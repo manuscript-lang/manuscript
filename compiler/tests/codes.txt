@@ -1,0 +1,1652 @@
+parse	
+parse	bad ; fix it
+parse	fine; 
+parse	 (in use site) tail; 
+parse	Hashable
+parse	bad Hashable; fix it
+parse	fine; Hashable
+parse	Hashable (in use site) tail; Hashable
+parse	UTF-8
+parse	bad UTF-8; fix it
+parse	fine; UTF-8
+parse	UTF-8 (in use site) tail; UTF-8
+parse	alias
+parse	bad alias; fix it
+parse	fine; alias
+parse	alias (in use site) tail; alias
+parse	cannot be constructed
+parse	bad cannot be constructed; fix it
+parse	fine; cannot be constructed
+parse	cannot be constructed (in use site) tail; cannot be constructed
+parse	cannot infer
+parse	bad cannot infer; fix it
+parse	fine; cannot infer
+parse	cannot infer (in use site) tail; cannot infer
+parse	cannot move 
+parse	bad cannot move ; fix it
+parse	fine; cannot move 
+parse	cannot move  (in use site) tail; cannot move 
+parse	captured
+parse	bad captured; fix it
+parse	fine; captured
+parse	captured (in use site) tail; captured
+parse	division by zero
+parse	bad division by zero; fix it
+parse	fine; division by zero
+parse	division by zero (in use site) tail; division by zero
+parse	does not change its receiver
+parse	bad does not change its receiver; fix it
+parse	fine; does not change its receiver
+parse	does not change its receiver (in use site) tail; does not change its receiver
+parse	does not satisfy
+parse	bad does not satisfy; fix it
+parse	fine; does not satisfy
+parse	does not satisfy (in use site) tail; does not satisfy
+parse	duplicate argument
+parse	bad duplicate argument; fix it
+parse	fine; duplicate argument
+parse	duplicate argument (in use site) tail; duplicate argument
+parse	duplicate implementation operation
+parse	bad duplicate implementation operation; fix it
+parse	fine; duplicate implementation operation
+parse	duplicate implementation operation (in use site) tail; duplicate implementation operation
+parse	escape
+parse	bad escape; fix it
+parse	fine; escape
+parse	escape (in use site) tail; escape
+parse	exhaustive
+parse	bad exhaustive; fix it
+parse	fine; exhaustive
+parse	exhaustive (in use site) tail; exhaustive
+parse	expected 
+parse	bad expected ; fix it
+parse	fine; expected 
+parse	expected  (in use site) tail; expected 
+parse	expected Int
+parse	bad expected Int; fix it
+parse	fine; expected Int
+parse	expected Int (in use site) tail; expected Int
+parse	extra operation
+parse	bad extra operation; fix it
+parse	fine; extra operation
+parse	extra operation (in use site) tail; extra operation
+parse	fixture is available only
+parse	bad fixture is available only; fix it
+parse	fine; fixture is available only
+parse	fixture is available only (in use site) tail; fixture is available only
+parse	generic arity
+parse	bad generic arity; fix it
+parse	fine; generic arity
+parse	generic arity (in use site) tail; generic arity
+parse	immutable
+parse	bad immutable; fix it
+parse	fine; immutable
+parse	immutable (in use site) tail; immutable
+parse	implementation receiver must be nominal
+parse	bad implementation receiver must be nominal; fix it
+parse	fine; implementation receiver must be nominal
+parse	implementation receiver must be nominal (in use site) tail; implementation receiver must be nominal
+parse	implementation target must be an interface
+parse	bad implementation target must be an interface; fix it
+parse	fine; implementation target must be an interface
+parse	implementation target must be an interface (in use site) tail; implementation target must be an interface
+parse	import
+parse	bad import; fix it
+parse	fine; import
+parse	import (in use site) tail; import
+parse	indent
+parse	bad indent; fix it
+parse	fine; indent
+parse	indent (in use site) tail; indent
+parse	infer
+parse	bad infer; fix it
+parse	fine; infer
+parse	infer (in use site) tail; infer
+parse	is a resource that is never closed
+parse	bad is a resource that is never closed; fix it
+parse	fine; is a resource that is never closed
+parse	is a resource that is never closed (in use site) tail; is a resource that is never closed
+parse	is an immutable binding
+parse	bad is an immutable binding; fix it
+parse	fine; is an immutable binding
+parse	is an immutable binding (in use site) tail; is an immutable binding
+parse	is moved here but used again
+parse	bad is moved here but used again; fix it
+parse	fine; is moved here but used again
+parse	is moved here but used again (in use site) tail; is moved here but used again
+parse	is never read
+parse	bad is never read; fix it
+parse	fine; is never read
+parse	is never read (in use site) tail; is never read
+parse	literal
+parse	bad literal; fix it
+parse	fine; literal
+parse	literal (in use site) tail; literal
+parse	missing argument
+parse	bad missing argument; fix it
+parse	fine; missing argument
+parse	missing argument (in use site) tail; missing argument
+parse	missing implementation operation
+parse	bad missing implementation operation; fix it
+parse	fine; missing implementation operation
+parse	missing implementation operation (in use site) tail; missing implementation operation
+parse	module
+parse	bad module; fix it
+parse	fine; module
+parse	module (in use site) tail; module
+parse	nominal source data
+parse	bad nominal source data; fix it
+parse	fine; nominal source data
+parse	nominal source data (in use site) tail; nominal source data
+parse	overlapping implementation
+parse	bad overlapping implementation; fix it
+parse	fine; overlapping implementation
+parse	overlapping implementation (in use site) tail; overlapping implementation
+parse	parameter
+parse	bad parameter; fix it
+parse	fine; parameter
+parse	parameter (in use site) tail; parameter
+parse	path
+parse	bad path; fix it
+parse	fine; path
+parse	path (in use site) tail; path
+parse	reachable fallthrough
+parse	bad reachable fallthrough; fix it
+parse	fine; reachable fallthrough
+parse	reachable fallthrough (in use site) tail; reachable fallthrough
+parse	recursive
+parse	bad recursive; fix it
+parse	fine; recursive
+parse	recursive (in use site) tail; recursive
+parse	redundant prelude import foo
+parse	bad redundant prelude import foo; fix it
+parse	fine; redundant prelude import foo
+parse	redundant prelude import foo (in use site) tail; redundant prelude import foo
+parse	requires a type field
+parse	bad requires a type field; fix it
+parse	fine; requires a type field
+parse	requires a type field (in use site) tail; requires a type field
+parse	reuses a prelude name
+parse	bad reuses a prelude name; fix it
+parse	fine; reuses a prelude name
+parse	reuses a prelude name (in use site) tail; reuses a prelude name
+parse	same independently known type
+parse	bad same independently known type; fix it
+parse	fine; same independently known type
+parse	same independently known type (in use site) tail; same independently known type
+parse	scalar
+parse	bad scalar; fix it
+parse	fine; scalar
+parse	scalar (in use site) tail; scalar
+parse	shadows an outer binding
+parse	bad shadows an outer binding; fix it
+parse	fine; shadows an outer binding
+parse	shadows an outer binding (in use site) tail; shadows an outer binding
+parse	signature does not match
+parse	bad signature does not match; fix it
+parse	fine; signature does not match
+parse	signature does not match (in use site) tail; signature does not match
+parse	string-literal match patterns x
+parse	bad string-literal match patterns x; fix it
+parse	fine; string-literal match patterns x
+parse	string-literal match patterns x (in use site) tail; string-literal match patterns x
+parse	suite
+parse	bad suite; fix it
+parse	fine; suite
+parse	suite (in use site) tail; suite
+parse	tabs
+parse	bad tabs; fix it
+parse	fine; tabs
+parse	tabs (in use site) tail; tabs
+parse	this statement discards
+parse	bad this statement discards; fix it
+parse	fine; this statement discards
+parse	this statement discards (in use site) tail; this statement discards
+parse	type arguments, found 
+parse	bad type arguments, found ; fix it
+parse	fine; type arguments, found 
+parse	type arguments, found  (in use site) tail; type arguments, found 
+parse	unknown
+parse	bad unknown; fix it
+parse	fine; unknown
+parse	unknown (in use site) tail; unknown
+parse	unknown argument
+parse	bad unknown argument; fix it
+parse	fine; unknown argument
+parse	unknown argument (in use site) tail; unknown argument
+parse	unknown binding
+parse	bad unknown binding; fix it
+parse	fine; unknown binding
+parse	unknown binding (in use site) tail; unknown binding
+parse	unknown case
+parse	bad unknown case; fix it
+parse	fine; unknown case
+parse	unknown case (in use site) tail; unknown case
+parse	unknown or ambiguous member
+parse	bad unknown or ambiguous member; fix it
+parse	fine; unknown or ambiguous member
+parse	unknown or ambiguous member (in use site) tail; unknown or ambiguous member
+parse	unknown standard module
+parse	bad unknown standard module; fix it
+parse	fine; unknown standard module
+parse	unknown standard module (in use site) tail; unknown standard module
+parse	unknown type
+parse	bad unknown type; fix it
+parse	fine; unknown type
+parse	unknown type (in use site) tail; unknown type
+resolution	
+resolution	bad ; fix it
+resolution	fine; 
+resolution	 (in use site) tail; 
+resolution	Hashable
+resolution	bad Hashable; fix it
+resolution	fine; Hashable
+resolution	Hashable (in use site) tail; Hashable
+resolution	UTF-8
+resolution	bad UTF-8; fix it
+resolution	fine; UTF-8
+resolution	UTF-8 (in use site) tail; UTF-8
+resolution	alias
+resolution	bad alias; fix it
+resolution	fine; alias
+resolution	alias (in use site) tail; alias
+resolution	cannot be constructed
+resolution	bad cannot be constructed; fix it
+resolution	fine; cannot be constructed
+resolution	cannot be constructed (in use site) tail; cannot be constructed
+resolution	cannot infer
+resolution	bad cannot infer; fix it
+resolution	fine; cannot infer
+resolution	cannot infer (in use site) tail; cannot infer
+resolution	cannot move 
+resolution	bad cannot move ; fix it
+resolution	fine; cannot move 
+resolution	cannot move  (in use site) tail; cannot move 
+resolution	captured
+resolution	bad captured; fix it
+resolution	fine; captured
+resolution	captured (in use site) tail; captured
+resolution	division by zero
+resolution	bad division by zero; fix it
+resolution	fine; division by zero
+resolution	division by zero (in use site) tail; division by zero
+resolution	does not change its receiver
+resolution	bad does not change its receiver; fix it
+resolution	fine; does not change its receiver
+resolution	does not change its receiver (in use site) tail; does not change its receiver
+resolution	does not satisfy
+resolution	bad does not satisfy; fix it
+resolution	fine; does not satisfy
+resolution	does not satisfy (in use site) tail; does not satisfy
+resolution	duplicate argument
+resolution	bad duplicate argument; fix it
+resolution	fine; duplicate argument
+resolution	duplicate argument (in use site) tail; duplicate argument
+resolution	duplicate implementation operation
+resolution	bad duplicate implementation operation; fix it
+resolution	fine; duplicate implementation operation
+resolution	duplicate implementation operation (in use site) tail; duplicate implementation operation
+resolution	escape
+resolution	bad escape; fix it
+resolution	fine; escape
+resolution	escape (in use site) tail; escape
+resolution	exhaustive
+resolution	bad exhaustive; fix it
+resolution	fine; exhaustive
+resolution	exhaustive (in use site) tail; exhaustive
+resolution	expected 
+resolution	bad expected ; fix it
+resolution	fine; expected 
+resolution	expected  (in use site) tail; expected 
+resolution	expected Int
+resolution	bad expected Int; fix it
+resolution	fine; expected Int
+resolution	expected Int (in use site) tail; expected Int
+resolution	extra operation
+resolution	bad extra operation; fix it
+resolution	fine; extra operation
+resolution	extra operation (in use site) tail; extra operation
+resolution	fixture is available only
+resolution	bad fixture is available only; fix it
+resolution	fine; fixture is available only
+resolution	fixture is available only (in use site) tail; fixture is available only
+resolution	generic arity
+resolution	bad generic arity; fix it
+resolution	fine; generic arity
+resolution	generic arity (in use site) tail; generic arity
+resolution	immutable
+resolution	bad immutable; fix it
+resolution	fine; immutable
+resolution	immutable (in use site) tail; immutable
+resolution	implementation receiver must be nominal
+resolution	bad implementation receiver must be nominal; fix it
+resolution	fine; implementation receiver must be nominal
+resolution	implementation receiver must be nominal (in use site) tail; implementation receiver must be nominal
+resolution	implementation target must be an interface
+resolution	bad implementation target must be an interface; fix it
+resolution	fine; implementation target must be an interface
+resolution	implementation target must be an interface (in use site) tail; implementation target must be an interface
+resolution	import
+resolution	bad import; fix it
+resolution	fine; import
+resolution	import (in use site) tail; import
+resolution	indent
+resolution	bad indent; fix it
+resolution	fine; indent
+resolution	indent (in use site) tail; indent
+resolution	infer
+resolution	bad infer; fix it
+resolution	fine; infer
+resolution	infer (in use site) tail; infer
+resolution	is a resource that is never closed
+resolution	bad is a resource that is never closed; fix it
+resolution	fine; is a resource that is never closed
+resolution	is a resource that is never closed (in use site) tail; is a resource that is never closed
+resolution	is an immutable binding
+resolution	bad is an immutable binding; fix it
+resolution	fine; is an immutable binding
+resolution	is an immutable binding (in use site) tail; is an immutable binding
+resolution	is moved here but used again
+resolution	bad is moved here but used again; fix it
+resolution	fine; is moved here but used again
+resolution	is moved here but used again (in use site) tail; is moved here but used again
+resolution	is never read
+resolution	bad is never read; fix it
+resolution	fine; is never read
+resolution	is never read (in use site) tail; is never read
+resolution	literal
+resolution	bad literal; fix it
+resolution	fine; literal
+resolution	literal (in use site) tail; literal
+resolution	missing argument
+resolution	bad missing argument; fix it
+resolution	fine; missing argument
+resolution	missing argument (in use site) tail; missing argument
+resolution	missing implementation operation
+resolution	bad missing implementation operation; fix it
+resolution	fine; missing implementation operation
+resolution	missing implementation operation (in use site) tail; missing implementation operation
+resolution	module
+resolution	bad module; fix it
+resolution	fine; module
+resolution	module (in use site) tail; module
+resolution	nominal source data
+resolution	bad nominal source data; fix it
+resolution	fine; nominal source data
+resolution	nominal source data (in use site) tail; nominal source data
+resolution	overlapping implementation
+resolution	bad overlapping implementation; fix it
+resolution	fine; overlapping implementation
+resolution	overlapping implementation (in use site) tail; overlapping implementation
+resolution	parameter
+resolution	bad parameter; fix it
+resolution	fine; parameter
+resolution	parameter (in use site) tail; parameter
+resolution	path
+resolution	bad path; fix it
+resolution	fine; path
+resolution	path (in use site) tail; path
+resolution	reachable fallthrough
+resolution	bad reachable fallthrough; fix it
+resolution	fine; reachable fallthrough
+resolution	reachable fallthrough (in use site) tail; reachable fallthrough
+resolution	recursive
+resolution	bad recursive; fix it
+resolution	fine; recursive
+resolution	recursive (in use site) tail; recursive
+resolution	redundant prelude import foo
+resolution	bad redundant prelude import foo; fix it
+resolution	fine; redundant prelude import foo
+resolution	redundant prelude import foo (in use site) tail; redundant prelude import foo
+resolution	requires a type field
+resolution	bad requires a type field; fix it
+resolution	fine; requires a type field
+resolution	requires a type field (in use site) tail; requires a type field
+resolution	reuses a prelude name
+resolution	bad reuses a prelude name; fix it
+resolution	fine; reuses a prelude name
+resolution	reuses a prelude name (in use site) tail; reuses a prelude name
+resolution	same independently known type
+resolution	bad same independently known type; fix it
+resolution	fine; same independently known type
+resolution	same independently known type (in use site) tail; same independently known type
+resolution	scalar
+resolution	bad scalar; fix it
+resolution	fine; scalar
+resolution	scalar (in use site) tail; scalar
+resolution	shadows an outer binding
+resolution	bad shadows an outer binding; fix it
+resolution	fine; shadows an outer binding
+resolution	shadows an outer binding (in use site) tail; shadows an outer binding
+resolution	signature does not match
+resolution	bad signature does not match; fix it
+resolution	fine; signature does not match
+resolution	signature does not match (in use site) tail; signature does not match
+resolution	string-literal match patterns x
+resolution	bad string-literal match patterns x; fix it
+resolution	fine; string-literal match patterns x
+resolution	string-literal match patterns x (in use site) tail; string-literal match patterns x
+resolution	suite
+resolution	bad suite; fix it
+resolution	fine; suite
+resolution	suite (in use site) tail; suite
+resolution	tabs
+resolution	bad tabs; fix it
+resolution	fine; tabs
+resolution	tabs (in use site) tail; tabs
+resolution	this statement discards
+resolution	bad this statement discards; fix it
+resolution	fine; this statement discards
+resolution	this statement discards (in use site) tail; this statement discards
+resolution	type arguments, found 
+resolution	bad type arguments, found ; fix it
+resolution	fine; type arguments, found 
+resolution	type arguments, found  (in use site) tail; type arguments, found 
+resolution	unknown
+resolution	bad unknown; fix it
+resolution	fine; unknown
+resolution	unknown (in use site) tail; unknown
+resolution	unknown argument
+resolution	bad unknown argument; fix it
+resolution	fine; unknown argument
+resolution	unknown argument (in use site) tail; unknown argument
+resolution	unknown binding
+resolution	bad unknown binding; fix it
+resolution	fine; unknown binding
+resolution	unknown binding (in use site) tail; unknown binding
+resolution	unknown case
+resolution	bad unknown case; fix it
+resolution	fine; unknown case
+resolution	unknown case (in use site) tail; unknown case
+resolution	unknown or ambiguous member
+resolution	bad unknown or ambiguous member; fix it
+resolution	fine; unknown or ambiguous member
+resolution	unknown or ambiguous member (in use site) tail; unknown or ambiguous member
+resolution	unknown standard module
+resolution	bad unknown standard module; fix it
+resolution	fine; unknown standard module
+resolution	unknown standard module (in use site) tail; unknown standard module
+resolution	unknown type
+resolution	bad unknown type; fix it
+resolution	fine; unknown type
+resolution	unknown type (in use site) tail; unknown type
+type	
+type	bad ; fix it
+type	fine; 
+type	 (in use site) tail; 
+type	Hashable
+type	bad Hashable; fix it
+type	fine; Hashable
+type	Hashable (in use site) tail; Hashable
+type	UTF-8
+type	bad UTF-8; fix it
+type	fine; UTF-8
+type	UTF-8 (in use site) tail; UTF-8
+type	alias
+type	bad alias; fix it
+type	fine; alias
+type	alias (in use site) tail; alias
+type	cannot be constructed
+type	bad cannot be constructed; fix it
+type	fine; cannot be constructed
+type	cannot be constructed (in use site) tail; cannot be constructed
+type	cannot infer
+type	bad cannot infer; fix it
+type	fine; cannot infer
+type	cannot infer (in use site) tail; cannot infer
+type	cannot move 
+type	bad cannot move ; fix it
+type	fine; cannot move 
+type	cannot move  (in use site) tail; cannot move 
+type	captured
+type	bad captured; fix it
+type	fine; captured
+type	captured (in use site) tail; captured
+type	division by zero
+type	bad division by zero; fix it
+type	fine; division by zero
+type	division by zero (in use site) tail; division by zero
+type	does not change its receiver
+type	bad does not change its receiver; fix it
+type	fine; does not change its receiver
+type	does not change its receiver (in use site) tail; does not change its receiver
+type	does not satisfy
+type	bad does not satisfy; fix it
+type	fine; does not satisfy
+type	does not satisfy (in use site) tail; does not satisfy
+type	duplicate argument
+type	bad duplicate argument; fix it
+type	fine; duplicate argument
+type	duplicate argument (in use site) tail; duplicate argument
+type	duplicate implementation operation
+type	bad duplicate implementation operation; fix it
+type	fine; duplicate implementation operation
+type	duplicate implementation operation (in use site) tail; duplicate implementation operation
+type	escape
+type	bad escape; fix it
+type	fine; escape
+type	escape (in use site) tail; escape
+type	exhaustive
+type	bad exhaustive; fix it
+type	fine; exhaustive
+type	exhaustive (in use site) tail; exhaustive
+type	expected 
+type	bad expected ; fix it
+type	fine; expected 
+type	expected  (in use site) tail; expected 
+type	expected Int
+type	bad expected Int; fix it
+type	fine; expected Int
+type	expected Int (in use site) tail; expected Int
+type	extra operation
+type	bad extra operation; fix it
+type	fine; extra operation
+type	extra operation (in use site) tail; extra operation
+type	fixture is available only
+type	bad fixture is available only; fix it
+type	fine; fixture is available only
+type	fixture is available only (in use site) tail; fixture is available only
+type	generic arity
+type	bad generic arity; fix it
+type	fine; generic arity
+type	generic arity (in use site) tail; generic arity
+type	immutable
+type	bad immutable; fix it
+type	fine; immutable
+type	immutable (in use site) tail; immutable
+type	implementation receiver must be nominal
+type	bad implementation receiver must be nominal; fix it
+type	fine; implementation receiver must be nominal
+type	implementation receiver must be nominal (in use site) tail; implementation receiver must be nominal
+type	implementation target must be an interface
+type	bad implementation target must be an interface; fix it
+type	fine; implementation target must be an interface
+type	implementation target must be an interface (in use site) tail; implementation target must be an interface
+type	import
+type	bad import; fix it
+type	fine; import
+type	import (in use site) tail; import
+type	indent
+type	bad indent; fix it
+type	fine; indent
+type	indent (in use site) tail; indent
+type	infer
+type	bad infer; fix it
+type	fine; infer
+type	infer (in use site) tail; infer
+type	is a resource that is never closed
+type	bad is a resource that is never closed; fix it
+type	fine; is a resource that is never closed
+type	is a resource that is never closed (in use site) tail; is a resource that is never closed
+type	is an immutable binding
+type	bad is an immutable binding; fix it
+type	fine; is an immutable binding
+type	is an immutable binding (in use site) tail; is an immutable binding
+type	is moved here but used again
+type	bad is moved here but used again; fix it
+type	fine; is moved here but used again
+type	is moved here but used again (in use site) tail; is moved here but used again
+type	is never read
+type	bad is never read; fix it
+type	fine; is never read
+type	is never read (in use site) tail; is never read
+type	literal
+type	bad literal; fix it
+type	fine; literal
+type	literal (in use site) tail; literal
+type	missing argument
+type	bad missing argument; fix it
+type	fine; missing argument
+type	missing argument (in use site) tail; missing argument
+type	missing implementation operation
+type	bad missing implementation operation; fix it
+type	fine; missing implementation operation
+type	missing implementation operation (in use site) tail; missing implementation operation
+type	module
+type	bad module; fix it
+type	fine; module
+type	module (in use site) tail; module
+type	nominal source data
+type	bad nominal source data; fix it
+type	fine; nominal source data
+type	nominal source data (in use site) tail; nominal source data
+type	overlapping implementation
+type	bad overlapping implementation; fix it
+type	fine; overlapping implementation
+type	overlapping implementation (in use site) tail; overlapping implementation
+type	parameter
+type	bad parameter; fix it
+type	fine; parameter
+type	parameter (in use site) tail; parameter
+type	path
+type	bad path; fix it
+type	fine; path
+type	path (in use site) tail; path
+type	reachable fallthrough
+type	bad reachable fallthrough; fix it
+type	fine; reachable fallthrough
+type	reachable fallthrough (in use site) tail; reachable fallthrough
+type	recursive
+type	bad recursive; fix it
+type	fine; recursive
+type	recursive (in use site) tail; recursive
+type	redundant prelude import foo
+type	bad redundant prelude import foo; fix it
+type	fine; redundant prelude import foo
+type	redundant prelude import foo (in use site) tail; redundant prelude import foo
+type	requires a type field
+type	bad requires a type field; fix it
+type	fine; requires a type field
+type	requires a type field (in use site) tail; requires a type field
+type	reuses a prelude name
+type	bad reuses a prelude name; fix it
+type	fine; reuses a prelude name
+type	reuses a prelude name (in use site) tail; reuses a prelude name
+type	same independently known type
+type	bad same independently known type; fix it
+type	fine; same independently known type
+type	same independently known type (in use site) tail; same independently known type
+type	scalar
+type	bad scalar; fix it
+type	fine; scalar
+type	scalar (in use site) tail; scalar
+type	shadows an outer binding
+type	bad shadows an outer binding; fix it
+type	fine; shadows an outer binding
+type	shadows an outer binding (in use site) tail; shadows an outer binding
+type	signature does not match
+type	bad signature does not match; fix it
+type	fine; signature does not match
+type	signature does not match (in use site) tail; signature does not match
+type	string-literal match patterns x
+type	bad string-literal match patterns x; fix it
+type	fine; string-literal match patterns x
+type	string-literal match patterns x (in use site) tail; string-literal match patterns x
+type	suite
+type	bad suite; fix it
+type	fine; suite
+type	suite (in use site) tail; suite
+type	tabs
+type	bad tabs; fix it
+type	fine; tabs
+type	tabs (in use site) tail; tabs
+type	this statement discards
+type	bad this statement discards; fix it
+type	fine; this statement discards
+type	this statement discards (in use site) tail; this statement discards
+type	type arguments, found 
+type	bad type arguments, found ; fix it
+type	fine; type arguments, found 
+type	type arguments, found  (in use site) tail; type arguments, found 
+type	unknown
+type	bad unknown; fix it
+type	fine; unknown
+type	unknown (in use site) tail; unknown
+type	unknown argument
+type	bad unknown argument; fix it
+type	fine; unknown argument
+type	unknown argument (in use site) tail; unknown argument
+type	unknown binding
+type	bad unknown binding; fix it
+type	fine; unknown binding
+type	unknown binding (in use site) tail; unknown binding
+type	unknown case
+type	bad unknown case; fix it
+type	fine; unknown case
+type	unknown case (in use site) tail; unknown case
+type	unknown or ambiguous member
+type	bad unknown or ambiguous member; fix it
+type	fine; unknown or ambiguous member
+type	unknown or ambiguous member (in use site) tail; unknown or ambiguous member
+type	unknown standard module
+type	bad unknown standard module; fix it
+type	fine; unknown standard module
+type	unknown standard module (in use site) tail; unknown standard module
+type	unknown type
+type	bad unknown type; fix it
+type	fine; unknown type
+type	unknown type (in use site) tail; unknown type
+lowering	
+lowering	bad ; fix it
+lowering	fine; 
+lowering	 (in use site) tail; 
+lowering	Hashable
+lowering	bad Hashable; fix it
+lowering	fine; Hashable
+lowering	Hashable (in use site) tail; Hashable
+lowering	UTF-8
+lowering	bad UTF-8; fix it
+lowering	fine; UTF-8
+lowering	UTF-8 (in use site) tail; UTF-8
+lowering	alias
+lowering	bad alias; fix it
+lowering	fine; alias
+lowering	alias (in use site) tail; alias
+lowering	cannot be constructed
+lowering	bad cannot be constructed; fix it
+lowering	fine; cannot be constructed
+lowering	cannot be constructed (in use site) tail; cannot be constructed
+lowering	cannot infer
+lowering	bad cannot infer; fix it
+lowering	fine; cannot infer
+lowering	cannot infer (in use site) tail; cannot infer
+lowering	cannot move 
+lowering	bad cannot move ; fix it
+lowering	fine; cannot move 
+lowering	cannot move  (in use site) tail; cannot move 
+lowering	captured
+lowering	bad captured; fix it
+lowering	fine; captured
+lowering	captured (in use site) tail; captured
+lowering	division by zero
+lowering	bad division by zero; fix it
+lowering	fine; division by zero
+lowering	division by zero (in use site) tail; division by zero
+lowering	does not change its receiver
+lowering	bad does not change its receiver; fix it
+lowering	fine; does not change its receiver
+lowering	does not change its receiver (in use site) tail; does not change its receiver
+lowering	does not satisfy
+lowering	bad does not satisfy; fix it
+lowering	fine; does not satisfy
+lowering	does not satisfy (in use site) tail; does not satisfy
+lowering	duplicate argument
+lowering	bad duplicate argument; fix it
+lowering	fine; duplicate argument
+lowering	duplicate argument (in use site) tail; duplicate argument
+lowering	duplicate implementation operation
+lowering	bad duplicate implementation operation; fix it
+lowering	fine; duplicate implementation operation
+lowering	duplicate implementation operation (in use site) tail; duplicate implementation operation
+lowering	escape
+lowering	bad escape; fix it
+lowering	fine; escape
+lowering	escape (in use site) tail; escape
+lowering	exhaustive
+lowering	bad exhaustive; fix it
+lowering	fine; exhaustive
+lowering	exhaustive (in use site) tail; exhaustive
+lowering	expected 
+lowering	bad expected ; fix it
+lowering	fine; expected 
+lowering	expected  (in use site) tail; expected 
+lowering	expected Int
+lowering	bad expected Int; fix it
+lowering	fine; expected Int
+lowering	expected Int (in use site) tail; expected Int
+lowering	extra operation
+lowering	bad extra operation; fix it
+lowering	fine; extra operation
+lowering	extra operation (in use site) tail; extra operation
+lowering	fixture is available only
+lowering	bad fixture is available only; fix it
+lowering	fine; fixture is available only
+lowering	fixture is available only (in use site) tail; fixture is available only
+lowering	generic arity
+lowering	bad generic arity; fix it
+lowering	fine; generic arity
+lowering	generic arity (in use site) tail; generic arity
+lowering	immutable
+lowering	bad immutable; fix it
+lowering	fine; immutable
+lowering	immutable (in use site) tail; immutable
+lowering	implementation receiver must be nominal
+lowering	bad implementation receiver must be nominal; fix it
+lowering	fine; implementation receiver must be nominal
+lowering	implementation receiver must be nominal (in use site) tail; implementation receiver must be nominal
+lowering	implementation target must be an interface
+lowering	bad implementation target must be an interface; fix it
+lowering	fine; implementation target must be an interface
+lowering	implementation target must be an interface (in use site) tail; implementation target must be an interface
+lowering	import
+lowering	bad import; fix it
+lowering	fine; import
+lowering	import (in use site) tail; import
+lowering	indent
+lowering	bad indent; fix it
+lowering	fine; indent
+lowering	indent (in use site) tail; indent
+lowering	infer
+lowering	bad infer; fix it
+lowering	fine; infer
+lowering	infer (in use site) tail; infer
+lowering	is a resource that is never closed
+lowering	bad is a resource that is never closed; fix it
+lowering	fine; is a resource that is never closed
+lowering	is a resource that is never closed (in use site) tail; is a resource that is never closed
+lowering	is an immutable binding
+lowering	bad is an immutable binding; fix it
+lowering	fine; is an immutable binding
+lowering	is an immutable binding (in use site) tail; is an immutable binding
+lowering	is moved here but used again
+lowering	bad is moved here but used again; fix it
+lowering	fine; is moved here but used again
+lowering	is moved here but used again (in use site) tail; is moved here but used again
+lowering	is never read
+lowering	bad is never read; fix it
+lowering	fine; is never read
+lowering	is never read (in use site) tail; is never read
+lowering	literal
+lowering	bad literal; fix it
+lowering	fine; literal
+lowering	literal (in use site) tail; literal
+lowering	missing argument
+lowering	bad missing argument; fix it
+lowering	fine; missing argument
+lowering	missing argument (in use site) tail; missing argument
+lowering	missing implementation operation
+lowering	bad missing implementation operation; fix it
+lowering	fine; missing implementation operation
+lowering	missing implementation operation (in use site) tail; missing implementation operation
+lowering	module
+lowering	bad module; fix it
+lowering	fine; module
+lowering	module (in use site) tail; module
+lowering	nominal source data
+lowering	bad nominal source data; fix it
+lowering	fine; nominal source data
+lowering	nominal source data (in use site) tail; nominal source data
+lowering	overlapping implementation
+lowering	bad overlapping implementation; fix it
+lowering	fine; overlapping implementation
+lowering	overlapping implementation (in use site) tail; overlapping implementation
+lowering	parameter
+lowering	bad parameter; fix it
+lowering	fine; parameter
+lowering	parameter (in use site) tail; parameter
+lowering	path
+lowering	bad path; fix it
+lowering	fine; path
+lowering	path (in use site) tail; path
+lowering	reachable fallthrough
+lowering	bad reachable fallthrough; fix it
+lowering	fine; reachable fallthrough
+lowering	reachable fallthrough (in use site) tail; reachable fallthrough
+lowering	recursive
+lowering	bad recursive; fix it
+lowering	fine; recursive
+lowering	recursive (in use site) tail; recursive
+lowering	redundant prelude import foo
+lowering	bad redundant prelude import foo; fix it
+lowering	fine; redundant prelude import foo
+lowering	redundant prelude import foo (in use site) tail; redundant prelude import foo
+lowering	requires a type field
+lowering	bad requires a type field; fix it
+lowering	fine; requires a type field
+lowering	requires a type field (in use site) tail; requires a type field
+lowering	reuses a prelude name
+lowering	bad reuses a prelude name; fix it
+lowering	fine; reuses a prelude name
+lowering	reuses a prelude name (in use site) tail; reuses a prelude name
+lowering	same independently known type
+lowering	bad same independently known type; fix it
+lowering	fine; same independently known type
+lowering	same independently known type (in use site) tail; same independently known type
+lowering	scalar
+lowering	bad scalar; fix it
+lowering	fine; scalar
+lowering	scalar (in use site) tail; scalar
+lowering	shadows an outer binding
+lowering	bad shadows an outer binding; fix it
+lowering	fine; shadows an outer binding
+lowering	shadows an outer binding (in use site) tail; shadows an outer binding
+lowering	signature does not match
+lowering	bad signature does not match; fix it
+lowering	fine; signature does not match
+lowering	signature does not match (in use site) tail; signature does not match
+lowering	string-literal match patterns x
+lowering	bad string-literal match patterns x; fix it
+lowering	fine; string-literal match patterns x
+lowering	string-literal match patterns x (in use site) tail; string-literal match patterns x
+lowering	suite
+lowering	bad suite; fix it
+lowering	fine; suite
+lowering	suite (in use site) tail; suite
+lowering	tabs
+lowering	bad tabs; fix it
+lowering	fine; tabs
+lowering	tabs (in use site) tail; tabs
+lowering	this statement discards
+lowering	bad this statement discards; fix it
+lowering	fine; this statement discards
+lowering	this statement discards (in use site) tail; this statement discards
+lowering	type arguments, found 
+lowering	bad type arguments, found ; fix it
+lowering	fine; type arguments, found 
+lowering	type arguments, found  (in use site) tail; type arguments, found 
+lowering	unknown
+lowering	bad unknown; fix it
+lowering	fine; unknown
+lowering	unknown (in use site) tail; unknown
+lowering	unknown argument
+lowering	bad unknown argument; fix it
+lowering	fine; unknown argument
+lowering	unknown argument (in use site) tail; unknown argument
+lowering	unknown binding
+lowering	bad unknown binding; fix it
+lowering	fine; unknown binding
+lowering	unknown binding (in use site) tail; unknown binding
+lowering	unknown case
+lowering	bad unknown case; fix it
+lowering	fine; unknown case
+lowering	unknown case (in use site) tail; unknown case
+lowering	unknown or ambiguous member
+lowering	bad unknown or ambiguous member; fix it
+lowering	fine; unknown or ambiguous member
+lowering	unknown or ambiguous member (in use site) tail; unknown or ambiguous member
+lowering	unknown standard module
+lowering	bad unknown standard module; fix it
+lowering	fine; unknown standard module
+lowering	unknown standard module (in use site) tail; unknown standard module
+lowering	unknown type
+lowering	bad unknown type; fix it
+lowering	fine; unknown type
+lowering	unknown type (in use site) tail; unknown type
+format	
+format	bad ; fix it
+format	fine; 
+format	 (in use site) tail; 
+format	Hashable
+format	bad Hashable; fix it
+format	fine; Hashable
+format	Hashable (in use site) tail; Hashable
+format	UTF-8
+format	bad UTF-8; fix it
+format	fine; UTF-8
+format	UTF-8 (in use site) tail; UTF-8
+format	alias
+format	bad alias; fix it
+format	fine; alias
+format	alias (in use site) tail; alias
+format	cannot be constructed
+format	bad cannot be constructed; fix it
+format	fine; cannot be constructed
+format	cannot be constructed (in use site) tail; cannot be constructed
+format	cannot infer
+format	bad cannot infer; fix it
+format	fine; cannot infer
+format	cannot infer (in use site) tail; cannot infer
+format	cannot move 
+format	bad cannot move ; fix it
+format	fine; cannot move 
+format	cannot move  (in use site) tail; cannot move 
+format	captured
+format	bad captured; fix it
+format	fine; captured
+format	captured (in use site) tail; captured
+format	division by zero
+format	bad division by zero; fix it
+format	fine; division by zero
+format	division by zero (in use site) tail; division by zero
+format	does not change its receiver
+format	bad does not change its receiver; fix it
+format	fine; does not change its receiver
+format	does not change its receiver (in use site) tail; does not change its receiver
+format	does not satisfy
+format	bad does not satisfy; fix it
+format	fine; does not satisfy
+format	does not satisfy (in use site) tail; does not satisfy
+format	duplicate argument
+format	bad duplicate argument; fix it
+format	fine; duplicate argument
+format	duplicate argument (in use site) tail; duplicate argument
+format	duplicate implementation operation
+format	bad duplicate implementation operation; fix it
+format	fine; duplicate implementation operation
+format	duplicate implementation operation (in use site) tail; duplicate implementation operation
+format	escape
+format	bad escape; fix it
+format	fine; escape
+format	escape (in use site) tail; escape
+format	exhaustive
+format	bad exhaustive; fix it
+format	fine; exhaustive
+format	exhaustive (in use site) tail; exhaustive
+format	expected 
+format	bad expected ; fix it
+format	fine; expected 
+format	expected  (in use site) tail; expected 
+format	expected Int
+format	bad expected Int; fix it
+format	fine; expected Int
+format	expected Int (in use site) tail; expected Int
+format	extra operation
+format	bad extra operation; fix it
+format	fine; extra operation
+format	extra operation (in use site) tail; extra operation
+format	fixture is available only
+format	bad fixture is available only; fix it
+format	fine; fixture is available only
+format	fixture is available only (in use site) tail; fixture is available only
+format	generic arity
+format	bad generic arity; fix it
+format	fine; generic arity
+format	generic arity (in use site) tail; generic arity
+format	immutable
+format	bad immutable; fix it
+format	fine; immutable
+format	immutable (in use site) tail; immutable
+format	implementation receiver must be nominal
+format	bad implementation receiver must be nominal; fix it
+format	fine; implementation receiver must be nominal
+format	implementation receiver must be nominal (in use site) tail; implementation receiver must be nominal
+format	implementation target must be an interface
+format	bad implementation target must be an interface; fix it
+format	fine; implementation target must be an interface
+format	implementation target must be an interface (in use site) tail; implementation target must be an interface
+format	import
+format	bad import; fix it
+format	fine; import
+format	import (in use site) tail; import
+format	indent
+format	bad indent; fix it
+format	fine; indent
+format	indent (in use site) tail; indent
+format	infer
+format	bad infer; fix it
+format	fine; infer
+format	infer (in use site) tail; infer
+format	is a resource that is never closed
+format	bad is a resource that is never closed; fix it
+format	fine; is a resource that is never closed
+format	is a resource that is never closed (in use site) tail; is a resource that is never closed
+format	is an immutable binding
+format	bad is an immutable binding; fix it
+format	fine; is an immutable binding
+format	is an immutable binding (in use site) tail; is an immutable binding
+format	is moved here but used again
+format	bad is moved here but used again; fix it
+format	fine; is moved here but used again
+format	is moved here but used again (in use site) tail; is moved here but used again
+format	is never read
+format	bad is never read; fix it
+format	fine; is never read
+format	is never read (in use site) tail; is never read
+format	literal
+format	bad literal; fix it
+format	fine; literal
+format	literal (in use site) tail; literal
+format	missing argument
+format	bad missing argument; fix it
+format	fine; missing argument
+format	missing argument (in use site) tail; missing argument
+format	missing implementation operation
+format	bad missing implementation operation; fix it
+format	fine; missing implementation operation
+format	missing implementation operation (in use site) tail; missing implementation operation
+format	module
+format	bad module; fix it
+format	fine; module
+format	module (in use site) tail; module
+format	nominal source data
+format	bad nominal source data; fix it
+format	fine; nominal source data
+format	nominal source data (in use site) tail; nominal source data
+format	overlapping implementation
+format	bad overlapping implementation; fix it
+format	fine; overlapping implementation
+format	overlapping implementation (in use site) tail; overlapping implementation
+format	parameter
+format	bad parameter; fix it
+format	fine; parameter
+format	parameter (in use site) tail; parameter
+format	path
+format	bad path; fix it
+format	fine; path
+format	path (in use site) tail; path
+format	reachable fallthrough
+format	bad reachable fallthrough; fix it
+format	fine; reachable fallthrough
+format	reachable fallthrough (in use site) tail; reachable fallthrough
+format	recursive
+format	bad recursive; fix it
+format	fine; recursive
+format	recursive (in use site) tail; recursive
+format	redundant prelude import foo
+format	bad redundant prelude import foo; fix it
+format	fine; redundant prelude import foo
+format	redundant prelude import foo (in use site) tail; redundant prelude import foo
+format	requires a type field
+format	bad requires a type field; fix it
+format	fine; requires a type field
+format	requires a type field (in use site) tail; requires a type field
+format	reuses a prelude name
+format	bad reuses a prelude name; fix it
+format	fine; reuses a prelude name
+format	reuses a prelude name (in use site) tail; reuses a prelude name
+format	same independently known type
+format	bad same independently known type; fix it
+format	fine; same independently known type
+format	same independently known type (in use site) tail; same independently known type
+format	scalar
+format	bad scalar; fix it
+format	fine; scalar
+format	scalar (in use site) tail; scalar
+format	shadows an outer binding
+format	bad shadows an outer binding; fix it
+format	fine; shadows an outer binding
+format	shadows an outer binding (in use site) tail; shadows an outer binding
+format	signature does not match
+format	bad signature does not match; fix it
+format	fine; signature does not match
+format	signature does not match (in use site) tail; signature does not match
+format	string-literal match patterns x
+format	bad string-literal match patterns x; fix it
+format	fine; string-literal match patterns x
+format	string-literal match patterns x (in use site) tail; string-literal match patterns x
+format	suite
+format	bad suite; fix it
+format	fine; suite
+format	suite (in use site) tail; suite
+format	tabs
+format	bad tabs; fix it
+format	fine; tabs
+format	tabs (in use site) tail; tabs
+format	this statement discards
+format	bad this statement discards; fix it
+format	fine; this statement discards
+format	this statement discards (in use site) tail; this statement discards
+format	type arguments, found 
+format	bad type arguments, found ; fix it
+format	fine; type arguments, found 
+format	type arguments, found  (in use site) tail; type arguments, found 
+format	unknown
+format	bad unknown; fix it
+format	fine; unknown
+format	unknown (in use site) tail; unknown
+format	unknown argument
+format	bad unknown argument; fix it
+format	fine; unknown argument
+format	unknown argument (in use site) tail; unknown argument
+format	unknown binding
+format	bad unknown binding; fix it
+format	fine; unknown binding
+format	unknown binding (in use site) tail; unknown binding
+format	unknown case
+format	bad unknown case; fix it
+format	fine; unknown case
+format	unknown case (in use site) tail; unknown case
+format	unknown or ambiguous member
+format	bad unknown or ambiguous member; fix it
+format	fine; unknown or ambiguous member
+format	unknown or ambiguous member (in use site) tail; unknown or ambiguous member
+format	unknown standard module
+format	bad unknown standard module; fix it
+format	fine; unknown standard module
+format	unknown standard module (in use site) tail; unknown standard module
+format	unknown type
+format	bad unknown type; fix it
+format	fine; unknown type
+format	unknown type (in use site) tail; unknown type
+execution	
+execution	bad ; fix it
+execution	fine; 
+execution	 (in use site) tail; 
+execution	Hashable
+execution	bad Hashable; fix it
+execution	fine; Hashable
+execution	Hashable (in use site) tail; Hashable
+execution	UTF-8
+execution	bad UTF-8; fix it
+execution	fine; UTF-8
+execution	UTF-8 (in use site) tail; UTF-8
+execution	alias
+execution	bad alias; fix it
+execution	fine; alias
+execution	alias (in use site) tail; alias
+execution	cannot be constructed
+execution	bad cannot be constructed; fix it
+execution	fine; cannot be constructed
+execution	cannot be constructed (in use site) tail; cannot be constructed
+execution	cannot infer
+execution	bad cannot infer; fix it
+execution	fine; cannot infer
+execution	cannot infer (in use site) tail; cannot infer
+execution	cannot move 
+execution	bad cannot move ; fix it
+execution	fine; cannot move 
+execution	cannot move  (in use site) tail; cannot move 
+execution	captured
+execution	bad captured; fix it
+execution	fine; captured
+execution	captured (in use site) tail; captured
+execution	division by zero
+execution	bad division by zero; fix it
+execution	fine; division by zero
+execution	division by zero (in use site) tail; division by zero
+execution	does not change its receiver
+execution	bad does not change its receiver; fix it
+execution	fine; does not change its receiver
+execution	does not change its receiver (in use site) tail; does not change its receiver
+execution	does not satisfy
+execution	bad does not satisfy; fix it
+execution	fine; does not satisfy
+execution	does not satisfy (in use site) tail; does not satisfy
+execution	duplicate argument
+execution	bad duplicate argument; fix it
+execution	fine; duplicate argument
+execution	duplicate argument (in use site) tail; duplicate argument
+execution	duplicate implementation operation
+execution	bad duplicate implementation operation; fix it
+execution	fine; duplicate implementation operation
+execution	duplicate implementation operation (in use site) tail; duplicate implementation operation
+execution	escape
+execution	bad escape; fix it
+execution	fine; escape
+execution	escape (in use site) tail; escape
+execution	exhaustive
+execution	bad exhaustive; fix it
+execution	fine; exhaustive
+execution	exhaustive (in use site) tail; exhaustive
+execution	expected 
+execution	bad expected ; fix it
+execution	fine; expected 
+execution	expected  (in use site) tail; expected 
+execution	expected Int
+execution	bad expected Int; fix it
+execution	fine; expected Int
+execution	expected Int (in use site) tail; expected Int
+execution	extra operation
+execution	bad extra operation; fix it
+execution	fine; extra operation
+execution	extra operation (in use site) tail; extra operation
+execution	fixture is available only
+execution	bad fixture is available only; fix it
+execution	fine; fixture is available only
+execution	fixture is available only (in use site) tail; fixture is available only
+execution	generic arity
+execution	bad generic arity; fix it
+execution	fine; generic arity
+execution	generic arity (in use site) tail; generic arity
+execution	immutable
+execution	bad immutable; fix it
+execution	fine; immutable
+execution	immutable (in use site) tail; immutable
+execution	implementation receiver must be nominal
+execution	bad implementation receiver must be nominal; fix it
+execution	fine; implementation receiver must be nominal
+execution	implementation receiver must be nominal (in use site) tail; implementation receiver must be nominal
+execution	implementation target must be an interface
+execution	bad implementation target must be an interface; fix it
+execution	fine; implementation target must be an interface
+execution	implementation target must be an interface (in use site) tail; implementation target must be an interface
+execution	import
+execution	bad import; fix it
+execution	fine; import
+execution	import (in use site) tail; import
+execution	indent
+execution	bad indent; fix it
+execution	fine; indent
+execution	indent (in use site) tail; indent
+execution	infer
+execution	bad infer; fix it
+execution	fine; infer
+execution	infer (in use site) tail; infer
+execution	is a resource that is never closed
+execution	bad is a resource that is never closed; fix it
+execution	fine; is a resource that is never closed
+execution	is a resource that is never closed (in use site) tail; is a resource that is never closed
+execution	is an immutable binding
+execution	bad is an immutable binding; fix it
+execution	fine; is an immutable binding
+execution	is an immutable binding (in use site) tail; is an immutable binding
+execution	is moved here but used again
+execution	bad is moved here but used again; fix it
+execution	fine; is moved here but used again
+execution	is moved here but used again (in use site) tail; is moved here but used again
+execution	is never read
+execution	bad is never read; fix it
+execution	fine; is never read
+execution	is never read (in use site) tail; is never read
+execution	literal
+execution	bad literal; fix it
+execution	fine; literal
+execution	literal (in use site) tail; literal
+execution	missing argument
+execution	bad missing argument; fix it
+execution	fine; missing argument
+execution	missing argument (in use site) tail; missing argument
+execution	missing implementation operation
+execution	bad missing implementation operation; fix it
+execution	fine; missing implementation operation
+execution	missing implementation operation (in use site) tail; missing implementation operation
+execution	module
+execution	bad module; fix it
+execution	fine; module
+execution	module (in use site) tail; module
+execution	nominal source data
+execution	bad nominal source data; fix it
+execution	fine; nominal source data
+execution	nominal source data (in use site) tail; nominal source data
+execution	overlapping implementation
+execution	bad overlapping implementation; fix it
+execution	fine; overlapping implementation
+execution	overlapping implementation (in use site) tail; overlapping implementation
+execution	parameter
+execution	bad parameter; fix it
+execution	fine; parameter
+execution	parameter (in use site) tail; parameter
+execution	path
+execution	bad path; fix it
+execution	fine; path
+execution	path (in use site) tail; path
+execution	reachable fallthrough
+execution	bad reachable fallthrough; fix it
+execution	fine; reachable fallthrough
+execution	reachable fallthrough (in use site) tail; reachable fallthrough
+execution	recursive
+execution	bad recursive; fix it
+execution	fine; recursive
+execution	recursive (in use site) tail; recursive
+execution	redundant prelude import foo
+execution	bad redundant prelude import foo; fix it
+execution	fine; redundant prelude import foo
+execution	redundant prelude import foo (in use site) tail; redundant prelude import foo
+execution	requires a type field
+execution	bad requires a type field; fix it
+execution	fine; requires a type field
+execution	requires a type field (in use site) tail; requires a type field
+execution	reuses a prelude name
+execution	bad reuses a prelude name; fix it
+execution	fine; reuses a prelude name
+execution	reuses a prelude name (in use site) tail; reuses a prelude name
+execution	same independently known type
+execution	bad same independently known type; fix it
+execution	fine; same independently known type
+execution	same independently known type (in use site) tail; same independently known type
+execution	scalar
+execution	bad scalar; fix it
+execution	fine; scalar
+execution	scalar (in use site) tail; scalar
+execution	shadows an outer binding
+execution	bad shadows an outer binding; fix it
+execution	fine; shadows an outer binding
+execution	shadows an outer binding (in use site) tail; shadows an outer binding
+execution	signature does not match
+execution	bad signature does not match; fix it
+execution	fine; signature does not match
+execution	signature does not match (in use site) tail; signature does not match
+execution	string-literal match patterns x
+execution	bad string-literal match patterns x; fix it
+execution	fine; string-literal match patterns x
+execution	string-literal match patterns x (in use site) tail; string-literal match patterns x
+execution	suite
+execution	bad suite; fix it
+execution	fine; suite
+execution	suite (in use site) tail; suite
+execution	tabs
+execution	bad tabs; fix it
+execution	fine; tabs
+execution	tabs (in use site) tail; tabs
+execution	this statement discards
+execution	bad this statement discards; fix it
+execution	fine; this statement discards
+execution	this statement discards (in use site) tail; this statement discards
+execution	type arguments, found 
+execution	bad type arguments, found ; fix it
+execution	fine; type arguments, found 
+execution	type arguments, found  (in use site) tail; type arguments, found 
+execution	unknown
+execution	bad unknown; fix it
+execution	fine; unknown
+execution	unknown (in use site) tail; unknown
+execution	unknown argument
+execution	bad unknown argument; fix it
+execution	fine; unknown argument
+execution	unknown argument (in use site) tail; unknown argument
+execution	unknown binding
+execution	bad unknown binding; fix it
+execution	fine; unknown binding
+execution	unknown binding (in use site) tail; unknown binding
+execution	unknown case
+execution	bad unknown case; fix it
+execution	fine; unknown case
+execution	unknown case (in use site) tail; unknown case
+execution	unknown or ambiguous member
+execution	bad unknown or ambiguous member; fix it
+execution	fine; unknown or ambiguous member
+execution	unknown or ambiguous member (in use site) tail; unknown or ambiguous member
+execution	unknown standard module
+execution	bad unknown standard module; fix it
+execution	fine; unknown standard module
+execution	unknown standard module (in use site) tail; unknown standard module
+execution	unknown type
+execution	bad unknown type; fix it
+execution	fine; unknown type
+execution	unknown type (in use site) tail; unknown type
+other	
+other	bad ; fix it
+other	fine; 
+other	 (in use site) tail; 
+other	Hashable
+other	bad Hashable; fix it
+other	fine; Hashable
+other	Hashable (in use site) tail; Hashable
+other	UTF-8
+other	bad UTF-8; fix it
+other	fine; UTF-8
+other	UTF-8 (in use site) tail; UTF-8
+other	alias
+other	bad alias; fix it
+other	fine; alias
+other	alias (in use site) tail; alias
+other	cannot be constructed
+other	bad cannot be constructed; fix it
+other	fine; cannot be constructed
+other	cannot be constructed (in use site) tail; cannot be constructed
+other	cannot infer
+other	bad cannot infer; fix it
+other	fine; cannot infer
+other	cannot infer (in use site) tail; cannot infer
+other	cannot move 
+other	bad cannot move ; fix it
+other	fine; cannot move 
+other	cannot move  (in use site) tail; cannot move 
+other	captured
+other	bad captured; fix it
+other	fine; captured
+other	captured (in use site) tail; captured
+other	division by zero
+other	bad division by zero; fix it
+other	fine; division by zero
+other	division by zero (in use site) tail; division by zero
+other	does not change its receiver
+other	bad does not change its receiver; fix it
+other	fine; does not change its receiver
+other	does not change its receiver (in use site) tail; does not change its receiver
+other	does not satisfy
+other	bad does not satisfy; fix it
+other	fine; does not satisfy
+other	does not satisfy (in use site) tail; does not satisfy
+other	duplicate argument
+other	bad duplicate argument; fix it
+other	fine; duplicate argument
+other	duplicate argument (in use site) tail; duplicate argument
+other	duplicate implementation operation
+other	bad duplicate implementation operation; fix it
+other	fine; duplicate implementation operation
+other	duplicate implementation operation (in use site) tail; duplicate implementation operation
+other	escape
+other	bad escape; fix it
+other	fine; escape
+other	escape (in use site) tail; escape
+other	exhaustive
+other	bad exhaustive; fix it
+other	fine; exhaustive
+other	exhaustive (in use site) tail; exhaustive
+other	expected 
+other	bad expected ; fix it
+other	fine; expected 
+other	expected  (in use site) tail; expected 
+other	expected Int
+other	bad expected Int; fix it
+other	fine; expected Int
+other	expected Int (in use site) tail; expected Int
+other	extra operation
+other	bad extra operation; fix it
+other	fine; extra operation
+other	extra operation (in use site) tail; extra operation
+other	fixture is available only
+other	bad fixture is available only; fix it
+other	fine; fixture is available only
+other	fixture is available only (in use site) tail; fixture is available only
+other	generic arity
+other	bad generic arity; fix it
+other	fine; generic arity
+other	generic arity (in use site) tail; generic arity
+other	immutable
+other	bad immutable; fix it
+other	fine; immutable
+other	immutable (in use site) tail; immutable
+other	implementation receiver must be nominal
+other	bad implementation receiver must be nominal; fix it
+other	fine; implementation receiver must be nominal
+other	implementation receiver must be nominal (in use site) tail; implementation receiver must be nominal
+other	implementation target must be an interface
+other	bad implementation target must be an interface; fix it
+other	fine; implementation target must be an interface
+other	implementation target must be an interface (in use site) tail; implementation target must be an interface
+other	import
+other	bad import; fix it
+other	fine; import
+other	import (in use site) tail; import
+other	indent
+other	bad indent; fix it
+other	fine; indent
+other	indent (in use site) tail; indent
+other	infer
+other	bad infer; fix it
+other	fine; infer
+other	infer (in use site) tail; infer
+other	is a resource that is never closed
+other	bad is a resource that is never closed; fix it
+other	fine; is a resource that is never closed
+other	is a resource that is never closed (in use site) tail; is a resource that is never closed
+other	is an immutable binding
+other	bad is an immutable binding; fix it
+other	fine; is an immutable binding
+other	is an immutable binding (in use site) tail; is an immutable binding
+other	is moved here but used again
+other	bad is moved here but used again; fix it
+other	fine; is moved here but used again
+other	is moved here but used again (in use site) tail; is moved here but used again
+other	is never read
+other	bad is never read; fix it
+other	fine; is never read
+other	is never read (in use site) tail; is never read
+other	literal
+other	bad literal; fix it
+other	fine; literal
+other	literal (in use site) tail; literal
+other	missing argument
+other	bad missing argument; fix it
+other	fine; missing argument
+other	missing argument (in use site) tail; missing argument
+other	missing implementation operation
+other	bad missing implementation operation; fix it
+other	fine; missing implementation operation
+other	missing implementation operation (in use site) tail; missing implementation operation
+other	module
+other	bad module; fix it
+other	fine; module
+other	module (in use site) tail; module
+other	nominal source data
+other	bad nominal source data; fix it
+other	fine; nominal source data
+other	nominal source data (in use site) tail; nominal source data
+other	overlapping implementation
+other	bad overlapping implementation; fix it
+other	fine; overlapping implementation
+other	overlapping implementation (in use site) tail; overlapping implementation
+other	parameter
+other	bad parameter; fix it
+other	fine; parameter
+other	parameter (in use site) tail; parameter
+other	path
+other	bad path; fix it
+other	fine; path
+other	path (in use site) tail; path
+other	reachable fallthrough
+other	bad reachable fallthrough; fix it
+other	fine; reachable fallthrough
+other	reachable fallthrough (in use site) tail; reachable fallthrough
+other	recursive
+other	bad recursive; fix it
+other	fine; recursive
+other	recursive (in use site) tail; recursive
+other	redundant prelude import foo
+other	bad redundant prelude import foo; fix it
+other	fine; redundant prelude import foo
+other	redundant prelude import foo (in use site) tail; redundant prelude import foo
+other	requires a type field
+other	bad requires a type field; fix it
+other	fine; requires a type field
+other	requires a type field (in use site) tail; requires a type field
+other	reuses a prelude name
+other	bad reuses a prelude name; fix it
+other	fine; reuses a prelude name
+other	reuses a prelude name (in use site) tail; reuses a prelude name
+other	same independently known type
+other	bad same independently known type; fix it
+other	fine; same independently known type
+other	same independently known type (in use site) tail; same independently known type
+other	scalar
+other	bad scalar; fix it
+other	fine; scalar
+other	scalar (in use site) tail; scalar
+other	shadows an outer binding
+other	bad shadows an outer binding; fix it
+other	fine; shadows an outer binding
+other	shadows an outer binding (in use site) tail; shadows an outer binding
+other	signature does not match
+other	bad signature does not match; fix it
+other	fine; signature does not match
+other	signature does not match (in use site) tail; signature does not match
+other	string-literal match patterns x
+other	bad string-literal match patterns x; fix it
+other	fine; string-literal match patterns x
+other	string-literal match patterns x (in use site) tail; string-literal match patterns x
+other	suite
+other	bad suite; fix it
+other	fine; suite
+other	suite (in use site) tail; suite
+other	tabs
+other	bad tabs; fix it
+other	fine; tabs
+other	tabs (in use site) tail; tabs
+other	this statement discards
+other	bad this statement discards; fix it
+other	fine; this statement discards
+other	this statement discards (in use site) tail; this statement discards
+other	type arguments, found 
+other	bad type arguments, found ; fix it
+other	fine; type arguments, found 
+other	type arguments, found  (in use site) tail; type arguments, found 
+other	unknown
+other	bad unknown; fix it
+other	fine; unknown
+other	unknown (in use site) tail; unknown
+other	unknown argument
+other	bad unknown argument; fix it
+other	fine; unknown argument
+other	unknown argument (in use site) tail; unknown argument
+other	unknown binding
+other	bad unknown binding; fix it
+other	fine; unknown binding
+other	unknown binding (in use site) tail; unknown binding
+other	unknown case
+other	bad unknown case; fix it
+other	fine; unknown case
+other	unknown case (in use site) tail; unknown case
+other	unknown or ambiguous member
+other	bad unknown or ambiguous member; fix it
+other	fine; unknown or ambiguous member
+other	unknown or ambiguous member (in use site) tail; unknown or ambiguous member
+other	unknown standard module
+other	bad unknown standard module; fix it
+other	fine; unknown standard module
+other	unknown standard module (in use site) tail; unknown standard module
+other	unknown type
+other	bad unknown type; fix it
+other	fine; unknown type
+other	unknown type (in use site) tail; unknown type
