@@ -334,36 +334,118 @@ fn body_facts(files: &[String]) {
             println!("unchecked");
             continue;
         }
-        let facts = loaded.facts();
-        for (i, d) in module.decls.iter().enumerate() {
-            let (word, mut ids) = match &d.kind {
-                DeclKind::Fn(f) if !f.external => {
-                    let mut ids = Vec::new();
-                    body_stmts(&f.body, &mut ids);
-                    ("fn", ids)
-                }
-                DeclKind::Const(k) => {
-                    let mut ids = Vec::new();
-                    body_exprs(&k.value, &mut ids);
-                    ("const", ids)
-                }
-                _ => continue,
-            };
-            let end = module.decls.get(i + 1).map_or(u32::MAX, |n| n.pos.line);
-            println!("{word} {}:{}", d.pos.line, d.pos.column);
-            for x in &program.diagnostics {
-                if x.pos.line >= d.pos.line && x.pos.line < end {
-                    println!("diag {}:{}: {}", x.pos.line, x.pos.column, x.message);
-                }
+        print_body_facts(syms, &module, &program, &loaded);
+    }
+}
+
+/// The functions of `module` with the diagnostics inside each and the type of each expression.
+fn print_body_facts(
+    syms: Names,
+    module: &ms_syntax::ast::Module,
+    program: &ms_check::Program,
+    loaded: &ms_check::ModRef,
+) {
+    let facts = loaded.facts();
+    for (i, d) in module.decls.iter().enumerate() {
+        let (word, mut ids) = match &d.kind {
+            DeclKind::Fn(f) if !f.external => {
+                let mut ids = Vec::new();
+                body_stmts(&f.body, &mut ids);
+                ("fn", ids)
             }
-            for id in ids.drain(..) {
-                let ty = facts
-                    .info(id)
-                    .and_then(|i| i.ty.as_ref())
-                    .map_or("-".to_string(), |t| show(syms, t));
-                println!("expr {} {ty}", id.index());
+            DeclKind::Const(k) => {
+                let mut ids = Vec::new();
+                body_exprs(&k.value, &mut ids);
+                ("const", ids)
+            }
+            _ => continue,
+        };
+        let end = module.decls.get(i + 1).map_or(u32::MAX, |n| n.pos.line);
+        println!("{word} {}:{}", d.pos.line, d.pos.column);
+        for x in &program.diagnostics {
+            if x.pos.line >= d.pos.line && x.pos.line < end {
+                println!("diag {}:{}: {}", x.pos.line, x.pos.column, x.message);
             }
         }
+        for id in ids.drain(..) {
+            let ty = facts
+                .info(id)
+                .and_then(|i| i.ty.as_ref())
+                .map_or("-".to_string(), |t| show(syms, t));
+            println!("expr {} {ty}", id.index());
+        }
+    }
+}
+
+/// The modules a file imports, depth first (imports before the importer), each with the parsed
+/// syntax. Local imports resolve relative to the importing file, as the C project loader does for
+/// a standalone file.
+fn load_project(
+    path: &std::path::Path,
+    seen: &mut Vec<(std::path::PathBuf, ms_check::ModRef, ms_syntax::ast::Module)>,
+    imports: &mut Vec<(ms_check::ModRef, ms_syntax::ast::NodeId, std::path::PathBuf)>,
+    entry: bool,
+) -> Option<ms_check::ModRef> {
+    let syms = Names::global();
+    let canonical = std::fs::canonicalize(path).ok()?;
+    if let Some((_, loaded, _)) = seen.iter().find(|(p, _, _)| *p == canonical) {
+        return Some(loaded.clone());
+    }
+    let source = std::fs::read_to_string(&canonical).ok()?;
+    let name: std::sync::Arc<str> = if entry {
+        "main.ms".into()
+    } else {
+        canonical.to_string_lossy().as_ref().into()
+    };
+    let module = ms_syntax::parser::parse(&name, &source).ok()?;
+    let mut targets = Vec::new();
+    for i in &module.imports {
+        if i.path.starts_with("@std/") {
+            continue;
+        }
+        let target = canonical.parent()?.join(&*i.path);
+        let loaded = load_project(&target, seen, imports, false)?;
+        targets.push((i.id, std::fs::canonicalize(target).ok()?, loaded));
+    }
+    let loaded = ms_check::load_module(syms, &module);
+    for (id, target, _) in targets {
+        imports.push((loaded.clone(), id, target));
+    }
+    seen.push((canonical, loaded.clone(), module));
+    Some(loaded)
+}
+
+/// `c_oracle --project FILE...`: the bodies mode for files that import project modules, plus the
+/// resolution diagnostics of the entry file (`import L:C: message`).
+fn project_facts(files: &[String]) {
+    let syms = Names::global();
+    let session = Session::new();
+    session.ensure_standard();
+    for path in files {
+        let mut seen = Vec::new();
+        let mut imports = Vec::new();
+        let Some(loaded) = load_project(std::path::Path::new(path), &mut seen, &mut imports, true) else {
+            continue;
+        };
+        if seen.len() < 2 {
+            continue;
+        }
+        let mut map = ms_check::ImportMap::default();
+        for (importer, id, target) in &imports {
+            if let Some((_, t, _)) = seen.iter().find(|(p, _, _)| p == target) {
+                map.insert(importer.file, *id, t.file);
+            }
+        }
+        println!("== {path}");
+        let modules: Vec<_> = seen.iter().map(|(_, m, _)| m.clone()).collect();
+        let program = ms_check::check_in(syms, &session, modules, map, ms_check::CheckOptions::default());
+        let module = &seen.iter().find(|(_, m, _)| m.file == loaded.file).expect("entry").2;
+        for d in &program.diagnostics {
+            if &*d.file == "main.ms" && d.phase == ms_syntax::Phase::Resolution {
+                println!("import {}:{}: {}", d.pos.line, d.pos.column, d.message);
+            }
+        }
+        print_body_facts(syms, module, &program, &loaded);
     }
 }
 
@@ -476,6 +558,10 @@ fn main() {
     }
     if args.first().is_some_and(|a| a == "--ownership") {
         ownership_diagnostics(&args[1..]);
+        return;
+    }
+    if args.first().is_some_and(|a| a == "--project") {
+        project_facts(&args[1..]);
         return;
     }
     if args.first().is_some_and(|a| a == "--bodies") {
