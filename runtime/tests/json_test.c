@@ -424,14 +424,18 @@ static void expect_error_text(const char *source, const char *want) {
 }
 
 static void test_error_text(void) {
-    expect_error_text("{\"a\":1,}", "line 1, column 8: unexpected character `}`");
-    expect_error_text("[1,\n2,\n x]", "line 3, column 2: unexpected character `x`");
-    expect_error_text("{\"a\":1,\"a\":2}", "line 1, column 14: duplicate object key");
-    expect_error_text("[1,", "line 1, column 4: unexpected end of input");
-    expect_error_text("[1,\x01]", "line 1, column 4: unexpected character U+0001");
-    expect_error_text("\xc3\xa9", "line 1, column 1: unexpected character `\xc3\xa9`");
-    /* A bad separator is consumed before it is reported, so the error is at the byte after it, counted in scalars. */
-    expect_error_text("[\"\xc3\xa9\" x]", "line 1, column 7: unexpected character `]`");
+    expect_error_text("{\"a\":1,}", "line 1, column 7: trailing comma is not allowed");
+    expect_error_text("[1,\n2,\n x]", "line 3, column 2: unexpected character, expected a valid JSON value");
+    expect_error_text("{\"a\":1,\"a\":2}", "line 1, column 8: duplicate object key");
+    expect_error_text("{\"\":1,\"\":2}", "line 1, column 7: duplicate object key");
+    expect_error_text("{\"a\":{},\n \"b\":1,\"a\\u0041\":2,\"\\u0061\":3}", "line 2, column 20: duplicate object key");
+    expect_error_text("[1,", "line 1, column 4: unexpected end of data");
+    expect_error_text("[1,\x01]", "line 1, column 4: unexpected character, expected a valid JSON value");
+    expect_error_text("\xc3\xa9", "line 1, column 1: unexpected character, expected a valid root value");
+    /* Columns count scalars, not bytes. */
+    expect_error_text("[\"\xc3\xa9\" x]", "line 1, column 6: unexpected character, expected a comma or a closing bracket");
+    expect_error_text("", "line 1, column 1: input length is 0");
+    expect_error_text("[1] x", "line 1, column 5: unexpected content after document");
 }
 
 /* The caller may read the error slot for any failure status, so a failure without text leaves it the empty string. */

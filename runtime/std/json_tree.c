@@ -108,38 +108,23 @@ static uint8_t close_array(TreeBuilder *builder, Mark mark) {
     return scalar(builder, CASE_ARRAY, (uint8_t *)&list);
 }
 
-/* Releases the members from `from` on, which a map did not take. */
-static void drop_members(TreeBuilder *builder, Mark mark, size_t from) {
-    for (size_t i = from; i < builder->key_count - mark.keys; i++) {
-        msrt_slot_drop(&msrt_desc_string, (uint8_t *)&builder->keys[mark.keys + i]);
-        msrt_slot_drop(builder->desc, value_at(builder, mark.values + i));
-    }
-}
-
-/* Moves the members above `from` into a String-keyed map and builds the object case. MS_STATUS_INVALID_DATA when two
- * members share a key (everything is released). */
+/* Moves the members above `from` into a String-keyed map and builds the object case. The scanner has already
+ * rejected a repeated key. */
 static uint8_t close_object(TreeBuilder *builder, Mark mark) {
     const size_t count = builder->key_count - mark.keys;
     MsMap map = {0};
-    uint8_t status = MS_STATUS_OK;
     msrt_map_new(&map);
     msrt_map_stamp(&map, &msrt_desc_string);
     if (count > 0) {
         msrt_map_reserve(&map, &msrt_desc_string, builder->desc, (int64_t)count);
     }
-    for (size_t i = 0; i < count && status == MS_STATUS_OK; i++) {
-        uint8_t *key = (uint8_t *)&builder->keys[mark.keys + i];
-        if (msrt_map_contains(&map, &msrt_desc_string, builder->desc, key)) {
-            drop_members(builder, mark, i);
-            msrt_map_drop(&map, &msrt_desc_string, builder->desc);
-            status = MS_STATUS_INVALID_DATA;
-        } else {
-            msrt_map_add(&map, &msrt_desc_string, builder->desc, key, value_at(builder, mark.values + i));
-        }
+    for (size_t i = 0; i < count; i++) {
+        msrt_map_add(&map, &msrt_desc_string, builder->desc, (uint8_t *)&builder->keys[mark.keys + i],
+                     value_at(builder, mark.values + i));
     }
     builder->key_count = mark.keys;
     builder->value_count = mark.values;
-    return status == MS_STATUS_OK ? scalar(builder, CASE_OBJECT, (uint8_t *)&map) : status;
+    return scalar(builder, CASE_OBJECT, (uint8_t *)&map);
 }
 
 static uint8_t tree_close(void *sink, bool is_array) {
@@ -189,7 +174,7 @@ uint8_t msstd_json_parse_tree(const MsStr *text, uint8_t has_max_bytes, int64_t 
     }
     TreeBuilder builder = {.desc = desc, .ctor = ctor, .size = desc->size};
     JsonStop stop = {0};
-    const uint8_t status = json_scan(source, limits, &tree_ops, &builder, &stop);
+    const uint8_t status = json_scan(source, limits, &tree_ops, &builder, &stop, NULL);
     if (status == MS_STATUS_OK && builder.value_count == 1 && builder.mark_count == 0) {
         memcpy(out, builder.values, builder.size);
         builder.value_count = 0; /* moved to the caller */
