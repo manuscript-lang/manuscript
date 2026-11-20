@@ -19,11 +19,15 @@ static uint8_t source_failed(MsStr *err) {
 }
 
 uint8_t msstd_random_os_bytes(int64_t count, MsVec *out, MsStr *err) {
+    // The caller reads both slots whatever the status: an empty result and no text until there is one.
+    msrt_write_bytes(out, NULL, 0);
+    if (err != NULL) {
+        *err = ms_str_empty();
+    }
     if (count < 0 || count > MAX_BYTES) {
         return STATUS_INVALID_INPUT;
     }
     if (count == 0) {
-        msrt_write_bytes(out, NULL, 0);
         return STATUS_OK;
     }
     uint8_t *buffer = msrt_alloc((size_t)count);
