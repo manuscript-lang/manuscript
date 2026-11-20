@@ -1,13 +1,14 @@
 //! The scheduler's descriptor poller. A task parks on one descriptor at a time; each
 //! registration is one-shot and level-like: registering an already-ready descriptor reports
-//! it at once. Both platforms use mio.
+//! it at once. With the C runtime (`ms_c = "ms_io_open"`) both platforms use the libuv reactor in `poller_uv.rs`;
+//! otherwise both use mio.
 
 use crate::fault;
 #[cfg(all(unix, not(ms_c = "ms_io_open")))]
 use crate::sys;
 #[cfg(all(unix, not(ms_c = "ms_io_open")))]
 use crate::task::WAIT_KEEP;
-#[cfg(not(all(unix, ms_c = "ms_io_open")))]
+#[cfg(not(ms_c = "ms_io_open"))]
 use crate::task::{WAIT_HUP, WAIT_READ, WAIT_WRITE};
 use core::mem::MaybeUninit;
 #[cfg(all(unix, not(ms_c = "ms_io_open")))]
@@ -31,7 +32,7 @@ pub enum Watch {
     Failed,
 }
 
-#[cfg(not(all(unix, ms_c = "ms_io_open")))]
+#[cfg(not(ms_c = "ms_io_open"))]
 /// The interest a wait asks for; waiting on nothing watches for readability.
 fn interest(events: u32) -> mio::Interest {
     match (events & WAIT_READ != 0, events & WAIT_WRITE != 0) {
@@ -41,7 +42,7 @@ fn interest(events: u32) -> mio::Interest {
     }
 }
 
-#[cfg(not(all(unix, ms_c = "ms_io_open")))]
+#[cfg(not(ms_c = "ms_io_open"))]
 /// The `WAIT_*` bits an event reports.
 fn bits(ev: &mio::event::Event) -> u32 {
     let mut r = 0;
@@ -268,7 +269,7 @@ mod imp {
     }
 }
 
-#[cfg(windows)]
+#[cfg(all(windows, not(ms_c = "ms_io_open")))]
 mod imp {
     //! mio over the sockets tasks wait on. mio only watches its own socket types, so a wait
     //! lends the raw `SOCKET` to a short-lived [`TcpStream`] view that is registered and, when
@@ -707,7 +708,7 @@ mod imp {
     }
 }
 
-#[cfg(all(unix, ms_c = "ms_io_open"))]
+#[cfg(ms_c = "ms_io_open")]
 #[path = "poller_uv.rs"]
 mod imp;
 pub use imp::{close, create, forget, kick, unwatch, wait, watch};
