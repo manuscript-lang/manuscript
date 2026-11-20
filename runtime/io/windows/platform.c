@@ -55,6 +55,7 @@ typedef struct MsPipe {
     int write_status;
     bool owes_read_event;  /* an event could not be queued */
     bool owes_write_event;
+    bool close_when_written; /* dropped while a write was in flight: close once it finishes, so no byte is lost */
     bool closing;
 } MsPipe;
 
@@ -147,7 +148,7 @@ bool ms_io_windows_wait(MsIoReactor *reactor, int64_t timeout_ns) {
 
 static MsPipe *pipe_find(const MsWindowsState *state, uintptr_t key) {
     for (MsPipe *pipe = state->pipes; pipe != NULL; pipe = pipe->next) {
-        if (pipe->key == key) {
+        if (pipe->key == key && !pipe->close_when_written) {
             return pipe;
         }
     }
@@ -325,11 +326,15 @@ static void on_pipe_read(uv_stream_t *stream, ssize_t count, const uv_buf_t *buf
     pipe_notify(pipe, false);
 }
 
+static void pipe_close(MsPipe *pipe);
+
 static void on_pipe_write(uv_write_t *request, int status) {
     MsPipe *const pipe = request->data;
     pipe->writing = false;
     pipe->write_status = status < 0 ? status : 0;
-    if (!pipe->closing) {
+    if (pipe->close_when_written) {
+        pipe_close(pipe);
+    } else if (!pipe->closing) {
         pipe_notify(pipe, true);
     }
 }
@@ -341,9 +346,7 @@ static void on_pipe_closed(uv_handle_t *handle) {
     ms_sys_free(pipe);
 }
 
-/* Takes `pipe` off the list and ends its handle; libuv finishes the close (and cancels a pending read or write)
- * while the loop runs, then the callback frees it. */
-static void pipe_close(MsPipe *pipe) {
+static void pipe_unlink(MsPipe *pipe) {
     MsPipe **link = &pipe->state->pipes;
     while (*link != NULL && *link != pipe) {
         link = &(*link)->next;
@@ -351,6 +354,12 @@ static void pipe_close(MsPipe *pipe) {
     if (*link == pipe) {
         *link = pipe->next;
     }
+}
+
+/* Takes `pipe` off the list and ends its handle; libuv finishes the close (and cancels a pending read or write)
+ * while the loop runs, then the callback frees it. */
+static void pipe_close(MsPipe *pipe) {
+    pipe_unlink(pipe);
     pipe->closing = true;
     uv_close((uv_handle_t *)&pipe->handle, on_pipe_closed);
 }
@@ -505,9 +514,15 @@ void ms_io_pipe_group(uintptr_t handle, uintptr_t key) {
 void ms_io_pipe_drop(uintptr_t handle) {
     MsIoReactor *const reactor = ms_io_reactor_current();
     MsPipe *const pipe = reactor == NULL ? NULL : pipe_find(state_of(reactor), handle);
-    if (pipe != NULL) {
-        pipe_close(pipe);
+    if (pipe == NULL) {
+        return;
     }
+    if (pipe->writing) {
+        /* Closing now would cancel the write in flight and the child would miss its last bytes. */
+        pipe->close_when_written = true;
+        return;
+    }
+    pipe_close(pipe);
 }
 
 /* ---- the reactor's hooks ---- */
