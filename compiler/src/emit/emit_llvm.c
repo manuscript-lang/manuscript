@@ -301,6 +301,25 @@ static bool ll_typedesc(LCx *c, const MirInst *inst) {
     return true;
 }
 
+/* `str`: a short literal is two constant words; a long one is the address of its bytes and a tag. */
+static bool ll_str_lit(LCx *c, const MirInst *inst) {
+    bool is_static = false;
+    uint64_t lo = 0, hi = 0;
+    mir_str_lit_words(c->m->strings.text[inst->imm.a], c->m->strings.len[inst->imm.a], &is_static, &lo, &hi);
+    if (!is_static) {
+        ms_buf_printf(c->out, "  %%v%u = add i64 %lld, 0\n", inst->res, (long long)lo);
+    } else if (c->data == NULL || c->data->strings[inst->imm.a] == MIR_NONE) {
+        c->why = "str without static data";
+        return false;
+    } else {
+        ms_buf_printf(c->out, "  %%v%u = ptrtoint ptr ", inst->res);
+        ll_ref(c, c->out, (MirRef){MT_DATA, c->data->strings[inst->imm.a], NULL});
+        ms_buf_puts(c->out, " to i64\n");
+    }
+    ms_buf_printf(c->out, "  %%v%u.1 = add i64 %lld, 0\n", inst->res, (long long)hi);
+    return true;
+}
+
 /* `global.get`, `global.set`: the leaves of the value at the global's address. */
 static bool ll_global(LCx *c, const MirInst *inst) {
     if (c->data == NULL) {
@@ -1111,7 +1130,10 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     }
     switch (inst->op) {
     case MOP_IConst: case MOP_BConst: case MOP_FConst: ll_constant(c, inst); return true;
+    case MOP_StrLit: return ll_str_lit(c, inst);
+    case MOP_DepthLeave: return true; /* nothing to write */
     case MOP_ListLen: ll_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_LEN_LEAF); return true;
+    case MOP_ListCap: ll_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_CAP_LEAF); return true;
     case MOP_ICmp: case MOP_UICmp: case MOP_FCmp: ll_compare(c, inst); return true;
     case MOP_Call: return ll_call(c, inst, block, index);
     case MOP_CallRt: return ll_call_rt(c, inst, block, index);

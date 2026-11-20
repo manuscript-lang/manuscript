@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/emit_entry.h"
 #include "ms/emit_llvm.h"
 #include "ms/emit_qbe.h"
 #include "ms/mir_opt.h"
@@ -71,6 +72,7 @@ int main(int argc, char **argv) {
     }
     MsBuf out = {0}, why = {0};
     bool ok;
+    mir_name_entry(&m);
     if (llvm) {
         mir_lower_ops(&m, &glue);
         MirData data;
@@ -82,6 +84,7 @@ int main(int argc, char **argv) {
     if (!ok) {
         return fail("the C back end cannot write:\n", &why);
     }
+    mir_emit_entry_main(&m, llvm, &out);
     fwrite(out.data, 1, out.len, stdout);
     return 0;
 }
