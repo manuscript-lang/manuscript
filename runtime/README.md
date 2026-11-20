@@ -8,7 +8,7 @@ runtime/
   sys/           the one door to the OS: posix (Linux, macOS) and windows; memory regions, the clock, threads and sleep so far
   core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num.c so far)
   io/            reactor on libuv (to come)
-  net/           http1 (llhttp), tls (OpenSSL) and ws frames done; http2 (nghttp2) to come
+  net/           http1 (llhttp), tls (OpenSSL), ws frames, h2 (nghttp2) and the connection rows done as tested units; wiring to come
   std/           natives per stdlib module (to come)
   third_party/   pinned dependencies and the one build for all of them
   tests/         smoke programs and unit tests (`make c-test`, under ASan and UBSan)
