@@ -294,6 +294,34 @@ static void dump_stmts(MsBuf *out, const MsCheck *c, const MsFacts *facts, const
     }
 }
 
+static void dump_stmts(MsBuf *out, const MsCheck *c, const MsFacts *facts, const MsStmts *body) {
+    for (uint32_t k = 0; k < body->len; k++) {
+        const MsStmt *s = body->ptr[k];
+        switch ((MsStmtKind)s->kind) {
+        case MS_S_BIND: dump_expr(out, c, facts, s->u.bind.value); break;
+        case MS_S_RETURN:
+        case MS_S_CALL:
+            if (s->u.expr != NULL) {
+                dump_expr(out, c, facts, s->u.expr);
+            }
+            break;
+        case MS_S_IF:
+            dump_expr(out, c, facts, s->u.branch.cond);
+            dump_stmts(out, c, facts, &s->u.branch.body);
+            dump_stmts(out, c, facts, &s->u.branch.else_body);
+            break;
+        case MS_S_WHILE:
+            dump_expr(out, c, facts, s->u.loop.cond);
+            dump_stmts(out, c, facts, &s->u.loop.body);
+            break;
+        case MS_S_ASSIGN:
+        case MS_S_BREAK:
+        case MS_S_CONTINUE:
+        case MS_S_FOR: break;
+        }
+    }
+}
+
 /* The declaration's diagnostics: those of the module on lines from its own to the next
  * declaration's, as the Rust oracle attributes them. */
 static bool dump_in_function(const MsModuleRow *row, uint32_t index, const MsDiag *diag) {
