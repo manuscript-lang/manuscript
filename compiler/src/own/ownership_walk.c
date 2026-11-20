@@ -69,6 +69,7 @@ typedef struct OwnWalk {
     uint32_t *declared; /* bindings in scope, innermost last */
     uint32_t ndeclared, declared_cap;
     bool supported;
+    const uint32_t *by_node; /* the binding each introducing node made */
 } OwnWalk;
 
 typedef enum Demand { DEMAND_READ, DEMAND_MOVE } Demand;
@@ -352,9 +353,13 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
 static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     const uint32_t sym = w->facts->call_callee[e->id];
     const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
-    // A call to the function being summarized has no summary yet.
-    if (decl == NULL || decl->kind != MS_D_FN || &decl->u.fn == w->function) {
+    // A call to the function being walked reads its summary from the previous round; the rounds
+    // iterate from the optimistic start until it settles.
+    if (decl == NULL || decl->kind != MS_D_FN) {
         return NULL;
+    }
+    if (w->check->syms.module[sym] != w->module) {
+        return NULL; /* another module's declaration ids index another module's tables */
     }
     const OwnSummary *summary = &w->summaries[decl->id];
     return summary->usable ? summary : NULL;
@@ -655,6 +660,12 @@ static bool own_returns_parameter_borrow(const OwnWalk *w, const MsExpr *e) {
     return w->is_param[root] && w->param_mode[root] != 2; /* a `move` parameter is owned: returning it moves it */
 }
 
+/* Whether the call names the function being walked. */
+static bool own_is_self_call(const OwnWalk *w, const MsExpr *e) {
+    const uint32_t sym = w->facts->call_callee[e->id];
+    return sym != MS_NONE && w->check->syms.decl[sym] != NULL && &w->check->syms.decl[sym]->u.fn == w->function;
+}
+
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
@@ -669,6 +680,10 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
     if (e->kind == MS_E_CALL) {
         const OwnSummary *callee = own_callee(w, e);
         w->supported = w->supported && callee != NULL && !callee->returns_borrow;
+    }
+    if (e->kind == MS_E_CALL && own_is_self_call(w, e)) {
+        own_expr(w, e, DEMAND_MOVE); /* returns whatever this function returns: neither kind of return */
+        return;
     }
     if (own_returns_parameter_borrow(w, e)) {
         w->borrowed_params |= 1u << w->param_index[own_resolve(w, w->facts->res_ref[e->id])];
@@ -876,6 +891,23 @@ static void own_while(OwnWalk *w, const MsStmt *s) {
     own_join(w, entry);
 }
 
+/* `for i in a..b`: the bounds are read once; the counter is a fresh copied binding per iteration. */
+static void own_for(OwnWalk *w, const MsStmt *s) {
+    const MsExpr *range = s->u.each.iter;
+    own_expr(w, range->u.call.args.ptr[0].value, DEMAND_READ);
+    own_expr(w, range->u.call.args.ptr[1].value, DEMAND_READ);
+    own_release_pending(w);
+    const uint32_t counter = w->by_node[s->id];
+    if (counter == MS_NONE) {
+        w->supported = false;
+        return;
+    }
+    BorrowSet entry = own_set_copy(&w->active);
+    own_declare(w, counter, PERM_IMMUTABLE, false);
+    own_block(w, &s->u.each.body);
+    own_join(w, entry);
+}
+
 /* ---- match ---- */
 
 /* One arm: its payloads, body and value share a scope. */
@@ -931,7 +963,7 @@ static void own_statement(OwnWalk *w, const MsStmt *s) {
     case MS_S_CONTINUE: return; /* the loop's join covers what the jump skips */
     case MS_S_ASSIGN: own_assign(w, s); return;
     case MS_S_CALL: own_expr(w, s->u.expr, DEMAND_READ); return;
-    case MS_S_FOR: w->supported = false; return;
+    case MS_S_FOR: own_for(w, s); return;
     }
 }
 
@@ -960,6 +992,7 @@ static bool own_function(OwnWalk *w, const MsFunc *function, const uint32_t *by_
     w->consumed = 0;
     w->note_param = MS_NONE;
     w->supported = true;
+    w->by_node = by_node;
     own_declare_parameters(w, function, by_node);
     for (uint32_t i = 0; i < function->body.len && w->supported; i++) {
         own_statement(w, function->body.ptr[i]);
