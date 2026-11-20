@@ -47,6 +47,8 @@ export extern fn msstd_process_subprocess_wait(
 
 export extern fn msstd_process_subprocess_max_resident(handle: NativeSubprocess) Int
 
+export extern fn msstd_process_subprocess_pid(handle: NativeSubprocess) Int
+
 export extern fn msstd_process_subprocess_terminate(handle: NativeSubprocess) Void
 
 export extern fn msstd_process_subprocess_kill(handle: NativeSubprocess) Void

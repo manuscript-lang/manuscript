@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/methods.h"
 #include "ms/tables.h"
 
 /* ---- MsNameMap: open addressing, linear probing, values stored as value + 1 ---- */
@@ -86,6 +87,10 @@ static void syms_free(MsSyms *syms) {
 }
 
 void ms_check_free(MsCheck *c) {
+    if (c->methods != NULL) {
+        ms_methods_free(c->methods);
+        free(c->methods);
+    }
     ms_tys_free(&c->tys);
     syms_free(&c->syms);
     for (uint32_t i = 0; i < c->nmods; i++) {

@@ -1,0 +1,102 @@
+/* The program's method table and the checking of one module against it (ms/program.h). */
+#include <stdlib.h>
+#include <string.h>
+
+#include "ms/check.h"
+#include "ms/desugar.h"
+#include "ms/methods.h"
+#include "ms/program.h"
+#include "ms/stdlib.h"
+
+/* The modules whose methods every module sees: the prelude's types (`List`, `Optional`, `Result`,
+ * `String`) are declared there. */
+static const char *const program_prelude[] = {"@std/core.ms", "@std/string.ms", "@std/collections/collections.ms"};
+
+/* Desugars the inherent methods of module `m`; a `+source` half names the types its native half
+ * declares. Must run before anything declares the module. */
+static void program_desugar(MsCheck *c, MsModId m) {
+    const MsStr path = ms_name(c->names, c->mods[m].path);
+    MsDecl **foreign = NULL;
+    uint32_t nforeign = 0;
+    if (path.len > 7 && memcmp(path.ptr + path.len - 7, "+source", 7) == 0) {
+        const MsModId native = ms_module_find(c, ms_intern(c->names, path.ptr, path.len - 7));
+        const MsModule *types = native == MS_NONE ? NULL : c->mods[native].syntax;
+        foreign = MS_NEW_N(&c->arena, MsDecl *, (types == NULL ? 0 : types->ndecls) + 1);
+        for (uint32_t d = 0; types != NULL && d < types->ndecls; d++) {
+            if (types->decls[d]->kind == MS_D_TYPE || types->decls[d]->kind == MS_D_ENUM) {
+                foreign[nforeign++] = types->decls[d];
+            }
+        }
+    }
+    MsInherentError *errors = NULL;
+    uint32_t nerrors = 0;
+    ms_module_desugar(c, m, c->mods[m].text, foreign, nforeign, &errors, &nerrors);
+}
+
+static void program_desugar_bundled(MsCheck *c) {
+    for (MsModId m = 0; !c->std_desugared && m < c->nmods; m++) {
+        program_desugar(c, m);
+    }
+    c->std_desugared = true;
+}
+
+void ms_program_begin(MsCheck *c) {
+    if (c->methods == NULL) {
+        c->methods = calloc(1, sizeof *c->methods);
+    } else {
+        ms_methods_free(c->methods);
+    }
+    ms_methods_init(c->methods);
+    for (MsModId m = 0; m < c->nmods; m++) {
+        c->mods[m].impls_added = false;
+    }
+}
+
+/* Adds the operations and impls of module `m` once, whatever imports it. */
+static void program_add_impls(MsCheck *c, MsModId m) {
+    if (m == MS_NONE || c->mods[m].impls_added || c->mods[m].syntax == NULL) {
+        return;
+    }
+    c->mods[m].impls_added = true;
+    ms_module_resolve_types(c, m);
+    ms_module_ensure_operations(c, m, c->methods);
+    ms_module_add_implementations(c, m, c->methods);
+}
+
+/* A bundled module by path, with its `+source` half. */
+static void program_add_bundled(MsCheck *c, MsStr path) {
+    program_add_impls(c, ms_module_find(c, ms_intern(c->names, path.ptr, path.len)));
+    const MsStr source = ms_arena_fmt(&c->arena, "%.*s+source", (int)path.len, path.ptr);
+    program_add_impls(c, ms_module_find(c, ms_intern(c->names, source.ptr, source.len)));
+}
+
+bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
+    program_desugar_bundled(c);
+    if (c->methods == NULL) {
+        ms_program_begin(c);
+    }
+    MsInherentError *errors = NULL;
+    uint32_t nerrors = 0;
+    ms_module_desugar(c, module, text, NULL, 0, &errors, &nerrors);
+    if (nerrors > 0) {
+        return false;
+    }
+    ms_module_resolve_types(c, module);
+    for (size_t i = 0; i < sizeof program_prelude / sizeof *program_prelude; i++) {
+        program_add_bundled(c, (MsStr){program_prelude[i], (uint32_t)strlen(program_prelude[i])});
+    }
+    const MsModule *syntax = c->mods[module].syntax;
+    for (uint32_t i = 0; i < syntax->nimports; i++) {
+        const MsModId target = c->mods[module].import_targets == NULL ? MS_NONE : c->mods[module].import_targets[i];
+        if (target != MS_NONE) {
+            program_add_impls(c, target);
+        } else {
+            program_add_bundled(c, syntax->imports[i].path);
+        }
+    }
+    c->mods[module].impls_added = true;
+    ms_module_ensure_operations(c, module, c->methods);
+    ms_module_add_implementations(c, module, c->methods);
+    ms_module_check_bodies_with(c, module, c->methods);
+    return true;
+}
