@@ -31,4 +31,13 @@ void msrt_io_write_stdout_line(const MsStr *text, const MsStr *end);
 /* ms-sig: msrt_io_write_stderr(s: *const StrVal) */
 void msrt_io_write_stderr(const MsStr *text);
 
+/* ms-sig: msrt_io_write_bytes_stdout(v: *const VecVal) */
+void msrt_io_write_bytes_stdout(const MsVec *bytes);
+
+/* ms-sig: msrt_io_write_bytes_stderr(v: *const VecVal) */
+void msrt_io_write_bytes_stderr(const MsVec *bytes);
+
+/* ms-sig: msrt_io_flush() */
+void msrt_io_flush(void);
+
 #endif

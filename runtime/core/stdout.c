@@ -136,6 +136,15 @@ void msrt_io_write_stderr(const MsStr *text) {
     ms_sys_stderr_write((MsBytes){ms_str_data(text), ms_str_len(text)});
 }
 
+void msrt_io_write_bytes_stdout(const MsVec *bytes) { ms_stdout_write(bytes->ptr, bytes->len, NULL, 0); }
+
+void msrt_io_write_bytes_stderr(const MsVec *bytes) {
+    ms_sched_flush_stdout();
+    ms_sys_stderr_write(ms_bytes_of(bytes->ptr, bytes->len));
+}
+
+void msrt_io_flush(void) { ms_sched_flush_stdout(); }
+
 int64_t msrt_test_capture_new(void) {
     const uint64_t id = atomic_fetch_add_explicit(&next_capture, 1, memory_order_relaxed);
     ms_spin_lock(&captures.lock);

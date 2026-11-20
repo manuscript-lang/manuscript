@@ -8,3 +8,6 @@ msstd_io_write_bytes
 msrt_io_write_stdout
 msrt_io_write_stdout_line
 msrt_io_write_stderr
+msrt_io_write_bytes_stdout
+msrt_io_write_bytes_stderr
+msrt_io_flush
