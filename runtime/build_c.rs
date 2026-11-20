@@ -77,6 +77,10 @@ pub fn libs_sh(root: &Path, triple: Option<&str>, args: &[&str]) -> Result<Vec<S
             .env("MS_C_LIBS", "pinned")
             .env("CC", musl_compiler());
     }
+    if let Some(t) = triple.filter(|t| t.contains("windows")) {
+        // llhttp is compiled by build.sh with llvm-mingw's clang; the other libraries are MSYS2 packages.
+        command.env("CC", c_compiler(root, t, std::env::consts::ARCH));
+    }
     command
         .arg(root.join("runtime/third_party/libs.sh"))
         .args(args);
@@ -103,6 +107,7 @@ pub fn c_libs_wired(triple: Option<&str>) -> bool {
     match std::env::consts::OS {
         "linux" => triple.is_none_or(|t| t.ends_with("linux-gnu") || t.ends_with("linux-musl")),
         "macos" => true,
+        "windows" => triple.is_some_and(|t| t.ends_with("windows-gnullvm")),
         _ => false,
     }
 }
@@ -215,6 +220,7 @@ pub fn plan_c_runtime(root: &Path, triple: Option<&str>) -> Result<CRuntime, Str
 /// The archiver for `triple`: llvm-mingw's on Windows, else `ar`.
 pub fn archiver(root: &Path, triple: Option<&str>) -> PathBuf {
     match triple {
+        None if cfg!(windows) => PathBuf::from("llvm-ar"),
         Some(t) if t.contains("windows") => c_compiler(root, t, std::env::consts::ARCH)
             .with_file_name(format!("llvm-ar{}", std::env::consts::EXE_SUFFIX)),
         _ => PathBuf::from("ar"),
@@ -250,7 +256,7 @@ pub fn compile_c_objects(
         let object = objects.join(format!("{n}-{stem}.o"));
         let mut command = Command::new(&cc);
         command
-            .args(["-c", "-O2", "-std=c11", "-fPIC", "-fno-stack-protector"])
+            .args(["-c", "-O2", "-std=c11", "-fno-stack-protector"])
             // A null check stays even where an attribute says the pointer is never null.
             .args(["-fno-strict-aliasing", "-fno-delete-null-pointer-checks"])
             // A fault walks frame pointers to name the program line that called into the runtime, and
@@ -265,9 +271,16 @@ pub fn compile_c_objects(
             .arg("-o")
             .arg(&object)
             .arg(source);
+        // Windows objects are not position independent; a Windows host's own build (unit tests) targets MSVC.
+        if !cfg!(windows) && !triple.is_some_and(|t| t.contains("windows")) {
+            command.arg("-fPIC");
+        }
+        if triple.is_none() && cfg!(windows) {
+            command.arg(format!("--target={arch}-pc-windows-msvc"));
+        }
         // glibc and macOS check libc calls whose destination size is known (documentation/contributing/c-style.md).
         // Level 2: its `__*_chk` entry points are all older than the glibc floor.
-        if !triple.is_some_and(|t| t.contains("windows") || t.contains("musl")) {
+        if !(cfg!(windows) || triple.is_some_and(|t| t.contains("windows") || t.contains("musl"))) {
             command.arg("-D_FORTIFY_SOURCE=2");
         }
         // `musl-gcc` already targets musl, and llvm-mingw's clang wrapper mingw-w64 (Rust's `gnullvm` is not a

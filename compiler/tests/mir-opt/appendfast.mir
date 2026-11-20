@@ -1,0 +1,15 @@
+module "appendfast"
+entry @main
+extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
+extern @msrt_string_append(move str, str) -> str fresh leaf string_append
+fn @main() -> int {
+b0:
+  %a: str = str "x"
+  %b: str = str "y"
+  %e: str = call.rt @msrt_string_concat (%a, %b)
+  %c: str = call.rt @msrt_string_append (%e, %b)
+  %d: str = call.rt @msrt_string_append (%c, %a)
+  drop %d
+  %z: int = iconst 0
+  ret %z
+}

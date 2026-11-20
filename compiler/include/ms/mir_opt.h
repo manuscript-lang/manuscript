@@ -18,5 +18,9 @@ bool mir_opt_ifconv(MirModule *m); /* small pure diamonds become `select` */
 bool mir_opt_ifconv_func(MirModule *m, MirFunc *f);
 
 bool mir_opt_reserve(MirModule *m); /* a list filled by a counted loop is allocated at its final size */
+/* The entry point of a generated stable driftsort of `elem` slots by comparator `g` (opt_sortgen). */
+uint32_t mir_sortgen_drift(MirModule *m, uint32_t g, MirTy elem);
+bool mir_opt_sortgen(MirModule *m);    /* sorts by a known comparator run as generated code */
+bool mir_opt_appendfast(MirModule *m); /* `string_append` on an owned string with room runs inline */
 
 #endif

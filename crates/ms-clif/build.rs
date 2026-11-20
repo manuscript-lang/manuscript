@@ -12,7 +12,7 @@ const MUSL_FILES: [&str; 5] = ["crt1.o", "crti.o", "crtn.o", "libc.a", "libunwin
 /// Files copied from llvm-mingw's `<arch>-w64-mingw32/lib`: the C startup object, the CRT and unwinder
 /// libraries, and the import libraries for every DLL the runtime (Rust's `std` plus the standard library
 /// crates) calls.
-const MINGW_FILES: [&str; 18] = [
+const MINGW_FILES: [&str; 21] = [
     "crt2.o",
     "libmingw32.a",
     "libmingwex.a",
@@ -28,6 +28,9 @@ const MINGW_FILES: [&str; 18] = [
     "libntdll.a",
     "libsecur32.a",
     "libuserenv.a",
+    "libiphlpapi.a",
+    "libpsapi.a",
+    "libole32.a",
     "libws2_32.a",
     "libuser32.a",
     "libshell32.a",
