@@ -25,7 +25,7 @@ static void test_sizes(void) {
 static void test_spans(void) {
     const uint8_t text[] = {'a', 'b', 'c', 'd'};
     CHECK(MS_COUNT_OF(text) == 4);
-    MsBytes all = ms_bytes(text, MS_COUNT_OF(text));
+    MsBytes all = ms_bytes_of(text, MS_COUNT_OF(text));
 
     uint8_t byte = 0;
     CHECK(ms_bytes_get(all, 3, &byte) && byte == 'd');
@@ -37,7 +37,7 @@ static void test_spans(void) {
     CHECK(!ms_bytes_slice(all, 3, 2, &middle));
     CHECK(!ms_bytes_slice(all, 0, 5, &middle));
 
-    MsBytes empty = ms_bytes(NULL, 0);
+    MsBytes empty = ms_bytes_of(NULL, 0);
     CHECK(ms_bytes_slice(empty, 0, 0, &middle) && middle.len == 0);
     CHECK(!ms_bytes_get(empty, 0, &byte));
 
@@ -51,7 +51,7 @@ static void test_spans(void) {
 
     /* Overlapping copy: shift "abc" one to the right inside the same storage. */
     uint8_t shifted[4] = {'a', 'b', 'c', 0};
-    CHECK(ms_bytes_copy(ms_bytes_mut(shifted + 1, 3), ms_bytes(shifted, 3)));
+    CHECK(ms_bytes_copy(ms_bytes_mut(shifted + 1, 3), ms_bytes_of(shifted, 3)));
     CHECK(shifted[1] == 'a' && shifted[2] == 'b' && shifted[3] == 'c');
 
     MsBytesMut tail = {0};
