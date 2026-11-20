@@ -290,10 +290,27 @@ static MpTok mpa_lex_number(MpLexer *lx) {
     return (MpTok){.k = MPT_NUM, .s = lx->text + start, .n = (uint32_t)(lx->position - start)};
 }
 
+/* An identifier. A generic type's name is printed with its arguments (`Result[Void, Error]`); a
+ * `[` right after identifier characters starts such a suffix, which belongs to the name up to its
+ * matching `]` (the `[` of a switch or a blob is always set off by a space). The Rust parser does
+ * not read these names. */
 static MpTok mpa_lex_identifier(MpLexer *lx) {
     size_t start = lx->position;
     while (mpa_lex_more(lx) && mpa_ident_char((unsigned char)lx->text[lx->position])) {
         lx->position++;
+    }
+    if (lx->position > start && mpa_lex_more(lx) && lx->text[lx->position] == '[') {
+        size_t depth = 0;
+        size_t at = lx->position;
+        while (at < lx->length && lx->text[at] != '\n') {
+            depth += lx->text[at] == '[';
+            depth -= lx->text[at] == ']';
+            at++;
+            if (depth == 0) {
+                lx->position = at;
+                break;
+            }
+        }
     }
     return (MpTok){.k = MPT_IDENT, .s = lx->text + start, .n = (uint32_t)(lx->position - start)};
 }

@@ -249,39 +249,53 @@ pub fn build_executable(
     } else {
         Backend::Cranelift
     };
-    optimize(module, level, cfg!(debug_assertions));
-    if build.count_ops {
-        ms_mir::count_ops::run(module);
-    }
-    // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
-    let unwound = ms_mir::unwind::run(module);
-    if unwound && cfg!(debug_assertions) {
-        verify_after(module, "unwind")?;
-    }
-    // The hybrid cancel exits run the cleanups `unwind` registered, so they go in after it: its
-    // discard after a parking call must not sit between the call and the check.
-    if ms_mir::cancel_edges::enabled()
-        && ms_mir::cancel_edges::run(module)
-        && cfg!(debug_assertions)
-    {
-        verify_after(module, "cancel_edges")?;
-    }
-    // After `unwind`, which looks for the check as the first instruction of a function.
-    if ms_mir::depth::lower(module) && cfg!(debug_assertions) {
-        verify_after(module, "depth")?;
-    }
-    // The checks and list growth the backends lower are explicit MIR from here on.
-    ms_mir::expand::run(module, options.checks);
-    if cfg!(debug_assertions) {
-        verify_after(module, "expand")?;
-    }
-    // Drop and clone functions are made here; the backends lower only primitives, so the release
-    // shorthands become loads, drops and frees.
-    ms_mir::glue::run_and_expand(module);
-    phase("mir optimize");
-    let compiled = match llvm {
-        Some(level) => crate::llvm::compile(module, options.checks, level, build),
-        None => ms_clif::compile(module, &options).map(|object| vec![object]),
+    let compiled = if crate::c_backend::enabled() {
+        // The C pipeline runs the optimizer and the finishing passes itself.
+        crate::c_backend::compile(
+            module,
+            level == Level::Speed,
+            llvm.is_some(),
+            options.checks,
+        )
+        .map(|object| vec![object])
+    } else {
+        optimize(module, level, cfg!(debug_assertions));
+        if build.count_ops {
+            ms_mir::count_ops::run(module);
+        }
+        // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
+        let unwound = ms_mir::unwind::run(module);
+        if unwound && cfg!(debug_assertions) {
+            verify_after(module, "unwind")?;
+        }
+        // The hybrid cancel exits run the cleanups `unwind` registered, so they go in after it: its
+        // discard after a parking call must not sit between the call and the check.
+        if ms_mir::cancel_edges::enabled()
+            && ms_mir::cancel_edges::run(module)
+            && cfg!(debug_assertions)
+        {
+            verify_after(module, "cancel_edges")?;
+        }
+        // After `unwind`, which looks for the check as the first instruction of a function.
+        if ms_mir::depth::lower(module) && cfg!(debug_assertions) {
+            verify_after(module, "depth")?;
+        }
+        // The checks and list growth the backends lower are explicit MIR from here on.
+        ms_mir::expand::run(module, options.checks);
+        if cfg!(debug_assertions) {
+            verify_after(module, "expand")?;
+        }
+        // Drop and clone functions are made here; the backends lower only primitives, so the release
+        // shorthands become loads, drops and frees.
+        ms_mir::glue::run_and_expand(module);
+        phase("mir optimize");
+        match llvm {
+            Some(level) => crate::llvm::compile(module, options.checks, level, build)
+                .map_err(|e| e.to_string()),
+            None => ms_clif::compile(module, &options)
+                .map(|object| vec![object])
+                .map_err(|e| e.to_string()),
+        }
     };
     let mut objects = compiled.map_err(|e| {
         format!(

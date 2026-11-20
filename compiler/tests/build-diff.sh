@@ -1,0 +1,39 @@
+#!/bin/sh
+# Builds every `phase=run` conformance program with the Rust back end and with the C back end
+# (`MS_BACKEND=c`), runs both executables and compares stdout and exit status. Prints one line per
+# program and a census of why the C build fails (the emitter's reason lines), which is the list of
+# gaps to route to the emitter, lowering and pass owners.
+# Run from the repository root with a built `ms` (`make build`): `sh compiler/tests/build-diff.sh [LIMIT]`.
+# MS_BUILD_DIFF_PROFILE=Debug (default) or Release, as `ms build --build-type`.
+set -u
+limit=${1:-0}
+profile=${MS_BUILD_DIFF_PROFILE:-Debug}
+ms=${MS:-target/release/ms}
+sh compiler/tests/cbuild.sh ms_mir_build qbe > /dev/null
+bin=$(pwd)/target/cmake/test/compiler
+out=target/c-compiler/build-diff
+rm -rf "$out"
+mkdir -p "$out"
+export ASAN_OPTIONS=detect_leaks=0 MS_C_BACKEND_DIR=$bin
+grep -rl "^// conform: .*phase=run" tests/conformance/fixtures --include=*.ms | sort > "$out/files.txt"
+[ "$limit" -gt 0 ] && head -n "$limit" "$out/files.txt" > "$out/files.cut" && mv "$out/files.cut" "$out/files.txt"
+pass=0 same=0 diff=0 cfail=0 rfail=0
+while read -r src; do
+    id=$(echo "$src" | tr '/' '_')
+    "$ms" build --build-type $profile "$src" -o "$out/$id.rust" > "$out/$id.rust.log" 2>&1 || { rfail=$((rfail + 1)); continue; }
+    if ! MS_BACKEND=c "$ms" build --build-type $profile "$src" -o "$out/$id.c" > "$out/$id.c.log" 2>&1; then
+        cfail=$((cfail + 1))
+        echo "cfail $src"
+        continue
+    fi
+    "$out/$id.rust" > "$out/$id.rust.out" 2>&1 < /dev/null; r=$?
+    "$out/$id.c" > "$out/$id.c.out" 2>&1 < /dev/null; c=$?
+    if [ "$r" = "$c" ] && cmp -s "$out/$id.rust.out" "$out/$id.c.out"; then
+        same=$((same + 1)); echo "same  $src"
+    else
+        diff=$((diff + 1)); echo "DIFF  $src (rust $r, c $c)"
+    fi
+done < "$out/files.txt"
+echo "built by both and same: $same; differ: $diff; C build failed: $cfail; Rust build failed: $rfail"
+echo "--- why the C build fails (count, reason) ---"
+cat "$out"/*.c.log 2> /dev/null | grep -E '^[A-Za-z_0-9.$@<>-]+: ' | sed -E 's/^[^:]+: //' | sort | uniq -c | sort -rn | head -n 40
