@@ -47,6 +47,11 @@ long ms_h2_input(MsH2 *h, const void *buf, size_t n);
 long ms_h2_output(MsH2 *h, void *buf, size_t cap);
 /* 1 while output is pending or the session still wants to read or write, 0 once it can be closed. */
 int ms_h2_alive(MsH2 *h);
+/* 1 when ms_h2_output would return bytes: the caller should write after any call that submits frames. */
+int ms_h2_pending(MsH2 *h);
+/* The most requests a client may have open on this connection, from the server's settings (UINT32_MAX when it set
+   no limit); 0 when no new request can be opened (either side sent GOAWAY, or the stream ids ran out). */
+uint32_t ms_h2_max_requests(MsH2 *h);
 
 /* Next event; 0 when none. */
 int ms_h2_next(MsH2 *h, MsH2Event *ev);

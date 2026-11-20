@@ -237,6 +237,13 @@ int ms_h2_alive(MsH2 *h) {
     return h->pend_len || (!h->failed && (nghttp2_session_want_read(h->session) || nghttp2_session_want_write(h->session)));
 }
 
+int ms_h2_pending(MsH2 *h) { return h->pend_len || nghttp2_session_want_write(h->session); }
+
+uint32_t ms_h2_max_requests(MsH2 *h) {
+    if (!nghttp2_session_check_request_allowed(h->session)) return 0;
+    return nghttp2_session_get_remote_settings(h->session, NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS);
+}
+
 int ms_h2_next(MsH2 *h, MsH2Event *ev) {
     if (h->next == h->nevents) {
         h->nevents = h->next = h->arena_len = h->nfields = 0;
