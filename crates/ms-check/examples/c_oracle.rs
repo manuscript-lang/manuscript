@@ -33,7 +33,9 @@ const TYPE_FAMILIES: [&str; 12] = [
     "requires ",
 ];
 
-use ms_check::api::ast::{Decl, DeclKind, Param, TypeKind, TypeParam, TypeRef};
+use ms_check::api::ast::{
+    Decl, DeclKind, Expr, ExprKind, NodeId, Param, Stmt, StmtKind, TextPart, TypeKind, TypeParam, TypeRef,
+};
 use std::collections::BTreeSet;
 
 /// The positions and node ids of the written types of the declarations the C checker resolves.
@@ -237,8 +239,102 @@ fn scope_diagnostics(files: &[String]) {
     }
 }
 
+/// The ids of the expressions of the shapes the C body checker supports, in tree order.
+fn body_exprs(e: &Expr, out: &mut Vec<NodeId>) {
+    out.push(e.id);
+    match &e.kind {
+        ExprKind::Text(parts) => parts.iter().for_each(|p| {
+            if let TextPart::Interp(x) = p {
+                body_exprs(x, out);
+            }
+        }),
+        ExprKind::Unary { operand, .. } => body_exprs(operand, out),
+        ExprKind::Binary { left, right, .. } => {
+            body_exprs(left, out);
+            body_exprs(right, out);
+        }
+        _ => {}
+    }
+}
+
+fn body_stmts(body: &[Stmt], out: &mut Vec<NodeId>) {
+    for s in body {
+        match &s.kind {
+            StmtKind::Bind { value, .. } => body_exprs(value, out),
+            StmtKind::Return(Some(v)) | StmtKind::Call(v) => body_exprs(v, out),
+            _ => {}
+        }
+    }
+}
+
+/// `c_oracle --bodies FILE...`: per top-level function, whether the checker reported anything
+/// inside it and the type of each expression of its body.
+fn body_facts(files: &[String]) {
+    let syms = Names::global();
+    let session = Session::new();
+    session.ensure_standard();
+    for path in files {
+        let Ok(source) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        let file: std::sync::Arc<str> = "main.ms".into();
+        let Ok(module) = ms_syntax::parser::parse(&file, &source) else {
+            continue;
+        };
+        if module.imports.iter().any(|i| !i.path.starts_with("@std/")) {
+            continue;
+        }
+        println!("== {path}");
+        let loaded = ms_check::load_module(syms, &module);
+        let program = ms_check::check_in(
+            syms,
+            &session,
+            vec![loaded.clone()],
+            ms_check::ImportMap::default(),
+            ms_check::CheckOptions::default(),
+        );
+        if program.symbols.get(&loaded.file).is_none() {
+            println!("unchecked");
+            continue;
+        }
+        let facts = loaded.facts();
+        for (i, d) in module.decls.iter().enumerate() {
+            let DeclKind::Fn(f) = &d.kind else {
+                continue;
+            };
+            if f.external {
+                continue;
+            }
+            let end = module.decls.get(i + 1).map_or(u32::MAX, |n| n.pos.line);
+            let dirty = program
+                .diagnostics
+                .iter()
+                .any(|x| x.pos.line >= d.pos.line && x.pos.line < end);
+            println!(
+                "fn {}:{} {}",
+                d.pos.line,
+                d.pos.column,
+                if dirty { "dirty" } else { "clean" }
+            );
+            let mut ids = Vec::new();
+            body_stmts(&f.body, &mut ids);
+            for id in ids {
+                let ty = facts
+                    .info(id)
+                    .and_then(|i| i.ty.as_ref())
+                    .map_or("-".to_string(), |t| show(syms, t));
+                println!("expr {} {ty}", id.index());
+            }
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|a| a == "--bodies") {
+        body_facts(&args[1..]);
+        return;
+    }
     if args.first().is_some_and(|a| a == "--scope") {
         scope_diagnostics(&args[1..]);
         return;

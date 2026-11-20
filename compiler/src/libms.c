@@ -48,6 +48,7 @@
 #include "check_scope.c"
 #include "check_types.c"
 #include "check_decls.c"
+#include "check_body.c"
 #include "dump_check.c"
 #include "effect_directives.c"
 #include "effect_reach.c"
