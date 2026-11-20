@@ -14,8 +14,7 @@ fn near(x: Float, y: Float) Bool:
 	return x <= y or x != y
 
 fn main() Int:
-	if both(true, false) or either(true, false):
-		return 1
-	if mixed(1, 2, true) and same(true, false) and near(1.0, 2.0):
-		return 2
+	if both(true, false) or either(true, false): return 1
+	if mixed(1, 2, true) and same(true, false) and near(1.0, 2.0): return 2
+
 	return 0
