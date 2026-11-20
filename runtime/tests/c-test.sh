@@ -5,7 +5,7 @@
 set -eu
 out=target/c-test
 mkdir -p "$out"
-flags="-std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include"
+flags="-std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include -Iruntime/std"
 for t in runtime/tests/core_*.c; do
     name=$(basename "$t" .c)
     cc $flags "$t" runtime/core/*.c -lm -o "$out/$name"

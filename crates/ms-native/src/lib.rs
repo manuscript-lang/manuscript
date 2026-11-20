@@ -7,6 +7,7 @@ extern crate ms_rt;
 extern crate ms_std_archive;
 extern crate ms_std_bigint;
 extern crate ms_std_core;
+#[cfg(not(ms_c_crypto))]
 extern crate ms_std_crypto;
 extern crate ms_std_decimal;
 extern crate ms_std_fs;

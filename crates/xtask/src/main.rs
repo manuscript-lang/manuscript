@@ -681,6 +681,10 @@ fn build_archive(
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
     let plan = plan_c_runtime(root, triple)?;
+    if plan.has_std_source(root, "crypto.c") {
+        // `ms-native` then leaves the Rust `ms-std-crypto` out: `runtime/std/crypto*.c` define every `msstd_crypto_*`.
+        command.env("MS_C_CRYPTO", "1");
+    }
     if plan.has_reactor(root) {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
@@ -721,6 +725,12 @@ struct CRuntime {
 }
 
 impl CRuntime {
+    /// Whether `runtime/std/<name>` is part of the archive.
+    fn has_std_source(&self, root: &Path, name: &str) -> bool {
+        let wanted = root.join("runtime/std").join(name);
+        self.sources.iter().any(|s| *s == wanted)
+    }
+
     /// Whether the libuv reactor (`runtime/io`) is part of the archive; `ms-rt` then leaves its mio poller out.
     fn has_reactor(&self, root: &Path) -> bool {
         let io = root.join("runtime/io");
@@ -873,6 +883,15 @@ fn plan_c_runtime(root: &Path, triple: Option<&str>) -> Result<CRuntime, String>
     let io = runtime.join("io");
     let reactor = std::env::var_os("MS_C_REACTOR").is_some();
     sources.retain(|s| (wired || libraries_of(s).is_empty()) && (reactor || !s.starts_with(&io)));
+    // The PCRE2 regex natives change the pattern dialect, so they join every target together (workstream W8):
+    // opt-in with `MS_C_REGEX=1` until Windows has the libraries too. Removal: delete this filter with `ms-std-regex`.
+    let regex = std::env::var_os("MS_C_REGEX").is_some();
+    sources.retain(|s| {
+        regex
+            || !s
+                .file_name()
+                .is_some_and(|n| n.to_string_lossy().starts_with("regex"))
+    });
     let mut names: Vec<&str> = sources.iter().flat_map(|s| libraries_of(s)).collect();
     names.sort_unstable();
     names.dedup();
