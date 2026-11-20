@@ -74,9 +74,10 @@ if [ ! -f "$out/lib/libnghttp2.a" ]; then
     cp "$src/nghttp2-$(version_of nghttp2)"/lib/includes/nghttp2/nghttp2.h "$build"/lib/includes/nghttp2/nghttp2ver.h "$out/include/nghttp2/"
 fi
 if [ ! -f "$out/lib/libssl.a" ]; then
+    # no-secure-memory: its mmap-locked heap needs kernel headers (<linux/mman.h>) that musl-gcc does not see, and we keep no keys in a locked heap.
     build=$root/build/$triple/openssl
     rm -rf "$build"; mkdir -p "$build"
-    (cd "$build" && CC="$cc" perl "$src/openssl-$(version_of openssl)/Configure" no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers --libdir=lib --prefix="$build/install" >/dev/null \
+    (cd "$build" && CC="$cc" perl "$src/openssl-$(version_of openssl)/Configure" no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" >/dev/null \
         && make -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
         && cp "$src/openssl-$(version_of openssl)"/include/openssl/*.h include/openssl/*.h "$out/include/openssl/")
 fi
