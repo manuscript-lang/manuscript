@@ -75,9 +75,3 @@ __attribute__((weak)) uint8_t msrt_rollback_needed(void) { return 1; }
 
 /* Weak: core_task_abi links the real one (runtime/core/task_abi.c), every other core test runs without a scheduler. */
 __attribute__((weak)) void msrt_task_grow(MsGrowFn shim, void *block) { shim(block); }
-
-void msrt_obj_drop(MsObj *object) {
-    if (object != NULL && object->drop != NULL) {
-        object->drop(object);
-    }
-}

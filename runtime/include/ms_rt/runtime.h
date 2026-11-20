@@ -7,14 +7,15 @@
 #include "ms_rt/alloc.h"
 #include "ms_rt/base.h"
 #include "ms_rt/safe.h"
+#include "ms_rt/fault.h"
 #include "ms_rt/string.h"
 #include "ms_rt/strbuild.h" /* msrt_fault: raises a fault with a message and never returns */
 
-/* The FaultKind codes of ms-rt-abi that natives raise. */
-typedef enum MsFaultKind {
-    MS_FAULT_DIVISION_BY_ZERO = 4,
-    MS_FAULT_OVERFLOW = 5,
-} MsFaultKind;
+/* The FaultKind codes (ms_rt/fault.h) natives raise, under the names they have used. */
+#ifndef MS_FAULT_OVERFLOW
+#define MS_FAULT_OVERFLOW MS_FAULT_KIND_OVERFLOW
+#endif
+#define MS_FAULT_DIVISION_BY_ZERO MS_FAULT_KIND_DIVISION_BY_ZERO
 
 /* A presence flag parameter (an `Optional` argument split in two): 0 or 1. */
 typedef uint8_t HasRaw;
