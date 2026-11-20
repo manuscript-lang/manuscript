@@ -612,6 +612,23 @@ int main(void) {
     ((MsObj *)client)->drop(client);
     ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
+
+    /* closing a client ends the body it has open and refuses later requests */
+    address = listen_on_loopback(&server);
+    host_port = (const char *)msrt_str_data(&address);
+    thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+    CHECK(thread != NULL);
+    CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
+    CHECK(msstd_client_fetch(client, &get, URL("/big"), table, &nobody, 1, 10 * SECOND, &response, &err) == STATUS_OK);
+    msstd_client_close(client);
+    msstd_client_close(client);
+    CHECK(msstd_body_read(response, 0, 0, &data, &err) == STATUS_CLOSED);
+    void *refused_response = NULL;
+    CHECK(msstd_client_fetch(client, &get, URL("/a"), table, &nobody, 1, 5 * SECOND, &refused_response, &err) == STATUS_CLOSED);
+    ((MsObj *)response)->drop(response);
+    ((MsObj *)client)->drop(client);
+    ms_sys_thread_join(thread);
+    ms_sys_net_close(server.listener);
     ((MsObj *)table)->drop(table);
     ms_curl_shutdown();
 #undef URL
