@@ -1,12 +1,12 @@
 # runtime
 
-The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt` and `ms-std-*` crates step by step. Plan and reasons: [proposals/c-runtime.md](../proposals/c-runtime.md). The third-party build and the C build (`runtime/core/num.c` so far) exist; `runtime/symbols/<module>.txt` lists the symbols defined in C, and [the wiki page](../wiki/runtime/a-runtime-symbol-moves-to-c-by-listing-it-in-c-symbols.md) says how a symbol moves.
+The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt` and `ms-std-*` crates step by step. Plan and reasons: [proposals/c-runtime.md](../proposals/c-runtime.md). The third-party build and the C build (`runtime/core/{num,string,utf8,fmt}.c` so far) exist; `runtime/symbols/<module>.txt` lists the symbols defined in C, and [the wiki page](../wiki/runtime/a-runtime-symbol-moves-to-c-by-listing-it-in-c-symbols.md) says how a symbol moves.
 
 ```
 runtime/
   include/       ms_rt/base.h and one ms_rt/<module>.h per module: the ABI
   sys/           per-OS code: linux, darwin, windows (to come)
-  core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num.c so far)
+  core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num, string, utf8, fmt so far)
   io/            reactor on libuv (to come)
   net/           http1 (llhttp), tls (OpenSSL) and ws frames done; http2 (nghttp2) to come
   std/           natives per stdlib module (to come)
