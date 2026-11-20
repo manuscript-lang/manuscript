@@ -89,6 +89,23 @@ static bool body_is_closeable(const MsBody *b, MsTy ty, uint32_t depth) {
     return false;
 }
 
+/* A value of a nominal type that may need a cleanup, with type arguments of primitive type
+ * (`WriteStream[String]`): only the receiver of a method call, which is a temporary. */
+bool ms_body_is_handle(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    const uint32_t def = tys->def[ty];
+    if (ms_ty_kind(tys, ty) != MS_K_TYPE || def == 0 || def - 1 >= b->c->syms.count ||
+        b->c->syms.kind[def - 1] != MS_SYM_TYPE) {
+        return false;
+    }
+    for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
+        if (!body_is_value_type(b, ms_ty_args(tys, ty)[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* A type whose values the pass can pass around: primitives, lists, function values and nominal
  * types that cannot need a cleanup (a value that closes gets one the pass does not record yet). */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
@@ -98,7 +115,7 @@ static bool body_is_admitted(const MsBody *b, MsTy ty) {
 
 /* `Result[T, E]` whose success type the pass can hold (or `Void`); the error type is only ever
  * passed through by `?`, so any type is accepted for it. */
-static bool body_is_result(const MsBody *b, MsTy ty) {
+bool ms_body_is_result(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     return ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_RESULT) && tys->nargs[ty] == 2 &&
            (ms_ty_args(tys, ty)[0] == b->void_ty || body_is_admitted(b, ms_ty_args(tys, ty)[0]));
@@ -112,7 +129,7 @@ static bool body_is_optional(const MsBody *b, MsTy ty) {
 
 /* What a parameter or a local can hold. */
 static bool body_is_bindable(const MsBody *b, MsTy ty) {
-    return ty == b->invalid_ty || body_is_admitted(b, ty) || body_is_optional(b, ty) || body_is_result(b, ty);
+    return ty == b->invalid_ty || body_is_admitted(b, ty) || body_is_optional(b, ty) || ms_body_is_result(b, ty);
 }
 
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
@@ -605,7 +622,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
         return body_construct(b, e, sym);
     }
-    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
+    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
         syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||
         syms->decl[sym]->u.fn.external) {
         return ms_body_unsupported(b);
@@ -627,7 +644,8 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (body_has_invalid(b, result)) {
         return b->invalid_ty;
     }
-    return body_is_bindable(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
+    return body_is_bindable(b, result) || result == b->void_ty || ms_body_is_handle(b, result) ? result
+                                                                                          : ms_body_unsupported(b);
 }
 
 /* `call()?` on a `Result[T, E]` inside a function that returns `Result[_, E]`, or on an
@@ -639,8 +657,8 @@ static MsTy body_try(MsBody *b, const MsExpr *operand) {
     if (operand_ty == MS_TY_NONE) {
         return ms_body_unsupported(b);
     }
-    if (body_is_result(b, operand_ty)) {
-        const bool same_error = body_is_result(b, b->result) && ms_ty_args(tys, b->result)[1] == ms_ty_args(tys, operand_ty)[1];
+    if (ms_body_is_result(b, operand_ty)) {
+        const bool same_error = ms_body_is_result(b, b->result) && ms_ty_args(tys, b->result)[1] == ms_ty_args(tys, operand_ty)[1];
         return same_error ? ms_ty_args(tys, operand_ty)[0] : ms_body_unsupported(b);
     }
     return ms_body_unsupported(b);
@@ -684,12 +702,19 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
 /* `local.field` where the local holds a record this module declares and the field is a Copy
  * primitive (Int, Float, Bool): the field's type. Anything else a member can be (a method, a case, a module path)
  * is not checked yet. */
-static MsTy body_member(MsBody *b, const MsExpr *e) {
+static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver);
+
+static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e, false); }
+
+/* A field is read as the receiver of another member when it is a record this module declares:
+ * only the path matters, nothing is borrowed or moved out of the holder. */
+static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver) {
     const MsExpr *receiver = e->u.member.left;
-    if (receiver->kind != MS_E_NAME) {
+    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER) {
         return ms_body_unsupported(b);
     }
-    const MsTy record = ms_body_expr(b, receiver, MS_TY_NONE);
+    const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, true))
+                                                      : ms_body_expr(b, receiver, MS_TY_NONE);
     if (record == MS_TY_NONE) {
         return MS_TY_NONE;
     }
@@ -702,7 +727,9 @@ static MsTy body_member(MsBody *b, const MsExpr *e) {
         if (def->fields[i].name != e->u.member.name) {
             continue;
         }
-        if (!body_is_value_type(b, def->fields[i].ty) || def->fields[i].ty == b->string_ty) {
+        const MsTy field = def->fields[i].ty;
+        const bool path = as_receiver && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
+        if (!path && (!body_is_value_type(b, field) || field == b->string_ty)) {
             break; /* reading a String field borrows or moves it out of its holder */
         }
         b->facts->res_kind[e->id] = MS_RES_FIELD;
@@ -1025,7 +1052,7 @@ static void body_call_statement(MsBody *b, const MsStmt *s) {
 static bool body_returns_nothing(const MsBody *b) {
     const MsTyTable *tys = &b->c->tys;
     return b->result == b->void_ty ||
-           (body_is_result(b, b->result) && ms_ty_args(tys, b->result)[0] == b->void_ty);
+           (ms_body_is_result(b, b->result) && ms_ty_args(tys, b->result)[0] == b->void_ty);
 }
 
 static void body_return_statement(MsBody *b, const MsStmt *s) {
@@ -1402,6 +1429,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
     memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
+    facts->lambda_first = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);
