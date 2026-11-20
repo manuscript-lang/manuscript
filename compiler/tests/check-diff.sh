@@ -109,7 +109,7 @@ if ! grep -q 'body_construct_defaults.ms 5:1$' "$out/bodies.keys" || ! grep -q '
     status=1
 fi
 # A function over a type that closes is checked in C: the ownership pass knows it is a resource.
-if ! grep -q 'body_resource_param.ms 11:1$' "$out/bodies.keys" || ! grep -q 'body_resource_param.ms 14:1$' "$out/bodies.keys"; then
+if ! grep -q 'body_resource_param.ms 11:1$' "$out/bodies.keys" || ! grep -q 'body_resource_param.ms 14:1$' "$out/bodies.keys" || ! grep -q 'body_resource_param.ms 18:1$' "$out/bodies.keys"; then
     echo "FAIL bodies: a function over a type that closes is no longer checked in C (compiler/tests/scope/body_resource_param.ms)"
     status=1
 fi
