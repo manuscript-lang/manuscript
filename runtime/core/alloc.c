@@ -102,12 +102,6 @@ static inline void note_request(size_t size) {
 
 /* ---- allocation ---- */
 
-/* Memory a block gives back returns to the system at once: a growing list copies into a bigger block and frees the
- * smaller, and holding the freed pages for mimalloc's default 10 ms raised the peak of such a program by a quarter. */
-__attribute__((constructor)) static void tune_mimalloc(void) {
-    mi_option_set_default(mi_option_purge_delay, 0);
-}
-
 void *msrt_alloc(size_t size) {
     note_request(size);
     void *const p = mi_malloc(size);

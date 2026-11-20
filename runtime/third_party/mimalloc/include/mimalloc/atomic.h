@@ -1,21 +1,22 @@
 /* ----------------------------------------------------------------------------
-Copyright (c) 2018-2024 Microsoft Research, Daan Leijen
+Copyright (c) 2018-2026 Microsoft Research, Daan Leijen
 This is free software; you can redistribute it and/or modify it under the
 terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #pragma once
-#ifndef MIMALLOC_ATOMIC_H
-#define MIMALLOC_ATOMIC_H
+#ifndef MI_ATOMIC_H
+#define MI_ATOMIC_H
 
 // include windows.h or pthreads.h
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__CYGWIN__)  // we use windows locks on cygwin, but otherwise treat it as unix
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
-#elif !defined(__wasi__) && (!defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__))
-#define  MI_USE_PTHREADS
+#endif
+#if MI_TLS_MODEL_PTHREADS || (!defined(_WIN32) && !defined(__wasi__) && (!defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)))
+#define  MI_USE_PTHREADS        1
 #include <pthread.h>
 #endif
 
@@ -41,7 +42,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #else
  #define MI_ATOMIC_VAR_INIT(x)    ATOMIC_VAR_INIT(x)
 #endif
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) && !defined(__clang__)
 // Use MSVC C wrapper for C11 atomics
 #define  _Atomic(tp)              tp
 #define  MI_ATOMIC_VAR_INIT(x)    x
@@ -70,34 +71,46 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #define mi_atomic_load_acquire(p)                mi_atomic(load_explicit)(p,mi_memory_order(acquire))
 #define mi_atomic_load_relaxed(p)                mi_atomic(load_explicit)(p,mi_memory_order(relaxed))
+#define mi_atomic_load_seq_cst(p)                mi_atomic(load_explicit)(p,mi_memory_order(seq_cst))
 #define mi_atomic_store_release(p,x)             mi_atomic(store_explicit)(p,x,mi_memory_order(release))
 #define mi_atomic_store_relaxed(p,x)             mi_atomic(store_explicit)(p,x,mi_memory_order(relaxed))
 #define mi_atomic_exchange_relaxed(p,x)          mi_atomic(exchange_explicit)(p,x,mi_memory_order(relaxed))
 #define mi_atomic_exchange_release(p,x)          mi_atomic(exchange_explicit)(p,x,mi_memory_order(release))
 #define mi_atomic_exchange_acq_rel(p,x)          mi_atomic(exchange_explicit)(p,x,mi_memory_order(acq_rel))
+
+#define mi_atomic_cas_weak_relaxed(p,exp,des)    mi_atomic_cas_weak(p,exp,des,mi_memory_order(relaxed),mi_memory_order(relaxed))
 #define mi_atomic_cas_weak_release(p,exp,des)    mi_atomic_cas_weak(p,exp,des,mi_memory_order(release),mi_memory_order(relaxed))
 #define mi_atomic_cas_weak_acq_rel(p,exp,des)    mi_atomic_cas_weak(p,exp,des,mi_memory_order(acq_rel),mi_memory_order(acquire))
+#define mi_atomic_cas_strong_relaxed(p,exp,des)  mi_atomic_cas_strong(p,exp,des,mi_memory_order(relaxed),mi_memory_order(relaxed))
+#define mi_atomic_cas_strong_acquire(p,exp,des)  mi_atomic_cas_strong(p,exp,des,mi_memory_order(acquire),mi_memory_order(relaxed))
 #define mi_atomic_cas_strong_release(p,exp,des)  mi_atomic_cas_strong(p,exp,des,mi_memory_order(release),mi_memory_order(relaxed))
 #define mi_atomic_cas_strong_acq_rel(p,exp,des)  mi_atomic_cas_strong(p,exp,des,mi_memory_order(acq_rel),mi_memory_order(acquire))
 
 #define mi_atomic_add_relaxed(p,x)               mi_atomic(fetch_add_explicit)(p,x,mi_memory_order(relaxed))
-#define mi_atomic_sub_relaxed(p,x)               mi_atomic(fetch_sub_explicit)(p,x,mi_memory_order(relaxed))
 #define mi_atomic_add_acq_rel(p,x)               mi_atomic(fetch_add_explicit)(p,x,mi_memory_order(acq_rel))
+#define mi_atomic_sub_relaxed(p,x)               mi_atomic(fetch_sub_explicit)(p,x,mi_memory_order(relaxed))
 #define mi_atomic_sub_acq_rel(p,x)               mi_atomic(fetch_sub_explicit)(p,x,mi_memory_order(acq_rel))
+#define mi_atomic_and_relaxed(p,x)               mi_atomic(fetch_and_explicit)(p,x,mi_memory_order(relaxed))
+#define mi_atomic_and_acquire(p,x)               mi_atomic(fetch_and_explicit)(p,x,mi_memory_order(acquire))
+#define mi_atomic_and_release(p,x)               mi_atomic(fetch_and_explicit)(p,x,mi_memory_order(release))
 #define mi_atomic_and_acq_rel(p,x)               mi_atomic(fetch_and_explicit)(p,x,mi_memory_order(acq_rel))
+#define mi_atomic_or_relaxed(p,x)                mi_atomic(fetch_or_explicit)(p,x,mi_memory_order(relaxed))
 #define mi_atomic_or_acq_rel(p,x)                mi_atomic(fetch_or_explicit)(p,x,mi_memory_order(acq_rel))
 
-#define mi_atomic_increment_relaxed(p)           mi_atomic_add_relaxed(p,(uintptr_t)1)
-#define mi_atomic_decrement_relaxed(p)           mi_atomic_sub_relaxed(p,(uintptr_t)1)
-#define mi_atomic_increment_acq_rel(p)           mi_atomic_add_acq_rel(p,(uintptr_t)1)
-#define mi_atomic_decrement_acq_rel(p)           mi_atomic_sub_acq_rel(p,(uintptr_t)1)
+#define mi_atomic_increment_relaxed(p)           mi_atomic_add_relaxed(p,(size_t)1)
+#define mi_atomic_decrement_relaxed(p)           mi_atomic_sub_relaxed(p,(size_t)1)
+#define mi_atomic_increment_acq_rel(p)           mi_atomic_add_acq_rel(p,(size_t)1)
+#define mi_atomic_decrement_acq_rel(p)           mi_atomic_sub_acq_rel(p,(size_t)1)
 
-static inline void mi_atomic_yield(void);
-static inline intptr_t mi_atomic_addi(_Atomic(intptr_t)*p, intptr_t add);
-static inline intptr_t mi_atomic_subi(_Atomic(intptr_t)*p, intptr_t sub);
+static inline mi_ssize_t mi_atomic_addi_acq_rel(_Atomic(mi_ssize_t)*p, mi_ssize_t add);
+static inline mi_ssize_t mi_atomic_subi_acq_rel(_Atomic(mi_ssize_t)*p, mi_ssize_t sub);
+static inline mi_ssize_t mi_atomic_addi_relaxed(_Atomic(mi_ssize_t)*p, mi_ssize_t add);
+static inline mi_ssize_t mi_atomic_subi_relaxed(_Atomic(mi_ssize_t)*p, mi_ssize_t sub);
+static inline void       mi_atomic_storess_relaxed(_Atomic(mi_ssize_t)* p, mi_ssize_t x);
+static inline mi_ssize_t mi_atomic_loads_relaxed(_Atomic(mi_ssize_t)* p);
 
 
-#if defined(__cplusplus) || !defined(_MSC_VER)
+#if defined(__cplusplus) || !defined(_MSC_VER) || defined(__clang__)
 
 // In C++/C11 atomics we have polymorphic atomics so can use the typed `ptr` variants (where `tp` is the type of atomic value)
 // We use these macros so we can provide a typed wrapper in MSVC in C compilation mode as well
@@ -128,18 +141,18 @@ static inline intptr_t mi_atomic_subi(_Atomic(intptr_t)*p, intptr_t sub);
 #endif
 
 // These are used by the statistics
-static inline int64_t mi_atomic_addi64_relaxed(volatile int64_t* p, int64_t add) {
+static inline int64_t mi_atomic_volatile_addi64_relaxed(volatile int64_t* p, int64_t add) {
   return mi_atomic(fetch_add_explicit)((_Atomic(int64_t)*)p, add, mi_memory_order(relaxed));
 }
-static inline void mi_atomic_void_addi64_relaxed(volatile int64_t* p, const volatile int64_t* padd) {
+static inline void mi_atomic_volatile_void_addi64_relaxed(volatile int64_t* p, const volatile int64_t* padd) {
   const int64_t add = mi_atomic_load_relaxed((_Atomic(int64_t)*)padd);
   if (add != 0) {
     mi_atomic(fetch_add_explicit)((_Atomic(int64_t)*)p, add, mi_memory_order(relaxed));
   }
 }
-static inline void mi_atomic_maxi64_relaxed(volatile int64_t* p, int64_t x) {
+static inline void mi_atomic_volatile_maxi64_relaxed(volatile int64_t* p, int64_t x) {
   int64_t current = mi_atomic_load_relaxed((_Atomic(int64_t)*)p);
-  while (current < x && !mi_atomic_cas_weak_release((_Atomic(int64_t)*)p, &current, x)) { /* nothing */ };
+  while (current < x && !mi_atomic_cas_weak_relaxed((_Atomic(int64_t)*)p, &current, x)) { /* nothing */ };
 }
 
 // Used by timers
@@ -149,10 +162,13 @@ static inline void mi_atomic_maxi64_relaxed(volatile int64_t* p, int64_t x) {
 #define mi_atomic_storei64_relaxed(p,x)         mi_atomic(store_explicit)(p,x,mi_memory_order(relaxed))
 
 #define mi_atomic_casi64_strong_acq_rel(p,e,d)  mi_atomic_cas_strong_acq_rel(p,e,d)
+#define mi_atomic_casi64_strong_relaxed(p,e,d)  mi_atomic_cas_strong_relaxed(p,e,d)
+#define mi_atomic_casi64_strong_release(p,e,d)  mi_atomic_cas_strong_release(p,e,d)
 #define mi_atomic_addi64_acq_rel(p,i)           mi_atomic_add_acq_rel(p,i)
+#define mi_atomic_addi64_relaxed(p,i)           mi_atomic_add_relaxed(p,i)
 
 
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) && !defined(__clang__)
 
 // Deprecated: MSVC plain C compilation wrapper that uses Interlocked operations to model C11 atomics.
 // It is recommended to always compile as C++ when using MSVC.
@@ -211,24 +227,22 @@ static inline uintptr_t mi_atomic_exchange_explicit(_Atomic(uintptr_t)*p, uintpt
   (void)(mo);
   return (uintptr_t)MI_MSC_64(_InterlockedExchange)((volatile msc_intptr_t*)p, (msc_intptr_t)exchange);
 }
-static inline void mi_atomic_thread_fence(mi_memory_order mo) {
-  (void)(mo);
-  _Atomic(uintptr_t) x = 0;
-  mi_atomic_exchange_explicit(&x, 1, mo);
-}
 
 static inline uintptr_t mi_atomic_load_explicit(_Atomic(uintptr_t) const* p, mi_memory_order mo) {
   (void)(mo);
   // assert(mo<=mi_memory_order_acquire); // others are not used by mimalloc
   #if defined(_M_IX86) || defined(_M_X64)
+    // on x86/x64 we have a strong memory model so any load is acquire
     return (uintptr_t)MI_MSC_XX(__iso_volatile_load)((volatile const intptr_t*)p);
   #elif defined(_M_ARM) || defined(_M_ARM64)
     if (mo == mi_memory_order_relaxed) {
       return (uintptr_t)MI_MSC_XX(__iso_volatile_load)((volatile const intptr_t*)p);
     }
+    #if !defined(__clang__) // work around __ldar missing in clang-cl, see https://github.com/llvm/llvm-project/issues/121689
     else if (mo <= mi_memory_order_acquire) {
       return MI_MSC_XX(__ldar)((volatile const uintptr_t*)p);
     }
+    #endif
     else {
       const uintptr_t u = (uintptr_t)MI_MSC_XX(__iso_volatile_load)((volatile const intptr_t*)p);
       __dmb(15);  // _ARM(64)_BARRIER_SY
@@ -248,9 +262,11 @@ static inline void mi_atomic_store_explicit(_Atomic(uintptr_t)*p, uintptr_t x, m
     if (mo == mi_memory_order_relaxed) {
       MI_MSC_XX(__iso_volatile_store)((volatile intptr_t*)p, x);
     }
+    #if !defined(__clang__) // work around __stlr missing in clang-cl, see https://github.com/llvm/llvm-project/issues/121689
     else if (mo <= mi_memory_order_release) {
       MI_MSC_XX(__stlr)((volatile uintptr_t*)p,x);
     }
+    #endif
     else {
       mi_atomic_exchange_explicit(p, x, mo);
     }
@@ -268,7 +284,7 @@ static inline int64_t mi_atomic_loadi64_explicit(_Atomic(int64_t)*p, mi_memory_o
     if (mo == mi_memory_order_relaxed) {
       return __iso_volatile_load64((volatile const int64_t*)p);
     }
-    #if defined(_M_ARM64)
+    #if defined(_M_ARM64) && !defined(__clang__) // work around __ldar64 missing in clang-cl, see https://github.com/llvm/llvm-project/issues/121689
     else if (mo <= mi_memory_order_acquire) {
       return __ldar64((volatile const uintptr_t*)p);
     }
@@ -293,7 +309,7 @@ static inline void mi_atomic_storei64_explicit(_Atomic(int64_t)*p, int64_t x, mi
     if (mo == mi_memory_order_relaxed) {
       __iso_volatile_store64((volatile int64_t*)p,x);
     }
-    #if defined(_M_ARM64)
+    #if defined(_M_ARM64) && !defined(__clang__) // work around __stlr64 missing in clang-cl, see https://github.com/llvm/llvm-project/issues/121689
     else if (mo == mi_memory_order_release) {
       __stlr64((volatile uint64_t*)p, (uint64_t)x);
     }
@@ -307,9 +323,9 @@ static inline void mi_atomic_storei64_explicit(_Atomic(int64_t)*p, int64_t x, mi
 }
 
 // These are used by the statistics
-static inline int64_t mi_atomic_addi64_relaxed(volatile _Atomic(int64_t)*p, int64_t add) {
+static inline int64_t mi_atomic_volatile_addi64_relaxed(volatile _Atomic(int64_t)*p, int64_t add) {
   #ifdef _WIN64
-    return (int64_t)mi_atomic_addi((int64_t*)p, add);
+    return (int64_t)mi_atomic_addi_relaxed((_Atomic(int64_t)*)p, add);
   #elif defined(_M_ARM)
     return _InterlockedExchangeAdd64(p, add);
   #else
@@ -323,25 +339,30 @@ static inline int64_t mi_atomic_addi64_relaxed(volatile _Atomic(int64_t)*p, int6
     return current;
   #endif
 }
-static inline void mi_atomic_void_addi64_relaxed(volatile int64_t* p, const volatile int64_t* padd) {
+
+static inline void mi_atomic_volatile_void_addi64_relaxed(volatile int64_t* p, const volatile int64_t* padd) {
   const int64_t add = *padd;
   if (add != 0) {
-    mi_atomic_addi64_relaxed((volatile _Atomic(int64_t)*)p, add);
+    mi_atomic_volatile_addi64_relaxed((volatile _Atomic(int64_t)*)p, add);
   }
 }
 
-static inline void mi_atomic_maxi64_relaxed(volatile _Atomic(int64_t)*p, int64_t x) {
+static inline void mi_atomic_volatile_maxi64_relaxed(volatile _Atomic(int64_t)* p, int64_t x) {
   int64_t current;
   do {
     current = *p;
   } while (current < x && _InterlockedCompareExchange64(p, x, current) != current);
 }
 
-static inline void mi_atomic_addi64_acq_rel(volatile _Atomic(int64_t*)p, int64_t i) {
-  mi_atomic_addi64_relaxed(p, i);
+static inline void mi_atomic_addi64_acq_rel(volatile _Atomic(int64_t)* p, int64_t i) {
+  mi_atomic_volatile_addi64_relaxed(p, i);
 }
 
-static inline bool mi_atomic_casi64_strong_acq_rel(volatile _Atomic(int64_t*)p, int64_t* exp, int64_t des) {
+static inline int64_t mi_atomic_addi64_relaxed(volatile _Atomic(int64_t)* p, int64_t i) {
+  return mi_atomic_volatile_addi64_relaxed(p, i);
+}
+
+static inline bool mi_atomic_casi64_strong_acq_rel(volatile _Atomic(int64_t)* p, int64_t* exp, int64_t des) {
   const int64_t read = _InterlockedCompareExchange64(p, des, *exp);
   if (read == *exp) {
     return true;
@@ -352,18 +373,21 @@ static inline bool mi_atomic_casi64_strong_acq_rel(volatile _Atomic(int64_t*)p, 
   }
 }
 
+#define mi_atomic_casi64_strong_relaxed(p,e,d)  mi_atomic_casi64_strong_acq_rel(p,e,d)
+#define mi_atomic_casi64_strong_release(p,e,d)  mi_atomic_casi64_strong_acq_rel(p,e,d)
+
 // The pointer macros cast to `uintptr_t`.
-#define mi_atomic_load_ptr_acquire(tp,p)                (tp*)mi_atomic_load_acquire((_Atomic(uintptr_t)*)(p))
-#define mi_atomic_load_ptr_relaxed(tp,p)                (tp*)mi_atomic_load_relaxed((_Atomic(uintptr_t)*)(p))
+#define mi_atomic_load_ptr_acquire(tp,p)                ((tp*)mi_atomic_load_acquire((_Atomic(uintptr_t)*)(p)))
+#define mi_atomic_load_ptr_relaxed(tp,p)                ((tp*)mi_atomic_load_relaxed((_Atomic(uintptr_t)*)(p)))
 #define mi_atomic_store_ptr_release(tp,p,x)             mi_atomic_store_release((_Atomic(uintptr_t)*)(p),(uintptr_t)(x))
 #define mi_atomic_store_ptr_relaxed(tp,p,x)             mi_atomic_store_relaxed((_Atomic(uintptr_t)*)(p),(uintptr_t)(x))
 #define mi_atomic_cas_ptr_weak_release(tp,p,exp,des)    mi_atomic_cas_weak_release((_Atomic(uintptr_t)*)(p),(uintptr_t*)exp,(uintptr_t)des)
 #define mi_atomic_cas_ptr_weak_acq_rel(tp,p,exp,des)    mi_atomic_cas_weak_acq_rel((_Atomic(uintptr_t)*)(p),(uintptr_t*)exp,(uintptr_t)des)
 #define mi_atomic_cas_ptr_strong_release(tp,p,exp,des)  mi_atomic_cas_strong_release((_Atomic(uintptr_t)*)(p),(uintptr_t*)exp,(uintptr_t)des)
 #define mi_atomic_cas_ptr_strong_acq_rel(tp,p,exp,des)  mi_atomic_cas_strong_acq_rel((_Atomic(uintptr_t)*)(p),(uintptr_t*)exp,(uintptr_t)des)
-#define mi_atomic_exchange_ptr_relaxed(tp,p,x)          (tp*)mi_atomic_exchange_relaxed((_Atomic(uintptr_t)*)(p),(uintptr_t)x)
-#define mi_atomic_exchange_ptr_release(tp,p,x)          (tp*)mi_atomic_exchange_release((_Atomic(uintptr_t)*)(p),(uintptr_t)x)
-#define mi_atomic_exchange_ptr_acq_rel(tp,p,x)          (tp*)mi_atomic_exchange_acq_rel((_Atomic(uintptr_t)*)(p),(uintptr_t)x)
+#define mi_atomic_exchange_ptr_relaxed(tp,p,x)          ((tp*)mi_atomic_exchange_relaxed((_Atomic(uintptr_t)*)(p),(uintptr_t)x))
+#define mi_atomic_exchange_ptr_release(tp,p,x)          ((tp*)mi_atomic_exchange_release((_Atomic(uintptr_t)*)(p),(uintptr_t)x))
+#define mi_atomic_exchange_ptr_acq_rel(tp,p,x)          ((tp*)mi_atomic_exchange_acq_rel((_Atomic(uintptr_t)*)(p),(uintptr_t)x))
 
 #define mi_atomic_loadi64_acquire(p)    mi_atomic(loadi64_explicit)(p,mi_memory_order(acquire))
 #define mi_atomic_loadi64_relaxed(p)    mi_atomic(loadi64_explicit)(p,mi_memory_order(relaxed))
@@ -373,101 +397,55 @@ static inline bool mi_atomic_casi64_strong_acq_rel(volatile _Atomic(int64_t*)p, 
 
 #endif
 
-
-// Atomically add a signed value; returns the previous value.
-static inline intptr_t mi_atomic_addi(_Atomic(intptr_t)*p, intptr_t add) {
-  return (intptr_t)mi_atomic_add_acq_rel((_Atomic(uintptr_t)*)p, (uintptr_t)add);
+// Atomic minimum where 0 means "not set" (and `x > 0`); returns the previous value.
+// This always writes (even if the value is unchanged) so it is a read-modify-write that
+// is ordered with other read-modify-writes on `p` (unlike a failed CAS which is just a read).
+static inline int64_t mi_atomic_mini64_nonzero_acq_rel(_Atomic(int64_t)* p, int64_t x) {
+  int64_t current = mi_atomic_loadi64_relaxed(p);
+  int64_t desired;
+  do {
+    desired = (current == 0 || x < current ? x : current);
+  } while (!mi_atomic_casi64_strong_acq_rel(p, &current, desired));
+  return current;
 }
 
-// Atomically subtract a signed value; returns the previous value.
-static inline intptr_t mi_atomic_subi(_Atomic(intptr_t)*p, intptr_t sub) {
-  return (intptr_t)mi_atomic_addi(p, -sub);
+static inline int64_t mi_atomic_exchangei64_acq_rel(_Atomic(int64_t)* p, int64_t x) {
+  int64_t current = mi_atomic_loadi64_relaxed(p);
+  while (!mi_atomic_casi64_strong_acq_rel(p, &current, x)) { /* nothing */ };
+  return current;
 }
 
+static inline mi_ssize_t mi_atomic_addi_acq_rel(_Atomic(mi_ssize_t)*p, mi_ssize_t add) {
+  return (mi_ssize_t)mi_atomic_add_acq_rel((_Atomic(size_t)*)p, (size_t)add);
+}
+static inline mi_ssize_t mi_atomic_subi_acq_rel(_Atomic(mi_ssize_t)*p, mi_ssize_t sub) {
+  return (mi_ssize_t)mi_atomic_addi_acq_rel(p, -sub);
+}
+static inline mi_ssize_t mi_atomic_addi_relaxed(_Atomic(mi_ssize_t)*p, mi_ssize_t add) {
+  return (mi_ssize_t)mi_atomic_add_relaxed((_Atomic(size_t)*)p, (size_t)add);
+}
+static inline mi_ssize_t mi_atomic_subi_relaxed(_Atomic(mi_ssize_t)*p, mi_ssize_t sub) {
+  return (mi_ssize_t)mi_atomic_addi_relaxed(p, -sub);
+}
+static inline void mi_atomic_storess_relaxed(_Atomic(mi_ssize_t)* p, mi_ssize_t x) {
+  mi_atomic_store_relaxed((_Atomic(size_t)*)p, (size_t)x);
+}
+static inline mi_ssize_t mi_atomic_loads_relaxed(_Atomic(mi_ssize_t)* p) {
+  return (mi_ssize_t)mi_atomic_load_relaxed((_Atomic(size_t)*)p);
+}
 
 // ----------------------------------------------------------------------
-// Once and Guard
+// Guard
 // ----------------------------------------------------------------------
 
-typedef _Atomic(uintptr_t) mi_atomic_guard_t;
+typedef _Atomic(size_t) mi_atomic_guard_t;
 
 // Allows only one thread to execute at a time (without blocking anyone)
 #define mi_atomic_guard(guard) \
-  uintptr_t _mi_guard_expected = 0; \
+  size_t _mi_guard_expected = 0; \
   for(bool _mi_guard_once = true; \
-      _mi_guard_once && mi_atomic_cas_strong_acq_rel(guard,&_mi_guard_expected,(uintptr_t)1); \
-      (mi_atomic_store_release(guard,(uintptr_t)0), _mi_guard_once = false) )
-
-
-
-// ----------------------------------------------------------------------
-// Yield
-// ----------------------------------------------------------------------
-
-#if defined(_WIN32)
-static inline void mi_atomic_yield(void) {
-  YieldProcessor();  // see issue #1215 and #1225 why this is preferred over __yield or SwitchToThread
-}
-#elif defined(__SSE2__)
-#include <emmintrin.h>
-static inline void mi_atomic_yield(void) {
-  _mm_pause();
-}
-#elif (defined(__GNUC__) || defined(__clang__)) && \
-      (defined(__x86_64__) || defined(__i386__) || \
-       defined(__aarch64__) || defined(__arm__) || \
-       defined(__powerpc__) || defined(__ppc__) || defined(__PPC__) || defined(__POWERPC__))
-#if defined(__x86_64__) || defined(__i386__)
-static inline void mi_atomic_yield(void) {
-  __asm__ volatile ("pause" ::: "memory");
-}
-#elif defined(__aarch64__)
-static inline void mi_atomic_yield(void) {
-  __asm__ volatile("isb");
-}
-#elif defined(__arm__)
-#if __ARM_ARCH >= 7
-static inline void mi_atomic_yield(void) {
-  __asm__ volatile("yield" ::: "memory");
-}
-#else
-static inline void mi_atomic_yield(void) {
-  __asm__ volatile ("nop" ::: "memory");
-}
-#endif
-#elif defined(__powerpc__) || defined(__ppc__) || defined(__PPC__) || defined(__POWERPC__)
-#ifdef __APPLE__
-static inline void mi_atomic_yield(void) {
-  __asm__ volatile ("or r27,r27,r27" ::: "memory");
-}
-#else
-static inline void mi_atomic_yield(void) {
-  __asm__ __volatile__ ("or 27,27,27" ::: "memory");
-}
-#endif
-#endif
-#elif defined(__sun)
-#include <synch.h>
-static inline void mi_atomic_yield(void) {
-  smt_pause();
-}
-#elif defined(__wasi__)
-#include <sched.h>
-static inline void mi_atomic_yield(void) {
-  sched_yield();
-}
-// Fallback for other archs
-#elif defined(__cplusplus)
-#include <thread>
-static inline void mi_atomic_yield(void) {
-  std::this_thread::yield();
-}
-#else
-#include <unistd.h>
-static inline void mi_atomic_yield(void) {
-  sleep(0);
-}
-#endif
+      _mi_guard_once && mi_atomic_cas_strong_acquire(guard,&_mi_guard_expected,(size_t)1); \
+      (mi_atomic_store_release(guard,(size_t)0), _mi_guard_once = false) )
 
 
 // ----------------------------------------------------------------------
@@ -479,11 +457,15 @@ static inline void mi_atomic_yield(void) {
 #pragma warning(disable:26110)  // unlock with holding lock
 #endif
 
-#define mi_lock(lock)                  for(bool _mi_go = (mi_lock_acquire(lock),true); _mi_go; (mi_lock_release(lock), _mi_go=false) )
-#define mi_lock_maybe(lock,acquire)    for(bool _mi_go = (acquire ? (mi_lock_acquire(lock),true) : true); _mi_go; _mi_go = (acquire ? (mi_lock_release(lock),false) : false) )
+// use a unique loop variable per line to avoid shadowing warnings for nested locks
+#define mi_concat_(a,b)                a##b
+#define mi_concat(a,b)                 mi_concat_(a,b)
+#define mi_unique(name)                mi_concat(name,__LINE__)
+#define mi_lock(lock)                  for(bool mi_unique(_mi_go) = (mi_lock_acquire(lock),true); mi_unique(_mi_go); (mi_lock_release(lock), mi_unique(_mi_go)=false) )
+#define mi_lock_maybe(lock,acquire)    for(bool mi_unique(_mi_go) = ((acquire) ? (mi_lock_acquire(lock),true) : true); mi_unique(_mi_go); mi_unique(_mi_go) = ((acquire) ? (mi_lock_release(lock),false) : false) )
 
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__CYGWIN__)
 
 typedef struct mi_lock_s {
   SRWLOCK mutex;    // slim reader-writer lock
@@ -562,10 +544,10 @@ static inline void mi_lock_release(mi_lock_t* lock) {
   lock->mutex.unlock();
 }
 static inline void mi_lock_init(mi_lock_t* lock) {
-  new(&lock->mutex) std::mutex();
+  new(&lock->mutex) std::mutex();  // in-place constructor
 }
 static inline void mi_lock_done(mi_lock_t* lock) {
-  (void)(lock);
+  lock->mutex.~mutex(); // in-place destructor
 }
 
 #else
@@ -577,26 +559,27 @@ static inline void mi_lock_done(mi_lock_t* lock) {
 #define EFAULT (14)
 #endif
 void _mi_error_message(int err, const char* fmt, ...);
+void _mi_prim_thread_yield(void);
 
 typedef struct mi_lock_s {
-  _Atomic(uintptr_t) mutex;
+  _Atomic(size_t) mutex;
 } mi_lock_t;
 
 #define MI_LOCK_INITIALIZER  { MI_ATOMIC_VAR_INIT(0) }
 
 static inline bool mi_lock_try_acquire(mi_lock_t* lock) {
-  uintptr_t expected = 0;
-  return mi_atomic_cas_strong_acq_rel(&lock->mutex, &expected, (uintptr_t)1);
+  size_t expected = 0;
+  return mi_atomic_cas_strong_acquire(&lock->mutex, &expected, (size_t)1);
 }
 static inline void mi_lock_acquire(mi_lock_t* lock) {
   for (int i = 0; i < 10000; i++) {  // for at most 10000 tries?
     if (mi_lock_try_acquire(lock)) return;
-    mi_atomic_yield();
+    _mi_prim_thread_yield();
   }
   _mi_error_message(EFAULT, "internal error: lock cannot be acquired (due to lack of native lock primitives)\n");
 }
 static inline void mi_lock_release(mi_lock_t* lock) {
-  mi_atomic_store_release(&lock->mutex, (uintptr_t)0);
+  mi_atomic_store_release(&lock->mutex, (size_t)0);
 }
 static inline void mi_lock_init(mi_lock_t* lock) {
   mi_lock_release(lock);
@@ -609,19 +592,63 @@ static inline void mi_lock_done(mi_lock_t* lock) {
 
 
 typedef struct mi_atomic_once_s {
-  _Atomic(uintptr_t) tid;
+  _Atomic(size_t)    tid;
   mi_lock_t          lock;
 } mi_atomic_once_t;
 
 // Returns `true` only on the first invocation, signifying we can execute an action once.
 // If it returns `true`, the caller should call `_mi_atomic_once_release` after performing the action.
 // Other threads (than the initial thread that entered) will block until `_mi_atomic_once_release` has been called.
-bool _mi_atomic_once_enter(mi_atomic_once_t* once);        // defined in `libc.c`
-void _mi_atomic_once_release(mi_atomic_once_t* once);      // defined in `libc.c`
+bool _mi_atomic_once_enter(mi_atomic_once_t* once);        // defined in `util/libc.c`
+void _mi_atomic_once_release(mi_atomic_once_t* once);      // defined in `util/libc.c`
 
 #define mi_atomic_do_once  \
   static mi_atomic_once_t _mi_once = { MI_ATOMIC_VAR_INIT(0), MI_LOCK_INITIALIZER }; \
   for(bool _mi_exec = _mi_atomic_once_enter(&_mi_once); _mi_exec; (_mi_atomic_once_release(&_mi_once),_mi_exec=false))
+
+
+
+/* -----------------------------------------------------------
+  pthread thread locals
+----------------------------------------------------------- */
+
+#if MI_USE_PTHREADS
+
+#if defined(__APPLE__) && defined(__aarch64__)
+#define MI_PTHREAD_KEY_INVALID ((pthread_key_t)(0))   // nicer codegen
+#else
+#define MI_PTHREAD_KEY_INVALID ((pthread_key_t)(-1))
+#endif
+
+#if defined(__linux__) && defined(__GLIBC__)
+// pthread_getspecific returns NULL for invalid keys. <https://man7.org/linux/man-pages/man3/pthread_getspecific.3p.html>
+// see also: <https://github.com/lattera/glibc/blob/master/nptl/pthread_getspecific.c>
+#define MI_PTHREADS_GET_INVALID_KEY_IS_NULL  1
+#endif
+
+mi_decl_noinline bool _mi_pthread_key_create(pthread_key_t* pkey, void (*destruct)(void*), void* init);
+
+static inline void* mi_pthread_key_get(pthread_key_t key) {
+  #if !MI_PTHREADS_GET_INVALID_KEY_IS_NULL
+  if mi_unlikely(key==MI_PTHREAD_KEY_INVALID) return NULL;
+  #endif
+  return pthread_getspecific(key);
+}
+
+static inline bool mi_pthread_key_set(pthread_key_t* pkey, void* val) {
+  if mi_likely(*pkey!=MI_PTHREAD_KEY_INVALID) { pthread_setspecific(*pkey,val); return true; }
+  else if (val!=NULL) { return _mi_pthread_key_create(pkey,NULL,val); }
+  else return true;
+}
+
+static inline void mi_pthread_key_delete(pthread_key_t* pkey) {
+  const pthread_key_t key = *pkey;
+  if (key!=MI_PTHREAD_KEY_INVALID) {
+    *pkey = MI_PTHREAD_KEY_INVALID;
+    pthread_key_delete(key);
+  }
+}
+#endif
 
 
 #endif // __MIMALLOC_ATOMIC_H
