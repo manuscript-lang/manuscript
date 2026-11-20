@@ -916,10 +916,10 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_UNARY: ty = body_unary(b, e); break;
     case MS_E_BINARY: ty = body_binary(b, e); break;
     case MS_E_MEMBER: ty = body_member(b, e); break;
-    case MS_E_INDEX: ty = ms_body_index(b, e); break;
+    case MS_E_INDEX:
+    case MS_E_APPLY: ty = ms_body_index(b, e); break;
     case MS_E_LIST: ty = ms_body_list(b, e, expected); break;
     case MS_E_MAP: ty = ms_body_map(b, e, expected); break;
-    case MS_E_APPLY:
     case MS_E_PROBE: return ms_body_unsupported(b);
     case MS_E_LAMBDA: ty = ms_body_lambda(b, e, expected); break;
     case MS_E_CALL: ty = body_call(b, e, expected); break;

@@ -86,6 +86,10 @@ typedef struct Lb {
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
     uint32_t nvars, cvars;
+    MirValue *temps;      /* the owned temporaries of the statement being lowered, dropped where it ends (newest first) */
+    uint32_t ntemps, ctemps;
+    uint32_t stmt_mark;   /* `ntemps` where the statement being lowered began */
+    uint32_t branching;   /* conditional contexts around the expression being lowered (an arm, a short-circuit's right side) */
     bool dead;            /* control cannot reach the current position */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
@@ -95,6 +99,7 @@ typedef struct Lb {
 void lb_statements(Lb *lb, const MsStmts *body);
 void lb_return_void(Lb *lb);
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
+void lb_hold_temp(Lb *lb, MirValue v); /* an owned temporary that lives to the end of the statement */
 MirLoc lb_loc(const Lb *lb, MsPos pos);
 void lb_reset_state(Lb *lb);
 

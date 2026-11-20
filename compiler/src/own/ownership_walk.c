@@ -354,15 +354,22 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         return;
     case MS_E_MEMBER: own_expr(w, e->u.member.left, DEMAND_READ); return; /* a copied field reads its holder */
     case MS_E_INDEX: /* only a scalar element is read: the checker admits no other */
-        own_expr(w, e->u.bin.left, DEMAND_READ);
-        own_expr(w, e->u.bin.right, DEMAND_READ);
+    case MS_E_APPLY: { /* `xs[i]` read as a type application: the checker admits it only as an index */
+        const MsExpr *list = NULL;
+        const MsExpr *index = NULL;
+        if (!ms_expr_index(e, &list, &index)) {
+            w->supported = false;
+            return;
+        }
+        own_expr(w, list, DEMAND_READ);
+        own_expr(w, index, DEMAND_READ);
         return;
+    }
     case MS_E_LIST: /* each entry moves into the list */
         for (uint32_t i = 0; i < e->u.list.len; i++) {
             own_expr(w, e->u.list.ptr[i], DEMAND_MOVE);
         }
         return;
-    case MS_E_APPLY:
     case MS_E_PROBE:
     case MS_E_MAP: w->supported = false; return; /* collections are not modeled */
     case MS_E_LAMBDA: own_lambda(w, e); return;
@@ -491,8 +498,12 @@ static bool own_mentions(const OwnWalk *w, const MsExpr *e, uint32_t binding) {
         }
         return false;
     case MS_E_INDEX: return own_mentions(w, e->u.bin.left, binding) || own_mentions(w, e->u.bin.right, binding);
+    case MS_E_APPLY: {
+        const MsExpr *list = NULL;
+        const MsExpr *index = NULL;
+        return !ms_expr_index(e, &list, &index) || own_mentions(w, list, binding) || own_mentions(w, index, binding);
+    }
     case MS_E_MEMBER:
-    case MS_E_APPLY:
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
@@ -605,7 +616,9 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
                 own_mutate(w, arg, binding);
                 continue;
             }
-            if (arg->kind == MS_E_INDEX || arg->kind == MS_E_MEMBER) {
+            const MsExpr *part_of = NULL;
+            const MsExpr *part_at = NULL;
+            if (ms_expr_index(arg, &part_of, &part_at) || arg->kind == MS_E_MEMBER) {
                 w->supported = false; /* a part of a variable is a place too: changing it is left to Rust */
                 return;
             }
