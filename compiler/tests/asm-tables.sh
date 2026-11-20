@@ -37,7 +37,7 @@ clang "$out/llvm.tables.s" -DMS_LLVM_LINES compiler/tests/asm_tables_check.c -o 
 "$out/llvm" && echo "ok   asm-tables llvm lines"
 # The assembly LLVM writes for every platform the release builds target (ELF and Mach-O `.loc`, COFF `.cv_loc`,
 # indented directives, labels with comments) takes the tables and still assembles for that platform.
-printf 'F asm_tables_input.c\nY h\t0\t1\th\nY f\t0\t2\tf\n' > "$out/input.meta"
+printf 'F asm_tables_input.c\nY h\t0\t1\th\nY f\t0\t4\tf\n' > "$out/input.meta"
 for entry in x86_64-linux-gnu: aarch64-linux-gnu: x86_64-apple-macos:_ aarch64-apple-macos:_ \
     x86_64-pc-windows-msvc: aarch64-pc-windows-msvc: x86_64-pc-windows-gnu:; do
     triple=${entry%%:*}

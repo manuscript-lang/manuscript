@@ -22,11 +22,14 @@ static int at_patch_cmp(const void *a, const void *b) {
     return x < y ? -1 : x > y;
 }
 
+/* A function symbol and its number, sorted by symbol for the lookup of labels. */
+typedef struct AtKey { MsStr sym; uint32_t index; } AtKey;
+
 static int at_sym_cmp(const void *a, const void *b) {
-    const AtFunc *x = *(const AtFunc *const *)a, *y = *(const AtFunc *const *)b;
-    const size_t n = x->sym.len < y->sym.len ? x->sym.len : y->sym.len;
-    const int c = memcmp(x->sym.ptr, y->sym.ptr, n);
-    return c != 0 ? c : (x->sym.len > y->sym.len) - (x->sym.len < y->sym.len);
+    const MsStr x = ((const AtKey *)a)->sym, y = ((const AtKey *)b)->sym;
+    const size_t n = x.len < y.len ? x.len : y.len;
+    const int c = memcmp(x.ptr, y.ptr, n);
+    return c != 0 ? c : (x.len > y.len) - (x.len < y.len);
 }
 
 static uint32_t at_uint(const char **p) {
@@ -37,7 +40,9 @@ static uint32_t at_uint(const char **p) {
 }
 
 static uint32_t at_file(const char **p) {
-    const long v = strtol(*p, (char **)p, 10);
+    char *end;
+    const long v = strtol(*p, &end, 10);
+    *p = end;
     return v < 0 ? MIR_NONE : (uint32_t)v;
 }
 
@@ -140,11 +145,11 @@ static bool at_loc_args(const char *text, size_t n, AtLoc *out) {
     return true;
 }
 
-static AtFunc *at_find(AtFunc **sorted, uint32_t n, MsStr sym) {
-    AtFunc key = {.sym = sym};
-    const AtFunc *k = &key;
-    AtFunc **hit = bsearch(&k, sorted, n, sizeof *sorted, at_sym_cmp);
-    return hit != NULL ? *hit : NULL;
+/* The number of the function whose symbol is `sym`, or UINT32_MAX. */
+static uint32_t at_find(const AtKey *sorted, uint32_t n, MsStr sym) {
+    const AtKey key = {sym, 0};
+    const AtKey *hit = bsearch(&key, sorted, n, sizeof key, at_sym_cmp);
+    return hit != NULL ? hit->index : UINT32_MAX;
 }
 
 static void at_put_blob(MsBuf *out, const uint8_t *blob, size_t size, AtPatch *patches, size_t npatches,
@@ -177,15 +182,44 @@ static void at_put_blob(MsBuf *out, const uint8_t *blob, size_t size, AtPatch *p
     }
 }
 
-bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, size_t asm_len,
-                    const char *prefix, bool strip_lines, MsBuf *out, MsBuf *why) {
-    AtMeta a = {0};
-    mir_module_init(&a.m);
-    at_meta_parse(&a, meta, meta_len);
-    AtFunc **sorted = malloc((a.nfuncs ? a.nfuncs : 1) * sizeof *sorted);
-    for (uint32_t i = 0; i < a.nfuncs; i++) sorted[i] = &a.funcs[i];
-    qsort(sorted, a.nfuncs, sizeof *sorted, at_sym_cmp);
-    MsBuf locs = {0};
+/* The tables as data after the assembly: the blob of `mir_fault_tables`, its code addresses the labels. */
+static void at_emit_tables(AtMeta *a, const AtLoc *all, size_t nlocs, const char *prefix, MsBuf *out) {
+    MirFuncTable *tables = MS_NEW_N(&a->m.arena, MirFuncTable, a->nfuncs ? a->nfuncs : 1);
+    MirCodeRange *ranges = MS_NEW_N(&a->m.arena, MirCodeRange, nlocs ? nlocs : 1);
+    size_t at = 0;
+    for (uint32_t f = 0; f < a->nfuncs; f++) {
+        const size_t first = at;
+        for (size_t k = 0; k < nlocs; k++) {
+            if (all[k].func == f) {
+                ranges[at++] = (MirCodeRange){(uint32_t)k + 1, MIR_NONE, all[k].line, all[k].scope};
+            }
+        }
+        tables[f] = (MirFuncTable){a->funcs[f].name, a->funcs[f].file, a->funcs[f].line, 0, ranges + first,
+                                   (uint32_t)(at - first)};
+    }
+    MirTables t;
+    mir_fault_tables(&a->m.arena, &a->m, tables, a->nfuncs, a->scopes, a->nscopes, &t);
+    AtPatch *patches = MS_NEW_N(&a->m.arena, AtPatch, t.npcs * 2 + 5 + a->nfuncs + 1);
+    size_t np = 0;
+    for (size_t i = 0; i < t.npcs; i++) {
+        const MirTablePc *pc = &t.pcs[i];
+        if (pc->off == 0) {
+            patches[np++] = (AtPatch){pc->at, AT_FUNC_ADDR, pc->func};
+            patches[np++] = (AtPatch){pc->at + 8, AT_FUNC_SIZE, pc->func};
+        } else {
+            patches[np++] = (AtPatch){pc->at, AT_LOC_ADDR, pc->off - 1};
+        }
+    }
+    for (int i = 0; i < 5; i++) {
+        patches[np++] = (AtPatch){t.pointers[i].at, AT_BLOB_ADDR, t.pointers[i].to};
+    }
+    at_put_blob(out, t.blob, t.size, patches, np, a->funcs, prefix);
+}
+
+/* Copies the assembly to `out` with a label after every `.loc` and at the end of every function, and
+ * collects the places in `locs`. */
+static void at_scan(AtMeta *a, const AtKey *sorted, const char *asm_text, size_t asm_len, const char *prefix,
+                    bool strip_lines, MsBuf *out, MsBuf *locs) {
     const size_t plen = strlen(prefix);
     int cur = -1;
     AtLoc l;
@@ -205,21 +239,35 @@ bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, siz
         }
         const size_t label = at_label_len(p, n);
         if (label > plen && memcmp(p, prefix, plen) == 0) {
-            AtFunc *f = at_find(sorted, a.nfuncs, (MsStr){p + plen, (uint32_t)(label - plen)});
-            if (f != NULL && !f->seen) {
-                f->seen = true;
-                cur = (int)(f - a.funcs);
+            const uint32_t f = at_find(sorted, a->nfuncs, (MsStr){p + plen, (uint32_t)(label - plen)});
+            if (f != UINT32_MAX && !a->funcs[f].seen) {
+                a->funcs[f].seen = true;
+                cur = (int)f;
             }
         } else if (is_loc && l.line != 0) { /* line 0 is code LLVM made up: the range before it goes on */
             l.func = (uint32_t)cur;
-            ms_buf_printf(out, ".Lmsl%zu:\n", locs.len / sizeof l);
-            ms_buf_put(&locs, &l, sizeof l);
+            ms_buf_printf(out, ".Lmsl%zu:\n", locs->len / sizeof l);
+            ms_buf_put(locs, &l, sizeof l);
         }
         p = eol + 1;
     }
     if (cur >= 0) {
         ms_buf_printf(out, ".Lmse%d:\n", cur);
     }
+}
+
+bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, size_t asm_len,
+                    const char *prefix, bool strip_lines, MsBuf *out, MsBuf *why) {
+    AtMeta a = {0};
+    mir_module_init(&a.m);
+    at_meta_parse(&a, meta, meta_len);
+    AtKey *sorted = malloc((a.nfuncs ? a.nfuncs : 1) * sizeof *sorted);
+    for (uint32_t i = 0; i < a.nfuncs; i++) {
+        sorted[i] = (AtKey){a.funcs[i].sym, i};
+    }
+    qsort(sorted, a.nfuncs, sizeof *sorted, at_sym_cmp);
+    MsBuf locs = {0};
+    at_scan(&a, sorted, asm_text, asm_len, prefix, strip_lines, out, &locs);
     bool ok = true;
     for (uint32_t i = 0; i < a.nfuncs; i++) {
         if (!a.funcs[i].seen) {
@@ -228,38 +276,7 @@ bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, siz
         }
     }
     if (ok) {
-        const size_t nlocs = locs.len / sizeof(AtLoc);
-        const AtLoc *all = (const AtLoc *)(const void *)locs.data;
-        MirFuncTable *tables = MS_NEW_N(&a.m.arena, MirFuncTable, a.nfuncs ? a.nfuncs : 1);
-        MirCodeRange *ranges = MS_NEW_N(&a.m.arena, MirCodeRange, nlocs ? nlocs : 1);
-        size_t at = 0;
-        for (uint32_t f = 0; f < a.nfuncs; f++) {
-            const size_t first = at;
-            for (size_t k = 0; k < nlocs; k++) {
-                if (all[k].func == f) {
-                    ranges[at++] = (MirCodeRange){(uint32_t)k + 1, MIR_NONE, all[k].line, all[k].scope};
-                }
-            }
-            tables[f] = (MirFuncTable){a.funcs[f].name, a.funcs[f].file, a.funcs[f].line, 0, ranges + first,
-                                       (uint32_t)(at - first)};
-        }
-        MirTables t;
-        mir_fault_tables(&a.m.arena, &a.m, tables, a.nfuncs, a.scopes, a.nscopes, &t);
-        AtPatch *patches = MS_NEW_N(&a.m.arena, AtPatch, t.npcs * 2 + 5 + a.nfuncs + 1);
-        size_t np = 0;
-        for (size_t i = 0; i < t.npcs; i++) {
-            const MirTablePc *pc = &t.pcs[i];
-            if (pc->off == 0) {
-                patches[np++] = (AtPatch){pc->at, AT_FUNC_ADDR, pc->func};
-                patches[np++] = (AtPatch){pc->at + 8, AT_FUNC_SIZE, pc->func};
-            } else {
-                patches[np++] = (AtPatch){pc->at, AT_LOC_ADDR, pc->off - 1};
-            }
-        }
-        for (int i = 0; i < 5; i++) {
-            patches[np++] = (AtPatch){t.pointers[i].at, AT_BLOB_ADDR, t.pointers[i].to};
-        }
-        at_put_blob(out, t.blob, t.size, patches, np, a.funcs, prefix);
+        at_emit_tables(&a, ms_buf_items(&locs), locs.len / sizeof(AtLoc), prefix, out);
     }
     free(sorted);
     ms_buf_free(&locs);
