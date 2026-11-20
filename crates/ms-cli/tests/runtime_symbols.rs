@@ -9,9 +9,7 @@ use std::io::Read as _;
 const ARCHIVE_GZ: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/libms_native.a.gz"));
 const TABLE: &str = include_str!("../../ms-lower/rt_symbols.txt");
 
-/// Exports the table cannot list: data symbols and assembly entry points, which have no Rust
-/// signature or one that differs per platform (the stack switches take the thread environment
-/// block fields on Windows).
+/// Exports the table cannot list: data symbols, which have no function signature.
 const UNLISTED: &[&str] = &[
     "msrt_desc_int",
     "msrt_desc_float",
@@ -20,10 +18,6 @@ const UNLISTED: &[&str] = &[
     "msrt_desc_string",
     "msrt_desc_bytes",
     "msrt_ascii_chars",
-    "msrt_guard_jump",
-    "msrt_task_tramp",
-    "msrt_ctx_switch",
-    "msrt_call_on_stack",
 ];
 
 /// Runtime prefixes the compiler calls; other exports (libc shims, Rust internals) are not catalogued.

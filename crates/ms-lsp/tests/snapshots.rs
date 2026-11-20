@@ -663,7 +663,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     // `regex.ms` loads only when imported, and this workspace does not import it.
     let expected = std::collections::BTreeMap::from([
         ("collections/collections.ms", 8),
-        ("concurrency/promise.ms", 2),
+        ("concurrency/promise.ms", 4),
         ("core.ms", 3),
         ("data/encoding.ms", 2),
         ("io/io.ms", 7),
