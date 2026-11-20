@@ -91,7 +91,7 @@ add_library(ms_tool STATIC "${_c}/src/libms.c" "${_c}/src/tool.c")
 target_include_directories(ms_tool PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include"
                            "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include" ${MS_LIB_crypto_INCLUDES})
 target_compile_options(ms_tool PRIVATE -O1 -g -Wall -Wextra -Werror -Wno-format-truncation)
-set_target_properties(ms_tool PROPERTIES OUTPUT_NAME mstool ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
+set_target_properties(ms_tool PROPERTIES POSITION_INDEPENDENT_CODE ON OUTPUT_NAME mstool ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
 
 # libms_tools.a: libms plus the shim Manuscript `extern fn` declarations call (compiler/tools/tool_shim.c, which
 # includes only ms_abi.h because its names collide with libms's). `make libms-tools` copies it to target/.
@@ -101,4 +101,4 @@ set_source_files_properties("${_c}/src/libms.c" PROPERTIES INCLUDE_DIRECTORIES
 set_source_files_properties("${_c}/tools/tool_shim.c" PROPERTIES INCLUDE_DIRECTORIES
                             "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include")
 target_compile_options(ms_tools_shim PRIVATE -O2)
-set_target_properties(ms_tools_shim PROPERTIES OUTPUT_NAME ms_tools ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
+set_target_properties(ms_tools_shim PROPERTIES POSITION_INDEPENDENT_CODE ON OUTPUT_NAME ms_tools ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
