@@ -8,6 +8,7 @@ import (
 	promise,
 	set_options,
 	wait_any from "@std/concurrency/promise.ms",
+	stderr from "@std/io/io.ms",
 	ExchangeLimits,
 	NativeExchange,
 	finish_exchange,
@@ -487,6 +488,20 @@ fn call(
 	handler(exchange)?
 	return ok(0)
 
+// The fault report up to the first frame of this server: the handler's own frames.
+fn handler_frames(report: String) String:
+	var kept = ""
+
+	for line in report.split("\n"):
+		if (
+			line.index_of("@std/").is_some()
+			or line.index_of("task started by").is_some()
+		): break
+
+		if not line.is_empty(): kept = kept + line + "\n"
+
+	return kept
+
 // Cancels the handler once the peer is gone from the exchange.
 fn watch(native: NativeExchange, stopper: Cancel) Void!:
 	if msstd_xchg_wait_gone(native).is_ok(): stopper.cancel()
@@ -538,6 +553,10 @@ fn run_handler(
 
 	if outcome.is_error():
 		kind := outcome.err().kind
+
+		// A handler that faulted answers 500; its report goes to the diagnostics.
+		if report := outcome.err().details.get("report"):
+			void stderr().write(f"HTTP stream handler fault: {handler_frames(report)}")
 
 		if kind == "ETIMEDOUT":
 			answer(native, 504)

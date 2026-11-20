@@ -39,8 +39,14 @@ typedef enum MirTyKind {
     MK_IFACE  /* id: interface declaration */
 } MirTyKind;
 
+/* What a runtime object is, set when its type is made (`mir_ty_obj`) from the runtime's declaration of the name:
+ * a handle is one shared word; a collection (`Map`, `Set`) keeps its contents, named by the type arguments, in
+ * its own layout; a value object (`BigInt`) is raw bytes that copy like plain data when its arguments do. */
+typedef enum MirObjClass { MIR_OBJ_HANDLE = 0, MIR_OBJ_COLLECTION, MIR_OBJ_VALUE } MirObjClass;
+
 typedef struct MirTyData {
     uint8_t kind;
+    uint8_t obj_class;  /* MK_OBJ: a MirObjClass, derived from `name` */
     uint32_t id;        /* MK_TYPE, MK_ALT, MK_IFACE */
     MirTy elem;         /* MK_LIST, MK_OPT, result of MK_FN */
     MsSym name;         /* MK_OBJ: the runtime's name */

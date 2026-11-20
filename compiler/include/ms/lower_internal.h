@@ -13,6 +13,9 @@
 
 /* The loop being lowered: where `continue` and `break` go. Lives on the lowering's stack. A
  * `for` has a step block that only exists once something branches to it. */
+/* `type_of` of a record whose fields are being lowered: reaching it again means the record holds itself. */
+#define LB_TYPE_PENDING (MIR_NONE - 1)
+
 typedef struct LbLoop {
     MirBlock next, exit; /* `continue` goes to `next`, `break` to `exit` */
     struct LbLoop *outer;
@@ -103,11 +106,14 @@ typedef struct Lb {
     LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
     uint32_t ndead_insts, cdead_insts;
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
-    MirTy *type_of;       /* by checker type: the record it lowered to, or MIR_NONE */
-    bool *declaring;      /* by checker type: a record whose fields are being lowered */
+    MirTy *type_of;       /* by checker type: the record it lowered to, MIR_NONE, or LB_TYPE_PENDING while its fields lower */
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
     uint32_t nvars, cvars;
+    MirValue *temps;      /* the owned temporaries of the statement being lowered, dropped where it ends (newest first) */
+    uint32_t ntemps, ctemps;
+    uint32_t stmt_mark;   /* `ntemps` where the statement being lowered began */
+    uint32_t branching;   /* conditional contexts around the expression being lowered (an arm, a short-circuit's right side) */
     bool dead;            /* control cannot reach the current position */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
@@ -117,6 +123,7 @@ typedef struct Lb {
 void lb_statements(Lb *lb, const MsStmts *body);
 void lb_return_void(Lb *lb);
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
+void lb_hold_temp(Lb *lb, MirValue v); /* an owned temporary that lives to the end of the statement */
 MirLoc lb_loc(const Lb *lb, MsPos pos);
 void lb_reset_state(Lb *lb);
 
@@ -161,6 +168,13 @@ MirTy lst_type(Lb *lb, MsTy ty);
 bool lb_is_list(const Lb *lb, MirTy ty);
 LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_index(Lb *lb, const MsExpr *e);
+void lst_for(Lb *lb, const MsStmt *s);
+
+/* Strings built from pieces (lower_text.c, included after lower_body.c). */
+LbVal lt_text(Lb *lb, const MsExpr *e);
+
+/* User enums (lower_enum.c, included after lower_body.c). */
+MirTy le_type(Lb *lb, MsTy ty);
 
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
@@ -170,6 +184,8 @@ LbVal lr_field(Lb *lb, const MsExpr *e);
 /* Optional and Result (lower_alt.c, included after lower_body.c). */
 MirTy la_type(Lb *lb, MsTy ty);
 LbVal la_none(Lb *lb, const MsExpr *e);
+LbVal la_nullary(Lb *lb, const MsExpr *e);
+LbVal la_none_owned(Lb *lb, const MsExpr *e);
 LbVal la_case(Lb *lb, const MsExpr *call);
 MirValue la_test(Lb *lb, MirValue subject);
 MirValue la_payload(Lb *lb, MirValue subject);

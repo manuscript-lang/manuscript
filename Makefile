@@ -245,6 +245,8 @@ c-compiler-test:
 	sh compiler/tests/mir-pass-diff.sh
 	sh compiler/tests/mir-pass-frozen.sh
 	sh compiler/tests/check-diff.sh
+	sh compiler/tests/diag-render-diff.sh
+	sh compiler/tests/entry-diff.sh
 	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
@@ -273,9 +275,15 @@ target/c-tool/libmstool.a: FORCE
 c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/diff.ms
 	"$(RELEASE_MS)" test tools/ms/mark.ms
+	"$(RELEASE_MS)" test tools/ms/html.ms
+	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/matches.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/imports.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/skill_calls.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/fixes.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/interpolation.ms --link target/c-tool/libmstool.a
@@ -301,6 +309,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" build tools/ms/review.ms -o target/c-tool/review
 	"$(RELEASE_MS)" build tools/ms/report.ms -o target/c-tool/report
 	sh tools/ms/review-diff.sh target/release/ms-tooling-dev target/c-tool/review target/c-tool/report target/c-tool/review-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/html.ms -o target/c-tool/html
+	sh tools/ms/html-diff.sh target/release/ms-tooling-dev target/c-tool/html target/c-tool/html-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/inspect.ms -o target/c-tool/inspect
 	sh tools/ms/inspect-diff.sh "$(RELEASE_MS)" target/c-tool/inspect target/c-tool/inspect-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/facts_diff.ms -o target/c-tool/facts_diff

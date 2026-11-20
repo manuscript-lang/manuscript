@@ -42,6 +42,7 @@ fn run(syms: ms_syntax::Names) -> i32 {
         "view" => view(syms, files),
         "review" => review(syms, files),
         "report" => report(syms, files),
+        "html" => html(syms, files),
         "skill-calls" => skill_calls(files),
         other => {
             eprintln!("unknown command {other}");
@@ -408,6 +409,35 @@ fn report(syms: ms_syntax::Names, args: &[String]) -> i32 {
     0
 }
 
+/// `html HEAD [BASE]`: the interactive page, with the findings against BASE when given and no type hints.
+fn html(syms: ms_syntax::Names, args: &[String]) -> i32 {
+    let (Some(head_file), base_file) = (args.first(), args.get(1)) else {
+        eprintln!("usage: ms-tooling-dev html HEAD [BASE]");
+        return 2;
+    };
+    let Some(head) = facts_of(syms, head_file) else {
+        return 1;
+    };
+    let findings = match base_file {
+        Some(file) => {
+            let Some(base) = facts_of(syms, file) else {
+                return 1;
+            };
+            let input = ms_tooling::review::DiffInput {
+                base_checked: true,
+                ..Default::default()
+            };
+            Some(ms_tooling::review::compare_facts(&base, &head, &input))
+        }
+        None => None,
+    };
+    print!(
+        "{}",
+        ms_tooling::html::html_page(&head, findings.as_deref(), &[])
+    );
+    0
+}
+
 /// `view FILE VIEW ENTITY DEPTH FORMAT`: the text `ms diagram` prints for the view.
 fn view(syms: ms_syntax::Names, args: &[String]) -> i32 {
     let [file, name, entity, depth, format] = args else {
@@ -472,7 +502,10 @@ impl ms_syntax::visit::Visitor for KindScan<'_> {
         let kind = if ty.is_string() {
             "String"
         } else {
-            kinds.iter().find(|(b, _)| ty.is(*b)).map_or("Other", |(_, n)| n)
+            kinds
+                .iter()
+                .find(|(b, _)| ty.is(*b))
+                .map_or("Other", |(_, n)| n)
         };
         self.out.push((e.id.0, kind));
     }
@@ -484,7 +517,10 @@ fn nodes(syms: ms_syntax::Names, files: &[String]) -> i32 {
         return 1;
     };
     for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
-        let mut scan = KindScan { module, out: Vec::new() };
+        let mut scan = KindScan {
+            module,
+            out: Vec::new(),
+        };
         for decl in &module.decls {
             ms_syntax::visit::walk_decl(&mut scan, decl.decl());
         }

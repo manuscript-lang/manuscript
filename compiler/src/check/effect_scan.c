@@ -59,8 +59,13 @@ static void scan_call(ScanState *s, const MsExpr *e) {
         s->unknown = true;
         return;
     }
+    if (s->facts->call_type_args_len != NULL && s->facts->call_type_args_len[e->id] != 0) {
+        s->partial = true; // the operations of the type arguments are charged too, which the scan does not port yet
+        return;
+    }
     if (syms->decl[callee] != NULL && syms->decl[callee]->kind == MS_D_TYPE) {
-        if (scan_is_node(s->check, callee)) {
+        // A type the runtime provides (`Error`) has no body to charge.
+        if (scan_is_node(s->check, callee) && syms->native[callee] == MS_NATIVE_SOURCE) {
             scan_edge(s, callee, e->pos);
         }
         return;

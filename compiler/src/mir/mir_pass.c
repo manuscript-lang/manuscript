@@ -57,8 +57,7 @@ static bool pass_plain_in(const MirModule *m, MirTy ty, MirTy *seen, uint32_t *n
     case MK_IFACE:
         return false;
     case MK_OBJ:
-        if (!mir_name_is(m, d->name, "Map") && !mir_name_is(m, d->name, "Set") &&
-            !mir_name_is(m, d->name, "BigInt")) {
+        if (d->obj_class == MIR_OBJ_HANDLE) {
             return false;
         }
         return pass_plain_all(m, ty, d->args, d->nargs, seen, nseen);

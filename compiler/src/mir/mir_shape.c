@@ -120,12 +120,11 @@ static MirShape sh_words(const MirLeaf *leaf, uint32_t count) {
 }
 
 static bool sh_is_map_or_set(const MirLayouts *layouts, const MirTyData *data) {
+    (void)layouts;
     if (data->kind != MK_OBJ) {
         return false;
     }
-    MsStr name = ms_name(&layouts->module->names, data->name);
-    return (name.len == 3 && memcmp(name.ptr, "Map", 3) == 0) ||
-           (name.len == 3 && memcmp(name.ptr, "Set", 3) == 0);
+    return data->obj_class == MIR_OBJ_COLLECTION;
 }
 
 bool mir_ty_is_map_or_set(const MirModule *module, MirTy ty) {
@@ -133,7 +132,7 @@ bool mir_ty_is_map_or_set(const MirModule *module, MirTy ty) {
     if (data->kind != MK_OBJ) {
         return false;
     }
-    return mir_name_is(module, data->name, "Map") || mir_name_is(module, data->name, "Set");
+    return data->obj_class == MIR_OBJ_COLLECTION;
 }
 
 bool mir_type_field_boxed(const MirLayouts *layouts, MirTy field_ty) {

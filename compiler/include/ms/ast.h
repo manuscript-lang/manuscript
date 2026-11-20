@@ -173,6 +173,23 @@ struct MsExpr {
     } u;
 };
 
+/* The receiver and index of `left[index]`, however the bracket was parsed: an index, or an
+ * application whose one bracket entry also reads as a value (`xs[i]` before name resolution says
+ * `xs` is a value). False for any other expression. */
+static inline bool ms_expr_index(const MsExpr *e, const MsExpr **left, const MsExpr **index) {
+    if (e->kind == MS_E_INDEX) {
+        *left = e->u.bin.left;
+        *index = e->u.bin.right;
+        return true;
+    }
+    if (e->kind == MS_E_APPLY && e->u.apply.value != NULL && e->u.apply.types.len == 1) {
+        *left = e->u.apply.left;
+        *index = e->u.apply.value;
+        return true;
+    }
+    return false;
+}
+
 /* ---- patterns and statements ---- */
 
 typedef enum MsPatternKind { MS_P_NAME, MS_P_LIST, MS_P_TYPE } MsPatternKind;

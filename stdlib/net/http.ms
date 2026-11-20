@@ -196,7 +196,7 @@ fn HttpClient.request_raw(
 	max_response_bytes: Int? = none,
 	timeout: Duration? = none,
 ) RawResponse!:
-	return send(
+	return client_send(
 		self.native,
 		method.to_string(),
 		url,
@@ -225,7 +225,7 @@ fn invalid_request() Error:
 // Sends one request on the client behind `native`. A negative limit or timeout, a URL
 // that is not `http` or `https` without user info, and a method or header the client
 // cannot send return EINVAL.
-export fn send(
+export fn client_send(
 	native: NativeHttpClient,
 	method: String,
 	address: String,

@@ -1,0 +1,3 @@
+enum main:
+    a
+    b

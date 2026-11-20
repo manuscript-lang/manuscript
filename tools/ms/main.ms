@@ -17,8 +17,9 @@ import (
 	Invocation, parse_invocation, requests_help, takes_value, validate from "./args.ms",
 	rust_cli from "./bridge.ms",
 	run_explain from "./explain.ms",
-	run_fmt from "./fmt.ms",
+	Printed, run_fmt from "./fmt.ms",
 	command_help, command_names, overview from "./help.ms",
+	run_add, run_install, run_remove from "./install.ms",
 	run_init from "./init.ms",
 	run_profile from "./profile.ms",
 	run_members from "./test/members.ms",
@@ -310,9 +311,24 @@ export fn run(given: List[String]) Int:
 
 		return delegate(args)
 
+	if args[0] == "install" or args[0] == "add" or args[0] == "remove":
+		if done := run_manifest_command(args):
+			out(done.stdout)
+			err(done.stderr)
+			return done.status
+
+		return delegate(args)
+
 	if is_source_command(args[0]): return run_source_command(args, usage_text)
 
 	return delegate(args)
+
+fn run_manifest_command(args: List[String]) Printed?:
+	rest := args.drop(1)
+	if args[0] == "install": return run_install(rest)
+	if args[0] == "add": return run_add(rest)
+
+	return run_remove(rest)
 
 fn main() Int:
 	return run(arguments())

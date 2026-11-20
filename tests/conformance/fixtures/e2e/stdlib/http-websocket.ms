@@ -135,7 +135,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 	):
 		ok(_): return fail("HTTP output budget ignored")
 		error(cause):
-			expect_equal(cause, Error("network: limit exceeded", kind: "EOVERFLOW"))?
+			expect_equal(cause, Error("HTTP: limit exceeded", kind: "EOVERFLOW"))?
 
 test "WebSocket negotiates a protocol and echoes a text frame":
 	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
@@ -278,7 +278,7 @@ test "HTTP requests reject an empty method":
 	):
 		ok(_): return fail("empty method accepted")
 		error(cause):
-			expect_equal(cause, Error("network: invalid input", kind: "EINVAL"))?
+			expect_equal(cause, Error("HTTP: invalid input", kind: "EINVAL"))?
 
 fn silent(var exchange: HttpExchange) Void!:
 	var _socket = (
