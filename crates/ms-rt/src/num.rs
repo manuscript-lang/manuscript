@@ -4,6 +4,16 @@ use ms_rt_abi::{
     STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
 };
 
+// The moved symbols (runtime/symbols/num.txt) are defined by the C runtime; Rust callers and tests reach them here.
+unsafe extern "C-unwind" {
+    pub fn msrt_float_compare(a: f64, b: f64) -> i64;
+    pub fn msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8;
+    pub fn msrt_int_compare(a: i64, b: i64) -> i64;
+    pub fn msrt_uint_compare(a: i64, b: i64) -> i64;
+    pub fn msrt_uint_to_float(v: i64) -> f64;
+    pub fn msrt_uint_to_float32(v: i64) -> f64;
+}
+
 // The formatting kernels live in runtime/core/fmt.c; the helpers below call them.
 unsafe extern "C-unwind" {
     fn msrt_fmt_u64(value: u64, out: *mut u8, capacity: usize, length: *mut usize) -> bool;
@@ -513,94 +523,6 @@ pub unsafe extern "C-unwind" fn msrt_float_to_fixed(v: f64, digits: i64, out: *m
     unsafe { precision_out(v, b'f', digits, 0, "to_fixed", out) }
 }
 
-/// The `Float` with this IEEE 754 binary64 bit pattern.
-#[cfg(not(ms_c = "msrt_float_from_bits"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C-unwind" fn msrt_float_from_bits(bits: i64) -> f64 {
-    f64::from_bits(bits as u64)
-}
-
-/// The IEEE 754 binary64 bit pattern of a `Float`.
-#[cfg(not(ms_c = "msrt_float_to_bits"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C-unwind" fn msrt_float_to_bits(value: f64) -> i64 {
-    value.to_bits() as i64
-}
-
-/// The binary32 with this bit pattern (the low 32 bits), widened exactly to the `f64` a `Float32` register holds.
-#[cfg(not(ms_c = "msrt_float32_from_bits"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C-unwind" fn msrt_float32_from_bits(bits: i64) -> f64 {
-    f64::from(f32::from_bits(bits as u32))
-}
-
-/// The binary32 bit pattern of a value a `Float32` register holds as an `f64`.
-#[cfg(not(ms_c = "msrt_float32_to_bits"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C-unwind" fn msrt_float32_to_bits(value: f64) -> i64 {
-    i64::from((value as f32).to_bits())
-}
-
-/// `Float.truncate_to_int()`: present flag, value through `out` only when present.
-#[cfg(not(ms_c = "msrt_float_truncate_to_int"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8 {
-    const LIMIT: f64 = 9_223_372_036_854_775_808.0;
-    if !(-LIMIT..LIMIT).contains(&v) {
-        return 0;
-    }
-    // SAFETY: the caller passes a writable out.
-    unsafe { *out = v as i64 };
-    1
-}
-
-/// `Float.to_float32()`: present flag, value through `out` only when present. A finite value
-/// too large for binary32 is absent (Float32 payloads are stored as 4 bytes); NaN and infinities convert unchanged.
-#[cfg(not(ms_c = "msrt_float_to_float32"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_float_to_float32(v: f64, out: *mut f32) -> u8 {
-    let narrowed = v as f32;
-    if v.is_finite() && narrowed.is_infinite() {
-        return 0;
-    }
-    // SAFETY: the caller passes a writable out.
-    unsafe { *out = narrowed };
-    1
-}
-
-/// `Float.compare`: a total order in which `-0.0 == 0.0` and NaN is equal to itself and sorts last.
-#[cfg(not(ms_c = "msrt_float_compare"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C-unwind" fn msrt_float_compare(a: f64, b: f64) -> i64 {
-    if a.is_nan() || b.is_nan() {
-        return a.is_nan() as i64 - b.is_nan() as i64;
-    }
-    (a > b) as i64 - (a < b) as i64
-}
-
-/// `Int.compare`.
-#[cfg(not(ms_c = "msrt_int_compare"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C-unwind" fn msrt_int_compare(a: i64, b: i64) -> i64 {
-    (a > b) as i64 - (a < b) as i64
-}
-
-/// `UInt64.compare`: the operands are bit patterns.
-#[cfg(not(ms_c = "msrt_uint_compare"))]
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_compare(a: i64, b: i64) -> i64 {
-    let (a, b) = (a as u64, b as u64);
-    (a > b) as i64 - (a < b) as i64
-}
-
 /// `UInt64./`.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_uint_div(a: i64, b: i64) -> i64 {
@@ -617,20 +539,6 @@ pub extern "C-unwind" fn msrt_uint_rem(a: i64, b: i64) -> i64 {
         crate::fault::msrt_fault_rem_zero();
     }
     ((a as u64) % (b as u64)) as i64
-}
-
-/// `UInt64.to_float`.
-#[cfg(not(ms_c = "msrt_uint_to_float"))]
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_to_float(v: i64) -> f64 {
-    v as u64 as f64
-}
-
-/// `UInt64.to_float32`: round once to binary32, then widen for the runtime ABI.
-#[cfg(not(ms_c = "msrt_uint_to_float32"))]
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_to_float32(v: i64) -> f64 {
-    f64::from(v as u64 as f32)
 }
 
 /// `UInt64` in decimal digits.
@@ -662,36 +570,44 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_unsafe)]
     fn uint64_helpers() {
-        let big = u64::MAX as i64;
-        assert_eq!(msrt_uint_compare(big, 1), 1);
-        assert_eq!(msrt_uint_compare(1, big), -1);
-        assert_eq!(msrt_uint_div(big, 2) as u64, u64::MAX / 2);
-        assert_eq!(msrt_uint_rem(big, 10), 5);
-        assert_eq!(msrt_uint_to_float(big), u64::MAX as f64);
-        let mut tmp = [0u8; 20];
-        assert_eq!(format_u64(u64::MAX, &mut tmp), b"18446744073709551615");
-        let mut out = Vec::new();
-        format_radix_u64(u64::MAX, 16, &mut out);
-        assert_eq!(out, b"ffffffffffffffff");
+        // SAFETY: the C numeric natives take and return plain values.
+        unsafe {
+            let big = u64::MAX as i64;
+            assert_eq!(msrt_uint_compare(big, 1), 1);
+            assert_eq!(msrt_uint_compare(1, big), -1);
+            assert_eq!(msrt_uint_div(big, 2) as u64, u64::MAX / 2);
+            assert_eq!(msrt_uint_rem(big, 10), 5);
+            assert_eq!(msrt_uint_to_float(big), u64::MAX as f64);
+            let mut tmp = [0u8; 20];
+            assert_eq!(format_u64(u64::MAX, &mut tmp), b"18446744073709551615");
+            let mut out = Vec::new();
+            format_radix_u64(u64::MAX, 16, &mut out);
+            assert_eq!(out, b"ffffffffffffffff");
+        }
     }
 
     #[test]
+    #[allow(unused_unsafe)]
     fn uint64_to_float32_rounds_once() {
-        let cases = [
-            (4_611_686_293_305_294_849u64, 4_611_686_568_183_201_792.0),
-            (9_223_372_586_610_589_695, 9_223_372_036_854_775_808.0),
-            (9_223_372_586_610_589_696, 9_223_372_036_854_775_808.0),
-            (9_223_372_586_610_589_697, 9_223_373_136_366_403_584.0),
-            (9_223_373_686_122_217_471, 9_223_373_136_366_403_584.0),
-            (9_223_373_686_122_217_472, 9_223_374_235_878_031_360.0),
-            (9_223_373_686_122_217_473, 9_223_374_235_878_031_360.0),
-            (0, 0.0),
-            (16_777_217, 16_777_216.0),
-            (u64::MAX, 18_446_744_073_709_551_616.0),
-        ];
-        for (input, expected) in cases {
-            assert_eq!(msrt_uint_to_float32(input as i64), expected, "{input}");
+        // SAFETY: the C numeric natives take and return plain values.
+        unsafe {
+            let cases = [
+                (4_611_686_293_305_294_849u64, 4_611_686_568_183_201_792.0),
+                (9_223_372_586_610_589_695, 9_223_372_036_854_775_808.0),
+                (9_223_372_586_610_589_696, 9_223_372_036_854_775_808.0),
+                (9_223_372_586_610_589_697, 9_223_373_136_366_403_584.0),
+                (9_223_373_686_122_217_471, 9_223_373_136_366_403_584.0),
+                (9_223_373_686_122_217_472, 9_223_374_235_878_031_360.0),
+                (9_223_373_686_122_217_473, 9_223_374_235_878_031_360.0),
+                (0, 0.0),
+                (16_777_217, 16_777_216.0),
+                (u64::MAX, 18_446_744_073_709_551_616.0),
+            ];
+            for (input, expected) in cases {
+                assert_eq!(msrt_uint_to_float32(input as i64), expected, "{input}");
+            }
         }
     }
 
@@ -898,49 +814,53 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_unsafe)]
     fn exported_numbers_natives() {
-        let _g = crate::testutil::lock();
-        let st = |t: &[u8]| -> *const ms_rt_abi::StrVal {
-            Box::leak(Box::new(crate::string::from_bytes(t)))
-        };
-        let mut n = 0i64;
-        // SAFETY: live strings and writable outs.
+        // SAFETY: the C numeric natives take and return plain values.
         unsafe {
-            assert_eq!(msrt_numbers_parse_int(st(b"-ff"), 16, &mut n), STATUS_OK);
-            assert_eq!(n, -255);
+            let _g = crate::testutil::lock();
+            let st = |t: &[u8]| -> *const ms_rt_abi::StrVal {
+                Box::leak(Box::new(crate::string::from_bytes(t)))
+            };
+            let mut n = 0i64;
+            // SAFETY: live strings and writable outs.
+            unsafe {
+                assert_eq!(msrt_numbers_parse_int(st(b"-ff"), 16, &mut n), STATUS_OK);
+                assert_eq!(n, -255);
+                assert_eq!(
+                    msrt_numbers_parse_int(st(b"1"), 40, &mut n),
+                    STATUS_INVALID_INPUT
+                );
+                let mut f = 0f64;
+                assert_eq!(msrt_numbers_parse_float(st(b"2.5e1"), &mut f), STATUS_OK);
+                assert_eq!(f, 25.0);
+                assert_eq!(
+                    msrt_numbers_parse_float(st(b"1e999"), &mut f),
+                    STATUS_OUT_OF_RANGE
+                );
+                let mut out = crate::string::NO_STR;
+                msrt_float_to_fixed(1.005, 2, &mut out);
+                assert_eq!(crate::string::bytes(&out), b"1.00");
+                assert_eq!(msrt_float_truncate_to_int(-2.9, &mut n), 1);
+                assert_eq!(n, -2);
+                assert_eq!(msrt_float_truncate_to_int(9223372036854775808.0, &mut n), 0);
+                assert_eq!(msrt_float_truncate_to_int(f64::NAN, &mut n), 0);
+            }
+            assert_eq!(msrt_float_compare(f64::NAN, 1.0), 1);
+            assert_eq!(msrt_float_compare(1.0, f64::NAN), -1);
+            assert_eq!(msrt_float_compare(f64::NAN, f64::NAN), 0);
+            assert_eq!(msrt_float_compare(-0.0, 0.0), 0);
+            assert_eq!(msrt_float_compare(2.0, 1.0), 1);
+            assert_eq!(msrt_int_compare(1, 2), -1);
+            let mut m = crate::string::NO_STR;
+            // SAFETY: `m` is writable.
+            unsafe { msrt_numbers_error_message(STATUS_OUT_OF_RANGE, &mut m) };
+            // SAFETY: live string.
             assert_eq!(
-                msrt_numbers_parse_int(st(b"1"), 40, &mut n),
-                STATUS_INVALID_INPUT
+                unsafe { crate::string::bytes(&m) },
+                b"number: value out of range"
             );
-            let mut f = 0f64;
-            assert_eq!(msrt_numbers_parse_float(st(b"2.5e1"), &mut f), STATUS_OK);
-            assert_eq!(f, 25.0);
-            assert_eq!(
-                msrt_numbers_parse_float(st(b"1e999"), &mut f),
-                STATUS_OUT_OF_RANGE
-            );
-            let mut out = crate::string::NO_STR;
-            msrt_float_to_fixed(1.005, 2, &mut out);
-            assert_eq!(crate::string::bytes(&out), b"1.00");
-            assert_eq!(msrt_float_truncate_to_int(-2.9, &mut n), 1);
-            assert_eq!(n, -2);
-            assert_eq!(msrt_float_truncate_to_int(9223372036854775808.0, &mut n), 0);
-            assert_eq!(msrt_float_truncate_to_int(f64::NAN, &mut n), 0);
         }
-        assert_eq!(msrt_float_compare(f64::NAN, 1.0), 1);
-        assert_eq!(msrt_float_compare(1.0, f64::NAN), -1);
-        assert_eq!(msrt_float_compare(f64::NAN, f64::NAN), 0);
-        assert_eq!(msrt_float_compare(-0.0, 0.0), 0);
-        assert_eq!(msrt_float_compare(2.0, 1.0), 1);
-        assert_eq!(msrt_int_compare(1, 2), -1);
-        let mut m = crate::string::NO_STR;
-        // SAFETY: `m` is writable.
-        unsafe { msrt_numbers_error_message(STATUS_OUT_OF_RANGE, &mut m) };
-        // SAFETY: live string.
-        assert_eq!(
-            unsafe { crate::string::bytes(&m) },
-            b"number: value out of range"
-        );
     }
 
     #[test]

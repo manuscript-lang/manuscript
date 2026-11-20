@@ -1,0 +1,1 @@
+# ms_rt/chars.h is header-only (inline helpers): no exported symbols.
