@@ -674,6 +674,26 @@ static void mp_func_kind(const MirModule *m, const MirFunc *f, MsBuf *o) {
     }
     if (f->sort == MSORT_GENERIC) ms_buf_puts(o, " sort_cmp");
     if (f->sort == MSORT_SPECIALIZED) ms_buf_puts(o, " sort_cmp_for");
+    if (f->explicit_cancel) ms_buf_puts(o, " explicit_cancel");
+    if (f->nnoalias > 0) {
+        ms_buf_puts(o, " noalias(");
+        for (uint32_t i = 0; i < f->nnoalias; i++) {
+            ms_buf_printf(o, i ? ", %u" : "%u", f->noalias[i]);
+        }
+        ms_buf_putc(o, ')');
+    }
+    if (f->has_slot_result) {
+        ms_buf_puts(o, " slot_result(@");
+        mp_sym(m, o, m->funcs[f->slot_result].name);
+        ms_buf_putc(o, ')');
+    }
+    if (f->has_close_exit) {
+        ms_buf_puts(o, " close_exit(@");
+        mp_sym(m, o, m->funcs[f->close_exit[0]].name);
+        ms_buf_puts(o, ", @");
+        mp_sym(m, o, m->funcs[f->close_exit[1]].name);
+        ms_buf_putc(o, ')');
+    }
 }
 
 static void mp_func_header(const PrintCx *cx, MsBuf *o) {

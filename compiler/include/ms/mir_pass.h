@@ -27,6 +27,11 @@ MirImm mir_imm_cc(MirCc cc);
 MirImm mir_imm_ext(uint32_t ext);
 
 
+/* An empty function with `f`'s signature: a pass that takes a function out of the module to rewrite
+ * it leaves this behind, so a recursive call still reads which arguments the callee consumes and
+ * whether its result borrows. */
+MirFunc mir_func_stand_in(MirModule *m, const MirFunc *f);
+
 /* Whether the module starts tasks (some extern has the `spawns_task` role): only then do the
  * cancellation passes rewrite anything. */
 bool mir_starts_tasks(const MirModule *m);
@@ -59,10 +64,22 @@ bool mir_expand_owned(MirModule *m);
  * on modules that start tasks. */
 bool mir_unwind(MirModule *m);
 
+/* Places the scope-exit cleanup of every Raw function (one that still carries scope markers).
+ * False with `error` set to `function: message` when a function's ownership cannot be expressed. */
+bool mir_elaborate(MirModule *m, MsBuf *error);
+
+/* The same, and with `cancel_exits` a function of a task program that parks also gets explicit
+ * cancel exits when its owners allow them (port of cancel_exit.rs). */
+bool mir_elaborate_with(MirModule *m, bool cancel_exits, MsBuf *error);
+
 /* cancel_edges: after every call that can park, test the task's `unwinding` byte and leave the
  * function through one cancel exit that runs the registered cleanups. Only on modules that start
  * tasks; the caller decides whether edges are switched on (`MS_CANCEL_EDGES`). */
 bool mir_cancel_edges(MirModule *m);
+
+/* depth: lowers `depth.enter`, the stack-depth check of a recursive function, to `stack.low`, memory
+ * operations and a call of a grow shim. Run after unwind. Returns whether there was one. */
+bool mir_depth_lower(MirModule *m);
 
 /* ---- glue ---- */
 
