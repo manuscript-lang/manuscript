@@ -250,6 +250,9 @@ static void wake(size_t row) {
 /* ---- completion ---- */
 
 static void drop_block(void *block, const MsTypeDesc *desc, int64_t pipe) {
+    if (block == NULL) {
+        return; /* a completion without a value */
+    }
     if (pipe != 0 && unread_hook != NULL) {
         unread_hook(pipe, block, desc);
         return;
@@ -325,6 +328,8 @@ void ms_promise_io_done(MsPromise id) {
     const ptrdiff_t row = row_of(id);
     if (row >= 0) {
         complete((size_t)row, NULL, NULL, false, 0);
+    } else if (is_foreign(id)) {
+        send_done(id, NULL, NULL, false, 0); /* a pipe's last writer closing on another isolate ends a parked reader */
     }
 }
 
@@ -595,6 +600,11 @@ static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
     const size_t row = (size_t)found;
     /* Work taken back from the queue ends only its own promise when it faults, as it would on another isolate. */
     const bool was_queued = (table.hot[row].flags & FLAG_QUEUED) != 0;
+    if (was_queued && deadline != NO_TIME) {
+        /* Work on this stack notices a limit only at its own waits, so a bounded wait leaves queued work to run as a
+         * task of its own, which a limit can cancel (a consumer that never waits would otherwise outlive it). */
+        return false;
+    }
     if (was_queued && !claim_queued(row)) {
         return false;
     }
