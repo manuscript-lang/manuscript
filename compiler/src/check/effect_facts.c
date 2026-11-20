@@ -232,9 +232,12 @@ MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId modul
                 out->neffects = reach.declared[k].count;
             }
         }
+        if (fx.reach == NULL) {
+            continue;
+        }
         const MsReachNode *n = &fx.reach[node];
-        const MsEffectScope *permit = n->allow_fn.present ? &n->allow_fn : n->allow_file.present ? &n->allow_file : NULL;
-        if (permit != NULL) {
+        const MsEffectScope *permit = n->allow_fn.present ? &n->allow_fn : &n->allow_file;
+        if (permit->present) {
             out->permits = permit->names;
             out->npermits = permit->count;
         }
