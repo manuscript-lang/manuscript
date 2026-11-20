@@ -34,7 +34,7 @@ size_t msrt_cleanup_push(MsCleanupFn run, uint8_t *arg);
 void msrt_cleanup_discard(size_t handle);
 
 /* Objects with a header (closures, handles). Null stays null. */
-typedef struct MsObj MsObj;
+
 MsObj *msrt_obj_clone(MsObj *object);
 void msrt_obj_drop(MsObj *object);
 
