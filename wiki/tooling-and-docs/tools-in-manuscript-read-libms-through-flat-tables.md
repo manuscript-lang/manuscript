@@ -15,3 +15,5 @@ Verify: `make c-tools-test` compares the dumps over the whole corpus and lints s
 Verified: copy `String.view_bytes()` of a short view with `as_bytes()` until [#4655](https://github.com/manuscript-lang/manuscript/issues/4655) is fixed; the borrowed bytes change after another view is taken.
 
 Verified: the docs generator (`tools/ms/docgen.ms`) and description inventory (`doc_inventory.ms`) are pure rendering over an API model and reproduce all 103 `ms-docgen` files, `stdlib.json` and the coverage JSON byte for byte. The model comes from the temporary Rust example `crates/ms-tooling/examples/api_model.rs` until the C checker's declaration columns can feed a Manuscript model builder; the example is deleted with the Rust docs generator.
+
+Search: [search.ms](../../tools/ms/search.ms) ports `ms search_symbol` (pages, fuzzy ranking, `name_rank`, text and JSON output) over the dumped API model and matches the Rust command on every query of `tools/ms/search_queries.txt` in text, `--json` and `--limit 10`. It has library symbols only until the C checker supplies project symbols.
