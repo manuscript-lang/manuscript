@@ -62,3 +62,5 @@ version x
 init a b
 init -x
 init --lib --workspace
+verify --bogus
+verify a b
