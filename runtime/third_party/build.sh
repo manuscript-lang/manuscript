@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds the C libraries the networking runtime links (libuv, nghttp2, llhttp, OpenSSL) as static archives.
 # Sources are pinned in runtime/third_party/c-libs.lock (sha256 checked) and fetched into target/c-libs/src; llhttp is vendored.
-# Output: target/c-libs/<triple>-<key>/{lib,include}. Usage: build.sh [triple]; `build.sh key [triple]` prints the cache key. CC and CXX choose the compilers.
+# Output: target/c-libs/<triple>-<key>/{lib,include}. Usage: build.sh [triple]; `build.sh key [triple]` prints the cache key. CC chooses the compiler.
 # Needs a C compiler, make, cmake and perl (OpenSSL's Configure). Using `ms` needs none of them.
 set -eu
 repository=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
@@ -10,11 +10,10 @@ triple=${1:-host}
 root=$repository/target/c-libs
 src=$root/src
 cc=${CC:-cc}
-cxx=${CXX:-c++}
 # One build for every dependency. The output folder is named by a hash of everything that decides its contents
 # (pins, this script, the triple, the compilers), so a CI cache keyed on `key` restores it whole and a change to any
 # input starts a clean build of all of them.
-hash_input() { cat "$repository/runtime/third_party/c-libs.lock" "$repository/runtime/third_party/build.sh"; find "$repository/runtime/third_party/llhttp" "$repository/runtime/third_party/qbe" -type f | sort | xargs cat; printf '%s\n%s\n%s\n' "$triple" "$("$cc" --version | head -1)" "$("$cxx" --version | head -1)"; }
+hash_input() { cat "$repository/runtime/third_party/c-libs.lock" "$repository/runtime/third_party/build.sh"; find "$repository/runtime/third_party/llhttp" "$repository/runtime/third_party/qbe" -type f | sort | xargs cat; printf '%s\n%s\n' "$triple" "$("$cc" --version | head -1)"; }
 key=$(hash_input | if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -c1-16)
 if [ "${1:-}" = key ]; then echo "$key"; exit 0; fi
 out=$root/$triple-$key
@@ -75,20 +74,22 @@ if [ ! -f "$out/lib/libssl.a" ]; then
         && make -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
         && cp "$src/openssl-$(version_of openssl)"/include/openssl/*.h include/openssl/*.h "$out/include/openssl/")
 fi
-if [ ! -f "$out/lib/libre2.a" ]; then
-    # RE2 is C++17 and needs Abseil; both build static and install into one prefix. The runtime links libstdc++ (libc++ on macOS and mingw) statically.
-    build=$root/build/$triple/abseil
-    cmake -S "$src/abseil-$(version_of abseil)" -B "$build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$cxx" -DCMAKE_CXX_STANDARD=17 -DABSL_PROPAGATE_CXX_STD=ON -DABSL_BUILD_TESTING=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_PREFIX="$root/build/$triple/absl-install" >/dev/null
+if [ ! -f "$out/lib/libz.a" ]; then
+    # zlib: the in-memory deflate and inflate code only, compiled directly (no gz file layer, no build system).
+    build=$root/build/$triple/zlib
+    zsrc=$src/zlib-$(version_of zlib)
+    mkdir -p "$build"
+    for f in adler32 compress crc32 deflate infback inffast inflate inftrees trees uncompr zutil; do "$cc" -O2 -fPIC -I"$zsrc" -c "$zsrc/$f.c" -o "$build/$f.o"; done
+    ar rcs "$out/lib/libz.a" "$build"/*.o
+    cp "$zsrc/zlib.h" "$zsrc/zconf.h" "$out/include/"
+fi
+if [ ! -f "$out/lib/libpcre2-8.a" ]; then
+    # PCRE2, 8-bit library only, with its JIT. Plain C: no C++ runtime in programs.
+    build=$root/build/$triple/pcre2
+    cmake -S "$src/pcre2-$(version_of pcre2)" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=OFF -DPCRE2_BUILD_PCRE2_32=OFF -DPCRE2_SUPPORT_JIT=ON -DPCRE2_SUPPORT_UNICODE=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_SUPPORT_LIBZ=OFF -DPCRE2_SUPPORT_LIBBZ2=OFF -DPCRE2_SUPPORT_LIBREADLINE=OFF >/dev/null
     cmake --build "$build" -j "$jobs" >/dev/null
-    cmake --install "$build" >/dev/null
-    build=$root/build/$triple/re2
-    cmake -S "$src/re2-$(version_of re2)" -B "$build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$cxx" -DCMAKE_CXX_STANDARD=17 -DRE2_BUILD_TESTING=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_PREFIX_PATH="$root/build/$triple/absl-install" >/dev/null
-    cmake --build "$build" -j "$jobs" >/dev/null
-    cp "$build/libre2.a" "$out/lib/"
-    mkdir -p "$out/include/re2"
-    cp "$src/re2-$(version_of re2)"/re2/*.h "$out/include/re2/"
-    cp "$root/build/$triple/absl-install"/lib/libabsl_*.a "$out/lib/"
-    cp -R "$root/build/$triple/absl-install/include/absl" "$out/include/"
+    cp "$build/libpcre2-8.a" "$out/lib/"
+    cp "$build/interface/pcre2.h" "$out/include/"
 fi
 touch "$out/.complete"
 echo "$out"
