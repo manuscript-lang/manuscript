@@ -55,7 +55,7 @@ static MsSym decl_name(const MsDecl *d) {
     case MS_D_FN: return d->u.fn.name;
     case MS_D_CONST: return d->u.konst.name;
     case MS_D_TYPE: return d->u.type.name;
-    case MS_D_ENUM: return d->u.enum_.name;
+    case MS_D_ENUM: return d->u.enumeration.name;
     case MS_D_ALIAS: return d->u.alias.name;
     case MS_D_INTERFACE: return d->u.iface.name;
     default: return 0;
@@ -66,7 +66,7 @@ static uint32_t decl_nvars(const MsDecl *d) {
     switch (d->kind) {
     case MS_D_FN: return d->u.fn.type_params.len;
     case MS_D_TYPE: return d->u.type.type_params.len;
-    case MS_D_ENUM: return d->u.enum_.type_params.len;
+    case MS_D_ENUM: return d->u.enumeration.type_params.len;
     case MS_D_ALIAS: return d->u.alias.type_params.len;
     case MS_D_INTERFACE: return d->u.iface.type_params.len;
     default: return 0;
@@ -77,7 +77,7 @@ static const MsTypeParams *decl_type_params(const MsDecl *d) {
     switch (d->kind) {
     case MS_D_FN: return &d->u.fn.type_params;
     case MS_D_TYPE: return &d->u.type.type_params;
-    case MS_D_ENUM: return &d->u.enum_.type_params;
+    case MS_D_ENUM: return &d->u.enumeration.type_params;
     case MS_D_ALIAS: return &d->u.alias.type_params;
     case MS_D_INTERFACE: return &d->u.iface.type_params;
     default: return NULL;
@@ -291,7 +291,7 @@ static bool register_extern_type(Loader *l, MsModId m, const MsDecl *d) {
                             .kind = MS_SYM_TYPE,
                             .native = MS_NATIVE_BUILTIN,
                             .native_name = name,
-                            .is_exported = d->export_,
+                            .is_exported = d->is_exported,
                             .decl = d};
     MsSymId s = ms_sym_add(c, m, &spec);
     if (s == MS_NONE) {
@@ -314,7 +314,7 @@ static void register_source_stubs(Loader *l, MsModId m, const MsModule *mod) {
     for (uint32_t i = 0; i < mod->ndecls; i++) {
         const MsDecl *d = mod->decls[i];
         bool nominal = d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE;
-        if (!nominal || !d->export_ || (d->kind == MS_D_TYPE && d->u.type.external)) {
+        if (!nominal || !d->is_exported || (d->kind == MS_D_TYPE && d->u.type.external)) {
             continue;
         }
         MsSym name = decl_name(d);
@@ -420,7 +420,7 @@ static bool register_native_decl(Loader *l, MsModId m, MsStr stem, const MsDecl 
                             .kind = d->kind == MS_D_FN ? MS_SYM_FN : MS_SYM_TYPE,
                             .native = MS_NATIVE_BUILTIN,
                             .native_name = native_name,
-                            .is_exported = d->export_,
+                            .is_exported = d->is_exported,
                             .decl = d,
                             .nvars = decl_nvars(d)};
     const MsSymId sym = ms_sym_add(c, m, &spec);
