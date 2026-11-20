@@ -26,10 +26,13 @@ void *msrt_realloc(void *p, size_t n) { return realloc(p, n); }
 void *msrt_alloc_zeroed(size_t n) { return calloc(1, n); }
 void msrt_free(void *p) { free(p); }
 
+/* A test that checks faults defines its own msrt_fault and msfault_raise and sets MS_TEST_OWN_FAULTS first. */
+#ifndef MS_TEST_OWN_FAULTS
 _Noreturn void msrt_fault(const uint8_t *message, size_t length) {
     fprintf(stderr, "fault: %.*s\n", (int)length, (const char *)message);
     abort();
 }
+#endif
 
 _Noreturn void msrt_index_fault(int64_t index, int64_t length) {
     fprintf(stderr, "index fault: %lld of %lld\n", (long long)index, (long long)length);
@@ -70,16 +73,13 @@ void msrt_list_drop(MsVec *v, const MsTypeDesc *d) {
     free(v->ptr);
 }
 
-/* Faults end the test with the message; the real runtime records and unwinds. */
-void msrt_fault(const void *message, size_t length);
-void msrt_fault(const void *message, size_t length) {
-    fprintf(stderr, "FAULT %.*s\n", (int)length, (const char *)message);
-    exit(1);
-}
+#ifndef MS_TEST_OWN_FAULTS
 void msfault_raise(uint8_t kind, const void *message, size_t length);
 void msfault_raise(uint8_t kind, const void *message, size_t length) {
     fprintf(stderr, "FAULT(%u) %.*s\n", kind, (int)length, (const char *)message);
-    exit(1);
+    abort();
 }
+
+#endif
 
 #endif

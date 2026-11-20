@@ -8,6 +8,7 @@
 #include "ms_rt/base.h"
 #include "ms_rt/safe.h"
 #include "ms_rt/string.h"
+#include "ms_rt/strbuild.h" /* msrt_fault: raises a fault with a message and never returns */
 
 /* The status code of invalid data (base.h has the others). */
 enum { MS_STATUS_INVALID_DATA = 4 };
@@ -21,9 +22,11 @@ typedef enum MsFaultKind {
 /* A presence flag parameter (an `Optional` argument split in two): 0 or 1. */
 typedef uint8_t HasRaw;
 
-/* Raises a fault with this message; never returns. */
-MS_NORETURN void msrt_fault(const void *message, size_t length);
-/* The same for a fault of a family (an MsFaultKind). */
+/* The fault message is bytes, so text literals go through ms_fault_text. */
+static inline MS_NORETURN void ms_fault_text(const char *text, size_t length) {
+    msrt_fault((const uint8_t *)text, length);
+}
+/* Raises a fault of a family (an MsFaultKind) with this message; never returns. */
 MS_NORETURN void msfault_raise(uint8_t kind, const void *message, size_t length);
 
 #endif

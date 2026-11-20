@@ -20,7 +20,7 @@ enum { BITS_PER_BYTE = 8 };
 static void must(int ok) {
     if (ok == 0) {
         ERR_clear_error();
-        msrt_fault("bignum: out of memory", 21);
+        ms_fault_text("bignum: out of memory", 21);
     }
 }
 
@@ -350,7 +350,7 @@ static bool pow_of_two(MsBig *out, const BIGNUM *a, uint64_t exponent) {
     }
     const uint64_t k = (uint64_t)BN_num_bits(a) - 1;
     if (exponent > (uint64_t)INT_MAX / k) {
-        msrt_fault("bignum: value too large", 23);
+        ms_fault_text("bignum: value too large", 23);
     }
     BIGNUM *const result = new_bn();
     BN_zero(result);
@@ -613,8 +613,36 @@ static uint8_t *digits_by_division(const BIGNUM *a, unsigned radix, size_t *leng
     return reversed;
 }
 
+/* Digits of a power-of-two radix of the magnitude, least significant first, read straight from its bits. */
+static uint8_t *digits_by_bits(const BIGNUM *a, unsigned radix, size_t *length) {
+    unsigned bits_per_digit = 0;
+    while ((1u << bits_per_digit) < radix) {
+        bits_per_digit++;
+    }
+    const size_t bits = (size_t)BN_num_bits(a);
+    const size_t count = bits == 0 ? 1 : (bits + bits_per_digit - 1) / bits_per_digit;
+    const size_t bytes = bits / BITS_PER_BYTE + 1;
+    uint8_t *const magnitude = msrt_alloc(bytes);
+    must(BN_bn2lebinpad(a, magnitude, (int)bytes) >= 0);
+    uint8_t *const digits = msrt_alloc(count);
+    for (size_t i = 0; i < count; i++) {
+        unsigned digit = 0;
+        for (unsigned k = 0; k < bits_per_digit; k++) {
+            const size_t bit = i * bits_per_digit + k;
+            digit |= (unsigned)((magnitude[bit / BITS_PER_BYTE] >> (bit % BITS_PER_BYTE)) & 1u) << k;
+        }
+        digits[i] = (uint8_t)digit;
+    }
+    msrt_free(magnitude);
+    *length = count;
+    return digits;
+}
+
+static bool is_power_of_two_radix(unsigned radix) { return (radix & (radix - 1)) == 0; }
+
 uint8_t *ms_big_digits_new(const MsBig *a, unsigned radix, size_t *length) {
-    uint8_t *const digits = digits_by_division(value_of(a), radix, length);
+    uint8_t *const digits = is_power_of_two_radix(radix) ? digits_by_bits(value_of(a), radix, length)
+                                                         : digits_by_division(value_of(a), radix, length);
     for (size_t i = 0; i < *length / 2; i++) {
         const uint8_t swap = digits[i];
         digits[i] = digits[*length - 1 - i];

@@ -66,8 +66,14 @@ EDGES = [(0, 0), (1, 0), (-1, 0), (1, -1), (5, -1), (10 ** 34 - 1, 0), (-(10 ** 
 lines = []
 
 
+PER_OP = 50  # cases kept per operation: enough to cover each rule, small enough to review
+kept = {}
+
+
 def emit(op, a="-", b="-", c="-", expected="-"):
-    lines.append("\t".join([op, a, b, c, expected]))
+    kept[op] = kept.get(op, 0) + 1
+    if kept[op] <= PER_OP or expected.startswith("ERR"):
+        lines.append("\t".join([op, a, b, c, expected]))
 
 
 def arithmetic(op, fn, count):

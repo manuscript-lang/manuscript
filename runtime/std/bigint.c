@@ -333,7 +333,7 @@ void msstd_bigint_to_string_radix(const MsBigCell *a, int64_t radix, MsStr *out)
         char message[128];
         const int length = snprintf(message, sizeof message,
                                     "BigInt.to_string_radix: radix must be between 2 and 36, found %lld", (long long)radix);
-        msrt_fault(message, length > 0 ? (size_t)length : 0);
+        ms_fault_text(message, length > 0 ? (size_t)length : 0);
     }
     size_t digit_count = 0;
     uint8_t *const digits = ms_big_digits_new(&a->value, (unsigned)radix, &digit_count);

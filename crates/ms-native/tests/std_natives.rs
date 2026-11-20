@@ -26,6 +26,7 @@ fn st(t: &str) -> *const StrVal {
 fn text(s: *const StrVal) -> String {
     // SAFETY: tests pass live strings.
     String::from_utf8_lossy(unsafe { bytes(s) }).into_owned()
+}
 
 mod process {
     use super::*;

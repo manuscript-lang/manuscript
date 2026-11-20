@@ -109,7 +109,7 @@ static MsU128 big_magnitude(const MsBig *a) {
     uint64_t high = 0;
     uint64_t low = 0;
     if (!ms_big_to_u128(a, &high, &low)) {
-        msrt_fault("Decimal: internal coefficient wider than 128 bits", 49);
+        ms_fault_text("Decimal: internal coefficient wider than 128 bits", 49);
     }
     return ((MsU128)high << 64) | low;
 }

@@ -23,7 +23,7 @@ typedef struct TextBuffer {
 static void buffer_reserve(TextBuffer *buffer, size_t extra) {
     size_t needed = 0;
     if (!ms_size_add(buffer->len, extra, &needed)) {
-        msrt_fault("time: output too large", 22);
+        ms_fault_text("time: output too large", 22);
     }
     if (needed <= buffer->cap && buffer->ptr != NULL) {
         return;
@@ -31,7 +31,7 @@ static void buffer_reserve(TextBuffer *buffer, size_t extra) {
     size_t cap = buffer->cap == 0 ? 64 : buffer->cap;
     while (cap < needed) {
         if (!ms_size_mul(cap, 2, &cap)) {
-            msrt_fault("time: output too large", 22);
+            ms_fault_text("time: output too large", 22);
         }
     }
     uint8_t *const grown = msrt_alloc(cap);

@@ -6,7 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "fake_list.h"
+#define MS_TEST_OWN_FAULTS
+#include "fake_rt.h"
 #include "ms_rt/decimal.h"
 #include "ms_rt/runtime.h"
 
@@ -22,15 +23,7 @@ static int failures;
 static jmp_buf fault_jump;
 static int fault_code; /* 0 none, otherwise the FaultKind of the last fault */
 
-void *msrt_alloc(size_t size) {
-    void *const memory = malloc(size);
-    if (memory == NULL) {
-        abort();
-    }
-    return memory;
-}
-void msrt_free(void *pointer) { free(pointer); }
-void msrt_fault(const void *message, size_t length) {
+_Noreturn void msrt_fault(const uint8_t *message, size_t length) {
     printf("FAULT %.*s\n", (int)length, (const char *)message);
     exit(1);
 }

@@ -6,7 +6,8 @@
 #include <string.h>
 
 #include "../std/time_internal.h"
-#include "fake_list.h"
+#define MS_TEST_OWN_FAULTS
+#include "fake_rt.h"
 
 static int failures;
 #define CHECK(cond) \
@@ -21,15 +22,7 @@ static jmp_buf fault_jump;
 static char fault_text[512];
 static bool fault_expected;
 
-void *msrt_alloc(size_t size) {
-    void *const memory = malloc(size);
-    if (memory == NULL) {
-        abort();
-    }
-    return memory;
-}
-void msrt_free(void *pointer) { free(pointer); }
-void msrt_fault(const void *message, size_t length) {
+_Noreturn void msrt_fault(const uint8_t *message, size_t length) {
     if (!fault_expected) {
         printf("UNEXPECTED FAULT %.*s\n", (int)length, (const char *)message);
         exit(1);
@@ -37,7 +30,7 @@ void msrt_fault(const void *message, size_t length) {
     snprintf(fault_text, sizeof fault_text, "%.*s", (int)length, (const char *)message);
     longjmp(fault_jump, 1);
 }
-void msfault_raise(uint8_t kind, const void *message, size_t length);
+
 void msfault_raise(uint8_t kind, const void *message, size_t length) {
     (void)kind;
     msrt_fault(message, length);

@@ -27,7 +27,7 @@ MS_NORETURN static void fault_with(const char *format, ...) {
     if (used >= sizeof message) {
         used = sizeof message - 1; /* truncated by vsnprintf */
     }
-    msrt_fault(message, used);
+    ms_fault_text(message, used);
 }
 
 /* The operands of a binary operation, as the overflow message names them. */
