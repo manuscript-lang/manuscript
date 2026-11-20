@@ -114,8 +114,11 @@ static void embed_base64(MsBuf *out, const uint8_t *data, size_t length) {
         const size_t chunk = length - at < 3 ? length - at : 3;
         const uint32_t n = ((uint32_t)data[at] << 16) | (chunk > 1 ? (uint32_t)data[at + 1] << 8 : 0) | (chunk > 2 ? data[at + 2] : 0);
         for (size_t i = 0; i < 4; i++) {
-            const char digit = alphabet[(n >> (18 - 6 * i)) & 63];
-            ms_buf_putc(out, i <= chunk ? digit : '=');
+            if (i <= chunk) {
+                ms_buf_putc(out, alphabet[(n >> (18 - 6 * i)) & 63]);
+            } else {
+                ms_buf_putc(out, '=');
+            }
         }
     }
 }
