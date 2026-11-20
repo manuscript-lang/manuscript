@@ -7,3 +7,5 @@ Verified: `compiler/` ports `ms-syntax` stage by stage. Messages, positions, fix
 Apply when: changing `compiler/src`, `crates/ms-syntax/src/{lexer,parser,dump}.rs`, or the oracle `crates/ms-syntax/examples/c_oracle.rs`. A change to the Rust front end changes the oracle: port it to C in the same change, or the comparison fails.
 Evidence: [compiler/README.md](../../compiler/README.md), `compiler/tests/syntax-diff.sh`.
 Verify: `make c-compiler-test` prints `ok` for every mode and set.
+
+The checker follows the same rule. `compiler/tests/check-diff.sh` compares the C checker's tables with `crates/ms-check/examples/c_oracle.rs`, and each pass the C checker gains adds a comparison line there (diagnostics, then types, interface evidence, ownership facts, effect sets) before its Rust code is deleted. The tables are one type table plus dense symbol columns (`compiler/include/ms/tables.h`), not a tree of reference-counted types; a pass adds columns indexed by the same ids.

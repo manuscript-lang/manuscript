@@ -1,13 +1,13 @@
 # compiler
 
-`libms`, the Manuscript compiler as a C library, replacing the Rust crates one stage at a time. Plan: [plan section 5, "Compiler"](../proposals/c-runtime.md) and the workstream list in the project files. This folder holds the front end so far: the lexer with the layout rules (`src/lex.c`), the syntax tree (`include/ms/ast.h`) and the parser (`src/parse.c`). Diagnostic codes are in `src/diag.c` and editor recovery in `src/partial.c`. The formatter is written in Manuscript over this library.
+`libms`, the Manuscript compiler as a C library, replacing the Rust crates one stage at a time. Plan: [plan section 5, "Compiler"](../proposals/c-runtime.md) and the workstream list in the project files. This folder holds the front end (the lexer with the layout rules `src/lex.c`, the syntax tree `include/ms/ast.h`, the parser `src/parse.c`, diagnostic codes `src/diag.c`, editor recovery `src/partial.c`) and the start of the checker: the tables every pass reads (`types.c`, `tables.c`) and the standard-library loader (`stdlib.c`). The formatter is written in Manuscript over this library.
 
 ```
 compiler/
-  include/ms/   public headers: libms.h (entry points and the stage table), driver.h, base.h (arena, names, diagnostics), token.h, lex.h, ast.h, parse.h, dump.h, diag.h
+  include/ms/   public headers: libms.h (entry points and the stage table), driver.h, base.h (arena, names, diagnostics), token.h, lex.h, ast.h, parse.h, diag.h, types.h, tables.h, stdlib.h, dump.h
   src/          one file per stage; libms.c includes them all, and building that one file builds the library
   tools/        ms (the thin executable over the driver), ms_syntax_dump: prints tokens and trees for the comparison below
-  tests/        syntax-diff.sh, mutate.c, driver-test.sh
+  tests/        syntax-diff.sh, mutate.c, driver-test.sh, check-diff.sh, types_test.c
 ```
 
 ## Rules
@@ -22,6 +22,10 @@ compiler/
 `make c-compiler-test` (`compiler/tests/syntax-diff.sh`) builds `crates/ms-syntax/examples/c_oracle.rs` and the C dump tool with AddressSanitizer and UBSan, runs both on every `.ms` file in the repository and on mutated copies (`MS_FUZZ`, default 3000; `MS_FUZZ_SEED`), and compares the outputs with `cmp`. A mutant is a corpus file with a few bytes inserted, deleted or swapped for lexer-hostile pieces, so most of them end in a lexer error and every message is compared. The nightly run uses more mutants.
 
 `src/unicode_debug.inc` is the table of scalars that Rust's `{:?}` escapes, which error messages quote; `tests/gen_debug_table.rs` regenerates it.
+
+## The checker tables
+
+`MsTyTable` (`types.h`) is the one representation of checked types: a struct of arrays of interned type constructors, indexed by `MsTy`. Equal types share an index, so identity is an integer compare; type variables are never shared. `MsCheck` (`tables.h`) holds the type table, the symbol columns (name, identity text, kind, module, native binding, export flag, declaration, type, variable count) and one row per module with its scope. A pass adds columns beside these, indexed by the same ids. `ms_std_load` (`stdlib.h`) parses the bundled files, splits a file that mixes native operations with bodies into a native half and a `+source` half, and registers symbols as the Rust loader does. `compiler/tests/check-diff.sh` compares the result with `crates/ms-check/examples/c_oracle.rs` byte for byte. Later passes (resolution, types, interfaces, ownership, effects) add their own lines to that script.
 
 ## Driver and stages
 
