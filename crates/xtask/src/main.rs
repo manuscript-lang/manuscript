@@ -687,6 +687,10 @@ fn build_archive(
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
+    if c_reactor(triple) {
+        // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
+        command.env("MS_C_REACTOR", "1");
+    }
     if let Some(triple) = triple {
         // The glibc target builds with the host's C compiler.
         if !triple.ends_with("linux-gnu") {
@@ -711,6 +715,14 @@ fn build_archive(
     strip_debug(&archive);
     add_c_runtime(root, target, triple, &archive)?;
     Ok(archive)
+}
+
+/// Whether this archive uses the libuv reactor (`runtime/io`): the glibc Linux build, when `MS_UV_DIR` names a
+/// folder holding libuv. Other targets keep the mio poller until `io` builds for them (workstream W0 and W5).
+fn c_reactor(triple: Option<&str>) -> bool {
+    std::env::var_os("MS_UV_DIR").is_some()
+        && std::env::consts::OS == "linux"
+        && triple.is_none_or(|t| t.ends_with("linux-gnu"))
 }
 
 /// Every C source of the runtime (`runtime/{sys,core,io,net,std}`; `third_party` and `tests` are not part of it).
@@ -753,6 +765,11 @@ fn add_c_runtime(
     for layer in ["sys", "core"] {
         c_sources(&runtime.join(layer), skip, &mut sources);
     }
+    let libuv =
+        c_reactor(triple).then(|| PathBuf::from(std::env::var_os("MS_UV_DIR").unwrap_or_default()));
+    if libuv.is_some() {
+        c_sources(&runtime.join("io"), &mut sources);
+    }
     sources.sort();
     if sources.is_empty() {
         return Ok(());
@@ -775,10 +792,11 @@ fn add_c_runtime(
             .args(["-c", "-O2", "-std=c11", "-fPIC", "-fno-stack-protector"])
             .args(["-fno-strict-aliasing", "-Wall", "-Wextra", "-Werror"])
             .arg("-I")
-            .arg(runtime.join("include"))
-            .arg("-o")
-            .arg(&object)
-            .arg(source);
+            .arg(runtime.join("include"));
+        if let Some(libs) = &libuv {
+            command.arg("-I").arg(libs.join("include"));
+        }
+        command.arg("-o").arg(&object).arg(source);
         // The musl archive is built on a glibc host: the sources use no libc header, so only the target differs.
         if let Some(t) = triple.filter(|_| !host) {
             command.arg(format!("--target={t}"));
@@ -796,6 +814,26 @@ fn add_c_runtime(
     } else {
         PathBuf::from("ar")
     };
+    if let Some(libs) = &libuv {
+        // libuv's members join the archive, so programs link no second library.
+        let dir = objects.join("libuv");
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let status = Command::new(&ar)
+            .arg("x")
+            .arg(libs.join("lib/libuv.a"))
+            .current_dir(&dir)
+            .status()
+            .map_err(|e| format!("run {}: {e}", ar.display()))?;
+        if !status.success() {
+            return Err("extracting libuv failed".into());
+        }
+        for entry in std::fs::read_dir(&dir)
+            .map_err(|e| e.to_string())?
+            .flatten()
+        {
+            files.push(entry.path());
+        }
+    }
     let status = Command::new(&ar)
         .arg("rcs")
         .arg(archive)

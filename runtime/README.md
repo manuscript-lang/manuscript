@@ -8,17 +8,24 @@ runtime/
   sys/           the one door to the OS: posix (Linux, macOS) and windows; memory regions, the clock, threads and sleep so far
   core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num.c so far)
   io/            reactor on libuv (to come)
-  net/           http1 (llhttp) and tls (OpenSSL) done; http2 (nghttp2), websocket to come
+  net/           http1 (llhttp), tls (OpenSSL) and ws frames done; http2 (nghttp2) to come
   std/           natives per stdlib module (to come)
   third_party/   pinned dependencies and the one build for all of them
-  tests/         smoke programs and, later, unit tests
+  tests/         smoke programs and unit tests (`make c-test`, under ASan and UBSan)
+  fuzz/          fuzz harnesses and seed corpus (`make c-fuzz`); nightly
 ```
 
 Layering: `sys` < `core` < `io` < `net` and `std`. `core` never includes libuv.
 
 ## Third-party libraries
 
-`sh runtime/third_party/build.sh [triple]` builds every dependency in one go into `target/c-libs/<triple>-<key>/{lib,include}`. `build.sh key [triple]` prints the key, a hash of the pins, the script, the vendored llhttp, the triple and the compiler versions: cache the folder on that key and any change rebuilds all of it. `sh runtime/third_party/smoke.sh` builds and runs the smoke programs in `runtime/tests`. Building needs a C compiler, make, cmake and perl; using `ms` needs none of them.
+Libraries come from the system packages first (Chinmay, 2026-11-20); our own pinned builds are for release archives and come later on every platform.
+
+- `sh runtime/third_party/libs.sh install` installs libuv, nghttp2, OpenSSL, PCRE2 and zlib with apt, Homebrew, apk or vcpkg.
+- `libs.sh cflags` and `libs.sh libs <name>...` (names: `uv llhttp nghttp2 ssl crypto pcre2 z`) print the compiler and linker flags; every script and test gets its flags there and names no library path itself. llhttp and QBE are vendored and built in both modes; `libs.sh dir` prints their folder.
+- `MS_C_LIBS=pinned` switches to the versions in `c-libs.lock`, built by `build.sh [triple]` into `target/c-libs/<triple>-pinned-<key>/{lib,include}` (needs make, cmake and perl). `build.sh key [triple]` prints the cache key.
+- Oldest versions the C runtime may assume, from Ubuntu 24.04: libuv 1.48, nghttp2 1.59, OpenSSL 3.0, PCRE2 10.42, zlib 1.3. Code that needs something newer checks for it at build time. `sh runtime/third_party/smoke.sh` runs the smoke programs in either mode.
+- Not proven yet: Homebrew, apk and vcpkg installs (only apt has been run), and Windows, where vcpkg builds from source.
 
 | Library | Version | Use | License |
 | --- | --- | --- | --- |
