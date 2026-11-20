@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 
 #include "ms/check.h"
+#include "ms/desugar.h"
+#include "ms/methods.h"
 #include "ms/dump.h"
 #include "ms/ownership.h"
 #include "ms/parse.h"
@@ -51,6 +53,25 @@ static bool only_std_imports(const MsModule *module) {
     return true;
 }
 
+/* Checks the bodies of module `id` with the program's method table: the inherent methods desugared
+ * to impls, the interface operations and the implementations resolved first, as the Rust checker
+ * does. A module with an inherent error is left unchecked. */
+static void check_bodies_with_methods(MsCheck *check, MsModId id, const char *text, size_t length) {
+    MsInherentError *errors = NULL;
+    uint32_t nerrors = 0;
+    ms_module_desugar(check, id, (MsStr){text, (uint32_t)length}, NULL, 0, &errors, &nerrors);
+    if (nerrors > 0) {
+        return;
+    }
+    ms_module_resolve_types(check, id);
+    MsMethodTable table;
+    ms_methods_init(&table);
+    ms_module_ensure_operations(check, id, &table);
+    ms_module_add_implementations(check, id, &table);
+    ms_module_check_bodies_with(check, id, &table);
+    ms_methods_free(&table);
+}
+
 /* Prints the name-resolution diagnostics of each file as `path:line:col: message`, the form
  * `c_oracle --scope` prints. Files that fail to parse or import project modules print nothing. */
 static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *names, int nfiles_in, char **paths,
@@ -73,7 +94,7 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
             MsBuf dump = {0};
             if (bodies) {
-                ms_module_check_bodies(check, id);
+                check_bodies_with_methods(check, id, text, (size_t)n);
                 if (effects) {
                     // The effect scan reads the facts of every function the body pass checked.
                     ms_dump_module_effects(&dump, check, id);
