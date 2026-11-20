@@ -1,5 +1,5 @@
 /* Records that live behind a pointer (`type Name indirect`), for emit_llvm.c (included from it); the
- * layout is the one described in emit_qbe_record.inc. Reading, building or freeing a collection
+ * layout is the one the runtime uses. Reading, building or freeing a collection
  * field branches, which ends the current piece of the block (ll_pieces). */
 
 /* A conditional piece: `br cond, %i<n>, <join>`, the code of the condition's side, then the join. */
