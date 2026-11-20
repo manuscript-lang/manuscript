@@ -87,6 +87,11 @@ void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
 void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 void lb_write_back(Lb *lb);
+MirLoc lb_loc(const Lb *lb, MsPos pos);
+void lb_drop(Lb *lb, MirValue v);
+void lb_return_void(Lb *lb);
+void lb_statements(Lb *lb, const MsStmts *body);
+void lb_reset_state(Lb *lb);
 
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
