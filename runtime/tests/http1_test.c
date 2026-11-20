@@ -46,6 +46,24 @@ int main(void) {
     CHECK(parse("BREW / HTTP/1.1\r\n\r\n", 1 << 20, &r, f, 8) == MS_H1_BAD && r.status == 501);
     CHECK(parse("GET / HTTP/1.1\r\nA: b\r\nHost\r\n\r\n", 1 << 20, &r, f, 8) == MS_H1_BAD);
 
+    /* response writers */
+    char o[256]; size_t u = 0;
+    CHECK(ms_h1_write_status(o, sizeof o, &u, 1, 200, "OK", 2) == 0);
+    CHECK(ms_h1_write_field(o, sizeof o, &u, "Content-Type", 12, "text/plain", 10) == 0);
+    CHECK(ms_h1_write_head_end(o, sizeof o, &u) == 0);
+    CHECK(u == strlen("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n") && !memcmp(o, "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n", u));
+    u = 0;
+    CHECK(ms_h1_write_field(o, sizeof o, &u, "X", 1, "a\r\nSet-Cookie: b", 17) == -2 && u == 0);
+    CHECK(ms_h1_write_field(o, sizeof o, &u, "X Y", 3, "v", 1) == -2);
+    CHECK(ms_h1_write_field(o, sizeof o, &u, "", 0, "v", 1) == -2);
+    CHECK(ms_h1_write_status(o, sizeof o, &u, 1, 200, "O\nK", 4) == -2);
+    CHECK(ms_h1_write_field(o, 8, &u, "Name", 4, "value", 5) == -1 && u == 0);
+    CHECK(ms_h1_write_chunk(o, sizeof o, &u, "hello world!", 12) == 0 && !memcmp(o, "c\r\nhello world!\r\n", u) && u == 17);
+    u = 0;
+    CHECK(ms_h1_write_chunk(o, sizeof o, &u, "", 0) == 0 && u == 5 && !memcmp(o, "0\r\n\r\n", 5));
+    u = 0;
+    CHECK(ms_h1_write_chunk(o, 6, &u, "hello", 5) == -1 && u == 0);
+
     if (!failed) printf("http1 ok\n");
     return failed;
 }

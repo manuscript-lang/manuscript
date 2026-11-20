@@ -79,3 +79,68 @@ int ms_h1_parse_request(const char *buf, size_t len, size_t head_limit, ms_h1_re
     out->status = s.too_many ? 431 : e == HPE_INVALID_METHOD ? 501 : 400;
     return MS_H1_BAD;
 }
+
+static int put(char *dst, size_t cap, size_t *used, const char *s, size_t n) {
+    if (n > cap - *used) return -1;
+    memcpy(dst + *used, s, n);
+    *used += n;
+    return 0;
+}
+
+static size_t decimal(char *out, unsigned v) {
+    char t[10];
+    size_t n = 0, i = 0;
+    do { t[n++] = (char)('0' + v % 10); v /= 10; } while (v);
+    while (n) out[i++] = t[--n];
+    return i;
+}
+
+int ms_h1_write_status(char *dst, size_t cap, size_t *used, int minor, unsigned status, const char *reason, size_t reason_len) {
+    if (status > 999 || reason_len > 1024) return -2;
+    for (size_t i = 0; i < reason_len; i++) if (reason[i] == '\r' || reason[i] == '\n' || reason[i] == 0) return -2;
+    char line[16 + 1024 + 2];
+    size_t n = 0;
+    memcpy(line, minor ? "HTTP/1.1 " : "HTTP/1.0 ", 9); n = 9;
+    char d[10];
+    size_t dn = decimal(d, status);
+    for (size_t pad = dn; pad < 3; pad++) line[n++] = '0';
+    memcpy(line + n, d, dn); n += dn;
+    line[n++] = ' ';
+    memcpy(line + n, reason, reason_len); n += reason_len;
+    line[n++] = '\r'; line[n++] = '\n';
+    return put(dst, cap, used, line, n);
+}
+
+static int is_token(unsigned char c) {
+    if (c >= '0' && c <= '9') return 1;
+    if ((c | 32) >= 'a' && (c | 32) <= 'z') return 1;
+    return c && strchr("!#$%&'*+-.^_`|~", c) != NULL;
+}
+
+int ms_h1_write_field(char *dst, size_t cap, size_t *used, const char *name, size_t name_len, const char *value, size_t value_len) {
+    if (name_len == 0) return -2;
+    for (size_t i = 0; i < name_len; i++) if (!is_token((unsigned char)name[i])) return -2;
+    for (size_t i = 0; i < value_len; i++) if (value[i] == '\r' || value[i] == '\n' || value[i] == 0) return -2;
+    if (name_len + value_len + 4 > cap - *used) return -1;
+    put(dst, cap, used, name, name_len);
+    put(dst, cap, used, ": ", 2);
+    put(dst, cap, used, value, value_len);
+    return put(dst, cap, used, "\r\n", 2);
+}
+
+int ms_h1_write_head_end(char *dst, size_t cap, size_t *used) { return put(dst, cap, used, "\r\n", 2); }
+
+int ms_h1_write_chunk(char *dst, size_t cap, size_t *used, const char *data, size_t n) {
+    static const char hex[] = "0123456789abcdef";
+    char size[2 * sizeof(size_t) + 2];
+    size_t k = 0;
+    for (int shift = (int)(8 * sizeof(size_t)) - 4; shift >= 0; shift -= 4) {
+        unsigned nib = (unsigned)((n >> shift) & 15);
+        if (k || nib || shift == 0) size[k++] = hex[nib];
+    }
+    size[k++] = '\r'; size[k++] = '\n';
+    if (n > cap || k + n + 2 > cap - *used) return -1;
+    put(dst, cap, used, size, k);
+    put(dst, cap, used, data, n);
+    return put(dst, cap, used, "\r\n", 2);
+}
