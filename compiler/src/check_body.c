@@ -848,7 +848,7 @@ static bool body_for_statement(MsBody *b, const MsStmt *s) {
     // The call itself stays untyped: the standard library's signatures are not resolved here yet.
     b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
     const uint32_t scope_start = b->facts->bindings.count;
-    (void)ms_body_bind(b, s->u.each.name, b->int_ty, s->id, 0, MS_ROLE_LOOP);
+    (void)ms_body_bind(b, s->u.each.name, b->int_ty, s->id, s->pos, 0, MS_ROLE_LOOP);
     const uint32_t outer_breaks = b->breaks;
     b->breaks = 0;
     b->loop_depth++;
