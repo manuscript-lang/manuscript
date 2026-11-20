@@ -11,6 +11,7 @@
 
 #include "ms/check.h"
 #include "ms/dump.h"
+#include "ms/ownership.h"
 #include "ms/parse.h"
 #include "ms/stdlib.h"
 
@@ -57,7 +58,7 @@ static bool ends_with(const char *s, const char *suffix) {
 /* Prints the name-resolution diagnostics of each file as `path:line:col: message`, the form
  * `c_oracle --scope` prints. Files that fail to parse or import project modules print nothing. */
 static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *names, int nfiles_in, char **paths,
-                                    bool bodies) {
+                                    bool bodies, bool ownership) {
     for (int i = 0; i < nfiles_in; i++) {
         FILE *f = fopen(paths[i], "rb");
         if (f == NULL) {
@@ -77,7 +78,12 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             MsBuf dump = {0};
             if (bodies) {
                 ms_module_check_bodies(check, id);
-                ms_dump_module_bodies(&dump, check, id);
+                ms_module_check_ownership(check, id);
+                if (ownership) {
+                    ms_dump_module_ownership(&dump, check, id);
+                } else {
+                    ms_dump_module_bodies(&dump, check, id);
+                }
                 printf("%.*s", (int)dump.len, (const char *)dump.data);
             } else {
                 ms_module_resolve_types(check, id);
@@ -95,10 +101,11 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
 }
 
 int main(int argc, char **argv) {
-    const bool bodies = argc >= 3 && strcmp(argv[2], "--bodies") == 0;
+    const bool ownership = argc >= 3 && strcmp(argv[2], "--ownership") == 0;
+    const bool bodies = ownership || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
     const bool scope = bodies || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
     if (argc != 2 && !scope) {
-        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies FILE...]\n", stderr);
+        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership FILE...]\n", stderr);
         return 2;
     }
     const char *root = argv[1];
@@ -148,7 +155,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (scope) {
-        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies);
+        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership);
     } else {
         MsBuf out = {0};
         ms_dump_std_tables(&out, &check);

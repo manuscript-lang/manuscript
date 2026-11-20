@@ -5,6 +5,7 @@
 #   scope   the name-resolution diagnostics of every fixture that imports only `@std/` modules
 #   bodies  the expression types of the functions whose bodies the C pass checks (only those: it
 #           leaves a function with an unhandled construct to the Rust checker), with no Rust diagnostic inside
+#   ownership  the ownership diagnostics inside the functions the C walk handles (moves, borrows, returns)
 #   effect directives  the `// ms: effect` and `allow_effect` lines of every .ms file in the repository
 #   desugar  inherent impls rewritten, as project and bundled modules and with foreign types
 #   methods  the operations of interfaces, over every file that declares one
@@ -86,6 +87,24 @@ if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.
 else
     echo "FAIL bodies: first difference"
     diff "$out/bodies.rust.keyed" "$out/bodies.c.keyed" | head -20 || true
+    status=1
+fi
+
+# Ownership: the diagnostics inside each function the C passes checked, against the Rust checker's,
+# on the ownership fixtures and the corpus. Only functions the C walk handles are compared.
+ownership_files=$(find compiler/tests/ownership compiler/tests/scope tests/conformance/fixtures -name '*.ms' | sort)
+"$oracle" --ownership $ownership_files > "$out/ownership.rust"
+"$out/check-dump" stdlib --ownership $ownership_files > "$out/ownership.c"
+keyed "$out/ownership.c" > "$out/ownership.c.keyed"
+cut -d'|' -f1 "$out/ownership.c.keyed" | sort -u > "$out/ownership.keys"
+keyed "$out/ownership.rust" | awk -F'|' -v list="$out/ownership.keys" '
+    BEGIN { while ((getline line < list) > 0) keep[line] = 1 }
+    $1 in keep' > "$out/ownership.rust.keyed"
+if cmp -s "$out/ownership.rust.keyed" "$out/ownership.c.keyed" && [ -s "$out/ownership.c.keyed" ]; then
+    echo "ok   ownership ($(wc -l < "$out/ownership.keys") functions, $(grep -c '|diag ' "$out/ownership.c.keyed") diagnostics)"
+else
+    echo "FAIL ownership: first difference"
+    diff "$out/ownership.rust.keyed" "$out/ownership.c.keyed" | head -20 || true
     status=1
 fi
 
