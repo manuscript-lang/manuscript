@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include "fault.h"
+#include "isolate.h"
 #include "ms_rt/safe.h"
 #include "unwind.h"
 
@@ -78,6 +79,8 @@ typedef struct MsSchedHooks {
      * park that just returned was ended by a failure; both make the park report MS_WAIT_CANCELLED. */
     bool (*park_begin)(uint64_t token);
     bool (*park_end)(void);
+    /* Mail of a kind the scheduler does not handle itself (the promise table's): the hook takes `mail` and frees it. */
+    void (*mail)(MsMail *mail);
     /* Frees the other tables when the scheduler ends. May be NULL. */
     void (*teardown)(void);
 } MsSchedHooks;
@@ -127,6 +130,9 @@ void ms_sched_teardown(void);
 /* Raises a stop request on this scheduler (a signal, a parent isolate): every waiting task that is not shielded
  * wakes with MS_WAIT_CANCELLED. Safe from any thread once the scheduler exists. */
 void ms_sched_stop(uint8_t signal);
+/* Registers this thread's scheduler as an isolate (see isolate.h): its index goes into token ids, and mail for it
+ * wakes the poller through `wake`. Returns the index, or MS_NO_ISOLATE. */
+uint32_t ms_sched_attach(MsWakeFn wake, void *argument);
 /* The monotonic clock the scheduler reads, in nanoseconds. */
 int64_t ms_sched_now(void);
 /* A promise (not a task) waits for `fd`: returns MS_POLL_ARMED, MS_POLL_ALWAYS (ready at once, nothing registered) or

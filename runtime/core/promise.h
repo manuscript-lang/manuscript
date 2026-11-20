@@ -64,6 +64,9 @@ bool ms_promise_done(MsPromise id);
 /* Waits up to `timeout_ns` (negative: no limit) and returns an outcome code. A cancel arriving while it waits ends
  * the promise and unwinds the caller. */
 int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns);
+/* Makes the promise listen to the cancel switch `cancel`: when it fires the promise is cancelled. Call it once the work
+ * has started. Replaces an earlier switch. */
+void ms_promise_on_cancel(MsPromise id, int64_t cancel);
 /* Cancels the promise if unfinished, without waiting. */
 void ms_promise_cancel(MsPromise id);
 /* Ends the promise's limit `timeout_ns` from now: it is cancelled and a wait reports a timeout. */

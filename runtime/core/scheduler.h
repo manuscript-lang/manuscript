@@ -201,6 +201,8 @@ void ms_park_wake(MsSched *sched, MsTask *task, uint32_t result);
 void ms_park_set_deadline(MsSched *sched, MsTask *task, int64_t at_ns);
 /* Registers the running task as a waiter of `fd` for `events`; false when `fd` cannot be waited on. On true,
  * `*ready_now` says it is ready at once and nothing was registered. */
+/* Handles the mail queued for this isolate; true when it made a task ready. */
+bool ms_park_drain_mail(MsSched *sched);
 MS_NODISCARD bool ms_park_watch(MsSched *sched, MsTask *task, int fd, uint32_t events, bool *ready_now);
 /* Cancels tasks whose time limit passed and wakes timers that expired. */
 void ms_park_expire(MsSched *sched, int64_t now);

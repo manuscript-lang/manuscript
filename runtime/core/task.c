@@ -220,6 +220,9 @@ static void service(MsSched *sched) {
     }
     /* A poll is a system call: a busy queue polls once per POLL_EVERY switches, an empty queue blocks in the idle
      * path, which polls. */
+    if (ms_isolate_has_mail()) {
+        (void)ms_park_drain_mail(sched);
+    }
     sched->switches_since_poll++;
     if (sched->fd_waiting != 0 && sched->switches_since_poll >= POLL_EVERY) {
         sched->switches_since_poll = 0;

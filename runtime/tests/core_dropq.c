@@ -24,7 +24,7 @@ static size_t current;
 
 /* The drop glue of a chain: every node is dropped through the worklist, as generated code does. */
 static void drop_node(uint8_t *block) {
-    Node *const node = (Node *)block;
+    Node *const node = (Node *)(void *)block;
     Node *const next = node->next;
     node->next = NULL;
     dropped++;

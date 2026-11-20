@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "../core/cancel.h"
 #include "../core/group.h"
 #include "../core/promise.h"
 #include "../core/scheduler.h"
@@ -377,6 +378,32 @@ static void test_run_watched(void) {
     ms_group_free(group);
 }
 
+static void test_cancel_switch(void) {
+    const int64_t first = ms_cancel_new();
+    const int64_t second = ms_cancel_new();
+    expect(!ms_cancel_fired(first), "a new switch has not fired");
+    const MsPromise id = ms_promise_new();
+    ms_promise_on_cancel(id, first);
+    ms_promise_on_cancel(id, second); /* rebinding releases the first */
+    ms_cancel_fire(first);
+    expect(!ms_promise_done(id), "only the replacement switch cancels it");
+    ms_cancel_fire(second);
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_CANCELLED, "the second switch cancelled it");
+    ms_cancel_fire(second); /* firing twice does nothing */
+    expect(ms_cancel_fired(second), "fired");
+    ms_promise_drop(id);
+
+    const MsPromise late = ms_promise_new();
+    ms_promise_on_cancel(late, second); /* already fired: cancelled at once */
+    expect(ms_promise_wait(late, -1) == MS_PROMISE_CANCELLED, "listening to a fired switch cancels");
+    ms_promise_drop(late);
+    ms_cancel_free(first);
+    ms_cancel_free(second);
+    const int64_t unfired = ms_cancel_new();
+    ms_cancel_free(unfired);
+    expect(!ms_cancel_fired(unfired), "a freed switch reads as not fired");
+}
+
 /* A frame that started many promises: cancelling it ends them all, linearly. */
 enum { MANY = 20000 };
 static MsPromise many_ids[MANY];
@@ -434,6 +461,7 @@ static void entry(void *argument) {
     test_io_on_ready();
     test_wait_any();
     test_group();
+    test_cancel_switch();
     test_run_watched();
     test_cancelled_frame_ends_its_promises();
 }

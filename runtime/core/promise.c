@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "array.h"
+#include "cancel.h"
 #include "group.h"
 #include "ms_rt/alloc.h"
 #include "scheduler.h"
@@ -34,7 +35,8 @@ enum {
     FLAG_GROUPED = 64,    /* a wait group member: the group hears when it finishes */
 };
 
-#define GENERATION_MASK 0x7fffffffu
+#define GENERATION_MASK 0xffffffu /* 24 bits: an id is `isolate << 56 | generation << 32 | (row + 1)` */
+#define ISOLATE_SHIFT 56
 #define NO_TIME INT64_MAX
 
 typedef struct Hot {
@@ -59,6 +61,7 @@ typedef struct Cold {
     int32_t fd;                 /* the descriptor a readiness wait watches, or -1 */
     uint32_t events;            /* what that wait asks for */
     MsFaultText report;         /* the fault that ended the promise */
+    int64_t cancel;             /* the cancel switch the promise listens to, or 0 */
     uint32_t next_started;      /* row + 1 of the creator's next older started promise, 0 ends the list */
     uint32_t prev_started;
 } Cold;
@@ -92,16 +95,26 @@ static void fail(const char *text) { ms_sched()->hooks.fault(MS_FAULT_KIND_FAULT
 
 static void drop_closure(void *closure) { msrt_obj_drop(closure); }
 
-static MsPromise make_id(size_t row) { return (MsPromise)((int64_t)table.hot[row].generation << 32 | (int64_t)(row + 1)); }
+static uint64_t own_isolate(void) { return (uint64_t)(ms_sched()->isolate & 0x3fu); }
+
+static MsPromise make_id(size_t row) {
+    return (MsPromise)(own_isolate() << ISOLATE_SHIFT | (uint64_t)table.hot[row].generation << 32 | (uint64_t)(row + 1));
+}
+
+/* Whether `id` belongs to another isolate's table. */
+static bool is_foreign(MsPromise id) { return ((uint64_t)id >> ISOLATE_SHIFT) != own_isolate(); }
 
 /* The row of `id`, or -1 for a stale, closed or foreign id. */
 static ptrdiff_t row_of(MsPromise id) {
+    if (is_foreign(id)) {
+        return -1;
+    }
     const uint64_t low = (uint64_t)id & 0xffffffffu;
     if (low == 0 || low > table.count) {
         return -1;
     }
     const size_t row = (size_t)low - 1;
-    if (table.hot[row].state == STATE_FREE || (uint64_t)table.hot[row].generation != ((uint64_t)id >> 32)) {
+    if (table.hot[row].state == STATE_FREE || (uint64_t)table.hot[row].generation != (((uint64_t)id >> 32) & GENERATION_MASK)) {
         return -1;
     }
     return (ptrdiff_t)row;
@@ -531,6 +544,21 @@ static void stop(MsPromise id) {
 
 void ms_promise_cancel(MsPromise id) { stop(id); }
 
+void ms_promise_on_cancel(MsPromise id, int64_t cancel) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0) {
+        return;
+    }
+    const int64_t previous = table.cold[row].cancel;
+    table.cold[row].cancel = cancel;
+    if (previous != 0) {
+        ms_cancel_unregister(previous, id);
+    }
+    if (ms_cancel_register(cancel, id)) {
+        stop(id);
+    }
+}
+
 void ms_promise_limit(MsPromise id, int64_t timeout_ns) {
     const ptrdiff_t row = row_of(id);
     if (row < 0) {
@@ -572,6 +600,10 @@ bool ms_promise_end(MsPromise id) {
     }
     Hot *hot = &table.hot[found];
     Cold *const cold = &table.cold[found];
+    if (cold->cancel != 0) {
+        ms_cancel_unregister(cold->cancel, id);
+        cold->cancel = 0;
+    }
     if ((hot->flags & FLAG_DEFERRED) != 0) {
         hot->flags &= (uint8_t)~FLAG_DEFERRED;
         MsObj *const closure = cold->closure;
@@ -948,6 +980,7 @@ static bool fd_ready(uint64_t id, uint32_t bits) {
 
 void ms_promises_teardown(void) {
     ms_groups_teardown();
+    ms_cancel_teardown();
     for (size_t row = 0; row < table.count; row++) {
         if (table.hot[row].state != STATE_FREE) {
             release_result(row);
