@@ -162,6 +162,14 @@ runs:
         else
           cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
         fi
+    # The C unit tests on macOS: the same `make c-test` as Linux, against Homebrew's libuv, nghttp2, OpenSSL, PCRE2,
+    # zlib and curl. The Windows leg runs them through `cargo xtask c-test`.
+    - name: C unit tests
+      if: ${{ !cancelled() && env.UNIT == 'true' && runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        sh runtime/third_party/libs.sh install
+        make c-test
     - name: Native Windows project paths
       if: env.UNIT == 'true' && runner.os == 'Windows'
       shell: bash
