@@ -1,0 +1,301 @@
+/* Arena, scratch buffer, interner and UTF-8 helpers. */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "ms/base.h"
+
+struct MsChunk {
+    MsChunk *next;
+    size_t size;
+    /* data follows, aligned to 16 */
+};
+
+#define MS_CHUNK_MIN (64 * 1024)
+#define MS_CHUNK_HEADER 16
+
+static void ms_oom(void) {
+    fputs("ms: out of memory\n", stderr);
+    abort();
+}
+
+void *ms_alloc(MsArena *a, size_t size, size_t align) {
+    uintptr_t p = ((uintptr_t)a->cur + (align - 1)) & ~(uintptr_t)(align - 1);
+    if (a->cur == NULL || p + size > (uintptr_t)a->end) {
+        size_t want = size + align + MS_CHUNK_HEADER;
+        size_t cap = want > MS_CHUNK_MIN ? want : MS_CHUNK_MIN;
+        MsChunk *c = malloc(sizeof(MsChunk) + cap);
+        if (c == NULL) {
+            ms_oom();
+        }
+        c->next = a->head;
+        c->size = cap;
+        a->head = c;
+        a->cur = (char *)(c + 1);
+        a->end = a->cur + cap;
+        p = ((uintptr_t)a->cur + (align - 1)) & ~(uintptr_t)(align - 1);
+    }
+    a->cur = (char *)(p + size);
+    return (void *)p;
+}
+
+void ms_arena_free(MsArena *a) {
+    MsChunk *c = a->head;
+    while (c != NULL) {
+        MsChunk *next = c->next;
+        free(c);
+        c = next;
+    }
+    a->head = NULL;
+    a->cur = a->end = NULL;
+}
+
+char *ms_arena_strndup(MsArena *a, const char *s, size_t n) {
+    char *d = ms_alloc(a, n + 1, 1);
+    memcpy(d, s, n);
+    d[n] = 0;
+    return d;
+}
+
+MsStr ms_arena_vfmt(MsArena *a, const char *fmt, va_list ap) {
+    va_list again;
+    va_copy(again, ap);
+    int n = vsnprintf(NULL, 0, fmt, ap);
+    if (n < 0) {
+        ms_oom();
+    }
+    char *d = ms_alloc(a, (size_t)n + 1, 1);
+    vsnprintf(d, (size_t)n + 1, fmt, again);
+    va_end(again);
+    MsStr r = {d, (uint32_t)n};
+    return r;
+}
+
+MsStr ms_arena_fmt(MsArena *a, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    MsStr r = ms_arena_vfmt(a, fmt, ap);
+    va_end(ap);
+    return r;
+}
+
+/* ---- MsBuf ---- */
+
+void ms_buf_free(MsBuf *b) {
+    free(b->data);
+    b->data = NULL;
+    b->len = b->cap = 0;
+}
+
+void *ms_buf_push(MsBuf *b, size_t n) {
+    if (b->len + n > b->cap) {
+        size_t cap = b->cap ? b->cap : 256;
+        while (cap < b->len + n) {
+            cap *= 2;
+        }
+        char *d = realloc(b->data, cap);
+        if (d == NULL) {
+            ms_oom();
+        }
+        b->data = d;
+        b->cap = cap;
+    }
+    void *p = b->data + b->len;
+    b->len += n;
+    return p;
+}
+
+void ms_buf_put(MsBuf *b, const void *p, size_t n) {
+    if (n != 0) {
+        memcpy(ms_buf_push(b, n), p, n);
+    }
+}
+
+void ms_buf_putc(MsBuf *b, char c) {
+    *(char *)ms_buf_push(b, 1) = c;
+}
+
+void ms_buf_puts(MsBuf *b, const char *s) {
+    ms_buf_put(b, s, strlen(s));
+}
+
+void ms_buf_printf(MsBuf *b, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    va_list again;
+    va_copy(again, ap);
+    int n = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
+    if (n < 0) {
+        ms_oom();
+    }
+    char *d = ms_buf_push(b, (size_t)n + 1);
+    vsnprintf(d, (size_t)n + 1, fmt, again);
+    va_end(again);
+    b->len--; /* drop the NUL */
+}
+
+/* ---- names ---- */
+
+static uint32_t hash_bytes(const char *s, size_t n) {
+    uint32_t h = 2166136261u; /* FNV-1a */
+    for (size_t i = 0; i < n; i++) {
+        h = (h ^ (uint8_t)s[i]) * 16777619u;
+    }
+    return h;
+}
+
+static void names_grow_table(MsNames *n) {
+    uint32_t size = n->mask ? (n->mask + 1) * 2 : 1024;
+    uint32_t *table = calloc(size, sizeof(uint32_t));
+    if (table == NULL) {
+        ms_oom();
+    }
+    for (uint32_t i = 0; i < n->count; i++) {
+        uint32_t h = hash_bytes(n->text[i], n->len[i]) & (size - 1);
+        while (table[h] != 0) {
+            h = (h + 1) & (size - 1);
+        }
+        table[h] = i + 1;
+    }
+    free(n->table);
+    n->table = table;
+    n->mask = size - 1;
+}
+
+void ms_names_init(MsNames *n) {
+    memset(n, 0, sizeof *n);
+    names_grow_table(n);
+    ms_intern(n, "", 0); /* symbol 0 */
+}
+
+void ms_names_free(MsNames *n) {
+    free(n->text);
+    free(n->len);
+    free(n->table);
+    ms_arena_free(&n->arena);
+    memset(n, 0, sizeof *n);
+}
+
+MsSym ms_intern(MsNames *n, const char *s, size_t len) {
+    uint32_t h = hash_bytes(s, len) & n->mask;
+    while (n->table[h] != 0) {
+        uint32_t id = n->table[h] - 1;
+        if (n->len[id] == len && memcmp(n->text[id], s, len) == 0) {
+            return id;
+        }
+        h = (h + 1) & n->mask;
+    }
+    if (n->count == n->cap) {
+        uint32_t cap = n->cap ? n->cap * 2 : 1024;
+        const char **text = realloc((void *)n->text, cap * sizeof *text);
+        uint32_t *lens = realloc(n->len, cap * sizeof *lens);
+        if (text == NULL || lens == NULL) {
+            ms_oom();
+        }
+        n->text = text;
+        n->len = lens;
+        n->cap = cap;
+    }
+    uint32_t id = n->count++;
+    n->text[id] = ms_arena_strndup(&n->arena, s, len);
+    n->len[id] = (uint32_t)len;
+    n->table[h] = id + 1;
+    if ((uint64_t)n->count * 2 > n->mask) {
+        names_grow_table(n);
+    }
+    return id;
+}
+
+MsSym ms_intern_cstr(MsNames *n, const char *s) {
+    return ms_intern(n, s, strlen(s));
+}
+
+/* ---- UTF-8 ---- */
+
+bool ms_utf8_valid(const char *s, size_t n) {
+    const uint8_t *p = (const uint8_t *)s;
+    size_t i = 0;
+    while (i < n) {
+        uint8_t b = p[i];
+        if (b < 0x80) {
+            i++;
+        } else if (b >= 0xC2 && b <= 0xDF) {
+            if (i + 1 >= n || (p[i + 1] & 0xC0) != 0x80) {
+                return false;
+            }
+            i += 2;
+        } else if (b >= 0xE0 && b <= 0xEF) {
+            if (i + 2 >= n || (p[i + 1] & 0xC0) != 0x80 || (p[i + 2] & 0xC0) != 0x80) {
+                return false;
+            }
+            if (b == 0xE0 && p[i + 1] < 0xA0) {
+                return false; /* overlong */
+            }
+            if (b == 0xED && p[i + 1] >= 0xA0) {
+                return false; /* surrogate */
+            }
+            i += 3;
+        } else if (b >= 0xF0 && b <= 0xF4) {
+            if (i + 3 >= n || (p[i + 1] & 0xC0) != 0x80 || (p[i + 2] & 0xC0) != 0x80 ||
+                (p[i + 3] & 0xC0) != 0x80) {
+                return false;
+            }
+            if (b == 0xF0 && p[i + 1] < 0x90) {
+                return false; /* overlong */
+            }
+            if (b == 0xF4 && p[i + 1] >= 0x90) {
+                return false; /* beyond U+10FFFF */
+            }
+            i += 4;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
+int ms_utf8_decode(const char *s, size_t n, uint32_t *scalar) {
+    const uint8_t *p = (const uint8_t *)s;
+    if (n == 0) {
+        *scalar = 0;
+        return 0;
+    }
+    if (p[0] < 0x80) {
+        *scalar = p[0];
+        return 1;
+    }
+    if (p[0] < 0xE0 && n >= 2) {
+        *scalar = ((uint32_t)(p[0] & 0x1F) << 6) | (p[1] & 0x3F);
+        return 2;
+    }
+    if (p[0] < 0xF0 && n >= 3) {
+        *scalar = ((uint32_t)(p[0] & 0x0F) << 12) | ((uint32_t)(p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+        return 3;
+    }
+    if (n >= 4) {
+        *scalar = ((uint32_t)(p[0] & 0x07) << 18) | ((uint32_t)(p[1] & 0x3F) << 12) |
+                  ((uint32_t)(p[2] & 0x3F) << 6) | (p[3] & 0x3F);
+        return 4;
+    }
+    *scalar = 0xFFFD;
+    return 1;
+}
+
+void ms_utf8_put(MsBuf *b, uint32_t c) {
+    if (c < 0x80) {
+        ms_buf_putc(b, (char)c);
+    } else if (c < 0x800) {
+        ms_buf_putc(b, (char)(0xC0 | (c >> 6)));
+        ms_buf_putc(b, (char)(0x80 | (c & 0x3F)));
+    } else if (c < 0x10000) {
+        ms_buf_putc(b, (char)(0xE0 | (c >> 12)));
+        ms_buf_putc(b, (char)(0x80 | ((c >> 6) & 0x3F)));
+        ms_buf_putc(b, (char)(0x80 | (c & 0x3F)));
+    } else {
+        ms_buf_putc(b, (char)(0xF0 | (c >> 18)));
+        ms_buf_putc(b, (char)(0x80 | ((c >> 12) & 0x3F)));
+        ms_buf_putc(b, (char)(0x80 | ((c >> 6) & 0x3F)));
+        ms_buf_putc(b, (char)(0x80 | (c & 0x3F)));
+    }
+}

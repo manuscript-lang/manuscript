@@ -11,7 +11,7 @@
 static int fired;
 static void on_timer(uv_timer_t *t) { fired = 1; uv_close((uv_handle_t *)t, NULL); }
 static int on_url(llhttp_t *p, const char *at, size_t n) { (void)p; (void)at; (void)n; return 0; }
-static nghttp2_ssize send_cb(nghttp2_session *s, const uint8_t *d, size_t n, int f, void *u) { (void)s; (void)d; (void)f; (void)u; return (nghttp2_ssize)n; }
+static ssize_t send_cb(nghttp2_session *s, const uint8_t *d, size_t n, int f, void *u) { (void)s; (void)d; (void)f; (void)u; return (ssize_t)n; }
 
 int main(void) {
     uv_loop_t loop; uv_timer_t timer;
