@@ -32,6 +32,7 @@
 #include "ms_sched.h"
 
 #ifdef _WIN32
+#define PSAPI_VERSION 2 /* GetProcessMemoryInfo from kernel32, so no extra library */
 #include <windows.h>
 #include <psapi.h>
 #else

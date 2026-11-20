@@ -18,7 +18,9 @@ export ASAN_OPTIONS=detect_leaks=0
 "$bin/ms_mir_build" compiler/tests/qbe/lines.mir --opt none --tables-meta "$out/lines.meta" > "$out/lines.ssa"
 "$bin/qbe" -t "$target" "$out/lines.ssa" > "$out/lines.s"
 # A function the assembly lacks (LLVM inlined and removed it) is left out of the tables.
-printf 'Y removed_function\t0\t1\tremoved_function\n' >> "$out/lines.meta"
+# It comes first, so the functions after it are numbered differently in the meta and in the tables.
+{ sed -n 1p "$out/lines.meta"; printf 'Y removed_function\t0\t1\tremoved_function\n'; sed 1d "$out/lines.meta"; } > "$out/lines.meta.new"
+mv "$out/lines.meta.new" "$out/lines.meta"
 "$bin/ms_asm_tables" "$out/lines.meta" "$out/lines.s" --prefix "$prefix" > "$out/lines.tables.s"
 cc "$out/lines.tables.s" compiler/tests/asm_tables_check.c -o "$out/lines"
 "$out/lines" && echo "ok   asm-tables lines"
@@ -37,6 +39,11 @@ clang -S -O0 -Wno-override-module -o "$out/llvm.s" "$out/llvm.ll"
 if grep -q '^[[:space:]]*\.loc' "$out/llvm.tables.s"; then echo "FAIL asm-tables llvm: .loc left in the output"; exit 1; fi
 clang "$out/llvm.tables.s" -DMS_LLVM_LINES compiler/tests/asm_tables_check.c -o "$out/llvm"
 "$out/llvm" && echo "ok   asm-tables llvm lines"
+# Code of `inner` that LLVM inlined into `outer` (its function is gone): column 2 names the body of function 1 in
+# the meta (one body number per function, counted after the scopes), which becomes a scope of its own.
+"$bin/ms_asm_tables" compiler/tests/asm-tables/inlined.meta compiler/tests/asm-tables/inlined.s > "$out/inlined.tables.s"
+clang "$out/inlined.tables.s" compiler/tests/asm_tables_inlined_check.c -o "$out/inlined"
+"$out/inlined" && echo "ok   asm-tables inlined callee"
 # The assembly LLVM writes for every platform the release builds target (ELF and Mach-O `.loc`, COFF `.cv_loc`,
 # indented directives, labels with comments) takes the tables and still assembles for that platform.
 printf 'F asm_tables_input.c\nY h\t0\t1\th\nY f\t0\t4\tf\n' > "$out/input.meta"

@@ -148,6 +148,8 @@ ms_test(sys_mem SOURCES "${_tests}/sys_mem.c" ${_os_sources} LIBS)
 ms_test(sys_mem_x86 SOURCES "${_tests}/sys_mem_x86.c" "${_rt}/sys/mem_x86.c" LIBS)
 ms_test(sys_thread SOURCES "${_tests}/sys_thread.c" "${_rt}/sys/thread.c" ${_os_sources}
         INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
+ms_test(sys_sampler SOURCES "${_tests}/sys_sampler.c" "${_rt}/sys/thread.c" ${_os_sources}
+        INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_os_sources} PLAIN
         INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 
@@ -214,7 +216,7 @@ ms_test(ws_socket_test SOURCES "${_tests}/ws_socket_test.c" "${_rt}/net/ws_socke
         ${_platform_net} OBJECTS ms_test_core ms_test_llhttp
         INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_z_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_z_LINK} ${CMAKE_DL_LIBS} pthread m DEFINES MS_ALLOC_STATS)
-ms_test(ws_dial_test SOURCES "${_tests}/ws_dial_test.c" "${_rt}/net/ws_dial.c" "${_rt}/net/ws_connect.c" "${_rt}/net/status.c" "${_rt}/net/ws_handle.c" "${_rt}/net/ws_client.c" "${_rt}/net/ws_socket.c"
+ms_test(ws_dial_test SOURCES "${_tests}/ws_dial_test.c" "${_rt}/net/ws_dial.c" "${_rt}/net/ws_connect.c" "${_rt}/net/ws_socket_natives.c" "${_rt}/net/status.c" "${_rt}/net/ws_handle.c" "${_rt}/net/ws_client.c" "${_rt}/net/ws_socket.c"
         "${_rt}/net/ws_codec.c" "${_rt}/net/ws.c" "${_rt}/net/headers.c"
         "${_rt}/net/conn_object.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
         ${_platform_net} OBJECTS ms_test_core ms_test_llhttp

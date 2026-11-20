@@ -323,15 +323,15 @@ size_t ms_sys_net_dns_config(char *out, size_t capacity) {
             }
         }
         char suffixes[1024] = ""; /* one search line: resolv.conf keeps the last one */
-        size_t suffixes_used = 0;
         for (const IP_ADAPTER_ADDRESSES *a = list; a != NULL; a = a->Next) {
             char suffix[256];
             if (a->OperStatus != IfOperStatusUp || a->DnsSuffix == NULL || a->DnsSuffix[0] == 0) continue;
             const int n = WideCharToMultiByte(CP_UTF8, 0, a->DnsSuffix, -1, suffix, (int)sizeof suffix, NULL, NULL);
-            if (n <= 1 || suffixes_used + (size_t)n + 2 >= sizeof suffixes) continue;
-            if (suffixes_used != 0) suffixes[suffixes_used++] = ' ';
-            memcpy(suffixes + suffixes_used, suffix, (size_t)n); /* n counts the terminator */
-            suffixes_used += (size_t)n - 1;
+            const size_t length = strlen(suffixes);
+            if (n <= 1 || length + (size_t)n + 2 >= sizeof suffixes) continue;
+            const size_t gap = length != 0 ? 1 : 0;
+            if (gap != 0) suffixes[length] = ' ';
+            memcpy(suffixes + length + gap, suffix, (size_t)n); /* n counts the terminating NUL */
         }
         if (suffixes[0] != 0) append_text(out, capacity, &used, "search %s\n", suffixes);
     }
