@@ -97,6 +97,14 @@ void ms_promise_io_done_int(MsPromise id, int64_t value);
 /* Completes with `block` (a heap block holding an owned value of `desc`, taken). `pipe` != 0 names the pipe that
  * gave the value up, so an untaken value goes back through the unread hook. A completed promise drops the block. */
 void ms_promise_io_done_block(MsPromise id, void *block, const MsTypeDesc *desc, int64_t pipe) MS_NONNULL_ARGS(2, 3);
+/* A promise for the readiness of `fd` for `events` (MS_WAIT_READ, WRITE, ...), limited by `timeout_ns` (negative:
+ * none). It finishes with an Int of the ready bits, MS_WAIT_TIMEOUT when the limit passed; a descriptor that cannot
+ * be polled is ready at once. Returns -1 when `fd` cannot be waited on. */
+MsPromise ms_promise_ready(int fd, uint32_t events, int64_t timeout_ns);
+/* A descriptor wait for an I/O promise `id`: `retry` is called with the ready bits (or MS_WAIT_TIMEOUT, or
+ * MS_WAIT_CANCELLED when the promise ends first). False when `fd` cannot be waited on. */
+MS_NODISCARD bool ms_promise_io_on_ready(MsPromise id, int fd, uint32_t events, int64_t timeout_ns,
+                                         MsPromiseRetry retry, uintptr_t state) MS_NONNULL_ARGS(5);
 /* Registers the native continuation of an I/O promise: called with MS_WAIT_CANCELLED if the promise ends first. */
 void ms_promise_on_drop(MsPromise id, MsPromiseRetry cancel, uintptr_t state) MS_NONNULL_ARGS(2);
 

@@ -85,7 +85,7 @@ static void unlink_node(MsSched *sched, MsFdQueue *queue, MsNode node) {
  * if every waiter keeps it. */
 static uint32_t combined_events(const MsSched *sched, const MsFdQueue *queue, uint32_t asked) {
     for (MsNode node = queue->oldest; node != 0; node = sched->waiters[node - 1].next) {
-        const uint32_t other = sched->waiters[node - 1].events;
+        const uint32_t other = sched->waiters[node - 1].events & ~(uint32_t)MS_WAIT_PROMISE;
         asked = ((asked | other) & ~MS_WAIT_KEEP) | (asked & other & MS_WAIT_KEEP);
     }
     return asked;
@@ -138,19 +138,57 @@ bool ms_park_watch(MsSched *sched, MsTask *task, int fd, uint32_t events, bool *
 
 /* ---- wake-ups ---- */
 
-/* Ends the descriptor wait of a task, leaving the poller watching what the other waiters still ask. */
-static void leave_descriptor(MsSched *sched, MsTask *task) {
-    const int fd = task->wait_fd;
+/* Removes a waiter node, leaving the poller watching what the other waiters still ask. */
+static void leave_node(MsSched *sched, int fd, MsNode node) {
     MsFdQueue *const queue = &sched->fd_queues[fd];
-    unlink_node(sched, queue, task->wait_node);
-    node_free(sched, task->wait_node);
-    task->wait_node = 0;
-    task->wait_fd = -1;
+    unlink_node(sched, queue, node);
+    node_free(sched, node);
     sched->fd_waiting--;
     if (queue->oldest == 0) {
         sched->poll.unwatch(fd);
     } else {
         ms_park_rearm(sched, fd);
+    }
+}
+
+/* Ends the descriptor wait of a task. */
+static void leave_descriptor(MsSched *sched, MsTask *task) {
+    leave_node(sched, task->wait_fd, task->wait_node);
+    task->wait_node = 0;
+    task->wait_fd = -1;
+}
+
+int ms_sched_fd_wait_begin(uint64_t id, int fd, uint32_t events) {
+    MsSched *const sched = ms_sched();
+    MsFdQueue *const queue = queue_of(sched, fd);
+    if (queue == NULL) {
+        return MS_POLL_FAILED;
+    }
+    const int armed = sched->poll.watch(fd, combined_events(sched, queue, events));
+    if (armed != MS_POLL_ARMED) {
+        return armed;
+    }
+    const MsNode node = node_alloc(sched);
+    if (node == 0) {
+        return MS_POLL_FAILED;
+    }
+    sched->waiters[node - 1] = (MsWaiter){.owner = id, .events = events | MS_WAIT_PROMISE, .fd = fd};
+    append_node(sched, queue, node);
+    sched->fd_waiting++;
+    return MS_POLL_ARMED;
+}
+
+void ms_sched_fd_wait_end(uint64_t id, int fd) {
+    MsSched *const sched = ms_sched();
+    if (fd < 0 || (size_t)fd >= sched->fd_queue_count) {
+        return;
+    }
+    for (MsNode node = sched->fd_queues[fd].oldest; node != 0; node = sched->waiters[node - 1].next) {
+        const MsWaiter *const waiter = &sched->waiters[node - 1];
+        if (waiter->owner == id && (waiter->events & MS_WAIT_PROMISE) != 0) {
+            leave_node(sched, fd, node);
+            return;
+        }
     }
 }
 
@@ -297,7 +335,15 @@ static void deliver(MsSched *sched, int fd, uint32_t bits) {
     MsNode node = sched->fd_queues[fd].oldest;
     while (node != 0) {
         const MsWaiter waiter = sched->waiters[node - 1];
+        const MsNode this_node = node;
         node = waiter.next;
+        if ((waiter.events & MS_WAIT_PROMISE) != 0) {
+            const uint32_t wanted = bits & (waiter.events | MS_WAIT_HUP) & ~(uint32_t)MS_WAIT_PROMISE;
+            if (wanted != 0 && sched->hooks.fd_ready(waiter.owner, wanted)) {
+                leave_node(sched, fd, this_node);
+            }
+            continue;
+        }
         MsTask *const task = ms_task_lookup(sched, waiter.owner);
         if (task == NULL) {
             continue;

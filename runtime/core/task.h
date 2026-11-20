@@ -36,6 +36,8 @@ typedef void (*MsTaskEntry)(void *);
 /* Request bit: keep the descriptor registered between waits. Only for a descriptor its owner drains before every
  * wait and keeps open for good. */
 #define MS_WAIT_KEEP 32u
+/* Internal: marks a descriptor waiter that is a promise, not a task. */
+#define MS_WAIT_PROMISE 128u
 
 /* ms_task_spawn flags. */
 #define MS_SPAWN_DETACHED 1u /* nobody joins; a fault in the task ends the process */
@@ -68,6 +70,9 @@ typedef struct MsSchedHooks {
      * (id, deadline) still means something, and what to do when it is due. May be NULL together. */
     bool (*timer_live)(uint64_t id, int64_t deadline);
     void (*timer_fire)(uint64_t id, int64_t deadline);
+    /* A descriptor a promise waits on (ms_sched_fd_wait_begin) has `bits` ready: true when the promise is done with
+     * the descriptor (the wait is then removed), false to keep waiting. */
+    bool (*fd_ready)(uint64_t id, uint32_t bits);
     /* Frees the other tables when the scheduler ends. May be NULL. */
     void (*teardown)(void);
 } MsSchedHooks;
@@ -119,6 +124,10 @@ void ms_sched_teardown(void);
 void ms_sched_stop(uint8_t signal);
 /* The monotonic clock the scheduler reads, in nanoseconds. */
 int64_t ms_sched_now(void);
+/* A promise (not a task) waits for `fd`: returns MS_POLL_ARMED, MS_POLL_ALWAYS (ready at once, nothing registered) or
+ * MS_POLL_FAILED. The hooks' fd_ready is called with the ready bits. */
+int ms_sched_fd_wait_begin(uint64_t id, int fd, uint32_t events);
+void ms_sched_fd_wait_end(uint64_t id, int fd);
 /* Arms an entry for the timer_live and timer_fire hooks; wakes the scheduler's idle wait in time. */
 void ms_sched_arm(uint64_t id, int64_t at_ns);
 

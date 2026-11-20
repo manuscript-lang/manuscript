@@ -54,6 +54,8 @@ typedef struct Cold {
     MsPromiseRetry retry;       /* the continuation of an I/O promise */
     uintptr_t retry_state;
     int64_t pipe;               /* the pipe a result block came from, for the unread hook */
+    int32_t fd;                 /* the descriptor a readiness wait watches, or -1 */
+    uint32_t events;            /* what that wait asks for */
     MsFaultText report;         /* the fault that ended the promise */
     uint32_t next_started;      /* row + 1 of the creator's next older started promise, 0 ends the list */
     uint32_t prev_started;
@@ -122,7 +124,7 @@ static void release_result(size_t row) {
 }
 
 static void reset_row(size_t row) {
-    table.cold[row] = (Cold){.deadline = NO_TIME, .limit = NO_TIME};
+    table.cold[row] = (Cold){.deadline = NO_TIME, .limit = NO_TIME, .fd = -1};
     Hot *const hot = &table.hot[row];
     hot->flags = 0;
     hot->token = 0;
@@ -450,6 +452,15 @@ static void request_cancel(size_t row) {
     }
 }
 
+/* Ends the descriptor wait of a pending promise. */
+static void leave_fd(MsPromise id, size_t row) {
+    Cold *const cold = &table.cold[row];
+    if (cold->fd >= 0) {
+        ms_sched_fd_wait_end((uint64_t)id, cold->fd);
+        cold->fd = -1;
+    }
+}
+
 static void stop(MsPromise id) {
     const ptrdiff_t found = row_of(id);
     if (found < 0 || table.hot[found].state != STATE_PENDING) {
@@ -469,6 +480,7 @@ static void stop(MsPromise id) {
         cold->closure = NULL;
         msrt_obj_drop(closure);
     }
+    leave_fd(id, row);
     MsPromiseRetry retry = cold->retry;
     cold->retry = NULL;
     if (retry != NULL) {
@@ -529,6 +541,9 @@ bool ms_promise_end(MsPromise id) {
         MsObj *const closure = cold->closure;
         cold->closure = NULL;
         msrt_obj_drop(closure);
+    }
+    if (hot->state == STATE_PENDING) {
+        leave_fd(id, (size_t)found);
     }
     if (hot->state == STATE_PENDING && cold->retry != NULL) {
         MsPromiseRetry retry = cold->retry;
@@ -684,6 +699,20 @@ MsPromise ms_promise_sleep(int64_t ns) {
     return id;
 }
 
+/* The wait of a readiness promise ran out: the continuation completes it, or it reads as MS_WAIT_TIMEOUT. */
+static void readiness_timed_out(MsPromise id, size_t row) {
+    leave_fd(id, row);
+    MsPromiseRetry retry = table.cold[row].retry;
+    table.cold[row].retry = NULL;
+    if (retry != NULL) {
+        (void)retry(id, table.cold[row].retry_state, MS_WAIT_TIMEOUT);
+    }
+    const ptrdiff_t again = row_of(id);
+    if (again >= 0 && table.hot[again].state == STATE_PENDING) {
+        ms_promise_io_done_int(id, MS_WAIT_TIMEOUT);
+    }
+}
+
 static bool timer_live(uint64_t id, int64_t deadline) {
     const ptrdiff_t row = row_of((MsPromise)id);
     return row >= 0 && table.hot[row].state == STATE_PENDING &&
@@ -701,8 +730,89 @@ static void timer_fire(uint64_t id, int64_t deadline) {
     }
     if (row >= 0 && table.hot[row].state == STATE_PENDING && table.cold[row].deadline == deadline) {
         table.cold[row].deadline = NO_TIME;
-        ms_promise_io_done_unit(promise);
+        if (table.cold[row].fd >= 0) {
+            readiness_timed_out(promise, (size_t)row);
+        } else {
+            ms_promise_io_done_unit(promise);
+        }
     }
+}
+
+/* ---- descriptor readiness ---- */
+
+static void arm_timeout(MsPromise id, size_t row, int64_t timeout_ns) {
+    if (timeout_ns >= 0) {
+        const int64_t at = ms_sched_now() + timeout_ns;
+        table.cold[row].deadline = at;
+        ms_sched_arm((uint64_t)id, at);
+    }
+}
+
+MsPromise ms_promise_ready(int fd, uint32_t events, int64_t timeout_ns) {
+    const MsPromise id = ms_promise_new();
+    const int armed = ms_sched_fd_wait_begin((uint64_t)id, fd, events);
+    if (armed == MS_POLL_FAILED) {
+        ms_promise_drop(id);
+        return -1;
+    }
+    if (armed == MS_POLL_ALWAYS) {
+        ms_promise_io_done_int(id, events & (MS_WAIT_READ | MS_WAIT_WRITE));
+        return id;
+    }
+    const size_t row = row_or_fault(id);
+    table.cold[row].fd = fd;
+    table.cold[row].events = events;
+    arm_timeout(id, row, timeout_ns);
+    return id;
+}
+
+bool ms_promise_io_on_ready(MsPromise id, int fd, uint32_t events, int64_t timeout_ns, MsPromiseRetry retry,
+                            uintptr_t state) {
+    const ptrdiff_t found = row_of(id);
+    if (found < 0) {
+        return false;
+    }
+    const int armed = ms_sched_fd_wait_begin((uint64_t)id, fd, events);
+    if (armed == MS_POLL_FAILED) {
+        return false;
+    }
+    if (armed == MS_POLL_ALWAYS) {
+        (void)retry(id, state, events & (MS_WAIT_READ | MS_WAIT_WRITE));
+        return true;
+    }
+    Cold *const cold = &table.cold[found];
+    cold->fd = fd;
+    cold->events = events;
+    cold->retry = retry;
+    cold->retry_state = state;
+    arm_timeout(id, (size_t)found, timeout_ns);
+    return true;
+}
+
+/* The poller reports `bits` for the descriptor `id` waits on: true when the promise is done with it. */
+static bool fd_ready(uint64_t id, uint32_t bits) {
+    const MsPromise promise = (MsPromise)id;
+    ptrdiff_t found = row_of(promise);
+    if (found < 0 || table.hot[found].state != STATE_PENDING) {
+        return true;
+    }
+    const uint32_t wanted = bits & (table.cold[found].events | MS_WAIT_HUP);
+    if (wanted == 0) {
+        return false;
+    }
+    const MsPromiseRetry retry = table.cold[found].retry;
+    if (retry != NULL && !retry(promise, table.cold[found].retry_state, wanted)) {
+        return false;
+    }
+    found = row_of(promise);
+    if (found >= 0) {
+        table.cold[found].fd = -1; /* the scheduler removes the wait now */
+        table.cold[found].retry = NULL;
+    }
+    if (retry == NULL) {
+        ms_promise_io_done_int(promise, wanted);
+    }
+    return true;
 }
 
 void ms_promises_teardown(void) {
@@ -722,5 +832,6 @@ void ms_promise_hooks(MsSchedHooks *hooks) {
     hooks->end_started = end_started;
     hooks->timer_live = timer_live;
     hooks->timer_fire = timer_fire;
+    hooks->fd_ready = fd_ready;
     hooks->teardown = ms_promises_teardown;
 }
