@@ -1,5 +1,7 @@
 /* libms as one translation unit: compile this file and nothing else. Static helpers in different
  * files must therefore not share names. */
+/* lstat, readlink and getcwd for project/path.c. */
+#define _POSIX_C_SOURCE 200809L
 #include "syntax/base.c"
 #include "syntax/token.c"
 #include "syntax/lex.c"
@@ -80,6 +82,8 @@
 #include "syntax/constfold.c"
 #include "check/lower_scope.c"
 #include "check/lower_body.c"
+#include "check/lower_record.c"
+#include "check/lower_closure.c"
 #include "syntax/walk.c"
 #include "check/ty_subst.c"
 #include "check/ty_algebra.c"
@@ -127,3 +131,7 @@
 #include "emit/emit_entry.c"
 #include "emit/emit_qbe.c"
 #include "emit/emit_llvm.c"
+#include "project/path.c"
+#include "project/manifest.c"
+#include "project/resolve.c"
+#include "project/load.c"

@@ -16,6 +16,8 @@
 #include "../std/abi.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/sys.h"
+#include "ms_rt/obj.h"
+#include "ms_rt/xchg.h"
 #include "ms_sched.h"
 #include "../net/status.h"
 
@@ -67,6 +69,7 @@ uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) {
 void *msrt_alloc(size_t size) { return malloc(size == 0 ? 1 : size); }
 void *msrt_alloc_zeroed(size_t size) { return calloc(1, size == 0 ? 1 : size); }
 void msrt_free(void *pointer) { free(pointer); }
+void msrt_obj_drop(MsObj *object) { object->drop(object); }
 const MsTypeDesc msrt_desc_bytes, msrt_desc_string;
 void msrt_list_with_capacity(const MsTypeDesc *d, int64_t cap, MsVec *out) { (void)d; (void)cap; *out = (MsVec){0}; }
 void msrt_list_push(MsVec *v, const MsTypeDesc *d, const void *elem) { (void)v; (void)d; (void)elem; }
@@ -192,6 +195,8 @@ static MsHeaders *response_fields(void) {
 }
 
 static void handle(MsXchgH2 *x) {
+    MsObj *object = ms_exchange_from_h2(x); /* the natives of xchg.h work on this */
+    CHECK(object != NULL);
     MsStr err;
     MsHeaders *headers = response_fields();
     uint8_t keep = 0;
@@ -208,42 +213,42 @@ static void handle(MsXchgH2 *x) {
         }
         CHECK(host == 1 && cookie == 1);
         ms_headers_object(fields)->drop(ms_headers_object(fields));
-        CHECK(ms_xchg_h2_write(x, ms_bytes_of((const uint8_t *)"x", 1), 0, 0, &err) == STATUS_INVALID_INPUT); /* no head yet */
+        CHECK(msstd_xchg_write(object, &(MsVec){(void *)(uintptr_t)"x", (size_t)(1), (size_t)(1)}, 0, 0, &err) == STATUS_INVALID_INPUT); /* no head yet */
         for (;;) {
             MsVec chunk = {0};
-            const uint8_t status = ms_xchg_h2_read(x, 1, 4096, 0, 0, &chunk, &err);
+            const uint8_t status = msstd_xchg_read(object, 1, 4096, 0, 0, &chunk, &err);
             if (status == STATUS_NONE) break;
             CHECK(status == STATUS_OK);
             for (size_t i = 0; i < chunk.len; i++) if (((uint8_t *)chunk.ptr)[i] != (uint8_t)((upload_seen + i) * 7)) upload_matches = 0;
             upload_seen += chunk.len;
             msrt_free(chunk.ptr);
         }
-        CHECK(ms_xchg_h2_send_head(x, 99, headers, 0, 0, &err) == STATUS_INVALID_INPUT);
-        CHECK(ms_xchg_h2_send_head(x, 200, headers, 1, RESPONSE, &err) == STATUS_OK);
-        CHECK(ms_xchg_h2_send_head(x, 200, headers, 1, RESPONSE, &err) == STATUS_INVALID_INPUT); /* once */
+        CHECK(msstd_xchg_send_head(object, 99, ms_headers_object(headers), 0, 0, 0, 0, &err) == STATUS_INVALID_INPUT);
+        CHECK(msstd_xchg_send_head(object, 200, ms_headers_object(headers), 1, RESPONSE, 0, 0, &err) == STATUS_OK);
+        CHECK(msstd_xchg_send_head(object, 200, ms_headers_object(headers), 1, RESPONSE, 0, 0, &err) == STATUS_INVALID_INPUT); /* once */
         uint8_t *body = malloc(RESPONSE);
         for (size_t i = 0; i < RESPONSE; i++) body[i] = (uint8_t)(i * 3);
-        CHECK(ms_xchg_h2_write(x, ms_bytes_of(body, 100000), 0, 0, &err) == STATUS_OK);
-        CHECK(ms_xchg_h2_write(x, ms_bytes_of(body + 100000, RESPONSE - 100000), 0, 0, &err) == STATUS_OK);
-        CHECK(ms_xchg_h2_write(x, ms_bytes_of(body, 1), 0, 0, &err) == STATUS_OUT_OF_RANGE); /* past the declared length */
+        CHECK(msstd_xchg_write(object, &(MsVec){body, (size_t)(100000), (size_t)(100000)}, 0, 0, &err) == STATUS_OK);
+        CHECK(msstd_xchg_write(object, &(MsVec){body + 100000, (size_t)(RESPONSE - 100000), (size_t)(RESPONSE - 100000)}, 0, 0, &err) == STATUS_OK);
+        CHECK(msstd_xchg_write(object, &(MsVec){body, (size_t)(1), (size_t)(1)}, 0, 0, &err) == STATUS_OUT_OF_RANGE); /* past the declared length */
         free(body);
-        CHECK(ms_xchg_h2_finish(x, 0, 0, &keep, &err) == STATUS_OK && keep == 1);
+        CHECK(msstd_xchg_finish(object, 0, 0, &keep, &err) == STATUS_OK && keep == 1);
     } else if (index == 1) {
         CHECK(bytes_is(ms_xchg_h2_method(x), "HEAD"));
-        CHECK(ms_xchg_h2_send_head(x, 200, headers, 1, 5, &err) == STATUS_OK);
-        CHECK(ms_xchg_h2_write(x, ms_bytes_of((const uint8_t *)"hello", 5), 0, 0, &err) == STATUS_OK); /* a HEAD response has no body */
-        CHECK(ms_xchg_h2_finish(x, 0, 0, &keep, &err) == STATUS_OK && keep == 1);
+        CHECK(msstd_xchg_send_head(object, 200, ms_headers_object(headers), 1, 5, 0, 0, &err) == STATUS_OK);
+        CHECK(msstd_xchg_write(object, &(MsVec){(void *)(uintptr_t)"hello", (size_t)(5), (size_t)(5)}, 0, 0, &err) == STATUS_OK); /* a HEAD response has no body */
+        CHECK(msstd_xchg_finish(object, 0, 0, &keep, &err) == STATUS_OK && keep == 1);
     } else if (index == 2) {
-        CHECK(ms_xchg_h2_send_head(x, 200, headers, 1, 10, &err) == STATUS_OK);
-        CHECK(ms_xchg_h2_write(x, ms_bytes_of((const uint8_t *)"four", 4), 0, 0, &err) == STATUS_OK);
-        CHECK(ms_xchg_h2_finish(x, 0, 0, &keep, &err) == STATUS_INVALID_DATA && keep == 1); /* the stream is reset, not the connection */
+        CHECK(msstd_xchg_send_head(object, 200, ms_headers_object(headers), 1, 10, 0, 0, &err) == STATUS_OK);
+        CHECK(msstd_xchg_write(object, &(MsVec){(void *)(uintptr_t)"four", (size_t)(4), (size_t)(4)}, 0, 0, &err) == STATUS_OK);
+        CHECK(msstd_xchg_finish(object, 0, 0, &keep, &err) == STATUS_INVALID_DATA && keep == 1); /* the stream is reset, not the connection */
     } else {
-        CHECK(ms_xchg_h2_reset(x, 100, 0, 0, &err) == STATUS_LIMIT_EXCEEDED); /* 20000 bytes of body left, over the limit of 100 */
-        CHECK(ms_xchg_h2_send_head(x, 204, headers, 0, 0, &err) == STATUS_OK);
-        CHECK(ms_xchg_h2_finish(x, 0, 0, &keep, &err) == STATUS_OK && keep == 1);
+        CHECK(msstd_xchg_reset(object, 100, 0, 0, &err) == STATUS_LIMIT_EXCEEDED); /* 20000 bytes of body left, over the limit of 100 */
+        CHECK(msstd_xchg_send_head(object, 204, ms_headers_object(headers), 0, 0, 0, 0, &err) == STATUS_OK);
+        CHECK(msstd_xchg_finish(object, 0, 0, &keep, &err) == STATUS_OK && keep == 1);
     }
     ms_headers_object(headers)->drop(ms_headers_object(headers));
-    ms_xchg_h2_drop(x);
+    msrt_obj_drop(object);
 }
 
 int main(void) {

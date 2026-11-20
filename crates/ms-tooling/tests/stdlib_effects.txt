@@ -71,6 +71,7 @@
 @std/os/process.ms cpu_usage: std.process.read
 @std/os/process.ms get_priority: std.process.read
 @std/os/process.ms groups: std.process.read
+@std/os/process.ms hold_stop: std.process.signal
 @std/os/process.ms initialize_groups: std.process.write
 @std/os/process.ms process_info: std.process.read
 @std/os/process.ms replace: std.process.run
