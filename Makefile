@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test vscode-package vscode-install c-fuzz
+.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -203,3 +203,14 @@ c-fuzz:
 # The C compiler front end against the Rust one, token for token, on the corpus and on mutated copies; nightly runs more mutants.
 c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
+
+# libms with the tool entry points (compiler/include/ms/tool.h): the archive a Manuscript tool links with `--link`.
+target/c-tool/libmstool.a: compiler/src/tool.c compiler/include/ms/tool.h $(wildcard compiler/src/*.c compiler/include/ms/*.h)
+	mkdir -p target/c-tool
+	cc -std=c11 -O1 -g -Wall -Wextra -Werror -Icompiler/include -Icrates/ms-rt-abi/include -c compiler/src/tool.c -o target/c-tool/tool.o
+	ar rcs $@ target/c-tool/tool.o
+
+# The Manuscript tools over libms: their tests, and the lexical lint against the Rust `ms lint` on mutated corpus copies.
+c-tools-test: build target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" run tools/ms/lint_diff.ms --link target/c-tool/libmstool.a -- "$(RELEASE_MS)" target/c-tool/work 3 $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' 'examples/*.ms' 'stdlib/*.ms' | awk 'NR%4==0')
