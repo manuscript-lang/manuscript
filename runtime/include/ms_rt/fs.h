@@ -38,6 +38,14 @@ typedef struct MsFsEntry {
     uint8_t symlink;
 } MsFsEntry;
 
+/* One PathEntry of glob_entries: the path, then the nested DirectoryEntry's name and two flag bytes. */
+typedef struct MsFsPathEntry {
+    MsStr path;
+    MsStr name;
+    uint8_t directory;
+    uint8_t symlink;
+} MsFsPathEntry;
+
 /* Takes an admission permit for copying `bytes` for a pool job, parking while the pool is full. True when one is
  * held and msstd_fs_release must follow. */
 /* ms-sig: msstd_fs_admit(bytes: i64) -> u8 */
@@ -93,5 +101,29 @@ uint8_t msstd_fs_truncate(const MsStr *path, int64_t size, MsStr *err);
 /* Writes bytes to a file (`replace` truncates, otherwise the file must not exist). */
 /* ms-sig: msstd_fs_write_file(path: *const StrVal, data: *const VecVal, replace: u8, err: ErrSlot) -> u8 @domain=filesystem */
 uint8_t msstd_fs_write_file(const MsStr *path, const MsVec *data, uint8_t replace, MsStr *err);
+
+/* Directory cursors and scoped temporary directories: handles the runtime drops (the Rust-free object header). */
+/* ms-sig: msstd_fs_directory_open(path: *const StrVal, out: *mut *mut ObjCell<Directory>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_directory_open(const MsStr *path, void **out, MsStr *err);
+/* ms-sig: msstd_fs_directory_read(handle h: *mut ObjCell<Directory>, out: *mut EntryOut, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_directory_read(void *handle, MsFsEntry *out, MsStr *err);
+/* ms-sig: msstd_fs_directory_close(handle h: *mut ObjCell<Directory>) @domain=filesystem */
+void msstd_fs_directory_close(void *handle);
+/* ms-sig: msstd_fs_directory_path(handle h: *const ObjCell<Directory>, out: *mut StrVal) @domain=filesystem */
+void msstd_fs_directory_path(const void *handle, MsStr *out);
+/* ms-sig: msstd_fs_temporary_open(prefix: *const StrVal, out: *mut *mut ObjCell<Temporary>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_temporary_open(const MsStr *prefix, void **out, MsStr *err);
+/* ms-sig: msstd_fs_temporary_path(handle h: *const ObjCell<Temporary>, out: *mut StrVal) @domain=filesystem */
+void msstd_fs_temporary_path(const void *handle, MsStr *out);
+/* ms-sig: msstd_fs_temporary_close(handle h: *mut ObjCell<Temporary>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_temporary_close(void *handle, MsStr *err);
+
+/* Copies a file or tree. `clone` is "none", "try" or "force"; `filter` is null or a closure over (source, destination). */
+/* ms-sig: msstd_fs_copy(source: *const StrVal, destination: *const StrVal, flags: i64, clone: *const StrVal, has_entries: HasRaw, entries: i64, has_bytes: HasRaw, bytes: i64, filter: *mut Closure, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_copy(const MsStr *source, const MsStr *destination, int64_t flags, const MsStr *clone, uint8_t has_entries, int64_t entries, uint8_t has_bytes, int64_t bytes, void *filter, MsStr *err);
+/* The sorted matches of `patterns` under `path` that `exclude` and the filter (null, or a closure over (path, name,
+ * directory, symlink)) do not leave out. */
+/* ms-sig: msstd_fs_glob_entries(path: *const StrVal, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, has_max_entries: HasRaw, max_entries: i64, has_max_results: HasRaw, max_results: i64, filter: *mut Closure, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_glob_entries(const MsStr *path, const MsVec *patterns, const MsVec *exclude, uint8_t follow_links, uint8_t has_max_entries, int64_t max_entries, uint8_t has_max_results, int64_t max_results, void *filter, MsVec *out, MsStr *err);
 
 #endif

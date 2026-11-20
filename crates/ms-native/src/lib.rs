@@ -14,7 +14,6 @@ extern crate ms_std_fs;
 extern crate ms_std_io;
 extern crate ms_std_json;
 extern crate ms_std_net;
-extern crate ms_std_path;
 extern crate ms_std_process;
 extern crate ms_std_regex;
 extern crate ms_std_system;

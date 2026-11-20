@@ -122,6 +122,18 @@ void ms_fs_info_fill(MsFsInfo *out, const MsSysStat *stat);
  * in `out`. */
 bool ms_fs_make_temporary_directory(MsBytes pattern, MsFsBuffer *out, MsFsFail *fail);
 
+/* Whether a listing entry is a directory or a symbolic link: its own kind, or an lstat when the filesystem gives none. */
+void ms_fs_entry_kind(MsBytes directory, const MsSysDirEntry *entry, bool *is_dir, bool *is_symlink);
+/* Removes the tree at `path` without following links; a missing path is already removed. */
+void ms_fs_remove_tree(MsBytes path, MsFsFail *fail);
+
+/* The absolute, canonical form of an existing path (every link resolved), or the host error. */
+MsSysError ms_fs_eval_symlinks(MsBytes path, MsFsBuffer *out);
+/* os.Remove: the path as a file, then as an empty directory. */
+MsSysError ms_fs_remove_one(const char *path);
+/* Whether two stats describe the same file. */
+bool ms_fs_same_file(const MsSysStat *a, const MsSysStat *b);
+
 /* ---- runtime values ---- */
 
 

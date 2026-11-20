@@ -550,7 +550,7 @@ static int compare_entries(const void *left, const void *right) {
 
 /* Whether an entry is a directory or a symbolic link: from the listing's own kind, or an lstat when the filesystem
  * reports none. */
-static void entry_kind(MsBytes directory, const MsSysDirEntry *entry, bool *is_dir, bool *is_symlink) {
+void ms_fs_entry_kind(MsBytes directory, const MsSysDirEntry *entry, bool *is_dir, bool *is_symlink) {
     *is_dir = false;
     *is_symlink = false;
     if (entry->kind != MS_SYS_DT_UNKNOWN) {
@@ -585,7 +585,7 @@ static void list_add(ListJob *job, const MsSysDirEntry *entry) {
         return;
     }
     ListEntry item = {0};
-    entry_kind(job->base.path, entry, &item.directory, &item.symlink);
+    ms_fs_entry_kind(job->base.path, entry, &item.directory, &item.symlink);
     MsFsBuffer name = {0};
     if (!ms_fs_buffer_append_lossy(&name, (const uint8_t *)entry->name, entry->name_length)) {
         ms_fs_buffer_free(&name);
@@ -753,7 +753,7 @@ uint8_t msstd_fs_create_directory(const MsStr *path, uint8_t recursive, MsStr *e
 }
 
 /* os.Remove: as a file, then as a directory. */
-static MsSysError remove_one(const char *path) {
+MsSysError ms_fs_remove_one(const char *path) {
     const MsSysError first = ms_sys_fs_unlink(path);
     if (first == 0) {
         return 0;
@@ -822,7 +822,7 @@ static MsSysError remove_directory_tree(MsBytes path, size_t depth, MsFsFail *fa
 }
 
 /* The tree at `path`; a missing path is already removed. */
-static void remove_tree(MsBytes path, MsFsFail *fail) {
+void ms_fs_remove_tree(MsBytes path, MsFsFail *fail) {
     if (ms_fs_poll_cancel(fail)) {
         return;
     }
@@ -847,7 +847,7 @@ static void remove_tree(MsBytes path, MsFsFail *fail) {
 }
 
 /* The absolute, canonical form of an existing path, or false with the host error. */
-static MsSysError eval_symlinks(MsBytes path, MsFsBuffer *out) {
+MsSysError ms_fs_eval_symlinks(MsBytes path, MsFsBuffer *out) {
     MsFsPath text;
     if (!ms_fs_path_init(&text, path)) {
         return ms_sys_fs_error_of(MS_SYS_ERR_INVALID);
@@ -864,7 +864,7 @@ static MsSysError eval_symlinks(MsBytes path, MsFsBuffer *out) {
     return kept ? 0 : ms_sys_fs_error_of(MS_SYS_ERR_IO);
 }
 
-static bool same_file(const MsSysStat *a, const MsSysStat *b) { return a->device == b->device && a->inode == b->inode; }
+bool ms_fs_same_file(const MsSysStat *a, const MsSysStat *b) { return a->device == b->device && a->inode == b->inode; }
 
 static bool bytes_equal(MsBytes a, MsBytes b) { return a.len == b.len && (a.len == 0 || memcmp(a.ptr, b.ptr, a.len) == 0); }
 
@@ -909,7 +909,7 @@ static bool refuse_ancestors(const MsSysStat *info, MsFsBuffer *start, MsFsFail 
             ok = false;
             break;
         }
-        if (same_file(info, &up)) {
+        if (ms_fs_same_file(info, &up)) {
             fail_invalid(fail);
             ok = false;
             break;
@@ -951,7 +951,7 @@ static bool removal_path(MsBytes given, MsFsBuffer *out, MsFsFail *fail) {
     MsFsBuffer joined = {0};
     MsFsBuffer canonical_cwd = {0};
     bool ok = removal_candidate(given, cwd, &joined, fail);
-    const MsSysError cwd_error = ok ? eval_symlinks(cwd, &canonical_cwd) : 0;
+    const MsSysError cwd_error = ok ? ms_fs_eval_symlinks(cwd, &canonical_cwd) : 0;
     if (cwd_error != 0) {
         ms_fs_fail_errno_at(fail, cwd_error, "lstat", cwd);
         ok = false;
@@ -994,11 +994,11 @@ static void remove_job(void *data) {
         return;
     }
     if (job->flag != 0) {
-        remove_tree(ms_fs_buffer_view(&target), &job->fail);
+        ms_fs_remove_tree(ms_fs_buffer_view(&target), &job->fail);
     } else {
         MsFsPath text;
         if (open_path(&job->fail, &text, ms_fs_buffer_view(&target))) {
-            const MsSysError error = remove_one(text.text);
+            const MsSysError error = ms_fs_remove_one(text.text);
             ms_fs_path_free(&text);
             if (error != 0) {
                 ms_fs_fail_errno_at(&job->fail, error, "remove", ms_fs_buffer_view(&target));
@@ -1114,7 +1114,7 @@ static void canonicalize_job(void *data) {
         return;
     }
     ms_fs_path_free(&path);
-    const MsSysError error = eval_symlinks(job->path, &job->text);
+    const MsSysError error = ms_fs_eval_symlinks(job->path, &job->text);
     if (error != 0) {
         ms_fs_fail_errno_at(&job->fail, error, "lstat", job->path);
     } else if (!ms_fs_valid_utf8(ms_fs_buffer_view(&job->text))) {

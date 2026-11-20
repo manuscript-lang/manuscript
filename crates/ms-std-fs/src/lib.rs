@@ -11,7 +11,6 @@
 
 extern crate alloc;
 
-pub mod dir;
 pub mod err;
 pub mod file;
 pub mod ops;
@@ -20,17 +19,16 @@ pub mod path;
 pub mod stream;
 #[allow(unsafe_code)] // libc and Win32 calls
 pub mod sys;
-pub mod walk;
 #[allow(unsafe_code)] // inotify
 pub mod watch;
 
 use alloc::vec::Vec;
 use err::{Fail, Res};
 use ms_rt::ffi::{
-    BytesList, EntryFilter, ErrOut, Has, ObjMut, ObjRef, Object, PairFilter, StatusCode, Str, Text,
+    BytesList, ErrOut, Has, ObjMut, ObjRef, Object, StatusCode, Str,
     TextList, TypeList, abi_type, native,
 };
-use ms_rt_abi::{STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE};
+use ms_rt_abi::STATUS_FAILED;
 use stream::Stream;
 
 /// Delivers a pending cancel once the failing operation's frames have returned and dropped what
@@ -163,14 +161,6 @@ abi_type! {
     }
 }
 
-fn entry_out(name: &[u8], directory: bool, symlink: bool) -> EntryOut {
-    EntryOut {
-        name: Str::from_bytes(name),
-        directory: u8::from(directory),
-        symlink: u8::from(symlink),
-    }
-}
-
 abi_type! {
     /// Flattened filesystem status: type id, block size, blocks, free, available, files, free files.
     pub struct FsOut {
@@ -198,16 +188,6 @@ abi_type! {
     pub struct EventOut {
         pub path: Str,
         pub kind: Str,
-    }
-}
-
-abi_type! {
-    /// One `PathEntry`: the path, then the nested `DirectoryEntry`'s name and two flag bytes.
-    pub struct PathEntryOut {
-        pub path: Str,
-        pub name: Str,
-        pub directory: u8,
-        pub symlink: u8,
     }
 }
 
@@ -337,113 +317,6 @@ native! {
         max_lines: i64; err: ErrOut) -> Result<TextList, StatusCode> {
         let mut h = h;
         fs_status(h.read_lines(max_bytes, max_lines), &err).map(TextList)
-    }
-
-    fn msstd_fs_directory_open(path: &str; err: ErrOut) -> Result<Object<dir::Directory>, StatusCode> {
-        fs_status_at(path.as_bytes(), dir::Directory::open(path.as_bytes()), &err).map(Object)
-    }
-
-    /// The next entry in native order; `STATUS_NONE` at the end.
-    fn msstd_fs_directory_read(h: ObjMut<dir::Directory>; err: ErrOut) -> Result<EntryOut, StatusCode> {
-        let mut h = h;
-        let item = fs_status(h.read(), &err)?.ok_or(StatusCode(STATUS_NONE))?;
-        Ok(entry_out(&item.name, item.directory, item.symlink))
-    }
-
-    fn msstd_fs_directory_close(h: ObjMut<dir::Directory>) -> () {
-        let mut h = h;
-        h.close()
-    }
-
-    fn msstd_fs_directory_path(h: ObjRef<dir::Directory>) -> Text {
-        Text(h.path().to_vec())
-    }
-
-    /// Creates a temporary directory scoped to the handle (`close` removes the tree).
-    fn msstd_fs_temporary_open(prefix: &str; err: ErrOut) -> Result<Object<dir::Temporary>, StatusCode> {
-        fs_status(dir::Temporary::create(prefix.as_bytes()), &err).map(Object)
-    }
-
-    fn msstd_fs_temporary_path(h: ObjRef<dir::Temporary>) -> Text {
-        Text(h.path().to_vec())
-    }
-
-    /// Removes the tree; a failure carries its text in `err`.
-    fn msstd_fs_temporary_close(h: ObjMut<dir::Temporary>; err: ErrOut) -> Result<(), StatusCode> {
-        let mut h = h;
-        fs_status(h.close(), &err)
-    }
-
-    /// `copy`. `clone` is `"none"`, `"try"` or `"force"`; `filter` is null or a closure that
-    /// answers whether to copy an entry.
-    fn msstd_fs_copy(
-        source: &str,
-        destination: &str,
-        flags: i64,
-        clone: &str,
-        has_entries: Has,
-        entries: i64,
-        has_bytes: Has,
-        bytes: i64,
-        filter: Option<PairFilter>; err: ErrOut) -> Result<(), StatusCode> {
-        let Some(clone) = walk::Clone::parse(clone.as_bytes()) else {
-            return Err(StatusCode(STATUS_INVALID_INPUT));
-        };
-        let (entries, bytes) = fs_status(lim(*has_entries, entries).and_then(|e| Ok((e, lim(*has_bytes, bytes)?))), &err)?;
-        let options = walk::CopyOptions {
-            recursive: flags & 1 != 0,
-            replace: flags & 2 != 0,
-            error_on_exists: flags & 4 != 0,
-            dereference: flags & 8 != 0,
-            preserve: flags & 16 != 0,
-            verbatim: flags & 32 != 0,
-            clone,
-            entries,
-            bytes,
-        };
-        let mut call = |s: &[u8], d: &[u8]| filter.as_ref().is_some_and(|f| f.call(s, d));
-        let f: Option<walk::Filter<'_>> = if filter.is_some() { Some(&mut call) } else { None };
-        fs_status_pair(source.as_bytes(), destination.as_bytes(), walk::copy(source.as_bytes(), destination.as_bytes(), options, f), &err)
-    }
-
-    /// `glob_entries`: `patterns` and `exclude` are `List[String]`; matches come back as a
-    /// `List[PathEntry]`. `filter` is null or a closure over `(path, name, directory, symlink)`
-    /// that answers whether to exclude the entry.
-    fn msstd_fs_glob_entries(
-        path: &str,
-        patterns: Vec<&str>,
-        exclude: Vec<&str>,
-        follow_links: bool,
-        has_max_entries: Has,
-        max_entries: i64,
-        has_max_results: Has,
-        max_results: i64,
-        filter: Option<EntryFilter>; err: ErrOut) -> Result<TypeList<PathEntryOut>, StatusCode> {
-        let (max_entries, max_results) = fs_status_at(path.as_bytes(), lim(*has_max_entries, max_entries)
-            .and_then(|e| Ok((e, lim(*has_max_results, max_results)?))), &err)?;
-        let patterns: Vec<&[u8]> = patterns.iter().map(|p| p.as_bytes()).collect();
-        let exclude: Vec<&[u8]> = exclude.iter().map(|p| p.as_bytes()).collect();
-        let options = walk::GlobOptions {
-            patterns: &patterns,
-            exclude: &exclude,
-            follow_links,
-            max_entries,
-            max_results,
-        };
-        let mut call = |e: &walk::PathEntry| {
-            filter
-                .as_ref()
-                .is_some_and(|f| f.call(&e.path, &e.name, e.directory, e.symlink))
-        };
-        let cb: Option<&mut dyn FnMut(&walk::PathEntry) -> bool> =
-            if filter.is_some() { Some(&mut call) } else { None };
-        let items = fs_status_at(path.as_bytes(), walk::glob_entries(path.as_bytes(), &options, cb), &err)?;
-        Ok(TypeList::new(items.iter().map(|e| PathEntryOut {
-            path: Str::from_bytes(&e.path),
-            name: Str::from_bytes(&e.name),
-            directory: u8::from(e.directory),
-            symlink: u8::from(e.symlink),
-        })))
     }
 
     /// A polling watcher (`interval_ns` > 0); `max` bounds tracked paths.

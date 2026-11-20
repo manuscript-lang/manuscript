@@ -42,3 +42,16 @@ MsSchedWait ms_sched_pool_run_shielded(MsSchedJobFn run, void *data) {
     run(data);
     return MS_SCHED_DONE;
 }
+
+size_t msrt_cleanup_push(void (*run)(uint8_t *), uint8_t *argument);
+void msrt_cleanup_discard(size_t handle);
+void msrt_string_empty(MsStr *out);
+
+/* The unit tests never leave program code by a jump, so a cleanup is never run. */
+size_t msrt_cleanup_push(void (*run)(uint8_t *), uint8_t *argument) {
+    (void)run;
+    (void)argument;
+    return 1;
+}
+void msrt_cleanup_discard(size_t handle) { (void)handle; }
+void msrt_string_empty(MsStr *out) { *out = (MsStr){.ptr_word = NULL, .tagged = 0}; }
