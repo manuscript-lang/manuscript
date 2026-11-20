@@ -10,6 +10,7 @@
 #include "ms_rt/base.h"
 #include "ms_rt/safe.h"
 #include "ms_rt/desc.h"
+#include "ms_rt/map.h"
 
 /* The family of a fault, which the structured fault record names (crates/ms-rt-abi FaultKind). */
 typedef enum MsFaultKind {
@@ -37,26 +38,10 @@ typedef struct MsObj MsObj;
 MsObj *msrt_obj_clone(MsObj *object);
 void msrt_obj_drop(MsObj *object);
 
-/* Strings (ms_rt/string.h has equality and hash, which desc.c declares through MsStr): copy and release, which the Rust runtime still defines. */
+/* Strings (ms_rt/string.h has equality and hash): copy and release, which the Rust runtime still defines. */
 void msrt_string_clone(const MsStr *s, MsStr *out);
 void msrt_string_free(const MsStr *s);
-uint8_t msrt_string_eq(const MsStr *a, const MsStr *b);
-int64_t msrt_string_hash(const MsStr *s);
 void msrt_string_empty(MsStr *out);
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out);
-
-/* Hash of `len` bytes (the string hash over bytes). */
-int64_t msrt_hash_bytes(const uint8_t *ptr, size_t len);
-
-/* Maps and sets, which the slot kinds MS_KIND_MAP and MS_KIND_SET store. Equality has no exported
- * entry yet: `msmap_eq` is glue in crates/ms-rt/src/map.rs until map.c replaces it. */
-struct MsMap;
-struct MsTypeDesc;
-void msrt_map_drop(struct MsMap *m, const struct MsTypeDesc *kd, const struct MsTypeDesc *vd);
-void msrt_map_copy(const struct MsMap *m, const struct MsTypeDesc *kd, const struct MsTypeDesc *vd, struct MsMap *out);
-void msrt_map_new(struct MsMap *out);
-uint8_t msrt_map_contains(const struct MsMap *m, const struct MsTypeDesc *kd, const struct MsTypeDesc *vd, const uint8_t *key);
-void msrt_set_add_copy(struct MsMap *m, const struct MsTypeDesc *kd, const uint8_t *key);
-uint8_t msmap_eq(const struct MsMap *a, const struct MsMap *b, const struct MsTypeDesc *kd, const struct MsTypeDesc *vd);
 
 #endif

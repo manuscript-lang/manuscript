@@ -94,57 +94,5 @@ void msrt_string_empty(MsStr *out) { memset(out, 0, 16); }
 
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) { make_owned(ptr, len, out); }
 
-int64_t msrt_hash_bytes(const uint8_t *ptr, size_t len) {
-    uint64_t hash = 14695981039346656037ull;
-    for (size_t i = 0; i < len; i++) {
-        hash = (hash ^ ptr[i]) * 1099511628211ull;
-    }
-    return (int64_t)hash;
-}
-
 MsObj *msrt_obj_clone(MsObj *object) { return object; }
 void msrt_obj_drop(MsObj *object) { (void)object; }
-
-/* Maps are not part of the list tests: a set is a list of its keys, enough for `distinct` and `to_set`. */
-void msrt_map_new(MsMap *out) { memset(out, 0, sizeof *out); }
-
-uint8_t msrt_map_contains(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key) {
-    (void)vd;
-    for (size_t i = 0; i < m->len; i++) {
-        if (memcmp(m->slots + i * kd->size, key, kd->size) == 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-void msrt_set_add_copy(MsMap *m, const MsTypeDesc *kd, const uint8_t *key) {
-    if (msrt_map_contains(m, kd, NULL, key)) {
-        return;
-    }
-    m->slots = realloc(m->slots, (m->len + 1) * kd->size);
-    memcpy(m->slots + m->len * kd->size, key, kd->size);
-    m->len++;
-}
-
-void msrt_map_drop(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd) {
-    (void)kd;
-    (void)vd;
-    free(m->slots);
-    memset(m, 0, sizeof *m);
-}
-
-void msrt_map_copy(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsMap *out) {
-    (void)m;
-    (void)kd;
-    (void)vd;
-    memset(out, 0, sizeof *out);
-}
-
-uint8_t msmap_eq(const MsMap *a, const MsMap *b, const MsTypeDesc *kd, const MsTypeDesc *vd) {
-    (void)a;
-    (void)b;
-    (void)kd;
-    (void)vd;
-    return 0;
-}

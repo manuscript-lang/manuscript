@@ -226,7 +226,15 @@ fn abi_kind(text: &str) -> String {
             .any(|t| t == w)
     };
     // Role aliases of the runtime ABI (crates/ms-rt-abi): pointers and a presence byte.
-    for alias in ["ElemDesc", "KeyDesc", "ValDesc", "ValueDesc", "CmpFn", "MsCompareFn", "ErrSlot"] {
+    for alias in [
+        "ElemDesc",
+        "KeyDesc",
+        "ValDesc",
+        "ValueDesc",
+        "CmpFn",
+        "MsCompareFn",
+        "ErrSlot",
+    ] {
         if word(alias) {
             return "ptr".into();
         }
@@ -331,7 +339,9 @@ fn check_c_abi(
     }
     for header in read_dir("runtime/include/ms_rt", "h")? {
         let module = header.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        if !matches!(module, "base" | "safe") && !root.join(format!("runtime/symbols/{module}.txt")).exists() {
+        if !matches!(module, "base" | "safe")
+            && !root.join(format!("runtime/symbols/{module}.txt")).exists()
+        {
             return Err(format!(
                 "ms_rt/{module}.h has no runtime/symbols/{module}.txt"
             ));

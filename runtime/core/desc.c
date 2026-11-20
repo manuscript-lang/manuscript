@@ -4,9 +4,11 @@
  */
 #include "hash.h"
 #include "list_ops.h"
+#include "map_table.h"
 #include "ms_rt/alloc.h"
 #include "rt_calls.h"
 #include "slot.h"
+#include "str_key.h"
 
 #define STR_SLOT_SIZE 16u
 #define BYTES_SLOT_SIZE 24u
@@ -178,9 +180,9 @@ bool ms_slot_eq(const MsTypeDesc *d, const uint8_t *a, const uint8_t *b) {
     case MS_KIND_LIST:
         return ms_list_eq(ms_slot_list_const(a), ms_slot_list_const(b), d->inner0);
     case MS_KIND_MAP:
-        return msmap_eq(ms_slot_map_const(a), ms_slot_map_const(b), d->inner0, d->inner1) != 0;
+        return ms_map_eq(ms_slot_map_const(a), ms_slot_map_const(b), d->inner0, d->inner1);
     case MS_KIND_SET:
-        return msmap_eq(ms_slot_map_const(a), ms_slot_map_const(b), d->inner0, NULL) != 0;
+        return ms_map_eq(ms_slot_map_const(a), ms_slot_map_const(b), d->inner0, NULL);
     }
     return false;
 }
@@ -214,7 +216,7 @@ static MS_NORETURN void fault_not_hashable(void) {
 }
 
 static uint64_t bytes_hash(const MsList *bytes) {
-    return (uint64_t)msrt_hash_bytes(bytes->ptr, bytes->len);
+    return ms_hash_bytes(bytes->ptr, bytes->len);
 }
 
 static uint64_t shared_hash(const MsTypeDesc *d, const uint8_t *slot) {
@@ -233,7 +235,7 @@ static uint64_t pod_or_custom_hash(const MsTypeDesc *d, const uint8_t *slot) {
     if (d->kind != MS_KIND_POD) {
         fault_not_hashable();
     }
-    return (uint64_t)msrt_hash_bytes(slot, d->size);
+    return ms_hash_bytes(slot, d->size);
 }
 
 uint64_t ms_slot_hash(const MsTypeDesc *d, const uint8_t *slot) {
