@@ -6,7 +6,7 @@
  * MS_STR_MAX_BYTES faults.
  */
 #include "ms_rt/alloc.h"
-#include "ms_rt/fmt.h"
+#include "fmt_fixed.h"
 #include "ms_rt/string.h"
 #include "rt_calls.h"
 
@@ -73,7 +73,7 @@ static bool bytes_ascii(MsBytes text) {
 /* Whether every byte of `s` is ASCII: an inline string by its bits, another by its flag, else by a scan. */
 static bool is_ascii(const MsStr *s) {
     if (ms_str_is_inline(s)) {
-        return ((uintptr_t)s->ptr_word & INLINE_HIGH_BITS_FIRST) == 0 && (s->tagged & INLINE_HIGH_BITS_SECOND) == 0;
+        return (s->low_bits & INLINE_HIGH_BITS_FIRST) == 0 && (s->tagged & INLINE_HIGH_BITS_SECOND) == 0;
     }
     return (s->tagged & MS_STR_ASCII) != 0 || bytes_ascii((MsBytes){s->ptr_word, ms_str_len(s)});
 }
@@ -120,19 +120,14 @@ static inline MS_ALWAYS_INLINE void copy_parts(const Join *join, uint8_t *dst) {
 
 /* An inline string holding `head` and then the parts (15 bytes or fewer in all). */
 static inline MS_ALWAYS_INLINE MsStr inline_join(MsBytes head, const Join *join) {
-    uint8_t bytes[2 * sizeof(uint64_t)] = {0};
+    MsStr result = {.low_bits = 0, .tagged = 0};
+    __builtin_memset(result.inline_bytes, 0, sizeof result.inline_bytes);
     if (head.len != 0) {
-        __builtin_memcpy(bytes, head.ptr, head.len);
+        __builtin_memcpy(result.inline_bytes, head.ptr, head.len);
     }
-    copy_parts(join, bytes + head.len);
-    /* The first 8 bytes are the address word and the rest the second word, below the length and the tag. */
-    uint64_t words[2];
-    __builtin_memcpy(words, bytes, sizeof words);
-    size_t length = head.len + join->total;
-    words[1] |= MS_STR_TAG_INLINE | ((uint64_t)length << MS_STR_INLINE_SHIFT);
-    MsStr result;
-    _Static_assert(sizeof result == sizeof words, "a string is two words");
-    __builtin_memcpy(&result, words, sizeof result);
+    copy_parts(join, result.inline_bytes + head.len);
+    const size_t length = head.len + join->total;
+    result.tagged |= MS_STR_TAG_INLINE | ((uint64_t)length << MS_STR_INLINE_SHIFT);
     return result;
 }
 

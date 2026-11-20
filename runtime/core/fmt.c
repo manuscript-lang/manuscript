@@ -5,6 +5,7 @@
  * crates/ms-rt/src/num.rs and float_digits.rs; the output is byte-identical to that code.
  */
 #include "ms_rt/fmt.h"
+#include "fmt_fixed.h"
 
 #include "float_table.h"
 

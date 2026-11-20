@@ -1,27 +1,10 @@
 /* Replays runtime/tests/oracle/crypto.tsv (recorded from Go's crypto packages) against runtime/std/crypto.c. */
 #include <stdio.h>
 
-#include "../std/abi.h"
+#include "ms_rt/crypto.h"
 #include "fake_rt.h"
 
-typedef msrt_vec vec;
-void *msstd_crypto_hasher_new(int64_t);
-void *msstd_crypto_hmac_hasher_new(int64_t, const vec *);
-void msstd_crypto_hasher_update(void *, const vec *);
-void msstd_crypto_hasher_finish(void *, vec *);
-void msstd_crypto_digest(int64_t, const vec *, vec *);
-uint8_t msstd_crypto_hmac(int64_t, const vec *, const vec *, vec *);
-uint8_t msstd_crypto_derive_key(int64_t, const vec *, const vec *, int64_t, int64_t, vec *);
-uint8_t msstd_crypto_hkdf(int64_t, const vec *, const vec *, const vec *, int64_t, vec *);
-uint8_t msstd_crypto_constant_time_equal(const vec *, const vec *);
-uint8_t msstd_crypto_seal(const vec *, const vec *, const vec *, const vec *, vec *);
-uint8_t msstd_crypto_open(const vec *, const vec *, const vec *, const vec *, vec *);
-uint8_t msstd_crypto_aes_ctr(const vec *, const vec *, const vec *, vec *);
-uint8_t msstd_crypto_aes_cbc_encrypt(const vec *, const vec *, const vec *, vec *);
-uint8_t msstd_crypto_aes_cbc_decrypt(const vec *, const vec *, const vec *, vec *);
-uint8_t msstd_crypto_sign(const vec *, const vec *, vec *);
-uint8_t msstd_crypto_public_key(const vec *, vec *);
-uint8_t msstd_crypto_verify(const vec *, const vec *, const vec *);
+typedef MsVec vec;
 
 /* The fake runtime stores 8-byte elements; Bytes here are byte buffers, as the real runtime writes them. */
 static vec from_hex(const char *tok) {
@@ -79,7 +62,10 @@ static void result(char *dst, int st, vec *out) {
 
 int main(void) {
     FILE *f = fopen("runtime/tests/oracle/crypto.tsv", "r");
-    if (!f) return puts("cannot open the oracle"), 1;
+    if (!f) {
+        puts("cannot open the oracle");
+        return 1;
+    }
     static char line[1 << 20], want[1 << 16], got[1 << 16];
     int cases = 0, failures = 0;
     while (fgets(line, sizeof line, f)) {
@@ -135,7 +121,7 @@ int main(void) {
             put_hex(got, &r1);
             strcat(got, "\t");
             put_hex(got, &r2);
-            ((msrt_obj *)h)->drop(h);
+            ((MsObj *)h)->drop(h);
             free(d1.ptr), free(d2.ptr), free(key.ptr), free(r1.ptr), free(r2.ptr);
         } else if (!strcmp(kind, "cteq")) {
             vec l = from_hex(a[0]), r = from_hex(a[1]);
@@ -174,7 +160,10 @@ int main(void) {
     }
     fclose(f);
     if (cases < 2000) failures++;
-    if (failures) return printf("%d of %d cases failed\n", failures, cases), 1;
+    if (failures) {
+        printf("%d of %d cases failed\n", failures, cases);
+        return 1;
+    }
     printf("std_crypto ok (%d cases)\n", cases);
     return 0;
 }

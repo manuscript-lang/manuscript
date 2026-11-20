@@ -215,7 +215,10 @@ c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
 	sh compiler/tests/mir-diff.sh
 	sh compiler/tests/check-diff.sh
+	sh compiler/tests/hints-diff.sh
+	sh compiler/tests/constfold-diff.sh
+	sh compiler/tests/qbe-run.sh
 
-# The C driver: stage table and parse entry point, then the thin `ms` in front of the Rust `ms` (needs make build).
+# The C driver: stage table and parse entry point, then the thin `ms` in front of a stand-in for the Rust `ms` (no Rust build needed).
 c-driver-test:
 	sh compiler/tests/driver-test.sh

@@ -10,31 +10,34 @@
 static int failures;
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); failures++; } } while (0)
 
-static ms_re *compile(const char *p, char *msg) {
+static MsRegex *compile(const char *p, char *msg) {
     msg[0] = 0;
     return ms_re_compile(p, strlen(p), msg, 160);
 }
 static int accepts(const char *p) {
     char msg[160];
-    ms_re *re = compile(p, msg);
+    MsRegex *re = compile(p, msg);
     ms_re_free(re);
     return re != NULL;
 }
 static int find(const char *p, const char *text, int64_t *span) {
     char msg[160];
-    ms_re *re = compile(p, msg);
+    MsRegex *re = compile(p, msg);
     int64_t slots[64];
     int rc = re ? ms_re_match(re, text, strlen(text), 0, slots) : -9;
-    if (rc == MS_RE_MATCHED) span[0] = slots[0], span[1] = slots[1];
+    if (rc == MS_RE_MATCHED) {
+        span[0] = slots[0];
+        span[1] = slots[1];
+    }
     ms_re_free(re);
     return rc;
 }
 /* All matches of p in text, as "a-b," pairs. */
 static void all(const char *p, const char *text, char *out) {
     char msg[160];
-    ms_re *re = compile(p, msg);
+    MsRegex *re = compile(p, msg);
     int64_t slots[64];
-    ms_re_iter it;
+    MsRegexIter it;
     ms_re_iter_init(&it);
     out[0] = 0;
     while (ms_re_next(re, text, strlen(text), &it, slots) == MS_RE_MATCHED)
@@ -52,14 +55,20 @@ int main(void) {
                           "\\p{Greek}", "\\p{L}+", "(a{100}){100}", "a*+", "(?>a)", "\\Qa.b\\E", "\\bx\\b", "(?#c)a",
                           "a{", "a{,2}"}; /* PCRE2 reads a malformed repeat as literal text */
     for (size_t i = 0; i < sizeof good / sizeof *good; i++)
-        if (!accepts(good[i])) printf("should compile: %s\n", good[i]), failures++;
+        if (!accepts(good[i])) {
+            printf("should compile: %s\n", good[i]);
+            failures++;
+        }
 
     /* Rejected: syntax errors, and features outside the dialect. */
     const char *bad[] = {"(?P<n>a)(?P<n>b)", "(a", "a)", "*a", "[a", "a\\", "(a)\\1", "\\g{1}(a)", "(?P<n>a)\\k<n>",
                          "(?P<n>a)(?P=n)", "(?=a)", "(?!a)", "(?<=a)b", "(?<!a)b", "(?R)", "(a)(?1)", "(?&n)(?P<n>a)",
                          "(?P>n)(?P<n>a)", "(?(1)a|b)", "a(?C1)", "(*FAIL)", "\\C"};
     for (size_t i = 0; i < sizeof bad / sizeof *bad; i++)
-        if (accepts(bad[i])) printf("should not compile: %s\n", bad[i]), failures++;
+        if (accepts(bad[i])) {
+            printf("should not compile: %s\n", bad[i]);
+            failures++;
+        }
 
     /* A pattern's text hides nothing: escaped parentheses, classes and \Q..\E are not constructs. */
     CHECK(accepts("\\(?=a"));
@@ -81,7 +90,7 @@ int main(void) {
 
     /* Groups: slots of participating and absent groups, and names. */
     {
-        ms_re *re = compile("(?P<y>[0-9]{4})-(x)?(?P<m>[0-9]{2})", msg);
+        MsRegex *re = compile("(?P<y>[0-9]{4})-(x)?(?P<m>[0-9]{2})", msg);
         int64_t slots[8];
         CHECK(re && ms_re_slots(re) == 4);
         CHECK(ms_re_match(re, "on 2026-10", 10, 0, slots) == MS_RE_MATCHED);

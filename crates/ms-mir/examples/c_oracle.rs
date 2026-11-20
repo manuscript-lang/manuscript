@@ -2,9 +2,12 @@
 //! parse error), so the C MIR in `compiler/` can be compared with it byte for byte
 //! (`make c-compiler-test`). Temporary tooling for the C rewrite: delete it with `ms-mir`.
 
-use ms_mir::ir::Op;
+use ms_mir::interp::Interp;
+use ms_mir::ir::{Boxing, Op};
+use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use ms_mir::parse::parse_module;
 use ms_mir::print::print_module;
+use ms_mir::types::{AltId, Ty, TyKind};
 use std::fmt::Write;
 
 fn main() {
@@ -29,6 +32,54 @@ fn main() {
                 );
             }
         }
+        "boxing" => {
+            for path in &args[1..] {
+                let _ = writeln!(out, "=== {path}");
+                let Some(m) = std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|t| parse_module(&t).ok())
+                else {
+                    out.push_str("error\n");
+                    continue;
+                };
+                for a in 0..m.alts.len() {
+                    let b = Boxing::default().alt(&m, AltId(a as u32));
+                    let _ = writeln!(out, "alt {a} {}", b as u8);
+                }
+                for t in 0..m.types.len() {
+                    if let TyKind::Opt(inner) = m.types.kind(Ty(t as u32)) {
+                        let b = m.opt_is_boxed(*inner);
+                        let _ = writeln!(out, "opt {t} {}", b as u8);
+                    }
+                }
+            }
+        }
+        "run" => {
+            for path in &args[1..] {
+                let _ = writeln!(out, "=== {path}");
+                let Some(m) = std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|t| parse_module(&t).ok())
+                else {
+                    out.push_str("error\n");
+                    continue;
+                };
+                run_module(&m, &mut out);
+            }
+        }
+        "layout" => {
+            for path in &args[1..] {
+                let _ = writeln!(out, "=== {path}");
+                let Some(m) = std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|t| parse_module(&t).ok())
+                else {
+                    out.push_str("error\n");
+                    continue;
+                };
+                dump_layout(&m, &mut out);
+            }
+        }
         _ => {
             for path in &args[1..] {
                 let bytes = std::fs::read(path).expect("read");
@@ -47,4 +98,132 @@ fn main() {
         }
     }
     print!("{out}");
+}
+
+fn leaf_list(leaves: &[Leaf]) -> String {
+    let names: Vec<String> = leaves
+        .iter()
+        .map(|l| format!("{l:?}").to_lowercase())
+        .collect();
+    names.join(",")
+}
+
+fn flags(v: &[bool]) -> String {
+    v.iter().map(|b| if *b { '1' } else { '0' }).collect()
+}
+
+fn nums<T: std::fmt::Display>(v: &[T]) -> String {
+    let s: Vec<String> = v.iter().map(|x| x.to_string()).collect();
+    s.join(",")
+}
+
+/// One block of lines per type, alternative, indirect record and function; the C dump prints the same.
+fn dump_layout(m: &ms_mir::ir::Module, out: &mut String) {
+    let lay = Layouts::new(m);
+    for t in 0..m.types.len() {
+        let ty = Ty(t as u32);
+        let shape = lay.shape(ty);
+        let mem = mem_layout(&shape.leaves);
+        let _ = writeln!(
+            out,
+            "ty {t} leaves={} size={} align={} off={} ptr={} bool={} str={}",
+            leaf_list(&shape.leaves),
+            mem.size,
+            mem.align,
+            nums(&mem.offsets),
+            flags(&lay.pointer_leaves(ty)),
+            flags(&lay.bool_leaves(ty)),
+            lay.is_str_like(ty) as u8
+        );
+        match m.types.kind(ty) {
+            TyKind::Opt(inner) => {
+                let _ = writeln!(out, "  nullable={}", lay.opt_is_nullable(*inner) as u8);
+            }
+            TyKind::Alt(a) => {
+                let _ = writeln!(out, "  boxed={}", lay.is_boxed(*a) as u8);
+                match &shape.alt {
+                    Some(AltRepr::Inline { slots }) => {
+                        for (c, s) in slots.iter().enumerate() {
+                            let _ = writeln!(out, "  inline case {c} slots={}", nums(s));
+                        }
+                    }
+                    Some(AltRepr::Boxed { slots, block }) => {
+                        for (c, s) in slots.iter().enumerate() {
+                            let _ = writeln!(out, "  boxed case {c} slots={}", nums(s));
+                        }
+                        let _ = writeln!(
+                            out,
+                            "  block={} size={}",
+                            leaf_list(block),
+                            lay.boxed_block_size(ty).unwrap_or(0)
+                        );
+                    }
+                    None => {}
+                }
+                for (c, case) in lay.alt_fields(*a).iter().enumerate() {
+                    for (i, (fty, idx)) in case.iter().enumerate() {
+                        let _ = writeln!(out, "  field {c}.{i} ty={} idx={}", fty.0, nums(idx));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    for r in 0..m.type_defs.len() {
+        let block = lay.type_block(ms_mir::types::TypeId(r as u32));
+        let _ = writeln!(out, "block {r} {}", leaf_list(&block));
+    }
+    for (i, f) in m.funcs.iter().enumerate() {
+        let c = lay.closure(f);
+        let caps: Vec<String> = c
+            .captures
+            .iter()
+            .map(|s| format!("{}@{}:{}", s.ty.0, s.offset, leaf_list(&s.leaves)))
+            .collect();
+        let _ = writeln!(out, "closure {i} size={} caps={}", c.size, caps.join(" "));
+    }
+}
+
+/// Internal faults quote the interpreter's own debug output, which the C version does not copy.
+fn plain(message: &str) -> &str {
+    if message.starts_with("interpreter:") || message.starts_with("entry returned") {
+        "interpreter"
+    } else {
+        message
+    }
+}
+
+/// Runs the entry and prints what the C interpreter prints: the program's output, its exit code
+/// or fault (kind, message, frames, cleanup faults) and the drop and step counts.
+fn run_module(m: &ms_mir::ir::Module, out: &mut String) {
+    if ms_mir::expand_owned::needed(m) {
+        out.push_str("skip expand\n");
+        return;
+    }
+    let mut it = Interp::new(m);
+    it.set_fuel(Some(2_000_000));
+    let result = it.run_entry();
+    let _ = writeln!(out, "stdout={}", it.stdout().replace('\n', "\\n"));
+    match result {
+        Ok(code) => {
+            let _ = writeln!(out, "exit {code}");
+        }
+        Err(f) => {
+            let kind = format!("{:?}", f.kind);
+            let kind = kind.split('(').next().unwrap_or("");
+            let _ = writeln!(
+                out,
+                "fault {kind} {} fuel={}",
+                plain(&f.message),
+                f.fuel_exhausted as u8
+            );
+            for s in &f.stack {
+                let _ = writeln!(out, "  at {s}");
+            }
+            for c in &f.cleanup_faults {
+                let _ = writeln!(out, "  cleanup {}", plain(c));
+            }
+        }
+    }
+    let _ = writeln!(out, "drops {} steps {}", it.drops(), it.steps());
 }

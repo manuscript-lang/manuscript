@@ -1,0 +1,4 @@
+# Defined in runtime/std/path.c; the Rust natives of ms-std-path are deleted. The matcher in crates/ms-std-path/src/glob.rs stays for fs walks until fs moves to C.
+msstd_path_compile_glob
+msstd_path_glob_matches
+msstd_path_host_windows

@@ -35,7 +35,7 @@ static MsStr heap(const char *text, bool ascii) {
     size_t n = strlen(text);
     uint8_t *bytes = msrt_alloc(n + 1);
     memcpy(bytes, text, n + 1);
-    return (MsStr){bytes, n | (ascii ? MS_STR_ASCII : 0)};
+    return (MsStr){.ptr_word = bytes, .tagged = n | (ascii ? MS_STR_ASCII : 0)};
 }
 
 static size_t address(const MsStr *s) {
@@ -99,7 +99,7 @@ static void test_append(void) {
     CHECK(ms_str_is_inline(&third));
     /* A part that views the appended string's own bytes is read before they move. */
     MsStr loop = heap("repeat-me-repeat-me", true);
-    MsStr view = {loop.ptr_word, 6 | (UINT64_C(3) << 62)};
+    MsStr view = {.ptr_word = loop.ptr_word, .tagged = 6 | (UINT64_C(3) << 62)};
     MsStr fourth;
     msrt_string_append_fmt1(&loop, 0b0, address(&view), &fourth);
     CHECK(is_text(&fourth, "repeat-me-repeat-merepeat"));

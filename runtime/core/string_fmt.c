@@ -1,7 +1,7 @@
 /* The natives that turn one Int, UInt64, Float, Float32 or Bool into a string (`to_string`,
  * `to_string_radix`). The digits come from fmt.c into a stack buffer sized for the longest text; the
  * string constructor builds the value, which is inline when it fits. */
-#include "ms_rt/fmt.h"
+#include "fmt_fixed.h"
 #include "ms_rt/string.h"
 #include "text.h"
 

@@ -9,11 +9,6 @@
 #include "rt_calls.h"
 #include "rt_stubs.h"
 
-/* The two words of a string value; the runtime declares the type opaque to this layer. */
-struct MsStr {
-    uint64_t words[2];
-};
-
 static void check(bool ok, int line, const char *text) {
     if (!ok) {
         fprintf(stderr, "core_list.c:%d: %s\n", line, text);

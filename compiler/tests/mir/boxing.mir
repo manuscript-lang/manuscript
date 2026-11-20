@@ -1,0 +1,16 @@
+module "boxing"
+type Node { v: int, next: opt<Node> }
+type Plain { a: int, b: str }
+type Pair { n: opt<Pair2>, p: Plain }
+type Pair2 { back: opt<Pair> }
+alt Tree { Leaf(v: int), Branch(l: Tree, r: Tree) }
+alt Even { Zero, Succ(o: Odd) }
+alt Odd { One(e: Even) }
+alt Flat { A(x: int), B(y: opt<Plain>) }
+alt Through { T(n: Node), U(l: list<Through>) }
+entry @main
+fn @main() -> int {
+b0:
+  %z: int = iconst 0
+  ret %z
+}

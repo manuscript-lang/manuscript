@@ -1,0 +1,3 @@
+# Defined in runtime/std/fs*.c; the Rust ms-std-fs definitions are deleted as each moves.
+msstd_fs_admit
+msstd_fs_release
