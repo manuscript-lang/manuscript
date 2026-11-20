@@ -179,6 +179,9 @@ int main(void) {
         ms_sys_thread_join(thread);
         ((MsObj *)handle)->drop(handle);
         ((MsObj *)conn)->drop(conn);
+        msrt_string_free(&authority);
+        msrt_string_free(&target);
+        msrt_list_drop(&names, &msrt_desc_string);
         ms_sys_net_close(server.listener);
     }
 
