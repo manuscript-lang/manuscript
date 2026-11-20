@@ -277,7 +277,11 @@ static void set_terminal(MsFsWatcher *watcher, uint8_t status, const char *text)
     if (watcher->terminal == STATUS_OK) {
         watcher->terminal = status;
         if (text != NULL) {
-            watcher->terminal_text = strdup(text);
+            size_t size = strlen(text) + 1;
+            watcher->terminal_text = malloc(size);
+            if (watcher->terminal_text != NULL) {
+                memcpy(watcher->terminal_text, text, size);
+            }
         }
     }
     watcher_unlock(watcher);
