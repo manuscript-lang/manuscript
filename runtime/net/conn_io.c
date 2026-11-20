@@ -201,7 +201,7 @@ static MsNetStatus pump_in(MsConn *row, MsTls *tls, int64_t deadline_ns, bool *e
 
 enum { GONE_POLL_NS = 20000000 };
 
-MsNetStatus ms_conn_wait_gone(MsConnTable *table, MsConnId id) {
+MsNetStatus ms_conn_wait_gone(MsConnTable *table, MsConnId id, const uint8_t *handed_on) {
     for (;;) {
         MsConn *row = usable(table, id);
         if (row == NULL) {
@@ -220,8 +220,15 @@ MsNetStatus ms_conn_wait_gone(MsConnTable *table, MsConnId id) {
         if (result == MS_SYS_ERROR) {
             return MS_NET_RESET;
         }
-        if (result == MS_SYS_OK && (msrt_task_sleep(GONE_POLL_NS) & MS_WAIT_CANCELLED) != 0) {
-            return MS_NET_CANCELLED;
+        if (result == MS_SYS_OK) {
+            /* Queued bytes hide a FIN behind them, so a connection whose reads another owner took (an upgrade) is no
+             * longer watched. */
+            if (handed_on != NULL && __atomic_load_n(handed_on, __ATOMIC_ACQUIRE) != 0) {
+                return MS_NET_OK;
+            }
+            if ((msrt_task_sleep(GONE_POLL_NS) & MS_WAIT_CANCELLED) != 0) {
+                return MS_NET_CANCELLED;
+            }
         }
     }
 }
