@@ -19,12 +19,20 @@ MsLiveness ms_liveness_new(MsArena *arena, uint32_t node_count) {
     return live;
 }
 
+/* What `break` and `continue` reach in the innermost loop: the state after the loop and the
+ * state at its head. */
+typedef struct LiveLoop {
+    const uint32_t *after, *head;
+    const struct LiveLoop *outer;
+} LiveLoop;
+
 typedef struct LiveWalk {
     MsLiveness *live;
     const MsFacts *facts;
     MsArena *scratch;
     uint32_t *later; /* by binding id: the earliest later use, or MS_NONE */
     uint32_t nbindings;
+    const LiveLoop *loop;
     bool supported;
 } LiveWalk;
 
@@ -113,6 +121,26 @@ static void live_define(LiveWalk *w, const MsPattern *pattern) {
 
 static void live_statement(LiveWalk *w, const MsStmt *s);
 
+/* The store ends the old value's life; the value runs first, so it may read the old one. */
+static void live_assign(LiveWalk *w, const MsStmt *s) {
+    const uint32_t binding = w->facts->assign_binding[s->id];
+    if (binding == MS_NONE) {
+        w->supported = false;
+        return;
+    }
+    w->later[binding] = MS_NONE;
+    live_expr(w, s->u.assign.value);
+}
+
+/* A jump continues from the state at its loop's exit or head. */
+static void live_jump(LiveWalk *w, const MsStmt *s) {
+    if (w->loop == NULL) {
+        w->supported = false;
+        return;
+    }
+    w->later = live_copy_of(w, s->kind == MS_S_BREAK ? w->loop->after : w->loop->head);
+}
+
 /* Both branches start from what follows the `if`; afterwards the earlier use on either path counts. */
 static void live_if(LiveWalk *w, const MsStmt *s) {
     if (s->u.branch.binding != NULL) {
@@ -135,7 +163,10 @@ static void live_while(LiveWalk *w, const MsStmt *s) {
     uint32_t *head = live_snapshot(w);
     for (;;) {
         w->later = live_copy_of(w, head);
+        const LiveLoop here = {after, head, w->loop};
+        w->loop = &here;
         live_block(w, &s->u.loop.body);
+        w->loop = here.outer;
         live_join(w, after);
         live_expr(w, s->u.loop.cond);
         const uint32_t *entry = w->later;
@@ -168,10 +199,10 @@ static void live_statement(LiveWalk *w, const MsStmt *s) {
         return;
     case MS_S_IF: live_if(w, s); return;
     case MS_S_WHILE: live_while(w, s); return;
-    case MS_S_ASSIGN:
-    case MS_S_CALL:
     case MS_S_BREAK:
-    case MS_S_CONTINUE:
+    case MS_S_CONTINUE: live_jump(w, s); return;
+    case MS_S_ASSIGN: live_assign(w, s); return;
+    case MS_S_CALL:
     case MS_S_FOR: w->supported = false; return;
     }
 }

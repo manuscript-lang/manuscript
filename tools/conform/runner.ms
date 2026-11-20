@@ -50,6 +50,26 @@ fn unrecorded(fx: Fixture, reason: String) Case:
 		diff: reason,
 	)
 
+// The longest build error text a failure shows.
+BUILD_ERROR_LIMIT := 4000
+
+// What the compiler or linker said when `ms test` could not build the fixture (its
+// report has a `*_error` reason), which the diff cuts off: the diagnostics' messages
+// and standard error. Empty when the build succeeded.
+fn build_failure(actual: JsonValue) String:
+	report := actual.get("report")
+	if report.is_none(): return ""
+	if not string_member(report.get(), "reason").ends_with("_error"): return ""
+
+	var text = string_member(actual, "stderr")
+	if found := report.get().get("diagnostics"):
+		if items := found.as_list():
+			for item in items:
+				text += f"\n{string_member(item, "message")}"
+	if text.trim().is_empty(): return ""
+
+	return f"build error:\n{text.trim().chars().take(BUILD_ERROR_LIMIT).join("")}\n"
+
 // Judges `actual` against the recorded expectation of `fx`.
 fn judge(fx: Fixture, allow: ExpectFail, actual: JsonValue, millis: Int) Case:
 	loaded := load_expected(fx)
@@ -68,7 +88,7 @@ fn judge(fx: Fixture, allow: ExpectFail, actual: JsonValue, millis: Int) Case:
 		phase: fx.phase,
 		outcome: outcome,
 		millis: millis,
-		diff: difference.get_or(""),
+		diff: difference.get_or("") + if passed: "" else: build_failure(actual),
 	)
 
 fn elapsed_millis(started: Instant) Int:
