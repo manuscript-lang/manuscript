@@ -116,3 +116,68 @@ MirImm mir_imm_none(void) { return (MirImm){.tag = MI_NONE}; }
 MirImm mir_imm_int(int64_t v) { return (MirImm){.tag = MI_INT, .i = v}; }
 MirImm mir_imm_cc(MirCc cc) { return (MirImm){.tag = MI_CC, .a = (uint32_t)cc}; }
 MirImm mir_imm_ext(uint32_t ext) { return (MirImm){.tag = MI_EXT, .a = ext}; }
+
+/* ---- cancellation points ---- */
+
+bool mir_starts_tasks(const MirModule *m) {
+    for (uint32_t i = 0; i < m->nexterns; i++) {
+        if (m->externs[i].role == MR_SPAWNS_TASK) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool pass_leaf_extern(const MirModule *m, uint32_t ext) {
+    return m->externs[ext].noreturn || m->externs[ext].leaf;
+}
+
+/* Whether `inst` reaches a cancellation point by itself, not through a callee. */
+static bool pass_parks_directly(const MirModule *m, const MirInst *inst) {
+    switch ((MirOp)inst->op) {
+    case MOP_Poll:
+    case MOP_CallInd:
+    case MOP_CallMethod:
+        return true;
+    case MOP_CallRt:
+        return inst->imm.tag == MI_EXT && !pass_leaf_extern(m, inst->imm.a);
+    default:
+        return false;
+    }
+}
+
+bool mir_inst_parks(const MirModule *m, const bool *parks, const MirInst *inst) {
+    if (pass_parks_directly(m, inst)) {
+        return true;
+    }
+    return inst->op == MOP_Call && inst->imm.tag == MI_FUNC && parks[inst->imm.a];
+}
+
+bool *mir_parking_funcs(MsArena *arena, const MirModule *m) {
+    bool *parks = MS_NEW_N(arena, bool, m->nfuncs ? m->nfuncs : 1);
+    memset(parks, 0, sizeof(bool) * (m->nfuncs ? m->nfuncs : 1));
+    for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
+        const MirFunc *f = &m->funcs[fi];
+        for (uint32_t b = 0; b < f->nblocks && !parks[fi]; b++) {
+            for (uint32_t i = 0; i < f->blocks[b].ninsts && !parks[fi]; i++) {
+                parks[fi] = pass_parks_directly(m, &f->blocks[b].insts[i]);
+            }
+        }
+    }
+    /* Propagate to callers until nothing changes. */
+    for (bool changed = true; changed;) {
+        changed = false;
+        for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
+            const MirFunc *f = &m->funcs[fi];
+            for (uint32_t b = 0; b < f->nblocks && !parks[fi]; b++) {
+                for (uint32_t i = 0; i < f->blocks[b].ninsts && !parks[fi]; i++) {
+                    const MirInst *inst = &f->blocks[b].insts[i];
+                    parks[fi] = inst->op == MOP_Call && inst->imm.tag == MI_FUNC &&
+                                parks[inst->imm.a];
+                    changed = changed || parks[fi];
+                }
+            }
+        }
+    }
+    return parks;
+}

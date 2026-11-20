@@ -6,6 +6,7 @@
 //! indices and lengths count Unicode scalars; a string whose scalar count equals its byte length
 //! is ASCII, which every indexing operation exploits.
 //! ms: domain string
+#![cfg_attr(ms_c = "msrt_string_fmt2", allow(dead_code))]
 use crate::alloc;
 use crate::fault;
 use crate::obj;
@@ -1253,6 +1254,7 @@ unsafe fn append_parts<const N: usize>(a: *const StrVal, mask: i64, parts: [usiz
 }
 
 /// `f"{a}{b}"` where a part may be an integer: see [`format_parts`].
+#[cfg(not(ms_c = "msrt_string_fmt2"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal) {
@@ -1261,6 +1263,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt2(mask: i64, a: usize, b: usize, 
 }
 
 /// Three parts, any of them integers: see [`format_parts`].
+#[cfg(not(ms_c = "msrt_string_fmt3"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_fmt3(
@@ -1275,6 +1278,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt3(
 }
 
 /// Four parts, any of them integers: see [`format_parts`].
+#[cfg(not(ms_c = "msrt_string_fmt4"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_fmt4(
@@ -1290,6 +1294,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt4(
 }
 
 /// Five parts, any of them integers: see [`format_parts`].
+#[cfg(not(ms_c = "msrt_string_fmt5"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_fmt5(
@@ -1306,6 +1311,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt5(
 }
 
 /// Six parts, any of them integers: see [`format_parts`].
+#[cfg(not(ms_c = "msrt_string_fmt6"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_fmt6(
@@ -1323,6 +1329,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt6(
 }
 
 /// The join of an owned `s` and one part, growing `s`: see [`append_parts`].
+#[cfg(not(ms_c = "msrt_string_append_fmt1"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_append_fmt1(
@@ -1336,6 +1343,7 @@ pub unsafe extern "C-unwind" fn msrt_string_append_fmt1(
 }
 
 /// The join of an owned `s` and two parts, growing `s`: see [`append_parts`].
+#[cfg(not(ms_c = "msrt_string_append_fmt2"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_append_fmt2(
@@ -1350,6 +1358,7 @@ pub unsafe extern "C-unwind" fn msrt_string_append_fmt2(
 }
 
 /// The join of an owned `s` and three parts, growing `s`: see [`append_parts`].
+#[cfg(not(ms_c = "msrt_string_append_fmt3"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_append_fmt3(
@@ -1365,6 +1374,7 @@ pub unsafe extern "C-unwind" fn msrt_string_append_fmt3(
 }
 
 /// The join of an owned `s` and four parts, growing `s`: see [`append_parts`].
+#[cfg(not(ms_c = "msrt_string_append_fmt4"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_append_fmt4(
@@ -1381,6 +1391,7 @@ pub unsafe extern "C-unwind" fn msrt_string_append_fmt4(
 }
 
 /// The join of an owned `s` and five parts, growing `s`: see [`append_parts`].
+#[cfg(not(ms_c = "msrt_string_append_fmt5"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_append_fmt5(
@@ -3567,13 +3578,16 @@ unsafe fn normalize_kind(
 // Conversions to string (Int, Float, Bool)
 // ---------------------------------------------------------------------------
 
+#[cfg(not(ms_c = "msrt_int_to_string"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_int_to_string(v: i64, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_int_to_string_val(v)).write_to(out) }
+    let mut tmp = [0u8; 20];
+    // SAFETY: caller passes a writable `out`.
+    unsafe { from_bytes(crate::num::format_i64(v, &mut tmp)).write_to(out) }
 }
 
+#[cfg(not(ms_c = "msrt_uint_to_string"))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_uint_to_string(v: i64, out: *mut StrVal) {
     let mut tmp = [0u8; 20];
@@ -3581,6 +3595,7 @@ pub unsafe extern "C-unwind" fn msrt_uint_to_string(v: i64, out: *mut StrVal) {
     unsafe { from_bytes(crate::num::format_u64(v as u64, &mut tmp)).write_to(out) }
 }
 
+#[cfg(not(ms_c = "msrt_uint_to_string_radix"))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal) {
     if !(2..=36).contains(&radix) {
@@ -3594,11 +3609,7 @@ pub unsafe extern "C-unwind" fn msrt_uint_to_string_radix(v: i64, radix: i64, ou
     unsafe { from_buf(b).write_to(out) }
 }
 
-unsafe fn msrt_int_to_string_val(v: i64) -> StrVal {
-    let mut tmp = [0u8; 20];
-    from_bytes(crate::num::format_i64(v, &mut tmp))
-}
-
+#[cfg(not(ms_c = "msrt_float32_to_string"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float32_to_string(v: f64, out: *mut StrVal) {
@@ -3606,36 +3617,26 @@ pub unsafe extern "C-unwind" fn msrt_float32_to_string(v: f64, out: *mut StrVal)
     unsafe { from_bytes(crate::num::float32_text(v).as_slice()).write_to(out) }
 }
 
+#[cfg(not(ms_c = "msrt_float_to_string"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float_to_string(v: f64, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_float_to_string_val(v)).write_to(out) }
+    // SAFETY: caller passes a writable `out`.
+    unsafe { from_bytes(crate::num::float_text(v).as_slice()).write_to(out) }
 }
 
-unsafe fn msrt_float_to_string_val(v: f64) -> StrVal {
-    from_bytes(crate::num::float_text(v).as_slice())
-}
-
+#[cfg(not(ms_c = "msrt_bool_to_string"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_bool_to_string(v: u8, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_bool_to_string_val(v)).write_to(out) }
+    // SAFETY: caller passes a writable `out`.
+    unsafe { from_bytes(if v != 0 { b"true" } else { b"false" }).write_to(out) }
 }
 
-unsafe fn msrt_bool_to_string_val(v: u8) -> StrVal {
-    from_bytes(if v != 0 { b"true" } else { b"false" })
-}
-
+#[cfg(not(ms_c = "msrt_int_to_string_radix"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_int_to_string_radix_val(v, radix)).write_to(out) }
-}
-
-unsafe fn msrt_int_to_string_radix_val(v: i64, radix: i64) -> StrVal {
     if !(2..=36).contains(&radix) {
         fault::fault_fmt(format_args!(
             "to_string_radix: radix must be between 2 and 36, found {radix}"
@@ -3643,7 +3644,8 @@ unsafe fn msrt_int_to_string_radix_val(v: i64, radix: i64) -> StrVal {
     }
     let mut b = Vec::new();
     crate::num::format_radix(v, radix as u32, &mut b);
-    from_buf(b)
+    // SAFETY: caller passes a writable `out`.
+    unsafe { from_buf(b).write_to(out) }
 }
 
 /// The double-quoted, escaped spelling of a string (as `%q` writes it).
