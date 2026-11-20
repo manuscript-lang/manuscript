@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/mir_abi.h"
 #include "ms/mir_analysis.h"
 #include "ms/mir_layout.h"
 #include "ms/mir_pass.h"
@@ -666,6 +667,21 @@ static void ll_checked_div(LCx *c, const MirInst *inst, uint32_t block, uint32_t
                   a[0], n, inst->res, n, n);
 }
 
+/* `stack.low`: whether the frame address is below the running segment's limit, which sits in the
+ * last bytes of the stack region the frame lies in (`MIR_STACK_REGION` is a power of two). */
+static void ll_stack_low(LCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const uint32_t n = c->next++;
+    ms_buf_printf(o, "  %%sf%u = call ptr @llvm.frameaddress.p0(i32 0)\n", n);
+    ms_buf_printf(o, "  %%sp%u = ptrtoint ptr %%sf%u to i64\n", n, n);
+    ms_buf_printf(o, "  %%sb%u = and i64 %%sp%u, %lld\n", n, n, (long long)-MIR_STACK_REGION);
+    ms_buf_printf(o, "  %%sc%u = add i64 %%sb%u, %lld\n", n, n,
+                  (long long)(MIR_STACK_REGION - MIR_STACK_LIMIT_CELL));
+    ms_buf_printf(o, "  %%sa%u = inttoptr i64 %%sc%u to ptr\n", n, n);
+    ms_buf_printf(o, "  %%sl%u = load i64, ptr %%sa%u\n", n, n);
+    ms_buf_printf(o, "  %%v%u = icmp ult i64 %%sp%u, %%sl%u\n", inst->res, n, n);
+}
+
 static void ll_compare(LCx *c, const MirInst *inst) {
     const bool is_float = inst->op == MOP_FCmp;
     const char *type = is_float ? "double" : ll_vty(c, inst->args[0]);
@@ -893,6 +909,60 @@ static void ll_opt_convert(LCx *c, const MirInst *inst) {
 
 /* `opt.is_some`: the flag leaf of an optional held as [flag, value], or a non-null test of one held
  * as a single nullable pointer. */
+/* ---- alternatives and optionals ---- */
+
+/* `alt.tag`: leaf 0, or the first word of the block a boxed alternative points to. */
+static void ll_alt_tag(LCx *c, const MirInst *inst) {
+    if (mir_shape(c->layouts, c->f->values[inst->args[0]])->alt == MIR_ALT_BOXED) {
+        char base[24];
+        ll_pointer(c, inst->args[0], base, sizeof base);
+        ms_buf_printf(c->out, "  %%v%u = load i64, ptr %s\n", inst->res, base);
+    } else {
+        ll_copy_leaf(c, inst->res, 0, inst->args[0], 0);
+    }
+}
+
+/* `opt.some`: a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
+ * payload itself, any other is the payload after a presence flag. */
+static bool ll_opt_some(LCx *c, const MirInst *inst) {
+    const MirTy inner = mir_ty_data(c->m, c->f->values[inst->res])->elem;
+    MsBuf *o = c->out;
+    if (mir_layouts_opt_boxed(c->layouts, inner)) {
+        const MirLeafSpan leaves = ll_leaves(c, inner);
+        const uint32_t size = mir_mem_layout(leaves.ptr, leaves.len, NULL).size;
+        ms_buf_printf(o, "  %%v%u = call i64 @\"msrt_alloc\"(i64 %u)\n", inst->res, size > 0 ? size : 1);
+        char base[24];
+        ll_pointer(c, inst->res, base, sizeof base);
+        return leaves.len == 0 || ll_leaves_at(c, inst->args[0], base, false);
+    }
+    uint32_t at = 0;
+    if (!mir_opt_is_nullable(c->layouts, inner)) {
+        ms_buf_printf(o, "  %%v%u = or i1 false, true\n", inst->res);
+        at = 1;
+    }
+    const uint32_t n = ll_leaves(c, c->f->values[inst->args[0]]).len;
+    for (uint32_t k = 0; k < n; k++) {
+        ll_copy_leaf(c, inst->res, at + k, inst->args[0], k);
+    }
+    return true;
+}
+
+/* `opt.get`: the payload of an optional known to hold one. */
+static bool ll_opt_get(LCx *c, const MirInst *inst) {
+    const MirTy inner = mir_ty_data(c->m, c->f->values[inst->args[0]])->elem;
+    if (mir_layouts_opt_boxed(c->layouts, inner)) {
+        char base[24];
+        ll_pointer(c, inst->args[0], base, sizeof base);
+        return ll_leaves_at(c, inst->res, base, true);
+    }
+    const uint32_t skip = mir_opt_is_nullable(c->layouts, inner) ? 0 : 1;
+    const uint32_t n = ll_leaves(c, c->f->values[inst->res]).len;
+    for (uint32_t k = 0; k < n; k++) {
+        ll_copy_leaf(c, inst->res, k, inst->args[0], skip + k);
+    }
+    return true;
+}
+
 static void ll_opt_is_some(LCx *c, const MirInst *inst) {
     const MirValue x = inst->args[0];
     if (ll_leaves(c, c->f->values[x]).len == 1) {
@@ -984,6 +1054,10 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     switch (inst->op) {
     case MOP_IConst: case MOP_BConst: case MOP_FConst: ll_constant(c, inst); return true;
     case MOP_ICmp: case MOP_UICmp: case MOP_FCmp: ll_compare(c, inst); return true;
+    case MOP_StackLow: ll_stack_low(c, inst); return true;
+    case MOP_AltTag: ll_alt_tag(c, inst); return true;
+    case MOP_OptSome: return ll_opt_some(c, inst);
+    case MOP_OptGet: return ll_opt_get(c, inst);
     case MOP_Call: return ll_call(c, inst, block, index);
     case MOP_CallRt: return ll_call_rt(c, inst, block, index);
     case MOP_SDivChk: case MOP_SRemChk: ll_checked_div(c, inst, block, part); return true;
@@ -1343,6 +1417,7 @@ static const char ll_declarations[] =
     "declare i64 @llvm.ctlz.i64(i64, i1)\n"
     "declare i64 @llvm.cttz.i64(i64, i1)\n"
     "declare i64 @llvm.ctpop.i64(i64)\n"
+    "declare ptr @llvm.frameaddress.p0(i32)\n"
     "declare double @llvm.sqrt.f64(double)\n"
     "declare double @llvm.fabs.f64(double)\n"
     "declare double @llvm.floor.f64(double)\n"

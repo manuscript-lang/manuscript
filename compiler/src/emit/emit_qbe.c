@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/mir_abi.h"
 #include "ms/mir_analysis.h"
 #include "ms/mir_data.h"
 #include "ms/mir_layout.h"
@@ -326,10 +327,13 @@ static void qbe_frame_slots(QCx *c) {
             if (inst->op == MOP_Slot) {
                 ms_buf_printf(c->out, "\t%%v%u =l alloc8 %u\n", inst->res,
                               qbe_slot_bytes(c->layouts, (MirTy)inst->imm.a));
-            } else if (inst->op == MOP_Call && inst->res != MIR_NONE &&
+            } else if ((inst->op == MOP_Call || inst->op == MOP_CallInd || inst->op == MOP_CallMethod) &&
+                       inst->res != MIR_NONE &&
                        qbe_leaves(c, c->f->values[inst->res]).len > 1) {
                 ms_buf_printf(c->out, "\t%%r%u_%u =l alloc8 %u\n", b, k,
                               qbe_slot_bytes(c->layouts, c->f->values[inst->res]));
+            } else if (inst->op == MOP_StackLow) {
+                ms_buf_printf(c->out, "\t%%f%u_%u =l alloc8 8\n", b, k);
             } else if (inst->op == MOP_CallRt) {
                 qbe_frame_rt_call(c, inst, b, k);
             }
@@ -338,14 +342,19 @@ static void qbe_frame_slots(QCx *c) {
 }
 
 /* Every leaf of every argument, in order, after the hidden result pointer when there is one. */
-static void qbe_call_arguments(QCx *c, const MirInst *inst, const char *result_area) {
+static void qbe_call_arguments(QCx *c, const MirInst *inst, const char *result_area,
+                               const char *lead) {
     MsBuf *o = c->out;
     bool first = true;
     if (result_area != NULL) {
         ms_buf_printf(o, "l %s", result_area);
         first = false;
     }
-    for (uint32_t k = 0; k < inst->nargs; k++) {
+    if (lead != NULL) {
+        ms_buf_printf(o, "%s%s", first ? "" : ", ", lead);
+        first = false;
+    }
+    for (uint32_t k = lead != NULL ? 1 : 0; k < inst->nargs; k++) {
         const MirLeafSpan leaves = qbe_leaves(c, c->f->values[inst->args[k]]);
         for (uint32_t j = 0; j < leaves.len; j++) {
             ms_buf_printf(o, "%s%c ", first ? "" : ", ", qbe_leaf_type(leaves.ptr[j]));
@@ -355,10 +364,11 @@ static void qbe_call_arguments(QCx *c, const MirInst *inst, const char *result_a
     }
 }
 
-/* A call. A result of more than one leaf comes back through a stack area that the call is given
- * and that is read leaf by leaf afterwards. */
-static bool qbe_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
-    const MirFunc *callee = &c->m->funcs[inst->imm.a];
+/* A call of `callee` (a QBE symbol or the temporary holding a code address); `lead` is an argument
+ * that stands for the first operand, or NULL. A result of more than one leaf comes back through a
+ * stack area that the call is given and that is read leaf by leaf afterwards. */
+static bool qbe_call_to(QCx *c, const MirInst *inst, uint32_t block, uint32_t index,
+                        const char *callee, const char *lead) {
     MsBuf *o = c->out;
     const uint32_t result_leaves =
         inst->res == MIR_NONE ? 0 : qbe_leaves(c, c->f->values[inst->res]).len;
@@ -371,14 +381,23 @@ static bool qbe_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     } else {
         ms_buf_puts(o, "\tcall ");
     }
-    qbe_sym(o, ms_name(&c->m->names, callee->name));
+    ms_buf_puts(o, callee);
     ms_buf_putc(o, '(');
-    qbe_call_arguments(c, inst, result_leaves > 1 ? area : NULL);
+    qbe_call_arguments(c, inst, result_leaves > 1 ? area : NULL, lead);
     ms_buf_puts(o, ")\n");
     if (result_leaves <= 1) {
         return true;
     }
     return qbe_load_leaves(c, inst->res, area);
+}
+
+static bool qbe_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    MsBuf name = {0};
+    qbe_sym(&name, ms_name(&c->m->names, c->m->funcs[inst->imm.a].name));
+    ms_buf_putc(&name, '\0');
+    const bool ok = qbe_call_to(c, inst, block, index, name.data, NULL);
+    ms_buf_free(&name);
+    return ok;
 }
 
 /* ---- static data ---- */
@@ -673,6 +692,177 @@ static void qbe_opt_is_some(QCx *c, const MirInst *inst) {
 }
 
 /* The instructions that read and write memory and build records; false when `c->why` is set. */
+/* `stack.low`: whether the stack pointer is below the running segment's limit, which sits in the
+ * last bytes of the stack region the frame lies in. QBE has no stack pointer; the address of a word
+ * in this frame stands for it. */
+static void qbe_stack_low(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    MsBuf *o = c->out;
+    const uint32_t n = c->next++;
+    ms_buf_printf(o, "\t%%s%u =l and %%f%u_%u, %lld\n", n, block, index, (long long)-MIR_STACK_REGION);
+    ms_buf_printf(o, "\t%%s%ua =l add %%s%u, %lld\n", n, n,
+                  (long long)(MIR_STACK_REGION - MIR_STACK_LIMIT_CELL));
+    ms_buf_printf(o, "\t%%s%ub =l loadl %%s%ua\n", n, n);
+    ms_buf_printf(o, "\t%%v%u =w cultl %%f%u_%u, %%s%ub\n", inst->res, block, index, n);
+}
+
+/* ---- alternatives and optionals ---- */
+
+/* Whether the alternative `ty` lives behind a pointer. */
+static bool qbe_alt_boxed(QCx *c, MirTy ty) {
+    return mir_shape(c->layouts, ty)->alt == MIR_ALT_BOXED;
+}
+
+/* `alt.tag`: leaf 0, or the first word of the block a boxed alternative points to. */
+static void qbe_alt_tag(QCx *c, const MirInst *inst) {
+    if (qbe_alt_boxed(c, c->f->values[inst->args[0]])) {
+        ms_buf_printf(c->out, "\t%%v%u =l loadl %%v%u\n", inst->res, inst->args[0]);
+    } else {
+        qbe_copy_leaf(c, inst->res, 0, inst->args[0], 0);
+    }
+}
+
+/* The type an optional wraps. */
+static MirTy qbe_opt_inner(const QCx *c, MirTy opt) {
+    return mir_ty_data(c->m, opt)->elem;
+}
+
+/* `opt.some`: a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
+ * payload itself, any other is the payload after a presence flag. */
+static bool qbe_opt_some(QCx *c, const MirInst *inst) {
+    const MirTy inner = qbe_opt_inner(c, c->f->values[inst->res]);
+    MsBuf *o = c->out;
+    if (mir_layouts_opt_boxed(c->layouts, inner)) {
+        const MirLeafSpan leaves = qbe_leaves(c, inner);
+        const uint32_t size = mir_mem_layout(leaves.ptr, leaves.len, NULL).size;
+        ms_buf_printf(o, "\t%%v%u =l call $msrt_alloc(l %u)\n", inst->res, size > 0 ? size : 1);
+        char base[24];
+        (void)snprintf(base, sizeof base, "%%v%u", inst->res);
+        return leaves.len == 0 || qbe_store_leaves(c, inst->args[0], base);
+    }
+    const bool nullable = mir_opt_is_nullable(c->layouts, inner);
+    uint32_t at = 0;
+    if (!nullable) {
+        ms_buf_printf(o, "\t%%v%u =w copy 1\n", inst->res);
+        at = 1;
+    }
+    const uint32_t n = qbe_leaves(c, c->f->values[inst->args[0]]).len;
+    for (uint32_t k = 0; k < n; k++) {
+        qbe_copy_leaf(c, inst->res, at + k, inst->args[0], k);
+    }
+    return true;
+}
+
+/* `opt.get`: the payload of an optional known to hold one. */
+static bool qbe_opt_get(QCx *c, const MirInst *inst) {
+    const MirTy ty = c->f->values[inst->args[0]];
+    const MirTy inner = qbe_opt_inner(c, ty);
+    if (mir_layouts_opt_boxed(c->layouts, inner)) {
+        char base[24];
+        (void)snprintf(base, sizeof base, "%%v%u", inst->args[0]);
+        return qbe_load_leaves(c, inst->res, base);
+    }
+    const uint32_t skip = mir_opt_is_nullable(c->layouts, inner) ? 0 : 1;
+    const uint32_t n = qbe_leaves(c, c->f->values[inst->res]).len;
+    for (uint32_t k = 0; k < n; k++) {
+        qbe_copy_leaf(c, inst->res, k, inst->args[0], skip + k);
+    }
+    return true;
+}
+
+/* ---- closures, interfaces, selects ---- */
+
+/* A closure object is three header words (clone, drop, code), then each capture at its offset
+ * (`mir_closure_layout`); an interface value is the data address and its vtable address with a tag
+ * in the low two bits. Slot 0 of a vtable is the payload drop, slot 1 + k the code of method k. */
+enum { QBE_CLOSURE_CODE = 16, QBE_TAG_MASK = 3 };
+
+/* Reads the word at `base + offset` into the temporary `%k<n>` and returns `n`. */
+static uint32_t qbe_load_word(QCx *c, const char *base, uint32_t offset) {
+    const uint32_t at = qbe_address(c, base, offset);
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "\t%%k%u =l loadl %%a%u\n", n, at);
+    return n;
+}
+
+/* `call.ind`: the code word of the closure in the first operand, called with the closure first. */
+static bool qbe_call_ind(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    char env[24], callee[24];
+    (void)snprintf(env, sizeof env, "%%v%u", inst->args[0]);
+    (void)snprintf(callee, sizeof callee, "%%k%u", qbe_load_word(c, env, QBE_CLOSURE_CODE));
+    return qbe_call_to(c, inst, block, index, callee, NULL);
+}
+
+/* `call.method`: the code word of the method's slot, called with the data address first. */
+static bool qbe_call_method(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "\t%%t%u =l and %%v%u.1, %d\n", n, inst->args[0], -(QBE_TAG_MASK + 1));
+    char table[24], callee[24], lead[24];
+    (void)snprintf(table, sizeof table, "%%t%u", n);
+    (void)snprintf(callee, sizeof callee, "%%k%u", qbe_load_word(c, table, 8 * (1 + inst->imm.b)));
+    (void)snprintf(lead, sizeof lead, "l %%v%u", inst->args[0]);
+    return qbe_call_to(c, inst, block, index, callee, lead);
+}
+
+/* `closure.cap`, `closure.cap_addr`: capture `i` of the closure being run, by value or by address. */
+static bool qbe_closure_cap(QCx *c, const MirInst *inst) {
+    const MirClosureLayout layout = mir_closure_layout(c->layouts, c->f);
+    const uint32_t i = inst->imm.a;
+    if (i >= layout.ncaptures) {
+        c->why = "capture out of range";
+        return false;
+    }
+    const uint32_t offset = layout.captures[i].offset;
+    if (inst->op == MOP_ClosureCapAddr) {
+        ms_buf_printf(c->out, "\t%%v%u =l add %%v%u, %u\n", inst->res, inst->args[0], offset);
+        return true;
+    }
+    if (layout.captures[i].leaves.len == 0) {
+        return true;
+    }
+    char env[24];
+    (void)snprintf(env, sizeof env, "%%v%u", inst->args[0]);
+    const uint32_t at = qbe_address(c, env, offset);
+    char base[24];
+    (void)snprintf(base, sizeof base, "%%a%u", at);
+    return qbe_load_leaves(c, inst->res, base);
+}
+
+/* The instruction that brings a leaf into a long for the select mask. */
+static const char *qbe_select_widen(MirLeaf leaf) {
+    const char type = qbe_leaf_type(leaf);
+    if (type == 'd') {
+        return "cast ";
+    }
+    return type == 'w' ? "extuw " : "copy ";
+}
+
+/* `select cond, a, b`, leaf by leaf, without a branch: the mask of `cond` picks the bits. A float
+ * goes through its integer bits. */
+static void qbe_select(QCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const MirLeafSpan leaves = qbe_leaves(c, c->f->values[inst->res]);
+    const uint32_t n = c->next++;
+    ms_buf_printf(o, "\t%%c%u =l extuw %%v%u\n\t%%m%u =l sub 0, %%c%u\n", n, inst->args[0], n, n);
+    for (uint32_t k = 0; k < leaves.len; k++) {
+        const uint32_t t = c->next++;
+        for (uint32_t side = 0; side < 2; side++) {
+            ms_buf_printf(o, "\t%%x%u_%u =l ", t, side);
+            ms_buf_puts(o, qbe_select_widen(leaves.ptr[k]));
+            qbe_name(o, inst->args[1 + side], k);
+            ms_buf_putc(o, '\n');
+        }
+        ms_buf_printf(o, "\t%%y%u =l and %%x%u_0, %%m%u\n", t, t, n);
+        ms_buf_printf(o, "\t%%z%u =l xor %%m%u, -1\n\t%%w%u =l and %%x%u_1, %%z%u\n", t, n, t, t, t);
+        ms_buf_printf(o, "\t%%o%u =l or %%y%u, %%w%u\n\t", t, t, t);
+        qbe_name(o, inst->res, k);
+        if (qbe_leaf_type(leaves.ptr[k]) == 'd') {
+            ms_buf_printf(o, " =d cast %%o%u\n", t);
+        } else {
+            ms_buf_printf(o, " =%c copy %%o%u\n", qbe_leaf_type(leaves.ptr[k]), t);
+        }
+    }
+}
+
 static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
     *handled = true;
     switch ((MirOp)inst->op) {
@@ -714,6 +904,20 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
     case MOP_INarrowOpt: case MOP_F2IOpt: return qbe_opt_convert(c, inst);
     case MOP_OptIsSome: qbe_opt_is_some(c, inst); return true;
+    case MOP_StackLow: qbe_stack_low(c, inst, block, index); return true;
+    case MOP_PtrAdd:
+        ms_buf_printf(c->out, "\t%%v%u =l add %%v%u, %%v%u\n", inst->res, inst->args[0], inst->args[1]);
+        return true;
+    case MOP_Select: qbe_select(c, inst); return true;
+    case MOP_AltTag: qbe_alt_tag(c, inst); return true;
+    case MOP_OptSome: return qbe_opt_some(c, inst);
+    case MOP_OptGet: return qbe_opt_get(c, inst);
+    case MOP_CallInd: return qbe_call_ind(c, inst, block, index);
+    case MOP_CallMethod: return qbe_call_method(c, inst, block, index);
+    case MOP_ClosureCap: case MOP_ClosureCapAddr: return qbe_closure_cap(c, inst);
+    case MOP_IfaceTag:
+        ms_buf_printf(c->out, "\t%%v%u =l and %%v%u.1, %d\n", inst->res, inst->args[0], QBE_TAG_MASK);
+        return true;
     case MOP_TypeDesc: case MOP_FuncAddr: return qbe_address_of(c, inst);
     case MOP_GlobalGet: case MOP_GlobalSet: return qbe_global(c, inst);
     default:
