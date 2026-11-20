@@ -316,6 +316,51 @@ static void scope_report_failed_import(MsCheck *c, MsModId module, const MsImpor
     ms_report(c, module, &diag);
 }
 
+void ms_module_set_imports(MsCheck *c, MsModId module, const MsModId *targets) {
+    c->mods[module].import_targets = targets;
+}
+
+/* What an import of a project module can see there: the names it exports, and whether the name
+ * asked for is declared without `export`. */
+static MsExportList scope_local_exports(MsCheck *c, MsModId target, MsSym wanted) {
+    const MsModuleRow *row = &c->mods[target];
+    MsStr *names = MS_NEW_N(&c->arena, MsStr, row->norder + 1);
+    MsExportList list = {.names = names};
+    for (uint32_t i = 0; i < row->norder; i++) {
+        const MsSymId sym = row->order[i];
+        if (c->syms.module[sym] != target || c->syms.decl[sym] == NULL) {
+            continue;
+        }
+        if (c->syms.is_exported[sym]) {
+            names[list.count++] = ms_name(c->names, c->syms.name[sym]);
+        } else if (c->syms.name[sym] == wanted) {
+            list.name_is_private = true;
+        }
+    }
+    return list;
+}
+
+/* An import of a project module: the exported declaration of that name, or the diagnostic. */
+static void scope_import_local(MsCheck *c, MsModId module, const MsImport *item, MsModId target) {
+    ms_module_declare(c, target);
+    const MsSymId found = ms_map_get(&c->mods[target].scope, item->name);
+    if (found != MS_NONE && c->syms.module[found] == target && c->syms.decl[found] != NULL &&
+        c->syms.is_exported[found]) {
+        ms_module_resolve_types(c, target); // the importer's signatures name the target's types
+        scope_add_symbol(c, module, item->name, found, item->name_pos);
+        return;
+    }
+    const MsExportList local = scope_local_exports(c, target, item->name);
+    const uint32_t width = ms_name(c->names, item->name).len;
+    MsPos end = item->name_pos;
+    end.offset += width;
+    end.column += width;
+    const MsStr message = ms_export_message(&c->arena, c, item, false, &local);
+    const MsCheckDiag diag = {.diag = {.pos = item->name_pos, .has_end = true, .end = end, .message = message},
+                              .phase = MS_PHASE_RESOLUTION};
+    ms_report(c, module, &diag);
+}
+
 static void scope_import_symbols(MsCheck *c, MsModId module) {
     const MsModule *syntax = c->mods[module].syntax;
     const MsStr own_path = ms_name(c->names, c->mods[module].path);
@@ -323,7 +368,12 @@ static void scope_import_symbols(MsCheck *c, MsModId module) {
     for (uint32_t i = 0; i < syntax->nimports; i++) {
         const MsImport *item = &syntax->imports[i];
         if (!scope_has_prefix(item->path, scope_std_prefix)) {
-            continue; /* imports of the project's own modules are resolved with the module graph */
+            // A project module resolves through the graph's targets; without them the import stays unresolved.
+            const MsModId target = c->mods[module].import_targets == NULL ? MS_NONE : c->mods[module].import_targets[i];
+            if (target != MS_NONE) {
+                scope_import_local(c, module, item, target);
+            }
+            continue;
         }
         const MsSymId found = scope_import_target(c, item);
         const bool hidden = scope_is_internal_path(item->path) && !in_standard;

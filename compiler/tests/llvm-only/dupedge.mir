@@ -1,0 +1,17 @@
+module "dupedge"
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %k: int = iconst 7
+  %one: int = iconst 1
+  %two: int = iconst 2
+  switch %k [1: b1(%one), 7: b1(%two)] default b1(%k)
+b1(%r: int):
+  %v: bool = icmp.eq %r, %two
+  br_if %v, b2(%r, %one), b2(%one, %r)
+b2(%x: int, %y: int):
+  %s: int = isub %x, %y
+  %void: void = void
+  %t: int = iadd %s, %two
+  ret %t
+}

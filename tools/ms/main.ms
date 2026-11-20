@@ -16,6 +16,7 @@ import (
 
 	Invocation, parse_invocation, requests_help, takes_value, validate from "./args.ms",
 	rust_cli from "./bridge.ms",
+	run_explain from "./explain.ms",
 	command_help, command_names, overview from "./help.ms",
 	run_init from "./init.ms",
 	run_profile from "./profile.ms",
@@ -175,6 +176,12 @@ fn delegate(args: List[String]) Int:
 
 	return child.get().wait().get_or(70)
 
+fn run_explain_command(args: List[String]) Int:
+	got := run_explain(args)
+	out(got.stdout)
+	err(got.stderr)
+	return got.status
+
 fn is_source_command(command: String) Bool:
 	return [
 		"check", "lint", "build", "emit", "run", "test", "bench", "inspect", "diagram",
@@ -291,6 +298,7 @@ export fn run(given: List[String]) Int:
 
 	if args[0] == "help": return run_help(args.drop(1))
 	if args[0] == "init": return run_init(args.drop(1))
+	if args[0] == "explain": return run_explain_command(args.drop(1))
 	if args[0] == "verify": return run_verify(args.drop(1))
 	if is_source_command(args[0]): return run_source_command(args, usage_text)
 
