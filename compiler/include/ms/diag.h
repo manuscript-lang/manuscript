@@ -8,15 +8,15 @@ typedef struct MsCodeInfo {
     const char *code, *family, *repair;
 } MsCodeInfo;
 
-typedef struct MsKind {
+typedef struct MsSubcode {
     const char *family, *needle;
     MsCodeInfo info;
-} MsKind;
+} MsSubcode;
 
 /* The rule family for a diagnostic of `phase` ("parse", "resolution", "type", "lowering", ...). */
 const char *ms_code_for(const char *phase, MsStr message);
 /* The first sub-code of `family` whose needle appears in the message's cause, or NULL. */
-const MsKind *ms_kind_for(const char *family, MsStr message);
+const MsSubcode *ms_subcode_for(const char *family, MsStr message);
 /* The entry for a code or sub-code, matched case-insensitively, or NULL. */
 const MsCodeInfo *ms_explain(const char *code);
 

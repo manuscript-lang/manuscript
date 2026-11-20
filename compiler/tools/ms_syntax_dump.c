@@ -36,7 +36,7 @@ static bool read_file(const char *path, char **data, size_t *len) {
 
 static void print_code(MsBuf *out, const char *phase, MsStr message) {
     const char *code = ms_code_for(phase, message);
-    const MsKind *kind = ms_kind_for(code, message);
+    const MsSubcode *kind = ms_subcode_for(code, message);
     ms_buf_printf(out, "%s %s\n", code, kind ? kind->info.code : "-");
 }
 

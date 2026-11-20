@@ -30,7 +30,7 @@ static const MsCodeInfo ms_codes[] = {
     {"MS4000", "Lowering", "report this as a compiler bug with the source"},
 };
 
-static const MsKind ms_kinds[] = {
+static const MsSubcode ms_subcodes[] = {
     {"MS2001", "unknown binding", {"MS2001.1", "Unknown name", "apply the `fix` edit, import the name, or declare it"}},
     {"MS2001", "unknown type", {"MS2001.2", "Unknown type", "import the type or declare it"}},
     {"MS2001", "unknown or ambiguous member", {"MS2001.3", "Unknown member", "use one of the members the message lists"}},
@@ -148,11 +148,11 @@ const char *ms_code_for(const char *phase, MsStr message) {
     return "MS0000";
 }
 
-const MsKind *ms_kind_for(const char *family, MsStr message) {
+const MsSubcode *ms_subcode_for(const char *family, MsStr message) {
     MsStr cause = dg_before(message, "; ");
-    for (size_t i = 0; i < sizeof ms_kinds / sizeof ms_kinds[0]; i++) {
-        if (strcmp(ms_kinds[i].family, family) == 0 && dg_has(cause, ms_kinds[i].needle)) {
-            return &ms_kinds[i];
+    for (size_t i = 0; i < sizeof ms_subcodes / sizeof ms_subcodes[0]; i++) {
+        if (strcmp(ms_subcodes[i].family, family) == 0 && dg_has(cause, ms_subcodes[i].needle)) {
+            return &ms_subcodes[i];
         }
     }
     return NULL;
@@ -173,9 +173,9 @@ const MsCodeInfo *ms_explain(const char *code) {
             return &ms_codes[i];
         }
     }
-    for (size_t i = 0; i < sizeof ms_kinds / sizeof ms_kinds[0]; i++) {
-        if (dg_ieq(ms_kinds[i].info.code, code)) {
-            return &ms_kinds[i].info;
+    for (size_t i = 0; i < sizeof ms_subcodes / sizeof ms_subcodes[0]; i++) {
+        if (dg_ieq(ms_subcodes[i].info.code, code)) {
+            return &ms_subcodes[i].info;
         }
     }
     return NULL;
