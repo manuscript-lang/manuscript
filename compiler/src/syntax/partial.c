@@ -21,18 +21,12 @@ typedef struct Line {
 
 /* ---- text helpers (Rust's str::trim is Unicode White_Space) ---- */
 
-static bool pt_white(uint32_t c) {
-    return (c >= 9 && c <= 13) || c == 32 || c == 0x85 || c == 0xA0 || c == 0x1680 ||
-           (c >= 0x2000 && c <= 0x200A) || c == 0x2028 || c == 0x2029 || c == 0x202F || c == 0x205F ||
-           c == 0x3000;
-}
-
 static size_t pt_trim_start(const char *s, size_t n) {
     size_t i = 0;
     while (i < n) {
         uint32_t c;
         int k = ms_utf8_decode(s + i, n - i, &c);
-        if (!pt_white(c)) {
+        if (!ms_text_is_unicode_space(c)) {
             break;
         }
         i += (size_t)k;
@@ -48,7 +42,7 @@ static size_t pt_trim_end(const char *s, size_t n) {
         }
         uint32_t c;
         ms_utf8_decode(s + i, n - i, &c);
-        if (!pt_white(c)) {
+        if (!ms_text_is_unicode_space(c)) {
             break;
         }
         n = i;
@@ -451,7 +445,7 @@ static size_t pt_first_fields(const char *s, size_t length, MsStr fields[2]) {
         while (lo < length) {
             uint32_t c = 0;
             int width = ms_utf8_decode(s + lo, length - lo, &c);
-            if (!pt_white(c)) {
+            if (!ms_text_is_unicode_space(c)) {
                 break;
             }
             lo += (size_t)width;
@@ -460,7 +454,7 @@ static size_t pt_first_fields(const char *s, size_t length, MsStr fields[2]) {
         while (hi < length) {
             uint32_t c = 0;
             int width = ms_utf8_decode(s + hi, length - hi, &c);
-            if (pt_white(c)) {
+            if (ms_text_is_unicode_space(c)) {
                 break;
             }
             hi += (size_t)width;

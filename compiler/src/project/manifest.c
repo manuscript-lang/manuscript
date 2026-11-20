@@ -796,16 +796,12 @@ static bool manifest_read_entries(Builder *b, const Entry *entries, size_t count
 }
 
 /* Orders rows whose first member is the name (MsAlias, DepRow, EffectRow), as the Rust maps iterate. */
-static int manifest_name_order(const void *x, const void *y) {
-    return strcmp(*(const char *const *)x, *(const char *const *)y);
-}
-
 /* The rows of `buf` sorted by name and copied into the arena. */
 static void *manifest_sorted(MsArena *a, MsBuf *buf, size_t size, uint32_t *count) {
     const size_t n = buf->len / size;
     void *rows = ms_buf_items(buf);
     if (n > 1) {
-        qsort(rows, n, size, manifest_name_order);
+        qsort(rows, n, size, ms_cmp_cstr);
     }
     void *copy = ms_alloc(a, (n + 1) * size, _Alignof(max_align_t));
     if (n > 0) {

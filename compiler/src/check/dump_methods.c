@@ -97,10 +97,6 @@ static void put_method_row(MsBuf *out, const MsCheck *c, const MsMethods *m, uin
     }
 }
 
-static int compare_lines(const void *a, const void *b) {
-    return strcmp(*(const char *const *)a, *(const char *const *)b);
-}
-
 /* The rows of `module`, one line each, in text order: a type's own methods are rows in the order
  * they are declared, and the oracle sorts the same way. */
 void ms_dump_methods(MsBuf *out, const MsCheck *c, MsModId module, const MsMethodTable *table) {
@@ -117,7 +113,7 @@ void ms_dump_methods(MsBuf *out, const MsCheck *c, MsModId module, const MsMetho
         memcpy(lines[count++], row.data, row.len);
         ms_buf_free(&row);
     }
-    qsort(lines, count, sizeof *lines, compare_lines);
+    qsort(lines, count, sizeof *lines, ms_cmp_cstr);
     for (size_t i = 0; i < count; i++) {
         ms_buf_puts(out, lines[i]);
         free(lines[i]);

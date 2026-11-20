@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "ms_rt/safe.h"
 
@@ -34,6 +35,11 @@ void ms_arena_reset(MsArena *a);
 static inline int ms_cmp_u32(const void *x, const void *y) {
     const uint32_t a = *(const uint32_t *)x, b = *(const uint32_t *)y;
     return a < b ? -1 : a > b;
+}
+
+/* qsort order for `const char *` elements. */
+static inline int ms_cmp_cstr(const void *x, const void *y) {
+    return strcmp(*(const char *const *)x, *(const char *const *)y);
 }
 
 /* Whether `x` is among v[0..n]. */

@@ -10,6 +10,7 @@
 #include "ms/ast.h"
 #include "ms/lex.h"
 #include "ms/parse.h"
+#include "ms/text.h"
 
 enum { FMT_WIDTH = 88, FMT_FLOW_WIDTH = 50 };
 #define FMT_NONE SIZE_MAX
@@ -35,7 +36,7 @@ static inline Str fmt_lit(const char *text) { return fmt_str(text, strlen(text))
 
 static inline Str fmt_slice(Str s, size_t from, size_t to) { return fmt_str(s.ptr + from, to - from); }
 
-static inline bool fmt_eq(Str a, Str b) { return a.len == b.len && memcmp(a.ptr, b.ptr, a.len) == 0; }
+static inline bool fmt_eq(Str a, Str b) { return ms_text_equal(a, b); }
 
 /* Bytewise order: negative, zero or positive. */
 static inline int fmt_compare(Str a, Str b) {
@@ -108,11 +109,6 @@ static inline size_t fmt_chars(Str s) {
 }
 
 /* Unicode White_Space, as Rust's `char::is_whitespace`. */
-static inline bool fmt_is_space(uint32_t c) {
-    return (c >= 9 && c <= 13) || c == 32 || c == 0x85 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200A) ||
-           c == 0x2028 || c == 0x2029 || c == 0x202F || c == 0x205F || c == 0x3000;
-}
-
 /* The scalar at byte `at` of valid UTF-8 and its width. */
 static inline size_t fmt_scalar_at(Str s, size_t at, uint32_t *scalar) {
     return (size_t)ms_utf8_decode(s.ptr + at, s.len - at, scalar);
@@ -153,7 +149,7 @@ static inline Str fmt_trim_start(Str s) {
     while (from < s.len) {
         uint32_t scalar;
         const size_t width = fmt_scalar_at(s, from, &scalar);
-        if (!fmt_is_space(scalar)) {
+        if (!ms_text_is_unicode_space(scalar)) {
             break;
         }
         from += width;
@@ -166,7 +162,7 @@ static inline Str fmt_trim_end(Str s) {
     while (to > 0) {
         uint32_t scalar;
         const size_t width = fmt_scalar_before(s, to, &scalar);
-        if (!fmt_is_space(scalar)) {
+        if (!ms_text_is_unicode_space(scalar)) {
             break;
         }
         to -= width;

@@ -25,15 +25,6 @@
 #include "read_file.h"
 #include "std_files.h"
 
-static bool only_std_imports(const MsModule *module) {
-    for (uint32_t i = 0; i < module->nimports; i++) {
-        if (module->imports[i].path.len < 5 || memcmp(module->imports[i].path.ptr, "@std/", 5) != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 /* A construct C lowers differently from Rust by design: Rust threads parameters through a loop
  * header and tests a `match` arm by arm, C branches once (`switch`, or `br_if` on a Bool). */
 static void note_divergent_stmt(void *flag, const MsStmt *s) {
@@ -94,7 +85,7 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
     bool verified = true;
     MsModule *module = MS_NEW(syntax, MsModule);
     MsDiag diag;
-    if (ms_parse(syntax, names, text, length, module, &diag) && only_std_imports(module)) {
+    if (ms_parse(syntax, names, text, length, module, &diag) && ms_module_only_std_imports(module)) {
         if (!run) {
             printf("=== %s\n", path);
         }

@@ -271,10 +271,6 @@ static bool is_set_alias(const MsDecl *decl) {
     return decl->kind == MS_D_ALIAS && decl->u.alias.type_params.len == 0 && decl->u.alias.targets.len > 1;
 }
 
-static bool is_inherent_impl(const MsDecl *decl) {
-    return decl->kind == MS_D_IMPL && decl->u.impl.contract == NULL;
-}
-
 /* The members of the set alias `name`; the last alias of that name counts. */
 static const MsTypeRefs *find_set(const MsModule *module, MsSym name) {
     for (uint32_t i = module->ndecls; i > 0; i--) {
@@ -312,7 +308,7 @@ static MsBuf expand_set_receivers(Desugar *d, const MsModule *module) {
     }
     for (uint32_t i = 0; i < module->ndecls; i++) {
         MsDecl *decl = module->decls[i];
-        const MsTypeRef *receiver = is_inherent_impl(decl) ? decl->u.impl.receiver : NULL;
+        const MsTypeRef *receiver = ms_decl_is_inherent_impl(decl) ? decl->u.impl.receiver : NULL;
         bool bare = receiver != NULL && receiver->kind == MS_TYPE_NAMED && receiver->args.len == 0;
         const MsTypeRefs *members = has_sets && bare ? find_set(module, receiver->name) : NULL;
         if (members == NULL) {

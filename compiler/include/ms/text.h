@@ -89,6 +89,12 @@ static inline bool ms_text_contains(MsStr text, const char *needle) {
     return false;
 }
 
+/* The value of a hexadecimal digit, or -1 for any other character. */
+static inline int ms_text_digit_value(char c) {
+    uint32_t value = 0;
+    return ms_hex_digit_value((uint8_t)c, &value) ? (int)value : -1;
+}
+
 static inline MsStr ms_text_drop_front(MsStr text, size_t count) {
     return (MsStr){text.ptr + count, (uint32_t)(text.len - count)};
 }
