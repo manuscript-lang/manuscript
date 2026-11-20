@@ -70,7 +70,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/net/dns.ms`: DnsConfig, dns_lookup, dns_resolve
 - `@std/net/exchange.ms`: ExchangeLimits, NativeExchange, RequestTarget, finish_exchange, open_exchange, parse_target
 - `@std/net/fetch.ms`: FetchBody, FetchOptions, FetchResponse, Fetcher, FetcherOptions, fetch, fetcher, json_body
-- `@std/net/http.ms`: ClientResponse, HttpClient, HttpClientOptions, HttpClientWire, HttpExchange, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpResponseMetadata, HttpServer, HttpServerOptions, NativeAdmission, NativeConnection, NativeH2Conn, NativeHandler, NativeHttpClient, NativeListener, NativeResponseBody, NativeTlsServer, RawResponse, StreamingResponse, buffered, headers, json, open_client, read_body, redirect, reply, send, text, upgrade
+- `@std/net/http.ms`: ClientResponse, HttpClient, HttpClientOptions, HttpClientWire, HttpExchange, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpResponseMetadata, HttpServer, HttpServerOptions, NativeAdmission, NativeConnection, NativeH2Conn, NativeHandler, NativeHttpClient, NativeListener, NativeResponseBody, NativeTlsServer, RawResponse, StreamingResponse, buffered, client_send, headers, json, open_client, read_body, redirect, reply, text, upgrade
 - `@std/net/ip.ms`: Cidr, DnsKind, DnsRecord, IpAddress, IpFamily, contains_ip, parse_cidr, parse_ip
 - `@std/net/mail.ms`: Address, Message, decode_words, parse_address, parse_address_list, parse_message
 - `@std/net/mime.ms`: HeaderField, Headers, MediaType, Part, encode_multipart, extension_for_media_type, form_part, format_media_type, media_type_for_extension, multipart_boundary, multipart_parts, parse_headers, parse_media_type, parse_multipart
