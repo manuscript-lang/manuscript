@@ -623,7 +623,9 @@ static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const 
     }
     const MirLeafSpan leaves = ll_leaves(c, ty);
     for (uint32_t j = 0; j < leaves.len; j++) {
-        ms_buf_printf(args, "%s%s ", args->len > 0 ? ", " : "", ll_leaf_type(leaves.ptr[j]));
+        const char *type = ll_leaf_type(leaves.ptr[j]);
+        /* C expects a `bool` argument zero-extended to a byte; LLVM leaves the upper bits of an i1 undefined. */
+        ms_buf_printf(args, "%s%s%s ", args->len > 0 ? ", " : "", type, strcmp(type, "i1") == 0 ? " zeroext" : "");
         ll_name(args, value, j);
     }
     return true;
