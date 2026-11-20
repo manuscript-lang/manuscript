@@ -25,6 +25,8 @@ void msrt_fault_div_zero(void) { exit(136); }
 void msrt_fault_rem_zero(void) { exit(137); }
 void msrt_fault_div_overflow(long a, long b) { (void)a; (void)b; exit(138); }
 void msrt_index_fault(long a, long b) { (void)a; (void)b; exit(139); }
+long msrt_alloc(long n) { return (long)malloc((size_t)n); }
+void msrt_free(long p) { free((void *)p); }
 int main(void) { return (int)msmain(); }
 C
 status=0

@@ -135,6 +135,15 @@ MS_NODISCARD bool ms_sys_native_start(uintptr_t anchor, bool (*is_source)(uintpt
 bool ms_sys_has_unwind_data(uintptr_t pc);
 /* The bounds of the calling thread's stack. */
 void ms_sys_stack_bounds(uintptr_t *low, uintptr_t *high);
+
 #endif
+
+/* sys/strtod.c: the C library's correctly rounded decimal conversion. */
+
+/* The double nearest to the decimal literal `[+-]digits[.digits][e[+-]digits]` of len bytes at text, which the caller
+ * has already checked: an overflow gives an infinity of the literal's sign, an underflow gives zero. False when the
+ * temporary NUL-terminated copy the conversion needs cannot be allocated. */
+MS_NODISCARD bool ms_sys_parse_decimal(const uint8_t *text, size_t len, double *out);
+
 
 #endif
