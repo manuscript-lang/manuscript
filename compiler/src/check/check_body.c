@@ -59,8 +59,11 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
         return false;
     }
     // An argument that must meet a bound (`K: Hashable`) is checked against it by the Rust checker.
-    const MsDef *definition = tys->nargs[ty] == 0 ? NULL : ms_def(b->c, sym);
-    if (tys->nargs[ty] != 0 && (definition == NULL || definition->nvars < tys->nargs[ty])) {
+    if (tys->nargs[ty] == 0) {
+        return true;
+    }
+    const MsDef *definition = ms_def(b->c, sym);
+    if (definition == NULL || definition->nvars < tys->nargs[ty]) {
         return false;
     }
     for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
