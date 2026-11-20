@@ -207,3 +207,17 @@ int ms_sys_net_addr_from_raw(const void *sockaddr, size_t length, MsAddr *out) {
     from_sockaddr(&ss, out);
     return 0;
 }
+
+size_t ms_sys_net_dns_config(char *out, size_t capacity) {
+    const int fd = open("/etc/resolv.conf", O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return 0;
+    size_t used = 0;
+    while (used < capacity) {
+        const ssize_t r = read(fd, out + used, capacity - used);
+        if (r < 0 && errno == EINTR) continue;
+        if (r <= 0) break;
+        used += (size_t)r;
+    }
+    close(fd);
+    return used;
+}
