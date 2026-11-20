@@ -20,3 +20,4 @@ run clibs_smoke -- uv llhttp nghttp2 ssl crypto
 run clibs_smoke_zlib -- z
 run clibs_smoke_pcre2 -- pcre2
 run http1_test runtime/net/http1.c -- llhttp
+run tls_test runtime/net/tls.c -- ssl crypto
