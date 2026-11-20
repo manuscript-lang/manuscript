@@ -373,18 +373,14 @@ export fn thread_affinity(files: List[String]) List[String]:
 // Allowed normal dependencies on other workspace crates, per compiler or tool crate, as
 // `crate: dependency dependency`. Widening a row needs a reason beside it, in the same change.
 LAYERS := [
-	"ms-syntax:", "ms-json:", "ms-mir: ms-rt-abi", "ms-decimal:", "ms-check: ms-syntax",
-	"ms-lower: ms-check ms-mir ms-rt-abi ms-decimal", "ms-mir-llvm: ms-mir ms-rt-abi",
+	"ms-syntax:", "ms-json:", "ms-mir: ms-rt-abi", "ms-check: ms-syntax",
+	"ms-lower: ms-check ms-mir ms-rt-abi", "ms-mir-llvm: ms-mir ms-rt-abi",
 	"ms-clif: ms-mir ms-rt-abi",
 	"ms-build: ms-check ms-clif ms-lower ms-mir ms-mir-llvm",
 	"ms-driver: ms-check ms-syntax", "ms-tooling: ms-check ms-driver ms-json ms-syntax",
 	"ms-lsp: ms-check ms-driver ms-json ms-syntax ms-tooling",
 	"ms-cli: ms-build ms-check ms-driver ms-json ms-lsp ms-mir ms-rt-abi ms-syntax ms-tooling"
 ]
-// Pure arithmetic both worlds use: the compiler folds literals with it and the runtime
-// wraps it.
-SHARED := "ms-decimal"
-
 // The runtime is a separate world: it never depends on a compiler crate, and a compiler
 // crate never depends on a runtime crate other than `ms-rt-abi`.
 fn is_runtime(name: String) Bool:
@@ -404,7 +400,7 @@ fn is_compiler_crate(name: String) Bool:
 // Why `name` may not depend on `dep`, or "".
 export fn layering_violation(name: String, dep: String) String:
 	if is_runtime(name):
-		if dep != SHARED and is_compiler_crate(dep): return "a runtime crate must not depend on a compiler crate"
+		if is_compiler_crate(dep): return "a runtime crate must not depend on a compiler crate"
 		return ""
 
 	if allowed := layer_row(name):
