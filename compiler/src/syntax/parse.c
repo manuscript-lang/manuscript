@@ -1613,7 +1613,10 @@ MS_NODISCARD static bool fn_declaration(Parser *p, MsToken token, MsDecl **out) 
     return true;
 }
 
+/* `extern type Name[T]` is a runtime-backed type; a ':' body gives it the fields a constructor takes,
+ * as a `type` does (`extern type List[T]:` with its `reserve` field). */
 MS_NODISCARD static bool extern_type_declaration(Parser *p, MsToken token, MsDecl **out) {
+    const size_t keyword = p->at + 1;
     p->at += 2;
     MsToken name_tok = {0};
     if (!need_token(p, MS_T_Name, &name_tok)) return false;
@@ -1621,8 +1624,10 @@ MS_NODISCARD static bool extern_type_declaration(Parser *p, MsToken token, MsDec
     MsTypeParams tps = {0};
     if (!type_params(p, &tps)) return false;
     if (kind(p) == MS_T_Colon) {
-        fail(p, peek(p), LIT("an extern type has no body; remove the ':'"));
-        return false;
+        p->at = keyword;
+        if (!type_declaration(p, peek(p), out)) return false;
+        (*out)->u.type.external = true;
+        return true;
     }
     if (!end(p)) return false;
     MsDecl *d = new_decl(p, token.pos, MS_D_TYPE);

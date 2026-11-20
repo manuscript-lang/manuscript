@@ -230,7 +230,7 @@ static void scope_add_prelude(MsCheck *c, MsModId module) {
     for (size_t i = 0; i < PRELUDE_NAME_COUNT; i++) {
         const MsSym name = ms_intern_cstr(c->names, scope_prelude_names[i]);
         const MsSymId symbol = ms_map_get(&c->std_types, name);
-        if (symbol == MS_NONE || scope_same_file(c, c->syms.module[symbol], module) || scope_imports_name(syntax, name)) {
+        if (symbol == MS_NONE || c->syms.module[symbol] == module || scope_imports_name(syntax, name)) {
             continue;
         }
         (void)ms_map_add(names, name, symbol);
@@ -405,14 +405,11 @@ static bool scope_is_nominal_decl(const MsDecl *d) {
 /* A symbol the loader registered for this very declaration (an `extern type` or an exported
  * type of a bundled source module), or MS_NONE. */
 static MsSymId scope_registered_symbol(const MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {
-    if (!c->mods[module].source) {
-        return MS_NONE;
+    MsSymId found = c->mods[module].source ? ms_map_get(&c->mods[module].scope, name) : MS_NONE;
+    if (found == MS_NONE) {
+        found = ms_map_get(&c->std_types, name); // a native module's type is registered by the loader
     }
-    const MsSymId found = ms_map_get(&c->mods[module].scope, name);
-    if (found != MS_NONE && c->syms.decl[found] == d) {
-        return found;
-    }
-    return MS_NONE;
+    return found != MS_NONE && c->syms.decl[found] == d ? found : MS_NONE;
 }
 
 static MsSymId scope_declare_one(MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {
