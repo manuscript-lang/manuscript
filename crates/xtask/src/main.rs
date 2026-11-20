@@ -276,6 +276,10 @@ fn check_c_abi(
             if !seen.insert(name.to_string()) {
                 return Err(format!("{name} is listed in two runtime/symbols files"));
             }
+            // `ms_sys_*` is the runtime's own door to the OS (ms_rt/sys.h): not natives, so no recorded signature.
+            if name.starts_with("ms_sys_") {
+                continue;
+            }
             let Some((params, ret)) = declared.get(*name) else {
                 return Err(format!(
                     "{name} is in runtime/symbols/{module}.txt but not declared in ms_rt/{module}.h"
@@ -819,6 +823,9 @@ fn platform_dirs(triple: Option<&str>) -> Vec<&'static str> {
         )
     });
     let mut dirs = Vec::new();
+    if t.contains("linux") || t.contains("apple") {
+        dirs.push("posix");
+    }
     if t.contains("linux") {
         dirs.push("linux");
     }
@@ -838,9 +845,9 @@ fn platform_dirs(triple: Option<&str>) -> Vec<&'static str> {
 }
 
 /// Every C source of the runtime (`runtime/{sys,core,io,net,std}`; `third_party` and `tests` are not part of it).
-/// A folder named for a platform (`linux`, `glibc`, `musl`, `darwin`, `windows`) is compiled only for it.
+/// A folder named for a platform (`posix` for Linux and macOS, `linux`, `glibc`, `musl`, `darwin`, `windows`) is compiled only for it.
 fn c_sources(dir: &Path, platform: &[&str], found: &mut Vec<PathBuf>) {
-    const PLATFORMS: [&str; 5] = ["linux", "glibc", "musl", "darwin", "windows"];
+    const PLATFORMS: [&str; 6] = ["posix", "linux", "glibc", "musl", "darwin", "windows"];
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
