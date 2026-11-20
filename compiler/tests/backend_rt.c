@@ -26,6 +26,11 @@ void msrt_index_fault(long a, long b) { (void)a; (void)b; exit(139); }
 long msrt_alloc(long n) { return (long)malloc((size_t)n); }
 void msrt_free(long p) { free((void *)p); }
 
+void msrt_cancelled(void) { exit(140); }
+/* The task header the region's cell points at: the cancel flag is its byte at offset 8. */
+static uint64_t task_header[2];
+void msrt_test_cancel(void) { task_header[1] = 1; }
+
 /* The program runs on a stack inside a 256 MiB region aligned to its size, with the recursion limit
  * (zero, so `stack.low` is false) in the region's last word, as the generated code expects. */
 #include <sys/mman.h>
@@ -40,6 +45,8 @@ int main(void) {
     uint8_t *base = (uint8_t *)(((uintptr_t)raw + REGION - 1) & ~(REGION - 1));
     const uint64_t zero = 0;
     memcpy(base + REGION - 8, &zero, sizeof zero);
+    const uint64_t header = (uint64_t)(uintptr_t)task_header;
+    memcpy(base + REGION - 16, &header, sizeof header);
     getcontext(&program_context);
     program_context.uc_stack.ss_sp = base + REGION - 4096 - (1 << 20);
     program_context.uc_stack.ss_size = 1 << 20;

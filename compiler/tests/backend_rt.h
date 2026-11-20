@@ -25,6 +25,8 @@ void *msrt_test_fn(void);
 void *msrt_obj_clone(void *o);
 void msrt_obj_drop(void *o);
 void msrt_fault_int_overflow(void);
+void msrt_cancelled(void);
+void msrt_test_cancel(void);
 void msrt_fault_int_range(void);
 void msrt_fault_div_zero(void);
 void msrt_fault_rem_zero(void);
