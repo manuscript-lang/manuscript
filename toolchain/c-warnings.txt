@@ -16,4 +16,3 @@
 -Wdouble-promotion
 -Wnull-dereference
 -Wwrite-strings
--Wunused-macros
