@@ -4,7 +4,11 @@
 #ifndef MS_OWNERSHIP_H
 #define MS_OWNERSHIP_H
 
+#include "ms_rt/safe.h"
+
 #include "ms/base.h"
+#include "ms/tables.h"
+#include "ms/types.h"
 
 /* ---- places: a local binding and a path of projections ---- */
 
@@ -59,5 +63,31 @@ uint32_t ms_bits_count(MsBits s);
 void ms_bits_meet(MsBits into, MsBits from);
 /* Adds the members of `from`. */
 void ms_bits_union(MsBits into, MsBits from);
+
+/* ---- value classes: how a value of a type moves ---- */
+
+/* Ordered, so the class of a container is the largest class of what it holds. */
+typedef enum MsClass {
+    MS_CLASS_COPY,     /* duplicated implicitly: scalars, types of those, plain-word natives */
+    MS_CLASS_MOVE,     /* one owner; moves at its last use, `.clone()` copies */
+    MS_CLASS_RESOURCE  /* a unique resource (`Closeable`): moves and cannot be copied */
+} MsClass;
+
+typedef struct MsClassifier MsClassifier;
+
+/* A classifier over the checker's tables; `check` must outlive it. Results are kept per interned
+ * type, so each type is classified once. Owned: free with ms_classifier_free. */
+MsClassifier *ms_classifier_new(MsCheck *check) MS_NONNULL;
+void ms_classifier_free(MsClassifier *classifier);
+
+/* Declares that values of the type with this identity close themselves (a `Closeable`
+ * implementation, or a `move close()` of the type's own). Later queries see it; call it before
+ * classifying. */
+void ms_classifier_mark_closeable(MsClassifier *classifier, MsSym type_id) MS_NONNULL;
+/* Declares that the interface with this identity has a consuming `close`, so its values own what
+ * they were made from. */
+void ms_classifier_mark_owned_close(MsClassifier *classifier, MsSym interface_id) MS_NONNULL;
+
+MsClass ms_classify(MsClassifier *classifier, MsTy type) MS_NONNULL;
 
 #endif

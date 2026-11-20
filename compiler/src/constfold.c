@@ -1,6 +1,7 @@
 /* Constant arithmetic over literals; see ms/constfold.h. A port of
  * crates/ms-check/src/constfaults.rs and crates/ms-syntax/src/number.rs. */
 #include <string.h>
+#include "ms_rt/chars.h"
 
 #include "ms/constfold.h"
 
@@ -8,22 +9,10 @@
 
 /* ---- number literals ---- */
 
-static bool is_digit(char c) {
-    return c >= '0' && c <= '9';
-}
-
 /* The value of a digit of any radix up to 16, or -1. */
 static int digit_value(char c) {
-    if (is_digit(c)) {
-        return c - '0';
-    }
-    if (c >= 'a' && c <= 'f') {
-        return c - 'a' + 10;
-    }
-    if (c >= 'A' && c <= 'F') {
-        return c - 'A' + 10;
-    }
-    return -1;
+    uint32_t value = 0;
+    return ms_hex_digit_value((uint8_t)c, &value) ? (int)value : -1;
 }
 
 __extension__ typedef unsigned __int128 MsUint128;

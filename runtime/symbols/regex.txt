@@ -1,4 +1,4 @@
-# Defined in runtime/std/regex_abi.c, regex_text.c and regex_category.c; the Rust ms-std-regex definitions are deleted with the crate.
+# Defined in runtime/std/regex_abi.c, regex_text.c and regex_category.c.
 msstd_regex_captures
 msstd_regex_captures_all
 msstd_regex_capture_all_spans

@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "ms_rt/alloc.h"
+#include "ms_rt/chars.h"
 
 /* PCRE2 allocates through the runtime, so its memory is the program's memory. */
 static void *re_alloc(PCRE2_SIZE size, void *unused) {
@@ -116,7 +117,7 @@ static const char *screen(const unsigned char *p, size_t n, size_t *at) {
 static size_t column_of(const char *pattern, size_t offset) {
     size_t col = 1;
     for (size_t i = 0; i < offset; i++)
-        if (((unsigned char)pattern[i] & 0xC0) != 0x80) col++;
+        if (!ms_utf8_is_continuation((uint8_t)pattern[i])) col++;
     return col;
 }
 
@@ -298,7 +299,7 @@ int ms_re_next(const MsRegex *re, const char *text, size_t len, MsRegexIter *it,
             if (s == it->prev_end) accept = 0;
             size_t step = 1;
             if (it->pos < len)
-                while (it->pos + step < len && ((unsigned char)text[it->pos + step] & 0xC0) == 0x80) step++;
+                while (it->pos + step < len && ms_utf8_is_continuation((uint8_t)text[it->pos + step])) step++;
             it->pos += step;
         } else {
             it->pos = e;
