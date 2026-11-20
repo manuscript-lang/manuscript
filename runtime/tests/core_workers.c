@@ -146,6 +146,12 @@ static _Atomic int cross_started;
 static void use_foreign_promises(Cross *work) {
     expect(!ms_promise_done(work->dep), "foreign done: still pending");
     atomic_store(&cross_started, 1);
+    ms_promise_set_grouped(work->dep, true);
+    ms_promise_set_grouped(work->dep, false);
+    const MsPromise both[2] = {work->dep, ms_promise_sleep(60LL * 1000 * 1000 * 1000)};
+    expect(ms_promise_wait_any(both, 2, -1) == 0, "foreign wait_any: the foreign promise finished first");
+    ms_promise_cancel(both[1]);
+    ms_promise_drop(both[1]);
     expect(ms_promise_wait(work->dep, -1) == MS_PROMISE_OK, "foreign wait: ok");
     int64_t value = 0;
     expect(ms_promise_take(work->dep, &msrt_desc_int, (uint8_t *)&value), "foreign take");

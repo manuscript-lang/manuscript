@@ -41,6 +41,8 @@
 #include <span>
 #include <string_view>
 #include <compare>
+#include <type_traits>
+#include <print>
 
 namespace nghttp2 {
 
@@ -62,20 +64,25 @@ template <typename T, size_t N> constexpr size_t str_size(T (&)[N]) {
   return N - 1;
 }
 
-// inspired by <http://blog.korfuri.fr/post/go-defer-in-cpp/>, but our
-// template can take functions returning other than void.
-template <typename F, typename... T> struct Defer {
-  Defer(F &&f, T &&...t)
-    : f(std::bind(std::forward<F>(f), std::forward<T>(t)...)) {}
-  Defer(Defer &&o) noexcept : f(std::move(o.f)) {}
+template <std::invocable F> struct Defer {
+  using Invocable = std::decay_t<F>;
+
+  template <typename G>
+  [[nodiscard]] explicit Defer(G &&g) noexcept(
+    std::is_nothrow_constructible_v<Invocable, G &&>)
+    : f{std::forward<G>(g)} {}
   ~Defer() { f(); }
 
-  using ResultType = std::invoke_result_t<F, T...>;
-  std::function<ResultType()> f;
+  Defer(Defer &&o) = delete;
+  Defer(const Defer &) = delete;
+  Defer &operator=(const Defer &) = delete;
+  Defer &operator=(Defer &&) = delete;
+
+  Invocable f;
 };
 
-template <typename F, typename... T> Defer<F, T...> defer(F &&f, T &&...t) {
-  return Defer<F, T...>(std::forward<F>(f), std::forward<T>(t)...);
+template <std::invocable F> [[nodiscard]] Defer<std::decay_t<F>> defer(F &&f) {
+  return Defer<std::decay_t<F>>(std::forward<F>(f));
 }
 
 template <typename T, typename F> bool test_flags(T t, F flags) {
@@ -86,7 +93,7 @@ template <typename T, typename F> bool test_flags(T t, F flags) {
 // T *dlnext, which point to previous element and next element in the
 // list respectively.
 template <typename T> struct DList {
-  DList() : head(nullptr), tail(nullptr), len(0) {}
+  DList() noexcept = default;
 
   DList(const DList &) = delete;
   DList &operator=(const DList &) = delete;
@@ -124,14 +131,12 @@ template <typename T> struct DList {
     auto n = t->dlnext;
     if (p) {
       p->dlnext = n;
-    }
-    if (head == t) {
+    } else {
       head = n;
     }
     if (n) {
       n->dlprev = p;
-    }
-    if (tail == t) {
+    } else {
       tail = p;
     }
     t->dlprev = t->dlnext = nullptr;
@@ -141,8 +146,8 @@ template <typename T> struct DList {
 
   size_t size() const { return len; }
 
-  T *head, *tail;
-  size_t len;
+  T *head{}, *tail{};
+  size_t len{};
 };
 
 template <typename T> void dlist_delete_all(DList<T> &dl) {
@@ -155,37 +160,40 @@ template <typename T> void dlist_delete_all(DList<T> &dl) {
 
 // User-defined literals for K, M, and G (powers of 1024)
 
-constexpr unsigned long long operator"" _k(unsigned long long k) {
+[[nodiscard]] constexpr unsigned long long
+operator""_k(unsigned long long k) noexcept {
   return k * 1024;
 }
 
-constexpr unsigned long long operator"" _m(unsigned long long m) {
+[[nodiscard]] constexpr unsigned long long
+operator""_m(unsigned long long m) noexcept {
   return m * 1024 * 1024;
 }
 
-constexpr unsigned long long operator"" _g(unsigned long long g) {
+[[nodiscard]] constexpr unsigned long long
+operator""_g(unsigned long long g) noexcept {
   return g * 1024 * 1024 * 1024;
 }
 
 // User-defined literals for time, converted into double in seconds
 
 // hours
-constexpr double operator"" _h(unsigned long long h) {
+[[nodiscard]] constexpr double operator""_h(unsigned long long h) noexcept {
   return static_cast<double>(h * 60 * 60);
 }
 
 // minutes
-constexpr double operator"" _min(unsigned long long min) {
+[[nodiscard]] constexpr double operator""_min(unsigned long long min) noexcept {
   return static_cast<double>(min * 60);
 }
 
 // seconds
-constexpr double operator"" _s(unsigned long long s) {
+[[nodiscard]] constexpr double operator""_s(unsigned long long s) noexcept {
   return static_cast<double>(s);
 }
 
 // milliseconds
-constexpr double operator"" _ms(unsigned long long ms) {
+[[nodiscard]] constexpr double operator""_ms(unsigned long long ms) noexcept {
   return static_cast<double>(ms) / 1000.;
 }
 
@@ -207,7 +215,7 @@ public:
   using const_iterator = const_pointer;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  constexpr ImmutableString() noexcept : len(0), base("") {}
+  constexpr ImmutableString() noexcept = default;
 
   constexpr ImmutableString(const char *s, size_t slen)
     : len(slen), base(copystr(s, s + len)) {}
@@ -217,14 +225,14 @@ public:
 
   ImmutableString(std::nullptr_t) = delete;
 
-  template <std::ranges::input_range R>
+  template <std::ranges::sized_range R>
   requires(std::is_same_v<std::ranges::range_value_t<R>, value_type> &&
            !std::is_same_v<std::remove_cvref_t<R>, ImmutableString> &&
            !std::is_array_v<std::remove_cvref_t<R>>)
   constexpr explicit ImmutableString(R &&r)
     : len(std::ranges::size(r)), base(copystr(std::forward<R>(r))) {}
 
-  template <std::input_iterator I>
+  template <std::forward_iterator I>
   requires(std::is_same_v<std::iter_value_t<I>, value_type>)
   constexpr ImmutableString(I first, I last)
     : len(as_unsigned(std::ranges::distance(first, last))),
@@ -294,7 +302,7 @@ public:
   }
 
 private:
-  template <std::input_iterator I>
+  template <std::forward_iterator I>
   constexpr const char *copystr(I first, I last) {
     auto len = static_cast<size_t>(std::ranges::distance(first, last));
     if (len == 0) {
@@ -305,14 +313,14 @@ private:
     return res;
   }
 
-  template <std::ranges::input_range R>
+  template <std::ranges::forward_range R>
   requires(!std::is_array_v<std::remove_cvref_t<R>>)
   constexpr const char *copystr(R &&r) {
     return copystr(std::ranges::begin(r), std::ranges::end(r));
   }
 
-  size_type len;
-  const char *base;
+  size_type len{};
+  const char *base{""};
 };
 
 inline bool operator==(const ImmutableString &lhs, const ImmutableString &rhs) {
@@ -328,8 +336,7 @@ inline std::string &operator+=(std::string &lhs, const ImmutableString &rhs) {
   return lhs;
 }
 
-inline bool operator==(const ImmutableString &lhs,
-                       const std::string_view &rhs) {
+inline bool operator==(const ImmutableString &lhs, std::string_view rhs) {
   return std::ranges::equal(lhs, rhs);
 }
 
@@ -344,25 +351,17 @@ constexpr ImmutableString operator""_is(const char *str, size_t len) {
 }
 
 template <typename T, std::size_t N>
-[[nodiscard]] std::span<
-  const uint8_t, N == std::dynamic_extent ? std::dynamic_extent : N * sizeof(T)>
-as_uint8_span(std::span<T, N> s) noexcept {
-  return std::span < const uint8_t,
-         N == std::dynamic_extent
-           ? std::dynamic_extent
-           : N * sizeof(T) >
-               {reinterpret_cast<const uint8_t *>(s.data()), s.size_bytes()};
+[[nodiscard]] auto as_uint8_span(std::span<T, N> s) noexcept {
+  return std::span<const uint8_t, N == std::dynamic_extent ? std::dynamic_extent
+                                                           : N * sizeof(T)>{
+    reinterpret_cast<const uint8_t *>(s.data()), s.size_bytes()};
 }
 
 template <typename T, std::size_t N>
-[[nodiscard]] std::span<uint8_t, N == std::dynamic_extent ? std::dynamic_extent
-                                                          : N * sizeof(T)>
-as_writable_uint8_span(std::span<T, N> s) noexcept {
-  return std::span < uint8_t,
-         N == std::dynamic_extent
-           ? std::dynamic_extent
-           : N * sizeof(T) >
-               {reinterpret_cast<uint8_t *>(s.data()), s.size_bytes()};
+[[nodiscard]] auto as_writable_uint8_span(std::span<T, N> s) noexcept {
+  return std::span<uint8_t, N == std::dynamic_extent ? std::dynamic_extent
+                                                     : N * sizeof(T)>{
+    reinterpret_cast<uint8_t *>(s.data()), s.size_bytes()};
 }
 
 template <typename R>
@@ -402,7 +401,7 @@ inline int run_app(std::function<int(int, char **)> app, int argc,
   } catch (const std::bad_alloc &) {
     fputs("Out of memory\n", stderr);
   } catch (const std::exception &x) {
-    fprintf(stderr, "Caught %s:\n%s\n", typeid(x).name(), x.what());
+    std::println(stderr, "Caught {}:\n{}", typeid(x).name(), x.what());
   } catch (...) {
     fputs("Unknown exception caught\n", stderr);
   }
@@ -411,4 +410,4 @@ inline int run_app(std::function<int(int, char **)> app, int argc,
 
 } // namespace nghttp2
 
-#endif // TEMPLATE_H
+#endif // !defined(TEMPLATE_H)

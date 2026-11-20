@@ -316,10 +316,10 @@ static MirValue lb_var_argument(Lb *lb, const MsExpr *arg, uint32_t *binding_out
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const uint32_t callee = lb->facts->call_callee[e->id];
     const uint32_t func = callee == MS_NONE ? MIR_NONE : lb->func_of[callee];
-    if (func == MIR_NONE) {
+    const uint32_t count = e->u.call.args.len;
+    if (func == MIR_NONE || count != lb->c->tys.nparams[lb->c->syms.ty[callee]]) {
         return lb_unsupported(lb);
     }
-    const uint32_t count = e->u.call.args.len;
     const MsTyParam *params = ms_ty_params(&lb->c->tys, lb->c->syms.ty[callee]);
     MirValue *args = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
     MirValue *slots = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);

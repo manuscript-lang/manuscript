@@ -35,6 +35,10 @@ static bool body_is_value_type(const MsBody *b, MsTy ty) {
     return ty != MS_TY_NONE && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ty == b->string_ty);
 }
 
+bool ms_body_is_primitive_value(const MsBody *b, MsTy ty) {
+    return body_is_value_type(b, ty);
+}
+
 /* A `type`, `enum` or interface without type parameters. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
@@ -436,18 +440,22 @@ static bool body_is_case_name(const MsBody *b, MsSym name) {
 
 /* A name that is not a binding, a module name, a source location or a case. Reported at the
  * name; the whole is invalid, which silences what uses it. */
-static MsTy body_unknown_name(MsBody *b, const MsExpr *e) {
-    const MsStr name = ms_name(b->c->names, e->u.sym);
+static MsTy body_unknown_name_at(MsBody *b, MsPos pos, MsSym sym) {
+    const MsStr name = ms_name(b->c->names, sym);
     const char *advice = body_unknown_advice(b, name);
     if (advice == NULL) {
         return ms_body_unsupported(b);
     }
     const MsStr message = ms_arena_fmt(&b->c->arena, "unknown binding %.*s%s", (int)name.len, name.ptr, advice);
-    const MsCheckDiag diag = {.diag = {.pos = e->pos, .message = message},
+    const MsCheckDiag diag = {.diag = {.pos = pos, .message = message},
                               .phase = MS_PHASE_RESOLUTION,
-                              .unknown = e->u.sym};
+                              .unknown = sym};
     MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
     return b->invalid_ty;
+}
+
+static MsTy body_unknown_name(MsBody *b, const MsExpr *e) {
+    return body_unknown_name_at(b, e->pos, e->u.sym);
 }
 
 static bool body_is_unknown(const MsBody *b, MsSym name) {
@@ -519,7 +527,61 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     return record;
 }
 
-static MsTy body_call(MsBody *b, const MsExpr *e) {
+/* "missing argument NAME: T in call to CALLEE; add 'NAME: <T>'" at the call. */
+static void body_report_missing(MsBody *b, const MsExpr *call, uint32_t index, const MsTyParam *param, MsStr callee) {
+    const MsStr name = ms_name(b->c->names, param->name);
+    const MsStr ty = body_show(b, param->ty);
+    const bool positional = (param->flags & MS_PARAM_POSITIONAL) != 0;
+    body_report(b, call->pos,
+                positional ? ms_arena_fmt(&b->c->arena, "missing argument %u: %.*s in call to %.*s; pass it positionally, without a label",
+                                          index + 1, (int)ty.len, ty.ptr, (int)callee.len, callee.ptr)
+                           : ms_arena_fmt(&b->c->arena, "missing argument %.*s: %.*s in call to %.*s; add '%.*s: <%.*s>'",
+                                          (int)name.len, name.ptr, (int)ty.len, ty.ptr, (int)callee.len, callee.ptr,
+                                          (int)name.len, name.ptr, (int)ty.len, ty.ptr));
+}
+
+/* The arguments of a call to `function`, in parameter order, positional or labelled with the
+ * parameter's name: each is checked against its parameter with the context "argument 'NAME' of
+ * CALLEE". An argument past the last parameter and a parameter with no argument are reported.
+ * False when something here is left to the Rust checker (labels out of order or unknown, defaults,
+ * parameters of other kinds); the caller returns the unsupported mark. */
+static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function, const MsTyParam *params, MsStr callee) {
+    const uint32_t nparams = function->params.len;
+    const uint32_t nargs = call->u.call.args.len;
+    for (uint32_t i = 0; i < nargs; i++) {
+        const MsArg *arg = &call->u.call.args.ptr[i];
+        if (i >= nparams) {
+            if (arg->has_name) {
+                return false;
+            }
+            body_report(b, arg->pos, ms_arena_fmt(&b->c->arena, "too many positional arguments; every parameter is already supplied, so remove this argument"));
+            if (ms_body_expr(b, arg->value, MS_TY_NONE) == MS_TY_NONE) {
+                return false;
+            }
+            continue;
+        }
+        const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
+        if ((arg->has_name && (arg->name != params[i].name || (params[i].flags & MS_PARAM_POSITIONAL) != 0)) ||
+            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)))) {
+            return false;
+        }
+        const MsStr name = ms_name(b->c->names, params[i].name);
+        b->context = ms_arena_fmt(&b->c->arena, "argument '%.*s' of %.*s", (int)name.len, name.ptr, (int)callee.len,
+                                  callee.ptr).ptr;
+        if (ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
+            return false;
+        }
+    }
+    for (uint32_t i = nargs; i < nparams; i++) {
+        if (function->params.ptr[i]->def != NULL || body_has_invalid(b, params[i].ty)) {
+            return false;
+        }
+        body_report_missing(b, call, i, &params[i], callee);
+    }
+    return true;
+}
+
+static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
         return ms_body_method_call(b, e);
@@ -537,28 +599,28 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
     const MsSyms *syms = &b->c->syms;
+    if (sym == MS_NONE && ms_body_is_builtin_case(b, callee->u.sym)) {
+        return ms_body_builtin_call(b, e, expected);
+    }
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
         return body_construct(b, e, sym);
     }
-    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
-        syms->decl[sym] == NULL || syms->nvars[sym] != 0 || syms->decl[sym]->kind != MS_D_FN ||
+    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
+        syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||
         syms->decl[sym]->u.fn.external) {
         return ms_body_unsupported(b);
     }
+    if (syms->nvars[sym] != 0) {
+        return ms_body_generic_call(b, e, sym);
+    }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
-    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != e->u.call.args.len) {
+    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION) {
         return ms_body_unsupported(b);
     }
-    const MsTyParam *params = ms_ty_params(tys, sig);
-    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
-        const MsArg *arg = &e->u.call.args.ptr[i];
-        const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
-        if (arg->has_name || (params[i].flags & MS_PARAM_POSITIONAL) != 0 ||
-            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty))) ||
-            ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
-            return ms_body_unsupported(b);
-        }
+    if (tys->nparams[sig] != syms->decl[sym]->u.fn.params.len ||
+        !body_arguments(b, e, &syms->decl[sym]->u.fn, ms_ty_params(tys, sig), ms_name(b->c->names, callee->u.sym))) {
+        return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
@@ -791,7 +853,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_PROBE:
     case MS_E_MAP: return ms_body_unsupported(b);
     case MS_E_LAMBDA: ty = ms_body_lambda(b, e, expected); break;
-    case MS_E_CALL: ty = body_call(b, e); break;
+    case MS_E_CALL: ty = body_call(b, e, expected); break;
     case MS_E_MATCH: ty = ms_body_match(b, e, expected); break;
     }
     if (ty == MS_TY_NONE) {
@@ -864,6 +926,45 @@ static void body_bind_statement(MsBody *b, const MsStmt *s) {
     }
 }
 
+/* `name = value` where `name` is no binding: an unknown name, or a module declaration, which is
+ * not an assignment target. The value is checked with no expectation. False when this is left to
+ * the Rust checker. */
+static bool body_assign_to_declaration(MsBody *b, const MsStmt *s) {
+    const MsSym name = s->u.assign.name;
+    if (body_is_unknown(b, name)) {
+        if (body_unknown_name_at(b, s->pos, name) == MS_TY_NONE) {
+            return false;
+        }
+    } else {
+        const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, name);
+        const MsSyms *syms = &b->c->syms;
+        if (sym == MS_NONE || syms->decl[sym] == NULL) {
+            return false;
+        }
+        const bool imported = syms->module[sym] != b->module;
+        const char *what = NULL;
+        const MsDeclKind kind = syms->decl[sym]->kind;
+        if (kind == MS_D_CONST) {
+            what = imported ? "imported constant" : "constant";
+        } else if (kind == MS_D_FN) {
+            what = imported ? "imported function" : "function";
+        } else if (kind == MS_D_TYPE) {
+            what = imported ? "imported type" : "type";
+        }
+        if (what == NULL) {
+            return false;
+        }
+        const MsStr text = ms_name(b->c->names, name);
+        body_report(b, s->pos,
+                    ms_arena_fmt(&b->c->arena, "cannot assign to %s %.*s; assignment targets are 'var' bindings and type fields",
+                                 what, (int)text.len, text.ptr));
+    }
+    if (ms_body_expr(b, s->u.assign.value, MS_TY_NONE) == MS_TY_NONE) {
+        (void)ms_body_unsupported(b);
+    }
+    return true;
+}
+
 /* `name = value` and `name op= value` (the parser writes the second as `name = name op value`).
  * Reads of the name inside the value only feed its next value, so they do not count as reads. */
 static void body_assign_statement(MsBody *b, const MsStmt *s) {
@@ -872,6 +973,9 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     const uint32_t binding = ms_body_find_binding(b, s->u.assign.name);
+    if (binding == MS_NONE && body_assign_to_declaration(b, s)) {
+        return;
+    }
     if (binding == MS_NONE || binding < b->lambda_floor) {
         (void)ms_body_unsupported(b);
         return;

@@ -140,8 +140,16 @@ typedef struct MirClosureLayout {
 #define MIR_STACK_HDR_CELL 16
 #define MIR_HDR_CANCEL 8
 
+/* The tag bits of a string's second word (runtime/include/ms_rt/string.h) and the longest inline string. */
+#define MIR_STR_STATIC ((uint64_t)1 << 63)
+#define MIR_STR_INLINE ((uint64_t)1 << 62)
+#define MIR_STR_ASCII ((uint64_t)1 << 61)
+#define MIR_STR_INLINE_SHIFT 56
+#define MIR_STR_INLINE_MAX 15
+
 /* A list or bytes value is three leaves: the element address, the length and the capacity. */
 #define MIR_LIST_LEN_LEAF 1
+#define MIR_LIST_CAP_LEAF 2
 #define MIR_MAP_WORDS 7
 /* A type with more leaves than this is a failure, not a layout. */
 #define MIR_LAYOUT_MAX_LEAVES (1u << 20)
@@ -172,12 +180,35 @@ const MirShape *mir_shape(MirLayouts *layouts, MirTy ty);
 MirLeafSpan mir_leaves(MirLayouts *layouts, MirTy ty);
 MirMemLayout mir_type_mem(MirLayouts *layouts, MirTy ty);
 const MirAltFields *mir_alt_fields(MirLayouts *layouts, uint32_t alt);
+/* The payload leaf of case `case_index` that fills slot `slot` of its alternative: operand `*operand`
+ * (a field), leaf `*leaf` of it. False when the case leaves that slot unused. */
+bool mir_alt_slot_source(const MirAltFields *fields, uint32_t case_index, uint32_t slot,
+                         uint32_t *operand, uint32_t *leaf);
 
 /* The leaves of the heap block behind indirect type `type_id`: its fields' leaves in order,
  * except that a map or set field is one pointer to a header block that exists only while the
  * collection is not the all-zero empty value. */
 MirLeafSpan mir_type_block(MirLayouts *layouts, uint32_t type_id);
+/* The byte offset of field `field` of the inline record `type_id` in its memory image. */
+uint32_t mir_field_offset(MirLayouts *layouts, uint32_t type_id, uint32_t field);
 bool mir_type_field_boxed(const MirLayouts *layouts, MirTy field_ty);
+/* The heap block behind a record of an indirect type: `leaves` of its fields in order (as
+ * mir_type_block), their byte `offsets`, the index of each field's first leaf in `starts`, and the
+ * block `size`. Free with mir_record_block_free. */
+typedef struct MirRecordBlock {
+    const MirTypeDef *def;
+    MirLeafSpan leaves;
+    uint32_t *offsets;
+    uint32_t *starts;
+    uint32_t size;
+} MirRecordBlock;
+
+/* Fills `out` for the indirect record type `ty`. False when out of memory or when a field is a
+ * collection held as a pointer to a header (`*boxed_field` then says so), which the emitters do not
+ * write yet. */
+bool mir_record_block(MirLayouts *layouts, MirTy ty, MirRecordBlock *out, bool *boxed_field);
+void mir_record_block_free(MirRecordBlock *block);
+
 /* The size of the heap block of the boxed alternative `ty`; false for any other type. */
 bool mir_boxed_block_size(MirLayouts *layouts, MirTy ty, uint32_t *size);
 /* The object layout of function `f` (header only when it is not a closure). */

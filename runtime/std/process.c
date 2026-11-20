@@ -18,11 +18,6 @@
 
 #include "fs_support.h"
 
-/* The start-up records of the startup code (crates/ms-rt/src/start.rs): the arguments the process was started with and
- * the monotonic time it started at (0 before start). */
-void msrt_argv(MsVec *out);
-int64_t msrt_start_nanos(void);
-
 enum {
     MAX_ID = 2147483647,
     MAX_SIGNAL = 64,

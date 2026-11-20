@@ -173,19 +173,33 @@ static bool key_equal(const JsonDoc *doc, const JsonMember *a, const JsonMember 
            memcmp(doc->text.ptr + a->key_offset, doc->text.ptr + b->key_offset, a->key_length) == 0;
 }
 
-/* FNV-1a over the key's bytes. */
+/* A hash of the key's length and its first and last eight bytes (fewer for a short key), read as words. Keys that
+ * collide are compared in full, so this only has to spread keys, not identify them. */
 static uint64_t key_hash(const JsonDoc *doc, const JsonMember *member) {
-    uint64_t hash = UINT64_C(0xcbf29ce484222325);
-    for (uint32_t i = 0; i < member->key_length; i++) {
-        hash = (hash ^ doc->text.ptr[member->key_offset + i]) * UINT64_C(0x100000001b3);
+    const uint8_t *key = doc->text.ptr + member->key_offset;
+    const size_t length = member->key_length;
+    uint64_t first = 0;
+    uint64_t last = 0;
+    if (length >= 8) {
+        first = ms_load64(key);
+        last = ms_load64(key + length - 8);
+    } else if (length >= 4) {
+        first = ms_load32(key);
+        last = ms_load32(key + length - 4);
+    } else if (length > 0) {
+        first = key[0];
+        last = (uint64_t)key[length - 1] | ((uint64_t)key[length / 2] << 8);
     }
-    return hash;
+    const uint64_t mixed = (first ^ ((last << 29) | (last >> 35)) ^ length) * UINT64_C(0x9E3779B97F4A7C15);
+    return mixed ^ (mixed >> 32);
 }
 
-/* Objects up to this many members detect a repeated key by pairwise comparison; larger ones hash their keys. */
-enum { LINEAR_KEYS = 12 };
+/* Objects up to this many members detect a repeated key by pairwise comparison; larger ones hash their keys, into a
+ * table on the stack up to STACK_TABLE_SLOTS slots. */
+enum { LINEAR_KEYS = 4, STACK_TABLE_SLOTS = 128 };
 
-/* Whether two of the `count` members share a key. */
+/* Whether two of the `count` members share a key: each member's index, plus one, goes into an open-addressing table
+ * of at least twice as many slots, and a key that lands on an equal one is a repeat. */
 static bool has_duplicate(const JsonDoc *doc, const JsonMember *members, size_t count) {
     if (count <= LINEAR_KEYS) {
         for (size_t i = 1; i < count; i++) {
@@ -197,11 +211,17 @@ static bool has_duplicate(const JsonDoc *doc, const JsonMember *members, size_t 
         }
         return false;
     }
-    size_t size = 1;
+    size_t size = 4;
     while (size < count * 2) {
         size *= 2;
     }
-    uint32_t *table = msrt_alloc_zeroed(size * sizeof *table);
+    uint32_t stack_table[STACK_TABLE_SLOTS];
+    uint32_t *table = stack_table;
+    if (size > STACK_TABLE_SLOTS) {
+        table = msrt_alloc_zeroed(size * sizeof *table);
+    } else {
+        memset(stack_table, 0, size * sizeof *table);
+    }
     bool found = false;
     for (size_t i = 0; i < count && !found; i++) {
         size_t slot = (size_t)key_hash(doc, &members[i]) & (size - 1);
@@ -214,7 +234,9 @@ static bool has_duplicate(const JsonDoc *doc, const JsonMember *members, size_t 
         }
         table[slot] = (uint32_t)i + 1;
     }
-    msrt_free(table);
+    if (table != stack_table) {
+        msrt_free(table);
+    }
     return found;
 }
 

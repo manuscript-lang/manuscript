@@ -11,6 +11,7 @@
 #include <time.h>
 
 #include "../../std/abi.h"
+#include "ms_rt/obj.h"
 #include "ms_rt/process.h"
 #include "ms_rt/string.h"
 #include "ms_rt/sys.h"
