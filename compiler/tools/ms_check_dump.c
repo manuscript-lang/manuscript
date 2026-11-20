@@ -153,7 +153,7 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
                 }
                 if (effects) {
                     // The effect scan reads the facts of every function the body pass checked.
-                    ms_dump_module_effects(&dump, check, id);
+                    ms_dump_module_effects(&dump, check, id, (MsStr){check_text, (uint32_t)n});
                     printf("%.*s", (int)dump.len, (const char *)dump.data);
                     ms_buf_free(&dump);
                     free(owned);

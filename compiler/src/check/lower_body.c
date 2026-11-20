@@ -471,6 +471,9 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
         return la_case(lb, e);
     }
+    if (callee == MS_NONE && lb->facts->call_method[e->id] != MS_NONE) {
+        return lst_method(lb, e);
+    }
     if (callee == MS_NONE) {
         return lb_call_value(lb, e);
     }
@@ -741,11 +744,13 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
     }
     const MirTy bound_ty = lb_mir_ty(lb, ty);
     if (bound_ty != MIR_STR && !lb_is_fn(lb, bound_ty) && lb_owns(lb, bound_ty)) {
-        if (!value.owned || s->u.bind.is_mutable) {
+        if (!value.owned || (s->u.bind.is_mutable && !lb_is_list(lb, bound_ty))) {
             lb->ok = false; // a record local is made from a call or a construction, and is not a `var` yet
             return;
         }
-        lscope_own(&lb->scopes, value.v, 0);
+        if (!s->u.bind.is_mutable) {
+            lscope_own(&lb->scopes, value.v, 0); // a `var` is owned at each exit with the value it holds there
+        }
     }
     if (ty == lb->string_ty) {
         if (!value.owned) {
@@ -841,8 +846,11 @@ static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
         lscope_disown(&lb->scopes, v);
         return (LbVal){v, true};
     }
-    lb->ok = false; // an owned result that is no local: a copy the pass does not make yet
-    return (LbVal){v, true};
+    if (e->kind == MS_E_NAME) {
+        lb->ok = false; // a borrowed parameter handed out as an owned result: left to Rust
+        return (LbVal){v, true};
+    }
+    return (LbVal){lb_copy(lb, v), true}; // a borrowed value that is no local: the caller gets a copy
 }
 
 static void lb_return(Lb *lb, const MsStmt *s) {

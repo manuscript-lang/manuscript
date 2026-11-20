@@ -1,2 +1,2 @@
 fn main() Void:
-    return
+	return

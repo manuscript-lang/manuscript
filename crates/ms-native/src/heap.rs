@@ -1,9 +1,17 @@
 //! Rust's global allocator over the C heap (`runtime/core/alloc.c`, mimalloc).
-use super::{alloc, alloc_zeroed, free, realloc};
+// The allocator binding is the only unsafe code here.
+#![allow(unsafe_code)]
 use core::alloc::{GlobalAlloc, Layout};
 use std::alloc::System;
 
-/// Rust's global allocator for compiled programs (installed by `ms-native` on every platform).
+unsafe extern "C-unwind" {
+    fn msrt_alloc(size: usize) -> *mut u8;
+    fn msrt_alloc_zeroed(size: usize) -> *mut u8;
+    fn msrt_realloc(p: *mut u8, size: usize) -> *mut u8;
+    fn msrt_free(p: *mut u8);
+}
+
+/// Rust's global allocator for compiled programs (installed on every platform).
 ///
 /// The standard-library natives (`Vec`, `String`, `HashMap` inside `ms-std-*`) share the runtime's
 /// heap, from any thread. Alignments above 16 go to the system allocator, and the layout tells
@@ -16,7 +24,8 @@ unsafe impl GlobalAlloc for StdHeap {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         if layout.align() <= 16 {
-            alloc(layout.size())
+            // SAFETY: any size is valid.
+            unsafe { msrt_alloc(layout.size()) }
         } else {
             // SAFETY: forwarded.
             unsafe { System.alloc(layout) }
@@ -26,7 +35,8 @@ unsafe impl GlobalAlloc for StdHeap {
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         if layout.align() <= 16 {
-            alloc_zeroed(layout.size())
+            // SAFETY: any size is valid.
+            unsafe { msrt_alloc_zeroed(layout.size()) }
         } else {
             // SAFETY: forwarded.
             unsafe { System.alloc_zeroed(layout) }
@@ -38,7 +48,7 @@ unsafe impl GlobalAlloc for StdHeap {
         // SAFETY: `p` came from the allocator that `layout.align()` selects.
         unsafe {
             if layout.align() <= 16 {
-                free(p);
+                msrt_free(p);
             } else {
                 System.dealloc(p, layout);
             }
@@ -50,7 +60,7 @@ unsafe impl GlobalAlloc for StdHeap {
         // SAFETY: `p` came from the allocator that `layout.align()` selects.
         unsafe {
             if layout.align() <= 16 {
-                realloc(p, new_size)
+                msrt_realloc(p, new_size)
             } else {
                 System.realloc(p, layout, new_size)
             }
