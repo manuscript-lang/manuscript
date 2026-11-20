@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test vscode-package vscode-install c-fuzz
+.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-lint c-compiler-test vscode-package vscode-install c-fuzz
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -195,6 +195,11 @@ stdlib-bench: build
 # The C runtime unit tests under AddressSanitizer and UBSan; nightly, not the pull request gate.
 c-test:
 	sh runtime/tests/c-test.sh
+
+# The C style gate (documentation/contributing/c-style.md): strict warnings on every C file, clang-tidy on the
+# files that differ from C_LINT_BASE (all of them when it is unset).
+c-lint:
+	sh toolchain/c-lint.sh $(C_LINT_BASE)
 
 # The C runtime fuzz harnesses (runtime/fuzz) under AddressSanitizer and UBSan; FUZZ_RUNS, FUZZ_SEED, FUZZER=libfuzzer.
 c-fuzz:

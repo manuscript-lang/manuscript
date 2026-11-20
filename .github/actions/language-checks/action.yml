@@ -1,5 +1,5 @@
 name: Language checks
-description: Repository rules, license check, and the VS Code extension package. Needs a checkout and a Rust toolchain.
+description: Repository rules, license check, the C style gate, and the VS Code extension package. Needs a checkout and a Rust toolchain.
 
 runs:
   using: composite
@@ -15,6 +15,17 @@ runs:
     - name: Repo rules and licenses
       shell: bash
       run: make repo-check licenses-check
+    # Strict warnings on every C file and clang-tidy on the ones this change touches (documentation/contributing/c-style.md).
+    # The nightly c-safety job runs clang-tidy on all of them.
+    - name: C style gate
+      shell: bash
+      env:
+        BASE_REF: ${{ github.base_ref }}
+      run: |
+        sh runtime/third_party/libs.sh install
+        base=
+        if [ -n "$BASE_REF" ]; then git fetch --depth=1 origin "$BASE_REF"; base=FETCH_HEAD; fi
+        make c-lint C_LINT_BASE="$base"
     - name: Validate and package VS Code extension
       shell: bash
       working-directory: extensions/vscode
