@@ -122,6 +122,7 @@ static void expect(MsHeaders *fields, const char *method, const char *host, cons
 int main(void) {
     /* a good request: the RFC's sample key, a subprotocol picked in the server's order */
     {
+        fprintf(stderr, "ws_server_test: stage 1\n"); fflush(stderr);
         const char *protocols[] = {"superchat", "chat"};
         MsHeaders *fields = request("keep-alive, Upgrade", "13", SAMPLE_KEY, NULL, "chat, superchat");
         MsHeaders *response;
@@ -139,6 +140,7 @@ int main(void) {
 
     /* none of the offered subprotocols is spoken: none is selected */
     {
+        fprintf(stderr, "ws_server_test: stage 2\n"); fflush(stderr);
         const char *protocols[] = {"other"};
         MsHeaders *fields = request("Upgrade", "13", SAMPLE_KEY, NULL, "chat");
         MsHeaders *response;
@@ -163,6 +165,7 @@ int main(void) {
 
     /* two keys: two parsers could read two */
     {
+        fprintf(stderr, "ws_server_test: stage 3\n"); fflush(stderr);
         MsHeaders *fields = request("Upgrade", "13", SAMPLE_KEY, NULL, NULL);
         CHECK(ms_headers_add_canonical(fields, text("Sec-WebSocket-Key"), text(SAMPLE_KEY)));
         expect(fields, "GET", "h", NULL, 0, 400, NULL);
@@ -183,6 +186,7 @@ int main(void) {
 
     /* a subprotocol that is not a token is refused before anything is read */
     {
+        fprintf(stderr, "ws_server_test: stage 4\n"); fflush(stderr);
         MsHeaders *fields = request("Upgrade", "13", SAMPLE_KEY, NULL, NULL), *response = ms_headers_new();
         const char *bad[] = {"a b"};
         MsStr method = str("GET"), host = str("h"), chosen, why;
@@ -199,6 +203,7 @@ int main(void) {
 
     /* a served session talks to a client session over loopback */
     {
+        fprintf(stderr, "ws_server_test: stage 5\n"); fflush(stderr);
         MsAddr loopback = {4, {127, 0, 0, 1}, 0, 0}, bound;
         MsSock listener = MS_SOCK_INVALID, client_fd = MS_SOCK_INVALID, server_fd = MS_SOCK_INVALID;
         CHECK(ms_sys_net_tcp_listen(&loopback, 4, &listener) == MS_SYS_OK && ms_sys_net_local_addr(listener, &bound) == MS_SYS_OK);
@@ -215,11 +220,13 @@ int main(void) {
             PollFd p = {.fd = (PollHandle)client_fd, .events = POLLOUT};
             CHECK(poll_sockets(&p, 1, 5000) == 1 && ms_sys_net_connect_done(client_fd) == MS_SYS_OK);
         }
+        fprintf(stderr, "ws_server_test: loop a\n"); fflush(stderr);
         MsConnTable *client_table = ms_conn_table_new(1), *server_table = ms_conn_table_new(1);
         MsObj *client_conn = ms_netconn_new(client_table, ms_conn_open(client_table, (int)client_fd, MS_CONN_WS));
         MsObj *server_conn = ms_netconn_new(server_table, ms_conn_open(server_table, (int)server_fd, MS_CONN_WS));
         CHECK(client_conn != NULL && server_conn != NULL);
 
+        fprintf(stderr, "ws_server_test: loop b\n"); fflush(stderr);
         MsStr chat = str("chat"), why = str("");
         void *served = NULL;
         CHECK(msstd_ws_serve(server_conn, &chat, 1, 0, &served, &why) == STATUS_INVALID_INPUT); /* a limit of 0 */
@@ -229,6 +236,7 @@ int main(void) {
         MsWsSocket *client = ms_ws_socket_new(ms_netconn_alias(client_conn), MS_WS_ROLE_CLIENT, &config);
         CHECK(client != NULL);
 
+        fprintf(stderr, "ws_server_test: loop c\n"); fflush(stderr);
         MsWsMessage message;
         bool ended = false;
         CHECK(ms_ws_socket_send(client, text("hello"), true, after_ms(5000)) == MS_WSS_OK);
@@ -236,10 +244,15 @@ int main(void) {
         CHECK(ms_ws_socket_send(ms_ws_handle_socket(served), text("back"), false, after_ms(5000)) == MS_WSS_OK);
         CHECK(ms_ws_socket_receive(client, after_ms(5000), &message, &ended) == MS_WSS_OK && !message.text && message.data.len == 4 && memcmp(message.data.ptr, "back", 4) == 0);
 
+        fprintf(stderr, "ws_server_test: loop d\n"); fflush(stderr);
         ms_ws_socket_release(client);
+        fprintf(stderr, "ws_server_test: loop e\n"); fflush(stderr);
         ((MsObj *)served)->drop(served);
+        fprintf(stderr, "ws_server_test: loop f\n"); fflush(stderr);
         ((MsObj *)server_conn)->drop(server_conn);
+        fprintf(stderr, "ws_server_test: loop g\n"); fflush(stderr);
         ((MsObj *)client_conn)->drop(client_conn);
+        fprintf(stderr, "ws_server_test: loop h\n"); fflush(stderr);
         ms_sys_net_close(listener);
         ms_str_release(&chat);
         ms_str_release(&why);
