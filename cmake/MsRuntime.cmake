@@ -51,7 +51,13 @@ foreach(source ${_sources})
     continue()
   endif()
   ms_libraries_of("${source}" _needs)
-  if(_needs AND NOT MS_LIBS_WIRED)
+  set(_missing OFF)
+  foreach(lib ${_needs})
+    if(NOT MS_LIBS_WIRED AND NOT lib IN_LIST MS_LIBS_ONLY)
+      set(_missing ON)
+    endif()
+  endforeach()
+  if(_missing)
     continue()
   endif()
   list(APPEND _selected "${source}")
@@ -73,7 +79,9 @@ list(REMOVE_DUPLICATES _used_libs)
 set(_features "")
 foreach(source ${_selected})
   get_filename_component(_name "${source}" NAME)
-  if(source MATCHES "/runtime/io/")
+  # reactor.c defines the ms_io_* entry points; the files beside it (ring, refused) need no library and stay
+  # selected on a target without libuv, which has no reactor.
+  if(source MATCHES "/runtime/io/reactor\\.c$")
     list(APPEND _features reactor)
   endif()
 endforeach()
@@ -108,6 +116,10 @@ foreach(lib ${_used_libs})
   endif()
 endforeach()
 list(REMOVE_DUPLICATES _archives)
+set(_library_targets "")
+if(TARGET ms_zlib)
+  list(APPEND _library_targets ms_zlib)
+endif()
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/c-object-files.txt"
      CONTENT "$<JOIN:$<TARGET_OBJECTS:ms_runtime_objects>,\n>\n")
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/c-library-files.txt" CONTENT "$<JOIN:${_archives},\n>\n")
@@ -119,7 +131,7 @@ add_custom_command(
           -DOUT=${CMAKE_BINARY_DIR}/c-objects.txt -P ${CMAKE_SOURCE_DIR}/cmake/FoldArchives.cmake
   # The object files themselves, not the target: an OBJECT library has no output file, so a dependency on its name
   # would let the folded copies in c-members go stale after a source changes.
-  DEPENDS $<TARGET_OBJECTS:ms_runtime_objects> ms_llhttp "${CMAKE_BINARY_DIR}/c-object-files.txt"
+  DEPENDS $<TARGET_OBJECTS:ms_runtime_objects> ms_llhttp ${_library_targets} "${CMAKE_BINARY_DIR}/c-object-files.txt"
           "${CMAKE_BINARY_DIR}/c-library-files.txt" ${_archives}
           "${CMAKE_SOURCE_DIR}/cmake/FoldArchives.cmake"
   COMMENT "Folding the C libraries into the runtime objects"

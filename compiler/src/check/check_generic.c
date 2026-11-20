@@ -1,7 +1,7 @@
 /* Calls of generic functions of the module: `identity(3)`, `larger(a, b)`. The type arguments are
  * inferred from the argument types (infer.h), every bound must hold (implements.h), and the call
- * has the result type with them applied. Handled: positional arguments of primitive type, each
- * variable bound to a primitive, bounds that are certainly met. Explicit type arguments, defaults
+ * has the result type with them applied. Handled: positional arguments of a type the body pass admits, each
+ * variable bound to one, bounds that are certainly met. Explicit type arguments, defaults
  * that are needed, bounds whose answer is unknown and every other form leave the function to the
  * Rust checker. Records `call_callee` and the type arguments (`call_type_args_*`). */
 #include <string.h>
@@ -24,11 +24,11 @@ static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, MsInfer *in)
         // Explicit type arguments already fix some variables: the argument is checked against that.
         const MsTy want = ms_infer_apply(in, params[i].ty);
         const bool fixed = !ms_ty_has_variable(tys, &b->c->arena, want);
-        if (arg->has_name || params[i].flags != 0 || (fixed && !ms_body_is_plain_value(b, want))) {
+        if (arg->has_name || params[i].flags != 0 || (fixed && !ms_body_is_admitted(b, want))) {
             return false;
         }
         const MsTy actual = ms_body_expr(b, arg->value, fixed ? want : MS_TY_NONE);
-        if (actual == MS_TY_NONE || !ms_body_is_plain_value(b, actual) || ms_infer_match(in, params[i].ty, actual) != MS_MATCH_OK) {
+        if (actual == MS_TY_NONE || !ms_body_is_admitted(b, actual) || ms_infer_match(in, params[i].ty, actual) != MS_MATCH_OK) {
             return false;
         }
     }
@@ -41,7 +41,7 @@ static bool generic_bounds(MsBody *b, MsInfer *in) {
         return false;
     }
     for (uint32_t i = 0; i < in->nvars; i++) {
-        if (in->bound[i] == MS_TY_NONE || !ms_body_is_plain_value(b, in->bound[i])) {
+        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i])) {
             return false;
         }
         const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
@@ -107,7 +107,7 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
         return ms_body_unsupported(b);
     }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
-    if (!ms_body_is_plain_value(b, result)) {
+    if (!ms_body_is_admitted(b, result)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;

@@ -55,43 +55,7 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
 }
 
-/* Whether a value of the type may have a cleanup the pass does not record yet: it has a `close`
- * method, or holds a field or payload that does. Without a method table nothing is known. */
 static bool body_text_is(const MsBody *b, MsSym name, const char *text);
-
-static bool body_is_closeable(const MsBody *b, MsTy ty, uint32_t depth) {
-    const MsTyTable *tys = &b->c->tys;
-    if (b->methods == NULL || depth > 4) {
-        return true;
-    }
-    const MsMethods *m = &b->methods->methods;
-    for (uint32_t i = 0; i < m->count; i++) {
-        if (m->receiver[i] == ty && m->decl[i] != NULL && body_text_is(b, m->decl[i]->name, "close")) {
-            return true;
-        }
-    }
-    const uint32_t def = tys->def[ty];
-    if (def == 0 || def - 1 >= b->c->defs_cap) {
-        return false;
-    }
-    const MsDef *d = &b->c->defs[def - 1];
-    for (uint32_t i = 0; i < d->nfields; i++) {
-        const MsTy field = d->fields[i].ty;
-        if (field != MS_TY_NONE && ms_ty_kind(tys, field) != MS_K_VARIABLE && body_is_closeable(b, field, depth + 1)) {
-            return true;
-        }
-    }
-    for (uint32_t k = 0; k < d->ncases; k++) {
-        for (uint32_t i = 0; i < d->cases[k].nfields; i++) {
-            const MsTy field = d->cases[k].fields[i].ty;
-            if (field != MS_TY_NONE && ms_ty_kind(tys, field) != MS_K_VARIABLE &&
-                body_is_closeable(b, field, depth + 1)) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
 
 /* A value of a nominal type that may need a cleanup, with type arguments of primitive type
  * (`WriteStream[String]`): only the receiver of a method call, which is a temporary. */
@@ -111,10 +75,11 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
 }
 
 /* A type whose values the pass can pass around: primitives, lists, function values and nominal
- * types that cannot need a cleanup (a value that closes gets one the pass does not record yet). */
+ * types. A value that closes is classified a resource by the ownership pass; the lowering leaves
+ * it to the Rust lowering until it records the close. */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
-           (body_is_own_nominal(b, ty) && !body_is_closeable(b, ty, 0));
+           body_is_own_nominal(b, ty);
 }
 
 bool ms_body_is_admitted(const MsBody *b, MsTy ty) {
@@ -739,18 +704,20 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
 /* `local.field` where the local holds a record this module declares and the field is a Copy
  * primitive (Int, Float, Bool): the field's type. Anything else a member can be (a method, a case, a module path)
  * is not checked yet. */
-static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver);
+typedef enum { MEMBER_READ, MEMBER_RECEIVER, MEMBER_STORE } MemberUse;
 
-static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e, false); }
+static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use);
+
+static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e, MEMBER_READ); }
 
 /* A field is read as the receiver of another member when it is a record this module declares:
  * only the path matters, nothing is borrowed or moved out of the holder. */
-static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver) {
+static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     const MsExpr *receiver = e->u.member.left;
     if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER) {
         return ms_body_unsupported(b);
     }
-    const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, true))
+    const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, MEMBER_RECEIVER))
                                                       : ms_body_expr(b, receiver, MS_TY_NONE);
     if (record == MS_TY_NONE) {
         return MS_TY_NONE;
@@ -765,8 +732,8 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver) {
             continue;
         }
         const MsTy field = def->fields[i].ty;
-        const bool path = as_receiver && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
-        if (!path && (!body_is_value_type(b, field) || field == b->string_ty)) {
+        const bool path = use == MEMBER_RECEIVER && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
+        if (!path && use != MEMBER_STORE && (!body_is_value_type(b, field) || field == b->string_ty)) {
             break; /* reading a String field borrows or moves it out of its holder */
         }
         b->facts->res_kind[e->id] = MS_RES_FIELD;
@@ -975,7 +942,9 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
-    if (!body_is_value_type(b, ty) || b->c->syms.decl[sym] != NULL) {
+    const bool primitive = body_is_value_type(b, ty) && b->c->syms.decl[sym] == NULL;
+    const bool declared = ty != MS_TY_NONE && body_is_own_nominal(b, ty) && body_is_admitted(b, ty);
+    if (!primitive && !declared) {
         return ms_body_unsupported(b);
     }
     b->facts->type_ref_ty[t->id] = ty;
@@ -1063,7 +1032,7 @@ static void body_assign_field(MsBody *b, const MsStmt *s) {
         (void)ms_body_unsupported(b);
         return;
     }
-    const MsTy field = ms_body_record(b, target->id, body_member(b, target));
+    const MsTy field = ms_body_record(b, target->id, body_member_of(b, target, MEMBER_STORE));
     if (field == MS_TY_NONE || ms_body_expr(b, s->u.assign.value, field) == MS_TY_NONE) {
         (void)ms_body_unsupported(b);
         return;
@@ -1526,6 +1495,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->param_consumed = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->param_consumed, 0, nodes * sizeof *facts->param_consumed);
     facts->ret_borrowed = MS_NEW_N(arena, bool, nodes);
     memset(facts->ret_borrowed, 0, nodes * sizeof *facts->ret_borrowed);
     facts->const_use = MS_NEW_N(arena, bool, nodes);
