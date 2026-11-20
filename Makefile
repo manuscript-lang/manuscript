@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -23,7 +23,7 @@ vscode-install: vscode-package
 		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
-verify: check repo-check workflow-check bench-check unit docs-check licenses-check
+verify: check repo-check workflow-check bench-check lsp-test unit docs-check licenses-check
 
 verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
@@ -188,6 +188,11 @@ dist: build
 dist-check: dist
 	$(MS) run tools/dist-check.ms
 
+# The language server written in Manuscript (tools/lsp): its unit tests and a check of the entry point.
+lsp-test: build
+	"$(RELEASE_MS)" test tools/lsp/frame.ms tools/lsp/text.ms tools/lsp/uri.ms tools/lsp/structure.ms tools/lsp/server.ms tools/lsp/check.ms
+	"$(RELEASE_MS)" check tools/lsp/main.ms
+
 agent-bench-check: build
 	PATH="$(dir $(RELEASE_MS)):$$PATH" "$(RELEASE_MS)" run bench/agent/run.ms -- oracle
 	"$(RELEASE_MS)" test bench/agent/core_test.ms
@@ -216,8 +221,13 @@ stdlib-bench: build
 # The C build: one CMake project (CMakeLists.txt, cmake/) for the runtime archive, its tests and the fuzz harnesses,
 # generated with Ninja; ccache is used when installed. `c-configure` and `c-build` make target/cmake/test (sanitizers on).
 C_BUILD ?= target/cmake/test
-.PHONY: c-configure c-build
-c-configure:
+# The system C libraries the CMake builds find with pkg-config. Nothing is installed here: a missing one stops the
+# build with the command that installs it.
+.PHONY: c-deps c-configure c-build
+c-deps:
+	@pkg-config --exists libuv libnghttp2 libssl libcrypto libpcre2-8 zlib libcurl 2>/dev/null || { echo "make: the C libraries are not all installed (pkg-config). Install them with: sh runtime/third_party/libs.sh install" >&2; exit 1; }
+
+c-configure: c-deps
 	cmake -S . -B $(C_BUILD) -G Ninja -DMS_SANITIZE=ON
 
 c-build: c-configure
@@ -230,7 +240,7 @@ c-test: c-build
 # The C style gate (documentation/contributing/c-style.md): strict warnings on every C file, clang-tidy on the
 # files that differ from C_LINT_BASE (all of them when it is unset).
 .PHONY: c-lint
-c-lint:
+c-lint: c-deps
 	cmake -S . -B target/cmake/lint -G Ninja -DMS_BUILD_COMPILER=OFF -DMS_BUILD_TESTS=OFF
 	C_LINT_BASE="$(C_LINT_BASE)" cmake --build target/cmake/lint --target c-lint
 
@@ -277,6 +287,11 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/mark.ms
 	"$(RELEASE_MS)" test tools/ms/html.ms
 	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
+	"$(RELEASE_MS)" test tools/ms/cli.ms
+	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
+	"$(RELEASE_MS)" test tools/ms/install.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/project.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/workspace.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/matches.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
@@ -298,7 +313,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	diff -r target/c-tool/docs.rust/documentation target/c-tool/docs.ms/documentation
 	cmp target/c-tool/static.rust/stdlib.md target/c-tool/docs.ms/website/static/stdlib.md
 	cmp target/c-tool/static.rust/stdlib.json target/c-tool/docs.ms/website/static/stdlib.json
-	"$(RELEASE_MS)" run tools/ms/doc_inventory.ms -- target/c-tool/model.json crates/ms-tooling/data/description_backlog.json target/c-tool/coverage.ms.json
+	"$(RELEASE_MS)" run tools/ms/doc_inventory.ms -- target/c-tool/model.json tools/ms/data/description_backlog.json target/c-tool/coverage.ms.json
 	cmp target/c-tool/coverage.rust.json target/c-tool/coverage.ms.json
 	"$(RELEASE_MS)" test tools/ms/doc_inventory.ms
 	"$(RELEASE_MS)" build tools/ms/search.ms -o target/c-tool/search

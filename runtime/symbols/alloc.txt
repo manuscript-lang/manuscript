@@ -6,13 +6,8 @@ msrt_free
 msrt_heap_claim
 msrt_heap_release
 msrt_heap_has
-msrt_heap_owns
 msrt_heap_usable_size
 msrt_heap_trim
-msrt_heap_alloc_zeroed_cached
-msrt_heap_large_request
-msrt_heap_shared_take
-msrt_heap_shared_put
 msrt_heap_stats
 msrt_heap_requested
 msrt_heap_sample_every

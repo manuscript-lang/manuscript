@@ -214,6 +214,7 @@ void mir_module_init(MirModule *m) {
     ms_names_init(&m->names);
     ms_names_init(&m->strings);
     m->entry = MIR_NONE;
+    m->close = MIR_NONE;
     m->name = ms_intern_cstr(&m->names, "module");
     ty_rehash(m, 64);
     static const MirTyKind builtin[MIR_BUILTIN_TYPES] = {
@@ -301,7 +302,7 @@ uint32_t mir_add_alt(MirModule *m, MsSym name) {
 }
 
 uint32_t mir_add_iface(MirModule *m, MsSym name) {
-    MirIfaceDef d = {.name = name, .close = MIR_NONE};
+    MirIfaceDef d = {.name = name};
     MIR_PUSH(m, m->ifaces, m->nifaces, m->cifaces, MirIfaceDef, d);
     symmap_add(m, &m->by_iface, name, m->nifaces - 1);
     return m->nifaces - 1;

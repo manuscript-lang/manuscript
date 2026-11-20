@@ -7,3 +7,5 @@ msrt_slot_hash
 msrt_hash_combine
 msrt_hash_bytes
 msrt_hash_int
+msrt_eq_enter
+msrt_eq_leave

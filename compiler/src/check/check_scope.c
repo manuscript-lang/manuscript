@@ -3,6 +3,7 @@
  * crates/ms-check/src/checker.rs. */
 #include <string.h>
 
+#include "ms/text.h"
 #include "ms/check.h"
 #include "ms/import_hints.h"
 
@@ -23,28 +24,9 @@ static const char scope_twin_suffix[] = "+source";
 
 /* ---- text helpers ---- */
 
-static bool scope_has_prefix(MsStr s, const char *prefix) {
-    const size_t n = strlen(prefix);
-    return s.len >= n && memcmp(s.ptr, prefix, n) == 0;
-}
-
-static bool scope_text_is(MsStr s, const char *literal) {
-    return s.len == strlen(literal) && memcmp(s.ptr, literal, s.len) == 0;
-}
-
-static bool scope_mentions(MsStr s, const char *needle) {
-    const size_t n = strlen(needle);
-    for (size_t at = 0; at + n <= s.len; at++) {
-        if (memcmp(s.ptr + at, needle, n) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static bool scope_in(MsStr s, const char *const *list, size_t count) {
     for (size_t i = 0; i < count; i++) {
-        if (scope_text_is(s, list[i])) {
+        if (ms_text_is(s, list[i])) {
             return true;
         }
     }
@@ -84,7 +66,7 @@ void ms_report(MsCheck *c, MsModId module, const MsCheckDiag *diag) {
     MsModuleRow *row = &c->mods[module];
     /* Once an unknown type is reported, `<invalid>` in a later message only restates it. */
     if (row->unknown_type && diag->phase != MS_PHASE_RESOLUTION &&
-        scope_mentions(diag->diag.message, "<invalid>")) {
+        ms_text_contains(diag->diag.message, "<invalid>")) {
         return;
     }
     if (row->ndiags == row->diags_cap) {
@@ -105,9 +87,9 @@ static void scope_report_at(MsCheck *c, MsModId module, MsPos pos, MsStr message
 bool ms_is_prelude_symbol(const MsCheck *c, MsSymId sym) {
     const MsStr name = ms_name(c->names, c->syms.name[sym]);
     const MsModId owner = c->syms.module[sym];
-    if (owner != MS_NONE && scope_text_is(name, "print")) {
+    if (owner != MS_NONE && ms_text_is(name, "print")) {
         /* The path as written: the source half of a mixed file is not `@std/core.ms` itself. */
-        if (scope_text_is(ms_name(c->names, c->mods[owner].path), scope_core_path)) {
+        if (ms_text_is(ms_name(c->names, c->mods[owner].path), scope_core_path)) {
             return true;
         }
     }
@@ -152,7 +134,7 @@ static MsSymId scope_standard_symbol(MsCheck *c, MsStr path, MsSym name) {
 
 static bool scope_imports_name(const MsModule *module, MsSym name) {
     for (uint32_t i = 0; i < module->nimports; i++) {
-        if (module->imports[i].name == name && scope_has_prefix(module->imports[i].path, scope_std_prefix)) {
+        if (module->imports[i].name == name && ms_text_starts_with(module->imports[i].path, scope_std_prefix)) {
             return true;
         }
     }
@@ -212,7 +194,7 @@ static void scope_declare_primitives(MsCheck *c) {
 static void scope_add_prelude(MsCheck *c, MsModId module) {
     MsNameMap *names = &c->mods[module].names;
     const MsModule *syntax = c->mods[module].syntax;
-    const bool standard = scope_has_prefix(ms_name(c->names, c->mods[module].path), scope_std_prefix);
+    const bool standard = ms_text_starts_with(ms_name(c->names, c->mods[module].path), scope_std_prefix);
     if (!standard) {
         scope_reject_constructor_names(c, module);
     }
@@ -285,7 +267,7 @@ static void scope_add_symbol(MsCheck *c, MsModId module, MsSym name, MsSymId sym
 /* ---- imports ---- */
 
 static bool scope_is_internal_path(MsStr path) {
-    return scope_has_prefix(path, scope_internal_prefix);
+    return ms_text_starts_with(path, scope_internal_prefix);
 }
 
 /* The symbol an import of `item` names, when the standard library has one. */
@@ -360,10 +342,10 @@ static void scope_import_local(MsCheck *c, MsModId module, const MsImport *item,
 static void scope_import_symbols(MsCheck *c, MsModId module) {
     const MsModule *syntax = c->mods[module].syntax;
     const MsStr own_path = ms_name(c->names, c->mods[module].path);
-    const bool in_standard = scope_has_prefix(own_path, scope_std_prefix);
+    const bool in_standard = ms_text_starts_with(own_path, scope_std_prefix);
     for (uint32_t i = 0; i < syntax->nimports; i++) {
         const MsImport *item = &syntax->imports[i];
-        if (!scope_has_prefix(item->path, scope_std_prefix)) {
+        if (!ms_text_starts_with(item->path, scope_std_prefix)) {
             // A project module resolves through the graph's targets; without them the import stays unresolved.
             const MsModId target = c->mods[module].import_targets == NULL ? MS_NONE : c->mods[module].import_targets[i];
             if (target != MS_NONE) {
@@ -405,14 +387,11 @@ static bool scope_is_nominal_decl(const MsDecl *d) {
 /* A symbol the loader registered for this very declaration (an `extern type` or an exported
  * type of a bundled source module), or MS_NONE. */
 static MsSymId scope_registered_symbol(const MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {
-    if (!c->mods[module].source) {
-        return MS_NONE;
+    MsSymId found = c->mods[module].source ? ms_map_get(&c->mods[module].scope, name) : MS_NONE;
+    if (found == MS_NONE) {
+        found = ms_map_get(&c->std_types, name); // a native module's type is registered by the loader
     }
-    const MsSymId found = ms_map_get(&c->mods[module].scope, name);
-    if (found != MS_NONE && c->syms.decl[found] == d) {
-        return found;
-    }
-    return MS_NONE;
+    return found != MS_NONE && c->syms.decl[found] == d ? found : MS_NONE;
 }
 
 static MsSymId scope_declare_one(MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {

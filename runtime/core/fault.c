@@ -5,6 +5,7 @@
  * cleanup adds a note to the report in progress and runs the cleanups that are left, so one failing cleanup
  * does not stop the others.
  */
+#include "alloc.h"
 #include "array.h"
 #include "fault.h"
 #include "ms_rt/alloc.h"
@@ -28,7 +29,7 @@ static void buffer_append(ByteBuffer *buffer, const uint8_t *bytes, size_t count
         return; /* a report too large to hold is cut short */
     }
     buffer->items = items;
-    if (count > 0) {
+    if (count > 0 && bytes != NULL) {
         __builtin_memcpy(buffer->items + buffer->length, bytes, count);
     }
     buffer->length = needed;
@@ -311,3 +312,6 @@ void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, si
     text->bytes = grown.items;
     text->length = grown.length;
 }
+
+/* The allocator's out-of-memory hook (alloc.h): the full fault path. Weak so a unit test can supply its own. */
+__attribute__((weak)) void msalloc_oom(size_t bytes) { ms_fault_out_of_memory(bytes); }

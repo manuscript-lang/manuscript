@@ -7,6 +7,7 @@
 #include "array.h"
 #include "ms_rt/alloc.h"
 #include "scheduler.h"
+#include "sweep.h"
 #include "watch.h"
 
 enum {
@@ -500,18 +501,10 @@ void ms_park_idle(MsSched *sched) {
 
 /* ---- parking on a descriptor or a timer ---- */
 
-static int64_t after_ns(int64_t timeout_ns) {
-    if (timeout_ns < 0) {
-        return MS_NO_DEADLINE;
-    }
-    const int64_t now = ms_sched_now();
-    return now > INT64_MAX - timeout_ns ? INT64_MAX : now + timeout_ns;
-}
-
 uint32_t ms_task_wait_fd_at(int fd, uint32_t events, int64_t at_ns) {
     MsSched *const sched = ms_sched();
     MsTask *const task = ms_task_running();
-    if (ms_cancel_flag() != 0) {
+    if (ms_cancel_flag() != 0 || ms_sweep_cancel_here()) {
         return MS_WAIT_CANCELLED;
     }
     if (fd >= 0) {
@@ -531,7 +524,7 @@ uint32_t ms_task_wait_fd_at(int fd, uint32_t events, int64_t at_ns) {
 }
 
 uint32_t ms_task_wait_fd(int fd, uint32_t events, int64_t timeout_ns) {
-    return ms_task_wait_fd_at(fd, events, after_ns(timeout_ns));
+    return ms_task_wait_fd_at(fd, events, ms_sched_deadline_after(timeout_ns));
 }
 
 uint32_t ms_task_sleep(int64_t ns) { return ms_task_wait_fd(-1, 0, ns > 0 ? ns : 0); }

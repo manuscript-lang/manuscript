@@ -45,3 +45,4 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [C MIR passes: shallow clones, unity build, unzeroed allocations](c-mir-passes-share-arrays-and-a-unity-build.md): what bit the port of the optimiser to C, and that it is not a perf target.
 - [The C back end runs inside `ms`, and `llc` is its assembler](the-c-back-end-runs-in-process-and-llc-is-the-assembler.md): libms is linked, not spawned; assembly goes through `module asm` because the pinned tools have no assembler.
 - [The C ownership classifier learns closeable types from method rows](c-checker-learns-closeable-types-from-method-rows.md): why the checker refused every type that closes, what the walk and lowering still decline.
+- [Native types are declared `extern type`, never recognised by name](native-types-are-declared-extern-not-recognised-by-name.md): `List` is `extern type List[T]:` with its constructor field; scope binds a native module's type to the loader's symbol, not a twin.

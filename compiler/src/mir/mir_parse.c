@@ -13,6 +13,7 @@
 #include "ms_rt/chars.h"
 
 #include "ms/mir.h"
+#include "ms/text.h"
 
 typedef enum { MPT_IDENT, MPT_VAL, MPT_AT, MPT_NUM, MPT_STR, MPT_LOC, MPT_ARROW, MPT_P } MpTokKind;
 
@@ -135,11 +136,6 @@ static bool mpa_parse_hex_u64(const char *s, size_t n, uint64_t *out) {
 static bool mpa_ident_char(unsigned char c) { return ms_ascii_is_ident(c) || c == '.' || c == '$'; }
 static bool mpa_ws_char(unsigned char c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
 
-static int mpa_hexval(char c) {
-    uint32_t value = 0;
-    return ms_hex_digit_value((uint8_t)c, &value) ? (int)value : -1;
-}
-
 /* A line being tokenized: `text[position]` is the next character. */
 typedef struct MpLexer {
     MpParser *p;
@@ -163,13 +159,13 @@ static char mpa_lex_at(const MpLexer *lx, size_t ahead) {
 static int mpa_hex_escape(const MpLexer *lx) {
     char high = mpa_lex_at(lx, 0);
     char low = mpa_lex_at(lx, 1);
-    if (lx->position + 2 > lx->length || mpa_hexval(low) < 0) {
+    if (lx->position + 2 > lx->length || ms_text_digit_value(low) < 0) {
         return -1;
     }
-    if (mpa_hexval(high) >= 0) {
-        return mpa_hexval(high) * 16 + mpa_hexval(low);
+    if (ms_text_digit_value(high) >= 0) {
+        return ms_text_digit_value(high) * 16 + ms_text_digit_value(low);
     }
-    return high == '+' ? mpa_hexval(low) : -1;
+    return high == '+' ? ms_text_digit_value(low) : -1;
 }
 
 /* Reads one escape after a backslash into `out`. */
@@ -1418,6 +1414,9 @@ typedef struct MpUnit {
     bool has_entry;
     MpTok entry_name;
     uint32_t entry_line;
+    bool has_close;
+    MpTok close_name;
+    uint32_t close_line;
 } MpUnit;
 
 /* Reads the next line of `src` from `*pos`, without its line ending. */
@@ -1587,13 +1586,6 @@ static void mpa_define_iface(MpCur *c) {
         MIR_PUSH(m, methods, used, capacity, MirMethodSig, sig);
         mpa_c_eat_p(c, ',');
     }
-    MsSym close = mir_name(m, "close", 5);
-    m->ifaces[id].close = MIR_NONE;
-    for (uint32_t k = 0; k < used && m->ifaces[id].close == MIR_NONE; k++) {
-        if (methods[k].name == close) {
-            m->ifaces[id].close = k;
-        }
-    }
     m->ifaces[id].methods = methods;
     m->ifaces[id].nmethods = used;
     m->ifaces[id].std = mpa_parse_std(c);
@@ -1651,8 +1643,8 @@ static void mpa_item_blob(MpCur *c) {
     }
     char *bytes = ms_alloc(&m->arena, hex.n / 2 + 1, 1);
     for (uint32_t k = 0; k < hex.n; k += 2) {
-        int high = mpa_hexval(hex.s[k]);
-        int low = mpa_hexval(hex.s[k + 1]);
+        int high = ms_text_digit_value(hex.s[k]);
+        int low = ms_text_digit_value(hex.s[k + 1]);
         if (high < 0 || low < 0) {
             mpa_perr(c->p, c->line, "%s", failure);
         }
@@ -1760,6 +1752,10 @@ static void mpa_declare_items(MpParser *p, MpUnit *unit) {
             unit->entry_name = mpa_c_at(&c);
             unit->entry_line = unit->items[i].no;
             unit->has_entry = true;
+        } else if (mpa_tok_is(&keyword, "close")) {
+            unit->close_name = mpa_c_at(&c);
+            unit->close_line = unit->items[i].no;
+            unit->has_close = true;
         } else if (!mpa_tok_is(&keyword, "vtable") && !mpa_tok_is(&keyword, "desc_glue") &&
                    !mpa_tok_is(&keyword, "type") &&
                    !mpa_tok_is(&keyword, "alt") && !mpa_tok_is(&keyword, "iface")) {
@@ -1955,6 +1951,14 @@ static void mpa_define_vtables_and_entry(MpParser *p, const MpUnit *unit) {
             const uint32_t hash = mpa_named_function(p, unit->items[i].no, mpa_c_at(&c));
             mir_add_desc_glue(p->m, ty, eq, hash);
         }
+    }
+    if (unit->has_close) {
+        const uint32_t close = mir_func_by_name(p->m, mir_name(p->m, unit->close_name.s, unit->close_name.n));
+        if (close == MIR_NONE) {
+            mpa_perr(p, unit->close_line, "unknown close function @%.*s", (int)unit->close_name.n,
+                     unit->close_name.s);
+        }
+        p->m->close = close;
     }
     if (!unit->has_entry) {
         return;

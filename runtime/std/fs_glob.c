@@ -163,7 +163,7 @@ static bool compile_list(GlobWalk *walk, const MsVec *list, Patterns *out) {
         return fail_memory(walk);
     }
     for (size_t i = 0; i < list->len; i++) {
-        if (!compile_one(walk, ms_fs_string_bytes(&items[i]), &out->items[i])) {
+        if (!compile_one(walk, msrt_str_bytes(&items[i]), &out->items[i])) {
             return false;
         }
         out->count = i + 1;
@@ -380,17 +380,6 @@ static bool filter_excludes(GlobWalk *walk, const Visit *visit) {
     return excluded != 0;
 }
 
-static bool ancestors_contain(const MsFsBuffer *ancestors, MsBytes canonical) {
-    size_t cursor = 0;
-    MsBytes name;
-    while (ms_fs_names_next(ancestors, &cursor, &name)) {
-        if (name.len == canonical.len && (name.len == 0 || memcmp(name.ptr, canonical.ptr, name.len) == 0)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static bool visit_path(GlobWalk *walk, MsBytes path, size_t depth);
 
 /* Visits every child of the directory `path`. */
@@ -417,7 +406,7 @@ static bool enter_directory(GlobWalk *walk, MsBytes path, size_t depth) {
         ms_fs_buffer_free(&canonical);
         return fail_at(walk, error, "lstat", path);
     }
-    if (ancestors_contain(&walk->ancestors, ms_fs_buffer_view(&canonical))) {
+    if (ms_fs_names_contain(&walk->ancestors, ms_fs_buffer_view(&canonical))) {
         ms_fs_buffer_free(&canonical);
         return true;
     }
@@ -532,20 +521,18 @@ static bool pattern_base(GlobWalk *walk, MsBytes pattern, MsFsBuffer *base) {
     return ok || fail_memory(walk);
 }
 
-static bool bytes_equal(MsBytes a, MsBytes b) { return a.len == b.len && (a.len == 0 || memcmp(a.ptr, b.ptr, a.len) == 0); }
-
 /* The directories to start from, packed as names: the root, and where each pattern's literal prefix leads. */
 static bool collect_starts(GlobWalk *walk, const MsVec *patterns, MsFsBuffer *starts) {
     bool ok = ms_fs_names_push(starts, ms_fs_buffer_view(&walk->root)) || fail_memory(walk);
     const MsStr *items = patterns->ptr;
     for (size_t i = 0; ok && i < patterns->len; i++) {
         MsFsBuffer base = {0};
-        ok = pattern_base(walk, ms_fs_string_bytes(&items[i]), &base);
+        ok = pattern_base(walk, msrt_str_bytes(&items[i]), &base);
         MsSysStat info;
         const bool directory = ok && ms_fs_stat_bytes(ms_fs_buffer_view(&base), false, &info) == 0 && ms_fs_stat_is_directory(&info);
         if (ok && directory) {
             ok = ms_fs_names_push(starts, ms_fs_buffer_view(&base)) || fail_memory(walk);
-        } else if (ok && !bytes_equal(ms_fs_buffer_view(&base), ms_fs_buffer_view(&walk->root))) {
+        } else if (ok && !ms_bytes_equal(ms_fs_buffer_view(&base), ms_fs_buffer_view(&walk->root))) {
             MsFsBuffer parent = {0};
             ok = (ms_fs_path_dir(ms_fs_buffer_view(&base), &parent) && ms_fs_names_push(starts, ms_fs_buffer_view(&parent))) || fail_memory(walk);
             ms_fs_buffer_free(&parent);
@@ -698,7 +685,7 @@ static bool prepare(GlobWalk *walk, MsBytes path, const MsVec *patterns, const M
 uint8_t msstd_fs_glob_entries(const MsStr *path, const MsVec *patterns, const MsVec *exclude, uint8_t follow_links, uint8_t has_max_entries,
                               int64_t max_entries, uint8_t has_max_results, int64_t max_results, void *filter, MsVec *out, MsStr *err) {
     GlobWalk walk = {.follow_links = follow_links != 0, .filter = filter};
-    const MsBytes given = ms_fs_string_bytes(path);
+    const MsBytes given = msrt_str_bytes(path);
     if (!ms_fs_limit(has_max_entries, max_entries, &walk.remaining) || !ms_fs_limit(has_max_results, max_results, &walk.max_results)) {
         ms_fs_fail_status(&walk.fail, STATUS_INVALID_INPUT);
         return ms_fs_finish_at(&walk.fail, given, err);

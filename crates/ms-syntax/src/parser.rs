@@ -1406,14 +1406,21 @@ impl<'a> Parser<'a> {
                 })
             }
             Tok::Extern if self.ahead(1).kind == Tok::Type => {
-                self.at += 1;
-                self.at += 1;
+                // A ':' body gives the extern type the fields a constructor takes, as a `type` does.
+                let keyword = self.at + 1;
+                self.at += 2;
                 let name_tok = self.need(Tok::Name)?;
                 let name = self.sym(name_tok);
                 let type_params = self.type_params()?;
                 if self.kind() == Tok::Colon {
-                    let t = self.peek();
-                    return self.fail(t, "an extern type has no body; remove the ':'");
+                    self.at = keyword;
+                    let type_token = self.peek();
+                    let mut decl = self.type_declaration(type_token)?;
+                    decl.pos = token.pos; // the declaration starts at `extern`, where its comment sits above
+                    if let DeclKind::Type(t) = &mut decl.kind {
+                        t.external = true;
+                    }
+                    return Ok(decl);
                 }
                 self.end()?;
                 DeclKind::Type(TypeDecl {

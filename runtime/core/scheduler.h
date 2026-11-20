@@ -31,6 +31,8 @@ enum {
     MS_TASK_FLAG_DETACHED = 1,
     MS_TASK_FLAG_FATAL = 2,
     MS_TASK_FLAG_TIMED_OUT = 4,
+    MS_TASK_FLAG_BORN_SHIELDED = 16, /* started while its spawner was shielded: the sweep does not cancel its parks */
+    MS_TASK_FLAG_THREAD = 8, /* the record of the thread's own flow of control, not a task anything can cancel */
 };
 
 /* Slot of the waiter list nodes: index + 1, 0 ends a list. */
@@ -61,6 +63,7 @@ typedef struct MsTask {
     void *argument;
     int64_t deadline;   /* when the park times out, or MS_NO_DEADLINE */
     int64_t read_limit; /* every park ends by then (ms_task_read_limit), or MS_NO_DEADLINE */
+    uint64_t capture;   /* the test output capture this task prints to, or 0; spawned tasks inherit it */
     int64_t kill_at;    /* when the task is cancelled for running too long, or MS_NO_DEADLINE */
     MsFaultText message; /* the fault message of a joinable task, until joined */
     MsTaskExtra *extra;  /* owned, or NULL: stack segments */
@@ -120,6 +123,7 @@ typedef struct MsSched {
     MsTask *main_task;
     uint32_t isolate; /* registry index carried in token ids */
     _Atomic uint8_t stop_request; /* a stop aimed at this scheduler, 0 when none; set from any thread */
+    _Atomic(MsTaskHdr *) published_hdr; /* the running task's header, for a stop raised from another thread */
     bool cancel_edges;            /* the program's modules branch on `unwinding` after a call that can park */
 
     MsTaskSlot *slots; /* the handle table */
@@ -182,6 +186,12 @@ MsTask *ms_task_running(void) MS_RETURNS_NONNULL;
 void ms_task_destroy(MsSched *sched, MsTask *task) MS_NONNULL;
 /* The record behind `handle`, or NULL. */
 MsTask *ms_task_lookup(const MsSched *sched, MsTaskHandle handle);
+/* Makes `task` the running task's header a remote stop raises its cancel flag on (see ms_sched_stop_remote), then
+ * applies a stop that arrived since the flag was last refreshed. */
+void ms_sched_publish(MsSched *sched, MsTask *task) MS_NONNULL;
+/* The stack window (low, high, chain) of the task the stop target runs, for the profiler's sampler on any thread or in
+ * a signal handler. False when no task is published. */
+bool ms_sched_sample_window(uintptr_t window[3]);
 /* The stop request aimed at this thread's scheduler (SIGINT, SIGTERM, a parent's cancel), 0 when none. */
 uint8_t ms_sched_stop_request(void);
 
@@ -235,5 +245,15 @@ bool ms_token_is_remote(const MsSched *sched, uint64_t id);
 void ms_task_switch_away(MsSched *sched);
 void ms_task_enqueue(MsSched *sched, MsTask *task);
 size_t ms_task_ready_count(const MsSched *sched);
+
+/* Native state that one thread alone may touch (the Rust session of a network stream, the terminal) keeps the
+ * promises started there on that thread (sched_abi.c; goes away with ms-std-net). */
+bool ms_sched_pinned_here(void);
+/* The calling thread's isolate index, whether it is a worker, and the pin counts of the streams that keep a thread's
+ * promises on it (pin_adjust counts one more or fewer on `thread`; pin_main pins the main thread for good). */
+uint32_t ms_sched_thread(void);
+bool ms_sched_is_worker(void);
+void ms_sched_pin_adjust(uint32_t thread, int32_t delta);
+void ms_sched_pin_main(void);
 
 #endif
