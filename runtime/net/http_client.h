@@ -4,6 +4,7 @@
    protocols hand a head over without copying it. */
 #ifndef MS_NET_HTTP_CLIENT_H
 #define MS_NET_HTTP_CLIENT_H
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "http1.h"
@@ -25,6 +26,11 @@ typedef struct {
     const MsH1Field *fields;
     uint32_t nfields;
 } MsHttpResponse;
+
+/* Whether a caller's request field is one the exchange writes itself (Host, Content-Length, Transfer-Encoding) or, for
+   HTTP/2, one the protocol forbids (Connection, Keep-Alive, Proxy-Connection, Upgrade). Such a request is refused
+   whole, not rewritten. */
+bool ms_http_field_refused(MsBytes name, bool http2);
 
 /* A response body, read until the stream ends. HTTP/1 and HTTP/2 each embed this as the first member of their own
    body type and set the two functions. */

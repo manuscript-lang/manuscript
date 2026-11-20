@@ -107,6 +107,33 @@ else
     status=1
 fi
 
+# Effect scan: the callables each function or constant the C checker checked references (first
+# reference of each, in source order), against the Rust scan's. Only functions C claims are compared.
+"$oracle" --effects $files > "$out/effects.rust"
+"$bin/ms_check_dump" stdlib --effects $files > "$out/effects.c"
+# The Rust checker scans effects only for a program it accepts; leave the others out.
+awk '/^== / { file = $2 } /^unchecked$/ { print file }' "$out/effects.rust" > "$out/effects.unchecked"
+for side in rust c; do
+    awk -v list="$out/effects.unchecked" '
+        BEGIN { while ((getline line < list) > 0) skip[line] = 1 }
+        /^== / { dropped = ($2 in skip) }
+        !dropped { print }' "$out/effects.$side" > "$out/effects.$side.kept"
+    mv "$out/effects.$side.kept" "$out/effects.$side"
+done
+keyed "$out/effects.c" > "$out/effects.c.keyed"
+cut -d'|' -f1 "$out/effects.c.keyed" | sort -u > "$out/effects.keys"
+keyed "$out/effects.rust" | awk -F'|' -v list="$out/effects.keys" '
+    BEGIN { while ((getline line < list) > 0) keep[line] = 1 }
+    $1 in keep' > "$out/effects.rust.keyed"
+if cmp -s "$out/effects.rust.keyed" "$out/effects.c.keyed" && [ -s "$out/effects.c.keyed" ]; then
+    echo "ok   effect scan ($(wc -l < "$out/effects.keys") functions, $(grep -c '|edge ' "$out/effects.c.keyed") references)"
+else
+    echo "FAIL effect scan: first difference"
+    diff "$out/effects.rust.keyed" "$out/effects.c.keyed" | head -20 || true
+    status=1
+fi
+
+
 # Effect directives on every source file, then generated graphs, each compared with the Rust result.
 # The fixture is written here because the repository forbids carriage returns in stored files: it has CRLF
 # and CR-only line ends, non-breaking and em spaces, empty names and directives without a separator.

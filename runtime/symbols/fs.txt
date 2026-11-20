@@ -1,4 +1,4 @@
-# Defined in runtime/std/fs*.c; the Rust ms-std-fs definitions are deleted as each moves.
+# Defined in runtime/std/fs*.c.
 msstd_fs_access
 msstd_fs_admit
 msstd_fs_append_file

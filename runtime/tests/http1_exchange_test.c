@@ -4,6 +4,7 @@
    task waits are test doubles (there is no scheduler). */
 #include <poll.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -57,7 +58,8 @@ uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) {
 /* Serves `connections` connections: reads a request head, then answers by its target. */
 typedef struct Server { MsSock listener; int connections; } Server;
 
-static void answer(MsConnTable *table, MsConnId id, const uint8_t *request, size_t length) {
+/* Answers one request; false when the reply ends the connection. */
+static bool answer(MsConnTable *table, MsConnId id, const uint8_t *request, size_t length) {
     const char *text = (const char *)request;
     if (strstr(text, "HEAD ") == text) {
         (void)ms_conn_write(table, id, S("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\n"), -1);
@@ -78,6 +80,7 @@ static void answer(MsConnTable *table, MsConnId id, const uint8_t *request, size
         (void)ms_conn_write(table, id, (const uint8_t *)head, (size_t)n, -1);
         (void)ms_conn_write(table, id, request, length, -1);
     }
+    return strstr(text, " /eof ") == NULL && strstr(text, " /short ") == NULL;
 }
 
 static void *serve(void *argument) {
@@ -92,16 +95,24 @@ static void *serve(void *argument) {
         }
         const MsConnId id = ms_conn_open(table, (int)socket, MS_CONN_HTTP1);
         char request[2048];
-        size_t length = 0;
-        while (length < sizeof request - 1) {
-            size_t count = 0;
-            if (ms_conn_read(table, id, (uint8_t *)request + length, sizeof request - 1 - length, -1, &count) != MS_NET_OK || count == 0) break;
-            length += count;
-            request[length] = 0;
-            if (strstr(request, "\r\n\r\n") != NULL) break;
+        bool keep = true;
+        while (keep) {
+            size_t length = 0;
+            while (length < sizeof request - 1) {
+                size_t count = 0;
+                if (ms_conn_read(table, id, (uint8_t *)request + length, sizeof request - 1 - length, -1, &count) != MS_NET_OK || count == 0) {
+                    keep = false;
+                    break;
+                }
+                length += count;
+                request[length] = 0;
+                if (strstr(request, "\r\n\r\n") != NULL) break;
+            }
+            if (keep) {
+                request[length] = 0;
+                keep = answer(table, id, (const uint8_t *)request, length);
+            }
         }
-        request[length] = 0;
-        answer(table, id, (const uint8_t *)request, length);
         (void)ms_conn_close_io(table, id);
     }
     ms_conn_table_free(table);
@@ -111,18 +122,14 @@ static void *serve(void *argument) {
 static MsBytes text(const char *s) { return ms_bytes_of((const uint8_t *)s, strlen(s)); }
 
 /* One exchange for `method` and `target`; reads the body to its end into `out` (NUL-terminated). */
-static MsNetStatus fetch(MsConnTable *table, const MsAddr *address, const char *method, const char *target, const char *body_out_text,
-                         const MsH1Field *fields, uint32_t nfields, MsBytes head, MsHttpResponse *response, char *out, size_t cap,
-                         int *body_status) {
-    MsConnId id = 0;
-    int code = 0;
-    if (ms_net_connect(table, address, MS_CONN_HTTP1, NULL, NULL, -1, &id, &code) != MS_NET_OK) return MS_NET_FAILED;
+static MsNetStatus fetch_row(MsConnTable *table, MsConnId id, const char *method, const char *target, const char *body_out_text,
+                             const MsH1Field *fields, uint32_t nfields, MsBytes head, MsHttpResponse *response, char *out, size_t cap,
+                             int *body_status) {
     const MsHttpRequest request = {.method = text(method), .authority = text("example.test"), .target = text(target), .head = head,
                                    .fields = fields, .nfields = nfields, .body = text(body_out_text)};
     MsHttpBody *body = NULL;
     const MsNetStatus status = ms_http1_exchange(table, id, &request, -1, response, &body);
     if (status != MS_NET_OK) {
-        (void)ms_conn_close_io(table, id);
         return status;
     }
     size_t used = 0;
@@ -139,11 +146,23 @@ static MsNetStatus fetch(MsConnTable *table, const MsAddr *address, const char *
     return MS_NET_OK;
 }
 
+/* The same on a row of its own, closed afterwards. */
+static MsNetStatus fetch(MsConnTable *table, const MsAddr *address, const char *method, const char *target, const char *body_out_text,
+                         const MsH1Field *fields, uint32_t nfields, MsBytes head, MsHttpResponse *response, char *out, size_t cap,
+                         int *body_status) {
+    MsConnId id = 0;
+    int code = 0;
+    if (ms_net_connect(table, address, MS_CONN_HTTP1, NULL, NULL, -1, &id, &code) != MS_NET_OK) return MS_NET_FAILED;
+    const MsNetStatus status = fetch_row(table, id, method, target, body_out_text, fields, nfields, head, response, out, cap, body_status);
+    (void)ms_conn_close_io(table, id);
+    return status;
+}
+
 int main(void) {
     MsIoReactor *reactor;
     CHECK(ms_io_open(1, &reactor));
     MsConnTable *table = ms_conn_table_new(4);
-    Server server = {.connections = 8};
+    Server server = {.connections = 9};
     MsAddr loopback = {4, {127, 0, 0, 1}, 0, 0}, bound;
     CHECK(ms_sys_net_tcp_listen(&loopback, 4, &server.listener) == MS_SYS_OK);
     CHECK(ms_sys_net_local_addr(server.listener, &bound) == MS_SYS_OK);
@@ -178,6 +197,19 @@ int main(void) {
     const MsH1Field one[] = {{{0, 5}, {5, 1}}};
     CHECK(fetch(table, &bound, "POST", "/echo", "abc", one, 1, text(names), &response, out, sizeof out, &body_status) == MS_NET_OK);
     CHECK(strstr(out, "POST /echo HTTP/1.1\r\nHost: example.test\r\nContent-Length: 3\r\nX-One: 1\r\n\r\n") == out);
+
+    /* a body read to its end on a keep-alive response leaves the row for the next request; anything else closes it */
+    MsConnId kept = 0;
+    int kept_code = 0;
+    CHECK(ms_net_connect(table, &bound, MS_CONN_HTTP1, NULL, NULL, -1, &kept, &kept_code) == MS_NET_OK);
+    CHECK(fetch_row(table, kept, "GET", "/len", "", NULL, 0, none, &response, out, sizeof out, &body_status) == MS_NET_OK);
+    CHECK(strcmp(out, "hello") == 0 && ms_conn_get(table, kept) != NULL);
+    CHECK(fetch_row(table, kept, "GET", "/chunked", "", NULL, 0, none, &response, out, sizeof out, &body_status) == MS_NET_OK);
+    CHECK(strcmp(out, "hello") == 0 && ms_conn_get(table, kept) != NULL);
+    CHECK(fetch_row(table, kept, "HEAD", "/len", "", NULL, 0, none, &response, out, sizeof out, &body_status) == MS_NET_OK);
+    CHECK(out[0] == 0 && ms_conn_get(table, kept) != NULL); /* a HEAD reply has no body and keeps the row */
+    CHECK(fetch_row(table, kept, "GET", "/eof", "", NULL, 0, none, &response, out, sizeof out, &body_status) == MS_NET_OK);
+    CHECK(strcmp(out, "until close") == 0 && ms_conn_get(table, kept) == NULL); /* the reply ended the connection */
 
     /* a field the exchange writes itself is refused, and the row stays open for the caller */
     static const char host[] = "Hostx";

@@ -6,6 +6,7 @@
 #define MS_MIR_PASS_H
 
 #include "ms/mir.h"
+#include "ms/mir_opt.h"
 
 /* ---- shared helpers ---- */
 
@@ -81,6 +82,20 @@ bool mir_cancel_edges(MirModule *m);
  * operations and a call of a grow shim. Run after unwind. Returns whether there was one. */
 bool mir_depth_lower(MirModule *m);
 
+/* count_ops: a call of `msrt_ops_add(n)` at the head of every block, n its instruction count plus
+ * one. */
+void mir_count_ops(MirModule *m);
+
+/* frames: a flag per value of `f` (`nvalues` entries, in `arena`), set for the `iface.borrow` results
+ * and the closure objects that may live in `f`'s frame; NULL when there is none of either. */
+bool *mir_framed_iface_borrows(MsArena *arena, const MirModule *m, const MirFunc *f);
+bool *mir_framed_closure_objects(MsArena *arena, const MirModule *m, const MirFunc *f);
+
+/* copies: whether a value of `t` holds a runtime object, and a line `func<TAB>type<TAB>file:line`
+ * for every clone that copies one. */
+bool mir_holds_object(const MirModule *m, MirTy t);
+void mir_object_copies(const MirModule *m, MsBuf *out);
+
 /* ---- pipeline ---- */
 
 typedef struct MirPipelineOptions {
@@ -92,6 +107,10 @@ typedef struct MirPipelineOptions {
 /* Right after lowering: places the scope-exit cleanup of every Raw function. False with `error` set
  * to the message. */
 bool mir_pipeline_prepare(MirModule *m, const MirPipelineOptions *o, MsBuf *error);
+
+/* Between prepare and finish: the optimizer for `level` (opt_pipeline.c), re-verifying after every
+ * pass when `o->verify` is set. False with `error` set to the failing pass and the module. */
+bool mir_pipeline_optimize(MirModule *m, MirOptLevel level, const MirPipelineOptions *o, MsBuf *error);
 
 /* After the optimizer: unwind, cancel_edges when on, depth, expand, glue. `glue` receives what glue
  * made, which backends look up. */
@@ -127,6 +146,11 @@ typedef struct MirGlue {
 
 /* The function made for `kind` of `ty` (and closure `a`, capture `b`), or MIR_NONE. */
 uint32_t mir_glue_find(const MirGlue *g, MirGlueKind kind, MirTy ty, uint32_t a, uint32_t b);
+
+/* Marks in `framed` (zeroed, one flag per value of `f`) the closure objects `f` keeps in its stack
+ * frame: a closure that owns no resource, only dropped, called, or lent to calls that neither keep
+ * nor return it. Glue picks the framed drop for them and backends allocate them in the frame. */
+void mir_framed_closures(const MirModule *m, const MirFunc *f, bool *framed);
 
 /* glue: makes the drop and clone function of every type whose drop is a walk of its fields, the
  * slot and block functions descriptors and interfaces point at, and the closure object

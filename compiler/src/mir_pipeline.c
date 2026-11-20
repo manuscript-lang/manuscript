@@ -1,6 +1,6 @@
 /* pipeline: the passes between lowering and the backends, in the order the Rust build runs them
- * (func.rs, native.rs). `mir_pipeline_prepare` runs right after lowering; the optimizer then runs
- * (it is its own set of passes); `mir_pipeline_finish` runs the ownership and expansion passes.
+ * (func.rs, native.rs). `mir_pipeline_prepare` runs right after lowering; `mir_pipeline_optimize`
+ * then runs the optimizer (opt_pipeline.c); `mir_pipeline_finish` runs the ownership and expansion passes.
  *
  *   prepare: elaborate (with cancel exits when edges are on), verify
  *   finish:  unwind, cancel_edges (when on), depth, expand, glue + expand_owned
@@ -32,6 +32,10 @@ bool mir_pipeline_prepare(MirModule *m, const MirPipelineOptions *o, MsBuf *erro
         return false;
     }
     return !o->verify || pl_verify(m, "elaborate", error);
+}
+
+bool mir_pipeline_optimize(MirModule *m, MirOptLevel level, const MirPipelineOptions *o, MsBuf *error) {
+    return mir_optimize(m, level, o->verify, error);
 }
 
 bool mir_pipeline_finish(MirModule *m, const MirPipelineOptions *o, MirGlue *glue, MsBuf *error) {
