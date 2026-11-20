@@ -189,6 +189,10 @@ typedef struct Pass {
 static const Pass passes[] = {
     {"bytetake", mir_opt_bytetake},
     {"strfuse", mir_opt_strfuse},
+    {"loopslot", mir_opt_loopslot},
+    {"optparam", mir_opt_optparam},
+    {"ifconv", mir_opt_ifconv},
+    {"reserve", mir_opt_reserve},
 };
 
 /* Runs the named pass and prints whether it changed the module, then the module. */

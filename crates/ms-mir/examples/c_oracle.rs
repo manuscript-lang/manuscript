@@ -259,6 +259,10 @@ fn run_pass(name: &str, m: &mut Module) -> bool {
     match name {
         "bytetake" => opt::bytetake::run(m),
         "strfuse" => opt::strfuse::run(m),
+        "loopslot" => opt::loopslot::run(m),
+        "optparam" => opt::optparam::run(m),
+        "ifconv" => opt::ifconv::run(m),
+        "reserve" => opt::reserve::run(m),
         _ => panic!("unknown pass {name}"),
     }
 }

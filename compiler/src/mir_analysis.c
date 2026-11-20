@@ -187,6 +187,19 @@ void mir_term_each_use(MirTerm *t, MirUseFn fn, void *ctx) {
     }
 }
 
+void mir_term_each_value(const MirTerm *t, MirValueFn fn, void *ctx) {
+    if ((t->kind == MT_CONDBR || t->kind == MT_SWITCH || t->kind == MT_RET) && t->value != MIR_NONE) {
+        fn(ctx, t->value);
+    }
+    const uint32_t ntargets = mir_term_ntargets(t);
+    for (uint32_t i = 0; i < ntargets; i++) {
+        const MirTarget *target = mir_term_target_const(t, i);
+        for (uint32_t k = 0; k < target->nargs; k++) {
+            fn(ctx, target->args[k]);
+        }
+    }
+}
+
 /* ---- control flow ---- */
 
 /* Calls `visit(ctx, from, to)` once per distinct edge, in block order. Edges out of one block
@@ -427,4 +440,93 @@ MsSym mir_name_suffixed(MirModule *m, MsSym base, const char *suffix, size_t suf
     memcpy(text, name.ptr, name.len);
     memcpy(text + name.len, suffix, suffix_len);
     return mir_name(m, text, (size_t)name.len + suffix_len);
+}
+
+uint32_t mir_entry_insert_at(const MirFunc *f) {
+    return f->blocks[0].ninsts > 0 && f->blocks[0].insts[0].op == MOP_DepthEnter ? 1u : 0u;
+}
+
+static void count_use(void *ctx, MirValue value) {
+    ((uint32_t *)ctx)[value]++;
+}
+
+uint32_t *mir_use_counts(MsArena *arena, const MirFunc *f) {
+    uint32_t *uses = MS_NEW_N(arena, uint32_t, (size_t)f->nvalues + 1);
+    memset(uses, 0, sizeof(uint32_t) * ((size_t)f->nvalues + 1));
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        const MirBlockData *blk = &f->blocks[b];
+        for (uint32_t i = 0; i < blk->ninsts; i++) {
+            for (uint32_t k = 0; k < blk->insts[i].nargs; k++) {
+                uses[blk->insts[i].args[k]]++;
+            }
+        }
+        mir_term_each_value(&blk->term, count_use, uses);
+    }
+    return uses;
+}
+
+bool mir_is_scalar(const MirModule *m, MirTy ty) {
+    switch ((MirTyKind)mir_ty_data(m, ty)->kind) {
+    case MK_BOOL: case MK_INT: case MK_INT8: case MK_INT16: case MK_INT32: case MK_UINT8:
+    case MK_UINT16: case MK_UINT32: case MK_UINT64: case MK_FLOAT: case MK_FLOAT32:
+        return true;
+    case MK_VOID: case MK_STR: case MK_BYTES: case MK_PTR: case MK_TYPE: case MK_ALT: case MK_LIST:
+    case MK_OPT: case MK_OBJ: case MK_FN: case MK_IFACE:
+        return false;
+    }
+    return false;
+}
+
+void mir_func_clone(MirModule *m, const MirFunc *f, MirFunc *out) {
+    *out = *f;
+    out->values = MS_NEW_N(&m->arena, MirTy, (size_t)f->cvalues + 1);
+    if (f->nvalues > 0) {
+        memcpy(out->values, f->values, sizeof(MirTy) * f->nvalues);
+    }
+    out->blocks = MS_NEW_N(&m->arena, MirBlockData, (size_t)f->cblocks + 1);
+    memcpy(out->blocks, f->blocks, sizeof(MirBlockData) * f->nblocks);
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        MirBlockData *dst = &out->blocks[b];
+        const MirBlockData *src = &f->blocks[b];
+        dst->params = MS_NEW_N(&m->arena, MirBlockParam, (size_t)src->cparams + 1);
+        if (src->nparams > 0) {
+            memcpy(dst->params, src->params, sizeof(MirBlockParam) * src->nparams);
+        }
+        dst->insts = MS_NEW_N(&m->arena, MirInst, (size_t)src->cinsts + 1);
+        if (src->ninsts > 0) {
+            memcpy(dst->insts, src->insts, sizeof(MirInst) * src->ninsts);
+        }
+    }
+}
+
+void mir_func_compact_blocks(MirFunc *f) {
+    MsArena arena = {0};
+    MirBlock *order = NULL;
+    const uint32_t count = mir_rpo(&arena, f, &order);
+    bool in_place = count == f->nblocks;
+    for (uint32_t i = 0; i < count && in_place; i++) {
+        in_place = order[i] == i;
+    }
+    if (in_place) {
+        ms_arena_free(&arena);
+        return;
+    }
+    MirBlock *map = MS_NEW_N(&arena, MirBlock, (size_t)f->nblocks + 1);
+    for (uint32_t i = 0; i < f->nblocks; i++) {
+        map[i] = MIR_NONE;
+    }
+    for (uint32_t i = 0; i < count; i++) {
+        map[order[i]] = i;
+    }
+    MirBlockData *moved = MS_NEW_N(&arena, MirBlockData, (size_t)count + 1);
+    for (uint32_t i = 0; i < count; i++) {
+        moved[i] = f->blocks[order[i]];
+        for (uint32_t t = 0; t < mir_term_ntargets(&moved[i].term); t++) {
+            MirTarget *target = mir_term_target(&moved[i].term, t);
+            target->block = map[target->block];
+        }
+    }
+    memcpy(f->blocks, moved, sizeof(MirBlockData) * count);
+    f->nblocks = count;
+    ms_arena_free(&arena);
 }

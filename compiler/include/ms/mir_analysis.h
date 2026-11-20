@@ -37,6 +37,10 @@ const MirTarget *mir_term_target_const(const MirTerm *t, uint32_t index);
 typedef void (*MirUseFn)(void *ctx, MirValue *value);
 void mir_term_each_use(MirTerm *t, MirUseFn fn, void *ctx);
 
+/* The same walk for a reader: `fn(ctx, value)` gets each operand by value. */
+typedef void (*MirValueFn)(void *ctx, MirValue value);
+void mir_term_each_value(const MirTerm *t, MirValueFn fn, void *ctx);
+
 /* ---- control flow ---- */
 
 /* Predecessor lists in one array: block b's predecessors are `list[start[b]..start[b + 1]]`, in
@@ -67,6 +71,13 @@ MirBlock *mir_dominators(MsArena *arena, const MirFunc *f, const MirBlock *order
 
 /* The number of instructions in `f`, excluding terminators. */
 uint32_t mir_inst_count(const MirFunc *f);
+
+/* Use counts per value over the whole function: instruction operands, conditions and block
+ * arguments. `nvalues + 1` entries, in `arena`. */
+uint32_t *mir_use_counts(MsArena *arena, const MirFunc *f);
+
+/* Whether `ty` is a number or a boolean, which are stored inline. */
+bool mir_is_scalar(const MirModule *m, MirTy ty);
 
 /* ---- value sets ---- */
 
@@ -105,6 +116,17 @@ uint32_t mir_extern_intern(MirModule *m, const MirExtern *def);
 
 /* Inserts `inst` before position `at` of `block` (`at == ninsts` appends). */
 void mir_block_insert(MirModule *m, MirBlockData *block, uint32_t at, const MirInst *inst);
+
+/* Copies `f` into `out`: its own arrays of values, blocks, parameters and instructions (the
+ * operand arrays are shared, so a pass edits a clone only by replacing them). */
+void mir_func_clone(MirModule *m, const MirFunc *f, MirFunc *out);
+
+/* Removes unreachable blocks and renumbers the rest in reverse post-order. */
+void mir_func_compact_blocks(MirFunc *f);
+
+/* Where a pass inserts at the start of the entry block: after the recursion check
+ * (`depth.enter`), which stays first. */
+uint32_t mir_entry_insert_at(const MirFunc *f);
 
 /* Removes the instructions at the (ascending) positions in `dead`. */
 void mir_block_remove(MirBlockData *block, const uint32_t *dead, uint32_t ndead);
