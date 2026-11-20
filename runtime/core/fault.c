@@ -76,6 +76,8 @@ typedef struct MsFaultFlight {
     MsFaultDetail *detail; /* owned until the report is sealed; NULL while the process is ending */
 } MsFaultFlight;
 
+static void add_note(MsFaultDetail *detail, MsBytes message);
+
 static void detail_free(MsFaultDetail *detail) {
     if (detail == NULL) {
         return;
@@ -91,6 +93,25 @@ void ms_fault_text_free(MsFaultText *text) {
     msrt_free(text->bytes);
     detail_free(text->detail);
     *text = (MsFaultText){0};
+}
+
+MsFaultText ms_fault_text_clone(const MsFaultText *text) {
+    MsFaultText copy = {.length = text->length};
+    if (text->bytes != NULL) {
+        copy.bytes = msrt_alloc(text->length == 0 ? 1 : text->length);
+        __builtin_memcpy(copy.bytes, text->bytes, text->length);
+    }
+    if (text->detail != NULL) {
+        copy.detail = msrt_alloc_zeroed(sizeof *copy.detail);
+        *copy.detail = *text->detail;
+        copy.detail->notes = NULL;
+        copy.detail->note_count = 0;
+        copy.detail->note_capacity = 0;
+        for (size_t i = 0; i < text->detail->note_count; i++) {
+            add_note(copy.detail, ms_bytes_of(text->detail->notes[i].bytes, text->detail->notes[i].length));
+        }
+    }
+    return copy;
 }
 
 static void add_note(MsFaultDetail *detail, MsBytes message) {

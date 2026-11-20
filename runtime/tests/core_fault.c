@@ -337,7 +337,12 @@ static void test_cleanups_and_nested_fault(void) {
            "the cleanup's fault is part of the report");
     expect(text.detail->message_length == 5 && text.detail->note_count == 1 && text.detail->notes[0].length == 6,
            "and a note of the record");
+    MsFaultText copy = ms_fault_text_clone(&text);
     ms_fault_text_free(&text);
+    expect(copy.length == strlen("first\ncleanup fault: second") && copy.detail->note_count == 1 &&
+               memcmp(copy.detail->notes[0].bytes, "second", 6) == 0,
+           "a copy outlives the report it was made from");
+    ms_fault_text_free(&copy);
 }
 
 static void test_out_of_memory_report(void) {

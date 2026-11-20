@@ -76,6 +76,8 @@ typedef struct MsFaultText {
 
 /* Frees the report and leaves `*text` empty. */
 void ms_fault_text_free(MsFaultText *text) MS_NONNULL;
+/* An independent copy of the report, detail included; the caller frees it. */
+MsFaultText ms_fault_text_clone(const MsFaultText *text) MS_NONNULL;
 
 /* ---- raising ---- */
 
