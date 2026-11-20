@@ -79,7 +79,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/net/sse.ms`: SseEvent, SseLimits, sse_events
 - `@std/net/tls.ms`: CertificateInfo, TlsInfo, TlsOptions, parse_certificates, verify_certificates
 - `@std/net/url.ms`: QueryEntry, Url, decode_component, encode_component, format, format_query, parse, parse_query, resolve
-- `@std/net/websocket.ms`: NativeWebSocket, RawWebSocketMessage, WebSocket, WebSocketKind, WebSocketMessage, WebSocketOptions, WebSocketWire, web_socket_from
+- `@std/net/websocket.ms`: NativeWebSocket, RawWebSocketMessage, WebSocket, WebSocketKind, WebSocketMessage, WebSocketOptions, web_socket_from
 - `@std/os/env.ms`: arguments, change_directory, environment, home_directory, load_environment, set_environment, which, working_directory
 - `@std/os/fs.ms`: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, OpenMode, OpenOptions, PathEntry, RawWatcher, Seek, TemporaryDirectory, WatchOptions, access, append_file, canonicalize, chmod, chown, copy, create_directory, create_hard_link, create_symlink, exists, glob, list, move, open, open_directory, read_file, read_symlink, remove, rename, set_times, stat, stat_filesystem, temporary, temporary_directory, temporary_root, truncate, watch, write_atomic, write_file
 - `@std/os/path.ms`: Glob, PathOperations, PathParts, basename, basename_without, compile_glob, delimiter, dirname, extension, format, is_absolute, join, matches_glob, normalize, parse, posix, relative, resolve, separator, stem, to_namespaced_path, win32, with_extension

@@ -12,7 +12,6 @@
 
 pub mod net;
 pub mod tls;
-pub mod websocket;
 
 pub use crate::bound::Bound;
 
@@ -97,8 +96,6 @@ handle_newtype! {
     DgramH(Bound<std::rc::Rc<crate::conn::Datagrams>>);
     /// An `HttpHeaders` handle; `HttpHeaders.clone` copies the headers.
     HeadersH(Bound<crate::http::headers::Shared>): clone;
-    /// A `WebSocket` handle.
-    SocketH(Bound<std::rc::Rc<crate::ws::socket::Socket>>);
     /// An `IpAddress` handle.
     IpH(std::net::IpAddr);
 }

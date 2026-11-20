@@ -1,5 +1,5 @@
 /* msstd_ws_connect (ws_connect.h): the argument and status mapping over ms_ws_dial. */
-#include "ws_connect.h"
+#include "ms_rt/net.h"
 
 #include <stdlib.h>
 
@@ -10,7 +10,6 @@
 #include "status.h"
 #include "ws_dial.h"
 #include "ws_natives.h"
-#include "ws_socket_natives.h"
 
 static MsBytes bytes_of_str(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
