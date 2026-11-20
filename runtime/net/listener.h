@@ -17,6 +17,10 @@ typedef struct MsListener MsListener;
  * MS_NET_FAILED with the system code in *error_code. */
 MS_NODISCARD MsNetStatus ms_listener_open(const MsAddr *address, int backlog, MsObj **out, int *error_code);
 
+/* The same on a Unix domain socket bound to `path` (not empty, no NUL byte). The file is removed when the last handle
+ * drops. */
+MS_NODISCARD MsNetStatus ms_listener_open_unix(MsBytes path, int backlog, MsObj **out, int *error_code);
+
 /* The listener behind a handle. */
 MsListener *ms_listener_of(const void *handle);
 
@@ -27,6 +31,9 @@ MS_NODISCARD MsNetStatus ms_listener_accept(MsListener *listener, int64_t deadli
 
 /* The bound address (the port 0 case reads back the chosen port). */
 MS_NODISCARD MsNetStatus ms_listener_address(const MsListener *listener, MsAddr *out);
+
+/* The file a Unix domain listener is bound to; NULL for a TCP listener (whose address is ms_listener_address). */
+const char *ms_listener_path(const MsListener *listener);
 
 /* Stops later accepts; safe to call twice. */
 void ms_listener_close(MsListener *listener);

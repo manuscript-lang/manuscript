@@ -2,14 +2,18 @@
 #include "listener.h"
 
 #include <stdatomic.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "ms_rt/alloc.h"
 #include "ms_rt/sys.h"
+#include "ms_rt/sys_fs.h"
 #include "ms_sched.h"
 
 struct MsListener {
     MsSock socket;
     atomic_bool closed;
+    char *path; /* a Unix domain listener's file, removed when the handle drops; NULL for TCP */
 };
 
 /* The handle the standard library holds: it owns the listener and releases it when dropped. */
@@ -21,6 +25,11 @@ typedef struct ListenerHandle {
 static void listener_drop(MsObj *object) {
     ListenerHandle *handle = (ListenerHandle *)object;
     ms_sys_net_close(handle->listener->socket);
+    if (handle->listener->path != NULL) {
+        const MsSysError removed = ms_sys_fs_unlink(handle->listener->path); /* nothing to do when it is gone */
+        (void)removed;
+        free(handle->listener->path);
+    }
     msrt_free(handle->listener);
     msrt_free(handle);
 }
@@ -41,20 +50,44 @@ static MsNetStatus wait_status(uint32_t result) {
     return (result & MS_WAIT_TIMEOUT) != 0 ? MS_NET_TIMEOUT : MS_NET_OK;
 }
 
+/* Wraps a listening socket (and the file it is bound to, if any) in the handle; takes ownership of both. */
+static MsObj *listener_new(MsSock socket, char *path) {
+    MsListener *listener = msrt_alloc_zeroed(sizeof *listener);
+    ListenerHandle *handle = msrt_alloc_zeroed(sizeof *handle);
+    listener->socket = socket;
+    listener->path = path;
+    atomic_init(&listener->closed, false);
+    handle->header.clone = NULL;
+    handle->header.drop = listener_drop;
+    handle->listener = listener;
+    return &handle->header;
+}
+
 MsNetStatus ms_listener_open(const MsAddr *address, int backlog, MsObj **out, int *error_code) {
     MsSock socket = MS_SOCK_INVALID;
     if (ms_sys_net_tcp_listen(address, backlog, &socket) != MS_SYS_OK) {
         *error_code = ms_sys_net_error();
         return MS_NET_FAILED;
     }
-    MsListener *listener = msrt_alloc_zeroed(sizeof *listener);
-    ListenerHandle *handle = msrt_alloc_zeroed(sizeof *handle);
-    listener->socket = socket;
-    atomic_init(&listener->closed, false);
-    handle->header.clone = NULL;
-    handle->header.drop = listener_drop;
-    handle->listener = listener;
-    *out = &handle->header;
+    *out = listener_new(socket, NULL);
+    return MS_NET_OK;
+}
+
+MsNetStatus ms_listener_open_unix(MsBytes path, int backlog, MsObj **out, int *error_code) {
+    char *copy = path.len == 0 || memchr(path.ptr, 0, path.len) != NULL ? NULL : malloc(path.len + 1);
+    if (copy == NULL) {
+        *error_code = 0;
+        return MS_NET_FAILED;
+    }
+    memcpy(copy, path.ptr, path.len);
+    copy[path.len] = 0;
+    MsSock socket = MS_SOCK_INVALID;
+    if (ms_sys_net_unix_listen(copy, backlog, &socket) != MS_SYS_OK) {
+        *error_code = ms_sys_net_error();
+        free(copy);
+        return MS_NET_FAILED;
+    }
+    *out = listener_new(socket, copy);
     return MS_NET_OK;
 }
 
@@ -94,5 +127,7 @@ MsNetStatus ms_listener_accept(MsListener *listener, int64_t deadline_ns, MsConn
 MsNetStatus ms_listener_address(const MsListener *listener, MsAddr *out) {
     return ms_sys_net_local_addr(listener->socket, out) == MS_SYS_OK ? MS_NET_OK : MS_NET_FAILED;
 }
+
+const char *ms_listener_path(const MsListener *listener) { return listener->path; }
 
 void ms_listener_close(MsListener *listener) { atomic_store(&listener->closed, true); }
