@@ -17,6 +17,7 @@ static MsBytes bytes_of_str(const MsStr *text) {
 }
 
 uint8_t msstd_net_listen(const MsStr *address, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     MsAddr target;
     if (!ms_net_addr_parse(bytes_of_str(address), &target)) {
         return STATUS_INVALID_INPUT;
@@ -32,6 +33,7 @@ uint8_t msstd_net_listen(const MsStr *address, void **out, MsStr *err) {
 }
 
 uint8_t msstd_listener_accept(const void *handle, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     MsConnTable *table = NULL;
     MsConnId id = 0;
     int code = 0;

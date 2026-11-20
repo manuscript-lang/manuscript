@@ -2,7 +2,7 @@
 // in tools/ms/cases.txt. For each line: when the Rust `ms` rejects it with status 2, or
 // the front answers by itself, output and status must be identical; otherwise the front
 // must hand the command to the Rust `ms`. Usage: ms run tools/ms-cli-check.ms [--
-// path/to/ms]
+// path/to/ms [path/to/libmstool.a]]
 import (
 	Bytes from "@std/bytes.ms",
 	arguments from "@std/os/env.ms",
@@ -18,6 +18,7 @@ fn text(bytes: Bytes) String:
 fn main() Int:
 	args := arguments()
 	rust := args.get_or(0, "target/release/ms")
+	link := args.get_or(1, "target/c-tool/libmstool.a")
 	cases := text(read_file("tools/ms/cases.txt").wait().get())
 	var failures = 0
 
@@ -31,7 +32,13 @@ fn main() Int:
 
 		front := run(
 			rust,
-			["run", "tools/ms/main.ms", "--"].concat(words),
+			[
+				"run",
+				"tools/ms/main.ms",
+				"--link",
+				link.clone(),
+				"--",
+			].concat(words),
 			RunOptions(env: plan),
 		).wait().get()
 		delegated := text(front.stdout).starts_with("delegate ")

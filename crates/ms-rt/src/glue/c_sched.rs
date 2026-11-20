@@ -11,6 +11,18 @@ pub extern "C" fn ms_sched_cancel_pending() -> bool {
     super::cancel_pending()
 }
 
+/// Holds stop requests back from the running task (`fault::stop_shield_enter`).
+#[unsafe(no_mangle)]
+pub extern "C" fn ms_sched_stop_hold() {
+    crate::fault::stop_shield_enter();
+}
+
+/// Ends one `ms_sched_stop_hold`; a request that arrived meanwhile applies again.
+#[unsafe(no_mangle)]
+pub extern "C" fn ms_sched_stop_release() {
+    crate::fault::stop_shield_exit();
+}
+
 /// Delivers a pending cancel by return (see `fault::cancel_return`). The caller releases what
 /// it holds first and returns a zero result at once; without cancel edges this does not return.
 #[unsafe(no_mangle)]

@@ -359,7 +359,12 @@ void uw_push_each(UwCx *cx, MirFunc *f, UwOut *o, const MirValue *values, uint32
             uw_out_push(cx, o, mir_inst(MOP_Load, (MirImm){.tag = MI_TY, .a = ty}, held, loc,
                                         mir_args_copy(cx->m, &v, 1), 1));
         }
-        const uint32_t c = uh_has(&cx->raw_values, v) ? uw_raw_closer(cx, ty) : uw_closer(cx, ty);
+        uint32_t c = uw_closer(cx, ty);
+        if (uh_has(&cx->raw_values, v)) {
+            c = uw_raw_closer(cx, ty);
+        } else if (uh_has(&cx->box_values, v)) {
+            c = uw_box_closer(cx, ty);
+        }
         handles[i] = mir_new_value(cx->m, f, MIR_INT);
         uw_out_push(cx, o, uw_push_inst(cx, MOP_CleanupPush, held, c, handles[i], loc));
     }

@@ -63,6 +63,23 @@ static void uw_raw_slots(UwCx *cx, const MirFunc *f) {
     }
 }
 
+/* The interface values `f` hands to a method call as its receiver and then forgets: the method
+ * takes the payload out of the box, so a cancellation inside the call frees the box only. */
+static void uw_moved_receivers(UwCx *cx, const MirFunc *f) {
+    UwHash forgotten = {0};
+    UW_INSTS(f, b, i, inst) {
+        if (inst->op == MOP_Forget && inst->nargs > 0) {
+            (void)uh_put(&cx->fn, &forgotten, inst->args[0], 0);
+        }
+    }
+    cx->box_values = (UwHash){0};
+    UW_INSTS(f, b, i, inst) {
+        if (inst->op == MOP_CallMethod && inst->nargs > 0 && uh_has(&forgotten, inst->args[0])) {
+            (void)uh_put(&cx->fn, &cx->box_values, inst->args[0], 0);
+        }
+    }
+}
+
 /* Rewrites the blocks that keep their registrations to a window of their own: each window opens
  * before its first instruction and discards what it holds after its last. */
 static void uw_rewrite_windows(UwCx *cx, MirFunc *f, const UwWalk *walk, uint32_t bi,
@@ -188,6 +205,7 @@ static bool uw_function(UwCx *cx, MirFunc *f, uint32_t fi) {
         return false;
     }
     uw_raw_slots(cx, f);
+    uw_moved_receivers(cx, f);
     const UwHash in_slots = uw_covered_slot_takes(&cx->fn, cx->m, f, false);
     uw_name_holes(cx, f, &in_slots);
     const bool wrapped = uw_wrap_with_closers(cx, f);

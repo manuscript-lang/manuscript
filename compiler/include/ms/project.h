@@ -8,6 +8,7 @@
 
 #include "ms/ast.h"
 #include "ms/base.h"
+#include "ms/tables.h"
 
 typedef enum MsProjectErrorKind {
     MS_PERR_NONE,
@@ -95,6 +96,8 @@ MS_NODISCARD bool ms_project_source_path(MsArena *a, const char *root, const cha
                                          MsProjectError *err);
 /* Go's strconv.Quote, for `%q` in diagnostics. */
 const char *ms_project_quote(MsArena *a, const char *text);
+/* The text as Rust's `{:?}` writes a string, for the messages that were formatted that way. */
+const char *ms_debug_quote(MsArena *a, const char *text);
 
 /* ---- the module graph (project/load.c) ---- */
 
@@ -136,5 +139,14 @@ typedef struct MsGraph {
  * the request (MS_PERR_UNSUPPORTED in `err`: a library manifest, test discovery, anything the manifest reader
  * leaves out), so the caller can hand the command to the Rust driver. Modules parse into `names` and `a`. */
 MS_NODISCARD bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err);
+
+/* ---- checking a graph (project/graph_check.c) ---- */
+
+/* Adds each module of the graph to the checker, in graph order, with its imports resolved to the modules they name
+ * (`import_targets`; standard-library imports stay MS_NONE). `ids` receives the checker's id of each module. */
+void ms_graph_add_modules(MsCheck *c, MsNames *names, MsArena *a, const MsGraph *graph, MsModId *ids);
+/* Checks the bodies of every module of the graph with the program's method table (ms_program_check_module). Modules
+ * with an inherent error are left unchecked and their ids appear in `unchecked` when it is not NULL; returns how many. */
+uint32_t ms_graph_check(MsCheck *c, const MsGraph *graph, const MsModId *ids, bool *unchecked);
 
 #endif
