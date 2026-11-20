@@ -13,6 +13,7 @@ domains:
     topics: [checking, lowering, MIR, Cranelift, build, module loading, fault sites, compile-time scaling]
     paths:
       - "crates/ms-check/**"
+      - "compiler/**"
       - "crates/ms-mir/**"
       - "crates/ms-lower/**"
       - "crates/ms-clif/**"
