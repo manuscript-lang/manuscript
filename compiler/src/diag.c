@@ -1,0 +1,182 @@
+#include <ctype.h>
+#include <string.h>
+
+#include "ms/diag.h"
+
+
+static const MsCodeInfo ms_codes[] = {
+    {"MS0000", "Unclassified diagnostic", "read the message; it names the cause and the fix"},
+    {"MS1000", "Grammar", "follow the expected token the message names; block headers end with ':'"},
+    {"MS1001", "Literals and text", "fix the literal, escape or encoding the message names"},
+    {"MS1002", "Layout", "indent with four spaces and keep each suite aligned"},
+    {"MS2001", "Names and members", "apply the `fix` edit (nearest name or import), or declare the name"},
+    {"MS2002", "Modules and imports", "check the path, extension and [aliases] entry the message names"},
+    {"MS2003", "Redundant prelude import", "delete the import; the prelude already provides it"},
+    {"MS3000", "General typing", "read the message; it names the rule and the fix"},
+    {"MS3001", "Exact types and operators", "convert explicitly: to_float(), \"{value}\", or an explicit comparison"},
+    {"MS3002", "Duplicate argument", "pass each argument once"},
+    {"MS3003", "Missing argument", "supply the parameter the message names"},
+    {"MS3004", "Unknown argument", "use one of the parameter names the message lists"},
+    {"MS3010", "Overlapping implementation", "keep one impl per interface and type"},
+    {"MS3011", "Signature mismatch", "match the interface operation's signature"},
+    {"MS3012", "Implementation receiver", "implement interfaces for types you declare"},
+    {"MS3021", "Hashing", "use a Hashable key type"},
+    {"MS3030", "Captures", "capture a copy with .clone(), or finish using the value first"},
+    {"MS3040", "Recursion", "keep recursive types finite and generic arguments stable"},
+    {"MS3050", "Exhaustiveness", "add the missing cases or a final `_:`"},
+    {"MS3060", "Mutation", "declare the binding with `var`; the `fix` edit rewrites the binding"},
+    {"MS3070", "Numeric literals", "use a value inside the type's range"},
+    {"MS3080", "Generic inference", "write the type arguments or annotate the binding"},
+    {"MS4000", "Lowering", "report this as a compiler bug with the source"},
+};
+
+static const MsKind ms_kinds[] = {
+    {"MS2001", "unknown binding", {"MS2001.1", "Unknown name", "apply the `fix` edit, import the name, or declare it"}},
+    {"MS2001", "unknown type", {"MS2001.2", "Unknown type", "import the type or declare it"}},
+    {"MS2001", "unknown or ambiguous member", {"MS2001.3", "Unknown member", "use one of the members the message lists"}},
+    {"MS2001", "unknown case", {"MS2001.4", "Unknown alternative case", "name a case the alternative declares"}},
+    {"MS2001", "reuses a prelude name", {"MS2001.5", "Prelude name reused", "rename the declaration"}},
+    {"MS2001", "fixture is available only", {"MS2001.6", "Fixture outside tests", "declare a make_fixture factory in the test module"}},
+    {"MS2002", "unknown standard module", {"MS2002.1", "Unknown standard module", "check the module name against the standard library"}},
+    {"MS3000", "is never read", {"MS3000.1", "Unused local binding", "use the binding, or name it with a leading '_'"}},
+    {"MS3000", "is moved here but used again", {"MS3000.2", "Use after move", "pass `.clone()` to keep the value, or stop using it after the move"}},
+    {"MS3000", "shadows an outer binding", {"MS3000.4", "Shadowed binding", "rename one binding, or assign to the outer `var`"}},
+    {"MS3000", "this statement discards", {"MS3000.5", "Discarded Result", "write a trailing `?` to propagate the failure, or handle it"}},
+    {"MS3000", "reachable fallthrough", {"MS3000.6", "Missing return", "return a value on every path"}},
+    {"MS3000", "division by zero", {"MS3000.7", "Division by zero", "divide by a nonzero value"}},
+    {"MS3000", "does not satisfy", {"MS3000.8", "Bound not satisfied", "use a type that implements the interface"}},
+    {"MS3000", "cannot be constructed", {"MS3000.9", "Interface constructed", "construct a type that implements the interface"}},
+    {"MS3000", "is a resource that is never closed", {"MS3000.10", "Unclosed resource", "call `.close()`, or return it"}},
+    {"MS3000", "cannot move ", {"MS3000.11", "Move out of a borrow", "take an clone with `.clone()`"}},
+    {"MS3000", "requires a type field", {"MS3000.12", "Assignment target", "assign to a type field or a variable"}},
+    {"MS3001", "expected ", {"MS3001.1", "Type mismatch", "convert explicitly, or change the declared type"}},
+    {"MS3010", "overlapping implementation", {"MS3010.1", "Overlapping implementation", "keep one impl per interface and type"}},
+    {"MS3011", "signature does not match", {"MS3011.1", "Signature mismatch", "match the interface operation's signature"}},
+    {"MS3000", "missing implementation operation", {"MS3000.14", "Missing operation", "implement every operation the interface declares"}},
+    {"MS3000", "extra operation", {"MS3000.15", "Extra operation", "remove operations the interface does not declare"}},
+    {"MS3000", "duplicate implementation operation", {"MS3000.16", "Duplicate operation", "define each operation once"}},
+    {"MS3012", "implementation receiver must be nominal", {"MS3012.1", "Implementation receiver", "implement interfaces for a type or alternative you declare"}},
+    {"MS3000", "implementation target must be an interface", {"MS3000.17", "Implementation target", "name an interface after `impl`"}},
+    {"MS3050", "exhaustive", {"MS3050.1", "Non-exhaustive match", "add the missing cases or a final `_:`"}},
+    {"MS3000", "parameter", {"MS3000.18", "Parameter not declared var", "write `var` before the parameter"}},
+    {"MS3060", "is an immutable binding", {"MS3060.2", "Immutable binding changed", "declare the binding with `var`"}},
+    {"MS3000", "does not change its receiver", {"MS3000.19", "Method does not change its receiver", "declare the method `var fn`"}},
+    {"MS3080", "cannot infer", {"MS3080.1", "Cannot infer", "write the type arguments or annotate the binding"}},
+    {"MS3000", "type arguments, found ", {"MS3000.20", "Generic arity", "write every required type argument"}},
+};
+
+static const char *const ms_type_rules[][2] = {
+    {"duplicate argument", "MS3002"},
+    {"missing argument", "MS3003"},
+    {"unknown argument", "MS3004"},
+    {"overlapping implementation", "MS3010"},
+    {"signature does not match", "MS3011"},
+    {"nominal source data", "MS3012"},
+    {"Hashable", "MS3021"},
+    {"captured", "MS3030"},
+    {"recursive", "MS3040"},
+    {"exhaustive", "MS3050"},
+    {"immutable", "MS3060"},
+    {"literal", "MS3070"},
+    {"infer", "MS3080"},
+    {"generic arity", "MS3080"},
+    {"expected ", "MS3001"},
+    {"same independently known type", "MS3001"},
+};
+
+static bool dg_has(MsStr s, const char *needle) {
+    size_t n = strlen(needle);
+    for (size_t i = 0; i + n <= s.len; i++) {
+        if (memcmp(s.ptr + i, needle, n) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool dg_starts(MsStr s, const char *pre) {
+    size_t n = strlen(pre);
+    return s.len >= n && memcmp(s.ptr, pre, n) == 0;
+}
+
+/* The text before the first occurrence of `sep`, or all of it. */
+static MsStr dg_before(MsStr s, const char *sep) {
+    size_t n = strlen(sep);
+    for (size_t i = 0; i + n <= s.len; i++) {
+        if (memcmp(s.ptr + i, sep, n) == 0) {
+            return (MsStr){s.ptr, (uint32_t)i};
+        }
+    }
+    return s;
+}
+
+const char *ms_code_for(const char *phase, MsStr message) {
+    /* Messages read "<cause>; <fix>"; a trailing " (in <use site>)" is not part of the rule. */
+    MsStr m = dg_before(dg_before(message, "; "), " (in ");
+    if (strcmp(phase, "parse") == 0) {
+        if (dg_starts(m, "string-literal match patterns")) {
+            return "MS1000";
+        }
+        if (dg_has(m, "indent") || dg_has(m, "suite") || dg_has(m, "tabs")) {
+            return "MS1002";
+        }
+        if (dg_has(m, "UTF-8") || dg_has(m, "scalar") || dg_has(m, "escape") || dg_has(m, "literal")) {
+            return "MS1001";
+        }
+        return "MS1000";
+    }
+    if (strcmp(phase, "resolution") == 0) {
+        if (dg_starts(m, "redundant prelude import ")) {
+            return "MS2003";
+        }
+        if (dg_has(m, "module") || dg_has(m, "import") || dg_has(m, "path") || dg_has(m, "alias")) {
+            return "MS2002";
+        }
+        return "MS2001";
+    }
+    if (strcmp(phase, "type") == 0) {
+        for (size_t i = 0; i < sizeof ms_type_rules / sizeof ms_type_rules[0]; i++) {
+            if (dg_has(m, ms_type_rules[i][0])) {
+                return ms_type_rules[i][1];
+            }
+        }
+        return "MS3000";
+    }
+    if (strcmp(phase, "lowering") == 0) {
+        return "MS4000";
+    }
+    return "MS0000";
+}
+
+const MsKind *ms_kind_for(const char *family, MsStr message) {
+    MsStr cause = dg_before(message, "; ");
+    for (size_t i = 0; i < sizeof ms_kinds / sizeof ms_kinds[0]; i++) {
+        if (strcmp(ms_kinds[i].family, family) == 0 && dg_has(cause, ms_kinds[i].needle)) {
+            return &ms_kinds[i];
+        }
+    }
+    return NULL;
+}
+
+static bool dg_ieq(const char *a, const char *b) {
+    for (; *a != 0 && *b != 0; a++, b++) {
+        if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) {
+            return false;
+        }
+    }
+    return *a == *b;
+}
+
+const MsCodeInfo *ms_explain(const char *code) {
+    for (size_t i = 0; i < sizeof ms_codes / sizeof ms_codes[0]; i++) {
+        if (dg_ieq(ms_codes[i].code, code)) {
+            return &ms_codes[i];
+        }
+    }
+    for (size_t i = 0; i < sizeof ms_kinds / sizeof ms_kinds[0]; i++) {
+        if (dg_ieq(ms_kinds[i].info.code, code)) {
+            return &ms_kinds[i].info;
+        }
+    }
+    return NULL;
+}

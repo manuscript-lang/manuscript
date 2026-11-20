@@ -36,6 +36,32 @@ fn diag(out: &mut String, d: &Diagnostic) {
     let _ = writeln!(out, " opener={} {}", d.opener_line, quote(&d.message));
 }
 
+/// A `.txt` file lists `phase<TAB>message` lines; a source file contributes its parse error.
+fn codes(out: &mut String, path: &str, text: &str, file: &Arc<str>) {
+    let mut line = |phase: &str, message: &str| {
+        let d = Diagnostic {
+            phase: match phase {
+                "parse" => ms_syntax::diag::Phase::Parse,
+                "resolution" => ms_syntax::diag::Phase::Resolution,
+                "type" => ms_syntax::diag::Phase::Type,
+                "lowering" => ms_syntax::diag::Phase::Lowering,
+                "format" => ms_syntax::diag::Phase::Format,
+                _ => ms_syntax::diag::Phase::Execution,
+            },
+            ..Diagnostic::parse(file, Pos::default(), message)
+        };
+        let _ = writeln!(out, "{} {}", d.code(), d.subcode().unwrap_or("-"));
+    };
+    if path.ends_with(".txt") {
+        for l in text.lines() {
+            let (phase, message) = l.split_once('\t').unwrap_or((l, ""));
+            line(phase, message);
+        }
+    } else if let Err(d) = parse(file, text) {
+        line("parse", &d.message);
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mode = args[0].as_str();
@@ -48,6 +74,10 @@ fn main() {
             continue;
         };
         let file: Arc<str> = Arc::from("f.ms");
+        if mode == "codes" {
+            codes(&mut out, path, text, &file);
+            continue;
+        }
         match mode {
             "tokens" => match lex(&file, text) {
                 Ok(l) => {
