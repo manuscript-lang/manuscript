@@ -1,6 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
-	ArchiveEntry, NativeDecoder, NativeEncoder from "@std/io/archive.ms",
+	NativeDecoder, NativeEncoder from "@std/io/archive.ms",
 )
 
 // Native unpack bounds; `unpack` builds them from `ArchiveOptions`.
@@ -23,18 +23,6 @@ export extern fn msstd_compress_decoder_new(
 export extern fn msstd_compress_decoder_push(decoder: NativeDecoder, data: Bytes) Bytes!
 
 export extern fn msstd_compress_decoder_end(decoder: NativeDecoder) Bytes!
-
-export extern fn msstd_archive_pack(
-	entries: List[ArchiveEntry],
-	format: String,
-	max_bytes: Int?,
-) Bytes!
-
-export extern fn msstd_archive_unpack(
-	data: Bytes,
-	format: String,
-	limits: ArchiveLimits,
-) List[ArchiveEntry]!
 
 export extern fn msstd_compress_compress(
 	data: Bytes,
