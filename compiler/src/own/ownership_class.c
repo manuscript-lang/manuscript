@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/methods.h"
 #include "ms/ownership.h"
 
 enum { CLASS_MAX_NESTING = 64, CLASS_UNKNOWN = 0xff };
@@ -51,6 +52,36 @@ void ms_classifier_free(MsClassifier *classifier) {
 
 void ms_classifier_mark_closeable(MsClassifier *classifier, MsSym type_id) {
     (void)ms_map_add(&classifier->closeable, type_id, 1);
+}
+
+static bool row_named_close(const MsCheck *check, MsSym name) {
+    const MsStr text = ms_name(check->names, name);
+    return text.len == 5 && memcmp(text.ptr, "close", 5) == 0;
+}
+
+/* `Method::closes`: a `Closeable` implementation, or a type's own `close()` that returns
+ * `Void!`, which satisfies `Closeable` by shape. */
+static bool row_closes(const MsCheck *check, const MsMethods *rows, uint32_t i) {
+    const MsTyTable *tys = &check->tys;
+    if (rows->contract[i] != MS_TY_NONE && ms_ty_is(tys, rows->contract[i], MS_BI_CLOSEABLE)) {
+        return true;
+    }
+    const MsFunc *decl = rows->decl[i];
+    if (!rows->inherent[i] || decl == NULL || !row_named_close(check, decl->name) ||
+        tys->nparams[rows->ty[i]] != 0) {
+        return false;
+    }
+    const MsTy result = tys->result[rows->ty[i]];
+    return ms_ty_is(tys, result, MS_BI_RESULT) && tys->nargs[result] == 2 &&
+           ms_ty_is(tys, ms_ty_args(tys, result)[0], MS_BI_VOID) && ms_ty_is(tys, ms_ty_args(tys, result)[1], MS_BI_ERROR);
+}
+
+void ms_classifier_mark_methods(MsClassifier *classifier, const MsMethods *rows) {
+    for (uint32_t i = 0; rows != NULL && i < rows->count; i++) {
+        if (row_closes(classifier->check, rows, i)) {
+            ms_classifier_mark_closeable(classifier, classifier->check->tys.id[rows->receiver[i]]);
+        }
+    }
 }
 
 void ms_classifier_mark_owned_close(MsClassifier *classifier, MsSym interface_id) {
@@ -173,6 +204,26 @@ static MsClass nominal_class(MsClassifier *classifier, MsTy type, ClassWalk *wal
     return class;
 }
 
+/* `declares_owned_close`: the interface declares `move fn close()`, so a value of it owns what it
+ * was made from. */
+static bool declares_owned_close(const MsClassifier *classifier, MsTy type) {
+    const MsCheck *check = classifier->check;
+    const MsTyTable *tys = &check->tys;
+    if (is_marked(&classifier->owned_close, tys, type)) {
+        return true;
+    }
+    const MsOperations *ops = check->methods == NULL || tys->def[type] == 0
+                                  ? NULL
+                                  : ms_interface_operations(check->methods, tys->def[type] - 1);
+    for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
+        const MsStr name = ms_name(check->names, ops->items[i].name);
+        if (ops->items[i].decl->consuming && name.len == 5 && memcmp(name.ptr, "close", 5) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static MsClass compute_class(MsClassifier *classifier, MsTy type, ClassWalk *walk) {
     const MsTyTable *tys = &classifier->check->tys;
     switch (ms_ty_kind(tys, type)) {
@@ -184,7 +235,7 @@ static MsClass compute_class(MsClassifier *classifier, MsTy type, ClassWalk *wal
     case MS_K_VARIABLE:
         return variable_class(classifier, type);
     case MS_K_CONTRACT:
-        return ms_ty_is(tys, type, MS_BI_CLOSEABLE) || is_marked(&classifier->owned_close, tys, type)
+        return ms_ty_is(tys, type, MS_BI_CLOSEABLE) || declares_owned_close(classifier, type)
                    ? MS_CLASS_RESOURCE
                    : MS_CLASS_MOVE;
     case MS_K_FUNCTION:
