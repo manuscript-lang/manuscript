@@ -37,7 +37,9 @@ static uint32_t at_uint(const char **p) {
 }
 
 static uint32_t at_file(const char **p) {
-    const long v = strtol(*p, (char **)p, 10);
+    char *end = NULL;
+    const long v = strtol(*p, &end, 10);
+    *p = end;
     return v < 0 ? MIR_NONE : (uint32_t)v;
 }
 

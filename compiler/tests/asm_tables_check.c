@@ -22,6 +22,7 @@ static int check(int ok, const char *what) {
     return !ok;
 }
 
+int msrt_start(void *entry, const Tables *t, int argc, char **argv);
 int msrt_start(void *entry, const Tables *t, int argc, char **argv) {
     (void)argc; (void)argv;
     int bad = check(t != NULL && t->abi == 3, "tables with ABI 3");
