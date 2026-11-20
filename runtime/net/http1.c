@@ -96,10 +96,23 @@ int ms_h1_parse_request(const char *buf, size_t len, size_t head_limit, MsH1Requ
 }
 
 
+/* The reader's state behind the opaque storage of MsH1Reader. */
+typedef struct {
+    llhttp_t parser;
+    const char *base; /* the buffer of the current ms_h1_read_body call */
+    MsSpan data;
+    uint8_t have_data, done, no_body;
+} MsH1ReaderState;
+
+_Static_assert(sizeof(MsH1ReaderState) <= sizeof(MsH1Reader), "MS_H1_READER_BYTES holds the llhttp parser and its state");
+_Static_assert(_Alignof(MsH1ReaderState) <= _Alignof(MsH1Reader), "the reader storage is aligned for the llhttp parser");
+
+static MsH1ReaderState *reader_state(MsH1Reader *reader) { return (MsH1ReaderState *)reader; }
+
 /* Response heads and bodies. The reader keeps the llhttp parser from the head through the body, so chunked and
    length framing are llhttp's; a body span points into the buffer of the call that found it. */
 static int on_body(llhttp_t *p, const char *c, size_t n) {
-    MsH1Reader *r = p->data;
+    MsH1ReaderState *r = p->data;
     if (n == 0) return 0; /* llhttp reports an empty span for a body read to end of stream; it is no data */
     r->data.off = (uint32_t)(c - r->base);
     r->data.len = (uint32_t)n;
@@ -108,7 +121,7 @@ static int on_body(llhttp_t *p, const char *c, size_t n) {
 }
 
 static int on_message_done(llhttp_t *p) {
-    ((MsH1Reader *)p->data)->done = 1;
+    ((MsH1ReaderState *)p->data)->done = 1;
     return HPE_PAUSED;
 }
 
@@ -117,6 +130,7 @@ static llhttp_settings_t body_settings = {.on_body = on_body, .on_message_comple
 
 int ms_h1_parse_response(MsH1Reader *reader, const char *buf, size_t len, size_t head_limit, MsH1Response *out,
                          uint32_t field_cap, int head_request) {
+    MsH1ReaderState *r = reader_state(reader);
     MsH1Field *fields = out->fields;
     memset(out, 0, sizeof *out);
     out->fields = fields;
@@ -126,25 +140,26 @@ int ms_h1_parse_response(MsH1Reader *reader, const char *buf, size_t len, size_t
     llhttp_settings_t cb;
     head_settings(&cb);
     cb.on_status = on_first_line;
-    llhttp_init(&reader->parser, HTTP_RESPONSE, &cb);
-    reader->parser.data = &s;
-    enum llhttp_errno e = llhttp_execute(&reader->parser, buf, len);
+    llhttp_init(&r->parser, HTTP_RESPONSE, &cb);
+    r->parser.data = &s;
+    enum llhttp_errno e = llhttp_execute(&r->parser, buf, len);
     if (e == HPE_OK) return len > head_limit ? MS_H1_BAD : MS_H1_PARTIAL;
-    const size_t used = (size_t)(llhttp_get_error_pos(&reader->parser) - buf);
+    const size_t used = (size_t)(llhttp_get_error_pos(&r->parser) - buf);
     if (e != HPE_PAUSED || used > head_limit) return MS_H1_BAD;
     out->head_len = (uint32_t)used;
-    out->status = reader->parser.status_code;
-    out->minor = reader->parser.http_minor;
-    out->keep_alive = (uint8_t)llhttp_should_keep_alive(&reader->parser);
+    out->status = r->parser.status_code;
+    out->minor = r->parser.http_minor;
+    out->keep_alive = (uint8_t)llhttp_should_keep_alive(&r->parser);
     /* HEAD answers, 1xx, 204 and 304 carry no body whatever their headers claim. */
-    reader->no_body = head_request || out->status < 200 || out->status == 204 || out->status == 304;
-    reader->parser.settings = &body_settings;
-    reader->parser.data = reader;
-    llhttp_resume(&reader->parser);
+    r->no_body = head_request || out->status < 200 || out->status == 204 || out->status == 304;
+    r->parser.settings = &body_settings;
+    r->parser.data = r;
+    llhttp_resume(&r->parser);
     return MS_H1_COMPLETE;
 }
 
-int ms_h1_read_body(MsH1Reader *r, const char *buf, size_t len, MsSpan *data, size_t *used) {
+int ms_h1_read_body(MsH1Reader *reader, const char *buf, size_t len, MsSpan *data, size_t *used) {
+    MsH1ReaderState *r = reader_state(reader);
     *used = 0;
     if (r->no_body || r->done) return MS_H1_BODY_DONE;
     if (len > UINT32_MAX) return MS_H1_BODY_BAD;
@@ -159,7 +174,8 @@ int ms_h1_read_body(MsH1Reader *r, const char *buf, size_t len, MsSpan *data, si
     return r->done ? MS_H1_BODY_DONE : MS_H1_BODY_NEED_MORE;
 }
 
-int ms_h1_read_body_eof(MsH1Reader *r) {
+int ms_h1_read_body_eof(MsH1Reader *reader) {
+    MsH1ReaderState *r = reader_state(reader);
     if (r->no_body || r->done) return MS_H1_BODY_DONE;
     r->have_data = 0;
     const enum llhttp_errno e = llhttp_finish(&r->parser);

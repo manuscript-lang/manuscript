@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <llhttp.h>
 #include "ms_rt/safe.h"
 
 /* A byte range of the read buffer. */
@@ -41,12 +40,11 @@ typedef struct {
 } MsH1Response;
 
 /* Follows one response from its head through its body. The caller provides the storage and passes it to the
-   functions below; it holds the llhttp parser, so it must not move while a response is being read. */
+   functions below; it holds the llhttp parser (opaque here, so users of this header need no llhttp include path),
+   so it must not move while a response is being read. */
+enum { MS_H1_READER_BYTES = 128 };
 typedef struct {
-    llhttp_t parser;
-    const char *base;
-    MsSpan data;
-    uint8_t have_data, done, no_body;
+    _Alignas(8) unsigned char opaque[MS_H1_READER_BYTES];
 } MsH1Reader;
 
 /* Parses one response head from buf[0..len) and starts `reader` on its body. PARTIAL: keep the bytes and call again
