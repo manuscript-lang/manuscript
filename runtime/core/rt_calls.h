@@ -12,6 +12,7 @@
 #include "ms_rt/desc.h"
 #include "ms_rt/fault.h"
 #include "ms_rt/map.h"
+#include "ms_rt/obj.h"
 #include "ms_rt/string.h"
 
 /* The families of fault are ms_rt/fault.h's; core files that predate it keep their spellings. */
@@ -35,12 +36,7 @@ void msrt_cleanup_discard(size_t handle);
 /* Non-zero when a callback may leave through a guard or a registered cleanup (fault.rs). */
 uint8_t msrt_rollback_needed(void);
 
-/* Objects with a header (closures, handles). Null stays null. */
-
 /* Runs `shim(block)` on the running task's next stack segment (the task module). */
 void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block);
-
-MsObj *msrt_obj_clone(MsObj *object);
-void msrt_obj_drop(MsObj *object);
 
 #endif

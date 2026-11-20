@@ -9,7 +9,6 @@
 #include <stdbool.h>
 
 #include "conn_io.h"
-#include "h2conn.h"
 #include "ms_rt/base.h"
 
 typedef struct MsNetConn MsNetConn;
@@ -33,12 +32,5 @@ void ms_netconn_close_if_last(const void *handle);
 /* Whether the row has been closed. */
 bool ms_netconn_closed(const MsNetConn *conn);
 
-/* One exchange is open on a connection at a time (an HTTP/1 response or an HTTP/2 stream is read in order). `begin`
- * claims it and is false while another exchange holds it; `end` hands it back. */
-bool ms_netconn_begin_exchange(MsNetConn *conn);
-void ms_netconn_end_exchange(MsNetConn *conn);
-/* The connection's HTTP/2 session for the exchanges that follow one another on it, made on first use (NULL when out
- * of memory) and freed with the core. Only the holder of the open exchange touches it. */
-MsH2Conn *ms_netconn_h2(MsNetConn *conn);
 
 #endif
