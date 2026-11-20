@@ -11,12 +11,12 @@ seed=${PRELUDE_FIX_SEED:-1}
 
 cargo build --release --locked -p ms-syntax --example c_prelude_fix_oracle
 oracle=target/release/examples/c_prelude_fix_oracle
-cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_prelude_fix_dump.c -o "$out/prelude_fix_dump" -lm
+sh compiler/tests/cbuild.sh ms_prelude_fix_dump
+bin=target/cmake/test/compiler
 
 "$oracle" gen "$cases" "$seed" > "$out/prelude_fix.cases"
 "$oracle" < "$out/prelude_fix.cases" > "$out/prelude_fix.rust"
-"$out/prelude_fix_dump" < "$out/prelude_fix.cases" > "$out/prelude_fix.c.out"
+"$bin/ms_prelude_fix_dump" < "$out/prelude_fix.cases" > "$out/prelude_fix.c.out"
 if cmp -s "$out/prelude_fix.rust" "$out/prelude_fix.c.out"; then
     echo "prelude_fix: $(wc -l < "$out/prelude_fix.cases") cases identical"
 else
