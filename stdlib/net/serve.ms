@@ -8,9 +8,11 @@ import (
 	promise,
 	set_options,
 	wait_any from "@std/concurrency/promise.ms",
-	hold_stop from "@std/os/process.ms",
 	stderr from "@std/io/io.ms",
-	ExchangeLimits, NativeExchange, finish_exchange, open_exchange from "@std/net/exchange.ms",
+	ExchangeLimits,
+	NativeExchange,
+	finish_exchange,
+	open_exchange from "@std/net/exchange.ms",
 	HttpExchange,
 	HttpServer,
 	HttpServerOptions,
@@ -491,7 +493,11 @@ fn handler_frames(report: String) String:
 	var kept = ""
 
 	for line in report.split("\n"):
-		if line.index_of("@std/").is_some() or line.index_of("task started by").is_some(): break
+		if (
+			line.index_of("@std/").is_some()
+			or line.index_of("task started by").is_some()
+		): break
+
 		if not line.is_empty(): kept = kept + line + "\n"
 
 	return kept
