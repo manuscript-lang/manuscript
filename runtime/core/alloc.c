@@ -19,7 +19,7 @@
 #include <stdatomic.h>
 
 #include "alloc.h"
-#include "ms_sys.h"
+#include "ms_rt/sys.h"
 
 #define MAX_SMALL MSALLOC_MAX_SMALL
 #define NUM_CLASSES MSALLOC_NUM_CLASSES
@@ -122,7 +122,7 @@ typedef struct {
 
 static void lock(Lock *l) {
     while (atomic_flag_test_and_set_explicit(&l->held, memory_order_acquire)) {
-        mssys_yield();
+        ms_sys_yield();
     }
 }
 
@@ -280,7 +280,7 @@ static void *shared_take(size_t size) {
     void *head = shared_cache.free[c];
     if (head) {
         shared_cache.free[c] = link_next(head);
-        shared_cache.cached -= mssys_malloc_size(head);
+        shared_cache.cached -= ms_sys_malloc_size(head);
     }
     unlock(&shared_lock);
     return head;
@@ -291,7 +291,7 @@ void *msrt_heap_shared_take(size_t size) {
 }
 
 uint8_t msrt_heap_shared_put(void *p) {
-    size_t usable = mssys_malloc_size(p);
+    size_t usable = ms_sys_malloc_size(p);
     if (usable < ((size_t)1 << LARGE_MIN_SHIFT) || usable > LARGE_MAX) {
         return 0;
     }
@@ -320,7 +320,7 @@ bool msalloc_reserve(void *(*map)(size_t), void (*unmap)(void *, size_t), MsAllo
         size_t glen = gsize * GROW_CHUNKS;
         size_t table_len = (pages_bytes >> PAGE_SHIFT) * 4;
         void *pages = map(pages_bytes), *table = map(table_len), *grow = map(glen);
-        if (pages && table && grow && mssys_commit(table, table_len)) {
+        if (pages && table && grow && ms_sys_commit(table, table_len)) {
             r = (MsAllocRegion){pages, pages_bytes, table, grow, glen, log2_floor(gsize)};
             fit = shrink;
             found = true;
@@ -348,7 +348,7 @@ bool msalloc_reserve(void *(*map)(size_t), void (*unmap)(void *, size_t), MsAllo
         size_t glen = gsize * GROW_CHUNKS;
         size_t table_len = (pages_bytes >> PAGE_SHIFT) * 4;
         void *pages = map(pages_bytes), *table = map(table_len), *grow = map(glen);
-        if (pages && table && grow && mssys_commit(table, table_len)) {
+        if (pages && table && grow && ms_sys_commit(table, table_len)) {
             *out = (MsAllocRegion){pages, pages_bytes, table, grow, glen, log2_floor(gsize)};
             return true;
         }
@@ -365,14 +365,14 @@ COLD static bool ensure_region(void) {
     if (!region_done) {
         region_done = true;
         MsAllocRegion r;
-        if (msalloc_reserve(mssys_map, mssys_unmap, &r)) {
+        if (msalloc_reserve(ms_sys_map_anon, ms_sys_unmap, &r)) {
             /* Huge pages only past the first few MiB: the kernel clears a whole 2 MiB page on the first
              * touch, which costs a short program about 0.35 ms at start-up for memory it never uses. */
             if (r.pages_len > HUGE_AFTER) {
-                mssys_prefer_huge((char *)r.pages + HUGE_AFTER, r.pages_len - HUGE_AFTER);
+                ms_sys_prefer_huge_pages((char *)r.pages + HUGE_AFTER, r.pages_len - HUGE_AFTER);
             }
             if (r.grow_len > HUGE_AFTER) {
-                mssys_prefer_huge((char *)r.grow + HUGE_AFTER, r.grow_len - HUGE_AFTER);
+                ms_sys_prefer_huge_pages((char *)r.grow + HUGE_AFTER, r.grow_len - HUGE_AFTER);
             }
             atomic_store_explicit(&hot.pages_len, r.pages_len, memory_order_relaxed);
             atomic_store_explicit(&hot.grow_bits, r.grow_bits, memory_order_relaxed);
@@ -403,7 +403,7 @@ void msrt_heap_claim(void) {
     unlock(&idle_lock);
     if (adopted) {
         *s = adopted->state;
-        mssys_free(adopted);
+        ms_sys_free(adopted);
         return;
     }
     size_t heap = atomic_fetch_add_explicit(&heap_count, 1, memory_order_relaxed);
@@ -423,7 +423,7 @@ void msrt_heap_release(void) {
         void *p = s->large_free[c];
         while (p) {
             void *next = link_next(p);
-            mssys_free(p);
+            ms_sys_free(p);
             p = next;
         }
         s->large_free[c] = 0;
@@ -440,7 +440,7 @@ void msrt_heap_release(void) {
     s->live = 0;
 #endif
     /* The list node comes from the system allocator, not from this heap. */
-    Idle *node = mssys_malloc(sizeof(Idle));
+    Idle *node = ms_sys_malloc(sizeof(Idle));
     if (!node) {
         msalloc_rust_oom(sizeof(Idle));
     }
@@ -501,7 +501,7 @@ COLD static void *refill(State *s, size_t c) {
             size_t step = used - have > COMMIT_STEP ? used - have : COMMIT_STEP;
             size_t room = pages_len() - have;
             size_t chunk = step < room ? step : room;
-            if (!mssys_commit(base + have, chunk)) {
+            if (!ms_sys_commit(base + have, chunk)) {
                 unlock(&commit_lock);
                 return 0;
             }
@@ -589,7 +589,7 @@ static void advise_huge(void *p, size_t len) {
     const uintptr_t start = (address + HUGE_PAGE - 1) & ~(uintptr_t)(HUGE_PAGE - 1);
     const uintptr_t end = (address + len) & ~(uintptr_t)(HUGE_PAGE - 1);
     if (end > start) {
-        mssys_prefer_huge((char *)p + (start - address), end - start);
+        ms_sys_prefer_huge_pages((char *)p + (start - address), end - start);
     }
 }
 
@@ -601,7 +601,7 @@ NOINLINE static void *alloc_large(State *s, size_t size) {
         if (head) {
             s->large_free[c] = link_next(head);
             s->large_count[c]--;
-            s->large_cached -= mssys_malloc_size(head);
+            s->large_cached -= ms_sys_malloc_size(head);
             live_add(s, 1);
             return head;
         }
@@ -612,7 +612,7 @@ NOINLINE static void *alloc_large(State *s, size_t size) {
             return shared;
         }
     }
-    void *p = mssys_malloc(request);
+    void *p = ms_sys_malloc(request);
     if (!p) {
         msalloc_rust_oom(request);
     }
@@ -645,7 +645,7 @@ void *msrt_heap_alloc_zeroed_cached(size_t size) {
     s->requested[1] += size;
     s->large_free[c] = link_next(head);
     s->large_count[c]--;
-    s->large_cached -= mssys_malloc_size(head);
+    s->large_cached -= ms_sys_malloc_size(head);
     __builtin_memset(head, 0, size);
     live_add(s, 1);
     return head;
@@ -661,7 +661,7 @@ void *msrt_alloc_zeroed(size_t size) {
 
 /* Keeps a freed system block in its large free list, or returns it to the system. */
 static void free_large(State *s, void *p) {
-    size_t usable = mssys_malloc_size(p);
+    size_t usable = ms_sys_malloc_size(p);
     size_t c = large_class_down(usable > ((size_t)1 << LARGE_MIN_SHIFT) ? usable : ((size_t)1 << LARGE_MIN_SHIFT));
     if (s->heap != NO_HEAP && usable >= ((size_t)1 << LARGE_MIN_SHIFT) && usable <= LARGE_MAX &&
         s->large_cached + usable <= LARGE_CACHE_LIMIT && s->large_count[c] < LOCAL_PER_CLASS) {
@@ -670,7 +670,7 @@ static void free_large(State *s, void *p) {
         s->large_count[c]++;
         s->large_cached += usable;
     } else if (!msrt_heap_shared_put(p)) {
-        mssys_free(p);
+        ms_sys_free(p);
     }
 }
 
@@ -678,7 +678,7 @@ static void free_large(State *s, void *p) {
  * unless there are many and the chunk is this heap's. */
 static void grow_release(State *s, size_t chunk) {
     if (chunk == s->grow_chunk && s->grow_committed > GROW_KEEP) {
-        mssys_decommit(grow_base(chunk), s->grow_committed);
+        ms_sys_release(grow_base(chunk), s->grow_committed);
         s->grow_committed = 0;
     }
     atomic_store_explicit(&grow_len[chunk], 0, memory_order_release);
@@ -725,7 +725,7 @@ size_t msrt_heap_usable_size(void *p) {
     if (page_word(p, &word)) {
         return msalloc_class_size[(uint8_t)word];
     }
-    return mssys_malloc_size(p);
+    return ms_sys_malloc_size(p);
 }
 
 /* realloc for a block that is shrinking: a small block whose class already fits new_size (more than half
@@ -763,7 +763,7 @@ static bool grow_commit(State *s, size_t len) {
         if (to > grow_size()) {
             to = grow_size();
         }
-        if (!mssys_commit(grow_base(s->grow_chunk) + s->grow_committed, to - s->grow_committed)) {
+        if (!ms_sys_commit(grow_base(s->grow_chunk) + s->grow_committed, to - s->grow_committed)) {
             return false;
         }
         s->grow_committed = to;
@@ -830,7 +830,7 @@ void *msrt_realloc(void *p, size_t new_size) {
         }
         return move_block(p, old, new_size);
     }
-    size_t old = mssys_malloc_size(p);
+    size_t old = ms_sys_malloc_size(p);
     if (new_size <= MAX_SMALL) {
         return move_block(p, old, new_size);
     }
@@ -841,7 +841,7 @@ void *msrt_realloc(void *p, size_t new_size) {
             __builtin_memcpy(q, p, old);
             /* The old block goes straight back: a cached copy would stay resident unused. */
             live_add(s, -1);
-            mssys_free(p);
+            ms_sys_free(p);
             return q;
         }
     }
@@ -850,7 +850,7 @@ void *msrt_realloc(void *p, size_t new_size) {
     bool uncached = new_size > old && old >= REMAP_MIN &&
                     (new_size > LARGE_MAX || s->large_free[large_class_up(new_size)] == 0);
     if ((old > LARGE_MAX && new_size > LARGE_MAX) || uncached) {
-        void *q = mssys_realloc(p, new_size);
+        void *q = ms_sys_realloc(p, new_size);
         if (!q) {
             msalloc_rust_oom(new_size);
         }

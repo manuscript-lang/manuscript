@@ -9,7 +9,7 @@ mkdir -p "$out"
 flags="-std=gnu11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include -Iruntime/std"
 for t in runtime/tests/core_*.c; do
     name=$(basename "$t" .c)
-    cc $flags -DMS_ALLOC_STATS -Iruntime/core -Iruntime/tests/support "$t" runtime/core/*.c runtime/sys/*.c runtime/sys/posix/*.c runtime/tests/support/*.c \
+    cc $flags -DMS_ALLOC_STATS -Iruntime/core -Iruntime/tests/support "$t" runtime/core/*.c runtime/sys/posix/*.c runtime/tests/support/*.c \
         -lm -lpthread -o "$out/$name"
     "$out/$name"
 done
@@ -34,7 +34,7 @@ cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined 
 for t in runtime/tests/io_*.c; do
     name=$(basename "$t" .c)
     # shellcheck disable=SC2046
-    cc $flags $(sh runtime/third_party/libs.sh cflags) "$t" runtime/io/*.c runtime/sys/*.c $(sh runtime/third_party/libs.sh libs uv) \
+    cc $flags $(sh runtime/third_party/libs.sh cflags) "$t" runtime/io/*.c runtime/sys/posix/*.c $(sh runtime/third_party/libs.sh libs uv) \
         -lpthread -o "$out/$name"
     "$out/$name"
 done

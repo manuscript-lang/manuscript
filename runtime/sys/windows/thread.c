@@ -41,4 +41,6 @@ void ms_sys_thread_join(uintptr_t thread) {
     CloseHandle(thread);
 }
 
+void ms_sys_yield(void) { SwitchToThread(); }
+
 void ms_sys_sleep_ms(uint32_t ms) { Sleep(ms); }

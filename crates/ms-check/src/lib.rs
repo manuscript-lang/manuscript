@@ -57,6 +57,13 @@ mod type_substitution_tests;
 #[cfg(test)]
 mod tytable_tests;
 
+/// Exposes the effect graph and directives to the C checker's comparison tool; deleted with the Rust checker.
+#[doc(hidden)]
+pub mod effect_oracle {
+    pub use crate::effect_directives::{Directives, Lines, matches};
+    pub use crate::effect_reach::{ReachNode, resolve};
+}
+
 pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
 pub use stdlib::Session;
 pub use syntax::{ModRef, ModuleData};

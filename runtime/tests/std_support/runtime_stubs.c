@@ -2,6 +2,7 @@
  * program has one task (so nothing parks and the pool is never used), and a stop request never arrives. Linked into
  * every runtime/tests/std_*.c test, which links all of runtime/std. */
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

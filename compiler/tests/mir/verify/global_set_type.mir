@@ -1,0 +1,9 @@
+module "t"
+global @g: int
+fn @main() -> int {
+b0:
+  %a: bool = bconst true
+  global.set @g %a
+  %z: int = iconst 0
+  ret %z
+}
