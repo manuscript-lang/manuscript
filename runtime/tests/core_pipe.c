@@ -18,11 +18,11 @@ static void expect(bool condition, const char *what) {
     }
 }
 
-static int64_t write_int(int64_t pipe, int64_t value) { return ms_pipe_write(pipe, (uint8_t *)&value, &msrt_desc_int); }
+static int64_t write_int(int64_t pipe, int64_t value) { return msrt_pipe_write(pipe, (uint8_t *)&value, &msrt_desc_int); }
 
 /* The next value, or false when the read finished with none. */
 static bool read_int(int64_t pipe, int64_t *value) {
-    const MsPromise read = (MsPromise)ms_pipe_read(pipe);
+    const MsPromise read = (MsPromise)msrt_pipe_read(pipe);
     expect(ms_promise_wait(read, -1) == MS_PROMISE_OK, "a read finishes");
     const bool got = ms_promise_take(read, &msrt_desc_int, (uint8_t *)value);
     ms_promise_drop(read);
@@ -30,24 +30,24 @@ static bool read_int(int64_t pipe, int64_t *value) {
 }
 
 static void test_order_then_end(void) {
-    const int64_t pipe = ms_pipe_new(8);
+    const int64_t pipe = msrt_pipe_new(8);
     for (int64_t i = 0; i < 5; i++) {
         expect(write_int(pipe, i) == MS_PIPE_WRITTEN, "write under capacity");
     }
     int64_t value = -1;
     for (int64_t i = 0; i < 3; i++) {
-        expect(ms_pipe_try(pipe, &msrt_desc_int, (uint8_t *)&value) == 1 && value == i, "try gives values in order");
+        expect(msrt_pipe_try(pipe, &msrt_desc_int, (uint8_t *)&value) == 1 && value == i, "try gives values in order");
     }
-    expect(ms_pipe_ended(pipe) == 0, "not ended with a writer");
-    ms_pipe_close_writer(pipe);
-    expect(ms_pipe_ended(pipe) == 0, "not ended while values are queued");
+    expect(msrt_pipe_ended(pipe) == 0, "not ended with a writer");
+    msrt_pipe_close_writer(pipe);
+    expect(msrt_pipe_ended(pipe) == 0, "not ended while values are queued");
     expect(read_int(pipe, &value) && value == 3, "read after close_writer");
     expect(read_int(pipe, &value) && value == 4, "read the last value");
     expect(!read_int(pipe, &value), "then the end, with no value");
-    expect(ms_pipe_ended(pipe) == 1, "ended");
-    expect(ms_pipe_try(pipe, &msrt_desc_int, (uint8_t *)&value) == 0, "nothing to try");
-    ms_pipe_close_reader(pipe);
-    expect(ms_pipe_ended(pipe) == 1, "a retired pipe reads as ended");
+    expect(msrt_pipe_ended(pipe) == 1, "ended");
+    expect(msrt_pipe_try(pipe, &msrt_desc_int, (uint8_t *)&value) == 0, "nothing to try");
+    msrt_pipe_close_reader(pipe);
+    expect(msrt_pipe_ended(pipe) == 1, "a retired pipe reads as ended");
     expect(write_int(pipe, 1) == MS_PIPE_CLOSED, "a stale id refuses writes");
 }
 
@@ -65,7 +65,7 @@ static void writer_task(void *arg) {
         ms_task_yield();
     }
     if (job->close_at_end) {
-        ms_pipe_close_writer(job->pipe);
+        msrt_pipe_close_writer(job->pipe);
     }
 }
 
@@ -75,7 +75,7 @@ static void spawn_writer(WriterJob *job) {
 }
 
 static void test_parked_read_finished_by_writer(void) {
-    const int64_t pipe = ms_pipe_new(4);
+    const int64_t pipe = msrt_pipe_new(4);
     static WriterJob job;
     job = (WriterJob){.pipe = pipe, .first = 10, .count = 3, .close_at_end = true};
     spawn_writer(&job);
@@ -84,12 +84,12 @@ static void test_parked_read_finished_by_writer(void) {
         expect(read_int(pipe, &value) && value == 10 + i, "a parked read gets each written value");
     }
     expect(!read_int(pipe, &value), "closing the last writer ends the parked read");
-    ms_pipe_close_reader(pipe);
+    msrt_pipe_close_reader(pipe);
 }
 
 static void test_several_writers(void) {
-    const int64_t pipe = ms_pipe_new(64);
-    ms_pipe_add_writer(pipe);
+    const int64_t pipe = msrt_pipe_new(64);
+    msrt_pipe_add_writer(pipe);
     static WriterJob a, b;
     a = (WriterJob){.pipe = pipe, .first = 0, .count = 20, .close_at_end = true};
     b = (WriterJob){.pipe = pipe, .first = 100, .count = 20, .close_at_end = false};
@@ -106,55 +106,55 @@ static void test_several_writers(void) {
             expect(value == next_b++, "each writer's order holds");
         }
     }
-    ms_pipe_close_writer(pipe); /* the Pipe value's own writer, the third */
+    msrt_pipe_close_writer(pipe); /* the Pipe value's own writer, the third */
     expect(!read_int(pipe, &value), "the end once every writer closed");
-    ms_pipe_close_reader(pipe);
+    msrt_pipe_close_reader(pipe);
 }
 
 static void test_flush_back_pressure(void) {
-    const int64_t pipe = ms_pipe_new(2);
+    const int64_t pipe = msrt_pipe_new(2);
     expect(write_int(pipe, 1) == MS_PIPE_WRITTEN && write_int(pipe, 2) == MS_PIPE_WRITTEN, "within capacity");
     expect(write_int(pipe, 3) == MS_PIPE_FULL, "above capacity answers full");
-    const MsPromise flush = (MsPromise)ms_pipe_flush(pipe);
+    const MsPromise flush = (MsPromise)msrt_pipe_flush(pipe);
     expect(!ms_promise_done(flush), "a flush above capacity waits");
     int64_t value = 0;
-    expect(ms_pipe_try(pipe, &msrt_desc_int, (uint8_t *)&value) == 1 && value == 1, "the reader takes a value");
+    expect(msrt_pipe_try(pipe, &msrt_desc_int, (uint8_t *)&value) == 1 && value == 1, "the reader takes a value");
     expect(ms_promise_wait(flush, -1) == MS_PROMISE_OK, "the flush finishes once the backlog fits");
     ms_promise_drop(flush);
-    const MsPromise again = (MsPromise)ms_pipe_flush(pipe);
+    const MsPromise again = (MsPromise)msrt_pipe_flush(pipe);
     expect(ms_promise_done(again), "a flush within capacity is done at once");
     ms_promise_drop(again);
-    ms_pipe_close_writer(pipe);
-    ms_pipe_close_reader(pipe);
+    msrt_pipe_close_writer(pipe);
+    msrt_pipe_close_reader(pipe);
 }
 
 static void test_close_reader_releases_flush_and_refuses_writes(void) {
-    const int64_t pipe = ms_pipe_new(0);
+    const int64_t pipe = msrt_pipe_new(0);
     expect(write_int(pipe, 1) == MS_PIPE_FULL, "capacity zero is full at one");
-    const MsPromise flush = (MsPromise)ms_pipe_flush(pipe);
+    const MsPromise flush = (MsPromise)msrt_pipe_flush(pipe);
     expect(!ms_promise_done(flush), "waits");
-    ms_pipe_close_reader(pipe);
+    msrt_pipe_close_reader(pipe);
     expect(ms_promise_wait(flush, -1) == MS_PROMISE_OK, "a closed reader releases the flush");
     ms_promise_drop(flush);
     expect(write_int(pipe, 2) == MS_PIPE_CLOSED, "a closed reader refuses writes");
-    ms_pipe_close_writer(pipe);
+    msrt_pipe_close_writer(pipe);
 }
 
 static void test_dropped_read_leaves_the_queue_alone(void) {
-    const int64_t pipe = ms_pipe_new(4);
-    const MsPromise read = (MsPromise)ms_pipe_read(pipe);
+    const int64_t pipe = msrt_pipe_new(4);
+    const MsPromise read = (MsPromise)msrt_pipe_read(pipe);
     ms_promise_drop(read);
     /* The next write queues the value instead of handing it to the dropped read. */
     expect(write_int(pipe, 7) == MS_PIPE_WRITTEN, "write after a dropped read");
     int64_t value = 0;
     expect(read_int(pipe, &value) && value == 7, "the value is still there");
-    ms_pipe_close_writer(pipe);
-    ms_pipe_close_reader(pipe);
+    msrt_pipe_close_writer(pipe);
+    msrt_pipe_close_reader(pipe);
 }
 
 static void test_cancelled_read_leaves_the_wait(void) {
-    const int64_t pipe = ms_pipe_new(4);
-    const MsPromise read = (MsPromise)ms_pipe_read(pipe);
+    const int64_t pipe = msrt_pipe_new(4);
+    const MsPromise read = (MsPromise)msrt_pipe_read(pipe);
     expect(!ms_promise_done(read), "an empty pipe parks the read");
     ms_promise_cancel(read);
     ms_promise_drop(read);
@@ -163,39 +163,39 @@ static void test_cancelled_read_leaves_the_wait(void) {
     job = (WriterJob){.pipe = pipe, .first = 5, .count = 1, .close_at_end = true};
     spawn_writer(&job);
     expect(read_int(pipe, &value) && value == 5, "a new read works after the cancel");
-    ms_pipe_close_reader(pipe);
+    msrt_pipe_close_reader(pipe);
 }
 
 /* A value that owns memory: dropping the pipe's queue frees it (the sanitizer reports a leak otherwise). */
 static void test_owned_values_are_dropped(void) {
-    const int64_t pipe = ms_pipe_new(8);
+    const int64_t pipe = msrt_pipe_new(8);
     for (int i = 0; i < 3; i++) {
         MsList bytes = {.ptr = msrt_alloc(100), .len = 100, .cap = 100};
         memset(bytes.ptr, i, bytes.len);
-        expect(ms_pipe_write(pipe, (uint8_t *)&bytes, &msrt_desc_bytes) == MS_PIPE_WRITTEN, "write owned bytes");
+        expect(msrt_pipe_write(pipe, (uint8_t *)&bytes, &msrt_desc_bytes) == MS_PIPE_WRITTEN, "write owned bytes");
     }
     MsList out = {0};
-    expect(ms_pipe_try(pipe, &msrt_desc_bytes, (uint8_t *)&out) == 1 && out.len == 100 && out.ptr[0] == 0, "try moves the bytes out");
+    expect(msrt_pipe_try(pipe, &msrt_desc_bytes, (uint8_t *)&out) == 1 && out.len == 100 && out.ptr[0] == 0, "try moves the bytes out");
     msrt_free(out.ptr);
-    const MsPromise read = (MsPromise)ms_pipe_read(pipe);
+    const MsPromise read = (MsPromise)msrt_pipe_read(pipe);
     expect(ms_promise_wait(read, -1) == MS_PROMISE_OK && ms_promise_take(read, &msrt_desc_bytes, (uint8_t *)&out) && out.ptr[0] == 1,
            "read hands over the next");
     msrt_free(out.ptr);
     ms_promise_drop(read);
-    ms_pipe_close_writer(pipe);
-    ms_pipe_close_reader(pipe); /* frees the third */
+    msrt_pipe_close_writer(pipe);
+    msrt_pipe_close_reader(pipe); /* frees the third */
 }
 
 static void test_ids_are_not_reused_while_stale(void) {
-    const int64_t first = ms_pipe_new(1);
-    ms_pipe_close_writer(first);
-    ms_pipe_close_reader(first);
-    const int64_t second = ms_pipe_new(1);
+    const int64_t first = msrt_pipe_new(1);
+    msrt_pipe_close_writer(first);
+    msrt_pipe_close_reader(first);
+    const int64_t second = msrt_pipe_new(1);
     expect(second != first, "a reused cell has a new generation");
     expect(write_int(first, 1) == MS_PIPE_CLOSED, "the stale id refuses writes");
     expect(write_int(second, 1) == MS_PIPE_WRITTEN, "the new pipe works");
-    ms_pipe_close_writer(second);
-    ms_pipe_close_reader(second);
+    msrt_pipe_close_writer(second);
+    msrt_pipe_close_reader(second);
 }
 
 static void entry(void *arg) {

@@ -65,6 +65,7 @@ enum {
     MS_TABLES_WITH_SCOPES = 3,
     MS_FRAMES_REPORT_MAX = 32,    /* frames a report names before it says the rest were omitted */
     MS_FRAMES_WALK_MAX = 1000000, /* logical frames one walk may visit, so a corrupt chain ends */
+    MS_FRAMES_NATIVE_MAX = 64, /* addresses outside the tables a walk may pass, which cost no step */
 };
 
 /* One source frame of a report, innermost first. */
@@ -128,6 +129,7 @@ typedef struct MsFrameCollector {
     MsFrameList *list;
     size_t steps; /* logical frames left (an inlined frame costs one, like a physical one) */
     bool innermost;
+    size_t native; /* addresses outside the tables passed so far */
 } MsFrameCollector;
 
 void ms_frames_collector_init(MsFrameCollector *collector, MsFrameList *list, size_t steps) MS_NONNULL;
