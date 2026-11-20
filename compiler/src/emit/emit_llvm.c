@@ -1137,22 +1137,14 @@ static void ll_copy_list(LCx *c, const MirInst *inst, MirValue from) {
 
 /* The unchecked list operations: the index is in range or the length is known. Dropping an old
  * element is the job of `lower_ops`, which runs first. */
-static bool ll_list_op(LCx *c, const MirInst *inst, bool *handled) {
+static bool ll_list_write_op(LCx *c, const MirInst *inst, bool *handled) {
     *handled = true;
     char base[24], index[24];
-    const bool is_list = inst->op == MOP_ListGetU || inst->op == MOP_ListAddrU || inst->op == MOP_ListSetU ||
+    const bool is_list = inst->op == MOP_ListSetU ||
                          inst->op == MOP_ListFillU || inst->op == MOP_ListPushU || inst->op == MOP_ListGrow;
     const uint32_t size = is_list ? mir_list_elem_size(c->layouts, c->f->values[inst->args[0]]) : 0;
     MsBuf *o = c->out;
     switch ((MirOp)inst->op) {
-    case MOP_ListGetU: case MOP_ListAddrU:
-        (void)snprintf(index, sizeof index, "%%v%u", inst->args[1]);
-        ll_elem_base(c, inst->args[0], index, size, base, sizeof base);
-        if (inst->op == MOP_ListAddrU) {
-            ms_buf_printf(o, "  %%v%u = ptrtoint ptr %s to i64\n", inst->res, base);
-            return true;
-        }
-        return ll_leaves_at(c, inst->res, base, true);
     case MOP_ListSetU: case MOP_ListFillU:
         (void)snprintf(index, sizeof index, "%%v%u", inst->args[1]);
         ll_elem_base(c, inst->args[0], index, size, base, sizeof base);
@@ -1214,9 +1206,9 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     if (handled) {
         return closure_ok;
     }
-    const bool list_ok = ll_list_op(c, inst, &handled);
+    const bool write_ok = ll_list_write_op(c, inst, &handled);
     if (handled) {
-        return list_ok;
+        return write_ok;
     }
     const bool iface_ok = ll_iface_op(c, inst, block, index, &handled);
     if (handled) {
