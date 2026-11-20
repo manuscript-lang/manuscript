@@ -49,6 +49,8 @@
 #include "opt_simplify.c"
 #include "opt_simplify_fold.c"
 #include "opt_simplify_cfg.c"
+#include "opt_inline.c"
+#include "opt_inline_closure.c"
 #include "hints.c"
 #include "constfold.c"
 #include "lower_body.c"

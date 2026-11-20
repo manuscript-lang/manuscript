@@ -319,6 +319,8 @@ static inline bool mir_owns(uint64_t owned, uint32_t i) { return i < 64 && (owne
 MsSym mir_name(MirModule *m, const char *s, size_t n);
 uint32_t mir_add_string(MirModule *m, const char *s, size_t n);
 uint32_t mir_add_func(MirModule *m, const MirFunc *f);
+/* Rebuilds the name index after functions were removed or moved. */
+void mir_funcs_reindex(MirModule *m);
 uint32_t mir_add_type(MirModule *m, MsSym name);
 uint32_t mir_add_alt(MirModule *m, MsSym name);
 uint32_t mir_add_iface(MirModule *m, MsSym name);
