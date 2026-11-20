@@ -3769,207 +3769,252 @@ MS_NODISCARD static bool call_arguments(Parser *p, Args *out) {
     return true;
 }
 
-MS_NODISCARD static bool primary(Parser *p, MsExpr **out) {
-    MsToken t = peek(p);
-    p->at++;
-    MsExpr *e;
+MS_NODISCARD static bool list_literal(Parser *p, MsToken t, MsExpr **out) {
+    MsExprs items = {NULL, 0};
+    if (!take(p, MS_T_RBracket)) {
+        size_t m = mark(p);
+        for (;;) {
+            if (!push_expression(p, 0)) return false;
+            if (!take(p, MS_T_Comma) || kind(p) == MS_T_RBracket) {
+                break;
+            }
+        }
+        if (!need(p, MS_T_RBracket)) return false;
+        FINISH_PTRS(p, m, items);
+    }
+    MsExpr *e = mk(p, t.pos, MS_E_LIST);
+    e->u.list = items;
+    *out = e;
+    return true;
+}
+
+MS_NODISCARD static bool match_expression(Parser *p, MsToken t, MsExpr **out) {
+    MsExpr *scrutinee = NULL;
+    if (!expression(p, 0, &scrutinee)) return false;
+    MsExpr *arms_holder = NEW(p, MsExpr);
+    if (!match_arms(p, t, arms_holder)) return false;
+    MsExpr *e = mk(p, t.pos, MS_E_MATCH);
+    e->u.match.scrutinee = scrutinee;
+    e->u.match.arms = arms_holder->u.match.arms;
+    *out = e;
+    return true;
+}
+
+/* One `key: value` entry of a map literal, pushed on the scratch stack. */
+MS_NODISCARD static bool map_entry(Parser *p) {
+    MsExpr *key = NULL;
+    if (!expression(p, 0, &key)) return false;
+    if (kind(p) == MS_T_Comma || kind(p) == MS_T_RBrace) {
+        fail(p, peek(p), LIT("a brace literal is a Map and needs 'key: value' entries; there is no set literal, so write Set[T]() and call add(value), or [a, b].to_set() from a List"));
+        return false;
+    }
+    if (!need(p, MS_T_Colon)) return false;
+    MsExpr *value = NULL;
+    if (!expression(p, 0, &value)) return false;
+    MsMapEntry entry = {key, value};
+    push(p, &entry, sizeof entry);
+    return true;
+}
+
+MS_NODISCARD static bool map_literal(Parser *p, MsToken t, MsExpr **out) {
+    uint32_t n = 0;
+    MsMapEntry *entries = NULL;
+    if (!take(p, MS_T_RBrace)) {
+        size_t m = mark(p);
+        for (;;) {
+            if (!map_entry(p)) return false;
+            if (!take(p, MS_T_Comma) || kind(p) == MS_T_RBrace) {
+                break;
+            }
+        }
+        if (!need(p, MS_T_RBrace)) return false;
+        entries = finish(p, m, &n, sizeof(MsMapEntry), _Alignof(MsMapEntry));
+    }
+    MsExpr *e = mk(p, t.pos, MS_E_MAP);
+    e->u.map.ptr = entries;
+    e->u.map.len = n;
+    *out = e;
+    return true;
+}
+
+/* The parameters of `fn a, b: ...`, which have no parentheses or types. A bracket or brace pattern
+ * binds from a hidden parameter, and `destructured` collects the statements that unpack it. */
+MS_NODISCARD static bool bare_lambda_parameters(Parser *p, MsParams *params, MsBuf *destructured) {
+    size_t m = mark(p);
+    uint32_t count = 0;
+    while (kind(p) == MS_T_Name || kind(p) == MS_T_LBracket || kind(p) == MS_T_LBrace ||
+           (kind(p) == MS_T_Var && ahead(p, 1).kind == MS_T_Name)) {
+        if (kind(p) == MS_T_LBracket || kind(p) == MS_T_LBrace) {
+            MsPattern *pat = NULL;
+            if (!pattern(p, &pat)) return false;
+            char nm[48];
+            snprintf(nm, sizeof nm, HIDDEN_ITEM " %u", count);
+            MsSym hidden = intern(p, nm);
+            push_ptr(p, mk_param(p, pat->pos, hidden, NULL, NULL, false, false));
+            count++;
+            MS_VEC_PUSH(*destructured, MsStmt *, destructure(p, pat, hidden));
+        } else {
+            /* `fn var exchange, next: ...`: a parameter the function changes in place;
+             * `fn move item: ...` takes ownership of it. */
+            bool moving = TAKE_MOVE(p, MS_T_Name);
+            bool is_mutable = take(p, MS_T_Var);
+            MsToken name = next(p);
+            push_ptr(p, mk_param(p, name.pos, sym(p, name), NULL, NULL, is_mutable, moving));
+            count++;
+        }
+        if (!take(p, MS_T_Comma)) {
+            break;
+        }
+    }
+    FINISH_PTRS(p, m, *params);
+    return true;
+}
+
+/* The parameters in parentheses of `fn (a: Int) Int: ...`, and its optional result type. */
+MS_NODISCARD static bool lambda_signature(Parser *p, MsParams *params, MsTypeRef **result) {
+    if (!parameters(p, true, true, params)) return false;
+    if (kind(p) == MS_T_Arrow) {
+        fail_fix(p, peek(p), LIT("result types follow the parameter list without an arrow; remove '->', e.g. fn (x: Int) Int: x + 1"), LIT(""));
+        return false;
+    }
+    if (kind(p) != MS_T_Colon) {
+        return typ(p, result);
+    }
+    return true;
+}
+
+MS_NODISCARD static bool lambda_expression(Parser *p, MsToken t, MsExpr **out) {
+    MsTypeRef *result = NULL;
+    MsParams params = {0};
+    MsBuf destructured = {0}; /* MsStmt * */
+    bool ok = kind(p) == MS_T_LParen ? lambda_signature(p, &params, &result)
+                                      : bare_lambda_parameters(p, &params, &destructured);
+    MsStmts body = {0};
+    ok = ok && statement_suite(p, true, false, &body);
+    size_t ndestructured = MS_VEC_LEN(destructured, MsStmt *);
+    if (ok && ndestructured != 0) {
+        MsStmt **with_unpacking = MS_NEW_N(p->arena, MsStmt *, body.len + ndestructured);
+        memcpy(with_unpacking, ms_buf_items(&destructured), ndestructured * sizeof(MsStmt *));
+        memcpy(with_unpacking + ndestructured, body.ptr, body.len * sizeof(MsStmt *));
+        body.ptr = with_unpacking;
+        body.len += (uint32_t)ndestructured;
+    }
+    ms_buf_free(&destructured);
+    if (!ok) {
+        return false;
+    }
+    MsExpr *e = mk(p, t.pos, MS_E_LAMBDA);
+    e->u.lambda.params = params;
+    e->u.lambda.result = result;
+    e->u.lambda.body = body;
+    *out = e;
+    return true;
+}
+
+/* What to say about a token that cannot start an expression; `before` is the token ahead of it. */
+static const char *expression_hint(MsToken t, MsTok before) {
+    if (t.kind == MS_T_Else) {
+        return "'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', directly after the if body";
+    }
+    if (t.kind == MS_T_Gt && before == MS_T_Lt) {
+        return "'<>' is not an operator; write '!=' for inequality";
+    }
+    if (t.kind == MS_T_Star && before == MS_T_Star) {
+        return "there is no '**' power operator; multiply explicitly or call a function from @std/math/math.ms";
+    }
+    if ((t.kind == MS_T_Comma || t.kind == MS_T_RParen) && before == MS_T_Colon) {
+        return "a label before ':' needs a value, e.g. count: 1";
+    }
+    if (t.kind == MS_T_Comma) {
+        return "remove the extra comma or add the missing value before it";
+    }
+    return "write a value, name, call, or literal here";
+}
+
+static void report_expected_expression(Parser *p, MsToken t) {
+    MsTok before = p->at > 1 ? (MsTok)p->tokens[p->at - 2].kind : MS_T_Eof;
+    MsStr word = text(p, t);
+    MsStr dt = describe(p, t);
+    /* Words that read as names (`type`, `test`) are the ones written as variables. */
+    bool reserved = t.kind == MS_T_Test || t.kind == MS_T_Type || t.kind == MS_T_Fixture;
+    if (reserved) {
+        fail(p, t, fmt(p, "expected an expression, found %.*s; '%.*s' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter", STR(dt), STR(word)));
+        return;
+    }
+    fail(p, t, fmt(p, "expected an expression, found %.*s; %s", STR(dt), expression_hint(t, before)));
+}
+
+/* `( expression )`. */
+MS_NODISCARD static bool grouped_expression(Parser *p, MsToken t, MsExpr **out) {
+    if (kind(p) == MS_T_RParen) {
+        fail(p, t, LIT("'()' is not a value; the Void value is written 'void'"));
+        return false;
+    }
+    if (!expression(p, 0, out)) return false;
+    if (kind(p) == MS_T_Comma) {
+        fail(p, peek(p), LIT("Manuscript has no tuples; declare a type with 'type Pair:' and named fields, or use a List when the items share one type"));
+        return false;
+    }
+    return need(p, MS_T_RParen);
+}
+
+/* The expressions that are one token or a simple literal; *out stays NULL for any other token. */
+MS_NODISCARD static bool simple_primary(Parser *p, MsToken t, MsExpr **out) {
     switch (t.kind) {
     case MS_T_Name: case MS_T_SelfKw: case MS_T_Fixture:
-        e = mk_name(p, t.pos, sym(p, t));
-        break;
+        *out = mk_name(p, t.pos, sym(p, t));
+        return true;
     case MS_T_Number:
-        e = mk(p, t.pos, MS_E_NUMBER);
-        e->u.sym = sym(p, t);
-        break;
+        *out = mk(p, t.pos, MS_E_NUMBER);
+        (*out)->u.sym = sym(p, t);
+        return true;
     case MS_T_True: case MS_T_False:
-        e = mk(p, t.pos, MS_E_BOOL);
-        e->u.flag = t.kind == MS_T_True;
-        break;
+        *out = mk(p, t.pos, MS_E_BOOL);
+        (*out)->u.flag = t.kind == MS_T_True;
+        return true;
+    case MS_T_Void:
+        *out = mk(p, t.pos, MS_E_VOID);
+        return true;
     case MS_T_String: {
         TextParts parts = {0};
         if (!text_parts_of(p, t, &parts)) return false;
-        e = mk(p, t.pos, MS_E_TEXT);
+        MsExpr *e = mk(p, t.pos, MS_E_TEXT);
         e->u.text.ptr = parts.ptr;
         e->u.text.len = parts.len;
-        break;
+        *out = e;
+        return true;
     }
-    case MS_T_Void:
-        e = mk(p, t.pos, MS_E_VOID);
-        break;
+    default:
+        return true;
+    }
+}
+
+MS_NODISCARD static bool primary_operand(Parser *p, MsToken t, MsExpr **out) {
+    switch (t.kind) {
     case MS_T_LParen:
-        if (kind(p) == MS_T_RParen) {
-            fail(p, t, LIT("'()' is not a value; the Void value is written 'void'"));
-            return false;
-        }
-        if (!expression(p, 0, &e)) return false;
-        if (kind(p) == MS_T_Comma) {
-            fail(p, peek(p), LIT("Manuscript has no tuples; declare a type with 'type Pair:' and named fields, or use a List when the items share one type"));
-            return false;
-        }
-        if (!need(p, MS_T_RParen)) return false;
-        break;
-    case MS_T_LBracket: {
-        MsExprs items = {NULL, 0};
-        if (!take(p, MS_T_RBracket)) {
-            size_t m = mark(p);
-            for (;;) {
-                if (!push_expression(p, 0)) return false;
-                if (!take(p, MS_T_Comma)) {
-                    break;
-                }
-                if (kind(p) == MS_T_RBracket) {
-                    break;
-                }
-            }
-            if (!need(p, MS_T_RBracket)) return false;
-            FINISH_PTRS(p, m, items);
-        }
-        e = mk(p, t.pos, MS_E_LIST);
-        e->u.list = items;
-        break;
-    }
-    case MS_T_Match: {
-        MsExpr *scrutinee = NULL;
-        if (!expression(p, 0, &scrutinee)) return false;
-        MsExpr *tmp = NEW(p, MsExpr);
-        if (!match_arms(p, t, tmp)) return false;
-        e = mk(p, t.pos, MS_E_MATCH);
-        e->u.match.scrutinee = scrutinee;
-        e->u.match.arms = tmp->u.match.arms;
-        break;
-    }
-    case MS_T_LBrace: {
-        uint32_t n = 0;
-        MsMapEntry *entries = NULL;
-        if (!take(p, MS_T_RBrace)) {
-            size_t m = mark(p);
-            for (;;) {
-                MsExpr *key = NULL;
-                if (!expression(p, 0, &key)) return false;
-                if (kind(p) == MS_T_Comma || kind(p) == MS_T_RBrace) {
-                    fail(p, peek(p), LIT("a brace literal is a Map and needs 'key: value' entries; there is no set literal, so write Set[T]() and call add(value), or [a, b].to_set() from a List"));
-                    return false;
-                }
-                if (!need(p, MS_T_Colon)) return false;
-                MsExpr *value = NULL;
-                if (!expression(p, 0, &value)) return false;
-                MsMapEntry en = {key, value};
-                push(p, &en, sizeof en);
-                if (!take(p, MS_T_Comma) || kind(p) == MS_T_RBrace) {
-                    break;
-                }
-            }
-            if (!need(p, MS_T_RBrace)) return false;
-            entries = finish(p, m, &n, sizeof(MsMapEntry), _Alignof(MsMapEntry));
-        }
-        e = mk(p, t.pos, MS_E_MAP);
-        e->u.map.ptr = entries;
-        e->u.map.len = n;
-        break;
-    }
-    case MS_T_Fn: {
-        MsTypeRef *result = NULL;
-        MsParams params;
-        MsStmt **destructured = NULL;
-        uint32_t ndestructured = 0, cap = 0;
-        if (kind(p) == MS_T_LParen) {
-            if (!parameters(p, true, true, &params)) return false;
-            if (kind(p) == MS_T_Arrow) {
-                fail_fix(p, peek(p), LIT("result types follow the parameter list without an arrow; remove '->', e.g. fn (x: Int) Int: x + 1"), LIT(""));
-                return false;
-            }
-            if (kind(p) != MS_T_Colon) {
-                if (!typ(p, &result)) return false;
-            }
-        } else {
-            size_t m = mark(p);
-            uint32_t count = 0;
-            while (kind(p) == MS_T_Name || kind(p) == MS_T_LBracket || kind(p) == MS_T_LBrace ||
-                   (kind(p) == MS_T_Var && ahead(p, 1).kind == MS_T_Name)) {
-                if (kind(p) == MS_T_LBracket || kind(p) == MS_T_LBrace) {
-                    /* `fn [a, b]: ...` binds the pattern from a hidden parameter. */
-                    MsPattern *pat = NULL;
-                    if (!pattern(p, &pat)) return false;
-                    char nm[48];
-                    snprintf(nm, sizeof nm, HIDDEN_ITEM " %u", count);
-                    MsSym hidden = intern(p, nm);
-                    push_ptr(p, mk_param(p, pat->pos, hidden, NULL, NULL, false, false));
-                    count++;
-                    MsStmt *d = destructure(p, pat, hidden);
-                    if (ndestructured == cap) {
-                        uint32_t ncap = cap ? cap * 2 : 4;
-                        MsStmt **nd = MS_NEW_N(p->arena, MsStmt *, ncap);
-                        if (ndestructured != 0) {
-                            memcpy(nd, destructured, ndestructured * sizeof(MsStmt *));
-                        }
-                        destructured = nd;
-                        cap = ncap;
-                    }
-                    destructured[ndestructured++] = d;
-                    if (!take(p, MS_T_Comma)) {
-                        break;
-                    }
-                    continue;
-                }
-                /* `fn var exchange, next: ...`: a parameter the function changes in place;
-                 * `fn move item: ...` takes ownership of it. */
-                bool moving = TAKE_MOVE(p, MS_T_Name);
-                bool is_mutable = take(p, MS_T_Var);
-                MsToken name = next(p);
-                push_ptr(p, mk_param(p, name.pos, sym(p, name), NULL, NULL, is_mutable, moving));
-                count++;
-                if (!take(p, MS_T_Comma)) {
-                    break;
-                }
-            }
-            FINISH_PTRS(p, m, params);
-        }
-        MsStmts body = {0};
-        if (!statement_suite(p, true, false, &body)) return false;
-        if (ndestructured != 0) {
-            MsStmt **nb = MS_NEW_N(p->arena, MsStmt *, body.len + ndestructured);
-            memcpy(nb, destructured, ndestructured * sizeof(MsStmt *));
-            memcpy(nb + ndestructured, body.ptr, body.len * sizeof(MsStmt *));
-            body.ptr = nb;
-            body.len += ndestructured;
-        }
-        e = mk(p, t.pos, MS_E_LAMBDA);
-        e->u.lambda.params = params;
-        e->u.lambda.result = result;
-        e->u.lambda.body = body;
-        break;
-    }
+        return grouped_expression(p, t, out);
+    case MS_T_LBracket:
+        return list_literal(p, t, out);
+    case MS_T_Match:
+        return match_expression(p, t, out);
+    case MS_T_LBrace:
+        return map_literal(p, t, out);
+    case MS_T_Fn:
+        return lambda_expression(p, t, out);
     case MS_T_If:
-        if (!if_expression(p, t, &e)) return false;
-        break;
-    default: {
-        MsTok before = p->at > 1 ? (MsTok)p->tokens[p->at - 2].kind : MS_T_Eof;
-        const char *hint;
-        if (t.kind == MS_T_Else) {
-            hint = "'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', directly after the if body";
-        } else if (t.kind == MS_T_Gt && before == MS_T_Lt) {
-            hint = "'<>' is not an operator; write '!=' for inequality";
-        } else if (t.kind == MS_T_Star && before == MS_T_Star) {
-            hint = "there is no '**' power operator; multiply explicitly or call a function from @std/math/math.ms";
-        } else if ((t.kind == MS_T_Comma || t.kind == MS_T_RParen) && before == MS_T_Colon) {
-            hint = "a label before ':' needs a value, e.g. count: 1";
-        } else if (t.kind == MS_T_Comma) {
-            hint = "remove the extra comma or add the missing value before it";
-        } else {
-            hint = "write a value, name, call, or literal here";
-        }
-        MsStr word = text(p, t);
-        /* Words that read as names (`type`, `test`) are the ones written as variables. */
-        bool reserved = t.kind == MS_T_Test || t.kind == MS_T_Type || t.kind == MS_T_Fixture;
-        MsStr dt = describe(p, t);
-        if (reserved) {
-            fail(p, t, fmt(p, "expected an expression, found %.*s; '%.*s' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter", STR(dt), STR(word)));
-            return false;
-        }
-        fail(p, t, fmt(p, "expected an expression, found %.*s; %s", STR(dt), hint));
+        return if_expression(p, t, out);
+    default:
+        report_expected_expression(p, t);
         return false;
     }
-    }
+}
+
+MS_NODISCARD static bool primary(Parser *p, MsExpr **out) {
+    MsToken t = peek(p);
+    p->at++;
+    MsExpr *e = NULL;
+    if (!simple_primary(p, t, &e)) return false;
+    if (e == NULL && !primary_operand(p, t, &e)) return false;
     return postfix(p, e, out);
 }
 
