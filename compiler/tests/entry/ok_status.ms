@@ -1,2 +1,2 @@
 fn main() Int?!:
-    return ok(0)
+	return ok(0)
