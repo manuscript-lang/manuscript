@@ -14,6 +14,9 @@
  * while it ran (/proc on Linux, the process handle on Windows); samples, not wait4's rusage (workaround, see #4780).
  */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c11 */
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE /* with only _POSIX_C_SOURCE, Darwin hides struct rusage's ru_maxrss */
+#endif
 
 #include <errno.h>
 #include <stdio.h>
