@@ -6,6 +6,11 @@
 // wrote into a bundle: `program`, `profile.folded`, `profile.pb`, `top.txt`,
 // `manifest.json`. The build is the Rust `ms build` until libms can link a whole
 // program. The command returns the program's exit status.
+//
+// Known gap (https://github.com/manuscript-lang/manuscript/issues/5009): SIGINT and
+// SIGTERM unwind the waiting task, so the program is killed without writing a profile;
+// the Rust CLI forwarded them. Restore forwarding once a task can hold back a stop
+// request.
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	promise from "@std/concurrency/promise.ms",
