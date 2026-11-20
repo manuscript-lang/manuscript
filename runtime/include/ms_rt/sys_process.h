@@ -15,6 +15,8 @@
 
 typedef enum { MS_SYS_ID_UID, MS_SYS_ID_GID, MS_SYS_ID_EUID, MS_SYS_ID_EGID } MsSysIdentity;
 
+/* The process's user or group id, or -1 on a platform that has none. */
+int64_t ms_sys_process_identity(MsSysIdentity which);
 /* Sets the file-creation mask and reports the previous one. */
 MS_NODISCARD MsSysError ms_sys_process_umask(uint32_t mask, uint32_t *previous);
 /* The supplementary groups of the process. */

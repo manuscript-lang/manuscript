@@ -95,3 +95,8 @@ export fn listen_allowed(policy: Policy, host: String) Bool:
 	for level in policy.levels:
 		if not level.listen: return false
 	return address_allowed(policy, host)
+
+// Reports whether a Unix domain socket path may be dialed or listened on. Unix sockets
+// bypass host and CIDR checks, so only an unrestricted network allows them.
+export fn unix_allowed(policy: Policy) Bool:
+	return policy.levels.is_empty()
