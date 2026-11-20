@@ -18,6 +18,7 @@ import (
 	Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/time.ms",
 
 	errno_text from "../errno.ms",
+	forward_signals, hold from "../forward.ms",
 	Fault, decode, from_text, is_fault_status from "./fault.ms",
 	TestOptions from "./options.ms",
 	Kind, Parsed, Record, parse from "./records.ms",
@@ -231,6 +232,8 @@ export fn run_together(
 		return run
 
 	var child = started.get()
+	_hold := hold()
+	_relay := forward_signals(child.pid())
 	var out = child.stdout()
 
 	// A test with no result past `--timeout` plus a second never waits; the process is
