@@ -341,9 +341,24 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
         (void)ms_body_unsupported(b);
         return false;
     }
+    const bool outer_broken = b->loop_broken;
+    b->loop_broken = false;
+    b->loop_depth++;
     (void)ms_body_block(b, &s->u.loop.body);
-    // Without `break` (unsupported here), `while true` never ends.
-    return !(cond->kind == MS_E_BOOL && cond->u.flag);
+    b->loop_depth--;
+    // `while true` ends only through a `break`.
+    const bool falls = !(cond->kind == MS_E_BOOL && cond->u.flag) || b->loop_broken;
+    b->loop_broken = outer_broken;
+    return falls;
+}
+
+/* `break` and `continue`: only inside a loop, and control never falls out of them. */
+static void body_jump_statement(MsBody *b, const MsStmt *s) {
+    if (b->loop_depth == 0) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    b->loop_broken = b->loop_broken || s->kind == MS_S_BREAK;
 }
 
 /* Checks the statements of a nested scope in order; whether control falls out of the end. A
@@ -366,9 +381,12 @@ static bool body_run(MsBody *b, const MsStmts *body) {
         case MS_S_IF: falls = body_if_statement(b, s); break;
         case MS_S_WHILE: falls = body_while_statement(b, s); break;
         case MS_S_ASSIGN: body_assign_statement(b, s); break;
-        case MS_S_CALL:
         case MS_S_BREAK:
         case MS_S_CONTINUE:
+            body_jump_statement(b, s);
+            falls = false;
+            break;
+        case MS_S_CALL:
         case MS_S_FOR: (void)ms_body_unsupported(b); break;
         }
     }
@@ -459,6 +477,8 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
     b->first_binding = first_binding;
     b->supported = true;
+    b->loop_depth = 0;
+    b->loop_broken = false;
     b->result = b->c->tys.result[sig];
     const MsTyParam *params = ms_ty_params(&b->c->tys, sig);
     for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {

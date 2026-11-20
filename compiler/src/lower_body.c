@@ -16,6 +16,13 @@
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
 
+/* The loop being lowered: where `continue` and `break` go. Lives on the lowering's stack. */
+typedef struct LbLoop {
+    MirBlock header, exit;
+    struct LbLoop *outer;
+    bool broke; /* a `break` branches to `exit` */
+} LbLoop;
+
 /* A lowered expression: the value, and whether the holder must drop it. */
 typedef struct LbVal {
     MirValue v;
@@ -33,6 +40,7 @@ typedef struct Lb {
     MirVar *var_of;
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
+    LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     bool dead;            /* control cannot reach the current position */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
@@ -475,16 +483,46 @@ static void lb_while(Lb *lb, const MsStmt *s) {
     }
     mir_b_seal_block(&lb->b, body);
     lb_enter(lb, body);
+    LbLoop here = {header, exit, lb->loop, false};
+    lb->loop = &here;
     lb_statements(lb, &s->u.loop.body);
+    lb->loop = here.outer;
     if (!lb->dead) {
         mir_b_br(&lb->b, header, NULL, 0);
     }
     mir_b_seal_block(&lb->b, header);
     mir_b_seal_block(&lb->b, exit);
     lb_enter(lb, exit);
-    if (forever) {
+    if (forever && !here.broke) {
         mir_b_unreachable(&lb->b);
         lb->dead = true;
+    }
+}
+
+/* `break` and `continue`: branch to the loop's exit or header; the rest of the block is dead. */
+static void lb_jump(Lb *lb, const MsStmt *s) {
+    LbLoop *loop = lb->loop;
+    if (loop == NULL) {
+        lb->ok = false;
+        return;
+    }
+    if (s->kind == MS_S_BREAK) {
+        loop->broke = true;
+    }
+    mir_b_br(&lb->b, s->kind == MS_S_BREAK ? loop->exit : loop->header, NULL, 0);
+    lb->dead = true;
+}
+
+/* `name = value` writes the `var` the checker resolved the statement to. */
+static void lb_assign(Lb *lb, const MsStmt *s) {
+    const uint32_t binding = lb->facts->assign_binding[s->id];
+    if (binding == MS_NONE || lb->var_of[binding] == MIR_NONE) {
+        lb->ok = false;
+        return;
+    }
+    const LbVal value = lb_expr(lb, s->u.assign.value);
+    if (lb->ok) {
+        mir_b_def_var(&lb->b, lb->var_of[binding], value.v);
     }
 }
 
@@ -499,10 +537,10 @@ static void lb_statement(Lb *lb, const MsStmt *s) {
     case MS_S_RETURN: lb_return(lb, s); break;
     case MS_S_IF: lb_if(lb, s); break;
     case MS_S_WHILE: lb_while(lb, s); break;
-    case MS_S_ASSIGN:
-    case MS_S_CALL:
+    case MS_S_ASSIGN: lb_assign(lb, s); break;
     case MS_S_BREAK:
-    case MS_S_CONTINUE:
+    case MS_S_CONTINUE: lb_jump(lb, s); break;
+    case MS_S_CALL:
     case MS_S_FOR: lb->ok = false; break;
     }
     lb->stmt = outer;
@@ -556,6 +594,7 @@ static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym) {
         return false;
     }
     lb->dead = false;
+    lb->loop = NULL;
     lb->stmt = NULL;
     lb_statements(lb, &d->u.fn.body);
     uint32_t id = 0;
