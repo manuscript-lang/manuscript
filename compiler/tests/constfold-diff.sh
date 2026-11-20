@@ -11,7 +11,7 @@ seed=${FOLD_SEED:-1}
 cargo build --release --locked -p ms-syntax --example c_fold_oracle
 oracle=target/release/examples/c_fold_oracle
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_constfold_dump.c -o "$out/constfold_dump"
+    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_constfold_dump.c -o "$out/constfold_dump" -lm
 
 "$oracle" gen "$cases" "$seed" > "$out/constfold.cases"
 "$oracle" < "$out/constfold.cases" > "$out/constfold.rust"

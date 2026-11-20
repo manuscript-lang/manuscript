@@ -9,6 +9,11 @@
 
 #include "ms/base.h"
 
+/* Byte-wise string comparison, which is how Rust orders strings. */
+bool ms_str_equal(MsStr a, MsStr b);
+int ms_str_compare(MsStr a, MsStr b);
+bool ms_str_starts_with(MsStr s, MsStr prefix);
+
 /* Levenshtein distance over scalar values. */
 size_t ms_edit_distance(MsArena *arena, MsStr a, MsStr b);
 
