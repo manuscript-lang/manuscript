@@ -28,6 +28,11 @@ void ms_workers_configure(const MsWorkerEnv *env) {
     atomic_store(&limit_cache, env->limit < 1 ? 1 : env->limit);
 }
 
+void ms_workers_set_limit(uint32_t limit) {
+    const uint32_t bounded = limit < 1 ? 1 : (limit > MS_MAX_ISOLATES ? MS_MAX_ISOLATES : limit);
+    atomic_store(&limit_cache, bounded);
+}
+
 uint32_t ms_workers_limit(void) { return atomic_load_explicit(&limit_cache, memory_order_relaxed); }
 
 /* The worker's only task: it waits for the stop request while the scheduler's idle hook runs promises. */

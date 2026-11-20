@@ -6,10 +6,14 @@
  * thread (runtime/io/stop.c), never in a signal handler: the first raises the cancel flag of the running task and
  * wakes the scheduler; a second before cleanup finished, or the grace period running out, ends the process.
  */
+#define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c11 */
+
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <uv.h>
 
 #include "../core/cancel.h"
 #include "../core/fault.h"
@@ -17,6 +21,7 @@
 #include "../core/promise.h"
 #include "../core/task.h"
 #include "../core/unwind.h"
+#include "../core/worker.h"
 #include "../io/reactor.h"
 #include "../io/stop.h"
 #include "entry.h"
@@ -31,6 +36,7 @@ enum {
     CLEANUP_GRACE_SECONDS = 30, /* after the first stop request, before cleanup is abandoned */
     MAX_MAIN_EXIT = 125,        /* 126 and above are reserved by shells */
     SIZE_CLASS_LINE = 160,
+    ENV_TEXT_BYTES = 32,
     TASK_OUTCOME_CANCELLED = 2, /* ms_task_join's third outcome */
 };
 
@@ -176,13 +182,23 @@ static void report_leaks(void) {
 }
 #endif
 
-/* Opens this thread's reactor and scheduler for the main isolate. False when the reactor cannot open. */
-MS_NODISCARD static bool open_scheduler(void) {
+static const MsPollOps poll_ops = {.watch = poll_watch, .unwatch = poll_unwatch, .forget = poll_forget, .wait = poll_wait};
+
+/* Opens the calling thread's reactor and says how to poll and wake it. False when the reactor cannot open. */
+MS_NODISCARD static bool open_poller(bool is_main, MsPollOps *poll, MsWakeFn *wake, void **wake_argument) {
     MsIoReactor *reactor = NULL;
-    if (!ms_io_open(true, &reactor)) {
+    if (!ms_io_open(is_main, &reactor)) {
         return false;
     }
     ms_io_set_completion_sink(ms_sched_post_completion);
+    *poll = poll_ops;
+    *wake = wake_reactor;
+    *wake_argument = reactor;
+    return true;
+}
+
+/* The hooks of a scheduler of this process; `service` marks a worker. */
+static MsSchedHooks scheduler_hooks(void) {
     MsSchedHooks hooks = {
         .fault = hook_fault,
         .exit_process = hook_exit,
@@ -190,9 +206,58 @@ MS_NODISCARD static bool open_scheduler(void) {
         .task_fault = hook_task_fault,
     };
     ms_promise_hooks(&hooks);
-    const MsPollOps poll = {.watch = poll_watch, .unwatch = poll_unwatch, .forget = poll_forget, .wait = poll_wait};
+    return hooks;
+}
+
+/* The core count unless MS_THREADS says otherwise, within what the isolate registry holds. */
+static uint32_t default_limit(void) {
+    char text[ENV_TEXT_BYTES];
+    size_t size = sizeof text;
+    long wanted = 0;
+    if (uv_os_getenv("MS_THREADS", text, &size) == 0) {
+        wanted = strtol(text, NULL, 10);
+    }
+    if (wanted <= 0) {
+        wanted = (long)uv_available_parallelism();
+    }
+    return wanted > (long)MS_MAX_ISOLATES ? MS_MAX_ISOLATES : (wanted < 1 ? 1 : (uint32_t)wanted);
+}
+
+void msrt_runtime_set_threads(int64_t threads) {
+    ms_workers_set_limit(threads < 1 ? 1 : (threads > (int64_t)MS_MAX_ISOLATES ? MS_MAX_ISOLATES : (uint32_t)threads));
+}
+
+int64_t msrt_runtime_limit(void) { return ms_workers_limit(); }
+
+static bool worker_setup(MsPollOps *poll, MsWakeFn *wake, void **wake_argument) {
+    const bool overflow_reported = ms_sys_fault_handler_install(report_overflow);
+    (void)overflow_reported;
+    msrt_heap_claim();
+    return open_poller(false, poll, wake, wake_argument);
+}
+
+static void worker_finish(void) {
+    ms_io_close(false);
+    msrt_heap_release();
+}
+
+/* Starts the worker isolates' configuration: the limit is the core count unless MS_THREADS says otherwise. */
+static void configure_workers(void) {
+    MsWorkerEnv env = {.limit = default_limit(), .hooks = scheduler_hooks(), .setup = worker_setup, .finish = worker_finish};
+    ms_workers_configure(&env);
+}
+
+/* Opens this thread's reactor and scheduler for the main isolate. False when the reactor cannot open. */
+MS_NODISCARD static bool open_scheduler(void) {
+    MsPollOps poll = {0};
+    MsWakeFn wake = NULL;
+    void *wake_argument = NULL;
+    if (!open_poller(true, &poll, &wake, &wake_argument)) {
+        return false;
+    }
+    MsSchedHooks hooks = scheduler_hooks();
     ms_sched_set_hooks(&hooks, &poll);
-    (void)ms_sched_attach(wake_reactor, reactor);
+    (void)ms_sched_attach(wake, wake_argument);
     return true;
 }
 
@@ -207,6 +272,7 @@ static void runtime_thread(void *argument) {
         ms_fault_fatal(MS_FAULT_KIND_FAULT, text_bytes("cannot open the event loop"));
     }
     ms_sched_set_stop_target();
+    configure_workers();
     uint8_t outcome = 0;
     MsFaultText message = {0};
     if (ms_task_run_main(main_task, NULL, MS_SPAWN_FATAL, &outcome, &message) != MS_TASK_OK) {
@@ -217,6 +283,7 @@ static void runtime_thread(void *argument) {
         /* A stop request unwound the main task through its guard: the program ends with the signal's status. */
         main_result = atomic_load(&pending_signal) == MS_STOP_INTERRUPT ? MS_EXIT_INTERRUPT : MS_EXIT_TERMINATE;
     }
+    ms_workers_shutdown();
     ms_io_stop_end();
     ms_sched_clear_stop_target();
     ms_sched_teardown();

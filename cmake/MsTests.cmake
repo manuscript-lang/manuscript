@@ -136,7 +136,7 @@ file(GLOB _entry_sources CONFIGURE_DEPENDS "${_rt}/entry/*.c")
 file(GLOB _entry_tests CONFIGURE_DEPENDS "${_tests}/entry_*.c")
 foreach(file ${_entry_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" ${_entry_sources} ${_io_sources} "${_rt}/sys/thread.c" OBJECTS ms_test_core
+  ms_test(${name} SOURCES "${file}" ${_entry_sources} ${_io_sources} OBJECTS ms_test_core
           INCLUDES ${MS_LIB_uv_INCLUDES} LIBS m ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} DEFINES MS_ALLOC_STATS)
 endforeach()
 
