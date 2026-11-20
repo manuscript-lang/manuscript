@@ -12,8 +12,8 @@ static int failed;
 static void nap(void) { struct timespec t = {0, 1000000}; nanosleep(&t, NULL); }
 
 int main(void) {
-    ms_addr lo = {4, {127, 0, 0, 1}, 0, 0}, bound, peer;
-    ms_sock l, c, s;
+    MsAddr lo = {4, {127, 0, 0, 1}, 0, 0}, bound, peer;
+    MsSock l, c, s;
     CHECK(ms_sys_net_tcp_listen(&lo, 8, &l) == MS_SYS_OK);
     CHECK(ms_sys_net_local_addr(l, &bound) == MS_SYS_OK && bound.family == 4 && bound.port != 0 && bound.ip[0] == 127);
     CHECK(ms_sys_net_accept(l, &s, NULL) == MS_SYS_AGAIN); /* nothing waiting, no block */
@@ -59,15 +59,15 @@ int main(void) {
     } else CHECK(rc == MS_SYS_ERROR);
 
     /* IPv6 loopback, when the machine has it */
-    ms_addr lo6 = {6, {0}, 0, 0}; lo6.ip[15] = 1;
-    ms_sock l6;
+    MsAddr lo6 = {6, {0}, 0, 0}; lo6.ip[15] = 1;
+    MsSock l6;
     if (ms_sys_net_tcp_listen(&lo6, 4, &l6) == MS_SYS_OK) {
         CHECK(ms_sys_net_local_addr(l6, &bound) == MS_SYS_OK && bound.family == 6 && bound.ip[15] == 1 && bound.port != 0);
         ms_sys_net_close(l6);
     }
     /* a listener on :: accepts IPv4 clients too (dual stack), when the machine has IPv6 */
-    ms_addr any6 = {6, {0}, 0, 0}, v4;
-    ms_sock d, dc, da;
+    MsAddr any6 = {6, {0}, 0, 0}, v4;
+    MsSock d, dc, da;
     if (ms_sys_net_tcp_listen(&any6, 4, &d) == MS_SYS_OK) {
         CHECK(ms_sys_net_local_addr(d, &bound) == MS_SYS_OK);
         v4 = lo; v4.port = bound.port;
