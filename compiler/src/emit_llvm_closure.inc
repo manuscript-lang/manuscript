@@ -26,7 +26,7 @@ static bool ll_call_ind(LCx *c, const MirInst *inst, uint32_t block, uint32_t in
     const uint32_t n = c->next++;
     ms_buf_printf(c->out, "  %%k%u = load ptr, ptr %s\n", n, code_at);
     (void)snprintf(callee, sizeof callee, "%%k%u", n);
-    return ll_call_to(c, inst, block, index, callee);
+    return ll_call_to(c, inst, block, index, callee, NULL);
 }
 
 /* Stores `@func` at `offset` of the closure object `obj`. */
