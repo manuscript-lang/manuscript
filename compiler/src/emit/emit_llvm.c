@@ -1442,14 +1442,15 @@ static void ll_edge_label(MsBuf *o, const MirTerm *t, uint32_t from, uint32_t k)
 /* A `switch`: the cases by value, the default last. Several cases may share a target. */
 static void ll_switch(LCx *c, const MirTerm *t, uint32_t from) {
     MsBuf *o = c->out;
+    /* One line, so the place tag `ll_debug_tag` adds to each indented line lands after the `]`. */
     ms_buf_printf(o, "  switch i64 %%v%u, label ", t->value);
     ll_edge_label(o, t, from, t->ncases);
     ms_buf_puts(o, " [");
     for (uint32_t k = 0; k < t->ncases; k++) {
-        ms_buf_printf(o, "\n    i64 %lld, label ", (long long)t->cases[k].value);
+        ms_buf_printf(o, " i64 %lld, label ", (long long)t->cases[k].value);
         ll_edge_label(o, t, from, k);
     }
-    ms_buf_puts(o, "\n  ]\n");
+    ms_buf_puts(o, " ]\n");
 }
 
 static bool ll_term(LCx *c, const MirTerm *t, uint32_t from) {
