@@ -47,6 +47,57 @@ uint8_t ms_sched_stop_request(void) {
     return thread_sched == NULL ? 0 : atomic_load_explicit(&thread_sched->stop_request, memory_order_relaxed);
 }
 
+/* Raises the cancel flag of `hdr` to at least `signal`, unless a shield holds the stop back. */
+static void raise_cancel(MsTaskHdr *hdr, uint8_t signal) {
+    if (atomic_load(&hdr->shield) != 0 || atomic_load(&hdr->stop_shield) != 0) {
+        return;
+    }
+    uint8_t seen = atomic_load(&hdr->cancel);
+    while (seen < signal && !atomic_compare_exchange_weak(&hdr->cancel, &seen, signal)) {
+    }
+}
+
+void ms_sched_publish(MsSched *sched, MsTask *task) {
+    /* Sequentially consistent, paired with the stop request store in ms_sched_stop_remote: either that call sees this
+     * header, or this call sees its request. */
+    atomic_store(&sched->published_hdr, &task->unwind.hdr);
+    const uint8_t stop = atomic_load(&sched->stop_request);
+    if (stop != 0) {
+        raise_cancel(&task->unwind.hdr, stop);
+    }
+}
+
+static _Atomic(MsSched *) stop_target;
+
+void ms_sched_set_stop_target(void) { atomic_store(&stop_target, ms_sched()); }
+
+void ms_sched_clear_stop_target(void) {
+    MsSched *const sched = ms_sched_if_any();
+    if (sched != NULL) {
+        atomic_store(&sched->published_hdr, NULL);
+    }
+    atomic_store(&stop_target, NULL);
+}
+
+void ms_sched_stop_remote(uint8_t signal) {
+    MsSched *const sched = atomic_load(&stop_target);
+    if (sched == NULL) {
+        return;
+    }
+    atomic_store(&sched->stop_request, signal);
+    MsTaskHdr *const running = atomic_load(&sched->published_hdr);
+    if (running != NULL) {
+        raise_cancel(running, signal);
+    }
+    MsMail *const mail = msrt_alloc_zeroed(sizeof *mail);
+    mail->kind = MS_MAIL_STOP;
+    mail->from = MS_NO_ISOLATE;
+    mail->a = signal;
+    if (!ms_isolate_post(sched->isolate, mail)) {
+        msrt_free(mail); /* the isolate ended; there is nothing left to stop */
+    }
+}
+
 void ms_sched_stop(uint8_t signal) {
     atomic_store_explicit(&ms_sched()->stop_request, signal, memory_order_relaxed);
 }

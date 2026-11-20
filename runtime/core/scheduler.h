@@ -120,6 +120,7 @@ typedef struct MsSched {
     MsTask *main_task;
     uint32_t isolate; /* registry index carried in token ids */
     _Atomic uint8_t stop_request; /* a stop aimed at this scheduler, 0 when none; set from any thread */
+    _Atomic(MsTaskHdr *) published_hdr; /* the running task's header, for a stop raised from another thread */
 
     MsTaskSlot *slots; /* the handle table */
     size_t slot_count;
@@ -181,6 +182,9 @@ MsTask *ms_task_running(void) MS_RETURNS_NONNULL;
 void ms_task_destroy(MsSched *sched, MsTask *task) MS_NONNULL;
 /* The record behind `handle`, or NULL. */
 MsTask *ms_task_lookup(const MsSched *sched, MsTaskHandle handle);
+/* Makes `task` the running task's header a remote stop raises its cancel flag on (see ms_sched_stop_remote), then
+ * applies a stop that arrived since the flag was last refreshed. */
+void ms_sched_publish(MsSched *sched, MsTask *task) MS_NONNULL;
 /* The stop request aimed at this thread's scheduler (SIGINT, SIGTERM, a parent's cancel), 0 when none. */
 uint8_t ms_sched_stop_request(void);
 

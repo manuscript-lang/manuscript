@@ -95,8 +95,22 @@ MsTask *ms_task_running(void) {
         task->state = MS_STATE_RUNNING;
         sched->current = task;
         sched->main_task = task;
+        ms_sched_publish(sched, task);
     }
     return sched->current;
+}
+
+/* How far below the stack's lowest usable address a fault still counts as overflow; a frame bigger than the guard
+ * can skip past it. */
+enum { OVERFLOW_REACH = 1 << 20, GUARD_PAGE = 4096 };
+
+bool ms_task_stack_overflow_at(uintptr_t address) {
+    const MsSched *const sched = ms_sched_if_any();
+    if (sched == NULL || sched->current == NULL) {
+        return false;
+    }
+    const uintptr_t low = sched->current->unwind.stack_low;
+    return low != 0 && address < low + GUARD_PAGE && address + OVERFLOW_REACH >= low;
 }
 
 /* ---- the ready ring ---- */
@@ -250,6 +264,7 @@ void ms_task_switch_away(MsSched *sched) {
         publish_region(next);
         refresh_cancel(sched, next);
         sched->current = next;
+        ms_sched_publish(sched, next);
         save_teb(current);
         ms_ctx_switch(&current->sp, next->sp, teb_of(next));
         reap(sched);

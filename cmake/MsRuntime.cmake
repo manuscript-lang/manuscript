@@ -3,7 +3,7 @@
 #   c-objects.txt   one path per line: our objects and the library members, which `ar` adds to the runtime archive
 #   c-features.txt  which optional parts the archive has (reactor), which the Rust build then leaves out
 # in the build folder. The linker takes a member only when a program reaches it.
-set(MS_RUNTIME_LAYERS sys core io net std)
+set(MS_RUNTIME_LAYERS sys core io entry net std)
 
 # The library names (as MS_LIB_NAMES and llhttp) whose headers `source` includes, directly or through a header
 # of its own folder.
