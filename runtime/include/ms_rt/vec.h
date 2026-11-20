@@ -5,10 +5,10 @@
 
 #include "ms_rt/base.h"
 
-typedef struct ms_vec {
-    uint8_t *ptr;
+typedef struct MsVec {
+    void *ptr; /* owned unless cap is 0 */
     size_t len;
     size_t cap;
-} ms_vec;
+} MsVec;
 
 #endif

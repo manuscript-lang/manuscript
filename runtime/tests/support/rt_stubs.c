@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "ms_rt/base.h"
+#include "ms_rt/strbuild.h"
 
 uint8_t msrt_ascii_chars[128][2] = {
 #define C4(n) {(n)}, {(n) + 1}, {(n) + 2}, {(n) + 3}

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ms_rt/safe.h"
 #include "ms_rt/search.h"
 #include "ms_rt/strbuild.h"
 #include "ms_rt/utf8.h"
@@ -38,7 +39,7 @@ static size_t random_text(uint8_t *buf, size_t max_pieces, size_t alpha) {
 }
 
 /* A string of the given bytes in a kind chosen by `kind` (heap-backed kinds own `*mem`). */
-static ms_str make(const uint8_t *p, size_t n, int kind, uint8_t **mem) {
+static MsStr make(const uint8_t *p, size_t n, int kind, uint8_t **mem) {
     *mem = NULL;
     if (kind == 0 || n == 0) {
         return ms_str_from_bytes(p, n);
@@ -47,17 +48,17 @@ static ms_str make(const uint8_t *p, size_t n, int kind, uint8_t **mem) {
         *mem = malloc(n + 1);
         memcpy(*mem, p, n);
         (*mem)[n] = 0;
-        return (ms_str){*mem, MS_STR_VIEW | n};
+        return (MsStr){*mem, MS_STR_VIEW | n};
     }
     return ms_str_heap_copy(p, n); /* owned, whatever its length */
 }
 
-static bool same(const ms_str *s, const uint8_t *p, size_t n) {
+static bool same(const MsStr *s, const uint8_t *p, size_t n) {
     return ms_str_len(s) == n && memcmp(ms_str_data(s), p, n) == 0;
 }
 
 /* Inline strings keep the bytes past their length zero, so equal inline strings have equal words. */
-static void check_shape(const ms_str *s) {
+static void check_shape(const MsStr *s) {
     if (ms_str_is_inline(s)) {
         uint8_t raw[16];
         memcpy(raw, &s->ptr_word, 8);
@@ -91,7 +92,8 @@ static size_t naive_split(const uint8_t *t, size_t n, const uint8_t *sep, size_t
     if (m == 0) {
         while (pos < n) {
             size_t w = ms_utf8_decode(t + pos, n - pos).width;
-            off[k] = pos, len[k++] = w;
+            off[k] = pos;
+            len[k++] = w;
             pos += w;
         }
         return k;
@@ -99,18 +101,20 @@ static size_t naive_split(const uint8_t *t, size_t n, const uint8_t *sep, size_t
     for (;;) {
         size_t p = naive_find(t + pos, n - pos, sep, m);
         if (p == SIZE_MAX) {
-            off[k] = pos, len[k++] = n - pos;
+            off[k] = pos;
+            len[k++] = n - pos;
             return k;
         }
-        off[k] = pos, len[k++] = p;
+        off[k] = pos;
+        len[k++] = p;
         pos += p + m;
     }
 }
 
-static void free_list(ms_vec *v) {
+static void free_list(MsVec *v) {
     for (size_t i = 0; i < v->len; i++) {
-        check_shape(&((ms_str *)v->ptr)[i]);
-        ms_str_release(&((ms_str *)v->ptr)[i]);
+        check_shape(&((MsStr *)v->ptr)[i]);
+        ms_str_release(&((MsStr *)v->ptr)[i]);
     }
     if (v->cap) {
         msrt_free(v->ptr);
@@ -121,12 +125,15 @@ static size_t naive_replace(const uint8_t *t, size_t n, const uint8_t *o, size_t
     size_t w = 0, pos = 0;
     if (m == 0) {
         for (;;) {
-            memcpy(out + w, r, k), w += k;
+            memcpy(out + w, r, k);
+            w += k;
             if (pos >= n) {
                 return w;
             }
             size_t c = ms_utf8_decode(t + pos, n - pos).width;
-            memcpy(out + w, t + pos, c), w += c, pos += c;
+            memcpy(out + w, t + pos, c);
+            w += c;
+            pos += c;
         }
     }
     for (;;) {
@@ -135,8 +142,10 @@ static size_t naive_replace(const uint8_t *t, size_t n, const uint8_t *o, size_t
             memcpy(out + w, t + pos, n - pos);
             return w + n - pos;
         }
-        memcpy(out + w, t + pos, p), w += p;
-        memcpy(out + w, r, k), w += k;
+        memcpy(out + w, t + pos, p);
+        w += p;
+        memcpy(out + w, r, k);
+            w += k;
         pos += p + m;
     }
 }
@@ -150,12 +159,12 @@ int main(void) {
         size_t m = random_text(sep, 3, alpha), k = random_text(rep, 3, alpha);
         uint8_t *m1, *m2, *m3;
         int kind = (int)(rnd() % 3);
-        ms_str s = make(text, n, kind, &m1), sp = make(sep, m, (int)(rnd() % 3), &m2), rp = make(rep, k, (int)(rnd() % 3), &m3);
+        MsStr s = make(text, n, kind, &m1), sp = make(sep, m, (int)(rnd() % 3), &m2), rp = make(rep, k, (int)(rnd() % 3), &m3);
 
         size_t cnt = naive_split(text, n, sep, m, off, len);
         for (int mode = 0; mode < 3; mode++) {
-            ms_vec v;
-            ms_str frame[8];
+            MsVec v;
+            MsStr frame[8];
             if (mode == 0) {
                 msrt_string_split(&s, &sp, &v);
             } else if (mode == 1) {
@@ -165,19 +174,19 @@ int main(void) {
             }
             CHECK(v.len == cnt);
             for (size_t i = 0; i < cnt; i++) {
-                CHECK(same(&((ms_str *)v.ptr)[i], text + off[i], len[i]));
+                CHECK(same(&((MsStr *)v.ptr)[i], text + off[i], len[i]));
             }
             if (mode == 2 && v.cap == 0 && v.ptr) {
-                CHECK(v.ptr == (uint8_t *)frame && cnt <= 8);
+                CHECK(v.ptr == (void *)frame && cnt <= 8);
                 for (size_t i = 0; i < v.len; i++) {
-                    check_shape(&((ms_str *)v.ptr)[i]);
+                    check_shape(&((MsStr *)v.ptr)[i]);
                 }
             } else {
                 free_list(&v);
             }
         }
         if (n > 0 || m > 0) {
-            ms_str first;
+            MsStr first;
             if (n == 0 && m != 0) {
                 /* the first piece of an empty text is the empty string */
             }
@@ -189,7 +198,7 @@ int main(void) {
         }
 
         size_t wn = naive_replace(text, n, sep, m, rep, k, want);
-        ms_str out;
+        MsStr out;
         msrt_string_replace(&s, &sp, &rp, &out);
         CHECK(same(&out, want, wn));
         check_shape(&out);
@@ -210,7 +219,7 @@ int main(void) {
         ms_str_release(&out);
 
         /* replace_take consumes an owned copy. */
-        ms_str own = ms_str_heap_copy(text, n);
+        MsStr own = ms_str_heap_copy(text, n);
         if (n <= MS_STR_INLINE_MAX) {
             ms_str_release(&own);
             own = ms_str_from_bytes(text, n);
@@ -224,7 +233,9 @@ int main(void) {
         ms_str_release(&s);
         ms_str_release(&sp);
         ms_str_release(&rp);
-        free(m1), free(m2), free(m3);
+        free(m1);
+        free(m2);
+        free(m3);
     }
 
     /* Long texts: the prepared search path (128 bytes or more) and a result over the inline size. */
@@ -234,28 +245,29 @@ int main(void) {
         big[i] = (uint8_t)("abcdefgh, \n"[rnd() % 11]);
     }
     const uint8_t pat[] = "abc, d";
-    ms_str s = ms_str_heap_copy(big, BIG), sp = ms_str_from_bytes(pat, sizeof pat - 1), rp = ms_str_from_bytes((const uint8_t *)"XYZ12345", 8);
-    ms_vec v;
+    MsStr s = ms_str_heap_copy(big, BIG), sp = ms_str_from_bytes(pat, sizeof pat - 1), rp = ms_str_from_bytes((const uint8_t *)"XYZ12345", 8);
+    MsVec v;
     msrt_string_split(&s, &sp, &v);
     CHECK(v.len == ms_count(big, BIG, pat, sizeof pat - 1) + 1);
     free_list(&v);
     uint8_t *ref = malloc(BIG * 2), *got_src = malloc(BIG);
-    ms_str out;
+    MsStr out;
     for (int shrink = 0; shrink < 2; shrink++) {
-        ms_str r = shrink ? ms_str_from_bytes((const uint8_t *)"Q", 1) : rp;
+        MsStr r = shrink ? ms_str_from_bytes((const uint8_t *)"Q", 1) : rp;
         size_t rl = ms_str_len(&r), wn = naive_replace(big, BIG, pat, sizeof pat - 1, ms_str_data(&r), rl, ref);
         msrt_string_replace(&s, &sp, &r, &out);
         CHECK(same(&out, ref, wn));
         check_shape(&out);
         ms_str_release(&out);
         memcpy(got_src, big, BIG);
-        ms_str own = ms_str_heap_copy(got_src, BIG);
+        MsStr own = ms_str_heap_copy(got_src, BIG);
         msrt_string_replace_take(&own, &sp, &r, &out);
         CHECK(same(&out, ref, wn));
         check_shape(&out);
         ms_str_release(&out);
     }
-    free(ref), free(got_src);
+    free(ref);
+    free(got_src);
     free(big);
     ms_str_release(&s);
     ms_str_release(&sp);

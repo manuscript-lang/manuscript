@@ -6,8 +6,6 @@ compiler/src/lex.c
 compiler/src/libms.c
 compiler/src/libms_api.c
 compiler/src/parse.c
-runtime/core/string.c
-runtime/core/utf8.c
 runtime/fuzz/http1_fuzz.c
 runtime/fuzz/num_fuzz.c
 runtime/io/reactor.c
