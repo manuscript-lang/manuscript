@@ -1,10 +1,10 @@
 /* libms: the public entry points of the compiler library.
  *
  * Every stage of the pipeline has one entry point here and one slot in the stage table
- * (`ms_stage_impl`). A stage is either implemented in C or still served by the Rust toolchain; the
+ * (`ms_stage_table_default`). A stage is either implemented in C or still served by the Rust toolchain; the
  * driver (driver.h) runs a command in C only when every stage it needs is in C, and otherwise hands
  * the whole command to the Rust `ms`. Porting a stage means adding its entry point below, writing
- * it in `compiler/src`, and flipping its row in `ms_stage_impl`; no caller changes.
+ * it in `compiler/src`, and flipping its row in `ms_stage_table_default`; no caller changes.
  *
  * No global state: a MsCompiler owns the names and the arena of one compilation. */
 #ifndef MS_LIBMS_H
@@ -12,6 +12,7 @@
 
 #include "ms/ast.h"
 #include "ms/base.h"
+#include "ms_rt/safe.h"
 
 /* ---- stages ---- */
 
@@ -29,8 +30,16 @@ typedef enum MsStage {
 typedef enum MsImpl { MS_IMPL_RUST, MS_IMPL_C } MsImpl;
 
 const char *ms_stage_name(MsStage stage);
-/* Where a stage runs today. `MS_STAGES=parse=rust,...` overrides it for comparison runs. */
-MsImpl ms_stage_impl(MsStage stage);
+
+/* Where each stage runs. A value, not a global: the caller owns its table. */
+typedef struct MsStageTable {
+    MsImpl impl[MS_STAGE_COUNT];
+} MsStageTable;
+
+MsStageTable ms_stage_table_default(void);
+/* Applies "parse=rust,check=c" (stage=impl, comma separated) over `table`. Returns false and leaves
+ * the table untouched when an item names no stage or implementation. */
+MS_NODISCARD bool ms_stage_table_override(MsStageTable *table, const char *spec);
 
 /* ---- one compilation ---- */
 

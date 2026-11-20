@@ -4,6 +4,7 @@
 
 Checking, lowering, MIR, Cranelift, build, fault sites.
 
+- [The C parser returns false on failure and speculation restores a checkpoint](the-c-parser-returns-false-on-failure-and-speculation-restores-a-checkpoint.md): `longjmp` is banned; node ids are spent on abandoned attempts exactly as in Rust.
 - [Fallible native calls share one error builder](fallible-native-calls-share-one-error-builder.md): the status-to-`Error` chain was inlined at every call site (web server MIR 12,070 to 6,414 lines, binary 3.96 to 3.65 MB).
 - [Callback adapters do not change generic type identity](callback-adapters-do-not-change-generic-type-identity.md): reader conversion applies at a callable value boundary; implementation overlap and receiver matching preserve nested callback modes.
 

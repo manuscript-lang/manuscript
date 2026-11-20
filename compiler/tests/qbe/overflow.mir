@@ -1,0 +1,11 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %m: int = iconst 9223372036854775807
+  %one: int = iconst 1
+  %r: int = iadd.chk %m, %one
+  ret %r
+}

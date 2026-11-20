@@ -1515,6 +1515,16 @@ pub unsafe extern "C-unwind" fn msrt_fault(msg: *const u8, len: usize) -> ! {
     fault(unsafe { core::slice::from_raw_parts(msg, len) })
 }
 
+/// Raises a fault of the family `kind` (a `FaultKind` code) for the C runtime, whose faults keep
+/// their family in the structured record. Glue until the C fault module replaces this one.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msfault_raise(kind: u8, msg: *const u8, len: usize) -> ! {
+    // SAFETY: caller passes a readable range.
+    fault_kind(FaultKind::from_code(kind), unsafe {
+        core::slice::from_raw_parts(msg, len)
+    })
+}
+
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_fault_string(s: *const ms_rt_abi::StrVal) -> ! {
