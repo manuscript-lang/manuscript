@@ -17,17 +17,15 @@ uint32_t mir_extern_get(MirModule *m, const char *name, const MirTy *params, uin
 bool mir_drops_plain_memory(const MirModule *m, MirTy ty);
 
 /* A copy of `args` in the module's arena. */
-const MirValue *mir_args_copy(MirModule *m, const MirValue *args, uint32_t n);
+MirValue *mir_args_copy(MirModule *m, const MirValue *args, uint32_t n);
 
 /* Instruction and immediate constructors; the argument array is borrowed, so pass an arena copy. */
-MirInst mir_inst(MirOp op, MirImm imm, MirValue res, MirLoc loc, const MirValue *args, uint32_t n);
+MirInst mir_inst(MirOp op, MirImm imm, MirValue res, MirLoc loc, MirValue *args, uint32_t n);
 MirImm mir_imm_none(void);
 MirImm mir_imm_int(int64_t v);
 MirImm mir_imm_cc(MirCc cc);
 MirImm mir_imm_ext(uint32_t ext);
 
-/* Inserts `inst` into `b` before position `at`. */
-void mir_block_insert(MirModule *m, MirBlockData *b, uint32_t at, MirInst inst);
 
 /* ---- passes ---- */
 

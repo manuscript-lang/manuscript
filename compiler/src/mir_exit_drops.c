@@ -6,6 +6,7 @@
  * handle is never skipped (`mir_drops_plain_memory`). Port of exit_drops.rs. */
 #include <string.h>
 
+#include "ms/mir_analysis.h"
 #include "ms/mir_pass.h"
 
 /* Instructions that may sit between the exit drops and the return. */
@@ -57,8 +58,8 @@ static void xd_gate_run(MirModule *m, MirFunc *f, uint32_t block, uint32_t start
     for (uint32_t i = 0; i < run; i++) {
         plain[i] = xd_drop_is_plain(m, f, &b->insts[start + i]);
     }
-    mir_block_insert(m, b, start,
-                     mir_inst(MOP_CallRt, mir_imm_ext(gate), flag, loc, mir_args_copy(m, NULL, 0), 0));
+    MirInst call = mir_inst(MOP_CallRt, mir_imm_ext(gate), flag, loc, mir_args_copy(m, NULL, 0), 0);
+    mir_block_insert(m, b, start, &call);
     for (uint32_t i = 0; i < run; i++) {
         MirInst *inst = &b->insts[start + 1 + i];
         if (!plain[i]) {

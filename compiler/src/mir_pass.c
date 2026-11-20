@@ -98,7 +98,7 @@ bool mir_drops_plain_memory(const MirModule *m, MirTy ty) {
     return plain;
 }
 
-const MirValue *mir_args_copy(MirModule *m, const MirValue *args, uint32_t n) {
+MirValue *mir_args_copy(MirModule *m, const MirValue *args, uint32_t n) {
     MirValue *copy = MS_NEW_N(&m->arena, MirValue, n ? n : 1);
     if (n > 0) {
         memcpy(copy, args, sizeof(MirValue) * n);
@@ -106,7 +106,7 @@ const MirValue *mir_args_copy(MirModule *m, const MirValue *args, uint32_t n) {
     return copy;
 }
 
-MirInst mir_inst(MirOp op, MirImm imm, MirValue res, MirLoc loc, const MirValue *args,
+MirInst mir_inst(MirOp op, MirImm imm, MirValue res, MirLoc loc, MirValue *args,
                  uint32_t n) {
     return (MirInst){.op = (uint8_t)op, .imm = imm, .res = res, .loc = loc, .args = args,
                      .nargs = n};
@@ -116,15 +116,3 @@ MirImm mir_imm_none(void) { return (MirImm){.tag = MI_NONE}; }
 MirImm mir_imm_int(int64_t v) { return (MirImm){.tag = MI_INT, .i = v}; }
 MirImm mir_imm_cc(MirCc cc) { return (MirImm){.tag = MI_CC, .a = (uint32_t)cc}; }
 MirImm mir_imm_ext(uint32_t ext) { return (MirImm){.tag = MI_EXT, .a = ext}; }
-
-void mir_block_insert(MirModule *m, MirBlockData *b, uint32_t at, MirInst inst) {
-    MirInst last = inst;
-    if (b->ninsts > at) {
-        last = b->insts[b->ninsts - 1];
-    }
-    MIR_PUSH(m, b->insts, b->ninsts, b->cinsts, MirInst, last);
-    if (at < b->ninsts - 1) {
-        memmove(&b->insts[at + 1], &b->insts[at], sizeof(MirInst) * (b->ninsts - 1 - at));
-    }
-    b->insts[at] = inst;
-}
