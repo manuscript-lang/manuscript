@@ -2,7 +2,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "ms_rt.h"
+#include "ms_rt/num.h"
 
 static void check(bool ok, int line, const char *text) {
     if (!ok) {

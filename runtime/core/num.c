@@ -1,5 +1,5 @@
 /* Number primitives with no runtime state. Ported from crates/ms-rt/src/num.rs. */
-#include "ms_rt.h"
+#include "ms_rt/num.h"
 
 /* Float.compare: a total order in which -0.0 == 0.0 and NaN is equal to itself and sorts last. */
 int64_t msrt_float_compare(double a, double b) {

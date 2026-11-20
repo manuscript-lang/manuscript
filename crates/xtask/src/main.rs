@@ -240,20 +240,97 @@ fn abi_kind(text: &str) -> String {
     text.into()
 }
 
-/// Every symbol of `runtime/c-symbols.txt` has a prototype in `runtime/include/ms_rt.h` with the parameters and
-/// result of its recorded signature, and every C function the header declares is listed (the two cannot drift).
+/// `runtime/symbols/<module>.txt` lists the symbols `runtime/include/ms_rt/<module>.h` declares and C defines.
+/// Every listed symbol has a prototype in its module's header with the parameters and result of its recorded
+/// signature, and every function the header declares is listed (the two cannot drift).
 fn check_c_abi(
     root: &Path,
     table: &std::collections::BTreeMap<String, String>,
 ) -> Result<(), String> {
-    let listed = std::fs::read_to_string(root.join("runtime/c-symbols.txt")).unwrap_or_default();
-    let listed: std::collections::BTreeSet<&str> = listed
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty() && !l.starts_with('#'))
-        .collect();
-    let header = std::fs::read_to_string(root.join("runtime/include/ms_rt.h"))
-        .map_err(|e| format!("runtime/include/ms_rt.h: {e}"))?;
+    let read_dir = |dir: &str, ext: &str| -> Result<Vec<PathBuf>, String> {
+        let mut found: Vec<PathBuf> = std::fs::read_dir(root.join(dir))
+            .map_err(|e| format!("{dir}: {e}"))?
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e == ext))
+            .collect();
+        found.sort();
+        Ok(found)
+    };
+    let mut seen = std::collections::BTreeSet::new();
+    for list in read_dir("runtime/symbols", "txt")? {
+        let module = list.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        let listed = std::fs::read_to_string(&list).map_err(|e| e.to_string())?;
+        let listed: std::collections::BTreeSet<&str> = listed
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            .collect();
+        let header_path = root.join(format!("runtime/include/ms_rt/{module}.h"));
+        let header = std::fs::read_to_string(&header_path)
+            .map_err(|e| format!("{}: {e}", header_path.display()))?;
+        let declared = c_prototypes(&header);
+        for name in &listed {
+            if !seen.insert(name.to_string()) {
+                return Err(format!("{name} is listed in two runtime/symbols files"));
+            }
+            let Some((params, ret)) = declared.get(*name) else {
+                return Err(format!(
+                    "{name} is in runtime/symbols/{module}.txt but not declared in ms_rt/{module}.h"
+                ));
+            };
+            let Some(line) = table.get(*name) else {
+                return Err(format!(
+                    "{name} is in runtime/symbols/{module}.txt but not a runtime function"
+                ));
+            };
+            let (rust_params, rust_ret) = line
+                .split_once('(')
+                .and_then(|(_, r)| r.rsplit_once(')'))
+                .map(|(p, r)| {
+                    (
+                        p,
+                        r.trim().strip_prefix("->").map(str::trim).unwrap_or("()"),
+                    )
+                })
+                .ok_or_else(|| format!("{name}: unreadable signature `{line}`"))?;
+            let rust_params: Vec<String> = rust_params
+                .split(',')
+                .filter(|p| !p.trim().is_empty())
+                .map(|p| abi_kind(p.split_once(':').map_or(p, |(_, t)| t)))
+                .collect();
+            let rust_ret = if rust_ret == "()" {
+                "void".to_string()
+            } else {
+                abi_kind(rust_ret)
+            };
+            if &rust_params != params || &rust_ret != ret {
+                return Err(format!(
+                    "{name}: ms_rt/{module}.h says ({}) -> {ret}, the runtime signature is ({}) -> {rust_ret}",
+                    params.join(", "),
+                    rust_params.join(", ")
+                ));
+            }
+        }
+        if let Some(name) = declared.keys().find(|n| !listed.contains(n.as_str())) {
+            return Err(format!(
+                "{name} is declared in ms_rt/{module}.h but not in runtime/symbols/{module}.txt"
+            ));
+        }
+    }
+    for header in read_dir("runtime/include/ms_rt", "h")? {
+        let module = header.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        if module != "base" && !root.join(format!("runtime/symbols/{module}.txt")).exists() {
+            return Err(format!(
+                "ms_rt/{module}.h has no runtime/symbols/{module}.txt"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The `msrt_*`/`msstd_*` prototypes of a module header as `name -> (parameter kinds, result kind)`.
+fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>, String)> {
     let mut declared = std::collections::BTreeMap::new();
     for line in header.lines() {
         let Some((head, rest)) = line.split_once('(') else {
@@ -284,51 +361,7 @@ fn check_c_abi(
             .collect();
         declared.insert(name.to_string(), (params, ret));
     }
-    for name in &listed {
-        let Some((params, ret)) = declared.get(*name) else {
-            return Err(format!(
-                "{name} is in runtime/c-symbols.txt but not declared in ms_rt.h"
-            ));
-        };
-        let Some(line) = table.get(*name) else {
-            return Err(format!(
-                "{name} is in runtime/c-symbols.txt but not a runtime function"
-            ));
-        };
-        let (rust_params, rust_ret) = line
-            .split_once('(')
-            .and_then(|(_, r)| r.rsplit_once(')'))
-            .map(|(p, r)| {
-                (
-                    p,
-                    r.trim().strip_prefix("->").map(str::trim).unwrap_or("()"),
-                )
-            })
-            .ok_or_else(|| format!("{name}: unreadable signature `{line}`"))?;
-        let rust_params: Vec<String> = rust_params
-            .split(',')
-            .filter(|p| !p.trim().is_empty())
-            .map(|p| abi_kind(p.split_once(':').map_or(p, |(_, t)| t)))
-            .collect();
-        let rust_ret = if rust_ret == "()" {
-            "void".to_string()
-        } else {
-            abi_kind(rust_ret)
-        };
-        if &rust_params != params || &rust_ret != ret {
-            return Err(format!(
-                "{name}: ms_rt.h says ({}) -> {ret}, the runtime signature is ({}) -> {rust_ret}",
-                params.join(", "),
-                rust_params.join(", ")
-            ));
-        }
-    }
-    if let Some(name) = declared.keys().find(|n| !listed.contains(n.as_str())) {
-        return Err(format!(
-            "{name} is declared in ms_rt.h but not in runtime/c-symbols.txt"
-        ));
-    }
-    Ok(())
+    declared
 }
 
 fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -639,7 +672,7 @@ fn build_archive(
         ])
         .arg(root.join("Cargo.toml"))
         .env("CARGO_TARGET_DIR", target)
-        // `ms-rt`'s build script compiles out the Rust definition of every symbol in `runtime/c-symbols.txt`.
+        // `ms-rt`'s build script compiles out the Rust definition of every symbol in `runtime/symbols/<module>.txt`.
         .env("MS_C_RUNTIME", "1")
         // The runtime ships without debug info; symbol names are enough for the profiler.
         .env("CARGO_PROFILE_RELEASE_DEBUG", "0")
@@ -676,10 +709,10 @@ fn build_archive(
     Ok(archive)
 }
 
-/// Whether this archive uses the libuv reactor (`runtime/io`): the glibc Linux build, when `MS_C_LIBS` names a
+/// Whether this archive uses the libuv reactor (`runtime/io`): the glibc Linux build, when `MS_UV_DIR` names a
 /// folder holding libuv. Other targets keep the mio poller until `io` builds for them (workstream W0 and W5).
 fn c_reactor(triple: Option<&str>) -> bool {
-    std::env::var_os("MS_C_LIBS").is_some()
+    std::env::var_os("MS_UV_DIR").is_some()
         && std::env::consts::OS == "linux"
         && triple.is_none_or(|t| t.ends_with("linux-gnu"))
 }
@@ -703,7 +736,7 @@ fn c_sources(dir: &Path, found: &mut Vec<PathBuf>) {
 }
 
 /// Compiles `runtime/**/*.c` for `triple` and adds the objects to `archive`, where they define the
-/// symbols the Rust runtime compiled out (`runtime/c-symbols.txt`). The sources include only
+/// symbols the Rust runtime compiled out (`runtime/symbols/<module>.txt`). The sources include only
 /// freestanding headers, so one clang call per file serves glibc, musl and mingw targets alike.
 fn add_c_runtime(
     root: &Path,
@@ -718,7 +751,7 @@ fn add_c_runtime(
         c_sources(&runtime.join(layer), &mut sources);
     }
     let libuv =
-        c_reactor(triple).then(|| PathBuf::from(std::env::var_os("MS_C_LIBS").unwrap_or_default()));
+        c_reactor(triple).then(|| PathBuf::from(std::env::var_os("MS_UV_DIR").unwrap_or_default()));
     if libuv.is_some() {
         c_sources(&runtime.join("io"), &mut sources);
     }
