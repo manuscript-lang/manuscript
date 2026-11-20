@@ -74,8 +74,10 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             MsBuf dump = {0};
             if (bodies) {
                 ms_module_check_bodies(check, id);
-                ms_module_check_ownership(check, id);
                 if (ownership) {
+                    // The ownership walk narrows `body_checked` to the functions it handles, so it
+                    // runs only for its own comparison; the body comparison sees every claim.
+                    ms_module_check_ownership(check, id);
                     ms_dump_module_ownership(&dump, check, id);
                 } else {
                     ms_dump_module_bodies(&dump, check, id);
