@@ -586,7 +586,8 @@ static bool lb_signature(Lb *lb, const MsFunc *fn, MsSymId sym, MirParam *params
     *ret = lb_mir_ty(lb, lb->c->tys.result[sig]);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MirTy ty = lb_mir_ty(lb, sig_params[i].ty);
-        if (ty == MIR_NONE) {
+        // `var` and `move` parameters need a pass-by-reference and a hand-over this pass does not lower yet.
+        if (ty == MIR_NONE || fn->params.ptr[i]->is_mutable || fn->params.ptr[i]->moving) {
             return false;
         }
         params[i] = (MirParam){ty, MM_BORROW};
