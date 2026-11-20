@@ -180,9 +180,9 @@ pub fn plan_c_runtime(root: &Path, triple: Option<&str>) -> Result<CRuntime, Str
     sources.sort();
     let wired = c_libs_wired(triple);
     // The libuv reactor replaces the mio poller. It joins the glibc Linux archive, where the corpus passes with
-    // it; musl, macOS and Windows keep mio until their builds are proven (workstream W5).
+    // it, and the macOS archive (kqueue); musl and Windows keep mio until their builds are proven (workstream W5).
     let io = runtime.join("io");
-    let reactor = platform.contains(&"glibc");
+    let reactor = platform.contains(&"glibc") || platform.contains(&"darwin");
     sources.retain(|s| (wired || libraries_of(s).is_empty()) && (reactor || !s.starts_with(&io)));
     // The PCRE2 regex natives change the pattern dialect, so they join every target together (workstream W8):
     // opt-in with `MS_C_REGEX=1` until Windows has the libraries too. Removal: delete this filter with `ms-std-regex`.
