@@ -835,6 +835,12 @@ static void own_returned_borrow_call(OwnWalk *w, const MsExpr *e) {
     own_expr(w, e, DEMAND_READ);
 }
 
+/* Whether the call goes through a function-typed local: its result is a new value. */
+static bool own_is_value_call(const OwnWalk *w, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    return callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_BINDING;
+}
+
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
@@ -846,7 +852,7 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE);
         return;
     }
-    if (e->kind == MS_E_CALL && !own_is_constructor(w, e)) {
+    if (e->kind == MS_E_CALL && !own_is_constructor(w, e) && !own_is_value_call(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
         if (callee == NULL || (callee->returns_borrow && own_is_self_call(w, e))) {
             w->supported = false;
