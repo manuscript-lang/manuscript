@@ -34,7 +34,8 @@ const TYPE_FAMILIES: [&str; 12] = [
 ];
 
 use ms_check::api::ast::{
-    Decl, DeclKind, Expr, ExprKind, NodeId, Param, Stmt, StmtKind, TextPart, TypeKind, TypeParam, TypeRef,
+    Decl, DeclKind, Expr, ExprKind, NodeId, Param, Stmt, StmtKind, TextPart, TypeKind, TypeParam,
+    TypeRef,
 };
 use std::collections::BTreeSet;
 
