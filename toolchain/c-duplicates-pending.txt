@@ -13,9 +13,6 @@ digit_value
 discover_path_order
 fmt_eq
 fmt_is_space
-gl_cmp
-ic_zeroed
-il_zeroed
 impl_scope_has
 is_inherent
 is_inherent_impl
@@ -27,17 +24,8 @@ mpa_hexval
 ms_text_equal
 only_std_imports
 pt_white
-sb_sweep
-sb_zeroed
 scope_declares
 scope_is_nominal_decl
 scope_symbol_kind
-sf_zeroed
-sm_sweep
-sm_zeroed
 ty_invalid
 unescape
-uw_cmp_u32
-uw_cmp_u32_flow
-uw_in
-uw_list_has

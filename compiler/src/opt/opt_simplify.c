@@ -15,14 +15,34 @@
 
 /* ---- shared helpers (declared in opt_simplify.h) ---- */
 
-static void *sm_zeroed(MsArena *a, size_t n, size_t elem) {
-    void *p = ms_alloc(a, elem * (n + 1), 16);
-    memset(p, 0, elem * (n + 1));
-    return p;
+/* Removes the instructions flagged in `dead[block][index]` from every block. */
+void mir_sweep_dead(MirFunc *f, bool *const *dead, MsArena *arena) {
+    for (uint32_t bi = 0; bi < f->nblocks; bi++) {
+        MirBlockData *b = &f->blocks[bi];
+        uint32_t *list = MS_NEW_N(arena, uint32_t, (size_t)b->ninsts + 1);
+        uint32_t n = 0;
+        for (uint32_t ii = 0; ii < b->ninsts; ii++) {
+            if (dead[bi][ii]) {
+                list[n++] = ii;
+            }
+        }
+        if (n > 0) {
+            mir_block_remove(b, list, n);
+        }
+    }
+}
+
+/* One cleared flag per instruction of each block, for mir_sweep_dead. */
+bool **mir_dead_flags(MsArena *arena, const MirFunc *f) {
+    bool **dead = MS_NEW_N(arena, bool *, (size_t)f->nblocks + 1);
+    for (uint32_t bi = 0; bi < f->nblocks; bi++) {
+        dead[bi] = ms_alloc_zeroed(arena, f->blocks[bi].ninsts, sizeof(bool));
+    }
+    return dead;
 }
 
 MirSubst mir_subst_new(MsArena *arena, uint32_t nvalues) {
-    MirSubst s = {sm_zeroed(arena, nvalues, sizeof(MirValue)), nvalues, 0};
+    MirSubst s = {ms_alloc_zeroed(arena, nvalues, sizeof(MirValue)), nvalues, 0};
     for (uint32_t v = 0; v < nvalues; v++) {
         s.to[v] = MIR_NONE;
     }
@@ -143,30 +163,6 @@ MirInst mir_inst_make(MirModule *m, MirOp op, const MirValue *args, uint32_t nar
 /* ---- helpers for the rewrites below ---- */
 
 /* Removes the instructions flagged in `dead[bi][ii]` from every block. */
-static void sm_sweep(MirFunc *f, bool *const *dead, MsArena *arena) {
-    for (uint32_t bi = 0; bi < f->nblocks; bi++) {
-        MirBlockData *b = &f->blocks[bi];
-        uint32_t *list = MS_NEW_N(arena, uint32_t, (size_t)b->ninsts + 1);
-        uint32_t n = 0;
-        for (uint32_t ii = 0; ii < b->ninsts; ii++) {
-            if (dead[bi][ii]) {
-                list[n++] = ii;
-            }
-        }
-        if (n > 0) {
-            mir_block_remove(b, list, n);
-        }
-    }
-}
-
-static bool **sm_dead_flags(MsArena *arena, const MirFunc *f) {
-    bool **dead = MS_NEW_N(arena, bool *, (size_t)f->nblocks + 1);
-    for (uint32_t bi = 0; bi < f->nblocks; bi++) {
-        dead[bi] = sm_zeroed(arena, f->blocks[bi].ninsts, sizeof(bool));
-    }
-    return dead;
-}
-
 static void sm_term_use_state(void *ctx, MirValue v) {
     uint8_t *state = ctx;
     if (state[v] != 0) {
@@ -182,7 +178,7 @@ static void sm_term_use_add2(void *ctx, MirValue v) {
 /* An `opt.none_owned` whose every use is a drop owns nothing: the `none` and its drops go. */
 static bool sm_dropped_nones(MirFunc *f) {
     MsArena arena = {0};
-    uint8_t *state = sm_zeroed(&arena, f->nvalues, 1); /* 0 not a none, 1 only dropped, 2 used */
+    uint8_t *state = ms_alloc_zeroed(&arena, f->nvalues, 1); /* 0 not a none, 1 only dropped, 2 used */
     bool any = false;
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
@@ -230,8 +226,8 @@ static bool sm_dropped_nones(MirFunc *f) {
 /* An `opt.some` whose only use is its drop never needed the box: drop the payload instead. */
 static bool sm_dropped_somes(MirFunc *f) {
     MsArena arena = {0};
-    uint32_t *uses = sm_zeroed(&arena, f->nvalues, sizeof(uint32_t));
-    bool *dropped = sm_zeroed(&arena, f->nvalues, sizeof(bool));
+    uint32_t *uses = ms_alloc_zeroed(&arena, f->nvalues, sizeof(uint32_t));
+    bool *dropped = ms_alloc_zeroed(&arena, f->nvalues, sizeof(bool));
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         const MirBlockData *b = &f->blocks[bi];
         for (uint32_t ii = 0; ii < b->ninsts; ii++) {
@@ -246,7 +242,7 @@ static bool sm_dropped_somes(MirFunc *f) {
         mir_term_each_value(&b->term, sm_term_use_add2, uses);
     }
     /* Boxes used once, by a drop, with the payload they hold. */
-    MirValue *payload = sm_zeroed(&arena, f->nvalues, sizeof(MirValue));
+    MirValue *payload = ms_alloc_zeroed(&arena, f->nvalues, sizeof(MirValue));
     bool any = false;
     for (uint32_t v = 0; v < f->nvalues; v++) {
         payload[v] = MIR_NONE;
@@ -329,10 +325,10 @@ typedef struct SmAlts {
 } SmAlts;
 
 static bool sm_alts_collect(MirModule *m, const MirFunc *f, MsArena *arena, SmAlts *a) {
-    a->known = sm_zeroed(arena, f->nvalues, sizeof(bool));
-    a->kcase = sm_zeroed(arena, f->nvalues, sizeof(uint32_t));
-    a->kargs = sm_zeroed(arena, f->nvalues, sizeof(MirValue *));
-    a->knargs = sm_zeroed(arena, f->nvalues, sizeof(uint32_t));
+    a->known = ms_alloc_zeroed(arena, f->nvalues, sizeof(bool));
+    a->kcase = ms_alloc_zeroed(arena, f->nvalues, sizeof(uint32_t));
+    a->kargs = ms_alloc_zeroed(arena, f->nvalues, sizeof(MirValue *));
+    a->knargs = ms_alloc_zeroed(arena, f->nvalues, sizeof(uint32_t));
     bool any = false;
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
@@ -385,7 +381,7 @@ static bool sm_dead_alt(const void *ctx, const MirInst *i) {
 /* A value left with only its drop is never observed: delete both. */
 static bool sm_alts_drop_dead(MirFunc *f, MsArena *arena, SmAlts *a) {
     uint32_t *uses = mir_use_counts(arena, f);
-    uint32_t *drops = sm_zeroed(arena, f->nvalues, sizeof(uint32_t));
+    uint32_t *drops = ms_alloc_zeroed(arena, f->nvalues, sizeof(uint32_t));
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
             const MirInst *i = &f->blocks[bi].insts[ii];
@@ -394,7 +390,7 @@ static bool sm_alts_drop_dead(MirFunc *f, MsArena *arena, SmAlts *a) {
             }
         }
     }
-    a->dead = sm_zeroed(arena, f->nvalues, sizeof(bool));
+    a->dead = ms_alloc_zeroed(arena, f->nvalues, sizeof(bool));
     bool any = false;
     for (uint32_t v = 0; v < f->nvalues; v++) {
         a->dead[v] = a->known[v] && uses[v] > 0 && uses[v] == drops[v];
@@ -437,8 +433,8 @@ typedef struct SmBoxes {
 
 /* Every `iface.new` of a payload that needs no drop, and the `iface.data` pointers into them. */
 static bool sm_boxes_collect(MirModule *m, const MirFunc *f, MsArena *arena, SmBoxes *x) {
-    x->boxed = sm_zeroed(arena, f->nvalues, sizeof(MirValue));
-    x->pointers = sm_zeroed(arena, f->nvalues, sizeof(MirValue));
+    x->boxed = ms_alloc_zeroed(arena, f->nvalues, sizeof(MirValue));
+    x->pointers = ms_alloc_zeroed(arena, f->nvalues, sizeof(MirValue));
     for (uint32_t v = 0; v < f->nvalues; v++) {
         x->boxed[v] = x->pointers[v] = MIR_NONE;
     }
@@ -469,7 +465,7 @@ static bool sm_boxes_collect(MirModule *m, const MirFunc *f, MsArena *arena, SmB
  * payload type. */
 static void sm_boxes_count(const MirFunc *f, MsArena *arena, SmBoxes *x) {
     x->uses = mir_use_counts(arena, f);
-    x->handled = sm_zeroed(arena, f->nvalues, sizeof(uint32_t));
+    x->handled = ms_alloc_zeroed(arena, f->nvalues, sizeof(uint32_t));
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
             const MirInst *i = &f->blocks[bi].insts[ii];
@@ -489,7 +485,7 @@ static void sm_boxes_count(const MirFunc *f, MsArena *arena, SmBoxes *x) {
 
 /* Keeps only the boxes nothing else touches; false when none is left. */
 static bool sm_boxes_prune(const MirFunc *f, MsArena *arena, SmBoxes *x) {
-    bool *unplain_owner = sm_zeroed(arena, f->nvalues, sizeof(bool));
+    bool *unplain_owner = ms_alloc_zeroed(arena, f->nvalues, sizeof(bool));
     for (uint32_t p = 0; p < f->nvalues; p++) {
         if (x->pointers[p] != MIR_NONE && x->handled[p] != x->uses[p]) {
             unplain_owner[x->pointers[p]] = true;
@@ -576,11 +572,11 @@ static MirValue sm_list_element(const SmLists *x, const MirInst *i) {
 /* The integer constants, and the `list.lit`s whose elements need no drop. */
 static bool sm_lists_collect(MirModule *m, const MirFunc *f, MsArena *arena, SmLists *x) {
     const uint32_t n = f->nvalues;
-    x->is_const = sm_zeroed(arena, n, sizeof(bool));
-    x->consts = sm_zeroed(arena, n, sizeof(int64_t));
-    x->known = sm_zeroed(arena, n, sizeof(bool));
-    x->items = sm_zeroed(arena, n, sizeof(MirValue *));
-    x->nitems = sm_zeroed(arena, n, sizeof(uint32_t));
+    x->is_const = ms_alloc_zeroed(arena, n, sizeof(bool));
+    x->consts = ms_alloc_zeroed(arena, n, sizeof(int64_t));
+    x->known = ms_alloc_zeroed(arena, n, sizeof(bool));
+    x->items = ms_alloc_zeroed(arena, n, sizeof(MirValue *));
+    x->nitems = ms_alloc_zeroed(arena, n, sizeof(uint32_t));
     bool any = false;
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
@@ -605,7 +601,7 @@ static bool sm_lists_collect(MirModule *m, const MirFunc *f, MsArena *arena, SmL
 /* Keeps only the literals nothing but folded reads, `list.len` and drops touch. */
 static bool sm_lists_prune(const MirFunc *f, MsArena *arena, SmLists *x) {
     uint32_t *uses = mir_use_counts(arena, f);
-    uint32_t *folded = sm_zeroed(arena, f->nvalues, sizeof(uint32_t));
+    uint32_t *folded = ms_alloc_zeroed(arena, f->nvalues, sizeof(uint32_t));
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
             const MirInst *i = &f->blocks[bi].insts[ii];
@@ -781,7 +777,7 @@ static bool sm_roundtrips(MirFunc *f) {
     bool changed = false;
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         MirBlockData *b = &f->blocks[bi];
-        bool *removed = sm_zeroed(&arena, b->ninsts, sizeof(bool));
+        bool *removed = ms_alloc_zeroed(&arena, b->ninsts, sizeof(bool));
         bool any = false;
         for (uint32_t i = 0; i < b->ninsts; i++) {
             SmRoundtrip rt;
@@ -842,7 +838,7 @@ static bool sm_shields(MirModule *m, MirFunc *f) {
     bool changed = false;
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         MirBlockData *b = &f->blocks[bi];
-        bool *removed = sm_zeroed(&arena, b->ninsts, sizeof(bool));
+        bool *removed = ms_alloc_zeroed(&arena, b->ninsts, sizeof(bool));
         bool is_open = false;
         uint32_t at = 0, count = 0;
         for (uint32_t i = 0; i < b->ninsts; i++) {
@@ -880,7 +876,7 @@ static bool sm_shields(MirModule *m, MirFunc *f) {
 static bool sm_put_takes(MirFunc *f) {
     MsArena arena = {0};
     MirSubst subst = mir_subst_new(&arena, f->nvalues);
-    bool **dead = sm_dead_flags(&arena, f);
+    bool **dead = mir_dead_flags(&arena, f);
     bool any = false;
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         const MirBlockData *b = &f->blocks[bi];
@@ -907,7 +903,7 @@ static bool sm_put_takes(MirFunc *f) {
         }
     }
     if (any) {
-        sm_sweep(f, (bool *const *)dead, &arena);
+        mir_sweep_dead(f, (bool *const *)dead, &arena);
         mir_subst_apply(f, &subst);
     }
     ms_arena_free(&arena);
@@ -924,8 +920,8 @@ typedef struct SmWork {
 static bool sm_dce(MirModule *m, MirFunc *f) {
     MsArena arena = {0};
     uint32_t *uses = mir_use_counts(&arena, f);
-    uint64_t *removable = sm_zeroed(&arena, f->nvalues, sizeof(uint64_t)); /* position + 1 */
-    bool **dead = sm_dead_flags(&arena, f);
+    uint64_t *removable = ms_alloc_zeroed(&arena, f->nvalues, sizeof(uint64_t)); /* position + 1 */
+    bool **dead = mir_dead_flags(&arena, f);
     uint32_t total = 0;
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         total += f->blocks[bi].ninsts;
@@ -967,7 +963,7 @@ static bool sm_dce(MirModule *m, MirFunc *f) {
         }
     }
     if (changed) {
-        sm_sweep(f, (bool *const *)dead, &arena);
+        mir_sweep_dead(f, (bool *const *)dead, &arena);
     }
     ms_arena_free(&arena);
     return changed;
@@ -987,7 +983,7 @@ typedef struct SmSnapshot {
 
 static SmSnapshot sm_snapshot(MsArena *arena, const MirFunc *f) {
     SmSnapshot s = {MS_NEW_N(arena, MirBlockData, (size_t)f->nblocks + 1),
-                    sm_zeroed(arena, f->nblocks, sizeof(MirCase *)), f->nblocks};
+                    ms_alloc_zeroed(arena, f->nblocks, sizeof(MirCase *)), f->nblocks};
     memcpy(s.blocks, f->blocks, sizeof(MirBlockData) * f->nblocks);
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         const MirTerm *t = &f->blocks[bi].term;

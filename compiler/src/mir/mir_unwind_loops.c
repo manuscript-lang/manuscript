@@ -16,15 +16,6 @@ typedef struct UwChosen {
     uint32_t nstable;
 } UwChosen;
 
-static bool uw_in(const uint32_t *v, uint32_t n, uint32_t x) {
-    for (uint32_t i = 0; i < n; i++) {
-        if (v[i] == x) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static void uw_body_push(UwCx *cx, UwLoop *l, uint32_t b) {
     if (l->nbody == l->cbody) {
         const uint32_t cap = l->cbody ? l->cbody * 2 : 8;
@@ -57,7 +48,7 @@ static UwHash uw_consumed_inside(UwCx *cx, const MirFunc *f, const bool *def, ui
         for (uint32_t k = 0; k < mir_term_ntargets(&blk->term); k++) {
             const MirTarget *t = mir_term_target_const(&blk->term, k);
             const MirBlockData *dest = &f->blocks[t->block];
-            if (!uw_in(l->body, l->nbody, t->block)) {
+            if (!ms_u32_contains(l->body, l->nbody, t->block)) {
                 continue;
             }
             for (uint32_t j = 0; j < t->nargs && j < dest->nparams; j++) {
@@ -101,7 +92,7 @@ static UwChain uw_chain_facts(UwCx *cx, const MirFunc *f, const UwLoop *l) {
         for (uint32_t k = 0; k < mir_term_ntargets(&blk->term); k++) {
             const MirTarget *t = mir_term_target_const(&blk->term, k);
             const MirBlockData *dest = &f->blocks[t->block];
-            if (!uw_in(l->body, l->nbody, t->block)) {
+            if (!ms_u32_contains(l->body, l->nbody, t->block)) {
                 continue;
             }
             for (uint32_t j = 0; j < t->nargs && j < dest->nparams; j++) {
@@ -254,7 +245,7 @@ static UwLoop uw_natural_loop(UwHoist *h, uint32_t hd) {
     uw_body_push(cx, &l, hd);
     while (work.n > 0) {
         const uint32_t b = work.v[--work.n];
-        if (uw_in(l.body, l.nbody, b)) {
+        if (ms_u32_contains(l.body, l.nbody, b)) {
             continue;
         }
         uw_body_push(cx, &l, b);
@@ -269,7 +260,7 @@ static UwLoop uw_natural_loop(UwHoist *h, uint32_t hd) {
             ok = h->f->blocks[b].insts[n].op != MOP_MoveOut;
         }
         for (uint32_t k = 0; k < mir_preds_count(&h->preds, b) && ok && b != hd; k++) {
-            ok = uw_in(l.body, l.nbody, mir_pred(&h->preds, b, k));
+            ok = ms_u32_contains(l.body, l.nbody, mir_pred(&h->preds, b, k));
         }
         if (!ok) {
             l.nbody = 0;
@@ -383,7 +374,7 @@ static void uw_retarget(MirTerm *t, uint32_t from, uint32_t to) {
 static void uw_widen(UwApply *ap, uint32_t li, uint32_t a, uint32_t b, uint32_t fresh) {
     for (uint32_t lj = 0; lj < ap->nbodies; lj++) {
         UwLoop *o = &ap->bodies[lj];
-        if (lj != li && uw_in(o->body, o->nbody, a) && uw_in(o->body, o->nbody, b)) {
+        if (lj != li && ms_u32_contains(o->body, o->nbody, a) && ms_u32_contains(o->body, o->nbody, b)) {
             uw_body_push(ap->cx, o, fresh);
         }
     }
@@ -406,7 +397,7 @@ static void uw_loop_exits(UwApply *ap, uint32_t li, const UwLoop *body, MirValue
         const uint32_t nt = mir_term_ntargets(&f->blocks[b].term);
         for (uint32_t slot = 0; slot < nt; slot++) {
             const MirTarget t = *mir_term_target(&f->blocks[b].term, slot);
-            if (uw_in(body->body, body->nbody, t.block)) {
+            if (ms_u32_contains(body->body, body->nbody, t.block)) {
                 continue;
             }
             const uint32_t out = mir_new_block(ap->cx->m, f);
@@ -436,7 +427,7 @@ static void uw_apply_one(UwApply *ap, uint32_t li, const UwPick *pick) {
     uint32_t *outside = MS_NEW_N(&cx->fn, uint32_t, (size_t)mir_preds_count(&preds, h) + 1);
     uint32_t noutside = 0;
     for (uint32_t i = 0; i < mir_preds_count(&preds, h); i++) {
-        if (!uw_in(body.body, body.nbody, mir_pred(&preds, h, i))) {
+        if (!ms_u32_contains(body.body, body.nbody, mir_pred(&preds, h, i))) {
             outside[noutside++] = mir_pred(&preds, h, i);
         }
     }
@@ -477,9 +468,9 @@ static void uw_apply_one(UwApply *ap, uint32_t li, const UwPick *pick) {
         UwLoop *o = &ap->bodies[lj];
         bool enters = false;
         for (uint32_t i = 0; i < noutside; i++) {
-            enters = enters || uw_in(o->body, o->nbody, outside[i]);
+            enters = enters || ms_u32_contains(o->body, o->nbody, outside[i]);
         }
-        if (lj != li && uw_in(o->body, o->nbody, h) && enters) {
+        if (lj != li && ms_u32_contains(o->body, o->nbody, h) && enters) {
             uw_body_push(cx, o, pre);
         }
     }

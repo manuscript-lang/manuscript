@@ -73,16 +73,11 @@ static void gl_push(MsArena *a, GlVec *vec, uint32_t x) {
     vec->v[vec->n++] = x;
 }
 
-static int gl_cmp(const void *x, const void *y) {
-    const uint32_t a = *(const uint32_t *)x, b = *(const uint32_t *)y;
-    return a < b ? -1 : a > b;
-}
-
 static void gl_sort_unique(GlVec *vec) {
     if (vec->n < 2) {
         return;
     }
-    qsort(vec->v, vec->n, sizeof(uint32_t), gl_cmp);
+    qsort(vec->v, vec->n, sizeof(uint32_t), ms_cmp_u32);
     uint32_t out = 1;
     for (uint32_t i = 1; i < vec->n; i++) {
         if (vec->v[i] != vec->v[out - 1]) {

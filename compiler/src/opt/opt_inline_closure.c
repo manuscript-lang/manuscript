@@ -8,12 +8,6 @@
 #include "opt/opt_inline.h"
 #include "opt/opt_simplify.h"
 
-static void *ic_zeroed(MsArena *arena, size_t count, size_t size) {
-    void *p = ms_alloc(arena, count * size + 1, 8);
-    memset(p, 0, count * size + 1);
-    return p;
-}
-
 /* ---- the closures a function builds ---- */
 
 /* Per value of one function: the closure code and captures when it is a plain-data closure built
@@ -28,10 +22,10 @@ typedef struct IcKnown {
 
 static IcKnown ic_known_new(MsArena *arena, uint32_t nvalues) {
     IcKnown k = {.n = nvalues};
-    k.code = ic_zeroed(arena, nvalues, sizeof(uint32_t));
+    k.code = ms_alloc_zeroed(arena, nvalues, sizeof(uint32_t));
     memset(k.code, 0xff, sizeof(uint32_t) * nvalues);
-    k.caps = ic_zeroed(arena, nvalues, sizeof(MirValue *));
-    k.ncaps = ic_zeroed(arena, nvalues, sizeof(uint32_t));
+    k.caps = ms_alloc_zeroed(arena, nvalues, sizeof(MirValue *));
+    k.ncaps = ms_alloc_zeroed(arena, nvalues, sizeof(uint32_t));
     return k;
 }
 
@@ -78,14 +72,14 @@ typedef struct IcIncoming {
 
 static IcIncoming ic_incoming(MsArena *arena, const MirFunc *f) {
     IcIncoming in = {0};
-    in.base = ic_zeroed(arena, (size_t)f->nblocks + 1, sizeof(uint32_t));
+    in.base = ms_alloc_zeroed(arena, (size_t)f->nblocks + 1, sizeof(uint32_t));
     for (uint32_t b = 0; b < f->nblocks; b++) {
         in.base[b + 1] = in.base[b] + f->blocks[b].nparams;
     }
     const uint32_t rows = in.base[f->nblocks];
-    in.off = ic_zeroed(arena, (size_t)rows + 2, sizeof(uint32_t));
+    in.off = ms_alloc_zeroed(arena, (size_t)rows + 2, sizeof(uint32_t));
     for (uint32_t pass = 0; pass < 2; pass++) {
-        uint32_t *cursor = ic_zeroed(arena, (size_t)rows + 1, sizeof(uint32_t));
+        uint32_t *cursor = ms_alloc_zeroed(arena, (size_t)rows + 1, sizeof(uint32_t));
         for (uint32_t b = 0; b < f->nblocks; b++) {
             for (uint32_t k = 0; k < mir_term_ntargets(&f->blocks[b].term); k++) {
                 const MirTarget *t = mir_term_target_const(&f->blocks[b].term, k);
@@ -103,7 +97,7 @@ static IcIncoming ic_incoming(MsArena *arena, const MirFunc *f) {
             for (uint32_t r = 0; r < rows; r++) {
                 in.off[r + 1] += in.off[r];
             }
-            in.args = ic_zeroed(arena, in.off[rows], sizeof(MirValue));
+            in.args = ms_alloc_zeroed(arena, in.off[rows], sizeof(MirValue));
         }
     }
     return in;
@@ -160,7 +154,7 @@ static bool ic_alias_sweep(const MirFunc *f, const IcIncoming *in, MirValue *ali
  * result: the result itself, `copy` of such a value, and a block parameter each of whose incoming
  * arguments is such a value (or the parameter itself, on a loop back edge). */
 static MirValue *ic_aliases(MsArena *arena, const MirFunc *f, const IcKnown *roots) {
-    MirValue *alias = ic_zeroed(arena, f->nvalues, sizeof(MirValue));
+    MirValue *alias = ms_alloc_zeroed(arena, f->nvalues, sizeof(MirValue));
     memset(alias, 0xff, sizeof(MirValue) * f->nvalues);
     for (uint32_t v = 0; v < f->nvalues; v++) {
         alias[v] = ic_known_has(roots, v) ? v : MIR_NONE;
@@ -293,8 +287,8 @@ static bool ic_delete_unused(MirModule *m, uint32_t fi) {
     }
     const IcIncoming in = ic_incoming(&arena, f);
     IcDelete d = {.alias = ic_aliases(&arena, f, &roots), .base = in.base};
-    d.live = ic_zeroed(&arena, f->nvalues, sizeof(bool));
-    d.dead_param = ic_zeroed(&arena, in.base[f->nblocks], sizeof(bool));
+    d.live = ms_alloc_zeroed(&arena, f->nvalues, sizeof(bool));
+    d.dead_param = ms_alloc_zeroed(&arena, in.base[f->nblocks], sizeof(bool));
     for (uint32_t b = 0; b < f->nblocks; b++) {
         ic_note_block(&d, f, &f->blocks[b]);
     }
@@ -351,7 +345,7 @@ static bool ic_closure_body(MirModule *m, const MirFunc *f, MirFunc *out) {
     }
     mir_func_deep_clone(m, f, out);
     MsArena arena = {0};
-    MirValue *sub = ic_zeroed(&arena, f->nvalues, sizeof(MirValue));
+    MirValue *sub = ms_alloc_zeroed(&arena, f->nvalues, sizeof(MirValue));
     memset(sub, 0xff, sizeof(MirValue) * f->nvalues);
     MirValue *cap = MS_NEW_N(&arena, MirValue, (size_t)f->ncaptures + 1);
     for (uint32_t k = 0; k < f->ncaptures; k++) {
@@ -421,10 +415,10 @@ static IcFields ic_fields_new(MsArena *arena, uint32_t bound) {
         cap *= 2;
     }
     IcFields t = {.mask = cap - 1};
-    t.used = ic_zeroed(arena, cap, sizeof(bool));
-    t.type = ic_zeroed(arena, cap, sizeof(uint32_t));
-    t.field = ic_zeroed(arena, cap, sizeof(uint32_t));
-    t.code = ic_zeroed(arena, cap, sizeof(uint32_t));
+    t.used = ms_alloc_zeroed(arena, cap, sizeof(bool));
+    t.type = ms_alloc_zeroed(arena, cap, sizeof(uint32_t));
+    t.field = ms_alloc_zeroed(arena, cap, sizeof(uint32_t));
+    t.code = ms_alloc_zeroed(arena, cap, sizeof(uint32_t));
     return t;
 }
 
@@ -466,7 +460,7 @@ static uint32_t ic_capture_free_code(const MirInst *const *defs, MirValue v) {
 }
 
 static void ic_fields_scan(IcFields *t, MsArena *arena, const MirModule *m, const MirFunc *f) {
-    const MirInst **defs = ic_zeroed(arena, f->nvalues, sizeof(MirInst *));
+    const MirInst **defs = ms_alloc_zeroed(arena, f->nvalues, sizeof(MirInst *));
     for (uint32_t b = 0; b < f->nblocks; b++) {
         for (uint32_t i = 0; i < f->blocks[b].ninsts; i++) {
             const MirInst *in = &f->blocks[b].insts[i];
@@ -926,8 +920,8 @@ typedef struct IcSortEdit { MirValue addr; uint32_t thunk, code; } IcSortEdit;
 /* The `func.addr` of a generic sort thunk and the `closure.new` code, by value, of one function. */
 static bool ic_sort_scan(MsArena *arena, const MirModule *m, const MirFunc *f, uint32_t **thunks,
                          uint32_t **codes) {
-    *thunks = ic_zeroed(arena, f->nvalues, sizeof(uint32_t));
-    *codes = ic_zeroed(arena, f->nvalues, sizeof(uint32_t));
+    *thunks = ms_alloc_zeroed(arena, f->nvalues, sizeof(uint32_t));
+    *codes = ms_alloc_zeroed(arena, f->nvalues, sizeof(uint32_t));
     memset(*thunks, 0xff, sizeof(uint32_t) * f->nvalues);
     memset(*codes, 0xff, sizeof(uint32_t) * f->nvalues);
     bool any_thunk = false, any_code = false;

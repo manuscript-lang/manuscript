@@ -49,6 +49,12 @@ static void arena_add_chunk(MsArena *a, size_t size, size_t align) {
     a->end = a->cur + capacity;
 }
 
+void *ms_alloc_zeroed(MsArena *a, size_t count, size_t size) {
+    void *p = ms_alloc(a, size * (count + 1), 16);
+    memset(p, 0, size * (count + 1));
+    return p;
+}
+
 void *ms_alloc(MsArena *a, size_t size, size_t align) {
     if (!chunk_fits(a, size, align)) {
         arena_add_chunk(a, size, align);

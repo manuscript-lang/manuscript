@@ -40,6 +40,9 @@ void mir_block_set_insts(MirModule *m, MirBlockData *b, const MirInst *src, uint
 /* Appends `src[0..n]` to the instructions of `b`. */
 void mir_block_append(MirModule *m, MirBlockData *b, const MirInst *src, uint32_t n);
 
+bool **mir_dead_flags(MsArena *arena, const MirFunc *f);
+void mir_sweep_dead(MirFunc *f, bool *const *dead, MsArena *arena);
+
 bool mir_imm_eq(const MirImm *a, const MirImm *b);
 bool mir_op_commutative(uint8_t op, const MirImm *imm);
 /* The target with its own copy of the arguments. */
