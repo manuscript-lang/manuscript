@@ -4,6 +4,8 @@
 //! ```text
 //! ms-tooling-dev lint FILE...
 //! ms-tooling-dev inspect FILE
+//! ms-tooling-dev facts FILE                 the fact model as JSON, the input of tools/ms/views.ms
+//! ms-tooling-dev view FILE VIEW ENTITY DEPTH FORMAT   one `ms diagram` view (ascii, mermaid, json)
 //! ms-tooling-dev skill-calls update         rewrite the standard-call table in the agent skill
 //! ```
 //!
@@ -32,6 +34,8 @@ fn run(syms: ms_syntax::Names) -> i32 {
     match command.as_str() {
         "lint" => lint(syms, files),
         "inspect" => inspect(syms, files),
+        "facts" => facts_json(syms, files),
+        "view" => view(syms, files),
         "skill-calls" => skill_calls(files),
         other => {
             eprintln!("unknown command {other}");
@@ -162,4 +166,154 @@ fn skill_calls(args: &[String]) -> i32 {
             2
         }
     }
+}
+
+fn facts_of(syms: ms_syntax::Names, path: &str) -> Option<ms_tooling::facts::Facts> {
+    let program = checked(syms, path)?;
+    Some(ms_tooling::collect::collect_facts(
+        syms,
+        &ms_tooling::inspect::collect(syms, &program).rows(),
+        &program,
+    ))
+}
+
+fn node_json(n: &ms_tooling::tree::Node) -> ms_json::Json {
+    ms_json::obj([
+        ("label", ms_json::Json::str(&n.label)),
+        ("kind", ms_json::Json::str(&n.kind)),
+        ("reference", ms_json::Json::str(&n.reference)),
+        ("file", ms_json::Json::str(&n.file)),
+        ("line", ms_json::Json::int(n.line as i64)),
+        ("omitted", ms_json::Json::int(0)),
+        (
+            "children",
+            ms_json::Json::Arr(n.children.iter().map(node_json).collect()),
+        ),
+    ])
+}
+
+fn slot_json(s: &ms_tooling::facts::Slot) -> ms_json::Json {
+    ms_json::obj([
+        ("name", ms_json::Json::str(&s.name)),
+        ("ty", ms_json::Json::str(&s.ty)),
+        ("exclusive", ms_json::Json::Bool(s.var)),
+        ("mode", ms_json::Json::str(s.passing_mode())),
+        ("refs", ms_json::Json::strings(&s.refs)),
+    ])
+}
+
+/// The fact model of one file, with entities in key order, as `tools/ms/views.ms` reads it.
+fn facts_value(facts: &ms_tooling::facts::Facts) -> ms_json::Json {
+    let entities = facts
+        .entities
+        .values()
+        .map(|f| {
+            ms_json::obj([
+                ("key", ms_json::Json::str(&f.key)),
+                ("file", ms_json::Json::str(&f.file)),
+                ("kind", ms_json::Json::str(&f.kind)),
+                ("name", ms_json::Json::str(&f.name)),
+                ("line", ms_json::Json::int(f.line as i64)),
+                ("effects", ms_json::Json::strings(&f.effects)),
+                ("error", ms_json::Json::str(&f.error)),
+                ("tries", ms_json::Json::int(f.tries as i64)),
+                ("scopes", ms_json::Json::int(f.scopes as i64)),
+                ("calls", ms_json::Json::strings(&f.calls)),
+                ("external", ms_json::Json::strings(&f.external)),
+                (
+                    "slots",
+                    ms_json::Json::Arr(f.slots.iter().map(slot_json).collect()),
+                ),
+                (
+                    "result",
+                    f.result.as_ref().map_or(ms_json::Json::Null, slot_json),
+                ),
+                (
+                    "result_ownership",
+                    ms_json::Json::str(f.result_ownership.label()),
+                ),
+                (
+                    "result_borrow",
+                    ms_json::Json::Bool(matches!(
+                        f.result_ownership,
+                        ms_tooling::facts::ResultOwnership::Borrow
+                    )),
+                ),
+                ("receiver", ms_json::Json::str(f.receiver)),
+            ])
+        })
+        .collect();
+    let imports = facts
+        .imports
+        .iter()
+        .map(|(file, paths)| {
+            ms_json::obj([
+                ("file", ms_json::Json::str(file)),
+                ("paths", ms_json::Json::strings(paths)),
+            ])
+        })
+        .collect();
+    let flows = facts
+        .flows
+        .iter()
+        .map(|(key, steps)| {
+            ms_json::obj([
+                ("key", ms_json::Json::str(key)),
+                (
+                    "steps",
+                    ms_json::Json::Arr(steps.iter().map(node_json).collect()),
+                ),
+            ])
+        })
+        .collect();
+    ms_json::obj([
+        ("entities", ms_json::Json::Arr(entities)),
+        ("imports", ms_json::Json::Arr(imports)),
+        ("flows", ms_json::Json::Arr(flows)),
+    ])
+}
+
+fn facts_json(syms: ms_syntax::Names, files: &[String]) -> i32 {
+    let Some(facts) = files.first().and_then(|f| facts_of(syms, f)) else {
+        return 1;
+    };
+    println!("{}", facts_value(&facts).pretty(ms_json::Escape::HtmlSafe));
+    0
+}
+
+/// `view FILE VIEW ENTITY DEPTH FORMAT`: the text `ms diagram` prints for the view.
+fn view(syms: ms_syntax::Names, args: &[String]) -> i32 {
+    let [file, name, entity, depth, format] = args else {
+        eprintln!("usage: ms-tooling-dev view FILE VIEW ENTITY DEPTH ascii|mermaid|json");
+        return 2;
+    };
+    let Some(facts) = facts_of(syms, file) else {
+        return 1;
+    };
+    let depth: i64 = depth.parse().expect("depth");
+    let tree = match ms_tooling::views::build_view(&facts, name, entity, depth) {
+        Ok(tree) => tree,
+        Err(message) => {
+            println!("error: {message}");
+            return 2;
+        }
+    };
+    let text = match format.as_str() {
+        "json" => {
+            ms_json::obj([
+                ("format", ms_json::Json::int(1)),
+                ("view", ms_json::Json::str(name)),
+                ("entity", ms_json::Json::str(entity)),
+                ("tree", tree.to_json()),
+            ])
+            .pretty_line(ms_json::Escape::HtmlSafe)
+                + "\n"
+        }
+        "mermaid" => ms_tooling::views::mermaid_view(&facts, name, entity, depth)
+            .unwrap_or_else(|| tree.mermaid()),
+        _ => ms_tooling::views::ascii_view(&facts, name, entity, depth)
+            .unwrap_or_else(|| tree.ascii()),
+    };
+    print!("{text}");
+    0
 }

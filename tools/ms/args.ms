@@ -148,7 +148,7 @@ fn required_value(args: List[String], index: Int, split: Split) Taken?:
 	return Taken(text: text, index: at)
 
 // A directory argument selects the `ms.toml` inside it.
-fn resolve_input(command: String, filename: String) String!:
+export fn resolve_input(command: String, filename: String) String!:
 	info := stat(filename)
 	if info.is_error(): return ok(filename.clone())
 	if not info.get().is_directory(): return ok(filename.clone())

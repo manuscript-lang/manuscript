@@ -122,6 +122,39 @@ static void live_match(LiveWalk *w, const MsExpr *e) {
     live_expr(w, e->u.match.scrutinee);
 }
 
+/* A call of a module function, of an operation of a primitive (the receiver is read first), or
+ * through a function-typed local (the local is read first). The walk decides what it handles. */
+static void live_call(LiveWalk *w, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    const bool through_local = callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_BINDING;
+    const bool operation = callee->kind == MS_E_MEMBER && w->facts->call_interface[e->id] != MS_TY_NONE;
+    if (w->facts->call_callee[e->id] == MS_NONE && !through_local && !operation) {
+        w->supported = false; /* a method row or anything else the walk does not follow */
+        return;
+    }
+    for (uint32_t i = e->u.call.args.len; i > 0; i--) {
+        live_expr(w, e->u.call.args.ptr[i - 1].value);
+    }
+    if (operation) {
+        live_expr(w, callee->u.member.left);
+    } else if (through_local) {
+        live_expr(w, callee);
+    }
+}
+
+/* An anonymous function runs on its own: its body is walked from nothing after it, and what it
+ * captures was read when it was made, which the walk does not follow (captures are copies). */
+static void live_lambda(LiveWalk *w, const MsExpr *e) {
+    uint32_t *outer = w->later;
+    const LiveLoop *loop = w->loop;
+    w->later = MS_NEW_N(w->scratch, uint32_t, w->nbindings + 1);
+    memset(w->later, 0xff, sizeof(uint32_t) * (size_t)w->nbindings);
+    w->loop = NULL;
+    live_block(w, &e->u.lambda.body);
+    w->later = outer;
+    w->loop = loop;
+}
+
 static void live_expr(LiveWalk *w, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER:
@@ -153,23 +186,14 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
         return;
     case MS_E_APPLY:
     case MS_E_PROBE:
-    case MS_E_MAP:
-    case MS_E_LAMBDA: w->supported = false; return; /* closures and collections are not modeled */
+    case MS_E_MAP: w->supported = false; return; /* collections are not modeled */
+    case MS_E_LAMBDA: live_lambda(w, e); return;
     case MS_E_CALL:
         if (ms_call_builds_case(w->facts, e)) {
             live_expr(w, e->u.call.args.ptr[0].value);
             return;
         }
-        if (w->facts->call_callee[e->id] == MS_NONE) {
-            w->supported = false; /* a method, an interface operation or a function value */
-            return;
-        }
-        for (uint32_t i = e->u.call.args.len; i > 0; i--) {
-            live_expr(w, e->u.call.args.ptr[i - 1].value);
-        }
-        if (e->u.call.callee->kind == MS_E_MEMBER) {
-            live_expr(w, e->u.call.callee->u.member.left); // the receiver is evaluated first
-        }
+        live_call(w, e);
         return;
     case MS_E_MATCH: live_match(w, e); return;
     }
@@ -238,6 +262,26 @@ static void live_while(LiveWalk *w, const MsStmt *s) {
     w->later = head;
 }
 
+/* `for i in a..b`: like a `while` whose test reads nothing; the bounds run once before it. */
+static void live_for(LiveWalk *w, const MsStmt *s) {
+    uint32_t *after = live_snapshot(w);
+    uint32_t *head = live_snapshot(w);
+    for (;;) {
+        w->later = live_copy_of(w, head);
+        const LiveLoop here = {after, head, w->loop};
+        w->loop = &here;
+        live_block(w, &s->u.each.body);
+        w->loop = here.outer;
+        live_join(w, after);
+        if (!live_min_into(head, w->later, w->nbindings) || !w->supported) {
+            break;
+        }
+    }
+    w->later = head;
+    live_expr(w, s->u.each.iter->u.call.args.ptr[1].value);
+    live_expr(w, s->u.each.iter->u.call.args.ptr[0].value);
+}
+
 static void live_statement(LiveWalk *w, const MsStmt *s) {
     switch ((MsStmtKind)s->kind) {
     case MS_S_BIND:
@@ -257,7 +301,7 @@ static void live_statement(LiveWalk *w, const MsStmt *s) {
     case MS_S_CONTINUE: live_jump(w, s); return;
     case MS_S_ASSIGN: live_assign(w, s); return;
     case MS_S_CALL: live_expr(w, s->u.expr); return;
-    case MS_S_FOR: w->supported = false; return;
+    case MS_S_FOR: live_for(w, s); return;
     }
 }
 
