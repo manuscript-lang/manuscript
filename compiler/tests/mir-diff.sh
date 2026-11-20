@@ -70,4 +70,16 @@ for set in files layout-fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" layout > "$out/layout-$set.c"
     check "layout $set" "$out/layout-$set.rust" "$out/layout-$set.c"
 done
+
+# The optimisation passes: both implementations run one pass on the same verified module.
+# MS_MIR_CORPUS names a folder of unoptimised modules (`ms emit` of the conformance fixtures) that
+# is checked as well.
+cp "$out/files.txt" "$out/opt-files.txt"
+if [ -n "${MS_MIR_CORPUS:-}" ]; then find "$MS_MIR_CORPUS" -name '*.mir' | sort >> "$out/opt-files.txt"; fi
+tr '\n' '\0' < "$out/opt-files.txt" | xargs -0 "$oracle" verified | tr '\n' '\0' > "$out/verified.0"
+for pass in bytetake strfuse; do
+    xargs -0 "$oracle" opt $pass < "$out/verified.0" > "$out/opt-$pass.rust"
+    xargs -0 "$out/dump" opt $pass < "$out/verified.0" > "$out/opt-$pass.c"
+    check "opt $pass ($(grep -c '^changed true' "$out/opt-$pass.rust") of $(grep -c '^===' "$out/opt-$pass.rust") changed)" "$out/opt-$pass.rust" "$out/opt-$pass.c"
+done
 exit $status

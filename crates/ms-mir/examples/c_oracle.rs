@@ -36,6 +36,30 @@ fn main() {
                 analysis(m, f, out);
             }
         }),
+        "verified" => {
+            // The files that parse and verify: the optimisation passes need a verified module.
+            for path in &args[1..] {
+                let ok = std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|t| parse_module(&t).ok())
+                    .is_some_and(|m| match ms_mir::verify::verify_module(&m) {
+                        Ok(()) => true,
+                        Err(e) => {
+                            eprintln!("unverified {path}: {}", e[0]);
+                            false
+                        }
+                    });
+                if ok {
+                    let _ = writeln!(out, "{path}");
+                }
+            }
+        }
+        "opt" => each_module(&args[2..], &mut out, |m, out| {
+            let mut m = m.clone();
+            let changed = run_pass(&args[1], &mut m);
+            let _ = writeln!(out, "changed {changed}");
+            out.push_str(&print_module(&m));
+        }),
         "boxing" => {
             for path in &args[1..] {
                 let _ = writeln!(out, "=== {path}");
@@ -226,5 +250,15 @@ fn analysis(m: &Module, f: &ms_mir::ir::Func, out: &mut String) {
             let owned = ms_mir::verify::indirect_owned(m, f, inst);
             let _ = writeln!(out, "{bi}.{ii} res={res} views={views} owned={owned:x} args={modes}");
         }
+    }
+}
+
+/// Runs one optimisation pass by name and returns whether it changed the module.
+fn run_pass(name: &str, m: &mut Module) -> bool {
+    use ms_mir::opt;
+    match name {
+        "bytetake" => opt::bytetake::run(m),
+        "strfuse" => opt::strfuse::run(m),
+        _ => panic!("unknown pass {name}"),
     }
 }

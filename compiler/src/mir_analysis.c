@@ -334,6 +334,14 @@ MirBlock *mir_dominators(MsArena *arena, const MirFunc *f, const MirBlock *order
     return idom;
 }
 
+uint32_t mir_inst_count(const MirFunc *f) {
+    uint32_t n = 0;
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        n += f->blocks[b].ninsts;
+    }
+    return n;
+}
+
 /* ---- value sets ---- */
 
 MirBits mir_bits_new(MsArena *arena, uint32_t nbits) {
@@ -343,7 +351,53 @@ MirBits mir_bits_new(MsArena *arena, uint32_t nbits) {
     return (MirBits){words, nbits};
 }
 
+MirBits mir_owned_values(MsArena *arena, const MirModule *m, const MirFunc *f, bool entry_params) {
+    MirBits owned = mir_bits_new(arena, f->nvalues);
+    for (uint32_t b = entry_params ? 0 : 1; b < f->nblocks; b++) {
+        for (uint32_t i = 0; i < f->blocks[b].nparams; i++) {
+            if (f->blocks[b].params[i].mode == MM_MOVE) {
+                mir_bits_set(&owned, f->blocks[b].params[i].value);
+            }
+        }
+    }
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        for (uint32_t i = 0; i < f->blocks[b].ninsts; i++) {
+            MirMode mode = MM_BORROW;
+            if (mir_result_mode(m, f, &f->blocks[b].insts[i], &mode) && mode == MM_MOVE) {
+                mir_bits_set(&owned, f->blocks[b].insts[i].res);
+            }
+        }
+    }
+    return owned;
+}
+
 /* ---- editing ---- */
+
+static bool same_signature(const MirExtern *a, const MirExtern *b) {
+    if (a->name != b->name || a->ret != b->ret || a->nparams != b->nparams) {
+        return false;
+    }
+    for (uint32_t i = 0; i < a->nparams; i++) {
+        if (a->params[i].ty != b->params[i].ty) {
+            return false;
+        }
+    }
+    return true;
+}
+
+uint32_t mir_extern_intern(MirModule *m, const MirExtern *def) {
+    for (uint32_t i = 0; i < m->nexterns; i++) {
+        if (same_signature(&m->externs[i], def)) {
+            return i;
+        }
+    }
+    MirExtern copy = *def;
+    copy.params = MS_NEW_N(&m->arena, MirParam, def->nparams ? def->nparams : 1);
+    if (def->nparams > 0) {
+        memcpy(copy.params, def->params, sizeof(MirParam) * def->nparams);
+    }
+    return mir_add_extern(m, &copy);
+}
 
 void mir_block_insert(MirModule *m, MirBlockData *block, uint32_t at, const MirInst *inst) {
     MirInst placeholder = *inst;
@@ -365,4 +419,12 @@ void mir_block_remove(MirBlockData *block, const uint32_t *dead, uint32_t ndead)
         block->insts[kept++] = block->insts[i];
     }
     block->ninsts = kept;
+}
+
+MsSym mir_name_suffixed(MirModule *m, MsSym base, const char *suffix, size_t suffix_len) {
+    const MsStr name = ms_name(&m->names, base);
+    char *text = ms_alloc(&m->arena, (size_t)name.len + suffix_len, 1);
+    memcpy(text, name.ptr, name.len);
+    memcpy(text + name.len, suffix, suffix_len);
+    return mir_name(m, text, (size_t)name.len + suffix_len);
 }

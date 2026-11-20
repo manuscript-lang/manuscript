@@ -14,6 +14,8 @@
 #include "mir_shape.c"
 #include "mir_parse.c"
 #include "mir_analysis.c"
+#include "opt_bytetake.c"
+#include "opt_strfuse.c"
 #include "types.c"
 #include "tables.c"
 #include "stdlib.c"

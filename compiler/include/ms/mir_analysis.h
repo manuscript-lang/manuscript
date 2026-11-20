@@ -65,6 +65,9 @@ uint32_t mir_rpo(MsArena *arena, const MirFunc *f, MirBlock **order);
 MirBlock *mir_dominators(MsArena *arena, const MirFunc *f, const MirBlock *order, uint32_t count,
                          const MirPreds *preds);
 
+/* The number of instructions in `f`, excluding terminators. */
+uint32_t mir_inst_count(const MirFunc *f);
+
 /* ---- value sets ---- */
 
 typedef struct MirBits {
@@ -87,7 +90,18 @@ static inline void mir_bits_clear(MirBits *s, uint32_t i) {
     }
 }
 
+/* The values of `f` that hold an owned value: block parameters taken by move (the entry block's
+ * only when `entry_params`) and results `mir_result_mode` calls owned. */
+MirBits mir_owned_values(MsArena *arena, const MirModule *m, const MirFunc *f, bool entry_params);
+
 /* ---- editing ---- */
+
+/* The interned name `<base><suffix>` (`suffix` is `suffix_len` bytes). */
+MsSym mir_name_suffixed(MirModule *m, MsSym base, const char *suffix, size_t suffix_len);
+
+/* The id of a runtime function equal to `def` in name, result and parameter types, declaring it
+ * when the module has none (`Module::add_extern`). `def`'s parameter array is copied. */
+uint32_t mir_extern_intern(MirModule *m, const MirExtern *def);
 
 /* Inserts `inst` before position `at` of `block` (`at == ninsts` appends). */
 void mir_block_insert(MirModule *m, MirBlockData *block, uint32_t at, const MirInst *inst);

@@ -8,6 +8,7 @@
 #include "ms/mir.h"
 #include "ms/mir_analysis.h"
 #include "ms/mir_layout.h"
+#include "ms/mir_opt.h"
 
 static bool read_file(const char *path, char **data, size_t *len) {
     FILE *f = fopen(path, "rb");
@@ -180,6 +181,26 @@ static void print_analysis(const MirModule *m, const MirFunc *f, MsBuf *out) {
     ms_arena_free(&arena);
 }
 
+typedef struct Pass {
+    const char *name;
+    bool (*run)(MirModule *m);
+} Pass;
+
+static const Pass passes[] = {
+    {"bytetake", mir_opt_bytetake},
+    {"strfuse", mir_opt_strfuse},
+};
+
+/* Runs the named pass and prints whether it changed the module, then the module. */
+static void dump_opt(const char *pass, MirModule *m, MsBuf *out) {
+    for (size_t i = 0; i < sizeof passes / sizeof passes[0]; i++) {
+        if (strcmp(passes[i].name, pass) == 0) {
+            ms_buf_printf(out, "changed %s\n", passes[i].run(m) ? "true" : "false");
+            mir_print_module(m, out);
+        }
+    }
+}
+
 static void dump_analysis(const MirModule *m, MsBuf *out) {
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         print_analysis(m, &m->funcs[i], out);
@@ -188,7 +209,7 @@ static void dump_analysis(const MirModule *m, MsBuf *out) {
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fputs("usage: ms_mir_dump print|analysis|ops FILE...\n", stderr);
+        fputs("usage: ms_mir_dump print|analysis|ops FILE...\n       ms_mir_dump opt PASS FILE...\n", stderr);
         return 2;
     }
     MsBuf out = {0};
@@ -199,8 +220,10 @@ int main(int argc, char **argv) {
         }
     }
     bool boxing = strcmp(argv[1], "boxing") == 0, layout = strcmp(argv[1], "layout") == 0;
-    const bool analysis = strcmp(argv[1], "analysis") == 0;
-    for (int i = 2; i < argc && (boxing || layout || analysis || strcmp(argv[1], "print") == 0); i++) {
+    const bool analysis = strcmp(argv[1], "analysis") == 0, opt = strcmp(argv[1], "opt") == 0;
+    const char *pass = opt && argc > 2 ? argv[2] : "";
+    for (int i = opt ? 3 : 2;
+         i < argc && (boxing || layout || analysis || opt || strcmp(argv[1], "print") == 0); i++) {
         char *src;
         size_t len;
         if (!read_file(argv[i], &src, &len)) {
@@ -226,6 +249,8 @@ int main(int argc, char **argv) {
         } else if (mir_parse(&m, src, len, &line, &msg)) {
             if (analysis) {
                 dump_analysis(&m, &out);
+            } else if (opt) {
+                dump_opt(pass, &m, &out);
             } else {
                 mir_print_module(&m, &out);
             }
