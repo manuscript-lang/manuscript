@@ -8,7 +8,7 @@
 
 ## Status
 
-Approved direction, 2026-11-20, checked against `660429d4`. Chinmay: "lets revive the effort of rewriting the backend to c"; "for networking stack lets use nodejs libs libuv, nghttp, llhttp, with openssl"; "lets use re2 for regex"; no Rust left for regex, time zones or archives; "one single build for all dependencies and later we can cache it". Skeptical review (2026-11-20): build with changes; stage 0 may ship. Applied: stale inlining figures and the bitcode step removed, the frame breakdown marked as unverified, a stop condition added before stage 2, the libuv fit and platform items made stage 1 work instead of open questions.
+Approved direction, 2026-11-20, checked against `660429d4`. Chinmay: "lets revive the effort of rewriting the backend to c"; "for networking stack lets use nodejs libs libuv, nghttp, llhttp, with openssl"; "lets use re2 for regex"; no Rust left for regex, time zones or archives; "one single build for all dependencies and later we can cache it". Skeptical review (2026-11-20): build with changes; stage 0 may ship. Applied: stale inlining figures and the bitcode step removed, the frame breakdown marked as unverified, a park-path measurement added before stage 2 (the reviewer asked for a stop condition; Chinmay's direction is that the C port is not conditional), the libuv fit and platform items made stage 1 work instead of open questions.
 
 ## Problem
 
@@ -61,7 +61,7 @@ runtime/
 
 0. Folder, pins, one third-party build, smoke programs (this PR): smoke passes on Linux; macOS and Windows by CI dispatch.
 1. `ms_rt.h`, the xtask build, generators, per-symbol selection: `make verify` unchanged, six platforms green. Settled here, with a written note each: static C++ runtime under the glibc 2.28 floor, libc++ for musl, OpenSSL's Configure under llvm-mingw on both Windows architectures, the system trust store, and size and start-up budgets for a program that uses no TLS or regex.
-1a. Stop condition: port the park path only (wait, switch, socket wait) and measure stack bytes per parked task against the Rust runtime on the same design. Under 1 KB saved per parked task means the task and scheduler port stops and only libraries and leaf primitives continue.
+1a. Measurement, not a gate: port the park path (wait, switch, socket wait) and record stack bytes per parked task against the Rust runtime on the same design, so the gain from C is reported apart from the gain from design changes. The port continues either way (Chinmay, 2026-11-20: "moving to c is essential"; design changes come in addition).
 2. `sys` and `core`: conformance on both runtimes; instructions per call against checked C.
 3. `io` on libuv, then `net`, after a design note on the fit: one loop per scheduler thread, `uv_poll_t` or streams, how a handle moves between threads (`sched::Pin::touch` today), and how the asynchronous `uv_close` meets a guard jump. Tasks and http-tail benchmarks no slower; memory per idle connection against 7.1 KB, with TLS measured separately (an OpenSSL `SSL` with buffers can cost 20 to 40 KB).
 4. `std/*`, RE2, time zones, archives; C unit tests under ASan and UBSan and fuzzing of the parsers in the nightly job, outside the PR budget; delete the Rust runtime.
