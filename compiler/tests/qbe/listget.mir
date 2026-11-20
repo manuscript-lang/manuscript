@@ -1,0 +1,15 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+extern @msrt_test_ints() -> list<int>
+
+fn @msmain() -> int {
+b0:
+  %l: list<int> = call.rt @msrt_test_ints ()
+  %two: int = iconst 2
+  %x: int = list.get.u %l, %two
+  %one: int = iconst 1
+  %y: int = list.take %l, %one
+  %r: int = iadd %x, %y
+  ret %r
+}
