@@ -98,6 +98,8 @@ typedef struct Lb {
  * and `lb_mir_ty` are declared further down). */
 void lb_statements(Lb *lb, const MsStmts *body);
 void lb_return_void(Lb *lb);
+uint32_t lb_scoped(Lb *lb, const MsStmts *body);          /* lowers `body` in its own scope; its owner depth */
+MirBlock lb_step_block(Lb *lb, LbLoop *loop);             /* where `continue` of `loop` goes */
 bool lb_owns(Lb *lb, MirTy ty);                          /* whether a value of `ty` has an owner to release */
 MirValue lb_move_argument(Lb *lb, const MsExpr *e);       /* lowers `e` as a moved-in operand */
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */

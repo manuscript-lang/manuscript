@@ -54,16 +54,6 @@ uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out
  * reader does not cover the project (a workspace, a manifest form it lacks). */
 uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out);
 
-/* Edits to the text of an ms.toml for `ms add` and `ms remove` (ms_manifest_add_dependency and friends in ms/project.h):
- * `pin` is an MsPinKind (0 tag, 1 sha, 2 version). Status 0 puts the edited manifest in `out`; 1 is an error with the
- * Rust text in `message_out`; 2 means the editor does not read this manifest's form and the caller falls back to Rust. */
-uint8_t ms_tool_manifest_add(const ms_str *text, const ms_str *name, const ms_str *url, uint8_t pin, const ms_str *pinned, ms_str *out,
-                             ms_str *message_out);
-uint8_t ms_tool_manifest_allow(const ms_str *text, const ms_str *name, const ms_list *effects, ms_str *out, ms_str *message_out);
-uint8_t ms_tool_manifest_remove(const ms_str *text, const ms_str *name, ms_str *out, ms_str *message_out);
-/* The alias `ms add` gives a repository URL, empty when it makes none. */
-void ms_tool_manifest_default_name(const ms_str *url, ms_str *out);
-
 /* ---- syntax trees ---- */
 
 /* A parsed module, kept in C. `extern type Tree` on the Manuscript side. A parse that fails still

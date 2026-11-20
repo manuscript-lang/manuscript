@@ -1058,7 +1058,7 @@ static MsPlace own_target_place(OwnWalk *w, const MsExpr *target, uint32_t root,
     const MsPlace place = {root, steps, depth};
     MsBuf shown = {0};
     ms_place_show(&shown, w->check->names, place, w->facts->bindings.name[root]);
-    *text = (MsStr){.ptr = ms_arena_strndup(&w->check->arena, shown.data, shown.len), .len = shown.len};
+    *text = (MsStr){.ptr = ms_arena_strndup(&w->check->arena, shown.data, shown.len), .len = (uint32_t)shown.len};
     ms_buf_free(&shown);
     return place;
 }
