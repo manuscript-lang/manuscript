@@ -1536,6 +1536,14 @@ static MirCaseDef mpa_parse_case(MpCur *c) {
 static void mpa_define_alt(MpCur *c) {
     MirModule *m = c->p->m;
     uint32_t id = mir_alt_by_name(m, mpa_tsym(c, mpa_c_ident(c)));
+    if (mpa_c_eat_ident(c, "borrowed")) {
+        MpTok mask = mpa_c_num(c);
+        uint32_t bits = 0; /* a bit per case; a variant has fewer than 32 */
+        if (!mpa_parse_u32(mask.s, mask.n, &bits)) {
+            mpa_perr(c->p, c->line, "bad borrowed mask");
+        }
+        m->alts[id].borrowed = bits;
+    }
     mpa_c_expect_p(c, '{');
     MirCaseDef *cases = NULL;
     uint32_t used = 0, capacity = 0;

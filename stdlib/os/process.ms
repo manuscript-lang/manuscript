@@ -170,8 +170,8 @@ fn Subprocess.max_resident_bytes() Int:
 	return msstd_process_subprocess_max_resident(self.native)
 
 // The child's process id, which `send_signal` takes; the child leads its own process
-// group, so its id is also the group's. Valid until the child is waited for: a process id
-// can be reused after that.
+// group, so its id is also the group's. Valid until the child is waited for: a process
+// id can be reused after that.
 fn Subprocess.pid() Int:
 	return msstd_process_subprocess_pid(self.native)
 
