@@ -128,6 +128,9 @@ static MsTy match_arm_values(MsBody *b, const MsExpr *e, MsTy expected) {
 MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *scrutinee = e->u.match.scrutinee;
     const MsTy ty = ms_body_expr(b, scrutinee, MS_TY_NONE);
+    if (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_ALTERNATIVE) {
+        return ms_body_match_alternative(b, e, expected, ty);
+    }
     if (ty != b->int_ty && ty != b->string_ty && ty != b->bool_ty) {
         return ms_body_unsupported(b);
     }
