@@ -1,10 +1,17 @@
 /* Shared parts of the @std/fs and @std/io natives: failures, validated paths, the blocking-pool wrapper, a byte
  * buffer and runtime values (fs_support.h). */
+#define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c11 */
+
 #include "fs_support.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <uv.h>
+
+#ifdef STATUS_TIMEOUT /* winnt.h, through uv.h, after abi.h declared the runtime's */
+#undef STATUS_TIMEOUT
+#endif
 
 /* ---- failures ---- */
 
@@ -55,6 +62,21 @@ static void fail_with_message(MsFsFail *fail, char *message, size_t length) {
     fail->status = STATUS_FAILED;
     fail->message = message;
     fail->message_length = length;
+}
+
+void ms_fs_fail_uv(MsFsFail *fail, int code, const char *operation, MsBytes name) {
+    if (code == UV_ENOENT) {
+        ms_fs_fail_status(fail, STATUS_NOT_FOUND);
+    } else if (code == UV_EACCES || code == UV_EPERM) {
+        ms_fs_fail_status(fail, STATUS_PERMISSION_DENIED);
+    } else if (code == UV_ENOTSUP || code == UV_ENOSYS) {
+        ms_fs_fail_status(fail, STATUS_UNSUPPORTED);
+    } else {
+        char text[512];
+        (void)snprintf(text, sizeof text, "%s%s%.*s: %s", operation, name.len != 0 ? " " : "", (int)name.len,
+                       name.len != 0 ? (const char *)name.ptr : "", uv_strerror(code));
+        ms_fs_fail_text(fail, text);
+    }
 }
 
 void ms_fs_fail_text(MsFsFail *fail, const char *text) {

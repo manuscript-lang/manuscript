@@ -349,30 +349,6 @@ static bool row_within(const WatchRow *row, MsBytes path) {
 
 static void watch_event(uv_fs_event_t *handle, const char *filename, int events, int status);
 
-static uint8_t status_of_uv(int code) {
-    if (code == UV_ENOENT) {
-        return STATUS_NOT_FOUND;
-    }
-    if (code == UV_EACCES || code == UV_EPERM) {
-        return STATUS_PERMISSION_DENIED;
-    }
-    if (code == UV_ENOTSUP) {
-        return STATUS_UNSUPPORTED;
-    }
-    return STATUS_FAILED;
-}
-
-static void fail_uv(MsFsFail *fail, int code, const char *operation, MsBytes path) {
-    const uint8_t status = status_of_uv(code);
-    if (status != STATUS_FAILED) {
-        ms_fs_fail_status(fail, status);
-        return;
-    }
-    char text[512];
-    (void)snprintf(text, sizeof text, "%s %.*s: %s", operation, (int)path.len, (const char *)path.ptr, uv_strerror(code));
-    ms_fs_fail_text(fail, text);
-}
-
 /* Starts a handle on `path`. Recursive handles cover the subtree on the hosts that can. */
 static void row_add(MsFsWatcher *watcher, MsBytes path, bool is_directory, MsFsFail *fail) {
     WatchRow *row = calloc(1, sizeof *row);
@@ -393,14 +369,14 @@ static void row_add(MsFsWatcher *watcher, MsBytes path, bool is_directory, MsFsF
     if (code != 0) {
         free(text);
         free(row);
-        fail_uv(fail, code, "watch", path);
+        ms_fs_fail_uv(fail, code, "watch", path);
         return;
     }
     const unsigned flags = (WATCH_RECURSIVE_HANDLE && watcher->recursive && is_directory) ? UV_FS_EVENT_RECURSIVE : 0;
     code = uv_fs_event_start(&row->handle, watch_event, text, flags);
     if (code != 0) {
         uv_close((uv_handle_t *)&row->handle, row_closed);
-        fail_uv(fail, code, "watch", path);
+        ms_fs_fail_uv(fail, code, "watch", path);
         return;
     }
     row->next = watcher->rows;

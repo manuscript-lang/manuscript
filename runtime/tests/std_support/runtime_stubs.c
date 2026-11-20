@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "ms_rt/string.h"
+#include "ms_rt/sys.h"
 #include "ms_sched.h"
 
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {
@@ -75,3 +76,5 @@ uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) {
     *value = 0;
     return 0;
 }
+
+void ms_sys_sync_environ(void) {}
