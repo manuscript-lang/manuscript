@@ -105,18 +105,26 @@ void msrt_list_sort_in_place(MsList *v, const MsTypeDesc *d, MsCompareFn cmp, ui
         return;
     }
     const size_t bytes = v->len * d->size;
-    size_t storage = 0;
-    if (!ms_size_mul(bytes, 2, &storage)) {
+    /* The merge keeps a snapshot of the original slots only when a comparator that faults or is cancelled can
+     * leave through a guard or a cleanup, which then needs a valid list back. */
+    const bool rollback = msrt_rollback_needed() != 0;
+    size_t storage = bytes;
+    if (rollback && !ms_size_mul(bytes, 2, &storage)) {
         static const char message[] = "list size overflow";
         msfault_raise(MS_FAULT_OVERFLOW, (const uint8_t *)message, sizeof message - 1);
     }
     uint8_t *scratch = msrt_alloc(storage == 0 ? 1 : storage);
-    __builtin_memcpy(scratch + bytes, v->ptr, bytes);
-    SortRollback rollback = {.items = v->ptr, .scratch = scratch, .bytes = bytes};
-    const size_t handle = msrt_cleanup_push(restore_and_free, (uint8_t *)&rollback);
+    SortRollback state = {.items = v->ptr, .scratch = scratch, .bytes = bytes};
+    size_t handle = 0;
+    if (rollback) {
+        __builtin_memcpy(scratch + bytes, v->ptr, bytes);
+        handle = msrt_cleanup_push(restore_and_free, (uint8_t *)&state);
+    }
     const Comparator comparator = {.call = cmp, .env = env};
     merge_sort(v->ptr, scratch, v->len, d->size, &comparator);
-    msrt_cleanup_discard(handle);
+    if (rollback) {
+        msrt_cleanup_discard(handle);
+    }
     msrt_free(scratch);
 }
 
@@ -202,6 +210,8 @@ static bool varying_bits(const int64_t *items, size_t count, unsigned *low, unsi
 }
 
 /* A list of this many Ints or fewer is cheaper to sort in place with no first partition. */
+/* Ints that sort without a heap buffer (16 KiB of stack). */
+#define STACK_SPARE_ITEMS ((size_t)2048)
 #define PARTITION_MIN ((size_t)1 << 13)
 
 /* Sorts a long list by one partition on its top byte, then each part (a few thousand Ints, which stay in
@@ -241,7 +251,11 @@ static void radix_sort_ints(MsList *list) {
     if (!varying_bits(items, list->len, &low, &high)) {
         return;
     }
-    int64_t *spare = (int64_t *)__builtin_assume_aligned(msrt_alloc(list->len * sizeof(int64_t)), _Alignof(int64_t));
+    /* A short list sorts in a stack buffer: no allocation, and nothing to unwind if the run is cancelled. */
+    int64_t stack_spare[STACK_SPARE_ITEMS];
+    const bool on_stack = list->len <= STACK_SPARE_ITEMS;
+    int64_t *spare = on_stack ? stack_spare
+                              : (int64_t *)__builtin_assume_aligned(msrt_alloc(list->len * sizeof(int64_t)), _Alignof(int64_t));
     if (list->len >= PARTITION_MIN && high - low >= RADIX_BITS * 2) {
         partition_sort_ints(items, spare, list->len, low, high);
     } else {
@@ -250,7 +264,9 @@ static void radix_sort_ints(MsList *list) {
             __builtin_memcpy(items, sorted, list->len * sizeof(int64_t));
         }
     }
-    msrt_free(spare);
+    if (!on_stack) {
+        msrt_free(spare);
+    }
 }
 
 static void reverse_ints(MsList *list) {
@@ -291,12 +307,24 @@ static void drop_copy(uint8_t *arg) {
     ms_list_drop(state->copy, state->d);
 }
 
+/* Registers the cleanup that drops the unpublished copy, only when a jump can leave the sort (no guard or cleanup
+ * is open: nothing to unwind to, so no handle). */
+static size_t guard_copy(SortedCopy *state) {
+    return msrt_rollback_needed() != 0 ? msrt_cleanup_push(drop_copy, (uint8_t *)state) : 0;
+}
+
+static void unguard_copy(size_t handle) {
+    if (handle != 0) {
+        msrt_cleanup_discard(handle);
+    }
+}
+
 void msrt_list_sorted(const MsList *v, const MsTypeDesc *d, MsCompareFn cmp, uint8_t *env, MsList *out) {
     ms_list_clone(v, d, out);
     SortedCopy state = {.copy = out, .d = d};
-    const size_t handle = msrt_cleanup_push(drop_copy, (uint8_t *)&state);
+    const size_t handle = guard_copy(&state);
     msrt_list_sort_in_place(out, d, cmp, env);
-    msrt_cleanup_discard(handle);
+    unguard_copy(handle);
 }
 
 /* Whether hi - lo overflows an Int for the extremes of the list: then some pair differs by more than an
@@ -321,11 +349,11 @@ void msrt_list_sorted_by_difference(const MsList *v, const MsTypeDesc *d, MsComp
                                     MsList *out) {
     ms_list_clone(v, d, out);
     SortedCopy state = {.copy = out, .d = d};
-    const size_t handle = msrt_cleanup_push(drop_copy, (uint8_t *)&state);
+    const size_t handle = guard_copy(&state);
     if (out->len >= 2 && differences_overflow(out)) {
         msrt_list_sort_in_place(out, d, cmp, env);
     } else {
         msrt_list_sort_ints(out, desc);
     }
-    msrt_cleanup_discard(handle);
+    unguard_copy(handle);
 }

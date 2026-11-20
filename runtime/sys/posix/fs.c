@@ -847,6 +847,8 @@ MsSysFdKind ms_sys_fs_fd_kind(MsSysFd fd) {
 
 bool ms_sys_fs_is_output(MsSysFd fd) { return fd == 1 || fd == 2; }
 
+MsSysFd ms_sys_fs_standard(int32_t which) { return which; }
+
 MsSysError ms_sys_fs_redirect_null(int32_t which) {
     const int null = open("/dev/null", O_RDWR | O_CLOEXEC);
     if (null < 0) {

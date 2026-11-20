@@ -42,5 +42,7 @@ int ms_sys_net_shutdown(MsSock s, int how);
 void ms_sys_net_close(MsSock s);
 /* The operating system's code for the last MS_SYS_ERROR on this thread (errno, or WSAGetLastError). */
 int ms_sys_net_error(void);
+/* Reads an IPv4 or IPv6 socket address, as the resolver returns it, into `out`. -1 for another family or a short one. */
+int ms_sys_net_addr_from_raw(const void *sockaddr, size_t length, MsAddr *out);
 
 #endif

@@ -2,9 +2,9 @@
 
 # Small map slots are copied inline, not by `memcpy`
 
-Verified: the map insert copied a 72-byte `JsonValue` slot through a `memcpy` call per entry; sizes up to ten words now copy inline (`copy_slot`). Check the slot size of a new element type before assuming it is covered.
+Verified: the map insert copied a 72-byte `JsonValue` slot through a `memcpy` call per entry; sizes up to ten words now copy inline (`ms_map_copy_slot`, now in C). Check the slot size of a new element type before assuming it is covered.
 
 
 Apply when: a map or list of records shows `memcpy` in a profile.
-Evidence: [map slots](../../crates/ms-rt/src/map.rs).
+Evidence: [map slots](../../runtime/core/map_table.h).
 Verify: callgrind on `bench/perf/json` (`ms build bench/perf/json/ms.toml -o /tmp/jb`, then `valgrind --tool=callgrind /tmp/jb quick twitter:parse`).
