@@ -196,9 +196,19 @@ bench-check: build
 stdlib-bench: build
 	MS="$(RELEASE_MS)" "$(RELEASE_MS)" run bench/tools/stdlib_bench.ms -- $(BENCHREPEATS) $(BENCHFILTER)
 
-# The C runtime unit tests under AddressSanitizer and UBSan; nightly, not the pull request gate.
-c-test:
-	sh runtime/tests/c-test.sh
+# The C build: one CMake project (CMakeLists.txt, cmake/) for the runtime archive, its tests and the fuzz harnesses,
+# generated with Ninja; ccache is used when installed. `c-configure` and `c-build` make target/cmake/test (sanitizers on).
+C_BUILD ?= target/cmake/test
+.PHONY: c-configure c-build
+c-configure:
+	cmake -S . -B $(C_BUILD) -G Ninja -DMS_SANITIZE=ON
+
+c-build: c-configure
+	cmake --build $(C_BUILD)
+
+# The C runtime unit tests (ctest) under AddressSanitizer and UBSan; nightly, not the pull request gate.
+c-test: c-build
+	ctest --test-dir $(C_BUILD) --output-on-failure -j $(shell nproc 2>/dev/null || sysctl -n hw.ncpu)
 
 # The C style gate (documentation/contributing/c-style.md): strict warnings on every C file, clang-tidy on the
 # files that differ from C_LINT_BASE (all of them when it is unset).
