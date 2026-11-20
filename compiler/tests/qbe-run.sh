@@ -6,7 +6,7 @@ set -eu
 out=target/c-compiler/qbe
 mkdir -p "$out"
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include compiler/src/libms.c compiler/tools/ms_mir_qbe.c -o "$out/mir_qbe"
+    -Iruntime/include -Icompiler/include compiler/src/libms.c compiler/tools/ms_mir_qbe.c -o "$out/mir_qbe"
 q=runtime/third_party/qbe
 cc -std=c99 -O1 -w -I"$q" "$q"/*.c "$q"/amd64/*.c "$q"/arm64/*.c "$q"/rv64/*.c -o "$out/qbe"
 case "$(uname -s)-$(uname -m)" in
