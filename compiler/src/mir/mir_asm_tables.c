@@ -48,8 +48,13 @@ static uint32_t at_file(const char **p) {
     return v < 0 ? MIR_NONE : (uint32_t)v;
 }
 
+/* A call in function `func` to function `callee`, on `line` in scope `scope` (0: the function's own code). */
+typedef struct AtSite { uint32_t func, callee, line, scope; } AtSite;
+
 typedef struct AtMeta {
     MirModule m;
+    AtSite *sites;
+    uint32_t nsites, csites;
     AtFunc *funcs;
     uint32_t nfuncs, cfuncs;
     MirScope *scopes;
@@ -76,6 +81,14 @@ static void at_meta_parse(AtMeta *a, const char *text, size_t len) {
             p++;
             f.name = (MsStr){p, (uint32_t)(eol - p)};
             MIR_PUSH(&a->m, a->funcs, a->nfuncs, a->cfuncs, AtFunc, f);
+        } else if (text[0] == 'C') {
+            AtSite site = {.func = a->nfuncs - 1};
+            site.callee = at_uint(&p);
+            p++;
+            site.line = at_uint(&p);
+            p++;
+            site.scope = at_uint(&p);
+            MIR_PUSH(&a->m, a->sites, a->nsites, a->csites, AtSite, site);
         } else if (text[0] == 'B') {
             a->bodies = true;
         } else if (text[0] == 'S') {
@@ -251,6 +264,23 @@ static uint32_t at_clone(AtRemap *r, uint32_t c, uint32_t p, AtCall call) {
     return at_new_scope(r, key, s);
 }
 
+/* The call in function `p` that LLVM replaced with the body of `q`. LLVM's locations carry no call site, so the
+ * calls the module has to `q` are the candidates: the first on or after the line of `p`'s own code just before the
+ * body (`own`), else the last; with no candidate that line itself. */
+static AtCall at_call_site(const AtMeta *a, uint32_t p, uint32_t q, AtCall own) {
+    const AtSite *chosen = NULL;
+    for (uint32_t i = 0; i < a->nsites; i++) {
+        const AtSite *site = &a->sites[i];
+        if (site->func != p || site->callee != q) {
+            continue;
+        }
+        if (chosen == NULL || (chosen->line < own.line && site->line >= own.line)) {
+            chosen = site;
+        }
+    }
+    return chosen == NULL ? own : (AtCall){chosen->line, chosen->scope};
+}
+
 static void at_remap_scopes(AtMeta *a, AtLoc *all, size_t nlocs) {
     AtRemap r = {.a = a, .norig = a->nscopes};
     r.owner = MS_NEW_N(&a->m.arena, uint32_t, a->nscopes ? a->nscopes : 1);
@@ -266,7 +296,7 @@ static void at_remap_scopes(AtMeta *a, AtLoc *all, size_t nlocs) {
         const uint32_t p = all[i].func, c = all[i].scope;
         if (c > r.norig) {
             const uint32_t q = c - r.norig - 1;
-            all[i].scope = q >= a->nfuncs || q == p ? 0 : at_inlined_body(&r, q, p, own[p]);
+            all[i].scope = q >= a->nfuncs || q == p ? 0 : at_inlined_body(&r, q, p, at_call_site(a, p, q, own[p]));
         } else if (c > 0 && r.owner[c - 1] != p) {
             all[i].scope = at_clone(&r, c, p, own[p]);
         }
@@ -403,6 +433,15 @@ void mir_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay
             const MsStr sn = ms_name(&m->names, s->name);
             ms_buf_printf(out, "S %d\t%u\t%u\t%.*s\n", s->file == MIR_NONE ? -1 : (int)s->file,
                           s->parent == 0 ? 0 : base + s->parent, s->call_line, (int)sn.len, sn.ptr);
+        }
+        for (uint32_t b = 0; b < f->nblocks; b++) {
+            for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+                const MirInst *inst = &f->blocks[b].insts[k];
+                if (inst->op == MOP_Call && inst->imm.a != i && !mir_loc_none(inst->loc) && inst->loc.line != 0) {
+                    ms_buf_printf(out, "C %u\t%u\t%u\n", (uint32_t)inst->imm.a, inst->loc.line,
+                                  inst->loc.scope == 0 ? 0 : base + inst->loc.scope);
+                }
+            }
         }
         base += f->nscopes;
     }
