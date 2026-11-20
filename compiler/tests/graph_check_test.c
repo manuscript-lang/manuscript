@@ -24,7 +24,7 @@ static char root[64];
 
 static void write_file(const char *name, const char *text) {
     const char *path = MS_PATH_JOIN(&arena, root, name);
-    FILE *f = fopen(path, "w");
+    FILE *f = fopen(path, "we");
     CHECK(f != NULL);
     if (f != NULL) {
         fputs(text, f);
@@ -64,9 +64,9 @@ int main(void) {
     CHECK(check.mods[ids[0]].ndiags == 0);
     ms_check_free(&check);
     ms_names_free(&names);
-    char command[160];
-    snprintf(command, sizeof command, "rm -rf %s", root);
-    CHECK(system(command) == 0);
+    CHECK(unlink(MS_PATH_JOIN(&arena, root, "lib.ms")) == 0);
+    CHECK(unlink(MS_PATH_JOIN(&arena, root, "main.ms")) == 0);
+    CHECK(rmdir(root) == 0);
     ms_arena_free(&arena);
     if (failures != 0) {
         fprintf(stderr, "%d failure(s)\n", failures);
