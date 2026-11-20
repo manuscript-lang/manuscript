@@ -345,15 +345,12 @@ fn llvm_direct_emission_proves_facts() {
     // A list parameter of a function only direct code calls is a borrowed pointer to the list.
     assert!(
         new_ir.contains(
-            "(ptr nonnull readonly nocapture align 8 dereferenceable(24) %a0, double %a1_0)"
+            "(ptr nonnull readonly nocapture align 8 dereferenceable(24) %in0, double %v1)"
         ),
         "the list function was not emitted directly"
     );
-    // A `Bool` parameter is a zero-extended byte that is 0 or 1.
-    assert!(
-        new_ir.contains("i8 zeroext range(i8 0, 2) %a2_0"),
-        "{new_ir}"
-    );
+    // A `Bool` parameter is an `i1`, which is 0 or 1 by construction.
+    assert!(new_ir.contains("i1 %v2) nounwind"), "{new_ir}");
     // A pure loop-free function carries what LLVM cannot infer across a unit boundary.
     let grind = new_ir
         .lines()
@@ -367,7 +364,7 @@ fn llvm_direct_emission_proves_facts() {
     assert!(
         new_ir.lines().any(|l| l.starts_with("define")
             && l.contains("@\"total_floats")
-            && l.contains("dereferenceable(24) %a0")),
+            && l.contains("dereferenceable(24) %in0")),
         "the list loop was not emitted directly"
     );
     // The list element loads carry the scalar element alias class.
