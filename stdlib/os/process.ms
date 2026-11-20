@@ -28,6 +28,7 @@ import (
 	msstd_process_subprocess_close,
 	msstd_process_subprocess_kill,
 	msstd_process_subprocess_max_resident,
+	msstd_process_subprocess_pid,
 	msstd_process_subprocess_stream_id,
 	msstd_process_subprocess_terminate,
 	msstd_process_subprocess_wait,
@@ -167,6 +168,12 @@ fn Subprocess.wait(timeout: Duration? = none) Int!:
 // exit status; 0 before that or when the host cannot report it.
 fn Subprocess.max_resident_bytes() Int:
 	return msstd_process_subprocess_max_resident(self.native)
+
+// The child's process id, which `send_signal` takes; the child leads its own process
+// group, so its id is also the group's. Valid until the child is waited for: a process id
+// can be reused after that.
+fn Subprocess.pid() Int:
+	return msstd_process_subprocess_pid(self.native)
 
 // Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it
 // kills the direct process. Does not wait.

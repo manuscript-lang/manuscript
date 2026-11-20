@@ -47,6 +47,7 @@ test "spawn accepts cwd and env and reports the peak resident set after wait":
     child := spawn(
         shell(), print_probe(), SpawnOptions(env: {"MS_PROBE": "spawned"}, cwd: root())
     )?
+    expect_true(child.pid() > 0)?
     expect_equal(child.max_resident_bytes(), 0)?
     expect_equal((child.wait()?), 0)?
     expect_true(child.max_resident_bytes() > 0)?
