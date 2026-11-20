@@ -32,6 +32,10 @@ static bool run_pass(const char *name, MirModule *m, bool *changed, MsBuf *failu
         *changed = mir_depth_lower(m);
     } else if (strcmp(name, "cancel_edges") == 0) {
         *changed = mir_cancel_edges(m);
+    } else if (strcmp(name, "finish") == 0) {
+        MirGlue g = {0};
+        const MirPipelineOptions o = {.cancel_edges = true, .checks = true, .verify = false};
+        (void)mir_pipeline_finish(m, &o, &g, failure);
     } else if (strcmp(name, "glue") == 0) {
         MirGlue g = {0};
         *changed = mir_glue(m, &g);
