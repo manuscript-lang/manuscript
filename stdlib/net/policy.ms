@@ -12,6 +12,20 @@ export type Level:
 	prefixes: List[String]
 	listen: Bool
 
+fn Level.allows_host(name: String) Bool:
+	var allowed = self.hosts.contains(name)
+	parsed := parse_ip(name)
+	if parsed.is_ok():
+		for prefix in self.prefixes:
+			if in_prefix(prefix, parsed.get()): allowed = true
+	return allowed
+
+fn Level.allows_address(address: IpAddress) Bool:
+	var allowed = self.prefixes.is_empty() and not self.hosts.is_empty()
+	for prefix in self.prefixes:
+		if in_prefix(prefix, address): allowed = true
+	return allowed
+
 // The restrictions of a derived network. A request must pass every level, so a derived
 // network can only narrow its parent.
 export type Policy:
@@ -53,20 +67,6 @@ fn in_prefix(prefix: String, address: IpAddress) Bool:
 	if parsed.is_error(): return false
 
 	return contains_ip(parsed.get(), address).get_or(false)
-
-fn Level.allows_host(name: String) Bool:
-	var allowed = self.hosts.contains(name)
-	parsed := parse_ip(name)
-	if parsed.is_ok():
-		for prefix in self.prefixes:
-			if in_prefix(prefix, parsed.get()): allowed = true
-	return allowed
-
-fn Level.allows_address(address: IpAddress) Bool:
-	var allowed = self.prefixes.is_empty() and not self.hosts.is_empty()
-	for prefix in self.prefixes:
-		if in_prefix(prefix, address): allowed = true
-	return allowed
 
 // Reports whether a host name or literal address may be dialed.
 export fn host_allowed(policy: Policy, name: String) Bool:

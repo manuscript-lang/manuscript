@@ -90,7 +90,7 @@ void ms_module_check_bodies(MsCheck *c, MsModId module);
 /* The same with the program's method table (`ms_module_add_implementations` has run for every
  * module that declares impls): method calls and interface calls are checked too. */
 struct MsMethodTable;
-void ms_module_check_bodies_with(MsCheck *c, MsModId module, const struct MsMethodTable *methods);
+void ms_module_check_bodies_with(MsCheck *c, MsModId module, struct MsMethodTable *methods);
 
 /* Reports the locals and match payloads of the checked functions that nothing reads (`unused.rs`).
  * Like the Rust pass it reports only for a module with no other diagnostic, and it exempts names

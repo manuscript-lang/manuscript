@@ -341,7 +341,8 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
 static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     const uint32_t sym = w->facts->call_callee[e->id];
     const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
-    if (decl == NULL || decl->kind != MS_D_FN) {
+    // Summaries are indexed by declaration node id, which only means something within one module.
+    if (decl == NULL || decl->kind != MS_D_FN || w->check->syms.module[sym] != w->module) {
         return NULL;
     }
     const OwnSummary *summary = &w->summaries[decl->id];
@@ -545,9 +546,23 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
     }
 }
 
+/* An operation of a primitive receiver: it borrows the receiver and every argument, and its result is
+ * a scalar the checker admitted, so nothing it returns holds a borrow. */
+static void own_intrinsic_call(OwnWalk *w, const MsExpr *e) {
+    own_expr(w, e->u.call.callee->u.member.left, DEMAND_READ);
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
+    }
+}
+
 /* A call of a function this module declares: each argument is read, since a parameter that is
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
+    if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_interface[e->id] != MS_TY_NONE &&
+        ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) != MS_K_CONTRACT) {
+        own_intrinsic_call(w, e);
+        return;
+    }
     const OwnSummary *callee = own_callee(w, e);
     if (callee == NULL || e->u.call.callee->kind != MS_E_NAME) {
         w->supported = false;
@@ -916,7 +931,10 @@ static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const uin
         const MsParam *param = function->params.ptr[i];
         own_declare(w, binding, param->is_mutable ? PERM_MUTABLE : PERM_IMMUTABLE, true);
         w->param_index[binding] = i;
-        w->param_mode[binding] = param->is_mutable ? 1 : (param->moving ? 2 : 0);
+        w->param_mode[binding] = param->is_mutable ? 1 : 0;
+        if (param->moving && !param->is_mutable) {
+            w->param_mode[binding] = 2;
+        }
     }
 }
 
