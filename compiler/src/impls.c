@@ -264,6 +264,7 @@ typedef struct ImplRow {
     MsTy contract;
     MsTy ty;
     const MsFunc *decl;
+    uint8_t access; /* MS_METHOD_* */
     MsPos pos;
     const MsTy *own; /* the method's own variables, after the impl's */
     uint32_t nown;
@@ -282,6 +283,7 @@ static void impl_grow_methods(MsMethods *m) {
     IMPL_GROW_COLUMN(m, contract, cap);
     IMPL_GROW_COLUMN(m, ty, cap);
     m->decl = ms_array_resize(m->decl, cap, sizeof(const MsFunc *)); // NOLINT(bugprone-sizeof-expression): a column of declaration pointers
+    IMPL_GROW_COLUMN(m, access, cap);
     IMPL_GROW_COLUMN(m, native, cap);
     IMPL_GROW_COLUMN(m, inherent, cap);
     IMPL_GROW_COLUMN(m, module, cap);
@@ -324,6 +326,7 @@ static void impl_add_row(Impl *im, const ImplRow *row) {
     m->contract[at] = row->contract;
     m->ty[at] = row->ty;
     m->decl[at] = row->decl;
+    m->access[at] = row->access;
     m->native[at] = MS_NATIVE_SOURCE;
     m->inherent[at] = row->contract == MS_TY_NONE;
     m->module[at] = im->r->module;
@@ -523,6 +526,8 @@ static void impl_add_method(Impl *im, const ImplOperations *ops, uint32_t index)
                      .contract = im->contract,
                      .ty = signature,
                      .decl = &method->func,
+                     .access = (uint8_t)((method->mutating ? MS_METHOD_MUTATING : 0) |
+                                         (method->consuming ? MS_METHOD_CONSUMING : 0)),
                      .pos = method->pos,
                      .own = own,
                      .nown = method->func.type_params.len};

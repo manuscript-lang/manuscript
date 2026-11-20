@@ -93,7 +93,7 @@ void msrt_obj_drop(MsObj *object);
 
 static void fail(const char *text) { ms_sched()->hooks.fault(MS_FAULT_KIND_FAULT, text); }
 
-static void drop_closure(void *closure) { msrt_obj_drop(closure); }
+static void drop_closure(uint8_t *closure) { msrt_obj_drop((MsObj *)__builtin_assume_aligned(closure, _Alignof(MsObj))); }
 
 static uint64_t own_isolate(void) { return (uint64_t)(ms_sched()->isolate & 0x3fu); }
 
@@ -478,7 +478,7 @@ static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
         until = inherited;
     }
     const int64_t earlier = ms_task_set_defer_deadline(until);
-    const size_t handle = ms_cleanup_push(drop_closure, closure);
+    const size_t handle = ms_cleanup_push(drop_closure, (uint8_t *)closure);
     MsFaultText message = {0};
     MsGuardStatus status = MS_GUARD_OK;
     if (guarded) {

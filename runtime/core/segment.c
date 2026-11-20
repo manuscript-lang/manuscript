@@ -82,7 +82,7 @@ void ms_task_segment_teb(uint32_t segment, uintptr_t out[MS_CTX_TEB_WORDS]) {
 #endif
 }
 
-static void free_block(void *block) { msrt_free(block); }
+static void free_block(uint8_t *block) { msrt_free(block); }
 
 /* Makes sure the task holds a slot for segment `k` (counted from 1). */
 static bool ensure_segment(MsSched *sched, MsTask *task, uint32_t k) {
