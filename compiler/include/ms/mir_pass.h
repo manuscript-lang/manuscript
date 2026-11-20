@@ -6,6 +6,7 @@
 #define MS_MIR_PASS_H
 
 #include "ms/mir.h"
+#include "ms/mir_opt.h"
 
 /* ---- shared helpers ---- */
 
@@ -111,6 +112,10 @@ typedef struct MirPipelineOptions {
  * to the message. */
 bool mir_pipeline_prepare(MirModule *m, const MirPipelineOptions *o, MsBuf *error);
 
+/* Between prepare and finish: the optimizer for `level` (opt_pipeline.c), re-verifying after every
+ * pass when `o->verify` is set. False with `error` set to the failing pass and the module. */
+bool mir_pipeline_optimize(MirModule *m, MirOptLevel level, const MirPipelineOptions *o, MsBuf *error);
+
 /* After the optimizer: unwind, cancel_edges when on, depth, expand, glue. `glue` receives what glue
  * made, which backends look up. */
 struct MirGlue;
@@ -145,6 +150,11 @@ typedef struct MirGlue {
 
 /* The function made for `kind` of `ty` (and closure `a`, capture `b`), or MIR_NONE. */
 uint32_t mir_glue_find(const MirGlue *g, MirGlueKind kind, MirTy ty, uint32_t a, uint32_t b);
+
+/* Marks in `framed` (zeroed, one flag per value of `f`) the closure objects `f` keeps in its stack
+ * frame: a closure that owns no resource, only dropped, called, or lent to calls that neither keep
+ * nor return it. Glue picks the framed drop for them and backends allocate them in the frame. */
+void mir_framed_closures(const MirModule *m, const MirFunc *f, bool *framed);
 
 /* glue: makes the drop and clone function of every type whose drop is a walk of its fields, the
  * slot and block functions descriptors and interfaces point at, and the closure object

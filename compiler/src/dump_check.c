@@ -4,6 +4,7 @@
 
 #include "ms/check.h"
 #include "ms/dump.h"
+#include "ms/effects.h"
 #include "ms/facts.h"
 
 static const MsCheck *g_sort;
@@ -298,9 +299,14 @@ static void dump_stmts(MsBuf *out, const MsCheck *c, const MsFacts *facts, const
             dump_stmts(out, c, facts, &s->u.loop.body);
             break;
         case MS_S_ASSIGN: dump_expr(out, c, facts, s->u.assign.value); break;
+        case MS_S_FOR: // the range call itself is untyped; its bounds are
+            for (uint32_t i = 0; i < s->u.each.iter->u.call.args.len; i++) {
+                dump_expr(out, c, facts, s->u.each.iter->u.call.args.ptr[i].value);
+            }
+            dump_stmts(out, c, facts, &s->u.each.body);
+            break;
         case MS_S_BREAK:
-        case MS_S_CONTINUE:
-        case MS_S_FOR: break;
+        case MS_S_CONTINUE: break;
         }
     }
 }
@@ -354,4 +360,27 @@ void ms_dump_module_ownership(MsBuf *out, const MsCheck *c, MsModId m) {
         ms_buf_printf(out, "fn %u:%u\n", d->pos.line, d->pos.column);
         dump_function_diags(out, row, i);
     }
+}
+
+void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m) {
+    const MsModuleRow *row = &c->mods[m];
+    const MsFacts *facts = row->facts;
+    MsArena scratch = {0};
+    for (uint32_t i = 0; facts != NULL && facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        if ((d->kind != MS_D_FN && d->kind != MS_D_CONST) || !facts->body_checked[d->id]) {
+            continue;
+        }
+        const MsScanNode node = ms_effect_scan_decl(&scratch, c, m, d);
+        if (node.partial) {
+            continue;
+        }
+        ms_buf_printf(out, "%s %u:%u\n", d->kind == MS_D_CONST ? "const" : "fn", d->pos.line, d->pos.column);
+        for (uint32_t k = 0; k < node.nedges; k++) {
+            const MsStr name = ms_name(c->names, c->syms.name[node.edges[k].callee]);
+            ms_buf_printf(out, "edge %.*s %u:%u\n", (int)name.len, name.ptr, node.edges[k].pos.line,
+                          node.edges[k].pos.column);
+        }
+    }
+    ms_arena_free(&scratch);
 }

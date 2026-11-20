@@ -644,6 +644,17 @@ impl crate::checker::Program {
         scan.declared.get(&id).cloned().unwrap_or_default()
     }
 
+    /// The callables callable `id` references, first reference of each, in source order (for the
+    /// C checker's comparison tool; deleted with the Rust checker).
+    pub fn effect_edges_of(&self, id: Name) -> Vec<(Name, Pos)> {
+        let mut scan = self.effect_scan.borrow_mut();
+        scan.reach(id);
+        let Some(node) = scan.state.as_ref().and_then(|s| s.nodes.get(&id)) else {
+            return Vec::new();
+        };
+        node.edge_pos.clone()
+    }
+
     /// Scans every callable, for a listing of the whole library.
     pub fn scan_all_effects(&self) {
         let mut scan = self.effect_scan.borrow_mut();
