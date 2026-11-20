@@ -341,7 +341,8 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
 static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     const uint32_t sym = w->facts->call_callee[e->id];
     const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
-    if (decl == NULL || decl->kind != MS_D_FN) {
+    // A call to the function being summarized has no summary yet.
+    if (decl == NULL || decl->kind != MS_D_FN || &decl->u.fn == w->function) {
         return NULL;
     }
     const OwnSummary *summary = &w->summaries[decl->id];

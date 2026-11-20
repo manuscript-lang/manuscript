@@ -519,21 +519,33 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     return record;
 }
 
-/* The positional arguments of a call, each bound to the next parameter and checked against it with
- * the context "argument 'NAME' of CALLEE". An argument past the last parameter is reported and
- * checked with no expectation. False when something here is left to the Rust checker (labels,
- * missing arguments, parameters of other kinds); the caller returns the unsupported mark. */
-static bool body_arguments(MsBody *b, const MsExpr *call, uint32_t nparams, const MsTyParam *params, MsStr callee) {
+/* "missing argument NAME: T in call to CALLEE; add 'NAME: <T>'" at the call. */
+static void body_report_missing(MsBody *b, const MsExpr *call, uint32_t index, const MsTyParam *param, MsStr callee) {
+    const MsStr name = ms_name(b->c->names, param->name);
+    const MsStr ty = body_show(b, param->ty);
+    const bool positional = (param->flags & MS_PARAM_POSITIONAL) != 0;
+    body_report(b, call->pos,
+                positional ? ms_arena_fmt(&b->c->arena, "missing argument %u: %.*s in call to %.*s; pass it positionally, without a label",
+                                          index + 1, (int)ty.len, ty.ptr, (int)callee.len, callee.ptr)
+                           : ms_arena_fmt(&b->c->arena, "missing argument %.*s: %.*s in call to %.*s; add '%.*s: <%.*s>'",
+                                          (int)name.len, name.ptr, (int)ty.len, ty.ptr, (int)callee.len, callee.ptr,
+                                          (int)name.len, name.ptr, (int)ty.len, ty.ptr));
+}
+
+/* The arguments of a call to `function`, in parameter order, positional or labelled with the
+ * parameter's name: each is checked against its parameter with the context "argument 'NAME' of
+ * CALLEE". An argument past the last parameter and a parameter with no argument are reported.
+ * False when something here is left to the Rust checker (labels out of order or unknown, defaults,
+ * parameters of other kinds); the caller returns the unsupported mark. */
+static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function, const MsTyParam *params, MsStr callee) {
+    const uint32_t nparams = function->params.len;
     const uint32_t nargs = call->u.call.args.len;
-    if (nargs < nparams) {
-        return false;
-    }
     for (uint32_t i = 0; i < nargs; i++) {
         const MsArg *arg = &call->u.call.args.ptr[i];
-        if (arg->has_name) {
-            return false;
-        }
         if (i >= nparams) {
+            if (arg->has_name) {
+                return false;
+            }
             body_report(b, arg->pos, ms_arena_fmt(&b->c->arena, "too many positional arguments; every parameter is already supplied, so remove this argument"));
             if (ms_body_expr(b, arg->value, MS_TY_NONE) == MS_TY_NONE) {
                 return false;
@@ -541,7 +553,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, uint32_t nparams, cons
             continue;
         }
         const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
-        if ((params[i].flags & MS_PARAM_POSITIONAL) != 0 ||
+        if ((arg->has_name && (arg->name != params[i].name || (params[i].flags & MS_PARAM_POSITIONAL) != 0)) ||
             !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)))) {
             return false;
         }
@@ -551,6 +563,12 @@ static bool body_arguments(MsBody *b, const MsExpr *call, uint32_t nparams, cons
         if (ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
             return false;
         }
+    }
+    for (uint32_t i = nargs; i < nparams; i++) {
+        if (function->params.ptr[i]->def != NULL || body_has_invalid(b, params[i].ty)) {
+            return false;
+        }
+        body_report_missing(b, call, i, &params[i], callee);
     }
     return true;
 }
@@ -586,7 +604,8 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION) {
         return ms_body_unsupported(b);
     }
-    if (!body_arguments(b, e, tys->nparams[sig], ms_ty_params(tys, sig), ms_name(b->c->names, callee->u.sym))) {
+    if (tys->nparams[sig] != syms->decl[sym]->u.fn.params.len ||
+        !body_arguments(b, e, &syms->decl[sym]->u.fn, ms_ty_params(tys, sig), ms_name(b->c->names, callee->u.sym))) {
         return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;
