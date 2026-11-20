@@ -72,6 +72,7 @@ int ms_h2conn_next(MsH2Conn *c, MsH2ConnEvent *event); /* 0 when none */
 
 /* Calls fn for every stream the connection still holds (open, or closed and not yet released), in no order. fn must
    not release streams. */
+/* `user` points at the two words of the stream: the handler's (ms_h2conn_user) and the watcher's (ms_h2conn_watch). */
 void ms_h2conn_for_each(MsH2Conn *c, void (*fn)(void *context, int32_t stream, const uint64_t *user), void *context);
 
 /* Per-stream queries; NULL or 0 for an unknown or released stream. The head and trailers are valid until release. */
@@ -81,6 +82,8 @@ unsigned ms_h2conn_state(const MsH2Conn *c, int32_t stream);
 uint32_t ms_h2conn_reset_code(const MsH2Conn *c, int32_t stream);
 /* The caller's word for the stream (a parked task, an exchange): starts as 0. */
 uint64_t *ms_h2conn_user(MsH2Conn *c, int32_t stream);
+/* A second word, for a task that waits for the stream to go away while the first one works on it. */
+uint64_t *ms_h2conn_watch(MsH2Conn *c, int32_t stream);
 
 /* Body bytes into buf: the count (> 0), or 0 when none are queued (check ms_h2conn_state for ENDED or RESET), or
    -1 for an unknown stream. Reading returns the bytes to the peer's windows, so output may become pending. */

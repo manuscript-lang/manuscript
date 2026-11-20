@@ -13,7 +13,6 @@ doctest = false
 
 [dependencies]
 ms-rt = { path = "../ms-rt" }
-ms-std-net = { path = "../ms-std-net" }
 
 [features]
 # The runtime with allocation sampling, for `ms profile --allocs` (`cargo xtask runtime --alloc-profile`).

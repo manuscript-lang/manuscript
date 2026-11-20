@@ -57,6 +57,8 @@ MS_NODISCARD MsNetStatus ms_h2_stream_respond(MsH2Serve *serve, int32_t stream, 
 MS_NODISCARD MsNetStatus ms_h2_stream_write(MsH2Serve *serve, int32_t stream, const uint8_t *data, size_t length, int end,
                                             int64_t deadline_ns);
 MS_NODISCARD MsNetStatus ms_h2_stream_trailers_send(MsH2Serve *serve, int32_t stream, const MsH2Nv *nv, size_t nnv);
+/* Parks until the peer resets the stream or the connection goes away (RESET or CLOSED), or the task is cancelled. */
+MsNetStatus ms_h2_stream_wait_gone(MsH2Serve *serve, int32_t stream);
 MsNetStatus ms_h2_stream_reset(MsH2Serve *serve, int32_t stream, uint32_t code);
 /* The handler is done (NO_ERROR code 0 after a complete exchange). Must be called exactly once per request. */
 void ms_h2_serve_release(MsH2Serve *serve, int32_t stream, uint32_t code);

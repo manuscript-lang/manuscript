@@ -10,6 +10,7 @@ import (
 	stdout from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 
 	json_string from "./docgen.ms",
 	Fact, Facts from "./views.ms",
@@ -478,3 +479,171 @@ fn main() Void!:
 	var out = stdout()
 	out.write(findings_json(compare_facts(base, head, input)))?
 	out.flush()?
+
+// ---- Tests: the behavior crates/ms-tooling/tests/review.rs pinned ----
+
+fn fact(file: String, kind: String, name: String, line: Int) Fact:
+	return Fact(
+		key: f"{file}#{kind}#{name}",
+		file: file,
+		kind: kind,
+		name: name,
+		line: line,
+		effects: [],
+		error: "",
+		tries: 0,
+		scopes: 0,
+		calls: [],
+		external: [],
+		slots: [],
+		result_ownership: "",
+		result_borrow: false,
+		receiver: "",
+		result: none,
+		ty: "fn() Int",
+		first: line,
+		last: line + 1,
+	)
+
+fn facts_of(list: List[Fact]) Facts:
+	return Facts(
+		entities: list.sorted_by_key(fn f: f.key.clone()),
+		imports: [],
+		flows: [],
+	)
+
+fn input_at(lines: List[Int]) DiffInput:
+	return DiffInput(added: Set[String](), touched: {"r.ms": lines}, base_checked: true)
+
+fn program(add_effect: Bool) Facts:
+	var say = fact("r.ms", "fn", "say", 3)
+	say.effects = ["io"]
+	say.reach = ["io"]
+	say.external = ["@std/io/io.ms#stdout"]
+
+	var add = fact("r.ms", "fn", "add", 7)
+	var run = fact("r.ms", "fn", "run", 10)
+	run.exported = true
+	run.calls = [add.key.clone()]
+
+	if add_effect:
+		add.effects = ["io"]
+		add.reach = ["io"]
+		add.calls = [say.key.clone()]
+		run.effects = ["io"]
+		run.reach = ["io"]
+
+	return facts_of([say, add, run])
+
+test "an effect gain ranks through callers":
+	findings := compare_facts(program(false), program(true), input_at([8]))
+	expect_equal(findings[0].tier, "EFFECT+")?
+	expect_equal(findings.length(), 2)?
+	expect_true(findings[0].changes.contains("reaches: + io"))?
+
+	add := findings.find(fn f: f.entity == "add").get()
+	expect_equal(add.evidence, ["path: add -> say -> @std/io/io.ms#stdout"])?
+
+fn declared_program(permit: Bool, reach: Bool) Facts:
+	var connect = fact("r.ms", "fn", "connect", 3)
+	var save = fact("r.ms", "fn", "save", 7)
+	save.calls = [connect.key.clone()]
+
+	if reach:
+		connect.reach = ["std.net.connect"]
+		save.reach = ["std.net.connect"]
+
+	if permit: save.permits = ["std.net.*"]
+	return facts_of([connect, save])
+
+test "a new permission and a new reach are effect findings, the permission first":
+	findings := compare_facts(
+		declared_program(false, false),
+		declared_program(true, true),
+		input_at([8]),
+	)
+	save := findings.find(fn f: f.entity == "save").get()
+	expect_equal(save.tier, "EFFECT+")?
+	expect_equal(save.changes[0], "permits: + std.net.*")?
+	expect_true(save.changes.contains("reaches: + std.net.connect"))?
+	expect_equal(save.evidence, ["path: save -> connect"])?
+
+test "reach counts distinct callers across cycles":
+	var entry = fact("r.ms", "fn", "entry", 1)
+	var left = fact("r.ms", "fn", "left", 3)
+	var right = fact("r.ms", "fn", "right", 5)
+	var target = fact("r.ms", "fn", "target", 7)
+	unrelated := fact("r.ms", "fn", "unrelated", 9)
+	entry.calls = [left.key.clone(), right.key.clone()]
+	left.calls = [target.key.clone(), target.key.clone()]
+	right.calls = [target.key.clone()]
+	target.calls = [left.key.clone(), target.key.clone()]
+	target.exported = true
+
+	base := facts_of([entry, left, right, target, unrelated])
+	var head = base.clone()
+
+	for i in 0..head.entities.length():
+		if head.entities[i].name == "target": head.entities[i].ty = "fn() String"
+		if head.entities[i].name == "left": head.entities[i].scopes = 1
+
+	// The right branch has one caller, but a body-only edit gets no reach bonus.
+	findings := compare_facts(base, head, input_at([6]))
+	expect_equal(findings.length(), 3)?
+	expect_equal(findings[0].entity, "target")?
+	expect_equal(findings[0].tier, "CONTRACT")?
+	expect_equal(findings[0].reach, 3)?
+	expect_equal(findings[0].score, 15)?
+	expect_equal(findings[0].terms, ["contract +8", "reach(3) +4", "exported +3"])?
+	expect_equal(findings[1].entity, "left")?
+	expect_equal(findings[1].tier, "RESOURCE")?
+	expect_equal(findings[1].reach, 3)?
+	expect_equal(findings[1].score, 8)?
+	expect_equal(findings[1].terms, ["resource +4", "reach(3) +4"])?
+	expect_equal(findings[2].entity, "right")?
+	expect_equal(findings[2].tier, "INTERNAL")?
+	expect_equal(findings[2].reach, 0)?
+	expect_equal(findings[2].score, 0)?
+	expect_true(findings[2].terms.is_empty())?
+
+type Range:
+	name: String
+	first: Int
+	last: Int
+
+type Expected:
+	line: Int
+	key: String
+
+test "touched lines map to the most specific entity, ties to the smallest key":
+	var facts = List[Fact]()
+
+	for spec in [
+		Range(name: "outer", first: 1, last: 10),
+		Range(name: "b", first: 3, last: 5),
+		Range(name: "a", first: 3, last: 5),
+		Range(name: "ignored", first: 0, last: 20),
+		Range(name: "invalid", first: 8, last: 7),
+	]:
+		var f = fact("a.ms", "fn", spec.name.clone(), 0)
+		f.key = spec.name.clone()
+		f.first = spec.first
+		f.last = spec.last
+		facts.append(f)
+
+	head := facts_of(facts)
+	cases := [
+		Expected(line: -1, key: ""),
+		Expected(line: 0, key: ""),
+		Expected(line: 1, key: "outer"),
+		Expected(line: 3, key: "a"),
+		Expected(line: 5, key: "a"),
+		Expected(line: 6, key: "outer"),
+		Expected(line: 10, key: "outer"),
+		Expected(line: 11, key: ""),
+	]
+
+	for c in cases:
+		keys := touched_keys(head, {"a.ms": [c.line, c.line], "absent.ms": [1]})
+		expect_equal(keys.length(), if c.key.is_empty(): 0 else: 1)?
+		expect_true(c.key.is_empty() or keys.contains(c.key))?
