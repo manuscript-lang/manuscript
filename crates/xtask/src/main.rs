@@ -745,23 +745,34 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
             "entry",
         ));
     }
-    let mut built = std::thread::scope(|scope| {
-        let handles: Vec<_> = jobs
-            .iter()
+    // On Windows they build one after another: CMake started beside a running build fails there with
+    // `AssignProcessToJobObject: (50) The request is not supported`.
+    let mut built = if cfg!(windows) {
+        jobs.iter()
             .map(|(dir, triple, name, features)| {
-                let (root, out) = (&root, &out);
-                scope
-                    .spawn(move || build_archive(root, out, dir, triple.as_deref(), name, features))
-            })
-            .collect();
-        handles
-            .into_iter()
-            .map(|h| {
-                h.join()
-                    .unwrap_or_else(|_| Err("archive build panicked".into()))
+                build_archive(&root, &out, dir, triple.as_deref(), name, features)
             })
             .collect::<Vec<_>>()
-    });
+    } else {
+        std::thread::scope(|scope| {
+            let handles: Vec<_> = jobs
+                .iter()
+                .map(|(dir, triple, name, features)| {
+                    let (root, out) = (&root, &out);
+                    scope.spawn(move || {
+                        build_archive(root, out, dir, triple.as_deref(), name, features)
+                    })
+                })
+                .collect();
+            handles
+                .into_iter()
+                .map(|h| {
+                    h.join()
+                        .unwrap_or_else(|_| Err("archive build panicked".into()))
+                })
+                .collect::<Vec<_>>()
+        })
+    };
     let archive = built.remove(0)?;
     built.into_iter().collect::<Result<Vec<_>, _>>()?;
     Ok(archive)

@@ -6,12 +6,6 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Mutex;
-
-/// One CMake at a time per process: `xtask runtime` builds its archives side by side, and on Windows two CMake
-/// processes started together can fail with `AssignProcessToJobObject: (50) The request is not supported`. The C
-/// half is short (ccache); the cargo builds that follow stay parallel.
-static CMAKE_RUNS: Mutex<()> = Mutex::new(());
 
 /// What the CMake build leaves for one target.
 pub struct CRuntime {
@@ -156,7 +150,6 @@ pub fn build_c_runtime(root: &Path, work: &Path, triple: Option<&str>) -> Result
             configure.arg(format!("-DCMAKE_C_COMPILER_TARGET={arch}-pc-windows-msvc"));
         }
     }
-    let _one_at_a_time = CMAKE_RUNS.lock().unwrap_or_else(|e| e.into_inner());
     run(&mut configure, "cmake configure")?;
     run(
         Command::new("cmake")
