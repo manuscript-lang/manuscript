@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ms/mir_layout.h"
 
@@ -25,6 +26,7 @@ typedef struct LCx {
     MirLayouts *layouts; /* borrowed from mir_emit_llvm */
     uint32_t next;       /* counter for generated names */
     const char *why;
+    const MirData *data; /* the module's static data; NULL when it has none */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -249,17 +251,75 @@ static bool ll_leaves_at(LCx *c, MirValue value, const char *base, bool load) {
     return true;
 }
 
+/* Pointers are `i64` registers like any word, so an address is converted where memory is touched:
+ * writes `%pN = inttoptr` of `value` and the name `%pN` to `name`. LLVM folds the round trip of a
+ * stack slot back into the alloca. */
+static void ll_pointer(LCx *c, MirValue value, char *name, size_t cap) {
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "  %%p%u = inttoptr i64 %%v%u to ptr\n", n, value);
+    (void)snprintf(name, cap, "%%p%u", n);
+}
+
+/* ---- static data ---- */
+
+static void ll_data_name(MsBuf *o, const char *name) {
+    ll_sym(o, (MsStr){name, (uint32_t)strlen(name)});
+}
+
+/* The address a relocation or a data reference names, as an LLVM constant. */
+static void ll_ref(const LCx *c, MsBuf *o, MirRef ref) {
+    if (ref.kind == MT_DATA) {
+        ll_data_name(o, c->data->syms[ref.index].name);
+    } else if (ref.kind == MT_FUNC) {
+        ll_sym(o, ms_name(&c->m->names, c->m->funcs[ref.index].name));
+    } else {
+        ll_data_name(o, ref.runtime);
+    }
+}
+
+/* `typedesc`: the address of the descriptor for the type, as a word. */
+static bool ll_typedesc(LCx *c, const MirInst *inst) {
+    if (c->data == NULL) {
+        c->why = "no static data";
+        return false;
+    }
+    const MirRef ref = mir_data_desc(c->data, (MirTy)inst->imm.a);
+    if (ref.kind == MT_RUNTIME && ref.runtime == NULL) {
+        c->why = "typedesc of a type the data table did not see";
+        return false;
+    }
+    ms_buf_printf(c->out, "  %%v%u = ptrtoint ptr ", inst->res);
+    ll_ref(c, c->out, ref);
+    ms_buf_puts(c->out, " to i64\n");
+    return true;
+}
+
+/* `global.get`, `global.set`: the leaves of the value at the global's address. */
+static bool ll_global(LCx *c, const MirInst *inst) {
+    if (c->data == NULL) {
+        c->why = "no static data";
+        return false;
+    }
+    char base[96];
+    MsBuf name = {0};
+    ll_data_name(&name, c->data->syms[c->data->globals[inst->imm.a]].name);
+    (void)snprintf(base, sizeof base, "%.*s", (int)name.len, name.data);
+    ms_buf_free(&name);
+    const bool get = inst->op == MOP_GlobalGet;
+    return ll_leaves_at(c, get ? inst->res : inst->args[0], base, get);
+}
+
 /* `load`, `take`: the result's leaves from the pointer in the first operand. */
 static bool ll_load(LCx *c, const MirInst *inst) {
     char base[24];
-    (void)snprintf(base, sizeof base, "%%v%u", inst->args[0]);
+    ll_pointer(c, inst->args[0], base, sizeof base);
     return ll_leaves_at(c, inst->res, base, true);
 }
 
 /* `store`, `put`: the second operand's leaves to the pointer in the first. */
 static bool ll_store(LCx *c, const MirInst *inst) {
     char base[24];
-    (void)snprintf(base, sizeof base, "%%v%u", inst->args[0]);
+    ll_pointer(c, inst->args[0], base, sizeof base);
     return ll_leaves_at(c, inst->args[1], base, false);
 }
 
@@ -378,8 +438,8 @@ static void ll_frame_slots(LCx *c) {
         for (uint32_t k = 0; k < block->ninsts; k++) {
             const MirInst *inst = &block->insts[k];
             if (inst->op == MOP_Slot) {
-                ms_buf_printf(c->out, "  %%v%u = alloca [%u x i8], align 8\n", inst->res,
-                              ll_slot_bytes(c->layouts, (MirTy)inst->imm.a));
+                ms_buf_printf(c->out, "  %%s%u = alloca [%u x i8], align 8\n  %%v%u = ptrtoint ptr %%s%u to i64\n",
+                              inst->res, ll_slot_bytes(c->layouts, (MirTy)inst->imm.a), inst->res, inst->res);
             } else if (inst->op == MOP_Call && inst->res != MIR_NONE &&
                        ll_leaves(c, c->f->values[inst->res]).len > 1) {
                 ms_buf_printf(c->out, "  %%r%u_%u = alloca [%u x i8], align 8\n", b, k,
@@ -648,6 +708,8 @@ static bool ll_memory_inst(LCx *c, const MirInst *inst, bool *handled) {
     case MOP_Slot: return true; /* allocated at the top of the entry block */
     case MOP_Load: case MOP_Take: return ll_load(c, inst);
     case MOP_Store: case MOP_Put: return ll_store(c, inst);
+    case MOP_TypeDesc: return ll_typedesc(c, inst);
+    case MOP_GlobalGet: case MOP_GlobalSet: return ll_global(c, inst);
     case MOP_TypeNew: ll_record_new(c, inst); return true;
     case MOP_TypeGet: return ll_record_get(c, inst);
     case MOP_TypeSet: return ll_record_set(c, inst);
@@ -952,12 +1014,78 @@ static const char ll_declarations[] =
     "declare double @llvm.ceil.f64(double)\n"
     "declare double @llvm.trunc.f64(double)\n";
 
-bool mir_emit_llvm(const MirModule *m, MsBuf *out, MsBuf *why) {
+/* The words of a data symbol: its bytes with each relocation's address in place. */
+static void ll_data_words(const LCx *c, MsBuf *o, const MirDataSym *sym) {
+    ms_buf_printf(o, "[%u x i64] [", sym->size / 8);
+    for (uint32_t w = 0; w < sym->size / 8; w++) {
+        const MirReloc *at = NULL;
+        for (uint32_t r = 0; r < sym->nrelocs; r++) {
+            if (sym->relocs[r].offset == w * 8) {
+                at = &sym->relocs[r];
+            }
+        }
+        ms_buf_printf(o, "%si64 ", w == 0 ? "" : ", ");
+        if (at != NULL) {
+            ms_buf_puts(o, "ptrtoint (ptr ");
+            ll_ref(c, o, at->to);
+            ms_buf_puts(o, " to i64)");
+            continue;
+        }
+        uint64_t word = 0;
+        for (uint32_t k = 0; sym->bytes != NULL && k < 8; k++) {
+            word |= (uint64_t)sym->bytes[w * 8 + k] << (8 * k);
+        }
+        ms_buf_printf(o, "%lld", (long long)word);
+    }
+    ms_buf_putc(o, ']');
+}
+
+/* Whether a relocation before (`sym`, `reloc`) names the runtime symbol `name`. */
+static bool ll_runtime_seen(const MirData *d, uint32_t sym, uint32_t reloc, const char *name) {
+    for (uint32_t j = 0; j <= sym; j++) {
+        const uint32_t end = j < sym ? d->syms[j].nrelocs : reloc;
+        for (uint32_t q = 0; q < end; q++) {
+            const MirRef other = d->syms[j].relocs[q].to;
+            if (other.kind == MT_RUNTIME && strcmp(other.runtime, name) == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* One definition per data symbol, preceded by a declaration of each runtime symbol it names. */
+static void ll_define_data(const LCx *c) {
+    MsBuf *o = c->out;
+    const MirData *d = c->data;
+    for (uint32_t i = 0; i < d->nsyms; i++) {
+        for (uint32_t r = 0; r < d->syms[i].nrelocs; r++) {
+            const MirRef ref = d->syms[i].relocs[r].to;
+            if (ref.kind == MT_RUNTIME && !ll_runtime_seen(d, i, r, ref.runtime)) {
+                ll_data_name(o, ref.runtime);
+                ms_buf_puts(o, " = external global i8\n");
+            }
+        }
+    }
+    for (uint32_t i = 0; i < d->nsyms; i++) {
+        const MirDataSym *sym = &d->syms[i];
+        ll_data_name(o, sym->name);
+        ms_buf_printf(o, " = hidden %s ", sym->writable ? "global" : "constant");
+        if (sym->bytes == NULL && sym->nrelocs == 0) {
+            ms_buf_printf(o, "[%u x i8] zeroinitializer", sym->size);
+        } else {
+            ll_data_words(c, o, sym);
+        }
+        ms_buf_printf(o, ", align %u\n", sym->align);
+    }
+}
+
+bool mir_emit_llvm(const MirModule *m, const MirData *data, MsBuf *out, MsBuf *why) {
     MirLayouts layouts;
     mir_layouts_init(&layouts, m);
     bool ok = true;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL};
+        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data};
         if (ll_function(&c, i)) {
             continue;
         }
@@ -965,8 +1093,11 @@ bool mir_emit_llvm(const MirModule *m, MsBuf *out, MsBuf *why) {
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
-    LCx externs = {m, NULL, out, &layouts, 0, NULL};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data};
     ll_declare_externs(&externs);
+    if (data != NULL) {
+        ll_define_data(&externs);
+    }
     mir_layouts_free(&layouts);
     ms_buf_puts(out, ll_declarations);
     return ok;

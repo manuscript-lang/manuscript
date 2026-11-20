@@ -29,8 +29,6 @@ export extern fn msstd_system_dev_null() String
 // The case index of `Os`: 0 Linux, 1 Macos, 2 Windows, 3 Other.
 export extern fn msstd_system_os() Int
 
-export extern fn msstd_system_constants() Map[String, Int]
-
 export extern fn msstd_system_info() SystemInfo
 
 export extern fn msstd_system_user_info() UserInfo!

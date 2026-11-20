@@ -9,7 +9,7 @@ out=target/c-compiler/mir-pass
 mkdir -p "$out"
 fuzz=${MS_MIR_FUZZ:-600}
 seed=${MS_FUZZ_SEED:-1}
-PASSES=${MS_MIR_PASSES:-"exit_drops expand expand-nochecks expand_owned unwind cancel_edges glue glue_expand"}
+PASSES=${MS_MIR_PASSES:-"exit_drops expand expand-nochecks expand_owned unwind cancel_edges glue glue_expand elaborate elaborate-cancel depth finish"}
 
 cargo build --release --locked -p ms-mir --example c_pass_oracle
 oracle=target/release/examples/c_pass_oracle
@@ -31,10 +31,28 @@ status=0
 for set in files fuzz; do
     cp "$out/$set.txt" "$out/valid-$set.txt"
     for pass in $PASSES; do
-        tr '\n' '\0' < "$out/valid-$set.txt" | xargs -0 "$oracle" pass "$pass" > "$out/$pass-$set.rust"
-        tr '\n' '\0' < "$out/valid-$set.txt" | xargs -0 "$bin/ms_mir_pass" pass "$pass" > "$out/$pass-$set.c"
+        list="$out/valid-$set.txt"
+        # The Raw fixtures of elaborate are not verifier-clean until elaborated (the Rust tests only
+        # verify the output), so that pass also runs on them whole.
+        if [ "$pass" = elaborate ] && [ "$set" = files ]; then
+            { cat "$list"; git ls-files 'compiler/tests/mir/elaborate/*.mir'; } | sort -u > "$out/elaborate-list.txt"
+            list="$out/elaborate-list.txt"
+        fi
+        if [ "$pass" = elaborate-cancel ] && [ "$set" = files ]; then
+            # The elaborate fixtures, made task programs, and the task fixtures themselves.
+            mkdir -p "$out/task"
+            { cat "$list"; git ls-files 'compiler/tests/mir/elaborate-cancel/*.mir'; } | sort -u > "$out/cancel-list.txt"
+            for f in $(git ls-files 'compiler/tests/mir/elaborate/*.mir'); do
+                t="$out/task/$(basename "$f")"
+                { head -1 "$f"; echo 'extern @msrt_promise_start(int) -> int spawns_task'; tail -n +2 "$f"; } > "$t"
+                echo "$t" >> "$out/cancel-list.txt"
+            done
+            list="$out/cancel-list.txt"
+        fi
+        tr '\n' '\0' < "$list" | xargs -0 "$oracle" pass "$pass" > "$out/$pass-$set.rust"
+        tr '\n' '\0' < "$list" | xargs -0 "$bin/ms_mir_pass" pass "$pass" > "$out/$pass-$set.c"
         if cmp -s "$out/$pass-$set.rust" "$out/$pass-$set.c"; then
-            echo "ok   mir pass $pass $set ($(wc -l < "$out/valid-$set.txt") files)"
+            echo "ok   mir pass $pass $set ($(wc -l < "$list") files)"
         else
             echo "FAIL mir pass $pass $set: first difference"
             diff "$out/$pass-$set.rust" "$out/$pass-$set.c" | head -20 || true

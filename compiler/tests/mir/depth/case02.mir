@@ -1,0 +1,16 @@
+module "t"
+entry @main
+
+fn @main() -> int {
+b0:
+  depth.enter
+  %0: int = iconst 3
+  %1: int = call @fib (%0)
+  ret %1
+}
+
+fn @fib(%0: int) -> int {
+b0:
+  depth.enter
+  ret %0
+}

@@ -35,14 +35,23 @@ typedef struct {
     int fd;
     short events;
     short revents;
-} PollNowEntry;
+} ReadyEntry;
 
-int poll(PollNowEntry *entries, unsigned long count, int timeout_ms);
+int poll(ReadyEntry *entries, unsigned long count, int timeout_ms);
 
-enum { POLL_NOW_READABLE = 1 };
+enum { READY_IN = 0x1, READY_OUT = 0x4, READY_INVALID = 0x20 };
+
+bool ms_sys_fd_ready(int fd, bool writes, bool *ready) {
+    ReadyEntry entry = {.fd = fd, .events = writes ? READY_OUT : READY_IN, .revents = 0};
+    if (poll(&entry, 1, 0) < 0 || (entry.revents & READY_INVALID) != 0) {
+        return false;
+    }
+    *ready = entry.revents != 0;
+    return true;
+}
 
 bool ms_sys_fd_readable_now(int fd) {
-    PollNowEntry entry = {.fd = fd, .events = POLL_NOW_READABLE, .revents = 0};
+    ReadyEntry entry = {.fd = fd, .events = READY_IN, .revents = 0};
     return poll(&entry, 1, 0) != 0; /* a hang-up or an error is readable too: the read reports it */
 }
 
@@ -81,6 +90,12 @@ void ms_sys_sync_environ(void) {
     environ = __environ;
 }
 
+char **ms_sys_swap_libc_environ(char **replacement) {
+    char **previous = __environ;
+    __environ = replacement;
+    return previous;
+}
+
 #else
 
 bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {
@@ -90,5 +105,7 @@ bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {
 }
 
 void ms_sys_sync_environ(void) {}
+
+char **ms_sys_swap_libc_environ(char **replacement) { return replacement; }
 
 #endif

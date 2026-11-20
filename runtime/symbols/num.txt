@@ -11,3 +11,4 @@ msrt_float32_from_bits
 msrt_float32_to_bits
 msrt_float_truncate_to_int
 msrt_float_to_float32
+msrt_numbers_parse_int

@@ -9,13 +9,24 @@
 
 #include "ms/ownership.h"
 
-MsLiveness ms_liveness_new(MsArena *arena, uint32_t node_count) {
-    const size_t nodes = (size_t)node_count + 1;
+MsLiveness ms_liveness_new(MsArena *arena, const MsFacts *facts) {
+    const size_t nodes = (size_t)facts->node_count + 1;
     MsLiveness live = {MS_NEW_N(arena, uint8_t, nodes), MS_NEW_N(arena, uint32_t, nodes),
-                       MS_NEW_N(arena, MsPos, nodes)};
+                       MS_NEW_N(arena, MsPos, nodes),   MS_NEW_N(arena, uint32_t, nodes),
+                       MS_NEW_N(arena, uint32_t, nodes)};
     memset(live.state, MS_USE_NONE, nodes * sizeof *live.state);
     memset(live.next, 0xff, nodes * sizeof *live.next);
     memset(live.pos, 0, nodes * sizeof *live.pos);
+    memset(live.arm_first, 0xff, nodes * sizeof *live.arm_first);
+    memset(live.arm_count, 0, nodes * sizeof *live.arm_count);
+    const MsBindings *bindings = &facts->bindings;
+    for (uint32_t i = 0; i < bindings->count; i++) {
+        if (bindings->role[i] == MS_ROLE_ARM) {
+            const uint32_t arm = bindings->decl_node[i];
+            live.arm_first[arm] = live.arm_count[arm] == 0 ? i : live.arm_first[arm];
+            live.arm_count[arm]++;
+        }
+    }
     return live;
 }
 
@@ -36,6 +47,16 @@ typedef struct LiveWalk {
     bool supported;
 } LiveWalk;
 
+static uint32_t *live_copy_of(const LiveWalk *w, const uint32_t *source) {
+    uint32_t *copy = MS_NEW_N(w->scratch, uint32_t, w->nbindings + 1);
+    memcpy(copy, source, sizeof(uint32_t) * w->nbindings);
+    return copy;
+}
+
+static uint32_t *live_snapshot(const LiveWalk *w) {
+    return live_copy_of(w, w->later);
+}
+
 static void live_expr(LiveWalk *w, const MsExpr *e);
 static void live_block(LiveWalk *w, const MsStmts *body);
 
@@ -48,13 +69,21 @@ static void live_use(LiveWalk *w, const MsExpr *e) {
     w->later[binding] = e->id;
 }
 
-/* After an operand that may be skipped: each binding's earlier use on either path. */
-static void live_join(LiveWalk *w, const uint32_t *skipped) {
-    for (uint32_t i = 0; i < w->nbindings; i++) {
-        if (skipped[i] != MS_NONE && (w->later[i] == MS_NONE || skipped[i] < w->later[i])) {
-            w->later[i] = skipped[i];
+/* Each binding's earlier use on either path. */
+static bool live_min_into(uint32_t *into, const uint32_t *from, uint32_t n) {
+    bool changed = false;
+    for (uint32_t i = 0; i < n; i++) {
+        if (from[i] != MS_NONE && (into[i] == MS_NONE || from[i] < into[i])) {
+            into[i] = from[i];
+            changed = true;
         }
     }
+    return changed;
+}
+
+/* After an operand that may be skipped: the earlier use on either path. */
+static void live_join(LiveWalk *w, const uint32_t *skipped) {
+    (void)live_min_into(w->later, skipped, w->nbindings);
 }
 
 static void live_binary(LiveWalk *w, const MsExpr *e) {
@@ -69,6 +98,28 @@ static void live_binary(LiveWalk *w, const MsExpr *e) {
         live_join(w, skipped);
     }
     live_expr(w, e->u.bin.left);
+}
+
+/* Each arm runs from what follows the match: its body, then its value is read first. The arm's
+ * payload bindings start there. The scrutinee is read before every arm. */
+static void live_match(LiveWalk *w, const MsExpr *e) {
+    const uint32_t *after = live_snapshot(w);
+    uint32_t *joined = live_copy_of(w, after);
+    memset(joined, 0xff, sizeof(uint32_t) * w->nbindings);
+    for (uint32_t i = e->u.match.arms.len; i > 0; i--) {
+        const MsArm *arm = e->u.match.arms.ptr[i - 1];
+        w->later = live_copy_of(w, after);
+        if (arm->value != NULL) {
+            live_expr(w, arm->value);
+        }
+        live_block(w, &arm->body);
+        for (uint32_t k = 0; k < w->live->arm_count[arm->id]; k++) {
+            w->later[w->live->arm_first[arm->id] + k] = MS_NONE;
+        }
+        (void)live_min_into(joined, w->later, w->nbindings);
+    }
+    w->later = joined;
+    live_expr(w, e->u.match.scrutinee);
 }
 
 static void live_expr(LiveWalk *w, const MsExpr *e) {
@@ -97,20 +148,10 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_LIST:
     case MS_E_MAP:
     case MS_E_LAMBDA:
-    case MS_E_CALL:
-    case MS_E_MATCH: w->supported = false; return;
+    case MS_E_CALL: w->supported = false; return;
+    case MS_E_MATCH: live_match(w, e); return;
     }
 }
-static uint32_t *live_copy_of(const LiveWalk *w, const uint32_t *source) {
-    uint32_t *copy = MS_NEW_N(w->scratch, uint32_t, w->nbindings + 1);
-    memcpy(copy, source, sizeof(uint32_t) * w->nbindings);
-    return copy;
-}
-
-static uint32_t *live_snapshot(const LiveWalk *w) {
-    return live_copy_of(w, w->later);
-}
-
 /* A binding's life starts at its definition: nothing before it uses it. */
 static void live_define(LiveWalk *w, const MsPattern *pattern) {
     const uint32_t binding = w->facts->pattern_binding[pattern->id];
@@ -143,12 +184,11 @@ static void live_jump(LiveWalk *w, const MsStmt *s) {
 
 /* Both branches start from what follows the `if`; afterwards the earlier use on either path counts. */
 static void live_if(LiveWalk *w, const MsStmt *s) {
-    if (s->u.branch.binding != NULL) {
-        w->supported = false;
-        return;
-    }
     uint32_t *after = live_snapshot(w);
     live_block(w, &s->u.branch.body);
+    if (s->u.branch.binding != NULL) {
+        live_define(w, s->u.branch.binding);
+    }
     uint32_t *then_later = w->later;
     w->later = after;
     live_block(w, &s->u.branch.else_body);
@@ -169,15 +209,7 @@ static void live_while(LiveWalk *w, const MsStmt *s) {
         w->loop = here.outer;
         live_join(w, after);
         live_expr(w, s->u.loop.cond);
-        const uint32_t *entry = w->later;
-        bool changed = false;
-        for (uint32_t i = 0; i < w->nbindings; i++) {
-            if (entry[i] != MS_NONE && (head[i] == MS_NONE || entry[i] < head[i])) {
-                head[i] = entry[i];
-                changed = true;
-            }
-        }
-        if (!changed || !w->supported) {
+        if (!live_min_into(head, w->later, w->nbindings) || !w->supported) {
             break;
         }
     }

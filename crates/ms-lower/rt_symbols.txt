@@ -124,9 +124,12 @@ msrt_heap_alloc_zeroed_cached(size: usize) -> *mut u8
 msrt_heap_claim()
 msrt_heap_has() -> u8
 msrt_heap_large_request(size: usize) -> usize
+msrt_heap_live_by_size(sizes: *mut usize, counts: *mut i64, capacity: usize) -> usize
+msrt_heap_live_total() -> i64
 msrt_heap_owns(p: *const u8) -> u8
 msrt_heap_release()
 msrt_heap_requested(out: *mut u64)
+msrt_heap_requested_reset()
 msrt_heap_sample_every(period: i64, hook: *mut u8)
 msrt_heap_shared_put(p: *mut u8) -> u8
 msrt_heap_shared_take(size: usize) -> *mut u8
@@ -650,7 +653,7 @@ msstd_json_w_string(handle w: *mut ObjCell<Writer>, text: *const StrVal) @domain
 msstd_json_w_tree(handle w: *mut ObjCell<Writer>, desc: *const TypeDesc, view: unsafe extern "C-unwind" fn(*const u8, *mut u8, *mut u8), root: *const u8) @domain=JSON @leaf
 msstd_json_w_uint(handle w: *mut ObjCell<Writer>, v: i64) @domain=JSON @leaf
 msstd_json_w_undo(handle w: *mut ObjCell<Writer>) @domain=JSON @leaf
-msstd_json_writer_new(has_max_bytes: HasRaw, max_bytes: i64, has_indent: HasRaw, indent: i64) -> *mut ObjCell<Writer> @handle @domain=JSON @leaf
+msstd_json_writer_new(has_max_bytes: HasRaw, max_bytes: i64, has_indent: HasRaw, indent: i64) -> *mut ObjCell<Writer> @domain=JSON @handle @leaf
 msstd_math_acos(v: f64) -> f64 @domain=number @leaf
 msstd_math_acosh(v: f64) -> f64 @domain=number @leaf
 msstd_math_add_with_carry(left: u64, right: u64, carry: u8, out: *mut WordSumOut) @domain=number @leaf
@@ -800,7 +803,6 @@ msstd_regex_named_capture_pairs(handle re: *const ObjCell<Regex>, text: *const S
 msstd_regex_replace_all(handle re: *const ObjCell<Regex>, text: *const StrVal, replacement: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=regular expression @leaf
 msstd_regex_replace_template(handle re: *const ObjCell<Regex>, text: *const StrVal, template: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=regular expression @leaf
 msstd_regex_split(handle re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=regular expression @leaf
-msstd_system_constants(out: *mut MapVal) @domain=system
 msstd_system_cpus(out: *mut VecVal, err: ErrSlot) -> u8 @domain=system
 msstd_system_dev_null(out: *mut StrVal) @domain=system
 msstd_system_end_of_line(out: *mut StrVal) @domain=system
@@ -823,12 +825,12 @@ msstd_terminal_capabilities_input_is_terminal() -> u8 @domain=terminal
 msstd_terminal_capabilities_output_is_terminal() -> u8 @domain=terminal
 msstd_terminal_capabilities_raw_mode() -> u8 @domain=terminal
 msstd_terminal_capabilities_resize_events() -> u8 @domain=terminal
-msstd_terminal_input_text(out: *mut StrVal) @domain=terminal
+msstd_terminal_input_text(handle h: *const ObjCell<RawH>, out: *mut StrVal) @domain=terminal
 msstd_terminal_raw_mode(out: *mut *mut ObjCell<RawH>, err: ErrSlot) -> u8 @domain=terminal
 msstd_terminal_raw_terminal_close(handle h: *const ObjCell<RawH>) @domain=terminal
 msstd_terminal_raw_terminal_read(handle h: *const ObjCell<RawH>, quick: u8) -> u8 @domain=terminal
 msstd_terminal_raw_terminal_set_restore(handle h: *const ObjCell<RawH>, text: *const StrVal) @domain=terminal
-msstd_terminal_raw_terminal_share(handle h: *const ObjCell<RawH>) -> *mut ObjCell<RawH> @handle @domain=terminal
+msstd_terminal_raw_terminal_share(handle h: *const ObjCell<RawH>) -> *mut ObjCell<RawH> @domain=terminal @handle
 msstd_terminal_raw_terminal_size_columns(handle h: *const ObjCell<RawH>) -> i64 @domain=terminal
 msstd_terminal_raw_terminal_size_rows(handle h: *const ObjCell<RawH>) -> i64 @domain=terminal
 msstd_terminal_raw_terminal_size_status(handle h: *const ObjCell<RawH>) -> u8 @domain=terminal

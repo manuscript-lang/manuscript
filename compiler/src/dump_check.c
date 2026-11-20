@@ -249,6 +249,11 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
         dump_expr(out, c, facts, e->u.bin.left);
         dump_expr(out, c, facts, e->u.bin.right);
         break;
+    case MS_E_CALL:
+        for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+            dump_expr(out, c, facts, e->u.call.args.ptr[i].value);
+        }
+        break;
     case MS_E_MATCH:
         dump_expr(out, c, facts, e->u.match.scrutinee);
         for (uint32_t i = 0; i < e->u.match.arms.len; i++) {
@@ -268,8 +273,7 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
-    case MS_E_LAMBDA:
-    case MS_E_CALL: break;
+    case MS_E_LAMBDA: break;
     }
 }
 
@@ -309,13 +313,15 @@ static bool dump_in_function(const MsModuleRow *row, uint32_t index, const MsDia
     return diag->pos.line >= first && diag->pos.line < end;
 }
 
-static bool dump_function_dirty(const MsModuleRow *row, uint32_t index) {
+/* The diagnostics inside declaration `index`, one `diag L:C: message` line each. */
+static void dump_function_diags(MsBuf *out, const MsModuleRow *row, uint32_t index) {
     for (uint32_t k = 0; k < row->ndiags; k++) {
-        if (dump_in_function(row, index, &row->diags[k].diag)) {
-            return true;
+        const MsDiag *diag = &row->diags[k].diag;
+        if (dump_in_function(row, index, diag)) {
+            ms_buf_printf(out, "diag %u:%u: %.*s\n", diag->pos.line, diag->pos.column, (int)diag->message.len,
+                          diag->message.ptr);
         }
     }
-    return false;
 }
 
 void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
@@ -327,8 +333,8 @@ void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
             continue;
         }
         const bool constant = d->kind == MS_D_CONST;
-        ms_buf_printf(out, "%s %u:%u %s\n", constant ? "const" : "fn", d->pos.line, d->pos.column,
-                      dump_function_dirty(row, i) ? "dirty" : "clean");
+        ms_buf_printf(out, "%s %u:%u\n", constant ? "const" : "fn", d->pos.line, d->pos.column);
+        dump_function_diags(out, row, i);
         if (constant) {
             dump_expr(out, c, facts, d->u.konst.value);
         } else {
@@ -346,12 +352,6 @@ void ms_dump_module_ownership(MsBuf *out, const MsCheck *c, MsModId m) {
             continue;
         }
         ms_buf_printf(out, "fn %u:%u\n", d->pos.line, d->pos.column);
-        for (uint32_t k = 0; k < row->ndiags; k++) {
-            const MsDiag *diag = &row->diags[k].diag;
-            if (dump_in_function(row, i, diag)) {
-                ms_buf_printf(out, "diag %u:%u: %.*s\n", diag->pos.line, diag->pos.column, (int)diag->message.len,
-                              diag->message.ptr);
-            }
-        }
+        dump_function_diags(out, row, i);
     }
 }

@@ -119,6 +119,12 @@ static bool run_one_cleanup(MsUnwind *unwind) {
     return true;
 }
 
+void ms_cleanup_run_pending(void) {
+    MsUnwind *const unwind = running();
+    while (run_one_cleanup(unwind)) {
+    }
+}
+
 void ms_cleanup_run(size_t handle) {
     MsUnwind *const unwind = running();
     while (handle > 0 && unwind->hdr.cleanup_length >= handle) {
@@ -224,7 +230,7 @@ bool ms_guard_leave(MsGuardStatus status, MsFaultText message) {
     if (!guards_pop(unwind, &frame)) {
         return false;
     }
-    unwind->faulting = false;
+    unwind->flight = NULL;
     unwind->unwind_drops = false;
     unwind->hdr.limit = frame.limit;
     uintptr_t teb[MS_CTX_TEB_WORDS] = {0};
@@ -233,12 +239,11 @@ bool ms_guard_leave(MsGuardStatus status, MsFaultText message) {
     ms_task_publish_limit();
     atomic_store_explicit(&unwind->hdr.shield, frame.shield, memory_order_relaxed);
     refresh_flag(unwind);
-    msrt_free(sched->guard_message.bytes);
-    sched->guard_message = (MsFaultText){0};
+    ms_fault_text_free(&sched->guard_message);
     if (status == MS_GUARD_FAULT) {
         sched->guard_message = message;
     } else {
-        msrt_free(message.bytes);
+        ms_fault_text_free(&message);
     }
     ms_guard_jump(frame.jump, (uintptr_t)status, teb);
 }
@@ -284,7 +289,7 @@ MsGuardStatus ms_guard_call(void (*code)(void *), void *data, MsFaultText *messa
     if (message != NULL) {
         *message = sched->guard_message;
     } else {
-        msrt_free(sched->guard_message.bytes);
+        ms_fault_text_free(&sched->guard_message);
     }
     sched->guard_message = (MsFaultText){0};
     return (MsGuardStatus)landed;

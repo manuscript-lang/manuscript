@@ -32,7 +32,13 @@ fn main() {
                     out.push_str("error\n");
                     continue;
                 };
-                let changed = run_pass(pass, &mut m);
+                let changed = match run_pass(pass, &mut m) {
+                    Ok(changed) => changed,
+                    Err(e) => {
+                        let _ = writeln!(out, "fail {e}");
+                        continue;
+                    }
+                };
                 let _ = writeln!(out, "changed {}", changed as u8);
                 out.push_str(&print_module(&m));
                 for f in &m.funcs {
@@ -50,8 +56,14 @@ fn main() {
 
 /// Runs the pass `name` on `m` and returns whether it reports a change; `compiler/tools/ms_mir_pass.c`
 /// has the same names.
-fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> bool {
-    match name {
+fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> Result<bool, String> {
+    if name == "elaborate" {
+        return ms_mir::elaborate::run(m).map(|()| true);
+    }
+    if name == "elaborate-cancel" {
+        return ms_mir::elaborate::run_with(m, true).map(|()| true);
+    }
+    Ok(match name {
         "exit_drops" => {
             ms_mir::exit_drops::run(m);
             true
@@ -61,11 +73,20 @@ fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> bool {
         "expand_owned" => ms_mir::expand_owned::run(m),
         "unwind" => ms_mir::unwind::run(m),
         "cancel_edges" => ms_mir::cancel_edges::run(m),
+        "depth" => ms_mir::depth::lower(m),
         "glue" => ms_mir::glue::run(m),
+        "finish" => {
+            ms_mir::unwind::run(m);
+            ms_mir::cancel_edges::run(m);
+            ms_mir::depth::lower(m);
+            ms_mir::expand::run(m, true);
+            ms_mir::glue::run_and_expand(m);
+            true
+        }
         "glue_expand" => {
             ms_mir::glue::run_and_expand(m);
             true
         }
         other => panic!("unknown pass {other}"),
-    }
+    })
 }
