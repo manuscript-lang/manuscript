@@ -19,6 +19,22 @@ use ms_rt_abi::{
 // The moved symbols (runtime/symbols/string.txt) are defined by the C runtime; Rust callers and tests reach them here.
 unsafe extern "C-unwind" {
     pub fn msrt_string_fields(s: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8;
+    pub fn msrt_string_scalar_at(
+        s: *const StrVal,
+        offset: i64,
+        has_default: HasRaw,
+        default: i64,
+    ) -> i64;
+    pub fn msrt_string_index_any(s: *const StrVal, set: *const StrVal, out: *mut i64) -> u8;
+    pub fn msrt_string_last_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8;
+    pub fn msrt_string_trim_chars(
+        s: *const StrVal,
+        set: *const StrVal,
+        from_start: u8,
+        from_end: u8,
+        out: *mut StrVal,
+    );
     pub fn msrt_string_from_scalars(values: *const VecVal, out: *mut StrVal) -> u8;
     pub fn msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal);
     pub fn msrt_string_view_bytes(s: *const StrVal, out: *mut VecVal);
@@ -501,55 +517,6 @@ pub(super) fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
     rest.iter().position(|&b| b == c).map(|p| at + p)
 }
 
-/// `String.scalar_at(offset, default)`: an ASCII byte is its own scalar, one read; anything else
-/// is decoded or rejected by [`msrt_string_scalar_at_slow`].
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
-    s: *const StrVal,
-    offset: i64,
-    has_default: HasRaw,
-    default: i64,
-) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        if let Some(&b) = usize::try_from(offset).ok().and_then(|i| bytes(s).get(i))
-            && b < 0x80
-        {
-            return b as i64;
-        }
-        msrt_string_scalar_at_slow(s, offset, has_default, default)
-    }
-}
-
-/// Whether byte offset `i` of `text` starts a scalar (or is the end).
-#[inline(always)]
-fn is_boundary(text: &[u8], i: usize) -> bool {
-    i == text.len() || text[i] & 0xC0 != 0x80
-}
-
-/// `String.scalar_at(offset, default)`: the scalar that starts at byte `offset`. An offset outside
-/// the text or inside a scalar gives `default`, or a fault without one.
-pub unsafe fn msrt_string_scalar_at_slow(
-    s: *const StrVal,
-    offset: i64,
-    has_default: HasRaw,
-    default: i64,
-) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        let text = bytes(s);
-        match usize::try_from(offset) {
-            Ok(i) if i < text.len() && is_boundary(text, i) => utf8::decode(&text[i..]).0 as i64,
-            _ if has_default.is_set() => default,
-            _ => fault::fault_fmt(format_args!(
-                "String.scalar_at: offset {offset} does not start a scalar of the {} byte text; pass a default",
-                text.len()
-            )),
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Comparison, hashing
 // ---------------------------------------------------------------------------
@@ -626,26 +593,6 @@ pub unsafe fn msrt_string_index_of_long(a: *const StrVal, v: *const StrVal, out:
     unsafe {
         let text = bytes(a);
         match find(text, bytes(v)) {
-            None => 0,
-            Some(i) => {
-                *out = i as i64;
-                1
-            }
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_last_index_of(
-    a: *const StrVal,
-    v: *const StrVal,
-    out: *mut i64,
-) -> u8 {
-    // SAFETY: caller passes live strings and a writable out.
-    unsafe {
-        let text = bytes(a);
-        match rfind(text, bytes(v)) {
             None => 0,
             Some(i) => {
                 *out = i as i64;
@@ -979,169 +926,6 @@ pub unsafe fn join_strings(items: *const StrVal, n: usize, sep: &[u8]) -> StrVal
 // Lists produced from strings (List[String] = VecVal of 8-byte string pointers)
 // ---------------------------------------------------------------------------
 
-/// The scalars of a set string: the ASCII ones as a bit mask, the rest by comparison.
-struct ScalarSet<'a> {
-    low: u64,
-    high: u64,
-    wide: &'a [u8],
-}
-
-impl<'a> ScalarSet<'a> {
-    fn new(set: &'a [u8]) -> ScalarSet<'a> {
-        let (mut low, mut high) = (0u64, 0u64);
-        let mut wide_from = None;
-        for (i, &b) in set.iter().enumerate() {
-            if b < 64 {
-                low |= 1 << b;
-            } else if b < 0x80 {
-                high |= 1 << (b - 64);
-            } else if wide_from.is_none() {
-                wide_from = Some(i);
-            }
-        }
-        ScalarSet {
-            low,
-            high,
-            wide: wide_from.map_or(&[], |i| &set[i..]),
-        }
-    }
-
-    #[inline(always)]
-    fn contains(&self, c: u32) -> bool {
-        if c < 64 {
-            return self.low >> c & 1 != 0;
-        }
-        if c < 0x80 {
-            return self.high >> (c - 64) & 1 != 0;
-        }
-        let mut i = 0;
-        while i < self.wide.len() {
-            let (w, n) = utf8::decode(&self.wide[i..]);
-            if w == c {
-                return true;
-            }
-            i += n;
-        }
-        false
-    }
-}
-
-/// `String.trim_chars` and its start and end forms: the text without the leading and trailing
-/// scalars that occur in `set`. ASCII scalars are tested from a bit mask and only others decoded.
-#[unsafe(no_mangle)]
-// ms: leaf domain=string
-pub unsafe extern "C-unwind" fn msrt_string_trim_chars(
-    s: *const StrVal,
-    set: *const StrVal,
-    from_start: u8,
-    from_end: u8,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe {
-        let text = bytes(s);
-        let members = ScalarSet::new(bytes(set));
-        let (mut a, mut b) = (0, text.len());
-        if from_start != 0 {
-            while a < b {
-                let (c, w) = if text[a] < 0x80 {
-                    (u32::from(text[a]), 1)
-                } else {
-                    utf8::decode(&text[a..b])
-                };
-                if !members.contains(c) {
-                    break;
-                }
-                a += w;
-            }
-        }
-        if from_end != 0 {
-            while b > a {
-                let (c, w) = if text[b - 1] < 0x80 {
-                    (u32::from(text[b - 1]), 1)
-                } else {
-                    utf8::decode_last(&text[a..b])
-                };
-                if !members.contains(c) {
-                    break;
-                }
-                b -= w;
-            }
-        }
-        from_bytes(&text[a..b]).write_to(out)
-    }
-}
-
-/// `String.index_any`: the byte offset of the first scalar of `s` that occurs in `set`.
-/// A set of at most eight ASCII bytes is scanned eight bytes per step (a non-ASCII byte of the
-/// text is never a member); any other set tests each scalar against a bit mask and decodes
-/// only non-ASCII ones.
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_index_any(
-    s: *const StrVal,
-    set: *const StrVal,
-    out: *mut i64,
-) -> u8 {
-    const LO: u64 = 0x0101_0101_0101_0101;
-    const HI: u64 = 0x8080_8080_8080_8080;
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe {
-        let (text, members) = (bytes(s), bytes(set));
-        let found = if members.len() <= 8 && members.is_ascii() {
-            let mut pats = [0u64; 8];
-            for (p, &b) in pats.iter_mut().zip(members) {
-                *p = LO * u64::from(b);
-            }
-            let pats = &pats[..members.len()];
-            let (chunks, rest) = text.as_chunks::<8>();
-            let mut at = None;
-            for (k, w) in chunks.iter().enumerate() {
-                let x = u64::from_le_bytes(*w);
-                let hit = pats.iter().fold(0, |hit, &p| {
-                    let y = x ^ p;
-                    hit | (y.wrapping_sub(LO) & !y & HI)
-                });
-                if hit != 0 {
-                    // A lane above a true match can be flagged falsely, never below it.
-                    at = Some(k * 8 + hit.trailing_zeros() as usize / 8);
-                    break;
-                }
-            }
-            at.or_else(|| {
-                let done = chunks.len() * 8;
-                rest.iter()
-                    .position(|b| members.contains(b))
-                    .map(|i| done + i)
-            })
-        } else {
-            let set = ScalarSet::new(members);
-            let mut i = 0;
-            let mut at = None;
-            while i < text.len() {
-                let (c, w) = if text[i] < 0x80 {
-                    (u32::from(text[i]), 1)
-                } else {
-                    utf8::decode(&text[i..])
-                };
-                if set.contains(c) {
-                    at = Some(i);
-                    break;
-                }
-                i += w;
-            }
-            at
-        };
-        match found {
-            Some(i) => {
-                *out = i as i64;
-                1
-            }
-            None => 0,
-        }
-    }
-}
-
 /// Room for the pieces of a split that is read in place: the list borrows it.
 const SPLIT_BUF: usize = 8;
 const _: () = assert!(size_of::<FrameBuf<StrVal, 8>>() == SPLIT_BUF * size_of::<StrVal>());
@@ -1308,14 +1092,6 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
         st.cur = fresh;
         st.cap = cap;
     }
-}
-
-/// `String.parse_float()`: present flag, value through `out`; the `Result` form is `math.parse_float`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe { u8::from(crate::num::msrt_numbers_parse_float(s, out) == STATUS_OK) }
 }
 
 /// Normalization forms by the spelling `String.normalize` takes.
@@ -2168,12 +1944,6 @@ mod tests {
             assert_eq!(msrt_string_scalar_at(s, 1, HasRaw(0), 0), 0xE9);
             assert_eq!(msrt_string_scalar_at(s, 3, HasRaw(0), 0), 'l' as i64);
             assert_eq!(msrt_string_scalar_at(s, 2, HasRaw(1), -1), -1);
-            testutil::assert_fault(
-                "String.scalar_at: offset 2 does not start a scalar of the 6 byte text; pass a default",
-                || {
-                    msrt_string_scalar_at(s, 2, HasRaw(0), 0);
-                },
-            );
         }
     }
 

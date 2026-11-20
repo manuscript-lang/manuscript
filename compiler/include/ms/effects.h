@@ -11,6 +11,7 @@
 #define MS_EFFECTS_H
 
 #include "ms/base.h"
+#include "ms/tables.h"
 #include "ms_rt/safe.h"
 
 /* ---- directives ---- */
@@ -100,5 +101,29 @@ typedef struct MsReach {
  * `arena`. Returns false, writing nothing, when two nodes share an id. */
 MS_NODISCARD bool ms_reach_resolve(MsArena *arena, const MsReachNode *nodes, uint32_t count,
                                    MsReach *out);
+
+/* ---- the scan of checked bodies (effect_scan.c) ---- */
+
+/* What one callable's body reaches, read from the checker's facts. The edges are the first reference
+ * to each callable, in source order; `unknown` is set when the body does something the scan cannot
+ * classify (a call whose callee the checker did not resolve, a native outside `core/panic`).
+ * Mirrors the `Scan` visitor of crates/ms-check/src/effects.rs, for the constructs the C body
+ * checker handles so far; a body it did not check has no facts and is not scanned. */
+typedef struct MsScanEdge {
+    MsSymId callee;
+    MsPos pos;
+} MsScanEdge;
+
+typedef struct MsScanNode {
+    const MsScanEdge *edges;
+    uint32_t nedges;
+    bool unknown;
+    bool write; /* assigns to a member */
+    bool partial; /* reaches a method or interface call, whose edge the scan does not record yet */
+} MsScanNode;
+
+/* Scans the declaration `d` (a function or constant) of `module`, whose body the checker checked.
+ * The edges live in `arena`. */
+MsScanNode ms_effect_scan_decl(MsArena *arena, const MsCheck *c, MsModId module, const MsDecl *d);
 
 #endif

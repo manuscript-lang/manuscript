@@ -723,6 +723,11 @@
       "license": "BSD-3-Clause"
     },
     {
+      "name": "yyjson",
+      "version": "0.10.0",
+      "license": "MIT"
+    },
+    {
       "name": "zlib",
       "version": "1.3.2",
       "license": "Zlib"

@@ -32,12 +32,15 @@ typedef struct MsBindings {
     MsSym *name;
     MsTy *ty;
     uint32_t *decl_node;  /* the syntax node that introduces it */
-    uint32_t *callable;   /* the function or lambda it belongs to */
+    uint32_t *callable;   /* the declaration node of the function it belongs to */
+    uint32_t *reads;      /* how many times its value is read, not counting reads that only feed its own next value */
+    MsPos *pos;           /* where its name is written */
     uint8_t *flags;       /* MS_BIND_* */
     uint8_t *role;        /* MsBindRole */
     uint32_t count;
 } MsBindings;
-enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2 };
+/* MS_BIND_FED: a read of the binding only computes its own next value (`total = total + 1`). */
+enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2, MS_BIND_FED = 4 };
 typedef enum MsBindRole {
     MS_ROLE_PARAM, MS_ROLE_SELF, MS_ROLE_LET, MS_ROLE_VAR, MS_ROLE_PATTERN, MS_ROLE_LOOP,
     MS_ROLE_ARM, MS_ROLE_LAMBDA_PARAM
@@ -46,6 +49,7 @@ typedef enum MsBindRole {
 /* Methods of a program: what an `impl` supplies, in declaration order (see methods.h). A symbol's
  * signature is its `ty` in `MsSyms`: a function type whose parameters carry the label, type and
  * var/move flags (`ms_ty_params`) and whose result is `tys.result`. */
+enum { MS_METHOD_MUTATING = 1, MS_METHOD_CONSUMING = 2 };
 typedef struct MsMethods {
     MsSym *id;            /* `module/Receiver/Contract/name`, as the Rust checker names it */
     MsTy *receiver;
@@ -53,6 +57,7 @@ typedef struct MsMethods {
     MsTy *ty;             /* the signature, receiver not included */
     const MsFunc **decl;  /* the declaration, or NULL for a property without operations */
     MsNativeKind *native;
+    uint8_t *access;      /* MS_METHOD_MUTATING | MS_METHOD_CONSUMING of the receiver */
     bool *inherent;       /* a type's own method: its contract is the synthesized `Type$methods` */
     MsModId *module;      /* the module that declares the impl */
     bool *local;          /* an extension declared outside the receiver's module: visible there only */

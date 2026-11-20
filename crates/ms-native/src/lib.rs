@@ -6,7 +6,6 @@
 extern crate ms_rt;
 extern crate ms_std_bigint;
 extern crate ms_std_decimal;
-extern crate ms_std_fs;
 extern crate ms_std_net;
 extern crate ms_std_process;
 extern crate ms_std_table;
