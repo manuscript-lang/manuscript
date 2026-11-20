@@ -12,6 +12,7 @@
 #include <stdatomic.h>
 
 #include <mimalloc.h>
+#include <mimalloc-stats.h>
 
 #define LIKELY(x) __builtin_expect(!!(x), 1)
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
@@ -173,11 +174,12 @@ uint8_t msrt_heap_has(void) { return 1; }
 
 /* out[0] bytes in use and out[1] bytes the allocator holds from the system, for the process. */
 void msrt_heap_stats(int64_t *out) {
+    mi_stats_t stats = {.size = sizeof stats, .version = MI_STAT_VERSION};
     size_t current_commit = 0;
     size_t peak_commit = 0;
     mi_process_info(NULL, NULL, NULL, NULL, NULL, &current_commit, &peak_commit, NULL);
-    out[0] = (int64_t)current_commit;
     out[1] = (int64_t)current_commit;
+    out[0] = mi_stats_get(&stats) ? stats.malloc_normal.current + stats.malloc_huge.current : out[1];
 }
 
 /* out[0] allocations and out[1] bytes requested by the calling thread and by every thread that has
