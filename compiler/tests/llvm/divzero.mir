@@ -1,0 +1,11 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %a: int = iconst 7
+  %b: int = iconst 0
+  %r: int = sdiv.chk %a, %b
+  ret %r
+}
