@@ -3,22 +3,9 @@
 #include "regex.h"
 
 #include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
 
-/* Runtime ABI (crates/ms-rt-abi). To move to include/ms_rt.h with the declarations when these natives are listed. */
-typedef struct { void *ptr; size_t tagged; } msrt_str;
-typedef struct { void *ptr; size_t len, cap; } msrt_vec;
-typedef struct msrt_obj msrt_obj;
-struct msrt_obj {
-    msrt_obj *(*clone)(msrt_obj *);
-    void (*drop)(msrt_obj *);
-};
-enum { STATUS_OK = 0, STATUS_INVALID_INPUT = 1, STATUS_LIMIT_EXCEEDED = 3, STATUS_INVALID_DATA = 4, STATUS_FAILED = 11 };
+#include "abi.h"
 
-extern void *msrt_alloc(size_t size);
-extern void msrt_free(void *p);
 extern const unsigned char msrt_desc_int[];
 extern void msrt_list_with_capacity(const void *desc, int64_t cap, msrt_vec *out);
 extern void msrt_list_push(msrt_vec *v, const void *desc, const void *elem);
@@ -29,10 +16,8 @@ typedef struct {
     ms_re *re;
 } re_cell;
 
-static size_t str_len(const msrt_str *s) {
-    return s->tagged >> 62 == 1 ? (s->tagged >> 56) & 15 : s->tagged & (((size_t)1 << 31) - 1);
-}
-static const char *str_data(const msrt_str *s) { return s->tagged >> 62 == 1 ? (const char *)s : (const char *)s->ptr; }
+#define str_len msrt_str_len
+#define str_data msrt_str_data
 
 static const ms_re *regex_of(const void *handle) { return ((const re_cell *)handle)->re; }
 
