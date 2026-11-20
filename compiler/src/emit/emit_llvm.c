@@ -1022,7 +1022,7 @@ static void ll_alt_tag(LCx *c, const MirInst *inst) {
     }
 }
 
-/* `opt.some`: a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
+/* `opt.some`, `opt.view` (the same leaves; the view borrows its payload): a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
  * payload itself, any other is the payload after a presence flag. */
 static bool ll_opt_some(LCx *c, const MirInst *inst) {
     const MirTy inner = mir_ty_data(c->m, c->f->values[inst->res])->elem;
@@ -1091,7 +1091,7 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
         ll_opt_convert(c, inst);
         return true;
     case MOP_AltTag: ll_alt_tag(c, inst); return true;
-    case MOP_OptSome: return ll_opt_some(c, inst);
+    case MOP_OptSome: case MOP_OptView: return ll_opt_some(c, inst);
     case MOP_OptGet: return ll_opt_get(c, inst);
     case MOP_OptIsSome:
         ll_opt_is_some(c, inst);

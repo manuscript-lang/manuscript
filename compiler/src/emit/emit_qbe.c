@@ -878,7 +878,7 @@ static MirTy qbe_opt_inner(const QCx *c, MirTy opt) {
     return mir_ty_data(c->m, opt)->elem;
 }
 
-/* `opt.some`: a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
+/* `opt.some`, `opt.view` (the same leaves; the view borrows its payload): a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
  * payload itself, any other is the payload after a presence flag. */
 static bool qbe_opt_some(QCx *c, const MirInst *inst) {
     const MirTy inner = qbe_opt_inner(c, c->f->values[inst->res]);
@@ -963,7 +963,7 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
     case MOP_INarrowOpt: case MOP_F2IOpt: return qbe_opt_convert(c, inst);
     case MOP_AltTag: qbe_alt_tag(c, inst); return true;
-    case MOP_OptSome: return qbe_opt_some(c, inst);
+    case MOP_OptSome: case MOP_OptView: return qbe_opt_some(c, inst);
     case MOP_OptGet: return qbe_opt_get(c, inst);
     case MOP_OptIsSome: qbe_opt_is_some(c, inst); return true;
     case MOP_ListLen: qbe_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_LEN_LEAF); return true;

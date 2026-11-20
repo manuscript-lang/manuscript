@@ -1,6 +1,7 @@
 /* MIR machine layout (layout.rs): the leaves of every type, their memory layout, the payload slots
  * of alternatives, closure objects, and the pointer and boolean flags the LLVM emitter reads.
  * Everything is computed on first ask and kept in the MirLayouts arena, which owns it. */
+#include <stdlib.h>
 #include <string.h>
 
 #include "ms/mir_layout.h"
