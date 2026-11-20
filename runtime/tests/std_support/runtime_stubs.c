@@ -79,8 +79,6 @@ uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) {
     return 0;
 }
 
-void ms_sys_sync_environ(void) {}
-
 /* A read wait runs inline: the unit tests have no scheduler to park on. */
 MsSchedWait ms_sched_pool_run(MsSchedJobFn run, MsSchedJobFn release, void *data, int64_t timeout_ns) {
     (void)release;
