@@ -15,7 +15,6 @@ doctest = false
 [dependencies]
 ms-rt = { path = "../ms-rt" }
 ms-std-net = { path = "../ms-std-net" }
-ms-std-table = { path = "../ms-std-table" }
 
 [features]
 # The glibc process entry (`_start`); only the archive `ms` links enables it, since a test binary has crt1's.
