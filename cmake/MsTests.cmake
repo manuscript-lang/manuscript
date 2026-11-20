@@ -27,7 +27,7 @@ endif()
 set(MS_POSIX_ONLY_TESTS
     core_alloc core_fault core_isolate core_pipe core_promise core_streams core_task core_workers staged_sched_pool staged_sched_shims
     conn_io_test dial_test h2_serve_test net_natives_test unix_test
-    io_refused ws_socket_test exchange_test
+    io_refused ws_socket_test exchange_test exchange_h2_test
     io_completion io_reactor sys_net_test std_signals std_process_state sys_fault)
 
 # libcurl on macOS asks the system for proxy settings.
