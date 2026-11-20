@@ -9,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "../core/cancel.h"
 #include "../core/promise.h"
 #include "../core/scheduler.h"
 #include "../core/worker.h"
@@ -259,6 +260,48 @@ static void foreign_completion_without_value(void) {
     ms_promise_drop(id);
 }
 
+/* A worker listens to a switch of the main isolate, sees it fire, and fires another one of the main isolate's. */
+static void use_foreign_switches(Cross *work) {
+    const int64_t watched = (int64_t)work->victim;
+    const int64_t raised = (int64_t)work->dep;
+    const MsPromise sleeper = ms_promise_sleep(60LL * 1000 * 1000 * 1000);
+    expect(!ms_cancel_register(watched, sleeper), "switch: not fired yet");
+    expect(!ms_cancel_fired(watched), "switch: reads not fired on a worker");
+    atomic_store(&cross_started, 1);
+    expect(ms_promise_wait(sleeper, -1) == MS_PROMISE_CANCELLED, "switch: the foreign listener is cancelled");
+    expect(ms_cancel_fired(watched), "switch: reads fired on a worker");
+    ms_promise_drop(sleeper);
+    ms_cancel_fire(raised);
+    int64_t one = 1;
+    ms_promise_put(work->id, (uint8_t *)&one, &msrt_desc_int, false);
+}
+
+static void foreign_switches(void) {
+    const int64_t watched = ms_cancel_new();
+    const int64_t raised = ms_cancel_new();
+    const MsPromise id = ms_promise_new();
+    Cross *const work = msrt_alloc_zeroed(sizeof *work);
+    work->header.drop = work_drop;
+    work->code = use_foreign_switches;
+    work->id = id;
+    work->victim = (MsPromise)watched;
+    work->dep = (MsPromise)raised;
+    atomic_store(&cross_started, 0);
+    ms_promise_start(id, (MsObj *)work);
+    for (int i = 0; i < 500 && atomic_load(&cross_started) == 0; i++) {
+        (void)ms_task_sleep(1000 * 1000);
+    }
+    expect(atomic_load(&cross_started) == 1, "switch: a worker started the work");
+    (void)ms_task_sleep(5 * 1000 * 1000); /* let the register mail arrive */
+    ms_cancel_fire(watched);
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_OK, "switch: ok");
+    expect(take_int(id) == 1, "switch: value");
+    expect(ms_cancel_fired(raised), "switch: a worker fired a main switch");
+    ms_promise_drop(id);
+    ms_cancel_free(watched);
+    ms_cancel_free(raised);
+}
+
 enum { MANY = 300 };
 
 static void many_promises_all_finish(void) {
@@ -294,6 +337,7 @@ static void entry(void *argument) {
     cancel_reaches_the_worker();
     foreign_operations();
     foreign_completion_without_value();
+    foreign_switches();
     many_promises_all_finish();
     abandoned_work_is_freed();
 }

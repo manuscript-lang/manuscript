@@ -772,6 +772,15 @@ static void promise_mail(MsMail *mail) {
         ms_remote_watch(mail);
         return;
     }
+    if (op == MS_MAIL_SWITCH) {
+        ms_cancel_serve(mail);
+        return;
+    }
+    if (op == MS_MAIL_CANCEL_ID) {
+        ms_promise_cancel(id);
+        msrt_free(mail);
+        return;
+    }
     if (op != MAIL_CANCEL) {
         /* Mail about queued work means another isolate took it before its owner looked: the row reads as remote. */
         const ptrdiff_t queued = row_of(id);
