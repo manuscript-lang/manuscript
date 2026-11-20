@@ -8,19 +8,22 @@ import (
 	promise,
 	set_options,
 	wait_any from "@std/concurrency/promise.ms",
-	hold_stop from "@std/os/process.ms",
-	ExchangeLimits, NativeExchange, finish_exchange, open_exchange from "@std/net/exchange.ms",
+	ExchangeLimits,
+	NativeExchange,
+	finish_exchange,
+	open_exchange from "@std/net/exchange.ms",
 	HttpExchange,
 	HttpServer,
 	HttpServerOptions,
 	NativeAdmission,
 	NativeConnection,
-	NativeListener,
 	NativeH2Conn,
 	NativeHandler,
+	NativeListener,
 	NativeTlsServer,
 	headers from "@std/net/http.ms",
 	TlsOptions from "@std/net/tls.ms",
+	hold_stop from "@std/os/process.ms",
 	Duration, nanoseconds, sleep from "@std/time.ms",
 
 	msrt_runtime_limit,
@@ -39,12 +42,12 @@ import (
 	msstd_handler_new,
 	msstd_handler_share,
 	msstd_handler_take,
+	msstd_xchg_finish,
+	msstd_xchg_method,
 	msstd_xchg_next,
 	msstd_xchg_reject,
 	msstd_xchg_reject_status,
 	msstd_xchg_send_head,
-	msstd_xchg_finish,
-	msstd_xchg_method,
 	msstd_xchg_share,
 	msstd_xchg_target,
 	msstd_xchg_wait_gone from "@std/internal/http.ms",
@@ -66,7 +69,8 @@ import (
 // A connection promise is placed on the least loaded thread and serves its connection
 // from there. HTTP/1.1 connections read one request head at a time; HTTP/2 connections
 // (negotiated through ALPN on a TLS listener) run the runtime's connection task next to
-// a loop that starts a request promise for each stream. Either way a request is the same
+// a loop that starts a request promise for each stream. Either way a request is the
+// same
 // `NativeExchange`, so the handler cannot tell them apart.
 
 // Request head cap when `max_header_bytes` is none.
@@ -98,10 +102,8 @@ fn rules_of(options: HttpServerOptions) Rules!:
 
 	if span := options.timeout:
 		if span.to_nanoseconds() <= 0: return error(invalid())
-
 	if span := options.grace:
 		if span.to_nanoseconds() < 0: return error(invalid())
-
 	if cores := options.cores:
 		if cores < 1: return error(invalid())
 
@@ -128,7 +130,6 @@ fn tls_server(options: HttpServerOptions) NativeTlsServer?!:
 	chosen := given.get()
 	var alpn = chosen.alpn.clone()
 	if alpn.is_empty(): alpn = ["http/1.1"]
-
 	return ok(
 		msstd_tls_server_new(
 			TlsOptions(
@@ -143,19 +144,18 @@ fn tls_server(options: HttpServerOptions) NativeTlsServer?!:
 	)
 
 // Starts a server on `address`: the accept loop runs as a promise, which `HttpServer`
-// owns. The handler goes into a runtime object that every thread's connection tasks call
-// (a closure has one owner, and a connection promise on another thread cannot borrow it).
+// owns. The handler goes into a runtime object that every thread's connection tasks
+// call (a closure has one owner, and a connection promise on another thread cannot
+// borrow it).
 export fn start_server(
 	address: String,
 	handler: fn(var HttpExchange) Void!,
-	options: HttpServerOptions = HttpServerOptions(),
+	options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
 	rules := rules_of(options)?
 	secured := tls_server(options)?
-
 	listener := msstd_net_listen(address)?
 	bound := msstd_listener_address(listener)
-
 	if cores := options.cores: msrt_runtime_set_threads(cores)
 
 	admission := msstd_admit_new(options.max_requests)
@@ -167,7 +167,6 @@ export fn start_server(
 		live: [],
 		grace: options.grace.clone(),
 	)
-
 	stopping := cancel_switch()
 	accepting := begin_accepting(state, serving, rules, stopping.signal(), secured)
 	return ok(
@@ -192,8 +191,8 @@ fn begin_accepting(
 
 // The accept loop's state: the listener, the connections it started, and the switch
 // that asks them to finish. Its close, which runs when the loop returns, is cancelled
-// or faults, stops accepting, lets requests in flight finish within the grace period and
-// cancels what is left.
+// or faults, stops accepting, lets requests in flight finish within the grace period
+// and cancels what is left.
 type Accepting:
 	listener: NativeListener
 	// Fired by close: idle connections end and busy ones finish their request.
@@ -253,7 +252,10 @@ fn accept_loop(
 		shared := msstd_listener_share(accepting.listener)
 		waiting := promise(
 			fn: msstd_listener_accept(shared, none),
-			options: PromiseOptions(placement: Placement.Here, cancel: stop.clone())
+			options: PromiseOptions(
+				placement: Placement.Here,
+				cancel: stop.clone(),
+			)
 		)
 		accepted := waiting.wait()
 
@@ -295,8 +297,9 @@ fn share_tls(server: NativeTlsServer?) NativeTlsServer?:
 	if given := server: return msstd_tls_server_share(given)
 	return none
 
-// Starts the promise that serves one connection on the least loaded thread. It owns what
-// it captures, so the connection and the shares belong to it for as long as it runs.
+// Starts the promise that serves one connection on the least loaded thread. It owns
+// what it captures, so the connection and the shares belong to it for as long as it
+// runs.
 fn start_connection(
 	raw: NativeConnection,
 	serving: NativeHandler,
@@ -310,7 +313,11 @@ fn start_connection(
 	ending := drain.clone()
 	return promise(
 		fn: serve_connection(raw, serving, rules, drain, secured),
-		options: PromiseOptions(placement: Placement.Spread, drain: ending, grace: grace)
+		options: PromiseOptions(
+			placement: Placement.Spread,
+			drain: ending,
+			grace: grace,
+		)
 	)
 
 // Serves one accepted connection to its end: the TLS handshake when the listener has
@@ -333,6 +340,7 @@ fn serve_connection(
 
 		// A failed handshake already closed the connection.
 		if upgraded.is_error(): return ok()
+
 		conn = upgraded.get()
 
 	if msstd_conn_alpn(conn) == "h2":
@@ -348,7 +356,10 @@ fn serve_connection(
 fn next_head(conn: NativeConnection, rules: Rules, drain: Signal) NativeExchange?:
 	waiting := promise(
 		fn: msstd_xchg_next(conn, rules.head_limit, rules.timeout.clone()),
-		options: PromiseOptions(placement: Placement.Here, cancel: drain.clone())
+		options: PromiseOptions(
+			placement: Placement.Here,
+			cancel: drain.clone(),
+		)
 	)
 	got := waiting.wait()
 
@@ -384,6 +395,7 @@ fn serve_h2(
 	drain: Signal,
 ) Void!:
 	opened := msstd_h2_open(conn, 0, rules.head_limit, 0, 0, rules.timeout.clone())
+
 	if opened.is_error():
 		msstd_conn_close(conn)
 		return ok()
@@ -395,7 +407,6 @@ fn serve_h2(
 		fn: msstd_h2_run(msstd_h2_share(h2)),
 		options: PromiseOptions(placement: Placement.Here)
 	)
-
 	var requests: List[Promise[Void]] = []
 	var draining = false
 
@@ -416,6 +427,7 @@ fn serve_h2(
 
 		if got.is_error():
 			if drain.cancelled() and not draining: continue
+
 			break
 
 		if request := got.get():
@@ -426,7 +438,6 @@ fn serve_h2(
 	while not requests.is_empty():
 		if request := requests.pop():
 			void request.wait()
-
 	void running.wait()
 	return ok()
 
@@ -448,7 +459,7 @@ fn serve_stream(request: NativeExchange, serving: NativeHandler) Void!:
 fn serve_one(
 	handler: fn(var HttpExchange) Void!,
 	rules: Rules,
-	admission: NativeAdmission,
+	admission: NativeAdmission
 ) Void:
 	native := msstd_handler_take()
 	msstd_handler_keep(serve_request(native, handler, rules, admission))
@@ -463,10 +474,11 @@ fn answer(native: NativeExchange, status: Int) Void:
 fn call(
 	handler: fn(var HttpExchange) Void!,
 	native: NativeExchange,
-	limits: ExchangeLimits,
+	limits: ExchangeLimits
 ) Int!:
-	// A stop request (SIGINT, SIGTERM) must not end a request in flight: the drain and its
-	// grace period decide that, so the request holds the stop back until it is done.
+	// A stop request (SIGINT, SIGTERM) must not end a request in flight: the drain and
+	// its grace period decide that, so the request holds the stop back until it is
+	// done.
 	_hold := hold_stop()
 	opened := open_exchange(native, limits)
 	if opened.is_error(): return ok(400)
@@ -487,7 +499,7 @@ fn serve_request(
 	native: NativeExchange,
 	handler: fn(var HttpExchange) Void!,
 	rules: Rules,
-	admission: NativeAdmission,
+	admission: NativeAdmission
 ) Bool:
 	if msstd_admit_enter(admission).is_error():
 		answer(native, 503)
@@ -500,7 +512,7 @@ fn serve_request(
 fn run_handler(
 	native: NativeExchange,
 	handler: fn(var HttpExchange) Void!,
-	rules: Rules,
+	rules: Rules
 ) Bool:
 	// The asterisk form names the server itself, which only OPTIONS may ask about.
 	if msstd_xchg_target(native) == "*" and msstd_xchg_method(native) != "OPTIONS":
@@ -514,19 +526,19 @@ fn run_handler(
 		options: PromiseOptions(
 			placement: Placement.Here,
 			timeout: rules.timeout.clone(),
-			cancel: stopper.signal()
+			cancel: stopper.signal(),
 		)
 	)
 	gone := promise(
 		fn: watch(msstd_xchg_share(native), stopper),
 		options: PromiseOptions(placement: Placement.Here)
 	)
-
 	outcome := running.wait()
 	gone.cancel()
 
 	if outcome.is_error():
 		kind := outcome.err().kind
+
 		if kind == "ETIMEDOUT":
 			answer(native, 504)
 			return false

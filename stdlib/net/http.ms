@@ -1,7 +1,7 @@
 import (
 	Bytes, join from "@std/bytes.ms",
-	Promise,
 	Cancel,
+	Promise,
 	PromiseOptions,
 	complete,
 	deferred,
@@ -251,13 +251,23 @@ export fn send(
 
 // What `msstd_client_new` reads, field for field.
 export type HttpClientWire:
+	// PEM text of the trusted roots; empty uses the system roots.
 	roots_pem: String
+	// PEM text of the client certificate chain; empty sends none.
 	certificate_pem: String
+	// PEM text of the client certificate's private key; empty when there is no
+	// certificate.
 	private_key_pem: String
+	// The DNS server (`ip:port`) that resolves request hosts; empty uses the network's
+	// resolver.
 	resolver: String
+	// The Unix socket path every request goes through; empty connects over TCP.
 	unix_socket: String
+	// How many redirects a request follows; 0 returns the redirect response itself.
 	max_redirects: Int
+	// Whether the client keeps cookies between its requests.
 	cookies: Bool
+	// Whether response bodies with a content encoding are decoded.
 	decompress: Bool
 
 // Creates a client for `options` that obeys every level of `policy`: its hosts and

@@ -1,17 +1,17 @@
 import (
 	Bytes from "@std/bytes.ms",
+	DnsConfig from "@std/net/dns.ms",
 	HttpHeaders,
 	NativeConnection,
 	NativeHttpClient,
 	NativeListener,
 	NativeTlsServer from "@std/net/http.ms",
-	DnsConfig from "@std/net/dns.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
-	Datagram,
-	NativeDatagramSocket,
-	NativeScope from "@std/net/net.ms",
+	Datagram, NativeDatagramSocket, NativeScope from "@std/net/net.ms",
 	CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
-	NativeWebSocket, RawWebSocketMessage, WebSocketHandshake from "@std/net/websocket.ms",
+	NativeWebSocket,
+	RawWebSocketMessage,
+	WebSocketHandshake from "@std/net/websocket.ms",
 	Duration, Timestamp from "@std/time.ms",
 )
 
@@ -234,7 +234,6 @@ export extern fn msstd_websocket_send_bytes(
 
 export extern fn msstd_websocket_subprotocol(handle: NativeWebSocket) String
 
-
 export extern fn msstd_ws_connect(
 	conn: NativeConnection,
 	authority: String,
@@ -245,4 +244,3 @@ export extern fn msstd_ws_connect(
 	max_message_bytes: Int?,
 	timeout: Duration?,
 ) NativeWebSocket!
-

@@ -70,17 +70,18 @@ import expect_equal from "@std/test/test.ms"
 - `@std/net/dns.ms`: DnsConfig, dns_lookup, dns_resolve
 - `@std/net/exchange.ms`: ExchangeLimits, NativeExchange, RequestTarget, finish_exchange, open_exchange, parse_target
 - `@std/net/fetch.ms`: FetchBody, FetchOptions, FetchResponse, Fetcher, FetcherOptions, fetch, fetcher, json_body
-- `@std/net/http.ms`: ClientResponse, HttpClient, HttpClientOptions, HttpExchange, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpResponseMetadata, HttpServer, HttpServerOptions, NativeHttpClient, NativeResponseBody, NativeServing, NativeWorker, NativeWorkerSpec, RawExchange, RawResponse, StreamingResponse, buffered, headers, json, read_body, redirect, reply, text, upgrade
+- `@std/net/http.ms`: ClientResponse, HttpClient, HttpClientOptions, HttpClientWire, HttpExchange, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpResponseMetadata, HttpServer, HttpServerOptions, NativeAdmission, NativeConnection, NativeH2Conn, NativeHandler, NativeHttpClient, NativeListener, NativeResponseBody, NativeTlsServer, RawResponse, StreamingResponse, buffered, headers, json, open_client, read_body, redirect, reply, send, text, upgrade
 - `@std/net/ip.ms`: Cidr, DnsKind, DnsRecord, IpAddress, IpFamily, contains_ip, parse_cidr, parse_ip
 - `@std/net/mail.ms`: Address, Message, decode_words, parse_address, parse_address_list, parse_message
 - `@std/net/mime.ms`: HeaderField, Headers, MediaType, Part, encode_multipart, extension_for_media_type, form_part, format_media_type, media_type_for_extension, multipart_boundary, multipart_parts, parse_headers, parse_media_type, parse_multipart
-- `@std/net/net.ms`: Connection, ConnectionInfo, Datagram, DatagramSocket, DnsOptions, Listener, NativeConnection, NativeDatagramSocket, NativeListener, NativeNetwork, NativeScope, Network, PendingConnection, RequestOptions, accept_tls, bind_datagram, connect, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, resolve_dns, restrict, serve, start_tls, web_socket, with_resolver
+- `@std/net/net.ms`: Connection, ConnectionInfo, Datagram, DatagramSocket, DnsOptions, Listener, NativeDatagramSocket, NativeScope, Network, PendingConnection, RequestOptions, accept_tls, bind_datagram, connect, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, resolve_dns, restrict, serve, start_tls, web_socket, with_resolver
 - `@std/net/policy.ms`: Level, Policy, address_allowed, fold_host, host_allowed, listen_allowed, narrow, unix_allowed, unrestricted
 - `@std/net/router.ms`: Route, RouteParams, Router, Segment, access_log, request_id, with_request_headers
+- `@std/net/serve.ms`: start_server
 - `@std/net/sse.ms`: SseEvent, SseLimits, sse_events
 - `@std/net/tls.ms`: CertificateInfo, TlsInfo, TlsOptions, parse_certificates, verify_certificates
 - `@std/net/url.ms`: QueryEntry, Url, decode_component, encode_component, format, format_query, parse, parse_query, resolve
-- `@std/net/websocket.ms`: NativeWebSocket, RawWebSocketMessage, WebSocket, WebSocketKind, WebSocketMessage, WebSocketOptions, web_socket_from
+- `@std/net/websocket.ms`: NativeWebSocket, RawWebSocketMessage, WebSocket, WebSocketHandshake, WebSocketKind, WebSocketMessage, WebSocketOptions, web_socket_from
 - `@std/os/env.ms`: arguments, change_directory, environment, home_directory, load_environment, set_environment, which, working_directory
 - `@std/os/fs.ms`: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, OpenMode, OpenOptions, PathEntry, RawWatcher, Seek, TemporaryDirectory, WatchOptions, access, append_file, canonicalize, chmod, chown, copy, create_directory, create_hard_link, create_symlink, exists, glob, list, move, open, open_directory, read_file, read_symlink, remove, rename, set_times, stat, stat_filesystem, temporary, temporary_directory, temporary_root, truncate, watch, write_atomic, write_file
 - `@std/os/path.ms`: Glob, PathOperations, PathParts, basename, basename_without, compile_glob, delimiter, dirname, extension, format, is_absolute, join, matches_glob, normalize, parse, posix, relative, resolve, separator, stem, to_namespaced_path, win32, with_extension

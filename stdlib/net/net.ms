@@ -21,7 +21,6 @@ import (
 	NativeListener,
 	headers,
 	open_client from "@std/net/http.ms",
-	start_server from "@std/net/serve.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
 	Policy,
 	address_allowed,
@@ -30,11 +29,10 @@ import (
 	narrow,
 	unix_allowed,
 	unrestricted from "@std/net/policy.ms",
+	start_server from "@std/net/serve.ms",
 	TlsInfo, TlsOptions from "@std/net/tls.ms",
 	parse from "@std/net/url.ms",
-	WebSocket,
-	WebSocketOptions,
-	web_socket_from from "@std/net/websocket.ms",
+	WebSocket, WebSocketOptions, web_socket_from from "@std/net/websocket.ms",
 	Duration, Instant, Timestamp, monotonic, nanoseconds, sleep from "@std/time.ms",
 
 	msstd_conn_accept_tls,
@@ -64,7 +62,6 @@ import (
 	msstd_net_listen,
 	msstd_net_listen_unix,
 	msstd_net_lookup,
-	msstd_ws_connect,
 	msstd_scope_child,
 	msstd_scope_close,
 	msstd_scope_new,
@@ -74,7 +71,8 @@ import (
 	msstd_scope_track_conn,
 	msstd_scope_track_dgram,
 	msstd_scope_track_listener,
-	msstd_scope_untrack_client from "@std/internal/net.ms",
+	msstd_scope_untrack_client,
+	msstd_ws_connect from "@std/internal/net.ms",
 )
 
 type ConnectionSource:
@@ -487,12 +485,9 @@ fn Network.connect(
 	native := self.dial(address, tls, timeout)?
 	return ok(connection(native))
 
-// The tracked native connection behind `connect`; `web_socket` runs its handshake on one.
-fn Network.dial(
-	address: String,
-	tls: TlsOptions?,
-	timeout: Duration?,
-) NativeConnection!:
+// The tracked native connection behind `connect`; `web_socket` runs its handshake on
+// one.
+fn Network.dial(address: String, tls: TlsOptions?, timeout: Duration?) NativeConnection!:
 	if not msstd_scope_open(self.scope): return error(closed_error())
 
 	found := split_host_port(address)
@@ -752,7 +747,6 @@ fn Network.web_socket(
 ) WebSocket!:
 	if given := options.max_message_bytes:
 		if given <= 0: return error(invalid_address())
-
 	if limit := options.timeout:
 		if limit.compare(nanoseconds(0)) < 0: return error(invalid_address())
 
@@ -780,16 +774,12 @@ fn Network.web_socket(
 	if secure: tls_arg = tls_options.clone()
 
 	started := monotonic()
-	native := self.dial(
-		f"{authority}:{port}",
-		tls_arg,
-		options.timeout.clone(),
-	)?
-
+	native := self.dial(f"{authority}:{port}", tls_arg, options.timeout.clone())?
 	var shown = authority.clone()
 	if parsed.port.is_some(): shown += f":{port}"
 
 	left := remaining(started, options.timeout.clone())
+
 	if left.is_error():
 		msstd_conn_close(native)
 		return error(left.err())
@@ -804,6 +794,7 @@ fn Network.web_socket(
 		options.max_message_bytes,
 		left.get(),
 	)
+
 	if socket.is_error():
 		msstd_conn_close(native)
 		if not msstd_scope_open(self.scope): return error(closed_error())
@@ -822,7 +813,6 @@ fn Network.with_resolver(address: String) Network!:
 
 	target := found.get()
 	if parse_ip(target.host).is_error(): return error(invalid_address())
-
 	if not host_allowed(self.policy, target.host): return error(denied())
 	if not address_allowed(self.policy, target.host): return error(denied())
 	if not msstd_scope_open(self.scope): return error(closed_error())
@@ -868,11 +858,7 @@ fn remaining(started: Instant, timeout: Duration?) Duration?!:
 
 // The network of the current host.
 fn host_network() Network:
-	return Network(
-		policy: unrestricted(),
-		resolver: "",
-		scope: msstd_scope_new(),
-	)
+	return Network(policy: unrestricted(), resolver: "", scope: msstd_scope_new())
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A restricted
 // network without listening permission, or an address outside its CIDRs, returns

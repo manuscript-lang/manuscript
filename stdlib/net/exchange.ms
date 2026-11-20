@@ -15,8 +15,7 @@ import (
 	msstd_xchg_take_conn,
 	msstd_xchg_target,
 	msstd_xchg_write from "@std/internal/http.ms",
-	msstd_ws_handshake,
-	msstd_ws_serve from "@std/internal/net.ms",
+	msstd_ws_handshake, msstd_ws_serve from "@std/internal/net.ms",
 )
 
 // One HTTP/1 server exchange as the runtime hands it over: the request head, the body
@@ -175,6 +174,17 @@ fn invalid(reason: String) Error:
 
 fn overflow(reason: String) Error:
 	return Error(f"http: {reason}", kind: "EOVERFLOW")
+
+fn websocket_failure(reason: String) Error:
+	return Error(reason, kind: "EIO")
+
+fn status_reason(status: Int) String:
+	match status:
+		400: return "Bad Request"
+		403: return "Forbidden"
+		405: return "Method Not Allowed"
+		426: return "Upgrade Required"
+		_: return "Error"
 
 // What the handler sees of one request: the `HttpExchange` over a native exchange.
 type ServerExchange:
@@ -337,17 +347,6 @@ fn var ServerExchange.write_bytes(move data: Bytes) Void!:
 fn var ServerExchange.write(move data: String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-fn websocket_failure(reason: String) Error:
-	return Error(reason, kind: "EIO")
-
-fn status_reason(status: Int) String:
-	match status:
-		400: return "Bad Request"
-		403: return "Forbidden"
-		405: return "Method Not Allowed"
-		426: return "Upgrade Required"
-		_: return "Error"
-
 // Answers a refused upgrade with its status line, the version the server speaks and a
 // short text body, and closes the connection after it.
 fn var ServerExchange.refuse_upgrade(status: Int, reason: String) Error:
@@ -356,6 +355,7 @@ fn var ServerExchange.refuse_upgrade(status: Int, reason: String) Error:
 	void fields.append("Sec-Websocket-Version", "13")
 	void fields.append("X-Content-Type-Options", "nosniff")
 	void fields.append("Connection", "close")
+
 	body := f"{status_reason(status)}\n".to_bytes()
 	void msstd_xchg_send_head(self.native, status, fields, body.length(), none)
 	void msstd_xchg_write(self.native, body, none)
@@ -398,12 +398,14 @@ fn var ServerExchange.upgrade(
 	// RFC 6455 section 4.2.1: the opening handshake is an HTTP/1.1 (or later) request.
 	if self.protocol_text == "HTTP/1.0":
 		return error(self.refuse_upgrade(400, "websocket: upgrade needs HTTP/1.1"))
-
-	if shake.status != 101: return error(self.refuse_upgrade(shake.status, shake.reason))
+	if shake.status != 101: return error(
+		self.refuse_upgrade(shake.status, shake.reason)
+	)
 
 	msstd_xchg_send_head(self.native, 101, response, none, none)?
 	self.status = 101
 	self.complete = true
+
 	connection := msstd_xchg_take_conn(self.native)?
 	native := msstd_ws_serve(connection, shake.subprotocol, max_message_bytes)?
 	return ok(web_socket_from(native))
@@ -433,9 +435,13 @@ export fn open_exchange(
 export fn finish_exchange(native: NativeExchange, failure: Error?) Bool:
 	if error_found := failure:
 		var status = 500
+
 		// Only a request body over its limit is the client's fault; a response over
 		// its limit is the handler's.
-		if error_found.kind == "EOVERFLOW" and error_found.details.get("limit") == "request": status = 413
+		if (
+			error_found.kind == "EOVERFLOW"
+			and error_found.details.get("limit") == "request"
+		): status = 413
 		void msstd_xchg_send_head(native, status, headers(), 0, none)
 		void msstd_xchg_finish(native, none)
 		return false

@@ -132,4 +132,3 @@ export type WebSocketOptions:
 	// When True, offers per-message compression during the handshake; it applies only
 	// if the peer agrees.
 	compression: Bool = false
-
