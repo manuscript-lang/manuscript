@@ -57,6 +57,15 @@ typedef struct MsSysThread MsSysThread;
 MS_NODISCARD MsSysThread *ms_sys_thread_spawn(size_t stack, MsSysThreadFn start, void *arg);
 /* Waits for a thread started by ms_sys_thread_spawn and releases its handle. */
 void ms_sys_thread_join(MsSysThread *thread);
+/* A one-bit wake-up between threads, with a timed wait: the sleep of a thread that another thread may cut short. */
+typedef struct MsSysSignal MsSysSignal;
+MS_NODISCARD MsSysSignal *ms_sys_signal_new(void);
+void ms_sys_signal_free(MsSysSignal *signal);
+/* Waits until the signal is sent or timeout_ns pass (negative: until it is sent), then clears it. True when it was
+ * sent. The timeout has the granularity of the system's clock. */
+bool ms_sys_signal_wait(MsSysSignal *signal, int64_t timeout_ns);
+/* Sets the signal; one send wakes one wait, and a send while nobody waits is kept for the next wait. */
+void ms_sys_signal_send(MsSysSignal *signal);
 /* Lets another thread run: the wait of a spin lock. */
 void ms_sys_yield(void);
 /* Blocks the calling thread for ms milliseconds. */
