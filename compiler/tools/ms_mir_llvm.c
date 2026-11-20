@@ -4,26 +4,19 @@
 #include <stdlib.h>
 
 #include "ms/emit_llvm.h"
+#include "read_file.h"
 
 int main(int argc, char **argv) {
     if (argc != 2) {
         fputs("usage: ms_mir_llvm FILE\n", stderr);
         return 2;
     }
-    FILE *f = fopen(argv[1], "rb");
-    if (f == NULL) {
+    size_t n = 0;
+    char *src = read_whole_file(argv[1], &n);
+    if (src == NULL) {
         fprintf(stderr, "cannot read %s\n", argv[1]);
         return 1;
     }
-    size_t cap = 4096, n = 0;
-    char *src = malloc(cap);
-    for (;;) {
-        n += fread(src + n, 1, cap - n, f);
-        if (n < cap) break;
-        cap *= 2;
-        src = realloc(src, cap);
-    }
-    fclose(f);
     MirModule m;
     mir_module_init(&m);
     uint32_t line;

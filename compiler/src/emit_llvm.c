@@ -108,17 +108,17 @@ static const char *ll_cc(MirCc cc, bool is_unsigned, bool is_float) {
 /* Operations that are one LLVM instruction on their two operands, by opcode. `masked` shifts take
  * their amount modulo the width, which LLVM leaves undefined past it. */
 typedef struct LlBinary {
-    MirOp op;
     const char *mnemonic;
+    MirOp op;
     bool masked;
 } LlBinary;
 
 static const LlBinary ll_binary[] = {
-    {MOP_IAdd, "add", false}, {MOP_ISub, "sub", false},  {MOP_IMul, "mul", false},
-    {MOP_And, "and", false},  {MOP_Or, "or", false},     {MOP_Xor, "xor", false},
-    {MOP_Shl, "shl", true},   {MOP_Sshr, "ashr", true},  {MOP_Ushr, "lshr", true},
-    {MOP_FAdd, "fadd", false}, {MOP_FSub, "fsub", false}, {MOP_FMul, "fmul", false},
-    {MOP_FDiv, "fdiv", false}, {MOP_SDiv, "sdiv", false}, {MOP_SRem, "srem", false},
+    {"add", MOP_IAdd, false}, {"sub", MOP_ISub, false},  {"mul", MOP_IMul, false},
+    {"and", MOP_And, false},  {"or", MOP_Or, false},     {"xor", MOP_Xor, false},
+    {"shl", MOP_Shl, true},   {"ashr", MOP_Sshr, true},  {"lshr", MOP_Ushr, true},
+    {"fadd", MOP_FAdd, false}, {"fsub", MOP_FSub, false}, {"fmul", MOP_FMul, false},
+    {"fdiv", MOP_FDiv, false}, {"sdiv", MOP_SDiv, false}, {"srem", MOP_SRem, false},
 };
 
 static const LlBinary *ll_find_binary(MirOp op) {
@@ -250,12 +250,19 @@ static void ll_copy_leaf(LCx *c, MirValue dst, uint32_t out_index, MirValue src,
     MsBuf *o = c->out;
     const MirLeafSpan leaves = ll_leaves(c, c->f->values[dst]);
     const char *ty = ll_leaf_type(leaves.ptr[out_index]);
-    const bool is_float = ty[0] == 'd';
+    const char *identity = ", 0\n";
+    const char *op = " = or ";
+    if (ty[0] == 'd') {
+        op = " = fadd ";
+        identity = ", -0.0\n";
+    } else if (ty[1] == '1') {
+        identity = ", false\n";
+    }
     ms_buf_puts(o, "  ");
     ll_name(o, dst, out_index);
-    ms_buf_printf(o, is_float ? " = fadd double " : " = or %s ", ty);
+    ms_buf_printf(o, "%s%s ", op, ty);
     ll_name(o, src, src_index);
-    ms_buf_puts(o, is_float ? ", -0.0\n" : (ty[1] == '1' && ty[2] == '\0' ? ", false\n" : ", 0\n"));
+    ms_buf_puts(o, identity);
 }
 
 /* `type.new`: the leaves of the fields in order. */
