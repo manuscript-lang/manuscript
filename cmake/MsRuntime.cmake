@@ -119,7 +119,9 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -DAR=${CMAKE_AR} -DOBJECTS=${CMAKE_BINARY_DIR}/c-object-files.txt
           -DLIBRARIES=${CMAKE_BINARY_DIR}/c-library-files.txt -DWORK=${CMAKE_BINARY_DIR}/c-members
           -DOUT=${CMAKE_BINARY_DIR}/c-objects.txt -P ${CMAKE_SOURCE_DIR}/cmake/FoldArchives.cmake
-  DEPENDS ms_runtime_objects ms_llhttp "${CMAKE_BINARY_DIR}/c-object-files.txt"
+  # The object files themselves, not the target: an OBJECT library has no output file, so a dependency on its name
+  # would let the folded copies in c-members go stale after a source changes.
+  DEPENDS $<TARGET_OBJECTS:ms_runtime_objects> ms_llhttp "${CMAKE_BINARY_DIR}/c-object-files.txt"
           "${CMAKE_BINARY_DIR}/c-library-files.txt" ${_archives}
           "${CMAKE_SOURCE_DIR}/cmake/FoldArchives.cmake"
   COMMENT "Folding the C libraries into the runtime objects"
