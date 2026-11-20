@@ -13,7 +13,7 @@ cargo build --release --locked -p ms-syntax --example c_oracle
 oracle=target/release/examples/c_oracle
 
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -DMS_NO_PARSER -Icompiler/include compiler/src/libms.c compiler/tools/ms_syntax_dump.c -o "$out/dump"
+    -Icompiler/include compiler/src/libms.c compiler/tools/ms_syntax_dump.c -o "$out/dump"
 cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/mutate.c -o "$out/mutate"
 
 git ls-files '*.ms' > "$out/files.txt"
@@ -23,7 +23,7 @@ mkdir -p "$out/fuzz"
 ls "$out"/fuzz/*.ms > "$out/fuzz.txt"
 
 status=0
-for mode in ${MS_MODES:-tokens}; do
+for mode in ${MS_MODES:-tokens ast}; do
     for set in files fuzz; do
         # xargs keeps the command line short and the oracle's per-process cost low.
         tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" "$mode" > "$out/$mode-$set.rust"
