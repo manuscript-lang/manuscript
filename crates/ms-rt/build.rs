@@ -50,7 +50,8 @@ fn main() {
     }
 }
 
-/// Compiles `runtime/**/*.c` for the host and links it into this crate's test binaries as `libms_c.a` (an archive:
+/// Compiles `runtime/**/*.c` for the host and links it into this crate's test binaries as `libms_c.a`, not bundled
+/// (a bundled copy would land in `libms_native.a` beside the objects `cargo xtask runtime` adds) (an archive:
 /// the linker takes an object only for a symbol nothing else defines).
 fn link_c_runtime(root: &std::path::Path) {
     for dir in ["include", "sys", "core", "io", "net", "std"] {
@@ -75,5 +76,5 @@ fn link_c_runtime(root: &std::path::Path) {
         .expect("run ar");
     assert!(status.success(), "ar failed");
     println!("cargo::rustc-link-search=native={}", out.display());
-    println!("cargo::rustc-link-lib=static=ms_c");
+    println!("cargo::rustc-link-lib=static:-bundle=ms_c");
 }
