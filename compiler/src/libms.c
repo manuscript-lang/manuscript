@@ -64,6 +64,7 @@
 #include "check_decls.c"
 #include "check_body.c"
 #include "check_match.c"
+#include "check_alt.c"
 #include "dump_check.c"
 #include "effect_directives.c"
 #include "effect_reach.c"
