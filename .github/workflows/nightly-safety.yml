@@ -10,6 +10,7 @@ name: Nightly safety
 #   view-matrix   generated view programs (trim, slice, split) with temporaries after them, poisoned, in Debug and Release
 #   stress-sched  runs the stdlib sweep under the scheduler stress mode
 #   bench-gate    `ms bench` on bench/perf/guards; fails when an allocation or copy count rose more than 3% over baseline.json
+#   c-safety      the C runtime unit tests and fuzz harnesses (runtime/fuzz) under AddressSanitizer and UBSan on Linux and macOS, then libFuzzer on Linux
 #   perf-counts   instructions of the suite and guard programs under callgrind against bench/perf/counts.txt; opens an issue when one is over 3% higher
 
 on:
@@ -66,6 +67,33 @@ jobs:
           os: linux
           arch: amd64
       - run: make ${{ matrix.check }}
+
+  c-safety:
+    if: github.ref == 'refs/heads/main'
+    name: c-safety (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    steps:
+      - uses: actions/checkout@v7
+      - run: make c-test
+      - name: Fuzz with a new seed each night
+        run: |
+          FUZZ_SEED=$(date -u +%Y%m%d) FUZZ_RUNS=3000000 make c-fuzz
+      - name: Fuzz with libFuzzer (coverage-guided)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends clang libclang-rt-dev
+          CC=clang FUZZER=libfuzzer FUZZ_SEED=$(date -u +%Y%m%d) FUZZ_RUNS=2000000 make c-fuzz
+      - name: Keep the failing input
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: c-fuzz-crash-${{ matrix.os }}
+          path: target/c-fuzz/*/fuzz-crash*
 
   perf-counts:
     if: github.ref == 'refs/heads/main'
