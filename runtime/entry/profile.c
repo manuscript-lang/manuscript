@@ -13,6 +13,7 @@
  */
 #define _GNU_SOURCE
 #define _DARWIN_C_SOURCE
+#define _XOPEN_SOURCE 700 /* macOS <ucontext.h> is an error without it; _DARWIN_C_SOURCE keeps the rest visible */
 
 #include <stdatomic.h>
 #include <stdio.h>
