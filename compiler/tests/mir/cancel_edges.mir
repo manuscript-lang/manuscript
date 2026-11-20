@@ -1,0 +1,38 @@
+module "cancel_edges"
+extern @spawn(int) -> int spawns_task
+extern @sleep(int) -> void
+extern @quick(int) -> int leaf
+entry @main
+fn @park(%x: int, %s: str) -> str {
+b0:
+  %t: str = clone %s
+  %r: int = call.rt @spawn (%x)
+  poll
+  %u: void = call.rt @sleep (%r)
+  %q: int = call.rt @quick (%x)
+  %c: bool = icmp.gt %q, %r
+  br_if %c, b1(%s), b2(%s)
+b1(%a: str):
+  %v: void = call.rt @sleep (%r)
+  %a2: str = clone %a
+  drop %t
+  ret %a2
+b2(%b: str):
+  %b2: str = clone %b
+  drop %t
+  ret %b2
+}
+fn @calls(%x: int) -> int {
+b0:
+  %e: str = str "e"
+  %s: str = call @park (%x, %e)
+  drop %s
+  ret %x
+}
+fn @main() -> int {
+b0:
+  depth.enter
+  %z: int = iconst 3
+  %y: int = call @calls (%z)
+  ret %y
+}
