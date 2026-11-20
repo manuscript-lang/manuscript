@@ -1,0 +1,7 @@
+module "t"
+fn @main() -> int {
+b0:
+  %a: int = iconst 1
+  %b: bool = opt.is_some %a
+  ret %a
+}

@@ -1,0 +1,7 @@
+module "t"
+iface Area { area() -> int }
+vtable @v_int: Area for int { @area_int }
+fn @area_int(%self: int) -> int method {
+b0:
+  ret %self
+}

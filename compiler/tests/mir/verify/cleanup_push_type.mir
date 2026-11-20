@@ -1,0 +1,14 @@
+module "t"
+fn @closer(%x: int) -> void {
+b0:
+  %v: void = void
+  ret %v
+}
+fn @main() -> int {
+b0:
+  %b: bool = bconst true
+  %h: int = cleanup.push @closer %b
+  cleanup.run %h
+  %z: int = iconst 0
+  ret %z
+}

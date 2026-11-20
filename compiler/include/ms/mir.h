@@ -172,6 +172,7 @@ typedef struct MirFunc {
     uint32_t nparams;
     MirTy ret;
     bool ret_borrowed, ret_view;
+    bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
     uint8_t linkage, kind, inline_hint, sort;
     MirTy *captures; /* MFK_CLOSURE */
     uint32_t ncaptures;
