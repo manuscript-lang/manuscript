@@ -95,6 +95,7 @@
 #include "check/check_unused.c"
 #include "check/check_method.c"
 #include "check/check_closure.c"
+#include "check/check_list.c"
 #include "check/dump_check.c"
 #include "check/effect_directives.c"
 #include "check/effect_reach.c"
