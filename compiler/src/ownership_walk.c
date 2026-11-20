@@ -381,10 +381,10 @@ static void own_statement(OwnWalk *w, const MsStmt *s) {
     case MS_S_RETURN: own_return(w, s); return;
     case MS_S_IF: own_if(w, s); return;
     case MS_S_WHILE: own_while(w, s); return;
+    case MS_S_BREAK:
+    case MS_S_CONTINUE: return; /* the loop's join covers what the jump skips */
     case MS_S_ASSIGN:
     case MS_S_CALL:
-    case MS_S_BREAK:
-    case MS_S_CONTINUE:
     case MS_S_FOR: w->supported = false; return;
     }
 }
