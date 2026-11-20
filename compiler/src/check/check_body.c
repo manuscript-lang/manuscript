@@ -57,25 +57,6 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
 
 static bool body_text_is(const MsBody *b, MsSym name, const char *text);
 
-/* Whether `ty` is an interface a value of which owns what it was made from: `Closeable`, or one
- * that declares `move fn close()` (the ownership classifier's `owned_close`). */
-static bool body_is_owned_closer(const MsBody *b, MsTy ty) {
-    const MsTyTable *tys = &b->c->tys;
-    if (ms_ty_kind(tys, ty) != MS_K_CONTRACT) {
-        return false;
-    }
-    if (ms_ty_is(tys, ty, MS_BI_CLOSEABLE) || tys->def[ty] == 0 || b->methods == NULL) {
-        return true;
-    }
-    const MsOperations *ops = ms_interface_operations(b->methods, tys->def[ty] - 1);
-    for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
-        if (ops->items[i].decl->consuming && body_text_is(b, ops->items[i].name, "close")) {
-            return true;
-        }
-    }
-    return false;
-}
-
 /* A value of a nominal type that may need a cleanup, with type arguments of primitive type
  * (`WriteStream[String]`): only the receiver of a method call, which is a temporary. */
 bool ms_body_is_handle(const MsBody *b, MsTy ty) {
@@ -98,7 +79,7 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
  * it to the Rust lowering until it records the close. */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
-           (body_is_own_nominal(b, ty) && !body_is_owned_closer(b, ty));
+           body_is_own_nominal(b, ty);
 }
 
 bool ms_body_is_admitted(const MsBody *b, MsTy ty) {
