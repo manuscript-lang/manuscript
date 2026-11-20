@@ -45,7 +45,7 @@ static MsBytes string_bytes(const void *value) {
     const MsStringView *s = value;
     bool inline_bytes = (s->tagged >> 62) == 1;
     size_t len = inline_bytes ? (size_t)((s->tagged >> 56) & 15) : (size_t)(s->tagged & (((uint64_t)1 << 31) - 1));
-    return ms_bytes(inline_bytes ? (const uint8_t *)s : s->ptr, len);
+    return ms_bytes_of(inline_bytes ? (const uint8_t *)s : s->ptr, len);
 }
 
 /* ---- memory helpers ---- */
@@ -336,7 +336,7 @@ static MsPathResult expand_alternative(MsBytes prefix, MsBytes middle, MsBytes s
     if (!text_list_push3(&whole, prefix, middle, suffix)) {
         goto done;
     }
-    MsBytes joined = ms_bytes((const uint8_t *)whole.items[0].ptr, whole.items[0].len);
+    MsBytes joined = ms_bytes_of((const uint8_t *)whole.items[0].ptr, whole.items[0].len);
     result = expand_braces(joined, depth + 1, &expanded);
     if (result != PATH_OK) {
         goto done;
@@ -346,7 +346,7 @@ static MsPathResult expand_alternative(MsBytes prefix, MsBytes middle, MsBytes s
         goto done;
     }
     for (size_t i = 0; i < expanded.count; i++) {
-        MsBytes item = ms_bytes((const uint8_t *)expanded.items[i].ptr, expanded.items[i].len);
+        MsBytes item = ms_bytes_of((const uint8_t *)expanded.items[i].ptr, expanded.items[i].len);
         if (!text_list_push3(out, item, (MsBytes){0}, (MsBytes){0})) {
             result = PATH_NO_MEMORY;
             goto done;
@@ -374,7 +374,7 @@ static MsPathResult expand_range(MsBytes pattern, size_t open, size_t close, siz
     for (;;) {
         char buffer[32] = {0};
         size_t length = format_range_element(&spec, n, buffer);
-        MsPathResult result = expand_alternative(prefix, ms_bytes((const uint8_t *)buffer, length), suffix, depth, out);
+        MsPathResult result = expand_alternative(prefix, ms_bytes_of((const uint8_t *)buffer, length), suffix, depth, out);
         if (result != PATH_OK) {
             return result;
         }
@@ -1087,7 +1087,7 @@ static MsPathResult glob_fill(MsGlobCell *cell, MsBytes pattern) {
     }
     for (size_t i = 0; result == PATH_OK && i < expanded.count; i++) {
         cell->alternative_count = i + 1;
-        MsBytes text = ms_bytes((const uint8_t *)expanded.items[i].ptr, expanded.items[i].len);
+        MsBytes text = ms_bytes_of((const uint8_t *)expanded.items[i].ptr, expanded.items[i].len);
         result = parse_alternative(text, &cell->alternatives[i]);
     }
     text_list_free(&expanded);
@@ -1142,7 +1142,7 @@ uint8_t msstd_path_compile_glob(uint8_t windows, const void *pattern, MsObj **ou
     if (slashed != NULL && cell != NULL) {
         cell->header.drop = glob_drop;
         cell->windows = windows != 0;
-        result = glob_fill(cell, ms_bytes((const uint8_t *)slashed, text.len));
+        result = glob_fill(cell, ms_bytes_of((const uint8_t *)slashed, text.len));
     }
     msrt_free(slashed);
     if (result != PATH_OK) {
@@ -1264,7 +1264,7 @@ uint8_t msstd_path_glob_matches(const MsObj *glob, const void *value, uint8_t *o
     }
     char *slashed = slash_copy(text, cell->windows);
     MsParts parts = {0};
-    bool failed = slashed == NULL || !parts_split(ms_bytes((const uint8_t *)slashed, text.len), &parts);
+    bool failed = slashed == NULL || !parts_split(ms_bytes_of((const uint8_t *)slashed, text.len), &parts);
     bool matched = false;
     for (size_t i = 0; !failed && !matched && i < cell->alternative_count; i++) {
         matched = match_alternative(&failed, &parts, &cell->alternatives[i]);
