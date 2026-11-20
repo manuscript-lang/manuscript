@@ -885,12 +885,17 @@ mod tests {
         let _g = lock();
         let pipe = msrt_pipe_new(8);
         // One thread runs the writer too, so waiting for it would only hold it back.
-        let start = crate::sys::monotonic_ns();
-        assert_eq!(msrt_pipe_brief_wait(pipe), 0);
-        assert!(
-            crate::sys::monotonic_ns() - start < BRIEF_NS,
-            "it answers without waiting"
-        );
+        // A wait would cost at least BRIEF_NS every time, while a descheduled thread on a loaded
+        // runner costs a long gap only now and then: the fastest of many calls shows which it is.
+        let fastest = (0..64)
+            .map(|_| {
+                let start = crate::sys::monotonic_ns();
+                assert_eq!(msrt_pipe_brief_wait(pipe), 0);
+                crate::sys::monotonic_ns() - start
+            })
+            .min()
+            .unwrap_or(i64::MAX);
+        assert!(fastest < BRIEF_NS, "it answers without waiting");
         assert_eq!(write_int(pipe, 7), WRITTEN);
         assert_eq!(msrt_pipe_brief_wait(pipe), 1);
         let read = msrt_pipe_read(pipe);
