@@ -1,0 +1,17 @@
+module "t"
+entry @main
+
+fn @main() -> int {
+b0:
+  depth.enter
+  %0: int = iconst 0
+  ret %0
+}
+
+fn @walk(%0: move str, %1: int) -> void {
+b0:
+  depth.enter
+  drop %0
+  %2: void = void
+  ret %2
+}

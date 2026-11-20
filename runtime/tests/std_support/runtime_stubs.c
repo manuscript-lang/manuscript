@@ -46,6 +46,7 @@ MsSchedWait ms_sched_pool_run_shielded(MsSchedJobFn run, void *data) {
 
 size_t msrt_cleanup_push(void (*run)(uint8_t *), uint8_t *argument);
 void msrt_cleanup_discard(size_t handle);
+uint8_t msrt_rollback_needed(void);
 void msrt_string_empty(MsStr *out);
 
 /* The unit tests never leave program code by a jump, so a cleanup is never run. */
@@ -55,6 +56,7 @@ size_t msrt_cleanup_push(void (*run)(uint8_t *), uint8_t *argument) {
     return 1;
 }
 void msrt_cleanup_discard(size_t handle) { (void)handle; }
+uint8_t msrt_rollback_needed(void) { return 0; }
 void msrt_string_empty(MsStr *out) { *out = (MsStr){.ptr_word = NULL, .tagged = 0}; }
 int32_t ms_sched_stdout_error(void) { return 0; }
 void ms_sched_flush_stdout(void) {}
@@ -75,3 +77,18 @@ uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) {
     *value = 0;
     return 0;
 }
+
+/* A read wait runs inline: the unit tests have no scheduler to park on. */
+MsSchedWait ms_sched_pool_run(MsSchedJobFn run, MsSchedJobFn release, void *data, int64_t timeout_ns) {
+    (void)release;
+    (void)timeout_ns;
+    run(data);
+    return MS_SCHED_DONE;
+}
+
+uint32_t msrt_task_sleep(int64_t ns) {
+    (void)ns;
+    return 0;
+}
+
+void msrt_process_on_exit(void (*hook)(void)) { (void)hook; }

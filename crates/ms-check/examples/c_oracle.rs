@@ -253,14 +253,16 @@ fn body_exprs(e: &Expr, out: &mut Vec<NodeId>) {
             }
         }),
         ExprKind::Unary { operand, .. } => body_exprs(operand, out),
+        ExprKind::Member { left, .. } => body_exprs(left, out),
         ExprKind::Binary { left, right, .. } => {
             body_exprs(left, out);
             body_exprs(right, out);
         }
+        ExprKind::Call { args, .. } => args.iter().for_each(|a| body_exprs(&a.value, out)),
         ExprKind::Match { scrutinee, arms } => {
             body_exprs(scrutinee, out);
             for arm in arms {
-                body_exprs(&arm.path, out);
+                out.push(arm.path.id); // a pattern: its parts are not expressions
                 if let Some(value) = &arm.value {
                     body_exprs(value, out);
                 }
@@ -327,26 +329,31 @@ fn body_facts(files: &[String]) {
         }
         let facts = loaded.facts();
         for (i, d) in module.decls.iter().enumerate() {
-            let DeclKind::Fn(f) = &d.kind else {
-                continue;
+            let (word, mut ids) = match &d.kind {
+                DeclKind::Fn(f) if !f.external => {
+                    let mut ids = Vec::new();
+                    body_stmts(&f.body, &mut ids);
+                    ("fn", ids)
+                }
+                DeclKind::Const(k) => {
+                    let mut ids = Vec::new();
+                    body_exprs(&k.value, &mut ids);
+                    ("const", ids)
+                }
+                _ => continue,
             };
-            if f.external {
-                continue;
-            }
             let end = module.decls.get(i + 1).map_or(u32::MAX, |n| n.pos.line);
             let dirty = program
                 .diagnostics
                 .iter()
                 .any(|x| x.pos.line >= d.pos.line && x.pos.line < end);
             println!(
-                "fn {}:{} {}",
+                "{word} {}:{} {}",
                 d.pos.line,
                 d.pos.column,
                 if dirty { "dirty" } else { "clean" }
             );
-            let mut ids = Vec::new();
-            body_stmts(&f.body, &mut ids);
-            for id in ids {
+            for id in ids.drain(..) {
                 let ty = facts
                     .info(id)
                     .and_then(|i| i.ty.as_ref())

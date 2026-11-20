@@ -4,11 +4,6 @@
 #[cfg(feature = "alloc-profile")]
 use core::ffi::c_void;
 
-#[cfg(feature = "stats")]
-compile_error!(
-    "the counting runtime (`stats`) uses the Rust allocator: build it without MS_C_RUNTIME"
-);
-
 unsafe extern "C-unwind" {
     pub fn msrt_alloc(size: usize) -> *mut u8;
     pub fn msrt_alloc_zeroed(size: usize) -> *mut u8;
@@ -25,6 +20,14 @@ unsafe extern "C-unwind" {
     fn msrt_heap_shared_take(size: usize) -> *mut u8;
     fn msrt_heap_shared_put(p: *mut u8) -> u8;
     pub fn msrt_heap_stats(out: *mut i64);
+    #[cfg(feature = "stats")]
+    fn msrt_heap_requested_reset();
+    #[cfg(feature = "stats")]
+    fn msrt_heap_live_total() -> i64;
+    #[cfg(feature = "stats")]
+    fn msrt_heap_live_by_size(sizes: *mut usize, counts: *mut i64, capacity: usize) -> usize;
+    #[cfg(all(test, not(feature = "stats")))]
+    fn msalloc_live_blocks() -> i64;
     fn msrt_heap_requested(out: *mut u64);
     #[cfg(feature = "alloc-profile")]
     fn msrt_heap_sample_every(period: i64, hook: *mut c_void);
@@ -174,4 +177,36 @@ pub fn sample_every(period: i64) {
     }
     #[cfg(not(feature = "alloc-profile"))]
     let _ = period;
+}
+
+/// Starts the `requested` counters over: called as the program's `main` begins, so the counts a gate reads
+/// cover the program and not the runtime's own start-up records, which differ by platform.
+#[cfg(feature = "stats")]
+pub fn reset_requested() {
+    // SAFETY: no preconditions.
+    unsafe { msrt_heap_requested_reset() }
+}
+
+/// Live blocks of the whole process (the counting runtime).
+#[cfg(feature = "stats")]
+pub fn live_blocks() -> isize {
+    // SAFETY: no preconditions.
+    unsafe { msrt_heap_live_total() as isize }
+}
+
+/// Live blocks of the calling thread's heap (unit tests, which the C archive counts).
+#[cfg(all(test, not(feature = "stats")))]
+pub fn live_blocks() -> isize {
+    // SAFETY: no preconditions.
+    unsafe { msalloc_live_blocks() as isize }
+}
+
+/// `(block size, live count)` for each size class with a nonzero count; the size is 0 for large blocks.
+#[cfg(feature = "stats")]
+pub fn live_by_size() -> Vec<(usize, isize)> {
+    let mut sizes = [0usize; 128];
+    let mut counts = [0i64; 128];
+    // SAFETY: both arrays hold `capacity` entries.
+    let n = unsafe { msrt_heap_live_by_size(sizes.as_mut_ptr(), counts.as_mut_ptr(), sizes.len()) };
+    (0..n).map(|i| (sizes[i], counts[i] as isize)).collect()
 }
