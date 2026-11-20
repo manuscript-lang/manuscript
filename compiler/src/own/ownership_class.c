@@ -225,7 +225,7 @@ static MsClass nominal_class(MsClassifier *classifier, MsTy type, ClassWalk *wal
 
 /* `declares_owned_close`: the interface declares `move fn close()`, so a value of it owns what it
  * was made from. */
-static bool declares_owned_close(const MsClassifier *classifier, MsTy type) {
+static bool declares_owned_close(MsClassifier *classifier, MsTy type) {
     const MsCheck *check = classifier->check;
     const MsTyTable *tys = &check->tys;
     if (is_marked(&classifier->owned_close, tys, type)) {
@@ -235,7 +235,7 @@ static bool declares_owned_close(const MsClassifier *classifier, MsTy type) {
                                   ? NULL
                                   : ms_interface_operations(check->methods, tys->def[type] - 1);
     for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
-        if (ops->items[i].decl->consuming && ops->items[i].name == close_name((MsClassifier *)classifier)) {
+        if (ops->items[i].decl->consuming && ops->items[i].name == close_name(classifier)) {
             return true;
         }
     }

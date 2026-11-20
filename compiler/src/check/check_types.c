@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "ms/check.h"
+#include "ms/text.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
 

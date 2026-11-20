@@ -1050,7 +1050,7 @@ static MsPlace own_target_place(OwnWalk *w, const MsExpr *target, uint32_t root,
     for (const MsExpr *e = target; e->kind == MS_E_MEMBER; e = e->u.member.left) {
         depth++;
     }
-    MsStep *steps = MS_NEW_N(&w->check->arena, MsStep, depth + 1);
+    MsStep *steps = MS_NEW_N(&w->check->arena, MsStep, (size_t)depth + 1);
     uint32_t at = depth;
     for (const MsExpr *e = target; e->kind == MS_E_MEMBER; e = e->u.member.left) {
         steps[--at] = (MsStep){MS_STEP_FIELD, e->u.member.name, 0};

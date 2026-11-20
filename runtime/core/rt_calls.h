@@ -42,6 +42,6 @@ void msrt_cleanup_discard(size_t handle);
 uint8_t msrt_rollback_needed(void);
 
 /* Runs `shim(block)` on the running task's next stack segment (the task module). */
-void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block);
+void msrt_task_grow(void (*shim)(void *), void *block);
 
 #endif

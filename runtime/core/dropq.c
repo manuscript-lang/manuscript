@@ -75,7 +75,7 @@ typedef struct CopyJob {
     uint8_t *dst;
 } CopyJob;
 
-static void run_copy(uint8_t *block) { // NOLINT(readability-non-const-parameter): the grow shim signature
+static void run_copy(void *block) { // NOLINT(readability-non-const-parameter): the grow shim signature
     CopyJob job;
     __builtin_memcpy(&job, block, sizeof job);
     job.copy(job.src, job.dst);
@@ -85,6 +85,6 @@ void msrt_slot_copy_grown(MsSlotCopyRun copy, const uint8_t *src, uint8_t *dst) 
     /* The job is a heap block, freed here or by the grow's cleanup if the copy leaves by a fault. */
     CopyJob *const job = msrt_alloc(sizeof *job);
     *job = (CopyJob){.copy = copy, .src = src, .dst = dst};
-    msrt_task_grow(run_copy, (uint8_t *)job);
+    msrt_task_grow(run_copy, job);
     msrt_free(job);
 }

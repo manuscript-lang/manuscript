@@ -98,6 +98,8 @@ typedef struct Lb {
  * and `lb_mir_ty` are declared further down). */
 void lb_statements(Lb *lb, const MsStmts *body);
 void lb_return_void(Lb *lb);
+bool lb_owns(Lb *lb, MirTy ty);                          /* whether a value of `ty` has an owner to release */
+MirValue lb_move_argument(Lb *lb, const MsExpr *e);       /* lowers `e` as a moved-in operand */
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
 void lb_hold_temp(Lb *lb, MirValue v); /* an owned temporary that lives to the end of the statement */
 MirLoc lb_loc(const Lb *lb, MsPos pos);

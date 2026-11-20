@@ -8,6 +8,7 @@
 #include "ms_rt/desc.h"
 #include "ms_rt/alloc.h"
 #include "rt_calls.h"
+#include "task_abi.h"
 #include "rt_stubs.h"
 
 jmp_buf *ms_test_fault;
@@ -73,7 +74,7 @@ __attribute__((weak)) void msrt_cleanup_discard(size_t handle) { ms_test_cleanup
 __attribute__((weak)) uint8_t msrt_rollback_needed(void) { return 1; }
 
 /* Weak: core_task_abi links the real one (runtime/core/task_abi.c), every other core test runs without a scheduler. */
-__attribute__((weak)) void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block) { shim(block); }
+__attribute__((weak)) void msrt_task_grow(void (*shim)(void *), void *block) { shim(block); }
 __attribute__((weak)) uint32_t msrt_task_sleep(int64_t ns) {
     (void)ns;
     return 0;

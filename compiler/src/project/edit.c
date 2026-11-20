@@ -434,7 +434,7 @@ const char *ms_manifest_default_name(MsArena *a, const char *url) {
     name[0] = '@';
     for (size_t i = 0; i < length; i++) {
         const char c = base[i];
-        name[i + 1] = c == '-' ? '_' : c;
+        name[i + 1] = (char)(c == '-' ? '_' : c);
     }
     return ms_manifest_valid_alias(name) ? name : NULL;
 }
