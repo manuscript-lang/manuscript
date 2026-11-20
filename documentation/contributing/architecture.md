@@ -40,7 +40,7 @@ weight = 1
 | `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
 | `ms-build` | Lowering seam, optimization, native codegen and link |
 | `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, agent skill, docgen; language server |
-| `ms-cli`, `ms-conform`, `ms-repo-check` | The `ms` binary; the conformance runner; repository invariants |
+| `ms-cli` | The `ms` binary (the conformance runner is `tools/conform-run.ms`) |
 
 `stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority and the Rust implementation embeds it unchanged.
 

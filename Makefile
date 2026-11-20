@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -39,9 +39,16 @@ check: runtime
 fmt:
 	cargo fmt --all
 
-# Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, Rust unsafe allow-list.
-repo-check:
-	cargo run --release --locked -q -p ms-repo-check
+# The libms entry points that Manuscript tools call with `extern fn` (compiler/tools/tool_shim.c).
+libms-tools:
+	cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
+	cmake --build target/cmake/tools --target ms_tools_shim
+	cp target/cmake/tools/compiler/libms_tools.a target/libms_tools.a
+
+# Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, portability and
+# the other rules in tools/repo-check/, written in Manuscript over libms.
+repo-check: build libms-tools
+	$(MS) run tools/repo-check.ms --link target/libms_tools.a
 
 workflow-check:
 	node --test tests/workflows/*.test.cjs
@@ -75,8 +82,7 @@ llvm-report: build
 # Backend drift: the run and test phases of the corpus under LLVM (Release default) and under Cranelift
 # (MS_BACKEND=cranelift), compared directly; any differing stdout, stderr or exit status fails.
 drift-check: build
-	cargo build --release --locked -q -p ms-conform
-	target/release/ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
+	$(MS) run tools/conform-run.ms -- diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
 
 # The corpus under both backends with every dead statement stack slot filled with a pattern (MS_POISON_SLOTS=1), so a
 # pointer that outlives its slot fails in every build, not only where the backend happens to reuse the slot.
@@ -139,11 +145,11 @@ ms-cli-check: build
 	$(MS) run tools/ms-cli-check.ms
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
-licenses:
-	cargo run --release --locked -q -p ms-repo-check -- licenses
+licenses: build libms-tools
+	$(MS) run tools/repo-check.ms --link target/libms_tools.a -- licenses
 
-licenses-check:
-	cargo run --release --locked -q -p ms-repo-check -- licenses -check
+licenses-check: build libms-tools
+	$(MS) run tools/repo-check.ms --link target/libms_tools.a -- licenses -check
 
 # The book and API reference come from the Rust docgen (crates/ms-tooling).
 docs:
@@ -196,15 +202,26 @@ bench-check: build
 stdlib-bench: build
 	MS="$(RELEASE_MS)" "$(RELEASE_MS)" run bench/tools/stdlib_bench.ms -- $(BENCHREPEATS) $(BENCHFILTER)
 
-# The C runtime unit tests under AddressSanitizer and UBSan; nightly, not the pull request gate.
-c-test:
-	sh runtime/tests/c-test.sh
+# The C build: one CMake project (CMakeLists.txt, cmake/) for the runtime archive, its tests and the fuzz harnesses,
+# generated with Ninja; ccache is used when installed. `c-configure` and `c-build` make target/cmake/test (sanitizers on).
+C_BUILD ?= target/cmake/test
+.PHONY: c-configure c-build
+c-configure:
+	cmake -S . -B $(C_BUILD) -G Ninja -DMS_SANITIZE=ON
+
+c-build: c-configure
+	cmake --build $(C_BUILD)
+
+# The C runtime unit tests (ctest) under AddressSanitizer and UBSan; nightly, not the pull request gate.
+c-test: c-build
+	ctest --test-dir $(C_BUILD) --output-on-failure -j $(shell nproc 2>/dev/null || sysctl -n hw.ncpu)
 
 # The C style gate (documentation/contributing/c-style.md): strict warnings on every C file, clang-tidy on the
 # files that differ from C_LINT_BASE (all of them when it is unset).
 .PHONY: c-lint
 c-lint:
-	sh toolchain/c-lint.sh $(C_LINT_BASE)
+	cmake -S . -B target/cmake/lint -G Ninja -DMS_BUILD_COMPILER=OFF -DMS_BUILD_TESTS=OFF
+	C_LINT_BASE="$(C_LINT_BASE)" cmake --build target/cmake/lint --target c-lint
 
 # The C runtime fuzz harnesses (runtime/fuzz) under AddressSanitizer and UBSan; FUZZ_RUNS, FUZZ_SEED, FUZZER=libfuzzer.
 c-fuzz:
@@ -216,22 +233,29 @@ c-compiler-test:
 	sh compiler/tests/mir-diff.sh
 	sh compiler/tests/mir-pass-diff.sh
 	sh compiler/tests/check-diff.sh
+	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
+	sh compiler/tests/fixes-diff.sh
+	sh compiler/tests/prelude-fix-diff.sh
 	sh compiler/tests/import-hints-diff.sh
 	sh compiler/tests/qbe-run.sh
 
 # libms with the tool entry points (compiler/include/ms/tool.h): the archive a Manuscript tool links with `--link`.
-target/c-tool/libmstool.a: compiler/src/tool.c compiler/include/ms/tool.h $(wildcard compiler/src/*.c compiler/include/ms/*.h)
+.PHONY: FORCE
+FORCE:
+
+C_TOOL = target/cmake/tools/compiler
+target/c-tool/libmstool.a: FORCE
+	cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
+	cmake --build target/cmake/tools --target ms_tool ms_syntax_dump
 	mkdir -p target/c-tool
-	cc -std=c11 -O1 -g -Wall -Wextra -Werror -Icompiler/include -Iruntime/include -c compiler/src/libms.c -o target/c-tool/libms.o
-	cc -std=c11 -O1 -g -Wall -Wextra -Werror -Icompiler/include -Iruntime/include -Icrates/ms-rt-abi/include -c compiler/src/tool.c -o target/c-tool/tool.o
-	ar rcs $@ target/c-tool/libms.o target/c-tool/tool.o
+	cp $(C_TOOL)/libmstool.a $@
+	cp $(C_TOOL)/ms_syntax_dump target/c-tool/ms_syntax_dump
 
 # The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; and `search_symbol` against the Rust one.
 c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
-	cc -std=c11 -O1 -Wno-maybe-uninitialized -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_syntax_dump.c -o target/c-tool/ms_syntax_dump
 	git ls-files '*.ms' > target/c-tool/files.txt
 	target/c-tool/ms_syntax_dump ast $$(cat target/c-tool/files.txt) | sed -E 's/^(error [0-9]+:[0-9]+:[0-9]+) .*/\1/' > target/c-tool/ast.c.txt
 	"$(RELEASE_MS)" run tools/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt

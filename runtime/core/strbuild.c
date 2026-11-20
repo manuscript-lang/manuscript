@@ -4,10 +4,13 @@
  * A string is a MsStr (ms_rt/string.h). Every function here follows its rules: owned strings have a NUL after
  * their bytes, inline strings keep the bytes past their length zero, one-character ASCII and empty results are
  * static, and a view never points into an inline string. */
+#include <string.h>
 #include "ms_rt/alloc.h"
+#include "ms_rt/search.h"
 #include "ms_rt/safe.h"
 #include "ms_rt/string.h"
 #include "ms_rt/utf8.h"
+#include "ms_rt/chars.h"
 
 /* The fault entry point and the table of one-character ASCII strings (two bytes each, the second a NUL) are
  * still defined by the Rust runtime. */
@@ -328,9 +331,20 @@ void msrt_string_concat6(const MsStr *a, const MsStr *b, const MsStr *c, const M
 
 /* Fills `destination` with whole copies of `pattern`: the first copy is written, then the filled part doubles. */
 static void fill_repeated(MsBytesMut destination, MsBytes pattern) {
+    if (destination.len == 0) {
+        return;
+    }
+    if (pattern.len == 1) {
+        memset(destination.ptr, pattern.ptr[0], destination.len);
+        return;
+    }
+    MsBytes first = pattern;
+    if (first.len > destination.len && !ms_bytes_slice(pattern, 0, destination.len, &first)) {
+        fault_limit();
+    }
     MsBytesMut cursor = destination;
-    append_bytes(&cursor, pattern);
-    size_t filled = pattern.len;
+    append_bytes(&cursor, first);
+    size_t filled = first.len;
     while (filled < destination.len) {
         size_t step = filled < destination.len - filled ? filled : destination.len - filled;
         append_bytes(&cursor, ms_bytes_of(destination.ptr, step));
@@ -373,7 +387,7 @@ static void reverse_scalars(MsBytesMut destination, MsBytes text) {
     while (end > 0) {
         size_t start = end - 1;
         uint8_t byte = 0;
-        while (start > 0 && end - start < 4 && ms_bytes_get(text, start, &byte) && (byte & 0xC0) == 0x80) {
+        while (start > 0 && end - start < 4 && ms_bytes_get(text, start, &byte) && ms_utf8_is_continuation(byte)) {
             start--;
         }
         MsBytes scalar = {0};
@@ -504,11 +518,179 @@ void msrt_string_trim_start_view(const MsStr *s, MsStr *out) { trim_view(s, true
 
 void msrt_string_trim_end_view(const MsStr *s, MsStr *out) { trim_view(s, false, true, out); }
 
+/* ---- Trimmed copies ---- */
+
+/* The text without white space at the ends the flags name: the same string when nothing is trimmed. */
+static MsStr trimmed(const MsStr *s, bool trim_start, bool trim_end) {
+    MsBytes text = str_bytes(s);
+    TrimRange range = trim_range(text, trim_start, trim_end);
+    MsBytes kept = {0};
+    if (range.start == 0 && range.end == text.len) {
+        return cloned(s);
+    }
+    if (!ms_bytes_slice(text, range.start, range.end, &kept)) {
+        return make_empty();
+    }
+    return from_bytes(kept);
+}
+
+void msrt_string_trim(const MsStr *s, MsStr *out) { *out = trimmed(s, true, true); }
+
+void msrt_string_trim_start(const MsStr *s, MsStr *out) { *out = trimmed(s, true, false); }
+
+void msrt_string_trim_end(const MsStr *s, MsStr *out) { *out = trimmed(s, false, true); }
+
+/* The string over the first `len` bytes of the owned block at `block`: the same block when it stays on the heap, an
+ * inline copy (freeing the block) when it fits inline. */
+static MsStr finish_owned(uint8_t *block, size_t len, bool ascii) {
+    if (len <= MS_STR_INLINE_MAX) {
+        MsStr result = from_bytes(ms_bytes_of(block, len));
+        msrt_free(block);
+        return result;
+    }
+    block[len] = 0;
+    MsStr result = {.ptr_word = block, .tagged = len};
+    return ascii ? with_ascii_flag(result) : result;
+}
+
+/* `trim`, `trim_start` or `trim_end` of a string that dies at the call: the kept bytes move to the front of the
+ * same block. */
+static void trimmed_take(MsStr *s, bool trim_start, bool trim_end, MsStr *out) {
+    if (!owns_block(s)) {
+        *out = trimmed(s, trim_start, trim_end);
+        return;
+    }
+    uint8_t *block = s->ptr_word;
+    bool ascii = (s->tagged & MS_STR_ASCII) != 0;
+    MsBytes text = str_bytes(s);
+    TrimRange range = trim_range(text, trim_start, trim_end);
+    size_t kept = range.end > range.start ? range.end - range.start : 0;
+    if (range.start > 0 && kept > 0) {
+        MsBytes source = {0};
+        if (!ms_bytes_slice(text, range.start, range.end, &source)) {
+            fault_limit();
+        }
+        copy_into(ms_bytes_mut(block, kept), source);
+    }
+    *out = finish_owned(block, kept, ascii);
+}
+
+void msrt_string_trim_take(MsStr *s, MsStr *out) { trimmed_take(s, true, true, out); }
+
+void msrt_string_trim_start_take(MsStr *s, MsStr *out) { trimmed_take(s, true, false, out); }
+
+void msrt_string_trim_end_take(MsStr *s, MsStr *out) { trimmed_take(s, false, true, out); }
+
+/* ---- Searching and characters ---- */
+
+/* `String.index_of`: whether `v` occurs in `a`, and where. */
+uint8_t msrt_string_index_of(const MsStr *a, const MsStr *v, int64_t *out) {
+    size_t found = ms_find(ms_str_data(a), ms_str_len(a), ms_str_data(v), ms_str_len(v));
+    if (found == SIZE_MAX) {
+        return 0;
+    }
+    *out = (int64_t)found;
+    return 1;
+}
+
+/* The character that starts at byte `at` (a lead byte or a stray byte, which reads as U+FFFD) as a one-character
+ * string. The caller passes an offset inside the text. */
+void msrt_string_char_at(const MsStr *s, int64_t at, MsStr *out) {
+    MsBytes text = str_bytes(s);
+    MsBytes rest = {0};
+    if (at < 0 || !ms_bytes_slice(text, (size_t)at, text.len, &rest) || rest.len == 0) {
+        *out = make_empty();
+        return;
+    }
+    MsRune rune = ms_utf8_decode(rest.ptr, rest.len);
+    if (rune.rune == MS_RUNE_ERROR && rune.width == 1) {
+        static const uint8_t replacement[] = {0xEF, 0xBF, 0xBD};
+        *out = from_bytes(ms_bytes_of(replacement, sizeof replacement));
+        return;
+    }
+    MsBytes character = {0};
+    if (!ms_bytes_slice(rest, 0, rune.width, &character)) {
+        fault_limit();
+    }
+    *out = from_bytes(character);
+}
+
+/* ---- Padding ---- */
+
+/* The padding bytes that fill `needed` scalars and the length of the padded text. */
+typedef struct PadPlan {
+    size_t pad_bytes;
+    size_t total;
+} PadPlan;
+
+/* The plan for padding `text_length` bytes with `needed` scalars of `padding`; faults past the string limit. */
+static PadPlan plan_padding(size_t text_length, size_t needed, const MsStr *padding) {
+    MsBytes padding_bytes = str_bytes(padding);
+    size_t padding_scalars = (size_t)msrt_string_scalar_length(padding);
+    size_t cycle_bytes = 0;
+    size_t prefix_bytes = 0;
+    PadPlan plan = {0};
+    if (needed % padding_scalars > 0) {
+        prefix_bytes = ms_utf8_offset_of(padding_bytes.ptr, padding_bytes.len, needed % padding_scalars);
+    }
+    if (!ms_size_mul(needed / padding_scalars, padding_bytes.len, &cycle_bytes) ||
+        !ms_size_add(cycle_bytes, prefix_bytes, &plan.pad_bytes) || !ms_size_add(text_length, plan.pad_bytes, &plan.total) ||
+        plan.total > MS_STR_MAX_BYTES) {
+        fault_limit();
+    }
+    return plan;
+}
+
+/* Writes the padded text into `destination` of `plan->total` bytes: the padding repeated (and cut at the last
+ * scalar that fits) before the text when `at_start`, after it otherwise. */
+static void write_padded(MsBytesMut destination, MsBytes text, MsBytes padding, const PadPlan *plan, bool at_start) {
+    MsBytesMut pad_region = {0};
+    MsBytesMut text_region = {0};
+    size_t pad_start = at_start ? 0 : text.len;
+    size_t text_start = at_start ? plan->pad_bytes : 0;
+    if (!ms_bytes_mut_slice(destination, pad_start, pad_start + plan->pad_bytes, &pad_region) ||
+        !ms_bytes_mut_slice(destination, text_start, text_start + text.len, &text_region)) {
+        fault_limit();
+    }
+    copy_into(text_region, text);
+    fill_repeated(pad_region, padding);
+}
+
+/* Pads to `target` scalars with repeated `padding`; a short target or empty padding leaves the text unchanged.
+ * Output beyond the string limit faults like `concat`. */
+static void pad(bool at_start, const MsStr *s, int64_t target, const MsStr *padding, MsStr *out) {
+    int64_t needed = 0;
+    MsBytes text = str_bytes(s);
+    MsBytes padding_bytes = str_bytes(padding);
+    if (__builtin_sub_overflow(target, msrt_string_scalar_length(s), &needed) || needed <= 0 || padding_bytes.len == 0) {
+        *out = cloned(s);
+        return;
+    }
+    PadPlan plan = plan_padding(text.len, (size_t)needed, padding);
+    if (plan.total <= MS_STR_INLINE_MAX) {
+        uint8_t small[MS_STR_INLINE_MAX + 1] = {0};
+        write_padded(ms_bytes_mut(small, plan.total), text, padding_bytes, &plan, at_start);
+        *out = inline_from_bits(pack_bits(ms_bytes_of(small, plan.total)), plan.total);
+        return;
+    }
+    OwnedBlock block = owned_block_new(plan.total);
+    write_padded(block.bytes, text, padding_bytes, &plan, at_start);
+    *out = (str_is_ascii(s) && str_is_ascii(padding)) ? with_ascii_flag(block.str) : block.str;
+}
+
+void msrt_string_pad_start(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out) {
+    pad(true, s, target, padding, out);
+}
+
+void msrt_string_pad_end(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out) {
+    pad(false, s, target, padding, out);
+}
+
 /* ---- Slices and views ---- */
 
 static bool is_boundary(MsBytes text, size_t index) {
     uint8_t byte = 0;
-    return index == text.len || (ms_bytes_get(text, index, &byte) && (byte & 0xC0) != 0x80);
+    return index == text.len || (ms_bytes_get(text, index, &byte) && !ms_utf8_is_continuation(byte));
 }
 
 /* A bound as an offset into `length` bytes: a negative bound counts back from the end. */

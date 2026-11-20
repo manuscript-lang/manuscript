@@ -9,8 +9,12 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "ms/check.h"
 #include "ms/dump.h"
+#include "ms/ownership.h"
+#include "ms/parse.h"
 #include "ms/stdlib.h"
+#include "dump_io.h"
 
 static MsStdFile *files;
 static uint32_t nfiles, cap;
@@ -38,14 +42,66 @@ static void add_file(const char *dir, const char *rel, const char *name) {
     files[nfiles++] = (MsStdFile){strdup(name), text, (size_t)n};
 }
 
-static bool ends_with(const char *s, const char *suffix) {
-    size_t a = strlen(s), b = strlen(suffix);
-    return a >= b && strcmp(s + a - b, suffix) == 0;
+static bool only_std_imports(const MsModule *module) {
+    for (uint32_t i = 0; i < module->nimports; i++) {
+        if (module->imports[i].path.len < 5 || memcmp(module->imports[i].path.ptr, "@std/", 5) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* Prints the name-resolution diagnostics of each file as `path:line:col: message`, the form
+ * `c_oracle --scope` prints. Files that fail to parse or import project modules print nothing. */
+static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *names, int nfiles_in, char **paths,
+                                    bool bodies, bool ownership) {
+    for (int i = 0; i < nfiles_in; i++) {
+        FILE *f = fopen(paths[i], "rb");
+        if (f == NULL) {
+            continue;
+        }
+        fseek(f, 0, SEEK_END);
+        long n = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        char *text = malloc((size_t)n + 1);
+        const bool read = text != NULL && fread(text, 1, (size_t)n, f) == (size_t)n;
+        fclose(f);
+        MsModule *module = MS_NEW(syntax, MsModule);
+        MsDiag diag;
+        if (read && ms_parse(syntax, names, text, (size_t)n, module, &diag) && only_std_imports(module)) {
+            printf("== %s\n", paths[i]);
+            MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
+            MsBuf dump = {0};
+            if (bodies) {
+                ms_module_check_bodies(check, id);
+                ms_module_check_ownership(check, id);
+                if (ownership) {
+                    ms_dump_module_ownership(&dump, check, id);
+                } else {
+                    ms_dump_module_bodies(&dump, check, id);
+                }
+                printf("%.*s", (int)dump.len, (const char *)dump.data);
+            } else {
+                ms_module_resolve_types(check, id);
+                for (uint32_t k = 0; k < check->mods[id].ndiags; k++) {
+                    const MsDiag *d = &check->mods[id].diags[k].diag;
+                    printf("%u:%u: %.*s\n", d->pos.line, d->pos.column, (int)d->message.len, d->message.ptr);
+                }
+                ms_dump_module_types(&dump, check, id);
+                printf("--\n%.*s", (int)dump.len, (const char *)dump.data);
+            }
+            ms_buf_free(&dump);
+        }
+        free(text);
+    }
 }
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
-        fputs("usage: ms_check_dump STDLIB_DIR\n", stderr);
+    const bool ownership = argc >= 3 && strcmp(argv[2], "--ownership") == 0;
+    const bool bodies = ownership || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
+    const bool scope = bodies || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
+    if (argc != 2 && !scope) {
+        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership FILE...]\n", stderr);
         return 2;
     }
     const char *root = argv[1];
@@ -94,10 +150,14 @@ int main(int argc, char **argv) {
         fprintf(stderr, "standard declarations: %.*s\n", (int)err.len, err.ptr);
         return 1;
     }
-    MsBuf out = {0};
-    ms_dump_std_tables(&out, &check);
-    fwrite(out.data, 1, out.len, stdout);
-    ms_buf_free(&out);
+    if (scope) {
+        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership);
+    } else {
+        MsBuf out = {0};
+        ms_dump_std_tables(&out, &check);
+        fwrite(out.data, 1, out.len, stdout);
+        ms_buf_free(&out);
+    }
     ms_check_free(&check);
     ms_arena_free(&syntax);
     ms_names_free(&names);

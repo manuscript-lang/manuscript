@@ -1,0 +1,371 @@
+module "t"
+entry @main
+extern @msrt_promise_start(int) -> int spawns_task
+extern @msrt_task_sleep(int) -> int
+extern @msrt_string_eq(str, str) -> bool string_eq
+fn @main() -> int {
+b0:
+  %n: int = iconst 5
+  %c: bool = bconst true
+  %k0: str = str "held"
+  %l0: str = clone %k0
+  %r0: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b1(), b2()
+b1:
+  %s0: int = call.rt @msrt_task_sleep (%n)
+  br b2()
+b2:
+  %k1: str = str "held"
+  %l1: str = clone %k1
+  %r1: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b3(), b4()
+b3:
+  %s1: int = call.rt @msrt_task_sleep (%n)
+  br b4()
+b4:
+  %k2: str = str "held"
+  %l2: str = clone %k2
+  %r2: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b5(), b6()
+b5:
+  %s2: int = call.rt @msrt_task_sleep (%n)
+  br b6()
+b6:
+  %k3: str = str "held"
+  %l3: str = clone %k3
+  %r3: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b7(), b8()
+b7:
+  %s3: int = call.rt @msrt_task_sleep (%n)
+  br b8()
+b8:
+  %k4: str = str "held"
+  %l4: str = clone %k4
+  %r4: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b9(), b10()
+b9:
+  %s4: int = call.rt @msrt_task_sleep (%n)
+  br b10()
+b10:
+  %k5: str = str "held"
+  %l5: str = clone %k5
+  %r5: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b11(), b12()
+b11:
+  %s5: int = call.rt @msrt_task_sleep (%n)
+  br b12()
+b12:
+  %k6: str = str "held"
+  %l6: str = clone %k6
+  %r6: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b13(), b14()
+b13:
+  %s6: int = call.rt @msrt_task_sleep (%n)
+  br b14()
+b14:
+  %k7: str = str "held"
+  %l7: str = clone %k7
+  %r7: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b15(), b16()
+b15:
+  %s7: int = call.rt @msrt_task_sleep (%n)
+  br b16()
+b16:
+  %k8: str = str "held"
+  %l8: str = clone %k8
+  %r8: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b17(), b18()
+b17:
+  %s8: int = call.rt @msrt_task_sleep (%n)
+  br b18()
+b18:
+  %k9: str = str "held"
+  %l9: str = clone %k9
+  %r9: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b19(), b20()
+b19:
+  %s9: int = call.rt @msrt_task_sleep (%n)
+  br b20()
+b20:
+  %k10: str = str "held"
+  %l10: str = clone %k10
+  %r10: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b21(), b22()
+b21:
+  %s10: int = call.rt @msrt_task_sleep (%n)
+  br b22()
+b22:
+  %k11: str = str "held"
+  %l11: str = clone %k11
+  %r11: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b23(), b24()
+b23:
+  %s11: int = call.rt @msrt_task_sleep (%n)
+  br b24()
+b24:
+  %k12: str = str "held"
+  %l12: str = clone %k12
+  %r12: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b25(), b26()
+b25:
+  %s12: int = call.rt @msrt_task_sleep (%n)
+  br b26()
+b26:
+  %k13: str = str "held"
+  %l13: str = clone %k13
+  %r13: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b27(), b28()
+b27:
+  %s13: int = call.rt @msrt_task_sleep (%n)
+  br b28()
+b28:
+  %k14: str = str "held"
+  %l14: str = clone %k14
+  %r14: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b29(), b30()
+b29:
+  %s14: int = call.rt @msrt_task_sleep (%n)
+  br b30()
+b30:
+  %k15: str = str "held"
+  %l15: str = clone %k15
+  %r15: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b31(), b32()
+b31:
+  %s15: int = call.rt @msrt_task_sleep (%n)
+  br b32()
+b32:
+  %k16: str = str "held"
+  %l16: str = clone %k16
+  %r16: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b33(), b34()
+b33:
+  %s16: int = call.rt @msrt_task_sleep (%n)
+  br b34()
+b34:
+  %k17: str = str "held"
+  %l17: str = clone %k17
+  %r17: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b35(), b36()
+b35:
+  %s17: int = call.rt @msrt_task_sleep (%n)
+  br b36()
+b36:
+  %k18: str = str "held"
+  %l18: str = clone %k18
+  %r18: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b37(), b38()
+b37:
+  %s18: int = call.rt @msrt_task_sleep (%n)
+  br b38()
+b38:
+  %k19: str = str "held"
+  %l19: str = clone %k19
+  %r19: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b39(), b40()
+b39:
+  %s19: int = call.rt @msrt_task_sleep (%n)
+  br b40()
+b40:
+  %k20: str = str "held"
+  %l20: str = clone %k20
+  %r20: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b41(), b42()
+b41:
+  %s20: int = call.rt @msrt_task_sleep (%n)
+  br b42()
+b42:
+  %k21: str = str "held"
+  %l21: str = clone %k21
+  %r21: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b43(), b44()
+b43:
+  %s21: int = call.rt @msrt_task_sleep (%n)
+  br b44()
+b44:
+  %k22: str = str "held"
+  %l22: str = clone %k22
+  %r22: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b45(), b46()
+b45:
+  %s22: int = call.rt @msrt_task_sleep (%n)
+  br b46()
+b46:
+  %k23: str = str "held"
+  %l23: str = clone %k23
+  %r23: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b47(), b48()
+b47:
+  %s23: int = call.rt @msrt_task_sleep (%n)
+  br b48()
+b48:
+  %k24: str = str "held"
+  %l24: str = clone %k24
+  %r24: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b49(), b50()
+b49:
+  %s24: int = call.rt @msrt_task_sleep (%n)
+  br b50()
+b50:
+  %k25: str = str "held"
+  %l25: str = clone %k25
+  %r25: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b51(), b52()
+b51:
+  %s25: int = call.rt @msrt_task_sleep (%n)
+  br b52()
+b52:
+  %k26: str = str "held"
+  %l26: str = clone %k26
+  %r26: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b53(), b54()
+b53:
+  %s26: int = call.rt @msrt_task_sleep (%n)
+  br b54()
+b54:
+  %k27: str = str "held"
+  %l27: str = clone %k27
+  %r27: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b55(), b56()
+b55:
+  %s27: int = call.rt @msrt_task_sleep (%n)
+  br b56()
+b56:
+  %k28: str = str "held"
+  %l28: str = clone %k28
+  %r28: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b57(), b58()
+b57:
+  %s28: int = call.rt @msrt_task_sleep (%n)
+  br b58()
+b58:
+  %k29: str = str "held"
+  %l29: str = clone %k29
+  %r29: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b59(), b60()
+b59:
+  %s29: int = call.rt @msrt_task_sleep (%n)
+  br b60()
+b60:
+  %k30: str = str "held"
+  %l30: str = clone %k30
+  %r30: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b61(), b62()
+b61:
+  %s30: int = call.rt @msrt_task_sleep (%n)
+  br b62()
+b62:
+  %k31: str = str "held"
+  %l31: str = clone %k31
+  %r31: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b63(), b64()
+b63:
+  %s31: int = call.rt @msrt_task_sleep (%n)
+  br b64()
+b64:
+  %k32: str = str "held"
+  %l32: str = clone %k32
+  %r32: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b65(), b66()
+b65:
+  %s32: int = call.rt @msrt_task_sleep (%n)
+  br b66()
+b66:
+  %k33: str = str "held"
+  %l33: str = clone %k33
+  %r33: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b67(), b68()
+b67:
+  %s33: int = call.rt @msrt_task_sleep (%n)
+  br b68()
+b68:
+  %k34: str = str "held"
+  %l34: str = clone %k34
+  %r34: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b69(), b70()
+b69:
+  %s34: int = call.rt @msrt_task_sleep (%n)
+  br b70()
+b70:
+  %k35: str = str "held"
+  %l35: str = clone %k35
+  %r35: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b71(), b72()
+b71:
+  %s35: int = call.rt @msrt_task_sleep (%n)
+  br b72()
+b72:
+  %k36: str = str "held"
+  %l36: str = clone %k36
+  %r36: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b73(), b74()
+b73:
+  %s36: int = call.rt @msrt_task_sleep (%n)
+  br b74()
+b74:
+  %k37: str = str "held"
+  %l37: str = clone %k37
+  %r37: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b75(), b76()
+b75:
+  %s37: int = call.rt @msrt_task_sleep (%n)
+  br b76()
+b76:
+  %k38: str = str "held"
+  %l38: str = clone %k38
+  %r38: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b77(), b78()
+b77:
+  %s38: int = call.rt @msrt_task_sleep (%n)
+  br b78()
+b78:
+  %k39: str = str "held"
+  %l39: str = clone %k39
+  %r39: int = call.rt @msrt_task_sleep (%n)
+  br_if %c, b79(), b80()
+b79:
+  %s39: int = call.rt @msrt_task_sleep (%n)
+  br b80()
+b80:
+  drop %l39
+  drop %l38
+  drop %l37
+  drop %l36
+  drop %l35
+  drop %l34
+  drop %l33
+  drop %l32
+  drop %l31
+  drop %l30
+  drop %l29
+  drop %l28
+  drop %l27
+  drop %l26
+  drop %l25
+  drop %l24
+  drop %l23
+  drop %l22
+  drop %l21
+  drop %l20
+  drop %l19
+  drop %l18
+  drop %l17
+  drop %l16
+  drop %l15
+  drop %l14
+  drop %l13
+  drop %l12
+  drop %l11
+  drop %l10
+  drop %l9
+  drop %l8
+  drop %l7
+  drop %l6
+  drop %l5
+  drop %l4
+  drop %l3
+  drop %l2
+  drop %l1
+  drop %l0
+  ret %n
+}

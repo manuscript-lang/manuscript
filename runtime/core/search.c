@@ -5,12 +5,6 @@
 #include "ms_rt/search.h"
 
 
-static inline uint64_t load64(const uint8_t *p) {
-    uint64_t v;
-    __builtin_memcpy(&v, p, sizeof v);
-    return v;
-}
-
 /* memchr for a short haystack: eight bytes per step, testing each word for a byte equal to c with the
  * zero-byte trick. */
 static inline size_t memchr_short(uint8_t c, const uint8_t *hay, size_t n) {
@@ -18,7 +12,7 @@ static inline size_t memchr_short(uint8_t c, const uint8_t *hay, size_t n) {
     uint64_t pat = lo * c;
     size_t at = 0;
     for (; at + 8 <= n; at += 8) {
-        uint64_t x = load64(hay + at) ^ pat;
+        uint64_t x = ms_load64(hay + at) ^ pat;
         uint64_t hit = (x - lo) & ~x & hi;
         if (hit != 0) {
             return at + (size_t)__builtin_ctzll(hit) / 8;

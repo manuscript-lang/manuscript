@@ -1,0 +1,24 @@
+module "t"
+entry @main
+extern @msrt_promise_start(int) -> int spawns_task
+extern @msrt_task_sleep(int) -> int
+extern @msrt_string_eq(str, str) -> bool string_eq
+
+fn @main() -> int {
+b0:
+  %l: list<int> = list.lit
+  %zero: int = iconst 0
+  br b1(%zero, %l)
+b1(%i: int, %xs: move list<int>):
+  %ten: int = iconst 10
+  %more: bool = icmp.lt %i, %ten
+  br_if %more, b2(), b3()
+b2():
+  %one: int = iconst 1
+  %next: int = iadd.chk %i, %one
+  %ys: list<int> = list.set %xs, %zero, %i
+  br b1(%next, %ys)
+b3():
+  drop %xs
+  ret %i
+}

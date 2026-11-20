@@ -21,12 +21,6 @@ pub(crate) fn poll_cancel() -> Res<()> {
     Ok(())
 }
 
-/// [`poll_cancel`] for loops that report an errno; the boundary raises the cancel, so the
-/// errno itself is never shown.
-pub(crate) fn poll_cancel_errno() -> Result<(), Errno> {
-    poll_cancel().map_err(|_| sys::EIO)
-}
-
 /// The result a stop request leaves a job's caller with: the caller returns it, and the FFI
 /// boundary raises the cancel (`fs_status*`, `io::status`), so the value itself is never shown.
 #[cfg_attr(
@@ -129,19 +123,6 @@ fn wait_readable(fd: sys::Fd) -> Res<()> {
     #[cfg(any(not(unix), test))]
     let _ = fd;
     Ok(())
-}
-
-/// Opens `path`. A named pipe opened for reading would block in `open(2)` until a writer
-/// arrives, so it is opened without waiting and then switched back to blocking mode; reads wait
-/// for data through `wait_readable`.
-pub(crate) fn open_waitless(path: &CPath, flags: i32, mode: u32) -> Result<sys::Fd, Errno> {
-    #[cfg(unix)]
-    if flags & 3 == sys::O_RDONLY && sys::stat(path, true).is_ok_and(|st| st.is_fifo()) {
-        let fd = sys::open(path, flags | libc::O_NONBLOCK, mode)?;
-        sys::clear_nonblocking(fd);
-        return Ok(fd);
-    }
-    sys::open(path, flags, mode)
 }
 
 /// Opens `path` for reading and returns its `fstat` with it, one system call fewer than `stat` then
@@ -924,7 +905,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn stat_and_glob_report_a_non_utf8_name_lossily() {
+    fn stat_reports_a_non_utf8_name_lossily() {
         let root = scratch("s");
         create_directory(&root, true).unwrap();
         let bad = path::join(&root, b"bad\xff.dat");
@@ -940,8 +921,6 @@ mod tests {
             stat(&bad, true).unwrap().name,
             "bad\u{fffd}.dat".as_bytes().to_vec()
         );
-        let found = crate::walk::glob(&root, b"*.dat", UNLIMITED).unwrap();
-        assert_eq!(found, ["bad\u{fffd}.dat".as_bytes().to_vec()]);
         remove(&root, true).unwrap();
     }
 

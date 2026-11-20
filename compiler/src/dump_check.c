@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/check.h"
 #include "ms/dump.h"
+#include "ms/facts.h"
 
 static const MsCheck *g_sort;
 
@@ -80,5 +82,263 @@ void ms_dump_std_tables(MsBuf *out, const MsCheck *c) {
             ms_buf_printf(out, " vars=%u\n", c->syms.nvars[s]);
         }
         free(rows);
+    }
+}
+
+/* ---- the declared types of one module ---- */
+
+static void put_type(MsBuf *out, const MsCheck *c, MsTy ty) {
+    ms_ty_show(out, c->names, &c->tys, ty);
+}
+
+static void put_param(MsBuf *out, const MsCheck *c, const MsTyParam *p) {
+    put_name(out, c, p->name);
+    ms_buf_puts(out, ": ");
+    ms_buf_puts(out, (p->flags & MS_PARAM_VAR) != 0 ? "var " : "");
+    ms_buf_puts(out, (p->flags & MS_PARAM_MOVE) != 0 ? "move " : "");
+    put_type(out, c, p->ty);
+}
+
+static void put_variable(MsBuf *out, const MsCheck *c, MsTy var) {
+    const MsVarInfo *info = var < c->var_info_cap ? &c->var_info[var] : NULL;
+    ms_buf_puts(out, "  var ");
+    put_name(out, c, c->tys.name[var]);
+    ms_buf_puts(out, " default=");
+    if (info != NULL && info->def != MS_TY_NONE) {
+        put_type(out, c, info->def);
+    } else {
+        ms_buf_putc(out, '-');
+    }
+    ms_buf_puts(out, " bounds=");
+    for (uint32_t i = 0; info != NULL && i < info->nbounds; i++) {
+        ms_buf_puts(out, i == 0 ? "" : ",");
+        put_type(out, c, info->bounds[i]);
+    }
+    ms_buf_putc(out, '\n');
+}
+
+static void put_symbol_types(MsBuf *out, const MsCheck *c, MsSymId s) {
+    ms_buf_puts(out, "sym ");
+    put_name(out, c, c->syms.name[s]);
+    ms_buf_puts(out, ": ");
+    if (c->syms.ty[s] != MS_TY_NONE) {
+        put_type(out, c, c->syms.ty[s]);
+    } else {
+        ms_buf_putc(out, '-');
+    }
+    ms_buf_putc(out, '\n');
+    uint32_t nvars = 0;
+    const MsTy *vars = ms_sym_vars(c, s, &nvars);
+    for (uint32_t i = 0; i < nvars; i++) {
+        put_variable(out, c, vars[i]);
+    }
+    const MsDef *def = s < c->defs_cap ? &c->defs[s] : NULL;
+    for (uint32_t i = 0; def != NULL && i < def->nfields; i++) {
+        ms_buf_puts(out, "  field ");
+        put_param(out, c, &def->fields[i]);
+        ms_buf_putc(out, '\n');
+    }
+    for (uint32_t i = 0; def != NULL && i < def->ncases; i++) {
+        ms_buf_puts(out, "  case ");
+        put_name(out, c, def->cases[i].name);
+        ms_buf_putc(out, '(');
+        for (uint32_t k = 0; k < def->cases[i].nfields; k++) {
+            ms_buf_puts(out, k == 0 ? "" : ", ");
+            put_param(out, c, &def->cases[i].fields[k]);
+        }
+        ms_buf_puts(out, ")\n");
+    }
+}
+
+/* Marks the references written in a type-parameter list: the Rust checker resolves them again for
+ * the operations of an implementation, so their entries are not the declaration pass's. */
+static void mark_type_ref(uint8_t *skip, uint32_t count, const MsTypeRef *t) {
+    if (t == NULL) {
+        return;
+    }
+    if (t->id < count) {
+        skip[t->id] = 1;
+    }
+    for (uint32_t i = 0; i < t->args.len; i++) {
+        mark_type_ref(skip, count, t->args.ptr[i]);
+    }
+    for (uint32_t i = 0; i < t->params.len; i++) {
+        mark_type_ref(skip, count, t->params.ptr[i]->ty);
+    }
+    mark_type_ref(skip, count, t->result);
+}
+
+static void mark_type_params(uint8_t *skip, uint32_t count, const MsDecl *d) {
+    const MsTypeParams *params = NULL;
+    switch ((MsDeclKind)d->kind) {
+    case MS_D_FN: params = &d->u.fn.type_params; break;
+    case MS_D_TYPE: params = &d->u.type.type_params; break;
+    case MS_D_ENUM: params = &d->u.enumeration.type_params; break;
+    case MS_D_ALIAS: params = &d->u.alias.type_params; break;
+    case MS_D_INTERFACE: params = &d->u.iface.type_params; break;
+    case MS_D_CONST:
+    case MS_D_IMPL:
+    case MS_D_TEST: return;
+    }
+    for (uint32_t i = 0; i < params->len; i++) {
+        mark_type_ref(skip, count, params->ptr[i]->def);
+        for (uint32_t k = 0; k < params->ptr[i]->bounds.len; k++) {
+            mark_type_ref(skip, count, params->ptr[i]->bounds.ptr[k]);
+        }
+    }
+}
+
+void ms_dump_module_types(MsBuf *out, const MsCheck *c, MsModId m) {
+    const MsModuleRow *row = &c->mods[m];
+    for (uint32_t i = 0; i < row->norder; i++) {
+        const MsSymId s = row->order[i];
+        const MsDecl *d = c->syms.decl[s];
+        /* A declaration whose name another symbol took is not the module's symbol. */
+        const bool bound = ms_map_get(&row->names, c->syms.name[s]) == s;
+        if (d != NULL && d->kind != MS_D_CONST && bound) {
+            put_symbol_types(out, c, s);
+        }
+    }
+    const MsFacts *facts = row->facts;
+    if (facts == NULL) {
+        return;
+    }
+    uint8_t *skip = calloc((size_t)facts->node_count + 1, 1);
+    for (uint32_t i = 0; skip != NULL && i < row->syntax->ndecls; i++) {
+        mark_type_params(skip, facts->node_count + 1, row->syntax->decls[i]);
+    }
+    for (uint32_t id = 0; skip != NULL && id <= facts->node_count; id++) {
+        if (facts->type_ref_ty[id] != MS_TY_NONE && skip[id] == 0) {
+            ms_buf_printf(out, "typeref %u ", id);
+            put_type(out, c, facts->type_ref_ty[id]);
+            ms_buf_putc(out, '\n');
+        }
+    }
+    free(skip);
+}
+
+/* ---- function bodies ---- */
+
+static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const MsExpr *e) {
+    ms_buf_printf(out, "expr %u ", e->id);
+    // A node the checker never typed (the `_` of a match arm) is `-`.
+    if (facts->expr_ty[e->id] == MS_TY_NONE) {
+        ms_buf_putc(out, '-');
+    } else {
+        ms_ty_show(out, c->names, &c->tys, facts->expr_ty[e->id]);
+    }
+    ms_buf_putc(out, '\n');
+    switch ((MsExprKind)e->kind) {
+    case MS_E_TEXT:
+        for (uint32_t i = 0; i < e->u.text.len; i++) {
+            if (e->u.text.ptr[i].expr != NULL) {
+                dump_expr(out, c, facts, e->u.text.ptr[i].expr);
+            }
+        }
+        break;
+    case MS_E_UNARY: dump_expr(out, c, facts, e->u.bin.left); break;
+    case MS_E_BINARY:
+        dump_expr(out, c, facts, e->u.bin.left);
+        dump_expr(out, c, facts, e->u.bin.right);
+        break;
+    case MS_E_MATCH:
+        dump_expr(out, c, facts, e->u.match.scrutinee);
+        for (uint32_t i = 0; i < e->u.match.arms.len; i++) {
+            const MsArm *arm = e->u.match.arms.ptr[i];
+            dump_expr(out, c, facts, arm->path);
+            if (arm->value != NULL) {
+                dump_expr(out, c, facts, arm->value);
+            }
+        }
+        break;
+    case MS_E_NUMBER:
+    case MS_E_BOOL:
+    case MS_E_VOID:
+    case MS_E_NAME:
+    case MS_E_MEMBER:
+    case MS_E_APPLY:
+    case MS_E_INDEX:
+    case MS_E_PROBE:
+    case MS_E_LIST:
+    case MS_E_MAP:
+    case MS_E_LAMBDA:
+    case MS_E_CALL: break;
+    }
+}
+
+static void dump_stmts(MsBuf *out, const MsCheck *c, const MsFacts *facts, const MsStmts *body) {
+    for (uint32_t k = 0; k < body->len; k++) {
+        const MsStmt *s = body->ptr[k];
+        switch ((MsStmtKind)s->kind) {
+        case MS_S_BIND: dump_expr(out, c, facts, s->u.bind.value); break;
+        case MS_S_RETURN:
+        case MS_S_CALL:
+            if (s->u.expr != NULL) {
+                dump_expr(out, c, facts, s->u.expr);
+            }
+            break;
+        case MS_S_IF:
+            dump_expr(out, c, facts, s->u.branch.cond);
+            dump_stmts(out, c, facts, &s->u.branch.body);
+            dump_stmts(out, c, facts, &s->u.branch.else_body);
+            break;
+        case MS_S_WHILE:
+            dump_expr(out, c, facts, s->u.loop.cond);
+            dump_stmts(out, c, facts, &s->u.loop.body);
+            break;
+        case MS_S_ASSIGN:
+        case MS_S_BREAK:
+        case MS_S_CONTINUE:
+        case MS_S_FOR: break;
+        }
+    }
+}
+
+/* The declaration's diagnostics: those of the module on lines from its own to the next
+ * declaration's, as the Rust oracle attributes them. */
+static bool dump_in_function(const MsModuleRow *row, uint32_t index, const MsDiag *diag) {
+    const uint32_t first = row->syntax->decls[index]->pos.line;
+    const uint32_t end = index + 1 < row->syntax->ndecls ? row->syntax->decls[index + 1]->pos.line : UINT32_MAX;
+    return diag->pos.line >= first && diag->pos.line < end;
+}
+
+static bool dump_function_dirty(const MsModuleRow *row, uint32_t index) {
+    for (uint32_t k = 0; k < row->ndiags; k++) {
+        if (dump_in_function(row, index, &row->diags[k].diag)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
+    const MsModuleRow *row = &c->mods[m];
+    const MsFacts *facts = row->facts;
+    for (uint32_t i = 0; facts != NULL && facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        if (d->kind != MS_D_FN || !facts->body_checked[d->id]) {
+            continue;
+        }
+        ms_buf_printf(out, "fn %u:%u %s\n", d->pos.line, d->pos.column, dump_function_dirty(row, i) ? "dirty" : "clean");
+        dump_stmts(out, c, facts, &d->u.fn.body);
+    }
+}
+
+void ms_dump_module_ownership(MsBuf *out, const MsCheck *c, MsModId m) {
+    const MsModuleRow *row = &c->mods[m];
+    const MsFacts *facts = row->facts;
+    for (uint32_t i = 0; facts != NULL && facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        if (d->kind != MS_D_FN || !facts->body_checked[d->id]) {
+            continue;
+        }
+        ms_buf_printf(out, "fn %u:%u\n", d->pos.line, d->pos.column);
+        for (uint32_t k = 0; k < row->ndiags; k++) {
+            const MsDiag *diag = &row->diags[k].diag;
+            if (dump_in_function(row, i, diag)) {
+                ms_buf_printf(out, "diag %u:%u: %.*s\n", diag->pos.line, diag->pos.column, (int)diag->message.len,
+                              diag->message.ptr);
+            }
+        }
     }
 }

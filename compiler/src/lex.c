@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "ms/lex.h"
+#include "ms_rt/chars.h"
 
 #define MAX_INTERPOLATION_DEPTH 1000
 
@@ -56,15 +57,6 @@ typedef struct Scanner {
 } Scanner;
 
 
-static bool letter(uint8_t b) {
-    return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_';
-}
-static bool digit(uint8_t b) {
-    return b >= '0' && b <= '9';
-}
-static bool hexdigit(uint8_t b) {
-    return digit(b) || (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F');
-}
 static bool bindigit(uint8_t b) {
     return b == '0' || b == '1';
 }
@@ -72,7 +64,7 @@ static bool graphic(uint8_t b) {
     return b > 0x20 && b < 0x7f;
 }
 static bool is_word_byte(uint8_t b) {
-    return letter(b) || digit(b);
+    return ms_ascii_is_ident_start(b) || ms_ascii_is_digit(b);
 }
 
 /* ---- errors ---- */
@@ -235,8 +227,7 @@ static int at(const Scanner *s, size_t i) {
 }
 
 static bool starts_with(const Scanner *s, size_t i, const char *lit) {
-    size_t n = strlen(lit);
-    return i + n <= s->n && memcmp(s->src + i, lit, n) == 0;
+    return i <= s->n && ms_bytes_starts_with(ms_bytes_of((const uint8_t *)s->src + i, s->n - i), ms_bytes_of((const uint8_t *)lit, strlen(lit)));
 }
 
 static bool at_line_comment(const Scanner *s) {
@@ -415,10 +406,10 @@ MS_NODISCARD static bool scan_exponent(Scanner *s) {
     if (s->offset < s->n && (s->src[s->offset] == '+' || s->src[s->offset] == '-')) {
         advance(s);
     }
-    if (s->offset == s->n || !digit(s->src[s->offset])) {
+    if (s->offset == s->n || !ms_ascii_is_digit(s->src[s->offset])) {
         return fail_str(s, LIT("an exponent requires digits; write e.g. 1e3 or 2.5e-4"));
     }
-    while (s->offset < s->n && digit(s->src[s->offset])) {
+    while (s->offset < s->n && ms_ascii_is_digit(s->src[s->offset])) {
         advance(s);
     }
     return true;
@@ -457,20 +448,20 @@ MS_NODISCARD static bool scan_number(Scanner *s, MsPos p) {
     advance(s);
     bool zero = s->src[start] == '0' && s->offset < s->n;
     if (zero && s->src[s->offset] == 'x') {
-        return scan_radix_number(s, p, start, hexdigit);
+        return scan_radix_number(s, p, start, ms_ascii_is_hex);
     }
     if (zero && s->src[s->offset] == 'b') {
         return scan_radix_number(s, p, start, bindigit);
     }
-    if (zero && (digit(s->src[s->offset]) || s->src[s->offset] == '_')) {
+    if (zero && (ms_ascii_is_digit(s->src[s->offset]) || s->src[s->offset] == '_')) {
         return fail_str(s, LIT("leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042"));
     }
-    if (!scan_digits(s, digit, true)) {
+    if (!scan_digits(s, ms_ascii_is_digit, true)) {
         return false;
     }
-    if (s->offset + 1 < s->n && s->src[s->offset] == '.' && digit(s->src[s->offset + 1])) {
+    if (s->offset + 1 < s->n && s->src[s->offset] == '.' && ms_ascii_is_digit(s->src[s->offset + 1])) {
         advance(s);
-        if (!scan_digits(s, digit, false)) {
+        if (!scan_digits(s, ms_ascii_is_digit, false)) {
             return false;
         }
     }
@@ -480,7 +471,7 @@ MS_NODISCARD static bool scan_number(Scanner *s, MsPos p) {
     if (s->offset < s->n && s->src[s->offset] == 'd') {
         advance(s);
     }
-    if (s->offset < s->n && letter(s->src[s->offset])) {
+    if (s->offset < s->n && ms_ascii_is_ident_start(s->src[s->offset])) {
         return fail_number_suffix(s, p, start);
     }
     emit(s, MS_T_Number, start, s->offset, p);
@@ -541,14 +532,8 @@ MS_NODISCARD static bool scan_escape(Scanner *s, bool interpolating) {
         uint64_t value = 0;
         while (s->offset < n && s->src[s->offset] != '}') {
             uint8_t ch = advance(s);
-            uint64_t d;
-            if (ch >= '0' && ch <= '9') {
-                d = ch - '0';
-            } else if (ch >= 'a' && ch <= 'f') {
-                d = ch - 'a' + 10;
-            } else if (ch >= 'A' && ch <= 'F') {
-                d = ch - 'A' + 10;
-            } else {
+            uint32_t d = 0;
+            if (!ms_hex_digit_value(ch, &d)) {
                 MsStr message = LIT("invalid Unicode scalar escape; use only hexadecimal digits 0-9 and a-f inside \\u{...}");
                 if (ch < 0x80) {
                     return fail_str(s, message);
@@ -619,7 +604,7 @@ MS_NODISCARD static bool interpolation_body(Scanner *s, MsPos open) {
             }
             continue;
         }
-        bool after_word = s->offset > 0 && (letter(s->src[s->offset - 1]) || digit(s->src[s->offset - 1]));
+        bool after_word = s->offset > 0 && (ms_ascii_is_ident_start(s->src[s->offset - 1]) || ms_ascii_is_digit(s->src[s->offset - 1]));
         if (b == 'f' && at(s, s->offset + 1) == '"' && !after_word) {
             advance(s);
             if (!scan_string(s, true)) {
@@ -921,7 +906,7 @@ static bool continues_next(const Scanner *s) {
         } else if (c == '|') {
             return true;
         } else if (c == '.') {
-            return j + 1 < n && !digit(s->src[j + 1]) && s->src[j + 1] != '.';
+            return j + 1 < n && !ms_ascii_is_digit(s->src[j + 1]) && s->src[j + 1] != '.';
         } else {
             return false;
         }
@@ -1453,11 +1438,11 @@ static bool scan_token(Scanner *s, const LineInfo *info, bool *line_done) {
     if (b == '"' || (b == 'f' && at(s, s->offset + 1) == '"')) {
         return scan_text_token(s, pos);
     }
-    if (letter(b)) {
+    if (ms_ascii_is_ident_start(b)) {
         scan_word(s, pos);
         return true;
     }
-    if (digit(b)) {
+    if (ms_ascii_is_digit(b)) {
         return scan_number(s, pos);
     }
     return scan_symbol(s, info, pos, b);

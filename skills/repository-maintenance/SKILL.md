@@ -8,7 +8,7 @@ description: Organize or maintain Manuscript packages, shared guidance, embedded
 Use for cleanup, package moves, pins (`rust-toolchain.toml`, `Cargo.lock`, `.node-version`, `.msversion`), CI/releases, or the skill catalog. Read [architecture](../../documentation/contributing/architecture.md), [maintenance](../../documentation/contributing/maintenance.md), and [lessons](../../wiki/repository/index.md).
 
 - Simplify duplicated traversal, queries, serialization, forwarding, and CLI paths as well as layout. Name the work removed; add a layer only for a concrete contract.
-- Respect crate ownership and dependency edges (see [architecture](../../documentation/contributing/architecture.md)) and the `make repo-check` invariants (`crates/ms-repo-check`).
+- Respect crate ownership and dependency edges (see [architecture](../../documentation/contributing/architecture.md)) and the `make repo-check` invariants (`tools/repo-check.ms`).
 - Moves update crate manifests, `ms-native` embed inputs, release filters, docs, and tests.
 - Use pinned `rust-toolchain.toml`, `.node-version`, tool manifests, and Makefile commands. Standalone behavior cannot rely on host tools. Publish caches only after complete archive validation, with no partial ready state.
 - After third-party changes run `make licenses` and `make licenses-check`. Update generated outputs through their owner.

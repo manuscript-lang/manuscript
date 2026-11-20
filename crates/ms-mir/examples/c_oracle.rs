@@ -327,6 +327,7 @@ fn analysis(m: &Module, f: &ms_mir::ir::Func, out: &mut String) {
             // operand count in an ill-formed instruction; one mode per operand is what matters.
             let mut modes: String = ms_mir::verify::arg_modes(m, f, inst)
                 .into_iter()
+                .take(inst.args.len())
                 .map(mode_char)
                 .take(inst.args.len())
                 .collect();
@@ -353,6 +354,11 @@ fn run_pass(name: &str, m: &mut Module) -> bool {
         "optparam" => opt::optparam::run(m),
         "ifconv" => opt::ifconv::run(m),
         "reserve" => opt::reserve::run(m),
+        "appendfast" => opt::appendfast::run(m),
+        "sortgen" => opt::sortgen::run(m),
+        "copyelim" => opt::copyelim::run(m),
+        "copytakes" => opt::copyelim::run_takes(m),
+        "lastuse" => opt::lastuse::run(m),
         _ => panic!("unknown pass {name}"),
     }
 }

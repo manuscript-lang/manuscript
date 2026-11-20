@@ -255,8 +255,21 @@ jobs:
       - name: Install the C libraries
         if: matrix.check == 'runtime'
         run: sh runtime/third_party/libs.sh install
+      # ccache (the C build's compiler launcher) keeps the objects between runs; a pull request restores the newest entry.
+      - name: Install ccache
+        if: matrix.check == 'compiler'
+        run: sudo apt-get install -y --no-install-recommends ccache
+      - name: Restore the ccache directory
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-c-${{ matrix.check }}-${{ hashFiles('runtime/**', 'compiler/**', 'CMakeLists.txt', 'cmake/**') }}
+          restore-keys: ccache-c-${{ matrix.check }}-
       - name: Runtime unit tests
         if: matrix.check == 'runtime'
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
+          CCACHE_MAXSIZE: 100M
         run: make c-test
       # The compiler checks run the Rust `ms` (the reference the C front end is compared with).
       - id: sccache
@@ -271,6 +284,9 @@ jobs:
           arch: amd64
       - name: C compiler tests
         if: matrix.check == 'compiler'
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
+          CCACHE_MAXSIZE: 100M
         run: make c-compiler-test c-driver-test
 
   # The pull request time budget (AGENTS.md, wiki/repository/pull-request-ci-has-a-ten-minute-budget.md): each

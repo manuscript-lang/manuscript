@@ -74,6 +74,22 @@ MS_NODISCARD MS_NONNULL static inline bool ms_size_sub(size_t a, size_t b, size_
     return true;
 }
 
+/* ---- word loads ---- */
+
+/* The native-endian word at p, read with memcpy so alignment and aliasing never matter. The caller guarantees
+ * that 8 (or 4) bytes are readable. */
+static inline uint64_t ms_load64(const uint8_t *p) {
+    uint64_t v;
+    __builtin_memcpy(&v, p, sizeof v);
+    return v;
+}
+
+static inline uint32_t ms_load32(const uint8_t *p) {
+    uint32_t v;
+    __builtin_memcpy(&v, p, sizeof v);
+    return v;
+}
+
 /* ---- spans ---- */
 
 /* Read-only bytes: borrowed, never freed through the span. `ptr` may be null only when `len` is 0. */
@@ -141,6 +157,26 @@ MS_NODISCARD static inline bool ms_bytes_copy(MsBytesMut destination, MsBytes so
 
 static inline bool ms_bytes_equal(MsBytes a, MsBytes b) {
     return a.len == b.len && (a.len == 0 || __builtin_memcmp(a.ptr, b.ptr, a.len) == 0);
+}
+
+static inline bool ms_bytes_starts_with(MsBytes bytes, MsBytes prefix) {
+    return bytes.len >= prefix.len && ms_bytes_equal(ms_bytes_of(bytes.ptr, prefix.len), prefix);
+}
+
+MS_NODISCARD static inline bool ms_bytes_ends_with(MsBytes bytes, MsBytes suffix) {
+    return bytes.len >= suffix.len && ms_bytes_equal(ms_bytes_of(bytes.ptr + (bytes.len - suffix.len), suffix.len), suffix);
+}
+
+/* The offset of the first occurrence of `needle` in `hay` (an empty needle matches at 0). A plain scan for the
+ * compiler and tools; the runtime's hot paths use ms_find in ms_rt/search.h. False when absent, `at` untouched. */
+MS_NODISCARD MS_NONNULL static inline bool ms_bytes_find(MsBytes hay, MsBytes needle, size_t *at) {
+    for (size_t i = 0; i + needle.len <= hay.len; i++) {
+        if (ms_bytes_equal(ms_bytes_of(hay.ptr + i, needle.len), needle)) {
+            *at = i;
+            return true;
+        }
+    }
+    return false;
 }
 
 #endif

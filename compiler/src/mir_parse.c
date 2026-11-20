@@ -10,6 +10,7 @@
 #include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ms_rt/chars.h"
 
 #include "ms/mir.h"
 
@@ -116,10 +117,10 @@ static bool mpa_parse_hex_u64(const char *s, size_t n, uint64_t *out) {
     }
     uint64_t v = 0;
     for (size_t i = 0; i < n; i++) {
-        if (!isxdigit((unsigned char)s[i])) {
+        uint32_t d = 0;
+        if (!ms_hex_digit_value((uint8_t)s[i], &d)) {
             return false;
         }
-        int d = isdigit((unsigned char)s[i]) ? s[i] - '0' : (tolower((unsigned char)s[i]) - 'a' + 10);
         if (v >> 60) {
             return false;
         }
@@ -131,11 +132,12 @@ static bool mpa_parse_hex_u64(const char *s, size_t n, uint64_t *out) {
 
 /* ---- tokenizer ---- */
 
-static bool mpa_ident_char(unsigned char c) { return isalnum(c) || c == '_' || c == '.' || c == '$'; }
+static bool mpa_ident_char(unsigned char c) { return ms_ascii_is_ident(c) || c == '.' || c == '$'; }
 static bool mpa_ws_char(unsigned char c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
 
 static int mpa_hexval(char c) {
-    return isdigit((unsigned char)c) ? c - '0' : isxdigit((unsigned char)c) ? tolower(c) - 'a' + 10 : -1;
+    uint32_t value = 0;
+    return ms_hex_digit_value((uint8_t)c, &value) ? (int)value : -1;
 }
 
 /* A line being tokenized: `text[position]` is the next character. */
@@ -240,7 +242,7 @@ static MpTok mpa_lex_name(MpLexer *lx) {
 /* `!file:line:col`; the bang is at the current position. */
 static MpTok mpa_lex_location(MpLexer *lx) {
     size_t start = ++lx->position;
-    while (mpa_lex_more(lx) && (isdigit((unsigned char)lx->text[lx->position]) || lx->text[lx->position] == ':')) {
+    while (mpa_lex_more(lx) && (ms_ascii_is_digit((uint8_t)lx->text[lx->position]) || lx->text[lx->position] == ':')) {
         lx->position++;
     }
     uint32_t fields[3] = {0};
@@ -270,7 +272,7 @@ static MpTok mpa_lex_number(MpLexer *lx) {
     size_t start = lx->position++;
     if (lx->text[start] == '0' && mpa_lex_at(lx, 0) == 'x') {
         lx->position++;
-        while (mpa_lex_more(lx) && isxdigit((unsigned char)lx->text[lx->position])) {
+        while (mpa_lex_more(lx) && ms_ascii_is_hex((uint8_t)lx->text[lx->position])) {
             lx->position++;
         }
     } else {
@@ -278,7 +280,7 @@ static MpTok mpa_lex_number(MpLexer *lx) {
             char c = lx->text[lx->position];
             char before = lx->text[lx->position - 1];
             bool exponent_sign = (c == '+' || c == '-') && (before == 'e' || before == 'E');
-            if (!isdigit((unsigned char)c) && c != '.' && c != 'e' && c != 'E' && !exponent_sign) {
+            if (!ms_ascii_is_digit((uint8_t)c) && c != '.' && c != 'e' && c != 'E' && !exponent_sign) {
                 break;
             }
             lx->position++;
@@ -313,10 +315,10 @@ static MpTok mpa_lex_token(MpLexer *lx) {
         lx->position += 2;
         return (MpTok){.k = MPT_ARROW};
     }
-    if (isdigit(c) || (c == '-' && isdigit(next))) {
+    if (ms_ascii_is_digit((uint8_t)c) || (c == '-' && ms_ascii_is_digit((uint8_t)next))) {
         return mpa_lex_number(lx);
     }
-    if (isalpha(c) || c == '_') {
+    if (ms_ascii_is_ident_start((uint8_t)c)) {
         return mpa_lex_identifier(lx);
     }
     if (c != 0 && strchr("(){}<>[],:=", c) != NULL) {
