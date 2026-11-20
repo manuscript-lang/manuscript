@@ -1065,6 +1065,9 @@ static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
         const MsDecl *d = row->syntax->decls[i];
         const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !failed[i] && !lb_has_diagnostic(row, i);
         syms[i] = checked ? ms_decl_own_symbol(lb->c, module, d) : MS_NONE;
+        if (syms[i] != MS_NONE && lb->c->syms.nvars[syms[i]] != 0) {
+            syms[i] = MS_NONE; // a generic function is checked here but not lowered: it needs one copy per type argument
+        }
         if (syms[i] != MS_NONE) {
             lb->func_of[syms[i]] = lb_add_stub(lb, d, syms[i]);
         }
