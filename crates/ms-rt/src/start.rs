@@ -152,8 +152,7 @@ fn report_leaks() {
             eprintln!("ms-rt live blocks by size: {}", by_size.join(" "));
         }
         let [allocs, bytes] = crate::alloc::requested();
-        // SAFETY: the counters belong to this isolate.
-        let k = unsafe { *crate::string::COPY_COUNTS.ptr() };
+        let k = crate::string::copy_counts();
         eprintln!(
             "ms-rt counts: allocs={allocs} alloc_bytes={bytes} list_copies={} list_copy_bytes={} string_clones={} string_clone_bytes={}",
             k[0], k[1], k[2], k[3]

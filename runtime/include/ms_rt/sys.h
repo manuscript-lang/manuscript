@@ -68,6 +68,8 @@ void ms_sys_sleep_ms(uint32_t ms);
 MS_NODISCARD bool ms_sys_fd_get_nonblocking(int fd, bool *on);
 /* Puts fd in or out of non-blocking mode; false when the system refuses (a best-effort restore may ignore it). */
 bool ms_sys_fd_set_nonblocking(int fd, bool on);
+/* Whether a read of fd would not block right now (data, the end or an error is there). Windows: always true. */
+bool ms_sys_fd_readable_now(int fd);
 /* Sleeps until fd is readable or timeout_ns pass, with nanosecond resolution; a signal or an error ends it early.
  * False where the system has no such wait (only Linux does), so the caller waits another way. */
 MS_NODISCARD bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns);
