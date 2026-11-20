@@ -10,6 +10,7 @@
 const unsigned char msrt_desc_int[1];
 void *msrt_alloc(size_t n) { return malloc(n); }
 void msrt_free(void *p) { free(p); }
+void *msrt_alloc_zeroed(size_t n) { return calloc(1, n); }
 
 void msrt_list_with_capacity(const void *d, int64_t cap, MsVec *out) {
     (void)d;
