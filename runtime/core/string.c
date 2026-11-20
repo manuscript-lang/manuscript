@@ -84,10 +84,10 @@ int64_t msrt_string_scalar_length(const MsStr *s) {
 }
 
 /* The scalar that starts at byte `at`; an offset outside the string reads as an invalid byte. */
-static inline ms_rune rune_at(const MsStr *s, int64_t at) {
+static inline MsRune rune_at(const MsStr *s, int64_t at) {
     size_t n = ms_str_len(s);
     if (at < 0 || (uint64_t)at >= n) {
-        return (ms_rune){MS_RUNE_ERROR, 1};
+        return (MsRune){MS_RUNE_ERROR, 1};
     }
     return ms_utf8_decode(ms_str_data(s) + at, n - (size_t)at);
 }
@@ -97,7 +97,7 @@ int64_t msrt_string_char_width(const MsStr *s, int64_t at) { return rune_at(s, a
 
 /* The scalar value and byte width of the character at byte `at` in one decode, as scalar << 3 | width. */
 int64_t msrt_string_scalar_step(const MsStr *s, int64_t at) {
-    ms_rune r = rune_at(s, at);
+    MsRune r = rune_at(s, at);
     return (int64_t)(((uint64_t)r.rune << 3) | r.width);
 }
 
