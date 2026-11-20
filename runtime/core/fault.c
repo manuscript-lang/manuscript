@@ -5,8 +5,6 @@
  * cleanup adds a note to the report in progress and runs the cleanups that are left, so one failing cleanup
  * does not stop the others.
  */
-#include <string.h>
-
 #include "array.h"
 #include "fault.h"
 #include "ms_rt/alloc.h"
@@ -281,16 +279,18 @@ size_t ms_fault_capture_frames(uintptr_t *out, size_t capacity) {
                              window_of(&ms_task_running()->unwind), out, capacity);
 }
 
-/* The frames of the standard library say nothing about who started a task (`promise` is one), so a report lists
- * only the program's own. Frames of one file name stay in order. */
-static void drop_std_frames(MsFrameList *list) {
-    size_t kept = 0;
-    for (size_t i = 0; i < list->count; i++) {
-        if (strncmp(list->frames[i].file, "@std/", 5) != 0) {
-            list->frames[kept++] = list->frames[i];
-        }
+/* The frames a task was started from begin inside the standard library's `promise`; the report names where the
+ * program started it, so those leading frames are left out. */
+static void drop_library_frames(MsFrameList *list) {
+    size_t skip = 0;
+    while (skip < list->count && __builtin_strncmp(list->frames[skip].file, "@std/", 5) == 0) {
+        skip++;
     }
-    list->count = kept;
+    if (skip == 0) {
+        return;
+    }
+    list->count -= skip;
+    __builtin_memmove(list->frames, list->frames + skip, list->count * sizeof list->frames[0]);
 }
 
 void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, size_t count) {
@@ -301,7 +301,7 @@ void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, si
     }
     MsFrameList *const started = &text->detail->started;
     ms_frames_describe(addresses, count, started);
-    drop_std_frames(started);
+    drop_library_frames(started);
     if (started->count == 0) {
         return;
     }

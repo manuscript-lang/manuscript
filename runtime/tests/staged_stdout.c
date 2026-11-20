@@ -7,6 +7,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef _WIN32
+#include <io.h>
+#endif
+
 #include "../staged/stdout.h"
 #include "ms_sched.h"
 #include "ms_rt/alloc.h"
@@ -49,8 +53,16 @@ static void expect_file(const char *path, const char *want, const char *what) {
 }
 
 int main(void) {
+#ifdef _WIN32
+    /* Windows has no /tmp or mkstemp: a unique name in the working directory, and binary mode so "\n" is one byte. */
+    _set_fmode(_O_BINARY);
+    char path[] = "ms_staged_stdout_XXXXXX";
+    expect(_mktemp_s(path, sizeof path) == 0, "temporary name");
+    const int file = open(path, O_RDWR | O_CREAT | O_EXCL | O_BINARY, 0600);
+#else
     char path[] = "/tmp/ms_staged_stdout_XXXXXX";
     const int file = mkstemp(path);
+#endif
     expect(file >= 0, "temporary file");
     expect(dup2(file, 1) == 1, "point stdout at the file");
 

@@ -1088,8 +1088,9 @@ fn started_frames(captured: &[usize]) -> Frames {
             }
         }
     });
-    // The standard library's frames (`promise` is one) say nothing about who started a task.
-    frames.list.retain(|f| !f.file.starts_with("@std/"));
+    // The capture begins inside the standard library's `promise`; the report names where the program started the task.
+    let skip = frames.list.iter().take_while(|f| f.file.starts_with("@std/")).count();
+    frames.list.drain(..skip);
     frames
 }
 

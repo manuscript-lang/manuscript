@@ -37,3 +37,16 @@ fn same(s: Shape, n: Int) Int:
 			twice := r + r
 			twice + n
 		_: n
+
+fn describe_arms(shape: Shape) Int:
+	var total = 0
+
+	match shape:
+		Circle(r):
+			total += r
+		Rect(w, h):
+			total += w * h
+		Empty:
+			total += 1
+
+	return total

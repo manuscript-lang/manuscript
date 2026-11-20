@@ -6,6 +6,8 @@
 //! ms-tooling-dev inspect FILE
 //! ms-tooling-dev facts FILE                 the fact model as JSON, the input of tools/ms/views.ms
 //! ms-tooling-dev view FILE VIEW ENTITY DEPTH FORMAT   one `ms diagram` view (ascii, mermaid, json)
+//! ms-tooling-dev review BASE HEAD [--no-base] [--added FILE]... [--touch FILE:LINE]...
+//!                                           the ranked findings of `ms review` as JSON, the oracle of tools/ms/review.ms
 //! ms-tooling-dev skill-calls update         rewrite the standard-call table in the agent skill
 //! ```
 //!
@@ -36,6 +38,7 @@ fn run(syms: ms_syntax::Names) -> i32 {
         "inspect" => inspect(syms, files),
         "facts" => facts_json(syms, files),
         "view" => view(syms, files),
+        "review" => review(syms, files),
         "skill-calls" => skill_calls(files),
         other => {
             eprintln!("unknown command {other}");
@@ -240,6 +243,13 @@ fn facts_value(facts: &ms_tooling::facts::Facts) -> ms_json::Json {
                     )),
                 ),
                 ("receiver", ms_json::Json::str(f.receiver)),
+                ("label", ms_json::Json::str(&f.label)),
+                ("ty", ms_json::Json::str(&f.ty)),
+                ("exported", ms_json::Json::Bool(f.exported)),
+                ("reach", ms_json::Json::strings(&f.reach)),
+                ("permits", ms_json::Json::strings(&f.permits)),
+                ("first", ms_json::Json::int(f.first as i64)),
+                ("last", ms_json::Json::int(f.last as i64)),
             ])
         })
         .collect();
@@ -278,6 +288,55 @@ fn facts_json(syms: ms_syntax::Names, files: &[String]) -> i32 {
         return 1;
     };
     println!("{}", facts_value(&facts).pretty(ms_json::Escape::HtmlSafe));
+    0
+}
+
+/// `review BASE HEAD [--no-base] [--added FILE]... [--touch FILE:LINE]...`: the findings of
+/// `compare_facts` as a JSON array, in rank order.
+fn review(syms: ms_syntax::Names, args: &[String]) -> i32 {
+    let [base, head, options @ ..] = args else {
+        eprintln!(
+            "usage: ms-tooling-dev review BASE HEAD [--no-base] [--added FILE]... [--touch FILE:LINE]..."
+        );
+        return 2;
+    };
+    let (Some(base), Some(head)) = (facts_of(syms, base), facts_of(syms, head)) else {
+        return 1;
+    };
+    let mut input = ms_tooling::review::DiffInput {
+        base_checked: true,
+        ..Default::default()
+    };
+    let mut options = options.iter();
+    while let Some(option) = options.next() {
+        match option.as_str() {
+            "--no-base" => input.base_checked = false,
+            "--added" => {
+                input.added.insert(options.next().expect("a file").clone());
+            }
+            "--touch" => {
+                let spec = options.next().expect("FILE:LINE");
+                let (file, line) = spec.rsplit_once(':').expect("FILE:LINE");
+                input
+                    .touched
+                    .entry(file.to_string())
+                    .or_default()
+                    .push(line.parse().expect("a line"));
+            }
+            other => {
+                eprintln!("unknown option {other}");
+                return 2;
+            }
+        }
+    }
+    let findings = ms_tooling::review::compare_facts(&base, &head, &input);
+    let json = ms_json::Json::Arr(
+        findings
+            .iter()
+            .map(ms_tooling::review::Finding::to_json)
+            .collect(),
+    );
+    println!("{}", json.pretty(ms_json::Escape::HtmlSafe));
     0
 }
 

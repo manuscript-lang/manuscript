@@ -1,19 +1,19 @@
 type Door:
-    open: Bool
+	open: Bool
 
 fn move Door.close() Void!:
-    return ok()
+	return ok()
 
 type Room:
-    door: Door
-    size: Int
+	door: Door
+	size: Int
 
 fn size_of(room: Room) Int:
-    return room.size
+	return room.size
 
 fn pass(move door: Door) Void:
-    _held := door
-    return
+	_held := door
+	return
 
 fn forward(door: Door) Void:
-    pass(door)
+	pass(door)
