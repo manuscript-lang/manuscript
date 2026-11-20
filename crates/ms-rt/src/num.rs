@@ -1,11 +1,10 @@
 //! Int and Float formatting and parsing with shortest round-trip output.
 //! ms: domain number
-use ms_rt_abi::{
-    STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
-};
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, StrVal};
 
 // The moved symbols (runtime/symbols/num.txt) are defined by the C runtime; Rust callers and tests reach them here.
 unsafe extern "C-unwind" {
+    pub fn msrt_numbers_parse_float(text: *const StrVal, out: *mut f64) -> u8;
     pub fn msrt_numbers_parse_int(text: *const StrVal, radix: i64, out: *mut i64) -> u8;
     pub fn msrt_float_compare(a: f64, b: f64) -> i64;
     pub fn msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8;
@@ -126,145 +125,6 @@ pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
     }
 }
 
-/// `Numbers.parse_float` (decimal and exponent syntax only).
-pub fn parse_float(text: &[u8]) -> Result<f64, u8> {
-    if let Some(v) = parse_float_exact(text) {
-        return Ok(v);
-    }
-    match text {
-        b"NaN" => return Ok(f64::NAN),
-        b"Infinity" | b"+Infinity" => return Ok(f64::INFINITY),
-        b"-Infinity" => return Ok(f64::NEG_INFINITY),
-        _ => {}
-    }
-    if !float_syntax(text) {
-        return Err(STATUS_INVALID_DATA);
-    }
-    // SAFETY: `float_syntax` accepted only ASCII digits, signs, `.` and `e`.
-    let s = unsafe { core::str::from_utf8_unchecked(text) };
-    match s.parse::<f64>() {
-        Ok(v) if v.is_infinite() => Err(STATUS_OUT_OF_RANGE),
-        Ok(v) => Ok(v),
-        Err(_) => Err(STATUS_INVALID_DATA),
-    }
-}
-
-/// The value of a decimal literal whose mantissa is at most 2^53 and whose power of ten is at
-/// most 22 in magnitude, in one pass over the text: both operands are exact binary64 values, so
-/// the one multiplication or division rounds correctly (Clinger's fast path). Any other text,
-/// valid or not, is left to the general parser.
-fn parse_float_exact(t: &[u8]) -> Option<f64> {
-    const POW10: [f64; 23] = [
-        1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16,
-        1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
-    ];
-    let mut i = 0;
-    let negative = match t.first()? {
-        b'-' => {
-            i = 1;
-            true
-        }
-        b'+' => {
-            i = 1;
-            false
-        }
-        _ => false,
-    };
-    let (mut mantissa, mut digits, mut exp) = (0u64, 0u32, 0i32);
-    let start = i;
-    while let Some(d) = t.get(i).filter(|c| c.is_ascii_digit()) {
-        mantissa = mantissa * 10 + u64::from(d - b'0');
-        digits += 1;
-        i += 1;
-        if digits > 19 {
-            return None;
-        }
-    }
-    if i == start {
-        return None;
-    }
-    if t.get(i) == Some(&b'.') {
-        i += 1;
-        let fraction = i;
-        while let Some(d) = t.get(i).filter(|c| c.is_ascii_digit()) {
-            mantissa = mantissa * 10 + u64::from(d - b'0');
-            digits += 1;
-            exp -= 1;
-            i += 1;
-            if digits > 19 {
-                return None;
-            }
-        }
-        if i == fraction {
-            return None;
-        }
-    }
-    if matches!(t.get(i), Some(b'e' | b'E')) {
-        i += 1;
-        let down = t.get(i) == Some(&b'-');
-        if down || t.get(i) == Some(&b'+') {
-            i += 1;
-        }
-        let first = i;
-        let mut e = 0i32;
-        while let Some(d) = t.get(i).filter(|c| c.is_ascii_digit()) {
-            e = e * 10 + i32::from(d - b'0');
-            i += 1;
-            if e > 999 {
-                return None;
-            }
-        }
-        if i == first {
-            return None;
-        }
-        exp += if down { -e } else { e };
-    }
-    if i != t.len() || mantissa > 1 << 53 || !(-22..=22).contains(&exp) {
-        return None;
-    }
-    let v = mantissa as f64;
-    let v = if exp < 0 {
-        v / POW10[(-exp) as usize]
-    } else {
-        v * POW10[exp as usize]
-    };
-    Some(if negative { -v } else { v })
-}
-
-/// `^[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$`
-fn float_syntax(t: &[u8]) -> bool {
-    let mut i = 0;
-    if i < t.len() && (t[i] == b'+' || t[i] == b'-') {
-        i += 1;
-    }
-    let digits = |i: &mut usize| {
-        let s = *i;
-        while *i < t.len() && t[*i].is_ascii_digit() {
-            *i += 1;
-        }
-        *i > s
-    };
-    if !digits(&mut i) {
-        return false;
-    }
-    if i < t.len() && t[i] == b'.' {
-        i += 1;
-        if !digits(&mut i) {
-            return false;
-        }
-    }
-    if i < t.len() && (t[i] == b'e' || t[i] == b'E') {
-        i += 1;
-        if i < t.len() && (t[i] == b'+' || t[i] == b'-') {
-            i += 1;
-        }
-        if !digits(&mut i) {
-            return false;
-        }
-    }
-    i == t.len()
-}
-
 /// The text of one float: a sign, at most 17 digits, up to 20 zeros or six leading zeros, a point,
 /// or `e`, a sign and three exponent digits all fit in 40 bytes.
 pub struct FloatText {
@@ -332,21 +192,6 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
 // ---------------------------------------------------------------------------
 // Exported natives: `@std/math` and the Int / Float receiver operations
 // ---------------------------------------------------------------------------
-
-/// `Numbers.parse_float(text)`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_numbers_parse_float(text: *const StrVal, out: *mut f64) -> u8 {
-    // SAFETY: the caller passes a live string and a writable out.
-    match parse_float(unsafe { crate::string::bytes(text) }) {
-        Ok(v) => {
-            // SAFETY: as above.
-            unsafe { *out = v };
-            STATUS_OK
-        }
-        Err(status) => status,
-    }
-}
 
 /// The error message for a number status code (`STATUS_INVALID_INPUT`, `_INVALID_DATA`, `_OUT_OF_RANGE`).
 #[unsafe(no_mangle)]
@@ -446,6 +291,7 @@ pub fn format_radix_u64(v: u64, radix: u32, out: &mut Vec<u8>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ms_rt_abi::STATUS_OK;
     use std::string::{String, ToString};
 
     fn s(b: Vec<u8>) -> String {
@@ -740,16 +586,26 @@ mod tests {
     )]
     fn float_parsing() {
         let _g = crate::testutil::lock();
-        // The exact fast path agrees with the standard parser wherever it answers.
+        // The C parser agrees with the standard parser, bit for bit, on every literal of the syntax.
+        let parse = |t: &str| -> Result<f64, u8> {
+            let text = crate::string::from_bytes(t.as_bytes());
+            let mut out = 0f64;
+            // SAFETY: a live string and a writable out.
+            let status = unsafe { msrt_numbers_parse_float(&text, &mut out) };
+            if status == STATUS_OK {
+                Ok(out)
+            } else {
+                Err(status)
+            }
+        };
         let mut x = 12345u64;
-        let mut answered = 0;
         for _ in 0..20000 {
             x = x
                 .wrapping_mul(6364136223846793005)
                 .wrapping_add(1442695040888963407);
             let whole = (x >> 40) % 100_000_000_000;
             let frac = (x >> 8) % 1_000_000_000_000;
-            let e = ((x >> 3) % 60) as i32 - 30;
+            let e = ((x >> 3) % 700) as i32 - 350;
             let sign = ["", "-", "+"][(x % 3) as usize];
             let texts = [
                 std::format!("{sign}{whole}"),
@@ -758,13 +614,16 @@ mod tests {
                 std::format!("{sign}{whole}E{e}"),
             ];
             for t in texts {
-                if let Some(v) = parse_float_exact(t.as_bytes()) {
-                    assert_eq!(v.to_bits(), t.parse::<f64>().unwrap().to_bits(), "{t}");
-                    answered += 1;
+                let want = t.parse::<f64>().unwrap();
+                match parse(&t) {
+                    Ok(v) => assert_eq!(v.to_bits(), want.to_bits(), "{t}"),
+                    Err(status) => {
+                        assert!(want.is_infinite(), "{t}");
+                        assert_eq!(status, STATUS_OUT_OF_RANGE, "{t}");
+                    }
                 }
             }
         }
-        assert!(answered > 20000, "{answered}");
         for t in [
             "-0",
             "-0.0",
@@ -776,25 +635,26 @@ mod tests {
             "5e-22",
             "5e-23",
             "123456789012345678901",
+            "2.2250738585072011e-308",
+            "4.9e-324",
         ] {
-            if let Some(v) = parse_float_exact(t.as_bytes()) {
-                assert_eq!(v.to_bits(), t.parse::<f64>().unwrap().to_bits(), "{t}");
-            }
+            assert_eq!(
+                parse(t).unwrap().to_bits(),
+                t.parse::<f64>().unwrap().to_bits(),
+                "{t}"
+            );
         }
         for t in [
-            "", "+", "-", ".5", "5.", "1e", "1e+", "e5", "1.5x", " 1", "1 ", "0x10", "1_0",
+            "", "+", "-", ".5", "5.", "1e", "1e+", "e5", "1.5x", " 1", "1 ", "0x10", "1_0", "inf",
+            "+NaN",
         ] {
-            assert_eq!(parse_float_exact(t.as_bytes()), None, "{t:?}");
+            assert_eq!(parse(t), Err(STATUS_INVALID_DATA), "{t:?}");
         }
-        assert_eq!(parse_float(b"1.5e3"), Ok(1500.0));
-        assert_eq!(parse_float(b"-0"), Ok(-0.0));
-        assert_eq!(parse_float(b"1e400"), Err(STATUS_OUT_OF_RANGE));
-        assert_eq!(parse_float(b".5"), Err(STATUS_INVALID_DATA));
-        assert_eq!(parse_float(b"1."), Err(STATUS_INVALID_DATA));
-        assert_eq!(parse_float(b"inf"), Err(STATUS_INVALID_DATA));
-        assert!(parse_float(b"NaN").unwrap().is_nan());
-        assert_eq!(parse_float(b"+Infinity"), Ok(f64::INFINITY));
-        assert_eq!(parse_float(b"+NaN"), Err(STATUS_INVALID_DATA));
-        assert_eq!(parse_float(b"1e-400"), Ok(0.0));
+        assert_eq!(parse("1.5e3"), Ok(1500.0));
+        assert_eq!(parse("1e400"), Err(STATUS_OUT_OF_RANGE));
+        assert!(parse("NaN").unwrap().is_nan());
+        assert_eq!(parse("+Infinity"), Ok(f64::INFINITY));
+        assert_eq!(parse("-Infinity"), Ok(f64::NEG_INFINITY));
+        assert_eq!(parse("1e-400"), Ok(0.0));
     }
 }

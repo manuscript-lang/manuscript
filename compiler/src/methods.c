@@ -20,6 +20,7 @@ void ms_methods_free(MsMethodTable *table) {
     free(m->contract);
     free(m->ty);
     free(m->decl);
+    free(m->access);
     free(m->native);
     free(m->inherent);
     free(m->module);

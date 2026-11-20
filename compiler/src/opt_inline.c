@@ -264,18 +264,16 @@ void mir_func_deep_clone(MirModule *m, const MirFunc *f, MirFunc *out) {
         for (uint32_t i = 0; i < blk->ninsts; i++) {
             blk->insts[i].args = il_copy_args(m, blk->insts[i].args, blk->insts[i].nargs);
         }
+        if (blk->term.kind == MT_SWITCH) {
+            /* The shallow clone shares the case array: own it before editing its targets. */
+            MirCase *cases = MS_NEW_N(&m->arena, MirCase, (size_t)blk->term.ncases + 1);
+            memcpy(cases, blk->term.cases, sizeof(MirCase) * blk->term.ncases);
+            blk->term.cases = cases;
+        }
         const uint32_t nt = mir_term_ntargets(&blk->term);
         for (uint32_t k = 0; k < nt; k++) {
             MirTarget *t = mir_term_target(&blk->term, k);
             *t = mir_target_clone(m, t);
-        }
-        if (blk->term.kind == MT_SWITCH) {
-            MirCase *cases = MS_NEW_N(&m->arena, MirCase, (size_t)blk->term.ncases + 1);
-            memcpy(cases, blk->term.cases, sizeof(MirCase) * blk->term.ncases);
-            for (uint32_t c = 0; c < blk->term.ncases; c++) {
-                cases[c].target = mir_target_clone(m, &cases[c].target);
-            }
-            blk->term.cases = cases;
         }
     }
 }
@@ -285,6 +283,7 @@ void mir_func_deep_clone(MirModule *m, const MirFunc *f, MirFunc *out) {
 typedef struct IlMap {
     const MirValue *value; /* callee value -> value in the caller */
     const MirBlock *block; /* callee block -> block in the caller */
+    uint32_t scope_base;   /* the caller's scope count before the callee's were added */
 } IlMap;
 
 static MirTarget il_map_target(MirModule *m, const IlMap *map, const MirTarget *t) {
@@ -296,8 +295,14 @@ static MirTarget il_map_target(MirModule *m, const IlMap *map, const MirTarget *
     return out;
 }
 
-static MirLoc il_map_loc(MirLoc l, MirLoc call) {
-    return (l.line == 0 && l.scope == 0) ? call : l;
+/* A position the callee does not know (a generated thunk) is the call's own, so a fault there
+ * reports the call line; the callee's scopes sit after one scope for the callee itself. */
+static MirLoc il_map_loc(const IlMap *map, MirLoc l, MirLoc call) {
+    if (l.line == 0 && l.scope == 0) {
+        return call;
+    }
+    l.scope += map->scope_base + 1;
+    return l;
 }
 
 static MirInst il_map_inst(MirModule *m, const IlMap *map, const MirInst *in, MirLoc call_loc) {
@@ -307,7 +312,7 @@ static MirInst il_map_inst(MirModule *m, const IlMap *map, const MirInst *in, Mi
         out.args[i] = map->value[in->args[i]];
     }
     out.res = in->res == MIR_NONE ? MIR_NONE : map->value[in->res];
-    out.loc = il_map_loc(in->loc, call_loc);
+    out.loc = il_map_loc(map, in->loc, call_loc);
     return out;
 }
 
@@ -340,7 +345,7 @@ static MirTerm il_map_term(MirModule *m, MirFunc *f, const IlMap *map, const Mir
             arg = mir_new_value(m, f, MIR_VOID);
             dst->insts[dst->ninsts++] =
                 mir_inst_make(m, MOP_VoidConst, NULL, 0, (MirImm){0}, arg,
-                              il_map_loc(cb->term_loc, call_loc));
+                              il_map_loc(map, cb->term_loc, call_loc));
         }
         mir_term_set_br(&t, (MirTarget){.block = cont, .args = il_copy_args(m, &arg, 1), .nargs = 1});
         break;
@@ -371,8 +376,43 @@ static void il_fill_block(MirModule *m, MirFunc *f, const IlMap *map, const MirB
         }
     }
     blk.term = il_map_term(m, f, map, cb, cont, call->loc, &blk);
-    blk.term_loc = il_map_loc(cb->term_loc, call->loc);
+    blk.term_loc = il_map_loc(map, cb->term_loc, call->loc);
     f->blocks[at] = blk;
+}
+
+/* The callee's positions become a scope called from the call's position; scopes the callee
+ * already carries (its own inlined callees) nest beneath it. Returns the new scope's index. */
+static uint32_t il_add_scopes(MirModule *m, MirFunc *f, const MirFunc *callee, const MirInst *call) {
+    const uint32_t base = f->nscopes;
+    MIR_PUSH(m, f->scopes, f->nscopes, f->cscopes, MirScope,
+             ((MirScope){callee->name, callee->loc.file, call->loc.scope, call->loc.line}));
+    for (uint32_t k = 0; k < callee->nscopes; k++) {
+        MirScope s = callee->scopes[k];
+        s.parent += base + 1;
+        MIR_PUSH(m, f->scopes, f->nscopes, f->cscopes, MirScope, s);
+    }
+    return base;
+}
+
+/* The callee's names follow its values, in the frame that scope shows. A parameter has no value of
+ * its own once the body is inlined: the argument it receives carries the name, and the debugger
+ * shows it only inside the callee's frame. */
+static void il_add_names(MirModule *m, MirFunc *f, const MirFunc *callee, const MirInst *call,
+                         const MirValue *values, uint32_t base) {
+    const MirBlockData *entry = &callee->blocks[0];
+    for (uint32_t k = 0; k < callee->nnames; k++) {
+        MirNamedValue n = callee->names[k];
+        MirValue value = values[n.value];
+        for (uint32_t j = 0; j < entry->nparams; j++) {
+            if (entry->params[j].value == n.value) {
+                value = call->args[j];
+                break;
+            }
+        }
+        n.value = value;
+        n.scope += base + 1;
+        MIR_PUSH(m, f->names, f->nnames, f->cnames, MirNamedValue, n);
+    }
 }
 
 uint32_t mir_inline_at(MirModule *m, MirFunc *f, uint32_t bi, uint32_t ii, const MirFunc *callee,
@@ -395,15 +435,17 @@ uint32_t mir_inline_at(MirModule *m, MirFunc *f, uint32_t bi, uint32_t ii, const
     f->blocks[cont] = rest;
 
     MsArena scratch = {0};
+    const uint32_t scope_base = il_add_scopes(m, f, callee, &call);
     MirValue *values = MS_NEW_N(&scratch, MirValue, (size_t)callee->nvalues + 1);
     for (uint32_t v = 0; v < callee->nvalues; v++) {
         values[v] = mir_new_value(m, f, callee->values[v]);
     }
+    il_add_names(m, f, callee, &call, values, scope_base);
     MirBlock *blocks = MS_NEW_N(&scratch, MirBlock, (size_t)callee->nblocks + 1);
     for (uint32_t k = 0; k < callee->nblocks; k++) {
         blocks[k] = mir_new_block(m, f);
     }
-    const IlMap map = {values, blocks};
+    const IlMap map = {values, blocks, scope_base};
     for (uint32_t k = 0; k < callee->nblocks; k++) {
         il_fill_block(m, f, &map, &callee->blocks[k], blocks[k], cont, &call);
     }
@@ -519,6 +561,9 @@ static bool il_choose(IlRun *r, uint32_t bi, const MirInst *inst) {
         return false;
     }
     const MirFunc *callee = &m->funcs[gi];
+    if (callee->nblocks == 0) {
+        return false;
+    }
     /* A callee on a cycle inlines once its check is gone: every cycle through it still passes a
      * checked function, which never inlines. */
     if (gi == r->fi || (r->cyc[gi] && il_has_check(callee)) || callee->kind != MFK_NORMAL ||
@@ -717,6 +762,7 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
     for (uint32_t v = 0; v < m->nvtables; v++) {
         cap += m->vtables[v].nmethods;
     }
+    cap += 2 * (size_t)m->ndesc_glue;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         cap += m->funcs[i].ncapture_closers;
         for (uint32_t b = 0; b < m->funcs[i].nblocks; b++) {
@@ -737,6 +783,10 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
         for (uint32_t k = 0; k < m->vtables[v].nmethods; k++) {
             il_push_root(stack, &n, m->vtables[v].methods[k]);
         }
+    }
+    for (uint32_t g = 0; g < m->ndesc_glue; g++) {
+        il_push_root(stack, &n, m->desc_glue[g].eq);
+        il_push_root(stack, &n, m->desc_glue[g].hash);
     }
     const bool any = n > 0;
     while (n > 0) {
@@ -780,6 +830,10 @@ static void il_renumber(MirModule *m, const uint32_t *map) {
         for (uint32_t k = 0; k < m->vtables[v].nmethods; k++) {
             m->vtables[v].methods[k] = map[m->vtables[v].methods[k]];
         }
+    }
+    for (uint32_t g = 0; g < m->ndesc_glue; g++) {
+        m->desc_glue[g].eq = map[m->desc_glue[g].eq];
+        m->desc_glue[g].hash = map[m->desc_glue[g].hash];
     }
     m->entry = m->entry == MIR_NONE ? MIR_NONE : map[m->entry];
 }

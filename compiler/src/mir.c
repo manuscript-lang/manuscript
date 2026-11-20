@@ -351,3 +351,8 @@ void mir_func_init(MirModule *m, MirFunc *f, MsSym name, const MirParam *params,
                  bp);
     }
 }
+
+void mir_add_desc_glue(MirModule *m, MirTy ty, uint32_t eq, uint32_t hash) {
+    const MirDescGlue g = {ty, eq, hash};
+    MIR_PUSH(m, m->desc_glue, m->ndesc_glue, m->cdesc_glue, MirDescGlue, g);
+}

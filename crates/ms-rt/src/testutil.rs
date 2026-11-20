@@ -27,10 +27,3 @@ pub fn fault_of<R>(f: impl FnOnce() -> R) -> Option<std::string::String> {
         },
     }
 }
-
-/// Asserts the closure faults with exactly this first line (frames ignored).
-#[track_caller]
-pub fn assert_fault<R>(message: &str, f: impl FnOnce() -> R) {
-    let got = fault_of(f).expect("expected a fault");
-    assert_eq!(got.lines().next().unwrap_or(""), message);
-}

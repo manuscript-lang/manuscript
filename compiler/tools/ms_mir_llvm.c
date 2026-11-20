@@ -28,11 +28,21 @@ int main(int argc, char **argv) {
         return 1;
     }
     MirGlue glue = {0};
-    mir_glue_run_and_expand(&m, &glue);
+    MsBuf failure = {0};
+    const MirPipelineOptions pipeline = {.checks = true, .verify = false};
+    if (!mir_pipeline_finish(&m, &pipeline, &glue, &failure)) {
+        fprintf(stderr, "%s: %.*s\n", argv[1], (int)failure.len, failure.data);
+        ms_buf_free(&failure);
+        mir_module_free(&m);
+        free(src);
+        return 1;
+    }
+    ms_buf_free(&failure);
+    mir_lower_ops(&m, &glue);
     MirData data;
     mir_data_build(&m, &glue, &data);
     MsBuf out = {0}, why = {0};
-    bool ok = mir_emit_llvm(&m, &data, &out, &why);
+    bool ok = mir_emit_llvm(&m, &data, &glue, &out, &why);
     if (!ok) fprintf(stderr, "the LLVM emitter cannot write:\n%.*s", (int)why.len, why.data);
     else fwrite(out.data, 1, out.len, stdout);
     ms_buf_free(&out);

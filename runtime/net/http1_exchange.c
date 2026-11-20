@@ -144,9 +144,26 @@ static int body_read(MsHttpBody *handle, MsBytesMut out, int64_t deadline_ns, si
     return MS_NET_OK;
 }
 
+/* A body that ends the message with nothing left over leaves the row ready for the next request, provided the peer
+ * agreed to keep it open. Anything else (an unread rest, bytes past the message, a closing peer) closes the row. */
+static bool row_reusable(MsHttp1Body *body) {
+    if (!body->finished) {
+        /* A body with no bytes (HEAD, 204, 304, length 0) ends when asked, without a read. */
+        MsSpan data = {0, 0};
+        size_t used = 0;
+        const int step = ms_h1_read_body(&body->head.reader, (const char *)body->input, body->input_length, &data, &used);
+        body->input += used;
+        body->input_length -= used;
+        body->finished = step == MS_H1_BODY_DONE;
+    }
+    return body->finished && body->head.response.keep_alive != 0 && body->input_length == 0 && body->run_length == 0;
+}
+
 static void body_close(MsHttpBody *handle) {
     MsHttp1Body *body = (MsHttp1Body *)handle;
-    (void)ms_conn_close_io(body->table, body->id);
+    if (!row_reusable(body)) {
+        (void)ms_conn_close_io(body->table, body->id);
+    }
     ms_http1_head_free(&body->head);
     free(body);
 }
@@ -176,16 +193,11 @@ static bool head_capacity(const MsHttpRequest *request, size_t *capacity) {
     return true;
 }
 
-static bool field_is(const MsHttpRequest *request, const MsH1Field *field, const char *name) {
-    const MsBytes candidate = ms_bytes_of(request->head.ptr + field->name.off, field->name.len);
-    return ms_ascii_equal_fold(candidate, ms_bytes_of((const uint8_t *)name, strlen(name)));
-}
-
 /* Writes the request head into `out`. 0, or -1 when a field is refused or the head holds a byte the writers refuse. */
 static int write_request_head(Out *out, const MsHttpRequest *request) {
     for (uint32_t i = 0; i < request->nfields; i++) {
         const MsH1Field *f = &request->fields[i];
-        if (field_is(request, f, "Host") || field_is(request, f, "Content-Length") || field_is(request, f, "Transfer-Encoding")) {
+        if (ms_http_field_refused(ms_bytes_of(request->head.ptr + f->name.off, f->name.len), false)) {
             return -1;
         }
     }

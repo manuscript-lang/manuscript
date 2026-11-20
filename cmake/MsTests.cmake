@@ -58,7 +58,7 @@ file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
 # task_abi.c is linked by core_task_abi alone: the other tests stub the task ABI and run without a scheduler.
 set(_task_abi "${_rt}/core/task_abi.c")
 list(REMOVE_ITEM _core_sources "${_task_abi}")
-ms_test_objects(ms_test_core ${_core_sources} ${_posix_sources} ${_support_sources})
+ms_test_objects(ms_test_core ${_core_sources} ${_posix_sources} "${_rt}/sys/strtod.c" ${_support_sources})
 target_compile_definitions(ms_test_core PRIVATE MS_ALLOC_STATS)
 file(GLOB _core_tests CONFIGURE_DEPENDS "${_tests}/core_*.c")
 foreach(file ${_core_tests})
@@ -69,6 +69,16 @@ foreach(file ${_core_tests})
   endif()
   ms_test(${name} SOURCES "${file}" ${_extra} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
 endforeach()
+
+# The staged fault ABI (runtime/staged): defined over the C task and fault path, replacing the weak stubs of the core
+# objects. Nothing builds it into the runtime archive until the Rust fault module is removed.
+ms_test(staged_fault_abi SOURCES "${_tests}/staged_fault_abi.c" "${_rt}/staged/fault_abi.c" OBJECTS ms_test_core
+        INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
+
+# The staged scheduler shims (runtime/staged/sched_shims.c) over the C scheduler and the libuv reactor's pool.
+ms_test(staged_sched_shims SOURCES "${_tests}/staged_sched_shims.c" "${_rt}/staged/sched_shims.c" ${_io_sources}
+        OBJECTS ms_test_core INCLUDES "${_rt}/staged" ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} m
+        DEFINES MS_ALLOC_STATS)
 
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
@@ -83,13 +93,22 @@ file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
   ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c" "${_rt}/sys/posix/fd.c"
-          "${_rt}/sys/posix/ifindex.c"
+          "${_rt}/sys/posix/ifindex.c" "${_rt}/sys/posix/process.c" "${_rt}/sys/posix/signal.c"
           INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_z_INCLUDES}
           LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
 
+# The vendored yyjson the JSON scanner reads with, compiled like ms_test_llhttp.
+add_library(ms_test_yyjson OBJECT "${MS_YYJSON_DIR}/src/yyjson.c")
+target_include_directories(ms_test_yyjson PUBLIC "${MS_YYJSON_DIR}/include")
+target_compile_definitions(ms_test_yyjson PUBLIC ${MS_YYJSON_DEFINES})
+target_compile_options(ms_test_yyjson PRIVATE -O1 -g -w)
+if(MS_SANITIZE)
+  target_compile_options(ms_test_yyjson PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=undefined)
+endif()
+
 # The JSON test replays the recorded corpus against the natives over the real runtime/core.
-ms_test(json_test SOURCES "${_tests}/json_test.c" ${_json_sources} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
+ms_test(json_test SOURCES "${_tests}/json_test.c" ${_json_sources} OBJECTS ms_test_core ms_test_yyjson INCLUDES "${MS_YYJSON_DIR}/include" LIBS m DEFINES MS_ALLOC_STATS)
 
 # The HTTP/1 test links the vendored llhttp sources (the same ones the runtime archive compiles).
 set(_llhttp "${CMAKE_SOURCE_DIR}/runtime/third_party/llhttp")
@@ -141,22 +160,35 @@ ms_test(conn_io_test SOURCES "${_tests}/conn_io_test.c" "${_rt}/net/conn_io.c" "
         "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c" "${_rt}/sys/posix/clock.c" OBJECTS ms_test_llhttp
         INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK}
         ${CMAKE_DL_LIBS} pthread)
+ms_test(addr_text_test SOURCES "${_tests}/addr_text_test.c" "${_rt}/net/addr_text.c")
 ms_test(dial_test SOURCES "${_tests}/dial_test.c" "${_rt}/net/dial.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c"
         "${_rt}/net/http1.c" "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c" ${_io_sources} ${_posix_sources}
         OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} pthread)
-ms_test(http1_exchange_test SOURCES "${_tests}/http1_exchange_test.c" "${_rt}/net/http1_exchange.c" "${_rt}/net/dial.c"
+ms_test(http1_exchange_test SOURCES "${_tests}/http1_exchange_test.c" "${_rt}/net/http1_exchange.c" "${_rt}/net/http_client.c" "${_rt}/net/dial.c"
         "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c"
         ${_io_sources} ${_posix_sources}
         OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} pthread)
-ms_test(http2_exchange_test SOURCES "${_tests}/http2_exchange_test.c" "${_rt}/net/http2_exchange.c" "${_rt}/net/h2conn.c"
+ms_test(http2_exchange_test SOURCES "${_tests}/http2_exchange_test.c" "${_rt}/net/http2_exchange.c" "${_rt}/net/http_client.c" "${_rt}/net/h2conn.c"
         "${_rt}/net/h2.c" "${_rt}/net/dial.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
+        "${_rt}/sys/${_platform}/net.c" ${_io_sources} ${_posix_sources}
+        OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_nghttp2_INCLUDES}
+        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_nghttp2_LINK} ${CMAKE_DL_LIBS} pthread)
+ms_test(net_natives_test SOURCES "${_tests}/net_natives_test.c" "${_rt}/net/natives.c" "${_rt}/net/status.c" "${_rt}/net/fetch.c"
+        "${_rt}/net/headers.c" "${_rt}/net/http_client.c" "${_rt}/net/http1_exchange.c" "${_rt}/net/http2_exchange.c"
+        "${_rt}/net/h2conn.c" "${_rt}/net/h2.c" "${_rt}/net/conn_object.c" "${_rt}/net/addr_text.c"
+        "${_rt}/net/dial.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
         "${_rt}/sys/${_platform}/net.c" ${_io_sources} ${_posix_sources}
         OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_nghttp2_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_nghttp2_LINK} ${CMAKE_DL_LIBS} pthread)
 ms_test(h2_test SOURCES "${_tests}/h2_test.c" "${_rt}/net/h2.c" INCLUDES ${MS_LIB_nghttp2_INCLUDES}
         LIBS ${MS_LIB_nghttp2_LINK})
+ms_test(h2_serve_test SOURCES "${_tests}/h2_serve_test.c" "${_rt}/net/h2_serve.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c"
+        "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c"
+        "${_rt}/sys/posix/clock.c" OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES}
+        ${MS_LIB_nghttp2_INCLUDES} LIBS ${MS_LIB_nghttp2_LINK} ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS}
+        pthread)
 ms_test(h2conn_test SOURCES "${_tests}/h2conn_test.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c"
         INCLUDES ${MS_LIB_nghttp2_INCLUDES} LIBS ${MS_LIB_nghttp2_LINK})
 
