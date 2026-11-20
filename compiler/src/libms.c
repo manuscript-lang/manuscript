@@ -100,6 +100,7 @@
 #include "check/check_types.c"
 #include "check/check_decls.c"
 #include "check/check_list.c"
+#include "check/check_map.c"
 #include "check/check_body.c"
 #include "check/check_match.c"
 #include "check/check_alt.c"
