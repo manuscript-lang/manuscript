@@ -1,0 +1,17 @@
+module "data"
+type Pair { x: int, y: int }
+global @g: int
+global @p: Pair
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %d: ptr = typedesc Pair
+  %w: int = load int %d
+  %v: int = iconst 5
+  global.set @g %v
+  %r: int = global.get @g
+  %mask: int = iconst 4294967295
+  %size: int = and %w, %mask
+  %sum: int = iadd %size, %r
+  ret %sum
+}
