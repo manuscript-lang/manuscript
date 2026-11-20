@@ -21,6 +21,8 @@ enum {
     MS_SYS_AGAIN = 1,      /* would block: wait for readiness and call again */
     MS_SYS_EOF = 2,        /* read: the peer closed its side */
     MS_SYS_INPROGRESS = 3, /* connect started: wait for writability, then ms_sys_net_connect_done */
+    MS_SYS_TOO_BIG = 4,    /* a datagram larger than the buffer (Windows refuses it; elsewhere it is truncated, so
+                              callers read one byte more than they accept and compare) */
     MS_SYS_ERROR = -1      /* see ms_sys_net_error() */
 };
 
@@ -33,6 +35,14 @@ int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out);
 int ms_sys_net_tcp_connect(const MsAddr *addr, MsSock *out);
 /* After INPROGRESS and writability: OK when connected, ERROR (ms_sys_net_error is the cause) when it failed. */
 int ms_sys_net_connect_done(MsSock s);
+/* A UDP socket bound to `addr` (port 0 picks one; read it back with ms_sys_net_local_addr). IPv6 sockets accept IPv4
+ * too, as with the TCP listener. */
+int ms_sys_net_udp_bind(const MsAddr *addr, MsSock *out);
+/* Receives one datagram into buf[n], its sender to *from (may be NULL); the byte count goes to *done. AGAIN when none is
+ * waiting; TOO_BIG when the system refused one longer than the buffer. */
+int ms_sys_net_udp_recv(MsSock s, void *buf, size_t n, size_t *done, MsAddr *from);
+/* Sends one datagram to `to`: OK with the whole of it in *done, AGAIN when the buffer is full. */
+int ms_sys_net_udp_send(MsSock s, const void *buf, size_t n, const MsAddr *to, size_t *done);
 /* The next pending connection of a listener; `peer` may be NULL. AGAIN when none is waiting. */
 int ms_sys_net_accept(MsSock listener, MsSock *out, MsAddr *peer);
 /* One read or write; the byte count goes to *done. A read of 0 bytes returns EOF. Writes never raise SIGPIPE. */
