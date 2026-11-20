@@ -54,5 +54,6 @@
 #include "effect_reach.c"
 #include "ownership_places.c"
 #include "ownership_bits.c"
+#include "ownership_class.c"
 #include "libms_api.c"
 #include "emit_qbe.c"
