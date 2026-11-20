@@ -94,7 +94,7 @@ pub unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
 
 /// `get_ptr` for a `String` key and an 8-byte, 8-aligned value: the value's address or null. The
 /// descriptors are accepted for signature parity with the generic entry point and ignored.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_get_ptr_sw8"), unsafe(no_mangle))]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_map_get_ptr_sw8(
     m: *const MapVal,
@@ -114,7 +114,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr_sw8(
 }
 
 /// `contains` for a `String` key and an 8-byte, 8-aligned value.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_contains_sw8"), unsafe(no_mangle))]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_map_contains_sw8(
     m: *const MapVal,
@@ -127,7 +127,7 @@ pub unsafe extern "C-unwind" fn msrt_map_contains_sw8(
 }
 
 /// `get` for a `String` key and a plain 8-byte scalar value (`Int` or `Float`).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_get_sw8"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get_sw8(
     m: *const MapVal,
@@ -149,7 +149,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_sw8(
 
 /// `get_ptr` for an `Int` key and an 8-byte, 8-aligned value. The call site checked the shape;
 /// the descriptors are accepted for signature parity and ignored.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_get_ptr_w8"), unsafe(no_mangle))]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_map_get_ptr_w8(
     m: *const MapVal,
@@ -169,7 +169,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr_w8(
 }
 
 /// `contains` for an `Int` key and an 8-byte, 8-aligned value.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_contains_w8"), unsafe(no_mangle))]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_map_contains_w8(
     m: *const MapVal,
@@ -211,7 +211,7 @@ pub unsafe fn find_set_w(m: &MapVal, key: *const u8) -> *const u8 {
 }
 
 /// `contains` for a `Set[Int]`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_contains_w"), unsafe(no_mangle))]
 // ms: leaf pure domain=set
 pub unsafe extern "C-unwind" fn msrt_set_contains_w(
     m: *const MapVal,
@@ -224,7 +224,7 @@ pub unsafe extern "C-unwind" fn msrt_set_contains_w(
 }
 
 /// `get` for an `Int` key and a plain 8-byte scalar value (`Int` or `Float`).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_get_w8"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get_w8(
     m: *const MapVal,
@@ -245,7 +245,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_w8(
 }
 
 /// `length()`: the number of live entries.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_length"), unsafe(no_mangle))]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_map_length(m: *const MapVal) -> i64 {
     // SAFETY: caller contract.
@@ -253,7 +253,7 @@ pub unsafe extern "C-unwind" fn msrt_map_length(m: *const MapVal) -> i64 {
 }
 
 /// Number of slots to scan with `msrt_map_entry_ptrs` (live entries plus holes).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_slot_count"), unsafe(no_mangle))]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_map_slot_count(m: *const MapVal) -> i64 {
     // SAFETY: caller contract.
@@ -358,7 +358,7 @@ pub fn key_desc(m: *const MapVal, kd: *const TypeDesc) -> *const TypeDesc {
 }
 
 /// Borrowed pointers to the key and value of slot `i`; 0 for a hole.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_entry_ptrs"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_entry_ptrs(
     m: *const MapVal,
@@ -1119,7 +1119,7 @@ fn opt<'a>(p: *const TypeDesc) -> Option<&'a TypeDesc> {
     unsafe { p.as_ref() }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_new"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_new(out: *mut MapVal) {
     // SAFETY: `out` is writable.
@@ -1129,7 +1129,7 @@ pub unsafe extern "C-unwind" fn msrt_map_new(out: *mut MapVal) {
 /// Records creator evidence only for an unstamped collection. Native operations may already
 /// return a copy or derived collection retaining its original creator.
 /// `kd` and its nested descriptors and callbacks must be static.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_stamp"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_stamp(m: *mut MapVal, kd: KeyDesc) {
     // SAFETY: `m` is a live map; descriptors are static.
@@ -1140,7 +1140,7 @@ pub unsafe extern "C-unwind" fn msrt_map_stamp(m: *mut MapVal, kd: KeyDesc) {
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_drop"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_drop(m: *mut MapVal, kd: KeyDesc, vd: ValDesc) {
     let kd = key_desc(m, kd);
@@ -1148,7 +1148,7 @@ pub unsafe extern "C-unwind" fn msrt_map_drop(m: *mut MapVal, kd: KeyDesc, vd: V
     unsafe { drop_map(m, &*kd, opt(vd)) }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_copy"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_copy(
     m: *const MapVal,
@@ -1162,7 +1162,7 @@ pub unsafe extern "C-unwind" fn msrt_map_copy(
 }
 
 /// Makes room for `n` entries so that inserting that many never regrows the map.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_reserve"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_reserve(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, n: i64) {
     let kd = key_desc(m, kd);
@@ -1187,7 +1187,7 @@ pub unsafe extern "C-unwind" fn msrt_map_reserve(m: *mut MapVal, kd: KeyDesc, vd
 }
 
 /// `add(key, value)` / `Set.add`: `key` and `val` are consumed.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_add"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add(
     m: *mut MapVal,
@@ -1249,7 +1249,7 @@ unsafe fn insert_word<K: KeyOps>(m: &mut MapVal, key: *mut u8, val: *mut u8, ksi
 }
 
 /// [`msrt_map_add`] for an `Int` key and a plain 8-byte scalar value (`Int` or `Float`).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_add_w8"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_w8(
     m: *mut MapVal,
@@ -1269,7 +1269,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_w8(
 }
 
 /// [`msrt_map_add`] for a `String` key and a plain 8-byte scalar value (`Int` or `Float`).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_add_sw8"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_sw8(
     m: *mut MapVal,
@@ -1293,7 +1293,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_sw8(
 /// a key. `default` is consumed either way: stored when the entry is new, dropped when it exists.
 /// One hash and probe serve a read-modify-write: the caller reads and writes through the returned
 /// pointer before the map is used again.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_slot_lent"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
     m: *mut MapVal,
@@ -1326,7 +1326,7 @@ pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
 
 /// `add(key, value)` with a borrowed `key`: it is copied into the map only when the entry is
 /// absent, so replacing the value of an existing key allocates nothing. `val` is consumed.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_add_lent"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_lent(
     m: *mut MapVal,
@@ -1360,7 +1360,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_lent(
 
 /// `add_default(key, value)` with a borrowed `key`: nothing is copied or stored when the entry
 /// exists. `val` is consumed.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_add_default_lent"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_default_lent(
     m: *mut MapVal,
@@ -1391,7 +1391,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_default_lent(
 }
 
 /// `add_default(key, value)`: stores only when absent; both consumed.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_add_default"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_default(
     m: *mut MapVal,
@@ -1407,7 +1407,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_default(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_remove"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_remove(
     m: *mut MapVal,
@@ -1422,7 +1422,7 @@ pub unsafe extern "C-unwind" fn msrt_map_remove(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_contains"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_contains(
     m: *const MapVal,
@@ -1436,7 +1436,7 @@ pub unsafe extern "C-unwind" fn msrt_map_contains(
 }
 
 /// Borrowed pointer to the value of `key`, or null.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_get_ptr"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
     m: *const MapVal,
@@ -1478,7 +1478,7 @@ unsafe fn value_ptr_k<K: KeyOps>(
 }
 
 /// `get(key)`: copies the value into `out`; 0 when absent.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_get"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get(
     m: *const MapVal,
@@ -1506,7 +1506,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get(
 }
 
 /// Removes every entry, keeping nothing allocated.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_clear"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_clear(m: *mut MapVal, kd: KeyDesc, vd: ValDesc) {
     let kd = key_desc(m, kd);
@@ -1515,7 +1515,7 @@ pub unsafe extern "C-unwind" fn msrt_map_clear(m: *mut MapVal, kd: KeyDesc, vd: 
 }
 
 /// `Set.values()`: a set's elements are its map's keys, as a fresh list of copies.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_values"), unsafe(no_mangle))]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_values(
     m: *const MapVal,
@@ -1528,7 +1528,7 @@ pub unsafe extern "C-unwind" fn msrt_set_values(
 }
 
 /// `keys()` as a fresh list of copies.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_keys"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_keys(
     m: *const MapVal,
@@ -1541,7 +1541,7 @@ pub unsafe extern "C-unwind" fn msrt_map_keys(
     unsafe { collect(m, &*kd, opt(vd), true, out) }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_values"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_values(
     m: *const MapVal,
@@ -1556,7 +1556,7 @@ pub unsafe extern "C-unwind" fn msrt_map_values(
 
 /// `for k in m.keys()` over a map that outlives the loop unchanged: string keys come back as
 /// views of the map's own strings, so nothing is copied. Other keys are copied as by `keys`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_keys_view"), unsafe(no_mangle))]
 // ms: leaf view_of=msrt_map_keys
 pub unsafe extern "C-unwind" fn msrt_map_keys_view(
     m: *const MapVal,
@@ -1570,7 +1570,7 @@ pub unsafe extern "C-unwind" fn msrt_map_keys_view(
 }
 
 /// `for v in m.values()` over a map that outlives the loop unchanged (see [`msrt_map_keys_view`]).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_values_view"), unsafe(no_mangle))]
 // ms: leaf view_of=msrt_map_values
 pub unsafe extern "C-unwind" fn msrt_map_values_view(
     m: *const MapVal,
@@ -1664,7 +1664,7 @@ unsafe fn collect(
 }
 
 /// `merge(other)`: entries of `other` (borrowed, copied) replace or append.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_merge"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_merge(
     m: *mut MapVal,
@@ -1723,7 +1723,7 @@ pub unsafe extern "C-unwind" fn msrt_map_merge(
 /// 8-byte little-endian word (`Int`, `Float` bits, `Bool` as 0 or 1), or tag `1`, a `u32`
 /// length and that many bytes (`String`). An item must fit its slot (word keys are `Int`,
 /// string keys `String`), as the call site's types guarantee.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_map_add_table"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_table(
     m: *mut MapVal,
@@ -1834,7 +1834,7 @@ unsafe fn each_key_while(m: &MapVal, kd: &TypeDesc, mut f: impl FnMut(*const u8)
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_add_copy"), unsafe(no_mangle))]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) {
     let kd = key_desc(m, kd);
@@ -1844,7 +1844,7 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, k
 
 /// `Set.add` for an `Int` element: the layout is fixed (hash word, key), so the call site skips
 /// descriptor dispatch. A set stamped with its module's key behaviour keeps the general path.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_add_copy_w"), unsafe(no_mangle))]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_add_copy_w(m: *mut MapVal, kd: KeyDesc, key: *const u8) {
     // SAFETY: caller contract; `key` is a live `Int` slot.
@@ -1884,7 +1884,7 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy_w(m: *mut MapVal, kd: KeyDesc,
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_union"), unsafe(no_mangle))]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_union(
     a: *const MapVal,
@@ -1920,7 +1920,7 @@ unsafe fn filter_into(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_intersection"), unsafe(no_mangle))]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_intersection(
     a: *const MapVal,
@@ -1942,7 +1942,7 @@ pub unsafe extern "C-unwind" fn msrt_set_intersection(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_difference"), unsafe(no_mangle))]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_difference(
     a: *const MapVal,
@@ -1959,7 +1959,7 @@ pub unsafe extern "C-unwind" fn msrt_set_difference(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_symmetric_difference"), unsafe(no_mangle))]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
     a: *const MapVal,
@@ -1981,7 +1981,7 @@ pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_is_subset_of"), unsafe(no_mangle))]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
     a: *const MapVal,
@@ -1997,7 +1997,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_is_superset_of"), unsafe(no_mangle))]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(
     a: *const MapVal,
@@ -2009,7 +2009,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(
     unsafe { msrt_set_is_subset_of(b, a, kd) }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_set_is_disjoint_from"), unsafe(no_mangle))]
 // ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_is_disjoint_from(
     a: *const MapVal,

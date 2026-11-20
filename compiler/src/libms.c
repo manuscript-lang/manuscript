@@ -10,6 +10,8 @@
 #include "dump.c"
 #include "mir.c"
 #include "mir_print.c"
+#include "mir_layout.c"
+#include "mir_shape.c"
 #include "mir_parse.c"
 #include "types.c"
 #include "tables.c"
@@ -20,3 +22,4 @@
 #include "ownership_places.c"
 #include "ownership_bits.c"
 #include "libms_api.c"
+#include "emit_qbe.c"

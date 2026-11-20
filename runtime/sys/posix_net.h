@@ -16,7 +16,7 @@
 
 static int again(int e) { return e == EAGAIN || e == EWOULDBLOCK; }
 
-static socklen_t to_sockaddr(const ms_addr *a, struct sockaddr_storage *ss) {
+static socklen_t to_sockaddr(const MsAddr *a, struct sockaddr_storage *ss) {
     memset(ss, 0, sizeof *ss);
     if (a->family == 4) {
         struct sockaddr_in *s = (struct sockaddr_in *)ss;
@@ -33,7 +33,7 @@ static socklen_t to_sockaddr(const ms_addr *a, struct sockaddr_storage *ss) {
     return sizeof *s;
 }
 
-static void from_sockaddr(const struct sockaddr_storage *ss, ms_addr *a) {
+static void from_sockaddr(const struct sockaddr_storage *ss, MsAddr *a) {
     memset(a, 0, sizeof *a);
     if (ss->ss_family == AF_INET) {
         const struct sockaddr_in *s = (const struct sockaddr_in *)ss;
@@ -60,7 +60,7 @@ static int prepare(int fd) {
 
 static int fail_close(int fd) { int e = errno; close(fd); errno = e; return MS_SYS_ERROR; }
 
-static int new_socket(const ms_addr *a, int *fd) {
+static int new_socket(const MsAddr *a, int *fd) {
     int s = socket(a->family == 4 ? AF_INET : AF_INET6, SOCK_STREAM, 0);
     if (s < 0) return MS_SYS_ERROR;
     if (prepare(s) < 0) return fail_close(s);
@@ -68,7 +68,7 @@ static int new_socket(const ms_addr *a, int *fd) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_tcp_listen(const ms_addr *addr, int backlog, ms_sock *out) {
+int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out) {
     int fd;
     if (new_socket(addr, &fd)) return MS_SYS_ERROR;
     int one = 1;
@@ -84,7 +84,7 @@ int ms_sys_net_tcp_listen(const ms_addr *addr, int backlog, ms_sock *out) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_tcp_connect(const ms_addr *addr, ms_sock *out) {
+int ms_sys_net_tcp_connect(const MsAddr *addr, MsSock *out) {
     int fd;
     if (new_socket(addr, &fd)) return MS_SYS_ERROR;
     int one = 1;
@@ -96,7 +96,7 @@ int ms_sys_net_tcp_connect(const ms_addr *addr, ms_sock *out) {
     return fail_close(fd);
 }
 
-int ms_sys_net_connect_done(ms_sock s) {
+int ms_sys_net_connect_done(MsSock s) {
     int err = 0;
     socklen_t len = sizeof err;
     if (getsockopt((int)s, SOL_SOCKET, SO_ERROR, &err, &len) < 0) return MS_SYS_ERROR;
@@ -104,11 +104,11 @@ int ms_sys_net_connect_done(ms_sock s) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_accept(ms_sock listener, ms_sock *out, ms_addr *peer) {
+int ms_sys_net_accept(MsSock listener, MsSock *out, MsAddr *peer) {
     struct sockaddr_storage ss;
     socklen_t len = sizeof ss;
     int fd;
-    do fd = accept((int)listener, (struct sockaddr *)&ss, &len); while (fd < 0 && errno == EINTR);
+    do fd = accept((int)listener, (struct sockaddr *)&ss, &len); while (fd < 0 && errno == EINTR); // NOLINT(android-cloexec-accept): macOS has no accept4; prepare() sets close-on-exec
     if (fd < 0) return again(errno) ? MS_SYS_AGAIN : MS_SYS_ERROR;
     if (prepare(fd) < 0) return fail_close(fd);
     int one = 1;
@@ -118,7 +118,7 @@ int ms_sys_net_accept(ms_sock listener, ms_sock *out, ms_addr *peer) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_read(ms_sock s, void *buf, size_t n, size_t *done) {
+int ms_sys_net_read(MsSock s, void *buf, size_t n, size_t *done) {
     ssize_t r;
     do r = recv((int)s, buf, n, 0); while (r < 0 && errno == EINTR);
     if (r < 0) return again(errno) ? MS_SYS_AGAIN : MS_SYS_ERROR;
@@ -126,7 +126,7 @@ int ms_sys_net_read(ms_sock s, void *buf, size_t n, size_t *done) {
     return r == 0 && n > 0 ? MS_SYS_EOF : MS_SYS_OK;
 }
 
-int ms_sys_net_write(ms_sock s, const void *buf, size_t n, size_t *done) {
+int ms_sys_net_write(MsSock s, const void *buf, size_t n, size_t *done) {
     ssize_t r;
     do r = send((int)s, buf, n, MS_SEND_FLAGS); while (r < 0 && errno == EINTR);
     if (r < 0) return again(errno) ? MS_SYS_AGAIN : MS_SYS_ERROR;
@@ -134,7 +134,7 @@ int ms_sys_net_write(ms_sock s, const void *buf, size_t n, size_t *done) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_local_addr(ms_sock s, ms_addr *out) {
+int ms_sys_net_local_addr(MsSock s, MsAddr *out) {
     struct sockaddr_storage ss;
     socklen_t len = sizeof ss;
     if (getsockname((int)s, (struct sockaddr *)&ss, &len) < 0) return MS_SYS_ERROR;
@@ -142,7 +142,7 @@ int ms_sys_net_local_addr(ms_sock s, ms_addr *out) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_peer_addr(ms_sock s, ms_addr *out) {
+int ms_sys_net_peer_addr(MsSock s, MsAddr *out) {
     struct sockaddr_storage ss;
     socklen_t len = sizeof ss;
     if (getpeername((int)s, (struct sockaddr *)&ss, &len) < 0) return MS_SYS_ERROR;
@@ -150,6 +150,6 @@ int ms_sys_net_peer_addr(ms_sock s, ms_addr *out) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_shutdown(ms_sock s, int how) { return shutdown((int)s, how == 1 ? SHUT_WR : SHUT_RDWR) < 0 ? MS_SYS_ERROR : MS_SYS_OK; }
-void ms_sys_net_close(ms_sock s) { close((int)s); }
+int ms_sys_net_shutdown(MsSock s, int how) { return shutdown((int)s, how == 1 ? SHUT_WR : SHUT_RDWR) < 0 ? MS_SYS_ERROR : MS_SYS_OK; }
+void ms_sys_net_close(MsSock s) { close((int)s); }
 int ms_sys_net_error(void) { return errno; }

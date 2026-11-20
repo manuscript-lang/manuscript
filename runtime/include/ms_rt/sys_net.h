@@ -6,15 +6,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef intptr_t ms_sock; /* a descriptor, or a SOCKET on Windows */
-#define MS_SOCK_INVALID ((ms_sock)-1)
+typedef intptr_t MsSock; /* a descriptor, or a SOCKET on Windows */
+#define MS_SOCK_INVALID ((MsSock)-1)
 
 typedef struct {
     uint8_t family;   /* 4 or 6 */
     uint8_t ip[16];   /* the first 4 bytes for IPv4 */
     uint16_t port;    /* host order */
     uint32_t scope;   /* IPv6 scope id, else 0 */
-} ms_addr;
+} MsAddr;
 
 enum {
     MS_SYS_OK = 0,
@@ -25,21 +25,21 @@ enum {
 };
 
 /* A listening socket on `addr` (port 0 picks one; read it back with ms_sys_net_local_addr). */
-int ms_sys_net_tcp_listen(const ms_addr *addr, int backlog, ms_sock *out);
+int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out);
 /* Starts a connection: OK when connected at once, INPROGRESS otherwise. */
-int ms_sys_net_tcp_connect(const ms_addr *addr, ms_sock *out);
+int ms_sys_net_tcp_connect(const MsAddr *addr, MsSock *out);
 /* After INPROGRESS and writability: OK when connected, ERROR (ms_sys_net_error is the cause) when it failed. */
-int ms_sys_net_connect_done(ms_sock s);
+int ms_sys_net_connect_done(MsSock s);
 /* The next pending connection of a listener; `peer` may be NULL. AGAIN when none is waiting. */
-int ms_sys_net_accept(ms_sock listener, ms_sock *out, ms_addr *peer);
+int ms_sys_net_accept(MsSock listener, MsSock *out, MsAddr *peer);
 /* One read or write; the byte count goes to *done. A read of 0 bytes returns EOF. Writes never raise SIGPIPE. */
-int ms_sys_net_read(ms_sock s, void *buf, size_t n, size_t *done);
-int ms_sys_net_write(ms_sock s, const void *buf, size_t n, size_t *done);
-int ms_sys_net_local_addr(ms_sock s, ms_addr *out);
-int ms_sys_net_peer_addr(ms_sock s, ms_addr *out);
+int ms_sys_net_read(MsSock s, void *buf, size_t n, size_t *done);
+int ms_sys_net_write(MsSock s, const void *buf, size_t n, size_t *done);
+int ms_sys_net_local_addr(MsSock s, MsAddr *out);
+int ms_sys_net_peer_addr(MsSock s, MsAddr *out);
 /* Half-closes the write side (how = 1) or both (how = 2). */
-int ms_sys_net_shutdown(ms_sock s, int how);
-void ms_sys_net_close(ms_sock s);
+int ms_sys_net_shutdown(MsSock s, int how);
+void ms_sys_net_close(MsSock s);
 /* The operating system's code for the last MS_SYS_ERROR on this thread (errno, or WSAGetLastError). */
 int ms_sys_net_error(void);
 

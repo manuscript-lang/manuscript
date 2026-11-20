@@ -20,7 +20,7 @@ static int startup(void) {
 
 static int would_block(int e) { return e == WSAEWOULDBLOCK || e == WSAEINPROGRESS; }
 
-static int to_sockaddr(const ms_addr *a, SOCKADDR_STORAGE *ss) {
+static int to_sockaddr(const MsAddr *a, SOCKADDR_STORAGE *ss) {
     memset(ss, 0, sizeof *ss);
     if (a->family == 4) {
         SOCKADDR_IN *s = (SOCKADDR_IN *)ss;
@@ -37,7 +37,7 @@ static int to_sockaddr(const ms_addr *a, SOCKADDR_STORAGE *ss) {
     return (int)sizeof *s;
 }
 
-static void from_sockaddr(const SOCKADDR_STORAGE *ss, ms_addr *a) {
+static void from_sockaddr(const SOCKADDR_STORAGE *ss, MsAddr *a) {
     memset(a, 0, sizeof *a);
     if (ss->ss_family == AF_INET) {
         const SOCKADDR_IN *s = (const SOCKADDR_IN *)ss;
@@ -64,7 +64,7 @@ static int prepare(SOCKET s) {
     return 0;
 }
 
-static int new_socket(const ms_addr *a, SOCKET *out) {
+static int new_socket(const MsAddr *a, SOCKET *out) {
     if (startup()) return MS_SYS_ERROR;
     SOCKET s = WSASocketW(a->family == 4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_NO_HANDLE_INHERIT);
     if (s == INVALID_SOCKET) return MS_SYS_ERROR;
@@ -73,7 +73,7 @@ static int new_socket(const ms_addr *a, SOCKET *out) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_tcp_listen(const ms_addr *addr, int backlog, ms_sock *out) {
+int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out) {
     SOCKET s;
     if (new_socket(addr, &s)) return MS_SYS_ERROR;
     SOCKADDR_STORAGE ss;
@@ -85,30 +85,30 @@ int ms_sys_net_tcp_listen(const ms_addr *addr, int backlog, ms_sock *out) {
         setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&off, sizeof off);
     }
     if (bind(s, (SOCKADDR *)&ss, len) != 0 || listen(s, backlog) != 0) return fail_close(s);
-    *out = (ms_sock)s;
+    *out = (MsSock)s;
     return MS_SYS_OK;
 }
 
-int ms_sys_net_tcp_connect(const ms_addr *addr, ms_sock *out) {
+int ms_sys_net_tcp_connect(const MsAddr *addr, MsSock *out) {
     SOCKET s;
     if (new_socket(addr, &s)) return MS_SYS_ERROR;
     SOCKADDR_STORAGE ss;
     int len = to_sockaddr(addr, &ss);
     BOOL on = TRUE;
     setsockopt(s, IPPROTO_TCP, TCP_NODELAY, (const char *)&on, sizeof on);
-    if (connect(s, (SOCKADDR *)&ss, len) == 0) { *out = (ms_sock)s; return MS_SYS_OK; }
-    if (would_block(WSAGetLastError())) { *out = (ms_sock)s; return MS_SYS_INPROGRESS; }
+    if (connect(s, (SOCKADDR *)&ss, len) == 0) { *out = (MsSock)s; return MS_SYS_OK; }
+    if (would_block(WSAGetLastError())) { *out = (MsSock)s; return MS_SYS_INPROGRESS; }
     return fail_close(s);
 }
 
-int ms_sys_net_connect_done(ms_sock s) {
+int ms_sys_net_connect_done(MsSock s) {
     int err = 0, len = (int)sizeof err;
     if (getsockopt((SOCKET)s, SOL_SOCKET, SO_ERROR, (char *)&err, &len) != 0) return MS_SYS_ERROR;
     if (err) { WSASetLastError(err); return MS_SYS_ERROR; }
     return MS_SYS_OK;
 }
 
-int ms_sys_net_accept(ms_sock listener, ms_sock *out, ms_addr *peer) {
+int ms_sys_net_accept(MsSock listener, MsSock *out, MsAddr *peer) {
     SOCKADDR_STORAGE ss;
     int len = (int)sizeof ss;
     SOCKET s = accept((SOCKET)listener, (SOCKADDR *)&ss, &len);
@@ -117,11 +117,11 @@ int ms_sys_net_accept(ms_sock listener, ms_sock *out, ms_addr *peer) {
     BOOL on = TRUE;
     setsockopt(s, IPPROTO_TCP, TCP_NODELAY, (const char *)&on, sizeof on);
     if (peer) from_sockaddr(&ss, peer);
-    *out = (ms_sock)s;
+    *out = (MsSock)s;
     return MS_SYS_OK;
 }
 
-int ms_sys_net_read(ms_sock s, void *buf, size_t n, size_t *done) {
+int ms_sys_net_read(MsSock s, void *buf, size_t n, size_t *done) {
     int want = n > 0x40000000 ? 0x40000000 : (int)n;
     int r = recv((SOCKET)s, (char *)buf, want, 0);
     if (r == SOCKET_ERROR) return would_block(WSAGetLastError()) ? MS_SYS_AGAIN : MS_SYS_ERROR;
@@ -129,7 +129,7 @@ int ms_sys_net_read(ms_sock s, void *buf, size_t n, size_t *done) {
     return r == 0 && n > 0 ? MS_SYS_EOF : MS_SYS_OK;
 }
 
-int ms_sys_net_write(ms_sock s, const void *buf, size_t n, size_t *done) {
+int ms_sys_net_write(MsSock s, const void *buf, size_t n, size_t *done) {
     int want = n > 0x40000000 ? 0x40000000 : (int)n;
     int r = send((SOCKET)s, (const char *)buf, want, 0);
     if (r == SOCKET_ERROR) return would_block(WSAGetLastError()) ? MS_SYS_AGAIN : MS_SYS_ERROR;
@@ -137,7 +137,7 @@ int ms_sys_net_write(ms_sock s, const void *buf, size_t n, size_t *done) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_local_addr(ms_sock s, ms_addr *out) {
+int ms_sys_net_local_addr(MsSock s, MsAddr *out) {
     SOCKADDR_STORAGE ss;
     int len = (int)sizeof ss;
     if (getsockname((SOCKET)s, (SOCKADDR *)&ss, &len) != 0) return MS_SYS_ERROR;
@@ -145,7 +145,7 @@ int ms_sys_net_local_addr(ms_sock s, ms_addr *out) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_peer_addr(ms_sock s, ms_addr *out) {
+int ms_sys_net_peer_addr(MsSock s, MsAddr *out) {
     SOCKADDR_STORAGE ss;
     int len = (int)sizeof ss;
     if (getpeername((SOCKET)s, (SOCKADDR *)&ss, &len) != 0) return MS_SYS_ERROR;
@@ -153,6 +153,6 @@ int ms_sys_net_peer_addr(ms_sock s, ms_addr *out) {
     return MS_SYS_OK;
 }
 
-int ms_sys_net_shutdown(ms_sock s, int how) { return shutdown((SOCKET)s, how == 1 ? SD_SEND : SD_BOTH) != 0 ? MS_SYS_ERROR : MS_SYS_OK; }
-void ms_sys_net_close(ms_sock s) { closesocket((SOCKET)s); }
+int ms_sys_net_shutdown(MsSock s, int how) { return shutdown((SOCKET)s, how == 1 ? SD_SEND : SD_BOTH) != 0 ? MS_SYS_ERROR : MS_SYS_OK; }
+void ms_sys_net_close(MsSock s) { closesocket((SOCKET)s); }
 int ms_sys_net_error(void) { return WSAGetLastError(); }
