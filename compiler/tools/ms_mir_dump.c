@@ -279,7 +279,6 @@ static const Pass passes[] = {
     {"inlinesmall", mir_opt_inline_small},
     {"pipeline0", pipeline_none},
     {"pipeline", pipeline_speed},
-    {"range", mir_opt_range},
 };
 
 /* Runs the named pass and prints whether it changed the module, then the module. */

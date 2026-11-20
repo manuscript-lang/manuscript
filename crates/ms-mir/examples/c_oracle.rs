@@ -372,7 +372,6 @@ fn run_pass(name: &str, m: &mut Module) -> bool {
             opt::optimize(m, opt::Level::Speed, false);
             true
         }
-        "range" => opt::range::run(m),
         _ => panic!("unknown pass {name}"),
     }
 }
