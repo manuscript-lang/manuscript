@@ -505,23 +505,3 @@ pub unsafe fn thread_join(thread: usize) {
     // SAFETY: forwarded.
     unsafe { pthread_join(thread, core::ptr::null_mut()) };
 }
-
-/// Blocks the calling thread for `ms` milliseconds.
-#[cfg(not(ms_c = "mssys_sleep_ms"))]
-pub fn sleep_ms(ms: u32) {
-    unsafe extern "C" {
-        fn nanosleep(req: *const Timespec, rem: *mut Timespec) -> c_int;
-    }
-    let mut req = Timespec {
-        sec: (ms / 1000) as i64,
-        nsec: (ms % 1000) as i64 * 1_000_000,
-    };
-    let mut rem = Timespec { sec: 0, nsec: 0 };
-    // SAFETY: valid pointers; an interrupted sleep continues with the rest.
-    while unsafe { nanosleep(&req, &mut rem) } != 0 {
-        req = Timespec {
-            sec: rem.sec,
-            nsec: rem.nsec,
-        };
-    }
-}
