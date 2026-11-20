@@ -6,6 +6,7 @@
  * static, and a view never points into an inline string. */
 #include <string.h>
 #include "ms_rt/alloc.h"
+#include "ms_rt/fmt.h"
 #include "ms_rt/search.h"
 #include "ms_rt/safe.h"
 #include "ms_rt/string.h"
@@ -726,29 +727,17 @@ void msrt_string_slice(const MsStr *s, int64_t start, int64_t end, MsStr *out) {
     }
 }
 
-/* Writes the decimal digits of `value` ending at `end` and returns where they start. */
-static char *format_i64(int64_t value, char *end) {
-    uint64_t magnitude = value < 0 ? UINT64_C(0) - (uint64_t)value : (uint64_t)value;
-    char *digit = end;
-    do {
-        *--digit = (char)('0' + magnitude % 10);
-        magnitude /= 10;
-    } while (magnitude != 0);
-    if (value < 0) {
-        *--digit = '-';
-    }
-    return digit;
-}
-
 /* Appends `text` to the message being built in `message`, which the caller sized for it. */
 static void message_append(MsBytesMut *message, const char *text, size_t length) {
     append_bytes(message, ms_bytes_of((const uint8_t *)text, length));
 }
 
 static void message_append_number(MsBytesMut *message, int64_t value) {
-    char digits[24];
-    char *first = format_i64(value, digits + sizeof digits);
-    message_append(message, first, (size_t)(digits + sizeof digits - first));
+    uint8_t digits[MS_FMT_INTEGER_CAPACITY];
+    size_t count = 0;
+    if (msrt_fmt_i64(value, digits, sizeof digits, &count)) {
+        append_bytes(message, ms_bytes_of(digits, count));
+    }
 }
 
 static MS_NORETURN void fault_view_bounds(int64_t start, int64_t end) {

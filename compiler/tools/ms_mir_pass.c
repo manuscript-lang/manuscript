@@ -37,6 +37,10 @@ static bool run_pass(const char *name, MirModule *m, bool *changed, MsBuf *failu
         MirGlue g = {0};
         const MirPipelineOptions o = {.cancel_edges = true, .checks = true, .verify = false};
         (void)mir_pipeline_finish(m, &o, &g, failure);
+    } else if (strcmp(name, "count_ops") == 0) {
+        mir_count_ops(m);
+    } else if (strcmp(name, "copies") == 0 || strcmp(name, "frames") == 0) {
+        /* Not a rewrite: main prints the framed values of each function. */
     } else if (strcmp(name, "debug_types") == 0) {
         /* Not a rewrite: main prints the description instead of the module. */
     } else if (strcmp(name, "glue") == 0) {
@@ -103,6 +107,28 @@ static void print_debug_types(const MirModule *m, MsBuf *out) {
     mir_debug_types_free(&t);
 }
 
+/* Per function, the values frames.rs frames. */
+static void print_frames(const MirModule *m, MsBuf *out) {
+    for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
+        const MirFunc *f = &m->funcs[fi];
+        MsArena arena = {0};
+        const MsStr name = ms_name(&m->names, f->name);
+        ms_buf_printf(out, "%.*s", (int)name.len, name.ptr);
+        const bool *sets[2] = {mir_framed_iface_borrows(&arena, m, f),
+                               mir_framed_closure_objects(&arena, m, f)};
+        for (int s = 0; s < 2; s++) {
+            ms_buf_puts(out, s == 0 ? " iface:" : " closure:");
+            for (uint32_t v = 0; sets[s] != NULL && v < f->nvalues; v++) {
+                if (sets[s][v]) {
+                    ms_buf_printf(out, " %u", v);
+                }
+            }
+        }
+        ms_buf_putc(out, '\n');
+        ms_arena_free(&arena);
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc < 4 || strcmp(argv[1], "pass") != 0) {
         fputs("usage: ms_mir_pass pass NAME FILE...\n", stderr);
@@ -137,6 +163,10 @@ int main(int argc, char **argv) {
             ms_buf_printf(&out, "changed %d\n", changed ? 1 : 0);
             if (strcmp(argv[2], "debug_types") == 0) {
                 print_debug_types(&m, &out);
+            } else if (strcmp(argv[2], "copies") == 0) {
+                mir_object_copies(&m, &out);
+            } else if (strcmp(argv[2], "frames") == 0) {
+                print_frames(&m, &out);
             } else {
                 mir_print_module(&m, &out);
                 print_cold(&m, &out);

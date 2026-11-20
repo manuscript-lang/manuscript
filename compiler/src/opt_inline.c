@@ -762,6 +762,7 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
     for (uint32_t v = 0; v < m->nvtables; v++) {
         cap += m->vtables[v].nmethods;
     }
+    cap += 2 * (size_t)m->ndesc_glue;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         cap += m->funcs[i].ncapture_closers;
         for (uint32_t b = 0; b < m->funcs[i].nblocks; b++) {
@@ -782,6 +783,10 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
         for (uint32_t k = 0; k < m->vtables[v].nmethods; k++) {
             il_push_root(stack, &n, m->vtables[v].methods[k]);
         }
+    }
+    for (uint32_t g = 0; g < m->ndesc_glue; g++) {
+        il_push_root(stack, &n, m->desc_glue[g].eq);
+        il_push_root(stack, &n, m->desc_glue[g].hash);
     }
     const bool any = n > 0;
     while (n > 0) {
@@ -825,6 +830,10 @@ static void il_renumber(MirModule *m, const uint32_t *map) {
         for (uint32_t k = 0; k < m->vtables[v].nmethods; k++) {
             m->vtables[v].methods[k] = map[m->vtables[v].methods[k]];
         }
+    }
+    for (uint32_t g = 0; g < m->ndesc_glue; g++) {
+        m->desc_glue[g].eq = map[m->desc_glue[g].eq];
+        m->desc_glue[g].hash = map[m->desc_glue[g].hash];
     }
     m->entry = m->entry == MIR_NONE ? MIR_NONE : map[m->entry];
 }
