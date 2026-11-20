@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 
 	Syntax, children, node_kind, parse from "../syntax.ms",
-	Finding, finding from "./finding.ms",
+	Finding, finding, with_fix from "./finding.ms",
 )
 
 DROP_RETURN := "Drop the final return: the end of the function already returns it"
@@ -131,17 +131,16 @@ fn trailing_return(
 	if from == 0 or source[from - 1] != 10: return
 	if source.view(from, to).contains("//".to_bytes()): return
 
-	out.append(
-		finding(
-			"MSL128",
-			"warning",
-			DROP_RETURN,
-			file,
-			tree.offset[last],
-			tree.line[last],
-			tree.column[last],
-		)
+	found := finding(
+		"MSL128",
+		"error",
+		DROP_RETURN,
+		file,
+		tree.offset[last],
+		tree.line[last],
+		tree.column[last],
 	)
+	out.append(with_fix(found, from, to, ""))
 
 // Whether the brackets of `text` pair up.
 fn balanced(text: Bytes) Bool:
@@ -193,15 +192,22 @@ fn temp_return(
 	if written.contains("\n".to_bytes()) or not balanced(written): return
 	if source.view(tree.offset[first], tree.end_offset[value]).contains("//".to_bytes()): return
 
+	found := finding(
+		"MSL126",
+		"error",
+		"Return the value directly instead of binding it first",
+		file,
+		tree.offset[first],
+		tree.line[first],
+		tree.column[first],
+	)
+	value_text := written.decode_utf8().get_or("")
 	out.append(
-		finding(
-			"MSL126",
-			"warning",
-			"Return the value directly instead of binding it first",
-			file,
+		with_fix(
+			found,
 			tree.offset[first],
-			tree.line[first],
-			tree.column[first],
+			tree.end_offset[value],
+			f"return {value_text}",
 		)
 	)
 
@@ -494,6 +500,8 @@ test "a final bare return of a Void function is dropped":
 	found.length() | expect_equal(expected: 1)?
 	found[0].code | expect_equal(expected: "MSL128")?
 	found[0].line | expect_equal(expected: 3)?
+	found[0].fix_from | expect_equal(expected: 32)?
+	found[0].fix_to | expect_equal(expected: 43)?
 
 test "a value bound and returned at once is returned directly":
 	source := "fn f(x: Int) Int:\n    y := x + 1\n    return y\n\nfn g(x: Int) Int:\n    y := x + 1\n    return x\n"

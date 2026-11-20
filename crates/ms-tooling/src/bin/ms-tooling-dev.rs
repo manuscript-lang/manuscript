@@ -5,7 +5,10 @@
 //! ms-tooling-dev lint FILE...
 //! ms-tooling-dev inspect FILE
 //! ms-tooling-dev facts FILE                 the fact model as JSON, the input of tools/ms/views.ms
+//! ms-tooling-dev nodes FILE                 `ID KIND` per typed expression, the oracle of `ms_check_dump --nodes`
 //! ms-tooling-dev view FILE VIEW ENTITY DEPTH FORMAT   one `ms diagram` view (ascii, mermaid, json)
+//! ms-tooling-dev review BASE HEAD [--no-base] [--added FILE]... [--touch FILE:LINE]...
+//!                                           the ranked findings of `ms review` as JSON, the oracle of tools/ms/review.ms
 //! ms-tooling-dev skill-calls update         rewrite the standard-call table in the agent skill
 //! ```
 //!
@@ -35,7 +38,9 @@ fn run(syms: ms_syntax::Names) -> i32 {
         "lint" => lint(syms, files),
         "inspect" => inspect(syms, files),
         "facts" => facts_json(syms, files),
+        "nodes" => nodes(syms, files),
         "view" => view(syms, files),
+        "review" => review(syms, files),
         "skill-calls" => skill_calls(files),
         other => {
             eprintln!("unknown command {other}");
@@ -240,6 +245,13 @@ fn facts_value(facts: &ms_tooling::facts::Facts) -> ms_json::Json {
                     )),
                 ),
                 ("receiver", ms_json::Json::str(f.receiver)),
+                ("label", ms_json::Json::str(&f.label)),
+                ("ty", ms_json::Json::str(&f.ty)),
+                ("exported", ms_json::Json::Bool(f.exported)),
+                ("reach", ms_json::Json::strings(&f.reach)),
+                ("permits", ms_json::Json::strings(&f.permits)),
+                ("first", ms_json::Json::int(f.first as i64)),
+                ("last", ms_json::Json::int(f.last as i64)),
             ])
         })
         .collect();
@@ -281,6 +293,55 @@ fn facts_json(syms: ms_syntax::Names, files: &[String]) -> i32 {
     0
 }
 
+/// `review BASE HEAD [--no-base] [--added FILE]... [--touch FILE:LINE]...`: the findings of
+/// `compare_facts` as a JSON array, in rank order.
+fn review(syms: ms_syntax::Names, args: &[String]) -> i32 {
+    let [base, head, options @ ..] = args else {
+        eprintln!(
+            "usage: ms-tooling-dev review BASE HEAD [--no-base] [--added FILE]... [--touch FILE:LINE]..."
+        );
+        return 2;
+    };
+    let (Some(base), Some(head)) = (facts_of(syms, base), facts_of(syms, head)) else {
+        return 1;
+    };
+    let mut input = ms_tooling::review::DiffInput {
+        base_checked: true,
+        ..Default::default()
+    };
+    let mut options = options.iter();
+    while let Some(option) = options.next() {
+        match option.as_str() {
+            "--no-base" => input.base_checked = false,
+            "--added" => {
+                input.added.insert(options.next().expect("a file").clone());
+            }
+            "--touch" => {
+                let spec = options.next().expect("FILE:LINE");
+                let (file, line) = spec.rsplit_once(':').expect("FILE:LINE");
+                input
+                    .touched
+                    .entry(file.to_string())
+                    .or_default()
+                    .push(line.parse().expect("a line"));
+            }
+            other => {
+                eprintln!("unknown option {other}");
+                return 2;
+            }
+        }
+    }
+    let findings = ms_tooling::review::compare_facts(&base, &head, &input);
+    let json = ms_json::Json::Arr(
+        findings
+            .iter()
+            .map(ms_tooling::review::Finding::to_json)
+            .collect(),
+    );
+    println!("{}", json.pretty(ms_json::Escape::HtmlSafe));
+    0
+}
+
 /// `view FILE VIEW ENTITY DEPTH FORMAT`: the text `ms diagram` prints for the view.
 fn view(syms: ms_syntax::Names, args: &[String]) -> i32 {
     let [file, name, entity, depth, format] = args else {
@@ -315,5 +376,56 @@ fn view(syms: ms_syntax::Names, args: &[String]) -> i32 {
             .unwrap_or_else(|| tree.ascii()),
     };
     print!("{text}");
+    0
+}
+
+struct KindScan<'a> {
+    module: &'a ms_check::ModuleData,
+    out: Vec<(u32, &'static str)>,
+}
+
+impl ms_syntax::visit::Visitor for KindScan<'_> {
+    fn expr(&mut self, e: &ms_syntax::ast::Expr) {
+        use ms_check::api::types::Builtin as B;
+        let Some(ty) = self.module.facts().info(e.id).and_then(|i| i.ty.clone()) else {
+            return;
+        };
+        let kinds = [
+            (B::Optional, "Optional"),
+            (B::Result, "Result"),
+            (B::List, "List"),
+            (B::Map, "Map"),
+            (B::Set, "Set"),
+            (B::Bytes, "Bytes"),
+            (B::Int, "Int"),
+            (B::Float, "Float"),
+            (B::Bool, "Bool"),
+            (B::Void, "Void"),
+            (B::Promise, "Promise"),
+        ];
+        let kind = if ty.is_string() {
+            "String"
+        } else {
+            kinds.iter().find(|(b, _)| ty.is(*b)).map_or("Other", |(_, n)| n)
+        };
+        self.out.push((e.id.0, kind));
+    }
+}
+
+/// `nodes FILE`: `ID KIND` for each expression the Rust checker typed, sorted by id.
+fn nodes(syms: ms_syntax::Names, files: &[String]) -> i32 {
+    let Some(program) = files.first().and_then(|f| checked(syms, f)) else {
+        return 1;
+    };
+    for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
+        let mut scan = KindScan { module, out: Vec::new() };
+        for decl in &module.decls {
+            ms_syntax::visit::walk_decl(&mut scan, decl.decl());
+        }
+        scan.out.sort();
+        for (id, kind) in scan.out {
+            println!("{id} {kind}");
+        }
+    }
     0
 }
