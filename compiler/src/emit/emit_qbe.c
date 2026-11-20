@@ -755,6 +755,30 @@ static void qbe_stack_check(QCx *c, const MirInst *inst) {
     ms_buf_printf(o, "\t%%v%u =w cultl %%sp, %%o%ul\n", inst->res, n);
 }
 
+/* `poll`: faults when the running task's cancel flag is set. The region's last 16 bytes hold the
+ * task header's address; the flag is the byte at `MIR_HDR_CANCEL` in it. */
+static void qbe_poll(QCx *c, uint32_t block, uint32_t *part) {
+    MsBuf *o = c->out;
+    const uint32_t n = c->next++;
+    ms_buf_printf(o, "\t%%o%ub =l and %%sp, %lld\n", n, (long long)-MIR_STACK_REGION);
+    ms_buf_printf(o, "\t%%o%uc =l add %%o%ub, %lld\n\t%%o%uh =l loadl %%o%uc\n", n, n,
+                  (long long)(MIR_STACK_REGION - MIR_STACK_HDR_CELL), n, n);
+    ms_buf_printf(o, "\t%%o%up =l add %%o%uh, %d\n\t%%o%uf =w loadub %%o%up\n", n, n, MIR_HDR_CANCEL, n, n);
+    ms_buf_printf(o, "\t%%o%us =w cnew %%o%uf, 0\n", n, n);
+    qbe_fault_branch(c, n, "$msrt_cancelled()", block, part);
+}
+
+/* `undef`: any value of the type, zero in every leaf. */
+static void qbe_undef(QCx *c, const MirInst *inst) {
+    const MirLeafSpan leaves = qbe_leaves(c, c->f->values[inst->res]);
+    for (uint32_t k = 0; k < leaves.len; k++) {
+        const char reg = qbe_leaf_type(leaves.ptr[k]);
+        ms_buf_puts(c->out, "\t");
+        qbe_name(c->out, inst->res, k);
+        ms_buf_printf(c->out, " =%c copy %s\n", reg, reg == 'd' ? "d_0" : "0");
+    }
+}
+
 /* `opt.is_some`: the flag leaf of an optional held as [flag, value], or a non-null test of one held
  * as a single nullable pointer. */
 static void qbe_opt_is_some(QCx *c, const MirInst *inst) {
@@ -822,7 +846,10 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
     case MOP_INarrowOpt: case MOP_F2IOpt: return qbe_opt_convert(c, inst);
     case MOP_OptIsSome: qbe_opt_is_some(c, inst); return true;
+    case MOP_ListLen: qbe_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_LEN_LEAF); return true;
     case MOP_StackLow: case MOP_StackNear: qbe_stack_check(c, inst); return true;
+    case MOP_Poll: qbe_poll(c, block, part); return true;
+    case MOP_Undef: qbe_undef(c, inst); return true;
     case MOP_TypeDesc: case MOP_FuncAddr: return qbe_address_of(c, inst);
     case MOP_GlobalGet: case MOP_GlobalSet: return qbe_global(c, inst);
     default:
@@ -993,7 +1020,7 @@ static bool qbe_uses_stack_check(const QCx *c) {
     for (uint32_t b = 0; b < c->f->nblocks; b++) {
         for (uint32_t k = 0; k < c->f->blocks[b].ninsts; k++) {
             const uint8_t op = c->f->blocks[b].insts[k].op;
-            if (op == MOP_StackLow || op == MOP_StackNear) {
+            if (op == MOP_StackLow || op == MOP_StackNear || op == MOP_Poll) {
                 return true;
             }
         }
