@@ -28,11 +28,18 @@ static const char *errno_message(MsArena *a, int err_no) {
     return text;
 }
 
+void ms_project_error_unsupported(MsProjectError *err, const char *what) {
+    *err = (MsProjectError){.kind = MS_PERR_UNSUPPORTED, .message = what};
+}
+
+bool ms_project_error_is_unsupported(const MsProjectError *err) { return err->kind == MS_PERR_UNSUPPORTED; }
+
 const char *ms_project_error_text(MsArena *a, const MsProjectError *err) {
     switch (err->kind) {
     case MS_PERR_PATH: return ms_arena_fmt(a, "%s %s: %s", err->op, err->path, errno_message(a, err->err_no)).ptr;
     case MS_PERR_ERRNO: return errno_message(a, err->err_no);
-    case MS_PERR_MESSAGE: return err->message;
+    case MS_PERR_MESSAGE:
+    case MS_PERR_UNSUPPORTED: return err->message;
     case MS_PERR_MANIFEST:
         return ms_arena_fmt(a, "%s:%u:%u: %s", err->file, err->line, err->column, ms_project_error_text(a, err->cause)).ptr;
     case MS_PERR_NONE: break;
@@ -46,6 +53,7 @@ bool ms_project_error_not_exist(const MsProjectError *err) {
     case MS_PERR_ERRNO: return err->err_no == ENOENT;
     case MS_PERR_MANIFEST: return ms_project_error_not_exist(err->cause);
     case MS_PERR_MESSAGE:
+    case MS_PERR_UNSUPPORTED:
     case MS_PERR_NONE: break;
     }
     return false;

@@ -129,3 +129,5 @@
 #include "emit/emit_qbe.c"
 #include "emit/emit_llvm.c"
 #include "project/path.c"
+#include "project/manifest.c"
+#include "project/resolve.c"

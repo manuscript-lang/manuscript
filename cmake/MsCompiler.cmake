@@ -53,7 +53,7 @@ foreach(file ${_tools})
 endforeach()
 
 # Unit tests of the checker and the driver; ctest runs them.
-foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test)
+foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test)
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
 ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" WITH_LIBMS TEST)

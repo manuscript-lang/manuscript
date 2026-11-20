@@ -13,7 +13,8 @@ typedef enum MsProjectErrorKind {
     MS_PERR_PATH,    /* a failed system call on a path: `op path: message` */
     MS_PERR_ERRNO,   /* a bare errno, as Go returns from symlink walks */
     MS_PERR_MESSAGE, /* any other text */
-    MS_PERR_MANIFEST /* `file:line:column: cause` */
+    MS_PERR_MANIFEST, /* `file:line:column: cause` */
+    MS_PERR_UNSUPPORTED /* a feature the C reader lacks: the caller hands the work to the Rust driver */
 } MsProjectErrorKind;
 
 typedef struct MsProjectError MsProjectError;
@@ -21,7 +22,7 @@ struct MsProjectError {
     MsProjectErrorKind kind;
     const char *op, *path;       /* MS_PERR_PATH */
     int err_no;                  /* MS_PERR_PATH, MS_PERR_ERRNO */
-    const char *message;         /* MS_PERR_MESSAGE */
+    const char *message;         /* MS_PERR_MESSAGE, MS_PERR_UNSUPPORTED (what is missing) */
     const char *file;            /* MS_PERR_MANIFEST: where it was found, and the cause */
     uint32_t line, column, offset;
     const MsProjectError *cause;
@@ -32,6 +33,8 @@ const char *ms_project_error_text(MsArena *a, const MsProjectError *err);
 /* True for ENOENT only (Go's os.IsNotExist), looking through a manifest location. */
 bool ms_project_error_not_exist(const MsProjectError *err);
 void ms_project_error_message(MsProjectError *err, const char *message);
+void ms_project_error_unsupported(MsProjectError *err, const char *what);
+bool ms_project_error_is_unsupported(const MsProjectError *err);
 void ms_project_error_path(MsProjectError *err, MsArena *a, const char *op, const char *path, int err_no);
 
 /* ---- paths (project/path.c): filepath.Clean, Join, Dir, Base, Ext, Abs, Rel, EvalSymlinks ---- */
@@ -51,5 +54,45 @@ MS_NODISCARD bool ms_path_rel(MsArena *a, const char *base, const char *target, 
 /* True when `rel` (from ms_path_rel) leaves its base directory. */
 bool ms_path_escapes(const char *rel);
 MS_NODISCARD bool ms_path_eval_symlinks(MsArena *a, const char *path, const char **out, MsProjectError *err);
+
+
+/* ---- ms.toml (project/manifest.c) ---- */
+
+/* An `[aliases]` entry: the name as written (`@lib`), its target made canonical, and where each was written. */
+typedef struct MsAlias {
+    const char *name, *target;
+    MsPos key_pos, value_pos;
+} MsAlias;
+
+/* A read manifest. This reader covers `[project]` (name, source, entry) and `[aliases]`; a manifest that uses
+ * anything else (version, effects, [embed], [dependencies], [effects], [workspace]) or is not valid TOML fails
+ * with MS_PERR_UNSUPPORTED, so the caller can hand the command to the Rust driver. */
+typedef struct MsProject {
+    const char *root;          /* canonical directory holding ms.toml */
+    const char *file;          /* base name of the manifest, as diagnostics print it */
+    const char *name;
+    const char *source;        /* canonical source directory */
+    const char *entry;         /* canonical entry file, "" for a library */
+    const char *configuration; /* the manifest text as read */
+    MsAlias *aliases;          /* sorted by name */
+    uint32_t alias_count;
+    MsPos location;            /* the [project] header */
+} MsProject;
+
+/* The nearest ms.toml in `filename`'s directory or above, NULL when there is none. */
+const char *ms_project_find_manifest(MsArena *a, const char *filename);
+MS_NODISCARD bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProjectError *err);
+
+/* ---- imports (project/resolve.c) ---- */
+
+/* Resolves a local import written in `importer` to a canonical file confined to the project root. Standard-library
+ * imports (`@std/`) belong to the checker and are not passed here. */
+MS_NODISCARD bool ms_project_resolve_import(MsArena *a, const MsProject *p, const char *importer, const char *path,
+                                            const char **out, MsProjectError *err);
+/* Canonicalises `path` (relative paths are under `root`, which is canonical) and rejects one that leaves `root`. */
+MS_NODISCARD bool ms_project_source_path(MsArena *a, const char *root, const char *path, const char **out,
+                                         MsProjectError *err);
+/* Go's strconv.Quote, for `%q` in diagnostics. */
+const char *ms_project_quote(MsArena *a, const char *text);
 
 #endif
