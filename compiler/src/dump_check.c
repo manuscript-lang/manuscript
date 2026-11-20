@@ -252,6 +252,51 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
     }
 }
 
+static void dump_stmts(MsBuf *out, const MsCheck *c, const MsFacts *facts, const MsStmts *body) {
+    for (uint32_t k = 0; k < body->len; k++) {
+        const MsStmt *s = body->ptr[k];
+        switch ((MsStmtKind)s->kind) {
+        case MS_S_BIND: dump_expr(out, c, facts, s->u.bind.value); break;
+        case MS_S_RETURN:
+        case MS_S_CALL:
+            if (s->u.expr != NULL) {
+                dump_expr(out, c, facts, s->u.expr);
+            }
+            break;
+        case MS_S_IF:
+            dump_expr(out, c, facts, s->u.branch.cond);
+            dump_stmts(out, c, facts, &s->u.branch.body);
+            dump_stmts(out, c, facts, &s->u.branch.else_body);
+            break;
+        case MS_S_WHILE:
+            dump_expr(out, c, facts, s->u.loop.cond);
+            dump_stmts(out, c, facts, &s->u.loop.body);
+            break;
+        case MS_S_ASSIGN:
+        case MS_S_BREAK:
+        case MS_S_CONTINUE:
+        case MS_S_FOR: break;
+        }
+    }
+}
+
+/* The declaration's diagnostics: those of the module on lines from its own to the next
+ * declaration's, as the Rust oracle attributes them. */
+static bool dump_in_function(const MsModuleRow *row, uint32_t index, const MsDiag *diag) {
+    const uint32_t first = row->syntax->decls[index]->pos.line;
+    const uint32_t end = index + 1 < row->syntax->ndecls ? row->syntax->decls[index + 1]->pos.line : UINT32_MAX;
+    return diag->pos.line >= first && diag->pos.line < end;
+}
+
+static bool dump_function_dirty(const MsModuleRow *row, uint32_t index) {
+    for (uint32_t k = 0; k < row->ndiags; k++) {
+        if (dump_in_function(row, index, &row->diags[k].diag)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
     const MsModuleRow *row = &c->mods[m];
     const MsFacts *facts = row->facts;
@@ -260,12 +305,25 @@ void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
         if (d->kind != MS_D_FN || !facts->body_checked[d->id]) {
             continue;
         }
-        ms_buf_printf(out, "fn %u:%u clean\n", d->pos.line, d->pos.column);
-        for (uint32_t k = 0; k < d->u.fn.body.len; k++) {
-            const MsStmt *s = d->u.fn.body.ptr[k];
-            const MsExpr *value = s->kind == MS_S_BIND ? s->u.bind.value : s->u.expr;
-            if (value != NULL) {
-                dump_expr(out, c, facts, value);
+        ms_buf_printf(out, "fn %u:%u %s\n", d->pos.line, d->pos.column, dump_function_dirty(row, i) ? "dirty" : "clean");
+        dump_stmts(out, c, facts, &d->u.fn.body);
+    }
+}
+
+void ms_dump_module_ownership(MsBuf *out, const MsCheck *c, MsModId m) {
+    const MsModuleRow *row = &c->mods[m];
+    const MsFacts *facts = row->facts;
+    for (uint32_t i = 0; facts != NULL && facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        if (d->kind != MS_D_FN || !facts->body_checked[d->id]) {
+            continue;
+        }
+        ms_buf_printf(out, "fn %u:%u\n", d->pos.line, d->pos.column);
+        for (uint32_t k = 0; k < row->ndiags; k++) {
+            const MsDiag *diag = &row->diags[k].diag;
+            if (dump_in_function(row, i, diag)) {
+                ms_buf_printf(out, "diag %u:%u: %.*s\n", diag->pos.line, diag->pos.column, (int)diag->message.len,
+                              diag->message.ptr);
             }
         }
     }

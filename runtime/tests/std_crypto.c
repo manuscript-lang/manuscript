@@ -1,6 +1,8 @@
 /* Replays runtime/tests/oracle/crypto.tsv (recorded from Go's crypto packages) against runtime/std/crypto.c. */
 #include <stdio.h>
 
+#include "append.h"
+
 #include "ms_rt/crypto.h"
 #include "fake_rt.h"
 
@@ -48,13 +50,13 @@ static void result(char *dst, int st, vec *out) {
         snprintf(dst + strlen(dst), RESULT_CAP - strlen(dst), "err %s", status_name(st));
         return;
     }
-    strcat(dst, "ok ");
+    msx_append(dst, RESULT_CAP, "ok ");
     if (out->len > 1024) {
         vec d = {NULL, 0, 0}, one = {out->ptr, out->len, out->len};
         char tmp[16] = "";
         msstd_crypto_digest(3, &one, &d);
         snprintf(tmp, sizeof tmp, "x#%zu:", out->len);
-        strcat(dst, tmp);
+        msx_append(dst, RESULT_CAP, "%s", tmp);
         put_hex(dst + strlen(dst), &d);
         memmove(dst + strlen(dst) - 2 * d.len - 1, dst + strlen(dst) - 2 * d.len, 2 * d.len + 1); /* drop the extra x */
         free(d.ptr);
@@ -78,13 +80,18 @@ int main(void) {
         if (line[0] == '#' || !line[0]) continue;
         char *field[16];
         int nf = 0, arrow = -1;
-        for (char *p = strtok(line, "\t"); p && nf < 16; p = strtok(NULL, "\t")) {
-            if (!strcmp(p, "=>")) arrow = nf;
-            field[nf++] = p;
+        for (char *p = line; *p && nf < 16;) { /* tab-separated fields */
+            p += strspn(p, "\t");
+            if (!*p) break;
+            char *start = p;
+            p += strcspn(p, "\t");
+            if (*p) *p++ = 0;
+            if (!strcmp(start, "=>")) arrow = nf;
+            field[nf++] = start;
         }
         want[0] = 0;
-        for (int i = arrow + 1; i < nf; i++) strcat(strcat(want, i > arrow + 1 ? "\t" : ""), field[i]);
-        if (arrow == nf - 1) strcat(want, ""); /* an empty result: the oracle writes nothing after the arrow */
+        for (int i = arrow + 1; i < nf; i++) msx_append(want, sizeof want, "%s%s", i > arrow + 1 ? "\t" : "", field[i]);
+        if (arrow == nf - 1) msx_append(want, sizeof want, "%s", ""); /* an empty result: the oracle writes nothing after the arrow */
         char **a = field + 1;
         got[0] = 0;
         const char *kind = field[0];
@@ -99,7 +106,7 @@ int main(void) {
         } else if (!strcmp(kind, "hmac")) {
             vec k = from_hex(a[1]), d = from_hex(a[2]);
             st = msstd_crypto_hmac(alg, &k, &d, &out);
-            strcat(got, "ok ");
+            msx_append(got, sizeof got, "%s", "ok ");
             put_hex(got, &out);
             free(k.ptr), free(d.ptr);
         } else if (!strcmp(kind, "pbkdf2") || !strcmp(kind, "hkdf")) {
@@ -122,17 +129,17 @@ int main(void) {
             msstd_crypto_hasher_finish(h, &r1);
             msstd_crypto_hasher_finish(h, &r2);
             put_hex(got, &r1);
-            strcat(got, "\t");
+            msx_append(got, sizeof got, "%s", "\t");
             put_hex(got, &r2);
             ((MsObj *)h)->drop(h);
             free(d1.ptr), free(d2.ptr), free(key.ptr), free(r1.ptr), free(r2.ptr);
         } else if (!strcmp(kind, "cteq")) {
             vec l = from_hex(a[0]), r = from_hex(a[1]);
-            strcat(got, msstd_crypto_constant_time_equal(&l, &r) ? "1" : "0");
+            msx_append(got, sizeof got, "%s", msstd_crypto_constant_time_equal(&l, &r) ? "1" : "0");
             free(l.ptr), free(r.ptr);
         } else if (!strcmp(kind, "verify")) {
             vec k = from_hex(a[0]), d = from_hex(a[1]), s = from_hex(a[2]);
-            strcat(got, msstd_crypto_verify(&k, &d, &s) ? "1" : "0");
+            msx_append(got, sizeof got, "%s", msstd_crypto_verify(&k, &d, &s) ? "1" : "0");
             free(k.ptr), free(d.ptr), free(s.ptr);
         } else {
             vec x = from_hex(a[0]), y = nf - arrow > 3 || !strcmp(kind, "pubkey") ? (vec){0} : (vec){0};

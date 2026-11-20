@@ -1,7 +1,7 @@
 # The C half of the runtime archive: every source of runtime/{sys,core,io,net,std} for this target, compiled to
 # objects, plus every member of the static libraries those sources include. The target `ms_runtime` leaves
 #   c-objects.txt   one path per line: our objects and the library members, which `ar` adds to the runtime archive
-#   c-features.txt  which optional parts the archive has (crypto, reactor), which the Rust build then leaves out
+#   c-features.txt  which optional parts the archive has (reactor), which the Rust build then leaves out
 # in the build folder. The linker takes a member only when a program reaches it.
 set(MS_RUNTIME_LAYERS sys core io net std)
 
@@ -59,12 +59,6 @@ foreach(source ${_sources})
   if(_rel MATCHES "^io/" AND NOT MS_GLIBC)
     continue()
   endif()
-  # The PCRE2 regex natives change the pattern dialect, so they join every target together (workstream W8):
-  # opt-in with MS_C_REGEX until Windows has the libraries too. Removal: delete this filter with `ms-std-regex`.
-  get_filename_component(_name "${source}" NAME)
-  if(_name MATCHES "^regex" AND NOT MS_C_REGEX)
-    continue()
-  endif()
   list(APPEND _selected "${source}")
   list(APPEND _used_libs ${_needs})
   get_filename_component(_dir "${source}" DIRECTORY)
@@ -84,9 +78,6 @@ list(REMOVE_DUPLICATES _used_libs)
 set(_features "")
 foreach(source ${_selected})
   get_filename_component(_name "${source}" NAME)
-  if(_name STREQUAL "crypto.c")
-    list(APPEND _features crypto)
-  endif()
   if(source MATCHES "/runtime/io/")
     list(APPEND _features reactor)
   endif()

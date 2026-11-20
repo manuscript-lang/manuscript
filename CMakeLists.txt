@@ -6,7 +6,6 @@ cmake_minimum_required(VERSION 3.20)
 # project (runtime/build_c.rs) with MS_TRIPLE naming the target. Cache variables:
 #   MS_TRIPLE      target triple of a runtime archive ("" = this host); picks the platform folders and flags.
 #   MS_C_LIBS      system (pkg-config) or prefix (MS_LIBS_PREFIX holds include/ and lib/lib*.a: pinned builds, MSYS2).
-#   MS_C_REGEX     compile the PCRE2 regex natives (runtime/std/regex*).
 #   MS_SANITIZE    ON: AddressSanitizer and UBSan (the tests).
 #   MS_CCACHE      OFF: do not use ccache even when installed.
 # Files are found by glob (CONFIGURE_DEPENDS), so adding a .c file under runtime/ needs no edit here.
@@ -17,10 +16,11 @@ set(MS_C_LIBS "system" CACHE STRING "system or prefix")
 set(MS_LIBS_PREFIX "" CACHE PATH "Folder with include/ and lib/ of the C libraries when MS_C_LIBS=prefix")
 set(MS_LIBS_DEFINES "" CACHE STRING "Extra definitions for the libraries' headers")
 option(MS_LIBS_IDIRAFTER "Search MS_LIBS_PREFIX/include after the compiler's own (MSYS2)" OFF)
-option(MS_C_REGEX "Compile the regex natives" OFF)
 option(MS_SANITIZE "Build the tests with AddressSanitizer and UBSan" OFF)
 option(MS_CCACHE "Use ccache when installed" ON)
-option(MS_BUILD_TESTS "Build the C tests" ON)
+option(MS_BUILD_RUNTIME "Configure the runtime archive and its libraries" ON)
+option(MS_BUILD_COMPILER "Configure the C compiler, its tools and tests (compiler/)" ON)
+option(MS_BUILD_TESTS "Build the C runtime tests" ON)
 
 if(MS_CCACHE AND NOT CMAKE_C_COMPILER_LAUNCHER)
   find_program(MS_CCACHE_PROGRAM ccache)
@@ -35,9 +35,14 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(cmake/MsPlatform.cmake)
-include(cmake/MsLibs.cmake)
-include(cmake/MsRuntime.cmake)
-if(MS_BUILD_TESTS)
-  enable_testing()
+if(MS_BUILD_RUNTIME)
+  include(cmake/MsLibs.cmake)
+  include(cmake/MsRuntime.cmake)
+endif()
+enable_testing()
+if(MS_BUILD_RUNTIME AND MS_BUILD_TESTS)
   include(cmake/MsTests.cmake)
+endif()
+if(MS_BUILD_COMPILER)
+  include(cmake/MsCompiler.cmake)
 endif()
