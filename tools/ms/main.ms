@@ -17,6 +17,7 @@ import (
 	Invocation, parse_invocation, requests_help, takes_value, validate from "./args.ms",
 	rust_cli from "./bridge.ms",
 	run_explain from "./explain.ms",
+	run_fmt from "./fmt.ms",
 	command_help, command_names, overview from "./help.ms",
 	run_init from "./init.ms",
 	run_profile from "./profile.ms",
@@ -300,6 +301,13 @@ export fn run(given: List[String]) Int:
 	if args[0] == "init": return run_init(args.drop(1))
 	if args[0] == "explain": return run_explain_command(args.drop(1))
 	if args[0] == "verify": return run_verify(args.drop(1))
+	if args[0] == "fmt":
+		if done := run_fmt(args.drop(1)):
+			out(done.stdout)
+			err(done.stderr)
+			return done.status
+		return delegate(args)
+
 	if is_source_command(args[0]): return run_source_command(args, usage_text)
 
 	return delegate(args)
