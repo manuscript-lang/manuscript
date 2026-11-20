@@ -86,7 +86,7 @@ void process_result(DNSResolver *resolv) {
 namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto resolv = static_cast<DNSResolver *>(w->data);
-  resolv->on_read(w->fd);
+  (void)resolv->on_read(w->fd);
   process_result(resolv);
 }
 } // namespace
@@ -94,7 +94,7 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   auto resolv = static_cast<DNSResolver *>(w->data);
-  resolv->on_write(w->fd);
+  (void)resolv->on_write(w->fd);
   process_result(resolv);
 }
 } // namespace
@@ -102,7 +102,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 namespace {
 void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto resolv = static_cast<DNSResolver *>(w->data);
-  resolv->on_timeout();
+  (void)resolv->on_timeout();
   process_result(resolv);
 }
 } // namespace
@@ -116,12 +116,7 @@ void stop_ev(struct ev_loop *loop,
 }
 } // namespace
 
-DNSResolver::DNSResolver(struct ev_loop *loop)
-  : result_{},
-    loop_(loop),
-    channel_(nullptr),
-    family_(AF_UNSPEC),
-    status_(DNSResolverStatus::IDLE) {
+DNSResolver::DNSResolver(struct ev_loop *loop) : loop_(loop) {
   ev_timer_init(&timer_, timeoutcb, 0., 0.);
   timer_.data = this;
 }
@@ -137,13 +132,14 @@ DNSResolver::~DNSResolver() {
   ev_timer_stop(loop_, &timer_);
 }
 
-int DNSResolver::resolve(const std::string_view &name, int family) {
+std::expected<void, Error> DNSResolver::resolve(std::string_view name,
+                                                int family) {
   if (status_ != DNSResolverStatus::IDLE) {
-    return -1;
+    return std::unexpected{Error::DNS};
   }
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Start resolving host " << name << " in IPv"
+  if (log_enabled(INFO)) {
+    Log{INFO} << "Start resolving host " << name << " in IPv"
               << (family == AF_INET ? "4" : "6");
   }
 
@@ -154,47 +150,53 @@ int DNSResolver::resolve(const std::string_view &name, int family) {
 
   auto &dnsconf = get_config()->dns;
 
-  ares_options opts{};
-  opts.sock_state_cb = sock_state_cb;
-  opts.sock_state_cb_data = this;
-  opts.timeout = static_cast<int>(dnsconf.timeout.lookup * 1000);
-  opts.tries = static_cast<int>(dnsconf.max_try);
+  ares_options opts{
+    .timeout = static_cast<int>(dnsconf.timeout.lookup * 1000),
+    .tries = static_cast<int>(dnsconf.max_try),
+    .sock_state_cb = sock_state_cb,
+    .sock_state_cb_data = this,
+  };
 
   auto optmask = ARES_OPT_SOCK_STATE_CB | ARES_OPT_TIMEOUTMS | ARES_OPT_TRIES;
 
   ares_channel chan;
   rv = ares_init_options(&chan, &opts, optmask);
   if (rv != ARES_SUCCESS) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "ares_init_options failed: " << ares_strerror(rv);
+    if (log_enabled(INFO)) {
+      Log{INFO} << "ares_init_options failed: " << ares_strerror(rv);
     }
     status_ = DNSResolverStatus::ERROR;
-    return -1;
+    return std::unexpected{Error::DNS};
   }
 
   channel_ = chan;
   status_ = DNSResolverStatus::RUNNING;
 
-  ares_addrinfo_hints hints{};
-  hints.ai_family = family_;
+  ares_addrinfo_hints hints{
+    .ai_family = family_,
+  };
 
   ares_getaddrinfo(channel_, name_.data(), nullptr, &hints, addrinfo_cb, this);
   reset_timeout();
 
-  return 0;
+  return {};
 }
 
-int DNSResolver::on_read(int fd) { return handle_event(fd, ARES_SOCKET_BAD); }
+std::expected<void, Error> DNSResolver::on_read(int fd) {
+  return handle_event(fd, ARES_SOCKET_BAD);
+}
 
-int DNSResolver::on_write(int fd) { return handle_event(ARES_SOCKET_BAD, fd); }
+std::expected<void, Error> DNSResolver::on_write(int fd) {
+  return handle_event(ARES_SOCKET_BAD, fd);
+}
 
-int DNSResolver::on_timeout() {
+std::expected<void, Error> DNSResolver::on_timeout() {
   return handle_event(ARES_SOCKET_BAD, ARES_SOCKET_BAD);
 }
 
-int DNSResolver::handle_event(int rfd, int wfd) {
+std::expected<void, Error> DNSResolver::handle_event(int rfd, int wfd) {
   if (status_ == DNSResolverStatus::IDLE) {
-    return -1;
+    return std::unexpected{Error::DNS};
   }
 
   ares_process_fd(channel_, rfd, wfd);
@@ -202,11 +204,11 @@ int DNSResolver::handle_event(int rfd, int wfd) {
   switch (status_) {
   case DNSResolverStatus::RUNNING:
     reset_timeout();
-    return 0;
+    return {};
   case DNSResolverStatus::OK:
-    return 0;
+    return {};
   case DNSResolverStatus::ERROR:
-    return -1;
+    return std::unexpected{Error::DNS};
   default:
     // Unreachable
     assert(0);
@@ -236,7 +238,7 @@ DNSResolverStatus DNSResolver::get_status(Address *result) const {
   }
 
   if (result) {
-    memcpy(result, &result_, sizeof(result_));
+    *result = result_;
   }
 
   return status_;
@@ -297,8 +299,8 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
   ev_timer_stop(loop_, &timer_);
 
   if (status != ARES_SUCCESS) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Name lookup for " << name_
+    if (log_enabled(INFO)) {
+      Log{INFO} << "Name lookup for " << name_
                 << " failed: " << ares_strerror(status);
     }
     status_ = DNSResolverStatus::ERROR;
@@ -309,24 +311,32 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
 
   for (; ap; ap = ap->ai_next) {
     switch (ap->ai_family) {
-    case AF_INET:
+    case AF_INET: {
       status_ = DNSResolverStatus::OK;
-      result_.len = sizeof(result_.su.in);
 
-      assert(sizeof(result_.su.in) == ap->ai_addrlen);
+      sockaddr_in sa;
 
-      memcpy(&result_.su.in, ap->ai_addr, sizeof(result_.su.in));
+      assert(sizeof(sa) == ap->ai_addrlen);
+
+      memcpy(&sa, ap->ai_addr, sizeof(sa));
+
+      result_.skaddr.emplace<sockaddr_in>(sa);
 
       break;
-    case AF_INET6:
+    }
+    case AF_INET6: {
       status_ = DNSResolverStatus::OK;
-      result_.len = sizeof(result_.su.in6);
 
-      assert(sizeof(result_.su.in6) == ap->ai_addrlen);
+      sockaddr_in6 sa;
 
-      memcpy(&result_.su.in6, ap->ai_addr, sizeof(result_.su.in6));
+      assert(sizeof(sa) == ap->ai_addrlen);
+
+      memcpy(&sa, ap->ai_addr, sizeof(sa));
+
+      result_.skaddr.emplace<sockaddr_in6>(sa);
 
       break;
+    }
     default:
       continue;
     }
@@ -335,8 +345,8 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
   }
 
   if (!ap) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Name lookup for " << name_
+    if (log_enabled(INFO)) {
+      Log{INFO} << "Name lookup for " << name_
                 << " failed: no address returned";
     }
     status_ = DNSResolverStatus::ERROR;
@@ -344,9 +354,9 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
   }
 
   if (status_ == DNSResolverStatus::OK) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Name lookup succeeded: " << name_ << " -> "
-                << util::numeric_name(&result_.su.sa, result_.len);
+    if (log_enabled(INFO)) {
+      Log{INFO} << "Name lookup succeeded: " << name_ << " -> "
+                << util::numeric_name(result_.as_sockaddr(), result_.size());
     }
     return;
   }
@@ -355,9 +365,9 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
 }
 
 void DNSResolver::set_complete_cb(CompleteCb cb) {
-  completeCb_ = std::move(cb);
+  complete_cb_ = std::move(cb);
 }
 
-CompleteCb DNSResolver::get_complete_cb() const { return completeCb_; }
+CompleteCb DNSResolver::get_complete_cb() const { return complete_cb_; }
 
 } // namespace shrpx

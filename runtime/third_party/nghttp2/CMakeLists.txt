@@ -24,13 +24,13 @@
 
 cmake_minimum_required(VERSION 3.14)
 # XXX using 1.8.90 instead of 1.9.0-DEV
-project(nghttp2 VERSION 1.66.0 LANGUAGES C)
+project(nghttp2 VERSION 1.71.0 LANGUAGES C)
 
 # See versioning rule:
 #  https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-set(LT_CURRENT  42)
-set(LT_REVISION 5)
-set(LT_AGE      28)
+set(LT_CURRENT  44)
+set(LT_REVISION 0)
+set(LT_AGE      30)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(Version)
@@ -71,24 +71,8 @@ if(WITH_WOLFSSL)
 else()
   find_package(OpenSSL 1.1.1)
 endif()
-find_package(Libngtcp2 1.12.0)
-if(OPENSSL_FOUND)
-  find_package(Libngtcp2_crypto_quictls 1.12.0)
-  if(LIBNGTCP2_CRYPTO_QUICTLS_FOUND)
-    set(HAVE_LIBNGTCP2_CRYPTO_QUICTLS 1)
-  endif()
-  find_package(Libngtcp2_crypto_ossl 1.12.0)
-  if(LIBNGTCP2_CRYPTO_OSSL_FOUND)
-    set(HAVE_LIBNGTCP2_CRYPTO_OSSL 1)
-  endif()
-endif()
-if(WOLFSSL_FOUND)
-  find_package(Libngtcp2_crypto_wolfssl 1.12.0)
-  if(LIBNGTCP2_CRYPTO_WOLFSSL_FOUND)
-    set(HAVE_LIBNGTCP2_CRYPTO_WOLFSSL 1)
-  endif()
-endif()
-find_package(Libnghttp3 1.1.0)
+find_package(Libngtcp2 1.23.0)
+find_package(Libnghttp3 1.17.0)
 if(WITH_LIBBPF)
   find_package(Libbpf 0.7.0)
   if(NOT LIBBPF_FOUND)
@@ -142,7 +126,7 @@ endif()
 
 if(NOT ENABLE_LIB_ONLY)
   include(ExtractValidFlags)
-  foreach(_cxx1x_flag -std=c++20)
+  foreach(_cxx1x_flag -std=c++23)
     extract_valid_cxx_flags(_cxx1x_flag_supported ${_cxx1x_flag})
     if(_cxx1x_flag_supported)
       set(CXX1XCXXFLAGS ${_cxx1x_flag})
@@ -200,6 +184,7 @@ if(NOT ENABLE_LIB_ONLY AND OPENSSL_FOUND)
   if(WIN32)
     set(CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}" "ws2_32" "bcrypt")
   endif()
+  check_symbol_exists("LIBRESSL_VERSION_NUMBER" "openssl/opensslv.h" LIBRESSL_FOUND)
   if(ENABLE_HTTP3)
     check_symbol_exists(SSL_provide_quic_data "openssl/ssl.h" HAVE_SSL_PROVIDE_QUIC_DATA)
     if(NOT HAVE_SSL_PROVIDE_QUIC_DATA)
@@ -286,11 +271,39 @@ if(ENABLE_APP AND NOT (ZLIB_FOUND AND (OPENSSL_FOUND OR WOLFSSL_FOUND) AND LIBEV
   message(FATAL_ERROR "Applications were requested (ENABLE_APP=1) but dependencies are not met.")
 endif()
 
-# HTTP/3 requires libngtcp2 + (quictls/openssl +
-# libngtcp2_crypto_quictls, wolfSSL + libngtcp2_crypto_wolfssl, or
-# openssl/openssl + libngtcp2_crypto_ossl) and libnghttp3.
+if(ENABLE_HTTP3)
+  if(HAVE_SSL_PROVIDE_QUIC_DATA AND NOT LIBRESSL_FOUND)
+    find_package(Libngtcp2_crypto_quictls 1.23.0)
+    if(LIBNGTCP2_CRYPTO_QUICTLS_FOUND)
+      set(HAVE_LIBNGTCP2_CRYPTO_QUICTLS 1)
+    endif()
+  elseif(HAVE_SSL_PROVIDE_QUIC_DATA AND LIBRESSL_FOUND)
+    find_package(Libngtcp2_crypto_libressl 1.23.0)
+    if(LIBNGTCP2_CRYPTO_LIBRESSL_FOUND)
+      set(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL 1)
+    endif()
+  elseif(HAVE_WOLFSSL_SSL_PROVIDE_QUIC_DATA)
+    find_package(Libngtcp2_crypto_wolfssl 1.23.0)
+    if(LIBNGTCP2_CRYPTO_WOLFSSL_FOUND)
+      set(HAVE_LIBNGTCP2_CRYPTO_WOLFSSL 1)
+    endif()
+  elseif(HAVE_SSL_SET_QUIC_TLS_CBS)
+    find_package(Libngtcp2_crypto_ossl 1.23.0)
+    if(LIBNGTCP2_CRYPTO_OSSL_FOUND)
+      set(HAVE_LIBNGTCP2_CRYPTO_OSSL 1)
+    endif()
+  endif()
+endif()
+
+# HTTP/3 requires libngtcp2 + nghttp3 + one of:
+#
+# - quictls/openssl + libngtcp2_crypto_quictls
+# - libressl + libngtcp2_crypto_libressl
+# - wolfSSL + libngtcp2_crypto_wolfssl
+# - openssl/openssl + libngtcp2_crypto_ossl
 if(ENABLE_HTTP3 AND NOT (LIBNGTCP2_FOUND AND LIBNGHTTP3_FOUND AND
-      ((HAVE_SSL_PROVIDE_QUIC_DATA AND LIBNGTCP2_CRYPTO_QUICTLS_FOUND) OR
+      ((HAVE_SSL_PROVIDE_QUIC_DATA AND NOT LIBRESSL_FOUND AND LIBNGTCP2_CRYPTO_QUICTLS_FOUND) OR
+	(HAVE_SSL_PROVIDE_QUIC_DATA AND LIBRESSL_FOUND AND LIBNGTCP2_CRYPTO_LIBRESSL_FOUND) OR
 	(HAVE_WOLFSSL_SSL_PROVIDE_QUIC_DATA AND LIBNGTCP2_CRYPTO_WOLFSSL_FOUND) OR
 	(HAVE_SSL_SET_QUIC_TLS_CBS AND LIBNGTCP2_CRYPTO_OSSL_FOUND))))
   message(FATAL_ERROR "HTTP/3 was requested (ENABLE_HTTP3=1) but dependencies are not met.")
@@ -519,6 +532,7 @@ message(STATUS "summary of build options:
       Libc-ares:      ${HAVE_LIBCARES} (LIBS='${LIBCARES_LIBRARIES}')
       Libngtcp2:      ${HAVE_LIBNGTCP2} (LIBS='${LIBNGTCP2_LIBRARIES}')
       Libngtcp2_crypto_quictls: ${HAVE_LIBNGTCP2_CRYPTO_QUICTLS} (LIBS='${LIBNGTCP2_CRYPTO_QUICTLS_LIBRARIES}')
+      Libngtcp2_crypto_libressl: ${HAVE_LIBNGTCP2_CRYPTO_LIBRESSL} (LIBS='${LIBNGTCP2_CRYPTO_LIBRESSL_LIBRARIES}')
       Libngtcp2_crypto_wolfssl: ${HAVE_LIBNGTCP2_CRYPTO_WOLFSSL} (LIBS='${LIBNGTCP2_CRYPTO_WOLFSSL_LIBRARIES}')
       Libnghttp3:     ${HAVE_LIBNGHTTP3} (LIBS='${LIBNGHTTP3_LIBRARIES}')
       Libbpf:         ${HAVE_LIBBPF} (LIBS='${LIBBPF_LIBRARIES}')

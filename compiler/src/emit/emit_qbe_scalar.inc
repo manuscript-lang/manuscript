@@ -290,7 +290,7 @@ static bool qbe_pointer_op(QCx *c, const MirInst *inst, bool *ok) {
     case MOP_FFloor: ms_buf_printf(o, "\t%%v%u =d call $floor(d %%v%u)\n", inst->res, a[0]); return true;
     case MOP_FCeil: ms_buf_printf(o, "\t%%v%u =d call $ceil(d %%v%u)\n", inst->res, a[0]); return true;
     case MOP_FTrunc: ms_buf_printf(o, "\t%%v%u =d call $trunc(d %%v%u)\n", inst->res, a[0]); return true;
-    case MOP_VoidConst: return true;
+    case MOP_VoidConst: case MOP_DepthLeave: return true; /* nothing to write */
     default: return false;
     }
 }
@@ -299,7 +299,7 @@ static bool qbe_pointer_op(QCx *c, const MirInst *inst, bool *ok) {
 static uint32_t qbe_splits(const MirModule *m, const MirFunc *f, const MirInst *inst) {
     switch ((MirOp)inst->op) {
     case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk: case MOP_IntOverflowIf:
-    case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk:
+    case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk: case MOP_Poll:
         return 1;
     case MOP_SDivChk:
         return 2;

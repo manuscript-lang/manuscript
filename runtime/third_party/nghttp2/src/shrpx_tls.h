@@ -29,6 +29,7 @@
 
 #include <vector>
 #include <mutex>
+#include <expected>
 
 #include "ssl_compat.h"
 
@@ -36,20 +37,23 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
 #  include <wolfssl/openssl/err.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
 #  include <openssl/err.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ev.h>
 
 #ifdef HAVE_NEVERBLEED
 #  include <neverbleed.h>
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
 #include "network.h"
 #include "shrpx_config.h"
 #include "shrpx_router.h"
+#include "errors.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -75,6 +79,9 @@ struct TLSContextData {
   // SCT data formatted so that this can be directly sent as
   // extension_data of signed_certificate_timestamp.
   std::vector<uint8_t> sct_data;
+  // cert_type is the type of certificate (e.g.,
+  // NGHTTP2_CERT_TYPE_ECDSA).
+  int cert_type;
 };
 
 // Create server side SSL_CTX
@@ -84,39 +91,42 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #ifdef HAVE_NEVERBLEED
                             ,
                             neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 );
 
 // Create client side SSL_CTX.  This does not configure ALPN settings.
 SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb,
-#endif // HAVE_NEVERBLEED
-  const std::string_view &cacert, const std::string_view &cert_file,
-  const std::string_view &private_key_file);
+#endif // defined(HAVE_NEVERBLEED)
+  std::string_view cacert, std::string_view cert_file,
+  std::string_view private_key_file);
 
-ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
-                                 socklen_t addrlen, const UpstreamAddr *faddr);
+std::expected<std::unique_ptr<ClientHandler>, Error>
+accept_connection(Worker *worker, int fd, const sockaddr *addr,
+                  socklen_t addrlen, const UpstreamAddr *faddr);
 
 // Check peer's certificate against given |address| and |host|.
-int check_cert(SSL *ssl, const Address *addr, const std::string_view &host);
+std::expected<void, Error> check_cert(SSL *ssl, const Address *addr,
+                                      std::string_view host);
 // Check peer's certificate against given host name described in
 // |addr| and numeric address in |raddr|.  Note that |raddr| might not
 // point to &addr->addr.
-int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr);
+std::expected<void, Error> check_cert(SSL *ssl, const DownstreamAddr *addr,
+                                      const Address *raddr);
 
 // Verify |cert| using numeric IP address.  |hostname| and |addr|
-// should contain the same numeric IP address.  This function returns
-// 0 if it succeeds, or -1.
-int verify_numeric_hostname(X509 *cert, const std::string_view &hostname,
-                            const Address *addr);
+// should contain the same numeric IP address.
+std::expected<void, Error> verify_numeric_hostname(X509 *cert,
+                                                   std::string_view hostname,
+                                                   const Address *addr);
 
-// Verify |cert| using DNS name hostname.  This function returns 0 if
-// it succeeds, or -1.
-int verify_dns_hostname(X509 *cert, const std::string_view &hostname);
+// Verify |cert| using DNS name hostname.
+std::expected<void, Error> verify_dns_hostname(X509 *cert,
+                                               std::string_view hostname);
 
 struct WildcardRevPrefix {
-  WildcardRevPrefix(const std::string_view &prefix, size_t idx)
+  WildcardRevPrefix(std::string_view prefix, size_t idx)
     : prefix(std::ranges::begin(prefix), std::ranges::end(prefix)), idx(idx) {}
 
   // "Prefix" of wildcard pattern.  It is reversed from original form.
@@ -135,63 +145,68 @@ struct WildcardPattern {
 
 class CertLookupTree {
 public:
-  CertLookupTree();
+  CertLookupTree() = default;
 
   // Adds hostname pattern |hostname| to the lookup tree, associating
   // value |index|.  When the queried host matches this pattern,
-  // |index| is returned.  We support wildcard pattern.  The left most
-  // '*' is considered as wildcard character, and it must match at
-  // least one character.  If the same pattern has been already added,
-  // this function does not alter the tree, and returns the existing
-  // matching index.
+  // |index| is returned.  We support wildcard pattern.  If the left
+  // most complete label is '*', it is considered as wildcard
+  // character, and it must match at least one character.  The
+  // wildcard rule is subject to RFC 9525.  If the same pattern has
+  // been already added, this function does not alter the tree, and
+  // returns the existing matching index.
   //
   // The caller should lower-case |hostname| since this function does
   // do that, and lookup function performs case-sensitive match.
   //
-  // TODO Treat wildcard pattern described as RFC 6125.
-  //
-  // This function returns the index.  It returns -1 if it fails
-  // (e.g., hostname is too long).  If the returned index equals to
-  // |index|, then hostname is added to the tree with the value
-  // |index|.  If it is not -1, and does not equal to |index|, same
-  // hostname has already been added to the tree.
-  ssize_t add_cert(const std::string_view &hostname, size_t index);
+  // This function returns the index.  It may fail with error (e.g.,
+  // hostname is too long).  If the returned index equals to |index|,
+  // then hostname is added to the tree with the value |index|.
+  // Otherwise, same hostname has already been added to the tree.
+  std::expected<size_t, Error> add_cert(std::string_view hostname,
+                                        size_t index);
 
   // Looks up index using the given |hostname|.  The exact match takes
-  // precedence over wildcard match.  For wildcard match, longest
-  // match (sum of matched suffix and prefix length in bytes) is
-  // preferred, breaking a tie with longer suffix.
+  // precedence over wildcard match.
   //
   // The caller should lower-case |hostname| since this function
   // performs case-sensitive match.
-  ssize_t lookup(const std::string_view &hostname);
+  std::expected<size_t, Error> lookup(std::string_view hostname);
 
   // Dumps the contents of this lookup tree to stderr.
   void dump() const;
 
 private:
-  // Exact match
-  Router router_;
-  // Wildcard reversed suffix match.  The returned index is into
-  // wildcard_patterns_.
-  Router rev_wildcard_router_;
-  // Stores wildcard suffix patterns.
-  std::vector<WildcardPattern> wildcard_patterns_;
+  struct Hash {
+    using is_transparent = void;
+
+    size_t operator()(std::string_view s) const noexcept {
+      return std::hash<std::string_view>{}(s);
+    }
+
+    size_t operator()(const std::string &s) const noexcept {
+      return std::hash<std::string_view>{}(s);
+    }
+  };
+  // patterns_ contains the server identities in TLS certificate.  If
+  // it starts with '.', it is a wildcard.  We do not add any identity
+  // that starts with '.' and is not wildcard.
+  std::unordered_map<std::string, size_t, Hash, std::equal_to<>> patterns_;
 };
 
 // Adds hostnames in certificate in |ssl_ctx| to lookup tree |lt|.
 // The subjectAltNames and commonName are considered as eligible
 // hostname.  If there is at least one dNSName in subjectAltNames,
 // commonName is not considered.  |ssl_ctx| is also added to
-// |indexed_ssl_ctx|.  This function returns 0 if it succeeds, or -1.
-int cert_lookup_tree_add_ssl_ctx(
+// |indexed_ssl_ctx|.
+void cert_lookup_tree_add_ssl_ctx(
   CertLookupTree *lt, std::vector<std::vector<SSL_CTX *>> &indexed_ssl_ctx,
   SSL_CTX *ssl_ctx);
 
 // Returns true if |proto| is included in the
 // protocol list |protos|.
 bool in_proto_list(const std::vector<std::string_view> &protos,
-                   const std::string_view &proto);
+                   std::string_view proto);
 
 // Returns true if security requirement for HTTP/2 is fulfilled.
 bool check_http2_requirement(SSL *ssl);
@@ -202,8 +217,9 @@ bool check_http2_requirement(SSL *ssl);
 nghttp2_ssl_op_type
 create_tls_proto_mask(const std::vector<std::string_view> &tls_proto_list);
 
-int set_alpn_prefs(std::vector<unsigned char> &out,
-                   const std::vector<std::string_view> &protos);
+std::expected<void, Error>
+set_alpn_prefs(std::vector<unsigned char> &out,
+               const std::vector<std::string_view> &protos);
 
 // Setups server side SSL_CTX.  This function inspects get_config()
 // and if upstream_no_tls is true, returns nullptr.  Otherwise
@@ -220,7 +236,7 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 #ifdef HAVE_NEVERBLEED
                          ,
                          neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 );
 
 #ifdef ENABLE_HTTP3
@@ -231,15 +247,15 @@ SSL_CTX *setup_quic_server_ssl_context(
 #  ifdef HAVE_NEVERBLEED
   ,
   neverbleed_t *nb
-#  endif // HAVE_NEVERBLEED
+#  endif // defined(HAVE_NEVERBLEED)
 );
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 // Setups client side SSL_CTX.
 SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 );
 
 // Sets ALPN settings in |SSL| suitable for HTTP/2 use.
@@ -251,44 +267,39 @@ void setup_downstream_http1_alpn(SSL *ssl);
 // this function returns nullptr.
 std::unique_ptr<CertLookupTree> create_cert_lookup_tree();
 
-SSL *create_ssl(SSL_CTX *ssl_ctx);
+std::expected<SSL *, Error> create_ssl(SSL_CTX *ssl_ctx);
 
 // Returns true if SSL/TLS is enabled on upstream
 bool upstream_tls_enabled(const ConnectionConfig &connconf);
 
 // Performs TLS hostname match.  |pattern| can contain wildcard
-// character '*', which matches prefix of target hostname.  There are
+// character '*' as its left most complete label, which matches the
+// single left most non-empty label of the target hostname.  There are
 // several restrictions to make wildcard work.  The matching algorithm
-// is based on RFC 6125.
-bool tls_hostname_match(const std::string_view &pattern,
-                        const std::string_view &hostname);
+// is based on RFC 9525.
+bool tls_hostname_match(std::string_view pattern, std::string_view hostname);
 
 // Caches |session|.  |session| is serialized into ASN1
 // representation, and stored.  |t| is used as a time stamp.
 // Depending on the existing cache's time stamp, |session| might not
 // be cached.
 void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
-                           const std::chrono::steady_clock::time_point &t);
+                           std::chrono::steady_clock::time_point t);
 
-// Returns cached session associated |addr|.  If no cache entry is
-// found associated to |addr|, nullptr will be returned.
-SSL_SESSION *reuse_tls_session(const TLSSessionCache &addr);
-
-// Loads certificate form file |filename|.  The caller should delete
-// the returned object using X509_free().
-X509 *load_certificate(const char *filename);
+// Returns cached session associated |addr|.
+std::expected<SSL_SESSION *, Error>
+reuse_tls_session(const TLSSessionCache &addr);
 
 // Returns TLS version from |v|.  The returned value is defined in
-// OpenSSL header file.  This function returns -1 if |v| is not valid
-// TLS version string.
-int proto_version_from_string(const std::string_view &v);
+// OpenSSL header file.
+std::expected<int, Error> proto_version_from_string(std::string_view v);
 
-// Stores fingerprint of |x| in |dst| of length |dstlen|.  |md|
-// specifies hash function to use, and |dstlen| must be large enough
-// to include hash value (e.g., 32 bytes for SHA-256).  This function
-// returns the number of bytes written in |dst|, or -1.
-ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, const X509 *x,
-                             const EVP_MD *md);
+// Stores fingerprint of |x| in |dst|.  |md| specifies hash function
+// to use, and |dst| must be large enough to include hash value (e.g.,
+// 32 bytes for SHA-256).  This function returns the span that just
+// includes the fingerprint.
+std::expected<std::span<uint8_t>, Error>
+get_x509_fingerprint(std::span<uint8_t> dst, const X509 *x, const EVP_MD *md);
 
 // Returns subject name of |x|.  If this function fails to get subject
 // name, it returns an empty string.
@@ -302,16 +313,29 @@ std::string_view get_x509_issuer_name(BlockAllocator &balloc, X509 *x);
 // number, it returns an empty string.  number
 std::string_view get_x509_serial(BlockAllocator &balloc, X509 *x);
 
-// Fills NotBefore of |x| in |t|.  This function returns 0 if it
-// succeeds, or -1.
-int get_x509_not_before(time_t &t, X509 *x);
+// Returns NotBefore of |x|.
+std::expected<time_t, Error> get_x509_not_before(X509 *x);
 
-// Fills NotAfter of |x| in |t|.  This function returns 0 if it
-// succeeds, or -1.
-int get_x509_not_after(time_t &t, X509 *x);
+// Returns NotAfter of |x|.
+std::expected<time_t, Error> get_x509_not_after(X509 *x);
+
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+// Read HPKE private key from PEM file denoted by |path|.  It only
+// reads the first private key.
+std::expected<HPKEPrivateKey, Error>
+read_hpke_private_key_pem(BlockAllocator &balloc, std::string_view path);
+
+// Read the specific |type| of content from PEM file denoted by
+// |path|.  It only reads the first block of the specified type.
+std::expected<std::span<const uint8_t>, Error>
+read_pem(BlockAllocator &balloc, std::string_view path, std::string_view type);
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+
+// Return true if ECH was accepted in |ssl|.
+bool is_ech_accepted(SSL *ssl);
 
 } // namespace tls
 
 } // namespace shrpx
 
-#endif // SHRPX_TLS_H
+#endif // !defined(SHRPX_TLS_H)

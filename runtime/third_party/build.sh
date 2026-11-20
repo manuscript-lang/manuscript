@@ -54,6 +54,8 @@ case "$triple" in
     cmake_flags="$cmake_flags -DCMAKE_OSX_ARCHITECTURES=$cmake_arch -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
     ssl_extra="" ;;
 *)
+    # Programs link no libgcc or compiler-rt, so atomics must be inline (outline atomics call __aarch64_ldadd8_* and friends).
+    case "$arch" in aarch64|arm64) export CFLAGS="${CFLAGS:-} -mno-outline-atomics" ;; esac
     case "$arch" in aarch64|arm64) ssl_target=linux-aarch64 ;; x86_64) ssl_target=linux-x86_64 ;; *) ssl_target=linux-generic64 ;; esac
     ssl_extra="" ;;
 esac
@@ -73,23 +75,23 @@ if [ ! -f "$out/lib/libnghttp2.a" ]; then
     mkdir -p "$out/include/nghttp2"
     cp "$vendor/nghttp2"/lib/includes/nghttp2/nghttp2.h "$build"/lib/includes/nghttp2/nghttp2ver.h "$out/include/nghttp2/"
 fi
-# OpenSSL's Configure needs a perl that produces Unix-like paths (not Strawberry or ActiveState Perl, which report MSWin32)
-# and has IPC::Cmd, which loads Locale::Maketext::Simple; perl 5.42 dropped that module from the core, so a copy of it is
-# vendored in runtime/third_party/perl-lib. The shell's perl is tried first, then MSYS2's (Windows).
-export PERL5LIB="$vendor/perl-lib${PERL5LIB:+:$PERL5LIB}"
+# OpenSSL's Configure needs a perl that produces Unix-like paths (not Strawberry or ActiveState Perl, which report MSWin32).
+# The shell's perl is tried first, then MSYS2's (Windows).
 msys=${MS_MSYS2:-C:/msys64}
 perl=
 for candidate in perl "$msys/usr/bin/perl"; do
-    if "$candidate" -MIPC::Cmd -e 'exit($^O eq "MSWin32")' >/dev/null 2>&1; then perl=$candidate; break; fi
+    if "$candidate" -e 'exit($^O eq "MSWin32")' >/dev/null 2>&1; then perl=$candidate; break; fi
 done
 if [ ! -f "$out/lib/libssl.a" ]; then
-    [ -n "$perl" ] || { echo "build.sh: no Unix-style perl with IPC::Cmd (OpenSSL's Configure needs one; on Windows install MSYS2's perl)" >&2; exit 1; }
+    [ -n "$perl" ] || { echo "build.sh: no Unix-style perl (OpenSSL's Configure needs one; on Windows install MSYS2's perl)" >&2; exit 1; }
     # no-secure-memory: its mmap-locked heap needs kernel headers (<linux/mman.h>) that musl-gcc does not see, and we keep no keys in a locked heap.
-    perl_dir=; case "$perl" in */*) perl_dir=$(dirname "$perl"): ;; esac
+    perl_dir=; ssl_make=make
+    # MSYS2's perl records MSYS-style paths (/d/a/...) in configdata.pm, which only MSYS2's own make can resolve.
+    case "$perl" in */*) perl_dir=$(dirname "$perl"):; [ -x "$(dirname "$perl")/make" ] && ssl_make=$(dirname "$perl")/make ;; esac
     build=$root/build/$triple/openssl
     rm -rf "$build"; mkdir -p "$build"
     (cd "$build" && PATH="$perl_dir$PATH" CC="$cc" "$perl" "$vendor/openssl/Configure" "$ssl_target" $ssl_extra no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" >/dev/null \
-        && make -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
+        && "$ssl_make" -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
         && cp "$vendor/openssl"/include/openssl/*.h include/openssl/*.h "$out/include/openssl/")
 fi
 if [ ! -f "$out/lib/libz.a" ]; then
@@ -97,7 +99,7 @@ if [ ! -f "$out/lib/libz.a" ]; then
     build=$root/build/$triple/zlib
     zsrc=$vendor/zlib
     mkdir -p "$build"
-    for f in adler32 compress crc32 deflate infback inffast inflate inftrees trees uncompr zutil; do "$cc" -O2 -fPIC -I"$zsrc" -c "$zsrc/$f.c" -o "$build/$f.o"; done
+    for f in adler32 compress crc32 deflate infback inffast inflate inftrees trees uncompr zutil; do "$cc" -O2 -fPIC ${CFLAGS:-} -I"$zsrc" -c "$zsrc/$f.c" -o "$build/$f.o"; done
     ar rcs "$out/lib/libz.a" "$build"/*.o
     cp "$zsrc/zlib.h" "$zsrc/zconf.h" "$out/include/"
 fi
@@ -114,10 +116,10 @@ if [ ! -f "$out/lib/libcurl.a" ]; then
     # no extra libraries (psl, idn, ssh, brotli, zstd), no executable.
     build=$root/build/$triple/curl
     cmake -S "$vendor/curl" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
-        -DHTTP_ONLY=ON -DCURL_USE_OPENSSL=ON -DUSE_NGHTTP2=ON -DCURL_ZLIB=ON -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF \
-        -DUSE_LIBIDN2=OFF -DCURL_DISABLE_LDAP=ON -DCURL_USE_GSSAPI=OFF -DENABLE_UNIX_SOCKETS=ON -DCURL_ENABLE_SSL=ON \
+        -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_FILE=ON -DCURL_DISABLE_FTP=ON -DCURL_DISABLE_GOPHER=ON -DCURL_DISABLE_IMAP=ON -DCURL_DISABLE_LDAP=ON -DCURL_DISABLE_LDAPS=ON -DCURL_DISABLE_MQTT=ON -DCURL_DISABLE_POP3=ON -DCURL_DISABLE_RTSP=ON -DCURL_DISABLE_SMB=ON -DCURL_DISABLE_SMTP=ON -DCURL_DISABLE_TELNET=ON -DCURL_DISABLE_TFTP=ON -DCURL_USE_OPENSSL=ON -DUSE_NGHTTP2=ON -DCURL_ZLIB=ON -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF \
+        -DUSE_LIBIDN2=OFF -DCURL_USE_GSSAPI=OFF -DENABLE_UNIX_SOCKETS=ON -DCURL_ENABLE_SSL=ON \
         -DCMAKE_PREFIX_PATH="$out" -DOPENSSL_ROOT_DIR="$out" -DOPENSSL_USE_STATIC_LIBS=ON -DZLIB_ROOT="$out" \
-        -DNGHTTP2_INCLUDE_DIR="$out/include" -DNGHTTP2_LIBRARY="$out/lib/libnghttp2.a" -DCMAKE_USE_SCHANNEL=OFF >/dev/null
+        -DNGHTTP2_INCLUDE_DIR="$out/include" -DNGHTTP2_LIBRARY="$out/lib/libnghttp2.a" >/dev/null
     cmake --build "$build" -j "$jobs" >/dev/null
     cp "$build"/lib/libcurl.a "$out/lib/"
     mkdir -p "$out/include/curl"

@@ -2,16 +2,37 @@
 /* Unit tests for runtime/net/natives.c over loopback: lookup, a plain and a TLS dial, reads and writes through a
    connection handle, the end of a stream, share and close_if_last, addresses, TLS facts, and the refusals. The task
    waits are test doubles (there is no scheduler) and the runtime is the fake of fake_rt.h. */
-#include <poll.h>
-#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+#include <uv.h>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <afunix.h>
+#include <io.h>
+#include <process.h>
+#define poll_sockets(fds, count, ms) WSAPoll((fds), (ULONG)(count), (ms))
+#define remove_file _unlink
+#define current_pid _getpid
+#define close_socket closesocket
+typedef WSAPOLLFD PollFd;
+typedef SOCKET PollHandle;
+#else
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <time.h>
 #include <unistd.h>
+#define poll_sockets(fds, count, ms) poll((fds), (nfds_t)(count), (ms))
+#define remove_file unlink
+#define current_pid getpid
+#define close_socket close
+typedef struct pollfd PollFd;
+typedef int PollHandle;
+#endif
 
 #include "../io/reactor.h"
 #include "../net/addr_text.h"
@@ -38,9 +59,9 @@ bool ms_sched_cancel_pending(void) { return false; }
 void ms_sched_cancel_return(void) {}
 
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
-    struct pollfd p = {.fd = fd, .events = (short)((events & MS_WAIT_READ ? POLLIN : 0) | (events & MS_WAIT_WRITE ? POLLOUT : 0))};
+    PollFd p = {.fd = (PollHandle)fd, .events = (short)((events & MS_WAIT_READ ? POLLIN : 0) | (events & MS_WAIT_WRITE ? POLLOUT : 0))};
     const int ms = timeout_ns < 0 ? -1 : (int)(timeout_ns / 1000000 + 1);
-    const int r = poll(&p, 1, ms);
+    const int r = poll_sockets(&p, 1, ms);
     if (r == 0) return MS_WAIT_TIMEOUT;
     return (p.revents & POLLIN ? MS_WAIT_READ : 0) | (p.revents & POLLOUT ? MS_WAIT_WRITE : 0) | (p.revents & (POLLHUP | POLLERR) ? MS_WAIT_HUP : 0);
 }
@@ -52,24 +73,24 @@ static uint64_t pending_token;
 uint64_t msrt_token_new(uint32_t flags) { (void)flags; pending_token = ++next_token; return pending_token; }
 void msrt_token_free(uint64_t token) { (void)token; pending_token = 0; }
 /* Posts from other threads (the HTTP client's driver) are remembered until the token's park takes them. */
-static pthread_mutex_t post_lock = PTHREAD_MUTEX_INITIALIZER;
+static uv_mutex_t post_lock;
 static struct { uint64_t token, value; } posted[16];
 
 void msrt_token_post_remote(uint64_t token, uint64_t value) {
-    pthread_mutex_lock(&post_lock);
+    uv_mutex_lock(&post_lock);
     for (size_t i = 0; i < sizeof posted / sizeof posted[0]; i++) {
         if (posted[i].token == 0) { posted[i].token = token; posted[i].value = value; break; }
     }
-    pthread_mutex_unlock(&post_lock);
+    uv_mutex_unlock(&post_lock);
 }
 
 static bool take_post(uint64_t token, uint64_t *value) {
     bool found = false;
-    pthread_mutex_lock(&post_lock);
+    uv_mutex_lock(&post_lock);
     for (size_t i = 0; i < sizeof posted / sizeof posted[0]; i++) {
         if (posted[i].token == token) { *value = posted[i].value; posted[i].token = 0; found = true; break; }
     }
-    pthread_mutex_unlock(&post_lock);
+    uv_mutex_unlock(&post_lock);
     return found;
 }
 
@@ -97,13 +118,13 @@ uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) {
 /* A server that echoes what it reads until the client closes, then closes. With a context it speaks TLS. */
 typedef struct Server { MsSock listener; MsTlsCtx *context; } Server;
 
-static void *serve(void *argument) {
+static void serve(void *argument) {
     Server *server = argument;
     MsSock socket = MS_SOCK_INVALID;
     for (;;) {
         if (ms_sys_net_accept(server->listener, &socket, NULL) == MS_SYS_OK) break;
-        struct pollfd p = {.fd = (int)server->listener, .events = POLLIN};
-        poll(&p, 1, 100);
+        PollFd p = {.fd = (PollHandle)server->listener, .events = POLLIN};
+        poll_sockets(&p, 1, 100);
     }
     MsConnTable *table = ms_conn_table_new(2);
     const MsConnId id = ms_conn_open(table, (int)socket, MS_CONN_HTTP1);
@@ -118,7 +139,6 @@ static void *serve(void *argument) {
     }
     (void)ms_conn_close_io(table, id);
     ms_conn_table_free(table);
-    return NULL;
 }
 
 /* An HTTP/1.1 server for one connection, answering each request by its path until the client closes or a reply ends
@@ -169,7 +189,7 @@ static bool answer_http(MsConnTable *table, MsConnId id, const char *request, si
     } else if (strstr(request, " /big ") != NULL) {
         reply_big(table, id);
     } else if (strstr(request, " /slow ") != NULL) {
-        nanosleep(&(struct timespec){0, 300000000}, NULL);
+        ms_sys_sleep_ms(300);
         reply(table, id, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello");
     } else {
         reply(table, id, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 3\r\n\r\nbye");
@@ -178,13 +198,13 @@ static bool answer_http(MsConnTable *table, MsConnId id, const char *request, si
     return true;
 }
 
-static void *serve_http(void *argument) {
+static void serve_http(void *argument) {
     Server *server = argument;
     MsSock socket = MS_SOCK_INVALID;
     for (;;) {
         if (ms_sys_net_accept(server->listener, &socket, NULL) == MS_SYS_OK) break;
-        struct pollfd p = {.fd = (int)server->listener, .events = POLLIN};
-        poll(&p, 1, 100);
+        PollFd p = {.fd = (PollHandle)server->listener, .events = POLLIN};
+        poll_sockets(&p, 1, 100);
     }
     MsConnTable *table = ms_conn_table_new(2);
     const MsConnId id = ms_conn_open(table, (int)socket, MS_CONN_HTTP1);
@@ -219,7 +239,6 @@ static void *serve_http(void *argument) {
     }
     (void)ms_conn_close_io(table, id);
     ms_conn_table_free(table);
-    return NULL;
 }
 
 static MsStr str(const char *s) {
@@ -259,6 +278,7 @@ static MsStr listen_on_loopback(Server *server) {
 static const int64_t SECOND = 1000000000;
 
 int main(void) {
+    CHECK(uv_mutex_init(&post_lock) == 0);
     MsIoReactor *reactor;
     CHECK(ms_io_open(1, &reactor));
     MsStr err;
@@ -275,8 +295,9 @@ int main(void) {
     /* a plain connection: echo, share, addresses, end of stream */
     Server server = {0};
     MsStr address = listen_on_loopback(&server);
-    pthread_t thread;
-    CHECK(pthread_create(&thread, NULL, serve, &server) == 0);
+    MsSysThread *thread = NULL;
+    thread = ms_sys_thread_spawn(1 << 20, serve, &server);
+    CHECK(thread != NULL);
     MsStr no_name = str("");
     void *conn = NULL;
     CHECK(msstd_net_dial(&address, &no_name, 0, NULL, 1, 5 * SECOND, &conn, &err) == STATUS_OK && conn != NULL);
@@ -302,7 +323,7 @@ int main(void) {
     CHECK(msstd_conn_read(conn, 0, 0, 0, 0, &got, &err) == STATUS_CLOSED);
     ((MsObj *)other)->drop(other);
     ((MsObj *)conn)->drop(conn);
-    pthread_join(thread, NULL);
+    ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
 
     /* TLS: the handshake verifies the name, the options carry the ALPN list, tls_info reports the facts */
@@ -310,7 +331,8 @@ int main(void) {
     CHECK(context != NULL && ms_tls_ctx_set_alpn(context, "h2,http/1.1") == 0);
     server.context = context;
     address = listen_on_loopback(&server);
-    CHECK(pthread_create(&thread, NULL, serve, &server) == 0);
+    thread = ms_sys_thread_spawn(1 << 20, serve, &server);
+    CHECK(thread != NULL);
     MsNetTlsOptions options = {.server_name = str("localhost"), .roots_pem = str(CERT), .certificate_pem = str(""), .private_key_pem = str("")};
     MsStr offered[2] = {str("h2"), str("http/1.1")};
     options.alpn = (MsVec){offered, 2, 2};
@@ -321,15 +343,16 @@ int main(void) {
     CHECK(msstd_conn_read(conn, 1, 5, 1, 5 * SECOND, &got, &err) == STATUS_OK && got.len == 5);
     msstd_conn_close(conn);
     ((MsObj *)conn)->drop(conn);
-    pthread_join(thread, NULL);
+    ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
 
     /* a name the certificate does not cover fails the handshake and leaves nothing open */
     address = listen_on_loopback(&server);
-    CHECK(pthread_create(&thread, NULL, serve, &server) == 0);
+    thread = ms_sys_thread_spawn(1 << 20, serve, &server);
+    CHECK(thread != NULL);
     MsStr wrong = str("example.invalid");
     CHECK(msstd_net_dial(&address, &wrong, 1, &options, 1, 5 * SECOND, &conn, &err) == STATUS_FAILED);
-    pthread_join(thread, NULL);
+    ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
 
     /* refusals: a malformed address, a connection that is refused, TLS without a name */
@@ -365,7 +388,8 @@ int main(void) {
     MsNetHttpOptions http_options = {.roots_pem = str(""), .certificate_pem = str(""), .private_key_pem = str(""), .unix_socket = str(""), .max_redirects = -1, .cookies = 1, .decompress = 1};
     address = listen_on_loopback(&server);
     server.context = NULL;
-    CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+    thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+    CHECK(thread != NULL);
     void *client = NULL;
     CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
     char url[128];
@@ -464,14 +488,15 @@ int main(void) {
     CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len == 3);
     ((MsObj *)response)->drop(response);
     ((MsObj *)client)->drop(client);
-    pthread_join(thread, NULL);
+    ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
 
     /* the filter's address and redirect checks: 127.0.0.1 inside an allowed range connects, and a redirect to a name
        outside the levels ends the request with the hop never made */
     address = listen_on_loopback(&server);
     host_port = (const char *)msrt_str_data(&address);
-    CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+    thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+    CHECK(thread != NULL);
     CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
     MsVec loopback_cidrs;
     msrt_list_with_capacity(&msrt_desc_string, 1, &loopback_cidrs);
@@ -482,21 +507,22 @@ int main(void) {
     ((MsObj *)response)->drop(response);
     CHECK(msstd_client_fetch(client, &get, URL("/hop"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_PERMISSION_DENIED); /* the aborted hop drops the connection */
     ((MsObj *)client)->drop(client);
-    pthread_join(thread, NULL);
+    ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
 
     /* a Unix socket client reaches a server by path; a narrowed one is refused */
     {
         char path[108];
-        snprintf(path, sizeof path, "/tmp/ms_net_test_%d.sock", (int)getpid());
-        unlink(path);
+        snprintf(path, sizeof path, "ms_net_test_%d.sock", (int)current_pid());
+        remove_file(path);
         struct sockaddr_un unix_address = {.sun_family = AF_UNIX};
         snprintf(unix_address.sun_path, sizeof unix_address.sun_path, "%s", path);
-        const int listener = socket(AF_UNIX, SOCK_STREAM, 0);
-        CHECK(listener >= 0 && bind(listener, (struct sockaddr *)&unix_address, sizeof unix_address) == 0 && listen(listener, 4) == 0);
-        server.listener = (MsSock)listener;
+        const MsSock listener = (MsSock)socket(AF_UNIX, SOCK_STREAM, 0);
+        CHECK(listener != MS_SOCK_INVALID && bind(listener, (struct sockaddr *)&unix_address, sizeof unix_address) == 0 && listen(listener, 4) == 0);
+        server.listener = listener;
         server.context = NULL;
-        CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+        thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+    CHECK(thread != NULL);
         MsNetHttpOptions unix_options = http_options;
         unix_options.unix_socket = str(path);
         CHECK(msstd_client_new(&unix_options, &client, &err) == STATUS_OK);
@@ -509,9 +535,9 @@ int main(void) {
         CHECK(msstd_client_fetch(denied_client, &get, URL("/a"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_PERMISSION_DENIED);
         ((MsObj *)denied_client)->drop(denied_client);
         ((MsObj *)client)->drop(client);
-        pthread_join(thread, NULL);
-        close(listener);
-        unlink(path);
+        ms_sys_thread_join(thread);
+        close_socket(listener);
+        remove_file(path);
     }
 
     /* HTTPS: the client verifies the server against the roots it was given, and the request goes over TLS */
@@ -520,7 +546,8 @@ int main(void) {
     server.context = https_context;
     address = listen_on_loopback(&server);
     const char *port_text = strrchr((const char *)msrt_str_data(&address), ':') + 1;
-    CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+    thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+    CHECK(thread != NULL);
     MsNetHttpOptions https_options = http_options;
     https_options.roots_pem = str(CERT);
     CHECK(msstd_client_new(&https_options, &client, &err) == STATUS_OK);
@@ -530,20 +557,21 @@ int main(void) {
     CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len == 5);
     ((MsObj *)response)->drop(response);
     ((MsObj *)client)->drop(client);
-    pthread_join(thread, NULL);
+    ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
     server.context = NULL;
     /* without those roots the same server is not trusted */
     address = listen_on_loopback(&server);
     server.context = https_context;
     port_text = strrchr((const char *)msrt_str_data(&address), ':') + 1;
-    CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+    thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+    CHECK(thread != NULL);
     CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
     snprintf(url, sizeof url, "https://localhost:%s/a", port_text);
     url_text = str(url);
     CHECK(msstd_client_fetch(client, &get, &url_text, table, &nobody, 1, 10 * SECOND, &response, &err) == STATUS_FAILED);
     ((MsObj *)client)->drop(client);
-    pthread_join(thread, NULL);
+    ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
     ms_tls_ctx_free(https_context);
     server.context = NULL;
@@ -551,11 +579,12 @@ int main(void) {
     /* a deadline covers the wait for the response */
     address = listen_on_loopback(&server);
     host_port = (const char *)msrt_str_data(&address);
-    CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+    thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+    CHECK(thread != NULL);
     CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
     CHECK(msstd_client_fetch(client, &get, URL("/slow"), table, &nobody, 1, 50000000, &response, &err) == STATUS_TIMED_OUT);
     ((MsObj *)client)->drop(client);
-    pthread_join(thread, NULL);
+    ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
     ((MsObj *)table)->drop(table);
     ms_curl_shutdown();

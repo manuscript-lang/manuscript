@@ -18,6 +18,7 @@ typedef struct List {
 long msrt_test_add(long a, long b);
 void msrt_test_str(long n, Str *out);
 void msrt_test_list(long n, List *out);
+long msrt_test_slen(const Str *s);
 long msrt_test_len(const Str *s);
 void msrt_string_clone(const Str *s, Str *out);
 void msrt_string_free(const Str *s);
@@ -25,6 +26,8 @@ void *msrt_test_fn(void);
 void *msrt_obj_clone(void *o);
 void msrt_obj_drop(void *o);
 void msrt_fault_int_overflow(void);
+void msrt_cancelled(void);
+void msrt_test_cancel(void);
 void msrt_fault_int_range(void);
 void msrt_fault_div_zero(void);
 void msrt_fault_rem_zero(void);

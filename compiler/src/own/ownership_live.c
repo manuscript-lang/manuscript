@@ -154,8 +154,12 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_APPLY:
     case MS_E_PROBE:
     case MS_E_MAP:
-    case MS_E_LAMBDA: w->supported = false; return;
+    case MS_E_LAMBDA: w->supported = false; return; /* closures and collections are not modeled */
     case MS_E_CALL:
+        if (w->facts->call_callee[e->id] == MS_NONE) {
+            w->supported = false; /* a method, an interface operation or a function value */
+            return;
+        }
         for (uint32_t i = e->u.call.args.len; i > 0; i--) {
             live_expr(w, e->u.call.args.ptr[i - 1].value);
         }

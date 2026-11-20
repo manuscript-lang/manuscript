@@ -68,7 +68,7 @@ fn compile_in(
     checks: bool,
 ) -> Result<Vec<u8>, String> {
     let mir = dir.join("program.mir");
-    std::fs::write(&mir, ms_mir::print::print_module(module))
+    std::fs::write(&mir, ms_mir::print::print_module_unique(module))
         .map_err(|e| format!("cannot write {}: {e}", mir.display()))?;
     let mut build = Command::new(tool("ms_mir_build")?);
     build

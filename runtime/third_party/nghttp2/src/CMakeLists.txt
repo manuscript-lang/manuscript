@@ -16,6 +16,7 @@ include_directories(
   ${LIBNGHTTP3_INCLUDE_DIRS}
   ${LIBNGTCP2_INCLUDE_DIRS}
   ${LIBNGTCP2_CRYPTO_QUICTLS_INCLUDE_DIRS}
+  ${LIBNGTCP2_CRYPTO_LIBRESSL_INCLUDE_DIRS}
   ${LIBNGTCP2_CRYPTO_WOLFSSL_INCLUDE_DIRS}
   ${LIBNGTCP2_CRYPTO_OSSL_INCLUDE_DIRS}
   ${OPENSSL_INCLUDE_DIRS}
@@ -37,6 +38,7 @@ link_libraries(
   ${LIBNGHTTP3_LIBRARIES}
   ${LIBNGTCP2_LIBRARIES}
   ${LIBNGTCP2_CRYPTO_QUICTLS_LIBRARIES}
+  ${LIBNGTCP2_CRYPTO_LIBRESSL_LIBRARIES}
   ${LIBNGTCP2_CRYPTO_WOLFSSL_LIBRARIES}
   ${LIBNGTCP2_CRYPTO_OSSL_LIBRARIES}
   ${OPENSSL_LIBRARIES}
@@ -54,6 +56,7 @@ if(ENABLE_APP)
   set(HELPER_OBJECTS
     util.cc
     http2.cc timegm.c app_helper.cc nghttp2_gzip.c
+    network.cc
   )
 
   # nghttp client
@@ -80,6 +83,7 @@ if(ENABLE_APP)
     http2.cc h2load.cc
     timegm.c
     tls.cc
+    network.cc
     h2load_http2_session.cc
     h2load_http1_session.cc
   )
@@ -95,6 +99,7 @@ if(ENABLE_APP)
     util.cc http2.cc timegm.c
     app_helper.cc
     tls.cc
+    network.cc
     shrpx_config.cc
     shrpx_accept_handler.cc
     shrpx_connection_handler.cc
@@ -165,6 +170,7 @@ if(ENABLE_APP)
 
   if(HAVE_MRUBY)
     target_link_libraries(nghttpx_static mruby-lib)
+    target_include_directories(nghttpx_static PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/../third-party/mruby/build/include)
   endif()
 
   if(HAVE_NEVERBLEED)
@@ -188,6 +194,8 @@ if(ENABLE_APP)
       memchunk_test.cc
       template_test.cc
       base64_test.cc
+      network_test.cc
+      allocator_test.cc
       ${CMAKE_SOURCE_DIR}/tests/munit/munit.c
     )
     if(ENABLE_HTTP3)
@@ -247,6 +255,8 @@ if(ENABLE_HPACK_TOOLS)
     comp_helper.c
     util.cc
     timegm.c
+    tls.cc
+    network.cc
   )
   add_executable(inflatehd ${inflatehd_SOURCES})
   add_executable(deflatehd ${deflatehd_SOURCES})
