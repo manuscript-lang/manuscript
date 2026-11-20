@@ -319,6 +319,8 @@ static inline const MirTyData *mir_ty_data(const MirModule *m, MirTy t) {
     return &m->types.kinds[t];
 }
 bool mir_needs_drop(const MirModule *m, MirTy t);
+/* Whether declaration name `sym` spells `text`. */
+bool mir_name_is(const MirModule *m, MsSym sym, const char *text);
 static inline bool mir_owns(uint64_t owned, uint32_t i) { return i < 64 && (owned >> i & 1); }
 
 /* Declarations; each returns the new id. Names are interned. */
