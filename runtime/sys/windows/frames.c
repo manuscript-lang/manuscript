@@ -2,6 +2,7 @@
  * the system's data for the runtime's own frames to reach the first frame of generated code, and the portable
  * scan (ms_frames_scan_record) for the rest. */
 #include "ms_rt/sys.h"
+#include "context.h"
 #include "winapi.h"
 
 // NOLINTBEGIN(readability-identifier-naming): the names are Win32's
@@ -12,26 +13,7 @@ MS_WINAPI void *RtlVirtualUnwind(uint32_t kind, uintptr_t image, uintptr_t pc, v
 MS_WINAPI void GetCurrentThreadStackLimits(uintptr_t *low, uintptr_t *high);
 // NOLINTEND(readability-identifier-naming)
 
-/* Offsets into CONTEXT of the instruction pointer, the stack pointer and the frame register, and its size. */
-#if defined(__x86_64__)
-enum { CONTEXT_BYTES = 0x4D0, CONTEXT_PC = 0xF8, CONTEXT_SP = 0x98, CONTEXT_FP = 0xA0 };
-#elif defined(__aarch64__)
-enum { CONTEXT_BYTES = 0x390, CONTEXT_PC = 0x108, CONTEXT_SP = 0x100, CONTEXT_FP = 0xF0 };
-#else
-#error "no CONTEXT layout for this architecture"
-#endif
-
 enum { MAX_NATIVE_FRAMES = 256 };
-
-typedef struct {
-    _Alignas(16) uint8_t bytes[CONTEXT_BYTES];
-} Context;
-
-static uintptr_t context_word(const Context *context, size_t offset) {
-    uintptr_t word = 0;
-    __builtin_memcpy(&word, context->bytes + offset, sizeof word);
-    return word;
-}
 
 void ms_sys_stack_bounds(uintptr_t *low, uintptr_t *high) { GetCurrentThreadStackLimits(low, high); }
 

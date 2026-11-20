@@ -50,6 +50,7 @@ static MsObj *client_handle(MsCurlClient *client) {
 }
 
 uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     const MsCurlClientOptions settings = {.roots_pem = str_bytes(&options->roots_pem),
                                           .certificate_pem = str_bytes(&options->certificate_pem),
                                           .private_key_pem = str_bytes(&options->private_key_pem),
@@ -149,6 +150,7 @@ static uint8_t body_read_some(BodyObject *body, uint8_t *buffer, size_t capacity
 }
 
 uint8_t msstd_body_read(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err) {
+    ms_net_clear_text(err);
     BodyObject *body = body_of(handle);
     if (has_max != 0 && max <= 0) {
         return STATUS_INVALID_INPUT;
@@ -171,6 +173,7 @@ uint8_t msstd_body_read(const void *handle, uint8_t has_max, int64_t max, MsVec 
 }
 
 uint8_t msstd_body_read_all(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err) {
+    ms_net_clear_text(err);
     BodyObject *body = body_of(handle);
     if (has_max != 0 && max < 0) {
         return STATUS_INVALID_INPUT;
@@ -323,6 +326,7 @@ static uint8_t start_failure(MsNetStatus status, MsCurlFault fault, const char *
 
 uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr *url, const void *headers, const MsVec *body,
                            uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     Block block = {NULL, NULL, 0, 0};
     const uint8_t prepared = block_make(ms_headers_of(headers), &block);
     if (prepared != STATUS_OK) {
