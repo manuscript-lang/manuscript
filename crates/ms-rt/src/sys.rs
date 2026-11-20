@@ -1,4 +1,6 @@
 //! Minimal libc surface. Declared by hand so the crate has no dependencies.
+// The Rust definitions that `runtime/sys` replaces are dead in an archive build until they are deleted.
+#![cfg_attr(ms_c = "mssys_map_anon", allow(dead_code))]
 #![allow(non_camel_case_types)]
 
 use core::ffi::{c_char, c_int, c_long, c_void};

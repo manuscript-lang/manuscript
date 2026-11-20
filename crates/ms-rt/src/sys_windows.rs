@@ -1,6 +1,8 @@
 //! Windows surface of the runtime: the C runtime for memory and the environment, Win32 for
 //! everything else. Declared by hand, with `raw-dylib` imports so the archive needs no import
 //! libraries. The same names as the Unix `sys` module where the callers are shared.
+// The Rust definitions that `runtime/sys` replaces are dead in an archive build until they are deleted.
+#![cfg_attr(ms_c = "mssys_map_anon", allow(dead_code))]
 #![allow(non_camel_case_types, non_snake_case, clippy::upper_case_acronyms)]
 
 use core::ffi::{c_char, c_int, c_void};
