@@ -738,7 +738,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
     // directory, so a shared one serialises them), so they build side by side: the gnu, musl,
     // allocation-profiling and stress runtimes finish in about the time of the slowest.
     let mut jobs: Vec<(PathBuf, Option<String>, &str, &str)> =
-        vec![(target.clone(), triple.clone(), "libms_native.a", "entry")];
+        vec![(target.clone(), triple.clone(), "libms_native.a", "")];
     if stats {
         // The counting runtime of the leak checks: the allocator counts live blocks (MS_ALLOC_STATS) and the
         // runtime prints them at exit.
@@ -746,7 +746,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             out.join("build-stats"),
             triple.clone(),
             "libms_native_stats.a",
-            "entry,ms-rt/stats",
+            "ms-rt/stats",
         ));
     }
     if alloc_profile {
@@ -756,7 +756,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             out.join("build-allocs"),
             triple.clone(),
             "libms_native_allocs.a",
-            "entry,alloc-profile",
+            "alloc-profile",
         ));
     }
     if sched_stress {
@@ -765,7 +765,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             out.join("build-stress"),
             triple.clone(),
             "libms_native_stress.a",
-            "entry,sched-stress",
+            "sched-stress",
         ));
     }
     if std::env::consts::OS == "linux" {
@@ -773,7 +773,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             out.join("build-musl"),
             Some(format!("{arch}-unknown-linux-musl")),
             "libms_native_musl.a",
-            "entry",
+            "",
         ));
     }
     // The C half does not depend on the Rust features, so each triple's CMake build runs once and its

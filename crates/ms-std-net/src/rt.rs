@@ -4,9 +4,8 @@
 //! atomic); background threads of this crate never touch this module.
 
 use crate::sys::{self, Borrowed};
-use std::sync::atomic::Ordering;
 
-use ms_rt::fault::{cancel_flag, cancel_return, msrt_shield_enter, msrt_shield_exit};
+use ms_rt::fault::{cancel_pending as pending, cancel_return, msrt_shield_enter, msrt_shield_exit};
 #[cfg(unix)]
 use ms_rt::task::msrt_task_forget_fd;
 use ms_rt::task::{
@@ -18,7 +17,7 @@ use ms_rt::task::{
 pub fn cancel_requested() -> bool {
     // The flag is a static `u8` the runtime updates from a signal handler; atomics have the
     // layout of the integer and relaxed loads are what the ABI prescribes.
-    cancel_flag().load(Ordering::Relaxed) != 0
+    pending()
 }
 
 /// Delivers a pending stop request (see [`cancelled`]) and answers `true`; the caller then

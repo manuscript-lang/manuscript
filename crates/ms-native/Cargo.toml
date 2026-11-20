@@ -17,8 +17,6 @@ ms-rt = { path = "../ms-rt" }
 ms-std-net = { path = "../ms-std-net" }
 
 [features]
-# The glibc process entry (`_start`); only the archive `ms` links enables it, since a test binary has crt1's.
-entry = []
 # The runtime with allocation sampling, for `ms profile --allocs` (`cargo xtask runtime --alloc-profile`).
 alloc-profile = ["ms-rt/alloc-profile"]
 # The runtime with the scheduler stress mode, for `make stress-sched` (`cargo xtask runtime --sched-stress`).

@@ -56,6 +56,7 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {
     *out = (MsStr){.ptr_word = copy, .tagged = len};
 }
 bool ms_sched_cancel_pending(void) { return false; }
+__attribute__((weak)) int64_t ms_sched_defer_deadline(void) { return INT64_MAX; }
 void ms_sched_cancel_return(void) {}
 
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {

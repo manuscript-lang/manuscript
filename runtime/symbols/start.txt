@@ -7,3 +7,5 @@ msrt_exit_frees
 msrt_process_on_exit
 msrt_process_exit
 msrt_start
+msrt_runtime_set_threads
+msrt_runtime_limit

@@ -35,6 +35,12 @@ void msrt_process_on_exit(MsExitHook hook);
 /* ms-sig: msrt_process_exit(code: i64) -> ! */
 void msrt_process_exit(int64_t code);
 
+/* The worker-thread limit the program asks for and the one in force (runtime/entry/start.c). */
+/* ms-sig: msrt_runtime_set_threads(n: i64) */
+void msrt_runtime_set_threads(int64_t threads);
+/* ms-sig: msrt_runtime_limit() -> i64 */
+int64_t msrt_runtime_limit(void);
+
 /* ms-sig: msrt_start(main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8) -> i32 */
 int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *const *argv);
 
