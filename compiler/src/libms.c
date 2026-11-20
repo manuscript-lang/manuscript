@@ -9,6 +9,7 @@
 #include "mir.c"
 #include "mir_print.c"
 #include "mir_layout.c"
+#include "mir_shape.c"
 #include "mir_parse.c"
 #include "types.c"
 #include "tables.c"

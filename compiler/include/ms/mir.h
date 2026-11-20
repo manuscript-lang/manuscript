@@ -185,7 +185,12 @@ typedef struct MirFunc {
 
 typedef struct MirField { MsSym name; MirTy ty; } MirField;
 
-typedef struct MirTypeDef { MsSym name; MirField *fields; uint32_t nfields; } MirTypeDef;
+typedef struct MirTypeDef {
+    MsSym name;
+    MirField *fields;
+    uint32_t nfields;
+    bool indirect; /* one pointer to a heap block (not in the text form: lowering sets it) */
+} MirTypeDef;
 
 typedef enum MirStd { MSTD_NONE, MSTD_RESULT, MSTD_COMPARABLE, MSTD_EQUAL } MirStd;
 
