@@ -5,7 +5,7 @@
 # SHA-256 of the tarball they came from. Nothing is downloaded.
 # Output: target/c-libs/<triple>-pinned-<key>/{lib,include}. Usage: build.sh [triple]; `build.sh key [triple]` prints the cache key.
 # CC chooses the compiler (musl-gcc for musl, llvm-mingw's clang for Windows). Needs a C compiler, make, cmake and perl (OpenSSL's Configure). Using `ms` needs none of them.
-# set -eu
+set -e
 repository=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 triple=${1:-host}
 [ "$triple" = key ] && triple=${2:-host}
