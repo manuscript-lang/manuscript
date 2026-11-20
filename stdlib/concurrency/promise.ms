@@ -402,6 +402,17 @@ export fn wait_first[T](promises: List[Promise[T]]) T!:
 	which := msrt_promise_wait_any(ids, -1)
 	return pending[which].wait()
 
+// Waits until one of the promises has finished and returns its position in the list. It
+// takes no result and cancels nothing, so a supervisor can wait on several events,
+// handle the one that finished with `wait`, and call it again on the rest. A finished
+// promise stays finished, so remove the ones already handled from the list. An empty
+// list is an error.
+export fn wait_any[T](promises: List[Promise[T]]) Int!:
+	if promises.is_empty(): return error(Error("promise: nothing to wait for"))
+
+	var ids = promises.map(fn p: p.id)
+	return ok(msrt_promise_wait_any(ids, -1))
+
 // Returns a promise whose work runs in the task that first waits on it, on that task's
 // stack, with no task of its own. The work may wait itself. `work` receives the new
 // promise's id and must finish with `complete(id, ...)`. This is for stream
