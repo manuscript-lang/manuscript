@@ -7,8 +7,9 @@ import (
 	stderr, stdin, stdout_bytes from "@std/io/io.ms",
 
 	check_document from "./check.ms",
+	format_document from "./format.ms",
 	Framer, encode from "./frame.ms",
-	Next, Server from "./server.ms",
+	Backend, Next, Server from "./server.ms",
 )
 
 fn send(messages: List[String]) Void!:
@@ -21,6 +22,7 @@ fn serve() Int!:
 	var input = stdin()
 	var framer = Framer()
 	var server = Server(version: "dev")
+	backend := Backend(check: check_document, format: format_document)
 
 	for chunk in input:
 		framer.push(chunk)
@@ -30,12 +32,12 @@ fn serve() Int!:
 			body := frame.get_or("".to_bytes())
 			if frame.is_none(): break
 
-			handled := server.handle(body.decode_utf8().get_or(""), check_document)
+			handled := server.handle(body.decode_utf8().get_or(""), backend)
 			send(handled.messages)?
 			if handled.next == Next.Stop: return ok(0)
 			if handled.next == Next.StopFailed: return ok(1)
 
-		send(server.publish(check_document))?
+		send(server.publish(backend))?
 
 	return ok(0)
 

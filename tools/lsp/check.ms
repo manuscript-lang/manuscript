@@ -4,13 +4,11 @@
 // `$MS_RUST_CLI`, as in tools/ms/main.ms, else `ms-rust`.
 import (
 	JsonValue, parse from "@std/data/json.ms",
-	environment from "@std/os/env.ms",
-	remove, write_file from "@std/os/fs.ms",
-	basename, dirname, join from "@std/os/path.ms",
-	run from "@std/os/process.ms",
+	basename from "@std/os/path.ms",
 	expect_equal from "@std/test/test.ms",
 
 	Field, field, int_at, json_text, number, object, string_at from "./rpc.ms",
+	run_on_scratch, scratch_name from "./scratch.ms",
 	Position, position_at from "./text.ms",
 )
 
@@ -117,22 +115,16 @@ export fn diagnostics_of(report: String, source: String, file: String) List[Json
 
 	return found
 
-fn checker_program() String:
-	env := environment().get_or(Map[String, String]())
-	return env.get("MS_RUST_CLI").get_or("ms-rust")
-
 // Checks `source` as if it were the saved contents of `path`.
 export fn check_document(path: String, source: String) List[JsonValue]:
-	hidden := f".ms-lsp-{basename(path)}"
-	scratch := join([dirname(path), hidden.clone()])
-	var found: List[JsonValue] = []
-	if write_file(scratch, source, replace: true).wait().is_error(): return found
+	ran := run_on_scratch(path, source, ["check", "--json"])
+	if ran.is_error(): return []
 
-	ran := run(checker_program(), ["check", scratch.clone(), "--json"]).wait()
-	remove(scratch).get_or(void)
-	if ran.is_error(): return found
-
-	return diagnostics_of(ran.get().stdout.decode_utf8().get_or(""), source, hidden)
+	return diagnostics_of(
+		ran.get().output.stdout.decode_utf8().get_or(""),
+		source,
+		scratch_name(path),
+	)
 
 test "checker issues become LSP diagnostics":
 	report := "{\"format\":1,\"diagnostics\":[{\"code\":\"MS2001\",\"phase\":\"resolution\",\"message\":\"unknown binding foo\",\"position\":{\"file\":\".ms-lsp-a.ms\",\"line\":2,\"column\":2,\"offset\":4}},{\"code\":\"MS1\",\"message\":\"elsewhere\",\"position\":{\"file\":\"other.ms\",\"line\":1,\"column\":1,\"offset\":0}}]}"

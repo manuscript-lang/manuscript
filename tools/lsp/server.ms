@@ -18,7 +18,7 @@ import (
 	object,
 	result_message,
 	string_at from "./rpc.ms",
-	Position, replace_range from "./text.ms",
+	Position, position_at, replace_range from "./text.ms",
 	filename, is_file from "./uri.ms",
 )
 
@@ -40,6 +40,14 @@ export type Outcome:
 	// Messages to send, in order.
 	messages: List[String] = []
 	next: Next = Next.Continue
+
+// What the server asks of the outside world, so tests can stand in for the checker and
+// the formatter.
+export type Backend:
+	// The diagnostics of one open document: file path and buffer text.
+	check: fn(String, String) List[JsonValue]
+	// The formatted text of a buffer, or why it cannot be formatted.
+	format: fn(String, String) Result[String, Error]
 
 export type Server:
 	documents: Map[String, Document] = Map[String, Document]()
@@ -69,6 +77,10 @@ fn capabilities(server: Server) JsonValue:
 							"positionEncoding",
 							json_text("utf-16"),
 						),
+						field(
+							"documentFormattingProvider",
+							JsonValue.BoolValue(true),
+						),
 					]
 				),
 			),
@@ -84,6 +96,60 @@ fn capabilities(server: Server) JsonValue:
 					]
 				),
 			),
+		]
+	)
+
+// One edit that replaces the whole buffer with `formatted`.
+fn whole_document_edit(source: String, formatted: String) JsonValue:
+	end := position_at(source, source.length())
+	return object(
+		[
+			field(
+				"range",
+				object(
+					[
+						field(
+							"start",
+							object(
+								[
+									field(
+										"line",
+										number(
+											0
+										),
+									),
+									field(
+										"character",
+										number(
+											0
+										),
+									),
+								]
+							),
+						),
+						field(
+							"end",
+							object(
+								[
+									field(
+										"line",
+										number(
+											end.line
+										),
+									),
+									field(
+										"character",
+										number(
+											end.character
+										),
+									),
+								]
+							),
+						),
+					]
+				),
+			),
+			field("newText", json_text(formatted)),
 		]
 	)
 
@@ -160,7 +226,7 @@ export fn diagnostics_message(
 	return notification("textDocument/publishDiagnostics", object(fields))
 
 // Handles one decoded message body.
-fn var Server.handle(body: String, check: fn(String, String) List[JsonValue]) Outcome:
+fn var Server.handle(body: String, backend: Backend) Outcome:
 	var out = Outcome()
 	parsed := parse(body)
 
@@ -198,10 +264,11 @@ fn var Server.handle(body: String, check: fn(String, String) List[JsonValue]) Ou
 
 	// Edits batch up; anything else first sees the diagnostics of the edits before it.
 	if not method.starts_with("textDocument/did") and method != "initialized":
-		out.messages.extend(self.publish(check))
+		out.messages.extend(self.publish(backend))
 
 	var result = JsonValue.Null
 	var known = true
+	var failure = ""
 
 	if method == "initialize":
 		self.initialized = true
@@ -217,10 +284,33 @@ fn var Server.handle(body: String, check: fn(String, String) List[JsonValue]) Ou
 	else if method == "textDocument/didChange": self.did_change(params)
 	else if method == "textDocument/didClose": self.did_close(params, out)
 	else if method == "textDocument/didSave": result = JsonValue.Null
+	else if method == "textDocument/formatting":
+		uri := string_at(params, ["textDocument", "uri"])
+		document := self.documents.get(uri).map(
+			fn(found: Document) Document: found.clone()
+		)
+
+		if document.is_none(): failure = "document is not open"
+		else if is_file(uri):
+			formatted := backend.format(filename(uri), document.get().text)
+
+			if formatted.is_error(): failure = formatted.err().message
+			else: result = list(
+				[
+					whole_document_edit(
+						document.get().text,
+						formatted.get(),
+					)
+				]
+			)
+		else: result = list([])
 	else: known = false
 
 	if request_id := id:
-		if known: out.messages.append(result_message(request_id, result))
+		if not failure.is_empty(): out.messages.append(
+			error_message(request_id, -32602, failure)
+		)
+		else if known: out.messages.append(result_message(request_id, result))
 		else: out.messages.append(
 			error_message(request_id, -32601, "method not supported")
 		)
@@ -229,7 +319,7 @@ fn var Server.handle(body: String, check: fn(String, String) List[JsonValue]) Ou
 
 // The messages that bring the diagnostics of every changed open document up to date,
 // using `check` to compute the diagnostics of one document.
-fn var Server.publish(check: fn(String, String) List[JsonValue]) List[String]:
+fn var Server.publish(backend: Backend) List[String]:
 	var messages: List[String] = []
 	pending := self.dirty.clone()
 	self.dirty = []
@@ -237,18 +327,24 @@ fn var Server.publish(check: fn(String, String) List[JsonValue]) List[String]:
 	for uri in pending:
 		if document := self.documents.get(uri):
 			var found: List[JsonValue] = []
-			if is_file(uri): found = check(filename(uri), document.text)
+			if is_file(uri): found = backend.check(filename(uri), document.text)
 			messages.append(diagnostics_message(uri, found, document.version))
 
 	return messages
 
 fn no_diagnostics(path: String, source: String) List[JsonValue]: []
 
+fn shout(path: String, source: String) Result[String, Error]:
+	if source.contains("bad"): return error(Error("cannot parse"))
+	return ok(source.upper())
+
+fn fake() Backend: Backend(check: no_diagnostics, format: shout)
+
 fn initialized_server() Server:
 	var server = Server(version: "0.0.0")
 	server.handle(
 		"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}",
-		no_diagnostics,
+		fake(),
 	)
 	return server
 
@@ -256,7 +352,7 @@ test "requests before initialize are refused":
 	var server = Server()
 	out := server.handle(
 		"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"textDocument/hover\"}",
-		no_diagnostics,
+		fake(),
 	)
 	expect_equal(
 		out.messages,
@@ -269,7 +365,7 @@ test "initialize answers with the capabilities":
 	var server = Server(version: "1.2.3")
 	out := server.handle(
 		"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}",
-		no_diagnostics,
+		fake(),
 	)
 	expect_equal(out.messages.length(), 1)?
 	expect_equal(out.messages[0].contains("\"textDocumentSync\":2"), true)?
@@ -277,45 +373,33 @@ test "initialize answers with the capabilities":
 
 test "bad input gets the JSON-RPC errors":
 	var server = initialized_server()
-	expect_equal(
-		server.handle("{", no_diagnostics).messages[0].contains("-32700"),
-		true,
-	)?
-	expect_equal(
-		server.handle("[]", no_diagnostics).messages[0].contains("-32600"),
-		true,
-	)?
+	expect_equal(server.handle("{", fake()).messages[0].contains("-32700"), true)?
+	expect_equal(server.handle("[]", fake()).messages[0].contains("-32600"), true)?
 	expect_equal(
 		server.handle(
 			"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"nope\"}",
-			no_diagnostics,
+			fake(),
 		).messages[0].contains("-32601"),
 		true,
 	)?
 	expect_equal(
 		server.handle(
 			"{\"jsonrpc\":\"2.0\",\"method\":\"nope\"}",
-			no_diagnostics,
+			fake(),
 		).messages,
 		[],
 	)?
 
 test "shutdown then exit stops cleanly, exit alone fails":
 	var server = initialized_server()
-	server.handle(
-		"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"shutdown\"}",
-		no_diagnostics,
-	)
+	server.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"shutdown\"}", fake())
 
-	out := server.handle("{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}", no_diagnostics)
+	out := server.handle("{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}", fake())
 	expect_equal(out.next, Next.Stop)?
 
 	var other = initialized_server()
 	expect_equal(
-		other.handle(
-			"{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}",
-			no_diagnostics,
-		).next,
+		other.handle("{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}", fake()).next,
 		Next.StopFailed,
 	)?
 
@@ -323,16 +407,16 @@ test "incremental changes edit the open document":
 	var server = initialized_server()
 	server.handle(
 		"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\",\"version\":1,\"text\":\"ab\\ncd\"}}}",
-		no_diagnostics,
+		fake(),
 	)
 	server.handle(
 		"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didChange\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\",\"version\":2},\"contentChanges\":[{\"range\":{\"start\":{\"line\":0,\"character\":1},\"end\":{\"line\":1,\"character\":1}},\"text\":\"X\"}]}}",
-		no_diagnostics,
+		fake(),
 	)
 	expect_equal(server.documents.get("file:///a.ms").get().text, "aXd")?
 	expect_equal(server.documents.get("file:///a.ms").get().version, 2)?
 
-	messages := server.publish(no_diagnostics)
+	messages := server.publish(fake())
 	expect_equal(messages.length(), 1)?
 	expect_equal(messages[0].contains("\"version\":2"), true)?
 
@@ -340,13 +424,52 @@ test "closing a document clears its diagnostics":
 	var server = initialized_server()
 	server.handle(
 		"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\",\"version\":1,\"text\":\"x\"}}}",
-		no_diagnostics,
+		fake(),
 	)
 
 	out := server.handle(
 		"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"}}}",
-		no_diagnostics,
+		fake(),
 	)
 	expect_equal(out.messages.length(), 1)?
 	expect_equal(out.messages[0].contains("\"diagnostics\":[]"), true)?
-	expect_equal(server.publish(no_diagnostics), [])?
+	expect_equal(server.publish(fake()), [])?
+
+test "formatting replaces the whole buffer with the formatted text":
+	var server = initialized_server()
+	server.handle(
+		"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\",\"version\":1,\"text\":\"ab\\ncd\"}}}",
+		fake(),
+	)
+
+	out := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"textDocument/formatting\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"}}}",
+		fake(),
+	)
+
+	// The pending diagnostics go out first, then the answer.
+	expect_equal(out.messages.length(), 2)?
+	expect_equal(
+		out.messages[1],
+		"{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":[{\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":1,\"character\":2}},\"newText\":\"AB\\nCD\"}]}",
+	)?
+
+test "formatting a buffer that does not parse, or is not open, is an invalid-params error":
+	var server = initialized_server()
+	server.handle(
+		"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\",\"version\":1,\"text\":\"bad\"}}}",
+		fake(),
+	)
+
+	broken := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"textDocument/formatting\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"}}}",
+		fake(),
+	)
+	expect_equal(broken.messages[1].contains("\"code\":-32602"), true)?
+	expect_equal(broken.messages[1].contains("cannot parse"), true)?
+
+	closed := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"textDocument/formatting\",\"params\":{\"textDocument\":{\"uri\":\"file:///other.ms\"}}}",
+		fake(),
+	)
+	expect_equal(closed.messages[0].contains("document is not open"), true)?
