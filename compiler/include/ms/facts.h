@@ -89,6 +89,7 @@ typedef struct MsFacts {
     MsTy *type_args;
     uint32_t *lambda_first;   /* by lambda node id: the first binding of its parameters and body; the ones below are captured */
     uint32_t *assign_binding; /* by assignment statement node id: the binding it writes, else MS_NONE */
+    bool *each_list;  /* by `for` statement node id: it iterates a list, not a range */
     bool *body_checked;   /* by declaration node id: the function's body was checked */
     bool *ret_borrowed;   /* by declaration node id: every result is a reference into the arguments (ownership pass) */
     MsBindings bindings;

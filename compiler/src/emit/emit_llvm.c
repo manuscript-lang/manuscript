@@ -21,6 +21,8 @@
 /* Values of at most this many bytes are passed as their leaves; larger ones are not supported yet. */
 #define LL_DIRECT_BYTES 16
 
+#include "emit_llvm_debug.inc"
+
 typedef struct LCx {
     const MirModule *m;
     const MirFunc *f;
@@ -33,6 +35,8 @@ typedef struct LCx {
     bool *framed;        /* per value of `f`: a closure object kept in the frame */
     bool *borrowed;      /* per value of `f`: an `iface.borrow` kept in the frame; NULL when none */
     bool export_all;     /* every function gets an external symbol, for the tables unit to address */
+    LlDebug *dbg;        /* source places for the fault tables, or NULL */
+    uint32_t scope_base; /* module-wide index of the first scope of `f` */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -1406,13 +1410,24 @@ static void ll_switch(LCx *c, const MirTerm *t) {
     ms_buf_puts(o, "\n  ]\n");
 }
 
-static bool ll_term(LCx *c, const MirTerm *t) {
+/* A conditional branch whose two edges enter the same block with arguments. */
+static bool ll_reaches_twice(const MirTerm *t) {
+    return t->kind == MT_CONDBR && t->a.block == t->b.block && t->a.nargs > 0;
+}
+
+static bool ll_term(LCx *c, const MirTerm *t, uint32_t block) {
     MsBuf *o = c->out;
     switch ((MirTermKind)t->kind) {
     case MT_BR:
         ms_buf_printf(o, "  br label %%b%u\n", t->a.block);
         return true;
     case MT_CONDBR:
+        if (ll_reaches_twice(t)) {
+            /* Both edges enter one block with arguments: a block each, so its phis can tell them apart. */
+            ms_buf_printf(o, "  br i1 %%v%u, label %%r%u.0, label %%r%u.1\nr%u.0:\n  br label %%b%u\nr%u.1:\n  br label %%b%u\n",
+                          t->value, block, block, block, t->a.block, block, t->b.block);
+            return true;
+        }
         ms_buf_printf(o, "  br i1 %%v%u, label %%b%u, label %%b%u\n", t->value, t->a.block, t->b.block);
         return true;
     case MT_SWITCH:
@@ -1508,19 +1523,25 @@ static bool ll_phi_leaf(LCx *c, uint32_t b, uint32_t index, uint32_t leaf, const
                 edge = e;
             }
         }
-        if (reached > 1 && edge->nargs > 0) {
+        if (reached > 1 && edge->nargs > 0 && !ll_reaches_twice(t)) {
             c->why = "one block reaches a target twice with arguments";
             return false;
         }
         if (edge == NULL) {
             continue;
         }
-        ms_buf_printf(c->out, "%s[ ", first ? "" : ", ");
-        ll_name(c->out, edge->args[index], leaf);
-        ms_buf_puts(c->out, ", %");
-        ll_label(c, s, last[s]);
-        ms_buf_puts(c->out, " ]");
-        first = false;
+        for (uint32_t k = 0; k < (ll_reaches_twice(t) ? 2U : 1U); k++) {
+            ms_buf_printf(c->out, "%s[ ", first ? "" : ", ");
+            ll_name(c->out, (ll_reaches_twice(t) ? ll_edge(t, k) : edge)->args[index], leaf);
+            ms_buf_puts(c->out, ", %");
+            if (ll_reaches_twice(t)) {
+                ms_buf_printf(c->out, "r%u.%u", s, k);
+            } else {
+                ll_label(c, s, last[s]);
+            }
+            ms_buf_puts(c->out, " ]");
+            first = false;
+        }
     }
     ms_buf_putc(c->out, '\n');
     return true;
@@ -1555,6 +1576,17 @@ static bool ll_entry(LCx *c) {
     return true;
 }
 
+/* Puts the source place `loc` (the function's own line when it has none) on the text written since `from`. */
+static void ll_place(LCx *c, size_t from, MirLoc loc) {
+    if (c->dbg == NULL) {
+        return;
+    }
+    const bool known = !mir_loc_none(loc) && loc.line != 0;
+    const uint32_t line = known ? loc.line : c->f->loc.line;
+    const uint32_t scope = known && loc.scope != 0 ? c->scope_base + loc.scope : 0;
+    ll_debug_tag(c->out, from, ll_debug_location(c->dbg, line, scope));
+}
+
 static bool ll_block(LCx *c, uint32_t b, const uint32_t *last) {
     const MirBlockData *block = &c->f->blocks[b];
     ms_buf_printf(c->out, "b%u:\n", b);
@@ -1568,11 +1600,16 @@ static bool ll_block(LCx *c, uint32_t b, const uint32_t *last) {
     }
     uint32_t part = 0;
     for (uint32_t k = 0; k < block->ninsts; k++) {
+        const size_t from = c->out->len;
         if (!ll_inst(c, &block->insts[k], b, k, &part)) {
             return false;
         }
+        ll_place(c, from, block->insts[k].loc);
     }
-    return ll_term(c, &block->term);
+    const size_t from = c->out->len;
+    const bool ok = ll_term(c, &block->term, b);
+    ll_place(c, from, block->term_loc);
+    return ok;
 }
 
 /* `define <result> @name(<hidden result pointer>, <leaves of each parameter>) {`. */
@@ -1603,7 +1640,11 @@ static void ll_header(LCx *c, uint32_t index) {
             first = false;
         }
     }
-    ms_buf_puts(o, ") nounwind {\n");
+    ms_buf_puts(o, ") nounwind");
+    if (c->dbg != NULL) {
+        ms_buf_printf(o, " !dbg !%u", ll_debug_subprogram(c->dbg, ms_name(&c->m->names, f->name), f->loc.line));
+    }
+    ms_buf_puts(o, " {\n");
 }
 
 /* Pieces each block splits into: its checked operations each end one, and the last piece is what
@@ -1810,13 +1851,18 @@ static void ll_define_data(const LCx *c) {
     }
 }
 
-bool mir_emit_llvm_with(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all,
-                        MsBuf *out, MsBuf *why) {
+static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all, bool places,
+                    MsBuf *out, MsBuf *why) {
     MirLayouts layouts;
     mir_layouts_init(&layouts, m);
     bool ok = true;
+    LlDebug debug = {0};
+    ll_debug_init(&debug);
+    LlDebug *dbg = places ? &debug : NULL;
+    uint32_t scope_base = 0;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all};
+        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base};
+        scope_base += m->funcs[i].nscopes;
         if (ll_function(&c, i)) {
             continue;
         }
@@ -1824,7 +1870,7 @@ bool mir_emit_llvm_with(const MirModule *m, const MirData *data, const MirGlue *
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);
@@ -1832,7 +1878,20 @@ bool mir_emit_llvm_with(const MirModule *m, const MirData *data, const MirGlue *
     ll_declare_heap(&externs);
     mir_layouts_free(&layouts);
     ms_buf_puts(out, ll_declarations);
+    if (places) {
+        ll_debug_finish(&debug, out);
+    }
+    ms_buf_free(&debug.nodes);
     return ok;
+}
+
+bool mir_emit_llvm_with(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all,
+                        MsBuf *out, MsBuf *why) {
+    return ll_emit(m, data, glue, export_all, false, out, why);
+}
+
+bool mir_emit_llvm_places(const MirModule *m, const MirData *data, const MirGlue *glue, MsBuf *out, MsBuf *why) {
+    return ll_emit(m, data, glue, false, true, out, why);
 }
 
 bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue, MsBuf *out, MsBuf *why) {
