@@ -19,6 +19,8 @@ use ms_rt_abi::{
 // The moved symbols (runtime/symbols/string.txt) are defined by the C runtime; Rust callers and tests reach them here.
 unsafe extern "C-unwind" {
     pub fn msrt_string_fields(s: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_quote(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8;
     pub fn msrt_string_scalar_at(
         s: *const StrVal,
         offset: i64,
@@ -1093,14 +1095,6 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
     }
 }
 
-/// `String.parse_float()`: present flag, value through `out`; the `Result` form is `math.parse_float`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe { u8::from(crate::num::msrt_numbers_parse_float(s, out) == STATUS_OK) }
-}
-
 /// Normalization forms by the spelling `String.normalize` takes.
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -1234,43 +1228,6 @@ unsafe fn normalize_kind(
 // ---------------------------------------------------------------------------
 // Conversions to string (Int, Float, Bool)
 // ---------------------------------------------------------------------------
-
-/// The double-quoted, escaped spelling of a string (as `%q` writes it).
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_quote_val(s)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_quote_val(s: *const StrVal) -> StrVal {
-    // SAFETY: caller passes a live string.
-    let text = unsafe { bytes(s) };
-    let mut out = Vec::with_capacity(text.len() + 2);
-    out.push(b'"');
-    let mut i = 0;
-    while i < text.len() {
-        let c = text[i];
-        match c {
-            b'"' => out.extend_from_slice(b"\\\""),
-            b'\\' => out.extend_from_slice(b"\\\\"),
-            b'\n' => out.extend_from_slice(b"\\n"),
-            b'\t' => out.extend_from_slice(b"\\t"),
-            b'\r' => out.extend_from_slice(b"\\r"),
-            0..=0x1f | 0x7f => {
-                const HEX: &[u8; 16] = b"0123456789abcdef";
-                out.extend_from_slice(b"\\x");
-                out.push(HEX[(c >> 4) as usize]);
-                out.push(HEX[(c & 15) as usize]);
-            }
-            _ => out.push(c),
-        }
-        i += 1;
-    }
-    out.push(b'"');
-    from_buf(out)
-}
 
 unsafe extern "C-unwind" {
     /// `[list copies, list bytes, string clones, string bytes]` of the counting runtime (zeros elsewhere).

@@ -4,7 +4,7 @@
  * framing removed.
  *
  * Every call parks the running task on the row (conn_io.h). On the first failure of a read the exchange is over; the
- * caller closes the body, which closes the row.
+ * caller closes the body, which closes the row. One exchange is open on a row at a time.
  */
 #ifndef MS_NET_HTTP1_EXCHANGE_H
 #define MS_NET_HTTP1_EXCHANGE_H
@@ -34,7 +34,8 @@ MS_NODISCARD MsNetStatus ms_http1_read_head(MsConnTable *table, MsConnId id, int
 void ms_http1_head_free(MsHttp1Head *head);
 
 /* Sends `request` on the row and reads the response head. On MS_NET_OK `*response` describes it (its spans point into
- * memory the body owns) and `*body` reads the message body; closing the body ends the exchange and closes the row. On
+ * memory the body owns) and `*body` reads the message body; closing the body ends the exchange: a body read to its end on a keep-alive
+ * response leaves the row open for another request, any other close closes the row. On
  * failure nothing is allocated and the row is left open for the caller to close. The request's own fields are written
  * after Host and Content-Length; a field named either of those, or Transfer-Encoding, is refused (MS_NET_FAILED). */
 MS_NODISCARD MsNetStatus ms_http1_exchange(MsConnTable *table, MsConnId id, const MsHttpRequest *request, int64_t deadline_ns,
