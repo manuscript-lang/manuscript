@@ -149,4 +149,16 @@ uint8_t msstd_tls_parse_certificates(const MsStr *pem, uint8_t has_max, int64_t 
 /* ms-sig: msstd_tls_verify_certificates(chain: *const StrVal, roots: *const StrVal, server_name: *const StrVal, now: *const Timestamp) -> u8 @domain=TLS */
 uint8_t msstd_tls_verify_certificates(const MsStr *chain, const MsStr *roots, const MsStr *server_name, const MsTlsTimestamp *now);
 
+/* Listeners (ListenerH, runtime/net/server_natives.c). `listen` binds one address (an IP literal with a port; port 0
+ * picks one) and `accept` parks the task until a connection arrives: the connection is a ConnH like a dialed one.
+ * `close` stops later accepts; an accept already parked ends when its task is cancelled. */
+/* ms-sig: msstd_net_listen(address: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_net_listen(const MsStr *address, void **out, MsStr *err);
+/* ms-sig: msstd_listener_accept(handle l: *const ObjCell<ListenerH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_listener_accept(const void *handle, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* ms-sig: msstd_listener_address(handle l: *const ObjCell<ListenerH>, out: *mut StrVal) @domain=network */
+void msstd_listener_address(const void *handle, MsStr *out);
+/* ms-sig: msstd_listener_close(handle l: *const ObjCell<ListenerH>) @domain=network */
+void msstd_listener_close(const void *handle);
+
 #endif

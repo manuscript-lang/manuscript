@@ -23,7 +23,11 @@ msstd_headers_names
 msstd_headers_new
 msstd_headers_remove
 msstd_headers_values
+msstd_listener_accept
+msstd_listener_address
+msstd_listener_close
 msstd_net_dial
+msstd_net_listen
 msstd_net_lookup
 msstd_tls_parse_certificates
 msstd_tls_verify_certificates

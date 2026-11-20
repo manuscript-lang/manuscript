@@ -678,6 +678,9 @@ msstd_json_w_tree(handle w: *mut ObjCell<Writer>, desc: *const TypeDesc, view: u
 msstd_json_w_uint(handle w: *mut ObjCell<Writer>, v: i64) @domain=JSON @leaf
 msstd_json_w_undo(handle w: *mut ObjCell<Writer>) @domain=JSON @leaf
 msstd_json_writer_new(has_max_bytes: HasRaw, max_bytes: i64, has_indent: HasRaw, indent: i64) -> *mut ObjCell<Writer> @domain=JSON @handle @leaf
+msstd_listener_accept(handle l: *const ObjCell<ListenerH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network
+msstd_listener_address(handle l: *const ObjCell<ListenerH>, out: *mut StrVal) @domain=network
+msstd_listener_close(handle l: *const ObjCell<ListenerH>) @domain=network
 msstd_math_acos(v: f64) -> f64 @domain=number @leaf
 msstd_math_acosh(v: f64) -> f64 @domain=number @leaf
 msstd_math_add_with_carry(left: u64, right: u64, carry: u8, out: *mut WordSumOut) @domain=number @leaf
@@ -751,6 +754,7 @@ msstd_net_error_message(status: u8, has_failed: HasRaw, failed: *const StrVal, o
 msstd_net_ip_address_family(handle ip: *const ObjCell<IpH>) -> u8 @domain=network
 msstd_net_ip_address_text(handle ip: *const ObjCell<IpH>, out: *mut StrVal) @domain=network
 msstd_net_ip_family_text(family: u8, out: *mut StrVal) @domain=network
+msstd_net_listen(address: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8 @domain=network
 msstd_net_listener_accept(handle l: *const ObjCell<ListenerH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network
 msstd_net_listener_accept_raw(handle l: *const ObjCell<ListenerH>, has_timeout: HasRaw, timeout: i64, out: *mut i64, err: ErrSlot) -> u8 @domain=network
 msstd_net_listener_address(handle l: *const ObjCell<ListenerH>, out: *mut StrVal) @domain=network
