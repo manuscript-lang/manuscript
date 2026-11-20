@@ -33,7 +33,11 @@ pub fn c_compiler(root: &Path, triple: &str, arch: &str) -> PathBuf {
         let mingw = std::env::var_os("MS_MINGW")
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("target/llvm-bundle/mingw"));
-        mingw.join("bin").join(format!("{arch}-w64-mingw32-clang"))
+        // CMake wants the full file name of the compiler, and a Windows host's file has the extension.
+        let exe = if cfg!(windows) { ".exe" } else { "" };
+        mingw
+            .join("bin")
+            .join(format!("{arch}-w64-mingw32-clang{exe}"))
     } else if triple.contains("musl") {
         musl_compiler()
     } else {
