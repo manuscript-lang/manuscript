@@ -32,8 +32,37 @@ fn main() {
                     out.push_str("error\n");
                     continue;
                 };
-                let changed = run_pass(pass, &mut m);
+                let changed = match run_pass(pass, &mut m) {
+                    Ok(changed) => changed,
+                    Err(e) => {
+                        let _ = writeln!(out, "fail {e}");
+                        continue;
+                    }
+                };
                 let _ = writeln!(out, "changed {}", changed as u8);
+                if pass == "debug_types" {
+                    out.push_str(&debug_types_dump(&m));
+                    continue;
+                }
+                if pass == "copies" {
+                    for site in ms_mir::copies::object_copies(&m) {
+                        let _ = writeln!(out, "{site}");
+                    }
+                    continue;
+                }
+                if pass == "frames" {
+                    for f in &m.funcs {
+                        let sorted = |s: std::collections::HashSet<usize>| {
+                            let mut v: Vec<usize> = s.into_iter().collect();
+                            v.sort_unstable();
+                            v.iter().map(|i| format!(" {i}")).collect::<String>()
+                        };
+                        let iface = sorted(ms_mir::frames::framed_iface_borrows(&m, f));
+                        let closure = sorted(ms_mir::frames::framed_closure_objects(&m, f));
+                        let _ = writeln!(out, "{} iface:{iface} closure:{closure}", f.name);
+                    }
+                    continue;
+                }
                 out.push_str(&print_module(&m));
                 for f in &m.funcs {
                     let mut cold: Vec<u32> = f.cold.iter().map(|b| b.0).collect();
@@ -48,10 +77,64 @@ fn main() {
     print!("{out}");
 }
 
+/// What `print_debug_types` in `compiler/tools/ms_mir_pass.c` prints.
+fn debug_types_dump(m: &ms_mir::ir::Module) -> String {
+    use ms_mir::debug_types::{DebugKind, Encoding, debug_types_by_ty};
+    let (types, of_ty) = debug_types_by_ty(m);
+    let mut out = String::new();
+    for (i, t) in types.iter().enumerate() {
+        let _ = write!(out, "{i} {} size={} ", t.name, t.size);
+        let members = match &t.kind {
+            DebugKind::Base(e) => {
+                let e = match e {
+                    Encoding::Bool => "bool",
+                    Encoding::Signed => "signed",
+                    Encoding::Unsigned => "unsigned",
+                    Encoding::Float => "float",
+                };
+                let _ = writeln!(out, "base {e}");
+                &[][..]
+            }
+            DebugKind::Pointer(to) => {
+                match to {
+                    Some(to) => {
+                        let _ = writeln!(out, "pointer -> {to}");
+                    }
+                    None => out.push_str("pointer\n"),
+                }
+                &[][..]
+            }
+            DebugKind::Struct(ms) => {
+                out.push_str("struct\n");
+                ms
+            }
+            DebugKind::Union(ms) => {
+                out.push_str("union\n");
+                ms
+            }
+        };
+        for mem in members {
+            let _ = writeln!(out, "  {} @{}: {}", mem.name, mem.offset, mem.ty);
+        }
+    }
+    out.push_str("of_ty");
+    for i in of_ty {
+        let _ = write!(out, " {i}");
+    }
+    out.push('\n');
+    out
+}
+
 /// Runs the pass `name` on `m` and returns whether it reports a change; `compiler/tools/ms_mir_pass.c`
 /// has the same names.
-fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> bool {
-    match name {
+fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> Result<bool, String> {
+    if name == "elaborate" {
+        return ms_mir::elaborate::run(m).map(|()| true);
+    }
+    if name == "elaborate-cancel" {
+        return ms_mir::elaborate::run_with(m, true).map(|()| true);
+    }
+    Ok(match name {
         "exit_drops" => {
             ms_mir::exit_drops::run(m);
             true
@@ -61,11 +144,25 @@ fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> bool {
         "expand_owned" => ms_mir::expand_owned::run(m),
         "unwind" => ms_mir::unwind::run(m),
         "cancel_edges" => ms_mir::cancel_edges::run(m),
+        "depth" => ms_mir::depth::lower(m),
         "glue" => ms_mir::glue::run(m),
+        "debug_types" | "frames" | "copies" => true,
+        "count_ops" => {
+            ms_mir::count_ops::run(m);
+            true
+        }
+        "finish" => {
+            ms_mir::unwind::run(m);
+            ms_mir::cancel_edges::run(m);
+            ms_mir::depth::lower(m);
+            ms_mir::expand::run(m, true);
+            ms_mir::glue::run_and_expand(m);
+            true
+        }
         "glue_expand" => {
             ms_mir::glue::run_and_expand(m);
             true
         }
         other => panic!("unknown pass {other}"),
-    }
+    })
 }

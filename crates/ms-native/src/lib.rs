@@ -4,10 +4,6 @@
 //! program links a single archive, because a second Rust staticlib would repeat the Rust runtime's
 //! own symbols. A new `ms-std-*` crate joins the archive by being listed in `Cargo.toml` and below.
 extern crate ms_rt;
-extern crate ms_std_archive;
-extern crate ms_std_core;
-extern crate ms_std_fs;
-extern crate ms_std_json;
 extern crate ms_std_net;
 extern crate ms_std_process;
 extern crate ms_std_table;

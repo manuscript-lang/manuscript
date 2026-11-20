@@ -1,0 +1,16 @@
+module "t"
+file 0 "t.ms"
+type Pair { x: int, y: int }
+global @counter: int
+global @pair: Pair
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %five: int = iconst 5
+  global.set @counter %five
+  %g: int = global.get @counter
+  %d: ptr = typedesc Pair
+  %size: int = load int %d
+  %r: int = iadd %g, %size
+  ret %r
+}

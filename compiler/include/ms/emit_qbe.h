@@ -5,8 +5,8 @@
 
 #include "ms/mir.h"
 
-/* Appends the QBE text of every function of `m` to `out`. Returns false when something cannot be
+/* Runs glue on `m`, then appends the QBE text of its static data and every function to `out`. Returns false when something cannot be
  * written yet, with one line per function and reason appended to `why` (`out` is then partial). */
-bool mir_emit_qbe(const MirModule *m, MsBuf *out, MsBuf *why);
+bool mir_emit_qbe(MirModule *m, MsBuf *out, MsBuf *why);
 
 #endif

@@ -93,7 +93,7 @@ void msrt_obj_drop(MsObj *object);
 
 static void fail(const char *text) { ms_sched()->hooks.fault(MS_FAULT_KIND_FAULT, text); }
 
-static void drop_closure(void *closure) { msrt_obj_drop(closure); }
+static void drop_closure(uint8_t *closure) { msrt_obj_drop((MsObj *)__builtin_assume_aligned(closure, _Alignof(MsObj))); }
 
 static uint64_t own_isolate(void) { return (uint64_t)(ms_sched()->isolate & 0x3fu); }
 
@@ -337,7 +337,7 @@ static void run_closure(void *closure) { ((MsClosure *)closure)->code(closure); 
 static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) {
     const ptrdiff_t found = row_of(id);
     if (found < 0) {
-        msrt_free(message.bytes);
+        ms_fault_text_free(&message);
         return;
     }
     const size_t row = (size_t)found;
@@ -380,7 +380,7 @@ static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) 
             cold->report.length = sizeof text - 1;
         }
     }
-    msrt_free(message.bytes);
+    ms_fault_text_free(&message);
     wake(row);
 }
 
@@ -444,14 +444,14 @@ void ms_promise_start_idle(MsPromise id, MsObj *closure) {
 static void end_guarded_run(MsPromise id, MsGuardStatus status, MsFaultText message) {
     const ptrdiff_t row = row_of(id);
     if (row < 0 || status == MS_GUARD_OK || table.hot[row].state != STATE_PENDING) {
-        msrt_free(message.bytes);
+        ms_fault_text_free(&message);
         return;
     }
     if (status == MS_GUARD_FAULT) {
         table.cold[row].report = message;
         table.hot[row].state = STATE_FAILED;
     } else {
-        msrt_free(message.bytes);
+        ms_fault_text_free(&message);
         table.hot[row].state = STATE_CANCELLED;
     }
     wake((size_t)row);
@@ -478,7 +478,7 @@ static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
         until = inherited;
     }
     const int64_t earlier = ms_task_set_defer_deadline(until);
-    const size_t handle = ms_cleanup_push(drop_closure, closure);
+    const size_t handle = ms_cleanup_push(drop_closure, (uint8_t *)closure);
     MsFaultText message = {0};
     MsGuardStatus status = MS_GUARD_OK;
     if (guarded) {
@@ -642,7 +642,7 @@ void ms_promise_drop(MsPromise id) {
     }
     const size_t row = (size_t)found;
     release_result(row);
-    msrt_free(table.cold[row].report.bytes);
+    ms_fault_text_free(&table.cold[row].report);
     table.hot[row].state = STATE_FREE;
     if (table.free_count == table.free_capacity) {
         size_t capacity = table.free_capacity;
@@ -658,14 +658,10 @@ void ms_promise_drop(MsPromise id) {
 
 MsFaultText ms_promise_fault_report(MsPromise id) {
     const ptrdiff_t row = row_of(id);
-    MsFaultText copy = {0};
     if (row < 0 || table.cold[row].report.bytes == NULL) {
-        return copy;
+        return (MsFaultText){0};
     }
-    copy.bytes = msrt_alloc(table.cold[row].report.length);
-    copy.length = table.cold[row].report.length;
-    memcpy(copy.bytes, table.cold[row].report.bytes, copy.length);
-    return copy;
+    return ms_fault_text_clone(&table.cold[row].report);
 }
 
 /* A cancelled frame ends the promises it started at or above its cleanup height `base`, newest first: the work
@@ -986,7 +982,7 @@ void ms_promises_teardown(void) {
     for (size_t row = 0; row < table.count; row++) {
         if (table.hot[row].state != STATE_FREE) {
             release_result(row);
-            msrt_free(table.cold[row].report.bytes);
+            ms_fault_text_free(&table.cold[row].report);
         }
     }
     msrt_free(table.hot);

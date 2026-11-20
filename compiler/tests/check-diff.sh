@@ -4,7 +4,7 @@
 #   tables  the bundled standard library as loaded into the symbol tables (crates/ms-check c_oracle)
 #   scope   the name-resolution diagnostics of every fixture that imports only `@std/` modules
 #   bodies  the expression types of the functions whose bodies the C pass checks (only those: it
-#           leaves a function with an unhandled construct to the Rust checker), with no Rust diagnostic inside
+#           leaves a function with an unhandled construct to the Rust checker), with the diagnostics inside each
 #   ownership  the ownership diagnostics inside the functions the C walk handles (moves, borrows, returns)
 #   effect directives  the `// ms: effect` and `allow_effect` lines of every .ms file in the repository
 #   desugar  inherent impls rewritten, as project and bundled modules and with foreign types
@@ -22,13 +22,14 @@ effects_oracle=target/release/examples/c_oracle_effects
 desugar_oracle=target/release/examples/c_oracle_desugar
 methods_oracle=target/release/examples/c_oracle_methods
 
-sh compiler/tests/cbuild.sh ms_check_dump types_test ownership_test recursion_test ty_algebra_test infer_test ms_effect_dump effect_graph_gen ms_desugar_dump ms_methods_dump
+sh compiler/tests/cbuild.sh ms_check_dump types_test ownership_test recursion_test ty_algebra_test infer_test implements_test ms_effect_dump effect_graph_gen ms_desugar_dump ms_methods_dump
 bin=target/cmake/test/compiler
 "$bin/ownership_test"
 "$bin/types_test"
 "$bin/recursion_test"
 "$bin/ty_algebra_test"
 "$bin/infer_test"
+"$bin/implements_test"
 
 status=0
 "$oracle" > "$out/tables.rust"
@@ -67,8 +68,9 @@ else
 fi
 
 # Function bodies: the facts of every function the C pass checked, against the Rust checker's.
-# Each line is keyed by file and function so that only the functions C claims are compared; a Rust
-# diagnostic inside one of them shows as `dirty`, which the C side never prints.
+# Each line is keyed by file and function so that only the functions C claims are compared, with
+# the diagnostics inside each (`diag L:C: message`): one Rust reports and C does not, or the
+# reverse, is a difference.
 "$oracle" --bodies $files > "$out/bodies.rust"
 "$bin/ms_check_dump" stdlib --bodies $files > "$out/bodies.c"
 keyed() {

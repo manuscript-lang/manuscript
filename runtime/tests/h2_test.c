@@ -26,8 +26,55 @@ static int has(const MsH2 *h, const MsH2Event *e, const char *name, const char *
     return 0;
 }
 
+/* A response streamed in pieces with a trailer: the server never queues more than MS_H2_SEND_HOLD, says when it
+   has room again, and the reader's consume calls reopen the peer's windows. */
+static void streaming(const char *payload, size_t blen) {
+    MsH2Limits lim = {100, 0, 65535, 65535};
+    MsH2 *srv = ms_h2_new(1, &lim), *cli = ms_h2_new(0, &lim);
+    MsH2Nv get[] = {{S(":method"), S("GET")}, {S(":scheme"), S("https")}, {S(":path"), S("/big")}, {S(":authority"), S("example.test")}};
+    int32_t id = ms_h2_open(cli, get, 4, 0);
+    CHECK(id == 1);
+    settle(cli, srv);
+    MsH2Event e;
+    while (ms_h2_next(srv, &e)) {}
+    MsH2Nv head[] = {{S(":status"), S("200")}};
+    CHECK(ms_h2_respond(srv, id, head, 1, 1) == 0);
+    CHECK(ms_h2_send(srv, 99, "x", 1, 0) == -1); /* no such stream */
+    size_t big = MS_H2_SEND_HOLD * 2 + 5, offered = 0, received = 0;
+    char *want = malloc(big), *have = malloc(big);
+    for (size_t i = 0; i < big; i++) want[i] = payload[i % blen];
+    int blocked = 0, writable = 0, trailer = 0, ended = 0;
+    for (int round = 0; round < 4000 && !ended; round++) {
+        if (offered < big) {
+            long took = ms_h2_send(srv, id, want + offered, big - offered, 0);
+            CHECK(took >= 0);
+            offered += (size_t)took;
+            if (offered < big) blocked = 1;
+        } else if (!trailer) {
+            MsH2Nv tr[] = {{S("x-sum"), S("42")}};
+            CHECK(ms_h2_trailers(srv, id, tr, 1) == 0);
+            CHECK(ms_h2_send(srv, id, "z", 1, 1) == -1); /* ended */
+            trailer = 1;
+        }
+        settle(srv, cli);
+        while (ms_h2_next(cli, &e)) {
+            if (e.type == MS_H2_DATA) {
+                CHECK(received + e.data.len <= big);
+                memcpy(have + received, ms_h2_arena(cli) + e.data.off, e.data.len);
+                received += e.data.len;
+                CHECK(ms_h2_consume(cli, e.stream, e.data.len) == 0);
+            }
+            if (e.type == MS_H2_HEADERS && has(cli, &e, "x-sum", "42")) { CHECK(e.end_stream); ended = 1; }
+        }
+        while (ms_h2_next(srv, &e)) if (e.type == MS_H2_WRITABLE && e.stream == id) writable = 1;
+    }
+    CHECK(blocked && writable && trailer && ended && received == big && !memcmp(have, want, big));
+    free(want); free(have);
+    ms_h2_free(srv); ms_h2_free(cli);
+}
+
 int main(void) {
-    MsH2Limits lim = {100, 0};
+    MsH2Limits lim = {100, 0, 0, 0};
     MsH2 *srv = ms_h2_new(1, &lim), *cli = ms_h2_new(0, NULL);
     CHECK(srv && cli);
     MsH2Nv req[] = {{S(":method"), S("POST")}, {S(":scheme"), S("https")}, {S(":path"), S("/up?x=1")},
@@ -37,11 +84,12 @@ int main(void) {
     for (size_t i = 0; i < blen; i++) payload[i] = (char)('a' + i % 26);
     int32_t id = ms_h2_submit_request(cli, req, 5, payload, blen);
     CHECK(id == 1);
-    settle(cli, srv);
 
     MsH2Event e; size_t got = 0; int saw_headers = 0, saw_end = 0;
     char *copy = malloc(blen);
-    while (ms_h2_next(srv, &e)) {
+    for (int round = 0; round < 10 && !saw_end; round++) { /* the reader returns window between rounds */
+      settle(cli, srv);
+      while (ms_h2_next(srv, &e)) {
         if (e.type == MS_H2_HEADERS) {
             saw_headers = 1;
             CHECK(e.stream == 1 && !e.end_stream);
@@ -50,8 +98,10 @@ int main(void) {
             CHECK(got + e.data.len <= blen);
             memcpy(copy + got, ms_h2_arena(srv) + e.data.off, e.data.len);
             got += e.data.len;
+            CHECK(ms_h2_consume(srv, e.stream, e.data.len) == 0);
             if (e.end_stream) saw_end = 1;
         }
+      }
     }
     CHECK(saw_headers && saw_end && got == blen && !memcmp(copy, payload, blen));
 
@@ -91,10 +141,16 @@ int main(void) {
     CHECK(ms_h2_submit_request(c2, req, 5, payload, 30000) == 1);
     for (int i = 0; i < 20000; i++) { pump(c2, s2); pump(s2, c2); }
     size_t got2 = 0;
-    while (ms_h2_next(s2, &e)) if (e.type == MS_H2_DATA) got2 += e.data.len;
+    while (ms_h2_next(s2, &e)) {
+        if (e.type != MS_H2_DATA) continue;
+        got2 += e.data.len;
+        CHECK(ms_h2_consume(s2, e.stream, e.data.len) == 0);
+    }
     CHECK(got2 == 30000);
     ms_h2_free(s2); ms_h2_free(c2);
 
+    window = 32768;
+    streaming(payload, blen);
     free(payload); free(copy);
     ms_h2_free(srv); ms_h2_free(cli);
     if (!failed) printf("h2 ok\n");

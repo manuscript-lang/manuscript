@@ -46,6 +46,7 @@ typedef enum MsBindRole {
 /* Methods of a program: what an `impl` supplies, in declaration order (see methods.h). A symbol's
  * signature is its `ty` in `MsSyms`: a function type whose parameters carry the label, type and
  * var/move flags (`ms_ty_params`) and whose result is `tys.result`. */
+enum { MS_METHOD_MUTATING = 1, MS_METHOD_CONSUMING = 2 };
 typedef struct MsMethods {
     MsSym *id;            /* `module/Receiver/Contract/name`, as the Rust checker names it */
     MsTy *receiver;
@@ -53,6 +54,7 @@ typedef struct MsMethods {
     MsTy *ty;             /* the signature, receiver not included */
     const MsFunc **decl;  /* the declaration, or NULL for a property without operations */
     MsNativeKind *native;
+    uint8_t *access;      /* MS_METHOD_MUTATING | MS_METHOD_CONSUMING of the receiver */
     bool *inherent;       /* a type's own method: its contract is the synthesized `Type$methods` */
     MsModId *module;      /* the module that declares the impl */
     bool *local;          /* an extension declared outside the receiver's module: visible there only */
@@ -76,6 +78,7 @@ typedef struct MsFacts {
     uint32_t *arm_case;   /* by match-arm node id: the case index the arm matches */
     /* calls, by call-expression node id */
     uint32_t *call_callee;     /* symbol id of the called function, else MS_NONE */
+    bool *const_use;           /* by name node: a module constant read, which evaluates its initializer */
     uint32_t *call_method;     /* method id when the call is a method call, else MS_NONE */
     MsTy *call_receiver;       /* the receiver's type for a method call */
     MsTy *call_interface;      /* the interface a call dispatches through, else MS_TY_NONE */

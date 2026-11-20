@@ -702,6 +702,14 @@ static MirValue *ic_split_param(MirModule *m, MirFunc *f, const MirFunc *g, uint
         params[n] = f->params[j];
         bparams[n++] = entry->params[j];
     }
+    /* Parameters after the split one move by the captures that replace it. */
+    uint32_t kept = 0;
+    for (uint32_t k = 0; k < f->nnoalias; k++) {
+        if (f->noalias[k] != i) {
+            f->noalias[kept++] = f->noalias[k] > i ? f->noalias[k] - 1 + nc : f->noalias[k];
+        }
+    }
+    f->nnoalias = kept;
     f->params = params;
     f->nparams = n;
     entry->params = bparams;
