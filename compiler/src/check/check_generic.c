@@ -3,8 +3,9 @@
  * has the result type with them applied. Handled: positional arguments of primitive type, each
  * variable bound to a primitive, bounds that are certainly met. Explicit type arguments, defaults
  * that are needed, bounds whose answer is unknown and every other form leave the function to the
- * Rust checker. Records `call_callee`; the type
- * arguments are recomputed from the argument types by whoever lowers the call. */
+ * Rust checker. Records `call_callee` and the type arguments (`call_type_args_*`). */
+#include <string.h>
+
 #include "check_body.h"
 
 #include "ms/implements.h"
@@ -52,6 +53,29 @@ static bool generic_bounds(MsBody *b, MsInfer *in) {
     return true;
 }
 
+/* The type arguments the call was inferred at, in the order of the callee's variables: the lowering
+ * makes one copy of the callee per list. */
+static void generic_record_type_args(MsBody *b, const MsExpr *e, const MsInfer *in) {
+    MsFacts *facts = b->facts;
+    if (facts->ntype_args + in->nvars > facts->ctype_args) {
+        uint32_t cap = facts->ctype_args == 0 ? 16 : facts->ctype_args * 2;
+        while (cap < facts->ntype_args + in->nvars) {
+            cap *= 2;
+        }
+        MsTy *grown = MS_NEW_N(&b->c->arena, MsTy, cap);
+        if (facts->ntype_args != 0) {
+            memcpy(grown, facts->type_args, facts->ntype_args * sizeof *grown);
+        }
+        facts->type_args = grown;
+        facts->ctype_args = cap;
+    }
+    facts->call_type_args_at[e->id] = facts->ntype_args;
+    facts->call_type_args_len[e->id] = in->nvars;
+    for (uint32_t i = 0; i < in->nvars; i++) {
+        facts->type_args[facts->ntype_args++] = in->bound[i];
+    }
+}
+
 MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym) {
     if (b->c->syms.module[sym] != b->module) {
         return ms_body_unsupported(b); /* an imported generic: its declaration ids belong to another module */
@@ -69,5 +93,6 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym) {
         return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;
+    generic_record_type_args(b, e, &in);
     return result;
 }
