@@ -4,7 +4,7 @@
 //! less than Cranelift; a program they cannot write fails with the reason instead of falling back,
 //! so the corpus diff (`compiler/tests/build-diff.sh`) counts the gaps.
 //!
-//! Tools come from `MS_C_BACKEND_DIR` (a folder holding `ms_mir_build` and `qbe`), else from the
+//! Tools come from `MS_C_BACKEND_DIR` (a folder holding `ms_mir_build`, `ms_asm_tables` and `qbe`), else from the
 //! folder of the running `ms`.
 
 use std::path::{Path, PathBuf};
@@ -31,7 +31,7 @@ fn tool(name: &str) -> Result<PathBuf, String> {
         Ok(path)
     } else {
         Err(format!(
-            "MS_BACKEND=c needs {}; set MS_C_BACKEND_DIR to a folder with ms_mir_build and qbe",
+            "MS_BACKEND=c needs {}; set MS_C_BACKEND_DIR to a folder with ms_mir_build, ms_asm_tables and qbe",
             path.display()
         ))
     }
@@ -78,6 +78,10 @@ fn compile_in(
     if !checks {
         build.arg("--no-checks");
     }
+    let meta = dir.join("program.meta");
+    if !llvm {
+        build.arg("--tables-meta").arg(&meta);
+    }
     let text = run(&mut build, "ms_mir_build")?;
     let object = dir.join("program.o");
     if llvm {
@@ -104,6 +108,16 @@ fn compile_in(
             Command::new(tool("qbe")?).args(["-t", target]).arg(&ssa),
             "qbe",
         )?;
+        // The fault tables: ms_asm_tables labels the assembly and appends them (no debug info is read).
+        let plain = dir.join("program.plain.s");
+        std::fs::write(&plain, asm)
+            .map_err(|e| format!("cannot write {}: {e}", plain.display()))?;
+        let mut tables = Command::new(tool("ms_asm_tables")?);
+        tables.arg(&meta).arg(&plain);
+        if std::env::consts::OS == "macos" {
+            tables.args(["--prefix", "_"]);
+        }
+        let asm = run(&mut tables, "ms_asm_tables")?;
         let s = dir.join("program.s");
         std::fs::write(&s, asm).map_err(|e| format!("cannot write {}: {e}", s.display()))?;
         run(

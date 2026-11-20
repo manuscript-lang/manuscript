@@ -202,7 +202,30 @@ static char *format_text(const char *pattern, int64_t seconds, int64_t nanos, in
     return owned(&out);
 }
 
+/* The system zone answer for a TZ setting, as text (the String is freed here). */
+static int system_zone_is(const char *setting, const char *expected) {
+    setenv("TZ", setting, 1);
+    MsStr zone;
+    msstd_time_system_zone(&zone);
+    const int same = ms_str_len(&zone) == strlen(expected) && memcmp(ms_str_data(&zone), expected, strlen(expected)) == 0;
+    msrt_string_free(&zone);
+    unsetenv("TZ");
+    return same;
+}
+
+static void system_zone_checks(void) {
+    CHECK(system_zone_is("Europe/Paris", "tz:Europe/Paris"));
+    CHECK(system_zone_is(":/usr/share/zoneinfo/Asia/Tokyo", "tz:Asia/Tokyo"));
+    char *const long_name = malloc(6001);
+    memset(long_name, 'A', 6000);
+    long_name[6000] = 0;
+    CHECK(system_zone_is(long_name, "")); /* too long for a zone name: no over-read, an empty answer */
+    free(long_name);
+    CHECK(system_zone_is("\xff\xfe", "")); /* not UTF-8 */
+}
+
 static void direct_checks(void) {
+    system_zone_checks();
     CHECK(msstd_time_duration_add(2, 3) == 5);
     CHECK(msstd_time_duration_to_milliseconds(2500000) == 2);
     CHECK(msstd_time_duration_to_seconds(1500000000) == 1.5);

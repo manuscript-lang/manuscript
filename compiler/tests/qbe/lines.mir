@@ -1,0 +1,17 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+
+fn @helper(%0: int) -> int !0:1:1 {
+b0:
+  %1: int = iadd %0, %0 !0:2:3
+  ret %1 !0:3:3
+}
+
+fn @msmain() -> int !0:5:1 {
+b0:
+  %0: int = iconst 20 !0:6:3
+  %1: int = call @helper (%0) !0:7:3
+  %2: int = call @helper (%1) !0:8:3
+  ret %2 !0:9:3
+}

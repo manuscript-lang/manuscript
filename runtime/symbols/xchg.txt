@@ -1,0 +1,10 @@
+# Defined in runtime/net/exchange.c (HTTP/1) and exchange_h2.c (HTTP/2).
+msstd_xchg_finish
+msstd_xchg_head
+msstd_xchg_next
+msstd_xchg_read
+msstd_xchg_reject
+msstd_xchg_reset
+msstd_xchg_send_head
+msstd_xchg_take_conn
+msstd_xchg_write

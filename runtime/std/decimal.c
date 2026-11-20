@@ -15,6 +15,7 @@ typedef __int128 MsI128;
 
 enum {
     MS_DECIMAL_DIGITS = 34,
+    MS_DECIMAL_WIDE_DIGITS = 38, /* the most digits dropped from a 128-bit value */
     MS_DECIMAL_MIN_QUANTUM = -6176,
     MS_DECIMAL_MAX_EXPONENT = 6144,
     /* The most digits a rendering can hold: sign, 34 digits, a point, `e+6144`. */
@@ -32,12 +33,36 @@ typedef enum MsRounding {
 
 /* ---- 128-bit helpers ---- */
 
+enum { POW10_WORD_MAX = 19 }; /* 10^19 is the largest power of ten in 64 bits */
+
+/* 10^exponent for an exponent up to 38 (the largest power of ten in 128 bits): two table lookups. */
 static MsU128 power_of_ten(unsigned exponent) {
-    MsU128 power = 1;
-    for (unsigned i = 0; i < exponent; i++) {
-        power *= 10;
+    static const uint64_t words[POW10_WORD_MAX + 1] = {
+        1ULL,
+        10ULL,
+        100ULL,
+        1000ULL,
+        10000ULL,
+        100000ULL,
+        1000000ULL,
+        10000000ULL,
+        100000000ULL,
+        1000000000ULL,
+        10000000000ULL,
+        100000000000ULL,
+        1000000000000ULL,
+        10000000000000ULL,
+        100000000000000ULL,
+        1000000000000000ULL,
+        10000000000000000ULL,
+        100000000000000000ULL,
+        1000000000000000000ULL,
+        10000000000000000000ULL,
+    };
+    if (exponent <= POW10_WORD_MAX) {
+        return words[exponent];
     }
-    return power;
+    return (MsU128)words[POW10_WORD_MAX] * words[exponent - POW10_WORD_MAX];
 }
 
 /* Decimal digits of a nonzero 128-bit value (1 for zero). */
@@ -69,10 +94,20 @@ static MsU128 magnitude_of(MsI128 value) { return value < 0 ? (MsU128)0 - (MsU12
 
 /* Strips trailing zeros of a coefficient into the exponent. */
 static void normalize(MsU128 *magnitude, int64_t *exponent) {
-    while (*magnitude != 0 && *magnitude % 10 == 0) {
-        *magnitude /= 10;
+    while (*magnitude >> 64 != 0) { /* wide values go down to 64 bits first */
+        const MsU128 tenth = *magnitude / 10;
+        if (*magnitude != tenth * 10) {
+            return;
+        }
+        *magnitude = tenth;
         (*exponent)++;
     }
+    uint64_t narrow = (uint64_t)*magnitude;
+    while (narrow != 0 && narrow % 10 == 0) {
+        narrow /= 10;
+        (*exponent)++;
+    }
+    *magnitude = narrow;
 }
 
 /* ---- the bignum bridge ---- */
@@ -135,12 +170,52 @@ static void drop_digits_half_even(MsBig *out, const MsBig *coefficient, int64_t 
     ms_big_free(&one);
 }
 
+/* Rounds the exact value +-magnitude * 10^exponent half to even at 34 digits. Returns false when the magnitude
+ * exceeds the format. */
+MS_NODISCARD static bool round_wide(MsU128 magnitude, bool negative, int64_t exponent, MsDecimal *out) {
+    if (magnitude == 0) {
+        *out = pack(0, 0);
+        return true;
+    }
+    const int64_t digits = digits_of(magnitude);
+    const int64_t leading = exponent + digits - 1;
+    const int64_t quantum = leading - (MS_DECIMAL_DIGITS - 1) > MS_DECIMAL_MIN_QUANTUM
+                                ? leading - (MS_DECIMAL_DIGITS - 1)
+                                : MS_DECIMAL_MIN_QUANTUM;
+    const int64_t drop = quantum - exponent;
+    if (drop > 0) {
+        exponent = quantum;
+        if (drop > MS_DECIMAL_WIDE_DIGITS) { /* below half of one unit of the quantum */
+            magnitude = 0;
+        } else {
+            const MsU128 unit = power_of_ten((unsigned)drop);
+            const MsU128 remainder = magnitude % unit;
+            magnitude /= unit;
+            const MsU128 complement = unit - remainder;
+            if (remainder > complement || (remainder == complement && (magnitude & 1) != 0)) {
+                magnitude++;
+            }
+        }
+    }
+    normalize(&magnitude, &exponent);
+    if (magnitude != 0 && exponent + (int64_t)digits_of(magnitude) - 1 > MS_DECIMAL_MAX_EXPONENT) {
+        return false;
+    }
+    *out = pack(negative ? -(MsI128)magnitude : (MsI128)magnitude, exponent);
+    return true;
+}
+
 /* Rounds the exact value coefficient * 10^exponent half to even at 34 digits. Returns false when the magnitude
  * exceeds the format. */
 MS_NODISCARD static bool rounded(const MsBig *coefficient, int64_t exponent, MsDecimal *out) {
     if (ms_big_is_zero(coefficient)) {
         *out = pack(0, 0);
         return true;
+    }
+    uint64_t high = 0;
+    uint64_t low = 0;
+    if (ms_big_to_u128(coefficient, &high, &low)) {
+        return round_wide(((MsU128)high << 64) | low, ms_big_sign(coefficient) < 0, exponent, out);
     }
     const int64_t digits = big_digits(coefficient);
     const int64_t leading = exponent + digits - 1;
@@ -248,6 +323,41 @@ MS_NORETURN static void overflow_fault(const char *operation, const MsDecimal *l
 
 /* ---- arithmetic ---- */
 
+/* The magnitude of d's coefficient scaled up by 10^shift; false when it does not fit 128 bits. */
+static bool scaled_magnitude(const MsDecimal *d, int64_t shift, MsU128 *out) {
+    if (shift > MS_DECIMAL_WIDE_DIGITS) {
+        return false;
+    }
+    return !__builtin_mul_overflow(magnitude_of(coefficient_of(d)), power_of_ten((unsigned)shift), out);
+}
+
+/* The sum or difference when both aligned coefficients and their combination fit 128 bits (the common case). */
+static bool combine_wide(const MsDecimal *a, const MsDecimal *b, bool subtract, int64_t exponent, MsDecimal *out) {
+    MsU128 left = 0;
+    MsU128 right = 0;
+    if (!scaled_magnitude(a, a->exponent - exponent, &left) || !scaled_magnitude(b, b->exponent - exponent, &right)) {
+        return false;
+    }
+    const bool left_negative = coefficient_of(a) < 0;
+    const bool right_negative = (coefficient_of(b) < 0) != subtract;
+    MsU128 magnitude = 0;
+    bool negative = left_negative;
+    if (left_negative == right_negative) {
+        if (__builtin_add_overflow(left, right, &magnitude)) {
+            return false;
+        }
+    } else if (left >= right) {
+        magnitude = left - right;
+    } else {
+        magnitude = right - left;
+        negative = right_negative;
+    }
+    if (!round_wide(magnitude, negative, exponent, out)) {
+        overflow_fault(subtract ? "-" : "+", a, b);
+    }
+    return true;
+}
+
 /* The exact sum or difference shares one alignment: both coefficients are scaled to the smaller exponent. */
 static void combine(const MsDecimal *a, const MsDecimal *b, bool subtract, MsDecimal *out) {
     if (is_zero(b)) {
@@ -263,6 +373,9 @@ static void combine(const MsDecimal *a, const MsDecimal *b, bool subtract, MsDec
         return;
     }
     const int64_t exponent = a->exponent < b->exponent ? a->exponent : b->exponent;
+    if (combine_wide(a, b, subtract, exponent, out)) {
+        return;
+    }
     MsBig left = MS_BIG_ZERO;
     MsBig right = MS_BIG_ZERO;
     MsBig scale = MS_BIG_ZERO;
@@ -291,6 +404,14 @@ void msstd_decimal_add(const MsDecimal *a, const MsDecimal *b, MsDecimal *out) {
 void msstd_decimal_subtract(const MsDecimal *a, const MsDecimal *b, MsDecimal *out) { combine(a, b, true, out); }
 
 void msstd_decimal_multiply(const MsDecimal *a, const MsDecimal *b, MsDecimal *out) {
+    MsU128 product = 0;
+    if (!__builtin_mul_overflow(magnitude_of(coefficient_of(a)), magnitude_of(coefficient_of(b)), &product)) {
+        const bool negative = (coefficient_of(a) < 0) != (coefficient_of(b) < 0);
+        if (!round_wide(product, negative, a->exponent + b->exponent, out)) {
+            overflow_fault("*", a, b);
+        }
+        return;
+    }
     MsBig left = MS_BIG_ZERO;
     MsBig right = MS_BIG_ZERO;
     big_from_coefficient(&left, a);
@@ -669,6 +790,27 @@ static void scaled_coefficient(MsBig *out, const MsDecimal *d, int64_t places, M
     ms_big_free(&twice);
 }
 
+/* |coefficient| / 10^drop rounded by `mode`, for a drop of at least one digit. A 34-digit coefficient is below
+ * 10^34, so a drop beyond 34 digits leaves less than half a unit: nearest rounding and truncation give zero and only
+ * a directed mode moves one unit away. */
+static MsU128 rounded_magnitude(MsU128 magnitude, bool negative, int64_t drop, MsRounding mode) {
+    if (drop > MS_DECIMAL_DIGITS) {
+        const bool away = (mode == MS_ROUND_FLOOR && negative) || (mode == MS_ROUND_CEIL && !negative);
+        return away ? 1 : 0;
+    }
+    const MsU128 unit = power_of_ten((unsigned)drop);
+    const MsU128 remainder = magnitude % unit;
+    MsU128 quotient = magnitude / unit;
+    if (remainder != 0) {
+        const MsU128 complement = unit - remainder;
+        const int comparison_with_half = (remainder > complement) - (remainder < complement);
+        if (rounds_up(mode, comparison_with_half, (quotient & 1) != 0, negative)) {
+            quotient++;
+        }
+    }
+    return quotient;
+}
+
 uint8_t msstd_decimal_round(const MsDecimal *value, int64_t places, HasRaw has_mode, int64_t mode, MsDecimal *out) {
     MsRounding rounding = MS_ROUND_HALF_EVEN;
     if (!rounding_of(has_mode, mode, &rounding) || places < -6144 || places > 6176) {
@@ -678,11 +820,9 @@ uint8_t msstd_decimal_round(const MsDecimal *value, int64_t places, HasRaw has_m
         *out = *value;
         return MS_STATUS_OK;
     }
-    MsBig scaled = MS_BIG_ZERO;
-    scaled_coefficient(&scaled, value, places, rounding);
-    const bool negative = ms_big_sign(&scaled) < 0;
-    MsU128 magnitude = big_magnitude(&scaled); /* below the shift, so at most 35 digits */
-    ms_big_free(&scaled);
+    const bool negative = coefficient_of(value) < 0;
+    const int64_t drop = -(value->exponent + places);
+    MsU128 magnitude = rounded_magnitude(magnitude_of(coefficient_of(value)), negative, drop, rounding);
     int64_t exponent = -places;
     normalize(&magnitude, &exponent);
     if (magnitude != 0) {

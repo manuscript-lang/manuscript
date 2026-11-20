@@ -146,8 +146,8 @@ ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_os_so
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} ${_pipe_stubs} "${_rt}/sys/${_os}/fs.c" "${_rt}/sys/${_os}/clock.c" "${_rt}/sys/${_os}/fd.c"
-          "${_rt}/sys/${_os}/ifindex.c" "${_rt}/sys/${_os}/process.c" "${_rt}/sys/${_os}/signal.c" "${_rt}/sys/${_os}/yield.c"
+  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} ${_pipe_stubs} "${_rt}/core/utf8.c" "${_rt}/sys/${_os}/fs.c" "${_rt}/sys/${_os}/clock.c" "${_rt}/sys/${_os}/fd.c"
+          "${_rt}/sys/${_os}/ifindex.c" "${_rt}/sys/${_os}/process.c" "${_rt}/sys/${_os}/signal.c"
           INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_z_INCLUDES}
           LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
