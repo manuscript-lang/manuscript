@@ -39,6 +39,8 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(cmake/MsPlatform.cmake)
+# The allocator of the runtime and of the compiler tools, so a build without the runtime has it too.
+include(cmake/MsMimalloc.cmake)
 if(MS_BUILD_RUNTIME)
   include(cmake/MsLibs.cmake)
   include(cmake/MsRuntime.cmake)
