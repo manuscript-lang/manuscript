@@ -410,6 +410,7 @@ fn serve_h2(
 	)
 	var requests: List[Promise[Void]] = []
 	var draining = false
+	var prune_at = PRUNE_AT
 
 	while true:
 		// Draining sends GOAWAY once; requests already started finish.
@@ -433,6 +434,10 @@ fn serve_h2(
 
 		if request := got.get():
 			requests.append(start_stream(request, msstd_handler_share(serving)))
+
+			if requests.length() >= prune_at:
+				requests = ended_removed(requests)
+				prune_at = PRUNE_AT.max(requests.length() * 2)
 		else:
 			break
 
@@ -441,6 +446,24 @@ fn serve_h2(
 			void request.wait()
 	void running.wait()
 	return ok()
+
+// How many requests a connection tracks before it drops the ones that have ended.
+PRUNE_AT := 64
+
+// Keeps the requests still running, so a long-lived connection holds a promise per live
+// request and not one per request served.
+fn ended_removed(requests: List[Promise[Void]]) List[Promise[Void]]:
+	var kept: List[Promise[Void]] = []
+	var pending = requests
+
+	while not pending.is_empty():
+		if request := pending.pop():
+			if request.done():
+				void request.wait()
+			else:
+				kept.append(request)
+
+	return kept
 
 fn start_stream(request: NativeExchange, serving: NativeHandler) Promise[Void]:
 	return promise(
