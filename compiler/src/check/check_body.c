@@ -491,8 +491,11 @@ static MsTy body_constant_use(MsBody *b, const MsExpr *e) {
     return b->c->tys.result[syms->ty[sym]];
 }
 
-static MsTy body_name(MsBody *b, const MsExpr *e) {
+static MsTy body_name(MsBody *b, const MsExpr *e, MsTy expected) {
     const uint32_t binding = ms_body_find_binding(b, e->u.sym);
+    if (binding == MS_NONE && ms_body_is_case_of(b, expected, e->u.sym)) {
+        return ms_body_case_name(b, e, expected);
+    }
     if (binding == MS_NONE && !body_text_is(b, e->u.sym, "none")) {
         const MsSymId named = ms_map_get(&b->c->mods[b->module].names, e->u.sym);
         if (named != MS_NONE && b->c->syms.kind[named] == MS_SYM_FN) {
@@ -639,6 +642,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsSyms *syms = &b->c->syms;
     if (sym == MS_NONE && ms_body_is_builtin_case(b, callee->u.sym)) {
         return ms_body_builtin_call(b, e, expected);
+    }
+    if (sym == MS_NONE && ms_body_is_case_of(b, expected, callee->u.sym)) {
+        return ms_body_case_call(b, e, expected);
     }
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
         return body_construct(b, e, sym);
@@ -912,7 +918,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_BOOL: ty = b->bool_ty; break;
     case MS_E_VOID: ty = b->void_ty; break;
     case MS_E_TEXT: ty = body_text(b, e); break;
-    case MS_E_NAME: ty = body_name(b, e); break;
+    case MS_E_NAME: ty = body_name(b, e, expected); break;
     case MS_E_UNARY: ty = body_unary(b, e); break;
     case MS_E_BINARY: ty = body_binary(b, e); break;
     case MS_E_MEMBER: ty = body_member(b, e); break;

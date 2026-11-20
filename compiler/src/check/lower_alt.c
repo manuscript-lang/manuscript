@@ -61,19 +61,34 @@ LbVal la_none(Lb *lb, const MsExpr *e) {
     return (LbVal){mir_b_emit(&lb->b, MOP_OptNone, NULL, 0, (MirImm){0}, ty), false};
 }
 
-/* `ok(value)` and `error(cause)`: the checker resolved the callee to the case. */
+/* `ok(value)`, `error(cause)` and `Case(args)` of an enum: the checker resolved the callee to the
+ * case, and every argument fills one field of it. */
 LbVal la_case(Lb *lb, const MsExpr *call) {
     const MsExpr *callee = call->u.call.callee;
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[call->id]);
-    if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT || call->u.call.args.len != 1) {
+    const uint32_t count = call->u.call.args.len;
+    if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT) {
         return lb_unsupported(lb);
     }
-    const LbVal payload = lb_expr(lb, call->u.call.args.ptr[0].value);
+    MirValue *payload = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
+    for (uint32_t i = 0; i < count && lb->ok; i++) {
+        payload[i] = lb_expr(lb, call->u.call.args.ptr[i].value).v;
+    }
     if (!lb->ok) {
         return LB_FAIL;
     }
     const MirImm imm = {.tag = MI_CASE, .a = mir_ty_data(lb->m, ty)->id, .b = lb->facts->res_ref[callee->id]};
-    return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, &payload.v, 1, imm, ty), false};
+    return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, payload, count, imm, ty), false};
+}
+
+/* A case without payload, named: `Empty`. */
+LbVal la_nullary(Lb *lb, const MsExpr *e) {
+    const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT) {
+        return lb_unsupported(lb);
+    }
+    const MirImm imm = {.tag = MI_CASE, .a = mir_ty_data(lb->m, ty)->id, .b = lb->facts->res_ref[e->id]};
+    return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, NULL, 0, imm, ty), false};
 }
 
 /* Whether `subject` holds a value: `opt.is_some`, or a Result's tag is `ok`. */
