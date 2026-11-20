@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "append.h"
 #include "ms_rt/string.h"
 #include "support/rt_stubs.h"
 
@@ -140,7 +141,7 @@ int main(void) {
             MsStr next;
             msrt_string_append(&acc, &piece, &next);
             acc = next;
-            strcat(want, "-x");
+            msx_append(want, sizeof want, "-x");
             CHECK(is(&acc, want));
         }
         MsStr self_tail = {.bytes = ms_str_data(&acc) + 5, .tagged = 10 | (UINT64_C(3) << 62)}; /* a view into acc */
