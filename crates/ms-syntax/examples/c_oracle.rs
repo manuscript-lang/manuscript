@@ -79,6 +79,14 @@ fn main() {
             continue;
         }
         match mode {
+            "partial" => {
+                let (m, diags) = ms_syntax::partial::parse_partial(&file, text);
+                out.push_str(&dump_module(Names::global(), &m));
+                let _ = writeln!(out, "nodes {}", m.node_count);
+                for d in &diags {
+                    diag(&mut out, d);
+                }
+            }
             "tokens" => match lex(&file, text) {
                 Ok(l) => {
                     for t in &l.tokens {

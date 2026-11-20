@@ -3652,9 +3652,14 @@ static void module_(Parser *p, MsBuf *imports, MsBuf *decls) {
 }
 
 bool ms_parse(MsArena *arena, MsNames *names, const char *src, size_t len, MsModule *out, MsDiag *diag) {
+    return ms_parse_chunk(arena, names, src, len, 0, 0, 0, out, diag);
+}
+
+bool ms_parse_chunk(MsArena *arena, MsNames *names, const char *src, size_t len, uint32_t base_offset,
+                    uint32_t base_line, uint32_t first_id, MsModule *out, MsDiag *diag) {
     memset(out, 0, sizeof *out);
     MsLexed lexed;
-    if (!ms_lex(arena, src, len, &lexed, diag)) {
+    if (!ms_lex_at(arena, src, len, base_offset, base_line, &lexed, diag)) {
         return false;
     }
     MsBuf scratch = {0}, bytes = {0}, imports = {0}, decls = {0};
@@ -3671,6 +3676,7 @@ bool ms_parse(MsArena *arena, MsNames *names, const char *src, size_t len, MsMod
     p.scratch = &scratch;
     p.bytes = &bytes;
     p.diag = diag;
+    p.next_id = first_id;
     Catch c;
     c.prev = NULL;
     p.catch_ = &c;

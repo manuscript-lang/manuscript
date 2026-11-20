@@ -23,7 +23,7 @@ mkdir -p "$out/fuzz"
 ls "$out"/fuzz/*.ms > "$out/fuzz.txt"
 
 status=0
-for mode in ${MS_MODES:-tokens ast codes}; do
+for mode in ${MS_MODES:-tokens ast codes partial}; do
     for set in files fuzz; do
         # xargs keeps the command line short and the oracle's per-process cost low.
         tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" "$mode" > "$out/$mode-$set.rust"

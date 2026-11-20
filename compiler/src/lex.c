@@ -48,6 +48,9 @@ typedef struct Scanner {
     const MsBounds *cached;
     size_t boundary_origin;
     bool virtual_paren;
+    MsBuf *prefixes; /* bool per physical line: is a delimiter open there (recovery) */
+    const bool *stop_at;
+    size_t nstop;
     jmp_buf jb;
     MsDiag *diag;
 } Scanner;
@@ -1007,6 +1010,18 @@ static void run(Scanner *s) {
     bool continuing = false;
     size_t statement_indent = 0;
     while (s->offset < n) {
+        if (s->prefixes != NULL) {
+            bool open = VLEN(s->delimiters, char) != 0;
+            /* Lines inside a multi-line text were consumed by one token. */
+            size_t line = s->line - s->base_line - 1;
+            while (s->prefixes->len < line) {
+                ms_buf_putc(s->prefixes, 1);
+            }
+            ms_buf_putc(s->prefixes, open);
+            if (s->prefixes->len - 1 < s->nstop && s->stop_at[s->prefixes->len - 1] && !open) {
+                return;
+            }
+        }
         /* A leading tab is one indent level: four columns. */
         size_t leading = 0;
         bool spaced = false;
@@ -1355,6 +1370,14 @@ static void run(Scanner *s) {
         emit_layout(s, MS_T_Indent);
         emit_layout(s, MS_T_Dedent);
     }
+    if (s->prefixes != NULL) {
+        /* Lines consumed by a final multi-line text token are inside it. */
+        size_t line = s->line - s->base_line - 1;
+        while (s->prefixes->len < line) {
+            ms_buf_putc(s->prefixes, 1);
+        }
+        ms_buf_putc(s->prefixes, VLEN(s->delimiters, char) != 0);
+    }
     if (VLEN(s->delimiters, char) != 0) {
         char open = VLAST(s->delimiters, char);
         MsPos where_ = VLAST(s->opened, MsPos);
@@ -1535,4 +1558,162 @@ bool ms_lex_interpolation(MsArena *arena, const char *src, size_t len, size_t or
     *count = ntokens(&s);
     scanner_free(&s);
     return true;
+}
+
+/* ---- editor recovery ---- */
+
+static size_t count_newlines(const char *src, size_t len) {
+    size_t n = 0;
+    for (size_t i = 0; i < len; i++) {
+        n += src[i] == '\n';
+    }
+    return n;
+}
+
+bool *ms_unterminated_prefixes(MsArena *arena, const char *src, size_t len, const bool *stop_at,
+                               size_t nstop, size_t *count) {
+    size_t lines = count_newlines(src, len) + 1;
+    bool *out = MS_NEW_N(arena, bool, lines);
+    memset(out, 0, lines);
+    *count = lines;
+    if (len >= 3 && memcmp(src, "\xEF\xBB\xBF", 3) == 0) {
+        return out;
+    }
+    size_t nlen;
+    uint32_t *offsets;
+    const char *text = normalize(arena, src, len, &nlen, &offsets);
+    MsDiag diag;
+    MsBuf prefixes = {0};
+    Scanner s;
+    scanner_init(&s, arena, text, nlen, 0, 0, offsets, &diag);
+    s.prefixes = &prefixes;
+    s.stop_at = stop_at;
+    s.nstop = nstop;
+    if (setjmp(s.jb) == 0) {
+        run(&s);
+    }
+    for (size_t i = 0; i < lines && i < prefixes.len; i++) {
+        out[i] = ((const bool *)prefixes.data)[i];
+    }
+    scanner_free(&s);
+    ms_buf_free(&prefixes);
+    return out;
+}
+
+/* Recovery looks only at where a text ends; its lexical errors are the strict parse's to report. */
+static void scan_string_ignoring_errors(Scanner *s, bool formatted) {
+    if (setjmp(s->jb) == 0) {
+        scan_string(s, formatted);
+    }
+}
+
+bool *ms_recovery_continuations(MsArena *arena, const char *src, size_t len, const bool *roots,
+                                size_t nroots, size_t *count) {
+    size_t lines = count_newlines(src, len) + 1;
+    bool *out = MS_NEW_N(arena, bool, lines);
+    memset(out, 0, lines);
+    *count = lines;
+    size_t nlen;
+    uint32_t *offsets;
+    const char *text = normalize(arena, src, len, &nlen, &offsets);
+    MsDiag diag;
+    Scanner s;
+    scanner_init(&s, arena, text, nlen, 0, 0, offsets, &diag);
+    size_t depth = 0;
+    bool invalid_text_header = false;
+    uint32_t leading_line = 0;
+    size_t first_token = 0;
+    while (s.offset < s.n) {
+        size_t first = s.line - 1;
+        if (s.column == 1 && first < nroots && roots[first]) {
+            depth = 0;
+        }
+        if (at_line_comment(&s)) {
+            while (s.offset < s.n && s.src[s.offset] != '\n') {
+                advance(&s);
+            }
+        } else if (at_block_comment(&s)) {
+            advance(&s);
+            advance(&s);
+            /* Comments do not nest. Even a malformed comment remains opaque up to its first
+             * closer (or EOF); strict lexing reports the error. */
+            while (s.offset < s.n) {
+                if (starts_with(&s, s.offset, "*/")) {
+                    advance(&s);
+                    advance(&s);
+                    break;
+                }
+                advance(&s);
+            }
+        } else if (starts_with(&s, s.offset, "f\"") &&
+                   !(s.offset > 0 && (letter(s.src[s.offset - 1]) || digit(s.src[s.offset - 1])))) {
+            /* The prefix of interpolating text; the quote is handled next. */
+            advance(&s);
+        } else if (starts_with(&s, s.offset, "r\"") && !starts_with(&s, s.offset + 2, "\"\"") &&
+                   !(s.offset > 0 && (letter(s.src[s.offset - 1]) || digit(s.src[s.offset - 1])))) {
+            /* One-line raw text ends at its first quote; no escapes. */
+            advance(&s);
+            advance(&s);
+            while (s.offset < s.n) {
+                uint8_t byte = advance(&s);
+                if (byte == '"' || byte == '\n') {
+                    break;
+                }
+            }
+        } else if (starts_with(&s, s.offset, "r\"\"\"") || starts_with(&s, s.offset, "\"\"\"")) {
+            bool raw = s.src[s.offset] == 'r';
+            if (leading_line != s.line) {
+                leading_line = s.line;
+                size_t line_start = s.offset - (s.column - 1);
+                size_t k = line_start;
+                while (k < s.n && (s.src[k] == ' ' || s.src[k] == '\t')) {
+                    k++;
+                }
+                first_token = k;
+            }
+            bool standalone = s.offset == first_token;
+            for (int k = 0; k < (raw ? 4 : 3); k++) {
+                advance(&s);
+            }
+            /* A malformed header's standalone closer must not become a fresh opener. A literal in
+             * a new expression (including a standalone delimiter continuation) supersedes that
+             * malformed header. */
+            bool body = at(&s, s.offset) == '\n';
+            bool closing_invalid = invalid_text_header && standalone && !raw && depth == 0;
+            invalid_text_header = !body;
+            if (body && !closing_invalid) {
+                while (s.offset < s.n) {
+                    if (starts_with(&s, s.offset, "\"\"\"")) {
+                        for (int k = 0; k < 3; k++) {
+                            advance(&s);
+                        }
+                        break;
+                    }
+                    uint8_t byte = advance(&s);
+                    if (!raw && byte == '\\' && s.offset < s.n) {
+                        advance(&s);
+                    }
+                }
+            }
+        } else if (s.src[s.offset] == '"') {
+            bool formatted = s.offset > 0 && s.src[s.offset - 1] == 'f' &&
+                             !(s.offset > 1 && (letter(s.src[s.offset - 2]) || digit(s.src[s.offset - 2])));
+            scan_string_ignoring_errors(&s, formatted);
+        } else {
+            uint8_t b = advance(&s);
+            if (b == '(' || b == '[' || b == '{') {
+                depth++;
+            } else if ((b == ')' || b == ']' || b == '}') && depth > 0) {
+                depth--;
+            }
+        }
+        /* An invalid single-line string may consume its newline before failing; the following
+         * line still starts independently. */
+        size_t last = s.line - 1 - (s.column == 1);
+        for (size_t i = first + 1; i <= last && i < lines; i++) {
+            out[i] = true;
+        }
+    }
+    scanner_free(&s);
+    return out;
 }

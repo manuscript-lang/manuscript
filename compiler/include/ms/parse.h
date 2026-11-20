@@ -12,4 +12,20 @@
 bool ms_parse(MsArena *arena, MsNames *names, const char *src, size_t len, MsModule *out,
               MsDiag *diag);
 
+/* Parses a slice of a larger file whose first byte is at original offset base_offset on line
+ * base_line + 1, numbering nodes from first_id. Used by editor recovery. */
+bool ms_parse_chunk(MsArena *arena, MsNames *names, const char *src, size_t len, uint32_t base_offset,
+                    uint32_t base_line, uint32_t first_id, MsModule *out, MsDiag *diag);
+
+typedef struct MsDiagList {
+    MsDiag *items;
+    uint32_t len;
+} MsDiagList;
+
+/* Editor recovery: the module of every declaration that parsed (or parsed after blanking invalid
+ * statements) and the diagnostics of everything that did not. A file that parses strictly yields
+ * the same module and no diagnostics. */
+void ms_parse_partial(MsArena *arena, MsNames *names, const char *src, size_t len, MsModule *out,
+                      MsDiagList *diagnostics);
+
 #endif

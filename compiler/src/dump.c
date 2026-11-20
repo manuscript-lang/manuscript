@@ -613,5 +613,14 @@ void ms_dump_module(MsBuf *out, const MsNames *names, const MsModule *m) {
         d_decl(&d, m->decls[i], table);
         d_w(&d, "\n");
     }
-    d_w(&d, "omitted []\nrecovered []\n");
+    d_w(&d, "omitted [");
+    for (uint32_t i = 0; i < m->nomitted; i++) {
+        d_q(&d, m->omitted[i]);
+        d_w(&d, " ");
+    }
+    d_w(&d, "]\nrecovered [");
+    for (uint32_t i = 0; i < m->nrecovered; i++) {
+        ms_buf_printf(out, "%u-%u ", m->recovered[i].start, m->recovered[i].end);
+    }
+    d_w(&d, "]\n");
 }

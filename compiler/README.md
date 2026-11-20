@@ -1,6 +1,6 @@
 # compiler
 
-`libms`, the Manuscript compiler as a C library, replacing the Rust crates one stage at a time. Plan: [plan section 5, "Compiler"](../proposals/c-runtime.md) and the workstream list in the project files. This folder holds the front end so far: the lexer with the layout rules (`src/lex.c`), the syntax tree (`include/ms/ast.h`) and the parser (`src/parse.c`). Diagnostic codes are in `src/diag.c`. Editor recovery (`partial.rs`) and the formatter are not ported yet.
+`libms`, the Manuscript compiler as a C library, replacing the Rust crates one stage at a time. Plan: [plan section 5, "Compiler"](../proposals/c-runtime.md) and the workstream list in the project files. This folder holds the front end so far: the lexer with the layout rules (`src/lex.c`), the syntax tree (`include/ms/ast.h`) and the parser (`src/parse.c`). Diagnostic codes are in `src/diag.c` and editor recovery in `src/partial.c`. The formatter is written in Manuscript over this library.
 
 ```
 compiler/

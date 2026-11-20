@@ -6,4 +6,5 @@
 #include "dump_base.c"
 #include "diag.c"
 #include "parse.c"
+#include "partial.c"
 #include "dump.c"

@@ -337,6 +337,12 @@ typedef struct MsModule {
     MsDecl **decls;
     uint32_t ndecls;
     uint32_t node_count; /* node ids are 0..node_count */
+    /* Editor recovery only: names of declarations left out and the spans that parsed after
+     * blanking invalid statements. */
+    MsStr *omitted;
+    uint32_t nomitted;
+    MsSpan *recovered;
+    uint32_t nrecovered;
 } MsModule;
 
 #endif

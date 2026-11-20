@@ -68,6 +68,7 @@ int main(int argc, char **argv) {
     }
     bool tokens = strcmp(argv[1], "tokens") == 0;
     bool codes = strcmp(argv[1], "codes") == 0;
+    bool partial = strcmp(argv[1], "partial") == 0;
     MsBuf out = {0};
     for (int i = 2; i < argc; i++) {
         char *src;
@@ -97,6 +98,18 @@ int main(int argc, char **argv) {
                 }
                 ms_names_free(&names);
             }
+        } else if (partial) {
+            MsNames names;
+            ms_names_init(&names);
+            MsModule mod;
+            MsDiagList list;
+            ms_parse_partial(&arena, &names, src, len, &mod, &list);
+            ms_dump_module(&out, &names, &mod);
+            ms_buf_printf(&out, "nodes %u\n", mod.node_count);
+            for (uint32_t k = 0; k < list.len; k++) {
+                ms_dump_diag(&out, &list.items[k]);
+            }
+            ms_names_free(&names);
         } else if (tokens) {
             MsLexed lexed;
             if (!ms_lex(&arena, src, len, &lexed, &diag)) {
