@@ -1814,10 +1814,12 @@ static const char ll_declarations[] =
     "declare double @llvm.ceil.f64(double)\n"
     "declare double @llvm.trunc.f64(double)\n";
 
-/* The words of a data symbol: its bytes with each relocation's address in place. */
+/* The words of a data symbol: its bytes with each relocation's address in place; a size that is not a
+ * multiple of 8 (a string literal) is padded with zeros to the next word. */
 static void ll_data_words(const LCx *c, MsBuf *o, const MirDataSym *sym) {
-    ms_buf_printf(o, "[%u x i64] [", sym->size / 8);
-    for (uint32_t w = 0; w < sym->size / 8; w++) {
+    const uint32_t nwords = (sym->size + 7) / 8;
+    ms_buf_printf(o, "[%u x i64] [", nwords);
+    for (uint32_t w = 0; w < nwords; w++) {
         const MirReloc *at = NULL;
         for (uint32_t r = 0; r < sym->nrelocs; r++) {
             if (sym->relocs[r].offset == w * 8) {
@@ -1832,7 +1834,7 @@ static void ll_data_words(const LCx *c, MsBuf *o, const MirDataSym *sym) {
             continue;
         }
         uint64_t word = 0;
-        for (uint32_t k = 0; sym->bytes != NULL && k < 8; k++) {
+        for (uint32_t k = 0; sym->bytes != NULL && k < 8 && w * 8 + k < sym->size; k++) {
             word |= (uint64_t)sym->bytes[w * 8 + k] << (8 * k);
         }
         ms_buf_printf(o, "%lld", (long long)word);
