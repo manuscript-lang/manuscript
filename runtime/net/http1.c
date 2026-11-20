@@ -2,6 +2,7 @@
 #include <llhttp.h>
 #include <stdbool.h>
 #include <string.h>
+#include "ms_rt/chars.h"
 
 typedef struct {
     const char *base;
@@ -121,8 +122,7 @@ int ms_h1_write_status(char *dst, size_t cap, size_t *used, int minor, unsigned 
 }
 
 static int is_token(unsigned char c) {
-    if (c >= '0' && c <= '9') return 1;
-    if ((c | 32) >= 'a' && (c | 32) <= 'z') return 1;
+    if (ms_ascii_is_alnum(c)) return 1;
     return c && strchr("!#$%&'*+-.^_`|~", c) != NULL;
 }
 

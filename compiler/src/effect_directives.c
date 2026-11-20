@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "ms/effects.h"
+#include "ms_rt/chars.h"
 
 /* ---- text helpers: Rust's `text_trim` family, which removes Unicode White_Space ---- */
 
@@ -29,7 +30,7 @@ static uint32_t text_scalar_at(MsStr text, uint32_t at, int *length) {
 /* The start of the last scalar that ends at text[end]. */
 static uint32_t last_scalar_start(MsStr text, uint32_t end) {
     uint32_t start = end - 1;
-    while (start > 0 && ((uint8_t)text.ptr[start] & 0xC0u) == 0x80u) {
+    while (start > 0 && ms_utf8_is_continuation((uint8_t)text.ptr[start])) {
         start--;
     }
     return start;

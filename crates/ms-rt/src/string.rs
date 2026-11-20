@@ -2028,10 +2028,6 @@ mod tests {
         }
     }
 
-    #[cfg_attr(
-        miri,
-        ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
-    )]
     #[test]
     fn newline_search_matches_scalar_search_across_the_prefix_boundary() {
         for len in 0..=129 {
