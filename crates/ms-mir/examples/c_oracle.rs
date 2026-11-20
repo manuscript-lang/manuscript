@@ -303,10 +303,14 @@ fn analysis(m: &Module, f: &ms_mir::ir::Func, out: &mut String) {
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
             let res = m.result_mode(f, inst).map_or('-', mode_char);
-            let modes: String = ms_mir::verify::arg_modes(m, f, inst)
+            // `call` yields one mode per parameter, even when the arity is wrong: print one per operand.
+            let mut modes: Vec<char> = ms_mir::verify::arg_modes(m, f, inst)
                 .into_iter()
+                .take(inst.args.len())
                 .map(mode_char)
                 .collect();
+            modes.resize(inst.args.len(), 'B');
+            let modes: String = modes.into_iter().collect();
             let views = u8::from(m.result_views(f, inst));
             let owned = ms_mir::verify::indirect_owned(m, f, inst);
             let _ = writeln!(out, "{bi}.{ii} res={res} views={views} owned={owned:x} args={modes}");
@@ -324,6 +328,7 @@ fn run_pass(name: &str, m: &mut Module) -> bool {
         "optparam" => opt::optparam::run(m),
         "ifconv" => opt::ifconv::run(m),
         "reserve" => opt::reserve::run(m),
+        "appendfast" => opt::appendfast::run(m),
         _ => panic!("unknown pass {name}"),
     }
 }
