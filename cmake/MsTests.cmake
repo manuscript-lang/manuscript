@@ -79,6 +79,7 @@ else()
   set(_pthread pthread)
 endif()
 file(GLOB _os_sources CONFIGURE_DEPENDS "${_rt}/sys/${_os}/*.c")
+string(TOLOWER "${CMAKE_SYSTEM_NAME}" _platform)
 # The Linux and macOS socket layer is its own file; on Windows sys/windows/net.c is already one of _os_sources.
 set(_platform_net "${_rt}/sys/${_platform}/net.c")
 set(_win_std_extra "")
@@ -184,7 +185,6 @@ foreach(file ${_io_tests})
 endforeach()
 
 # The socket layer: this platform's sources in runtime/sys (linux or darwin); the test needs only the C library.
-string(TOLOWER "${CMAKE_SYSTEM_NAME}" _platform)
 ms_test(sys_net_test SOURCES "${_tests}/sys_net_test.c" ${_platform_net})
 
 # The completion ring has no dependency but the C library.
