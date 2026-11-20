@@ -1,10 +1,7 @@
 compiler/src/driver.c
-compiler/src/dump.c
-compiler/src/dump_base.c
 compiler/src/dump_check.c
 compiler/src/libms.c
 compiler/src/libms_api.c
-compiler/src/parse.c
 compiler/src/stdlib.c
 compiler/src/tables.c
 compiler/src/types.c
