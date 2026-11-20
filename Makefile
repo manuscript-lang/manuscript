@@ -243,6 +243,7 @@ c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
 	sh compiler/tests/mir-diff.sh
 	sh compiler/tests/mir-pass-diff.sh
+	sh compiler/tests/mir-pass-frozen.sh
 	sh compiler/tests/check-diff.sh
 	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh

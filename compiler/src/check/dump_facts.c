@@ -259,6 +259,53 @@ static uint32_t facts_impl_line(const MsModule *module, const MsNames *names, ui
     return line;
 }
 
+static void facts_put_case_slots(MsBuf *body, const MsNames *names, const MsDecl *d) {
+    for (uint32_t i = 0; i < d->u.enumeration.cases.len; i++) {
+        const MsCase *c = d->u.enumeration.cases.ptr[i];
+        MsBuf name = {0}, text = {0};
+        facts_put_str(&name, names, c->name);
+        if (c->fields.len > 0) {
+            ms_buf_putc(&text, '(');
+            facts_put_param_text(&text, names, c->fields);
+            ms_buf_putc(&text, ')');
+        }
+        ms_buf_puts(body, i == 0 ? "{\"name\": " : ", {\"name\": ");
+        facts_put_json_buf(body, &name);
+        ms_buf_puts(body, ", \"ty\": ");
+        facts_put_json_buf(body, &text);
+        ms_buf_puts(body, ", \"exclusive\": false, \"mode\": \"\", \"refs\": []}");
+        ms_buf_free(&name);
+        ms_buf_free(&text);
+    }
+}
+
+static void facts_put_method_slots(MsBuf *body, const MsNames *names, const MsDecl *d) {
+    for (uint32_t i = 0; i < d->u.iface.methods.len; i++) {
+        const MsMethod *m = d->u.iface.methods.ptr[i];
+        MsBuf name = {0}, text = {0};
+        facts_put_str(&name, names, m->func.name);
+        ms_buf_putc(&text, '(');
+        facts_put_param_text(&text, names, m->func.params);
+        ms_buf_puts(&text, ") ");
+        facts_put_type_text(&text, names, m->func.result);
+        ms_buf_puts(body, i == 0 ? "{\"name\": " : ", {\"name\": ");
+        facts_put_json_buf(body, &name);
+        ms_buf_puts(body, ", \"ty\": ");
+        facts_put_json_buf(body, &text);
+        ms_buf_printf(body, ", \"exclusive\": %s, \"mode\": \"\", \"refs\": []}", m->mutating ? "true" : "false");
+        ms_buf_free(&name);
+        ms_buf_free(&text);
+    }
+}
+
+/* The slots of `params` without the brackets of facts_put_params. */
+static void facts_put_inner_params(MsBuf *body, const MsNames *names, MsParams params) {
+    MsBuf slots = {0};
+    facts_put_params(&slots, names, params);
+    ms_buf_put(body, slots.data + 1, slots.len - 2);
+    ms_buf_free(&slots);
+}
+
 static void facts_fill_decl(FactsRow *row, const MsNames *names, const MsDecl *d) {
     MsBuf *body = &row->body;
     ms_buf_puts(body, ", \"slots\": [");
@@ -267,63 +314,23 @@ static void facts_fill_decl(FactsRow *row, const MsNames *names, const MsDecl *d
     switch (d->kind) {
     case MS_D_FN:
         facts_put_str(&row->name, names, d->u.fn.name);
-        {
-            MsBuf slots = {0};
-            facts_put_params(&slots, names, d->u.fn.params);
-            ms_buf_put(body, slots.data + 1, slots.len - 2); /* without the brackets */
-            ms_buf_free(&slots);
-        }
+        facts_put_inner_params(body, names, d->u.fn.params);
         result = d->u.fn.result;
         tries = facts_tries_of(d->u.fn.params, d->u.fn.body);
         break;
-    case MS_D_TYPE: {
+    case MS_D_TYPE:
         facts_put_str(&row->name, names, d->u.type.name);
-        MsBuf slots = {0};
-        facts_put_params(&slots, names, d->u.type.fields);
-        ms_buf_put(body, slots.data + 1, slots.len - 2);
-        ms_buf_free(&slots);
+        facts_put_inner_params(body, names, d->u.type.fields);
         break;
-    }
     case MS_D_ENUM:
         facts_put_str(&row->name, names, d->u.enumeration.name);
-        for (uint32_t i = 0; i < d->u.enumeration.cases.len; i++) {
-            const MsCase *c = d->u.enumeration.cases.ptr[i];
-            MsBuf name = {0}, text = {0};
-            facts_put_str(&name, names, c->name);
-            if (c->fields.len > 0) {
-                ms_buf_putc(&text, '(');
-                facts_put_param_text(&text, names, c->fields);
-                ms_buf_putc(&text, ')');
-            }
-            ms_buf_puts(body, i == 0 ? "{\"name\": " : ", {\"name\": ");
-            facts_put_json_buf(body, &name);
-            ms_buf_puts(body, ", \"ty\": ");
-            facts_put_json_buf(body, &text);
-            ms_buf_puts(body, ", \"exclusive\": false, \"mode\": \"\", \"refs\": []}");
-            ms_buf_free(&name);
-            ms_buf_free(&text);
-        }
+        facts_put_case_slots(body, names, d);
         ms_buf_putc(body, ']');
         facts_put_tail(body, names, NULL, "", 0);
         return;
     case MS_D_INTERFACE:
         facts_put_str(&row->name, names, d->u.iface.name);
-        for (uint32_t i = 0; i < d->u.iface.methods.len; i++) {
-            const MsMethod *m = d->u.iface.methods.ptr[i];
-            MsBuf name = {0}, text = {0};
-            facts_put_str(&name, names, m->func.name);
-            ms_buf_putc(&text, '(');
-            facts_put_param_text(&text, names, m->func.params);
-            ms_buf_puts(&text, ") ");
-            facts_put_type_text(&text, names, m->func.result);
-            ms_buf_puts(body, i == 0 ? "{\"name\": " : ", {\"name\": ");
-            facts_put_json_buf(body, &name);
-            ms_buf_puts(body, ", \"ty\": ");
-            facts_put_json_buf(body, &text);
-            ms_buf_printf(body, ", \"exclusive\": %s, \"mode\": \"\", \"refs\": []}", m->mutating ? "true" : "false");
-            ms_buf_free(&name);
-            ms_buf_free(&text);
-        }
+        facts_put_method_slots(body, names, d);
         ms_buf_putc(body, ']');
         facts_put_tail(body, names, NULL, "", 0);
         return;
@@ -351,12 +358,17 @@ static void facts_fill_method(FactsRow *row, const MsNames *names, const MsDecl 
     facts_put_str(&row->name, names, m->func.name);
     ms_buf_puts(&row->body, ", \"slots\": ");
     facts_put_params(&row->body, names, m->func.params);
-    facts_put_tail(&row->body, names, m->func.result, m->mutating ? "var" : m->consuming ? "move" : "borrow",
-             facts_tries_of(m->func.params, m->func.body));
+    const char *mode = "borrow";
+    if (m->mutating) {
+        mode = "var";
+    } else if (m->consuming) {
+        mode = "move";
+    }
+    facts_put_tail(&row->body, names, m->func.result, mode, facts_tries_of(m->func.params, m->func.body));
 }
 
-void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId id) {
-    const MsModuleRow *row = &c->mods[id];
+void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m) {
+    const MsModuleRow *row = &c->mods[m];
     const MsModule *module = row->syntax;
     const MsNames *names = c->names;
     MsBuf file = {0};
@@ -376,9 +388,9 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId id) {
             continue;
         }
         for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
-            const MsMethod *m = d->u.impl.methods.ptr[k];
-            FactsRow *method = facts_add_row(&rows, names, file.data, "method", m->pos.line);
-            facts_fill_method(method, names, d, m);
+            const MsMethod *meth = d->u.impl.methods.ptr[k];
+            FactsRow *method = facts_add_row(&rows, names, file.data, "method", meth->pos.line);
+            facts_fill_method(method, names, d, meth);
             facts_seal_key(method);
         }
     }

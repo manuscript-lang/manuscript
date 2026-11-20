@@ -168,6 +168,7 @@ static void subprocess_pipes_and_close(void) {
     char buffer[8];
     CHECK(read(out, buffer, sizeof buffer) == 4 && memcmp(buffer, "ping", 4) == 0);
     close(out);
+    CHECK(msstd_process_subprocess_pid(child) > 0);
     CHECK(msstd_process_subprocess_max_resident(child) > 0);
     msstd_process_subprocess_close(child);
     child->drop(child);
