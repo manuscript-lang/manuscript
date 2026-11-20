@@ -9,6 +9,9 @@
 #include "ms_sched.h"
 
 void ms_net_write_text(MsStr *out, const char *text) {
+    if (out == NULL) {
+        return;
+    }
     msrt_string_from_bytes((const uint8_t *)text, strlen(text), out);
 }
 

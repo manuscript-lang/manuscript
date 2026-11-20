@@ -3,7 +3,7 @@
  * then runs the optimizer (opt_pipeline.c); `mir_pipeline_finish` runs the ownership and expansion passes.
  *
  *   prepare: elaborate (with cancel exits when edges are on), verify
- *   finish:  unwind, cancel_edges (when on), depth, expand, glue + expand_owned
+ *   finish:  count_ops (when on), unwind, cancel_edges (when on), depth, expand, glue + expand_owned
  *
  * Each step verifies the module afterwards when `verify` is set, as the Rust debug build does. */
 #include <string.h>
@@ -39,6 +39,9 @@ bool mir_pipeline_optimize(MirModule *m, MirOptLevel level, const MirPipelineOpt
 }
 
 bool mir_pipeline_finish(MirModule *m, const MirPipelineOptions *o, MirGlue *glue, MsBuf *error) {
+    if (o->count_ops) {
+        mir_count_ops(m);
+    }
     /* Not an optimization: it keeps cancellation from leaking, so every profile runs it. */
     if (mir_unwind(m) && o->verify && !pl_verify(m, "unwind", error)) {
         return false;
