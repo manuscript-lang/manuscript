@@ -12,7 +12,10 @@
 static int failures;
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); failures++; } } while (0)
 
-static MsStr lit(const char *s) { MsStr v = {(uint8_t *)(uintptr_t)s, strlen(s) | ((size_t)2 << 62)}; return v; }
+/* A static string value over the literal: the top bits 10 mean borrowed bytes that outlive the value. */
+static MsStr lit(const char *s) {
+    return (MsStr){.bytes = (const uint8_t *)s, .tagged = strlen(s) | ((uint64_t)2 << MS_STR_TAG_SHIFT)};
+}
 static void *compile(const char *p) {
     void *h = NULL;
     MsStr pat = lit(p);
@@ -60,7 +63,7 @@ int main(void) {
     /* compile errors come back as owned text */
     {
         void *h = NULL;
-        MsStr bad = lit("(?=a)"), err = {0, 0};
+        MsStr bad = lit("(?=a)"), err = {.tagged = 0};
         CHECK(msstd_regex_compile(&bad, &h, &err) == 4 && h == NULL);
         CHECK(err.tagged == strlen("lookahead is not supported at column 1") && memcmp(err.ptr_word, "lookahead", 9) == 0);
         free(err.ptr_word);
