@@ -118,4 +118,8 @@ bool mir_glue(MirModule *m, MirGlue *g);
 /* glue plus expand_owned, repeated until nothing new is wanted. The last step before backends. */
 void mir_glue_run_and_expand(MirModule *m, MirGlue *g);
 
+/* lower_ops: the last pass before the emitters. Rewrites clone, drop, move.out and forget into
+ * renamed uses, runtime calls and glue calls (proposals/lower-ops-to-runtime-calls.md, stage 1). */
+void mir_lower_ops(MirModule *m, const MirGlue *glue);
+
 #endif
