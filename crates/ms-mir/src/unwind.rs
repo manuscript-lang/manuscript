@@ -336,7 +336,12 @@ fn box_closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
     b.br_if(on, run, &[], skip, &[]);
     b.switch_to(run);
     let data = b.emit(Op::IfaceData, &[v], Imm::None, Some(Ty::PTR));
-    b.emit(Op::Free, &[data.expect("iface.data result")], Imm::None, None);
+    b.emit(
+        Op::Free,
+        &[data.expect("iface.data result")],
+        Imm::None,
+        None,
+    );
     b.emit(Op::Forget, &[v], Imm::None, None);
     let u = b.unit();
     b.ret(Some(u));
