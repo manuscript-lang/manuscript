@@ -128,8 +128,22 @@ MirTy mir_ty_iface(MirModule *m, uint32_t id) {
     MirTyData d = {.kind = MK_IFACE, .id = id};
     return mir_ty_intern(m, &d);
 }
+/* The runtime's declaration of the objects that are not one shared word: the only place their names appear. */
+static const struct { const char *name; MirObjClass class; } mir_object_decls[] = {
+    {"Map", MIR_OBJ_COLLECTION}, {"Set", MIR_OBJ_COLLECTION}, {"BigInt", MIR_OBJ_VALUE},
+};
+
+static MirObjClass obj_class_of(const MirModule *m, MsSym name) {
+    for (size_t i = 0; i < sizeof mir_object_decls / sizeof mir_object_decls[0]; i++) {
+        if (mir_name_is(m, name, mir_object_decls[i].name)) {
+            return mir_object_decls[i].class;
+        }
+    }
+    return MIR_OBJ_HANDLE;
+}
+
 MirTy mir_ty_obj(MirModule *m, MsSym name, const MirTy *args, uint32_t nargs) {
-    MirTyData d = {.kind = MK_OBJ, .name = name, .args = args, .nargs = nargs};
+    MirTyData d = {.kind = MK_OBJ, .obj_class = (uint8_t)obj_class_of(m, name), .name = name, .args = args, .nargs = nargs};
     return mir_ty_intern(m, &d);
 }
 MirTy mir_ty_fn(MirModule *m, const MirTy *params, uint32_t n, MirTy ret, uint64_t owned) {

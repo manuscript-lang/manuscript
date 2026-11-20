@@ -5,6 +5,7 @@
 #include "ms/diag.h"
 #include "ms/format.h"
 #include "ms/lex.h"
+#include "ms/packages.h"
 #include "ms/parse.h"
 #include "ms/project.h"
 #include "ms/tool.h"
@@ -156,6 +157,106 @@ uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out
     }
     ms_arena_free(&arena);
     return status;
+}
+
+static const char *install_state_name(MsInstallState state) {
+    switch (state) {
+    case MS_INSTALL_FETCHED: return "fetched";
+    case MS_INSTALL_CACHED: return "cached";
+    case MS_INSTALL_KEPT: return "kept";
+    }
+    return "";
+}
+
+uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const size_t update_count = ms_list_len(update);
+    const char **names = MS_NEW_N(&arena, const char *, update_count + 1);
+    for (size_t i = 0; i < update_count; i++) {
+        ms_value value = ms_list_get(update, i);
+        names[i] = ms_arena_strndup(&arena, (const char *)value.as.buf.data, value.as.buf.len);
+        ms_value_free(&value);
+    }
+    const MsInstallOptions options = {.manifest = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest)),
+                                      .update = names, .update_count = (uint32_t)update_count, .locked = locked != 0, .frozen = frozen != 0};
+    MsInstallReport report = {0};
+    MsProjectError error = {0};
+    uint8_t status = 0;
+    if (!ms_install(&arena, &options, &report, &error)) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    }
+    for (uint32_t i = 0; status == 0 && i < report.count; i++) {
+        const MsInstalledCopy *c = &report.copies[i];
+        push_text(out, ms_arena_fmt(&arena, "%s\t%s\t%s\t%s\t%s", c->name, c->copy.entry.spec, c->copy.entry.revision,
+                                   install_state_name(c->state), c->effects).ptr);
+    }
+    ms_arena_free(&arena);
+    return status;
+}
+
+/* ---- ms.toml edits ---- */
+
+static const char *arg_text(MsArena *a, const ms_str *s) {
+    return ms_arena_strndup(a, (const char *)ms_str_data(s), ms_str_len(s));
+}
+
+static uint8_t finish_edit(MsArena *a, bool ok, const char *edited, const MsProjectError *error, ms_str *out, ms_str *message_out) {
+    if (ok) {
+        ms_string_new((const uint8_t *)edited, strlen(edited), out);
+        return 0;
+    }
+    const char *text = ms_project_error_text(a, error);
+    ms_string_new((const uint8_t *)text, strlen(text), message_out);
+    return ms_project_error_is_unsupported(error) ? 2 : 1;
+}
+
+uint8_t ms_tool_manifest_add(const ms_str *text, const ms_str *name, const ms_str *url, uint8_t pin, const ms_str *pinned, ms_str *out,
+                             ms_str *message_out) {
+    MsArena arena = {0};
+    MsProjectError error = {0};
+    const char *edited = NULL;
+    const bool ok = ms_manifest_add_dependency(&arena, arg_text(&arena, text), arg_text(&arena, name), arg_text(&arena, url), (MsPinKind)pin,
+                                               arg_text(&arena, pinned), &edited, &error);
+    const uint8_t status = finish_edit(&arena, ok, edited, &error, out, message_out);
+    ms_arena_free(&arena);
+    return status;
+}
+
+uint8_t ms_tool_manifest_allow(const ms_str *text, const ms_str *name, const ms_list *effects, ms_str *out, ms_str *message_out) {
+    MsArena arena = {0};
+    MsProjectError error = {0};
+    const char *edited = NULL;
+    const size_t count = ms_list_len(effects);
+    const char **names = MS_NEW_N(&arena, const char *, count + 1);
+    for (size_t i = 0; i < count; i++) {
+        ms_value value = ms_list_get(effects, i);
+        names[i] = ms_arena_strndup(&arena, (const char *)value.as.buf.data, value.as.buf.len);
+        ms_value_free(&value);
+    }
+    const bool ok = ms_manifest_allow_effects(&arena, arg_text(&arena, text), arg_text(&arena, name), names, (uint32_t)count, &edited, &error);
+    const uint8_t status = finish_edit(&arena, ok, edited, &error, out, message_out);
+    ms_arena_free(&arena);
+    return status;
+}
+
+uint8_t ms_tool_manifest_remove(const ms_str *text, const ms_str *name, ms_str *out, ms_str *message_out) {
+    MsArena arena = {0};
+    MsProjectError error = {0};
+    const char *edited = NULL;
+    const bool ok = ms_manifest_remove_dependency(&arena, arg_text(&arena, text), arg_text(&arena, name), &edited, &error);
+    const uint8_t status = finish_edit(&arena, ok, edited, &error, out, message_out);
+    ms_arena_free(&arena);
+    return status;
+}
+
+/* The name `ms add` gives `url`, empty when it makes no alias. */
+void ms_tool_manifest_default_name(const ms_str *url, ms_str *out) {
+    MsArena arena = {0};
+    const char *name = ms_manifest_default_name(&arena, arg_text(&arena, url));
+    ms_string_new((const uint8_t *)(name != NULL ? name : ""), name != NULL ? strlen(name) : 0, out);
+    ms_arena_free(&arena);
 }
 
 /* ---- syntax trees ---- */

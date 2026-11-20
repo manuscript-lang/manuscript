@@ -500,7 +500,7 @@ uint8_t msstd_xchg_wait_gone(const void *handle, MsStr *err) {
     if (exchange->h2 != NULL) {
         return ms_xchg_h2_wait_gone(exchange->h2, err);
     }
-    const MsNetStatus status = ms_conn_wait_gone(table_of(exchange), id_of(exchange));
+    const MsNetStatus status = ms_conn_wait_gone(table_of(exchange), id_of(exchange), &exchange->spent);
     return status == MS_NET_RESET || status == MS_NET_CLOSED ? STATUS_OK : finish_status(exchange, status, err);
 }
 
