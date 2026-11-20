@@ -21,6 +21,9 @@ type Kinds:
 	func: Int
 	impl: Int
 	method: Int
+	list: Int
+	bind: Int
+	pattern: Int
 
 fn kinds() Kinds:
 	return Kinds(
@@ -33,6 +36,9 @@ fn kinds() Kinds:
 		func: node_kind("Fn"),
 		impl: node_kind("Impl"),
 		method: node_kind("Method"),
+		list: node_kind("List"),
+		bind: node_kind("Bind"),
+		pattern: node_kind("PatName"),
 	)
 
 fn name_of(tree: Syntax, at: Int) String:
@@ -123,6 +129,68 @@ fn trailing_return(
 		)
 	)
 
+// Whether the brackets of `text` pair up.
+fn balanced(text: Bytes) Bool:
+	var open = 0
+
+	for at in 0..text.length():
+		byte := text[at]
+
+		if byte == 40 or byte == 91 or byte == 123: open += 1
+		else if byte == 41 or byte == 93 or byte == 125: open -= 1
+
+		if open < 0: return false
+
+	return open == 0
+
+// Where the expression at `at` begins: its own position is an operator or a name for
+// the kinds that lead with an operand, so take the leftmost of its subtree. Records
+// with no position (an absent child, a text part) carry offset 0 and are skipped.
+fn first_offset(tree: Syntax, at: Int) Int:
+	var first = tree.offset[at]
+
+	for child in children(tree, at):
+		from := first_offset(tree, child)
+		if from > 0 and from < first: first = from
+
+	return first
+
+// `name := value` straight before `return name` in the statements `first` and `second` is
+// `return value` (MSL126).
+fn temp_return(
+	tree: Syntax,
+	k: Kinds,
+	source: Bytes,
+	file: String,
+	first: Int,
+	second: Int,
+	var out: List[Finding],
+) Void:
+	if tree.kind[first] != k.bind or tree.kind[second] != k.ret: return
+	if tree.flags[first] / 2 % 2 == 1: return
+
+	parts := children(tree, first)
+	if tree.kind[parts[0]] != k.pattern or tree.kind[parts[1]] != k.absent: return
+
+	value := children(tree, second)[0]
+	if tree.kind[value] != k.name or name_of(tree, value) != name_of(tree, parts[0]): return
+
+	written := source.view(first_offset(tree, parts[2]), tree.end_offset[parts[2]])
+	if written.contains("\n".to_bytes()) or not balanced(written): return
+	if source.view(tree.offset[first], tree.end_offset[value]).contains("//".to_bytes()): return
+
+	out.append(
+		finding(
+			"MSL126",
+			"warning",
+			"Return the value directly instead of binding it first",
+			file,
+			tree.offset[first],
+			tree.line[first],
+			tree.column[first],
+		)
+	)
+
 // The findings of the terse rules for the module in `text`; none when it does not
 // parse.
 export fn lint_terse(file: String, text: String) List[Finding]:
@@ -133,6 +201,13 @@ export fn lint_terse(file: String, text: String) List[Finding]:
 	tree := parsed.get()
 	k := kinds()
 	source := text.to_bytes()
+
+	for at in 0..tree.kind.length():
+		if tree.kind[at] != k.list: continue
+
+		statements := children(tree, at)
+		for i in 1..statements.length():
+			temp_return(tree, k, source, file, statements[i - 1], statements[i], out)
 
 	for decl in children(tree, 0):
 		if tree.kind[decl] == k.func:
@@ -160,3 +235,10 @@ test "a final bare return of a Void function is dropped":
 	found.length() | expect_equal(expected: 1)?
 	found[0].code | expect_equal(expected: "MSL128")?
 	found[0].line | expect_equal(expected: 3)?
+
+test "a value bound and returned at once is returned directly":
+	source := "fn f(x: Int) Int:\n    y := x + 1\n    return y\n\nfn g(x: Int) Int:\n    y := x + 1\n    return x\n"
+	found := lint_terse("t.ms", source)
+	found.length() | expect_equal(expected: 1)?
+	found[0].code | expect_equal(expected: "MSL126")?
+	found[0].line | expect_equal(expected: 2)?
