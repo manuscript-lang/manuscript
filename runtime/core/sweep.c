@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include "scheduler.h"
+#include "unwind.h"
 
 static _Atomic uint64_t parks;
 static _Atomic uint64_t target = UINT64_MAX;
@@ -37,7 +38,7 @@ bool ms_sweep_cancel_here(void) {
         return false;
     }
     if (hit) {
-        task->unwind.task_cancel = 1; /* a real cancel stays recorded on the task, and survives shields */
+        ms_cancel_set_task(1); /* a real cancel stays recorded on the task, and survives shields */
     }
     /* A shielded park does not see a cancel: the request stays pending for the next unshielded park. */
     return hit && !ms_task_shielded(task);
