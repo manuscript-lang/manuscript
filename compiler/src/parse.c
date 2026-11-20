@@ -1301,162 +1301,169 @@ static void type_param_names(Parser *p, MsBuf *out, MsTypeParams tps) {
     ms_buf_putc(out, ']');
 }
 
-MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out) {
-    p->at++;
-    MsToken name_tok = {0};
-    if (!need_token(p, MS_T_Name, &name_tok)) return false;
-    MsSym name = sym(p, name_tok);
-    MsTypeParams tps = {0};
-    if (!type_params(p, &tps)) return false;
-    if (token.kind == MS_T_Type && take(p, MS_T_Assign)) {
-        size_t m = mark(p);
+/* `type Name = A | B`: an alias for one or several types. */
+MS_NODISCARD static bool alias_declaration(Parser *p, MsToken token, MsSym name, MsTypeParams tps, MsDecl **out) {
+    size_t m = mark(p);
+    if (!push_typ(p)) return false;
+    while (take(p, MS_T_Pipe)) {
         if (!push_typ(p)) return false;
-        while (take(p, MS_T_Pipe)) {
-            if (!push_typ(p)) return false;
-        }
-        MsTypeRefs targets;
-        FINISH_PTRS(p, m, targets);
-        if (!end(p)) return false;
-        MsDecl *d = new_decl(p, token.pos, MS_D_ALIAS);
-        d->u.alias.name = name;
-        d->u.alias.type_params = tps;
-        d->u.alias.targets = targets;
-        *out = d;
-        return true;
     }
-    if (!need(p, MS_T_Colon)) return false;
-    if (token.kind == MS_T_Interface && take(p, MS_T_Ellipsis)) {
-        /* `interface Name: ...` declares a property with no operations, like `Data`. */
-        if (!end(p)) return false;
-        MsDecl *d = new_decl(p, token.pos, MS_D_INTERFACE);
+    MsTypeRefs targets;
+    FINISH_PTRS(p, m, targets);
+    if (!end(p)) return false;
+    MsDecl *d = new_decl(p, token.pos, MS_D_ALIAS);
+    d->u.alias.name = name;
+    d->u.alias.type_params = tps;
+    d->u.alias.targets = targets;
+    *out = d;
+    return true;
+}
+
+/* `interface Name: ...` or `type Name: ...`: a declaration with no members. */
+MS_NODISCARD static bool empty_declaration(Parser *p, MsToken token, MsSym name, MsTypeParams tps, MsDecl **out) {
+    if (!end(p)) return false;
+    MsDecl *d = new_decl(p, token.pos, token.kind == MS_T_Interface ? MS_D_INTERFACE : MS_D_TYPE);
+    if (token.kind == MS_T_Interface) {
         d->u.iface.name = name;
         d->u.iface.type_params = tps;
-        *out = d;
-        return true;
-    }
-    if (token.kind == MS_T_Type && take(p, MS_T_Ellipsis)) {
-        if (!end(p)) return false;
-        MsDecl *d = new_decl(p, token.pos, MS_D_TYPE);
+    } else {
         d->u.type.name = name;
         d->u.type.type_params = tps;
-        *out = d;
+    }
+    *out = d;
+    return true;
+}
+
+/* `move fn` in an interface or type body. */
+static bool at_move_fn(const Parser *p) {
+    return kind(p) == MS_T_Name && text_is(p, peek(p), "move") && ahead(p, 1).kind == MS_T_Fn;
+}
+
+static bool at_enum_variant_start(const Parser *p) {
+    MsTok next_kind = (MsTok)ahead(p, 1).kind;
+    return kind(p) == MS_T_Name && (next_kind == MS_T_LParen || next_kind == MS_T_Newline ||
+                                    next_kind == MS_T_Dedent || next_kind == MS_T_Eof);
+}
+
+/* Rejects a member that does not belong in the body of this kind of declaration. */
+static bool report_misplaced_member(Parser *p, MsToken token) {
+    MsToken prefix;
+    if (token.kind == MS_T_Type && (legacy_case_prefix(p, &prefix) || at_enum_variant_start(p))) {
+        fail(p, token, LIT("a type declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes"));
         return true;
     }
-    if (token.kind == MS_T_Enum && kind(p) == MS_T_Ellipsis) {
-        fail(p, peek(p), LIT("an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field: Type)'"));
-        return false;
+    if (token.kind == MS_T_Enum && legacy_case_prefix(p, &prefix)) {
+        fail(p, prefix, LIT("enum variants do not use 'case'; remove the prefix and write 'Name' or 'Name(field: Type)'"));
+        return true;
     }
-    if (!need(p, MS_T_Newline)) return false;
-    if (token.kind == MS_T_Enum && kind(p) != MS_T_Indent) {
-        fail(p, peek(p), LIT("an enum must declare at least one variant; indent 'Name' or 'Name(field: Type)' under the header"));
-        return false;
+    if (token.kind == MS_T_Enum && kind(p) != MS_T_Name) {
+        fail(p, peek(p), LIT("an enum contains only variants; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block"));
+        return true;
     }
-    if (!need(p, MS_T_Indent)) return false;
-    /* Only one of fields, cases and methods is ever collected for a given declaration kind. */
-    size_t m = mark(p);
-    while (kind(p) != MS_T_Dedent) {
-        newlines(p);
-        if (kind(p) == MS_T_Dedent) {
-            break;
-        }
-        MsToken prefix;
-        if (token.kind == MS_T_Type &&
-            (legacy_case_prefix(p, &prefix) ||
-             (kind(p) == MS_T_Name &&
-              (ahead(p, 1).kind == MS_T_LParen || ahead(p, 1).kind == MS_T_Newline ||
-               ahead(p, 1).kind == MS_T_Dedent || ahead(p, 1).kind == MS_T_Eof)))) {
-            fail(p, token, LIT("a type declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes"));
+    if (token.kind == MS_T_Interface && !at_move_fn(p) && kind(p) != MS_T_Fn && kind(p) != MS_T_Var) {
+        fail(p, peek(p), LIT("an interface contains only operation signatures; write 'fn name(...) Type' and put method bodies in an 'impl' block"));
+        return true;
+    }
+    return false;
+}
+
+/* The payload fields of an enum variant, `(field: Type, ...)`. */
+MS_NODISCARD static bool variant_payload(Parser *p, MsToken variant, MsParams *payload) {
+    if (!parameters(p, false, false, payload)) return false;
+    for (uint32_t i = 0; i < payload->len; i++) {
+        if (payload->ptr[i]->is_mutable) {
+            fail(p, previous(p), LIT("case payload fields cannot be 'var'; mutability belongs to the binding that holds the value"));
             return false;
         }
-        if (token.kind == MS_T_Enum) {
-            if (legacy_case_prefix(p, &prefix)) {
-                fail(p, prefix, LIT("enum variants do not use 'case'; remove the prefix and write 'Name' or 'Name(field: Type)'"));
-                return false;
-            }
-            if (kind(p) != MS_T_Name) {
-                fail(p, peek(p), LIT("an enum contains only variants; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block"));
-                return false;
-            }
-        }
-        bool move_fn = kind(p) == MS_T_Name && text_is(p, peek(p), "move") && ahead(p, 1).kind == MS_T_Fn;
-        if (token.kind == MS_T_Interface && !move_fn && kind(p) != MS_T_Fn && kind(p) != MS_T_Var) {
-            fail(p, peek(p), LIT("an interface contains only operation signatures; write 'fn name(...) Type' and put method bodies in an 'impl' block"));
-            return false;
-        }
-        if (token.kind == MS_T_Enum) {
-            MsToken cname = {0};
-            if (!need_token(p, MS_T_Name, &cname)) return false;
-            MsParams payload = {NULL, 0};
-            if (kind(p) == MS_T_LParen) {
-                if (!parameters(p, false, false, &payload)) return false;
-                for (uint32_t i = 0; i < payload.len; i++) {
-                    if (payload.ptr[i]->is_mutable) {
-                        fail(p, previous(p), LIT("case payload fields cannot be 'var'; mutability belongs to the binding that holds the value"));
-                        return false;
-                    }
-                }
-                if (payload.len == 0) {
-                    MsStr n = text(p, cname);
-                    fail(p, cname, fmt(p, "payloadless variants omit parentheses; write '%.*s' instead of '%.*s()'", STR(n), STR(n)));
-                    return false;
-                }
-            }
-            if (kind(p) == MS_T_Colon) {
-                fail(p, peek(p), LIT("enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block"));
-                return false;
-            }
-            if (kind(p) == MS_T_Assign) {
-                fail(p, peek(p), LIT("enum variants cannot have defaults; write 'Name' or 'Name(field: Type)' and supply payload values when constructing a variant"));
-                return false;
-            }
-            MsCase *c = NEW(p, MsCase);
-            c->id = new_id(p);
-            c->pos = cname.pos;
-            c->name = sym(p, cname);
-            c->fields = payload;
-            push_ptr(p, c);
-            if (!end(p)) return false;
-        } else if (kind(p) == MS_T_Fn || move_fn || (kind(p) == MS_T_Var && ahead(p, 1).kind == MS_T_Fn)) {
-            bool consuming = TAKE_MOVE(p, MS_T_Fn);
-            bool mutating = take(p, MS_T_Var);
-            MsToken fn_token = {0};
-            if (!need_token(p, MS_T_Fn, &fn_token)) return false;
-            MsPos fn_pos = fn_token.pos;
-            if (token.kind == MS_T_Type) {
-                MsBuf names = {0};
-                type_param_names(p, &names, tps);
-                MsStr nt = ms_name(p->names, name);
-                MsStr msg = fmt(p, "a type declares only fields; write its methods after it as 'fn %.*s%.*s.name(...)'", STR(nt), (int)names.len, names.data ? (const char *)names.data : "");
-                ms_buf_free(&names);
-                fail(p, previous(p), msg);
-                return false;
-            }
-            MsToken mname = {0};
-            if (!need_token(p, MS_T_Name, &mname)) return false;
-            MsMethod *me = NULL;
-            if (!method_signature(p, mname, true, false, mutating, fn_pos, &me)) return false;
-            me->consuming = consuming;
-            if (!end(p)) return false;
-            push_ptr(p, me);
-        } else {
-            MsToken fname = {0};
-            if (!need_token(p, MS_T_Name, &fname)) return false;
-            if (!need_name_colon(p, fname)) return false;
-            MsTypeRef *ty = NULL;
-            if (!typ(p, &ty)) return false;
-            MsExpr *def;
-            if (take(p, MS_T_Assign)) {
-                if (!expression(p, 0, &def)) return false;
-            } else {
-                def = implicit_none(p, ty);
-            }
-            push_ptr(p, mk_param(p, fname.pos, sym(p, fname), ty, def, false, false));
-            if (!end(p)) return false;
-        }
     }
-    if (!need(p, MS_T_Dedent)) return false;
-    uint32_t count;
-    void **items = finish(p, m, &count, sizeof(void *), _Alignof(void *));
+    if (payload->len == 0) {
+        MsStr n = text(p, variant);
+        fail(p, variant, fmt(p, "payloadless variants omit parentheses; write '%.*s' instead of '%.*s()'", STR(n), STR(n)));
+        return false;
+    }
+    return true;
+}
+
+/* One enum variant, pushed on the scratch stack. */
+MS_NODISCARD static bool enum_variant(Parser *p) {
+    MsToken cname = {0};
+    if (!need_token(p, MS_T_Name, &cname)) return false;
+    MsParams payload = {NULL, 0};
+    if (kind(p) == MS_T_LParen && !variant_payload(p, cname, &payload)) return false;
+    if (kind(p) == MS_T_Colon) {
+        fail(p, peek(p), LIT("enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block"));
+        return false;
+    }
+    if (kind(p) == MS_T_Assign) {
+        fail(p, peek(p), LIT("enum variants cannot have defaults; write 'Name' or 'Name(field: Type)' and supply payload values when constructing a variant"));
+        return false;
+    }
+    MsCase *c = NEW(p, MsCase);
+    c->id = new_id(p);
+    c->pos = cname.pos;
+    c->name = sym(p, cname);
+    c->fields = payload;
+    push_ptr(p, c);
+    return end(p);
+}
+
+/* An interface operation `fn name(...) Type`; a `type` body may not hold one. */
+MS_NODISCARD static bool member_signature(Parser *p, MsToken token, MsSym name, MsTypeParams tps) {
+    bool consuming = TAKE_MOVE(p, MS_T_Fn);
+    bool mutating = take(p, MS_T_Var);
+    MsToken fn_token = {0};
+    if (!need_token(p, MS_T_Fn, &fn_token)) return false;
+    if (token.kind == MS_T_Type) {
+        MsBuf names = {0};
+        type_param_names(p, &names, tps);
+        MsStr nt = ms_name(p->names, name);
+        MsStr msg = fmt(p, "a type declares only fields; write its methods after it as 'fn %.*s%.*s.name(...)'", STR(nt), (int)names.len, names.data ? names.data : "");
+        ms_buf_free(&names);
+        fail(p, previous(p), msg);
+        return false;
+    }
+    MsToken mname = {0};
+    if (!need_token(p, MS_T_Name, &mname)) return false;
+    MsMethod *me = NULL;
+    if (!method_signature(p, mname, true, false, mutating, fn_token.pos, &me)) return false;
+    me->consuming = consuming;
+    if (!end(p)) return false;
+    push_ptr(p, me);
+    return true;
+}
+
+/* One `name: Type [= default]` field of a type, pushed on the scratch stack. */
+MS_NODISCARD static bool type_field(Parser *p) {
+    MsToken fname = {0};
+    if (!need_token(p, MS_T_Name, &fname)) return false;
+    if (!need_name_colon(p, fname)) return false;
+    MsTypeRef *ty = NULL;
+    if (!typ(p, &ty)) return false;
+    MsExpr *def = NULL;
+    if (take(p, MS_T_Assign)) {
+        if (!expression(p, 0, &def)) return false;
+    } else {
+        def = implicit_none(p, ty);
+    }
+    push_ptr(p, mk_param(p, fname.pos, sym(p, fname), ty, def, false, false));
+    return end(p);
+}
+
+/* One member of the indented body, pushed on the scratch stack. */
+MS_NODISCARD static bool declaration_member(Parser *p, MsToken token, MsSym name, MsTypeParams tps) {
+    if (report_misplaced_member(p, token)) {
+        return false;
+    }
+    if (token.kind == MS_T_Enum) {
+        return enum_variant(p);
+    }
+    bool starts_signature = kind(p) == MS_T_Fn || at_move_fn(p) || (kind(p) == MS_T_Var && ahead(p, 1).kind == MS_T_Fn);
+    return starts_signature ? member_signature(p, token, name, tps) : type_field(p);
+}
+
+/* The declaration of `token`'s kind built from the collected members. */
+MS_NODISCARD static bool finish_declaration(Parser *p, MsToken token, MsSym name, MsTypeParams tps, void **items,
+                                            uint32_t count, MsDecl **out) {
     if (token.kind == MS_T_Interface && count == 0) {
         fail(p, token, LIT("declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation"));
         return false;
@@ -1465,7 +1472,7 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
         fail(p, token, LIT("an enum must declare at least one variant; add 'Name' or 'Name(field: Type)'"));
         return false;
     }
-    MsDecl *d;
+    MsDecl *d = NULL;
     if (token.kind == MS_T_Interface) {
         d = new_decl(p, token.pos, MS_D_INTERFACE);
         d->u.iface.name = name;
@@ -1487,6 +1494,51 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
     }
     *out = d;
     return true;
+}
+
+/* The header of a declaration with members, through its indent; false after reporting a problem. */
+MS_NODISCARD static bool declaration_body_start(Parser *p, MsToken token) {
+    if (token.kind == MS_T_Enum && kind(p) == MS_T_Ellipsis) {
+        fail(p, peek(p), LIT("an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field: Type)'"));
+        return false;
+    }
+    if (!need(p, MS_T_Newline)) return false;
+    if (token.kind == MS_T_Enum && kind(p) != MS_T_Indent) {
+        fail(p, peek(p), LIT("an enum must declare at least one variant; indent 'Name' or 'Name(field: Type)' under the header"));
+        return false;
+    }
+    return need(p, MS_T_Indent);
+}
+
+MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out) {
+    p->at++;
+    MsToken name_tok = {0};
+    if (!need_token(p, MS_T_Name, &name_tok)) return false;
+    MsSym name = sym(p, name_tok);
+    MsTypeParams tps = {0};
+    if (!type_params(p, &tps)) return false;
+    if (token.kind == MS_T_Type && take(p, MS_T_Assign)) {
+        return alias_declaration(p, token, name, tps, out);
+    }
+    if (!need(p, MS_T_Colon)) return false;
+    bool no_members = (token.kind == MS_T_Interface || token.kind == MS_T_Type) && take(p, MS_T_Ellipsis);
+    if (no_members) {
+        return empty_declaration(p, token, name, tps, out);
+    }
+    if (!declaration_body_start(p, token)) return false;
+    /* Only one of fields, cases and methods is ever collected for a given declaration kind. */
+    size_t m = mark(p);
+    while (kind(p) != MS_T_Dedent) {
+        newlines(p);
+        if (kind(p) == MS_T_Dedent) {
+            break;
+        }
+        if (!declaration_member(p, token, name, tps)) return false;
+    }
+    if (!need(p, MS_T_Dedent)) return false;
+    uint32_t count = 0;
+    void **items = finish(p, m, &count, sizeof(void *), _Alignof(void *));
+    return finish_declaration(p, token, name, tps, items, count, out);
 }
 
 /* The type parameters that stand for the receiver's own arguments in `fn Type[T: Bound].m()`. */
