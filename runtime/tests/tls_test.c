@@ -28,14 +28,14 @@ static const char KEY[] =
     "-----END PRIVATE KEY-----\n";
 
 /* Moves pending ciphertext one way. */
-static void pump(ms_tls *from, ms_tls *to) {
+static void pump(MsTls *from, MsTls *to) {
     char b[4096];
     long n;
     while ((n = ms_tls_outgoing(from, b, sizeof b)) > 0) ms_tls_incoming(to, b, (size_t)n);
 }
 
 /* Runs both handshakes to the end. */
-static int handshake(ms_tls *c, ms_tls *s) {
+static int handshake(MsTls *c, MsTls *s) {
     int cs = MS_TLS_WANT_IO, ss = MS_TLS_WANT_IO;
     for (int i = 0; i < 20 && (cs == MS_TLS_WANT_IO || ss == MS_TLS_WANT_IO); i++) {
         if (cs == MS_TLS_WANT_IO) cs = ms_tls_handshake(c);
@@ -48,14 +48,14 @@ static int handshake(ms_tls *c, ms_tls *s) {
 }
 
 int main(void) {
-    ms_tls_ctx *sctx = ms_tls_ctx_new(1, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, NULL, 0);
-    ms_tls_ctx *cctx = ms_tls_ctx_new(0, NULL, 0, NULL, 0, CERT, sizeof CERT - 1);
-    ms_tls_ctx *bare = ms_tls_ctx_new(0, NULL, 0, NULL, 0, NULL, 0); /* system store: does not trust the test cert */
+    MsTlsCtx *sctx = ms_tls_ctx_new(1, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, NULL, 0);
+    MsTlsCtx *cctx = ms_tls_ctx_new(0, NULL, 0, NULL, 0, CERT, sizeof CERT - 1);
+    MsTlsCtx *bare = ms_tls_ctx_new(0, NULL, 0, NULL, 0, NULL, 0); /* system store: does not trust the test cert */
     CHECK(sctx && cctx && bare);
     CHECK(ms_tls_ctx_new(1, CERT, sizeof CERT - 1, CERT, sizeof CERT - 1, NULL, 0) == NULL); /* key is not a key */
     CHECK(ms_tls_ctx_new(1, NULL, 0, NULL, 0, NULL, 0) == NULL);
 
-    ms_tls *c = ms_tls_new(cctx, "localhost"), *s = ms_tls_new(sctx, NULL);
+    MsTls *c = ms_tls_new(cctx, "localhost"), *s = ms_tls_new(sctx, NULL);
     CHECK(handshake(c, s) == MS_TLS_DONE);
     char b[64];
     CHECK(ms_tls_read(s, b, sizeof b) == MS_TLS_WANT_IO); /* nothing yet: wait, not an error */

@@ -12,14 +12,14 @@ typedef struct {
     uint8_t server;      /* this end is the server: frames must be masked, else they must not be */
     uint8_t deflate;     /* permessage-deflate negotiated: RSV1 allowed on the first data frame */
     uint8_t fragmenting; /* inside a fragmented message: the last data frame had FIN clear */
-} ms_ws_state;
+} MsWsState;
 
 typedef struct {
     uint8_t fin, opcode, compressed, masked;
     uint8_t mask[4];
     uint32_t head_len;
     uint64_t payload_len;
-} ms_ws_head;
+} MsWsHead;
 
 enum { MS_WS_PARTIAL = 0, MS_WS_OK = 1, MS_WS_BAD = 2 };
 
@@ -27,8 +27,8 @@ enum { MS_WS_PARTIAL = 0, MS_WS_OK = 1, MS_WS_BAD = 2 };
    comma-separated failure text, for example "RSV1 set, bad MASK". The checks that need only the first two bytes
    run before the rest of the header arrives, so a bad frame fails early. On OK the caller updates
    `state->fragmenting` with ms_ws_after_head. */
-int ms_ws_parse_head(const ms_ws_state *state, const uint8_t *buf, size_t len, ms_ws_head *out, char *reason, size_t cap);
-void ms_ws_after_head(ms_ws_state *state, const ms_ws_head *head);
+int ms_ws_parse_head(const MsWsState *state, const uint8_t *buf, size_t len, MsWsHead *out, char *reason, size_t cap);
+void ms_ws_after_head(MsWsState *state, const MsWsHead *head);
 
 /* XORs buf[0..n) with the mask, where `pos` is how many payload bytes of this frame came before it. */
 void ms_ws_unmask(uint8_t *buf, size_t n, const uint8_t mask[4], uint64_t pos);
