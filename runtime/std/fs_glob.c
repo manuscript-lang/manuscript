@@ -521,8 +521,6 @@ static bool pattern_base(GlobWalk *walk, MsBytes pattern, MsFsBuffer *base) {
     return ok || fail_memory(walk);
 }
 
-static bool bytes_equal(MsBytes a, MsBytes b) { return a.len == b.len && (a.len == 0 || memcmp(a.ptr, b.ptr, a.len) == 0); }
-
 /* The directories to start from, packed as names: the root, and where each pattern's literal prefix leads. */
 static bool collect_starts(GlobWalk *walk, const MsVec *patterns, MsFsBuffer *starts) {
     bool ok = ms_fs_names_push(starts, ms_fs_buffer_view(&walk->root)) || fail_memory(walk);
@@ -534,7 +532,7 @@ static bool collect_starts(GlobWalk *walk, const MsVec *patterns, MsFsBuffer *st
         const bool directory = ok && ms_fs_stat_bytes(ms_fs_buffer_view(&base), false, &info) == 0 && ms_fs_stat_is_directory(&info);
         if (ok && directory) {
             ok = ms_fs_names_push(starts, ms_fs_buffer_view(&base)) || fail_memory(walk);
-        } else if (ok && !bytes_equal(ms_fs_buffer_view(&base), ms_fs_buffer_view(&walk->root))) {
+        } else if (ok && !ms_bytes_equal(ms_fs_buffer_view(&base), ms_fs_buffer_view(&walk->root))) {
             MsFsBuffer parent = {0};
             ok = (ms_fs_path_dir(ms_fs_buffer_view(&base), &parent) && ms_fs_names_push(starts, ms_fs_buffer_view(&parent))) || fail_memory(walk);
             ms_fs_buffer_free(&parent);

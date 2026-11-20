@@ -10,6 +10,7 @@
 #include "ms_rt/safe.h"
 #include "ms_rt/strbuild.h"
 #include "ms_rt/utf8.h"
+#include "string_slice.h"
 
 /* Texts up to this many bytes split at a one-byte separator in one pass over their words: a record's fields
  * are a few bytes apart, where a search per piece costs more than the scan. */
@@ -25,25 +26,10 @@ typedef enum MsPieceMode {
     MS_PIECE_VIEW,
 } MsPieceMode;
 
-/* The runtime checked an invariant that only a bug can break: the report names the module. */
-MS_NORETURN static void internal_fault(void) {
-    static const uint8_t message[] = "string: internal bounds error";
-    msrt_fault(message, sizeof message - 1);
-}
-
-/* bytes[start..end]; the callers' arithmetic keeps both in range, so a bad range is a runtime bug. */
-static inline MS_ALWAYS_INLINE MsBytes slice(MsBytes bytes, size_t start, size_t end) {
-    MsBytes part = {0};
-    if (!ms_bytes_slice(bytes, start, end, &part)) {
-        internal_fault();
-    }
-    return part;
-}
-
 static MsBytesMut slice_mut(MsBytesMut bytes, size_t start, size_t end) {
     MsBytesMut part = {0};
     if (!ms_bytes_mut_slice(bytes, start, end, &part)) {
-        internal_fault();
+        ms_string_internal_fault();
     }
     return part;
 }
@@ -52,7 +38,7 @@ static MsBytesMut slice_mut(MsBytesMut bytes, size_t start, size_t end) {
 static inline MS_ALWAYS_INLINE size_t write_at(MsBytesMut dst, size_t at, MsBytes source) {
     size_t end = 0;
     if (!ms_size_add(at, source.len, &end) || end > dst.len) {
-        internal_fault();
+        ms_string_internal_fault();
     }
     ms_copy_bytes(dst.ptr + at, source.ptr, source.len);
     return end;
@@ -124,7 +110,7 @@ static inline MS_ALWAYS_INLINE bool split_at_byte(MsBytes text, uint8_t separato
         uint64_t mask = equal_bytes_mask(ms_load64(text.ptr + offset), pattern);
         while (mask != 0) {
             const size_t hit = offset + (size_t)__builtin_ctzll(mask) / 8;
-            if (!list_put(list, make_piece(mode, slice(text, piece_start, hit)), fixed)) {
+            if (!list_put(list, make_piece(mode, ms_string_slice(text, piece_start, hit)), fixed)) {
                 return false;
             }
             piece_start = hit + 1;
@@ -135,12 +121,12 @@ static inline MS_ALWAYS_INLINE bool split_at_byte(MsBytes text, uint8_t separato
         if (text.ptr[offset] != separator) {
             continue;
         }
-        if (!list_put(list, make_piece(mode, slice(text, piece_start, offset)), fixed)) {
+        if (!list_put(list, make_piece(mode, ms_string_slice(text, piece_start, offset)), fixed)) {
             return false;
         }
         piece_start = offset + 1;
     }
-    return list_put(list, make_piece(mode, slice(text, piece_start, text.len)), fixed);
+    return list_put(list, make_piece(mode, ms_string_slice(text, piece_start, text.len)), fixed);
 }
 
 /* Split after each scalar: the piece count is known, so the list is sized once. */
@@ -151,7 +137,7 @@ static void split_scalars(MsBytes text, MsVec *list, MsPieceMode mode) {
     }
     for (size_t offset = 0; offset < text.len;) {
         const size_t width = ms_utf8_decode(text.ptr + offset, text.len - offset).width;
-        list_push(list, make_piece(mode, slice(text, offset, offset + width)));
+        list_push(list, make_piece(mode, ms_string_slice(text, offset, offset + width)));
         offset += width;
     }
 }
@@ -161,12 +147,12 @@ static void split_at_pattern(MsBytes text, MsBytes separator, MsVec *list, MsPie
     const MsNeedle needle = ms_needle_for(separator, text.len);
     size_t piece_start = 0;
     for (;;) {
-        const size_t hit = ms_needle_find(&needle, slice(text, piece_start, text.len));
+        const size_t hit = ms_needle_find(&needle, ms_string_slice(text, piece_start, text.len));
         if (hit == SIZE_MAX) {
-            list_push(list, make_piece(mode, slice(text, piece_start, text.len)));
+            list_push(list, make_piece(mode, ms_string_slice(text, piece_start, text.len)));
             return;
         }
-        list_push(list, make_piece(mode, slice(text, piece_start, piece_start + hit)));
+        list_push(list, make_piece(mode, ms_string_slice(text, piece_start, piece_start + hit)));
         piece_start += hit + separator.len;
     }
 }
@@ -227,7 +213,7 @@ void msrt_string_split_first(const MsStr *s, const MsStr *sep, MsStr *out) {
             end = text.len;
         }
     }
-    ms_str_write(make_piece(MS_PIECE_VIEW, slice(text, 0, end)), out);
+    ms_str_write(make_piece(MS_PIECE_VIEW, ms_string_slice(text, 0, end)), out);
 }
 
 /* ---- replace ---- */
@@ -260,16 +246,16 @@ static void fill_replaced(MsBytesMut destination, const void *context) {
     const MsReplacement *job = context;
     size_t written = 0, read = 0;
     for (size_t match = 0; match < job->matches; match++) {
-        const MsBytes rest = slice(job->text, read, job->text.len);
+        const MsBytes rest = ms_string_slice(job->text, read, job->text.len);
         const size_t before = ms_needle_find(job->needle, rest);
         if (before == SIZE_MAX) {
-            internal_fault(); /* counted before: the match is there */
+            ms_string_internal_fault(); /* counted before: the match is there */
         }
-        written = write_at(destination, written, slice(rest, 0, before));
+        written = write_at(destination, written, ms_string_slice(rest, 0, before));
         written = write_at(destination, written, job->replacement);
         read += before + job->old_text.len;
     }
-    (void)write_at(destination, written, slice(job->text, read, job->text.len));
+    (void)write_at(destination, written, ms_string_slice(job->text, read, job->text.len));
 }
 
 /* The text with the replacement inserted before every scalar and at the end. */
@@ -282,7 +268,7 @@ static void fill_inserted(MsBytesMut destination, const void *context) {
             return;
         }
         const size_t width = ms_utf8_decode(job->text.ptr + read, job->text.len - read).width;
-        written = write_at(destination, written, slice(job->text, read, read + width));
+        written = write_at(destination, written, ms_string_slice(job->text, read, read + width));
         read += width;
     }
 }
@@ -290,7 +276,7 @@ static void fill_inserted(MsBytesMut destination, const void *context) {
 static size_t count_matches(const MsNeedle *needle, MsBytes text) {
     size_t count = 0, read = 0;
     while (text.len - read >= needle->pattern.len) {
-        const size_t before = ms_needle_find(needle, slice(text, read, text.len));
+        const size_t before = ms_needle_find(needle, ms_string_slice(text, read, text.len));
         if (before == SIZE_MAX) {
             break;
         }
@@ -326,9 +312,9 @@ void msrt_string_replace_first(const MsStr *s, const MsStr *old, const MsStr *re
     uint8_t small[MS_STR_INLINE_MAX + 1] = {0};
     const MsStr heap = total > MS_STR_INLINE_MAX ? ms_str_alloc(total) : (MsStr){.ptr_word = NULL, .tagged = 0};
     const MsBytesMut destination = ms_bytes_mut(total > MS_STR_INLINE_MAX ? heap.ptr_word : small, total);
-    size_t written = write_at(destination, 0, slice(text, 0, at));
+    size_t written = write_at(destination, 0, ms_string_slice(text, 0, at));
     written = write_at(destination, written, with);
-    (void)write_at(destination, written, slice(text, at + old_text.len, text.len));
+    (void)write_at(destination, written, ms_string_slice(text, at + old_text.len, text.len));
     ms_str_write(total > MS_STR_INLINE_MAX ? heap : ms_str_from_bytes(small, total), out);
 }
 
@@ -344,12 +330,12 @@ static MsStr replace_shrinking(const MsStr *s, MsBytes old_text, MsBytes with) {
     const MsBytesMut block = ms_bytes_mut(msrt_alloc(text.len + 1), text.len + 1);
     size_t written = 0, read = 0;
     while (before != SIZE_MAX) {
-        written = write_at(block, written, slice(text, read, read + before));
+        written = write_at(block, written, ms_string_slice(text, read, read + before));
         written = write_at(block, written, with);
         read += before + old_text.len;
-        before = ms_needle_find(&needle, slice(text, read, text.len));
+        before = ms_needle_find(&needle, ms_string_slice(text, read, text.len));
     }
-    written = write_at(block, written, slice(text, read, text.len));
+    written = write_at(block, written, ms_string_slice(text, read, text.len));
     if (written <= MS_STR_INLINE_MAX) {
         const MsStr result = ms_str_from_bytes(block.ptr, written);
         msrt_free(block.ptr);
@@ -388,9 +374,9 @@ void msrt_string_replace(const MsStr *s, const MsStr *old, const MsStr *replacem
 
 /* Moves bytes within one buffer; the ranges may overlap. */
 static void move_within(MsBytesMut buffer, size_t to, size_t from, size_t length) {
-    const MsBytes source = slice(ms_bytes_view(buffer), from, from + length);
+    const MsBytes source = ms_string_slice(ms_bytes_view(buffer), from, from + length);
     if (!ms_bytes_copy(slice_mut(buffer, to, to + length), source)) {
-        internal_fault();
+        ms_string_internal_fault();
     }
 }
 
@@ -410,7 +396,7 @@ void msrt_string_replace_take(MsStr *s, const MsStr *old, const MsStr *replaceme
     const MsNeedle needle = ms_needle_for(old_text, buffer.len);
     size_t written = 0, read = 0;
     for (;;) {
-        const size_t before = ms_needle_find(&needle, slice(ms_bytes_view(buffer), read, buffer.len));
+        const size_t before = ms_needle_find(&needle, ms_string_slice(ms_bytes_view(buffer), read, buffer.len));
         if (before == SIZE_MAX) {
             break;
         }

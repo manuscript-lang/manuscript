@@ -24,7 +24,6 @@ struct MsCidrCell {
     int bits;
 };
 
-static MsBytes bytes_of_text(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
 static void cell_drop_entry(MsObj *object) { msrt_free(object); }
 
@@ -102,7 +101,7 @@ static void write_text(const MsAddr *address, MsStr *out) {
 /* The address of `text`, with an IPv4-mapped address as IPv4; false when it is not one. */
 static bool parse_ip(const MsStr *text, MsIpCell **out) {
     MsAddr address;
-    if (!parse_address(bytes_of_text(text), &address)) {
+    if (!parse_address(msrt_str_bytes(text), &address)) {
         return false;
     }
     normalize(&address);
@@ -173,7 +172,7 @@ static bool parse_range(MsBytes text, MsAddr *address, int *bits) {
 static bool parse_cidr(const MsStr *text, MsCidrCell **out) {
     MsAddr address;
     int bits = 0;
-    if (!parse_range(bytes_of_text(text), &address, &bits)) {
+    if (!parse_range(msrt_str_bytes(text), &address, &bits)) {
         return false;
     }
     *out = cidr_new(&address, bits);

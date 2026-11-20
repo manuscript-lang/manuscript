@@ -866,8 +866,6 @@ MsSysError ms_fs_eval_symlinks(MsBytes path, MsFsBuffer *out) {
 
 bool ms_fs_same_file(const MsSysStat *a, const MsSysStat *b) { return a->device == b->device && a->inode == b->inode; }
 
-static bool bytes_equal(MsBytes a, MsBytes b) { return a.len == b.len && (a.len == 0 || memcmp(a.ptr, b.ptr, a.len) == 0); }
-
 /* `given` as an absolute path without trailing separators; false (the root itself is refused as invalid) with `fail`
  * set. */
 static bool removal_candidate(MsBytes given, MsBytes cwd, MsFsBuffer *joined, MsFsFail *fail) {
@@ -877,7 +875,7 @@ static bool removal_candidate(MsBytes given, MsBytes cwd, MsFsBuffer *joined, Ms
     bool ok = false;
     if (!built || !ms_fs_path_clean(ms_fs_buffer_view(joined), &clean) || !ms_fs_path_dir(ms_fs_buffer_view(&clean), &parent)) {
         fail_memory(fail);
-    } else if (bytes_equal(ms_fs_buffer_view(&parent), ms_fs_buffer_view(&clean))) {
+    } else if (ms_bytes_equal(ms_fs_buffer_view(&parent), ms_fs_buffer_view(&clean))) {
         fail_invalid(fail);
     } else {
         while (joined->length > 1 && ms_fs_is_separator(joined->data[joined->length - 1])) {
@@ -918,7 +916,7 @@ static bool refuse_ancestors(const MsSysStat *info, MsFsBuffer *start, MsFsFail 
         if (!ms_fs_path_dir(ms_fs_buffer_view(&ancestor), &next)) {
             fail_memory(fail);
             ok = false;
-        } else if (bytes_equal(ms_fs_buffer_view(&next), ms_fs_buffer_view(&ancestor))) {
+        } else if (ms_bytes_equal(ms_fs_buffer_view(&next), ms_fs_buffer_view(&ancestor))) {
             ms_fs_buffer_free(&next);
             break;
         }
@@ -937,7 +935,7 @@ static bool removal_path(MsBytes given, MsFsBuffer *out, MsFsFail *fail) {
     const MsBytes base_name = ms_fs_path_base(given);
     const uint8_t dot[] = {'.'};
     const uint8_t dots[] = {'.', '.'};
-    if (given.len == 0 || bytes_equal(base_name, ms_bytes_of(dot, 1)) || bytes_equal(base_name, ms_bytes_of(dots, 2))) {
+    if (given.len == 0 || ms_bytes_equal(base_name, ms_bytes_of(dot, 1)) || ms_bytes_equal(base_name, ms_bytes_of(dots, 2))) {
         fail_invalid(fail);
         return false;
     }

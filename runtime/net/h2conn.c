@@ -136,15 +136,13 @@ static uint32_t status_of(MsBytes value) {
     return status;
 }
 
-static bool is_name(MsBytes name, const char *text) { return name.len == strlen(text) && memcmp(name.ptr, text, name.len) == 0; }
-
 /* Stores a pseudo-header value in its place in the head; unknown pseudo-headers cannot arrive (nghttp2 rejects them). */
 static void pseudo_set(MsH2Head *head, MsBytes name, MsBytes value) {
-    if (is_name(name, ":status")) head->status = status_of(value);
-    else if (is_name(name, ":method")) head->method = value;
-    else if (is_name(name, ":scheme")) head->scheme = value;
-    else if (is_name(name, ":authority")) head->authority = value;
-    else if (is_name(name, ":path")) head->path = value;
+    if (ms_bytes_is_text(name, ":status")) head->status = status_of(value);
+    else if (ms_bytes_is_text(name, ":method")) head->method = value;
+    else if (ms_bytes_is_text(name, ":scheme")) head->scheme = value;
+    else if (ms_bytes_is_text(name, ":authority")) head->authority = value;
+    else if (ms_bytes_is_text(name, ":path")) head->path = value;
 }
 
 /* Copies a header block out of the connection's event arena. Returns false when out of memory. */

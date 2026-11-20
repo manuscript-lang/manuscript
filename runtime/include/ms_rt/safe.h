@@ -159,6 +159,11 @@ static inline bool ms_bytes_equal(MsBytes a, MsBytes b) {
     return a.len == b.len && (a.len == 0 || __builtin_memcmp(a.ptr, b.ptr, a.len) == 0);
 }
 
+/* Whether `bytes` is exactly the C string `text`. */
+static inline bool ms_bytes_is_text(MsBytes bytes, const char *text) {
+    return ms_bytes_equal(bytes, ms_bytes_of((const uint8_t *)text, __builtin_strlen(text)));
+}
+
 static inline bool ms_bytes_starts_with(MsBytes bytes, MsBytes prefix) {
     return bytes.len >= prefix.len && ms_bytes_equal(ms_bytes_of(bytes.ptr, prefix.len), prefix);
 }

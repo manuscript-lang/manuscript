@@ -174,10 +174,6 @@ static char *copy_bytes(MsBytes bytes) {
     return copy;
 }
 
-static bool is_name(MsBytes name, const char *text) {
-    return name.len == strlen(text) && memcmp(name.ptr, text, name.len) == 0;
-}
-
 /* The request fields: names canonical, cookie fields joined with "; ", Host from :authority when none was sent. */
 static MsHeaders *request_fields(const MsH2Head *head) {
     MsHeaders *fields = ms_headers_new();
@@ -189,7 +185,7 @@ static MsHeaders *request_fields(const MsH2Head *head) {
     bool has_host = false, ok = true;
     for (size_t i = 0; ok && i < head->nfields; i++) {
         const MsH2Header *field = &head->fields[i];
-        if (is_name(field->name, "cookie")) {
+        if (ms_bytes_is_text(field->name, "cookie")) {
             const size_t add = field->value.len + (cookie_length > 0 ? 2 : 0);
             uint8_t *grown = realloc(cookie, cookie_length + add);
             ok = grown != NULL;
@@ -206,7 +202,7 @@ static MsHeaders *request_fields(const MsH2Head *head) {
             }
             continue;
         }
-        has_host = has_host || is_name(field->name, "host");
+        has_host = has_host || ms_bytes_is_text(field->name, "host");
         ok = ms_headers_add_canonical(fields, field->name, field->value);
     }
     if (ok && cookie_length > 0) {
@@ -235,13 +231,13 @@ static MsXchgH2 *exchange_new(MsXchgH2Conn *conn, int32_t stream) {
     x->conn = conn;
     x->stream = stream;
     x->method_length = head->method.len;
-    const bool connect = is_name(head->method, "CONNECT");
+    const bool connect = ms_bytes_is_text(head->method, "CONNECT");
     const MsBytes target = connect ? head->authority : head->path;
     x->target_length = target.len;
     x->method = copy_bytes(head->method);
     x->target = copy_bytes(target);
     x->fields = request_fields(head);
-    x->is_head = is_name(head->method, "HEAD");
+    x->is_head = ms_bytes_is_text(head->method, "HEAD");
     if (x->method == NULL || x->target == NULL || x->fields == NULL) {
         free(x->method);
         free(x->target);
@@ -321,7 +317,7 @@ static bool is_token_byte(uint8_t c) {
 static bool connection_specific(MsBytes name) {
     static const char *const names[] = {"connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade", "content-length", "te", "host"};
     for (size_t i = 0; i < sizeof names / sizeof *names; i++) {
-        if (is_name(name, names[i])) {
+        if (ms_bytes_is_text(name, names[i])) {
             return true;
         }
     }
