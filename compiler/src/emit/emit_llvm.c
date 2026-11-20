@@ -37,6 +37,7 @@ typedef struct LCx {
     bool export_all;     /* every function gets an external symbol, for the tables unit to address */
     LlDebug *dbg;        /* source places for the fault tables, or NULL */
     uint32_t scope_base; /* module-wide index of the first scope of `f` */
+    uint32_t body_scope; /* the scope number of `f`'s own body: past the module's scopes, one per function */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -1442,14 +1443,15 @@ static void ll_edge_label(MsBuf *o, const MirTerm *t, uint32_t from, uint32_t k)
 /* A `switch`: the cases by value, the default last. Several cases may share a target. */
 static void ll_switch(LCx *c, const MirTerm *t, uint32_t from) {
     MsBuf *o = c->out;
+    /* One line, so the place tag `ll_debug_tag` adds to each indented line lands after the `]`. */
     ms_buf_printf(o, "  switch i64 %%v%u, label ", t->value);
     ll_edge_label(o, t, from, t->ncases);
     ms_buf_puts(o, " [");
     for (uint32_t k = 0; k < t->ncases; k++) {
-        ms_buf_printf(o, "\n    i64 %lld, label ", (long long)t->cases[k].value);
+        ms_buf_printf(o, " i64 %lld, label ", (long long)t->cases[k].value);
         ll_edge_label(o, t, from, k);
     }
-    ms_buf_puts(o, "\n  ]\n");
+    ms_buf_puts(o, " ]\n");
 }
 
 static bool ll_term(LCx *c, const MirTerm *t, uint32_t from) {
@@ -1588,7 +1590,8 @@ static void ll_place(LCx *c, size_t from, MirLoc loc) {
     }
     const bool known = !mir_loc_none(loc) && loc.line != 0;
     const uint32_t line = known ? loc.line : c->f->loc.line;
-    const uint32_t scope = known && loc.scope != 0 ? c->scope_base + loc.scope : 0;
+    /* Scope 0 is the function itself; LLVM may inline it into another, so it gets a number of its own. */
+    const uint32_t scope = known && loc.scope != 0 ? c->scope_base + loc.scope : c->body_scope;
     ll_debug_tag(c->out, from, ll_debug_location(c->dbg, line, scope));
 }
 
@@ -1907,9 +1910,13 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     LlDebug debug = {0};
     ll_debug_init(&debug);
     LlDebug *dbg = places ? &debug : NULL;
-    uint32_t scope_base = 0;
+    uint32_t scope_base = 0, total_scopes = 0;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base};
+        total_scopes += m->funcs[i].nscopes;
+    }
+    for (uint32_t i = 0; i < m->nfuncs; i++) {
+        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base,
+                 total_scopes + i + 1};
         scope_base += m->funcs[i].nscopes;
         if (ll_function(&c, i)) {
             continue;
@@ -1918,7 +1925,7 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);

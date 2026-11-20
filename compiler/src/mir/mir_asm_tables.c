@@ -8,6 +8,8 @@
 typedef struct AtFunc {
     MsStr sym, name;
     uint32_t file, line;
+    uint32_t index; /* in the meta; the end label `.Lmse<index>` */
+    uint32_t first_scope, nscopes; /* its inlined scopes: global numbers first_scope + 1 ... */
     bool seen;
 } AtFunc;
 
@@ -52,6 +54,7 @@ typedef struct AtMeta {
     uint32_t nfuncs, cfuncs;
     MirScope *scopes;
     uint32_t nscopes, cscopes;
+    bool bodies; /* a column past the scopes names a function body (LLVM may inline functions into each other) */
 } AtMeta;
 
 static void at_meta_parse(AtMeta *a, const char *text, size_t len) {
@@ -65,7 +68,7 @@ static void at_meta_parse(AtMeta *a, const char *text, size_t len) {
             MIR_PUSH(&a->m, a->m.files, a->m.nfiles, a->m.cfiles, MsStr, f);
         } else if (text[0] == 'Y') {
             const char *tab = memchr(p, '\t', (size_t)(eol - p));
-            AtFunc f = {.sym = {p, (uint32_t)(tab - p)}};
+            AtFunc f = {.sym = {p, (uint32_t)(tab - p)}, .first_scope = a->nscopes};
             p = tab + 1;
             f.file = at_file(&p);
             p++;
@@ -73,6 +76,8 @@ static void at_meta_parse(AtMeta *a, const char *text, size_t len) {
             p++;
             f.name = (MsStr){p, (uint32_t)(eol - p)};
             MIR_PUSH(&a->m, a->funcs, a->nfuncs, a->cfuncs, AtFunc, f);
+        } else if (text[0] == 'B') {
+            a->bodies = true;
         } else if (text[0] == 'S') {
             MirScope s = {0};
             s.file = at_file(&p);
@@ -83,6 +88,7 @@ static void at_meta_parse(AtMeta *a, const char *text, size_t len) {
             p++;
             s.name = mir_name(&a->m, p, (size_t)(eol - p));
             MIR_PUSH(&a->m, a->scopes, a->nscopes, a->cscopes, MirScope, s);
+            a->funcs[a->nfuncs - 1].nscopes++;
         }
         text = eol + 1;
     }
@@ -165,7 +171,7 @@ static void at_put_blob(MsBuf *out, const uint8_t *blob, size_t size, AtPatch *p
             case AT_FUNC_ADDR: ms_buf_printf(out, "\t.quad %s%.*s\n", prefix, (int)f->sym.len, f->sym.ptr); at += 8; break;
             case AT_LOC_ADDR: ms_buf_printf(out, "\t.quad .Lmsl%zu\n", pt->value); at += 8; break;
             case AT_FUNC_SIZE:
-                ms_buf_printf(out, "\t.long .Lmse%zu-%s%.*s\n", pt->value, prefix, (int)f->sym.len, f->sym.ptr);
+                ms_buf_printf(out, "\t.long .Lmse%u-%s%.*s\n", f->index, prefix, (int)f->sym.len, f->sym.ptr);
                 at += 4;
                 break;
             case AT_BLOB_ADDR: ms_buf_printf(out, "\t.quad %sms_tables+%zu\n", prefix, pt->value); at += 8; break;
@@ -182,14 +188,98 @@ static void at_put_blob(MsBuf *out, const uint8_t *blob, size_t size, AtPatch *p
     }
 }
 
+
+/* ---- functions LLVM inlined into each other ----
+ * The `.loc` of an instruction names its own function body or inlined scope, not where LLVM put it. A range
+ * whose scope belongs to another function than the one holding the code gets a scope of its own: a frame for
+ * that callee whose parent is the function (the frame of a wrapper without a position is then left out). */
+
+typedef struct AtClone { uint64_t key; uint32_t id; } AtClone;
+
+typedef struct AtRemap {
+    AtMeta *a;
+    uint32_t *owner; /* per original scope: the function whose body it was in */
+    uint32_t norig;
+    MsBuf memo; /* AtClone */
+} AtRemap;
+
+static uint32_t at_memo(AtRemap *r, uint64_t key) {
+    const AtClone *all = ms_buf_items(&r->memo);
+    for (size_t i = 0; i < r->memo.len / sizeof *all; i++) {
+        if (all[i].key == key) {
+            return all[i].id;
+        }
+    }
+    return 0;
+}
+
+static uint32_t at_new_scope(AtRemap *r, uint64_t key, MirScope s) {
+    MIR_PUSH(&r->a->m, r->a->scopes, r->a->nscopes, r->a->cscopes, MirScope, s);
+    const AtClone c = {key, r->a->nscopes};
+    ms_buf_put(&r->memo, &c, sizeof c);
+    return c.id;
+}
+
+/* The scope of function `q`'s own body inlined into function `p`. */
+static uint32_t at_inlined_body(AtRemap *r, uint32_t q, uint32_t p) {
+    const uint64_t key = ((uint64_t)p << 32) | (0x80000000u | q);
+    const uint32_t known = at_memo(r, key);
+    if (known != 0) {
+        return known;
+    }
+    const AtFunc *f = &r->a->funcs[q];
+    return at_new_scope(r, key, (MirScope){mir_name(&r->a->m, f->name.ptr, f->name.len), f->file, 0, 0});
+}
+
+/* A copy of scope `c` (a global number) for code in function `p`, its chain ending at the inlined body. */
+static uint32_t at_clone(AtRemap *r, uint32_t c, uint32_t p) {
+    const uint64_t key = ((uint64_t)p << 32) | c;
+    const uint32_t known = at_memo(r, key);
+    if (known != 0) {
+        return known;
+    }
+    MirScope s = r->a->scopes[c - 1];
+    const uint32_t q = r->owner[c - 1];
+    if (s.parent == 0) {
+        s.parent = at_inlined_body(r, q, p);
+    } else if (r->owner[s.parent - 1] != p) {
+        s.parent = at_clone(r, s.parent, p);
+    }
+    return at_new_scope(r, key, s);
+}
+
+static void at_remap_scopes(AtMeta *a, AtLoc *all, size_t nlocs) {
+    AtRemap r = {.a = a, .norig = a->nscopes};
+    r.owner = MS_NEW_N(&a->m.arena, uint32_t, a->nscopes ? a->nscopes : 1);
+    for (uint32_t f = 0; f < a->nfuncs; f++) {
+        for (uint32_t k = 0; k < a->funcs[f].nscopes; k++) {
+            r.owner[a->funcs[f].first_scope + k] = f;
+        }
+    }
+    for (size_t i = 0; i < nlocs; i++) {
+        const uint32_t p = all[i].func, c = all[i].scope;
+        if (c > r.norig) {
+            const uint32_t q = c - r.norig - 1;
+            all[i].scope = q >= a->nfuncs || q == p ? 0 : at_inlined_body(&r, q, p);
+        } else if (c > 0 && r.owner[c - 1] != p) {
+            all[i].scope = at_clone(&r, c, p);
+        }
+    }
+    ms_buf_free(&r.memo);
+}
+
 /* The tables as data after the assembly: the blob of `mir_fault_tables`, its code addresses the labels. */
-static void at_emit_tables(AtMeta *a, const AtLoc *all, size_t nlocs, const char *prefix, MsBuf *out) {
+static void at_emit_tables(AtMeta *a, AtLoc *all, size_t nlocs, const char *prefix, MsBuf *out) {
+    if (a->bodies) {
+        at_remap_scopes(a, all, nlocs);
+    }
     /* A function the compiler removed (an internal one LLVM inlined everywhere) has no code and no entry. */
     AtFunc *kept = MS_NEW_N(&a->m.arena, AtFunc, a->nfuncs ? a->nfuncs : 1);
     uint32_t nkept = 0;
     for (uint32_t f = 0; f < a->nfuncs; f++) {
         if (a->funcs[f].seen) {
-            kept[nkept++] = a->funcs[f];
+            kept[nkept] = a->funcs[f];
+            kept[nkept++].index = f;
         }
     }
     MirFuncTable *tables = MS_NEW_N(&a->m.arena, MirFuncTable, nkept ? nkept : 1);
