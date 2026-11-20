@@ -71,25 +71,55 @@ static MsStr std_text(const MsCheck *check, MsSym path) {
 
 /* The implementations of the modules `id` imports join the method table first, as the Rust
  * checker's program-wide table has them. */
+/* Desugars the inherent methods of every bundled module once, before anything declares it: a
+ * `+source` half names the types its native half declares. */
+static void desugar_bundled(MsCheck *check) {
+    for (MsModId m = 0; m < check->nmods; m++) {
+        MsInherentError *errors = NULL;
+        uint32_t nerrors = 0;
+        MsDecl **foreign = NULL;
+        uint32_t nforeign = 0;
+        const MsStr path = ms_name(check->names, check->mods[m].path);
+        if (path.len > 7 && memcmp(path.ptr + path.len - 7, "+source", 7) == 0) {
+            const MsModId native = ms_module_find(check, ms_intern(check->names, path.ptr, path.len - 7));
+            const MsModule *types = native == MS_NONE ? NULL : check->mods[native].syntax;
+            foreign = malloc(((types == NULL ? 0 : types->ndecls) + 1) * sizeof *foreign);
+            for (uint32_t d = 0; types != NULL && d < types->ndecls; d++) {
+                if (types->decls[d]->kind == MS_D_TYPE || types->decls[d]->kind == MS_D_ENUM) {
+                    foreign[nforeign++] = types->decls[d];
+                }
+            }
+        }
+        ms_module_desugar(check, m, std_text(check, check->mods[m].path), foreign, nforeign, &errors, &nerrors);
+        free(foreign);
+    }
+}
+
+static void add_module_methods(MsCheck *check, MsModId id, MsMethodTable *table, const char *path) {
+    for (int half = 0; half < 2; half++) {
+        char buf[512];
+        snprintf(buf, sizeof buf, "%s%s", path, half == 0 ? "" : "+source");
+        const MsModId m = ms_module_find(check, ms_intern_cstr(check->names, buf));
+        if (m == MS_NONE || m == id || check->mods[m].syntax == NULL) {
+            continue;
+        }
+        ms_module_resolve_types(check, m);
+        ms_module_ensure_operations(check, m, table);
+        ms_module_add_implementations(check, m, table);
+    }
+}
+
+/* The methods of the types every module sees (the prelude's), then those of the imports. */
 static void add_import_methods(MsCheck *check, MsModId id, MsMethodTable *table) {
+    static const char *const prelude[] = {"@std/core.ms", "@std/string.ms", "@std/collections/collections.ms"};
+    for (size_t i = 0; i < sizeof prelude / sizeof prelude[0]; i++) {
+        add_module_methods(check, id, table, prelude[i]);
+    }
     const MsModule *syntax = check->mods[id].syntax;
     for (uint32_t i = 0; i < syntax->nimports; i++) {
-        const MsStr path = syntax->imports[i].path;
-        for (int half = 0; half < 2; half++) {
-            char buf[512];
-            snprintf(buf, sizeof buf, "%.*s%s", (int)path.len, path.ptr, half == 0 ? "" : "+source");
-            const MsModId m = ms_module_find(check, ms_intern_cstr(check->names, buf));
-            if (m == MS_NONE || m == id || check->mods[m].syntax == NULL) {
-                continue;
-            }
-            MsInherentError *errors = NULL;
-            uint32_t nerrors = 0;
-            const MsStr text = std_text(check, check->mods[m].path);
-            ms_module_desugar(check, m, text, NULL, 0, &errors, &nerrors);
-            ms_module_resolve_types(check, m);
-            ms_module_ensure_operations(check, m, table);
-            ms_module_add_implementations(check, m, table);
-        }
+        char path[512];
+        snprintf(path, sizeof path, "%.*s", (int)syntax->imports[i].path.len, syntax->imports[i].path.ptr);
+        add_module_methods(check, id, table, path);
     }
 }
 
@@ -159,12 +189,19 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
                     ms_module_check_unused(check, id);
                     ms_dump_module_ownership(&dump, check, id);
                 } else {
+                    // Functions the ownership walk handed back keep the checker's claim; the dump
+                    // marks them, because Rust's ownership diagnostics inside them have no C twin yet.
+                    bool *declined = claimed == NULL ? NULL : malloc(claims * sizeof *declined);
+                    for (size_t k = 0; declined != NULL && k < claims; k++) {
+                        declined[k] = claimed[k] && !facts->body_checked[k];
+                    }
                     if (claimed != NULL) {
                         memcpy(facts->body_checked, claimed, claims * sizeof *claimed);
                     }
                     free(claimed);
                     ms_module_check_unused(check, id);
-                    ms_dump_module_bodies(&dump, check, id);
+                    ms_dump_module_bodies(&dump, check, id, declined);
+                    free(declined);
                 }
                 printf("%.*s", (int)dump.len, (const char *)dump.data);
             } else {
@@ -238,6 +275,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (scope) {
+        desugar_bundled(&check);
         print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership, effects);
     } else {
         MsBuf out = {0};

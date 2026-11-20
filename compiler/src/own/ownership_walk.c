@@ -582,6 +582,31 @@ static void own_intrinsic_call(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+/* A method of a type, called on a local or a temporary: a method that changes its receiver changes
+ * the local in place, and no argument may read it; the others borrow it. The checker admitted only
+ * arguments and results of scalars, so nothing returned holds a borrow. */
+static void own_method_call(OwnWalk *w, const MsExpr *e) {
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    const bool mutating = (w->facts->methods->access[w->facts->call_method[e->id]] & MS_METHOD_MUTATING) != 0;
+    const uint32_t binding = own_argument_local(w, receiver);
+    if (mutating) {
+        bool overlaps = binding == MS_NONE;
+        for (uint32_t i = 0; i < e->u.call.args.len && !overlaps; i++) {
+            overlaps = own_mentions(w, e->u.call.args.ptr[i].value, binding);
+        }
+        if (overlaps) {
+            w->supported = false;
+            return;
+        }
+        own_mutate(w, receiver, binding);
+    } else {
+        own_expr(w, receiver, DEMAND_READ);
+    }
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
+    }
+}
+
 /* A call of a function this module declares: each argument is read, since a parameter that is
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
@@ -596,6 +621,10 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_interface[e->id] != MS_TY_NONE &&
         ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) != MS_K_CONTRACT) {
         own_intrinsic_call(w, e);
+        return;
+    }
+    if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_method[e->id] != MS_NONE && w->facts->methods != NULL) {
+        own_method_call(w, e);
         return;
     }
     const OwnSummary *callee = own_callee(w, e);

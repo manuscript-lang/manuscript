@@ -330,7 +330,7 @@ static void dump_function_diags(MsBuf *out, const MsModuleRow *row, uint32_t ind
     }
 }
 
-void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
+void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m, const bool *declined) {
     const MsModuleRow *row = &c->mods[m];
     const MsFacts *facts = row->facts;
     for (uint32_t i = 0; facts != NULL && facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
@@ -339,7 +339,8 @@ void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
             continue;
         }
         const bool constant = d->kind == MS_D_CONST;
-        ms_buf_printf(out, "%s %u:%u\n", constant ? "const" : "fn", d->pos.line, d->pos.column);
+        ms_buf_printf(out, "%s %u:%u%s\n", constant ? "const" : "fn", d->pos.line, d->pos.column,
+                      declined != NULL && declined[d->id] ? " ownership-declined" : "");
         dump_function_diags(out, row, i);
         if (constant) {
             dump_expr(out, c, facts, d->u.konst.value);
