@@ -15,6 +15,7 @@ typedef struct MsBody {
     MsFacts *facts;
     MsLiteralFacts *literals;
     MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
+    uint32_t lambda_floor;  /* bindings below this id belong to an enclosing function: captured */
     const MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
     bool has_close;         /* the module declares a method named `close` */
     MsTy result;
@@ -27,6 +28,15 @@ typedef struct MsBody {
     bool supported;         /* false once a construct outside the handled set is met */
 } MsBody;
 
+/* A parameter or local of this type can be called and passed around (check_closure.c). */
+bool ms_body_is_function_value(const MsBody *b, MsTy ty);
+/* `callee(args)` through the function-typed binding `binding`. */
+MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding);
+/* A module function named as a value; an anonymous function. */
+MsTy ms_body_function_name(MsBody *b, const MsExpr *e);
+MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected);
+/* The primitive type a written annotation names, or MS_TY_NONE after giving up. */
+MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
 /* A call `receiver.name(args)` (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
