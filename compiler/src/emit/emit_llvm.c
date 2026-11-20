@@ -427,6 +427,14 @@ static void ll_copy_leaf(LCx *c, MirValue dst, uint32_t out_index, MirValue src,
     ms_buf_puts(o, identity);
 }
 
+/* `msrt_free` of the block whose address is the word `value` (an LLVM value name). The argument is a
+ * pointer: passed as an integer the block is hidden from LLVM, which may then move a read of it past
+ * the free. */
+static void ll_free(LCx *c, const char *value) {
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "  %%fp%u = inttoptr i64 %s to ptr\n  call void @\"msrt_free\"(ptr %%fp%u)\n", n, value, n);
+}
+
 #include "emit_llvm_record.inc"
 
 /* `type.new`: the leaves of the fields in order. */
@@ -642,6 +650,15 @@ static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const 
             return false;
         }
         ms_buf_printf(args, "%sptr %s", args->len > 0 ? ", " : "", area);
+        return true;
+    }
+    if (ty == MIR_PTR) {
+        /* An address is a word in registers; the function takes a `ptr`, so LLVM sees what the call can reach. */
+        const uint32_t n = c->next++;
+        ms_buf_printf(c->out, "  %%pa%u = inttoptr i64 ", n);
+        ll_name(c->out, value, 0);
+        ms_buf_puts(c->out, " to ptr\n");
+        ms_buf_printf(args, "%sptr %%pa%u", args->len > 0 ? ", " : "", n);
         return true;
     }
     const MirLeafSpan leaves = ll_leaves(c, ty);
@@ -948,13 +965,15 @@ static bool ll_pointer_op(LCx *c, const MirInst *inst) {
     const int64_t width = inst->imm.tag == MI_INT ? inst->imm.i : 8;
     const char *type = ll_word_type(width);
     const bool word = type[1] == '6' && type[2] == '4';
+    char freed[24];
     switch ((MirOp)inst->op) {
     case MOP_Free:
         if (inst->imm.tag != MI_NONE) {
             c->why = "free of a collection field";
             return false;
         }
-        ms_buf_printf(o, "  call void @\"msrt_free\"(i64 %%v%u)\n", inst->args[0]);
+        (void)snprintf(freed, sizeof freed, "%%v%u", inst->args[0]);
+        ll_free(c, freed);
         return true;
     case MOP_PtrNull:
         ms_buf_printf(o, "  %%v%u = add i64 0, 0\n", inst->res);
@@ -1771,7 +1790,7 @@ static void ll_declare_heap(const LCx *c) {
         ms_buf_puts(c->out, "declare i64 @\"msrt_realloc\"(i64, i64)\n");
     }
     if (ll_extern_named(c, "msrt_free") == MIR_NONE) {
-        ms_buf_puts(c->out, "declare void @\"msrt_free\"(i64)\n");
+        ms_buf_puts(c->out, "declare void @\"msrt_free\"(ptr)\n");
     }
     if (ll_extern_named(c, "msrt_string_free") == MIR_NONE) {
         ms_buf_puts(c->out, "declare void @\"msrt_string_free\"(ptr)\n");
@@ -1803,7 +1822,7 @@ static void ll_declare_externs(LCx *c) {
         bool first = true;
         for (uint32_t k = 0; k < def->nparams; k++) {
             const MirLeafSpan leaves = ll_leaves(c, def->params[k].ty);
-            if (!ll_rt_direct(c, def->params[k].ty)) {
+            if (def->params[k].ty == MIR_PTR || !ll_rt_direct(c, def->params[k].ty)) {
                 ms_buf_printf(o, "%sptr", first ? "" : ", ");
                 first = false;
                 continue;
