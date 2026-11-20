@@ -323,11 +323,17 @@ void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
     const MsFacts *facts = row->facts;
     for (uint32_t i = 0; facts != NULL && facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        if (d->kind != MS_D_FN || !facts->body_checked[d->id]) {
+        if ((d->kind != MS_D_FN && d->kind != MS_D_CONST) || !facts->body_checked[d->id]) {
             continue;
         }
-        ms_buf_printf(out, "fn %u:%u %s\n", d->pos.line, d->pos.column, dump_function_dirty(row, i) ? "dirty" : "clean");
-        dump_stmts(out, c, facts, &d->u.fn.body);
+        const bool constant = d->kind == MS_D_CONST;
+        ms_buf_printf(out, "%s %u:%u %s\n", constant ? "const" : "fn", d->pos.line, d->pos.column,
+                      dump_function_dirty(row, i) ? "dirty" : "clean");
+        if (constant) {
+            dump_expr(out, c, facts, d->u.konst.value);
+        } else {
+            dump_stmts(out, c, facts, &d->u.fn.body);
+        }
     }
 }
 

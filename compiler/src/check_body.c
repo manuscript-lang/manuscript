@@ -566,6 +566,25 @@ static bool body_module_has_close(const MsCheck *c, const MsModule *syntax) {
     return false;
 }
 
+/* A module constant `NAME := value` (or `NAME: Type := value`) whose initializer is literals and
+ * operators. The Rust checker types it as a function of no parameters, in a scope of its own. */
+static void body_check_constant(MsBody *b, const MsDecl *d) {
+    const uint32_t first_binding = b->facts->bindings.count;
+    const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
+    b->first_binding = first_binding;
+    b->supported = true;
+    MsTy expected = MS_TY_NONE;
+    if (d->u.konst.ty != NULL) {
+        expected = body_annotation(b, d->u.konst.ty);
+    }
+    const MsTy ty = b->supported ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
+    if (b->supported && body_is_value_type(b, ty)) {
+        b->facts->body_checked[d->id] = true;
+    } else {
+        body_undo(b, first_binding, written_start);
+    }
+}
+
 void ms_module_check_bodies(MsCheck *c, MsModId module) {
     ms_module_resolve_types(c, module);
     MsModuleRow *row = &c->mods[module];
@@ -587,9 +606,15 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        const MsSymId sym = d->kind == MS_D_FN && !d->synthetic ? ms_decl_own_symbol(c, module, d) : MS_NONE;
-        if (sym != MS_NONE) {
+        const bool checkable = (d->kind == MS_D_FN || d->kind == MS_D_CONST) && !d->synthetic;
+        const MsSymId sym = checkable ? ms_decl_own_symbol(c, module, d) : MS_NONE;
+        if (sym == MS_NONE) {
+            continue;
+        }
+        if (d->kind == MS_D_FN) {
             body_check_function(&b, d, sym);
+        } else {
+            body_check_constant(&b, d);
         }
     }
     ms_buf_free(&b.written);
