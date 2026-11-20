@@ -1,11 +1,13 @@
 /* ms_mir_dump MODE FILE...: reads MIR text files and prints, per file, what
  * crates/ms-mir/examples/c_oracle.rs prints, so the two can be diffed byte for byte.
- * MODE: print (canonical text, or `error line N`), ops (the opcode table). */
+ * MODE: print (canonical text, or `error line N`), ops (the opcode table), pass NAME (the text
+ * after running the pass, then `changed N` before it and the cold blocks after it). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "ms/mir.h"
+#include "ms/mir_pass.h"
 
 static bool read_file(const char *path, char **data, size_t *len) {
     FILE *f = fopen(path, "rb");
@@ -24,6 +26,42 @@ static bool read_file(const char *path, char **data, size_t *len) {
     return true;
 }
 
+/* Runs the pass `name` on `m`; false when the name is unknown. */
+static bool run_pass(const char *name, MirModule *m, bool *changed) {
+    *changed = true;
+    if (strcmp(name, "exit_drops") == 0) {
+        mir_exit_drops(m);
+    } else if (strcmp(name, "expand") == 0) {
+        *changed = mir_expand(m, true);
+    } else if (strcmp(name, "expand-nochecks") == 0) {
+        *changed = mir_expand(m, false);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+static void print_cold(const MirModule *m, MsBuf *out) {
+    for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
+        const MirFunc *f = &m->funcs[fi];
+        bool any = false;
+        for (uint32_t bi = 0; bi < f->nblocks; bi++) {
+            if (!f->blocks[bi].cold) {
+                continue;
+            }
+            if (!any) {
+                MsStr name = ms_name(&m->names, f->name);
+                ms_buf_printf(out, "cold %.*s: [", (int)name.len, name.ptr);
+            }
+            ms_buf_printf(out, "%s%u", any ? ", " : "", bi);
+            any = true;
+        }
+        if (any) {
+            ms_buf_puts(out, "]\n");
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         fputs("usage: ms_mir_dump print|ops FILE...\n", stderr);
@@ -36,7 +74,9 @@ int main(int argc, char **argv) {
             ms_buf_printf(&out, "%s imm=%d res=%d fx=%d\n", o->name, o->imm, o->has_result, o->effects);
         }
     }
-    for (int i = 2; i < argc && strcmp(argv[1], "print") == 0; i++) {
+    bool pass = argc > 2 && strcmp(argv[1], "pass") == 0;
+    int first = pass ? 3 : 2;
+    for (int i = first; i < argc && (pass || strcmp(argv[1], "print") == 0); i++) {
         char *src;
         size_t len;
         if (!read_file(argv[i], &src, &len)) {
@@ -53,8 +93,19 @@ int main(int argc, char **argv) {
         mir_module_init(&m);
         uint32_t line;
         MsStr msg;
+        bool changed = false;
         if (mir_parse(&m, src, len, &line, &msg)) {
+            if (pass && !run_pass(argv[2], &m, &changed)) {
+                fprintf(stderr, "unknown pass %s\n", argv[2]);
+                return 2;
+            }
+            if (pass) {
+                ms_buf_printf(&out, "changed %d\n", changed ? 1 : 0);
+            }
             mir_print_module(&m, &out);
+            if (pass) {
+                print_cold(&m, &out);
+            }
         } else {
             ms_buf_printf(&out, "error line %u\n", line);
         }
