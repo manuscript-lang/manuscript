@@ -2,7 +2,8 @@
 //! parse error), so the C MIR in `compiler/` can be compared with it byte for byte
 //! (`make c-compiler-test`). Temporary tooling for the C rewrite: delete it with `ms-mir`.
 
-use ms_mir::ir::Op;
+use ms_mir::ir::{Boxing, Op};
+use ms_mir::types::{AltId, Ty, TyKind};
 use ms_mir::parse::parse_module;
 use ms_mir::print::print_module;
 use std::fmt::Write;
@@ -27,6 +28,28 @@ fn main() {
                     "{} imm={imm} res={} fx={fx}",
                     i.name, i.has_result as u8
                 );
+            }
+        }
+        "boxing" => {
+            for path in &args[1..] {
+                let _ = writeln!(out, "=== {path}");
+                let Some(m) = std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|t| parse_module(&t).ok())
+                else {
+                    out.push_str("error\n");
+                    continue;
+                };
+                for a in 0..m.alts.len() {
+                    let b = Boxing::default().alt(&m, AltId(a as u32));
+                    let _ = writeln!(out, "alt {a} {}", b as u8);
+                }
+                for t in 0..m.types.len() {
+                    if let TyKind::Opt(inner) = m.types.kind(Ty(t as u32)) {
+                        let b = m.opt_is_boxed(*inner);
+                        let _ = writeln!(out, "opt {t} {}", b as u8);
+                    }
+                }
             }
         }
         _ => {

@@ -280,6 +280,8 @@ void mir_module_free(MirModule *m);
 
 /* Type table. */
 MirTy mir_ty_intern(MirModule *m, const MirTyData *d);
+/* The type equal to `*d` if the table already holds one (nothing is interned); false otherwise. */
+bool mir_ty_find(const MirModule *m, const MirTyData *d, MirTy *out);
 MirTy mir_ty_list(MirModule *m, MirTy elem);
 MirTy mir_ty_opt(MirModule *m, MirTy elem);
 MirTy mir_ty_type(MirModule *m, uint32_t id);

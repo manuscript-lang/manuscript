@@ -49,4 +49,9 @@ for set in files fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" print > "$out/print-$set.c"
     check "print $set ($(grep -c '^===' "$out/print-$set.rust") files)" "$out/print-$set.rust" "$out/print-$set.c"
 done
+for set in files fuzz; do
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" boxing > "$out/boxing-$set.rust"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" boxing > "$out/boxing-$set.c"
+    check "boxing $set" "$out/boxing-$set.rust" "$out/boxing-$set.c"
+done
 exit $status
