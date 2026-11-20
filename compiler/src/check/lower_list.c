@@ -40,11 +40,16 @@ LbVal lst_literal(Lb *lb, const MsExpr *e) {
 
 /* `list[index]`: the list is borrowed for the read, and dropped after it when it is a temporary. */
 LbVal lst_index(Lb *lb, const MsExpr *e) {
-    const LbVal list = lb_expr(lb, e->u.bin.left);
+    const MsExpr *left = NULL;
+    const MsExpr *at = NULL;
+    if (!ms_expr_index(e, &left, &at)) {
+        return lb_unsupported(lb);
+    }
+    const LbVal list = lb_expr(lb, left);
     if (!lb->ok || !lb_is_list(lb, mir_b_ty(&lb->b, list.v))) {
         return lb_unsupported(lb);
     }
-    const LbVal index = lb_expr(lb, e->u.bin.right);
+    const LbVal index = lb_expr(lb, at);
     if (!lb->ok) {
         return LB_FAIL;
     }

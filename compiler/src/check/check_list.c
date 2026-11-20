@@ -70,8 +70,14 @@ MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected) {
     return ty;
 }
 
+/* `xs[i]`, written as an index or as a bracket that reads as a type application: the receiver must be
+ * a local, which makes the bracket an index. */
 MsTy ms_body_index(MsBody *b, const MsExpr *e) {
-    const MsExpr *left = e->u.bin.left;
+    const MsExpr *left = NULL;
+    const MsExpr *index = NULL;
+    if (!ms_expr_index(e, &left, &index) || (e->kind == MS_E_APPLY && (left->kind != MS_E_NAME || ms_body_find_binding(b, left->u.sym) == MS_NONE))) {
+        return ms_body_unsupported(b);
+    }
     const MsTy list = ms_body_expr(b, left, MS_TY_NONE);
     if (list == MS_TY_NONE || left->kind == MS_E_LIST || !ms_body_is_list(b, list)) {
         return ms_body_unsupported(b);
@@ -80,5 +86,5 @@ MsTy ms_body_index(MsBody *b, const MsExpr *e) {
     if (element != b->int_ty && element != b->float_ty && element != b->bool_ty) {
         return ms_body_unsupported(b); // an element with one owner is borrowed in place: the walk does not follow it
     }
-    return ms_body_expr(b, e->u.bin.right, b->int_ty) == MS_TY_NONE ? MS_TY_NONE : element;
+    return ms_body_expr(b, index, b->int_ty) == MS_TY_NONE ? MS_TY_NONE : element;
 }

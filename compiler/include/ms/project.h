@@ -56,6 +56,9 @@ MS_NODISCARD bool ms_path_abs(MsArena *a, const char *path, const char **out, Ms
 MS_NODISCARD bool ms_path_rel(MsArena *a, const char *base, const char *target, const char **out, MsProjectError *err);
 /* True when `rel` (from ms_path_rel) leaves its base directory. */
 bool ms_path_escapes(const char *rel);
+/* The entry names of `dir` other than `.` and `..`, in byte order. A directory that cannot be opened fails as
+ * `<open_op> <dir>: <reason>`. */
+MS_NODISCARD bool ms_path_list_dir(MsArena *a, const char *dir, const char *open_op, const char *const **names, uint32_t *count, MsProjectError *err);
 MS_NODISCARD bool ms_path_eval_symlinks(MsArena *a, const char *path, const char **out, MsProjectError *err);
 
 
@@ -122,6 +125,25 @@ typedef struct MsProject {
  * commit or the requirement as written), the row ms_tool_dependencies returns. */
 const char *ms_project_dependency_row(MsArena *a, const MsDependency *d);
 
+/* ---- ms.toml edits (project/edit.c) ---- */
+
+/* `@name` is an alias: `@`, then letters, digits and underscores, not starting with a digit. */
+bool ms_manifest_valid_alias(const char *key);
+typedef enum MsPinKind { MS_PIN_TAG, MS_PIN_SHA, MS_PIN_VERSION } MsPinKind;
+/* The package name `ms add` gives a repository URL (`https://h/acme/ms-pg.git` is `@pg`); NULL when it is no alias. */
+const char *ms_manifest_default_name(MsArena *a, const char *url);
+/* The manifest `text` with `name = { url = ..., tag | sha | version = ... }` under [dependencies], comments and
+ * formatting kept. A form the editor does not read is MS_PERR_UNSUPPORTED; a name already present is an error. */
+MS_NODISCARD bool ms_manifest_add_dependency(MsArena *a, const char *text, const char *name, const char *url, MsPinKind pin,
+                                             const char *pinned, const char **out, MsProjectError *err);
+/* `text` allowing `name` the `effects` under [effects]. */
+MS_NODISCARD bool ms_manifest_allow_effects(MsArena *a, const char *text, const char *name, const char *const *effects, uint32_t count,
+                                            const char **out, MsProjectError *err);
+/* `text` without `name` in [dependencies] and [effects]; an error when it was not a dependency. */
+MS_NODISCARD bool ms_manifest_remove_dependency(MsArena *a, const char *text, const char *name, const char **out, MsProjectError *err);
+
+/* The whole file at `path`, NUL-terminated after its `*length` bytes (which may include NULs); NULL with *err set. */
+const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err);
 /* The nearest ms.toml in `filename`'s directory or above, NULL when there is none. */
 const char *ms_project_find_manifest(MsArena *a, const char *filename);
 MS_NODISCARD bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProjectError *err);

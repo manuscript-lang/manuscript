@@ -41,6 +41,8 @@ fn run(syms: ms_syntax::Names) -> i32 {
         "nodes" => nodes(syms, files),
         "view" => view(syms, files),
         "review" => review(syms, files),
+        "report" => report(syms, files),
+        "html" => html(syms, files),
         "skill-calls" => skill_calls(files),
         other => {
             eprintln!("unknown command {other}");
@@ -293,45 +295,77 @@ fn facts_json(syms: ms_syntax::Names, files: &[String]) -> i32 {
     0
 }
 
-/// `review BASE HEAD [--no-base] [--added FILE]... [--touch FILE:LINE]...`: the findings of
-/// `compare_facts` as a JSON array, in rank order.
+/// The options `review` and `report` share.
+struct ReviewArgs {
+    input: ms_tooling::review::DiffInput,
+    all: bool,
+    effect: String,
+    format: String,
+    project: bool,
+    paths: Vec<String>,
+}
+
+fn review_args(args: &[String]) -> Option<ReviewArgs> {
+    let mut out = ReviewArgs {
+        input: ms_tooling::review::DiffInput {
+            base_checked: true,
+            ..Default::default()
+        },
+        all: false,
+        effect: String::new(),
+        format: "ascii".into(),
+        project: false,
+        paths: Vec::new(),
+    };
+    let mut options = args.iter();
+    while let Some(option) = options.next() {
+        match option.as_str() {
+            "--no-base" => out.input.base_checked = false,
+            "--project" => out.project = true,
+            "--all" => out.all = true,
+            "--effect" => out.effect = options.next()?.clone(),
+            "--format" => out.format = options.next()?.clone(),
+            "--added" => {
+                out.input.added.insert(options.next()?.clone());
+            }
+            "--touch" => {
+                let (file, line) = options.next()?.rsplit_once(':')?;
+                out.input
+                    .touched
+                    .entry(file.to_string())
+                    .or_default()
+                    .push(line.parse().ok()?);
+            }
+            "--stats" => {
+                let mut number = || options.next()?.parse::<usize>().ok();
+                out.input.files = number()?;
+                out.input.sources = number()?;
+                out.input.insertions = number()?;
+                out.input.deletions = number()?;
+            }
+            other if other.starts_with("--") => return None,
+            _ => out.paths.push(option.clone()),
+        }
+    }
+    Some(out)
+}
+
+/// `review BASE HEAD [options]`: the findings of `compare_facts` as a JSON array, in rank order.
 fn review(syms: ms_syntax::Names, args: &[String]) -> i32 {
-    let [base, head, options @ ..] = args else {
+    let Some(parsed) = review_args(args) else {
         eprintln!(
             "usage: ms-tooling-dev review BASE HEAD [--no-base] [--added FILE]... [--touch FILE:LINE]..."
         );
         return 2;
     };
+    let [base, head] = parsed.paths.as_slice() else {
+        eprintln!("review needs BASE and HEAD");
+        return 2;
+    };
     let (Some(base), Some(head)) = (facts_of(syms, base), facts_of(syms, head)) else {
         return 1;
     };
-    let mut input = ms_tooling::review::DiffInput {
-        base_checked: true,
-        ..Default::default()
-    };
-    let mut options = options.iter();
-    while let Some(option) = options.next() {
-        match option.as_str() {
-            "--no-base" => input.base_checked = false,
-            "--added" => {
-                input.added.insert(options.next().expect("a file").clone());
-            }
-            "--touch" => {
-                let spec = options.next().expect("FILE:LINE");
-                let (file, line) = spec.rsplit_once(':').expect("FILE:LINE");
-                input
-                    .touched
-                    .entry(file.to_string())
-                    .or_default()
-                    .push(line.parse().expect("a line"));
-            }
-            other => {
-                eprintln!("unknown option {other}");
-                return 2;
-            }
-        }
-    }
-    let findings = ms_tooling::review::compare_facts(&base, &head, &input);
+    let findings = ms_tooling::review::compare_facts(&base, &head, &parsed.input);
     let json = ms_json::Json::Arr(
         findings
             .iter()
@@ -339,6 +373,68 @@ fn review(syms: ms_syntax::Names, args: &[String]) -> i32 {
             .collect(),
     );
     println!("{}", json.pretty(ms_json::Escape::HtmlSafe));
+    0
+}
+
+/// `report BASE HEAD [options]` or `report --project HEAD [options]`: the rendered review report.
+fn report(syms: ms_syntax::Names, args: &[String]) -> i32 {
+    let Some(parsed) = review_args(args) else {
+        eprintln!("usage: ms-tooling-dev report BASE HEAD [options] | --project HEAD");
+        return 2;
+    };
+    let options = ms_tooling::report::ReviewOptions {
+        all: parsed.all,
+        effect: &parsed.effect,
+    };
+    let report = if parsed.project {
+        let [head] = parsed.paths.as_slice() else {
+            eprintln!("report --project needs HEAD");
+            return 2;
+        };
+        let Some(head) = facts_of(syms, head) else {
+            return 1;
+        };
+        ms_tooling::report::project_report(&head, options)
+    } else {
+        let [base, head] = parsed.paths.as_slice() else {
+            eprintln!("report needs BASE and HEAD");
+            return 2;
+        };
+        let (Some(base), Some(head)) = (facts_of(syms, base), facts_of(syms, head)) else {
+            return 1;
+        };
+        ms_tooling::report::diff_report(&base, &head, &parsed.input, options)
+    };
+    print!("{}", report.render(&parsed.format));
+    0
+}
+
+/// `html HEAD [BASE]`: the interactive page, with the findings against BASE when given and no type hints.
+fn html(syms: ms_syntax::Names, args: &[String]) -> i32 {
+    let (Some(head_file), base_file) = (args.first(), args.get(1)) else {
+        eprintln!("usage: ms-tooling-dev html HEAD [BASE]");
+        return 2;
+    };
+    let Some(head) = facts_of(syms, head_file) else {
+        return 1;
+    };
+    let findings = match base_file {
+        Some(file) => {
+            let Some(base) = facts_of(syms, file) else {
+                return 1;
+            };
+            let input = ms_tooling::review::DiffInput {
+                base_checked: true,
+                ..Default::default()
+            };
+            Some(ms_tooling::review::compare_facts(&base, &head, &input))
+        }
+        None => None,
+    };
+    print!(
+        "{}",
+        ms_tooling::html::html_page(&head, findings.as_deref(), &[])
+    );
     0
 }
 
@@ -406,7 +502,10 @@ impl ms_syntax::visit::Visitor for KindScan<'_> {
         let kind = if ty.is_string() {
             "String"
         } else {
-            kinds.iter().find(|(b, _)| ty.is(*b)).map_or("Other", |(_, n)| n)
+            kinds
+                .iter()
+                .find(|(b, _)| ty.is(*b))
+                .map_or("Other", |(_, n)| n)
         };
         self.out.push((e.id.0, kind));
     }
@@ -418,7 +517,10 @@ fn nodes(syms: ms_syntax::Names, files: &[String]) -> i32 {
         return 1;
     };
     for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
-        let mut scan = KindScan { module, out: Vec::new() };
+        let mut scan = KindScan {
+            module,
+            out: Vec::new(),
+        };
         for decl in &module.decls {
             ms_syntax::visit::walk_decl(&mut scan, decl.decl());
         }
