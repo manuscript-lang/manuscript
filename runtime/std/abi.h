@@ -8,11 +8,6 @@
 
 #include "ms_rt/string.h"
 
-/* <windows.h> (libuv's headers pull it in) defines STATUS_TIMEOUT as an NTSTATUS macro; the runtime's status wins. */
-#ifdef STATUS_TIMEOUT
-#undef STATUS_TIMEOUT
-#endif
-
 enum {
     STATUS_OK = 0,
     STATUS_INVALID_INPUT = 1,
@@ -27,7 +22,8 @@ enum {
     STATUS_CLOSED = 10,
     STATUS_FAILED = 11,
     STATUS_UNAVAILABLE = 12,
-    STATUS_TIMEOUT = 13,
+    /* Not STATUS_TIMEOUT: <windows.h> defines that name as a macro. */
+    STATUS_TIMED_OUT = 13,
     STATUS_NOT_TERMINAL = 15,
     STATUS_NONE = 16,
     STATUS_BUSY = 17,

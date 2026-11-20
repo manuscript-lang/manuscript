@@ -86,7 +86,7 @@ static bool check_wait(MsFsFail *fail) {
         return false;
     }
     if (ms_sched_read_limit_passed()) {
-        ms_fs_fail_status(fail, STATUS_TIMEOUT);
+        ms_fs_fail_status(fail, STATUS_TIMED_OUT);
         return false;
     }
     return true;

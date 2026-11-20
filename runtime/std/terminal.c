@@ -589,7 +589,7 @@ static uint8_t wait_status(MsTerminal *terminal, const ReadWait *wait) {
         }
         /* A bounded read whose time is up returns its parks at once, so "nothing came" would make the caller retry
          * without end. */
-        return ms_sched_read_limit_passed() ? STATUS_TIMEOUT : STATUS_NONE;
+        return ms_sched_read_limit_passed() ? STATUS_TIMED_OUT : STATUS_NONE;
     }
     decode_input(terminal, wait->bytes, wait->length);
     return terminal->text.length == 0 ? STATUS_NONE : STATUS_OK;
@@ -617,7 +617,7 @@ uint8_t msstd_terminal_raw_terminal_read(const MsObj *handle, uint8_t quick) {
          * bounded read (`next(timeout:)`) whose time is up ends here too, as a timeout. */
         (void)uv_async_send(&terminal->wake);
         if (outcome == MS_SCHED_TIMED_OUT) {
-            return STATUS_TIMEOUT;
+            return STATUS_TIMED_OUT;
         }
         ms_sched_cancel_return();
         return STATUS_OK;
