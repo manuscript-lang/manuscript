@@ -1,5 +1,5 @@
 /* ms_asm_tables META ASM [--prefix _] [--strip-lines]: reads the description `ms_mir_build --tables-meta` wrote and the
- * assembly QBE wrote, and prints the assembly with the fault tables appended (mir_asm_tables); `--strip-lines` leaves out
+ * assembly clang wrote, and prints the assembly with the fault tables appended (mir_asm_tables); `--strip-lines` leaves out
  * the `.loc` lines, for builds that carry no line tables. */
 #include <stdio.h>
 #include <stdlib.h>

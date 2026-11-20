@@ -1,5 +1,5 @@
 # The C compiler (compiler/): libms as one translation unit, the dump tools the differential scripts
-# (compiler/tests/*-diff.sh) run, the compiler's unit tests, the driver, vendored QBE and the `libmstool.a` that
+# (compiler/tests/*-diff.sh) run, the compiler's unit tests, the driver and the `libmstool.a` that
 # Manuscript tools link with `--link`. Executables land in <build>/compiler. Targets are named for the file:
 # `cmake --build <build> --target ms_syntax_dump`. Adding a tool `compiler/tools/ms_<name>.c` needs no edit here;
 # a unit test `compiler/tests/<name>_test.c` needs a line below.
@@ -53,7 +53,7 @@ foreach(file ${_tools})
 endforeach()
 
 # Unit tests of the checker and the driver; ctest runs them.
-foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test semver_test lock_test resolve_test graph_check_test)
+foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test project_discover_test semver_test lock_test resolve_test graph_check_test)
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
 ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" WITH_LIBMS TEST)
@@ -63,15 +63,6 @@ ms_compiler_exe(ms "${_c}/src/driver.c" "${_c}/tools/ms.c" WITH_LIBMS)
 # Helpers of the differential scripts: the mutator and the effect graph generator need no libms.
 ms_compiler_exe(mutate "${_c}/tests/mutate.c" PLAIN)
 ms_compiler_exe(effect_graph_gen "${_c}/tests/effect_graph_gen.c" PLAIN)
-
-# QBE 1.3, the debug code generator (vendored), as a standalone compiler.
-file(GLOB _qbe CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/runtime/third_party/qbe/*.c"
-     "${CMAKE_SOURCE_DIR}/runtime/third_party/qbe/amd64/*.c" "${CMAKE_SOURCE_DIR}/runtime/third_party/qbe/arm64/*.c"
-     "${CMAKE_SOURCE_DIR}/runtime/third_party/qbe/rv64/*.c")
-add_executable(qbe ${_qbe})
-target_include_directories(qbe PRIVATE "${CMAKE_SOURCE_DIR}/runtime/third_party/qbe")
-target_compile_options(qbe PRIVATE -std=c99 -O1 -w)
-set_target_properties(qbe PROPERTIES C_EXTENSIONS OFF RUNTIME_OUTPUT_DIRECTORY "${_bin}")
 
 # libmstool.a: libms plus the tool interface (compiler/include/ms/tool.h), the archive a Manuscript tool links
 # with `--link`. No sanitizers: it links into programs built by `ms`.

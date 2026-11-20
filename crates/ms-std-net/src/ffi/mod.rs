@@ -114,6 +114,4 @@ handle_newtype! {
     ExchH(Bound<std::rc::Rc<crate::http::exchange::Exchange>>);
     /// A `WebSocket` handle.
     SocketH(Bound<std::rc::Rc<crate::ws::socket::Socket>>);
-    /// An `IpAddress` handle.
-    IpH(std::net::IpAddr);
 }

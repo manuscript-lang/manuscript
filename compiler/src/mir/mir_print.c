@@ -303,6 +303,9 @@ static void mp_alts(const MirModule *m, MsBuf *o) {
         const MirAltDef *a = &m->alts[i];
         ms_buf_puts(o, "alt ");
         mp_sym(m, o, a->name);
+        if (a->borrowed != 0) {
+            ms_buf_printf(o, " borrowed %llu", (unsigned long long)a->borrowed);
+        }
         ms_buf_puts(o, " { ");
         for (uint32_t c = 0; c < a->ncases; c++) {
             const MirCaseDef *cd = &a->cases[c];
