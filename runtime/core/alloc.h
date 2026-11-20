@@ -14,23 +14,23 @@
 #define MSALLOC_LARGE_MAX ((size_t)16 << 20)
 
 extern const uint16_t msalloc_class_size[MSALLOC_NUM_CLASSES];
-size_t msalloc_large_size(size_t large_class);
+size_t msalloc_large_size(size_t c);
 
 /* What a heap reservation is: small-block pages, their owner/class table, and the growth chunks. */
-typedef struct msalloc_region {
+typedef struct MsAllocRegion {
     void *pages;
     size_t pages_len;
     void *table;
     void *grow;
     size_t grow_len;
     size_t grow_bits;
-} msalloc_region;
+} MsAllocRegion;
 
 /* Reserves the pages, their table and the growth chunks with `map`. When the system refuses the full
  * size (ulimit -v, a container, valgrind) the reservation is halved until it fits, and the heap keeps
  * a quarter of what fit so later stacks and system maps still find space. False when even the
  * smallest is refused. Exposed so a test can refuse maps. */
-bool msalloc_reserve(void *(*map)(size_t), void (*unmap)(void *, size_t), msalloc_region *out);
+bool msalloc_reserve(void *(*map)(size_t), void (*unmap)(void *, size_t), MsAllocRegion *out);
 
 /* Called when the system cannot give a block: reports out-of-memory and does not return. Defined by
  * the Rust runtime (crates/ms-rt/src/alloc.rs); a C test defines its own. */

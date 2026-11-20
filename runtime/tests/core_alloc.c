@@ -372,7 +372,7 @@ static void a_refused_reservation_is_halved_until_it_fits(void) {
     for (unsigned shrink = 0; shrink <= 10; shrink += shrink == 0 ? 3 : 7) {
         map_limit = grow >> shrink;
         mapped_n = 0;
-        msalloc_region r;
+        MsAllocRegion r;
         CHECK(msalloc_reserve(limited_map, limited_unmap, &r));
         unsigned kept = shrink == 0 ? 0 : (shrink + 2 < 10 ? shrink + 2 : 10);
         CHECK(r.pages_len == pages >> kept);
@@ -380,7 +380,7 @@ static void a_refused_reservation_is_halved_until_it_fits(void) {
         CHECK(mapped_n == 3); /* only the accepted mappings stay */
         for (size_t i = 0; i < mapped_n; i++) mssys_unmap(mapped[i].p, mapped[i].len);
     }
-    msalloc_region r;
+    MsAllocRegion r;
     CHECK(!msalloc_reserve(refuse_map, never_unmap, &r));
 }
 
