@@ -32,7 +32,7 @@ test "library errors carry a kind callers can branch on":
 			describe_error(cause) | expect_equal("malformed input")?
 			cause.message
 				| expect_equal(
-					"JSON: invalid data: line 1, column 2: unexpected end of data"
+					"JSON: invalid data: line 1, column 2: unexpected end of input"
 				)?
 
 test "propagation with try forwards the same Error":

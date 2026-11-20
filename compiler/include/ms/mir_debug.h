@@ -38,4 +38,11 @@ typedef struct MirDebugTypes {
 void mir_debug_types(const MirModule *m, MirDebugTypes *out);
 void mir_debug_types_free(MirDebugTypes *t);
 
+/* `path` as debug info should name it: a logical `@std/` path becomes the file under the
+ * standard-library sources when they are on disk: under `stdlib_dir` (NULL for none) or the
+ * directory the build named. */
+MsStr mir_debug_file_name(MsArena *arena, MsStr path, const char *stdlib_dir);
+/* Forward slashes and no Windows verbatim prefix. */
+MsStr mir_portable_path(MsArena *arena, MsStr path);
+
 #endif

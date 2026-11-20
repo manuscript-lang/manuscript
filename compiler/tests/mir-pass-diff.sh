@@ -5,11 +5,14 @@
 # To add a pass: write it, add its name to `run_pass` in c_pass_oracle.rs and ms_mir_pass.c, and
 # to PASSES here. MS_MIR_FUZZ sets the mutant count (default 600).
 set -eu
+# The standard-library sources both debug_files ports look for, as a checkout has them.
+MS_STDLIB_DIR=${MS_STDLIB_DIR:-$PWD/stdlib}
+export MS_STDLIB_DIR
 out=target/c-compiler/mir-pass
 mkdir -p "$out"
 fuzz=${MS_MIR_FUZZ:-600}
 seed=${MS_FUZZ_SEED:-1}
-PASSES=${MS_MIR_PASSES:-"exit_drops expand expand-nochecks expand_owned unwind cancel_edges glue glue_expand elaborate elaborate-cancel depth finish debug_types frames count_ops copies"}
+PASSES=${MS_MIR_PASSES:-"exit_drops expand expand-nochecks expand_owned unwind cancel_edges glue glue_expand elaborate elaborate-cancel depth finish debug_types frames count_ops copies slots tables debug_files"}
 
 cargo build --release --locked -p ms-mir --example c_pass_oracle
 oracle=target/release/examples/c_pass_oracle
