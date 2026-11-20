@@ -103,6 +103,10 @@ typedef struct MsNetHttpOptions {
 uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err);
 /* ms-sig: msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle @domain=network */
 void *msstd_client_share(const void *handle);
+/* Ends the client's transfers (a body read or a request in progress returns STATUS_CLOSED) and refuses later requests
+ * with STATUS_CLOSED. Safe to repeat. */
+/* ms-sig: msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=network */
+void msstd_client_close(const void *handle);
 /* ms-sig: msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=network */
 uint8_t msstd_client_narrow(const void *handle, const MsVec *hosts, const MsVec *cidrs);
 

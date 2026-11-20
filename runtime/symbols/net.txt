@@ -3,6 +3,7 @@ msstd_body_close
 msstd_body_metadata
 msstd_body_read
 msstd_body_read_all
+msstd_client_close
 msstd_client_fetch
 msstd_client_narrow
 msstd_client_new
