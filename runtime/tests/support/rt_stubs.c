@@ -15,6 +15,15 @@ char ms_test_fault_message[256];
 uint8_t ms_test_fault_kind;
 size_t ms_test_cleanups;
 
+/* The table of one-character ASCII strings the Rust runtime defines (two bytes each, the second a NUL). */
+uint8_t msrt_ascii_chars[128][2];
+
+__attribute__((constructor)) static void init_ascii_chars(void) {
+    for (int i = 0; i < 128; i++) {
+        msrt_ascii_chars[i][0] = (uint8_t)i;
+    }
+}
+
 #define MAX_CLEANUPS 8
 static void (*cleanup_run[MAX_CLEANUPS])(uint8_t *);
 static uint8_t *cleanup_arg[MAX_CLEANUPS];
@@ -60,10 +69,3 @@ void msrt_cleanup_discard(size_t handle) { ms_test_cleanups = handle - 1; }
 
 MsObj *msrt_obj_clone(MsObj *object) { return object; }
 void msrt_obj_drop(MsObj *object) { (void)object; }
-
-/* The Rust runtime's table of one-byte ASCII strings: entry b is {b, 0}. */
-uint8_t msrt_ascii_chars[128][2] = {
-#define MS_STUB_ROW4(n) {(n)}, {(n) + 1}, {(n) + 2}, {(n) + 3}
-#define MS_STUB_ROW16(n) MS_STUB_ROW4(n), MS_STUB_ROW4((n) + 4), MS_STUB_ROW4((n) + 8), MS_STUB_ROW4((n) + 12)
-    MS_STUB_ROW16(0), MS_STUB_ROW16(16), MS_STUB_ROW16(32), MS_STUB_ROW16(48),
-    MS_STUB_ROW16(64), MS_STUB_ROW16(80), MS_STUB_ROW16(96), MS_STUB_ROW16(112)};
