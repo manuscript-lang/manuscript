@@ -121,6 +121,15 @@ static void live_define(LiveWalk *w, const MsPattern *pattern) {
 
 static void live_statement(LiveWalk *w, const MsStmt *s);
 
+/* A jump continues from the state at its loop's exit or head. */
+static void live_jump(LiveWalk *w, const MsStmt *s) {
+    if (w->loop == NULL) {
+        w->supported = false;
+        return;
+    }
+    w->later = live_copy_of(w, s->kind == MS_S_BREAK ? w->loop->after : w->loop->head);
+}
+
 /* Both branches start from what follows the `if`; afterwards the earlier use on either path counts. */
 static void live_if(LiveWalk *w, const MsStmt *s) {
     if (s->u.branch.binding != NULL) {
@@ -179,8 +188,8 @@ static void live_statement(LiveWalk *w, const MsStmt *s) {
         return;
     case MS_S_IF: live_if(w, s); return;
     case MS_S_WHILE: live_while(w, s); return;
-    case MS_S_BREAK: w->later = live_copy_of(w, w->loop->after); return;
-    case MS_S_CONTINUE: w->later = live_copy_of(w, w->loop->head); return;
+    case MS_S_BREAK:
+    case MS_S_CONTINUE: live_jump(w, s); return;
     case MS_S_ASSIGN:
     case MS_S_CALL:
     case MS_S_FOR: w->supported = false; return;
