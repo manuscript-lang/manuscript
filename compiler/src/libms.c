@@ -120,6 +120,7 @@
 #include "check/effect_directives.c"
 #include "check/effect_reach.c"
 #include "check/effect_scan.c"
+#include "check/effect_facts.c"
 #include "syntax/ast_copy.c"
 #include "syntax/desugar.c"
 #include "check/methods.c"
@@ -140,6 +141,8 @@
 #include "libms_api.c"
 #include "emit/emit_entry.c"
 #include "emit/emit_llvm.c"
+/* The project loader uses POSIX file calls; the Windows tools (ms_mir_build, ms_asm_tables) do not need it. */
+#ifndef _WIN32
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/discover.c"
@@ -152,3 +155,4 @@
 #include "project/install.c"
 
 #include "project/graph_check.c"
+#endif

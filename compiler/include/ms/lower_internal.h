@@ -137,6 +137,7 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over 
 LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating);
 
 /* lower_method.c: methods of impls. */
+bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
 uint32_t lm_prepare(Lb *lb, MsModId module);                              /* the method rows; their count */
 void lm_stubs(Lb *lb, MsModId module, uint32_t nrows, const bool *failed); /* a stub for each method to lower */
@@ -162,6 +163,8 @@ void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
 void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 void lb_write_back(Lb *lb);
+bool lb_owns(Lb *lb, MirTy ty);                        /* whether a value of the type is dropped by its holder */
+MirValue lb_move_argument(Lb *lb, const MsExpr *e);    /* an argument for a `move` parameter */
 
 /* Lists of scalars (lower_list.c, included after lower_body.c). */
 MirTy lst_type(Lb *lb, MsTy ty);
@@ -169,6 +172,7 @@ bool lb_is_list(const Lb *lb, MirTy ty);
 LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_index(Lb *lb, const MsExpr *e);
 void lst_for(Lb *lb, const MsStmt *s);
+LbVal lst_method(Lb *lb, const MsExpr *e);
 
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);

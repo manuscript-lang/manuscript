@@ -3,7 +3,7 @@
 #
 #   sh toolchain/package-skill.sh <output-directory>
 #
-# The archive holds one folder, `manuscript/`, copied from crates/ms-tooling/data/agent-skill and
+# The archive holds one folder, `manuscript/`, copied from tools/ms/data/agent-skill and
 # stamped with the version in .msversion. Every release attaches it under the same file name, so
 # releases/latest/download/ is a stable URL.
 set -eu
@@ -15,7 +15,7 @@ version="$(cat "$root/.msversion")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-cp -R "$root/crates/ms-tooling/data/agent-skill" "$work/manuscript"
+cp -R "$root/tools/ms/data/agent-skill" "$work/manuscript"
 find "$work/manuscript" -name '*.md' | while read -r file; do
 	sed "s/{{MS_VERSION}}/$version/g" "$file" >"$file.new"
 	mv "$file.new" "$file"

@@ -8,19 +8,20 @@
 // (default `ms-rust` on the PATH), with the same streams; `MS_CLI_PLAN=1` prints the
 // choice instead of running it.
 import (
+	Command, Matches, Parsed from "@std/cli/command.ms",
 	edit_distance from "@std/data/diff.ms",
 	stderr, stdout from "@std/io/io.ms",
 	arguments, environment from "@std/os/env.ms",
 	exists, read_file from "@std/os/fs.ms",
 	SpawnOptions, Stdio, spawn from "@std/os/process.ms",
 
-	Invocation, parse_invocation, requests_help, takes_value, validate from "./args.ms",
+	Invocation, invocation, validate from "./args.ms",
 	rust_cli from "./bridge.ms",
+	spec, takes_value from "./cli.ms",
 	run_explain from "./explain.ms",
 	Printed, run_fmt from "./fmt.ms",
-	command_help, command_names, overview from "./help.ms",
-	run_add, run_install, run_remove from "./install.ms",
 	run_init from "./init.ms",
+	run_add, run_install, run_remove from "./install.ms",
 	run_profile from "./profile.ms",
 	run_members from "./test/members.ms",
 	run_bench, run_test from "./test/run.ms",
@@ -34,13 +35,16 @@ fn out(text: String) Void:
 fn err(text: String) Void:
 	stderr().write(text).get()
 
-fn unknown_command(name: String) Void:
+fn command_names(root: Command) List[String]:
+	return root.children.map(fn child: child.name.clone()).concat(["help"])
+
+fn unknown_command(root: Command, name: String) Void:
 	err(f"unknown command: {name}\n")
 
 	var best = ""
 	var best_distance = 3
 
-	for candidate in command_names():
+	for candidate in command_names(root):
 		distance := edit_distance(name, candidate)
 
 		if distance < best_distance:
@@ -59,7 +63,7 @@ fn unknown_command(name: String) Void:
 			f"'{name}' looks like a path; commands come first, e.g. 'ms run {name}' or 'ms check {name}'.\n"
 		)
 
-	err(f"Commands: {command_names().join(", ")}. Run 'ms --help' for details.\n")
+	err(f"Commands: {command_names(root).join(", ")}. Run 'ms --help' for details.\n")
 
 fn project_commands() List[String]:
 	return [
@@ -76,7 +80,7 @@ fn target_list_commands() List[String]:
 // (`ms run --json main.ms`,
 // `ms check -- main.ms`) replaces the default and, where the command wants its file first,
 // moves ahead of the options. Returns none when the arguments stay as they are.
-fn default_project_target(args: List[String]) List[String]?:
+fn default_project_target(root: Command, args: List[String]) List[String]?:
 	command := args[0].clone()
 	if not project_commands().contains(command): return none
 	if args.length() > 1 and args[1] != "--" and not args[1].starts_with("-"): return none
@@ -96,7 +100,7 @@ fn default_project_target(args: List[String]) List[String]?:
 			break
 
 		if arg.starts_with("-"):
-			if takes_value(arg): i += 1
+			if takes_value(root, command, arg): i += 1
 		else:
 			inputs.append(i)
 
@@ -136,22 +140,6 @@ fn default_project_target(args: List[String]) List[String]?:
 	var result = [command.clone(), "ms.toml"]
 	result.extend(args.drop(1))
 	return result
-
-fn run_help(args: List[String]) Int:
-	if args.is_empty():
-		out(overview())
-		return 0
-
-	if args.length() == 1:
-		if text := command_help(args[0]):
-			out(text)
-			return 0
-
-		unknown_command(args[0])
-		return 2
-
-	err("usage: ms help [command]\nRun 'ms --help' to list commands.\n")
-	return 2
 
 // Hands the whole command to the Rust `ms`.
 fn delegate(args: List[String]) Int:
@@ -237,15 +225,8 @@ fn run_tests(args: List[String], inv: Invocation) Int?:
 	single.targets = [found[0].clone()]
 	return run_test(single)
 
-fn run_source_command(args: List[String], usage_text: String) Int:
-	if args.length() < 2:
-		err(
-			f"ms {args[0]}: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms {args[0]} ms.toml\n\n"
-		)
-		err(usage_text)
-		return 2
-
-	parsed := parse_invocation(args)
+fn run_source_command(args: List[String], matches: Matches) Int:
+	parsed := invocation(matches)
 
 	if parsed.is_error():
 		err(parsed.err().message + "\n")
@@ -265,45 +246,40 @@ fn run_source_command(args: List[String], usage_text: String) Int:
 	return delegate(args)
 
 export fn run(given: List[String]) Int:
-	if given.is_empty() or given[0] == "--help" or given[0] == "-h":
-		out(overview())
-		return 0
+	root := spec()
+	if given.length() == 1 and given[0] == "--version": return delegate(given)
 
-	if given[0] == "--version" or given[0] == "version":
-		if (
-			given[0] == "version"
-			and given.length() == 2
-			and (given[1] == "--help" or given[1] == "-h")
-		):
-			out(command_help("version").get_or(""))
-			return 0
-
-		if given.length() > 1:
-			err(f"ms {given[0]} takes no arguments; use ms version or ms --version\n")
+	if given.length() > 0 and not given[0].starts_with("-") and given[0] != "help":
+		if root.child(given[0]).is_none():
+			unknown_command(root, given[0])
 			return 2
 
-		return delegate(given)
+	var args = given.clone()
+	if not given.is_empty():
+		if defaulted := default_project_target(root, given): args = defaulted
 
-	known := command_help(given[0])
+	parsed := root.parse(args)
 
-	if known.is_none():
-		unknown_command(given[0])
+	if parsed.is_error():
+		hint := if args.is_empty() or args[0].starts_with("-") or args[0] == "help": "ms --help" else: f"ms help {args[0]}"
+		err(parsed.err().message + f"\nRun '{hint}' for usage.\n")
 		return 2
 
-	usage_text := known.get_or("")
-	var args = given.clone()
-	if defaulted := default_project_target(given): args = defaulted
+	match parsed.get():
+		Help(text):
+			out(text)
+			return 0
+		Run(matches): return dispatch(args, matches)
 
-	if requests_help(args.drop(1)):
-		out(usage_text)
-		return 0
+// Runs the command `matches` selected, with `args` as the command line after the
+// default target was applied.
+fn dispatch(args: List[String], matches: Matches) Int:
+	command := matches.path[1].clone()
+	if command == "init": return run_init(args.drop(1))
+	if command == "explain": return run_explain_command(args.drop(1))
+	if command == "verify": return run_verify(args.drop(1))
 
-	if args[0] == "help": return run_help(args.drop(1))
-	if args[0] == "init": return run_init(args.drop(1))
-	if args[0] == "explain": return run_explain_command(args.drop(1))
-	if args[0] == "verify": return run_verify(args.drop(1))
-
-	if args[0] == "fmt":
+	if command == "fmt":
 		if done := run_fmt(args.drop(1)):
 			out(done.stdout)
 			err(done.stderr)
@@ -311,7 +287,7 @@ export fn run(given: List[String]) Int:
 
 		return delegate(args)
 
-	if args[0] == "install" or args[0] == "add" or args[0] == "remove":
+	if command == "install" or command == "add" or command == "remove":
 		if done := run_manifest_command(args):
 			out(done.stdout)
 			err(done.stderr)
@@ -319,7 +295,7 @@ export fn run(given: List[String]) Int:
 
 		return delegate(args)
 
-	if is_source_command(args[0]): return run_source_command(args, usage_text)
+	if is_source_command(command): return run_source_command(args, matches)
 
 	return delegate(args)
 

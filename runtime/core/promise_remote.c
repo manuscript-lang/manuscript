@@ -127,12 +127,8 @@ int64_t ms_remote_wait(MsPromise id, int64_t timeout_ns) {
         if (code >= 0) {
             return code;
         }
-        const uint32_t owner = (uint32_t)((uint64_t)id >> 56);
         const uint64_t token = ms_token_new(MS_TOKEN_REMOTE);
-        MsMail *const mail = msrt_alloc(sizeof *mail);
-        *mail = (MsMail){.kind = MS_MAIL_PROMISE, .a = MS_MAIL_WATCH, .b = (uint64_t)id, .c = token};
-        if (token == 0 || !ms_isolate_post(owner, mail)) {
-            msrt_free(mail);
+        if (token == 0 || !ms_remote_watch_post(id, token)) {
             (void)ms_token_free(token);
             return MS_PROMISE_CLOSED;
         }

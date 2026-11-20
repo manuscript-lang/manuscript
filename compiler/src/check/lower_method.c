@@ -94,6 +94,10 @@ bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered) {
     return changed;
 }
 
+bool lm_has(const Lb *lb, uint32_t row) {
+    return lb->rows != NULL && row < lb->facts->methods->count && lb->rows[row].method != NULL;
+}
+
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row) {
     const MsMethods *methods = lb->facts->methods;
     if (row >= methods->count || lb->method_func == NULL) {
