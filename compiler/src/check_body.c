@@ -144,8 +144,27 @@ static MsTy body_text(MsBody *b, const MsExpr *e) {
     return b->string_ty;
 }
 
+/* A read of a module constant this pass has checked: a call of no arguments, typed as the
+ * constant's initializer. */
+static MsTy body_constant_use(MsBody *b, const MsExpr *e) {
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, e->u.sym);
+    const MsSyms *syms = &b->c->syms;
+    if (sym == MS_NONE || syms->module[sym] != b->module || syms->decl[sym] == NULL ||
+        syms->decl[sym]->kind != MS_D_CONST || syms->ty[sym] == MS_TY_NONE) {
+        return ms_body_unsupported(b);
+    }
+    b->facts->res_kind[e->id] = MS_RES_SYMBOL;
+    b->facts->res_ref[e->id] = sym;
+    b->facts->call_callee[e->id] = sym;
+    b->facts->const_use[e->id] = true;
+    return b->c->tys.result[syms->ty[sym]];
+}
+
 static MsTy body_name(MsBody *b, const MsExpr *e) {
     const uint32_t binding = ms_body_find_binding(b, e->u.sym);
+    if (binding == MS_NONE && !body_text_is(b, e->u.sym, "none")) {
+        return body_constant_use(b, e);
+    }
     if (binding == MS_NONE || body_text_is(b, e->u.sym, "none")) {
         return ms_body_unsupported(b);
     }
@@ -255,6 +274,38 @@ static bool body_constant_fault(MsBody *b, const MsExpr *e) {
     return fault.len != 0;
 }
 
+static MsStr body_show(MsBody *b, MsTy ty);
+
+/* What to do about operands of two different primitive types: Int with Float, or text with a
+ * number for `*`, have their own hint. */
+static const char *body_operand_hint(const MsBody *b, MsBinaryOp op, MsTy left, MsTy right) {
+    const bool mixed = (left == b->int_ty && right == b->float_ty) || (left == b->float_ty && right == b->int_ty);
+    if (mixed) {
+        return "convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)";
+    }
+    const bool repeat = (left == b->string_ty && right == b->int_ty) || (left == b->int_ty && right == b->string_ty);
+    if (repeat && op == MS_B_MUL) {
+        return "to repeat text write text.repeat(count), which returns a Result (append '?' to propagate it)";
+    }
+    return "convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert "
+           "between Int and Float)";
+}
+
+/* Operands of two primitive types that differ: reported at the operator, and the whole is
+ * invalid (a comparison is still Bool), which silences whatever uses it. */
+static MsTy body_report_operands(MsBody *b, const MsExpr *e, MsTy left, MsTy right) {
+    const MsBinaryOp op = (MsBinaryOp)e->op;
+    const MsStr l = body_show(b, left);
+    const MsStr r = body_show(b, right);
+    const MsStr message = ms_arena_fmt(
+        &b->c->arena, "operator operands require the same independently known type, found %.*s %s %.*s; %s", (int)l.len,
+        l.ptr, ms_binary_str(op), (int)r.len, r.ptr, body_operand_hint(b, op, left, right));
+    const MsCheckDiag diag = {.diag = {.pos = e->pos, .message = message}, .phase = MS_PHASE_TYPE};
+    MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
+    const bool comparison = op == MS_B_EQ || op == MS_B_NE || body_is_ordering(op);
+    return comparison ? b->bool_ty : b->invalid_ty;
+}
+
 static MsTy body_binary(MsBody *b, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     const MsTy left = ms_body_expr(b, e->u.bin.left, MS_TY_NONE);
@@ -262,8 +313,16 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
     if (right == MS_TY_NONE) {
         return MS_TY_NONE;
     }
+    const bool comparison = op == MS_B_EQ || op == MS_B_NE || body_is_ordering(op);
+    if (left == b->invalid_ty || right == b->invalid_ty) {
+        // An operand already reported its own error; this one does not restate it.
+        return comparison || op == MS_B_AND || op == MS_B_OR ? b->bool_ty : b->invalid_ty;
+    }
     if (op == MS_B_AND || op == MS_B_OR) {
         return left == b->bool_ty && right == b->bool_ty ? b->bool_ty : ms_body_unsupported(b);
+    }
+    if (left != right && body_is_value_type(b, left) && body_is_value_type(b, right)) {
+        return body_report_operands(b, e, left, right);
     }
     if (left != right || !body_is_value_type(b, left)) {
         return ms_body_unsupported(b);
@@ -285,10 +344,51 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
     return left;
 }
 
+/* ---- diagnostics ---- */
+
+static MsStr body_show(MsBody *b, MsTy ty) {
+    MsBuf text = {0};
+    ms_ty_show(&text, b->c->names, &b->c->tys, ty);
+    const MsStr shown = ms_arena_fmt(&b->c->arena, "%.*s", (int)text.len, (const char *)text.data);
+    ms_buf_free(&text);
+    return shown;
+}
+
+/* What the implicit conversion between two primitives would be, written out; "" for none. */
+static const char *body_conversion_hint(const MsBody *b, MsTy actual, MsTy expected) {
+    if (actual == b->int_ty && expected == b->float_ty) {
+        return "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value";
+    }
+    if (actual == b->float_ty && expected == b->int_ty) {
+        return "Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)";
+    }
+    if (expected == b->string_ty && (actual == b->int_ty || actual == b->float_ty || actual == b->bool_ty)) {
+        return actual == b->int_ty
+                   ? "Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\""
+               : actual == b->float_ty
+                   ? "Float does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\""
+                   : "Bool does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"";
+    }
+    return "";
+}
+
+/* "expected X, found Y (in <context>)" at `e`, with the conversion hint where one applies. */
+static void body_report_mismatch(MsBody *b, const MsExpr *e, MsTy actual, MsTy expected, const char *context) {
+    const MsStr want = body_show(b, expected);
+    const MsStr found = body_show(b, actual);
+    const char *hint = body_conversion_hint(b, actual, expected);
+    const MsStr message = ms_arena_fmt(&b->c->arena, "expected %.*s, found %.*s (in %s)%s%s", (int)want.len, want.ptr,
+                                       (int)found.len, found.ptr, context, *hint != '\0' ? "; " : "", hint);
+    const MsCheckDiag diag = {.diag = {.pos = e->pos, .message = message}, .phase = MS_PHASE_TYPE};
+    MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
+}
+
 /* The type of `e` where `expected` is the type the context wants, or MS_TY_NONE for no
  * expectation. A type that is not the expected one is a diagnostic. */
 MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     MsTy ty = MS_TY_NONE;
+    const char *context = b->context;
+    b->context = NULL;
     // A value checked against an Optional may be wrapped in `some`; that is not recorded yet.
     if (expected != MS_TY_NONE && ms_ty_is(&b->c->tys, expected, MS_BI_OPTIONAL)) {
         return ms_body_unsupported(b);
@@ -314,8 +414,20 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     if (ty == MS_TY_NONE) {
         return ty;
     }
+    if (ty == b->invalid_ty) {
+        // Already reported where it went wrong; nothing built on it is.
+        (void)ms_body_record(b, e->id, ty);
+        return expected != MS_TY_NONE ? expected : ty;
+    }
     if (expected != MS_TY_NONE && ty != expected) {
-        return ms_body_unsupported(b);
+        // A value of the wrong primitive type is reported where the statement asked for it; the
+        // statement goes on as if it had the expected type, as the Rust checker does.
+        if (context == NULL || !body_is_value_type(b, ty) || !body_is_value_type(b, expected)) {
+            return ms_body_unsupported(b);
+        }
+        body_report_mismatch(b, e, ty, expected, context);
+        (void)ms_body_record(b, e->id, ty);
+        return expected;
     }
     return ms_body_record(b, e->id, ty);
 }
@@ -346,6 +458,10 @@ static void body_bind_statement(MsBody *b, const MsStmt *s) {
     if (!b->supported) {
         return;
     }
+    if (expected != MS_TY_NONE) {
+        const MsStr name = ms_name(b->c->names, pattern->u.name);
+        b->context = ms_arena_fmt(&b->c->arena, "the initializer of '%.*s'", (int)name.len, name.ptr).ptr;
+    }
     const MsTy value = ms_body_expr(b, s->u.bind.value, expected);
     if (value == MS_TY_NONE || !body_is_bindable(b, value)) {
         (void)ms_body_unsupported(b);
@@ -367,9 +483,18 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     const uint32_t binding = ms_body_find_binding(b, s->u.assign.name);
-    if (binding == MS_NONE || (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+    if (binding == MS_NONE) {
         (void)ms_body_unsupported(b);
         return;
+    }
+    if ((b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+        const MsStr name = ms_name(b->c->names, s->u.assign.name);
+        const MsStr message = ms_arena_fmt(&b->c->arena,
+                                           "cannot assign immutable binding %.*s; declare it with 'var %.*s = ...' "
+                                           "instead of '%.*s := ...'",
+                                           (int)name.len, name.ptr, (int)name.len, name.ptr, (int)name.len, name.ptr);
+        const MsCheckDiag diag = {.diag = {.pos = s->pos, .message = message}, .phase = MS_PHASE_TYPE};
+        MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
     }
     const uint32_t reads_before = b->reads[binding];
     (void)ms_body_expr(b, s->u.assign.value, b->facts->bindings.ty[binding]);
@@ -383,6 +508,7 @@ static void body_return_statement(MsBody *b, const MsStmt *s) {
         b->supported = b->supported && b->result == b->void_ty;
         return;
     }
+    b->context = "the return value";
     (void)ms_body_expr(b, value, b->result);
 }
 
@@ -390,6 +516,7 @@ static void body_return_statement(MsBody *b, const MsStmt *s) {
 /* Checks a condition against `Bool`, then the branches; whether control can leave the statement. */
 static bool body_if_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *cond = s->u.branch.cond;
+    b->context = "an if condition";
     if (s->u.branch.binding != NULL || ms_body_expr(b, cond, b->bool_ty) == MS_TY_NONE) {
         (void)ms_body_unsupported(b);
         return false;
@@ -401,6 +528,7 @@ static bool body_if_statement(MsBody *b, const MsStmt *s) {
 
 static bool body_while_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *cond = s->u.loop.cond;
+    b->context = "a while condition";
     if (ms_body_expr(b, cond, b->bool_ty) == MS_TY_NONE) {
         (void)ms_body_unsupported(b);
         return false;
@@ -502,14 +630,26 @@ static void body_statements(MsBody *b, const MsStmts *body) {
 
 /* ---- functions ---- */
 
-static void body_undo(MsBody *b, uint32_t first_binding, size_t written_start) {
+/* Reports the diagnostics a claimed function collected, from `first` on. */
+static void body_commit_diags(MsBody *b, size_t first) {
+    const MsCheckDiag *diags = ms_buf_items(&b->diags);
+    for (size_t i = first; i < MS_VEC_LEN(b->diags, MsCheckDiag); i++) {
+        ms_report(b->c, b->module, &diags[i]);
+    }
+    b->diags.len = first * sizeof(MsCheckDiag);
+}
+
+static void body_undo(MsBody *b, uint32_t first_binding, size_t written_start, size_t diags_start) {
     const uint32_t *ids = ms_buf_items(&b->written);
     for (size_t i = written_start; i < MS_VEC_LEN(b->written, uint32_t); i++) {
         b->facts->expr_ty[ids[i]] = MS_TY_NONE;
         b->facts->res_kind[ids[i]] = MS_RES_NONE;
         b->facts->res_ref[ids[i]] = MS_NONE;
+        b->facts->call_callee[ids[i]] = MS_NONE;
+        b->facts->const_use[ids[i]] = false;
     }
     b->written.len = written_start * sizeof(uint32_t);
+    b->diags.len = diags_start * sizeof(MsCheckDiag);
     b->facts->bindings.count = first_binding;
 }
 
@@ -545,6 +685,7 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     }
     const uint32_t first_binding = b->facts->bindings.count;
     const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
+    const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
     b->first_binding = first_binding;
     b->supported = true;
     b->result = b->c->tys.result[sig];
@@ -557,8 +698,9 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     }
     if (b->supported) {
         b->facts->body_checked[d->id] = true;
+        body_commit_diags(b, diags_start);
     } else {
-        body_undo(b, first_binding, written_start);
+        body_undo(b, first_binding, written_start, diags_start);
     }
 }
 
@@ -576,6 +718,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->const_use = MS_NEW_N(arena, bool, nodes);
+    memset(facts->const_use, 0, nodes * sizeof *facts->const_use);
     facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->call_callee, 0xff, nodes * sizeof *facts->call_callee);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
@@ -594,6 +738,12 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     bindings->flags = MS_NEW_N(arena, uint8_t, nodes);
     bindings->role = MS_NEW_N(arena, uint8_t, nodes);
     bindings->count = 0;
+}
+
+static MsTy body_invalid(MsCheck *c) {
+    const MsSym name = ms_intern_cstr(c->names, "<invalid>");
+    const MsTyDesc desc = {.name = name, .id = name, .kind = MS_K_INVALID};
+    return ms_ty_intern(&c->tys, &desc);
 }
 
 /* Whether the module declares a method called `close`, inside an `impl` or as `fn Type.close`. */
@@ -619,22 +769,50 @@ static bool body_module_has_close(const MsCheck *c, const MsModule *syntax) {
     return false;
 }
 
+/* Whether a constant's initializer is literals, text and operators alone: a call, a name or a
+ * member in it is another rule's concern (a constant may name only other constants). */
+static bool body_is_constant_expression(const MsExpr *e) {
+    switch ((MsExprKind)e->kind) {
+    case MS_E_NUMBER:
+    case MS_E_BOOL:
+    case MS_E_VOID: return true;
+    case MS_E_TEXT:
+        for (uint32_t i = 0; i < e->u.text.len; i++) {
+            const MsExpr *part = e->u.text.ptr[i].expr;
+            if (part != NULL && !body_is_constant_expression(part)) {
+                return false;
+            }
+        }
+        return true;
+    case MS_E_UNARY: return body_is_constant_expression(e->u.bin.left);
+    case MS_E_BINARY: return body_is_constant_expression(e->u.bin.left) && body_is_constant_expression(e->u.bin.right);
+    default: return false;
+    }
+}
+
 /* A module constant `NAME := value` (or `NAME: Type := value`) whose initializer is literals and
  * operators. The Rust checker types it as a function of no parameters, in a scope of its own. */
-static void body_check_constant(MsBody *b, const MsDecl *d) {
+static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
     const uint32_t first_binding = b->facts->bindings.count;
     const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
+    const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
     b->first_binding = first_binding;
     b->supported = true;
     MsTy expected = MS_TY_NONE;
     if (d->u.konst.ty != NULL) {
         expected = body_annotation(b, d->u.konst.ty);
     }
-    const MsTy ty = b->supported ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
-    if (b->supported && body_is_value_type(b, ty)) {
+    const bool literal = body_is_constant_expression(d->u.konst.value);
+    const MsTy ty = b->supported && literal ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
+    if (b->supported && literal && body_is_value_type(b, ty)) {
         b->facts->body_checked[d->id] = true;
+        body_commit_diags(b, diags_start);
+        // Like the Rust checker's, the constant's symbol is a function of no parameters.
+        const MsSym fn = ms_intern_cstr(b->c->names, "fn");
+        const MsTyDesc desc = {.name = fn, .id = fn, .kind = MS_K_FUNCTION, .result = ty};
+        b->c->syms.ty[sym] = ms_ty_intern(&b->c->tys, &desc);
     } else {
-        body_undo(b, first_binding, written_start);
+        body_undo(b, first_binding, written_start, diags_start);
     }
 }
 
@@ -654,21 +832,26 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
               .bool_ty = body_primitive(c, "Bool"),
               .string_ty = body_primitive(c, "String"),
               .void_ty = body_primitive(c, "Void"),
+              .invalid_ty = body_invalid(c),
               .has_close = body_module_has_close(c, row->syntax)};
     body_allocate(&b, facts);
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
-    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
-        const MsDecl *d = row->syntax->decls[i];
-        const bool checkable = (d->kind == MS_D_FN || d->kind == MS_D_CONST) && !d->synthetic;
-        const MsSymId sym = checkable ? ms_decl_own_symbol(c, module, d) : MS_NONE;
-        if (sym == MS_NONE) {
-            continue;
-        }
-        if (d->kind == MS_D_FN) {
-            body_check_function(&b, d, sym);
-        } else {
-            body_check_constant(&b, d);
+    // Constants first: a function reads them wherever they are declared.
+    for (uint32_t pass = 0; pass < 2; pass++) {
+        const MsDeclKind kind = pass == 0 ? MS_D_CONST : MS_D_FN;
+        for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+            const MsDecl *d = row->syntax->decls[i];
+            const MsSymId sym = d->kind == kind && !d->synthetic ? ms_decl_own_symbol(c, module, d) : MS_NONE;
+            if (sym == MS_NONE) {
+                continue;
+            }
+            if (kind == MS_D_FN) {
+                body_check_function(&b, d, sym);
+            } else {
+                body_check_constant(&b, d, sym);
+            }
         }
     }
     ms_buf_free(&b.written);
+    ms_buf_free(&b.diags);
 }

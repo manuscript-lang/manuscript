@@ -312,6 +312,8 @@ fn abi_kind(text: &str) -> String {
         "MsDropRun",
         "RunCopy",
         "MsSlotCopyRun",
+        "JsonCtorFn",
+        "JsonViewFn",
         "ErrSlot",
     ] {
         if word(alias) {
@@ -423,7 +425,7 @@ fn check_c_abi(
     }
     for header in read_dir("runtime/include/ms_rt", "h")? {
         let module = header.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        if !["base", "safe", "chars"].contains(&module)
+        if !["base", "safe", "chars", "array"].contains(&module)
             && !root.join(format!("runtime/symbols/{module}.txt")).exists()
         {
             return Err(format!(
@@ -440,8 +442,10 @@ fn split_top_level(params: &str) -> Vec<&str> {
     let (mut parts, mut depth, mut start) = (Vec::new(), 0usize, 0);
     for (i, c) in params.char_indices() {
         match c {
-            '<' => depth += 1,
-            '>' => depth = depth.saturating_sub(1),
+            '<' | '(' => depth += 1,
+            // The `>` of a `->` return arrow closes nothing.
+            '>' if !params[..i].ends_with('-') => depth = depth.saturating_sub(1),
+            ')' => depth = depth.saturating_sub(1),
             ',' if depth == 0 => {
                 parts.push(&params[start..i]);
                 start = i + 1;
