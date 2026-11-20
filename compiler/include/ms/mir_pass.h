@@ -81,6 +81,24 @@ bool mir_cancel_edges(MirModule *m);
  * operations and a call of a grow shim. Run after unwind. Returns whether there was one. */
 bool mir_depth_lower(MirModule *m);
 
+/* ---- pipeline ---- */
+
+typedef struct MirPipelineOptions {
+    bool cancel_edges; /* explicit cancel exits (`MS_CANCEL_EDGES`) */
+    bool checks;       /* the bounds and none checks `expand` makes explicit */
+    bool verify;       /* verify the module after each step, as the Rust debug build does */
+} MirPipelineOptions;
+
+/* Right after lowering: places the scope-exit cleanup of every Raw function. False with `error` set
+ * to the message. */
+bool mir_pipeline_prepare(MirModule *m, const MirPipelineOptions *o, MsBuf *error);
+
+/* After the optimizer: unwind, cancel_edges when on, depth, expand, glue. `glue` receives what glue
+ * made, which backends look up. */
+struct MirGlue;
+bool mir_pipeline_finish(MirModule *m, const MirPipelineOptions *o, struct MirGlue *glue,
+                         MsBuf *error);
+
 /* ---- glue ---- */
 
 /* The kinds of generated helper functions a backend calls instead of writing its own. */
@@ -117,5 +135,9 @@ bool mir_glue(MirModule *m, MirGlue *g);
 
 /* glue plus expand_owned, repeated until nothing new is wanted. The last step before backends. */
 void mir_glue_run_and_expand(MirModule *m, MirGlue *g);
+
+/* lower_ops: the last pass before the emitters. Rewrites clone, drop, move.out and forget into
+ * renamed uses, runtime calls and glue calls (proposals/lower-ops-to-runtime-calls.md, stage 1). */
+void mir_lower_ops(MirModule *m, const MirGlue *glue);
 
 #endif
