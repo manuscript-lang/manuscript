@@ -1,0 +1,8 @@
+module "typed_no_space"
+entry @main
+fn @main() -> int {
+b0:
+  %a:int = iconst 1
+  %b:int = iadd %a, %a
+  ret %b
+}
