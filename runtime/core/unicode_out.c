@@ -37,6 +37,10 @@ MS_NODISCARD static bool reserve(MsUtf8Out *out, size_t extra) {
 }
 
 bool ms_utf8_out_scalar(MsUtf8Out *out, uint32_t scalar) {
+    if (out->cap - out->len >= 4) { /* room for any scalar: encode in place */
+        out->len += ms_utf8_encode(scalar, out->ptr + out->len);
+        return true;
+    }
     uint8_t encoded[4];
     const size_t width = ms_utf8_encode(scalar, encoded);
     return ms_utf8_out_bytes(out, encoded, width);

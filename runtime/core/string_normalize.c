@@ -338,13 +338,21 @@ static bool normalize_text(MsBytes text, MsNormState *state) {
     size_t at = 0;
     while (at < text.len) {
         const uint8_t byte = text.ptr[at];
-        /* An ASCII scalar before another one is a whole segment of its own: write it directly. */
-        if (byte < 0x80 && (at + 1 == text.len || text.ptr[at + 1] < 0x80)) {
-            if (!flush(state) || !ms_utf8_out_bytes(state->out, &byte, 1)) {
-                return false;
+        /* ASCII scalars before another ASCII scalar are segments of their own: write the run in one piece, keeping
+         * its last scalar back when a non-ASCII one follows, since that may combine with it. */
+        if (byte < 0x80) {
+            size_t end = at + 1;
+            while (end < text.len && text.ptr[end] < 0x80) {
+                end++;
             }
-            at++;
-            continue;
+            const size_t direct = end == text.len ? end - at : end - at - 1;
+            if (direct > 0) {
+                if (!flush(state) || !ms_utf8_out_bytes(state->out, text.ptr + at, direct)) {
+                    return false;
+                }
+                at += direct;
+                continue;
+            }
         }
         const MsRune scalar = ms_utf8_decode(text.ptr + at, text.len - at);
         if (!add_decomposed(state, scalar.rune)) {
