@@ -4,6 +4,8 @@
 
 #include "ms_rt/base.h"
 
+/* ms: domain string */
+
 /* A string value: two words (crates/ms-rt-abi StrVal). The top bits of `tagged` say what the bytes are:
  * 00 owned allocation at `ptr_word`, 01 inline (the bytes are the value itself, `inline_bytes`, length in bits
  * 56..59 of `tagged`), 10 static and 11 view (`bytes`). Inline strings keep the bytes past their length zero.
@@ -49,6 +51,7 @@ uint8_t msrt_string_is_empty(const MsStr *s);
 int64_t msrt_string_length(const MsStr *s);
 uint8_t msrt_string_contains(const MsStr *a, const MsStr *v);
 uint8_t msrt_string_contains_multi(const MsStr *a, const MsStr *v);
+/* ms-sig: msrt_string_count(a: *const StrVal, v: *const StrVal) -> i64 @domain=string @leaf */
 int64_t msrt_string_count(const MsStr *a, const MsStr *v);
 int64_t msrt_string_scalar_length(const MsStr *s);
 int64_t msrt_string_char_width(const MsStr *s, int64_t at);
@@ -99,12 +102,19 @@ void msrt_string_trim_start_view(const MsStr *s, MsStr *out);
 void msrt_string_trim_end_view(const MsStr *s, MsStr *out);
 void msrt_string_slice(const MsStr *s, int64_t start, int64_t end, MsStr *out);
 void msrt_string_view(const MsStr *s, int64_t start, int64_t end, MsStr *out);
+/* ms-sig: msrt_string_split(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_split(const MsStr *s, const MsStr *sep, MsVec *out);
+/* ms-sig: msrt_string_split_view(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_split_view(const MsStr *s, const MsStr *sep, MsVec *out);
+/* ms-sig: msrt_string_split_view_into(s: *const StrVal, sep: *const StrVal, buf: *mut FrameBuf<StrVal, 8>, out: *mut VecVal) @domain=string @leaf @view_of=msrt_string_split */
 void msrt_string_split_view_into(const MsStr *s, const MsStr *sep, MsStr *buf, MsVec *out);
+/* ms-sig: msrt_string_split_first(s: *const StrVal, sep: *const StrVal, out: *mut StrVal) @domain=string @first_of=msrt_string_split @leaf */
 void msrt_string_split_first(const MsStr *s, const MsStr *sep, MsStr *out);
+/* ms-sig: msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
 void msrt_string_replace(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+/* ms-sig: msrt_string_replace_first(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_replace_first(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+/* ms-sig: msrt_string_replace_take(s: *mut StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_replace_take(MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
 
 #endif
