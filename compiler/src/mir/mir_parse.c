@@ -1414,6 +1414,9 @@ typedef struct MpUnit {
     bool has_entry;
     MpTok entry_name;
     uint32_t entry_line;
+    bool has_close;
+    MpTok close_name;
+    uint32_t close_line;
 } MpUnit;
 
 /* Reads the next line of `src` from `*pos`, without its line ending. */
@@ -1583,13 +1586,6 @@ static void mpa_define_iface(MpCur *c) {
         MIR_PUSH(m, methods, used, capacity, MirMethodSig, sig);
         mpa_c_eat_p(c, ',');
     }
-    MsSym close = mir_name(m, "close", 5);
-    m->ifaces[id].close = MIR_NONE;
-    for (uint32_t k = 0; k < used && m->ifaces[id].close == MIR_NONE; k++) {
-        if (methods[k].name == close) {
-            m->ifaces[id].close = k;
-        }
-    }
     m->ifaces[id].methods = methods;
     m->ifaces[id].nmethods = used;
     m->ifaces[id].std = mpa_parse_std(c);
@@ -1756,6 +1752,10 @@ static void mpa_declare_items(MpParser *p, MpUnit *unit) {
             unit->entry_name = mpa_c_at(&c);
             unit->entry_line = unit->items[i].no;
             unit->has_entry = true;
+        } else if (mpa_tok_is(&keyword, "close")) {
+            unit->close_name = mpa_c_at(&c);
+            unit->close_line = unit->items[i].no;
+            unit->has_close = true;
         } else if (!mpa_tok_is(&keyword, "vtable") && !mpa_tok_is(&keyword, "desc_glue") &&
                    !mpa_tok_is(&keyword, "type") &&
                    !mpa_tok_is(&keyword, "alt") && !mpa_tok_is(&keyword, "iface")) {
@@ -1951,6 +1951,14 @@ static void mpa_define_vtables_and_entry(MpParser *p, const MpUnit *unit) {
             const uint32_t hash = mpa_named_function(p, unit->items[i].no, mpa_c_at(&c));
             mir_add_desc_glue(p->m, ty, eq, hash);
         }
+    }
+    if (unit->has_close) {
+        const uint32_t close = mir_func_by_name(p->m, mir_name(p->m, unit->close_name.s, unit->close_name.n));
+        if (close == MIR_NONE) {
+            mpa_perr(p, unit->close_line, "unknown close function @%.*s", (int)unit->close_name.n,
+                     unit->close_name.s);
+        }
+        p->m->close = close;
     }
     if (!unit->has_entry) {
         return;

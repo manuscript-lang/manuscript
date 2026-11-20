@@ -84,7 +84,7 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand);
 static void own_lambda(OwnWalk *w, const MsExpr *e);
 
 /* Holders at or above this are not bindings: the hidden borrow a `for` loop keeps on its iterable. */
-enum { OWN_HIDDEN_HOLDER = 0xF0000000u };
+#define OWN_HIDDEN_HOLDER 0xF0000000u
 
 static MsStr own_name(const OwnWalk *w, uint32_t binding) {
     if (binding >= OWN_HIDDEN_HOLDER) {
@@ -694,9 +694,17 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
 
 /* `Type(a, b)`: a record this module or another declares, built from its arguments. */
 static bool own_is_constructor(const OwnWalk *w, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    if (callee->kind != MS_E_NAME) {
+        return false;
+    }
+    // `ok(v)` and `error(e)` build the Result around their argument, as a record is built.
+    if (w->facts->res_kind[callee->id] == MS_RES_CASE) {
+        return true;
+    }
     const uint32_t sym = w->facts->call_callee[e->id];
     const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
-    return e->u.call.callee->kind == MS_E_NAME && decl != NULL && decl->kind == MS_D_TYPE;
+    return decl != NULL && decl->kind == MS_D_TYPE;
 }
 
 /* Every argument moves into the new record (a copy for a plain value); the record holds no borrow. */

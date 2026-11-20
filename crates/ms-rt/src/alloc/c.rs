@@ -1,9 +1,6 @@
 //! Binding to the C allocator (`runtime/core/alloc.c`), which the archive builds link. Every function
 //! of the Rust allocator's interface forwards to its `msrt_*` symbol, so the rest of the runtime is
 //! unchanged and one allocator serves programs, the runtime and Rust's global allocator.
-#[cfg(feature = "alloc-profile")]
-use core::ffi::c_void;
-
 unsafe extern "C-unwind" {
     pub fn msrt_alloc(size: usize) -> *mut u8;
     pub fn msrt_alloc_zeroed(size: usize) -> *mut u8;
@@ -12,13 +9,8 @@ unsafe extern "C-unwind" {
     fn msrt_heap_claim();
     fn msrt_heap_release();
     fn msrt_heap_has() -> u8;
-    fn msrt_heap_owns(p: *const u8) -> u8;
     fn msrt_heap_usable_size(p: *mut u8) -> usize;
     fn msrt_heap_trim(p: *mut u8, new_size: usize) -> *mut u8;
-    fn msrt_heap_alloc_zeroed_cached(size: usize) -> *mut u8;
-    fn msrt_heap_large_request(size: usize) -> usize;
-    fn msrt_heap_shared_take(size: usize) -> *mut u8;
-    fn msrt_heap_shared_put(p: *mut u8) -> u8;
     pub fn msrt_heap_stats(out: *mut i64);
     #[cfg(feature = "stats")]
     fn msrt_heap_requested_reset();
@@ -29,8 +21,6 @@ unsafe extern "C-unwind" {
     #[cfg(all(test, not(feature = "stats")))]
     fn msalloc_live_blocks() -> i64;
     fn msrt_heap_requested(out: *mut u64);
-    #[cfg(feature = "alloc-profile")]
-    fn msrt_heap_sample_every(period: i64, hook: *mut c_void);
 }
 
 /// Called by the C allocator when the system cannot give a block.
@@ -112,41 +102,6 @@ pub fn has_heap() -> bool {
     unsafe { msrt_heap_has() != 0 }
 }
 
-/// Whether `p` lies in the heap's reservation (small pages or a growth chunk).
-#[inline]
-#[allow(clippy::not_unsafe_ptr_arg_deref)] // the address is only compared, never read
-pub fn owns(p: *mut u8) -> bool {
-    // SAFETY: any address may be tested.
-    unsafe { msrt_heap_owns(p) != 0 }
-}
-
-/// A cached block with at least `size` usable bytes for a thread without a heap, or null.
-pub fn shared_take(size: usize) -> *mut u8 {
-    // SAFETY: any size is valid.
-    unsafe { msrt_heap_shared_take(size) }
-}
-
-/// Keeps the system block `p` for [`shared_take`]; false when it is not a large block or the lists are full.
-///
-/// # Safety
-/// `p` is a live system block that nothing else uses.
-pub unsafe fn shared_put(p: *mut u8) -> bool {
-    // SAFETY: caller contract.
-    unsafe { msrt_heap_shared_put(p) != 0 }
-}
-
-/// The size a large block of `size` bytes is requested from the system with.
-pub fn large_request(size: usize) -> usize {
-    // SAFETY: any size is valid.
-    unsafe { msrt_heap_large_request(size) }
-}
-
-/// A zeroed large block taken from the free lists, or null when none is cached.
-pub fn alloc_zeroed_cached(size: usize) -> *mut u8 {
-    // SAFETY: any size is valid.
-    unsafe { msrt_heap_alloc_zeroed_cached(size) }
-}
-
 /// Small-block heap figures in bytes for the calling thread's heap: `[used, in_use_pages]`.
 pub fn heap_stats() -> [i64; 2] {
     let mut out = [0i64; 2];
@@ -161,22 +116,6 @@ pub fn requested() -> [u64; 2] {
     // SAFETY: two writable words.
     unsafe { msrt_heap_requested(out.as_mut_ptr()) };
     out
-}
-
-/// Starts allocation sampling on the calling thread: every `period`th allocation is a sample.
-///
-/// A runtime built without the `alloc-profile` feature takes no samples.
-pub fn sample_every(period: i64) {
-    #[cfg(feature = "alloc-profile")]
-    {
-        extern "C-unwind" fn hook(size: usize) -> i64 {
-            crate::profile::alloc_sample(size)
-        }
-        // SAFETY: `hook` has the sampler signature the C allocator calls.
-        unsafe { msrt_heap_sample_every(period, hook as *mut c_void) };
-    }
-    #[cfg(not(feature = "alloc-profile"))]
-    let _ = period;
 }
 
 /// Starts the `requested` counters over: called as the program's `main` begins, so the counts a gate reads

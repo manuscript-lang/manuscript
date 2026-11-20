@@ -5,6 +5,7 @@
 
 #include "array.h"
 #include "rt_calls.h"
+#include "ms_rt/task.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/safe.h"
 

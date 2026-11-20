@@ -122,6 +122,7 @@ fn configure_c(
     build: &Path,
     triple: Option<&str>,
     stats: bool,
+    process_entry: bool,
     tests: bool,
 ) -> Result<(), String> {
     let arch = std::env::consts::ARCH;
@@ -144,6 +145,10 @@ fn configure_c(
         .arg(format!(
             "-DMS_ALLOC_STATS={}",
             if stats { "ON" } else { "OFF" }
+        ))
+        .arg(format!(
+            "-DMS_PROCESS_ENTRY={}",
+            if process_entry { "ON" } else { "OFF" }
         ))
         // The build is the same wherever it runs: the caller's flags do not reach it.
         .env_remove("CFLAGS")
@@ -195,9 +200,10 @@ pub fn build_c_runtime(
     work: &Path,
     triple: Option<&str>,
     stats: bool,
+    process_entry: bool,
 ) -> Result<CRuntime, String> {
     let build = work.join("cmake");
-    configure_c(root, &build, triple, stats, false)?;
+    configure_c(root, &build, triple, stats, process_entry, false)?;
     run(
         Command::new("cmake")
             .arg("--build")
@@ -226,7 +232,7 @@ pub fn build_c_runtime(
 /// with the C compiler and libraries `build_c_runtime` uses.
 pub fn run_c_tests(root: &Path, work: &Path, triple: Option<&str>) -> Result<String, String> {
     let build = work.join("cmake-tests");
-    configure_c(root, &build, triple, false, true)?;
+    configure_c(root, &build, triple, false, false, true)?;
     run(
         // `-k 0` keeps going past a failing file, so one run reports every compile error, not the first.
         Command::new("cmake")

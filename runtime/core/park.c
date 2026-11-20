@@ -7,6 +7,7 @@
 #include "array.h"
 #include "ms_rt/alloc.h"
 #include "scheduler.h"
+#include "sweep.h"
 #include "watch.h"
 
 enum {
@@ -503,7 +504,7 @@ void ms_park_idle(MsSched *sched) {
 uint32_t ms_task_wait_fd_at(int fd, uint32_t events, int64_t at_ns) {
     MsSched *const sched = ms_sched();
     MsTask *const task = ms_task_running();
-    if (ms_cancel_flag() != 0) {
+    if (ms_cancel_flag() != 0 || ms_sweep_cancel_here()) {
         return MS_WAIT_CANCELLED;
     }
     if (fd >= 0) {
