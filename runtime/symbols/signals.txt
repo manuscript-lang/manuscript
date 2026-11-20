@@ -1,0 +1,4 @@
+# Defined in runtime/std/signals.c over runtime/sys/{posix,windows}/signal.c.
+msstd_process_signal_close
+msstd_process_signal_next
+msstd_process_watch_signals
