@@ -12,6 +12,7 @@
 #include "ms_rt/desc.h"
 #include "ms_rt/fault.h"
 #include "ms_rt/map.h"
+#include "ms_rt/obj.h"
 #include "ms_rt/string.h"
 
 /* The families of fault are ms_rt/fault.h's; core files that predate it keep their spellings. */
@@ -21,10 +22,15 @@
 
 /* Raises a fault of `kind` with the message `msg[0..len]`. */
 MS_NORETURN void msfault_raise(uint8_t kind, const uint8_t *msg, size_t len);
+/* Division and remainder by zero (a fault of the division family). */
+MS_NORETURN void msrt_fault_div_zero(void);
+MS_NORETURN void msrt_fault_rem_zero(void);
+#ifndef MS_RT_STRBUILD_H /* ms_rt/strbuild.h declares the same two */
 /* Raises a generic fault. */
 MS_NORETURN void msrt_fault(const uint8_t *msg, size_t len);
 /* "index N out of range for length L; pass a default". */
 MS_NORETURN void msrt_index_fault(int64_t index, int64_t length);
+#endif
 /* The fault of a list mutator given a bad index: operation 0 insert, 1 remove, 2 set, 3 swap, 4 replace. */
 MS_NORETURN void msrt_list_index_fault(int64_t operation, int64_t index, int64_t len);
 
@@ -35,12 +41,7 @@ void msrt_cleanup_discard(size_t handle);
 /* Non-zero when a callback may leave through a guard or a registered cleanup (fault.rs). */
 uint8_t msrt_rollback_needed(void);
 
-/* Objects with a header (closures, handles). Null stays null. */
-
 /* Runs `shim(block)` on the running task's next stack segment (the task module). */
 void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block);
-
-MsObj *msrt_obj_clone(MsObj *object);
-void msrt_obj_drop(MsObj *object);
 
 #endif

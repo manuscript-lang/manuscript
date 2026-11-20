@@ -25,6 +25,9 @@ typedef struct QCx {
     MsBuf *out;
     MirLayouts *layouts; /* borrowed from mir_emit_qbe */
     const MirData *data; /* descriptors, vtables and globals, borrowed from mir_emit_qbe */
+    const MirGlue *glue; /* the glue functions, borrowed from mir_emit_qbe */
+    bool *framed;        /* per value of `f`: a closure object kept in the frame */
+    bool *borrowed;      /* per value of `f`: an `iface.borrow` kept in the frame; NULL when none */
     uint32_t next;       /* counter for generated names */
     const char *why;
 } QCx;
@@ -77,9 +80,6 @@ static void qbe_sym(MsBuf *o, MsStr n) {
 
 static MsStr qbe_cstr(const char *text) { return (MsStr){text, (uint32_t)strlen(text)}; }
 
-static bool qbe_checked(MirOp op) {
-    return op == MOP_IAddChk || op == MOP_ISubChk || op == MOP_IMulChk;
-}
 
 static void qbe_label(QCx *c, uint32_t block, uint32_t part) {
     if (part == 0) ms_buf_printf(c->out, "@b%u", block);
@@ -147,14 +147,15 @@ static const char *qbe_store_mnemonic(MirLeaf leaf) { return qbe_leaf_kind(leaf)
  * single and widened, because it lives in a double register. */
 static void qbe_load_leaf(QCx *c, MirLeaf leaf, MirValue dst, uint32_t index, uint32_t address) {
     MsBuf *o = c->out;
-    ms_buf_puts(o, "\t");
-    qbe_name(o, dst, index);
     if (leaf == MIR_LEAF_F32) {
         const uint32_t n = c->next++;
+        ms_buf_printf(o, "\t%%s%u =s loads %%a%u\n\t", n, address);
+        qbe_name(o, dst, index);
         ms_buf_printf(o, " =d exts %%s%u\n", n);
-        ms_buf_printf(o, "\t%%s%u =s loads %%a%u\n", n, address);
         return;
     }
+    ms_buf_puts(o, "\t");
+    qbe_name(o, dst, index);
     ms_buf_printf(o, " =%c %s %%a%u\n", qbe_leaf_type(leaf), qbe_load_mnemonic(leaf), address);
 }
 
@@ -318,6 +319,27 @@ static void qbe_frame_rt_call(QCx *c, const MirInst *inst, uint32_t block, uint3
     }
 }
 
+/* Whether a value of `ty` crosses a call as the address of a copy, not as its leaves. */
+static bool qbe_indirect(QCx *c, MirTy ty) {
+    return mir_type_mem(c->layouts, ty).size > QBE_DIRECT_BYTES;
+}
+
+/* The frame slots a call of `f` needs: the result area when the result has several leaves, and a
+ * copy of each argument that passes by address. */
+static void qbe_frame_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    if (inst->res != MIR_NONE && qbe_leaves(c, c->f->values[inst->res]).len > 1) {
+        ms_buf_printf(c->out, "\t%%r%u_%u =l alloc8 %u\n", block, index,
+                      qbe_slot_bytes(c->layouts, c->f->values[inst->res]));
+    }
+    for (uint32_t k = 0; k < inst->nargs; k++) {
+        const MirTy ty = c->f->values[inst->args[k]];
+        if (qbe_indirect(c, ty)) {
+            ms_buf_printf(c->out, "\t%%x%u_%u_%u =l alloc8 %u\n", block, index, k,
+                          qbe_slot_bytes(c->layouts, ty));
+        }
+    }
+}
+
 static void qbe_frame_slots(QCx *c) {
     for (uint32_t b = 0; b < c->f->nblocks; b++) {
         const MirBlockData *block = &c->f->blocks[b];
@@ -326,27 +348,42 @@ static void qbe_frame_slots(QCx *c) {
             if (inst->op == MOP_Slot) {
                 ms_buf_printf(c->out, "\t%%v%u =l alloc8 %u\n", inst->res,
                               qbe_slot_bytes(c->layouts, (MirTy)inst->imm.a));
-            } else if (inst->op == MOP_Call && inst->res != MIR_NONE &&
-                       qbe_leaves(c, c->f->values[inst->res]).len > 1) {
-                ms_buf_printf(c->out, "\t%%r%u_%u =l alloc8 %u\n", b, k,
-                              qbe_slot_bytes(c->layouts, c->f->values[inst->res]));
+            } else if (inst->op == MOP_Call || inst->op == MOP_CallInd || inst->op == MOP_CallMethod) {
+                qbe_frame_call(c, inst, b, k);
             } else if (inst->op == MOP_CallRt) {
                 qbe_frame_rt_call(c, inst, b, k);
+            } else if (inst->op == MOP_IfaceBorrow && c->borrowed != NULL && c->borrowed[inst->res]) {
+                ms_buf_printf(c->out, "\t%%i%u_%u =l alloc8 %u\n", b, k,
+                              qbe_slot_bytes(c->layouts, c->f->values[inst->args[0]]));
+            } else if (inst->op == MOP_ClosureNew && c->framed[inst->res]) {
+                const MirClosureLayout layout =
+                    mir_closure_layout(c->layouts, &c->m->funcs[inst->imm.a]);
+                ms_buf_printf(c->out, "\t%%o%u_%u =l alloc8 %u\n", b, k, layout.size);
             }
         }
     }
 }
 
 /* Every leaf of every argument, in order, after the hidden result pointer when there is one. */
-static void qbe_call_arguments(QCx *c, const MirInst *inst, const char *result_area) {
+static void qbe_call_arguments(QCx *c, const MirInst *inst, const char *result_area, const char *lead,
+                               uint32_t block, uint32_t index) {
     MsBuf *o = c->out;
     bool first = true;
     if (result_area != NULL) {
         ms_buf_printf(o, "l %s", result_area);
         first = false;
     }
-    for (uint32_t k = 0; k < inst->nargs; k++) {
+    if (lead != NULL) {
+        ms_buf_printf(o, "%s%s", first ? "" : ", ", lead);
+        first = false;
+    }
+    for (uint32_t k = lead != NULL ? 1 : 0; k < inst->nargs; k++) {
         const MirLeafSpan leaves = qbe_leaves(c, c->f->values[inst->args[k]]);
+        if (qbe_indirect(c, c->f->values[inst->args[k]])) {
+            ms_buf_printf(o, "%sl %%x%u_%u_%u", first ? "" : ", ", block, index, k);
+            first = false;
+            continue;
+        }
         for (uint32_t j = 0; j < leaves.len; j++) {
             ms_buf_printf(o, "%s%c ", first ? "" : ", ", qbe_leaf_type(leaves.ptr[j]));
             qbe_name(o, inst->args[k], j);
@@ -355,11 +392,29 @@ static void qbe_call_arguments(QCx *c, const MirInst *inst, const char *result_a
     }
 }
 
+/* Writes each argument that passes by address into its frame slot, before the call. */
+static bool qbe_spill_arguments(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    char slot[32];
+    for (uint32_t k = 0; k < inst->nargs; k++) {
+        if (!qbe_indirect(c, c->f->values[inst->args[k]])) {
+            continue;
+        }
+        (void)snprintf(slot, sizeof slot, "%%x%u_%u_%u", block, index, k);
+        if (!qbe_store_leaves(c, inst->args[k], slot)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* A call. A result of more than one leaf comes back through a stack area that the call is given
  * and that is read leaf by leaf afterwards. */
-static bool qbe_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
-    const MirFunc *callee = &c->m->funcs[inst->imm.a];
+static bool qbe_call_to(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, const char *target,
+                        const char *lead) {
     MsBuf *o = c->out;
+    if (!qbe_spill_arguments(c, inst, block, index)) {
+        return false;
+    }
     const uint32_t result_leaves =
         inst->res == MIR_NONE ? 0 : qbe_leaves(c, c->f->values[inst->res]).len;
     char area[32] = {0};
@@ -371,14 +426,22 @@ static bool qbe_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     } else {
         ms_buf_puts(o, "\tcall ");
     }
-    qbe_sym(o, ms_name(&c->m->names, callee->name));
+    if (target != NULL) {
+        ms_buf_puts(o, target);
+    } else {
+        qbe_sym(o, ms_name(&c->m->names, c->m->funcs[inst->imm.a].name));
+    }
     ms_buf_putc(o, '(');
-    qbe_call_arguments(c, inst, result_leaves > 1 ? area : NULL);
+    qbe_call_arguments(c, inst, result_leaves > 1 ? area : NULL, lead, block, index);
     ms_buf_puts(o, ")\n");
     if (result_leaves <= 1) {
         return true;
     }
     return qbe_load_leaves(c, inst->res, area);
+}
+
+static bool qbe_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    return qbe_call_to(c, inst, block, index, NULL, NULL);
 }
 
 /* ---- static data ---- */
@@ -524,46 +587,42 @@ static bool qbe_call_rt(QCx *c, const MirInst *inst, uint32_t block, uint32_t in
     return ok;
 }
 
-/* Ends the current piece of the block with a branch on the overflow flag `%o<n>s`: the fault is a
- * block of its own and the rest of the block continues in a new piece. */
-static void qbe_overflow_branch(QCx *c, uint32_t n, uint32_t block, uint32_t *part) {
+/* Ends the current piece of the block with a branch on the flag `%o<n>s`: the fault `call` (its
+ * text, such as `$msrt_fault_int_overflow()`) is a block of its own and the rest of the block
+ * continues in a new piece. */
+static void qbe_fault_branch(QCx *c, uint32_t n, const char *call, uint32_t block, uint32_t *part) {
     MsBuf *o = c->out;
     (*part)++;
     ms_buf_printf(o, "\tjnz %%o%us, @f%u, ", n, n);
     qbe_label(c, block, *part);
-    ms_buf_printf(o, "\n@f%u\n\tcall $msrt_fault_int_overflow()\n\thlt\n", n);
+    ms_buf_printf(o, "\n@f%u\n\tcall %s\n\thlt\n", n, call);
     qbe_label(c, block, *part);
     ms_buf_putc(o, '\n');
 }
 
-/* A checked add or subtract. add overflows when both operands differ in sign from the result; sub
- * when the operands differ in sign and the result differs from the first. */
-static void qbe_checked_arith(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+/* Writes `sum = a +/- b` and the flag `%o<n>s`: add overflows when both operands differ in sign
+ * from the result; sub when the operands differ in sign and the result differs from the first. */
+static void qbe_add_flag(QCx *c, uint32_t n, bool add, MirValue a, MirValue b, const char *sum) {
     MsBuf *o = c->out;
-    const MirValue *a = inst->args;
-    const bool add = inst->op == MOP_IAddChk;
-    const uint32_t n = c->next++;
-    ms_buf_printf(o, "\t%%v%u =l %s %%v%u, %%v%u\n", inst->res, add ? "add" : "sub", a[0], a[1]);
-    ms_buf_printf(o, "\t%%o%ua =l xor %%v%u, %%v%u\n", n, a[0], inst->res);
+    ms_buf_printf(o, "\t%s =l %s %%v%u, %%v%u\n", sum, add ? "add" : "sub", a, b);
+    ms_buf_printf(o, "\t%%o%ua =l xor %%v%u, %s\n", n, a, sum);
     /* add: the second operand against the result; sub: the two operands against each other. */
-    const MirValue second = add ? a[1] : a[0];
-    const MirValue other = add ? inst->res : a[1];
-    ms_buf_printf(o, "\t%%o%ub =l xor %%v%u, %%v%u\n", n, second, other);
+    if (add) {
+        ms_buf_printf(o, "\t%%o%ub =l xor %%v%u, %s\n", n, b, sum);
+    } else {
+        ms_buf_printf(o, "\t%%o%ub =l xor %%v%u, %%v%u\n", n, a, b);
+    }
     ms_buf_printf(o, "\t%%o%uc =l and %%o%ua, %%o%ub\n", n, n, n);
     ms_buf_printf(o, "\t%%o%us =w csltl %%o%uc, 0\n", n, n);
-    qbe_overflow_branch(c, n, block, part);
 }
 
-/* A checked multiply. QBE has no overflow flag and no high multiply, so the product is divided
- * back: it overflowed when `product / a != b`. A zero or minus-one `a` would trap or lie in the
- * division, so the divisor is replaced by 1 there; `a == 0` never overflows and `a == -1`
- * overflows exactly when `b` is the minimum. All of it is straight-line code. */
-static void qbe_checked_mul(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+/* Writes `prod = a * b` and the flag `%o<n>s`. QBE has no overflow flag and no high multiply, so
+ * the product is divided back: it overflowed when `prod / a != b`. A zero or minus-one `a` would
+ * trap or lie in the division, so the divisor is replaced by 1 there; `a == 0` never overflows and
+ * `a == -1` overflows exactly when `b` is the minimum. All of it is straight-line code. */
+static void qbe_mul_flag(QCx *c, uint32_t n, MirValue a, MirValue b, const char *prod) {
     MsBuf *o = c->out;
-    const MirValue a = inst->args[0];
-    const MirValue b = inst->args[1];
-    const uint32_t n = c->next++;
-    ms_buf_printf(o, "\t%%v%u =l mul %%v%u, %%v%u\n", inst->res, a, b);
+    ms_buf_printf(o, "\t%s =l mul %%v%u, %%v%u\n", prod, a, b);
     ms_buf_printf(o, "\t%%o%ua =w ceql %%v%u, 0\n", n, a);
     ms_buf_printf(o, "\t%%o%ub =w ceql %%v%u, -1\n", n, a);
     ms_buf_printf(o, "\t%%o%uc =w or %%o%ua, %%o%ub\n", n, n, n);
@@ -572,7 +631,7 @@ static void qbe_checked_mul(QCx *c, const MirInst *inst, uint32_t block, uint32_
     ms_buf_printf(o, "\t%%o%ue =l sub %%v%u, 1\n", n, a);
     ms_buf_printf(o, "\t%%o%uf =l mul %%o%ue, %%o%ud\n", n, n, n);
     ms_buf_printf(o, "\t%%o%ug =l sub %%v%u, %%o%uf\n", n, a, n);
-    ms_buf_printf(o, "\t%%o%uh =l div %%v%u, %%o%ug\n", n, inst->res, n);
+    ms_buf_printf(o, "\t%%o%uh =l div %s, %%o%ug\n", n, prod, n);
     ms_buf_printf(o, "\t%%o%ui =w cnel %%o%uh, %%v%u\n", n, n, b);
     ms_buf_printf(o, "\t%%o%uj =w xor %%o%uc, 1\n", n, n);
     ms_buf_printf(o, "\t%%o%uk =w and %%o%ui, %%o%uj\n", n, n, n);
@@ -580,7 +639,24 @@ static void qbe_checked_mul(QCx *c, const MirInst *inst, uint32_t block, uint32_
     ms_buf_printf(o, "\t%%o%um =w ceql %%v%u, -9223372036854775808\n", n, b);
     ms_buf_printf(o, "\t%%o%un =w and %%o%ul, %%o%um\n", n, n, n);
     ms_buf_printf(o, "\t%%o%us =w or %%o%uk, %%o%un\n", n, n, n);
-    qbe_overflow_branch(c, n, block, part);
+}
+
+#define QBE_FAULT_OVERFLOW "$msrt_fault_int_overflow()"
+
+static void qbe_checked_arith(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+    const uint32_t n = c->next++;
+    char sum[24];
+    (void)snprintf(sum, sizeof sum, "%%v%u", inst->res);
+    qbe_add_flag(c, n, inst->op == MOP_IAddChk, inst->args[0], inst->args[1], sum);
+    qbe_fault_branch(c, n, QBE_FAULT_OVERFLOW, block, part);
+}
+
+static void qbe_checked_mul(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+    const uint32_t n = c->next++;
+    char prod[24];
+    (void)snprintf(prod, sizeof prod, "%%v%u", inst->res);
+    qbe_mul_flag(c, n, inst->args[0], inst->args[1], prod);
+    qbe_fault_branch(c, n, QBE_FAULT_OVERFLOW, block, part);
 }
 
 static void qbe_compare(QCx *c, const MirInst *inst) {
@@ -661,6 +737,24 @@ static bool qbe_opt_convert(QCx *c, const MirInst *inst) {
     return true;
 }
 
+/* `stack.low`, `stack.near`: whether the stack pointer is below the running segment's limit (plus
+ * the headroom). The limit is the word at the end of the stack's region, which is aligned to its
+ * size, so one mask of any address in the frame finds it. The frame's address is that of its
+ * `%sp` slot. */
+static void qbe_stack_check(QCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const uint32_t n = c->next++;
+    ms_buf_printf(o, "\t%%o%ub =l and %%sp, %lld\n", n, (long long)-MIR_STACK_REGION);
+    ms_buf_printf(o, "\t%%o%uc =l add %%o%ub, %lld\n\t%%o%ul =l loadl %%o%uc\n", n, n,
+                  (long long)(MIR_STACK_REGION - MIR_STACK_LIMIT_CELL), n, n);
+    if (inst->op == MOP_StackNear) {
+        ms_buf_printf(o, "\t%%o%ul2 =l add %%o%ul, %lld\n", n, n, (long long)inst->imm.i);
+        ms_buf_printf(o, "\t%%v%u =w cultl %%sp, %%o%ul2\n", inst->res, n);
+        return;
+    }
+    ms_buf_printf(o, "\t%%v%u =w cultl %%sp, %%o%ul\n", inst->res, n);
+}
+
 /* `opt.is_some`: the flag leaf of an optional held as [flag, value], or a non-null test of one held
  * as a single nullable pointer. */
 static void qbe_opt_is_some(QCx *c, const MirInst *inst) {
@@ -688,6 +782,10 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
     }
 }
 
+#include "emit_qbe_scalar.inc"
+#include "emit_qbe_closure.inc"
+#include "emit_qbe_iface.inc"
+
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
 static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
@@ -705,15 +803,26 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     if (handled) {
         return ok;
     }
+    const bool scalar_ok = qbe_scalar_inst(c, inst, block, part, &handled);
+    if (handled) {
+        return scalar_ok;
+    }
+    const bool closure_ok = qbe_closure_op(c, inst, block, index, &handled);
+    if (handled) {
+        return closure_ok;
+    }
+    const bool iface_ok = qbe_iface_op(c, inst, block, index, &handled);
+    if (handled) {
+        return iface_ok;
+    }
     switch (inst->op) {
     case MOP_IConst: case MOP_BConst: case MOP_FConst: qbe_constant(c, inst); return true;
     case MOP_ICmp: case MOP_UICmp: case MOP_FCmp: qbe_compare(c, inst); return true;
     case MOP_Call: return qbe_call(c, inst, block, index);
-    case MOP_IAddChk: case MOP_ISubChk: qbe_checked_arith(c, inst, block, part); return true;
-    case MOP_IMulChk: qbe_checked_mul(c, inst, block, part); return true;
     case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
     case MOP_INarrowOpt: case MOP_F2IOpt: return qbe_opt_convert(c, inst);
     case MOP_OptIsSome: qbe_opt_is_some(c, inst); return true;
+    case MOP_StackLow: case MOP_StackNear: qbe_stack_check(c, inst); return true;
     case MOP_TypeDesc: case MOP_FuncAddr: return qbe_address_of(c, inst);
     case MOP_GlobalGet: case MOP_GlobalSet: return qbe_global(c, inst);
     default:
@@ -740,43 +849,86 @@ static bool qbe_return(QCx *c, MirValue value) {
     return true;
 }
 
-static bool qbe_term(QCx *c, const MirTerm *t) {
+/* The runtime function a `fault` terminator calls, and how many zero words it takes. */
+typedef struct QbeFault {
+    const char *name;
+    uint8_t words;
+    MirFault kind;
+} QbeFault;
+
+static const QbeFault qbe_faults[] = {
+    {"msrt_fault_int_overflow", 0, MF_INT_OVERFLOW}, {"msrt_fault_div_zero", 0, MF_DIV_BY_ZERO},
+    {"msrt_index_fault", 2, MF_INDEX_OUT_OF_RANGE},  {"msrt_fault_unwrap_none", 0, MF_NONE_UNWRAP},
+    {"msrt_cancelled", 0, MF_CANCELLED},             {"msrt_fault_depth", 0, MF_CALL_DEPTH},
+};
+
+static bool qbe_fault_term(QCx *c, const MirTerm *t) {
     MsBuf *o = c->out;
+    if (t->fault == MF_UNREACHABLE) {
+        ms_buf_puts(o, "\thlt\n");
+        return true;
+    }
+    for (size_t k = 0; k < sizeof qbe_faults / sizeof qbe_faults[0]; k++) {
+        if (qbe_faults[k].kind != t->fault) {
+            continue;
+        }
+        ms_buf_printf(o, "\tcall $%s(", qbe_faults[k].name);
+        for (uint32_t w = 0; w < qbe_faults[k].words; w++) {
+            ms_buf_printf(o, "%sl 0", w == 0 ? "" : ", ");
+        }
+        ms_buf_puts(o, ")\n\thlt\n");
+        return true;
+    }
+    c->why = "fault with a message";
+    return false;
+}
+
+/* A `switch`: QBE has none, so the cases are a chain of compares. A target with block arguments
+ * would need its phis to name the chain's blocks, which they do not yet. */
+static bool qbe_switch(QCx *c, const MirTerm *t, uint32_t block) {
+    MsBuf *o = c->out;
+    bool args = t->b.nargs > 0;
+    for (uint32_t k = 0; k < t->ncases; k++) {
+        args = args || t->cases[k].target.nargs > 0;
+    }
+    if (args) {
+        c->why = "switch with block arguments";
+        return false;
+    }
+    for (uint32_t k = 0; k < t->ncases; k++) {
+        const uint32_t n = c->next++;
+        ms_buf_printf(o, "\t%%s%u =w ceql %%v%u, %lld\n\tjnz %%s%u, @b%u, @s%u_%u\n@s%u_%u\n", n, t->value,
+                      (long long)t->cases[k].value, n, t->cases[k].target.block, block, k, block, k);
+    }
+    ms_buf_printf(o, "\tjmp @b%u\n", t->b.block);
+    return true;
+}
+
+static bool qbe_term(QCx *c, const MirTerm *t, uint32_t block) {
     switch ((MirTermKind)t->kind) {
     case MT_BR:
-        ms_buf_printf(o, "\tjmp @b%u\n", t->a.block);
+        ms_buf_printf(c->out, "\tjmp @b%u\n", t->a.block);
         return true;
     case MT_CONDBR:
-        ms_buf_printf(o, "\tjnz %%v%u, @b%u, @b%u\n", t->value, t->a.block, t->b.block);
+        ms_buf_printf(c->out, "\tjnz %%v%u, @b%u, @b%u\n", t->value, t->a.block, t->b.block);
         return true;
     case MT_RET:
         return qbe_return(c, t->value);
     case MT_UNREACHABLE:
-        ms_buf_puts(o, "\thlt\n");
+        ms_buf_puts(c->out, "\thlt\n");
         return true;
     case MT_FAULT:
-        if (t->fault == MF_INT_OVERFLOW) {
-            ms_buf_puts(o, "\tcall $msrt_fault_int_overflow()\n\thlt\n");
-            return true;
-        }
-        c->why = "fault kind";
-        return false;
-    default:
-        c->why = "switch";
-        return false;
+        return qbe_fault_term(c, t);
+    case MT_SWITCH:
+        return qbe_switch(c, t, block);
     }
+    return false;
 }
 
 /* Whether the function's boundary is one the emitter handles: parameters of at most 16 bytes, and
  * layouts that did not fail. */
 static bool qbe_types_ok(QCx *c) {
     const MirFunc *f = c->f;
-    for (uint32_t k = 0; k < f->nparams; k++) {
-        if (mir_type_mem(c->layouts, f->params[k].ty).size > QBE_DIRECT_BYTES) {
-            c->why = "parameter of more than 16 bytes";
-            return false;
-        }
-    }
     for (uint32_t k = 0; k < f->nvalues; k++) {
         (void)qbe_leaves(c, f->values[k]);
     }
@@ -835,11 +987,44 @@ static bool qbe_phi(QCx *c, uint32_t b, uint32_t index, const uint32_t *last) {
     return true;
 }
 
+/* The start of the entry block: the frame slots, then the leaves of each parameter that arrived
+ * as an address. */
+static bool qbe_uses_stack_check(const QCx *c) {
+    for (uint32_t b = 0; b < c->f->nblocks; b++) {
+        for (uint32_t k = 0; k < c->f->blocks[b].ninsts; k++) {
+            const uint8_t op = c->f->blocks[b].insts[k].op;
+            if (op == MOP_StackLow || op == MOP_StackNear) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static bool qbe_entry(QCx *c) {
+    qbe_frame_slots(c);
+    if (qbe_uses_stack_check(c)) {
+        ms_buf_puts(c->out, "\t%sp =l alloc8 8\n");
+    }
+    for (uint32_t k = 0; k < c->f->nparams; k++) {
+        if (!qbe_indirect(c, c->f->params[k].ty)) {
+            continue;
+        }
+        const MirValue param = c->f->blocks[0].params[k].value;
+        char from[24];
+        (void)snprintf(from, sizeof from, "%%in%u", param);
+        if (!qbe_load_leaves(c, param, from)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static bool qbe_block(QCx *c, uint32_t b, const uint32_t *last) {
     const MirBlockData *block = &c->f->blocks[b];
     ms_buf_printf(c->out, "@b%u\n", b);
-    if (b == 0) {
-        qbe_frame_slots(c);
+    if (b == 0 && !qbe_entry(c)) {
+        return false;
     }
     for (uint32_t p = 0; b > 0 && p < block->nparams; p++) {
         if (!qbe_phi(c, b, p, last)) {
@@ -852,7 +1037,7 @@ static bool qbe_block(QCx *c, uint32_t b, const uint32_t *last) {
             return false;
         }
     }
-    return qbe_term(c, &block->term);
+    return qbe_term(c, &block->term, b);
 }
 
 /* `export function <result> $name(<hidden result pointer>, <leaves of each parameter>) {`. */
@@ -875,6 +1060,11 @@ static void qbe_header(QCx *c, uint32_t index) {
     for (uint32_t k = 0; k < f->nparams; k++) {
         const MirValue param = f->blocks[0].params[k].value;
         const MirLeafSpan leaves = qbe_leaves(c, f->params[k].ty);
+        if (qbe_indirect(c, f->params[k].ty)) {
+            ms_buf_printf(o, "%sl %%in%u", first ? "" : ", ", param);
+            first = false;
+            continue;
+        }
         for (uint32_t j = 0; j < leaves.len; j++) {
             ms_buf_printf(o, "%s%c ", first ? "" : ", ", qbe_leaf_type(leaves.ptr[j]));
             qbe_name(o, param, j);
@@ -886,13 +1076,11 @@ static void qbe_header(QCx *c, uint32_t index) {
 
 /* Pieces each block splits into: its checked operations each end one, and the last piece is what
  * the successors' phis name. Fills `last` with the count per block. */
-static void qbe_last_pieces(const MirFunc *f, uint32_t *last) {
+static void qbe_last_pieces(const MirModule *m, const MirFunc *f, uint32_t *last) {
     for (uint32_t b = 0; b < f->nblocks; b++) {
         last[b] = 0;
         for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
-            if (qbe_checked((MirOp)f->blocks[b].insts[k].op)) {
-                last[b]++;
-            }
+            last[b] += qbe_splits(m, f, &f->blocks[b].insts[k]);
         }
     }
 }
@@ -907,13 +1095,26 @@ static bool qbe_function(QCx *c, uint32_t index) {
         c->why = "out of memory";
         return false;
     }
-    qbe_last_pieces(f, last);
+    c->framed = calloc(f->nvalues ? f->nvalues : 1, sizeof *c->framed); /* owned, freed below */
+    if (c->framed == NULL) {
+        free(last);
+        c->why = "out of memory";
+        return false;
+    }
+    mir_framed_closures(c->m, f, c->framed);
+    MsArena scratch = {0};
+    c->borrowed = mir_framed_iface_borrows(&scratch, c->m, f);
+    qbe_last_pieces(c->m, f, last);
     qbe_header(c, index);
     bool ok = true;
     for (uint32_t b = 0; ok && b < f->nblocks; b++) {
         ok = qbe_block(c, b, last);
     }
     free(last);
+    free(c->framed);
+    c->framed = NULL;
+    c->borrowed = NULL;
+    ms_arena_free(&scratch);
     if (ok) {
         ms_buf_puts(c->out, "}\n\n");
     }
@@ -935,11 +1136,11 @@ bool mir_emit_qbe_glued(MirModule *m, MirGlue *glue_in, MsBuf *out, MsBuf *why) 
     mir_layouts_init(&layouts, m);
     bool ok = true;
     for (uint32_t i = 0; i < data.nsyms; i++) {
-        const QCx c = {m, NULL, out, &layouts, &data, 0, NULL};
+        const QCx c = {m, NULL, out, &layouts, &data, &glue, NULL, NULL, 0, NULL};
         qbe_data_sym(&c, &data.syms[i]);
     }
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        QCx c = {m, &m->funcs[i], out, &layouts, &data, 0, NULL};
+        QCx c = {m, &m->funcs[i], out, &layouts, &data, &glue, NULL, NULL, 0, NULL};
         if (qbe_function(&c, i)) {
             continue;
         }

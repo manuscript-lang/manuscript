@@ -107,6 +107,12 @@ typedef struct MsProcessCounts {
     int64_t allocations, allocated_bytes, list_copies, list_copy_bytes, string_clones, string_clone_bytes, operations;
 } MsProcessCounts;
 
+/* The runtime's start-up records, defined by the startup code: the arguments the process was started with, the monotonic
+ * time it started at (0 before start) and its seven work counters. */
+void msrt_argv(MsVec *out);
+int64_t msrt_start_nanos(void);
+void msrt_counts(uint64_t *out);
+
 /* ms-sig: msstd_process_info(out: *mut ProcessInfoOut, err: ErrSlot) -> u8 @domain=process */
 uint8_t msstd_process_info(MsProcessInfo *out, MsStr *err);
 /* ms-sig: msstd_process_memory_usage(out: *mut MemoryOut, err: ErrSlot) -> u8 @domain=process */

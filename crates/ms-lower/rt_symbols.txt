@@ -461,6 +461,10 @@ msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, 
 msstd_checksum_adler32_update(initial: i64, data: *const VecVal) -> i64
 msstd_checksum_crc32(data: *const VecVal) -> i64
 msstd_checksum_crc32_update(initial: i64, data: *const VecVal) -> i64
+msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=network
+msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=network
+msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=network
+msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @domain=network @handle
 msstd_compress_compress(data: *const VecVal, format: *const StrVal, level: i64, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=compression
 msstd_compress_decoder_end(handle decoder: *const ObjCell<DecoderObj>, out: *mut VecVal) -> u8 @domain=compression
 msstd_compress_decoder_new(name: *const StrVal, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<DecoderObj>) -> u8 @domain=compression
@@ -611,7 +615,6 @@ msstd_http_exchange_send_headers(handle x: *const ObjCell<ExchH>, status: i64, h
 msstd_http_exchange_upgrade(handle x: *const ObjCell<ExchH>, origins: *const VecVal, subprotocols: *const VecVal, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<SocketH>, err: ErrSlot) -> u8 @domain=HTTP
 msstd_http_exchange_write(handle x: *const ObjCell<ExchH>, data: *const StrVal, err: ErrSlot) -> u8 @domain=HTTP
 msstd_http_exchange_write_bytes(handle x: *const ObjCell<ExchH>, data: *const VecVal, err: ErrSlot) -> u8 @domain=HTTP
-msstd_http_fetch(handle c: *const ObjCell<ConnH>, method: *const StrVal, authority: *const StrVal, target: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=network
 msstd_http_headers_append(handle h: *const ObjCell<HeadersH>, name: *const StrVal, value: *const VecVal) -> u8 @domain=HTTP
 msstd_http_headers_clone(handle h: *const ObjCell<HeadersH>) -> *mut ObjCell<HeadersH> @handle @domain=HTTP
 msstd_http_headers_names(handle h: *const ObjCell<HeadersH>, out: *mut VecVal) @domain=HTTP

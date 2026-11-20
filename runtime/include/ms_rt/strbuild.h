@@ -12,10 +12,12 @@
 extern uint8_t msrt_ascii_chars[][2];
 /* Fault paths defined by the Rust runtime until the fault module moves; they end the program with a report.
  * The prototypes are split over two lines so the symbol check does not read them as C definitions. */
+#ifndef MS_RT_CALLS_H /* runtime/core/rt_calls.h declares the same two */
 MS_NORETURN void
 msrt_fault(const uint8_t *msg, size_t len);
 MS_NORETURN void
 msrt_index_fault(int64_t index, int64_t length);
+#endif
 
 #define MS_STR_STATIC (UINT64_C(1) << 63)
 #define MS_STR_INLINE (UINT64_C(1) << 62)

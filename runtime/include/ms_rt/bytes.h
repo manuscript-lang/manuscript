@@ -51,4 +51,23 @@ void msrt_bytes_extend(MsList *b, const MsList *values);
 /* ms-sig: msrt_bytes_read_word(b: *const VecVal, at: i64, width: i64, little: u8, out: *mut i64) -> u8 @domain=binary @leaf @pure */
 uint8_t msrt_bytes_read_word(const MsList *b, int64_t at, int64_t width, uint8_t little, int64_t *out);
 
+/* ms-sig: msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8 @domain=binary @fresh @leaf @takes_self */
+uint8_t msrt_bytes_decode_utf8(const MsList *b, MsStr *out);
+/* The Bytes dies at the call: the string reuses its buffer, and invalid input frees it. */
+/* ms-sig: msrt_bytes_decode_utf8_take(b: *mut VecVal, out: *mut StrVal) -> u8 @domain=binary @leaf */
+uint8_t msrt_bytes_decode_utf8_take(MsList *b, MsStr *out);
+/* ms-sig: msrt_bytes_decode_utf8_range(b: *const VecVal, start: i64, end: i64, out: *mut StrVal) -> u8 @domain=binary @fresh @leaf */
+uint8_t msrt_bytes_decode_utf8_range(const MsList *b, int64_t start, int64_t end, MsStr *out);
+
+/* The string builder: a Bytes buffer that strings are appended to (runtime/core/bytes_text.c). */
+/* ms-sig: msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal) @domain=collection @leaf */
+void msrt_strbuilder_append(MsList *b, const MsStr *s);
+/* ms-sig: msrt_strbuilder_append_slow(b: *mut VecVal, s: *const StrVal) @domain=collection @leaf */
+void msrt_strbuilder_append_slow(MsList *b, const MsStr *s);
+/* ms-sig: msrt_strbuilder_append_int(b: *mut VecVal, n: i64) @domain=collection @leaf */
+void msrt_strbuilder_append_int(MsList *b, int64_t n);
+/* Builds the string and consumes the builder. */
+/* ms-sig: msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) @domain=collection @leaf */
+void msrt_strbuilder_freeze(MsList *b, MsStr *out);
+
 #endif

@@ -1,4 +1,4 @@
-# Runtime symbols of ms_rt/bytes.h defined in C (runtime/core/bytes.c); one per line. Each is compiled out of the Rust
+# Runtime symbols of ms_rt/bytes.h defined in C (runtime/core/bytes.c and bytes_text.c); one per line. Each is compiled out of the Rust
 # runtime when the archive is built by `cargo xtask runtime`; plain `cargo test` keeps the Rust definitions.
 msrt_bytes_drop
 msrt_bytes_copy
@@ -22,3 +22,10 @@ msrt_bytes_from_values
 msrt_bytes_append
 msrt_bytes_extend
 msrt_bytes_read_word
+msrt_bytes_decode_utf8
+msrt_bytes_decode_utf8_take
+msrt_bytes_decode_utf8_range
+msrt_strbuilder_append
+msrt_strbuilder_append_slow
+msrt_strbuilder_append_int
+msrt_strbuilder_freeze

@@ -143,6 +143,9 @@ static LbVal lb_match(Lb *lb, const MsExpr *e);
 static LbVal lb_unary(Lb *lb, const MsExpr *e) {
     const MsExpr *operand = e->u.bin.left;
     const MsUnaryOp op = (MsUnaryOp)e->op;
+    if (op == MS_U_TRY) {
+        return lb_unsupported(lb); // an early return of the error is not lowered yet
+    }
     if (op == MS_U_NEG && operand->kind == MS_E_NUMBER) {
         return lb_number(lb, operand, true);
     }
@@ -784,7 +787,9 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
         lb->value_of[binding] = values[i];
-        lb_name_value(lb, values[i], fn->params.ptr[i]->name, true);
+        if (!fn->params.ptr[i]->is_mutable) { // Rust names no `var` parameter: its value is a pointer
+            lb_name_value(lb, values[i], fn->params.ptr[i]->name, true);
+        }
     }
     lb_emit_plain(lb, MOP_DepthEnter);
     for (uint32_t i = 0; i < fn->params.len; i++) {
@@ -817,7 +822,8 @@ static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
         const MsStr name = ms_name(lb->c->names, d->u.fn.name);
-        if (name.len == 4 && memcmp(name.ptr, "main", 4) == 0) {
+        const bool is_main = name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
+        if (is_main && lb->b.f.ret == MIR_INT) { // any other `main` gets a wrapper, which is the export
             lb->b.f.linkage = ML_EXPORT;
         }
     }

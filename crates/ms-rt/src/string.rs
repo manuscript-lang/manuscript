@@ -8,15 +8,34 @@
 //! ms: domain string
 use crate::alloc;
 use crate::fault;
-use crate::utf8;
+
+unsafe extern "C-unwind" {
+    fn ms_utf8_count(s: *const u8, n: usize) -> usize;
+}
 use core::ptr::null_mut;
-use ms_rt_abi::{
-    HasRaw, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STR_INLINE_MAX, StrVal, VecVal,
-};
+use ms_rt_abi::{HasRaw, STR_INLINE_MAX, StrVal, VecVal};
 
 // The moved symbols (runtime/symbols/string.txt) are defined by the C runtime; Rust callers and tests reach them here.
 unsafe extern "C-unwind" {
     pub fn msrt_string_fields(s: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_upper(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_lower(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal);
+    pub fn msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal);
+    pub fn msrt_string_normalize(
+        s: *const StrVal,
+        form: *const StrVal,
+        has_max: HasRaw,
+        max: i64,
+        out: *mut StrVal,
+    ) -> u8;
+    pub fn msrt_string_normalize_kind(
+        s: *const StrVal,
+        kind: i64,
+        has_max: HasRaw,
+        max: i64,
+        out: *mut StrVal,
+    ) -> u8;
     pub fn msrt_string_quote(s: *const StrVal, out: *mut StrVal);
     pub fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8;
     pub fn msrt_string_scalar_at(
@@ -288,21 +307,6 @@ fn heap_copy(data: &[u8]) -> StrVal {
     if data.is_ascii() { s.with_ascii() } else { s }
 }
 
-/// A string of exactly `len` bytes written by `fill`: inline when it fits, otherwise one
-/// allocation with no intermediate buffer. `ascii` says that `fill` writes only ASCII bytes.
-#[inline(always)]
-fn build_exact(len: usize, ascii: bool, fill: impl FnOnce(&mut [u8])) -> StrVal {
-    if len <= STR_INLINE_MAX {
-        let mut small = [0u8; STR_INLINE_MAX + 1];
-        fill(&mut small[..len]);
-        return from_bytes(&small[..len]);
-    }
-    let r = alloc_str(len);
-    // SAFETY: `r` owns `len` writable bytes.
-    fill(unsafe { core::slice::from_raw_parts_mut(r.ptr_word, len) });
-    if ascii { r.with_ascii() } else { r }
-}
-
 /// Whether every byte of `s` is ASCII, from its flag when it has one.
 ///
 /// # Safety
@@ -446,7 +450,7 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
         if known_ascii(s) {
             return (*s).len();
         }
-        utf8::count(bytes(s))
+        ms_utf8_count(bytes(s).as_ptr(), (*s).len())
     }
 }
 
@@ -605,255 +609,6 @@ pub unsafe fn msrt_string_index_of_long(a: *const StrVal, v: *const StrVal, out:
 // Building
 // ---------------------------------------------------------------------------
 
-/// The string over the first `len` bytes of the owned allocation at `ptr`: the same allocation
-/// when it stays on the heap, an inline copy (freeing the buffer) when it fits inline.
-///
-/// # Safety
-/// `ptr` is an owned string allocation of at least `len + 1` bytes.
-unsafe fn finish_owned(ptr: *mut u8, len: usize, ascii: bool) -> StrVal {
-    // SAFETY: caller contract.
-    unsafe {
-        if len <= STR_INLINE_MAX {
-            let r = from_bytes(core::slice::from_raw_parts(ptr, len));
-            free_owned(ptr);
-            return r;
-        }
-        *ptr.add(len) = 0;
-        let r = StrVal::owned(ptr, len);
-        if ascii { r.with_ascii() } else { r }
-    }
-}
-
-/// `upper` or `lower` of a string that dies at the call: ASCII text maps in place.
-///
-/// # Safety
-/// `s` is an owned string the callee takes; `out` is writable.
-unsafe fn map_case_take(s: *mut StrVal, upper: bool, out: *mut StrVal) {
-    // SAFETY: caller contract.
-    unsafe {
-        if (*s).owns() && is_ascii(&*s) {
-            let (ptr, len) = ((*s).ptr_word, (*s).len());
-            let text = core::slice::from_raw_parts_mut(ptr, len);
-            if upper {
-                text.make_ascii_uppercase();
-            } else {
-                text.make_ascii_lowercase();
-            }
-            return StrVal::owned(ptr, len).with_ascii().write_to(out);
-        }
-        let r = map_case(s, upper);
-        release(&*s);
-        r.write_to(out)
-    }
-}
-
-/// `upper` or `lower` of non-ASCII `text` written straight into a result of the same size, or
-/// `None` when the text is short, has a final-sigma context (lowercasing needs the whole-string
-/// rule) or maps to more bytes than it has: the caller then maps it through `str`.
-///
-/// # Safety
-/// The result allocation is private to this call until it is returned.
-unsafe fn map_case_in_place(text: &str, upper: bool) -> Option<StrVal> {
-    let len = text.len();
-    if len <= STR_INLINE_MAX || (!upper && text.contains('\u{3a3}')) {
-        return None;
-    }
-    let r = alloc_str(len);
-    // SAFETY: `r` owns `len + 1` writable bytes.
-    let dst = unsafe { core::slice::from_raw_parts_mut(r.ptr_word, len) };
-    let mut at = 0;
-    let mut tmp = [0u8; 4];
-    for c in text.chars() {
-        if c.is_ascii() {
-            if at == len {
-                // SAFETY: `r` is owned and unused after this.
-                unsafe { free_owned(r.ptr_word) };
-                return None;
-            }
-            dst[at] = if upper {
-                c.to_ascii_uppercase()
-            } else {
-                c.to_ascii_lowercase()
-            } as u8;
-            at += 1;
-            continue;
-        }
-        let mut put = |m: char| -> bool {
-            let n = m.encode_utf8(&mut tmp).len();
-            if at + n > len {
-                return false;
-            }
-            dst[at..at + n].copy_from_slice(&tmp[..n]);
-            at += n;
-            true
-        };
-        let fits = if upper {
-            c.to_uppercase().all(&mut put)
-        } else {
-            c.to_lowercase().all(&mut put)
-        };
-        if !fits {
-            // SAFETY: `r` is owned and unused after this.
-            unsafe { free_owned(r.ptr_word) };
-            return None;
-        }
-    }
-    // SAFETY: `r` owns `len + 1` bytes and `at <= len` of them are written.
-    Some(unsafe { finish_owned(r.ptr_word, at, false) })
-}
-
-/// The high bit of each byte of `x` (all below 0x80) that is a lowercase letter (`lower` true) or an
-/// uppercase one: `x + (0x80 - lo)` sets a byte's high bit when it is at least `lo`, and
-/// `x + (0x80 - hi - 1)` when it is above `hi`; no byte carries into the next.
-#[inline(always)]
-fn ascii_letters_of_case(x: u64, lower: bool) -> u64 {
-    const LO: u64 = 0x0101_0101_0101_0101;
-    const HI: u64 = 0x8080_8080_8080_8080;
-    let (first, last) = if lower { (b'a', b'z') } else { (b'A', b'Z') };
-    let at_least = x + LO * u64::from(0x80 - first);
-    let above = x + LO * u64::from(0x80 - last - 1);
-    at_least & !above & HI
-}
-
-/// The first eight bytes of `text`, or all of them zero padded when it is shorter.
-#[inline(always)]
-fn first_word(text: &[u8]) -> u64 {
-    let mut word = [0u8; 8];
-    let n = text.len().min(8);
-    word[..n].copy_from_slice(&text[..n]);
-    u64::from_le_bytes(word)
-}
-
-/// The last eight bytes of `text` (at least eight long).
-#[inline(always)]
-fn last_word(text: &[u8]) -> u64 {
-    u64::from_le_bytes(text[text.len() - 8..].try_into().unwrap_or([0; 8]))
-}
-
-/// Whether ASCII `text` holds a lowercase letter (`lower` false: an uppercase one), eight bytes per
-/// step, stopping at the first.
-#[inline(always)]
-fn has_ascii_letter_of_case(text: &[u8], lower: bool) -> bool {
-    if text.len() < 8 {
-        return ascii_letters_of_case(first_word(text), lower) != 0;
-    }
-    // Text that changes usually shows a letter in its first word; the last word overlaps the one
-    // before it when the length is not a multiple of eight.
-    let head = u64::from_le_bytes(text[..8].try_into().unwrap_or([0; 8]));
-    if ascii_letters_of_case(head, lower) != 0 {
-        return true;
-    }
-    let (chunks, _) = text.as_chunks::<8>();
-    for w in &chunks[1..] {
-        if ascii_letters_of_case(u64::from_le_bytes(*w), lower) != 0 {
-            return true;
-        }
-    }
-    ascii_letters_of_case(last_word(text), lower) != 0
-}
-
-/// Writes ASCII `text` to `dst` with its lowercase letters uppercased (`upper`) or its uppercase
-/// letters lowercased, eight bytes per step in one pass: flipping bit 5 of a letter changes its case.
-#[inline(always)]
-fn map_ascii_case_into(dst: &mut [u8], text: &[u8], upper: bool) {
-    let flip = |x: u64| x ^ (ascii_letters_of_case(x, upper) >> 2);
-    if text.len() < 8 {
-        let word = flip(first_word(text)).to_le_bytes();
-        dst.copy_from_slice(&word[..text.len()]);
-        return;
-    }
-    let (chunks, _) = text.as_chunks::<8>();
-    let (out, _) = dst.as_chunks_mut::<8>();
-    for (d, w) in out.iter_mut().zip(chunks) {
-        *d = flip(u64::from_le_bytes(*w)).to_le_bytes();
-    }
-    // The last word overlaps the one before it when the length is not a multiple of eight.
-    let n = dst.len();
-    dst[n - 8..].copy_from_slice(&flip(last_word(text)).to_le_bytes());
-}
-
-/// `upper` or `lower` of the string `s`: ASCII text is copied once into its result and mapped
-/// there; other text maps scalar by scalar.
-///
-/// # Safety
-/// `s` is a live string.
-unsafe fn map_case(s: *const StrVal, upper: bool) -> StrVal {
-    // SAFETY: caller contract.
-    unsafe {
-        let text = bytes(s);
-        if is_ascii(&*s) {
-            if !has_ascii_letter_of_case(text, upper) {
-                // Already in the requested case: share the unchanged input.
-                return cloned(&*s);
-            }
-            return build_exact(text.len(), true, |dst| {
-                map_ascii_case_into(dst, text, upper)
-            });
-        }
-        let text = core::str::from_utf8(text).expect("String contains valid UTF-8");
-        if let Some(r) = map_case_in_place(text, upper) {
-            return r;
-        }
-        if upper {
-            from_buf(text.to_uppercase().into_bytes())
-        } else {
-            // Whole-string mapping supplies Unicode's full Cased and Case_Ignorable tables
-            // for the contextual final-sigma rule.
-            from_buf(text.to_lowercase().into_bytes())
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf fresh takes_self
-pub unsafe extern "C-unwind" fn msrt_string_upper(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_upper_val(s)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_upper_val(s: *const StrVal) -> StrVal {
-    // SAFETY: caller passes a live string.
-    unsafe { map_case(s, true) }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf fresh takes_self
-pub unsafe extern "C-unwind" fn msrt_string_lower(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_lower_val(s)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
-    // SAFETY: caller passes a live string.
-    unsafe { map_case(s, false) }
-}
-
-/// `upper` of a string that dies at the call (the optimizer rewrites a call whose receiver
-/// drops right after it); same `out` as `msrt_string_upper`.
-///
-/// # Safety
-/// `s` holds an owned string that the callee takes; `out` is writable.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal) {
-    // SAFETY: caller contract.
-    unsafe { map_case_take(s, true, out) }
-}
-
-/// `lower` of a string that dies at the call (the optimizer rewrites a call whose receiver
-/// drops right after it); same `out` as `msrt_string_lower`.
-///
-/// # Safety
-/// `s` holds an owned string that the callee takes; `out` is writable.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal) {
-    // SAFETY: caller contract.
-    unsafe { map_case_take(s, false, out) }
-}
-
 /// Copies `n` non-overlapping bytes; up to 16 bytes go through overlapping word moves instead of a call
 /// into `memcpy`, which costs more than the copy for the short pieces words and fields split into.
 ///
@@ -925,136 +680,6 @@ pub unsafe fn join_strings(items: *const StrVal, n: usize, sep: &[u8]) -> StrVal
 // Lists produced from strings (List[String] = VecVal of 8-byte string pointers)
 // ---------------------------------------------------------------------------
 
-/// Normalization forms by the spelling `String.normalize` takes.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_normalize(
-    s: *const StrVal,
-    form: *const StrVal,
-    has_max: HasRaw,
-    max: i64,
-    out: *mut StrVal,
-) -> u8 {
-    // SAFETY: caller passes live strings and a writable out.
-    unsafe {
-        if has_max.is_set() && max < 0 {
-            return STATUS_INVALID_INPUT;
-        }
-        let kind = match bytes(form) {
-            b"NFC" => 0,
-            b"NFD" => 1,
-            b"NFKC" => 2,
-            b"NFKD" => 3,
-            _ => return STATUS_INVALID_INPUT,
-        };
-        normalize_kind(s, kind, has_max, max, out)
-    }
-}
-
-/// `NormalizationForm.normalize`: `kind` is the case index (Nfc 0, Nfd 1, Nfkc 2, Nfkd 3).
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_normalize_kind(
-    s: *const StrVal,
-    kind: i64,
-    has_max: HasRaw,
-    max: i64,
-    out: *mut StrVal,
-) -> u8 {
-    // SAFETY: forwarded contract.
-    unsafe { normalize_kind(s, kind, has_max, max, out) }
-}
-
-unsafe fn normalize_kind(
-    s: *const StrVal,
-    kind: i64,
-    has_max: HasRaw,
-    max: i64,
-    out: *mut StrVal,
-) -> u8 {
-    use unicode_normalization::UnicodeNormalization;
-    if has_max.is_set() && max < 0 {
-        return STATUS_INVALID_INPUT;
-    }
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let limit = if has_max.is_set() {
-            max as usize
-        } else {
-            usize::MAX
-        };
-        let text = bytes(s);
-        if is_ascii(&*s) {
-            // ASCII text is already in every normalization form.
-            if text.len() > limit {
-                return STATUS_LIMIT_EXCEEDED;
-            }
-            *out = cloned(&*s);
-            return STATUS_OK;
-        }
-        // ASCII is stable under every form and never composes with what precedes it, so
-        // a normalization segment starts at the last ASCII byte before a non-ASCII run
-        // (a base letter may take a following mark) and ends at the next ASCII byte.
-        // Everything between segments is copied as it is.
-        let mut b: Vec<u8> = Vec::with_capacity(text.len());
-        let mut chars: Vec<char> = Vec::new();
-        let mut tmp = [0u8; 4];
-        let mut at = 0;
-        while at < text.len() {
-            let run_end = at
-                + text[at..]
-                    .iter()
-                    .position(|&x| x >= 0x80)
-                    .unwrap_or(text.len() - at);
-            if run_end == text.len() {
-                if text.len() - at > limit.saturating_sub(b.len()) {
-                    return STATUS_LIMIT_EXCEEDED;
-                }
-                b.extend_from_slice(&text[at..]);
-                break;
-            }
-            let start = if run_end > at { run_end - 1 } else { run_end };
-            if start - at > limit.saturating_sub(b.len()) {
-                return STATUS_LIMIT_EXCEEDED;
-            }
-            b.extend_from_slice(&text[at..start]);
-            let end = run_end
-                + text[run_end..]
-                    .iter()
-                    .position(|&x| x < 0x80)
-                    .unwrap_or(text.len() - run_end);
-            chars.clear();
-            let mut i = start;
-            while i < end {
-                let (c, w) = utf8::decode(&text[i..end]);
-                chars.push(char::from_u32(c).unwrap_or('\u{FFFD}'));
-                i += w;
-            }
-            let mut push = |c: char| -> bool {
-                let e = c.encode_utf8(&mut tmp).as_bytes();
-                if e.len() > limit.saturating_sub(b.len()) {
-                    return false;
-                }
-                b.extend_from_slice(e);
-                true
-            };
-            let it = chars.iter().copied();
-            let ok = match kind {
-                0 => it.nfc().all(&mut push),
-                1 => it.nfd().all(&mut push),
-                2 => it.nfkc().all(&mut push),
-                _ => it.nfkd().all(&mut push),
-            };
-            if !ok {
-                return STATUS_LIMIT_EXCEEDED;
-            }
-            at = end;
-        }
-        *out = from_buf(b);
-        STATUS_OK
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Conversions to string (Int, Float, Bool)
 // ---------------------------------------------------------------------------
@@ -1082,6 +707,7 @@ const EMPTY_VEC: VecVal = VecVal {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ms_rt_abi::{STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK};
 
     // The f-string joins are C (runtime/core/string_join.c); the unit tests link the C runtime.
     unsafe extern "C-unwind" {
@@ -1841,10 +1467,11 @@ mod tests {
             let before = std::format!("A{mark}Σ");
             let after = std::format!("AΣ{mark}A");
             // SAFETY: `st` leaks a live string.
-            let (lowered_before, lowered_after) =
-                unsafe { (map_case(st(&before), false), map_case(st(&after), false)) };
-            assert_eq!(txt(&lowered_before), std::format!("a{mark}ς"));
-            assert_eq!(txt(&lowered_after), std::format!("aσ{mark}a"));
+            let lowered_before = ret(|o| unsafe { msrt_string_lower(st(&before), o) });
+            // SAFETY: as above.
+            let lowered_after = ret(|o| unsafe { msrt_string_lower(st(&after), o) });
+            assert_eq!(lowered_before, std::format!("a{mark}ς"));
+            assert_eq!(lowered_after, std::format!("aσ{mark}a"));
         }
     }
 
