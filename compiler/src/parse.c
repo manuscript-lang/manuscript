@@ -1929,7 +1929,8 @@ MS_NODISCARD static bool binding_group(Parser *p, MsToken keyword, MsStmts *out)
                 return false;
             }
             break;
-        } else if (t.kind == MS_T_Eof) {
+        }
+        if (t.kind == MS_T_Eof) {
             if (!need(p, MS_T_RParen)) return false;
         } else if (t.pos.column != indent + 4) {
             fail(p, t, fmt(p, "binding group entries are indented four spaces past the '%s' line, to column %u", kw, indent + 4));
@@ -2777,29 +2778,70 @@ MS_NODISCARD static bool pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
     return true;
 }
 
-MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
+/* The first operand: a prefix `not`, `+` or `-` with its operand, or a primary expression. */
+MS_NODISCARD static bool leading_operand(Parser *p, int min, MsExpr **out) {
     MsToken t = peek(p);
-    if (t.kind == MS_T_Not && min > 3) {
+    if (t.kind == MS_T_Not && min > PREFIX_OPERAND) {
         fail(p, t, LIT("not requires grouping at this operator position; wrap it in parentheses, e.g. a == (not b)"));
         return false;
     }
-    MsExpr *e;
-    if (take(p, MS_T_Not)) {
-        MsExpr *operand = NULL;
-        if (!expression(p, PREFIX_OPERAND, &operand)) return false;
-        e = mk_unary(p, t.pos, MS_U_NOT, operand);
-    } else if (t.kind == MS_T_Try) {
+    if (t.kind == MS_T_Try) {
         fail_try(p, t);
         return false;
-    } else if (t.kind == MS_T_Plus || t.kind == MS_T_Minus) {
-        p->at++;
-        MsUnaryOp op = t.kind == MS_T_Plus ? MS_U_PLUS : MS_U_NEG;
-        MsExpr *operand = NULL;
-        if (!expression(p, 8, &operand)) return false;
-        e = mk_unary(p, t.pos, op, operand);
-    } else {
-        if (!primary(p, &e)) return false;
     }
+    if (t.kind != MS_T_Not && t.kind != MS_T_Plus && t.kind != MS_T_Minus) {
+        return primary(p, out);
+    }
+    p->at++;
+    MsUnaryOp op = MS_U_NOT;
+    int binding_power = PREFIX_OPERAND;
+    if (t.kind != MS_T_Not) {
+        op = t.kind == MS_T_Plus ? MS_U_PLUS : MS_U_NEG;
+        binding_power = 8;
+    }
+    MsExpr *operand = NULL;
+    if (!expression(p, binding_power, &operand)) return false;
+    *out = mk_unary(p, t.pos, op, operand);
+    return true;
+}
+
+/* `e | step`, then a member access or call chain on the result. */
+MS_NODISCARD static bool pipe_operator(Parser *p, MsExpr **e, size_t *links) {
+    if (!link(p, links)) return false;
+    if (!pipe(p, *e, e)) return false;
+    if (kind(p) == MS_T_Dot) {
+        if (!postfix(p, *e, e)) return false;
+    }
+    MsBinaryOp ignored;
+    if (binary_op(kind(p), &ignored)) {
+        fail(p, peek(p), LIT("a pipe has the lowest precedence; parenthesize it to use its result in an operator, e.g. (x | f) == y"));
+        return false;
+    }
+    return true;
+}
+
+/* `e..right`, which is the call range(e, right). */
+MS_NODISCARD static bool range_operator(Parser *p, MsExpr **e) {
+    p->at++;
+    MsExpr *right = NULL;
+    if (!expression(p, RANGE_LEVEL + 1, &right)) return false;
+    if (kind(p) == MS_T_DotDot) {
+        fail(p, peek(p), LIT("a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections/collections.ms\""));
+        return false;
+    }
+    *e = range_call(p, *e, right);
+    return true;
+}
+
+/* Rejects `x++` and `x--` written as statements, which parse as two operators. */
+static bool is_increment(const Parser *p, MsToken op, const MsExpr *e) {
+    return (op.kind == MS_T_Plus || op.kind == MS_T_Minus) && e->kind == MS_E_NAME &&
+           ahead(p, 1).kind == op.kind && ahead(p, 2).kind == MS_T_Newline;
+}
+
+MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
+    MsExpr *e = NULL;
+    if (!leading_operand(p, min, &e)) return false;
     bool compared = false;
     size_t links = 0;
     for (;;) {
@@ -2811,34 +2853,12 @@ MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
             and_and(p, op);
             return false;
         }
-        if (op.kind == MS_T_Pipe) {
-            if (min > 0) {
+        if (op.kind == MS_T_Pipe || op.kind == MS_T_DotDot) {
+            if (min > (op.kind == MS_T_Pipe ? 0 : RANGE_LEVEL)) {
                 break;
             }
-            if (!link(p, &links)) return false;
-            if (!pipe(p, e, &e)) return false;
-            if (kind(p) == MS_T_Dot) {
-                if (!postfix(p, e, &e)) return false;
-            }
-            MsBinaryOp tmp;
-            if (binary_op(kind(p), &tmp)) {
-                fail(p, peek(p), LIT("a pipe has the lowest precedence; parenthesize it to use its result in an operator, e.g. (x | f) == y"));
-                return false;
-            }
-            continue;
-        }
-        if (op.kind == MS_T_DotDot) {
-            if (min > RANGE_LEVEL) {
-                break;
-            }
-            p->at++;
-            MsExpr *right = NULL;
-            if (!expression(p, RANGE_LEVEL + 1, &right)) return false;
-            if (kind(p) == MS_T_DotDot) {
-                fail(p, peek(p), LIT("a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections/collections.ms\""));
-                return false;
-            }
-            e = range_call(p, e, right);
+            bool ok = op.kind == MS_T_Pipe ? pipe_operator(p, &e, &links) : range_operator(p, &e);
+            if (!ok) return false;
             continue;
         }
         MsBinaryOp bop;
@@ -2849,8 +2869,7 @@ MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
         if (level < min) {
             break;
         }
-        if ((op.kind == MS_T_Plus || op.kind == MS_T_Minus) && e->kind == MS_E_NAME &&
-            ahead(p, 1).kind == op.kind && ahead(p, 2).kind == MS_T_Newline) {
+        if (is_increment(p, op, e)) {
             const char *o = ms_tok_str((MsTok)op.kind);
             MsStr n = ms_name(p->names, e->u.sym);
             fail(p, op, fmt(p, "Manuscript has no '%s%s' operator; write '%.*s %s= 1'", o, o, STR(n), o));
@@ -2869,9 +2888,7 @@ MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
         b->u.bin.left = e;
         b->u.bin.right = right;
         e = b;
-        if (level == 4) {
-            compared = true;
-        }
+        compared = compared || level == 4;
     }
     *out = e;
     return true;
@@ -2976,108 +2993,127 @@ static MsStr dedent(Parser *p, MsStr content, size_t indent) {
 
 MS_NODISCARD static bool interpolation(Parser *p, MsToken token, size_t at, MsStr source, MsPos position, MsExpr **out);
 
-static void flush_literal(Parser *p, size_t bm) {
-    /* Pending literal bytes sit above `bm` in p->bytes; parts are pushed by the caller. */
-    (void)p;
-    (void)bm;
+/* Where text_parts stands in the raw text and in the literal it is building. */
+typedef struct TextCursor {
+    const uint8_t *raw;
+    size_t at;     /* next byte of the raw text */
+    size_t stop;   /* end of the content */
+    size_t indent; /* indentation removed from each line of multi-line text */
+    size_t bytes;  /* start of the literal being built, on the byte stack */
+    bool line_start;
+} TextCursor;
+
+/* Turns the literal bytes built so far into a part and pushes it. */
+static void flush_literal(Parser *p, size_t literal_start) {
+    if (p->bytes->len == literal_start) {
+        return;
+    }
+    size_t length = p->bytes->len - literal_start;
+    MsTextPart part = {{ms_arena_strndup(p->arena, p->bytes->data + literal_start, length), (uint32_t)length}, NULL};
+    push(p, &part, sizeof part);
+    p->bytes->len = literal_start;
+}
+
+/* Appends the character an escape stands for; the cursor is after the backslash. */
+static void append_escape(Parser *p, TextCursor *c) {
+    uint8_t escape = c->raw[c->at++];
+    switch (escape) {
+    case 'n':
+        ms_buf_putc(p->bytes, '\n');
+        return;
+    case 'r':
+        ms_buf_putc(p->bytes, '\r');
+        return;
+    case 't':
+        ms_buf_putc(p->bytes, '\t');
+        return;
+    case 'u':
+        break;
+    default:
+        ms_buf_putc(p->bytes, (char)escape);
+        return;
+    }
+    size_t digits = c->at + 1; /* after the '{' */
+    c->at = digits;
+    while (c->raw[c->at] != '}') {
+        c->at++;
+    }
+    uint32_t scalar = 0;
+    for (size_t k = digits; k < c->at; k++) {
+        uint8_t h = c->raw[k];
+        scalar = scalar * 16 + (uint32_t)(h <= '9' ? h - '0' : (h | 0x20) - 'a' + 10);
+    }
+    ms_utf8_put(p->bytes, scalar);
+    c->at++;
+}
+
+/* Consumes `{expr}` (the cursor is after the brace) and parses it. */
+MS_NODISCARD static bool text_interpolation(Parser *p, MsToken token, MsStr raw, size_t quotes, TextCursor *c,
+                                            MsPos *position, size_t *positioned) {
+    size_t start = c->at;
+    size_t brace = p->source_origin + token.lo + quotes + start - 1;
+    size_t close = ms_bounds_interp_end(p->bounds, brace);
+    c->at = close - (p->source_origin + token.lo + quotes);
+    MsStr source = {raw.ptr + start, (uint32_t)(c->at - 1 - start)};
+    /* Advance through each prefix once, including physical lines in multiline text. */
+    size_t at = quotes + start;
+    MsStr full = text(p, token);
+    MsStr rest = {full.ptr + *positioned, (uint32_t)(full.len - *positioned)};
+    *position = text_pos(*position, rest, at - *positioned, p->bounds);
+    *positioned = at;
+    MsExpr *value = NULL;
+    if (!interpolation(p, token, at, source, *position, &value)) return false;
+    MsTextPart part = {{NULL, 0}, value};
+    push(p, &part, sizeof part);
+    return true;
+}
+
+/* Skips the indentation a multi-line text's closing line removes from each content line. */
+static void skip_text_indent(TextCursor *c) {
+    size_t skipped = 0;
+    while (skipped < c->indent && c->at < c->stop && (c->raw[c->at] == ' ' || c->raw[c->at] == '\t')) {
+        skipped++;
+        c->at++;
+    }
 }
 
 MS_NODISCARD static bool text_parts(Parser *p, MsToken token, MsStr raw, size_t quotes, bool interpolating, TextParts *out) {
-    const uint8_t *rb = (const uint8_t *)raw.ptr;
-    size_t first, stop, indent;
+    TextCursor c = {.raw = (const uint8_t *)raw.ptr, .stop = raw.len};
     if (quotes >= 3) {
         MsStr content;
-        multiline_body(raw, &content, &indent, &first);
-        stop = first + content.len;
-    } else {
-        first = 0;
-        stop = raw.len;
-        indent = 0;
+        multiline_body(raw, &content, &c.indent, &c.at);
+        c.stop = c.at + content.len;
     }
-    size_t pm = mark(p);       /* parts, on the scratch stack */
-    size_t bm = p->bytes->len; /* the literal being built, on the byte stack */
-    size_t i = first;
-    bool line_start = indent > 0;
+    size_t parts_start = mark(p); /* parts, on the scratch stack */
+    c.bytes = p->bytes->len;
+    c.line_start = c.indent > 0;
     size_t positioned = 0;
     MsPos position = token.pos;
-#define FLUSH()                                                                                    \
-    do {                                                                                           \
-        if (p->bytes->len != bm) {                                                                 \
-            MsTextPart part = {{ms_arena_strndup(p->arena, p->bytes->data + bm, p->bytes->len - bm), \
-                                (uint32_t)(p->bytes->len - bm)}, NULL};                            \
-            push(p, &part, sizeof part);                                                           \
-            p->bytes->len = bm;                                                                    \
-        }                                                                                          \
-    } while (0)
-    while (i < stop) {
-        if (line_start) {
-            line_start = false;
-            size_t skipped = 0;
-            while (skipped < indent && i < stop && (rb[i] == ' ' || rb[i] == '\t')) {
-                skipped++;
-                i++;
-            }
+    while (c.at < c.stop) {
+        if (c.line_start) {
+            c.line_start = false;
+            skip_text_indent(&c);
             continue;
         }
-        uint8_t c = rb[i++];
-        if (c == '\\') {
-            c = rb[i++];
-            switch (c) {
-            case 'n': ms_buf_putc(p->bytes, '\n'); break;
-            case 'r': ms_buf_putc(p->bytes, '\r'); break;
-            case 't': ms_buf_putc(p->bytes, '\t'); break;
-            case 'u': {
-                size_t start = i + 1;
-                i = start;
-                while (rb[i] != '}') {
-                    i++;
-                }
-                uint32_t n = 0;
-                for (size_t k = start; k < i; k++) {
-                    uint8_t h = rb[k];
-                    n = n * 16 + (uint32_t)(h <= '9' ? h - '0' : (h | 0x20) - 'a' + 10);
-                }
-                ms_utf8_put(p->bytes, n);
-                i++;
-                break;
-            }
-            default:
-                ms_buf_putc(p->bytes, (char)c);
-            }
-            continue;
+        uint8_t b = c.raw[c.at++];
+        if (b == '\\') {
+            append_escape(p, &c);
+        } else if (interpolating && b == '{') {
+            flush_literal(p, c.bytes);
+            if (!text_interpolation(p, token, raw, quotes, &c, &position, &positioned)) return false;
+        } else {
+            ms_buf_putc(p->bytes, (char)b);
+            c.line_start = b == '\n' && c.indent > 0;
         }
-        if (!(interpolating && c == '{')) {
-            ms_buf_putc(p->bytes, (char)c);
-            line_start = c == '\n' && indent > 0;
-            continue;
-        }
-        FLUSH();
-        size_t start = i;
-        size_t brace = p->source_origin + token.lo + quotes + start - 1;
-        size_t stop = ms_bounds_interp_end(p->bounds, brace);
-        i = stop - (p->source_origin + token.lo + quotes);
-        MsStr source = {raw.ptr + start, (uint32_t)(i - 1 - start)};
-        /* Advance through each prefix once, including physical lines in multiline text. */
-        size_t at = quotes + start;
-        MsStr full = text(p, token);
-        MsStr rest = {full.ptr + positioned, (uint32_t)(full.len - positioned)};
-        position = text_pos(position, rest, at - positioned, p->bounds);
-        positioned = at;
-        MsExpr *value = NULL;
-        if (!interpolation(p, token, at, source, position, &value)) return false;
-        MsTextPart part = {{NULL, 0}, value};
-        push(p, &part, sizeof part);
     }
-    FLUSH();
-#undef FLUSH
+    flush_literal(p, c.bytes);
     TextParts result;
-    result.ptr = finish(p, pm, &result.len, sizeof(MsTextPart), _Alignof(MsTextPart));
+    result.ptr = finish(p, parts_start, &result.len, sizeof(MsTextPart), _Alignof(MsTextPart));
     if (result.len == 0) {
         result.ptr = MS_NEW_N(p->arena, MsTextPart, 1);
         result.ptr[0].lit = (MsStr){"", 0};
         result.len = 1;
     }
-    (void)flush_literal;
     *out = result;
     return true;
 }
@@ -3365,11 +3401,86 @@ static bool is_lower_start(MsStr s) {
     return s.len > 0 && ((s.ptr[0] >= 'a' && s.ptr[0] <= 'z') || s.ptr[0] == '_');
 }
 
+/* The names in `(a, b)` after a variant path, pushed as arm bindings. The `(` is consumed. */
+MS_NODISCARD static bool payload_bindings(Parser *p) {
+    for (;;) {
+        MsToken tok = peek(p);
+        if (!take(p, MS_T_Underscore)) {
+            if (!need(p, MS_T_Name)) return false;
+        }
+        MsArmBinding b = {sym(p, tok), tok.pos};
+        push(p, &b, sizeof b);
+        if (kind(p) == MS_T_LParen) {
+            fail(p, peek(p), LIT("patterns cannot be nested; bind the outer payload, then handle it in a separate match or helper function"));
+            return false;
+        }
+        if (!take(p, MS_T_Comma) || kind(p) == MS_T_RParen) {
+            break;
+        }
+    }
+    return need(p, MS_T_RParen);
+}
+
+/* A variant path, optionally with payload names. A lone lowercase name binds an Optional payload;
+ * the checker tells that from a lowercase variant using the scrutinee's type. */
+MS_NODISCARD static bool variant_pattern(Parser *p, MsToken start, MsExpr **path, bool *bare) {
+    MsExpr *written = NULL;
+    if (!case_path(p, &written)) return false;
+    if (written->kind == MS_E_NAME && str_is(ms_name(p->names, written->u.sym), "some") &&
+        kind(p) == MS_T_LParen && p->speculative == 0) {
+        fail(p, peek(p), LIT("there is no some pattern; write the payload name alone, e.g. 'value:' beside 'none:'"));
+        return false;
+    }
+    if (written->kind == MS_E_NAME && kind(p) != MS_T_LParen) {
+        MsStr n = ms_name(p->names, written->u.sym);
+        if (!str_is(n, "none") && is_lower_start(n)) {
+            MsArmBinding single = {written->u.sym, start.pos};
+            push(p, &single, sizeof single);
+            *bare = true;
+        }
+    }
+    *path = written;
+    if (take(p, MS_T_LParen)) {
+        return payload_bindings(p);
+    }
+    return true;
+}
+
+static bool starts_literal_pattern(const Parser *p) {
+    MsTok k = kind(p);
+    return k == MS_T_Number || k == MS_T_True || k == MS_T_False || k == MS_T_String ||
+           (k == MS_T_Minus && ahead(p, 1).kind == MS_T_Number);
+}
+
+/* One `pattern: body` arm. */
+MS_NODISCARD static bool match_arm(Parser *p, MsArm **out) {
+    MsToken start = peek(p);
+    size_t bindings_start = mark(p);
+    bool bare = false;
+    MsExpr *path = NULL;
+    if (starts_literal_pattern(p)) {
+        if (!expression(p, 0, &path)) return false;
+    } else if (take(p, MS_T_Underscore)) {
+        path = mk_name(p, start.pos, intern(p, "_"));
+    } else if (!variant_pattern(p, start, &path, &bare)) {
+        return false;
+    }
+    MsArm *a = NEW(p, MsArm);
+    a->bindings.ptr = finish(p, bindings_start, &a->bindings.len, sizeof(MsArmBinding), _Alignof(MsArmBinding));
+    a->id = new_id(p);
+    a->pos = start.pos;
+    a->path = path;
+    a->bare = bare;
+    if (!value_arm(p, a)) return false;
+    *out = a;
+    return true;
+}
+
 MS_NODISCARD static bool match_arms(Parser *p, MsToken header, MsExpr *m) {
     if (!need(p, MS_T_Colon)) return false;
     if (!need(p, MS_T_Newline)) return false;
     if (!need(p, MS_T_Indent)) return false;
-    size_t am = mark(p);
+    size_t arms_start = mark(p);
     uint32_t narms = 0;
     for (;;) {
         newlines(p);
@@ -3385,76 +3496,14 @@ MS_NODISCARD static bool match_arms(Parser *p, MsToken header, MsExpr *m) {
             fail_fix(p, prefix, LIT("match arms use bare variant names, e.g. Paid(receipt): or Missing:; remove the legacy 'case' prefix"), LIT(""));
             return false;
         }
-        MsToken start = peek(p);
-        MsTok k = (MsTok)start.kind;
-        bool literal = k == MS_T_Number || k == MS_T_True || k == MS_T_False || k == MS_T_String ||
-                       (k == MS_T_Minus && ahead(p, 1).kind == MS_T_Number);
-        size_t bm = mark(p);
-        bool bare = false;
-        MsExpr *path;
-        MsArmBinding single;
-        bool has_single = false;
-        if (literal) {
-            if (!expression(p, 0, &path)) return false;
-        } else if (take(p, MS_T_Underscore)) {
-            path = mk_name(p, start.pos, intern(p, "_"));
-        } else {
-            MsExpr *written = NULL;
-            if (!case_path(p, &written)) return false;
-            if (written->kind == MS_E_NAME && str_is(ms_name(p->names, written->u.sym), "some") &&
-                kind(p) == MS_T_LParen && p->speculative == 0) {
-                fail(p, peek(p), LIT("there is no some pattern; write the payload name alone, e.g. 'value:' beside 'none:'"));
-                return false;
-            }
-            if (written->kind == MS_E_NAME && kind(p) != MS_T_LParen) {
-                MsStr n = ms_name(p->names, written->u.sym);
-                if (!str_is(n, "none") && is_lower_start(n)) {
-                    /* The checker distinguishes an Optional payload binding from a lowercase
-                     * variant using the scrutinee's type. */
-                    single = (MsArmBinding){written->u.sym, start.pos};
-                    has_single = true;
-                    bare = true;
-                }
-            }
-            path = written;
-            if (has_single) {
-                push(p, &single, sizeof single);
-            }
-            if (take(p, MS_T_LParen)) {
-                for (;;) {
-                    MsToken tok = peek(p);
-                    if (!take(p, MS_T_Underscore)) {
-                        if (!need(p, MS_T_Name)) return false;
-                    }
-                    MsArmBinding b = {sym(p, tok), tok.pos};
-                    push(p, &b, sizeof b);
-                    if (kind(p) == MS_T_LParen) {
-                        fail(p, peek(p), LIT("patterns cannot be nested; bind the outer payload, then handle it in a separate match or helper function"));
-                        return false;
-                    }
-                    if (!take(p, MS_T_Comma)) {
-                        break;
-                    }
-                    if (kind(p) == MS_T_RParen) {
-                        break;
-                    }
-                }
-                if (!need(p, MS_T_RParen)) return false;
-            }
-        }
-        MsArm *a = NEW(p, MsArm);
-        a->bindings.ptr = finish(p, bm, &a->bindings.len, sizeof(MsArmBinding), _Alignof(MsArmBinding));
-        a->id = new_id(p);
-        a->pos = start.pos;
-        a->path = path;
-        a->bare = bare;
-        if (!value_arm(p, a)) return false;
-        push_ptr(p, a);
+        MsArm *arm = NULL;
+        if (!match_arm(p, &arm)) return false;
+        push_ptr(p, arm);
         narms++;
     }
     if (!need(p, MS_T_Dedent)) return false;
-    uint32_t n;
-    MsArm **arms = finish(p, am, &n, sizeof(void *), _Alignof(void *));
+    uint32_t n = 0;
+    MsArm **arms = finish(p, arms_start, &n, sizeof(void *), _Alignof(void *));
     m->u.match.arms.ptr = arms;
     m->u.match.arms.len = n;
     return true;
