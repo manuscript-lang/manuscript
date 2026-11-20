@@ -29,6 +29,14 @@ typedef struct BorrowSet {
     uint32_t len, cap;
 } BorrowSet;
 
+/* What a caller needs of a function: whether its non-copy result is a reference into some of its
+ * parameters (bit i is parameter i), and whether the walk handles it at all. */
+typedef struct OwnSummary {
+    uint32_t borrowed_params;
+    bool usable;
+    bool returns_borrow;
+} OwnSummary;
+
 typedef struct OwnWalk {
     MsCheck *check;
     MsModId module;
@@ -40,6 +48,10 @@ typedef struct OwnWalk {
     uint8_t *class_of;  /* by binding id: MsClass */
     uint32_t *origin;   /* by binding id: what a borrowed binding borrows from, else MS_NONE */
     bool *is_param;     /* by binding id */
+    uint32_t *param_index; /* by binding id: the parameter's position, else MS_NONE */
+    OwnSummary *summaries; /* by declaration node id */
+    uint32_t borrowed_params;
+    bool quiet;         /* a summary round: diagnostics are left to the final pass */
     bool *deferred;     /* by binding id: a part of a parameter that the match or `if` would consume if it moved */
     BorrowSet active;   /* live borrows in push order; a released one has holder MS_NONE */
     uint32_t *pending;  /* holders whose borrows end with the statement */
@@ -55,12 +67,16 @@ typedef struct OwnWalk {
 typedef enum Demand { DEMAND_READ, DEMAND_MOVE } Demand;
 
 static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning);
+static void own_call(OwnWalk *w, const MsExpr *e, Demand demand);
 
 static MsStr own_name(const OwnWalk *w, uint32_t binding) {
     return ms_name(w->check->names, w->facts->bindings.name[binding]);
 }
 
 static void own_error(OwnWalk *w, MsPos pos, MsStr message) {
+    if (w->quiet) {
+        return;
+    }
     const MsModuleRow *row = &w->check->mods[w->module];
     for (uint32_t i = 0; i < row->ndiags; i++) {
         const MsDiag *seen = &row->diags[i].diag;
@@ -85,6 +101,7 @@ static void own_declare(OwnWalk *w, uint32_t binding, Perm perm, bool parameter)
     w->class_of[binding] = (uint8_t)ms_classify(w->classifier, w->facts->bindings.ty[binding]);
     w->origin[binding] = MS_NONE;
     w->is_param[binding] = parameter;
+    w->param_index[binding] = MS_NONE;
     w->deferred[binding] = false;
 }
 
@@ -227,6 +244,11 @@ static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
 }
 
 static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
+    if (w->facts->res_kind[e->id] != MS_RES_BINDING) {
+        /* A module constant: a plain value is read; anything else is left to Rust. */
+        w->supported = w->supported && ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
+        return;
+    }
     const uint32_t binding = w->facts->res_ref[e->id];
     if (demand != DEMAND_MOVE || w->class_of[binding] == MS_CLASS_COPY) {
         own_record(w, e, binding);
@@ -265,8 +287,105 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     case MS_E_LIST:
     case MS_E_MAP:
     case MS_E_LAMBDA:
-    case MS_E_CALL: w->supported = false; return;
+    case MS_E_CALL: own_call(w, e, demand); return;
     case MS_E_MATCH: own_match(w, e, demand, false); return;
+    }
+}
+
+/* ---- calls ---- */
+
+/* The summary of the function a call names, or NULL when the walk cannot reason about it. */
+static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
+    const uint32_t sym = w->facts->call_callee[e->id];
+    const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
+    if (decl == NULL || decl->kind != MS_D_FN) {
+        return NULL;
+    }
+    const OwnSummary *summary = &w->summaries[decl->id];
+    return summary->usable ? summary : NULL;
+}
+
+/* The bindings a call's reference result points into, one per borrowed parameter's argument: a
+ * name gives what it names, a nested borrowing call gives its own. False when a source is a
+ * temporary, which the call's result then owns a copy of. */
+static bool own_call_origins(const OwnWalk *w, const MsExpr *e, uint32_t *out, uint32_t *count) {
+    const OwnSummary *callee = own_callee(w, e);
+    if (callee == NULL || !callee->returns_borrow) {
+        return false;
+    }
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        const MsExpr *arg = e->u.call.args.ptr[i].value;
+        if ((callee->borrowed_params >> i & 1u) == 0) {
+            continue;
+        }
+        if (arg->kind == MS_E_CALL) {
+            if (!own_call_origins(w, arg, out, count)) {
+                return false;
+            }
+        } else if (arg->kind == MS_E_NAME && w->facts->res_kind[arg->id] == MS_RES_BINDING) {
+            const uint32_t root = own_resolve(w, w->facts->res_ref[arg->id]);
+            bool seen = false;
+            for (uint32_t k = 0; k < *count; k++) {
+                seen = seen || out[k] == root;
+            }
+            if (!seen && *count < 4) {
+                out[(*count)++] = root;
+            }
+        } else {
+            return false;
+        }
+    }
+    return *count != 0;
+}
+
+static void own_error_kept_borrow(OwnWalk *w, const MsExpr *e, const uint32_t *origins, uint32_t count) {
+    const MsStr name = ms_name(w->check->names, e->u.call.callee->u.sym);
+    MsStr roots = {0};
+    uint32_t order[4];
+    for (uint32_t i = 0; i < count; i++) {
+        order[i] = origins[i];
+    }
+    for (uint32_t i = 1; i < count; i++) { /* sorted by name, as Rust lists them */
+        for (uint32_t k = i; k > 0; k--) {
+            const MsStr a = own_name(w, order[k - 1]);
+            const MsStr b = own_name(w, order[k]);
+            const size_t n = a.len < b.len ? a.len : b.len;
+            const int c = memcmp(a.ptr, b.ptr, n);
+            if (c > 0 || (c == 0 && a.len > b.len)) {
+                const uint32_t t = order[k];
+                order[k] = order[k - 1];
+                order[k - 1] = t;
+            }
+        }
+    }
+    for (uint32_t i = 0; i < count; i++) {
+        const MsStr part = own_name(w, order[i]);
+        roots = i == 0 ? part
+                       : ms_arena_fmt(&w->check->arena, "%.*s`, `%.*s", (int)roots.len, roots.ptr, (int)part.len, part.ptr);
+    }
+    own_error(w, e->pos,
+              ms_arena_fmt(&w->check->arena,
+                           "`%.*s` returns a reference into `%.*s`, which this position would keep; store `.clone()` of "
+                           "it, or use it in place",
+                           (int)name.len, name.ptr, (int)roots.len, roots.ptr));
+}
+
+/* A call of a function this module declares: each argument is read, since a parameter that is
+ * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
+static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
+    const OwnSummary *callee = own_callee(w, e);
+    if (callee == NULL || e->u.call.callee->kind != MS_E_NAME) {
+        w->supported = false;
+        return;
+    }
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
+    }
+    const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
+    uint32_t origins[4];
+    uint32_t count = 0;
+    if (callee->returns_borrow && !copied && demand == DEMAND_MOVE && own_call_origins(w, e, origins, &count)) {
+        own_error_kept_borrow(w, e, origins, count);
     }
 }
 
@@ -287,9 +406,31 @@ static uint32_t own_borrowed_name(const OwnWalk *w, const MsStmt *s, uint32_t bi
     return same_type && allowed && kept ? source : MS_NONE;
 }
 
+/* `x := f(a)` where `f` returns a reference into `a`: the binding borrows it like a name. */
+static bool own_bind_borrowed_call(OwnWalk *w, const MsStmt *s, uint32_t binding) {
+    const MsExpr *value = s->u.bind.value;
+    const OwnSummary *callee = value->kind == MS_E_CALL ? own_callee(w, value) : NULL;
+    uint32_t origins[4];
+    uint32_t count = 0;
+    if (callee == NULL || !callee->returns_borrow || w->class_of[binding] == MS_CLASS_COPY ||
+        !own_call_origins(w, value, origins, &count)) {
+        return false;
+    }
+    if (s->u.bind.is_mutable || count != 1) {
+        w->supported = false; /* an exclusive borrow, or one that holds several places */
+        return true;
+    }
+    own_expr(w, value, DEMAND_READ);
+    own_declare_borrow(w, binding, origins[0], s->u.bind.pattern->pos, "binding of a part of it");
+    return true;
+}
+
 static void own_bind(OwnWalk *w, const MsStmt *s) {
     const uint32_t binding = w->facts->pattern_binding[s->u.bind.pattern->id];
     own_declare(w, binding, s->u.bind.is_mutable ? PERM_MUTABLE : PERM_IMMUTABLE, false);
+    if (own_bind_borrowed_call(w, s, binding)) {
+        return;
+    }
     const uint32_t source = w->class_of[binding] == MS_CLASS_COPY ? MS_NONE : own_borrowed_name(w, s, binding);
     if (source == MS_NONE) {
         own_expr(w, s->u.bind.value, DEMAND_MOVE);
@@ -324,7 +465,12 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE);
         return;
     }
+    if (e->kind == MS_E_CALL) {
+        const OwnSummary *callee = own_callee(w, e);
+        w->supported = w->supported && callee != NULL && !callee->returns_borrow;
+    }
     if (own_returns_parameter_borrow(w, e)) {
+        w->borrowed_params |= 1u << w->param_index[own_resolve(w, w->facts->res_ref[e->id])];
         w->borrowed_return = w->has_borrowed_return ? w->borrowed_return : e->pos;
         w->has_borrowed_return = true;
         own_expr(w, e, DEMAND_READ);
@@ -583,7 +729,7 @@ static void own_statement(OwnWalk *w, const MsStmt *s) {
     case MS_S_BREAK:
     case MS_S_CONTINUE: return; /* the loop's join covers what the jump skips */
     case MS_S_ASSIGN: own_assign(w, s); return;
-    case MS_S_CALL:
+    case MS_S_CALL: own_expr(w, s->u.expr, DEMAND_READ); return;
     case MS_S_FOR: w->supported = false; return;
     }
 }
@@ -594,6 +740,7 @@ static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const uin
     for (uint32_t i = 0; i < function->params.len; i++) {
         const uint32_t binding = by_node[function->params.ptr[i]->id];
         own_declare(w, binding, PERM_IMMUTABLE, true);
+        w->param_index[binding] = i;
     }
 }
 
@@ -604,6 +751,7 @@ static bool own_function(OwnWalk *w, const MsFunc *function, const uint32_t *by_
     w->pending_base = 0;
     w->ndeclared = 0;
     w->has_borrowed_return = w->has_owned_return = false;
+    w->borrowed_params = 0;
     w->supported = true;
     own_declare_parameters(w, function, by_node);
     for (uint32_t i = 0; i < function->body.len && w->supported; i++) {
@@ -637,6 +785,56 @@ static void own_allocate(OwnWalk *w, MsArena *arena) {
     w->origin = MS_NEW_N(arena, uint32_t, n);
     w->is_param = MS_NEW_N(arena, bool, n);
     w->deferred = MS_NEW_N(arena, bool, n);
+    w->param_index = MS_NEW_N(arena, uint32_t, n);
+    w->summaries = MS_NEW_N(arena, OwnSummary, (size_t)w->facts->node_count + 1);
+    memset(w->summaries, 0, ((size_t)w->facts->node_count + 1) * sizeof *w->summaries);
+}
+
+/* Walks one function and records what its callers need to know. Returns whether the summary
+ * changed. */
+static bool own_summarize(OwnWalk *w, const MsDecl *d, const uint32_t *by_node) {
+    OwnSummary *summary = &w->summaries[d->id];
+    const bool handled = own_function(w, &d->u.fn, by_node) && d->u.fn.params.len < 32;
+    const bool returns_borrow = handled && w->has_borrowed_return && !w->has_owned_return;
+    const uint32_t mask = returns_borrow ? w->borrowed_params : 0;
+    const bool changed = summary->usable != handled || summary->returns_borrow != returns_borrow ||
+                         summary->borrowed_params != mask;
+    *summary = (OwnSummary){.usable = handled, .returns_borrow = returns_borrow, .borrowed_params = mask};
+    return changed;
+}
+
+/* Whether some node is a call of a function: only then does one function's walk depend on another's. */
+static bool own_has_calls(const MsFacts *facts) {
+    for (uint32_t i = 0; i <= facts->node_count; i++) {
+        if (facts->call_callee[i] != MS_NONE && !facts->const_use[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Walks every function whose liveness the pass handles until the summaries stop changing, so a
+ * caller sees what its callees return. Diagnostics wait for the final pass. */
+static void own_summary_rounds(OwnWalk *w, const MsModuleRow *row, const uint32_t *by_node) {
+    enum { MAX_ROUNDS = 12 };
+    w->quiet = true;
+    for (uint32_t round = 0; round < MAX_ROUNDS; round++) {
+        bool changed = false;
+        for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+            const MsDecl *d = row->syntax->decls[i];
+            if (d->kind == MS_D_FN && w->summaries[d->id].usable) {
+                changed = own_summarize(w, d, by_node) || changed;
+            }
+        }
+        if (!changed) {
+            w->quiet = false;
+            return;
+        }
+    }
+    for (uint32_t i = 0; i < row->syntax->ndecls; i++) { /* no fixpoint: leave every function to Rust */
+        w->summaries[row->syntax->decls[i]->id].usable = false;
+    }
+    w->quiet = false;
 }
 
 void ms_module_check_ownership(MsCheck *c, MsModId module) {
@@ -653,11 +851,17 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
     const uint32_t *by_node = own_bindings_by_node(facts, &scratch);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        if (d->kind != MS_D_FN || !facts->body_checked[d->id]) {
-            continue;
+        const bool claimed = d->kind == MS_D_FN && facts->body_checked[d->id];
+        w.summaries[d->id].usable = claimed && ms_liveness_function(&live, facts, &d->u.fn);
+    }
+    if (own_has_calls(facts)) {
+        own_summary_rounds(&w, row, by_node);
+    }
+    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        if (d->kind == MS_D_FN && facts->body_checked[d->id]) {
+            facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, &d->u.fn, by_node);
         }
-        const bool handled = ms_liveness_function(&live, facts, &d->u.fn) && own_function(&w, &d->u.fn, by_node);
-        facts->body_checked[d->id] = handled;
     }
     free(w.active.items);
     free(w.declared);
