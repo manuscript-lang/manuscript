@@ -10,7 +10,14 @@ static void add(char *reason, size_t cap, size_t *n, const char *text) {
     if (cap) reason[*n < cap ? *n : cap - 1] = 0;
 }
 
-int ms_ws_parse_head(const ms_ws_state *s, const uint8_t *buf, size_t len, ms_ws_head *out, char *reason, size_t cap) {
+/* Bytes of extended payload length that follow the two-byte head for this 7-bit length field. */
+static size_t extended_length_bytes(uint64_t shortlen) {
+    if (shortlen == 126) return 2;
+    if (shortlen == 127) return 8;
+    return 0;
+}
+
+int ms_ws_parse_head(const MsWsState *s, const uint8_t *buf, size_t len, MsWsHead *out, char *reason, size_t cap) {
     if (cap) reason[0] = 0;
     if (len < 2) return MS_WS_PARTIAL;
     uint8_t b0 = buf[0], b1 = buf[1];
@@ -38,7 +45,7 @@ int ms_ws_parse_head(const ms_ws_state *s, const uint8_t *buf, size_t len, ms_ws
     if ((masked != 0) != (s->server != 0)) add(reason, cap, &n, "bad MASK");
     if (n) return MS_WS_BAD;
 
-    size_t ext = shortlen == 126 ? 2 : shortlen == 127 ? 8 : 0;
+    size_t ext = extended_length_bytes(shortlen);
     size_t total = 2 + ext + (masked ? 4 : 0);
     if (len < total) return MS_WS_PARTIAL;
     uint64_t length = shortlen;
@@ -61,7 +68,7 @@ int ms_ws_parse_head(const ms_ws_state *s, const uint8_t *buf, size_t len, ms_ws
     return MS_WS_OK;
 }
 
-void ms_ws_after_head(ms_ws_state *s, const ms_ws_head *h) {
+void ms_ws_after_head(MsWsState *s, const MsWsHead *h) {
     if (h->opcode == MS_WS_TEXT || h->opcode == MS_WS_BINARY || h->opcode == MS_WS_CONT) s->fragmenting = !h->fin;
 }
 

@@ -9,7 +9,7 @@ mkdir -p "$out"
 flags="-std=gnu11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include -Iruntime/std"
 for t in runtime/tests/core_*.c; do
     name=$(basename "$t" .c)
-    cc $flags -DMS_ALLOC_STATS -Iruntime/core "$t" runtime/core/*.c runtime/sys/posix/*.c runtime/tests/support/*.c \
+    cc $flags -DMS_ALLOC_STATS -Iruntime/core -Iruntime/tests/support "$t" runtime/core/*.c runtime/sys/posix/*.c runtime/tests/support/*.c \
         -lm -lpthread -o "$out/$name"
     "$out/$name"
 done
@@ -35,3 +35,7 @@ platform=$(uname -s | tr '[:upper:]' '[:lower:]')
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include \
     runtime/tests/sys_net_test.c "runtime/sys/$platform/net.c" -o "$out/sys_net_test"
 "$out/sys_net_test"
+# The completion ring has no dependency but the C library.
+cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
+    runtime/tests/io_ring_test.c runtime/io/ring.c -o "$out/io_ring_test"
+"$out/io_ring_test"

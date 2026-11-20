@@ -73,7 +73,7 @@ const uint16_t msalloc_class_size[NUM_CLASSES] = {
 };
 
 /* size / 16 (rounded up) -> class index, for sizes 1..=2048. */
-static const uint8_t LOOKUP[129] = {
+static const uint8_t class_lookup[129] = {
     0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  8,  9,  9,  10, 10, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13,
     14, 14, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 18,
     18, 18, 18, 18, 18, 18, 18, 19, 19, 19, 19, 19, 19, 19, 19, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
@@ -109,7 +109,7 @@ static inline size_t large_class_down(size_t usable) {
 }
 
 static inline size_t class_of(size_t size) {
-    return LOOKUP[(size + 15) / 16];
+    return class_lookup[(size + 15) / 16];
 }
 
 /* A lock that never allocates; the critical sections are a few loads and stores, so a spin with a yield
@@ -174,13 +174,15 @@ static _Thread_local State st = STATE_INIT;
  * ownership test reads is in one object so it costs one address load. */
 static struct {
     _Atomic uintptr_t base;
+    _Atomic(char *) pages_start; /* the same address as `base`, for pointer arithmetic */
     _Atomic(uint32_t *) table;
     _Atomic uintptr_t grow_base;
+    _Atomic(char *) grow_start; /* the same address as `grow_base`, for pointer arithmetic */
     /* Bytes of address space the page reservation actually got. */
     _Atomic size_t pages_len;
     /* log2 of the size of one growth chunk, halved along with the pages. */
     _Atomic size_t grow_bits;
-} hot = {UNMAPPED, 0, UNMAPPED, PAGES_SIZE, 30};
+} hot = {UNMAPPED, NULL, NULL, UNMAPPED, NULL, PAGES_SIZE, 30};
 
 static Lock region_lock = LOCK_INIT;
 static bool region_done;
@@ -224,8 +226,8 @@ static inline size_t grow_size(void) {
     return (size_t)1 << atomic_load_explicit(&hot.grow_bits, memory_order_relaxed);
 }
 
-static inline uintptr_t grow_base(size_t chunk) {
-    return atomic_load_explicit(&hot.grow_base, memory_order_relaxed) + chunk * grow_size();
+static inline char *grow_base(size_t chunk) {
+    return atomic_load_explicit(&hot.grow_start, memory_order_relaxed) + chunk * grow_size();
 }
 
 static inline void *link_next(void *p) {
@@ -261,7 +263,10 @@ int64_t msalloc_live_blocks(void) {
     return st.live;
 }
 #else
-#define live_add(s, delta) ((void)0)
+static inline void live_add(State *state, int64_t delta) {
+    (void)state;
+    (void)delta;
+}
 #endif
 
 /* ---- shared cache of large blocks ---- */
@@ -305,9 +310,9 @@ uint8_t msrt_heap_shared_put(void *p) {
 
 /* ---- the reservation ---- */
 
-bool msalloc_reserve(void *(*map)(size_t), void (*unmap)(void *, size_t), msalloc_region *out) {
+bool msalloc_reserve(void *(*map)(size_t), void (*unmap)(void *, size_t), MsAllocRegion *out) {
     unsigned fit = 0;
-    msalloc_region r;
+    MsAllocRegion r;
     bool found = false;
     for (unsigned shrink = 0; shrink <= MAX_SHRINK && !found; shrink++) {
         size_t pages_bytes = PAGES_SIZE >> shrink;
@@ -316,7 +321,7 @@ bool msalloc_reserve(void *(*map)(size_t), void (*unmap)(void *, size_t), msallo
         size_t table_len = (pages_bytes >> PAGE_SHIFT) * 4;
         void *pages = map(pages_bytes), *table = map(table_len), *grow = map(glen);
         if (pages && table && grow && ms_sys_commit(table, table_len)) {
-            r = (msalloc_region){pages, pages_bytes, table, grow, glen, (size_t)log2_floor(gsize)};
+            r = (MsAllocRegion){pages, pages_bytes, table, grow, glen, log2_floor(gsize)};
             fit = shrink;
             found = true;
             break;
@@ -344,7 +349,7 @@ bool msalloc_reserve(void *(*map)(size_t), void (*unmap)(void *, size_t), msallo
         size_t table_len = (pages_bytes >> PAGE_SHIFT) * 4;
         void *pages = map(pages_bytes), *table = map(table_len), *grow = map(glen);
         if (pages && table && grow && ms_sys_commit(table, table_len)) {
-            *out = (msalloc_region){pages, pages_bytes, table, grow, glen, (size_t)log2_floor(gsize)};
+            *out = (MsAllocRegion){pages, pages_bytes, table, grow, glen, log2_floor(gsize)};
             return true;
         }
         if (pages) unmap(pages, pages_bytes);
@@ -359,7 +364,7 @@ COLD static bool ensure_region(void) {
     lock(&region_lock);
     if (!region_done) {
         region_done = true;
-        msalloc_region r;
+        MsAllocRegion r;
         if (msalloc_reserve(ms_sys_map_anon, ms_sys_unmap, &r)) {
             /* Huge pages only past the first few MiB: the kernel clears a whole 2 MiB page on the first
              * touch, which costs a short program about 0.35 ms at start-up for memory it never uses. */
@@ -373,6 +378,8 @@ COLD static bool ensure_region(void) {
             atomic_store_explicit(&hot.grow_bits, r.grow_bits, memory_order_relaxed);
             atomic_store_explicit(&hot.table, (uint32_t *)r.table, memory_order_relaxed);
             atomic_store_explicit(&hot.grow_base, (uintptr_t)r.grow, memory_order_relaxed);
+            atomic_store_explicit(&hot.grow_start, (char *)r.grow, memory_order_relaxed);
+            atomic_store_explicit(&hot.pages_start, (char *)r.pages, memory_order_relaxed);
             /* Published last: a reader that sees base sees the rest. */
             atomic_store_explicit(&hot.base, (uintptr_t)r.pages, memory_order_release);
         }
@@ -485,7 +492,7 @@ COLD static void *refill(State *s, size_t c) {
         atomic_store_explicit(&next_page, num_pages(), memory_order_relaxed);
         return 0;
     }
-    uintptr_t base = atomic_load_explicit(&hot.base, memory_order_relaxed);
+    char *base = atomic_load_explicit(&hot.pages_start, memory_order_relaxed);
     size_t used = (page + 1) * PAGE_SIZE;
     if (used > atomic_load_explicit(&committed, memory_order_acquire)) {
         lock(&commit_lock);
@@ -494,7 +501,7 @@ COLD static void *refill(State *s, size_t c) {
             size_t step = used - have > COMMIT_STEP ? used - have : COMMIT_STEP;
             size_t room = pages_len() - have;
             size_t chunk = step < room ? step : room;
-            if (!ms_sys_commit((void *)(base + have), chunk)) {
+            if (!ms_sys_commit(base + have, chunk)) {
                 unlock(&commit_lock);
                 return 0;
             }
@@ -503,7 +510,7 @@ COLD static void *refill(State *s, size_t c) {
         unlock(&commit_lock);
     }
     atomic_load_explicit(&hot.table, memory_order_relaxed)[page] = (s->heap << OWNER_SHIFT) | (uint32_t)c;
-    char *start = (char *)(base + page * PAGE_SIZE);
+    char *start = base + page * PAGE_SIZE;
     size_t size = msalloc_class_size[c];
     s->bump_end[c] = start + PAGE_SIZE / size * size;
     s->bump[c] = start;
@@ -578,10 +585,11 @@ void *msrt_alloc(size_t size) {
 /* Asks for huge pages over the whole 2 MiB units inside a block the system allocator mapped: a block above
  * LARGE_MAX is a big list or buffer whose first touch otherwise costs one page fault per 4 KiB. */
 static void advise_huge(void *p, size_t len) {
-    uintptr_t start = ((uintptr_t)p + HUGE_PAGE - 1) & ~(uintptr_t)(HUGE_PAGE - 1);
-    uintptr_t end = ((uintptr_t)p + len) & ~(uintptr_t)(HUGE_PAGE - 1);
+    const uintptr_t address = (uintptr_t)p;
+    const uintptr_t start = (address + HUGE_PAGE - 1) & ~(uintptr_t)(HUGE_PAGE - 1);
+    const uintptr_t end = (address + len) & ~(uintptr_t)(HUGE_PAGE - 1);
     if (end > start) {
-        ms_sys_prefer_huge_pages((void *)start, end - start);
+        ms_sys_prefer_huge_pages((char *)p + (start - address), end - start);
     }
 }
 
@@ -670,7 +678,7 @@ static void free_large(State *s, void *p) {
  * unless there are many and the chunk is this heap's. */
 static void grow_release(State *s, size_t chunk) {
     if (chunk == s->grow_chunk && s->grow_committed > GROW_KEEP) {
-        ms_sys_release((void *)grow_base(chunk), s->grow_committed);
+        ms_sys_release(grow_base(chunk), s->grow_committed);
         s->grow_committed = 0;
     }
     atomic_store_explicit(&grow_len[chunk], 0, memory_order_release);
@@ -684,7 +692,6 @@ void msrt_free(void *p) {
     State *s = &st;
     live_add(s, -1);
     uint32_t word;
-    size_t chunk;
     if (page_word(p, &word)) {
         size_t c = (uint8_t)word;
         uint32_t owner = word >> OWNER_SHIFT;
@@ -698,8 +705,8 @@ void msrt_free(void *p) {
         } else {
             remote_free(owner, p);
         }
-    } else if ((chunk = grow_chunk_of(p)) < GROW_CHUNKS) {
-        grow_release(s, chunk);
+    } else if (grow_chunk_of(p) < GROW_CHUNKS) {
+        grow_release(s, grow_chunk_of(p));
     } else {
         /* Not a block of the reservation, so it came from the system allocator. */
         free_large(s, p);
@@ -756,7 +763,7 @@ static bool grow_commit(State *s, size_t len) {
         if (to > grow_size()) {
             to = grow_size();
         }
-        if (!ms_sys_commit((void *)(grow_base(s->grow_chunk) + s->grow_committed), to - s->grow_committed)) {
+        if (!ms_sys_commit(grow_base(s->grow_chunk) + s->grow_committed, to - s->grow_committed)) {
             return false;
         }
         s->grow_committed = to;
@@ -774,7 +781,7 @@ static void *grow_take(State *s, size_t size) {
     }
     atomic_store_explicit(&grow_len[s->grow_chunk], size, memory_order_release);
     live_add(s, 1);
-    return (void *)grow_base(s->grow_chunk);
+    return grow_base(s->grow_chunk);
 }
 
 /* Resizes the block in this heap's growth chunk: in place while it stays big, otherwise out of it. */

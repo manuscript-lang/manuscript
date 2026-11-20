@@ -5,7 +5,7 @@
 set -eu
 out=target/c-compiler
 mkdir -p "$out"
-cflags="-std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Wno-format-truncation -Icompiler/include"
+cflags="-std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Wno-format-truncation -Icompiler/include -Iruntime/include"
 cc $cflags compiler/src/libms.c compiler/src/driver.c compiler/tests/driver_test.c -o "$out/driver_test"
 "$out/driver_test"
 cc $cflags compiler/src/libms.c compiler/src/driver.c compiler/tools/ms.c -o "$out/ms"

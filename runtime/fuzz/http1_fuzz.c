@@ -9,8 +9,8 @@
 #define REQUIRE(c) do { if (!(c)) abort(); } while (0)
 
 static void check_parse(const char *text, size_t len, size_t limit, uint32_t cap) {
-    ms_h1_field *fields = malloc((cap ? cap : 1) * sizeof *fields);
-    ms_h1_request r;
+    MsH1Field *fields = malloc((cap ? cap : 1) * sizeof *fields);
+    MsH1Request r;
     memset(&r, 0, sizeof r);
     r.fields = fields;
     int rc = ms_h1_parse_request(text, len, limit, &r, cap);
@@ -23,7 +23,7 @@ static void check_parse(const char *text, size_t len, size_t limit, uint32_t cap
             REQUIRE((uint64_t)fields[i].value.off + fields[i].value.len <= r.head_len);
         }
         /* the head alone parses to the same head: a request does not depend on bytes after it */
-        ms_h1_request again;
+        MsH1Request again;
         memset(&again, 0, sizeof again);
         again.fields = fields;
         char *exact = malloc(r.head_len ? r.head_len : 1);

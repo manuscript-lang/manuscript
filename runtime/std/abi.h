@@ -8,9 +8,9 @@
 
 #include "ms_rt/string.h"
 
-typedef ms_str msrt_str;
-typedef ms_vec msrt_vec;
-typedef ms_obj msrt_obj;
+typedef MsStr msrt_str;
+typedef MsVec msrt_vec;
+typedef MsObj msrt_obj;
 
 enum {
     STATUS_OK = 0,

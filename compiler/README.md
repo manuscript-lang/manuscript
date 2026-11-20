@@ -1,12 +1,10 @@
 # compiler
 
-`libms`, the Manuscript compiler as a C library, replacing the Rust crates one stage at a time. Plan: [plan section 5, "Compiler"](../proposals/c-runtime.md) and the workstream list in the project files. This folder holds the MIR (below) and the front end so far: the lexer with the layout rules (`src/lex.c`), the syntax tree (`include/ms/ast.h`) and the parser (`src/parse.c`). Editor recovery (`partial.rs`), the formatter and diagnostic codes are not ported yet.
-
-`libms`, the Manuscript compiler as a C library, replacing the Rust crates one stage at a time. Plan: [plan section 5, "Compiler"](../proposals/c-runtime.md) and the workstream list in the project files. This folder holds the front end (the lexer with the layout rules `src/lex.c`, the syntax tree `include/ms/ast.h`, the parser `src/parse.c`) and the start of the checker: the tables every pass reads (`types.c`, `tables.c`) and the standard-library loader (`stdlib.c`). Editor recovery (`partial.rs`), the formatter and diagnostic codes are not ported yet.
+`libms`, the Manuscript compiler as a C library, replacing the Rust crates one stage at a time. Plan: [plan section 5, "Compiler"](../proposals/c-runtime.md) and the workstream list in the project files. This folder holds the MIR (below), the front end (the lexer with the layout rules `src/lex.c`, the syntax tree `include/ms/ast.h`, the parser `src/parse.c`, diagnostic codes `src/diag.c`, editor recovery `src/partial.c`) and the start of the checker: the tables every pass reads (`types.c`, `tables.c`) and the standard-library loader (`stdlib.c`). The formatter is written in Manuscript over this library.
 
 ```
 compiler/
-  include/ms/   public headers: libms.h (entry points and the stage table), driver.h, base.h (arena, names, diagnostics), token.h, lex.h, ast.h, parse.h, types.h, tables.h, stdlib.h, dump.h
+  include/ms/   public headers: libms.h (entry points and the stage table), driver.h, base.h (arena, names, diagnostics), token.h, lex.h, ast.h, parse.h, diag.h, types.h, tables.h, stdlib.h, dump.h
   src/          one file per stage; libms.c includes them all, and building that one file builds the library
   tools/        ms (the thin executable over the driver), ms_syntax_dump: prints tokens and trees for the comparison below
   tests/        syntax-diff.sh, mutate.c, driver-test.sh, check-diff.sh, types_test.c
