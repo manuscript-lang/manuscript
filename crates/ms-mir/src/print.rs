@@ -316,9 +316,15 @@ fn print_module_text(m: &Module) -> String {
             })
             .collect();
         let attr = a.std.name().map(|n| format!(" {n}")).unwrap_or_default();
+        // The cases a borrowing variant holds as borrows (a bit per case).
+        let borrowed = if a.borrowed == 0 {
+            String::new()
+        } else {
+            format!(" borrowed {}", a.borrowed)
+        };
         let _ = writeln!(
             o,
-            "alt {} {{ {} }}{attr}",
+            "alt {}{borrowed} {{ {} }}{attr}",
             alt_label(m, ai),
             cases.join(", ")
         );
