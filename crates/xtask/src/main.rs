@@ -10,7 +10,7 @@
 #[path = "../../../runtime/build_c.rs"]
 mod build_c;
 
-use build_c::{CRuntime, archiver, c_compiler, compile_c_objects, plan_c_runtime};
+use build_c::{CRuntime, archiver, build_c_runtime, c_compiler};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
@@ -416,7 +416,7 @@ fn check_c_abi(
     }
     for header in read_dir("runtime/include/ms_rt", "h")? {
         let module = header.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        if !["base", "safe"].contains(&module)
+        if !["base", "safe", "chars"].contains(&module)
             && !root.join(format!("runtime/symbols/{module}.txt")).exists()
         {
             return Err(format!(
@@ -795,12 +795,8 @@ fn build_archive(
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    let plan = plan_c_runtime(root, triple)?;
-    if plan.has_std_source(root, "crypto.c") {
-        // `ms-native` then leaves the Rust `ms-std-crypto` out: `runtime/std/crypto*.c` define every `msstd_crypto_*`.
-        command.env("MS_C_CRYPTO", "1");
-    }
-    if plan.has_reactor(root) {
+    let plan = build_c_runtime(root, target, triple)?;
+    if plan.has_reactor() {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
     }
@@ -830,8 +826,7 @@ fn build_archive(
     Ok(archive)
 }
 
-/// Compiles the planned C sources for `triple` and adds the objects, and every member of the libraries they
-/// use, to `archive`.
+/// Adds the C objects the CMake build made for `triple`, and every member of the libraries they use, to `archive`.
 fn add_c_runtime(
     root: &Path,
     target: &Path,
@@ -839,7 +834,7 @@ fn add_c_runtime(
     plan: &CRuntime,
     archive: &Path,
 ) -> Result<(), String> {
-    let files = compile_c_objects(root, target, triple, plan)?;
+    let files = &plan.objects;
     if files.is_empty() {
         return Ok(());
     }
@@ -857,7 +852,7 @@ fn add_c_runtime(
             .map_err(|e| format!("write {}: {e}", list.display()))?;
         command.arg(format!("@{}", list.display()));
     } else {
-        command.args(&files);
+        command.args(files);
     }
     let status = command
         .status()

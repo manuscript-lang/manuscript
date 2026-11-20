@@ -14,3 +14,13 @@ unsigned long __isoc23_strtoul(const char *s, char **end, int base) { return str
 
 /* glibc before 2.34 keeps `atexit` in libc_nonshared.a, which programs do not link. */
 int atexit(void (*function)(void)) { return __cxa_atexit((void (*)(void *))function, NULL, NULL); }
+
+#if defined(__aarch64__)
+/* glibc before 2.34 keeps `pthread_atfork` in libpthread_nonshared.a, and the aarch64 stubs export only the
+ * `__register_atfork` it calls (x86-64 stubs export `pthread_atfork` itself). A program is never dlclosed, so
+ * the handle is null. libuv registers its fork handlers with it. */
+int __register_atfork(void (*)(void), void (*)(void), void (*)(void), void *);
+int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void)) {
+    return __register_atfork(prepare, parent, child, NULL);
+}
+#endif

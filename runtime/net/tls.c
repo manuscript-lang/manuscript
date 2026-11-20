@@ -3,6 +3,7 @@
 #include <openssl/ssl.h>
 #include <openssl/x509_vfy.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -132,7 +133,7 @@ static int classify(MsTls *t, int rc) {
     if (e == SSL_ERROR_WANT_READ || e == SSL_ERROR_WANT_WRITE) return MS_TLS_WANT_IO;
     if (e == SSL_ERROR_ZERO_RETURN) return MS_TLS_CLOSED;
     note(t);
-    if (!t->err[0]) strcpy(t->err, "TLS I/O error");
+    if (!t->err[0]) (void)snprintf(t->err, sizeof t->err, "%s", "TLS I/O error");
     return MS_TLS_ERROR;
 }
 

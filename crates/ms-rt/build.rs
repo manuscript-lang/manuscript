@@ -2,7 +2,7 @@
 //! and links the objects built from `runtime/**/*.c`; every symbol named in a `runtime/symbols/<module>.txt`
 //! then gets the cfg `ms_c = "<symbol>"`, which compiles its Rust definition out. Without the
 //! variable (unit tests, clippy) the Rust definitions stay, and this script compiles the C itself
-//! (`runtime/build_c.rs`, the code `cargo xtask runtime` uses, no `cc` crate) into `libms_c.a` and links it after
+//! (`runtime/build_c.rs`, the code `cargo xtask runtime` uses: CMake and Ninja, no `cc` crate) into `libms_c.a` and links it after
 //! the Rust code: a symbol whose Rust body was deleted is then defined by its C object, while one Rust still defines
 //! never pulls that object in.
 
@@ -60,11 +60,14 @@ fn link_c_runtime(root: &std::path::Path) {
             root.join("runtime").join(dir).display()
         );
     }
-    println!("cargo::rerun-if-env-changed=MS_C_REGEX");
+    println!(
+        "cargo::rerun-if-changed={}",
+        root.join("CMakeLists.txt").display()
+    );
+    println!("cargo::rerun-if-changed={}", root.join("cmake").display());
     let out = std::path::PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
-    let plan = build_c::plan_c_runtime(root, None).expect("plan the C runtime");
-    let objects =
-        build_c::compile_c_objects(root, &out, None, &plan).expect("compile the C runtime");
+    let plan = build_c::build_c_runtime(root, &out, None).expect("build the C runtime");
+    let objects = plan.objects;
     let archive = out.join(if cfg!(windows) {
         "ms_c.lib"
     } else {

@@ -1,17 +1,17 @@
 fn some(x: Int) Int:
-    return x
+	return x
 
 type List:
-    n: Int
+	n: Int
 
 type Int:
-    n: Int
+	n: Int
 
 fn print(x: String) Void:
-    return
+	return
 
 fn helper() Void:
-    return
+	return
 
 fn helper() Void:
-    return
+	return

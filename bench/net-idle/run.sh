@@ -10,16 +10,26 @@ mkdir -p "$out"
 # shellcheck disable=SC2046
 cc -std=gnu11 -O2 -Wall -Wextra -Iruntime/include -Iruntime/third_party/llhttp/include $(sh $libs cflags) \
     bench/net-idle/server.c runtime/sys/linux/net.c runtime/io/ring.c runtime/net/conn.c runtime/net/http1.c \
-    runtime/net/ws.c $(sh $libs libs uv crypto llhttp) -o "$out/server"
+    runtime/net/ws.c runtime/net/tls.c $(sh $libs libs uv ssl crypto llhttp) -o "$out/server"
 ulimit -n 20000 2>/dev/null || true
-for mode in ws http; do
+# shellcheck disable=SC2046
+cc -std=gnu11 -O1 -Wall $(pkg-config --cflags openssl) bench/net-idle/tls_memory.c runtime/net/tls.c \
+    $(pkg-config --libs openssl) -o "$out/tls_memory"
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 1 -subj /CN=localhost \
+    -keyout "$out/key.pem" -out "$out/cert.pem" 2>/dev/null
+# Each row: the client mode, then "tls" when the server and client speak TLS (a server given a certificate).
+for mode in "ws" "http" "ws tls" "http tls"; do
     for count in 2000 8000; do
         port=$((20000 + count / 100))
-        "$out/server" "$port" $((count + 10)) > "$out/ready" &
+        case "$mode" in *tls) certificate="$out/cert.pem $out/key.pem" ;; *) certificate= ;; esac
+        # shellcheck disable=SC2086
+        "$out/server" "$port" $((count + 10)) $certificate > "$out/ready" &
         server=$!
         while ! grep -q ready "$out/ready" 2>/dev/null; do sleep 0.1; done
-        python3 bench/net-idle/client.py "$port" "$server" "$count" "$mode"
+        # shellcheck disable=SC2086
+        python3 bench/net-idle/client.py "$port" "$server" "$count" $mode
         kill "$server"; wait "$server" 2>/dev/null || true
         rm -f "$out/ready"
     done
 done
+"$out/tls_memory" "$out/cert.pem" "$out/key.pem"

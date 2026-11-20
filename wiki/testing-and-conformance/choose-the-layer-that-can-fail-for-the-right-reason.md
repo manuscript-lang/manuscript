@@ -2,7 +2,7 @@
 
 # Choose the layer that can fail for the right reason
 
-Verified: the layers are Rust unit and integration tests per crate (`cargo nextest run --workspace`); the frozen conformance corpus in `tests/conformance/fixtures` (run, check, test, parse phases, gated by `make conform`); the former end-to-end fixtures, now corpus fixtures under `tests/conformance/fixtures/e2e/` (`accept` and `stdlib` as `test`, `reject` as `check`, multi-file `projects`), so `ms-conform` is the only runner for `.ms` behavior and a Rust test that only runs a program and compares output belongs there as a `run` fixture; and documentation fences checked by `make docs-check`.
+Verified: the layers are Rust unit and integration tests per crate (`cargo nextest run --workspace`); the frozen conformance corpus in `tests/conformance/fixtures` (run, check, test, parse phases, gated by `make conform`); the former end-to-end fixtures, now corpus fixtures under `tests/conformance/fixtures/e2e/` (`accept` and `stdlib` as `test`, `reject` as `check`, multi-file `projects`), so `tools/conform-run.ms` is the only runner for `.ms` behavior and a Rust test that only runs a program and compares output belongs there as a `run` fixture; and documentation fences checked by `make docs-check`.
 
 Apply when: deciding where a regression test belongs.
 Evidence: [conformance corpus](../../tests/conformance/README.md), [development checks](../../documentation/contributing/development.md), [Makefile](../../Makefile).

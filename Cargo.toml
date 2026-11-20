@@ -8,7 +8,6 @@ default-members = [
     "crates/ms-cli",
     "crates/ms-clif",
     "crates/ms-mir-llvm",
-    "crates/ms-conform",
     "crates/ms-build",
     "crates/ms-driver",
     "crates/ms-json",
@@ -16,7 +15,6 @@ default-members = [
     "crates/ms-lsp",
     "crates/ms-mir",
     "crates/ms-mir-llvm",
-    "crates/ms-repo-check",
     "crates/ms-rt",
     "crates/ms-rt-abi",
     "crates/ms-syntax",
@@ -71,8 +69,6 @@ opt-level = 2
 # caches the build cost. Programs the `ms` binary compiles are no faster for it (measured on yaml, regex, bigint).
 [profile.dev.package.ms-std-core]
 opt-level = 2
-[profile.dev.package.ms-std-crypto]
-opt-level = 2
 [profile.dev.package.ms-std-bigint]
 opt-level = 2
 [profile.dev.package.ms-std-archive]
@@ -83,31 +79,7 @@ opt-level = 2
 opt-level = 2
 
 # The RustCrypto crates behind @std/crypto, for the same tests.
-[profile.dev.package.crypto-bigint]
-opt-level = 2
-[profile.dev.package.rsa]
-opt-level = 2
-[profile.dev.package.p256]
-opt-level = 2
-[profile.dev.package.p384]
-opt-level = 2
-[profile.dev.package.p521]
-opt-level = 2
-[profile.dev.package.primeorder]
-opt-level = 2
-[profile.dev.package.ed25519-dalek]
-opt-level = 2
-[profile.dev.package.curve25519-dalek]
-opt-level = 2
 [profile.dev.package.sha2]
-opt-level = 2
-[profile.dev.package.sha3]
-opt-level = 2
-[profile.dev.package.aes]
-opt-level = 2
-[profile.dev.package.ghash]
-opt-level = 2
-[profile.dev.package.polyval]
 opt-level = 2
 
 # The ms-cli build script gzips the two runtime archives (about 45 MB each). Build dependencies are

@@ -256,7 +256,7 @@ runs:
       shell: bash
       run: |
         cargo build --profile checked --locked -p ms-cli
-        target/debug/ms-conform run --ms target/checked/ms --phase run,test --exclude-tag aliasing \
+        target/debug/ms run tools/conform-run.ms -- run --ms target/checked/ms --phase run,test --exclude-tag aliasing \
           --expect-fail tests/conformance/expect-fail.txt --strict --quiet
     - name: LLVM backend size, build time and kernel times against Cranelift
       if: env.GATES == 'true'

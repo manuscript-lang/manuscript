@@ -166,14 +166,26 @@ typedef enum MirInline { MINL_AUTO, MINL_ALWAYS, MINL_NEVER } MirInline;
 typedef enum MirFuncKind { MFK_NORMAL, MFK_CLOSURE, MFK_METHOD } MirFuncKind;
 typedef enum MirSort { MSORT_NONE, MSORT_GENERIC, MSORT_SPECIALIZED } MirSort;
 
+typedef struct MirCaptureCloser { uint32_t capture, func; } MirCaptureCloser;
+
 typedef struct MirFunc {
     MsSym name;
     MirParam *params;
     uint32_t nparams;
     MirTy ret;
     bool ret_borrowed, ret_view;
+    /* Set by passes, not in the text form: a function made only to run while a cancellation
+     * unwinds; one that leaves a cancel by its own explicit exits; one whose lists are raw slot
+     * copies (they own no elements). */
+    bool unwind_only, explicit_cancel, raw_scratch;
+    /* Set by lowering, not in the text form: a closure function whose environment owns
+     * resources lists the capture index and the function that closes it; a cleanup thunk that
+     * closes a value in place names the type of that value. */
+    MirCaptureCloser *capture_closers;
+    uint32_t ncapture_closers;
+    bool has_slot_close;
+    MirTy slot_close;
     bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
-    bool raw_scratch; /* a generated sort: its scratch lists hold slots as bits and own nothing (not in the text form) */
     uint8_t linkage, kind, inline_hint, sort;
     MirTy *captures; /* MFK_CLOSURE */
     uint32_t ncaptures;

@@ -9,7 +9,7 @@ out=target/c-compiler/mir-pass
 mkdir -p "$out"
 fuzz=${MS_MIR_FUZZ:-600}
 seed=${MS_FUZZ_SEED:-1}
-PASSES="exit_drops expand expand-nochecks"
+PASSES=${MS_MIR_PASSES:-"exit_drops expand expand-nochecks expand_owned cancel_edges glue glue_expand"}
 
 cargo build --release --locked -p ms-mir --example c_pass_oracle
 oracle=target/release/examples/c_pass_oracle

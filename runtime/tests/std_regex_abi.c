@@ -1,5 +1,5 @@
 /* The @std/regex natives against a fake of the runtime's list functions: results, budgets and errors. */
-#include "../std/regex_abi.h"
+#include "ms_rt/regex.h"
 #include "fake_rt.h"
 #include "../std/regex.h"
 
