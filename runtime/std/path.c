@@ -12,6 +12,7 @@
 #include "ms_rt/base.h"
 #include "ms_rt/path.h"
 #include "ms_rt/safe.h"
+#include "ms_rt/chars.h"
 
 #include <string.h>
 
@@ -258,10 +259,6 @@ typedef struct MsRangeSpec {
     size_t width; /* zero padding, 0 for none */
 } MsRangeSpec;
 
-static bool is_letter(uint8_t byte) {
-    return (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z');
-}
-
 /* Reads the endpoints of a range from its `..` separated fields (two or three). */
 static bool parse_range(const MsFields *fields, MsRangeSpec *spec) {
     MsBytes first = fields->items[0];
@@ -275,7 +272,7 @@ static bool parse_range(const MsFields *fields, MsRangeSpec *spec) {
         spec->step = step < 0 ? 0 - (uint64_t)step : (uint64_t)step;
     }
     if (!parse_integer(first, &spec->low) || !parse_integer(second, &spec->high)) {
-        if (first.len != 1 || second.len != 1 || !is_letter(first.ptr[0]) || !is_letter(second.ptr[0])) {
+        if (first.len != 1 || second.len != 1 || !ms_ascii_is_alpha(first.ptr[0]) || !ms_ascii_is_alpha(second.ptr[0])) {
             return false;
         }
         spec->low = first.ptr[0];
@@ -1023,7 +1020,7 @@ static bool decode_text(MsBytes text, uint32_t **chars, size_t *count) {
         uint32_t c = width == 1 ? lead : (uint32_t)(lead & (0xFFu >> (width + 1)));
         bool valid = i + width <= text.len;
         for (size_t k = 1; valid && k < width; k++) {
-            valid = (text.ptr[i + k] & 0xC0) == 0x80;
+            valid = ms_utf8_is_continuation(text.ptr[i + k]);
             c = (c << 6) | (uint32_t)(text.ptr[i + k] & 0x3F);
         }
         decoded[n++] = valid ? c : 0xFFFDu;
