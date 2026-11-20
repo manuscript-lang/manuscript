@@ -1,0 +1,24 @@
+module "pointers"
+type Pair { x: int, y: int }
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %s: ptr = slot Pair
+  %zero: int = iconst 0
+  %p: ptr = ptr.add %s, %zero
+  %v: int = iconst 4660
+  ptr.storeu 2 %p, %v
+  %lo: int = ptr.loadu 1 %p
+  %hi: int = ptr.loadu 2 %p
+  %null: ptr = ptr.null
+  %isn: bool = ptr.is_null %null
+  %isp: bool = ptr.is_null %p
+  %a: int = b2i %isn
+  %b: int = b2i %isp
+  %t: int = iadd %lo, %a
+  %u: int = iadd %t, %b
+  %r: int = isub %hi, %u
+  %m: int = iconst 4600
+  %k: int = isub %r, %m
+  ret %k
+}

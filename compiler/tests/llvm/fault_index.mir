@@ -1,0 +1,12 @@
+module "fault_index"
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %z: int = iconst 0
+  %c: bool = icmp.eq %z, %z
+  br_if %c, b1(), b2()
+b1():
+  fault index_out_of_range
+b2():
+  ret %z
+}

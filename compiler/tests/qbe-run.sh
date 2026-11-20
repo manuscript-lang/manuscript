@@ -16,9 +16,16 @@ Darwin-*) target=amd64_apple ;;
 esac
 cat > "$out/rt.c" <<'C'
 #include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+typedef struct { uint8_t *ptr; uint64_t tagged; } Str;
 extern long msmain(void);
 void msrt_fault_int_overflow(void) { exit(134); }
 long msrt_test_add(long a, long b) { return a + b; }
+void msrt_test_str(long n, Str *out) { out->ptr = calloc((size_t)n + 1, 1); out->tagged = (uint64_t)n; }
+long msrt_test_len(const Str *s) { return (long)s->tagged; }
+void msrt_string_clone(const Str *s, Str *out) { out->ptr = malloc(s->tagged + 1); memcpy(out->ptr, s->ptr, s->tagged + 1); out->tagged = s->tagged; }
+void msrt_string_free(const Str *s) { free(s->ptr); }
 int main(void) { return (int)msmain(); }
 C
 status=0

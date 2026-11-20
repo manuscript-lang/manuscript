@@ -121,6 +121,7 @@ typedef struct MsSched {
     uint32_t isolate; /* registry index carried in token ids */
     _Atomic uint8_t stop_request; /* a stop aimed at this scheduler, 0 when none; set from any thread */
     _Atomic(MsTaskHdr *) published_hdr; /* the running task's header, for a stop raised from another thread */
+    bool cancel_edges;            /* the program's modules branch on `unwinding` after a call that can park */
 
     MsTaskSlot *slots; /* the handle table */
     size_t slot_count;

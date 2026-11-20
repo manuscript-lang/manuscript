@@ -265,50 +265,6 @@ fn float_syntax(t: &[u8]) -> bool {
     i == t.len()
 }
 
-/// A positive finite binary64's shortest scientific form needs at most 17 digits, a decimal
-/// point, `e`, an exponent sign and three exponent digits: 23 bytes. Binary32 is smaller.
-#[derive(Default)]
-struct Scientific {
-    bytes: [u8; 32],
-    len: usize,
-}
-
-impl Scientific {
-    fn as_slice(&self) -> &[u8] {
-        &self.bytes[..self.len]
-    }
-}
-
-impl core::fmt::Write for Scientific {
-    fn write_str(&mut self, text: &str) -> core::fmt::Result {
-        let end = self.len + text.len();
-        let target = self.bytes.get_mut(self.len..end).ok_or(core::fmt::Error)?;
-        target.copy_from_slice(text.as_bytes());
-        self.len = end;
-        Ok(())
-    }
-}
-
-/// Shortest round-trip digits and decimal exponent of a finite positive `v`.
-fn shortest(v: f64) -> (Scientific, i32) {
-    let (digits, exp10) = crate::float_digits::shortest(v);
-    let mut s = Scientific::default();
-    let mut tmp = [0u8; 20];
-    let text = format_u64(digits, &mut tmp);
-    s.bytes[..text.len()].copy_from_slice(text);
-    s.len = text.len();
-    (s, exp10 + text.len() as i32 - 1)
-}
-
-/// The shortest round-trip digits of a finite positive `v` copied into `buf`, with the decimal
-/// exponent of the first digit.
-pub fn shortest_digits(v: f64, buf: &mut [u8; 24]) -> (usize, i32) {
-    let (digits, exp) = shortest(v);
-    let n = digits.len.min(buf.len());
-    buf[..n].copy_from_slice(&digits.as_slice()[..n]);
-    (n, exp)
-}
-
 /// The text of one float: a sign, at most 17 digits, up to 20 zeros or six leading zeros, a point,
 /// or `e`, a sign and three exponent digits all fit in 40 bytes.
 pub struct FloatText {
