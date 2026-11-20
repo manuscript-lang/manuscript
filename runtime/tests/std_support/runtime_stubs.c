@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "ms_rt/string.h"
+#include "ms_sched.h"
 
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {
     uint8_t *copy = malloc(len + 1);
@@ -37,7 +38,7 @@ bool ms_sched_pool_admit(size_t bytes, bool *cancelled) {
     return false;
 }
 void ms_sched_pool_release(void) {}
-int ms_sched_pool_run_shielded(void (*run)(void *), void *data) {
+MsSchedWait ms_sched_pool_run_shielded(MsSchedJobFn run, void *data) {
     run(data);
-    return 0;
+    return MS_SCHED_DONE;
 }

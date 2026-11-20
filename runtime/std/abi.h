@@ -40,7 +40,7 @@ struct MsTypeDesc {
     uint32_t reserved;
     const MsTypeDesc *inner0;
     const MsTypeDesc *inner1;
-    void (*drop)(uint8_t *slot);
+    void (*drop)(const uint8_t *slot);
     void (*copy)(const uint8_t *source, uint8_t *destination);
     void *eq;
     void *hash;

@@ -8,7 +8,7 @@
 static int failures;
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); failures++; } } while (0)
 
-static MsBytes text(const char *s) { return ms_bytes((const uint8_t *)s, strlen(s)); }
+static MsBytes text(const char *s) { return ms_bytes_of((const uint8_t *)s, strlen(s)); }
 
 static int same(MsBytes got, const char *want) { return got.len == strlen(want) && memcmp(got.ptr, want, got.len) == 0; }
 

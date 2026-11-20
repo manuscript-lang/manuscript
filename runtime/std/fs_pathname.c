@@ -226,18 +226,18 @@ MsBytes ms_fs_path_base_with(MsFsRules rules, MsBytes path) {
     const Parsed parsed = parse(rules, path);
     Element last = {0};
     if (last_element(&parsed, path, &last) > 0) {
-        return ms_bytes(path.ptr + last.start, last.length);
+        return ms_bytes_of(path.ptr + last.start, last.length);
     }
     if (parsed.physical_root && parsed.prefix_length == 0) {
-        return ms_bytes(&separators[rules == MS_FS_RULES_WINDOWS ? 1 : 0], 1);
+        return ms_bytes_of(&separators[rules == MS_FS_RULES_WINDOWS ? 1 : 0], 1);
     }
     if (parsed.physical_root) {
-        return ms_bytes(&separators[1], 1);
+        return ms_bytes_of(&separators[1], 1);
     }
     if (parsed.prefix_length > 0) {
-        return ms_bytes(path.ptr, parsed.prefix_length);
+        return ms_bytes_of(path.ptr, parsed.prefix_length);
     }
-    return ms_bytes(dot_text, 1);
+    return ms_bytes_of(dot_text, 1);
 }
 
 bool ms_fs_path_join_with(MsFsRules rules, MsBytes first, MsBytes second, MsFsBuffer *out) {
@@ -261,7 +261,7 @@ bool ms_fs_path_join_with(MsFsRules rules, MsBytes first, MsBytes second, MsFsBu
         built = ms_fs_buffer_append(&joined, first.ptr, head.prefix_length) &&
                 ms_fs_buffer_append(&joined, second.ptr, second.len);
     } else {
-        const MsBytes rest = ms_bytes(second.ptr + tail.prefix_length, second.len - tail.prefix_length);
+        const MsBytes rest = ms_bytes_of(second.ptr + tail.prefix_length, second.len - tail.prefix_length);
         const uint8_t last = first.ptr[first.len - 1];
         const bool bare_disk = head.prefix_kind == PREFIX_DISK && first.len == head.prefix_length;
         built = ms_fs_buffer_append(&joined, first.ptr, first.len) &&

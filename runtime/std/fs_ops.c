@@ -309,7 +309,7 @@ static void write_whole_here(FsJob *job) {
 
 static uint8_t write_with(const MsStr *path, const MsVec *data, int32_t flags, MsStr *err) {
     FsJob job = job_for(path);
-    job.other = ms_bytes(data->ptr, data->len);
+    job.other = ms_bytes_of(data->ptr, data->len);
     job.number = flags;
     if (!ms_sched_pool_alone() && !ms_sched_on_pool_thread()) {
         run_job(write_whole_job, &job);
@@ -542,7 +542,10 @@ static int compare_entries(const void *left, const void *right) {
     if (order != 0) {
         return order;
     }
-    return a->length < b->length ? -1 : (a->length > b->length ? 1 : 0);
+    if (a->length == b->length) {
+        return 0;
+    }
+    return a->length < b->length ? -1 : 1;
 }
 
 /* Whether an entry is a directory or a symbolic link: from the listing's own kind, or an lstat when the filesystem
@@ -557,7 +560,7 @@ static void entry_kind(MsBytes directory, const MsSysDirEntry *entry, bool *is_d
     }
     MsFsBuffer full = {0};
     MsFsPath path;
-    if (ms_fs_path_join(directory, ms_bytes((const uint8_t *)entry->name, entry->name_length), &full) &&
+    if (ms_fs_path_join(directory, ms_bytes_of((const uint8_t *)entry->name, entry->name_length), &full) &&
         ms_fs_path_init(&path, ms_fs_buffer_view(&full))) {
         MsSysStat stat;
         if (ms_sys_fs_stat(path.text, false, &stat) == 0) {
@@ -574,6 +577,47 @@ typedef struct ListJob {
     ListEntries entries;
 } ListJob;
 
+/* Adds one directory entry to the job's list, or fails the job. */
+static void list_add(ListJob *job, const MsSysDirEntry *entry) {
+    MsFsFail *fail = &job->base.fail;
+    if ((int64_t)job->entries.count >= job->base.number) {
+        ms_fs_fail_status(fail, STATUS_LIMIT_EXCEEDED);
+        return;
+    }
+    ListEntry item = {0};
+    entry_kind(job->base.path, entry, &item.directory, &item.symlink);
+    MsFsBuffer name = {0};
+    if (!ms_fs_buffer_append_lossy(&name, (const uint8_t *)entry->name, entry->name_length)) {
+        ms_fs_buffer_free(&name);
+        fail_memory(fail);
+        return;
+    }
+    item.name = name.data;
+    item.length = name.length;
+    if (!entries_push(&job->entries, item)) {
+        free(item.name);
+        fail_memory(fail);
+    }
+}
+
+/* Reads every entry of the open directory into the job. */
+static void list_read_all(ListJob *job, MsSysDir *dir) {
+    MsFsFail *fail = &job->base.fail;
+    while (!ms_fs_failed(fail)) {
+        MsSysDirEntry entry;
+        bool found = false;
+        const MsSysError error = ms_sys_fs_dir_read(dir, &entry, &found);
+        if (error != 0) {
+            ms_fs_fail_errno_at(fail, error, "readdirent", job->base.path);
+            return;
+        }
+        if (!found || ms_fs_poll_cancel(fail)) {
+            return;
+        }
+        list_add(job, &entry);
+    }
+}
+
 static void list_job(void *data) {
     ListJob *job = data;
     MsFsFail *fail = &job->base.fail;
@@ -582,46 +626,21 @@ static void list_job(void *data) {
         return;
     }
     MsSysStat stat;
+    MsSysDir *dir = NULL;
     MsSysError error = ms_sys_fs_stat(path.text, true, &stat);
     if (error != 0) {
         ms_fs_fail_errno_at(fail, error, "open", job->base.path);
     } else if (!is_directory(&stat)) {
         fail_invalid(fail);
-    }
-    MsSysDir *dir = NULL;
-    if (!ms_fs_failed(fail) && (error = ms_sys_fs_dir_open(path.text, &dir)) != 0) {
-        ms_fs_fail_errno_at(fail, error, "readdirent", job->base.path);
-    }
-    ms_fs_path_free(&path);
-    while (!ms_fs_failed(fail)) {
-        MsSysDirEntry entry;
-        bool found = false;
-        if ((error = ms_sys_fs_dir_read(dir, &entry, &found)) != 0) {
+    } else {
+        error = ms_sys_fs_dir_open(path.text, &dir);
+        if (error != 0) {
             ms_fs_fail_errno_at(fail, error, "readdirent", job->base.path);
-        } else if (!found) {
-            break;
-        } else if (ms_fs_poll_cancel(fail)) {
-            break;
-        } else if ((int64_t)job->entries.count >= job->base.number) {
-            ms_fs_fail_status(fail, STATUS_LIMIT_EXCEEDED);
-        } else {
-            ListEntry item = {0};
-            entry_kind(job->base.path, &entry, &item.directory, &item.symlink);
-            MsFsBuffer name = {0};
-            if (!ms_fs_buffer_append_lossy(&name, (const uint8_t *)entry.name, entry.name_length)) {
-                ms_fs_buffer_free(&name);
-                fail_memory(fail);
-                break;
-            }
-            item.name = name.data;
-            item.length = name.length;
-            if (!entries_push(&job->entries, item)) {
-                free(item.name);
-                fail_memory(fail);
-            }
         }
     }
+    ms_fs_path_free(&path);
     if (dir != NULL) {
+        list_read_all(job, dir);
         ms_sys_fs_dir_close(dir);
     }
     if (!ms_fs_failed(fail) && job->entries.count > 1) {
@@ -629,17 +648,21 @@ static void list_job(void *data) {
     }
 }
 
-static void entry_drop(uint8_t *slot) { msrt_string_free(&((MsFsEntry *)(void *)slot)->name); }
-
-static void entry_copy(const uint8_t *source, uint8_t *destination) {
-    const MsFsEntry *from = (const MsFsEntry *)(const void *)source;
-    MsFsEntry *to = (MsFsEntry *)(void *)destination;
-    msrt_string_clone(&from->name, &to->name);
-    to->directory = from->directory;
-    to->symlink = from->symlink;
+static void entry_drop(const uint8_t *slot) {
+    MsFsEntry entry;
+    memcpy(&entry, slot, sizeof entry);
+    msrt_string_free(&entry.name);
 }
 
-static const MsTypeDesc ENTRY_DESC = {
+static void entry_copy(const uint8_t *source, uint8_t *destination) {
+    MsFsEntry entry;
+    memcpy(&entry, source, sizeof entry);
+    MsFsEntry copy = entry;
+    msrt_string_clone(&entry.name, &copy.name);
+    memcpy(destination, &copy, sizeof copy);
+}
+
+static const MsTypeDesc entry_desc = {
     .size = sizeof(MsFsEntry),
     .align = _Alignof(MsFsEntry),
     .kind = MS_TYPE_KIND_CUSTOM,
@@ -655,11 +678,11 @@ uint8_t msstd_fs_list(const MsStr *path, uint8_t has_limit, int64_t limit, MsVec
         ms_fs_run(list_job, &job, &job.base.fail);
     }
     if (!ms_fs_failed(&job.base.fail)) {
-        msrt_list_with_capacity(&ENTRY_DESC, (int64_t)job.entries.count, out);
+        msrt_list_with_capacity(&entry_desc, (int64_t)job.entries.count, out);
         for (size_t i = 0; i < job.entries.count; i++) {
             MsFsEntry entry = {.directory = job.entries.items[i].directory ? 1 : 0, .symlink = job.entries.items[i].symlink ? 1 : 0};
             msrt_string_from_bytes(job.entries.items[i].name, job.entries.items[i].length, &entry.name);
-            msrt_list_push(out, &ENTRY_DESC, &entry);
+            msrt_list_push(out, &entry_desc, &entry);
         }
     }
     const uint8_t status = ms_fs_finish_at(&job.base.fail, job.base.path, err);
@@ -845,12 +868,76 @@ static bool same_file(const MsSysStat *a, const MsSysStat *b) { return a->device
 
 static bool bytes_equal(MsBytes a, MsBytes b) { return a.len == b.len && (a.len == 0 || memcmp(a.ptr, b.ptr, a.len) == 0); }
 
+/* `given` as an absolute path without trailing separators; false (the root itself is refused as invalid) with `fail`
+ * set. */
+static bool removal_candidate(MsBytes given, MsBytes cwd, MsFsBuffer *joined, MsFsFail *fail) {
+    MsFsBuffer clean = {0};
+    MsFsBuffer parent = {0};
+    const bool built = ms_fs_is_absolute(given) ? ms_fs_buffer_append(joined, given.ptr, given.len) : ms_fs_path_join(cwd, given, joined);
+    bool ok = false;
+    if (!built || !ms_fs_path_clean(ms_fs_buffer_view(joined), &clean) || !ms_fs_path_dir(ms_fs_buffer_view(&clean), &parent)) {
+        fail_memory(fail);
+    } else if (bytes_equal(ms_fs_buffer_view(&parent), ms_fs_buffer_view(&clean))) {
+        fail_invalid(fail);
+    } else {
+        while (joined->length > 1 && ms_fs_is_separator(joined->data[joined->length - 1])) {
+            joined->length--;
+        }
+        ok = true;
+    }
+    ms_fs_buffer_free(&clean);
+    ms_fs_buffer_free(&parent);
+    return ok;
+}
+
+/* Fails `fail` as invalid when `info` is the directory at `start` or one of its ancestors. `start` is consumed. */
+static bool refuse_ancestors(const MsSysStat *info, MsFsBuffer *start, MsFsFail *fail) {
+    MsFsBuffer ancestor = *start;
+    *start = (MsFsBuffer){0};
+    bool ok = true;
+    for (;;) {
+        MsFsPath at;
+        if (!open_path(fail, &at, ms_fs_buffer_view(&ancestor))) {
+            ok = false;
+            break;
+        }
+        MsSysStat up;
+        const MsSysError up_error = ms_sys_fs_stat(at.text, true, &up);
+        ms_fs_path_free(&at);
+        if (up_error != 0) {
+            ms_fs_fail_errno_at(fail, up_error, "stat", ms_fs_buffer_view(&ancestor));
+            ok = false;
+            break;
+        }
+        if (same_file(info, &up)) {
+            fail_invalid(fail);
+            ok = false;
+            break;
+        }
+        MsFsBuffer next = {0};
+        if (!ms_fs_path_dir(ms_fs_buffer_view(&ancestor), &next)) {
+            fail_memory(fail);
+            ok = false;
+        } else if (bytes_equal(ms_fs_buffer_view(&next), ms_fs_buffer_view(&ancestor))) {
+            ms_fs_buffer_free(&next);
+            break;
+        }
+        ms_fs_buffer_free(&ancestor);
+        ancestor = next;
+        if (!ok) {
+            break;
+        }
+    }
+    ms_fs_buffer_free(&ancestor);
+    return ok;
+}
+
 /* The path to remove: refuses the working directory, its ancestors and the root before anything is touched. */
 static bool removal_path(MsBytes given, MsFsBuffer *out, MsFsFail *fail) {
     const MsBytes base_name = ms_fs_path_base(given);
     const uint8_t dot[] = {'.'};
     const uint8_t dots[] = {'.', '.'};
-    if (given.len == 0 || bytes_equal(base_name, ms_bytes(dot, 1)) || bytes_equal(base_name, ms_bytes(dots, 2))) {
+    if (given.len == 0 || bytes_equal(base_name, ms_bytes_of(dot, 1)) || bytes_equal(base_name, ms_bytes_of(dots, 2))) {
         fail_invalid(fail);
         return false;
     }
@@ -860,93 +947,38 @@ static bool removal_path(MsBytes given, MsFsBuffer *out, MsFsFail *fail) {
         fail_invalid(fail);
         return false;
     }
-    const MsBytes cwd = ms_bytes((const uint8_t *)cwd_text, cwd_length);
-    bool ok = false;
+    const MsBytes cwd = ms_bytes_of((const uint8_t *)cwd_text, cwd_length);
     MsFsBuffer joined = {0};
-    MsFsBuffer clean = {0};
-    MsFsBuffer parent = {0};
-    MsFsBuffer ancestor = {0};
-    MsFsBuffer next = {0};
-    do {
-        const bool built = ms_fs_is_absolute(given) ? ms_fs_buffer_append(&joined, given.ptr, given.len) : ms_fs_path_join(cwd, given, &joined);
-        if (!built || !ms_fs_path_clean(ms_fs_buffer_view(&joined), &clean) || !ms_fs_path_dir(ms_fs_buffer_view(&clean), &parent)) {
-            fail_memory(fail);
-            break;
-        }
-        if (bytes_equal(ms_fs_buffer_view(&parent), ms_fs_buffer_view(&clean))) {
-            fail_invalid(fail);
-            break;
-        }
-        while (joined.length > 1 && ms_fs_is_separator(joined.data[joined.length - 1])) {
-            joined.length--;
-        }
-        const MsSysError cwd_error = eval_symlinks(cwd, &ancestor);
-        if (cwd_error != 0) {
-            ms_fs_fail_errno_at(fail, cwd_error, "lstat", cwd);
-            break;
-        }
-        MsFsPath target;
-        if (!open_path(fail, &target, ms_fs_buffer_view(&joined))) {
-            break;
-        }
-        MsSysStat info;
-        const MsSysError info_error = ms_sys_fs_stat(target.text, false, &info);
+    MsFsBuffer canonical_cwd = {0};
+    bool ok = removal_candidate(given, cwd, &joined, fail);
+    const MsSysError cwd_error = ok ? eval_symlinks(cwd, &canonical_cwd) : 0;
+    if (cwd_error != 0) {
+        ms_fs_fail_errno_at(fail, cwd_error, "lstat", cwd);
+        ok = false;
+    }
+    MsSysStat info;
+    MsSysError info_error = ms_sys_fs_error_of(MS_SYS_ERR_NOT_FOUND);
+    MsFsPath target;
+    if (ok && open_path(fail, &target, ms_fs_buffer_view(&joined))) {
+        info_error = ms_sys_fs_stat(target.text, false, &info);
         ms_fs_path_free(&target);
         if (info_error != 0 && !is_kind(info_error, MS_SYS_ERR_NOT_FOUND)) {
             ms_fs_fail_errno_at(fail, info_error, "lstat", ms_fs_buffer_view(&joined));
-            break;
+            ok = false;
         }
-        if (info_error == 0 && is_directory(&info)) {
-            bool refused = false;
-            bool failed = false;
-            for (;;) {
-                MsFsPath at;
-                if (!open_path(fail, &at, ms_fs_buffer_view(&ancestor))) {
-                    failed = true;
-                    break;
-                }
-                MsSysStat up;
-                const MsSysError up_error = ms_sys_fs_stat(at.text, true, &up);
-                ms_fs_path_free(&at);
-                if (up_error != 0) {
-                    ms_fs_fail_errno_at(fail, up_error, "stat", ms_fs_buffer_view(&ancestor));
-                    failed = true;
-                    break;
-                }
-                if (same_file(&info, &up)) {
-                    refused = true;
-                    break;
-                }
-                ms_fs_buffer_free(&next);
-                if (!ms_fs_path_dir(ms_fs_buffer_view(&ancestor), &next)) {
-                    fail_memory(fail);
-                    failed = true;
-                    break;
-                }
-                if (bytes_equal(ms_fs_buffer_view(&next), ms_fs_buffer_view(&ancestor))) {
-                    break;
-                }
-                ms_fs_buffer_free(&ancestor);
-                ancestor = next;
-                next = (MsFsBuffer){0};
-            }
-            if (refused) {
-                fail_invalid(fail);
-            }
-            if (refused || failed) {
-                break;
-            }
-        }
+    } else {
+        ok = false;
+    }
+    if (ok && info_error == 0 && is_directory(&info)) {
+        ok = refuse_ancestors(&info, &canonical_cwd, fail);
+    }
+    if (ok) {
         *out = joined;
         joined = (MsFsBuffer){0};
-        ok = true;
-    } while (false);
+    }
     free(cwd_text);
     ms_fs_buffer_free(&joined);
-    ms_fs_buffer_free(&clean);
-    ms_fs_buffer_free(&parent);
-    ms_fs_buffer_free(&ancestor);
-    ms_fs_buffer_free(&next);
+    ms_fs_buffer_free(&canonical_cwd);
     return ok;
 }
 
@@ -1056,7 +1088,7 @@ static void read_link_job(void *data) {
         ms_fs_fail_errno_at(&job->fail, error, "readlink", job->path);
         return;
     }
-    if (!ms_fs_valid_utf8(ms_bytes((const uint8_t *)target, length))) {
+    if (!ms_fs_valid_utf8(ms_bytes_of((const uint8_t *)target, length))) {
         ms_fs_fail_status(&job->fail, STATUS_UNSUPPORTED);
     } else if (!ms_fs_buffer_append(&job->text, (const uint8_t *)target, length)) {
         fail_memory(&job->fail);
@@ -1110,7 +1142,7 @@ static bool temporary_root(MsFsBuffer *out) {
     if (ms_sys_fs_temp_directory(&temp, &length) != 0) {
         return false;
     }
-    const MsBytes root = ms_bytes((const uint8_t *)temp, length);
+    const MsBytes root = ms_bytes_of((const uint8_t *)temp, length);
     bool done = false;
     if (ms_fs_is_absolute(root)) {
         done = ms_fs_buffer_append(out, root.ptr, root.len);
@@ -1118,7 +1150,7 @@ static bool temporary_root(MsFsBuffer *out) {
         char *cwd = NULL;
         size_t cwd_length = 0;
         if (ms_sys_fs_current_directory(&cwd, &cwd_length) == 0) {
-            done = ms_fs_path_join(ms_bytes((const uint8_t *)cwd, cwd_length), root, out);
+            done = ms_fs_path_join(ms_bytes_of((const uint8_t *)cwd, cwd_length), root, out);
             free(cwd);
         } else {
             done = ms_fs_buffer_append(out, root.ptr, root.len);
@@ -1163,8 +1195,8 @@ bool ms_fs_make_temporary_directory(MsBytes pattern, MsFsBuffer *out, MsFsFail *
             break;
         }
     }
-    const MsBytes prefix = ms_bytes(pattern.ptr, star);
-    const MsBytes suffix = star < pattern.len ? ms_bytes(pattern.ptr + star + 1, pattern.len - star - 1) : ms_bytes(pattern.ptr, 0);
+    const MsBytes prefix = ms_bytes_of(pattern.ptr, star);
+    const MsBytes suffix = star < pattern.len ? ms_bytes_of(pattern.ptr + star + 1, pattern.len - star - 1) : ms_bytes_of(pattern.ptr, 0);
     MsFsBuffer root = {0};
     if (!temporary_root(&root) ||
         (root.length > 0 && !ms_fs_is_separator(root.data[root.length - 1]) && !ms_fs_buffer_push(&root, ms_fs_separator()))) {

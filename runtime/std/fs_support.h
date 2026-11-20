@@ -83,7 +83,7 @@ MS_NODISCARD bool ms_fs_buffer_push(MsFsBuffer *buffer, uint8_t byte);
  * unlistable. */
 MS_NODISCARD bool ms_fs_buffer_append_lossy(MsFsBuffer *buffer, const uint8_t *bytes, size_t length);
 void ms_fs_buffer_free(MsFsBuffer *buffer);
-static inline MsBytes ms_fs_buffer_view(const MsFsBuffer *buffer) { return ms_bytes(buffer->data, buffer->length); }
+static inline MsBytes ms_fs_buffer_view(const MsFsBuffer *buffer) { return ms_bytes_of(buffer->data, buffer->length); }
 
 bool ms_fs_valid_utf8(MsBytes bytes);
 
@@ -128,7 +128,7 @@ bool ms_fs_make_temporary_directory(MsBytes pattern, MsFsBuffer *out, MsFsFail *
 void ms_fs_write_string(MsStr *out, const uint8_t *bytes, size_t length);
 void ms_fs_write_buffer_string(MsStr *out, const MsFsBuffer *buffer);
 
-static inline MsBytes ms_fs_string_bytes(const MsStr *text) { return ms_bytes((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
+static inline MsBytes ms_fs_string_bytes(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
 /* An optional size limit: unset is unlimited, a negative one invalid. */
 MS_NODISCARD bool ms_fs_limit(uint8_t present, int64_t value, int64_t *out);

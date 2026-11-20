@@ -142,7 +142,7 @@ static uint8_t finish_with(MsFsFail *fail, MsBytes detail, MsStr *err) {
     return status;
 }
 
-uint8_t ms_fs_finish(MsFsFail *fail, MsStr *err) { return finish_with(fail, ms_bytes((const uint8_t *)"", 0), err); }
+uint8_t ms_fs_finish(MsFsFail *fail, MsStr *err) { return finish_with(fail, ms_bytes_of((const uint8_t *)"", 0), err); }
 
 uint8_t ms_fs_finish_at(MsFsFail *fail, MsBytes path, MsStr *err) {
     return finish_with(fail, path, err);
@@ -153,7 +153,7 @@ uint8_t ms_fs_finish_pair(MsFsFail *fail, MsBytes source, MsBytes destination, M
     const bool built = ms_fs_buffer_append(&both, source.ptr, source.len) &&
                        ms_fs_buffer_append(&both, (const uint8_t *)" -> ", 4) &&
                        ms_fs_buffer_append(&both, destination.ptr, destination.len);
-    const uint8_t status = finish_with(fail, built ? ms_fs_buffer_view(&both) : ms_bytes((const uint8_t *)"", 0), err);
+    const uint8_t status = finish_with(fail, built ? ms_fs_buffer_view(&both) : ms_bytes_of((const uint8_t *)"", 0), err);
     ms_fs_buffer_free(&both);
     return status;
 }
@@ -301,7 +301,7 @@ bool ms_fs_valid_utf8(MsBytes bytes) {
     size_t at = 0;
     while (at < bytes.len) {
         size_t skip = 0;
-        const size_t width = utf8_sequence(ms_bytes(bytes.ptr + at, bytes.len - at), &skip);
+        const size_t width = utf8_sequence(ms_bytes_of(bytes.ptr + at, bytes.len - at), &skip);
         if (width == 0) {
             return false;
         }
@@ -315,7 +315,7 @@ bool ms_fs_buffer_append_lossy(MsFsBuffer *buffer, const uint8_t *bytes, size_t 
     size_t at = 0;
     while (at < length) {
         size_t skip = 0;
-        const size_t width = utf8_sequence(ms_bytes(bytes + at, length - at), &skip);
+        const size_t width = utf8_sequence(ms_bytes_of(bytes + at, length - at), &skip);
         if (width != 0) {
             if (!ms_fs_buffer_append(buffer, bytes + at, width)) {
                 return false;
