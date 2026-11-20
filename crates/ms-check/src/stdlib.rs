@@ -140,10 +140,6 @@ impl Session {
     }
 }
 
-/// Native types that declare fields, so they cannot be written `extern type`. A type in a native
-/// module is otherwise an ordinary type (`Error`), so the runtime's own `List` is named here.
-const NATIVE_WITH_FIELDS: &[&str] = &["List"];
-
 // -------------------------------------------------------------------- queries
 
 /// The directories that group bundled modules into packages; a module's native identifiers use its file stem without them.
@@ -630,9 +626,9 @@ impl Loader<'_> {
                 decl: Some(d.clone()),
             });
             if let Some(mut kind) = kind {
-                // `extern type` declares an opaque runtime value; `List` also carries a constructor field.
+                // `extern type` declares a runtime-backed type; `List` also carries a constructor field.
                 let external = matches!(&d.decl().kind, DeclKind::Type(r) if r.external);
-                if external || NATIVE_WITH_FIELDS.contains(&syms.str(name)) {
+                if external {
                     kind = Kind::Native;
                 }
                 let def = Definition::new(&s, kind);

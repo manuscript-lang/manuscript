@@ -405,14 +405,11 @@ static bool scope_is_nominal_decl(const MsDecl *d) {
 /* A symbol the loader registered for this very declaration (an `extern type` or an exported
  * type of a bundled source module), or MS_NONE. */
 static MsSymId scope_registered_symbol(const MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {
-    if (!c->mods[module].source) {
-        return MS_NONE;
+    MsSymId found = c->mods[module].source ? ms_map_get(&c->mods[module].scope, name) : MS_NONE;
+    if (found == MS_NONE) {
+        found = ms_map_get(&c->std_types, name); // a native module's type is registered by the loader
     }
-    const MsSymId found = ms_map_get(&c->mods[module].scope, name);
-    if (found != MS_NONE && c->syms.decl[found] == d) {
-        return found;
-    }
-    return MS_NONE;
+    return found != MS_NONE && c->syms.decl[found] == d ? found : MS_NONE;
 }
 
 static MsSymId scope_declare_one(MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {

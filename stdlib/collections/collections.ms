@@ -4,7 +4,7 @@ Start with a literal such as `["docs", "release"]`; use `var` when you want to a
 A list has one owner; `clone()` makes a deep copy, and accessors such as `get` borrow elements.
 `List[T]()` creates an empty list. `List[T](reserve: n)` also preallocates room for `n` items without changing the length; a negative `n` reserves nothing.
 */
-export type List[T]:
+export extern type List[T]:
 	// Constructor-only capacity hint in items: room for this many elements is allocated
 	// up front. The list starts empty. `none` or a negative value reserves nothing.
 	reserve: Int?

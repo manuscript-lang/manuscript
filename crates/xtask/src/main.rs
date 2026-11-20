@@ -301,7 +301,7 @@ fn parse_header_signatures(text: &str) -> Vec<(String, String, Vec<String>)> {
 /// The scalar kind of a Rust parameter type or a C declaration (`ptr` for any pointer), so the two spellings compare.
 fn abi_kind(text: &str) -> String {
     let text = text.trim();
-    if text.contains('*') {
+    if text.contains('*') || text.contains("fn(") {
         return "ptr".into();
     }
     // `repr(transparent)` ABI wrappers: the error slot is a pointer, the has-raw flag a byte.
@@ -329,6 +329,16 @@ fn abi_kind(text: &str) -> String {
         "JsonCtorFn",
         "JsonViewFn",
         "ErrSlot",
+        "CleanupFn",
+        "MsCleanupFn",
+        "Entry",
+        "MsAbiEntry",
+        "MainFn",
+        "MsMainFn",
+        "MsGuardFn",
+        "MsExitHook",
+        "ExitHook",
+        "MsGrowFn",
     ] {
         if word(alias) {
             return "ptr".into();
@@ -341,6 +351,7 @@ fn abi_kind(text: &str) -> String {
         ("i64", "int64_t"),
         ("u64", "uint64_t"),
         ("i32", "int32_t"),
+        ("i32", "int"),
         ("u32", "uint32_t"),
         ("u8", "uint8_t"),
         ("usize", "size_t"),
@@ -418,7 +429,7 @@ fn check_c_abi(
                 .filter(|p| !p.trim().is_empty())
                 .map(|p| abi_kind(p.split_once(':').map_or(p, |(_, t)| t)))
                 .collect();
-            let rust_ret = if rust_ret == "()" {
+            let rust_ret = if rust_ret == "()" || rust_ret == "!" {
                 "void".to_string()
             } else {
                 abi_kind(rust_ret)
@@ -489,12 +500,13 @@ fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>
         if tail.trim() != ";" || !name.starts_with("msrt_") && !name.starts_with("msstd_") {
             continue;
         }
+        let ret = ret.replace("MS_NORETURN", "").replace("MS_NODISCARD", "");
         let ret = if head.contains('*') {
             "ptr".to_string()
         } else if ret.contains("MS_NORETURN") {
             "!".to_string()
         } else {
-            abi_kind(ret)
+            abi_kind(&ret)
         };
         let params: Vec<String> = params
             .split(',')
@@ -759,7 +771,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
     // directory, so a shared one serialises them), so they build side by side: the gnu, musl,
     // allocation-profiling and stress runtimes finish in about the time of the slowest.
     let mut jobs: Vec<(PathBuf, Option<String>, &str, &str)> =
-        vec![(target.clone(), triple.clone(), "libms_native.a", "entry")];
+        vec![(target.clone(), triple.clone(), "libms_native.a", "")];
     if stats {
         // The counting runtime of the leak checks: the allocator counts live blocks (MS_ALLOC_STATS) and the
         // runtime prints them at exit.
@@ -767,7 +779,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             out.join("build-stats"),
             triple.clone(),
             "libms_native_stats.a",
-            "entry,ms-rt/stats",
+            "ms-rt/stats",
         ));
     }
     if alloc_profile {
@@ -777,7 +789,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             out.join("build-allocs"),
             triple.clone(),
             "libms_native_allocs.a",
-            "entry,alloc-profile",
+            "alloc-profile",
         ));
     }
     if sched_stress {
@@ -786,7 +798,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             out.join("build-stress"),
             triple.clone(),
             "libms_native_stress.a",
-            "entry,sched-stress",
+            "sched-stress",
         ));
     }
     if std::env::consts::OS == "linux" {
@@ -794,7 +806,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             out.join("build-musl"),
             Some(format!("{arch}-unknown-linux-musl")),
             "libms_native_musl.a",
-            "entry",
+            "",
         ));
     }
     // The C half does not depend on the Rust features, so each triple's CMake build runs once and its
@@ -808,7 +820,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             plans.push((
                 triple.clone(),
                 stats,
-                build_c_runtime(&root, dir, triple.as_deref(), stats),
+                build_c_runtime(&root, dir, triple.as_deref(), stats, true),
             ));
         }
     }

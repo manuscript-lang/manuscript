@@ -18,4 +18,12 @@ for mir in compiler/tests/run/*.mir compiler/tests/llvm/*.mir compiler/tests/llv
     want=$(cat "$name.exit")
     if [ "$got" = "$want" ]; then echo "ok   llvm $base"; else echo "FAIL llvm $base: exit $got, want $want"; status=1; fi
 done
+# Pointers are `ptr` at a runtime call, so LLVM knows the block `free` takes is a pointer.
+if grep -l 'msrt_free"(i64' "$out"/*.ll; then echo "FAIL llvm: msrt_free takes i64"; status=1; fi
+# What the direct-emission test (crates/ms-cli/tests/llvm.rs) checks of the Rust emitter, for this one: a borrowed
+# aggregate parameter is a readonly nocapture pointer, a register-only loop-free function is memory(none), and list
+# element accesses carry the scalar alias class.
+for fact in 'ptr nonnull readonly nocapture align 8 dereferenceable([0-9]*) %in0' 'willreturn nofree nosync memory(none)' 'load [a-z0-9]*, ptr %a[0-9]*, !tbaa !'; do
+    if ! grep -lq -- "$fact" "$out"/*.ll; then echo "FAIL llvm: no function has: $fact"; status=1; fi
+done
 exit $status
