@@ -306,8 +306,6 @@ fn abi_kind(text: &str) -> String {
         "ValueDesc",
         "CmpFn",
         "MsCompareFn",
-        "JsonCtorFn",
-        "JsonViewFn",
         "RunDrop",
         "MsDropRun",
         "RunCopy",
@@ -422,7 +420,7 @@ fn check_c_abi(
     }
     for header in read_dir("runtime/include/ms_rt", "h")? {
         let module = header.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        if !["base", "safe", "chars", "array"].contains(&module)
+        if !["base", "safe", "chars"].contains(&module)
             && !root.join(format!("runtime/symbols/{module}.txt")).exists()
         {
             return Err(format!(
@@ -434,17 +432,13 @@ fn check_c_abi(
 }
 
 /// The `msrt_*`/`msstd_*` prototypes of a module header as `name -> (parameter kinds, result kind)`.
-/// Splits a parameter list at the commas outside angle brackets and parentheses (`FrameBuf<StrVal, 8>` and a function
-/// pointer type are each one parameter).
+/// Splits a parameter list at the commas outside angle brackets (`FrameBuf<StrVal, 8>` is one parameter).
 fn split_top_level(params: &str) -> Vec<&str> {
     let (mut parts, mut depth, mut start) = (Vec::new(), 0usize, 0);
-    let bytes = params.as_bytes();
     for (i, c) in params.char_indices() {
         match c {
-            '<' | '(' => depth += 1,
-            // The `>` of a function pointer's `->` closes nothing.
-            '>' if i > 0 && bytes[i - 1] == b'-' => {}
-            '>' | ')' => depth = depth.saturating_sub(1),
+            '<' => depth += 1,
+            '>' => depth = depth.saturating_sub(1),
             ',' if depth == 0 => {
                 parts.push(&params[start..i]);
                 start = i + 1;
@@ -751,13 +745,38 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
             "entry",
         ));
     }
+    // The C half does not depend on the Rust features, so each triple's CMake build runs once and its
+    // objects go into every archive of that triple (CMake started beside a running build also fails on
+    // Windows with `AssignProcessToJobObject: (50) The request is not supported`, so they run one by one).
+    let mut plans: Vec<(Option<String>, Result<CRuntime, String>)> = Vec::new();
+    for (dir, triple, _, _) in &jobs {
+        if !plans.iter().any(|(t, _)| t == triple) {
+            plans.push((
+                triple.clone(),
+                build_c_runtime(&root, dir, triple.as_deref()),
+            ));
+        }
+    }
+    let plan_of = |triple: &Option<String>| {
+        plans
+            .iter()
+            .find(|(t, _)| t == triple)
+            .expect("a plan for every job's triple")
+            .1
+            .as_ref()
+    };
     let mut built = std::thread::scope(|scope| {
         let handles: Vec<_> = jobs
             .iter()
             .map(|(dir, triple, name, features)| {
                 let (root, out) = (&root, &out);
-                scope
-                    .spawn(move || build_archive(root, out, dir, triple.as_deref(), name, features))
+                let plan = plan_of(triple);
+                scope.spawn(move || match plan {
+                    Ok(plan) => {
+                        build_archive(root, out, dir, triple.as_deref(), name, features, plan)
+                    }
+                    Err(message) => Err(message.clone()),
+                })
             })
             .collect();
         handles
@@ -781,6 +800,7 @@ fn build_archive(
     triple: Option<&str>,
     name: &str,
     features: &str,
+    plan: &CRuntime,
 ) -> Result<PathBuf, String> {
     let arch = std::env::consts::ARCH;
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
@@ -805,7 +825,6 @@ fn build_archive(
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    let plan = build_c_runtime(root, target, triple)?;
     if plan.has_reactor() {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
@@ -831,7 +850,7 @@ fn build_archive(
     let built = release.join("libms_native.a");
     let archive = out.join(name);
     std::fs::copy(&built, &archive).map_err(|e| format!("copy {}: {e}", built.display()))?;
-    add_c_runtime(root, target, triple, &plan, &archive)?;
+    add_c_runtime(root, triple, plan, &archive)?;
     strip_debug(&archive);
     Ok(archive)
 }
@@ -839,7 +858,6 @@ fn build_archive(
 /// Adds the C objects the CMake build made for `triple`, and every member of the libraries they use, to `archive`.
 fn add_c_runtime(
     root: &Path,
-    target: &Path,
     triple: Option<&str>,
     plan: &CRuntime,
     archive: &Path,
@@ -850,13 +868,11 @@ fn add_c_runtime(
     }
     let ar = archiver(root, triple);
     let mut command = Command::new(&ar);
+    let mut response = None;
     command.arg("rcs").arg(archive);
     if cfg!(windows) {
         // The folded library members overflow Windows' 32 KiB command line; llvm-ar reads a response file.
-        let list = target.join("c-objects/members.rsp");
-        if let Some(dir) = list.parent() {
-            std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
-        }
+        let list = archive.with_extension("rsp");
         let names: Vec<String> = files
             .iter()
             .map(|f| f.to_string_lossy().replace('\\', "/"))
@@ -864,12 +880,16 @@ fn add_c_runtime(
         std::fs::write(&list, names.join("\n"))
             .map_err(|e| format!("write {}: {e}", list.display()))?;
         command.arg(format!("@{}", list.display()));
+        response = Some(list);
     } else {
         command.args(files);
     }
     let status = command
         .status()
         .map_err(|e| format!("run {}: {e}", ar.display()))?;
+    if let Some(list) = response {
+        let _ = std::fs::remove_file(list);
+    }
     if !status.success() {
         return Err(format!(
             "adding the C objects to {} failed",
