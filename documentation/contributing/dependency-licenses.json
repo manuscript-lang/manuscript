@@ -698,6 +698,11 @@
   ],
   "c_libraries": [
     {
+      "name": "curl",
+      "version": "8.23.0",
+      "license": "curl"
+    },
+    {
       "name": "libuv",
       "version": "1.51.0",
       "license": "MIT"
