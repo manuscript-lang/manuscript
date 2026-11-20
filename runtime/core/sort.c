@@ -105,18 +105,26 @@ void msrt_list_sort_in_place(MsList *v, const MsTypeDesc *d, MsCompareFn cmp, ui
         return;
     }
     const size_t bytes = v->len * d->size;
-    size_t storage = 0;
-    if (!ms_size_mul(bytes, 2, &storage)) {
+    /* The merge keeps a snapshot of the original slots only when a comparator that faults or is cancelled can
+     * leave through a guard or a cleanup, which then needs a valid list back. */
+    const bool rollback = msrt_rollback_needed() != 0;
+    size_t storage = bytes;
+    if (rollback && !ms_size_mul(bytes, 2, &storage)) {
         static const char message[] = "list size overflow";
         msfault_raise(MS_FAULT_OVERFLOW, (const uint8_t *)message, sizeof message - 1);
     }
     uint8_t *scratch = msrt_alloc(storage == 0 ? 1 : storage);
-    __builtin_memcpy(scratch + bytes, v->ptr, bytes);
-    SortRollback rollback = {.items = v->ptr, .scratch = scratch, .bytes = bytes};
-    const size_t handle = msrt_cleanup_push(restore_and_free, (uint8_t *)&rollback);
+    SortRollback state = {.items = v->ptr, .scratch = scratch, .bytes = bytes};
+    size_t handle = 0;
+    if (rollback) {
+        __builtin_memcpy(scratch + bytes, v->ptr, bytes);
+        handle = msrt_cleanup_push(restore_and_free, (uint8_t *)&state);
+    }
     const Comparator comparator = {.call = cmp, .env = env};
     merge_sort(v->ptr, scratch, v->len, d->size, &comparator);
-    msrt_cleanup_discard(handle);
+    if (rollback) {
+        msrt_cleanup_discard(handle);
+    }
     msrt_free(scratch);
 }
 

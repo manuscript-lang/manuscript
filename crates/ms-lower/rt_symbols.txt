@@ -261,6 +261,7 @@ msrt_promise_take(id: i64, d: ValueDesc, out: *mut u8) -> u8 @domain=promise
 msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 @domain=promise
 msrt_promise_wait_any(ids: *const VecVal, timeout_ns: i64) -> i64 @domain=promise
 msrt_realloc(p: *mut u8, size: usize) -> *mut u8
+msrt_rollback_needed() -> u8 @leaf
 msrt_runtime_limit() -> i64
 msrt_runtime_set_threads(n: i64)
 msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) @domain=set @leaf
