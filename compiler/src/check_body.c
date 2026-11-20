@@ -180,6 +180,37 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
     return body_is_numeric(b, operand_ty) ? operand_ty : ms_body_unsupported(b);
 }
 
+/* `local.field` where the local holds a record this module declares and the field is a Copy
+ * primitive (Int, Float, Bool): the field's type. Anything else a member can be (a method, a case, a module path)
+ * is not checked yet. */
+static MsTy body_member(MsBody *b, const MsExpr *e) {
+    const MsExpr *receiver = e->u.member.left;
+    if (receiver->kind != MS_E_NAME) {
+        return ms_body_unsupported(b);
+    }
+    const MsTy record = ms_body_expr(b, receiver, MS_TY_NONE);
+    if (record == MS_TY_NONE) {
+        return MS_TY_NONE;
+    }
+    const MsTyTable *tys = &b->c->tys;
+    if (ms_ty_kind(tys, record) != MS_K_TYPE || !body_is_own_nominal(b, record)) {
+        return ms_body_unsupported(b);
+    }
+    const MsDef *def = ms_def(b->c, tys->def[record] - 1);
+    for (uint32_t i = 0; def != NULL && i < def->nfields; i++) {
+        if (def->fields[i].name != e->u.member.name) {
+            continue;
+        }
+        if (!body_is_value_type(b, def->fields[i].ty) || def->fields[i].ty == b->string_ty) {
+            break; /* reading a String field borrows or moves it out of its holder */
+        }
+        b->facts->res_kind[e->id] = MS_RES_FIELD;
+        b->facts->res_ref[e->id] = i;
+        return def->fields[i].ty;
+    }
+    return ms_body_unsupported(b);
+}
+
 static bool body_is_ordering(MsBinaryOp op) {
     return op == MS_B_LT || op == MS_B_GT || op == MS_B_LE || op == MS_B_GE;
 }
@@ -237,7 +268,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_NAME: ty = body_name(b, e); break;
     case MS_E_UNARY: ty = body_unary(b, e); break;
     case MS_E_BINARY: ty = body_binary(b, e); break;
-    case MS_E_MEMBER:
+    case MS_E_MEMBER: ty = body_member(b, e); break;
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:

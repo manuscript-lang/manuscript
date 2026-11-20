@@ -237,6 +237,7 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
         }
         break;
     case MS_E_UNARY: dump_expr(out, c, facts, e->u.bin.left); break;
+    case MS_E_MEMBER: dump_expr(out, c, facts, e->u.member.left); break;
     case MS_E_BINARY:
         dump_expr(out, c, facts, e->u.bin.left);
         dump_expr(out, c, facts, e->u.bin.right);
@@ -255,7 +256,6 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
     case MS_E_BOOL:
     case MS_E_VOID:
     case MS_E_NAME:
-    case MS_E_MEMBER:
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:

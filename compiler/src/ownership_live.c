@@ -82,7 +82,7 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
         return;
     case MS_E_UNARY: live_expr(w, e->u.bin.left); return;
     case MS_E_BINARY: live_binary(w, e); return;
-    case MS_E_MEMBER:
+    case MS_E_MEMBER: live_expr(w, e->u.member.left); return;
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:

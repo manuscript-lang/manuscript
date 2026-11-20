@@ -253,6 +253,7 @@ fn body_exprs(e: &Expr, out: &mut Vec<NodeId>) {
             }
         }),
         ExprKind::Unary { operand, .. } => body_exprs(operand, out),
+        ExprKind::Member { left, .. } => body_exprs(left, out),
         ExprKind::Binary { left, right, .. } => {
             body_exprs(left, out);
             body_exprs(right, out);
