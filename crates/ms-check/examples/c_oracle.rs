@@ -257,6 +257,7 @@ fn body_exprs(e: &Expr, out: &mut Vec<NodeId>) {
             body_exprs(left, out);
             body_exprs(right, out);
         }
+        ExprKind::Call { args, .. } => args.iter().for_each(|a| body_exprs(&a.value, out)),
         ExprKind::Match { scrutinee, arms } => {
             body_exprs(scrutinee, out);
             for arm in arms {
