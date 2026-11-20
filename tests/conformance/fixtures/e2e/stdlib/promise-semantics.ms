@@ -2,14 +2,16 @@
 // conform: phase=test
 import (
 	Promise,
+	Cancel,
 	PromiseOptions,
+	Signal,
 	cancel_switch,
 	promise,
 	wait_all,
 	wait_first from "@std/concurrency/promise.ms",
 	panic from "@std/core.ms",
 	expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
-	milliseconds, nanoseconds, sleep from "@std/time.ms",
+	milliseconds, nanoseconds, seconds, sleep from "@std/time.ms",
 )
 
 fn report(reason: Error) String:
@@ -270,3 +272,52 @@ test "a wait_all cancelled by a timeout leaves later wait_all calls working":
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		)?
 	)
+
+fn winds_down(notice: Signal, var finished: Cancel) Int:
+	while not notice.cancelled():
+		void sleep(milliseconds(2)).wait()
+	finished.cancel()
+	return 9
+
+// A promise a function returns owns what it captures.
+fn start_polite(watch: Signal, move finished: Cancel) Promise[Int]:
+	var owned = finished
+	options := PromiseOptions(drain: watch.clone(), grace: seconds(10))
+	return promise(fn: ok(winds_down(watch, owned)), options: options)
+
+// Dropping a promise with a drain signal fires the signal first; the work finishes on
+// its own instead of being cancelled at its next wait.
+test "ending a promise with a drain signal lets it wind down":
+	notice := cancel_switch()
+	finished := cancel_switch()
+	after := finished.signal()
+	worker := start_polite(notice.signal(), finished)
+	void sleep(milliseconds(10)).wait()
+	expect_equal(notice.signal().cancelled(), false)?
+	worker.close()?
+	expect_equal(notice.signal().cancelled(), true)?
+	expect_equal(after.cancelled(), true)?
+
+// The grace bounds the notice: work that ignores it is cancelled when the grace passes.
+test "work that ignores the drain signal is cancelled after its grace":
+	notice := cancel_switch()
+	worker := promise(
+		fn: ok(forever()),
+		options: PromiseOptions(drain: notice.signal(), grace: milliseconds(20))
+	)
+	void sleep(milliseconds(10)).wait()
+	worker.close()?
+	expect_equal(notice.signal().cancelled(), true)?
+
+// An explicit cancel is the owner giving up, not winding down: no notice goes out.
+test "an explicit cancel gives no drain notice":
+	notice := cancel_switch()
+	worker := promise(
+		fn: ok(forever()),
+		options: PromiseOptions(drain: notice.signal(), grace: seconds(10))
+	)
+	void sleep(milliseconds(10)).wait()
+	worker.cancel()
+	reason := worker.wait() | expect_error?
+	expect_equal(reason.kind, "ECANCELED")?
+	expect_equal(notice.signal().cancelled(), false)?
