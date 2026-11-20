@@ -939,7 +939,7 @@ static bool manifest_finish(Builder *b) {
     return manifest_check_declared(b);
 }
 
-static const char *manifest_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err) {
+const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err) {
     FILE *f = fopen(path, "rbe");
     if (f == NULL) {
         ms_project_error_path(err, a, "open", path, errno);
@@ -977,7 +977,7 @@ bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProject
     *out = (MsProject){.root = root, .file = ms_path_base(a, absolute), .name = "", .source = "", .entry = ""};
     out->location = (MsPos){.line = 1, .column = 1};
     size_t length = 0;
-    out->configuration = manifest_read_file(a, absolute, &length, err);
+    out->configuration = ms_project_read_file(a, absolute, &length, err);
     if (out->configuration == NULL) {
         return false;
     }

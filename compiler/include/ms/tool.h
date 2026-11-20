@@ -45,6 +45,15 @@ uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *messa
  * `message_out`; 2 means the C reader does not cover the target (a workspace root, a project with dependencies). */
 uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out);
 
+/* Resolves and fetches the dependencies of the project whose ms.toml is `manifest` (ms_install in ms/packages.h) and
+ * writes ms.lock when it changed; `update` names the repositories to re-pick, `locked` fails instead of changing
+ * ms.lock and `frozen` leaves it alone. Rows, in copy-id order, are `name\tspec\trevision\tstate\teffects`: the
+ * alias that reaches the copy (else its id), `url#reference`, the full commit, `fetched`, `cached` (downloaded, but
+ * the cache held the content) or `kept` (the locked copy was intact in the cache), and `[project] effects` joined by
+ * spaces (`none` without any). Status 0 is success; 1 is an error with the Rust text in `message_out`; 2 means the C
+ * reader does not cover the project (a workspace, a manifest form it lacks). */
+uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out);
+
 /* ---- syntax trees ---- */
 
 /* A parsed module, kept in C. `extern type Tree` on the Manuscript side. A parse that fails still

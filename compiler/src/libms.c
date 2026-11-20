@@ -140,4 +140,6 @@
 #include "project/semver.c"
 #include "project/lock.c"
 #include "project/solve.c"
+#include "project/packages.c"
+#include "project/install.c"
 #include "project/graph_check.c"
