@@ -300,6 +300,96 @@ fn guarded_append(tree: Syntax, k: Kinds, only: Int, name: String) Bool:
 	body := children(tree, parts[2])
 	return body.length() == 1 and appends_to(tree, k, body[0], name)
 
+// The furthest end offset of any expression in the subtree at `at`.
+fn last_offset(tree: Syntax, at: Int) Int:
+	var last = tree.end_offset[at]
+
+	for child in children(tree, at):
+		to := last_offset(tree, child)
+		if to > last: last = to
+
+	return last
+
+// How many times the name `name` is read in the subtree at `at`.
+fn count_reads(tree: Syntax, k: Kinds, at: Int, name: String) Int:
+	var total = if tree.kind[at] == k.name and name_of(tree, at) == name: 1 else: 0
+	for child in children(tree, at): total += count_reads(tree, k, child, name)
+	return total
+
+// How many times `needle` appears in `text`.
+fn occurrences(text: Bytes, needle: Bytes) Int:
+	var total = 0
+	var from = 0
+
+	while from + needle.length() <= text.length():
+		if text.view(from, from + needle.length()) == needle:
+			total += 1
+			from += needle.length()
+		else:
+			from += 1
+
+	return total
+
+// `for i in 0..xs.length():` that only reads `xs[i]` is `for x in xs:` (MSL123).
+fn index_loop(
+	tree: Syntax,
+	k: Kinds,
+	source: Bytes,
+	file: String,
+	at: Int,
+	var out: List[Finding],
+) Void:
+	if tree.kind[at] != k.loop: return
+
+	parts := children(tree, at)
+	iter := parts[0]
+	written := source.view(first_offset(tree, iter), tree.end_offset[iter])
+	if written.contains("\n".to_bytes()) or not balanced(written): return
+
+	text := written.decode_utf8().get_or("")
+	if not text.starts_with("0..") or not text.ends_with(".length()"): return
+
+	list := text.slice(3, text.length() - 9)
+	if list.is_empty(): return
+
+	letters := list.to_bytes()
+
+	for position in 0..letters.length():
+		c := letters[position]
+		alnum := (
+			(c >= 48 and c <= 57)
+			or (c >= 65 and c <= 90)
+			or (c >= 97 and c <= 122)
+			or c == 95
+			or c >= 128
+		)
+		if not alnum: return
+
+	name := name_of(tree, at)
+	total := count_reads(tree, k, parts[1], name)
+	var end = last_offset(tree, parts[1])
+
+	// An index expression ends before its closing bracket.
+	while end < source.length() and source[end] == 93: end += 1
+
+	indexed := occurrences(
+		source.view(tree.offset[at], end),
+		f"{list}[{name}]".to_bytes(),
+	)
+	if total == 0 or total != indexed: return
+
+	out.append(
+		finding(
+			"MSL123",
+			"warning",
+			f"Loop over the list directly: `for item in {list}:` instead of indexing {list}[{name}]",
+			file,
+			tree.offset[at],
+			tree.line[at],
+			tree.column[at],
+		)
+	)
+
 // `for x in xs: out.append(x)` is `out.extend(xs)` (MSL125).
 fn append_all(
 	tree: Syntax,
@@ -374,7 +464,9 @@ export fn lint_terse(file: String, text: String) List[Finding]:
 				out,
 			)
 
-	for at in 0..tree.kind.length(): append_all(tree, k, file, at, out)
+	for at in 0..tree.kind.length():
+		append_all(tree, k, file, at, out)
+		index_loop(tree, k, source, file, at, out)
 
 	for decl in children(tree, 0):
 		if tree.kind[decl] == k.func:
@@ -416,3 +508,10 @@ test "a loop that only appends or adds is a library call":
 	var codes: List[String] = []
 	for item in found: codes.append(item.code.clone())
 	codes | expect_equal(expected: ["MSL124", "MSL124", "MSL124", "MSL125"])?
+
+test "a loop that only indexes the list is a loop over the list":
+	source := "fn f(xs: List[Int]) Int:\n    var t = 0\n    for i in 0..xs.length():\n        t += xs[i]\n        print(t)\n    for j in 0..xs.length():\n        t += xs[j] + j\n        print(t)\n    return t\n"
+	found := lint_terse("t.ms", source)
+	found.length() | expect_equal(expected: 1)?
+	found[0].code | expect_equal(expected: "MSL123")?
+	found[0].line | expect_equal(expected: 3)?
