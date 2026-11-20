@@ -33,6 +33,15 @@ typedef struct LbVal {
     bool owned;
 } LbVal;
 
+/* A lambda whose closure function is added but not yet lowered: `func` is its stub and `caps`
+ * the outer bindings its environment holds, in order. */
+typedef struct LbJob {
+    const MsExpr *lambda;
+    uint32_t func;
+    uint32_t *caps;
+    uint32_t ncaps;
+} LbJob;
+
 typedef struct Lb {
     const MsCheck *c;
     const MsFacts *facts;
@@ -44,6 +53,10 @@ typedef struct Lb {
     MirValue *value_of;
     MirVar *var_of;
     uint32_t *func_of;    /* by symbol id: the module function a call reaches, or MIR_NONE */
+    uint32_t *thunk_of;   /* by symbol id: the closure function forwarding to it, or MIR_NONE */
+    LbJob *jobs;          /* the lambdas made by the function being lowered, to lower after it */
+    uint32_t njobs, cjobs;
+    bool closure;         /* lowering a closure body: no call depth, no `var` parameters */
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
     const MsDecl *decl;   /* the function being lowered */
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
@@ -53,6 +66,15 @@ typedef struct Lb {
     bool dead;            /* control cannot reach the current position */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
+
+/* lower_closure.c: function values and lambdas. */
+MirTy lb_fn_ty(const Lb *lb, MsTy ty);
+bool lb_is_fn(const Lb *lb, MirTy ty);
+LbVal lb_lambda(Lb *lb, const MsExpr *e);
+LbVal lb_function_value(Lb *lb, const MsExpr *e);
+LbVal lb_call_value(Lb *lb, const MsExpr *e);
+/* Lowers the queued lambdas after their maker; `ok` is whether the maker was lowered. */
+bool lb_closures(Lb *lb, bool ok);
 
 #define LB_FAIL ((LbVal){MIR_NONE, false})
 
