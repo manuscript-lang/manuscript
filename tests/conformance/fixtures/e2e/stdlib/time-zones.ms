@@ -672,6 +672,18 @@ test "the TZ setting selects the local zone":
 	expect_equal((moment.calendar("Local")?).zone, "UTC")?
 	set_environment("TZ", none)?
 
+test "the host zone resolves Local when TZ is unset":
+	set_environment("TZ", none)?
+
+	// The host supplies the zone: /etc/localtime on Unix, the registry on Windows.
+	// Whatever it is, `Local` must agree with the IANA name it resolves to.
+	moment := parse_timestamp("2024-07-04T16:05:09Z")?
+	name := local_zone()
+	local := moment.calendar("Local")?
+	named := moment.calendar(name)?
+	expect_equal(local.offset_seconds, named.offset_seconds)?
+	expect_equal(local.zone, named.zone)?
+
 test "a POSIX rule with a short daylight-saving interval resolves gaps and folds":
 	set_environment("TZ", "STD0DST,M3.2.0/0,M3.2.0/4")?
 
