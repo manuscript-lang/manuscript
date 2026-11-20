@@ -19,6 +19,15 @@ flags=$(cat "$MS_LINT_FLAGS")
 # A source under runtime/sys/<os>/ or runtime/io/<os>/ compiles only on that system, so the others are left to that system's build.
 case "$(uname -s)" in Darwin) other='/(sys|io)/(linux|glibc|windows)/' ;; *) other='/(sys|io)/(darwin|windows)/' ;; esac
 files=$(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2>/dev/null | grep -Ev "$other" | sort)
+# compiler/src is one translation unit, libms.c, that includes each source once: a file included twice redeclares its
+# types, and one left out is not built. driver.c and tool.c are the entry points, outside it.
+included=$(sed -n 's/^#include "\(.*\.c\)"$/\1/p' compiler/src/libms.c)
+twice=$(echo "$included" | sort | uniq -d)
+[ -z "$twice" ] || { echo "c-lint: libms.c includes twice: $twice" >&2; exit 1; }
+for f in $(cd compiler/src && find . -name '*.c' | sed 's|^\./||' | sort); do
+    case "$f" in driver.c|libms.c|tool.c) continue ;; esac
+    echo "$included" | grep -qx "$f" || { echo "c-lint: compiler/src/$f is not included by libms.c" >&2; exit 1; }
+done
 changed=$files
 if [ -n "$base" ]; then
     git rev-parse --verify --quiet "$base^{commit}" > /dev/null || { echo "c-lint: $base is not a commit" >&2; exit 1; }
