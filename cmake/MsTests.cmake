@@ -103,7 +103,7 @@ ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_posix
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c" "${_rt}/sys/posix/fd.c"
+  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/core/utf8.c" "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c" "${_rt}/sys/posix/fd.c"
           "${_rt}/sys/posix/ifindex.c" "${_rt}/sys/posix/process.c" "${_rt}/sys/posix/signal.c"
           INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_z_INCLUDES}
           LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
