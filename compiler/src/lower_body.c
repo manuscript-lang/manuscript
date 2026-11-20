@@ -16,11 +16,13 @@
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
 
-/* The loop being lowered: where `continue` and `break` go. Lives on the lowering's stack. */
+/* The loop being lowered: where `continue` and `break` go. Lives on the lowering's stack. A
+ * `for` has a step block that only exists once something branches to it. */
 typedef struct LbLoop {
-    MirBlock header, exit;
+    MirBlock next, exit; /* `continue` goes to `next`, `break` to `exit` */
     struct LbLoop *outer;
-    bool broke; /* a `break` branches to `exit` */
+    bool broke;   /* a `break` branches to `exit` */
+    bool stepped; /* a branch to `next` exists (a `while` has it from the start) */
 } LbLoop;
 
 /* A lowered expression: the value, and whether the holder must drop it. */
@@ -504,7 +506,7 @@ static void lb_while(Lb *lb, const MsStmt *s) {
     }
     mir_b_seal_block(&lb->b, body);
     lb_enter(lb, body);
-    LbLoop here = {header, exit, lb->loop, false};
+    LbLoop here = {header, exit, lb->loop, false, true};
     lb->loop = &here;
     lb_statements(lb, &s->u.loop.body);
     lb->loop = here.outer;
@@ -520,6 +522,15 @@ static void lb_while(Lb *lb, const MsStmt *s) {
     }
 }
 
+/* The block `continue` and the end of the body go to; a `for` makes it on first use. */
+static MirBlock lb_step_block(Lb *lb, LbLoop *loop) {
+    if (!loop->stepped) {
+        loop->next = mir_b_new_block(&lb->b);
+        loop->stepped = true;
+    }
+    return loop->next;
+}
+
 /* `break` and `continue`: branch to the loop's exit or header; the rest of the block is dead. */
 static void lb_jump(Lb *lb, const MsStmt *s) {
     LbLoop *loop = lb->loop;
@@ -530,7 +541,7 @@ static void lb_jump(Lb *lb, const MsStmt *s) {
     if (s->kind == MS_S_BREAK) {
         loop->broke = true;
     }
-    mir_b_br(&lb->b, s->kind == MS_S_BREAK ? loop->exit : loop->header, NULL, 0);
+    mir_b_br(&lb->b, s->kind == MS_S_BREAK ? loop->exit : lb_step_block(lb, loop), NULL, 0);
     lb->dead = true;
 }
 
@@ -547,6 +558,49 @@ static void lb_assign(Lb *lb, const MsStmt *s) {
     }
 }
 
+/* `for name in a..b`: a counter from `a` while below `b` (both evaluated once, before the loop),
+ * stepped by one after the body or a `continue`. The loop variable is the counter's current value. */
+static void lb_for(Lb *lb, const MsStmt *s) {
+    const MsExpr *range = s->u.each.iter;
+    const LbVal start = lb_expr(lb, range->u.call.args.ptr[0].value);
+    const LbVal end = lb->ok ? lb_expr(lb, range->u.call.args.ptr[1].value) : LB_FAIL;
+    const uint32_t binding = lb->binding_at[s->id];
+    if (!lb->ok || binding == MS_NONE) {
+        lb->ok = false;
+        return;
+    }
+    const MirVar counter = mir_b_declare_var(&lb->b, MIR_INT, MM_BORROW);
+    mir_b_def_var(&lb->b, counter, start.v);
+    const MirBlock header = mir_b_new_block(&lb->b);
+    const MirBlock body = mir_b_new_block(&lb->b);
+    const MirBlock exit = mir_b_new_block(&lb->b);
+    mir_b_br(&lb->b, header, NULL, 0);
+    lb_enter(lb, header);
+    const MirValue index = mir_b_use_var(&lb->b, counter);
+    const MirValue below = mir_b_icmp(&lb->b, MCC_LT, index, end.v);
+    mir_b_br_if(&lb->b, below, body, NULL, 0, exit, NULL, 0);
+    mir_b_seal_block(&lb->b, body);
+    lb_enter(lb, body);
+    lb->value_of[binding] = index;
+    LbLoop here = {.exit = exit, .outer = lb->loop};
+    lb->loop = &here;
+    lb_statements(lb, &s->u.each.body);
+    lb->loop = here.outer;
+    if (!lb->dead) {
+        mir_b_br(&lb->b, lb_step_block(lb, &here), NULL, 0);
+    }
+    if (here.stepped) {
+        mir_b_seal_block(&lb->b, here.next);
+        lb_enter(lb, here.next);
+        const MirValue current = mir_b_use_var(&lb->b, counter);
+        mir_b_def_var(&lb->b, counter, mir_b_binop(&lb->b, MOP_IAdd, current, mir_b_iconst(&lb->b, 1)));
+        mir_b_br(&lb->b, header, NULL, 0);
+    }
+    mir_b_seal_block(&lb->b, header);
+    mir_b_seal_block(&lb->b, exit);
+    lb_enter(lb, exit);
+}
+
 /* Lowers a statement; every instruction in it reports the statement's own position, and the
  * enclosing statement's position comes back once it ends. */
 static void lb_statement(Lb *lb, const MsStmt *s) {
@@ -561,8 +615,8 @@ static void lb_statement(Lb *lb, const MsStmt *s) {
     case MS_S_ASSIGN: lb_assign(lb, s); break;
     case MS_S_BREAK:
     case MS_S_CONTINUE: lb_jump(lb, s); break;
-    case MS_S_CALL:
-    case MS_S_FOR: lb->ok = false; break;
+    case MS_S_FOR: lb_for(lb, s); break;
+    case MS_S_CALL: lb->ok = false; break;
     }
     lb->stmt = outer;
     if (outer != NULL) {

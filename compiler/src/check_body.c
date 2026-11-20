@@ -779,6 +779,21 @@ static bool body_if_statement(MsBody *b, const MsStmt *s) {
     return then_falls || else_falls;
 }
 
+static void body_close_scope(MsBody *b, uint32_t scope_start);
+
+/* Whether `callee` names the standard library's `range`. */
+static bool body_is_range(const MsBody *b, const MsExpr *callee) {
+    if (callee->kind != MS_E_NAME || ms_body_find_binding(b, callee->u.sym) != MS_NONE) {
+        return false;
+    }
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
+    if (sym == MS_NONE) {
+        return false;
+    }
+    const MsStr id = ms_name(b->c->names, b->c->syms.id[sym]);
+    return id.len == 22 && memcmp(id.ptr, "@std/collections/range", 22) == 0;
+}
+
 static bool body_while_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *cond = s->u.loop.cond;
     b->context = "a while condition";
@@ -795,6 +810,37 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
     b->breaks = outer_breaks;
     // `while true` ends only through a `break`.
     return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
+}
+
+/* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
+ * loop variable is an immutable Int that lives for the body. */
+static bool body_for_statement(MsBody *b, const MsStmt *s) {
+    const MsExpr *iter = s->u.each.iter;
+    if (iter->kind != MS_E_CALL || iter->u.call.args.len != 2 || !body_is_range(b, iter->u.call.callee)) {
+        (void)ms_body_unsupported(b);
+        return true;
+    }
+    for (uint32_t i = 0; i < 2; i++) {
+        const MsArg *bound = &iter->u.call.args.ptr[i];
+        if (bound->has_name || ms_body_expr(b, bound->value, b->int_ty) == MS_TY_NONE) {
+            (void)ms_body_unsupported(b);
+            return true;
+        }
+    }
+    // The call itself stays untyped: the standard library's signatures are not resolved here yet.
+    b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
+    const uint32_t scope_start = b->facts->bindings.count;
+    (void)ms_body_bind(b, s->u.each.name, b->int_ty, s->id, 0, MS_ROLE_LOOP);
+    const uint32_t outer_breaks = b->breaks;
+    b->breaks = 0;
+    b->loop_depth++;
+    if (b->supported) {
+        (void)ms_body_block(b, &s->u.each.body);
+    }
+    b->loop_depth--;
+    b->breaks = outer_breaks;
+    body_close_scope(b, scope_start);
+    return true; // a range ends
 }
 
 /* `break` and `continue` leave the innermost loop; outside one they are a diagnostic. */
@@ -831,8 +877,8 @@ static bool body_run(MsBody *b, const MsStmts *body) {
             body_jump_statement(b, s);
             falls = false;
             break;
-        case MS_S_CALL:
-        case MS_S_FOR: (void)ms_body_unsupported(b); break;
+        case MS_S_CALL: (void)ms_body_unsupported(b); break;
+        case MS_S_FOR: falls = body_for_statement(b, s); break;
         }
     }
     return falls;
