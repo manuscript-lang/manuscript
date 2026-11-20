@@ -12,11 +12,8 @@
 extern crate alloc;
 
 pub mod err;
-pub mod file;
 pub mod ops;
 pub mod path;
-#[allow(unsafe_code)] // the runtime flush hook
-pub mod stream;
 #[allow(unsafe_code)] // libc and Win32 calls
 pub mod sys;
 #[allow(unsafe_code)] // inotify
@@ -24,12 +21,8 @@ pub mod watch;
 
 use alloc::vec::Vec;
 use err::{Fail, Res};
-use ms_rt::ffi::{
-    BytesList, ErrOut, Has, ObjMut, ObjRef, Object, StatusCode, Str,
-    TextList, TypeList, abi_type, native,
-};
+use ms_rt::ffi::{ErrOut, Has, ObjMut, Object, StatusCode, Str, TypeList, abi_type, native};
 use ms_rt_abi::STATUS_FAILED;
-use stream::Stream;
 
 /// Delivers a pending cancel once the failing operation's frames have returned and dropped what
 /// they held. Runs only at the FFI boundary, never on a pool thread; the native then returns its
@@ -124,34 +117,6 @@ abi_type! {
     }
 }
 
-fn info_out(i: ops::Info) -> InfoOut {
-    let (cs, cn) = i.created.unwrap_or((0, 0));
-    InfoOut {
-        name: Str::from_bytes(&i.name),
-        size: i.size,
-        mode: i.mode,
-        permissions: i.permissions,
-        modified_seconds: i.modified.0,
-        modified_nanos: i.modified.1,
-        accessed_seconds: i.accessed.0,
-        accessed_nanos: i.accessed.1,
-        changed_seconds: i.changed.0,
-        changed_nanos: i.changed.1,
-        created_seconds: cs,
-        created_nanos: cn,
-        created_present: i.created.is_some() as i64,
-        kinds: i64::from(i.kinds()),
-        block_size: i.block_size as i64,
-        blocks: i.blocks as i64,
-        rdev: i.rdev as i64,
-        device: i.device as i64,
-        inode: i.inode as i64,
-        links: i.links as i64,
-        uid: i.uid as i64,
-        gid: i.gid as i64,
-    }
-}
-
 abi_type! {
     /// One `DirectoryEntry` as compiled code lays the record out: the name, then two flag bytes.
     pub struct EntryOut {
@@ -192,133 +157,6 @@ abi_type! {
 }
 
 native! {
-    // ---- File handles, directory cursors, temporary directories, glob and copy ----
-
-    /// `FileSystem.open`: a mode string such as `"r+"` plus permission bits; an unknown mode is
-    /// invalid.
-    fn msstd_fs_open(path: &str, flags: &str, mode: i64; err: ErrOut) -> Result<Object<Stream>, StatusCode> {
-        let opened = file::flags_of_mode(flags.as_bytes())
-            .ok_or_else(Fail::invalid)
-            .and_then(|f| file::open(path.as_bytes(), i64::from(f), mode));
-        fs_status_at(path.as_bytes(), opened, &err).map(Object)
-    }
-
-    /// `FileHandle.clone`: a second handle over a duplicate of the descriptor.
-    fn msstd_fs_file_clone(h: ObjRef<Stream>; err: ErrOut) -> Result<Object<Stream>, StatusCode> {
-        fs_status(file::duplicate(&h), &err).map(Object)
-    }
-
-    fn msstd_fs_file_read_at(
-        h: ObjMut<Stream>,
-        offset: i64,
-        has_max: Has,
-        max: i64; err: ErrOut) -> Result<Vec<u8>, StatusCode> {
-        let mut h = h;
-        fs_status(h.read_at(offset, has_max.then_some(max)), &err)
-    }
-
-    fn msstd_fs_file_read_file(
-        h: ObjMut<Stream>,
-        has_max: Has,
-        max: i64; err: ErrOut) -> Result<Vec<u8>, StatusCode> {
-        let mut h = h;
-        fs_status(lim(*has_max, max).and_then(|m| h.read_file(m)), &err)
-    }
-
-    fn msstd_fs_file_write_at(
-        h: ObjMut<Stream>,
-        offset: i64,
-        data: &[u8]; err: ErrOut) -> Result<(), StatusCode> {
-        let mut h = h;
-        fs_status(h.write_at(offset, data), &err)
-    }
-
-    /// `sizes` is a `List[Int]`; the result is a `List[Bytes]`, one chunk per size.
-    fn msstd_fs_file_read_vectors(
-        h: ObjMut<Stream>,
-        sizes: &[i64],
-        offset: i64; err: ErrOut) -> Result<BytesList, StatusCode> {
-        let mut h = h;
-        fs_status(h.read_vectors(sizes, offset), &err).map(BytesList)
-    }
-
-    /// `buffers` is a `List[Bytes]`.
-    fn msstd_fs_file_write_vectors(
-        h: ObjMut<Stream>,
-        buffers: Vec<&[u8]>,
-        offset: i64; err: ErrOut) -> Result<(), StatusCode> {
-        let mut h = h;
-        fs_status(h.write_vectors(&buffers, offset), &err)
-    }
-
-    fn msstd_fs_file_seek(
-        h: ObjMut<Stream>,
-        offset: i64,
-        origin: i64; err: ErrOut) -> Result<i64, StatusCode> {
-        let mut h = h;
-        fs_status(h.seek(offset, origin), &err)
-    }
-
-    fn msstd_fs_file_stat(h: ObjMut<Stream>; err: ErrOut) -> Result<InfoOut, StatusCode> {
-        let mut h = h;
-        fs_status(h.stat(), &err).map(info_out)
-    }
-
-    fn msstd_fs_file_truncate(h: ObjMut<Stream>, size: i64; err: ErrOut) -> Result<(), StatusCode> {
-        let mut h = h;
-        fs_status(h.truncate(size), &err)
-    }
-
-    fn msstd_fs_file_sync(h: ObjMut<Stream>; err: ErrOut) -> Result<(), StatusCode> {
-        let mut h = h;
-        fs_status(h.sync(), &err)
-    }
-
-    fn msstd_fs_file_data_sync(h: ObjMut<Stream>; err: ErrOut) -> Result<(), StatusCode> {
-        let mut h = h;
-        fs_status(h.data_sync(), &err)
-    }
-
-    fn msstd_fs_file_try_lock(h: ObjMut<Stream>, exclusive: bool; err: ErrOut) -> Result<i64, StatusCode> {
-        let mut h = h;
-        fs_status(h.try_lock(exclusive), &err).map(i64::from)
-    }
-
-    fn msstd_fs_file_unlock(h: ObjMut<Stream>; err: ErrOut) -> Result<(), StatusCode> {
-        let mut h = h;
-        fs_status(h.unlock(), &err)
-    }
-
-    fn msstd_fs_file_chmod(h: ObjMut<Stream>, mode: i64; err: ErrOut) -> Result<(), StatusCode> {
-        let mut h = h;
-        fs_status(h.chmod(mode), &err)
-    }
-
-    fn msstd_fs_file_chown(h: ObjMut<Stream>, uid: i64, gid: i64; err: ErrOut) -> Result<(), StatusCode> {
-        let mut h = h;
-        fs_status(h.chown(uid, gid), &err)
-    }
-
-    fn msstd_fs_file_set_times(
-        h: ObjMut<Stream>,
-        accessed: &Timestamp,
-        modified: &Timestamp; err: ErrOut) -> Result<(), StatusCode> {
-        let mut h = h;
-        fs_status(h.set_times(
-            (accessed.seconds, accessed.nanos),
-            (modified.seconds, modified.nanos),
-        ), &err)
-    }
-
-    /// The remaining lines as a `List[String]`.
-    fn msstd_fs_file_read_lines(
-        h: ObjMut<Stream>,
-        max_bytes: i64,
-        max_lines: i64; err: ErrOut) -> Result<TextList, StatusCode> {
-        let mut h = h;
-        fs_status(h.read_lines(max_bytes, max_lines), &err).map(TextList)
-    }
-
     /// A polling watcher (`interval_ns` > 0); `max` bounds tracked paths.
     fn msstd_fs_watch(
         path: &str,

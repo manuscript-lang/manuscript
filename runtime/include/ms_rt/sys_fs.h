@@ -91,6 +91,35 @@ MS_NODISCARD MsSysError ms_sys_fs_data_sync(MsSysFd fd);
 MS_NODISCARD MsSysError ms_sys_fs_try_lock(MsSysFd fd, bool exclusive, bool *taken);
 MS_NODISCARD MsSysError ms_sys_fs_unlock(MsSysFd fd);
 
+/* ---- what a descriptor is ---- */
+
+/* How reads of a descriptor block. A file never blocks a read for long, so it is read on the blocking pool; the
+ * others are waited on (a pipe or console on Windows cannot be, and has its own kind). */
+typedef enum {
+    MS_SYS_FD_FILE = 0, /* a regular file */
+    MS_SYS_FD_PIPE,
+    MS_SYS_FD_CONSOLE,
+    MS_SYS_FD_OTHER /* a terminal, socket, device, or anything the kind of is unknown */
+} MsSysFdKind;
+
+MsSysFdKind ms_sys_fs_fd_kind(MsSysFd fd);
+/* Whether `fd` is standard output or error, which the runtime's buffered `print` shares. */
+bool ms_sys_fs_is_output(MsSysFd fd);
+/* Points standard stream `which` (0 input, 1 output, 2 error) at the null device, for this process and children. */
+MS_NODISCARD MsSysError ms_sys_fs_redirect_null(int32_t which);
+
+#ifdef _WIN32
+/* A manual-reset event that ends a console wait from another thread. */
+MS_NODISCARD MsSysError ms_sys_fs_event_new(MsSysFd *event);
+void ms_sys_fs_event_signal(MsSysFd event);
+void ms_sys_fs_event_free(MsSysFd event);
+/* Blocks until the console input `fd` has input or `event` is signalled; true when there is input (or it failed,
+ * which the next read reports), false when stopped. */
+bool ms_sys_fs_wait_console(MsSysFd fd, MsSysFd event);
+/* Fails the blocking read another thread has pending on `fd`, so that thread returns. */
+void ms_sys_fs_cancel_io(MsSysFd fd);
+#endif
+
 /* ---- file information ---- */
 
 typedef struct MsSysTime {

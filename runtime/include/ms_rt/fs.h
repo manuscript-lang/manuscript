@@ -126,4 +126,43 @@ uint8_t msstd_fs_copy(const MsStr *source, const MsStr *destination, int64_t fla
 /* ms-sig: msstd_fs_glob_entries(path: *const StrVal, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, has_max_entries: HasRaw, max_entries: i64, has_max_results: HasRaw, max_results: i64, filter: *mut Closure, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
 uint8_t msstd_fs_glob_entries(const MsStr *path, const MsVec *patterns, const MsVec *exclude, uint8_t follow_links, uint8_t has_max_entries, int64_t max_entries, uint8_t has_max_results, int64_t max_results, void *filter, MsVec *out, MsStr *err);
 
+
+/* File handles: a handle is the host stream of @std/io over an opened file (runtime/std/file.c). */
+/* ms-sig: msstd_fs_open(path: *const StrVal, flags: *const StrVal, mode: i64, out: *mut *mut ObjCell<Stream>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_open(const MsStr *path, const MsStr *mode_text, int64_t mode, void **out, MsStr *err);
+/* ms-sig: msstd_fs_file_clone(handle h: *const ObjCell<Stream>, out: *mut *mut ObjCell<Stream>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_clone(const void *handle, void **out, MsStr *err);
+/* ms-sig: msstd_fs_file_read_at(handle h: *mut ObjCell<Stream>, offset: i64, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_read_at(void *handle, int64_t offset, uint8_t has_max, int64_t max, MsVec *out, MsStr *err);
+/* ms-sig: msstd_fs_file_read_file(handle h: *mut ObjCell<Stream>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_read_file(void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err);
+/* ms-sig: msstd_fs_file_write_at(handle h: *mut ObjCell<Stream>, offset: i64, data: *const VecVal, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_write_at(void *handle, int64_t offset, const MsVec *data, MsStr *err);
+/* ms-sig: msstd_fs_file_read_vectors(handle h: *mut ObjCell<Stream>, sizes: *const VecVal, offset: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_read_vectors(void *handle, const MsVec *sizes, int64_t offset, MsVec *out, MsStr *err);
+/* ms-sig: msstd_fs_file_write_vectors(handle h: *mut ObjCell<Stream>, buffers: *const VecVal, offset: i64, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_write_vectors(void *handle, const MsVec *buffers, int64_t offset, MsStr *err);
+/* ms-sig: msstd_fs_file_seek(handle h: *mut ObjCell<Stream>, offset: i64, origin: i64, out: *mut i64, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_seek(void *handle, int64_t offset, int64_t origin, int64_t *out, MsStr *err);
+/* ms-sig: msstd_fs_file_stat(handle h: *mut ObjCell<Stream>, out: *mut InfoOut, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_stat(void *handle, MsFsInfo *out, MsStr *err);
+/* ms-sig: msstd_fs_file_truncate(handle h: *mut ObjCell<Stream>, size: i64, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_truncate(void *handle, int64_t size, MsStr *err);
+/* ms-sig: msstd_fs_file_sync(handle h: *mut ObjCell<Stream>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_sync(void *handle, MsStr *err);
+/* ms-sig: msstd_fs_file_data_sync(handle h: *mut ObjCell<Stream>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_data_sync(void *handle, MsStr *err);
+/* ms-sig: msstd_fs_file_try_lock(handle h: *mut ObjCell<Stream>, exclusive: u8, out: *mut i64, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_try_lock(void *handle, uint8_t exclusive, int64_t *out, MsStr *err);
+/* ms-sig: msstd_fs_file_unlock(handle h: *mut ObjCell<Stream>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_unlock(void *handle, MsStr *err);
+/* ms-sig: msstd_fs_file_chmod(handle h: *mut ObjCell<Stream>, mode: i64, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_chmod(void *handle, int64_t mode, MsStr *err);
+/* ms-sig: msstd_fs_file_chown(handle h: *mut ObjCell<Stream>, uid: i64, gid: i64, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_chown(void *handle, int64_t uid, int64_t gid, MsStr *err);
+/* ms-sig: msstd_fs_file_set_times(handle h: *mut ObjCell<Stream>, accessed: *const Timestamp, modified: *const Timestamp, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_set_times(void *handle, const MsFsTimestamp *accessed, const MsFsTimestamp *modified, MsStr *err);
+/* ms-sig: msstd_fs_file_read_lines(handle h: *mut ObjCell<Stream>, max_bytes: i64, max_lines: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_file_read_lines(void *handle, int64_t max_bytes, int64_t max_lines, MsVec *out, MsStr *err);
+
 #endif

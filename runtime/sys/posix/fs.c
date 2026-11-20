@@ -836,3 +836,24 @@ uint32_t ms_sys_fs_random(void) {
     state = (state ^ (state >> 27)) * UINT64_C(0x94D049BB133111EB);
     return (uint32_t)((state ^ (state >> 31)) >> 16);
 }
+
+MsSysFdKind ms_sys_fs_fd_kind(MsSysFd fd) {
+    struct stat info;
+    if (fstat((int)fd, &info) != 0) {
+        return MS_SYS_FD_OTHER;
+    }
+    return S_ISREG(info.st_mode) ? MS_SYS_FD_FILE : MS_SYS_FD_OTHER;
+}
+
+bool ms_sys_fs_is_output(MsSysFd fd) { return fd == 1 || fd == 2; }
+
+MsSysError ms_sys_fs_redirect_null(int32_t which) {
+    const int null = open("/dev/null", O_RDWR | O_CLOEXEC);
+    if (null < 0) {
+        return last_error();
+    }
+    const int moved = dup2(null, (int)which);
+    const MsSysError error = moved < 0 ? last_error() : 0;
+    close_after(null);
+    return error;
+}
