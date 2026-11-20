@@ -17,7 +17,7 @@ typedef int PollHandle;
 #endif
 
 #include "../std/abi.h"
-#include "../net/datagram.h"
+#include "ms_rt/net.h"
 #include "ms_rt/sys_net.h"
 #include "ms_sched.h"
 
