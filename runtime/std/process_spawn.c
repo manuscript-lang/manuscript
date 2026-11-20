@@ -33,6 +33,7 @@
 
 #ifdef _WIN32
 #define PSAPI_VERSION 2 /* GetProcessMemoryInfo from kernel32, so no extra library */
+#include <io.h>
 #include <windows.h>
 #include <psapi.h>
 #else
