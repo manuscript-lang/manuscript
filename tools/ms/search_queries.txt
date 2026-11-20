@@ -1,0 +1,80 @@
+read file
+jsn parse
+fs.read
+sort by key
+how do i print
+uppercase
+size
+delete
+push
+stdin lines
+concat
+split
+env
+random
+readFile
+raed_file
+zzzz
+x
+@std/data/json.ms
+@std/os/fs.ms.read_file
+prelude
+prelude.List
+prelude.List.sorted
+prelude.String
+prelude.Map.get
+List.sorted
+parse
+read
+json
+fs
+fs.FileHandle
+fs.FileHandle.read
+string
+http server
+sleep
+time now
+environment variable
+lowercase string
+map get
+set add
+command.Matches.int_or_none
+terminal.RawTerminal
+collections.Map.add
+itertools.combinations
+promise.Promise
+core.Closeable.close
+chacha20poly1305.chacha20poly1305_seal
+crypto.seal
+csv
+encoding.utf16_encode
+json.StringifyOptions.indent
+utf8.Utf8Error
+yaml.parse_all
+image.Rgba
+archive.CompressionFormat.Deflate
+io.stderr
+log.stdout_transport
+complex.imaginary_unit
+math.asinh
+math.isqrt
+math.reverse_bytes
+statistics.percentile
+http.HttpMethod
+ip
+mime.encode_multipart
+net.RequestOptions.headers
+sse.SseEvent.data
+websocket.WebSocketMessage
+fs.FileInfo
+fs.create_directory
+path.basename_without
+process.ResourceUsage
+system.Endianness.Big
+system.user_info
+regex.Regex
+property.Drawn.source
+test.expect_fault
+time.Duration
+unicode.is_mark
+prelude.Int16.to_string_radix

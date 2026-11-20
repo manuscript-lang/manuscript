@@ -88,7 +88,7 @@ typedef struct MsBytesMut {
     size_t len;
 } MsBytesMut;
 
-static inline MsBytes ms_bytes(const uint8_t *ptr, size_t len) {
+static inline MsBytes ms_bytes_of(const uint8_t *ptr, size_t len) {
     return (MsBytes){.ptr = ptr, .len = len};
 }
 

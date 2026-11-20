@@ -22,7 +22,7 @@ done
 for t in runtime/tests/std_*.c; do
     name=$(basename "$t" .c)
     # shellcheck disable=SC2046
-    cc $flags $(pkg-config --cflags libpcre2-8 libcrypto) "$t" runtime/std/*.c $(sh runtime/third_party/libs.sh libs pcre2 crypto) -lm -o "$out/$name"
+    cc $flags $(pkg-config --cflags libpcre2-8 libcrypto) "$t" runtime/std/*.c runtime/tests/std_support/*.c $(sh runtime/third_party/libs.sh libs pcre2 crypto) -lm -o "$out/$name"
     "$out/$name"
 done
 # The HTTP/1 tests link the vendored llhttp sources (the same ones the pinned build compiles).

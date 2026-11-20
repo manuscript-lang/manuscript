@@ -1,0 +1,4 @@
+[project]
+name = "ms-tools"
+source = "."
+entry = "lint.ms"
