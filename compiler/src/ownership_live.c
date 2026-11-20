@@ -148,7 +148,7 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_LIST:
     case MS_E_MAP:
     case MS_E_LAMBDA:
-    case MS_E_CALL:
+    case MS_E_CALL: w->supported = false; return;
     case MS_E_MATCH: live_match(w, e); return;
     }
 }
@@ -184,12 +184,11 @@ static void live_jump(LiveWalk *w, const MsStmt *s) {
 
 /* Both branches start from what follows the `if`; afterwards the earlier use on either path counts. */
 static void live_if(LiveWalk *w, const MsStmt *s) {
-    if (s->u.branch.binding != NULL) {
-        w->supported = false;
-        return;
-    }
     uint32_t *after = live_snapshot(w);
     live_block(w, &s->u.branch.body);
+    if (s->u.branch.binding != NULL) {
+        live_define(w, s->u.branch.binding);
+    }
     uint32_t *then_later = w->later;
     w->later = after;
     live_block(w, &s->u.branch.else_body);

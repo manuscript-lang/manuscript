@@ -41,6 +41,7 @@
 #include "mir_elaborate_sites.c"
 #include "mir_elaborate_convert.c"
 #include "mir_elaborate.c"
+#include "mir_pipeline.c"
 #include "mir_analysis.c"
 #include "mir_verify_types.c"
 #include "mir_verify.c"

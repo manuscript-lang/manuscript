@@ -1,11 +1,14 @@
 /* The runtime services the std natives call and the unit tests do not exercise: strings are plain malloc'd bytes, the
  * program has one task (so nothing parks and the pool is never used), and a stop request never arrives. Linked into
  * every runtime/tests/std_*.c test, which links all of runtime/std. */
+#define _POSIX_C_SOURCE 200809L
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "ms_rt/string.h"
 #include "ms_sched.h"
@@ -61,21 +64,61 @@ void msrt_string_empty(MsStr *out) { *out = (MsStr){.ptr_word = NULL, .tagged = 
 int32_t ms_sched_stdout_error(void) { return 0; }
 void ms_sched_flush_stdout(void) {}
 
-/* Watchers park on a token the unit tests never wait for. */
+/* Tokens count posts under one lock: a park takes one, or waits for a post or the timeout. */
+enum { STUB_TOKENS = 64 };
+static pthread_mutex_t token_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t token_posted = PTHREAD_COND_INITIALIZER;
+static uint64_t token_pending[STUB_TOKENS + 1];
+static uint64_t token_issued;
+
 uint64_t msrt_token_new(uint32_t flags) {
     (void)flags;
-    return 1;
+    pthread_mutex_lock(&token_lock);
+    const uint64_t token = token_issued % STUB_TOKENS + 1;
+    token_issued++;
+    token_pending[token] = 0;
+    pthread_mutex_unlock(&token_lock);
+    return token;
 }
 void msrt_token_free(uint64_t token) { (void)token; }
 void msrt_token_post_remote(uint64_t token, uint64_t value) {
-    (void)token;
     (void)value;
+    pthread_mutex_lock(&token_lock);
+    token_pending[token]++;
+    pthread_cond_broadcast(&token_posted);
+    pthread_mutex_unlock(&token_lock);
 }
 uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) {
-    (void)token;
-    (void)timeout_ns;
     *value = 0;
-    return 0;
+    struct timespec until;
+    clock_gettime(CLOCK_REALTIME, &until);
+    until.tv_sec += (time_t)(timeout_ns / 1000000000);
+    until.tv_nsec += (long)(timeout_ns % 1000000000);
+    if (until.tv_nsec >= 1000000000) {
+        until.tv_sec++;
+        until.tv_nsec -= 1000000000;
+    }
+    uint32_t result = 0;
+    pthread_mutex_lock(&token_lock);
+    while (token_pending[token] == 0 && result == 0) {
+        if (timeout_ns < 0) {
+            pthread_cond_wait(&token_posted, &token_lock);
+        } else if (pthread_cond_timedwait(&token_posted, &token_lock, &until) != 0) {
+            result = MS_WAIT_TIMEOUT;
+        }
+    }
+    if (token_pending[token] != 0) {
+        token_pending[token] = 0;
+    }
+    pthread_mutex_unlock(&token_lock);
+    return result;
+}
+
+/* The stream table is the Rust runtime's; a test reads the descriptor itself, so its id is the descriptor. */
+int64_t msrt_streams_open(int64_t fd, int64_t flags);
+int64_t msrt_streams_open(int64_t fd, int64_t flags) {
+    (void)flags;
+    return fd;
 }
 
 /* A read wait runs inline: the unit tests have no scheduler to park on. */
