@@ -161,6 +161,12 @@ static void use_foreign_promises(Cross *work) {
     ms_promise_put(work->id, (uint8_t *)&twice, &msrt_desc_int, false);
 }
 
+/* A worker completes a promise of the main isolate with no value, as a pipe's last writer ends a parked read. */
+static void finish_foreign_without_value(Cross *work) {
+    atomic_store(&cross_started, 1);
+    ms_promise_io_done(work->dep);
+}
+
 static int64_t take_int(MsPromise id) {
     int64_t value = -1;
     expect(ms_promise_take(id, &msrt_desc_int, (uint8_t *)&value), "a value to take");
@@ -232,6 +238,27 @@ static void foreign_operations(void) {
     ms_promise_drop(victim);
 }
 
+/* The completion reaches a promise another isolate owns: the owner, parked on it, wakes. */
+static void foreign_completion_without_value(void) {
+    const MsPromise dep = ms_promise_new();
+    ms_promise_set_remote_wake(dep);
+    const MsPromise id = ms_promise_new();
+    Cross *const work = msrt_alloc_zeroed(sizeof *work);
+    work->header.drop = work_drop;
+    work->code = finish_foreign_without_value;
+    work->id = id;
+    work->dep = dep;
+    atomic_store(&cross_started, 0);
+    ms_promise_start(id, (MsObj *)work);
+    for (int i = 0; i < 500 && atomic_load(&cross_started) == 0; i++) {
+        usleep(2000); /* blocked outside the scheduler, so only a worker can run the work */
+    }
+    expect(atomic_load(&cross_started) == 1, "foreign completion: a worker ran the work");
+    expect(ms_promise_wait(dep, 10LL * 1000 * 1000 * 1000) == MS_PROMISE_OK, "foreign completion: the owner wakes");
+    ms_promise_drop(dep);
+    ms_promise_drop(id);
+}
+
 enum { MANY = 300 };
 
 static void many_promises_all_finish(void) {
@@ -266,6 +293,7 @@ static void entry(void *argument) {
     idle_worker_takes_old_work();
     cancel_reaches_the_worker();
     foreign_operations();
+    foreign_completion_without_value();
     many_promises_all_finish();
     abandoned_work_is_freed();
 }
