@@ -1391,3 +1391,25 @@ fn packed_stack_runs_rebuild_the_words() {
         assert!(tokens <= words.len() / 2 + 1, "{words:?}");
     }
 }
+
+#[test]
+fn teardown_frees_the_chunk_frozen_copies_were_carved_from() {
+    use super::records::{frozen_alloc, frozen_free};
+    let _g = lock();
+    teardown();
+    // SAFETY: the copy is freed once, and teardown runs with no task switching.
+    unsafe {
+        let copy = frozen_alloc(16);
+        assert!(!sched().frozen_chunk.is_null());
+        frozen_free(copy.cast());
+        assert!(
+            !sched().frozen_chunk.is_null(),
+            "the chunk in use is kept for the next copy"
+        );
+        teardown();
+        assert!(
+            sched().frozen_chunk.is_null(),
+            "teardown must free the kept chunk"
+        );
+    }
+}
