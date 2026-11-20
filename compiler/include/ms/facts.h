@@ -25,6 +25,10 @@ typedef enum MsResolution {
     MS_RES_METHOD,  /* a method or interface operation: `ref` is a method id */
 } MsResolution;
 
+/* How the caller comes to own the result of a borrow-returning call over a temporary: a copy taken
+ * before the temporary is dropped, or the temporary itself when the callee hands it back whole. */
+enum { MS_OWNED_NONE, MS_OWNED_CLONE, MS_OWNED_WHOLE };
+
 /* ---- types (second) ---- */
 
 /* Bindings: one row per parameter, local, pattern name and `for` variable of a module. */
@@ -84,6 +88,8 @@ typedef struct MsFacts {
     bool *const_use;           /* by name node: a module constant read, which evaluates its initializer */
     uint32_t *call_method;     /* method id when the call is a method call, else MS_NONE */
     MsTy *call_receiver;       /* the receiver's type for a method call */
+    uint8_t *call_owned_borrow; /* a call returning a borrow over a temporary argument: MS_OWNED_CLONE or MS_OWNED_WHOLE */
+    uint32_t *call_owned_param; /* MS_OWNED_WHOLE: the parameter whose argument comes back whole */
     MsTy *call_interface;      /* the interface a call dispatches through, else MS_TY_NONE */
     uint32_t *call_type_args_at, *call_type_args_len; /* into `type_args` */
     MsTy *type_args;

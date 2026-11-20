@@ -24,8 +24,9 @@ fn from_nested() Float:
 	return wrap(wrap_pair(1.5, 2.5)) + wrap(0.5)
 
 fn from_records() Int:
-	p := Point(x: 1, y: 2)
-	return identity(p).y
+	p := identity(Point(x: 1, y: 2))
+	q := pick(p, Point(x: 3, y: 4))
+	return q.y
 
 fn from_ints() Int:
 	a := identity(3)

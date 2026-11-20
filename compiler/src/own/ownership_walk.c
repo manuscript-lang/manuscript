@@ -42,7 +42,7 @@ typedef struct OwnSummary {
 typedef struct OwnWalk {
     MsCheck *check;
     MsModId module;
-    const MsFacts *facts;
+    MsFacts *facts;
     MsClassifier *classifier;
     const MsLiveness *live;
     const MsFunc *function;
@@ -657,6 +657,31 @@ static void own_construct(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+/* Whether the argument is a place (a name, a field or an element): a borrow of it needs no owner. */
+static bool own_is_place_argument(const OwnWalk *w, const MsExpr *arg) {
+    return (arg->kind == MS_E_NAME && w->facts->res_kind[arg->id] == MS_RES_BINDING) || arg->kind == MS_E_MEMBER ||
+           arg->kind == MS_E_INDEX;
+}
+
+/* A borrow-returning call over a temporary: the caller owns the result. When the callee hands back
+ * the whole of one temporary argument the caller keeps that temporary; otherwise it copies the
+ * result before the temporary is dropped. */
+static void own_record_owned_borrow(OwnWalk *w, const MsExpr *e, const OwnSummary *callee) {
+    w->facts->call_owned_borrow[e->id] = MS_OWNED_CLONE;
+    const uint32_t mask = callee->borrowed_params;
+    if (mask == 0 || (mask & (mask - 1)) != 0) {
+        return;
+    }
+    uint32_t param = 0;
+    while ((mask >> param & 1u) == 0) {
+        param++;
+    }
+    if (param < e->u.call.args.len && !own_is_place_argument(w, e->u.call.args.ptr[param].value)) {
+        w->facts->call_owned_borrow[e->id] = MS_OWNED_WHOLE;
+        w->facts->call_owned_param[e->id] = param;
+    }
+}
+
 /* A call of a function this module declares: each argument is read, since a parameter that is
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
@@ -691,7 +716,12 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
     uint32_t origins[4];
     uint32_t count = 0;
-    if (callee->returns_borrow && !copied && demand == DEMAND_MOVE && own_call_origins(w, e, origins, &count)) {
+    if (!callee->returns_borrow || copied) {
+        return;
+    }
+    if (!own_call_origins(w, e, origins, &count)) {
+        own_record_owned_borrow(w, e, callee);
+    } else if (demand == DEMAND_MOVE) {
         own_error_kept_borrow(w, e, origins, count);
     }
 }
