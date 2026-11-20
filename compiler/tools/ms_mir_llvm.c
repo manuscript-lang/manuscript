@@ -29,6 +29,7 @@ int main(int argc, char **argv) {
     }
     MirGlue glue = {0};
     mir_glue_run_and_expand(&m, &glue);
+    mir_lower_ops(&m, &glue);
     MirData data;
     mir_data_build(&m, &glue, &data);
     MsBuf out = {0}, why = {0};

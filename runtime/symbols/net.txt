@@ -1,0 +1,13 @@
+# Defined in runtime/net/natives.c; the Rust ms-std-net definitions of the same operations are deleted with that crate.
+msstd_conn_alias
+msstd_conn_close
+msstd_conn_close_if_last
+msstd_conn_local_address
+msstd_conn_peer_address
+msstd_conn_read
+msstd_conn_share
+msstd_conn_shutdown_write
+msstd_conn_tls_info
+msstd_conn_write_bytes
+msstd_net_dial
+msstd_net_lookup

@@ -8,6 +8,7 @@
 #include "read_file.h"
 
 #include "ms/mir.h"
+#include "ms/mir_debug.h"
 #include "ms/mir_pass.h"
 
 /* Runs the pass `name` on `m`; false when the name is unknown. */
@@ -36,6 +37,8 @@ static bool run_pass(const char *name, MirModule *m, bool *changed, MsBuf *failu
         MirGlue g = {0};
         const MirPipelineOptions o = {.cancel_edges = true, .checks = true, .verify = false};
         (void)mir_pipeline_finish(m, &o, &g, failure);
+    } else if (strcmp(name, "debug_types") == 0) {
+        /* Not a rewrite: main prints the description instead of the module. */
     } else if (strcmp(name, "glue") == 0) {
         MirGlue g = {0};
         *changed = mir_glue(m, &g);
@@ -70,6 +73,36 @@ static void print_cold(const MirModule *m, MsBuf *out) {
     }
 }
 
+/* One line per type, then its members, then the list index of each MIR type. */
+static void print_debug_types(const MirModule *m, MsBuf *out) {
+    static const char *const kinds[] = {"base", "struct", "union", "pointer"};
+    static const char *const encodings[] = {"bool", "signed", "unsigned", "float"};
+    MirDebugTypes t = {0};
+    mir_debug_types(m, &t);
+    for (uint32_t i = 0; i < t.ntypes; i++) {
+        const MirDebugType *d = &t.types[i];
+        ms_buf_printf(out, "%u %.*s size=%u %s", i, (int)d->name.len, d->name.ptr, d->size,
+                      kinds[d->kind]);
+        if (d->kind == MDK_BASE) {
+            ms_buf_printf(out, " %s", encodings[d->encoding]);
+        } else if (d->kind == MDK_POINTER && d->pointee != MIR_NONE) {
+            ms_buf_printf(out, " -> %u", d->pointee);
+        }
+        ms_buf_putc(out, '\n');
+        for (uint32_t k = 0; k < d->nmembers; k++) {
+            const MirDebugMember *mem = &d->members[k];
+            ms_buf_printf(out, "  %.*s @%u: %u\n", (int)mem->name.len, mem->name.ptr, mem->offset,
+                          mem->ty);
+        }
+    }
+    ms_buf_puts(out, "of_ty");
+    for (uint32_t i = 0; i < t.nty; i++) {
+        ms_buf_printf(out, " %u", t.of_ty[i]);
+    }
+    ms_buf_putc(out, '\n');
+    mir_debug_types_free(&t);
+}
+
 int main(int argc, char **argv) {
     if (argc < 4 || strcmp(argv[1], "pass") != 0) {
         fputs("usage: ms_mir_pass pass NAME FILE...\n", stderr);
@@ -102,8 +135,12 @@ int main(int argc, char **argv) {
             failure = (MsBuf){0};
         } else {
             ms_buf_printf(&out, "changed %d\n", changed ? 1 : 0);
-            mir_print_module(&m, &out);
-            print_cold(&m, &out);
+            if (strcmp(argv[2], "debug_types") == 0) {
+                print_debug_types(&m, &out);
+            } else {
+                mir_print_module(&m, &out);
+                print_cold(&m, &out);
+            }
         }
         mir_module_free(&m);
         free(src);

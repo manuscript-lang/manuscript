@@ -53,6 +53,10 @@ void mir_subst_apply(MirFunc *f, MirSubst *s) {
         }
         mir_term_each_use(&b->term, sm_apply_use, s);
     }
+    /* A debugger name follows its value to what replaced it. */
+    for (uint32_t k = 0; k < f->nnames; k++) {
+        f->names[k].value = mir_subst_resolve(s, f->names[k].value);
+    }
 }
 
 void mir_inst_vec_push(MsArena *arena, MirInstVec *vec, const MirInst *inst) {
