@@ -306,6 +306,8 @@ fn abi_kind(text: &str) -> String {
         "ValueDesc",
         "CmpFn",
         "MsCompareFn",
+        "JsonCtorFn",
+        "JsonViewFn",
         "ErrSlot",
     ] {
         if word(alias) {
@@ -416,7 +418,7 @@ fn check_c_abi(
     }
     for header in read_dir("runtime/include/ms_rt", "h")? {
         let module = header.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        if !["base", "safe", "chars"].contains(&module)
+        if !["base", "safe", "chars", "array"].contains(&module)
             && !root.join(format!("runtime/symbols/{module}.txt")).exists()
         {
             return Err(format!(
@@ -428,13 +430,17 @@ fn check_c_abi(
 }
 
 /// The `msrt_*`/`msstd_*` prototypes of a module header as `name -> (parameter kinds, result kind)`.
-/// Splits a parameter list at the commas outside angle brackets (`FrameBuf<StrVal, 8>` is one parameter).
+/// Splits a parameter list at the commas outside angle brackets and parentheses (`FrameBuf<StrVal, 8>` and a function
+/// pointer type are each one parameter).
 fn split_top_level(params: &str) -> Vec<&str> {
     let (mut parts, mut depth, mut start) = (Vec::new(), 0usize, 0);
+    let bytes = params.as_bytes();
     for (i, c) in params.char_indices() {
         match c {
-            '<' => depth += 1,
-            '>' => depth = depth.saturating_sub(1),
+            '<' | '(' => depth += 1,
+            // The `>` of a function pointer's `->` closes nothing.
+            '>' if i > 0 && bytes[i - 1] == b'-' => {}
+            '>' | ')' => depth = depth.saturating_sub(1),
             ',' if depth == 0 => {
                 parts.push(&params[start..i]);
                 start = i + 1;
