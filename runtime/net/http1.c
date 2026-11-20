@@ -168,6 +168,28 @@ int ms_h1_read_body_eof(MsH1Reader *r) {
     return r->done ? MS_H1_BODY_DONE : MS_H1_BODY_BAD;
 }
 
+const MsH1Field *ms_h1_find_field(const char *base, const MsH1Field *fields, uint32_t count, MsBytes name) {
+    for (uint32_t i = 0; i < count; i++) {
+        const MsBytes candidate = ms_bytes_of((const uint8_t *)base + fields[i].name.off, fields[i].name.len);
+        if (ms_ascii_equal_fold(candidate, name)) return &fields[i];
+    }
+    return NULL;
+}
+
+bool ms_h1_value_has_token(MsBytes value, MsBytes token) {
+    size_t start = 0;
+    while (start <= value.len) {
+        size_t end = start;
+        while (end < value.len && value.ptr[end] != ',') end++;
+        size_t from = start, to = end;
+        while (from < to && (value.ptr[from] == ' ' || value.ptr[from] == '\t')) from++;
+        while (to > from && (value.ptr[to - 1] == ' ' || value.ptr[to - 1] == '\t')) to--;
+        if (ms_ascii_equal_fold(ms_bytes_of(value.ptr + from, to - from), token)) return true;
+        start = end + 1;
+    }
+    return false;
+}
+
 static int put(char *dst, size_t cap, size_t *used, const char *s, size_t n) {
     if (n > cap - *used) return -1;
     memcpy(dst + *used, s, n);

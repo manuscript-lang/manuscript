@@ -2,9 +2,11 @@
    buffer must stay unchanged until the handler is done with the head. */
 #ifndef MS_NET_HTTP1_H
 #define MS_NET_HTTP1_H
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <llhttp.h>
+#include "ms_rt/safe.h"
 
 /* A byte range of the read buffer. */
 typedef struct { uint32_t off, len; } MsSpan;
@@ -26,8 +28,6 @@ enum { MS_H1_PARTIAL = 0, MS_H1_COMPLETE = 1, MS_H1_BAD = 2 };
    status to send (400, 431, 501). len above 4 GiB is refused. head_limit bounds the head; nothing is
    allocated. */
 int ms_h1_parse_request(const char *buf, size_t len, size_t head_limit, MsH1Request *out, uint32_t field_cap);
-
-#endif
 
 /* A response head, as offsets into the read buffer like a request head. */
 typedef struct {
@@ -65,6 +65,12 @@ int ms_h1_read_body(MsH1Reader *reader, const char *buf, size_t len, MsSpan *dat
 /* The peer closed the stream: DONE when that ends a body that had no length, else BAD (a truncated body). */
 int ms_h1_read_body_eof(MsH1Reader *reader);
 
+/* The first field of `fields` called `name` (ASCII case-insensitive); NULL when there is none. Spans are offsets into
+   `base`. */
+const MsH1Field *ms_h1_find_field(const char *base, const MsH1Field *fields, uint32_t count, MsBytes name);
+/* Whether the comma-separated `value` lists `token` (ASCII case-insensitive, blanks around a token ignored). */
+bool ms_h1_value_has_token(MsBytes value, MsBytes token);
+
 /* The request line: method SP target SP HTTP/1.1 CRLF. A method that is not a token, or a target holding a space or
    a control byte, returns -2; nothing is written. */
 int ms_h1_write_request_line(char *dst, size_t cap, size_t *used, const char *method, size_t method_len,
@@ -80,3 +86,5 @@ int ms_h1_write_field(char *dst, size_t cap, size_t *used, const char *name, siz
 int ms_h1_write_head_end(char *dst, size_t cap, size_t *used);
 /* One chunk (size line, data, CRLF); n == 0 writes the terminating chunk "0\r\n\r\n". */
 int ms_h1_write_chunk(char *dst, size_t cap, size_t *used, const char *data, size_t n);
+
+#endif
