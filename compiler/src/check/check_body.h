@@ -42,6 +42,8 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
 /* Lists (check_list.c): whether `ty` is a `List` of admitted elements, a `List[...]` annotation,
  * a list literal and an index expression. */
 bool ms_body_is_list(const MsBody *b, MsTy ty);
+MsBuiltin ms_body_standard_identity(const MsBody *b, MsTy ty);
+bool ms_body_same_type(const MsBody *b, MsTy x, MsTy y);
 bool ms_body_is_handle(const MsBody *b, MsTy ty);
 bool ms_body_is_result(const MsBody *b, MsTy ty);
 MsTy ms_body_list_annotation(MsBody *b, const MsTypeRef *t);

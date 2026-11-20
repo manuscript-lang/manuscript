@@ -18,23 +18,6 @@ typedef struct Target {
     bool mutating, consuming;
 } Target;
 
-/* The standard type a type declared by the standard library is: `Optional` declared in `@std/core.ms`
- * is the built-in `@std/Optional` that `Int?` writes. A type of the program's own is never one. */
-static MsBuiltin row_standard_identity(const MsBody *b, MsTy ty) {
-    const uint32_t def = b->c->tys.def[ty];
-    if (def == 0 || def - 1 >= b->c->syms.count) {
-        return MS_B_NONE;
-    }
-    const MsStr module = ms_name(b->c->names, b->c->mods[b->c->syms.module[def - 1]].path);
-    const MsStr name = ms_name(b->c->names, b->c->syms.name[def - 1]);
-    char id[128];
-    if (module.len < 5 || memcmp(module.ptr, "@std/", 5) != 0 ||
-        snprintf(id, sizeof id, "@std/%.*s", (int)name.len, name.ptr) >= (int)sizeof id) {
-        return MS_B_NONE;
-    }
-    return ms_builtin_from_id((MsStr){id, (uint32_t)strlen(id)});
-}
-
 /* Binds the row's variables by matching its receiver type against the actual one. A built-in
  * type (`List[T]`) is declared by its standard module as a type and written elsewhere as the
  * native built-in: they are one type when the name and the arguments agree. */
@@ -42,9 +25,9 @@ static bool row_receiver_fits(const MsBody *b, MsInfer *in, MsTy pattern, MsTy a
     const MsTyTable *tys = &b->c->tys;
     // The standard type as the program writes it (`List[Int]`, `Int?`) is the one its module declares
     // (`List[T]`, `Optional[T]`) when both have the same standard identity (`@std/Optional`).
-    const MsBuiltin declared = row_standard_identity(b, pattern);
-    const bool same_native = declared != MS_B_NONE && declared == tys->builtin[actual] && tys->id[pattern] != tys->id[actual] &&
-                             tys->nargs[pattern] == tys->nargs[actual];
+    const MsBuiltin declared = ms_body_standard_identity(b, pattern);
+    const bool same_native = declared != MS_B_NONE && declared == ms_body_standard_identity(b, actual) &&
+                             tys->id[pattern] != tys->id[actual] && tys->nargs[pattern] == tys->nargs[actual];
     if (!same_native) {
         return ms_infer_match(in, pattern, actual) == MS_MATCH_OK;
     }

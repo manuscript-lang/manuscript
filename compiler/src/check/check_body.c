@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "check/check_body.h"
@@ -141,6 +142,47 @@ static bool body_has_invalid(const MsBody *b, MsTy ty) {
         }
     }
     return false;
+}
+
+/* The standard type a type declared by the standard library is: `Optional` declared in `@std/core.ms`
+ * is the built-in `@std/Optional` that `Int?` writes. A type of the program's own is never one. */
+MsBuiltin ms_body_standard_identity(const MsBody *b, MsTy ty) {
+    if (b->c->tys.builtin[ty] != MS_B_NONE) {
+        return (MsBuiltin)b->c->tys.builtin[ty];
+    }
+    const uint32_t def = b->c->tys.def[ty];
+    if (def == 0 || def - 1 >= b->c->syms.count) {
+        return MS_B_NONE;
+    }
+    const MsStr module = ms_name(b->c->names, b->c->mods[b->c->syms.module[def - 1]].path);
+    const MsStr name = ms_name(b->c->names, b->c->syms.name[def - 1]);
+    char id[128];
+    if (module.len < 5 || memcmp(module.ptr, "@std/", 5) != 0 ||
+        snprintf(id, sizeof id, "@std/%.*s", (int)name.len, name.ptr) >= (int)sizeof id) {
+        return MS_B_NONE;
+    }
+    return ms_builtin_from_id((MsStr){id, (uint32_t)strlen(id)});
+}
+
+/* Whether two types are the same type: equal, or the standard type declared by its module and the
+ * built-in the program writes (`List[Int]` as declared by collections.ms and as written), with the
+ * same arguments. */
+bool ms_body_same_type(const MsBody *b, MsTy x, MsTy y) {
+    const MsTyTable *tys = &b->c->tys;
+    if (x == y) {
+        return true;
+    }
+    const MsBuiltin identity = ms_body_standard_identity(b, x);
+    if (x == MS_TY_NONE || y == MS_TY_NONE || identity == MS_B_NONE || identity != ms_body_standard_identity(b, y) ||
+        tys->nargs[x] != tys->nargs[y]) {
+        return false;
+    }
+    for (uint32_t i = 0; i < tys->nargs[x]; i++) {
+        if (!ms_body_same_type(b, ms_ty_args(tys, x)[i], ms_ty_args(tys, y)[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 /* A type that is only ever the same as itself: a primitive, or a type or enum, never an interface
@@ -936,7 +978,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     if (expected == b->invalid_ty) {
         return ms_body_record(b, e->id, ty); // what was asked for is already reported
     }
-    if (expected != MS_TY_NONE && ty != expected) {
+    if (expected != MS_TY_NONE && !ms_body_same_type(b, ty, expected)) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
         if (context == NULL || !body_is_comparable(b, ty) || !body_is_comparable(b, expected)) {
