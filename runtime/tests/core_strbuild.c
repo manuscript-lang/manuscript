@@ -177,31 +177,31 @@ int main(void) {
     const char *padded[] = {"", "  ", " a ", "\t\n hello world \r\n", "   a string well past the inline size, with é   ", "no-trim-needed-here-at-all"};
     const char *both[] = {"", "", "a", "hello world", "a string well past the inline size, with é", "no-trim-needed-here-at-all"};
     for (size_t i = 0; i < sizeof padded / sizeof *padded; i++) {
-        MsStr in = mk(padded[i]), r;
-        msrt_string_trim(&in, &r);
-        CHECK(is(&r, both[i]));
-        drop(&r);
-        msrt_string_trim_start(&in, &r);
-        CHECK(strncmp((const char *)ms_str_data(&r), both[i], strlen(both[i])) == 0 && ms_str_len(&r) >= strlen(both[i]));
-        drop(&r);
-        msrt_string_trim_end(&in, &r);
-        CHECK(ms_str_len(&r) >= strlen(both[i]));
-        drop(&r);
+        MsStr in = mk(padded[i]), res;
+        msrt_string_trim(&in, &res);
+        CHECK(is(&res, both[i]));
+        drop(&res);
+        msrt_string_trim_start(&in, &res);
+        CHECK(strncmp((const char *)ms_str_data(&res), both[i], strlen(both[i])) == 0 && ms_str_len(&res) >= strlen(both[i]));
+        drop(&res);
+        msrt_string_trim_end(&in, &res);
+        CHECK(ms_str_len(&res) >= strlen(both[i]));
+        drop(&res);
         MsStr owned = mk(padded[i]);
-        msrt_string_trim_take(&owned, &r);
-        CHECK(is(&r, both[i]));
-        drop(&r);
+        msrt_string_trim_take(&owned, &res);
+        CHECK(is(&res, both[i]));
+        drop(&res);
         drop(&in);
     }
     {
-        MsStr in = mk("   leading and a long enough tail to live on the heap"), r;
-        msrt_string_trim_start_take(&in, &r);
-        CHECK(is(&r, "leading and a long enough tail to live on the heap"));
-        drop(&r);
+        MsStr in = mk("   leading and a long enough tail to live on the heap"), res;
+        msrt_string_trim_start_take(&in, &res);
+        CHECK(is(&res, "leading and a long enough tail to live on the heap"));
+        drop(&res);
         in = mk("a long enough head to live on the heap and then trailing   ");
-        msrt_string_trim_end_take(&in, &r);
-        CHECK(is(&r, "a long enough head to live on the heap and then trailing"));
-        drop(&r);
+        msrt_string_trim_end_take(&in, &res);
+        CHECK(is(&res, "a long enough head to live on the heap and then trailing"));
+        drop(&res);
     }
     /* index_of */
     {
@@ -214,34 +214,34 @@ int main(void) {
     }
     /* char_at: ascii, two-byte, stray byte */
     {
-        MsStr t = mk("aé"), r;
-        msrt_string_char_at(&t, 0, &r);
-        CHECK(is(&r, "a"));
-        msrt_string_char_at(&t, 1, &r);
-        CHECK(is(&r, "\xc3\xa9"));
-        drop(&t);
+        MsStr txt = mk("aé"), res;
+        msrt_string_char_at(&txt, 0, &res);
+        CHECK(is(&res, "a"));
+        msrt_string_char_at(&txt, 1, &res);
+        CHECK(is(&res, "\xc3\xa9"));
+        drop(&txt);
         const uint8_t stray[] = {'x', 0xff};
-        msrt_string_from_bytes(stray, 2, &t);
-        msrt_string_char_at(&t, 1, &r);
-        CHECK(is(&r, "\xef\xbf\xbd"));
-        drop(&t);
+        msrt_string_from_bytes(stray, 2, &txt);
+        msrt_string_char_at(&txt, 1, &res);
+        CHECK(is(&res, "\xef\xbf\xbd"));
+        drop(&txt);
     }
     /* padding by scalars, inline and heap results, multi-byte padding, short target */
     {
-        MsStr t = mk("é"), dash = mk("-"), ab = mk("é-"), r;
-        msrt_string_pad_start(&t, 4, &dash, &r);
-        CHECK(is(&r, "---\xc3\xa9"));
-        msrt_string_pad_end(&t, 4, &ab, &r);
-        CHECK(is(&r, "\xc3\xa9\xc3\xa9-\xc3\xa9"));
-        msrt_string_pad_end(&t, 1, &dash, &r);
-        CHECK(is(&r, "\xc3\xa9"));
-        msrt_string_pad_start(&t, 40, &ab, &r);
-        CHECK(ms_str_len(&r) == 2 + 39 / 2 * 3 + (39 % 2) * 2 && memcmp(ms_str_data(&r) + ms_str_len(&r) - 2, "\xc3\xa9", 2) == 0);
-        drop(&r);
+        MsStr txt = mk("é"), dash = mk("-"), ab = mk("é-"), res;
+        msrt_string_pad_start(&txt, 4, &dash, &res);
+        CHECK(is(&res, "---\xc3\xa9"));
+        msrt_string_pad_end(&txt, 4, &ab, &res);
+        CHECK(is(&res, "\xc3\xa9\xc3\xa9-\xc3\xa9"));
+        msrt_string_pad_end(&txt, 1, &dash, &res);
+        CHECK(is(&res, "\xc3\xa9"));
+        msrt_string_pad_start(&txt, 40, &ab, &res);
+        CHECK(ms_str_len(&res) == 2 + 39 / 2 * 3 + (39 % 2) * 2 && memcmp(ms_str_data(&res) + ms_str_len(&res) - 2, "\xc3\xa9", 2) == 0);
+        drop(&res);
         MsStr none = mk("");
-        msrt_string_pad_start(&t, 9, &none, &r);
-        CHECK(is(&r, "\xc3\xa9"));
-        drop(&t); drop(&dash); drop(&ab);
+        msrt_string_pad_start(&txt, 9, &none, &res);
+        CHECK(is(&res, "\xc3\xa9"));
+        drop(&txt); drop(&dash); drop(&ab);
     }
     puts("core_strbuild: ok");
     return 0;
