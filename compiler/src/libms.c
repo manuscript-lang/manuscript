@@ -7,6 +7,7 @@
 #include "syntax/lex.c"
 #include "syntax/dump_base.c"
 #include "syntax/diag.c"
+#include "syntax/diag_render.c"
 #include "syntax/parse.c"
 #include "syntax/partial.c"
 #include "syntax/dump.c"
