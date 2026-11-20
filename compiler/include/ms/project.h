@@ -95,6 +95,8 @@ MS_NODISCARD bool ms_project_source_path(MsArena *a, const char *root, const cha
                                          MsProjectError *err);
 /* Go's strconv.Quote, for `%q` in diagnostics. */
 const char *ms_project_quote(MsArena *a, const char *text);
+/* The text as Rust's `{:?}` writes a string, for the messages that were formatted that way. */
+const char *ms_debug_quote(MsArena *a, const char *text);
 
 /* ---- the module graph (project/load.c) ---- */
 
