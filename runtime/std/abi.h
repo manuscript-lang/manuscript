@@ -54,6 +54,8 @@ extern const unsigned char msrt_desc_int[];
 void msrt_list_with_capacity(const void *desc, int64_t cap, MsVec *out);
 void msrt_list_push(MsVec *v, const void *desc, const void *elem);
 void msrt_list_drop(MsVec *v, const void *desc);
+extern const unsigned char msrt_desc_bytes[];
+extern const unsigned char msrt_desc_string[];
 
 static inline size_t msrt_str_len(const MsStr *s) { return ms_str_len(s); }
 static inline const char *msrt_str_data(const MsStr *s) { return (const char *)ms_str_data(s); }

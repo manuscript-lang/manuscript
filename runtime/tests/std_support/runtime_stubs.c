@@ -56,3 +56,7 @@ size_t msrt_cleanup_push(void (*run)(uint8_t *), uint8_t *argument) {
 }
 void msrt_cleanup_discard(size_t handle) { (void)handle; }
 void msrt_string_empty(MsStr *out) { *out = (MsStr){.ptr_word = NULL, .tagged = 0}; }
+const unsigned char msrt_desc_bytes[1];
+const unsigned char msrt_desc_string[1];
+int32_t ms_sched_stdout_error(void) { return 0; }
+void ms_sched_flush_stdout(void) {}

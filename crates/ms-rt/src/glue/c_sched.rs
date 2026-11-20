@@ -29,6 +29,18 @@ pub extern "C-unwind" fn ms_sched_cancel_return() {
     crate::fault::cancel_return();
 }
 
+/// The OS code of the first failed write to standard output, or 0.
+#[unsafe(no_mangle)]
+pub extern "C" fn ms_sched_stdout_error() -> i32 {
+    crate::io::stdout_error()
+}
+
+/// Writes out the runtime's buffered standard output.
+#[unsafe(no_mangle)]
+pub extern "C" fn ms_sched_flush_stdout() {
+    crate::io::flush_stdout();
+}
+
 /// Whether a bounded read of the running task has used its time.
 #[unsafe(no_mangle)]
 pub extern "C" fn ms_sched_read_limit_passed() -> bool {
