@@ -19,7 +19,10 @@ typedef int PollHandle;
 
 #include "../net/conn_object.h"
 #include "../net/ws.h"
+#include "../net/ws_connect.h"
 #include "../net/ws_dial.h"
+#include "../net/ws_natives.h"
+#include "../std/abi.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_net.h"
 #include "ms_sched.h"
@@ -31,6 +34,8 @@ static void check(bool ok, int line, const char *text) {
     }
 }
 #define CHECK(cond) check((cond), __LINE__, #cond)
+
+void ms_sched_cancel_return(void) {}
 
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
     PollFd p = {.fd = (PollHandle)fd, .events = (short)((events & MS_WAIT_READ ? POLLIN : 0) | (events & MS_WAIT_WRITE ? POLLOUT : 0))};
@@ -148,6 +153,32 @@ int main(void) {
         ms_ws_socket_release(session);
         ((MsObj *)conn)->drop(conn);
         ((MsObj *)headers)->drop((MsObj *)headers);
+        ms_sys_net_close(server.listener);
+    }
+
+    /* the native: the same handshake through msstd_ws_connect, and a field the caller may not set */
+    {
+        Server server = {.select = "chat", .extra = ""};
+        MsObj *conn = connect_to(&server);
+        MsSysThread *thread = ms_sys_thread_spawn(1 << 20, serve, &server);
+        CHECK(thread != NULL);
+        MsStr authority, target, bad, none;
+        msrt_string_from_bytes((const uint8_t *)"example.test:8080", 17, &authority);
+        msrt_string_from_bytes((const uint8_t *)"/chat?x=1", 9, &target);
+        msrt_string_from_bytes((const uint8_t *)"chat", 4, &bad);
+        msrt_string_from_bytes(NULL, 0, &none);
+        MsVec names;
+        msrt_list_with_capacity(&msrt_desc_string, 1, &names);
+        msrt_list_push(&names, &msrt_desc_string, &bad);
+        void *handle = NULL;
+        CHECK(msstd_ws_connect(conn, &authority, &target, NULL, &names, 0, 0, 0, 1, 5000000000, &handle, &none) == STATUS_OK && handle != NULL);
+        MsWsSocket *session = ms_ws_handle_socket(handle);
+        CHECK(is(ms_ws_socket_subprotocol(session), "chat"));
+        CHECK(ms_ws_socket_receive(session, after_ms(5000), &message, &ended) == MS_WSS_OK && is(message.data, "hello"));
+        CHECK(ms_ws_socket_send(session, text("hi"), true, after_ms(5000)) == MS_WSS_OK);
+        ms_sys_thread_join(thread);
+        ((MsObj *)handle)->drop(handle);
+        ((MsObj *)conn)->drop(conn);
         ms_sys_net_close(server.listener);
     }
 
