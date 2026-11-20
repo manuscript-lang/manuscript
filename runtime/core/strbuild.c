@@ -100,7 +100,7 @@ static OwnedBlock owned_block_new(size_t len) {
     }
     uint8_t *block = msrt_alloc(block_size);
     block[len] = 0;
-    return (OwnedBlock){.str = {.block = block, .tagged = len}, .bytes = ms_bytes_mut(block, len)};
+    return (OwnedBlock){.str = {.ptr_word = block, .tagged = len}, .bytes = ms_bytes_mut(block, len)};
 }
 
 static MsStr with_ascii_flag(MsStr s) {
@@ -179,7 +179,7 @@ void msrt_str_free(uint8_t *ptr) { msrt_free(ptr); }
 
 void msrt_string_free(const MsStr *s) {
     if (owns_block(s)) {
-        msrt_free(s->block);
+        msrt_free(s->ptr_word);
     }
 }
 

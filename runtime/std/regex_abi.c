@@ -35,7 +35,7 @@ uint8_t msstd_regex_compile(const msrt_str *pattern, re_cell **out, msrt_str *er
             size_t n = strlen(msg);
             char *bytes = msrt_alloc(n + 1);
             memcpy(bytes, msg, n + 1);
-            err->block = (uint8_t *)bytes;
+            err->ptr_word = (uint8_t *)bytes;
             err->tagged = n; /* owned: the top two bits are 00 */
         }
         ms_re_free(re);

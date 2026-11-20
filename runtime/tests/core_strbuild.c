@@ -1,9 +1,9 @@
-/* Unit test for runtime/core/strbuild.c; `make c-test` builds it with ASan and UBSan. Fault and the ASCII table come from support/fault.c. */
+/* Unit test for runtime/core/strbuild.c; `make c-test` builds it with ASan and UBSan. Fault and the ASCII table come from support/rt_stubs.c. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ms_rt/string.h"
-#include "rt_stubs.h"
+#include "support/rt_stubs.h"
 
 static void check(bool ok, int line, const char *text) {
     if (!ok) {
@@ -108,12 +108,12 @@ int main(void) {
         msrt_string_view(&t, 0, 2, &r); /* inside a scalar */
         CHECK(false);
     }
-    CHECK(strcmp(ms_test_fault_msg, "String.view: bounds 0..2 are outside the text or inside a scalar") == 0);
+    CHECK(strcmp(ms_test_fault_message, "String.view: bounds 0..2 are outside the text or inside a scalar") == 0);
     if (setjmp(jb) == 0) {
         msrt_string_view(&t, -9, 2, &r);
         CHECK(false);
     }
-    CHECK(strcmp(ms_test_fault_msg, "String.view: bounds -9..2 are outside the text or inside a scalar") == 0);
+    CHECK(strcmp(ms_test_fault_message, "String.view: bounds -9..2 are outside the text or inside a scalar") == 0);
     ms_test_fault = NULL;
     drop(&t);
     puts("core_strbuild: ok");

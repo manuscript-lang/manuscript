@@ -2,80 +2,13 @@
  * hash is bit-identical to `hash_bytes` there, because the Rust maps and the compiler's inline map
  * probe still compute it themselves. */
 #include "ms_rt/string.h"
+#include "str_key.h"
 #include "ms_rt/search.h"
 #include "ms_rt/utf8.h"
 
-#define K0 UINT64_C(0x9e3779b97f4a7c15)
-#define K1 UINT64_C(0xff51afd7ed558ccd)
+int64_t msrt_string_hash(const MsStr *s) { return (int64_t)ms_str_hash(s); }
 
-static inline uint64_t load64(const uint8_t *p) {
-    uint64_t v;
-    __builtin_memcpy(&v, p, sizeof v);
-    return v;
-}
-
-static inline uint32_t load32(const uint8_t *p) {
-    uint32_t v;
-    __builtin_memcpy(&v, p, sizeof v);
-    return v;
-}
-
-static inline uint64_t fold(uint64_t a, uint64_t b) {
-    unsigned __int128 m = (unsigned __int128)a * b;
-    return (uint64_t)m ^ (uint64_t)(m >> 64);
-}
-
-/* The hash of a string of n <= 15 bytes whose little-endian bits are lo (bytes 0..7) and hi (bytes 8..15). */
-static inline uint64_t hash_inline(size_t n, uint64_t lo, uint64_t hi) {
-    uint64_t h = K0 ^ ((uint64_t)n * K1);
-    return fold(fold(h ^ lo, K1) ^ hi, K0);
-}
-
-int64_t msrt_string_hash(const MsStr *s) {
-    size_t n = ms_str_len(s);
-    if (ms_str_is_inline(s)) {
-        uint64_t hi = s->tagged & ((UINT64_C(1) << MS_STR_INLINE_SHIFT) - 1);
-        return (int64_t)hash_inline(n, s->low_bits, hi);
-    }
-    const uint8_t *b = ms_str_data(s);
-    if (n <= MS_STR_INLINE_MAX) {
-        uint8_t pad[16] = {0};
-        __builtin_memcpy(pad, b, n);
-        return (int64_t)hash_inline(n, load64(pad), load64(pad + 8));
-    }
-    uint64_t h = K0 ^ ((uint64_t)n * K1);
-    size_t i = 0;
-    while (i + 8 <= n) {
-        h = fold(h ^ load64(b + i), K1);
-        i += 8;
-    }
-    /* Sixteen bytes or more: the last eight bytes, overlapping the words already folded in. */
-    return (int64_t)fold(h ^ load64(b + n - 8), K0);
-}
-
-/* Whether two strings hold the same bytes: overlapping word compares for up to 16 bytes. */
-static inline bool bytes_eq(const MsStr *a, const MsStr *b) {
-    size_t n = ms_str_len(a);
-    if (n != ms_str_len(b)) {
-        return false;
-    }
-    const uint8_t *p = ms_str_data(a), *q = ms_str_data(b);
-    if (n >= 8 && n <= 16) {
-        return load64(p) == load64(q) && load64(p + n - 8) == load64(q + n - 8);
-    }
-    if (n >= 4 && n < 8) {
-        return load32(p) == load32(q) && load32(p + n - 4) == load32(q + n - 4);
-    }
-    if (n < 4) {
-        /* The first, middle and last bytes cover every byte of a string of up to three. */
-        return n == 0 || (p[0] == q[0] && p[n >> 1] == q[n >> 1] && p[n - 1] == q[n - 1]);
-    }
-    return __builtin_memcmp(p, q, n) == 0;
-}
-
-uint8_t msrt_string_eq(const MsStr *a, const MsStr *b) {
-    return (a->low_bits == b->low_bits && a->tagged == b->tagged) || bytes_eq(a, b);
-}
+uint8_t msrt_string_eq(const MsStr *a, const MsStr *b) { return ms_str_equal(a, b); }
 
 static inline uint64_t bswap64(uint64_t v) { return __builtin_bswap64(v); }
 
@@ -97,7 +30,7 @@ int64_t msrt_string_compare(const MsStr *a, const MsStr *b) {
     uint64_t ta = a->tagged, tb = b->tagged;
     if ((ta >> 62) != 1 && (tb >> 62) != 1) {
         /* Neither is inline: the address word and the length field are read directly. */
-        return compare_memory(ms_str_data(a), (size_t)(ta & MS_STR_LEN_MASK), ms_str_data(b), (size_t)(tb & MS_STR_LEN_MASK));
+        return compare_memory(a->ptr_word, (size_t)(ta & MS_STR_LEN_MASK), b->ptr_word, (size_t)(tb & MS_STR_LEN_MASK));
     }
     if ((ta >> 62) != 1 || (tb >> 62) != 1) {
         return compare_mixed(a, b);
@@ -105,7 +38,7 @@ int64_t msrt_string_compare(const MsStr *a, const MsStr *b) {
     /* Both inline: the bits are zero past the length, so the first byte is the most significant after a
      * byte swap, and equal padded words differ at most in length (a prefix, or a string that continues
      * with NUL bytes); the shorter one is smaller. */
-    uint64_t x = bswap64(a->low_bits), y = bswap64(b->low_bits);
+    uint64_t x = bswap64((uint64_t)(uintptr_t)a->ptr_word), y = bswap64((uint64_t)(uintptr_t)b->ptr_word);
     if (x == y) {
         const uint64_t mask = (UINT64_C(1) << MS_STR_INLINE_SHIFT) - 1;
         x = bswap64(ta & mask);
@@ -136,7 +69,7 @@ uint8_t msrt_string_ends_with(const MsStr *a, const MsStr *v) {
 static inline bool known_ascii(const MsStr *s) {
     if (ms_str_is_inline(s)) {
         const uint64_t high = UINT64_C(0x8080808080808080);
-        return (s->low_bits & high) == 0 && (s->tagged & (high >> 8)) == 0;
+        return ((uint64_t)(uintptr_t)s->ptr_word & high) == 0 && (s->tagged & (high >> 8)) == 0;
     }
     return (s->tagged & MS_STR_ASCII) != 0;
 }

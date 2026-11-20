@@ -25,7 +25,7 @@ static MsStr inl(const char *text) {
     uint8_t raw[16] = {0};
     memcpy(raw, text, n);
     MsStr s;
-    memcpy(&s.low_bits, raw, 8);
+    memcpy(&s.ptr_word, raw, 8);
     uint64_t hi = 0;
     memcpy(&hi, raw + 8, 8);
     s.tagged = hi | (UINT64_C(1) << 62) | ((uint64_t)n << MS_STR_INLINE_SHIFT);

@@ -5,20 +5,23 @@
 #include "ms_rt/base.h"
 
 /* A string value: two words (crates/ms-rt-abi StrVal). The top bits of `tagged` say what the bytes are:
- * 00 owned allocation at `block`, 01 inline (the bytes are the value itself, `inline_bytes`, length in bits
+ * 00 owned allocation at `ptr_word`, 01 inline (the bytes are the value itself, `inline_bytes`, length in bits
  * 56..59 of `tagged`), 10 static and 11 view (`bytes`). Inline strings keep the bytes past their length zero.
  * `low_bits` is the first word as an integer, for comparing, hashing and building inline values. */
-typedef union MsStr {
-    struct {
-        union {
-            uint8_t *block;       /* owned: the allocation, freed with msrt_free */
-            const uint8_t *bytes; /* static or view: borrowed bytes */
-            uint64_t low_bits;
+typedef struct MsStr MsStr;
+struct MsStr {
+    union {
+        struct {
+            union {
+                uint8_t *ptr_word;    /* owned: the allocation, freed with msrt_free */
+                const uint8_t *bytes; /* static or view: borrowed bytes */
+                uint64_t low_bits;
+            };
+            uint64_t tagged;
         };
-        uint64_t tagged;
+        uint8_t inline_bytes[16];
     };
-    uint8_t inline_bytes[16];
-} MsStr;
+};
 
 _Static_assert(sizeof(MsStr) == 16, "a string value is two words");
 
