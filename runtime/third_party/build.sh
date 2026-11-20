@@ -40,7 +40,7 @@ jobs=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
 mkdir -p "$out/lib" "$out/include"
 vendor=$repository/runtime/third_party
 cmake_flags="-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$cc -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
-command -v ninja 2>&1 && cmake_flags="$cmake_flags -G Ninja"
+command -v ninja >/dev/null 2>&1 && cmake_flags="$cmake_flags -G Ninja"
 arch=${triple%%-*}
 [ "$triple" = host ] && arch=$(uname -m)
 # What the target needs beyond the compiler: OpenSSL's Configure target, CMake's system, the Windows library names.
