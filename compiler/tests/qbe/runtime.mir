@@ -1,0 +1,13 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+extern @msrt_test_add(int, int) -> int
+
+fn @msmain() -> int {
+b0:
+  %a: int = iconst 6
+  %b: int = iconst 7
+  %p: int = imul.chk %a, %b
+  %s: int = call.rt @msrt_test_add (%p, %a)
+  ret %s
+}
