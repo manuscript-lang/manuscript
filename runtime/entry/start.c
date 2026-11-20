@@ -338,7 +338,6 @@ static void runtime_thread(void *argument) {
 }
 
 int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *const *argv) {
-    ms_sys_sync_environ();
     const bool frames = ms_frames_install(tables); /* without them a report simply has no source frames */
     (void)frames;
     ms_entry_set_arguments(argc, argv);
