@@ -99,6 +99,8 @@ fn compile_in(
         let target = match (std::env::consts::OS, std::env::consts::ARCH) {
             ("macos", "aarch64") => "arm64_apple",
             ("macos", _) => "amd64_apple",
+            ("windows", "aarch64") => "arm64", // QBE has no arm64_win; see `elf_only_removed`
+            ("windows", _) => "amd64_win",
             (_, "aarch64") => "arm64",
             _ => "amd64_sysv",
         };
@@ -110,6 +112,12 @@ fn compile_in(
         )?;
         // The fault tables: ms_asm_tables labels the assembly and appends them (no debug info is read).
         let plain = dir.join("program.plain.s");
+        // QBE's arm64 text is ELF-flavoured; on Windows (COFF) the directives that only ELF has are dropped.
+        let asm = if std::env::consts::OS == "windows" && target == "arm64" {
+            elf_only_removed(&asm)
+        } else {
+            asm
+        };
         std::fs::write(&plain, asm)
             .map_err(|e| format!("cannot write {}: {e}", plain.display()))?;
         let mut tables = Command::new(tool("ms_asm_tables")?);
@@ -126,4 +134,13 @@ fn compile_in(
         )?;
     }
     std::fs::read(&object).map_err(|e| format!("cannot read {}: {e}", object.display()))
+}
+
+/// `asm` without the lines only ELF assemblers take: `.type`, `.size` and the `.note.GNU-stack` section.
+fn elf_only_removed(asm: &[u8]) -> Vec<u8> {
+    let text = String::from_utf8_lossy(asm);
+    text.lines()
+        .filter(|l| !(l.starts_with(".type") || l.starts_with(".size") || l.contains("GNU-stack")))
+        .flat_map(|l| l.bytes().chain(std::iter::once(b'\n')))
+        .collect()
 }
