@@ -22,8 +22,6 @@
 #include "promise.h"
 #include "spin.h"
 
-MS_NORETURN void
-msrt_fault(const uint8_t *msg, size_t len);
 
 enum {
     READ_CHUNK = 64 * 1024,  /* bytes a read asks the system for */
@@ -232,7 +230,7 @@ static bool drain(Entry *entry) {
 
 /* ---- the program ABI ---- */
 
-int64_t ms_streams_open(int64_t fd, int64_t flags) {
+int64_t msrt_streams_open(int64_t fd, int64_t flags) {
     MsSysFd descriptor = (MsSysFd)fd;
 #ifdef _WIN32
     if (fd >= 0 && fd < STANDARD_STREAMS) {
@@ -303,7 +301,7 @@ static bool read_retry(MsPromise id, uintptr_t stream, uint32_t bits) {
     return true;
 }
 
-int64_t ms_streams_read(int64_t stream) {
+int64_t msrt_streams_read(int64_t stream) {
     const MsPromise id = ms_promise_new();
     Entry *entry = entry_lock(stream);
     if (entry == NULL) {
@@ -344,7 +342,7 @@ int64_t ms_streams_read(int64_t stream) {
     return id;
 }
 
-int64_t ms_streams_write(int64_t stream, const MsList *data) {
+int64_t msrt_streams_write(int64_t stream, const MsList *data) {
     Entry *entry = entry_lock(stream);
     if (entry == NULL) {
         return 1;
@@ -403,7 +401,7 @@ static bool write_retry(MsPromise id, uintptr_t stream, uint32_t bits) {
     return drained;
 }
 
-int64_t ms_streams_flush(int64_t stream) {
+int64_t msrt_streams_flush(int64_t stream) {
     const MsPromise id = ms_promise_new();
     Entry *entry = entry_lock(stream);
     bool drained = true;
@@ -419,7 +417,7 @@ int64_t ms_streams_flush(int64_t stream) {
     return id;
 }
 
-int64_t ms_streams_buffered(int64_t stream) {
+int64_t msrt_streams_buffered(int64_t stream) {
     Entry *entry = entry_lock(stream);
     if (entry == NULL) {
         return 0;
@@ -429,7 +427,7 @@ int64_t ms_streams_buffered(int64_t stream) {
     return buffered;
 }
 
-void ms_streams_error(int64_t stream, MsStr *out) {
+void msrt_streams_error(int64_t stream, MsStr *out) {
     Entry *entry = entry_lock(stream);
     if (entry == NULL || entry->error == NULL) {
         if (entry != NULL) {
@@ -442,7 +440,7 @@ void ms_streams_error(int64_t stream, MsStr *out) {
     entry_unlock();
 }
 
-void ms_streams_close(int64_t stream) {
+void msrt_streams_close(int64_t stream) {
     Entry *entry = entry_lock(stream);
     if (entry == NULL) {
         return;

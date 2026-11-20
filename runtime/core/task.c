@@ -93,10 +93,25 @@ MsTask *ms_task_running(void) {
     if (sched->current == NULL) {
         MsTask *const task = new_task(sched);
         task->state = MS_STATE_RUNNING;
+        task->flags |= MS_TASK_FLAG_THREAD;
         sched->current = task;
         sched->main_task = task;
+        ms_sched_publish(sched, task);
     }
     return sched->current;
+}
+
+/* How far below the stack's lowest usable address a fault still counts as overflow; a frame bigger than the guard
+ * can skip past it. */
+enum { OVERFLOW_REACH = 1 << 20, GUARD_PAGE = 4096 };
+
+bool ms_task_stack_overflow_at(uintptr_t address) {
+    const MsSched *const sched = ms_sched_if_any();
+    if (sched == NULL || sched->current == NULL) {
+        return false;
+    }
+    const uintptr_t low = sched->current->unwind.stack_low;
+    return low != 0 && address < low + GUARD_PAGE && address + OVERFLOW_REACH >= low;
 }
 
 /* ---- the ready ring ---- */
@@ -250,6 +265,7 @@ void ms_task_switch_away(MsSched *sched) {
         publish_region(next);
         refresh_cancel(sched, next);
         sched->current = next;
+        ms_sched_publish(sched, next);
         save_teb(current);
         ms_ctx_switch(&current->sp, next->sp, teb_of(next));
         reap(sched);
@@ -332,7 +348,9 @@ static void task_main(void) {
 
 MsTaskHandle ms_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t stack_bytes, MsTaskStatus *status) {
     MsSched *const sched = ms_sched();
-    (void)ms_task_running();
+    MsTask *const spawner = ms_task_running();
+    const uint64_t capture = spawner->capture;
+    const bool born_shielded = ms_task_shielded(spawner);
     const size_t length = stack_bytes == MS_TASK_ROOT_STACK ? MS_STACK_REGION : MS_STACK_SLOT;
     uint8_t *base = NULL;
     MsStackBounds bounds = {0};
@@ -355,6 +373,7 @@ MsTaskHandle ms_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t 
     task->stack_length = length;
     task->entry = entry;
     task->argument = arg;
+    task->capture = capture;
     task->sp = bounds.sp;
     task->unwind.stack_low = bounds.low;
     task->unwind.stack_high = bounds.high;
@@ -365,6 +384,9 @@ MsTaskHandle ms_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t 
     if ((flags & MS_SPAWN_FATAL) != 0) {
         task->flags |= MS_TASK_FLAG_FATAL;
     }
+    if (born_shielded) {
+        task->flags |= MS_TASK_FLAG_BORN_SHIELDED;
+    }
 #if defined(_WIN32)
     task->teb[0] = bounds.high;
     task->teb[1] = bounds.high - MS_STACK_INITIAL_COMMIT;
@@ -374,6 +396,10 @@ MsTaskHandle ms_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t 
     *status = MS_TASK_OK;
     return task->handle;
 }
+
+uint64_t ms_task_capture(void) { return ms_task_running()->capture; }
+
+void ms_task_set_capture(uint64_t capture) { ms_task_running()->capture = capture; }
 
 MsTaskHandle ms_task_current(void) { return ms_task_running()->handle; }
 
@@ -525,7 +551,8 @@ static size_t collect_live(const MsSched *sched, MsTaskHandle **handles) {
     void *items = NULL;
     for (size_t i = 0; i < sched->slot_count; i++) {
         const MsTask *const task = sched->slots[i].task;
-        if (task == NULL || task == sched->current || task == sched->main_task || task->state == MS_STATE_DONE) {
+        if (task == NULL || task == sched->current || task == sched->main_task ||
+            (task->flags & MS_TASK_FLAG_THREAD) != 0 || task->state == MS_STATE_DONE) {
             continue;
         }
         if (!ms_array_reserve(&items, &capacity, count + 1, sizeof **handles)) {

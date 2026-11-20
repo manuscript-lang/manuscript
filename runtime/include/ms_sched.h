@@ -62,6 +62,10 @@ bool ms_sched_read_limit_passed(void);
 /* Marks the running task's stack as lent to another thread (true) or returned (false): while lent, the task keeps
  * its stack pages even when parked. Crates/ms-rt/src/task while the scheduler is Rust. */
 void ms_sched_task_pin(bool lend);
+/* The absolute deadline (monotonic clock, nanoseconds) of the wait or promise limit whose deferred work runs on the
+ * running task's stack, or INT64_MAX. A park inside such work ends by it (see ms_net_wait_fd). */
+int64_t ms_sched_defer_deadline(void);
+
 /* The number of live tasks, and whether every task but the running one is stalled (parked on something no
  * running task will wake). */
 size_t msrt_task_count(void);

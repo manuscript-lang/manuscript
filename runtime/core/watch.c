@@ -40,6 +40,11 @@ static void wake(void) {
     }
 }
 
+/* The clock when `isolate` last left its rest (0 for an index out of range). */
+uint64_t ms_watch_stirred(uint32_t isolate) {
+    return isolate < MS_MAX_ISOLATES ? atomic_load_explicit(&stirred[isolate], memory_order_relaxed) : 0;
+}
+
 void ms_watch_stir(void) {
     const uint32_t self = ms_isolate_self();
     if (self >= MS_MAX_ISOLATES) {

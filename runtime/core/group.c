@@ -72,6 +72,7 @@ int64_t ms_group_new(void) {
         }
         groups.items = items;
         index = groups.count++;
+        groups.items[index] = (Group){0}; /* a grown array is not zeroed: a fresh slot owns no buffers yet */
     }
     groups.items[index] = (Group){.live = true, .done = groups.items[index].done,
                                   .done_capacity = groups.items[index].done_capacity,
@@ -195,6 +196,16 @@ void ms_group_finished(MsPromise id, bool failed) {
     }
 }
 
+/* Whether a member still pending may be finished by another thread or isolate. */
+static bool members_elsewhere(const Group *group) {
+    for (size_t i = 0; i < group->member_count; i++) {
+        if (ms_promise_completes_elsewhere(group->members[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
 int64_t ms_group_next(int64_t group_id) {
     for (;;) {
         Group *const group = group_of(group_id);
@@ -205,7 +216,7 @@ int64_t ms_group_next(int64_t group_id) {
         if (group->pending == 0) {
             return -1;
         }
-        const uint64_t token = ms_token_new(0);
+        const uint64_t token = ms_token_new(members_elsewhere(group) ? MS_TOKEN_REMOTE : 0);
         if (token == 0) {
             fail("promise: out of wait tokens");
         }
