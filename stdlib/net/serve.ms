@@ -8,6 +8,7 @@ import (
 	promise,
 	set_options,
 	wait_any from "@std/concurrency/promise.ms",
+	hold_stop from "@std/os/process.ms",
 	ExchangeLimits, NativeExchange, finish_exchange, open_exchange from "@std/net/exchange.ms",
 	HttpExchange,
 	HttpServer,
@@ -281,6 +282,7 @@ fn accept_loop(
 				msstd_handler_share(serving),
 				rules.clone(),
 				accepting.drain.signal(),
+				accepting.grace.clone(),
 				share_tls(secured),
 			)
 		)
@@ -299,11 +301,15 @@ fn start_connection(
 	serving: NativeHandler,
 	rules: Rules,
 	drain: Signal,
+	grace: Duration?,
 	secured: NativeTlsServer?,
 ) Promise[Void]:
+	// Ending the promise (the accept loop unwinding on a stop request) fires the drain
+	// first and cancels the connection only after the grace period.
+	ending := drain.clone()
 	return promise(
 		fn: serve_connection(raw, serving, rules, drain, secured),
-		options: PromiseOptions(placement: Placement.Spread)
+		options: PromiseOptions(placement: Placement.Spread, drain: ending, grace: grace)
 	)
 
 // Serves one accepted connection to its end: the TLS handshake when the listener has
@@ -315,6 +321,9 @@ fn serve_connection(
 	drain: Signal,
 	secured: NativeTlsServer?,
 ) Void!:
+	// The connection ends through the drain, not through a stop request (see `call`).
+	_hold := hold_stop()
+
 	// A connection belongs to the thread that uses it, so this one adopts it.
 	var conn = msstd_conn_share(raw)
 
@@ -455,6 +464,9 @@ fn call(
 	native: NativeExchange,
 	limits: ExchangeLimits,
 ) Int!:
+	// A stop request (SIGINT, SIGTERM) must not end a request in flight: the drain and its
+	// grace period decide that, so the request holds the stop back until it is done.
+	_hold := hold_stop()
 	opened := open_exchange(native, limits)
 	if opened.is_error(): return ok(400)
 
