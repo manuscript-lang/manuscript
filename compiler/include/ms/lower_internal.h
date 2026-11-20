@@ -90,6 +90,14 @@ typedef struct Lb {
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
 
+/* lower_body.c: what the files that lower a construct call back into (`lb_unsupported`, `lb_expr`
+ * and `lb_mir_ty` are declared further down). */
+void lb_statements(Lb *lb, const MsStmts *body);
+void lb_return_void(Lb *lb);
+void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
+MirLoc lb_loc(const Lb *lb, MsPos pos);
+void lb_reset_state(Lb *lb);
+
 /* lower_closure.c: function values and lambdas. */
 MirTy lb_fn_ty(Lb *lb, MsTy ty);
 bool lb_is_fn(const Lb *lb, MirTy ty);
