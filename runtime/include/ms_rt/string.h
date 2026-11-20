@@ -75,6 +75,16 @@ void msrt_string_concat6(const MsStr *a, const MsStr *b, const MsStr *c, const M
 void msrt_string_trim_view(const MsStr *s, MsStr *out);
 void msrt_string_trim_start_view(const MsStr *s, MsStr *out);
 void msrt_string_trim_end_view(const MsStr *s, MsStr *out);
+void msrt_string_trim(const MsStr *s, MsStr *out);
+void msrt_string_trim_start(const MsStr *s, MsStr *out);
+void msrt_string_trim_end(const MsStr *s, MsStr *out);
+void msrt_string_trim_take(MsStr *s, MsStr *out);
+void msrt_string_trim_start_take(MsStr *s, MsStr *out);
+void msrt_string_trim_end_take(MsStr *s, MsStr *out);
+uint8_t msrt_string_index_of(const MsStr *a, const MsStr *v, int64_t *out);
+void msrt_string_char_at(const MsStr *s, int64_t at, MsStr *out);
+void msrt_string_pad_start(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
+void msrt_string_pad_end(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
 void msrt_string_slice(const MsStr *s, int64_t start, int64_t end, MsStr *out);
 void msrt_string_view(const MsStr *s, int64_t start, int64_t end, MsStr *out);
 void msrt_string_split(const MsStr *s, const MsStr *sep, MsVec *out);

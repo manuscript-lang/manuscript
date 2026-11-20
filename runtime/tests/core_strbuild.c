@@ -173,6 +173,76 @@ int main(void) {
     CHECK(strcmp(ms_test_fault_message, "String.view: bounds -9..2 are outside the text or inside a scalar") == 0);
     ms_test_fault = NULL;
     drop(&t);
+    /* trims (borrowing and owned), at inline, heap and untouched sizes */
+    const char *padded[] = {"", "  ", " a ", "\t\n hello world \r\n", "   a string well past the inline size, with é   ", "no-trim-needed-here-at-all"};
+    const char *both[] = {"", "", "a", "hello world", "a string well past the inline size, with é", "no-trim-needed-here-at-all"};
+    for (size_t i = 0; i < sizeof padded / sizeof *padded; i++) {
+        MsStr in = mk(padded[i]), r;
+        msrt_string_trim(&in, &r);
+        CHECK(is(&r, both[i]));
+        drop(&r);
+        msrt_string_trim_start(&in, &r);
+        CHECK(strncmp((const char *)ms_str_data(&r), both[i], strlen(both[i])) == 0 && ms_str_len(&r) >= strlen(both[i]));
+        drop(&r);
+        msrt_string_trim_end(&in, &r);
+        CHECK(ms_str_len(&r) >= strlen(both[i]));
+        drop(&r);
+        MsStr owned = mk(padded[i]);
+        msrt_string_trim_take(&owned, &r);
+        CHECK(is(&r, both[i]));
+        drop(&r);
+        drop(&in);
+    }
+    {
+        MsStr in = mk("   leading and a long enough tail to live on the heap"), r;
+        msrt_string_trim_start_take(&in, &r);
+        CHECK(is(&r, "leading and a long enough tail to live on the heap"));
+        drop(&r);
+        in = mk("a long enough head to live on the heap and then trailing   ");
+        msrt_string_trim_end_take(&in, &r);
+        CHECK(is(&r, "a long enough head to live on the heap and then trailing"));
+        drop(&r);
+    }
+    /* index_of */
+    {
+        MsStr h = mk("a string well past the inline size, with é"), n = mk("inline"), none = mk("zzz"), empty = mk("");
+        int64_t at = -1;
+        CHECK(msrt_string_index_of(&h, &n, &at) == 1 && at == 23);
+        CHECK(msrt_string_index_of(&h, &none, &at) == 0);
+        CHECK(msrt_string_index_of(&h, &empty, &at) == 1 && at == 0);
+        drop(&h); drop(&n); drop(&none);
+    }
+    /* char_at: ascii, two-byte, stray byte */
+    {
+        MsStr t = mk("aé"), r;
+        msrt_string_char_at(&t, 0, &r);
+        CHECK(is(&r, "a"));
+        msrt_string_char_at(&t, 1, &r);
+        CHECK(is(&r, "\xc3\xa9"));
+        drop(&t);
+        const uint8_t stray[] = {'x', 0xff};
+        msrt_string_from_bytes(stray, 2, &t);
+        msrt_string_char_at(&t, 1, &r);
+        CHECK(is(&r, "\xef\xbf\xbd"));
+        drop(&t);
+    }
+    /* padding by scalars, inline and heap results, multi-byte padding, short target */
+    {
+        MsStr t = mk("é"), dash = mk("-"), ab = mk("é-"), r;
+        msrt_string_pad_start(&t, 4, &dash, &r);
+        CHECK(is(&r, "---\xc3\xa9"));
+        msrt_string_pad_end(&t, 4, &ab, &r);
+        CHECK(is(&r, "\xc3\xa9\xc3\xa9-\xc3\xa9"));
+        msrt_string_pad_end(&t, 1, &dash, &r);
+        CHECK(is(&r, "\xc3\xa9"));
+        msrt_string_pad_start(&t, 40, &ab, &r);
+        CHECK(ms_str_len(&r) == 2 + 39 / 2 * 3 + (39 % 2) * 2 && memcmp(ms_str_data(&r) + ms_str_len(&r) - 2, "\xc3\xa9", 2) == 0);
+        drop(&r);
+        MsStr none = mk("");
+        msrt_string_pad_start(&t, 9, &none, &r);
+        CHECK(is(&r, "\xc3\xa9"));
+        drop(&t); drop(&dash); drop(&ab);
+    }
     puts("core_strbuild: ok");
     return 0;
 }
