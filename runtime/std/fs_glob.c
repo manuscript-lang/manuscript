@@ -485,7 +485,8 @@ static bool visit_path(GlobWalk *walk, MsBytes path, size_t depth) {
 
 static bool has_glob_character(MsBytes part) {
     for (size_t i = 0; i < part.len; i++) {
-        if (memchr("*?[]{}()!", part.ptr[i], 9) != NULL) {
+        static const uint8_t special[] = {'*', '?', '[', ']', '{', '}', '(', ')', '!'};
+        if (memchr(special, part.ptr[i], sizeof special) != NULL) {
             return true;
         }
     }
@@ -572,7 +573,8 @@ static bool select_starts(GlobWalk *walk, const MsFsBuffer *starts, MsBytes **ou
     while (ms_fs_names_next(starts, &cursor, &name)) {
         total += 1;
     }
-    MsBytes *all = malloc(total * sizeof(MsBytes));
+    size_t bytes = 0;
+    MsBytes *all = ms_size_mul(total == 0 ? 1 : total, sizeof(MsBytes), &bytes) ? malloc(bytes) : NULL;
     if (all == NULL) {
         return fail_memory(walk);
     }

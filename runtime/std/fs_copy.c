@@ -172,14 +172,15 @@ static Climb climb_once(Copier *copier, MsFsBuffer *ancestor, MsFsBuffer *suffix
     MsFsBuffer joined = {0};
     Climb result = CLIMB_UP;
     const MsBytes name = ms_fs_path_base(current);
-    if (!ms_fs_path_dir(current, &parent)) {
+    const bool parted = ms_fs_path_dir(current, &parent);
+    const bool at_top = parted && parent.length == current.len && memcmp(parent.data, current.ptr, current.len) == 0;
+    const bool grown = parted && !at_top &&
+                       (suffix->length == 0 ? ms_fs_buffer_append(&joined, name.ptr, name.len) : ms_fs_path_join(name, ms_fs_buffer_view(suffix), &joined));
+    if (!parted || (!at_top && !grown)) {
         fail_memory(copier);
         result = CLIMB_FAILED;
-    } else if (parent.length == current.len && memcmp(parent.data, current.ptr, current.len) == 0) {
+    } else if (at_top) {
         fail_status(copier, STATUS_INVALID_INPUT);
-        result = CLIMB_FAILED;
-    } else if (suffix->length == 0 ? !ms_fs_buffer_append(&joined, name.ptr, name.len) : !ms_fs_path_join(name, ms_fs_buffer_view(suffix), &joined)) {
-        fail_memory(copier);
         result = CLIMB_FAILED;
     }
     if (result == CLIMB_UP) {
