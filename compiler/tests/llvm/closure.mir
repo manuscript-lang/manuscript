@@ -1,0 +1,21 @@
+module "closure"
+extern @msrt_alloc(int) -> ptr
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %k: int = iconst 30
+  %c: fn(int) -> int = closure.new @addk %k
+  %x: int = iconst 12
+  %r: int = call.ind (%c, %x)
+  %p: ptr = func.addr @addk
+  %z: bool = ptr.is_null %p
+  %zi: int = b2i %z
+  %out: int = iadd %r, %zi
+  ret %out
+}
+fn @addk(%env: ptr, %x: int) -> int closure(int) {
+b0:
+  %k: int = closure.cap 0 %env
+  %s: int = iadd %x, %k
+  ret %s
+}

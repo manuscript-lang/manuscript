@@ -128,6 +128,11 @@ typedef struct MirGlue {
 /* The function made for `kind` of `ty` (and closure `a`, capture `b`), or MIR_NONE. */
 uint32_t mir_glue_find(const MirGlue *g, MirGlueKind kind, MirTy ty, uint32_t a, uint32_t b);
 
+/* Marks in `framed` (zeroed, one flag per value of `f`) the closure objects `f` keeps in its stack
+ * frame: a closure that owns no resource, only dropped, called, or lent to calls that neither keep
+ * nor return it. Glue picks the framed drop for them and backends allocate them in the frame. */
+void mir_framed_closures(const MirModule *m, const MirFunc *f, bool *framed);
+
 /* glue: makes the drop and clone function of every type whose drop is a walk of its fields, the
  * slot and block functions descriptors and interfaces point at, and the closure object
  * functions. Returns whether anything was made. */
