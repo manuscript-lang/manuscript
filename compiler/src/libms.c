@@ -32,6 +32,7 @@
 #include "opt_appendfast.c"
 #include "opt_sortgen_drift.c"
 #include "opt_sortgen.c"
+#include "opt_copyelim.c"
 #include "hints.c"
 #include "constfold.c"
 #include "walk.c"
