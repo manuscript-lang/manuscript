@@ -18,5 +18,6 @@ bool mir_opt_ifconv(MirModule *m); /* small pure diamonds become `select` */
 bool mir_opt_ifconv_func(MirModule *m, MirFunc *f);
 
 bool mir_opt_reserve(MirModule *m); /* a list filled by a counted loop is allocated at its final size */
+bool mir_opt_appendfast(MirModule *m); /* `string_append` on an owned string with room runs inline */
 
 #endif

@@ -23,6 +23,8 @@
 #include "opt_optparam.c"
 #include "opt_ifconv.c"
 #include "opt_reserve.c"
+#include "mir_builder.c"
+#include "opt_appendfast.c"
 #include "hints.c"
 #include "constfold.c"
 #include "types.c"
