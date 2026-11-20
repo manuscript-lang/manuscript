@@ -107,3 +107,14 @@ bool ms_utf8_is_space(uint32_t c) {
     return c == 0x85 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200A) || c == 0x2028 || c == 0x2029 ||
            c == 0x202F || c == 0x205F || c == 0x3000;
 }
+
+/* The byte offset reached by moving `count` scalars forward from the start of the n bytes at s, or n when fewer
+ * remain. */
+size_t ms_utf8_offset_of(const uint8_t *s, size_t n, size_t count) {
+    size_t offset = 0;
+    while (count > 0 && offset < n) {
+        offset += ms_utf8_decode(s + offset, n - offset).width;
+        count--;
+    }
+    return offset;
+}
