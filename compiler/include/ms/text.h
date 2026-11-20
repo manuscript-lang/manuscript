@@ -74,6 +74,21 @@ static inline bool ms_text_ends_with(MsStr text, const char *suffix) {
     return text.len >= length && memcmp(text.ptr + text.len - length, suffix, length) == 0;
 }
 
+static inline bool ms_text_is(MsStr text, const char *literal) {
+    const size_t length = strlen(literal);
+    return text.len == length && memcmp(text.ptr, literal, length) == 0;
+}
+
+static inline bool ms_text_contains(MsStr text, const char *needle) {
+    const size_t length = strlen(needle);
+    for (size_t at = 0; at + length <= text.len; at++) {
+        if (memcmp(text.ptr + at, needle, length) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static inline MsStr ms_text_drop_front(MsStr text, size_t count) {
     return (MsStr){text.ptr + count, (uint32_t)(text.len - count)};
 }

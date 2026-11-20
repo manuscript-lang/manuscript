@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/text.h"
 #include "ms/parse.h"
 #include "ms/stdlib.h"
 
@@ -12,11 +13,6 @@ static const char *const extension_modules[] = {
     "math/decimal.ms",
 };
 static const char *const package_names[] = {"collections", "concurrency", "data", "io", "math", "net", "os"};
-
-static bool sl_str_is(MsStr s, const char *lit) {
-    size_t n = strlen(lit);
-    return s.len == n && memcmp(s.ptr, lit, n) == 0;
-}
 
 MsStr ms_module_stem(MsStr file) {
     MsStr p = file;
@@ -27,11 +23,11 @@ MsStr ms_module_stem(MsStr file) {
     if (p.len >= 3 && memcmp(p.ptr + p.len - 3, ".ms", 3) == 0) {
         p.len -= 3;
     }
-    if (sl_str_is(p, "test/test")) {
+    if (ms_text_is(p, "test/test")) {
         MsStr r = {"test", 4};
         return r;
     }
-    if (sl_str_is(p, "test/bench")) {
+    if (ms_text_is(p, "test/bench")) {
         MsStr r = {"bench", 5};
         return r;
     }
@@ -199,7 +195,7 @@ static void mark_eager(Loader *l) {
                 p.len -= 5;
             }
             for (uint32_t j = 0; j < l->n; j++) {
-                if (sl_str_is(p, l->loaded[j].name) && top < l->n * 8 + 8) {
+                if (ms_text_is(p, l->loaded[j].name) && top < l->n * 8 + 8) {
                     stack[top++] = j;
                 }
             }
@@ -367,7 +363,7 @@ static bool native_nominal_kind(const MsDecl *d, MsStr name, MsKind *kind) {
         return false;
     }
     const bool external = d->kind == MS_D_TYPE && d->u.type.external;
-    *kind = (external || sl_str_is(name, "List")) ? MS_K_NATIVE : nominal_kind(d);
+    *kind = (external || ms_text_is(name, "List")) ? MS_K_NATIVE : nominal_kind(d);
     return true;
 }
 

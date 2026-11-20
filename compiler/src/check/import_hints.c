@@ -2,6 +2,7 @@
  * import_hint, type_import_hint and export_message of crates/ms-check/src/hints.rs. */
 #include <string.h>
 
+#include "ms/text.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
 #include "ms/stdlib.h"
@@ -18,15 +19,6 @@ static const char *const prelude_function = "print";
 
 static MsStr cstr(const char *s) {
     return (MsStr){s, (uint32_t)strlen(s)};
-}
-
-static bool path_has_prefix(MsStr s, const char *prefix) {
-    return ms_str_starts_with(s, cstr(prefix));
-}
-
-static bool path_has_suffix(MsStr s, const char *suffix) {
-    MsStr tail = cstr(suffix);
-    return s.len >= tail.len && memcmp(s.ptr + s.len - tail.len, tail.ptr, tail.len) == 0;
 }
 
 static MsStr after_last_slash(MsStr s) {
@@ -73,7 +65,7 @@ static size_t standard_module_names(MsArena *arena, const MsCheck *c, MsStr **ou
     size_t n = 0;
     for (MsModId m = 0; m < c->nmods; m++) {
         MsStr path = module_path(c, m);
-        bool listed = path_has_prefix(path, STD_PREFIX) && !path_has_prefix(path, "@std/internal/") && !path_has_suffix(path, "+source");
+        bool listed = ms_text_starts_with(path, STD_PREFIX) && !ms_text_starts_with(path, "@std/internal/") && !ms_text_ends_with(path, "+source");
         if (listed) {
             paths[n++] = path;
         }
@@ -361,7 +353,7 @@ static MsStr unknown_module_message(MsArena *arena, const MsCheck *c, MsStr path
 /* The file name of a module path without `.ms` (any number of them, as Rust's trim_end_matches). */
 static MsStr file_stem(MsStr path) {
     MsStr file = after_last_slash(path);
-    while (path_has_suffix(file, ".ms")) {
+    while (ms_text_ends_with(file, ".ms")) {
         file.len -= 3;
     }
     return file;
@@ -411,7 +403,7 @@ MsStr ms_export_message(MsArena *arena, const MsCheck *c, const MsImport *item, 
                         const MsExportList *local) {
     MsStr name = ms_name(c->names, item->name);
     MsStr path = item->path;
-    if (!path_has_prefix(path, STD_PREFIX)) {
+    if (!ms_text_starts_with(path, STD_PREFIX)) {
         if (local != NULL && local->name_is_private) {
             return ms_arena_fmt(arena,
                                 "module does not export %.*s; it is declared in %.*s but not exported, so write "

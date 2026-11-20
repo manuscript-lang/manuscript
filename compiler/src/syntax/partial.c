@@ -4,6 +4,7 @@
 #include <string.h>
 #include "ms_rt/chars.h"
 
+#include "ms/text.h"
 #include "ms/lex.h"
 #include "ms/parse.h"
 
@@ -473,10 +474,6 @@ static size_t pt_first_fields(const char *s, size_t length, MsStr fields[2]) {
     return found;
 }
 
-static bool pt_str_is(MsStr s, const char *word) {
-    return s.len == strlen(word) && memcmp(s.ptr, word, s.len) == 0;
-}
-
 /* The declared name of a first non-comment line `line`, or false when it declares none. */
 static bool pt_name_of_line(Part *part, MsStr line, MsStr *out) {
     const char *rest = line.ptr;
@@ -493,8 +490,8 @@ static bool pt_name_of_line(Part *part, MsStr line, MsStr *out) {
     if (pt_first_fields(rest, length, fields) < 2) {
         return false;
     }
-    bool declares = pt_str_is(fields[0], "fn") || pt_str_is(fields[0], "type") || pt_str_is(fields[0], "enum") ||
-                    pt_str_is(fields[0], "interface");
+    bool declares = ms_text_is(fields[0], "fn") || ms_text_is(fields[0], "type") || ms_text_is(fields[0], "enum") ||
+                    ms_text_is(fields[0], "interface");
     if (!declares) {
         return false;
     }

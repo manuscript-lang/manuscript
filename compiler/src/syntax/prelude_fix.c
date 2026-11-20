@@ -1,4 +1,5 @@
 /* Redundant prelude import fixes (ms/prelude_fix.h). */
+#include "ms/text.h"
 #include "ms/prelude_fix.h"
 #include "ms_rt/chars.h"
 
@@ -20,11 +21,6 @@ static bool pf_is_all_blank(MsStr s) {
         }
     }
     return true;
-}
-
-static bool pf_has(MsStr s, const char *needle) {
-    size_t found = 0;
-    return ms_bytes_find(ms_bytes_of((const uint8_t *)s.ptr, s.len), ms_bytes_of((const uint8_t *)needle, strlen(needle)), &found);
 }
 
 /* The first `\n` at or after `from`, or the source length. */
@@ -53,7 +49,7 @@ static MsStr pf_text(MsStr source, size_t from, size_t to) {
 }
 
 static bool pf_is_comment_trivia(MsStr trivia) {
-    return pf_has(trivia, "//") || pf_has(trivia, "/*");
+    return ms_text_contains(trivia, "//") || ms_text_contains(trivia, "/*");
 }
 
 /* Position of byte `offset` of the source, by counting lines. */

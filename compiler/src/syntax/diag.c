@@ -2,6 +2,7 @@
 #include <string.h>
 #include "ms_rt/chars.h"
 
+#include "ms/text.h"
 #include "ms/diag.h"
 
 
@@ -85,21 +86,6 @@ static const char *const ms_type_rules[][2] = {
     {"same independently known type", "MS3001"},
 };
 
-static bool dg_has(MsStr s, const char *needle) {
-    size_t n = strlen(needle);
-    for (size_t i = 0; i + n <= s.len; i++) {
-        if (memcmp(s.ptr + i, needle, n) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static bool dg_starts(MsStr s, const char *pre) {
-    size_t n = strlen(pre);
-    return s.len >= n && memcmp(s.ptr, pre, n) == 0;
-}
-
 /* The text before the first occurrence of `sep`, or all of it. */
 static MsStr dg_before(MsStr s, const char *sep) {
     size_t n = strlen(sep);
@@ -115,29 +101,29 @@ const char *ms_code_for(const char *phase, MsStr message) {
     /* Messages read "<cause>; <fix>"; a trailing " (in <use site>)" is not part of the rule. */
     MsStr m = dg_before(dg_before(message, "; "), " (in ");
     if (strcmp(phase, "parse") == 0) {
-        if (dg_starts(m, "string-literal match patterns")) {
+        if (ms_text_starts_with(m, "string-literal match patterns")) {
             return "MS1000";
         }
-        if (dg_has(m, "indent") || dg_has(m, "suite") || dg_has(m, "tabs")) {
+        if (ms_text_contains(m, "indent") || ms_text_contains(m, "suite") || ms_text_contains(m, "tabs")) {
             return "MS1002";
         }
-        if (dg_has(m, "UTF-8") || dg_has(m, "scalar") || dg_has(m, "escape") || dg_has(m, "literal")) {
+        if (ms_text_contains(m, "UTF-8") || ms_text_contains(m, "scalar") || ms_text_contains(m, "escape") || ms_text_contains(m, "literal")) {
             return "MS1001";
         }
         return "MS1000";
     }
     if (strcmp(phase, "resolution") == 0) {
-        if (dg_starts(m, "redundant prelude import ")) {
+        if (ms_text_starts_with(m, "redundant prelude import ")) {
             return "MS2003";
         }
-        if (dg_has(m, "module") || dg_has(m, "import") || dg_has(m, "path") || dg_has(m, "alias")) {
+        if (ms_text_contains(m, "module") || ms_text_contains(m, "import") || ms_text_contains(m, "path") || ms_text_contains(m, "alias")) {
             return "MS2002";
         }
         return "MS2001";
     }
     if (strcmp(phase, "type") == 0) {
         for (size_t i = 0; i < sizeof ms_type_rules / sizeof ms_type_rules[0]; i++) {
-            if (dg_has(m, ms_type_rules[i][0])) {
+            if (ms_text_contains(m, ms_type_rules[i][0])) {
                 return ms_type_rules[i][1];
             }
         }
@@ -152,7 +138,7 @@ const char *ms_code_for(const char *phase, MsStr message) {
 const MsSubcode *ms_subcode_for(const char *family, MsStr message) {
     MsStr cause = dg_before(message, "; ");
     for (size_t i = 0; i < sizeof ms_subcodes / sizeof ms_subcodes[0]; i++) {
-        if (strcmp(ms_subcodes[i].family, family) == 0 && dg_has(cause, ms_subcodes[i].needle)) {
+        if (strcmp(ms_subcodes[i].family, family) == 0 && ms_text_contains(cause, ms_subcodes[i].needle)) {
             return &ms_subcodes[i];
         }
     }
