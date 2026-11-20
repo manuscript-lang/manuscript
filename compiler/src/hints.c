@@ -18,12 +18,12 @@ static char to_lower(char c) {
     return (char)(c + ('a' - 'A'));
 }
 
-static bool str_equal(MsStr a, MsStr b) {
+bool ms_str_equal(MsStr a, MsStr b) {
     return a.len == b.len && memcmp(a.ptr, b.ptr, a.len) == 0;
 }
 
 /* Byte-wise order, which is how Rust orders strings. */
-static int str_compare(MsStr a, MsStr b) {
+int ms_str_compare(MsStr a, MsStr b) {
     uint32_t common = a.len < b.len ? a.len : b.len;
     int order = common == 0 ? 0 : memcmp(a.ptr, b.ptr, common);
     if (order != 0) {
@@ -35,7 +35,7 @@ static int str_compare(MsStr a, MsStr b) {
     return a.len < b.len ? -1 : 1;
 }
 
-static bool str_starts_with(MsStr s, MsStr prefix) {
+bool ms_str_starts_with(MsStr s, MsStr prefix) {
     return s.len >= prefix.len && memcmp(s.ptr, prefix.ptr, prefix.len) == 0;
 }
 
@@ -137,17 +137,17 @@ MsStr ms_closest(MsArena *arena, MsStr name, const MsStr *candidates, size_t cou
     Nearness best_nearness = {0, false};
     for (size_t i = 0; i < count; i++) {
         MsStr candidate = candidates[i];
-        if (str_equal(candidate, name)) {
+        if (ms_str_equal(candidate, name)) {
             continue;
         }
         MsStr lower = lowercase(arena, candidate);
         Nearness nearness = {ms_edit_distance(arena, lower_name, lower),
-                             !(str_starts_with(lower_name, lower) || str_starts_with(lower, lower_name))};
+                             !(ms_str_starts_with(lower_name, lower) || ms_str_starts_with(lower, lower_name))};
         if (nearness.distance > (nearness.unrelated ? limit : prefix_limit)) {
             continue;
         }
         bool better = best.len == 0 || nearer(nearness, best_nearness) ||
-                      (same_nearness(nearness, best_nearness) && str_compare(candidate, best) < 0);
+                      (same_nearness(nearness, best_nearness) && ms_str_compare(candidate, best) < 0);
         if (better) {
             best = candidate;
             best_nearness = nearness;
@@ -167,7 +167,7 @@ MsStr ms_did_you_mean(MsArena *arena, MsStr name, const MsStr *candidates, size_
 /* ---- lists ---- */
 
 static int compare_names(const void *a, const void *b) {
-    return str_compare(*(const MsStr *)a, *(const MsStr *)b);
+    return ms_str_compare(*(const MsStr *)a, *(const MsStr *)b);
 }
 
 size_t ms_unique_sorted(MsArena *arena, const MsStr *names, size_t count, MsStr **out) {
@@ -183,7 +183,7 @@ size_t ms_unique_sorted(MsArena *arena, const MsStr *names, size_t count, MsStr 
     }
     size_t unique = 0;
     for (size_t i = 0; i < kept; i++) {
-        if (unique == 0 || !str_equal(sorted[unique - 1], sorted[i])) {
+        if (unique == 0 || !ms_str_equal(sorted[unique - 1], sorted[i])) {
             sorted[unique++] = sorted[i];
         }
     }
@@ -251,7 +251,7 @@ static const Rename renamed_modules[] = {
 const char *ms_renamed_module(MsStr path) {
     for (size_t i = 0; i < MS_COUNT_OF(renamed_modules); i++) {
         MsStr old = {renamed_modules[i].old_path, (uint32_t)strlen(renamed_modules[i].old_path)};
-        if (str_equal(old, path)) {
+        if (ms_str_equal(old, path)) {
             return renamed_modules[i].new_path;
         }
     }
@@ -362,7 +362,7 @@ static MsStr snake_case(MsArena *arena, MsStr name) {
 
 static bool contains_name(const MsStr *names, size_t count, MsStr name) {
     for (size_t i = 0; i < count; i++) {
-        if (str_equal(names[i], name)) {
+        if (ms_str_equal(names[i], name)) {
             return true;
         }
     }
@@ -390,7 +390,7 @@ MsStr ms_synonym_hint(MsArena *arena, MsStr name, const MsStr *available, size_t
         for (size_t k = 0; member_synonyms[i].replacements[k] != NULL; k++) {
             MsStr candidate = {member_synonyms[i].replacements[k], (uint32_t)strlen(member_synonyms[i].replacements[k])};
             for (size_t a = 0; a < count; a++) {
-                if (!str_equal(available[a], candidate)) {
+                if (!ms_str_equal(available[a], candidate)) {
                     continue;
                 }
                 if (nfound++ != 0) {
@@ -427,7 +427,7 @@ static const TypeAlias type_aliases[] = {
 const char *ms_type_alias(MsStr name) {
     for (size_t i = 0; i < MS_COUNT_OF(type_aliases); i++) {
         MsStr spelling = {type_aliases[i].spelling, (uint32_t)strlen(type_aliases[i].spelling)};
-        if (str_equal(spelling, name)) {
+        if (ms_str_equal(spelling, name)) {
             return type_aliases[i].builtin;
         }
     }

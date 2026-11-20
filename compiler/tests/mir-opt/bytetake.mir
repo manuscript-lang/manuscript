@@ -1,0 +1,24 @@
+module "bytetake"
+entry @main
+extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
+extern @msrt_string_upper(str) -> str fresh leaf takes_dying
+extern @msrt_string_replace(str, str, str) -> str fresh leaf takes_dying
+fn @main() -> int {
+b0:
+  %a: str = str "x"
+  %b: str = str "y"
+  %c: str = call.rt @msrt_string_concat (%a, %b)
+  %u: str = call.rt @msrt_string_upper (%c)
+  drop %c
+  %d: str = call.rt @msrt_string_concat (%a, %b)
+  %r: str = call.rt @msrt_string_replace (%d, %b, %a)
+  %l: int = str.len %d
+  drop %d
+  %e: str = call.rt @msrt_string_concat (%a, %b)
+  %w: str = call.rt @msrt_string_replace (%e, %e, %a)
+  drop %e
+  drop %u
+  drop %r
+  drop %w
+  ret %l
+}

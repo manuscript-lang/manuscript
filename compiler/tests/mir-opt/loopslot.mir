@@ -1,0 +1,19 @@
+module "loopslot"
+entry @main
+type Box { items: list<int> }
+extern @msrt_box_grow(ptr, int) -> void leaf
+fn @main() -> int {
+b0:
+  %zero: int = iconst 0
+  %empty: list<int> = list.new %zero
+  %box0: Box = type.new Box %empty
+  br b1(%box0, %zero)
+b1(%p: move Box, %i: int):
+  %s: ptr = slot Box
+  put %s, %p
+  %u: void = call.rt @msrt_box_grow (%s, %i)
+  %next: Box = take Box %s
+  %one: int = iconst 1
+  %j: int = iadd %i, %one
+  br b1(%next, %j)
+}
