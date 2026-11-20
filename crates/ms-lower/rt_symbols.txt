@@ -124,9 +124,12 @@ msrt_heap_alloc_zeroed_cached(size: usize) -> *mut u8
 msrt_heap_claim()
 msrt_heap_has() -> u8
 msrt_heap_large_request(size: usize) -> usize
+msrt_heap_live_by_size(sizes: *mut usize, counts: *mut i64, capacity: usize) -> usize
+msrt_heap_live_total() -> i64
 msrt_heap_owns(p: *const u8) -> u8
 msrt_heap_release()
 msrt_heap_requested(out: *mut u64)
+msrt_heap_requested_reset()
 msrt_heap_sample_every(period: i64, hook: *mut u8)
 msrt_heap_shared_put(p: *mut u8) -> u8
 msrt_heap_shared_take(size: usize) -> *mut u8

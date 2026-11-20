@@ -71,7 +71,8 @@ void msrt_cleanup_discard(size_t handle) { ms_test_cleanups = handle - 1; }
 uint8_t msrt_rollback_needed(void) { return 1; }
 
 MsObj *msrt_obj_clone(MsObj *object) { return object; }
-void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block) { shim(block); }
+/* Weak: core_task_abi links the real one (runtime/core/task_abi.c), every other core test runs without a scheduler. */
+__attribute__((weak)) void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block) { shim(block); }
 
 void msrt_obj_drop(MsObj *object) {
     if (object != NULL && object->drop != NULL) {
