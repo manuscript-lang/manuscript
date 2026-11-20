@@ -1,0 +1,63 @@
+/* Ownership and borrow pass: the data every part of the pass shares. The Rust pass is
+ * crates/ms-check/src/ownership; each part here is checked against it before it is called ported.
+ * Nothing is global: a place lives in the arena it is built in. */
+#ifndef MS_OWNERSHIP_H
+#define MS_OWNERSHIP_H
+
+#include "ms/base.h"
+
+/* ---- places: a local binding and a path of projections ---- */
+
+typedef enum MsStepKind {
+    MS_STEP_FIELD,   /* a type field, named by `name` */
+    MS_STEP_ELEMENT, /* some element of a collection: an index, a map value, an accessor */
+    MS_STEP_INDEX    /* the element of a list at a non-negative literal index */
+} MsStepKind;
+
+typedef struct MsStep {
+    MsStepKind kind;
+    MsSym name;     /* MS_STEP_FIELD */
+    uint64_t index; /* MS_STEP_INDEX */
+} MsStep;
+
+/* A part of a local binding's value. Immutable once built: `then` and `join` copy. */
+typedef struct MsPlace {
+    uint32_t root; /* the binding's identity */
+    const MsStep *path;
+    uint32_t len;
+} MsPlace;
+
+MsPlace ms_place_local(uint32_t root);
+MsPlace ms_place_then(MsArena *a, MsPlace p, MsStep step);
+MsPlace ms_place_join(MsArena *a, MsPlace p, const MsStep *more, uint32_t nmore);
+
+/* Whether the two places share storage: same root, and one path is a prefix of the other.
+ * Distinct fields and distinct literal list indexes are disjoint; any other pair of elements may
+ * alias. */
+bool ms_place_overlaps(MsPlace a, MsPlace b);
+
+/* Source-like text: the root's name, then `.field`, `[..]` and `[3]`. */
+void ms_place_show(MsBuf *out, const MsNames *names, MsPlace p, MsSym root_name);
+
+/* ---- binding sets: the "every path has done X" sets of the backward walks ---- */
+
+/* A dense set of binding identities below `nbits`, one bit each. The walks copy a set at every
+ * branch and loop pass, so it is one array, not a hash set. */
+typedef struct MsBits {
+    uint64_t *words;
+    uint32_t nbits;
+} MsBits;
+
+MsBits ms_bits_new(MsArena *a, uint32_t nbits);
+MsBits ms_bits_copy(MsArena *a, MsBits s);
+bool ms_bits_has(MsBits s, uint32_t i);
+void ms_bits_add(MsBits s, uint32_t i);
+void ms_bits_remove(MsBits s, uint32_t i);
+void ms_bits_clear(MsBits s);
+uint32_t ms_bits_count(MsBits s);
+/* Keeps the members that `from` also has: the join of two paths that must both act. */
+void ms_bits_meet(MsBits into, MsBits from);
+/* Adds the members of `from`. */
+void ms_bits_union(MsBits into, MsBits from);
+
+#endif
