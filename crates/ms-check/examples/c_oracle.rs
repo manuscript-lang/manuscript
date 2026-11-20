@@ -16,7 +16,9 @@ fn main() {
     for module in session.standard_modules() {
         for d in &module.decls {
             if matches!(&d.decl().kind, ms_check::api::ast::DeclKind::Type(r) if r.external) {
-                let s = session.standard_symbol(syms.str(d.name())).expect("extern type");
+                let s = session
+                    .standard_symbol(syms.str(d.name()))
+                    .expect("extern type");
                 let _ = writeln!(
                     out,
                     "extern {} {} id={} export={} vars={}",
@@ -50,7 +52,9 @@ fn main() {
             let native = match s.native {
                 Native::Source => "source".to_string(),
                 Native::Contract => "contract".to_string(),
-                Native::Extern { symbol, bundled } => format!("extern:{}:{bundled}", syms.str(symbol)),
+                Native::Extern { symbol, bundled } => {
+                    format!("extern:{}:{bundled}", syms.str(symbol))
+                }
                 Native::Builtin(b) => format!("builtin:{}", syms.str(b)),
             };
             let _ = writeln!(
