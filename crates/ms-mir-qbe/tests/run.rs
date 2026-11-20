@@ -32,6 +32,17 @@ fn qbe(dir: &Path) -> PathBuf {
     bin
 }
 
+/// QBE's name for the host target.
+fn target() -> &'static str {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("macos", "aarch64") => "arm64_apple",
+        ("macos", _) => "amd64_apple",
+        ("windows", _) => "amd64_win",
+        (_, "aarch64") => "arm64",
+        _ => "amd64_sysv",
+    }
+}
+
 /// Builds `src` with `@main`'s result as the exit status and returns that status.
 fn exit_status(name: &str, src: &str) -> i32 {
     let dir = std::env::temp_dir().join(format!("ms-mir-qbe-{name}-{}", std::process::id()));
@@ -40,7 +51,11 @@ fn exit_status(name: &str, src: &str) -> i32 {
     let ssa = ms_mir_qbe::emit(&module).unwrap_or_else(|e| panic!("{e}"));
     std::fs::write(dir.join("p.ssa"), &ssa).unwrap();
     let qbe = qbe(&dir);
-    let asm = Command::new(&qbe).arg(dir.join("p.ssa")).output().unwrap();
+    let asm = Command::new(&qbe)
+        .args(["-t", target()])
+        .arg(dir.join("p.ssa"))
+        .output()
+        .unwrap();
     assert!(
         asm.status.success(),
         "{ssa}\n{}",
