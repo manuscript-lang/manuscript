@@ -862,10 +862,9 @@ static bool target_is_directory(const WCHAR *link_path, const WCHAR *target) {
     WCHAR joined[2 * MAX_PATH];
     const bool absolute = target[0] == L'\\' || (target[0] != L'\0' && target[1] == L':');
     if (absolute) {
-        const size_t length = wcslen(target);
-        const size_t kept = length < MS_COUNT_OF(joined) ? length : MS_COUNT_OF(joined) - 1;
-        memcpy(joined, target, kept * sizeof *joined);
-        joined[kept] = L'\0';
+        const size_t length = wcsnlen(target, MS_COUNT_OF(joined) - 1);
+        memcpy(joined, target, length * sizeof *joined);
+        joined[length] = L'\0';
     } else {
         const WCHAR *slash = wcsrchr(link_path, L'\\');
         const size_t prefix = slash != NULL ? (size_t)(slash - link_path) + 1 : 0;
@@ -939,10 +938,9 @@ typedef struct MsReparseBuffer {
     };
 } MsReparseBuffer;
 
-/* Tags beyond INT_MAX are not enum constants (those are int), so they compare unsigned with `tag`. */
-#define MS_REPARSE_TAG_MOUNT_POINT 0xA0000003UL
-#define MS_REPARSE_TAG_SYMLINK 0xA000000CUL
-
+/* Not enumerators: the tags exceed INT_MAX, which an enum constant is under MSVC's rules. */
+static const ULONG MS_REPARSE_TAG_MOUNT_POINT = 0xA0000003u;
+static const ULONG MS_REPARSE_TAG_SYMLINK = 0xA000000Cu;
 enum { MS_REPARSE_BUFFER_SIZE = 16 * 1024 };
 
 /* The target text inside a reparse buffer, in UTF-16 units. */

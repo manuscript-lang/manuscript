@@ -274,6 +274,7 @@ fn body_stmts(body: &[Stmt], out: &mut Vec<NodeId>) {
     for s in body {
         match &s.kind {
             StmtKind::Bind { value, .. } => body_exprs(value, out),
+            StmtKind::Assign { value, .. } => body_exprs(value, out),
             StmtKind::Return(Some(v)) | StmtKind::Call(v) => body_exprs(v, out),
             StmtKind::If {
                 cond,

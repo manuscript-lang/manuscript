@@ -22,8 +22,7 @@ enum {
     STATUS_CLOSED = 10,
     STATUS_FAILED = 11,
     STATUS_UNAVAILABLE = 12,
-    /* Not STATUS_TIMEOUT: <windows.h> defines that name as a macro. */
-    STATUS_TIMED_OUT = 13,
+    STATUS_TIMED_OUT = 13, /* not STATUS_TIMEOUT: winnt.h defines that macro */
     STATUS_NOT_TERMINAL = 15,
     STATUS_NONE = 16,
     STATUS_BUSY = 17,
