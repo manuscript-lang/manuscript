@@ -182,12 +182,12 @@ mod sampler {
     use core::ffi::c_void;
 
     static TARGET: Process<*mut c_void> = Process::new(core::ptr::null_mut());
-    static SAMPLER: Process<*mut c_void> = Process::new(core::ptr::null_mut());
+    static SAMPLER: Process<usize> = Process::new(0);
     /// The runtime thread's segment cells (`STACK_LO`, `STACK_HI`, `STACK_CHAIN`), which live in
     /// that thread's storage: the sampler reads them from outside, as it reads the thread's registers.
     static CELLS: Process<[*const usize; 3]> = Process::new([core::ptr::null(); 3]);
 
-    unsafe extern "system" fn run(_: *mut c_void) -> u32 {
+    extern "C" fn run(_: *mut c_void) {
         let ms = (1000 / parse_hz()).max(1) as u32;
         // SAFETY: the target handle outlives the sampler (it is joined before the handle closes).
         let target = unsafe { *TARGET.ptr() };
@@ -211,7 +211,6 @@ mod sampler {
                 record(pc, fp, seg);
             }
         }
-        0
     }
 
     pub unsafe fn start_sampling() {
@@ -227,7 +226,7 @@ mod sampler {
                 STACK_HI.ptr().cast_const(),
                 STACK_CHAIN.ptr().cast_const(),
             ];
-            *SAMPLER.ptr() = sys::thread_spawn(0, run);
+            *SAMPLER.ptr() = sys::thread_spawn(0, run, core::ptr::null_mut());
         }
     }
 
@@ -235,13 +234,13 @@ mod sampler {
         // SAFETY: waits for the sampler to see `ENABLED == 0`, then releases both handles.
         unsafe {
             let (sampler, target) = (*SAMPLER.ptr(), *TARGET.ptr());
-            if !sampler.is_null() {
+            if sampler != 0 {
                 sys::thread_join(sampler);
             }
             if !target.is_null() {
                 sys::close_handle(target);
             }
-            *SAMPLER.ptr() = core::ptr::null_mut();
+            *SAMPLER.ptr() = 0;
             *TARGET.ptr() = core::ptr::null_mut();
         }
     }

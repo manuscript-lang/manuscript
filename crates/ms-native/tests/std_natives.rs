@@ -151,41 +151,42 @@ fn timestamps_round_trip_through_strings() {
             nanos: 0,
         };
 
+        // Zone names resolve in Manuscript; the natives take the offset and abbreviation.
         let mut cal = std::mem::MaybeUninit::<CalendarOut>::uninit();
-        assert_eq!(
-            msstd_time_timestamp_calendar(&t, st("Asia/Tokyo"), cal.as_mut_ptr()),
-            STATUS_OK
-        );
+        msstd_time_timestamp_calendar(&t, 9 * 3600, st("JST"), cal.as_mut_ptr());
         let cal = cal.assume_init();
         assert_eq!(
             (cal.year, cal.month, cal.day, cal.hour, cal.offset_seconds),
             (2024, 7, 5, 1, 9 * 3600)
         );
         assert_eq!(text(cal.zone.as_ptr()), "JST");
-        let mut c2 = std::mem::MaybeUninit::<CalendarOut>::uninit();
-        assert_eq!(
-            msstd_time_timestamp_calendar(&t, st("Mars/Base"), c2.as_mut_ptr()),
-            STATUS_INVALID_INPUT
-        );
 
         let mut out = ms_rt::string::NO_STR;
-        assert_eq!(
-            msstd_time_timestamp_format(&t, st("YYYY/MM/DD HH:mm ZZ"), st("+05:30"), &mut out),
-            STATUS_OK
+        msstd_time_timestamp_format(
+            &t,
+            st("YYYY/MM/DD HH:mm ZZ"),
+            5 * 3600 + 1800,
+            st("+05:30"),
+            &mut out,
         );
         assert_eq!(text(&out), "2024/07/04 21:35 +05:30");
 
+        let mut local = 0_i64;
+        assert_eq!(
+            msstd_time_local_from_calendar(2024, 7, 4, 21, 35, 9, 0, &mut local),
+            STATUS_OK
+        );
         let mut back = Timestamp {
             seconds: 0,
             nanos: 0,
         };
         assert_eq!(
-            msstd_time_from_calendar(2024, 7, 4, 21, 35, 9, 0, st("+05:30"), &mut back),
+            msstd_time_from_local(local, 0, 5 * 3600 + 1800, &mut back),
             STATUS_OK
         );
         assert_eq!((back.seconds, back.nanos), (t.seconds, 0));
         assert_eq!(
-            msstd_time_from_calendar(2024, 2, 30, 0, 0, 0, 0, st("UTC"), &mut back),
+            msstd_time_local_from_calendar(2024, 2, 30, 0, 0, 0, 0, &mut local),
             STATUS_OUT_OF_RANGE
         );
 

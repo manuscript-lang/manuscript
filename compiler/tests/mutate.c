@@ -1,6 +1,7 @@
 /* mutate OUT_DIR COUNT SEED FILE_LIST: writes COUNT mutated copies of the listed sources, for
  * differential fuzzing of the C front end against the Rust one. The generator is a fixed xorshift,
  * so a seed names the same files on every platform. */
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,6 +28,15 @@ static const char *const pieces[] = {
     "<", ">", "+=", "-=", "\xc3\xa9", "\xe2\x80\xae", "\xe2\x80\x8b", "\xf0\x9f\x98\x80", "\xcc\x81",
     "\x01", "\x7f", "\xef\xbb\xbf",
 };
+/* Pieces for MIR text (the optional sixth argument "mir"). */
+static const char *const mir_pieces[] = {
+    "%", "@", "!", "!1:2:3", "!1:2", "->", ":", ",", "(", ")", "{", "}", "[", "]", "<", ">", "=",
+    "move ", "int", "str", "list<int>", "opt<", "fn(", "dyn ", "obj ", "b9", "b0()", "br ", "ret",
+    "fn @f() {\n", "}\n", "\n", " ; c\n", "\"", "\\x", "\\x4", "\\q", "0x", "0xzz", "1e5", "1e", "-",
+    "-9223372036854775809", "99999999999999999999", "1.5", "1.", ".5", "true", "false", "default",
+    "fault ", "switch ", "icmp.", "icmp.xx", "export", "inline(", "closure(", "method", "sort_cmp",
+    "\t", "\r", "\r\n", "\x01", "\xc3\xa9", "unknown", "x.y", "a.b.c", "0",
+};
 #define NPIECES (sizeof pieces / sizeof pieces[0])
 
 typedef struct {
@@ -52,10 +62,13 @@ static void splice(Bytes *b, size_t at, size_t del, const char *ins, size_t ins_
 }
 
 int main(int argc, char **argv) {
-    if (argc != 5) {
-        fputs("usage: mutate OUT_DIR COUNT SEED FILE_LIST\n", stderr);
+    if (argc != 5 && argc != 6) {
+        fputs("usage: mutate OUT_DIR COUNT SEED FILE_LIST [mir]\n", stderr);
         return 2;
     }
+    bool mir = argc == 6 && strcmp(argv[5], "mir") == 0;
+    const char *const *piece_set = mir ? mir_pieces : pieces;
+    size_t npieces = mir ? sizeof mir_pieces / sizeof mir_pieces[0] : NPIECES;
     const char *out = argv[1];
     long count = atol(argv[2]);
     rng_state = (uint64_t)atol(argv[3]) * 0x9E3779B97F4A7C15ull + 88172645463325252ull;
@@ -104,13 +117,13 @@ int main(int argc, char **argv) {
             size_t at = below(b.n + 1);
             uint64_t op = rnd() % 100;
             if (op < 45) {
-                const char *piece = pieces[below(NPIECES)];
+                const char *piece = piece_set[below(npieces)];
                 splice(&b, at, 0, piece, strlen(piece));
             } else if (op < 70) {
                 static const size_t dels[] = {1, 1, 2, 5, 20};
                 splice(&b, at, dels[below(5)], "", 0);
             } else if (op < 85) {
-                const char *piece = pieces[below(NPIECES)];
+                const char *piece = piece_set[below(npieces)];
                 splice(&b, at, 1, piece, strlen(piece));
             } else {
                 size_t lo = at;
@@ -131,7 +144,7 @@ int main(int argc, char **argv) {
             }
         }
         char path[4096];
-        snprintf(path, sizeof path, "%s/m%06ld.ms", out, i);
+        snprintf(path, sizeof path, "%s/m%06ld.%s", out, i, mir ? "mir" : "ms");
         FILE *o = fopen(path, "wb");
         if (o == NULL) {
             perror(path);
