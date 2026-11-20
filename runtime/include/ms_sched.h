@@ -52,6 +52,13 @@ void ms_sched_flush_stdout(void);
 void msrt_process_on_exit(void (*hook)(void));
 /* Whether a bounded read of the running task has used its time (a wait loop must then fail with a timeout). */
 bool ms_sched_read_limit_passed(void);
+/* Marks the running task's stack as lent to another thread (true) or returned (false): while lent, the task keeps
+ * its stack pages even when parked. Crates/ms-rt/src/task while the scheduler is Rust. */
+void ms_sched_task_pin(bool lend);
+/* The number of live tasks, and whether every task but the running one is stalled (parked on something no
+ * running task will wake). */
+size_t msrt_task_count(void);
+bool msrt_task_others_stalled(void);
 /* Whether the caller is a pool thread. */
 bool ms_sched_on_pool_thread(void);
 /* Whether the program has one task, so a blocking call can run inline instead of on the pool. */

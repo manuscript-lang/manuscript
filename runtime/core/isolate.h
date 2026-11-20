@@ -36,7 +36,7 @@ typedef struct MsMail {
     uint64_t b;
     uint64_t c;
     void *p;
-    void *q;
+    const void *q;
 } MsMail;
 
 /* How a poller blocked in its wait is woken from another thread (uv_async_send for the libuv reactor). */
@@ -67,6 +67,9 @@ bool ms_isolate_has_mail(void);
  * the caller must not block. Pair with ms_isolate_idle_leave. */
 MS_NODISCARD bool ms_isolate_idle_enter(void);
 void ms_isolate_idle_leave(void);
+
+/* Wakes one sleeping isolate other than `except`; false when none sleeps. Safe from any thread. */
+bool ms_isolate_wake_one(uint32_t except);
 
 /* Posts `value` to a token of another isolate (or this one): the program-ABI msrt_token_post_remote. */
 void ms_token_post_remote(uint64_t token, uint64_t value);

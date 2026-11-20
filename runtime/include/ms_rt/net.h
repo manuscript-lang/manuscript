@@ -68,4 +68,85 @@ void msstd_conn_peer_address(const void *handle, MsStr *out);
 /* ms-sig: msstd_conn_tls_info(handle c: *const ObjCell<ConnH>, out: *mut TlsInfoWire) -> u8 @domain=network */
 uint8_t msstd_conn_tls_info(const void *handle, MsNetTlsInfo *out);
 
+/* Header tables (HeadersH): an ordered multimap with ASCII case-insensitive names; values are bytes, those of one name
+ * are kept together in the order added, and a name keeps the spelling of its first use. `append` refuses a name that
+ * is not an HTTP token (STATUS_INVALID_INPUT) and a table past 1024 fields or 1 MiB (STATUS_LIMIT_EXCEEDED). `values`
+ * returns 1 with a list of Bytes, or 0 for a name that is not there; `remove` returns 1 when it removed something. */
+/* ms-sig: msstd_headers_new() -> *mut ObjCell<HeadersH> @handle @domain=HTTP */
+void *msstd_headers_new(void);
+/* ms-sig: msstd_headers_clone(handle h: *const ObjCell<HeadersH>) -> *mut ObjCell<HeadersH> @handle @domain=HTTP */
+void *msstd_headers_clone(const void *handle);
+/* ms-sig: msstd_headers_append(handle h: *const ObjCell<HeadersH>, name: *const StrVal, value: *const VecVal) -> u8 @domain=HTTP */
+uint8_t msstd_headers_append(const void *handle, const MsStr *name, const MsVec *value);
+/* ms-sig: msstd_headers_values(handle h: *const ObjCell<HeadersH>, name: *const StrVal, out: *mut VecVal) -> u8 @domain=HTTP */
+uint8_t msstd_headers_values(const void *handle, const MsStr *name, MsVec *out);
+/* ms-sig: msstd_headers_names(handle h: *const ObjCell<HeadersH>, out: *mut VecVal) @domain=HTTP */
+void msstd_headers_names(const void *handle, MsVec *out);
+/* ms-sig: msstd_headers_remove(handle h: *const ObjCell<HeadersH>, name: *const StrVal) -> u8 @domain=HTTP */
+uint8_t msstd_headers_remove(const void *handle, const MsStr *name);
+
+/* The HTTP client (ClientH), over libcurl: one client holds a connection pool (HTTP/2 requests to a host share one
+ * connection), cookies, TLS roots and a network filter. `share` is another handle on the same client. `narrow` adds a
+ * level to the filter (stdlib/net/policy.ms): the host names and CIDR ranges a request may reach, including every
+ * redirect target; STATUS_INVALID_INPUT for a CIDR that is not valid. Narrow before the first request. */
+typedef struct MsNetHttpOptions {
+    MsStr roots_pem;          /* extra trusted roots; empty for the system's */
+    MsStr certificate_pem;    /* a client certificate and its key, or empty */
+    MsStr private_key_pem;
+    MsStr unix_socket;        /* a Unix domain socket path used for every connection instead of TCP, or empty; the URL still
+                                 gives the Host header and scheme. Refused for a narrowed client. */
+    int64_t max_redirects;    /* 0 follows none; negative takes 20 */
+    uint8_t cookies;          /* keep cookies across this client's requests */
+    uint8_t decompress;       /* ask for gzip and deflate and decode them */
+} MsNetHttpOptions;
+/* ms-sig: msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err);
+/* ms-sig: msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle @domain=network */
+void *msstd_client_share(const void *handle);
+/* ms-sig: msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=network */
+uint8_t msstd_client_narrow(const void *handle, const MsVec *hosts, const MsVec *cidrs);
+
+/* One request: the response head in the body object, the body streamed by `msstd_body_read`. `url` is absolute
+ * (http or https); the method, the URL and the fields are checked (STATUS_INVALID_INPUT), and a request whose host,
+ * redirect target or resolved address the filter refuses is STATUS_PERMISSION_DENIED. Host, Content-Length and
+ * Transfer-Encoding are written by the client and refused as caller fields. The timeout covers the whole exchange,
+ * body reads included. Redirects, cookies and decompression follow the client's options; the version is chosen by
+ * ALPN. */
+/* ms-sig: msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr *url, const void *headers, const MsVec *body, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+
+/* BodyMetadata flattened: the status, a copy of the response headers and the protocol ("HTTP/1.1" or "HTTP/2.0").
+ * Valid after the body is closed. */
+typedef struct MsNetBodyMetadata {
+    int64_t status;
+    void *headers;
+    MsStr protocol;
+} MsNetBodyMetadata;
+
+/* The response body. `read` returns up to `max` bytes (at most 64 KiB, default 64 KiB) and STATUS_NONE at the end;
+ * `read_all` returns the rest, STATUS_LIMIT_EXCEEDED when it passes `max`. The bytes are the message body with the
+ * transfer framing removed (and the content-encoding decoded when the client decompresses). Closing a body that was
+ * read to its end returns the connection to the client's pool; any other close drops it. */
+/* ms-sig: msstd_body_read(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_body_read(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err);
+/* ms-sig: msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_body_read_all(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err);
+/* ms-sig: msstd_body_metadata(handle b: *const ObjCell<BodyH>, out: *mut MetadataWire) @domain=network */
+void msstd_body_metadata(const void *handle, MsNetBodyMetadata *out);
+/* ms-sig: msstd_body_close(handle b: *const ObjCell<BodyH>) @domain=network */
+void msstd_body_close(const void *handle);
+
+/* The certificate natives of @std/net/tls (runtime/net/tls_natives.c). A Timestamp is two words. */
+typedef struct MsTlsTimestamp {
+    int64_t seconds;
+    int64_t nanos;
+} MsTlsTimestamp;
+
+/* The certificates of a PEM text as a `List[CertificateInfo]`; `max` applies when `has_max`. */
+/* ms-sig: msstd_tls_parse_certificates(pem: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=TLS */
+uint8_t msstd_tls_parse_certificates(const MsStr *pem, uint8_t has_max, int64_t max, MsVec *out);
+/* Verifies a chain (leaf first) against the roots for a name at `now`. */
+/* ms-sig: msstd_tls_verify_certificates(chain: *const StrVal, roots: *const StrVal, server_name: *const StrVal, now: *const Timestamp) -> u8 @domain=TLS */
+uint8_t msstd_tls_verify_certificates(const MsStr *chain, const MsStr *roots, const MsStr *server_name, const MsTlsTimestamp *now);
+
 #endif

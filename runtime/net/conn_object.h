@@ -32,4 +32,5 @@ void ms_netconn_close_if_last(const void *handle);
 /* Whether the row has been closed. */
 bool ms_netconn_closed(const MsNetConn *conn);
 
+
 #endif

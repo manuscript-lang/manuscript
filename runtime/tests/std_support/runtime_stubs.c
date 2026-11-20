@@ -25,6 +25,49 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {
 void msrt_string_clone(const MsStr *s, MsStr *out) { msrt_string_from_bytes(ms_str_data(s), ms_str_len(s), out); }
 void msrt_string_free(const MsStr *s) { free(s->ptr_word); }
 
+/* The start-up records: a test program records no start time and was given no arguments. */
+int64_t msrt_start_nanos(void) { return 0; }
+void msrt_counts(uint64_t *out) { memset(out, 0, 7 * sizeof *out); }
+void msrt_argv(MsVec *out) { *out = (MsVec){0}; }
+
+void msrt_heap_stats(int64_t *out) { out[0] = out[1] = 0; }
+
+/* A map of Strings to Strings as a list of pairs, for the one map a std native builds (the environment); the real
+ * map is runtime/core/map.c, which these tests do not link. Only the first word of the map value is used, as a count. */
+enum { STUB_MAP_LIMIT = 8192 };
+static struct {
+    MsStr key, value;
+} stub_entries[STUB_MAP_LIMIT];
+
+void msrt_map_new(void *out) { memset(out, 0, 56); }
+void msrt_map_add(void *map, const void *kd, const void *vd, uint8_t *key, uint8_t *value) {
+    (void)kd;
+    (void)vd;
+    size_t *count = map;
+    stub_entries[(*count)++] = (typeof(stub_entries[0])){*(MsStr *)key, *(MsStr *)value};
+}
+const uint8_t *msrt_map_get_ptr(const void *map, const void *kd, const void *vd, const uint8_t *key) {
+    (void)kd;
+    (void)vd;
+    const MsStr *wanted = (const MsStr *)key;
+    for (size_t i = 0; i < *(const size_t *)map; i++) {
+        if (ms_str_len(&stub_entries[i].key) == ms_str_len(wanted) &&
+            memcmp(ms_str_data(&stub_entries[i].key), ms_str_data(wanted), ms_str_len(wanted)) == 0) {
+            return (const uint8_t *)&stub_entries[i].value;
+        }
+    }
+    return NULL;
+}
+void msrt_map_drop(void *map, const void *kd, const void *vd) {
+    (void)kd;
+    (void)vd;
+    for (size_t i = 0; i < *(size_t *)map; i++) {
+        free(stub_entries[i].key.ptr_word);
+        free(stub_entries[i].value.ptr_word);
+    }
+    *(size_t *)map = 0;
+}
+
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
     (void)fd;
     (void)events;

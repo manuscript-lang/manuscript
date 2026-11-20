@@ -68,6 +68,13 @@ static int new_socket(const MsAddr *a, int *fd) {
     return MS_SYS_OK;
 }
 
+int ms_sys_net_tcp_socket(const MsAddr *addr, MsSock *out) {
+    int fd;
+    if (new_socket(addr, &fd)) return MS_SYS_ERROR;
+    *out = fd;
+    return MS_SYS_OK;
+}
+
 int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out) {
     int fd;
     if (new_socket(addr, &fd)) return MS_SYS_ERROR;

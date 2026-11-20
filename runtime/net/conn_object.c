@@ -45,7 +45,7 @@ static MsObj *handle_new(MsNetConn *conn) {
 }
 
 MsObj *ms_netconn_new(MsConnTable *table, MsConnId id) {
-    MsNetConn *conn = msrt_alloc(sizeof *conn);
+    MsNetConn *conn = msrt_alloc_zeroed(sizeof *conn);
     atomic_init(&conn->handles, 1);
     atomic_init(&conn->ends, 1);
     atomic_init(&conn->closed, false);

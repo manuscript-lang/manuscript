@@ -454,6 +454,17 @@ void msrt_list_reversed(const MsList *v, const MsTypeDesc *d, MsList *out) {
     msrt_list_reverse(out, d);
 }
 
+/* The fault of a destructuring pattern whose name count differs from the list's length. */
+void msrt_fault_destructure(int64_t names, int64_t elements) {
+    MsText text = {0};
+    ms_text_add(&text, "destructuring length mismatch; the pattern binds ");
+    ms_text_add_i64(&text, names);
+    ms_text_add(&text, " names but the list has ");
+    ms_text_add_i64(&text, elements);
+    ms_text_add(&text, " elements");
+    ms_text_fault(&text, MS_FAULT_GENERIC);
+}
+
 /* ---- range edits ---- */
 
 static MS_NORETURN void fault_splice_range(const char *what, int64_t found, size_t high) {

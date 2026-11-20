@@ -1,6 +1,5 @@
 //! Object headers, their clone and drop entries, and the allocator entry points.
 use crate::alloc;
-use core::ptr::null_mut;
 use ms_rt_abi::{CloneFn, Obj};
 
 /// Allocates an object of `size` bytes with the given clone and drop entries.
@@ -26,16 +25,8 @@ pub unsafe fn new_obj(size: usize, clone: Option<CloneFn>, drop: ms_rt_abi::Drop
 /// `o` must be null or a live object.
 #[inline(always)]
 pub unsafe fn clone_obj(o: *mut Obj) -> *mut Obj {
-    if o.is_null() {
-        return o;
-    }
-    // SAFETY: live object per the contract.
-    unsafe {
-        match (*o).clone {
-            Some(clone) => clone(o),
-            None => crate::fault::fatal(b"copy of a value that has one owner"),
-        }
-    }
+    // SAFETY: forwarded contract.
+    unsafe { msrt_obj_clone(o) }
 }
 
 /// Drops an object its owner is done with, destroying it. Null is ignored.
@@ -44,126 +35,27 @@ pub unsafe fn clone_obj(o: *mut Obj) -> *mut Obj {
 /// `o` must be null or a live object the caller owns.
 #[inline(always)]
 pub unsafe fn drop_obj(o: *mut Obj) {
-    if !o.is_null() {
-        // SAFETY: live object per the contract.
-        unsafe { drop_slow(o) }
-    }
+    // SAFETY: forwarded contract.
+    unsafe { msrt_obj_drop(o) }
 }
 
-const MAX_DROP_DEPTH: usize = 4096;
-crate::isolate_static! {
-    static DROP_DEPTH: usize = 0;
-}
-crate::isolate_static! {
-    static PENDING: *mut Obj = null_mut();
-}
-
-/// The next object in the pending list, linked through the dead object's clone slot.
-unsafe fn pending_next(o: *mut Obj) -> *mut Obj {
-    // SAFETY: `o` is a dead object whose clone slot holds a pending link.
-    unsafe { (*o).clone.map_or(null_mut(), |f| f as *mut Obj) }
-}
-
-/// Runs an object's drop entry, deferring when the drop nesting is deep so long
-/// chains (linked lists, deep trees) cannot overflow the stack.
-///
-/// # Safety
-/// `o` must be an object its owner just dropped.
-#[inline(never)]
-pub unsafe fn drop_slow(o: *mut Obj) {
-    // SAFETY: single threaded access to the drop state; `o` is dead and owned by us.
-    unsafe {
-        let depth = DROP_DEPTH.ptr();
-        if *depth >= MAX_DROP_DEPTH {
-            // The dead object's clone slot links the pending list.
-            let next = *PENDING.ptr();
-            (*o).clone = if next.is_null() {
-                None
-            } else {
-                Some(core::mem::transmute::<*mut Obj, CloneFn>(next))
-            };
-            *PENDING.ptr() = o;
-            return;
-        }
-        *depth += 1;
-        let drop = (*o)
-            .drop
-            .unwrap_or_else(|| crate::fault::fatal(b"object without drop"));
-        drop(o);
-        *depth -= 1;
-        if *depth == 0 {
-            while !(*PENDING.ptr()).is_null() {
-                let p = *PENDING.ptr();
-                *PENDING.ptr() = pending_next(p);
-                *depth = 1;
-                let drop = (*p)
-                    .drop
-                    .unwrap_or_else(|| crate::fault::fatal(b"object without drop"));
-                drop(p);
-                *depth = 0;
-            }
-        }
-    }
-}
-
-/// MIR operations executed, added by the counting calls of an `ms bench --ops` build.
-static OPS: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
-
-/// Adds `n` executed MIR operations (a block's instruction count) to the total.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C" fn msrt_ops_add(n: i64) {
-    OPS.fetch_add(n as u64, core::sync::atomic::Ordering::Relaxed);
-}
-
-/// Writes the work counters to `out[0..7]`: allocations and their bytes (the calling thread and
-/// every finished thread), then list copies, list copy bytes, string clones and string clone
-/// bytes (the calling isolate), then the MIR operations executed (an `--ops` build; 0 otherwise).
-/// Counts only grow; a bench reads them before and after a run.
-///
-/// # Safety
-/// `out` must point to seven writable `u64`.
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_counts(out: *mut u64) {
-    let [allocations, bytes] = alloc::requested();
-    let copies = crate::string::copy_counts();
-    let all = [
-        allocations,
-        bytes,
-        copies[0],
-        copies[1],
-        copies[2],
-        copies[3],
-        OPS.load(core::sync::atomic::Ordering::Relaxed),
-    ];
-    for (i, v) in all.into_iter().enumerate() {
-        // SAFETY: the caller passes seven writable words.
-        unsafe { out.add(i).write(v) };
-    }
+// Defined in C (runtime/core/obj.c): clone, drop (deep chains stay off the stack) and the work counters.
+unsafe extern "C-unwind" {
+    pub fn msrt_obj_clone(o: *mut Obj) -> *mut Obj;
+    pub fn msrt_obj_drop(o: *mut Obj);
+    pub safe fn msrt_ops_add(n: i64);
+    pub fn msrt_counts(out: *mut u64);
 }
 
 // The allocator symbols are defined in runtime/core/alloc.c; the runtime reaches them under their old names.
 pub use crate::alloc::{msrt_alloc, msrt_alloc_zeroed, msrt_free, msrt_heap_stats, msrt_realloc};
-
-/// An independent copy of `o` through its clone entry (null stays null).
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_obj_clone(o: *mut Obj) -> *mut Obj {
-    // SAFETY: forwarded contract.
-    unsafe { clone_obj(o) }
-}
-
-/// Drops the object `o` its owner is done with (null is ignored).
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_obj_drop(o: *mut Obj) {
-    // SAFETY: forwarded contract.
-    unsafe { drop_obj(o) }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::global::Process;
     use crate::testutil::lock;
+    use core::ptr::null_mut;
 
     static DROPS: Process<usize> = Process::new(0);
 

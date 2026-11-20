@@ -114,8 +114,7 @@ Behavior notes (same as Go unless stated):
 msstd_net_network_connect_tls_config(net, address, opts: *const TlsOptionsWire, has_timeout, timeout, out, err) -> u8
 msstd_net_network_listen_tls(net, address, opts: *const TlsOptionsWire, has_handshake_timeout, handshake_timeout, out, err) -> u8
 msstd_net_connection_tls_info(c, out: *mut TlsInfoWire) -> u8          // TLS status group
-msstd_tls_parse_certificates(pem, has_max, max, certs: *mut *mut CertificateInfoWire, count: *mut usize) -> u8
-msstd_tls_verify_certificates(chain_pem, roots_pem, server_name, now_seconds: i64, now_nanos: i32) -> u8
+// msstd_tls_parse_certificates and msstd_tls_verify_certificates: C, runtime/net/tls_natives.c
 msstd_tls_error_message(status) -> String
 ```
 
