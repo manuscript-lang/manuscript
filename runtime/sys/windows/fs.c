@@ -1271,6 +1271,11 @@ bool ms_sys_fs_is_output(MsSysFd fd) {
     return !is_invalid(fd) && (handle_of(fd) == GetStdHandle(STD_OUTPUT_HANDLE) || handle_of(fd) == GetStdHandle(STD_ERROR_HANDLE));
 }
 
+MsSysFd ms_sys_fs_standard(int32_t which) {
+    const DWORD slot = which == 0 ? STD_INPUT_HANDLE : which == 1 ? STD_OUTPUT_HANDLE : STD_ERROR_HANDLE;
+    return (MsSysFd)GetStdHandle(slot);
+}
+
 MsSysError ms_sys_fs_redirect_null(int32_t which) {
     const DWORD slot = which == 0 ? STD_INPUT_HANDLE : which == 1 ? STD_OUTPUT_HANDLE : STD_ERROR_HANDLE;
     const HANDLE null = CreateFileW(L"NUL", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
