@@ -1,16 +1,16 @@
 // `ms search_symbol` over the standard-library API model: the index, module, declaration
 // and member pages of crates/ms-tooling/src/guide/pages.rs, the fuzzy ranking of
 // guide/search.rs, `name_rank` of crates/ms-lsp/src/query.rs, and the rendering of
-// crates/ms-cli/src/engine/search.rs. Project declarations arrive with the C checker; until
-// then `project_total` is 0 and only library matches appear.
+// crates/ms-cli/src/engine/search.rs. Project declarations arrive with the C checker;
+// until then `project_total` is 0 and only library matches appear.
 //
 // Until the C checker can build the model, it is read from the JSON file the Rust
 // `ms-tooling` example `api_model` prints.
 //   ms run tools/ms/search.ms -- MODEL.json [--json] [--limit N] [name or words...]
 import (
 	parse from "@std/data/json.ms",
-	arguments from "@std/os/env.ms",
 	stdout from "@std/io/io.ms",
+	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
 	is_alphabetic, is_lowercase, is_numeric, is_uppercase from "@std/unicode.ms",
 
@@ -26,6 +26,7 @@ fn short_name(path: String) String:
 	stripped := path.cut_prefix("@std/").get_or(path)
 	name := stripped.cut_suffix(".ms").get_or(stripped)
 	if slash := name.last_index_of("/"): return name.slice(slash + 1, name.length())
+
 	return name.clone()
 
 fn package_name(path: String) String:
@@ -45,6 +46,7 @@ fn take_chars(text: String, count: Int) String:
 
 	for ch in text.chars():
 		if taken >= count: break
+
 		out = out.concat(ch)
 		taken += 1
 
@@ -57,6 +59,7 @@ fn one_line(text: String, limit: Int) String:
 	joined := squash(text)
 	body := joined.cut_suffix(":").get_or(joined).trim()
 	if body.scalar_length() > limit: return take_chars(body, limit - 1).concat("…")
+
 	return body
 
 // The first non-empty line of a doc, cut at a word boundary.
@@ -78,6 +81,7 @@ fn first_line(doc: String, limit: Int) String:
 fn cap_doc(text: String, limit: Int) String:
 	doc := text.trim()
 	if doc.length() <= limit: return doc
+
 	var kept = doc.scalar_length()
 	var out = doc.clone()
 
@@ -92,6 +96,7 @@ fn clip_lines(text: String, limit: Int) String:
 	if lines.length() <= limit: return text.clone()
 
 	var out = ""
+
 	for i in 0..limit:
 		if i > 0: out = out.concat("\n")
 		out = out.concat(lines[i])
@@ -113,12 +118,15 @@ fn clip_text(text: String, limit: Int) String:
 
 	for ch in text.chars():
 		width := ch.length()
+
 		if offset + width <= head: head_text = head_text.concat(ch)
 		else if offset < head: head_text = head_text.concat("\u{fffd}")
 
 		if offset >= start: tail_text = tail_text.concat(ch)
 		else if offset + width > start:
-			for _stray in 0..offset + width - start: tail_text = tail_text.concat("\u{fffd}")
+			for _stray in 0..offset + width - start: tail_text = tail_text.concat(
+				"\u{fffd}"
+			)
 
 		offset += width
 
@@ -131,6 +139,7 @@ fn floor_boundary(text: String, limit: Int) Int:
 	for ch in text.chars():
 		width := ch.length()
 		if offset + width > limit: break
+
 		offset += width
 
 	return offset
@@ -155,6 +164,7 @@ fn is_prelude(module: Module) Int: if module.path == "prelude": 0 else: 1
 fn compare_modules(a: Module, b: Module) Int:
 	order := is_prelude(a).compare(is_prelude(b))
 	if order != 0: return order
+
 	return a.path.compare(b.path)
 
 // The standard modules, `prelude` first and the rest by path.
@@ -182,10 +192,12 @@ fn index_lines(modules: List[Module], width: Int) String:
 		for d in module.declarations:
 			next := f"{line} {d.name},"
 			if next.length() > width and shown > 0: break
+
 			line = next
 			shown += 1
 
 		if line.ends_with(","): line = line.slice(0, line.length() - 1)
+
 		rest := module.declarations.length() - shown
 		if rest > 0: line = f"{line} +{rest}"
 		out = f"{out}{line}\n"
@@ -199,6 +211,7 @@ fn index(modules: List[Module]) String:
 	while true:
 		body := index_lines(modules, width)
 		if header.length() + body.length() <= 3400 or width <= 24: return f"{header}{body}"
+
 		width -= 4
 
 	return ""
@@ -223,6 +236,7 @@ fn module_page(module: Module) String:
 
 		opaque := if d.opaque: "opaque " else: ""
 		out = f"{out}{opaque}{d.kind} {bare(d.name)}"
+
 		doc := first_line(d.doc, 90)
 		if not doc.is_empty(): out = f"{out} // {doc}"
 		out = f"{out}\n"
@@ -261,13 +275,17 @@ fn member_page(module: Module, d: Declaration, name: String) String?:
 
 	for member in d.members:
 		if bare(member.name) != name: continue
+
 		count += 1
 		if count > 3: break
+
 		out = f"{out}{d.name}.{member.name} ({module.path})\n{clip_lines(member.signature.trim_end_chars("\n"), 6)}\n"
+
 		doc := cap_doc(member.doc, 800)
 		if not doc.is_empty(): out = f"{out}{doc}\n"
 
 	if count == 0: return none
+
 	return clip_text(out, 3500)
 
 // The path split at its first two dots; `@std/` and the first `.ms` are dropped.
@@ -305,6 +323,7 @@ fn page(modules: List[Module], path: String) String?:
 	for d in module.declarations:
 		if bare(d.name) != parts[1]: continue
 		if parts.length() == 2: return declaration_page(module, d)
+
 		return member_page(module, d, parts[2])
 
 	return none
@@ -346,7 +365,9 @@ fn split_words(text: String) List[String]:
 				words.append(current.clone())
 				current = ""
 
-		if is_alphabetic(scalar) or is_numeric(scalar): current = current.concat(ch.lower())
+		if is_alphabetic(scalar) or is_numeric(scalar): current = current.concat(
+			ch.lower()
+		)
 		else if not current.is_empty():
 			words.append(current.clone())
 			current = ""
@@ -361,9 +382,17 @@ fn first_block(text: String) String:
 	paragraphs := text.split("\n\n")
 	lines := paragraphs[0].trim_end_chars("\n").split("\n")
 	if lines.length() <= 3: return lines.join("\n")
+
 	return f"{lines[0]}\n{lines[1]}\n{lines[2]}\n    ..."
 
-fn new_entry(path: String, short: String, name: String, kind: String, signature: String, doc: String) Entry:
+fn new_entry(
+	path: String,
+	short: String,
+	name: String,
+	kind: String,
+	signature: String,
+	doc: String,
+) Entry:
 	return Entry(
 		path.clone(),
 		name.clone(),
@@ -395,7 +424,6 @@ fn standard_index(modules: List[Module]) List[Entry]:
 			)
 			entry.effects = d.effects.clone()
 			out.append(entry)
-
 			for m in d.members:
 				out.append(
 					new_entry(
@@ -410,7 +438,10 @@ fn standard_index(modules: List[Module]) List[Entry]:
 
 	return out
 
-fn stop_words() List[String]: ["a", "an", "the", "of", "to", "in", "for", "with", "by", "from", "and", "or", "how", "do"]
+fn stop_words() List[String]: [
+	"a", "an", "the", "of", "to", "in", "for", "with", "by", "from", "and", "or", "how",
+	"do"
+]
 
 // Drops filler so "sort by key" matches on "sort" and "key".
 fn significant_words(query: String) List[String]:
@@ -419,8 +450,8 @@ fn significant_words(query: String) List[String]:
 	var kept = List[String]()
 	for word in all:
 		if not stops.contains(word) and word != "i": kept.append(word.clone())
-
 	if kept.is_empty(): return all
+
 	return kept
 
 fn synonyms(token: String) List[String]:
@@ -437,6 +468,7 @@ fn synonyms(token: String) List[String]:
 	if token == "split": return ["split", "lines"]
 	if token == "env": return ["environment"]
 	if token == "random": return ["random"]
+
 	return []
 
 fn byte_list(text: String) List[Int]:
@@ -449,10 +481,8 @@ fn is_subsequence(small: String, large: String) Bool:
 	wanted := byte_list(small)
 	have := byte_list(large)
 	var at = 0
-
 	for i in 0..have.length():
 		if at < wanted.length() and wanted[at] == have[i]: at += 1
-
 	return at == wanted.length()
 
 // The Damerau-Levenshtein distance with adjacent transpositions.
@@ -488,19 +518,24 @@ fn score_word(token: String, word: String, weight: Int) Int:
 	if word.starts_with(token) and token.length() >= 2: return weight * 7 / 10
 	if token.length() >= 3 and word.contains(token): return weight / 2
 	if weight < 50: return 0
+	if (
+		token.length() >= 3
+		and token.as_bytes()[0] == word.as_bytes()[0]
+		and is_subsequence(token, word)
+	): return (weight * 3 / 10)
+	if (
+		token.length() >= 5
+		and edit_distance(token, word) <= allowed_typos(token.length())
+	): return (weight * 4 / 10)
 
-	if token.length() >= 3 and token.as_bytes()[0] == word.as_bytes()[0] and is_subsequence(token, word): return weight * 3 / 10
-	if token.length() >= 5 and edit_distance(token, word) <= allowed_typos(token.length()): return weight * 4 / 10
 	return 0
 
 fn score_words(token: String, e: Entry) Int:
 	var best = 0
 	for word in e.words: best = best.max(score_word(token, word, 100))
 	for word in e.module_words: best = best.max(score_word(token, word, 60))
-
 	if token.length() >= 4:
 		for word in e.doc_words: best = best.max(score_word(token, word, 12))
-
 	return best
 
 fn score_token(token: String, e: Entry) Int:
@@ -513,7 +548,6 @@ fn name_coverage(tokens: List[String], e: Entry) Int:
 	var covered = 0
 	for word in e.words:
 		if tokens.contains(word): covered += 1
-
 	return 15 * covered - 10 * (e.words.length() - covered)
 
 fn compare_matches(a: Match, b: Match) Int:
@@ -551,7 +585,11 @@ fn search(entries: List[Entry], query: String, limit: Int) List[Match]:
 				matched += 1
 				if score >= STRONG_SCORE: strong += 1
 
-		if matched == 0 or matched < best or (matched < tokens.length() and strong == 0): continue
+		if (
+			matched == 0
+			or matched < best
+			or (matched < tokens.length() and strong == 0)
+		): continue
 
 		if matched > best:
 			best = matched
@@ -579,6 +617,7 @@ fn search(entries: List[Entry], query: String, limit: Int) List[Match]:
 	for m in matches:
 		key := f"{m.name.length()}:{m.name}{m.signature}"
 		if seen.contains(key): continue
+
 		seen.add(key)
 		if kept.length() < limit: kept.append(m.clone())
 
@@ -586,7 +625,10 @@ fn search(entries: List[Entry], query: String, limit: Int) List[Match]:
 
 // ---- `name_rank` of the language server ----
 
-fn fold(text: String) String: text.lower().replace("_", "").replace(".", "").replace(" ", "")
+fn fold(text: String) String: text.lower().replace("_", "").replace(".", "").replace(
+	" ",
+	"",
+)
 
 fn loose_rank(name: String, query: String) Int:
 	if query.is_empty(): return -1
@@ -596,11 +638,16 @@ fn loose_rank(name: String, query: String) Int:
 
 	n := byte_list(name)
 	q := byte_list(query)
-	if q.length() >= 3 and n.length() > 0 and n[0] == q[0] and is_subsequence(query, name): return 3
+	if (
+		q.length() >= 3
+		and n.length() > 0
+		and n[0] == q[0]
+		and is_subsequence(query, name)
+	): return 3
 	if q.length() < 5: return -1
 	if (n.length() - q.length()).abs() <= 2 and distance(n, q) <= 2: return 4
-
 	if n.length() > q.length() and distance(n.slice(0, q.length()).get_or([]), q) <= 2: return 4
+
 	return -1
 
 fn name_rank(name: String, query: String) Int:
@@ -632,7 +679,13 @@ type Ranked:
 fn compare_ranked(a: Ranked, b: Ranked) Int: a.rank.compare(b.rank)
 
 // Standard-library symbols follow project matches within the same result limit.
-fn library_matches(entries: List[Entry], query: String, words: Int, project: Int, limit: Int) List[Described]:
+fn library_matches(
+	entries: List[Entry],
+	query: String,
+	words: Int,
+	project: Int,
+	limit: Int,
+) List[Described]:
 	concept := search(entries, query, 50)
 	var library = List[Ranked]()
 
@@ -645,7 +698,6 @@ fn library_matches(entries: List[Entry], query: String, words: Int, project: Int
 	if project == 0 and (words > 1 or library.is_empty()):
 		var seen = Set[String]()
 		for ranked in library: seen.add(ranked.hit.path.clone())
-
 		for m in concept:
 			if not seen.contains(m.path): library.append(Ranked(5, m.clone()))
 
@@ -656,6 +708,7 @@ fn library_matches(entries: List[Entry], query: String, words: Int, project: Int
 
 	for ranked in library:
 		if out.length() >= room: break
+
 		m := ranked.hit
 		effects := if m.kind == "fn" and not m.effects.is_empty(): f"effects: {m.effects.join(", ")}" else: ""
 		out.append(
@@ -677,7 +730,12 @@ fn clip(text: String, limit: Int) String:
 	if text.scalar_length() <= limit: return text.clone()
 	return take_chars(text, limit - 1).concat("…")
 
-fn render_text(query: String, described: List[Described], total: Int, project_count: Int) String:
+fn render_text(
+	query: String,
+	described: List[Described],
+	total: Int,
+	project_count: Int,
+) String:
 	if described.is_empty(): return f"No project or standard-library symbol like {debug_quote(query)}. Try a shorter name.\n"
 
 	var out = ""
@@ -722,6 +780,7 @@ fn render_json(query: String, described: List[Described], total: Int) String:
 		if not m.doc.is_empty(): matches = f"{matches},\n      \"doc\": {json_string(m.doc)}"
 		if not m.effects.is_empty(): matches = f"{matches},\n      \"effects\": {json_string(m.effects)}"
 		if not m.uses.is_empty(): matches = f"{matches},\n      \"uses\": {string_array(m.uses, 3)}"
+
 		origin := if m.std: "std" else: "project"
 		matches = f"{matches},\n      \"origin\": \"{origin}\"\n    \}"
 
@@ -740,9 +799,11 @@ fn parse_request(args: List[String]) Request!:
 	while i < args.length():
 		arg := args[i]
 		i += 1
+
 		if arg == "--json": request.json = true
 		else if arg == "--limit" or arg.starts_with("--limit="):
 			var text = ""
+
 			if parts := arg.split_once("="): text = parts.after.clone()
 			else if i < args.length():
 				text = args[i].clone()
@@ -754,8 +815,11 @@ fn parse_request(args: List[String]) Request!:
 					"ms search_symbol: --limit needs a positive number, e.g. ms search_symbol Config --limit 3"
 				)
 			)
+
 			request.limit = count.min(10)
-		else if arg.starts_with("-"): return error(Error(f"unknown option {arg} for ms search_symbol"))
+		else if arg.starts_with("-"): return error(
+			Error(f"unknown option {arg} for ms search_symbol")
+		)
 		else: request.names.append(arg.clone())
 
 	return ok(request)
@@ -772,12 +836,18 @@ fn run(modules: List[Module], request: Request) String:
 
 	query := request.names.join(" ")
 	entries := standard_index(modules)
-
 	if request.names.length() == 1 and not request.json:
 		if text := page(sorted, query): return text
 
-	described := library_matches(entries, query, request.names.length(), 0, request.limit)
+	described := library_matches(
+		entries,
+		query,
+		request.names.length(),
+		0,
+		request.limit,
+	)
 	if request.json: return render_json(query, described, 0)
+
 	return render_text(query, described, 0, 0)
 
 // ms: allow_effect std.env.read
