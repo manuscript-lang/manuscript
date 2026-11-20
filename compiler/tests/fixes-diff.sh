@@ -1,5 +1,5 @@
 #!/bin/sh
-# Compares compiler/src/fixes.c with the fix builders of crates/ms-check/src/suggestions.rs
+# Compares compiler/src/syntax/fixes.c with the fix builders of crates/ms-check/src/suggestions.rs
 # (crates/ms-syntax/examples/c_fixes_oracle.rs holds them verbatim) on random cases. Run from the
 # repository root. FIXES_CASES and FIXES_SEED size and seed the run.
 set -eu

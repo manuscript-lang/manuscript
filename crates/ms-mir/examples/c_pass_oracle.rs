@@ -1,5 +1,5 @@
 //! Runs a MIR pass on each verified MIR text file and prints the module the Rust pass leaves, so the
-//! C passes in `compiler/src/mir_*.c` can be compared byte for byte (`compiler/tests/mir-pass-diff.sh`).
+//! C passes in `compiler/src/mir/*.c` can be compared byte for byte (`compiler/tests/mir-pass-diff.sh`).
 //! Temporary tooling for the C rewrite: delete it with `ms-mir`.
 //!
 //! `valid FILE...` prints the files whose module parses and verifies. `pass NAME FILE...` prints, per
