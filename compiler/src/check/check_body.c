@@ -1503,6 +1503,10 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->const_use, 0, nodes * sizeof *facts->const_use);
     facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->call_callee, 0xff, nodes * sizeof *facts->call_callee);
+    facts->call_owned_borrow = MS_NEW_N(arena, uint8_t, nodes);
+    facts->call_owned_param = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->call_owned_borrow, 0, nodes * sizeof *facts->call_owned_borrow);
+    memset(facts->call_owned_param, 0, nodes * sizeof *facts->call_owned_param);
     facts->call_method = MS_NEW_N(arena, uint32_t, nodes);
     facts->call_receiver = MS_NEW_N(arena, MsTy, nodes);
     facts->call_interface = MS_NEW_N(arena, MsTy, nodes);
