@@ -4,6 +4,7 @@
 //! archive at `target/ms-native/libms_native.a`, where `ms-cli`'s build script embeds it.
 //! `runtime --alloc-profile` also builds `libms_native_allocs.a`, the same runtime with allocation
 //! sampling for `ms profile --allocs`; release packaging asks for it, pull request CI does not.
+//! `runtime --stats` builds `libms_native_stats.a`, the counting runtime of the leak checks.
 //! `runtime --sched-stress` builds `libms_native_stress.a`, the runtime with the scheduler stress mode,
 //! which only `make stress-sched` embeds (in a separate `ms`).
 
@@ -21,6 +22,7 @@ fn main() -> ExitCode {
             match runtime(
                 flag.as_deref() == Some("--alloc-profile"),
                 flag.as_deref() == Some("--sched-stress"),
+                flag.as_deref() == Some("--stats"),
             ) {
                 Ok(archive) => {
                     println!("{}", archive.display());
@@ -47,7 +49,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: cargo xtask runtime [--alloc-profile | --sched-stress] | cargo xtask symbols [--check]"
+                "usage: cargo xtask runtime [--alloc-profile | --sched-stress | --stats] | cargo xtask symbols [--check]"
             );
             ExitCode::from(2)
         }
@@ -371,7 +373,8 @@ fn check_c_abi(
                 return Err(format!("{name} is listed in two runtime/symbols files"));
             }
             // `ms_sys_*` is the runtime's own door to the OS (ms_rt/sys.h): not natives, so no recorded signature.
-            if name.starts_with("ms_sys_") {
+            // `ms_*_v1` is the versioned C ABI of user extern shims (ms_rt/cabi.h), declared in ms_abi.h.
+            if name.starts_with("ms_sys_") || name.ends_with("_v1") {
                 continue;
             }
             let Some((params, ret)) = declared.get(*name) else {
@@ -694,7 +697,7 @@ fn strip_paths(ty: &str) -> String {
 
 /// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.
 /// On Linux it also leaves `libms_native_musl.a` beside it, the runtime of `ms build --static`.
-fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
+fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathBuf, String> {
     // Cargo can reuse this executable from another checkout when target directories are shared.
     // Its runtime environment names the active package; the compiled path may name the old one.
     let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
@@ -718,6 +721,16 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
     // allocation-profiling and stress runtimes finish in about the time of the slowest.
     let mut jobs: Vec<(PathBuf, Option<String>, &str, &str)> =
         vec![(target.clone(), triple.clone(), "libms_native.a", "entry")];
+    if stats {
+        // The counting runtime of the leak checks: the allocator counts live blocks (MS_ALLOC_STATS) and the
+        // runtime prints them at exit.
+        jobs.push((
+            out.join("build-stats"),
+            triple.clone(),
+            "libms_native_stats.a",
+            "entry,ms-rt/stats",
+        ));
+    }
     if alloc_profile {
         // The feature changes the runtime, so sharing a directory would rebuild it whenever the
         // two archives alternate.
@@ -748,21 +761,24 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
     // The C half does not depend on the Rust features, so each triple's CMake build runs once and its
     // objects go into every archive of that triple (CMake started beside a running build also fails on
     // Windows with `AssignProcessToJobObject: (50) The request is not supported`, so they run one by one).
-    let mut plans: Vec<(Option<String>, Result<CRuntime, String>)> = Vec::new();
-    for (dir, triple, _, _) in &jobs {
-        if !plans.iter().any(|(t, _)| t == triple) {
+    // The counting runtime (`stats`) is the one C build that differs: its allocator counts live blocks.
+    let mut plans: Vec<(Option<String>, bool, Result<CRuntime, String>)> = Vec::new();
+    for (dir, triple, _, features) in &jobs {
+        let stats = features.contains("stats");
+        if !plans.iter().any(|(t, s, _)| t == triple && *s == stats) {
             plans.push((
                 triple.clone(),
-                build_c_runtime(&root, dir, triple.as_deref()),
+                stats,
+                build_c_runtime(&root, dir, triple.as_deref(), stats),
             ));
         }
     }
-    let plan_of = |triple: &Option<String>| {
+    let plan_of = |triple: &Option<String>, stats: bool| {
         plans
             .iter()
-            .find(|(t, _)| t == triple)
+            .find(|(t, s, _)| t == triple && *s == stats)
             .expect("a plan for every job's triple")
-            .1
+            .2
             .as_ref()
     };
     let mut built = std::thread::scope(|scope| {
@@ -770,7 +786,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
             .iter()
             .map(|(dir, triple, name, features)| {
                 let (root, out) = (&root, &out);
-                let plan = plan_of(triple);
+                let plan = plan_of(triple, features.contains("stats"));
                 scope.spawn(move || match plan {
                     Ok(plan) => {
                         build_archive(root, out, dir, triple.as_deref(), name, features, plan)

@@ -33,6 +33,8 @@ MS_NORETURN void msrt_list_index_fault(int64_t operation, int64_t index, int64_t
 typedef void (*MsCleanupFn)(uint8_t *arg);
 size_t msrt_cleanup_push(MsCleanupFn run, uint8_t *arg);
 void msrt_cleanup_discard(size_t handle);
+/* Non-zero when a callback may leave through a guard or a registered cleanup (fault.rs). */
+uint8_t msrt_rollback_needed(void);
 
 /* Objects with a header (closures, handles). Null stays null. */
 

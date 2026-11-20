@@ -8,7 +8,6 @@ import (
 	msstd_process_elapsed,
 	msstd_process_memory_usage,
 	msstd_process_runtime_counts,
-	msstd_system_constants,
 	msstd_system_cpus,
 	msstd_system_dev_null,
 	msstd_system_end_of_line,
@@ -188,7 +187,53 @@ export fn os() Os:
 // Returns native signal/error/loader/priority constants by name. Names and values vary
 // by host; missing entries do not imply a portable numeric default.
 export fn constants() Map[String, Int]:
-	return msstd_system_constants()
+	host := os()
+	if host == Os.Linux: return linux_constants()
+	if host == Os.Macos: return macos_constants()
+
+	return Map[String, Int]()
+
+// Linux numbers its signals the same on every architecture the runtime targets.
+fn linux_constants() Map[String, Int]:
+	return {
+		"SIGHUP": 1,
+		"SIGINT": 2,
+		"SIGQUIT": 3,
+		"SIGABRT": 6,
+		"SIGKILL": 9,
+		"SIGUSR1": 10,
+		"SIGSEGV": 11,
+		"SIGUSR2": 12,
+		"SIGPIPE": 13,
+		"SIGALRM": 14,
+		"SIGTERM": 15,
+		"SIGCHLD": 17,
+		"SIGCONT": 18,
+		"SIGSTOP": 19,
+		"PRIORITY_LOW": 19,
+		"PRIORITY_HIGH": -20
+	}
+
+// macOS shares the first signals with Linux and numbers the rest as BSD does.
+fn macos_constants() Map[String, Int]:
+	return {
+		"SIGHUP": 1,
+		"SIGINT": 2,
+		"SIGQUIT": 3,
+		"SIGABRT": 6,
+		"SIGKILL": 9,
+		"SIGUSR1": 30,
+		"SIGSEGV": 11,
+		"SIGUSR2": 31,
+		"SIGPIPE": 13,
+		"SIGALRM": 14,
+		"SIGTERM": 15,
+		"SIGCHLD": 20,
+		"SIGCONT": 19,
+		"SIGSTOP": 17,
+		"PRIORITY_LOW": 19,
+		"PRIORITY_HIGH": -20
+	}
 
 // Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0
 // when no limit applies or the platform has no such limit.

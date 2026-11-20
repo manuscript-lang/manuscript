@@ -31,6 +31,30 @@ bool ms_sys_fd_set_nonblocking(int fd, bool on) {
     return wanted == flags || fcntl(fd, FCNTL_SET_FLAGS, wanted) == 0;
 }
 
+typedef struct {
+    int fd;
+    short events;
+    short revents;
+} ReadyEntry;
+
+int poll(ReadyEntry *entries, unsigned long count, int timeout_ms);
+
+enum { READY_IN = 0x1, READY_OUT = 0x4, READY_INVALID = 0x20 };
+
+bool ms_sys_fd_ready(int fd, bool writes, bool *ready) {
+    ReadyEntry entry = {.fd = fd, .events = writes ? READY_OUT : READY_IN, .revents = 0};
+    if (poll(&entry, 1, 0) < 0 || (entry.revents & READY_INVALID) != 0) {
+        return false;
+    }
+    *ready = entry.revents != 0;
+    return true;
+}
+
+bool ms_sys_fd_readable_now(int fd) {
+    ReadyEntry entry = {.fd = fd, .events = READY_IN, .revents = 0};
+    return poll(&entry, 1, 0) != 0; /* a hang-up or an error is readable too: the read reports it */
+}
+
 #if defined(__linux__)
 
 typedef struct {

@@ -10,9 +10,7 @@ extern crate ms_std_fs;
 extern crate ms_std_json;
 extern crate ms_std_net;
 extern crate ms_std_process;
-extern crate ms_std_system;
 extern crate ms_std_table;
-extern crate ms_std_terminal;
 
 /// Rust-side allocations of the native standard library share the runtime's allocator.
 #[global_allocator]

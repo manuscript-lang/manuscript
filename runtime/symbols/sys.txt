@@ -12,3 +12,4 @@ ms_sys_thread_spawn
 ms_sys_thread_join
 ms_sys_sleep_ms
 ms_sys_fault_handler_install
+ms_sys_interface_index

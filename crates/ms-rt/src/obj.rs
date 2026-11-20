@@ -106,21 +106,6 @@ pub unsafe fn drop_slow(o: *mut Obj) {
     }
 }
 
-/// Writes small-block heap bytes (`used`, `in_use`) to `out[0..2]`, for `@std/process` `memory_usage`.
-///
-/// # Safety
-/// `out` must point to two writable `i64`.
-#[cfg(not(ms_c = "msrt_heap_stats"))]
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
-    let [used, in_use] = crate::alloc::heap_stats();
-    // SAFETY: the caller passes two writable words.
-    unsafe {
-        out.write(used);
-        out.add(1).write(in_use);
-    }
-}
-
 /// MIR operations executed, added by the counting calls of an `ms bench --ops` build.
 static OPS: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
 
@@ -141,8 +126,7 @@ pub extern "C" fn msrt_ops_add(n: i64) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_counts(out: *mut u64) {
     let [allocations, bytes] = alloc::requested();
-    // SAFETY: the counters belong to this isolate.
-    let copies = unsafe { *crate::string::COPY_COUNTS.ptr() };
+    let copies = crate::string::copy_counts();
     let all = [
         allocations,
         bytes,
@@ -158,42 +142,8 @@ pub unsafe extern "C-unwind" fn msrt_counts(out: *mut u64) {
     }
 }
 
-// With the C allocator the four symbols below are defined in runtime/core/alloc.c; the runtime reaches
-// them under their old names.
-#[cfg(ms_c = "msrt_alloc")]
-pub use crate::alloc::msrt_alloc;
-#[cfg(ms_c = "msrt_free")]
-pub use crate::alloc::msrt_free;
-#[cfg(ms_c = "msrt_heap_stats")]
-pub use crate::alloc::msrt_heap_stats;
-
-#[cfg(not(ms_c = "msrt_alloc"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_alloc(size: usize) -> *mut u8 {
-    alloc::alloc(size)
-}
-
-#[cfg(not(ms_c = "msrt_alloc_zeroed"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_alloc_zeroed(size: usize) -> *mut u8 {
-    alloc::alloc_zeroed(size)
-}
-
-#[cfg(not(ms_c = "msrt_realloc"))]
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_realloc(p: *mut u8, size: usize) -> *mut u8 {
-    // SAFETY: forwarded contract.
-    unsafe { alloc::realloc(p, size) }
-}
-
-#[cfg(not(ms_c = "msrt_free"))]
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_free(p: *mut u8) {
-    // SAFETY: forwarded contract.
-    unsafe { alloc::free(p) }
-}
+// The allocator symbols are defined in runtime/core/alloc.c; the runtime reaches them under their old names.
+pub use crate::alloc::{msrt_alloc, msrt_alloc_zeroed, msrt_free, msrt_heap_stats, msrt_realloc};
 
 /// An independent copy of `o` through its clone entry (null stays null).
 #[unsafe(no_mangle)]

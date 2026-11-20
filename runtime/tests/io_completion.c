@@ -2,6 +2,7 @@
  * limit on outstanding completions. Run under the sanitizers by `make c-test`. */
 #define _POSIX_C_SOURCE 200809L /* the socket and name-resolution types under -std=c11 */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -86,6 +87,44 @@ static void test_resolve_reports_an_error(void) {
     ms_io_addresses_free(addresses);
 }
 
+static uint64_t sunk_id;
+static int32_t sunk_result;
+static uint32_t sunk_kind;
+
+static void record_completion(uint64_t id, int32_t result, uint32_t kind) {
+    sunk_id = id;
+    sunk_result = result;
+    sunk_kind = kind;
+}
+
+/* With a sink installed, ms_io_wait hands completions over itself instead of leaving them on the ring. */
+static void test_sink_receives_completions(void) {
+    MsIoReady ready[CAPACITY];
+    size_t count = 0;
+    int value = 1;
+    ms_io_set_completion_sink(record_completion);
+    CHECK(ms_io_work(add_seven, &value, FIRST_ID + 3));
+    for (int attempt = 0; attempt < 5 && sunk_id == 0; attempt++) {
+        CHECK(ms_io_wait(SECOND, ready, CAPACITY, &count));
+    }
+    CHECK(sunk_id == FIRST_ID + 3 && sunk_result == 8 && sunk_kind == MS_IO_WORK);
+    ms_io_set_completion_sink(NULL);
+}
+
+/* An abandoned resolve neither delivers a completion nor leaks, whether or not it had finished. */
+static void test_abandoned_resolve_is_dropped(void) {
+    MsIoReady ready[CAPACITY];
+    size_t count = 0;
+    MsIoAddresses *addresses = NULL;
+    CHECK(ms_io_resolve("127.0.0.1", "80", FIRST_ID + 4, &addresses));
+    ms_io_addresses_abandon(addresses);
+    for (int round = 0; round < 3; round++) {
+        CHECK(ms_io_wait(0, ready, CAPACITY, &count));
+    }
+    MsIoEvent event;
+    CHECK(!ms_io_completion(&event));
+}
+
 int main(void) {
     MsIoReactor *reactor = NULL;
     CHECK(ms_io_open(false, &reactor));
@@ -93,6 +132,8 @@ int main(void) {
     test_outstanding_completions_are_bounded();
     test_resolve_finds_the_loopback_address();
     test_resolve_reports_an_error();
+    test_sink_receives_completions();
+    test_abandoned_resolve_is_dropped();
     ms_io_close(false);
     puts("io_completion: ok");
     return 0;
