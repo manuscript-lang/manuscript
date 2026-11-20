@@ -760,9 +760,20 @@ fn libraries_of(source: &Path) -> Vec<&'static str> {
     found
 }
 
-/// Runs `libs.sh` (the one place that names library paths) for `triple`.
+/// The C compiler for the musl runtime: musl's own headers decide how libuv and OpenSSL compile (`musl-tools`).
+fn musl_compiler() -> PathBuf {
+    std::env::var_os("MS_MUSL_CC").map_or_else(|| PathBuf::from("musl-gcc"), PathBuf::from)
+}
+
+/// Runs `libs.sh` (the one place that names library paths) for `triple`. The musl archive takes pinned builds
+/// made with the musl compiler (system packages are glibc's); the others take the system packages.
 fn libs_sh(root: &Path, triple: Option<&str>, args: &[&str]) -> Result<Vec<String>, String> {
     let mut command = Command::new("sh");
+    if triple.is_some_and(|t| t.contains("musl")) {
+        command
+            .env("MS_C_LIBS", "pinned")
+            .env("CC", musl_compiler());
+    }
     command
         .arg(root.join("runtime/third_party/libs.sh"))
         .args(args);
@@ -786,7 +797,8 @@ fn libs_sh(root: &Path, triple: Option<&str>, args: &[&str]) -> Result<Vec<Strin
 /// Whether the C libraries are wired for `triple`. Each target joins as its build is proven (workstream W0b);
 /// a source that needs a library the target lacks stays out of that archive and the Rust runtime serves it.
 fn c_libs_wired(triple: Option<&str>) -> bool {
-    std::env::consts::OS == "linux" && triple.is_none_or(|t| t.ends_with("linux-gnu"))
+    std::env::consts::OS == "linux"
+        && triple.is_none_or(|t| t.ends_with("linux-gnu") || t.ends_with("linux-musl"))
 }
 
 /// Folders of `runtime` that hold code for one platform only: the target's own is compiled, the rest are not.
@@ -900,6 +912,7 @@ fn add_c_runtime(
     let host = triple.is_none_or(|t| t.ends_with("linux-gnu"));
     let cc = match triple {
         Some(t) if t.contains("windows") => c_compiler(root, t, arch),
+        Some(t) if t.contains("musl") => musl_compiler(),
         _ => PathBuf::from("clang"),
     };
     let objects = target.join("c-objects");
@@ -921,8 +934,8 @@ fn add_c_runtime(
             .arg("-o")
             .arg(&object)
             .arg(source);
-        // The musl archive is built on a glibc host: the sources use no libc header, so only the target differs.
-        if let Some(t) = triple.filter(|_| !host) {
+        // `musl-gcc` already targets musl; a clang for another target needs it named.
+        if let Some(t) = triple.filter(|t| !host && !t.contains("musl")) {
             command.arg(format!("--target={t}"));
         }
         let status = command

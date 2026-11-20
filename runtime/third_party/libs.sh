@@ -29,7 +29,7 @@ install)
     if command -v apt-get >/dev/null 2>&1; then
         sudo=; [ "$(id -u)" = 0 ] || sudo=sudo
         $sudo apt-get update
-        $sudo apt-get install -y --no-install-recommends pkg-config libuv1-dev libnghttp2-dev libssl-dev libpcre2-dev zlib1g-dev
+        $sudo apt-get install -y --no-install-recommends pkg-config musl-tools libuv1-dev libnghttp2-dev libssl-dev libpcre2-dev zlib1g-dev
     elif command -v brew >/dev/null 2>&1; then
         brew install pkgconf libuv libnghttp2 openssl@3 pcre2 zlib
     elif command -v apk >/dev/null 2>&1; then
