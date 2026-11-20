@@ -32,7 +32,7 @@ static bool only_std_imports(const MsModule *module) {
 /* A construct C lowers differently from Rust by design: Rust threads parameters through a loop
  * header and tests a `match` arm by arm, C branches once (`switch`, or `br_if` on a Bool). */
 static void note_divergent_stmt(void *flag, const MsStmt *s) {
-    if (s->kind == MS_S_WHILE) {
+    if (s->kind == MS_S_WHILE || s->kind == MS_S_FOR) {
         *(bool *)flag = true;
     }
 }
