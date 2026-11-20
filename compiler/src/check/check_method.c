@@ -97,8 +97,9 @@ static bool operation_of(const MsBody *b, MsTy contract, MsSym name, Target *out
 }
 
 /* The operation `name` of the interface `iface_name` of `@std/intrinsics.ms`: what a primitive
- * receiver offers beyond the methods of impls. Only operations without type variables. */
-static bool intrinsic_in(const MsBody *b, const char *iface_name, MsSym name, Target *out) {
+ * receiver offers beyond the methods of impls. An interface over the receiver type (`CloneOperations[T]`)
+ * is applied to `receiver`; operations with type variables of their own are left out. */
+static bool intrinsic_in(const MsBody *b, const char *iface_name, MsTy receiver, MsSym name, Target *out) {
     MsCheck *c = b->c;
     const uint32_t module = ms_map_get(&c->module_by_path, ms_intern_cstr(c->names, "@std/intrinsics.ms"));
     if (module == MS_NONE) {
@@ -108,10 +109,21 @@ static bool intrinsic_in(const MsBody *b, const char *iface_name, MsSym name, Ta
     const MsOperations *ops = sym == MS_NONE ? NULL : ms_interface_operations(b->methods, sym);
     for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
         const MsOperation *op = &ops->items[i];
-        if (op->name == name) {
-            *out = (Target){.sig = op->ty, .method = MS_NONE, .mutating = op->decl->mutating, .consuming = op->decl->consuming};
-            return op->nvars == 0;
+        if (op->name != name || op->nvars != 0) {
+            continue;
         }
+        MsTy sig = op->ty;
+        const MsDef *definition = ms_def(c, sym);
+        if (definition != NULL && definition->nvars != 0) {
+            MsInfer in;
+            ms_infer_init(&in, c, &c->arena, definition->vars, definition->nvars);
+            if (definition->nvars != 1 || !ms_infer_give(&in, &receiver, 1)) {
+                return false;
+            }
+            sig = ms_infer_apply(&in, sig);
+        }
+        *out = (Target){.sig = sig, .method = MS_NONE, .mutating = op->decl->mutating, .consuming = op->decl->consuming};
+        return true;
     }
     return false;
 }
@@ -126,7 +138,8 @@ static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Targ
     } else if (receiver == b->float_ty) {
         own = "FloatOperations";
     }
-    return (own != NULL && intrinsic_in(b, own, name, out)) || intrinsic_in(b, "ValueOperations", name, out);
+    return (own != NULL && intrinsic_in(b, own, receiver, name, out)) ||
+           intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
 }
 
 /* The natives whose result points into their receiver (`view`, `split`, `chars`, ...): the
