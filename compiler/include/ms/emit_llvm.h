@@ -1,6 +1,5 @@
-/* libms LLVM emitter: writes LLVM IR text from MIR, for release builds. The caller runs the LLVM
- * tools on the text and links. Covers the scalar subset so far (the one `emit_qbe.h` covers); the
- * rest is reported. */
+/* libms LLVM emitter: writes LLVM IR text from MIR, for debug and release builds. The caller runs the
+ * LLVM tools on the text and links. What it cannot write is reported. */
 #ifndef MS_EMIT_LLVM_H
 #define MS_EMIT_LLVM_H
 
@@ -20,6 +19,10 @@ bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue,
  * `mir_emit_llvm_main` names. */
 bool mir_emit_llvm_with(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all,
                         MsBuf *out, MsBuf *why);
+
+/* `mir_emit_llvm` with a source place on every instruction (line tables only, the column is the module-wide
+ * scope), for the fault tables ms_asm_tables builds from `clang -S`. */
+bool mir_emit_llvm_places(const MirModule *m, const MirData *data, const MirGlue *glue, MsBuf *out, MsBuf *why);
 
 /* Appends the program's `main` and the fault tables (`mir_fault_tables`, one entry per function in
  * module order) as one more module: `main` hands the entry function and the table to `msrt_start`.

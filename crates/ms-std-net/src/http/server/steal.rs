@@ -402,7 +402,7 @@ impl Group {
 }
 
 /// The watcher's hook: looks at every group, and answers whether to look often for a while.
-fn tick(look: Look, resting: u64) -> bool {
+extern "C" fn tick(look: Look, resting: u64) -> bool {
     let now = ms_rt::sys::monotonic_ns();
     let balance = now - BALANCED.load(Ordering::Relaxed) >= BALANCE_EVERY.as_nanos() as i64;
     if balance {

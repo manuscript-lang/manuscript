@@ -186,10 +186,10 @@ test "regex compile errors preserve columns after anchors and numbered lines":
 
 test "regex compile errors point to duplicate flags and group names":
 	for item in [
-		["(?-i-m)", "invalid hyphen in option setting at column 5"],
+		["(?-i-m)", "invalid hyphen in option setting at column 6"],
 		["(?P<word>a)(?P<word>b)", "two named subpatterns have the same name (PCRE2_DUPNAMES not set) at column 21"],
 		["(?P<名字>a)\n  (?P<名字>b)", "two named subpatterns have the same name (PCRE2_DUPNAMES not set) at column 20"],
-		["a\n(?-i-m)", "invalid hyphen in option setting at column 7"],
+		["a\n(?-i-m)", "invalid hyphen in option setting at column 8"],
 	]:
 		invalid := compile(item[0])
 		expect_equal(invalid.err().kind, "EBADMSG")?

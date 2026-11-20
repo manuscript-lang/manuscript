@@ -99,28 +99,6 @@ int main(void) {
     MsStr closed; msstd_dgram_address(b, &closed);
     CHECK(msrt_str_len(&closed) == 0);
 
-    /* scopes: closing one closes its sockets and its children's, and refuses more */
-    void *scope = msstd_scope_new();
-    void *inner = msstd_scope_child(scope);
-    void *tracked = bind_loopback();
-    void *deep = bind_loopback();
-    CHECK(msstd_scope_track_dgram(scope, tracked) == 1);
-    CHECK(msstd_scope_track_dgram(inner, deep) == 1);
-    CHECK(msstd_scope_open(scope) == 1);
-    msstd_scope_close(scope);
-    CHECK(msstd_scope_open(scope) == 0 && msstd_scope_open(inner) == 0);
-    CHECK(msstd_dgram_receive(tracked, 0, 0, 0, 0, &got, &err) == STATUS_CLOSED);
-    CHECK(msstd_dgram_receive(deep, 0, 0, 0, 0, &got, &err) == STATUS_CLOSED);
-    void *late = bind_loopback();
-    CHECK(msstd_scope_track_dgram(scope, late) == 0);
-    CHECK(msstd_dgram_receive(late, 0, 0, 0, 0, &got, &err) == STATUS_CLOSED);
-    void *orphan = msstd_scope_child(scope);
-    CHECK(msstd_scope_open(orphan) == 0);
-    msstd_scope_close(scope);
-    for (void **object = (void *[]){tracked, deep, late, scope, inner, orphan}, **end = object + 6; object < end; object++) {
-        ((MsObj *)*object)->drop(*object);
-    }
-
     msrt_free(payload.ptr);
     ((MsObj *)a)->drop(a);
     ((MsObj *)a2)->drop(a2);

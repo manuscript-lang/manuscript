@@ -5,7 +5,6 @@
 
 // Links the msrt_* runtime symbols.
 use ms_lsp::json::{self, Json, obj};
-use ms_rt as _;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::Cursor;

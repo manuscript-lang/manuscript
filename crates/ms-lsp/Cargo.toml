@@ -17,7 +17,6 @@ ms-driver = { path = "../ms-driver" }
 ms-tooling = { path = "../ms-tooling" }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt" }
 
 [[test]]
 name = "it"

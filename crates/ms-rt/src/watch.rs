@@ -1,25 +1,39 @@
-//! The watcher that told one scheduler thread to hand connections to another. The C scheduler places work
-//! itself, so these are inert: a thread never reads as held up, and `ms-std-net` shares nothing between threads
-//! (see `may_share`). Goes away with `ms-std-net`.
+//! The watcher of the C scheduler (`runtime/core/watch.c`): a thread that looks at the scheduler threads from
+//! outside, for the hook of the Rust HTTP server that sends a resting thread to take the connections of a held-up
+//! one. Goes away with `ms-std-net`.
+#![allow(unsafe_code)]
 
 /// One look of the watcher at the threads.
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct Look {
     pub now: u64,
     pub last: u64,
 }
 
-pub type Hook = fn(Look, u64) -> bool;
+/// Called at every look with the resting threads (bit `i` for thread `i`); answers whether to look often for a while.
+pub type Hook = extern "C" fn(Look, u64) -> bool;
 
-/// The watcher's tick count; it never advances.
-pub fn epoch() -> u64 {
-    0
+unsafe extern "C" {
+    fn ms_watch_epoch() -> u64;
+    fn ms_watch_add_hook(hook: Hook) -> bool;
+    fn ms_watch_stirred(isolate: u32) -> u64;
 }
 
-/// Registers a hook the watcher would call each tick; nothing calls it.
-pub fn add_hook(_hook: Hook) {}
+/// The watcher's clock as of its last look.
+pub fn epoch() -> u64 {
+    // SAFETY: reads an atomic.
+    unsafe { ms_watch_epoch() }
+}
 
-/// The tick at which `thread` last woke.
-pub fn stirred(_thread: usize) -> u64 {
-    0
+/// Adds `hook` (once) and starts the watcher.
+pub fn add_hook(hook: Hook) {
+    // SAFETY: a plain function pointer.
+    let _ = unsafe { ms_watch_add_hook(hook) };
+}
+
+/// The clock when `thread` last left its rest.
+pub fn stirred(thread: usize) -> u64 {
+    // SAFETY: reads an atomic.
+    unsafe { ms_watch_stirred(thread as u32) }
 }

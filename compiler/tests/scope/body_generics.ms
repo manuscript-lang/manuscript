@@ -27,3 +27,29 @@ fn through_binding() Bool:
 
 fn conflicting() Int:
 	return larger(1, 2.5)
+
+fn pass_through[T](value: T) T:
+	return value
+
+fn through_call[T](value: T) T:
+	return identity(value)
+
+fn first_of[A, B](a: A, b: B) A:
+	return a
+
+fn rebind[T](value: T) T:
+	copy := value
+	return copy
+
+interface Named:
+	fn name() String
+	fn weight(scale: Int) Int
+
+fn label[T: Named](value: T) String:
+	return value.name()
+
+fn heavy[T: Named](value: T, scale: Int) Int:
+	return value.weight(scale)
+
+fn missing[T: Named](value: T) Int:
+	return value.nothing()

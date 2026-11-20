@@ -278,6 +278,10 @@ static void live_for(LiveWalk *w, const MsStmt *s) {
         }
     }
     w->later = head;
+    if (w->facts->each_list[s->id]) {
+        live_expr(w, s->u.each.iter);
+        return;
+    }
     live_expr(w, s->u.each.iter->u.call.args.ptr[1].value);
     live_expr(w, s->u.each.iter->u.call.args.ptr[0].value);
 }

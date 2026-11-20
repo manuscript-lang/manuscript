@@ -23,9 +23,12 @@ import (
 	msstd_process_set_title,
 	msstd_process_signal_close,
 	msstd_process_signal_next,
+	msstd_process_stop_hold,
+	msstd_process_stop_release,
 	msstd_process_subprocess_close,
 	msstd_process_subprocess_kill,
 	msstd_process_subprocess_max_resident,
+	msstd_process_subprocess_pid,
 	msstd_process_subprocess_stream_id,
 	msstd_process_subprocess_terminate,
 	msstd_process_subprocess_wait,
@@ -165,6 +168,12 @@ fn Subprocess.wait(timeout: Duration? = none) Int!:
 // exit status; 0 before that or when the host cannot report it.
 fn Subprocess.max_resident_bytes() Int:
 	return msstd_process_subprocess_max_resident(self.native)
+
+// The child's process id, which `send_signal` takes; the child leads its own process
+// group, so its id is also the group's. Valid until the child is waited for: a process id
+// can be reused after that.
+fn Subprocess.pid() Int:
+	return msstd_process_subprocess_pid(self.native)
 
 // Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it
 // kills the direct process. Does not wait.
@@ -329,7 +338,8 @@ export fn spawn(
 Observes the native signal numbers in `signals`: a nonempty list of numbers from 1 through 64, excluding SIGKILL and
 SIGSTOP. Other lists return EINVAL. `capacity` is how many signals are buffered while no read waits, from 1 through
 1048576; none uses 128. A number in range may still be unsupported by the OS. Observing a signal does not suppress
-host cancellation.
+host cancellation: to handle SIGINT or SIGTERM yourself, such as forwarding it to a child and waiting for the child to
+exit, hold the stop request back with `hold_stop`.
 Each read yields the next signal number; the stream never ends on its own. Dropping it unregisters the observer.
 Use scope-owned `Closeable` resources for shutdown cleanup, since cancellation may prevent code after a read from running.
 */
@@ -337,6 +347,34 @@ Use scope-owned `Closeable` resources for shutdown cleanup, since cancellation m
 export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
 	native := msstd_process_watch_signals(signals, capacity)?
 	return ok(ReadStream[Int](SignalSource(native)))
+
+// The hold `hold_stop` returns: closing it, at the end of its scope, lets stop requests
+// apply again.
+export type StopHold:
+	// Whether the hold is still open; `close` clears it, so a second close releases
+	// nothing.
+	held: Bool = true
+
+// Ends the hold: stop requests apply to the task again, and one that arrived meanwhile
+// applies at its next cancellation point. Idempotent; scope exit calls it.
+fn move StopHold.close() Void!:
+	if self.held:
+		self.held = false
+		msstd_process_stop_release()
+
+/*
+Holds SIGINT and SIGTERM back from the calling task until the returned hold closes at the end of its scope, so the task can handle them itself: read them with `watch_signals`, forward them to a child, and keep waiting. Without a hold a stop request ends the task's waits and unwinds it. A cancel aimed at the task by other code still applies. Holds nest. A request that arrived while held applies when the last hold closes, at the task's next cancellation point.
+```
+_hold := hold_stop()
+signals := watch_signals([2, 15], none)?
+child := spawn("worker")?
+```
+The hold covers the task that calls `hold_stop`, not the tasks it starts.
+*/
+// ms: effect std.process.signal
+export fn hold_stop() StopHold:
+	msstd_process_stop_hold()
+	return StopHold()
 
 // Returns the current process title.
 // Platforms that cannot read it return ENOTSUP.
