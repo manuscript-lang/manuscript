@@ -1,0 +1,23 @@
+module "t"
+file 0 "t.ms"
+type Err indirect { msg: str, code: int, ok: bool }
+entry @msmain
+extern @msrt_test_str(int) -> str
+extern @msrt_test_len(str) -> int
+
+fn @msmain() -> int {
+b0:
+  %n: int = iconst 5
+  %s: str = call.rt @msrt_test_str (%n)
+  %seven: int = iconst 7
+  %t: bool = bconst true
+  %e: Err = type.new Err %s, %seven, %t
+  %m: int = iconst 9
+  %s2: str = call.rt @msrt_test_str (%m)
+  %e2: Err = type.set Err.msg %e, %s2
+  %c: int = type.get Err.code %e2
+  %msg: str = type.get Err.msg %e2
+  %l: int = call.rt @msrt_test_len (%msg)
+  %r: int = iadd %c, %l
+  ret %r
+}

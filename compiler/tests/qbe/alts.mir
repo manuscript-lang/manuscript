@@ -1,0 +1,29 @@
+module "t"
+file 0 "t.ms"
+alt Shape { Circle(r: int), Rect(w: int, h: float), Empty }
+alt Chain { End, Link(head: int, rest: Chain) }
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %three: int = iconst 3
+  %two: float = fconst 2.5
+  %rect: Shape = alt.new Shape.Rect %three, %two
+  %h: float = alt.get Shape.Rect.h %rect
+  %w: int = alt.get Shape.Rect.w %rect
+  %e: Shape = alt.new Shape.Empty
+  %end: Chain = alt.new Chain.End
+  %seven: int = iconst 7
+  %link: Chain = alt.new Chain.Link %seven, %end
+  %head: int = alt.get Chain.Link.head %link
+  %none: opt<int> = opt.none
+  %some: bool = opt.is_some %none
+  %s: int = b2i %some
+  %lim: float = fconst 2.0
+  %big: bool = fcmp.gt %h, %lim
+  %hi: int = b2i %big
+  %a: int = iadd %w, %head
+  %b: int = iadd %a, %hi
+  %r: int = iadd %b, %s
+  ret %r
+}
