@@ -101,7 +101,7 @@ static bool resolve_fail_message(MsProjectError *err, const char *message) {
 }
 
 /* The path a local import names, before symlinks are resolved and confinement is checked. */
-static bool resolve_import_target(MsArena *a, const MsProject *p, const char *importer, const char *path, const char **out, MsProjectError *err) {
+static bool resolve_import_target(MsArena *a, const MsProject *p, const char *importer, const char *path, const char **out, bool *generated, MsProjectError *err) {
     if (strchr(path, '\\') != NULL) {
         return resolve_fail_message(err, "import paths use / separators; write \"./dir/file.ms\" instead of backslashes");
     }
@@ -122,6 +122,18 @@ static bool resolve_import_target(MsArena *a, const MsProject *p, const char *im
         const size_t alias_length = slash != NULL ? (size_t)(slash - path) : strlen(path);
         const char *remainder = slash != NULL ? slash + 1 : "";
         const char *alias = ms_arena_strndup(a, path, alias_length);
+        for (uint32_t i = 0; i < p->embed_count; i++) {
+            if (strcmp(p->embed[i].name, alias) != 0) {
+                continue;
+            }
+            if (remainder[0] != 0) {
+                return resolve_fail_message(err, ms_arena_fmt(a, "embed %s names a generated module, so import it as \"%s\" alone", alias, alias).ptr);
+            }
+            /* Generated on load; no file exists, so there is nothing to canonicalize. */
+            *out = ms_embed_module_path(a, p->root, alias);
+            *generated = true;
+            return true;
+        }
         const char *base = resolve_find_alias(p, alias, alias_length);
         if (base == NULL || base[0] == 0) {
             return resolve_fail_message(err, ms_arena_fmt(a, "unknown import alias %s%s", alias, resolve_alias_hint(a, p)).ptr);
@@ -153,5 +165,13 @@ static bool resolve_import_target(MsArena *a, const MsProject *p, const char *im
 
 bool ms_project_resolve_import(MsArena *a, const MsProject *p, const char *importer, const char *path, const char **out, MsProjectError *err) {
     const char *target;
-    return resolve_import_target(a, p, importer, path, &target, err) && ms_project_source_path(a, p->root, target, out, err);
+    bool generated = false;
+    if (!resolve_import_target(a, p, importer, path, &target, &generated, err)) {
+        return false;
+    }
+    if (generated) {
+        *out = target;
+        return true;
+    }
+    return ms_project_source_path(a, p->root, target, out, err);
 }

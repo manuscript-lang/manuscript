@@ -12,7 +12,6 @@
 #include "ms_rt/obj.h"
 #include "status.h"
 
-static MsBytes bytes_of_str(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
 /* The comma-separated ALPN names of the options' list, or NULL when one holds a comma or memory runs out. */
 static char *alpn_names(const MsVec *list) {
@@ -50,9 +49,9 @@ static uint8_t set_alpn(MsTlsCtx *context, const MsVec *list) {
 }
 
 uint8_t ms_net_tls_context(int server, const MsNetTlsOptions *options, MsTlsCtx **out) {
-    const MsBytes roots = bytes_of_str(&options->roots_pem);
-    const MsBytes certificate = bytes_of_str(&options->certificate_pem);
-    const MsBytes key = bytes_of_str(&options->private_key_pem);
+    const MsBytes roots = msrt_str_bytes(&options->roots_pem);
+    const MsBytes certificate = msrt_str_bytes(&options->certificate_pem);
+    const MsBytes key = msrt_str_bytes(&options->private_key_pem);
     if (!server && options->require_client_certificate != 0) {
         return STATUS_INVALID_INPUT;
     }

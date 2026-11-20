@@ -11,6 +11,7 @@
 #include "ms_rt/search.h"
 #include "ms_rt/strbuild.h"
 #include "ms_rt/utf8.h"
+#include "string_slice.h"
 
 struct MsSplitIter {
     MsObj header;
@@ -37,36 +38,27 @@ MsSplitIter *msrt_string_split_iter(const MsStr *s, const MsStr *sep) {
     return iter;
 }
 
-static MsBytes slice(MsBytes bytes, size_t start, size_t end) {
-    MsBytes part = {0};
-    if (!ms_bytes_slice(bytes, start, end, &part)) {
-        static const uint8_t message[] = "string: internal bounds error";
-        msrt_fault(message, sizeof message - 1);
-    }
-    return part;
-}
-
 /* The next piece of a split after each scalar, or none when the text is used up. */
 static bool next_scalar(MsSplitIter *iter, MsBytes text, MsBytes *piece) {
     if (iter->position >= text.len) {
         return false;
     }
     const size_t width = ms_utf8_decode(text.ptr + iter->position, text.len - iter->position).width;
-    *piece = slice(text, iter->position, iter->position + width);
+    *piece = ms_string_slice(text, iter->position, iter->position + width);
     iter->position += width;
     return true;
 }
 
 /* The next piece of a split at a separator; the last one runs to the end of the text. */
 static MsBytes next_delimited(MsSplitIter *iter, MsBytes text, MsBytes separator) {
-    const MsBytes rest = slice(text, iter->position, text.len);
+    const MsBytes rest = ms_string_slice(text, iter->position, text.len);
     const size_t at = ms_needle_find(&iter->needle, rest);
     if (at == SIZE_MAX) {
         iter->done = true;
         return rest;
     }
     iter->position += at + separator.len;
-    return slice(rest, 0, at);
+    return ms_string_slice(rest, 0, at);
 }
 
 uint8_t msrt_split_next(MsSplitIter *iter, MsStr *out) {

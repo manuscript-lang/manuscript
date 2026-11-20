@@ -32,17 +32,6 @@ static char *copy_text(const MsStr *text) {
     return copy;
 }
 
-static MsBytes bytes_of_str(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
-
-static void write_address(MsStr *out, const MsAddr *address) {
-    char text[MS_NET_ADDR_TEXT_MAX];
-    size_t length = 0;
-    if (ms_net_addr_format(address, text, sizeof text, &length)) {
-        msrt_string_from_bytes((const uint8_t *)text, length, out);
-    } else {
-        msrt_string_from_bytes(NULL, 0, out);
-    }
-}
 
 /* ---- lookup ---- */
 
@@ -66,7 +55,7 @@ uint8_t msstd_net_lookup(const MsStr *host, int64_t port, uint8_t has_timeout, i
     msrt_list_with_capacity(&msrt_desc_string, (int64_t)found.count, out);
     for (size_t i = 0; i < found.count; i++) {
         MsStr text;
-        write_address(&text, &found.items[i]);
+        ms_net_write_address(&text, &found.items[i]);
         msrt_list_push(out, &msrt_desc_string, &text);
     }
     return STATUS_OK;
@@ -78,7 +67,7 @@ uint8_t msstd_net_dial(const MsStr *address, const MsStr *server_name, uint8_t h
                        uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
     ms_net_clear_text(err);
     MsAddr target;
-    if (!ms_net_addr_parse(bytes_of_str(address), &target)) {
+    if (!ms_net_addr_parse(msrt_str_bytes(address), &target)) {
         return STATUS_INVALID_INPUT;
     }
     MsTlsCtx *context = NULL;
@@ -167,7 +156,7 @@ static void socket_address(const void *handle, int (*query)(MsSock, MsAddr *), M
     const MsConn *row = ms_conn_get(ms_netconn_table(conn), ms_netconn_id(conn));
     MsAddr address;
     if (row != NULL && query(row->fd, &address) == MS_SYS_OK) {
-        write_address(out, &address);
+        ms_net_write_address(out, &address);
     } else {
         msrt_string_from_bytes(NULL, 0, out);
     }

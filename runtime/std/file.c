@@ -98,15 +98,15 @@ uint8_t msstd_fs_open(const MsStr *path, const MsStr *mode_text, int64_t mode, v
     MsFsFail fail = {0};
     int32_t flags = 0;
     MsStream *stream = NULL;
-    if (!flags_of_mode(ms_fs_string_bytes(mode_text), &flags)) {
+    if (!flags_of_mode(msrt_str_bytes(mode_text), &flags)) {
         fail_invalid(&fail);
     } else {
-        (void)open_file(ms_fs_string_bytes(path), flags, mode, &stream, &fail);
+        (void)open_file(msrt_str_bytes(path), flags, mode, &stream, &fail);
     }
     if (stream != NULL) {
         *out = stream;
     }
-    return ms_fs_finish_at(&fail, ms_fs_string_bytes(path), err);
+    return ms_fs_finish_at(&fail, msrt_str_bytes(path), err);
 }
 
 uint8_t msstd_fs_file_clone(const void *handle, void **out, MsStr *err) {

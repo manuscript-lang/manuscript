@@ -80,7 +80,7 @@ uint8_t msstd_process_working_directory(MsStr *out, MsStr *err) {
 
 uint8_t msstd_process_change_directory(const MsStr *path, MsStr *err) {
     MsFsFail fail = {0};
-    const MsBytes name = ms_fs_string_bytes(path);
+    const MsBytes name = msrt_str_bytes(path);
     MsFsPath checked;
     if (!ms_fs_path_init(&checked, name)) {
         ms_fs_fail_status(&fail, STATUS_INVALID_INPUT);
@@ -154,8 +154,8 @@ uint8_t msstd_process_environment_map(MsMap *out, MsStr *err) {
 }
 
 uint8_t msstd_process_set_environment(const MsStr *name, uint8_t has_value, const MsStr *value, MsStr *err) {
-    const MsBytes key = ms_fs_string_bytes(name);
-    const MsBytes text = ms_fs_string_bytes(value);
+    const MsBytes key = msrt_str_bytes(name);
+    const MsBytes text = msrt_str_bytes(value);
     if (key.len == 0 || memchr(key.ptr, 0, key.len) != NULL || memchr(key.ptr, '=', key.len) != NULL ||
         (has_value != 0 && memchr(text.ptr, 0, text.len) != NULL)) {
         return invalid(err);
@@ -186,7 +186,7 @@ uint8_t msstd_process_set_environment(const MsStr *name, uint8_t has_value, cons
 }
 
 uint8_t msstd_process_environment_is_set(const MsStr *name) {
-    const MsBytes key = ms_fs_string_bytes(name);
+    const MsBytes key = msrt_str_bytes(name);
     MsFsPath text;
     if (memchr(key.ptr, '=', key.len) != NULL || !ms_fs_path_init(&text, key)) {
         return 0;
@@ -258,7 +258,7 @@ uint8_t msstd_process_set_groups(const MsVec *groups, MsStr *err) {
 
 /* `gid` first, then the groups of `username`, each once. */
 uint8_t msstd_process_initialize_groups(const MsStr *username, int64_t gid, MsStr *err) {
-    const MsBytes name = ms_fs_string_bytes(username);
+    const MsBytes name = msrt_str_bytes(username);
     MsFsFail fail = {0};
     if (!in_id_range(gid) || memchr(name.ptr, 0, name.len) != NULL) {
         return invalid(err);
@@ -324,7 +324,7 @@ uint8_t msstd_process_set_identity(const MsStr *kind, int64_t id, MsStr *err) {
         const char *name;
         MsSysIdentity which;
     } kinds[] = {{"uid", MS_SYS_ID_UID}, {"gid", MS_SYS_ID_GID}, {"euid", MS_SYS_ID_EUID}, {"egid", MS_SYS_ID_EGID}};
-    const MsBytes text = ms_fs_string_bytes(kind);
+    const MsBytes text = msrt_str_bytes(kind);
     if (!in_id_range(id)) {
         return invalid(err);
     }
@@ -362,7 +362,7 @@ uint8_t msstd_process_title(MsStr *out, MsStr *err) {
 }
 
 uint8_t msstd_process_set_title(const MsStr *title, MsStr *err) {
-    const MsBytes text = ms_fs_string_bytes(title);
+    const MsBytes text = msrt_str_bytes(title);
     if (memchr(text.ptr, 0, text.len) != NULL || memchr(text.ptr, '\n', text.len) != NULL) {
         return invalid(err);
     }

@@ -1058,7 +1058,7 @@ static MsPlace own_target_place(OwnWalk *w, const MsExpr *target, uint32_t root,
     for (const MsExpr *e = target; e->kind == MS_E_MEMBER; e = e->u.member.left) {
         depth++;
     }
-    MsStep *steps = MS_NEW_N(&w->check->arena, MsStep, depth + 1);
+    MsStep *steps = MS_NEW_N(&w->check->arena, MsStep, (size_t)depth + 1);
     uint32_t at = depth;
     for (const MsExpr *e = target; e->kind == MS_E_MEMBER; e = e->u.member.left) {
         steps[--at] = (MsStep){MS_STEP_FIELD, e->u.member.name, 0};
@@ -1066,7 +1066,7 @@ static MsPlace own_target_place(OwnWalk *w, const MsExpr *target, uint32_t root,
     const MsPlace place = {root, steps, depth};
     MsBuf shown = {0};
     ms_place_show(&shown, w->check->names, place, w->facts->bindings.name[root]);
-    *text = (MsStr){.ptr = ms_arena_strndup(&w->check->arena, shown.data, shown.len), .len = shown.len};
+    *text = (MsStr){.ptr = ms_arena_strndup(&w->check->arena, shown.data, shown.len), .len = (uint32_t)shown.len};
     ms_buf_free(&shown);
     return place;
 }
@@ -1225,7 +1225,10 @@ static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning
     const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
     const bool borrowed = !returning && demand != DEMAND_MOVE && !copied && own_arms_are_names(w, e);
     /* Arms that are not all references produce a value, so a place among them moves. */
-    const Demand arm_demand = !borrowed && demand == DEMAND_READ ? DEMAND_MOVE : demand;
+    Demand arm_demand = demand;
+    if (!borrowed && demand == DEMAND_READ) {
+        arm_demand = DEMAND_MOVE;
+    }
     const Scrutinee source = own_scrutinee(w, e->u.match.scrutinee);
     own_release_pending(w);
     BorrowSet entry = own_set_copy(&w->active);

@@ -1,3 +1,3 @@
 enum main:
-    a
-    b
+	a
+	b

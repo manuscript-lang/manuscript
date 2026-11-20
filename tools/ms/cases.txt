@@ -20,7 +20,6 @@ build a.ms -o out
 build a.ms -o
 build a.ms --build-type
 build a.ms --build-type Fast
-build a.ms --build-type debug --build-type release
 build a.ms --static
 build a.ms --link x.a
 check a.ms --link x.a

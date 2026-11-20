@@ -1,2 +1,2 @@
 fn main() String:
-    return "x"
+	return "x"

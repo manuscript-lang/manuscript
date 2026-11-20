@@ -10,22 +10,8 @@
 
 #include "abi.h"
 #include "ms_rt/crypto.h"
+#include "crypto_md.h"
 
-/* The HashAlgorithm cases, in declaration order. */
-static const EVP_MD *md_of(int64_t index) {
-    switch (index) {
-    case 0: return EVP_md5();
-    case 1: return EVP_sha1();
-    case 2: return EVP_sha224();
-    case 3: return EVP_sha256();
-    case 4: return EVP_sha384();
-    case 5: return EVP_sha512();
-    case 6: return EVP_sha3_256();
-    case 7: return EVP_sha3_384();
-    case 8: return EVP_sha3_512();
-    default: return NULL;
-    }
-}
 static const char *md_name(int64_t index) {
     static const char *names[] = {"MD5", "SHA1", "SHA224", "SHA256", "SHA384", "SHA512", "SHA3-256", "SHA3-384", "SHA3-512"};
     return index >= 0 && index < 9 ? names[index] : NULL;
