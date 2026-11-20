@@ -58,7 +58,7 @@ file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
 # task_abi.c is linked by core_task_abi alone: the other tests stub the task ABI and run without a scheduler.
 set(_task_abi "${_rt}/core/task_abi.c")
 list(REMOVE_ITEM _core_sources "${_task_abi}")
-ms_test_objects(ms_test_core ${_core_sources} ${_posix_sources} ${_support_sources})
+ms_test_objects(ms_test_core ${_core_sources} ${_posix_sources} "${_rt}/sys/strtod.c" ${_support_sources})
 target_compile_definitions(ms_test_core PRIVATE MS_ALLOC_STATS)
 file(GLOB _core_tests CONFIGURE_DEPENDS "${_tests}/core_*.c")
 foreach(file ${_core_tests})
