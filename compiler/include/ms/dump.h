@@ -26,7 +26,7 @@ void ms_dump_module_types(MsBuf *out, const MsCheck *c, MsModId m);
 
 /* The checked functions of the module: `fn LINE:COLUMN clean`, then `expr ID TYPE` for each
  * expression of the body in tree order. The form `c_oracle --bodies` prints. */
-void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m);
+void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m, const bool *declined);
 /* The functions the C passes checked, each with the diagnostics inside it. */
 void ms_dump_module_ownership(MsBuf *out, const MsCheck *c, MsModId m);
 /* `fn L:C` and the `edge NAME L:C` lines of each checked function and constant, as `c_oracle --effects`. */
