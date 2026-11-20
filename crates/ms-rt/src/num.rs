@@ -773,6 +773,7 @@ pub unsafe extern "C-unwind" fn msrt_float_to_fixed(v: f64, digits: i64, out: *m
 }
 
 /// The `Float` with this IEEE 754 binary64 bit pattern.
+#[cfg(not(ms_c = "msrt_float_from_bits"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub extern "C-unwind" fn msrt_float_from_bits(bits: i64) -> f64 {
@@ -780,6 +781,7 @@ pub extern "C-unwind" fn msrt_float_from_bits(bits: i64) -> f64 {
 }
 
 /// The IEEE 754 binary64 bit pattern of a `Float`.
+#[cfg(not(ms_c = "msrt_float_to_bits"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub extern "C-unwind" fn msrt_float_to_bits(value: f64) -> i64 {
@@ -787,6 +789,7 @@ pub extern "C-unwind" fn msrt_float_to_bits(value: f64) -> i64 {
 }
 
 /// The binary32 with this bit pattern (the low 32 bits), widened exactly to the `f64` a `Float32` register holds.
+#[cfg(not(ms_c = "msrt_float32_from_bits"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub extern "C-unwind" fn msrt_float32_from_bits(bits: i64) -> f64 {
@@ -794,6 +797,7 @@ pub extern "C-unwind" fn msrt_float32_from_bits(bits: i64) -> f64 {
 }
 
 /// The binary32 bit pattern of a value a `Float32` register holds as an `f64`.
+#[cfg(not(ms_c = "msrt_float32_to_bits"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub extern "C-unwind" fn msrt_float32_to_bits(value: f64) -> i64 {
@@ -801,6 +805,7 @@ pub extern "C-unwind" fn msrt_float32_to_bits(value: f64) -> i64 {
 }
 
 /// `Float.truncate_to_int()`: present flag, value through `out` only when present.
+#[cfg(not(ms_c = "msrt_float_truncate_to_int"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8 {
@@ -815,6 +820,7 @@ pub unsafe extern "C-unwind" fn msrt_float_truncate_to_int(v: f64, out: *mut i64
 
 /// `Float.to_float32()`: present flag, value through `out` only when present. A finite value
 /// too large for binary32 is absent (Float32 payloads are stored as 4 bytes); NaN and infinities convert unchanged.
+#[cfg(not(ms_c = "msrt_float_to_float32"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float_to_float32(v: f64, out: *mut f32) -> u8 {
