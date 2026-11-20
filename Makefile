@@ -200,6 +200,12 @@ stdlib-bench: build
 c-test:
 	sh runtime/tests/c-test.sh
 
+# The C style gate (documentation/contributing/c-style.md): strict warnings on every C file, clang-tidy on the
+# files that differ from C_LINT_BASE (all of them when it is unset).
+.PHONY: c-lint
+c-lint:
+	sh toolchain/c-lint.sh $(C_LINT_BASE)
+
 # The C runtime fuzz harnesses (runtime/fuzz) under AddressSanitizer and UBSan; FUZZ_RUNS, FUZZ_SEED, FUZZER=libfuzzer.
 c-fuzz:
 	sh runtime/tests/fuzz.sh
@@ -207,6 +213,7 @@ c-fuzz:
 # The C compiler front end and checker against the Rust ones, byte for byte (syntax on the corpus and on mutated copies, checker tables on the standard library); nightly runs more mutants.
 c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
+	sh compiler/tests/mir-diff.sh
 	sh compiler/tests/check-diff.sh
 
 # The C driver: stage table and parse entry point, then the thin `ms` in front of the Rust `ms` (needs make build).

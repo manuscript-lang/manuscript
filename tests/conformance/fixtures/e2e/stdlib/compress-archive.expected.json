@@ -28,19 +28,29 @@
           "index": 3,
           "name": "compress-archive.ms::ZIP unpack verifies a zero stored checksum",
           "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "compress-archive.ms::ZIP64 end record sentinels trigger independently",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "compress-archive.ms::tar unpack rejects a damaged header checksum",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 4,
-        "selected": 4,
-        "passed": 4,
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN compress-archive.ms::compression formats roundtrip and enforce expanded byte budgets\nPASS compress-archive.ms::compression formats roundtrip and enforce expanded byte budgets\nRUN compress-archive.ms::ZIP and TAR preserve entries and independently enforce archive limits\nPASS compress-archive.ms::ZIP and TAR preserve entries and independently enforce archive limits\nRUN compress-archive.ms::archives reject traversal paths\nPASS compress-archive.ms::archives reject traversal paths\nRUN compress-archive.ms::ZIP unpack verifies a zero stored checksum\nPASS compress-archive.ms::ZIP unpack verifies a zero stored checksum\n4 tests, 0 failed\n",
+      "stdout": "RUN compress-archive.ms::compression formats roundtrip and enforce expanded byte budgets\nPASS compress-archive.ms::compression formats roundtrip and enforce expanded byte budgets\nRUN compress-archive.ms::ZIP and TAR preserve entries and independently enforce archive limits\nPASS compress-archive.ms::ZIP and TAR preserve entries and independently enforce archive limits\nRUN compress-archive.ms::archives reject traversal paths\nPASS compress-archive.ms::archives reject traversal paths\nRUN compress-archive.ms::ZIP unpack verifies a zero stored checksum\nPASS compress-archive.ms::ZIP unpack verifies a zero stored checksum\nRUN compress-archive.ms::ZIP64 end record sentinels trigger independently\nPASS compress-archive.ms::ZIP64 end record sentinels trigger independently\nRUN compress-archive.ms::tar unpack rejects a damaged header checksum\nPASS compress-archive.ms::tar unpack rejects a damaged header checksum\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
