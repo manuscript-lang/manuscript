@@ -135,6 +135,10 @@ typedef struct MirClosureLayout {
  * bytes before the region's end (`ms_rt_abi::symbols::STACK_REGION`, `STACK_LIMIT_CELL`). */
 #define MIR_STACK_REGION ((int64_t)256 << 20)
 #define MIR_STACK_LIMIT_CELL 8
+/* The word this many bytes before the region's end holds the task header's address; the header's
+ * cancel flag is the byte at `MIR_HDR_CANCEL` (`ISOLATE_HDR_CANCEL`). */
+#define MIR_STACK_HDR_CELL 16
+#define MIR_HDR_CANCEL 8
 
 /* A list or bytes value is three leaves: the element address, the length and the capacity. */
 #define MIR_LIST_LEN_LEAF 1

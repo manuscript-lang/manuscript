@@ -1000,6 +1000,7 @@ static SmSnapshot sm_snapshot(MsArena *arena, const MirFunc *f) {
 }
 
 static void sm_restore(MirFunc *f, const SmSnapshot *s) {
+    f->nblocks = s->n; /* a block compaction since the snapshot may have dropped unreachable ones */
     memcpy(f->blocks, s->blocks, sizeof(MirBlockData) * s->n);
     for (uint32_t bi = 0; bi < s->n; bi++) {
         if (s->cases[bi] != NULL) {

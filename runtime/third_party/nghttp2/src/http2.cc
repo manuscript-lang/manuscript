@@ -24,6 +24,8 @@
  */
 #include "http2.h"
 
+#include <print>
+
 #include "llhttp.h"
 
 #include "util.h"
@@ -253,7 +255,7 @@ std::string_view stringify_status(BlockAllocator &balloc,
 struct Capitalizer {
   template <std::weakly_incrementable O>
   requires(std::indirectly_writable<O, char>)
-  constexpr O operator()(const std::string_view &s, O result) noexcept {
+  constexpr O operator()(std::string_view s, O result) noexcept {
     using result_type = std::iter_value_t<O>;
 
     *result++ = static_cast<result_type>(util::upcase(s[0]));
@@ -271,18 +273,19 @@ struct Capitalizer {
 };
 
 namespace {
-void capitalize_long(DefaultMemchunks *buf, const std::string_view &s) {
+void capitalize_long(DefaultMemchunks *buf, std::string_view s) {
   buf->append(util::upcase(s[0]));
 
-  auto it = s.begin() + 1;
+  auto it = std::ranges::begin(s) + 1;
 
-  for (; it != s.end();) {
-    auto p = std::ranges::find(it, s.end(), '-');
-    p = std::ranges::find_if(p, s.end(), [](auto c) { return c != '-'; });
+  for (; it != std::ranges::end(s);) {
+    auto p = std::ranges::find(it, std::ranges::end(s), '-');
+    p = std::ranges::find_if(p, std::ranges::end(s),
+                             [](auto c) { return c != '-'; });
 
     buf->append(it, p);
 
-    if (p == s.end()) {
+    if (p == std::ranges::end(s)) {
       return;
     }
 
@@ -293,7 +296,7 @@ void capitalize_long(DefaultMemchunks *buf, const std::string_view &s) {
 }
 } // namespace
 
-void capitalize(DefaultMemchunks *buf, const std::string_view &s) {
+void capitalize(DefaultMemchunks *buf, std::string_view s) {
   assert(!s.empty());
 
   constexpr size_t max_namelen = 32;
@@ -306,21 +309,20 @@ void capitalize(DefaultMemchunks *buf, const std::string_view &s) {
   buf->append(s.size(), std::bind_front(Capitalizer{}, s));
 }
 
-Headers::value_type to_header(const std::string_view &name,
-                              const std::string_view &value, bool no_index,
-                              int32_t token) {
+Headers::value_type to_header(std::string_view name, std::string_view value,
+                              bool no_index, int32_t token) {
   return Header(std::string{std::ranges::begin(name), std::ranges::end(name)},
                 std::string{std::ranges::begin(value), std::ranges::end(value)},
                 no_index, token);
 }
 
-void add_header(Headers &nva, const std::string_view &name,
-                const std::string_view &value, bool no_index, int32_t token) {
+void add_header(Headers &nva, std::string_view name, std::string_view value,
+                bool no_index, int32_t token) {
   nva.push_back(to_header(name, value, no_index, token));
 }
 
 const Headers::value_type *get_header(const Headers &nva,
-                                      const std::string_view &name) {
+                                      std::string_view name) {
   const Headers::value_type *res = nullptr;
   for (auto &nv : nva) {
     if (nv.name == name) {
@@ -336,8 +338,8 @@ bool non_empty_value(const HeaderRefs::value_type *nv) {
 
 namespace {
 void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
-                                  const HeaderRefs &headers, uint8_t nv_flags,
-                                  uint32_t flags) {
+                                  std::span<const HeaderRef> headers,
+                                  uint8_t nv_flags, uint32_t flags) {
   auto it_forwarded = std::ranges::end(headers);
   auto it_xff = std::ranges::end(headers);
   auto it_xfp = std::ranges::end(headers);
@@ -436,19 +438,20 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
 } // namespace
 
 void copy_headers_to_nva(std::vector<nghttp2_nv> &nva,
-                         const HeaderRefs &headers, uint32_t flags) {
+                         std::span<const HeaderRef> headers, uint32_t flags) {
   copy_headers_to_nva_internal(nva, headers, NGHTTP2_NV_FLAG_NONE, flags);
 }
 
 void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
-                                const HeaderRefs &headers, uint32_t flags) {
+                                std::span<const HeaderRef> headers,
+                                uint32_t flags) {
   copy_headers_to_nva_internal(
     nva, headers, NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE,
     flags);
 }
 
 void build_http1_headers_from_headers(DefaultMemchunks *buf,
-                                      const HeaderRefs &headers,
+                                      std::span<const HeaderRef> headers,
                                       uint32_t flags) {
   auto it_forwarded = std::ranges::end(headers);
   auto it_xff = std::ranges::end(headers);
@@ -564,17 +567,18 @@ int32_t determine_window_update_transmission(nghttp2_session *session,
 void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen) {
   auto end = nva + nvlen;
   for (; nva != end; ++nva) {
-    fprintf(out, "%s: %s\n", nva->name, nva->value);
+    std::println(out, "{}: {}", as_string_view(nva->name, nva->namelen),
+                 as_string_view(nva->value, nva->valuelen));
   }
-  fputc('\n', out);
+  std::println(out, "");
   fflush(out);
 }
 
 void dump_nv(FILE *out, const HeaderRefs &nva) {
   for (auto &nv : nva) {
-    fprintf(out, "%s: %s\n", nv.name.data(), nv.value.data());
+    std::println(out, "{}: {}", nv.name, nv.value);
   }
-  fputc('\n', out);
+  std::println(out, "");
   fflush(out);
 }
 
@@ -584,11 +588,11 @@ void erase_header(HeaderRef *hd) {
 }
 
 std::string_view rewrite_location_uri(BlockAllocator &balloc,
-                                      const std::string_view &uri,
+                                      std::string_view uri,
                                       const urlparse_url &u,
-                                      const std::string_view &match_host,
-                                      const std::string_view &request_authority,
-                                      const std::string_view &upstream_scheme) {
+                                      std::string_view match_host,
+                                      std::string_view request_authority,
+                                      std::string_view upstream_scheme) {
   // We just rewrite scheme and authority.
   if ((u.field_set & (1 << URLPARSE_HOST)) == 0) {
     return ""sv;
@@ -648,22 +652,22 @@ std::string_view rewrite_location_uri(BlockAllocator &balloc,
   return as_string_view(std::ranges::begin(iov), p);
 }
 
-int parse_http_status_code(const std::string_view &src) {
+std::expected<int, Error> parse_http_status_code(std::string_view src) {
   if (src.size() != 3) {
-    return -1;
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
   int status = 0;
   for (auto c : src) {
     if (!isdigit(c)) {
-      return -1;
+      return std::unexpected{Error::INVALID_ARGUMENT};
     }
     status *= 10;
     status += c - '0';
   }
 
   if (status < 100) {
-    return -1;
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
   return status;
@@ -671,7 +675,7 @@ int parse_http_status_code(const std::string_view &src) {
 
 // This function was generated by genheaderfunc.py.  Inspired by h2o
 // header lookup.  https://github.com/h2o/h2o
-int lookup_token(const std::string_view &name) {
+int lookup_token(std::string_view name) {
   switch (name.size()) {
   case 2:
     switch (name[1]) {
@@ -955,23 +959,6 @@ template <typename InputIt> InputIt skip_lws(InputIt first, InputIt last) {
 } // namespace
 
 namespace {
-template <typename InputIt>
-InputIt skip_to_next_field(InputIt first, InputIt last) {
-  for (; first != last; ++first) {
-    switch (*first) {
-    case ' ':
-    case '\t':
-    case ',':
-      continue;
-    default:
-      return first;
-    }
-  }
-  return first;
-}
-} // namespace
-
-namespace {
 // Skip to the right dquote ('"'), handling backslash escapes.
 // Returns |last| if input is not terminated with '"'.
 template <typename InputIt>
@@ -992,7 +979,7 @@ InputIt skip_to_right_dquote(InputIt first, InputIt last) {
       case ' ':
         break;
       default:
-        if ((0x21 <= *first && *first <= 0x7e) /* VCHAR */ ||
+        if ((0x21 <= *first && *first <= 0x7E) /* VCHAR */ ||
             0x80 <= *first /* obs-text */) {
           break;
         }
@@ -1007,8 +994,8 @@ InputIt skip_to_right_dquote(InputIt first, InputIt last) {
     case '!':
       break;
     default:
-      if ((0x23 <= *first && *first <= 0x5b) ||
-          (0x5d <= *first && *first <= 0x7e)) {
+      if ((0x23 <= *first && *first <= 0x5B) ||
+          (0x5D <= *first && *first <= 0x7E)) {
         break;
       }
 
@@ -1020,286 +1007,8 @@ InputIt skip_to_right_dquote(InputIt first, InputIt last) {
 }
 } // namespace
 
-namespace {
-// Returns true if link-param does not match pattern |pat| of length
-// |patlen| or it has empty value ("").  |pat| should be parmname
-// followed by "=".
-bool check_link_param_empty(const std::string_view &s,
-                            const std::string_view &pat) {
-  return s.size() < pat.size() ||
-         !std::ranges::equal(s.substr(0, pat.size()), pat, util::CaseCmp()) ||
-         (s.size() >= pat.size() + 2 &&
-          // we only accept URI if pat is followed by ""
-          // (e.g., loadpolicy="") here.
-          s[pat.size()] == '"' && s[pat.size() + 1] == '"');
-}
-} // namespace
-
-namespace {
-// Returns true if link-param consists of only parmname, and it
-// matches string [pat, pat + patlen).
-bool check_link_param_without_value(const std::string_view &s,
-                                    const std::string_view &pat) {
-  if (s.size() < pat.size()) {
-    return false;
-  }
-
-  if (s.size() == pat.size()) {
-    return std::ranges::equal(s, pat, util::CaseCmp());
-  }
-
-  switch (s[pat.size()]) {
-  case ';':
-  case ',':
-    return std::ranges::equal(s.substr(0, pat.size()), pat, util::CaseCmp());
-  }
-
-  return false;
-}
-} // namespace
-
-namespace {
-std::pair<LinkHeader, const char *>
-parse_next_link_header_once(const char *first, const char *last) {
-  first = skip_to_next_field(first, last);
-  if (first == last || *first != '<') {
-    return {{""sv}, last};
-  }
-  auto url_first = ++first;
-  first = std::ranges::find(first, last, '>');
-  if (first == last) {
-    return {{""sv}, first};
-  }
-  auto url_last = first++;
-  if (first == last) {
-    return {{""sv}, first};
-  }
-  // we expect ';' or ',' here
-  switch (*first) {
-  case ',':
-    return {{""sv}, ++first};
-  case ';':
-    ++first;
-    break;
-  default:
-    return {{""sv}, last};
-  }
-
-  auto ok = false;
-  auto ign = false;
-  for (;;) {
-    first = skip_lws(first, last);
-    if (first == last) {
-      return {{""sv}, first};
-    }
-    // we expect link-param
-
-    if (!ign) {
-      if (!ok) {
-        // rel can take several relations using quoted form.
-        static constexpr auto PLP = "rel=\""sv;
-        static constexpr auto PLT = "preload"sv;
-
-        if (first + PLP.size() < last && *(first + PLP.size() - 1) == '"' &&
-            std::ranges::equal(PLP, std::string_view{first, PLP.size()},
-                               util::CaseCmp())) {
-          // we have to search preload in whitespace separated list:
-          // rel="preload something http://example.org/foo"
-          first += PLP.size();
-          auto start = first;
-          for (; first != last;) {
-            if (*first != ' ' && *first != '"') {
-              ++first;
-              continue;
-            }
-
-            if (start == first) {
-              return {{""sv}, last};
-            }
-
-            if (!ok && start + PLT.size() == first &&
-                std::ranges::equal(PLT, std::string_view{start, PLT.size()},
-                                   util::CaseCmp())) {
-              ok = true;
-            }
-
-            if (*first == '"') {
-              break;
-            }
-            first = skip_lws(first, last);
-            start = first;
-          }
-          if (first == last) {
-            return {{""sv}, last};
-          }
-          assert(*first == '"');
-          ++first;
-          if (first == last || *first == ',') {
-            goto almost_done;
-          }
-          if (*first == ';') {
-            ++first;
-            // parse next link-param
-            continue;
-          }
-          return {{""sv}, last};
-        }
-      }
-      // we are only interested in rel=preload parameter.  Others are
-      // simply skipped.
-      static constexpr auto PL = "rel=preload"sv;
-      if (first + PL.size() == last) {
-        if (std::ranges::equal(PL, std::string_view{first, PL.size()},
-                               util::CaseCmp())) {
-          // ok = true;
-          // this is the end of sequence
-          return {{{url_first, url_last}}, last};
-        }
-      } else if (first + PL.size() + 1 <= last) {
-        switch (*(first + PL.size())) {
-        case ',':
-          if (!std::ranges::equal(PL, std::string_view{first, PL.size()},
-                                  util::CaseCmp())) {
-            break;
-          }
-          // ok = true;
-          // skip including ','
-          first += PL.size() + 1;
-          return {{{url_first, url_last}}, first};
-        case ';':
-          if (!std::ranges::equal(PL, std::string_view{first, PL.size()},
-                                  util::CaseCmp())) {
-            break;
-          }
-          ok = true;
-          // skip including ';'
-          first += PL.size() + 1;
-          // continue parse next link-param
-          continue;
-        }
-      }
-      // we have to reject URI if we have nonempty anchor parameter.
-      if (!ign && !check_link_param_empty({first, last}, "anchor="sv)) {
-        ign = true;
-      }
-
-      // reject URI if we have non-empty loadpolicy.  This could be
-      // tightened up to just pick up "next" or "insert".
-      if (!ign && !check_link_param_empty({first, last}, "loadpolicy="sv)) {
-        ign = true;
-      }
-
-      // reject URI if we have nopush attribute.
-      if (!ign && check_link_param_without_value({first, last}, "nopush"sv)) {
-        ign = true;
-      }
-    }
-
-    auto param_first = first;
-    for (; first != last;) {
-      if (util::in_attr_char(*first)) {
-        ++first;
-        continue;
-      }
-      // '*' is only allowed at the end of parameter name and must be
-      // followed by '='
-      if (last - first >= 2 && first != param_first) {
-        if (*first == '*' && *(first + 1) == '=') {
-          ++first;
-          break;
-        }
-      }
-      if (*first == '=' || *first == ';' || *first == ',') {
-        break;
-      }
-      return {{""sv}, last};
-    }
-    if (param_first == first) {
-      // empty parmname
-      return {{""sv}, last};
-    }
-    // link-param without value is acceptable (see link-extension) if
-    // it is not followed by '='
-    if (first == last || *first == ',') {
-      goto almost_done;
-    }
-    if (*first == ';') {
-      ++first;
-      // parse next link-param
-      continue;
-    }
-    // now parsing link-param value
-    assert(*first == '=');
-    ++first;
-    if (first == last) {
-      // empty value is not acceptable
-      return {{""sv}, first};
-    }
-    if (*first == '"') {
-      // quoted-string
-      first = skip_to_right_dquote(first + 1, last);
-      if (first == last) {
-        return {{""sv}, first};
-      }
-      ++first;
-      if (first == last || *first == ',') {
-        goto almost_done;
-      }
-      if (*first == ';') {
-        ++first;
-        // parse next link-param
-        continue;
-      }
-      return {{""sv}, last};
-    }
-    // not quoted-string, skip to next ',' or ';'
-    if (*first == ',' || *first == ';') {
-      // empty value
-      return {{""sv}, last};
-    }
-    for (; first != last; ++first) {
-      if (*first == ',' || *first == ';') {
-        break;
-      }
-    }
-    if (first == last || *first == ',') {
-      goto almost_done;
-    }
-    assert(*first == ';');
-    ++first;
-    // parse next link-param
-  }
-
-almost_done:
-  assert(first == last || *first == ',');
-
-  if (first != last) {
-    ++first;
-  }
-  if (ok && !ign) {
-    return {{{url_first, url_last}}, first};
-  }
-  return {{""sv}, first};
-}
-} // namespace
-
-std::vector<LinkHeader> parse_link_header(const std::string_view &src) {
-  std::vector<LinkHeader> res;
-  for (auto first = std::ranges::begin(src); first != std::ranges::end(src);) {
-    auto rv = parse_next_link_header_once(first, std::ranges::end(src));
-    first = rv.second;
-    auto &link = rv.first;
-    if (!link.uri.empty()) {
-      res.push_back(link);
-    }
-  }
-  return res;
-}
-
-std::string path_join(const std::string_view &base_path,
-                      const std::string_view &base_query,
-                      const std::string_view &rel_path,
-                      const std::string_view &rel_query) {
+std::string path_join(std::string_view base_path, std::string_view base_query,
+                      std::string_view rel_path, std::string_view rel_query) {
   BlockAllocator balloc(1024, 1024);
 
   return std::string{
@@ -1320,7 +1029,7 @@ bool expect_response_body(int method_token, uint32_t status_code) {
 }
 
 // This function was generated by genmethodfunc.py.
-int lookup_method_token(const std::string_view &name) {
+int lookup_method_token(std::string_view name) {
   switch (name.size()) {
   case 3:
     switch (name[2]) {
@@ -1522,94 +1231,6 @@ std::string_view to_method_string(int method_token) {
     llhttp_method_name(static_cast<llhttp_method>(method_token))};
 }
 
-std::string_view get_pure_path_component(const std::string_view &uri) {
-  int rv;
-
-  urlparse_url u;
-  rv = urlparse_parse_url(uri.data(), uri.size(), 0, &u);
-  if (rv != 0) {
-    return ""sv;
-  }
-
-  if (u.field_set & (1 << URLPARSE_PATH)) {
-    auto &f = u.field_data[URLPARSE_PATH];
-    return std::string_view{uri.data() + f.off, f.len};
-  }
-
-  return "/"sv;
-}
-
-int construct_push_component(BlockAllocator &balloc, std::string_view &scheme,
-                             std::string_view &authority,
-                             std::string_view &path,
-                             const std::string_view &base,
-                             const std::string_view &uri) {
-  int rv;
-  std::string_view rel, relq;
-
-  if (uri.size() == 0) {
-    return -1;
-  }
-
-  urlparse_url u;
-
-  rv = urlparse_parse_url(uri.data(), uri.size(), 0, &u);
-
-  if (rv != 0) {
-    if (uri[0] == '/') {
-      return -1;
-    }
-
-    // treat link_url as relative URI.
-    auto end = std::ranges::find(uri, '#');
-    auto q = std::ranges::find(std::ranges::begin(uri), end, '?');
-
-    rel = std::string_view{std::ranges::begin(uri), q};
-    if (q != end) {
-      relq = std::string_view{q + 1, std::ranges::end(uri)};
-    }
-  } else {
-    if (u.field_set & (1 << URLPARSE_SCHEMA)) {
-      scheme = util::get_uri_field(uri.data(), u, URLPARSE_SCHEMA);
-    }
-
-    if (u.field_set & (1 << URLPARSE_HOST)) {
-      auto auth = util::get_uri_field(uri.data(), u, URLPARSE_HOST);
-      auto len = auth.size();
-      auto port_exists = u.field_set & (1 << URLPARSE_PORT);
-      if (port_exists) {
-        len += 1 + str_size("65535");
-      }
-      auto iov = make_byte_ref(balloc, len + 1);
-      auto p = std::ranges::begin(iov);
-      p = std::ranges::copy(auth, p).out;
-      if (port_exists) {
-        *p++ = ':';
-        p = util::utos(u.port, p);
-      }
-      *p = '\0';
-
-      authority = as_string_view(std::ranges::begin(iov), p);
-    }
-
-    if (u.field_set & (1 << URLPARSE_PATH)) {
-      auto &f = u.field_data[URLPARSE_PATH];
-      rel = std::string_view{uri.data() + f.off, f.len};
-    } else {
-      rel = "/"sv;
-    }
-
-    if (u.field_set & (1 << URLPARSE_QUERY)) {
-      auto &f = u.field_data[URLPARSE_QUERY];
-      relq = std::string_view{uri.data() + f.off, f.len};
-    }
-  }
-
-  path = path_join(balloc, base, ""sv, rel, relq);
-
-  return 0;
-}
-
 namespace {
 template <typename InputIt> InputIt eat_file(InputIt first, InputIt last) {
   if (first == last) {
@@ -1647,15 +1268,13 @@ template <typename InputIt> InputIt eat_dir(InputIt first, InputIt last) {
 }
 } // namespace
 
-std::string_view path_join(BlockAllocator &balloc,
-                           const std::string_view &base_path,
-                           const std::string_view &base_query,
-                           const std::string_view &rel_path,
-                           const std::string_view &rel_query) {
-  auto res =
-    make_byte_ref(balloc, std::max(static_cast<size_t>(1), base_path.size()) +
-                            rel_path.size() + 1 +
-                            std::max(base_query.size(), rel_query.size()) + 1);
+std::string_view path_join(BlockAllocator &balloc, std::string_view base_path,
+                           std::string_view base_query,
+                           std::string_view rel_path,
+                           std::string_view rel_query) {
+  auto res = make_byte_ref(
+    balloc, std::max(1UZ, base_path.size()) + rel_path.size() + 1 +
+              std::max(base_query.size(), rel_query.size()) + 1);
   auto p = std::ranges::begin(res);
 
   if (rel_path.empty()) {
@@ -1740,9 +1359,8 @@ std::string_view path_join(BlockAllocator &balloc,
   return as_string_view(std::ranges::begin(res), p);
 }
 
-std::string_view normalize_path(BlockAllocator &balloc,
-                                const std::string_view &path,
-                                const std::string_view &query) {
+std::string_view normalize_path(BlockAllocator &balloc, std::string_view path,
+                                std::string_view query) {
   // First, decode %XX for unreserved characters, then do
   // http2::path_join
 
@@ -1789,8 +1407,8 @@ std::string_view normalize_path(BlockAllocator &balloc,
 }
 
 std::string_view normalize_path_colon(BlockAllocator &balloc,
-                                      const std::string_view &path,
-                                      const std::string_view &query) {
+                                      std::string_view path,
+                                      std::string_view query) {
   // First, decode %XX for unreserved characters and ':', then do
   // http2::path_join
 
@@ -1836,15 +1454,14 @@ std::string_view normalize_path_colon(BlockAllocator &balloc,
                    as_string_view(std::ranges::begin(result), p), query);
 }
 
-std::string normalize_path(const std::string_view &path,
-                           const std::string_view &query) {
+std::string normalize_path(std::string_view path, std::string_view query) {
   BlockAllocator balloc(1024, 1024);
 
   return std::string{normalize_path(balloc, path, query)};
 }
 
 std::string_view rewrite_clean_path(BlockAllocator &balloc,
-                                    const std::string_view &src) {
+                                    std::string_view src) {
   if (src.empty() || src[0] != '/') {
     return src;
   }
@@ -1860,7 +1477,7 @@ std::string_view rewrite_clean_path(BlockAllocator &balloc,
                         std::string_view{query, fragment});
 }
 
-bool contains_trailers(const std::string_view &s) {
+bool contains_trailers(std::string_view s) {
   constexpr auto trailers = "trailers"sv;
 
   for (auto p = std::ranges::begin(s), end = std::ranges::end(s);; ++p) {
@@ -1886,26 +1503,30 @@ bool contains_trailers(const std::string_view &s) {
   }
 }
 
-std::string_view make_websocket_accept_token(uint8_t *dest,
-                                             const std::string_view &key) {
+std::expected<std::string_view, Error>
+make_websocket_accept_token(std::span<uint8_t, base64::encode_length(20)> dest,
+                            std::string_view key) {
+  assert(key.size() == base64::encode_length(16));
+
   static constexpr auto magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"sv;
-  std::array<char, base64::encode_length(16) + magic.size()> s;
+  std::array<uint8_t, base64::encode_length(16) + magic.size()> s;
   auto p = std::ranges::copy(key, std::ranges::begin(s)).out;
   std::ranges::copy(magic, p);
 
   std::array<uint8_t, 20> h;
-  if (util::sha1(h.data(), as_string_view(s)) != 0) {
-    return ""sv;
+  if (auto rv = util::sha1(h, s); !rv) {
+    return std::unexpected{rv.error()};
   }
 
-  return as_string_view(dest, base64::encode(h, dest));
+  return as_string_view(std::ranges::begin(dest),
+                        base64::encode(h, std::ranges::begin(dest)));
 }
 
 bool legacy_http1(int major, int minor) {
   return major <= 0 || (major == 1 && minor == 0);
 }
 
-bool check_transfer_encoding(const std::string_view &s) {
+bool check_transfer_encoding(std::string_view s) {
   if (s.empty()) {
     return false;
   }

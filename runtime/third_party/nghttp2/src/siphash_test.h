@@ -27,11 +27,11 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif // HAVE_CONFIG_H
+#endif // defined(HAVE_CONFIG_H)
 
 #define MUNIT_ENABLE_ASSERT_ALIASES
 
-#include "munit.h"
+#include "munitxx.h"
 
 namespace nghttp2 {
 
@@ -41,4 +41,4 @@ munit_void_test_decl(test_siphash)
 
 } // namespace nghttp2
 
-#endif // SIPHASH_TEST_H
+#endif // !defined(SIPHASH_TEST_H)

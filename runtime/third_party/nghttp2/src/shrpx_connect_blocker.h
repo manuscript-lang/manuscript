@@ -76,11 +76,11 @@ private:
   struct ev_loop *loop_;
   // The number of consecutive connection failure.  Reset to 0 on
   // success.
-  size_t fail_count_;
+  size_t fail_count_{};
   // true if peer is considered offline.
-  bool offline_;
+  bool offline_{};
 };
 
 } // namespace shrpx
 
-#endif // SHRPX_CONNECT_BLOCKER_H
+#endif // !defined(SHRPX_CONNECT_BLOCKER_H)

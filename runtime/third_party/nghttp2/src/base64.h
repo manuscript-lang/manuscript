@@ -36,19 +36,17 @@ namespace nghttp2 {
 
 namespace base64 {
 
-namespace {
-constexpr char B64_CHARS[] = {
+inline constexpr char B64_CHARS[] = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
   'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
   'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/',
 };
-} // namespace
 
 constexpr size_t encode_length(size_t n) { return (n + 2) / 3 * 4; }
 
-template <std::input_iterator I, std::weakly_incrementable O>
+template <std::forward_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
 constexpr O encode(I first, I last, O result) {
   using result_type = std::iter_value_t<O>;
@@ -70,9 +68,9 @@ constexpr O encode(I first, I last, O result) {
     n += static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 8);
     n += static_cast<uint8_t>(*first++);
     *p++ = static_cast<result_type>(B64_CHARS[n >> 18]);
-    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3fu]);
-    *p++ = static_cast<result_type>(B64_CHARS[(n >> 6) & 0x3fu]);
-    *p++ = static_cast<result_type>(B64_CHARS[n & 0x3fu]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3FU]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 6) & 0x3FU]);
+    *p++ = static_cast<result_type>(B64_CHARS[n & 0x3FU]);
   }
 
   switch (len) {
@@ -80,15 +78,15 @@ constexpr O encode(I first, I last, O result) {
     auto n = static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 16);
     n += static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 8);
     *p++ = static_cast<result_type>(B64_CHARS[n >> 18]);
-    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3fu]);
-    *p++ = static_cast<result_type>(B64_CHARS[(n >> 6) & 0x3fu]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3FU]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 6) & 0x3FU]);
     *p++ = '=';
     break;
   }
   case 1: {
     auto n = static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 16);
     *p++ = static_cast<result_type>(B64_CHARS[n >> 18]);
-    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3fu]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3FU]);
     *p++ = '=';
     *p++ = '=';
     break;
@@ -98,14 +96,14 @@ constexpr O encode(I first, I last, O result) {
   return p;
 }
 
-template <std::ranges::input_range R, std::weakly_incrementable O>
+template <std::ranges::forward_range R, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char> &&
          !std::is_array_v<std::remove_cvref_t<R>>)
 constexpr O encode(R &&r, O result) {
   return encode(std::ranges::begin(r), std::ranges::end(r), std::move(result));
 }
 
-template <std::ranges::input_range R>
+template <std::ranges::sized_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr std::string encode(R &&r) {
   std::string res;
@@ -114,14 +112,14 @@ constexpr std::string encode(R &&r) {
     return res;
   }
 
-  res.resize((len + 2) / 3 * 4);
-
-  encode(std::forward<R>(r), std::ranges::begin(res));
+  res.resize_and_overwrite((len + 2) / 3 * 4, [&r](auto p, auto len) {
+    return std::ranges::distance(p, encode(r, p));
+  });
 
   return res;
 }
 
-constinit const int B64_INDEX_TABLE[] = {
+inline constexpr int B64_INDEX_TABLE[] = {
   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60,
@@ -137,7 +135,7 @@ constinit const int B64_INDEX_TABLE[] = {
   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
-template <std::input_iterator I, std::weakly_incrementable O>
+template <std::forward_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, uint8_t>)
 constexpr O decode(I first, I last, O result) {
   using result_type = std::iter_value_t<O>;
@@ -147,7 +145,8 @@ constexpr O decode(I first, I last, O result) {
   for (; first != last;) {
     uint32_t n = 0;
     for (int i = 1; i <= 4; ++i, ++first) {
-      auto idx = B64_INDEX_TABLE[static_cast<size_t>(*first)];
+      auto idx =
+        B64_INDEX_TABLE[static_cast<size_t>(static_cast<uint8_t>(*first))];
       if (idx == -1) {
         if (i <= 2) {
           return result;
@@ -162,7 +161,7 @@ constexpr O decode(I first, I last, O result) {
         }
         if (*first == '=' && std::ranges::next(first, 1) == last) {
           *p++ = static_cast<result_type>(n >> 16);
-          *p++ = n >> 8 & 0xffu;
+          *p++ = n >> 8 & 0xFFU;
           return p;
         }
         return result;
@@ -172,14 +171,14 @@ constexpr O decode(I first, I last, O result) {
     }
 
     *p++ = static_cast<result_type>(n >> 16);
-    *p++ = n >> 8 & 0xffu;
-    *p++ = n & 0xffu;
+    *p++ = n >> 8 & 0xFFU;
+    *p++ = n & 0xFFU;
   }
 
   return p;
 }
 
-template <std::ranges::input_range R>
+template <std::ranges::sized_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::span<const uint8_t> decode(BlockAllocator &balloc, R &&r) {
   auto len = std::ranges::size(r);
@@ -199,4 +198,4 @@ std::span<const uint8_t> decode(BlockAllocator &balloc, R &&r) {
 
 } // namespace nghttp2
 
-#endif // BASE64_H
+#endif // !defined(BASE64_H)

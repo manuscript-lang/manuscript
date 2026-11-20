@@ -329,8 +329,15 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
-    case MS_E_LAMBDA: w->supported = false; return;
-    case MS_E_CALL: own_call(w, e, demand); return;
+    case MS_E_LAMBDA: w->supported = false; return; /* closures and collections are not modeled */
+    case MS_E_CALL:
+        // A call that names no function (a method, an interface operation or a function value) is not modeled.
+        if (w->facts->call_callee[e->id] == MS_NONE) {
+            w->supported = false;
+            return;
+        }
+        own_call(w, e, demand);
+        return;
     case MS_E_MATCH: own_match(w, e, demand, false); return;
     }
 }
@@ -563,7 +570,8 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
         return;
     }
     const OwnSummary *callee = own_callee(w, e);
-    if (callee == NULL || e->u.call.callee->kind != MS_E_NAME) {
+    if (callee == NULL || e->u.call.callee->kind != MS_E_NAME ||
+        e->u.call.args.len != w->check->syms.decl[w->facts->call_callee[e->id]]->u.fn.params.len) {
         w->supported = false;
         return;
     }

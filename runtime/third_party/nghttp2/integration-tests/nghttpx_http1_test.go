@@ -926,6 +926,439 @@ func TestH1H1CONNECTMethod(t *testing.T) {
 	}
 }
 
+// TestH1H1CONNECTMethodWithContentLength tests that CONNECT request
+// with content-length fails.
+func TestH1H1CONNECTMethodWithContentLength(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Fatalf("request should not be forwarded")
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443 HTTP/1.1\r\nTest-Case: TestH1H1CONNECTMethodWithContentLength\r\nHost: 127.0.0.1:443\r\nContent-Length: 5\r\n\r\nhello"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1CONNECTMethodWithTransferEncoding tests that CONNECT
+// request with transfer-encoding fails.
+func TestH1H1CONNECTMethodWithTransferEncoding(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Fatalf("request should not be forwarded")
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443 HTTP/1.1\r\nTest-Case: TestH1H1CONNECTMethodWithTransferEncoding\r\nHost: 127.0.0.1:443\r\nTransfer-Encoding: chunked\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1CONNECTMethodBuffering tests that CONNECT request succeeds
+// and forwars buffered data.
+func TestH1H1CONNECTMethodBuffering(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			_, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if _, err := bufrw.WriteString("HTTP/1.1 200 OK\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+
+			bufrw.Flush()
+
+			s, err := bufrw.ReadString('\n')
+			if err != nil {
+				t.Fatalf("Error bufrw.ReadString() = %v", err)
+			}
+
+			if got, want := s, "hello world\n"; got != want {
+				t.Errorf("data: %v; want %v", got, want)
+			}
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443 HTTP/1.1\r\nTest-Case: TestH1H1CONNECTMethodBuffering\r\nHost: 127.0.0.1:443\r\n\r\nhello world\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1CONNECTMethodDiscardBuffer tests that CONNECT request
+// fails and buffered data is not forwarded.
+func TestH1H1CONNECTMethodDiscardBuffer(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			_, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if _, err := bufrw.WriteString("HTTP/1.1 405 Method Not Allowed\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+
+			bufrw.Flush()
+
+			if _, err := bufrw.ReadString('\n'); err == nil {
+				t.Fatal("bufrw.ReadString() should fail")
+			}
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443 HTTP/1.1\r\nTest-Case: TestH1H1CONNECTMethodDiscardBuffer\r\nHost: 127.0.0.1:443\r\n\r\nhello world\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusMethodNotAllowed; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1UpgradeWithTransferEncoding rejects Upgrade request with
+// transfer-encoding fails.
+func TestH1H1UpgradeWithTransferEncoding(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Fatalf("request should not be forwarded")
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.1\r\nTest-Case: TestH1H1UpgradeWithTransferEncoding\r\nHost: 127.0.0.1:443\r\nUpgrade: foo\r\nConnection: upgrade\r\nTransfer-Encoding: chunked\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1UpgradeWithContentLength rejects Upgrade request with
+// transfer-encoding fails.
+func TestH1H1UpgradeWithContentLength(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Fatalf("request should not be forwarded")
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.1\r\nTest-Case: TestH1H1UpgradeWithContentLength\r\nHost: 127.0.0.1:443\r\nUpgrade: h2c\r\nConnection: upgrade, HTTP2-Settings\r\nhttp2-settings: AAMAAABkAAQAAP__AAkAAAAB\r\nContent-Length: 10\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1OPTIONSServerWide tests that server-wide OPTIONS request.
+func TestH1H1OPTIONS(t *testing.T) {
+	st := newServerTester(t, options{})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "OPTIONS * HTTP/1.1\r\nTest-Case: TestH1H1OPTIONSServerWide\r\nHost: 127.0.0.1\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+}
+
+// TestH1H1OPTIONSProxyServerWide tests that server-wide OPTIONS
+// request in proxy request.
+func TestH1H1OPTIONSProxyServerWide(t *testing.T) {
+	st := newServerTester(t, options{})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "OPTIONS http://127.0.0.1 HTTP/1.1\r\nTest-Case: TestH1H1OPTIONSProxyServerWide\r\nHost: 127.0.0.1\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+}
+
+// TestH1H1BadMethodAsterisk tests that "*" in HTTP request other than
+// OPTIONS request.
+func TestH1H1BadMethodAsterisk(t *testing.T) {
+	st := newServerTester(t, options{})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET * HTTP/1.1\r\nTest-Case: TestH1H1BadMethodAsterisk\r\nHost: 127.0.0.1\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+}
+
+// TestH1H1AsteriskPrefix tests that a path starting with "*" in HTTP
+// request.
+func TestH1H1AsteriskPrefix(t *testing.T) {
+	st := newServerTester(t, options{})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "OPTIONS *foo HTTP/1.1\r\nTest-Case: TestH1H1AsteriskPrefix\r\nHost: 127.0.0.1\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+}
+
+// TestH1H2OPTIONSServerWide tests that server-wide OPTIONS request.
+func TestH1H2OPTIONS(t *testing.T) {
+	opts := options{
+		args: []string{"--http2-bridge"},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "OPTIONS * HTTP/1.1\r\nTest-Case: TestH1H2OPTIONSServerWide\r\nHost: 127.0.0.1\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+}
+
+// TestH1H2OPTIONSProxyServerWide tests that server-wide OPTIONS
+// request in proxy request.
+func TestH1H2OPTIONSProxyServerWide(t *testing.T) {
+	opts := options{
+		args: []string{"--http2-bridge"},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "OPTIONS http://127.0.0.1 HTTP/1.1\r\nTest-Case: TestH1H2OPTIONSProxyServerWide\r\nHost: 127.0.0.1\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+}
+
+// TestH1H2BadMethodAsterisk tests that "*" in HTTP request other than
+// OPTIONS request.
+func TestH1H2BadMethodAsterisk(t *testing.T) {
+	opts := options{
+		args: []string{"--http2-bridge"},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET * HTTP/1.1\r\nTest-Case: TestH1H2BadMethodAsterisk\r\nHost: 127.0.0.1\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+}
+
+// TestH1H2AsteriskPrefix tests that a path starting with "*" in HTTP
+// request.
+func TestH1H2AsteriskPrefix(t *testing.T) {
+	opts := options{
+		args: []string{"--http2-bridge"},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "OPTIONS *foo HTTP/1.1\r\nTest-Case: TestH1H2AsteriskPrefix\r\nHost: 127.0.0.1\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+}
+
 // // TestH1H2ConnectFailure tests that server handles the situation that
 // // connection attempt to HTTP/2 backend failed.
 // func TestH1H2ConnectFailure(t *testing.T) {
@@ -1746,5 +2179,35 @@ func TestH1H1RequestHTTP10TransferEncoding(t *testing.T) {
 
 	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H2BadHost tests that invalid character in host is treated as
+// bad request.
+func TestH1H2BadHost(t *testing.T) {
+	opts := options{
+		args: []string{"--http2-bridge"},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.1\r\nTest-Case: TestH1H2BadHost\r\nHost: 127.0.0.1\x8c\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
 	}
 }
