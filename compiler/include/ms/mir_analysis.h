@@ -117,7 +117,7 @@ uint32_t mir_extern_intern(MirModule *m, const MirExtern *def);
 /* Inserts `inst` before position `at` of `block` (`at == ninsts` appends). */
 void mir_block_insert(MirModule *m, MirBlockData *block, uint32_t at, const MirInst *inst);
 
-/* Copies `f` into `out`: its own arrays of values, blocks, parameters and instructions (the
+/* Copies `f` into `out`: its own arrays of values, blocks, parameters, instructions, scopes and names (the
  * operand arrays are shared, so a pass edits a clone only by replacing them). */
 void mir_func_clone(MirModule *m, const MirFunc *f, MirFunc *out);
 

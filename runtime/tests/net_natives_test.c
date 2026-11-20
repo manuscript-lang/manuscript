@@ -11,6 +11,7 @@
 #include "../net/addr_text.h"
 #include "../net/conn_object.h"
 #include "../net/dial.h"
+#define FAKE_RT_TRACK
 #include "fake_rt.h"
 #include "ms_rt/net.h"
 #include "ms_rt/sys.h"
@@ -22,7 +23,7 @@ static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
 
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {
-    uint8_t *copy = malloc(len + 1);
+    uint8_t *copy = msrt_alloc_zeroed(len + 1); /* NUL-terminated: the test reads some strings as C strings */
     if (copy != NULL && len > 0) memcpy(copy, ptr, len);
     *out = (MsStr){.ptr_word = copy, .tagged = len};
 }
@@ -203,6 +204,7 @@ int main(void) {
 
     ms_tls_ctx_free(context);
     ms_io_close(1);
+    fake_rt_free_all();
     puts(failed ? "net_natives_test: FAILED" : "net_natives_test: ok");
     return failed;
 }
