@@ -22,7 +22,6 @@ import (
 	headers,
 	open_client from "@std/net/http.ms",
 	start_server from "@std/net/serve.ms",
-	dns_lookup, dns_resolve from "@std/net/dns.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
 	Policy,
 	address_allowed,
