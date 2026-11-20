@@ -646,6 +646,26 @@ static bool qbe_call_rt(QCx *c, const MirInst *inst, uint32_t block, uint32_t in
     return ok;
 }
 
+/* `dbgloc <line>, <scope>` makes QBE write `.loc 1 <line> <scope>`: the fault tables are built from the
+ * assembly (compiler/tools/ms_asm_tables.c), which turns each into a code range. The scope is
+ * module-wide (0 is the function itself) and the column carries it. A fault block repeats the place of
+ * the operation it guards (QBE lays blocks out as it likes, and a trace names the faulting line from the
+ * return address of the fault call), and every block starts by writing its own place again. */
+static void qbe_dbg_here(QCx *c) {
+    if (c->loc.line != 0) {
+        ms_buf_printf(c->out, "\tdbgloc %u, %u\n", c->loc.line,
+                      c->loc.scope == 0 ? 0 : c->scope_base + c->loc.scope);
+    }
+}
+
+static void qbe_dbg(QCx *c, MirLoc loc) {
+    if (mir_loc_none(loc) || (loc.line == c->loc.line && loc.scope == c->loc.scope)) {
+        return;
+    }
+    c->loc = loc;
+    qbe_dbg_here(c);
+}
+
 /* Ends the current piece of the block with a branch on the flag `%o<n>s`: the fault `call` (its
  * text, such as `$msrt_fault_int_overflow()`) is a block of its own and the rest of the block
  * continues in a new piece. */
@@ -654,9 +674,12 @@ static void qbe_fault_branch(QCx *c, uint32_t n, const char *call, uint32_t bloc
     (*part)++;
     ms_buf_printf(o, "\tjnz %%o%us, @f%u, ", n, n);
     qbe_label(c, block, *part);
-    ms_buf_printf(o, "\n@f%u\n\tcall %s\n\thlt\n", n, call);
+    ms_buf_printf(o, "\n@f%u\n", n);
+    qbe_dbg_here(c);
+    ms_buf_printf(o, "\tcall %s\n\thlt\n", call);
     qbe_label(c, block, *part);
     ms_buf_putc(o, '\n');
+    qbe_dbg_here(c);
 }
 
 /* Writes `sum = a +/- b` and the flag `%o<n>s`: add overflows when both operands differ in sign
@@ -701,13 +724,20 @@ static void qbe_mul_flag(QCx *c, uint32_t n, MirValue a, MirValue b, const char 
 }
 
 #define QBE_FAULT_OVERFLOW "$msrt_fault_int_overflow()"
+#define QBE_FAULT_RANGE "$msrt_fault_int_range()"
+
+/* The fault of a signed 64-bit overflow: a sized result reports its type's range instead. */
+static const char *qbe_arith_fault(const QCx *c, const MirInst *inst) {
+    int64_t lo, hi;
+    return mir_sized_result_range(c->m, c->f, inst, &lo, &hi) ? QBE_FAULT_RANGE : QBE_FAULT_OVERFLOW;
+}
 
 static void qbe_checked_arith(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
     const uint32_t n = c->next++;
     char sum[24];
     (void)snprintf(sum, sizeof sum, "%%v%u", inst->res);
     qbe_add_flag(c, n, inst->op == MOP_IAddChk, inst->args[0], inst->args[1], sum);
-    qbe_fault_branch(c, n, QBE_FAULT_OVERFLOW, block, part);
+    qbe_fault_branch(c, n, qbe_arith_fault(c, inst), block, part);
 }
 
 static void qbe_checked_mul(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
@@ -715,7 +745,7 @@ static void qbe_checked_mul(QCx *c, const MirInst *inst, uint32_t block, uint32_
     char prod[24];
     (void)snprintf(prod, sizeof prod, "%%v%u", inst->res);
     qbe_mul_flag(c, n, inst->args[0], inst->args[1], prod);
-    qbe_fault_branch(c, n, QBE_FAULT_OVERFLOW, block, part);
+    qbe_fault_branch(c, n, qbe_arith_fault(c, inst), block, part);
 }
 
 static void qbe_compare(QCx *c, const MirInst *inst) {
@@ -1053,7 +1083,7 @@ static bool qbe_list_write_op(QCx *c, const MirInst *inst, uint32_t block, uint3
     }
 }
 
-static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
+static bool qbe_inst_core(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
     const char *mnemonic = qbe_binary_mnemonic((MirOp)inst->op);
     if (mnemonic != NULL) {
         ms_buf_printf(c->out, "\t%%v%u =%c %s %%v%u, %%v%u\n", inst->res, qbe_vty(c, inst->res),
@@ -1122,6 +1152,22 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
         c->why = mir_op_info[inst->op].name;
         return false;
     }
+}
+
+/* A checked operation on a sized integer also faults when its result leaves the type's range. */
+static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
+    if (!qbe_inst_core(c, inst, block, index, part)) {
+        return false;
+    }
+    int64_t lo, hi;
+    if (!mir_sized_result_range(c->m, c->f, inst, &lo, &hi)) {
+        return true;
+    }
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "\t%%o%ua =w csltl %%v%u, %lld\n\t%%o%ub =w csgtl %%v%u, %lld\n\t%%o%us =w or %%o%ua, %%o%ub\n",
+                  n, inst->res, (long long)lo, n, inst->res, (long long)hi, n, n, n);
+    qbe_fault_branch(c, n, QBE_FAULT_RANGE, block, part);
+    return true;
 }
 
 /* `ret`: nothing, the one leaf, or the leaves written through the hidden result pointer. */
@@ -1197,12 +1243,23 @@ static bool qbe_switch(QCx *c, const MirTerm *t, uint32_t block) {
     return true;
 }
 
+/* A conditional branch whose two edges enter the same block with arguments. */
+static bool qbe_reaches_twice(const MirTerm *t) {
+    return t->kind == MT_CONDBR && t->a.block == t->b.block && t->a.nargs > 0;
+}
+
 static bool qbe_term(QCx *c, const MirTerm *t, uint32_t block) {
     switch ((MirTermKind)t->kind) {
     case MT_BR:
         ms_buf_printf(c->out, "\tjmp @b%u\n", t->a.block);
         return true;
     case MT_CONDBR:
+        if (qbe_reaches_twice(t)) {
+            /* Both edges enter one block with arguments: a block each, so its phis can tell them apart. */
+            ms_buf_printf(c->out, "\tjnz %%v%u, @r%u_0, @r%u_1\n@r%u_0\n\tjmp @b%u\n@r%u_1\n\tjmp @b%u\n",
+                          t->value, block, block, block, t->a.block, block, t->b.block);
+            return true;
+        }
         ms_buf_printf(c->out, "\tjnz %%v%u, @b%u, @b%u\n", t->value, t->a.block, t->b.block);
         return true;
     case MT_RET:
@@ -1249,16 +1306,17 @@ static bool qbe_phi_leaf(QCx *c, uint32_t b, uint32_t index, uint32_t leaf, cons
             edges[0] = &t->a;
             edges[1] = &t->b;
         }
-        if (edges[1] != NULL && edges[0]->block == b && edges[1]->block == b && edges[0]->nargs > 0) {
-            c->why = "one block reaches a target twice with arguments";
-            return false;
-        }
+        const bool twice = qbe_reaches_twice(t);
         for (size_t k = 0; k < 2; k++) {
             if (edges[k] == NULL || edges[k]->block != b) {
                 continue;
             }
             ms_buf_printf(c->out, "%s ", first ? "" : ",");
-            qbe_label(c, s, last[s]);
+            if (twice) {
+                ms_buf_printf(c->out, "@r%u_%zu", s, k);
+            } else {
+                qbe_label(c, s, last[s]);
+            }
             ms_buf_putc(c->out, ' ');
             qbe_name(c->out, edges[k]->args[index], leaf);
             first = false;
@@ -1313,20 +1371,10 @@ static bool qbe_entry(QCx *c) {
     return true;
 }
 
-/* `dbgloc <line>, <scope>` makes QBE write `.loc 1 <line> <scope>`: the fault tables are built from the
- * assembly (compiler/tools/ms_asm_tables.c), which turns each into a code range. The scope is
- * module-wide (0 is the function itself) and the column carries it. */
-static void qbe_dbg(QCx *c, MirLoc loc) {
-    if (mir_loc_none(loc) || (loc.line == c->loc.line && loc.scope == c->loc.scope)) {
-        return;
-    }
-    c->loc = loc;
-    ms_buf_printf(c->out, "\tdbgloc %u, %u\n", loc.line, loc.scope == 0 ? 0 : c->scope_base + loc.scope);
-}
-
 static bool qbe_block(QCx *c, uint32_t b, const uint32_t *last) {
     const MirBlockData *block = &c->f->blocks[b];
     ms_buf_printf(c->out, "@b%u\n", b);
+    c->loc = (MirLoc){0};
     if (b == 0 && !qbe_entry(c)) {
         return false;
     }
@@ -1461,7 +1509,7 @@ bool mir_emit_qbe_glued(MirModule *m, MirGlue *glue_in, MsBuf *out, MsBuf *why) 
     return ok;
 }
 
-void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay, MsBuf *out) {
+void mir_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay, bool llvm, MsBuf *out) {
     for (uint32_t i = 0; i < m->nfiles; i++) {
         ms_buf_printf(out, "F %.*s\n", (int)m->files[i].len, m->files[i].ptr);
     }
@@ -1472,7 +1520,8 @@ void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndis
         const MsStr name = ms_name(&m->names, f->name);
         const MsStr shown = i < ndisplay ? ms_name(&m->names, display[i]) : name; /* glue added by the emitter */
         sym.len = 0;
-        qbe_sym(&sym, name);
+        qbe_sym(&sym, name); /* LLVM writes the plain name too: source names are identifiers and dots */
+        (void)llvm;
         ms_buf_printf(out, "Y %.*s\t%d\t%u\t%.*s\n", (int)sym.len - 1, sym.data + 1,
                       f->loc.file == MIR_NONE ? -1 : (int)f->loc.file, f->loc.line, (int)shown.len, shown.ptr);
         for (uint32_t k = 0; k < f->nscopes; k++) {

@@ -22,6 +22,7 @@ struct WakeHandle(*mut core::ffi::c_void);
 // SAFETY: `uv_async_send` is the one libuv call that is safe from any thread; the reactor lives
 // until `close` clears the isolate's wake closure.
 unsafe impl Send for WakeHandle {}
+// SAFETY: as for `Send`; the handle is only ever passed to `ms_io_wake`.
 unsafe impl Sync for WakeHandle {}
 
 pub unsafe fn create() -> i32 {

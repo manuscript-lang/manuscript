@@ -42,5 +42,5 @@ echo "--- why the C build fails (count, reason) ---"
 # with several gaps counts under each.
 for log in "$out"/*.c.log; do
     sed -E 's#/tmp/ms-cbackend-[0-9]+/##; s/^native code generation failed[^:]*: (ms_mir_build|qbe|cc) failed: //' "$log" |
-        awk '/^the C back end cannot write:/ {w=1; next} w && NF {sub(/^[^:]*: /, ""); print "emitter: " $0; next} /does not verify after/ {print "verify: " $0; v=1; next} v && NF {sub(/^[^:]*: /, ""); sub(/%[0-9]+/, "%N"); print "  " $0; v=0; next} !w && NF && !v {print "other: " $0; exit}'
+        awk '/^the C back end cannot write:/ {w=1; next} w && NF {sub(/^[^:]*: /, ""); print "emitter: " $0; next} /^Built / {exit} /does not verify after/ {print "verify: " $0; v=1; next} v && NF {sub(/^[^:]*: /, ""); sub(/%[0-9]+/, "%N"); print "  " $0; v=0; next} !w && NF && !v {print "other: " $0; exit}'
 done | sort | uniq -c | sort -rn | head -n 40

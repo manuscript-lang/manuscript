@@ -1,0 +1,88 @@
+MS0000	Unclassified diagnostic		read the message; it names the cause and the fix
+MS1000	Grammar		follow the expected token the message names; block headers end with ':'
+MS1001	Literals and text		fix the literal, escape or encoding the message names
+MS1002	Layout		indent with four spaces and keep each suite aligned
+MS2001	Names and members		apply the `fix` edit (nearest name or import), or declare the name
+MS2002	Modules and imports		check the path, extension and [aliases] entry the message names
+MS2003	Redundant prelude import		delete the import; the prelude already provides it
+MS3000	General typing		read the message; it names the rule and the fix
+MS3001	Exact types and operators		convert explicitly: to_float(), "{value}", or an explicit comparison
+MS3002	Duplicate argument		pass each argument once
+MS3003	Missing argument		supply the parameter the message names
+MS3004	Unknown argument		use one of the parameter names the message lists
+MS3010	Overlapping implementation		keep one impl per interface and type
+MS3011	Signature mismatch		match the interface operation's signature
+MS3012	Implementation receiver		implement interfaces for types you declare
+MS3021	Hashing		use a Hashable key type
+MS3030	Captures		capture a copy with .clone(), or finish using the value first
+MS3040	Recursion		keep recursive types finite and generic arguments stable
+MS3050	Exhaustiveness		add the missing cases or a final `_:`
+MS3060	Mutation		declare the binding with `var`; the `fix` edit rewrites the binding
+MS3070	Numeric literals		use a value inside the type's range
+MS3080	Generic inference		write the type arguments or annotate the binding
+MS4000	Lowering		report this as a compiler bug with the source
+MS2001.1	Unknown name		apply the `fix` edit, import the name, or declare it
+MS2001.2	Unknown type		import the type or declare it
+MS2001.3	Unknown member		use one of the members the message lists
+MS2001.4	Unknown alternative case		name a case the alternative declares
+MS2001.5	Prelude name reused		rename the declaration
+MS2001.6	Fixture outside tests		declare a make_fixture factory in the test module
+MS2002.1	Unknown standard module		check the module name against the standard library
+MS3000.1	Unused local binding		use the binding, or name it with a leading '_'
+MS3000.2	Use after move		pass `.clone()` to keep the value, or stop using it after the move
+MS3000.4	Shadowed binding		rename one binding, or assign to the outer `var`
+MS3000.5	Discarded Result		write a trailing `?` to propagate the failure, or handle it
+MS3000.6	Missing return		return a value on every path
+MS3000.7	Division by zero		divide by a nonzero value
+MS3000.8	Bound not satisfied		use a type that implements the interface
+MS3000.9	Interface constructed		construct a type that implements the interface
+MS3000.10	Unclosed resource		call `.close()`, or return it
+MS3000.11	Move out of a borrow		take an clone with `.clone()`
+MS3000.12	Assignment target		assign to a type field or a variable
+MS3001.1	Type mismatch		convert explicitly, or change the declared type
+MS3010.1	Overlapping implementation		keep one impl per interface and type
+MS3011.1	Signature mismatch		match the interface operation's signature
+MS3000.14	Missing operation		implement every operation the interface declares
+MS3000.15	Extra operation		remove operations the interface does not declare
+MS3000.16	Duplicate operation		define each operation once
+MS3012.1	Implementation receiver		implement interfaces for a type or alternative you declare
+MS3000.17	Implementation target		name an interface after `impl`
+MS3050.1	Non-exhaustive match		add the missing cases or a final `_:`
+MS3000.18	Parameter not declared var		write `var` before the parameter
+MS3060.2	Immutable binding changed		declare the binding with `var`
+MS3000.19	Method does not change its receiver		declare the method `var fn`
+MS3080.1	Cannot infer		write the type arguments or annotate the binding
+MS3000.20	Generic arity		write every required type argument
+MSL001	Trailing whitespace	warning	delete the spaces or tabs at the end of the line; `ms lint --fix` does it
+MSL002	Missing final newline	warning	end the file with a newline; `ms lint --fix` does it
+MSL102	Unused import	warning	remove the import or use the name; `ms lint --fix` removes it
+MSL103	Unreachable statement	warning	delete the statement or the `return`, `break` or `continue` before it
+MSL106	Match arm binding shadows a type or case	error	rename the binding to a lowercase name, or write the case with its payload in a helper
+MSL107	Nested match	error	bind the outer payload with an early exit, use a compatible trailing `?`, or call a small helper
+MSL108	Optional matched with only some and none	warning	use `if value := ...:` with `else:`, or an Optional method such as `get(default)` or `map`
+MSL109	Result matched with only ok and error	warning	use a trailing `?`, `if value := ...:` with `else:`, or a Result method such as `get(default)`, `is_error` or `err`
+MSL110	Optional.get() without a default	warning	use `if value := ...:`, or write `get_or(default)`
+MSL111	Loop that never waits or exits	error	wait inside the loop (sleep, or wait on a promise or a pipe), or return
+MSL112	Unconditional recursion	error	add a base case that returns before the recursive call
+MSL114	Resource closed at scope end with an uncalled flush	error	call `name.flush()?` (or `sync`, `commit`) before the scope ends, or close the resource explicitly
+MSL115	Promise dropped as soon as it is made	warning	bind the promise and call `wait()` on it, or pass it to `wait_all`; dropping a promise cancels it
+MSL116	Undeclared effect	warning	permit it with `// ms: allow_effect <effect>` above the function or in the file header, or move the call to the caller, or take a capability parameter
+MSL117	Integer literal interpolated into text	warning	drop the `f` so braces are plain text, or write `\{4\}` for literal braces in `f"..."` text; delete the braces to write the number
+MSL118	Length compared with zero	error	write `xs.is_empty()` or `not xs.is_empty()`; `ms lint --fix` does it
+MSL119	List read with get(i)	error	write `xs[i]`; `ms lint --fix` does it
+MSL120	Optional chained after a map get	error	write `map.get_or(key, default)`; `ms lint --fix` does it
+MSL121	Default overridden by a one-line if	error	write `x := if c: b else: a`; `ms lint --fix` does it for a literal or name default
+MSL122	Counter loop written as a while	error	write `for i in start..end:` and drop `i += 1`; `ms lint --fix` does it
+MSL123	Index loop that only reads xs[i]	warning	write `for item in xs:` and use `item`
+MSL124	Loop that appends or adds into a fresh accumulator	warning	write `xs.map(fn x: ...)`, `xs.filter(fn x: ...)` or `xs.sum()`
+MSL125	Loop that appends every element	warning	write `out.extend(xs)`
+MSL126	Binding returned on the next line	error	write `return <expression>`
+MSL127	Map entry rebuilt from its own lookup	error	write `m[k] -= v` (or `+=`, `*=`, `/=`, `%=`)
+MSL128	Final return the end of the function already makes	error	delete the final `return ok()` (`Void!`) or `return` (`Void`)
+MSL129	Void! outcome ignored with get(none)	error	write `void call()`; `ms lint --fix` does it
+MSL130	Statement get() on a Result	warning	write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome
+MSL131	Result printed as a value	warning	write `call()?` in a function that returns a Result, or `if value := call():` to read the success
+MSL132	slice result replaced by a fallback	warning	write `xs.slice(a, b)?`, or clamp the end with `min(end, xs.length())` before slicing
+MSL133	`//` after an operand reads like floor division	warning	`//` starts a comment, so the number after it is ignored; Int `/` already truncates, so write `a / 2`
+MSL134	Void value bound or printed	warning	call `xs.sort()` or `xs.reverse()` as a statement, or use `sorted()` or `reversed()` for a new list
+MSL135	`to_string()` on Bytes	warning	`bytes.to_string()` renders `Bytes(104, 105)`; write `bytes.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?` for the text

@@ -294,3 +294,46 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
         all,
     })
 }
+
+#[cfg(test)]
+mod explain_table {
+    /// The rows `tools/ms/data/codes.tsv` holds: code, family, severity (empty for a
+    /// compiler code) and repair, compiler codes first so a lookup finds them first.
+    fn table() -> String {
+        let mut out = String::new();
+        let compiler = ms_syntax::diag::CODES
+            .iter()
+            .chain(ms_syntax::diag::KINDS.iter().map(|k| &k.info));
+        for c in compiler {
+            out.push_str(&format!("{}\t{}\t\t{}\n", c.code, c.family, c.repair));
+        }
+        for r in ms_tooling::lint::RULES {
+            out.push_str(&format!(
+                "{}\t{}\t{}\t{}\n",
+                r.code,
+                r.family,
+                r.severity.name(),
+                r.repair
+            ));
+        }
+        out
+    }
+
+    /// The Manuscript `ms explain` reads this table; `MS_BLESS=1 cargo test explain_table`
+    /// rewrites it after a code or rule changes.
+    #[test]
+    fn tsv_is_current() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../tools/ms/data/codes.tsv");
+        let want = table();
+        assert!(!want.contains('\r'));
+        if std::env::var_os("MS_BLESS").is_some() {
+            std::fs::create_dir_all(std::path::Path::new(path).parent().unwrap()).unwrap();
+            std::fs::write(path, &want).unwrap();
+        }
+        let have = std::fs::read_to_string(path).unwrap_or_default();
+        assert!(
+            have == want,
+            "tools/ms/data/codes.tsv is stale; run MS_BLESS=1 cargo test -p ms-cli explain_table"
+        );
+    }
+}
