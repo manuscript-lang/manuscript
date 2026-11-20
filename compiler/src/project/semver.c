@@ -1,10 +1,11 @@
 /* Semantic versions and requirements (semver.h). */
 #include <string.h>
 
+#include "ms/project.h"
 #include "ms/semver.h"
 
 /* The text as Rust's `{:?}` writes a string: quoted, with escapes for quotes, backslashes and control characters. */
-static const char *semver_debug(MsArena *a, const char *text) {
+const char *ms_debug_quote(MsArena *a, const char *text) {
     MsBuf out = {0};
     ms_buf_putc(&out, '"');
     for (const char *c = text; *c != 0; c++) {
@@ -115,7 +116,7 @@ bool ms_version_parse(MsArena *a, const char *text, MsVersion *out, const char *
     const size_t parts = semver_split_numbers(text, length, n, valid);
     const bool ok = parts == 3 && valid[0] && valid[1] && valid[2] && (dash == NULL || semver_identifiers(pre));
     if (!ok) {
-        *error = ms_arena_fmt(a, "%s is not a version; write three numbers such as 1.2.3 (a suffix such as -rc.1 is allowed)", semver_debug(a, text)).ptr;
+        *error = ms_arena_fmt(a, "%s is not a version; write three numbers such as 1.2.3 (a suffix such as -rc.1 is allowed)", ms_debug_quote(a, text)).ptr;
         return false;
     }
     *out = (MsVersion){.major = n[0], .minor = n[1], .patch = n[2], .pre = ms_arena_strndup(a, pre, strlen(pre))};
@@ -221,7 +222,7 @@ const char *ms_bucket_text(MsArena *a, MsBucket b) {
 /* ---- requirements ---- */
 
 static bool semver_requirement_error(MsArena *a, const char *text, const char *why, const char **error) {
-    *error = ms_arena_fmt(a, "%s is not a version requirement: %s", semver_debug(a, text), why).ptr;
+    *error = ms_arena_fmt(a, "%s is not a version requirement: %s", ms_debug_quote(a, text), why).ptr;
     return false;
 }
 

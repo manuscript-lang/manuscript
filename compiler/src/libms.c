@@ -135,3 +135,4 @@
 #include "project/resolve.c"
 #include "project/load.c"
 #include "project/semver.c"
+#include "project/lock.c"
