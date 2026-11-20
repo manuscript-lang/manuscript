@@ -15,7 +15,6 @@ ms-check = { path = "../ms-check" }
 toml_edit = { version = "0.25.19", default-features = false, features = ["parse", "display"] }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt" }
 
 [[test]]
 name = "it"
