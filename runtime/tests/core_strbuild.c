@@ -13,27 +13,27 @@ static void check(bool ok, int line, const char *text) {
 }
 #define CHECK(cond) check((cond), __LINE__, #cond)
 
-static ms_str mk(const char *t) {
-    ms_str s;
+static MsStr mk(const char *t) {
+    MsStr s;
     msrt_string_from_bytes((const uint8_t *)t, strlen(t), &s);
     return s;
 }
-static bool is(const ms_str *s, const char *t) {
+static bool is(const MsStr *s, const char *t) {
     return ms_str_len(s) == strlen(t) && memcmp(ms_str_data(s), t, strlen(t)) == 0;
 }
-static void drop(ms_str *s) { msrt_string_free(s); }
+static void drop(MsStr *s) { msrt_string_free(s); }
 
 int main(void) {
     const char *lens[] = {"", "a", "ab", "fifteen-bytes!!", "sixteen-bytes!!!", "a string well past the inline size, with é"};
     /* from_bytes / clone / copy keep the bytes at every size. */
     for (size_t i = 0; i < sizeof lens / sizeof *lens; i++) {
-        ms_str s = mk(lens[i]), c;
+        MsStr s = mk(lens[i]), c;
         CHECK(is(&s, lens[i]));
         msrt_string_clone(&s, &c);
         CHECK(is(&c, lens[i]));
-        ms_str d = c;
+        MsStr d = c;
         if (!ms_str_is_inline(&s)) { /* msrt_str_copy takes an owned string or a view, never an inline one */
-            msrt_str_copy(s.ptr_word, s.tagged, &d);
+            msrt_str_copy(ms_str_data(&s), s.tagged, &d);
             CHECK(is(&d, lens[i]));
         }
         CHECK(ms_str_is_inline(&s) == (strlen(lens[i]) >= 2 && strlen(lens[i]) <= 15));
@@ -42,7 +42,7 @@ int main(void) {
     /* concat at every pair of sizes, 3 to 6 parts */
     for (size_t i = 0; i < sizeof lens / sizeof *lens; i++) {
         for (size_t j = 0; j < sizeof lens / sizeof *lens; j++) {
-            ms_str a = mk(lens[i]), b = mk(lens[j]), r;
+            MsStr a = mk(lens[i]), b = mk(lens[j]), r;
             char want[1024];
             snprintf(want, sizeof want, "%s%s", lens[i], lens[j]);
             msrt_string_concat(&a, &b, &r);
@@ -69,7 +69,7 @@ int main(void) {
         {"\xff bad \xff", "\xff bad \xff", "\xff bad \xff", "\xff bad \xff"},
     };
     for (size_t i = 0; i < sizeof trims / sizeof *trims; i++) {
-        ms_str s = mk(trims[i].in), v;
+        MsStr s = mk(trims[i].in), v;
         msrt_string_trim_view(&s, &v);
         CHECK(is(&v, trims[i].both));
         msrt_string_trim_start_view(&s, &v);
@@ -79,8 +79,8 @@ int main(void) {
         drop(&s);
     }
     /* slice and view, with negative, clamped and mid-scalar bounds */
-    ms_str s = mk("héllo, wörld of long text");
-    ms_str r;
+    MsStr s = mk("héllo, wörld of long text");
+    MsStr r;
     msrt_string_slice(&s, 0, 100, &r);
     CHECK(is(&r, "héllo, wörld of long text"));
     drop(&r);
@@ -101,7 +101,7 @@ int main(void) {
     msrt_string_view(&s, 4, 4, &r);
     CHECK(is(&r, ""));
     drop(&s);
-    ms_str t = mk("héllo");
+    MsStr t = mk("héllo");
     jmp_buf jb;
     ms_test_fault = &jb;
     if (setjmp(jb) == 0) {

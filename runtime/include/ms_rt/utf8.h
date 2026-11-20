@@ -8,23 +8,23 @@
 #define MS_RUNE_ERROR 0xFFFDu
 
 /* A decoded scalar and its byte width. An invalid sequence decodes as U+FFFD with width 1. */
-typedef struct ms_rune {
+typedef struct MsRune {
     uint32_t rune;
     uint32_t width;
-} ms_rune;
+} MsRune;
 
 /* Decodes the scalar at the start of the n > 0 bytes at s. */
-ms_rune ms_utf8_decode_multi(const uint8_t *s, size_t n);
+MsRune ms_utf8_decode_multi(const uint8_t *s, size_t n);
 
-static inline ms_rune ms_utf8_decode(const uint8_t *s, size_t n) {
+static inline MsRune ms_utf8_decode(const uint8_t *s, size_t n) {
     if (s[0] < 0x80) {
-        return (ms_rune){s[0], 1};
+        return (MsRune){s[0], 1};
     }
     return ms_utf8_decode_multi(s, n);
 }
 
 /* Decodes the scalar that ends the n > 0 bytes at s. */
-ms_rune ms_utf8_decode_last(const uint8_t *s, size_t n);
+MsRune ms_utf8_decode_last(const uint8_t *s, size_t n);
 
 /* Whether the scalar is Unicode White_Space. */
 bool ms_utf8_is_space(uint32_t c);
