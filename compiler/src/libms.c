@@ -44,6 +44,7 @@
 #include "mir/mir_pipeline.c"
 #include "mir/mir_slot_scope.c"
 #include "mir/mir_tables.c"
+#include "mir/mir_asm_tables.c"
 #include "mir/mir_debug.c"
 #include "mir/mir_debug_files.c"
 #include "mir/mir_frames.c"

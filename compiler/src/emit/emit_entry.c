@@ -15,11 +15,12 @@ void mir_name_entry(MirModule *m) {
     }
 }
 
-void mir_emit_entry_main(const MirModule *m, bool llvm, MsBuf *out) {
+void mir_emit_entry_main(const MirModule *m, bool llvm, bool tables, MsBuf *out) {
     if (m->entry == MIR_NONE) {
         return;
     }
-    /* The tables argument is null: the runtime then has no function or line names for traces. */
+    /* Without `tables` the argument is null and the runtime has no function or line names for traces;
+     * with them it is `ms_tables`, the block ms_asm_tables appends to the assembly (QBE only so far). */
     if (llvm) {
         ms_buf_puts(out,
                     "declare i32 @msrt_start(ptr, ptr, i32, ptr)\n\n"
@@ -28,8 +29,9 @@ void mir_emit_entry_main(const MirModule *m, bool llvm, MsBuf *out) {
                     "  ret i32 %r\n}\n");
         return;
     }
-    ms_buf_puts(out,
-                "export function w $main(w %argc, l %argv) {\n@start\n"
-                "\t%r =w call $msrt_start(l $" MIR_ENTRY_SYMBOL ", l 0, w %argc, l %argv)\n"
-                "\tret %r\n}\n");
+    ms_buf_printf(out,
+                  "export function w $main(w %%argc, l %%argv) {\n@start\n"
+                  "\t%%r =w call $msrt_start(l $" MIR_ENTRY_SYMBOL ", l %s, w %%argc, l %%argv)\n"
+                  "\tret %%r\n}\n",
+                  tables ? "$ms_tables" : "0");
 }
