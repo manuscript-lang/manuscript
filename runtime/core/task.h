@@ -73,6 +73,11 @@ typedef struct MsSchedHooks {
     /* A descriptor a promise waits on (ms_sched_fd_wait_begin) has `bits` ready: true when the promise is done with
      * the descriptor (the wait is then removed), false to keep waiting. */
     bool (*fd_ready)(uint64_t id, uint32_t bits);
+    /* While a task runs work inline for a wait group (ms_task_set_watch), each of its unshielded parks on `token` is
+     * bracketed: park_begin answers true when the park must end at once (a member already failed), park_end when the
+     * park that just returned was ended by a failure; both make the park report MS_WAIT_CANCELLED. */
+    bool (*park_begin)(uint64_t token);
+    bool (*park_end)(void);
     /* Frees the other tables when the scheduler ends. May be NULL. */
     void (*teardown)(void);
 } MsSchedHooks;
@@ -178,6 +183,10 @@ uint32_t ms_task_started_swap(MsTaskHandle handle, uint32_t head);
 /* The deadline a deferred promise run by the running task must end by (MS_NO_DEADLINE: none); set returns the old. */
 int64_t ms_task_defer_deadline(void);
 int64_t ms_task_set_defer_deadline(int64_t at_ns);
+
+/* An opaque pointer the running task carries for the park hooks (the wait group it runs work for); returns the old. */
+void *ms_task_watch(void);
+void *ms_task_set_watch(void *watch);
 
 /* Whether no other task could run while the current one blocks its thread (see task.c). */
 bool ms_task_others_stalled(void);

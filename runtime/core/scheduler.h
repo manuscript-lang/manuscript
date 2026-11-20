@@ -68,6 +68,7 @@ typedef struct MsTask {
     uint32_t wait_events;
     int32_t wait_fd;
     MsNode wait_node; /* this task's waiter node on wait_fd */
+    void *watch;            /* see ms_task_set_watch */
     int64_t defer_at;       /* deadline of the deferred promise this task runs, 0 when none */
     uint32_t started_head;  /* first promise this task started (row + 1), 0 for none */
     uint32_t segment; /* the segment the task runs on: 0 is the home slot, k is segments[k - 1] */

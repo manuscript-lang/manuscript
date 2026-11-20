@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "array.h"
+#include "group.h"
 #include "ms_rt/alloc.h"
 #include "scheduler.h"
 
@@ -30,6 +31,7 @@ enum {
     FLAG_DEFERRED = 8,    /* no task: the first waiter runs the work on its own stack */
     FLAG_TIMED_OUT = 16,  /* the limit passed and ended it: a wait reports a timeout, not a cancellation */
     FLAG_STOPPED = 32,    /* stop asked the work to cancel; without a result it reads as cancelled */
+    FLAG_GROUPED = 64,    /* a wait group member: the group hears when it finishes */
 };
 
 #define GENERATION_MASK 0x7fffffffu
@@ -168,8 +170,16 @@ MsPromise ms_promise_new(void) {
     return make_id(row);
 }
 
+static bool ended_without_value(uint8_t state) {
+    return state == STATE_ERROR || state == STATE_FAILED || state == STATE_CANCELLED;
+}
+
 static void wake(size_t row) {
     Hot *const hot = &table.hot[row];
+    if ((hot->flags & FLAG_GROUPED) != 0 && hot->state != STATE_PENDING) {
+        hot->flags &= (uint8_t)~FLAG_GROUPED;
+        ms_group_finished(make_id(row), ended_without_value(hot->state));
+    }
     const uint64_t token = hot->token;
     hot->token = 0;
     if (token != 0) {
@@ -415,8 +425,27 @@ void ms_promise_start_idle(MsPromise id, MsObj *closure) {
     }
 }
 
-/* Runs the deferred work of `id` on the caller's stack, ending by `deadline` (NO_TIME: no limit). */
-static bool run_deferred(MsPromise id, int64_t deadline) {
+/* Records how a guarded inline run ended. */
+static void end_guarded_run(MsPromise id, MsGuardStatus status, MsFaultText message) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0 || status == MS_GUARD_OK || table.hot[row].state != STATE_PENDING) {
+        msrt_free(message.bytes);
+        return;
+    }
+    if (status == MS_GUARD_FAULT) {
+        table.cold[row].report = message;
+        table.hot[row].state = STATE_FAILED;
+    } else {
+        msrt_free(message.bytes);
+        table.hot[row].state = STATE_CANCELLED;
+    }
+    wake((size_t)row);
+}
+
+/* Runs the deferred work of `id` on the caller's stack, ending by `deadline` (NO_TIME: no limit). With `guarded`, a
+ * fault or a cancel inside the work ends the promise as failed or cancelled instead of unwinding the caller (the
+ * run of a wait group, which a failing member interrupts). */
+static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
     const ptrdiff_t found = row_of(id);
     if (found < 0 || (table.hot[found].flags & FLAG_DEFERRED) == 0) {
         return false;
@@ -435,10 +464,17 @@ static bool run_deferred(MsPromise id, int64_t deadline) {
     }
     const int64_t earlier = ms_task_set_defer_deadline(until);
     const size_t handle = ms_cleanup_push(drop_closure, closure);
-    run_closure(closure);
+    MsFaultText message = {0};
+    MsGuardStatus status = MS_GUARD_OK;
+    if (guarded) {
+        status = ms_guard_call(run_closure, closure, &message);
+    } else {
+        run_closure(closure);
+    }
     ms_cleanup_discard(handle);
     msrt_obj_drop(closure);
     (void)ms_task_set_defer_deadline(earlier);
+    end_guarded_run(id, status, message);
     return true;
 }
 
@@ -645,7 +681,7 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
     const size_t first = row_or_fault(id);
     int64_t deadline = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
     deadline = earliest(deadline, earliest(table.cold[first].limit, ms_task_defer_deadline()));
-    (void)run_deferred(id, deadline);
+    (void)run_deferred(id, deadline, false);
     for (;;) {
         const ptrdiff_t row = row_of(id);
         if (row < 0) {
@@ -686,6 +722,101 @@ bool ms_promise_done(MsPromise id) {
     }
     const ptrdiff_t after = row_of(id);
     return after < 0 || table.hot[after].state != STATE_PENDING;
+}
+
+MsPromiseProbe ms_promise_probe(MsPromise id) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0) {
+        return MS_PROMISE_GONE;
+    }
+    const uint8_t state = table.hot[row].state;
+    if (state == STATE_PENDING) {
+        return MS_PROMISE_PENDING;
+    }
+    return ended_without_value(state) ? MS_PROMISE_FAILED_PROBE : MS_PROMISE_DONE_PROBE;
+}
+
+void ms_promise_set_grouped(MsPromise id, bool grouped) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0) {
+        return;
+    }
+    if (grouped) {
+        table.hot[row].flags |= FLAG_GROUPED;
+    } else {
+        table.hot[row].flags &= (uint8_t)~FLAG_GROUPED;
+    }
+}
+
+bool ms_promise_run_inline(MsPromise id) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0 || table.hot[row].state != STATE_PENDING || (table.hot[row].flags & FLAG_DEFERRED) == 0) {
+        return false;
+    }
+    (void)run_deferred(id, NO_TIME, true);
+    return true;
+}
+
+/* ---- waiting for any ---- */
+
+static ptrdiff_t first_done(const MsPromise *ids, size_t count) {
+    for (size_t at = 0; at < count; at++) {
+        const ptrdiff_t row = row_of(ids[at]);
+        if (row < 0 || table.hot[row].state != STATE_PENDING) {
+            return (ptrdiff_t)at;
+        }
+    }
+    return -1;
+}
+
+static void set_tokens(const MsPromise *ids, size_t count, uint64_t from, uint64_t to) {
+    for (size_t at = 0; at < count; at++) {
+        const ptrdiff_t row = row_of(ids[at]);
+        if (row < 0) {
+            continue;
+        }
+        if (to != 0 && table.hot[row].token != 0) {
+            fail("promise: another task is already waiting on this promise");
+        }
+        if (to != 0 || table.hot[row].token == from) {
+            table.hot[row].token = to;
+        }
+    }
+}
+
+int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_ns) {
+    int64_t deadline = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
+    deadline = earliest(deadline, ms_task_defer_deadline());
+    if (first_done(ids, count) < 0) {
+        for (size_t at = 0; at < count && run_deferred(ids[at], deadline, false) && first_done(ids, count) < 0; at++) {
+        }
+    }
+    for (;;) {
+        const ptrdiff_t done = first_done(ids, count);
+        if (done >= 0) {
+            return done;
+        }
+        const uint64_t token = ms_token_new(0);
+        if (token == 0) {
+            fail("promise: out of wait tokens");
+        }
+        set_tokens(ids, count, 0, token);
+        uint64_t value = 0;
+        uint32_t result = 0;
+        (void)ms_token_park_at(token, deadline == NO_TIME ? -1 : deadline, &value, &result);
+        set_tokens(ids, count, token, 0);
+        (void)ms_token_free(token);
+        if (result == MS_WAIT_CANCELLED) {
+            ms_cancelled();
+        }
+        const ptrdiff_t after = first_done(ids, count);
+        if (after >= 0) {
+            return after;
+        }
+        if (result == MS_WAIT_TIMEOUT) {
+            return -1;
+        }
+    }
 }
 
 /* ---- sleeps and limits ---- */
@@ -816,6 +947,7 @@ static bool fd_ready(uint64_t id, uint32_t bits) {
 }
 
 void ms_promises_teardown(void) {
+    ms_groups_teardown();
     for (size_t row = 0; row < table.count; row++) {
         if (table.hot[row].state != STATE_FREE) {
             release_result(row);
@@ -833,5 +965,6 @@ void ms_promise_hooks(MsSchedHooks *hooks) {
     hooks->timer_live = timer_live;
     hooks->timer_fire = timer_fire;
     hooks->fd_ready = fd_ready;
+    ms_group_hooks(hooks);
     hooks->teardown = ms_promises_teardown;
 }

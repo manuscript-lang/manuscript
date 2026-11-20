@@ -600,3 +600,15 @@ int64_t ms_task_set_defer_deadline(int64_t at_ns) {
     task->defer_at = at_ns == MS_NO_DEADLINE ? 0 : at_ns;
     return previous;
 }
+
+void *ms_task_watch(void) { return ms_sched()->current == NULL ? NULL : ms_sched()->current->watch; }
+
+void *ms_task_set_watch(void *watch) {
+    MsTask *const task = ms_sched()->current;
+    if (task == NULL) {
+        return NULL;
+    }
+    void *const previous = task->watch;
+    task->watch = watch;
+    return previous;
+}

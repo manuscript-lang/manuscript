@@ -75,6 +75,22 @@ void ms_promise_drop(MsPromise id);
 /* The report of the fault that failed the promise (owned by the caller); length 0 when none. */
 MsFaultText ms_promise_fault_report(MsPromise id);
 
+/* What a wait group needs to know of a promise. */
+typedef enum MsPromiseProbe {
+    MS_PROMISE_GONE = 0, /* closed or stale */
+    MS_PROMISE_PENDING,
+    MS_PROMISE_DONE_PROBE,   /* finished with a value */
+    MS_PROMISE_FAILED_PROBE, /* finished without a value: an error, a fault or a cancel */
+} MsPromiseProbe;
+MsPromiseProbe ms_promise_probe(MsPromise id);
+/* Marks a pending promise as a wait group member: ms_group_finished is called when it finishes. */
+void ms_promise_set_grouped(MsPromise id, bool grouped);
+/* Runs deferred work on the caller's stack, when `id` has some; true when it ran. */
+bool ms_promise_run_inline(MsPromise id);
+/* The index in `ids` of the first of `count` promises to finish, waiting up to `timeout_ns` (negative: no limit);
+ * -1 on timeout. A cancel unwinds the caller. */
+int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_ns);
+
 /* ---- work ---- */
 
 /* Runs `closure` (a function value, owned by the promise) as a task of this thread. Starting twice faults. */

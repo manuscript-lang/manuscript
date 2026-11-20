@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "../core/group.h"
 #include "../core/promise.h"
 #include "../core/scheduler.h"
 #include "ms_rt/alloc.h"
@@ -321,6 +322,61 @@ static void test_io_on_ready(void) {
     close(fds[1]);
 }
 
+static void test_wait_any(void) {
+    const MsPromise slow = ms_promise_sleep(40 * 1000 * 1000);
+    const MsPromise fast = ms_promise_sleep(5 * 1000 * 1000);
+    const MsPromise ids[2] = {slow, fast};
+    expect(ms_promise_wait_any(ids, 2, -1) == 1, "the fast sleep finishes first");
+    expect(ms_promise_wait_any(ids, 2, 1000) == 1, "a finished promise answers at once");
+    ms_promise_drop(fast);
+    const MsPromise lone[1] = {slow};
+    expect(ms_promise_wait_any(lone, 1, 1000 * 1000) == -1, "a short limit times out");
+    expect(ms_promise_wait(slow, -1) == MS_PROMISE_OK, "the slow one still finishes");
+    ms_promise_drop(slow);
+}
+
+static void test_group(void) {
+    const int64_t group = ms_group_new();
+    const MsPromise slow = ms_promise_sleep(30 * 1000 * 1000);
+    const MsPromise fast = ms_promise_sleep(5 * 1000 * 1000);
+    const MsPromise ids[2] = {slow, fast};
+    expect(ms_group_join(group, ids, 2, 0) == MS_GROUP_JOINED_ALL, "joined");
+    expect(ms_group_poll(group) == -1, "nothing finished yet");
+    expect(ms_group_next(group) == 1, "the fast one is reported first");
+    expect(ms_group_next(group) == 0, "then the slow one");
+    expect(ms_group_next(group) == -1, "then none is left");
+    ms_promise_drop(slow);
+    ms_promise_drop(fast);
+    ms_group_free(group);
+}
+
+/* A failed member interrupts the deferred promise a waiter runs inline for the group. */
+static void blocked_work(Work *work) {
+    const MsPromise long_sleep = ms_promise_sleep(work->sleep_ns);
+    (void)ms_promise_wait(long_sleep, -1);
+    ms_promise_drop(long_sleep);
+}
+
+static void test_run_watched(void) {
+    const int64_t group = ms_group_new();
+    const MsPromise failing = ms_promise_new();
+    Work *const failer = make_work(failing, put_value);
+    failer->sleep_ns = 5 * 1000 * 1000;
+    failer->fail = true;
+    ms_promise_start(failing, &failer->header);
+    const MsPromise inline_run = ms_promise_new();
+    Work *const slow = make_work(inline_run, blocked_work);
+    slow->sleep_ns = 20LL * 1000 * 1000 * 1000;
+    ms_promise_defer(inline_run, &slow->header);
+    const MsPromise ids[2] = {failing, inline_run};
+    const int64_t start = ms_sched_now();
+    expect(ms_promise_run_watched(inline_run, group, ids, 2, 0) == MS_RUN_INTERRUPTED, "the failure ends the run");
+    expect((ms_sched_now() - start) < 5LL * 1000 * 1000 * 1000, "it did not wait for the slow work");
+    ms_promise_drop(inline_run);
+    ms_promise_drop(failing);
+    ms_group_free(group);
+}
+
 /* A frame that started many promises: cancelling it ends them all, linearly. */
 enum { MANY = 20000 };
 static MsPromise many_ids[MANY];
@@ -376,6 +432,9 @@ static void entry(void *argument) {
     test_stale_ids();
     test_ready();
     test_io_on_ready();
+    test_wait_any();
+    test_group();
+    test_run_watched();
     test_cancelled_frame_ends_its_promises();
 }
 
