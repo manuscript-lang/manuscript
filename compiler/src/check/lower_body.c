@@ -783,6 +783,10 @@ static void lb_assign(Lb *lb, const MsStmt *s) {
 /* `for name in a..b`: a counter from `a` while below `b` (both evaluated once, before the loop),
  * stepped by one after the body or a `continue`. The loop variable is the counter's current value. */
 static void lb_for(Lb *lb, const MsStmt *s) {
+    if (lb->facts->each_list[s->id]) {
+        lb->ok = false; // a list loop is not lowered yet
+        return;
+    }
     const MsExpr *range = s->u.each.iter;
     const LbVal start = lb_expr(lb, range->u.call.args.ptr[0].value);
     const LbVal end = lb->ok ? lb_expr(lb, range->u.call.args.ptr[1].value) : LB_FAIL;
@@ -1025,6 +1029,9 @@ static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
         const MsDecl *d = row->syntax->decls[i];
         const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !failed[i] && !lb_has_diagnostic(row, i);
         syms[i] = checked ? ms_decl_own_symbol(lb->c, module, d) : MS_NONE;
+        if (syms[i] != MS_NONE && lb->c->syms.nvars[syms[i]] != 0) {
+            syms[i] = MS_NONE; // a generic function is checked here but not lowered: it needs one copy per type argument
+        }
         if (syms[i] != MS_NONE) {
             lb->func_of[syms[i]] = lb_add_stub(lb, d, syms[i]);
         }

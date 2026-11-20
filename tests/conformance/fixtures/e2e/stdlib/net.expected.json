@@ -3,7 +3,7 @@
   "phase": "test",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
       "repeat": 1,
       "format": 1,
@@ -46,51 +46,72 @@
         },
         {
           "index": 7,
-          "name": "net.ms::UDP loopback preserves datagram data and sender",
+          "name": "net.ms::a Unix domain socket carries bytes both ways and a restricted network refuses it",
           "status": "passed"
         },
         {
           "index": 8,
-          "name": "net.ms::network restriction denies admission and close rejects acquisitions",
+          "name": "net.ms::UDP loopback preserves datagram data and sender",
           "status": "passed"
         },
         {
           "index": 9,
-          "name": "net.ms::typed addresses preserve normalization and reject zones",
+          "name": "net.ms::network restriction denies admission and close rejects acquisitions",
           "status": "passed"
         },
         {
           "index": 10,
-          "name": "net.ms::a promise accepts on a listener it owns",
+          "name": "net.ms::a restricted network binds and sends datagrams only where it allows",
           "status": "passed"
         },
         {
           "index": 11,
-          "name": "net.ms::a promise reads a connection it owns",
-          "status": "passed"
+          "name": "net.ms::closing a network closes its datagram sockets and refuses new ones",
+          "status": "failed",
+          "failure": "the test process was terminated by signal 11 while this test ran"
         },
         {
           "index": 12,
-          "name": "net.ms::resolve returns typed DNS records from the configured resolver",
-          "status": "passed"
+          "name": "net.ms::typed addresses preserve normalization and reject zones",
+          "status": "not_run",
+          "failure": "the test process was terminated by signal 11 while an earlier test in this file ran"
         },
         {
           "index": 13,
+          "name": "net.ms::a promise accepts on a listener it owns",
+          "status": "not_run",
+          "failure": "the test process was terminated by signal 11 while an earlier test in this file ran"
+        },
+        {
+          "index": 14,
+          "name": "net.ms::a promise reads a connection it owns",
+          "status": "not_run",
+          "failure": "the test process was terminated by signal 11 while an earlier test in this file ran"
+        },
+        {
+          "index": 15,
+          "name": "net.ms::resolve returns typed DNS records from the configured resolver",
+          "status": "not_run",
+          "failure": "the test process was terminated by signal 11 while an earlier test in this file ran"
+        },
+        {
+          "index": 16,
           "name": "net.ms::an empty host listens on every interface, with or without IPv6",
-          "status": "passed"
+          "status": "not_run",
+          "failure": "the test process was terminated by signal 11 while an earlier test in this file ran"
         }
       ],
       "summary": {
-        "available": 14,
-        "selected": 14,
-        "passed": 14,
-        "failed": 0,
+        "available": 17,
+        "selected": 17,
+        "passed": 11,
+        "failed": 1,
         "skipped": 0,
-        "not_run": 0
+        "not_run": 5
       },
       "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN net.ms::IP parsing CIDR normalization and containment\nPASS net.ms::IP parsing CIDR normalization and containment\nRUN net.ms::TCP loopback writes reads half close and EOF\nPASS net.ms::TCP loopback writes reads half close and EOF\nRUN net.ms::a read cancelled by its timeout leaves the stream closable\nPASS net.ms::a read cancelled by its timeout leaves the stream closable\nRUN net.ms::a promise that accepts on a listener runs where the listener lives\nPASS net.ms::a promise that accepts on a listener runs where the listener lives\nRUN net.ms::closing the input leaves the output open and closing both ends the connection\nPASS net.ms::closing the input leaves the output open and closing both ends the connection\nRUN net.ms::host names resolve whatever their case\nPASS net.ms::host names resolve whatever their case\nRUN net.ms::an empty Unix socket path is invalid input\nPASS net.ms::an empty Unix socket path is invalid input\nRUN net.ms::UDP loopback preserves datagram data and sender\nPASS net.ms::UDP loopback preserves datagram data and sender\nRUN net.ms::network restriction denies admission and close rejects acquisitions\nPASS net.ms::network restriction denies admission and close rejects acquisitions\nRUN net.ms::typed addresses preserve normalization and reject zones\nPASS net.ms::typed addresses preserve normalization and reject zones\nRUN net.ms::a promise accepts on a listener it owns\nPASS net.ms::a promise accepts on a listener it owns\nRUN net.ms::a promise reads a connection it owns\nPASS net.ms::a promise reads a connection it owns\nRUN net.ms::resolve returns typed DNS records from the configured resolver\nPASS net.ms::resolve returns typed DNS records from the configured resolver\nRUN net.ms::an empty host listens on every interface, with or without IPv6\nPASS net.ms::an empty host listens on every interface, with or without IPv6\n14 tests, 0 failed\n",
+      "exit_code": 1,
+      "stdout": "RUN net.ms::IP parsing CIDR normalization and containment\nPASS net.ms::IP parsing CIDR normalization and containment\nRUN net.ms::TCP loopback writes reads half close and EOF\nPASS net.ms::TCP loopback writes reads half close and EOF\nRUN net.ms::a read cancelled by its timeout leaves the stream closable\nPASS net.ms::a read cancelled by its timeout leaves the stream closable\nRUN net.ms::a promise that accepts on a listener runs where the listener lives\nPASS net.ms::a promise that accepts on a listener runs where the listener lives\nRUN net.ms::closing the input leaves the output open and closing both ends the connection\nPASS net.ms::closing the input leaves the output open and closing both ends the connection\nRUN net.ms::host names resolve whatever their case\nPASS net.ms::host names resolve whatever their case\nRUN net.ms::an empty Unix socket path is invalid input\nPASS net.ms::an empty Unix socket path is invalid input\nRUN net.ms::a Unix domain socket carries bytes both ways and a restricted network refuses it\nPASS net.ms::a Unix domain socket carries bytes both ways and a restricted network refuses it\nRUN net.ms::UDP loopback preserves datagram data and sender\nPASS net.ms::UDP loopback preserves datagram data and sender\nRUN net.ms::network restriction denies admission and close rejects acquisitions\nPASS net.ms::network restriction denies admission and close rejects acquisitions\nRUN net.ms::a restricted network binds and sends datagrams only where it allows\nPASS net.ms::a restricted network binds and sends datagrams only where it allows\nRUN net.ms::closing a network closes its datagram sockets and refuses new ones\nFAIL net.ms::closing a network closes its datagram sockets and refuses new ones: the test process was terminated by signal 11 while this test ran\nRUN net.ms::typed addresses preserve normalization and reject zones\nNOT RUN net.ms::typed addresses preserve normalization and reject zones: the test process was terminated by signal 11 while an earlier test in this file ran\nRUN net.ms::a promise accepts on a listener it owns\nNOT RUN net.ms::a promise accepts on a listener it owns: the test process was terminated by signal 11 while an earlier test in this file ran\nRUN net.ms::a promise reads a connection it owns\nNOT RUN net.ms::a promise reads a connection it owns: the test process was terminated by signal 11 while an earlier test in this file ran\nRUN net.ms::resolve returns typed DNS records from the configured resolver\nNOT RUN net.ms::resolve returns typed DNS records from the configured resolver: the test process was terminated by signal 11 while an earlier test in this file ran\nRUN net.ms::an empty host listens on every interface, with or without IPv6\nNOT RUN net.ms::an empty host listens on every interface, with or without IPv6: the test process was terminated by signal 11 while an earlier test in this file ran\n12 tests, 1 failed, 5 not run\n",
       "diagnostics": []
     },
     "shape": [
@@ -111,6 +132,7 @@
       "summary.skipped",
       "tests",
       "tests[].duration_ns",
+      "tests[].failure",
       "tests[].index",
       "tests[].name",
       "tests[].status"

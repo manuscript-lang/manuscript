@@ -5,15 +5,20 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 
+#include "conn_object.h"
+#include "listener.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/net.h"
-#include "ms_rt/obj.h"
 
 typedef struct Scope Scope;
 
+static void drop_handle(MsObj *object) { object->drop(object); }
+
+typedef enum Kind { KIND_SCOPE, KIND_DGRAM, KIND_CONN, KIND_LISTENER } Kind;
+
 typedef struct Member {
     MsObj *handle;
-    uint8_t is_scope;
+    Kind kind;
 } Member;
 
 struct Scope {
@@ -43,7 +48,7 @@ static void handle_drop(MsObj *object) {
     msrt_free(handle);
     if (atomic_fetch_sub(&scope->handles, 1) == 1) {
         for (size_t i = 0; i < scope->count; i++) {
-            msrt_obj_drop(scope->members[i].handle);
+            drop_handle(scope->members[i].handle);
         }
         free(scope->members);
         msrt_free(scope);
@@ -68,8 +73,17 @@ void *msstd_scope_new(void) {
     return handle_new(scope);
 }
 
+static void close_member(const Member *member) {
+    switch (member->kind) {
+    case KIND_SCOPE: msstd_scope_close(member->handle); break;
+    case KIND_DGRAM: msstd_dgram_close(member->handle); break;
+    case KIND_CONN: ms_netconn_close(member->handle); break;
+    case KIND_LISTENER: ms_listener_close(ms_listener_of(member->handle)); break;
+    }
+}
+
 /* Records a member; false when the scope is closed or the table cannot grow. */
-static bool add(Scope *scope, MsObj *handle, uint8_t is_scope) {
+static bool add(Scope *scope, MsObj *handle, Kind kind) {
     lock(scope);
     bool added = false;
     if (!scope->closed) {
@@ -82,7 +96,7 @@ static bool add(Scope *scope, MsObj *handle, uint8_t is_scope) {
             }
         }
         if (scope->count < scope->capacity) {
-            scope->members[scope->count++] = (Member){handle, is_scope};
+            scope->members[scope->count++] = (Member){handle, kind};
             added = true;
         }
     }
@@ -90,11 +104,13 @@ static bool add(Scope *scope, MsObj *handle, uint8_t is_scope) {
     return added;
 }
 
+void *msstd_scope_share(const void *handle) { return handle_new(scope_of(handle)); }
+
 void *msstd_scope_child(const void *handle) {
     ScopeHandle *child = msstd_scope_new();
     ScopeHandle *held = handle_new(child->scope);
-    if (!add(scope_of(handle), &held->header, 1)) {
-        msrt_obj_drop(&held->header);
+    if (!add(scope_of(handle), &held->header, KIND_SCOPE)) {
+        drop_handle(&held->header);
         msstd_scope_close(child);
     }
     return child;
@@ -108,14 +124,26 @@ uint8_t msstd_scope_open(const void *handle) {
     return open;
 }
 
-uint8_t msstd_scope_track_dgram(const void *handle, const void *socket) {
-    MsObj *held = msstd_dgram_alias(socket);
-    if (add(scope_of(handle), held, 0)) {
+/* Records `held`, an alias of an object; when the scope is closed the object is closed and 0 returned. */
+static uint8_t track(const void *handle, MsObj *held, Kind kind) {
+    if (add(scope_of(handle), held, kind)) {
         return 1;
     }
-    msstd_dgram_close(socket);
-    msrt_obj_drop(held);
+    close_member(&(Member){held, kind});
+    drop_handle(held);
     return 0;
+}
+
+uint8_t msstd_scope_track_dgram(const void *handle, const void *socket) {
+    return track(handle, msstd_dgram_alias(socket), KIND_DGRAM);
+}
+
+uint8_t msstd_scope_track_conn(const void *handle, const void *connection) {
+    return track(handle, ms_netconn_alias(connection), KIND_CONN);
+}
+
+uint8_t msstd_scope_track_listener(const void *handle, const void *listener) {
+    return track(handle, ms_listener_share(listener), KIND_LISTENER);
 }
 
 void msstd_scope_close(const void *handle) {
@@ -133,12 +161,8 @@ void msstd_scope_close(const void *handle) {
         return;
     }
     for (size_t i = 0; i < count; i++) {
-        if (members[i].is_scope) {
-            msstd_scope_close(members[i].handle);
-        } else {
-            msstd_dgram_close(members[i].handle);
-        }
-        msrt_obj_drop(members[i].handle);
+        close_member(&members[i]);
+        drop_handle(members[i].handle);
     }
     free(members);
 }
