@@ -1,0 +1,44 @@
+#ifndef MS_TEST_X509_CERTS_H
+#define MS_TEST_X509_CERTS_H
+/* Copies of crates/ms-std-net/testdata: the stdlib.test certificate (valid 2020 to 2100, SAN stdlib.test and
+ * 127.0.0.1) and key, and two certificates whose subjects exercise the name formatting (many attribute kinds,
+ * escapes, unknown OIDs, non-ASCII text). */
+static const char STDLIB_CERT[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBUjCCAQSgAwIBAgIBATAFBgMrZXAwFjEUMBIGA1UEAxMLc3RkbGliLnRlc3Qw\n"
+    "IBcNMjAwMTAxMDAwMDAwWhgPMjEwMDAxMDEwMDAwMDBaMBYxFDASBgNVBAMTC3N0\n"
+    "ZGxpYi50ZXN0MCowBQYDK2VwAyEAe8MHlRjtEdoDNghb9pYpIP+H+zxNYwqbWMth\n"
+    "U2dPXdajdTBzMA4GA1UdDwEB/wQEAwIChDATBgNVHSUEDDAKBggrBgEFBQcDATAP\n"
+    "BgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBSXj3k9f25C8HSLlIZ2z/wi62CYtDAc\n"
+    "BgNVHREEFTATggtzdGRsaWIudGVzdIcEfwAAATAFBgMrZXADQQCy10RiI9QU8YqP\n"
+    "fHjTXEQP3dcOGFmJe/XvuCKA7zvgv1bryG9K95Hh1ci9ZlIuTYmx/LyutoNFvr82\n"
+    "ncADBsAL\n"
+    "-----END CERTIFICATE-----\n"
+    "\n";
+static const char STDLIB_KEY[] =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MC4CAQAwBQYDK2VwBCIEIDAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAx\n"
+    "-----END PRIVATE KEY-----\n"
+    "\n";
+static const char DN_NAMES[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIB+zCCAa2gAwIBAgIBATAFBgMrZXAwgaUxCzAJBgNVBAYTAlVTMQswCQYDVQQI\n"
+    "EwJDQTEMMAoGA1UEBwwDIEwjMQowCAYDVQQJEwFTMQowCAYDVQQREwE5MRYwCQYD\n"
+    "VQQKEwJPMTAJBgNVBAoTAk8yMQswCQYDVQQLEwJPVTEMMAoGA1UEAxMDYSxiMQsw\n"
+    "CQYDVQQFEwI3NzEXMBUGCgmSJomT8ixkARkTB2V4YW1wbGUxCjAIBgMqAwQTAXgw\n"
+    "IBcNNzAwMTAxMDAwMDAwWhgPMjA5NjEwMDIwNzA2NDBaMIGlMQswCQYDVQQGEwJV\n"
+    "UzELMAkGA1UECBMCQ0ExDDAKBgNVBAcMAyBMIzEKMAgGA1UECRMBUzEKMAgGA1UE\n"
+    "ERMBOTEWMAkGA1UEChMCTzEwCQYDVQQKEwJPMjELMAkGA1UECxMCT1UxDDAKBgNV\n"
+    "BAMTA2EsYjELMAkGA1UEBRMCNzcxFzAVBgoJkiaJk/IsZAEZEwdleGFtcGxlMQow\n"
+    "CAYDKgMEEwF4MCowBQYDK2VwAyEAqP3Hd9ddfFiQ0o8wKuInD+O+QoKgvGOJQSTE\n"
+    "CztCvDcwBQYDK2VwA0EA+G1QoFpFqWsDEGX6ia0RF72SfRSz4mlmoxOrUoTnqVmw\n"
+    "kRY1PdnEMud2VOPMyC2aNGx14JVSyXv2XGtSqob7DA==\n"
+    "-----END CERTIFICATE-----\n"
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIHOMIGBoAMCAQICAQEwBQYDK2VwMBAxDjAMBgNVBAMMBcO8bsOvMCAXDTcwMDEw\n"
+    "MTAwMDAwMFoYDzIwOTYxMDAyMDcwNjQwWjAQMQ4wDAYDVQQDDAXDvG7DrzAqMAUG\n"
+    "AytlcAMhADQV8KJ/2JOiDl5StloWHtoLU12yH6gLueiikH4flGcrMAUGAytlcANB\n"
+    "AEhi9qeMF+muqNsNPcW1TTvVjfwRBVn6xRqz9Pi9Xo/hPfJxLO7vE69vurcGUkty\n"
+    "1xVxGAm5OChILdgNZ/v5Xgg=\n"
+    "-----END CERTIFICATE-----\n";
+#endif

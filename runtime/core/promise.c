@@ -12,6 +12,10 @@
 #include "array.h"
 #include "cancel.h"
 #include "group.h"
+#include "isolate.h"
+#include "promise_remote.h"
+#include "queue.h"
+#include "worker.h"
 #include "ms_rt/alloc.h"
 #include "scheduler.h"
 
@@ -33,6 +37,18 @@ enum {
     FLAG_TIMED_OUT = 16,  /* the limit passed and ended it: a wait reports a timeout, not a cancellation */
     FLAG_STOPPED = 32,    /* stop asked the work to cancel; without a result it reads as cancelled */
     FLAG_GROUPED = 64,    /* a wait group member: the group hears when it finishes */
+    FLAG_QUEUED = 128,    /* DEFERRED work that is also in this isolate's queue, open to other isolates */
+    FLAG_REMOTE = 256,    /* another isolate took the work: it reports by mail, and the closure is its own */
+    FLAG_WANT_CANCEL = 512, /* a cancel arrived before the isolate that took the work said which task runs it */
+    FLAG_WATCHED = 1024,    /* another isolate asked to be told when it finishes (the watch table) */
+};
+
+/* The promise events isolates send each other (MsMail words: a = op | status << 8 | failed << 16, b = id). */
+enum PromiseMail {
+    MAIL_STARTED = 1, /* to the owner: c = the task running the work (the sender is the isolate) */
+    MAIL_DONE,        /* to the owner: p = result block, q = its desc, c = the pipe it came from */
+    MAIL_ENDED,       /* to the owner: p = fault report bytes, c = their length; the status is in `a` */
+    MAIL_CANCEL,      /* to the runner: b = the task to cancel */
 };
 
 #define GENERATION_MASK 0xffffffu /* 24 bits: an id is `isolate << 56 | generation << 32 | (row + 1)` */
@@ -41,7 +57,7 @@ enum {
 
 typedef struct Hot {
     uint8_t state;
-    uint8_t flags;
+    uint16_t flags;
     uint32_t generation;
     uint64_t token; /* the token a waiter parks on, or 0 */
 } Hot;
@@ -64,9 +80,21 @@ typedef struct Cold {
     int64_t cancel;             /* the cancel switch the promise listens to, or 0 */
     uint32_t next_started;      /* row + 1 of the creator's next older started promise, 0 ends the list */
     uint32_t prev_started;
+    uint32_t runner;            /* the isolate that took the work (FLAG_REMOTE), once it said so */
+    MsTaskHandle runner_task;   /* the task running it there, or 0 */
 } Cold;
 
+/* Remote tokens to post when a promise finishes: (row, generation) entries of promises another isolate waits on. */
+typedef struct Watch {
+    uint32_t row;
+    uint32_t generation;
+    uint64_t token;
+} Watch;
+
 typedef struct Table {
+    Watch *watches;
+    size_t watch_count;
+    size_t watch_capacity;
     Hot *hot;
     Cold *cold;
     size_t count;
@@ -187,16 +215,35 @@ static bool ended_without_value(uint8_t state) {
     return state == STATE_ERROR || state == STATE_FAILED || state == STATE_CANCELLED;
 }
 
+/* Posts the tokens of the isolates watching `row` and forgets them. */
+static void post_watches(size_t row) {
+    Hot *const hot = &table.hot[row];
+    size_t kept = 0;
+    for (size_t i = 0; i < table.watch_count; i++) {
+        const Watch watch = table.watches[i];
+        if (watch.row == row && watch.generation == hot->generation) {
+            ms_token_post_remote(watch.token, 0);
+        } else {
+            table.watches[kept++] = watch;
+        }
+    }
+    table.watch_count = kept;
+    hot->flags &= (uint16_t)~FLAG_WATCHED;
+}
+
 static void wake(size_t row) {
     Hot *const hot = &table.hot[row];
     if ((hot->flags & FLAG_GROUPED) != 0 && hot->state != STATE_PENDING) {
-        hot->flags &= (uint8_t)~FLAG_GROUPED;
+        hot->flags &= (uint16_t)~FLAG_GROUPED;
         ms_group_finished(make_id(row), ended_without_value(hot->state));
     }
     const uint64_t token = hot->token;
     hot->token = 0;
     if (token != 0) {
         ms_token_post(token, 1);
+    }
+    if ((hot->flags & FLAG_WATCHED) != 0 && hot->state != STATE_PENDING) {
+        post_watches(row);
     }
 }
 
@@ -225,13 +272,32 @@ static void complete(size_t row, void *block, const MsTypeDesc *desc, bool faile
     cold->desc = desc;
     cold->pipe = pipe;
     cold->retry = NULL;
-    if (cold->closure != NULL) {
+    if (cold->closure != NULL || (hot->flags & FLAG_REMOTE) != 0) {
         /* The work's task is still ending: its owned resources close first. */
-        hot->flags |= (uint8_t)(FLAG_HELD | (failed ? FLAG_HELD_ERROR : 0));
+        hot->flags |= (uint16_t)(FLAG_HELD | (failed ? FLAG_HELD_ERROR : 0));
         return;
     }
     hot->state = failed ? STATE_ERROR : STATE_OK;
     wake(row);
+}
+
+/* Mails a result to the isolate that owns `id`; a stale id, or an owner that is gone, drops it. */
+static void send_done(MsPromise id, void *block, const MsTypeDesc *desc, bool failed, int64_t pipe) {
+    const uint32_t owner = (uint32_t)((uint64_t)id >> ISOLATE_SHIFT);
+    MsMail *const mail = is_foreign(id) ? msrt_alloc(sizeof *mail) : NULL;
+    if (mail != NULL) {
+        *mail = (MsMail){.kind = MS_MAIL_PROMISE,
+                         .a = MAIL_DONE | (failed ? 1u << 16 : 0u),
+                         .b = (uint64_t)id,
+                         .c = (uint64_t)pipe,
+                         .p = block,
+                         .q = desc};
+        if (ms_isolate_post(owner, mail)) {
+            return;
+        }
+        msrt_free(mail);
+    }
+    drop_block(block, desc, pipe);
 }
 
 void ms_promise_put(MsPromise id, uint8_t *value, const MsTypeDesc *desc, bool failed) {
@@ -240,7 +306,7 @@ void ms_promise_put(MsPromise id, uint8_t *value, const MsTypeDesc *desc, bool f
     uint8_t *const block = msrt_alloc(size > 0 ? size : 1);
     memcpy(block, value, size);
     if (row < 0) {
-        drop_block(block, desc, 0);
+        send_done(id, block, desc, failed, 0);
         return;
     }
     complete((size_t)row, block, desc, failed, 0);
@@ -249,7 +315,7 @@ void ms_promise_put(MsPromise id, uint8_t *value, const MsTypeDesc *desc, bool f
 void ms_promise_io_done_block(MsPromise id, void *block, const MsTypeDesc *desc, int64_t pipe) {
     const ptrdiff_t row = row_of(id);
     if (row < 0) {
-        drop_block(block, desc, pipe);
+        send_done(id, block, desc, false, pipe);
         return;
     }
     complete((size_t)row, block, desc, false, pipe);
@@ -271,6 +337,9 @@ void ms_promise_io_done_int(MsPromise id, int64_t value) {
 void ms_promise_io_done_unit(MsPromise id) { ms_promise_io_done_int(id, 0); }
 
 bool ms_promise_take(MsPromise id, const MsTypeDesc *desc, uint8_t *out) {
+    if (is_foreign(id)) {
+        return ms_remote_take(id, desc, out);
+    }
     const ptrdiff_t row = row_of(id);
     if (row < 0 || table.cold[row].result == NULL) {
         return false;
@@ -345,12 +414,16 @@ static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) 
     Cold *const cold = &table.cold[row];
     MsObj *const closure = cold->closure;
     cold->closure = NULL;
-    msrt_obj_drop(closure);
+    if (closure != NULL) {
+        msrt_obj_drop(closure);
+    }
+    hot->flags &= (uint16_t) ~(FLAG_REMOTE | FLAG_WANT_CANCEL);
     if (cold->creator != 0) {
         unlink_started(row, cold->creator);
         cold->creator = 0;
     }
     cold->task = 0;
+    cold->runner_task = 0;
     const bool interrupted = (hot->flags & (FLAG_TIMED_OUT | FLAG_STOPPED)) != 0;
     if (hot->state == STATE_PENDING && (hot->flags & FLAG_HELD) != 0) {
         /* A promise whose limit passed or that was cancelled reports that, not the error its work returned on the
@@ -364,7 +437,7 @@ static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) 
         if (error) {
             hot->state = interrupted ? STATE_CANCELLED : STATE_ERROR;
         }
-        hot->flags &= (uint8_t) ~(FLAG_HELD | FLAG_HELD_ERROR);
+        hot->flags &= (uint16_t) ~(FLAG_HELD | FLAG_HELD_ERROR);
     } else if (hot->state == STATE_PENDING) {
         if (status == MS_GUARD_FAULT) {
             cold->report = message;
@@ -422,9 +495,61 @@ static void start_task(MsPromise id, MsObj *closure) {
     table.cold[row].task = task;
 }
 
-void ms_promise_start(MsPromise id, MsObj *closure) { start_task(id, closure); }
+/* Puts the work in this isolate's queue, where its waiter runs it inline or another isolate takes it once it is
+ * `age_ns` old. False when workers are off or the queue has no room: the caller starts a task instead. */
+static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns) {
+    if (ms_workers_limit() <= 1) {
+        return false;
+    }
+    const size_t row = row_or_fault(id);
+    Cold *const cold = &table.cold[row];
+    Hot *const hot = &table.hot[row];
+    if (cold->closure != NULL || (hot->flags & (FLAG_DEFERRED | FLAG_REMOTE)) != 0) {
+        fail("promise: already started");
+    }
+    const int64_t now = ms_sched_now();
+    if (!ms_queue_push(ms_sched()->isolate, (uint64_t)id, closure, now - age_ns)) {
+        return false;
+    }
+    cold->closure = closure;
+    cold->creator = ms_task_current();
+    cold->started_at = ms_cleanup_base();
+    link_started(row);
+    hot->flags |= FLAG_DEFERRED | FLAG_QUEUED | FLAG_REMOTE_WAKE;
+    ms_workers_nudge();
+    return true;
+}
 
-void ms_promise_start_spread(MsPromise id, MsObj *closure) { start_task(id, closure); }
+void ms_promise_start(MsPromise id, MsObj *closure) {
+    if (!queue_work(id, closure, 0)) {
+        start_task(id, closure);
+    }
+}
+
+void ms_promise_start_spread(MsPromise id, MsObj *closure) {
+    if (!queue_work(id, closure, MS_WORKER_BEAT_NS)) {
+        start_task(id, closure);
+    }
+}
+
+/* Takes the queued work of `row` back from the queue. True when it is still this isolate's (its flags then read as
+ * deferred work); false when another isolate took it, and the row now reads as running remotely. */
+static bool claim_queued(size_t row) {
+    Hot *const hot = &table.hot[row];
+    Cold *const cold = &table.cold[row];
+    hot->flags &= (uint16_t)~FLAG_QUEUED;
+    const bool ours = ms_queue_remove(ms_sched()->isolate, (uint64_t)make_id(row));
+    if (cold->creator != 0 && ours) {
+        unlink_started(row, cold->creator);
+        cold->creator = 0;
+    }
+    if (!ours) {
+        hot->flags &= (uint16_t)~FLAG_DEFERRED;
+        hot->flags |= FLAG_REMOTE;
+        cold->closure = NULL; /* the isolate that took it owns the closure now */
+    }
+    return ours;
+}
 
 void ms_promise_defer(MsPromise id, MsObj *closure) {
     const size_t row = row_or_fault(id);
@@ -466,7 +591,10 @@ static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
         return false;
     }
     const size_t row = (size_t)found;
-    table.hot[row].flags &= (uint8_t)~FLAG_DEFERRED;
+    if ((table.hot[row].flags & FLAG_QUEUED) != 0 && !claim_queued(row)) {
+        return false;
+    }
+    table.hot[row].flags &= (uint16_t)~FLAG_DEFERRED;
     MsObj *const closure = table.cold[row].closure;
     table.cold[row].closure = NULL;
     int64_t until = deadline;
@@ -493,11 +621,192 @@ static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
     return true;
 }
 
+/* ---- work taken by another isolate ---- */
+
+static void request_cancel(size_t row);
+
+/* The work of a promise another isolate owns, running here as a task. */
+typedef struct Taken {
+    MsPromise id;
+    MsObj *closure;
+} Taken;
+
+static void post_promise_mail(uint32_t target, MsMail *mail) {
+    if (!ms_isolate_post(target, mail)) {
+        msrt_free(mail); /* the owner is gone: nobody waits for the result */
+    }
+}
+
+static void send_ended(const Taken *taken, MsGuardStatus status, MsFaultText message) {
+    MsMail *const mail = msrt_alloc(sizeof *mail);
+    *mail = (MsMail){.kind = MS_MAIL_PROMISE,
+                     .a = MAIL_ENDED | (uint64_t)status << 8,
+                     .b = (uint64_t)taken->id,
+                     .c = message.length,
+                     .p = message.bytes};
+    if (!ms_isolate_post((uint32_t)((uint64_t)taken->id >> ISOLATE_SHIFT), mail)) {
+        msrt_free(message.bytes);
+        msrt_free(mail);
+    }
+}
+
+static void taken_entry(void *argument) {
+    Taken *const taken = argument;
+    MsMail *const started = msrt_alloc(sizeof *started);
+    *started = (MsMail){.kind = MS_MAIL_PROMISE, .a = MAIL_STARTED, .b = (uint64_t)taken->id, .c = ms_task_current()};
+    post_promise_mail((uint32_t)((uint64_t)taken->id >> ISOLATE_SHIFT), started);
+    MsFaultText message = {0};
+    const MsGuardStatus status = ms_guard_call(run_closure, taken->closure, &message);
+    /* Dropping the closure closes what it captured: like any implicit close it runs shielded. */
+    ms_shield_enter();
+    msrt_obj_drop(taken->closure);
+    send_ended(taken, status, message);
+    ms_shield_exit();
+    msrt_free(taken);
+}
+
+/* Runs the work of promise `id` of another isolate as a detached task here. True when the task exists. */
+static bool run_taken(MsPromise id, MsObj *closure) {
+    Taken *const taken = msrt_alloc(sizeof *taken);
+    *taken = (Taken){.id = id, .closure = closure};
+    MsTaskStatus status = MS_TASK_OK;
+    if (ms_task_spawn(taken_entry, taken, MS_SPAWN_DETACHED, 0, &status) != 0) {
+        return true;
+    }
+    static const char text[] = "promise: cannot start the work: out of stacks";
+    MsFaultText message = {.bytes = msrt_alloc(sizeof text - 1), .length = sizeof text - 1};
+    memcpy(message.bytes, text, sizeof text - 1);
+    send_ended(taken, MS_GUARD_FAULT, message);
+    msrt_obj_drop(closure);
+    msrt_free(taken);
+    return false;
+}
+
+/* Runs the owner's own queued work as a task of this isolate (its waiter is busy elsewhere). */
+static bool run_own(MsPromise id) {
+    const ptrdiff_t found = row_of(id);
+    if (found < 0) {
+        return false;
+    }
+    const size_t row = (size_t)found;
+    Cold *const cold = &table.cold[row];
+    table.hot[row].flags &= (uint16_t) ~(FLAG_DEFERRED | FLAG_QUEUED);
+    MsTaskStatus status = MS_TASK_OK;
+    void *const argument = (void *)(uintptr_t)id; // NOLINT(performance-no-int-to-ptr): the id travels as the argument word
+    cold->task = ms_task_spawn(work_entry, argument, MS_SPAWN_DETACHED, 0, &status);
+    return cold->task != 0;
+}
+
+/* The scheduler is about to block: take the oldest queued work of this isolate (its owner is idle) or of another that
+ * waited out the beat. */
+static bool idle_work(int64_t *wait_ns) {
+    const uint32_t self = ms_sched()->isolate;
+    const int64_t now = ms_sched_now();
+    int64_t wait = -1;
+    for (uint32_t other = 0; other < MS_MAX_ISOLATES; other++) {
+        const bool own = other == self;
+        if (!own && !ms_isolate_live(other)) {
+            continue;
+        }
+        const int64_t beat = own ? MS_WORKER_OWN_BEAT_NS : MS_WORKER_BEAT_NS;
+        uint64_t id = 0;
+        void *work = NULL;
+        if (ms_queue_steal(other, now - beat, &id, &work)) {
+            if (own ? run_own((MsPromise)id) : run_taken((MsPromise)id, work)) {
+                return true;
+            }
+            continue;
+        }
+        const int64_t oldest = ms_queue_oldest(other);
+        if (oldest != INT64_MAX) {
+            const int64_t left = oldest + beat - now;
+            wait = wait < 0 || left < wait ? left : wait;
+        }
+    }
+    if (wait > 0 || wait < 0) {
+        *wait_ns = wait;
+    } else {
+        *wait_ns = 0;
+    }
+    return false;
+}
+
+/* Whether work this isolate would take now is waiting (checked once the isolate is marked sleeping). */
+static bool work_pending(void) {
+    const uint32_t self = ms_sched()->isolate;
+    const int64_t now = ms_sched_now();
+    for (uint32_t other = 0; other < MS_MAX_ISOLATES; other++) {
+        const bool own = other == self;
+        if ((own || ms_isolate_live(other)) &&
+            ms_queue_oldest(other) <= now - (own ? MS_WORKER_OWN_BEAT_NS : MS_WORKER_BEAT_NS)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* A promise event arrived by mail; takes `mail`. */
+static void promise_mail(MsMail *mail) {
+    const uint64_t op = mail->a & 0xffu;
+    const MsPromise id = (MsPromise)mail->b;
+    if (op == MS_MAIL_ASK) {
+        ms_remote_serve(mail);
+        return;
+    }
+    if (op == MS_MAIL_WATCH) {
+        ms_remote_watch(mail);
+        return;
+    }
+    if (op != MAIL_CANCEL) {
+        /* Mail about queued work means another isolate took it before its owner looked: the row reads as remote. */
+        const ptrdiff_t queued = row_of(id);
+        if (queued >= 0 && (table.hot[queued].flags & FLAG_QUEUED) != 0) {
+            (void)claim_queued((size_t)queued);
+        }
+    }
+    if (op == MAIL_CANCEL) {
+        ms_task_cancel((MsTaskHandle)mail->b);
+    } else if (op == MAIL_DONE) {
+        const ptrdiff_t row = row_of(id);
+        if (row >= 0) {
+            complete((size_t)row, mail->p, (const MsTypeDesc *)mail->q, (mail->a >> 16 & 1u) != 0, (int64_t)mail->c);
+        } else {
+            drop_block(mail->p, (const MsTypeDesc *)mail->q, (int64_t)mail->c);
+        }
+    } else if (op == MAIL_STARTED) {
+        const ptrdiff_t row = row_of(id);
+        if (row >= 0 && (table.hot[row].flags & FLAG_REMOTE) != 0) {
+            table.cold[row].runner = mail->from;
+            table.cold[row].runner_task = (MsTaskHandle)mail->c;
+            if ((table.hot[row].flags & FLAG_WANT_CANCEL) != 0) {
+                request_cancel((size_t)row);
+            }
+        }
+    } else if (op == MAIL_ENDED) {
+        const MsFaultText message = {.bytes = mail->p, .length = mail->c};
+        work_ended(id, (MsGuardStatus)(mail->a >> 8 & 0xffu), message);
+    }
+    msrt_free(mail);
+}
+
 /* ---- stopping and ending ---- */
 
 /* Asks the work of `id` to stop at its next cancellation point. */
 static void request_cancel(size_t row) {
+    Hot *const hot = &table.hot[row];
     const Cold *const cold = &table.cold[row];
+    if ((hot->flags & FLAG_REMOTE) != 0) {
+        if (cold->runner_task == 0) {
+            hot->flags |= FLAG_WANT_CANCEL; /* applied when the runner says which task it is */
+            return;
+        }
+        MsMail *const mail = msrt_alloc(sizeof *mail);
+        *mail = (MsMail){.kind = MS_MAIL_PROMISE, .a = MAIL_CANCEL, .b = cold->runner_task};
+        if (!ms_isolate_post(cold->runner, mail)) {
+            msrt_free(mail);
+        }
+        return;
+    }
     if (cold->closure != NULL && cold->task != 0) {
         ms_task_cancel(cold->task);
     }
@@ -520,13 +829,16 @@ static void stop(MsPromise id) {
     const size_t row = (size_t)found;
     Hot *const hot = &table.hot[row];
     Cold *const cold = &table.cold[row];
-    if (cold->closure != NULL && (hot->flags & FLAG_DEFERRED) == 0) {
+    if ((hot->flags & FLAG_QUEUED) != 0) {
+        (void)claim_queued(row);
+    }
+    if ((cold->closure != NULL && (hot->flags & FLAG_DEFERRED) == 0) || (hot->flags & FLAG_REMOTE) != 0) {
         hot->flags |= FLAG_STOPPED;
         request_cancel(row);
         return;
     }
     if ((hot->flags & FLAG_DEFERRED) != 0) {
-        hot->flags &= (uint8_t)~FLAG_DEFERRED;
+        hot->flags &= (uint16_t)~FLAG_DEFERRED;
         MsObj *const closure = cold->closure;
         cold->closure = NULL;
         msrt_obj_drop(closure);
@@ -544,7 +856,13 @@ static void stop(MsPromise id) {
     }
 }
 
-void ms_promise_cancel(MsPromise id) { stop(id); }
+void ms_promise_cancel(MsPromise id) {
+    if (is_foreign(id)) {
+        ms_remote_cancel(id);
+        return;
+    }
+    stop(id);
+}
 
 void ms_promise_on_cancel(MsPromise id, int64_t cancel) {
     const ptrdiff_t row = row_of(id);
@@ -562,6 +880,10 @@ void ms_promise_on_cancel(MsPromise id, int64_t cancel) {
 }
 
 void ms_promise_limit(MsPromise id, int64_t timeout_ns) {
+    if (is_foreign(id)) {
+        ms_remote_limit(id, timeout_ns);
+        return;
+    }
     const ptrdiff_t row = row_of(id);
     if (row < 0) {
         return;
@@ -596,6 +918,9 @@ static uint32_t park_on(MsPromise id, int64_t at_ns) {
 }
 
 bool ms_promise_end(MsPromise id) {
+    if (is_foreign(id)) {
+        return ms_remote_end(id);
+    }
     ptrdiff_t found = row_of(id);
     if (found < 0) {
         return false;
@@ -606,8 +931,11 @@ bool ms_promise_end(MsPromise id) {
         ms_cancel_unregister(cold->cancel, id);
         cold->cancel = 0;
     }
+    if ((hot->flags & FLAG_QUEUED) != 0) {
+        (void)claim_queued((size_t)found);
+    }
     if ((hot->flags & FLAG_DEFERRED) != 0) {
-        hot->flags &= (uint8_t)~FLAG_DEFERRED;
+        hot->flags &= (uint16_t)~FLAG_DEFERRED;
         MsObj *const closure = cold->closure;
         cold->closure = NULL;
         msrt_obj_drop(closure);
@@ -620,12 +948,13 @@ bool ms_promise_end(MsPromise id) {
         cold->retry = NULL;
         (void)retry(id, cold->retry_state, MS_WAIT_CANCELLED);
     }
-    if (table.cold[found].closure != NULL) {
+    if (table.cold[found].closure != NULL || (table.hot[found].flags & FLAG_REMOTE) != 0) {
         if (table.hot[found].state == STATE_PENDING) {
             request_cancel((size_t)found);
         }
         ms_shield_enter();
-        while ((found = row_of(id)) >= 0 && table.cold[found].closure != NULL) {
+        while ((found = row_of(id)) >= 0 &&
+               (table.cold[found].closure != NULL || (table.hot[found].flags & FLAG_REMOTE) != 0)) {
             (void)park_on(id, -1);
         }
         ms_shield_exit();
@@ -635,6 +964,10 @@ bool ms_promise_end(MsPromise id) {
 }
 
 void ms_promise_drop(MsPromise id) {
+    if (is_foreign(id)) {
+        ms_remote_drop(id);
+        return;
+    }
     (void)ms_promise_end(id);
     const ptrdiff_t found = row_of(id);
     if (found < 0) {
@@ -643,6 +976,9 @@ void ms_promise_drop(MsPromise id) {
     const size_t row = (size_t)found;
     release_result(row);
     ms_fault_text_free(&table.cold[row].report);
+    if ((table.hot[row].flags & FLAG_WATCHED) != 0) {
+        post_watches(row);
+    }
     table.hot[row].state = STATE_FREE;
     if (table.free_count == table.free_capacity) {
         size_t capacity = table.free_capacity;
@@ -657,6 +993,9 @@ void ms_promise_drop(MsPromise id) {
 }
 
 MsFaultText ms_promise_fault_report(MsPromise id) {
+    if (is_foreign(id)) {
+        return ms_remote_fault_report(id);
+    }
     const ptrdiff_t row = row_of(id);
     if (row < 0 || table.cold[row].report.bytes == NULL) {
         return (MsFaultText){0};
@@ -670,7 +1009,10 @@ MsFaultText ms_promise_fault_report(MsPromise id) {
 static ptrdiff_t next_to_end(MsTaskHandle me, size_t base) {
     for (uint32_t at = ms_task_started_head(me); at != 0; at = table.cold[at - 1].next_started) {
         const Cold *const cold = &table.cold[at - 1];
-        if (cold->closure != NULL && cold->task != 0 && cold->task != me && cold->started_at >= base) {
+        const uint16_t flags = table.hot[at - 1].flags;
+        const bool elsewhere = (flags & (FLAG_QUEUED | FLAG_REMOTE)) != 0;
+        if (cold->started_at >= base &&
+            (elsewhere || (cold->closure != NULL && cold->task != 0 && cold->task != me))) {
             return (ptrdiff_t)at - 1;
         }
     }
@@ -707,7 +1049,35 @@ static int64_t outcome(size_t row) {
 
 static int64_t earliest(int64_t a, int64_t b) { return a < b ? a : b; }
 
+int64_t ms_promise_outcome(MsPromise id) {
+    const ptrdiff_t row = row_of(id);
+    return row < 0 ? MS_PROMISE_CLOSED : outcome((size_t)row);
+}
+
+void ms_promise_watch(MsPromise id, uint64_t token) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0 || table.hot[row].state != STATE_PENDING) {
+        ms_token_post_remote(token, 0);
+        return;
+    }
+    if (table.watch_count == table.watch_capacity) {
+        size_t capacity = table.watch_capacity;
+        void *items = table.watches;
+        if (!ms_array_reserve(&items, &capacity, table.watch_count + 1, sizeof *table.watches)) {
+            ms_token_post_remote(token, 0); /* no room: the waiter looks again */
+            return;
+        }
+        table.watches = items;
+        table.watch_capacity = capacity;
+    }
+    table.watches[table.watch_count++] = (Watch){(uint32_t)row, table.hot[row].generation, token};
+    table.hot[row].flags |= FLAG_WATCHED;
+}
+
 int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
+    if (is_foreign(id)) {
+        return ms_remote_wait(id, timeout_ns);
+    }
     const size_t first = row_or_fault(id);
     int64_t deadline = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
     deadline = earliest(deadline, earliest(table.cold[first].limit, ms_task_defer_deadline()));
@@ -742,6 +1112,9 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
 }
 
 bool ms_promise_done(MsPromise id) {
+    if (is_foreign(id)) {
+        return ms_remote_done(id);
+    }
     const ptrdiff_t row = row_of(id);
     if (row < 0) {
         return true;
@@ -755,6 +1128,9 @@ bool ms_promise_done(MsPromise id) {
 }
 
 MsPromiseProbe ms_promise_probe(MsPromise id) {
+    if (is_foreign(id)) {
+        return ms_remote_probe(id);
+    }
     const ptrdiff_t row = row_of(id);
     if (row < 0) {
         return MS_PROMISE_GONE;
@@ -774,7 +1150,7 @@ void ms_promise_set_grouped(MsPromise id, bool grouped) {
     if (grouped) {
         table.hot[row].flags |= FLAG_GROUPED;
     } else {
-        table.hot[row].flags &= (uint8_t)~FLAG_GROUPED;
+        table.hot[row].flags &= (uint16_t)~FLAG_GROUPED;
     }
 }
 
@@ -988,6 +1364,7 @@ void ms_promises_teardown(void) {
     msrt_free(table.hot);
     msrt_free(table.cold);
     msrt_free(table.free_rows);
+    msrt_free(table.watches);
     table = (Table){0};
 }
 
@@ -996,6 +1373,9 @@ void ms_promise_hooks(MsSchedHooks *hooks) {
     hooks->timer_live = timer_live;
     hooks->timer_fire = timer_fire;
     hooks->fd_ready = fd_ready;
+    hooks->mail = promise_mail;
+    hooks->idle = idle_work;
+    hooks->pending = work_pending;
     ms_group_hooks(hooks);
     hooks->teardown = ms_promises_teardown;
 }

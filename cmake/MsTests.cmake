@@ -51,6 +51,8 @@ file(GLOB _std_sources CONFIGURE_DEPENDS "${_rt}/std/*.c")
 # The JSON natives call the real maps, lists and number formatting of runtime/core, which the std tests fake.
 file(GLOB _json_sources CONFIGURE_DEPENDS "${_rt}/std/json_*.c")
 list(REMOVE_ITEM _std_sources ${_json_sources})
+# The blocking pool needs a scheduler to park on; the std tests stub it (tests/std_support).
+list(REMOVE_ITEM _std_sources "${_rt}/std/pool.c")
 file(GLOB _std_support CONFIGURE_DEPENDS "${_tests}/std_support/*.c")
 file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
 
@@ -75,10 +77,18 @@ endforeach()
 ms_test(staged_fault_abi SOURCES "${_tests}/staged_fault_abi.c" "${_rt}/staged/fault_abi.c" OBJECTS ms_test_core
         INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
 
-# The staged scheduler shims (runtime/staged/sched_shims.c) over the C scheduler and the libuv reactor's pool.
-ms_test(staged_sched_shims SOURCES "${_tests}/staged_sched_shims.c" "${_rt}/staged/sched_shims.c" ${_io_sources}
+# The staged scheduler queries (runtime/staged/sched_shims.c) over the C scheduler.
+ms_test(staged_sched_shims SOURCES "${_tests}/staged_sched_shims.c" "${_rt}/staged/sched_shims.c"
+        OBJECTS ms_test_core INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
+
+# The blocking pool (runtime/std/pool.c) over the C scheduler, with the calls the flip still has to move into core.
+ms_test(staged_sched_pool SOURCES "${_tests}/staged_sched_pool.c" "${_rt}/staged/sched_calls.c" "${_rt}/std/pool.c" "${_task_abi}"
         OBJECTS ms_test_core INCLUDES "${_rt}/staged" ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} m
         DEFINES MS_ALLOC_STATS)
+
+# The staged standard output (runtime/staged/stdout.c) over the OS layer's file writes.
+ms_test(staged_stdout SOURCES "${_tests}/staged_stdout.c" "${_rt}/staged/stdout.c"
+        OBJECTS ms_test_core INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
 
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
@@ -98,17 +108,8 @@ foreach(file ${_std_tests})
           LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
 
-# The vendored yyjson the JSON scanner reads with, compiled like ms_test_llhttp.
-add_library(ms_test_yyjson OBJECT "${MS_YYJSON_DIR}/src/yyjson.c")
-target_include_directories(ms_test_yyjson PUBLIC "${MS_YYJSON_DIR}/include")
-target_compile_definitions(ms_test_yyjson PUBLIC ${MS_YYJSON_DEFINES})
-target_compile_options(ms_test_yyjson PRIVATE -O1 -g -w)
-if(MS_SANITIZE)
-  target_compile_options(ms_test_yyjson PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=undefined)
-endif()
-
 # The JSON test replays the recorded corpus against the natives over the real runtime/core.
-ms_test(json_test SOURCES "${_tests}/json_test.c" ${_json_sources} OBJECTS ms_test_core ms_test_yyjson INCLUDES "${MS_YYJSON_DIR}/include" LIBS m DEFINES MS_ALLOC_STATS)
+ms_test(json_test SOURCES "${_tests}/json_test.c" ${_json_sources} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
 
 # The HTTP/1 test links the vendored llhttp sources (the same ones the runtime archive compiles).
 set(_llhttp "${CMAKE_SOURCE_DIR}/runtime/third_party/llhttp")
@@ -149,6 +150,8 @@ ms_test(clibs_smoke_pcre2 SOURCES "${_tests}/clibs_smoke_pcre2.c" INCLUDES ${MS_
         LIBS ${MS_LIB_pcre2_LINK})
 ms_test(tls_test SOURCES "${_tests}/tls_test.c" "${_rt}/net/tls.c" INCLUDES ${MS_LIB_ssl_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
+ms_test(x509_test SOURCES "${_tests}/x509_test.c" "${_rt}/net/x509.c" INCLUDES ${MS_LIB_crypto_INCLUDES}
+        LIBS ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
 ms_test(ws_test SOURCES "${_tests}/ws_test.c" "${_rt}/net/ws.c" INCLUDES ${MS_LIB_crypto_INCLUDES}
         LIBS ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
 ms_test(ws_client_test SOURCES "${_tests}/ws_client_test.c" "${_rt}/net/ws_client.c" "${_rt}/net/ws.c" "${_rt}/net/http1.c"
