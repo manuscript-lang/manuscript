@@ -155,7 +155,12 @@ fn find_renamed(m: &Module) -> HashMap<usize, String> {
     let mut seen: HashMap<&str, usize> = HashMap::new();
     let taken: std::collections::HashSet<&str> = printed.iter().map(String::as_str).collect();
     let mut renamed = HashMap::new();
-    for (i, base) in printed.iter().enumerate() {
+    // A function with a source position keeps its name; the generated entry wrapper that shares
+    // it (`main`) is the one renamed, so a trace names the user's function.
+    let mut order: Vec<usize> = (0..printed.len()).collect();
+    order.sort_by_key(|&i| m.funcs[i].loc.line == 0);
+    for i in order {
+        let base = &printed[i];
         let count = seen.entry(base.as_str()).or_insert(0);
         *count += 1;
         if *count > 1 {

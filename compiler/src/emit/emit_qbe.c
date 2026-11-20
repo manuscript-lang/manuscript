@@ -1461,7 +1461,7 @@ bool mir_emit_qbe_glued(MirModule *m, MirGlue *glue_in, MsBuf *out, MsBuf *why) 
     return ok;
 }
 
-void mir_qbe_tables_meta(const MirModule *m, MsBuf *out) {
+void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, MsBuf *out) {
     for (uint32_t i = 0; i < m->nfiles; i++) {
         ms_buf_printf(out, "F %.*s\n", (int)m->files[i].len, m->files[i].ptr);
     }
@@ -1470,10 +1470,11 @@ void mir_qbe_tables_meta(const MirModule *m, MsBuf *out) {
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         const MirFunc *f = &m->funcs[i];
         const MsStr name = ms_name(&m->names, f->name);
+        const MsStr shown = ms_name(&m->names, display[i]);
         sym.len = 0;
         qbe_sym(&sym, name);
         ms_buf_printf(out, "Y %.*s\t%d\t%u\t%.*s\n", (int)sym.len - 1, sym.data + 1,
-                      f->loc.file == MIR_NONE ? -1 : (int)f->loc.file, f->loc.line, (int)name.len, name.ptr);
+                      f->loc.file == MIR_NONE ? -1 : (int)f->loc.file, f->loc.line, (int)shown.len, shown.ptr);
         for (uint32_t k = 0; k < f->nscopes; k++) {
             const MirScope *s = &f->scopes[k];
             const MsStr sn = ms_name(&m->names, s->name);
