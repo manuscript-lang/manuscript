@@ -12,6 +12,7 @@
 
 #include "ms/check.h"
 #include "ms/lower.h"
+#include "ms/ownership.h"
 #include "ms/mir_verify.h"
 #include "ms/parse.h"
 #include "ms/walk.h"
@@ -88,6 +89,15 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         }
         const MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
         ms_module_check_bodies(check, id);
+        // The ownership walk fills `ret_borrowed` and narrows `body_checked` to the functions it
+        // handles; lowering keeps every function the body checker claimed.
+        MsFacts *facts = check->mods[id].facts;
+        const size_t claims = (size_t)facts->node_count + 1;
+        bool *claimed = malloc(claims * sizeof *claimed);
+        memcpy(claimed, facts->body_checked, claims * sizeof *claimed);
+        ms_module_check_ownership(check, id);
+        memcpy(facts->body_checked, claimed, claims * sizeof *claimed);
+        free(claimed);
         MirModule mir;
         mir_module_init(&mir);
         (void)ms_lower_module(check, id, &mir);

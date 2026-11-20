@@ -1390,6 +1390,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->ret_borrowed = MS_NEW_N(arena, bool, nodes);
+    memset(facts->ret_borrowed, 0, nodes * sizeof *facts->ret_borrowed);
     facts->const_use = MS_NEW_N(arena, bool, nodes);
     memset(facts->const_use, 0, nodes * sizeof *facts->const_use);
     facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);

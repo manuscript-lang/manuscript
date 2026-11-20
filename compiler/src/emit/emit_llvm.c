@@ -510,6 +510,8 @@ static void ll_frame_slots(LCx *c) {
             } else if (inst->op == MOP_IfaceBorrow && c->borrowed != NULL && c->borrowed[inst->res]) {
                 ms_buf_printf(c->out, "  %%i%u_%u = alloca [%u x i8], align 8\n", b, k,
                               ll_slot_bytes(c->layouts, c->f->values[inst->args[0]]));
+            } else if (inst->op == MOP_StrByte) {
+                ms_buf_printf(c->out, "  %%y%u_%u = alloca [16 x i8], align 8\n", b, k);
             } else if (inst->op == MOP_CallRt) {
                 ll_frame_rt_call(c, inst, b, k);
             }
@@ -1144,6 +1146,7 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
 #include "emit_llvm_iface.inc"
 #include "emit_llvm_enum.inc"
 #include "emit_llvm_list.inc"
+#include "emit_llvm_str.inc"
 #include "emit_llvm_task.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
@@ -1295,6 +1298,10 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     const bool write_ok = ll_list_write_op(c, inst, block, part, &handled);
     if (handled) {
         return write_ok;
+    }
+    const bool str_ok = ll_str_op(c, inst, block, index, part, &handled);
+    if (handled) {
+        return str_ok;
     }
     const bool iface_ok = ll_iface_op(c, inst, block, index, &handled);
     if (handled) {
@@ -1691,6 +1698,8 @@ static const char ll_declarations[] =
     "declare void @msrt_fault_depth() cold noreturn nounwind\n"
     "declare i64 @llvm.fptosi.sat.i64.f64(double)\n"
     "declare ptr @llvm.frameaddress.p0(i32)\n"
+    "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)\n"
+    "@msrt_ascii_chars = external global [0 x i8]\n"
     "declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64)\n"

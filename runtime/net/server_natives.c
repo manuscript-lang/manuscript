@@ -1,6 +1,7 @@
 /* The listener natives of ms_rt/net.h: listen, accept, address and close over listener.h. Status mapping lives in
  * status.c; everything else is a thin layer over listener.h and conn_object.h. */
 #include <stdlib.h>
+#include <string.h>
 
 #include "../std/abi.h"
 #include "addr_text.h"
@@ -47,6 +48,11 @@ uint8_t msstd_listener_accept(const void *handle, uint8_t has_timeout, int64_t t
 }
 
 void msstd_listener_address(const void *handle, MsStr *out) {
+    const char *path = ms_listener_path(ms_listener_of(handle));
+    if (path != NULL) { /* a Unix domain listener's address is its path */
+        msrt_string_from_bytes((const uint8_t *)path, strlen(path), out);
+        return;
+    }
     MsAddr address;
     char text[MS_NET_ADDR_TEXT_MAX];
     size_t length = 0;
