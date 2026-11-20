@@ -11,7 +11,7 @@ struct MsChunk {
     /* data follows, aligned to 16 */
 };
 
-#define MS_CHUNK_MIN (64 * 1024)
+#define MS_CHUNK_MIN ((size_t)64 * 1024)
 #define MS_CHUNK_HEADER 16
 
 static void ms_oom(void) {
@@ -19,24 +19,43 @@ static void ms_oom(void) {
     abort();
 }
 
-void *ms_alloc(MsArena *a, size_t size, size_t align) {
-    uintptr_t p = ((uintptr_t)a->cur + (align - 1)) & ~(uintptr_t)(align - 1);
-    if (a->cur == NULL || p + size > (uintptr_t)a->end) {
-        size_t want = size + align + MS_CHUNK_HEADER;
-        size_t cap = want > MS_CHUNK_MIN ? want : MS_CHUNK_MIN;
-        MsChunk *c = malloc(sizeof(MsChunk) + cap);
-        if (c == NULL) {
-            ms_oom();
-        }
-        c->next = a->head;
-        c->size = cap;
-        a->head = c;
-        a->cur = (char *)(c + 1);
-        a->end = a->cur + cap;
-        p = ((uintptr_t)a->cur + (align - 1)) & ~(uintptr_t)(align - 1);
+/* Bytes to skip from `cursor` to reach a multiple of `align` (a power of two). */
+static size_t padding_for(const char *cursor, size_t align) {
+    size_t misalignment = (uintptr_t)cursor & (align - 1);
+    return (align - misalignment) & (align - 1);
+}
+
+static bool chunk_fits(const MsArena *a, size_t size, size_t align) {
+    if (a->cur == NULL) {
+        return false;
     }
-    a->cur = (char *)(p + size);
-    return (void *)p;
+    size_t padding = padding_for(a->cur, align);
+    size_t remaining = (size_t)(a->end - a->cur);
+    return padding <= remaining && size <= remaining - padding;
+}
+
+static void arena_add_chunk(MsArena *a, size_t size, size_t align) {
+    size_t want = size + align + MS_CHUNK_HEADER;
+    size_t capacity = want > MS_CHUNK_MIN ? want : MS_CHUNK_MIN;
+    MsChunk *chunk = malloc(sizeof(MsChunk) + capacity);
+    if (chunk == NULL) {
+        ms_oom();
+    }
+    chunk->next = a->head;
+    chunk->size = capacity;
+    a->head = chunk;
+    a->cur = (char *)(chunk + 1);
+    a->end = a->cur + capacity;
+}
+
+void *ms_alloc(MsArena *a, size_t size, size_t align) {
+    if (!chunk_fits(a, size, align)) {
+        arena_add_chunk(a, size, align);
+    }
+    a->cur += padding_for(a->cur, align);
+    void *result = a->cur;
+    a->cur += size;
+    return result;
 }
 
 void ms_arena_free(MsArena *a) {
@@ -282,20 +301,20 @@ int ms_utf8_decode(const char *s, size_t n, uint32_t *scalar) {
     return 1;
 }
 
-void ms_utf8_put(MsBuf *b, uint32_t c) {
-    if (c < 0x80) {
-        ms_buf_putc(b, (char)c);
-    } else if (c < 0x800) {
-        ms_buf_putc(b, (char)(0xC0 | (c >> 6)));
-        ms_buf_putc(b, (char)(0x80 | (c & 0x3F)));
-    } else if (c < 0x10000) {
-        ms_buf_putc(b, (char)(0xE0 | (c >> 12)));
-        ms_buf_putc(b, (char)(0x80 | ((c >> 6) & 0x3F)));
-        ms_buf_putc(b, (char)(0x80 | (c & 0x3F)));
+void ms_utf8_put(MsBuf *b, uint32_t scalar) {
+    if (scalar < 0x80) {
+        ms_buf_putc(b, (char)scalar);
+    } else if (scalar < 0x800) {
+        ms_buf_putc(b, (char)(0xC0 | (scalar >> 6)));
+        ms_buf_putc(b, (char)(0x80 | (scalar & 0x3F)));
+    } else if (scalar < 0x10000) {
+        ms_buf_putc(b, (char)(0xE0 | (scalar >> 12)));
+        ms_buf_putc(b, (char)(0x80 | ((scalar >> 6) & 0x3F)));
+        ms_buf_putc(b, (char)(0x80 | (scalar & 0x3F)));
     } else {
-        ms_buf_putc(b, (char)(0xF0 | (c >> 18)));
-        ms_buf_putc(b, (char)(0x80 | ((c >> 12) & 0x3F)));
-        ms_buf_putc(b, (char)(0x80 | ((c >> 6) & 0x3F)));
-        ms_buf_putc(b, (char)(0x80 | (c & 0x3F)));
+        ms_buf_putc(b, (char)(0xF0 | (scalar >> 18)));
+        ms_buf_putc(b, (char)(0x80 | ((scalar >> 12) & 0x3F)));
+        ms_buf_putc(b, (char)(0x80 | ((scalar >> 6) & 0x3F)));
+        ms_buf_putc(b, (char)(0x80 | (scalar & 0x3F)));
     }
 }

@@ -124,7 +124,7 @@ static inline void ms_pack16(const uint8_t *p, size_t n, uint64_t *low, uint64_t
 }
 
 /* An inline string of n <= 15 bytes. */
-MS_ALWAYS_INLINE MsStr ms_str_inline(const uint8_t *p, size_t n) {
+static inline MS_ALWAYS_INLINE MsStr ms_str_inline(const uint8_t *p, size_t n) {
     uint64_t low = 0, high = 0;
     ms_pack16(p, n, &low, &high);
     MsStr s = {.ptr_word = NULL, .tagged = high | MS_STR_INLINE | ((uint64_t)n << MS_STR_INLINE_SHIFT)};
@@ -144,7 +144,7 @@ static inline MsStr ms_str_heap_copy(const uint8_t *p, size_t n) {
 }
 
 /* New string from bytes: the shared statics for none or one ASCII byte, inline up to 15, else a heap copy. */
-MS_ALWAYS_INLINE MsStr ms_str_from_bytes(const uint8_t *p, size_t n) {
+static inline MS_ALWAYS_INLINE MsStr ms_str_from_bytes(const uint8_t *p, size_t n) {
     if (n == 0) {
         return ms_str_empty();
     }
@@ -158,7 +158,7 @@ MS_ALWAYS_INLINE MsStr ms_str_from_bytes(const uint8_t *p, size_t n) {
 }
 
 /* A string for n bytes at p inside another live string: an inline copy when it fits, else a view. */
-MS_ALWAYS_INLINE MsStr ms_str_view_of(const uint8_t *p, size_t n) {
+static inline MS_ALWAYS_INLINE MsStr ms_str_view_of(const uint8_t *p, size_t n) {
     if (n <= MS_STR_INLINE_MAX) {
         return ms_str_inline(p, n);
     }

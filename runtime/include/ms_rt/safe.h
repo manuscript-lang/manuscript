@@ -29,7 +29,7 @@
 #define MS_NORETURN _Noreturn
 #define MS_FALLTHROUGH __attribute__((fallthrough))
 #define MS_UNUSED __attribute__((unused))
-#define MS_ALWAYS_INLINE static inline __attribute__((always_inline)) /* hot paths the compiler would otherwise outline */
+#define MS_ALWAYS_INLINE __attribute__((always_inline)) /* a hot probe loop that must be specialised into its caller */
 
 /* Compiles only when `array` is a real array: a pointer has the same type as the address of its first element. */
 #define MS_MUST_BE_ARRAY(array) \

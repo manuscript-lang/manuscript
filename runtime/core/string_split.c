@@ -32,7 +32,7 @@ MS_NORETURN static void internal_fault(void) {
 }
 
 /* bytes[start..end]; the callers' arithmetic keeps both in range, so a bad range is a runtime bug. */
-MS_ALWAYS_INLINE MsBytes slice(MsBytes bytes, size_t start, size_t end) {
+static inline MS_ALWAYS_INLINE MsBytes slice(MsBytes bytes, size_t start, size_t end) {
     MsBytes part = {0};
     if (!ms_bytes_slice(bytes, start, end, &part)) {
         internal_fault();
@@ -49,7 +49,7 @@ static MsBytesMut slice_mut(MsBytesMut bytes, size_t start, size_t end) {
 }
 
 /* Copies `source` to dst[at..] and returns the offset after it. */
-MS_ALWAYS_INLINE size_t write_at(MsBytesMut dst, size_t at, MsBytes source) {
+static inline MS_ALWAYS_INLINE size_t write_at(MsBytesMut dst, size_t at, MsBytes source) {
     size_t end = 0;
     if (!ms_size_add(at, source.len, &end) || end > dst.len) {
         internal_fault();
@@ -58,7 +58,7 @@ MS_ALWAYS_INLINE size_t write_at(MsBytesMut dst, size_t at, MsBytes source) {
     return end;
 }
 
-MS_ALWAYS_INLINE MsStr make_piece(MsPieceMode mode, MsBytes bytes) {
+static inline MS_ALWAYS_INLINE MsStr make_piece(MsPieceMode mode, MsBytes bytes) {
     const bool short_ascii = bytes.len == 0 || (bytes.len == 1 && bytes.ptr[0] < 0x80);
     if (mode == MS_PIECE_VIEW && !short_ascii) {
         return ms_str_view_of(bytes.ptr, bytes.len);
@@ -79,7 +79,7 @@ static void list_grow(MsVec *list) {
     list->cap = capacity;
 }
 
-MS_ALWAYS_INLINE void list_push(MsVec *list, MsStr piece) {
+static inline MS_ALWAYS_INLINE void list_push(MsVec *list, MsStr piece) {
     if (list->len == list->cap) {
         list_grow(list);
     }
@@ -99,7 +99,7 @@ static void list_reserve(MsVec *list, size_t count) {
 }
 
 /* Appends to a list that may be a caller's fixed buffer; false when a fixed list is full. */
-MS_ALWAYS_INLINE bool list_put(MsVec *list, MsStr piece, bool fixed) {
+static inline MS_ALWAYS_INLINE bool list_put(MsVec *list, MsStr piece, bool fixed) {
     if (fixed && list->len == list->cap) {
         return false;
     }
@@ -109,7 +109,7 @@ MS_ALWAYS_INLINE bool list_put(MsVec *list, MsStr piece, bool fixed) {
 
 /* The mask of the bytes of `word` equal to the byte in every lane of `pattern`: bit 7 of each matching byte, with
  * no false bytes above a match. */
-MS_ALWAYS_INLINE uint64_t equal_bytes_mask(uint64_t word, uint64_t pattern) {
+static inline MS_ALWAYS_INLINE uint64_t equal_bytes_mask(uint64_t word, uint64_t pattern) {
     const uint64_t low_bits = UINT64_C(0x7f7f7f7f7f7f7f7f), high_bits = UINT64_C(0x8080808080808080);
     const uint64_t diff = word ^ pattern;
     return ~(((diff & low_bits) + low_bits) | diff) & high_bits;
@@ -117,7 +117,7 @@ MS_ALWAYS_INLINE uint64_t equal_bytes_mask(uint64_t word, uint64_t pattern) {
 
 /* The pieces of `text` between bytes equal to `separator`, found eight bytes at a time and taken from each word's
  * mask. False when a fixed list fills up. */
-MS_ALWAYS_INLINE bool split_at_byte(MsBytes text, uint8_t separator, MsVec *list, MsPieceMode mode, bool fixed) {
+static inline MS_ALWAYS_INLINE bool split_at_byte(MsBytes text, uint8_t separator, MsVec *list, MsPieceMode mode, bool fixed) {
     const uint64_t pattern = UINT64_C(0x0101010101010101) * separator;
     size_t piece_start = 0, offset = 0;
     for (; offset + 8 <= text.len; offset += 8) {
