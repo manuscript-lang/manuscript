@@ -1,15 +1,36 @@
 //! Process-wide controls.
+use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt_abi::STATUS_UNSUPPORTED;
-use ms_std_fs::err::{Fail, Res};
-#[cfg(unix)]
-use ms_std_fs::ops::read_bounded;
-#[cfg(unix)]
-use ms_std_fs::sys::{self, CPath};
+use ms_rt_abi::{STATUS_FAILED, STATUS_UNSUPPORTED};
 
-/// The OS error code of `e`, or `EINVAL`-like `0` when it carries none.
-fn os_code(e: &std::io::Error) -> i32 {
-    e.raw_os_error().unwrap_or(0)
+/// A failed query: the status and, for `STATUS_FAILED`, the text.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Fail {
+    pub status: u8,
+    pub message: Option<String>,
+}
+
+pub type Res<T> = Result<T, Fail>;
+
+impl Fail {
+    pub fn status(status: u8) -> Fail {
+        Fail {
+            status,
+            message: None,
+        }
+    }
+
+    pub fn failed(message: &str) -> Fail {
+        Fail {
+            status: STATUS_FAILED,
+            message: Some(message.into()),
+        }
+    }
+
+    /// A failed operating-system call of `op` with the error text of `e`.
+    pub fn os(op: &str, e: &std::io::Error) -> Fail {
+        Fail::failed(&alloc::format!("{op}: {e}"))
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -43,7 +64,7 @@ pub struct Info {
 
 /// The path of the running executable.
 pub(crate) fn executable() -> Res<Vec<u8>> {
-    let path = std::env::current_exe().map_err(|e| Fail::errno(os_code(&e), "executable", b""))?;
+    let path = std::env::current_exe().map_err(|e| Fail::os("executable", &e))?;
     let text = path
         .into_os_string()
         .into_string()
@@ -83,12 +104,8 @@ pub const ARCH: &str = if cfg!(target_arch = "aarch64") {
 /// Resident set size in bytes (`/proc/self/statm`).
 #[cfg(target_os = "linux")]
 pub fn resident_bytes() -> Res<i64> {
-    let p = CPath::new(b"/proc/self/statm").expect("no NUL");
-    let fd = sys::open(&p, libc::O_RDONLY, 0)
-        .map_err(|e| Fail::errno(e, "open", b"/proc/self/statm"))?;
-    let data = read_bounded(fd, 4096);
-    let _ = sys::close(fd);
-    let text = String::from_utf8_lossy(&data?).into_owned();
+    let text = std::fs::read_to_string("/proc/self/statm")
+        .map_err(|e| Fail::os("open /proc/self/statm", &e))?;
     let pages: i64 = text
         .split_whitespace()
         .nth(1)
