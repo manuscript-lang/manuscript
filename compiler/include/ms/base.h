@@ -25,6 +25,15 @@ void ms_arena_free(MsArena *a);
 #define MS_NEW(a, T) ((T *)ms_alloc((a), sizeof(T), _Alignof(T)))
 #define MS_NEW_N(a, T, n) ((T *)ms_alloc((a), sizeof(T) * (size_t)(n), _Alignof(T)))
 
+/* Arrays that grow by doubling. `ms_capacity_for` is the capacity (at least 64, doubling from
+ * `current`) that holds `needed` elements; `ms_array_resize` returns `array` resized to that
+ * many `element_size`-byte elements, and the caller stores the result. Allocation failure and a
+ * size that overflows abort, as the arena does. */
+/* Reports that memory ran out and aborts; the library's one policy for allocation failure. */
+_Noreturn void ms_oom(void);
+uint32_t ms_capacity_for(uint32_t current, uint32_t needed);
+void *ms_array_resize(void *array, uint32_t capacity, size_t element_size);
+
 /* A string that is not NUL-terminated. */
 typedef struct MsStr {
     const char *ptr;
