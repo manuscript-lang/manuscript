@@ -5,12 +5,8 @@
 // (`MS_PROFILE` names the folded-stack file the runtime writes), and turns what it
 // wrote into a bundle: `program`, `profile.folded`, `profile.pb`, `top.txt`,
 // `manifest.json`. The build is the Rust `ms build` until libms can link a whole
-// program. The command returns the program's exit status.
-//
-// Known gap (https://github.com/manuscript-lang/manuscript/issues/5009): SIGINT and
-// SIGTERM unwind the waiting task, so the program is killed without writing a profile;
-// the Rust CLI forwarded them. Restore forwarding once a task can hold back a stop
-// request.
+// program. The command returns the program's exit status; SIGINT and SIGTERM go on to
+// the program (`forward.ms`).
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	promise from "@std/concurrency/promise.ms",
@@ -26,6 +22,7 @@ import (
 	Invocation from "./args.ms",
 	rust_cli from "./bridge.ms",
 	errno_text from "./errno.ms",
+	forward_signals, hold from "./forward.ms",
 	flag, list_of, number, object, render_document, text, with from "./json_out.ms",
 	Allocs,
 	Folded,
@@ -344,6 +341,8 @@ export fn run_profile(inv: Invocation) Int:
 		)
 
 	child := spawned.get()
+	_hold := hold()
+	_relay := forward_signals(child.pid())
 	var captured = nothing.clone()
 	var waited: Int! = ok(0)
 
