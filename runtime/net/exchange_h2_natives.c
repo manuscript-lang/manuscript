@@ -50,6 +50,7 @@ static uint32_t limit_of(int64_t value) {
 }
 
 uint8_t msstd_h2_open(const void *conn, int64_t max_streams, int64_t max_header_list, int64_t stream_window, int64_t connection_window, uint8_t has_idle, int64_t idle, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     const MsNetConn *core = ms_netconn_of(conn);
     const MsH2Limits limits = {limit_of(max_streams) != 0 ? limit_of(max_streams) : 100, limit_of(max_header_list), limit_of(stream_window), limit_of(connection_window)};
     MsXchgH2Conn *h2 = ms_xchg_h2_conn_new(ms_netconn_table(core), ms_netconn_id(core), &limits, has_idle != 0 && idle > 0 ? idle : 0);
@@ -65,11 +66,13 @@ uint8_t msstd_h2_open(const void *conn, int64_t max_streams, int64_t max_header_
 }
 
 uint8_t msstd_h2_run(const void *h2, MsStr *err) {
+    ms_net_clear_text(err);
     const MsNetStatus status = ms_xchg_h2_conn_run(state_of(h2)->conn);
     return status == MS_NET_CANCELLED ? ms_net_finish(status, 0, err) : STATUS_OK;
 }
 
 uint8_t msstd_h2_next(const void *h2, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     MsXchgH2 *request = NULL;
     const MsNetStatus status = ms_xchg_h2_conn_next(state_of(h2)->conn, ms_net_deadline_of(has_timeout, timeout), &request);
     if (status == MS_NET_CLOSED) {
