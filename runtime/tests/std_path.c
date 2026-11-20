@@ -2,17 +2,13 @@
  * corpus does not hold: brace extremes, limits, the Windows dialect and a failing allocation. */
 #include "ms_rt/path.h"
 #include "ms_rt/alloc.h"
+#include "fake_rt.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 enum { MAX_PATTERN_BYTES = 4096 };
-
-/* The runtime's allocator, as plain malloc. */
-void *msrt_alloc(size_t size) { return malloc(size); }
-void *msrt_alloc_zeroed(size_t size) { return calloc(1, size); }
-void msrt_free(void *p) { free(p); }
 
 static int failures;
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); failures++; } } while (0)
