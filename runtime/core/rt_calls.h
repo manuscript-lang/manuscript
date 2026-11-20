@@ -10,15 +10,14 @@
 #include "ms_rt/base.h"
 #include "ms_rt/safe.h"
 #include "ms_rt/desc.h"
+#include "ms_rt/fault.h"
 #include "ms_rt/map.h"
 #include "ms_rt/string.h"
 
-/* The family of a fault, which the structured fault record names (crates/ms-rt-abi FaultKind). */
-typedef enum MsFaultKind {
-    MS_FAULT_GENERIC = 0,
-    MS_FAULT_OVERFLOW = 5,
-    MS_FAULT_INDEX_OUT_OF_RANGE = 6
-} MsFaultKind;
+/* The families of fault are ms_rt/fault.h's; core files that predate it keep their spellings. */
+#define MS_FAULT_GENERIC MS_FAULT_KIND_FAULT
+#define MS_FAULT_OVERFLOW MS_FAULT_KIND_OVERFLOW
+#define MS_FAULT_INDEX_OUT_OF_RANGE MS_FAULT_KIND_INDEX_OUT_OF_RANGE
 
 /* Raises a fault of `kind` with the message `msg[0..len]`. */
 MS_NORETURN void msfault_raise(uint8_t kind, const uint8_t *msg, size_t len);
