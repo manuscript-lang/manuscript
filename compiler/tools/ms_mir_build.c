@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
     }
     MsBuf out = {0}, why = {0};
     bool ok;
-    mir_name_entry(&m);
+    mir_name_symbols(&m);
     if (llvm) {
         mir_lower_ops(&m, &glue);
         MirData data;

@@ -202,9 +202,12 @@ static uint32_t ll_record_pieces(const MirModule *m, const MirFunc *f, const Mir
     if (inst->op == MOP_Free && inst->imm.tag != MI_NONE) {
         return 1;
     }
-    const MirTy subject = inst->op == MOP_TypeNew ? f->values[inst->res]
-                          : inst->nargs > 0        ? f->values[inst->args[0]]
-                                                   : MIR_NONE;
+    MirTy subject = MIR_NONE;
+    if (inst->op == MOP_TypeNew) {
+        subject = f->values[inst->res];
+    } else if (inst->nargs > 0) {
+        subject = f->values[inst->args[0]];
+    }
     if (subject == MIR_NONE || mir_ty_data(m, subject)->kind != MK_TYPE ||
         !m->type_defs[mir_ty_data(m, subject)->id].indirect) {
         return 0;

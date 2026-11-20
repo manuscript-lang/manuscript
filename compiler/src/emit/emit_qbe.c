@@ -585,6 +585,20 @@ static bool qbe_rt_argument(QCx *c, MsBuf *args, MirTy ty, MirValue value, const
     return true;
 }
 
+/* The extension that makes a runtime result of a narrow leaf whole: C leaves the bits above the
+ * returned byte, halfword or word undefined. Null for a full-width leaf. */
+static const char *qbe_rt_widening(MirLeaf leaf) {
+    switch (leaf) {
+    case MIR_LEAF_I8: case MIR_LEAF_U8: return "extub";
+    case MIR_LEAF_N8: return "extsb";
+    case MIR_LEAF_N16: return "extsh";
+    case MIR_LEAF_N32: return "extsw";
+    case MIR_LEAF_U16: return "extuh";
+    case MIR_LEAF_U32: return "extuw";
+    default: return NULL;
+    }
+}
+
 /* A call of a runtime function, which follows the C ABI of `ms-rt-abi`: scalars by value,
  * everything else by the address of a copy, and a result that is not a scalar through a trailing
  * output pointer. */
@@ -608,13 +622,20 @@ static bool qbe_call_rt(QCx *c, const MirInst *inst, uint32_t block, uint32_t in
         if (!direct) {
             ms_buf_printf(&args, "%sl %s", args.len > 0 ? ", " : "", area);
         }
-        if (direct && result.len == 1) {
+        const char *widen = direct && result.len == 1 ? qbe_rt_widening(result.ptr[0]) : NULL;
+        if (widen != NULL) {
+            ms_buf_printf(c->out, "\t%%v%ur =w call ", inst->res);
+        } else if (direct && result.len == 1) {
             ms_buf_printf(c->out, "\t%%v%u =%c call ", inst->res, qbe_leaf_type(result.ptr[0]));
         } else {
             ms_buf_puts(c->out, "\tcall ");
         }
         qbe_sym(c->out, ms_name(&c->m->names, def->name));
         ms_buf_printf(c->out, "(%.*s)\n", (int)args.len, args.data == NULL ? "" : args.data);
+        if (widen != NULL) {
+            ms_buf_printf(c->out, "\t%%v%u =%c %s %%v%ur\n", inst->res, qbe_leaf_type(result.ptr[0]),
+                          widen, inst->res);
+        }
         if (!direct && inst->res != MIR_NONE) {
             ok = qbe_load_leaves(c, inst->res, area);
         }

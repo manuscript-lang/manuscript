@@ -202,7 +202,8 @@ static uint32_t lo_cleanup_thunk(LoCx *c, uint32_t closer) {
     const MirTy ty = c->m->funcs[closer].params[0].ty;
     const MirParam param = {MIR_PTR, MM_BORROW};
     MirBuilder b;
-    mir_b_init(&b, c->m, mir_name(c->m, "cleanup.thunk", 13), &param, 1, MIR_VOID);
+    const MsStr thunk_name = ms_arena_fmt(&c->m->arena, "cleanup.thunk.%u", closer);
+    mir_b_init(&b, c->m, mir_name(c->m, thunk_name.ptr, thunk_name.len), &param, 1, MIR_VOID);
     mir_b_func(&b)->linkage = ML_INTERNAL;
     MirValue p = 0;
     mir_b_params(&b, &p, 1);

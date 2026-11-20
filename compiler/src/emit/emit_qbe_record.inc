@@ -199,9 +199,12 @@ static bool qbe_free_field(QCx *c, const MirInst *inst, uint32_t block, uint32_t
 
 /* How many pieces `inst` ends: one per branch of the operations above. */
 static uint32_t qbe_record_splits(const MirModule *m, const MirFunc *f, const MirInst *inst) {
-    const MirTy subject = inst->op == MOP_TypeNew ? f->values[inst->res]
-                          : inst->nargs > 0        ? f->values[inst->args[0]]
-                                                   : MIR_NONE;
+    MirTy subject = MIR_NONE;
+    if (inst->op == MOP_TypeNew) {
+        subject = f->values[inst->res];
+    } else if (inst->nargs > 0) {
+        subject = f->values[inst->args[0]];
+    }
     if (inst->op == MOP_Free && inst->imm.tag != MI_NONE) {
         return 1;
     }
