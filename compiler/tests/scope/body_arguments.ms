@@ -10,3 +10,18 @@ fn wrong() Int:
 
 fn fine() Int:
 	return double(double(2))
+
+fn named() Int:
+	return double(n: 3)
+
+fn missing() Int:
+	return double()
+
+fn pair(a: Int, b: Int) Int:
+	return a + b
+
+fn missing_second() Int:
+	return pair(1)
+
+fn labelled_wrong() Int:
+	return pair(a: 1, c: 2)
