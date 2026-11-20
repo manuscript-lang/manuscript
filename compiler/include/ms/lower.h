@@ -1,0 +1,18 @@
+/* Lowering: the checked syntax tree to Raw-phase MIR (crates/ms-lower). The output is compared
+ * function by function with the Rust lowering's (compiler/tests/lower-diff.sh).
+ *
+ * The pass grows with the checker. A function is lowered only when the checker recorded its body
+ * (`MsFacts.body_checked`) and every construct in it is one this pass handles; any other function
+ * is left out of the module and stays with the Rust lowering. See lower_body.c for the handled set. */
+#ifndef MS_LOWER_H
+#define MS_LOWER_H
+
+#include "ms/mir.h"
+#include "ms/tables.h"
+
+/* Lowers the functions of `module` the pass supports into `out` (initialised with
+ * mir_module_init; the caller frees it). Returns how many functions were added. The checker must
+ * have run `ms_module_check_bodies` on the module. */
+uint32_t ms_lower_module(const MsCheck *c, MsModId module, MirModule *out);
+
+#endif

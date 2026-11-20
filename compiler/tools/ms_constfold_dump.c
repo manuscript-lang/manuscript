@@ -6,6 +6,7 @@
 
 #include "ms/constfold.h"
 #include "ms/parse.h"
+#include "dump_io.h"
 
 typedef struct Range {
     const char *name;
@@ -143,23 +144,6 @@ static void answer(const char *line) {
     puts("---");
     ms_names_free(&names);
     ms_arena_free(&arena);
-}
-
-/* Reads one line into `line` without its newline; false at end of input. */
-static bool read_line(MsBuf *line) {
-    line->len = 0;
-    char chunk[512];
-    while (fgets(chunk, sizeof chunk, stdin) != NULL) {
-        size_t n = strlen(chunk);
-        bool complete = n > 0 && chunk[n - 1] == '\n';
-        ms_buf_put(line, chunk, complete ? n - 1 : n);
-        if (complete) {
-            break;
-        }
-    }
-    bool any = line->len != 0 || feof(stdin) == 0;
-    ms_buf_putc(line, 0);
-    return any;
 }
 
 int main(void) {

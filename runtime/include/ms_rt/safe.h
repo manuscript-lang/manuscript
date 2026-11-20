@@ -159,6 +159,10 @@ static inline bool ms_bytes_equal(MsBytes a, MsBytes b) {
     return a.len == b.len && (a.len == 0 || __builtin_memcmp(a.ptr, b.ptr, a.len) == 0);
 }
 
+static inline bool ms_bytes_starts_with(MsBytes bytes, MsBytes prefix) {
+    return bytes.len >= prefix.len && ms_bytes_equal(ms_bytes_of(bytes.ptr, prefix.len), prefix);
+}
+
 MS_NODISCARD static inline bool ms_bytes_ends_with(MsBytes bytes, MsBytes suffix) {
     return bytes.len >= suffix.len && ms_bytes_equal(ms_bytes_of(bytes.ptr + (bytes.len - suffix.len), suffix.len), suffix);
 }

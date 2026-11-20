@@ -3267,8 +3267,7 @@ static TextParts one_literal(Parser *p, MsStr s) {
 }
 
 static bool has_prefix(MsStr s, const char *pre) {
-    size_t n = strlen(pre);
-    return s.len >= n && memcmp(s.ptr, pre, n) == 0;
+    return ms_bytes_starts_with(ms_bytes_of((const uint8_t *)s.ptr, s.len), ms_bytes_of((const uint8_t *)pre, strlen(pre)));
 }
 
 /* Decodes a text token into literal and interpolated parts. Only `f"..."` and `f"""` text
