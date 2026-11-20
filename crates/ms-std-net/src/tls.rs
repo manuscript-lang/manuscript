@@ -50,7 +50,7 @@ fn decode_block(text: &str, skip_junk: bool) -> Option<(String, Vec<u8>, &str)> 
         };
         let trimmed = line.trim();
         if trimmed == end {
-            let bytes = ms_std_core::encoding::base64_decode_lenient(&body)?;
+            let bytes = crate::base64::decode_lenient(&body)?;
             return Some((label, bytes, after));
         }
         if trimmed.contains(':') {

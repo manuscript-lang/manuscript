@@ -168,6 +168,25 @@ typedef enum MirSort { MSORT_NONE, MSORT_GENERIC, MSORT_SPECIALIZED } MirSort;
 
 typedef struct MirCaptureCloser { uint32_t capture, func; } MirCaptureCloser;
 
+/* A callee body inlined into a function: fault traces and profiles show it as its own frame,
+ * called from `call_line` of the enclosing scope. `MirLoc.scope` is one plus an index into
+ * `MirFunc.scopes` (0 is the function itself). */
+typedef struct MirScope {
+    MsSym name;
+    uint32_t file; /* MIR_NONE when unknown */
+    uint32_t parent; /* enclosing scope number */
+    uint32_t call_line;
+} MirScope;
+
+/* A value a debugger shows under its source name; `scope` is the `MirLoc.scope` of the body that
+ * declares it. */
+typedef struct MirNamedValue {
+    MirValue value;
+    MsSym name;
+    bool param; /* a parameter of the body that holds it, not a local */
+    uint32_t scope;
+} MirNamedValue;
+
 typedef struct MirFunc {
     MsSym name;
     MirParam *params;
@@ -175,9 +194,19 @@ typedef struct MirFunc {
     MirTy ret;
     bool ret_borrowed, ret_view;
     /* Set by passes, not in the text form: a function made only to run while a cancellation
-     * unwinds; one that leaves a cancel by its own explicit exits; one whose lists are raw slot
-     * copies (they own no elements). */
-    bool unwind_only, explicit_cancel, raw_scratch;
+     * unwinds; one whose lists are raw slot copies (they own no elements). */
+    bool unwind_only, raw_scratch;
+    /* In the text form: a function that leaves a cancel by its own explicit exits; the indexes
+     * of its pointer parameters no other memory overlaps (`var` parameters); on a `slot_close`
+     * thunk, the function running the same close for its result; on a function with fallible
+     * closing owners, the (plain, pending) functions that turn a close error into its result. */
+    bool explicit_cancel;
+    uint32_t *noalias;
+    uint32_t nnoalias;
+    bool has_slot_result;
+    uint32_t slot_result;
+    bool has_close_exit;
+    uint32_t close_exit[2];
     /* Set by lowering, not in the text form: a closure function whose environment owns
      * resources lists the capture index and the function that closes it; a cleanup thunk that
      * closes a value in place names the type of that value. */
@@ -196,6 +225,10 @@ typedef struct MirFunc {
     MirTy *captures; /* MFK_CLOSURE */
     uint32_t ncaptures;
     MirLoc loc;
+    MirScope *scopes;
+    uint32_t nscopes, cscopes;
+    MirNamedValue *names;
+    uint32_t nnames, cnames;
     MirTy *values; /* type of every value */
     uint32_t nvalues, cvalues;
     MirBlockData *blocks; /* block 0 is the entry */
@@ -260,6 +293,13 @@ typedef struct MirExtern {
 typedef struct MirConsts { int64_t *v; uint32_t n; } MirConsts;
 typedef struct MirGlobal { MsSym name; MirTy ty; } MirGlobal;
 
+/* The equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) the descriptor of an
+ * aggregate type points to. */
+typedef struct MirDescGlue {
+    MirTy ty;
+    uint32_t eq, hash; /* function ids */
+} MirDescGlue;
+
 typedef struct MirVtable {
     MsSym name;
     uint32_t iface;
@@ -287,6 +327,8 @@ typedef struct MirModule {
     uint32_t nifaces, cifaces;
     MirVtable *vtables;
     uint32_t nvtables, cvtables;
+    MirDescGlue *desc_glue;
+    uint32_t ndesc_glue, cdesc_glue;
     MsStr *blobs;
     uint32_t nblobs, cblobs;
     MirConsts *list_consts;
@@ -302,6 +344,8 @@ typedef struct MirModule {
 } MirModule;
 
 void mir_module_init(MirModule *m);
+/* Records the equality and hash functions the descriptor of aggregate `ty` points to. */
+void mir_add_desc_glue(MirModule *m, MirTy ty, uint32_t eq, uint32_t hash);
 void mir_module_free(MirModule *m);
 
 /* Type table. */

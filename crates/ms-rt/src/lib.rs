@@ -45,8 +45,6 @@ pub mod dropq {
 }
 pub mod fault;
 pub mod ffi;
-mod float_digits;
-mod float_table;
 pub mod global;
 pub mod glue;
 pub mod io;
@@ -61,7 +59,6 @@ pub mod poller;
 pub mod process;
 pub mod profile;
 pub mod promise;
-pub mod scan;
 pub mod sched;
 pub mod start;
 pub mod streams;
@@ -73,7 +70,6 @@ pub mod sys;
 pub mod sys;
 mod sys_c;
 pub mod task;
-pub mod tree;
 pub mod utf8;
 pub mod vec;
 pub mod watch;

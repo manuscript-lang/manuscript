@@ -503,7 +503,9 @@ fn var TerminalEvents.next() TerminalEvent?!:
 		ready := msstd_terminal_raw_terminal_read(self.handle.native, waiting)?
 
 		if ready.is_some():
-			for event in self.decoder.decode(msstd_terminal_input_text()):
+			for event in self.decoder.decode(
+				msstd_terminal_input_text(self.handle.native)
+			):
 				self.queue.append(event.clone())
 		else if waiting:
 			// A quiet pause resolves a lone escape into the Escape key.

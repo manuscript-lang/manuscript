@@ -16,6 +16,13 @@
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
 
+/* The loop being lowered: where `continue` and `break` go. Lives on the lowering's stack. */
+typedef struct LbLoop {
+    MirBlock header, exit;
+    struct LbLoop *outer;
+    bool broke; /* a `break` branches to `exit` */
+} LbLoop;
+
 /* A lowered expression: the value, and whether the holder must drop it. */
 typedef struct LbVal {
     MirValue v;
@@ -31,8 +38,10 @@ typedef struct Lb {
     /* By binding id: the value a `let` or parameter names, or the variable a `var` is. */
     MirValue *value_of;
     MirVar *var_of;
+    uint32_t *func_of;    /* by symbol id: the module function a call reaches, or MIR_NONE */
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
+    LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     bool dead;            /* control cannot reach the current position */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
@@ -260,6 +269,26 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     return (LbVal){mir_b_binop(&lb->b, arithmetic, left.v, right.v), false};
 }
 
+/* A call of a module function the checker resolved; MIR_NONE-valued `func_of` means the callee
+ * is not lowered, so neither is the caller. */
+static LbVal lb_call(Lb *lb, const MsExpr *e) {
+    const uint32_t callee = lb->facts->call_callee[e->id];
+    const uint32_t func = callee == MS_NONE ? MIR_NONE : lb->func_of[callee];
+    if (func == MIR_NONE) {
+        return lb_unsupported(lb);
+    }
+    const uint32_t count = e->u.call.args.len;
+    MirValue *args = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
+    for (uint32_t i = 0; i < count; i++) {
+        const LbVal arg = lb_expr(lb, e->u.call.args.ptr[i].value);
+        if (!lb->ok || arg.owned) {
+            return lb_unsupported(lb); // an owned temporary needs a drop after the call
+        }
+        args[i] = arg.v;
+    }
+    return (LbVal){mir_b_call(&lb->b, func, args, count), false};
+}
+
 static LbVal lb_expr(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
@@ -269,6 +298,7 @@ static LbVal lb_expr(Lb *lb, const MsExpr *e) {
     case MS_E_UNARY: return lb_unary(lb, e);
     case MS_E_BINARY: return lb_binary(lb, e);
     case MS_E_MATCH: return lb_match(lb, e);
+    case MS_E_CALL: return lb_call(lb, e);
     case MS_E_VOID:
     case MS_E_MEMBER:
     case MS_E_APPLY:
@@ -276,8 +306,7 @@ static LbVal lb_expr(Lb *lb, const MsExpr *e) {
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
-    case MS_E_LAMBDA:
-    case MS_E_CALL: break;
+    case MS_E_LAMBDA: break;
     }
     return lb_unsupported(lb);
 }
@@ -380,6 +409,13 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
 
 /* ---- statements ---- */
 
+/* Names `value` for a debugger, as the Rust lowering does: parameters and single-definition locals. */
+static void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param) {
+    const MsStr text = ms_name(lb->c->names, name);
+    const MirNamedValue named = {value, mir_name(lb->m, text.ptr, text.len), param, 0};
+    MIR_PUSH(lb->m, lb->b.f.names, lb->b.f.nnames, lb->b.f.cnames, MirNamedValue, named);
+}
+
 static void lb_bind(Lb *lb, const MsStmt *s) {
     const MsPattern *pattern = s->u.bind.pattern;
     const uint32_t binding = lb->facts->pattern_binding[pattern->id];
@@ -397,6 +433,9 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
         mir_b_def_var(&lb->b, lb->var_of[binding], value.v);
     } else {
         lb->value_of[binding] = value.v;
+        if (pattern->kind == MS_P_NAME) {
+            lb_name_value(lb, value.v, pattern->u.name, false);
+        }
     }
 }
 
@@ -475,16 +514,46 @@ static void lb_while(Lb *lb, const MsStmt *s) {
     }
     mir_b_seal_block(&lb->b, body);
     lb_enter(lb, body);
+    LbLoop here = {header, exit, lb->loop, false};
+    lb->loop = &here;
     lb_statements(lb, &s->u.loop.body);
+    lb->loop = here.outer;
     if (!lb->dead) {
         mir_b_br(&lb->b, header, NULL, 0);
     }
     mir_b_seal_block(&lb->b, header);
     mir_b_seal_block(&lb->b, exit);
     lb_enter(lb, exit);
-    if (forever) {
+    if (forever && !here.broke) {
         mir_b_unreachable(&lb->b);
         lb->dead = true;
+    }
+}
+
+/* `break` and `continue`: branch to the loop's exit or header; the rest of the block is dead. */
+static void lb_jump(Lb *lb, const MsStmt *s) {
+    LbLoop *loop = lb->loop;
+    if (loop == NULL) {
+        lb->ok = false;
+        return;
+    }
+    if (s->kind == MS_S_BREAK) {
+        loop->broke = true;
+    }
+    mir_b_br(&lb->b, s->kind == MS_S_BREAK ? loop->exit : loop->header, NULL, 0);
+    lb->dead = true;
+}
+
+/* `name = value` writes the `var` the checker resolved the statement to. */
+static void lb_assign(Lb *lb, const MsStmt *s) {
+    const uint32_t binding = lb->facts->assign_binding[s->id];
+    if (binding == MS_NONE || lb->var_of[binding] == MIR_NONE) {
+        lb->ok = false;
+        return;
+    }
+    const LbVal value = lb_expr(lb, s->u.assign.value);
+    if (lb->ok) {
+        mir_b_def_var(&lb->b, lb->var_of[binding], value.v);
     }
 }
 
@@ -499,10 +568,10 @@ static void lb_statement(Lb *lb, const MsStmt *s) {
     case MS_S_RETURN: lb_return(lb, s); break;
     case MS_S_IF: lb_if(lb, s); break;
     case MS_S_WHILE: lb_while(lb, s); break;
-    case MS_S_ASSIGN:
-    case MS_S_CALL:
+    case MS_S_ASSIGN: lb_assign(lb, s); break;
     case MS_S_BREAK:
-    case MS_S_CONTINUE:
+    case MS_S_CONTINUE: lb_jump(lb, s); break;
+    case MS_S_CALL:
     case MS_S_FOR: lb->ok = false; break;
     }
     lb->stmt = outer;
@@ -519,22 +588,29 @@ static void lb_statements(Lb *lb, const MsStmts *body) {
 
 /* ---- functions ---- */
 
-/* Starts the function and binds its parameters; false when a parameter or the result is not a
- * type this pass handles. */
-static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
-    const MsFunc *fn = &d->u.fn;
+/* The function's MIR signature into `params` (one per source parameter) and `ret`; false when a
+ * parameter or the result is not a type this pass handles. */
+static bool lb_signature(Lb *lb, const MsFunc *fn, MsSymId sym, MirParam *params, MirTy *ret) {
     const MsTy sig = lb->c->syms.ty[sym];
-    const MirTy ret = lb_mir_ty(lb, lb->c->tys.result[sig]);
-    MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, fn->params.len + 1);
     const MsTyParam *sig_params = ms_ty_params(&lb->c->tys, sig);
+    *ret = lb_mir_ty(lb, lb->c->tys.result[sig]);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MirTy ty = lb_mir_ty(lb, sig_params[i].ty);
-        if (ty == MIR_NONE) {
+        // `var` and `move` parameters need a pass-by-reference and a hand-over this pass does not lower yet.
+        if (ty == MIR_NONE || fn->params.ptr[i]->is_mutable || fn->params.ptr[i]->moving) {
             return false;
         }
         params[i] = (MirParam){ty, MM_BORROW};
     }
-    if (ret == MIR_NONE) {
+    return *ret != MIR_NONE;
+}
+
+/* Starts the function and binds its parameters; false when its signature is not handled. */
+static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
+    const MsFunc *fn = &d->u.fn;
+    MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, fn->params.len + 1);
+    MirTy ret = MIR_NONE;
+    if (!lb_signature(lb, fn, sym, params, &ret)) {
         return false;
     }
     const MsStr name = ms_name(lb->c->names, fn->name);
@@ -544,34 +620,37 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
     mir_b_params(&lb->b, values, fn->params.len);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         lb->value_of[lb->binding_at[fn->params.ptr[i]->id]] = values[i];
+        lb_name_value(lb, values[i], fn->params.ptr[i]->name, true);
     }
     lb_emit_plain(lb, MOP_DepthEnter);
     return true;
 }
 
-/* Lowers one checked function into the module; false (nothing added) when it is not handled. */
-static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym) {
+/* Lowers one checked function over its stub `slot` in the module; false when it is not handled. */
+static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
     lb->ok = lb_begin(lb, d, sym);
     if (!lb->ok) {
         return false;
     }
     lb->dead = false;
+    lb->loop = NULL;
     lb->stmt = NULL;
     lb_statements(lb, &d->u.fn.body);
-    uint32_t id = 0;
     lb->ok = lb->ok && lb->dead; // a path that ends without `return` is a Void function's
-    if (!lb->ok) {
-        MirFunc discarded;
-        const bool built = mir_b_into_func(&lb->b, &discarded); // frees the builder's scratch tables
-        (void)built;
-        return false;
+    MirFunc f = {0};
+    if (lb->ok) {
+        mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
+        const MsStr name = ms_name(lb->c->names, d->u.fn.name);
+        if (name.len == 4 && memcmp(name.ptr, "main", 4) == 0) {
+            lb->b.f.linkage = ML_EXPORT;
+        }
     }
-    mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
-    const MsStr name = ms_name(lb->c->names, d->u.fn.name);
-    if (name.len == 4 && memcmp(name.ptr, "main", 4) == 0) {
-        lb->b.f.linkage = ML_EXPORT;
+    // Finishing also frees the builder's scratch tables, which a failed function needs too.
+    const bool built = mir_b_into_func(&lb->b, &f);
+    if (lb->ok && built) {
+        lb->m->funcs[slot] = f;
     }
-    return mir_b_finish(&lb->b, &id);
+    return lb->ok && built;
 }
 
 static void lb_index_bindings(Lb *lb, MsArena *arena) {
@@ -588,6 +667,69 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
     memset(lb->value_of, 0xff, (bindings->count + 1) * sizeof *lb->value_of);
 }
 
+/* Adds a function with the declared signature and an empty body, so calls can name it before its
+ * body is lowered (recursion and any order of declarations). */
+static uint32_t lb_add_stub(Lb *lb, const MsDecl *d, MsSymId sym) {
+    const MsFunc *fn = &d->u.fn;
+    MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, fn->params.len + 1);
+    MirTy ret = MIR_NONE;
+    if (!lb_signature(lb, fn, sym, params, &ret)) {
+        return MIR_NONE;
+    }
+    const MsStr name = ms_name(lb->c->names, fn->name);
+    MirFunc stub = {0};
+    mir_func_init(lb->m, &stub, mir_name(lb->m, name.ptr, name.len), params, fn->params.len, ret);
+    return mir_add_func(lb->m, &stub);
+}
+
+/* Whether the checker reported anything inside declaration `index`: on lines from its own to the
+ * next declaration's. A program with a diagnostic does not build, so such a function is not
+ * lowered (its body may be ill-typed). */
+static bool lb_has_diagnostic(const MsModuleRow *row, uint32_t index) {
+    const uint32_t first = row->syntax->decls[index]->pos.line;
+    const uint32_t end = index + 1 < row->syntax->ndecls ? row->syntax->decls[index + 1]->pos.line : UINT32_MAX;
+    for (uint32_t k = 0; k < row->ndiags; k++) {
+        const uint32_t line = row->diags[k].diag.pos.line;
+        if (line >= first && line < end) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* One pass over the module's checked functions: stub each one not in `failed`, then lower them.
+ * A function that does not lower is marked in `failed`; true when any new one was. */
+static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
+    const MsModuleRow *row = &lb->c->mods[module];
+    const uint32_t ndecls = row->syntax->ndecls;
+    memset(lb->func_of, 0xff, (size_t)lb->c->syms.count * sizeof *lb->func_of);
+    MsSymId *syms = MS_NEW_N(&lb->m->arena, MsSymId, (size_t)ndecls + 1);
+    for (uint32_t i = 0; i < ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !failed[i] && !lb_has_diagnostic(row, i);
+        syms[i] = checked ? ms_decl_own_symbol(lb->c, module, d) : MS_NONE;
+        if (syms[i] != MS_NONE) {
+            lb->func_of[syms[i]] = lb_add_stub(lb, d, syms[i]);
+        }
+    }
+    bool changed = false;
+    *lowered = 0;
+    for (uint32_t i = 0; i < ndecls; i++) {
+        if (syms[i] == MS_NONE) {
+            continue;
+        }
+        const bool unlowerable = lb->func_of[syms[i]] == MIR_NONE;
+        const bool done = !unlowerable && lb_function(lb, row->syntax->decls[i], syms[i], lb->func_of[syms[i]]);
+        failed[i] = !done;
+        changed = changed || !done;
+        *lowered += done ? 1 : 0;
+    }
+    return changed;
+}
+
+/* A failed function leaves a stub, and calls to it were lowered against it, so the pass repeats
+ * without it (its callers then fail too) until a pass loses nothing. That is at most one pass per
+ * function; programs lose a function or two. */
 uint32_t ms_lower_module(const MsCheck *c, MsModId module, MirModule *out) {
     const MsModuleRow *row = &c->mods[module];
     const MsFacts *facts = row->facts;
@@ -601,13 +743,18 @@ uint32_t ms_lower_module(const MsCheck *c, MsModId module, MirModule *out) {
              .float_ty = lb_primitive(c, "Float"),
              .bool_ty = lb_primitive(c, "Bool"),
              .string_ty = lb_primitive(c, "String")};
-    lb_index_bindings(&lb, &out->arena);
+    bool *failed = calloc((size_t)row->syntax->ndecls + 1, sizeof *failed);
+    lb.func_of = calloc((size_t)c->syms.count + 1, sizeof *lb.func_of);
     uint32_t lowered = 0;
-    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
-        const MsDecl *d = row->syntax->decls[i];
-        const bool checked = d->kind == MS_D_FN && facts->body_checked[d->id];
-        const MsSymId sym = checked ? ms_decl_own_symbol(c, module, d) : MS_NONE;
-        lowered += sym != MS_NONE && lb_function(&lb, d, sym) ? 1 : 0;
+    while (failed != NULL && lb.func_of != NULL) {
+        mir_module_free(out);
+        mir_module_init(out);
+        lb_index_bindings(&lb, &out->arena);
+        if (!lb_pass(&lb, module, failed, &lowered)) {
+            break;
+        }
     }
+    free(lb.func_of);
+    free(failed);
     return lowered;
 }

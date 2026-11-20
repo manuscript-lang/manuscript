@@ -231,11 +231,6 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "getrandom",
-      "version": "0.4.3",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
       "name": "gimli",
       "version": "0.33.0",
       "license": "MIT OR Apache-2.0"
@@ -393,16 +388,6 @@
     {
       "name": "quote",
       "version": "1.0.47",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "r-efi",
-      "version": "6.0.0",
-      "license": "MIT OR Apache-2.0 OR LGPL-2.1-or-later"
-    },
-    {
-      "name": "rand_core",
-      "version": "0.10.1",
       "license": "MIT OR Apache-2.0"
     },
     {
@@ -736,6 +721,11 @@
       "name": "pcre2",
       "version": "10.47",
       "license": "BSD-3-Clause"
+    },
+    {
+      "name": "yyjson",
+      "version": "0.10.0",
+      "license": "MIT"
     },
     {
       "name": "zlib",

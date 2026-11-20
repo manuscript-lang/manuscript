@@ -203,3 +203,56 @@ long ms_tls_write(MsTls *t, const void *buf, size_t n) {
 
 int ms_tls_shutdown(MsTls *t) { return SSL_shutdown(t->ssl) >= 0 ? 0 : -1; }
 const char *ms_tls_error(MsTls *t) { return t->err; }
+
+int ms_tls_version(const MsTls *t) { return SSL_version(t->ssl); }
+
+uint32_t ms_tls_cipher(const MsTls *t) {
+    const SSL_CIPHER *cipher = SSL_get_current_cipher(t->ssl);
+    return cipher == NULL ? 0 : SSL_CIPHER_get_protocol_id(cipher);
+}
+
+/* The peer's certificates leaf first. A client sees the whole chain the server sent; a server sees the chain without
+ * the leaf, which it keeps apart. */
+static X509 *peer_at(const MsTls *t, size_t index, X509 **leaf) {
+    STACK_OF(X509) *chain = SSL_get_peer_cert_chain(t->ssl);
+    *leaf = SSL_get1_peer_certificate(t->ssl);
+    const bool leaf_in_chain = chain != NULL && *leaf != NULL && sk_X509_num(chain) > 0 && X509_cmp(sk_X509_value(chain, 0), *leaf) == 0;
+    if (leaf_in_chain || *leaf == NULL) {
+        return chain != NULL && index < (size_t)sk_X509_num(chain) ? sk_X509_value(chain, (int)index) : NULL;
+    }
+    if (index == 0) {
+        return *leaf;
+    }
+    return chain != NULL && index - 1 < (size_t)sk_X509_num(chain) ? sk_X509_value(chain, (int)(index - 1)) : NULL;
+}
+
+size_t ms_tls_peer_count(const MsTls *t) {
+    STACK_OF(X509) *chain = SSL_get_peer_cert_chain(t->ssl);
+    X509 *leaf = SSL_get1_peer_certificate(t->ssl);
+    size_t count = chain == NULL ? 0 : (size_t)sk_X509_num(chain);
+    if (leaf != NULL) {
+        const bool leaf_in_chain = count > 0 && X509_cmp(sk_X509_value(chain, 0), leaf) == 0;
+        count += leaf_in_chain ? 0 : 1;
+        X509_free(leaf);
+    }
+    return count;
+}
+
+uint8_t *ms_tls_peer_der(const MsTls *t, size_t index, size_t *length) {
+    X509 *leaf = NULL;
+    X509 *certificate = peer_at(t, index, &leaf);
+    uint8_t *der = NULL;
+    if (certificate != NULL) {
+        const int needed = i2d_X509(certificate, NULL);
+        der = needed > 0 ? malloc((size_t)needed) : NULL;
+        uint8_t *cursor = der;
+        if (der != NULL && i2d_X509(certificate, &cursor) == needed) {
+            *length = (size_t)needed;
+        } else {
+            free(der);
+            der = NULL;
+        }
+    }
+    X509_free(leaf);
+    return der;
+}

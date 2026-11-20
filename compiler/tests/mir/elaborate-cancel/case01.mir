@@ -1,0 +1,25 @@
+module "t"
+extern @msrt_promise_start(int) -> int spawns_task
+extern @msrt_task_pause(int) -> int
+entry @main
+
+fn @held() -> int {
+b0:
+  scope.begin 1 0
+  %0: ptr = slot str
+  %1: str = str "x"
+  %2: str = clone %1
+  put %0, %2
+  %3: int = iconst 5
+  %4: int = call.rt @msrt_task_pause (%3)
+  %5: str = take str %0
+  drop %5
+  scope.end 1 0
+  ret %4
+}
+
+fn @main() -> int {
+b0:
+  %0: int = iconst 0
+  ret %0
+}
