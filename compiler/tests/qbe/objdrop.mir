@@ -1,0 +1,14 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+extern @msrt_test_fn() -> fn(int) -> int
+
+fn @msmain() -> int {
+b0:
+  %f: fn(int) -> int = call.rt @msrt_test_fn ()
+  %g: fn(int) -> int = clone %f
+  drop %f
+  drop %g
+  %r: int = iconst 7
+  ret %r
+}

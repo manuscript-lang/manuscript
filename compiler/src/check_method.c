@@ -53,6 +53,39 @@ static bool operation_of(const MsBody *b, MsTy contract, MsSym name, Target *out
     return false;
 }
 
+/* The operation `name` of the interface `iface_name` of `@std/intrinsics.ms`: what a primitive
+ * receiver offers beyond the methods of impls. Only operations without type variables. */
+static bool intrinsic_in(const MsBody *b, const char *iface_name, MsSym name, Target *out) {
+    MsCheck *c = b->c;
+    const uint32_t module = ms_map_get(&c->module_by_path, ms_intern_cstr(c->names, "@std/intrinsics.ms"));
+    if (module == MS_NONE) {
+        return false;
+    }
+    const MsSymId sym = ms_map_get(&c->mods[module].names, ms_intern_cstr(c->names, iface_name));
+    const MsOperations *ops = sym == MS_NONE ? NULL : ms_interface_operations(b->methods, sym);
+    for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
+        const MsOperation *op = &ops->items[i];
+        if (op->name == name) {
+            *out = (Target){.sig = op->ty, .method = MS_NONE, .mutating = op->decl->mutating, .consuming = op->decl->consuming};
+            return op->nvars == 0;
+        }
+    }
+    return false;
+}
+
+/* An operation of a primitive receiver: its own interface, then the one every value has. */
+static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
+    const char *own = receiver == b->string_ty ? "StringOperations"
+                      : receiver == b->int_ty  ? "IntOperations"
+                      : receiver == b->float_ty ? "FloatOperations"
+                                                : NULL;
+    return (own != NULL && intrinsic_in(b, own, name, out)) || intrinsic_in(b, "ValueOperations", name, out);
+}
+
+static bool body_is_primitive(const MsBody *b, MsTy ty) {
+    return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
+}
+
 static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig) {
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != e->u.call.args.len) {
@@ -72,37 +105,45 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig) {
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty;
 }
 
-/* The receiver's type and whether it is a mutable place: a binding declared `var`. Any other
- * receiver expression is a temporary, which a mutating method cannot change. */
-static MsTy receiver_type(MsBody *b, const MsExpr *receiver, bool *mutable_place) {
-    *mutable_place = false;
-    if (receiver->kind != MS_E_NAME) {
-        return ms_body_expr(b, receiver, MS_TY_NONE);
+/* `receiver.name(args)` on a primitive receiver of any shape (a local, a literal, another call):
+ * an intrinsic operation that borrows its receiver, recorded as a call through the interface
+ * `call_interface` names. */
+static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
+    const MsExpr *callee = e->u.call.callee;
+    Target target;
+    // A String result may be a view of the receiver (`view`), which the ownership walk does not follow yet.
+    if (!intrinsic_operation(b, receiver_ty, callee->u.member.name, &target) || target.consuming || target.mutating ||
+        b->c->tys.result[target.sig] == b->string_ty || !arguments_fit(b, e, target.sig)) {
+        return ms_body_unsupported(b);
     }
-    const uint32_t binding = ms_body_find_binding(b, receiver->u.sym);
-    if (binding == MS_NONE) {
-        return MS_TY_NONE;
-    }
-    *mutable_place = (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) != 0;
-    return ms_body_expr(b, receiver, b->facts->bindings.ty[binding]);
+    b->facts->call_interface[e->id] = receiver_ty;
+    b->facts->call_receiver[e->id] = receiver_ty;
+    return b->c->tys.result[target.sig];
 }
 
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
+    const MsExpr *receiver = callee->u.member.left;
     if (b->methods == NULL || e->u.call.args.len > 16) {
         return ms_body_unsupported(b);
     }
-    bool mutable_place = false;
-    const MsTy receiver_ty = receiver_type(b, callee->u.member.left, &mutable_place);
-    if (receiver_ty == MS_TY_NONE) {
+    const uint32_t binding = receiver->kind == MS_E_NAME ? ms_body_find_binding(b, receiver->u.sym) : MS_NONE;
+    if (receiver->kind == MS_E_NAME && binding == MS_NONE) {
         return ms_body_unsupported(b);
     }
+    const MsTy local_ty = binding == MS_NONE ? MS_TY_NONE : b->facts->bindings.ty[binding];
+    Target row;
+    if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, &row))) {
+        const MsTy receiver_ty = ms_body_expr(b, receiver, MS_TY_NONE);
+        return body_is_primitive(b, receiver_ty) ? body_intrinsic_call(b, e, receiver_ty) : ms_body_unsupported(b);
+    }
+    const MsTy receiver_ty = local_ty;
     Target target;
     const bool resolved = ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT
                               ? operation_of(b, receiver_ty, callee->u.member.name, &target)
                               : method_row(b, receiver_ty, callee->u.member.name, &target);
-    if (!resolved || target.consuming || (target.mutating && !mutable_place) ||
-        !arguments_fit(b, e, target.sig)) {
+    if (!resolved || target.consuming || (target.mutating && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) ||
+        ms_body_expr(b, receiver, receiver_ty) == MS_TY_NONE || !arguments_fit(b, e, target.sig)) {
         return ms_body_unsupported(b);
     }
     if (target.method == MS_NONE) {

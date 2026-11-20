@@ -28,10 +28,3 @@ fn var Acc.bump(by: Int) Int:
 
 fn bump_borrowed(acc: Acc) Int:
 	return acc.bump(1)
-
-fn make_square(n: Int) Square:
-	return Square(side: n)
-
-// A receiver that is a call result is a temporary: borrowed by a method that only reads.
-fn chained(n: Int) Int:
-	return make_square(n).area() + make_square(n).scaled(2)

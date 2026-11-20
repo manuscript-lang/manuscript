@@ -184,6 +184,8 @@ void msrt_string_chars(const MsStr *s, MsVec *out);
 void msrt_string_lines(const MsStr *s, MsVec *out);
 /* ms-sig: msrt_string_fields(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_fields(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_quote(s: *const StrVal, out: *mut StrVal) @domain=string @leaf */
+void msrt_string_quote(const MsStr *s, MsStr *out);
 /* ms-sig: msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 @domain=string @leaf */
 uint8_t msrt_string_parse_float(const MsStr *s, double *out);
 /* ms-sig: msrt_string_scalar_at(s: *const StrVal, offset: i64, has_default: HasRaw, default: i64) -> i64 @domain=string @leaf @pure */

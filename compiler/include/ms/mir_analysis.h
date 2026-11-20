@@ -131,4 +131,8 @@ uint32_t mir_entry_insert_at(const MirFunc *f);
 /* Removes the instructions at the (ascending) positions in `dead`. */
 void mir_block_remove(MirBlockData *block, const uint32_t *dead, uint32_t ndead);
 
+/* The values an integer of type `from` can take in the sized integer type `to`, for `inarrow.opt`:
+ * its range, clamped to what a signed 64-bit register holds, and from zero up for a UInt64 source. */
+void mir_narrow_range(const MirModule *m, MirTy from, MirTy to, int64_t *lo, int64_t *hi);
+
 #endif

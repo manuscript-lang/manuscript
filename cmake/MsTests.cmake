@@ -51,6 +51,8 @@ file(GLOB _std_sources CONFIGURE_DEPENDS "${_rt}/std/*.c")
 # The JSON natives call the real maps, lists and number formatting of runtime/core, which the std tests fake.
 file(GLOB _json_sources CONFIGURE_DEPENDS "${_rt}/std/json_*.c")
 list(REMOVE_ITEM _std_sources ${_json_sources})
+# The blocking pool needs a scheduler to park on; the std tests stub it (tests/std_support).
+list(REMOVE_ITEM _std_sources "${_rt}/std/pool.c")
 file(GLOB _std_support CONFIGURE_DEPENDS "${_tests}/std_support/*.c")
 file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
 

@@ -299,9 +299,14 @@ static void dump_stmts(MsBuf *out, const MsCheck *c, const MsFacts *facts, const
             dump_stmts(out, c, facts, &s->u.loop.body);
             break;
         case MS_S_ASSIGN: dump_expr(out, c, facts, s->u.assign.value); break;
+        case MS_S_FOR: // the range call itself is untyped; its bounds are
+            for (uint32_t i = 0; i < s->u.each.iter->u.call.args.len; i++) {
+                dump_expr(out, c, facts, s->u.each.iter->u.call.args.ptr[i].value);
+            }
+            dump_stmts(out, c, facts, &s->u.each.body);
+            break;
         case MS_S_BREAK:
-        case MS_S_CONTINUE:
-        case MS_S_FOR: break;
+        case MS_S_CONTINUE: break;
         }
     }
 }
