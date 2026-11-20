@@ -16,26 +16,12 @@
 #include <openssl/x509.h>
 
 #include "abi.h"
+#include "crypto_md.h"
 #include "ms_rt/crypto.h"
 
 typedef enum { K_NONE, K_P256, K_P384, K_P521, K_X25519, K_ED25519, K_RSA } MsKeyKind;
 
 static const uint8_t *bytes_of(const MsVec *v) { return v->ptr ? v->ptr : (const uint8_t *)""; }
-
-static const EVP_MD *md_of(int64_t index) {
-    switch (index) {
-    case 0: return EVP_md5();
-    case 1: return EVP_sha1();
-    case 2: return EVP_sha224();
-    case 3: return EVP_sha256();
-    case 4: return EVP_sha384();
-    case 5: return EVP_sha512();
-    case 6: return EVP_sha3_256();
-    case 7: return EVP_sha3_384();
-    case 8: return EVP_sha3_512();
-    default: return NULL;
-    }
-}
 
 static int digest_of(const EVP_MD *md, const MsVec *data, uint8_t *out, unsigned *n) {
     return EVP_Digest(bytes_of(data), data->len, out, n, md, NULL);

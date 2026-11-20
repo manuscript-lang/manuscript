@@ -161,6 +161,31 @@ static LbVal lst_get_or(Lb *lb, MirValue list, const MsExpr *index_expr, const M
     return (LbVal){result, false};
 }
 
+/* `xs.append(value)` on a `var` list this function owns: the push yields the updated list, which the variable
+ * holds from then on. */
+static LbVal lst_append(Lb *lb, const MsExpr *e) {
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    if (receiver->kind != MS_E_NAME || lb->facts->res_kind[receiver->id] != MS_RES_BINDING) {
+        return lb_unsupported(lb);
+    }
+    const uint32_t binding = lb->facts->res_ref[receiver->id];
+    if (lb->var_of[binding] == MIR_NONE || !lb_var_owned(lb, binding)) {
+        return lb_unsupported(lb);
+    }
+    const MirValue list = mir_b_use_var(&lb->b, lb->var_of[binding]);
+    const MirTy list_ty = mir_b_ty(&lb->b, list);
+    const MirTy element = lb_is_list(lb, list_ty) ? mir_ty_data(lb->m, list_ty)->elem : MIR_NONE;
+    const LbVal value = lb_expr(lb, e->u.call.args.ptr[0].value);
+    if (!lb->ok || element == MIR_NONE || value.owned || mir_b_ty(&lb->b, value.v) != element) {
+        return lb_unsupported(lb);
+    }
+    (void)mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = element}, MIR_PTR);
+    const MirValue args[2] = {list, value.v};
+    const MirValue pushed = mir_b_emit(&lb->b, MOP_ListPush, args, 2, (MirImm){0}, list_ty);
+    mir_b_def_var(&lb->b, lb->var_of[binding], pushed);
+    return (LbVal){mir_b_unit(&lb->b), false};
+}
+
 /* The natives of a list that read it: `length`, `is_empty`, `get` and `get_or`. The receiver is
  * borrowed; a temporary receiver is dropped after the read (the element needs no drop). Any other
  * method, and a receiver that is not a list, is left to the Rust lowering. */
@@ -168,9 +193,17 @@ LbVal lst_method(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
     const MsStr name = ms_name(lb->c->names, callee->u.member.name);
     const uint32_t count = e->u.call.args.len;
-    const bool known = (lst_is(name, "length") || lst_is(name, "is_empty")) ? count == 0
-                       : lst_is(name, "get") ? count == 1
-                       : lst_is(name, "get_or") && count == 2;
+    if (lst_is(name, "append") && count == 1) {
+        return lst_append(lb, e);
+    }
+    bool known = false;
+    if (lst_is(name, "length") || lst_is(name, "is_empty")) {
+        known = count == 0;
+    } else if (lst_is(name, "get")) {
+        known = count == 1;
+    } else if (lst_is(name, "get_or")) {
+        known = count == 2;
+    }
     if (!known || !lb_is_list(lb, lb_mir_ty(lb, lb->facts->call_receiver[e->id]))) {
         return lb_unsupported(lb);
     }

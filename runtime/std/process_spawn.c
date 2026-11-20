@@ -719,7 +719,7 @@ static uint8_t command_finish(MsFsFail *fail, const MsStr *program, const MsStr 
     }
     free(directory);
     if (!missing_directory) {
-        return ms_fs_finish_at(fail, ms_fs_string_bytes(program), err);
+        return ms_fs_finish_at(fail, msrt_str_bytes(program), err);
     }
     const char prefix[] = "working directory ";
     const size_t length = msrt_str_len(cwd);
