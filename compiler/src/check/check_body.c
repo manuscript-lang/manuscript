@@ -35,6 +35,10 @@ static bool body_is_value_type(const MsBody *b, MsTy ty) {
     return ty != MS_TY_NONE && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ty == b->string_ty);
 }
 
+bool ms_body_is_primitive_value(const MsBody *b, MsTy ty) {
+    return body_is_value_type(b, ty);
+}
+
 /* A `type`, `enum` or interface without type parameters. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
@@ -108,11 +112,40 @@ static bool body_is_optional(const MsBody *b, MsTy ty) {
 
 /* What a parameter or a local can hold. */
 static bool body_is_bindable(const MsBody *b, MsTy ty) {
-    return body_is_admitted(b, ty) || body_is_optional(b, ty) || body_is_result(b, ty);
+    return ty == b->invalid_ty || body_is_admitted(b, ty) || body_is_optional(b, ty) || body_is_result(b, ty);
 }
 
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
     return ty == b->int_ty || ty == b->float_ty;
+}
+
+/* Whether the type is `<invalid>` or built from it, as `Result[Int, <invalid>]`: an earlier
+ * diagnostic is why, so nothing built on it reports. */
+static bool body_has_invalid(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    if (ty == b->invalid_ty) {
+        return true;
+    }
+    for (uint32_t i = 0; ty != MS_TY_NONE && i < tys->nargs[ty]; i++) {
+        if (body_has_invalid(b, ms_ty_args(tys, ty)[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* A type that is only ever the same as itself: a primitive, or a type or enum, never an interface
+ * (a value converts to it), an Optional or a Result (which a plain value converts to), and the
+ * Promise and Error types, which have hints of their own. */
+static bool body_is_comparable(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    if (body_is_value_type(b, ty)) {
+        return true;
+    }
+    const MsKind kind = ms_ty_kind(tys, ty);
+    return body_is_admitted(b, ty) && (kind == MS_K_TYPE || kind == MS_K_ALTERNATIVE) &&
+           !ms_ty_is(tys, ty, MS_BI_OPTIONAL) && !ms_ty_is(tys, ty, MS_BI_RESULT) &&
+           !ms_ty_is(tys, ty, MS_BI_PROMISE) && !ms_ty_is(tys, ty, MS_BI_ERROR);
 }
 
 /* Gives up on the function; the caller returns `<invalid>` (MS_TY_NONE) up the tree. */
@@ -382,6 +415,13 @@ static const char *body_unknown_advice(MsBody *b, MsStr name) {
 /* Whether some type the module can name has an enum case called `name`: such a name is a
  * constructor, not an unknown. */
 static bool body_is_case_name(const MsBody *b, MsSym name) {
+    // The cases of `Result` and `Optional` are built in: the tables do not carry them.
+    static const char *const builtin_cases[] = {"ok", "error", "some", "none"};
+    for (size_t i = 0; i < MS_COUNT_OF(builtin_cases); i++) {
+        if (body_text_is(b, name, builtin_cases[i])) {
+            return true;
+        }
+    }
     const MsNameMap *names = &b->c->mods[b->module].names;
     for (uint32_t i = 0; i < names->cap; i++) {
         const uint32_t sym = names->vals[i];
@@ -483,6 +523,42 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     return record;
 }
 
+/* The positional arguments of a call, each bound to the next parameter and checked against it with
+ * the context "argument 'NAME' of CALLEE". An argument past the last parameter is reported and
+ * checked with no expectation. False when something here is left to the Rust checker (labels,
+ * missing arguments, parameters of other kinds); the caller returns the unsupported mark. */
+static bool body_arguments(MsBody *b, const MsExpr *call, uint32_t nparams, const MsTyParam *params, MsStr callee) {
+    const uint32_t nargs = call->u.call.args.len;
+    if (nargs < nparams) {
+        return false;
+    }
+    for (uint32_t i = 0; i < nargs; i++) {
+        const MsArg *arg = &call->u.call.args.ptr[i];
+        if (arg->has_name) {
+            return false;
+        }
+        if (i >= nparams) {
+            body_report(b, arg->pos, ms_arena_fmt(&b->c->arena, "too many positional arguments; every parameter is already supplied, so remove this argument"));
+            if (ms_body_expr(b, arg->value, MS_TY_NONE) == MS_TY_NONE) {
+                return false;
+            }
+            continue;
+        }
+        const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
+        if ((params[i].flags & MS_PARAM_POSITIONAL) != 0 ||
+            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)))) {
+            return false;
+        }
+        const MsStr name = ms_name(b->c->names, params[i].name);
+        b->context = ms_arena_fmt(&b->c->arena, "argument '%.*s' of %.*s", (int)name.len, name.ptr, (int)callee.len,
+                                  callee.ptr).ptr;
+        if (ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static MsTy body_call(MsBody *b, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
@@ -495,33 +571,36 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     if (callee->kind != MS_E_NAME) {
         return ms_body_unsupported(b);
     }
+    if (body_is_unknown(b, callee->u.sym)) {
+        // The arguments of a call to nothing are not checked.
+        return body_unknown_name(b, callee);
+    }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
     const MsSyms *syms = &b->c->syms;
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
         return body_construct(b, e, sym);
     }
-    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
-        syms->decl[sym] == NULL || syms->nvars[sym] != 0 || syms->decl[sym]->kind != MS_D_FN ||
+    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
+        syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||
         syms->decl[sym]->u.fn.external) {
         return ms_body_unsupported(b);
     }
+    if (syms->nvars[sym] != 0) {
+        return ms_body_generic_call(b, e, sym);
+    }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
-    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != e->u.call.args.len) {
+    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION) {
         return ms_body_unsupported(b);
     }
-    const MsTyParam *params = ms_ty_params(tys, sig);
-    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
-        const MsArg *arg = &e->u.call.args.ptr[i];
-        const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
-        if (arg->has_name || (params[i].flags & MS_PARAM_POSITIONAL) != 0 ||
-            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty))) ||
-            ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
-            return ms_body_unsupported(b);
-        }
+    if (!body_arguments(b, e, tys->nparams[sig], ms_ty_params(tys, sig), ms_name(b->c->names, callee->u.sym))) {
+        return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
+    if (body_has_invalid(b, result)) {
+        return b->invalid_ty;
+    }
     return body_is_bindable(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
 }
 
@@ -759,10 +838,13 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
         (void)ms_body_record(b, e->id, ty);
         return expected != MS_TY_NONE ? expected : ty;
     }
+    if (expected == b->invalid_ty) {
+        return ms_body_record(b, e->id, ty); // what was asked for is already reported
+    }
     if (expected != MS_TY_NONE && ty != expected) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
-        if (context == NULL || !body_is_value_type(b, ty) || !body_is_value_type(b, expected)) {
+        if (context == NULL || !body_is_comparable(b, ty) || !body_is_comparable(b, expected)) {
             return ms_body_unsupported(b);
         }
         body_report_mismatch(b, e, ty, expected, context);
@@ -1177,8 +1259,26 @@ static void body_expose(MsBody *b, MsTy ty, MsPos pos, BodySeen *seen) {
     }
 }
 
+/* The fixture factory of a module with tests has a declaration check of its own (it must return
+ * a type that implements the test hooks), which this pass does not make. */
+static bool body_is_test_fixture(const MsBody *b, const MsFunc *fn) {
+    if (!body_text_is(b, fn->name, "make_fixture")) {
+        return false;
+    }
+    const MsModule *syntax = b->c->mods[b->module].syntax;
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        if (syntax->decls[i]->kind == MS_D_TEST) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     const MsFunc *fn = &d->u.fn;
+    if (body_is_test_fixture(b, fn)) {
+        return;
+    }
     const MsTy sig = b->c->syms.ty[sym];
     if (fn->external || b->c->syms.nvars[sym] != 0 || !body_signature_supported(b, fn, sig)) {
         return;
@@ -1348,8 +1448,8 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
     }
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
-    // A module with a declaration-level diagnostic may have signatures the bodies would restate.
-    if (facts->body_checked != NULL || row->ndiags != 0) {
+    // A module that already ran its bodies keeps its facts.
+    if (facts->body_checked != NULL) {
         return;
     }
     MsBody b = {.c = c,

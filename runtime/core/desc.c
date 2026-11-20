@@ -273,3 +273,9 @@ uint8_t msrt_slot_eq(const MsTypeDesc *d, const uint8_t *a, const uint8_t *b) { 
 int64_t msrt_slot_hash(const MsTypeDesc *d, const uint8_t *slot) { return (int64_t)ms_slot_hash(d, slot); }
 
 int64_t msrt_hash_combine(int64_t a, int64_t b) { return (int64_t)ms_hash_combine((uint64_t)a, (uint64_t)b); }
+
+/* The hash of an Int a generated struct or tuple hash folds in: the word is offset, then avalanched. */
+int64_t msrt_hash_int(int64_t v) { return (int64_t)ms_hash_mix((uint64_t)v ^ UINT64_C(0x9e3779b9)); }
+
+/* The hash of `length` bytes at `bytes`, the one a String key has (runtime/core/str_key.h). */
+int64_t msrt_hash_bytes(const uint8_t *p, size_t len) { return (int64_t)ms_hash_bytes(p, len); }

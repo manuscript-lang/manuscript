@@ -144,8 +144,8 @@ typedef struct Cross {
 static _Atomic int cross_started;
 
 static void use_foreign_promises(Cross *work) {
-    atomic_store(&cross_started, 1);
     expect(!ms_promise_done(work->dep), "foreign done: still pending");
+    atomic_store(&cross_started, 1);
     expect(ms_promise_wait(work->dep, -1) == MS_PROMISE_OK, "foreign wait: ok");
     int64_t value = 0;
     expect(ms_promise_take(work->dep, &msrt_desc_int, (uint8_t *)&value), "foreign take");
