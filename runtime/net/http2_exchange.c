@@ -100,26 +100,12 @@ static int body_read(MsHttpBody *handle, MsBytesMut out, int64_t deadline_ns, si
 static void body_close(MsHttpBody *handle) {
     MsHttp2Body *x = (MsHttp2Body *)handle;
     ms_h2conn_release(x->h2, x->stream, x->finished ? 0 : H2_CANCEL);
-    (void)ms_conn_close_io(x->table, x->id);
-    ms_h2conn_free(x->h2);
     free(x->head_bytes);
     free(x->fields);
     free(x);
 }
 
 /* ---- the request ---- */
-
-/* HTTP/2 forbids these; a request that names one is refused rather than rewritten. */
-static bool field_refused(MsBytes name) {
-    static const char *const refused[] = {"host", "content-length", "transfer-encoding", "connection", "keep-alive",
-                                          "proxy-connection", "upgrade"};
-    for (size_t i = 0; i < sizeof refused / sizeof refused[0]; i++) {
-        if (ms_ascii_equal_fold(name, ms_bytes_of((const uint8_t *)refused[i], strlen(refused[i])))) {
-            return true;
-        }
-    }
-    return false;
-}
 
 /* The header block: four pseudo-headers, the caller's fields with lower-case names, then content-length. Names are
  * lowered into `names`, which the block's entries point into. Returns false when a field is refused. */
@@ -133,7 +119,7 @@ static bool build_block(const MsHttpRequest *request, bool secure, MsH2Nv *block
     for (uint32_t i = 0; i < request->nfields; i++) {
         const MsH1Field *f = &request->fields[i];
         const MsBytes name = ms_bytes_of(request->head.ptr + f->name.off, f->name.len);
-        if (field_refused(name)) {
+        if (ms_http_field_refused(name, true)) {
             return false;
         }
         for (size_t k = 0; k < name.len; k++) {
@@ -214,7 +200,7 @@ static MsNetStatus await_head(MsHttp2Body *x, int64_t deadline_ns) {
     }
 }
 
-MsNetStatus ms_http2_exchange(MsConnTable *table, MsConnId id, const MsHttpRequest *request, int64_t deadline_ns,
+MsNetStatus ms_http2_exchange(MsConnTable *table, MsConnId id, MsH2Conn *session, const MsHttpRequest *request, int64_t deadline_ns,
                               MsHttpResponse *response, MsHttpBody **body_out) {
     size_t name_bytes = 0;
     for (uint32_t i = 0; i < request->nfields; i++) {
@@ -233,10 +219,7 @@ MsNetStatus ms_http2_exchange(MsConnTable *table, MsConnId id, const MsHttpReque
     x->base.close = body_close;
     x->table = table;
     x->id = id;
-    x->h2 = ms_h2conn_new(0, NULL);
-    if (x->h2 == NULL) {
-        goto fail;
-    }
+    x->h2 = session;
     x->stream = ms_h2conn_open(x->h2, block, count, request->body.len > 0);
     if (x->stream < 0) {
         goto fail;
@@ -263,8 +246,8 @@ fail:
     free(block);
     free(names);
     if (x != NULL) {
-        if (x->h2 != NULL) {
-            ms_h2conn_free(x->h2);
+        if (x->stream > 0) {
+            ms_h2conn_release(x->h2, x->stream, H2_CANCEL);
         }
         free(x->head_bytes);
         free(x->fields);
