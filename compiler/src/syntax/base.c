@@ -70,6 +70,22 @@ void ms_arena_free(MsArena *a) {
     a->cur = a->end = NULL;
 }
 
+void ms_arena_reset(MsArena *a) {
+    MsChunk *keep = a->head;
+    if (keep == NULL) {
+        return;
+    }
+    MsChunk *c = keep->next;
+    while (c != NULL) {
+        MsChunk *next = c->next;
+        free(c);
+        c = next;
+    }
+    keep->next = NULL;
+    a->cur = (char *)(keep + 1);
+    a->end = a->cur + keep->size;
+}
+
 uint32_t ms_capacity_for(uint32_t current, uint32_t needed) {
     uint32_t capacity = current != 0 ? current : 64;
     while (capacity < needed) {

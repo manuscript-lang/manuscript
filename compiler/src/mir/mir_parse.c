@@ -229,7 +229,11 @@ static MpTok mpa_lex_string(MpLexer *lx) {
 static MpTok mpa_lex_name(MpLexer *lx) {
     char sigil = lx->text[lx->position++];
     size_t start = lx->position;
-    while (mpa_lex_more(lx) && mpa_ident_char((unsigned char)lx->text[lx->position])) {
+    /* A vtable is named for its impl and position (`@impl:10:0`): a colon before a digit belongs
+     * to the name; the colon that ends a declaration is followed by a space. */
+    while (mpa_lex_more(lx) &&
+           (mpa_ident_char((unsigned char)lx->text[lx->position]) ||
+            (lx->text[lx->position] == ':' && ms_ascii_is_digit((uint8_t)mpa_lex_at(lx, 1))))) {
         lx->position++;
     }
     if (lx->position == start) {
@@ -290,10 +294,36 @@ static MpTok mpa_lex_number(MpLexer *lx) {
     return (MpTok){.k = MPT_NUM, .s = lx->text + start, .n = (uint32_t)(lx->position - start)};
 }
 
+/* An identifier. A generic type's name is printed with its arguments (`Result[Void, Error]`); a
+ * `[` right after identifier characters starts such a suffix, which belongs to the name up to its
+ * matching `]` (the `[` of a switch or a blob is always set off by a space). The Rust parser does
+ * not read these names. */
 static MpTok mpa_lex_identifier(MpLexer *lx) {
     size_t start = lx->position;
     while (mpa_lex_more(lx) && mpa_ident_char((unsigned char)lx->text[lx->position])) {
         lx->position++;
+    }
+    /* `Result[List[Int], Error].ok.value`: bracketed arguments may be followed by more of the path. */
+    while (lx->position > start && mpa_lex_more(lx) && lx->text[lx->position] == '[') {
+        size_t depth = 0;
+        size_t at = lx->position;
+        bool closed = false;
+        while (at < lx->length && lx->text[at] != '\n') {
+            depth += lx->text[at] == '[';
+            depth -= lx->text[at] == ']';
+            at++;
+            if (depth == 0) {
+                closed = true;
+                break;
+            }
+        }
+        if (!closed) {
+            break;
+        }
+        lx->position = at;
+        while (mpa_lex_more(lx) && mpa_ident_char((unsigned char)lx->text[lx->position])) {
+            lx->position++;
+        }
     }
     return (MpTok){.k = MPT_IDENT, .s = lx->text + start, .n = (uint32_t)(lx->position - start)};
 }

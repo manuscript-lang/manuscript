@@ -59,6 +59,18 @@ void mir_desc_plan(const MirModule *m, MirLayouts *lay, MirTy key, MirDescPlan *
         return; /* plain bits whatever it holds */
     }
     md_plan_shape(m, lay, ty, d, out);
+    /* The scope's own glue, else the unscoped one. */
+    for (int pass = 0; pass < 2 && !out->has_eq_hash; pass++) {
+        const MirTy want = pass == 0 ? key : ty;
+        for (uint32_t i = 0; i < m->ndesc_glue; i++) {
+            if (m->desc_glue[i].ty == want) {
+                out->has_eq_hash = true;
+                out->eq = m->desc_glue[i].eq;
+                out->hash = m->desc_glue[i].hash;
+                break;
+            }
+        }
+    }
     for (uint32_t i = 0; i < 2; i++) {
         if (out->inner[i] != MIR_NONE) {
             out->inner[i] = mir_ty_unscoped(out->inner[i]) | scope << MIR_SCOPE_SHIFT;
@@ -113,7 +125,7 @@ static MirRef md_desc(MdCx *c, MirTy key) {
         md_put_word(bytes, (uint64_t)plan.size | (uint64_t)plan.align << 32);
         md_put_word(bytes + 8, plan.kind);
         s.bytes = bytes;
-        s.relocs = MS_NEW_N(&c->m->arena, MirReloc, 4);
+        s.relocs = MS_NEW_N(&c->m->arena, MirReloc, 6);
         to = (MirRef){.kind = MT_DATA, .index = md_new_sym(c, &s)};
     }
     const MirDescKey entry = {key, to};
@@ -135,6 +147,11 @@ static MirRef md_desc(MdCx *c, MirTy key) {
             md_func_reloc(MIR_DESC_DROP, mir_glue_find(c->glue, MG_SLOT_DROP, plan.slot_glue, 0, 0));
         sym->relocs[sym->nrelocs++] =
             md_func_reloc(MIR_DESC_COPY, mir_glue_find(c->glue, MG_SLOT_COPY, plan.slot_glue, 0, 0));
+    }
+    if (plan.has_eq_hash) {
+        MirDataSym *sym = &d->syms[to.index];
+        sym->relocs[sym->nrelocs++] = md_func_reloc(MIR_DESC_EQ, plan.eq);
+        sym->relocs[sym->nrelocs++] = md_func_reloc(MIR_DESC_HASH, plan.hash);
     }
     return to;
 }
