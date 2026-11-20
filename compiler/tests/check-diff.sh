@@ -22,13 +22,14 @@ effects_oracle=target/release/examples/c_oracle_effects
 desugar_oracle=target/release/examples/c_oracle_desugar
 methods_oracle=target/release/examples/c_oracle_methods
 
-sh compiler/tests/cbuild.sh ms_check_dump types_test ownership_test recursion_test ty_algebra_test infer_test ms_effect_dump effect_graph_gen ms_desugar_dump ms_methods_dump
+sh compiler/tests/cbuild.sh ms_check_dump types_test ownership_test recursion_test ty_algebra_test infer_test implements_test ms_effect_dump effect_graph_gen ms_desugar_dump ms_methods_dump
 bin=target/cmake/test/compiler
 "$bin/ownership_test"
 "$bin/types_test"
 "$bin/recursion_test"
 "$bin/ty_algebra_test"
 "$bin/infer_test"
+"$bin/implements_test"
 
 status=0
 "$oracle" > "$out/tables.rust"

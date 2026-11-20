@@ -86,6 +86,7 @@
 #include "desugar.c"
 #include "methods.c"
 #include "impls.c"
+#include "implements.c"
 #include "dump_methods.c"
 #include "ownership_places.c"
 #include "ownership_bits.c"
