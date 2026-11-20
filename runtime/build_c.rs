@@ -253,6 +253,9 @@ pub fn compile_c_objects(
             .args(["-c", "-O2", "-std=c11", "-fPIC", "-fno-stack-protector"])
             // A null check stays even where an attribute says the pointer is never null.
             .args(["-fno-strict-aliasing", "-fno-delete-null-pointer-checks"])
+            // A fault walks frame pointers to name the program line that called into the runtime, and
+            // the Rust runtime is built with them (.cargo/config.toml), so C frames must keep theirs.
+            .arg("-fno-omit-frame-pointer")
             .args(["-Wall", "-Wextra", "-Werror"])
             .arg("-I")
             .arg(runtime.join("include"))

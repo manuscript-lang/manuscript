@@ -1,13 +1,92 @@
 //! Int and Float formatting and parsing with shortest round-trip output.
 //! ms: domain number
+// The Rust formatting bodies are compiled out of the archive once the C kernels are linked (runtime/core/fmt.c).
+#![cfg_attr(ms_c = "msrt_fmt_float_precision", allow(dead_code, unused_imports))]
 use core::fmt::Write as _;
 use ms_rt_abi::{
     STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
 };
 use std::io::Write;
 
+// The formatting kernels live in runtime/core/fmt.c. `cargo xtask runtime` links them (the symbols are listed in
+// runtime/symbols/fmt.txt) and the helpers below call them; plain `cargo test` keeps the Rust bodies.
+#[cfg(ms_c = "msrt_fmt_u64")]
+unsafe extern "C-unwind" {
+    fn msrt_fmt_u64(value: u64, out: *mut u8, capacity: usize, length: *mut usize) -> bool;
+}
+#[cfg(ms_c = "msrt_fmt_i64")]
+unsafe extern "C-unwind" {
+    fn msrt_fmt_i64(value: i64, out: *mut u8, capacity: usize, length: *mut usize) -> bool;
+}
+#[cfg(ms_c = "msrt_fmt_radix")]
+unsafe extern "C-unwind" {
+    fn msrt_fmt_radix(
+        magnitude: u64,
+        radix: u32,
+        negative: u8,
+        out: *mut u8,
+        capacity: usize,
+        length: *mut usize,
+    ) -> bool;
+}
+#[cfg(ms_c = "msrt_fmt_float")]
+unsafe extern "C-unwind" {
+    fn msrt_fmt_float(value: f64, out: *mut u8, capacity: usize, length: *mut usize) -> bool;
+}
+#[cfg(ms_c = "msrt_fmt_float32")]
+unsafe extern "C-unwind" {
+    fn msrt_fmt_float32(value: f64, out: *mut u8, capacity: usize, length: *mut usize) -> bool;
+}
+#[cfg(ms_c = "msrt_fmt_float_precision")]
+unsafe extern "C-unwind" {
+    fn msrt_fmt_float_precision(
+        value: f64,
+        format: u8,
+        digits: i64,
+        out: *mut u8,
+        capacity: usize,
+        length: *mut usize,
+    ) -> bool;
+}
+
+/// Runs a C formatter over `buffer` and returns the bytes it wrote. Every buffer is at least the capacity the
+/// C header (`MS_FMT_*_CAPACITY`) documents for its argument, so a refusal is a bug in this file.
+#[cfg(any(
+    ms_c = "msrt_fmt_u64",
+    ms_c = "msrt_fmt_i64",
+    ms_c = "msrt_fmt_radix",
+    ms_c = "msrt_fmt_float",
+    ms_c = "msrt_fmt_float32",
+    ms_c = "msrt_fmt_float_precision"
+))]
+fn written(buffer: &mut [u8], call: impl FnOnce(*mut u8, usize, *mut usize) -> bool) -> usize {
+    let mut length = 0;
+    let fits = call(buffer.as_mut_ptr(), buffer.len(), &raw mut length);
+    assert!(
+        fits && length <= buffer.len(),
+        "number formatting buffer too small"
+    );
+    length
+}
+
 /// Formats `v` in decimal into `tmp`, returning the used tail.
 pub fn format_i64(v: i64, tmp: &mut [u8; 20]) -> &[u8] {
+    #[cfg(ms_c = "msrt_fmt_i64")]
+    {
+        // SAFETY: `written` passes the buffer's own pointer and length.
+        let n = written(tmp, |out, capacity, length| unsafe {
+            msrt_fmt_i64(v, out, capacity, length)
+        });
+        return &tmp[..n];
+    }
+    #[cfg(not(ms_c = "msrt_fmt_i64"))]
+    {
+        format_i64_rust(v, tmp)
+    }
+}
+
+#[cfg(not(ms_c = "msrt_fmt_i64"))]
+fn format_i64_rust(v: i64, tmp: &mut [u8; 20]) -> &[u8] {
     const PAIRS: &[u8; 200] = b"0001020304050607080910111213141516171819\
 2021222324252627282930313233343536373839\
 4041424344454647484950515253545556575859\
@@ -45,6 +124,30 @@ pub fn push_i64(out: &mut Vec<u8>, v: i64) {
 
 /// Lowercase radix formatting (`radix` in 2..=36).
 pub fn format_radix(v: i64, radix: u32, out: &mut Vec<u8>) {
+    #[cfg(ms_c = "msrt_fmt_radix")]
+    {
+        let mut tmp = [0u8; 65];
+        // SAFETY: `written` passes the buffer's own pointer and length.
+        let n = written(&mut tmp, |out, capacity, length| unsafe {
+            msrt_fmt_radix(
+                v.unsigned_abs(),
+                radix,
+                u8::from(v < 0),
+                out,
+                capacity,
+                length,
+            )
+        });
+        return out.extend_from_slice(&tmp[..n]);
+    }
+    #[cfg(not(ms_c = "msrt_fmt_radix"))]
+    {
+        format_radix_rust(v, radix, out)
+    }
+}
+
+#[cfg(not(ms_c = "msrt_fmt_radix"))]
+fn format_radix_rust(v: i64, radix: u32, out: &mut Vec<u8>) {
     let mut tmp = [0u8; 65];
     let mut i = tmp.len();
     let mut n = v.unsigned_abs();
@@ -528,6 +631,23 @@ pub fn float_to_string(v: f64) -> Vec<u8> {
 
 /// `Float.to_string` without an allocation.
 pub fn float_text(v: f64) -> FloatText {
+    #[cfg(ms_c = "msrt_fmt_float")]
+    {
+        let mut out = FloatText::new();
+        // SAFETY: `written` passes the buffer's own pointer and length.
+        out.len = written(&mut out.bytes, |bytes, capacity, length| unsafe {
+            msrt_fmt_float(v, bytes, capacity, length)
+        });
+        return out;
+    }
+    #[cfg(not(ms_c = "msrt_fmt_float"))]
+    {
+        float_text_rust(v)
+    }
+}
+
+#[cfg(not(ms_c = "msrt_fmt_float"))]
+fn float_text_rust(v: f64) -> FloatText {
     let mut out = FloatText::new();
     if v.is_nan() {
         out.put(b"NaN");
@@ -549,6 +669,23 @@ pub fn float_text(v: f64) -> FloatText {
 
 /// `Float32.to_string`: the shortest digits that round-trip through binary32.
 pub fn float32_text(v: f64) -> FloatText {
+    #[cfg(ms_c = "msrt_fmt_float32")]
+    {
+        let mut out = FloatText::new();
+        // SAFETY: as in `float_text`.
+        out.len = written(&mut out.bytes, |bytes, capacity, length| unsafe {
+            msrt_fmt_float32(v, bytes, capacity, length)
+        });
+        return out;
+    }
+    #[cfg(not(ms_c = "msrt_fmt_float32"))]
+    {
+        float32_text_rust(v)
+    }
+}
+
+#[cfg(not(ms_c = "msrt_fmt_float32"))]
+fn float32_text_rust(v: f64) -> FloatText {
     let x = v as f32;
     if x.is_nan() || x.is_infinite() || x == 0.0 {
         return float_text(f64::from(x));
@@ -626,6 +763,23 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
     if digits < minimum || digits > 100 {
         return None;
     }
+    #[cfg(ms_c = "msrt_fmt_float_precision")]
+    {
+        let mut buf = [0u8; 160];
+        // SAFETY: `written` passes the buffer's own pointer and length.
+        let n = written(&mut buf, |out, capacity, length| unsafe {
+            msrt_fmt_float_precision(v, format, digits, out, capacity, length)
+        });
+        return Some(buf[..n].to_vec());
+    }
+    #[cfg(not(ms_c = "msrt_fmt_float_precision"))]
+    {
+        float_precision_rust(v, format, digits)
+    }
+}
+
+#[cfg(not(ms_c = "msrt_fmt_float_precision"))]
+fn float_precision_rust(v: f64, format: u8, digits: i64) -> Option<Vec<u8>> {
     let digits = digits as usize;
     if v.is_nan() || v.is_infinite() {
         return Some(float_to_string(v));
@@ -894,6 +1048,22 @@ pub extern "C-unwind" fn msrt_uint_to_float32(v: i64) -> f64 {
 
 /// `UInt64` in decimal digits.
 pub fn format_u64(v: u64, tmp: &mut [u8; 20]) -> &[u8] {
+    #[cfg(ms_c = "msrt_fmt_u64")]
+    {
+        // SAFETY: `written` passes the buffer's own pointer and length.
+        let n = written(tmp, |out, capacity, length| unsafe {
+            msrt_fmt_u64(v, out, capacity, length)
+        });
+        return &tmp[..n];
+    }
+    #[cfg(not(ms_c = "msrt_fmt_u64"))]
+    {
+        format_u64_rust(v, tmp)
+    }
+}
+
+#[cfg(not(ms_c = "msrt_fmt_u64"))]
+fn format_u64_rust(v: u64, tmp: &mut [u8; 20]) -> &[u8] {
     let mut n = v;
     let mut i = tmp.len();
     loop {
@@ -909,6 +1079,23 @@ pub fn format_u64(v: u64, tmp: &mut [u8; 20]) -> &[u8] {
 
 /// `UInt64.to_string_radix`.
 pub fn format_radix_u64(v: u64, radix: u32, out: &mut Vec<u8>) {
+    #[cfg(ms_c = "msrt_fmt_radix")]
+    {
+        let mut tmp = [0u8; 65];
+        // SAFETY: `written` passes the buffer's own pointer and length.
+        let n = written(&mut tmp, |out, capacity, length| unsafe {
+            msrt_fmt_radix(v, radix, 0, out, capacity, length)
+        });
+        return out.extend_from_slice(&tmp[..n]);
+    }
+    #[cfg(not(ms_c = "msrt_fmt_radix"))]
+    {
+        format_radix_u64_rust(v, radix, out)
+    }
+}
+
+#[cfg(not(ms_c = "msrt_fmt_radix"))]
+fn format_radix_u64_rust(v: u64, radix: u32, out: &mut Vec<u8>) {
     let mut tmp = [0u8; 64];
     let mut i = tmp.len();
     let mut n = v;
@@ -922,6 +1109,137 @@ pub fn format_radix_u64(v: u64, radix: u32, out: &mut Vec<u8>) {
         }
     }
     out.extend_from_slice(&tmp[i..]);
+}
+
+// The runtime-internal formatting entry points, defined in C when the archive is built (runtime/core/fmt.c); these
+// Rust definitions keep `cargo test` and the symbol table whole. Each writes into `out[..capacity]` and stores the
+// byte count through `length`, or returns false without writing `length` when the text does not fit.
+
+/// # Safety
+/// `out` is writable for `capacity` bytes and `length` for one `usize`.
+#[cfg(not(all(
+    ms_c = "msrt_fmt_u64",
+    ms_c = "msrt_fmt_i64",
+    ms_c = "msrt_fmt_radix",
+    ms_c = "msrt_fmt_float",
+    ms_c = "msrt_fmt_float32",
+    ms_c = "msrt_fmt_float_precision"
+)))]
+unsafe fn copy_out(text: &[u8], out: *mut u8, capacity: usize, length: *mut usize) -> bool {
+    if text.len() > capacity {
+        return false;
+    }
+    // SAFETY: the text fits `capacity`, and the caller guarantees both pointers.
+    unsafe {
+        core::ptr::copy_nonoverlapping(text.as_ptr(), out, text.len());
+        *length = text.len();
+    }
+    true
+}
+
+/// # Safety
+/// See [`copy_out`].
+#[cfg(not(ms_c = "msrt_fmt_u64"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_fmt_u64(
+    value: u64,
+    out: *mut u8,
+    capacity: usize,
+    length: *mut usize,
+) -> bool {
+    let mut tmp = [0u8; 20];
+    // SAFETY: caller contract.
+    unsafe { copy_out(format_u64(value, &mut tmp), out, capacity, length) }
+}
+
+/// # Safety
+/// See [`copy_out`].
+#[cfg(not(ms_c = "msrt_fmt_i64"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_fmt_i64(
+    value: i64,
+    out: *mut u8,
+    capacity: usize,
+    length: *mut usize,
+) -> bool {
+    let mut tmp = [0u8; 20];
+    // SAFETY: caller contract.
+    unsafe { copy_out(format_i64(value, &mut tmp), out, capacity, length) }
+}
+
+/// # Safety
+/// See [`copy_out`].
+#[cfg(not(ms_c = "msrt_fmt_radix"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_fmt_radix(
+    magnitude: u64,
+    radix: u32,
+    negative: u8,
+    out: *mut u8,
+    capacity: usize,
+    length: *mut usize,
+) -> bool {
+    if !(2..=36).contains(&radix) {
+        return false;
+    }
+    let mut text = Vec::new();
+    if negative != 0 {
+        text.push(b'-');
+    }
+    format_radix_u64(magnitude, radix, &mut text);
+    // SAFETY: caller contract.
+    unsafe { copy_out(&text, out, capacity, length) }
+}
+
+/// # Safety
+/// See [`copy_out`].
+#[cfg(not(ms_c = "msrt_fmt_float"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_fmt_float(
+    value: f64,
+    out: *mut u8,
+    capacity: usize,
+    length: *mut usize,
+) -> bool {
+    // SAFETY: caller contract.
+    unsafe { copy_out(float_text(value).as_slice(), out, capacity, length) }
+}
+
+/// # Safety
+/// See [`copy_out`].
+#[cfg(not(ms_c = "msrt_fmt_float32"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_fmt_float32(
+    value: f64,
+    out: *mut u8,
+    capacity: usize,
+    length: *mut usize,
+) -> bool {
+    // SAFETY: caller contract.
+    unsafe { copy_out(float32_text(value).as_slice(), out, capacity, length) }
+}
+
+/// # Safety
+/// See [`copy_out`].
+#[cfg(not(ms_c = "msrt_fmt_float_precision"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_fmt_float_precision(
+    value: f64,
+    format: u8,
+    digits: i64,
+    out: *mut u8,
+    capacity: usize,
+    length: *mut usize,
+) -> bool {
+    let minimum = i64::from(format == b'g');
+    if !matches!(format, b'e' | b'f' | b'g') {
+        return false;
+    }
+    let Some(text) = float_precision(value, format, digits, minimum) else {
+        return false;
+    };
+    // SAFETY: caller contract.
+    unsafe { copy_out(&text, out, capacity, length) }
 }
 
 #[cfg(test)]

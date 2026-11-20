@@ -298,6 +298,23 @@ fn abi_kind(text: &str) -> String {
         text.split(|c: char| !c.is_alphanumeric() && c != '_')
             .any(|t| t == w)
     };
+    // Role aliases of the runtime ABI (crates/ms-rt-abi): pointers and a presence byte.
+    for alias in [
+        "ElemDesc",
+        "KeyDesc",
+        "ValDesc",
+        "ValueDesc",
+        "CmpFn",
+        "MsCompareFn",
+        "ErrSlot",
+    ] {
+        if word(alias) {
+            return "ptr".into();
+        }
+    }
+    if word("HasRaw") {
+        return "u8".into();
+    }
     for (rust, c) in [
         ("i64", "int64_t"),
         ("u64", "uint64_t"),
