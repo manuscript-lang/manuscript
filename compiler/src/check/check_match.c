@@ -148,5 +148,7 @@ MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
     if (!ok || !covered) {
         return ms_body_unsupported(b);
     }
-    return match_arm_values(b, e, expected);
+    const MsTy result = match_arm_values(b, e, expected);
+    b->match_falls = true;
+    return result;
 }
