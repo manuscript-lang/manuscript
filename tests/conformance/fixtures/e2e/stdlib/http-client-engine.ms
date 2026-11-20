@@ -87,6 +87,11 @@ fn run(base: String) Void!:
 	loopback := restrict([], ["127.0.0.0/8"])?
 	inside := loopback.request(HttpMethod.Get, f"{base}/hello")?
 	show("loopback", f"{inside.head.status}")
+
+	scoped := restrict([], ["127.0.0.0/8"])?
+	pooled := scoped.http_client()?
+	scoped.close()
+	show("closed", kind_of(pooled.request(HttpMethod.Get, f"{base}/hello")))
 	show(
 		"limit",
 		kind_of(

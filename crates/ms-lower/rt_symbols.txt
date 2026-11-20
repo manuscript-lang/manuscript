@@ -840,6 +840,7 @@ msstd_scope_close(handle s: *const ObjCell<ScopeH>) @domain=network
 msstd_scope_new() -> *mut ObjCell<ScopeH> @domain=network @handle
 msstd_scope_open(handle s: *const ObjCell<ScopeH>) -> u8 @domain=network
 msstd_scope_share(handle s: *const ObjCell<ScopeH>) -> *mut ObjCell<ScopeH> @domain=network @handle
+msstd_scope_track_client(handle s: *const ObjCell<ScopeH>, handle client: *const ObjCell<ClientH>) -> u8 @domain=network
 msstd_scope_track_conn(handle s: *const ObjCell<ScopeH>, handle conn: *const ObjCell<ConnH>) -> u8 @domain=network
 msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network
 msstd_scope_track_listener(handle s: *const ObjCell<ScopeH>, handle listener: *const ObjCell<ListenerH>) -> u8 @domain=network

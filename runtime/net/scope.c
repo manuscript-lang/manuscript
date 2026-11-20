@@ -14,7 +14,7 @@ typedef struct Scope Scope;
 
 static void drop_handle(MsObj *object) { object->drop(object); }
 
-typedef enum Kind { KIND_SCOPE, KIND_DGRAM, KIND_CONN, KIND_LISTENER } Kind;
+typedef enum Kind { KIND_SCOPE, KIND_DGRAM, KIND_CONN, KIND_LISTENER, KIND_CLIENT } Kind;
 
 typedef struct Member {
     MsObj *handle;
@@ -79,6 +79,7 @@ static void close_member(const Member *member) {
     case KIND_DGRAM: msstd_dgram_close(member->handle); break;
     case KIND_CONN: ms_netconn_close(member->handle); break;
     case KIND_LISTENER: ms_listener_close(ms_listener_of(member->handle)); break;
+    case KIND_CLIENT: msstd_client_close(member->handle); break;
     }
 }
 
@@ -140,6 +141,10 @@ uint8_t msstd_scope_track_dgram(const void *handle, const void *socket) {
 
 uint8_t msstd_scope_track_conn(const void *handle, const void *connection) {
     return track(handle, ms_netconn_alias(connection), KIND_CONN);
+}
+
+uint8_t msstd_scope_track_client(const void *handle, const void *client) {
+    return track(handle, msstd_client_share(client), KIND_CLIENT);
 }
 
 uint8_t msstd_scope_track_listener(const void *handle, const void *listener) {
