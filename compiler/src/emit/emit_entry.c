@@ -1,4 +1,6 @@
-/* The program entry both emitters share: the module's entry function is renamed `ms_entry`, and a C
+/* The program entry both emitters share: functions get symbols that cannot clash with each other or
+ * with the runtime and libc (a user function may be called `main`, `write` or `cleanup.thunk`), the
+ * entry function is renamed `ms_entry`, and a C
  * `main(argc, argv)` hands it to the runtime (`msrt_start`), which runs it on a task stack. A test
  * that links its own runtime (compiler/tests/backend_rt.c) skips both and calls the entry itself. */
 #include <string.h>
@@ -9,9 +11,16 @@
  * the C entry point takes. */
 #define MIR_ENTRY_SYMBOL "ms_entry"
 
-void mir_name_entry(MirModule *m) {
-    if (m->entry != MIR_NONE) {
-        m->funcs[m->entry].name = mir_name(m, MIR_ENTRY_SYMBOL, strlen(MIR_ENTRY_SYMBOL));
+void mir_name_symbols(MirModule *m) {
+    for (uint32_t i = 0; i < m->nfuncs; i++) {
+        MirFunc *f = &m->funcs[i];
+        if (i == m->entry) {
+            f->name = mir_name(m, MIR_ENTRY_SYMBOL, strlen(MIR_ENTRY_SYMBOL));
+        } else if (f->linkage != ML_EXPORT) {
+            const MsStr base = ms_name(&m->names, f->name);
+            const MsStr unique = ms_arena_fmt(&m->arena, "%.*s.%u", (int)base.len, base.ptr, i);
+            f->name = mir_name(m, unique.ptr, unique.len);
+        }
     }
 }
 

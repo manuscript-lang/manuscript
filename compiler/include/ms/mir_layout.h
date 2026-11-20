@@ -196,20 +196,22 @@ uint32_t mir_field_offset(MirLayouts *layouts, uint32_t type_id, uint32_t field)
 bool mir_type_field_boxed(const MirLayouts *layouts, MirTy field_ty);
 /* The heap block behind a record of an indirect type: `leaves` of its fields in order (as
  * mir_type_block), their byte `offsets`, the index of each field's first leaf in `starts`, and the
- * block `size`. Free with mir_record_block_free. */
+ * block `size`. A map or set field is one pointer word to a header block of MIR_MAP_WORDS words,
+ * null while the collection is empty (`boxed`). Free with mir_record_block_free. */
 typedef struct MirRecordBlock {
     const MirTypeDef *def;
     MirLeafSpan leaves;
     uint32_t *offsets;
     uint32_t *starts;
+    bool *boxed;
     uint32_t size;
 } MirRecordBlock;
 
-/* Fills `out` for the indirect record type `ty`. False when out of memory or when a field is a
- * collection held as a pointer to a header (`*boxed_field` then says so), which the emitters do not
- * write yet. */
-bool mir_record_block(MirLayouts *layouts, MirTy ty, MirRecordBlock *out, bool *boxed_field);
+/* Fills `out` for the indirect record type declaration `type_id`; false when out of memory. */
+bool mir_record_block(MirLayouts *layouts, uint32_t type_id, MirRecordBlock *out);
 void mir_record_block_free(MirRecordBlock *block);
+/* Whether `ty` is a map or set. */
+bool mir_ty_is_map_or_set(const MirModule *module, MirTy ty);
 
 /* The size of the heap block of the boxed alternative `ty`; false for any other type. */
 bool mir_boxed_block_size(MirLayouts *layouts, MirTy ty, uint32_t *size);
@@ -222,6 +224,10 @@ const bool *mir_bool_leaves(MirLayouts *layouts, MirTy ty);
 
 /* Whether `inner?` is a nullable pointer. */
 bool mir_opt_is_nullable(MirLayouts *layouts, MirTy inner);
+/* Whether the optional `opt` is held as a presence flag followed by its payload leaves. Not so for
+ * a nullable pointer, for a boxed payload (a pointer) or for a string, whose none is the null
+ * pointer with the static tag. */
+bool mir_opt_has_flag(MirLayouts *layouts, MirTy opt);
 /* Whether values of `ty` have the string layout: `String`, and `String?`. */
 bool mir_is_str_like(const MirLayouts *layouts, MirTy ty);
 
