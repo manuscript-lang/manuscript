@@ -2,15 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct ms_conn_table {
-    ms_conn *rows;
+struct MsConnTable {
+    MsConn *rows;
     uint32_t cap, next_free, live; /* next_free == cap: none left */
     uint32_t used;                 /* rows ever handed out; rows past it are untouched */
 };
 
-ms_conn_table *ms_conn_table_new(uint32_t cap) {
+MsConnTable *ms_conn_table_new(uint32_t cap) {
     if (cap == 0 || cap == UINT32_MAX) return NULL;
-    ms_conn_table *t = calloc(1, sizeof *t);
+    MsConnTable *t = calloc(1, sizeof *t);
     if (!t) return NULL;
     t->rows = calloc(cap, sizeof *t->rows);
     if (!t->rows) { free(t); return NULL; }
@@ -18,25 +18,25 @@ ms_conn_table *ms_conn_table_new(uint32_t cap) {
     return t;
 }
 
-static void release(ms_conn *c) {
+static void release(MsConn *c) {
     free(c->stash); free(c->wpend);
     c->stash = c->wpend = NULL;
     c->stash_len = c->wlen = c->wcap = 0;
 }
 
-void ms_conn_table_free(ms_conn_table *t) {
+void ms_conn_table_free(MsConnTable *t) {
     if (!t) return;
     for (uint32_t i = 0; i < t->used; i++) release(&t->rows[i]);
     free(t->rows);
     free(t);
 }
 
-ms_conn_id ms_conn_open(ms_conn_table *t, int fd, uint8_t proto) {
+MsConnId ms_conn_open(MsConnTable *t, int fd, uint8_t proto) {
     uint32_t i;
     if (t->next_free != t->cap) { i = t->next_free; t->next_free = t->rows[i].timer; }
     else if (t->used < t->cap) i = t->used++;
     else return 0;
-    ms_conn *c = &t->rows[i];
+    MsConn *c = &t->rows[i];
     uint32_t gen = c->gen ? c->gen : 1;
     memset(c, 0, sizeof *c);
     c->gen = gen; c->fd = fd; c->proto = proto;
@@ -44,15 +44,15 @@ ms_conn_id ms_conn_open(ms_conn_table *t, int fd, uint8_t proto) {
     return (uint64_t)gen << 32 | i;
 }
 
-ms_conn *ms_conn_get(ms_conn_table *t, ms_conn_id id) {
+MsConn *ms_conn_get(MsConnTable *t, MsConnId id) {
     uint32_t i = (uint32_t)id, gen = (uint32_t)(id >> 32);
     if (i >= t->used || gen == 0) return NULL;
-    ms_conn *c = &t->rows[i];
+    MsConn *c = &t->rows[i];
     return c->gen == gen && c->proto != MS_CONN_NONE ? c : NULL;
 }
 
-int ms_conn_close(ms_conn_table *t, ms_conn_id id) {
-    ms_conn *c = ms_conn_get(t, id);
+int ms_conn_close(MsConnTable *t, MsConnId id) {
+    MsConn *c = ms_conn_get(t, id);
     if (!c) return -1;
     release(c);
     uint32_t i = (uint32_t)(c - t->rows), gen = c->gen + 1;
@@ -64,10 +64,10 @@ int ms_conn_close(ms_conn_table *t, ms_conn_id id) {
     return 0;
 }
 
-uint32_t ms_conn_live(const ms_conn_table *t) { return t->live; }
+uint32_t ms_conn_live(const MsConnTable *t) { return t->live; }
 
 /* Appends n bytes to the stash. */
-static int stash_add(ms_conn *c, const uint8_t *buf, size_t n) {
+static int stash_add(MsConn *c, const uint8_t *buf, size_t n) {
     if (n > UINT32_MAX - c->stash_len) return -1;
     uint8_t *p = realloc(c->stash, c->stash_len + n);
     if (!p) return -1;
@@ -76,8 +76,8 @@ static int stash_add(ms_conn *c, const uint8_t *buf, size_t n) {
     return 0;
 }
 
-int ms_conn_h1_feed(ms_conn *c, const uint8_t *buf, size_t n, size_t head_limit, ms_h1_field *fields, uint32_t cap,
-                    ms_h1_request *req, const uint8_t **base, size_t *avail) {
+int ms_conn_h1_feed(MsConn *c, const uint8_t *buf, size_t n, size_t head_limit, MsH1Field *fields, uint32_t cap,
+                    MsH1Request *req, const uint8_t **base, size_t *avail) {
     const uint8_t *data = buf;
     size_t len = n;
     req->fields = fields;
@@ -96,7 +96,7 @@ int ms_conn_h1_feed(ms_conn *c, const uint8_t *buf, size_t n, size_t head_limit,
     return MS_CONN_REQUEST;
 }
 
-size_t ms_conn_request_done(ms_conn *c, const uint8_t *base, size_t avail, size_t consumed) {
+size_t ms_conn_request_done(MsConn *c, const uint8_t *base, size_t avail, size_t consumed) {
     size_t left = consumed < avail ? avail - consumed : 0;
     if (base == c->stash) {
         if (left) memmove(c->stash, c->stash + consumed, left);
