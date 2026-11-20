@@ -351,11 +351,12 @@ export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
 // The hold `hold_stop` returns: closing it, at the end of its scope, lets stop requests
 // apply again.
 export type StopHold:
-	// Whether the hold is still open; `close` clears it, so a second close releases nothing.
+	// Whether the hold is still open; `close` clears it, so a second close releases
+	// nothing.
 	held: Bool = true
 
-// Ends the hold: stop requests apply to the task again, and one that arrived meanwhile applies at its next
-// cancellation point. Idempotent; scope exit calls it.
+// Ends the hold: stop requests apply to the task again, and one that arrived meanwhile
+// applies at its next cancellation point. Idempotent; scope exit calls it.
 fn move StopHold.close() Void!:
 	if self.held:
 		self.held = false
