@@ -75,6 +75,14 @@ fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> Result<bool, String> {
         "cancel_edges" => ms_mir::cancel_edges::run(m),
         "depth" => ms_mir::depth::lower(m),
         "glue" => ms_mir::glue::run(m),
+        "finish" => {
+            ms_mir::unwind::run(m);
+            ms_mir::cancel_edges::run(m);
+            ms_mir::depth::lower(m);
+            ms_mir::expand::run(m, true);
+            ms_mir::glue::run_and_expand(m);
+            true
+        }
         "glue_expand" => {
             ms_mir::glue::run_and_expand(m);
             true
