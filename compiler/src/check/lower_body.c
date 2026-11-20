@@ -992,7 +992,7 @@ static void lb_assign(Lb *lb, const MsStmt *s) {
  * stepped by one after the body or a `continue`. The loop variable is the counter's current value. */
 static void lb_for(Lb *lb, const MsStmt *s) {
     if (lb->facts->each_list[s->id]) {
-        lb->ok = false; // a list loop is not lowered yet
+        lst_for(lb, s);
         return;
     }
     const MsExpr *range = s->u.each.iter;
