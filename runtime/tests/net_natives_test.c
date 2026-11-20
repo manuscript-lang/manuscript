@@ -590,6 +590,41 @@ int main(void) {
     ms_curl_shutdown();
 #undef URL
 
+    /* a listener: accept a client_end connection and move bytes both ways, time out, close */
+    {
+        MsStr any_port = str("127.0.0.1:0");
+        void *socket_listener = NULL;
+        CHECK(msstd_net_listen(&any_port, &socket_listener, &err) == STATUS_OK && socket_listener != NULL);
+        MsStr listen_address;
+        msstd_listener_address(socket_listener, &listen_address);
+        CHECK(msrt_str_len(&listen_address) > 0 && !str_is(&listen_address, "127.0.0.1:0"));
+        void *server_end = NULL;
+        CHECK(msstd_listener_accept(socket_listener, 1, SECOND / 20, &server_end, &err) == STATUS_TIMED_OUT);
+        void *client_end = NULL;
+        MsStr empty_name = str("");
+        CHECK(msstd_net_dial(&listen_address, &empty_name, 0, NULL, 1, 5 * SECOND, &client_end, &err) == STATUS_OK);
+        CHECK(msstd_listener_accept(socket_listener, 1, 5 * SECOND, &server_end, &err) == STATUS_OK && server_end != NULL);
+        MsVec ping_bytes = bytes("ping");
+        MsVec received;
+        CHECK(msstd_conn_write_bytes(client_end, &ping_bytes, 1, 5 * SECOND, &err) == STATUS_OK);
+        CHECK(msstd_conn_read(server_end, 1, 4, 1, 5 * SECOND, &received, &err) == STATUS_OK && received.len == 4 && memcmp(received.ptr, "ping", 4) == 0);
+        MsVec pong_bytes = bytes("pong");
+        CHECK(msstd_conn_write_bytes(server_end, &pong_bytes, 1, 5 * SECOND, &err) == STATUS_OK);
+        CHECK(msstd_conn_read(client_end, 1, 4, 1, 5 * SECOND, &received, &err) == STATUS_OK && received.len == 4 && memcmp(received.ptr, "pong", 4) == 0);
+        msstd_listener_close(socket_listener);
+        CHECK(msstd_listener_accept(socket_listener, 1, SECOND / 20, &server_end, &err) == STATUS_CLOSED);
+        MsStr busy = str("127.0.0.1:1");
+        void *rejected = NULL;
+        CHECK(msstd_net_listen(&busy, &rejected, &err) != STATUS_OK || rejected != NULL);
+        MsStr garbage = str("not an address");
+        CHECK(msstd_net_listen(&garbage, &rejected, &err) == STATUS_INVALID_INPUT);
+        msstd_conn_close(client_end);
+        msstd_conn_close(server_end);
+        ((MsObj *)client_end)->drop(client_end);
+        ((MsObj *)server_end)->drop(server_end);
+        ((MsObj *)socket_listener)->drop(socket_listener);
+    }
+
     ms_tls_ctx_free(context);
     ms_io_close(1);
     fake_rt_free_all();

@@ -241,6 +241,13 @@ pub fn print_module_unique(m: &Module) -> String {
     print_module_with(m, true)
 }
 
+/// As [`print_module`] with every function under its own name, even when two share one: the
+/// pass oracles compare the text of what a pass built against the C pass's, which keeps names
+/// as they are.
+pub fn print_module_raw(m: &Module) -> String {
+    print_module_text(m)
+}
+
 fn print_module_with(m: &Module, unique_decls: bool) -> String {
     RENAMED.with(|r| *r.borrow_mut() = find_renamed(m));
     if unique_decls {

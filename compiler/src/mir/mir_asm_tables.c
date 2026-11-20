@@ -83,11 +83,26 @@ static void at_meta_parse(AtMeta *a, const char *text, size_t len) {
     }
 }
 
-static bool at_is_label(const char *line, size_t n) { return n > 1 && line[n - 1] == ':' && line[0] != '.' && line[0] != '\t' && line[0] != ' '; }
+/* A symbol label at the start of a line, `name:` possibly followed by a comment (LLVM writes `f: # @f`);
+ * returns its length, 0 when the line is not one. Local labels (`.L...`) and directives start with a dot. */
+static size_t at_label_len(const char *line, size_t n) {
+    if (n < 2 || line[0] == '.' || line[0] == '\t' || line[0] == ' ' || line[0] == '#') {
+        return 0;
+    }
+    size_t k = 0;
+    while (k < n && line[k] != ':' && line[k] != ' ' && line[k] != '\t') {
+        k++;
+    }
+    return k < n && k > 0 && line[k] == ':' ? k : 0;
+}
 
 static bool at_ends_function(const char *line, size_t n) {
     static const char *const stops[] = {".size", ".type", ".text", ".data", ".section", ".globl", ".balign",
-                                        ".p2align", ".bss", ".cfi_endproc"};
+                                        ".p2align", ".bss", ".cfi_endproc", ".def", ".seh_endproc"};
+    while (n > 0 && (line[0] == '\t' || line[0] == ' ')) { /* LLVM indents directives, QBE does not */
+        line++;
+        n--;
+    }
     if (n == 0 || line[0] != '.') {
         return false;
     }
@@ -98,6 +113,32 @@ static bool at_ends_function(const char *line, size_t n) {
         }
     }
     return false;
+}
+
+/* The line and scope of a `.loc file line col` (ELF, Mach-O; QBE spaces, LLVM tabs) or `.cv_loc function file
+ * line col` (COFF, LLVM) directive at the start of `text`. The scope is the column, 0 when there is none. */
+static bool at_loc_args(const char *text, size_t n, AtLoc *out) {
+    static const char loc[] = "\t.loc", cv[] = "\t.cv_loc";
+    const bool is_cv = n > sizeof cv && memcmp(text, cv, sizeof cv - 1) == 0;
+    const size_t name = is_cv ? sizeof cv - 1 : sizeof loc - 1;
+    if (!is_cv && !(n > name && memcmp(text, loc, name) == 0)) {
+        return false;
+    }
+    if (text[name] != ' ' && text[name] != '\t') {
+        return false;
+    }
+    char *line_copy = malloc(n + 1); /* strtoul needs a NUL; owned, freed below */
+    memcpy(line_copy, text + name, n - name);
+    line_copy[n - name] = '\0';
+    const char *q = line_copy;
+    (void)at_uint(&q);
+    if (is_cv) {
+        (void)at_uint(&q); /* the file follows the function id */
+    }
+    out->line = at_uint(&q);
+    out->scope = *q == ' ' || *q == '\t' ? at_uint(&q) : 0;
+    free(line_copy);
+    return true;
 }
 
 static AtFunc *at_find(AtFunc **sorted, uint32_t n, MsStr sym) {
@@ -148,6 +189,7 @@ bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, siz
     MsBuf locs = {0};
     const size_t plen = strlen(prefix);
     int cur = -1;
+    AtLoc l;
     const char *p = asm_text, *end = asm_text + asm_len;
     while (p < end) {
         const char *eol = memchr(p, '\n', (size_t)(end - p));
@@ -159,17 +201,15 @@ bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, siz
         }
         ms_buf_put(out, p, n);
         ms_buf_putc(out, '\n');
-        if (at_is_label(p, n) && n - 1 >= plen && memcmp(p, prefix, plen) == 0) {
-            AtFunc *f = at_find(sorted, a.nfuncs, (MsStr){p + plen, (uint32_t)(n - 1 - plen)});
+        const size_t label = at_label_len(p, n);
+        if (label > plen && memcmp(p, prefix, plen) == 0) {
+            AtFunc *f = at_find(sorted, a.nfuncs, (MsStr){p + plen, (uint32_t)(label - plen)});
             if (f != NULL && !f->seen) {
                 f->seen = true;
                 cur = (int)(f - a.funcs);
             }
-        } else if (cur >= 0 && n > 7 && memcmp(p, "\t.loc ", 6) == 0) {
-            const char *q = p + 6;
-            (void)at_uint(&q); /* file */
-            AtLoc l = {.func = (uint32_t)cur, .line = at_uint(&q)};
-            l.scope = *q == ' ' ? (q++, at_uint(&q)) : 0;
+        } else if (cur >= 0 && at_loc_args(p, n, &l)) {
+            l.func = (uint32_t)cur;
             ms_buf_printf(out, ".Lmsl%zu:\n", locs.len / sizeof l);
             ms_buf_put(&locs, &l, sizeof l);
         }
