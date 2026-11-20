@@ -40,6 +40,7 @@ typedef struct OwnWalk {
     uint8_t *class_of;  /* by binding id: MsClass */
     uint32_t *origin;   /* by binding id: what a borrowed binding borrows from, else MS_NONE */
     bool *is_param;     /* by binding id */
+    bool *deferred;     /* by binding id: a part of a parameter that the match or `if` would consume if it moved */
     BorrowSet active;   /* live borrows in push order; a released one has holder MS_NONE */
     uint32_t *pending;  /* holders whose borrows end with the statement */
     uint32_t npending, pending_cap;
@@ -84,6 +85,7 @@ static void own_declare(OwnWalk *w, uint32_t binding, Perm perm, bool parameter)
     w->class_of[binding] = (uint8_t)ms_classify(w->classifier, w->facts->bindings.ty[binding]);
     w->origin[binding] = MS_NONE;
     w->is_param[binding] = parameter;
+    w->deferred[binding] = false;
 }
 
 /* The binding whose storage `binding` names: itself, or what it borrows. */
@@ -159,13 +161,29 @@ static void own_check_change(OwnWalk *w, MsPos pos, uint32_t binding, const char
     }
 }
 
+/* What a borrowed binding is called in a diagnostic (`role_text` in walk.rs). */
+static const char *own_role_text(const OwnWalk *w, uint32_t binding) {
+    switch ((MsBindRole)w->facts->bindings.role[binding]) {
+    case MS_ROLE_ARM: return "a match payload";
+    case MS_ROLE_LOOP: return "a loop variable";
+    case MS_ROLE_PATTERN: return "a pattern variable";
+    case MS_ROLE_PARAM:
+    case MS_ROLE_SELF:
+    case MS_ROLE_LET:
+    case MS_ROLE_VAR:
+    case MS_ROLE_LAMBDA_PARAM: break;
+    }
+    return "a borrow";
+}
+
 static void own_error_borrowed_move(OwnWalk *w, const MsExpr *e, uint32_t binding) {
     const MsStr name = own_name(w, binding);
     own_error(w, e->pos,
               ms_arena_fmt(&w->check->arena,
-                           "cannot move `%.*s` out: it is borrowed, not owned (a borrow); this position keeps its "
+                           "cannot move `%.*s` out: it is borrowed, not owned (%s); this position keeps its "
                            "own copy, so write `%.*s.clone()`; to avoid the copy, use `%.*s` only where it is read",
-                           (int)name.len, name.ptr, (int)name.len, name.ptr, (int)name.len, name.ptr));
+                           (int)name.len, name.ptr, own_role_text(w, binding), (int)name.len, name.ptr, (int)name.len,
+                           name.ptr));
 }
 
 static void own_error_used_again(OwnWalk *w, const MsExpr *e, uint32_t binding) {
@@ -193,6 +211,10 @@ static void own_record(OwnWalk *w, const MsExpr *e, uint32_t binding) {
 }
 
 static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
+    if (w->perm[binding] == PERM_BORROWED && w->deferred[binding]) {
+        w->supported = false; /* moving a part out would make the scrutinee consume its parameter */
+        return;
+    }
     if (w->perm[binding] == PERM_BORROWED) {
         own_error_borrowed_move(w, e, binding);
     } else if (!own_is_last(w, e)) {
@@ -243,7 +265,7 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     case MS_E_LIST:
     case MS_E_MAP:
     case MS_E_LAMBDA:
-    case MS_E_CALL:
+    case MS_E_CALL: w->supported = false; return;
     case MS_E_MATCH: own_match(w, e, demand, false); return;
     }
 }
@@ -394,6 +416,58 @@ static void own_block(OwnWalk *w, const MsStmts *body) {
     own_block_value(w, body, NULL, DEMAND_READ, false);
 }
 
+/* ---- matched values and their parts ---- */
+
+/* What a matched value is: owned (moved in, so its parts are too) or a place read in place, whose
+ * parts borrow from `origin`. `deferred` marks a parameter that moving a part would consume. */
+typedef struct Scrutinee {
+    bool owned;
+    uint32_t origin;
+    bool deferred;
+} Scrutinee;
+
+static Scrutinee own_scrutinee(OwnWalk *w, const MsExpr *e) {
+    const bool name = e->kind == MS_E_NAME && w->facts->res_kind[e->id] == MS_RES_BINDING;
+    if (!name) {
+        own_expr(w, e, DEMAND_MOVE);
+        return (Scrutinee){true, MS_NONE, false};
+    }
+    const uint32_t binding = w->facts->res_ref[e->id];
+    const bool last_use = w->class_of[binding] != MS_CLASS_COPY && own_is_last(w, e);
+    const bool owned_local = w->perm[binding] != PERM_BORROWED && !w->is_param[binding];
+    if (last_use && owned_local) {
+        own_expr(w, e, DEMAND_MOVE);
+        return (Scrutinee){true, MS_NONE, false};
+    }
+    const bool consumable = last_use && w->perm[binding] == PERM_IMMUTABLE && w->is_param[binding];
+    own_expr(w, e, DEMAND_READ);
+    return (Scrutinee){false, own_resolve(w, binding), consumable};
+}
+
+/* A part of the matched value: a copy or an owned part is a binding of its own, any other part
+ * borrows from the scrutinee's origin until its last use. False for a resource. */
+static bool own_payload(OwnWalk *w, uint32_t binding, const Scrutinee *source, MsPos pos) {
+    own_declare(w, binding, PERM_IMMUTABLE, false);
+    if (w->class_of[binding] == MS_CLASS_RESOURCE) {
+        return false;
+    }
+    if (w->class_of[binding] == MS_CLASS_COPY || source->owned) {
+        return true;
+    }
+    own_declare_borrow(w, binding, source->origin, pos, "pattern binding");
+    w->deferred[binding] = source->deferred;
+    return true;
+}
+
+static bool own_arm_payloads(OwnWalk *w, const MsArm *arm, const Scrutinee *source) {
+    for (uint32_t k = 0; k < w->live->arm_count[arm->id]; k++) {
+        if (!own_payload(w, w->live->arm_first[arm->id] + k, source, arm->pos)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* `name = value`: the value is moved in, then the old one is replaced, which no borrow may read. */
 static void own_assign(OwnWalk *w, const MsStmt *s) {
     const uint32_t binding = w->facts->assign_binding[s->id];
@@ -406,17 +480,43 @@ static void own_assign(OwnWalk *w, const MsStmt *s) {
     own_check_change(w, s->pos, binding, "reassign");
 }
 
+static void own_release_holder(BorrowSet *set, uint32_t holder) {
+    for (uint32_t i = 0; i < set->len; i++) {
+        set->items[i].holder = set->items[i].holder == holder ? MS_NONE : set->items[i].holder;
+    }
+}
+
+/* `if name := optional`: the payload lives in the then-branch only. */
+static bool own_if_condition(OwnWalk *w, const MsStmt *s, uint32_t *payload) {
+    const MsPattern *pattern = s->u.branch.binding;
+    *payload = MS_NONE;
+    if (pattern == NULL) {
+        own_expr(w, s->u.branch.cond, DEMAND_READ);
+        return true;
+    }
+    const Scrutinee source = own_scrutinee(w, s->u.branch.cond);
+    *payload = w->facts->pattern_binding[pattern->id];
+    return pattern->kind == MS_P_NAME && !s->u.branch.is_mutable && *payload != MS_NONE &&
+           own_payload(w, *payload, &source, pattern->pos);
+}
+
 static void own_if(OwnWalk *w, const MsStmt *s) {
-    if (s->u.branch.binding != NULL) {
+    const uint32_t mark = w->ndeclared;
+    uint32_t payload = MS_NONE;
+    if (!own_if_condition(w, s, &payload)) {
         w->supported = false;
         return;
     }
-    own_expr(w, s->u.branch.cond, DEMAND_READ);
     own_release_pending(w);
     BorrowSet entry = own_set_copy(&w->active);
     own_block(w, &s->u.branch.body);
     BorrowSet then_state = w->active;
     w->active = entry;
+    if (payload != MS_NONE) {
+        own_release_holder(&then_state, payload);
+        own_release_holder(&w->active, payload);
+        w->ndeclared = mark;
+    }
     own_block(w, &s->u.branch.else_body);
     own_join(w, then_state);
 }
@@ -431,34 +531,10 @@ static void own_while(OwnWalk *w, const MsStmt *s) {
 
 /* ---- match ---- */
 
-/* Declares the arm's payload bindings; false when one is not a plain copied value. */
-static bool own_arm_payloads(OwnWalk *w, const MsArm *arm) {
-    for (uint32_t k = 0; k < w->live->arm_count[arm->id]; k++) {
-        const uint32_t binding = w->live->arm_first[arm->id] + k;
-        own_declare(w, binding, PERM_IMMUTABLE, false);
-        if (w->class_of[binding] != MS_CLASS_COPY) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/* The scrutinee is read where it is, or moved out at its last use when it is an owned local. */
-static void own_scrutinee(OwnWalk *w, const MsExpr *e) {
-    const bool name = e->kind == MS_E_NAME && w->facts->res_kind[e->id] == MS_RES_BINDING;
-    if (!name) {
-        own_expr(w, e, DEMAND_MOVE);
-        return;
-    }
-    const uint32_t binding = w->facts->res_ref[e->id];
-    const bool owned = w->perm[binding] != PERM_BORROWED && !w->is_param[binding];
-    own_expr(w, e, owned && own_is_last(w, e) ? DEMAND_MOVE : DEMAND_READ);
-}
-
 /* One arm: its payloads, body and value share a scope. */
-static void own_arm(OwnWalk *w, const MsArm *arm, Demand demand, bool returning) {
+static void own_arm(OwnWalk *w, const MsArm *arm, const Scrutinee *source, Demand demand, bool returning) {
     const uint32_t mark = w->ndeclared;
-    if (!own_arm_payloads(w, arm)) {
+    if (!own_arm_payloads(w, arm, source)) {
         w->supported = false;
         return;
     }
@@ -482,14 +558,14 @@ static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning
     const bool borrowed = !returning && demand != DEMAND_MOVE && !copied && own_arms_are_names(w, e);
     /* Arms that are not all references produce a value, so a place among them moves. */
     const Demand arm_demand = !borrowed && demand == DEMAND_READ ? DEMAND_MOVE : demand;
-    own_scrutinee(w, e->u.match.scrutinee);
+    const Scrutinee source = own_scrutinee(w, e->u.match.scrutinee);
     own_release_pending(w);
     BorrowSet entry = own_set_copy(&w->active);
     BorrowSet joined = {0};
     for (uint32_t i = 0; i < e->u.match.arms.len && w->supported; i++) {
         free(w->active.items);
         w->active = own_set_copy(&entry);
-        own_arm(w, e->u.match.arms.ptr[i], arm_demand, returning);
+        own_arm(w, e->u.match.arms.ptr[i], &source, arm_demand, returning);
         own_join(w, joined);
         joined = w->active;
         w->active = (BorrowSet){0};
@@ -560,6 +636,7 @@ static void own_allocate(OwnWalk *w, MsArena *arena) {
     w->class_of = MS_NEW_N(arena, uint8_t, n);
     w->origin = MS_NEW_N(arena, uint32_t, n);
     w->is_param = MS_NEW_N(arena, bool, n);
+    w->deferred = MS_NEW_N(arena, bool, n);
 }
 
 void ms_module_check_ownership(MsCheck *c, MsModId module) {
