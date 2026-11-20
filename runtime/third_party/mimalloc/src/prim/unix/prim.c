@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
-Copyright (c) 2018-2025, Microsoft Research, Daan Leijen
+Copyright (c) 2018-2026, Microsoft Research, Daan Leijen
 This is free software; you can redistribute it and/or modify it under the
 terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
@@ -21,11 +21,16 @@ terms of the MIT license. A copy of the license can be found in the file
 #endif
 
 #include "mimalloc.h"
-#include "mimalloc/internal.h"
-#include "mimalloc/prim.h"
+#include "mimalloc/prim/prim.h"
+#include "mimalloc/track.h"
+#include "mimalloc/prim/os.h"
+#include "mimalloc/util/libc.h"
+#include "mimalloc/util/options.h"
+#include "mimalloc/heap/process.h"
+#include "mimalloc/prim/prim-tls.h"  // _mi_thread_id
 
 #include <sys/mman.h>  // mmap
-#include <unistd.h>    // sysconf
+#include <unistd.h>    // sysconf, sleep
 #include <fcntl.h>     // open, close, read, access
 #include <stdlib.h>    // getenv, arc4random_buf
 
@@ -38,19 +43,60 @@ terms of the MIT license. A copy of the license can be found in the file
   #endif
   #if defined(__GLIBC__)
   #include <linux/mman.h>   // linux mmap flags
-  #else
-  #include <sys/mman.h>
+  #endif
+  #if defined(__riscv) || defined(_M_RISCV)
+    #if defined(MI_HAS_SYS_HWPROBEH)
+      #include <sys/hwprobe.h>
+    #elif defined(MI_HAS_ASM_HWPROBEH)
+      #include <asm/hwprobe.h>
+    #endif
+  #endif
+  #if MI_PAC >= 2 && defined(__aarch64__) && !defined(__APPLE__)
+    #include <sys/auxv.h>   // getauxval
+    #define MI_UNIX_LINUX_PAC  1
+    #ifndef HWCAP_PACG
+    #define HWCAP_PACG  (1UL << 31)
+    #endif
+  #endif
+  #if MI_MTE && defined(__aarch64__)
+    #include <sys/auxv.h>   // getauxval
+    #define MI_UNIX_LINUX_MTE  1
+    #ifndef HWCAP2_MTE
+    #define HWCAP2_MTE  (1UL << 18)
+    #endif
+    #ifndef PROT_MTE
+    #define PROT_MTE    (0x20)
+    #endif
+    #ifndef PR_SET_TAGGED_ADDR_CTRL
+    #define PR_SET_TAGGED_ADDR_CTRL  55
+    #define PR_GET_TAGGED_ADDR_CTRL  56
+    #define PR_TAGGED_ADDR_ENABLE    (1UL << 0)
+    #endif
+    #ifndef PR_MTE_TCF_SHIFT
+    #define PR_MTE_TCF_SHIFT         1
+    #define PR_MTE_TCF_SYNC          (1UL << PR_MTE_TCF_SHIFT)
+    #define PR_MTE_TCF_ASYNC         (2UL << PR_MTE_TCF_SHIFT)
+    #define PR_MTE_TCF_MASK          (3UL << PR_MTE_TCF_SHIFT)
+    #define PR_MTE_TAG_SHIFT         3
+    #define PR_MTE_TAG_MASK          (0xFFFFUL << PR_MTE_TAG_SHIFT)
+    #endif
   #endif
 #elif defined(__APPLE__)
   #include <AvailabilityMacros.h>
   #include <TargetConditionals.h>
-  #if !defined(TARGET_OS_OSX) || TARGET_OS_OSX   // see issue #879, used to be (!TARGET_IOS_IPHONE && !TARGET_IOS_SIMULATOR)
-  #include <mach/vm_statistics.h>    // VM_MAKE_TAG, VM_FLAGS_SUPERPAGE_SIZE_2MB, etc.
+  #if !defined(TARGET_OS_OSX) || TARGET_OS_OSX || MI_MTE  // see issue #879 (on iOS only included for memory tagging)
+  #include <mach/vm_statistics.h>    // VM_MAKE_TAG, VM_FLAGS_SUPERPAGE_SIZE_2MB, VM_FLAGS_MTE, etc.
   #endif
   #if !defined(MAC_OS_X_VERSION_10_7)
   #define MAC_OS_X_VERSION_10_7   1070
   #endif
   #include <sys/sysctl.h>
+  #if MI_MTE && defined(VM_FLAGS_MTE) && __has_include(<os/security_config.h>)
+  #include <os/security_config.h>   // os_security_config_get
+  #include <mach/mach.h>
+  #include <mach/vm_map.h>          // vm_map (as `mach/mach_vm.h` is not supported on iOS)
+  #define MI_UNIX_MACH_MTE  1
+  #endif
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
   #include <sys/param.h>
   #if __FreeBSD_version >= 1200000
@@ -65,6 +111,17 @@ terms of the MIT license. A copy of the license can be found in the file
   #include <sys/syscall.h>
 #endif
 
+// MSan does not intercept raw syscalls, so memory they write must be marked as initialized
+#if defined(__has_feature)
+  #if __has_feature(memory_sanitizer)
+  #include <sanitizer/msan_interface.h>  // __msan_unpoison
+  #define mi_msan_unpoison(p,size)  __msan_unpoison(p,size)
+  #endif
+#endif
+#ifndef mi_msan_unpoison
+#define mi_msan_unpoison(p,size)
+#endif
+
 #if !defined(MADV_DONTNEED) && defined(POSIX_MADV_DONTNEED)  // QNX
 #define MADV_DONTNEED  POSIX_MADV_DONTNEED
 #endif
@@ -72,22 +129,25 @@ terms of the MIT license. A copy of the license can be found in the file
 #define MADV_FREE  POSIX_MADV_FREE
 #endif
 
-#define MI_UNIX_LARGE_PAGE_SIZE (2*MI_MiB) // TODO: can we query the OS for this?
+#define MI_UNIX_MAX_THP_PAGE_SIZE (8*MI_MiB)        // above this we do not use madvise for transparent huge pages (see issue #1431)
 
 //------------------------------------------------------------------------------------
 // Use syscalls for some primitives to allow for libraries that override open/read/close etc.
 // and do allocation themselves; using syscalls prevents recursion when mimalloc is
 // still initializing (issue #713)
+// Not used on Android, see issue python/cpython/pull/158530
 // Declare inline to avoid unused function warnings.
 //------------------------------------------------------------------------------------
 
-#if defined(MI_HAS_SYSCALL_H) && defined(SYS_open) && defined(SYS_close) && defined(SYS_read) && defined(SYS_access)
+#if defined(MI_HAS_SYSCALL_H) && defined(SYS_open) && defined(SYS_close) && defined(SYS_read) && defined(SYS_access)  && !defined(__ANDROID__)
 
 static inline int mi_prim_open(const char* fpath, int open_flags) {
   return syscall(SYS_open,fpath,open_flags,0);
 }
 static inline ssize_t mi_prim_read(int fd, void* buf, size_t bufsize) {
-  return syscall(SYS_read,fd,buf,bufsize);
+  ssize_t nread = syscall(SYS_read,fd,buf,bufsize);
+  if (nread > 0) { mi_msan_unpoison(buf, (size_t)nread); }
+  return nread;
 }
 static inline int mi_prim_close(int fd) {
   return syscall(SYS_close,fd);
@@ -124,12 +184,13 @@ static bool unix_detect_overcommit(void) {
   #if defined(__linux__)
     int fd = mi_prim_open("/proc/sys/vm/overcommit_memory", O_RDONLY);
     if (fd >= 0) {
-      char buf[32];
-      ssize_t nread = mi_prim_read(fd, &buf, sizeof(buf));
+      char buf[64];
+      ssize_t nread = mi_prim_read(fd, &buf, sizeof(buf)-1);
       mi_prim_close(fd);
       // <https://www.kernel.org/doc/Documentation/vm/overcommit-accounting>
       // 0: heuristic overcommit, 1: always overcommit, 2: never overcommit (ignore NORESERVE)
-      if (nread >= 1) {
+      if (nread >= 1 && nread < (ssize_t)sizeof(buf)) {
+        buf[nread] = 0;
         os_overcommit = (buf[0] == '0' || buf[0] == '1');
       }
     }
@@ -143,6 +204,46 @@ static bool unix_detect_overcommit(void) {
     // default: overcommit is true
   #endif
   return os_overcommit;
+}
+
+static bool unix_detect_thp(void) {
+  bool thp_enabled = false;
+  #if defined(__linux__)
+  int fd = mi_prim_open("/sys/kernel/mm/transparent_hugepage/enabled", O_RDONLY);
+  if (fd >= 0) {
+    char buf[64];
+    ssize_t nread = mi_prim_read(fd, &buf, sizeof(buf)-1);
+    mi_prim_close(fd);
+    // <https://www.kernel.org/doc/html/latest/admin-guide/mm/transhuge.html>
+    // between brackets is the current value, for example: always [madvise] never
+    if (nread >= 1 && nread < (ssize_t)sizeof(buf)) {
+      buf[nread] = 0;
+      thp_enabled = (_mi_strnstr(buf,nread,"[never]") == NULL);
+    }
+  }
+  #endif
+  return thp_enabled;
+}
+
+static size_t unix_detect_large_page_size(void) {
+  size_t large_page_size = 2*MI_MiB;  // assume 512*4KiB by default
+  #if defined(__linux__)
+  // get the transparent huge page size from the pmd size
+  const int fd = mi_prim_open("/sys/kernel/mm/transparent_hugepage/hpage_pmd_size", O_RDONLY);
+  if (fd >= 0) {
+    char buf[64];
+    const ssize_t nread = mi_prim_read(fd, &buf, sizeof(buf)-1);
+    mi_prim_close(fd);
+    if (nread >= 1 && nread < (ssize_t)sizeof(buf)) {
+      buf[nread] = 0;
+      long size = 0;
+      if (_mi_strntol(buf, nread, NULL, &size) && size > 0 && (unsigned long)size <= SIZE_MAX) {
+        large_page_size = (size_t)size;
+      }
+    }
+  }
+  #endif
+  return large_page_size;
 }
 
 // try to detect the physical memory dynamically (if possible)
@@ -187,6 +288,148 @@ static void unix_detect_physical_memory( size_t page_size, size_t* physical_memo
   #endif
 }
 
+// Detect the virtual address bits (currently Linux/RISC-V only)
+static size_t unix_detect_virtual_address_bits(void) {
+  #if defined(__riscv) || defined(_M_RISCV)
+    #if defined(RISCV_HWPROBE_KEY_HIGHEST_VIRT_ADDRESS)
+      struct riscv_hwprobe probe = { .key = RISCV_HWPROBE_KEY_HIGHEST_VIRT_ADDRESS, };
+      // Prefer the GNU libc interface if available, as it can also use the VDSO
+      #if defined(MI_HAS_SYS_HWPROBEH)
+      if (__riscv_hwprobe(&probe, 1, 0, NULL, 0) == 0)
+      #else
+      if (syscall(__NR_riscv_hwprobe, &probe, 1, 0, NULL, 0) == 0)
+      #endif
+      {
+        if (probe.key != -1) { // If a key is unknown to the kernel, its key field will be cleared to -1.
+          return (MI_SIZE_BITS - mi_clz((size_t)probe.value));
+        }
+      }
+    #endif
+    // Fallback to checking /proc/cpuinfo for older kernels
+    const int fd = mi_prim_open("/proc/cpuinfo", O_RDONLY);
+    if (fd >= 0) {
+      char buf[2048];
+      const ssize_t nread = mi_prim_read(fd, &buf, sizeof(buf)-1);
+      mi_prim_close(fd);
+      if ((nread >= 1) && (nread < (ssize_t)sizeof(buf))) {
+        buf[nread] = 0;
+        if (_mi_strnstr(buf, nread, "sv39")) { return 39; }
+        else if (_mi_strnstr(buf, nread, "sv48")) { return 48; }
+        else if (_mi_strnstr(buf, nread, "sv57")) { return 57; }
+      }
+    }
+  #endif // riscv
+  // default
+  return MI_MAX_VABITS;
+}
+
+#if MI_UNIX_LINUX_MTE
+// With `-DMI_MTE=ON` it is a fatal error if tag checking cannot be enabled for all threads
+#if MI_MTE >= 2
+#define unix_memtag_thread_error(...)   _mi_fatal_error(__VA_ARGS__)
+#else
+#define unix_memtag_thread_error(...)   _mi_warning_message(__VA_ARGS__)
+#endif
+
+// Enable the tagged address ABI with the tag check mode `tcf` and allow tags 1 to 15 for `irg` (for the current thread)
+static bool unix_memtag_thread_enable(unsigned long ctrl, unsigned long tcf) {
+  const unsigned long tags = (ctrl & PR_MTE_TAG_MASK) | (0xFFFEUL << PR_MTE_TAG_SHIFT);
+  return (prctl(PR_SET_TAGGED_ADDR_CTRL, PR_TAGGED_ADDR_ENABLE | tcf | tags, 0, 0, 0) == 0);
+}
+
+// Return the current number of threads in the process (or 0 if unknown)
+// (we use `/proc/self/stat` instead of `/proc/self/status` as it is emulated by qemu-user to only count guest threads)
+static size_t unix_thread_count(void) {
+  const int fd = mi_prim_open("/proc/self/stat", O_RDONLY);
+  if (fd < 0) return 0;
+  char buf[1024];
+  const ssize_t nread = mi_prim_read(fd, &buf, sizeof(buf)-1);
+  mi_prim_close(fd);
+  if (nread <= 0 || nread >= (ssize_t)sizeof(buf)) return 0;
+  buf[nread] = 0;
+  // skip to the last `)` (as the executable name can contain spaces and parenthesis) which ends field 2
+  const char* s = NULL;
+  for (const char* p = buf; *p != 0; p++) { if (*p == ')') { s = p + 1; } }
+  if (s == NULL) return 0;
+  // and skip fields 3 to 19 to get to field 20 (`num_threads`)
+  for (int field = 3; field < 20; field++) {
+    while (*s == ' ') { s++; }
+    while (*s != ' ' && *s != 0) { s++; }
+  }
+  while (*s == ' ') { s++; }
+  size_t count = 0;
+  while (*s >= '0' && *s <= '9') { count = 10*count + (size_t)(*s - '0'); s++; }
+  return count;
+}
+#endif
+
+#if MI_MTE >= 2
+// Does the CPU support the memory tagging (MTE) instructions? (only checked with `-DMI_MTE=ON`;
+// on other systems we assume it does and fault on the first use of a tag instruction otherwise)
+static bool unix_detect_memtag_cpu(void) {
+  #if MI_UNIX_LINUX_MTE
+  return ((getauxval(AT_HWCAP2) & HWCAP2_MTE) != 0);
+  #elif defined(__APPLE__) && defined(__aarch64__)
+  int val = 0;
+  size_t len = sizeof(val);
+  return (sysctlbyname("hw.optional.arm.FEAT_MTE", &val, &len, NULL, 0) == 0 && val != 0);
+  #else
+  return true;
+  #endif
+}
+#endif
+
+#if MI_PAC >= 2
+// Does the CPU (and OS) support generic pointer authentication (`pacga`)? (only detected with `-DMI_PAC=ON`)
+static bool unix_detect_pac_cpu(void) {
+  #if MI_UNIX_LINUX_PAC
+  return ((getauxval(AT_HWCAP) & HWCAP_PACG) != 0);
+  #elif defined(__APPLE__) && defined(__aarch64__)
+  int val = 0;
+  size_t len = sizeof(val);
+  return (sysctlbyname("hw.optional.arm.FEAT_PAuth", &val, &len, NULL, 0) == 0 && val != 0);
+  #else
+  return true;
+  #endif
+}
+#endif
+
+// Detect if memory tagging (MTE) is enabled for this process (only called if the `mte` option is enabled)
+static bool unix_detect_memtag(mi_os_mem_config_t* config) {
+  MI_UNUSED(config);
+  #if MI_UNIX_MACH_MTE
+  if (__builtin_available(macOS 26.0, iOS 26.0, *)) {
+    return ((os_security_config_get() & OS_SECURITY_CONFIG_MTE) != 0);   // set through process entitlements
+  }
+  #elif MI_UNIX_LINUX_MTE
+  // These settings are per thread and inherited by threads created afterwards (see also `_mi_prim_thread_init`)
+  if ((getauxval(AT_HWCAP2) & HWCAP2_MTE) == 0) return false;
+  const int ctrl = prctl(PR_GET_TAGGED_ADDR_CTRL, 0, 0, 0, 0);
+  if (ctrl < 0) return false;
+  unsigned long tcf;
+  switch (mi_option_get(mi_option_mte)) {
+    case MI_MEMTAG_MODE_SYNC:      tcf = PR_MTE_TCF_SYNC; break;
+    case MI_MEMTAG_MODE_ASYNC:     tcf = PR_MTE_TCF_ASYNC; break;
+    case MI_MEMTAG_MODE_PREFERRED: tcf = PR_MTE_TCF_SYNC | PR_MTE_TCF_ASYNC; break;
+    default: tcf = ((unsigned long)ctrl & PR_MTE_TCF_MASK); if (tcf == 0) { tcf = PR_MTE_TCF_SYNC; } break;
+  }
+  if (!unix_memtag_thread_enable((unsigned long)ctrl, tcf)) {
+    _mi_warning_message("unable to enable memory tagging (error %d)\n", errno);
+    return false;
+  }
+  config->memtag_mode = tcf;
+  _mi_verbose_message("memory tag check mode: %s\n", (tcf == PR_MTE_TCF_SYNC ? "sync" : (tcf == PR_MTE_TCF_ASYNC ? "async" : "preferred")));
+  // tag checking is only enabled for this thread and threads created from it afterwards (or that allocate)
+  const size_t nthreads = unix_thread_count();
+  if (nthreads > 1) {
+    unix_memtag_thread_error("memory tagging was enabled after %zu other thread(s) were created; these may not use tag checking\n"
+                        "  (and system calls with tagged pointers may fail in those threads until they call mimalloc)\n", nthreads - 1);
+  }
+  return true;
+  #endif
+  return false;
+}
+
 void _mi_prim_mem_init( mi_os_mem_config_t* config )
 {
   long psize = sysconf(_SC_PAGESIZE);
@@ -195,15 +438,30 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config )
     config->alloc_granularity = (size_t)psize;
     unix_detect_physical_memory(config->page_size, &config->physical_memory_in_kib);
   }
-  config->large_page_size = MI_UNIX_LARGE_PAGE_SIZE;
-  config->has_overcommit = unix_detect_overcommit();
   config->has_partial_free = true;    // mmap can free in parts
   config->has_virtual_reserve = true; // todo: check if this true for NetBSD?  (for anonymous mmap with PROT_NONE)
+  #if defined(MAP_ALIGNED) || defined(MAP_ALIGN)
+  config->has_aligned_alloc = true;   // see `unix_mmap_prim_aligned`
+  #endif
+  config->large_page_size = unix_detect_large_page_size();
+  config->has_transparent_huge_pages = (config->large_page_size <= MI_UNIX_MAX_THP_PAGE_SIZE) && unix_detect_thp();
+  config->has_overcommit = unix_detect_overcommit();
+  config->virtual_address_bits = unix_detect_virtual_address_bits();
+  #if MI_MTE >= 2
+  if (!unix_detect_memtag_cpu()) {
+    _mi_fatal_error("built with MI_MTE=ON but the CPU does not support memory tagging (MTE)\n");
+  }
+  #endif
+  config->has_memtag = (mi_option_is_enabled(mi_option_mte) && unix_detect_memtag(config));
+  #if MI_PAC >= 2
+  config->has_pac = unix_detect_pac_cpu();
+  #endif
 
   // disable transparent huge pages for this process?
   #if (defined(__linux__) || defined(__ANDROID__)) && defined(PR_GET_THP_DISABLE)
   if (!mi_option_is_enabled(mi_option_allow_thp)) // disable THP if requested through an option
   {
+    config->has_transparent_huge_pages = false;
     if (prctl(PR_GET_THP_DISABLE, 0, 0, 0, 0) == 0) {   // -1 on error, 1 if already disabled
       // Most likely since distros often come with always/madvise settings.
       // Disabling only for mimalloc process rather than touching system wide settings
@@ -231,7 +489,7 @@ int _mi_prim_free(void* addr, size_t size ) {
 
 // return errno on failure
 static int unix_madvise(void* addr, size_t size, int advice) {
-  #if defined(__sun)
+  #if defined(__sun) || defined(_AIX)
   const int res = madvise((caddr_t)addr, size, advice);  // Solaris needs cast (issue #520)
   return (res==0 ? 0 : errno);
   #elif defined(__QNX__)
@@ -245,8 +503,15 @@ static int unix_madvise(void* addr, size_t size, int advice) {
 static void* unix_mmap_prim(void* addr, size_t size, int protect_flags, int flags, int fd) {
   void* p = mmap(addr, size, protect_flags, flags, fd, 0 /* offset */);
   #if defined(__linux__) && defined(PR_SET_VMA)
-  if (p!=MAP_FAILED && p!=NULL) {
-    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, p, size, "mimalloc");
+  static _Atomic(size_t) no_set_vma_name; // = 0
+  if (p!=MAP_FAILED && p!=NULL && mi_atomic_load_relaxed(&no_set_vma_name)==0) {
+    const int err = errno;
+    if (prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, p, size, "mimalloc") != 0) {
+      // `EINVAL` means naming is not supported (Linux < 5.17, or without `CONFIG_ANON_VMA_NAME`)
+      // as our arguments are always valid; in that case don't call again.
+      if (errno == EINVAL) { mi_atomic_store_relaxed(&no_set_vma_name, (size_t)1); }
+      errno = err;  // don't modify errno on a successful mmap
+    }
   }
   #endif
   return p;
@@ -257,10 +522,11 @@ static void* unix_mmap_prim_aligned(void* addr, size_t size, size_t try_alignmen
   void* p = NULL;
   #if defined(MAP_ALIGNED)  // BSD
   if (addr == NULL && try_alignment > 1 && (try_alignment % _mi_os_page_size()) == 0) {
-    size_t n = mi_bsr(try_alignment);
+    size_t n = 0;
+    mi_bsr(try_alignment, &n);
     if (((size_t)1 << n) == try_alignment && n >= 12 && n <= 30) {  // alignment is a power of 2 and 4096 <= alignment <= 1GiB
       p = unix_mmap_prim(addr, size, protect_flags, flags | MAP_ALIGNED(n), fd);
-      if (p==MAP_FAILED || !_mi_is_aligned(p,try_alignment)) {
+      if (p==MAP_FAILED || !mi_is_aligned(p,try_alignment)) {
         int err = errno;
         _mi_trace_message("unable to directly request aligned OS memory (error: %d (0x%x), size: 0x%zx bytes, alignment: 0x%zx, hint address: %p)\n", err, err, size, try_alignment, addr);
       }
@@ -275,13 +541,13 @@ static void* unix_mmap_prim_aligned(void* addr, size_t size, size_t try_alignmen
     // fall back to regular mmap
   }
   #endif
-  #if (MI_INTPTR_SIZE >= 8) && !defined(MAP_ALIGNED)
+  #if (MI_SIZE_SIZE >= 8) && !defined(MAP_ALIGNED)
   // on 64-bit systems, use the virtual address area after 2TiB for 4MiB aligned allocations
   if (addr == NULL) {
     void* hint = _mi_os_get_aligned_hint(try_alignment, size);
     if (hint != NULL) {
       p = unix_mmap_prim(hint, size, protect_flags, flags, fd);
-      if (p==MAP_FAILED || !_mi_is_aligned(p,try_alignment)) {
+      if (p==MAP_FAILED || !mi_is_aligned(p,try_alignment)) {
         #if MI_TRACK_ENABLED  // asan sometimes does not instrument errno correctly?
         int err = 0;
         #else
@@ -312,6 +578,32 @@ static int unix_mmap_fd(void) {
   #endif
 }
 
+// macOS superpages are not supported on arm64 (with 16KiB pages)
+#if defined(VM_FLAGS_SUPERPAGE_SIZE_2MB) && !(defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__)))
+#define MI_OS_HAS_SUPERPAGES  1
+#endif
+
+#if defined(MAP_ALIGNED_SUPER) || defined(MAP_HUGETLB) || defined(MAP_HUGE_1GB) || defined(MAP_HUGE_2MB) || MI_OS_HAS_SUPERPAGES
+#define MI_OS_HAS_HUGE_PAGES  1
+#endif
+
+#if MI_UNIX_MACH_MTE
+// Allocate memory that supports memory tagging (as `mmap` has no MTE flag on macOS/iOS)
+static void* unix_mmap_memtag(size_t size, size_t try_alignment, int protect_flags, int fd) {
+  const vm_offset_t mask = (mi_is_power_of_two(try_alignment) && try_alignment <= MI_GiB ? try_alignment - 1 : 0);
+  const vm_prot_t prot = ((protect_flags & PROT_WRITE) != 0 ? VM_PROT_READ | VM_PROT_WRITE : VM_PROT_NONE);
+  vm_address_t addr = 0;
+  const kern_return_t err = vm_map(mach_task_self(), &addr, size, mask, VM_FLAGS_ANYWHERE | VM_FLAGS_MTE | (fd != -1 ? fd : 0),
+                                   MEMORY_OBJECT_NULL, 0, FALSE, prot, VM_PROT_READ | VM_PROT_WRITE, VM_INHERIT_DEFAULT);
+  if (err != KERN_SUCCESS) {
+    _mi_trace_message("unable to allocate memory tagged OS memory (error: %d, size: 0x%zx bytes, alignment: 0x%zx)\n", err, size, try_alignment);
+    errno = ENOMEM;
+    return NULL;
+  }
+  return (void*)addr;
+}
+#endif
+
 static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protect_flags, bool large_only, bool allow_large, bool* is_large) {
   #if !defined(MAP_ANONYMOUS)
   #define MAP_ANONYMOUS  MAP_ANON
@@ -321,6 +613,19 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
   #endif
   void* p = NULL;
   const int fd = unix_mmap_fd();
+  bool allow_huge = allow_large;
+  #if MI_UNIX_MACH_MTE || MI_UNIX_LINUX_MTE
+  if (_mi_os_has_memtag()) {   // no large OS pages with memory tagging
+    *is_large = false;
+    if (large_only) return NULL;
+    #if MI_UNIX_MACH_MTE
+    return unix_mmap_memtag(size, try_alignment, protect_flags, fd);
+    #else
+    allow_huge = false;
+    protect_flags |= PROT_MTE;  // also on `PROT_NONE` reservations as it is sticky with later `mprotect` calls
+    #endif
+  }
+  #endif
   int flags = MAP_PRIVATE | MAP_ANONYMOUS;
   if (_mi_os_has_overcommit()) {
     flags |= MAP_NORESERVE;
@@ -329,15 +634,15 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
   protect_flags |= PROT_MAX(PROT_READ | PROT_WRITE); // BSD
   #endif
   // huge page allocation
-  if (allow_large && (large_only || (_mi_os_canuse_large_page(size, try_alignment) && mi_option_is_enabled(mi_option_allow_large_os_pages)))) {
-    static _Atomic(size_t) large_page_try_ok; // = 0;
-    size_t try_ok = mi_atomic_load_acquire(&large_page_try_ok);
-    if (!large_only && try_ok > 0) {
+  #if MI_OS_HAS_HUGE_PAGES
+  if (allow_huge && (large_only || (_mi_os_canuse_large_page(size, try_alignment) && mi_option_is_enabled(mi_option_allow_large_os_pages)))) {
+    size_t backoff = mi_atomic_load_relaxed(&_mi_process.os.large_page_backoff);
+    if (!large_only && backoff > 0) {
       // If the OS is not configured for large OS pages, or the user does not have
       // enough permission, the `mmap` will always fail (but it might also fail for other reasons).
-      // Therefore, once a large page allocation failed, we don't try again for `large_page_try_ok` times
+      // Therefore, once a large page allocation failed, we don't try again for `os_large_page_backoff` times
       // to avoid too many failing calls to mmap.
-      mi_atomic_cas_strong_acq_rel(&large_page_try_ok, &try_ok, try_ok - 1);
+      mi_atomic_cas_strong_relaxed(&_mi_process.os.large_page_backoff, &backoff, backoff - 1);
     }
     else {
       int lflags = flags & ~MAP_NORESERVE;  // using NORESERVE on huge pages seems to fail on Linux
@@ -349,8 +654,7 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
       lflags |= MAP_HUGETLB;
       #endif
       #ifdef MAP_HUGE_1GB
-      static bool mi_huge_pages_available = true;
-      if (large_only && (size % MI_GiB) == 0 && mi_huge_pages_available) {
+      if (large_only && (size % MI_GiB) == 0 && (mi_atomic_load_relaxed(&_mi_process.os.huge_page_unavailable)==0)) {
         lflags |= MAP_HUGE_1GB;
       }
       else
@@ -360,7 +664,7 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
         lflags |= MAP_HUGE_2MB;
         #endif
       }
-      #ifdef VM_FLAGS_SUPERPAGE_SIZE_2MB
+      #if MI_OS_HAS_SUPERPAGES
       lfd |= VM_FLAGS_SUPERPAGE_SIZE_2MB;
       #endif
       if (large_only || lflags != flags) {
@@ -369,7 +673,7 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
         p = unix_mmap_prim_aligned(addr, size, try_alignment, protect_flags, lflags, lfd);
         #ifdef MAP_HUGE_1GB
         if (p == NULL && (lflags & MAP_HUGE_1GB) == MAP_HUGE_1GB) {
-          mi_huge_pages_available = false; // don't try huge 1GiB pages again
+          mi_atomic_store_relaxed(&_mi_process.os.huge_page_unavailable,1); // don't try huge 1GiB pages again
           if (large_only) {
             _mi_warning_message("unable to allocate huge (1GiB) page, trying large (2MiB) pages instead (errno: %i)\n", errno);
           }
@@ -379,37 +683,54 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
         #endif
         if (large_only) return p;
         if (p == NULL) {
-          mi_atomic_store_release(&large_page_try_ok, (size_t)8);  // on error, don't try again for the next N allocations
+          mi_atomic_store_relaxed(&_mi_process.os.large_page_backoff, (size_t)8);  // on error, don't try again for the next N allocations
         }
       }
     }
-  }
+  } // huge pages
+  #else
+  MI_UNUSED(allow_huge);
+  if (large_only) { *is_large = false; errno = ENOMEM; return NULL; }  // no huge OS pages available
+  #endif
   // regular allocation
   if (p == NULL) {
     *is_large = false;
     p = unix_mmap_prim_aligned(addr, size, try_alignment, protect_flags, flags, fd);
-    #if !defined(MI_NO_THP)
-    if (p != NULL && allow_large && mi_option_is_enabled(mi_option_allow_thp) && _mi_os_canuse_large_page(size, try_alignment)) {
-      #if defined(MADV_HUGEPAGE)
-      // Many Linux systems don't allow MAP_HUGETLB but they support instead
-      // transparent huge pages (THP). Generally, it is not required to call `madvise` with MADV_HUGE
-      // though since properly aligned allocations will already use large pages if available
-      // in that case -- in particular for our large regions (in `memory.c`).
-      // However, some systems only allow THP if called with explicit `madvise`, so
-      // when large OS pages are enabled for mimalloc, we call `madvise` anyways.
-      if (unix_madvise(p, size, MADV_HUGEPAGE) == 0) {
-        // *is_large = true; // possibly
-      };
-      #elif defined(__sun)
-      struct memcntl_mha cmd = {0};
-      cmd.mha_pagesize = _mi_os_large_page_size();
-      cmd.mha_cmd = MHA_MAPSIZE_VA;
-      if (memcntl((caddr_t)p, size, MC_HAT_ADVISE, (caddr_t)&cmd, 0, 0) == 0) {
-        // *is_large = true; // possibly
+    if (p!=NULL) {
+      #if defined(MADV_NOHUGEPAGE)
+      const size_t large_page_size = _mi_os_large_page_size();
+      if (large_page_size > MI_UNIX_MAX_THP_PAGE_SIZE && size >= large_page_size) {
+        (void)unix_madvise(p, size, MADV_NOHUGEPAGE);  // prevent using large transparent huge pages, see issue #1431
+      }
+      else
+      #endif
+      {  // keep the `else` above well-formed when MI_NO_THP is defined
+      #if !defined(MI_NO_THP)
+      if (allow_large && mi_option_is_enabled(mi_option_allow_thp) && _mi_os_canuse_large_page(size,try_alignment)) {
+        #if defined(MADV_HUGEPAGE)
+        if (_mi_os_has_thp()) {
+          // Many Linux systems don't allow MAP_HUGETLB but they support instead
+          // transparent huge pages (THP). Generally, it is not required to call `madvise` with MADV_HUGE
+          // though since properly aligned allocations will already use large pages if available
+          // in that case -- in particular for our large regions (in `memory.c`).
+          // However, some systems only allow THP if called with explicit `madvise`, so
+          // when large OS pages are enabled for mimalloc, we call `madvise` anyways.
+          if (unix_madvise(p, size, MADV_HUGEPAGE) == 0) {
+            // *is_large = true; // possibly
+          };
+        }
+        #elif defined(__sun)
+        struct memcntl_mha cmd = {0};
+        cmd.mha_pagesize = _mi_os_large_page_size();
+        cmd.mha_cmd = MHA_MAPSIZE_VA;
+        if (memcntl((caddr_t)p, size, MC_HAT_ADVISE, (caddr_t)&cmd, 0, 0) == 0) {
+          // *is_large = true; // possibly
+        }
+        #endif
       }
       #endif
+      }
     }
-    #endif
   }
   return p;
 }
@@ -431,7 +752,7 @@ int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool comm
 //---------------------------------------------
 
 static void unix_mprotect_hint(int err) {
-  #if defined(__linux__) && (MI_SECURE>=5) // guard page around every mimalloc page
+  #if defined(__linux__) && (MI_SECURE>=5 || MI_GUARDED) // guard page around every mimalloc page
   if (err == ENOMEM) {
     _mi_warning_message("The next warning may be caused by a low memory map limit.\n"
                         "  On Linux this is controlled by the vm.max_map_count -- maybe increase it?\n"
@@ -441,6 +762,10 @@ static void unix_mprotect_hint(int err) {
   MI_UNUSED(err);
   #endif
 }
+
+
+
+
 
 int _mi_prim_commit(void* start, size_t size, bool* is_zero) {
   // commit: ensure we can access the area
@@ -465,29 +790,36 @@ int _mi_prim_reuse(void* start, size_t size) {
   return 0;
 }
 
+// Release the physical memory of a range (while keeping it mapped)
+static int unix_madvise_release(void* start, size_t size) {
+  #if defined(__APPLE__) && defined(MADV_FREE_REUSABLE)
+  // use MADV_FREE_REUSABLE as it does immediate rss accounting (issue #1097)
+  int err = unix_madvise(start, size, MADV_FREE_REUSABLE);
+  if (err) { err = unix_madvise(start, size, MADV_DONTNEED); }
+  return err;
+  #else
+  // use MADV_DONTNEED as it decreases rss immediately (unlike MADV_FREE)
+  return unix_madvise(start, size, MADV_DONTNEED);
+  #endif
+}
+
 int _mi_prim_decommit(void* start, size_t size, bool* needs_recommit) {
   int err = 0;
-  #if defined(__APPLE__) && defined(MADV_FREE_REUSABLE)
-    // decommit on macOS: use MADV_FREE_REUSABLE as it does immediate rss accounting (issue #1097)
-    err = unix_madvise(start, size, MADV_FREE_REUSABLE);
-    if (err) { err = unix_madvise(start, size, MADV_DONTNEED); }
+  #if 1
+    err = unix_madvise_release(start, size);
+    #if MI_DEBUG || MI_SECURE>=4
+      *needs_recommit = true;
+      mprotect(start, size, PROT_NONE);
+    #else
+      *needs_recommit = false;
+    #endif
   #else
-    // decommit: use MADV_DONTNEED as it decreases rss immediately (unlike MADV_FREE)
-    err = unix_madvise(start, size, MADV_DONTNEED);
-  #endif
-  #if !MI_DEBUG && MI_SECURE<=2
-    *needs_recommit = false;
-  #else
+    // decommit: use mmap with MAP_FIXED and PROT_NONE to discard the existing memory (and reduce rss)
     *needs_recommit = true;
-    mprotect(start, size, PROT_NONE);
+    const int fd = unix_mmap_fd();
+    void* p = mmap(start, size, PROT_NONE, (MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE), fd, 0);
+    if (p != start) { err = errno; }
   #endif
-  /*
-  // decommit: use mmap with MAP_FIXED and PROT_NONE to discard the existing memory (and reduce rss)
-  *needs_recommit = true;
-  const int fd = unix_mmap_fd();
-  void* p = mmap(start, size, PROT_NONE, (MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE), fd, 0);
-  if (p != start) { err = errno; }
-  */
   return err;
 }
 
@@ -506,12 +838,11 @@ int _mi_prim_reset(void* start, size_t size) {
   // will not reduce the `rss` stats in tools like `top` even though the memory is available
   // to other processes. With the default `MIMALLOC_PURGE_DECOMMITS=1` we ensure that by
   // default `MADV_DONTNEED` is used though.
-  static _Atomic(size_t) advice = MI_ATOMIC_VAR_INIT(MADV_FREE);
-  int oadvice = (int)mi_atomic_load_relaxed(&advice);
-  while ((err = unix_madvise(start, size, oadvice)) != 0 && err == EAGAIN) { /* try again */ };
-  if (err == EINVAL && oadvice == MADV_FREE) {
+  const bool lazy = (mi_atomic_load_relaxed(&_mi_process.os.lazy_reset_unavailable) == 0);
+  while ((err = unix_madvise(start, size, (lazy ? MADV_FREE : MADV_DONTNEED))) != 0 && err == EAGAIN) { /* try again */ };
+  if (err == EINVAL && lazy) {
     // if MADV_FREE is not supported, fall back to MADV_DONTNEED from now on
-    mi_atomic_store_release(&advice, (size_t)MADV_DONTNEED);
+    mi_atomic_store_release(&_mi_process.os.lazy_reset_unavailable, (size_t)1);
     err = unix_madvise(start, size, MADV_DONTNEED);
   }
   #else
@@ -520,11 +851,43 @@ int _mi_prim_reset(void* start, size_t size) {
   return err;
 }
 
-int _mi_prim_protect(void* start, size_t size, bool protect) {
-  int err = mprotect(start, size, protect ? PROT_NONE : (PROT_READ | PROT_WRITE));
+#if defined(__OpenBSD__)
+#include <sys/param.h>  // OpenBSD version
+#endif
+
+// Make a read-only range immutable (best effort)
+static void unix_mseal(void* addr, size_t size) {
+  #if defined(MI_HAS_SYSCALL_H) && defined(SYS_mseal)
+  syscall(SYS_mseal, addr, size, 0UL);  // Linux 6.10+
+  #elif defined(__OpenBSD__) && defined(OpenBSD) && (OpenBSD >= 202304)
+  mimmutable(addr, size);               // OpenBSD 7.3+
+  #else
+  MI_UNUSED(addr); MI_UNUSED(size);
+  #endif
+}
+
+int _mi_prim_protect(void* addr, size_t size, mi_protect_t protect) {
+  const int prot = (protect == MI_PROTECT_NONE ? PROT_NONE : (protect == MI_PROTECT_READWRITE ? (PROT_READ | PROT_WRITE) : PROT_READ));
+  int err = mprotect(addr, size, prot);
   if (err != 0) { err = errno; }
   unix_mprotect_hint(err);
+  if (err == 0 && protect == MI_PROTECT_READ_SEALED) { unix_mseal(addr, size); }
   return err;
+}
+
+int _mi_prim_guard(void* start, size_t size, bool set_guard, bool is_committed) {
+  if (set_guard) {
+    // `mprotect` also works on reserved memory, so committed or not, we release the physical memory and protect
+    unix_madvise_release(start, size);  // best effort
+    return _mi_prim_protect(start, size, MI_PROTECT_NONE);
+  }
+  else if (is_committed) {
+    const int err = _mi_prim_protect(start, size, MI_PROTECT_READWRITE);
+    return (err != 0 ? err : _mi_prim_reuse(start, size));
+  }
+  else {
+    return 0;  // stays inaccessible until committed
+  }
 }
 
 
@@ -533,7 +896,7 @@ int _mi_prim_protect(void* start, size_t size, bool protect) {
 // Huge page allocation
 //---------------------------------------------
 
-#if (MI_INTPTR_SIZE >= 8) && !defined(__HAIKU__) && !defined(__CYGWIN__)
+#if (MI_SIZE_SIZE >= 8) && !defined(__HAIKU__) && !defined(__CYGWIN__)
 
 #ifndef MPOL_PREFERRED
 #define MPOL_PREFERRED 1
@@ -553,16 +916,16 @@ static long mi_prim_mbind(void* start, unsigned long len, unsigned long mode, co
 int _mi_prim_alloc_huge_os_pages(void* hint_addr, size_t size, int numa_node, bool* is_zero, void** addr) {
   bool is_large = true;
   *is_zero = true;
-  *addr = unix_mmap(hint_addr, size, MI_SEGMENT_SIZE, PROT_READ | PROT_WRITE, true, true, &is_large);
-  if (*addr != NULL && numa_node >= 0 && numa_node < 8*MI_INTPTR_SIZE) { // at most 64 nodes
+  *addr = unix_mmap(hint_addr, size, MI_ARENA_SLICE_ALIGN, PROT_READ | PROT_WRITE, true, true, &is_large);
+  if (*addr != NULL && numa_node >= 0 && numa_node < (8*MI_SIZE_SIZE - 1)) { // at most 63 nodes
     unsigned long numa_mask = (1UL << numa_node);
-    // TODO: does `mbind` work correctly for huge OS pages? should we
+    // todo: does `mbind` work correctly for huge OS pages? should we
     // use `set_mempolicy` before calling mmap instead?
     // see: <https://lkml.org/lkml/2017/2/9/875>
-    long err = mi_prim_mbind(*addr, size, MPOL_PREFERRED, &numa_mask, 8*MI_INTPTR_SIZE, 0);
+    long err = mi_prim_mbind(*addr, size, MPOL_PREFERRED, &numa_mask, 8*MI_SIZE_SIZE, 0);
     if (err != 0) {
       err = errno;
-      _mi_warning_message("failed to bind huge (1GiB) pages to numa node %d (error: %d (0x%x))\n", numa_node, err, err);
+      _mi_warning_message("failed to bind huge (1GiB) pages to numa node %d (error: %ld (0x%lx))\n", numa_node, err, err);
     }
   }
   return (*addr != NULL ? 0 : errno);
@@ -587,9 +950,9 @@ int _mi_prim_alloc_huge_os_pages(void* hint_addr, size_t size, int numa_node, bo
 
 size_t _mi_prim_numa_node(void) {
   #if defined(MI_HAS_SYSCALL_H) && defined(SYS_getcpu)
-    unsigned long node = 0;
-    unsigned long ncpu = 0;
-    long err = syscall(SYS_getcpu, &ncpu, &node, NULL);
+    unsigned int node = 0;
+    unsigned int ncpu = 0;
+    int err = syscall(SYS_getcpu, &ncpu, &node, NULL);
     if (err != 0) return 0;
     return node;
   #else
@@ -599,13 +962,16 @@ size_t _mi_prim_numa_node(void) {
 
 size_t _mi_prim_numa_node_count(void) {
   char buf[128];
-  unsigned node = 0;
-  for(node = 0; node < 256; node++) {
+  unsigned last_found = 0;
+  for(unsigned node = 1; node < 256; node++) {
     // enumerate node entries -- todo: it there a more efficient way to do this? (but ensure there is no allocation)
-    _mi_snprintf(buf, 127, "/sys/devices/system/node/node%u", node + 1);
-    if (mi_prim_access(buf,R_OK) != 0) break;
+    _mi_snprintf(buf, 127, "/sys/devices/system/node/node%u", node);
+    if (mi_prim_access(buf,R_OK) != 0) {
+      if (node - last_found > 4) break; // allow some sparseness of nodes but not more than 4
+    }
+    else { last_found = node; }         // highest found node
   }
-  return (node+1);
+  return last_found + 1;
 }
 
 #elif defined(__FreeBSD__) && __FreeBSD_version >= 1200000
@@ -631,7 +997,7 @@ size_t _mi_prim_numa_node_count(void) {
 #elif defined(__DragonFly__)
 
 size_t _mi_prim_numa_node(void) {
-  // TODO: DragonFly does not seem to provide any userland means to get this information.
+  // todo: DragonFly does not seem to provide any userland means to get this information.
   return 0ul;
 }
 
@@ -661,34 +1027,38 @@ size_t _mi_prim_numa_node_count(void) {
 
 #include <time.h>
 
-#if defined(CLOCK_REALTIME) || defined(CLOCK_MONOTONIC)
-
-mi_msecs_t _mi_prim_clock_now(void) {
-  struct timespec t;
-  #ifdef CLOCK_MONOTONIC
-  clock_gettime(CLOCK_MONOTONIC, &t);
-  #else
-  clock_gettime(CLOCK_REALTIME, &t);
-  #endif
-  return ((mi_msecs_t)t.tv_sec * 1000) + ((mi_msecs_t)t.tv_nsec / 1000000);
-}
-
-#else
-
 // low resolution timer
-mi_msecs_t _mi_prim_clock_now(void) {
-  #if !defined(CLOCKS_PER_SEC) || (CLOCKS_PER_SEC == 1000) || (CLOCKS_PER_SEC == 0)
-  return (mi_msecs_t)clock();
-  #elif (CLOCKS_PER_SEC < 1000)
-  return (mi_msecs_t)clock() * (1000 / (mi_msecs_t)CLOCKS_PER_SEC);
+static mi_msecs_t mi_prim_clock_now_lowres(void) {
+  const int64_t ticks = (int64_t)clock();
+  #if !defined(CLOCKS_PER_SEC)
+    return ticks;
   #else
-  return (mi_msecs_t)clock() / ((mi_msecs_t)CLOCKS_PER_SEC / 1000);
+    if (CLOCKS_PER_SEC <= 0 || CLOCKS_PER_SEC == 1000) {
+      return ticks;
+    }
+    else if (CLOCKS_PER_SEC > 0 && CLOCKS_PER_SEC < 1000) {
+      return ticks * (1000 / (mi_msecs_t)CLOCKS_PER_SEC);
+    }
+    else {
+      return ticks / ((mi_msecs_t)CLOCKS_PER_SEC / 1000);
+    }
   #endif
 }
 
-#endif
-
-
+mi_msecs_t _mi_prim_clock_now(void) {
+  #if defined(CLOCK_REALTIME) || defined(CLOCK_MONOTONIC)
+    #ifdef CLOCK_MONOTONIC
+    const clockid_t clockid = CLOCK_MONOTONIC;
+    #else
+    const clockid_t clockid = CLOCK_REALTIME;
+    #endif
+    struct timespec t;
+    if (clock_gettime(clockid,&t) == 0) {
+      return ((mi_msecs_t)t.tv_sec * 1000) + ((mi_msecs_t)t.tv_nsec / 1000000L);
+    }
+  #endif
+  return mi_prim_clock_now_lowres();
+}
 
 
 //----------------------------------------------------------------
@@ -697,7 +1067,6 @@ mi_msecs_t _mi_prim_clock_now(void) {
 
 #if defined(__unix__) || defined(__unix) || defined(unix) || defined(__APPLE__) || defined(__HAIKU__)
 #include <stdio.h>
-#include <unistd.h>
 #include <sys/resource.h>
 
 #if defined(__APPLE__)
@@ -715,41 +1084,46 @@ static mi_msecs_t timeval_secs(const struct timeval* tv) {
 void _mi_prim_process_info(mi_process_info_t* pinfo)
 {
   struct rusage rusage;
-  getrusage(RUSAGE_SELF, &rusage);
-  pinfo->utime = timeval_secs(&rusage.ru_utime);
-  pinfo->stime = timeval_secs(&rusage.ru_stime);
-#if !defined(__HAIKU__)
-  pinfo->page_faults = rusage.ru_majflt;
-#endif
-#if defined(__HAIKU__)
-  // Haiku does not have (yet?) a way to
-  // get these stats per process
-  thread_info tid;
-  area_info mem;
-  ssize_t c;
-  get_thread_info(find_thread(0), &tid);
-  while (get_next_area_info(tid.team, &c, &mem) == B_OK) {
-    pinfo->peak_rss += mem.ram_size;
+  if (getrusage(RUSAGE_SELF, &rusage) == 0) {
+    pinfo->utime = timeval_secs(&rusage.ru_utime);
+    pinfo->stime = timeval_secs(&rusage.ru_stime);
+    #if !defined(__HAIKU__)
+      pinfo->page_faults = rusage.ru_majflt;
+    #endif
+    #if defined(__APPLE__)
+      pinfo->peak_rss = rusage.ru_maxrss;         // macos reports in bytes
+    #else
+      pinfo->peak_rss = rusage.ru_maxrss * 1024;  // Linux/BSD report in KiB
+    #endif
   }
-  pinfo->page_faults = 0;
-#elif defined(__APPLE__)
-  pinfo->peak_rss = rusage.ru_maxrss;         // macos reports in bytes
-  #ifdef MACH_TASK_BASIC_INFO
-  struct mach_task_basic_info info;
-  mach_msg_type_number_t infoCount = MACH_TASK_BASIC_INFO_COUNT;
-  if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &infoCount) == KERN_SUCCESS) {
-    pinfo->current_rss = (size_t)info.resident_size;
-  }
-  #else
-  struct task_basic_info info;
-  mach_msg_type_number_t infoCount = TASK_BASIC_INFO_COUNT;
-  if (task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&info, &infoCount) == KERN_SUCCESS) {
-    pinfo->current_rss = (size_t)info.resident_size;
-  }
+
+  #if defined(__HAIKU__)
+    // Haiku does not have (yet?) a way to
+    // get these stats per process
+    thread_info tid;
+    if (get_thread_info(find_thread(0), &tid) == B_OK) {
+      area_info mem;
+      ssize_t c;
+      while (get_next_area_info(tid.team, &c, &mem) == B_OK) {
+        pinfo->peak_rss += mem.ram_size;
+      }
+    }
+    pinfo->page_faults = 0;
+  #elif defined(__APPLE__)
+    #ifdef MACH_TASK_BASIC_INFO
+    struct mach_task_basic_info info;
+    mach_msg_type_number_t infoCount = MACH_TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &infoCount) == KERN_SUCCESS) {
+      pinfo->current_rss = (size_t)info.resident_size;
+    }
+    #else
+    struct task_basic_info info;
+    mach_msg_type_number_t infoCount = TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&info, &infoCount) == KERN_SUCCESS) {
+      pinfo->current_rss = (size_t)info.resident_size;
+    }
+    #endif
   #endif
-#else
-  pinfo->peak_rss = rusage.ru_maxrss * 1024;  // Linux/BSD report in KiB
-#endif
   // use defaults for commit
 }
 
@@ -796,28 +1170,22 @@ static char** mi_get_environ(void) {
   return environ;
 }
 #endif
-bool _mi_prim_getenv(const char* name, char* result, size_t result_size) {
-  if (name==NULL) return false;
-  const size_t len = _mi_strlen(name);
-  if (len == 0) return false;
+int _mi_prim_getenv(const char* name, char* result, size_t result_size) {
+  return _mi_prim_getenv_by_visit(name, result, result_size);
+}
+bool _mi_prim_env_visit(mi_env_visit_fun* visit, void* arg) {
   char** env = mi_get_environ();
   if (env == NULL) return false;
-  // compare up to 10000 entries
   for (int i = 0; i < 10000 && env[i] != NULL; i++) {
-    const char* s = env[i];
-    if (_mi_strnicmp(name, s, len) == 0 && s[len] == '=') { // case insensitive
-      // found it
-      _mi_strlcpy(result, s + len + 1, result_size);
-      return true;
-    }
+    visit(env[i], arg);
   }
-  return false;
+  return true;
 }
 #else
 // fallback: use standard C `getenv` but this cannot be used while initializing the C runtime
-bool _mi_prim_getenv(const char* name, char* result, size_t result_size) {
+int _mi_prim_getenv(const char* name, char* result, size_t result_size) {
   // cannot call getenv() when still initializing the C runtime.
-  if (_mi_preloading()) return false;
+  if (_mi_preloading()) return -1;  // error, try again later
   const char* s = getenv(name);
   if (s == NULL) {
     // we check the upper case name too.
@@ -829,9 +1197,13 @@ bool _mi_prim_getenv(const char* name, char* result, size_t result_size) {
     buf[len] = 0;
     s = getenv(buf);
   }
-  if (s == NULL || _mi_strnlen(s,result_size) >= result_size)  return false;
-  _mi_strlcpy(result, s, result_size);
-  return true;
+  if (s == NULL) return 0; // not found
+  if (!_mi_strlcpy(result, s, result_size)) return -2;  // too long
+  return 1;  // success
+}
+bool _mi_prim_env_visit(mi_env_visit_fun* visit, void* arg) {
+  MI_UNUSED(visit); MI_UNUSED(arg);
+  return false;  // cannot iterate the environment
 }
 #endif  // !MI_USE_ENVIRON
 
@@ -860,7 +1232,7 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
   return true;
 }
 
-#elif defined(__APPLE__) || defined(__linux__) || defined(__HAIKU__)   // also for old apple versions < 10.7 (issue #829)
+#elif defined(__APPLE__) || defined(__linux__) || defined(__HAIKU__) || defined(__CYGWIN__)  // also for old apple versions < 10.7 (issue #829)
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -875,12 +1247,20 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
     #ifndef GRND_NONBLOCK
     #define GRND_NONBLOCK (1)
     #endif
-    static _Atomic(uintptr_t) no_getrandom; // = 0
+    #ifndef GRND_INSECURE
+    #define GRND_INSECURE (4)
+    #endif
+    static _Atomic(size_t) no_getrandom; // = 0
     if (mi_atomic_load_acquire(&no_getrandom)==0) {
       ssize_t ret = syscall(SYS_getrandom, buf, buf_len, GRND_NONBLOCK);
+      if (ret < 0 && errno == EAGAIN) {
+        // early during boot the entropy pool may not be initialized yet; use the best available randomness (Linux 5.6+)
+        ret = syscall(SYS_getrandom, buf, buf_len, GRND_INSECURE);
+      }
+      if (ret > 0) { mi_msan_unpoison(buf, (size_t)ret); }
       if (ret >= 0) return (buf_len == (size_t)ret);
-      if (errno != ENOSYS) return false;
-      mi_atomic_store_release(&no_getrandom, (uintptr_t)1); // don't call again, and fall back to /dev/urandom
+      if (errno == ENOSYS) { mi_atomic_store_release(&no_getrandom, (size_t)1); } // don't call again
+      // and fall back to /dev/urandom (which does not block early during boot)
     }
   #endif
   int flags = O_RDONLY;
@@ -892,7 +1272,10 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
   size_t count = 0;
   while(count < buf_len) {
     ssize_t ret = mi_prim_read(fd, (char*)buf + count, buf_len - count);
-    if (ret<=0) {
+    if (ret==0) {
+      break;
+    }
+    else if (ret<0) {
       if (errno!=EAGAIN && errno!=EINTR) break;
     }
     else {
@@ -919,31 +1302,38 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
 #if defined(MI_USE_PTHREADS)
 
 // use pthread local storage keys to detect thread ending
-// (and used with MI_TLS_PTHREADS for the default heap)
-pthread_key_t _mi_heap_default_key = (pthread_key_t)(-1);
+// (and used with MI_TLS_PTHREADS for the default theap)
+// atomic as a thread may initialize while the process is exiting and deleting the key
+static _Atomic(pthread_key_t) _mi_heap_default_key = MI_ATOMIC_VAR_INIT(MI_PTHREAD_KEY_INVALID);
 
 static void mi_pthread_done(void* value) {
   if (value!=NULL) {
-    _mi_thread_done((mi_heap_t*)value);
+    _mi_thread_done((mi_theap_t*)value);
   }
 }
 
 void _mi_prim_thread_init_auto_done(void) {
-  mi_assert_internal(_mi_heap_default_key == (pthread_key_t)(-1));
-  pthread_key_create(&_mi_heap_default_key, &mi_pthread_done);
+  mi_assert_internal(mi_atomic_load_relaxed(&_mi_heap_default_key) == MI_PTHREAD_KEY_INVALID);
+  pthread_key_t key;
+  if (pthread_key_create(&key, &mi_pthread_done) == 0) {
+    mi_atomic_store_release(&_mi_heap_default_key, key);
+  }
 }
 
 void _mi_prim_thread_done_auto_done(void) {
-  if (_mi_heap_default_key != (pthread_key_t)(-1)) {  // do not leak the key, see issue #809
-    pthread_key_delete(_mi_heap_default_key);
+  pthread_key_t key = mi_atomic_exchange_relaxed(&_mi_heap_default_key, MI_PTHREAD_KEY_INVALID);
+  if (key != MI_PTHREAD_KEY_INVALID) {  // do not leak the key, see issue #809
+    pthread_key_delete(key);
   }
 }
 
-void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {
-  if (_mi_heap_default_key != (pthread_key_t)(-1)) {  // can happen during recursive invocation on freeBSD
-    pthread_setspecific(_mi_heap_default_key, heap);
+void _mi_prim_thread_associate_default_theap(mi_theap_t* theap) {
+  pthread_key_t key = mi_atomic_load_relaxed(&_mi_heap_default_key);
+  if (key != MI_PTHREAD_KEY_INVALID) {  // can happen during recursive invocation on freeBSD
+    pthread_setspecific(key, theap);
   }
 }
+
 
 #else
 
@@ -955,8 +1345,34 @@ void _mi_prim_thread_done_auto_done(void) {
   // nothing
 }
 
-void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {
-  MI_UNUSED(heap);
+void _mi_prim_thread_associate_default_theap(mi_theap_t* theap) {
+  MI_UNUSED(theap);
 }
 
 #endif
+
+void _mi_prim_thread_init(void) {
+  #if MI_UNIX_LINUX_MTE
+  // ensure tag checking is enabled on threads that existed before mimalloc was initialized (and keep any mode that is already set)
+  if (_mi_os_has_memtag()) {
+    const int ctrl = prctl(PR_GET_TAGGED_ADDR_CTRL, 0, 0, 0, 0);
+    if (ctrl >= 0 && ((ctrl & PR_TAGGED_ADDR_ENABLE) == 0 || (ctrl & PR_MTE_TCF_MASK) == 0)) {
+      if (!unix_memtag_thread_enable((unsigned long)ctrl, (unsigned long)mi_process_get_sealed_once()->os_mem_config.memtag_mode)) {
+        unix_memtag_thread_error("unable to enable memory tagging on thread 0x%zx (error %d)\n", _mi_thread_id(), errno);
+      }
+    }
+  }
+  #endif
+}
+
+bool _mi_prim_thread_is_in_threadpool(void) {
+  return false;
+}
+
+void _mi_prim_thread_yield(void) {
+  sleep(0);
+}
+
+bool _mi_prim_process_is_killed(void) {
+  return false;  // todo: can we detect when exit_group has been called and threads have been killed (potentially holding locks?)
+}
