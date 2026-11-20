@@ -181,3 +181,13 @@ bool *mir_parking_funcs(MsArena *arena, const MirModule *m) {
     }
     return parks;
 }
+
+MirFunc mir_func_stand_in(MirModule *m, const MirFunc *f) {
+    MirFunc s;
+    mir_func_init(m, &s, 0, f->params, f->nparams, f->ret);
+    s.ret_borrowed = f->ret_borrowed;
+    s.ret_view = f->ret_view;
+    s.noalias = f->noalias;
+    s.nnoalias = f->nnoalias;
+    return s;
+}
