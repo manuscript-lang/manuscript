@@ -10,6 +10,7 @@
  * settings back. */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c11 */
 
+#include <signal.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
