@@ -1,0 +1,81 @@
+module "interp_scalar_ops"
+extern @msrt_print_int(int)
+extern @msrt_print_float(float)
+extern @msrt_print_bool(bool)
+entry @main
+fn @helper() -> int {
+b0:
+  %r: int = iconst 7
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst -40
+  %s: int = iconst 3
+  %x1: int = sshr %a, %s
+  %p1: void = call.rt @msrt_print_int (%x1)
+  %x2: int = ushr %a, %s
+  %p2: void = call.rt @msrt_print_int (%x2)
+  %x3: int = rotr %a, %s
+  %p3: void = call.rt @msrt_print_int (%x3)
+  %zero: int = iconst 0
+  %x4: int = rotr %a, %zero
+  %p4: void = call.rt @msrt_print_int (%x4)
+  %big: int = iconst 9223372036854775807
+  %o1: bool = iadd.overflow %big, %s
+  %p5: void = call.rt @msrt_print_bool (%o1)
+  %o2: bool = imul.overflow %a, %s
+  %p6: void = call.rt @msrt_print_bool (%o2)
+  %u1: int = uadd.chk %s, %s
+  %p7: void = call.rt @msrt_print_int (%u1)
+  %u2: int = usub.chk %u1, %s
+  %p8: void = call.rt @msrt_print_int (%u2)
+  %u3: int = umul.chk %u1, %s
+  %p9: void = call.rt @msrt_print_int (%u3)
+  %b1: int = and %a, %s
+  %p10: void = call.rt @msrt_print_int (%b1)
+  %b2: int = or %a, %s
+  %p11: void = call.rt @msrt_print_int (%b2)
+  %b3: int = xor %a, %s
+  %p12: void = call.rt @msrt_print_int (%b3)
+  %t: bool = bconst true
+  %f: bool = bconst false
+  %c1: bool = and %t, %f
+  %p13: void = call.rt @msrt_print_bool (%c1)
+  %c2: bool = or %t, %f
+  %p14: void = call.rt @msrt_print_bool (%c2)
+  %c3: bool = xor %t, %t
+  %p15: void = call.rt @msrt_print_bool (%c3)
+  %c4: bool = not %f
+  %p16: void = call.rt @msrt_print_bool (%c4)
+  %k1: int = ctz %a
+  %p17: void = call.rt @msrt_print_int (%k1)
+  %k2: int = ctz %zero
+  %p18: void = call.rt @msrt_print_int (%k2)
+  %k3: int = popcnt %a
+  %p19: void = call.rt @msrt_print_int (%k3)
+  %k4: int = b2i %t
+  %p20: void = call.rt @msrt_print_int (%k4)
+  %fl: float = fconst -2.75
+  %g1: float = fneg %fl
+  %p21: void = call.rt @msrt_print_float (%g1)
+  %g2: float = fabs %fl
+  %p22: void = call.rt @msrt_print_float (%g2)
+  %g3: float = ffloor %fl
+  %p23: void = call.rt @msrt_print_float (%g3)
+  %g4: float = fceil %fl
+  %p24: void = call.rt @msrt_print_float (%g4)
+  %g5: float = ftrunc %fl
+  %p25: void = call.rt @msrt_print_float (%g5)
+  %third: float = fconst 0.1
+  %g6: float = f32.round %third
+  %p26: void = call.rt @msrt_print_float (%g6)
+  int_overflow.if %f
+  %un: int = undef
+  %p27: void = call.rt @msrt_print_int (%un)
+  %fa: ptr = func.addr @helper
+  %lo: bool = stack.low
+  %p28: void = call.rt @msrt_print_bool (%lo)
+  %w: int = usub.chk %s, %u1
+  ret %w
+}

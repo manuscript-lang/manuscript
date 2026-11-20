@@ -1,0 +1,12 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %n: int = iconst 4
+  %l: list<int> = list.new %n
+  %b: bool = bconst true
+  %m: list<int> = list.push %l, %b
+  drop %m
+  %z: int = iconst 0
+  ret %z
+}

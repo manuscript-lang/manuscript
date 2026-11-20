@@ -315,6 +315,9 @@ fn windows_arguments(
         "libshell32.a",
         "libuser32.a",
         "libuserenv.a",
+        "libiphlpapi.a",
+        "libpsapi.a",
+        "libole32.a",
         "libws2_32.a",
         "libkernel32.a",
     ] {

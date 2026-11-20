@@ -1,0 +1,9 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: int = iconst 1
+  %o: opt<bool> = opt.some %a
+  %z: int = iconst 0
+  ret %z
+}

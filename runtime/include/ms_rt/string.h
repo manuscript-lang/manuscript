@@ -65,6 +65,9 @@ void msrt_str_copy(const uint8_t *ptr, size_t tagged, MsStr *out);
 void msrt_str_free(uint8_t *ptr);
 void msrt_string_free(const MsStr *s);
 void msrt_string_concat(const MsStr *a, const MsStr *b, MsStr *out);
+void msrt_string_append(const MsStr *a, const MsStr *b, MsStr *out);
+void msrt_string_repeat(const MsStr *s, int64_t count, MsStr *out);
+void msrt_string_reverse(const MsStr *s, MsStr *out);
 void msrt_string_concat3(const MsStr *a, const MsStr *b, const MsStr *c, MsStr *out);
 void msrt_string_concat4(const MsStr *a, const MsStr *b, const MsStr *c, const MsStr *d, MsStr *out);
 void msrt_string_concat5(const MsStr *a, const MsStr *b, const MsStr *c, const MsStr *d, const MsStr *e, MsStr *out);
@@ -74,5 +77,12 @@ void msrt_string_trim_start_view(const MsStr *s, MsStr *out);
 void msrt_string_trim_end_view(const MsStr *s, MsStr *out);
 void msrt_string_slice(const MsStr *s, int64_t start, int64_t end, MsStr *out);
 void msrt_string_view(const MsStr *s, int64_t start, int64_t end, MsStr *out);
+void msrt_string_split(const MsStr *s, const MsStr *sep, MsVec *out);
+void msrt_string_split_view(const MsStr *s, const MsStr *sep, MsVec *out);
+void msrt_string_split_view_into(const MsStr *s, const MsStr *sep, MsStr *buf, MsVec *out);
+void msrt_string_split_first(const MsStr *s, const MsStr *sep, MsStr *out);
+void msrt_string_replace(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+void msrt_string_replace_first(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+void msrt_string_replace_take(MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
 
 #endif

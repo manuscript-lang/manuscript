@@ -305,7 +305,7 @@ MirValue mir_new_value(MirModule *m, MirFunc *f, MirTy ty) {
     return f->nvalues - 1;
 }
 
-static MirBlockData block_empty(void) {
+MirBlockData mir_block_empty(void) {
     MirBlockData b = {0};
     b.term.kind = MT_UNREACHABLE;
     b.term.value = MIR_NONE;
@@ -314,7 +314,7 @@ static MirBlockData block_empty(void) {
 }
 
 MirBlock mir_new_block(MirModule *m, MirFunc *f) {
-    MirBlockData b = block_empty();
+    MirBlockData b = mir_block_empty();
     MIR_PUSH(m, f->blocks, f->nblocks, f->cblocks, MirBlockData, b);
     return f->nblocks - 1;
 }

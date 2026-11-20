@@ -458,13 +458,13 @@ static MsBytes table_item(MsBytes rest, uint8_t *out, size_t size) {
         fault_bad_table();
     }
     const uint8_t tag = rest.ptr[0];
-    rest = ms_bytes(rest.ptr + 1, rest.len - 1);
+    rest = ms_bytes_of(rest.ptr + 1, rest.len - 1);
     if (tag == 0) {
         if (rest.len < 8) {
             fault_bad_table();
         }
         __builtin_memcpy(out, rest.ptr, size < 8 ? size : 8);
-        return ms_bytes(rest.ptr + 8, rest.len - 8);
+        return ms_bytes_of(rest.ptr + 8, rest.len - 8);
     }
     uint32_t len = 0;
     if (rest.len < sizeof len) {
@@ -475,7 +475,7 @@ static MsBytes table_item(MsBytes rest, uint8_t *out, size_t size) {
         fault_bad_table();
     }
     msrt_string_from_bytes(rest.ptr + sizeof len, len, (MsStr *)__builtin_assume_aligned(out, 8));
-    return ms_bytes(rest.ptr + sizeof len + len, rest.len - sizeof len - len);
+    return ms_bytes_of(rest.ptr + sizeof len + len, rest.len - sizeof len - len);
 }
 
 /* Adds the entries of a packed table of constants, in order, so a later entry replaces an earlier one with
@@ -483,7 +483,7 @@ static MsBytes table_item(MsBytes rest, uint8_t *out, size_t size) {
 void msrt_map_add_table(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const MsStr *table) {
     kd = ms_map_key_desc(m, kd);
     const MapLayout l = ms_map_layout(kd, vd);
-    MsBytes rest = ms_bytes(ms_str_data(table), ms_str_len(table));
+    MsBytes rest = ms_bytes_of(ms_str_data(table), ms_str_len(table));
     _Alignas(16) uint64_t key[2] = {0, 0};
     _Alignas(16) uint64_t value[2] = {0, 0};
     while (rest.len > 0) {

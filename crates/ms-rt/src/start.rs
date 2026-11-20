@@ -341,6 +341,8 @@ pub unsafe extern "C-unwind" fn msrt_start(
 ) -> i32 {
     // SAFETY: one-time process setup before any other runtime use.
     unsafe {
+        // Before anything reads the environment.
+        sync_environ();
         *TABLES.ptr() = fault::address_ordered_tables(tables);
         *ARGC.ptr() = argc;
         *ARGV.ptr() = argv;
@@ -368,6 +370,21 @@ pub unsafe extern "C-unwind" fn msrt_start(
             return 1;
         }
         status
+    }
+}
+
+#[cfg(ms_c = "ms_io_open")]
+unsafe extern "C" {
+    fn ms_sys_sync_environ();
+}
+
+/// Makes the program's `environ` agree with the C library's after the library changed it (start-up,
+/// `setenv`); see `ms_sys_sync_environ` in runtime/include/ms_rt/sys.h. Only the libuv build needs it.
+pub fn sync_environ() {
+    #[cfg(ms_c = "ms_io_open")]
+    // SAFETY: a plain pointer copy; call it where no other thread reads the environment.
+    unsafe {
+        ms_sys_sync_environ();
     }
 }
 

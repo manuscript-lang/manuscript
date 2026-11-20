@@ -106,9 +106,10 @@ static bool pt_constant_start(const char *s, size_t n) {
 /* Recognizes declaration starts by token boundary, including contextual words only when their
  * following token selects a declaration. */
 static bool pt_root_start(const char *s, size_t n) {
-    static const char *const keywords[] = {"import", "export", "extern", "type", "enum", "interface", "impl", "test"};
-    for (size_t i = 0; i < sizeof keywords / sizeof keywords[0]; i++) {
-        if (pt_after_keyword(s, n, keywords[i]) >= 0) {
+    static const char *const declaration_words[] = {"import", "export", "extern", "type",
+                                                    "enum",   "interface", "impl", "test"};
+    for (size_t i = 0; i < sizeof declaration_words / sizeof declaration_words[0]; i++) {
+        if (pt_after_keyword(s, n, declaration_words[i]) >= 0) {
             return true;
         }
     }

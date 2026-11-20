@@ -57,7 +57,7 @@ static ms_u128_t pack_bits(MsBytes bytes) {
     return bits;
 }
 
-static MsBytes str_bytes(const MsStr *s) { return ms_bytes(ms_str_data(s), ms_str_len(s)); }
+static MsBytes str_bytes(const MsStr *s) { return ms_bytes_of(ms_str_data(s), ms_str_len(s)); }
 
 /* The bytes of a string of at most 16 bytes as little-endian bits. */
 static ms_u128_t str_bits(const MsStr *s) {
@@ -164,7 +164,7 @@ static MsStr view_of(MsBytes bytes) {
     return (MsStr){.bytes = bytes.ptr, .tagged = bytes.len | MS_STR_TAG_VIEW};
 }
 
-void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) { *out = from_bytes(ms_bytes(ptr, len)); }
+void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) { *out = from_bytes(ms_bytes_of(ptr, len)); }
 
 void msrt_string_empty(MsStr *out) { *out = make_empty(); }
 
@@ -172,7 +172,7 @@ void msrt_string_clone(const MsStr *s, MsStr *out) { *out = cloned(s); }
 
 /* `tagged` is the second word of an owned string or a view, never of an inline string. */
 void msrt_str_copy(const uint8_t *ptr, size_t tagged, MsStr *out) {
-    *out = owned_copy(ms_bytes(ptr, tagged & MS_STR_LEN_MASK));
+    *out = owned_copy(ms_bytes_of(ptr, tagged & MS_STR_LEN_MASK));
 }
 
 void msrt_str_free(uint8_t *ptr) { msrt_free(ptr); }
@@ -209,6 +209,67 @@ void msrt_string_concat(const MsStr *a, const MsStr *b, MsStr *out) {
     append_bytes(&cursor, str_bytes(a));
     append_bytes(&cursor, str_bytes(b));
     *out = (str_is_ascii(a) && str_is_ascii(b)) ? with_ascii_flag(block.str) : block.str;
+}
+
+/* Room after the text and NUL that an owned string records, as a lower bound of what its block holds. */
+#define MS_STR_SPARE_SHIFT 31
+#define MS_STR_SPARE_MASK (((UINT64_C(1) << 30) - 1) << MS_STR_SPARE_SHIFT)
+
+static size_t recorded_spare(const MsStr *s) { return (size_t)((s->tagged & MS_STR_SPARE_MASK) >> MS_STR_SPARE_SHIFT); }
+
+static MsStr with_spare(MsStr s, size_t spare) {
+    const size_t most = (size_t)(MS_STR_SPARE_MASK >> MS_STR_SPARE_SHIFT);
+    s.tagged = (s.tagged & ~MS_STR_SPARE_MASK) | ((uint64_t)(spare > most ? most : spare) << MS_STR_SPARE_SHIFT);
+    return s;
+}
+
+/* Whether `piece` lies inside the text of `s` (or just past its end), so growing `s` in place would move it. */
+static bool lies_within(const MsStr *s, MsBytes piece) {
+    uintptr_t start = (uintptr_t)s->ptr_word;
+    uintptr_t at = (uintptr_t)piece.ptr;
+    return at >= start && at - start <= ms_str_len(s);
+}
+
+/* `a + b` where the caller gives `a` up: an owned `a` grows in place, so `s = s + piece` in a loop reuses one block
+ * and reallocates a logarithmic number of times. Otherwise it is a concatenation and `a` is released. */
+void msrt_string_append(const MsStr *a, const MsStr *b, MsStr *out) {
+    MsStr first = *a;
+    size_t length_a = ms_str_len(&first);
+    MsBytes added = str_bytes(b);
+    size_t total = 0;
+    if (!owns_block(&first) || length_a == 0 || lies_within(&first, added)) {
+        msrt_string_concat(a, b, out);
+        msrt_string_free(&first);
+        return;
+    }
+    if (added.len == 0) {
+        *out = first;
+        return;
+    }
+    if (!ms_size_add(length_a, added.len, &total) || total > MS_STR_MAX_BYTES) {
+        fault_limit();
+    }
+    /* Only a flagged `a` stays flagged: scanning an unflagged one on every append would be quadratic. */
+    bool ascii = (first.tagged & MS_STR_ASCII) != 0 && str_is_ascii(b);
+    size_t need = total + 1;
+    size_t spare = 0;
+    uint8_t *block = first.ptr_word;
+    if (recorded_spare(&first) >= added.len) {
+        spare = recorded_spare(&first) - added.len;
+    } else if (msrt_heap_usable_size(block) >= need) {
+        spare = msrt_heap_usable_size(block) - need;
+    } else {
+        block = msrt_realloc(block, need + need / 2);
+        spare = need / 2;
+    }
+    MsBytesMut tail = {0};
+    if (!ms_bytes_mut_slice(ms_bytes_mut(block, need), length_a, need, &tail)) {
+        fault_limit();
+    }
+    append_bytes(&tail, added);
+    tail.ptr[0] = 0; /* the NUL after the text: the one byte of `tail` left */
+    MsStr grown = with_spare((MsStr){.ptr_word = block, .tagged = total}, spare);
+    *out = ascii ? with_ascii_flag(grown) : grown;
 }
 
 static size_t total_length(const MsStr *const *parts, size_t count) {
@@ -262,6 +323,92 @@ void msrt_string_concat6(const MsStr *a, const MsStr *b, const MsStr *c, const M
     const MsStr *parts[] = {a, b, c, d, e, f};
     concat_parts(parts, MS_COUNT_OF(parts), out);
 }
+
+/* ---- Repeat and reverse ---- */
+
+/* Fills `destination` with whole copies of `pattern`: the first copy is written, then the filled part doubles. */
+static void fill_repeated(MsBytesMut destination, MsBytes pattern) {
+    MsBytesMut cursor = destination;
+    append_bytes(&cursor, pattern);
+    size_t filled = pattern.len;
+    while (filled < destination.len) {
+        size_t step = filled < destination.len - filled ? filled : destination.len - filled;
+        append_bytes(&cursor, ms_bytes_of(destination.ptr, step));
+        filled += step;
+    }
+}
+
+/* `String.repeat`: a count of zero or below, or empty text, gives empty text; output beyond the string limit
+ * faults like `concat`. */
+void msrt_string_repeat(const MsStr *s, int64_t count, MsStr *out) {
+    MsBytes text = str_bytes(s);
+    if (count <= 0 || text.len == 0) {
+        *out = make_empty();
+        return;
+    }
+    if ((uint64_t)count > MS_STR_MAX_BYTES / text.len) {
+        fault_limit();
+    }
+    OwnedBlock block = owned_block_new(text.len * (size_t)count);
+    fill_repeated(block.bytes, text);
+    *out = str_is_ascii(s) ? with_ascii_flag(block.str) : block.str;
+}
+
+/* Copies `text` into `destination` back to front, one byte at a time. */
+static void reverse_ascii(MsBytesMut destination, MsBytes text) {
+    for (size_t i = 0; i < text.len; i++) {
+        uint8_t byte = 0;
+        if (!ms_bytes_get(text, text.len - 1 - i, &byte)) {
+            fault_limit();
+        }
+        destination.ptr[i] = byte;
+    }
+}
+
+/* Copies the scalars of `text` into `destination` last first. A String is valid UTF-8, so a scalar is a lead byte
+ * and its continuation bytes and moves as it is, without decoding. */
+static void reverse_scalars(MsBytesMut destination, MsBytes text) {
+    MsBytesMut cursor = destination;
+    size_t end = text.len;
+    while (end > 0) {
+        size_t start = end - 1;
+        uint8_t byte = 0;
+        while (start > 0 && end - start < 4 && ms_bytes_get(text, start, &byte) && (byte & 0xC0) == 0x80) {
+            start--;
+        }
+        MsBytes scalar = {0};
+        if (!ms_bytes_slice(text, start, end, &scalar)) {
+            fault_limit();
+        }
+        append_bytes(&cursor, scalar);
+        end = start;
+    }
+}
+
+static void reverse_into(MsBytesMut destination, MsBytes text, bool ascii) {
+    if (ascii) {
+        reverse_ascii(destination, text);
+    } else {
+        reverse_scalars(destination, text);
+    }
+}
+
+/* The text reversed by scalars; up to 15 bytes are built in a buffer and become an inline or static string like
+ * any short result. */
+static MsStr reversed(const MsStr *s, bool ascii) {
+    MsBytes text = str_bytes(s);
+    uint8_t small[MS_STR_INLINE_MAX + 1] = {0};
+    if (text.len <= MS_STR_INLINE_MAX) {
+        MsBytesMut buffer = ms_bytes_mut(small, text.len);
+        reverse_into(buffer, text, ascii);
+        return from_bytes(ms_bytes_of(small, text.len));
+    }
+    OwnedBlock block = owned_block_new(text.len);
+    reverse_into(block.bytes, text, ascii);
+    return ascii ? with_ascii_flag(block.str) : block.str;
+}
+
+void msrt_string_reverse(const MsStr *s, MsStr *out) { *out = reversed(s, str_is_ascii(s)); }
 
 /* ---- Trimmed views ---- */
 
@@ -413,7 +560,7 @@ static char *format_i64(int64_t value, char *end) {
 
 /* Appends `text` to the message being built in `message`, which the caller sized for it. */
 static void message_append(MsBytesMut *message, const char *text, size_t length) {
-    append_bytes(message, ms_bytes((const uint8_t *)text, length));
+    append_bytes(message, ms_bytes_of((const uint8_t *)text, length));
 }
 
 static void message_append_number(MsBytesMut *message, int64_t value) {
