@@ -87,6 +87,8 @@ void ms_classifier_free(MsClassifier *classifier);
 void ms_classifier_mark_closeable(MsClassifier *classifier, MsSym type_id) MS_NONNULL;
 /* Declares that the interface with this identity has a consuming `close`, so its values own what
  * they were made from. */
+/* Marks the receiver of every method row that closes it (`Method::closes`). */
+void ms_classifier_mark_methods(MsClassifier *classifier, const MsMethods *rows);
 void ms_classifier_mark_owned_close(MsClassifier *classifier, MsSym interface_id) MS_NONNULL;
 
 MsClass ms_classify(MsClassifier *classifier, MsTy type) MS_NONNULL;
@@ -104,13 +106,23 @@ typedef struct MsLiveness {
     uint8_t *state; /* MsUseState */
     uint32_t *next; /* node id, or MS_NONE */
     MsPos *pos;     /* where the use is written */
+    /* By match-arm node id: the arm's payload bindings, which are consecutive binding ids. */
+    uint32_t *arm_first;
+    uint32_t *arm_count;
 } MsLiveness;
 
-MsLiveness ms_liveness_new(MsArena *arena, uint32_t node_count);
+MsLiveness ms_liveness_new(MsArena *arena, const MsFacts *facts);
 
 /* Fills the liveness of one function body by a backward walk (`live.rs`). Returns false, leaving
  * the function unanalysed, for a statement or expression the walk does not handle yet. */
 bool ms_liveness_function(MsLiveness *live, const MsFacts *facts, const MsFunc *function);
+
+/* `ok(v)` or `error(e)`: a call whose callee name the checker resolved to a case of Result, so it built
+ * a value rather than calling a function, a method or a function value. */
+static inline bool ms_call_builds_case(const MsFacts *facts, const MsExpr *call) {
+    const MsExpr *callee = call->u.call.callee;
+    return callee->kind == MS_E_NAME && facts->res_kind[callee->id] == MS_RES_CASE && call->u.call.args.len == 1;
+}
 
 /* ---- the pass ---- */
 

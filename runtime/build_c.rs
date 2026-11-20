@@ -70,50 +70,81 @@ fn run(command: &mut Command, what: &str) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-/// The folder holding the C libraries (`include/`, `lib/lib*.a`) for `triple`, when they do not come from
-/// pkg-config: pinned builds for musl (system packages are glibc's), MSYS2's packages for Windows.
-fn libs_prefix(root: &Path, triple: &str) -> Result<Option<PathBuf>, String> {
-    if triple.contains("musl") {
-        let out = run(
-            Command::new("sh")
-                .arg(root.join("runtime/third_party/build.sh"))
-                .arg(triple)
-                .env("MS_C_LIBS", "pinned")
-                .env("CC", musl_compiler()),
-            "build.sh",
-        )?;
-        return Ok(Some(PathBuf::from(out)));
+/// The triple of the machine running the build, for the platforms whose prebuilt libraries match its own target
+/// (Windows hosts build their unit tests for MSVC, which the mingw-built libraries do not serve).
+fn host_triple() -> Option<String> {
+    let arch = std::env::consts::ARCH;
+    match std::env::consts::OS {
+        "linux" => Some(format!("{arch}-unknown-linux-gnu")),
+        "macos" => Some(format!("{arch}-apple-darwin")),
+        _ => None,
     }
-    if triple.contains("windows") {
-        let msys = std::env::var("MS_MSYS2").unwrap_or_else(|_| "C:/msys64".into());
-        let env = if triple.starts_with("aarch64") {
-            "clangarm64"
-        } else {
-            "clang64"
-        };
-        return Ok(Some(PathBuf::from(format!("{msys}/{env}"))));
-    }
-    Ok(None)
 }
 
-/// Configures and builds the C half of the runtime archive for `triple` (the host when `None`) in `work/cmake`
-/// and returns the objects to add to the archive. ccache is used when it is installed (`CMakeLists.txt`).
-pub fn build_c_runtime(root: &Path, work: &Path, triple: Option<&str>) -> Result<CRuntime, String> {
-    let build = work.join("cmake");
+/// The folder holding the C libraries (`include/`, `lib/lib*.a`) for `triple` (the host when `None`): the vendored
+/// sources of `runtime/third_party`, built by `runtime/third_party/build.sh` (once per target and key, then reused).
+/// `None` when the build takes system packages instead.
+fn libs_prefix(root: &Path, triple: Option<&str>) -> Result<Option<PathBuf>, String> {
+    let Some(triple) = triple.map(str::to_string).or_else(host_triple) else {
+        return Ok(None);
+    };
+    let compiler = c_compiler(root, &triple, std::env::consts::ARCH);
+    let out = run(
+        Command::new("sh")
+            .arg(root.join("runtime/third_party/build.sh"))
+            .arg(&triple)
+            .env("MS_C_LIBS", "pinned")
+            .env("CC", compiler),
+        "build.sh",
+    )?;
+    Ok(Some(PathBuf::from(native_path(&out))))
+}
+
+/// build.sh runs under MSYS2 and prints its prefix as an MSYS path (`/d/a/x`); the CMake and the compiler it drives
+/// are native Windows programs that read `D:/a/x`. Other hosts print a native path already.
+fn native_path(path: &str) -> String {
+    let bytes = path.as_bytes();
+    let msys_drive = cfg!(windows)
+        && bytes.len() >= 3
+        && bytes[0] == b'/'
+        && bytes[1].is_ascii_alphabetic()
+        && bytes[2] == b'/';
+    if !msys_drive {
+        return path.to_string();
+    }
+    format!("{}:{}", bytes[1].to_ascii_uppercase() as char, &path[2..])
+}
+
+/// Configures the CMake project for `triple` (the host when `None`) in `build`: the runtime, plus the unit tests when
+/// `tests`. ccache is used when it is installed (`CMakeLists.txt`).
+fn configure_c(
+    root: &Path,
+    build: &Path,
+    triple: Option<&str>,
+    stats: bool,
+    tests: bool,
+) -> Result<(), String> {
     let arch = std::env::consts::ARCH;
     let mut configure = Command::new("cmake");
     configure
         .arg("-S")
         .arg(root)
         .arg("-B")
-        .arg(&build)
+        .arg(build)
         .args([
             "-G",
             "Ninja",
-            "-DMS_BUILD_TESTS=OFF",
             "-DMS_BUILD_COMPILER=OFF",
             "-DCMAKE_BUILD_TYPE=",
         ])
+        .arg(format!(
+            "-DMS_BUILD_TESTS={}",
+            if tests { "ON" } else { "OFF" }
+        ))
+        .arg(format!(
+            "-DMS_ALLOC_STATS={}",
+            if stats { "ON" } else { "OFF" }
+        ))
         // The build is the same wherever it runs: the caller's flags do not reach it.
         .env_remove("CFLAGS")
         .env_remove("LDFLAGS");
@@ -134,15 +165,6 @@ pub fn build_c_runtime(root: &Path, work: &Path, triple: Option<&str>) -> Result
         if !host && !triple.contains("musl") && !triple.contains("windows") {
             configure.arg(format!("-DCMAKE_C_COMPILER_TARGET={triple}"));
         }
-        if let Some(prefix) = libs_prefix(root, triple)? {
-            configure.arg("-DMS_C_LIBS=prefix");
-            configure.arg(format!("-DMS_LIBS_PREFIX={}", prefix.display()));
-            if triple.contains("windows") {
-                // MSYS2 keeps its headers in one prefix; llvm-mingw's own come first.
-                configure.arg("-DMS_LIBS_IDIRAFTER=ON");
-                configure.arg("-DMS_LIBS_DEFINES=NGHTTP2_STATICLIB;PCRE2_STATIC");
-            }
-        }
     } else {
         configure.arg("-DCMAKE_C_COMPILER=clang");
         if cfg!(windows) {
@@ -150,7 +172,28 @@ pub fn build_c_runtime(root: &Path, work: &Path, triple: Option<&str>) -> Result
             configure.arg(format!("-DCMAKE_C_COMPILER_TARGET={arch}-pc-windows-msvc"));
         }
     }
+    if let Some(prefix) = libs_prefix(root, triple)? {
+        configure.arg("-DMS_C_LIBS=prefix");
+        configure.arg(format!("-DMS_LIBS_PREFIX={}", prefix.display()));
+        if triple.is_some_and(|t| t.contains("windows")) {
+            // The libraries are static archives; their headers say so only when told.
+            configure.arg("-DMS_LIBS_DEFINES=NGHTTP2_STATICLIB;PCRE2_STATIC;CURL_STATICLIB");
+        }
+    }
     run(&mut configure, "cmake configure")?;
+    Ok(())
+}
+
+/// Configures and builds the C half of the runtime archive for `triple` (the host when `None`) in `work/cmake`
+/// and returns the objects to add to the archive.
+pub fn build_c_runtime(
+    root: &Path,
+    work: &Path,
+    triple: Option<&str>,
+    stats: bool,
+) -> Result<CRuntime, String> {
+    let build = work.join("cmake");
+    configure_c(root, &build, triple, stats, false)?;
     run(
         Command::new("cmake")
             .arg("--build")
@@ -172,4 +215,28 @@ pub fn build_c_runtime(root: &Path, work: &Path, triple: Option<&str>) -> Result
             .collect(),
         features: read("c-features.txt")?,
     })
+}
+
+/// Builds the C unit tests for `triple` (the host when `None`) in `work/cmake-tests` and runs them with ctest. The
+/// tests are the ones `make c-test` runs on Linux and macOS under the sanitizers; this is how Windows runs them,
+/// with the C compiler and libraries `build_c_runtime` uses.
+pub fn run_c_tests(root: &Path, work: &Path, triple: Option<&str>) -> Result<String, String> {
+    let build = work.join("cmake-tests");
+    configure_c(root, &build, triple, false, true)?;
+    run(
+        // `-k 0` keeps going past a failing file, so one run reports every compile error, not the first.
+        Command::new("cmake")
+            .arg("--build")
+            .arg(&build)
+            .args(["--", "-k", "0"]),
+        "cmake build",
+    )?;
+    run(
+        Command::new("ctest").arg("--test-dir").arg(&build).args([
+            "--output-on-failure",
+            "--timeout",
+            "120",
+        ]),
+        "ctest",
+    )
 }

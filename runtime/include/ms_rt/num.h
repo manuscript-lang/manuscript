@@ -3,6 +3,7 @@
 #define MS_RT_NUM_H
 
 #include "ms_rt/base.h"
+#include "ms_rt/string.h"
 
 /* ms-sig: msrt_float_compare(a: f64, b: f64) -> i64 @domain=number @leaf */
 int64_t msrt_float_compare(double a, double b);
@@ -26,5 +27,24 @@ int64_t msrt_float32_to_bits(double value);
 uint8_t msrt_float_truncate_to_int(double v, int64_t *out);
 /* ms-sig: msrt_float_to_float32(v: f64, out: *mut f32) -> u8 @domain=number @leaf */
 uint8_t msrt_float_to_float32(double v, float *out);
+
+/* ms-sig: msrt_uint_div(a: i64, b: i64) -> i64 @domain=number */
+int64_t msrt_uint_div(int64_t a, int64_t b);
+/* ms-sig: msrt_uint_rem(a: i64, b: i64) -> i64 @domain=number */
+int64_t msrt_uint_rem(int64_t a, int64_t b);
+/* ms-sig: msrt_numbers_error_message(status: u8, out: *mut StrVal) @domain=number @leaf */
+void msrt_numbers_error_message(uint8_t status, MsStr *out);
+/* ms-sig: msrt_float_to_precision(v: f64, digits: i64, out: *mut StrVal) @domain=number @leaf */
+void msrt_float_to_precision(double v, int64_t digits, MsStr *out);
+/* ms-sig: msrt_float_to_exponential(v: f64, digits: i64, out: *mut StrVal) @domain=number @leaf */
+void msrt_float_to_exponential(double v, int64_t digits, MsStr *out);
+/* ms-sig: msrt_float_to_fixed(v: f64, digits: i64, out: *mut StrVal) @domain=number @leaf */
+void msrt_float_to_fixed(double v, int64_t digits, MsStr *out);
+
+/* ms-sig: msrt_numbers_parse_int(text: *const StrVal, radix: i64, out: *mut i64) -> u8 @domain=number @leaf */
+uint8_t msrt_numbers_parse_int(const MsStr *text, int64_t radix, int64_t *out);
+
+/* ms-sig: msrt_numbers_parse_float(text: *const StrVal, out: *mut f64) -> u8 @domain=number @leaf */
+uint8_t msrt_numbers_parse_float(const MsStr *text, double *out);
 
 #endif

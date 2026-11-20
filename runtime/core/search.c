@@ -314,3 +314,21 @@ size_t ms_count(const uint8_t *hay, size_t n, const uint8_t *needle, size_t m) {
     }
     return count;
 }
+
+/* The last match of a needle: candidates are the positions of the needle's first byte, found from the end, and
+ * each is compared whole. A text that repeats the needle's prefix thousands of times is the slow case (quadratic);
+ * forward search has the Two-Way fallback, reverse search has not needed it yet. */
+size_t ms_rfind(const uint8_t *hay, size_t n, const uint8_t *needle, size_t m) {
+    if (m == 0) {
+        return n;
+    }
+    if (m > n) {
+        return SIZE_MAX;
+    }
+    for (size_t at = n - m + 1; at > 0; at--) {
+        if (hay[at - 1] == needle[0] && __builtin_memcmp(hay + at - 1, needle, m) == 0) {
+            return at - 1;
+        }
+    }
+    return SIZE_MAX;
+}

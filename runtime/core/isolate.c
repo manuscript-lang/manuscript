@@ -5,6 +5,7 @@
 
 #include "ms_rt/alloc.h"
 #include "scheduler.h"
+#include "watch.h"
 
 enum { SLOT_FREE = 0, SLOT_STARTING = 1, SLOT_LIVE = 2 };
 
@@ -42,7 +43,7 @@ uint32_t ms_isolate_register(MsWakeFn wake, void *argument) {
     return MS_NO_ISOLATE;
 }
 
-void ms_isolate_unregister(uint32_t index) {
+void ms_isolate_unregister(uint32_t index, void (*discard)(MsMail *mail)) {
     if (index >= MS_MAX_ISOLATES) {
         return;
     }
@@ -50,6 +51,9 @@ void ms_isolate_unregister(uint32_t index) {
     MsMail *mail = atomic_exchange(&slots[index].mail, NULL);
     while (mail != NULL) {
         MsMail *const next = mail->next;
+        if (discard != NULL) {
+            discard(mail);
+        }
         msrt_free(mail);
         mail = next;
     }
@@ -131,7 +135,23 @@ bool ms_isolate_idle_enter(void) {
 void ms_isolate_idle_leave(void) {
     if (self_index < MS_MAX_ISOLATES) {
         atomic_store(&slots[self_index].sleeping, 0);
+        ms_watch_stir();
     }
+}
+
+uint64_t ms_isolate_resting(uint64_t *live) {
+    uint64_t resting = 0;
+    *live = 0;
+    for (uint32_t i = 0; i < MS_MAX_ISOLATES; i++) {
+        if (atomic_load(&slots[i].state) != SLOT_LIVE) {
+            continue;
+        }
+        *live |= UINT64_C(1) << i;
+        if (atomic_load(&slots[i].sleeping) != 0) {
+            resting |= UINT64_C(1) << i;
+        }
+    }
+    return resting;
 }
 
 void ms_token_post_remote(uint64_t token, uint64_t value) {
@@ -141,4 +161,19 @@ void ms_token_post_remote(uint64_t token, uint64_t value) {
     if (!ms_isolate_post(target, mail)) {
         msrt_free(mail); /* the isolate is gone: nobody waits on the token */
     }
+}
+
+bool ms_isolate_wake_one(uint32_t except) {
+    for (uint32_t i = 0; i < MS_MAX_ISOLATES; i++) {
+        Slot *const slot = &slots[i];
+        if (i == except || atomic_load(&slot->state) != SLOT_LIVE || slot->wake == NULL) {
+            continue;
+        }
+        uint32_t expected = 1;
+        if (atomic_compare_exchange_strong(&slot->sleeping, &expected, 0)) {
+            slot->wake(slot->wake_argument);
+            return true;
+        }
+    }
+    return false;
 }

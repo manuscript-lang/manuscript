@@ -38,12 +38,12 @@ jobs:
         run: rustup toolchain install nightly --profile minimal -c miri
       - name: Miri on the runtime and the native crates
         # One job, the crates in sequence; every crate runs even when an earlier one fails, and the
-        # step fails at the end. `ms-std-fs`, `ms-std-net` and `ms-std-process` need real files,
+        # step fails at the end. `ms-std-net` needs real files,
         # sockets and processes, which Miri cannot provide, so they stay out. `ms-rt-abi` reads its
         # header file in a test, which Miri's isolation forbids.
         run: |
           failed=""
-          for crate in ms-rt ms-rt-abi ms-std-core ms-std-bigint ms-std-json ms-std-archive ms-std-system ms-std-terminal; do
+          for crate in ms-rt ms-rt-abi; do
             flags="-Zmiri-ignore-leaks"
             [ "$crate" = ms-rt-abi ] && flags="$flags -Zmiri-disable-isolation"
             echo "::group::miri $crate"

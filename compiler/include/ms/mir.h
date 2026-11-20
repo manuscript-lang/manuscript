@@ -123,12 +123,12 @@ typedef struct MirParam { MirTy ty; uint8_t mode; } MirParam;
 typedef struct MirBlockParam { MirValue value; uint8_t mode; } MirBlockParam;
 
 typedef struct MirInst {
-    uint8_t op;      /* MirOp */
+    MirValue *args; /* owned by the module arena; passes edit it in place or replace it */
     MirImm imm;
     MirValue res;    /* MIR_NONE when the op defines nothing */
-    MirLoc loc;
-    MirValue *args; /* owned by the module arena; passes edit it in place or replace it */
     uint32_t nargs;
+    MirLoc loc;
+    uint8_t op;      /* MirOp */
 } MirInst;
 
 typedef struct MirTarget {
@@ -168,17 +168,46 @@ typedef enum MirSort { MSORT_NONE, MSORT_GENERIC, MSORT_SPECIALIZED } MirSort;
 
 typedef struct MirCaptureCloser { uint32_t capture, func; } MirCaptureCloser;
 
+/* A callee body inlined into a function: fault traces and profiles show it as its own frame,
+ * called from `call_line` of the enclosing scope. `MirLoc.scope` is one plus an index into
+ * `MirFunc.scopes` (0 is the function itself). */
+typedef struct MirScope {
+    MsSym name;
+    uint32_t file; /* MIR_NONE when unknown */
+    uint32_t parent; /* enclosing scope number */
+    uint32_t call_line;
+} MirScope;
+
+/* A value a debugger shows under its source name; `scope` is the `MirLoc.scope` of the body that
+ * declares it. */
+typedef struct MirNamedValue {
+    MirValue value;
+    MsSym name;
+    bool param; /* a parameter of the body that holds it, not a local */
+    uint32_t scope;
+} MirNamedValue;
+
 typedef struct MirFunc {
     MsSym name;
     MirParam *params;
     uint32_t nparams;
     MirTy ret;
     bool ret_borrowed, ret_view;
-    /* Set by passes, not in the text form: a function made only to run while a cancellation
-     * unwinds; one that leaves a cancel by its own explicit exits; one whose lists are raw slot
-     * copies (they own no elements). */
-    bool unwind_only, explicit_cancel, raw_scratch;
-    /* Set by lowering, not in the text form: a closure function whose environment owns
+    /* Set by passes: a function made only to run while a cancellation
+     * unwinds; one whose lists are raw slot copies (they own no elements). */
+    bool unwind_only, raw_scratch;
+    /* In the text form: a function that leaves a cancel by its own explicit exits; the indexes
+     * of its pointer parameters no other memory overlaps (`var` parameters); on a `slot_close`
+     * thunk, the function running the same close for its result; on a function with fallible
+     * closing owners, the (plain, pending) functions that turn a close error into its result. */
+    bool explicit_cancel;
+    uint32_t *noalias;
+    uint32_t nnoalias;
+    bool has_slot_result;
+    uint32_t slot_result;
+    bool has_close_exit;
+    uint32_t close_exit[2];
+    /* Set by lowering: a closure function whose environment owns
      * resources lists the capture index and the function that closes it; a cleanup thunk that
      * closes a value in place names the type of that value. */
     MirCaptureCloser *capture_closers;
@@ -186,10 +215,20 @@ typedef struct MirFunc {
     bool has_slot_close;
     MirTy slot_close;
     bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
+    /* Set by the range pass (`exact` lines in the text form): a bit set (`nexact` words) of the results of
+     * unchecked integer arithmetic it proved cannot wrap, which later analysis treats as exact.
+     * Values are never reused, so a bit stays true as the function is rewritten; the pass
+     * replaces the array instead of editing it, so a copy of the function may share it. */
+    uint64_t *exact;
+    uint32_t nexact;
     uint8_t linkage, kind, inline_hint, sort;
     MirTy *captures; /* MFK_CLOSURE */
     uint32_t ncaptures;
     MirLoc loc;
+    MirScope *scopes;
+    uint32_t nscopes, cscopes;
+    MirNamedValue *names;
+    uint32_t nnames, cnames;
     MirTy *values; /* type of every value */
     uint32_t nvalues, cvalues;
     MirBlockData *blocks; /* block 0 is the entry */
@@ -204,7 +243,7 @@ typedef struct MirTypeDef {
     MsSym name;
     MirField *fields;
     uint32_t nfields;
-    bool indirect; /* one pointer to a heap block (not in the text form: lowering sets it) */
+    bool indirect; /* one pointer to a heap block (`type Name indirect` in the text form) */
 } MirTypeDef;
 
 typedef enum MirStd { MSTD_NONE, MSTD_RESULT, MSTD_COMPARABLE, MSTD_EQUAL } MirStd;
@@ -254,6 +293,13 @@ typedef struct MirExtern {
 typedef struct MirConsts { int64_t *v; uint32_t n; } MirConsts;
 typedef struct MirGlobal { MsSym name; MirTy ty; } MirGlobal;
 
+/* The equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) the descriptor of an
+ * aggregate type points to. */
+typedef struct MirDescGlue {
+    MirTy ty;
+    uint32_t eq, hash; /* function ids */
+} MirDescGlue;
+
 typedef struct MirVtable {
     MsSym name;
     uint32_t iface;
@@ -281,6 +327,8 @@ typedef struct MirModule {
     uint32_t nifaces, cifaces;
     MirVtable *vtables;
     uint32_t nvtables, cvtables;
+    MirDescGlue *desc_glue;
+    uint32_t ndesc_glue, cdesc_glue;
     MsStr *blobs;
     uint32_t nblobs, cblobs;
     MirConsts *list_consts;
@@ -296,6 +344,8 @@ typedef struct MirModule {
 } MirModule;
 
 void mir_module_init(MirModule *m);
+/* Records the equality and hash functions the descriptor of aggregate `ty` points to. */
+void mir_add_desc_glue(MirModule *m, MirTy ty, uint32_t eq, uint32_t hash);
 void mir_module_free(MirModule *m);
 
 /* Type table. */
@@ -313,12 +363,16 @@ static inline const MirTyData *mir_ty_data(const MirModule *m, MirTy t) {
     return &m->types.kinds[t];
 }
 bool mir_needs_drop(const MirModule *m, MirTy t);
+/* Whether declaration name `sym` spells `text`. */
+bool mir_name_is(const MirModule *m, MsSym sym, const char *text);
 static inline bool mir_owns(uint64_t owned, uint32_t i) { return i < 64 && (owned >> i & 1); }
 
 /* Declarations; each returns the new id. Names are interned. */
 MsSym mir_name(MirModule *m, const char *s, size_t n);
 uint32_t mir_add_string(MirModule *m, const char *s, size_t n);
 uint32_t mir_add_func(MirModule *m, const MirFunc *f);
+/* Rebuilds the name index after functions were removed or moved. */
+void mir_funcs_reindex(MirModule *m);
 uint32_t mir_add_type(MirModule *m, MsSym name);
 uint32_t mir_add_alt(MirModule *m, MsSym name);
 uint32_t mir_add_iface(MirModule *m, MsSym name);

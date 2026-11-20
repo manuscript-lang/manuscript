@@ -36,7 +36,7 @@ typedef struct MsMail {
     uint64_t b;
     uint64_t c;
     void *p;
-    void *q;
+    const void *q;
 } MsMail;
 
 /* How a poller blocked in its wait is woken from another thread (uv_async_send for the libuv reactor). */
@@ -44,9 +44,9 @@ typedef void (*MsWakeFn)(void *argument);
 
 /* Registers the calling thread; returns its index, or MS_NO_ISOLATE when all are taken. */
 uint32_t ms_isolate_register(MsWakeFn wake, void *argument);
-/* Ends the registration; mail that arrives afterwards is refused, and what is queued is freed by the caller's
- * last ms_isolate_take. */
-void ms_isolate_unregister(uint32_t index);
+/* Ends the registration; mail that arrives afterwards is refused. Mail still queued goes to `discard` (may be
+ * NULL) to free its payload, then its node is freed. */
+void ms_isolate_unregister(uint32_t index, void (*discard)(MsMail *mail));
 /* This thread's index, or MS_NO_ISOLATE. */
 uint32_t ms_isolate_self(void);
 /* Whether `index` is a live isolate. */
@@ -67,6 +67,13 @@ bool ms_isolate_has_mail(void);
  * the caller must not block. Pair with ms_isolate_idle_leave. */
 MS_NODISCARD bool ms_isolate_idle_enter(void);
 void ms_isolate_idle_leave(void);
+
+/* The isolates that rest: bit `i` is set when isolate `i` is live and sleeping in its poller. `live` receives the
+ * live isolates in the same bits. Safe from any thread (the watcher reads it). */
+uint64_t ms_isolate_resting(uint64_t *live);
+
+/* Wakes one sleeping isolate other than `except`; false when none sleeps. Safe from any thread. */
+bool ms_isolate_wake_one(uint32_t except);
 
 /* Posts `value` to a token of another isolate (or this one): the program-ABI msrt_token_post_remote. */
 void ms_token_post_remote(uint64_t token, uint64_t value);

@@ -5,21 +5,22 @@
 // This module is the C ABI boundary of the C natives.
 #![allow(unsafe_code)]
 
-use core::ffi::c_void;
-
-use super::pool::{self, CWait};
-
-type JobFn = unsafe extern "C" fn(*mut c_void);
-
-/// `MsSchedWait`: how a wait ended.
-const WAIT_DONE: i32 = 0;
-const WAIT_TIMED_OUT: i32 = 1;
-const WAIT_CANCELLED: i32 = 2;
-
 /// Whether a stop request (SIGINT or SIGTERM) is pending for the running task.
 #[unsafe(no_mangle)]
 pub extern "C" fn ms_sched_cancel_pending() -> bool {
     super::cancel_pending()
+}
+
+/// Holds stop requests back from the running task (`fault::stop_shield_enter`).
+#[unsafe(no_mangle)]
+pub extern "C" fn ms_sched_stop_hold() {
+    crate::fault::stop_shield_enter();
+}
+
+/// Ends one `ms_sched_stop_hold`; a request that arrived meanwhile applies again.
+#[unsafe(no_mangle)]
+pub extern "C" fn ms_sched_stop_release() {
+    crate::fault::stop_shield_exit();
 }
 
 /// Delivers a pending cancel by return (see `fault::cancel_return`). The caller releases what
@@ -47,68 +48,13 @@ pub extern "C" fn ms_sched_read_limit_passed() -> bool {
     super::read_limit_passed()
 }
 
-/// Whether the caller is a pool thread, where nothing may call into the runtime.
+/// Lends the running task's stack to another thread (`lend`) or takes it back: a task with its stack lent
+/// keeps its pages while parked. The blocking pool (`runtime/std/pool.c`) uses it for jobs that read the caller's
+/// frame.
 #[unsafe(no_mangle)]
-pub extern "C" fn ms_sched_on_pool_thread() -> bool {
-    pool::on_pool_thread()
-}
-
-/// Whether the program has a single task, so a blocking call has nothing to overlap with.
-#[unsafe(no_mangle)]
-pub extern "C" fn ms_sched_pool_alone() -> bool {
-    pool::alone()
-}
-
-/// Takes an admission permit for a payload of `bytes`: true when one is held and
-/// `ms_sched_pool_release` must follow; `*cancelled` is set when a stop request ended the wait.
-///
-/// # Safety
-/// `cancelled` is writable.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn ms_sched_pool_admit(bytes: usize, cancelled: *mut bool) -> bool {
-    let held = pool::admit(bytes);
-    // SAFETY: writable per the contract.
-    unsafe { *cancelled = held.is_err() };
-    held.unwrap_or(false)
-}
-
-/// Returns the permit from `ms_sched_pool_admit`.
-#[unsafe(no_mangle)]
-pub extern "C" fn ms_sched_pool_release() {
-    pool::release();
-}
-
-/// Runs `run(data)` on a pool thread and parks until it finishes or `timeout_ns` passes
-/// (negative: no limit). `MS_SCHED_DONE` returns the data to the caller; on a timeout or a stop
-/// request `release(data)` runs on this thread later and the caller must not touch the data.
-///
-/// # Safety
-/// `run` and `release` are valid functions; the data is theirs to use.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn ms_sched_pool_run(
-    run: JobFn,
-    release: JobFn,
-    data: *mut c_void,
-    timeout_ns: i64,
-) -> i32 {
-    match pool::try_run_c(run, release, data, timeout_ns) {
-        CWait::Done => WAIT_DONE,
-        CWait::TimedOut => WAIT_TIMED_OUT,
-        CWait::Cancelled => WAIT_CANCELLED,
-    }
-}
-
-/// Runs `run(data)` on a pool thread and parks until it is done; a stop request is noticed only
-/// after the job ends. The data stays the caller's and may lie on its stack.
-///
-/// # Safety
-/// `run` is a valid function.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn ms_sched_pool_run_shielded(run: JobFn, data: *mut c_void) -> i32 {
-    match pool::run_shielded_c(run, data) {
-        Ok(()) => WAIT_DONE,
-        Err(_) => WAIT_CANCELLED,
-    }
+pub extern "C" fn ms_sched_task_pin(lend: bool) {
+    // SAFETY: called on the runtime thread by the running task.
+    unsafe { crate::task::pin_current(lend) };
 }
 
 /// What a Windows pipe call reports: `MS_SCHED_PIPE_OK`, a stop request, or an OS error.

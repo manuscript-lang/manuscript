@@ -66,7 +66,7 @@ msstd_net_parse_ip(text, out: *mut *mut Obj, err) -> u8
 msstd_net_parse_cidr(text, out, err) -> u8
 msstd_net_contains_ip(cidr, ip, out: *mut u8) -> u8
 msstd_net_ip_address_text(ip, out: *mut StrVal)          msstd_net_ip_address_family(ip) -> u8
-msstd_net_cidr_text(cidr, out: *mut StrVal)              msstd_net_ip_family_text(u8) / msstd_net_dns_kind_text(u8, out: *mut StrVal)
+msstd_net_cidr_text(cidr, out: *mut StrVal)              msstd_net_ip_family_text(u8)
 msstd_net_error_message(status, has_failed, failed: *const StrVal, out: *mut StrVal)
 msstd_net_network() -> *mut Obj                       the host's root network (+1)
 msstd_net_network_close(net)
@@ -77,9 +77,6 @@ msstd_net_network_listen_unix(net, path, out, err) -> u8
 msstd_net_network_bind_datagram(net, address, out, err) -> u8
 msstd_net_network_restrict(net, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out, err) -> u8
 msstd_net_network_with_resolver(net, address, out, err) -> u8
-msstd_net_network_lookup(net, name, has_max, max, has_timeout, timeout, out: *mut VecVal /* List[String] */, err) -> u8
-msstd_net_network_resolve(net, name, kind: u8, has_max, max, has_timeout, timeout,
-                         records: *mut *mut DnsRecordWire, count: *mut usize, err) -> u8
 msstd_net_connection_{close, local_address, peer_address, shutdown_write(err) -> u8}
 msstd_net_connection_read(c, has_max, max, has_timeout, timeout, out: *mut VecVal, err) -> u8   # STATUS_NONE (16) at end of stream
 msstd_net_connection_write_bytes(c, data: *const VecVal, has_timeout, timeout, err) -> u8
@@ -88,10 +85,6 @@ msstd_net_datagram_{address, close}  # receiver `sock`
 msstd_net_datagram_receive(sock, has_max, max, has_timeout, timeout, out: *mut DatagramWire { data: VecVal, sender: StrVal }, err) -> u8
 msstd_net_datagram_send_bytes(sock, data: *const VecVal, address, has_timeout, timeout, err) -> u8
 ```
-
-`DnsRecordWire { kind: u8, value: StrVal, priority: i64, weight: i64, port: i64 }`
-(40 bytes): `msstd_net_network_resolve` allocates `count` of them with `msrt_alloc`; the
-compiler moves each string into a `DnsRecord` and frees the array with `msrt_free`.
 
 Behavior notes (same as Go unless stated):
 
@@ -114,8 +107,7 @@ Behavior notes (same as Go unless stated):
 msstd_net_network_connect_tls_config(net, address, opts: *const TlsOptionsWire, has_timeout, timeout, out, err) -> u8
 msstd_net_network_listen_tls(net, address, opts: *const TlsOptionsWire, has_handshake_timeout, handshake_timeout, out, err) -> u8
 msstd_net_connection_tls_info(c, out: *mut TlsInfoWire) -> u8          // TLS status group
-msstd_tls_parse_certificates(pem, has_max, max, certs: *mut *mut CertificateInfoWire, count: *mut usize) -> u8
-msstd_tls_verify_certificates(chain_pem, roots_pem, server_name, now_seconds: i64, now_nanos: i32) -> u8
+// msstd_tls_parse_certificates and msstd_tls_verify_certificates: C, runtime/net/tls_natives.c
 msstd_tls_error_message(status) -> String
 ```
 

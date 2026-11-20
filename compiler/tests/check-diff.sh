@@ -4,7 +4,7 @@
 #   tables  the bundled standard library as loaded into the symbol tables (crates/ms-check c_oracle)
 #   scope   the name-resolution diagnostics of every fixture that imports only `@std/` modules
 #   bodies  the expression types of the functions whose bodies the C pass checks (only those: it
-#           leaves a function with an unhandled construct to the Rust checker), with no Rust diagnostic inside
+#           leaves a function with an unhandled construct to the Rust checker), with the diagnostics inside each
 #   ownership  the ownership diagnostics inside the functions the C walk handles (moves, borrows, returns)
 #   effect directives  the `// ms: effect` and `allow_effect` lines of every .ms file in the repository
 #   desugar  inherent impls rewritten, as project and bundled modules and with foreign types
@@ -22,12 +22,14 @@ effects_oracle=target/release/examples/c_oracle_effects
 desugar_oracle=target/release/examples/c_oracle_desugar
 methods_oracle=target/release/examples/c_oracle_methods
 
-sh compiler/tests/cbuild.sh ms_check_dump types_test ownership_test recursion_test ty_algebra_test ms_effect_dump effect_graph_gen ms_desugar_dump ms_methods_dump
+sh compiler/tests/cbuild.sh ms_check_dump types_test ownership_test recursion_test ty_algebra_test infer_test implements_test ms_effect_dump effect_graph_gen ms_desugar_dump ms_methods_dump
 bin=target/cmake/test/compiler
 "$bin/ownership_test"
 "$bin/types_test"
 "$bin/recursion_test"
 "$bin/ty_algebra_test"
+"$bin/infer_test"
+"$bin/implements_test"
 
 status=0
 "$oracle" > "$out/tables.rust"
@@ -66,18 +68,51 @@ else
 fi
 
 # Function bodies: the facts of every function the C pass checked, against the Rust checker's.
-# Each line is keyed by file and function so that only the functions C claims are compared; a Rust
-# diagnostic inside one of them shows as `dirty`, which the C side never prints.
+# Each line is keyed by file and function so that only the functions C claims are compared, with
+# the diagnostics inside each (`diag L:C: message`): one Rust reports and C does not, or the
+# reverse, is a difference.
 "$oracle" --bodies $files > "$out/bodies.rust"
 "$bin/ms_check_dump" stdlib --bodies $files > "$out/bodies.c"
 keyed() {
-    awk '/^== / { file = $2; key = ""; next } /^fn / { key = file " " $2 } key != "" { print key "|" $0 }' "$1"
+    awk '/^== / { file = $2; key = ""; next } /^(fn|const) / { key = file " " $2 } key != "" { print key "|" $0 }' "$1"
 }
-keyed "$out/bodies.c" > "$out/bodies.c.keyed"
+keyed "$out/bodies.c" > "$out/bodies.c.raw"
+# A function the ownership walk handed back is marked; Rust's ownership diagnostics inside it have no
+# C twin yet, so a marked function that C reports nothing in is compared without Rust's diagnostics.
+awk -F'|' '/\|(fn|const) .* ownership-declined$/ { print $1 }' "$out/bodies.c.raw" | sort -u > "$out/bodies.declined.all"
+awk -F'|' '$2 ~ /^diag / { print $1 }' "$out/bodies.c.raw" | sort -u > "$out/bodies.c.diagnosed"
+comm -23 "$out/bodies.declined.all" "$out/bodies.c.diagnosed" > "$out/bodies.declined"
+sed 's/ ownership-declined$//' "$out/bodies.c.raw" > "$out/bodies.c.keyed"
 cut -d'|' -f1 "$out/bodies.c.keyed" | sort -u > "$out/bodies.keys"
-keyed "$out/bodies.rust" | awk -F'|' -v list="$out/bodies.keys" '
-    BEGIN { while ((getline line < list) > 0) keep[line] = 1 }
-    $1 in keep' > "$out/bodies.rust.keyed"
+keyed "$out/bodies.rust" | awk -F'|' -v list="$out/bodies.keys" -v declined="$out/bodies.declined" '
+    BEGIN { while ((getline line < list) > 0) keep[line] = 1; while ((getline line < declined) > 0) skip[line] = 1 }
+    ($1 in keep) && !(($1 in skip) && $2 ~ /^diag /)' > "$out/bodies.rust.keyed"
+# A call of a function another module exports is claimed; a change that declines it drops hundreds of
+# functions, so one fixture pins it.
+if ! grep -q 'body_imported_call.ms 3:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a call of an imported function is no longer checked in C (compiler/tests/scope/body_imported_call.ms)"
+    status=1
+fi
+# A call that leaves out a parameter with a default, or passes a record, is claimed too.
+if ! grep -q 'body_argument_kinds.ms 11:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a call with a record argument or an omitted default is no longer checked in C (compiler/tests/scope/body_argument_kinds.ms)"
+    status=1
+fi
+# A number returned or passed where an Optional is expected, and `none`, are claimed (`some_wrap`).
+if ! grep -q 'body_optional_wrap.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_optional_wrap.ms 4:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a value used as an Optional is no longer checked in C (compiler/tests/scope/body_optional_wrap.ms)"
+    status=1
+fi
+# A record built with its defaults left out, and passed as an `ok` payload, is claimed.
+if ! grep -q 'body_construct_defaults.ms 5:1$' "$out/bodies.keys" || ! grep -q 'body_construct_defaults.ms 8:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a record built with defaults is no longer checked in C (compiler/tests/scope/body_construct_defaults.ms)"
+    status=1
+fi
+# A function over a type that closes is checked in C: the ownership pass knows it is a resource.
+if ! grep -q 'body_resource_param.ms 11:1$' "$out/bodies.keys" || ! grep -q 'body_resource_param.ms 14:1$' "$out/bodies.keys" || ! grep -q 'body_resource_param.ms 18:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a function over a type that closes is no longer checked in C (compiler/tests/scope/body_resource_param.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else
@@ -85,6 +120,22 @@ else
     diff "$out/bodies.rust.keyed" "$out/bodies.c.keyed" | head -20 || true
     status=1
 fi
+
+# Project imports: an entry that imports project modules, checked through the C module graph
+# (`--project`) against the Rust checker given the same import map. Export errors print as
+# `import L:C: message`.
+for entry in compiler/tests/project/main.ms compiler/tests/project/uses.ms; do
+    name=$(basename "$entry" .ms)
+    "$oracle" --project "$entry" > "$out/project-$name.rust"
+    "$bin/ms_check_dump" stdlib --project "$entry" | sed 's/ ownership-declined$//' > "$out/project-$name.c"
+    if cmp -s "$out/project-$name.rust" "$out/project-$name.c" && [ -s "$out/project-$name.c" ]; then
+        echo "ok   project $name ($(grep -c '^import ' "$out/project-$name.c") import diagnostics)"
+    else
+        echo "FAIL project $name: first difference"
+        diff "$out/project-$name.rust" "$out/project-$name.c" | head -20 || true
+        status=1
+    fi
+done
 
 # Ownership: the diagnostics inside each function the C passes checked, against the Rust checker's,
 # on the ownership fixtures and the corpus. Only functions the C walk handles are compared.
@@ -103,6 +154,33 @@ else
     diff "$out/ownership.rust.keyed" "$out/ownership.c.keyed" | head -20 || true
     status=1
 fi
+
+# Effect scan: the callables each function or constant the C checker checked references (first
+# reference of each, in source order), against the Rust scan's. Only functions C claims are compared.
+"$oracle" --effects $files > "$out/effects.rust"
+"$bin/ms_check_dump" stdlib --effects $files > "$out/effects.c"
+# The Rust checker scans effects only for a program it accepts; leave the others out.
+awk '/^== / { file = $2 } /^unchecked$/ { print file }' "$out/effects.rust" > "$out/effects.unchecked"
+for side in rust c; do
+    awk -v list="$out/effects.unchecked" '
+        BEGIN { while ((getline line < list) > 0) skip[line] = 1 }
+        /^== / { dropped = ($2 in skip) }
+        !dropped { print }' "$out/effects.$side" > "$out/effects.$side.kept"
+    mv "$out/effects.$side.kept" "$out/effects.$side"
+done
+keyed "$out/effects.c" > "$out/effects.c.keyed"
+cut -d'|' -f1 "$out/effects.c.keyed" | sort -u > "$out/effects.keys"
+keyed "$out/effects.rust" | awk -F'|' -v list="$out/effects.keys" '
+    BEGIN { while ((getline line < list) > 0) keep[line] = 1 }
+    $1 in keep' > "$out/effects.rust.keyed"
+if cmp -s "$out/effects.rust.keyed" "$out/effects.c.keyed" && [ -s "$out/effects.c.keyed" ]; then
+    echo "ok   effect scan ($(wc -l < "$out/effects.keys") functions, $(grep -c '|edge ' "$out/effects.c.keyed") references)"
+else
+    echo "FAIL effect scan: first difference"
+    diff "$out/effects.rust.keyed" "$out/effects.c.keyed" | head -20 || true
+    status=1
+fi
+
 
 # Effect directives on every source file, then generated graphs, each compared with the Rust result.
 # The fixture is written here because the repository forbids carriage returns in stored files: it has CRLF

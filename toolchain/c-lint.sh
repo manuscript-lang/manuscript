@@ -16,9 +16,18 @@ rm -rf "$out"; mkdir -p "$out"
 # The flags come from the CMake project (cmake/MsLint.cmake, `make c-lint`): warnings, include paths and library headers.
 [ -f "${MS_LINT_FLAGS:-}" ] || { echo "c-lint: run it through CMake (make c-lint or cmake --build <dir> --target c-lint)" >&2; exit 1; }
 flags=$(cat "$MS_LINT_FLAGS")
-# A source under runtime/sys/<os>/ compiles only on that system, so the others are left to that system's build.
-case "$(uname -s)" in Darwin) other='/sys/(linux|glibc|windows)/' ;; *) other='/sys/(darwin|windows)/' ;; esac
+# A source under runtime/sys/<os>/ or runtime/io/<os>/ compiles only on that system, so the others are left to that system's build.
+case "$(uname -s)" in Darwin) other='/(sys|io)/(linux|glibc|windows)/' ;; *) other='/(sys|io)/(darwin|windows)/' ;; esac
 files=$(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2>/dev/null | grep -Ev "$other" | sort)
+# compiler/src is one translation unit, libms.c, that includes each source once: a file included twice redeclares its
+# types, and one left out is not built. driver.c and tool.c are the entry points, outside it.
+included=$(sed -n 's/^#include "\(.*\.c\)"$/\1/p' compiler/src/libms.c)
+twice=$(echo "$included" | sort | uniq -d)
+[ -z "$twice" ] || { echo "c-lint: libms.c includes twice: $twice" >&2; exit 1; }
+for f in $(cd compiler/src && find . -name '*.c' | sed 's|^\./||' | sort); do
+    case "$f" in driver.c|libms.c|tool.c) continue ;; esac
+    echo "$included" | grep -qx "$f" || { echo "c-lint: compiler/src/$f is not included by libms.c" >&2; exit 1; }
+done
 changed=$files
 if [ -n "$base" ]; then
     git rev-parse --verify --quiet "$base^{commit}" > /dev/null || { echo "c-lint: $base is not a commit" >&2; exit 1; }
@@ -60,8 +69,9 @@ status=0
 # strcat and strcpy overrun, strtok keeps hidden state, gets cannot be used safely, and Apple's libc deprecates sprintf, so a
 # macOS build fails on it. Use snprintf, memcpy with a checked size, or ms_rt/safe.h (tests: tests/support/append.h).
 banned='(^|[^[:alnum:]_.>])(sprintf|vsprintf|strcpy|stpcpy|strcat|strtok|gets|tmpnam|mktemp)[[:space:]]*\('
+# Every system's sources count, including the ones this system does not compile.
 # shellcheck disable=SC2086
-if hits=$(grep -nHE "$banned" $files $(find runtime/include runtime/core runtime/net runtime/std runtime/sys runtime/io runtime/tests compiler/include compiler/src -name '*.h' 2> /dev/null) | grep -vE ':[0-9]+:[[:space:]]*(/?\*|//)'); then
+if hits=$(grep -nHE "$banned" $(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2> /dev/null) $(find runtime/include runtime/core runtime/net runtime/std runtime/sys runtime/io runtime/tests compiler/include compiler/src -name '*.h' 2> /dev/null) | grep -vE ':[0-9]+:[[:space:]]*(/?\*|//)'); then
     echo "$hits" >&2
     echo "c-lint: sprintf, strcpy, strcat, strtok and the like are banned; use snprintf or a bounded copy" >&2
     status=1

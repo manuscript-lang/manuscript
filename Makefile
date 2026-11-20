@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -60,8 +60,19 @@ unit: runtime
 
 test: unit conform
 
+# The old binary is removed first and its presence checked after, so a failed build never leaves a stale `ms` that later
+# commands run (a stale ms gives wrong census and conformance answers).
 build: runtime
+	@rm -f "$(RELEASE_MS)"
 	cargo build --release --locked -p ms-cli
+	@test -x "$(RELEASE_MS)" || { echo "make build: $(RELEASE_MS) was not produced" >&2; exit 1; }
+
+# A clean rebuild from the sources: drops the built C libraries, every CMake cache and the runtime archive, the
+# repository tools' shim and the old ms, then builds again. Downloaded LLVM and lld tools and cargo's own cache stay.
+rebuild:
+	rm -rf target/c-libs target/ms-native target/cmake target/libms_tools.a
+	rm -f "$(RELEASE_MS)"
+	$(MAKE) build
 
 # The frozen conformance corpus against the Rust `ms`, every phase, with programs built by Cranelift (about 3x
 # faster than LLVM; see documentation/contributing/development.md). Excludes fixtures whose answer depends on
@@ -141,7 +152,7 @@ removed-check: build
 	$(MS) run tools/removed-check.ms
 
 # The Manuscript command-line front (tools/ms) against the Rust ms on the argument lines in tools/ms/cases.txt.
-ms-cli-check: build
+ms-cli-check: build target/c-tool/libmstool.a
 	$(MS) run tools/ms-cli-check.ms
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
@@ -232,6 +243,7 @@ c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
 	sh compiler/tests/mir-diff.sh
 	sh compiler/tests/mir-pass-diff.sh
+	sh compiler/tests/mir-pass-frozen.sh
 	sh compiler/tests/check-diff.sh
 	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh
@@ -239,8 +251,11 @@ c-compiler-test:
 	sh compiler/tests/fixes-diff.sh
 	sh compiler/tests/prelude-fix-diff.sh
 	sh compiler/tests/import-hints-diff.sh
-	sh compiler/tests/qbe-run.sh
+	sh compiler/tests/run-run.sh
+	sh compiler/tests/asm-tables.sh
 	sh compiler/tests/llvm-run.sh
+	sh compiler/tests/llvm-main-run.sh
+	sh compiler/tests/data-run.sh
 
 # libms with the tool entry points (compiler/include/ms/tool.h): the archive a Manuscript tool links with `--link`.
 .PHONY: FORCE
@@ -249,14 +264,16 @@ FORCE:
 C_TOOL = target/cmake/tools/compiler
 target/c-tool/libmstool.a: FORCE
 	cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
-	cmake --build target/cmake/tools --target ms_tool ms_syntax_dump
+	cmake --build target/cmake/tools --target ms_tool ms_syntax_dump ms_check_dump
 	mkdir -p target/c-tool
 	cp $(C_TOOL)/libmstool.a $@
 	cp $(C_TOOL)/ms_syntax_dump target/c-tool/ms_syntax_dump
 
-# The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; and `search_symbol` against the Rust one.
+# The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; `search_symbol` against the Rust one; the `ms diagram` views and call graph against the Rust ones; and the C checker's fact dump against the Rust facts.
 c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/matches.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
 	git ls-files '*.ms' > target/c-tool/files.txt
 	target/c-tool/ms_syntax_dump ast $$(cat target/c-tool/files.txt) | sed -E 's/^(error [0-9]+:[0-9]+:[0-9]+) .*/\1/' > target/c-tool/ast.c.txt
 	"$(RELEASE_MS)" run tools/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt
@@ -273,6 +290,13 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/doc_inventory.ms
 	"$(RELEASE_MS)" build tools/ms/search.ms -o target/c-tool/search
 	sh tools/ms/search-diff.sh "$(RELEASE_MS)" target/c-tool/model.json target/c-tool/search
+	cargo build -q --release --locked -p ms-tooling --bin ms-tooling-dev
+	"$(RELEASE_MS)" build tools/ms/views.ms -o target/c-tool/views
+	sh tools/ms/views-diff.sh target/release/ms-tooling-dev target/c-tool/views target/c-tool/views-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/inspect.ms -o target/c-tool/inspect
+	sh tools/ms/inspect-diff.sh "$(RELEASE_MS)" target/c-tool/inspect target/c-tool/inspect-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/facts_diff.ms -o target/c-tool/facts_diff
+	sh compiler/tests/facts-diff.sh $(C_TOOL)/ms_check_dump target/release/ms-tooling-dev target/c-tool/facts_diff target/c-tool/facts-work $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' | awk 'NR%8==0')
 	"$(RELEASE_MS)" run tools/ms/lint_diff.ms --link target/c-tool/libmstool.a -- "$(RELEASE_MS)" target/c-tool/work 3 $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' 'examples/*.ms' 'stdlib/*.ms' | awk 'NR%4==0')
 
 # The C driver: stage table and parse entry point, then the thin `ms` in front of a stand-in for the Rust `ms` (no Rust build needed).

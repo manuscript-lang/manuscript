@@ -13,6 +13,84 @@ static int parse(const char *text, size_t limit, MsH1Request *r, MsH1Field *f, u
     return ms_h1_parse_request(text, strlen(text), limit, r, cap);
 }
 
+/* Reads a whole response body in `step`-byte reads: the decoded bytes in `out`, the result of the last call. */
+static int read_all(MsH1Reader *r, const char *buf, size_t len, size_t step, char *out, size_t *got) {
+    size_t at = 0;
+    int result = MS_H1_BODY_NEED_MORE;
+    *got = 0;
+    while (at < len && result != MS_H1_BODY_DONE) {
+        size_t n = len - at < step ? len - at : step;
+        while (1) {
+            MsSpan d; size_t used;
+            result = ms_h1_read_body(r, buf + at, n, &d, &used);
+            if (result == MS_H1_BODY_DATA) { memcpy(out + *got, buf + at + d.off, d.len); *got += d.len; }
+            at += used; n -= used;
+            if (result != MS_H1_BODY_DATA) break;
+        }
+        if (result == MS_H1_BODY_BAD) return result;
+    }
+    return result;
+}
+
+static void test_responses(void) {
+    MsH1Response resp; MsH1Field f[8]; MsH1Reader r; char body[64]; size_t got;
+    resp.fields = f;
+    const char *length = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\nX: y\r\n\r\nhello";
+    size_t head = strlen(length) - 5;
+    CHECK(ms_h1_parse_response(&r, length, strlen(length), 1 << 20, &resp, 8, 0) == MS_H1_COMPLETE);
+    CHECK(resp.status == 200 && resp.minor == 1 && resp.keep_alive && resp.nfields == 2 && resp.head_len == head);
+    CHECK(span_is(length, resp.reason, "OK") && span_is(length, f[1].name, "X") && span_is(length, f[1].value, "y"));
+    for (size_t step = 1; step <= 5; step++) {
+        ms_h1_parse_response(&r, length, strlen(length), 1 << 20, &resp, 8, 0);
+        CHECK(read_all(&r, length + head, 5, step, body, &got) == MS_H1_BODY_DONE && got == 5 && !memcmp(body, "hello", 5));
+    }
+
+    /* every prefix of the head is partial */
+    for (size_t n = 0; n < head; n++) CHECK(ms_h1_parse_response(&r, length, n, 1 << 20, &resp, 8, 0) == MS_H1_PARTIAL);
+
+    /* chunked, in every read size, and a chunked body split inside the framing */
+    const char *chunked = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n3\r\nabc\r\n4\r\ndefg\r\n0\r\n\r\n";
+    head = strlen("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+    for (size_t step = 1; step <= 8; step++) {
+        CHECK(ms_h1_parse_response(&r, chunked, strlen(chunked), 1 << 20, &resp, 8, 0) == MS_H1_COMPLETE);
+        CHECK(read_all(&r, chunked + head, strlen(chunked) - head, step, body, &got) == MS_H1_BODY_DONE && got == 7 && !memcmp(body, "abcdefg", 7));
+    }
+
+    /* a body that ends with the stream, and a truncated one */
+    const char *eof = "HTTP/1.0 200 OK\r\n\r\nuntil close";
+    head = strlen("HTTP/1.0 200 OK\r\n\r\n");
+    CHECK(ms_h1_parse_response(&r, eof, strlen(eof), 1 << 20, &resp, 8, 0) == MS_H1_COMPLETE && !resp.keep_alive);
+    CHECK(read_all(&r, eof + head, strlen(eof) - head, 100, body, &got) == MS_H1_BODY_NEED_MORE && got == 11);
+    CHECK(ms_h1_read_body_eof(&r) == MS_H1_BODY_DONE);
+    CHECK(ms_h1_parse_response(&r, length, strlen(length) - 2, 1 << 20, &resp, 8, 0) == MS_H1_COMPLETE);
+    CHECK(read_all(&r, length + head, 3, 100, body, &got) != MS_H1_BODY_DONE && ms_h1_read_body_eof(&r) == MS_H1_BODY_BAD);
+
+    /* no body: HEAD answers, 204, 304 and interim heads, whatever the headers claim */
+    const char *no_body = "HTTP/1.1 204 No Content\r\nContent-Length: 9\r\n\r\n";
+    MsSpan d; size_t used;
+    CHECK(ms_h1_parse_response(&r, no_body, strlen(no_body), 1 << 20, &resp, 8, 0) == MS_H1_COMPLETE);
+    CHECK(ms_h1_read_body(&r, "", 0, &d, &used) == MS_H1_BODY_DONE);
+    CHECK(ms_h1_parse_response(&r, length, strlen(length), 1 << 20, &resp, 8, 1) == MS_H1_COMPLETE);
+    CHECK(ms_h1_read_body(&r, "", 0, &d, &used) == MS_H1_BODY_DONE && used == 0);
+    const char *interim = "HTTP/1.1 100 Continue\r\n\r\n";
+    CHECK(ms_h1_parse_response(&r, interim, strlen(interim), 1 << 20, &resp, 8, 0) == MS_H1_COMPLETE && resp.status == 100);
+    const char *upgrade = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n";
+    CHECK(ms_h1_parse_response(&r, upgrade, strlen(upgrade), 1 << 20, &resp, 8, 0) == MS_H1_COMPLETE && resp.status == 101);
+    CHECK(resp.head_len == strlen(upgrade));
+
+    /* limits and smuggling refusals */
+    CHECK(ms_h1_parse_response(&r, length, strlen(length), 20, &resp, 8, 0) == MS_H1_BAD);
+    CHECK(ms_h1_parse_response(&r, length, strlen(length), 1 << 20, &resp, 1, 0) == MS_H1_BAD);
+    const char *both = "HTTP/1.1 200 OK\r\nContent-Length: 1\r\nTransfer-Encoding: chunked\r\n\r\n";
+    CHECK(ms_h1_parse_response(&r, both, strlen(both), 1 << 20, &resp, 8, 0) == MS_H1_BAD);
+    CHECK(ms_h1_parse_response(&r, "HTTP/1.1 20 OK\r\n\r\n", 19, 1 << 20, &resp, 8, 0) == MS_H1_BAD);
+    CHECK(ms_h1_parse_response(&r, "garbage\r\n\r\n", 11, 1 << 20, &resp, 8, 0) == MS_H1_BAD);
+    const char *bad_chunk = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\n";
+    head = strlen("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+    CHECK(ms_h1_parse_response(&r, bad_chunk, strlen(bad_chunk), 1 << 20, &resp, 8, 0) == MS_H1_COMPLETE);
+    CHECK(read_all(&r, bad_chunk + head, 4, 4, body, &got) == MS_H1_BODY_BAD);
+}
+
 int main(void) {
     MsH1Request r; MsH1Field f[8];
     const char *ok = "POST /a?b=1 HTTP/1.1\r\nHost: x.test\r\nContent-Length: 3\r\nX-Empty:\r\n\r\nabc";
@@ -64,6 +142,16 @@ int main(void) {
     u = 0;
     CHECK(ms_h1_write_chunk(o, 6, &u, "hello", 5) == -1 && u == 0);
 
+    /* request line */
+    u = 0;
+    CHECK(ms_h1_write_request_line(o, sizeof o, &u, "GET", 3, "/a?b=1", 6) == 0 && !memcmp(o, "GET /a?b=1 HTTP/1.1\r\n", u) && u == 21);
+    u = 0;
+    CHECK(ms_h1_write_request_line(o, sizeof o, &u, "GE T", 4, "/", 1) == -2);
+    CHECK(ms_h1_write_request_line(o, sizeof o, &u, "GET", 3, "/a b", 4) == -2);
+    CHECK(ms_h1_write_request_line(o, sizeof o, &u, "GET", 3, "/a\r\nX: y", 9) == -2);
+    CHECK(ms_h1_write_request_line(o, 12, &u, "GET", 3, "/long-target", 12) == -1 && u == 0);
+
+    test_responses();
     if (!failed) printf("http1 ok\n");
     return failed;
 }

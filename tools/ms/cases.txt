@@ -59,3 +59,25 @@ check a.ms --check
 build a.ms --list
 --version
 version x
+init a b
+init -x
+init --lib --workspace
+verify --bogus
+verify a b
+explain
+explain MS1000
+explain ms1000 MSL001
+explain MS2001.1 --json
+explain --json MSL001 nope MS1000
+explain nope
+explain --json
+explain --help
+explain a -h
+fmt
+fmt --json tools/ms/explain.ms
+fmt --bogus tools/ms/explain.ms
+fmt --check tools/ms/explain.ms tools/ms/fmt.ms ./tools/ms/explain.ms
+fmt --check --json tools/ms/explain.ms tools/ms/main.ms
+fmt --check --json tools/ms/cases.txt
+fmt --check tools/ms
+fmt --check --drop-labels tools/ms/explain.ms

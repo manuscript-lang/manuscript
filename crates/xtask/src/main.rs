@@ -4,13 +4,14 @@
 //! archive at `target/ms-native/libms_native.a`, where `ms-cli`'s build script embeds it.
 //! `runtime --alloc-profile` also builds `libms_native_allocs.a`, the same runtime with allocation
 //! sampling for `ms profile --allocs`; release packaging asks for it, pull request CI does not.
+//! `runtime --stats` builds `libms_native_stats.a`, the counting runtime of the leak checks.
 //! `runtime --sched-stress` builds `libms_native_stress.a`, the runtime with the scheduler stress mode,
 //! which only `make stress-sched` embeds (in a separate `ms`).
 
 #[path = "../../../runtime/build_c.rs"]
 mod build_c;
 
-use build_c::{CRuntime, archiver, build_c_runtime, c_compiler};
+use build_c::{CRuntime, archiver, build_c_runtime, c_compiler, run_c_tests};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
@@ -21,6 +22,7 @@ fn main() -> ExitCode {
             match runtime(
                 flag.as_deref() == Some("--alloc-profile"),
                 flag.as_deref() == Some("--sched-stress"),
+                flag.as_deref() == Some("--stats"),
             ) {
                 Ok(archive) => {
                     println!("{}", archive.display());
@@ -32,6 +34,16 @@ fn main() -> ExitCode {
                 }
             }
         }
+        Some("c-test") => match c_tests() {
+            Ok(report) => {
+                println!("{report}");
+                ExitCode::SUCCESS
+            }
+            Err(message) => {
+                eprintln!("xtask c-test: {message}");
+                ExitCode::FAILURE
+            }
+        },
         Some("symbols") => {
             let check = std::env::args().nth(2).as_deref() == Some("--check");
             match symbols(check) {
@@ -47,7 +59,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: cargo xtask runtime [--alloc-profile | --sched-stress] | cargo xtask symbols [--check]"
+                "usage: cargo xtask runtime [--alloc-profile | --sched-stress | --stats] | cargo xtask c-test | cargo xtask symbols [--check]"
             );
             ExitCode::from(2)
         }
@@ -310,6 +322,8 @@ fn abi_kind(text: &str) -> String {
         "MsDropRun",
         "RunCopy",
         "MsSlotCopyRun",
+        "JsonCtorFn",
+        "JsonViewFn",
         "ErrSlot",
     ] {
         if word(alias) {
@@ -371,7 +385,8 @@ fn check_c_abi(
                 return Err(format!("{name} is listed in two runtime/symbols files"));
             }
             // `ms_sys_*` is the runtime's own door to the OS (ms_rt/sys.h): not natives, so no recorded signature.
-            if name.starts_with("ms_sys_") {
+            // `ms_*_v1` is the versioned C ABI of user extern shims (ms_rt/cabi.h), declared in ms_abi.h.
+            if name.starts_with("ms_sys_") || name.ends_with("_v1") {
                 continue;
             }
             let Some((params, ret)) = declared.get(*name) else {
@@ -420,7 +435,7 @@ fn check_c_abi(
     }
     for header in read_dir("runtime/include/ms_rt", "h")? {
         let module = header.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        if !["base", "safe", "chars"].contains(&module)
+        if !["base", "runtime", "safe", "chars", "array"].contains(&module)
             && !root.join(format!("runtime/symbols/{module}.txt")).exists()
         {
             return Err(format!(
@@ -437,8 +452,10 @@ fn split_top_level(params: &str) -> Vec<&str> {
     let (mut parts, mut depth, mut start) = (Vec::new(), 0usize, 0);
     for (i, c) in params.char_indices() {
         match c {
-            '<' => depth += 1,
-            '>' => depth = depth.saturating_sub(1),
+            '<' | '(' => depth += 1,
+            // The `>` of a `->` return arrow closes nothing.
+            '>' if !params[..i].ends_with('-') => depth = depth.saturating_sub(1),
+            ')' => depth = depth.saturating_sub(1),
             ',' if depth == 0 => {
                 parts.push(&params[start..i]);
                 start = i + 1;
@@ -470,6 +487,8 @@ fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>
         }
         let ret = if head.contains('*') {
             "ptr".to_string()
+        } else if ret.contains("MS_NORETURN") {
+            "!".to_string()
         } else {
             abi_kind(ret)
         };
@@ -692,9 +711,28 @@ fn strip_paths(ty: &str) -> String {
     out
 }
 
+/// Builds the C unit tests for this host's runtime target and runs them: the Windows leg of `make c-test`.
+fn c_tests() -> Result<String, String> {
+    let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
+    let root = manifest.join("../..");
+    let arch = std::env::consts::ARCH;
+    let triple = match std::env::consts::OS {
+        "linux" => Some(format!("{arch}-unknown-linux-gnu")),
+        "windows" => Some(format!("{arch}-pc-windows-gnullvm")),
+        _ => None,
+    };
+    run_c_tests(
+        &root,
+        &root.join("target/ms-native/c-tests"),
+        triple.as_deref(),
+    )
+}
+
 /// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.
 /// On Linux it also leaves `libms_native_musl.a` beside it, the runtime of `ms build --static`.
-fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
+fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathBuf, String> {
     // Cargo can reuse this executable from another checkout when target directories are shared.
     // Its runtime environment names the active package; the compiled path may name the old one.
     let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
@@ -718,6 +756,16 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
     // allocation-profiling and stress runtimes finish in about the time of the slowest.
     let mut jobs: Vec<(PathBuf, Option<String>, &str, &str)> =
         vec![(target.clone(), triple.clone(), "libms_native.a", "entry")];
+    if stats {
+        // The counting runtime of the leak checks: the allocator counts live blocks (MS_ALLOC_STATS) and the
+        // runtime prints them at exit.
+        jobs.push((
+            out.join("build-stats"),
+            triple.clone(),
+            "libms_native_stats.a",
+            "entry,ms-rt/stats",
+        ));
+    }
     if alloc_profile {
         // The feature changes the runtime, so sharing a directory would rebuild it whenever the
         // two archives alternate.
@@ -745,13 +793,41 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
             "entry",
         ));
     }
+    // The C half does not depend on the Rust features, so each triple's CMake build runs once and its
+    // objects go into every archive of that triple (CMake started beside a running build also fails on
+    // Windows with `AssignProcessToJobObject: (50) The request is not supported`, so they run one by one).
+    // The counting runtime (`stats`) is the one C build that differs: its allocator counts live blocks.
+    let mut plans: Vec<(Option<String>, bool, Result<CRuntime, String>)> = Vec::new();
+    for (dir, triple, _, features) in &jobs {
+        let stats = features.contains("stats");
+        if !plans.iter().any(|(t, s, _)| t == triple && *s == stats) {
+            plans.push((
+                triple.clone(),
+                stats,
+                build_c_runtime(&root, dir, triple.as_deref(), stats),
+            ));
+        }
+    }
+    let plan_of = |triple: &Option<String>, stats: bool| {
+        plans
+            .iter()
+            .find(|(t, s, _)| t == triple && *s == stats)
+            .expect("a plan for every job's triple")
+            .2
+            .as_ref()
+    };
     let mut built = std::thread::scope(|scope| {
         let handles: Vec<_> = jobs
             .iter()
             .map(|(dir, triple, name, features)| {
                 let (root, out) = (&root, &out);
-                scope
-                    .spawn(move || build_archive(root, out, dir, triple.as_deref(), name, features))
+                let plan = plan_of(triple, features.contains("stats"));
+                scope.spawn(move || match plan {
+                    Ok(plan) => {
+                        build_archive(root, out, dir, triple.as_deref(), name, features, plan)
+                    }
+                    Err(message) => Err(message.clone()),
+                })
             })
             .collect();
         handles
@@ -775,6 +851,7 @@ fn build_archive(
     triple: Option<&str>,
     name: &str,
     features: &str,
+    plan: &CRuntime,
 ) -> Result<PathBuf, String> {
     let arch = std::env::consts::ARCH;
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
@@ -799,7 +876,6 @@ fn build_archive(
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    let plan = build_c_runtime(root, target, triple)?;
     if plan.has_reactor() {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
@@ -825,7 +901,7 @@ fn build_archive(
     let built = release.join("libms_native.a");
     let archive = out.join(name);
     std::fs::copy(&built, &archive).map_err(|e| format!("copy {}: {e}", built.display()))?;
-    add_c_runtime(root, target, triple, &plan, &archive)?;
+    add_c_runtime(root, triple, plan, &archive)?;
     strip_debug(&archive);
     Ok(archive)
 }
@@ -833,7 +909,6 @@ fn build_archive(
 /// Adds the C objects the CMake build made for `triple`, and every member of the libraries they use, to `archive`.
 fn add_c_runtime(
     root: &Path,
-    target: &Path,
     triple: Option<&str>,
     plan: &CRuntime,
     archive: &Path,
@@ -844,10 +919,11 @@ fn add_c_runtime(
     }
     let ar = archiver(root, triple);
     let mut command = Command::new(&ar);
+    let mut response = None;
     command.arg("rcs").arg(archive);
     if cfg!(windows) {
         // The folded library members overflow Windows' 32 KiB command line; llvm-ar reads a response file.
-        let list = target.join("c-objects/members.rsp");
+        let list = archive.with_extension("rsp");
         let names: Vec<String> = files
             .iter()
             .map(|f| f.to_string_lossy().replace('\\', "/"))
@@ -855,12 +931,16 @@ fn add_c_runtime(
         std::fs::write(&list, names.join("\n"))
             .map_err(|e| format!("write {}: {e}", list.display()))?;
         command.arg(format!("@{}", list.display()));
+        response = Some(list);
     } else {
         command.args(files);
     }
     let status = command
         .status()
         .map_err(|e| format!("run {}: {e}", ar.display()))?;
+    if let Some(list) = response {
+        let _ = std::fs::remove_file(list);
+    }
     if !status.success() {
         return Err(format!(
             "adding the C objects to {} failed",

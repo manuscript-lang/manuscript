@@ -32,12 +32,15 @@ typedef struct MsBindings {
     MsSym *name;
     MsTy *ty;
     uint32_t *decl_node;  /* the syntax node that introduces it */
-    uint32_t *callable;   /* the function or lambda it belongs to */
+    uint32_t *callable;   /* the declaration node of the function it belongs to */
+    uint32_t *reads;      /* how many times its value is read, not counting reads that only feed its own next value */
+    MsPos *pos;           /* where its name is written */
     uint8_t *flags;       /* MS_BIND_* */
     uint8_t *role;        /* MsBindRole */
     uint32_t count;
 } MsBindings;
-enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2 };
+/* MS_BIND_FED: a read of the binding only computes its own next value (`total = total + 1`). */
+enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2, MS_BIND_FED = 4 };
 typedef enum MsBindRole {
     MS_ROLE_PARAM, MS_ROLE_SELF, MS_ROLE_LET, MS_ROLE_VAR, MS_ROLE_PATTERN, MS_ROLE_LOOP,
     MS_ROLE_ARM, MS_ROLE_LAMBDA_PARAM
@@ -46,6 +49,7 @@ typedef enum MsBindRole {
 /* Methods of a program: what an `impl` supplies, in declaration order (see methods.h). A symbol's
  * signature is its `ty` in `MsSyms`: a function type whose parameters carry the label, type and
  * var/move flags (`ms_ty_params`) and whose result is `tys.result`. */
+enum { MS_METHOD_MUTATING = 1, MS_METHOD_CONSUMING = 2 };
 typedef struct MsMethods {
     MsSym *id;            /* `module/Receiver/Contract/name`, as the Rust checker names it */
     MsTy *receiver;
@@ -53,6 +57,7 @@ typedef struct MsMethods {
     MsTy *ty;             /* the signature, receiver not included */
     const MsFunc **decl;  /* the declaration, or NULL for a property without operations */
     MsNativeKind *native;
+    uint8_t *access;      /* MS_METHOD_MUTATING | MS_METHOD_CONSUMING of the receiver */
     bool *inherent;       /* a type's own method: its contract is the synthesized `Type$methods` */
     MsModId *module;      /* the module that declares the impl */
     bool *local;          /* an extension declared outside the receiver's module: visible there only */
@@ -76,13 +81,20 @@ typedef struct MsFacts {
     uint32_t *arm_case;   /* by match-arm node id: the case index the arm matches */
     /* calls, by call-expression node id */
     uint32_t *call_callee;     /* symbol id of the called function, else MS_NONE */
+    bool *const_use;           /* by name node: a module constant read, which evaluates its initializer */
     uint32_t *call_method;     /* method id when the call is a method call, else MS_NONE */
     MsTy *call_receiver;       /* the receiver's type for a method call */
     MsTy *call_interface;      /* the interface a call dispatches through, else MS_TY_NONE */
     uint32_t *call_type_args_at, *call_type_args_len; /* into `type_args` */
     MsTy *type_args;
+    uint32_t ntype_args, ctype_args; /* used and allocated entries of `type_args` */
+    uint32_t *lambda_first;   /* by lambda node id: the first binding of its parameters and body; the ones below are captured */
     uint32_t *assign_binding; /* by assignment statement node id: the binding it writes, else MS_NONE */
+    uint32_t *field_store_root; /* by assignment statement node id: the `var` a field store changes, else MS_NONE */
+    bool *each_list;  /* by `for` statement node id: it iterates a list, not a range */
+    bool *some_wrap;  /* by expression node id: a value of the payload type used where an Optional is expected, so it is wrapped in `some` */
     bool *body_checked;   /* by declaration node id: the function's body was checked */
+    bool *ret_borrowed;   /* by declaration node id: every result is a reference into the arguments (ownership pass) */
     MsBindings bindings;
     MsMethods *methods; /* the program's table, shared by every module */
 } MsFacts;

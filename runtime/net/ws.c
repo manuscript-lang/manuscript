@@ -58,8 +58,7 @@ int ms_ws_parse_head(const MsWsState *s, const uint8_t *buf, size_t len, MsWsHea
         return MS_WS_BAD;
     }
     if (length > (uint64_t)INT64_MAX) {
-        add(reason, cap, &n, "payload length too large");
-        return MS_WS_BAD;
+        return MS_WS_TOO_BIG;
     }
     memset(out, 0, sizeof *out);
     out->fin = fin; out->opcode = opcode; out->masked = masked; out->payload_len = length; out->head_len = (uint32_t)total;

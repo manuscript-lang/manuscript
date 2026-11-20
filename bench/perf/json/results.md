@@ -2,6 +2,48 @@
 
 `@std/json` `parse` and `stringify` against Node's `JSON.parse` and `JSON.stringify` on the standard documents (`twitter.json`, `canada.json`, `citm_catalog.json`) and a small RPC message. Both sides warm up, then take the median of at least five runs over one second. Throughput is MB of document per second; the last column is Node time over Manuscript time, so above 1.00x Manuscript is faster. Reproduce with `sh bench/perf/json/run.sh` (needs `node`); compare only runs from one machine.
 
+## 2026-11-20: word-at-a-time scanner (this change, after #4863)
+
+linux/amd64, four shared cores in a cloud container (noisy; compare only within this section). The scanner of `parse` reads strings, spaces and digits eight bytes at a time, dispatches on the first byte with a switch, keeps the one-space and no-space cases of whitespace inline, and checks repeated keys with a hash of the first and last eight bytes in a stack table. These are the techniques of the yyjson experiment below, applied to our own scanner and error text.
+
+Same-process `msstd_json_parse` of the document into a `JsonDoc`, then drop; best of six runs of 10 parses, MB/s. "before" is the scanner of #4783; "yyjson" is the reverted experiment compiled next to it (the target).
+
+| document | scan only: before | scan only: after | scan only: yyjson | parse: before | parse: after | parse: yyjson |
+|---|---:|---:|---:|---:|---:|---:|
+| twitter | 760 | 1379 | 722 | 491 | 822 | 701 |
+| citm_catalog | 1020 | 1739 | 1335 | 571 | 799 | 805 |
+| canada | 573 | 1286 | 661 | 407 | 454 | 344 |
+| generated records, 12 MB | 435 | 535 | 460 | 273 | 270 | 266 |
+| generated float arrays, 12 MB | 626 | 1229 | 449 | 483 | 525 | 307 |
+
+Instructions per parse (callgrind, one parse): twitter 14M to 10M, citm_catalog 30M to 20M, canada 57M to 42M. "Scan only" runs the scanner into a sink that does nothing; the remaining time of "parse" is the document builder and the copy of the text, which is why citm_catalog and the generated records are level with yyjson (within the noise of this machine) while the scan itself is faster everywhere.
+
+## 2026-11-20: parse with vendored yyjson (6d566840, #4851), reverted
+
+The owner decided to keep our own scanner and speed it up with yyjson's techniques, so #4851 was reverted. These are the numbers of the yyjson experiment, kept as the target the scanner has to match.
+
+linux/amd64, four shared cores in a cloud container (noisy; Node v22.23.5; compare only within this section). `ms` Release build (Cranelift). The scanner of `parse` is yyjson 0.10.0 read in place and walked into the document builder (before: the hand-written C scanner of #4783).
+
+End to end through `ms run bench/tools/json_bench.ms`, after the change:
+
+| document | operation | Node MB/s | serde_json MB/s | Manuscript MB/s | Manuscript / Node | Manuscript / serde_json |
+|---|---|---:|---:|---:|---:|---:|
+| twitter | parse | 304 | 184 | 361 | 1.19x | 1.97x |
+| canada | parse | 190 | 152 | 231 | 1.21x | 1.52x |
+| citm_catalog | parse | 658 | 369 | 479 | 0.73x | 1.30x |
+
+Before and after in the same process (`msstd_json_parse` of the document into a `JsonDoc`, then drop it; median of 25 runs of 10 parses; the old scanner is the C code of #4783 compiled next to the new one):
+
+| document | before MB/s | after MB/s | change |
+|---|---:|---:|---:|
+| twitter | 490-530 | 650-700 | +30% |
+| citm_catalog | 630 | 765-785 | +22% |
+| canada (floats) | 407 | 339 | -17% |
+| generated records, 12 MB | 245 | 260 | +5% |
+| generated arrays of 17-digit floats, 12 MB | 430-450 | 270-310 | -30% |
+
+The scan alone, with a no-op sink, is faster on every standard document (canada 612 against 567 MB/s); on the generated float arrays yyjson's read (29 ms of 12 MB) already costs as much as the whole old scan (34 ms), and the copy for the in-place read and the walk add about 12 ms. Number-heavy input is where the tree costs most.
+
 ## main at c1b81215 (2026-10-25)
 
 linux/amd64, four cores, Node v22.22.0, `ms` Release build (LLVM).

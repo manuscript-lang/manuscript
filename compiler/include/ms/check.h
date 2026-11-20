@@ -13,6 +13,11 @@
 /* The row of the module with this path, or MS_NONE. */
 MsModId ms_module_find(const MsCheck *c, MsSym path);
 
+/* The project modules `module`'s imports name: `targets[i]` is the row of what `syntax->imports[i]`
+ * imports, or MS_NONE for a standard-library import. The array has `nimports` entries and must outlive
+ * the checker; call before `ms_module_declare`. Port of the Rust `ImportMap`. */
+void ms_module_set_imports(MsCheck *c, MsModId module, const MsModId *targets);
+
 /* Declares the module's names once; later calls do nothing. Imports of `@std/` modules declare
  * the source module they read first. Imports of other modules are not resolved yet and leave no
  * name behind. */
@@ -48,6 +53,9 @@ typedef struct MsResolver {
 /* What a written type means in the resolver's scope; `<invalid>` after a diagnostic. NULL is
  * `<invalid>` without one. */
 MsTy ms_resolve_type(MsResolver *r, const MsTypeRef *t);
+
+/* The generic type `base` applied to `args`. */
+MsTy ms_ty_apply(MsCheck *c, MsTy base, const MsTy *args, uint32_t nargs);
 
 /* A parameter, field or payload list: the types resolved, duplicate names reported. */
 MsTyParam *ms_resolve_params(MsResolver *r, const MsParams *params);
@@ -87,5 +95,14 @@ MsSymId ms_decl_own_symbol(const MsCheck *c, MsModId module, const MsDecl *d);
  * for the others no fact is written. Fills `expr_ty`, `res_kind`/`res_ref`, `pattern_binding`,
  * `bindings` and `body_checked` of the module's facts for the checked ones. */
 void ms_module_check_bodies(MsCheck *c, MsModId module);
+/* The same with the program's method table (`ms_module_add_implementations` has run for every
+ * module that declares impls): method calls and interface calls are checked too. */
+struct MsMethodTable;
+void ms_module_check_bodies_with(MsCheck *c, MsModId module, struct MsMethodTable *methods);
+
+/* Reports the locals and match payloads of the checked functions that nothing reads (`unused.rs`).
+ * Like the Rust pass it reports only for a module with no other diagnostic, and it exempts names
+ * that begin with `_`. Call after ms_module_check_bodies (and the ownership pass). */
+void ms_module_check_unused(MsCheck *c, MsModId module);
 
 #endif

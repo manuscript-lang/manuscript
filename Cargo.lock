@@ -341,7 +341,7 @@ dependencies = [
  "asn1-rs",
  "displaydoc",
  "nom",
- "num-bigint 0.4.8",
+ "num-bigint",
  "num-traits",
  "rusticata-macros",
 ]
@@ -426,18 +426,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "wasi",
-]
-
-[[package]]
-name = "getrandom"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099"
-dependencies = [
- "cfg-if",
- "libc",
- "r-efi",
- "rand_core",
 ]
 
 [[package]]
@@ -584,7 +572,6 @@ dependencies = [
  "ms-lower",
  "ms-mir",
  "ms-mir-llvm",
- "ms-rt",
  "ms-syntax",
  "object",
 ]
@@ -609,7 +596,6 @@ dependencies = [
  "ms-json",
  "ms-lsp",
  "ms-mir",
- "ms-rt",
  "ms-rt-abi",
  "ms-syntax",
  "ms-tooling",
@@ -640,28 +626,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-decimal"
-version = "0.1.0"
-dependencies = [
- "num-bigint 0.5.1",
- "num-traits",
-]
-
-[[package]]
 name = "ms-driver"
 version = "0.0.0"
 dependencies = [
  "ms-check",
- "ms-rt",
  "ms-syntax",
  "toml_edit",
-]
-
-[[package]]
-name = "ms-inflate"
-version = "0.1.0"
-dependencies = [
- "flate2",
 ]
 
 [[package]]
@@ -673,9 +643,7 @@ name = "ms-lower"
 version = "0.0.0"
 dependencies = [
  "ms-check",
- "ms-decimal",
  "ms-mir",
- "ms-rt",
  "ms-rt-abi",
 ]
 
@@ -686,7 +654,6 @@ dependencies = [
  "ms-check",
  "ms-driver",
  "ms-json",
- "ms-rt",
  "ms-syntax",
  "ms-tooling",
 ]
@@ -713,18 +680,7 @@ version = "0.1.0"
 dependencies = [
  "ms-rt",
  "ms-rt-abi",
- "ms-std-archive",
- "ms-std-bigint",
- "ms-std-core",
- "ms-std-decimal",
- "ms-std-fs",
- "ms-std-json",
  "ms-std-net",
- "ms-std-process",
- "ms-std-system",
- "ms-std-table",
- "ms-std-terminal",
- "ms-std-time",
 ]
 
 [[package]]
@@ -735,7 +691,6 @@ dependencies = [
  "memchr",
  "mio",
  "ms-rt-abi",
- "unicode-normalization",
 ]
 
 [[package]]
@@ -743,73 +698,14 @@ name = "ms-rt-abi"
 version = "0.1.0"
 
 [[package]]
-name = "ms-std-archive"
-version = "0.1.0"
-dependencies = [
- "miniz_oxide",
- "ms-inflate",
- "ms-rt",
- "ms-std-core",
-]
-
-[[package]]
-name = "ms-std-bigint"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
- "num-bigint 0.5.1",
- "num-traits",
-]
-
-[[package]]
-name = "ms-std-core"
-version = "0.1.0"
-dependencies = [
- "getrandom 0.4.3",
- "libm",
- "ms-rt",
- "ms-rt-abi",
-]
-
-[[package]]
-name = "ms-std-decimal"
-version = "0.1.0"
-dependencies = [
- "ms-decimal",
- "ms-rt",
-]
-
-[[package]]
-name = "ms-std-fs"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "ms-std-json"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
-]
-
-[[package]]
 name = "ms-std-net"
 version = "0.1.0"
 dependencies = [
- "crc32fast",
  "flate2",
  "httparse",
  "mio",
- "ms-inflate",
  "ms-rt",
  "ms-rt-abi",
- "ms-std-core",
  "psl",
  "ring",
  "rustix",
@@ -818,56 +714,6 @@ dependencies = [
  "socket2",
  "windows-sys 0.61.2",
  "x509-parser",
-]
-
-[[package]]
-name = "ms-std-process"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "ms-std-fs",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "ms-std-system"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "ms-std-process",
- "rustix",
-]
-
-[[package]]
-name = "ms-std-table"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "unicode-width",
-]
-
-[[package]]
-name = "ms-std-terminal"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "rustix",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "ms-std-time"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -899,16 +745,6 @@ name = "num-bigint"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c89e69e7e0f03bea5ef08013795c25018e101932225a656383bd384495ecc367"
-dependencies = [
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-bigint"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93e7820bc0a80a0238e650327316f929ba18d5be054b647490a3a6a339f3e7c0"
 dependencies = [
  "num-integer",
  "num-traits",
@@ -1011,18 +847,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "r-efi"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
-
-[[package]]
-name = "rand_core"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
-
-[[package]]
 name = "regalloc2"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1073,7 +897,7 @@ checksum = "a4689e6c2294d81e88dc6261c768b63bc4fcdb852be6d1352498b114f61383b7"
 dependencies = [
  "cc",
  "cfg-if",
- "getrandom 0.2.17",
+ "getrandom",
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
@@ -1355,12 +1179,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tinyvec"
-version = "1.13.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
-
-[[package]]
 name = "toml_datetime"
 version = "1.1.3+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1408,21 +1226,6 @@ name = "unicode-ident"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2c754d6c33795a1c324727428e5a7dedb5b06195f9890bdbcba760d3e246563"
-
-[[package]]
-name = "unicode-normalization"
-version = "0.1.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75cd3fb03d5288b3ba9a1ee103ac7e9cbb59f0b03d64f8ddfcc04dd42758a85d"
-dependencies = [
- "tinyvec",
-]
-
-[[package]]
-name = "unicode-width"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca718471876992059f251e33aafc334346ada08042b7661dd1fe313a9bced557"
 
 [[package]]
 name = "untrusted"

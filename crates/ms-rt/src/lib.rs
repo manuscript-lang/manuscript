@@ -27,15 +27,16 @@ macro_rules! sym_prefix {
 }
 
 pub mod alloc;
-pub mod bits;
-pub mod cabi;
 pub mod cancel;
 pub mod desc;
 /// The drop worklist is C (`runtime/core/dropq.c`); the fault module resets it through this.
+#[cfg(not(test))]
 pub mod dropq {
     unsafe extern "C" {
         fn msdrop_reset();
     }
+    /// Only the non-test `guard_exit` calls this, so unit tests do not compile it.
+    #[cfg(not(test))]
     pub(crate) fn reset() {
         // SAFETY: the state belongs to the calling thread.
         unsafe { msdrop_reset() }
@@ -43,15 +44,11 @@ pub mod dropq {
 }
 pub mod fault;
 pub mod ffi;
-mod float_digits;
-mod float_table;
 pub mod global;
 pub mod glue;
 pub mod io;
 pub mod isolate;
 pub mod map;
-#[cfg(any(test, all(target_os = "linux", target_env = "musl")))]
-pub mod mem;
 pub mod num;
 pub mod obj;
 pub mod pipe;
@@ -59,7 +56,6 @@ pub mod poller;
 pub mod process;
 pub mod profile;
 pub mod promise;
-pub mod scan;
 pub mod sched;
 pub mod start;
 pub mod streams;
@@ -71,8 +67,6 @@ pub mod sys;
 pub mod sys;
 mod sys_c;
 pub mod task;
-pub mod tree;
-pub mod utf8;
 pub mod vec;
 pub mod watch;
 

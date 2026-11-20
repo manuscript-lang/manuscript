@@ -117,7 +117,7 @@ uint32_t mir_extern_intern(MirModule *m, const MirExtern *def);
 /* Inserts `inst` before position `at` of `block` (`at == ninsts` appends). */
 void mir_block_insert(MirModule *m, MirBlockData *block, uint32_t at, const MirInst *inst);
 
-/* Copies `f` into `out`: its own arrays of values, blocks, parameters and instructions (the
+/* Copies `f` into `out`: its own arrays of values, blocks, parameters, instructions, scopes and names (the
  * operand arrays are shared, so a pass edits a clone only by replacing them). */
 void mir_func_clone(MirModule *m, const MirFunc *f, MirFunc *out);
 
@@ -130,5 +130,12 @@ uint32_t mir_entry_insert_at(const MirFunc *f);
 
 /* Removes the instructions at the (ascending) positions in `dead`. */
 void mir_block_remove(MirBlockData *block, const uint32_t *dead, uint32_t ndead);
+
+/* The values an integer of type `from` can take in the sized integer type `to`, for `inarrow.opt`:
+ * its range, clamped to what a signed 64-bit register holds, and from zero up for a UInt64 source. */
+void mir_narrow_range(const MirModule *m, MirTy from, MirTy to, int64_t *lo, int64_t *hi);
+/* Whether `inst` is a checked integer operation whose result is a sized integer (Int8 to UInt32), and
+ * its range. Such a result faults as out of range when it leaves it, whatever the 64-bit check said. */
+bool mir_sized_result_range(const MirModule *m, const MirFunc *f, const MirInst *inst, int64_t *lo, int64_t *hi);
 
 #endif

@@ -256,16 +256,49 @@ static inline size_t grow_chunk_of(const void *p) {
 }
 
 #ifdef MS_ALLOC_STATS
-static inline void live_add(State *s, int64_t delta) {
+/* The counting runtime counts the whole process, since a block may be freed on another thread than the one that
+ * allocated it: every live block, and per size class (the last bucket is every block of the system allocator and
+ * the growth chunks). A block that realloc moved is freed from its new class, so a bucket can read below zero. */
+static _Atomic int64_t live_all;
+static _Atomic int64_t live_by_bucket[NUM_CLASSES + 1];
+
+static inline void live_add(State *s, int64_t delta, size_t bucket) {
     s->live += delta;
+    atomic_fetch_add_explicit(&live_all, delta, memory_order_relaxed);
+    atomic_fetch_add_explicit(&live_by_bucket[bucket], delta, memory_order_relaxed);
 }
 int64_t msalloc_live_blocks(void) {
     return st.live;
 }
+int64_t msrt_heap_live_total(void) {
+    return atomic_load_explicit(&live_all, memory_order_relaxed);
+}
+size_t msrt_heap_live_by_size(size_t *sizes, int64_t *counts, size_t capacity) {
+    size_t found = 0;
+    for (size_t bucket = 0; bucket <= NUM_CLASSES && found < capacity; bucket++) {
+        const int64_t count = atomic_load_explicit(&live_by_bucket[bucket], memory_order_relaxed);
+        if (count != 0) {
+            sizes[found] = bucket < NUM_CLASSES ? msalloc_class_size[bucket] : 0;
+            counts[found++] = count;
+        }
+    }
+    return found;
+}
 #else
-static inline void live_add(State *state, int64_t delta) {
+static inline void live_add(State *state, int64_t delta, size_t bucket) {
     (void)state;
     (void)delta;
+    (void)bucket;
+}
+int64_t msrt_heap_live_total(void) {
+    return 0;
+}
+size_t msrt_heap_live_by_size(size_t *sizes, int64_t *counts, size_t capacity) {
+    if (capacity != 0) {
+        sizes[0] = 0;
+        counts[0] = 0;
+    }
+    return 0;
 }
 #endif
 
@@ -545,7 +578,7 @@ NOINLINE static void *alloc_slow(size_t size) {
         void *head = s->free[c];
         if (head) {
             s->free[c] = link_next(head);
-            live_add(s, 1);
+            live_add(s, 1, c);
             return head;
         }
         char *p = s->bump[c];
@@ -554,7 +587,7 @@ NOINLINE static void *alloc_slow(size_t size) {
         }
         if (p) {
             s->bump[c] = p + msalloc_class_size[c];
-            live_add(s, 1);
+            live_add(s, 1, c);
             return p;
         }
     }
@@ -575,7 +608,7 @@ void *msrt_alloc(size_t size) {
         void *head = s->free[c];
         if (LIKELY(head != 0)) {
             s->free[c] = link_next(head);
-            live_add(s, 1);
+            live_add(s, 1, c);
             return head;
         }
     }
@@ -602,13 +635,13 @@ NOINLINE static void *alloc_large(State *s, size_t size) {
             s->large_free[c] = link_next(head);
             s->large_count[c]--;
             s->large_cached -= ms_sys_malloc_size(head);
-            live_add(s, 1);
+            live_add(s, 1, NUM_CLASSES);
             return head;
         }
         request = msalloc_large_size(c);
         void *shared = shared_take(size);
         if (shared) {
-            live_add(s, 1);
+            live_add(s, 1, NUM_CLASSES);
             return shared;
         }
     }
@@ -619,7 +652,7 @@ NOINLINE static void *alloc_large(State *s, size_t size) {
     if (request > LARGE_MAX) {
         advise_huge(p, request);
     }
-    live_add(s, 1);
+    live_add(s, 1, NUM_CLASSES);
     return p;
 }
 
@@ -647,7 +680,7 @@ void *msrt_heap_alloc_zeroed_cached(size_t size) {
     s->large_count[c]--;
     s->large_cached -= ms_sys_malloc_size(head);
     __builtin_memset(head, 0, size);
-    live_add(s, 1);
+    live_add(s, 1, NUM_CLASSES);
     return head;
 }
 
@@ -690,10 +723,10 @@ void msrt_free(void *p) {
         return;
     }
     State *s = &st;
-    live_add(s, -1);
     uint32_t word;
     if (page_word(p, &word)) {
         size_t c = (uint8_t)word;
+        live_add(s, -1, c);
         uint32_t owner = word >> OWNER_SHIFT;
         if (owner == s->heap) {
 #ifdef MS_ALLOC_STATS
@@ -706,9 +739,11 @@ void msrt_free(void *p) {
             remote_free(owner, p);
         }
     } else if (grow_chunk_of(p) < GROW_CHUNKS) {
+        live_add(s, -1, NUM_CLASSES);
         grow_release(s, grow_chunk_of(p));
     } else {
         /* Not a block of the reservation, so it came from the system allocator. */
+        live_add(s, -1, NUM_CLASSES);
         free_large(s, p);
     }
 }
@@ -780,7 +815,7 @@ static void *grow_take(State *s, size_t size) {
         return 0;
     }
     atomic_store_explicit(&grow_len[s->grow_chunk], size, memory_order_release);
-    live_add(s, 1);
+    live_add(s, 1, NUM_CLASSES);
     return grow_base(s->grow_chunk);
 }
 
@@ -796,7 +831,7 @@ static void *grow_resize(void *p, size_t new_size) {
     void *q = msrt_alloc(new_size);
     __builtin_memcpy(q, p, old < new_size ? old : new_size);
     grow_release(s, chunk);
-    live_add(s, -1);
+    live_add(s, -1, NUM_CLASSES);
     return q;
 }
 
@@ -840,7 +875,7 @@ void *msrt_realloc(void *p, size_t new_size) {
         if (q) {
             __builtin_memcpy(q, p, old);
             /* The old block goes straight back: a cached copy would stay resident unused. */
-            live_add(s, -1);
+            live_add(s, -1, NUM_CLASSES);
             ms_sys_free(p);
             return q;
         }
@@ -914,4 +949,12 @@ void msrt_heap_stats(int64_t *out) {
 void msrt_heap_requested(uint64_t *out) {
     out[0] = st.requested[0] + atomic_load_explicit(&released[0], memory_order_relaxed);
     out[1] = st.requested[1] + atomic_load_explicit(&released[1], memory_order_relaxed);
+}
+
+/* Starts the counters over: the program's main begins, so the counts a gate reads cover the program and not the
+ * runtime's own start-up records (the main task and its stack region), which differ by platform. */
+void msrt_heap_requested_reset(void) {
+    st.requested[0] = st.requested[1] = 0;
+    atomic_store_explicit(&released[0], 0, memory_order_relaxed);
+    atomic_store_explicit(&released[1], 0, memory_order_relaxed);
 }

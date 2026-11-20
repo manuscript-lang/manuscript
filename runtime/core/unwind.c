@@ -75,7 +75,7 @@ bool ms_unwinding(void) { return atomic_load_explicit(&running()->hdr.unwinding,
 
 /* ---- the cleanup stack ---- */
 
-size_t ms_cleanup_push(MsCleanupFn function, void *argument) {
+size_t ms_cleanup_push(MsCleanupFn function, uint8_t *argument) { // NOLINT(readability-non-const-parameter): the cleanup writes it
     MsTaskHdr *const hdr = &running()->hdr;
     void *items = hdr->cleanups;
     if (!ms_array_reserve(&items, &hdr->cleanup_capacity, hdr->cleanup_length + 1, sizeof *hdr->cleanups)) {
@@ -94,7 +94,7 @@ static size_t guard_base(const MsUnwind *unwind) {
 }
 
 /* Runs `function(argument)` with cancellation shielded: a cleanup is not cancelled half way. */
-static void run_shielded(MsUnwind *unwind, MsCleanupFn function, void *argument) {
+static void run_shielded(MsUnwind *unwind, MsCleanupFn function, uint8_t *argument) {
     atomic_fetch_add_explicit(&unwind->hdr.shield, 1, memory_order_relaxed);
     atomic_store_explicit(&unwind->hdr.cancel, 0, memory_order_relaxed);
     function(argument);
@@ -117,6 +117,12 @@ static bool run_one_cleanup(MsUnwind *unwind) {
         run_shielded(unwind, action.function, action.argument);
     }
     return true;
+}
+
+void ms_cleanup_run_pending(void) {
+    MsUnwind *const unwind = running();
+    while (run_one_cleanup(unwind)) {
+    }
 }
 
 void ms_cleanup_run(size_t handle) {
@@ -143,7 +149,7 @@ void ms_cleanup_discard(size_t handle) {
     prune_retired(hdr);
 }
 
-static void do_nothing(void *argument) { (void)argument; }
+static void do_nothing(uint8_t *argument) { (void)argument; } // NOLINT(readability-non-const-parameter): the cleanup signature
 
 void ms_cleanup_cancel(size_t handle) {
     MsTaskHdr *const hdr = &running()->hdr;
@@ -224,7 +230,7 @@ bool ms_guard_leave(MsGuardStatus status, MsFaultText message) {
     if (!guards_pop(unwind, &frame)) {
         return false;
     }
-    unwind->faulting = false;
+    unwind->flight = NULL;
     unwind->unwind_drops = false;
     unwind->hdr.limit = frame.limit;
     uintptr_t teb[MS_CTX_TEB_WORDS] = {0};
@@ -233,12 +239,11 @@ bool ms_guard_leave(MsGuardStatus status, MsFaultText message) {
     ms_task_publish_limit();
     atomic_store_explicit(&unwind->hdr.shield, frame.shield, memory_order_relaxed);
     refresh_flag(unwind);
-    msrt_free(sched->guard_message.bytes);
-    sched->guard_message = (MsFaultText){0};
+    ms_fault_text_free(&sched->guard_message);
     if (status == MS_GUARD_FAULT) {
         sched->guard_message = message;
     } else {
-        msrt_free(message.bytes);
+        ms_fault_text_free(&message);
     }
     ms_guard_jump(frame.jump, (uintptr_t)status, teb);
 }
@@ -284,7 +289,7 @@ MsGuardStatus ms_guard_call(void (*code)(void *), void *data, MsFaultText *messa
     if (message != NULL) {
         *message = sched->guard_message;
     } else {
-        msrt_free(sched->guard_message.bytes);
+        ms_fault_text_free(&sched->guard_message);
     }
     sched->guard_message = (MsFaultText){0};
     return (MsGuardStatus)landed;

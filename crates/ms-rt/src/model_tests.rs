@@ -3,7 +3,7 @@
 //! Each test drives a seeded sequence of operations through the exported C ABI and a plain
 //! `Vec`/`String` model, compares after every step, and checks that nothing leaks.
 use crate::alloc::live_blocks;
-use crate::desc::{msrt_desc_int, msrt_desc_string};
+use crate::desc::{msrt_desc_int, msrt_desc_string, msrt_slot_eq};
 use crate::map::msrt_map_length;
 use crate::map::*;
 use crate::string::{self, NO_STR, from_bytes};
@@ -62,6 +62,29 @@ unsafe fn ints(v: &VecVal) -> std::vec::Vec<i64> {
     unsafe { (0..v.len).map(|i| *(v.ptr as *const i64).add(i)).collect() }
 }
 
+unsafe fn drop_map(m: *mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>) {
+    // SAFETY: caller passes a live map of the descriptors.
+    unsafe { msrt_map_drop(m, kd, vd.map_or(core::ptr::null(), |v| v)) }
+}
+
+/// Equality of two maps through a `Map` descriptor, as the compiled `==` does.
+unsafe fn eq_map(a: &MapVal, b: &MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>) -> bool {
+    let d = TypeDesc {
+        size: 56,
+        align: 8,
+        kind: KIND_MAP,
+        reserved: 0,
+        inner0: kd,
+        inner1: vd.map_or(core::ptr::null(), |v| v),
+        drop: None,
+        copy: None,
+        eq: None,
+        hash: None,
+    };
+    // SAFETY: both are live maps of `d`.
+    unsafe { msrt_slot_eq(&d, (a as *const MapVal).cast(), (b as *const MapVal).cast()) != 0 }
+}
+
 unsafe fn map_keys_of(m: &MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>) -> VecVal {
     let mut out = VecVal {
         ptr: core::ptr::null_mut(),
@@ -79,6 +102,7 @@ fn string_map_matches_ordered_model(seed: u64) {
     let _g = testutil::lock();
     let before = live_blocks();
     let mut r = Rng(0x9e37_79b9_7f4a_7c15 ^ seed.wrapping_mul(0x9e37_79b9_7f4a_7c15));
+    // SAFETY: the descriptors are immutable statics defined in C.
     let (kd, vd) = (&msrt_desc_string, &msrt_desc_int);
     let mut m = empty();
     let mut model: std::vec::Vec<(std::string::String, i64)> = std::vec::Vec::new();

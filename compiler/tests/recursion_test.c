@@ -1,4 +1,4 @@
-/* Unit test of the finite-application walk (compiler/src/recursion.c): every directed graph of
+/* Unit test of the finite-application walk (compiler/src/check/recursion.c): every directed graph of
  * three generic declarations against the plain ancestor-sensitive traversal it replaces, the named
  * regressions of crates/ms-check/src/recursion/tests.rs, and type substitution. */
 #include <stdio.h>

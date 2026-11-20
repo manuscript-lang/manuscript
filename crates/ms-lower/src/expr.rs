@@ -297,14 +297,14 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "@std/Decimal" => {
-                let dec = ms_decimal::Dec::parse(&ms_check::api::number::canonical(text))
-                    .ok_or_else(|| Error::new(format!("invalid Decimal literal {text}")))?;
-                let dec = if negate { dec.negate() } else { dec };
+                let dec =
+                    crate::decimal_literal::parse(&ms_check::api::number::canonical(text), negate)
+                        .ok_or_else(|| Error::new(format!("invalid Decimal literal {text}")))?;
                 let ty = self.emty(e)?;
                 let TyKind::Type(rid) = self.b.m.types.kind(ty).clone() else {
                     return Err(Error::new("Decimal is not a type"));
                 };
-                let fields = [dec.lo as i64, dec.hi, dec.exp].map(|n| self.b.iconst(n));
+                let fields = [dec.lo, dec.hi, dec.exp].map(|n| self.b.iconst(n));
                 let v = self.b.type_new(rid, &fields);
                 Ok(Val { v, own: false })
             }

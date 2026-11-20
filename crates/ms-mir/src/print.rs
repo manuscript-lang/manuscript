@@ -18,6 +18,15 @@ use crate::types::{Ty, TyKind};
 use std::collections::HashMap;
 use std::fmt::Write;
 
+/// A location as `file:line:col`, with `:scope` when it belongs to an inlined callee.
+fn loc_str(l: Loc) -> String {
+    if l.scope == 0 {
+        l.to_string()
+    } else {
+        format!("{l}:{}", l.scope)
+    }
+}
+
 /// Renders a type.
 pub fn ty_str(m: &Module, t: Ty) -> String {
     let mut s = String::new();
@@ -45,8 +54,8 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
         TyKind::Str => out.push_str("str"),
         TyKind::Bytes => out.push_str("bytes"),
         TyKind::Ptr => out.push_str("ptr"),
-        TyKind::Type(r) => out.push_str(&m.type_defs[r.index()].name),
-        TyKind::Alt(a) => out.push_str(&m.alts[a.index()].name),
+        TyKind::Type(r) => out.push_str(&type_label(m, r.index())),
+        TyKind::Alt(a) => out.push_str(&alt_label(m, a.index())),
         TyKind::List(e) => {
             out.push_str("list<");
             write_ty(m, *e, out);
@@ -89,7 +98,7 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
         }
         TyKind::Iface(i) => {
             out.push_str("dyn ");
-            out.push_str(&m.ifaces[i.index()].name);
+            out.push_str(&iface_label(m, i.index()));
         }
     }
 }
@@ -114,16 +123,169 @@ pub fn quote(s: &str) -> String {
     o
 }
 
-fn mode_prefix(m: &Module, ty: Ty, mode: Mode) -> &'static str {
-    if mode == Mode::Move && m.needs_drop(ty) {
-        "move "
-    } else {
-        ""
+/// `move ` where a parameter takes its value owned, whatever the type: the verifier compares the mode
+/// with the one a function type or interface method declares, a scalar's included.
+fn mode_prefix(_m: &Module, _ty: Ty, mode: Mode) -> &'static str {
+    if mode == Mode::Move { "move " } else { "" }
+}
+
+thread_local! {
+    /// The printed names of functions whose own name another function already has (a program's
+    /// `main` and the exported entry wrapper `main`): the later one gets `.1`, `.2`, ... so every
+    /// reference in the text names one function and the text parses back. Empty almost always.
+    static RENAMED: std::cell::RefCell<HashMap<usize, String>> = std::cell::RefCell::new(HashMap::new());
+}
+
+/// A function name the text can hold: the generated names (`<function adapter>`, `<to_string>`)
+/// have characters a name token cannot.
+fn sanitized(name: &str) -> String {
+    name.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '$') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
+fn find_renamed(m: &Module) -> HashMap<usize, String> {
+    let printed: Vec<String> = m.funcs.iter().map(|f| sanitized(&f.name)).collect();
+    let mut seen: HashMap<&str, usize> = HashMap::new();
+    let taken: std::collections::HashSet<&str> = printed.iter().map(String::as_str).collect();
+    let mut renamed = HashMap::new();
+    // A function with a source position keeps its name; the generated entry wrapper that shares
+    // it (`main`) is the one renamed, so a trace names the user's function.
+    let mut order: Vec<usize> = (0..printed.len()).collect();
+    order.sort_by_key(|&i| m.funcs[i].loc.line == 0);
+    for i in order {
+        let base = &printed[i];
+        let count = seen.entry(base.as_str()).or_insert(0);
+        *count += 1;
+        if *count > 1 {
+            let mut k = *count - 1;
+            let mut name = format!("{base}.{k}");
+            while taken.contains(name.as_str()) {
+                k += 1;
+                name = format!("{base}.{k}");
+            }
+            renamed.insert(i, name);
+        } else if *base != m.funcs[i].name {
+            renamed.insert(i, base.clone());
+        }
     }
+    renamed
+}
+
+thread_local! {
+    /// As [`RENAMED`] for the type, alternative and interface declarations, whose names two
+    /// generic instances can share (`ListCursor` of strings and of bytes): the later ones get
+    /// `$1`, `$2`, ... (`.` is the field separator in a name, so it cannot be the suffix).
+    static RENAMED_DECLS: std::cell::RefCell<[HashMap<usize, String>; 3]> =
+        std::cell::RefCell::new([HashMap::new(), HashMap::new(), HashMap::new()]);
+}
+
+fn find_renamed_decls<'a>(names: impl Iterator<Item = &'a str>) -> HashMap<usize, String> {
+    let all: Vec<&str> = names.collect();
+    let taken: std::collections::HashSet<&str> = all.iter().copied().collect();
+    let mut seen: HashMap<&str, usize> = HashMap::new();
+    let mut renamed = HashMap::new();
+    for (i, name) in all.iter().enumerate() {
+        let count = seen.entry(name).or_insert(0);
+        *count += 1;
+        if *count > 1 {
+            let mut k = *count - 1;
+            let mut label = format!("{name}${k}");
+            while taken.contains(label.as_str()) {
+                k += 1;
+                label = format!("{name}${k}");
+            }
+            renamed.insert(i, label);
+        }
+    }
+    renamed
+}
+
+fn decl_label(kind: usize, index: usize, name: &str) -> String {
+    RENAMED_DECLS.with(|r| match r.borrow()[kind].get(&index) {
+        Some(label) => label.clone(),
+        None => name.to_string(),
+    })
+}
+
+fn type_label(m: &Module, index: usize) -> String {
+    decl_label(0, index, &m.type_defs[index].name)
+}
+
+fn alt_label(m: &Module, index: usize) -> String {
+    decl_label(1, index, &m.alts[index].name)
+}
+
+fn iface_label(m: &Module, index: usize) -> String {
+    decl_label(2, index, &m.ifaces[index].name)
+}
+
+/// The name function `index` is printed under.
+fn func_label(m: &Module, index: usize) -> String {
+    RENAMED.with(|r| match r.borrow().get(&index) {
+        Some(name) => name.clone(),
+        None => m.funcs[index].name.clone(),
+    })
+}
+
+/// The names a trace shows for functions whose printed name differs from their own (a name with
+/// spaces, such as a test's, is sanitized; a duplicate gets `.N`): one `printed<TAB>name` line each,
+/// in the order [`print_module_unique`] prints them.
+pub fn display_names(m: &Module) -> String {
+    let renamed = find_renamed(m);
+    let mut o = String::new();
+    for (i, f) in m.funcs.iter().enumerate() {
+        let printed = renamed.get(&i).cloned().unwrap_or_else(|| f.name.clone());
+        if printed != f.name {
+            let _ = writeln!(o, "{printed}\t{}", f.name);
+        }
+    }
+    o
 }
 
 /// Renders a module as canonical text.
 pub fn print_module(m: &Module) -> String {
+    print_module_with(m, false)
+}
+
+/// As [`print_module`], for text that is read back: two types, alternatives or interfaces that
+/// share a name (instances of one generic declaration) are printed under distinct names, so each
+/// reference names one declaration.
+pub fn print_module_unique(m: &Module) -> String {
+    print_module_with(m, true)
+}
+
+/// As [`print_module`] with every function under its own name, even when two share one: the
+/// pass oracles compare the text of what a pass built against the C pass's, which keeps names
+/// as they are.
+pub fn print_module_raw(m: &Module) -> String {
+    print_module_text(m)
+}
+
+fn print_module_with(m: &Module, unique_decls: bool) -> String {
+    RENAMED.with(|r| *r.borrow_mut() = find_renamed(m));
+    if unique_decls {
+        RENAMED_DECLS.with(|r| {
+            *r.borrow_mut() = [
+                find_renamed_decls(m.type_defs.iter().map(|t| t.name.as_str())),
+                find_renamed_decls(m.alts.iter().map(|t| t.name.as_str())),
+                find_renamed_decls(m.ifaces.iter().map(|t| t.name.as_str())),
+            ];
+        });
+    }
+    let text = print_module_text(m);
+    RENAMED.with(|r| r.borrow_mut().clear());
+    RENAMED_DECLS.with(|r| r.borrow_mut().iter_mut().for_each(HashMap::clear));
+    text
+}
+
+fn print_module_text(m: &Module) -> String {
     let mut o = String::new();
     let _ = writeln!(o, "module {}", quote(&m.name));
     for (i, f) in m.files.iter().enumerate() {
@@ -137,15 +299,21 @@ pub fn print_module(m: &Module) -> String {
         let items: Vec<String> = l.iter().map(|x| x.to_string()).collect();
         let _ = writeln!(o, "consts {i} [{}]", items.join(", "));
     }
-    for r in &m.type_defs {
+    for (ri, r) in m.type_defs.iter().enumerate() {
         let fields: Vec<String> = r
             .fields
             .iter()
             .map(|(n, t)| format!("{n}: {}", ty_str(m, *t)))
             .collect();
-        let _ = writeln!(o, "type {} {{ {} }}", r.name, fields.join(", "));
+        let indirect = if r.indirect { " indirect" } else { "" };
+        let _ = writeln!(
+            o,
+            "type {}{indirect} {{ {} }}",
+            type_label(m, ri),
+            fields.join(", ")
+        );
     }
-    for a in &m.alts {
+    for (ai, a) in m.alts.iter().enumerate() {
         let cases: Vec<String> = a
             .cases
             .iter()
@@ -163,9 +331,20 @@ pub fn print_module(m: &Module) -> String {
             })
             .collect();
         let attr = a.std.name().map(|n| format!(" {n}")).unwrap_or_default();
-        let _ = writeln!(o, "alt {} {{ {} }}{attr}", a.name, cases.join(", "));
+        // The cases a borrowing variant holds as borrows (a bit per case).
+        let borrowed = if a.borrowed == 0 {
+            String::new()
+        } else {
+            format!(" borrowed {}", a.borrowed)
+        };
+        let _ = writeln!(
+            o,
+            "alt {}{borrowed} {{ {} }}{attr}",
+            alt_label(m, ai),
+            cases.join(", ")
+        );
     }
-    for i in &m.ifaces {
+    for (ii, i) in m.ifaces.iter().enumerate() {
         let ms: Vec<String> = i
             .methods
             .iter()
@@ -187,7 +366,12 @@ pub fn print_module(m: &Module) -> String {
             })
             .collect();
         let attr = i.std.name().map(|n| format!(" {n}")).unwrap_or_default();
-        let _ = writeln!(o, "iface {} {{ {} }}{attr}", i.name, ms.join(", "));
+        let _ = writeln!(
+            o,
+            "iface {} {{ {} }}{attr}",
+            iface_label(m, ii),
+            ms.join(", ")
+        );
     }
     for e in &m.externs {
         let ps: Vec<String> = e
@@ -233,25 +417,43 @@ pub fn print_module(m: &Module) -> String {
         let ms: Vec<String> = v
             .methods
             .iter()
-            .map(|f| format!("@{}", m.funcs[f.index()].name))
+            .map(|f| format!("@{}", func_label(m, f.index())))
             .collect();
         let _ = writeln!(
             o,
             "vtable @{}: {} for {} {{ {} }}",
-            v.name,
-            m.ifaces[v.iface.index()].name,
+            sanitized(&v.name),
+            iface_label(m, v.iface.index()),
             ty_str(m, v.data_ty),
             ms.join(", ")
         );
     }
+    for &(ty, eq, hash) in &m.desc_glue {
+        let _ = writeln!(
+            o,
+            "desc_glue {} @{} @{}",
+            ty_str(m, ty),
+            func_label(m, eq.index()),
+            func_label(m, hash.index())
+        );
+    }
     if let Some(e) = m.entry {
-        let _ = writeln!(o, "entry @{}", m.funcs[e.index()].name);
+        let _ = writeln!(o, "entry @{}", func_label(m, e.index()));
     }
     for f in &m.funcs {
         o.push('\n');
         o.push_str(&print_func(m, f));
     }
     o
+}
+
+/// The printed name of `f`, which is a function of `m`.
+fn func_label_of(m: &Module, f: &Func) -> String {
+    let renamed = RENAMED.with(|r| !r.borrow().is_empty());
+    if renamed && let Some(i) = m.funcs.iter().position(|g| std::ptr::eq(g, f)) {
+        return func_label(m, i);
+    }
+    f.name.clone()
 }
 
 /// Renders one function.
@@ -292,7 +494,7 @@ pub fn print_func(m: &Module, f: &Func) -> String {
     let _ = write!(
         o,
         "fn @{}({}) -> {}",
-        f.name,
+        func_label_of(m, f),
         ps.join(", "),
         ty_str(m, f.ret)
     );
@@ -317,8 +519,50 @@ pub fn print_func(m: &Module, f: &Func) -> String {
         SortThunk::Generic => o.push_str(" sort_cmp"),
         SortThunk::Specialized => o.push_str(" sort_cmp_for"),
     }
+    if f.explicit_cancel {
+        o.push_str(" explicit_cancel");
+    }
+    if !f.noalias.is_empty() {
+        let ns: Vec<String> = f.noalias.iter().map(u32::to_string).collect();
+        let _ = write!(o, " noalias({})", ns.join(", "));
+    }
+    if let Some(s) = f.slot_result {
+        let _ = write!(o, " slot_result(@{})", func_label(m, s.0 as usize));
+    }
+    if let Some((a, b)) = f.close_exit {
+        let _ = write!(
+            o,
+            " close_exit(@{}, @{})",
+            func_label(m, a.0 as usize),
+            func_label(m, b.0 as usize)
+        );
+    }
+    for (set, word) in [
+        (f.ret_borrowed, "ret_borrowed"),
+        (f.ret_view, "ret_view"),
+        (f.scoped, "scoped"),
+        (f.keeps_scoped, "keeps_scoped"),
+        (f.unwind_only, "unwind_only"),
+        (f.raw_scratch, "raw_scratch"),
+    ] {
+        if set {
+            o.push(' ');
+            o.push_str(word);
+        }
+    }
+    if let Some(t) = f.slot_close {
+        let _ = write!(o, " slot_close({})", ty_str(m, t));
+    }
+    if !f.capture_closers.is_empty() {
+        let cs: Vec<String> = f
+            .capture_closers
+            .iter()
+            .map(|(i, g)| format!("{i} @{}", func_label(m, g.0 as usize)))
+            .collect();
+        let _ = write!(o, " capture_closers({})", cs.join(", "));
+    }
     if !f.loc.is_none() {
-        let _ = write!(o, " !{}", f.loc);
+        let _ = write!(o, " !{}", loc_str(f.loc));
     }
     o.push_str(" {\n");
     for (bi, b) in f.blocks.iter().enumerate() {
@@ -346,16 +590,48 @@ pub fn print_func(m: &Module, f: &Func) -> String {
             }
             o.push_str(&print_inst(m, i, &n));
             if !i.loc.is_none() {
-                let _ = write!(o, " !{}", i.loc);
+                let _ = write!(o, " !{}", loc_str(i.loc));
             }
             o.push('\n');
         }
         o.push_str("  ");
         o.push_str(&print_term(m, &b.term, &n));
         if !b.term_loc.is_none() {
-            let _ = write!(o, " !{}", b.term_loc);
+            let _ = write!(o, " !{}", loc_str(b.term_loc));
         }
         o.push('\n');
+    }
+    // Debugger and range facts, only when a function has them: the inlined scopes, the named
+    // values and the results proved exact, in that order.
+    for sc in &f.scopes {
+        let _ = writeln!(
+            o,
+            "  scope {} {} {} {}",
+            quote(&sc.name),
+            sc.file,
+            sc.parent,
+            sc.call_line
+        );
+    }
+    for nv in &f.names {
+        if let Some(&i) = names.get(&nv.value) {
+            let _ = writeln!(
+                o,
+                "  name %{i} {} {} {}",
+                quote(&nv.name),
+                if nv.param { "param" } else { "local" },
+                nv.scope
+            );
+        }
+    }
+    let mut exact: Vec<usize> = f
+        .exact
+        .iter()
+        .filter_map(|v| names.get(v).copied())
+        .collect();
+    exact.sort_unstable();
+    for i in exact {
+        let _ = writeln!(o, "  exact %{i}");
     }
     o.push_str("}\n");
     o
@@ -377,32 +653,32 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
         }
         Imm::Bool(b) => b.to_string(),
         Imm::Str(id) => quote(&m.strings[id.index()]),
-        Imm::Func(f) => format!("@{}", m.funcs[f.index()].name),
+        Imm::Func(f) => format!("@{}", func_label(m, f.index())),
         Imm::Ext(e) => format!("@{}", m.externs[e.index()].name),
         Imm::Ty(t) => ty_str(m, t),
-        Imm::Type(r) => m.type_defs[r.index()].name.clone(),
+        Imm::Type(r) => type_label(m, r.index()),
         Imm::Field(r, f) => format!(
             "{}.{}",
-            m.type_defs[r.index()].name,
+            type_label(m, r.index()),
             m.type_defs[r.index()].fields[f as usize].0
         ),
         Imm::Case(a, c) => format!(
             "{}.{}",
-            m.alts[a.index()].name,
+            alt_label(m, a.index()),
             m.alts[a.index()].cases[c as usize].name
         ),
         Imm::AltField(a, c, f) => {
             let case = &m.alts[a.index()].cases[c as usize];
             format!(
                 "{}.{}.{}",
-                m.alts[a.index()].name,
+                alt_label(m, a.index()),
                 case.name,
                 case.fields[f as usize].0
             )
         }
         Imm::AltMask(a, c, mask) => {
             let case = &m.alts[a.index()].cases[c as usize];
-            let mut s = format!("{}.{}", m.alts[a.index()].name, case.name);
+            let mut s = format!("{}.{}", alt_label(m, a.index()), case.name);
             for (i, (name, _)) in case.fields.iter().enumerate() {
                 if mask >> i & 1 == 1 {
                     s.push('.');
@@ -412,7 +688,7 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
             s
         }
         Imm::TypeMask(r, mask) => {
-            let mut s = m.type_defs[r.index()].name.clone();
+            let mut s = type_label(m, r.index());
             for (i, (name, _)) in m.type_defs[r.index()].fields.iter().enumerate() {
                 if mask >> i & 1 == 1 {
                     s.push('.');
@@ -421,11 +697,11 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
             }
             s
         }
-        Imm::Vtable(v) => format!("@{}", m.vtables[v.index()].name),
+        Imm::Vtable(v) => format!("@{}", sanitized(&m.vtables[v.index()].name)),
         Imm::Global(g) => format!("@{}", m.globals[g.index()].name),
         Imm::Method(ifc, k) => format!(
             "{}.{}",
-            m.ifaces[ifc.index()].name,
+            iface_label(m, ifc.index()),
             m.ifaces[ifc.index()].methods[k as usize].name
         ),
         Imm::Cc(cc) => {

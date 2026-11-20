@@ -396,7 +396,7 @@ static void test_read_limit(void) {
 static int cleanup_order[4];
 static int cleanup_count;
 
-static void note_cleanup(void *arg) { cleanup_order[cleanup_count++] = (int)(uintptr_t)arg; }
+static void note_cleanup(uint8_t *arg) { cleanup_order[cleanup_count++] = (int)(uintptr_t)arg; }
 
 static void faulting(void *arg) {
     (void)arg;
@@ -432,7 +432,7 @@ static void test_cancelled_unwinds(void) {
     expect(cleanup_count == 2 && cleanup_order[0] == 2 && cleanup_order[1] == 1, "cleanups ran innermost first");
 }
 
-static void cleanup_inner(void *arg) { (void)arg; }
+static void cleanup_inner(uint8_t *arg) { (void)arg; }
 
 static void test_cleanup_handles(void) {
     cleanup_count = 0;

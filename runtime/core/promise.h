@@ -67,6 +67,10 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns);
 /* Makes the promise listen to the cancel switch `cancel`: when it fires the promise is cancelled. Call it once the work
  * has started. Replaces an earlier switch. */
 void ms_promise_on_cancel(MsPromise id, int64_t cancel);
+/* Gives the promise a notice and a grace for its end: when its owner ends it (ms_promise_end, drop, unwinding), the
+ * switch `drain` fires first and the work has `grace_ns` (negative: no limit) to finish before it is cancelled. An
+ * explicit ms_promise_cancel skips the notice. */
+void ms_promise_drain(MsPromise id, int64_t drain, int64_t grace_ns);
 /* Cancels the promise if unfinished, without waiting. */
 void ms_promise_cancel(MsPromise id);
 /* Ends the promise's limit `timeout_ns` from now: it is cancelled and a wait reports a timeout. */
@@ -132,6 +136,16 @@ void ms_promise_on_drop(MsPromise id, MsPromiseRetry cancel, uintptr_t state) MS
 /* Wakes the waiter of `id` when another thread (a pipe peer) completes the promise: marks the row so a waiter
  * parks on a remote token. Set before the first wait. */
 void ms_promise_set_remote_wake(MsPromise id);
+
+/* ---- ids of another isolate ---- */
+
+/* The calls above accept an id that names another isolate's table: the owner answers by mail (promise_remote.c). The
+ * two below are what that owner-side needs. */
+
+/* The outcome code of a finished promise (see the top), or -1 while it is pending. */
+int64_t ms_promise_outcome(MsPromise id);
+/* Posts the remote token `token` when `id` finishes (at once when it has). */
+void ms_promise_watch(MsPromise id, uint64_t token);
 
 /* Frees the table of this thread; a value nobody took is dropped. */
 void ms_promises_teardown(void);

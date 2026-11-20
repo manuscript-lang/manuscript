@@ -31,7 +31,7 @@ uint8_t msrt_promise_end(int64_t id) { return ms_promise_end(id) ? 1 : 0; }
 void msrt_promise_fault_report(int64_t id, MsStr *out) {
     MsFaultText report = ms_promise_fault_report(id);
     *out = ms_str_from_bytes(report.bytes, report.length);
-    msrt_free(report.bytes);
+    ms_fault_text_free(&report);
 }
 
 int64_t msrt_promise_finished(void) {
@@ -43,6 +43,8 @@ int64_t msrt_promise_finished(void) {
 void msrt_promise_limit(int64_t id, int64_t timeout_ns) { ms_promise_limit(id, timeout_ns); }
 int64_t msrt_promise_new(void) { return ms_promise_new(); }
 void msrt_promise_on_cancel(int64_t id, int64_t cancel) { ms_promise_on_cancel(id, cancel); }
+
+void msrt_promise_drain(int64_t id, int64_t drain, int64_t grace_ns) { ms_promise_drain(id, drain, grace_ns); }
 
 void msrt_promise_put(int64_t id, uint8_t *value, const MsTypeDesc *d, int64_t failed) {
     ms_promise_put(id, value, d, failed != 0);

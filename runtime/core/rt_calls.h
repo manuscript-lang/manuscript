@@ -10,22 +10,27 @@
 #include "ms_rt/base.h"
 #include "ms_rt/safe.h"
 #include "ms_rt/desc.h"
+#include "ms_rt/fault.h"
 #include "ms_rt/map.h"
+#include "ms_rt/obj.h"
 #include "ms_rt/string.h"
 
-/* The family of a fault, which the structured fault record names (crates/ms-rt-abi FaultKind). */
-typedef enum MsFaultKind {
-    MS_FAULT_GENERIC = 0,
-    MS_FAULT_OVERFLOW = 5,
-    MS_FAULT_INDEX_OUT_OF_RANGE = 6
-} MsFaultKind;
+/* The families of fault are ms_rt/fault.h's; core files that predate it keep their spellings. */
+#define MS_FAULT_GENERIC MS_FAULT_KIND_FAULT
+#define MS_FAULT_OVERFLOW MS_FAULT_KIND_OVERFLOW
+#define MS_FAULT_INDEX_OUT_OF_RANGE MS_FAULT_KIND_INDEX_OUT_OF_RANGE
 
 /* Raises a fault of `kind` with the message `msg[0..len]`. */
 MS_NORETURN void msfault_raise(uint8_t kind, const uint8_t *msg, size_t len);
+/* Division and remainder by zero (a fault of the division family). */
+MS_NORETURN void msrt_fault_div_zero(void);
+MS_NORETURN void msrt_fault_rem_zero(void);
+#ifndef MS_RT_STRBUILD_H /* ms_rt/strbuild.h declares the same two */
 /* Raises a generic fault. */
 MS_NORETURN void msrt_fault(const uint8_t *msg, size_t len);
 /* "index N out of range for length L; pass a default". */
 MS_NORETURN void msrt_index_fault(int64_t index, int64_t length);
+#endif
 /* The fault of a list mutator given a bad index: operation 0 insert, 1 remove, 2 set, 3 swap, 4 replace. */
 MS_NORETURN void msrt_list_index_fault(int64_t operation, int64_t index, int64_t len);
 
@@ -33,13 +38,10 @@ MS_NORETURN void msrt_list_index_fault(int64_t operation, int64_t index, int64_t
 typedef void (*MsCleanupFn)(uint8_t *arg);
 size_t msrt_cleanup_push(MsCleanupFn run, uint8_t *arg);
 void msrt_cleanup_discard(size_t handle);
-
-/* Objects with a header (closures, handles). Null stays null. */
+/* Non-zero when a callback may leave through a guard or a registered cleanup (fault.rs). */
+uint8_t msrt_rollback_needed(void);
 
 /* Runs `shim(block)` on the running task's next stack segment (the task module). */
 void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block);
-
-MsObj *msrt_obj_clone(MsObj *object);
-void msrt_obj_drop(MsObj *object);
 
 #endif

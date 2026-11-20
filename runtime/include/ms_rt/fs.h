@@ -9,7 +9,7 @@
 
 /* ms: domain filesystem */
 
-/* Records the natives share with compiled code (crates/ms-std-fs abi_type). Strings and lists are runtime values. */
+/* Records the natives share with compiled code. Strings and lists are runtime values. */
 
 /* FileInfo flattened: the name, then 64-bit words only. Times are seconds and nanoseconds; `kinds` is a bit set. */
 typedef struct MsFsInfo {

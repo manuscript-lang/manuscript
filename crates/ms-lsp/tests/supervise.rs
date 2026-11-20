@@ -3,7 +3,6 @@
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_lsp::json::{self, Json, obj};
-use ms_rt as _;
 use std::io::Read;
 use std::process::Command;
 use std::sync::mpsc::{Receiver, Sender, channel};

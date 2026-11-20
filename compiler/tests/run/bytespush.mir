@@ -1,0 +1,20 @@
+module "t"
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %c: int = iconst 4
+  %l: list<int> = list.new %c
+  %p: ptr = slot list<int>
+  store %p, %l
+  %v: int = iconst 65
+  %ok: bool = bytes.push %p, %v
+  %big: int = iconst 300
+  %no: bool = bytes.push %p, %big
+  %q: list<int> = load list<int> %p
+  %n: int = list.len %q
+  %a: int = select %ok, %n, %c
+  %b: int = select %no, %c, %n
+  %r: int = iadd %a, %b
+  ret %r
+}

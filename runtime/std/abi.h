@@ -22,7 +22,9 @@ enum {
     STATUS_CLOSED = 10,
     STATUS_FAILED = 11,
     STATUS_UNAVAILABLE = 12,
-    STATUS_TIMEOUT = 13,
+    STATUS_TIMED_OUT = 13, /* not STATUS_TIMEOUT: winnt.h defines that macro */
+    STATUS_OUTPUT_LIMIT = 14,
+    STATUS_NOT_TERMINAL = 15,
     STATUS_NONE = 16,
     STATUS_BUSY = 17,
     STATUS_AUTHENTICATION_FAILED = 18
@@ -60,6 +62,14 @@ void msrt_list_with_capacity(const MsTypeDesc *desc, int64_t cap, MsVec *out);
 void msrt_list_push(MsVec *v, const MsTypeDesc *desc, const void *elem);
 void msrt_list_drop(MsVec *v, const MsTypeDesc *desc);
 
+/* A map is built through its functions and handed over whole: natives never read its slots (runtime/core/map.c).
+ * `add` takes ownership of the key and the value slot. */
+typedef struct MsMap MsMap;
+void msrt_map_new(MsMap *out);
+void msrt_map_add(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key, uint8_t *val);
+const uint8_t *msrt_map_get_ptr(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
+void msrt_map_drop(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd);
+
 static inline size_t msrt_str_len(const MsStr *s) { return ms_str_len(s); }
 static inline const char *msrt_str_data(const MsStr *s) { return (const char *)ms_str_data(s); }
 
@@ -74,4 +84,9 @@ static inline void msrt_write_bytes(MsVec *out, const void *data, size_t len) {
     memcpy(out->ptr, data, len);
     out->len = out->cap = len;
 }
+
+/* The start-up records of the startup code (crates/ms-rt/src/start.rs): the arguments the process was started with and
+ * the monotonic time it started at (0 before start). */
+void msrt_argv(MsVec *out);
+int64_t msrt_start_nanos(void);
 #endif

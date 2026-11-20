@@ -103,8 +103,15 @@ typedef enum {
 } MsSysFdKind;
 
 MsSysFdKind ms_sys_fs_fd_kind(MsSysFd fd);
+/* Whether `fd` is a terminal (a console on Windows). */
+bool ms_sys_fs_is_terminal(MsSysFd fd);
+/* Whether `error` says the reader of a pipe went away (EPIPE; ERROR_BROKEN_PIPE or ERROR_NO_DATA on Windows). */
+bool ms_sys_error_is_broken_pipe(MsSysError error);
 /* Whether `fd` is standard output or error, which the runtime's buffered `print` shares. */
 bool ms_sys_fs_is_output(MsSysFd fd);
+/* The descriptor of standard stream `which` (0 input, 1 output, 2 error): the number itself on Unix, the standard
+ * handle on Windows. */
+MsSysFd ms_sys_fs_standard(int32_t which);
 /* Points standard stream `which` (0 input, 1 output, 2 error) at the null device, for this process and children. */
 MS_NODISCARD MsSysError ms_sys_fs_redirect_null(int32_t which);
 

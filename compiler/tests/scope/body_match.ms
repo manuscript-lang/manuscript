@@ -24,4 +24,5 @@ fn shout(n: Int) String:
 		1: "one"
 		2: "two"
 		_: "other"
+
 	return label

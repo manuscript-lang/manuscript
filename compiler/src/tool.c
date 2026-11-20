@@ -2,8 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/diag.h"
+#include "ms/format.h"
 #include "ms/lex.h"
 #include "ms/parse.h"
+#include "ms/project.h"
 #include "ms/tool.h"
 
 static void push_int(ms_list *out, int64_t v) {
@@ -48,6 +51,40 @@ uint8_t ms_tool_lex(const ms_str *text, ms_list *out, int64_t *code_out, ms_str 
     return 0;
 }
 
+/* Reports a syntax error in the header form of ms_tool_format. */
+static void format_failure(const char *code, const MsDiag *diag, int64_t offset, int64_t *code_out,
+                           ms_str *message_out) {
+    MsBuf text = {0};
+    ms_buf_printf(&text, "%s\t%lld\t%lld\t", code, (long long)diag->pos.line, (long long)diag->pos.column);
+    ms_buf_put(&text, diag->message.ptr, diag->message.len);
+    ms_string_new((const uint8_t *)text.data, text.len, message_out);
+    ms_buf_free(&text);
+    *code_out = offset;
+}
+
+uint8_t ms_tool_format(const ms_str *text, ms_str *out, int64_t *code_out, ms_str *message_out) {
+    MsArena arena = {0};
+    MsBuf formatted = {0};
+    MsDiag diag;
+    const char *src = (const char *)ms_str_data(text);
+    size_t len = ms_str_len(text);
+    if (!ms_utf8_valid(src, len)) {
+        MsDiag invalid = {.pos = {.offset = 0, .line = 1, .column = 1}, .message = {"invalid UTF-8", 13}};
+        format_failure(ms_code_for("parse", invalid.message), &invalid, 0, code_out, message_out);
+        return 1;
+    }
+    if (!ms_format(&arena, src, len, &formatted, &diag)) {
+        format_failure(ms_code_for("parse", diag.message), &diag, diag.pos.offset, code_out, message_out);
+        ms_buf_free(&formatted);
+        ms_arena_free(&arena);
+        return 1;
+    }
+    ms_string_new((const uint8_t *)formatted.data, formatted.len, out);
+    ms_buf_free(&formatted);
+    ms_arena_free(&arena);
+    return 0;
+}
+
 void ms_tool_lex_blocks(const ms_str *text, ms_list *out) {
     MsArena arena = {0};
     MsLexed lexed;
@@ -73,6 +110,52 @@ void ms_tool_token_kinds(ms_list *out) {
         value.as.buf.len = strlen(s);
         ms_list_push(out, &value);
     }
+}
+
+static void push_text(ms_list *out, const char *text) {
+    ms_value value;
+    memset(&value, 0, sizeof value);
+    value.kind = MS_STRING;
+    value.as.buf.data = (const uint8_t *)text;
+    value.as.buf.len = strlen(text);
+    ms_list_push(out, &value);
+}
+
+uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest));
+    MsProject project;
+    MsProjectError error = {0};
+    uint8_t status = 0;
+    if (!ms_project_read(&arena, path, &project, &error)) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    }
+    for (uint32_t i = 0; status == 0 && i < project.dependency_count; i++) {
+        push_text(out, ms_project_dependency_row(&arena, &project.dependencies[i]));
+    }
+    ms_arena_free(&arena);
+    return status;
+}
+
+uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(target), ms_str_len(target));
+    const char **files = NULL;
+    uint32_t count = 0;
+    MsProjectError error = {0};
+    uint8_t status = 0;
+    if (!ms_project_format_paths(&arena, path, &files, &count, &error)) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    }
+    for (uint32_t i = 0; status == 0 && i < count; i++) {
+        push_text(out, files[i]);
+    }
+    ms_arena_free(&arena);
+    return status;
 }
 
 /* ---- syntax trees ---- */

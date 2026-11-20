@@ -8,16 +8,54 @@
 //! ms: domain string
 use crate::alloc;
 use crate::fault;
-use crate::obj;
-use crate::utf8;
+
+unsafe extern "C-unwind" {
+    fn ms_utf8_count(s: *const u8, n: usize) -> usize;
+}
 use core::ptr::null_mut;
-use ms_rt_abi::{
-    ErrSlot, FrameBuf, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
-    STR_INLINE_MAX, StrVal, VecVal,
-};
+use ms_rt_abi::{HasRaw, STR_INLINE_MAX, StrVal, VecVal};
 
 // The moved symbols (runtime/symbols/string.txt) are defined by the C runtime; Rust callers and tests reach them here.
 unsafe extern "C-unwind" {
+    pub fn msrt_string_fields(s: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_upper(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_lower(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal);
+    pub fn msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal);
+    pub fn msrt_string_normalize(
+        s: *const StrVal,
+        form: *const StrVal,
+        has_max: HasRaw,
+        max: i64,
+        out: *mut StrVal,
+    ) -> u8;
+    pub fn msrt_string_normalize_kind(
+        s: *const StrVal,
+        kind: i64,
+        has_max: HasRaw,
+        max: i64,
+        out: *mut StrVal,
+    ) -> u8;
+    pub fn msrt_string_quote(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8;
+    pub fn msrt_string_scalar_at(
+        s: *const StrVal,
+        offset: i64,
+        has_default: HasRaw,
+        default: i64,
+    ) -> i64;
+    pub fn msrt_string_index_any(s: *const StrVal, set: *const StrVal, out: *mut i64) -> u8;
+    pub fn msrt_string_last_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8;
+    pub fn msrt_string_trim_chars(
+        s: *const StrVal,
+        set: *const StrVal,
+        from_start: u8,
+        from_end: u8,
+        out: *mut StrVal,
+    );
+    pub fn msrt_string_from_scalars(values: *const VecVal, out: *mut StrVal) -> u8;
+    pub fn msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_view_bytes(s: *const StrVal, out: *mut VecVal);
     pub fn msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64;
     pub fn msrt_string_length(s: *const StrVal) -> i64;
     pub fn msrt_string_scalar_length(s: *const StrVal) -> i64;
@@ -102,30 +140,6 @@ unsafe extern "C-unwind" {
     );
 }
 
-/// Starts the caller's `err` slot (null when it wants no text) as the empty string, which owns
-/// no allocation, so any status leaves it valid.
-///
-/// # Safety
-/// `err` is null or writable memory for one string.
-pub(crate) unsafe fn init_err(err: ErrSlot) {
-    if !err.0.is_null() {
-        // SAFETY: the caller passes writable memory for one string.
-        unsafe { err.0.write(empty()) }
-    }
-}
-
-/// Stores `msg` in the `err` slot started by [`init_err`]; the status words come first in the
-/// error the program sees, then this detail.
-///
-/// # Safety
-/// As [`init_err`].
-pub(crate) unsafe fn store_err(err: ErrSlot, msg: &str) {
-    if !err.0.is_null() {
-        // SAFETY: the caller passes writable memory for one string; the empty start owns nothing.
-        unsafe { err.0.write(from_bytes(msg.as_bytes())) }
-    }
-}
-
 /// Bytes of a string.
 ///
 /// # Safety
@@ -179,84 +193,6 @@ pub unsafe fn bytes_eq(a: *const StrVal, b: *const StrVal) -> bool {
     }
 }
 
-/// Deterministic 64-bit hash of bytes. Up to [`STR_INLINE_MAX`] bytes are the two words an inline
-/// string holds (zero past the length), folded in turn with the length as the seed, which is what
-/// the compiler's inline map probe computes from an inline key. Longer text takes eight bytes per
-/// multiply-fold step, with the tail read as one overlapping word, then a final avalanche. Hashes
-/// are lookup aids, not stable identifiers.
-#[inline]
-pub fn hash_bytes(b: &[u8]) -> u64 {
-    const K0: u64 = 0x9e37_79b9_7f4a_7c15;
-    const K1: u64 = 0xff51_afd7_ed55_8ccd;
-    #[inline(always)]
-    fn fold(a: u64, b: u64) -> u64 {
-        let m = u128::from(a) * u128::from(b);
-        (m as u64) ^ ((m >> 64) as u64)
-    }
-    #[inline(always)]
-    fn word(b: &[u8], at: usize) -> u64 {
-        let mut w = [0u8; 8];
-        w.copy_from_slice(&b[at..at + 8]);
-        u64::from_le_bytes(w)
-    }
-    let n = b.len();
-    let mut h = K0 ^ (n as u64).wrapping_mul(K1);
-    if n <= STR_INLINE_MAX {
-        return hash_inline(n, StrVal::inline(b).inline_bits());
-    }
-    let mut i = 0;
-    while i + 8 <= n {
-        h = fold(h ^ word(b, i), K1);
-        i += 8;
-    }
-    // Sixteen bytes or more: the last eight bytes, overlapping the words already folded in.
-    let tail = word(b, n - 8);
-    fold(h ^ tail, K0)
-}
-
-/// The hash of a string of `n <= STR_INLINE_MAX` bytes whose little-endian bits are `bits`.
-#[inline(always)]
-fn hash_inline(n: usize, bits: u128) -> u64 {
-    const K0: u64 = 0x9e37_79b9_7f4a_7c15;
-    const K1: u64 = 0xff51_afd7_ed55_8ccd;
-    #[inline(always)]
-    fn fold(a: u64, b: u64) -> u64 {
-        let m = u128::from(a) * u128::from(b);
-        (m as u64) ^ ((m >> 64) as u64)
-    }
-    let h = K0 ^ (n as u64).wrapping_mul(K1);
-    fold(fold(h ^ bits as u64, K1) ^ (bits >> 64) as u64, K0)
-}
-
-/// `hash_bytes` of the string `s`; an inline string is hashed from its words as they are.
-///
-/// # Safety
-/// `s` must be a live string.
-#[inline(always)]
-pub unsafe fn hash_str(s: *const StrVal) -> u64 {
-    // SAFETY: caller contract.
-    unsafe {
-        if (*s).is_inline() {
-            return hash_inline((*s).len(), (*s).inline_bits());
-        }
-        hash_bytes(bytes(s))
-    }
-}
-
-/// Hash of an `Int` key: one widening multiply folded to 64 bits.
-#[inline(always)]
-pub fn hash_int(x: u64) -> u64 {
-    let m = u128::from(x ^ 0x9e37_79b9_7f4a_7c15) * 0xff51_afd7_ed55_8ccd;
-    (m as u64) ^ ((m >> 64) as u64)
-}
-
-#[inline]
-pub fn mix(mut h: u64) -> u64 {
-    h ^= h >> 32;
-    h = h.wrapping_mul(0x9e37_79b9_7f4a_7c15);
-    h ^ (h >> 29)
-}
-
 /// Native allocation ceiling for built strings.
 pub const MAX_BYTES: usize = 1 << 30;
 
@@ -291,21 +227,6 @@ fn heap_copy(data: &[u8]) -> StrVal {
     // SAFETY: `s` has room for `len` bytes.
     unsafe { core::ptr::copy_nonoverlapping(data.as_ptr(), s.ptr_word, data.len()) };
     if data.is_ascii() { s.with_ascii() } else { s }
-}
-
-/// A string of exactly `len` bytes written by `fill`: inline when it fits, otherwise one
-/// allocation with no intermediate buffer. `ascii` says that `fill` writes only ASCII bytes.
-#[inline(always)]
-fn build_exact(len: usize, ascii: bool, fill: impl FnOnce(&mut [u8])) -> StrVal {
-    if len <= STR_INLINE_MAX {
-        let mut small = [0u8; STR_INLINE_MAX + 1];
-        fill(&mut small[..len]);
-        return from_bytes(&small[..len]);
-    }
-    let r = alloc_str(len);
-    // SAFETY: `r` owns `len` writable bytes.
-    fill(unsafe { core::slice::from_raw_parts_mut(r.ptr_word, len) });
-    if ascii { r.with_ascii() } else { r }
 }
 
 /// Whether every byte of `s` is ASCII, from its flag when it has one.
@@ -451,21 +372,8 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
         if known_ascii(s) {
             return (*s).len();
         }
-        utf8::count(bytes(s))
+        ms_utf8_count(bytes(s).as_ptr(), (*s).len())
     }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf domain=map
-pub extern "C-unwind" fn msrt_hash_int(v: i64) -> i64 {
-    mix(v as u64 ^ 0x9e37_79b9) as i64
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf domain=map
-pub unsafe extern "C-unwind" fn msrt_hash_bytes(p: *const u8, len: usize) -> i64 {
-    // SAFETY: caller passes a readable range.
-    hash_bytes(unsafe { core::slice::from_raw_parts(p, len) }) as i64
 }
 
 /// `find` for a short haystack and a non-empty needle.
@@ -519,71 +427,6 @@ pub(super) fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
         at += 8;
     }
     rest.iter().position(|&b| b == c).map(|p| at + p)
-}
-
-/// `String.parse_int()`: present flag, value through `out`.
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        match crate::num::parse_int_decimal(bytes(s)) {
-            Some(v) => {
-                *out = v;
-                1
-            }
-            None => 0,
-        }
-    }
-}
-
-/// `String.scalar_at(offset, default)`: an ASCII byte is its own scalar, one read; anything else
-/// is decoded or rejected by [`msrt_string_scalar_at_slow`].
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
-    s: *const StrVal,
-    offset: i64,
-    has_default: HasRaw,
-    default: i64,
-) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        if let Some(&b) = usize::try_from(offset).ok().and_then(|i| bytes(s).get(i))
-            && b < 0x80
-        {
-            return b as i64;
-        }
-        msrt_string_scalar_at_slow(s, offset, has_default, default)
-    }
-}
-
-/// Whether byte offset `i` of `text` starts a scalar (or is the end).
-#[inline(always)]
-fn is_boundary(text: &[u8], i: usize) -> bool {
-    i == text.len() || text[i] & 0xC0 != 0x80
-}
-
-/// `String.scalar_at(offset, default)`: the scalar that starts at byte `offset`. An offset outside
-/// the text or inside a scalar gives `default`, or a fault without one.
-pub unsafe fn msrt_string_scalar_at_slow(
-    s: *const StrVal,
-    offset: i64,
-    has_default: HasRaw,
-    default: i64,
-) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        let text = bytes(s);
-        match usize::try_from(offset) {
-            Ok(i) if i < text.len() && is_boundary(text, i) => utf8::decode(&text[i..]).0 as i64,
-            _ if has_default.is_set() => default,
-            _ => fault::fault_fmt(format_args!(
-                "String.scalar_at: offset {offset} does not start a scalar of the {} byte text; pass a default",
-                text.len()
-            )),
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -671,323 +514,9 @@ pub unsafe fn msrt_string_index_of_long(a: *const StrVal, v: *const StrVal, out:
     }
 }
 
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_last_index_of(
-    a: *const StrVal,
-    v: *const StrVal,
-    out: *mut i64,
-) -> u8 {
-    // SAFETY: caller passes live strings and a writable out.
-    unsafe {
-        let text = bytes(a);
-        match rfind(text, bytes(v)) {
-            None => 0,
-            Some(i) => {
-                *out = i as i64;
-                1
-            }
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Building
 // ---------------------------------------------------------------------------
-
-/// A growable byte buffer the text formatters append to, so building a long text is linear.
-pub struct StrBuf(Vec<u8>);
-
-/// Starts an empty string builder (finish it with [`msrt_strbuf_finish`]).
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C-unwind" fn msrt_strbuf_new() -> *mut StrBuf {
-    Box::into_raw(Box::new(StrBuf(Vec::new())))
-}
-
-/// Appends a string's bytes to the builder.
-///
-/// # Safety
-/// `buf` must come from `msrt_strbuf_new` and `s` must be live.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_strbuf_push(buf: *mut StrBuf, s: *const StrVal) {
-    // SAFETY: the caller passes a live builder and string.
-    unsafe {
-        let text = bytes(s);
-        let out = &mut (*buf).0;
-        if out.len() + text.len() > MAX_BYTES {
-            fault::fault(b"string: limit exceeded");
-        }
-        out.extend_from_slice(text);
-    }
-}
-
-/// Consumes the builder and returns its text.
-///
-/// # Safety
-/// `buf` must come from `msrt_strbuf_new` and is not used afterwards.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_strbuf_finish_val(buf)).write_to(out) }
-}
-
-unsafe fn msrt_strbuf_finish_val(buf: *mut StrBuf) -> StrVal {
-    // SAFETY: the builder was boxed by `msrt_strbuf_new` and is consumed once.
-    let buf = unsafe { Box::from_raw(buf) };
-    from_bytes(&buf.0)
-}
-
-/// The string over the first `len` bytes of the owned allocation at `ptr`: the same allocation
-/// when it stays on the heap, an inline copy (freeing the buffer) when it fits inline.
-///
-/// # Safety
-/// `ptr` is an owned string allocation of at least `len + 1` bytes.
-unsafe fn finish_owned(ptr: *mut u8, len: usize, ascii: bool) -> StrVal {
-    // SAFETY: caller contract.
-    unsafe {
-        if len <= STR_INLINE_MAX {
-            let r = from_bytes(core::slice::from_raw_parts(ptr, len));
-            free_owned(ptr);
-            return r;
-        }
-        *ptr.add(len) = 0;
-        let r = StrVal::owned(ptr, len);
-        if ascii { r.with_ascii() } else { r }
-    }
-}
-
-/// `upper` or `lower` of a string that dies at the call: ASCII text maps in place.
-///
-/// # Safety
-/// `s` is an owned string the callee takes; `out` is writable.
-unsafe fn map_case_take(s: *mut StrVal, upper: bool, out: *mut StrVal) {
-    // SAFETY: caller contract.
-    unsafe {
-        if (*s).owns() && is_ascii(&*s) {
-            let (ptr, len) = ((*s).ptr_word, (*s).len());
-            let text = core::slice::from_raw_parts_mut(ptr, len);
-            if upper {
-                text.make_ascii_uppercase();
-            } else {
-                text.make_ascii_lowercase();
-            }
-            return StrVal::owned(ptr, len).with_ascii().write_to(out);
-        }
-        let r = map_case(s, upper);
-        release(&*s);
-        r.write_to(out)
-    }
-}
-
-/// `upper` or `lower` of non-ASCII `text` written straight into a result of the same size, or
-/// `None` when the text is short, has a final-sigma context (lowercasing needs the whole-string
-/// rule) or maps to more bytes than it has: the caller then maps it through `str`.
-///
-/// # Safety
-/// The result allocation is private to this call until it is returned.
-unsafe fn map_case_in_place(text: &str, upper: bool) -> Option<StrVal> {
-    let len = text.len();
-    if len <= STR_INLINE_MAX || (!upper && text.contains('\u{3a3}')) {
-        return None;
-    }
-    let r = alloc_str(len);
-    // SAFETY: `r` owns `len + 1` writable bytes.
-    let dst = unsafe { core::slice::from_raw_parts_mut(r.ptr_word, len) };
-    let mut at = 0;
-    let mut tmp = [0u8; 4];
-    for c in text.chars() {
-        if c.is_ascii() {
-            if at == len {
-                // SAFETY: `r` is owned and unused after this.
-                unsafe { free_owned(r.ptr_word) };
-                return None;
-            }
-            dst[at] = if upper {
-                c.to_ascii_uppercase()
-            } else {
-                c.to_ascii_lowercase()
-            } as u8;
-            at += 1;
-            continue;
-        }
-        let mut put = |m: char| -> bool {
-            let n = m.encode_utf8(&mut tmp).len();
-            if at + n > len {
-                return false;
-            }
-            dst[at..at + n].copy_from_slice(&tmp[..n]);
-            at += n;
-            true
-        };
-        let fits = if upper {
-            c.to_uppercase().all(&mut put)
-        } else {
-            c.to_lowercase().all(&mut put)
-        };
-        if !fits {
-            // SAFETY: `r` is owned and unused after this.
-            unsafe { free_owned(r.ptr_word) };
-            return None;
-        }
-    }
-    // SAFETY: `r` owns `len + 1` bytes and `at <= len` of them are written.
-    Some(unsafe { finish_owned(r.ptr_word, at, false) })
-}
-
-/// The high bit of each byte of `x` (all below 0x80) that is a lowercase letter (`lower` true) or an
-/// uppercase one: `x + (0x80 - lo)` sets a byte's high bit when it is at least `lo`, and
-/// `x + (0x80 - hi - 1)` when it is above `hi`; no byte carries into the next.
-#[inline(always)]
-fn ascii_letters_of_case(x: u64, lower: bool) -> u64 {
-    const LO: u64 = 0x0101_0101_0101_0101;
-    const HI: u64 = 0x8080_8080_8080_8080;
-    let (first, last) = if lower { (b'a', b'z') } else { (b'A', b'Z') };
-    let at_least = x + LO * u64::from(0x80 - first);
-    let above = x + LO * u64::from(0x80 - last - 1);
-    at_least & !above & HI
-}
-
-/// The first eight bytes of `text`, or all of them zero padded when it is shorter.
-#[inline(always)]
-fn first_word(text: &[u8]) -> u64 {
-    let mut word = [0u8; 8];
-    let n = text.len().min(8);
-    word[..n].copy_from_slice(&text[..n]);
-    u64::from_le_bytes(word)
-}
-
-/// The last eight bytes of `text` (at least eight long).
-#[inline(always)]
-fn last_word(text: &[u8]) -> u64 {
-    u64::from_le_bytes(text[text.len() - 8..].try_into().unwrap_or([0; 8]))
-}
-
-/// Whether ASCII `text` holds a lowercase letter (`lower` false: an uppercase one), eight bytes per
-/// step, stopping at the first.
-#[inline(always)]
-fn has_ascii_letter_of_case(text: &[u8], lower: bool) -> bool {
-    if text.len() < 8 {
-        return ascii_letters_of_case(first_word(text), lower) != 0;
-    }
-    // Text that changes usually shows a letter in its first word; the last word overlaps the one
-    // before it when the length is not a multiple of eight.
-    let head = u64::from_le_bytes(text[..8].try_into().unwrap_or([0; 8]));
-    if ascii_letters_of_case(head, lower) != 0 {
-        return true;
-    }
-    let (chunks, _) = text.as_chunks::<8>();
-    for w in &chunks[1..] {
-        if ascii_letters_of_case(u64::from_le_bytes(*w), lower) != 0 {
-            return true;
-        }
-    }
-    ascii_letters_of_case(last_word(text), lower) != 0
-}
-
-/// Writes ASCII `text` to `dst` with its lowercase letters uppercased (`upper`) or its uppercase
-/// letters lowercased, eight bytes per step in one pass: flipping bit 5 of a letter changes its case.
-#[inline(always)]
-fn map_ascii_case_into(dst: &mut [u8], text: &[u8], upper: bool) {
-    let flip = |x: u64| x ^ (ascii_letters_of_case(x, upper) >> 2);
-    if text.len() < 8 {
-        let word = flip(first_word(text)).to_le_bytes();
-        dst.copy_from_slice(&word[..text.len()]);
-        return;
-    }
-    let (chunks, _) = text.as_chunks::<8>();
-    let (out, _) = dst.as_chunks_mut::<8>();
-    for (d, w) in out.iter_mut().zip(chunks) {
-        *d = flip(u64::from_le_bytes(*w)).to_le_bytes();
-    }
-    // The last word overlaps the one before it when the length is not a multiple of eight.
-    let n = dst.len();
-    dst[n - 8..].copy_from_slice(&flip(last_word(text)).to_le_bytes());
-}
-
-/// `upper` or `lower` of the string `s`: ASCII text is copied once into its result and mapped
-/// there; other text maps scalar by scalar.
-///
-/// # Safety
-/// `s` is a live string.
-unsafe fn map_case(s: *const StrVal, upper: bool) -> StrVal {
-    // SAFETY: caller contract.
-    unsafe {
-        let text = bytes(s);
-        if is_ascii(&*s) {
-            if !has_ascii_letter_of_case(text, upper) {
-                // Already in the requested case: share the unchanged input.
-                return cloned(&*s);
-            }
-            return build_exact(text.len(), true, |dst| {
-                map_ascii_case_into(dst, text, upper)
-            });
-        }
-        let text = core::str::from_utf8(text).expect("String contains valid UTF-8");
-        if let Some(r) = map_case_in_place(text, upper) {
-            return r;
-        }
-        if upper {
-            from_buf(text.to_uppercase().into_bytes())
-        } else {
-            // Whole-string mapping supplies Unicode's full Cased and Case_Ignorable tables
-            // for the contextual final-sigma rule.
-            from_buf(text.to_lowercase().into_bytes())
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf fresh takes_self
-pub unsafe extern "C-unwind" fn msrt_string_upper(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_upper_val(s)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_upper_val(s: *const StrVal) -> StrVal {
-    // SAFETY: caller passes a live string.
-    unsafe { map_case(s, true) }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf fresh takes_self
-pub unsafe extern "C-unwind" fn msrt_string_lower(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_lower_val(s)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
-    // SAFETY: caller passes a live string.
-    unsafe { map_case(s, false) }
-}
-
-/// `upper` of a string that dies at the call (the optimizer rewrites a call whose receiver
-/// drops right after it); same `out` as `msrt_string_upper`.
-///
-/// # Safety
-/// `s` holds an owned string that the callee takes; `out` is writable.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal) {
-    // SAFETY: caller contract.
-    unsafe { map_case_take(s, true, out) }
-}
-
-/// `lower` of a string that dies at the call (the optimizer rewrites a call whose receiver
-/// drops right after it); same `out` as `msrt_string_lower`.
-///
-/// # Safety
-/// `s` holds an owned string that the callee takes; `out` is writable.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal) {
-    // SAFETY: caller contract.
-    unsafe { map_case_take(s, false, out) }
-}
 
 /// Copies `n` non-overlapping bytes; up to 16 bytes go through overlapping word moves instead of a call
 /// into `memcpy`, which costs more than the copy for the short pieces words and fields split into.
@@ -1060,827 +589,34 @@ pub unsafe fn join_strings(items: *const StrVal, n: usize, sep: &[u8]) -> StrVal
 // Lists produced from strings (List[String] = VecVal of 8-byte string pointers)
 // ---------------------------------------------------------------------------
 
-/// Bytes of a `List[String]` element.
-const ELEM: usize = core::mem::size_of::<StrVal>();
+// ---------------------------------------------------------------------------
+// Conversions to string (Int, Float, Bool)
+// ---------------------------------------------------------------------------
 
-/// Appends a string (owned) to a `List[String]` being built.
-unsafe fn push_str(v: &mut VecVal, p: StrVal) {
-    // SAFETY: elements are `StrVal`s stored inline.
-    unsafe {
-        if v.len == v.cap {
-            let cap = if v.cap == 0 { 4 } else { v.cap * 2 };
-            v.ptr = if v.ptr.is_null() {
-                alloc::alloc(cap * ELEM)
-            } else {
-                alloc::realloc(v.ptr, cap * ELEM)
-            };
-            v.cap = cap;
-        }
-        *(v.ptr as *mut StrVal).add(v.len) = p;
-        v.len += 1;
-    }
+unsafe extern "C-unwind" {
+    /// `[list copies, list bytes, string clones, string bytes]` of the counting runtime (zeros elsewhere).
+    pub fn msrt_copy_counts(out: *mut u64);
 }
 
+/// The deep copies the runtime performed, counted by the C runtime.
+pub fn copy_counts() -> [u64; 4] {
+    let mut counts = [0; 4];
+    // SAFETY: `counts` has the four words the C side writes.
+    unsafe { msrt_copy_counts(counts.as_mut_ptr()) };
+    counts
+}
+
+#[cfg(test)]
 const EMPTY_VEC: VecVal = VecVal {
     ptr: null_mut(),
     len: 0,
     cap: 0,
 };
 
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        if !text.is_empty() && text.is_ascii() {
-            // One shared static per ASCII character, so the list is filled without allocating
-            // or counting references (static objects have a huge count).
-            let n = text.len();
-            let p = alloc::alloc(n * ELEM) as *mut StrVal;
-            let base = core::ptr::addr_of_mut!(ASCII) as *mut u8;
-            for (k, &b) in text.iter().enumerate() {
-                let q = p.add(k);
-                *q = StrVal::literal(base.add((b as usize) * ms_rt_abi::ASCII_CHAR_STRIDE), 1);
-            }
-            *out = VecVal {
-                ptr: p as _,
-                len: n,
-                cap: n,
-            };
-            return;
-        }
-        let mut v = EMPTY_VEC;
-        let mut i = 0;
-        while i < text.len() {
-            let (c, w) = utf8::decode(&text[i..]);
-            let p = if c == 0xFFFD && w == 1 {
-                from_bytes("\u{FFFD}".as_bytes())
-            } else {
-                from_bytes(&text[i..i + w])
-            };
-            push_str(&mut v, p);
-            i += w;
-        }
-        *out = v;
-    }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_lines(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        let mut v = EMPTY_VEC;
-        let mut start = 0;
-        while let Some(p) = find_newline(&text[start..]) {
-            let mut end = start + p;
-            if end > start && text[end - 1] == b'\r' {
-                end -= 1;
-            }
-            push_str(&mut v, from_bytes(&text[start..end]));
-            start += p + 1;
-        }
-        if start < text.len() {
-            push_str(&mut v, from_bytes(&text[start..]));
-        }
-        *out = v;
-    }
-}
-
-/// The scalars of a set string: the ASCII ones as a bit mask, the rest by comparison.
-struct ScalarSet<'a> {
-    low: u64,
-    high: u64,
-    wide: &'a [u8],
-}
-
-impl<'a> ScalarSet<'a> {
-    fn new(set: &'a [u8]) -> ScalarSet<'a> {
-        let (mut low, mut high) = (0u64, 0u64);
-        let mut wide_from = None;
-        for (i, &b) in set.iter().enumerate() {
-            if b < 64 {
-                low |= 1 << b;
-            } else if b < 0x80 {
-                high |= 1 << (b - 64);
-            } else if wide_from.is_none() {
-                wide_from = Some(i);
-            }
-        }
-        ScalarSet {
-            low,
-            high,
-            wide: wide_from.map_or(&[], |i| &set[i..]),
-        }
-    }
-
-    #[inline(always)]
-    fn contains(&self, c: u32) -> bool {
-        if c < 64 {
-            return self.low >> c & 1 != 0;
-        }
-        if c < 0x80 {
-            return self.high >> (c - 64) & 1 != 0;
-        }
-        let mut i = 0;
-        while i < self.wide.len() {
-            let (w, n) = utf8::decode(&self.wide[i..]);
-            if w == c {
-                return true;
-            }
-            i += n;
-        }
-        false
-    }
-}
-
-/// `String.trim_chars` and its start and end forms: the text without the leading and trailing
-/// scalars that occur in `set`. ASCII scalars are tested from a bit mask and only others decoded.
-#[unsafe(no_mangle)]
-// ms: leaf domain=string
-pub unsafe extern "C-unwind" fn msrt_string_trim_chars(
-    s: *const StrVal,
-    set: *const StrVal,
-    from_start: u8,
-    from_end: u8,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe {
-        let text = bytes(s);
-        let members = ScalarSet::new(bytes(set));
-        let (mut a, mut b) = (0, text.len());
-        if from_start != 0 {
-            while a < b {
-                let (c, w) = if text[a] < 0x80 {
-                    (u32::from(text[a]), 1)
-                } else {
-                    utf8::decode(&text[a..b])
-                };
-                if !members.contains(c) {
-                    break;
-                }
-                a += w;
-            }
-        }
-        if from_end != 0 {
-            while b > a {
-                let (c, w) = if text[b - 1] < 0x80 {
-                    (u32::from(text[b - 1]), 1)
-                } else {
-                    utf8::decode_last(&text[a..b])
-                };
-                if !members.contains(c) {
-                    break;
-                }
-                b -= w;
-            }
-        }
-        from_bytes(&text[a..b]).write_to(out)
-    }
-}
-
-/// `String.index_any`: the byte offset of the first scalar of `s` that occurs in `set`.
-/// A set of at most eight ASCII bytes is scanned eight bytes per step (a non-ASCII byte of the
-/// text is never a member); any other set tests each scalar against a bit mask and decodes
-/// only non-ASCII ones.
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_index_any(
-    s: *const StrVal,
-    set: *const StrVal,
-    out: *mut i64,
-) -> u8 {
-    const LO: u64 = 0x0101_0101_0101_0101;
-    const HI: u64 = 0x8080_8080_8080_8080;
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe {
-        let (text, members) = (bytes(s), bytes(set));
-        let found = if members.len() <= 8 && members.is_ascii() {
-            let mut pats = [0u64; 8];
-            for (p, &b) in pats.iter_mut().zip(members) {
-                *p = LO * u64::from(b);
-            }
-            let pats = &pats[..members.len()];
-            let (chunks, rest) = text.as_chunks::<8>();
-            let mut at = None;
-            for (k, w) in chunks.iter().enumerate() {
-                let x = u64::from_le_bytes(*w);
-                let hit = pats.iter().fold(0, |hit, &p| {
-                    let y = x ^ p;
-                    hit | (y.wrapping_sub(LO) & !y & HI)
-                });
-                if hit != 0 {
-                    // A lane above a true match can be flagged falsely, never below it.
-                    at = Some(k * 8 + hit.trailing_zeros() as usize / 8);
-                    break;
-                }
-            }
-            at.or_else(|| {
-                let done = chunks.len() * 8;
-                rest.iter()
-                    .position(|b| members.contains(b))
-                    .map(|i| done + i)
-            })
-        } else {
-            let set = ScalarSet::new(members);
-            let mut i = 0;
-            let mut at = None;
-            while i < text.len() {
-                let (c, w) = if text[i] < 0x80 {
-                    (u32::from(text[i]), 1)
-                } else {
-                    utf8::decode(&text[i..])
-                };
-                if set.contains(c) {
-                    at = Some(i);
-                    break;
-                }
-                i += w;
-            }
-            at
-        };
-        match found {
-            Some(i) => {
-                *out = i as i64;
-                1
-            }
-            None => 0,
-        }
-    }
-}
-
-/// How `fields` treats a byte: 0 an ordinary ASCII byte, 1 ASCII White_Space, 2 the start of a
-/// multibyte scalar, which is decoded.
-const FIELD_CLASS: [u8; 256] = {
-    let mut table = [0u8; 256];
-    let mut i = 0;
-    while i < 256 {
-        table[i] = if i >= 0x80 {
-            2
-        } else if i == 32 || (i >= 9 && i <= 13) {
-            1
-        } else {
-            0
-        };
-        i += 1;
-    }
-    table
-};
-
-/// `String.fields`: the runs of text between Unicode White_Space, none empty. A byte below 0x80
-/// is tested directly and only other scalars are decoded, so ordinary text is one byte loop.
-#[unsafe(no_mangle)]
-// ms: leaf domain=string
-pub unsafe extern "C-unwind" fn msrt_string_fields(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        let mut v = EMPTY_VEC;
-        let mut field_start = usize::MAX;
-        let mut i = 0;
-        while i < text.len() {
-            let (space, width) = match FIELD_CLASS[text[i] as usize] {
-                0 => (false, 1),
-                1 => (true, 1),
-                _ => {
-                    let (c, w) = utf8::decode(&text[i..]);
-                    (utf8::is_space(c), w)
-                }
-            };
-            if space {
-                if field_start != usize::MAX {
-                    push_str(&mut v, from_bytes(&text[field_start..i]));
-                    field_start = usize::MAX;
-                }
-            } else if field_start == usize::MAX {
-                field_start = i;
-            }
-            i += width;
-        }
-        if field_start != usize::MAX {
-            push_str(&mut v, from_bytes(&text[field_start..]));
-        }
-        *out = v;
-    }
-}
-
-/// Keep nearby line endings cheap, then scan long lines with the vector byte searcher.
-/// A scalar prefix also avoids vector-search setup for ordinary short lines in a long text.
-#[inline]
-fn find_newline(text: &[u8]) -> Option<usize> {
-    if text.len() <= SHORT_HAY {
-        return text.iter().position(|&c| c == b'\n');
-    }
-    if let Some(at) = text[..SHORT_HAY].iter().position(|&c| c == b'\n') {
-        return Some(at);
-    }
-    memchr(b'\n', &text[SHORT_HAY..]).map(|at| at + SHORT_HAY)
-}
-
-/// Room for the pieces of a split that is read in place: the list borrows it.
-const SPLIT_BUF: usize = 8;
-const _: () = assert!(size_of::<FrameBuf<StrVal, 8>>() == SPLIT_BUF * size_of::<StrVal>());
-
-/// The state of `for piece in text.split(separator)` that does not build the list.
-///
-/// The piece handed to the loop is owned by the iterator and lent to the body, which copies it
-/// to keep it; the iterator rewrites it in place for the next one.
-#[repr(C)]
-pub struct SplitIter {
-    hdr: Obj,
-    /// Borrowed from the loop's operands, which outlive the iterator.
-    src: StrVal,
-    sep: StrVal,
-    /// The current piece (a shared static for short ones), or [`NO_STR`] before the first.
-    cur: StrVal,
-    /// Byte capacity of `cur` when it is a private allocation, else 0.
-    cap: usize,
-    pos: usize,
-    done: bool,
-}
-
-unsafe extern "C" fn split_iter_drop(o: *mut Obj) {
-    // SAFETY: `o` is a dead iterator that owns one reference to each string it holds.
-    unsafe {
-        let it = o as *mut SplitIter;
-        release_opt(&(*it).cur);
-        alloc::free(o as *mut u8);
-    }
-}
-
-/// Starts a split loop.
-#[unsafe(no_mangle)]
-// ms: leaf iter_of=msrt_string_split
-pub unsafe extern "C-unwind" fn msrt_string_split_iter(
-    s: *const StrVal,
-    sep: *const StrVal,
-) -> *mut SplitIter {
-    // SAFETY: caller passes live strings.
-    unsafe {
-        let it = obj::new_obj(core::mem::size_of::<SplitIter>(), None, split_iter_drop)
-            as *mut SplitIter;
-        // The loop keeps both strings alive until it ends, so the iterator only borrows them.
-        (*it).src = (*s).alias();
-        (*it).sep = (*sep).alias();
-        (*it).cur = NO_STR;
-        (*it).cap = 0;
-        (*it).pos = 0;
-        (*it).done = false;
-        it
-    }
-}
-
-/// Makes the next piece current and writes a borrow of it to `out` (the iterator owns the bytes
-/// until the next call); returns 0 when the pieces are used up.
-#[unsafe(no_mangle)]
-// ms: leaf domain=split
-pub unsafe extern "C-unwind" fn msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8 {
-    // SAFETY: caller passes a live iterator and a writable `out`.
-    unsafe {
-        match split_next(it) {
-            Some(value) => {
-                value.write_to(out);
-                1
-            }
-            None => 0,
-        }
-    }
-}
-
-unsafe fn split_next(it: *mut SplitIter) -> Option<StrVal> {
-    // SAFETY: `it` is a live iterator.
-    unsafe {
-        let st = &mut *it;
-        if st.done {
-            return None;
-        }
-        let (text, sepb) = (bytes(&st.src), bytes(&st.sep));
-        let piece: &[u8] = if sepb.is_empty() {
-            // Split after each scalar.
-            if st.pos >= text.len() {
-                st.done = true;
-                return None;
-            }
-            let w = utf8::decode(&text[st.pos..]).1;
-            let p = &text[st.pos..st.pos + w];
-            st.pos += w;
-            p
-        } else {
-            let at = if let [c] = sepb {
-                memchr(*c, &text[st.pos..])
-            } else {
-                find(&text[st.pos..], sepb)
-            };
-            match at {
-                Some(n) => {
-                    let p = &text[st.pos..st.pos + n];
-                    st.pos += n + sepb.len();
-                    p
-                }
-                None => {
-                    st.done = true;
-                    &text[st.pos..]
-                }
-            }
-        };
-        set_piece(st, piece);
-        Some(st.cur.alias())
-    }
-}
-
-/// Copies `n` bytes; short copies avoid the call to `memcpy`.
-///
-/// # Safety
-/// The ranges must be valid for `n` bytes and must not overlap.
-#[inline(always)]
-unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
-    // SAFETY: each branch reads and writes only inside the `n` bytes.
-    unsafe {
-        if (8..=16).contains(&n) {
-            let head = (src as *const u64).read_unaligned();
-            let tail = (src.add(n - 8) as *const u64).read_unaligned();
-            (dst as *mut u64).write_unaligned(head);
-            (dst.add(n - 8) as *mut u64).write_unaligned(tail);
-        } else if (4..8).contains(&n) {
-            let head = (src as *const u32).read_unaligned();
-            let tail = (src.add(n - 4) as *const u32).read_unaligned();
-            (dst as *mut u32).write_unaligned(head);
-            (dst.add(n - 4) as *mut u32).write_unaligned(tail);
-        } else if n > 16 || n == 0 {
-            core::ptr::copy_nonoverlapping(src, dst, n);
-        } else {
-            for i in 0..n {
-                *dst.add(i) = *src.add(i);
-            }
-        }
-    }
-}
-
-/// Stores `piece` as the iterator's current string.
-unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
-    // SAFETY: `st.cur` is [`NO_STR`] or a live string this iterator holds a reference to.
-    unsafe {
-        if piece.len() <= 1 && piece.first().is_none_or(|&b| b < 0x80) {
-            // Empty and one-byte ASCII pieces are shared statics.
-            release_opt(&st.cur);
-            st.cap = 0;
-            st.cur = from_bytes(piece);
-            return;
-        }
-        if st.cap >= piece.len() && !st.cur.ptr_word.is_null() && st.cur.owns() {
-            // The loop only borrows the piece: rewrite it in place.
-            st.cur.tagged = piece.len();
-            copy_short(piece.as_ptr(), st.cur.ptr_word, piece.len());
-            *st.cur.ptr_word.add(piece.len()) = 0;
-            return;
-        }
-        release_opt(&st.cur);
-        let cap = piece.len().max(24);
-        let mut fresh = alloc_str(cap);
-        fresh.tagged = piece.len();
-        copy_short(piece.as_ptr(), fresh.ptr_word, piece.len());
-        *fresh.ptr_word.add(piece.len()) = 0;
-        st.cur = fresh;
-        st.cap = cap;
-    }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out; 8-byte elements.
-    unsafe {
-        let text = bytes(s);
-        let n = scalar_count(s);
-        let p = if n == 0 {
-            null_mut()
-        } else {
-            alloc::alloc(n * 8)
-        } as *mut i64;
-        if n == text.len() {
-            for (k, &c) in text.iter().enumerate() {
-                *p.add(k) = c as i64;
-            }
-            *out = VecVal {
-                ptr: p as *mut u8,
-                len: n,
-                cap: n,
-            };
-            return;
-        }
-        let (mut i, mut k) = (0, 0);
-        while i < text.len() {
-            let (c, w) = utf8::decode(&text[i..]);
-            *p.add(k) = c as i64;
-            k += 1;
-            i += w;
-        }
-        *out = VecVal {
-            ptr: p as *mut u8,
-            len: n,
-            cap: n,
-        };
-    }
-}
-
-/// `String.from_scalars(values: List[Int])`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_from_scalars(
-    values: *const VecVal,
-    out: *mut StrVal,
-) -> u8 {
-    // SAFETY: caller passes a live list of Int and a writable out.
-    unsafe {
-        let v = &*values;
-        let src = if v.len == 0 {
-            &[][..]
-        } else {
-            core::slice::from_raw_parts(v.ptr as *const i64, v.len)
-        };
-        // All-ASCII is the common case: one OR-reduction proves it (a negative or large value sets a
-        // bit above 0x7F as an unsigned word), and the bytes are then narrowed straight into the result.
-        let ascii = src.iter().fold(0u64, |acc, &n| acc | n as u64) < 0x80;
-        if ascii {
-            if src.len() <= STR_INLINE_MAX {
-                let mut small = [0u8; STR_INLINE_MAX];
-                for (d, &n) in small.iter_mut().zip(src) {
-                    *d = n as u8;
-                }
-                *out = from_bytes(&small[..src.len()]);
-                return STATUS_OK;
-            }
-            let s = alloc_str(src.len());
-            let dst = core::slice::from_raw_parts_mut(s.ptr_word, src.len());
-            for (d, &n) in dst.iter_mut().zip(src) {
-                *d = n as u8;
-            }
-            *out = s.with_ascii();
-            return STATUS_OK;
-        }
-        let mut b = Vec::with_capacity(src.len());
-        let mut tmp = [0u8; 4];
-        for &n in src {
-            if !(0..=0x10FFFF).contains(&n) || (0xD800..=0xDFFF).contains(&n) {
-                return STATUS_INVALID_INPUT;
-            }
-            if n < 0x80 {
-                b.push(n as u8);
-                continue;
-            }
-            let w = utf8::encode(n as u32, &mut tmp);
-            b.extend_from_slice(&tmp[..w]);
-        }
-        *out = from_buf(b);
-        STATUS_OK
-    }
-}
-
-/// `String.to_bytes()`: a Bytes value (VecVal of u8).
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        let p = if text.is_empty() {
-            null_mut()
-        } else {
-            alloc::alloc(text.len())
-        };
-        if !text.is_empty() {
-            core::ptr::copy_nonoverlapping(text.as_ptr(), p, text.len());
-        }
-        *out = VecVal {
-            ptr: p,
-            len: text.len(),
-            cap: text.len(),
-        };
-    }
-}
-
-/// `String.view_bytes()`: the UTF-8 bytes of the text borrowed from the receiver, nothing copied
-/// (`cap == 0` marks a view, which is never freed). Valid while the receiver is neither changed nor
-/// dropped (the borrow check guarantees that). The bytes of an inline text are the receiver's own
-/// storage, which is why the function is declared `borrows`: the backends keep the argument's slot
-/// for the whole function.
-#[unsafe(no_mangle)]
-// ms: leaf pure borrows domain=string
-pub unsafe extern "C-unwind" fn msrt_string_view_bytes(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        *out = VecVal {
-            ptr: if text.is_empty() {
-                null_mut()
-            } else {
-                text.as_ptr() as *mut u8
-            },
-            len: text.len(),
-            cap: 0,
-        };
-    }
-}
-
-/// `String.parse_float()`: present flag, value through `out`; the `Result` form is `math.parse_float`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe { u8::from(crate::num::msrt_numbers_parse_float(s, out) == STATUS_OK) }
-}
-
-/// Normalization forms by the spelling `String.normalize` takes.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_normalize(
-    s: *const StrVal,
-    form: *const StrVal,
-    has_max: HasRaw,
-    max: i64,
-    out: *mut StrVal,
-) -> u8 {
-    // SAFETY: caller passes live strings and a writable out.
-    unsafe {
-        if has_max.is_set() && max < 0 {
-            return STATUS_INVALID_INPUT;
-        }
-        let kind = match bytes(form) {
-            b"NFC" => 0,
-            b"NFD" => 1,
-            b"NFKC" => 2,
-            b"NFKD" => 3,
-            _ => return STATUS_INVALID_INPUT,
-        };
-        normalize_kind(s, kind, has_max, max, out)
-    }
-}
-
-/// `NormalizationForm.normalize`: `kind` is the case index (Nfc 0, Nfd 1, Nfkc 2, Nfkd 3).
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_normalize_kind(
-    s: *const StrVal,
-    kind: i64,
-    has_max: HasRaw,
-    max: i64,
-    out: *mut StrVal,
-) -> u8 {
-    // SAFETY: forwarded contract.
-    unsafe { normalize_kind(s, kind, has_max, max, out) }
-}
-
-unsafe fn normalize_kind(
-    s: *const StrVal,
-    kind: i64,
-    has_max: HasRaw,
-    max: i64,
-    out: *mut StrVal,
-) -> u8 {
-    use unicode_normalization::UnicodeNormalization;
-    if has_max.is_set() && max < 0 {
-        return STATUS_INVALID_INPUT;
-    }
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let limit = if has_max.is_set() {
-            max as usize
-        } else {
-            usize::MAX
-        };
-        let text = bytes(s);
-        if is_ascii(&*s) {
-            // ASCII text is already in every normalization form.
-            if text.len() > limit {
-                return STATUS_LIMIT_EXCEEDED;
-            }
-            *out = cloned(&*s);
-            return STATUS_OK;
-        }
-        // ASCII is stable under every form and never composes with what precedes it, so
-        // a normalization segment starts at the last ASCII byte before a non-ASCII run
-        // (a base letter may take a following mark) and ends at the next ASCII byte.
-        // Everything between segments is copied as it is.
-        let mut b: Vec<u8> = Vec::with_capacity(text.len());
-        let mut chars: Vec<char> = Vec::new();
-        let mut tmp = [0u8; 4];
-        let mut at = 0;
-        while at < text.len() {
-            let run_end = at
-                + text[at..]
-                    .iter()
-                    .position(|&x| x >= 0x80)
-                    .unwrap_or(text.len() - at);
-            if run_end == text.len() {
-                if text.len() - at > limit.saturating_sub(b.len()) {
-                    return STATUS_LIMIT_EXCEEDED;
-                }
-                b.extend_from_slice(&text[at..]);
-                break;
-            }
-            let start = if run_end > at { run_end - 1 } else { run_end };
-            if start - at > limit.saturating_sub(b.len()) {
-                return STATUS_LIMIT_EXCEEDED;
-            }
-            b.extend_from_slice(&text[at..start]);
-            let end = run_end
-                + text[run_end..]
-                    .iter()
-                    .position(|&x| x < 0x80)
-                    .unwrap_or(text.len() - run_end);
-            chars.clear();
-            let mut i = start;
-            while i < end {
-                let (c, w) = utf8::decode(&text[i..end]);
-                chars.push(char::from_u32(c).unwrap_or('\u{FFFD}'));
-                i += w;
-            }
-            let mut push = |c: char| -> bool {
-                let e = c.encode_utf8(&mut tmp).as_bytes();
-                if e.len() > limit.saturating_sub(b.len()) {
-                    return false;
-                }
-                b.extend_from_slice(e);
-                true
-            };
-            let it = chars.iter().copied();
-            let ok = match kind {
-                0 => it.nfc().all(&mut push),
-                1 => it.nfd().all(&mut push),
-                2 => it.nfkc().all(&mut push),
-                _ => it.nfkd().all(&mut push),
-            };
-            if !ok {
-                return STATUS_LIMIT_EXCEEDED;
-            }
-            at = end;
-        }
-        *out = from_buf(b);
-        STATUS_OK
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Conversions to string (Int, Float, Bool)
-// ---------------------------------------------------------------------------
-
-/// The double-quoted, escaped spelling of a string (as `%q` writes it).
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_quote_val(s)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_quote_val(s: *const StrVal) -> StrVal {
-    // SAFETY: caller passes a live string.
-    let text = unsafe { bytes(s) };
-    let mut out = Vec::with_capacity(text.len() + 2);
-    out.push(b'"');
-    let mut i = 0;
-    while i < text.len() {
-        let c = text[i];
-        match c {
-            b'"' => out.extend_from_slice(b"\\\""),
-            b'\\' => out.extend_from_slice(b"\\\\"),
-            b'\n' => out.extend_from_slice(b"\\n"),
-            b'\t' => out.extend_from_slice(b"\\t"),
-            b'\r' => out.extend_from_slice(b"\\r"),
-            0..=0x1f | 0x7f => {
-                const HEX: &[u8; 16] = b"0123456789abcdef";
-                out.extend_from_slice(b"\\x");
-                out.push(HEX[(c >> 4) as usize]);
-                out.push(HEX[(c & 15) as usize]);
-            }
-            _ => out.push(c),
-        }
-        i += 1;
-    }
-    out.push(b'"');
-    from_buf(out)
-}
-
-crate::isolate_static! {
-/// Deep copies the runtime performed, `[list copies, list bytes, string clones, string bytes]` (counted by every runtime).
-    pub static COPY_COUNTS: [u64; 4] = [0; 4];
-}
-/// Records one deep copy of `kind` (0 list, 1 string) moving `bytes` bytes.
-pub fn count_copy(kind: usize, bytes: usize) {
-    // SAFETY: single threaded access to the counters.
-    unsafe {
-        let c = &mut *COPY_COUNTS.ptr();
-        c[kind * 2] += 1;
-        c[kind * 2 + 1] += bytes as u64;
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ms_rt_abi::{STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK};
 
     // The f-string joins are C (runtime/core/string_join.c); the unit tests link the C runtime.
     unsafe extern "C-unwind" {
@@ -2046,23 +782,6 @@ mod tests {
             let mut none = d.alias();
             msrt_string_concat3(&e, &e, &e, &mut none);
             assert_eq!(none.len(), 0);
-        }
-    }
-
-    #[test]
-    fn newline_search_matches_scalar_search_across_the_prefix_boundary() {
-        for len in 0..=129 {
-            let mut text = vec![b'x'; len];
-            assert_eq!(find_newline(&text), None);
-            for at in 0..len {
-                text[at] = b'\n';
-                assert_eq!(
-                    find_newline(&text),
-                    text.iter().position(|&c| c == b'\n'),
-                    "length {len}, newline {at}"
-                );
-                text[at] = b'x';
-            }
         }
     }
 
@@ -2310,49 +1029,6 @@ mod tests {
     }
 
     #[test]
-    fn hash_vectors_match_the_c_runtime() {
-        // The same vectors are asserted by runtime/tests/core_string.c.
-        let vectors: [(&str, i64); 6] = [
-            ("", 5637604647281345049),
-            ("a", -4589632175014895841),
-            ("hello", -2768413155067229152),
-            ("123456789012345", 1963792452095667305),
-            ("1234567890123456", 6017223085291776624),
-            (
-                "The quick brown fox jumps over the lazy dog",
-                5716930301217669884,
-            ),
-        ];
-        for (text, hash) in vectors {
-            assert_eq!(hash_bytes(text.as_bytes()) as i64, hash, "{text:?}");
-        }
-    }
-
-    #[test]
-    fn hash_bytes_separates_lengths_and_contents() {
-        let mut seen = std::collections::HashSet::new();
-        for len in 0..40usize {
-            for fill in [0u8, b'a', 0xff]
-                .into_iter()
-                .take(if len == 0 { 1 } else { 3 })
-            {
-                let v = std::vec![fill; len];
-                assert_eq!(hash_bytes(&v), hash_bytes(&v.clone()));
-                assert!(
-                    seen.insert(hash_bytes(&v)),
-                    "collision at len {len} fill {fill}"
-                );
-            }
-        }
-        for at in 0..24usize {
-            let mut a = std::vec![b'x'; 24];
-            let b = a.clone();
-            a[at] = b'y';
-            assert_ne!(hash_bytes(&a), hash_bytes(&b), "byte {at} ignored");
-        }
-    }
-
-    #[test]
     #[cfg_attr(
         miri,
         ignore = "an exhaustive sweep that takes over 200 s interpreted; native CI runs it"
@@ -2554,12 +1230,6 @@ mod tests {
             assert_eq!(msrt_string_scalar_at(s, 1, HasRaw(0), 0), 0xE9);
             assert_eq!(msrt_string_scalar_at(s, 3, HasRaw(0), 0), 'l' as i64);
             assert_eq!(msrt_string_scalar_at(s, 2, HasRaw(1), -1), -1);
-            testutil::assert_fault(
-                "String.scalar_at: offset 2 does not start a scalar of the 6 byte text; pass a default",
-                || {
-                    msrt_string_scalar_at(s, 2, HasRaw(0), 0);
-                },
-            );
         }
     }
 
@@ -2663,10 +1333,11 @@ mod tests {
             let before = std::format!("A{mark}Σ");
             let after = std::format!("AΣ{mark}A");
             // SAFETY: `st` leaks a live string.
-            let (lowered_before, lowered_after) =
-                unsafe { (map_case(st(&before), false), map_case(st(&after), false)) };
-            assert_eq!(txt(&lowered_before), std::format!("a{mark}ς"));
-            assert_eq!(txt(&lowered_after), std::format!("aσ{mark}a"));
+            let lowered_before = ret(|o| unsafe { msrt_string_lower(st(&before), o) });
+            // SAFETY: as above.
+            let lowered_after = ret(|o| unsafe { msrt_string_lower(st(&after), o) });
+            assert_eq!(lowered_before, std::format!("a{mark}ς"));
+            assert_eq!(lowered_after, std::format!("aσ{mark}a"));
         }
     }
 

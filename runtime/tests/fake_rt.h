@@ -22,15 +22,41 @@ __attribute__((constructor)) static void init_ascii_chars(void) {
     }
 }
 
-void *msrt_alloc(size_t n) { return malloc(n); }
-void *msrt_realloc(void *p, size_t n) { return realloc(p, n); }
-void *msrt_alloc_zeroed(size_t n) { return calloc(1, n); }
-void msrt_free(void *p) { free(p); }
+/* With FAKE_RT_TRACK defined, the allocations the runtime fake makes are remembered so a test that hands out values
+ * without a drop for each (strings and lists written through out parameters) frees what is left with
+ * fake_rt_free_all, and leak checking still sees every other allocation. */
+#ifdef FAKE_RT_TRACK
+static void *fake_live[1 << 14];
+static size_t fake_live_count;
+static void *fake_track(void *p) {
+    if (p != NULL && fake_live_count < sizeof fake_live / sizeof fake_live[0]) fake_live[fake_live_count++] = p;
+    return p;
+}
+static void fake_untrack(void *p) {
+    for (size_t i = fake_live_count; i > 0; i--) {
+        if (fake_live[i - 1] == p) { fake_live[i - 1] = fake_live[--fake_live_count]; return; }
+    }
+}
+static void fake_rt_free_all(void) {
+    while (fake_live_count > 0) free(fake_live[--fake_live_count]);
+}
+#else
+#define fake_track(p) (p)
+#define fake_untrack(p) ((void)(p))
+#endif
 
+void *msrt_alloc(size_t n) { return fake_track(malloc(n)); }
+void *msrt_realloc(void *p, size_t n) { fake_untrack(p); return fake_track(realloc(p, n)); }
+void *msrt_alloc_zeroed(size_t n) { return fake_track(calloc(1, n)); }
+void msrt_free(void *p) { fake_untrack(p); free(p); }
+
+/* A test that checks faults defines its own msrt_fault and msfault_raise and sets MS_TEST_OWN_FAULTS first. */
+#ifndef MS_TEST_OWN_FAULTS
 _Noreturn void msrt_fault(const uint8_t *message, size_t length) {
     fprintf(stderr, "fault: %.*s\n", (int)length, (const char *)message);
     abort();
 }
+#endif
 
 _Noreturn void msrt_index_fault(int64_t index, int64_t length) {
     fprintf(stderr, "index fault: %lld of %lld\n", (long long)index, (long long)length);
@@ -38,7 +64,7 @@ _Noreturn void msrt_index_fault(int64_t index, int64_t length) {
 }
 
 void msrt_list_with_capacity(const MsTypeDesc *d, int64_t cap, MsVec *out) {
-    out->ptr = cap ? malloc((size_t)cap * d->size) : NULL;
+    out->ptr = cap ? msrt_alloc((size_t)cap * d->size) : NULL;
     out->len = 0;
     out->cap = (size_t)cap;
 }
@@ -46,7 +72,7 @@ void msrt_list_with_capacity(const MsTypeDesc *d, int64_t cap, MsVec *out) {
 void msrt_list_push(MsVec *v, const MsTypeDesc *d, const void *e) {
     if (v->len == v->cap) {
         v->cap = v->cap ? v->cap * 2 : 4;
-        v->ptr = realloc(v->ptr, v->cap * d->size);
+        v->ptr = msrt_realloc(v->ptr, v->cap * d->size);
     }
     memcpy((uint8_t *)v->ptr + v->len * d->size, e, d->size);
     v->len++;
@@ -64,11 +90,20 @@ void msrt_list_drop(MsVec *v, const MsTypeDesc *d) {
             MsStr string;
             memcpy(&string, slot, sizeof string);
             if (string.tagged < ((uint64_t)1 << 62)) {
-                free(string.ptr_word);
+                msrt_free(string.ptr_word);
             }
         }
     }
-    free(v->ptr);
+    msrt_free(v->ptr);
 }
+
+#ifndef MS_TEST_OWN_FAULTS
+void msfault_raise(uint8_t kind, const void *message, size_t length);
+void msfault_raise(uint8_t kind, const void *message, size_t length) {
+    fprintf(stderr, "FAULT(%u) %.*s\n", kind, (int)length, (const char *)message);
+    abort();
+}
+
+#endif
 
 #endif

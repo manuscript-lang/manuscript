@@ -3,29 +3,10 @@
 #include <stdio.h>
 #include <string.h>
 #include "../net/tls.h"
+#include "test_cert.h"
 
 static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
-
-/* Self-signed test certificate for localhost, valid for a century, and its key. Test data only. */
-static const char CERT[] =
-    "-----BEGIN CERTIFICATE-----\n"
-    "MIIBlTCCATugAwIBAgIUTDhnP9MmNSVMFrvncmvJP86XTR8wCgYIKoZIzj0EAwIw\n"
-    "FDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MTEyMDAyMTMxMFoYDzIxMjYxMDI3\n"
-    "MDIxMzEwWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO\n"
-    "PQMBBwNCAARHmnJyhZTZnbl0vbF9TaF1HulFlgFb/bGF71ImMBXFCJ6WNYt4FAm6\n"
-    "vn4+mYYklmMtugKrV/wNuR7z3zBv/SG+o2kwZzAdBgNVHQ4EFgQU08J2xEUzFYzx\n"
-    "KqmJR0ydcM12/IgwHwYDVR0jBBgwFoAU08J2xEUzFYzxKqmJR0ydcM12/IgwDwYD\n"
-    "VR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID\n"
-    "SAAwRQIhAKx3oXUlFf3VrCtYMlW4jjmc5dJn3kQEmPIVMVu7RSpZAiBMZmgMpVuE\n"
-    "SRENQTzn+YxHjrZr5itiG0+3TZS6ScfnuQ==\n"
-    "-----END CERTIFICATE-----\n";
-static const char KEY[] =
-    "-----BEGIN PRIVATE KEY-----\n"
-    "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgLrAoU9fnE4ctW88E\n"
-    "ztzdELEzBjsZWorHGzje5quaQXKhRANCAARHmnJyhZTZnbl0vbF9TaF1HulFlgFb\n"
-    "/bGF71ImMBXFCJ6WNYt4FAm6vn4+mYYklmMtugKrV/wNuR7z3zBv/SG+\n"
-    "-----END PRIVATE KEY-----\n";
 
 /* Moves pending ciphertext one way. */
 static void pump(MsTls *from, MsTls *to) {
@@ -69,6 +50,45 @@ int main(void) {
     pump(c, s);
     CHECK(ms_tls_read(s, b, sizeof b) == MS_TLS_CLOSED);
     ms_tls_free(c); ms_tls_free(s);
+
+    /* ALPN: the server picks its first protocol the client offered; none when they share none */
+    MsTlsCtx *salpn = ms_tls_ctx_new(1, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, NULL, 0);
+    MsTlsCtx *calpn = ms_tls_ctx_new(0, NULL, 0, NULL, 0, CERT, sizeof CERT - 1);
+    CHECK(ms_tls_ctx_set_alpn(salpn, "h2,http/1.1") == 0 && ms_tls_ctx_set_alpn(calpn, "http/1.1,spdy/3") == 0);
+    CHECK(ms_tls_ctx_set_alpn(calpn, "a,,b") == -1);
+    CHECK(ms_tls_ctx_set_alpn(calpn, "http/1.1,spdy/3") == 0);
+    c = ms_tls_new(calpn, "localhost"); s = ms_tls_new(salpn, NULL);
+    CHECK(handshake(c, s) == MS_TLS_DONE);
+    CHECK(ms_bytes_equal(ms_tls_alpn(c), ms_bytes_of((const uint8_t *)"http/1.1", 8)));
+    CHECK(ms_bytes_equal(ms_tls_alpn(s), ms_bytes_of((const uint8_t *)"http/1.1", 8)));
+    ms_tls_free(c); ms_tls_free(s);
+    CHECK(ms_tls_ctx_set_alpn(calpn, "h2") == 0);
+    c = ms_tls_new(calpn, "localhost"); s = ms_tls_new(salpn, NULL);
+    CHECK(handshake(c, s) == MS_TLS_DONE && ms_tls_alpn(c).len == 2 && ms_tls_alpn(s).len == 2);
+    ms_tls_free(c); ms_tls_free(s);
+    CHECK(ms_tls_ctx_set_alpn(calpn, "spdy/3") == 0);
+    c = ms_tls_new(calpn, "localhost"); s = ms_tls_new(salpn, NULL);
+    CHECK(handshake(c, s) == MS_TLS_DONE && ms_tls_alpn(c).len == 0 && ms_tls_alpn(s).len == 0);
+    ms_tls_free(c); ms_tls_free(s);
+    ms_tls_ctx_free(salpn); ms_tls_ctx_free(calpn);
+
+    /* mutual TLS: a server that requires client certificates, a client that presents one, and one that does not */
+    MsTlsCtx *mserver = ms_tls_ctx_new(1, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, NULL, 0);
+    MsTlsCtx *mclient = ms_tls_ctx_new(0, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, CERT, sizeof CERT - 1);
+    CHECK(mserver && mclient && ms_tls_ctx_verify_clients(mserver, CERT, sizeof CERT - 1, 1) == 0);
+    CHECK(ms_tls_ctx_verify_clients(cctx, CERT, sizeof CERT - 1, 1) == -1); /* a client context has no clients */
+    c = ms_tls_new(mclient, "localhost"); s = ms_tls_new(mserver, NULL);
+    CHECK(handshake(c, s) == MS_TLS_DONE && ms_tls_verified(s) == 1 && ms_tls_verified(c) == 1);
+    ms_tls_free(c); ms_tls_free(s);
+    c = ms_tls_new(cctx, "localhost"); s = ms_tls_new(mserver, NULL);
+    CHECK(handshake(c, s) != MS_TLS_DONE);
+    ms_tls_free(c); ms_tls_free(s);
+    MsTlsCtx *optional = ms_tls_ctx_new(1, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, NULL, 0);
+    CHECK(optional && ms_tls_ctx_verify_clients(optional, CERT, sizeof CERT - 1, 0) == 0);
+    c = ms_tls_new(cctx, "localhost"); s = ms_tls_new(optional, NULL);
+    CHECK(handshake(c, s) == MS_TLS_DONE && ms_tls_verified(s) == 0); /* none offered, none required */
+    ms_tls_free(c); ms_tls_free(s);
+    ms_tls_ctx_free(mserver); ms_tls_ctx_free(mclient); ms_tls_ctx_free(optional);
 
     /* wrong host name */
     c = ms_tls_new(cctx, "example.invalid"); s = ms_tls_new(sctx, NULL);
