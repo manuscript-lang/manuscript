@@ -156,3 +156,14 @@ int ms_sys_net_peer_addr(MsSock s, MsAddr *out) {
 int ms_sys_net_shutdown(MsSock s, int how) { return shutdown((SOCKET)s, how == 1 ? SD_SEND : SD_BOTH) != 0 ? MS_SYS_ERROR : MS_SYS_OK; }
 void ms_sys_net_close(MsSock s) { closesocket((SOCKET)s); }
 int ms_sys_net_error(void) { return WSAGetLastError(); }
+
+int ms_sys_net_addr_from_raw(const void *sockaddr, size_t length, MsAddr *out) {
+    SOCKADDR_STORAGE ss;
+    if (length < sizeof(ADDRESS_FAMILY) || length > sizeof ss) return -1;
+    memset(&ss, 0, sizeof ss);
+    memcpy(&ss, sockaddr, length);
+    const size_t need = ss.ss_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6);
+    if ((ss.ss_family != AF_INET && ss.ss_family != AF_INET6) || length < need) return -1;
+    from_sockaddr(&ss, out);
+    return 0;
+}

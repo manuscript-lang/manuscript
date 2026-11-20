@@ -104,9 +104,12 @@ typedef struct MsLiveness {
     uint8_t *state; /* MsUseState */
     uint32_t *next; /* node id, or MS_NONE */
     MsPos *pos;     /* where the use is written */
+    /* By match-arm node id: the arm's payload bindings, which are consecutive binding ids. */
+    uint32_t *arm_first;
+    uint32_t *arm_count;
 } MsLiveness;
 
-MsLiveness ms_liveness_new(MsArena *arena, uint32_t node_count);
+MsLiveness ms_liveness_new(MsArena *arena, const MsFacts *facts);
 
 /* Fills the liveness of one function body by a backward walk (`live.rs`). Returns false, leaving
  * the function unanalysed, for a statement or expression the walk does not handle yet. */

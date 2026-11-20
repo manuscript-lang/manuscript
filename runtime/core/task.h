@@ -229,6 +229,10 @@ MsTokenStatus ms_token_park(uint64_t id, int64_t timeout_ns, uint64_t *value, ui
 /* Posts from the scheduler's own thread: wakes the waiter, or keeps the post for the next park. A post to a freed
  * token, or to one that holds an untaken post, is dropped. */
 void ms_token_post(uint64_t id, uint64_t value);
+/* The completion sink of the libuv reactor (ms_io_set_completion_sink in runtime/io/reactor.h): posts a finished
+ * operation's result to the token its caller parked on. The park's value is the result, an int32_t sign-extended to
+ * 64 bits. Runs on the scheduler's thread, inside the poller's wait. */
+void ms_sched_post_completion(uint64_t id, int32_t result, uint32_t kind);
 /* Ends `id`; later posts are dropped. MS_TOKEN_WAITED_ON when a task waits on it (nothing changes). */
 MsTokenStatus ms_token_free(uint64_t id);
 

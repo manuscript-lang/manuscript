@@ -110,3 +110,9 @@ fn if_else_both_move(s: String, flag: Bool) String:
 	else:
 		z := x
 		return z
+
+fn mixed_returns_branches(s: String, flag: Bool) String:
+	x := s + "a"
+	if flag: return s
+
+	return x
