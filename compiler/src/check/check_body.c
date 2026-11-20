@@ -684,12 +684,19 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
 /* `local.field` where the local holds a record this module declares and the field is a Copy
  * primitive (Int, Float, Bool): the field's type. Anything else a member can be (a method, a case, a module path)
  * is not checked yet. */
-static MsTy body_member(MsBody *b, const MsExpr *e) {
+static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver);
+
+static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e, false); }
+
+/* A field is read as the receiver of another member when it is a record this module declares:
+ * only the path matters, nothing is borrowed or moved out of the holder. */
+static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver) {
     const MsExpr *receiver = e->u.member.left;
-    if (receiver->kind != MS_E_NAME) {
+    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER) {
         return ms_body_unsupported(b);
     }
-    const MsTy record = ms_body_expr(b, receiver, MS_TY_NONE);
+    const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, true))
+                                                      : ms_body_expr(b, receiver, MS_TY_NONE);
     if (record == MS_TY_NONE) {
         return MS_TY_NONE;
     }
@@ -702,7 +709,9 @@ static MsTy body_member(MsBody *b, const MsExpr *e) {
         if (def->fields[i].name != e->u.member.name) {
             continue;
         }
-        if (!body_is_value_type(b, def->fields[i].ty) || def->fields[i].ty == b->string_ty) {
+        const MsTy field = def->fields[i].ty;
+        const bool path = as_receiver && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
+        if (!path && (!body_is_value_type(b, field) || field == b->string_ty)) {
             break; /* reading a String field borrows or moves it out of its holder */
         }
         b->facts->res_kind[e->id] = MS_RES_FIELD;
