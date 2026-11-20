@@ -297,8 +297,9 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "@std/Decimal" => {
-                let dec = crate::decimal_literal::parse(&ms_check::api::number::canonical(text), negate)
-                    .ok_or_else(|| Error::new(format!("invalid Decimal literal {text}")))?;
+                let dec =
+                    crate::decimal_literal::parse(&ms_check::api::number::canonical(text), negate)
+                        .ok_or_else(|| Error::new(format!("invalid Decimal literal {text}")))?;
                 let ty = self.emty(e)?;
                 let TyKind::Type(rid) = self.b.m.types.kind(ty).clone() else {
                     return Err(Error::new("Decimal is not a type"));
