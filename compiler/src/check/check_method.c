@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ms/implements.h"
 #include "ms/infer.h"
 
 typedef struct Target {
@@ -39,6 +40,21 @@ static bool row_receiver_fits(const MsBody *b, MsInfer *in, MsTy pattern, MsTy a
     return true;
 }
 
+/* Whether each variable the match bound meets the interfaces that bound it (`T: Numeric`); a bound
+ * the tables cannot answer counts as unmet, which leaves the call to the Rust checker. */
+static bool row_bounds_met(const MsBody *b, MsInfer *in) {
+    for (uint32_t i = 0; i < in->nvars; i++) {
+        const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
+        for (uint32_t k = 0; k < info->nbounds; k++) {
+            const MsTy contract = ms_infer_apply(in, info->bounds[k]);
+            if (in->bound[i] == MS_TY_NONE || ms_implements(b->c, b->methods, in->bound[i], contract) != MS_FIT_YES) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 /* The signature of row `i` for `receiver`: the row's own when it has no type variables, else with
  * the variables its receiver type binds (`WriteStream[T]` against `WriteStream[String]`) applied.
  * MS_TY_NONE when the row does not fit or leaves a variable open. */
@@ -50,7 +66,8 @@ static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver) {
     MsInfer in;
     ms_infer_init(&in, b->c, &b->c->arena, m->vars + m->vars_at[i], m->nvars[i]);
     uint32_t first = 0;
-    if (!row_receiver_fits(b, &in, m->receiver[i], receiver) || ms_infer_defaults(&in, &first) != 0) {
+    if (!row_receiver_fits(b, &in, m->receiver[i], receiver) || ms_infer_defaults(&in, &first) != 0 ||
+        !row_bounds_met(b, &in)) {
         return MS_TY_NONE;
     }
     return ms_infer_apply(&in, m->ty[i]);
@@ -271,8 +288,9 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
         if (body_is_primitive(b, receiver_ty)) {
             return body_intrinsic_call(b, e, receiver_ty);
         }
-        return receiver_ty != MS_TY_NONE && (ms_body_is_handle(b, receiver_ty) || ms_body_is_list(b, receiver_ty)) ? body_resolved_call(b, e, receiver_ty, MS_NONE)
-                                                                              : ms_body_unsupported(b);
+        return receiver_ty != MS_TY_NONE && (ms_body_is_handle(b, receiver_ty) || ms_body_is_bindable(b, receiver_ty))
+                   ? body_resolved_call(b, e, receiver_ty, MS_NONE)
+                   : ms_body_unsupported(b);
     }
     return body_resolved_call(b, e, local_ty, binding);
 }
