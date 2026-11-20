@@ -41,4 +41,14 @@ void mssys_unmap(uint8_t *p, size_t len);
 /* Monotonic clock in nanoseconds. */
 int64_t mssys_monotonic_ns(void);
 
+/* sys/{posix,windows}/thread.c */
+
+/* Starts a thread running start(arg). stack 0 takes the default size, else it is the stack size in bytes.
+ * Returns a handle for mssys_thread_join, or 0 on failure. */
+uintptr_t mssys_thread_spawn(size_t stack, void (*start)(void *), void *arg);
+/* Waits for a thread started by mssys_thread_spawn and releases its handle. */
+void mssys_thread_join(uintptr_t thread);
+/* Blocks the calling thread for ms milliseconds. */
+void mssys_sleep_ms(uint32_t ms);
+
 #endif

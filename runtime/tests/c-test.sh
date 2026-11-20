@@ -8,6 +8,6 @@ mkdir -p "$out"
 for t in runtime/tests/core_*.c runtime/tests/sys_*.c; do
     name=$(basename "$t" .c)
     cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined \
-        -Wall -Wextra -Werror -Iruntime/include "$t" runtime/core/*.c runtime/sys/posix/*.c -lm -o "$out/$name"
+        -Wall -Wextra -Werror -Iruntime/include "$t" runtime/core/*.c runtime/sys/posix/*.c -lm -lpthread -o "$out/$name"
     "$out/$name"
 done

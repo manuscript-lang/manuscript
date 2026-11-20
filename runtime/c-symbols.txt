@@ -21,3 +21,6 @@ mssys_release
 mssys_guard
 mssys_unmap
 mssys_monotonic_ns
+mssys_thread_spawn
+mssys_thread_join
+mssys_sleep_ms

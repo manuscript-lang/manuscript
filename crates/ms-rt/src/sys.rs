@@ -448,3 +448,80 @@ pub fn monotonic_ns() -> i64 {
     unsafe { clock_gettime(CLOCK_MONOTONIC, &mut t) };
     t.sec * 1_000_000_000 + t.nsec
 }
+
+#[repr(C)]
+struct ThreadStart {
+    f: extern "C" fn(*mut c_void),
+    arg: *mut c_void,
+}
+
+extern "C" fn thread_tramp(p: *mut c_void) -> *mut c_void {
+    // SAFETY: `p` is the block `thread_spawn` filled and handed over.
+    let s = unsafe { core::ptr::read(p.cast::<ThreadStart>()) };
+    // SAFETY: allocated by `malloc` in `thread_spawn`; read out above.
+    unsafe { free(p) };
+    (s.f)(s.arg);
+    core::ptr::null_mut()
+}
+
+/// Starts a thread running `start(arg)`; `stack` of 0 takes the default size. Returns a handle for
+/// [`thread_join`], or 0 on failure.
+///
+/// # Safety
+/// `start` is a valid thread entry.
+#[cfg(not(ms_c = "mssys_thread_spawn"))]
+pub unsafe fn thread_spawn(
+    stack: usize,
+    start: extern "C" fn(*mut c_void),
+    arg: *mut c_void,
+) -> usize {
+    // SAFETY: plain libc calls; the block is freed by the thread or here on failure.
+    unsafe {
+        let s = malloc(core::mem::size_of::<ThreadStart>()).cast::<ThreadStart>();
+        if s.is_null() {
+            return 0;
+        }
+        s.write(ThreadStart { f: start, arg });
+        let mut attr = core::mem::zeroed::<pthread_attr_buf>();
+        pthread_attr_init(&mut attr);
+        if stack != 0 {
+            pthread_attr_setstacksize(&mut attr, stack);
+        }
+        let mut tid = 0usize;
+        if pthread_create(&mut tid, &attr, thread_tramp, s.cast()) != 0 {
+            free(s.cast());
+            return 0;
+        }
+        tid
+    }
+}
+
+/// Waits for a thread started by [`thread_spawn`] and releases its handle.
+///
+/// # Safety
+/// `thread` is a live handle from `thread_spawn`, joined once.
+#[cfg(not(ms_c = "mssys_thread_join"))]
+pub unsafe fn thread_join(thread: usize) {
+    // SAFETY: forwarded.
+    unsafe { pthread_join(thread, core::ptr::null_mut()) };
+}
+
+/// Blocks the calling thread for `ms` milliseconds.
+#[cfg(not(ms_c = "mssys_sleep_ms"))]
+pub fn sleep_ms(ms: u32) {
+    unsafe extern "C" {
+        fn nanosleep(req: *const Timespec, rem: *mut Timespec) -> c_int;
+    }
+    let mut req = Timespec {
+        sec: (ms / 1000) as i64,
+        nsec: (ms % 1000) as i64 * 1_000_000,
+    };
+    let mut rem = Timespec { sec: 0, nsec: 0 };
+    // SAFETY: valid pointers; an interrupted sleep continues with the rest.
+    while unsafe { nanosleep(&req, &mut rem) } != 0 {
+        req = Timespec {
+            sec: rem.sec,
+            nsec: rem.nsec,
+        };
+    }
+}

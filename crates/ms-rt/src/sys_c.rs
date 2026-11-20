@@ -88,3 +88,42 @@ pub fn monotonic_ns() -> i64 {
     // SAFETY: no arguments.
     unsafe { mssys_monotonic_ns() }
 }
+
+/// # Safety
+/// `start` is a valid entry that ends the thread by returning.
+#[cfg(ms_c = "mssys_thread_spawn")]
+pub unsafe fn thread_spawn(
+    stack: usize,
+    start: extern "C" fn(*mut core::ffi::c_void),
+    arg: *mut core::ffi::c_void,
+) -> usize {
+    unsafe extern "C" {
+        fn mssys_thread_spawn(
+            stack: usize,
+            start: extern "C" fn(*mut core::ffi::c_void),
+            arg: *mut core::ffi::c_void,
+        ) -> usize;
+    }
+    // SAFETY: forwarded; the caller guarantees the entry.
+    unsafe { mssys_thread_spawn(stack, start, arg) }
+}
+
+/// # Safety
+/// `thread` is a live handle from `thread_spawn`, joined once.
+#[cfg(ms_c = "mssys_thread_join")]
+pub unsafe fn thread_join(thread: usize) {
+    unsafe extern "C" {
+        fn mssys_thread_join(thread: usize);
+    }
+    // SAFETY: forwarded; the caller guarantees the handle.
+    unsafe { mssys_thread_join(thread) }
+}
+
+#[cfg(ms_c = "mssys_sleep_ms")]
+pub fn sleep_ms(ms: u32) {
+    unsafe extern "C" {
+        fn mssys_sleep_ms(ms: u32);
+    }
+    // SAFETY: no pointers.
+    unsafe { mssys_sleep_ms(ms) }
+}

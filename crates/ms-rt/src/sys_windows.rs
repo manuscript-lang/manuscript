@@ -486,47 +486,75 @@ pub fn monotonic_ns() -> i64 {
     (now / freq) * 1_000_000_000 + (now % freq) * 1_000_000_000 / freq
 }
 
+#[cfg(not(ms_c = "mssys_sleep_ms"))]
 pub fn sleep_ms(ms: u32) {
     // SAFETY: plain Win32 call.
     unsafe { Sleep(ms) }
 }
 
-/// Starts a thread running `start`. `stack` of 0 takes the default size; otherwise it is the
-/// reservation (committed as the stack grows). Null on failure.
+#[repr(C)]
+struct ThreadStart {
+    f: extern "C" fn(*mut c_void),
+    arg: *mut c_void,
+}
+
+unsafe extern "system" fn thread_tramp(p: *mut c_void) -> u32 {
+    // SAFETY: `p` is the block `thread_spawn` filled and handed over.
+    let s = unsafe { core::ptr::read(p.cast::<ThreadStart>()) };
+    // SAFETY: allocated by `malloc` in `thread_spawn`; read out above.
+    unsafe { free(p) };
+    (s.f)(s.arg);
+    0
+}
+
+/// Starts a thread running `start(arg)`. `stack` of 0 takes the default size; otherwise it is the
+/// reservation (committed as the stack grows). Returns a handle for [`thread_join`], or 0 on failure.
 ///
 /// # Safety
 /// `start` is a valid thread entry.
+#[cfg(not(ms_c = "mssys_thread_spawn"))]
 pub unsafe fn thread_spawn(
     stack: usize,
-    start: unsafe extern "system" fn(*mut c_void) -> u32,
-) -> *mut c_void {
+    start: extern "C" fn(*mut c_void),
+    arg: *mut c_void,
+) -> usize {
     let flags = if stack == 0 {
         0
     } else {
         STACK_SIZE_PARAM_IS_A_RESERVATION
     };
-    // SAFETY: forwarded.
+    // SAFETY: the block is freed by the thread or here on failure.
     unsafe {
-        CreateThread(
+        let s = malloc(core::mem::size_of::<ThreadStart>()).cast::<ThreadStart>();
+        if s.is_null() {
+            return 0;
+        }
+        s.write(ThreadStart { f: start, arg });
+        let h = CreateThread(
             core::ptr::null_mut(),
             stack,
-            start,
-            core::ptr::null_mut(),
+            thread_tramp,
+            s.cast(),
             flags,
             core::ptr::null_mut(),
-        )
+        );
+        if h.is_null() {
+            free(s.cast());
+        }
+        h as usize
     }
 }
 
 /// Waits for a thread started by [`thread_spawn`] and releases its handle.
 ///
 /// # Safety
-/// `thread` is a live handle from `thread_spawn`.
-pub unsafe fn thread_join(thread: *mut c_void) {
+/// `thread` is a live handle from `thread_spawn`, joined once.
+#[cfg(not(ms_c = "mssys_thread_join"))]
+pub unsafe fn thread_join(thread: usize) {
     // SAFETY: forwarded.
     unsafe {
-        WaitForSingleObject(thread, INFINITE);
-        CloseHandle(thread);
+        WaitForSingleObject(thread as HANDLE, INFINITE);
+        CloseHandle(thread as HANDLE);
     }
 }
 
