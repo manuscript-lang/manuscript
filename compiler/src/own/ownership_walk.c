@@ -1217,7 +1217,10 @@ static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning
     const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
     const bool borrowed = !returning && demand != DEMAND_MOVE && !copied && own_arms_are_names(w, e);
     /* Arms that are not all references produce a value, so a place among them moves. */
-    const Demand arm_demand = !borrowed && demand == DEMAND_READ ? DEMAND_MOVE : demand;
+    Demand arm_demand = demand;
+    if (!borrowed && demand == DEMAND_READ) {
+        arm_demand = DEMAND_MOVE;
+    }
     const Scrutinee source = own_scrutinee(w, e->u.match.scrutinee);
     own_release_pending(w);
     BorrowSet entry = own_set_copy(&w->active);
