@@ -149,6 +149,8 @@ ms_test(clibs_smoke_pcre2 SOURCES "${_tests}/clibs_smoke_pcre2.c" INCLUDES ${MS_
         LIBS ${MS_LIB_pcre2_LINK})
 ms_test(tls_test SOURCES "${_tests}/tls_test.c" "${_rt}/net/tls.c" INCLUDES ${MS_LIB_ssl_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
+ms_test(x509_test SOURCES "${_tests}/x509_test.c" "${_rt}/net/x509.c" INCLUDES ${MS_LIB_crypto_INCLUDES}
+        LIBS ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
 ms_test(ws_test SOURCES "${_tests}/ws_test.c" "${_rt}/net/ws.c" INCLUDES ${MS_LIB_crypto_INCLUDES}
         LIBS ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
 ms_test(ws_client_test SOURCES "${_tests}/ws_client_test.c" "${_rt}/net/ws_client.c" "${_rt}/net/ws.c" "${_rt}/net/http1.c"
