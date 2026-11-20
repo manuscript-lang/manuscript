@@ -53,14 +53,12 @@ pub mod map;
 pub mod mem;
 pub mod num;
 pub mod obj;
-pub mod pipe;
 pub mod poller;
 pub mod process;
 pub mod profile;
 pub mod promise;
 pub mod sched;
 pub mod start;
-pub mod streams;
 pub mod string;
 #[cfg(not(windows))]
 pub mod sys;
