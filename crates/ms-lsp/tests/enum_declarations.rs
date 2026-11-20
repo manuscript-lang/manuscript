@@ -3,7 +3,6 @@ use ms_lsp::completion::completion_at;
 use ms_lsp::query::search_symbols;
 use ms_lsp::symbols::document_symbols;
 use ms_lsp::text::Position;
-use ms_rt as _;
 
 use crate::support;
 use support::Workspace;

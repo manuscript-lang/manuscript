@@ -4,7 +4,6 @@ use ms_lsp::analysis::Document;
 use ms_lsp::json;
 use ms_lsp::semantic::semantic_tokens;
 use ms_lsp::text::{self, Position};
-use ms_rt as _;
 
 #[test]
 fn semantic_positions_preserve_strict_and_forgiving_output() {
