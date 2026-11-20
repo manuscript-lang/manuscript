@@ -38,7 +38,7 @@ static MirTy la_result(Lb *lb, MsTy ty) {
 /* The MIR type of `Optional[T]` and `Result[T, E]` over payloads that need no drop, else MIR_NONE. */
 MirTy la_type(Lb *lb, MsTy ty) {
     const MsTyTable *tys = &lb->c->tys;
-    if (lb->type_of[ty] != MIR_NONE) {
+    if (lb->type_of[ty] != MIR_NONE && lb->type_of[ty] != LR_BUSY) {
         return lb->type_of[ty];
     }
     MirTy mir = MIR_NONE;

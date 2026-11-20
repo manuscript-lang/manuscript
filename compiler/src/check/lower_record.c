@@ -15,14 +15,19 @@ MirTy lr_type(Lb *lb, MsTy ty) {
     if (sym >= lb->c->defs_cap || lb->c->syms.kind[sym] != MS_SYM_TYPE) {
         return MIR_NONE;
     }
+    if (lb->type_of[ty] == LR_BUSY) {
+        return MIR_NONE; // a record that holds itself (through an Optional or a list) is not lowered
+    }
     if (lb->type_of[ty] != MIR_NONE) {
         return lb->type_of[ty];
     }
+    lb->type_of[ty] = LR_BUSY;
     const MsDef *def = &lb->c->defs[sym];
     MirField *fields = MS_NEW_N(&lb->m->arena, MirField, (size_t)def->nfields + 1);
     for (uint32_t i = 0; i < def->nfields; i++) {
         const MirTy field = lb_mir_ty(lb, def->fields[i].ty);
         if (field == MIR_NONE || (field != MIR_STR && mir_needs_drop(lb->m, field))) { // a String field only
+            lb->type_of[ty] = MIR_NONE;
             return MIR_NONE;
         }
         fields[i] = (MirField){mir_name(lb->m, ms_name(lb->c->names, def->fields[i].name).ptr,

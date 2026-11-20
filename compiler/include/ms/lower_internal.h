@@ -138,6 +138,8 @@ LbVal lt_text(Lb *lb, const MsExpr *e);
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);
 
+#define LR_BUSY (MIR_NONE - 1) /* `type_of` while the fields of a record are being typed: it holds itself if met again */
+
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);

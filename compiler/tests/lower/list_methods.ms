@@ -21,4 +21,5 @@ fn main() Int:
 	ys := [1.5]
 	if nothing(xs): return 0
 	if ratio(ys) > 3.0: return 1
+
 	return count(xs) + second(xs) + pick(xs, 5) + pick(xs, -1) + fresh()
