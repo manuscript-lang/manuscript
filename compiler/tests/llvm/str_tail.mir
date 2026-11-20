@@ -1,0 +1,9 @@
+module "str_tail"
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %s: str = str "abcdefghijklmnopqrs"
+  %i: int = iconst 18
+  %b: int = str.byte %s, %i
+  ret %b
+}

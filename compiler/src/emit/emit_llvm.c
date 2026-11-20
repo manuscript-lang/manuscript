@@ -1,7 +1,7 @@
 /* MIR to LLVM IR text.
  *
  * A MIR value is a run of SSA registers, one per leaf (`%v7`, `%v7.1`, ...). The calling
- * convention is the one `emit_qbe.c` writes, so both backends link against the same runtime:
+ * convention is the runtime's:
  * parameters of at most 16 bytes travel as their leaves; a result of more than one leaf is written
  * through a hidden first parameter. Registers hold `i64`, `double` and `i1`; sized integers and
  * Float32 are widened in registers and narrowed only in memory. Checked arithmetic is the
@@ -623,7 +623,9 @@ static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const 
     }
     const MirLeafSpan leaves = ll_leaves(c, ty);
     for (uint32_t j = 0; j < leaves.len; j++) {
-        ms_buf_printf(args, "%s%s ", args->len > 0 ? ", " : "", ll_leaf_type(leaves.ptr[j]));
+        const char *type = ll_leaf_type(leaves.ptr[j]);
+        /* C expects a `bool` argument zero-extended to a byte; LLVM leaves the upper bits of an i1 undefined. */
+        ms_buf_printf(args, "%s%s%s ", args->len > 0 ? ", " : "", type, strcmp(type, "i1") == 0 ? " zeroext" : "");
         ll_name(args, value, j);
     }
     return true;
