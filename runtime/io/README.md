@@ -7,3 +7,4 @@
 - `uv_poll_init` makes the descriptor non-blocking; the reactor restores the owner's flags (through `mssys_fd_*` in `runtime/sys/fd.c`).
 - A static libuv built without `-fPIC` (Debian, Ubuntu) makes the linker copy `environ` into the program while glibc updates only its own; `mssys_sync_environ` re-syncs it at start and after `setenv` (issue #4647; remove when the libraries are PIC).
 - libuv must link against the glibc 2.28 floor: compile it with a header that sets `__GLIBC_USE_C2X_STRTOL` to 0 (see the lock script), or `sscanf` links as `__isoc23_sscanf`.
+- `ring.c` is the completion ring: libuv callbacks push `(row id, kind, result)` and the scheduler pops after `uv_run`; one fixed-capacity ring and one scratch read buffer per loop, so an idle connection owns neither. Wiring it into `reactor.c` (reads and writes complete into it instead of reporting readiness) is the event-loop thread's file.

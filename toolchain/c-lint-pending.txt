@@ -1,7 +1,5 @@
-compiler/src/driver.c
 compiler/src/dump_check.c
 compiler/src/libms.c
-compiler/src/libms_api.c
 compiler/src/stdlib.c
 compiler/src/tables.c
 compiler/src/types.c
@@ -9,17 +7,11 @@ runtime/core/string.c
 runtime/core/utf8.c
 runtime/fuzz/http1_fuzz.c
 runtime/fuzz/num_fuzz.c
-runtime/net/conn.c
-runtime/net/h2.c
-runtime/net/http1.c
-runtime/net/tls.c
-runtime/net/ws.c
 runtime/std/crypto.c
 runtime/std/crypto_asym.c
 runtime/std/regex.c
 runtime/std/regex_abi.c
 runtime/sys/glibc/compat.c
-runtime/sys/linux/net.c
 runtime/sys/mem.c
 runtime/tests/clibs_smoke.c
 runtime/tests/core_num.c

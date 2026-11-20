@@ -6,15 +6,15 @@
 
 static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
-static int span_is(const char *b, ms_span s, const char *v) { return s.len == strlen(v) && !memcmp(b + s.off, v, s.len); }
+static int span_is(const char *b, MsSpan s, const char *v) { return s.len == strlen(v) && !memcmp(b + s.off, v, s.len); }
 
-static int parse(const char *text, size_t limit, ms_h1_request *r, ms_h1_field *f, uint32_t cap) {
+static int parse(const char *text, size_t limit, MsH1Request *r, MsH1Field *f, uint32_t cap) {
     r->fields = f;
     return ms_h1_parse_request(text, strlen(text), limit, r, cap);
 }
 
 int main(void) {
-    ms_h1_request r; ms_h1_field f[8];
+    MsH1Request r; MsH1Field f[8];
     const char *ok = "POST /a?b=1 HTTP/1.1\r\nHost: x.test\r\nContent-Length: 3\r\nX-Empty:\r\n\r\nabc";
     CHECK(parse(ok, 1 << 20, &r, f, 8) == MS_H1_COMPLETE);
     CHECK(r.method == HTTP_POST && r.minor == 1 && r.nfields == 3);
