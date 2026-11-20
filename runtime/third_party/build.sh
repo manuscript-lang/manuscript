@@ -5,7 +5,7 @@
 # SHA-256 of the tarball they came from. Nothing is downloaded.
 # Output: target/c-libs/<triple>-pinned-<key>/{lib,include}. Usage: build.sh [triple]; `build.sh key [triple]` prints the cache key.
 # CC chooses the compiler (musl-gcc for musl, llvm-mingw's clang for Windows). Needs a C compiler, make, cmake and perl (OpenSSL's Configure). Using `ms` needs none of them.
-# set -eu
+set -e
 repository=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 triple=${1:-host}
 [ "$triple" = key ] && triple=${2:-host}
@@ -40,7 +40,7 @@ jobs=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
 mkdir -p "$out/lib" "$out/include"
 vendor=$repository/runtime/third_party
 cmake_flags="-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$cc -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
-command -v ninja >/dev/null 2>&1 && cmake_flags="$cmake_flags -G Ninja"
+command -v ninja 2>&1 && cmake_flags="$cmake_flags -G Ninja"
 arch=${triple%%-*}
 [ "$triple" = host ] && arch=$(uname -m)
 # What the target needs beyond the compiler: OpenSSL's Configure target, CMake's system, the Windows library names.
@@ -60,17 +60,20 @@ case "$triple" in
     ssl_extra="" ;;
 esac
 
+# Runs a build step with its output held back: a failing step prints the tail of its output and stops the build.
+quiet() { "$@" >"$out/step.log" 2>&1 || { tail -n 60 "$out/step.log" >&2; echo "build.sh: failed: $*" >&2; exit 1; }; }
+
 if [ ! -f "$out/lib/libuv.a" ]; then
     build=$root/build/$triple/libuv
-    cmake -S "$vendor/libuv" -B "$build" $cmake_flags -DLIBUV_BUILD_SHARED=OFF -DLIBUV_BUILD_TESTS=OFF -DLIBUV_BUILD_BENCH=OFF >/dev/null
-    cmake --build "$build" -j "$jobs" >/dev/null
+    quiet cmake -S "$vendor/libuv" -B "$build" $cmake_flags -DLIBUV_BUILD_SHARED=OFF -DLIBUV_BUILD_TESTS=OFF -DLIBUV_BUILD_BENCH=OFF
+    quiet cmake --build "$build" -j "$jobs"
     cp "$build"/libuv.a "$out/lib/"
     cp -R "$vendor/libuv/include/." "$out/include/"
 fi
 if [ ! -f "$out/lib/libnghttp2.a" ]; then
     build=$root/build/$triple/nghttp2
-    cmake -S "$vendor/nghttp2" -B "$build" $cmake_flags -DENABLE_LIB_ONLY=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF >/dev/null
-    cmake --build "$build" -j "$jobs" >/dev/null
+    quiet cmake -S "$vendor/nghttp2" -B "$build" $cmake_flags -DENABLE_LIB_ONLY=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF
+    quiet cmake --build "$build" -j "$jobs"
     cp "$build"/lib/libnghttp2.a "$out/lib/"
     mkdir -p "$out/include/nghttp2"
     cp "$vendor/nghttp2"/lib/includes/nghttp2/nghttp2.h "$build"/lib/includes/nghttp2/nghttp2ver.h "$out/include/nghttp2/"
@@ -90,8 +93,8 @@ if [ ! -f "$out/lib/libssl.a" ]; then
     case "$perl" in */*) perl_dir=$(dirname "$perl"):; [ -x "$(dirname "$perl")/make" ] && ssl_make=$(dirname "$perl")/make ;; esac
     build=$root/build/$triple/openssl
     rm -rf "$build"; mkdir -p "$build"
-    (cd "$build" && PATH="$perl_dir$PATH" CC="$cc" "$perl" "$vendor/openssl/Configure" "$ssl_target" $ssl_extra no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" >/dev/null \
-        && "$ssl_make" -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
+    (cd "$build" && PATH="$perl_dir$PATH" CC="$cc" quiet "$perl" "$vendor/openssl/Configure" "$ssl_target" $ssl_extra no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" \
+        && quiet "$ssl_make" -j "$jobs" build_libs && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
         && cp "$vendor/openssl"/include/openssl/*.h include/openssl/*.h "$out/include/openssl/")
 fi
 if [ ! -f "$out/lib/libz.a" ]; then
@@ -106,8 +109,8 @@ fi
 if [ ! -f "$out/lib/libpcre2-8.a" ]; then
     # PCRE2, 8-bit library only, with its JIT. Plain C: no C++ runtime in programs.
     build=$root/build/$triple/pcre2
-    cmake -S "$vendor/pcre2" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=OFF -DPCRE2_BUILD_PCRE2_32=OFF -DPCRE2_SUPPORT_JIT=ON -DPCRE2_SUPPORT_UNICODE=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_SUPPORT_LIBZ=OFF -DPCRE2_SUPPORT_LIBBZ2=OFF -DPCRE2_SUPPORT_LIBREADLINE=OFF >/dev/null
-    cmake --build "$build" -j "$jobs" >/dev/null
+    quiet cmake -S "$vendor/pcre2" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=OFF -DPCRE2_BUILD_PCRE2_32=OFF -DPCRE2_SUPPORT_JIT=ON -DPCRE2_SUPPORT_UNICODE=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_SUPPORT_LIBZ=OFF -DPCRE2_SUPPORT_LIBBZ2=OFF -DPCRE2_SUPPORT_LIBREADLINE=OFF
+    quiet cmake --build "$build" -j "$jobs"
     cp "$build/libpcre2-8.a" "$out/lib/"
     cp "$build/interface/pcre2.h" "$out/include/"
 fi
@@ -115,12 +118,12 @@ if [ ! -f "$out/lib/libcurl.a" ]; then
     # libcurl: HTTP and HTTPS only (HTTP/2 through nghttp2, Unix sockets, cookies, proxies), on the OpenSSL and zlib built above. No other protocols,
     # no extra libraries (psl, idn, ssh, brotli, zstd), no executable.
     build=$root/build/$triple/curl
-    cmake -S "$vendor/curl" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
+    quiet cmake -S "$vendor/curl" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
         -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_FILE=ON -DCURL_DISABLE_FTP=ON -DCURL_DISABLE_GOPHER=ON -DCURL_DISABLE_IMAP=ON -DCURL_DISABLE_LDAP=ON -DCURL_DISABLE_LDAPS=ON -DCURL_DISABLE_MQTT=ON -DCURL_DISABLE_POP3=ON -DCURL_DISABLE_RTSP=ON -DCURL_DISABLE_SMB=ON -DCURL_DISABLE_SMTP=ON -DCURL_DISABLE_TELNET=ON -DCURL_DISABLE_TFTP=ON -DCURL_USE_OPENSSL=ON -DUSE_NGHTTP2=ON -DCURL_ZLIB=ON -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF \
         -DUSE_LIBIDN2=OFF -DCURL_USE_GSSAPI=OFF -DENABLE_UNIX_SOCKETS=ON -DCURL_ENABLE_SSL=ON \
         -DCMAKE_PREFIX_PATH="$out" -DOPENSSL_ROOT_DIR="$out" -DOPENSSL_USE_STATIC_LIBS=ON -DZLIB_ROOT="$out" \
-        -DNGHTTP2_INCLUDE_DIR="$out/include" -DNGHTTP2_LIBRARY="$out/lib/libnghttp2.a" >/dev/null
-    cmake --build "$build" -j "$jobs" >/dev/null
+        -DNGHTTP2_INCLUDE_DIR="$out/include" -DNGHTTP2_LIBRARY="$out/lib/libnghttp2.a"
+    quiet cmake --build "$build" -j "$jobs"
     cp "$build"/lib/libcurl.a "$out/lib/"
     mkdir -p "$out/include/curl"
     cp "$vendor/curl"/include/curl/*.h "$out/include/curl/"
@@ -132,5 +135,6 @@ case "$triple" in
 *linux-gnu) # The libraries are built on a current glibc; none may call what the floor (glibc 2.28) lacks.
     sh "$repository/toolchain/check-glibc-archives.sh" "$out" "$arch" || exit 1 ;;
 esac
+rm -f "$out/step.log"
 touch "$out/.complete"
 echo "$out"

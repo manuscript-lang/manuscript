@@ -517,9 +517,9 @@ int main(void) {
         remove_file(path);
         struct sockaddr_un unix_address = {.sun_family = AF_UNIX};
         snprintf(unix_address.sun_path, sizeof unix_address.sun_path, "%s", path);
-        const MsSock listener = (MsSock)socket(AF_UNIX, SOCK_STREAM, 0);
-        CHECK(listener != MS_SOCK_INVALID && bind(listener, (struct sockaddr *)&unix_address, sizeof unix_address) == 0 && listen(listener, 4) == 0);
-        server.listener = listener;
+        const PollHandle listener = (PollHandle)socket(AF_UNIX, SOCK_STREAM, 0);
+        CHECK((MsSock)listener != MS_SOCK_INVALID && bind(listener, (struct sockaddr *)&unix_address, sizeof unix_address) == 0 && listen(listener, 4) == 0);
+        server.listener = (MsSock)listener;
         server.context = NULL;
         thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
     CHECK(thread != NULL);

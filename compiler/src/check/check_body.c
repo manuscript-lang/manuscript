@@ -440,18 +440,22 @@ static bool body_is_case_name(const MsBody *b, MsSym name) {
 
 /* A name that is not a binding, a module name, a source location or a case. Reported at the
  * name; the whole is invalid, which silences what uses it. */
-static MsTy body_unknown_name(MsBody *b, const MsExpr *e) {
-    const MsStr name = ms_name(b->c->names, e->u.sym);
+static MsTy body_unknown_name_at(MsBody *b, MsPos pos, MsSym sym) {
+    const MsStr name = ms_name(b->c->names, sym);
     const char *advice = body_unknown_advice(b, name);
     if (advice == NULL) {
         return ms_body_unsupported(b);
     }
     const MsStr message = ms_arena_fmt(&b->c->arena, "unknown binding %.*s%s", (int)name.len, name.ptr, advice);
-    const MsCheckDiag diag = {.diag = {.pos = e->pos, .message = message},
+    const MsCheckDiag diag = {.diag = {.pos = pos, .message = message},
                               .phase = MS_PHASE_RESOLUTION,
-                              .unknown = e->u.sym};
+                              .unknown = sym};
     MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
     return b->invalid_ty;
+}
+
+static MsTy body_unknown_name(MsBody *b, const MsExpr *e) {
+    return body_unknown_name_at(b, e->pos, e->u.sym);
 }
 
 static bool body_is_unknown(const MsBody *b, MsSym name) {
@@ -577,7 +581,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
     return true;
 }
 
-static MsTy body_call(MsBody *b, const MsExpr *e) {
+static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
         return ms_body_method_call(b, e);
@@ -595,6 +599,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
     const MsSyms *syms = &b->c->syms;
+    if (sym == MS_NONE && ms_body_is_builtin_case(b, callee->u.sym)) {
+        return ms_body_builtin_call(b, e, expected);
+    }
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
         return body_construct(b, e, sym);
     }
@@ -846,7 +853,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_PROBE:
     case MS_E_MAP: return ms_body_unsupported(b);
     case MS_E_LAMBDA: ty = ms_body_lambda(b, e, expected); break;
-    case MS_E_CALL: ty = body_call(b, e); break;
+    case MS_E_CALL: ty = body_call(b, e, expected); break;
     case MS_E_MATCH: ty = ms_body_match(b, e, expected); break;
     }
     if (ty == MS_TY_NONE) {
@@ -919,6 +926,45 @@ static void body_bind_statement(MsBody *b, const MsStmt *s) {
     }
 }
 
+/* `name = value` where `name` is no binding: an unknown name, or a module declaration, which is
+ * not an assignment target. The value is checked with no expectation. False when this is left to
+ * the Rust checker. */
+static bool body_assign_to_declaration(MsBody *b, const MsStmt *s) {
+    const MsSym name = s->u.assign.name;
+    if (body_is_unknown(b, name)) {
+        if (body_unknown_name_at(b, s->pos, name) == MS_TY_NONE) {
+            return false;
+        }
+    } else {
+        const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, name);
+        const MsSyms *syms = &b->c->syms;
+        if (sym == MS_NONE || syms->decl[sym] == NULL) {
+            return false;
+        }
+        const bool imported = syms->module[sym] != b->module;
+        const char *what = NULL;
+        const MsDeclKind kind = syms->decl[sym]->kind;
+        if (kind == MS_D_CONST) {
+            what = imported ? "imported constant" : "constant";
+        } else if (kind == MS_D_FN) {
+            what = imported ? "imported function" : "function";
+        } else if (kind == MS_D_TYPE) {
+            what = imported ? "imported type" : "type";
+        }
+        if (what == NULL) {
+            return false;
+        }
+        const MsStr text = ms_name(b->c->names, name);
+        body_report(b, s->pos,
+                    ms_arena_fmt(&b->c->arena, "cannot assign to %s %.*s; assignment targets are 'var' bindings and type fields",
+                                 what, (int)text.len, text.ptr));
+    }
+    if (ms_body_expr(b, s->u.assign.value, MS_TY_NONE) == MS_TY_NONE) {
+        (void)ms_body_unsupported(b);
+    }
+    return true;
+}
+
 /* `name = value` and `name op= value` (the parser writes the second as `name = name op value`).
  * Reads of the name inside the value only feed its next value, so they do not count as reads. */
 static void body_assign_statement(MsBody *b, const MsStmt *s) {
@@ -927,6 +973,9 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     const uint32_t binding = ms_body_find_binding(b, s->u.assign.name);
+    if (binding == MS_NONE && body_assign_to_declaration(b, s)) {
+        return;
+    }
     if (binding == MS_NONE || binding < b->lambda_floor) {
         (void)ms_body_unsupported(b);
         return;

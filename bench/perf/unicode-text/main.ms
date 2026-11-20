@@ -1,7 +1,9 @@
-// String.upper, lower and normalize over five kinds of text, 64 KiB each, ns per input byte.
+// String.upper, lower and normalize over five kinds of text, 64 KiB each, ns per input
+// byte.
 // `ms run bench/perf/unicode-text/main.ms -- 200`: passes over each text per case.
-// Prints one line per case with a checksum of the result lengths; the same text must print the same checksum
-// on every build (the Rust runtime before the C tables, the C runtime after).
+// Prints one line per case with a checksum of the result lengths; the same text must
+// print the same checksum on every build (the Rust runtime before the C tables, the C
+// runtime after).
 import (
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
@@ -11,10 +13,15 @@ import (
 fn texts() List[List[String]]:
 	return [
 		["ascii", "The quick brown fox jumps over the lazy dog 0123456789. "],
-		["latin", "Crème brûlée à la façon de l'été, naïve café, Zürich Škoda Łódź. "],
+		[
+			"latin", "Crème brûlée à la façon de l'été, naïve café, Zürich Škoda Łódź. "
+		],
 		["greek", "Οδυσσεύς ὁ πολύτροπος ΣΟΦΟΣ ἀγαθός ᾅδης καὶ ΠΟΛΥΤΡΟΠΟΣ. "],
 		["cjk", "漢字かな交じり文を正規化する。한국어 텍스트 각 한글 ﬁ①. "],
-		["marks", "Cre\u{300}me bru\u{302}le\u{301}e a\u{300} Zu\u{308}rich Sa\u{323}\u{307}o. "],
+		[
+			"marks",
+			"Cre\u{300}me bru\u{302}le\u{301}e a\u{300} Zu\u{308}rich Sa\u{323}\u{307}o. "
+		],
 	]
 
 fn repeat_to(unit: String, target: Int) String:
@@ -24,15 +31,19 @@ fn run_case(label: String, text: String, passes: Int, step: fn(String) Int) Void
 	var total = 0
 	t0 := monotonic()
 	for _pass in 0..passes: total += step(text)
+
 	t1 := monotonic()
 	ns := t1.difference(t0).to_nanoseconds()
-	print(f"{label}: {ns * 100 / (passes * text.length())} ns/100 bytes, checksum {total}")
+	print(
+		f"{label}: {ns * 100 / (passes * text.length())} ns/100 bytes, checksum {total}"
+	)
 
 fn normalized(text: String, form: String) Int:
 	return text.normalize(form, none).get().length()
 
 fn main() Void:
 	passes := arguments()[0].parse_int().get()
+
 	for entry in texts():
 		text := repeat_to(entry[1], 65536)
 		name := entry[0]

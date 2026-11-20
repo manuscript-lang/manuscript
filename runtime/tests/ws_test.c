@@ -68,7 +68,7 @@ int main(void) {
     const uint8_t nonmin[] = {0x82, 126, 0x00, 0x05};
     CHECK(parse(&cli, nonmin, sizeof nonmin, &h, r) == MS_WS_BAD && !strcmp(r, "nonminimal payload length"));
     const uint8_t huge[] = {0x82, 127, 0x80, 0, 0, 0, 0, 0, 0, 0};
-    CHECK(parse(&cli, huge, sizeof huge, &h, r) == MS_WS_BAD);
+    CHECK(parse(&cli, huge, sizeof huge, &h, r) == MS_WS_TOO_BIG);
 
     /* close codes */
     CHECK(ms_ws_valid_close_code(1000) && ms_ws_valid_close_code(1013) && ms_ws_valid_close_code(3000) && ms_ws_valid_close_code(4999));
