@@ -2,6 +2,7 @@
  * are BN_* calls; this file adds what BIGNUM lacks (floor shifts, two's complement bitwise operations, integer
  * square roots, correctly rounded doubles, 128-bit and int64 conversion, text in any radix). */
 #include "bignum.h"
+#include "bignum_ntt.h"
 
 #include <limits.h>
 #include <math.h>
@@ -252,7 +253,32 @@ void ms_big_sub(MsBig *out, const MsBig *a, const MsBig *b) {
     result_end_shrinking(out, result, wide);
 }
 
-void ms_big_mul(MsBig *out, const MsBig *a, const MsBig *b) { binary(out, a, b, BN_mul); }
+enum { NTT_MIN_BITS = 1 << 16 }; /* below this OpenSSL's Karatsuba multiply is faster than the transforms */
+
+/* Wide products go through number-theoretic transforms. The cheap pool-limit test rejects small operands first. */
+static bool use_transform(const BIGNUM *a, const BIGNUM *b) {
+    if (BN_ucmp(a, pool_limit()) < 0 || BN_ucmp(b, pool_limit()) < 0) {
+        return false;
+    }
+    return BN_num_bits(a) >= NTT_MIN_BITS && BN_num_bits(b) >= NTT_MIN_BITS;
+}
+
+void ms_big_mul(MsBig *out, const MsBig *a, const MsBig *b) {
+    const BIGNUM *const x = value_of(a);
+    const BIGNUM *const y = value_of(b);
+    if (use_transform(x, y)) {
+        BIGNUM *const result = result_begin(out, a, b);
+        if (ms_ntt_multiply(result, x, y)) {
+            BN_set_negative(result, BN_is_negative(x) != BN_is_negative(y));
+            result_end(out, result);
+            return;
+        }
+        if (result != out->bn) {
+            release_bn(result);
+        }
+    }
+    binary(out, a, b, BN_mul);
+}
 
 void ms_big_divmod(MsBig *quotient, MsBig *remainder, const MsBig *a, const MsBig *b) {
     const bool wide = is_wide(a) || is_wide(b);
@@ -404,8 +430,32 @@ static bool pow_of_two(MsBig *out, const BIGNUM *a, uint64_t exponent) {
     return true;
 }
 
+/* Left-to-right square and multiply through ms_big_mul, so wide squares take the transform. */
+static void pow_by_squaring(MsBig *out, const MsBig *a, uint64_t exponent) {
+    MsBig base = MS_BIG_ZERO;
+    ms_big_copy(&base, a);
+    MsBig result = MS_BIG_ZERO;
+    ms_big_set_u64(&result, 1);
+    for (int bit = 63 - __builtin_clzll(exponent); bit >= 0; bit--) {
+        ms_big_mul(&result, &result, &result);
+        if (((exponent >> bit) & 1) != 0) {
+            ms_big_mul(&result, &result, &base);
+        }
+    }
+    ms_big_free(&base);
+    ms_big_free(out);
+    *out = result;
+}
+
+enum { POW_BY_SQUARING_BITS = 1 << 16 }; /* results this wide gain from the transform multiply */
+
 void ms_big_pow(MsBig *out, const MsBig *a, uint64_t exponent) {
     if (pow_of_two(out, value_of(a), exponent)) {
+        return;
+    }
+    const uint64_t estimate = (uint64_t)BN_num_bits(value_of(a)) * (exponent > POW_BY_SQUARING_BITS ? POW_BY_SQUARING_BITS : exponent);
+    if (exponent > 1 && estimate >= POW_BY_SQUARING_BITS) {
+        pow_by_squaring(out, a, exponent);
         return;
     }
     MsBig power = MS_BIG_ZERO;

@@ -142,6 +142,41 @@ test "network restriction denies admission and close rejects acquisitions":
 		)
 	)?
 
+test "a restricted network binds and sends datagrams only where it allows":
+	var open = bind_datagram("127.0.0.1:0")?
+	sealed := restrict([], ["127.0.0.0/8"], allow_listen: false)?
+	denied := Error("network: permission denied", kind: "EACCES")
+	expect_equal(expect_error(sealed.bind_datagram("127.0.0.1:0"))?, denied)?
+
+	listening := restrict([], ["127.0.0.0/8"], allow_listen: true)?
+	var socket = listening.bind_datagram("127.0.0.1:0")?
+	expect_equal(expect_error(listening.bind_datagram("192.0.2.1:0"))?, denied)?
+	expect_equal(
+		expect_error(
+			socket.output.write(Datagram("x".to_bytes(), "192.0.2.1:9"))
+		)?,
+		denied,
+	)?
+	socket.output.write(Datagram("x".to_bytes(), open.address.clone()))?
+
+	packet := (within(open.input, 2.seconds())?).get()
+	expect_equal(packet.data, "x".to_bytes())?
+
+test "closing a network closes its datagram sockets and refuses new ones":
+	var net = restrict([], ["127.0.0.0/8"], allow_listen: true)?
+	var socket = net.bind_datagram("127.0.0.1:0")?
+	var peer = bind_datagram("127.0.0.1:0")?
+	net.close()
+
+	closed := Error("network: resource is closed", kind: "EBADF")
+	expect_equal(expect_error(net.bind_datagram("127.0.0.1:0"))?, closed)?
+
+	e := (
+		socket.output.write(Datagram("x".to_bytes(), peer.address.clone()))
+		| expect_error?
+	)
+	expect_equal(e.kind.get_or(""), "EBADF")?
+
 test "typed addresses preserve normalization and reject zones":
 	ip := parse_ip("::ffff:192.0.2.1")?
 	expect_false(ip.to_string() != "192.0.2.1" or ip.family() != IpFamily.IPv4)?

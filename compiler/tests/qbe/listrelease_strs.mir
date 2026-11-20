@@ -1,0 +1,22 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+extern @msrt_test_str(int) -> str
+
+fn @msmain() -> int {
+b0:
+  %c: int = iconst 4
+  %o: list<str> = list.new %c
+  %n1: int = iconst 3
+  %s1: str = call.rt @msrt_test_str (%n1)
+  %o1: list<str> = list.push.u %o, %s1
+  %s2: str = call.rt @msrt_test_str (%n1)
+  %o2: list<str> = list.push.u %o1, %s2
+  %one: int = iconst 1
+  %zero: int = iconst 0
+  %taken: str = list.take %o2, %zero
+  drop %taken
+  %n: int = list.len %o2
+  list.release %o2, %one
+  ret %n
+}

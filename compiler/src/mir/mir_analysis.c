@@ -562,3 +562,23 @@ void mir_narrow_range(const MirModule *m, MirTy from, MirTy to, int64_t *lo, int
         *lo = 0;
     }
 }
+
+bool mir_sized_result_range(const MirModule *m, const MirFunc *f, const MirInst *inst, int64_t *lo, int64_t *hi) {
+    switch ((MirOp)inst->op) {
+    case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk: case MOP_UAddChk:
+    case MOP_USubChk: case MOP_UMulChk: case MOP_SDivChk: case MOP_SRemChk:
+        break;
+    default:
+        return false;
+    }
+    if (inst->res == MIR_NONE) {
+        return false;
+    }
+    switch ((MirTyKind)mir_ty_data(m, f->values[inst->res])->kind) {
+    case MK_INT8: case MK_INT16: case MK_INT32: case MK_UINT8: case MK_UINT16: case MK_UINT32:
+        mir_narrow_range(m, MIR_INT, f->values[inst->res], lo, hi);
+        return true;
+    default:
+        return false;
+    }
+}

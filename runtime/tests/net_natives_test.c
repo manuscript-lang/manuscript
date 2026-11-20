@@ -355,6 +355,32 @@ int main(void) {
     ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
 
+    /* start_tls upgrades a plain connection in place: the handshake runs on the row and the result is a handle on it */
+    address = listen_on_loopback(&server);
+    thread = ms_sys_thread_spawn(1 << 20, serve, &server);
+    CHECK(thread != NULL);
+    CHECK(msstd_net_dial(&address, &no_name, 0, NULL, 1, 5 * SECOND, &conn, &err) == STATUS_OK);
+    MsStr plain_alpn;
+    msstd_conn_alpn(conn, &plain_alpn);
+    CHECK(msrt_str_len(&plain_alpn) == 0 && msstd_conn_tls_info(conn, &info) == 0);
+    void *upgraded = NULL, *conn_again = NULL;
+    MsNetTlsOptions no_server_name = options;
+    no_server_name.server_name = str("");
+    CHECK(msstd_conn_start_tls(conn, &no_server_name, 1, 5 * SECOND, &upgraded, &err) == STATUS_INVALID_INPUT); /* a name is needed */
+    CHECK(msstd_conn_start_tls(conn, &options, 1, 5 * SECOND, &upgraded, &err) == STATUS_OK && upgraded != NULL);
+    CHECK(msstd_conn_tls_info(upgraded, &info) == 1 && str_is(&info.alpn, "h2") && info.verified == 1);
+    MsStr chosen;
+    msstd_conn_alpn(upgraded, &chosen);
+    CHECK(str_is(&chosen, "h2"));
+    CHECK(msstd_conn_start_tls(upgraded, &options, 1, 5 * SECOND, &conn_again, &err) == STATUS_INVALID_INPUT); /* already TLS */
+    CHECK(msstd_conn_write_bytes(upgraded, &hello, 1, 5 * SECOND, &err) == STATUS_OK);
+    CHECK(msstd_conn_read(upgraded, 1, 5, 1, 5 * SECOND, &got, &err) == STATUS_OK && got.len == 5);
+    msstd_conn_close(upgraded);
+    ((MsObj *)upgraded)->drop(upgraded);
+    ((MsObj *)conn)->drop(conn);
+    ms_sys_thread_join(thread);
+    ms_sys_net_close(server.listener);
+
     /* refusals: a malformed address, a connection that is refused, TLS without a name */
     MsStr bad = str("not an address");
     CHECK(msstd_net_dial(&bad, &no_name, 0, NULL, 0, 0, &conn, &err) == STATUS_INVALID_INPUT);
@@ -583,6 +609,23 @@ int main(void) {
     CHECK(thread != NULL);
     CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
     CHECK(msstd_client_fetch(client, &get, URL("/slow"), table, &nobody, 1, 50000000, &response, &err) == STATUS_TIMED_OUT);
+    ((MsObj *)client)->drop(client);
+    ms_sys_thread_join(thread);
+    ms_sys_net_close(server.listener);
+
+    /* closing a client ends the body it has open and refuses later requests */
+    address = listen_on_loopback(&server);
+    host_port = (const char *)msrt_str_data(&address);
+    thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+    CHECK(thread != NULL);
+    CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
+    CHECK(msstd_client_fetch(client, &get, URL("/big"), table, &nobody, 1, 10 * SECOND, &response, &err) == STATUS_OK);
+    msstd_client_close(client);
+    msstd_client_close(client);
+    CHECK(msstd_body_read(response, 0, 0, &data, &err) == STATUS_CLOSED);
+    void *refused_response = NULL;
+    CHECK(msstd_client_fetch(client, &get, URL("/a"), table, &nobody, 1, 5 * SECOND, &refused_response, &err) == STATUS_CLOSED);
+    ((MsObj *)response)->drop(response);
     ((MsObj *)client)->drop(client);
     ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);

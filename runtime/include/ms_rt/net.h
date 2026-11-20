@@ -103,6 +103,10 @@ typedef struct MsNetHttpOptions {
 uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err);
 /* ms-sig: msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle @domain=network */
 void *msstd_client_share(const void *handle);
+/* Ends the client's transfers (a body read or a request in progress returns STATUS_CLOSED) and refuses later requests
+ * with STATUS_CLOSED. Safe to repeat. */
+/* ms-sig: msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=network */
+void msstd_client_close(const void *handle);
 /* ms-sig: msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=network */
 uint8_t msstd_client_narrow(const void *handle, const MsVec *hosts, const MsVec *cidrs);
 
@@ -135,6 +139,62 @@ uint8_t msstd_body_read_all(const void *handle, uint8_t has_max, int64_t max, Ms
 void msstd_body_metadata(const void *handle, MsNetBodyMetadata *out);
 /* ms-sig: msstd_body_close(handle b: *const ObjCell<BodyH>) @domain=network */
 void msstd_body_close(const void *handle);
+
+/* Datagram sockets (DgramH): a UDP socket bound to a literal address. Addresses are text, "1.2.3.4:80"; a name is
+ * resolved by the caller. `receive` waits for one datagram of at most `max` bytes (1 to 65535, default 65535): a longer
+ * one is dropped and gives STATUS_LIMIT_EXCEEDED. `send` gives STATUS_LIMIT_EXCEEDED for more than 65535 bytes.
+ * `close` ends all use at once; a call blocked in a wait ends by its deadline or cancellation. Handles follow the
+ * connection handles: `share` is another end, `close_if_last` closes when no other end is open. */
+typedef struct MsNetDatagram {
+    MsVec data;
+    MsStr sender;
+} MsNetDatagram;
+
+/* ms-sig: msstd_dgram_bind(address: *const StrVal, out: *mut *mut ObjCell<DgramH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_dgram_bind(const MsStr *address, void **out, MsStr *err);
+/* ms-sig: msstd_dgram_address(handle s: *const ObjCell<DgramH>, out: *mut StrVal) @domain=network */
+void msstd_dgram_address(const void *handle, MsStr *out);
+/* ms-sig: msstd_dgram_close(handle s: *const ObjCell<DgramH>) @domain=network */
+void msstd_dgram_close(const void *handle);
+/* ms-sig: msstd_dgram_share(handle s: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH> @handle @domain=network */
+void *msstd_dgram_share(const void *handle);
+/* Another handle on the socket that is not an end: it keeps the socket's memory, not its descriptor. */
+/* ms-sig: msstd_dgram_alias(handle s: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH> @handle @domain=network */
+void *msstd_dgram_alias(const void *handle);
+/* ms-sig: msstd_dgram_close_if_last(handle s: *const ObjCell<DgramH>) @domain=network */
+void msstd_dgram_close_if_last(const void *handle);
+/* ms-sig: msstd_dgram_receive(handle s: *const ObjCell<DgramH>, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut DatagramWire, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_dgram_receive(const void *handle, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout, MsNetDatagram *out, MsStr *err);
+/* ms-sig: msstd_dgram_send(handle s: *const ObjCell<DgramH>, data: *const VecVal, address: *const StrVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_dgram_send(const void *handle, const MsVec *data, const MsStr *address, uint8_t has_timeout, int64_t timeout, MsStr *err);
+
+/* Network scopes (ScopeH): what `Network.close` closes. A scope remembers the datagram sockets opened through it and
+ * the scopes derived from it; `close` closes them all (once) and later `track` calls close the socket they are given
+ * and return 0. `child` is a scope that closes with this one. `open` is 1 until the scope is closed. */
+/* ms-sig: msstd_scope_new() -> *mut ObjCell<ScopeH> @handle @domain=network */
+void *msstd_scope_new(void);
+/* ms-sig: msstd_scope_child(handle s: *const ObjCell<ScopeH>) -> *mut ObjCell<ScopeH> @handle @domain=network */
+void *msstd_scope_child(const void *handle);
+/* ms-sig: msstd_scope_open(handle s: *const ObjCell<ScopeH>) -> u8 @domain=network */
+uint8_t msstd_scope_open(const void *handle);
+/* ms-sig: msstd_scope_close(handle s: *const ObjCell<ScopeH>) @domain=network */
+void msstd_scope_close(const void *handle);
+/* ms-sig: msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network */
+uint8_t msstd_scope_track_dgram(const void *handle, const void *socket);
+
+/* TLS on a plain connection, in place (runtime/net/tls_conn.c): the handshake runs on the row, then the result is
+ * another handle on the same connection and the caller drops the old one. `start_tls` is the client side (the
+ * options' server_name is sent and verified against roots_pem, the system roots when empty); `accept_tls` is the
+ * server side (certificate_pem and private_key_pem required; with roots_pem or require_client_certificate the client
+ * is asked for a certificate). STATUS_INVALID_INPUT for unusable options or a connection that is already TLS; a failed
+ * or timed out handshake closes the connection. */
+/* ms-sig: msstd_conn_start_tls(handle c: *const ObjCell<ConnH>, options: *const TlsOptionsWire, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_conn_start_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* ms-sig: msstd_conn_accept_tls(handle c: *const ObjCell<ConnH>, options: *const TlsOptionsWire, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_conn_accept_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* The application protocol the handshake chose ("h2", "http/1.1"), empty for none or a plain connection. */
+/* ms-sig: msstd_conn_alpn(handle c: *const ObjCell<ConnH>, out: *mut StrVal) @domain=network */
+void msstd_conn_alpn(const void *handle, MsStr *out);
 
 /* The certificate natives of @std/net/tls (runtime/net/tls_natives.c). A Timestamp is two words. */
 typedef struct MsTlsTimestamp {

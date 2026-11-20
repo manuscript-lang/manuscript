@@ -82,6 +82,22 @@ static bool qbe_iface_is(QCx *c, const MirInst *inst) {
     return true;
 }
 
+/* `clone` of an interface value: the payload copier sits in the vtable after the methods. The copy
+ * owns its payload whatever the source did, so the tag bits come off. */
+static bool qbe_iface_clone(QCx *c, const MirInst *inst) {
+    const MirTyData *d = mir_ty_data(c->m, c->f->values[inst->args[0]]);
+    if (d->kind != MK_IFACE) {
+        return false;
+    }
+    const uint32_t table = qbe_untag(c, inst->args[0]);
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "\t%%t%ua =l add %%t%u, %u\n\t%%k%u =l loadl %%t%ua\n", n, table,
+                  8 * (1 + c->m->ifaces[d->id].nmethods), n, n);
+    ms_buf_printf(c->out, "\t%%v%u =l call %%k%u(l %%v%u)\n\t%%v%u.1 =l copy %%t%u\n", inst->res, n,
+                  inst->args[0], inst->res, table);
+    return true;
+}
+
 /* The interface operations; `*handled` says whether `inst` is one. */
 static bool qbe_iface_op(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, bool *handled) {
     *handled = true;
@@ -100,6 +116,12 @@ static bool qbe_iface_op(QCx *c, const MirInst *inst, uint32_t block, uint32_t i
                       inst->res, table, QBE_TAG_VIEW);
         return true;
     }
+    case MOP_Clone:
+        if (qbe_iface_clone(c, inst)) {
+            return true;
+        }
+        *handled = false;
+        return true;
     case MOP_IfaceIs: return qbe_iface_is(c, inst);
     case MOP_IfaceDestroy:
         qbe_iface_destroy(c, inst);

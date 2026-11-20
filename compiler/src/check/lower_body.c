@@ -13,46 +13,10 @@
 #include "ms/constfold.h"
 #include "ms/facts.h"
 #include "ms/lower.h"
+#include "ms/lower_internal.h"
 #include "ms/lower_scope.h"
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
-
-/* The loop being lowered: where `continue` and `break` go. Lives on the lowering's stack. A
- * `for` has a step block that only exists once something branches to it. */
-typedef struct LbLoop {
-    MirBlock next, exit; /* `continue` goes to `next`, `break` to `exit` */
-    struct LbLoop *outer;
-    bool broke;   /* a `break` branches to `exit` */
-    bool stepped; /* a branch to `next` exists (a `while` has it from the start) */
-    uint32_t scope; /* the depth of the body's ownership scope: `break` and `continue` leave down to it */
-} LbLoop;
-
-/* A lowered expression: the value, and whether the holder must drop it. */
-typedef struct LbVal {
-    MirValue v;
-    bool owned;
-} LbVal;
-
-typedef struct Lb {
-    const MsCheck *c;
-    const MsFacts *facts;
-    MirModule *m;
-    MirBuilder b;
-    LScopes scopes; /* ownership scopes: the function body is depth 0 */
-    MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
-    /* By binding id: the value a `let` or parameter names, or the variable a `var` is. */
-    MirValue *value_of;
-    MirVar *var_of;
-    uint32_t *func_of;    /* by symbol id: the module function a call reaches, or MIR_NONE */
-    uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
-    const MsDecl *decl;   /* the function being lowered */
-    const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
-    LbLoop *loop;         /* the innermost loop around the statement, or NULL */
-    bool dead;            /* control cannot reach the current position */
-    bool ok;              /* false once a construct outside the handled set is met */
-} Lb;
-
-#define LB_FAIL ((LbVal){MIR_NONE, false})
 
 static LbVal lb_unsupported(Lb *lb) {
     lb->ok = false;
@@ -283,6 +247,19 @@ static LbVal lb_compare(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     return (LbVal){result, false};
 }
 
+/* `left op right` on lowered operands (not `and` and `or`, which short-circuit). */
+static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
+    const MirTy ty = mir_b_ty(&lb->b, left.v);
+    if (op == MS_B_ADD && ty == MIR_STR) {
+        return lb_concat(lb, left, right);
+    }
+    const MirOp arithmetic = lb_arithmetic_op(op, ty);
+    if (arithmetic == MOP_COUNT) {
+        return lb_compare(lb, op, left, right);
+    }
+    return (LbVal){mir_b_binop(&lb->b, arithmetic, left.v, right.v), false};
+}
+
 static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     if (op == MS_B_AND || op == MS_B_OR) {
@@ -293,15 +270,7 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     if (!lb->ok) {
         return LB_FAIL;
     }
-    const MirTy ty = mir_b_ty(&lb->b, left.v);
-    if (op == MS_B_ADD && ty == MIR_STR) {
-        return lb_concat(lb, left, right);
-    }
-    const MirOp arithmetic = lb_arithmetic_op(op, ty);
-    if (arithmetic == MOP_COUNT) {
-        return lb_compare(lb, op, left, right);
-    }
-    return (LbVal){mir_b_binop(&lb->b, arithmetic, left.v, right.v), false};
+    return lb_apply(lb, op, left, right);
 }
 
 /* A call of a module function the checker resolved; MIR_NONE-valued `func_of` means the callee
@@ -543,10 +512,6 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
     const MsPattern *pattern = s->u.bind.pattern;
     const uint32_t binding = lb->facts->pattern_binding[pattern->id];
     const MsTy ty = lb->facts->bindings.ty[binding];
-    if (ty == lb->string_ty && s->u.bind.is_mutable) {
-        lb->ok = false; // a `var` String is owned at each exit with the value it holds there
-        return;
-    }
     LbVal value = lb_expr(lb, s->u.bind.value);
     if (!lb->ok) {
         return;
@@ -555,11 +520,18 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
         if (!value.owned) {
             value = (LbVal){lb_copy(lb, value.v), true}; // a borrowed String is copied into the local
         }
-        lscope_own(&lb->scopes, value.v, 0);
+        if (!s->u.bind.is_mutable) {
+            lscope_own(&lb->scopes, value.v, 0);
+        }
     }
     if (s->u.bind.is_mutable) {
-        lb->var_of[binding] = mir_b_declare_var(&lb->b, lb_mir_ty(lb, ty), MM_BORROW);
+        const bool owned = ty == lb->string_ty;
+        lb->var_of[binding] = mir_b_declare_var(&lb->b, lb_mir_ty(lb, ty), owned ? MM_MOVE : MM_BORROW);
         mir_b_def_var(&lb->b, lb->var_of[binding], value.v);
+        if (owned) { // owned at each exit of its scope with the value it holds there
+            const LbVarOwner owner = {binding, lb->scopes.depth - 1};
+            MIR_PUSH(lb->m, lb->vars, lb->nvars, lb->cvars, LbVarOwner, owner);
+        }
     } else {
         lb->value_of[binding] = value.v;
         if (pattern->kind == MS_P_NAME) {
@@ -579,9 +551,40 @@ static void lb_write_back(Lb *lb) {
     }
 }
 
+/* Hands the current value of every owned `var` String declared at `depth` or deeper to its scope,
+ * before an exit leaves them. `except` is a value that leaves with the exit and is not dropped. */
+static void lb_own_vars(Lb *lb, uint32_t depth, MirValue except) {
+    for (uint32_t i = lb->nvars; i > 0; i--) {
+        const LbVarOwner *owner = &lb->vars[i - 1];
+        if (owner->depth < depth) {
+            continue;
+        }
+        const MirValue current = mir_b_use_var(&lb->b, lb->var_of[owner->binding]);
+        if (current != except) {
+            lscope_own_in(&lb->scopes, owner->depth, current, 0);
+        }
+    }
+}
+
+static bool lb_var_owned(const Lb *lb, uint32_t binding) {
+    for (uint32_t i = 0; i < lb->nvars; i++) {
+        if (lb->vars[i].binding == binding) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Whether `e` names an owned `var` String. */
+static bool lb_names_var(const Lb *lb, const MsExpr *e) {
+    return e->kind == MS_E_NAME && lb->facts->res_kind[e->id] == MS_RES_BINDING &&
+           lb_var_owned(lb, lb->facts->res_ref[e->id]);
+}
+
 /* Leaves a function that returns nothing. */
 static void lb_return_void(Lb *lb) {
     const MirValue unit = mir_b_unit(&lb->b);
+    lb_own_vars(lb, 0, MIR_NONE);
     lscope_exit_to(&lb->scopes, 0);
     lb_write_back(lb);
     lb_emit_plain(lb, MOP_DepthLeave);
@@ -591,6 +594,9 @@ static void lb_return_void(Lb *lb) {
 
 /* A borrowed String leaves the function: an owned name moves out as an owned value. */
 static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
+    if (lb_names_var(lb, e)) {
+        return (LbVal){v, true}; // a `var` leaves with its current value: lb_own_vars skips it
+    }
     if (lb_names_owned(lb, e)) {
         lscope_disown(&lb->scopes, v);
         return (LbVal){v, true};
@@ -611,6 +617,8 @@ static void lb_return(Lb *lb, const MsStmt *s) {
     if (mir_b_ty(&lb->b, value.v) == MIR_STR && !value.owned && !lb->b.f.ret_borrowed) {
         value = lb_hand_out(lb, s->u.expr, value.v);
     }
+    const bool leaves_var = !lb->b.f.ret_borrowed && lb_names_var(lb, s->u.expr);
+    lb_own_vars(lb, 0, leaves_var ? value.v : MIR_NONE);
     lscope_exit_to(&lb->scopes, 0);
     lb_write_back(lb);
     lb_emit_plain(lb, MOP_DepthLeave);
@@ -625,6 +633,12 @@ static void lb_statements(Lb *lb, const MsStmts *body);
 static uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
     const uint32_t depth = lscope_push(&lb->scopes);
     lb_statements(lb, body);
+    if (!lb->dead) {
+        lb_own_vars(lb, depth, MIR_NONE);
+    }
+    while (lb->nvars > 0 && lb->vars[lb->nvars - 1].depth >= depth) {
+        lb->nvars--;
+    }
     lscope_pop(&lb->scopes, !lb->dead);
     return depth;
 }
@@ -727,6 +741,7 @@ static void lb_jump(Lb *lb, const MsStmt *s) {
     if (s->kind == MS_S_BREAK) {
         loop->broke = true;
     }
+    lb_own_vars(lb, loop->scope, MIR_NONE);
     lscope_exit_to(&lb->scopes, loop->scope);
     mir_b_br(&lb->b, s->kind == MS_S_BREAK ? loop->exit : lb_step_block(lb, loop), NULL, 0);
     lb->dead = true;
@@ -739,10 +754,27 @@ static void lb_assign(Lb *lb, const MsStmt *s) {
         lb->ok = false;
         return;
     }
-    const LbVal value = lb_expr(lb, s->u.assign.value);
-    if (lb->ok) {
-        mir_b_def_var(&lb->b, lb->var_of[binding], value.v);
+    if (s->u.assign.member_target) {
+        lb->ok = false;
+        return;
     }
+    const MirVar var = lb->var_of[binding];
+    const MirValue old = mir_b_use_var(&lb->b, var);
+    if (mir_b_ty(&lb->b, old) == MIR_STR && !lb_var_owned(lb, binding)) {
+        lb->ok = false; // a `var` String parameter lives in the caller's memory: stored back, not dropped here
+        return;
+    }
+    LbVal value = lb_expr(lb, s->u.assign.value);
+    if (!lb->ok) {
+        return;
+    }
+    if (mir_b_ty(&lb->b, old) == MIR_STR) {
+        if (!value.owned) {
+            value = (LbVal){lb_copy(lb, value.v), true}; // a borrowed String is copied into the variable
+        }
+        lb_drop(lb, old); // the variable's previous value
+    }
+    mir_b_def_var(&lb->b, var, value.v);
 }
 
 /* `for name in a..b`: a counter from `a` while below `b` (both evaluated once, before the loop),
@@ -902,6 +934,8 @@ static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
     lb->loop = NULL;
     lb->stmt = NULL;
     lscope_init(&lb->scopes, &lb->b);
+    lb->vars = NULL; // the arena they live in is freed between passes
+    lb->nvars = lb->cvars = 0;
     (void)lscope_push(&lb->scopes); // the function's own scope: depth 0
     for (uint32_t i = 0; i < d->u.fn.params.len; i++) {
         if (d->u.fn.params.ptr[i]->moving) { // the function owns what it was handed
