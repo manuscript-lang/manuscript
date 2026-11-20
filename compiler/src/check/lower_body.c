@@ -819,7 +819,8 @@ static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
         const MsStr name = ms_name(lb->c->names, d->u.fn.name);
-        if (name.len == 4 && memcmp(name.ptr, "main", 4) == 0) {
+        const bool is_main = name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
+        if (is_main && lb->b.f.ret == MIR_INT) { // any other `main` gets a wrapper, which is the export
             lb->b.f.linkage = ML_EXPORT;
         }
     }
