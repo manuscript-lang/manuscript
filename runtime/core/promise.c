@@ -496,7 +496,7 @@ static void start_task(MsPromise id, MsObj *closure) {
 /* Puts the work in this isolate's queue, where its waiter runs it inline or another isolate takes it once it is
  * `age_ns` old. False when workers are off or the queue has no room: the caller starts a task instead. */
 static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns) {
-    if (ms_workers_limit() <= 1) {
+    if (ms_workers_limit() <= 1 || ms_sched_pinned_here()) {
         return false;
     }
     const size_t row = row_or_fault(id);
