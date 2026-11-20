@@ -283,11 +283,82 @@ static void test_headers_and_errors(void) {
     free_bytes(&second);
 }
 
+/* Runs `ms_gunzip_step` over `z` in `chunk`-byte pieces into a `room`-byte output window, offering unused input again.
+ * Returns the final status; `out` collects the output. */
+static uint8_t gunzip_chunked(const uint8_t *z, size_t z_len, size_t chunk, size_t room, uint8_t *out, size_t *out_len) {
+    MsGunzip *g = ms_gunzip_new();
+    uint8_t status = MS_GUNZIP_OK;
+    size_t fed = 0, made = 0;
+    uint8_t *pending = malloc(z_len + 1);
+    size_t pending_len = 0;
+    for (bool more = true; more || status == MS_GUNZIP_OK;) {
+        if (more) {
+            const size_t take = z_len - fed < chunk ? z_len - fed : chunk;
+            memcpy(pending + pending_len, z + fed, take);
+            pending_len += take;
+            fed += take;
+            more = fed < z_len;
+        }
+        for (;;) {
+            size_t used = 0, wrote = 0;
+            status = ms_gunzip_step(g, pending, pending_len, more, out + made, room, &used, &wrote);
+            memmove(pending, pending + used, pending_len - used);
+            pending_len -= used;
+            made += wrote;
+            if (status != MS_GUNZIP_OK || (used == 0 && wrote == 0)) {
+                break;
+            }
+        }
+        if (status != MS_GUNZIP_OK) {
+            break;
+        }
+    }
+    free(pending);
+    ms_gunzip_free(g);
+    *out_len = made;
+    return status;
+}
+
+static void test_gunzip_steps(void) {
+    char storage[64];
+    const MsVec sample = bytes_in(storage, "abcabcabcabcabcabcabcabc");
+    MsStr gzip = name_of("gzip");
+    MsVec z = {0};
+    CHECK(msstd_compress_compress(&sample, &gzip, 6, NO_LIMIT, 0, &z) == STATUS_OK);
+    uint8_t out[64];
+    size_t made = 0;
+    static const size_t chunks[] = {1, 3, 7, 4096};
+    for (size_t i = 0; i < MS_COUNT_OF(chunks); i++) {
+        CHECK(gunzip_chunked(z.ptr, z.len, chunks[i], 5, out, &made) == MS_GUNZIP_DONE);
+        CHECK(made == sample.len && memcmp(out, sample.ptr, made) == 0);
+    }
+    // Truncated input, a flipped trailer checksum and trailing junk.
+    CHECK(gunzip_chunked(z.ptr, z.len - 3, 4096, 64, out, &made) == MS_GUNZIP_TRUNCATED);
+    CHECK(gunzip_chunked(z.ptr, 0, 4096, 64, out, &made) == MS_GUNZIP_TRUNCATED);
+    uint8_t *bad = malloc(z.len + 4);
+    memcpy(bad, z.ptr, z.len);
+    bad[z.len - 8] ^= 1;
+    CHECK(gunzip_chunked(bad, z.len, 4096, 64, out, &made) == MS_GUNZIP_INVALID);
+    memcpy(bad, z.ptr, z.len);
+    memcpy(bad + z.len, "junk", 4);
+    CHECK(gunzip_chunked(bad, z.len + 4, 4096, 64, out, &made) == MS_GUNZIP_INVALID);
+    CHECK(gunzip_chunked((const uint8_t *)"not gzip at all", 15, 4096, 64, out, &made) == MS_GUNZIP_INVALID);
+    // Two members decode as one stream.
+    uint8_t *both = malloc(2 * z.len);
+    memcpy(both, z.ptr, z.len);
+    memcpy(both + z.len, z.ptr, z.len);
+    CHECK(gunzip_chunked(both, 2 * z.len, 5, 64, out, &made) == MS_GUNZIP_DONE && made == 2 * sample.len);
+    free(both);
+    free(bad);
+    free_bytes(&z);
+}
+
 int main(void) {
     replay_whole_buffer();
     replay_chunked();
     test_encoders();
     test_headers_and_errors();
+    test_gunzip_steps();
     puts(failures == 0 ? "std_compress: ok" : "std_compress: FAILED");
     return failures == 0 ? 0 : 1;
 }

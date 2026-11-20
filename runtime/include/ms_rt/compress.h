@@ -26,4 +26,15 @@ uint8_t msstd_compress_decoder_push(void *handle, const MsVec *data, MsVec *out)
 /* ms-sig: msstd_compress_decoder_end(handle decoder: *const ObjCell<DecoderObj>, out: *mut VecVal) -> u8 @domain=compression */
 uint8_t msstd_compress_decoder_end(void *handle, MsVec *out);
 
+/* A resumable gunzip over concatenated members, for the HTTP client (runtime/std/compress.c). Not a catalogued native:
+ * only Rust calls it. `ms_gunzip_step` inflates from `in` into `out` and reports how much of each it used. OK: call
+ * again with the unused input and fresh room (no use of either means it waits for input); DONE: every member ended and
+ * `more` is false; INVALID: not gzip or corrupt; TRUNCATED: the input ended inside a member and `more` is false. */
+typedef struct MsGunzip MsGunzip;
+typedef enum MsGunzipStatus { MS_GUNZIP_OK, MS_GUNZIP_DONE, MS_GUNZIP_INVALID, MS_GUNZIP_TRUNCATED } MsGunzipStatus;
+MsGunzip *ms_gunzip_new(void);
+void ms_gunzip_free(MsGunzip *gunzip);
+uint8_t ms_gunzip_step(MsGunzip *gunzip, const uint8_t *in, size_t in_len, bool more, uint8_t *out, size_t out_cap,
+                              size_t *in_used, size_t *out_used);
+
 #endif
