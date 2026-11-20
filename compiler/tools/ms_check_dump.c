@@ -56,7 +56,8 @@ static bool ends_with(const char *s, const char *suffix) {
 
 /* Prints the name-resolution diagnostics of each file as `path:line:col: message`, the form
  * `c_oracle --scope` prints. Files that fail to parse or import project modules print nothing. */
-static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *names, int nfiles_in, char **paths) {
+static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *names, int nfiles_in, char **paths,
+                                    bool bodies) {
     for (int i = 0; i < nfiles_in; i++) {
         FILE *f = fopen(paths[i], "rb");
         if (f == NULL) {
@@ -73,24 +74,31 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
         if (read && ms_parse(syntax, names, text, (size_t)n, module, &diag) && only_std_imports(module)) {
             printf("== %s\n", paths[i]);
             MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
-            ms_module_resolve_types(check, id);
-            for (uint32_t k = 0; k < check->mods[id].ndiags; k++) {
-                const MsDiag *d = &check->mods[id].diags[k].diag;
-                printf("%u:%u: %.*s\n", d->pos.line, d->pos.column, (int)d->message.len, d->message.ptr);
+            MsBuf dump = {0};
+            if (bodies) {
+                ms_module_check_bodies(check, id);
+                ms_dump_module_bodies(&dump, check, id);
+                printf("%.*s", (int)dump.len, (const char *)dump.data);
+            } else {
+                ms_module_resolve_types(check, id);
+                for (uint32_t k = 0; k < check->mods[id].ndiags; k++) {
+                    const MsDiag *d = &check->mods[id].diags[k].diag;
+                    printf("%u:%u: %.*s\n", d->pos.line, d->pos.column, (int)d->message.len, d->message.ptr);
+                }
+                ms_dump_module_types(&dump, check, id);
+                printf("--\n%.*s", (int)dump.len, (const char *)dump.data);
             }
-            MsBuf types = {0};
-            ms_dump_module_types(&types, check, id);
-            printf("--\n%.*s", (int)types.len, (const char *)types.data);
-            ms_buf_free(&types);
+            ms_buf_free(&dump);
         }
         free(text);
     }
 }
 
 int main(int argc, char **argv) {
-    const bool scope = argc >= 3 && strcmp(argv[2], "--scope") == 0;
+    const bool bodies = argc >= 3 && strcmp(argv[2], "--bodies") == 0;
+    const bool scope = bodies || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
     if (argc != 2 && !scope) {
-        fputs("usage: ms_check_dump STDLIB_DIR [--scope FILE...]\n", stderr);
+        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies FILE...]\n", stderr);
         return 2;
     }
     const char *root = argv[1];
@@ -140,7 +148,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (scope) {
-        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3);
+        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies);
     } else {
         MsBuf out = {0};
         ms_dump_std_tables(&out, &check);
