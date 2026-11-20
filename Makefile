@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -60,8 +60,19 @@ unit: runtime
 
 test: unit conform
 
+# The old binary is removed first and its presence checked after, so a failed build never leaves a stale `ms` that later
+# commands run (a stale ms gives wrong census and conformance answers).
 build: runtime
+	@rm -f "$(RELEASE_MS)"
 	cargo build --release --locked -p ms-cli
+	@test -x "$(RELEASE_MS)" || { echo "make build: $(RELEASE_MS) was not produced" >&2; exit 1; }
+
+# A clean rebuild from the sources: drops the built C libraries, every CMake cache and the runtime archive, the
+# repository tools' shim and the old ms, then builds again. Downloaded LLVM and lld tools and cargo's own cache stay.
+rebuild:
+	rm -rf target/c-libs target/ms-native target/cmake target/libms_tools.a
+	rm -f "$(RELEASE_MS)"
+	$(MAKE) build
 
 # The frozen conformance corpus against the Rust `ms`, every phase, with programs built by Cranelift (about 3x
 # faster than LLVM; see documentation/contributing/development.md). Excludes fixtures whose answer depends on
