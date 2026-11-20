@@ -1,5 +1,5 @@
 /* Scanning a string for the scalars of a set, and for its last substring: `String.index_any`,
- * `String.trim_chars` (and its start and end forms) and `String.last_index_of`. Ported from
+ * `String.trim_chars` (and its start and end forms) and `String.last_index_of`; and `String.scalar_at`. Ported from
  * crates/ms-rt/src/string.rs. Text is read through spans, so every offset below is checked by the span helpers. */
 #include "ms_rt/safe.h"
 #include "ms_rt/search.h"
@@ -124,4 +124,56 @@ uint8_t msrt_string_last_index_of(const MsStr *a, const MsStr *v, int64_t *out) 
     }
     *out = (int64_t)at;
     return 1;
+}
+
+/* ---- scalar_at ---- */
+
+#define MS_SCALAR_AT_MESSAGE_MAX 160
+
+/* Appends text to the message being built; the buffer is sized for the longest message, so a miss is a bug. */
+static void append_text(uint8_t *message, size_t *used, MsBytes text) {
+    MsBytesMut room = {0};
+    if (!ms_bytes_mut_slice(ms_bytes_mut(message, MS_SCALAR_AT_MESSAGE_MAX), *used, MS_SCALAR_AT_MESSAGE_MAX, &room) ||
+        !ms_bytes_copy(room, text)) {
+        ms_limit_fault();
+    }
+    *used += text.len;
+}
+
+static void append_literal(uint8_t *message, size_t *used, const char *text, size_t length) {
+    append_text(message, used, ms_bytes_of((const uint8_t *)text, length));
+}
+
+/* Appends the decimal text of a number. */
+static void append_number(uint8_t *message, size_t *used, int64_t value) {
+    MsStr digits;
+    msrt_int_to_string(value, &digits);
+    append_text(message, used, ms_str_bytes(&digits));
+    msrt_string_free(&digits);
+}
+
+MS_NORETURN static void scalar_at_fault(int64_t offset, size_t length) {
+    uint8_t message[MS_SCALAR_AT_MESSAGE_MAX];
+    size_t used = 0;
+    append_literal(message, &used, "String.scalar_at: offset ", sizeof "String.scalar_at: offset " - 1);
+    append_number(message, &used, offset);
+    append_literal(message, &used, " does not start a scalar of the ", sizeof " does not start a scalar of the " - 1);
+    append_number(message, &used, (int64_t)length);
+    append_literal(message, &used, " byte text; pass a default", sizeof " byte text; pass a default" - 1);
+    msrt_fault(message, used);
+}
+
+int64_t msrt_string_scalar_at(const MsStr *s, int64_t offset, uint8_t has_default, int64_t fallback) {
+    const MsBytes text = ms_str_bytes(s);
+    if (offset >= 0 && (uint64_t)offset < text.len) {
+        const size_t at = (size_t)offset;
+        const bool starts_scalar = (text.ptr[at] & 0xC0u) != 0x80u;
+        if (starts_scalar) {
+            return (int64_t)ms_utf8_decode(text.ptr + at, text.len - at).rune;
+        }
+    }
+    if (has_default != 0) {
+        return fallback;
+    }
+    scalar_at_fault(offset, text.len);
 }
