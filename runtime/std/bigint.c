@@ -1,6 +1,7 @@
 /* The @std/math BigInt natives (ms_rt/bigint.h) over the bignum of bignum.h. A BigInt is a runtime object: the two
  * entry points every object has (clone and drop) followed by a MsBig that the object owns. The limits and error
  * precedence are those of the Rust crate this replaces. */
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -275,6 +276,25 @@ static bool product_reaches(int64_t a, int64_t b, int64_t limit) {
     return __builtin_mul_overflow(a, b, &product) || product >= limit;
 }
 
+/* Whether |a|^exponent certainly has more than MS_BIGINT_MAX_BITS bits, judged from log2 of the top 64 bits so that
+ * an oversized power is refused without computing it. The estimate errs by far less than the 0.001 margin. */
+static bool power_certainly_exceeds(const MsBig *a, size_t length, int64_t exponent) {
+    const size_t shift = length > 64 ? length - 64 : 0;
+    MsBig top = MS_BIG_ZERO;
+    ms_big_abs(&top, a);
+    ms_big_shift_right(&top, &top, shift);
+    uint64_t high = 0;
+    uint64_t low = 0;
+    const bool fits = ms_big_to_u128(&top, &high, &low);
+    ms_big_free(&top);
+    if (!fits) {
+        return false;
+    }
+    const double log2_value = log2((double)low) + (double)shift;
+    /* The result has floor(exponent * log2) + 1 bits. */
+    return (double)exponent * log2_value > (double)MS_BIGINT_MAX_BITS + 1.001;
+}
+
 uint8_t msstd_bigint_pow(const MsBigCell *a, int64_t exponent, MsBigCell **out) {
     if (exponent < 0) {
         return MS_STATUS_INVALID_INPUT;
@@ -282,6 +302,9 @@ uint8_t msstd_bigint_pow(const MsBigCell *a, int64_t exponent, MsBigCell **out) 
     const size_t length = ms_big_bit_length(&a->value);
     const int64_t bits = length > (size_t)INT64_MAX ? INT64_MAX : (int64_t)length;
     if (exponent > 1 && bits > 1 && product_reaches(bits - 1, exponent, MS_BIGINT_MAX_BITS)) {
+        return MS_STATUS_LIMIT_EXCEEDED;
+    }
+    if (exponent > 1 && power_certainly_exceeds(&a->value, length, exponent)) {
         return MS_STATUS_LIMIT_EXCEEDED;
     }
     MsBig result = MS_BIG_ZERO;
