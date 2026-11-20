@@ -3,12 +3,23 @@ type Plain { a: int, b: str }
 type Pair { x: int, y: int }
 iface Area { area() -> int }
 vtable @v_int: Area for int { @area_int }
+desc_glue Pair @eq_pair @hash_pair
 global @counter: int
 global @pair: Pair
 entry @main
 fn @area_int(%self: ptr) -> int method {
 b0:
   %r: int = iconst 12
+  ret %r
+}
+fn @eq_pair(%a: ptr, %b: ptr) -> bool {
+b0:
+  %r: bool = bconst true
+  ret %r
+}
+fn @hash_pair(%a: ptr) -> int {
+b0:
+  %r: int = iconst 0
   ret %r
 }
 fn @main() -> int {
