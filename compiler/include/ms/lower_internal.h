@@ -88,6 +88,14 @@ typedef struct Lb {
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
 
+/* lower_body.c: what the files that lower a construct call back into (`lb_unsupported`, `lb_expr`
+ * and `lb_mir_ty` are declared further down). */
+void lb_statements(Lb *lb, const MsStmts *body);
+void lb_return_void(Lb *lb);
+void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
+MirLoc lb_loc(const Lb *lb, MsPos pos);
+void lb_reset_state(Lb *lb);
+
 /* lower_closure.c: function values and lambdas. */
 MirTy lb_fn_ty(Lb *lb, MsTy ty);
 bool lb_is_fn(Lb *lb, MirTy ty);
@@ -99,7 +107,8 @@ bool lb_closures(Lb *lb, bool ok);
 
 #define LB_FAIL ((LbVal){MIR_NONE, false})
 
-/* Helpers of lower_body.c the files after it use. */
+/* Helpers of lower_body.c the files after it use. `lb_unsupported` marks the function as not
+ * handled and returns `LB_FAIL`. */
 LbVal lb_unsupported(Lb *lb);
 LbVal lb_expr(Lb *lb, const MsExpr *e);
 MirTy lb_mir_ty(Lb *lb, MsTy ty);
@@ -107,6 +116,11 @@ void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
 void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 void lb_write_back(Lb *lb);
+MirLoc lb_loc(const Lb *lb, MsPos pos);
+void lb_drop(Lb *lb, MirValue v);
+void lb_return_void(Lb *lb);
+void lb_statements(Lb *lb, const MsStmts *body);
+void lb_reset_state(Lb *lb);
 
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);

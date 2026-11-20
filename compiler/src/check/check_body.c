@@ -117,6 +117,10 @@ static bool body_is_admitted(const MsBody *b, MsTy ty) {
            (body_is_own_nominal(b, ty) && !body_is_closeable(b, ty, 0));
 }
 
+bool ms_body_is_admitted(const MsBody *b, MsTy ty) {
+    return body_is_admitted(b, ty);
+}
+
 /* `Result[T, E]` whose success type the pass can hold (or `Void`); the error type is only ever
  * passed through by `?`, so any type is accepted for it. */
 bool ms_body_is_result(const MsBody *b, MsTy ty) {
@@ -531,12 +535,21 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     const MsSyms *syms = &b->c->syms;
     const MsTy record = syms->ty[sym];
     const MsDef *def = ms_def(b->c, sym);
-    if (syms->module[sym] != b->module || syms->nvars[sym] != 0 || syms->decl[sym] == NULL ||
-        syms->decl[sym]->kind != MS_D_TYPE || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
-        !body_is_admitted(b, record) || def->nfields != e->u.call.args.len) {
+    const MsDecl *decl = syms->decl[sym];
+    const uint32_t nargs = e->u.call.args.len;
+    if (syms->nvars[sym] != 0 || decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.external ||
+        (syms->module[sym] != b->module && decl->u.type.opaque) || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
+        !body_is_admitted(b, record) || nargs > def->nfields || def->nfields != decl->u.type.fields.len) {
         return ms_body_unsupported(b);
     }
     for (uint32_t i = 0; i < def->nfields; i++) {
+        if (i >= nargs) {
+            // A field left out takes its default.
+            if (decl->u.type.fields.ptr[i]->def == NULL) {
+                return ms_body_unsupported(b);
+            }
+            continue;
+        }
         const MsArg *arg = &e->u.call.args.ptr[i];
         const MsTy field = def->fields[i].ty;
         if ((arg->has_name && arg->name != def->fields[i].name) || def->fields[i].flags != 0 ||
@@ -1035,11 +1048,34 @@ static bool body_assign_to_declaration(MsBody *b, const MsStmt *s) {
     return true;
 }
 
+/* `local.a.b = value` where `local` is a `var` and the last field is a Copy primitive: the value
+ * is checked against the field's type and the statement records the local it changes. Stores into
+ * other places, and every diagnostic a store can have, are left to the Rust checker. */
+static void body_assign_field(MsBody *b, const MsStmt *s) {
+    const MsExpr *target = s->u.assign.target;
+    const MsExpr *root = target;
+    while (root->kind == MS_E_MEMBER) {
+        root = root->u.member.left;
+    }
+    const uint32_t binding = root->kind == MS_E_NAME ? ms_body_find_binding(b, root->u.sym) : MS_NONE;
+    if (target->kind != MS_E_MEMBER || binding == MS_NONE || binding < b->lambda_floor ||
+        (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    const MsTy field = ms_body_record(b, target->id, body_member(b, target));
+    if (field == MS_TY_NONE || ms_body_expr(b, s->u.assign.value, field) == MS_TY_NONE) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    b->facts->field_store_root[s->id] = binding;
+}
+
 /* `name = value` and `name op= value` (the parser writes the second as `name = name op value`).
  * Reads of the name inside the value only feed its next value, so they do not count as reads. */
 static void body_assign_statement(MsBody *b, const MsStmt *s) {
     if (s->u.assign.member_target) {
-        (void)ms_body_unsupported(b);
+        body_assign_field(b, s);
         return;
     }
     const uint32_t binding = ms_body_find_binding(b, s->u.assign.name);
@@ -1510,6 +1546,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
     facts->each_list = MS_NEW_N(arena, bool, nodes);
     memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
+    facts->field_store_root = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->field_store_root, 0xff, nodes * sizeof *facts->field_store_root);
     facts->some_wrap = MS_NEW_N(arena, bool, nodes);
     memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);

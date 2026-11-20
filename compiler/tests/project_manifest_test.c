@@ -180,6 +180,8 @@ static void test_packages(void) {
     CHECK(p.dependency_count == 3 && strcmp(p.dependencies[0].alias, "@pg") == 0 && p.dependencies[0].kind == MS_DEP_VERSION);
     CHECK(strcmp(p.dependencies[1].alias, "@sha") == 0 && p.dependencies[1].kind == MS_DEP_SHA && strcmp(p.dependencies[1].reference, SHA) == 0);
     CHECK(strcmp(p.dependencies[2].alias, "@zed") == 0 && p.dependencies[2].kind == MS_DEP_TAG && strcmp(p.dependencies[2].reference, "v1.0.0") == 0);
+    CHECK(strcmp(ms_project_dependency_row(&arena, &p.dependencies[0]), "@pg\t" URL "\tversion\t^1.2") == 0);
+    CHECK(strcmp(ms_project_dependency_row(&arena, &p.dependencies[2]), "@zed\t" URL "\ttag\tv1.0.0") == 0);
     CHECK(p.path_dependency_count == 1 && strcmp(p.path_dependencies[0].target, p.source) == 0);
     CHECK(p.allowed_effect_count == 1 && strcmp(p.allowed_effects[0].name, "@pg") == 0 && p.allowed_effects[0].count == 1);
 
