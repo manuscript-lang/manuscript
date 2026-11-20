@@ -20,6 +20,10 @@
  * message in `message_out`, and `code_out` holds its byte offset. */
 uint8_t ms_tool_lex(const ms_str *text, ms_list *out, int64_t *code_out, ms_str *message_out);
 
+/* Block-comment byte ranges (start, end pairs) in the CRLF-normalised text, as MsLexed.blocks; empty
+ * when the text does not lex. */
+void ms_tool_lex_blocks(const ms_str *text, ms_list *out);
+
 /* The token kind names, indexed by the `kind` column: "NAME", "STRING", "(", "fn", ... */
 void ms_tool_token_kinds(ms_list *out);
 
