@@ -26,6 +26,8 @@ typedef enum {
     MS_IO_CONNECT = 4, /* result: 0 connected, or a negative status */
     MS_IO_CLOSED = 5,  /* result: 0; the row's handle is closed and the row may be reused */
     MS_IO_TIMER = 6,   /* result: 0; the row's deadline passed */
+    MS_IO_WORK = 7,    /* result: the return value of a function run on the thread pool (ms_io_work); the id is the caller's */
+    MS_IO_RESOLVE = 8, /* result: 0 when the addresses are ready (ms_io_resolve), or a negative libuv status */
 } MsIoKind;
 
 typedef struct {
