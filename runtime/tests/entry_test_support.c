@@ -27,10 +27,10 @@ static void expect(int condition, const char *what) {
 static void deadline_task(void *argument) {
     (void)argument;
     setenv("MS_TEST_TIMEOUT_NS", "1000000000", 1);
-    msrt_test_deadline(1);
+    msrt_test_deadline(true);
     const int64_t bound = ms_task_defer_deadline();
     expect(bound != MS_NO_DEADLINE, "a deadline is set");
-    msrt_test_deadline(0);
+    msrt_test_deadline(false);
     expect(ms_task_defer_deadline() == MS_NO_DEADLINE, "and lifted");
 }
 

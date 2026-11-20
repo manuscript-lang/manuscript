@@ -5,11 +5,13 @@
 #ifndef MS_RT_TEST_H
 #define MS_RT_TEST_H
 
+#include <stdbool.h>
+
 #include "ms_rt/map.h"
 #include "ms_rt/string.h"
 
-/* ms-sig: msrt_test_deadline(on: u8) */
-void msrt_test_deadline(uint8_t on);
+/* ms-sig: msrt_test_deadline(on: bool) */
+void msrt_test_deadline(bool on);
 
 /* ms-sig: msrt_test_record(path: *const StrVal, text: *const StrVal) */
 void msrt_test_record(const MsStr *path, const MsStr *text);

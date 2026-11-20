@@ -103,6 +103,7 @@ pub fn build_c_runtime(
     work: &Path,
     triple: Option<&str>,
     stats: bool,
+    process_entry: bool,
 ) -> Result<CRuntime, String> {
     let build = work.join("cmake");
     let arch = std::env::consts::ARCH;
@@ -122,6 +123,10 @@ pub fn build_c_runtime(
         .arg(format!(
             "-DMS_ALLOC_STATS={}",
             if stats { "ON" } else { "OFF" }
+        ))
+        .arg(format!(
+            "-DMS_PROCESS_ENTRY={}",
+            if process_entry { "ON" } else { "OFF" }
         ))
         // The build is the same wherever it runs: the caller's flags do not reach it.
         .env_remove("CFLAGS")

@@ -773,7 +773,7 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             plans.push((
                 triple.clone(),
                 stats,
-                build_c_runtime(&root, dir, triple.as_deref(), stats),
+                build_c_runtime(&root, dir, triple.as_deref(), stats, true),
             ));
         }
     }

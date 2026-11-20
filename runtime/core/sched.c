@@ -135,6 +135,7 @@ void ms_task_destroy(MsSched *sched, MsTask *task) {
     }
     msrt_free(task->unwind.hdr.cleanups);
     msrt_free(task->unwind.guards);
+    msrt_free(task->unwind.eq_pairs);
     ms_fault_text_free(&task->message);
     msrt_free(task);
 }

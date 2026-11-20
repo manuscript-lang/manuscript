@@ -43,14 +43,14 @@ static int64_t timeout_from_environment(void) {
     return (end != text && *end == '\0' && value > 0) ? value : 0;
 }
 
-void msrt_test_deadline(uint8_t on) {
+void msrt_test_deadline(bool on) {
     int64_t timeout = atomic_load_explicit(&test_timeout_ns, memory_order_relaxed);
     if (timeout < 0) {
         timeout = timeout_from_environment();
         atomic_store_explicit(&test_timeout_ns, timeout, memory_order_relaxed);
     }
     int64_t at = MS_NO_DEADLINE;
-    if (on != 0 && timeout > 0) {
+    if (on && timeout > 0) {
         const int64_t now = ms_sys_monotonic_ns();
         at = now > INT64_MAX - timeout ? MS_NO_DEADLINE : now + timeout;
     }

@@ -233,6 +233,9 @@ bool ms_guard_leave(MsGuardStatus status, MsFaultText message) {
     unwind->flight = NULL;
     unwind->unwind_drops = false;
     unwind->hdr.limit = frame.limit;
+    if (unwind->eq_length > frame.eq_pairs) {
+        unwind->eq_length = frame.eq_pairs; /* a fault left comparisons open */
+    }
     uintptr_t teb[MS_CTX_TEB_WORDS] = {0};
     ms_task_segment_teb(frame.segment, teb);
     ms_task_restore_segment(frame.segment);
@@ -275,6 +278,7 @@ MsGuardStatus ms_guard_call(void (*code)(void *), void *data, MsFaultText *messa
                             .limit = unwind->hdr.limit,
                             .segment = task->segment,
                             .shield = atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed),
+                            .eq_pairs = unwind->eq_length,
                         });
     const uintptr_t landed = ms_guard_enter(&slot, code, data);
     if (landed == 0) {
