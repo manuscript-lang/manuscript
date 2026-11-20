@@ -3,9 +3,6 @@
 # Manuscript tools link with `--link`. Executables land in <build>/compiler. Targets are named for the file:
 # `cmake --build <build> --target ms_syntax_dump`. Adding a tool `compiler/tools/ms_<name>.c` needs no edit here;
 # a unit test `compiler/tests/<name>_test.c` needs a line below.
-if(MS_WINDOWS)
-  return()
-endif()
 set(_c "${CMAKE_SOURCE_DIR}/compiler")
 set(_cflags -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-format-truncation)
 set(_clink "")
@@ -49,8 +46,16 @@ endfunction()
 file(GLOB _tools CONFIGURE_DEPENDS "${_c}/tools/ms_*.c")
 foreach(file ${_tools})
   get_filename_component(name "${file}" NAME_WE)
+  # Windows builds only the tools of the C pipeline (`MS_BACKEND=c`): the rest read the project with POSIX calls.
+  if(MS_WINDOWS AND NOT name MATCHES "^ms_(mir_build|asm_tables)$")
+    continue()
+  endif()
   ms_compiler_exe(${name} "${file}" WITH_LIBMS INCLUDES "${_c}/tools")
 endforeach()
+
+if(MS_WINDOWS)
+  return()
+endif()
 
 # Unit tests of the checker and the driver; ctest runs them.
 foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test project_discover_test semver_test lock_test resolve_test graph_check_test)
