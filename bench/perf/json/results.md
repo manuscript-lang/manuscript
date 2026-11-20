@@ -2,7 +2,9 @@
 
 `@std/json` `parse` and `stringify` against Node's `JSON.parse` and `JSON.stringify` on the standard documents (`twitter.json`, `canada.json`, `citm_catalog.json`) and a small RPC message. Both sides warm up, then take the median of at least five runs over one second. Throughput is MB of document per second; the last column is Node time over Manuscript time, so above 1.00x Manuscript is faster. Reproduce with `sh bench/perf/json/run.sh` (needs `node`); compare only runs from one machine.
 
-## 2026-11-20: parse with vendored yyjson (6d566840, #4851)
+## 2026-11-20: parse with vendored yyjson (6d566840, #4851), reverted
+
+The owner decided to keep our own scanner and speed it up with yyjson's techniques, so #4851 was reverted. These are the numbers of the yyjson experiment, kept as the target the scanner has to match.
 
 linux/amd64, four shared cores in a cloud container (noisy; Node v22.23.5; compare only within this section). `ms` Release build (Cranelift). The scanner of `parse` is yyjson 0.10.0 read in place and walked into the document builder (before: the hand-written C scanner of #4783).
 

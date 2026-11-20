@@ -100,17 +100,8 @@ foreach(file ${_std_tests})
           LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
 
-# The vendored yyjson the JSON scanner reads with, compiled like ms_test_llhttp.
-add_library(ms_test_yyjson OBJECT "${MS_YYJSON_DIR}/src/yyjson.c")
-target_include_directories(ms_test_yyjson PUBLIC "${MS_YYJSON_DIR}/include")
-target_compile_definitions(ms_test_yyjson PUBLIC ${MS_YYJSON_DEFINES})
-target_compile_options(ms_test_yyjson PRIVATE -O1 -g -w)
-if(MS_SANITIZE)
-  target_compile_options(ms_test_yyjson PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=undefined)
-endif()
-
 # The JSON test replays the recorded corpus against the natives over the real runtime/core.
-ms_test(json_test SOURCES "${_tests}/json_test.c" ${_json_sources} OBJECTS ms_test_core ms_test_yyjson INCLUDES "${MS_YYJSON_DIR}/include" LIBS m DEFINES MS_ALLOC_STATS)
+ms_test(json_test SOURCES "${_tests}/json_test.c" ${_json_sources} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
 
 # The HTTP/1 test links the vendored llhttp sources (the same ones the runtime archive compiles).
 set(_llhttp "${CMAKE_SOURCE_DIR}/runtime/third_party/llhttp")
