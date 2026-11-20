@@ -18,6 +18,10 @@ use ms_rt_abi::{
 
 // The moved symbols (runtime/symbols/string.txt) are defined by the C runtime; Rust callers and tests reach them here.
 unsafe extern "C-unwind" {
+    pub fn msrt_string_fields(s: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_from_scalars(values: *const VecVal, out: *mut StrVal) -> u8;
+    pub fn msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_view_bytes(s: *const StrVal, out: *mut VecVal);
     pub fn msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64;
     pub fn msrt_string_length(s: *const StrVal) -> i64;
     pub fn msrt_string_scalar_length(s: *const StrVal) -> i64;
@@ -1060,95 +1064,6 @@ pub unsafe fn join_strings(items: *const StrVal, n: usize, sep: &[u8]) -> StrVal
 // Lists produced from strings (List[String] = VecVal of 8-byte string pointers)
 // ---------------------------------------------------------------------------
 
-/// Bytes of a `List[String]` element.
-const ELEM: usize = core::mem::size_of::<StrVal>();
-
-/// Appends a string (owned) to a `List[String]` being built.
-unsafe fn push_str(v: &mut VecVal, p: StrVal) {
-    // SAFETY: elements are `StrVal`s stored inline.
-    unsafe {
-        if v.len == v.cap {
-            let cap = if v.cap == 0 { 4 } else { v.cap * 2 };
-            v.ptr = if v.ptr.is_null() {
-                alloc::alloc(cap * ELEM)
-            } else {
-                alloc::realloc(v.ptr, cap * ELEM)
-            };
-            v.cap = cap;
-        }
-        *(v.ptr as *mut StrVal).add(v.len) = p;
-        v.len += 1;
-    }
-}
-
-const EMPTY_VEC: VecVal = VecVal {
-    ptr: null_mut(),
-    len: 0,
-    cap: 0,
-};
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        if !text.is_empty() && text.is_ascii() {
-            // One shared static per ASCII character, so the list is filled without allocating
-            // or counting references (static objects have a huge count).
-            let n = text.len();
-            let p = alloc::alloc(n * ELEM) as *mut StrVal;
-            let base = core::ptr::addr_of_mut!(ASCII) as *mut u8;
-            for (k, &b) in text.iter().enumerate() {
-                let q = p.add(k);
-                *q = StrVal::literal(base.add((b as usize) * ms_rt_abi::ASCII_CHAR_STRIDE), 1);
-            }
-            *out = VecVal {
-                ptr: p as _,
-                len: n,
-                cap: n,
-            };
-            return;
-        }
-        let mut v = EMPTY_VEC;
-        let mut i = 0;
-        while i < text.len() {
-            let (c, w) = utf8::decode(&text[i..]);
-            let p = if c == 0xFFFD && w == 1 {
-                from_bytes("\u{FFFD}".as_bytes())
-            } else {
-                from_bytes(&text[i..i + w])
-            };
-            push_str(&mut v, p);
-            i += w;
-        }
-        *out = v;
-    }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_lines(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        let mut v = EMPTY_VEC;
-        let mut start = 0;
-        while let Some(p) = find_newline(&text[start..]) {
-            let mut end = start + p;
-            if end > start && text[end - 1] == b'\r' {
-                end -= 1;
-            }
-            push_str(&mut v, from_bytes(&text[start..end]));
-            start += p + 1;
-        }
-        if start < text.len() {
-            push_str(&mut v, from_bytes(&text[start..]));
-        }
-        *out = v;
-    }
-}
-
 /// The scalars of a set string: the ASCII ones as a bit mask, the rest by comparison.
 struct ScalarSet<'a> {
     low: u64,
@@ -1310,74 +1225,6 @@ pub unsafe extern "C-unwind" fn msrt_string_index_any(
             None => 0,
         }
     }
-}
-
-/// How `fields` treats a byte: 0 an ordinary ASCII byte, 1 ASCII White_Space, 2 the start of a
-/// multibyte scalar, which is decoded.
-const FIELD_CLASS: [u8; 256] = {
-    let mut table = [0u8; 256];
-    let mut i = 0;
-    while i < 256 {
-        table[i] = if i >= 0x80 {
-            2
-        } else if i == 32 || (i >= 9 && i <= 13) {
-            1
-        } else {
-            0
-        };
-        i += 1;
-    }
-    table
-};
-
-/// `String.fields`: the runs of text between Unicode White_Space, none empty. A byte below 0x80
-/// is tested directly and only other scalars are decoded, so ordinary text is one byte loop.
-#[unsafe(no_mangle)]
-// ms: leaf domain=string
-pub unsafe extern "C-unwind" fn msrt_string_fields(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        let mut v = EMPTY_VEC;
-        let mut field_start = usize::MAX;
-        let mut i = 0;
-        while i < text.len() {
-            let (space, width) = match FIELD_CLASS[text[i] as usize] {
-                0 => (false, 1),
-                1 => (true, 1),
-                _ => {
-                    let (c, w) = utf8::decode(&text[i..]);
-                    (utf8::is_space(c), w)
-                }
-            };
-            if space {
-                if field_start != usize::MAX {
-                    push_str(&mut v, from_bytes(&text[field_start..i]));
-                    field_start = usize::MAX;
-                }
-            } else if field_start == usize::MAX {
-                field_start = i;
-            }
-            i += width;
-        }
-        if field_start != usize::MAX {
-            push_str(&mut v, from_bytes(&text[field_start..]));
-        }
-        *out = v;
-    }
-}
-
-/// Keep nearby line endings cheap, then scan long lines with the vector byte searcher.
-/// A scalar prefix also avoids vector-search setup for ordinary short lines in a long text.
-#[inline]
-fn find_newline(text: &[u8]) -> Option<usize> {
-    if text.len() <= SHORT_HAY {
-        return text.iter().position(|&c| c == b'\n');
-    }
-    if let Some(at) = text[..SHORT_HAY].iter().position(|&c| c == b'\n') {
-        return Some(at);
-    }
-    memchr(b'\n', &text[SHORT_HAY..]).map(|at| at + SHORT_HAY)
 }
 
 /// Room for the pieces of a split that is read in place: the list borrows it.
@@ -1545,143 +1392,6 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
         *fresh.ptr_word.add(piece.len()) = 0;
         st.cur = fresh;
         st.cap = cap;
-    }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out; 8-byte elements.
-    unsafe {
-        let text = bytes(s);
-        let n = scalar_count(s);
-        let p = if n == 0 {
-            null_mut()
-        } else {
-            alloc::alloc(n * 8)
-        } as *mut i64;
-        if n == text.len() {
-            for (k, &c) in text.iter().enumerate() {
-                *p.add(k) = c as i64;
-            }
-            *out = VecVal {
-                ptr: p as *mut u8,
-                len: n,
-                cap: n,
-            };
-            return;
-        }
-        let (mut i, mut k) = (0, 0);
-        while i < text.len() {
-            let (c, w) = utf8::decode(&text[i..]);
-            *p.add(k) = c as i64;
-            k += 1;
-            i += w;
-        }
-        *out = VecVal {
-            ptr: p as *mut u8,
-            len: n,
-            cap: n,
-        };
-    }
-}
-
-/// `String.from_scalars(values: List[Int])`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_from_scalars(
-    values: *const VecVal,
-    out: *mut StrVal,
-) -> u8 {
-    // SAFETY: caller passes a live list of Int and a writable out.
-    unsafe {
-        let v = &*values;
-        let src = if v.len == 0 {
-            &[][..]
-        } else {
-            core::slice::from_raw_parts(v.ptr as *const i64, v.len)
-        };
-        // All-ASCII is the common case: one OR-reduction proves it (a negative or large value sets a
-        // bit above 0x7F as an unsigned word), and the bytes are then narrowed straight into the result.
-        let ascii = src.iter().fold(0u64, |acc, &n| acc | n as u64) < 0x80;
-        if ascii {
-            if src.len() <= STR_INLINE_MAX {
-                let mut small = [0u8; STR_INLINE_MAX];
-                for (d, &n) in small.iter_mut().zip(src) {
-                    *d = n as u8;
-                }
-                *out = from_bytes(&small[..src.len()]);
-                return STATUS_OK;
-            }
-            let s = alloc_str(src.len());
-            let dst = core::slice::from_raw_parts_mut(s.ptr_word, src.len());
-            for (d, &n) in dst.iter_mut().zip(src) {
-                *d = n as u8;
-            }
-            *out = s.with_ascii();
-            return STATUS_OK;
-        }
-        let mut b = Vec::with_capacity(src.len());
-        let mut tmp = [0u8; 4];
-        for &n in src {
-            if !(0..=0x10FFFF).contains(&n) || (0xD800..=0xDFFF).contains(&n) {
-                return STATUS_INVALID_INPUT;
-            }
-            if n < 0x80 {
-                b.push(n as u8);
-                continue;
-            }
-            let w = utf8::encode(n as u32, &mut tmp);
-            b.extend_from_slice(&tmp[..w]);
-        }
-        *out = from_buf(b);
-        STATUS_OK
-    }
-}
-
-/// `String.to_bytes()`: a Bytes value (VecVal of u8).
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        let p = if text.is_empty() {
-            null_mut()
-        } else {
-            alloc::alloc(text.len())
-        };
-        if !text.is_empty() {
-            core::ptr::copy_nonoverlapping(text.as_ptr(), p, text.len());
-        }
-        *out = VecVal {
-            ptr: p,
-            len: text.len(),
-            cap: text.len(),
-        };
-    }
-}
-
-/// `String.view_bytes()`: the UTF-8 bytes of the text borrowed from the receiver, nothing copied
-/// (`cap == 0` marks a view, which is never freed). Valid while the receiver is neither changed nor
-/// dropped (the borrow check guarantees that). The bytes of an inline text are the receiver's own
-/// storage, which is why the function is declared `borrows`: the backends keep the argument's slot
-/// for the whole function.
-#[unsafe(no_mangle)]
-// ms: leaf pure borrows domain=string
-pub unsafe extern "C-unwind" fn msrt_string_view_bytes(s: *const StrVal, out: *mut VecVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        *out = VecVal {
-            ptr: if text.is_empty() {
-                null_mut()
-            } else {
-                text.as_ptr() as *mut u8
-            },
-            len: text.len(),
-            cap: 0,
-        };
     }
 }
 
@@ -1879,6 +1589,13 @@ pub fn count_copy(kind: usize, bytes: usize) {
 }
 
 #[cfg(test)]
+const EMPTY_VEC: VecVal = VecVal {
+    ptr: null_mut(),
+    len: 0,
+    cap: 0,
+};
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -2046,23 +1763,6 @@ mod tests {
             let mut none = d.alias();
             msrt_string_concat3(&e, &e, &e, &mut none);
             assert_eq!(none.len(), 0);
-        }
-    }
-
-    #[test]
-    fn newline_search_matches_scalar_search_across_the_prefix_boundary() {
-        for len in 0..=129 {
-            let mut text = vec![b'x'; len];
-            assert_eq!(find_newline(&text), None);
-            for at in 0..len {
-                text[at] = b'\n';
-                assert_eq!(
-                    find_newline(&text),
-                    text.iter().position(|&c| c == b'\n'),
-                    "length {len}, newline {at}"
-                );
-                text[at] = b'x';
-            }
         }
     }
 

@@ -78,4 +78,3 @@ pub fn fs_status_pair<T>(
     let both = [source, b" -> ", destination].concat();
     fs_status_at(&both, r, err)
 }
-
