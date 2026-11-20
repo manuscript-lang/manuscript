@@ -2190,375 +2190,432 @@ MS_NODISCARD static bool compound(Parser *p, MsToken start, MsExpr *e, MsStmt *s
     return true;
 }
 
+#define IS(s) str_is(n, s)
+/* A name that is a keyword in another language, written as a statement: reports how to say it in
+ * Manuscript and returns true. */
+static bool report_foreign_keyword(Parser *p, MsToken t, MsStr n) {
+    if (IS("assert")) {
+        fail(p, t, LIT("there is no 'assert': in a test block write 'expect_equal(actual, expected)?' or 'expect_true(condition)?', imported from \"@std/test/test.ms\""));
+        return true;
+    }
+    if (IS("pass")) {
+        fail_fix(p, t, LIT("'pass' is not a keyword; write 'void' for an empty block or match arm"), LIT("void"));
+        return true;
+    }
+    if (IS("const") || IS("val") || IS("final")) {
+        fail(p, t, fmt(p, "'%.*s' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", STR(n)));
+        return true;
+    }
+    if (IS("throw") || IS("raise") || IS("catch")) {
+        fail(p, t, fmt(p, "'%.*s' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", STR(n)));
+        return true;
+    }
+    if (IS("elseif")) {
+        fail(p, t, LIT("'elseif' is not a keyword; write 'else if <condition>:' for a further branch"));
+        return true;
+    }
+    if (IS("elif")) {
+        fail(p, t, LIT("there is no 'elif': write 'else if <condition>:' for a further branch"));
+        return true;
+    }
+    if (IS("def")) {
+        fail(p, t, LIT("there is no 'def': declare a function with 'fn name(a: Int) Int:'"));
+        return true;
+    }
+    if (IS("switch")) {
+        fail(p, t, LIT("'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'else if' for plain values"));
+        return true;
+    }
+    if (IS("except") || IS("finally")) {
+        fail(p, t, fmt(p, "'%.*s' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", STR(n)));
+        return true;
+    }
+    if (IS("loop")) {
+        fail(p, t, LIT("'loop' is not a keyword; write 'while true:' and leave it with 'break'"));
+        return true;
+    }
+    if (IS("foreach")) {
+        fail(p, t, LIT("'foreach' is not a keyword; write 'for item in items:'"));
+        return true;
+    }
+    if (IS("class")) {
+        fail(p, t, LIT("'class' is not a keyword inside a fn; declare a type with 'type Name:' at module level"));
+        return true;
+    }
+    if (IS("del")) {
+        fail(p, t, LIT("'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"));
+        return true;
+    }
+    if (IS("global") || IS("nonlocal")) {
+        fail(p, t, fmt(p, "'%.*s' is not a keyword; a fn sees module constants directly, and mutable state lives in a 'var' or a field passed explicitly", STR(n)));
+        return true;
+    }
+    if (IS("yield")) {
+        fail(p, t, LIT("'yield' is not a keyword; there are no generators, so build a list and return it"));
+        return true;
+    }
+    if (IS("async") || IS("await")) {
+        fail(p, t, fmt(p, "'%.*s' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\"", STR(n)));
+        return true;
+    }
+    if (IS("go")) {
+        fail(p, t, LIT("'go' is not a keyword; start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\": result := promise(fn: work()), then result.wait()"));
+        return true;
+    }
+    return false;
+}
+#undef IS
+
+/* An expression that is not a call, written as a statement where only calls may stand alone. */
+static void report_standalone_expression(Parser *p, MsToken t, const MsExpr *e) {
+    if (e->kind == MS_E_NAME && report_foreign_keyword(p, t, ms_name(p->names, e->u.sym))) {
+        return;
+    }
+    if (kind(p) == MS_T_Comma) {
+        fail(p, t, LIT("a statement cannot start with a comma-separated list of names: write one binding per line ('a := f()'), or destructure one value with '[a, b] := value'"));
+        return;
+    }
+    fail(p, t, LIT("only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function"));
+}
+
+/* `target = value`; an index target becomes the call that sets the element. */
+MS_NODISCARD static bool assignment_statement(Parser *p, MsToken t, MsExpr *e, MsStmt *st) {
+    MsExpr *left, *index;
+    MsExpr *value = NULL;
+    if (index_parts(e, &left, &index)) {
+        if (!expression(p, 0, &value)) return false;
+        st->kind = MS_S_CALL;
+        st->u.expr = index_set(p, e, value, false);
+        return true;
+    }
+    if (!assign_target(p, t, e, st)) return false;
+    if (!expression(p, 0, &value)) return false;
+    st->kind = MS_S_ASSIGN;
+    st->u.assign.value = value;
+    return true;
+}
+
 MS_NODISCARD static bool expression_statement(Parser *p, MsToken t, bool allow_value, MsStmt *st) {
     MsExpr *e = NULL;
     if (!expression(p, 0, &e)) return false;
-    MsExpr *l, *ix;
     if (compound_assignment(p)) {
         if (!compound(p, t, e, st)) return false;
     } else if (take(p, MS_T_Assign)) {
-        if (index_parts(e, &l, &ix)) {
-            MsExpr *value = NULL;
-            if (!expression(p, 0, &value)) return false;
-            st->kind = MS_S_CALL;
-            st->u.expr = index_set(p, e, value, false);
-            if (!end(p)) return false;
-            return true;
-        }
-        if (!assign_target(p, t, e, st)) return false;
-        MsExpr *value = NULL;
-        if (!expression(p, 0, &value)) return false;
-        st->kind = MS_S_ASSIGN;
-        st->u.assign.value = value;
+        if (!assignment_statement(p, t, e, st)) return false;
     } else {
         bool try_call = e->kind == MS_E_UNARY && e->op == MS_U_TRY && e->u.bin.left->kind == MS_E_CALL;
         bool is_call = e->kind == MS_E_CALL || e->kind == MS_E_MATCH || e->kind == MS_E_VOID;
         if (!p->inline_return && !is_call && !try_call && !allow_value) {
-            if (e->kind == MS_E_NAME) {
-                MsStr n = ms_name(p->names, e->u.sym);
-#define IS(s) str_is(n, s)
-                if (IS("assert")) {
-                    fail(p, t, LIT("there is no 'assert': in a test block write 'expect_equal(actual, expected)?' or 'expect_true(condition)?', imported from \"@std/test/test.ms\""));
-                    return false;
-                }
-                if (IS("pass")) {
-                    fail_fix(p, t, LIT("'pass' is not a keyword; write 'void' for an empty block or match arm"), LIT("void"));
-                    return false;
-                }
-                if (IS("const") || IS("val") || IS("final")) {
-                    fail(p, t, fmt(p, "'%.*s' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", STR(n)));
-                    return false;
-                }
-                if (IS("throw") || IS("raise") || IS("catch")) {
-                    fail(p, t, fmt(p, "'%.*s' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", STR(n)));
-                    return false;
-                }
-                if (IS("elseif")) {
-                    fail(p, t, LIT("'elseif' is not a keyword; write 'else if <condition>:' for a further branch"));
-                    return false;
-                }
-                if (IS("elif")) {
-                    fail(p, t, LIT("there is no 'elif': write 'else if <condition>:' for a further branch"));
-                    return false;
-                }
-                if (IS("def")) {
-                    fail(p, t, LIT("there is no 'def': declare a function with 'fn name(a: Int) Int:'"));
-                    return false;
-                }
-                if (IS("switch")) {
-                    fail(p, t, LIT("'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'else if' for plain values"));
-                    return false;
-                }
-                if (IS("except") || IS("finally")) {
-                    fail(p, t, fmt(p, "'%.*s' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", STR(n)));
-                    return false;
-                }
-                if (IS("loop")) {
-                    fail(p, t, LIT("'loop' is not a keyword; write 'while true:' and leave it with 'break'"));
-                    return false;
-                }
-                if (IS("foreach")) {
-                    fail(p, t, LIT("'foreach' is not a keyword; write 'for item in items:'"));
-                    return false;
-                }
-                if (IS("class")) {
-                    fail(p, t, LIT("'class' is not a keyword inside a fn; declare a type with 'type Name:' at module level"));
-                    return false;
-                }
-                if (IS("del")) {
-                    fail(p, t, LIT("'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"));
-                    return false;
-                }
-                if (IS("global") || IS("nonlocal")) {
-                    fail(p, t, fmt(p, "'%.*s' is not a keyword; a fn sees module constants directly, and mutable state lives in a 'var' or a field passed explicitly", STR(n)));
-                    return false;
-                }
-                if (IS("yield")) {
-                    fail(p, t, LIT("'yield' is not a keyword; there are no generators, so build a list and return it"));
-                    return false;
-                }
-                if (IS("async") || IS("await")) {
-                    fail(p, t, fmt(p, "'%.*s' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\"", STR(n)));
-                    return false;
-                }
-                if (IS("go")) {
-                    fail(p, t, LIT("'go' is not a keyword; start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\": result := promise(fn: work()), then result.wait()"));
-                    return false;
-                }
-#undef IS
-            }
-            if (kind(p) == MS_T_Comma) {
-                fail(p, t, LIT("a statement cannot start with a comma-separated list of names: write one binding per line ('a := f()'), or destructure one value with '[a, b] := value'"));
-                return false;
-            }
-            fail(p, t, LIT("only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function"));
+            report_standalone_expression(p, t, e);
             return false;
         }
-        if (p->inline_return) {
-            st->kind = MS_S_RETURN;
-        } else {
-            st->kind = MS_S_CALL;
-        }
+        st->kind = p->inline_return ? MS_S_RETURN : MS_S_CALL;
         st->u.expr = e;
     }
+    return end(p);
+}
+
+/* The statement parsers below each take the statement's first token and a statement `st` that
+ * already holds its position. They set *out to the finished statement, or leave it NULL when the
+ * tokens are not their statement, so the caller tries the next one. */
+
+static bool ends_expression(MsTok k) {
+    return k == MS_T_Newline || k == MS_T_Indent || k == MS_T_Dedent || k == MS_T_Eof ||
+           k == MS_T_Comma || k == MS_T_RParen || k == MS_T_RBracket || k == MS_T_RBrace;
+}
+
+/* `void call()` runs the call and drops its result on purpose: the `_ := call()` binding. */
+MS_NODISCARD static bool void_statement(Parser *p, MsToken t, MsStmt **out) {
+    if (ends_expression((MsTok)ahead(p, 1).kind)) {
+        return true;
+    }
+    p->at++;
+    MsExpr *value = NULL;
+    if (!expression(p, 0, &value)) return false;
     if (!end(p)) return false;
+    MsStmt *s = NEW(p, MsStmt);
+    s->id = new_id(p);
+    uint32_t pattern_id = new_id(p);
+    s->pos = t.pos;
+    s->kind = MS_S_BIND;
+    MsPattern *pt = NEW(p, MsPattern);
+    pt->id = pattern_id;
+    pt->pos = t.pos;
+    pt->kind = MS_P_NAME;
+    pt->u.name = intern(p, "_");
+    s->u.bind.pattern = pt;
+    s->u.bind.value = value;
+    *out = s;
     return true;
 }
 
-MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
-    MsToken t = peek(p);
-    MsPos pos = t.pos;
-    MsStmt st = {0};
-    st.pos = pos;
-    switch (t.kind) {
-    case MS_T_Void: {
-        MsTok k1 = (MsTok)ahead(p, 1).kind;
-        if (k1 == MS_T_Newline || k1 == MS_T_Indent || k1 == MS_T_Dedent || k1 == MS_T_Eof ||
-            k1 == MS_T_Comma || k1 == MS_T_RParen || k1 == MS_T_RBracket || k1 == MS_T_RBrace) {
-            break;
-        }
-        /* `void call()` runs the call and drops its result on purpose: the `_ := call()` binding. */
-        p->at++;
-        MsExpr *value = NULL;
-        if (!expression(p, 0, &value)) return false;
-        if (!end(p)) return false;
-        MsStmt *s = NEW(p, MsStmt);
-        s->id = new_id(p);
-        uint32_t pattern_id = new_id(p);
-        s->pos = pos;
-        s->kind = MS_S_BIND;
-        MsPattern *pt = NEW(p, MsPattern);
-        pt->id = pattern_id;
-        pt->pos = pos;
-        pt->kind = MS_P_NAME;
-        pt->u.name = intern(p, "_");
-        s->u.bind.pattern = pt;
-        s->u.bind.value = value;
-        *out = s;
-        return true;
+static bool starts_binding_target(MsTok k) {
+    return k == MS_T_Name || k == MS_T_Underscore || k == MS_T_LBracket || k == MS_T_LBrace;
+}
+
+/* Reports the removed `let`, which is the current token, with the rewrite that replaces it;
+ * `first` is where the diagnostic points. */
+static void report_removed_let(Parser *p, MsToken first, MsStr message) {
+    MsToken name = ahead(p, 1), eq = ahead(p, 2);
+    if (name.kind == MS_T_Name && eq.kind == MS_T_Assign) {
+        MsStr n = text(p, name);
+        fail_fix_range(p, first, eq, message, fmt(p, "%.*s :=", STR(n)));
+        return;
     }
-    default:
-        break;
-    }
+    fail(p, first, message);
+}
+
+/* Syntax from other languages that was removed: `_ := v` and `let`. Returns true when it
+ * reported one. */
+static bool report_removed_binding(Parser *p, MsToken t) {
     if (t.kind == MS_T_Underscore && ahead(p, 1).kind == MS_T_ColonAssign) {
         fail_fix_range(p, t, ahead(p, 1), LIT("'_ := value' was removed; write 'void value' to run an expression and drop its result on purpose"), LIT("void"));
+        return true;
+    }
+    if (t.kind == MS_T_Name && text_is(p, t, "let") && starts_binding_target((MsTok)ahead(p, 1).kind)) {
+        report_removed_let(p, t, LIT("'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding"));
+        return true;
+    }
+    return false;
+}
+
+MS_NODISCARD static bool var_statement(Parser *p, MsToken t, MsPos pos, MsStmt **out) {
+    p->at++;
+    if (kind(p) == MS_T_LParen) {
+        MsStmts entries = {0};
+        if (!binding_group(p, t, &entries)) return false;
+        p->nqueued = entries.len - 1;
+        p->queued = entries.ptr + 1;
+        *out = entries.ptr[0];
+        return true;
+    }
+    MsStmt *s = NULL;
+    if (!binding(p, true, NULL, pos, &s)) return false;
+    if (!end(p)) return false;
+    *out = s;
+    return true;
+}
+
+/* `fn name(...) Result:` inside a body binds a lambda to the name. */
+MS_NODISCARD static bool local_fn_statement(Parser *p, MsToken t, MsStmt *st, MsStmt **out) {
+    if (!(ahead(p, 1).kind == MS_T_Name && (ahead(p, 2).kind == MS_T_LParen || ahead(p, 2).kind == MS_T_LBracket))) {
+        return true;
+    }
+    p->at++;
+    MsToken name = {0};
+    if (!need_token(p, MS_T_Name, &name)) return false;
+    if (kind(p) == MS_T_LBracket) {
+        fail(p, peek(p), LIT("a local fn cannot take type parameters; declare a generic function at module level"));
         return false;
     }
-    if ((t.kind == MS_T_Name || t.kind == MS_T_Underscore || t.kind == MS_T_LBracket || t.kind == MS_T_LBrace) && binding_ahead(p)) {
-        MsStmt *s = NULL;
-        if (!binding(p, false, NULL, pos, &s)) return false;
-        if (!end(p)) return false;
-        *out = s;
+    MsParams params = {0};
+    if (!parameters(p, true, false, &params)) return false;
+    MsTypeRef *result = NULL;
+    if (!result_type(p, &result)) return false;
+    MsStmts body = {0};
+    if (!statement_suite(p, true, false, &body)) return false;
+    uint32_t pid = new_id(p);
+    MsExpr *value = mk(p, t.pos, MS_E_LAMBDA);
+    value->u.lambda.params = params;
+    value->u.lambda.result = result;
+    value->u.lambda.body = body;
+    MsPattern *pt = NEW(p, MsPattern);
+    pt->id = pid;
+    pt->pos = name.pos;
+    pt->kind = MS_P_NAME;
+    pt->u.name = sym(p, name);
+    st->kind = MS_S_BIND;
+    st->u.bind.pattern = pt;
+    st->u.bind.value = value;
+    *out = finish_stmt(p, st);
+    return true;
+}
+
+MS_NODISCARD static bool return_statement(Parser *p, MsStmt *st, MsStmt **out) {
+    p->at++;
+    MsExpr *value = NULL;
+    MsTok k = kind(p);
+    bool closes_inline = p->inline_statement && (k == MS_T_Comma || k == MS_T_RParen || k == MS_T_RBracket || k == MS_T_RBrace);
+    if (k != MS_T_Newline && !closes_inline) {
+        if (!expression(p, 0, &value)) return false;
+    }
+    if (!end(p)) return false;
+    st->kind = MS_S_RETURN;
+    st->u.expr = value;
+    *out = finish_stmt(p, st);
+    return true;
+}
+
+/* The binding of `if value := optional:` or `if var value = optional:`; none when absent. */
+MS_NODISCARD static bool if_binding(Parser *p, MsToken t, MsPattern **bind, bool *is_mutable) {
+    if (kind(p) == MS_T_Name && text_is(p, peek(p), "let") && starts_binding_target((MsTok)ahead(p, 1).kind)) {
+        report_removed_let(p, peek(p), LIT("'if let' was removed; write 'if value := optional:' (or 'if var value = optional:' for a mutable binding)"));
+        return false;
+    }
+    bool names_binding = (kind(p) == MS_T_Name || kind(p) == MS_T_Underscore) && ahead(p, 1).kind == MS_T_ColonAssign;
+    if (kind(p) != MS_T_Var && !names_binding) {
         return true;
     }
-    if (t.kind == MS_T_Name && text_is(p, t, "let")) {
-        MsTok k1 = (MsTok)ahead(p, 1).kind;
-        if (k1 == MS_T_Name || k1 == MS_T_Underscore || k1 == MS_T_LBracket || k1 == MS_T_LBrace) {
-            MsStr message = LIT("'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding");
-            /* `let x = v` becomes `x := v`; other shapes name the rewrite and get no edit. */
-            MsToken name = ahead(p, 1), eq = ahead(p, 2);
-            if (name.kind == MS_T_Name && eq.kind == MS_T_Assign) {
-                MsStr n = text(p, name);
-                fail_fix_range(p, t, eq, message, fmt(p, "%.*s :=", STR(n)));
-                return false;
-            }
-            fail(p, t, message);
+    *is_mutable = kind(p) == MS_T_Var;
+    if (*is_mutable) {
+        p->at++;
+    }
+    MsPattern *pat = NULL;
+    if (!pattern(p, &pat)) return false;
+    if (pat->kind != MS_P_NAME) {
+        fail(p, t, LIT("an if binding takes one name; write 'if value := optional:' and destructure the value inside the branch"));
+        return false;
+    }
+    if (kind(p) == MS_T_LParen) {
+        fail(p, t, LIT("an if binding unwraps an Optional or Result into one name; it does not match alternative cases. Write 'match value:' with a 'Case(x):' arm, or 'if value := optional:'"));
+        return false;
+    }
+    *bind = pat;
+    return need(p, *is_mutable ? MS_T_Assign : MS_T_ColonAssign);
+}
+
+MS_NODISCARD static bool if_statement(Parser *p, MsToken t, MsStmt *st, MsStmt **out) {
+    p->at++;
+    MsPattern *bind = NULL;
+    bool is_mutable = false;
+    if (!if_binding(p, t, &bind, &is_mutable)) return false;
+    MsExpr *cond = NULL;
+    if (!expression(p, 0, &cond)) return false;
+    MsStmts body = {0};
+    if (!suite(p, &body)) return false;
+    newlines(p);
+    MsStmts else_body = {NULL, 0};
+    if (take(p, MS_T_Else)) {
+        if (kind(p) == MS_T_If) {
+            else_body.ptr = MS_NEW_N(p->arena, MsStmt *, 1);
+            if (!statement(p, false, &else_body.ptr[0])) return false;
+            else_body.len = 1;
+        } else if (!suite(p, &else_body)) {
             return false;
         }
     }
+    st->kind = MS_S_IF;
+    st->u.branch.binding = bind;
+    st->u.branch.is_mutable = is_mutable;
+    st->u.branch.cond = cond;
+    st->u.branch.body = body;
+    st->u.branch.else_body = else_body;
+    *out = finish_stmt(p, st);
+    return true;
+}
+
+MS_NODISCARD static bool while_statement(Parser *p, MsStmt *st, MsStmt **out) {
+    p->at++;
+    MsExpr *cond = NULL;
+    if (!expression(p, 0, &cond)) return false;
+    if (kind(p) == MS_T_ColonAssign) {
+        fail(p, peek(p), LIT("while takes a condition, not a binding; to loop while a value is present write 'while true:', bind it inside with 'if name := value:', and leave with 'else: break'"));
+        return false;
+    }
+    MsStmts body = {0};
+    if (!suite(p, &body)) return false;
+    st->kind = MS_S_WHILE;
+    st->u.loop.cond = cond;
+    st->u.loop.body = body;
+    *out = finish_stmt(p, st);
+    return true;
+}
+
+/* The variable of `for`: a name, or a hidden name when the element is destructured by `*pat`. */
+MS_NODISCARD static bool for_variable(Parser *p, MsSym *name, MsPattern **pat) {
+    if (kind(p) == MS_T_LBracket || kind(p) == MS_T_LBrace) {
+        *name = intern(p, HIDDEN_ITEM);
+        return pattern(p, pat);
+    }
+    MsToken name_token = {0};
+    if (!need_token(p, MS_T_Name, &name_token)) return false;
+    *name = sym(p, name_token);
+    return true;
+}
+
+MS_NODISCARD static bool for_statement(Parser *p, MsStmt *st, MsStmt **out) {
+    p->at++;
+    if (kind(p) == MS_T_LParen) {
+        fail(p, peek(p), LIT("for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count"));
+        return false;
+    }
+    MsSym name = 0;
+    MsPattern *pat = NULL;
+    if (!for_variable(p, &name, &pat)) return false;
+    if (kind(p) == MS_T_Name && text_is(p, peek(p), "of")) {
+        fail(p, peek(p), LIT("for uses 'in', not 'of'; write 'for item in items:'"));
+        return false;
+    }
+    if (kind(p) == MS_T_Comma) {
+        fail(p, peek(p), LIT("for binds one name or one pattern; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value), or destructure each element with 'for [a, b] in pairs:'"));
+        return false;
+    }
+    if (!need(p, MS_T_In)) return false;
+    MsExpr *iter = NULL;
+    if (!expression(p, 0, &iter)) return false;
+    MsStmts body = {0};
+    if (!suite(p, &body)) return false;
+    if (pat != NULL) {
+        MsStmt **with_binding = MS_NEW_N(p->arena, MsStmt *, body.len + 1);
+        with_binding[0] = destructure(p, pat, name);
+        memcpy(with_binding + 1, body.ptr, body.len * sizeof(MsStmt *));
+        body.ptr = with_binding;
+        body.len++;
+    }
+    st->kind = MS_S_FOR;
+    st->u.each.name = name;
+    st->u.each.iter = iter;
+    st->u.each.body = body;
+    *out = finish_stmt(p, st);
+    return true;
+}
+
+/* The statements that start with a keyword; *out stays NULL for any other. */
+MS_NODISCARD static bool keyword_statement(Parser *p, MsToken t, MsStmt *st, MsStmt **out) {
     switch (t.kind) {
-    case MS_T_Var: {
-        p->at++;
-        if (kind(p) == MS_T_LParen) {
-            MsStmts entries = {0};
-            if (!binding_group(p, t, &entries)) return false;
-            MsStmt *first = entries.ptr[0];
-            p->nqueued = entries.len - 1;
-            p->queued = entries.ptr + 1;
-            *out = first;
-            return true;
-        }
-        MsStmt *s = NULL;
-        if (!binding(p, true, NULL, pos, &s)) return false;
-        if (!end(p)) return false;
-        *out = s;
-        return true;
-    }
-    case MS_T_Fn: {
-        if (!(ahead(p, 1).kind == MS_T_Name && (ahead(p, 2).kind == MS_T_LParen || ahead(p, 2).kind == MS_T_LBracket))) {
-            break;
-        }
-        p->at++;
-        MsToken name = {0};
-        if (!need_token(p, MS_T_Name, &name)) return false;
-        if (kind(p) == MS_T_LBracket) {
-            fail(p, peek(p), LIT("a local fn cannot take type parameters; declare a generic function at module level"));
-            return false;
-        }
-        MsParams params = {0};
-        if (!parameters(p, true, false, &params)) return false;
-        MsTypeRef *result = NULL;
-        if (!result_type(p, &result)) return false;
-        MsStmts body = {0};
-        if (!statement_suite(p, true, false, &body)) return false;
-        uint32_t pid = new_id(p);
-        MsExpr *value = mk(p, t.pos, MS_E_LAMBDA);
-        value->u.lambda.params = params;
-        value->u.lambda.result = result;
-        value->u.lambda.body = body;
-        MsPattern *pt = NEW(p, MsPattern);
-        pt->id = pid;
-        pt->pos = name.pos;
-        pt->kind = MS_P_NAME;
-        pt->u.name = sym(p, name);
-        st.kind = MS_S_BIND;
-        st.u.bind.pattern = pt;
-        st.u.bind.value = value;
-        *out = finish_stmt(p, &st);
-        return true;
-    }
-    case MS_T_Return: {
-        p->at++;
-        MsExpr *value = NULL;
-        MsTok k = kind(p);
-        if (k != MS_T_Newline && !(p->inline_statement && (k == MS_T_Comma || k == MS_T_RParen || k == MS_T_RBracket || k == MS_T_RBrace))) {
-            if (!expression(p, 0, &value)) return false;
-        }
-        if (!end(p)) return false;
-        st.kind = MS_S_RETURN;
-        st.u.expr = value;
-        *out = finish_stmt(p, &st);
-        return true;
-    }
+    case MS_T_Void:
+        return void_statement(p, t, out);
+    case MS_T_Var:
+        return var_statement(p, t, st->pos, out);
+    case MS_T_Fn:
+        return local_fn_statement(p, t, st, out);
+    case MS_T_Return:
+        return return_statement(p, st, out);
     case MS_T_Break:
     case MS_T_Continue:
         p->at++;
         if (!end(p)) return false;
-        st.kind = t.kind == MS_T_Break ? MS_S_BREAK : MS_S_CONTINUE;
-        *out = finish_stmt(p, &st);
+        st->kind = t.kind == MS_T_Break ? MS_S_BREAK : MS_S_CONTINUE;
+        *out = finish_stmt(p, st);
         return true;
-    case MS_T_If: {
-        p->at++;
-        MsPattern *bind = NULL;
-        bool is_mutable = false;
-        MsTok k1 = (MsTok)ahead(p, 1).kind;
-        if (kind(p) == MS_T_Name && text_is(p, peek(p), "let") &&
-            (k1 == MS_T_Name || k1 == MS_T_Underscore || k1 == MS_T_LBracket || k1 == MS_T_LBrace)) {
-            MsToken l = peek(p);
-            MsStr message = LIT("'if let' was removed; write 'if value := optional:' (or 'if var value = optional:' for a mutable binding)");
-            MsToken name = ahead(p, 1), eq = ahead(p, 2);
-            if (name.kind == MS_T_Name && eq.kind == MS_T_Assign) {
-                MsStr n = text(p, name);
-                fail_fix_range(p, l, eq, message, fmt(p, "%.*s :=", STR(n)));
-                return false;
-            }
-            fail(p, l, message);
-            return false;
-        }
-        if (kind(p) == MS_T_Var || ((kind(p) == MS_T_Name || kind(p) == MS_T_Underscore) && ahead(p, 1).kind == MS_T_ColonAssign)) {
-            is_mutable = kind(p) == MS_T_Var;
-            if (is_mutable) {
-                p->at++;
-            }
-            MsPattern *pat = NULL;
-            if (!pattern(p, &pat)) return false;
-            if (pat->kind != MS_P_NAME) {
-                fail(p, t, LIT("an if binding takes one name; write 'if value := optional:' and destructure the value inside the branch"));
-                return false;
-            }
-            if (kind(p) == MS_T_LParen) {
-                fail(p, t, LIT("an if binding unwraps an Optional or Result into one name; it does not match alternative cases. Write 'match value:' with a 'Case(x):' arm, or 'if value := optional:'"));
-                return false;
-            }
-            bind = pat;
-            if (!need(p, is_mutable ? MS_T_Assign : MS_T_ColonAssign)) return false;
-        }
-        MsExpr *cond = NULL;
-        if (!expression(p, 0, &cond)) return false;
-        MsStmts body = {0};
-        if (!suite(p, &body)) return false;
-        newlines(p);
-        MsStmts else_body = {NULL, 0};
-        if (take(p, MS_T_Else)) {
-            if (kind(p) == MS_T_If) {
-                else_body.ptr = MS_NEW_N(p->arena, MsStmt *, 1);
-                if (!statement(p, false, &else_body.ptr[0])) return false;
-                else_body.len = 1;
-            } else {
-                if (!suite(p, &else_body)) return false;
-            }
-        }
-        st.kind = MS_S_IF;
-        st.u.branch.binding = bind;
-        st.u.branch.is_mutable = is_mutable;
-        st.u.branch.cond = cond;
-        st.u.branch.body = body;
-        st.u.branch.else_body = else_body;
-        *out = finish_stmt(p, &st);
-        return true;
-    }
-    case MS_T_While: {
-        p->at++;
-        MsExpr *cond = NULL;
-        if (!expression(p, 0, &cond)) return false;
-        if (kind(p) == MS_T_ColonAssign) {
-            fail(p, peek(p), LIT("while takes a condition, not a binding; to loop while a value is present write 'while true:', bind it inside with 'if name := value:', and leave with 'else: break'"));
-            return false;
-        }
-        MsStmts body = {0};
-        if (!suite(p, &body)) return false;
-        st.kind = MS_S_WHILE;
-        st.u.loop.cond = cond;
-        st.u.loop.body = body;
-        *out = finish_stmt(p, &st);
-        return true;
-    }
-    case MS_T_For: {
-        p->at++;
-        if (kind(p) == MS_T_LParen) {
-            fail(p, peek(p), LIT("for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count"));
-            return false;
-        }
-        MsSym name;
-        MsPattern *pat = NULL;
-        if (kind(p) == MS_T_LBracket || kind(p) == MS_T_LBrace) {
-            name = intern(p, HIDDEN_ITEM);
-            if (!pattern(p, &pat)) return false;
-        } else {
-            MsToken name_token = {0};
-            if (!need_token(p, MS_T_Name, &name_token)) return false;
-            name = sym(p, name_token);
-        }
-        if (kind(p) == MS_T_Name && text_is(p, peek(p), "of")) {
-            fail(p, peek(p), LIT("for uses 'in', not 'of'; write 'for item in items:'"));
-            return false;
-        }
-        if (kind(p) == MS_T_Comma) {
-            fail(p, peek(p), LIT("for binds one name or one pattern; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value), or destructure each element with 'for [a, b] in pairs:'"));
-            return false;
-        }
-        if (!need(p, MS_T_In)) return false;
-        MsExpr *iter = NULL;
-        if (!expression(p, 0, &iter)) return false;
-        MsStmts body = {0};
-        if (!suite(p, &body)) return false;
-        if (pat != NULL) {
-            MsStmt **nb = MS_NEW_N(p->arena, MsStmt *, body.len + 1);
-            nb[0] = destructure(p, pat, name);
-            memcpy(nb + 1, body.ptr, body.len * sizeof(MsStmt *));
-            body.ptr = nb;
-            body.len++;
-        }
-        st.kind = MS_S_FOR;
-        st.u.each.name = name;
-        st.u.each.iter = iter;
-        st.u.each.body = body;
-        *out = finish_stmt(p, &st);
-        return true;
-    }
+    case MS_T_If:
+        return if_statement(p, t, st, out);
+    case MS_T_While:
+        return while_statement(p, st, out);
+    case MS_T_For:
+        return for_statement(p, st, out);
     default:
-        break;
+        return true;
     }
+}
+
+MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
+    MsToken t = peek(p);
+    MsStmt st = {0};
+    st.pos = t.pos;
+    *out = NULL;
+    if (report_removed_binding(p, t)) {
+        return false;
+    }
+    if (starts_binding_target((MsTok)t.kind) && binding_ahead(p)) {
+        MsStmt *s = NULL;
+        if (!binding(p, false, NULL, t.pos, &s)) return false;
+        if (!end(p)) return false;
+        *out = s;
+        return true;
+    }
+    if (!keyword_statement(p, t, &st, out)) return false;
+    if (*out != NULL) return true;
     if (!expression_statement(p, t, allow_value, &st)) return false;
     *out = finish_stmt(p, &st);
     return true;
