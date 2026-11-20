@@ -100,6 +100,7 @@ static uint8_t upgrade(const void *handle, MsTlsCtx *context, const char *host, 
 }
 
 uint8_t msstd_conn_start_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     if (msrt_str_len(&options->server_name) == 0 || memchr(msrt_str_data(&options->server_name), 0, msrt_str_len(&options->server_name)) != NULL) {
         return STATUS_INVALID_INPUT;
     }
@@ -122,6 +123,7 @@ uint8_t msstd_conn_start_tls(const void *handle, const MsNetTlsOptions *options,
 }
 
 uint8_t msstd_conn_accept_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     MsTlsCtx *context = NULL;
     const uint8_t built = ms_net_tls_context(1, options, &context);
     if (built != STATUS_OK) {

@@ -9,9 +9,6 @@
 static MsBytes bytes_of_vec(const MsVec *data) { return ms_bytes_of(data->ptr, data->len); }
 
 uint8_t ms_ws_finish(MsWsStatus status, const char *why, MsStr *err) {
-    if (status != MS_WSS_OK) {
-        ms_net_write_text(err, ""); /* the slot is uninitialized stack: every non-OK status leaves a valid string */
-    }
     switch (status) {
     case MS_WSS_OK: return STATUS_OK;
     case MS_WSS_CLOSED: return STATUS_CLOSED;
@@ -56,22 +53,26 @@ void msstd_websocket_subprotocol(const void *handle, MsStr *out) {
 }
 
 uint8_t msstd_websocket_ping_bytes(const void *handle, const MsVec *data, MsStr *err) {
+    ms_net_clear_text(err);
     MsWsSocket *socket = ms_ws_handle_socket(handle);
     return finish_session(socket, ms_ws_socket_ping(socket, bytes_of_vec(data)), err);
 }
 
 uint8_t msstd_websocket_ping(const void *handle, const MsStr *data, MsStr *err) {
+    ms_net_clear_text(err);
     MsWsSocket *socket = ms_ws_handle_socket(handle);
     const MsBytes bytes = ms_bytes_of((const uint8_t *)msrt_str_data(data), msrt_str_len(data));
     return finish_session(socket, ms_ws_socket_ping(socket, bytes), err);
 }
 
 uint8_t msstd_websocket_send_bytes(const void *handle, const MsVec *data, uint8_t text, MsStr *err) {
+    ms_net_clear_text(err);
     MsWsSocket *socket = ms_ws_handle_socket(handle);
     return finish_session(socket, ms_ws_socket_send(socket, bytes_of_vec(data), text != 0, -1), err);
 }
 
 uint8_t msstd_websocket_receive(const void *handle, MsNetWsMessage *out, MsStr *err) {
+    ms_net_clear_text(err);
     MsWsSocket *socket = ms_ws_handle_socket(handle);
     MsWsMessage message = {0};
     bool ended = false;
