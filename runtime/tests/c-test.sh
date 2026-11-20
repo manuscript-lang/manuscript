@@ -8,7 +8,7 @@ mkdir -p "$out"
 flags="-std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include"
 for t in runtime/tests/core_*.c; do
     name=$(basename "$t" .c)
-    cc $flags "$t" runtime/core/*.c -lm -o "$out/$name"
+    cc $flags "$t" runtime/tests/rt_stubs.c runtime/core/*.c -lm -o "$out/$name"
     "$out/$name"
 done
 for t in runtime/tests/std_*.c; do

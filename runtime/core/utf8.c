@@ -76,3 +76,34 @@ size_t ms_utf8_count(const uint8_t *s, size_t n) {
     }
     return n - continuation;
 }
+
+/* The scalar that ends the n > 0 bytes at s, with its width. A tail that is not a whole scalar decodes as one
+ * invalid byte. */
+ms_rune ms_utf8_decode_last(const uint8_t *s, size_t n) {
+    uint8_t b = s[n - 1];
+    if (b < 0x80) {
+        return (ms_rune){b, 1};
+    }
+    size_t lim = n > 4 ? n - 4 : 0;
+    size_t start = n - 1;
+    while (start > lim) {
+        start--;
+        if ((s[start] & 0xC0) != 0x80) {
+            break;
+        }
+    }
+    ms_rune r = ms_utf8_decode(s + start, n - start);
+    if (start + r.width != n) {
+        return (ms_rune){MS_RUNE_ERROR, 1};
+    }
+    return r;
+}
+
+/* Unicode White_Space (what Rust's char::is_whitespace tests). */
+bool ms_utf8_is_space(uint32_t c) {
+    if (c < 0x80) {
+        return c == ' ' || (c >= 9 && c <= 13);
+    }
+    return c == 0x85 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200A) || c == 0x2028 || c == 0x2029 ||
+           c == 0x202F || c == 0x205F || c == 0x3000;
+}

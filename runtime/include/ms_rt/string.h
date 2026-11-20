@@ -43,4 +43,22 @@ int64_t msrt_string_scalar_at_byte(const ms_str *s, int64_t at);
 uint8_t msrt_string_starts_with(const ms_str *a, const ms_str *v);
 uint8_t msrt_string_ends_with(const ms_str *a, const ms_str *v);
 
+/* Builders (runtime/core/strbuild.c). */
+void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);
+void msrt_string_empty(ms_str *out);
+void msrt_string_clone(const ms_str *s, ms_str *out);
+void msrt_str_copy(const uint8_t *ptr, size_t tagged, ms_str *out);
+void msrt_str_free(uint8_t *ptr);
+void msrt_string_free(const ms_str *s);
+void msrt_string_concat(const ms_str *a, const ms_str *b, ms_str *out);
+void msrt_string_concat3(const ms_str *a, const ms_str *b, const ms_str *c, ms_str *out);
+void msrt_string_concat4(const ms_str *a, const ms_str *b, const ms_str *c, const ms_str *d, ms_str *out);
+void msrt_string_concat5(const ms_str *a, const ms_str *b, const ms_str *c, const ms_str *d, const ms_str *e, ms_str *out);
+void msrt_string_concat6(const ms_str *a, const ms_str *b, const ms_str *c, const ms_str *d, const ms_str *e, const ms_str *f, ms_str *out);
+void msrt_string_trim_view(const ms_str *s, ms_str *out);
+void msrt_string_trim_start_view(const ms_str *s, ms_str *out);
+void msrt_string_trim_end_view(const ms_str *s, ms_str *out);
+void msrt_string_slice(const ms_str *s, int64_t start, int64_t end, ms_str *out);
+void msrt_string_view(const ms_str *s, int64_t start, int64_t end, ms_str *out);
+
 #endif

@@ -23,6 +23,12 @@ static inline ms_rune ms_utf8_decode(const uint8_t *s, size_t n) {
     return ms_utf8_decode_multi(s, n);
 }
 
+/* Decodes the scalar that ends the n > 0 bytes at s. */
+ms_rune ms_utf8_decode_last(const uint8_t *s, size_t n);
+
+/* Whether the scalar is Unicode White_Space. */
+bool ms_utf8_is_space(uint32_t c);
+
 /* Number of scalars in valid UTF-8 (an invalid byte still counts for the scalar it starts). */
 size_t ms_utf8_count(const uint8_t *s, size_t n);
 

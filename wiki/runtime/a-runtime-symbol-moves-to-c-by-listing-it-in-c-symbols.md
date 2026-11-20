@@ -6,4 +6,6 @@ Verified (2026-11-20, Linux x86-64): `cargo xtask runtime` compiles `runtime/{sy
 
 Rules: C under `core` and `sys` includes only freestanding headers (`stdint.h`, `stddef.h`, `stdbool.h`) so one source builds for glibc, musl and mingw; a symbol whose state is shared with Rust (the allocator, a table both sides touch) moves together with every Rust reader of that state, never alone, because Rust code inside `ms-rt` calls its own copy directly and would bypass the C one.
 
+When other Rust modules call a symbol that moved (`ffi`, `glue`), declare it in an `extern` block under `#[cfg(ms_c = "<symbol>")]` next to the gated definition so their imports still resolve. A C file that needs the allocator or `msrt_fault` declares the exported symbol locally (headers declare only what C defines) and the unit tests link `runtime/tests/rt_stubs.c` for them, until the allocator moves to C.
+
 Apply when: porting any runtime symbol to C or changing the C build. Evidence: `crates/xtask/src/main.rs` (`add_c_runtime`, `check_c_abi`), `crates/ms-rt/build.rs`, [proposals/c-runtime.md](../../proposals/c-runtime.md). Verify: `cargo xtask symbols --check`, `make c-test`, the conformance corpus on the built archive.
