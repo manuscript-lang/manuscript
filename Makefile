@@ -306,7 +306,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	diff -r target/c-tool/docs.rust/documentation target/c-tool/docs.ms/documentation
 	cmp target/c-tool/static.rust/stdlib.md target/c-tool/docs.ms/website/static/stdlib.md
 	cmp target/c-tool/static.rust/stdlib.json target/c-tool/docs.ms/website/static/stdlib.json
-	"$(RELEASE_MS)" run tools/ms/doc_inventory.ms -- target/c-tool/model.json crates/ms-tooling/data/description_backlog.json target/c-tool/coverage.ms.json
+	"$(RELEASE_MS)" run tools/ms/doc_inventory.ms -- target/c-tool/model.json tools/ms/data/description_backlog.json target/c-tool/coverage.ms.json
 	cmp target/c-tool/coverage.rust.json target/c-tool/coverage.ms.json
 	"$(RELEASE_MS)" test tools/ms/doc_inventory.ms
 	"$(RELEASE_MS)" build tools/ms/search.ms -o target/c-tool/search

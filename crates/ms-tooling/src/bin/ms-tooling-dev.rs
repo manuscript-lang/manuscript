@@ -143,7 +143,7 @@ fn skill_calls(args: &[String]) -> i32 {
         MODULES_END, MODULES_START, block_between, block_of, render, render_modules, splice,
         splice_between,
     };
-    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("data/agent-skill");
+    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tools/ms/data/agent-skill");
     match args.first() {
         Some(mode) if mode == "update" => {
             let path = data.join("references/standard-calls.md");

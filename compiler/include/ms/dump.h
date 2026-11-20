@@ -30,7 +30,7 @@ void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m, const bool *
 /* The functions the C passes checked, each with the diagnostics inside it. */
 void ms_dump_module_ownership(MsBuf *out, const MsCheck *c, MsModId m);
 /* `fn L:C` and the `edge NAME L:C` lines of each checked function and constant, as `c_oracle --effects`. */
-void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m);
+void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m, MsStr text);
 
 /* The module's fact model as JSON (see compiler/src/check/dump_facts.c). */
 void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m);
