@@ -1,7 +1,6 @@
 //! Natives for `@std/net/net.ms`.
 //! ms: domain network
 
-use super::tls::TlsOptionsWire;
 use super::{ConnH, DgramH, IpH, ListenerH, NetH, opt, report};
 use crate::bound::Bound;
 use crate::error::{NetErr, Status as _};
@@ -284,34 +283,6 @@ native! {
     /// Closes the connection when `c` is its last open end; an end that closes first leaves it open for the other.
     fn msstd_net_connection_close_if_last(c: ObjRef<ConnH>) -> () {
         c.close_end();
-    }
-
-    /// `start_tls(connection, options, timeout)`: the TLS connection that replaces `c`.
-    fn msstd_net_connection_start_tls(
-        c: ObjRef<ConnH>,
-        opts: &TlsOptionsWire,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<Object<ConnH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let upgraded = c.start_tls(&opts.to_options(), opt(*has_timeout, timeout));
-        out.write(Object(ConnH(Bound::new(report(upgraded, &err)?))));
-        Ok(())
-    }
-
-    /// `accept_tls(connection, options, timeout)`: the TLS connection that replaces `c`.
-    fn msstd_net_connection_accept_tls(
-        c: ObjRef<ConnH>,
-        opts: &TlsOptionsWire,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<Object<ConnH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let upgraded = c.accept_tls(&opts.to_options(), opt(*has_timeout, timeout));
-        out.write(Object(ConnH(Bound::new(report(upgraded, &err)?))));
-        Ok(())
     }
 
     /// `Connection.local_address()`.
