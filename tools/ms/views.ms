@@ -57,6 +57,9 @@ export type Fact:
 	permits: List[String] = []
 	first: Int = 0
 	last: Int = 0
+	// False when the C checker could not see everything the entity calls: effects,
+	// reach, permits and calls are then empty, not zero.
+	effects_known: Bool = true
 
 // One line of a view: a label and what hangs under it.
 export type Node:
