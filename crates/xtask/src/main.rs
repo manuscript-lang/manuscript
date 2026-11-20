@@ -231,6 +231,7 @@ fn abi_kind(text: &str) -> String {
         ("i32", "int32_t"),
         ("u32", "uint32_t"),
         ("u8", "uint8_t"),
+        ("usize", "size_t"),
         ("f64", "double"),
         ("bool", "bool"),
     ] {
