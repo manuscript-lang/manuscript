@@ -25,6 +25,7 @@ typedef struct MsBody {
     uint32_t loop_depth;    /* loops around the statement being checked */
     uint32_t breaks;        /* `break`s seen for the innermost loop */
     MsBuf written;          /* expression ids whose type this function wrote, to undo them */
+    bool in_constant;       /* checking a module constant's initializer: calls are not allowed there */
     bool supported;         /* false once a construct outside the handled set is met */
 } MsBody;
 

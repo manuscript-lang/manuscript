@@ -213,6 +213,22 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
     own_move_out(w, e, binding);
 }
 
+static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand);
+
+/* A call reads what it calls through (a function value, or a method's receiver) and each
+ * argument; the checker admits only arguments that copy. */
+static void own_call(OwnWalk *w, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    if (callee->kind == MS_E_MEMBER) {
+        own_expr(w, callee->u.member.left, DEMAND_READ);
+    } else if (w->facts->res_kind[callee->id] == MS_RES_BINDING) {
+        own_expr(w, callee, DEMAND_READ);
+    }
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
+    }
+}
+
 static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER:
@@ -232,14 +248,14 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         own_expr(w, e->u.bin.right, DEMAND_READ);
         return;
     case MS_E_MEMBER: own_expr(w, e->u.member.left, DEMAND_READ); return; /* a copied field reads its holder */
+    case MS_E_CALL: own_call(w, e); return;
+    case MS_E_MATCH: own_match(w, e, demand, false); return;
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
-    case MS_E_LAMBDA:
-    case MS_E_CALL:
-    case MS_E_MATCH: own_match(w, e, demand, false); return;
+    case MS_E_LAMBDA: w->supported = false; return; /* closures and collections are not modeled */
     }
 }
 

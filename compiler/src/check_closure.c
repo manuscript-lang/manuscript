@@ -140,11 +140,11 @@ MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     const MsTy outer_result = b->result;
     const uint32_t outer_depth = b->loop_depth, outer_floor = b->lambda_floor;
-    const bool outer_broken = b->loop_broken;
+    const uint32_t outer_breaks = b->breaks;
     const uint32_t first = b->facts->bindings.count;
     b->result = result;
     b->loop_depth = 0;
-    b->loop_broken = false;
+    b->breaks = 0;
     b->lambda_floor = first;
     const MsTyParam *params = ms_ty_params(&b->c->tys, fn);
     for (uint32_t i = 0; i < e->u.lambda.params.len && b->supported; i++) {
@@ -157,7 +157,7 @@ MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     b->result = outer_result;
     b->loop_depth = outer_depth;
-    b->loop_broken = outer_broken;
+    b->breaks = outer_breaks;
     b->lambda_floor = outer_floor;
     return b->supported && complete ? fn : ms_body_unsupported(b);
 }

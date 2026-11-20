@@ -163,6 +163,9 @@ static MsTy body_name(MsBody *b, const MsExpr *e) {
  * parameter, each the parameter's type. The callee's own body is checked on its own; a callee the
  * lowering cannot handle fails the callers there. */
 static MsTy body_call(MsBody *b, const MsExpr *e) {
+    if (b->in_constant) {
+        return ms_body_unsupported(b); /* the Rust checker reports a call in a constant */
+    }
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
         return ms_body_method_call(b, e);
@@ -646,9 +649,11 @@ static void body_check_constant(MsBody *b, const MsDecl *d) {
     b->supported = true;
     MsTy expected = MS_TY_NONE;
     if (d->u.konst.ty != NULL) {
-        expected = body_annotation(b, d->u.konst.ty);
+        expected = ms_body_annotation(b, d->u.konst.ty);
     }
+    b->in_constant = true;
     const MsTy ty = b->supported ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
+    b->in_constant = false;
     if (b->supported && body_is_value_type(b, ty)) {
         b->facts->body_checked[d->id] = true;
     } else {
