@@ -728,7 +728,7 @@ impl CRuntime {
     /// Whether `runtime/std/<name>` is part of the archive.
     fn has_std_source(&self, root: &Path, name: &str) -> bool {
         let wanted = root.join("runtime/std").join(name);
-        self.sources.iter().any(|s| *s == wanted)
+        self.sources.contains(&wanted)
     }
 
     /// Whether the libuv reactor (`runtime/io`) is part of the archive; `ms-rt` then leaves its mio poller out.
