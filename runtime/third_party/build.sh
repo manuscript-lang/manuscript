@@ -11,10 +11,12 @@ triple=${1:-host}
 root=$repository/target/c-libs
 src=$root/src
 cc=${CC:-cc}
+mode=${MS_C_LIBS:-system}
+case "$mode" in system|pinned) ;; *) echo "MS_C_LIBS must be system or pinned, not $mode" >&2; exit 1 ;; esac
 # One build for every dependency. The output folder is named by a hash of everything that decides its contents
 # (pins, this script, the triple, the compilers), so a CI cache keyed on `key` restores it whole and a change to any
 # input starts a clean build of all of them.
-hash_input() { cat "$repository/runtime/third_party/c-libs.lock" "$repository/runtime/third_party/build.sh"; find "$repository/runtime/third_party/llhttp" "$repository/runtime/third_party/qbe" -type f | sort | xargs cat; printf '%s\n%s\n' "$triple" "$("$cc" --version | head -1)"; }
+hash_input() { cat "$repository/runtime/third_party/c-libs.lock" "$repository/runtime/third_party/build.sh"; find "$repository/runtime/third_party/llhttp" "$repository/runtime/third_party/qbe" -type f | sort | xargs cat; printf '%s\n%s\n%s\n' "$triple" "$("$cc" --version | head -1)" "$mode"; }
 key=$(hash_input | if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -c1-16)
 if [ "${1:-}" = key ]; then echo "$key"; exit 0; fi
 out=$root/$triple-$mode-$key
