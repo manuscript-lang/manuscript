@@ -54,9 +54,9 @@ foreach(source ${_sources})
   if(_needs AND NOT MS_LIBS_WIRED)
     continue()
   endif()
-  # The libuv reactor replaces the mio poller. It joins the glibc Linux and the Windows archives; musl and macOS
-  # keep mio until their builds are proven (workstream W5).
-  if(_rel MATCHES "^io/" AND NOT MS_GLIBC AND NOT MS_WINDOWS)
+  # The libuv reactor replaces the mio poller. It joins the glibc Linux, macOS and Windows archives; musl keeps
+  # mio until its build is proven (workstream W5).
+  if(_rel MATCHES "^io/" AND NOT MS_GLIBC AND NOT MS_WINDOWS AND NOT APPLE)
     continue()
   endif()
   list(APPEND _selected "${source}")
