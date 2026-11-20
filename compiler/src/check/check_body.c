@@ -43,16 +43,35 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE);
 }
 
-/* A `type`, `enum` or interface without type parameters. */
+static bool body_is_admitted(const MsBody *b, MsTy ty);
+
+/* A `type`, `enum` or interface the program declares, whose type arguments (if it has any) are
+ * themselves admitted. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, ty);
     const uint32_t def = tys->def[ty];
-    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT) || tys->nargs[ty] != 0 || def == 0) {
+    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT) || def == 0) {
         return false;
     }
     const MsSymId sym = def - 1;
-    return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
+    if (sym >= b->c->syms.count || b->c->syms.kind[sym] != MS_SYM_TYPE) {
+        return false;
+    }
+    // An argument that must meet a bound (`K: Hashable`) is checked against it by the Rust checker.
+    if (tys->nargs[ty] == 0) {
+        return true;
+    }
+    const MsDef *definition = ms_def(b->c, sym);
+    if (definition == NULL || definition->nvars < tys->nargs[ty]) {
+        return false;
+    }
+    for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
+        if (!body_is_admitted(b, ms_ty_args(tys, ty)[i]) || ms_var_info(b->c, definition->vars[i])->nbounds != 0) {
+            return false;
+        }
+    }
+    return true;
 }
 
 static bool body_text_is(const MsBody *b, MsSym name, const char *text);
@@ -704,18 +723,20 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
 /* `local.field` where the local holds a record this module declares and the field is a Copy
  * primitive (Int, Float, Bool): the field's type. Anything else a member can be (a method, a case, a module path)
  * is not checked yet. */
-static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver);
+typedef enum { MEMBER_READ, MEMBER_RECEIVER, MEMBER_STORE } MemberUse;
 
-static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e, false); }
+static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use);
+
+static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e, MEMBER_READ); }
 
 /* A field is read as the receiver of another member when it is a record this module declares:
  * only the path matters, nothing is borrowed or moved out of the holder. */
-static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver) {
+static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     const MsExpr *receiver = e->u.member.left;
     if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER) {
         return ms_body_unsupported(b);
     }
-    const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, true))
+    const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, MEMBER_RECEIVER))
                                                       : ms_body_expr(b, receiver, MS_TY_NONE);
     if (record == MS_TY_NONE) {
         return MS_TY_NONE;
@@ -730,8 +751,8 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver) {
             continue;
         }
         const MsTy field = def->fields[i].ty;
-        const bool path = as_receiver && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
-        if (!path && (!body_is_value_type(b, field) || field == b->string_ty)) {
+        const bool path = use == MEMBER_RECEIVER && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
+        if (!path && use != MEMBER_STORE && (!body_is_value_type(b, field) || field == b->string_ty)) {
             break; /* reading a String field borrows or moves it out of its holder */
         }
         b->facts->res_kind[e->id] = MS_RES_FIELD;
@@ -940,7 +961,9 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
-    if (!body_is_value_type(b, ty) || b->c->syms.decl[sym] != NULL) {
+    const bool primitive = body_is_value_type(b, ty) && b->c->syms.decl[sym] == NULL;
+    const bool declared = ty != MS_TY_NONE && body_is_own_nominal(b, ty) && body_is_admitted(b, ty);
+    if (!primitive && !declared) {
         return ms_body_unsupported(b);
     }
     b->facts->type_ref_ty[t->id] = ty;
@@ -1028,7 +1051,7 @@ static void body_assign_field(MsBody *b, const MsStmt *s) {
         (void)ms_body_unsupported(b);
         return;
     }
-    const MsTy field = ms_body_record(b, target->id, body_member(b, target));
+    const MsTy field = ms_body_record(b, target->id, body_member_of(b, target, MEMBER_STORE));
     if (field == MS_TY_NONE || ms_body_expr(b, s->u.assign.value, field) == MS_TY_NONE) {
         (void)ms_body_unsupported(b);
         return;
@@ -1491,12 +1514,18 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->param_consumed = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->param_consumed, 0, nodes * sizeof *facts->param_consumed);
     facts->ret_borrowed = MS_NEW_N(arena, bool, nodes);
     memset(facts->ret_borrowed, 0, nodes * sizeof *facts->ret_borrowed);
     facts->const_use = MS_NEW_N(arena, bool, nodes);
     memset(facts->const_use, 0, nodes * sizeof *facts->const_use);
     facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->call_callee, 0xff, nodes * sizeof *facts->call_callee);
+    facts->call_owned_borrow = MS_NEW_N(arena, uint8_t, nodes);
+    facts->call_owned_param = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->call_owned_borrow, 0, nodes * sizeof *facts->call_owned_borrow);
+    memset(facts->call_owned_param, 0, nodes * sizeof *facts->call_owned_param);
     facts->call_method = MS_NEW_N(arena, uint32_t, nodes);
     facts->call_receiver = MS_NEW_N(arena, MsTy, nodes);
     facts->call_interface = MS_NEW_N(arena, MsTy, nodes);

@@ -1081,13 +1081,17 @@ pub fn capture_frames() -> Vec<usize> {
 /// The source frames of `captured`, the return addresses a task was started from.
 #[cfg(not(test))]
 fn started_frames(captured: &[usize]) -> Frames {
-    collect_with(|_, visit, _| {
+    let mut frames = collect_with(|_, visit, _| {
         for &ret in captured {
             if !visit(ret) {
                 break;
             }
         }
-    })
+    });
+    // The capture begins inside the standard library's `promise`; the report names where the program started the task.
+    let skip = frames.list.iter().take_while(|f| f.file.starts_with("@std/")).count();
+    frames.list.drain(..skip);
+    frames
 }
 
 /// The source frames found from `fp`.
