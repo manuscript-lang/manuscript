@@ -8,7 +8,7 @@ runtime/
   sys/           per-OS code: linux, darwin, windows (to come)
   core/          alloc, task, sched, fault, string, vec, map, promise, pipe (to come)
   io/            reactor on libuv (to come)
-  net/           http1 (llhttp), http2 (nghttp2), tls (OpenSSL), websocket (to come)
+  net/           http1 (llhttp) done; http2 (nghttp2), tls (OpenSSL), websocket to come
   std/           natives per stdlib module (to come)
   third_party/   pinned dependencies and the one build for all of them
   tests/         smoke programs and, later, unit tests
