@@ -1,0 +1,43 @@
+module "t"
+entry @main
+extern @msrt_promise_start(int) -> int spawns_task
+extern @msrt_task_sleep(int) -> int
+extern @msrt_string_eq(str, str) -> bool string_eq
+
+extern @msrt_print_int(int) -> void
+extern @msrt_shield_enter()
+extern @msrt_shield_exit()
+fn @close(%slot: ptr) -> void {
+b0:
+  %n: int = iconst 1
+  %u: void = call.rt @msrt_print_int (%n)
+  ret %u
+}
+fn @takes(%slot: ptr) -> void {
+b0:
+  %s: str = take str %slot
+  drop %s
+  %n: int = iconst 1
+  %u: void = call.rt @msrt_print_int (%n)
+  ret %u
+}
+
+fn @main() -> int {
+b0:
+  %s: str = str "held"
+  %t: str = clone %s
+  %slot: ptr = slot str
+  put %slot, %t
+  %e: void = call.rt @msrt_shield_enter ()
+  %k: void = call @close (%slot)
+  br b1()
+b1():
+  %j: void = call @close (%slot)
+  br b2()
+b2():
+  %x: void = call.rt @msrt_shield_exit ()
+  %back: str = take str %slot
+  drop %back
+  %r: int = iconst 0
+  ret %r
+}

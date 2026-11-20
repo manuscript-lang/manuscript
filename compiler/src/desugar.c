@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "ms/desugar.h"
+#include "ms/hints.h"
 #include "ms/text.h"
 
 static const char *const builtin_scalars[] = {
@@ -43,8 +44,6 @@ static MsStr arena_copy(MsArena *arena, const MsBuf *buf) {
     char *text = ms_arena_strndup(arena, buf->data == NULL ? "" : buf->data, buf->len);
     return (MsStr){text, (uint32_t)buf->len};
 }
-
-static bool str_equal(MsStr a, MsStr b) { return a.len == b.len && memcmp(a.ptr, b.ptr, a.len) == 0; }
 
 static void put_buf(MsBuf *out, const MsBuf *text) {
     if (text->len > 0) {
@@ -350,10 +349,10 @@ static MsBuf property_markers(MsStr source, uint32_t offset) {
             break;
         }
         MsStr text = ms_text_trim(ms_text_drop_front(line, 2));
-        if (str_equal(text, (MsStr){"ms: data", 8})) {
+        if (ms_str_equal(text, (MsStr){"ms: data", 8})) {
             MS_VEC_PUSH(found, const char *, "Data");
         }
-        if (str_equal(text, (MsStr){"ms: clonable", 12})) {
+        if (ms_str_equal(text, (MsStr){"ms: clonable", 12})) {
             MS_VEC_PUSH(found, const char *, "Clonable");
         }
         end = start;
@@ -427,7 +426,7 @@ static void append_methods(Form *form, const MsDecl *impl) {
 static size_t find_form(MsBuf *forms, MsSym type, MsStr key) {
     for (size_t i = 0; i < MS_VEC_LEN(*forms, Form); i++) {
         const Form *form = form_at(forms, i);
-        if (form->type == type && str_equal(form->key, key)) {
+        if (form->type == type && ms_str_equal(form->key, key)) {
             return i;
         }
     }
@@ -595,7 +594,7 @@ static void report_overlaps(Desugar *d, MsBuf *forms, const TypeTable *types) {
         const TypeInfo *info = type_table_find(types, a->type);
         for (size_t y = x + 1; y < count; y++) {
             const Form *b = form_at(forms, y);
-            if (b->type != a->type || !str_equal(a->bounds, b->bounds)) {
+            if (b->type != a->type || !ms_str_equal(a->bounds, b->bounds)) {
                 continue;
             }
             if (!forms_overlap(d, a->receiver, b->receiver, info->params)) {

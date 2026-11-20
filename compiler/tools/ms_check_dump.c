@@ -14,6 +14,7 @@
 #include "ms/ownership.h"
 #include "ms/parse.h"
 #include "ms/stdlib.h"
+#include "dump_io.h"
 
 static MsStdFile *files;
 static uint32_t nfiles, cap;
@@ -48,11 +49,6 @@ static bool only_std_imports(const MsModule *module) {
         }
     }
     return true;
-}
-
-static bool ends_with(const char *s, const char *suffix) {
-    size_t a = strlen(s), b = strlen(suffix);
-    return a >= b && strcmp(s + a - b, suffix) == 0;
 }
 
 /* Prints the name-resolution diagnostics of each file as `path:line:col: message`, the form

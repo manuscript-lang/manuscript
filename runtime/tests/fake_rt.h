@@ -12,6 +12,7 @@
 
 const MsTypeDesc msrt_desc_int = {.size = 8, .align = 8, .kind = 0};
 const MsTypeDesc msrt_desc_string = {.size = 16, .align = 8, .kind = MS_TYPE_KIND_STRING};
+const MsTypeDesc msrt_desc_bytes = {.size = 24, .align = 8, .kind = MS_TYPE_KIND_LIST};
 uint8_t msrt_ascii_chars[128][2];
 
 /* Entry b of the one-byte ASCII string table is {b, 0}, as the Rust runtime defines it. */

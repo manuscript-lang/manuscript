@@ -12,18 +12,13 @@
 #include <sys/stat.h>
 
 #include "ms/stdlib.h"
+#include "dump_io.h"
 #include "read_file.h"
 
 typedef struct StdFiles {
     MsStdFile *items;
     uint32_t count, cap;
 } StdFiles;
-
-static bool ends_with(const char *s, const char *suffix) {
-    size_t a = strlen(s);
-    size_t b = strlen(suffix);
-    return a >= b && strcmp(s + a - b, suffix) == 0;
-}
 
 static bool add_std_file(StdFiles *files, const char *dir, const char *rel, const char *name) {
     char path[4096];

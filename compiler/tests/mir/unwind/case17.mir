@@ -1,0 +1,12 @@
+module "t"
+entry @main
+extern @msrt_promise_start(int) -> int spawns_task
+extern @msrt_task_sleep(int) -> int
+extern @msrt_string_eq(str, str) -> bool string_eq
+
+fn @main() -> int {
+b0:
+  %s: str = str "held"
+  %t: str = clone %s
+  fault index_out_of_range
+}

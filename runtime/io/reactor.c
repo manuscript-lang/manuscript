@@ -45,7 +45,9 @@ struct MsIoReactor {
     MsIoRow **rows; /* owned; by descriptor, null where none */
     size_t rows_length;
     MsIoRow *free_rows; /* owned; closed rows ready for reuse */
-    MsIoRing *ring; /* owned */
+    MsIoRing *ring;        /* owned; readiness of watched descriptors */
+    MsIoRing *completions; /* owned; finished work and resolutions */
+    uint32_t pending;      /* submitted completions not yet pushed */
     bool woken; /* a wake-up was consumed since the wait began */
     void *platform; /* owned by the platform file (runtime/io/windows), NULL elsewhere */
 };
@@ -176,7 +178,7 @@ static void reactor_destroy(MsIoReactor *reactor) {
         uv_close((uv_handle_t *)&reactor->timer, NULL);
     }
     while (uv_loop_close(&reactor->loop) == UV_EBUSY) {
-        (void)uv_run(&reactor->loop, UV_RUN_NOWAIT);
+        (void)uv_run(&reactor->loop, UV_RUN_DEFAULT); /* waits for work still on the thread pool */
     }
     for (MsIoRow *row = reactor->free_rows; row != NULL;) {
         MsIoRow *next = row->next_free;
@@ -185,6 +187,7 @@ static void reactor_destroy(MsIoReactor *reactor) {
     }
     ms_sys_free(reactor->rows);
     ms_io_ring_free(reactor->ring);
+    ms_io_ring_free(reactor->completions);
     ms_sys_free(reactor);
 }
 
@@ -195,8 +198,10 @@ bool ms_io_open(bool is_main, MsIoReactor **reactor_out) {
     }
     *reactor = (MsIoReactor){0};
     reactor->ring = ms_io_ring_new(EVENT_CAPACITY);
-    if (reactor->ring == NULL || uv_loop_init(&reactor->loop) != 0) {
+    reactor->completions = ms_io_ring_new(MS_IO_MAX_COMPLETIONS);
+    if (reactor->ring == NULL || reactor->completions == NULL || uv_loop_init(&reactor->loop) != 0) {
         ms_io_ring_free(reactor->ring);
+        ms_io_ring_free(reactor->completions);
         ms_sys_free(reactor);
         return false;
     }
@@ -371,7 +376,7 @@ static void run_bounded(MsIoReactor *reactor, int64_t timeout_ns) {
     /* libuv adds new descriptors to the system poller only inside uv_run, so a pass that does not block comes
      * first: it registers them and collects what is already ready. */
     (void)uv_run(&reactor->loop, UV_RUN_NOWAIT);
-    if (ms_io_ring_length(reactor->ring) > 0 || reactor->woken) {
+    if (ms_io_ring_length(reactor->ring) > 0 || ms_io_ring_length(reactor->completions) > 0 || reactor->woken) {
         return;
     }
 #ifdef _WIN32
@@ -421,7 +426,7 @@ bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *cou
 #ifdef _WIN32
     ms_io_windows_flush(reactor);
 #endif
-    if (timeout_ns == 0 || ms_io_ring_length(reactor->ring) > 0) {
+    if (timeout_ns == 0 || ms_io_ring_length(reactor->ring) > 0 || ms_io_ring_length(reactor->completions) > 0) {
         (void)uv_run(&reactor->loop, UV_RUN_NOWAIT); /* events left from an earlier wait are ready now */
     } else if (timeout_ns > 0) {
         run_bounded(reactor, timeout_ns);
@@ -430,4 +435,125 @@ bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *cou
     }
     *count = drain_events(reactor, out, capacity);
     return true;
+}
+
+/* Reserves room for one completion; false when MS_IO_MAX_COMPLETIONS are outstanding. */
+static bool completion_reserve(MsIoReactor *reactor) {
+    if (reactor->pending + ms_io_ring_length(reactor->completions) >= MS_IO_MAX_COMPLETIONS) {
+        return false;
+    }
+    reactor->pending++;
+    return true;
+}
+
+/* Ends a reserved completion. The reservation guarantees the ring has room. */
+static void completion_push(MsIoReactor *reactor, MsIoEvent event) {
+    reactor->pending--;
+    (void)ms_io_ring_push(reactor->completions, event);
+}
+
+typedef struct {
+    uv_work_t request;
+    MsIoWorkFn function;
+    void *argument;
+    uint64_t id;
+    int32_t result;
+} MsIoWorkRequest;
+
+static void on_work(uv_work_t *request) {
+    MsIoWorkRequest *work = request->data;
+    work->result = work->function(work->argument);
+}
+
+static void on_work_done(uv_work_t *request, int status) {
+    MsIoWorkRequest *work = request->data;
+    MsIoReactor *reactor = uv_loop_get_data(request->loop);
+    const int32_t result = status < 0 ? status : work->result;
+    completion_push(reactor, (MsIoEvent){.id = work->id, .result = result, .kind = MS_IO_WORK});
+    ms_sys_free(work);
+}
+
+bool ms_io_work(MsIoWorkFn work, void *argument, uint64_t id) {
+    MsIoReactor *reactor = thread_reactor;
+    if (reactor == NULL || !completion_reserve(reactor)) {
+        return false;
+    }
+    MsIoWorkRequest *request = ms_sys_malloc(sizeof *request);
+    if (request == NULL) {
+        reactor->pending--;
+        return false;
+    }
+    *request = (MsIoWorkRequest){.function = work, .argument = argument, .id = id};
+    request->request.data = request;
+    if (uv_queue_work(&reactor->loop, &request->request, on_work, on_work_done) != 0) {
+        reactor->pending--;
+        ms_sys_free(request);
+        return false;
+    }
+    return true;
+}
+
+struct MsIoAddresses {
+    uv_getaddrinfo_t request;
+    uint64_t id;
+};
+
+static void on_resolved(uv_getaddrinfo_t *request, int status, struct addrinfo *list) {
+    (void)list; /* stays in request->addrinfo until ms_io_addresses_free */
+    const MsIoAddresses *addresses = request->data;
+    MsIoReactor *reactor = uv_loop_get_data(request->loop);
+    completion_push(reactor, (MsIoEvent){.id = addresses->id, .result = status, .kind = MS_IO_RESOLVE});
+}
+
+bool ms_io_resolve(const char *host, const char *service, uint64_t id, MsIoAddresses **out) {
+    MsIoReactor *reactor = thread_reactor;
+    if (reactor == NULL || !completion_reserve(reactor)) {
+        return false;
+    }
+    MsIoAddresses *addresses = ms_sys_malloc(sizeof *addresses);
+    if (addresses == NULL) {
+        reactor->pending--;
+        return false;
+    }
+    *addresses = (MsIoAddresses){.id = id};
+    addresses->request.data = addresses;
+    const struct addrinfo hints = {.ai_socktype = SOCK_STREAM};
+    if (uv_getaddrinfo(&reactor->loop, &addresses->request, on_resolved, host, service, &hints) != 0) {
+        reactor->pending--;
+        ms_sys_free(addresses);
+        return false;
+    }
+    *out = addresses;
+    return true;
+}
+
+size_t ms_io_addresses_count(const MsIoAddresses *addresses) {
+    size_t count = 0;
+    for (const struct addrinfo *entry = addresses->request.addrinfo; entry != NULL; entry = entry->ai_next) {
+        count++;
+    }
+    return count;
+}
+
+bool ms_io_addresses_at(const MsIoAddresses *addresses, size_t index, MsIoAddress *out) {
+    const struct addrinfo *entry = addresses->request.addrinfo;
+    for (; entry != NULL && index > 0; index--) {
+        entry = entry->ai_next;
+    }
+    if (entry == NULL || entry->ai_addrlen > sizeof out->socket_address) {
+        return false;
+    }
+    *out = (MsIoAddress){.family = entry->ai_family, .length = (uint32_t)entry->ai_addrlen};
+    const MsBytes source = ms_bytes_of((const uint8_t *)entry->ai_addr, entry->ai_addrlen);
+    return ms_bytes_copy(ms_bytes_mut(out->socket_address, sizeof out->socket_address), source);
+}
+
+void ms_io_addresses_free(MsIoAddresses *addresses) {
+    uv_freeaddrinfo(addresses->request.addrinfo);
+    ms_sys_free(addresses);
+}
+
+bool ms_io_completion(MsIoEvent *event) {
+    MsIoReactor *reactor = thread_reactor;
+    return reactor != NULL && ms_io_ring_pop(reactor->completions, event);
 }

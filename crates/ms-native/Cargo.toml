@@ -19,7 +19,6 @@ ms-std-bigint = { path = "../ms-std-bigint" }
 ms-std-decimal = { path = "../ms-std-decimal" }
 ms-std-core = { path = "../ms-std-core" }
 ms-std-fs = { path = "../ms-std-fs" }
-ms-std-io = { path = "../ms-std-io" }
 ms-std-json = { path = "../ms-std-json" }
 ms-std-net = { path = "../ms-std-net" }
 ms-std-process = { path = "../ms-std-process" }

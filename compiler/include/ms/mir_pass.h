@@ -54,6 +54,11 @@ bool mir_expand(MirModule *m, bool checks);
 bool mir_expand_owned_needed(const MirModule *m);
 bool mir_expand_owned(MirModule *m);
 
+/* unwind: registers a cleanup for every owned value live across an instruction that can reach a
+ * cancellation point or fault, so a cancelled or faulted task releases what its frames own. Only
+ * on modules that start tasks. */
+bool mir_unwind(MirModule *m);
+
 /* cancel_edges: after every call that can park, test the task's `unwinding` byte and leave the
  * function through one cancel exit that runs the registered cleanups. Only on modules that start
  * tasks; the caller decides whether edges are switched on (`MS_CANCEL_EDGES`). */

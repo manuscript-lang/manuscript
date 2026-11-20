@@ -53,6 +53,7 @@ struct MsTypeDesc {
 /* The builtin descriptors of an Int and of a String element. */
 extern const MsTypeDesc msrt_desc_int;
 extern const MsTypeDesc msrt_desc_string;
+extern const MsTypeDesc msrt_desc_bytes;
 
 /* The runtime's list functions: a descriptor says how an element is stored. Push takes ownership of the element. */
 void msrt_list_with_capacity(const MsTypeDesc *desc, int64_t cap, MsVec *out);
