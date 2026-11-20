@@ -3,6 +3,7 @@
 #define _POSIX_C_SOURCE 200809L /* lstat, readlink; libms.c defines it first for the whole unit */
 #endif
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -21,7 +22,11 @@ void ms_project_error_path(MsProjectError *err, MsArena *a, const char *op, cons
 
 /* The Go (`syscall.Errno`) message for an errno: lower-case first letter, no `(os error N)`. */
 static const char *errno_message(MsArena *a, int err_no) {
-    char *text = ms_arena_strndup(a, strerror(err_no), strlen(strerror(err_no)));
+    char message[128] = "unknown error";
+    if (strerror_r(err_no, message, sizeof message) != 0) {
+        snprintf(message, sizeof message, "errno %d", err_no);
+    }
+    char *text = ms_arena_strndup(a, message, strlen(message));
     if (text[0] >= 'A' && text[0] <= 'Z') {
         text[0] = (char)(text[0] - 'A' + 'a');
     }
@@ -101,9 +106,7 @@ const char *ms_path_clean(MsArena *a, const char *path) {
                 out[used++] = '.';
             }
         } else {
-            if (used > 0 && out[used - 1] != '/') {
-                out[used++] = '/';
-            } else if (used == 0 && rooted) {
+            if (used > 0 ? out[used - 1] != '/' : rooted) {
                 out[used++] = '/';
             }
             memcpy(out + used, part, n);
@@ -262,111 +265,126 @@ fail:
 
 enum { MAX_LINKS = 255 };
 
+/* The walk of ms_path_eval_symlinks: `dest` is the resolved prefix, `path` what is left to resolve. */
+typedef struct SymlinkWalk {
+    MsBuf path, dest;
+    size_t vol;   /* 1 for a rooted path */
+    size_t start; /* next unread byte of `path` */
+    int links;
+} SymlinkWalk;
+
 /* The last separator of dest[vol..], or -1. */
-static ptrdiff_t last_separator(const char *dest, size_t used, size_t vol) {
-    ptrdiff_t r = (ptrdiff_t)used - 1;
-    while (r >= (ptrdiff_t)vol && dest[r] != '/') {
+static ptrdiff_t last_separator(const SymlinkWalk *w) {
+    ptrdiff_t r = (ptrdiff_t)w->dest.len - 1;
+    while (r >= (ptrdiff_t)w->vol && w->dest.data[r] != '/') {
         r--;
     }
     return r;
 }
 
+/* `..`: drops the last resolved component, or keeps the `..` when there is none to drop. */
+static void walk_parent(SymlinkWalk *w) {
+    const ptrdiff_t r = last_separator(w);
+    const size_t last = r < (ptrdiff_t)w->vol ? w->vol : (size_t)r + 1;
+    const bool at_dotdot = w->dest.len - last == 2 && w->dest.data[last] == '.' && w->dest.data[last + 1] == '.';
+    if (r < (ptrdiff_t)w->vol || at_dotdot) {
+        if (w->dest.len > w->vol) {
+            ms_buf_putc(&w->dest, '/');
+        }
+        ms_buf_puts(&w->dest, "..");
+    } else {
+        w->dest.len = (size_t)r;
+    }
+}
+
+/* Replaces the link just resolved (the last component of dest, ending at path[end]) by its target. */
+static bool walk_follow(SymlinkWalk *w, MsArena *a, size_t end, MsProjectError *err) {
+    if (++w->links > MAX_LINKS) {
+        ms_project_error_message(err, "EvalSymlinks: too many links");
+        return false;
+    }
+    char target[4096];
+    const ssize_t length = readlink(w->dest.data, target, sizeof target - 1);
+    if (length < 0) {
+        ms_project_error_path(err, a, "readlink", w->dest.data, errno);
+        return false;
+    }
+    MsBuf next = {0};
+    ms_buf_put(&next, target, (size_t)length);
+    ms_buf_put(&next, w->path.data + end, w->path.len - end);
+    ms_buf_free(&w->path);
+    w->path = next;
+    if (target[0] == '/') {
+        w->dest.len = 0;
+        ms_buf_putc(&w->dest, '/');
+    } else {
+        const ptrdiff_t r = last_separator(w);
+        w->dest.len = r < (ptrdiff_t)w->vol ? w->vol : (size_t)r;
+    }
+    w->start = 0;
+    return true;
+}
+
+/* Resolves the component path[start..end): appends it to dest, then follows it if it is a link. */
+static bool walk_component(SymlinkWalk *w, MsArena *a, size_t end, MsProjectError *err) {
+    const size_t n = end - w->start;
+    const char *component = w->path.data + w->start;
+    if (n == 1 && component[0] == '.') {
+        w->start = end;
+        return true;
+    }
+    if (n == 2 && component[0] == '.' && component[1] == '.') {
+        walk_parent(w);
+        w->start = end;
+        return true;
+    }
+    if (w->dest.len > w->vol && w->dest.data[w->dest.len - 1] != '/') {
+        ms_buf_putc(&w->dest, '/');
+    }
+    ms_buf_put(&w->dest, component, n);
+    ms_buf_putc(&w->dest, 0);
+    w->dest.len--;
+    struct stat info;
+    if (lstat(w->dest.data, &info) != 0) {
+        ms_project_error_path(err, a, "lstat", w->dest.data, errno);
+        return false;
+    }
+    if (S_ISLNK(info.st_mode)) {
+        return walk_follow(w, a, end, err);
+    }
+    if (!S_ISDIR(info.st_mode) && end < w->path.len) {
+        *err = (MsProjectError){.kind = MS_PERR_ERRNO, .err_no = ENOTDIR};
+        return false;
+    }
+    w->start = end;
+    return true;
+}
+
 /* filepath.EvalSymlinks: every component is resolved with lstat, and errors carry the failing prefix. */
 bool ms_path_eval_symlinks(MsArena *a, const char *input, const char **out, MsProjectError *err) {
-    MsBuf path = {0};
-    ms_buf_puts(&path, input);
-    const size_t vol = input[0] == '/' ? 1 : 0;
-    MsBuf dest = {0};
-    ms_buf_put(&dest, input, vol);
-    size_t start = vol;
-    int links = 0;
+    SymlinkWalk w = {.vol = input[0] == '/' ? 1 : 0};
+    ms_buf_puts(&w.path, input);
+    ms_buf_put(&w.dest, input, w.vol);
+    w.start = w.vol;
     bool ok = true;
-    while (start < path.len) {
-        while (start < path.len && path.data[start] == '/') {
-            start++;
+    while (ok && w.start < w.path.len) {
+        while (w.start < w.path.len && w.path.data[w.start] == '/') {
+            w.start++;
         }
-        size_t end = start;
-        while (end < path.len && path.data[end] != '/') {
+        size_t end = w.start;
+        while (end < w.path.len && w.path.data[end] != '/') {
             end++;
         }
-        if (end == start) {
+        if (end == w.start) {
             break;
         }
-        const size_t n = end - start;
-        const char *component = path.data + start;
-        if (n == 1 && component[0] == '.') {
-            start = end;
-            continue;
-        }
-        if (n == 2 && component[0] == '.' && component[1] == '.') {
-            const ptrdiff_t r = last_separator(dest.data, dest.len, vol);
-            const bool at_dotdot = r >= (ptrdiff_t)vol && dest.len - (size_t)(r + 1) == 2 && dest.data[r + 1] == '.' && dest.data[r + 2] == '.';
-            const bool bare_dotdot = r < (ptrdiff_t)vol && dest.len - vol == 2 && dest.data[vol] == '.' && dest.data[vol + 1] == '.';
-            if (r < (ptrdiff_t)vol || at_dotdot) {
-                (void)bare_dotdot;
-                if (dest.len > vol) {
-                    ms_buf_putc(&dest, '/');
-                }
-                ms_buf_puts(&dest, "..");
-            } else {
-                dest.len = (size_t)r;
-            }
-            start = end;
-            continue;
-        }
-        if (dest.len > vol && dest.data[dest.len - 1] != '/') {
-            ms_buf_putc(&dest, '/');
-        }
-        ms_buf_put(&dest, component, n);
-        ms_buf_putc(&dest, 0);
-        dest.len--;
-        struct stat info;
-        if (lstat(dest.data, &info) != 0) {
-            ms_project_error_path(err, a, "lstat", dest.data, errno);
-            ok = false;
-            break;
-        }
-        if (!S_ISLNK(info.st_mode)) {
-            if (!S_ISDIR(info.st_mode) && end < path.len) {
-                *err = (MsProjectError){.kind = MS_PERR_ERRNO, .err_no = ENOTDIR};
-                ok = false;
-                break;
-            }
-            start = end;
-            continue;
-        }
-        if (++links > MAX_LINKS) {
-            ms_project_error_message(err, "EvalSymlinks: too many links");
-            ok = false;
-            break;
-        }
-        char target[4096];
-        const ssize_t length = readlink(dest.data, target, sizeof target - 1);
-        if (length < 0) {
-            ms_project_error_path(err, a, "readlink", dest.data, errno);
-            ok = false;
-            break;
-        }
-        target[length] = 0;
-        MsBuf next = {0};
-        ms_buf_put(&next, target, (size_t)length);
-        ms_buf_put(&next, path.data + end, path.len - end);
-        ms_buf_free(&path);
-        path = next;
-        if (target[0] == '/') {
-            dest.len = 0;
-            ms_buf_putc(&dest, '/');
-        } else {
-            const ptrdiff_t r = last_separator(dest.data, dest.len, vol);
-            dest.len = r < (ptrdiff_t)vol ? vol : (size_t)r;
-        }
-        start = 0;
+        ok = walk_component(&w, a, end, err);
     }
     if (ok) {
-        ms_buf_putc(&dest, 0);
-        *out = ms_path_clean(a, dest.data);
+        ms_buf_putc(&w.dest, 0);
+        *out = ms_path_clean(a, w.dest.data);
     }
-    ms_buf_free(&path);
-    ms_buf_free(&dest);
+    ms_buf_free(&w.path);
+    ms_buf_free(&w.dest);
     return ok;
 }

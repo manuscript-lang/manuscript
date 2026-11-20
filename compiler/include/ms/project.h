@@ -6,6 +6,7 @@
 #ifndef MS_PROJECT_H
 #define MS_PROJECT_H
 
+#include "ms/ast.h"
 #include "ms/base.h"
 
 typedef enum MsProjectErrorKind {
@@ -94,5 +95,46 @@ MS_NODISCARD bool ms_project_source_path(MsArena *a, const char *root, const cha
                                          MsProjectError *err);
 /* Go's strconv.Quote, for `%q` in diagnostics. */
 const char *ms_project_quote(MsArena *a, const char *text);
+
+/* ---- the module graph (project/load.c) ---- */
+
+typedef enum MsGraphPhase { MS_GRAPH_PARSE, MS_GRAPH_RESOLUTION } MsGraphPhase;
+
+/* A problem found while loading, named by the file it is in (the module's logical path, or the manifest). */
+typedef struct MsGraphDiag {
+    const char *file;
+    MsGraphPhase phase;
+    MsDiag diag;
+} MsGraphDiag;
+
+/* One parsed local module. `targets[i]` is the index in MsGraph.modules of what `syntax.imports[i]` names, or -1 for a
+ * standard-library import, which the checker resolves. A module's imports come before it in the graph. */
+typedef struct MsGraphModule {
+    const char *name; /* logical path: relative to the project root */
+    const char *path; /* canonical file */
+    MsModule syntax;
+    const char *source;
+    size_t length;
+    const int32_t *targets;
+} MsGraphModule;
+
+typedef struct MsGraph {
+    MsGraphModule *modules; /* dependency order; empty when a strict load failed */
+    uint32_t count;
+    MsGraphDiag *diagnostics;
+    uint32_t ndiagnostics;
+    const char *entry;        /* logical path of the entry module */
+    const char *source_root;  /* the directory the logical paths are relative to */
+    const char *project_root; /* the directory of ms.toml; NULL for a standalone file */
+    const char *configuration;
+    const char *manifest_file; /* where [project] is declared, for diagnostics; NULL without a manifest */
+    MsPos manifest_pos;
+} MsGraph;
+
+/* Loads the module `filename` (a .ms file) with everything it imports, as the Rust driver's strict `load_file` does.
+ * Problems with the inputs are diagnostics in the graph; the result is false only when the C loader does not cover
+ * the request (MS_PERR_UNSUPPORTED in `err`: a library manifest, test discovery, anything the manifest reader
+ * leaves out), so the caller can hand the command to the Rust driver. Modules parse into `names` and `a`. */
+MS_NODISCARD bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err);
 
 #endif

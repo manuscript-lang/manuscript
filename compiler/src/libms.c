@@ -131,3 +131,4 @@
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/resolve.c"
+#include "project/load.c"

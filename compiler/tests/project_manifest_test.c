@@ -41,7 +41,7 @@ static void write_file(const char *name, const char *text) {
 }
 
 static void new_project(void) {
-    strcpy(root, "/tmp/ms_project_XXXXXX");
+    snprintf(root, sizeof root, "%s", "/tmp/ms_project_XXXXXX");
     CHECK(mkdtemp(root) != NULL);
     write_file("src/main.ms", "");
     write_file("src/value.ms", "");
@@ -138,9 +138,10 @@ static void test_errors(void) {
     char *long_line = malloc(70100);
     CHECK(long_line != NULL);
     if (long_line != NULL) {
-        strcpy(long_line, MANIFEST "# ");
-        memset(long_line + strlen(long_line), 'x', 70000);
-        strcpy(long_line + strlen(MANIFEST "# ") + 70000, "\n");
+        const size_t head = strlen(MANIFEST "# ");
+        memcpy(long_line, MANIFEST "# ", head);
+        memset(long_line + head, 'x', 70000);
+        memcpy(long_line + head + 70000, "\n", 2);
         expect_error("line too long", long_line, "ms.toml:5:1: line too long");
         free(long_line);
     }

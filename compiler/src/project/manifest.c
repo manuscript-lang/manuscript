@@ -4,6 +4,7 @@
  * guessing, so the Rust driver reports it. */
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -134,9 +135,9 @@ static bool manifest_read_string(const Reader *r, size_t *at, const char **out, 
         ms_buf_putc(&value, c);
     }
     *control = false;
-    for (size_t i = 0; i < value.len; i++) {
-        const unsigned char c = (unsigned char)value.data[i];
-        *control |= c < 0x20 || c == 0x7f;
+    for (size_t k = 0; k < value.len; k++) {
+        const unsigned char byte = (unsigned char)value.data[k];
+        *control |= byte < 0x20 || byte == 0x7f;
     }
     *out = ms_arena_strndup(r->arena, value.data == NULL ? "" : value.data, value.len);
     ms_buf_free(&value);
@@ -174,7 +175,10 @@ static bool manifest_end_of_line(const Reader *r, size_t *at) {
 static bool is_scalar_char(char c) { return manifest_is_bare(c) || c == '.' || c == '+'; }
 
 static bool manifest_read_scalar(const Reader *r, size_t *at) {
-    const char first = *at < r->length ? r->text[*at] : 0;
+    char first = '\0';
+    if (*at < r->length) {
+        first = r->text[*at];
+    }
     const bool word = strncmp(r->text + *at, "true", 4) == 0 || strncmp(r->text + *at, "false", 5) == 0;
     if (!word && !(first >= '0' && first <= '9') && first != '+' && first != '-') {
         return false;
@@ -326,12 +330,11 @@ static bool manifest_add_alias(Builder *b, const Entry *e) {
 static bool manifest_add_project_key(Builder *b, const Entry *e) {
     const Reader *r = b->reader;
     MsProject *p = b->project;
-    const char *unknown = "unknown project key %s; [project] accepts name, source, entry, version, and effects";
     if (strcmp(e->name, "version") == 0 || strcmp(e->name, "effects") == 0) {
         return manifest_unsupported(r, "[project] version and effects");
     }
     if (strcmp(e->name, "name") != 0 && strcmp(e->name, "source") != 0 && strcmp(e->name, "entry") != 0) {
-        return manifest_fail_at(r, e->key_pos, ms_arena_fmt(r->arena, unknown, e->name).ptr);
+        return manifest_fail_at(r, e->key_pos, ms_arena_fmt(r->arena, "unknown project key %s; [project] accepts name, source, entry, version, and effects", e->name).ptr);
     }
     if (e->control) {
         return manifest_fail_at(r, e->value_pos, ms_arena_fmt(r->arena, "manifest value for %s contains a NUL or control character; remove it", e->name).ptr);
@@ -444,7 +447,7 @@ static bool manifest_finish(Builder *b) {
 }
 
 static const char *manifest_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err) {
-    FILE *f = fopen(path, "rb");
+    FILE *f = fopen(path, "rbe");
     if (f == NULL) {
         ms_project_error_path(err, a, "open", path, errno);
         return NULL;
