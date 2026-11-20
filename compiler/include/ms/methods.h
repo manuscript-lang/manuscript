@@ -27,11 +27,14 @@ typedef struct MsOperations {
     uint32_t count, cap;
 } MsOperations;
 
-/* The columns of the method table and the operations by interface symbol; owned by the caller
- * and freed with `ms_methods_free`. */
+/* The method rows, and the operations by interface symbol; owned by the caller and freed with
+ * `ms_methods_free`. */
 typedef struct MsMethodTable {
+    MsMethods methods;
     MsOperations *operations; /* by symbol id; grown on demand */
     uint32_t operations_cap;
+    uint8_t *operations_done; /* by module id: its interfaces' operations are resolved */
+    uint32_t done_cap;
 } MsMethodTable;
 
 void ms_methods_init(MsMethodTable *table);
@@ -42,11 +45,25 @@ void ms_methods_free(MsMethodTable *table);
  * checker reports for them to the module's list. */
 void ms_module_resolve_operations(MsCheck *c, MsModId module, MsMethodTable *table);
 
+/* Resolves the operations of the module's interfaces unless that was done, resolving the module's
+ * types first: what an implementation of one of its interfaces reads. */
+void ms_module_ensure_operations(MsCheck *c, MsModId module, MsMethodTable *table);
+
+/* Adds a row for each method of each `impl` the module declares, after the module's types and
+ * operations are resolved. Reports the diagnostics the Rust checker's `implementation` reports for
+ * the receiver, the interface and the operations, except the ones that compare signatures,
+ * overlap or well-formedness, which later passes bring. */
+void ms_module_add_implementations(MsCheck *c, MsModId module, MsMethodTable *table);
+
+/* The variable `Self` stands for in the operations of the interface type `contract`. */
+MsTy ms_self_variable(MsCheck *c, MsTy contract);
+
 /* The operations of the interface symbol `sym`, in declaration order; NULL when it has none. */
 const MsOperations *ms_interface_operations(const MsMethodTable *table, MsSymId sym);
 
-/* The operations of the module's interfaces in the form c_oracle_methods.rs prints, one `op` line
- * each, in declaration order. */
+/* The operations of the module's interfaces and the method rows it declares, in the form
+ * c_oracle_methods.rs prints: one `op` line per operation, then one `method` line per row. */
 void ms_dump_operations(MsBuf *out, const MsCheck *c, MsModId module, const MsMethodTable *table);
+void ms_dump_methods(MsBuf *out, const MsCheck *c, MsModId module, const MsMethodTable *table);
 
 #endif

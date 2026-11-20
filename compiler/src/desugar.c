@@ -15,10 +15,6 @@
 #include "ms/desugar.h"
 #include "ms/text.h"
 
-/* The suffix that keeps the interface synthesized for a type's own methods from colliding with a
- * declared name. Identity is the `synthetic` flag of the impl, never this suffix. */
-#define INHERENT_SUFFIX "$methods"
-
 static const char *const builtin_scalars[] = {
     "Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "Float",
     "Float32", "Bool", "String",
@@ -673,7 +669,7 @@ static MsSym contract_name(Desugar *d, const Entry *entry, MsBuf *counters) {
         counter->used++;
         ms_buf_printf(&name, "$%u", counter->used);
     }
-    ms_buf_puts(&name, INHERENT_SUFFIX);
+    ms_buf_puts(&name, MS_INHERENT_SUFFIX);
     MsSym sym = ms_intern(d->names, name.data, name.len);
     ms_buf_free(&name);
     return sym;

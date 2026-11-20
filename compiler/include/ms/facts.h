@@ -43,18 +43,24 @@ typedef enum MsBindRole {
     MS_ROLE_ARM, MS_ROLE_LAMBDA_PARAM
 } MsBindRole;
 
-/* Methods and interface operations of a program (implementations first, in declaration order).
- * A symbol's signature is its `ty` in `MsSyms`: a function type whose parameters carry the label,
- * type and var/move flags (`ms_ty_params`) and whose result is `tys.result`. */
+/* Methods of a program: what an `impl` supplies, in declaration order (see methods.h). A symbol's
+ * signature is its `ty` in `MsSyms`: a function type whose parameters carry the label, type and
+ * var/move flags (`ms_ty_params`) and whose result is `tys.result`. */
 typedef struct MsMethods {
     MsSym *id;            /* `module/Receiver/Contract/name`, as the Rust checker names it */
     MsTy *receiver;
-    MsTy *contract;       /* MS_TY_NONE for an inherent method */
+    MsTy *contract;       /* MS_TY_NONE for a type whose impl names no interface */
     MsTy *ty;             /* the signature, receiver not included */
-    const MsFunc **decl;  /* the declaration, or NULL for a native one */
+    const MsFunc **decl;  /* the declaration, or NULL for a property without operations */
     MsNativeKind *native;
-    bool *inherent;
-    uint32_t count;
+    bool *inherent;       /* a type's own method: its contract is the synthesized `Type$methods` */
+    MsModId *module;      /* the module that declares the impl */
+    bool *local;          /* an extension declared outside the receiver's module: visible there only */
+    MsPos *pos;           /* the method's name, or the impl for a row without a method */
+    uint32_t *vars_at, *nvars; /* the impl's variables, then the method's own, into `vars` */
+    MsTy *vars;
+    uint32_t vars_len, vars_cap;
+    uint32_t count, cap;
 } MsMethods;
 
 /* The per-module columns. */

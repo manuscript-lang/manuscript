@@ -14,6 +14,14 @@
 
 /* The diagnostics about operations the C checker implements so far. */
 static const char *const families[] = {
+    "implementation receiver must be nominal source data",
+    "implementation target must be an interface",
+    "duplicate implementation operation ",
+    "has the same name as a field of ",
+    "shadows a type parameter of the impl",
+    "is opaque outside ",
+    "is declared var fn but ",
+    "is Data when its parts are",
     "duplicate operation ",
     "shadows a type parameter of the receiver",
     "Self can only be a whole parameter or result type",
@@ -58,7 +66,8 @@ static void print_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         ms_module_resolve_types(check, id);
         MsMethodTable table;
         ms_methods_init(&table);
-        ms_module_resolve_operations(check, id, &table);
+        ms_module_ensure_operations(check, id, &table);
+        ms_module_add_implementations(check, id, &table);
         for (uint32_t k = 0; k < check->mods[id].ndiags; k++) {
             const MsDiag *d = &check->mods[id].diags[k].diag;
             if (is_listed(d)) {
@@ -67,6 +76,7 @@ static void print_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         }
         MsBuf out = {0};
         ms_dump_operations(&out, check, id, &table);
+        ms_dump_methods(&out, check, id, &table);
         printf("--\n%.*s", (int)out.len, out.data == NULL ? "" : out.data);
         ms_buf_free(&out);
         ms_methods_free(&table);

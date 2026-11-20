@@ -17,6 +17,10 @@
 #include "ms/base.h"
 #include "ms/tables.h"
 
+/* The suffix of the interface synthesized for a type's own methods (`Type$methods`), which keeps
+ * it from colliding with a declared name. Identity is the `synthetic` flag of the impl. */
+#define MS_INHERENT_SUFFIX "$methods"
+
 /* What the pass reads. */
 typedef struct MsDesugarInput {
     MsStr file;                /* the module's path; a path under `@std/` is a bundled module */

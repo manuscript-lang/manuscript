@@ -12,7 +12,15 @@ use ms_syntax::Names;
 use std::fmt::Write;
 
 /// The diagnostics about operations the C checker implements so far.
-const FAMILIES: [&str; 3] = [
+const FAMILIES: [&str; 11] = [
+    "implementation receiver must be nominal source data",
+    "implementation target must be an interface",
+    "duplicate implementation operation ",
+    "has the same name as a field of ",
+    "shadows a type parameter of the impl",
+    "is opaque outside ",
+    "is declared var fn but ",
+    "is Data when its parts are",
     "duplicate operation ",
     "shadows a type parameter of the receiver",
     "Self can only be a whole parameter or result type",
@@ -93,6 +101,39 @@ fn interface_operations(
     }
 }
 
+fn methods(out: &mut String, syms: Names, program: &ms_check::Program, module: &ms_check::ModRef) {
+    for m in program.methods.iter().filter(|m| m.module == module.file) {
+        let labels: Vec<String> = m
+            .ty
+            .params
+            .iter()
+            .map(|p| {
+                format!(
+                    "{}{}{}",
+                    if p.mutable { "var " } else { "" },
+                    if p.moving { "move " } else { "" },
+                    syms.str(p.name)
+                )
+            })
+            .collect();
+        let at = m
+            .decl
+            .as_ref()
+            .map_or("-".to_string(), |f| format!("{}:{}", f.pos().line, f.pos().column));
+        let _ = writeln!(
+            out,
+            "method {} for {}: {} params={} vars={} local={} inherent={} at={at}",
+            show(syms, &m.receiver),
+            m.contract.as_ref().map_or("-".to_string(), |c| show(syms, c)),
+            show(syms, &m.ty),
+            labels.join(","),
+            variables(syms, &m.variables),
+            m.local,
+            m.is_inherent(syms),
+        );
+    }
+}
+
 fn main() {
     let syms = Names::global();
     let session = Session::new();
@@ -125,6 +166,7 @@ fn main() {
         println!("--");
         let mut out = String::new();
         interface_operations(&mut out, syms, &session, &program, &loaded);
+        methods(&mut out, syms, &program, &loaded);
         print!("{out}");
     }
 }

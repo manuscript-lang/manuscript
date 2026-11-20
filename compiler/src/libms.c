@@ -54,6 +54,7 @@
 #include "ast_copy.c"
 #include "desugar.c"
 #include "methods.c"
+#include "impls.c"
 #include "dump_methods.c"
 #include "ownership_places.c"
 #include "ownership_bits.c"

@@ -13,6 +13,21 @@ void ms_methods_free(MsMethodTable *table) {
         free(table->operations[i].items);
     }
     free(table->operations);
+    free(table->operations_done);
+    MsMethods *m = &table->methods;
+    free(m->id);
+    free(m->receiver);
+    free(m->contract);
+    free(m->ty);
+    free(m->decl);
+    free(m->native);
+    free(m->inherent);
+    free(m->module);
+    free(m->local);
+    free(m->pos);
+    free(m->vars_at);
+    free(m->nvars);
+    free(m->vars);
     *table = (MsMethodTable){0};
 }
 
@@ -52,7 +67,7 @@ static void report_type_error(MsResolver *r, MsPos pos, MsStr message) {
 /* ---- Self ---- */
 
 /* The variable `Self` stands for the implementing type of `contract`, an interface type. */
-static MsTy self_variable(MsCheck *c, MsTy contract) {
+MsTy ms_self_variable(MsCheck *c, MsTy contract) {
     const MsStr owner = ms_name(c->names, c->tys.id[contract]);
     const MsStr id = ms_arena_fmt(&c->arena, "%.*s/Self", (int)owner.len, owner.ptr);
     const MsTyDesc desc = {.name = ms_intern_cstr(c->names, "Self"),
@@ -158,7 +173,7 @@ static MsOperation resolve_operation(MsResolver *r, const MsDecl *iface, MsSymId
     uint32_t ninterface = 0;
     const MsTy *interface_vars = ms_sym_vars(c, sym, &ninterface);
     const MsTypeScope *interface_scope = ms_variable_scope(c, interface_vars, ninterface);
-    const MsTy self = self_variable(c, contract);
+    const MsTy self = ms_self_variable(c, contract);
     MsTypeScope self_scope = {.parent = interface_scope, .names = (MsSym[]){c->tys.name[self]}, .types = &self, .len = 1};
     const MsTypeScope *outer = r->scope;
     r->scope = &self_scope;
@@ -192,7 +207,26 @@ static MsSymId own_symbol(const MsCheck *c, MsModId module, const MsDecl *d) {
     return sym != MS_NONE && c->syms.decl[sym] == d ? sym : MS_NONE;
 }
 
+static void mark_operations_done(MsMethodTable *table, MsModId module) {
+    if (module >= table->done_cap) {
+        const uint32_t cap = ms_capacity_for(table->done_cap, module + 1);
+        table->operations_done = ms_array_resize(table->operations_done, cap, sizeof *table->operations_done);
+        memset(table->operations_done + table->done_cap, 0, (size_t)(cap - table->done_cap));
+        table->done_cap = cap;
+    }
+    table->operations_done[module] = 1;
+}
+
+void ms_module_ensure_operations(MsCheck *c, MsModId module, MsMethodTable *table) {
+    if (module < table->done_cap && table->operations_done[module] != 0) {
+        return;
+    }
+    ms_module_resolve_types(c, module);
+    ms_module_resolve_operations(c, module, table);
+}
+
 void ms_module_resolve_operations(MsCheck *c, MsModId module, MsMethodTable *table) {
+    mark_operations_done(table, module);
     const MsModule *syntax = c->mods[module].syntax;
     MsResolver resolver = {.c = c, .module = module, .refs = c->mods[module].facts->type_ref_ty};
     for (uint32_t i = 0; i < syntax->ndecls; i++) {

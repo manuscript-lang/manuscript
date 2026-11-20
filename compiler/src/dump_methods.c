@@ -64,3 +64,34 @@ void ms_dump_operations(MsBuf *out, const MsCheck *c, MsModId module, const MsMe
         }
     }
 }
+
+static void put_row_variables(MsBuf *out, const MsCheck *c, const MsMethods *m, uint32_t row) {
+    put_variables(out, c, m->vars + m->vars_at[row], m->nvars[row]);
+}
+
+void ms_dump_methods(MsBuf *out, const MsCheck *c, MsModId module, const MsMethodTable *table) {
+    const MsMethods *m = &table->methods;
+    for (uint32_t i = 0; i < m->count; i++) {
+        if (m->module[i] != module) {
+            continue;
+        }
+        ms_buf_puts(out, "method ");
+        put_ty(out, c, m->receiver[i]);
+        ms_buf_puts(out, " for ");
+        put_ty(out, c, m->contract[i]);
+        ms_buf_puts(out, ": ");
+        put_ty(out, c, m->ty[i]);
+        ms_buf_puts(out, " params=");
+        if (c->tys.kind[m->ty[i]] == MS_K_FUNCTION) {
+            put_labels(out, c, m->ty[i]);
+        }
+        ms_buf_puts(out, " vars=");
+        put_row_variables(out, c, m, i);
+        ms_buf_printf(out, " local=%s inherent=%s", m->local[i] ? "true" : "false", m->inherent[i] ? "true" : "false");
+        if (m->decl[i] != NULL) {
+            ms_buf_printf(out, " at=%u:%u\n", m->pos[i].line, m->pos[i].column);
+        } else {
+            ms_buf_puts(out, " at=-\n");
+        }
+    }
+}
