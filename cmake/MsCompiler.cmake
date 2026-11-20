@@ -8,8 +8,14 @@ set(_cflags -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-format-truncation)
 set(_clink "")
 if(MS_WINDOWS)
   list(APPEND _cflags -D_CRT_SECURE_NO_WARNINGS)
-  # __int128 division (constfold, range analysis) calls __divti3 and __modti3, which MSVC libraries lack.
-  list(APPEND _clink -rtlib=compiler-rt)
+  # __int128 division (constfold, range analysis) calls __divti3 and __modti3, which MSVC libraries lack: link the
+  # compiler-rt builtins that ship with LLVM.
+  execute_process(COMMAND "${CMAKE_C_COMPILER}" --rtlib=compiler-rt --print-libgcc-file-name
+                  OUTPUT_VARIABLE _builtins OUTPUT_STRIP_TRAILING_WHITESPACE)
+  message(STATUS "compiler-rt builtins: ${_builtins}")
+  if(EXISTS "${_builtins}")
+    list(APPEND _clink "${_builtins}")
+  endif()
 endif()
 if(MS_SANITIZE)
   list(APPEND _cflags -fsanitize=address,undefined -fno-sanitize-recover=undefined)
