@@ -3,11 +3,11 @@
 #define _GNU_SOURCE
 #define _XOPEN_SOURCE 700
 #define _DARWIN_C_SOURCE
+#include "backend_rt.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-typedef struct { uint8_t *ptr; uint64_t tagged; } Str;
-extern long msmain(void);
 long msrt_test_add(long a, long b) { return a + b; }
 void msrt_test_str(long n, Str *out) { out->ptr = calloc((size_t)n + 1, 1); out->tagged = (uint64_t)n; }
 long msrt_test_len(const Str *s) { return (long)s->tagged; }
@@ -37,7 +37,8 @@ int main(void) {
     uint8_t *raw = mmap(NULL, 2 * REGION, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
     if (raw == MAP_FAILED) return 99;
     uint8_t *base = (uint8_t *)(((uintptr_t)raw + REGION - 1) & ~(REGION - 1));
-    *(uint64_t *)(base + REGION - 8) = 0;
+    const uint64_t zero = 0;
+    memcpy(base + REGION - 8, &zero, sizeof zero);
     getcontext(&program_context);
     program_context.uc_stack.ss_sp = base + REGION - 4096 - (1 << 20);
     program_context.uc_stack.ss_size = 1 << 20;

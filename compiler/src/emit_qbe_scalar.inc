@@ -251,11 +251,21 @@ static void qbe_narrow_check(QCx *c, const MirInst *inst, uint32_t block, uint32
 
 /* The load and store mnemonics of an unsigned access `bytes` wide (1, 2, 4, else a word). */
 static const char *qbe_word_load(int64_t bytes) {
-    return bytes == 1 ? "loadub" : bytes == 2 ? "loaduh" : bytes == 4 ? "loaduw" : "loadl";
+    switch (bytes) {
+    case 1: return "loadub";
+    case 2: return "loaduh";
+    case 4: return "loaduw";
+    default: return "loadl";
+    }
 }
 
 static const char *qbe_word_store(int64_t bytes) {
-    return bytes == 1 ? "storeb" : bytes == 2 ? "storeh" : bytes == 4 ? "storew" : "storel";
+    switch (bytes) {
+    case 1: return "storeb";
+    case 2: return "storeh";
+    case 4: return "storew";
+    default: return "storel";
+    }
 }
 
 /* `ptr.*`, `free`, and the libm-backed float ops; false when `inst` is none of them. */
