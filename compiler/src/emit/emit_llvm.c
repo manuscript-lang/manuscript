@@ -88,7 +88,7 @@ static uint32_t ll_pieces(MirOp op) {
     switch (op) {
     case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk:
     case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk:
-    case MOP_NarrowChk: case MOP_IntOverflowIf:
+    case MOP_NarrowChk: case MOP_IntOverflowIf: case MOP_Poll:
         return 1;
     case MOP_SDivChk:
         return 2;
@@ -1011,8 +1011,9 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
     }
 }
 
-#include "emit/emit_llvm_closure.inc"
-#include "emit/emit_llvm_iface.inc"
+#include "emit_llvm_closure.inc"
+#include "emit_llvm_iface.inc"
+#include "emit_llvm_task.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
@@ -1046,8 +1047,13 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     if (handled) {
         return iface_ok;
     }
+    const bool task_ok = ll_task_op(c, inst, block, part, &handled);
+    if (handled) {
+        return task_ok;
+    }
     switch (inst->op) {
     case MOP_IConst: case MOP_BConst: case MOP_FConst: ll_constant(c, inst); return true;
+    case MOP_ListLen: ll_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_LEN_LEAF); return true;
     case MOP_ICmp: case MOP_UICmp: case MOP_FCmp: ll_compare(c, inst); return true;
     case MOP_Call: return ll_call(c, inst, block, index);
     case MOP_CallRt: return ll_call_rt(c, inst, block, index);

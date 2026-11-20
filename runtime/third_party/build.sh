@@ -73,21 +73,22 @@ if [ ! -f "$out/lib/libnghttp2.a" ]; then
     mkdir -p "$out/include/nghttp2"
     cp "$vendor/nghttp2"/lib/includes/nghttp2/nghttp2.h "$build"/lib/includes/nghttp2/nghttp2ver.h "$out/include/nghttp2/"
 fi
-# OpenSSL's Configure needs a perl with IPC::Cmd and Locale::Maketext::Simple; the perl of a Windows shell (MSYS2's or
-# Git's) often lacks them, Strawberry Perl (on the GitHub runners) has them. A perl outside the shell's own tree takes
-# Windows-style paths.
+# OpenSSL's Configure needs a perl that produces Unix-like paths (not Strawberry or ActiveState Perl, which report MSWin32)
+# and has IPC::Cmd, which loads Locale::Maketext::Simple; perl 5.42 dropped that module from the core, so a copy of it is
+# vendored in runtime/third_party/perl-lib. The shell's perl is tried first, then MSYS2's (Windows).
+export PERL5LIB="$vendor/perl-lib${PERL5LIB:+:$PERL5LIB}"
+msys=${MS_MSYS2:-C:/msys64}
 perl=
-for candidate in perl "${MS_MSYS2:-C:/msys64}/usr/bin/perl" C:/Strawberry/perl/bin/perl; do
-    if "$candidate" -MIPC::Cmd -MLocale::Maketext::Simple -e1 >/dev/null 2>&1; then perl=$candidate; break; fi
+for candidate in perl "$msys/usr/bin/perl"; do
+    if "$candidate" -MIPC::Cmd -e 'exit($^O eq "MSWin32")' >/dev/null 2>&1; then perl=$candidate; break; fi
 done
-configure=$vendor/openssl/Configure
-case "$perl" in *Strawberry*) command -v cygpath >/dev/null 2>&1 && configure=$(cygpath -m "$configure") ;; esac
 if [ ! -f "$out/lib/libssl.a" ]; then
-    [ -n "$perl" ] || { echo "build.sh: no perl with IPC::Cmd and Locale::Maketext::Simple (OpenSSL's Configure needs both)" >&2; exit 1; }
+    [ -n "$perl" ] || { echo "build.sh: no Unix-style perl with IPC::Cmd (OpenSSL's Configure needs one; on Windows install MSYS2's perl)" >&2; exit 1; }
     # no-secure-memory: its mmap-locked heap needs kernel headers (<linux/mman.h>) that musl-gcc does not see, and we keep no keys in a locked heap.
+    perl_dir=; case "$perl" in */*) perl_dir=$(dirname "$perl"): ;; esac
     build=$root/build/$triple/openssl
     rm -rf "$build"; mkdir -p "$build"
-    (cd "$build" && CC="$cc" "$perl" "$configure" "$ssl_target" $ssl_extra no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" >/dev/null \
+    (cd "$build" && PATH="$perl_dir$PATH" CC="$cc" "$perl" "$vendor/openssl/Configure" "$ssl_target" $ssl_extra no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" >/dev/null \
         && make -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
         && cp "$vendor/openssl"/include/openssl/*.h include/openssl/*.h "$out/include/openssl/")
 fi
@@ -127,7 +128,7 @@ for a in libuv libnghttp2 libssl libcrypto libz libpcre2-8 libcurl; do
 done
 case "$triple" in
 *linux-gnu) # The libraries are built on a current glibc; none may call what the floor (glibc 2.28) lacks.
-    sh "$repository/toolchain/check-glibc-archives.sh" "$out" "$arch" ;;
+    sh "$repository/toolchain/check-glibc-archives.sh" "$out" "$arch" || exit 1 ;;
 esac
 touch "$out/.complete"
 echo "$out"

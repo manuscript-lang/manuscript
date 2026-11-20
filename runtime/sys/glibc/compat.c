@@ -2,9 +2,7 @@
  * against) does not export. Each is defined in terms of an older export; the linker takes a definition only
  * when a folded library member references it. Compiled for glibc targets only (folder `glibc`). The `stat`
  * family is in crates/ms-native/src/entry.rs. */
-#include <stdarg.h>
 #include <stddef.h>
-#include <stdio.h>
 
 int __cxa_atexit(void (*)(void *), void *, void *);
 
@@ -21,19 +19,22 @@ unsigned long __isoc23_strtoul(const char *s, char **end, int base) { return old
 long long __isoc23_strtoll(const char *s, char **end, int base) { return old_strtoll(s, end, base); }
 unsigned long long __isoc23_strtoull(const char *s, char **end, int base) { return old_strtoull(s, end, base); }
 
-/* The scanf family the same way (libuv reads /proc with them). */
-int __isoc23_sscanf(const char *text, const char *format, ...) {
-    va_list arguments;
-    va_start(arguments, format);
-    const int count = vsscanf(text, format, arguments);
-    va_end(arguments);
+/* The same for scanf: libuv's /proc parsers (uv_cpu_info, uv_uptime) call these two names when compiled against
+ * glibc 2.38 or newer. The prototypes are written out bound by assembler name so no header redirects vsscanf and vfscanf in turn. */
+int old_vsscanf(const char *, const char *, __builtin_va_list) __asm__("vsscanf");
+int old_vfscanf(void *, const char *, __builtin_va_list) __asm__("vfscanf");
+int __isoc23_sscanf(const char *s, const char *format, ...) {
+    __builtin_va_list args;
+    __builtin_va_start(args, format);
+    const int count = old_vsscanf(s, format, args);
+    __builtin_va_end(args);
     return count;
 }
-int __isoc23_fscanf(FILE *stream, const char *format, ...) {
-    va_list arguments;
-    va_start(arguments, format);
-    const int count = vfscanf(stream, format, arguments);
-    va_end(arguments);
+int __isoc23_fscanf(void *file, const char *format, ...) {
+    __builtin_va_list args;
+    __builtin_va_start(args, format);
+    const int count = old_vfscanf(file, format, args);
+    __builtin_va_end(args);
     return count;
 }
 
