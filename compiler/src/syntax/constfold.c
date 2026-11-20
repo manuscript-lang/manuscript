@@ -4,6 +4,7 @@
 #include "ms_rt/chars.h"
 
 #include "ms/constfold.h"
+#include "ms/text.h"
 
 #define MAX_MEMO_RANGES 8
 

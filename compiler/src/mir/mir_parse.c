@@ -13,6 +13,7 @@
 #include "ms_rt/chars.h"
 
 #include "ms/mir.h"
+#include "ms/text.h"
 
 typedef enum { MPT_IDENT, MPT_VAL, MPT_AT, MPT_NUM, MPT_STR, MPT_LOC, MPT_ARROW, MPT_P } MpTokKind;
 
