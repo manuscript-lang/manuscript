@@ -14,6 +14,7 @@ fn sum(n: Int, f: Bool) Int:
 		3: 300
 		4: 400
 		_: n
+
 	return base + (if f: 1 else: 0)
 
 fn main() Int:
