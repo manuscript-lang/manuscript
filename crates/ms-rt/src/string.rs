@@ -19,6 +19,7 @@ use ms_rt_abi::{
 // The moved symbols (runtime/symbols/string.txt) are defined by the C runtime; Rust callers and tests reach them here.
 unsafe extern "C-unwind" {
     pub fn msrt_string_fields(s: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8;
     pub fn msrt_string_scalar_at(
         s: *const StrVal,
         offset: i64,
@@ -1091,14 +1092,6 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
         st.cur = fresh;
         st.cap = cap;
     }
-}
-
-/// `String.parse_float()`: present flag, value through `out`; the `Result` form is `math.parse_float`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe { u8::from(crate::num::msrt_numbers_parse_float(s, out) == STATUS_OK) }
 }
 
 /// Normalization forms by the spelling `String.normalize` takes.
