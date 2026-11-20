@@ -34,6 +34,7 @@
 #include "ty_subst.c"
 #include "recursion.c"
 #include "fixes.c"
+#include "prelude_fix.c"
 #include "import_hints.c"
 #include "types.c"
 #include "tables.c"
