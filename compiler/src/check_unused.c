@@ -7,7 +7,7 @@
 #define UNUSED_REMEDY "name it with a leading '_' to ignore it"
 
 static bool unused_is_local(MsBindRole role) {
-    return role == MS_ROLE_LET || role == MS_ROLE_VAR || role == MS_ROLE_ARM;
+    return role == MS_ROLE_LET || role == MS_ROLE_VAR || role == MS_ROLE_ARM || role == MS_ROLE_PATTERN;
 }
 
 static void unused_report(MsCheck *c, MsModId module, uint32_t binding) {

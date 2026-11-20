@@ -1,0 +1,18 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+extern @msrt_test_str(int) -> str
+extern @msrt_test_len(str) -> int
+
+fn @msmain() -> int {
+b0:
+  %n: int = iconst 5
+  %s: str = call.rt @msrt_test_str (%n)
+  %c: str = clone %s
+  drop %s
+  %k: int = clone %n
+  %len: int = call.rt @msrt_test_len (%c)
+  drop %c
+  %r: int = iadd %len, %k
+  ret %r
+}

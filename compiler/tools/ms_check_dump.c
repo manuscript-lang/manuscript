@@ -74,13 +74,25 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             MsBuf dump = {0};
             if (bodies) {
                 ms_module_check_bodies(check, id);
+                // The ownership walk narrows `body_checked` to the functions it handles. The body
+                // comparison keeps every claim but still sees the ownership diagnostics of the
+                // functions the walk handled, as the Rust diagnostics include them.
+                MsFacts *facts = check->mods[id].facts;
+                const size_t claims = facts == NULL ? 0 : (size_t)facts->node_count + 1;
+                const bool keep = !ownership && facts != NULL && facts->body_checked != NULL;
+                bool *claimed = keep ? malloc(claims * sizeof *claimed) : NULL;
+                if (claimed != NULL) {
+                    memcpy(claimed, facts->body_checked, claims * sizeof *claimed);
+                }
+                ms_module_check_ownership(check, id);
                 if (ownership) {
-                    // The ownership walk narrows `body_checked` to the functions it handles, so it
-                    // runs only for its own comparison; the body comparison sees every claim.
-                    ms_module_check_ownership(check, id);
                     ms_module_check_unused(check, id);
                     ms_dump_module_ownership(&dump, check, id);
                 } else {
+                    if (claimed != NULL) {
+                        memcpy(facts->body_checked, claimed, claims * sizeof *claimed);
+                    }
+                    free(claimed);
                     ms_module_check_unused(check, id);
                     ms_dump_module_bodies(&dump, check, id);
                 }
