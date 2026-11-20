@@ -307,12 +307,24 @@ static void drop_copy(uint8_t *arg) {
     ms_list_drop(state->copy, state->d);
 }
 
+/* Registers the cleanup that drops the unpublished copy, only when a jump can leave the sort (no guard or cleanup
+ * is open: nothing to unwind to, so no handle). */
+static size_t guard_copy(SortedCopy *state) {
+    return msrt_rollback_needed() != 0 ? msrt_cleanup_push(drop_copy, (uint8_t *)state) : 0;
+}
+
+static void unguard_copy(size_t handle) {
+    if (handle != 0) {
+        msrt_cleanup_discard(handle);
+    }
+}
+
 void msrt_list_sorted(const MsList *v, const MsTypeDesc *d, MsCompareFn cmp, uint8_t *env, MsList *out) {
     ms_list_clone(v, d, out);
     SortedCopy state = {.copy = out, .d = d};
-    const size_t handle = msrt_cleanup_push(drop_copy, (uint8_t *)&state);
+    const size_t handle = guard_copy(&state);
     msrt_list_sort_in_place(out, d, cmp, env);
-    msrt_cleanup_discard(handle);
+    unguard_copy(handle);
 }
 
 /* Whether hi - lo overflows an Int for the extremes of the list: then some pair differs by more than an
@@ -337,11 +349,11 @@ void msrt_list_sorted_by_difference(const MsList *v, const MsTypeDesc *d, MsComp
                                     MsList *out) {
     ms_list_clone(v, d, out);
     SortedCopy state = {.copy = out, .d = d};
-    const size_t handle = msrt_cleanup_push(drop_copy, (uint8_t *)&state);
+    const size_t handle = guard_copy(&state);
     if (out->len >= 2 && differences_overflow(out)) {
         msrt_list_sort_in_place(out, d, cmp, env);
     } else {
         msrt_list_sort_ints(out, desc);
     }
-    msrt_cleanup_discard(handle);
+    unguard_copy(handle);
 }
