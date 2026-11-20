@@ -109,7 +109,7 @@ static size_t at_label_len(const char *line, size_t n) {
 
 static bool at_ends_function(const char *line, size_t n) {
     static const char *const stops[] = {".size", ".type", ".text", ".data", ".section", ".globl", ".bss", ".cfi_endproc", ".def", ".seh_endproc"};
-    while (n > 0 && (line[0] == '\t' || line[0] == ' ')) { /* LLVM indents directives, QBE does not */
+    while (n > 0 && (line[0] == '\t' || line[0] == ' ')) { /* LLVM indents directives */
         line++;
         n--;
     }
@@ -125,7 +125,7 @@ static bool at_ends_function(const char *line, size_t n) {
     return false;
 }
 
-/* The line and scope of a `.loc file line col` (ELF, Mach-O; QBE spaces, LLVM tabs) or `.cv_loc function file
+/* The line and scope of a `.loc file line col` (ELF, Mach-O; LLVM tabs) or `.cv_loc function file
  * line col` (COFF, LLVM) directive at the start of `text`. The scope is the column, 0 when there is none. */
 static bool at_loc_args(const char *text, size_t n, AtLoc *out) {
     static const char loc[] = "\t.loc", cv[] = "\t.cv_loc";
@@ -375,4 +375,26 @@ bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, siz
     mir_module_free(&a.m);
     (void)why;
     return true;
+}
+
+void mir_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay, MsBuf *out) {
+    for (uint32_t i = 0; i < m->nfiles; i++) {
+        ms_buf_printf(out, "F %.*s\n", (int)m->files[i].len, m->files[i].ptr);
+    }
+    ms_buf_puts(out, "B\n"); /* LLVM inlines: scope numbers past the module's name function bodies */
+    uint32_t base = 0;
+    for (uint32_t i = 0; i < m->nfuncs; i++) {
+        const MirFunc *f = &m->funcs[i];
+        const MsStr name = ms_name(&m->names, f->name); /* source names are identifiers and dots */
+        const MsStr shown = i < ndisplay ? ms_name(&m->names, display[i]) : name; /* glue added by the emitter */
+        ms_buf_printf(out, "Y %.*s\t%d\t%u\t%.*s\n", (int)name.len, name.ptr,
+                      f->loc.file == MIR_NONE ? -1 : (int)f->loc.file, f->loc.line, (int)shown.len, shown.ptr);
+        for (uint32_t k = 0; k < f->nscopes; k++) {
+            const MirScope *s = &f->scopes[k];
+            const MsStr sn = ms_name(&m->names, s->name);
+            ms_buf_printf(out, "S %d\t%u\t%u\t%.*s\n", s->file == MIR_NONE ? -1 : (int)s->file,
+                          s->parent == 0 ? 0 : base + s->parent, s->call_line, (int)sn.len, sn.ptr);
+        }
+        base += f->nscopes;
+    }
 }

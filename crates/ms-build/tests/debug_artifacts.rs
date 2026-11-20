@@ -2,7 +2,6 @@
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_build::{Profile, build_executable};
 use ms_mir::parse::parse_module;
-use ms_rt as _;
 use std::path::Path;
 use std::process::Command;
 

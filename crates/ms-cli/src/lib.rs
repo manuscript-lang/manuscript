@@ -4,9 +4,6 @@
 //! failing tests, I/O errors); `2` usage error (bad flags or arguments, nothing
 //! was run); and the program's own status for `run`.
 
-// Links the msrt_* runtime symbols that the standard-library crates reference.
-#[cfg(test)]
-use ms_rt as _;
 pub mod analysis;
 pub mod backend;
 mod commands;
