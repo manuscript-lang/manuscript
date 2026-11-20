@@ -32,11 +32,10 @@ pub(crate) fn environment_guard() -> std::sync::MutexGuard<'static, ()> {
     LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-use alloc::vec::Vec;
 use ms_rt::ffi::ErrOut;
 use ms_rt::ffi::{
-    Has, IntList, ObjMut, Object, StatusCode, Str, StrMap, StringList, Text, TextList, abi_type,
-    argv, monotonic_nanos, native, start_nanos,
+    Has, ObjMut, Object, StatusCode, Str, StrMap, StringList, abi_type, argv, monotonic_nanos,
+    native, start_nanos,
 };
 use ms_std_fs::fs_status;
 
@@ -121,86 +120,6 @@ native! {
         uptime_ns()
     }
 
-    /// The live environment as parallel `names` and `values` string lists.
-    fn msstd_process_environment(; err: ErrOut) -> Result<(TextList, TextList), StatusCode> {
-        let (names, values): (Vec<_>, Vec<_>) = fs_status(control::environment(), &err)?.into_iter().unzip();
-        Ok((TextList(names), TextList(values)))
-    }
-
-    fn msstd_process_set_environment(
-        name: &str,
-        has_value: Has,
-        value: &str; err: ErrOut) -> Result<(), StatusCode> {
-        let value = has_value.then_some(value.as_bytes());
-        fs_status(control::set_environment(name.as_bytes(), value), &err)
-    }
-
-    fn msstd_process_environment_is_set(name: &str) -> bool {
-        control::environment_is_set(name.as_bytes())
-    }
-
-    fn msstd_process_working_directory(; err: ErrOut) -> Result<Text, StatusCode> {
-        fs_status(control::working_directory(), &err).map(Text)
-    }
-
-    fn msstd_process_change_directory(path: &str; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(control::change_directory(path.as_bytes()), &err)
-    }
-
-    fn msstd_process_send_signal(pid: i64, signal: i64; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(control::send_signal(pid, signal), &err)
-    }
-
-    fn msstd_process_groups(; err: ErrOut) -> Result<IntList, StatusCode> {
-        fs_status(control::groups(), &err).map(IntList)
-    }
-
-    fn msstd_process_set_groups(groups: &[i64]; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(control::set_groups(groups), &err)
-    }
-
-    fn msstd_process_initialize_groups(username: &str, gid: i64; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(control::initialize_groups(username.as_bytes(), gid), &err)
-    }
-
-    fn msstd_process_umask(mask: i64; err: ErrOut) -> Result<i64, StatusCode> {
-        fs_status(control::umask(mask), &err)
-    }
-
-    fn msstd_process_set_identity(kind: &str, id: i64; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(control::set_identity(kind.as_bytes(), id), &err)
-    }
-
-    fn msstd_process_title(; err: ErrOut) -> Result<Text, StatusCode> {
-        fs_status(control::title(), &err).map(Text)
-    }
-
-    fn msstd_process_set_title(title: &str; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(control::set_title(title.as_bytes()), &err)
-    }
-
-    fn msstd_process_constrained_memory(; err: ErrOut) -> Result<i64, StatusCode> {
-        fs_status(control::memory_limit(), &err).map(|(limit, _)| limit)
-    }
-
-    fn msstd_process_available_memory(; err: ErrOut) -> Result<i64, StatusCode> {
-        fs_status(control::available_memory(), &err)
-    }
-
-    fn msstd_process_resource_usage(; err: ErrOut) -> Result<ResourceOut, StatusCode> {
-        fs_status(control::resource_usage(), &err).map(|u| ResourceOut {
-            user_microseconds: u.user_us,
-            system_microseconds: u.system_us,
-            max_resident_bytes: u.max_rss,
-            minor_faults: u.minor_faults,
-            major_faults: u.major_faults,
-            filesystem_reads: u.reads,
-            filesystem_writes: u.writes,
-            voluntary_switches: u.voluntary,
-            involuntary_switches: u.involuntary,
-        })
-    }
-
     /// `watch_signals`: `signals` is a `List[Int]`; the capacity is a present flag plus the value.
     fn msstd_process_watch_signals(
         signals: &[i64],
@@ -218,13 +137,6 @@ native! {
     fn msstd_process_signal_close(h: ObjMut<signals::Watcher>) -> () {
         let mut h = h;
         h.close()
-    }
-
-    fn msstd_process_cpu_usage(; err: ErrOut) -> Result<CpuOut, StatusCode> {
-        fs_status(control::resource_usage(), &err).map(|u| CpuOut {
-            user_microseconds: u.user_us,
-            system_microseconds: u.system_us,
-        })
     }
 
     /// `runtime_counts()` as `Result[RuntimeCounts, ControlError]`: the runtime's work counters.
