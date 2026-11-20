@@ -18,10 +18,10 @@ fn main() {
     println!("cargo::rerun-if-changed={}", dir.display());
     println!("cargo::rerun-if-env-changed=MS_C_REACTOR");
     let archive_build = std::env::var_os("MS_C_RUNTIME").is_some();
-    // Test and clippy builds on Linux and macOS link the C runtime. Windows hosts keep the Rust definitions: their
-    // tests build for MSVC, and the runtime's C is built for mingw (`cargo xtask runtime`).
+    // Test and clippy builds link the C runtime. On a Windows host they build for MSVC, so the C is compiled for
+    // MSVC too (clang `--target=<arch>-pc-windows-msvc`), unlike the runtime archive, which targets mingw.
     let native = std::env::var("TARGET").ok() == std::env::var("HOST").ok();
-    let test_c = !archive_build && native && !cfg!(windows);
+    let test_c = !archive_build && native;
     if test_c {
         link_c_runtime(&root);
     }
@@ -65,7 +65,11 @@ fn link_c_runtime(root: &std::path::Path) {
     let plan = build_c::plan_c_runtime(root, None).expect("plan the C runtime");
     let objects =
         build_c::compile_c_objects(root, &out, None, &plan).expect("compile the C runtime");
-    let archive = out.join("libms_c.a");
+    let archive = out.join(if cfg!(windows) {
+        "ms_c.lib"
+    } else {
+        "libms_c.a"
+    });
     let _ = std::fs::remove_file(&archive);
     let ar = build_c::archiver(root, None);
     let status = std::process::Command::new(&ar)
