@@ -66,7 +66,8 @@ fn link_c_runtime(root: &std::path::Path) {
     );
     println!("cargo::rerun-if-changed={}", root.join("cmake").display());
     let out = std::path::PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
-    let plan = build_c::build_c_runtime(root, &out, None, true, false).expect("build the C runtime");
+    let plan =
+        build_c::build_c_runtime(root, &out, None, true, false).expect("build the C runtime");
     let objects = plan.objects;
     let archive = out.join(if cfg!(windows) {
         "ms_c.lib"

@@ -1,7 +1,6 @@
 /* ms_rt/test.h: what the test runner (@std/internal/test_runner) calls (runtime/entry/test_support.c). The output
  * captures it also uses are declared with the standard output they redirect. Symbols are listed in
  * runtime/symbols/test.txt. */
-/* ms: domain test */
 #ifndef MS_RT_TEST_H
 #define MS_RT_TEST_H
 
