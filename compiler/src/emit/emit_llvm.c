@@ -1406,13 +1406,24 @@ static void ll_switch(LCx *c, const MirTerm *t) {
     ms_buf_puts(o, "\n  ]\n");
 }
 
-static bool ll_term(LCx *c, const MirTerm *t) {
+/* A conditional branch whose two edges enter the same block with arguments. */
+static bool ll_reaches_twice(const MirTerm *t) {
+    return t->kind == MT_CONDBR && t->a.block == t->b.block && t->a.nargs > 0;
+}
+
+static bool ll_term(LCx *c, const MirTerm *t, uint32_t block) {
     MsBuf *o = c->out;
     switch ((MirTermKind)t->kind) {
     case MT_BR:
         ms_buf_printf(o, "  br label %%b%u\n", t->a.block);
         return true;
     case MT_CONDBR:
+        if (ll_reaches_twice(t)) {
+            /* Both edges enter one block with arguments: a block each, so its phis can tell them apart. */
+            ms_buf_printf(o, "  br i1 %%v%u, label %%r%u.0, label %%r%u.1\nr%u.0:\n  br label %%b%u\nr%u.1:\n  br label %%b%u\n",
+                          t->value, block, block, block, t->a.block, block, t->b.block);
+            return true;
+        }
         ms_buf_printf(o, "  br i1 %%v%u, label %%b%u, label %%b%u\n", t->value, t->a.block, t->b.block);
         return true;
     case MT_SWITCH:
@@ -1508,19 +1519,25 @@ static bool ll_phi_leaf(LCx *c, uint32_t b, uint32_t index, uint32_t leaf, const
                 edge = e;
             }
         }
-        if (reached > 1 && edge->nargs > 0) {
+        if (reached > 1 && edge->nargs > 0 && !ll_reaches_twice(t)) {
             c->why = "one block reaches a target twice with arguments";
             return false;
         }
         if (edge == NULL) {
             continue;
         }
-        ms_buf_printf(c->out, "%s[ ", first ? "" : ", ");
-        ll_name(c->out, edge->args[index], leaf);
-        ms_buf_puts(c->out, ", %");
-        ll_label(c, s, last[s]);
-        ms_buf_puts(c->out, " ]");
-        first = false;
+        for (uint32_t k = 0; k < (ll_reaches_twice(t) ? 2U : 1U); k++) {
+            ms_buf_printf(c->out, "%s[ ", first ? "" : ", ");
+            ll_name(c->out, (ll_reaches_twice(t) ? ll_edge(t, k) : edge)->args[index], leaf);
+            ms_buf_puts(c->out, ", %");
+            if (ll_reaches_twice(t)) {
+                ms_buf_printf(c->out, "r%u.%u", s, k);
+            } else {
+                ll_label(c, s, last[s]);
+            }
+            ms_buf_puts(c->out, " ]");
+            first = false;
+        }
     }
     ms_buf_putc(c->out, '\n');
     return true;
@@ -1572,7 +1589,7 @@ static bool ll_block(LCx *c, uint32_t b, const uint32_t *last) {
             return false;
         }
     }
-    return ll_term(c, &block->term);
+    return ll_term(c, &block->term, b);
 }
 
 /* `define <result> @name(<hidden result pointer>, <leaves of each parameter>) {`. */

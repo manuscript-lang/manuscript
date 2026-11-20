@@ -912,6 +912,10 @@ static void own_while(OwnWalk *w, const MsStmt *s) {
 
 /* `for i in a..b`: the bounds are read once; the counter is a fresh copied binding per iteration. */
 static void own_for(OwnWalk *w, const MsStmt *s) {
+    if (w->facts->each_list[s->id]) {
+        w->supported = false; /* iterating a list borrows it for the loop: not modelled yet */
+        return;
+    }
     const MsExpr *range = s->u.each.iter;
     own_expr(w, range->u.call.args.ptr[0].value, DEMAND_READ);
     own_expr(w, range->u.call.args.ptr[1].value, DEMAND_READ);

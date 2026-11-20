@@ -116,7 +116,7 @@ static void check_bodies_with_methods(MsCheck *check, MsModId id, const char *te
 /* Prints the name-resolution diagnostics of each file as `path:line:col: message`, the form
  * `c_oracle --scope` prints. Files that fail to parse or import project modules print nothing. */
 static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *names, int nfiles_in, char **paths,
-                                    bool bodies, bool ownership, bool effects) {
+                                    bool bodies, bool ownership, bool effects, bool facts_json) {
     for (int i = 0; i < nfiles_in; i++) {
         FILE *f = fopen(paths[i], "rb");
         if (f == NULL) {
@@ -131,9 +131,16 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
         MsModule *module = MS_NEW(syntax, MsModule);
         MsDiag diag;
         if (read && ms_parse(syntax, names, text, (size_t)n, module, &diag) && only_std_imports(module)) {
-            printf("== %s\n", paths[i]);
             MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
             MsBuf dump = {0};
+            if (facts_json) {
+                ms_dump_module_facts(&dump, check, id);
+                printf("%.*s", (int)dump.len, (const char *)dump.data);
+                ms_buf_free(&dump);
+                free(text);
+                continue;
+            }
+            printf("== %s\n", paths[i]);
             if (bodies) {
                 check_bodies_with_methods(check, id, text, (size_t)n);
                 if (effects) {
@@ -185,10 +192,11 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
 int main(int argc, char **argv) {
     const bool ownership = argc >= 3 && strcmp(argv[2], "--ownership") == 0;
     const bool effects = argc >= 3 && strcmp(argv[2], "--effects") == 0;
+    const bool facts_json = argc >= 3 && strcmp(argv[2], "--facts") == 0;
     const bool bodies = ownership || effects || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
-    const bool scope = bodies || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
+    const bool scope = bodies || facts_json || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
     if (argc != 2 && !scope) {
-        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership|--effects FILE...]\n", stderr);
+        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership|--effects|--facts FILE...]\n", stderr);
         return 2;
     }
     const char *root = argv[1];
@@ -238,7 +246,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (scope) {
-        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership, effects);
+        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership, effects, facts_json);
     } else {
         MsBuf out = {0};
         ms_dump_std_tables(&out, &check);

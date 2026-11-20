@@ -168,17 +168,23 @@ uint8_t msstd_dgram_receive(const void *handle, uint8_t has_max, int64_t max, ui
 /* ms-sig: msstd_dgram_send(handle s: *const ObjCell<DgramH>, data: *const VecVal, address: *const StrVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_dgram_send(const void *handle, const MsVec *data, const MsStr *address, uint8_t has_timeout, int64_t timeout, MsStr *err);
 
-/* Network scopes (ScopeH): what `Network.close` closes. A scope remembers the datagram sockets opened through it and
+/* Network scopes (ScopeH): what `Network.close` closes. A scope remembers the sockets, connections and listeners opened through it and
  * the scopes derived from it; `close` closes them all (once) and later `track` calls close the socket they are given
  * and return 0. `child` is a scope that closes with this one. `open` is 1 until the scope is closed. */
 /* ms-sig: msstd_scope_new() -> *mut ObjCell<ScopeH> @handle @domain=network */
 void *msstd_scope_new(void);
+/* ms-sig: msstd_scope_share(handle s: *const ObjCell<ScopeH>) -> *mut ObjCell<ScopeH> @handle @domain=network */
+void *msstd_scope_share(const void *handle);
 /* ms-sig: msstd_scope_child(handle s: *const ObjCell<ScopeH>) -> *mut ObjCell<ScopeH> @handle @domain=network */
 void *msstd_scope_child(const void *handle);
 /* ms-sig: msstd_scope_open(handle s: *const ObjCell<ScopeH>) -> u8 @domain=network */
 uint8_t msstd_scope_open(const void *handle);
 /* ms-sig: msstd_scope_close(handle s: *const ObjCell<ScopeH>) @domain=network */
 void msstd_scope_close(const void *handle);
+/* ms-sig: msstd_scope_track_conn(handle s: *const ObjCell<ScopeH>, handle conn: *const ObjCell<ConnH>) -> u8 @domain=network */
+uint8_t msstd_scope_track_conn(const void *handle, const void *connection);
+/* ms-sig: msstd_scope_track_listener(handle s: *const ObjCell<ScopeH>, handle listener: *const ObjCell<ListenerH>) -> u8 @domain=network */
+uint8_t msstd_scope_track_listener(const void *handle, const void *listener);
 /* ms-sig: msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network */
 uint8_t msstd_scope_track_dgram(const void *handle, const void *socket);
 
@@ -218,6 +224,20 @@ uint8_t msstd_net_listen(const MsStr *address, void **out, MsStr *err);
 uint8_t msstd_listener_accept(const void *handle, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
 /* ms-sig: msstd_listener_address(handle l: *const ObjCell<ListenerH>, out: *mut StrVal) @domain=network */
 void msstd_listener_address(const void *handle, MsStr *out);
+/* Connects to the Unix domain socket at `path` and gives a plain connection. The connect itself blocks only while the
+ * listener's queue is full. An empty path or one with a NUL byte is STATUS_INVALID_INPUT; one longer than the system's
+ * limit is STATUS_FAILED. The connection's own addresses are empty text. */
+/* ms-sig: msstd_net_dial_unix(path: *const StrVal, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_net_dial_unix(const MsStr *path, void **out, MsStr *err);
+
+/* Listens on a new Unix domain socket at `path`; accept and close are the listener natives of ms_rt/net.h, its address
+ * is `path`, and the file is removed when the listener is dropped. An existing file at `path` fails the bind. */
+/* ms-sig: msstd_net_listen_unix(path: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_net_listen_unix(const MsStr *path, void **out, MsStr *err);
+
+/* Another handle on the same listener; the descriptor closes when the last one is dropped. */
+/* ms-sig: msstd_listener_share(handle l: *const ObjCell<ListenerH>) -> *mut ObjCell<ListenerH> @handle @domain=network */
+void *msstd_listener_share(const void *handle);
 /* ms-sig: msstd_listener_close(handle l: *const ObjCell<ListenerH>) @domain=network */
 void msstd_listener_close(const void *handle);
 
