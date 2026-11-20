@@ -265,7 +265,7 @@ static bool segment_holding(uintptr_t fp, MsStackWindow *window) {
 }
 
 void ms_frames_walk_chain(uintptr_t fp, MsStackWindow window, MsFrameVisit visit, void *context) {
-    for (size_t steps = 0; fp != 0 && fp % sizeof(uintptr_t) == 0 && steps < MS_FRAMES_WALK_MAX; steps++) {
+    for (size_t steps = 0; fp != 0 && fp % sizeof(uintptr_t) == 0 && steps < MS_FRAMES_WALK_MAX + MS_FRAMES_NATIVE_MAX; steps++) {
         if (!segment_holding(fp, &window)) {
             return;
         }
@@ -407,7 +407,9 @@ bool ms_frames_collector_add(uintptr_t return_address, void *context) {
     }
     const MsFuncEntry *const function = ms_frames_find_function(tables, return_address);
     if (function == NULL) {
-        return spend_step(collector);
+        /* The runtime's own frames above the first one of source cost no step, so the count of frames shown does
+         * not depend on how many the fault path has. */
+        return ++collector->native <= MS_FRAMES_NATIVE_MAX;
     }
     Position position = find_line(tables, function, return_address);
     /* The frame that raised the fault may sit in a call without a position of its own; it takes the nearest
