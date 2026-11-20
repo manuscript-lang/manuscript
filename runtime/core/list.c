@@ -6,6 +6,7 @@
  * A view (`cap == 0` with a buffer) borrows its elements: nothing frees, drops or grows it in place.
  */
 #include "hash.h"
+#include "index.h"
 #include "list_ops.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/list.h"
@@ -46,38 +47,6 @@ static size_t checked_add(size_t a, size_t b) {
         fault_list_overflow();
     }
     return sum;
-}
-
-/* Resolves a possibly negative index (counting from the end) against `len`: false when out of range. */
-static bool resolve_index(size_t len, int64_t index, size_t *out) {
-    const int64_t position = index < 0 ? (int64_t)len + index : index;
-    if (position < 0 || (uint64_t)position >= len) {
-        return false;
-    }
-    *out = (size_t)position;
-    return true;
-}
-
-/* An index that may also be `len` (the position after the last element), for insert. */
-static bool resolve_insert_index(size_t len, int64_t index, size_t *out) {
-    const int64_t position = index < 0 ? (int64_t)len + index : index;
-    if (position < 0 || (uint64_t)position > len) {
-        return false;
-    }
-    *out = (size_t)position;
-    return true;
-}
-
-/* The bounds start..end of a slice, each possibly negative, resolved against `len`. */
-static bool resolve_bounds(size_t len, int64_t start, int64_t end, size_t *from, size_t *to) {
-    const int64_t first = start < 0 ? (int64_t)len + start : start;
-    const int64_t last = end < 0 ? (int64_t)len + end : end;
-    if (first < 0 || last < first || (uint64_t)last > len) {
-        return false;
-    }
-    *from = (size_t)first;
-    *to = (size_t)last;
-    return true;
 }
 
 /* How many elements `take` and `drop` split at: a count of zero or below is zero. */
@@ -235,7 +204,7 @@ void msrt_list_reserve(MsList *v, const MsTypeDesc *d, int64_t extra) {
 /* The element at a possibly negative index, borrowed; `default_value` (may be NULL) when out of range. */
 const uint8_t *msrt_list_at(const MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *default_value) {
     size_t position = 0;
-    if (resolve_index(v->len, index, &position)) {
+    if (ms_resolve_index(v->len, index, &position)) {
         return ms_list_at(v, d, position);
     }
     if (default_value == NULL) {
@@ -317,7 +286,7 @@ uint8_t msrt_list_contains(const MsList *v, const MsTypeDesc *d, const uint8_t *
 
 void msrt_list_insert(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e) {
     size_t position = 0;
-    if (!resolve_insert_index(v->len, index, &position)) {
+    if (!ms_resolve_insert_index(v->len, index, &position)) {
         msrt_list_index_fault(0, index, (int64_t)v->len);
     }
     ms_list_reserve(v, d, 1);
@@ -354,7 +323,7 @@ uint8_t msrt_list_pop(MsList *v, const MsTypeDesc *d, uint8_t *out) {
 /* Replaces the element at `index` with `e` (consumed); the old element is dropped. */
 void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e) {
     size_t position = 0;
-    if (!resolve_index(v->len, index, &position)) {
+    if (!ms_resolve_index(v->len, index, &position)) {
         msrt_list_index_fault(2, index, (int64_t)v->len);
     }
     uint8_t *slot = ms_list_at(v, d, position);
@@ -365,7 +334,7 @@ void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t 
 /* Moves the element at `index` into `out` and stores `e` (consumed) in its place; nothing is copied or dropped. */
 void msrt_list_replace(MsList *v, const MsTypeDesc *d, int64_t index, uint8_t *e, uint8_t *out) {
     size_t position = 0;
-    if (!resolve_index(v->len, index, &position)) {
+    if (!ms_resolve_index(v->len, index, &position)) {
         msrt_list_index_fault(4, index, (int64_t)v->len);
     }
     uint8_t *slot = ms_list_at(v, d, position);
@@ -390,10 +359,10 @@ static void swap_slots(uint8_t *a, uint8_t *b, size_t size) {
 void msrt_list_swap(MsList *v, const MsTypeDesc *d, int64_t i, int64_t j) {
     size_t first = 0;
     size_t second = 0;
-    if (!resolve_index(v->len, i, &first)) {
+    if (!ms_resolve_index(v->len, i, &first)) {
         msrt_list_index_fault(3, i, (int64_t)v->len);
     }
-    if (!resolve_index(v->len, j, &second)) {
+    if (!ms_resolve_index(v->len, j, &second)) {
         msrt_list_index_fault(3, j, (int64_t)v->len);
     }
     if (first != second) {
@@ -403,7 +372,7 @@ void msrt_list_swap(MsList *v, const MsTypeDesc *d, int64_t i, int64_t j) {
 
 void msrt_list_remove(MsList *v, const MsTypeDesc *d, int64_t index) {
     size_t position = 0;
-    if (!resolve_index(v->len, index, &position)) {
+    if (!ms_resolve_index(v->len, index, &position)) {
         msrt_list_index_fault(1, index, (int64_t)v->len);
     }
     uint8_t *slot = ms_list_at(v, d, position);
@@ -598,7 +567,7 @@ uint8_t msrt_list_slice(const MsList *v, const MsTypeDesc *d, int64_t start, int
     start_error_slot(err);
     size_t from = 0;
     size_t to = 0;
-    if (!resolve_bounds(v->len, start, end, &from, &to)) {
+    if (!ms_resolve_bounds(v->len, start, end, &from, &to)) {
         store_slice_error(err, start, end, v->len);
         return MS_STATUS_OUT_OF_RANGE;
     }
@@ -614,7 +583,7 @@ uint8_t msrt_list_slice_view(const MsList *v, const MsTypeDesc *d, int64_t start
     start_error_slot(err);
     size_t from = 0;
     size_t to = 0;
-    if (!resolve_bounds(v->len, start, end, &from, &to)) {
+    if (!ms_resolve_bounds(v->len, start, end, &from, &to)) {
         store_slice_error(err, start, end, v->len);
         return MS_STATUS_OUT_OF_RANGE;
     }

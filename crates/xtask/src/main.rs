@@ -226,7 +226,7 @@ fn abi_kind(text: &str) -> String {
             .any(|t| t == w)
     };
     // Role aliases of the runtime ABI (crates/ms-rt-abi): pointers and a presence byte.
-    for alias in ["ElemDesc", "KeyDesc", "ValDesc", "ValueDesc", "CmpFn", "ErrSlot"] {
+    for alias in ["ElemDesc", "KeyDesc", "ValDesc", "ValueDesc", "CmpFn", "MsCompareFn", "ErrSlot"] {
         if word(alias) {
             return "ptr".into();
         }

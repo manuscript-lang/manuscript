@@ -278,6 +278,143 @@ static bool faults_on_fixture(void (*body)(void)) {
     return faulted;
 }
 
+/* ---- sorting ---- */
+
+static int64_t compare_ints(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+    (void)env;
+    int64_t x = 0;
+    int64_t y = 0;
+    memcpy(&x, a, 8);
+    memcpy(&y, b, 8);
+    return x < y ? -1 : x > y ? 1 : 0;
+}
+
+/* A pair (key, original position): sorting by key must keep the positions of equal keys in order. */
+typedef struct Pair {
+    int64_t key;
+    int64_t position;
+} Pair;
+
+static int64_t compare_pair_keys(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+    (void)env;
+    Pair x;
+    Pair y;
+    memcpy(&x, a, sizeof x);
+    memcpy(&y, b, sizeof y);
+    return x.key < y.key ? -1 : x.key > y.key ? 1 : 0;
+}
+
+static int64_t difference(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+    (void)env;
+    int64_t x = 0;
+    int64_t y = 0;
+    memcpy(&x, a, 8);
+    memcpy(&y, b, 8);
+    return x - y;
+}
+
+static uint64_t next_random(uint64_t *state) {
+    *state = *state * 6364136223846793005ull + 1442695040888963407ull;
+    return *state >> 33;
+}
+
+static void test_sort_stable_pairs(void) {
+    static const MsTypeDesc pair_desc = {.size = 16, .align = 8, .kind = MS_KIND_POD};
+    for (size_t count = 0; count < 200; count += 7) {
+        MsList l;
+        msrt_list_new(&l);
+        uint64_t seed = count + 1;
+        for (size_t i = 0; i < count; i++) {
+            Pair p = {.key = (int64_t)(next_random(&seed) % 5), .position = (int64_t)i};
+            msrt_list_push(&l, &pair_desc, (const uint8_t *)&p);
+        }
+        msrt_list_sort_in_place(&l, &pair_desc, compare_pair_keys, NULL);
+        for (size_t i = 1; i < count; i++) {
+            Pair a;
+            Pair b;
+            memcpy(&a, l.ptr + (i - 1) * 16, 16);
+            memcpy(&b, l.ptr + i * 16, 16);
+            CHECK(a.key < b.key || (a.key == b.key && a.position < b.position));
+        }
+        msrt_list_drop(&l, &pair_desc);
+    }
+}
+
+static void test_sort_ints(void) {
+    uint64_t seed = 7;
+    for (size_t count = 0; count < 600; count += 37) {
+        MsList by_cmp;
+        MsList by_radix;
+        MsList by_diff;
+        msrt_list_new(&by_cmp);
+        for (size_t i = 0; i < count; i++) {
+            int64_t v = (int64_t)(next_random(&seed) % 2001) - 1000;
+            if (i % 50 == 3) {
+                v = i % 100 == 3 ? INT64_MIN : INT64_MAX;
+            }
+            push_int(&by_cmp, v);
+        }
+        msrt_list_copy(&by_cmp, INT, &by_radix);
+        msrt_list_sort_in_place(&by_cmp, INT, compare_ints, NULL);
+        msrt_list_sort_ints(&by_radix, 0);
+        CHECK(by_cmp.len == by_radix.len && (count == 0 || memcmp(by_cmp.ptr, by_radix.ptr, count * 8) == 0));
+        msrt_list_sort_ints(&by_radix, 1);
+        for (size_t i = 0; i < count; i++) {
+            CHECK(int_at(&by_radix, i) == int_at(&by_cmp, count - 1 - i));
+        }
+        MsList sorted;
+        msrt_list_sorted(&by_cmp, INT, compare_ints, NULL, &sorted);
+        CHECK(sorted.len == count && (count == 0 || memcmp(sorted.ptr, by_cmp.ptr, count * 8) == 0));
+        msrt_list_drop(&sorted, INT);
+        msrt_list_sorted_by_difference(&by_cmp, INT, difference, NULL, 0, &by_diff);
+        CHECK(by_diff.len == count && (count == 0 || memcmp(by_diff.ptr, by_cmp.ptr, count * 8) == 0));
+        msrt_list_drop(&by_diff, INT);
+        msrt_list_drop(&by_cmp, INT);
+        msrt_list_drop(&by_radix, INT);
+    }
+}
+
+/* A comparator that faults on its Nth call, to check the list is put back and nothing leaks. */
+static size_t calls_left;
+
+static int64_t compare_then_fault(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+    if (calls_left-- == 0) {
+        static const char message[] = "comparator fault";
+        msrt_fault((const uint8_t *)message, sizeof message - 1);
+    }
+    return compare_ints(env, a, b);
+}
+
+static void sort_fixture_with_fault(void) { msrt_list_sort_in_place(&fixture, INT, compare_then_fault, NULL); }
+
+static void sorted_copy_with_fault(void) {
+    MsList out;
+    msrt_list_sorted(&fixture, INT, compare_then_fault, NULL, &out);
+}
+
+static void test_sort_rollback(void) {
+    int64_t original[50];
+    for (size_t i = 0; i < 50; i++) {
+        original[i] = (int64_t)((i * 37) % 50);
+    }
+    for (size_t budget = 0; budget < 250; budget += 11) {
+        fixture = ints(50, original);
+        calls_left = budget;
+        const bool faulted = faults(sort_fixture_with_fault);
+        CHECK(!faulted || is_ints(&fixture, 50, original) || fixture.len == 50);
+        if (faulted) { /* the slots are back in their original order */
+            CHECK(is_ints(&fixture, 50, original));
+        }
+        msrt_list_drop(&fixture, INT);
+        fixture = ints(50, original);
+        calls_left = budget;
+        (void)faults(sorted_copy_with_fault); /* the unpublished copy is dropped (LeakSanitizer checks) */
+        CHECK(is_ints(&fixture, 50, original));
+        msrt_list_drop(&fixture, INT);
+        CHECK(ms_test_cleanups == 0);
+    }
+}
+
 static void test_faults(void) {
     CHECK(faults_on_fixture(insert_out_of_range) && ms_test_fault_kind == 6);
     CHECK(faults_on_fixture(at_without_default) && ms_test_fault_kind == 6);
@@ -317,6 +454,9 @@ int main(void) {
     test_pieces();
     test_strings();
     test_distinct_range_keys();
+    test_sort_stable_pairs();
+    test_sort_ints();
+    test_sort_rollback();
     test_faults();
     test_nested_and_shadow();
     puts("core_list: ok");

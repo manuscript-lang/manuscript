@@ -16,6 +16,10 @@ char ms_test_fault_message[256];
 uint8_t ms_test_fault_kind;
 size_t ms_test_cleanups;
 
+#define MAX_CLEANUPS 8
+static void (*cleanup_run[MAX_CLEANUPS])(uint8_t *);
+static uint8_t *cleanup_arg[MAX_CLEANUPS];
+
 _Noreturn void msfault_raise(uint8_t kind, const uint8_t *msg, size_t len) {
     if (ms_test_fault == NULL) {
         fprintf(stderr, "fault: %.*s\n", (int)len, msg);
@@ -25,6 +29,10 @@ _Noreturn void msfault_raise(uint8_t kind, const uint8_t *msg, size_t len) {
     memcpy(ms_test_fault_message, msg, n);
     ms_test_fault_message[n] = 0;
     ms_test_fault_kind = kind;
+    while (ms_test_cleanups > 0) { /* a fault runs the pending cleanups, newest first, before it jumps */
+        ms_test_cleanups--;
+        cleanup_run[ms_test_cleanups](cleanup_arg[ms_test_cleanups]);
+    }
     longjmp(*ms_test_fault, 1);
 }
 
@@ -44,8 +52,8 @@ _Noreturn void msrt_list_index_fault(int64_t operation, int64_t index, int64_t l
 }
 
 size_t msrt_cleanup_push(void (*run)(uint8_t *), uint8_t *arg) {
-    (void)run;
-    (void)arg;
+    cleanup_run[ms_test_cleanups] = run;
+    cleanup_arg[ms_test_cleanups] = arg;
     return ++ms_test_cleanups;
 }
 

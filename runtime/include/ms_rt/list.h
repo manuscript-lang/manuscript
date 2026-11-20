@@ -7,6 +7,10 @@
 
 #include "ms_rt/desc.h"
 
+/* Compares two elements: negative when `a` sorts first. `env` is the comparator closure. It is program code, so
+ * it can fault or park; the sorts below are not leaf functions. */
+typedef int64_t (*MsCompareFn)(uint8_t *env, const uint8_t *a, const uint8_t *b);
+
 void msrt_list_new(MsList *out);
 void msrt_list_with_capacity(const MsTypeDesc *d, int64_t cap, MsList *out);
 void msrt_list_drop(MsList *v, const MsTypeDesc *d);
@@ -46,6 +50,10 @@ void msrt_list_keys(const MsList *v, MsList *out);
 void msrt_list_range(int64_t start, int64_t end, MsList *out);
 uint8_t msrt_list_range_by(int64_t start, int64_t end, int64_t step, uint8_t has_max, int64_t max, MsList *out);
 void msrt_list_to_set(const MsList *v, const MsTypeDesc *d, MsMap *out);
+void msrt_list_sort_in_place(MsList *v, const MsTypeDesc *d, MsCompareFn cmp, uint8_t *env);
+void msrt_list_sort_ints(MsList *v, int64_t desc);
+void msrt_list_sorted(const MsList *v, const MsTypeDesc *d, MsCompareFn cmp, uint8_t *env, MsList *out);
+void msrt_list_sorted_by_difference(const MsList *v, const MsTypeDesc *d, MsCompareFn cmp, uint8_t *env, int64_t desc, MsList *out);
 int64_t msrt_hash_list(const MsList *v, const MsTypeDesc *d);
 
 #endif

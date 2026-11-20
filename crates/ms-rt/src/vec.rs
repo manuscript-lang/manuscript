@@ -1302,7 +1302,7 @@ unsafe fn merge_sort(
 }
 
 /// Stable sort in place by a three-way comparator thunk (`< 0` means before).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_sort_in_place"), unsafe(no_mangle))]
 // The comparator is program code that can fault or park, so this is not a leaf.
 pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
     v: *mut VecVal,
@@ -1373,7 +1373,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
 
 /// Sorts a list of `Int` in place, ascending or (when `desc != 0`) descending. Equal integers are
 /// indistinguishable, so the unstable sort gives the same list as the stable one.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_sort_ints"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C" fn msrt_list_sort_ints(v: *mut VecVal, desc: i64) {
     // SAFETY: caller contract: `v` holds `len` words.
@@ -1395,7 +1395,7 @@ pub unsafe extern "C" fn msrt_list_sort_ints(v: *mut VecVal, desc: i64) {
 /// `desc != 0`). When no two elements differ by more than an `Int` holds, every difference has
 /// the sign of the integer order, so this is the integer sort. Otherwise the comparator runs as
 /// written, faulting where a subtraction overflows.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_sorted_by_difference"), unsafe(no_mangle))]
 // The comparator is program code that can fault or park, so this is not a leaf.
 pub unsafe extern "C-unwind" fn msrt_list_sorted_by_difference(
     v: *const VecVal,
@@ -1428,7 +1428,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted_by_difference(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_sorted"), unsafe(no_mangle))]
 // The comparator is program code that can fault or park, so this is not a leaf.
 pub unsafe extern "C-unwind" fn msrt_list_sorted(
     v: *const VecVal,
@@ -1580,7 +1580,7 @@ pub(crate) unsafe fn bytes_from(data: &[u8], out: *mut VecVal) {
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_drop"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_drop(b: *mut VecVal) {
     // SAFETY: caller contract.
@@ -1593,21 +1593,21 @@ pub unsafe extern "C-unwind" fn msrt_bytes_drop(b: *mut VecVal) {
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_copy"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_copy(b: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe { copy_bytes(b, out) }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_contains"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_contains(b: *const VecVal, v: *const VecVal) -> u8 {
     // SAFETY: caller contract.
     unsafe { string::find(bslice(b), bslice(v)).is_some() as u8 }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_index_of"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_index_of(
     b: *const VecVal,
@@ -1627,7 +1627,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of(
 }
 
 /// `index_of_byte(value, start)`: first offset at or after `start` holding `value`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_index_of_byte"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
     b: *const VecVal,
@@ -1665,7 +1665,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_last_index_of"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_last_index_of(
     b: *const VecVal,
@@ -1684,21 +1684,21 @@ pub unsafe extern "C-unwind" fn msrt_bytes_last_index_of(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_starts_with"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_starts_with(b: *const VecVal, v: *const VecVal) -> u8 {
     // SAFETY: caller contract.
     unsafe { bslice(b).starts_with(bslice(v)) as u8 }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_ends_with"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_ends_with(b: *const VecVal, v: *const VecVal) -> u8 {
     // SAFETY: caller contract.
     unsafe { bslice(b).ends_with(bslice(v)) as u8 }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_get"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_get(
     b: *const VecVal,
@@ -1720,7 +1720,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_get(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_slice"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_slice(
     b: *const VecVal,
@@ -1743,7 +1743,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_slice(
 /// `Bytes.view(start, end)`: a borrowed view of `[start, end)` that shares the receiver's storage
 /// (`cap == 0` marks a view, which is never freed). Bounds as in `slice`; a bound outside the
 /// receiver faults.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_view"), unsafe(no_mangle))]
 // ms: leaf borrows domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_view(
     b: *const VecVal,
@@ -1775,14 +1775,14 @@ pub unsafe extern "C-unwind" fn msrt_bytes_view(
 
 /// `a == b` for two `Bytes`: the lengths and then the bytes, without the descriptor dispatch of
 /// `msrt_slot_eq`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_eq"), unsafe(no_mangle))]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_bytes_eq(a: *const VecVal, b: *const VecVal) -> u8 {
     // SAFETY: caller contract.
     unsafe { (bslice(a) == bslice(b)) as u8 }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_reversed"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_reversed(b: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
@@ -1794,7 +1794,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_reversed(b: *const VecVal, out: *mut 
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_with_value"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_with_value(
     b: *const VecVal,
@@ -1819,7 +1819,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_with_value(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_concat"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_concat(
     a: *const VecVal,
@@ -1836,7 +1836,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_concat(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_split"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_split(
     b: *const VecVal,
@@ -1878,7 +1878,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_split(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_values"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_values(b: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
@@ -1902,7 +1902,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_values(b: *const VecVal, out: *mut Ve
 }
 
 /// `bytes.join(parts)`: the parts end to end in one allocation.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_join"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract; the list holds `Bytes` values inline.
@@ -1938,7 +1938,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut 
 }
 
 /// `Bytes(values)`: a `List[UInt8]` already holds one byte per element, so this copies it.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_from_values"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
@@ -2041,7 +2041,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_range(
 }
 
 /// `BytesBuilder.append(value)`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_append"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_append(b: *mut VecVal, value: i64) {
     // SAFETY: caller contract.
@@ -2058,7 +2058,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_append(b: *mut VecVal, value: i64) {
 }
 
 /// `BytesBuilder.append_bytes(values)`: borrowed `values`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_extend"), unsafe(no_mangle))]
 // ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const VecVal) {
     // SAFETY: caller contract.
@@ -2079,7 +2079,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const
 /// with that bit pattern. `@std/bytes.ms` builds every `Bytes.int32_le(at)` style read on it, and a
 /// call with a constant `width` and `little` inlines to one bounds compare and one load. Missing
 /// bytes are `STATUS_OUT_OF_RANGE`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_bytes_read_word"), unsafe(no_mangle))]
 // ms: leaf pure domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
     b: *const VecVal,
