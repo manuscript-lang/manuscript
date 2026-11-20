@@ -161,7 +161,48 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
     }
 }
 
+/* `drop.if flag v` ends its block with a branch on `flag` to a block that drops `v` and on to a
+ * block holding the rest, so the drop that remains is a plain `drop`. Blocks the split makes are
+ * visited too, for a second `drop.if`. */
+static void lo_split_drop_ifs(MirModule *m, MirFunc *f) {
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+            if (f->blocks[b].insts[k].op != MOP_DropIf) {
+                continue;
+            }
+            const MirInst held = f->blocks[b].insts[k];
+            const uint32_t nrest = f->blocks[b].ninsts - (k + 1);
+            MirInst *rest = MS_NEW_N(&m->arena, MirInst, nrest ? nrest : 1);
+            if (nrest > 0) {
+                memcpy(rest, &f->blocks[b].insts[k + 1], sizeof(MirInst) * nrest);
+            }
+            const MirTerm term = f->blocks[b].term;
+            const MirLoc term_loc = f->blocks[b].term_loc;
+            f->blocks[b].ninsts = k;
+            const MirBlock drop = mir_new_block(m, f);
+            const MirBlock next = mir_new_block(m, f);
+            const MirValue victim = held.args[1];
+            MirInst *only = MS_NEW_N(&m->arena, MirInst, 1);
+            *only = mir_inst(MOP_Drop, mir_imm_none(), MIR_NONE, held.loc,
+                             mir_args_copy(m, &victim, 1), 1);
+            f->blocks[drop].insts = only;
+            f->blocks[drop].ninsts = f->blocks[drop].cinsts = 1;
+            f->blocks[drop].term = (MirTerm){.kind = MT_BR, .value = MIR_NONE, .a = {.block = next}};
+            f->blocks[drop].term_loc = held.loc;
+            f->blocks[next].insts = rest;
+            f->blocks[next].ninsts = f->blocks[next].cinsts = nrest;
+            f->blocks[next].term = term;
+            f->blocks[next].term_loc = term_loc;
+            f->blocks[b].term = (MirTerm){.kind = MT_CONDBR, .value = held.args[0],
+                                          .a = {.block = drop}, .b = {.block = next}};
+            f->blocks[b].term_loc = held.loc;
+            break;
+        }
+    }
+}
+
 static void lo_function(LoCx *c, MirFunc *f) {
+    lo_split_drop_ifs(c->m, f);
     for (uint32_t b = 0; b < f->nblocks; b++) {
         MirBlockData *blk = &f->blocks[b];
         uint32_t kept = 0;
