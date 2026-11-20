@@ -9,6 +9,9 @@
  * process exit) writes the text the program registered (leaving the alternate screen and so on) and puts the saved
  * settings back. */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c11 */
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE 1 /* <signal.h> hides SIGWINCH under a strict POSIX level */
+#endif
 
 #include <signal.h>
 #include <stdatomic.h>
