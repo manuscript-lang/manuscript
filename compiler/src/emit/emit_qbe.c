@@ -290,6 +290,17 @@ static bool qbe_record_set(QCx *c, const MirInst *inst) {
     return true;
 }
 
+/* `ptr.field`: the address of a field of the inline record the operand points to. */
+static bool qbe_ptr_field(QCx *c, const MirInst *inst) {
+    if (c->m->type_defs[inst->imm.a].indirect) {
+        c->why = "record behind a pointer";
+        return false;
+    }
+    ms_buf_printf(c->out, "\t%%v%u =l add %%v%u, %u\n", inst->res, inst->args[0],
+                  mir_field_offset(c->layouts, inst->imm.a, inst->imm.b));
+    return true;
+}
+
 /* The `alloc8` of every stack slot and every call result written through a pointer goes at the
  * top of the entry block, so a loop does not grow the stack. Slots are `%v<result>`; result areas
  * of calls are `%r<block>_<instruction>`. */
@@ -819,7 +830,8 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
     case MOP_Store: case MOP_Put: return qbe_store(c, inst);
     case MOP_TypeNew: qbe_record_new(c, inst); return true;
     case MOP_TypeGet: return qbe_record_get(c, inst);
-    case MOP_TypeSet: return qbe_record_set(c, inst);
+    case MOP_TypeSet: case MOP_TypeFill: return qbe_record_set(c, inst);
+    case MOP_PtrField: return qbe_ptr_field(c, inst);
     default:
         *handled = false;
         return true;
