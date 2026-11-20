@@ -56,9 +56,7 @@ typedef struct Scanner {
 } Scanner;
 
 #define VLEN(b, T) ((b).len / sizeof(T))
-/* MsBuf storage comes from realloc, so it is aligned for any element type; the cast goes through
- * void * because the compiler cannot know that. */
-#define VAT(b, T, i) (((T *)(void *)(b).data)[i])
+#define VAT(b, T, i) (((T *)ms_buf_items(&(b)))[i])
 #define VLAST(b, T) VAT(b, T, VLEN(b, T) - 1)
 #define VPUSH(b, T, v)                                                                             \
     do {                                                                                           \

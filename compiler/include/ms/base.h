@@ -42,6 +42,12 @@ typedef struct MsBuf {
     size_t len, cap;
 } MsBuf;
 
+/* The stored bytes as an untyped pointer, for a vector of aligned elements: realloc storage is
+ * aligned for any element, which a typed cast from char * could not state. */
+static inline void *ms_buf_items(const MsBuf *b) {
+    return b->data;
+}
+
 void ms_buf_free(MsBuf *b);
 void *ms_buf_push(MsBuf *b, size_t n); /* appends n uninitialised bytes and returns them */
 void ms_buf_put(MsBuf *b, const void *p, size_t n);
