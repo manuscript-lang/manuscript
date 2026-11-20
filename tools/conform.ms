@@ -38,9 +38,9 @@ fn main() Int:
 		text += read_file(host_list).wait().get().decode_utf8().get_or("")
 	write_file(allow, text, replace: true).wait().get()
 
-	// The runner is a Manuscript program, started by `MS` (default target/release/ms). Not
-	// the running executable: under `ms run` that is this compiled tool, which would start
-	// itself again.
+	// The runner is a Manuscript program, started by `MS` (default target/release/ms).
+	// Not the running executable: under `ms run` that is this compiled tool, which
+	// would start itself again.
 	runner := tool_ms(working_directory().get())
 
 	// The quick loop tests the release-profile compiler `make build` just produced,

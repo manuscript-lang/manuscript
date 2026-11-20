@@ -1,8 +1,10 @@
-// The records a test executable appends to its results file (`MS_TEST_RESULTS`). Each is
-// one line led by U+0001 and a tag; `MSOUT` is followed by that many bytes of payload and a
-// newline. The format is written by `stdlib/internal/test_runner.ms`.
-import Bytes from "@std/bytes.ms"
-import expect_equal from "@std/test/test.ms"
+// The records a test executable appends to its results file (`MS_TEST_RESULTS`). Each
+// is one line led by U+0001 and a tag; `MSOUT` is followed by that many bytes of
+// payload and a newline. The format is written by `stdlib/internal/test_runner.ms`.
+import (
+	Bytes from "@std/bytes.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 export enum Kind:
 	// A test began: `index` and `file`.
@@ -11,8 +13,8 @@ export enum Kind:
 	Result
 	// A test of `file` faulted, with `message`.
 	Fault
-	// Output of a test (`index`), of a faulted file (`key` "f<file>") or its fault record
-	// (`key` "r<file>"): `payload`.
+	// Output of a test (`index`), of a faulted file (`key` "f<file>") or its fault
+	// record (`key` "r<file>"): `payload`.
 	Output
 
 export type Record:
@@ -95,7 +97,6 @@ export fn parse(data: Bytes) Parsed:
 		if found.is_none(): break
 
 		end := found.get()
-
 		line := slice_text(data, at, end)
 		next := end + 1
 
@@ -105,7 +106,11 @@ export fn parse(data: Bytes) Parsed:
 			if size < next + length + 1: break
 
 			out.records.append(
-				Record(kind: Kind.Output, key: rest[0].clone(), payload: data.view(next, next + length).clone())
+				Record(
+					kind: Kind.Output,
+					key: rest[0].clone(),
+					payload: data.view(next, next + length).clone(),
+				)
 			)
 			at = next + length + 1
 			out.used = at
@@ -113,7 +118,6 @@ export fn parse(data: Bytes) Parsed:
 
 		if record := parse_line(line):
 			out.records.append(record)
-
 		at = next
 		out.used = at
 
@@ -122,7 +126,6 @@ export fn parse(data: Bytes) Parsed:
 test "a start, a result and a fault":
 	text := "\u{1}MSSTART 3 1\n\u{1}MSTEST 3 fail 1500\u{1}boom\u{1}a.ms:4:2\n\u{1}MSFAULT 1\u{1}a\u{2}b\n"
 	parsed := parse(text.to_bytes())
-
 	parsed.records.length() | expect_equal(expected: 3)?
 	parsed.used | expect_equal(expected: text.to_bytes().length())?
 	parsed.records[0].index | expect_equal(expected: 3)?
@@ -134,7 +137,6 @@ test "a start, a result and a fault":
 test "output carries its bytes and waits for them":
 	whole := "\u{1}MSOUT 2 5\nhi\nyo\n"
 	parsed := parse(whole.to_bytes())
-
 	parsed.records.length() | expect_equal(expected: 1)?
 	parsed.records[0].key | expect_equal(expected: "2")?
 	parsed.records[0].payload.length() | expect_equal(expected: 5)?
