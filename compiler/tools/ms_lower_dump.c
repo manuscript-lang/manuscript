@@ -13,12 +13,12 @@
 #include "ms/check.h"
 #include "ms/lower.h"
 #include "ms/ownership.h"
+#include "ms/mir_pass.h"
 #include "ms/mir_verify.h"
 #include "ms/parse.h"
 #include "ms/walk.h"
 #include "ms/stdlib.h"
 #include "mir_run.h"
-#include "ms/mir_pass.h"
 #include "read_file.h"
 #include "std_files.h"
 
@@ -150,6 +150,9 @@ static int run_oracle_dump(const char *path) {
             MsStr message = {0};
             const size_t size = next == NULL ? strlen(source) : (size_t)(next - source);
             if (mir_parse(&mir, source, size, &line, &message)) {
+                if (mir_expand_owned_needed(&mir)) {
+                    (void)mir_expand_owned(&mir); // the interpreter has no owned shorthands (`opt.unbox`)
+                }
                 run_module(&mir, file);
             }
             mir_module_free(&mir);
