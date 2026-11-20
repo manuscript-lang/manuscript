@@ -22,7 +22,9 @@ typedef int PollHandle;
 #include "../net/ws_connect.h"
 #include "../net/ws_dial.h"
 #include "../net/ws_natives.h"
+#include "../net/ws_socket_natives.h"
 #include "../std/abi.h"
+#include "ms_rt/alloc.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_net.h"
 #include "ms_sched.h"
@@ -174,8 +176,25 @@ int main(void) {
         CHECK(msstd_ws_connect(conn, &authority, &target, NULL, &names, 0, 0, 0, 1, 5000000000, &handle, &none) == STATUS_OK && handle != NULL);
         MsWsSocket *session = ms_ws_handle_socket(handle);
         CHECK(is(ms_ws_socket_subprotocol(session), "chat"));
-        CHECK(ms_ws_socket_receive(session, after_ms(5000), &message, &ended) == MS_WSS_OK && is(message.data, "hello"));
-        CHECK(ms_ws_socket_send(session, text("hi"), true, after_ms(5000)) == MS_WSS_OK);
+        /* the SocketH natives over the same session: subprotocol, receive, send, share and close_if_last */
+        MsStr chosen;
+        msstd_websocket_subprotocol(handle, &chosen);
+        CHECK(msrt_str_len(&chosen) == 4 && memcmp(msrt_str_data(&chosen), "chat", 4) == 0);
+        msrt_string_free(&chosen);
+        MsNetWsMessage received;
+        MsStr failure;
+        CHECK(msstd_websocket_receive(handle, &received, &failure) == STATUS_OK && received.text == 1 &&
+              is(ms_bytes_of(received.data.ptr, received.data.len), "hello"));
+        msrt_free(received.data.ptr);
+        void *other = msstd_websocket_share(handle);
+        CHECK(other != NULL && ms_ws_socket_refs(session) == 2);
+        MsVec reply_data;
+        msrt_write_bytes(&reply_data, "hi", 2);
+        CHECK(msstd_websocket_send_bytes(handle, &reply_data, 1, &failure) == STATUS_OK);
+        msrt_free(reply_data.ptr);
+        msstd_websocket_close_if_last(other); /* not the last handle: the session stays open */
+        CHECK(!ms_ws_socket_is_closed(session));
+        ((MsObj *)other)->drop(other);
         ms_sys_thread_join(thread);
         ((MsObj *)handle)->drop(handle);
         ((MsObj *)conn)->drop(conn);
