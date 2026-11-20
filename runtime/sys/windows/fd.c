@@ -28,3 +28,10 @@ bool ms_sys_fd_ready(int fd, bool writes, bool *ready) {
 
 void ms_sys_sync_environ(void) {}
 
+
+/* A standard-input read blocks its thread until data or the end arrives, and a pipe read answers would-block
+ * instead, so there is nothing to poll first. */
+bool ms_sys_fd_readable_now(int fd) {
+    (void)fd;
+    return true;
+}

@@ -50,6 +50,11 @@ bool ms_sys_fd_ready(int fd, bool writes, bool *ready) {
     return true;
 }
 
+bool ms_sys_fd_readable_now(int fd) {
+    ReadyEntry entry = {.fd = fd, .events = READY_IN, .revents = 0};
+    return poll(&entry, 1, 0) != 0; /* a hang-up or an error is readable too: the read reports it */
+}
+
 #if defined(__linux__)
 
 typedef struct {
