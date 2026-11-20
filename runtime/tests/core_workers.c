@@ -130,6 +130,31 @@ static void sleep_until_cancelled(Work *work) {
     }
 }
 
+/* A worker's work uses promises of the main isolate: waits for `dep`, takes its value, cancels `victim`. */
+typedef struct Cross {
+    MsObj header;
+    void (*code)(struct Cross *);
+    MsPromise id;
+    int64_t value;
+    int64_t sleep_ns;
+    MsPromise dep;
+    MsPromise victim;
+} Cross;
+
+static _Atomic int cross_started;
+
+static void use_foreign_promises(Cross *work) {
+    atomic_store(&cross_started, 1);
+    expect(!ms_promise_done(work->dep), "foreign done: still pending");
+    expect(ms_promise_wait(work->dep, -1) == MS_PROMISE_OK, "foreign wait: ok");
+    int64_t value = 0;
+    expect(ms_promise_take(work->dep, &msrt_desc_int, (uint8_t *)&value), "foreign take");
+    ms_promise_cancel(work->victim);
+    expect(ms_promise_wait(work->victim, -1) == MS_PROMISE_CANCELLED, "foreign wait: cancelled");
+    const int64_t twice = value * 2;
+    ms_promise_put(work->id, (uint8_t *)&twice, &msrt_desc_int, false);
+}
+
 static int64_t take_int(MsPromise id) {
     int64_t value = -1;
     expect(ms_promise_take(id, &msrt_desc_int, (uint8_t *)&value), "a value to take");
@@ -176,6 +201,31 @@ static void cancel_reaches_the_worker(void) {
     expect(atomic_load(&drops) == before + 1, "cancel: closure dropped once");
 }
 
+static void foreign_operations(void) {
+    const MsPromise dep = ms_promise_new();
+    const MsPromise victim = ms_promise_new();
+    const MsPromise id = ms_promise_new();
+    Cross *const work = msrt_alloc_zeroed(sizeof *work);
+    work->header.drop = work_drop;
+    work->code = use_foreign_promises;
+    work->id = id;
+    work->dep = dep;
+    work->victim = victim;
+    atomic_store(&cross_started, 0);
+    ms_promise_start(id, (MsObj *)work);
+    for (int i = 0; i < 500 && atomic_load(&cross_started) == 0; i++) {
+        (void)ms_task_sleep(1000 * 1000); /* inside the scheduler: this isolate answers the worker's asks */
+    }
+    expect(atomic_load(&cross_started) == 1, "foreign: a worker started the work");
+    int64_t value = 21;
+    ms_promise_put(dep, (uint8_t *)&value, &msrt_desc_int, false);
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_OK, "foreign: ok");
+    expect(take_int(id) == 42, "foreign: value");
+    ms_promise_drop(id);
+    ms_promise_drop(dep);
+    ms_promise_drop(victim);
+}
+
 enum { MANY = 300 };
 
 static void many_promises_all_finish(void) {
@@ -201,6 +251,7 @@ static void entry(void *argument) {
     queued_work_runs_inline();
     idle_worker_takes_old_work();
     cancel_reaches_the_worker();
+    foreign_operations();
     many_promises_all_finish();
 }
 

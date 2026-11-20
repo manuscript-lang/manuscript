@@ -17,6 +17,8 @@
 /* How long a promise waits in its creator's queue before another isolate may take it: its creator's waiter usually
  * runs it first, and a task start costs more than waiting this long. */
 #define MS_WORKER_BEAT_NS 20000
+/* How long an isolate that has nothing else to do lets its own queued promise wait for a thief before running it. */
+#define MS_WORKER_OWN_BEAT_NS (50 * MS_WORKER_BEAT_NS)
 
 /* What a worker needs from the layer above, supplied before the first promise is queued. */
 typedef struct MsWorkerEnv {
