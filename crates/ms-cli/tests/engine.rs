@@ -6,7 +6,6 @@
 use crate::common;
 
 use common::scratch;
-use ms_rt as _;
 use std::path::Path;
 use std::process::Command;
 

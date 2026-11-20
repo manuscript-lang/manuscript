@@ -1,40 +1,26 @@
 #!/bin/sh
-# Builds compiler/tests/qbe/lines.mir with `ms_mir_build --tables-meta`, QBE and ms_asm_tables (no debug info is
+# Builds compiler/tests/run/lines.mir with `ms_mir_build --tables-meta`, clang and ms_asm_tables (no debug info is
 # read) and links it with compiler/tests/asm_tables_check.c, which checks the tables the program hands the runtime.
 # Run from the repository root: `make c-compiler-test`.
 set -eu
 out=target/c-compiler/asm-tables
 mkdir -p "$out"
-sh compiler/tests/cbuild.sh ms_mir_build ms_asm_tables qbe
+sh compiler/tests/cbuild.sh ms_mir_build ms_asm_tables
 bin=target/cmake/test/compiler
-case "$(uname -s)-$(uname -m)" in
-Darwin-arm64) target=arm64_apple prefix=_ ;;
-Darwin-*) target=amd64_apple prefix=_ ;;
-*-aarch64 | *-arm64) target=arm64 prefix= ;;
-*) target=amd64_sysv prefix= ;;
+case "$(uname -s)" in
+Darwin) prefix=_ ;;
+*) prefix= ;;
 esac
 # The tools leak their module on exit (the sanitizer build reports it); the leak is not what this checks.
 export ASAN_OPTIONS=detect_leaks=0
-"$bin/ms_mir_build" compiler/tests/qbe/lines.mir --opt none --tables-meta "$out/lines.meta" > "$out/lines.ssa"
-"$bin/qbe" -t "$target" "$out/lines.ssa" > "$out/lines.s"
-# A function the assembly lacks (LLVM inlined and removed it) is left out of the tables.
-# It comes first, so the functions after it are numbered differently in the meta and in the tables.
-{ sed -n 1p "$out/lines.meta"; printf 'Y removed_function\t0\t1\tremoved_function\n'; sed 1d "$out/lines.meta"; } > "$out/lines.meta.new"
-mv "$out/lines.meta.new" "$out/lines.meta"
-"$bin/ms_asm_tables" "$out/lines.meta" "$out/lines.s" --prefix "$prefix" > "$out/lines.tables.s"
-cc "$out/lines.tables.s" compiler/tests/asm_tables_check.c -o "$out/lines"
-"$out/lines" && echo "ok   asm-tables lines"
-# A fault call sits in a block QBE may lay out away from its operation: each one is preceded by a `.loc` of the
-# line that faults (4 and 5 in fault_line.mir), or the trace would name another line or none.
-"$bin/ms_mir_build" compiler/tests/asm-tables/fault_line.mir --opt none --no-verify > "$out/fault_line.ssa"
-"$bin/qbe" -t "$target" "$out/fault_line.ssa" > "$out/fault_line.s"
-lines=$(awk '/\.loc 1 /{line=$3} /msrt_fault_int_overflow/{print line}' "$out/fault_line.s" | sort | tr '\n' ' ')
-if [ "$lines" = "4 5 " ]; then echo "ok   asm-tables fault blocks"; else echo "FAIL asm-tables fault blocks: lines '$lines', want '4 5 '"; exit 1; fi
-# The LLVM release path: debug locations in the IR, `clang -S`, the same tool with `--strip-lines` (no `.loc` is left
+# Debug locations in the IR, `clang -S`, the same tool with `--strip-lines` (no `.loc` is left
 # in the program), and the same check against what clang's assembly gives (the calls inlined by the MIR optimizer
 # have no code of their own at -O0, so their lines are the helper's).
-"$bin/ms_mir_build" compiler/tests/qbe/lines.mir --backend llvm --opt none --tables-meta "$out/llvm.meta" > "$out/llvm.ll"
+"$bin/ms_mir_build" compiler/tests/run/lines.mir --opt none --tables-meta "$out/llvm.meta" > "$out/llvm.ll"
 clang -S -O0 -Wno-override-module -o "$out/llvm.s" "$out/llvm.ll"
+# A function the assembly lacks (LLVM inlined and removed it) is left out of the tables; it goes last, so the
+# body numbers of the functions before it stay the same.
+printf 'Y removed_function\t0\t1\tremoved_function\n' >> "$out/llvm.meta"
 "$bin/ms_asm_tables" "$out/llvm.meta" "$out/llvm.s" --prefix "$prefix" --strip-lines > "$out/llvm.tables.s"
 if grep -q '^[[:space:]]*\.loc' "$out/llvm.tables.s"; then echo "FAIL asm-tables llvm: .loc left in the output"; exit 1; fi
 clang "$out/llvm.tables.s" -DMS_LLVM_LINES compiler/tests/asm_tables_check.c -o "$out/llvm"

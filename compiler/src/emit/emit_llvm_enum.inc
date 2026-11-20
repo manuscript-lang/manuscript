@@ -1,5 +1,5 @@
-/* Alternatives and optionals for emit_llvm.c (included from it); the layout is the one described
- * in emit_qbe_enum.inc. */
+/* Alternatives and optionals for emit_llvm.c (included from it); the layout is the one the
+ * runtime uses. */
 
 /* A zero of the register type of `leaf`. */
 static void ll_zero_leaf(LCx *c, MirValue dst, uint32_t index, MirLeaf leaf) {

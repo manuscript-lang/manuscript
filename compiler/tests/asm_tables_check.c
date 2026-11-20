@@ -1,5 +1,5 @@
 /* Stands in for the runtime in compiler/tests/asm-tables.sh: receives the tables ms_asm_tables built and
- * checks them against the program compiler/tests/qbe/lines.mir: the entry on lines 5-9 with `helper` (lines 1-3)
+ * checks them against the program compiler/tests/run/lines.mir: the entry on lines 5-9 with `helper` (lines 1-3)
  * inlined at lines 7 and 8, so there are two scopes and line ranges that belong to them. Exit 0 when they hold. */
 #include <stddef.h>
 #include <stdint.h>

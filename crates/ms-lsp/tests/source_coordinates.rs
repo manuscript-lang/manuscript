@@ -2,7 +2,6 @@
 
 use ms_lsp::json::Json;
 use ms_lsp::text::{self, Range};
-use ms_rt as _;
 
 use crate::support;
 use support::{Script, Workspace};
