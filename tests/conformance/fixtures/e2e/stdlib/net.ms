@@ -14,6 +14,7 @@ import (
 	connect_unix,
 	listen,
 	listen_unix,
+	lookup,
 	resolve_dns,
 	restrict,
 	with_resolver from "@std/net/net.ms",
@@ -258,6 +259,62 @@ test "resolve returns typed DNS records from the configured resolver":
 	expect_equal(mx[0].priority, 10)?
 	expect_equal(mx[0].value, "mail.example.test.")?
 	expect_equal(answered, 1)?
+
+// The question a PTR lookup of `address` sends to a resolver that never answers.
+fn reverse_question(address: String) Bytes!:
+	server := bind_datagram("127.0.0.1:0")?
+	derived := with_resolver(server.address.clone())?
+	asking := promise(
+		fn: derived.resolve_dns(address, DnsKind.PTR, DnsOptions(timeout: 1.seconds()))
+	)
+	var listening = server
+	query := (within(listening.input, 2.seconds())?).get()
+	void expect_error(asking.wait())?
+	return ok(query.data.slice(12, query.data.length()).get_or(Bytes([])))
+
+test "a PTR lookup asks for the reverse name of the address":
+	v4 := reverse_question("1.2.3.4")?
+	expect_equal(
+		v4,
+		Bytes(
+			[
+				1, 52, 1, 51, 1, 50, 1, 49, 7, 105, 110, 45, 97, 100, 100, 114, 4, 97, 114,
+				112, 97, 0, 0, 12, 0, 1
+			]
+		),
+	)?
+
+	v6 := reverse_question("2001:db8::1")?
+	expect_equal(v6.length(), 78)?
+	expect_equal(v6.get(0), 1)?
+	expect_equal(v6.get(1), 49)?
+
+test "lookup answers literals and localhost, and enforces limits and policy":
+	expect_equal(lookup("127.0.0.1")?, ["127.0.0.1"])?
+	expect_equal(
+		expect_error(lookup("127.0.0.1", DnsOptions(max_records: 0)))?,
+		Error("network: limit exceeded", kind: "EOVERFLOW"),
+	)?
+	expect_equal(
+		expect_error(lookup("127.0.0.1", DnsOptions(max_records: -1)))?,
+		Error("network: invalid input", kind: "EINVAL"),
+	)?
+	expect_equal(
+		expect_error(lookup("127.0.0.1", DnsOptions(timeout: (-1).seconds())))?,
+		Error("network: invalid input", kind: "EINVAL"),
+	)?
+	nothing := restrict([])?
+	expect_equal(
+		expect_error(nothing.lookup("localhost"))?,
+		Error("network: permission denied", kind: "EACCES"),
+	)?
+	shouted := lookup("LocalHost", DnsOptions(timeout: 2.seconds()))?
+	expect_equal(shouted, lookup("localhost", DnsOptions(timeout: 2.seconds()))?)?
+	expect_true(shouted.contains("127.0.0.1"))?
+	expect_equal(
+		expect_error(resolve_dns("1.2.3.4", DnsKind.A, DnsOptions(max_records: 0)))?,
+		Error("network: limit exceeded", kind: "EOVERFLOW"),
+	)?
 
 test "an empty host listens on every interface, with or without IPv6":
 	var listener = listen(":0")?

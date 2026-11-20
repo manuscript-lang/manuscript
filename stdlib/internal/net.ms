@@ -1,6 +1,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	ClientResponse, HttpClient, HttpClientOptions, HttpHeaders from "@std/net/http.ms",
+	DnsConfig from "@std/net/dns.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
 	Datagram,
 	Listener,
@@ -32,6 +33,18 @@ export extern fn msstd_net_lookup(
 	port: Int,
 	timeout: Duration?,
 ) List[String]!
+
+// The records of one kind that the DNS server at `server` (`ip:port`) holds for `name`;
+// none when the name has none of that kind.
+export extern fn msstd_dns_query(
+	server: String,
+	name: String,
+	kind: DnsKind,
+	timeout: Duration?,
+) List[DnsRecord]?!
+
+// The host's resolver settings.
+export extern fn msstd_dns_config() DnsConfig!
 
 export extern fn msstd_tls_parse_certificates(
 	pem: String,
@@ -193,13 +206,6 @@ export extern fn msstd_net_network_listen_unix(
 	path: String,
 ) Listener!
 
-export extern fn msstd_net_network_lookup(
-	net: NativeNetwork,
-	name: String,
-	max_records: Int?,
-	timeout: Duration?,
-) List[String]!
-
 export extern fn msstd_net_network_request_bytes(
 	net: NativeNetwork,
 	method: String,
@@ -209,14 +215,6 @@ export extern fn msstd_net_network_request_bytes(
 	max_response_bytes: Int?,
 	timeout: Duration?,
 ) ClientResponse!
-
-export extern fn msstd_net_network_resolve(
-	net: NativeNetwork,
-	name: String,
-	kind: DnsKind,
-	max_records: Int?,
-	timeout: Duration?,
-) List[DnsRecord]!
 
 export extern fn msstd_net_network_restrict(
 	net: NativeNetwork,

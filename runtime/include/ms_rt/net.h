@@ -161,6 +161,60 @@ uint8_t msstd_dgram_receive(const void *handle, uint8_t has_max, int64_t max, ui
 /* ms-sig: msstd_dgram_send(handle s: *const ObjCell<DgramH>, data: *const VecVal, address: *const StrVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_dgram_send(const void *handle, const MsVec *data, const MsStr *address, uint8_t has_timeout, int64_t timeout, MsStr *err);
 
+/* The IP natives of @std/net/ip (runtime/net/ip.c). An IpAddress and a Cidr are runtime objects; every call borrows
+ * them. Text that is not an address or range gives STATUS_INVALID_DATA (STATUS_INVALID_INPUT from the JSON readers). */
+typedef struct MsIpCell MsIpCell;
+typedef struct MsCidrCell MsCidrCell;
+
+/* ms-sig: msstd_net_parse_ip(text: *const StrVal, out: *mut *mut ObjCell<IpH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_net_parse_ip(const MsStr *text, MsIpCell **out, MsStr *err);
+/* ms-sig: msstd_json_dec_ip(text: *const StrVal, out: *mut *mut ObjCell<IpH>) -> u8 @domain=JSON @leaf */
+uint8_t msstd_json_dec_ip(const MsStr *text, MsIpCell **out);
+/* ms-sig: msstd_net_ip_address_text(handle ip: *const ObjCell<IpH>, out: *mut StrVal) @domain=network */
+void msstd_net_ip_address_text(const MsIpCell *address, MsStr *out);
+/* The `IpFamily` case index: IPv4 0, IPv6 1. */
+/* ms-sig: msstd_net_ip_address_family(handle ip: *const ObjCell<IpH>) -> u8 @domain=network */
+uint8_t msstd_net_ip_address_family(const MsIpCell *address);
+/* ms-sig: msstd_net_parse_cidr(text: *const StrVal, out: *mut *mut ObjCell<Cidr>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_net_parse_cidr(const MsStr *text, MsCidrCell **out, MsStr *err);
+/* ms-sig: msstd_json_dec_cidr(text: *const StrVal, out: *mut *mut ObjCell<Cidr>) -> u8 @domain=JSON @leaf */
+uint8_t msstd_json_dec_cidr(const MsStr *text, MsCidrCell **out);
+/* ms-sig: msstd_net_cidr_text(handle cidr: *const ObjCell<Cidr>, out: *mut StrVal) @domain=network */
+void msstd_net_cidr_text(const MsCidrCell *range, MsStr *out);
+/* Whether the range holds the address: the families must match exactly. */
+/* ms-sig: msstd_net_contains_ip(handle cidr: *const ObjCell<Cidr>, handle ip: *const ObjCell<IpH>, out: *mut u8) -> u8 @domain=network */
+uint8_t msstd_net_contains_ip(const MsCidrCell *range, const MsIpCell *address, uint8_t *out);
+
+/* The DNS natives of @std/net/dns (runtime/net/dns_query.c). Which servers to ask, the search list and the policy
+ * checks around them are standard-library code. */
+/* One answer record at the layout of `DnsRecord`: `kind` is the `DnsKind` case index; priority is an MX preference or
+ * SRV priority. */
+typedef struct MsNetDnsRecord {
+    int64_t kind;
+    MsStr value;
+    int64_t priority;
+    int64_t weight;
+    int64_t port;
+} MsNetDnsRecord;
+
+/* Asks `server` ("1.2.3.4:53") for the records of a `DnsKind` case index of `name`, over UDP and then TCP when the
+ * answer is truncated. On STATUS_OK, `out` is a `List[DnsRecord]` (a value is an address, a host name with its final dot
+ * or the text). STATUS_NONE: the name does not exist or has no data of the kind. Another server error is STATUS_FAILED.
+ * Without a timeout the wait ends after 5 seconds. */
+/* ms-sig: msstd_dns_query(server: *const StrVal, name: *const StrVal, kind: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_dns_query(const MsStr *server, const MsStr *name, int64_t kind, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err);
+
+/* The host's resolver at the layout of `DnsConfig`: servers as "ip:53" text (the loopback pair when it names none),
+ * the search suffixes without a final dot, and ndots. */
+typedef struct MsNetDnsConfig {
+    MsVec servers;
+    MsVec search;
+    int64_t ndots;
+} MsNetDnsConfig;
+
+/* ms-sig: msstd_dns_config(out: *mut DnsConfigWire) -> u8 @domain=network */
+uint8_t msstd_dns_config(MsNetDnsConfig *out);
+
 /* The certificate natives of @std/net/tls (runtime/net/tls_natives.c). A Timestamp is two words. */
 typedef struct MsTlsTimestamp {
     int64_t seconds;
