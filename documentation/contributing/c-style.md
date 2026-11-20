@@ -82,7 +82,7 @@ A check is silenced only on the one line that needs it, with `// NOLINT(<check>)
 
 `toolchain/c-lint-pending.txt` lists the files written before this guide that do not pass yet. A listed file may fail; once it passes it must come off the list, and the gate rejects a change that adds a line, so the list only shrinks.
 
-Not checked by a tool yet, so reviewers check them: ownership comments, the layering of includes, and code inside `_WIN32` and `__APPLE__` branches (the gate runs clang on Linux). The shipped archive is still compiled with `-Wall -Wextra -Werror` only, because musl builds with gcc, whose stricter conversion warnings the pending files do not pass.
+Not checked by a tool yet, so reviewers check them: ownership comments, the layering of includes, and code for other systems: `_WIN32` and `__APPLE__` branches and the `runtime/sys/darwin` and `runtime/sys/windows` folders (the gate runs clang on Linux). The shipped archive is still compiled with `-Wall -Wextra -Werror` only, because musl builds with gcc, whose stricter conversion warnings the pending files do not pass.
 
 ## Tests
 

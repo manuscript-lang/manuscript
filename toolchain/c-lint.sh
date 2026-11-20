@@ -16,7 +16,9 @@ rm -rf "$out"; mkdir -p "$out"
 warnings=$(tr '\n' ' ' < toolchain/c-warnings.txt)
 # -Wcomma is clang-only, so it is not in the shared list.
 flags="-std=c11 $warnings -Wcomma -Iruntime/include -Icompiler/include -Iruntime/tests $(sh runtime/third_party/libs.sh cflags)"
-files=$(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2>/dev/null | sort)
+# A source under runtime/sys/<os>/ compiles only on that system, so the others are left to that system's build.
+case "$(uname -s)" in Darwin) other='/sys/(linux|glibc|windows)/' ;; *) other='/sys/(darwin|windows)/' ;; esac
+files=$(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2>/dev/null | grep -Ev "$other" | sort)
 changed=$files
 if [ -n "$base" ]; then
     git rev-parse --verify --quiet "$base^{commit}" > /dev/null || { echo "c-lint: $base is not a commit" >&2; exit 1; }
