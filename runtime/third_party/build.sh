@@ -72,16 +72,29 @@ esac
 # Runs a build step with its output held back: a failing step prints the tail of its output and stops the build.
 quiet() { "$@" >"$out/step.log" 2>&1 || { tail -n 60 "$out/step.log" >&2; echo "build.sh: failed: $*" >&2; exit 1; }; }
 
+# Configures a library's CMake build. A build folder keeps the cache of whatever configured it (source folder,
+# compiler, flags); one left by another checkout path or another compiler makes CMake refuse or build the wrong thing,
+# so a folder whose recorded configuration differs from this one is dropped and configured again.
+configure() {
+    source_dir=$1; build_dir=$2; shift 2
+    stamp="$source_dir|$cc|$cmake_flags|$*"
+    if [ -d "$build_dir" ] && [ "$(cat "$build_dir/.ms-config" 2>/dev/null)" != "$stamp" ]; then
+        rm -rf "$build_dir"
+    fi
+    quiet cmake -S "$source_dir" -B "$build_dir" $cmake_flags "$@"
+    printf '%s\n' "$stamp" >"$build_dir/.ms-config"
+}
+
 if [ ! -f "$out/lib/libuv.a" ]; then
     build=$root/build/$triple/libuv
-    quiet cmake -S "$vendor/libuv" -B "$build" $cmake_flags -DLIBUV_BUILD_SHARED=OFF -DLIBUV_BUILD_TESTS=OFF -DLIBUV_BUILD_BENCH=OFF
+    configure "$vendor/libuv" "$build" -DLIBUV_BUILD_SHARED=OFF -DLIBUV_BUILD_TESTS=OFF -DLIBUV_BUILD_BENCH=OFF
     quiet cmake --build "$build" -j "$jobs"
     cp "$build"/libuv.a "$out/lib/"
     cp -R "$vendor/libuv/include/." "$out/include/"
 fi
 if [ ! -f "$out/lib/libnghttp2.a" ]; then
     build=$root/build/$triple/nghttp2
-    quiet cmake -S "$vendor/nghttp2" -B "$build" $cmake_flags -DENABLE_LIB_ONLY=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF
+    configure "$vendor/nghttp2" "$build" -DENABLE_LIB_ONLY=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF
     quiet cmake --build "$build" -j "$jobs"
     cp "$build"/lib/libnghttp2.a "$out/lib/"
     mkdir -p "$out/include/nghttp2"
@@ -122,7 +135,7 @@ fi
 if [ ! -f "$out/lib/libpcre2-8.a" ]; then
     # PCRE2, 8-bit library only, with its JIT. Plain C: no C++ runtime in programs.
     build=$root/build/$triple/pcre2
-    quiet cmake -S "$vendor/pcre2" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=OFF -DPCRE2_BUILD_PCRE2_32=OFF -DPCRE2_SUPPORT_JIT=ON -DPCRE2_SUPPORT_UNICODE=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_SUPPORT_LIBZ=OFF -DPCRE2_SUPPORT_LIBBZ2=OFF -DPCRE2_SUPPORT_LIBREADLINE=OFF
+    configure "$vendor/pcre2" "$build" -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=OFF -DPCRE2_BUILD_PCRE2_32=OFF -DPCRE2_SUPPORT_JIT=ON -DPCRE2_SUPPORT_UNICODE=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_SUPPORT_LIBZ=OFF -DPCRE2_SUPPORT_LIBBZ2=OFF -DPCRE2_SUPPORT_LIBREADLINE=OFF
     quiet cmake --build "$build" -j "$jobs"
     cp "$build/libpcre2-8.a" "$out/lib/"
     cp "$build/interface/pcre2.h" "$out/include/"
@@ -131,7 +144,7 @@ if [ ! -f "$out/lib/libcurl.a" ]; then
     # libcurl: HTTP and HTTPS only (HTTP/2 through nghttp2, Unix sockets, cookies, proxies), on the OpenSSL and zlib built above. No other protocols,
     # no extra libraries (psl, idn, ssh, brotli, zstd), no executable.
     build=$root/build/$triple/curl
-    quiet cmake -S "$vendor/curl" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
+    configure "$vendor/curl" "$build" -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
         -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_FILE=ON -DCURL_DISABLE_FTP=ON -DCURL_DISABLE_GOPHER=ON -DCURL_DISABLE_IMAP=ON -DCURL_DISABLE_LDAP=ON -DCURL_DISABLE_LDAPS=ON -DCURL_DISABLE_MQTT=ON -DCURL_DISABLE_POP3=ON -DCURL_DISABLE_RTSP=ON -DCURL_DISABLE_SMB=ON -DCURL_DISABLE_SMTP=ON -DCURL_DISABLE_TELNET=ON -DCURL_DISABLE_TFTP=ON -DCURL_USE_OPENSSL=ON -DUSE_NGHTTP2=ON -DCURL_ZLIB=ON -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF \
         -DUSE_LIBIDN2=OFF -DCURL_USE_GSSAPI=OFF -DENABLE_UNIX_SOCKETS=ON -DCURL_ENABLE_SSL=ON \
         -DCMAKE_PREFIX_PATH="$out" -DOPENSSL_ROOT_DIR="$out" -DOPENSSL_USE_STATIC_LIBS=ON -DZLIB_ROOT="$out" \
