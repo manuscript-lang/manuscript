@@ -1,0 +1,206 @@
+/* The static data of a module: descriptors, vtables and globals, as plain symbols with relocations
+ * (compiler/include/ms/mir_data.h). Port of the descriptor plan of crates/ms-mir/src/statics.rs
+ * and the data definitions of crates/ms-mir-llvm/src/state.rs. */
+#include <stdio.h>
+#include <string.h>
+
+#include "ms/mir_data.h"
+
+static const char *md_runtime_desc(MirTyKind kind) {
+    switch (kind) {
+    case MK_INT: return "msrt_desc_int";
+    case MK_FLOAT: return "msrt_desc_float";
+    case MK_FLOAT32: return "msrt_desc_float32";
+    case MK_BOOL: return "msrt_desc_bool";
+    case MK_STR: return "msrt_desc_string";
+    case MK_BYTES: return "msrt_desc_bytes";
+    default: return NULL;
+    }
+}
+
+static void md_plan_shape(const MirModule *m, MirLayouts *lay, MirTy ty, const MirTyData *d,
+                          MirDescPlan *p) {
+    if (d->kind == MK_LIST) {
+        p->kind = MIR_DESC_LIST;
+        p->inner[0] = d->elem;
+    } else if (d->kind == MK_OBJ && mir_name_is(m, d->name, "Map")) {
+        p->kind = MIR_DESC_MAP;
+        p->inner[0] = d->nargs > 0 ? d->args[0] : MIR_NONE;
+        p->inner[1] = d->nargs > 1 ? d->args[1] : MIR_NONE;
+    } else if (d->kind == MK_OBJ && mir_name_is(m, d->name, "Set")) {
+        p->kind = MIR_DESC_SET;
+        p->inner[0] = d->nargs > 0 ? d->args[0] : MIR_NONE;
+    } else if (d->kind == MK_OBJ || d->kind == MK_FN ||
+               (d->kind == MK_OPT && mir_opt_is_nullable(lay, d->elem))) {
+        /* An object, a closure or a nullable optional is one shared word. */
+        p->kind = MIR_DESC_SHARED;
+    } else if (!mir_needs_drop(m, ty)) {
+        p->kind = MIR_DESC_POD;
+    } else {
+        p->kind = MIR_DESC_CUSTOM;
+        p->slot_glue = ty;
+    }
+}
+
+void mir_desc_plan(const MirModule *m, MirLayouts *lay, MirTy key, MirDescPlan *out) {
+    const uint32_t scope = mir_ty_scope(key);
+    const MirTy ty = mir_ty_unscoped(key);
+    const MirTyData *d = mir_ty_data(m, ty);
+    *out = (MirDescPlan){.inner = {MIR_NONE, MIR_NONE}, .slot_glue = MIR_NONE};
+    out->runtime = md_runtime_desc(d->kind);
+    if (out->runtime != NULL) {
+        return;
+    }
+    const MirMemLayout mem = mir_type_mem(lay, ty);
+    out->size = mem.size;
+    out->align = mem.align;
+    out->kind = MIR_DESC_POD;
+    if (scope == MIR_FORGOTTEN_SCOPE) {
+        return; /* plain bits whatever it holds */
+    }
+    md_plan_shape(m, lay, ty, d, out);
+    for (uint32_t i = 0; i < 2; i++) {
+        if (out->inner[i] != MIR_NONE) {
+            out->inner[i] = mir_ty_unscoped(out->inner[i]) | scope << MIR_SCOPE_SHIFT;
+        }
+    }
+}
+
+/* ---- building ---- */
+
+typedef struct MdCx {
+    MirModule *m;
+    const MirGlue *glue;
+    MirLayouts *lay;
+    MirData *d;
+} MdCx;
+
+static uint32_t md_new_sym(MdCx *c, const MirDataSym *s) {
+    MirData *d = c->d;
+    MIR_PUSH(c->m, d->syms, d->nsyms, d->csyms, MirDataSym, *s);
+    return d->nsyms - 1;
+}
+
+static const char *md_name(MdCx *c, const char *kind, uint32_t n) {
+    return ms_arena_fmt(&c->m->arena, "ms.%s.%u", kind, n).ptr;
+}
+
+static void md_put_word(uint8_t *at, uint64_t v) {
+    for (uint32_t i = 0; i < 8; i++) {
+        at[i] = (uint8_t)(v >> (8 * i));
+    }
+}
+
+static MirReloc md_func_reloc(uint32_t offset, uint32_t func) {
+    return (MirReloc){offset, {.kind = MT_FUNC, .index = func}};
+}
+
+static MirRef md_desc(MdCx *c, MirTy key) {
+    MirData *d = c->d;
+    for (uint32_t i = 0; i < d->nkeys; i++) {
+        if (d->keys[i].key == key) {
+            return d->keys[i].to;
+        }
+    }
+    MirDescPlan plan;
+    mir_desc_plan(c->m, c->lay, key, &plan);
+    MirRef to = {.kind = MT_RUNTIME, .runtime = plan.runtime};
+    MirDataSym s = {.size = MIR_DESC_BYTES, .align = 8};
+    if (plan.runtime == NULL) {
+        s.name = md_name(c, "desc", d->nsyms);
+        uint8_t *bytes = MS_NEW_N(&c->m->arena, uint8_t, MIR_DESC_BYTES);
+        memset(bytes, 0, MIR_DESC_BYTES);
+        md_put_word(bytes, (uint64_t)plan.size | (uint64_t)plan.align << 32);
+        md_put_word(bytes + 8, plan.kind);
+        s.bytes = bytes;
+        s.relocs = MS_NEW_N(&c->m->arena, MirReloc, 4);
+        to = (MirRef){.kind = MT_DATA, .index = md_new_sym(c, &s)};
+    }
+    const MirDescKey entry = {key, to};
+    MIR_PUSH(c->m, d->keys, d->nkeys, d->ckeys, MirDescKey, entry);
+    if (plan.runtime != NULL) {
+        return to;
+    }
+    /* The symbol exists and the key is recorded; now name what it points at. */
+    for (uint32_t i = 0; i < 2; i++) {
+        if (plan.inner[i] != MIR_NONE) {
+            const MirRef t = md_desc(c, plan.inner[i]);
+            MirDataSym *sym = &d->syms[to.index];
+            sym->relocs[sym->nrelocs++] = (MirReloc){i == 0 ? MIR_DESC_INNER0 : MIR_DESC_INNER1, t};
+        }
+    }
+    if (plan.slot_glue != MIR_NONE) {
+        MirDataSym *sym = &d->syms[to.index];
+        sym->relocs[sym->nrelocs++] =
+            md_func_reloc(MIR_DESC_DROP, mir_glue_find(c->glue, MG_SLOT_DROP, plan.slot_glue, 0, 0));
+        sym->relocs[sym->nrelocs++] =
+            md_func_reloc(MIR_DESC_COPY, mir_glue_find(c->glue, MG_SLOT_COPY, plan.slot_glue, 0, 0));
+    }
+    return to;
+}
+
+static void md_collect_descs(MdCx *c) {
+    const MirModule *m = c->m;
+    for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
+        const MirFunc *f = &m->funcs[fi];
+        for (uint32_t bi = 0; bi < f->nblocks; bi++) {
+            for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
+                const MirInst *inst = &f->blocks[bi].insts[ii];
+                if (inst->op == MOP_TypeDesc && inst->imm.tag == MI_TY) {
+                    (void)md_desc(c, inst->imm.a);
+                }
+            }
+        }
+    }
+}
+
+/* Slot 0 is the payload block's drop, the methods follow, then the payload clone. */
+static void md_vtables(MdCx *c) {
+    const MirModule *m = c->m;
+    c->d->vtables = MS_NEW_N(&c->m->arena, uint32_t, m->nvtables);
+    for (uint32_t i = 0; i < m->nvtables; i++) {
+        const MirVtable *vt = &m->vtables[i];
+        const MirTy data = mir_ty_unscoped(vt->data_ty);
+        const uint32_t nslots = vt->nmethods + 2;
+        MirDataSym s = {.name = md_name(c, "vtable", i), .size = nslots * 8, .align = 8};
+        s.relocs = MS_NEW_N(&c->m->arena, MirReloc, nslots);
+        s.relocs[s.nrelocs++] = md_func_reloc(0, mir_glue_find(c->glue, MG_BLOCK_DROP, data, 0, 0));
+        for (uint32_t k = 0; k < vt->nmethods; k++) {
+            s.relocs[s.nrelocs++] = md_func_reloc((k + 1) * 8, vt->methods[k]);
+        }
+        s.relocs[s.nrelocs++] =
+            md_func_reloc((vt->nmethods + 1) * 8, mir_glue_find(c->glue, MG_BLOCK_CLONE, data, 0, 0));
+        c->d->vtables[i] = md_new_sym(c, &s);
+    }
+}
+
+static void md_globals(MdCx *c) {
+    const MirModule *m = c->m;
+    c->d->globals = MS_NEW_N(&c->m->arena, uint32_t, m->nglobals);
+    for (uint32_t i = 0; i < m->nglobals; i++) {
+        const uint32_t size = mir_type_mem(c->lay, m->globals[i].ty).size;
+        MirDataSym s = {.name = md_name(c, "global", i), .size = size < 8 ? 8 : size, .align = 8,
+                        .writable = true};
+        c->d->globals[i] = md_new_sym(c, &s);
+    }
+}
+
+void mir_data_build(MirModule *m, const MirGlue *glue, MirData *out) {
+    MirLayouts lay;
+    mir_layouts_init(&lay, m);
+    *out = (MirData){0};
+    MdCx c = {.m = m, .glue = glue, .lay = &lay, .d = out};
+    md_globals(&c);
+    md_vtables(&c);
+    md_collect_descs(&c);
+    mir_layouts_free(&lay);
+}
+
+MirRef mir_data_desc(const MirData *d, MirTy key) {
+    for (uint32_t i = 0; i < d->nkeys; i++) {
+        if (d->keys[i].key == key) {
+            return d->keys[i].to;
+        }
+    }
+    return (MirRef){.kind = MT_RUNTIME, .runtime = NULL};
+}

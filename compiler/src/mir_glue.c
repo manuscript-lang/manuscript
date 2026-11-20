@@ -17,11 +17,11 @@
 
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
+#include "ms/mir_data.h"
 #include "ms/mir_layout.h"
 #include "ms/mir_pass.h"
 
 enum {
-    GL_FORGOTTEN_SCOPE = (1 << (32 - MIR_SCOPE_SHIFT)) - 1,
     GL_CLOSURE_CODE_OFFSET = 16,
     GL_DEEP_DROP_HEADROOM = 192 << 10,
     GL_MAX_CHAIN_FIELD = 32 /* a mask covers 32 fields */
@@ -94,13 +94,8 @@ static void gl_sort_unique(GlVec *vec) {
 
 /* ---- type queries ---- */
 
-static bool gl_name_is(const MirModule *m, MsSym sym, const char *text) {
-    const MsStr s = ms_name(&m->names, sym);
-    return s.len == strlen(text) && memcmp(s.ptr, text, s.len) == 0;
-}
-
 static bool gl_is_map_or_set(const MirModule *m, const MirTyData *d) {
-    return d->kind == MK_OBJ && (gl_name_is(m, d->name, "Map") || gl_name_is(m, d->name, "Set"));
+    return d->kind == MK_OBJ && (mir_name_is(m, d->name, "Map") || mir_name_is(m, d->name, "Set"));
 }
 
 static bool gl_is_opt(const MirModule *m, MirTy ty, MirTy *inner) {
@@ -448,40 +443,15 @@ static void gl_addr_types(MsArena *a, const MirModule *m, GlVec *slots, GlVec *b
             continue;
         }
         gl_push(a, &seen, key);
-        const uint32_t scope = mir_ty_scope(key);
-        const MirTy ty = mir_ty_unscoped(key);
-        const MirTyData *d = mir_ty_data(m, ty);
-        if (d->kind == MK_INT || d->kind == MK_FLOAT || d->kind == MK_FLOAT32 || d->kind == MK_BOOL ||
-            d->kind == MK_STR || d->kind == MK_BYTES) {
-            continue; /* a descriptor the runtime defines */
-        }
-        if (scope == GL_FORGOTTEN_SCOPE) {
-            continue; /* plain bits */
-        }
-        MirTy inner[2] = {MIR_NONE, MIR_NONE};
-        bool custom = false;
-        MirTy opt_inner = MIR_NONE;
-        if (d->kind == MK_LIST) {
-            inner[0] = d->elem;
-        } else if (d->kind == MK_OBJ && gl_name_is(m, d->name, "Map")) {
-            inner[0] = d->nargs > 0 ? d->args[0] : MIR_NONE;
-            inner[1] = d->nargs > 1 ? d->args[1] : MIR_NONE;
-        } else if (d->kind == MK_OBJ && gl_name_is(m, d->name, "Set")) {
-            inner[0] = d->nargs > 0 ? d->args[0] : MIR_NONE;
-        } else {
-            /* An object, a closure or a nullable optional is one shared word; anything else that
-             * needs no drop is plain bits; the rest gets slot glue. */
-            const bool shared = d->kind == MK_OBJ || d->kind == MK_FN ||
-                                (gl_is_opt(m, ty, &opt_inner) && mir_opt_is_nullable(&lay, opt_inner));
-            custom = !shared && mir_needs_drop(m, ty);
-        }
+        MirDescPlan plan;
+        mir_desc_plan(m, &lay, key, &plan);
         for (uint32_t i = 0; i < 2; i++) {
-            if (inner[i] != MIR_NONE) {
-                gl_push(a, &keys, mir_ty_unscoped(inner[i]) | scope << MIR_SCOPE_SHIFT);
+            if (plan.inner[i] != MIR_NONE) {
+                gl_push(a, &keys, plan.inner[i]);
             }
         }
-        if (custom) {
-            gl_push(a, slots, ty);
+        if (plan.slot_glue != MIR_NONE) {
+            gl_push(a, slots, plan.slot_glue);
         }
     }
     for (uint32_t i = 0; i < m->nvtables; i++) {
