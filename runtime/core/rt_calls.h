@@ -36,6 +36,9 @@ void msrt_cleanup_discard(size_t handle);
 
 /* Objects with a header (closures, handles). Null stays null. */
 
+/* Runs `shim(block)` on the running task's next stack segment (the task module). */
+void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block);
+
 MsObj *msrt_obj_clone(MsObj *object);
 void msrt_obj_drop(MsObj *object);
 
