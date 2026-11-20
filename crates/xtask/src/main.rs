@@ -701,7 +701,8 @@ fn add_c_runtime(
 ) -> Result<(), String> {
     let runtime = root.join("runtime");
     let mut sources = Vec::new();
-    for layer in ["sys", "core", "io", "net", "std"] {
+    // `io`, `net` and `std` join when their sources build for every target (libc headers, third-party includes).
+    for layer in ["sys", "core"] {
         c_sources(&runtime.join(layer), &mut sources);
     }
     sources.sort();
