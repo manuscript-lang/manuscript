@@ -122,19 +122,6 @@ static void live_match(LiveWalk *w, const MsExpr *e) {
     live_expr(w, e->u.match.scrutinee);
 }
 
-/* The arguments run after what is called, so they are walked first (the walk goes backwards). */
-static void live_call(LiveWalk *w, const MsExpr *e) {
-    for (uint32_t i = e->u.call.args.len; i > 0; i--) {
-        live_expr(w, e->u.call.args.ptr[i - 1].value);
-    }
-    const MsExpr *callee = e->u.call.callee;
-    if (callee->kind == MS_E_MEMBER) {
-        live_expr(w, callee->u.member.left);
-    } else if (w->facts->res_kind[callee->id] == MS_RES_BINDING) {
-        live_expr(w, callee);
-    }
-}
-
 static void live_expr(LiveWalk *w, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER:
@@ -155,14 +142,14 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_UNARY: live_expr(w, e->u.bin.left); return;
     case MS_E_BINARY: live_binary(w, e); return;
     case MS_E_MEMBER: live_expr(w, e->u.member.left); return;
-    case MS_E_CALL: live_call(w, e); return;
-    case MS_E_MATCH: live_match(w, e); return;
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
-    case MS_E_LAMBDA: w->supported = false; return; /* closures and collections are not modeled */
+    case MS_E_LAMBDA:
+    case MS_E_CALL: w->supported = false; return;
+    case MS_E_MATCH: live_match(w, e); return;
     }
 }
 /* A binding's life starts at its definition: nothing before it uses it. */
@@ -197,12 +184,11 @@ static void live_jump(LiveWalk *w, const MsStmt *s) {
 
 /* Both branches start from what follows the `if`; afterwards the earlier use on either path counts. */
 static void live_if(LiveWalk *w, const MsStmt *s) {
-    if (s->u.branch.binding != NULL) {
-        w->supported = false;
-        return;
-    }
     uint32_t *after = live_snapshot(w);
     live_block(w, &s->u.branch.body);
+    if (s->u.branch.binding != NULL) {
+        live_define(w, s->u.branch.binding);
+    }
     uint32_t *then_later = w->later;
     w->later = after;
     live_block(w, &s->u.branch.else_body);

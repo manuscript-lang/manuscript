@@ -11,7 +11,8 @@
 #include "ms/mir_pass.h"
 
 /* Runs the pass `name` on `m`; false when the name is unknown. */
-static bool run_pass(const char *name, MirModule *m, bool *changed) {
+/* A pass that can fail leaves its message in `failure`. */
+static bool run_pass(const char *name, MirModule *m, bool *changed, MsBuf *failure) {
     *changed = true;
     if (strcmp(name, "exit_drops") == 0) {
         mir_exit_drops(m);
@@ -23,8 +24,18 @@ static bool run_pass(const char *name, MirModule *m, bool *changed) {
         *changed = mir_expand_owned(m);
     } else if (strcmp(name, "unwind") == 0) {
         *changed = mir_unwind(m);
+    } else if (strcmp(name, "elaborate") == 0) {
+        mir_elaborate(m, failure);
+    } else if (strcmp(name, "elaborate-cancel") == 0) {
+        mir_elaborate_with(m, true, failure);
+    } else if (strcmp(name, "depth") == 0) {
+        *changed = mir_depth_lower(m);
     } else if (strcmp(name, "cancel_edges") == 0) {
         *changed = mir_cancel_edges(m);
+    } else if (strcmp(name, "finish") == 0) {
+        MirGlue g = {0};
+        const MirPipelineOptions o = {.cancel_edges = true, .checks = true, .verify = false};
+        (void)mir_pipeline_finish(m, &o, &g, failure);
     } else if (strcmp(name, "glue") == 0) {
         MirGlue g = {0};
         *changed = mir_glue(m, &g);
@@ -79,11 +90,16 @@ int main(int argc, char **argv) {
         uint32_t line;
         MsStr msg;
         bool changed = false;
+        MsBuf failure = {0};
         if (!mir_parse(&m, src, len, &line, &msg)) {
             ms_buf_puts(&out, "error\n");
-        } else if (!run_pass(argv[2], &m, &changed)) {
+        } else if (!run_pass(argv[2], &m, &changed, &failure)) {
             fprintf(stderr, "unknown pass %s\n", argv[2]);
             return 2;
+        } else if (failure.len > 0) {
+            ms_buf_printf(&out, "fail %.*s\n", (int)failure.len, failure.data);
+            ms_buf_free(&failure);
+            failure = (MsBuf){0};
         } else {
             ms_buf_printf(&out, "changed %d\n", changed ? 1 : 0);
             mir_print_module(&m, &out);

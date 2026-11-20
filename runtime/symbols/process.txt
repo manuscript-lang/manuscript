@@ -1,0 +1,10 @@
+# Defined in runtime/std/process_spawn.c over libuv; the Rust command, spawn and replace natives are deleted.
+msstd_process_command_run
+msstd_process_command_spawn
+msstd_process_replace
+msstd_process_subprocess_close
+msstd_process_subprocess_kill
+msstd_process_subprocess_max_resident
+msstd_process_subprocess_stream_id
+msstd_process_subprocess_terminate
+msstd_process_subprocess_wait

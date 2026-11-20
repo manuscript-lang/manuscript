@@ -653,7 +653,7 @@ msstd_json_w_string(handle w: *mut ObjCell<Writer>, text: *const StrVal) @domain
 msstd_json_w_tree(handle w: *mut ObjCell<Writer>, desc: *const TypeDesc, view: unsafe extern "C-unwind" fn(*const u8, *mut u8, *mut u8), root: *const u8) @domain=JSON @leaf
 msstd_json_w_uint(handle w: *mut ObjCell<Writer>, v: i64) @domain=JSON @leaf
 msstd_json_w_undo(handle w: *mut ObjCell<Writer>) @domain=JSON @leaf
-msstd_json_writer_new(has_max_bytes: HasRaw, max_bytes: i64, has_indent: HasRaw, indent: i64) -> *mut ObjCell<Writer> @handle @domain=JSON @leaf
+msstd_json_writer_new(has_max_bytes: HasRaw, max_bytes: i64, has_indent: HasRaw, indent: i64) -> *mut ObjCell<Writer> @domain=JSON @handle @leaf
 msstd_math_acos(v: f64) -> f64 @domain=number @leaf
 msstd_math_acosh(v: f64) -> f64 @domain=number @leaf
 msstd_math_add_with_carry(left: u64, right: u64, carry: u8, out: *mut WordSumOut) @domain=number @leaf
