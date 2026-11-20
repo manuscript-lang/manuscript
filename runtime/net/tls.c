@@ -6,8 +6,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ms_rt/safe.h"
 
-struct MsTlsCtx { SSL_CTX *ssl; int server; };
+struct MsTlsCtx {
+    SSL_CTX *ssl;
+    int server;
+    uint8_t alpn[MS_TLS_ALPN_MAX]; /* the protocols in wire format: a length byte before each name */
+    size_t alpn_len;
+};
 struct MsTls { SSL *ssl; BIO *in, *out; char err[160]; };
 
 static X509 *first_cert(const char *pem, size_t n, STACK_OF(X509) *rest) {
@@ -70,6 +76,47 @@ void ms_tls_ctx_free(MsTlsCtx *ctx) {
     if (!ctx) return;
     SSL_CTX_free(ctx->ssl);
     free(ctx);
+}
+
+/* The server's ALPN choice: the first of its own protocols that the client offered; none otherwise. */
+static int select_alpn(SSL *ssl, const unsigned char **out, unsigned char *out_len, const unsigned char *offered,
+                       unsigned int offered_len, void *arg) {
+    (void)ssl;
+    const MsTlsCtx *ctx = arg;
+    unsigned char *chosen = NULL;
+    /* OpenSSL's signatures take the lists as non-const pointers but only read them. */
+    const int found = SSL_select_next_proto(&chosen, out_len, (const unsigned char *)ctx->alpn, (unsigned int)ctx->alpn_len,
+                                            offered, offered_len);
+    if (found != OPENSSL_NPN_NEGOTIATED) return SSL_TLSEXT_ERR_NOACK;
+    *out = chosen;
+    return SSL_TLSEXT_ERR_OK;
+}
+
+int ms_tls_ctx_set_alpn(MsTlsCtx *ctx, const char *names) {
+    size_t used = 0;
+    const char *name = names;
+    while (*name != '\0') {
+        const char *end = strchr(name, ',');
+        const size_t length = end != NULL ? (size_t)(end - name) : strlen(name);
+        if (length == 0 || length > 255 || used + 1 + length > sizeof ctx->alpn) return -1;
+        ctx->alpn[used] = (uint8_t)length;
+        memcpy(ctx->alpn + used + 1, name, length);
+        used += 1 + length;
+        name += length + (end != NULL ? 1 : 0);
+    }
+    ctx->alpn_len = used;
+    if (ctx->server) {
+        SSL_CTX_set_alpn_select_cb(ctx->ssl, select_alpn, ctx);
+        return 0;
+    }
+    return SSL_CTX_set_alpn_protos(ctx->ssl, ctx->alpn, (unsigned int)used) == 0 ? 0 : -1; /* 0 means success here */
+}
+
+MsBytes ms_tls_alpn(const MsTls *t) {
+    const unsigned char *name = NULL;
+    unsigned int length = 0;
+    SSL_get0_alpn_selected(t->ssl, &name, &length);
+    return ms_bytes_of(name, length);
 }
 
 /* Sets the SNI name and the name the certificate must match. OpenSSL's SNI macro casts away const, so the name

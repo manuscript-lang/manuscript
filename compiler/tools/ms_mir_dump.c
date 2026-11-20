@@ -259,6 +259,10 @@ static const Pass passes[] = {
     {"copytakes", mir_opt_copyelim_takes},
     {"lastuse", mir_opt_lastuse},
     {"range", mir_opt_range},
+    {"simplify", mir_opt_simplify},
+    {"phis", mir_opt_simplify_phis},
+    {"inline", mir_opt_inline},
+    {"inlinesmall", mir_opt_inline_small},
 };
 
 /* Runs the named pass and prints whether it changed the module, then the module. */

@@ -45,9 +45,15 @@ fn stop_requested(sig: i32) {
         unsafe { sys::_exit(FaultKind::IncompleteCleanup.exit_status()) }
     }
     fault::raise_main_cancel(sig as u8);
-    crate::cabi::run_stop_hooks();
+    // SAFETY: runs the hooks `ms_on_stop` registered; they are async-signal-safe by contract.
+    unsafe { ms_stop_hooks_run() };
     arm_grace_timer();
     crate::task::kick();
+}
+
+unsafe extern "C" {
+    /// Runs the stop hooks of user extern shims (runtime/core/cabi.c).
+    fn ms_stop_hooks_run();
 }
 
 /// Reports a stop that cleanup did not survive, on standard error and in the fault record.
@@ -152,8 +158,7 @@ fn report_leaks() {
             eprintln!("ms-rt live blocks by size: {}", by_size.join(" "));
         }
         let [allocs, bytes] = crate::alloc::requested();
-        // SAFETY: the counters belong to this isolate.
-        let k = unsafe { *crate::string::COPY_COUNTS.ptr() };
+        let k = crate::string::copy_counts();
         eprintln!(
             "ms-rt counts: allocs={allocs} alloc_bytes={bytes} list_copies={} list_copy_bytes={} string_clones={} string_clone_bytes={}",
             k[0], k[1], k[2], k[3]
