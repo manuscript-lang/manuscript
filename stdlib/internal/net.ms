@@ -7,8 +7,7 @@ import (
 	NativeConnection,
 	NativeDatagramSocket,
 	NativeListener,
-	NativeNetwork,
-	Network from "@std/net/net.ms",
+	NativeNetwork from "@std/net/net.ms",
 	CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
 	NativeWebSocket, RawWebSocketMessage, WebSocketWire from "@std/net/websocket.ms",
 	Duration, Timestamp from "@std/time.ms",
@@ -27,6 +26,12 @@ export extern fn msstd_net_parse_cidr(text: String) Cidr!
 export extern fn msstd_net_parse_ip(text: String) IpAddress!
 
 export extern fn msstd_net_network() NativeNetwork
+
+export extern fn msstd_net_lookup(
+	host: String,
+	port: Int,
+	timeout: Duration?,
+) List[String]!
 
 export extern fn msstd_tls_parse_certificates(
 	pem: String,
@@ -80,23 +85,21 @@ export extern fn msstd_net_connection_write_bytes(
 	timeout: Duration?,
 ) Void!
 
-export extern fn msstd_net_datagram_address(handle: NativeDatagramSocket) String
+export extern fn msstd_dgram_bind(address: String) NativeDatagramSocket!
 
-export extern fn msstd_net_datagram_close(handle: NativeDatagramSocket) Void
+export extern fn msstd_dgram_address(handle: NativeDatagramSocket) String
 
-export extern fn msstd_net_datagram_share(
-	handle: NativeDatagramSocket
-) NativeDatagramSocket
+export extern fn msstd_dgram_share(handle: NativeDatagramSocket) NativeDatagramSocket
 
-export extern fn msstd_net_datagram_close_if_last(handle: NativeDatagramSocket) Void
+export extern fn msstd_dgram_close_if_last(handle: NativeDatagramSocket) Void
 
-export extern fn msstd_net_datagram_receive(
+export extern fn msstd_dgram_receive(
 	handle: NativeDatagramSocket,
 	max_bytes: Int?,
 	timeout: Duration?,
 ) Datagram!
 
-export extern fn msstd_net_datagram_send_bytes(
+export extern fn msstd_dgram_send(
 	handle: NativeDatagramSocket,
 	data: Bytes,
 	address: String,
@@ -149,11 +152,6 @@ export extern fn msstd_websocket_send_bytes(
 ) Void!
 
 export extern fn msstd_websocket_subprotocol(handle: NativeWebSocket) String
-
-export extern fn msstd_net_network_bind_datagram(
-	net: NativeNetwork,
-	address: String,
-) NativeDatagramSocket!
 
 export extern fn msstd_net_network_close(net: NativeNetwork) Void
 
@@ -225,7 +223,7 @@ export extern fn msstd_net_network_restrict(
 	hosts: List[String],
 	cidrs: List[String],
 	allow_listen: Bool,
-) Network!
+) NativeNetwork!
 
 export extern fn msstd_net_network_web_socket(
 	net: NativeNetwork,
@@ -238,4 +236,4 @@ export extern fn msstd_net_network_web_socket(
 export extern fn msstd_net_network_with_resolver(
 	net: NativeNetwork,
 	address: String,
-) Network!
+) NativeNetwork!
