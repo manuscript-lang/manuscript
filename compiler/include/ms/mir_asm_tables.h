@@ -17,7 +17,8 @@ void mir_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay
 
 /* Writes `asm_text` with the labels added, followed by the tables, to `out`. `prefix` is what the
  * target puts before a symbol ("_" on Apple, else ""); `strip_lines` leaves the `.loc` directives out of the
- * output (the labels stay). Returns false with a reason in `why`. */
+ * output (the labels stay). A function of the meta that has no code in the assembly (LLVM removed it) gets no
+ * table entry. Always succeeds; `why` is kept for a future reason. */
 bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, size_t asm_len,
                     const char *prefix, bool strip_lines, MsBuf *out, MsBuf *why);
 

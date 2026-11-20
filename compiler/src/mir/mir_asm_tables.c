@@ -184,22 +184,33 @@ static void at_put_blob(MsBuf *out, const uint8_t *blob, size_t size, AtPatch *p
 
 /* The tables as data after the assembly: the blob of `mir_fault_tables`, its code addresses the labels. */
 static void at_emit_tables(AtMeta *a, const AtLoc *all, size_t nlocs, const char *prefix, MsBuf *out) {
-    MirFuncTable *tables = MS_NEW_N(&a->m.arena, MirFuncTable, a->nfuncs ? a->nfuncs : 1);
+    /* A function the compiler removed (an internal one LLVM inlined everywhere) has no code and no entry. */
+    AtFunc *kept = MS_NEW_N(&a->m.arena, AtFunc, a->nfuncs ? a->nfuncs : 1);
+    uint32_t nkept = 0;
+    for (uint32_t f = 0; f < a->nfuncs; f++) {
+        if (a->funcs[f].seen) {
+            kept[nkept++] = a->funcs[f];
+        }
+    }
+    MirFuncTable *tables = MS_NEW_N(&a->m.arena, MirFuncTable, nkept ? nkept : 1);
     MirCodeRange *ranges = MS_NEW_N(&a->m.arena, MirCodeRange, nlocs ? nlocs : 1);
     size_t at = 0;
-    for (uint32_t f = 0; f < a->nfuncs; f++) {
+    for (uint32_t f = 0, n = 0; f < a->nfuncs; f++) {
+        if (!a->funcs[f].seen) {
+            continue;
+        }
         const size_t first = at;
         for (size_t k = 0; k < nlocs; k++) {
             if (all[k].func == f) {
                 ranges[at++] = (MirCodeRange){(uint32_t)k + 1, MIR_NONE, all[k].line, all[k].scope};
             }
         }
-        tables[f] = (MirFuncTable){a->funcs[f].name, a->funcs[f].file, a->funcs[f].line, 0, ranges + first,
-                                   (uint32_t)(at - first)};
+        tables[n++] = (MirFuncTable){a->funcs[f].name, a->funcs[f].file, a->funcs[f].line, 0, ranges + first,
+                                     (uint32_t)(at - first)};
     }
     MirTables t;
-    mir_fault_tables(&a->m.arena, &a->m, tables, a->nfuncs, a->scopes, a->nscopes, &t);
-    AtPatch *patches = MS_NEW_N(&a->m.arena, AtPatch, t.npcs * 2 + 5 + a->nfuncs + 1);
+    mir_fault_tables(&a->m.arena, &a->m, tables, nkept, a->scopes, a->nscopes, &t);
+    AtPatch *patches = MS_NEW_N(&a->m.arena, AtPatch, t.npcs * 2 + 5 + 1);
     size_t np = 0;
     for (size_t i = 0; i < t.npcs; i++) {
         const MirTablePc *pc = &t.pcs[i];
@@ -213,7 +224,7 @@ static void at_emit_tables(AtMeta *a, const AtLoc *all, size_t nlocs, const char
     for (int i = 0; i < 5; i++) {
         patches[np++] = (AtPatch){t.pointers[i].at, AT_BLOB_ADDR, t.pointers[i].to};
     }
-    at_put_blob(out, t.blob, t.size, patches, np, a->funcs, prefix);
+    at_put_blob(out, t.blob, t.size, patches, np, kept, prefix);
 }
 
 /* Copies the assembly to `out` with a label after every `.loc` and at the end of every function, and
@@ -268,18 +279,10 @@ bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, siz
     qsort(sorted, a.nfuncs, sizeof *sorted, at_sym_cmp);
     MsBuf locs = {0};
     at_scan(&a, sorted, asm_text, asm_len, prefix, strip_lines, out, &locs);
-    bool ok = true;
-    for (uint32_t i = 0; i < a.nfuncs; i++) {
-        if (!a.funcs[i].seen) {
-            ms_buf_printf(why, "no code for %.*s\n", (int)a.funcs[i].sym.len, a.funcs[i].sym.ptr);
-            ok = false;
-        }
-    }
-    if (ok) {
-        at_emit_tables(&a, ms_buf_items(&locs), locs.len / sizeof(AtLoc), prefix, out);
-    }
+    at_emit_tables(&a, ms_buf_items(&locs), locs.len / sizeof(AtLoc), prefix, out);
     free(sorted);
     ms_buf_free(&locs);
     mir_module_free(&a.m);
-    return ok;
+    (void)why;
+    return true;
 }
