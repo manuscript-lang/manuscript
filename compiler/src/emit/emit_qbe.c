@@ -812,6 +812,70 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
+/* ---- alternatives and optionals ---- */
+
+/* Whether the alternative `ty` lives behind a pointer. */
+static bool qbe_alt_boxed(QCx *c, MirTy ty) {
+    return mir_shape(c->layouts, ty)->alt == MIR_ALT_BOXED;
+}
+
+/* `alt.tag`: leaf 0, or the first word of the block a boxed alternative points to. */
+static void qbe_alt_tag(QCx *c, const MirInst *inst) {
+    if (qbe_alt_boxed(c, c->f->values[inst->args[0]])) {
+        ms_buf_printf(c->out, "\t%%v%u =l loadl %%v%u\n", inst->res, inst->args[0]);
+    } else {
+        qbe_copy_leaf(c, inst->res, 0, inst->args[0], 0);
+    }
+}
+
+/* The type an optional wraps. */
+static MirTy qbe_opt_inner(const QCx *c, MirTy opt) {
+    return mir_ty_data(c->m, opt)->elem;
+}
+
+/* `opt.some`: a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
+ * payload itself, any other is the payload after a presence flag. */
+static bool qbe_opt_some(QCx *c, const MirInst *inst) {
+    const MirTy inner = qbe_opt_inner(c, c->f->values[inst->res]);
+    MsBuf *o = c->out;
+    if (mir_layouts_opt_boxed(c->layouts, inner)) {
+        const MirLeafSpan leaves = qbe_leaves(c, inner);
+        const uint32_t size = mir_mem_layout(leaves.ptr, leaves.len, NULL).size;
+        ms_buf_printf(o, "\t%%v%u =l call $msrt_alloc(l %u)\n", inst->res, size > 0 ? size : 1);
+        char base[24];
+        (void)snprintf(base, sizeof base, "%%v%u", inst->res);
+        return leaves.len == 0 || qbe_store_leaves(c, inst->args[0], base);
+    }
+    const bool nullable = mir_opt_is_nullable(c->layouts, inner);
+    uint32_t at = 0;
+    if (!nullable) {
+        ms_buf_printf(o, "\t%%v%u =w copy 1\n", inst->res);
+        at = 1;
+    }
+    const uint32_t n = qbe_leaves(c, c->f->values[inst->args[0]]).len;
+    for (uint32_t k = 0; k < n; k++) {
+        qbe_copy_leaf(c, inst->res, at + k, inst->args[0], k);
+    }
+    return true;
+}
+
+/* `opt.get`: the payload of an optional known to hold one. */
+static bool qbe_opt_get(QCx *c, const MirInst *inst) {
+    const MirTy ty = c->f->values[inst->args[0]];
+    const MirTy inner = qbe_opt_inner(c, ty);
+    if (mir_layouts_opt_boxed(c->layouts, inner)) {
+        char base[24];
+        (void)snprintf(base, sizeof base, "%%v%u", inst->args[0]);
+        return qbe_load_leaves(c, inst->res, base);
+    }
+    const uint32_t skip = mir_opt_is_nullable(c->layouts, inner) ? 0 : 1;
+    const uint32_t n = qbe_leaves(c, c->f->values[inst->res]).len;
+    for (uint32_t k = 0; k < n; k++) {
+        qbe_copy_leaf(c, inst->res, k, inst->args[0], skip + k);
+    }
+    return true;
+}
+
 static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
     const char *mnemonic = qbe_binary_mnemonic((MirOp)inst->op);
     if (mnemonic != NULL) {
@@ -845,6 +909,9 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_Call: return qbe_call(c, inst, block, index);
     case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
     case MOP_INarrowOpt: case MOP_F2IOpt: return qbe_opt_convert(c, inst);
+    case MOP_AltTag: qbe_alt_tag(c, inst); return true;
+    case MOP_OptSome: return qbe_opt_some(c, inst);
+    case MOP_OptGet: return qbe_opt_get(c, inst);
     case MOP_OptIsSome: qbe_opt_is_some(c, inst); return true;
     case MOP_ListLen: qbe_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_LEN_LEAF); return true;
     case MOP_StackLow: case MOP_StackNear: qbe_stack_check(c, inst); return true;

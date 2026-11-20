@@ -17,6 +17,9 @@ typedef enum AskOp {
     ASK_DROP,
     ASK_REPORT,
     ASK_PROBE,
+    ASK_ON_CANCEL,
+    ASK_GROUPED,
+    ASK_RUN,
 } AskOp;
 
 /* One question. The asker owns it and keeps it alive until the reply token is posted. */
@@ -78,6 +81,22 @@ bool ms_remote_end(MsPromise id) { return simple(id, ASK_END, 0, 0) != 0; }
 void ms_remote_drop(MsPromise id) { (void)simple(id, ASK_DROP, 0, 0); }
 
 MsPromiseProbe ms_remote_probe(MsPromise id) { return (MsPromiseProbe)simple(id, ASK_PROBE, 0, MS_PROMISE_GONE); }
+
+void ms_remote_on_cancel(MsPromise id, int64_t cancel) { (void)simple(id, ASK_ON_CANCEL, cancel, 0); }
+
+void ms_remote_set_grouped(MsPromise id, bool grouped) { (void)simple(id, ASK_GROUPED, grouped ? 1 : 0, 0); }
+
+bool ms_remote_run_inline(MsPromise id) { return simple(id, ASK_RUN, 0, 0) != 0; }
+
+bool ms_remote_watch_post(MsPromise id, uint64_t token) {
+    MsMail *const mail = msrt_alloc(sizeof *mail);
+    *mail = (MsMail){.kind = MS_MAIL_PROMISE, .a = MS_MAIL_WATCH, .b = (uint64_t)id, .c = token};
+    if (!ms_isolate_post((uint32_t)((uint64_t)id >> 56), mail)) {
+        msrt_free(mail);
+        return false;
+    }
+    return true;
+}
 
 bool ms_remote_take(MsPromise id, const MsTypeDesc *desc, uint8_t *out) {
     Ask ask = {.id = id, .op = ASK_TAKE, .desc = desc, .out = out};
@@ -155,6 +174,15 @@ static void answer(Ask *ask) {
         break;
     case ASK_PROBE:
         ask->answer = (int64_t)ms_promise_probe(ask->id);
+        break;
+    case ASK_ON_CANCEL:
+        ms_promise_on_cancel(ask->id, ask->argument);
+        break;
+    case ASK_GROUPED:
+        ms_promise_set_grouped(ask->id, ask->argument != 0);
+        break;
+    case ASK_RUN:
+        ask->answer = ms_promise_run_inline(ask->id) ? 1 : 0;
         break;
     }
 }
