@@ -28,20 +28,20 @@ pub fn monotonic_since_start() -> i64 {
         .as_nanos() as i64
 }
 
-/// How the host names its local zone, for `@std/internal/zone.ms` to resolve:
+/// How the host names its local zone (the `TZ` setting first, on every platform), for `@std/internal/zone.ms` to resolve:
 /// `tz:<value>` from the `TZ` setting (an IANA name or a POSIX rule; `UTC` when empty),
 /// `link:<name>` when `/etc/localtime` links into a zoneinfo directory, `windows:<key>` for a
 /// Windows time-zone key, and the empty string when only the system zone file is left.
 #[allow(unsafe_code)] // the Win32 time-zone call
 pub fn system_zone() -> String {
+    if let Some(value) = std::env::var_os("TZ") {
+        let text = value.to_str().unwrap_or("");
+        let text = text.strip_prefix(':').unwrap_or(text);
+        let name = text.rsplit_once("zoneinfo/").map_or(text, |(_, name)| name);
+        return std::format!("tz:{}", if name.is_empty() { "UTC" } else { name });
+    }
     #[cfg(unix)]
     {
-        if let Some(value) = std::env::var_os("TZ") {
-            let text = value.to_str().unwrap_or("");
-            let text = text.strip_prefix(':').unwrap_or(text);
-            let name = text.rsplit_once("zoneinfo/").map_or(text, |(_, name)| name);
-            return std::format!("tz:{}", if name.is_empty() { "UTC" } else { name });
-        }
         if let Ok(target) = std::fs::read_link("/etc/localtime")
             && let Some((_, name)) = target.to_str().unwrap_or("").rsplit_once("zoneinfo/")
         {
