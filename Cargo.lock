@@ -702,7 +702,6 @@ dependencies = [
  "ms-rt",
  "ms-rt-abi",
  "ms-std-bigint",
- "ms-std-core",
  "ms-std-decimal",
  "ms-std-fs",
  "ms-std-json",
@@ -737,14 +736,6 @@ dependencies = [
  "ms-rt-abi",
  "num-bigint 0.5.1",
  "num-traits",
-]
-
-[[package]]
-name = "ms-std-core"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
 ]
 
 [[package]]
@@ -784,7 +775,6 @@ dependencies = [
  "ms-inflate",
  "ms-rt",
  "ms-rt-abi",
- "ms-std-core",
  "psl",
  "ring",
  "rustix",

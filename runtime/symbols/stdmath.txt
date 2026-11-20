@@ -1,4 +1,4 @@
-# Defined in runtime/std/stdmath.c; the Rust natives of ms-std-core are deleted.
+# Defined in runtime/std/stdmath.c.
 msstd_math_acos
 msstd_math_acosh
 msstd_math_add_with_carry

@@ -1,0 +1,31 @@
+/* ms_rt/unicode.h: the @std/unicode natives (runtime/std/unicode.c, on PCRE2's Unicode tables). A property of a value
+ * that is not a Unicode scalar is false. Symbols are listed in runtime/symbols/unicode.txt. */
+#ifndef MS_RT_UNICODE_H
+#define MS_RT_UNICODE_H
+
+#include "ms_rt/base.h"
+#include "ms_rt/string.h"
+
+/* Whether the scalar has the Unicode general category "P", "S" or "M"; any other category is false. */
+/* ms-sig: msstd_unicode_in_category(value: i64, category: *const StrVal) -> u8 @domain=regular expression @leaf */
+uint8_t msstd_unicode_in_category(int64_t value, const MsStr *category);
+/* ms-sig: msstd_unicode_is_alphabetic(value: i64) -> u8 @domain=unicode */
+uint8_t msstd_unicode_is_alphabetic(int64_t value);
+/* ms-sig: msstd_unicode_is_alphanumeric(value: i64) -> u8 @domain=unicode */
+uint8_t msstd_unicode_is_alphanumeric(int64_t value);
+/* ms-sig: msstd_unicode_is_ascii(value: i64) -> u8 @domain=unicode */
+uint8_t msstd_unicode_is_ascii(int64_t value);
+/* ms-sig: msstd_unicode_is_control(value: i64) -> u8 @domain=unicode */
+uint8_t msstd_unicode_is_control(int64_t value);
+/* ms-sig: msstd_unicode_is_lowercase(value: i64) -> u8 @domain=unicode */
+uint8_t msstd_unicode_is_lowercase(int64_t value);
+/* ms-sig: msstd_unicode_is_numeric(value: i64) -> u8 @domain=unicode */
+uint8_t msstd_unicode_is_numeric(int64_t value);
+/* ms-sig: msstd_unicode_is_uppercase(value: i64) -> u8 @domain=unicode */
+uint8_t msstd_unicode_is_uppercase(int64_t value);
+/* ms-sig: msstd_unicode_is_whitespace(value: i64) -> u8 @domain=unicode */
+uint8_t msstd_unicode_is_whitespace(int64_t value);
+/* ms-sig: msstd_utf8_is_valid(data: *const VecVal) -> u8 @domain=utf8 */
+uint8_t msstd_utf8_is_valid(const MsVec *data);
+
+#endif

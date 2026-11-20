@@ -1,4 +1,4 @@
-/* ms_rt/regex.h: the @std/regex natives (runtime/std/regex_abi.c, regex_text.c and regex_category.c over regex.c,
+/* ms_rt/regex.h: the @std/regex natives (runtime/std/regex_abi.c, and regex_text.c over regex.c,
  * on PCRE2). Fallible functions return a status (0 ok, 1 InvalidInput, 3 LimitExceeded, 4 InvalidData, 11 Failed)
  * and write their result through `out` only on success. A `has_*`/`max` pair is an optional budget: a negative
  * one is InvalidInput and one that more output would pass is LimitExceeded. Offsets are UTF-8 byte offsets.
@@ -49,9 +49,5 @@ uint8_t msstd_regex_split(const void *re, const MsStr *text, uint8_t has_max, in
 uint8_t msstd_regex_replace_all(const void *re, const MsStr *text, const MsStr *replacement, uint8_t has_max, int64_t max, MsStr *out);
 /* ms-sig: msstd_regex_replace_template(handle re: *const ObjCell<Regex>, text: *const StrVal, template: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf */
 uint8_t msstd_regex_replace_template(const void *re, const MsStr *text, const MsStr *template_text, uint8_t has_max, int64_t max, MsStr *out);
-
-/* Whether the scalar has the Unicode general category "P", "S" or "M"; any other category is false. */
-/* ms-sig: msstd_unicode_in_category(value: i64, category: *const StrVal) -> u8 @leaf */
-uint8_t msstd_unicode_in_category(int64_t value, const MsStr *category);
 
 #endif
