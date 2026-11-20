@@ -224,6 +224,7 @@ static bool ce_function(CeCx *cx) {
             ce_block(cx, &flow, order[i], nvalues);
         }
     }
+    cx->scratch = NULL;
     ms_arena_free(&scratch);
     return true;
 }
