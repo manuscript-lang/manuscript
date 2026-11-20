@@ -227,8 +227,7 @@ static int at(const Scanner *s, size_t i) {
 }
 
 static bool starts_with(const Scanner *s, size_t i, const char *lit) {
-    size_t n = strlen(lit);
-    return i + n <= s->n && memcmp(s->src + i, lit, n) == 0;
+    return i <= s->n && ms_bytes_starts_with(ms_bytes_of((const uint8_t *)s->src + i, s->n - i), ms_bytes_of((const uint8_t *)lit, strlen(lit)));
 }
 
 static bool at_line_comment(const Scanner *s) {
