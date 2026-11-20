@@ -129,7 +129,10 @@ export fn use_stats_runtime() Int:
 	set_environment("CARGO_TARGET_DIR", none).get()
 	if code != 0: return code
 
+	// The counting allocator is a build of the C allocator (MS_ALLOC_STATS) folded into the archive.
+	set_environment("MS_ALLOC_STATS", "1").get()
 	code = run_program("cargo", ["xtask", "runtime"])
+	set_environment("MS_ALLOC_STATS", none).get()
 	if code != 0: return code
 
 	lib := canonicalize(f"{stats_target}/{release}/libms_native.a").get()

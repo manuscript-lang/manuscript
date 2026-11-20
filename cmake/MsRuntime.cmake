@@ -96,6 +96,9 @@ add_library(ms_runtime_objects OBJECT ${_selected})
 target_include_directories(ms_runtime_objects PRIVATE "${CMAKE_SOURCE_DIR}/runtime/include")
 target_compile_options(ms_runtime_objects PRIVATE -O2 -Wall -Wextra -Werror ${MS_C_FLAGS})
 target_compile_definitions(ms_runtime_objects PRIVATE ${MS_LIBS_DEFINES})
+if(MS_ALLOC_STATS)
+  target_compile_definitions(ms_runtime_objects PRIVATE MS_ALLOC_STATS)
+endif()
 if(MS_LIBS_IDIRAFTER)
   # MSYS2 keeps its headers in one prefix; llvm-mingw's own come first.
   target_compile_options(ms_runtime_objects PRIVATE -idirafter "${MS_LIBS_PREFIX}/include")
@@ -119,7 +122,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -DAR=${CMAKE_AR} -DOBJECTS=${CMAKE_BINARY_DIR}/c-object-files.txt
           -DLIBRARIES=${CMAKE_BINARY_DIR}/c-library-files.txt -DWORK=${CMAKE_BINARY_DIR}/c-members
           -DOUT=${CMAKE_BINARY_DIR}/c-objects.txt -P ${CMAKE_SOURCE_DIR}/cmake/FoldArchives.cmake
-  DEPENDS ms_runtime_objects ms_llhttp "${CMAKE_BINARY_DIR}/c-object-files.txt"
+  DEPENDS ms_runtime_objects $<TARGET_OBJECTS:ms_runtime_objects> ms_llhttp "${CMAKE_BINARY_DIR}/c-object-files.txt"
           "${CMAKE_BINARY_DIR}/c-library-files.txt" ${_archives}
           "${CMAKE_SOURCE_DIR}/cmake/FoldArchives.cmake"
   COMMENT "Folding the C libraries into the runtime objects"

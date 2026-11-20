@@ -795,7 +795,12 @@ fn build_archive(
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    let plan = build_c_runtime(root, target, triple)?;
+    let plan = build_c_runtime(
+        root,
+        target,
+        triple,
+        std::env::var_os("MS_ALLOC_STATS").is_some(),
+    )?;
     if plan.has_reactor() {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
