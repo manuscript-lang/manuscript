@@ -27,3 +27,16 @@ fn through_binding() Bool:
 
 fn conflicting() Int:
 	return larger(1, 2.5)
+
+fn pass_through[T](value: T) T:
+	return value
+
+fn through_call[T](value: T) T:
+	return identity(value)
+
+fn first_of[A, B](a: A, b: B) A:
+	return a
+
+fn rebind[T](value: T) T:
+	copy := value
+	return copy
