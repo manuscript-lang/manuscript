@@ -3,19 +3,21 @@
 //! it at once. Both platforms use mio.
 
 use crate::fault;
-#[cfg(unix)]
+#[cfg(all(unix, not(ms_c = "msio_open")))]
 use crate::sys;
-#[cfg(unix)]
+#[cfg(all(unix, not(ms_c = "msio_open")))]
 use crate::task::WAIT_KEEP;
+#[cfg(not(all(unix, ms_c = "msio_open")))]
 use crate::task::{WAIT_HUP, WAIT_READ, WAIT_WRITE};
 use core::mem::MaybeUninit;
-#[cfg(unix)]
+#[cfg(all(unix, not(ms_c = "msio_open")))]
 use core::sync::atomic::AtomicI32;
-#[cfg(unix)]
+#[cfg(all(unix, not(ms_c = "msio_open")))]
 use core::sync::atomic::Ordering;
 
 /// A descriptor that became ready, with the `WAIT_*` bits it reports.
 #[derive(Clone, Copy)]
+#[repr(C)]
 pub struct Ready {
     pub fd: usize,
     pub bits: u32,
@@ -29,6 +31,7 @@ pub enum Watch {
     Failed,
 }
 
+#[cfg(not(all(unix, ms_c = "msio_open")))]
 /// The interest a wait asks for; waiting on nothing watches for readability.
 fn interest(events: u32) -> mio::Interest {
     match (events & WAIT_READ != 0, events & WAIT_WRITE != 0) {
@@ -38,6 +41,7 @@ fn interest(events: u32) -> mio::Interest {
     }
 }
 
+#[cfg(not(all(unix, ms_c = "msio_open")))]
 /// The `WAIT_*` bits an event reports.
 fn bits(ev: &mio::event::Event) -> u32 {
     let mut r = 0;
@@ -54,10 +58,10 @@ fn bits(ev: &mio::event::Event) -> u32 {
 }
 
 /// Write side of the descriptor that interrupts the wait; used by signal handlers.
-#[cfg(unix)]
+#[cfg(all(unix, not(ms_c = "msio_open")))]
 static WAKE_FD: AtomicI32 = AtomicI32::new(-1);
 
-#[cfg(unix)]
+#[cfg(all(unix, not(ms_c = "msio_open")))]
 mod imp {
     use super::*;
     use mio::unix::SourceFd;
@@ -703,6 +707,9 @@ mod imp {
     }
 }
 
+#[cfg(all(unix, ms_c = "msio_open"))]
+#[path = "poller_uv.rs"]
+mod imp;
 pub use imp::{close, create, forget, kick, unwatch, wait, watch};
 #[cfg(windows)]
 pub use imp::{

@@ -10,6 +10,7 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [Image codecs are pure Manuscript and allocate only after validating the header](image-codecs-are-pure-manuscript-and-allocate-after-validating.md): `@std/image` PNG/JPEG/BMP/PPM with fuzzing; limits optional, sizes checked before allocation; pitfalls found.
 - [BigInt power estimates do not prove a result fits](bigint-power-estimates-do-not-prove-a-result-fits.md): a lower bit-length bound rejects some oversized powers, but the computed result still needs its exact size checked.
 
+- [C runtime code is checked by sanitizers and fuzz harnesses, nightly](c-runtime-code-is-checked-by-sanitizers-and-fuzz-harnesses.md): `make c-test` and `make c-fuzz` under ASan and UBSan; new parsers and writers need a harness and seeds.
 - [A runtime symbol moves to C by listing it in `runtime/symbols/<module>.txt`](a-runtime-symbol-moves-to-c-by-listing-it-in-c-symbols.md): clang builds `runtime/**/*.c` into the archive; a per-symbol cfg compiles the Rust definition out; header drift is checked.
 - [Linux programs link glibc unless `--static` is asked](linux-programs-link-glibc-unless-static-is-asked.md): static musl's resolver misses mixed-case `/etc/hosts` names, so musl is opt-in; glibc programs link 2.28 stubs and run on any later glibc.
 - [Streams wait in the source and stages pull directly](streams-wait-in-the-source-and-stages-pull-directly.md): one stream type; waiting happens inside `next`; stages are `Source`s that pull their input; no cells, no `read()` or `wait()`.
