@@ -5,6 +5,7 @@
  * on is looked at again. Timers are a heap with lazy deletion (timers.h).
  */
 #include "array.h"
+#include "ms_rt/alloc.h"
 #include "scheduler.h"
 
 enum {
@@ -85,7 +86,7 @@ static void unlink_node(MsSched *sched, MsFdQueue *queue, MsNode node) {
  * if every waiter keeps it. */
 static uint32_t combined_events(const MsSched *sched, const MsFdQueue *queue, uint32_t asked) {
     for (MsNode node = queue->oldest; node != 0; node = sched->waiters[node - 1].next) {
-        const uint32_t other = sched->waiters[node - 1].events;
+        const uint32_t other = sched->waiters[node - 1].events & ~(uint32_t)MS_WAIT_PROMISE;
         asked = ((asked | other) & ~MS_WAIT_KEEP) | (asked & other & MS_WAIT_KEEP);
     }
     return asked;
@@ -138,19 +139,57 @@ bool ms_park_watch(MsSched *sched, MsTask *task, int fd, uint32_t events, bool *
 
 /* ---- wake-ups ---- */
 
-/* Ends the descriptor wait of a task, leaving the poller watching what the other waiters still ask. */
-static void leave_descriptor(MsSched *sched, MsTask *task) {
-    const int fd = task->wait_fd;
+/* Removes a waiter node, leaving the poller watching what the other waiters still ask. */
+static void leave_node(MsSched *sched, int fd, MsNode node) {
     MsFdQueue *const queue = &sched->fd_queues[fd];
-    unlink_node(sched, queue, task->wait_node);
-    node_free(sched, task->wait_node);
-    task->wait_node = 0;
-    task->wait_fd = -1;
+    unlink_node(sched, queue, node);
+    node_free(sched, node);
     sched->fd_waiting--;
     if (queue->oldest == 0) {
         sched->poll.unwatch(fd);
     } else {
         ms_park_rearm(sched, fd);
+    }
+}
+
+/* Ends the descriptor wait of a task. */
+static void leave_descriptor(MsSched *sched, MsTask *task) {
+    leave_node(sched, task->wait_fd, task->wait_node);
+    task->wait_node = 0;
+    task->wait_fd = -1;
+}
+
+int ms_sched_fd_wait_begin(uint64_t id, int fd, uint32_t events) {
+    MsSched *const sched = ms_sched();
+    MsFdQueue *const queue = queue_of(sched, fd);
+    if (queue == NULL) {
+        return MS_POLL_FAILED;
+    }
+    const int armed = sched->poll.watch(fd, combined_events(sched, queue, events));
+    if (armed != MS_POLL_ARMED) {
+        return armed;
+    }
+    const MsNode node = node_alloc(sched);
+    if (node == 0) {
+        return MS_POLL_FAILED;
+    }
+    sched->waiters[node - 1] = (MsWaiter){.owner = id, .events = events | MS_WAIT_PROMISE, .fd = fd};
+    append_node(sched, queue, node);
+    sched->fd_waiting++;
+    return MS_POLL_ARMED;
+}
+
+void ms_sched_fd_wait_end(uint64_t id, int fd) {
+    MsSched *const sched = ms_sched();
+    if (fd < 0 || (size_t)fd >= sched->fd_queue_count) {
+        return;
+    }
+    for (MsNode node = sched->fd_queues[fd].oldest; node != 0; node = sched->waiters[node - 1].next) {
+        const MsWaiter *const waiter = &sched->waiters[node - 1];
+        if (waiter->owner == id && (waiter->events & MS_WAIT_PROMISE) != 0) {
+            leave_node(sched, fd, node);
+            return;
+        }
     }
 }
 
@@ -226,7 +265,29 @@ void ms_park_arm_kill(MsSched *sched, MsTask *task, int64_t at_ns) {
     }
 }
 
+static bool external_live(void *context, MsTimer timer) {
+    const MsSched *const sched = context;
+    return sched->hooks.timer_live(timer.handle, timer.deadline);
+}
+
+void ms_sched_arm(uint64_t id, int64_t at_ns) {
+    MsSched *const sched = ms_sched();
+    ms_timers_push(&sched->external, (MsTimer){.deadline = at_ns, .handle = id});
+    if (sched->external.length > sched->external_limit) {
+        ms_timers_retain(&sched->external, external_live, sched);
+        const size_t doubled = sched->external.length * 2;
+        sched->external_limit = doubled > MIN_TIMER_LIMIT ? doubled : MIN_TIMER_LIMIT;
+    }
+}
+
 void ms_park_expire(MsSched *sched, int64_t now) {
+    MsTimer entry = {0};
+    while (ms_timers_peek(&sched->external, &entry) && entry.deadline <= now) {
+        ms_timers_pop(&sched->external);
+        if (sched->hooks.timer_live(entry.handle, entry.deadline)) {
+            sched->hooks.timer_fire(entry.handle, entry.deadline);
+        }
+    }
     MsTimer due = {0};
     while (ms_timers_peek(&sched->kills, &due) && due.deadline <= now) {
         ms_timers_pop(&sched->kills);
@@ -275,7 +336,15 @@ static void deliver(MsSched *sched, int fd, uint32_t bits) {
     MsNode node = sched->fd_queues[fd].oldest;
     while (node != 0) {
         const MsWaiter waiter = sched->waiters[node - 1];
+        const MsNode this_node = node;
         node = waiter.next;
+        if ((waiter.events & MS_WAIT_PROMISE) != 0) {
+            const uint32_t wanted = bits & (waiter.events | MS_WAIT_HUP) & ~(uint32_t)MS_WAIT_PROMISE;
+            if (wanted != 0 && sched->hooks.fd_ready(waiter.owner, wanted)) {
+                leave_node(sched, fd, this_node);
+            }
+            continue;
+        }
         MsTask *const task = ms_task_lookup(sched, waiter.owner);
         if (task == NULL) {
             continue;
@@ -326,6 +395,15 @@ static int64_t next_timeout(MsSched *sched, int64_t now) {
         timeout_ns = timeout_ns < 0 || until < timeout_ns ? until : timeout_ns;
         break;
     }
+    while (ms_timers_peek(&sched->external, &top)) {
+        if (!sched->hooks.timer_live(top.handle, top.deadline)) {
+            ms_timers_pop(&sched->external);
+            continue;
+        }
+        const int64_t until = top.deadline > now ? top.deadline - now : 0;
+        timeout_ns = timeout_ns < 0 || until < timeout_ns ? until : timeout_ns;
+        break;
+    }
     return timeout_ns;
 }
 
@@ -348,18 +426,42 @@ static void abandon_wait(MsSched *sched) {
     current->state = MS_STATE_RUNNING;
 }
 
+bool ms_park_drain_mail(MsSched *sched) {
+    MsMail *mail = ms_isolate_take();
+    const size_t before = sched->ready_length;
+    while (mail != NULL) {
+        MsMail *const next = mail->next;
+        if (mail->kind == MS_MAIL_TOKEN) {
+            ms_token_post(mail->a, mail->b);
+            msrt_free(mail);
+        } else if (mail->kind == MS_MAIL_STOP) {
+            ms_sched_stop((uint8_t)mail->a);
+            msrt_free(mail);
+        } else if (sched->hooks.mail != NULL) {
+            sched->hooks.mail(mail);
+        } else {
+            msrt_free(mail);
+        }
+        mail = next;
+    }
+    return sched->ready_length != before;
+}
+
 void ms_park_idle(MsSched *sched) {
     for (;;) {
         /* Tasks in a shielded cleanup keep waiting; they see the stop request afterwards. */
         if (ms_sched_stop_request() != 0 && ms_park_cancel_all(sched)) {
             return;
         }
-        const bool timed = sched->timers.length != 0 || sched->kills.length != 0;
+        const bool timed = sched->timers.length != 0 || sched->kills.length != 0 || sched->external.length != 0;
         const int64_t now = timed ? ms_sched_now() : 0;
         if (timed) {
             ms_park_expire(sched, now);
         }
         if (sched->ready_length != 0) {
+            return;
+        }
+        if (ms_isolate_has_mail() && ms_park_drain_mail(sched)) {
             return;
         }
         const int64_t timeout_ns = timed ? next_timeout(sched, now) : -1;
@@ -371,7 +473,11 @@ void ms_park_idle(MsSched *sched) {
         if (sched->hooks.flush_output != NULL) {
             sched->hooks.flush_output();
         }
+        if (!ms_isolate_idle_enter()) {
+            continue; /* mail arrived since the look above */
+        }
         ms_park_poll(sched, timeout_ns);
+        ms_isolate_idle_leave();
     }
 }
 
@@ -418,6 +524,7 @@ void ms_task_forget_fd(int fd) { ms_sched()->poll.forget(fd); }
 void ms_park_free(MsSched *sched) {
     ms_timers_free(&sched->timers);
     ms_timers_free(&sched->kills);
+    ms_timers_free(&sched->external);
     msrt_free(sched->fd_queues);
     msrt_free(sched->waiters);
 }

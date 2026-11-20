@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include "fault.h"
+#include "isolate.h"
 #include "ms_rt/safe.h"
 #include "unwind.h"
 
@@ -36,6 +37,8 @@ typedef void (*MsTaskEntry)(void *);
 /* Request bit: keep the descriptor registered between waits. Only for a descriptor its owner drains before every
  * wait and keeps open for good. */
 #define MS_WAIT_KEEP 32u
+/* Internal: marks a descriptor waiter that is a promise, not a task. */
+#define MS_WAIT_PROMISE 128u
 
 /* ms_task_spawn flags. */
 #define MS_SPAWN_DETACHED 1u /* nobody joins; a fault in the task ends the process */
@@ -64,6 +67,22 @@ typedef struct MsSchedHooks {
     /* A task started with MS_SPAWN_FATAL faulted: the main isolate reports and exits the process; a worker records
      * the report and cancels itself, so this may return. May be NULL. */
     void (*task_fault)(const MsFaultText *message);
+    /* Timers of other tables (the promise table's sleeps and limits), armed with ms_sched_arm: whether the entry
+     * (id, deadline) still means something, and what to do when it is due. May be NULL together. */
+    bool (*timer_live)(uint64_t id, int64_t deadline);
+    void (*timer_fire)(uint64_t id, int64_t deadline);
+    /* A descriptor a promise waits on (ms_sched_fd_wait_begin) has `bits` ready: true when the promise is done with
+     * the descriptor (the wait is then removed), false to keep waiting. */
+    bool (*fd_ready)(uint64_t id, uint32_t bits);
+    /* While a task runs work inline for a wait group (ms_task_set_watch), each of its unshielded parks on `token` is
+     * bracketed: park_begin answers true when the park must end at once (a member already failed), park_end when the
+     * park that just returned was ended by a failure; both make the park report MS_WAIT_CANCELLED. */
+    bool (*park_begin)(uint64_t token);
+    bool (*park_end)(void);
+    /* Mail of a kind the scheduler does not handle itself (the promise table's): the hook takes `mail` and frees it. */
+    void (*mail)(MsMail *mail);
+    /* Frees the other tables when the scheduler ends. May be NULL. */
+    void (*teardown)(void);
 } MsSchedHooks;
 
 /* Descriptor readiness, supplied by runtime/io (msio_*, one libuv loop per thread). The bits are MS_WAIT_*. */
@@ -111,8 +130,17 @@ void ms_sched_teardown(void);
 /* Raises a stop request on this scheduler (a signal, a parent isolate): every waiting task that is not shielded
  * wakes with MS_WAIT_CANCELLED. Safe from any thread once the scheduler exists. */
 void ms_sched_stop(uint8_t signal);
+/* Registers this thread's scheduler as an isolate (see isolate.h): its index goes into token ids, and mail for it
+ * wakes the poller through `wake`. Returns the index, or MS_NO_ISOLATE. */
+uint32_t ms_sched_attach(MsWakeFn wake, void *argument);
 /* The monotonic clock the scheduler reads, in nanoseconds. */
 int64_t ms_sched_now(void);
+/* A promise (not a task) waits for `fd`: returns MS_POLL_ARMED, MS_POLL_ALWAYS (ready at once, nothing registered) or
+ * MS_POLL_FAILED. The hooks' fd_ready is called with the ready bits. */
+int ms_sched_fd_wait_begin(uint64_t id, int fd, uint32_t events);
+void ms_sched_fd_wait_end(uint64_t id, int fd);
+/* Arms an entry for the timer_live and timer_fire hooks; wakes the scheduler's idle wait in time. */
+void ms_sched_arm(uint64_t id, int64_t at_ns);
 
 /* ---- tasks ---- */
 
@@ -153,6 +181,18 @@ bool ms_task_read_limit_passed(void);
  * limit. */
 void ms_task_limit_current(int64_t limit_ns);
 void ms_task_limit_current_at(int64_t at_ns);
+
+/* The promise table keeps, per task, the head of the list of promises that task started (row + 1, 0 for none), so
+ * a cancelled frame visits only its own. A handle that no longer exists reads as 0 and ignores a swap. */
+uint32_t ms_task_started_head(MsTaskHandle handle);
+uint32_t ms_task_started_swap(MsTaskHandle handle, uint32_t head);
+/* The deadline a deferred promise run by the running task must end by (MS_NO_DEADLINE: none); set returns the old. */
+int64_t ms_task_defer_deadline(void);
+int64_t ms_task_set_defer_deadline(int64_t at_ns);
+
+/* An opaque pointer the running task carries for the park hooks (the wait group it runs work for); returns the old. */
+void *ms_task_watch(void);
+void *ms_task_set_watch(void *watch);
 
 /* Whether no other task could run while the current one blocks its thread (see task.c). */
 bool ms_task_others_stalled(void);
