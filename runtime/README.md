@@ -5,7 +5,7 @@ The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt`
 ```
 runtime/
   include/       ms_rt/base.h and one ms_rt/<module>.h per module: the ABI
-  sys/           per-OS code: linux, darwin, windows (to come)
+  sys/           per-OS code: glibc compat, sockets (net.h; Linux and macOS share posix_net.h, Windows has its own)
   core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num.c so far)
   io/            reactor on libuv (to come)
   net/           http1 (llhttp), tls (OpenSSL), ws frames, h2 (nghttp2) and the connection rows done as tested units; wiring to come
@@ -39,3 +39,7 @@ Libraries come from the system packages first (Chinmay, 2026-11-20); our own pin
 | QBE | 1.3 (vendored, unmodified) | debug code generator, built to `bin/qbe` | MIT |
 
 Versions and SHA-256 sums are in `third_party/c-libs.lock`. Chinmay approved libuv, nghttp2, llhttp, OpenSSL, QBE, PCRE2 and zlib on 2026-11-20 (PCRE2 replaced RE2 the same day, to keep C++ out of programs); any other library needs his approval.
+
+## Style and safety
+
+Every C file follows [C style and safety](../documentation/contributing/c-style.md). `make c-lint` checks it; `ms_rt/safe.h` holds the checked sizes, spans and attribute macros.
