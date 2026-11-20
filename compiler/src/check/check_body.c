@@ -115,6 +115,21 @@ static bool body_is_numeric(const MsBody *b, MsTy ty) {
     return ty == b->int_ty || ty == b->float_ty;
 }
 
+/* Whether the type is `<invalid>` or built from it, as `Result[Int, <invalid>]`: an earlier
+ * diagnostic is why, so nothing built on it reports. */
+static bool body_has_invalid(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    if (ty == b->invalid_ty) {
+        return true;
+    }
+    for (uint32_t i = 0; ty != MS_TY_NONE && i < tys->nargs[ty]; i++) {
+        if (body_has_invalid(b, ms_ty_args(tys, ty)[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* A type that is only ever the same as itself: a primitive, or a type or enum, never an interface
  * (a value converts to it), an Optional or a Result (which a plain value converts to), and the
  * Promise and Error types, which have hints of their own. */
@@ -547,6 +562,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
+    if (body_has_invalid(b, result)) {
+        return b->invalid_ty;
+    }
     return body_is_bindable(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
 }
 
@@ -1373,8 +1391,8 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
     }
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
-    // A module with a declaration-level diagnostic may have signatures the bodies would restate.
-    if (facts->body_checked != NULL || row->ndiags != 0) {
+    // A module that already ran its bodies keeps its facts.
+    if (facts->body_checked != NULL) {
         return;
     }
     MsBody b = {.c = c,
