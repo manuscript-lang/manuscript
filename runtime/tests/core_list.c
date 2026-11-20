@@ -374,6 +374,36 @@ static void test_sort_ints(void) {
     }
 }
 
+/* Lists long enough to take the partitioned radix sort, in several distributions. */
+static void test_sort_ints_large(void) {
+    uint64_t seed = 99;
+    for (unsigned shape = 0; shape < 6; shape++) {
+        const size_t count = shape % 2 == 0 ? 20000 : 70001;
+        MsList by_cmp;
+        msrt_list_new(&by_cmp);
+        for (size_t i = 0; i < count; i++) {
+            const uint64_t r = next_random(&seed);
+            int64_t v = 0;
+            switch (shape) {
+            case 0: v = (int64_t)(r % 2147483648U); break;           /* 31 bits */
+            case 1: v = (int64_t)(r * 0x9e3779b97f4a7c15U); break;   /* all 64 bits, both signs */
+            case 2: v = (int64_t)(r % 5) - 2; break;                 /* a handful of values */
+            case 3: v = INT64_MIN + (int64_t)(r % 100000); break;    /* high bits equal, wide low range */
+            case 4: v = (int64_t)i; break;                           /* already sorted */
+            default: v = (int64_t)(count - i) * 1000003; break;      /* reversed */
+            }
+            push_int(&by_cmp, v);
+        }
+        MsList by_radix;
+        msrt_list_copy(&by_cmp, INT, &by_radix);
+        msrt_list_sort_in_place(&by_cmp, INT, compare_ints, NULL);
+        msrt_list_sort_ints(&by_radix, 0);
+        CHECK(memcmp(by_cmp.ptr, by_radix.ptr, count * 8) == 0);
+        msrt_list_drop(&by_cmp, INT);
+        msrt_list_drop(&by_radix, INT);
+    }
+}
+
 /* A comparator that faults on its Nth call, to check the list is put back and nothing leaks. */
 static size_t calls_left;
 
@@ -456,6 +486,7 @@ int main(void) {
     test_distinct_range_keys();
     test_sort_stable_pairs();
     test_sort_ints();
+    test_sort_ints_large();
     test_sort_rollback();
     test_faults();
     test_nested_and_shadow();

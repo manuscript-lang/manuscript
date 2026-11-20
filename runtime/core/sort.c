@@ -15,8 +15,9 @@
 #define INSERTION_LIMIT 12
 /* Int lists up to this long are insertion sorted; longer ones are radix sorted. */
 #define RADIX_THRESHOLD 64
-/* One radix pass per byte of an Int. */
-#define RADIX_PASSES 8
+/* The digit of a counting pass is a byte. */
+#define RADIX_BITS 8U
+#define RADIX_BUCKETS ((size_t)1 << RADIX_BITS)
 
 /* ---- merge sort of slots ---- */
 
@@ -146,62 +147,110 @@ static void insertion_sort_ints(uint8_t *items, size_t count) {
 /* The key whose unsigned order is the signed order of `value`. */
 static uint64_t order_key(int64_t value) { return (uint64_t)value ^ ((uint64_t)1 << 63); }
 
-/* How many keys have each value of each byte, counted for all eight bytes in one scan of the list. */
-typedef struct ByteCounts {
-    size_t of[RADIX_PASSES][256];
-} ByteCounts;
-
-static void count_bytes(const uint8_t *items, size_t count, ByteCounts *counts) {
-    for (size_t i = 0; i < count; i++) {
-        const uint64_t key = order_key(load_int(items, i));
-        for (unsigned pass = 0; pass < RADIX_PASSES; pass++) {
-            counts->of[pass][(key >> (pass * 8)) & 0xff]++;
+/* Sorts the first `count` Ints of the 8-aligned `items` by their order keys' bits `low` to `high` (the other
+ * bits are equal in all of them), by one stable counting pass per byte of those bits, from `items` to `spare`
+ * and back. Returns whichever of the two holds the result. A byte that is the same in every key costs only
+ * its count. */
+static int64_t *lsd_sort(int64_t *items, int64_t *spare, size_t count, unsigned low, unsigned high) {
+    int64_t *from = items;
+    int64_t *to = spare;
+    for (unsigned shift = low; shift <= high; shift += RADIX_BITS) {
+        const unsigned width = high - shift + 1 < RADIX_BITS ? high - shift + 1 : RADIX_BITS;
+        const uint64_t mask = ((uint64_t)1 << width) - 1;
+        size_t offsets[RADIX_BUCKETS] = {0};
+        for (size_t i = 0; i < count; i++) {
+            offsets[(order_key(from[i]) >> shift) & mask]++;
         }
+        size_t running = 0;
+        bool varies = true;
+        for (size_t bucket = 0; bucket <= mask; bucket++) {
+            varies = varies && offsets[bucket] != count;
+            const size_t bucket_size = offsets[bucket];
+            offsets[bucket] = running;
+            running += bucket_size;
+        }
+        if (!varies) {
+            continue;
+        }
+        for (size_t i = 0; i < count; i++) {
+            const int64_t value = from[i];
+            to[offsets[(order_key(value) >> shift) & mask]++] = value;
+        }
+        int64_t *swap = from;
+        from = to;
+        to = swap;
     }
+    return from;
 }
 
-/* Turns the counts of one byte into start offsets. False when every key has the same byte, so the pass
- * would change nothing. */
-static bool start_offsets(size_t counts[256], size_t total) {
-    size_t running = 0;
-    for (size_t bucket = 0; bucket < 256; bucket++) {
-        if (counts[bucket] == total) {
-            return false;
-        }
-        const size_t bucket_size = counts[bucket];
-        counts[bucket] = running;
-        running += bucket_size;
+/* The bits in which the order keys of the Ints differ: the lowest and highest. False when they are all equal. */
+static bool varying_bits(const int64_t *items, size_t count, unsigned *low, unsigned *high) {
+    uint64_t any = 0;
+    uint64_t all = ~(uint64_t)0;
+    for (size_t i = 0; i < count; i++) {
+        const uint64_t key = order_key(items[i]);
+        any |= key;
+        all &= key;
     }
+    const uint64_t differ = any ^ all;
+    if (differ == 0) {
+        return false;
+    }
+    *low = (unsigned)__builtin_ctzll(differ);
+    *high = 63U - (unsigned)__builtin_clzll(differ);
     return true;
 }
 
-/* One stable pass on byte `pass` of the keys, from `source` to `target`. */
-static void scatter(const uint8_t *source, uint8_t *target, size_t count, unsigned pass, size_t offsets[256]) {
+/* A list of this many Ints or fewer is cheaper to sort in place with no first partition. */
+#define PARTITION_MIN ((size_t)1 << 13)
+
+/* Sorts a long list by one partition on its top byte, then each part (a few thousand Ints, which stay in
+ * cache) by counting passes on the bits below: one pass over memory instead of a pass per byte. */
+static void partition_sort_ints(int64_t *items, int64_t *spare, size_t count, unsigned low, unsigned high) {
+    const unsigned shift = high - (RADIX_BITS - 1);
+    size_t starts[RADIX_BUCKETS + 1] = {0};
     for (size_t i = 0; i < count; i++) {
-        const int64_t value = load_int(source, i);
-        store_int(target, offsets[(order_key(value) >> (pass * 8)) & 0xff]++, value);
+        starts[((order_key(items[i]) >> shift) & (RADIX_BUCKETS - 1)) + 1]++;
+    }
+    for (size_t bucket = 0; bucket < RADIX_BUCKETS; bucket++) {
+        starts[bucket + 1] += starts[bucket];
+    }
+    size_t next[RADIX_BUCKETS];
+    __builtin_memcpy(next, starts, sizeof next);
+    for (size_t i = 0; i < count; i++) {
+        const int64_t value = items[i];
+        spare[next[(order_key(value) >> shift) & (RADIX_BUCKETS - 1)]++] = value;
+    }
+    for (size_t bucket = 0; bucket < RADIX_BUCKETS; bucket++) {
+        const size_t start = starts[bucket];
+        const size_t size = starts[bucket + 1] - start;
+        int64_t *sorted = spare + start;
+        if (size > 1 && shift > low) {
+            sorted = lsd_sort(spare + start, items + start, size, low, shift - 1);
+        }
+        if (sorted != items + start) {
+            __builtin_memcpy(items + start, sorted, size * sizeof(int64_t));
+        }
     }
 }
 
 static void radix_sort_ints(MsList *list) {
-    ByteCounts counts = {0};
-    count_bytes(list->ptr, list->len, &counts);
-    uint8_t *scratch = msrt_alloc(list->len * sizeof(int64_t));
-    uint8_t *from = list->ptr;
-    uint8_t *to = scratch;
-    for (unsigned pass = 0; pass < RADIX_PASSES; pass++) {
-        if (!start_offsets(counts.of[pass], list->len)) {
-            continue;
+    int64_t *items = (int64_t *)__builtin_assume_aligned(list->ptr, _Alignof(int64_t));
+    unsigned low = 0;
+    unsigned high = 0;
+    if (!varying_bits(items, list->len, &low, &high)) {
+        return;
+    }
+    int64_t *spare = (int64_t *)__builtin_assume_aligned(msrt_alloc(list->len * sizeof(int64_t)), _Alignof(int64_t));
+    if (list->len >= PARTITION_MIN && high - low >= RADIX_BITS * 2) {
+        partition_sort_ints(items, spare, list->len, low, high);
+    } else {
+        int64_t *sorted = lsd_sort(items, spare, list->len, low, high);
+        if (sorted != items) {
+            __builtin_memcpy(items, sorted, list->len * sizeof(int64_t));
         }
-        scatter(from, to, list->len, pass, counts.of[pass]);
-        uint8_t *swap = from;
-        from = to;
-        to = swap;
     }
-    if (from != list->ptr) {
-        __builtin_memcpy(list->ptr, from, list->len * sizeof(int64_t));
-    }
-    msrt_free(scratch);
+    msrt_free(spare);
 }
 
 static void reverse_ints(MsList *list) {
