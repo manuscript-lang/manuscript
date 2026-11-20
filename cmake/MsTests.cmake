@@ -56,16 +56,16 @@ target_compile_definitions(ms_test_core PRIVATE MS_ALLOC_STATS)
 file(GLOB _core_tests CONFIGURE_DEPENDS "${_tests}/core_*.c")
 foreach(file ${_core_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" OBJECTS ms_test_core LIBS m Threads::Threads DEFINES MS_ALLOC_STATS)
+  ms_test(${name} SOURCES "${file}" OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
 endforeach()
 
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
-ms_test(sys_mem SOURCES "${_tests}/sys_mem.c" ${_posix_sources} LIBS Threads::Threads)
+ms_test(sys_mem SOURCES "${_tests}/sys_mem.c" ${_posix_sources} LIBS)
 ms_test(sys_thread SOURCES "${_tests}/sys_thread.c" "${_rt}/sys/thread.c" ${_posix_sources}
-        INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} Threads::Threads ${CMAKE_DL_LIBS})
+        INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_posix_sources} PLAIN
-        INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} Threads::Threads ${CMAKE_DL_LIBS})
+        INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 
 # std_*: all of runtime/std with the system PCRE2 and libcrypto.
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
@@ -73,7 +73,7 @@ foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
   ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c"
           INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES}
-          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} m Threads::Threads ${CMAKE_DL_LIBS})
+          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
 
 # The HTTP/1 test links the vendored llhttp sources (the same ones the runtime archive compiles).
@@ -93,7 +93,7 @@ list(FILTER _io_tests EXCLUDE REGEX "io_ring_test\\.c$")
 foreach(file ${_io_tests})
   get_filename_component(name "${file}" NAME_WE)
   ms_test(${name} SOURCES "${file}" ${_io_sources} ${_posix_sources} INCLUDES ${MS_LIB_uv_INCLUDES}
-          LIBS ${MS_LIB_uv_LINK} Threads::Threads ${CMAKE_DL_LIBS})
+          LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 endforeach()
 
 # The socket layer: this platform's sources in runtime/sys (linux or darwin); the test needs only the C library.
@@ -108,15 +108,15 @@ set(_all_includes ${MS_LIB_uv_INCLUDES} ${MS_LIB_nghttp2_INCLUDES} ${MS_LIB_ssl_
     ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_z_INCLUDES} "${_llhttp}/include")
 list(REMOVE_DUPLICATES _all_includes)
 ms_test(clibs_smoke SOURCES "${_tests}/clibs_smoke.c" OBJECTS ms_test_llhttp INCLUDES ${_all_includes}
-        LIBS ${MS_LIB_uv_LINK} ${MS_LIB_nghttp2_LINK} ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} Threads::Threads
+        LIBS ${MS_LIB_uv_LINK} ${MS_LIB_nghttp2_LINK} ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK}
              ${CMAKE_DL_LIBS})
 ms_test(clibs_smoke_zlib SOURCES "${_tests}/clibs_smoke_zlib.c" INCLUDES ${MS_LIB_z_INCLUDES} LIBS ${MS_LIB_z_LINK})
 ms_test(clibs_smoke_pcre2 SOURCES "${_tests}/clibs_smoke_pcre2.c" INCLUDES ${MS_LIB_pcre2_INCLUDES}
         LIBS ${MS_LIB_pcre2_LINK})
 ms_test(tls_test SOURCES "${_tests}/tls_test.c" "${_rt}/net/tls.c" INCLUDES ${MS_LIB_ssl_INCLUDES}
-        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} Threads::Threads ${CMAKE_DL_LIBS})
+        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
 ms_test(ws_test SOURCES "${_tests}/ws_test.c" "${_rt}/net/ws.c" INCLUDES ${MS_LIB_crypto_INCLUDES}
-        LIBS ${MS_LIB_crypto_LINK} Threads::Threads ${CMAKE_DL_LIBS})
+        LIBS ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
 ms_test(conn_test SOURCES "${_tests}/conn_test.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" OBJECTS ms_test_llhttp
         INCLUDES "${_llhttp}/include")
 ms_test(h2_test SOURCES "${_tests}/h2_test.c" "${_rt}/net/h2.c" INCLUDES ${MS_LIB_nghttp2_INCLUDES}

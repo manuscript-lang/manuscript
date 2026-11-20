@@ -72,9 +72,6 @@ elseif(MS_C_LIBS STREQUAL "prefix")
 else()
   message(FATAL_ERROR "MS_C_LIBS must be system or prefix, not ${MS_C_LIBS}")
 endif()
-# Every POSIX target links the thread library (macOS has it in libc; the imported target is still needed).
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
 
 # llhttp: three vendored sources, compiled with the runtime's flags.
 set(MS_LLHTTP_DIR "${CMAKE_SOURCE_DIR}/runtime/third_party/llhttp")
