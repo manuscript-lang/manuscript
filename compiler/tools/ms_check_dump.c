@@ -54,7 +54,7 @@ static bool only_std_imports(const MsModule *module) {
 /* Prints the name-resolution diagnostics of each file as `path:line:col: message`, the form
  * `c_oracle --scope` prints. Files that fail to parse or import project modules print nothing. */
 static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *names, int nfiles_in, char **paths,
-                                    bool bodies, bool ownership) {
+                                    bool bodies, bool ownership, bool effects) {
     for (int i = 0; i < nfiles_in; i++) {
         FILE *f = fopen(paths[i], "rb");
         if (f == NULL) {
@@ -74,7 +74,9 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             MsBuf dump = {0};
             if (bodies) {
                 ms_module_check_bodies(check, id);
-                if (ownership) {
+                if (effects) {
+                    ms_dump_module_effects(&dump, check, id);
+                } else if (ownership) {
                     // The ownership walk narrows `body_checked` to the functions it handles, so it
                     // runs only for its own comparison; the body comparison sees every claim.
                     ms_module_check_ownership(check, id);
@@ -100,10 +102,11 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
 
 int main(int argc, char **argv) {
     const bool ownership = argc >= 3 && strcmp(argv[2], "--ownership") == 0;
-    const bool bodies = ownership || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
+    const bool effects = argc >= 3 && strcmp(argv[2], "--effects") == 0;
+    const bool bodies = ownership || effects || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
     const bool scope = bodies || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
     if (argc != 2 && !scope) {
-        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership FILE...]\n", stderr);
+        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership|--effects FILE...]\n", stderr);
         return 2;
     }
     const char *root = argv[1];
@@ -153,7 +156,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (scope) {
-        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership);
+        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership, effects);
     } else {
         MsBuf out = {0};
         ms_dump_std_tables(&out, &check);
