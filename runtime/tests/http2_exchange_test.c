@@ -116,7 +116,10 @@ static void *serve(void *argument) {
             while ((n = ms_h2conn_output(h2, out, sizeof out)) > 0) {
                 if (ms_conn_write(table, id, out, (size_t)n, -1) != MS_NET_OK) alive = false;
             }
-            if (job.stream != 0 && job.sent >= job.length && ms_h2conn_idle(h2)) break; /* the response is out and acknowledged */
+            if (job.stream != 0 && job.sent >= job.length && ms_h2conn_idle(h2)) { /* the response is out and acknowledged: the next stream */
+                job = (Job){0};
+                uploaded = 0;
+            }
             uint8_t in[16384];
             size_t count = 0;
             if (!alive || ms_conn_read(table, id, in, sizeof in, ms_sys_monotonic_ns() + 2000000000, &count) != MS_NET_OK || count == 0) break;
@@ -127,7 +130,7 @@ static void *serve(void *argument) {
                 uint8_t sink[4096];
                 long got;
                 while ((got = ms_h2conn_read(h2, event.stream, sink, sizeof sink)) > 0) uploaded += (size_t)got;
-                if ((ms_h2conn_state(h2, event.stream) & MS_H2S_ENDED) != 0 && job.stream == 0) answer(h2, event.stream, &job, big, upload, uploaded);
+                if ((ms_h2conn_state(h2, event.stream) & MS_H2S_ENDED) != 0 && event.stream != job.stream) answer(h2, event.stream, &job, big, upload, uploaded);
             }
         }
         (void)ms_conn_close_io(table, id);
@@ -143,18 +146,14 @@ static MsBytes text(const char *s) { return ms_bytes_of((const uint8_t *)s, strl
 /* One exchange; reads the body into a heap buffer sized `cap`. */
 static char seen_name[32], seen_value[32];
 
-static MsNetStatus fetch(MsConnTable *table, const MsAddr *address, const char *method, const char *target, MsBytes body_in,
+static MsNetStatus fetch(MsConnTable *table, MsConnId id, MsH2Conn *session, const char *method, const char *target, MsBytes body_in,
                          const MsH1Field *fields, uint32_t nfields, MsBytes head_bytes, MsHttpResponse *response, uint8_t *out,
                          size_t cap, size_t *length, int *body_status) {
-    MsConnId id = 0;
-    int code = 0;
-    if (ms_net_connect(table, address, MS_CONN_H2, NULL, NULL, -1, &id, &code) != MS_NET_OK) return MS_NET_FAILED;
     const MsHttpRequest request = {.method = text(method), .authority = text("example.test"), .target = text(target), .head = head_bytes,
                                    .fields = fields, .nfields = nfields, .body = body_in};
     MsHttpBody *body = NULL;
-    const MsNetStatus status = ms_http2_exchange(table, id, &request, 5000000000 + ms_sys_monotonic_ns(), response, &body);
+    const MsNetStatus status = ms_http2_exchange(table, id, session, &request, 5000000000 + ms_sys_monotonic_ns(), response, &body);
     if (status != MS_NET_OK) {
-        (void)ms_conn_close_io(table, id);
         return status;
     }
     seen_name[0] = seen_value[0] = 0;
@@ -181,7 +180,7 @@ int main(void) {
     MsIoReactor *reactor;
     CHECK(ms_io_open(1, &reactor));
     MsConnTable *table = ms_conn_table_new(4);
-    Server server = {.connections = 5};
+    Server server = {.connections = 6};
     MsAddr loopback = {4, {127, 0, 0, 1}, 0, 0}, bound;
     CHECK(ms_sys_net_tcp_listen(&loopback, 4, &server.listener) == MS_SYS_OK);
     CHECK(ms_sys_net_local_addr(server.listener, &bound) == MS_SYS_OK);
@@ -189,16 +188,27 @@ int main(void) {
     CHECK(pthread_create(&thread, NULL, serve, &server) == 0);
 
     MsHttpResponse response;
+    MsConnId row = 0;
+    int connect_code = 0;
+    MsH2Conn *session = NULL;
     uint8_t *out = malloc(BIG + 16);
     size_t length = 0;
     int body_status = 0;
     MsBytes none = {0};
 
-    CHECK(fetch(table, &bound, "GET", "/small", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    CHECK(ms_net_connect(table, &bound, MS_CONN_H2, NULL, NULL, -1, &row, &connect_code) == MS_NET_OK);
+    session = ms_h2conn_new(0, NULL);
+    CHECK(fetch(table, row, session, "GET", "/small", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    ms_h2conn_free(session);
+    CHECK(ms_conn_close_io(table, row) == MS_NET_OK);
     CHECK(response.status == 200 && body_status == 0 && length == 5 && memcmp(out, "hello", 5) == 0);
     CHECK(response.nfields == 1 && strcmp(seen_name, "x-seen") == 0 && strcmp(seen_value, "yes") == 0);
 
-    CHECK(fetch(table, &bound, "GET", "/big", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    CHECK(ms_net_connect(table, &bound, MS_CONN_H2, NULL, NULL, -1, &row, &connect_code) == MS_NET_OK);
+    session = ms_h2conn_new(0, NULL);
+    CHECK(fetch(table, row, session, "GET", "/big", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    ms_h2conn_free(session);
+    CHECK(ms_conn_close_io(table, row) == MS_NET_OK);
     CHECK(body_status == 0 && length == BIG);
     bool same = length == BIG;
     for (size_t i = 0; same && i < BIG; i++) same = out[i] == (uint8_t)(i * 7);
@@ -208,14 +218,39 @@ int main(void) {
     memset(upload, 'u', 150000);
     static const char names[] = "X-Mixed-Caseq";
     const MsH1Field mixed[] = {{{0, 12}, {12, 1}}};
-    CHECK(fetch(table, &bound, "POST", "/upload", ms_bytes_of(upload, 150000), mixed, 1, text(names), &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    CHECK(ms_net_connect(table, &bound, MS_CONN_H2, NULL, NULL, -1, &row, &connect_code) == MS_NET_OK);
+    session = ms_h2conn_new(0, NULL);
+    CHECK(fetch(table, row, session, "POST", "/upload", ms_bytes_of(upload, 150000), mixed, 1, text(names), &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    ms_h2conn_free(session);
+    CHECK(ms_conn_close_io(table, row) == MS_NET_OK);
     CHECK(response.status == 200 && length == 6 && memcmp(out, "150000", 6) == 0);
     free(upload);
 
-    CHECK(fetch(table, &bound, "GET", "/reset", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_FAILED);
+    CHECK(ms_net_connect(table, &bound, MS_CONN_H2, NULL, NULL, -1, &row, &connect_code) == MS_NET_OK);
+    session = ms_h2conn_new(0, NULL);
+    CHECK(fetch(table, row, session, "GET", "/reset", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_FAILED);
+    ms_h2conn_free(session);
+    CHECK(ms_conn_close_io(table, row) == MS_NET_OK);
 
-    CHECK(fetch(table, &bound, "GET", "/missing", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    CHECK(ms_net_connect(table, &bound, MS_CONN_H2, NULL, NULL, -1, &row, &connect_code) == MS_NET_OK);
+    session = ms_h2conn_new(0, NULL);
+    CHECK(fetch(table, row, session, "GET", "/missing", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    ms_h2conn_free(session);
+    CHECK(ms_conn_close_io(table, row) == MS_NET_OK);
     CHECK(response.status == 404 && length == 0 && body_status == 0);
+
+    /* streams one after another share a row and its session, including after an unfinished body (reset) */
+    CHECK(ms_net_connect(table, &bound, MS_CONN_H2, NULL, NULL, -1, &row, &connect_code) == MS_NET_OK);
+    session = ms_h2conn_new(0, NULL);
+    CHECK(fetch(table, row, session, "GET", "/small", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    CHECK(length == 5 && body_status == 0);
+    CHECK(fetch(table, row, session, "GET", "/big", none, NULL, 0, none, &response, out, 100, &length, &body_status) == MS_NET_OK);
+    CHECK(fetch(table, row, session, "GET", "/missing", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    CHECK(response.status == 404 && length == 0);
+    CHECK(fetch(table, row, session, "GET", "/small", none, NULL, 0, none, &response, out, BIG + 16, &length, &body_status) == MS_NET_OK);
+    CHECK(length == 5 && memcmp(out, "hello", 5) == 0);
+    ms_h2conn_free(session);
+    CHECK(ms_conn_close_io(table, row) == MS_NET_OK);
 
     /* fields HTTP/2 forbids, and the ones the exchange writes, are refused before anything is sent */
     static const char host[] = "Hostx";
@@ -232,7 +267,9 @@ int main(void) {
     CHECK(ms_net_connect(table, &bound, MS_CONN_H2, NULL, NULL, -1, &id, &code) == MS_NET_OK);
     const MsHttpRequest bad = {.method = text("GET"), .authority = text("example.test"), .target = text("/small"), .head = text(host), .fields = own, .nfields = 1};
     MsHttpBody *body = NULL;
-    CHECK(ms_http2_exchange(table, id, &bad, -1, &response, &body) == MS_NET_FAILED && body == NULL);
+    session = ms_h2conn_new(0, NULL);
+    CHECK(ms_http2_exchange(table, id, session, &bad, -1, &response, &body) == MS_NET_FAILED && body == NULL);
+    ms_h2conn_free(session);
     CHECK(ms_conn_close_io(table, id) == MS_NET_OK);
     pthread_join(thread, NULL); /* the server saw the connection close */
     ms_sys_net_close(again.listener);

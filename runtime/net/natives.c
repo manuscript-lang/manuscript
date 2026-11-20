@@ -12,49 +12,9 @@
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_fs.h"
 #include "ms_sched.h"
+#include "status.h"
 
 enum { READ_DEFAULT = 64 * 1024, READ_LIMIT = 1024 * 1024, TABLE_ROWS = 1 };
-
-/* ---- results ---- */
-
-static void write_text(MsStr *out, const char *text) {
-    msrt_string_from_bytes((const uint8_t *)text, strlen(text), out);
-}
-
-/* Maps a connection status to the runtime's. A cancelled wait ends the native through the scheduler; the caller has
- * released everything it holds before this runs. */
-static uint8_t finish(MsNetStatus status, int code, MsStr *err) {
-    switch (status) {
-    case MS_NET_OK: return STATUS_OK;
-    case MS_NET_CLOSED: return STATUS_CLOSED;
-    case MS_NET_TIMEOUT: return STATUS_TIMED_OUT;
-    case MS_NET_CANCELLED:
-        ms_sched_cancel_return();
-        return STATUS_OK;
-    case MS_NET_RESET:
-    case MS_NET_FAILED:
-        break;
-    }
-    if (err != NULL) {
-        char text[160];
-        const size_t length = code != 0 ? ms_sys_fs_error_text(code, text, sizeof text) : 0;
-        if (length > 0) {
-            msrt_string_from_bytes((const uint8_t *)text, length, err);
-        } else {
-            write_text(err, ms_net_status_text(status));
-        }
-    }
-    return STATUS_FAILED;
-}
-
-/* The absolute deadline for a relative timeout, or none. */
-static int64_t deadline_of(uint8_t has_timeout, int64_t timeout) {
-    if (has_timeout == 0 || timeout < 0) {
-        return -1;
-    }
-    const int64_t now = ms_sys_monotonic_ns();
-    return timeout > INT64_MAX - now ? INT64_MAX : now + timeout;
-}
 
 /* The bytes of a string as a NUL-terminated copy, or NULL for a string that holds a NUL (no host or address does). */
 static char *copy_text(const MsStr *text) {
@@ -92,14 +52,14 @@ uint8_t msstd_net_lookup(const MsStr *host, int64_t port, uint8_t has_timeout, i
         return STATUS_INVALID_INPUT;
     }
     MsNetAddresses found;
-    const MsNetStatus status = ms_net_resolve(name, (uint16_t)port, deadline_of(has_timeout, timeout), &found);
+    const MsNetStatus status = ms_net_resolve(name, (uint16_t)port, ms_net_deadline_of(has_timeout, timeout), &found);
     free(name);
     if (status != MS_NET_OK) {
         if (status == MS_NET_FAILED && err != NULL) {
-            write_text(err, "name not found");
+            ms_net_write_text(err, "name not found");
             return STATUS_FAILED;
         }
-        return finish(status, 0, err);
+        return ms_net_finish(status, 0, err);
     }
     msrt_list_with_capacity(&msrt_desc_string, (int64_t)found.count, out);
     for (size_t i = 0; i < found.count; i++) {
@@ -145,7 +105,7 @@ static MsTlsCtx *client_context(const MsNetTlsOptions *options, MsStr *err) {
     MsTlsCtx *context = ms_tls_ctx_new(0, (const char *)certificate.ptr, certificate.len, (const char *)key.ptr, key.len,
                                        roots.len == 0 ? NULL : (const char *)roots.ptr, roots.len);
     if (context == NULL) {
-        write_text(err, "invalid TLS options");
+        ms_net_write_text(err, "invalid TLS options");
         return NULL;
     }
     if (options->alpn.len > 0) {
@@ -154,7 +114,7 @@ static MsTlsCtx *client_context(const MsNetTlsOptions *options, MsStr *err) {
         free(names);
         if (!set) {
             ms_tls_ctx_free(context);
-            write_text(err, "invalid ALPN protocol list");
+            ms_net_write_text(err, "invalid ALPN protocol list");
             return NULL;
         }
     }
@@ -185,12 +145,12 @@ uint8_t msstd_net_dial(const MsStr *address, const MsStr *server_name, uint8_t h
     MsConnId id = 0;
     int code = 0;
     const MsNetStatus status = table == NULL ? MS_NET_FAILED
-                                              : ms_net_connect(table, &target, MS_CONN_HTTP1, context, name, deadline_of(has_timeout, timeout), &id, &code);
+                                              : ms_net_connect(table, &target, MS_CONN_HTTP1, context, name, ms_net_deadline_of(has_timeout, timeout), &id, &code);
     ms_tls_ctx_free(context);
     free(name);
     if (status != MS_NET_OK) {
         ms_conn_table_free(table);
-        return finish(status, code, err);
+        return ms_net_finish(status, code, err);
     }
     *out = ms_netconn_new(table, id);
     return STATUS_OK;
@@ -213,10 +173,10 @@ uint8_t msstd_conn_read(const void *handle, uint8_t has_max, int64_t max, uint8_
     }
     uint8_t *buffer = malloc(capacity);
     if (buffer == NULL) {
-        return finish(MS_NET_FAILED, 0, err);
+        return ms_net_finish(MS_NET_FAILED, 0, err);
     }
     size_t count = 0;
-    const MsNetStatus status = ms_conn_read(ms_netconn_table(conn), ms_netconn_id(conn), buffer, capacity, deadline_of(has_timeout, timeout), &count);
+    const MsNetStatus status = ms_conn_read(ms_netconn_table(conn), ms_netconn_id(conn), buffer, capacity, ms_net_deadline_of(has_timeout, timeout), &count);
     if (status == MS_NET_OK && count > 0) {
         msrt_write_bytes(out, buffer, count);
     }
@@ -224,19 +184,19 @@ uint8_t msstd_conn_read(const void *handle, uint8_t has_max, int64_t max, uint8_
     if (status == MS_NET_OK) {
         return count > 0 ? STATUS_OK : STATUS_NONE;
     }
-    return finish(status, ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
+    return ms_net_finish(status, ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
 }
 
 uint8_t msstd_conn_write_bytes(const void *handle, const MsVec *data, uint8_t has_timeout, int64_t timeout, MsStr *err) {
     const MsNetConn *conn = ms_netconn_of(handle);
-    const MsNetStatus status = ms_conn_write(ms_netconn_table(conn), ms_netconn_id(conn), data->ptr, data->len, deadline_of(has_timeout, timeout));
-    return finish(status, ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
+    const MsNetStatus status = ms_conn_write(ms_netconn_table(conn), ms_netconn_id(conn), data->ptr, data->len, ms_net_deadline_of(has_timeout, timeout));
+    return ms_net_finish(status, ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
 }
 
 uint8_t msstd_conn_shutdown_write(const void *handle, MsStr *err) {
     const MsNetConn *conn = ms_netconn_of(handle);
     const MsNetStatus status = ms_conn_shutdown_write(ms_netconn_table(conn), ms_netconn_id(conn), -1);
-    return finish(status, ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
+    return ms_net_finish(status, ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
 }
 
 void msstd_conn_close(const void *handle) { ms_netconn_close(handle); }

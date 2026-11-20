@@ -100,7 +100,7 @@ uint32_t ms_body_find_binding(const MsBody *b, MsSym name) {
 }
 
 /* Binds a name in the function's one scope. A name already bound there would be a diagnostic. */
-uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, uint8_t flags, MsBindRole role) {
+uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, MsPos pos, uint8_t flags, MsBindRole role) {
     if (!body_text_is(b, name, "_") && ms_body_find_binding(b, name) != MS_NONE) {
         (void)ms_body_unsupported(b);
         return MS_NONE;
@@ -108,11 +108,12 @@ uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, uint8_t fla
     MsBindings *bindings = &b->facts->bindings;
     const uint32_t id = bindings->count++;
     b->closed[id] = false;
-    b->reads[id] = 0;
+    bindings->reads[id] = 0;
+    bindings->pos[id] = pos;
     bindings->name[id] = name;
     bindings->ty[id] = ty;
     bindings->decl_node[id] = node;
-    bindings->callable[id] = 0;
+    bindings->callable[id] = b->function;
     bindings->flags[id] = flags;
     bindings->role[id] = (uint8_t)role;
     return id;
@@ -398,7 +399,7 @@ static MsTy body_name(MsBody *b, const MsExpr *e) {
     }
     b->facts->res_kind[e->id] = MS_RES_BINDING;
     b->facts->res_ref[e->id] = binding;
-    b->reads[binding]++;
+    b->facts->bindings.reads[binding]++;
     return b->facts->bindings.ty[binding];
 }
 
@@ -706,7 +707,7 @@ static void body_bind_statement(MsBody *b, const MsStmt *s) {
     }
     const uint8_t flags = s->u.bind.is_mutable ? MS_BIND_MUTABLE : 0;
     const MsBindRole role = s->u.bind.is_mutable ? MS_ROLE_VAR : MS_ROLE_LET;
-    const uint32_t binding = ms_body_bind(b, pattern->u.name, value, pattern->id, flags, role);
+    const uint32_t binding = ms_body_bind(b, pattern->u.name, value, pattern->id, pattern->pos, flags, role);
     if (binding != MS_NONE) {
         b->facts->pattern_binding[pattern->id] = binding;
     }
@@ -733,9 +734,13 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
         const MsCheckDiag diag = {.diag = {.pos = s->pos, .message = message}, .phase = MS_PHASE_TYPE};
         MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
     }
-    const uint32_t reads_before = b->reads[binding];
+    uint32_t *reads = &b->facts->bindings.reads[binding];
+    const uint32_t reads_before = *reads;
     (void)ms_body_expr(b, s->u.assign.value, b->facts->bindings.ty[binding]);
-    b->reads[binding] = reads_before;
+    if (*reads != reads_before) {
+        b->facts->bindings.flags[binding] |= MS_BIND_FED;
+    }
+    *reads = reads_before;
     b->facts->assign_binding[s->id] = binding;
 }
 
@@ -766,7 +771,7 @@ static bool body_if_let_statement(MsBody *b, const MsStmt *s) {
         return false;
     }
     const uint32_t scope_start = b->facts->bindings.count;
-    const uint32_t binding = ms_body_bind(b, pattern->u.name, payload, pattern->id, 0, MS_ROLE_PATTERN);
+    const uint32_t binding = ms_body_bind(b, pattern->u.name, payload, pattern->id, pattern->pos, 0, MS_ROLE_PATTERN);
     if (binding == MS_NONE) {
         return false;
     }
@@ -880,15 +885,6 @@ MsTy ms_body_block_value(MsBody *b, const MsStmts *body, const MsExpr *value, Ms
 
 static void body_statements(MsBody *b, const MsStmts *body) {
     const bool falls = ms_body_block(b, body);
-    // A local nothing reads, unless named with a leading `_`, is a diagnostic.
-    const MsBindings *bindings = &b->facts->bindings;
-    for (uint32_t i = b->first_binding; b->supported && i < bindings->count; i++) {
-        const bool local = bindings->role[i] == MS_ROLE_LET || bindings->role[i] == MS_ROLE_VAR ||
-                           bindings->role[i] == MS_ROLE_ARM || bindings->role[i] == MS_ROLE_PATTERN;
-        const MsStr name = ms_name(b->c->names, bindings->name[i]);
-        const bool ignored = name.len != 0 && name.ptr[0] == '_';
-        b->supported = !local || ignored || b->reads[i] != 0;
-    }
     // A function that returns a value must end every path with a `return`.
     if (b->supported && falls && b->result != b->void_ty) {
         (void)ms_body_unsupported(b);
@@ -954,12 +950,13 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
     const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
     b->first_binding = first_binding;
+    b->function = d->id;
     b->supported = true;
     b->result = b->c->tys.result[sig];
     const MsTyParam *params = ms_ty_params(&b->c->tys, sig);
     for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
         const uint8_t flags = (params[i].flags & MS_PARAM_VAR) != 0 ? MS_BIND_MUTABLE : 0;
-        (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, flags, MS_ROLE_PARAM);
+        (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, fn->params.ptr[i]->pos, flags, MS_ROLE_PARAM);
     }
     if (b->supported) {
         body_statements(b, &fn->body);
@@ -976,8 +973,6 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     MsArena *arena = &b->c->arena;
     const size_t nodes = (size_t)facts->node_count + 1;
     b->closed = MS_NEW_N(arena, bool, nodes);
-    b->reads = MS_NEW_N(arena, uint32_t, nodes);
-    memset(b->reads, 0, nodes * sizeof *b->reads);
     memset(b->closed, 0, nodes * sizeof *b->closed);
     facts->expr_ty = MS_NEW_N(arena, MsTy, nodes);
     facts->res_kind = MS_NEW_N(arena, uint8_t, nodes);
@@ -1009,6 +1004,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     bindings->ty = MS_NEW_N(arena, MsTy, nodes);
     bindings->decl_node = MS_NEW_N(arena, uint32_t, nodes);
     bindings->callable = MS_NEW_N(arena, uint32_t, nodes);
+    bindings->reads = MS_NEW_N(arena, uint32_t, nodes);
+    bindings->pos = MS_NEW_N(arena, MsPos, nodes);
     bindings->flags = MS_NEW_N(arena, uint8_t, nodes);
     bindings->role = MS_NEW_N(arena, uint8_t, nodes);
     bindings->count = 0;
@@ -1071,6 +1068,7 @@ static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
     const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
     const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
     b->first_binding = first_binding;
+    b->function = d->id;
     b->supported = true;
     MsTy expected = MS_TY_NONE;
     if (d->u.konst.ty != NULL) {

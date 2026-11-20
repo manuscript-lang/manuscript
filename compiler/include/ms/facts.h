@@ -32,12 +32,15 @@ typedef struct MsBindings {
     MsSym *name;
     MsTy *ty;
     uint32_t *decl_node;  /* the syntax node that introduces it */
-    uint32_t *callable;   /* the function or lambda it belongs to */
+    uint32_t *callable;   /* the declaration node of the function it belongs to */
+    uint32_t *reads;      /* how many times its value is read, not counting reads that only feed its own next value */
+    MsPos *pos;           /* where its name is written */
     uint8_t *flags;       /* MS_BIND_* */
     uint8_t *role;        /* MsBindRole */
     uint32_t count;
 } MsBindings;
-enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2 };
+/* MS_BIND_FED: a read of the binding only computes its own next value (`total = total + 1`). */
+enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2, MS_BIND_FED = 4 };
 typedef enum MsBindRole {
     MS_ROLE_PARAM, MS_ROLE_SELF, MS_ROLE_LET, MS_ROLE_VAR, MS_ROLE_PATTERN, MS_ROLE_LOOP,
     MS_ROLE_ARM, MS_ROLE_LAMBDA_PARAM
