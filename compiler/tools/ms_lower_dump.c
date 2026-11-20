@@ -12,6 +12,8 @@
 
 #include "ms/check.h"
 #include "ms/lower.h"
+#include "ms/desugar.h"
+#include "ms/methods.h"
 #include "ms/ownership.h"
 #include "ms/mir_pass.h"
 #include "ms/mir_verify.h"
@@ -74,6 +76,25 @@ static bool verify_module(const MirModule *mir, const char *path) {
     return ok;
 }
 
+/* Checks the bodies of module `id` with the program's method table, as ms_check_dump does: a
+ * record is admitted only once its methods are known (one with a `close` needs a cleanup). A module
+ * with an inherent error is left unchecked. */
+static void check_bodies(MsCheck *check, MsModId id, const char *text, size_t length) {
+    MsInherentError *errors = NULL;
+    uint32_t nerrors = 0;
+    ms_module_desugar(check, id, (MsStr){text, (uint32_t)length}, NULL, 0, &errors, &nerrors);
+    if (nerrors > 0) {
+        return;
+    }
+    ms_module_resolve_types(check, id);
+    MsMethodTable table;
+    ms_methods_init(&table);
+    ms_module_ensure_operations(check, id, &table);
+    ms_module_add_implementations(check, id, &table);
+    ms_module_check_bodies_with(check, id, &table);
+    ms_methods_free(&table);
+}
+
 static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const char *path, bool run) {
     size_t length = 0;
     char *text = read_whole_file(path, &length);
@@ -88,16 +109,18 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
             printf("=== %s\n", path);
         }
         const MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
-        ms_module_check_bodies(check, id);
+        check_bodies(check, id, text, length);
         // The ownership walk fills `ret_borrowed` and narrows `body_checked` to the functions it
         // handles; lowering keeps every function the body checker claimed.
         MsFacts *facts = check->mods[id].facts;
-        const size_t claims = (size_t)facts->node_count + 1;
-        bool *claimed = malloc(claims * sizeof *claimed);
-        memcpy(claimed, facts->body_checked, claims * sizeof *claimed);
-        ms_module_check_ownership(check, id);
-        memcpy(facts->body_checked, claimed, claims * sizeof *claimed);
-        free(claimed);
+        if (facts != NULL) { // an inherent error leaves the module unchecked
+            const size_t claims = (size_t)facts->node_count + 1;
+            bool *claimed = malloc(claims * sizeof *claimed);
+            memcpy(claimed, facts->body_checked, claims * sizeof *claimed);
+            ms_module_check_ownership(check, id);
+            memcpy(facts->body_checked, claimed, claims * sizeof *claimed);
+            free(claimed);
+        }
         MirModule mir;
         mir_module_init(&mir);
         (void)ms_lower_module(check, id, &mir);

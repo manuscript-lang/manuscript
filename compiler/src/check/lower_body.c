@@ -13,60 +13,9 @@
 #include "ms/constfold.h"
 #include "ms/facts.h"
 #include "ms/lower.h"
-#include "ms/lower_scope.h"
 #include "ms/mir_analysis.h"
-#include "ms/mir_builder.h"
 
-/* The loop being lowered: where `continue` and `break` go. Lives on the lowering's stack. A
- * `for` has a step block that only exists once something branches to it. */
-typedef struct LbLoop {
-    MirBlock next, exit; /* `continue` goes to `next`, `break` to `exit` */
-    struct LbLoop *outer;
-    bool broke;   /* a `break` branches to `exit` */
-    bool stepped; /* a branch to `next` exists (a `while` has it from the start) */
-    uint32_t scope; /* the depth of the body's ownership scope: `break` and `continue` leave down to it */
-} LbLoop;
-
-/* An owned `var` String: the value it holds is owned by its scope at every exit, since the
- * variable is reassigned and its current value differs from one exit to the next. */
-typedef struct LbVarOwner {
-    uint32_t binding;
-    uint32_t depth; /* the scope that declared it */
-} LbVarOwner;
-
-/* A lowered expression: the value, and whether the holder must drop it. */
-typedef struct LbVal {
-    MirValue v;
-    bool owned;
-} LbVal;
-
-typedef struct Lb {
-    const MsCheck *c;
-    const MsFacts *facts;
-    MirModule *m;
-    MirBuilder b;
-    LScopes scopes; /* ownership scopes: the function body is depth 0 */
-    MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
-    /* By binding id: the value a `let` or parameter names, or the variable a `var` is. */
-    MirValue *value_of;
-    MirVar *var_of;
-    uint32_t *func_of;    /* by symbol id: the module function a call reaches, or MIR_NONE */
-    uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
-    const MsDecl *decl;   /* the function being lowered */
-    const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
-    LbLoop *loop;         /* the innermost loop around the statement, or NULL */
-    struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
-    uint32_t nvars, cvars;
-    bool dead;            /* control cannot reach the current position */
-    bool ok;              /* false once a construct outside the handled set is met */
-} Lb;
-
-#define LB_FAIL ((LbVal){MIR_NONE, false})
-
-static LbVal lb_unsupported(Lb *lb) {
-    lb->ok = false;
-    return LB_FAIL;
-}
+#include "lower_internal.h"
 
 static MsTy lb_primitive(const MsCheck *c, const char *name) {
     const MsSymId sym = ms_map_get(&c->primitives, ms_intern_cstr(c->names, name));
@@ -74,7 +23,7 @@ static MsTy lb_primitive(const MsCheck *c, const char *name) {
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
-static MirTy lb_mir_ty(const Lb *lb, MsTy ty) {
+MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     if (ty == lb->int_ty) {
         return MIR_INT;
     }
@@ -84,10 +33,10 @@ static MirTy lb_mir_ty(const Lb *lb, MsTy ty) {
     if (ty == lb->bool_ty) {
         return MIR_BOOL;
     }
-    return ty == lb->string_ty ? MIR_STR : MIR_NONE;
+    return ty == lb->string_ty ? MIR_STR : lr_type(lb, ty);
 }
 
-static MirLoc lb_loc(const Lb *lb, MsPos pos) {
+MirLoc lb_loc(const Lb *lb, MsPos pos) {
     return (MirLoc){.file = 0, .line = pos.line, .col = pos.column, .scope = lb->b.loc.scope};
 }
 
@@ -160,7 +109,6 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
 
 /* ---- operators ---- */
 
-static LbVal lb_expr(Lb *lb, const MsExpr *e);
 static LbVal lb_match(Lb *lb, const MsExpr *e);
 
 static LbVal lb_unary(Lb *lb, const MsExpr *e) {
@@ -380,6 +328,9 @@ static MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const uint32_t callee = lb->facts->call_callee[e->id];
+    if (callee != MS_NONE && lb->c->syms.kind[callee] == MS_SYM_TYPE) {
+        return lr_construct(lb, e);
+    }
     const uint32_t func = callee == MS_NONE ? MIR_NONE : lb->func_of[callee];
     const uint32_t count = e->u.call.args.len;
     if (func == MIR_NONE || count != lb->c->tys.nparams[lb->c->syms.ty[callee]]) {
@@ -426,7 +377,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return (LbVal){result, mir_b_ty(&lb->b, result) == MIR_STR && !borrowed}; // else a String result is the caller's
 }
 
-static LbVal lb_expr(Lb *lb, const MsExpr *e) {
+LbVal lb_expr(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
@@ -436,8 +387,8 @@ static LbVal lb_expr(Lb *lb, const MsExpr *e) {
     case MS_E_BINARY: return lb_binary(lb, e);
     case MS_E_MATCH: return lb_match(lb, e);
     case MS_E_CALL: return lb_call(lb, e);
+    case MS_E_MEMBER: return lr_field(lb, e);
     case MS_E_VOID:
-    case MS_E_MEMBER:
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:
@@ -1017,6 +968,8 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
     for (uint32_t i = 0; i < bindings->count; i++) {
         lb->binding_at[bindings->decl_node[i]] = i;
     }
+    lb->type_of = MS_NEW_N(arena, MirTy, lb->c->tys.count + 1);
+    memset(lb->type_of, 0xff, (lb->c->tys.count + 1) * sizeof *lb->type_of);
     lb->value_of = MS_NEW_N(arena, MirValue, bindings->count + 1);
     lb->var_of = MS_NEW_N(arena, MirVar, bindings->count + 1);
     memset(lb->var_of, 0xff, (bindings->count + 1) * sizeof *lb->var_of);
