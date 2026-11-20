@@ -56,6 +56,16 @@ for file in $files; do
 done
 wait
 status=0
+# Library calls that take no size and have a bounded replacement (documentation/contributing/c-style.md): sprintf and
+# strcat and strcpy overrun, strtok keeps hidden state, gets cannot be used safely, and Apple's libc deprecates sprintf, so a
+# macOS build fails on it. Use snprintf, memcpy with a checked size, or ms_rt/safe.h (tests: tests/support/append.h).
+banned='(^|[^[:alnum:]_.>])(sprintf|vsprintf|strcpy|stpcpy|strcat|strtok|gets|tmpnam|mktemp)[[:space:]]*\('
+# shellcheck disable=SC2086
+if hits=$(grep -nHE "$banned" $files $(find runtime/include runtime/core runtime/net runtime/std runtime/sys runtime/io runtime/tests compiler/include compiler/src -name '*.h' 2> /dev/null) | grep -vE ':[0-9]+:[[:space:]]*(/?\*|//)'); then
+    echo "$hits" >&2
+    echo "c-lint: sprintf, strcpy, strcat, strtok and the like are banned; use snprintf or a bounded copy" >&2
+    status=1
+fi
 for file in $files; do
     log=$out/$(echo "$file" | tr / _).log
     listed=no
