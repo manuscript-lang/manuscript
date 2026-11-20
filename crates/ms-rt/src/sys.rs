@@ -1,9 +1,15 @@
 //! Minimal libc surface. Declared by hand so the crate has no dependencies.
+// The Rust definitions that `runtime/sys` replaces are dead in an archive build until they are deleted.
+#![cfg_attr(ms_c = "ms_sys_map_anon", allow(dead_code))]
 #![allow(non_camel_case_types)]
 
 use core::ffi::{c_char, c_int, c_long, c_void};
 
 pub type size_t = usize;
+
+/// Functions `runtime/sys` defines in C (`runtime/symbols/sys.txt`); empty unless `cargo xtask runtime` builds.
+#[allow(unused_imports)]
+pub use crate::sys_c::*;
 
 pub const STDIN: c_int = 0;
 pub const STDOUT: c_int = 1;
@@ -262,6 +268,7 @@ pub fn env_var(name: &[u8]) -> Option<&'static [u8]> {
 }
 
 #[cfg(miri)]
+#[cfg(not(ms_c = "ms_sys_map_anon"))]
 pub fn map_anon(len: usize) -> *mut u8 {
     // Miri has no `mmap`; a zeroed heap block stands in so the allocator can be checked.
     let layout = core::alloc::Layout::from_size_align(len, 1 << 16).unwrap();
@@ -271,6 +278,7 @@ pub fn map_anon(len: usize) -> *mut u8 {
 
 /// Reserves `len` bytes of zeroed address space; [`commit`] makes ranges of it usable. Null on failure.
 #[cfg(not(miri))]
+#[cfg(not(ms_c = "ms_sys_map_anon"))]
 pub fn map_anon(len: usize) -> *mut u8 {
     // SAFETY: anonymous private mapping; failure is reported as MAP_FAILED.
     let p = unsafe {
@@ -299,6 +307,7 @@ pub fn map_anon(len: usize) -> *mut u8 {
 /// large pages (`MEM_LARGE_PAGES`) need the `SeLockMemoryPrivilege` right, which a normal user
 /// does not hold, and are not demand-committed. Both stay no-ops (#3710).
 #[cfg(all(target_os = "linux", not(miri)))]
+#[cfg(not(ms_c = "ms_sys_prefer_huge_pages"))]
 pub fn prefer_huge_pages(p: *mut u8, len: usize) {
     unsafe extern "C" {
         fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
@@ -309,10 +318,12 @@ pub fn prefer_huge_pages(p: *mut u8, len: usize) {
 }
 
 #[cfg(not(all(target_os = "linux", not(miri))))]
+#[cfg(not(ms_c = "ms_sys_prefer_huge_pages"))]
 pub fn prefer_huge_pages(_p: *mut u8, _len: usize) {}
 
 /// Reserves `len` bytes of address space aligned to `len` (a power of two), holding stacks: no
 /// huge pages, so a touched stack page costs one page and not two megabytes. Null on failure.
+#[cfg(not(ms_c = "ms_sys_map_region"))]
 pub fn map_region(len: usize) -> *mut u8 {
     let raw = map_anon(2 * len);
     if raw.is_null() {
@@ -343,12 +354,14 @@ pub fn map_region(len: usize) -> *mut u8 {
 
 /// Makes `len` bytes at `p` (inside a [`map_anon`] mapping) usable. Unix maps everything readable
 /// and writable up front and the kernel commits pages on first touch.
+#[cfg(not(ms_c = "ms_sys_commit"))]
 pub fn commit(_p: *mut u8, _len: usize) -> bool {
     true
 }
 
 /// A guard page below a stack's committed pages: nothing to do on Unix, where the kernel
 /// commits any page of the mapping on first touch.
+#[cfg(not(ms_c = "ms_sys_commit_guard"))]
 pub fn commit_guard(_p: *mut u8) -> bool {
     true
 }
@@ -359,6 +372,7 @@ pub fn commit_guard(_p: *mut u8) -> bool {
 ///
 /// # Safety
 /// The range lies inside a live mapping and holds nothing in use.
+#[cfg(not(ms_c = "ms_sys_release"))]
 pub unsafe fn release(p: *mut u8, len: usize) {
     unsafe extern "C" {
         fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
@@ -381,6 +395,7 @@ pub unsafe fn release(p: *mut u8, len: usize) {
 ///
 /// # Safety
 /// The range lies inside a live mapping that nothing is using.
+#[cfg(not(ms_c = "ms_sys_guard"))]
 pub unsafe fn guard(p: *mut u8, len: usize) -> bool {
     #[cfg(target_os = "linux")]
     {
@@ -401,6 +416,7 @@ pub unsafe fn guard(p: *mut u8, len: usize) -> bool {
 ///
 /// # Safety
 /// The mapping is live and unused.
+#[cfg(not(ms_c = "ms_sys_unmap"))]
 pub unsafe fn unmap(p: *mut u8, len: usize) {
     unsafe extern "C" {
         fn munmap(addr: *mut c_void, len: size_t) -> c_int;
@@ -425,9 +441,67 @@ const CLOCK_MONOTONIC: c_int = 6;
 const CLOCK_MONOTONIC: c_int = 1;
 
 /// Monotonic clock in nanoseconds.
+#[cfg(not(ms_c = "ms_sys_monotonic_ns"))]
 pub fn monotonic_ns() -> i64 {
     let mut t = Timespec { sec: 0, nsec: 0 };
     // SAFETY: valid out pointer.
     unsafe { clock_gettime(CLOCK_MONOTONIC, &mut t) };
     t.sec * 1_000_000_000 + t.nsec
+}
+
+#[repr(C)]
+struct ThreadStart {
+    f: extern "C" fn(*mut c_void),
+    arg: *mut c_void,
+}
+
+extern "C" fn thread_tramp(p: *mut c_void) -> *mut c_void {
+    // SAFETY: `p` is the block `thread_spawn` filled and handed over.
+    let s = unsafe { core::ptr::read(p.cast::<ThreadStart>()) };
+    // SAFETY: allocated by `malloc` in `thread_spawn`; read out above.
+    unsafe { free(p) };
+    (s.f)(s.arg);
+    core::ptr::null_mut()
+}
+
+/// Starts a thread running `start(arg)`; `stack` of 0 takes the default size. Returns a handle for
+/// [`thread_join`], or 0 on failure.
+///
+/// # Safety
+/// `start` is a valid thread entry.
+#[cfg(not(ms_c = "ms_sys_thread_spawn"))]
+pub unsafe fn thread_spawn(
+    stack: usize,
+    start: extern "C" fn(*mut c_void),
+    arg: *mut c_void,
+) -> usize {
+    // SAFETY: plain libc calls; the block is freed by the thread or here on failure.
+    unsafe {
+        let s = malloc(core::mem::size_of::<ThreadStart>()).cast::<ThreadStart>();
+        if s.is_null() {
+            return 0;
+        }
+        s.write(ThreadStart { f: start, arg });
+        let mut attr = core::mem::zeroed::<pthread_attr_buf>();
+        pthread_attr_init(&mut attr);
+        if stack != 0 {
+            pthread_attr_setstacksize(&mut attr, stack);
+        }
+        let mut tid = 0usize;
+        if pthread_create(&mut tid, &attr, thread_tramp, s.cast()) != 0 {
+            free(s.cast());
+            return 0;
+        }
+        tid
+    }
+}
+
+/// Waits for a thread started by [`thread_spawn`] and releases its handle.
+///
+/// # Safety
+/// `thread` is a live handle from `thread_spawn`, joined once.
+#[cfg(not(ms_c = "ms_sys_thread_join"))]
+pub unsafe fn thread_join(thread: usize) {
+    // SAFETY: forwarded.
+    unsafe { pthread_join(thread, core::ptr::null_mut()) };
 }
