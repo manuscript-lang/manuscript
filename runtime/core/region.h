@@ -8,12 +8,12 @@
  * the heap with msrt_alloc), which the one-owner rules already express.
  *
  * Chunks come from the heap (msrt_alloc), so a region may be released from any thread. A region is not
- * thread safe: one owner at a time. Not yet part of the program ABI (ms_rt.h); the runtime calls it.
+ * thread safe: one owner at a time. Not yet part of the program ABI (the ms_rt headers); the runtime calls it.
  */
 #ifndef MS_REGION_H
 #define MS_REGION_H
 
-#include "ms_rt.h"
+#include "ms_rt/alloc.h"
 
 typedef struct msregion msregion;
 

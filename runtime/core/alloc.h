@@ -1,9 +1,9 @@
-/* alloc.h: internal to runtime/core. The exported allocator functions are declared in ms_rt.h; this
+/* alloc.h: internal to runtime/core. The exported allocator functions are declared in ms_rt/alloc.h; this
  * header holds what the allocator, its tests and regions share. */
 #ifndef MS_ALLOC_H
 #define MS_ALLOC_H
 
-#include "ms_rt.h"
+#include "ms_rt/alloc.h"
 
 /* Size classes: sixteen-byte steps up to 128, then four per doubling to MSALLOC_MAX_SMALL. */
 #define MSALLOC_MAX_SMALL 2048

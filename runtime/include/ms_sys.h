@@ -1,7 +1,7 @@
 /* ms_sys.h: the memory interface of runtime/sys, the one door to the operating system for the allocator.
  *
  * Freestanding headers only. Functions are named mssys_* and are not part of the program ABI
- * (ms_rt.h), so `cargo xtask symbols --check` ignores them. runtime/sys/mem.c implements them for
+ * (the ms_rt headers), so `cargo xtask symbols --check` ignores them. runtime/sys/mem.c implements them for
  * Linux, macOS and Windows; the OS-layer workstream grows this header, and may split it per module.
  */
 #ifndef MS_SYS_H

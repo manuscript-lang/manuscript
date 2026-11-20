@@ -2,7 +2,7 @@
 //!
 //! The archive builds (`cargo xtask runtime`, `MS_C_RUNTIME`) use the C allocator in
 //! `runtime/core/alloc.c`; `c` is the thin binding. `rust` is the original Rust implementation, kept
-//! for `cargo test` and clippy until the Rust runtime is deleted (`runtime/c-symbols.txt` lists the
+//! for `cargo test` and clippy until the Rust runtime is deleted (`runtime/symbols/alloc.txt` lists the
 //! C symbols; the whole module switches on `msrt_alloc`). `std_heap` is Rust's global allocator over
 //! either one.
 

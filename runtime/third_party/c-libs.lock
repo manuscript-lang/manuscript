@@ -1,6 +1,6 @@
-# name version url sha256 (checked by runtime/third_party/build.sh; llhttp is vendored under runtime/third_party/llhttp). abseil and re2 are the upstream release tarballs as Debian carries them (github archive URLs are not stable across tools); re2 20240702 builds with abseil 20240722.0.
+# name version url sha256 (checked by runtime/third_party/build.sh; llhttp is vendored under runtime/third_party/llhttp).
 libuv 1.51.0 https://dist.libuv.org/dist/v1.51.0/libuv-v1.51.0.tar.gz 5f0557b90b1106de71951a3c3931de5e0430d78da1d9a10287ebc7a3f78ef8eb
 nghttp2 1.66.0 https://github.com/nghttp2/nghttp2/releases/download/v1.66.0/nghttp2-1.66.0.tar.xz 00ba1bdf0ba2c74b2a4fe6c8b1069dc9d82f82608af24442d430df97c6f9e631
 openssl 3.5.4 https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz 967311f84955316969bdb1d8d4b983718ef42338639c621ec4c34fddef355e99
-abseil 20240722.0 https://deb.debian.org/debian/pool/main/a/abseil/abseil_20240722.0.orig.tar.gz df6d1f5ef540725f3851201176a60486aab332410788465c9877910bb471c34a
-re2 20240702 https://deb.debian.org/debian/pool/main/r/re2/re2_20240702.orig.tar.gz eb2df807c781601c14a260a507a5bb4509be1ee626024cb45acbd57cb9d4032b
+pcre2 10.47 https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.bz2 47fe8c99461250d42f89e6e8fdaeba9da057855d06eb7fc08d9ca03fd08d7bc7
+zlib 1.3.2 https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16

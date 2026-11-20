@@ -1,5 +1,5 @@
 /* Memory and thread-yield primitives for the allocator: the only place the allocator reaches the system.
- * Declares the few system functions it calls by hand, so no C library header is needed (see ms_rt.h). */
+ * Declares the few system functions it calls by hand, so no C library header is needed (see ms_rt/base.h). */
 #include "ms_sys.h"
 
 #if defined(_WIN32)

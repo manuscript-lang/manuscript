@@ -1077,6 +1077,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-mir-qbe"
+version = "0.0.0"
+dependencies = [
+ "ms-mir",
+]
+
+[[package]]
 name = "ms-native"
 version = "0.1.0"
 dependencies = [

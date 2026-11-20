@@ -1232,7 +1232,7 @@ fn live_add(s: &mut State, delta: isize) {
     LIVE_ALL.fetch_add(delta, Ordering::Relaxed);
 }
 
-// The `msrt_heap_*` exports below mirror the C allocator's interface (runtime/include/ms_rt.h) so the
+// The `msrt_heap_*` exports below mirror the C allocator's interface (runtime/include/ms_rt/alloc.h) so the
 // signature table and `cargo xtask symbols --check` see them; archive builds compile this module out.
 
 #[unsafe(no_mangle)]
