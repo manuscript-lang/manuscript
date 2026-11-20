@@ -157,7 +157,6 @@ static void test_call(void) {
     CHECK(result.kind == VALUE_INT && result.as.i == 42);
     ms_call_v1(function, args, 2, NULL);
     function->drop(function);
-    closure_drop(&closure->header); /* the stub msrt_obj_drop releases nothing */
 }
 
 static MsObj *wrong_arity_function;
@@ -215,7 +214,6 @@ int main(void) {
     wrong_arity_function = msrt_fn_new(&closure->header, 0);
     CHECK(faults(call_wrong_count) && fault_says("ms_call received 1 arguments for a function of 0 parameters"));
     wrong_arity_function->drop(wrong_arity_function);
-    closure_drop(&closure->header);
     test_stop_hooks();
     puts("core_cabi: ok");
     return 0;
