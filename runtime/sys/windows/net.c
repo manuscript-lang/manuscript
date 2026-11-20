@@ -4,6 +4,7 @@
 #include "ms_rt/sys_net.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <afunix.h>
 #include <iphlpapi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,6 +100,44 @@ int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out) {
         setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&off, sizeof off);
     }
     if (bind(s, (SOCKADDR *)&ss, len) != 0 || listen(s, backlog) != 0) return fail_close(s);
+    *out = (MsSock)s;
+    return MS_SYS_OK;
+}
+
+static int unix_address(const char *path, SOCKADDR_UN *sun) {
+    memset(sun, 0, sizeof *sun);
+    sun->sun_family = AF_UNIX;
+    const size_t length = strlen(path);
+    if (length == 0 || length >= sizeof sun->sun_path) { /* an empty path would autobind an abstract address */
+        WSASetLastError(length == 0 ? WSAEINVAL : WSAENAMETOOLONG);
+        return -1;
+    }
+    memcpy(sun->sun_path, path, length);
+    return 0;
+}
+
+static int new_unix_socket(SOCKET *out) {
+    if (startup()) return MS_SYS_ERROR;
+    SOCKET s = WSASocketW(AF_UNIX, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_NO_HANDLE_INHERIT);
+    if (s == INVALID_SOCKET) return MS_SYS_ERROR;
+    *out = s;
+    return MS_SYS_OK;
+}
+
+int ms_sys_net_unix_listen(const char *path, int backlog, MsSock *out) {
+    SOCKADDR_UN sun;
+    SOCKET s;
+    if (unix_address(path, &sun) < 0 || new_unix_socket(&s)) return MS_SYS_ERROR;
+    if (prepare(s) < 0 || bind(s, (SOCKADDR *)&sun, (int)sizeof sun) != 0 || listen(s, backlog) != 0) return fail_close(s);
+    *out = (MsSock)s;
+    return MS_SYS_OK;
+}
+
+int ms_sys_net_unix_connect(const char *path, MsSock *out) {
+    SOCKADDR_UN sun;
+    SOCKET s;
+    if (unix_address(path, &sun) < 0 || new_unix_socket(&s)) return MS_SYS_ERROR;
+    if (connect(s, (SOCKADDR *)&sun, (int)sizeof sun) != 0 || prepare(s) < 0) return fail_close(s); /* blocking until here */
     *out = (MsSock)s;
     return MS_SYS_OK;
 }
@@ -199,6 +238,7 @@ int ms_sys_net_local_addr(MsSock s, MsAddr *out) {
     SOCKADDR_STORAGE ss;
     int len = (int)sizeof ss;
     if (getsockname((SOCKET)s, (SOCKADDR *)&ss, &len) != 0) return MS_SYS_ERROR;
+    if (ss.ss_family != AF_INET && ss.ss_family != AF_INET6) { WSASetLastError(WSAEAFNOSUPPORT); return MS_SYS_ERROR; }
     from_sockaddr(&ss, out);
     return MS_SYS_OK;
 }
@@ -207,6 +247,7 @@ int ms_sys_net_peer_addr(MsSock s, MsAddr *out) {
     SOCKADDR_STORAGE ss;
     int len = (int)sizeof ss;
     if (getpeername((SOCKET)s, (SOCKADDR *)&ss, &len) != 0) return MS_SYS_ERROR;
+    if (ss.ss_family != AF_INET && ss.ss_family != AF_INET6) { WSASetLastError(WSAEAFNOSUPPORT); return MS_SYS_ERROR; }
     from_sockaddr(&ss, out);
     return MS_SYS_OK;
 }
