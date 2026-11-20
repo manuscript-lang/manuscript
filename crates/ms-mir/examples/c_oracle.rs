@@ -359,6 +359,7 @@ fn run_pass(name: &str, m: &mut Module) -> bool {
         "copyelim" => opt::copyelim::run(m),
         "copytakes" => opt::copyelim::run_takes(m),
         "lastuse" => opt::lastuse::run(m),
+        "range" => opt::range::run(m),
         _ => panic!("unknown pass {name}"),
     }
 }

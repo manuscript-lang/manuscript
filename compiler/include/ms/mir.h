@@ -186,6 +186,12 @@ typedef struct MirFunc {
     bool has_slot_close;
     MirTy slot_close;
     bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
+    /* Set by the range pass, not in the text form: a bit set (`nexact` words) of the results of
+     * unchecked integer arithmetic it proved cannot wrap, which later analysis treats as exact.
+     * Values are never reused, so a bit stays true as the function is rewritten; the pass
+     * replaces the array instead of editing it, so a copy of the function may share it. */
+    uint64_t *exact;
+    uint32_t nexact;
     uint8_t linkage, kind, inline_hint, sort;
     MirTy *captures; /* MFK_CLOSURE */
     uint32_t ncaptures;
