@@ -31,11 +31,13 @@ compiler/
 
 `include/ms/mir_layout.h` and `src/mir_layout.c` hold the boxing decision (`MirBoxing`, `mir_alt_is_boxed`, `mir_opt_is_boxed`: which recursive alternatives and optionals live behind a pointer), compared with the Rust `Boxing` by `mir-diff.sh` on every `.mir` file and mutant. `src/mir_shape.c` is `layout.rs`: leaves, memory layout, alternative payload slots, indirect type blocks, closure objects and the pointer and boolean leaf flags (`MirLayouts`), compared by `mir-diff.sh` the same way. A type nested too deep or with over a million leaves sets `MirLayouts.failed` and gets an empty shape; the Rust version overflows its stack there.
 
-Next: verifier, layout tables, then the optimisation passes one at a time, each checked by running both implementations on the same MIR text.
+`src/mir_val.c`, `src/mir_interp_ops.c` and `src/mir_interp.c` (`include/ms/mir_interp.h`) are `interp.rs`: the reference interpreter, with reference-counted copy-on-write values. `mir-diff.sh` runs the entry of every `.mir` file in both and compares output, exit code or fault, frames, cleanup faults, and the drop and step counts. The C interpreter does not yet expand the owned shorthands (`alt.own`, ...) the Rust one expands on construction; such a module stops with an internal fault, and the comparison skips those modules until the expansion passes are ported. libms now calls `sqrt`, `floor` and friends, so programs linking it add `-lm`.
+
+Next: verifier, then the optimisation passes one at a time, each checked by running both implementations on the same MIR text.
 
 ### MIR passes
 
-`include/ms/mir_pass.h` declares the ownership and expansion passes and their shared helpers (`src/mir_pass.c`); each pass is one file, `src/mir_<name>.c`: `exit_drops` and `expand` so far. A pass rewrites the module in place, builds what it adds in the module's arena and returns whether it changed anything. `mir-diff.sh` runs every pass on the `.mir` files that parse and verify (the corpus and the mutants) in both implementations (`c_oracle pass NAME`, `ms_mir_dump pass NAME`) and compares the printed module, a `changed` flag and the cold blocks byte for byte. To add a pass: write it, add its name to `run_pass` in both tools and to `PASSES` in the script.
+`include/ms/mir_pass.h` declares the ownership and expansion passes and their shared helpers (`src/mir_pass.c`); each pass is one file, `src/mir_<name>.c`: `exit_drops` and `expand` so far. A pass rewrites the module in place, builds what it adds in the module's arena and returns whether it changed anything. `mir-pass-diff.sh` runs every pass on the `.mir` files that parse and verify (the corpus and the mutants) in both implementations (`c_pass_oracle pass NAME`, `ms_mir_pass pass NAME`) and compares the printed module, a `changed` flag and the cold blocks byte for byte. To add a pass: write it, add its name to `run_pass` in both tools and to `PASSES` in `compiler/tests/mir-pass-diff.sh`.
 
 ## The checker tables
 

@@ -22,7 +22,7 @@ typedef struct {
     MsBuiltin b;
 } NameTag;
 
-static const NameTag PRIMITIVES[] = {
+static const NameTag primitive_names[] = {
     {"Int", MS_BI_INT},       {"Int8", MS_BI_INT8},     {"Int16", MS_BI_INT16},
     {"Int32", MS_BI_INT32},   {"Int64", MS_BI_INT64},   {"UInt8", MS_BI_UINT8},
     {"UInt16", MS_BI_UINT16}, {"UInt32", MS_BI_UINT32}, {"UInt64", MS_BI_UINT64},
@@ -31,7 +31,7 @@ static const NameTag PRIMITIVES[] = {
     {"Never", MS_BI_NEVER},
 };
 
-static const NameTag STANDARD[] = {
+static const NameTag standard_names[] = {
     {"Optional", MS_BI_OPTIONAL},   {"Result", MS_BI_RESULT},     {"List", MS_BI_LIST},
     {"Map", MS_BI_MAP},             {"Set", MS_BI_SET},           {"Bytes", MS_BI_BYTES},
     {"BigInt", MS_BI_BIGINT},       {"Decimal", MS_BI_DECIMAL},   {"Error", MS_BI_ERROR},
@@ -42,9 +42,9 @@ static const NameTag STANDARD[] = {
 };
 
 MsBuiltin ms_builtin_primitive(MsStr name) {
-    for (size_t i = 0; i < sizeof PRIMITIVES / sizeof *PRIMITIVES; i++) {
-        if (ty_str_is(name, PRIMITIVES[i].name)) {
-            return PRIMITIVES[i].b;
+    for (size_t i = 0; i < sizeof primitive_names / sizeof *primitive_names; i++) {
+        if (ty_str_is(name, primitive_names[i].name)) {
+            return primitive_names[i].b;
         }
     }
     return MS_B_NONE;
@@ -55,9 +55,9 @@ MsBuiltin ms_builtin_from_id(MsStr id) {
         return MS_B_NONE;
     }
     MsStr rest = {id.ptr + 5, id.len - 5};
-    for (size_t i = 0; i < sizeof STANDARD / sizeof *STANDARD; i++) {
-        if (ty_str_is(rest, STANDARD[i].name)) {
-            return STANDARD[i].b;
+    for (size_t i = 0; i < sizeof standard_names / sizeof *standard_names; i++) {
+        if (ty_str_is(rest, standard_names[i].name)) {
+            return standard_names[i].b;
         }
     }
     return MS_B_NONE;
@@ -95,28 +95,12 @@ bool ms_builtin_is_float(MsBuiltin b) { return b >= MS_BI_FLOAT && b <= MS_BI_FL
 
 #define NO_RESULT UINT32_MAX
 
-static void *grow(void *p, uint32_t *cap, uint32_t need, size_t elem) {
-    if (need <= *cap) {
-        return p;
-    }
-    uint32_t c = *cap ? *cap : 64;
-    while (c < need) {
-        c *= 2;
-    }
-    void *q = realloc(p, (size_t)c * elem);
-    if (q == NULL) {
-        abort();
-    }
-    *cap = c;
-    return q;
-}
-
 void ms_tys_init(MsTyTable *t) {
     memset(t, 0, sizeof *t);
     t->mask = 255;
-    t->slots = calloc(256, sizeof(uint32_t));
+    t->slots = calloc(256, sizeof *t->slots);
     if (t->slots == NULL) {
-        abort();
+        ms_oom();
     }
     /* row 0: no type */
     MsTyDesc none = {0};
@@ -125,9 +109,19 @@ void ms_tys_init(MsTyTable *t) {
 }
 
 void ms_tys_free(MsTyTable *t) {
-    free(t->name); free(t->id); free(t->kind); free(t->builtin); free(t->def);
-    free(t->args_at); free(t->nargs); free(t->params_at); free(t->nparams); free(t->result);
-    free(t->args_pool); free(t->params_pool); free(t->slots);
+    free(t->name);
+    free(t->id);
+    free(t->kind);
+    free(t->builtin);
+    free(t->def);
+    free(t->args_at);
+    free(t->nargs);
+    free(t->params_at);
+    free(t->nparams);
+    free(t->result);
+    free(t->args_pool);
+    free(t->params_pool);
+    free(t->slots);
     memset(t, 0, sizeof *t);
 }
 
@@ -167,26 +161,37 @@ static bool row_equals(const MsTyTable *t, uint32_t r, const MsTyDesc *d) {
     return true;
 }
 
-static MsTy add_row(MsTyTable *t, const MsTyDesc *d) {
-    uint32_t r = t->count;
-    uint32_t cap = t->cap;
-    uint32_t need = r + 1;
-    if (need > cap) {
-        uint32_t c = cap;
-        t->name = grow(t->name, &c, need, sizeof *t->name);
-        c = cap; t->id = grow(t->id, &c, need, sizeof *t->id);
-        c = cap; t->kind = grow(t->kind, &c, need, sizeof *t->kind);
-        c = cap; t->builtin = grow(t->builtin, &c, need, sizeof *t->builtin);
-        c = cap; t->def = grow(t->def, &c, need, sizeof *t->def);
-        c = cap; t->args_at = grow(t->args_at, &c, need, sizeof *t->args_at);
-        c = cap; t->nargs = grow(t->nargs, &c, need, sizeof *t->nargs);
-        c = cap; t->params_at = grow(t->params_at, &c, need, sizeof *t->params_at);
-        c = cap; t->nparams = grow(t->nparams, &c, need, sizeof *t->nparams);
-        c = cap; t->result = grow(t->result, &c, need, sizeof *t->result);
-        t->cap = c;
+/* Makes room for one more row and for the row's arguments and parameters. */
+static void reserve_row(MsTyTable *t, const MsTyDesc *d) {
+    if (t->count == t->cap) {
+        const uint32_t cap = ms_capacity_for(t->cap, t->count + 1);
+        t->name = ms_array_resize(t->name, cap, sizeof *t->name);
+        t->id = ms_array_resize(t->id, cap, sizeof *t->id);
+        t->kind = ms_array_resize(t->kind, cap, sizeof *t->kind);
+        t->builtin = ms_array_resize(t->builtin, cap, sizeof *t->builtin);
+        t->def = ms_array_resize(t->def, cap, sizeof *t->def);
+        t->args_at = ms_array_resize(t->args_at, cap, sizeof *t->args_at);
+        t->nargs = ms_array_resize(t->nargs, cap, sizeof *t->nargs);
+        t->params_at = ms_array_resize(t->params_at, cap, sizeof *t->params_at);
+        t->nparams = ms_array_resize(t->nparams, cap, sizeof *t->nparams);
+        t->result = ms_array_resize(t->result, cap, sizeof *t->result);
+        t->cap = cap;
     }
-    t->args_pool = grow(t->args_pool, &t->args_cap, t->args_len + d->nargs, sizeof *t->args_pool);
-    t->params_pool = grow(t->params_pool, &t->params_cap, t->params_len + d->nparams, sizeof *t->params_pool);
+    const uint32_t args_needed = t->args_len + d->nargs;
+    if (args_needed > t->args_cap) {
+        t->args_cap = ms_capacity_for(t->args_cap, args_needed);
+        t->args_pool = ms_array_resize(t->args_pool, t->args_cap, sizeof *t->args_pool);
+    }
+    const uint32_t params_needed = t->params_len + d->nparams;
+    if (params_needed > t->params_cap) {
+        t->params_cap = ms_capacity_for(t->params_cap, params_needed);
+        t->params_pool = ms_array_resize(t->params_pool, t->params_cap, sizeof *t->params_pool);
+    }
+}
+
+static MsTy add_row(MsTyTable *t, const MsTyDesc *d) {
+    reserve_row(t, d);
+    const uint32_t r = t->count;
     t->name[r] = d->name;
     t->id[r] = d->id;
     t->kind[r] = (uint8_t)d->kind;
@@ -212,9 +217,9 @@ static MsTy add_row(MsTyTable *t, const MsTyDesc *d) {
 static void rehash(MsTyTable *t) {
     uint32_t size = (t->mask + 1) * 2;
     free(t->slots);
-    t->slots = calloc(size, sizeof(uint32_t));
+    t->slots = calloc(size, sizeof *t->slots);
     if (t->slots == NULL) {
-        abort();
+        ms_oom();
     }
     t->mask = size - 1;
     for (uint32_t r = 1; r < t->count; r++) {

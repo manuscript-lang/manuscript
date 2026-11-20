@@ -2,6 +2,7 @@
 //! parse error), so the C MIR in `compiler/` can be compared with it byte for byte
 //! (`make c-compiler-test`). Temporary tooling for the C rewrite: delete it with `ms-mir`.
 
+use ms_mir::interp::Interp;
 use ms_mir::ir::{Boxing, Op};
 use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use ms_mir::parse::parse_module;
@@ -31,45 +32,6 @@ fn main() {
                 );
             }
         }
-        "valid" => {
-            // The files whose module parses and verifies: the ones a pass may be run on.
-            for path in &args[1..] {
-                let Ok(text) = std::fs::read_to_string(path) else {
-                    continue;
-                };
-                if parse_module(&text).is_ok_and(|m| ms_mir::verify::verify_module(&m).is_ok()) {
-                    let _ = writeln!(out, "{path}");
-                }
-            }
-        }
-        "pass" => {
-            let pass = args[1].as_str();
-            for path in &args[2..] {
-                let bytes = std::fs::read(path).expect("read");
-                let _ = writeln!(out, "=== {path}");
-                let Ok(text) = std::str::from_utf8(&bytes) else {
-                    out.push_str("error invalid-utf8\n");
-                    continue;
-                };
-                let mut m = match parse_module(text) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        let _ = writeln!(out, "error line {}", e.line);
-                        continue;
-                    }
-                };
-                let changed = run_pass(pass, &mut m);
-                let _ = writeln!(out, "changed {}", changed as u8);
-                out.push_str(&print_module(&m));
-                for f in &m.funcs {
-                    let mut cold: Vec<u32> = f.cold.iter().map(|b| b.0).collect();
-                    cold.sort_unstable();
-                    if !cold.is_empty() {
-                        let _ = writeln!(out, "cold {}: {cold:?}", f.name);
-                    }
-                }
-            }
-        }
         "boxing" => {
             for path in &args[1..] {
                 let _ = writeln!(out, "=== {path}");
@@ -90,6 +52,19 @@ fn main() {
                         let _ = writeln!(out, "opt {t} {}", b as u8);
                     }
                 }
+            }
+        }
+        "run" => {
+            for path in &args[1..] {
+                let _ = writeln!(out, "=== {path}");
+                let Some(m) = std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|t| parse_module(&t).ok())
+                else {
+                    out.push_str("error\n");
+                    continue;
+                };
+                run_module(&m, &mut out);
             }
         }
         "layout" => {
@@ -209,16 +184,46 @@ fn dump_layout(m: &ms_mir::ir::Module, out: &mut String) {
     }
 }
 
-/// Runs the pass `name` on `m` and returns whether it reports a change. The C port in
-/// `compiler/src/mir_*.c` has the same names in `compiler/tools/ms_mir_dump.c`.
-fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> bool {
-    match name {
-        "exit_drops" => {
-            ms_mir::exit_drops::run(m);
-            true
-        }
-        "expand" => ms_mir::expand::run(m, true),
-        "expand-nochecks" => ms_mir::expand::run(m, false),
-        other => panic!("unknown pass {other}"),
+/// Internal faults quote the interpreter's own debug output, which the C version does not copy.
+fn plain(message: &str) -> &str {
+    if message.starts_with("interpreter:") || message.starts_with("entry returned") {
+        "interpreter"
+    } else {
+        message
     }
+}
+
+/// Runs the entry and prints what the C interpreter prints: the program's output, its exit code
+/// or fault (kind, message, frames, cleanup faults) and the drop and step counts.
+fn run_module(m: &ms_mir::ir::Module, out: &mut String) {
+    if ms_mir::expand_owned::needed(m) {
+        out.push_str("skip expand\n");
+        return;
+    }
+    let mut it = Interp::new(m);
+    it.set_fuel(Some(2_000_000));
+    let result = it.run_entry();
+    let _ = writeln!(out, "stdout={}", it.stdout().replace('\n', "\\n"));
+    match result {
+        Ok(code) => {
+            let _ = writeln!(out, "exit {code}");
+        }
+        Err(f) => {
+            let kind = format!("{:?}", f.kind);
+            let kind = kind.split('(').next().unwrap_or("");
+            let _ = writeln!(
+                out,
+                "fault {kind} {} fuel={}",
+                plain(&f.message),
+                f.fuel_exhausted as u8
+            );
+            for s in &f.stack {
+                let _ = writeln!(out, "  at {s}");
+            }
+            for c in &f.cleanup_faults {
+                let _ = writeln!(out, "  cleanup {}", plain(c));
+            }
+        }
+    }
+    let _ = writeln!(out, "drops {} steps {}", it.drops(), it.steps());
 }

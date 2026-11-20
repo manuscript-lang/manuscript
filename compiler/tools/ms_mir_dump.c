@@ -6,8 +6,8 @@
 #include <string.h>
 
 #include "ms/mir.h"
+#include "ms/mir_interp.h"
 #include "ms/mir_layout.h"
-#include "ms/mir_pass.h"
 
 static bool read_file(const char *path, char **data, size_t *len) {
     FILE *f = fopen(path, "rb");
@@ -124,45 +124,79 @@ static void dump_layout(const MirModule *m, MsBuf *out) {
     mir_layouts_free(&lay);
 }
 
-/* Runs the pass `name` on `m`; false when the name is unknown. */
-static bool run_pass(const char *name, MirModule *m, bool *changed) {
-    *changed = true;
-    if (strcmp(name, "exit_drops") == 0) {
-        mir_exit_drops(m);
-    } else if (strcmp(name, "expand") == 0) {
-        *changed = mir_expand(m, true);
-    } else if (strcmp(name, "expand-nochecks") == 0) {
-        *changed = mir_expand(m, false);
-    } else {
-        return false;
+/* The owned shorthands the Rust interpreter expands first; the C one does not, so such modules are skipped. */
+static bool has_shorthand(const MirModule *m) {
+    for (uint32_t f = 0; f < m->nfuncs; f++) {
+        for (uint32_t b = 0; b < m->funcs[f].nblocks; b++) {
+            for (uint32_t i = 0; i < m->funcs[f].blocks[b].ninsts; i++) {
+                switch ((MirOp)m->funcs[f].blocks[b].insts[i].op) {
+                case MOP_AltOwn: case MOP_AltUnbox: case MOP_AltRelease: case MOP_TypeRelease:
+                case MOP_OptUnbox: case MOP_OptUnwrap:
+                    return true;
+                default:
+                    break;
+                }
+            }
+        }
     }
-    return true;
+    return false;
 }
 
-static void print_cold(const MirModule *m, MsBuf *out) {
-    for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
-        const MirFunc *f = &m->funcs[fi];
-        bool any = false;
-        for (uint32_t bi = 0; bi < f->nblocks; bi++) {
-            if (!f->blocks[bi].cold) {
-                continue;
-            }
-            if (!any) {
-                MsStr name = ms_name(&m->names, f->name);
-                ms_buf_printf(out, "cold %.*s: [", (int)name.len, name.ptr);
-            }
-            ms_buf_printf(out, "%s%u", any ? ", " : "", bi);
-            any = true;
+/* Internal faults quote debug output the C version does not copy: compare only that they happened. */
+static const char *plain_text(MsStr text, int *length) {
+    if ((text.len >= 12 && strncmp(text.ptr, "interpreter:", 12) == 0) ||
+        (text.len >= 14 && strncmp(text.ptr, "entry returned", 14) == 0)) {
+        *length = 11;
+        return "interpreter";
+    }
+    *length = (int)text.len;
+    return text.ptr;
+}
+
+static const char *fault_name(MirFault kind) {
+    static const char *const names[] = {"IntOverflow", "DivByZero", "IndexOutOfRange", "NoneUnwrap",
+                                        "Cancelled", "CallDepth", "Unreachable", "Message"};
+    return names[kind];
+}
+
+static void dump_run(const MirModule *m, MsBuf *out) {
+    if (has_shorthand(m)) {
+        ms_buf_puts(out, "skip expand\n");
+        return;
+    }
+    MirInterp *interp = mir_interp_new(m);
+    mir_interp_set_fuel(interp, 2000000);
+    int64_t code = 0;
+    bool ok = mir_interp_run_entry(interp, &code);
+    MsStr text = mir_interp_stdout(interp);
+    ms_buf_puts(out, "stdout=");
+    for (uint32_t i = 0; i < text.len; i++) {
+        if (text.ptr[i] == '\n') ms_buf_puts(out, "\\n"); else ms_buf_putc(out, text.ptr[i]);
+    }
+    ms_buf_putc(out, '\n');
+    if (ok) {
+        ms_buf_printf(out, "exit %lld\n", (long long)code);
+    } else {
+        const MirInterpFault *f = mir_interp_fault(interp);
+        int length = 0;
+        const char *message = plain_text(f->message, &length);
+        ms_buf_printf(out, "fault %s %.*s fuel=%d\n", fault_name(f->kind), length, message, f->fuel_exhausted ? 1 : 0);
+        for (uint32_t i = 0; i < f->nstack; i++) {
+            ms_buf_printf(out, "  at %.*s\n", (int)f->stack[i].len, f->stack[i].ptr);
         }
-        if (any) {
-            ms_buf_puts(out, "]\n");
+        for (uint32_t i = 0; i < f->ncleanup_faults; i++) {
+            message = plain_text(f->cleanup_faults[i], &length);
+            ms_buf_printf(out, "  cleanup %.*s\n", length, message);
         }
     }
+    ms_buf_printf(out, "drops %llu steps %llu\n", (unsigned long long)mir_interp_drops(interp),
+                  (unsigned long long)mir_interp_steps(interp));
+    mir_interp_free(interp);
 }
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fputs("usage: ms_mir_dump print|ops|pass NAME FILE...\n", stderr);
+        fputs("usage: ms_mir_dump print|ops FILE...\n", stderr);
         return 2;
     }
     MsBuf out = {0};
@@ -172,10 +206,8 @@ int main(int argc, char **argv) {
             ms_buf_printf(&out, "%s imm=%d res=%d fx=%d\n", o->name, o->imm, o->has_result, o->effects);
         }
     }
-    bool boxing = strcmp(argv[1], "boxing") == 0, layout = strcmp(argv[1], "layout") == 0;
-    bool pass = argc > 2 && strcmp(argv[1], "pass") == 0;
-    int first = pass ? 3 : 2;
-    for (int i = first; i < argc && (boxing || layout || pass || strcmp(argv[1], "print") == 0); i++) {
+    bool boxing = strcmp(argv[1], "boxing") == 0, layout = strcmp(argv[1], "layout") == 0, run = strcmp(argv[1], "run") == 0;
+    for (int i = 2; i < argc && (boxing || layout || run || strcmp(argv[1], "print") == 0); i++) {
         char *src;
         size_t len;
         if (!read_file(argv[i], &src, &len)) {
@@ -184,7 +216,7 @@ int main(int argc, char **argv) {
         }
         ms_buf_printf(&out, "=== %s\n", argv[i]);
         if (!ms_utf8_valid(src, len)) {
-            ms_buf_puts(&out, boxing || layout ? "error\n" : "error invalid-utf8\n");
+            ms_buf_puts(&out, boxing || layout || run ? "error\n" : "error invalid-utf8\n");
             free(src);
             continue;
         }
@@ -192,25 +224,14 @@ int main(int argc, char **argv) {
         mir_module_init(&m);
         uint32_t line;
         MsStr msg;
-        if (boxing || layout) {
+        if (boxing || layout || run) {
             if (mir_parse(&m, src, len, &line, &msg)) {
-                (boxing ? dump_boxing : dump_layout)(&m, &out);
+                (boxing ? dump_boxing : layout ? dump_layout : dump_run)(&m, &out);
             } else {
                 ms_buf_puts(&out, "error\n");
             }
         } else if (mir_parse(&m, src, len, &line, &msg)) {
-            bool changed = false;
-            if (pass && !run_pass(argv[2], &m, &changed)) {
-                fprintf(stderr, "unknown pass %s\n", argv[2]);
-                return 2;
-            }
-            if (pass) {
-                ms_buf_printf(&out, "changed %d\n", changed ? 1 : 0);
-            }
             mir_print_module(&m, &out);
-            if (pass) {
-                print_cold(&m, &out);
-            }
         } else {
             ms_buf_printf(&out, "error line %u\n", line);
         }
