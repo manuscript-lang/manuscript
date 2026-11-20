@@ -519,6 +519,22 @@ static bool own_arguments_overlap(const OwnWalk *w, const MsExpr *call, uint32_t
     return false;
 }
 
+/* A resource parameter handed to a `move` position must itself be declared `move`: a resource has
+ * one owner, so who owns it is declared. */
+static void own_require_declared_move(OwnWalk *w, const MsExpr *arg) {
+    const uint32_t binding = own_argument_local(w, arg);
+    if (binding == MS_NONE || !w->is_param[binding] || w->perm[binding] != PERM_IMMUTABLE ||
+        w->param_mode[binding] == 2 || w->class_of[binding] != MS_CLASS_RESOURCE) {
+        return;
+    }
+    const MsStr name = own_name(w, binding);
+    own_error(w, arg->pos,
+              ms_arena_fmt(&w->check->arena,
+                           "cannot pass `%.*s` as a `move` argument: it is not declared `move`, so the caller keeps it; "
+                           "write `move %.*s: <Type>` in the signature",
+                           (int)name.len, name.ptr, (int)name.len, name.ptr));
+}
+
 /* A `var` argument names a variable that may change: its permission, then any borrow that reads it. */
 static void own_mutate(OwnWalk *w, const MsExpr *arg, uint32_t binding) {
     const MsStr name = own_name(w, binding);
@@ -582,6 +598,7 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
                                    "the value to a var first"));
             own_expr(w, arg, DEMAND_READ);
         } else if (param->moving || (callee->consumed >> i & 1u) != 0) {
+            own_require_declared_move(w, arg);
             w->note_param = callee->consumed_at != NULL && (callee->consumed >> i & 1u) != 0 ? param->name : MS_NONE;
             w->note_at = w->note_param == MS_NONE ? w->note_at : callee->consumed_at[i];
             own_expr(w, arg, DEMAND_MOVE);
@@ -751,6 +768,27 @@ static bool own_is_self_call(const OwnWalk *w, const MsExpr *e) {
     return sym != MS_NONE && w->check->syms.decl[sym] != NULL && &w->check->syms.decl[sym]->u.fn == w->function;
 }
 
+/* `return f(a)` where `f` returns a reference into `a`: this function hands back a reference into
+ * its own parameters when every source is one, and is left to Rust otherwise. */
+static void own_returned_borrow_call(OwnWalk *w, const MsExpr *e) {
+    uint32_t origins[4];
+    uint32_t count = 0;
+    if (!own_call_origins(w, e, origins, &count) || count == 0) {
+        w->supported = false;
+        return;
+    }
+    for (uint32_t i = 0; i < count; i++) {
+        if (!w->is_param[origins[i]] || w->param_mode[origins[i]] == 2) { /* a `move` parameter is owned */
+            w->supported = false;
+            return;
+        }
+        w->borrowed_params |= 1u << w->param_index[origins[i]];
+    }
+    w->borrowed_return = w->has_borrowed_return ? w->borrowed_return : e->pos;
+    w->has_borrowed_return = true;
+    own_expr(w, e, DEMAND_READ);
+}
+
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
@@ -764,7 +802,12 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
     }
     if (e->kind == MS_E_CALL && !own_is_constructor(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
-        w->supported = w->supported && callee != NULL && !callee->returns_borrow;
+        if (callee == NULL || (callee->returns_borrow && own_is_self_call(w, e))) {
+            w->supported = false;
+        } else if (callee->returns_borrow) {
+            own_returned_borrow_call(w, e);
+            return;
+        }
     }
     if (e->kind == MS_E_CALL && own_is_self_call(w, e)) {
         own_expr(w, e, DEMAND_MOVE); /* returns whatever this function returns: neither kind of return */
@@ -1248,6 +1291,7 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
     MsLiveness live = ms_liveness_new(&scratch, facts);
     OwnWalk w = {.check = c, .module = module, .facts = facts, .live = &live,
                  .classifier = ms_classifier_new(c)};
+    ms_classifier_mark_methods(w.classifier, facts->methods);
     own_allocate(&w, &scratch);
     const uint32_t *by_node = own_bindings_by_node(facts, &scratch);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
