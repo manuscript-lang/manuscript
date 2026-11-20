@@ -22,7 +22,9 @@ typedef struct Target {
  * native built-in: they are one type when the name and the arguments agree. */
 static bool row_receiver_fits(const MsBody *b, MsInfer *in, MsTy pattern, MsTy actual) {
     const MsTyTable *tys = &b->c->tys;
-    const bool same_native = ms_ty_kind(tys, actual) == MS_K_NATIVE && ms_ty_kind(tys, pattern) == MS_K_TYPE &&
+    // The standard type as the program writes it (`List[Int]`, `Int?`) is the one its module declares
+    // (`List[T]`, `Optional[T]`) when the name and the arguments agree.
+    const bool same_native = tys->builtin[actual] != MS_B_NONE && tys->id[pattern] != tys->id[actual] &&
                              tys->name[pattern] == tys->name[actual] && tys->nargs[pattern] == tys->nargs[actual];
     if (!same_native) {
         return ms_infer_match(in, pattern, actual) == MS_MATCH_OK;
@@ -172,14 +174,14 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig, bool wide) {
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsArg *arg = &e->u.call.args.ptr[i];
-        if (arg->has_name || params[i].flags != 0 || !ms_body_is_admitted(b, params[i].ty) ||
+        if (arg->has_name || (params[i].flags & ~MS_PARAM_MOVE) != 0 || !ms_body_is_admitted(b, params[i].ty) ||
             ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
             return false;
         }
     }
     const MsTy result = tys->result[sig];
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty ||
-           (wide && (result == b->void_ty || ms_body_is_result(b, result)));
+           result == b->void_ty || ms_body_is_admitted(b, result) || (wide && ms_body_is_result(b, result));
 }
 
 /* `receiver.name(args)` on a primitive receiver of any shape (a local, a literal, another call):
