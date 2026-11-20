@@ -282,10 +282,6 @@ static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
         w->supported = false; /* a resource var parameter has its own message */
         return;
     }
-    if (w->class_of[binding] == MS_CLASS_RESOURCE && w->is_param[binding] && w->param_mode[binding] != 2) {
-        w->supported = false; /* a resource handed on by a parameter not declared `move` has its own message */
-        return;
-    }
     if (w->perm[binding] == PERM_BORROWED) {
         own_error_borrowed_move(w, e, binding);
     } else if (w->is_param[binding] && w->perm[binding] == PERM_MUTABLE) {
@@ -523,6 +519,22 @@ static bool own_arguments_overlap(const OwnWalk *w, const MsExpr *call, uint32_t
     return false;
 }
 
+/* A resource parameter handed to a `move` position must itself be declared `move`: a resource has
+ * one owner, so who owns it is declared. */
+static void own_require_declared_move(OwnWalk *w, const MsExpr *arg) {
+    const uint32_t binding = own_argument_local(w, arg);
+    if (binding == MS_NONE || !w->is_param[binding] || w->perm[binding] != PERM_IMMUTABLE ||
+        w->param_mode[binding] == 2 || w->class_of[binding] != MS_CLASS_RESOURCE) {
+        return;
+    }
+    const MsStr name = own_name(w, binding);
+    own_error(w, arg->pos,
+              ms_arena_fmt(&w->check->arena,
+                           "cannot pass `%.*s` as a `move` argument: it is not declared `move`, so the caller keeps it; "
+                           "write `move %.*s: <Type>` in the signature",
+                           (int)name.len, name.ptr, (int)name.len, name.ptr));
+}
+
 /* A `var` argument names a variable that may change: its permission, then any borrow that reads it. */
 static void own_mutate(OwnWalk *w, const MsExpr *arg, uint32_t binding) {
     const MsStr name = own_name(w, binding);
@@ -586,6 +598,7 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
                                    "the value to a var first"));
             own_expr(w, arg, DEMAND_READ);
         } else if (param->moving || (callee->consumed >> i & 1u) != 0) {
+            own_require_declared_move(w, arg);
             w->note_param = callee->consumed_at != NULL && (callee->consumed >> i & 1u) != 0 ? param->name : MS_NONE;
             w->note_at = w->note_param == MS_NONE ? w->note_at : callee->consumed_at[i];
             own_expr(w, arg, DEMAND_MOVE);
