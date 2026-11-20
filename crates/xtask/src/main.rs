@@ -745,34 +745,48 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
             "entry",
         ));
     }
-    // On Windows they build one after another: CMake started beside a running build fails there with
-    // `AssignProcessToJobObject: (50) The request is not supported`.
-    let mut built = if cfg!(windows) {
-        jobs.iter()
+    // The C half does not depend on the Rust features, so each triple's CMake build runs once and its
+    // objects go into every archive of that triple (CMake started beside a running build also fails on
+    // Windows with `AssignProcessToJobObject: (50) The request is not supported`, so they run one by one).
+    let mut plans: Vec<(Option<String>, Result<CRuntime, String>)> = Vec::new();
+    for (dir, triple, _, _) in &jobs {
+        if !plans.iter().any(|(t, _)| t == triple) {
+            plans.push((
+                triple.clone(),
+                build_c_runtime(&root, dir, triple.as_deref()),
+            ));
+        }
+    }
+    let plan_of = |triple: &Option<String>| {
+        plans
+            .iter()
+            .find(|(t, _)| t == triple)
+            .expect("a plan for every job's triple")
+            .1
+            .as_ref()
+    };
+    let mut built = std::thread::scope(|scope| {
+        let handles: Vec<_> = jobs
+            .iter()
             .map(|(dir, triple, name, features)| {
-                build_archive(&root, &out, dir, triple.as_deref(), name, features)
+                let (root, out) = (&root, &out);
+                let plan = plan_of(triple);
+                scope.spawn(move || match plan {
+                    Ok(plan) => {
+                        build_archive(root, out, dir, triple.as_deref(), name, features, plan)
+                    }
+                    Err(message) => Err(message.clone()),
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| {
+                h.join()
+                    .unwrap_or_else(|_| Err("archive build panicked".into()))
             })
             .collect::<Vec<_>>()
-    } else {
-        std::thread::scope(|scope| {
-            let handles: Vec<_> = jobs
-                .iter()
-                .map(|(dir, triple, name, features)| {
-                    let (root, out) = (&root, &out);
-                    scope.spawn(move || {
-                        build_archive(root, out, dir, triple.as_deref(), name, features)
-                    })
-                })
-                .collect();
-            handles
-                .into_iter()
-                .map(|h| {
-                    h.join()
-                        .unwrap_or_else(|_| Err("archive build panicked".into()))
-                })
-                .collect::<Vec<_>>()
-        })
-    };
+    });
     let archive = built.remove(0)?;
     built.into_iter().collect::<Result<Vec<_>, _>>()?;
     Ok(archive)
@@ -786,6 +800,7 @@ fn build_archive(
     triple: Option<&str>,
     name: &str,
     features: &str,
+    plan: &CRuntime,
 ) -> Result<PathBuf, String> {
     let arch = std::env::consts::ARCH;
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
@@ -810,7 +825,6 @@ fn build_archive(
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    let plan = build_c_runtime(root, target, triple)?;
     if plan.has_reactor() {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
@@ -836,7 +850,7 @@ fn build_archive(
     let built = release.join("libms_native.a");
     let archive = out.join(name);
     std::fs::copy(&built, &archive).map_err(|e| format!("copy {}: {e}", built.display()))?;
-    add_c_runtime(root, triple, &plan, &archive)?;
+    add_c_runtime(root, triple, plan, &archive)?;
     strip_debug(&archive);
     Ok(archive)
 }
