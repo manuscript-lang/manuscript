@@ -157,6 +157,9 @@ static uint8_t refuse(int64_t answer, const char *text, MsNetWsHandshake *out) {
 uint8_t msstd_ws_handshake(const MsStr *method, const MsStr *host, uint8_t tls, const void *request, const MsVec *origins,
                            const MsVec *subprotocols, const void *response, MsNetWsHandshake *out, MsStr *err) {
     ms_net_clear_text(err);
+    out->status = 0; /* the record is uninitialized stack: every field is valid whatever the answer */
+    msrt_string_from_bytes(NULL, 0, &out->subprotocol);
+    msrt_string_from_bytes(NULL, 0, &out->reason);
     const MsStr *protocols = subprotocols->ptr;
     for (size_t i = 0; i < subprotocols->len; i++) {
         if (!ms_h1_is_token(bytes_of_str(&protocols[i]))) {
