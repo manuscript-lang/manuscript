@@ -6,6 +6,7 @@
 #include "ms/format.h"
 #include "ms/lex.h"
 #include "ms/parse.h"
+#include "ms/project.h"
 #include "ms/tool.h"
 
 static void push_int(ms_list *out, int64_t v) {
@@ -109,6 +110,52 @@ void ms_tool_token_kinds(ms_list *out) {
         value.as.buf.len = strlen(s);
         ms_list_push(out, &value);
     }
+}
+
+static void push_text(ms_list *out, const char *text) {
+    ms_value value;
+    memset(&value, 0, sizeof value);
+    value.kind = MS_STRING;
+    value.as.buf.data = (const uint8_t *)text;
+    value.as.buf.len = strlen(text);
+    ms_list_push(out, &value);
+}
+
+uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest));
+    MsProject project;
+    MsProjectError error = {0};
+    uint8_t status = 0;
+    if (!ms_project_read(&arena, path, &project, &error)) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    }
+    for (uint32_t i = 0; status == 0 && i < project.dependency_count; i++) {
+        push_text(out, ms_project_dependency_row(&arena, &project.dependencies[i]));
+    }
+    ms_arena_free(&arena);
+    return status;
+}
+
+uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(target), ms_str_len(target));
+    const char **files = NULL;
+    uint32_t count = 0;
+    MsProjectError error = {0};
+    uint8_t status = 0;
+    if (!ms_project_format_paths(&arena, path, &files, &count, &error)) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    }
+    for (uint32_t i = 0; status == 0 && i < count; i++) {
+        push_text(out, files[i]);
+    }
+    ms_arena_free(&arena);
+    return status;
 }
 
 /* ---- syntax trees ---- */

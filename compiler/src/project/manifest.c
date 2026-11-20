@@ -10,6 +10,7 @@
 
 #include "ms/lock.h"
 #include "ms/project.h"
+#include "ms/resolve.h"
 
 enum { MAX_LINE = 65535 };
 
@@ -1024,6 +1025,11 @@ bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProject
     ms_buf_free(&b.effects);
     ms_buf_free(&b.assignments);
     return ok;
+}
+
+const char *ms_project_dependency_row(MsArena *a, const MsDependency *d) {
+    static const char *const kinds[] = {"tag", "sha", "version"};
+    return ms_arena_fmt(a, "%s\t%s\t%s\t%s", d->alias, d->url, kinds[d->kind], d->kind == MS_DEP_VERSION ? ms_dependency_describe(a, d) : d->reference).ptr;
 }
 
 const char *ms_project_find_manifest(MsArena *a, const char *filename) {

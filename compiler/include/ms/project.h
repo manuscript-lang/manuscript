@@ -118,9 +118,26 @@ typedef struct MsProject {
     MsPos location;            /* the [project] header */
 } MsProject;
 
+/* One `[dependencies]` entry as `alias\turl\tkind\treference` (kind tag, sha or version; the reference is the tag, the
+ * commit or the requirement as written), the row ms_tool_dependencies returns. */
+const char *ms_project_dependency_row(MsArena *a, const MsDependency *d);
+
 /* The nearest ms.toml in `filename`'s directory or above, NULL when there is none. */
 const char *ms_project_find_manifest(MsArena *a, const char *filename);
 MS_NODISCARD bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProjectError *err);
+
+/* ---- discovery (project/discover.c) ---- */
+
+/* The test files (`test.ms`, `*_test.ms`, `bench.ms`, `*_bench.ms`) below the project root and, with `include_source`,
+ * every `.ms` file below its source directory, sorted and without duplicates. Hidden, `vendor` and `node_modules`
+ * directories and nested projects are skipped, and directory links are not followed. */
+MS_NODISCARD bool ms_project_discover(MsArena *a, const MsProject *project, bool include_source, const char ***paths,
+                                      uint32_t *count, MsProjectError *err);
+/* The files `ms fmt target` formats: `target` itself when it is a file, else the discovered modules of the directory or
+ * of the project the manifest names, with its entry, each confined to the project root. A workspace root, and a project
+ * with dependencies, fail as MS_PERR_UNSUPPORTED. */
+MS_NODISCARD bool ms_project_format_paths(MsArena *a, const char *target, const char ***paths, uint32_t *count,
+                                          MsProjectError *err);
 
 /* ---- imports (project/resolve.c) ---- */
 
