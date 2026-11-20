@@ -17,11 +17,11 @@
 
 /* Interest and readiness bits; they equal the WAIT_* constants of the scheduler. */
 enum {
-    MS_IO_READ = 1,
-    MS_IO_WRITE = 2,
-    MS_IO_HUP = 4,
+    MS_IO_BIT_READ = 1,
+    MS_IO_BIT_WRITE = 2,
+    MS_IO_BIT_HUP = 4,
     /* Interest only: keep the descriptor's handle after the event instead of closing it on unwatch. */
-    MS_IO_KEEP = 32,
+    MS_IO_BIT_KEEP = 32,
 };
 
 /* A descriptor that became ready. The layout is shared with `Ready` in poller.rs. */
@@ -54,8 +54,8 @@ MS_NONNULL void ms_io_wake(MsIoReactor *reactor);
 /* ms_io_wake for the main thread's reactor; safe from a signal handler, a no-op while none is open. */
 void ms_io_kick(void);
 
-/* Watches `fd` once for the MS_IO_READ and MS_IO_WRITE bits of `events` (neither: reads), reporting it at once
- * if it is already ready. MS_IO_KEEP keeps the descriptor's handle across waits until ms_io_forget. */
+/* Watches `fd` once for the MS_IO_BIT_READ and MS_IO_BIT_WRITE bits of `events` (neither: reads), reporting it at once
+ * if it is already ready. MS_IO_BIT_KEEP keeps the descriptor's handle across waits until ms_io_forget. */
 MsIoWatch ms_io_watch(int fd, uint32_t events);
 
 /* Stops watching `fd`. */

@@ -1,0 +1,17 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: str = str "x"
+  %b: str = clone %a
+  %c: bool = bconst true
+  br_if %c, l(), r()
+l:
+  drop %b
+  br j()
+r:
+  br j()
+j:
+  %z: int = iconst 0
+  ret %z
+}

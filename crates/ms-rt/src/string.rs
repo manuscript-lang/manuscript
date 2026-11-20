@@ -954,6 +954,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
 ///
 /// # Safety
 /// `a` is owned by the caller and dead after the call; `b` is live; `out` is writable.
+#[cfg(not(ms_c = "msrt_string_append"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_append(
@@ -1441,6 +1442,7 @@ unsafe fn msrt_strbuf_finish_val(buf: *mut StrBuf) -> StrVal {
     from_bytes(&buf.0)
 }
 
+#[cfg(not(ms_c = "msrt_string_reverse"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_reverse(a: *const StrVal, out: *mut StrVal) {
@@ -1946,6 +1948,7 @@ pub unsafe extern "C-unwind" fn msrt_string_lower_take(s: *mut StrVal, out: *mut
 
 /// `repeat`: a count of zero or below, or empty text, gives empty text; output beyond the
 /// string limit faults like `concat`.
+#[cfg(not(ms_c = "msrt_string_repeat"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_repeat(s: *const StrVal, count: i64, out: *mut StrVal) {

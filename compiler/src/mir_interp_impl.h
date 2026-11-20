@@ -95,7 +95,11 @@ IpFlow ip_raise(MirInterp *it, MirFault kind, const char *fmt, ...) MS_PRINTF(3,
 IpFlow ip_internal(MirInterp *it, const char *fmt, ...) MS_PRINTF(2, 3);
 bool ip_exec(MirInterp *it, uint32_t entry, MirVal *args, uint32_t nargs, MirVal *result);
 MirVal ip_take_arg(MirInterp *it, const MirFunc *func, MirVal *regs, uint32_t value, bool own);
+/* Nested interpreter runs (cleanup actions raising cleanup actions); bounds the C stack. */
+#define IP_MAX_EXEC_DEPTH 2000
 const char *ip_depth_message(void);
+uint32_t ip_grow_cap(uint32_t count, uint32_t first);
+IpFlow ip_raise_text(MirInterp *it, MirFault kind, MsStr message);
 /* Makes room for `count` staged arguments (all void) and returns them. */
 MirVal *ip_stage(MirInterp *it, uint32_t count);
 
