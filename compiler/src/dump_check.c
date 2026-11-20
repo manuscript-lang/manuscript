@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/check.h"
 #include "ms/dump.h"
+#include "ms/facts.h"
 
 static const MsCheck *g_sort;
 
@@ -17,6 +19,15 @@ static int by_symbol_name(const void *a, const void *b) {
 static void put_name(MsBuf *out, const MsCheck *c, MsSym s) {
     MsStr n = ms_name(c->names, s);
     ms_buf_put(out, n.ptr, n.len);
+}
+
+static const char *sym_kind_text(MsSymKind kind) {
+    switch (kind) {
+    case MS_SYM_FN: return " fn";
+    case MS_SYM_ALIAS: return " alias";
+    case MS_SYM_TYPE: return " type";
+    }
+    return " type";
 }
 
 void ms_dump_std_tables(MsBuf *out, const MsCheck *c) {
@@ -59,7 +70,7 @@ void ms_dump_std_tables(MsBuf *out, const MsCheck *c) {
             MsSymId s = rows[i];
             ms_buf_puts(out, "  ");
             put_name(out, c, c->syms.name[s]);
-            ms_buf_puts(out, c->syms.kind[s] == MS_SYM_FN ? " fn" : c->syms.kind[s] == MS_SYM_ALIAS ? " alias" : " type");
+            ms_buf_puts(out, sym_kind_text(c->syms.kind[s]));
             ms_buf_puts(out, " export=true id=");
             put_name(out, c, c->syms.id[s]);
             ms_buf_puts(out, " native=");
@@ -72,4 +83,136 @@ void ms_dump_std_tables(MsBuf *out, const MsCheck *c) {
         }
         free(rows);
     }
+}
+
+/* ---- the declared types of one module ---- */
+
+static void put_type(MsBuf *out, const MsCheck *c, MsTy ty) {
+    ms_ty_show(out, c->names, &c->tys, ty);
+}
+
+static void put_param(MsBuf *out, const MsCheck *c, const MsTyParam *p) {
+    put_name(out, c, p->name);
+    ms_buf_puts(out, ": ");
+    ms_buf_puts(out, (p->flags & MS_PARAM_VAR) != 0 ? "var " : "");
+    ms_buf_puts(out, (p->flags & MS_PARAM_MOVE) != 0 ? "move " : "");
+    put_type(out, c, p->ty);
+}
+
+static void put_variable(MsBuf *out, const MsCheck *c, MsTy var) {
+    const MsVarInfo *info = var < c->var_info_cap ? &c->var_info[var] : NULL;
+    ms_buf_puts(out, "  var ");
+    put_name(out, c, c->tys.name[var]);
+    ms_buf_puts(out, " default=");
+    if (info != NULL && info->def != MS_TY_NONE) {
+        put_type(out, c, info->def);
+    } else {
+        ms_buf_putc(out, '-');
+    }
+    ms_buf_puts(out, " bounds=");
+    for (uint32_t i = 0; info != NULL && i < info->nbounds; i++) {
+        ms_buf_puts(out, i == 0 ? "" : ",");
+        put_type(out, c, info->bounds[i]);
+    }
+    ms_buf_putc(out, '\n');
+}
+
+static void put_symbol_types(MsBuf *out, const MsCheck *c, MsSymId s) {
+    ms_buf_puts(out, "sym ");
+    put_name(out, c, c->syms.name[s]);
+    ms_buf_puts(out, ": ");
+    if (c->syms.ty[s] != MS_TY_NONE) {
+        put_type(out, c, c->syms.ty[s]);
+    } else {
+        ms_buf_putc(out, '-');
+    }
+    ms_buf_putc(out, '\n');
+    uint32_t nvars = 0;
+    const MsTy *vars = ms_sym_vars(c, s, &nvars);
+    for (uint32_t i = 0; i < nvars; i++) {
+        put_variable(out, c, vars[i]);
+    }
+    const MsDef *def = s < c->defs_cap ? &c->defs[s] : NULL;
+    for (uint32_t i = 0; def != NULL && i < def->nfields; i++) {
+        ms_buf_puts(out, "  field ");
+        put_param(out, c, &def->fields[i]);
+        ms_buf_putc(out, '\n');
+    }
+    for (uint32_t i = 0; def != NULL && i < def->ncases; i++) {
+        ms_buf_puts(out, "  case ");
+        put_name(out, c, def->cases[i].name);
+        ms_buf_putc(out, '(');
+        for (uint32_t k = 0; k < def->cases[i].nfields; k++) {
+            ms_buf_puts(out, k == 0 ? "" : ", ");
+            put_param(out, c, &def->cases[i].fields[k]);
+        }
+        ms_buf_puts(out, ")\n");
+    }
+}
+
+/* Marks the references written in a type-parameter list: the Rust checker resolves them again for
+ * the operations of an implementation, so their entries are not the declaration pass's. */
+static void mark_type_ref(uint8_t *skip, uint32_t count, const MsTypeRef *t) {
+    if (t == NULL) {
+        return;
+    }
+    if (t->id < count) {
+        skip[t->id] = 1;
+    }
+    for (uint32_t i = 0; i < t->args.len; i++) {
+        mark_type_ref(skip, count, t->args.ptr[i]);
+    }
+    for (uint32_t i = 0; i < t->params.len; i++) {
+        mark_type_ref(skip, count, t->params.ptr[i]->ty);
+    }
+    mark_type_ref(skip, count, t->result);
+}
+
+static void mark_type_params(uint8_t *skip, uint32_t count, const MsDecl *d) {
+    const MsTypeParams *params = NULL;
+    switch ((MsDeclKind)d->kind) {
+    case MS_D_FN: params = &d->u.fn.type_params; break;
+    case MS_D_TYPE: params = &d->u.type.type_params; break;
+    case MS_D_ENUM: params = &d->u.enumeration.type_params; break;
+    case MS_D_ALIAS: params = &d->u.alias.type_params; break;
+    case MS_D_INTERFACE: params = &d->u.iface.type_params; break;
+    case MS_D_CONST:
+    case MS_D_IMPL:
+    case MS_D_TEST: return;
+    }
+    for (uint32_t i = 0; i < params->len; i++) {
+        mark_type_ref(skip, count, params->ptr[i]->def);
+        for (uint32_t k = 0; k < params->ptr[i]->bounds.len; k++) {
+            mark_type_ref(skip, count, params->ptr[i]->bounds.ptr[k]);
+        }
+    }
+}
+
+void ms_dump_module_types(MsBuf *out, const MsCheck *c, MsModId m) {
+    const MsModuleRow *row = &c->mods[m];
+    for (uint32_t i = 0; i < row->norder; i++) {
+        const MsSymId s = row->order[i];
+        const MsDecl *d = c->syms.decl[s];
+        /* A declaration whose name another symbol took is not the module's symbol. */
+        const bool bound = ms_map_get(&row->names, c->syms.name[s]) == s;
+        if (d != NULL && d->kind != MS_D_CONST && bound) {
+            put_symbol_types(out, c, s);
+        }
+    }
+    const MsFacts *facts = row->facts;
+    if (facts == NULL) {
+        return;
+    }
+    uint8_t *skip = calloc((size_t)facts->node_count + 1, 1);
+    for (uint32_t i = 0; skip != NULL && i < row->syntax->ndecls; i++) {
+        mark_type_params(skip, facts->node_count + 1, row->syntax->decls[i]);
+    }
+    for (uint32_t id = 0; skip != NULL && id <= facts->node_count; id++) {
+        if (facts->type_ref_ty[id] != MS_TY_NONE && skip[id] == 0) {
+            ms_buf_printf(out, "typeref %u ", id);
+            put_type(out, c, facts->type_ref_ty[id]);
+            ms_buf_putc(out, '\n');
+        }
+    }
+    free(skip);
 }

@@ -103,31 +103,106 @@ static inline size_t rare_index(const uint8_t *nd, size_t m) {
     return r;
 }
 
-/* hay holds n >= m >= 2 bytes; r is rare_index(nd, m). */
+/* The Two-Way search of the text from `from` on, for the offset in the whole text or SIZE_MAX. */
+static size_t two_way_from(const uint8_t *hay, size_t n, const uint8_t *nd, size_t m, size_t from) {
+    if (from > n - m) {
+        return SIZE_MAX;
+    }
+    const size_t found = ms_two_way(hay + from, n - from, nd, m);
+    return found == SIZE_MAX ? SIZE_MAX : found + from;
+}
+
+typedef uint8_t MsByteVector __attribute__((vector_size(16), aligned(1), may_alias));
+
+/* Two bytes of the needle, tested together at every start of a 16-byte window: the rare byte and the last one
+ * (the first when the rare one is the last). A start where both match is a candidate. */
+typedef struct PairProbe {
+    size_t rare_offset;
+    size_t last_offset;
+    uint8_t rare_value;
+    uint8_t last_value;
+    MsByteVector rare_byte; /* the rare byte in every lane */
+    MsByteVector last_byte;
+} PairProbe;
+
+static PairProbe pair_probe_new(const uint8_t *needle, size_t length, size_t rare_index) {
+    const MsByteVector zero = {0};
+    const size_t other = rare_index == length - 1 ? 0 : length - 1;
+    return (PairProbe){.rare_offset = rare_index,
+                       .last_offset = other,
+                       .rare_value = needle[rare_index],
+                       .last_value = needle[other],
+                       .rare_byte = zero + needle[rare_index],
+                       .last_byte = zero + needle[other]};
+}
+
+/* 0xff in lane k when the needle's two bytes sit at start + k; reads 16 bytes at each offset. */
+static inline MsByteVector probe_window(const uint8_t *hay, size_t start, const PairProbe *probe) {
+    const MsByteVector rare = *(const MsByteVector *)(hay + start + probe->rare_offset);
+    const MsByteVector last = *(const MsByteVector *)(hay + start + probe->last_offset);
+    return (rare == probe->rare_byte) & (last == probe->last_byte);
+}
+
+static inline bool any_lane_set(MsByteVector lanes) {
+    uint64_t halves[2];
+    __builtin_memcpy(halves, &lanes, sizeof halves);
+    return (halves[0] | halves[1]) != 0;
+}
+
+/* The candidate mask of fewer than sixteen starts, one scalar test each: bit 7 of byte k of half k / 8. */
+static void probe_tail(const uint8_t *hay, size_t start, size_t starts, const PairProbe *probe, uint64_t halves[2]) {
+    const uint8_t *rare = hay + probe->rare_offset, *last = hay + probe->last_offset;
+    for (size_t k = 0; k < starts; k++) {
+        if (rare[start + k] == probe->rare_value && last[start + k] == probe->last_value) {
+            halves[k / 8] |= UINT64_C(0x80) << (8 * (k % 8));
+        }
+    }
+}
+
+/* hay holds n >= m >= 2 bytes; r is rare_index(nd, m). Starts are tested sixteen at a time (thirty-two while no
+ * candidate shows up) with the compiler's portable 16-byte vectors (SSE2, NEON), so a text full of the rare byte
+ * alone costs no call per hit. Candidates that fail the full compare are counted as work; once they cost more
+ * than a few units per byte the rest is the linear Two-Way search. */
 static size_t find_long(const uint8_t *hay, size_t n, const uint8_t *nd, size_t m, size_t r) {
-    const uint8_t rb = nd[r], first = nd[0], lastb = nd[m - 1];
-    const size_t last = n - m; /* last valid start offset */
-    size_t pos = 0, work = 0;
-    while (pos <= last) {
-        /* a match starting in [pos, last] has its rare byte in [pos + r, last + r] */
-        const uint8_t *p = (const uint8_t *)__builtin_memchr(hay + pos + r, rb, last - pos + 1);
-        if (!p) return SIZE_MAX;
-        size_t c = (size_t)(p - hay) - r;
-        work += 8; /* per-candidate call overhead */
-        if (hay[c] == first && hay[c + m - 1] == lastb) {
-            if (__builtin_memcmp(hay + c, nd, m) == 0) return c;
-            work += m;
+    const uint64_t high = UINT64_C(0x8080808080808080);
+    const PairProbe probe = pair_probe_new(nd, m, r);
+    const size_t last_start = n - m;
+    size_t start = 0, work = 0;
+    while (start <= last_start) {
+        while (start <= last_start && last_start - start >= 31 &&
+               !any_lane_set(probe_window(hay, start, &probe) | probe_window(hay, start + 16, &probe))) {
+            start += 32;
         }
-        pos = c + 1;
-        if ((work >> 2) > pos + 64) { /* false candidates cost > ~4 units/byte: go linear */
-            if (pos > last) return SIZE_MAX;
-            size_t t = ms_two_way(hay + pos, n - pos, nd, m);
-            return t == SIZE_MAX ? t : t + pos;
+        if (start > last_start) {
+            break;
         }
+        uint64_t halves[2] = {0, 0};
+        size_t starts = last_start - start + 1;
+        if (starts >= 16) {
+            const MsByteVector window = probe_window(hay, start, &probe);
+            __builtin_memcpy(halves, &window, sizeof halves);
+            starts = 16;
+        } else {
+            probe_tail(hay, start, starts, &probe, halves);
+        }
+        for (size_t half = 0; half < 2; half++) {
+            uint64_t mask = halves[half] & high;
+            while (mask != 0) {
+                const size_t candidate = start + 8 * half + (size_t)__builtin_ctzll(mask) / 8;
+                mask &= mask - 1;
+                if (__builtin_memcmp(hay + candidate, nd, m) == 0) {
+                    return candidate;
+                }
+                work += 4 + m; /* a false candidate: the compare, plus the loop's own cost */
+                if ((work >> 2) > candidate + 64) { /* false candidates cost > ~4 units/byte: go linear */
+                    return two_way_from(hay, n, nd, m, candidate + 1);
+                }
+            }
+        }
+        start += starts;
     }
     return SIZE_MAX;
 }
-
 
 /* The offset of the byte to scan for: the last one that is not a space or common punctuation, which text is
  * full of, or the last byte when it is all of those. */
@@ -181,37 +256,62 @@ size_t ms_find_big(const uint8_t *hay, size_t n, const uint8_t *needle, size_t m
  * the per-call setup of the long search costs more than scanning them directly. */
 #define NEAR 16
 
+MsNeedle ms_needle_for(MsBytes pattern, size_t text_len) {
+    MsNeedle needle = {.pattern = pattern, .rare_index = 0, .prepared = false};
+    if (pattern.len >= 2 && text_len >= MS_MEDIUM_HAY) {
+        needle.rare_index = rare_index(pattern.ptr, pattern.len); /* chosen once for every search of this text */
+        needle.prepared = true;
+    }
+    return needle;
+}
+
+/* The search for a one-byte needle: matches are usually a few bytes apart, so the first NEAR bytes are scanned as
+ * words before the call to memchr. */
+static size_t find_byte(uint8_t byte, const uint8_t *hay, size_t n) {
+    if (n < MS_SHORT_HAY) {
+        return memchr_short(byte, hay, n);
+    }
+    size_t near_hit = memchr_short(byte, hay, NEAR);
+    if (near_hit != SIZE_MAX) {
+        return near_hit;
+    }
+    const uint8_t *hit = __builtin_memchr(hay + NEAR, byte, n - NEAR);
+    return hit == NULL ? SIZE_MAX : (size_t)(hit - hay);
+}
+
+size_t ms_needle_find(const MsNeedle *needle, MsBytes haystack) {
+    const uint8_t *pattern = needle->pattern.ptr, *hay = haystack.ptr;
+    const size_t m = needle->pattern.len, n = haystack.len;
+    if (m == 1) {
+        return find_byte(pattern[0], hay, n);
+    }
+    if (!needle->prepared) {
+        return ms_find(hay, n, pattern, m);
+    }
+    if (n < m) {
+        return SIZE_MAX;
+    }
+    if (n < MS_SHORT_HAY) {
+        return find_short(hay, n, pattern, m);
+    }
+    /* A match starting before NEAR ends inside this window. */
+    const size_t window = NEAR + m - 1 < n ? NEAR + m - 1 : n;
+    size_t found = find_short(hay, window, pattern, m);
+    if (found == SIZE_MAX && n - NEAR >= m) {
+        found = find_long(hay + NEAR, n - NEAR, pattern, m, needle->rare_index);
+        found = found == SIZE_MAX ? SIZE_MAX : found + NEAR;
+    }
+    return found;
+}
+
 size_t ms_count(const uint8_t *hay, size_t n, const uint8_t *needle, size_t m) {
     size_t count = 0, pos = 0;
     if (m == 0) {
         return 0;
     }
-    if (m == 1 || n < MS_MEDIUM_HAY) {
-        while (n - pos >= m) {
-            size_t i = ms_find(hay + pos, n - pos, needle, m);
-            if (i == SIZE_MAX) {
-                break;
-            }
-            count++;
-            pos += i + m;
-        }
-        return count;
-    }
-    size_t r = rare_index(needle, m); /* chosen once for every search of this call */
+    const MsNeedle prepared = ms_needle_for(ms_bytes_of(needle, m), n);
     while (n - pos >= m) {
-        const uint8_t *h = hay + pos;
-        size_t left = n - pos, i = SIZE_MAX;
-        if (left >= MS_SHORT_HAY) {
-            /* A match starting before NEAR ends inside this window. */
-            size_t near = NEAR + m - 1 < left ? NEAR + m - 1 : left;
-            i = find_short(h, near, needle, m);
-            if (i == SIZE_MAX && left - NEAR >= m) {
-                i = find_long(h + NEAR, left - NEAR, needle, m, r);
-                i = i == SIZE_MAX ? SIZE_MAX : i + NEAR;
-            }
-        } else {
-            i = find_short(h, left, needle, m);
-        }
+        size_t i = ms_needle_find(&prepared, ms_bytes_of(hay + pos, n - pos));
         if (i == SIZE_MAX) {
             break;
         }

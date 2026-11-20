@@ -1,0 +1,7 @@
+module "t"
+fn @main() -> int {
+b0:
+  %k: int = iconst 1
+  %r: int = call.ind (%k)
+  ret %r
+}

@@ -46,13 +46,62 @@ typedef struct MsSyms {
     uint32_t count, cap;
 } MsSyms;
 
+/* ---- declared types: per symbol and per type variable ---- */
+
+typedef struct MsCaseRow {
+    MsSym name;
+    MsTyParam *fields;
+    uint32_t nfields;
+} MsCaseRow;
+
+/* What a nominal declaration or function carries beyond its type: the type variables it declares
+ * (those a native type carries as arguments of its type are not repeated), and the fields or
+ * cases a `type` or `enum` resolves to. The Rust checker's `Definition`. */
+typedef struct MsDef {
+    MsTy *vars;
+    uint32_t nvars;
+    MsTyParam *fields;
+    uint32_t nfields;
+    MsCaseRow *cases;
+    uint32_t ncases;
+} MsDef;
+
+/* Beside a type variable: its default argument and the interfaces that bound it. */
+typedef struct MsVarInfo {
+    MsTy def; /* MS_TY_NONE for none */
+    MsTy *bounds;
+    uint32_t nbounds;
+} MsVarInfo;
+
+/* ---- diagnostics ---- */
+
+typedef enum MsPhase { MS_PHASE_RESOLUTION, MS_PHASE_TYPE } MsPhase;
+
+/* A checker diagnostic: the position and message, the phase that reports it, and, for an unknown
+ * name, the name (which later suggestions read). */
+typedef struct MsCheckDiag {
+    MsDiag diag;
+    MsPhase phase;
+    MsSym unknown;
+} MsCheckDiag;
+
 /* ---- modules ---- */
+
+struct MsFacts;
 
 typedef struct MsModuleRow {
     MsSym path; /* `@std/core.ms`, or a user module's path */
     const MsModule *syntax;
     MsNameMap scope; /* every symbol the module declares, by name; exported ones are those with is_exported */
     bool source;       /* has implementation bodies: checked like user code, on first import */
+    /* Name resolution (check_scope.c): everything the module's code can name at the top level --
+     * primitives, the prelude, imports and its own declarations -- and what that found wrong. */
+    MsNameMap names;
+    MsCheckDiag *diags;
+    uint32_t ndiags, diags_cap;
+    bool declared;
+    bool unknown_type; /* an unknown type was reported: later `<invalid>` messages only restate it */
+    struct MsFacts *facts; /* the columns the checker fills for the module; NULL until it runs */
     MsSymId *order;    /* the same symbols in declaration order */
     uint32_t norder;
 } MsModuleRow;
@@ -65,16 +114,46 @@ typedef struct MsCheck {
     MsModuleRow *mods;
     uint32_t nmods, mods_cap;
     MsNameMap std_types; /* standard type name -> symbol, as the world map of the Rust loader */
+    MsNameMap module_by_path; /* module path -> module id */
+    MsNameMap primitives;     /* primitive type name -> symbol; those symbols belong to no module */
+    MsDef *defs;              /* by symbol id; grown on demand */
+    uint32_t defs_cap;
+    MsVarInfo *var_info;      /* by type id, for type variables; grown on demand */
+    uint32_t var_info_cap;
 } MsCheck;
 
 void ms_check_init(MsCheck *c, MsNames *names);
 void ms_check_free(MsCheck *c);
 
 MsModId ms_module_add(MsCheck *c, MsSym path, const MsModule *syntax);
-/* Adds a symbol of `module`; exported ones also join the module's export map. Returns the new id,
- * or MS_NONE when the module already has a symbol of this name. */
-MsSymId ms_sym_add(MsCheck *c, MsModId module, MsSym name, MsSym id, MsSymKind kind,
-                   MsNativeKind native, MsSym native_name, bool is_exported, const MsDecl *decl,
-                   uint32_t nvars);
+/* What a symbol is declared with; the rest of its row starts empty. */
+typedef struct MsSymSpec {
+    MsSym name;
+    MsSym id;
+    MsSymKind kind;
+    MsNativeKind native;
+    MsSym native_name;
+    bool is_exported;
+    const MsDecl *decl; /* borrowed from the module's syntax, which outlives the tables */
+    uint32_t nvars;
+} MsSymSpec;
+
+/* Adds a symbol of `module`; exported ones are visible to importers. Returns the new id, or
+ * MS_NONE when the module already has a symbol of this name. */
+MsSymId ms_sym_add(MsCheck *c, MsModId module, const MsSymSpec *spec);
+
+/* Appends a symbol row without listing it in any scope. `module` is MS_NONE for a primitive type,
+ * which belongs to no module. */
+MsSymId ms_sym_new(MsCheck *c, MsModId module, const MsSymSpec *spec);
+
+/* The name a declaration binds (0 for an `impl` or a test) and how many type variables it declares. */
+MsSym ms_decl_name(const MsDecl *d);
+uint32_t ms_decl_nvars(const MsDecl *d);
+
+/* The definition row of `sym`, created empty on first use. The pointer is valid until the next
+ * call that may add a row. */
+MsDef *ms_def(MsCheck *c, MsSymId sym);
+/* The variable row of type variable `ty`, created empty on first use; same lifetime. */
+MsVarInfo *ms_var_info(MsCheck *c, MsTy ty);
 
 #endif

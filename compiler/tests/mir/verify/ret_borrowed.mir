@@ -1,0 +1,7 @@
+module "t"
+
+fn @f() -> str {
+b0:
+  %a: str = str "x"
+  ret %a
+}

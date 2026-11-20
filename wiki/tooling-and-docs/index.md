@@ -4,6 +4,7 @@
 
 Formatter, LSP, CLI, diagnostics, documentation, site.
 
+- [Tools in Manuscript read libms through flat tables](tools-in-manuscript-read-libms-through-flat-tables.md): tool.h returns `List[Int]` records, `make c-tools-test` diffs lint against Rust.
 - [Effects are implicit-deny comment directives](effects-are-implicit-deny-comment-directives.md): `allow_effect` permits, `effect` declares, `std.` tags on exported stdlib functions, MSL116 warns first.
 - [Packages are git dependencies pinned by lock and hash](packages-are-git-dependencies-pinned-by-lock-and-hash.md): `ms install` resolves versions (one copy per compatible range) and pins commit and content hash; builds then work offline; packages declare effects the importer allows.
 - [Bounded editor work rules](bounded-editor-work-rules.md): Formatter, navigation and token-batch work stays bounded to the query and required context.

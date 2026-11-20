@@ -2,16 +2,18 @@
 //! parse error), so the C MIR in `compiler/` can be compared with it byte for byte
 //! (`make c-compiler-test`). Temporary tooling for the C rewrite: delete it with `ms-mir`.
 
-use ms_mir::ir::{Boxing, Op};
+use ms_mir::interp::Interp;
+use ms_mir::ir::{Boxing, Mode, Module, Op};
 use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
-use ms_mir::types::{AltId, Ty, TyKind};
 use ms_mir::parse::parse_module;
 use ms_mir::print::print_module;
+use ms_mir::types::{AltId, Ty, TyKind};
 use std::fmt::Write;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut out = String::new();
+    std::panic::set_hook(Box::new(|_| {}));
     match args[0].as_str() {
         "ops" => {
             for op in Op::ALL {
@@ -31,6 +33,48 @@ fn main() {
                 );
             }
         }
+        "verify" => each_module(&args[1..], &mut out, |m, out| {
+            // A mutant can reach an index the verifier does not check: say so, and let the
+            // comparison skip the file.
+            match std::panic::catch_unwind(|| ms_mir::verify::verify_module(m)) {
+                Ok(Ok(())) => out.push_str("ok\n"),
+                Ok(Err(errs)) => {
+                    for e in errs {
+                        let _ = writeln!(out, "{e}");
+                    }
+                }
+                Err(_) => out.push_str("oracle-panic\n"),
+            }
+        }),
+        "analysis" => each_module(&args[1..], &mut out, |m, out| {
+            for f in &m.funcs {
+                analysis(m, f, out);
+            }
+        }),
+        "verified" => {
+            // The files that parse and verify: the optimisation passes need a verified module.
+            for path in &args[1..] {
+                let ok = std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|t| parse_module(&t).ok())
+                    .is_some_and(|m| match ms_mir::verify::verify_module(&m) {
+                        Ok(()) => true,
+                        Err(e) => {
+                            eprintln!("unverified {path}: {}", e[0]);
+                            false
+                        }
+                    });
+                if ok {
+                    let _ = writeln!(out, "{path}");
+                }
+            }
+        }
+        "opt" => each_module(&args[2..], &mut out, |m, out| {
+            let mut m = m.clone();
+            let changed = run_pass(&args[1], &mut m);
+            let _ = writeln!(out, "changed {changed}");
+            out.push_str(&print_module(&m));
+        }),
         "boxing" => {
             for path in &args[1..] {
                 let _ = writeln!(out, "=== {path}");
@@ -51,6 +95,19 @@ fn main() {
                         let _ = writeln!(out, "opt {t} {}", b as u8);
                     }
                 }
+            }
+        }
+        "run" => {
+            for path in &args[1..] {
+                let _ = writeln!(out, "=== {path}");
+                let Some(m) = std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|t| parse_module(&t).ok())
+                else {
+                    out.push_str("error\n");
+                    continue;
+                };
+                run_module(&m, &mut out);
             }
         }
         "layout" => {
@@ -87,7 +144,10 @@ fn main() {
 }
 
 fn leaf_list(leaves: &[Leaf]) -> String {
-    let names: Vec<String> = leaves.iter().map(|l| format!("{l:?}").to_lowercase()).collect();
+    let names: Vec<String> = leaves
+        .iter()
+        .map(|l| format!("{l:?}").to_lowercase())
+        .collect();
     names.join(",")
 }
 
@@ -164,5 +224,138 @@ fn dump_layout(m: &ms_mir::ir::Module, out: &mut String) {
             .map(|s| format!("{}@{}:{}", s.ty.0, s.offset, leaf_list(&s.leaves)))
             .collect();
         let _ = writeln!(out, "closure {i} size={} caps={}", c.size, caps.join(" "));
+    }
+}
+
+/// Internal faults quote the interpreter's own debug output, which the C version does not copy.
+fn plain(message: &str) -> &str {
+    if message.starts_with("interpreter:") || message.starts_with("entry returned") {
+        "interpreter"
+    } else {
+        message
+    }
+}
+
+/// Runs the entry and prints what the C interpreter prints: the program's output, its exit code
+/// or fault (kind, message, frames, cleanup faults) and the drop and step counts.
+fn run_module(m: &ms_mir::ir::Module, out: &mut String) {
+    if ms_mir::expand_owned::needed(m) {
+        out.push_str("skip expand\n");
+        return;
+    }
+    let mut it = Interp::new(m);
+    it.set_fuel(Some(2_000_000));
+    let result = it.run_entry();
+    let _ = writeln!(out, "stdout={}", it.stdout().replace('\n', "\\n"));
+    match result {
+        Ok(code) => {
+            let _ = writeln!(out, "exit {code}");
+        }
+        Err(f) => {
+            let kind = format!("{:?}", f.kind);
+            let kind = kind.split('(').next().unwrap_or("");
+            let _ = writeln!(
+                out,
+                "fault {kind} {} fuel={}",
+                plain(&f.message),
+                f.fuel_exhausted as u8
+            );
+            for s in &f.stack {
+                let _ = writeln!(out, "  at {s}");
+            }
+            for c in &f.cleanup_faults {
+                let _ = writeln!(out, "  cleanup {}", plain(c));
+            }
+        }
+    }
+    let _ = writeln!(out, "drops {} steps {}", it.drops(), it.steps());
+}
+
+fn each_module(paths: &[String], out: &mut String, mut run: impl FnMut(&Module, &mut String)) {
+    for path in paths {
+        let bytes = std::fs::read(path).expect("read");
+        let _ = writeln!(out, "=== {path}");
+        match std::str::from_utf8(&bytes).map(parse_module) {
+            Ok(Ok(m)) => run(&m, out),
+            Ok(Err(e)) => {
+                let _ = writeln!(out, "error line {}", e.line);
+            }
+            Err(_) => out.push_str("error invalid-utf8\n"),
+        }
+    }
+}
+
+fn mode_char(m: Mode) -> char {
+    match m {
+        Mode::Borrow => 'B',
+        Mode::Move => 'M',
+        Mode::Var => 'V',
+    }
+}
+
+/// The control-flow and ownership facts of `f` that the C analysis must reproduce.
+fn analysis(m: &Module, f: &ms_mir::ir::Func, out: &mut String) {
+    let ids = |v: &[ms_mir::ir::Block]| {
+        v.iter()
+            .map(|b| b.index().to_string())
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    let _ = writeln!(out, "func {}", f.name);
+    let rpo = f.rpo();
+    let preds = f.predecessors();
+    let _ = writeln!(out, "rpo {}", ids(&rpo));
+    for (b, p) in preds.iter().enumerate() {
+        let _ = writeln!(out, "preds {b}: {}", ids(p));
+    }
+    let idom = ms_mir::verify::dominators(f, &rpo, &preds);
+    let text: Vec<String> = idom
+        .iter()
+        .map(|&d| {
+            if d == usize::MAX {
+                "-".into()
+            } else {
+                d.to_string()
+            }
+        })
+        .collect();
+    let _ = writeln!(out, "idom {}", text.join(" "));
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate() {
+            let res = m.result_mode(f, inst).map_or('-', mode_char);
+            // `call` and `call.rt` give one mode per callee parameter, which differs from the
+            // operand count in an ill-formed instruction; one mode per operand is what matters.
+            let mut modes: String = ms_mir::verify::arg_modes(m, f, inst)
+                .into_iter()
+                .take(inst.args.len())
+                .map(mode_char)
+                .take(inst.args.len())
+                .collect();
+            while modes.len() < inst.args.len() {
+                modes.push('B');
+            }
+            let views = u8::from(m.result_views(f, inst));
+            let owned = ms_mir::verify::indirect_owned(m, f, inst);
+            let _ = writeln!(
+                out,
+                "{bi}.{ii} res={res} views={views} owned={owned:x} args={modes}"
+            );
+        }
+    }
+}
+
+/// Runs one optimisation pass by name and returns whether it changed the module.
+fn run_pass(name: &str, m: &mut Module) -> bool {
+    use ms_mir::opt;
+    match name {
+        "bytetake" => opt::bytetake::run(m),
+        "strfuse" => opt::strfuse::run(m),
+        "loopslot" => opt::loopslot::run(m),
+        "optparam" => opt::optparam::run(m),
+        "ifconv" => opt::ifconv::run(m),
+        "reserve" => opt::reserve::run(m),
+        "appendfast" => opt::appendfast::run(m),
+        "sortgen" => opt::sortgen::run(m),
+        _ => panic!("unknown pass {name}"),
     }
 }

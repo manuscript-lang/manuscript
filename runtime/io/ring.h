@@ -16,7 +16,7 @@
 #include <stdint.h>
 
 typedef enum {
-    MS_IO_READ = 1,    /* result: bytes now in the scratch buffer, 0 at end of stream, or a negative status */
+    MS_IO_READ = 1,    /* result: 0 when the row is readable, or a negative libuv status; the scheduler then reads into the scratch buffer */
     MS_IO_WRITE = 2,   /* result: bytes the socket took, or a negative status */
     MS_IO_ACCEPT = 3,  /* result: 0; the new socket is in the listener's accept queue */
     MS_IO_CONNECT = 4, /* result: 0 connected, or a negative status */
@@ -46,8 +46,9 @@ bool ms_io_ring_pop(MsIoRing *ring, MsIoEvent *event);
 uint32_t ms_io_ring_length(const MsIoRing *ring);
 uint32_t ms_io_ring_dropped(const MsIoRing *ring);
 
-/* The loop's shared read buffer. Every read of the loop lands here and is consumed (parsed, or copied into
- * the row's stash) before the next read starts, so one buffer serves any number of connections. */
+/* The loop's shared read buffer. The scheduler reads into it when it pops a readable row, and the bytes are
+ * consumed (parsed, or copied into the row's stash) before the next row is served, so one buffer serves any
+ * number of connections. A callback must not read into it: several callbacks run per loop pass. */
 typedef struct {
     uint8_t *data; /* owned */
     size_t size;

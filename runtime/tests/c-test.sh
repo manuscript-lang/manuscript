@@ -9,7 +9,7 @@ mkdir -p "$out"
 flags="-std=gnu11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include -Iruntime/std"
 for t in runtime/tests/core_*.c; do
     name=$(basename "$t" .c)
-    cc $flags -DMS_ALLOC_STATS -Iruntime/core -Iruntime/tests/support "$t" runtime/core/*.c runtime/sys/*.c runtime/sys/posix/*.c runtime/tests/support/*.c \
+    cc $flags -DMS_ALLOC_STATS -Iruntime/core -Iruntime/tests/support "$t" runtime/core/*.c runtime/sys/posix/*.c runtime/tests/support/*.c \
         -lm -lpthread -o "$out/$name"
     "$out/$name"
 done
@@ -22,7 +22,7 @@ done
 for t in runtime/tests/std_*.c; do
     name=$(basename "$t" .c)
     # shellcheck disable=SC2046
-    cc $flags $(pkg-config --cflags libpcre2-8 libcrypto) "$t" runtime/std/*.c $(sh runtime/third_party/libs.sh libs pcre2 crypto) -lm -o "$out/$name"
+    cc $flags $(pkg-config --cflags libpcre2-8 libcrypto) "$t" runtime/std/*.c runtime/tests/std_support/*.c runtime/sys/posix/fs.c runtime/sys/posix/clock.c $(sh runtime/third_party/libs.sh libs pcre2 crypto) -lm -o "$out/$name"
     "$out/$name"
 done
 # The HTTP/1 tests link the vendored llhttp sources (the same ones the pinned build compiles).
@@ -30,6 +30,14 @@ llhttp=runtime/third_party/llhttp
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -w -I"$llhttp/include" -Iruntime/include \
     runtime/tests/http1_test.c runtime/net/http1.c "$llhttp"/src/*.c -o "$out/http1_test"
 "$out/http1_test"
+# The reactor test links the reactor, libuv and the descriptor primitives of runtime/sys.
+for t in runtime/tests/io_*.c; do
+    name=$(basename "$t" .c)
+    # shellcheck disable=SC2046
+    cc $flags $(sh runtime/third_party/libs.sh cflags) "$t" runtime/io/*.c runtime/sys/posix/*.c $(sh runtime/third_party/libs.sh libs uv) \
+        -lpthread -o "$out/$name"
+    "$out/$name"
+done
 # The socket layer: the sources of this platform in runtime/sys (linux or darwin), the test needs only the C library.
 platform=$(uname -s | tr '[:upper:]' '[:lower:]')
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include \

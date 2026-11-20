@@ -1,0 +1,11 @@
+module "t"
+type P { x: int, y: int }
+fn @main() -> int {
+b0:
+  %a: int = iconst 1
+  %b: bool = bconst true
+  %p: P = type.new P %a, %a
+  %q: P = type.set P.x %p, %b
+  %z: int = iconst 0
+  ret %z
+}

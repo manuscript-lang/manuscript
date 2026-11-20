@@ -111,14 +111,43 @@ typedef struct ShortestDigits {
     long exponent;
 } ShortestDigits;
 
+/* `printf` rounds an exact tie to even, Rust's shortest digits round it up (`...3125` prints as
+ * `...313`). When the exact value of `v` is a tie at `precision` digits and rounding up still
+ * reads back as `v`, `text` ("d.ddde+XX") becomes the rounded-up digits. */
+static void mp_round_tie_up(char *text, size_t size, double v, int precision) {
+    char longer[400];
+    snprintf(longer, sizeof longer, "%.*e", precision + 60, v);
+    const char *tail = longer + 2 + precision; /* after "d." and `precision` digits */
+    if (*tail != '5') {
+        return;
+    }
+    for (const char *c = tail + 1; *c != 'e'; c++) {
+        if (*c != '0') {
+            return;
+        }
+    }
+    char up[64];
+    snprintf(up, sizeof up, "%.*e", precision, v);
+    char *last = up + strcspn(up, "e") - 1;
+    if (*last == '9') {
+        return; /* a carry changes the exponent; leave it to printf's own rounding */
+    }
+    (*last)++;
+    if (strtod(up, NULL) == v) {
+        snprintf(text, size, "%s", up);
+    }
+}
+
 static ShortestDigits mp_shortest_digits(double v) {
     char text[64] = {0};
-    for (int precision = 0; precision < 17; precision++) {
-        snprintf(text, sizeof text, "%.*e", precision, v);
+    int found = 0;
+    for (; found < 17; found++) {
+        snprintf(text, sizeof text, "%.*e", found, v);
         if (strtod(text, NULL) == v) {
             break;
         }
     }
+    mp_round_tie_up(text, sizeof text, v, found);
     /* text is d[.ddd]e[+-]XX */
     ShortestDigits out = {.digits = {0}};
     const char *exponent_mark = strchr(text, 'e');
