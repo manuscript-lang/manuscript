@@ -14,6 +14,9 @@
 /* The deepest container nesting a parse accepts or a write produces, and the widest indent a write honors. */
 enum { JSON_DEPTH_CEILING = 100000, JSON_INDENT_CEILING = 10 };
 
+/* What the scanner's inner steps answer besides a status: another value follows. */
+enum { JSON_MORE = 255 };
+
 /* ---- output buffer ---- */
 
 /* Bytes under a size limit. The allocation always holds one spare byte, so the contents can become a string value
@@ -33,15 +36,17 @@ void json_buffer_free(JsonBuffer *buffer);
 
 /* ---- parse events ---- */
 
-/* The text of a string, key or number (decoded, without quotes): borrowed from the scanner and valid until the sink
- * returns, or until the buffer is released when json_scan keeps it. `offset` is its start in that buffer. */
+/* The text of a string, key or number: borrowed from the scanner, valid until the sink returns. A string without
+ * escapes is a span of the source (`source_offset` says where); a decoded one is scratch (`source_offset` is
+ * JSON_DECODED). */
+#define JSON_DECODED ((size_t)SIZE_MAX)
 typedef struct JsonText {
     MsBytes bytes;
-    size_t offset;
+    size_t source_offset;
 } JsonText;
 
-/* What the scanner reports, in document order. Each function returns MS_STATUS_OK or
- * MS_STATUS_LIMIT_EXCEEDED; the scanner has rejected a repeated object key before the sink sees the object. */
+/* What the scanner reports, in document order. Each function returns MS_STATUS_OK, MS_STATUS_LIMIT_EXCEEDED, or (from
+ * `close`) MS_STATUS_INVALID_DATA for an object with a repeated key. */
 typedef struct JsonSinkOps {
     uint8_t (*null)(void *sink);
     uint8_t (*boolean)(void *sink, bool value);
@@ -58,10 +63,10 @@ typedef struct JsonLimits {
     size_t max_values;
 } JsonLimits;
 
-/* Where a failed scan stopped: the byte offset and the reason (a static string: yyjson's, or the repeated key). */
+/* Where a failed scan stopped: the byte offset, and whether it stopped at a repeated object key. */
 typedef struct JsonStop {
     size_t at;
-    const char *reason;
+    bool duplicate;
 } JsonStop;
 
 /* Reads the optional budgets (`has_*`, value) of a parse into limits for text of `length` bytes. MS_STATUS_INVALID_INPUT
@@ -70,11 +75,8 @@ MS_NODISCARD uint8_t json_limits(size_t length, uint8_t has_max_bytes, int64_t m
                                  int64_t max_depth, uint8_t has_max_values, int64_t max_values, JsonLimits *out);
 
 /* Scans exactly one value of `text` into `ops`. MS_STATUS_OK, MS_STATUS_INVALID_DATA for a syntax error (`stop` says
- * where and why, a repeated object key included) or MS_STATUS_LIMIT_EXCEEDED. The scanner decodes a private copy of
- * the text, which the reported JsonText offsets index. A successful scan hands that copy to `keep` when it is not
- * NULL (the caller frees it) and frees it otherwise; a failed scan always frees it. */
-MS_NODISCARD uint8_t json_scan(MsBytes text, JsonLimits limits, const JsonSinkOps *ops, void *sink, JsonStop *stop,
-                               JsonBuffer *keep);
+ * where, and whether it was a repeated key) or MS_STATUS_LIMIT_EXCEEDED. */
+MS_NODISCARD uint8_t json_scan(MsBytes text, JsonLimits limits, const JsonSinkOps *ops, void *sink, JsonStop *stop);
 
 /* `line L, column C: <reason>` for a syntax error, as an owned string. */
 void json_explain(MsBytes text, JsonStop stop, MsStr *out);

@@ -3,7 +3,7 @@
 ## Summary
 
 - The C backends (`emit_llvm.c`, `emit_qbe.c`) each cover only scalars, records, calls and data; the Rust LLVM emitter spends 2,034 lines in `mir_llvm/{lists,enums,glue,strings}.rs` and 983 in `glue_llvm.rs` on the other ops (LLVM-text builders, so not a one-for-one line count).
-- Add one pass, `mir_lower_ops` (`compiler/src/mir_lower_ops.c`), that rewrites those ops into `call.rt`, loads, stores, arithmetic and branches before any emitter runs. Emitters print scalars, memory, calls and data only.
+- Add one pass, `mir_lower_ops` (`compiler/src/mir/mir_lower_ops.c`), that rewrites those ops into `call.rt`, loads, stores, arithmetic and branches before any emitter runs. Emitters print scalars, memory, calls and data only.
 - Decision requested: build it, starting with strings and clone/drop (stage 1), not one emitter at a time.
 
 ## Status
@@ -36,9 +36,9 @@ Proposal, 2026-11-20, checked against `origin/main` at `72a07024f`. The coordina
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `compiler/src/mir_lower_ops.c`, `include/ms/mir_pass.h` | the pass, stage 1: clone, drop, drop.if, move.out, forget, str.len | `compiler/tests/qbe/strings.mir` (runs the lowered program) |
-| `compiler/src/emit_qbe.c`, `compiler/tests/qbe/` | call the pass; programs that clone and drop strings run | `make c-compiler-test` |
-| `compiler/src/emit_llvm.c` | call the pass (the LLVM thread) | its `llvm-run.sh` |
+| `compiler/src/mir/mir_lower_ops.c`, `include/ms/mir_pass.h` | the pass, stage 1: clone, drop, drop.if, move.out, forget, str.len | `compiler/tests/qbe/strings.mir` (runs the lowered program) |
+| `compiler/src/emit/emit_qbe.c`, `compiler/tests/qbe/` | call the pass; programs that clone and drop strings run | `make c-compiler-test` |
+| `compiler/src/emit/emit_llvm.c` | call the pass (the LLVM thread) | its `llvm-run.sh` |
 
 ## Alternatives
 
