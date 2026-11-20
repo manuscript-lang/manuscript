@@ -8,6 +8,7 @@ import (
 	from_scalars from "@std/string.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 
+	errno_text from "./errno.ms",
 	quote from "./quote.ms",
 )
 
@@ -195,7 +196,9 @@ export fn run_init(args: List[String]) Int:
 	made := create(absolute, files)
 
 	if made.is_error():
-		complain(f"ms init: cannot create project in {directory}: {made.err().message}")
+		complain(
+			f"ms init: cannot create project in {directory}: {errno_text(made.err())}"
+		)
 		return 1
 
 	say(f"Created project in {directory}")
