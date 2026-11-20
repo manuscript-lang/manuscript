@@ -28,5 +28,6 @@ Layering: `sys` < `core` < `io` < `net` and `std`. `core` never includes libuv.
 | OpenSSL | 3.5.4 | TLS and crypto | Apache-2.0 |
 | RE2 | 20240702 | regex (linear time, no backreferences) | BSD-3-Clause |
 | Abseil | 20240722.0 | RE2 dependency | Apache-2.0 |
+| QBE | 1.3 (vendored, unmodified) | debug code generator, built to `bin/qbe` | MIT |
 
 Versions and SHA-256 sums are in `third_party/c-libs.lock`. Chinmay approved libuv, nghttp2, llhttp, OpenSSL and RE2 on 2026-11-20; any other library needs his approval.
