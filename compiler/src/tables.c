@@ -70,7 +70,7 @@ void ms_check_free(MsCheck *c) {
     ms_tys_free(&c->tys);
     MsSyms *s = &c->syms;
     free(s->name); free(s->id); free(s->kind); free(s->module); free(s->native);
-    free(s->native_name); free(s->export_); free(s->decl); free(s->ty); free(s->nvars);
+    free(s->native_name); free(s->is_exported); free(s->decl); free(s->ty); free(s->nvars);
     for (uint32_t i = 0; i < c->nmods; i++) {
         ms_map_free(&c->mods[i].scope);
         free(c->mods[i].order);
@@ -99,7 +99,7 @@ MsModId ms_module_add(MsCheck *c, MsSym path, const MsModule *syntax) {
 #define COLUMN(field) s->field = realloc(s->field, c2 * sizeof *s->field); if (s->field == NULL) abort()
 
 MsSymId ms_sym_add(MsCheck *c, MsModId module, MsSym name, MsSym id, MsSymKind kind,
-                   MsNativeKind native, MsSym native_name, bool export_, const MsDecl *decl,
+                   MsNativeKind native, MsSym native_name, bool is_exported, const MsDecl *decl,
                    uint32_t nvars) {
     MsModuleRow *m = &c->mods[module];
     MsSyms *s = &c->syms;
@@ -109,7 +109,7 @@ MsSymId ms_sym_add(MsCheck *c, MsModId module, MsSym name, MsSym id, MsSymKind k
     if (s->count == s->cap) {
         uint32_t c2 = s->cap ? s->cap * 2 : 256;
         COLUMN(name); COLUMN(id); COLUMN(kind); COLUMN(module); COLUMN(native); COLUMN(native_name);
-        COLUMN(export_); COLUMN(decl); COLUMN(ty); COLUMN(nvars);
+        COLUMN(is_exported); COLUMN(decl); COLUMN(ty); COLUMN(nvars);
         s->cap = c2;
     }
     MsSymId r = s->count++;
@@ -119,11 +119,11 @@ MsSymId ms_sym_add(MsCheck *c, MsModId module, MsSym name, MsSym id, MsSymKind k
     s->module[r] = module;
     s->native[r] = native;
     s->native_name[r] = native_name;
-    s->export_[r] = export_;
+    s->is_exported[r] = is_exported;
     s->decl[r] = decl;
     s->ty[r] = MS_TY_NONE;
     s->nvars[r] = nvars;
-    /* The module's own scope lists every symbol, exported or not; `export_` says which are visible to importers. */
+    /* The module's own scope lists every symbol, exported or not; `is_exported` says which are visible to importers. */
     ms_map_add(&m->scope, name, r);
     m->order = realloc(m->order, (m->norder + 1) * sizeof *m->order);
     if (m->order == NULL) {

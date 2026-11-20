@@ -6,11 +6,17 @@
 set -eu
 out=target/c-test
 mkdir -p "$out"
-flags="-std=gnu11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include"
+flags="-std=gnu11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include -Iruntime/std"
 for t in runtime/tests/core_*.c; do
     name=$(basename "$t" .c)
-    cc $flags -DMS_ALLOC_STATS -Iruntime/core "$t" runtime/core/*.c runtime/sys/*.c runtime/tests/support/*.c \
+    cc $flags -DMS_ALLOC_STATS -Iruntime/core -Iruntime/tests/support "$t" runtime/core/*.c runtime/sys/*.c runtime/tests/support/*.c \
         -lm -lpthread -o "$out/$name"
+    "$out/$name"
+done
+# The OS layer: runtime/sys/posix (the Windows layer is covered by the conformance corpus on Windows).
+for t in runtime/tests/sys_mem.c runtime/tests/sys_thread.c; do
+    name=$(basename "$t" .c)
+    cc $flags "$t" runtime/sys/posix/*.c -lpthread -o "$out/$name"
     "$out/$name"
 done
 for t in runtime/tests/std_*.c; do

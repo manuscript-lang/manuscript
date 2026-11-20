@@ -9,6 +9,7 @@
 #include <openssl/params.h>
 
 #include "abi.h"
+#include "ms_rt/crypto.h"
 
 /* The HashAlgorithm cases, in declaration order. */
 static const EVP_MD *md_of(int64_t index) {
@@ -144,7 +145,7 @@ static hasher *hasher_alloc(void) {
     return h;
 }
 
-hasher *msstd_crypto_hasher_new(int64_t alg) {
+void *msstd_crypto_hasher_new(int64_t alg) {
     const EVP_MD *md = md_of(alg);
     hasher *h = hasher_alloc();
     h->md_init = EVP_MD_CTX_new();
@@ -157,7 +158,7 @@ hasher *msstd_crypto_hasher_new(int64_t alg) {
     return h;
 }
 
-hasher *msstd_crypto_hmac_hasher_new(int64_t alg, const msrt_vec *key) {
+void *msstd_crypto_hmac_hasher_new(int64_t alg, const msrt_vec *key) {
     const char *name = md_name(alg);
     hasher *h = hasher_alloc();
     EVP_MAC *mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
@@ -173,7 +174,8 @@ hasher *msstd_crypto_hmac_hasher_new(int64_t alg, const msrt_vec *key) {
     return h;
 }
 
-void msstd_crypto_hasher_update(hasher *h, const msrt_vec *data) {
+void msstd_crypto_hasher_update(void *handle, const msrt_vec *data) {
+    hasher *h = handle;
     if (!data->len) return;
     if (h->md_cur)
         EVP_DigestUpdate(h->md_cur, data->ptr, data->len);
@@ -181,7 +183,8 @@ void msstd_crypto_hasher_update(hasher *h, const msrt_vec *data) {
         EVP_MAC_update(h->mac_cur, data->ptr, data->len);
 }
 
-void msstd_crypto_hasher_finish(hasher *h, msrt_vec *out) {
+void msstd_crypto_hasher_finish(void *handle, msrt_vec *out) {
+    hasher *h = handle;
     uint8_t buf[EVP_MAX_MD_SIZE];
     size_t n = 0;
     if (h->md_cur) {

@@ -1,4 +1,7 @@
-import Date, Instant, Timestamp from "@std/time.ms"
+import (
+	Bytes from "@std/bytes.ms",
+	Date, Instant, Timestamp from "@std/time.ms",
+)
 
 export extern fn msstd_time_duration_add(value: Int, other: Int) Int
 
@@ -22,7 +25,9 @@ export extern fn msstd_time_duration_to_minutes(value: Int) Float
 
 export extern fn msstd_time_duration_to_hours(value: Int) Float
 
-export extern fn msstd_time_local_zone() String
+export extern fn msstd_time_system_zone() String
+
+export extern fn msstd_time_system_zone_file() Bytes!
 
 export extern fn msstd_time_instant_shift(value: Instant, duration: Int) Instant
 
@@ -32,17 +37,22 @@ export extern fn msstd_time_instant_compare(value: Instant, other: Instant) Int
 
 export extern fn msstd_time_timestamp_to_string(value: Timestamp) String
 
-export extern fn msstd_time_timestamp_calendar(value: Timestamp, zone: String) Date!
+export extern fn msstd_time_timestamp_calendar(
+	value: Timestamp,
+	offset: Int,
+	zone: String,
+) Date
 
 export extern fn msstd_time_timestamp_format(
 	value: Timestamp,
 	pattern: String,
+	offset: Int,
 	zone: String,
-) String!
+) String
 
 export extern fn msstd_time_parse_timestamp(text: String) Timestamp!
 
-export extern fn msstd_time_from_calendar(
+export extern fn msstd_time_local_from_calendar(
 	year: Int,
 	month: Int,
 	day: Int,
@@ -50,7 +60,12 @@ export extern fn msstd_time_from_calendar(
 	minute: Int,
 	second: Int,
 	nanosecond: Int,
-	zone: String,
+) Int!
+
+export extern fn msstd_time_from_local(
+	local: Int,
+	nanosecond: Int,
+	offset: Int,
 ) Timestamp!
 
 export extern fn msstd_time_clock_now() Instant

@@ -51,6 +51,16 @@ size_t ms_bounds_interp_end(const MsBounds *b, size_t start);
 /* Position after advancing from `from` to `to` through normalised text, restoring CR bytes. */
 MsPos ms_bounds_restore_offset(const MsBounds *b, MsPos from, MsPos to);
 
+/* Editor recovery. For each physical line start (including the empty line after a final newline),
+ * whether lexing the prefix ending there leaves a delimiter open; `stop_at` lines end the pass when
+ * they are closed. Returns an arena array of `*count` entries. */
+bool *ms_unterminated_prefixes(MsArena *arena, const char *src, size_t len, const bool *stop_at,
+                               size_t nstop, size_t *count);
+/* Physical lines inside text or block comments, which cannot start recovery chunks. `roots[i]` says
+ * line i starts a declaration. */
+bool *ms_recovery_continuations(MsArena *arena, const char *src, size_t len, const bool *roots,
+                                size_t nroots, size_t *count);
+
 /* Quotes a scalar the way Rust's `{:?}` does for a char. */
 void ms_quote_rune(MsBuf *out, uint32_t c);
 

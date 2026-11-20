@@ -5,11 +5,10 @@
 use crate::civil::{
     Civil, MAX_SECONDS, MIN_SECONDS, NANOS_PER_SECOND, civil_of, days_in_month, local_seconds,
 };
-use crate::zone::Zone;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
-use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE};
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_OUT_OF_RANGE};
 
 /// Seconds since the Unix epoch and a nanosecond part in `0..1_000_000_000`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -119,14 +118,14 @@ pub struct Date {
     pub zone: String,
 }
 
-pub fn calendar(ts: Ts, zone: &str) -> Result<Date, u8> {
-    let z = Zone::load(zone).ok_or(STATUS_INVALID_INPUT)?;
-    let (offset, name) = z.at(ts.seconds);
-    Ok(Date {
-        civil: civil_of(ts.seconds + offset, ts.nanos),
+/// Breaks a timestamp into fields in a zone that is `offset` seconds east of UTC and called `zone`.
+/// `@std/internal/zone.ms` resolves zone names to an offset and an abbreviation.
+pub fn calendar(ts: Ts, offset: i64, zone: &str) -> Date {
+    Date {
+        civil: civil_of(ts.seconds.saturating_add(offset), ts.nanos),
         offset_seconds: offset,
-        zone: name,
-    })
+        zone: zone.into(),
+    }
 }
 
 // A padded i64 needs at most 20 bytes; the signed hh:mm offset also fits. Keep
@@ -192,8 +191,8 @@ fn render_token(index: usize, c: &Date, out: &mut TokenText) {
 }
 
 /// `Timestamp.format(pattern, zone)`: at each position the first matching token wins, in this order.
-pub fn format(ts: Ts, pattern: &[u8], zone: &str) -> Result<Vec<u8>, u8> {
-    let c = calendar(ts, zone)?;
+pub fn format(ts: Ts, pattern: &[u8], offset: i64, zone: &str) -> Vec<u8> {
+    let c = calendar(ts, offset, zone);
     let keys: [&[u8]; 9] = [
         b"YYYY", b"MM", b"DD", b"HH", b"mm", b"ss", b"SSS", b"ZZ", b"zone",
     ];
@@ -223,12 +222,13 @@ pub fn format(ts: Ts, pattern: &[u8], zone: &str) -> Result<Vec<u8>, u8> {
         out.push(pattern[i]);
         i += 1;
     }
-    Ok(out)
+    out
 }
 
-/// `time.from_calendar(...)`: strictly validated fields; DST gaps and overlaps resolve to the earlier offset.
+/// Validates calendar fields strictly and returns their local seconds (the seconds of the same
+/// fields read as UTC); `from_local` then applies the zone's offset.
 #[allow(clippy::too_many_arguments)]
-pub fn from_calendar(
+pub fn local_from_calendar(
     year: i64,
     month: i64,
     day: i64,
@@ -236,10 +236,7 @@ pub fn from_calendar(
     minute: i64,
     second: i64,
     nanosecond: i64,
-    zone: &str,
-) -> Result<Ts, u8> {
-    let z = Zone::load(zone).ok_or(STATUS_INVALID_INPUT)?;
-    let out_of_range = STATUS_OUT_OF_RANGE;
+) -> Result<i64, u8> {
     if !(1..=9999).contains(&year)
         || !(1..=12).contains(&month)
         || day < 1
@@ -249,13 +246,17 @@ pub fn from_calendar(
         || !(0..NANOS_PER_SECOND).contains(&nanosecond)
         || day > days_in_month(year, month)
     {
-        return Err(out_of_range);
+        return Err(STATUS_OUT_OF_RANGE);
     }
-    let local = local_seconds(year, month, day, hour, minute, second);
-    let offset = z.offset_for_local(local, nanosecond);
+    Ok(local_seconds(year, month, day, hour, minute, second))
+}
+
+/// The timestamp of local seconds in a zone `offset` seconds east of UTC; a result outside years
+/// 1 through 9999 is out of range.
+pub fn from_local(local: i64, nanosecond: i64, offset: i64) -> Result<Ts, u8> {
     let unix = local - offset;
     if !in_range(unix) {
-        return Err(out_of_range);
+        return Err(STATUS_OUT_OF_RANGE);
     }
     Ok(Ts {
         seconds: unix,
@@ -266,6 +267,62 @@ pub fn from_calendar(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ms_rt_abi::STATUS_INVALID_INPUT;
+
+    // Zone names resolve in `stdlib/internal/zone.ms`; these tests use only UTC and fixed offsets.
+    fn zone_of(zone: &str) -> Result<(i64, String), u8> {
+        let b = zone.as_bytes();
+        match zone {
+            "UTC" | "" => return Ok((0, "UTC".to_string())),
+            _ => {}
+        }
+        let digit = |i: usize| {
+            b.get(i)
+                .filter(|c| c.is_ascii_digit())
+                .map(|c| i64::from(c - b'0'))
+        };
+        let parsed = (|| {
+            if b.len() != 6 || !matches!(b[0], b'+' | b'-') || b[3] != b':' {
+                return None;
+            }
+            let hours = digit(1)? * 10 + digit(2)?;
+            let minutes = digit(4)? * 10 + digit(5)?;
+            if hours > 23 || minutes > 59 {
+                return None;
+            }
+            let seconds = hours * 3_600 + minutes * 60;
+            Some(if b[0] == b'-' { -seconds } else { seconds })
+        })();
+        parsed
+            .map(|seconds| (seconds, zone.to_string()))
+            .ok_or(STATUS_INVALID_INPUT)
+    }
+
+    fn calendar(ts: Ts, zone: &str) -> Result<Date, u8> {
+        let (offset, name) = zone_of(zone)?;
+        Ok(super::calendar(ts, offset, &name))
+    }
+
+    fn format(ts: Ts, pattern: &[u8], zone: &str) -> Result<Vec<u8>, u8> {
+        let (offset, name) = zone_of(zone)?;
+        Ok(super::format(ts, pattern, offset, &name))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn from_calendar(
+        year: i64,
+        month: i64,
+        day: i64,
+        hour: i64,
+        minute: i64,
+        second: i64,
+        nanosecond: i64,
+        zone: &str,
+    ) -> Result<Ts, u8> {
+        let (offset, _) = zone_of(zone)?;
+        let local = local_from_calendar(year, month, day, hour, minute, second, nanosecond)?;
+        from_local(local, nanosecond, offset)
+    }
 
     // The original eager renderer is a byte-for-byte differential oracle for
     // token ordering, padding, truncation and unmatched (possibly non-UTF-8) bytes.
@@ -387,14 +444,7 @@ mod tests {
             b"\xffYYYY\x80MM\0zone",
             "日付 YYYY 年 MM 月 DD 日 🕰 HH:mm:ss".as_bytes(),
         ];
-        let zones = [
-            "UTC",
-            "",
-            "+23:59",
-            "-23:59",
-            "Europe/Berlin",
-            "America/New_York",
-        ];
+        let zones = ["UTC", "", "+23:59", "-23:59", "+05:30", "-03:30"];
         let mut random = 42_u64;
         for i in 0..512 {
             random = random
@@ -561,40 +611,23 @@ mod tests {
     #[test]
     fn zones() {
         let t = ts("2024-07-04T16:05:09.123456789Z");
-        let c = calendar(t, "America/New_York").unwrap();
-        assert_eq!(
-            (c.civil.hour, c.offset_seconds, c.zone.as_str()),
-            (12, -4 * 3600, "EDT")
-        );
         let c = calendar(t, "+05:30").unwrap();
         assert_eq!(
             (c.civil.hour, c.civil.minute, c.zone.as_str()),
             (21, 35, "+05:30")
         );
+        // Names are resolved by `@std/internal/zone.ms`; here only UTC and offsets exist.
         assert_eq!(
             calendar(t, "Nowhere/City").err(),
             Some(STATUS_INVALID_INPUT)
         );
-        // Names are case-sensitive, as zoneinfo file names are in Go.
-        for name in [
-            "america/new_york",
-            "AMERICA/NEW_YORK",
-            "utc",
-            "Utc",
-            "local",
-        ] {
+        for name in ["utc", "Utc", "local", "+5:30", "+24:00", "+05:60"] {
             assert_eq!(
                 calendar(t, name).err(),
                 Some(STATUS_INVALID_INPUT),
                 "{name}"
             );
         }
-        assert!(calendar(t, "US/Pacific").is_ok());
-        let text = format(t, b"YYYY-MM-DD HH:mm:ss.SSS ZZ [zone] SS", "Europe/Berlin").unwrap();
-        assert_eq!(
-            core::str::from_utf8(&text).unwrap(),
-            "2024-07-04 18:05:09.123 +02:00 [CEST] SS"
-        );
     }
 
     #[test]
@@ -646,13 +679,7 @@ mod tests {
 
     #[test]
     fn calendar_resolution_preserves_range_and_historical_jumps() {
-        for zone in [
-            "UTC",
-            "+23:59",
-            "-23:59",
-            "Europe/Berlin",
-            "America/New_York",
-        ] {
+        for zone in ["UTC", "+23:59", "-23:59", "+05:30", "-03:30"] {
             for text in ["0001-01-02T12:00:00Z", "9999-12-30T12:00:00Z"] {
                 let original = ts(text);
                 let c = calendar(original, zone).unwrap().civil;
@@ -672,7 +699,7 @@ mod tests {
             }
         }
         assert_eq!(
-            from_calendar(9999, 12, 31, 23, 59, 59, 999_999_999, "Europe/London"),
+            from_calendar(9999, 12, 31, 23, 59, 59, 999_999_999, "UTC"),
             Ok(Ts {
                 seconds: MAX_SECONDS,
                 nanos: 999_999_999
@@ -689,50 +716,14 @@ mod tests {
             from_calendar(9999, 12, 31, 23, 59, 59, 0, "-00:01"),
             Err(STATUS_OUT_OF_RANGE)
         );
-        // Apia skipped an entire date when it crossed the date line.
-        assert_eq!(
-            from_calendar(2011, 12, 30, 12, 0, 0, 0, "Pacific/Apia"),
-            Ok(ts("2011-12-30T22:00:00Z"))
-        );
-        // Lord Howe's overlap is half an hour, not an hour.
-        assert_eq!(
-            from_calendar(2024, 4, 7, 1, 45, 0, 0, "Australia/Lord_Howe"),
-            Ok(ts("2024-04-06T14:45:00Z"))
-        );
     }
 
     #[test]
     fn calendar_to_timestamp() {
         let f = |y, mo, d, h, zone: &str| from_calendar(y, mo, d, h, 30, 0, 0, zone).map(to_string);
-        assert_eq!(
-            f(2024, 7, 4, 12, "America/New_York").unwrap(),
-            "2024-07-04T16:30:00Z"
-        );
-        // Spring forward: 02:30 does not exist; the offset in force before the gap (EST) applies.
-        assert_eq!(
-            f(2024, 3, 10, 2, "America/New_York").unwrap(),
-            "2024-03-10T07:30:00Z"
-        );
-        // Midnight gap (Santiago skips 00:00-01:00): resolves instead of failing.
-        assert_eq!(
-            from_calendar(2024, 9, 8, 0, 30, 0, 0, "America/Santiago")
-                .map(to_string)
-                .unwrap(),
-            "2024-09-08T04:30:00Z"
-        );
-        // Repeated hour east of UTC: the earlier instant (BST).
-        assert_eq!(
-            f(2024, 10, 27, 1, "Europe/London").unwrap(),
-            "2024-10-27T00:30:00Z"
-        );
-        // Fall back: 01:30 occurs twice; the first (EDT) wins.
-        assert_eq!(
-            f(2024, 11, 3, 1, "America/New_York").unwrap(),
-            "2024-11-03T05:30:00Z"
-        );
+        assert_eq!(f(2024, 7, 4, 12, "+05:30").unwrap(), "2024-07-04T07:00:00Z");
         assert_eq!(f(2024, 2, 30, 1, "UTC"), Err(STATUS_OUT_OF_RANGE));
         assert_eq!(f(2024, 2, 1, 1, "Bogus/Zone"), Err(STATUS_INVALID_INPUT));
         assert_eq!(f(1, 1, 1, 0, "+01:00"), Err(STATUS_OUT_OF_RANGE));
-        let _ = "".to_string();
     }
 }
