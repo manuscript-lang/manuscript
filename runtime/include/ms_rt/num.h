@@ -31,4 +31,7 @@ uint8_t msrt_float_to_float32(double v, float *out);
 /* ms-sig: msrt_numbers_parse_int(text: *const StrVal, radix: i64, out: *mut i64) -> u8 @domain=number @leaf */
 uint8_t msrt_numbers_parse_int(const MsStr *text, int64_t radix, int64_t *out);
 
+/* ms-sig: msrt_numbers_parse_float(text: *const StrVal, out: *mut f64) -> u8 @domain=number @leaf */
+uint8_t msrt_numbers_parse_float(const MsStr *text, double *out);
+
 #endif
