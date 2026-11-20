@@ -2,6 +2,7 @@
 #ifndef MS_DUMP_H
 #define MS_DUMP_H
 
+#include "ms/ast.h"
 #include "ms/base.h"
 
 /* Quotes `s` in the dump's string syntax: printable ASCII as is, other bytes as \xNN. */
@@ -9,5 +10,13 @@ void ms_dump_quote(MsBuf *out, const char *s, size_t n);
 void ms_dump_pos(MsBuf *out, MsPos p);
 /* "error line:col:off end=... fix=... opener=N "message"\n" */
 void ms_dump_diag(MsBuf *out, const MsDiag *d);
+
+/* The canonical tree dump of crates/ms-syntax/src/dump.rs. */
+void ms_dump_module(MsBuf *out, const MsNames *names, const MsModule *m);
+
+#include "ms/tables.h"
+
+/* The standard-library tables in the form crates/ms-check/examples/c_oracle.rs prints. */
+void ms_dump_std_tables(MsBuf *out, const MsCheck *c);
 
 #endif

@@ -2,6 +2,7 @@
 # General benchmark suite: each program directory holds the same program as main.ms, main.rs, main.go and
 # main.js (and main.c where a C control exists). Every sample's output must match the Rust output byte for byte.
 # Usage: MS=./target/release/ms sh bench/perf/suite/run.sh [samples] [program ...]
+# CFLAGS overrides the C control's flags (default -O2).
 # Table: minimum wall time in ms of N samples (process start, stdin and stdout included; compilation excluded)
 # and each language's time over Manuscript's. A missing toolchain leaves its column "-".
 set -eu
@@ -29,7 +30,7 @@ for t in $manifest; do
   "$MS" build "$d/main.ms" -o "$work/${name}_ms" >/dev/null
   [ -f "$d/main.rs" ] && rustc -O -o "$work/${name}_rust" "$d/main.rs"
   have go && [ -f "$d/main.go" ] && (cd "$d" && go build -o "$work/${name}_go" main.go)
-  have gcc && [ -f "$d/main.c" ] && gcc -O2 -I"$here" -o "$work/${name}_c" "$d/main.c" -lm
+  have gcc && [ -f "$d/main.c" ] && gcc ${CFLAGS:--O2} -I"$here" -o "$work/${name}_c" "$d/main.c" -lm
   run() { # run <lang>
     case $1 in
       node) cmd="node $d/main.js" ;;
