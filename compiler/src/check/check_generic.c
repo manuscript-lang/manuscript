@@ -21,11 +21,11 @@ static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, MsInfer *in)
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsArg *arg = &e->u.call.args.ptr[i];
         const bool fixed = !ms_ty_has_variable(tys, &b->c->arena, params[i].ty);
-        if (arg->has_name || params[i].flags != 0 || (fixed && !ms_body_is_value_type(b, params[i].ty))) {
+        if (arg->has_name || params[i].flags != 0 || (fixed && !ms_body_is_primitive_value(b, params[i].ty))) {
             return false;
         }
         const MsTy actual = ms_body_expr(b, arg->value, fixed ? params[i].ty : MS_TY_NONE);
-        if (actual == MS_TY_NONE || !ms_body_is_value_type(b, actual) || ms_infer_match(in, params[i].ty, actual) != MS_MATCH_OK) {
+        if (actual == MS_TY_NONE || !ms_body_is_primitive_value(b, actual) || ms_infer_match(in, params[i].ty, actual) != MS_MATCH_OK) {
             return false;
         }
     }
@@ -38,7 +38,7 @@ static bool generic_bounds(MsBody *b, MsInfer *in) {
         return false;
     }
     for (uint32_t i = 0; i < in->nvars; i++) {
-        if (in->bound[i] == MS_TY_NONE || !ms_body_is_value_type(b, in->bound[i])) {
+        if (in->bound[i] == MS_TY_NONE || !ms_body_is_primitive_value(b, in->bound[i])) {
             return false;
         }
         const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
@@ -53,6 +53,9 @@ static bool generic_bounds(MsBody *b, MsInfer *in) {
 }
 
 MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym) {
+    if (b->c->syms.module[sym] != b->module) {
+        return ms_body_unsupported(b); /* an imported generic: its declaration ids belong to another module */
+    }
     const MsDef *def = ms_def(b->c, sym);
     const MsTy sig = b->c->syms.ty[sym];
     MsInfer in;
@@ -62,7 +65,7 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym) {
         return ms_body_unsupported(b);
     }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
-    if (!ms_body_is_value_type(b, result)) {
+    if (!ms_body_is_primitive_value(b, result)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;

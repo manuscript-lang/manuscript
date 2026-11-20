@@ -8,7 +8,28 @@
 //! ms: domain string
 use crate::alloc;
 use crate::fault;
-use crate::utf8;
+
+/// A scalar decoded by `ms_utf8_decode_multi` and the bytes it took (runtime/core/utf8.c).
+#[repr(C)]
+struct Rune {
+    rune: u32,
+    width: u32,
+}
+
+unsafe extern "C-unwind" {
+    fn ms_utf8_count(s: *const u8, n: usize) -> usize;
+    fn ms_utf8_decode_multi(s: *const u8, n: usize) -> Rune;
+}
+
+/// The scalar at the start of the non-empty `s` and its width; an invalid byte is U+FFFD of width 1.
+fn utf8_decode(s: &[u8]) -> (u32, usize) {
+    if s[0] < 0x80 {
+        return (u32::from(s[0]), 1);
+    }
+    // SAFETY: `s` is a live slice of `s.len() > 0` bytes.
+    let r = unsafe { ms_utf8_decode_multi(s.as_ptr(), s.len()) };
+    (r.rune, r.width as usize)
+}
 use core::ptr::null_mut;
 use ms_rt_abi::{
     HasRaw, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STR_INLINE_MAX, StrVal, VecVal,
@@ -446,7 +467,7 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
         if known_ascii(s) {
             return (*s).len();
         }
-        utf8::count(bytes(s))
+        ms_utf8_count(bytes(s).as_ptr(), (*s).len())
     }
 }
 
@@ -1026,7 +1047,7 @@ unsafe fn normalize_kind(
             chars.clear();
             let mut i = start;
             while i < end {
-                let (c, w) = utf8::decode(&text[i..end]);
+                let (c, w) = utf8_decode(&text[i..end]);
                 chars.push(char::from_u32(c).unwrap_or('\u{FFFD}'));
                 i += w;
             }

@@ -31,8 +31,12 @@ static MsTy body_primitive(const MsCheck *c, const char *name) {
     return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
 }
 
-bool ms_body_is_value_type(const MsBody *b, MsTy ty) {
+static bool body_is_value_type(const MsBody *b, MsTy ty) {
     return ty != MS_TY_NONE && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ty == b->string_ty);
+}
+
+bool ms_body_is_primitive_value(const MsBody *b, MsTy ty) {
+    return body_is_value_type(b, ty);
 }
 
 /* A `type`, `enum` or interface without type parameters. */
@@ -47,12 +51,49 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
 }
 
-/* A type whose values the pass can pass around: primitives, and the module's own nominal types
- * when nothing in the module could make them closeable (a value that closes gets a cleanup the
- * pass does not record yet). */
+/* Whether a value of the type may have a cleanup the pass does not record yet: it has a `close`
+ * method, or holds a field or payload that does. Without a method table nothing is known. */
+static bool body_text_is(const MsBody *b, MsSym name, const char *text);
+
+static bool body_is_closeable(const MsBody *b, MsTy ty, uint32_t depth) {
+    const MsTyTable *tys = &b->c->tys;
+    if (b->methods == NULL || depth > 4) {
+        return true;
+    }
+    const MsMethods *m = &b->methods->methods;
+    for (uint32_t i = 0; i < m->count; i++) {
+        if (m->receiver[i] == ty && m->decl[i] != NULL && body_text_is(b, m->decl[i]->name, "close")) {
+            return true;
+        }
+    }
+    const uint32_t def = tys->def[ty];
+    if (def == 0 || def - 1 >= b->c->defs_cap) {
+        return false;
+    }
+    const MsDef *d = &b->c->defs[def - 1];
+    for (uint32_t i = 0; i < d->nfields; i++) {
+        const MsTy field = d->fields[i].ty;
+        if (field != MS_TY_NONE && ms_ty_kind(tys, field) != MS_K_VARIABLE && body_is_closeable(b, field, depth + 1)) {
+            return true;
+        }
+    }
+    for (uint32_t k = 0; k < d->ncases; k++) {
+        for (uint32_t i = 0; i < d->cases[k].nfields; i++) {
+            const MsTy field = d->cases[k].fields[i].ty;
+            if (field != MS_TY_NONE && ms_ty_kind(tys, field) != MS_K_VARIABLE &&
+                body_is_closeable(b, field, depth + 1)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* A type whose values the pass can pass around: primitives, lists, function values and nominal
+ * types that cannot need a cleanup (a value that closes gets one the pass does not record yet). */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return ms_body_is_value_type(b, ty) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
-           (!b->has_close && body_is_own_nominal(b, ty));
+    return body_is_value_type(b, ty) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
+           (body_is_own_nominal(b, ty) && !body_is_closeable(b, ty, 0));
 }
 
 /* `Result[T, E]` whose success type the pass can hold (or `Void`); the error type is only ever
@@ -428,7 +469,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
     const MsSyms *syms = &b->c->syms;
-    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
+    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
         syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||
         syms->decl[sym]->u.fn.external) {
         return ms_body_unsupported(b);
@@ -446,7 +487,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
         const MsArg *arg = &e->u.call.args.ptr[i];
         const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
         if (arg->has_name || (params[i].flags & MS_PARAM_POSITIONAL) != 0 ||
-            !(ms_body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty))) ||
+            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty))) ||
             ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
             return ms_body_unsupported(b);
         }
@@ -518,7 +559,7 @@ static MsTy body_member(MsBody *b, const MsExpr *e) {
         if (def->fields[i].name != e->u.member.name) {
             continue;
         }
-        if (!ms_body_is_value_type(b, def->fields[i].ty) || def->fields[i].ty == b->string_ty) {
+        if (!body_is_value_type(b, def->fields[i].ty) || def->fields[i].ty == b->string_ty) {
             break; /* reading a String field borrows or moves it out of its holder */
         }
         b->facts->res_kind[e->id] = MS_RES_FIELD;
@@ -586,10 +627,10 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
     if (op == MS_B_AND || op == MS_B_OR) {
         return left == b->bool_ty && right == b->bool_ty ? b->bool_ty : ms_body_unsupported(b);
     }
-    if (left != right && ms_body_is_value_type(b, left) && ms_body_is_value_type(b, right)) {
+    if (left != right && body_is_value_type(b, left) && body_is_value_type(b, right)) {
         return body_report_operands(b, e, left, right);
     }
-    if (left != right || !ms_body_is_value_type(b, left)) {
+    if (left != right || !body_is_value_type(b, left)) {
         return ms_body_unsupported(b);
     }
     if (op == MS_B_EQ || op == MS_B_NE) {
@@ -687,7 +728,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     if (expected != MS_TY_NONE && ty != expected) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
-        if (context == NULL || !ms_body_is_value_type(b, ty) || !ms_body_is_value_type(b, expected)) {
+        if (context == NULL || !body_is_value_type(b, ty) || !body_is_value_type(b, expected)) {
             return ms_body_unsupported(b);
         }
         body_report_mismatch(b, e, ty, expected, context);
@@ -709,7 +750,7 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
-    if (!ms_body_is_value_type(b, ty) || b->c->syms.decl[sym] != NULL) {
+    if (!body_is_value_type(b, ty) || b->c->syms.decl[sym] != NULL) {
         return ms_body_unsupported(b);
     }
     b->facts->type_ref_ty[t->id] = ty;
@@ -1033,7 +1074,7 @@ static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig
         return false;
     }
     const MsTy result = tys->result[sig];
-    if (!body_is_admitted(b, result) && result != b->void_ty) {
+    if (!body_is_bindable(b, result) && result != b->void_ty) {
         return false;
     }
     const MsTyParam *params = ms_ty_params(tys, sig);
@@ -1123,28 +1164,6 @@ static MsTy body_invalid(MsCheck *c) {
     return ms_ty_intern(&c->tys, &desc);
 }
 
-/* Whether the module declares a method called `close`, inside an `impl` or as `fn Type.close`. */
-static bool body_module_has_close(const MsCheck *c, const MsModule *syntax) {
-    for (uint32_t i = 0; i < syntax->ndecls; i++) {
-        const MsDecl *d = syntax->decls[i];
-        if (d->kind == MS_D_FN) {
-            const MsStr name = ms_name(c->names, d->u.fn.name);
-            if (name.len >= 6 && memcmp(name.ptr + name.len - 6, ".close", 6) == 0) {
-                return true;
-            }
-        }
-        if (d->kind != MS_D_IMPL) {
-            continue;
-        }
-        for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
-            const MsStr name = ms_name(c->names, d->u.impl.methods.ptr[k]->func.name);
-            if (name.len == 5 && memcmp(name.ptr, "close", 5) == 0) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
 
 /* Whether a constant's initializer is literals, text and operators alone: a call, a name or a
  * member in it is another rule's concern (a constant may name only other constants). */
@@ -1182,7 +1201,7 @@ static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
     }
     const bool literal = body_is_constant_expression(d->u.konst.value);
     const MsTy ty = b->supported && literal ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
-    if (b->supported && literal && ms_body_is_value_type(b, ty)) {
+    if (b->supported && literal && body_is_value_type(b, ty)) {
         b->facts->body_checked[d->id] = true;
         body_commit_diags(b, diags_start);
         // Like the Rust checker's, the constant's symbol is a function of no parameters.
@@ -1219,8 +1238,7 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
               .string_ty = body_primitive(c, "String"),
               .void_ty = body_primitive(c, "Void"),
               .methods = methods,
-              .invalid_ty = body_invalid(c),
-              .has_close = body_module_has_close(c, row->syntax)};
+              .invalid_ty = body_invalid(c)};
     body_allocate(&b, facts);
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
     // Constants first: a function reads them wherever they are declared.
