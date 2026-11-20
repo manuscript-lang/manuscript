@@ -251,8 +251,19 @@ static bool credential_field(MsBytes name) {
     return ms_ascii_equal_fold(name, ms_bytes_of((const uint8_t *)"authorization", 13)) || ms_ascii_equal_fold(name, ms_bytes_of((const uint8_t *)"cookie", 6));
 }
 
+/* A request that lost its body does not describe one. */
+static bool entity_field(MsBytes name) {
+    static const char *const names[] = {"content-type", "content-length", "content-encoding", "content-language"};
+    for (size_t i = 0; i < sizeof names / sizeof names[0]; i++) {
+        if (ms_ascii_equal_fold(name, ms_bytes_of((const uint8_t *)names[i], strlen(names[i])))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* STATUS_INVALID_INPUT for a refused field, a name that is not a token, or a value that could split the head. */
-static uint8_t block_make(const MsHeaders *table, bool strip_credentials, Block *block) {
+static uint8_t block_make(const MsHeaders *table, bool strip_credentials, bool strip_entity, Block *block) {
     const size_t count = ms_headers_count(table);
     size_t total = 0;
     for (size_t i = 0; i < count; i++) {
@@ -275,7 +286,7 @@ static uint8_t block_make(const MsHeaders *table, bool strip_credentials, Block 
     for (size_t i = 0; i < count; i++) {
         MsBytes name, value;
         ms_headers_field(table, i, &name, &value);
-        if (strip_credentials && credential_field(name)) {
+        if ((strip_credentials && credential_field(name)) || (strip_entity && entity_field(name))) {
             continue;
         }
         MsH1Field *field = &block->fields[block->count++];
@@ -496,8 +507,9 @@ uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr 
     ms_net_clear_text(err);
     MsCurlClient *engine = client_of(handle)->client;
     const int64_t deadline = ms_net_deadline_of(has_timeout, timeout);
-    /* A client with its own resolver follows redirects here, so each new host is resolved through that server. */
-    const bool follow = ms_curl_client_resolver(engine) != NULL && ms_curl_client_max_redirects(engine) > 0;
+    /* Redirects are followed here, so each hop is checked against the filter, resolved through the client's own server when
+       it has one, and sent without the headers of a body it no longer carries. */
+    const bool follow = ms_curl_client_max_redirects(engine) > 0;
     char *current = malloc(msrt_str_len(url) + 1);
     if (current == NULL) {
         return ms_net_finish(MS_NET_FAILED, 0, err);
@@ -505,12 +517,12 @@ uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr 
     memcpy(current, msrt_str_data(url), msrt_str_len(url));
     current[msrt_str_len(url)] = 0;
     MsBytes verb = str_bytes(method), payload = ms_bytes_of(body->ptr, body->len);
-    bool strip = false;
+    bool strip = false, bodiless = false;
     long hops = 0;
     for (;;) {
         const MsBytes target = ms_bytes_of((const uint8_t *)current, strlen(current));
         Block block = {NULL, NULL, 0, 0};
-        uint8_t status = block_make(ms_headers_of(headers), strip, &block);
+        uint8_t status = block_make(ms_headers_of(headers), strip, bodiless, &block);
         char *entry = NULL;
         if (status == STATUS_OK) {
             status = resolve_entry(engine, target, deadline, &entry, err);
@@ -541,6 +553,7 @@ uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr 
                 free(current);
                 return failed;
             }
+            bodiless = bodiless || (payload.len == 0 && body->len > 0);
             hops++;
             continue;
         }
