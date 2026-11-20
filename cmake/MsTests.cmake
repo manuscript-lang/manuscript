@@ -89,11 +89,9 @@ string(TOLOWER "${CMAKE_SYSTEM_NAME}" _platform)
 # The Linux and macOS socket layer is its own file; on Windows sys/windows/net.c is already one of _os_sources.
 set(_platform_net "${_rt}/sys/${_platform}/net.c")
 set(_win_std_extra "")
-set(_win_thread_stub "")
 if(MS_WINDOWS)
   set(_platform_net "")
   set(_win_std_extra "${_rt}/sys/windows/yield.c") # the Windows stream layer yields while it waits
-  set(_win_thread_stub "${_tests}/support/thread_stub.c") # the Windows sampler spawns a thread: tests without libuv stub it
 endif()
 file(GLOB _support_sources CONFIGURE_DEPENDS "${_tests}/support/*.c")
 file(GLOB _std_sources CONFIGURE_DEPENDS "${_rt}/std/*.c")
@@ -145,7 +143,13 @@ endforeach()
 
 # The OS layer: runtime/sys/<platform> and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
-ms_test(sys_mem SOURCES "${_tests}/sys_mem.c" ${_os_sources} ${_win_thread_stub} LIBS)
+# On Windows the sampler in the OS layer allocates and spawns a thread, so the test links the core objects (the allocator and
+# the thread stub) and not the OS sources a second time.
+if(MS_WINDOWS)
+  ms_test(sys_mem SOURCES "${_tests}/sys_mem.c" OBJECTS ms_test_core LIBS m)
+else()
+  ms_test(sys_mem SOURCES "${_tests}/sys_mem.c" ${_os_sources} LIBS)
+endif()
 ms_test(sys_mem_x86 SOURCES "${_tests}/sys_mem_x86.c" "${_rt}/sys/mem_x86.c" LIBS)
 ms_test(sys_thread SOURCES "${_tests}/sys_thread.c" "${_rt}/sys/thread.c" ${_os_sources}
         INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})

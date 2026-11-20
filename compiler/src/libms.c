@@ -139,6 +139,8 @@
 #include "libms_api.c"
 #include "emit/emit_entry.c"
 #include "emit/emit_llvm.c"
+/* The project loader uses POSIX file calls; the Windows tools (ms_mir_build, ms_asm_tables) do not need it. */
+#ifndef _WIN32
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/discover.c"
@@ -152,3 +154,4 @@
 #include "project/install.c"
 
 #include "project/graph_check.c"
+#endif
