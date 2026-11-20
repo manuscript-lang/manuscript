@@ -99,9 +99,26 @@ bool lb_closures(Lb *lb, bool ok);
 
 #define LB_FAIL ((LbVal){MIR_NONE, false})
 
+/* Helpers of lower_body.c the files after it use. */
+LbVal lb_unsupported(Lb *lb);
+LbVal lb_expr(Lb *lb, const MsExpr *e);
+MirTy lb_mir_ty(Lb *lb, MsTy ty);
+void lb_emit_plain(Lb *lb, MirOp op);
+void lb_enter(Lb *lb, MirBlock block);
+void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
+void lb_write_back(Lb *lb);
+
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);
 LbVal lr_field(Lb *lb, const MsExpr *e);
+
+/* Optional and Result (lower_alt.c, included after lower_body.c). */
+MirTy la_type(Lb *lb, MsTy ty);
+LbVal la_none(Lb *lb, const MsExpr *e);
+LbVal la_case(Lb *lb, const MsExpr *call);
+MirValue la_test(Lb *lb, MirValue subject);
+MirValue la_payload(Lb *lb, MirValue subject);
+LbVal la_try(Lb *lb, const MsExpr *e);
 
 #endif
