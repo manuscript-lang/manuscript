@@ -1,5 +1,5 @@
 /* Address-space reservations on Linux and macOS. The kernel commits a page on first touch, so a reservation
- * is mapped readable and writable up front and mssys_commit has nothing to do. */
+ * is mapped readable and writable up front and ms_sys_commit has nothing to do. */
 #include "ms_rt/sys.h"
 
 extern void *mmap(void *addr, size_t len, int prot, int flags, int fd, int64_t off);
@@ -26,14 +26,14 @@ extern int mprotect(void *addr, size_t len, int prot);
 #define MADV_GUARD_INSTALL 102 /* Linux 6.13: a guard region that splits no mapping */
 #endif
 
-uint8_t *mssys_map_anon(size_t len) {
-    void *p = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
-    return p == MAP_FAILED ? NULL : (uint8_t *)p;
+uint8_t *ms_sys_map_anon(size_t len) {
+    void *const memory = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+    return memory == MAP_FAILED ? NULL : (uint8_t *)memory;
 }
 
 /* macOS superpages exist only on Intel, are wired and cannot back a 256 GiB reservation; Apple Silicon
  * uses 16 KiB base pages. Windows large pages need SeLockMemoryPrivilege and are not demand-committed. */
-void mssys_prefer_huge_pages(uint8_t *p, size_t len) {
+void ms_sys_prefer_huge_pages(uint8_t *p, size_t len) {
 #ifdef MADV_HUGEPAGE
     madvise(p, len, MADV_HUGEPAGE);
 #else
@@ -42,19 +42,20 @@ void mssys_prefer_huge_pages(uint8_t *p, size_t len) {
 #endif
 }
 
-void mssys_unmap(uint8_t *p, size_t len) { munmap(p, len); }
+void ms_sys_unmap(uint8_t *p, size_t len) { munmap(p, len); }
 
-uint8_t *mssys_map_region(size_t len) {
-    uint8_t *raw = mssys_map_anon(2 * len);
+uint8_t *ms_sys_map_region(size_t len) {
+    /* Map twice the size, then give back the unaligned head and tail. */
+    uint8_t *const raw = ms_sys_map_anon(2 * len);
     if (raw == NULL) {
         return NULL;
     }
-    uintptr_t start = (uintptr_t)raw;
-    uintptr_t base = (start + len - 1) / len * len;
+    const uintptr_t start = (uintptr_t)raw;
+    const uintptr_t base = (start + len - 1) / len * len;
+    const uintptr_t end = start + 2 * len;
     if (base > start) {
         munmap((void *)start, base - start);
     }
-    uintptr_t end = start + 2 * len;
     if (end > base + len) {
         munmap((void *)(base + len), end - base - len);
     }
@@ -64,21 +65,21 @@ uint8_t *mssys_map_region(size_t len) {
     return (uint8_t *)base;
 }
 
-bool mssys_commit(uint8_t *p, size_t len) {
+bool ms_sys_commit(uint8_t *p, size_t len) {
     (void)p;
     (void)len;
     return true;
 }
 
-bool mssys_commit_guard(uint8_t *p) {
+bool ms_sys_commit_guard(uint8_t *p) {
     (void)p;
     return true;
 }
 
 /* Linux zero-fills released pages; macOS frees them lazily and may keep the old contents. */
-void mssys_release(uint8_t *p, size_t len) { madvise(p, len, MADV_DONTNEED); }
+void ms_sys_release(uint8_t *p, size_t len) { madvise(p, len, MADV_DONTNEED); }
 
-bool mssys_guard(uint8_t *p, size_t len) {
+bool ms_sys_guard(uint8_t *p, size_t len) {
 #ifdef MADV_GUARD_INSTALL
     if (madvise(p, len, MADV_GUARD_INSTALL) == 0) {
         return true;

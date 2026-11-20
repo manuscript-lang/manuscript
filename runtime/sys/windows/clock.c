@@ -3,7 +3,7 @@
 __declspec(dllimport) int __stdcall QueryPerformanceCounter(int64_t *v);
 __declspec(dllimport) int __stdcall QueryPerformanceFrequency(int64_t *v);
 
-int64_t mssys_monotonic_ns(void) {
+int64_t ms_sys_monotonic_ns(void) {
     int64_t freq = 0, now = 0;
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&now);

@@ -1,64 +1,68 @@
 /* Threads and sleeping on Linux and macOS. */
 #include "ms_rt/sys.h"
+#include "timespec.h"
 
 /* Opaque storage larger than pthread_attr_t on every supported target. */
-typedef struct {
+typedef struct MsThreadAttr {
     _Alignas(16) uint8_t bytes[128];
-} mssys_attr;
-
-struct mssys_timespec_s {
-    int64_t sec;
-    int64_t nsec;
-};
+} MsThreadAttr;
 
 extern void *malloc(size_t size);
 extern void free(void *p);
-extern int pthread_attr_init(mssys_attr *attr);
-extern int pthread_attr_destroy(mssys_attr *attr);
-extern int pthread_attr_setstacksize(mssys_attr *attr, size_t size);
-extern int pthread_create(uintptr_t *thread, const mssys_attr *attr, void *(*start)(void *), void *arg);
-extern int pthread_join(uintptr_t thread, void **ret);
-extern int nanosleep(const struct mssys_timespec_s *req, struct mssys_timespec_s *rem);
+extern int pthread_attr_init(MsThreadAttr *attr);
+extern int pthread_attr_destroy(MsThreadAttr *attr);
+extern int pthread_attr_setstacksize(MsThreadAttr *attr, size_t size);
+extern int pthread_create(uintptr_t *thread, const MsThreadAttr *attr, void *(*start)(void *), void *arg);
+extern int pthread_join(uintptr_t thread, void **result);
+extern int nanosleep(const MsTimespec *request, MsTimespec *remaining);
 
-struct start {
-    void (*fn)(void *);
-    void *arg;
-};
+#define MS_MILLISECONDS_PER_SECOND 1000
+#define MS_NANOSECONDS_PER_MILLISECOND INT64_C(1000000)
 
-static void *trampoline(void *p) {
-    struct start s = *(struct start *)p;
-    free(p);
-    s.fn(s.arg);
+/* What a new thread runs. Allocated by ms_sys_thread_spawn; the thread owns it from the start and frees it. */
+typedef struct MsThreadStart {
+    void (*function)(void *);
+    void *argument;
+} MsThreadStart;
+
+static void *thread_trampoline(void *raw) {
+    const MsThreadStart start = *(const MsThreadStart *)raw;
+    free(raw);
+    start.function(start.argument);
     return NULL;
 }
 
-uintptr_t mssys_thread_spawn(size_t stack, void (*start)(void *), void *arg) {
-    struct start *s = malloc(sizeof *s);
-    if (s == NULL) {
+uintptr_t ms_sys_thread_spawn(size_t stack, void (*start)(void *), void *arg) {
+    MsThreadStart *const block = malloc(sizeof *block);
+    if (block == NULL) {
         return 0;
     }
-    s->fn = start;
-    s->arg = arg;
-    mssys_attr attr;
-    pthread_attr_init(&attr);
+    *block = (MsThreadStart){.function = start, .argument = arg};
+
+    MsThreadAttr attributes = {0};
+    pthread_attr_init(&attributes);
     if (stack != 0) {
-        pthread_attr_setstacksize(&attr, stack);
+        pthread_attr_setstacksize(&attributes, stack);
     }
-    uintptr_t tid = 0;
-    int rc = pthread_create(&tid, &attr, trampoline, s);
-    pthread_attr_destroy(&attr);
-    if (rc != 0) {
-        free(s);
+    uintptr_t thread = 0;
+    const int status = pthread_create(&thread, &attributes, thread_trampoline, block);
+    pthread_attr_destroy(&attributes);
+    if (status != 0) {
+        free(block);
         return 0;
     }
-    return tid;
+    return thread;
 }
 
-void mssys_thread_join(uintptr_t thread) { pthread_join(thread, NULL); }
+void ms_sys_thread_join(uintptr_t thread) { pthread_join(thread, NULL); }
 
-void mssys_sleep_ms(uint32_t ms) {
-    struct mssys_timespec_s req = {ms / 1000, (int64_t)(ms % 1000) * 1000000}, rem;
-    while (nanosleep(&req, &rem) != 0) {
-        req = rem; /* interrupted by a signal: sleep the rest */
+void ms_sys_sleep_ms(uint32_t ms) {
+    MsTimespec request = {
+        .seconds = ms / MS_MILLISECONDS_PER_SECOND,
+        .nanoseconds = (int64_t)(ms % MS_MILLISECONDS_PER_SECOND) * MS_NANOSECONDS_PER_MILLISECOND,
+    };
+    MsTimespec remaining = {0};
+    while (nanosleep(&request, &remaining) != 0) {
+        request = remaining; /* a signal interrupted the sleep: sleep the rest */
     }
 }

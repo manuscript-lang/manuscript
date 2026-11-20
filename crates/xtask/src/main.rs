@@ -353,7 +353,7 @@ fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>
         if tail.trim() != ";"
             || !name.starts_with("msrt_")
                 && !name.starts_with("msstd_")
-                && !name.starts_with("mssys_")
+                && !name.starts_with("ms_sys_")
         {
             continue;
         }

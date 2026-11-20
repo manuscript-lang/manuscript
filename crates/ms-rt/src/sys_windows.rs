@@ -2,7 +2,7 @@
 //! everything else. Declared by hand, with `raw-dylib` imports so the archive needs no import
 //! libraries. The same names as the Unix `sys` module where the callers are shared.
 // The Rust definitions that `runtime/sys` replaces are dead in an archive build until they are deleted.
-#![cfg_attr(ms_c = "mssys_map_anon", allow(dead_code))]
+#![cfg_attr(ms_c = "ms_sys_map_anon", allow(dead_code))]
 #![allow(non_camel_case_types, non_snake_case, clippy::upper_case_acronyms)]
 
 use core::ffi::{c_char, c_int, c_void};
@@ -332,7 +332,7 @@ pub fn env_var(name: &[u8]) -> Option<&'static [u8]> {
 }
 
 /// Reserves `len` bytes of address space; [`commit`] makes ranges of it usable. Null on failure.
-#[cfg(not(ms_c = "mssys_map_anon"))]
+#[cfg(not(ms_c = "ms_sys_map_anon"))]
 pub fn map_anon(len: usize) -> *mut u8 {
     // SAFETY: a fresh reservation.
     unsafe { VirtualAlloc(core::ptr::null_mut(), len, MEM_RESERVE, PAGE_NOACCESS).cast() }
@@ -341,7 +341,7 @@ pub fn map_anon(len: usize) -> *mut u8 {
 /// Windows has no usable huge-page advice for the heap reservation (`MEM_LARGE_PAGES` needs
 /// `SeLockMemoryPrivilege` and cannot be demand-committed; a `windows-2025` runner, an administrator,
 /// still failed with error 1314); see `sys::prefer_huge_pages`, #3710 and #3646.
-#[cfg(not(ms_c = "mssys_prefer_huge_pages"))]
+#[cfg(not(ms_c = "ms_sys_prefer_huge_pages"))]
 pub fn prefer_huge_pages(_p: *mut u8, _len: usize) {}
 
 /// The window of address space stack regions are placed in: 64 TiB starting at 32 TiB, far above
@@ -361,7 +361,7 @@ static NEXT_REGION: core::sync::atomic::AtomicUsize = core::sync::atomic::Atomic
 /// counter and reserves exactly that range, so the kernel arbitrates and an occupied slot only
 /// moves the counter on. The counter wraps, so ranges released at teardown are found again;
 /// null only when every slot of the window is taken.
-#[cfg(not(ms_c = "mssys_map_region"))]
+#[cfg(not(ms_c = "ms_sys_map_region"))]
 pub fn map_region(len: usize) -> *mut u8 {
     use core::sync::atomic::Ordering::Relaxed;
     let slots = REGION_WINDOW / len;
@@ -381,7 +381,7 @@ pub fn map_region(len: usize) -> *mut u8 {
 ///
 /// # Safety
 /// The range lies inside a live reservation that nothing is using.
-#[cfg(not(ms_c = "mssys_guard"))]
+#[cfg(not(ms_c = "ms_sys_guard"))]
 pub unsafe fn guard(_p: *mut u8, _len: usize) -> bool {
     true
 }
@@ -422,7 +422,7 @@ pub fn teb_stack() -> [usize; 3] {
 /// value, a later stack probe (`__chkstk`, for a frame over a page) would walk from there into
 /// the other stack's guard page, which the kernel reports as an unhandled guard-page violation
 /// (exit 0x80000001) because the address lies outside the thread's recorded stack.
-#[cfg(not(ms_c = "mssys_commit_guard"))]
+#[cfg(not(ms_c = "ms_sys_commit_guard"))]
 pub fn commit_guard(p: *mut u8) -> bool {
     const PAGE_GUARD: DWORD = 0x100;
     let limit = teb_stack()[1];
@@ -434,7 +434,7 @@ pub fn commit_guard(p: *mut u8) -> bool {
 }
 
 /// Writes the thread environment block's `StackLimit` field.
-#[cfg_attr(ms_c = "mssys_commit_guard", allow(dead_code))]
+#[cfg_attr(ms_c = "ms_sys_commit_guard", allow(dead_code))]
 fn set_stack_limit(limit: usize) {
     // SAFETY: a write of the current thread's TEB.
     unsafe {
@@ -446,7 +446,7 @@ fn set_stack_limit(limit: usize) {
 }
 
 /// Commits `len` bytes at `p` (inside a [`map_anon`] reservation) as zeroed read-write memory.
-#[cfg(not(ms_c = "mssys_commit"))]
+#[cfg(not(ms_c = "ms_sys_commit"))]
 pub fn commit(p: *mut u8, len: usize) -> bool {
     // SAFETY: the range lies inside a reservation of this process.
     !unsafe { VirtualAlloc(p.cast(), len, MEM_COMMIT, PAGE_READWRITE) }.is_null()
@@ -456,7 +456,7 @@ pub fn commit(p: *mut u8, len: usize) -> bool {
 ///
 /// # Safety
 /// The range lies inside a live reservation and holds nothing in use.
-#[cfg(not(ms_c = "mssys_release"))]
+#[cfg(not(ms_c = "ms_sys_release"))]
 pub unsafe fn release(p: *mut u8, len: usize) {
     // SAFETY: forwarded; the caller guarantees the range.
     unsafe { VirtualFree(p.cast(), len, MEM_DECOMMIT) };
@@ -466,14 +466,14 @@ pub unsafe fn release(p: *mut u8, len: usize) {
 ///
 /// # Safety
 /// `p` is the start of a live reservation that nothing uses.
-#[cfg(not(ms_c = "mssys_unmap"))]
+#[cfg(not(ms_c = "ms_sys_unmap"))]
 pub unsafe fn unmap(p: *mut u8, _len: usize) {
     // SAFETY: releasing the whole reservation.
     unsafe { VirtualFree(p.cast(), 0, MEM_RELEASE) };
 }
 
 /// Monotonic clock in nanoseconds.
-#[cfg(not(ms_c = "mssys_monotonic_ns"))]
+#[cfg(not(ms_c = "ms_sys_monotonic_ns"))]
 pub fn monotonic_ns() -> i64 {
     let (mut freq, mut now) = (0i64, 0i64);
     // SAFETY: valid out pointers; both calls cannot fail on supported Windows versions.
@@ -486,7 +486,7 @@ pub fn monotonic_ns() -> i64 {
     (now / freq) * 1_000_000_000 + (now % freq) * 1_000_000_000 / freq
 }
 
-#[cfg(not(ms_c = "mssys_sleep_ms"))]
+#[cfg(not(ms_c = "ms_sys_sleep_ms"))]
 pub fn sleep_ms(ms: u32) {
     // SAFETY: plain Win32 call.
     unsafe { Sleep(ms) }
@@ -512,7 +512,7 @@ unsafe extern "system" fn thread_tramp(p: *mut c_void) -> u32 {
 ///
 /// # Safety
 /// `start` is a valid thread entry.
-#[cfg(not(ms_c = "mssys_thread_spawn"))]
+#[cfg(not(ms_c = "ms_sys_thread_spawn"))]
 pub unsafe fn thread_spawn(
     stack: usize,
     start: extern "C" fn(*mut c_void),
@@ -549,7 +549,7 @@ pub unsafe fn thread_spawn(
 ///
 /// # Safety
 /// `thread` is a live handle from `thread_spawn`, joined once.
-#[cfg(not(ms_c = "mssys_thread_join"))]
+#[cfg(not(ms_c = "ms_sys_thread_join"))]
 pub unsafe fn thread_join(thread: usize) {
     // SAFETY: forwarded.
     unsafe {

@@ -17,16 +17,16 @@ static void bump(void *arg) { *(int *)arg += 41; }
 int main(void) {
     /* The argument reaches the thread and the join waits for it, with the default and with a given stack. */
     int a = 1, b = 1;
-    uintptr_t t1 = mssys_thread_spawn(0, bump, &a);
-    uintptr_t t2 = mssys_thread_spawn((size_t)1 << 20, bump, &b);
+    uintptr_t t1 = ms_sys_thread_spawn(0, bump, &a);
+    uintptr_t t2 = ms_sys_thread_spawn((size_t)1 << 20, bump, &b);
     CHECK(t1 != 0 && t2 != 0);
-    mssys_thread_join(t1);
-    mssys_thread_join(t2);
+    ms_sys_thread_join(t1);
+    ms_sys_thread_join(t2);
     CHECK(a == 42 && b == 42);
 
-    int64_t before = mssys_monotonic_ns();
-    mssys_sleep_ms(20);
-    CHECK(mssys_monotonic_ns() - before >= 19 * 1000000);
+    int64_t before = ms_sys_monotonic_ns();
+    ms_sys_sleep_ms(20);
+    CHECK(ms_sys_monotonic_ns() - before >= 19 * 1000000);
     puts("sys_thread ok");
     return 0;
 }

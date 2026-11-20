@@ -1,20 +1,21 @@
+/* The monotonic clock on Linux and macOS. */
 #include "ms_rt/sys.h"
+#include "timespec.h"
 
-struct mssys_timespec {
-    int64_t sec;
-    int64_t nsec;
-};
-
-extern int clock_gettime(int clock, struct mssys_timespec *ts);
+extern int clock_gettime(int clock, MsTimespec *ts);
 
 #ifdef __APPLE__
-#define CLOCK_MONOTONIC 6
+#define MS_CLOCK_MONOTONIC 6
 #else
-#define CLOCK_MONOTONIC 1
+#define MS_CLOCK_MONOTONIC 1
 #endif
 
-int64_t mssys_monotonic_ns(void) {
-    struct mssys_timespec t = {0, 0};
-    clock_gettime(CLOCK_MONOTONIC, &t);
-    return t.sec * 1000000000 + t.nsec;
+#define MS_NANOSECONDS_PER_SECOND INT64_C(1000000000)
+
+int64_t ms_sys_monotonic_ns(void) {
+    MsTimespec now = {0};
+    if (clock_gettime(MS_CLOCK_MONOTONIC, &now) != 0) {
+        return 0; /* cannot fail for a valid clock id and pointer */
+    }
+    return now.seconds * MS_NANOSECONDS_PER_SECOND + now.nanoseconds;
 }

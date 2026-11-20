@@ -15,26 +15,26 @@
 int main(void) {
     size_t page = 4096, len = (size_t)1 << 20;
 
-    uint8_t *p = mssys_map_anon(len);
+    uint8_t *p = ms_sys_map_anon(len);
     CHECK(p != NULL);
-    CHECK(mssys_commit(p, len));
+    CHECK(ms_sys_commit(p, len));
     for (size_t i = 0; i < len; i += page) {
         CHECK(p[i] == 0);
         p[i] = 1;
     }
-    mssys_prefer_huge_pages(p, len);
-    mssys_release(p, len);
-    CHECK(mssys_commit(p, len));
+    ms_sys_prefer_huge_pages(p, len);
+    ms_sys_release(p, len);
+    CHECK(ms_sys_commit(p, len));
     p[0] = 2; /* usable again after release and commit */
-    mssys_unmap(p, len);
+    ms_sys_unmap(p, len);
 
     /* Regions are aligned to their size, and several coexist. */
     uint8_t *r[4];
     for (int i = 0; i < 4; i++) {
-        r[i] = mssys_map_region(len);
+        r[i] = ms_sys_map_region(len);
         CHECK(r[i] != NULL);
         CHECK((uintptr_t)r[i] % len == 0);
-        CHECK(mssys_commit(r[i] + len - page, page));
+        CHECK(ms_sys_commit(r[i] + len - page, page));
         r[i][len - 1] = (uint8_t)i;
     }
     for (int i = 0; i < 4; i++) {
@@ -43,14 +43,14 @@ int main(void) {
         }
     }
     /* A guard at the bottom of a region, then its commit_guard no-op or guard page. */
-    CHECK(mssys_guard(r[0], page));
+    CHECK(ms_sys_guard(r[0], page));
     for (int i = 0; i < 4; i++) {
         CHECK(r[i][len - 1] == (uint8_t)i);
-        mssys_unmap(r[i], len);
+        ms_sys_unmap(r[i], len);
     }
 
-    int64_t a = mssys_monotonic_ns();
-    int64_t b = mssys_monotonic_ns();
+    int64_t a = ms_sys_monotonic_ns();
+    int64_t b = ms_sys_monotonic_ns();
     CHECK(a > 0 && b >= a);
     puts("sys_mem ok");
     return 0;
