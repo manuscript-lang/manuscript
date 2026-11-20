@@ -253,6 +253,7 @@ export type HttpClientWire:
 	roots_pem: String
 	certificate_pem: String
 	private_key_pem: String
+	resolver: String
 	unix_socket: String
 	max_redirects: Int
 	cookies: Bool
@@ -260,10 +261,12 @@ export type HttpClientWire:
 
 // Creates a client for `options` that obeys every level of `policy`: its hosts and
 // resolved addresses, and each redirect target. Negative limits and a Unix socket on a
-// restricted network are refused.
+// restricted network are refused. A non-empty `resolver` (`ip:port`) names the DNS
+// server for the request's host, and a redirect then stays on that host.
 export fn open_client(
 	policy: Policy,
 	options: HttpClientOptions = HttpClientOptions(),
+	resolver: String = "",
 ) HttpClient!:
 	if limit := options.max_idle_connections:
 		if limit < 0: return error(invalid_request())
@@ -287,6 +290,7 @@ export fn open_client(
 			roots_pem: options.tls.roots_pem.clone(),
 			certificate_pem: options.tls.certificate_pem.clone(),
 			private_key_pem: options.tls.private_key_pem.clone(),
+			resolver: resolver.clone(),
 			unix_socket: options.unix_socket.clone(),
 			max_redirects: redirects,
 			cookies: options.cookies,

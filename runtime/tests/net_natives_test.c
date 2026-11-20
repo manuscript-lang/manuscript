@@ -275,6 +275,39 @@ static MsStr listen_on_loopback(Server *server) {
     return str(text);
 }
 
+/* A DNS server for the resolver test: every name has the address 127.0.0.1, and there are no IPv6 records. */
+typedef struct DnsServer { MsSock udp; int queries; } DnsServer;
+
+static void serve_dns(void *argument) {
+    DnsServer *server = argument;
+    for (int served = 0; served < server->queries; served++) {
+        uint8_t query[512], out[600];
+        MsAddr from;
+        size_t count = 0;
+        while (ms_sys_net_udp_recv(server->udp, query, sizeof query, &count, &from) == MS_SYS_AGAIN) {
+            PollFd p = {.fd = (PollHandle)server->udp, .events = POLLIN};
+            poll_sockets(&p, 1, 100);
+        }
+        size_t end = 12;
+        while (end < count && query[end] != 0) end += (size_t)query[end] + 1;
+        end += 5;
+        const bool wants_a = query[end - 3] == 1;
+        memcpy(out, query, end);
+        out[2] = 0x81;
+        out[3] = 0x80;
+        out[6] = 0;
+        out[7] = wants_a ? 1 : 0;
+        size_t length = end;
+        if (wants_a) {
+            static const uint8_t record[] = {0xC0, 0x0C, 0, 1, 0, 1, 0, 0, 0, 30, 0, 4, 127, 0, 0, 1};
+            memcpy(out + length, record, sizeof record);
+            length += sizeof record;
+        }
+        size_t sent = 0;
+        (void)ms_sys_net_udp_send(server->udp, out, length, &from, &sent);
+    }
+}
+
 static const int64_t SECOND = 1000000000;
 
 int main(void) {
@@ -601,6 +634,42 @@ int main(void) {
     ms_sys_net_close(server.listener);
     ms_tls_ctx_free(https_context);
     server.context = NULL;
+
+
+    /* a client with its own resolver: the DNS server gives the address, and a redirect off the host is refused */
+    {
+        DnsServer dns = {.queries = 4};
+        MsAddr dns_bind = {4, {127, 0, 0, 1}, 0, 0}, dns_at;
+        CHECK(ms_sys_net_udp_bind(&dns_bind, &dns.udp) == MS_SYS_OK && ms_sys_net_local_addr(dns.udp, &dns_at) == MS_SYS_OK);
+        char dns_text[MS_NET_ADDR_TEXT_MAX];
+        size_t dns_length = 0;
+        CHECK(ms_net_addr_format(&dns_at, dns_text, sizeof dns_text, &dns_length));
+        MsSysThread *dns_thread = ms_sys_thread_spawn(1 << 20, serve_dns, &dns);
+        CHECK(dns_thread != NULL);
+        address = listen_on_loopback(&server);
+        const char *port = strrchr((const char *)msrt_str_data(&address), ':');
+        char named[128];
+        snprintf(named, sizeof named, "http://pinned.test%s", port);
+        thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+        CHECK(thread != NULL);
+        MsNetHttpOptions pinned_options = http_options;
+        pinned_options.resolver = str(dns_text);
+        CHECK(msstd_client_new(&pinned_options, &client, &err) == STATUS_OK);
+        char target[160];
+        snprintf(target, sizeof target, "%s/a", named);
+        MsStr target_text = str(target);
+        CHECK(msstd_client_fetch(client, &get, &target_text, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+        CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len > 0);
+        ((MsObj *)response)->drop(response);
+        snprintf(target, sizeof target, "%s/hop", named);
+        target_text = str(target);
+        CHECK(msstd_client_fetch(client, &get, &target_text, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_PERMISSION_DENIED);
+        ((MsObj *)client)->drop(client);
+        ms_sys_thread_join(thread);
+        ms_sys_thread_join(dns_thread);
+        ms_sys_net_close(server.listener);
+        ms_sys_net_close(dns.udp);
+    }
 
     /* a deadline covers the wait for the response */
     address = listen_on_loopback(&server);

@@ -844,6 +844,7 @@ msstd_scope_track_client(handle s: *const ObjCell<ScopeH>, handle client: *const
 msstd_scope_track_conn(handle s: *const ObjCell<ScopeH>, handle conn: *const ObjCell<ConnH>) -> u8 @domain=network
 msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network
 msstd_scope_track_listener(handle s: *const ObjCell<ScopeH>, handle listener: *const ObjCell<ListenerH>) -> u8 @domain=network
+msstd_scope_untrack_client(handle s: *const ObjCell<ScopeH>, handle client: *const ObjCell<ClientH>) -> u8 @domain=network
 msstd_system_cpus(out: *mut VecVal, err: ErrSlot) -> u8 @domain=system
 msstd_system_dev_null(out: *mut StrVal) @domain=system
 msstd_system_end_of_line(out: *mut StrVal) @domain=system
