@@ -859,6 +859,39 @@ static void ll_overflow_flag(LCx *c, const MirInst *inst) {
                   n, op, inst->args[0], inst->args[1], inst->res, n);
 }
 
+/* `inarrow.opt`, `f2i.opt`: the optional is [fits, value]. The value leaf is the integer register
+ * itself (or the saturating conversion of the float), which only means something when it fits. */
+static void ll_opt_convert(LCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const uint32_t n = c->next++;
+    const MirValue x = inst->args[0];
+    if (inst->op == MOP_INarrowOpt) {
+        const MirTyData *res = mir_ty_data(c->m, c->f->values[inst->res]);
+        int64_t lo, hi;
+        mir_narrow_range(c->m, c->f->values[x], res->elem, &lo, &hi);
+        ms_buf_printf(o, "  %%o%ua = icmp sge i64 %%v%u, %lld\n  %%o%ub = icmp sle i64 %%v%u, %lld\n", n, x,
+                      (long long)lo, n, x, (long long)hi);
+        ms_buf_printf(o, "  %%v%u = and i1 %%o%ua, %%o%ub\n", inst->res, n, n);
+        ll_copy_leaf(c, inst->res, 1, x, 0);
+        return;
+    }
+    ms_buf_printf(o, "  %%o%ua = fcmp oge double %%v%u, -9223372036854775808.0\n", n, x);
+    ms_buf_printf(o, "  %%o%ub = fcmp olt double %%v%u, 9223372036854775808.0\n", n, x);
+    ms_buf_printf(o, "  %%v%u = and i1 %%o%ua, %%o%ub\n", inst->res, n, n);
+    ms_buf_printf(o, "  %%v%u.1 = call i64 @llvm.fptosi.sat.i64.f64(double %%v%u)\n", inst->res, x);
+}
+
+/* `opt.is_some`: the flag leaf of an optional held as [flag, value], or a non-null test of one held
+ * as a single nullable pointer. */
+static void ll_opt_is_some(LCx *c, const MirInst *inst) {
+    const MirValue x = inst->args[0];
+    if (ll_leaves(c, c->f->values[x]).len == 1) {
+        ms_buf_printf(c->out, "  %%v%u = icmp ne i64 %%v%u, 0\n", inst->res, x);
+    } else {
+        ll_copy_leaf(c, inst->res, 0, x, 0);
+    }
+}
+
 /* `conv`, `f32.round`, `narrow.chk`, the overflow flags and `int_overflow.if`; false when `inst`
  * is none of them. */
 static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
@@ -884,6 +917,12 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
     }
     case MOP_NarrowChk:
         ll_narrow_chk(c, inst, block, part);
+        return true;
+    case MOP_INarrowOpt: case MOP_F2IOpt:
+        ll_opt_convert(c, inst);
+        return true;
+    case MOP_OptIsSome:
+        ll_opt_is_some(c, inst);
         return true;
     case MOP_IAddOverflow: case MOP_IMulOverflow:
         ll_overflow_flag(c, inst);
@@ -1273,6 +1312,7 @@ static const char ll_declarations[] =
     "declare void @msrt_fault_unwrap_none() cold noreturn nounwind\n"
     "declare void @msrt_cancelled() cold noreturn nounwind\n"
     "declare void @msrt_fault_depth() cold noreturn nounwind\n"
+    "declare i64 @llvm.fptosi.sat.i64.f64(double)\n"
     "declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64)\n"
