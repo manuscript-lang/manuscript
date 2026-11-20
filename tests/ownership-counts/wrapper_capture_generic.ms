@@ -1,4 +1,4 @@
-// expect-debug: allocs=4 alloc_bytes=192
+// expect-debug: allocs=2 alloc_bytes=64
 // expect-release: allocs=2 alloc_bytes=128
 // Nested wrappers, a generic pass-through and a capture: the baseline that
 // owned-argument and return-slot work must not raise.
