@@ -20,27 +20,27 @@ enum {
     MS_SYS_OK = 0,
     MS_SYS_AGAIN = 1,      /* would block: wait for readiness and call again */
     MS_SYS_EOF = 2,        /* read: the peer closed its side */
-    MS_SYS_INPROGRESS = 3, /* connect started: wait for writability, then mssys_net_connect_done */
-    MS_SYS_ERROR = -1      /* see mssys_net_error() */
+    MS_SYS_INPROGRESS = 3, /* connect started: wait for writability, then ms_sys_net_connect_done */
+    MS_SYS_ERROR = -1      /* see ms_sys_net_error() */
 };
 
-/* A listening socket on `addr` (port 0 picks one; read it back with mssys_net_local_addr). */
-int mssys_net_tcp_listen(const ms_addr *addr, int backlog, ms_sock *out);
+/* A listening socket on `addr` (port 0 picks one; read it back with ms_sys_net_local_addr). */
+int ms_sys_net_tcp_listen(const ms_addr *addr, int backlog, ms_sock *out);
 /* Starts a connection: OK when connected at once, INPROGRESS otherwise. */
-int mssys_net_tcp_connect(const ms_addr *addr, ms_sock *out);
-/* After INPROGRESS and writability: OK when connected, ERROR (mssys_net_error is the cause) when it failed. */
-int mssys_net_connect_done(ms_sock s);
+int ms_sys_net_tcp_connect(const ms_addr *addr, ms_sock *out);
+/* After INPROGRESS and writability: OK when connected, ERROR (ms_sys_net_error is the cause) when it failed. */
+int ms_sys_net_connect_done(ms_sock s);
 /* The next pending connection of a listener; `peer` may be NULL. AGAIN when none is waiting. */
-int mssys_net_accept(ms_sock listener, ms_sock *out, ms_addr *peer);
+int ms_sys_net_accept(ms_sock listener, ms_sock *out, ms_addr *peer);
 /* One read or write; the byte count goes to *done. A read of 0 bytes returns EOF. Writes never raise SIGPIPE. */
-int mssys_net_read(ms_sock s, void *buf, size_t n, size_t *done);
-int mssys_net_write(ms_sock s, const void *buf, size_t n, size_t *done);
-int mssys_net_local_addr(ms_sock s, ms_addr *out);
-int mssys_net_peer_addr(ms_sock s, ms_addr *out);
+int ms_sys_net_read(ms_sock s, void *buf, size_t n, size_t *done);
+int ms_sys_net_write(ms_sock s, const void *buf, size_t n, size_t *done);
+int ms_sys_net_local_addr(ms_sock s, ms_addr *out);
+int ms_sys_net_peer_addr(ms_sock s, ms_addr *out);
 /* Half-closes the write side (how = 1) or both (how = 2). */
-int mssys_net_shutdown(ms_sock s, int how);
-void mssys_net_close(ms_sock s);
+int ms_sys_net_shutdown(ms_sock s, int how);
+void ms_sys_net_close(ms_sock s);
 /* The operating system's code for the last MS_SYS_ERROR on this thread (errno, or WSAGetLastError). */
-int mssys_net_error(void);
+int ms_sys_net_error(void);
 
 #endif
