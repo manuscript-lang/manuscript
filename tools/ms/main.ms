@@ -19,6 +19,7 @@ import (
 	command_help, command_names, overview from "./help.ms",
 	run_init from "./init.ms",
 	run_profile from "./profile.ms",
+	run_verify from "./verify.ms",
 )
 
 fn out(text: String) Void:
@@ -238,6 +239,7 @@ export fn run(given: List[String]) Int:
 
 	if args[0] == "help": return run_help(args.drop(1))
 	if args[0] == "init": return run_init(args.drop(1))
+	if args[0] == "verify": return run_verify(args.drop(1))
 	if is_source_command(args[0]): return run_source_command(args, usage_text)
 
 	return delegate(args)
