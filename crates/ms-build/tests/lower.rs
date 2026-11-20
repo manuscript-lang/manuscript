@@ -9,7 +9,6 @@
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_driver::{CheckRequest, check_graph, load_file};
 use ms_lower::{Options, lower_program};
-use ms_rt as _;
 use std::path::{Path, PathBuf};
 
 fn lower(path: &Path) -> String {

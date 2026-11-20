@@ -564,8 +564,9 @@ static void body_report_missing(MsBody *b, const MsExpr *call, uint32_t index, c
 /* The arguments of a call to `function`, in parameter order, positional or labelled with the
  * parameter's name: each is checked against its parameter with the context "argument 'NAME' of
  * CALLEE". An argument past the last parameter and a parameter with no argument are reported.
- * False when something here is left to the Rust checker (labels out of order or unknown, defaults,
- * parameters of other kinds); the caller returns the unsupported mark. */
+ * A parameter with a default may be left out. False when something here is left to the Rust
+ * checker (labels out of order or unknown, parameters of types the pass does not admit); the
+ * caller returns the unsupported mark. */
 static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function, const MsTyParam *params, MsStr callee) {
     const uint32_t nparams = function->params.len;
     const uint32_t nargs = call->u.call.args.len;
@@ -583,7 +584,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
         }
         const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
         if ((arg->has_name && (arg->name != params[i].name || (params[i].flags & MS_PARAM_POSITIONAL) != 0)) ||
-            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)))) {
+            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)) || body_is_admitted(b, params[i].ty) || body_is_optional(b, params[i].ty))) {
             return false;
         }
         const MsStr name = ms_name(b->c->names, params[i].name);
@@ -594,8 +595,11 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
         }
     }
     for (uint32_t i = nargs; i < nparams; i++) {
-        if (function->params.ptr[i]->def != NULL || body_has_invalid(b, params[i].ty)) {
+        if (body_has_invalid(b, params[i].ty)) {
             return false;
+        }
+        if (function->params.ptr[i]->def != NULL) {
+            continue; // the default fills it
         }
         body_report_missing(b, call, i, &params[i], callee);
     }
@@ -861,13 +865,32 @@ static void body_report_mismatch(MsBody *b, const MsExpr *e, MsTy actual, MsTy e
 
 /* The type of `e` where `expected` is the type the context wants, or MS_TY_NONE for no
  * expectation. A type that is not the expected one is a diagnostic. */
+/* A value checked against an Optional: `none`, a value of the Optional's own type, or a value of
+ * its payload type, which is wrapped in `some` (`some_wrap`). Only a number or a Bool is wrapped, and
+ * anything else (a mismatch, which the Rust checker words, or a payload with a cleanup) is left to the
+ * Rust checker. */
+static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
+    const MsTy payload = ms_ty_args(&b->c->tys, expected)[0];
+    if (e->kind == MS_E_NAME && body_text_is(b, e->u.sym, "none") && ms_body_find_binding(b, e->u.sym) == MS_NONE) {
+        return ms_body_record(b, e->id, expected);
+    }
+    const MsTy ty = ms_body_expr(b, e, MS_TY_NONE);
+    if (ty == MS_TY_NONE || ty == expected) {
+        return ty;
+    }
+    if (ty != payload || !(ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty)) {
+        return ms_body_unsupported(b);
+    }
+    b->facts->some_wrap[e->id] = true;
+    return expected;
+}
+
 MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     MsTy ty = MS_TY_NONE;
     const char *context = b->context;
     b->context = NULL;
-    // A value checked against an Optional may be wrapped in `some`; that is not recorded yet.
     if (expected != MS_TY_NONE && ms_ty_is(&b->c->tys, expected, MS_BI_OPTIONAL)) {
-        return ms_body_unsupported(b);
+        return body_expr_optional(b, e, expected);
     }
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: ty = body_number(b, e); break;
@@ -1463,10 +1486,16 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
     memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
+    facts->call_type_args_at = MS_NEW_N(arena, uint32_t, nodes);
+    facts->call_type_args_len = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->call_type_args_at, 0, nodes * sizeof *facts->call_type_args_at);
+    memset(facts->call_type_args_len, 0, nodes * sizeof *facts->call_type_args_len);
     facts->lambda_first = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
     facts->each_list = MS_NEW_N(arena, bool, nodes);
     memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
+    facts->some_wrap = MS_NEW_N(arena, bool, nodes);
+    memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);

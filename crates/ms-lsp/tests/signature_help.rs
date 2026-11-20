@@ -3,7 +3,6 @@
 use ms_lsp::analysis::{Document, Documents, analyze};
 use ms_lsp::completion::signature_help;
 use ms_lsp::text;
-use ms_rt as _;
 
 use crate::support;
 use support::{Script, Workspace};

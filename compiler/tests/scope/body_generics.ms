@@ -40,3 +40,25 @@ fn first_of[A, B](a: A, b: B) A:
 fn rebind[T](value: T) T:
 	copy := value
 	return copy
+
+interface Named:
+	fn name() String
+	fn weight(scale: Int) Int
+
+fn label[T: Named](value: T) String:
+	return value.name()
+
+fn heavy[T: Named](value: T, scale: Int) Int:
+	return value.weight(scale)
+
+fn missing[T: Named](value: T) Int:
+	return value.nothing()
+
+fn apply_to[A, B](value: A, transform: fn(A) B) B:
+	return transform(value)
+
+fn count_of[T](items: List[T]) Int:
+	return items.len()
+
+fn same_list[T](items: List[T]) List[T]:
+	return items
