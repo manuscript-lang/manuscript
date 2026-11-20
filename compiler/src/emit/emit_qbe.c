@@ -847,7 +847,7 @@ static void qbe_opt_is_some(QCx *c, const MirInst *inst) {
         const uint32_t n = c->next++;
         ms_buf_printf(c->out, "\t%%t%u =l xor %%v%u.1, %lld\n\t%%o%u =l or %%v%u, %%t%u\n\t%%v%u =w cnel %%o%u, 0\n",
                       n, x, (long long)MIR_STR_STATIC, n, x, n, inst->res, n);
-    } else if (qbe_leaves(c, c->f->values[x]).len == 1) {
+    } else if (qbe_leaves(c, c->f->values[x]).len == 1 && qbe_leaf_type(qbe_leaves(c, c->f->values[x]).ptr[0]) == 'l') {
         ms_buf_printf(c->out, "\t%%v%u =w cnel %%v%u, 0\n", inst->res, x);
     } else {
         ms_buf_printf(c->out, "\t%%v%u =w copy %%v%u\n", inst->res, x);
@@ -1020,6 +1020,7 @@ static bool qbe_list_write_op(QCx *c, const MirInst *inst, uint32_t block, uint3
         (void)snprintf(index, sizeof index, "%%v%u", inst->args[1]);
         qbe_elem_base(c, inst->args[0], index, size, base, sizeof base);
         qbe_copy_list(c, inst, inst->args[0]);
+        qbe_copy_leaf(c, inst->res, MIR_LIST_LEN_LEAF, inst->args[0], MIR_LIST_LEN_LEAF);
         return qbe_store_leaves(c, inst->args[2], base);
     case MOP_ListPushU:
         (void)snprintf(index, sizeof index, "%%v%u.%u", inst->args[0], MIR_LIST_LEN_LEAF);
@@ -1460,7 +1461,7 @@ bool mir_emit_qbe_glued(MirModule *m, MirGlue *glue_in, MsBuf *out, MsBuf *why) 
     return ok;
 }
 
-void mir_qbe_tables_meta(const MirModule *m, MsBuf *out) {
+void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay, MsBuf *out) {
     for (uint32_t i = 0; i < m->nfiles; i++) {
         ms_buf_printf(out, "F %.*s\n", (int)m->files[i].len, m->files[i].ptr);
     }
@@ -1469,10 +1470,11 @@ void mir_qbe_tables_meta(const MirModule *m, MsBuf *out) {
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         const MirFunc *f = &m->funcs[i];
         const MsStr name = ms_name(&m->names, f->name);
+        const MsStr shown = i < ndisplay ? ms_name(&m->names, display[i]) : name; /* glue added by the emitter */
         sym.len = 0;
         qbe_sym(&sym, name);
         ms_buf_printf(out, "Y %.*s\t%d\t%u\t%.*s\n", (int)sym.len - 1, sym.data + 1,
-                      f->loc.file == MIR_NONE ? -1 : (int)f->loc.file, f->loc.line, (int)name.len, name.ptr);
+                      f->loc.file == MIR_NONE ? -1 : (int)f->loc.file, f->loc.line, (int)shown.len, shown.ptr);
         for (uint32_t k = 0; k < f->nscopes; k++) {
             const MirScope *s = &f->scopes[k];
             const MsStr sn = ms_name(&m->names, s->name);

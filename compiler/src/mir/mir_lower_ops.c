@@ -8,9 +8,9 @@
  * pass that reads the ownership ops. */
 #include <string.h>
 
-#include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
 #include "ms/mir_layout.h"
+#include "ms/mir_analysis.h"
 #include "ms/mir_pass.h"
 
 typedef struct LoCx {
@@ -397,6 +397,64 @@ static void lo_str_eq_lits(LoCx *c, MirFunc *f) {
     }
 }
 
+/* A clone of bytes, or of a list whose elements own nothing, is one block copy by the runtime.
+ * A list's copy needs the element descriptor, which this pass makes a value of its own. */
+static bool lo_is_block_clone(LoCx *c, const MirFunc *f, const MirInst *inst) {
+    if (inst->op != MOP_Clone || inst->nargs == 0) {
+        return false;
+    }
+    const MirTyData *d = mir_ty_data(c->m, f->values[inst->args[0]]);
+    return d->kind == MK_BYTES || (d->kind == MK_LIST && !mir_needs_drop(c->m, d->elem));
+}
+
+static uint32_t lo_block_copy_extern(LoCx *c, MirTy list, bool bytes) {
+    MirExtern def = {.name = mir_name(c->m, bytes ? "msrt_bytes_copy" : "msrt_list_copy", bytes ? 15 : 14),
+                     .nparams = bytes ? 1 : 2, .ret = list, .fresh = true, .leaf = true, .role = MR_NONE};
+    def.params = MS_NEW_N(&c->m->arena, MirParam, def.nparams);
+    def.params[0] = (MirParam){list, MM_BORROW};
+    if (!bytes) {
+        def.params[1] = (MirParam){MIR_PTR, MM_BORROW};
+    }
+    return mir_extern_intern(c->m, &def);
+}
+
+static void lo_block_clones(LoCx *c, MirFunc *f) {
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        uint32_t extra = 0;
+        for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+            extra += lo_is_block_clone(c, f, &f->blocks[b].insts[k]) ? 1 : 0;
+        }
+        if (extra == 0) {
+            continue;
+        }
+        MirInst *out = MS_NEW_N(&c->m->arena, MirInst, f->blocks[b].ninsts + extra);
+        uint32_t n = 0;
+        for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+            MirInst inst = f->blocks[b].insts[k];
+            if (!lo_is_block_clone(c, f, &inst)) {
+                out[n++] = inst;
+                continue;
+            }
+            const MirTy list = f->values[inst.args[0]];
+            const MirTyData *d = mir_ty_data(c->m, list);
+            MirValue args[2] = {inst.args[0], MIR_NONE};
+            uint32_t nargs = 1;
+            if (d->kind == MK_LIST) {
+                args[1] = mir_new_value(c->m, f, MIR_PTR);
+                out[n++] = mir_inst(MOP_TypeDesc, (MirImm){.tag = MI_TY, .a = d->elem}, args[1], inst.loc, NULL, 0);
+                nargs = 2;
+            }
+            inst.op = MOP_CallRt;
+            inst.imm = mir_imm_ext(lo_block_copy_extern(c, list, d->kind == MK_BYTES));
+            inst.args = mir_args_copy(c->m, args, nargs);
+            inst.nargs = nargs;
+            out[n++] = inst;
+        }
+        f->blocks[b].insts = out;
+        f->blocks[b].ninsts = f->blocks[b].cinsts = n;
+    }
+}
+
 /* `drop.if flag v` ends its block with a branch on `flag` to a block that drops `v` and on to a
  * block holding the rest, so the drop that remains is a plain `drop`. Blocks the split makes are
  * visited too, for a second `drop.if`. */
@@ -480,6 +538,7 @@ static void lo_expand_sets(LoCx *c, MirFunc *f) {
 static void lo_function(LoCx *c, MirFunc *f) {
     lo_list_drops(c, f);
     lo_str_eq_lits(c, f);
+    lo_block_clones(c, f);
     lo_expand_sets(c, f);
     lo_split_drop_ifs(c->m, f);
     lo_expand_cleanups(c, f);

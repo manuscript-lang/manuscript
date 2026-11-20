@@ -91,7 +91,7 @@ static uint32_t ll_pieces(const MirModule *m, const MirFunc *f, const MirInst *i
     switch ((MirOp)inst->op) {
     case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk:
     case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk:
-    case MOP_NarrowChk: case MOP_IntOverflowIf: case MOP_Poll:
+    case MOP_NarrowChk: case MOP_IntOverflowIf: case MOP_Poll: case MOP_ListNew:
         return 1;
     case MOP_SDivChk:
         return 2;
@@ -1031,7 +1031,8 @@ static void ll_opt_is_some(LCx *c, const MirInst *inst) {
         const uint32_t n = c->next++;
         ms_buf_printf(c->out, "  %%t%u = xor i64 %%v%u.1, %lld\n  %%o%u = or i64 %%v%u, %%t%u\n  %%v%u = icmp ne i64 %%o%u, 0\n",
                       n, x, (long long)MIR_STR_STATIC, n, x, n, inst->res, n);
-    } else if (ll_leaves(c, c->f->values[x]).len == 1) {
+    } else if (ll_leaves(c, c->f->values[x]).len == 1 &&
+               strcmp(ll_leaf_type(ll_leaves(c, c->f->values[x]).ptr[0]), "i64") == 0) {
         ms_buf_printf(c->out, "  %%v%u = icmp ne i64 %%v%u, 0\n", inst->res, x);
     } else {
         ll_copy_leaf(c, inst->res, 0, x, 0);
@@ -1234,6 +1235,7 @@ static bool ll_list_write_op(LCx *c, const MirInst *inst, uint32_t block, uint32
         (void)snprintf(index, sizeof index, "%%v%u", inst->args[1]);
         ll_elem_base(c, inst->args[0], index, size, base, sizeof base);
         ll_copy_list(c, inst, inst->args[0]);
+        ll_copy_leaf(c, inst->res, MIR_LIST_LEN_LEAF, inst->args[0], MIR_LIST_LEN_LEAF);
         return ll_leaves_at(c, inst->args[2], base, false);
     case MOP_ListPushU:
         (void)snprintf(index, sizeof index, "%%v%u.%u", inst->args[0], MIR_LIST_LEN_LEAF);
