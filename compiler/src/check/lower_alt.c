@@ -18,7 +18,7 @@ static MirTy la_result(Lb *lb, MsTy ty) {
     MirCaseDef *cases = MS_NEW_N(&lb->m->arena, MirCaseDef, 2);
     for (uint32_t i = 0; i < 2; i++) {
         const MirTy payload = lb_mir_ty(lb, args[i]);
-        if (payload == MIR_NONE || mir_needs_drop(lb->m, payload)) {
+        if (payload == MIR_NONE) {
             return MIR_NONE;
         }
         MirField *field = MS_NEW(&lb->m->arena, MirField);
@@ -44,7 +44,7 @@ MirTy la_type(Lb *lb, MsTy ty) {
     MirTy mir = MIR_NONE;
     if (ms_ty_is(tys, ty, MS_BI_OPTIONAL) && tys->nargs[ty] == 1) {
         const MirTy payload = lb_mir_ty(lb, ms_ty_args(tys, ty)[0]);
-        mir = payload == MIR_NONE || mir_needs_drop(lb->m, payload) ? MIR_NONE : mir_ty_opt(lb->m, payload);
+        mir = payload == MIR_NONE ? MIR_NONE : mir_ty_opt(lb->m, payload);
     } else if (ms_ty_is(tys, ty, MS_BI_RESULT) && tys->nargs[ty] == 2) {
         mir = la_result(lb, ty);
     }
@@ -61,8 +61,14 @@ LbVal la_none(Lb *lb, const MsExpr *e) {
     return (LbVal){mir_b_emit(&lb->b, MOP_OptNone, NULL, 0, (MirImm){0}, ty), false};
 }
 
+/* `none` handed out as an owned value (a result, a moved argument): the Optional that owns nothing. */
+LbVal la_none_owned(Lb *lb, const MsExpr *e) {
+    const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    return (LbVal){mir_b_emit(&lb->b, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, ty), true};
+}
+
 /* `ok(value)`, `error(cause)` and `Case(args)` of an enum: the checker resolved the callee to the
- * case, and every argument fills one field of it. */
+ * case, and every argument fills one field of it; a field that owns something is handed over. */
 LbVal la_case(Lb *lb, const MsExpr *call) {
     const MsExpr *callee = call->u.call.callee;
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[call->id]);
@@ -70,15 +76,17 @@ LbVal la_case(Lb *lb, const MsExpr *call) {
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT) {
         return lb_unsupported(lb);
     }
+    const MirCaseDef *def = &lb->m->alts[mir_ty_data(lb->m, ty)->id].cases[lb->facts->res_ref[callee->id]];
     MirValue *payload = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
     for (uint32_t i = 0; i < count && lb->ok; i++) {
-        payload[i] = lb_expr(lb, call->u.call.args.ptr[i].value).v;
+        const MsExpr *arg = call->u.call.args.ptr[i].value;
+        payload[i] = lb_owns(lb, def->fields[i].ty) ? lb_move_argument(lb, arg) : lb_expr(lb, arg).v;
     }
     if (!lb->ok) {
         return LB_FAIL;
     }
     const MirImm imm = {.tag = MI_CASE, .a = mir_ty_data(lb->m, ty)->id, .b = lb->facts->res_ref[callee->id]};
-    return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, payload, count, imm, ty), false};
+    return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, payload, count, imm, ty), lb_owns(lb, ty)};
 }
 
 /* A case without payload, named: `Empty`. */
@@ -105,11 +113,16 @@ MirValue la_test(Lb *lb, MirValue subject) {
 MirValue la_payload(Lb *lb, MirValue subject) {
     const MirTy ty = mir_b_ty(&lb->b, subject);
     const MirTyData *data = mir_ty_data(lb->m, ty);
+    const MirTy held = data->kind == MK_OPT ? data->elem : lb->m->alts[data->id].cases[LA_OK].fields[0].ty;
+    if (lb_owns(lb, held)) {
+        lb->ok = false; // taking an owned payload out of its holder is not lowered yet
+        return subject;
+    }
     if (data->kind == MK_OPT) {
         return mir_b_emit(&lb->b, MOP_OptGet, &subject, 1, (MirImm){0}, data->elem);
     }
     const MirImm imm = {.tag = MI_ALTFIELD, .a = data->id, .b = LA_OK, .c = 0};
-    return mir_b_emit(&lb->b, MOP_AltGet, &subject, 1, imm, lb->m->alts[data->id].cases[LA_OK].fields[0].ty);
+    return mir_b_emit(&lb->b, MOP_AltGet, &subject, 1, imm, held);
 }
 
 /* `call()?` on a Result inside a function that returns a Result with the same error type: the
@@ -117,6 +130,9 @@ MirValue la_payload(Lb *lb, MirValue subject) {
 LbVal la_try(Lb *lb, const MsExpr *e) {
     const LbVal result = lb_expr(lb, e->u.bin.left);
     const MirTy ret = lb->b.f.ret;
+    if (lb->ok && lb_owns(lb, mir_b_ty(&lb->b, result.v))) {
+        return lb_unsupported(lb); // the error or the value moves out of an owned result: not lowered yet
+    }
     if (!lb->ok || mir_ty_data(lb->m, mir_b_ty(&lb->b, result.v))->kind != MK_ALT ||
         mir_ty_data(lb->m, ret)->kind != MK_ALT) {
         return lb_unsupported(lb);

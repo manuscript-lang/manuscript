@@ -18,7 +18,7 @@ static bool cp_any(const MirModule *m, const MirField *fields, uint32_t n, MsBuf
 static bool cp_holds_kind(const MirModule *m, const MirTyData *d, MsBuf *seen) {
     switch (d->kind) {
     case MK_OBJ:
-        if (mir_name_is(m, d->name, "Map") || mir_name_is(m, d->name, "Set")) {
+        if (d->obj_class == MIR_OBJ_COLLECTION) {
             for (uint32_t i = 0; i < d->nargs; i++) {
                 if (cp_holds_in(m, d->args[i], seen)) {
                     return true;
