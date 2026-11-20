@@ -381,10 +381,11 @@ static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     if (w->check->syms.module[sym] != w->module) {
         // Another module's function: its declaration id indexes that module's tables, not these.
         // Its parameters borrow unless declared `var` or `move`, and a result that copies holds no
-        // borrow. A reference result is not modeled.
+        // borrow. A native (extern or built-in) function returns a new value; a function with a
+        // body in another module has a summary this walk does not compute, so only a copy is safe.
         static const OwnSummary foreign = {.usable = true};
         const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
-        return copied ? &foreign : NULL;
+        return copied || w->check->syms.native[sym] != MS_NATIVE_SOURCE ? &foreign : NULL;
     }
     const OwnSummary *summary = &w->summaries[decl->id];
     return summary->usable ? summary : NULL;

@@ -14,6 +14,7 @@
 #include "ms/lower.h"
 #include "ms/desugar.h"
 #include "ms/methods.h"
+#include "ms/program.h"
 #include "ms/ownership.h"
 #include "ms/mir_pass.h"
 #include "ms/mir_verify.h"
@@ -76,23 +77,12 @@ static bool verify_module(const MirModule *mir, const char *path) {
     return ok;
 }
 
-/* Checks the bodies of module `id` with the program's method table, as ms_check_dump does: a
- * record is admitted only once its methods are known (one with a `close` needs a cleanup). A module
- * with an inherent error is left unchecked. */
+/* Checks the bodies of module `id` against a fresh program: a record is admitted only once its
+ * methods are known (one with a `close` needs a cleanup). A module with an inherent error is left
+ * unchecked. */
 static void check_bodies(MsCheck *check, MsModId id, const char *text, size_t length) {
-    MsInherentError *errors = NULL;
-    uint32_t nerrors = 0;
-    ms_module_desugar(check, id, (MsStr){text, (uint32_t)length}, NULL, 0, &errors, &nerrors);
-    if (nerrors > 0) {
-        return;
-    }
-    ms_module_resolve_types(check, id);
-    MsMethodTable table;
-    ms_methods_init(&table);
-    ms_module_ensure_operations(check, id, &table);
-    ms_module_add_implementations(check, id, &table);
-    ms_module_check_bodies_with(check, id, &table);
-    ms_methods_free(&table);
+    ms_program_begin(check);
+    (void)ms_program_check_module(check, id, (MsStr){text, (uint32_t)length});
 }
 
 static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const char *path, bool run) {
