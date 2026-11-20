@@ -65,7 +65,7 @@ foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
 ms_compiler_exe(std_embed_test "${_c}/tests/std_embed_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
-ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" WITH_LIBMS TEST)
+ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST)
 # The embedded standard library: std_embed_gen writes std_embed_data.inc from stdlib/, std_embed.c includes it. Only
 # the executables that load the library link ms_std_embed.
 ms_compiler_exe(std_embed_gen "${_c}/tools/std_embed_gen.c" WITH_LIBMS INCLUDES "${_c}/tools")
@@ -79,7 +79,7 @@ target_include_directories(ms_std_embed PRIVATE "${_c}/include" "${CMAKE_SOURCE_
 target_compile_options(ms_std_embed PRIVATE -std=c11 -O1 -Wall -Wextra -Werror)
 
 # The thin `ms` in front of the Rust one.
-ms_compiler_exe(ms "${_c}/src/driver.c" "${_c}/tools/ms.c" WITH_LIBMS)
+ms_compiler_exe(ms "${_c}/src/driver.c" "${_c}/tools/ms.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS)
 
 # Helpers of the differential scripts: the mutator and the effect graph generator need no libms.
 ms_compiler_exe(mutate "${_c}/tests/mutate.c" PLAIN)

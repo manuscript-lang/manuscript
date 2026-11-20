@@ -150,3 +150,4 @@
 #include "project/install.c"
 
 #include "project/graph_check.c"
+#include "check_cmd.c"

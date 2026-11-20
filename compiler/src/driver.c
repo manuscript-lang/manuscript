@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #ifdef _WIN32
 #include <process.h>
 #else
@@ -10,7 +11,10 @@
 #include <sys/wait.h>
 #endif
 
+#include "ms/check_run.h"
+#include "ms/cmd.h"
 #include "ms/driver.h"
+#include "ms/std_embed.h"
 #include "ms_rt/safe.h"
 
 #define B(stage) (1u << (stage))
@@ -44,6 +48,58 @@ static const struct {
     {"search_symbol", B(MS_STAGE_CHECK) | B(MS_STAGE_TOOL)},
 };
 
+/* `ms check FILE.ms [--json]`: the one target and optional --json; anything else is a handover. */
+int ms_cmd_check(int argc, char **argv) {
+    const char *target = NULL;
+    bool json = false;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--json") == 0 && !json) {
+            json = true;
+        } else if (argv[i][0] != '-' && target == NULL) {
+            target = argv[i];
+        } else {
+            return MS_CMD_HANDOVER;
+        }
+    }
+    const size_t n = target == NULL ? 0 : strlen(target);
+    struct stat st;
+    if (n < 4 || strcmp(target + n - 3, ".ms") != 0 || stat(target, &st) != 0 || !S_ISREG(st.st_mode)) {
+        return MS_CMD_HANDOVER;
+    }
+    uint32_t nstd = 0;
+    const MsStdFile *std_files = ms_std_embedded(&nstd);
+    MsBuf out = {0}, err = {0};
+    const int status = ms_check_run(std_files, nstd, target, json, &out, &err);
+    if (status != MS_CHECK_HANDOVER) {
+        if (out.len != 0) {
+            fwrite(out.data, 1, out.len, stdout);
+        }
+        if (err.len != 0) {
+            fwrite(err.data, 1, err.len, stderr);
+        }
+    }
+    ms_buf_free(&out);
+    ms_buf_free(&err);
+    return status == MS_CHECK_HANDOVER ? MS_CMD_HANDOVER : status;
+}
+
+/* Commands whose own logic (the TOOL stage) is in C: they run when the other stages they need are. */
+static const struct {
+    const char *name;
+    int (*run)(int argc, char **argv);
+} c_commands[] = {
+    {"check", ms_cmd_check},
+};
+
+static int (*c_command(const char *name))(int, char **) {
+    for (size_t i = 0; i < sizeof c_commands / sizeof c_commands[0]; i++) {
+        if (strcmp(c_commands[i].name, name) == 0) {
+            return c_commands[i].run;
+        }
+    }
+    return NULL;
+}
+
 unsigned ms_command_stages(const char *command) {
     for (size_t i = 0; i < sizeof commands / sizeof commands[0]; i++) {
         if (strcmp(commands[i].name, command) == 0) {
@@ -59,7 +115,8 @@ bool ms_command_in_c(const MsStageTable *table, const char *command) {
         return false;
     }
     for (int stage = 0; stage < MS_STAGE_COUNT; stage++) {
-        if ((stages & B(stage)) != 0 && table->impl[stage] != MS_IMPL_C) {
+        const bool tool_in_c = stage == MS_STAGE_TOOL && c_command(command) != NULL;
+        if ((stages & B(stage)) != 0 && table->impl[stage] != MS_IMPL_C && !tool_in_c) {
             return false;
         }
     }
@@ -165,9 +222,18 @@ int ms_driver_main(int argc, char **argv) {
         fprintf(stderr, "ms driver: %s -> %s\n", command, in_c ? "c" : "rust");
     }
     if (in_c) {
-        /* No command is fully in C yet; the first one lands with its last stage. */
-        fprintf(stderr, "ms: command %s is marked as C but has no C entry\n", command);
-        return 70;
+        int (*const run)(int, char **) = c_command(command);
+        if (run == NULL) {
+            fprintf(stderr, "ms: command %s is marked as C but has no C entry\n", command);
+            return 70;
+        }
+        const int status = run(argc - 1, argv + 1);
+        if (status != MS_CMD_HANDOVER) {
+            return status;
+        }
+        if (trace) {
+            fprintf(stderr, "ms driver: %s -> rust (handover)\n", command);
+        }
     }
     char *cli = cli_override != NULL && *cli_override != '\0' ? copy_string(cli_override)
                                                                : sibling_rust_cli(argv[0]);
