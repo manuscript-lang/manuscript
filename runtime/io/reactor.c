@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdatomic.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <uv.h>
@@ -13,6 +14,18 @@
 #endif
 
 #define RING 64
+
+#if defined(__GLIBC__)
+extern char **__environ;
+/* A static libuv built without -fPIC (the Debian and Ubuntu packages) reaches `environ` with a direct
+ * reference, which makes the linker copy `environ` into the program. glibc then updates only its own
+ * `__environ`, so every reader of the copy sees an empty environment. Bring the copy up to date before
+ * anything reads it. Remove when the libraries are built position independent (see the issue on this
+ * workaround). */
+__attribute__((constructor)) static void msio_sync_environ(void) {
+    environ = __environ;
+}
+#endif
 
 typedef struct row {
     uv_poll_t h;
