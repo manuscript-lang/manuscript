@@ -5,6 +5,7 @@
 import (
 	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
+	quote from "@std/text.ms",
 
 	Finding from "./lint/finding.ms",
 	lint_interpolation from "./lint/interpolation.ms",
@@ -14,7 +15,9 @@ import (
 )
 
 fn show(finding: Finding) String:
-	return f"{finding.file}:{finding.line}:{finding.column}: {finding.code} {finding.severity} {finding.message}"
+	label := if finding.severity == "error": finding.code else: f"{finding.severity} {finding.code}"
+	edit := if finding.fix_from < 0: "" else: f" [fix {finding.fix_from}..{finding.fix_to} {quote(finding.fix_text)}]"
+	return f"{finding.file}:{finding.line}:{finding.column}: {label}: {finding.message}{edit}"
 
 fn main() Int:
 	var status = 0
