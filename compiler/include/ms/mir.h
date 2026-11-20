@@ -229,10 +229,6 @@ typedef struct MirFunc {
     uint32_t nscopes, cscopes;
     MirNamedValue *names;
     uint32_t nnames, cnames;
-    /* Parameters the caller guarantees alias nothing else: a function with some restores its
-     * cancel slots (see cancel exits). */
-    uint32_t *noalias;
-    uint32_t nnoalias;
     MirTy *values; /* type of every value */
     uint32_t nvalues, cvalues;
     MirBlockData *blocks; /* block 0 is the entry */
