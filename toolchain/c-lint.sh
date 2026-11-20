@@ -22,8 +22,13 @@ files=$(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime
 changed=$files
 if [ -n "$base" ]; then
     git rev-parse --verify --quiet "$base^{commit}" > /dev/null || { echo "c-lint: $base is not a commit" >&2; exit 1; }
-    # A file written after the guide never joins the pending list.
-    if git cat-file -e "$base:$pending" 2> /dev/null && git diff "$base" -- "$pending" | grep -q '^+[^+]'; then
+    # A file written after the guide never joins the pending list. Only this change's own additions count, so the
+    # list is compared with the commit the change started from, not with a main that has shrunk it since.
+    start=$(git merge-base "$base" HEAD 2> /dev/null || true)
+    # A pull request checked out shallow, as the merge of the change into its base: the first parent is that base.
+    [ -n "$start" ] || ! git rev-parse --verify --quiet 'HEAD^2^{commit}' > /dev/null || start=$(git rev-parse 'HEAD^1')
+    [ -n "$start" ] || start=$base
+    if git cat-file -e "$start:$pending" 2> /dev/null && git diff "$start" -- "$pending" | grep -q '^+[^+]'; then
         echo "c-lint: $pending gained a line; the list only shrinks" >&2; exit 1
     fi
 fi
