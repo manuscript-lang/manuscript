@@ -51,7 +51,10 @@ static int effect_name_compare(MsStr a, MsStr b) {
     if (order != 0) {
         return order;
     }
-    return a.len == b.len ? 0 : (a.len < b.len ? -1 : 1);
+    if (a.len == b.len) {
+        return 0;
+    }
+    return a.len < b.len ? -1 : 1;
 }
 
 static int effect_name_compare_ptr(const void *a, const void *b) {
@@ -424,7 +427,10 @@ static int compare_found(const void *a, const void *b) {
     if (x->node != y->node) {
         return x->node < y->node ? -1 : 1;
     }
-    return x->order < y->order ? -1 : (x->order > y->order ? 1 : 0);
+    if (x->order == y->order) {
+        return 0;
+    }
+    return x->order < y->order ? -1 : 1;
 }
 
 /* Where the violating node first references the next callable of its chain. */
