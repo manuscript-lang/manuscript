@@ -185,6 +185,9 @@ bool ms_task_timed_out(void);
  * Returns the previous limit. */
 int64_t ms_task_read_limit(int64_t timeout_ns);
 void ms_task_read_limit_restore(int64_t previous);
+/* The test output capture the running task prints to (0: standard output). Tasks it spawns inherit it. */
+uint64_t ms_task_capture(void);
+void ms_task_set_capture(uint64_t capture);
 bool ms_task_read_limit_passed(void);
 /* Cancels the running task `limit_ns` from now (negative: never), or at an absolute time. Replaces an earlier
  * limit. */

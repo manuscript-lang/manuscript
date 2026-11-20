@@ -11,9 +11,9 @@
 #include "ms_sched.h"
 #include "ms_rt/alloc.h"
 
-static uint64_t current_capture;
-uint64_t ms_task_capture(void) { return current_capture; }
-void ms_task_set_capture(uint64_t id) { current_capture = id; }
+/* The core's accessors (runtime/core/task.c); ms_sched.h clashes with task.h, so they are declared here. */
+uint64_t ms_task_capture(void);
+void ms_task_set_capture(uint64_t capture);
 
 static void expect(bool condition, const char *what) {
     if (!condition) {

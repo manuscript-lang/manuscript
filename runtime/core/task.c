@@ -347,7 +347,7 @@ static void task_main(void) {
 
 MsTaskHandle ms_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t stack_bytes, MsTaskStatus *status) {
     MsSched *const sched = ms_sched();
-    (void)ms_task_running();
+    const uint64_t capture = ms_task_running()->capture;
     const size_t length = stack_bytes == MS_TASK_ROOT_STACK ? MS_STACK_REGION : MS_STACK_SLOT;
     uint8_t *base = NULL;
     MsStackBounds bounds = {0};
@@ -370,6 +370,7 @@ MsTaskHandle ms_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t 
     task->stack_length = length;
     task->entry = entry;
     task->argument = arg;
+    task->capture = capture;
     task->sp = bounds.sp;
     task->unwind.stack_low = bounds.low;
     task->unwind.stack_high = bounds.high;
@@ -389,6 +390,10 @@ MsTaskHandle ms_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t 
     *status = MS_TASK_OK;
     return task->handle;
 }
+
+uint64_t ms_task_capture(void) { return ms_task_running()->capture; }
+
+void ms_task_set_capture(uint64_t capture) { ms_task_running()->capture = capture; }
 
 MsTaskHandle ms_task_current(void) { return ms_task_running()->handle; }
 

@@ -61,6 +61,7 @@ typedef struct MsTask {
     void *argument;
     int64_t deadline;   /* when the park times out, or MS_NO_DEADLINE */
     int64_t read_limit; /* every park ends by then (ms_task_read_limit), or MS_NO_DEADLINE */
+    uint64_t capture;   /* the test output capture this task prints to, or 0; spawned tasks inherit it */
     int64_t kill_at;    /* when the task is cancelled for running too long, or MS_NO_DEADLINE */
     MsFaultText message; /* the fault message of a joinable task, until joined */
     MsTaskExtra *extra;  /* owned, or NULL: stack segments */
