@@ -31,7 +31,7 @@ static MsTy body_primitive(const MsCheck *c, const char *name) {
     return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
 }
 
-static bool body_is_value_type(const MsBody *b, MsTy ty) {
+bool ms_body_is_value_type(const MsBody *b, MsTy ty) {
     return ty != MS_TY_NONE && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ty == b->string_ty);
 }
 
@@ -51,7 +51,7 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
  * when nothing in the module could make them closeable (a value that closes gets a cleanup the
  * pass does not record yet). */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return body_is_value_type(b, ty) || ms_body_is_function_value(b, ty) ||
+    return ms_body_is_value_type(b, ty) || ms_body_is_function_value(b, ty) ||
            (!b->has_close && body_is_own_nominal(b, ty));
 }
 
@@ -420,9 +420,11 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
     const MsSyms *syms = &b->c->syms;
     if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
-        syms->decl[sym] == NULL || syms->nvars[sym] != 0 || syms->decl[sym]->kind != MS_D_FN ||
-        syms->decl[sym]->u.fn.external) {
+        syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN || syms->decl[sym]->u.fn.external) {
         return ms_body_unsupported(b);
+    }
+    if (syms->nvars[sym] != 0) {
+        return ms_body_generic_call(b, e, sym);
     }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
@@ -433,14 +435,14 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsArg *arg = &e->u.call.args.ptr[i];
         if (arg->has_name || params[i].flags != 0 ||
-            !(body_is_value_type(b, params[i].ty) || ms_body_is_function_value(b, params[i].ty)) ||
+            !(ms_body_is_value_type(b, params[i].ty) || ms_body_is_function_value(b, params[i].ty)) ||
             ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
             return ms_body_unsupported(b);
         }
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
-    return body_is_value_type(b, result) ? result : ms_body_unsupported(b);
+    return ms_body_is_value_type(b, result) ? result : ms_body_unsupported(b);
 }
 
 static MsTy body_unary(MsBody *b, const MsExpr *e) {
@@ -489,7 +491,7 @@ static MsTy body_member(MsBody *b, const MsExpr *e) {
         if (def->fields[i].name != e->u.member.name) {
             continue;
         }
-        if (!body_is_value_type(b, def->fields[i].ty) || def->fields[i].ty == b->string_ty) {
+        if (!ms_body_is_value_type(b, def->fields[i].ty) || def->fields[i].ty == b->string_ty) {
             break; /* reading a String field borrows or moves it out of its holder */
         }
         b->facts->res_kind[e->id] = MS_RES_FIELD;
@@ -557,10 +559,10 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
     if (op == MS_B_AND || op == MS_B_OR) {
         return left == b->bool_ty && right == b->bool_ty ? b->bool_ty : ms_body_unsupported(b);
     }
-    if (left != right && body_is_value_type(b, left) && body_is_value_type(b, right)) {
+    if (left != right && ms_body_is_value_type(b, left) && ms_body_is_value_type(b, right)) {
         return body_report_operands(b, e, left, right);
     }
-    if (left != right || !body_is_value_type(b, left)) {
+    if (left != right || !ms_body_is_value_type(b, left)) {
         return ms_body_unsupported(b);
     }
     if (op == MS_B_EQ || op == MS_B_NE) {
@@ -658,7 +660,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     if (expected != MS_TY_NONE && ty != expected) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
-        if (context == NULL || !body_is_value_type(b, ty) || !body_is_value_type(b, expected)) {
+        if (context == NULL || !ms_body_is_value_type(b, ty) || !ms_body_is_value_type(b, expected)) {
             return ms_body_unsupported(b);
         }
         body_report_mismatch(b, e, ty, expected, context);
@@ -677,7 +679,7 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
-    if (!body_is_value_type(b, ty) || b->c->syms.decl[sym] != NULL) {
+    if (!ms_body_is_value_type(b, ty) || b->c->syms.decl[sym] != NULL) {
         return ms_body_unsupported(b);
     }
     b->facts->type_ref_ty[t->id] = ty;
@@ -1076,7 +1078,7 @@ static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
     }
     const bool literal = body_is_constant_expression(d->u.konst.value);
     const MsTy ty = b->supported && literal ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
-    if (b->supported && literal && body_is_value_type(b, ty)) {
+    if (b->supported && literal && ms_body_is_value_type(b, ty)) {
         b->facts->body_checked[d->id] = true;
         body_commit_diags(b, diags_start);
         // Like the Rust checker's, the constant's symbol is a function of no parameters.

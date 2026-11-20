@@ -40,6 +40,10 @@ MsTy ms_body_function_name(MsBody *b, const MsExpr *e);
 MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected);
 /* The primitive type a written annotation names, or MS_TY_NONE after giving up. */
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
+/* Int, Float, Bool or String: what a binding or argument of the handled set may hold. */
+bool ms_body_is_value_type(const MsBody *b, MsTy ty);
+/* A call of a generic function of the module (check_generic.c). */
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym);
 /* A call `receiver.name(args)` (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
