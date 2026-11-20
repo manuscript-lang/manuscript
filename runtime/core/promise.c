@@ -1393,6 +1393,7 @@ static bool fd_ready(uint64_t id, uint32_t bits) {
 }
 
 void ms_promises_teardown(void) {
+    ms_queue_release(ms_sched()->isolate); /* the isolate is unregistered by now: no thief reads its queue */
     ms_groups_teardown();
     ms_cancel_teardown();
     for (size_t row = 0; row < table.count; row++) {
