@@ -6,6 +6,7 @@
 #define MS_MIR_PASS_H
 
 #include "ms/mir.h"
+#include "ms/mir_opt.h"
 
 /* ---- shared helpers ---- */
 
@@ -106,6 +107,10 @@ typedef struct MirPipelineOptions {
 /* Right after lowering: places the scope-exit cleanup of every Raw function. False with `error` set
  * to the message. */
 bool mir_pipeline_prepare(MirModule *m, const MirPipelineOptions *o, MsBuf *error);
+
+/* Between prepare and finish: the optimizer for `level` (opt_pipeline.c), re-verifying after every
+ * pass when `o->verify` is set. False with `error` set to the failing pass and the module. */
+bool mir_pipeline_optimize(MirModule *m, MirOptLevel level, const MirPipelineOptions *o, MsBuf *error);
 
 /* After the optimizer: unwind, cancel_edges when on, depth, expand, glue. `glue` receives what glue
  * made, which backends look up. */
