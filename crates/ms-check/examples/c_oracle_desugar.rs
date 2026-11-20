@@ -91,7 +91,10 @@ fn main() {
         }
         methods.sort();
         let desugared = Module {
-            decls: decls.into_iter().filter(|d| !is_inherent(syms, d)).collect(),
+            decls: decls
+                .into_iter()
+                .filter(|d| !is_inherent(syms, d))
+                .collect(),
             node_count,
             ..module
         };

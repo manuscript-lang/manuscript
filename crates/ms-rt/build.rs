@@ -60,7 +60,6 @@ fn link_c_runtime(root: &std::path::Path) {
             root.join("runtime").join(dir).display()
         );
     }
-    println!("cargo::rerun-if-env-changed=MS_C_REGEX");
     println!(
         "cargo::rerun-if-changed={}",
         root.join("CMakeLists.txt").display()

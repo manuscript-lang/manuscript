@@ -329,7 +329,7 @@ uint8_t msstd_fs_file_read_vectors(void *handle, const MsVec *sizes, int64_t off
         if (offset < -1 || !sizes_valid(sizes)) {
             fail_invalid(&fail);
         } else {
-            msrt_list_with_capacity(msrt_desc_bytes, (int64_t)sizes->len, &parts);
+            msrt_list_with_capacity(&msrt_desc_bytes, (int64_t)sizes->len, &parts);
             started = true;
         }
     }
@@ -343,10 +343,10 @@ uint8_t msstd_fs_file_read_vectors(void *handle, const MsVec *sizes, int64_t off
         MsVec bytes;
         write_bytes_out(&bytes, &part);
         ms_fs_buffer_free(&part);
-        msrt_list_push(&parts, msrt_desc_bytes, &bytes);
+        msrt_list_push(&parts, &msrt_desc_bytes, &bytes);
     }
     if (started && ms_fs_failed(&fail)) {
-        msrt_list_drop(&parts, msrt_desc_bytes);
+        msrt_list_drop(&parts, &msrt_desc_bytes);
     } else if (started) {
         *out = parts;
     }
@@ -604,7 +604,7 @@ static void write_lines(MsBytes data, bool terminated, MsVec *out) {
         }
         MsStr line;
         msrt_string_from_bytes(data.ptr + start, end - start, &line);
-        msrt_list_push(out, msrt_desc_string, &line);
+        msrt_list_push(out, &msrt_desc_string, &line);
         start = i + 1;
     }
 }
@@ -624,7 +624,7 @@ uint8_t msstd_fs_file_read_lines(void *handle, int64_t max_bytes, int64_t max_li
         } else if ((int64_t)lines > max_lines) {
             ms_fs_fail_status(&fail, STATUS_LIMIT_EXCEEDED);
         } else {
-            msrt_list_with_capacity(msrt_desc_string, (int64_t)lines, out);
+            msrt_list_with_capacity(&msrt_desc_string, (int64_t)lines, out);
             write_lines(text, terminated, out);
         }
     }
