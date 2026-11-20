@@ -1,10 +1,10 @@
 //! The C back end (`MS_BACKEND=c`): the lowered module goes to `ms_mir_build` as MIR text, which
-//! runs the optimizer and finishing passes and prints QBE text (debug) or LLVM IR (release); the
-//! text is then assembled into the object the linker takes. Opt-in while the C emitters cover
+//! runs the optimizer and finishing passes and prints LLVM IR (debug and release); clang
+//! assembles it into the object the linker takes. Opt-in while the C emitters cover
 //! less than Cranelift; a program they cannot write fails with the reason instead of falling back,
 //! so the corpus diff (`compiler/tests/build-diff.sh`) counts the gaps.
 //!
-//! Tools come from `MS_C_BACKEND_DIR` (a folder holding `ms_mir_build`, `ms_asm_tables` and `qbe`), else from the
+//! Tools come from `MS_C_BACKEND_DIR` (a folder holding `ms_mir_build` and `ms_asm_tables`), else from the
 //! folder of the running `ms`.
 
 use std::path::{Path, PathBuf};
@@ -31,7 +31,7 @@ fn tool(name: &str) -> Result<PathBuf, String> {
         Ok(path)
     } else {
         Err(format!(
-            "MS_BACKEND=c needs {}; set MS_C_BACKEND_DIR to a folder with ms_mir_build, ms_asm_tables and qbe",
+            "MS_BACKEND=c needs {}; set MS_C_BACKEND_DIR to a folder with ms_mir_build and ms_asm_tables",
             path.display()
         ))
     }
@@ -51,102 +51,62 @@ fn run(command: &mut Command, what: &str) -> Result<Vec<u8>, String> {
     }
 }
 
-/// Compiles `module` to an object file with the C pipeline. `llvm` selects the release emitter.
-pub fn compile(module: &Module, speed: bool, llvm: bool, checks: bool) -> Result<Vec<u8>, String> {
+/// Compiles `module` to an object file with the C pipeline.
+pub fn compile(module: &Module, speed: bool, checks: bool) -> Result<Vec<u8>, String> {
     let dir = std::env::temp_dir().join(format!("ms-cbackend-{}", std::process::id()));
     std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
-    let result = compile_in(&dir, module, speed, llvm, checks);
+    let result = compile_in(&dir, module, speed, checks);
     let _ = std::fs::remove_dir_all(&dir);
     result
 }
 
-fn compile_in(
-    dir: &Path,
-    module: &Module,
-    speed: bool,
-    llvm: bool,
-    checks: bool,
-) -> Result<Vec<u8>, String> {
+fn compile_in(dir: &Path, module: &Module, speed: bool, checks: bool) -> Result<Vec<u8>, String> {
     let mir = dir.join("program.mir");
     std::fs::write(&mir, ms_mir::print::print_module_unique(module))
         .map_err(|e| format!("cannot write {}: {e}", mir.display()))?;
     let mut build = Command::new(tool("ms_mir_build")?);
     build
         .arg(&mir)
-        .args(["--backend", if llvm { "llvm" } else { "qbe" }])
         .args(["--opt", if speed { "speed" } else { "none" }]);
     if !checks {
         build.arg("--no-checks");
     }
     let meta = dir.join("program.meta");
     build.arg("--tables-meta").arg(&meta);
-    let text = run(&mut build, "ms_mir_build")?;
-    let object = dir.join("program.o");
+    let names = dir.join("program.names");
+    std::fs::write(&names, ms_mir::print::display_names(module))
+        .map_err(|e| format!("cannot write {}: {e}", names.display()))?;
+    build.arg("--display-names").arg(&names);
+    let ir_text = run(&mut build, "ms_mir_build")?;
+    let ir = dir.join("program.ll");
+    std::fs::write(&ir, ir_text).map_err(|e| format!("cannot write {}: {e}", ir.display()))?;
     let plain = dir.join("program.plain.s");
-    if llvm {
-        let ir = dir.join("program.ll");
-        std::fs::write(&ir, text).map_err(|e| format!("cannot write {}: {e}", ir.display()))?;
-        let opt = if speed { "-O3" } else { "-O0" };
-        run(
-            Command::new("clang")
-                .args(["-S", opt, "-o"])
-                .arg(&plain)
-                .arg(&ir),
-            "clang",
-        )?;
-    } else {
-        let target = match (std::env::consts::OS, std::env::consts::ARCH) {
-            ("macos", "aarch64") => "arm64_apple",
-            ("macos", _) => "amd64_apple",
-            ("windows", "aarch64") => "arm64", // QBE has no arm64_win; see `elf_only_removed`
-            ("windows", _) => "amd64_win",
-            (_, "aarch64") => "arm64",
-            _ => "amd64_sysv",
-        };
-        let ssa = dir.join("program.ssa");
-        std::fs::write(&ssa, text).map_err(|e| format!("cannot write {}: {e}", ssa.display()))?;
-        let asm = run(
-            Command::new(tool("qbe")?).args(["-t", target]).arg(&ssa),
-            "qbe",
-        )?;
-        // QBE's arm64 text is ELF-flavoured; on Windows (COFF) the directives that only ELF has are dropped.
-        let asm = if std::env::consts::OS == "windows" && target == "arm64" {
-            elf_only_removed(&asm)
-        } else {
-            asm
-        };
-        std::fs::write(&plain, asm)
-            .map_err(|e| format!("cannot write {}: {e}", plain.display()))?;
-    }
+    let opt = if speed { "-O3" } else { "-O0" };
+    run(
+        Command::new("clang")
+            .args(["-S", opt, "-o"])
+            .arg(&plain)
+            .arg(&ir),
+        "clang",
+    )?;
     // The fault tables: ms_asm_tables labels the assembly and appends them (no debug info is read).
-    // Release builds drop the `.loc` lines afterwards, so the object carries no line tables.
+    // The `.loc` lines are dropped afterwards, so the object carries no line tables.
     let mut tables = Command::new(tool("ms_asm_tables")?);
-    tables.arg(&meta).arg(&plain);
+    tables.arg(&meta).arg(&plain).arg("--strip-lines");
     if std::env::consts::OS == "macos" {
         tables.args(["--prefix", "_"]);
-    }
-    if llvm {
-        tables.arg("--strip-lines");
     }
     let asm = run(&mut tables, "ms_asm_tables")?;
     let s = dir.join("program.s");
     std::fs::write(&s, asm).map_err(|e| format!("cannot write {}: {e}", s.display()))?;
+    let object = dir.join("program.o");
     run(
-        Command::new(if llvm { "clang" } else { "cc" })
+        Command::new("clang")
             .arg("-c")
             .arg("-o")
             .arg(&object)
             .arg(&s),
-        if llvm { "clang" } else { "cc" },
+        "clang",
     )?;
     std::fs::read(&object).map_err(|e| format!("cannot read {}: {e}", object.display()))
-}
-
-/// `asm` without the lines only ELF assemblers take: `.type`, `.size` and the `.note.GNU-stack` section.
-fn elf_only_removed(asm: &[u8]) -> Vec<u8> {
-    let text = String::from_utf8_lossy(asm);
-    text.lines()
-        .filter(|l| !(l.starts_with(".type") || l.starts_with(".size") || l.contains("GNU-stack")))
-        .flat_map(|l| l.bytes().chain(std::iter::once(b'\n')))
-        .collect()
 }

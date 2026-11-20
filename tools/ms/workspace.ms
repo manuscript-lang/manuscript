@@ -21,15 +21,21 @@ fn table_of(value: TomlValue, key: String) TomlValue?:
 		TableValue(entries): return entries.get(key)
 		_: return none
 
+fn string_item(item: TomlValue) String?:
+	match item:
+		StringValue(text): return text.clone()
+		_: return none
+
 fn strings_of(value: TomlValue) List[String]?:
 	match value:
 		ArrayValue(items):
 			var out = List[String]()
 
 			for item in items:
-				match item:
-					StringValue(text): out.append(text.clone())
-					_: return none
+				text := string_item(item)
+				if text.is_none(): return none
+
+				out.append(text.get())
 
 			return out
 		_: return none

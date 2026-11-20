@@ -144,14 +144,20 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
     memset(seen, 0, info.ncases * sizeof *seen);
     uint32_t covered = 0;
     bool wildcard = false;
+    // Arms are all values or all statements; statement arms, which end the match as a statement, must
+    // each fall through (one that returns or breaks changes what follows the match).
+    const bool valued = e->u.match.arms.ptr[0]->value != NULL;
     MsTy result = expected;
+    if (!valued && expected != MS_TY_NONE && expected != b->void_ty) {
+        return ms_body_unsupported(b);
+    }
     for (uint32_t i = 0; i < count && b->supported; i++) {
         const MsArm *arm = e->u.match.arms.ptr[i];
         bool is_wildcard = false;
         const uint32_t index = alt_arm_case(b, arm, ty, &info, &is_wildcard);
         const bool last_with_cases_left = i == count - 1 && arm->bindings.len == 0 && covered < info.ncases;
         const bool fresh_case = index != MS_NONE && !seen[index];
-        const bool well_formed = arm->value != NULL && !wildcard &&
+        const bool well_formed = (arm->value != NULL) == valued && !wildcard &&
                                  (is_wildcard ? last_with_cases_left : fresh_case);
         if (!well_formed) {
             return ms_body_unsupported(b);
@@ -165,6 +171,15 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
             if (!alt_bind_payload(b, arm, ty, &info, index)) {
                 return ms_body_unsupported(b);
             }
+        }
+        if (!valued) {
+            const bool falls = ms_body_block(b, &arm->body);
+            alt_close_from(b, first);
+            if (!b->supported || !falls) {
+                return ms_body_unsupported(b);
+            }
+            result = b->void_ty;
+            continue;
         }
         const MsTy value = ms_body_block_value(b, &arm->body, arm->value, result);
         alt_close_from(b, first);

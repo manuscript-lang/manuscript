@@ -4,11 +4,10 @@
 
 use crate::addr::{parse_port, split_host_port};
 use crate::conn::OwnedSock;
-use crate::dns::{self, HostConfig, Record};
+use crate::dns::{self, HostConfig};
 use crate::error::{NetErr, cannot_resolve, describe_io_error};
-use crate::ip::{Cidr, ip_text, normalize};
+use crate::ip::{Cidr, normalize};
 use crate::policy::{Policy, fold_host, host_ok, ip_ok};
-use crate::rt;
 use crate::sys::{self, AsSock};
 use crate::wait::{Deadline, Interest, Lane, Wait, blocking, try_wait_fd};
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
@@ -24,75 +23,6 @@ use std::sync::{Arc, Mutex, Weak};
 pub trait Resource {
     /// Releases the resource; must be idempotent.
     fn close_resource(&self);
-}
-
-/// The record kinds of `DnsKind`, in declaration order.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DnsKind {
-    A,
-    Aaaa,
-    Cname,
-    Mx,
-    Ns,
-    Txt,
-    Ptr,
-    Srv,
-}
-
-impl DnsKind {
-    pub fn from_index(i: u8) -> Option<DnsKind> {
-        Some(match i {
-            0 => DnsKind::A,
-            1 => DnsKind::Aaaa,
-            2 => DnsKind::Cname,
-            3 => DnsKind::Mx,
-            4 => DnsKind::Ns,
-            5 => DnsKind::Txt,
-            6 => DnsKind::Ptr,
-            7 => DnsKind::Srv,
-            _ => return None,
-        })
-    }
-
-    pub fn index(self) -> u8 {
-        self as u8
-    }
-
-    pub fn text(self) -> &'static str {
-        match self {
-            DnsKind::A => "A",
-            DnsKind::Aaaa => "AAAA",
-            DnsKind::Cname => "CNAME",
-            DnsKind::Mx => "MX",
-            DnsKind::Ns => "NS",
-            DnsKind::Txt => "TXT",
-            DnsKind::Ptr => "PTR",
-            DnsKind::Srv => "SRV",
-        }
-    }
-
-    fn qtype(self) -> u16 {
-        match self {
-            DnsKind::A => dns::TYPE_A,
-            DnsKind::Aaaa => dns::TYPE_AAAA,
-            DnsKind::Cname => dns::TYPE_CNAME,
-            DnsKind::Mx => dns::TYPE_MX,
-            DnsKind::Ns => dns::TYPE_NS,
-            DnsKind::Txt => dns::TYPE_TXT,
-            DnsKind::Ptr => dns::TYPE_PTR,
-            DnsKind::Srv => dns::TYPE_SRV,
-        }
-    }
-}
-
-/// One `DnsRecord`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DnsRecord {
-    pub kind: DnsKind,
-    pub value: String,
-    pub priority: i64,
-    pub weight: i64,
-    pub port: i64,
 }
 
 /// The OS-backed network and its derived, restricted children.
@@ -362,110 +292,6 @@ impl Network {
                 Ok(ips.into_iter().map(normalize).filter(keep).collect())
             }
         }
-    }
-
-    /// `Network.lookup`.
-    pub fn lookup(
-        &self,
-        name: &str,
-        max_records: Option<i64>,
-        timeout: Option<i64>,
-    ) -> Result<Vec<String>, NetErr> {
-        if self.is_closed() {
-            return Err(NetErr::Closed);
-        }
-        let max = limit(max_records)?;
-        let deadline = Deadline::from_nanos(timeout).map_err(|_| NetErr::InvalidInput)?;
-        if !host_ok(&self.policy, name) {
-            return Err(NetErr::PermissionDenied);
-        }
-        let records = if name.parse::<IpAddr>().is_ok() {
-            vec![name.to_string()]
-        } else {
-            let ips = self.lookup_ips(name, deadline, None)?;
-            rt::check()?;
-            if self.is_closed() {
-                return Err(NetErr::Closed);
-            }
-            if ips.is_empty() {
-                return Err(NetErr::failed(cannot_resolve(name)));
-            }
-            ips.iter().map(ip_text).collect()
-        };
-        if records.len() as u128 > max {
-            return Err(NetErr::LimitExceeded);
-        }
-        Ok(records)
-    }
-
-    /// `Network.resolve`.
-    pub fn resolve(
-        &self,
-        name: &str,
-        kind: DnsKind,
-        max_records: Option<i64>,
-        timeout: Option<i64>,
-    ) -> Result<Vec<DnsRecord>, NetErr> {
-        let max = limit(max_records)?;
-        let deadline = Deadline::from_nanos(timeout).map_err(|_| NetErr::InvalidInput)?;
-        if !host_ok(&self.policy, name) {
-            return Err(NetErr::PermissionDenied);
-        }
-        if self.is_closed() {
-            return Err(NetErr::Closed);
-        }
-        let plain = |value: String| DnsRecord {
-            kind,
-            value,
-            priority: 0,
-            weight: 0,
-            port: 0,
-        };
-        let mut out = Vec::new();
-        match kind {
-            DnsKind::A | DnsKind::Aaaa => {
-                let ips = self.lookup_ips(name, deadline, Some(kind == DnsKind::A))?;
-                out.extend(ips.iter().map(|ip| plain(ip_text(ip))));
-            }
-            _ => {
-                let config = HostConfig::load();
-                let servers = match self.resolver {
-                    Some(s) => vec![s],
-                    None => config.servers.clone(),
-                };
-                let (query_name, candidates) = if kind == DnsKind::Ptr {
-                    let ip = name
-                        .parse::<IpAddr>()
-                        .map_err(|_| NetErr::failed("unrecognized address"))?;
-                    let reverse = dns::reverse_name(&ip);
-                    (reverse.clone(), vec![reverse])
-                } else {
-                    (name.to_string(), config.candidates(name))
-                };
-                let records =
-                    dns::lookup(&servers, &candidates, kind.qtype(), deadline, &query_name);
-                match records {
-                    Ok(records) => out.extend(records.into_iter().map(|r: Record| DnsRecord {
-                        kind,
-                        value: r.value,
-                        priority: r.priority,
-                        weight: r.weight,
-                        port: r.port,
-                    })),
-                    Err(e) => {
-                        rt::check()?;
-                        if self.is_closed() {
-                            return Err(NetErr::Closed);
-                        }
-                        return Err(e);
-                    }
-                }
-            }
-        }
-        if out.len() as u128 > max {
-            return Err(NetErr::LimitExceeded);
-        }
-        Ok(out)
     }
 
     // ------------------------------------------------------------------- dialing
@@ -832,76 +658,6 @@ mod tests {
         }
         assert_eq!(localhost_addrs("notlocalhost"), None);
         assert_eq!(localhost_addrs("localhost.example"), None);
-    }
-
-    #[test]
-    fn lookup_literal_and_limits() {
-        let n = Network::new_root();
-        assert_eq!(
-            n.lookup("127.0.0.1", None, None).unwrap(),
-            vec!["127.0.0.1"]
-        );
-        assert_eq!(
-            n.lookup("127.0.0.1", Some(0), None),
-            Err(NetErr::LimitExceeded)
-        );
-        assert_eq!(
-            n.lookup("127.0.0.1", Some(-1), None),
-            Err(NetErr::InvalidInput)
-        );
-        assert_eq!(
-            n.lookup("127.0.0.1", None, Some(-1)),
-            Err(NetErr::InvalidInput)
-        );
-        let r = n.restrict(&[], &[], false).unwrap();
-        assert_eq!(
-            r.lookup("localhost", None, None),
-            Err(NetErr::PermissionDenied)
-        );
-        let localhost = n.lookup("localhost", None, Some(5_000_000_000)).unwrap();
-        assert!(!localhost.is_empty());
-        let shouted = n.lookup("LocalHost", None, Some(5_000_000_000)).unwrap();
-        assert_eq!(shouted, localhost);
-    }
-
-    #[test]
-    fn explicit_resolver_answers_every_kind() {
-        let server = dns::testing::fake_dns();
-        let n = Network::new_root()
-            .with_resolver(&server.to_string())
-            .unwrap();
-        let t = Some(2_000_000_000);
-        for kind in [
-            DnsKind::A,
-            DnsKind::Aaaa,
-            DnsKind::Cname,
-            DnsKind::Txt,
-            DnsKind::Mx,
-            DnsKind::Ns,
-            DnsKind::Srv,
-        ] {
-            let r = n.resolve("test.", kind, Some(8), t).unwrap();
-            assert!(!r.is_empty(), "{kind:?}");
-            assert!(r.iter().all(|x| x.kind == kind));
-        }
-        let ptr = n.resolve("127.0.0.1", DnsKind::Ptr, Some(8), t).unwrap();
-        assert_eq!(ptr[0].value, "host.test.");
-        let mx = &n.resolve("test.", DnsKind::Mx, None, None).unwrap()[0];
-        assert_eq!(
-            (mx.value.as_str(), mx.priority, mx.weight, mx.port),
-            ("mail.test.", 10, 0, 0)
-        );
-        let srv = &n.resolve("test.", DnsKind::Srv, None, None).unwrap()[0];
-        assert_eq!(
-            (srv.value.as_str(), srv.priority, srv.weight, srv.port),
-            ("service.test.", 1, 2, 443)
-        );
-        assert_eq!(
-            n.resolve("test.", DnsKind::A, Some(0), None),
-            Err(NetErr::LimitExceeded)
-        );
-        assert!(!n.lookup("test.", Some(8), t).unwrap().is_empty());
-        assert_eq!(n.lookup("test.", Some(0), t), Err(NetErr::LimitExceeded));
     }
 
     #[test]

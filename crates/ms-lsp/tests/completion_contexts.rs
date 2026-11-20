@@ -3,7 +3,6 @@
 use ms_lsp::analysis::{Document, Documents, analyze};
 use ms_lsp::completion::completion_at;
 use ms_lsp::text::{Position, Range};
-use ms_rt as _;
 
 use crate::support;
 use support::Workspace;

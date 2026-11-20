@@ -6,10 +6,6 @@
 //! rules of the MIR verifier, and standard-library natives become runtime
 //! calls (`ms-rt`) or small MIR sequences.
 
-// Links the msrt_* runtime symbols into this crate's test binaries.
-#[cfg(test)]
-use ms_rt as _;
-
 mod alias;
 mod borrow_shape;
 mod bound_alias;

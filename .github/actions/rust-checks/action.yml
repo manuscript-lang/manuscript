@@ -162,6 +162,13 @@ runs:
         else
           cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
         fi
+    # The C unit tests, as `make c-test` runs them on Linux and macOS, built for windows-gnullvm with the same
+    # llvm-mingw clang and MSYS2 libraries as the runtime archive. Tests still written against POSIX descriptors are
+    # listed in cmake/MsTests.cmake (MS_POSIX_ONLY_TESTS).
+    - name: C unit tests
+      if: ${{ !cancelled() && env.UNIT == 'true' && runner.os == 'Windows' }}
+      shell: bash
+      run: cargo xtask c-test
     - name: Native Windows project paths
       if: env.UNIT == 'true' && runner.os == 'Windows'
       shell: bash

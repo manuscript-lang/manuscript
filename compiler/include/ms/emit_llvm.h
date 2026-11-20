@@ -1,6 +1,5 @@
-/* libms LLVM emitter: writes LLVM IR text from MIR, for release builds. The caller runs the LLVM
- * tools on the text and links. Covers the scalar subset so far (the one `emit_qbe.h` covers); the
- * rest is reported. */
+/* libms LLVM emitter: writes LLVM IR text from MIR, for debug and release builds. The caller runs the
+ * LLVM tools on the text and links. What it cannot write is reported. */
 #ifndef MS_EMIT_LLVM_H
 #define MS_EMIT_LLVM_H
 
