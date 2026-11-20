@@ -768,7 +768,7 @@ fn add_c_runtime(
     let libuv =
         c_reactor(triple).then(|| PathBuf::from(std::env::var_os("MS_UV_DIR").unwrap_or_default()));
     if libuv.is_some() {
-        c_sources(&runtime.join("io"), &mut sources);
+        c_sources(&runtime.join("io"), skip, &mut sources);
     }
     sources.sort();
     if sources.is_empty() {
