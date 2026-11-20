@@ -2,5 +2,4 @@ compiler/src/libms.c
 runtime/fuzz/http1_fuzz.c
 runtime/fuzz/num_fuzz.c
 runtime/sys/glibc/compat.c
-runtime/sys/mem.c
 runtime/tests/clibs_smoke.c

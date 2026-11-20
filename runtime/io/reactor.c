@@ -16,7 +16,7 @@
 #include <stdatomic.h>
 #include <uv.h>
 
-#include "ms_sys.h"
+#include "ms_rt/sys.h"
 
 enum {
     EVENT_CAPACITY = 128, /* two events per ready descriptor; a callback needs room for both */
@@ -147,16 +147,16 @@ static void reactor_destroy(MsIoReactor *reactor) {
     }
     for (MsIoRow *row = reactor->free_rows; row != NULL;) {
         MsIoRow *next = row->next_free;
-        mssys_free(row);
+        ms_sys_free(row);
         row = next;
     }
-    mssys_free(reactor->rows);
+    ms_sys_free(reactor->rows);
     ms_io_ring_free(reactor->ring);
-    mssys_free(reactor);
+    ms_sys_free(reactor);
 }
 
 bool ms_io_open(bool is_main, MsIoReactor **reactor_out) {
-    MsIoReactor *reactor = mssys_malloc(sizeof *reactor);
+    MsIoReactor *reactor = ms_sys_malloc(sizeof *reactor);
     if (reactor == NULL) {
         return false;
     }
@@ -164,7 +164,7 @@ bool ms_io_open(bool is_main, MsIoReactor **reactor_out) {
     reactor->ring = ms_io_ring_new(EVENT_CAPACITY);
     if (reactor->ring == NULL || uv_loop_init(&reactor->loop) != 0) {
         ms_io_ring_free(reactor->ring);
-        mssys_free(reactor);
+        ms_sys_free(reactor);
         return false;
     }
     uv_loop_set_data(&reactor->loop, reactor);
@@ -221,7 +221,7 @@ MS_NODISCARD static bool table_reserve(MsIoReactor *reactor, int fd) {
     if (!ms_size_mul(length, sizeof(MsIoRow *), &bytes)) {
         return false;
     }
-    MsIoRow **grown = mssys_realloc(reactor->rows, bytes);
+    MsIoRow **grown = ms_sys_realloc(reactor->rows, bytes);
     if (grown == NULL) {
         return false;
     }
@@ -239,7 +239,7 @@ static MsIoWatch row_open(MsIoReactor *reactor, int fd, MsIoRow **row_out) {
     if (row != NULL) {
         reactor->free_rows = row->next_free;
     } else {
-        row = mssys_malloc(sizeof *row);
+        row = ms_sys_malloc(sizeof *row);
         if (row == NULL) {
             return MS_IO_WATCH_FAILED;
         }
@@ -247,7 +247,7 @@ static MsIoWatch row_open(MsIoReactor *reactor, int fd, MsIoRow **row_out) {
     *row = (MsIoRow){.fd = fd};
     /* uv_poll_init makes the descriptor non-blocking; the owner's choice is restored. */
     bool was_nonblocking = true;
-    const bool known = mssys_fd_get_nonblocking(fd, &was_nonblocking);
+    const bool known = ms_sys_fd_get_nonblocking(fd, &was_nonblocking);
     const int error = uv_poll_init(&reactor->loop, &row->handle, fd);
     if (error != 0) {
         row->next_free = reactor->free_rows;
@@ -256,7 +256,7 @@ static MsIoWatch row_open(MsIoReactor *reactor, int fd, MsIoRow **row_out) {
         return error == UV_EBADF ? MS_IO_WATCH_FAILED : MS_IO_WATCH_ALWAYS;
     }
     if (known && !was_nonblocking) {
-        (void)mssys_fd_set_nonblocking(fd, false);
+        (void)ms_sys_fd_set_nonblocking(fd, false);
     }
     uv_handle_set_data((uv_handle_t *)&row->handle, row);
     *row_out = row;
@@ -328,7 +328,7 @@ static void run_bounded(MsIoReactor *reactor, int64_t timeout_ns) {
     if (ms_io_ring_length(reactor->ring) > 0 || reactor->woken) {
         return;
     }
-    if (mssys_fd_wait_readable(uv_backend_fd(&reactor->loop), timeout_ns)) {
+    if (ms_sys_fd_wait_readable(uv_backend_fd(&reactor->loop), timeout_ns)) {
         (void)uv_run(&reactor->loop, UV_RUN_NOWAIT);
         return;
     }
