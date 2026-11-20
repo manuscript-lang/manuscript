@@ -7,7 +7,8 @@ endif()
 set(_tests "${CMAKE_SOURCE_DIR}/runtime/tests")
 set(_rt "${CMAKE_SOURCE_DIR}/runtime")
 
-set(_test_flags -O1 -g -Wall -Wextra -Werror)
+# Frame pointers, as in every runtime build: the fault report walks them.
+set(_test_flags -O1 -g -Wall -Wextra -Werror -fno-omit-frame-pointer)
 set(_plain_flags -O0 -g -Wall -Wextra -Werror)
 if(MS_SANITIZE)
   list(APPEND _test_flags -fsanitize=address,undefined -fno-sanitize-recover=undefined)

@@ -39,6 +39,7 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [Cross-thread cancellation metadata must use atomic accesses](cross-thread-cancellation-metadata-must-use-atomic-accesses.md): a volatile read of `Hdr.shield` raced with the owning task's writes through `Cell<u32>`.
 - [Runtime state is reached through short-lived borrows](runtime-state-needs-short-lived-borrows-for-miri.md): a `&mut` to isolate state held across a call that fetches it again is undefined behavior under Stacked Borrows.
 - [CSV writer defaults can erase a single empty field](csv-writer-defaults-can-erase-a-single-empty-field.md): a naive CSV writer emits the same bare line ending for zero fields and one empty field, while a reader skips blank lines.
+- [A fault report is built in the raiser's frame and travels with its record](a-fault-report-is-built-in-the-raisers-frame-and-travels-with-its-record.md): `MsFaultFlight` on the raiser's stack, record carried with the message, frames point into the compiler's blob, nested faults become notes.
 - [Faults and test failures reach the CLI as a record](faults-and-test-failures-reach-the-cli-as-a-record.md): the runtime writes a structured record to `MS_FAULT_RECORD`; the CLI never parses fault text.
 - [Test helper rules](test-helper-rules.md): Test plans, fixtures, fault assertions and helpers that must not duplicate test blocks.
 - [Host API names do not establish units or write guarantees](host-api-names-do-not-establish-units-or-write-guarantees.md): host uptime and Clock…
