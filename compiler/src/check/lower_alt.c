@@ -67,21 +67,36 @@ LbVal la_none_owned(Lb *lb, const MsExpr *e) {
     return (LbVal){mir_b_emit(&lb->b, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, ty), true};
 }
 
-/* `ok(value)` and `error(cause)`: the checker resolved the callee to the case. */
+/* `ok(value)`, `error(cause)` and `Case(args)` of an enum: the checker resolved the callee to the
+ * case, and every argument fills one field of it; a field that owns something is handed over. */
 LbVal la_case(Lb *lb, const MsExpr *call) {
     const MsExpr *callee = call->u.call.callee;
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[call->id]);
-    if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT || call->u.call.args.len != 1) {
+    const uint32_t count = call->u.call.args.len;
+    if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT) {
         return lb_unsupported(lb);
     }
-    const MsExpr *arg = call->u.call.args.ptr[0].value;
-    const MirTy held = lb->m->alts[mir_ty_data(lb->m, ty)->id].cases[lb->facts->res_ref[callee->id]].fields[0].ty;
-    const LbVal payload = lb_owns(lb, held) ? (LbVal){lb_move_argument(lb, arg), true} : lb_expr(lb, arg);
+    const MirCaseDef *def = &lb->m->alts[mir_ty_data(lb->m, ty)->id].cases[lb->facts->res_ref[callee->id]];
+    MirValue *payload = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
+    for (uint32_t i = 0; i < count && lb->ok; i++) {
+        const MsExpr *arg = call->u.call.args.ptr[i].value;
+        payload[i] = lb_owns(lb, def->fields[i].ty) ? lb_move_argument(lb, arg) : lb_expr(lb, arg).v;
+    }
     if (!lb->ok) {
         return LB_FAIL;
     }
     const MirImm imm = {.tag = MI_CASE, .a = mir_ty_data(lb->m, ty)->id, .b = lb->facts->res_ref[callee->id]};
-    return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, &payload.v, 1, imm, ty), lb_owns(lb, ty)};
+    return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, payload, count, imm, ty), lb_owns(lb, ty)};
+}
+
+/* A case without payload, named: `Empty`. */
+LbVal la_nullary(Lb *lb, const MsExpr *e) {
+    const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT) {
+        return lb_unsupported(lb);
+    }
+    const MirImm imm = {.tag = MI_CASE, .a = mir_ty_data(lb->m, ty)->id, .b = lb->facts->res_ref[e->id]};
+    return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, NULL, 0, imm, ty), false};
 }
 
 /* Whether `subject` holds a value: `opt.is_some`, or a Result's tag is `ok`. */
