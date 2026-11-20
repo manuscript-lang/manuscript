@@ -1,6 +1,6 @@
 # runtime
 
-The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt` and `ms-std-*` crates step by step. Plan and reasons: `c-backend/plan.md` in the project files. Only the third-party build exists so far.
+The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt` and `ms-std-*` crates step by step. Plan and reasons: [proposals/c-runtime.md](../proposals/c-runtime.md). Only the third-party build exists so far.
 
 ```
 runtime/
