@@ -3,9 +3,10 @@ package nghttp2
 import (
 	"bufio"
 	"bytes"
-	"cmp"
 	"context"
+	"crypto/sha1"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -16,7 +17,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -323,14 +323,14 @@ func (st *serverTester) Close() {
 			close(done)
 		}()
 
-		if err := st.cmd.Process.Signal(syscall.SIGQUIT); err != nil {
+		if err := st.cmd.Process.Signal(syscall.SIGQUIT); err != nil && !errors.Is(err, os.ErrProcessDone) {
 			st.t.Errorf("Error st.cmd.Process.Signal() = %v", err)
 		}
 
 		select {
 		case <-done:
 		case <-time.After(10 * time.Second):
-			if err := st.cmd.Process.Kill(); err != nil {
+			if err := st.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 				st.t.Errorf("Error st.cmd.Process.Kill() = %v", err)
 			}
 
@@ -365,10 +365,11 @@ func (st *serverTester) readFrame() (http2.Frame, error) {
 }
 
 type requestParam struct {
-	name        string              // name for this request to identify the request in log easily
-	streamID    uint32              // stream ID, automatically assigned if 0
-	method      string              // method, defaults to GET
-	scheme      string              // scheme, defaults to http
+	name        string // name for this request to identify the request in log easily
+	streamID    uint32 // stream ID, automatically assigned if 0
+	method      string // method, defaults to GET
+	scheme      string // scheme, defaults to http
+	protocol    string
 	authority   string              // authority, defaults to backend server address
 	path        string              // path, defaults to /
 	header      []hpack.HeaderField // additional request header fields
@@ -567,13 +568,19 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 
 		_ = st.enc.WriteField(pair(":method", method))
 
-		scheme := "http"
+		if method != "CONNECT" || rp.protocol != "" {
+			scheme := "http"
 
-		if rp.scheme != "" {
-			scheme = rp.scheme
+			if rp.scheme != "" {
+				scheme = rp.scheme
+			}
+
+			_ = st.enc.WriteField(pair(":scheme", scheme))
 		}
 
-		_ = st.enc.WriteField(pair(":scheme", scheme))
+		if rp.protocol != "" {
+			_ = st.enc.WriteField(pair(":protocol", rp.protocol))
+		}
 
 		authority := st.authority
 
@@ -583,13 +590,16 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 
 		_ = st.enc.WriteField(pair(":authority", authority))
 
-		path := "/"
+		if method != "CONNECT" || rp.protocol != "" {
+			path := "/"
 
-		if rp.path != "" {
-			path = rp.path
+			if rp.path != "" {
+				path = rp.path
+			}
+
+			_ = st.enc.WriteField(pair(":path", path))
 		}
 
-		_ = st.enc.WriteField(pair(":path", path))
 		_ = st.enc.WriteField(pair("test-case", rp.name))
 
 		for _, h := range rp.header {
@@ -665,18 +675,6 @@ loop:
 			if f.StreamEnded() && streamEnded(res, streams, sr) {
 				break loop
 			}
-		case *http2.PushPromiseFrame:
-			_, err := st.dec.Write(f.HeaderBlockFragment())
-			if err != nil {
-				return res, err
-			}
-
-			sr := &serverResponse{
-				streamID:  f.PromiseID,
-				reqHeader: cloneHeader(st.header),
-			}
-
-			streams[sr.streamID] = sr
 		case *http2.DataFrame:
 			sr, ok := streams[f.StreamID]
 			if !ok {
@@ -719,33 +717,23 @@ loop:
 		}
 	}
 
-	slices.SortFunc(res.pushResponse, func(a, b *serverResponse) int {
-		return cmp.Compare(a.streamID, b.streamID)
-	})
-
 	return res, nil
 }
 
 func streamEnded(mainSr *serverResponse, streams map[uint32]*serverResponse, sr *serverResponse) bool {
 	delete(streams, sr.streamID)
 
-	if mainSr.streamID != sr.streamID {
-		mainSr.pushResponse = append(mainSr.pushResponse, sr)
-	}
-
 	return len(streams) == 0
 }
 
 type serverResponse struct {
-	status       int               // HTTP status code
-	header       http.Header       // response header fields
-	body         []byte            // response body
-	streamID     uint32            // stream ID in HTTP/2
-	errCode      http2.ErrCode     // error code received in HTTP/2 RST_STREAM or GOAWAY
-	connErr      bool              // true if HTTP/2 connection error
-	connClose    bool              // Connection: close is included in response header in HTTP/1 test
-	reqHeader    http.Header       // http request header, currently only stores pushed request header
-	pushResponse []*serverResponse // pushed response
+	status    int           // HTTP status code
+	header    http.Header   // response header fields
+	body      []byte        // response body
+	streamID  uint32        // stream ID in HTTP/2
+	errCode   http2.ErrCode // error code received in HTTP/2 RST_STREAM or GOAWAY
+	connErr   bool          // true if HTTP/2 connection error
+	connClose bool          // Connection: close is included in response header in HTTP/1 test
 }
 
 func cloneHeader(h http.Header) http.Header {
@@ -923,4 +911,9 @@ func writeProxyProtocolV2(w io.Writer, hdr proxyProtocolV2) error {
 	}
 
 	return nil
+}
+
+func makeWebSocketAcceptToken(key string) string {
+	hashed := sha1.Sum([]byte(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
+	return base64.StdEncoding.EncodeToString(hashed[:])
 }

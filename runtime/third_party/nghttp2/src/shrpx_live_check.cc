@@ -30,18 +30,14 @@
 
 namespace shrpx {
 
-namespace {
 constexpr size_t MAX_BUFFER_SIZE = 4_k;
-} // namespace
 
 namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
-  int rv;
   auto conn = static_cast<Connection *>(w->data);
   auto live_check = static_cast<LiveCheck *>(conn->data);
 
-  rv = live_check->do_read();
-  if (rv != 0) {
+  if (!live_check->do_read()) {
     live_check->on_failure();
     return;
   }
@@ -50,12 +46,10 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 
 namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
-  int rv;
   auto conn = static_cast<Connection *>(w->data);
   auto live_check = static_cast<LiveCheck *>(conn->data);
 
-  rv = live_check->do_write();
-  if (rv != 0) {
+  if (!live_check->do_write()) {
     live_check->on_failure();
     return;
   }
@@ -77,11 +71,9 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 namespace {
 void backoff_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
-  int rv;
   auto live_check = static_cast<LiveCheck *>(w->data);
 
-  rv = live_check->initiate_connection();
-  if (rv != 0) {
+  if (!live_check->initiate_connection()) {
     live_check->on_failure();
     return;
   }
@@ -92,8 +84,8 @@ namespace {
 void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto live_check = static_cast<LiveCheck *>(w->data);
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "SETTINGS timeout";
+  if (log_enabled(INFO)) {
+    Log{INFO} << "SETTINGS timeout";
   }
 
   live_check->on_failure();
@@ -109,17 +101,9 @@ LiveCheck::LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
           get_config()->tls.dyn_rec.idle_timeout, Proto::NONE),
     wb_(worker->get_mcpool()),
     gen_(gen),
-    read_(&LiveCheck::noop),
-    write_(&LiveCheck::noop),
     worker_(worker),
     ssl_ctx_(ssl_ctx),
-    addr_(addr),
-    session_(nullptr),
-    raddr_(nullptr),
-    success_count_(0),
-    fail_count_(0),
-    settings_ack_received_(false),
-    session_closing_(false) {
+    addr_(addr) {
   ev_timer_init(&backoff_timer_, backoff_timeoutcb, 0., 0.);
   backoff_timer_.data = this;
 
@@ -166,11 +150,9 @@ void LiveCheck::disconnect() {
 
 // Use the similar backoff algorithm described in
 // https://github.com/grpc/grpc/blob/master/doc/connection-backoff.md
-namespace {
 constexpr size_t MAX_BACKOFF_EXP = 10;
 constexpr auto MULTIPLIER = 1.6;
 constexpr auto JITTER = 0.2;
-} // namespace
 
 void LiveCheck::schedule() {
   auto base_backoff =
@@ -187,28 +169,30 @@ void LiveCheck::schedule() {
   ev_timer_start(conn_.loop, &backoff_timer_);
 }
 
-int LiveCheck::do_read() { return read_(*this); }
+std::expected<void, Error> LiveCheck::do_read() { return read_(*this); }
 
-int LiveCheck::do_write() { return write_(*this); }
+std::expected<void, Error> LiveCheck::do_write() { return write_(*this); }
 
-int LiveCheck::initiate_connection() {
+std::expected<void, Error> LiveCheck::initiate_connection() {
   int rv;
 
   auto worker_blocker = worker_->get_connect_blocker();
   if (worker_blocker->blocked()) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Worker wide backend connection was blocked temporarily";
+    if (log_enabled(INFO)) {
+      Log{INFO} << "Worker wide backend connection was blocked temporarily";
     }
-    return -1;
+    return std::unexpected{Error::INTERNAL};
   }
 
   if (!dns_query_ && addr_->tls) {
     assert(ssl_ctx_);
 
-    auto ssl = tls::create_ssl(ssl_ctx_);
-    if (!ssl) {
-      return -1;
+    auto maybe_ssl = tls::create_ssl(ssl_ctx_);
+    if (!maybe_ssl) {
+      return std::unexpected{maybe_ssl.error()};
     }
+
+    auto ssl = *maybe_ssl;
 
     switch (addr_->proto) {
     case Proto::HTTP1:
@@ -229,13 +213,10 @@ int LiveCheck::initiate_connection() {
     if (!dns_query_) {
       auto dns_query = std::make_unique<DNSQuery>(
         addr_->host, [this](DNSResolverStatus status, const Address *result) {
-          int rv;
-
           if (status == DNSResolverStatus::OK) {
             *this->resolved_addr_ = *result;
           }
-          rv = this->initiate_connection();
-          if (rv != 0) {
+          if (!initiate_connection()) {
             this->on_failure();
           }
         });
@@ -247,10 +228,10 @@ int LiveCheck::initiate_connection() {
 
       switch (dns_tracker->resolve(resolved_addr_.get(), dns_query.get())) {
       case DNSResolverStatus::ERROR:
-        return -1;
+        return std::unexpected{Error::DNS};
       case DNSResolverStatus::RUNNING:
         dns_query_ = std::move(dns_query);
-        return 0;
+        return {};
       case DNSResolverStatus::OK:
         break;
       default:
@@ -260,7 +241,7 @@ int LiveCheck::initiate_connection() {
       switch (dns_query_->status) {
       case DNSResolverStatus::ERROR:
         dns_query_.reset();
-        return -1;
+        return std::unexpected{Error::DNS};
       case DNSResolverStatus::OK:
         dns_query_.reset();
         break;
@@ -269,31 +250,32 @@ int LiveCheck::initiate_connection() {
       }
     }
 
-    util::set_port(*resolved_addr_, addr_->port);
+    resolved_addr_->port(addr_->port);
     raddr_ = resolved_addr_.get();
   } else {
     raddr_ = &addr_->addr;
   }
 
-  conn_.fd = util::create_nonblock_socket(raddr_->su.storage.ss_family);
-
-  if (conn_.fd == -1) {
+  auto maybe_fd = util::create_nonblock_socket(raddr_->family());
+  if (!maybe_fd) {
     auto error = errno;
-    LOG(WARN) << "socket() failed; addr=" << util::to_numeric_addr(raddr_)
+    Log{WARN} << "socket() failed; addr=" << util::to_numeric_addr(raddr_)
               << ", errno=" << error;
-    return -1;
+    return std::unexpected{maybe_fd.error()};
   }
 
-  rv = connect(conn_.fd, &raddr_->su.sa, raddr_->len);
+  conn_.fd = *maybe_fd;
+
+  rv = connect(conn_.fd, raddr_->as_sockaddr(), raddr_->size());
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
-    LOG(WARN) << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
+    Log{WARN} << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
               << ", errno=" << error;
 
     close(conn_.fd);
     conn_.fd = -1;
 
-    return -1;
+    return std::unexpected{Error::SYSCALL};
   }
 
   if (addr_->tls) {
@@ -302,8 +284,9 @@ int LiveCheck::initiate_connection() {
       SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.data());
     }
 
-    auto session = tls::reuse_tls_session(addr_->tls_session_cache);
-    if (session) {
+    auto maybe_session = tls::reuse_tls_session(addr_->tls_session_cache);
+    if (maybe_session) {
+      auto session = *maybe_session;
       SSL_set_session(conn_.tls.ssl, session);
       SSL_SESSION_free(session);
     }
@@ -323,22 +306,22 @@ int LiveCheck::initiate_connection() {
   conn_.wt.repeat = downstreamconf.timeout.connect;
   ev_timer_again(conn_.loop, &conn_.wt);
 
-  return 0;
+  return {};
 }
 
-int LiveCheck::connected() {
+std::expected<void, Error> LiveCheck::connected() {
   auto sock_error = util::get_socket_error(conn_.fd);
   if (sock_error != 0) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Backend connect failed; addr="
+    if (log_enabled(INFO)) {
+      Log{INFO} << "Backend connect failed; addr="
                 << util::to_numeric_addr(raddr_) << ": errno=" << sock_error;
     }
 
-    return -1;
+    return std::unexpected{Error::CONNECT_FAIL};
   }
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Connection established";
+  if (log_enabled(INFO)) {
+    Log{INFO} << "Connection established";
   }
 
   auto &downstreamconf = *get_config()->conn.downstream;
@@ -363,40 +346,39 @@ int LiveCheck::connected() {
     read_ = &LiveCheck::read_clear;
     write_ = &LiveCheck::write_clear;
 
-    if (connection_made() != 0) {
-      return -1;
+    if (auto rv = connection_made(); !rv) {
+      return rv;
     }
 
-    return 0;
+    return {};
   }
 
   on_success();
 
-  return 0;
+  return {};
 }
 
-int LiveCheck::tls_handshake() {
+std::expected<void, Error> LiveCheck::tls_handshake() {
   conn_.last_read = std::chrono::steady_clock::now();
 
   ERR_clear_error();
 
-  auto rv = conn_.tls_handshake();
+  if (auto rv = conn_.tls_handshake(); !rv) {
+    if (rv.error() == Error::TLS_HANDSHAKE_INPROGRESS) {
+      return {};
+    }
 
-  if (rv == SHRPX_ERR_INPROGRESS) {
-    return 0;
-  }
-
-  if (rv < 0) {
     return rv;
   }
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "SSL/TLS handshake completed";
+  if (log_enabled(INFO)) {
+    Log{INFO} << "SSL/TLS handshake completed";
   }
 
-  if (!get_config()->tls.insecure &&
-      tls::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
-    return -1;
+  if (!get_config()->tls.insecure) {
+    if (auto rv = tls::check_cert(conn_.tls.ssl, addr_, raddr_); !rv) {
+      return rv;
+    }
   }
 
   // Check negotiated ALPN
@@ -413,7 +395,7 @@ int LiveCheck::tls_handshake() {
     if (proto.empty() || proto == "http/1.1"sv) {
       break;
     }
-    return -1;
+    return std::unexpected{Error::ALPN};
   case Proto::HTTP2:
     if (util::check_h2_is_selected(proto)) {
       // For HTTP/2, we try to read SETTINGS ACK from server to make
@@ -421,83 +403,77 @@ int LiveCheck::tls_handshake() {
       read_ = &LiveCheck::read_tls;
       write_ = &LiveCheck::write_tls;
 
-      if (connection_made() != 0) {
-        return -1;
+      if (auto rv = connection_made(); !rv) {
+        return rv;
       }
 
-      return 0;
+      return {};
     }
-    return -1;
+    return std::unexpected{Error::ALPN};
   default:
     break;
   }
 
   on_success();
 
-  return 0;
+  return {};
 }
 
-int LiveCheck::read_tls() {
+std::expected<void, Error> LiveCheck::read_tls() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<uint8_t, 4_k> buf;
+  std::array<uint8_t, 4_k> rawbuf;
+  auto buf = std::span{rawbuf};
 
   ERR_clear_error();
 
   for (;;) {
-    auto nread = conn_.read_tls(buf.data(), buf.size());
-
-    if (nread == 0) {
-      return 0;
+    auto maybe_data = conn_.read_tls(buf);
+    if (!maybe_data) {
+      return std::unexpected{maybe_data.error()};
     }
 
-    if (nread < 0) {
-      return static_cast<int>(nread);
+    auto data = *maybe_data;
+    if (data.empty()) {
+      return {};
     }
 
-    if (on_read(buf.data(), as_unsigned(nread)) != 0) {
-      return -1;
+    if (auto rv = on_read(data); !rv) {
+      return rv;
     }
   }
 }
 
-int LiveCheck::write_tls() {
+std::expected<void, Error> LiveCheck::write_tls() {
   conn_.last_read = std::chrono::steady_clock::now();
 
   ERR_clear_error();
 
-  struct iovec iov;
-
   for (;;) {
-    if (wb_.rleft() > 0) {
-      auto iovcnt = wb_.riovec(&iov, 1);
-      if (iovcnt != 1) {
-        assert(0);
-        return -1;
-      }
-      auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
-
-      if (nwrite == 0) {
-        return 0;
+    auto data = wb_.peek();
+    if (data.empty()) {
+      if (auto rv = on_write(); !rv) {
+        return rv;
       }
 
-      if (nwrite < 0) {
-        return static_cast<int>(nwrite);
+      data = wb_.peek();
+      if (data.empty()) {
+        conn_.start_tls_write_idle();
+        break;
       }
-
-      wb_.drain(as_unsigned(nwrite));
-
-      continue;
     }
 
-    if (on_write() != 0) {
-      return -1;
+    auto maybe_nwrite = conn_.write_tls(data);
+    if (!maybe_nwrite) {
+      return std::unexpected{maybe_nwrite.error()};
     }
 
-    if (wb_.rleft() == 0) {
-      conn_.start_tls_write_idle();
-      break;
+    auto nwrite = *maybe_nwrite;
+    if (nwrite == 0) {
+      return {};
     }
+
+    wb_.drain(nwrite);
   }
 
   conn_.wlimit.stopw();
@@ -507,65 +483,59 @@ int LiveCheck::write_tls() {
     on_success();
   }
 
-  return 0;
+  return {};
 }
 
-int LiveCheck::read_clear() {
+std::expected<void, Error> LiveCheck::read_clear() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<uint8_t, 4_k> buf;
+  std::array<uint8_t, 4_k> rawbuf;
+  auto buf = std::span{rawbuf};
 
   for (;;) {
-    auto nread = conn_.read_clear(buf.data(), buf.size());
-
-    if (nread == 0) {
-      return 0;
+    auto maybe_data = conn_.read_clear(buf);
+    if (!maybe_data) {
+      return std::unexpected{maybe_data.error()};
     }
 
-    if (nread < 0) {
-      return static_cast<int>(nread);
+    auto data = *maybe_data;
+    if (data.empty()) {
+      return {};
     }
 
-    if (on_read(buf.data(), as_unsigned(nread)) != 0) {
-      return -1;
+    if (auto rv = on_read(data); !rv) {
+      return rv;
     }
   }
 }
 
-int LiveCheck::write_clear() {
+std::expected<void, Error> LiveCheck::write_clear() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  struct iovec iov;
-
   for (;;) {
-    if (wb_.rleft() > 0) {
-      auto iovcnt = wb_.riovec(&iov, 1);
-      if (iovcnt != 1) {
-        assert(0);
-        return -1;
-      }
-      auto nwrite = conn_.write_clear(iov.iov_base, iov.iov_len);
-
-      if (nwrite == 0) {
-        return 0;
+    auto data = wb_.peek();
+    if (data.empty()) {
+      if (auto rv = on_write(); !rv) {
+        return rv;
       }
 
-      if (nwrite < 0) {
-        return static_cast<int>(nwrite);
+      data = wb_.peek();
+      if (data.empty()) {
+        break;
       }
-
-      wb_.drain(as_unsigned(nwrite));
-
-      continue;
     }
 
-    if (on_write() != 0) {
-      return -1;
+    auto maybe_nwrite = conn_.write_clear(data);
+    if (!maybe_nwrite) {
+      return std::unexpected{maybe_nwrite.error()};
     }
 
-    if (wb_.rleft() == 0) {
-      break;
+    auto nwrite = *maybe_nwrite;
+    if (nwrite == 0) {
+      return {};
     }
+
+    wb_.drain(nwrite);
   }
 
   conn_.wlimit.stopw();
@@ -575,53 +545,53 @@ int LiveCheck::write_clear() {
     on_success();
   }
 
-  return 0;
+  return {};
 }
 
-int LiveCheck::on_read(const uint8_t *data, size_t len) {
-  auto rv = nghttp2_session_mem_recv2(session_, data, len);
+std::expected<void, Error> LiveCheck::on_read(std::span<const uint8_t> data) {
+  auto rv = nghttp2_session_mem_recv2(session_, data.data(), data.size());
   if (rv < 0) {
-    LOG(ERROR) << "nghttp2_session_mem_recv2() returned error: "
+    Log{ERROR} << "nghttp2_session_mem_recv2() returned error: "
                << nghttp2_strerror(static_cast<int>(rv));
-    return -1;
+    return std::unexpected{Error::HTTP2};
   }
 
   if (settings_ack_received_ && !session_closing_) {
     session_closing_ = true;
     auto rv = nghttp2_session_terminate_session(session_, NGHTTP2_NO_ERROR);
     if (rv != 0) {
-      return -1;
+      return std::unexpected{Error::HTTP2};
     }
   }
 
   if (nghttp2_session_want_read(session_) == 0 &&
       nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "No more read/write for this session";
+    if (log_enabled(INFO)) {
+      Log{INFO} << "No more read/write for this session";
     }
 
     // If we have SETTINGS ACK already, we treat this success.
     if (settings_ack_received_) {
-      return 0;
+      return {};
     }
 
-    return -1;
+    return std::unexpected{Error::DONE};
   }
 
   signal_write();
 
-  return 0;
+  return {};
 }
 
-int LiveCheck::on_write() {
+std::expected<void, Error> LiveCheck::on_write() {
   for (;;) {
     const uint8_t *data;
     auto datalen = nghttp2_session_mem_send2(session_, &data);
 
     if (datalen < 0) {
-      LOG(ERROR) << "nghttp2_session_mem_send2() returned error: "
+      Log{ERROR} << "nghttp2_session_mem_send2() returned error: "
                  << nghttp2_strerror(static_cast<int>(datalen));
-      return -1;
+      return std::unexpected{Error::HTTP2};
     }
     if (datalen == 0) {
       break;
@@ -635,25 +605,25 @@ int LiveCheck::on_write() {
 
   if (nghttp2_session_want_read(session_) == 0 &&
       nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "No more read/write for this session";
+    if (log_enabled(INFO)) {
+      Log{INFO} << "No more read/write for this session";
     }
 
     if (settings_ack_received_) {
-      return 0;
+      return {};
     }
 
-    return -1;
+    return std::unexpected{Error::DONE};
   }
 
-  return 0;
+  return {};
 }
 
 void LiveCheck::on_failure() {
   ++fail_count_;
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Liveness check for " << addr_->host << ":" << addr_->port
+  if (log_enabled(INFO)) {
+    Log{INFO} << "Liveness check for " << addr_->host << ":" << addr_->port
               << " failed " << fail_count_ << " time(s) in a row";
   }
 
@@ -666,8 +636,8 @@ void LiveCheck::on_success() {
   ++success_count_;
   fail_count_ = 0;
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Liveness check for " << addr_->host << ":" << addr_->port
+  if (log_enabled(INFO)) {
+    Log{INFO} << "Liveness check for " << addr_->host << ":" << addr_->port
               << " succeeded " << success_count_ << " time(s) in a row";
   }
 
@@ -679,7 +649,7 @@ void LiveCheck::on_success() {
     return;
   }
 
-  LOG(NOTICE) << util::to_numeric_addr(&addr_->addr) << " is considered online";
+  Log{NOTICE} << util::to_numeric_addr(&addr_->addr) << " is considered online";
 
   addr_->connect_blocker->online();
 
@@ -688,8 +658,6 @@ void LiveCheck::on_success() {
 
   disconnect();
 }
-
-int LiveCheck::noop() { return 0; }
 
 void LiveCheck::start_settings_timer() {
   auto &downstreamconf = get_config()->http2.downstream;
@@ -737,51 +705,52 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
 }
 } // namespace
 
-int LiveCheck::connection_made() {
+std::expected<void, Error> LiveCheck::connection_made() {
   int rv;
 
   nghttp2_session_callbacks *callbacks;
   rv = nghttp2_session_callbacks_new(&callbacks);
   if (rv != 0) {
-    return -1;
+    return std::unexpected{Error::HTTP2};
   }
 
   nghttp2_session_callbacks_set_on_frame_send_callback(callbacks,
                                                        on_frame_send_callback);
   nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
                                                        on_frame_recv_callback);
+  nghttp2_session_callbacks_set_rand_callback(callbacks, util::secure_random);
 
   rv = nghttp2_session_client_new(&session_, callbacks, this);
 
   nghttp2_session_callbacks_del(callbacks);
 
   if (rv != 0) {
-    return -1;
+    return std::unexpected{Error::HTTP2};
   }
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, nullptr, 0);
   if (rv != 0) {
-    return -1;
+    return std::unexpected{Error::HTTP2};
   }
 
   auto must_terminate =
     addr_->tls && !nghttp2::tls::check_http2_requirement(conn_.tls.ssl);
 
   if (must_terminate) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "TLSv1.2 was not negotiated. HTTP/2 must not be negotiated.";
+    if (log_enabled(INFO)) {
+      Log{INFO} << "TLSv1.2 was not negotiated. HTTP/2 must not be negotiated.";
     }
 
     rv =
       nghttp2_session_terminate_session(session_, NGHTTP2_INADEQUATE_SECURITY);
     if (rv != 0) {
-      return -1;
+      return std::unexpected{Error::HTTP2};
     }
   }
 
   signal_write();
 
-  return 0;
+  return {};
 }
 
 void LiveCheck::signal_write() { conn_.wlimit.startw(); }

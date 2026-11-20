@@ -2,4 +2,3 @@
 //! crate links once instead of once per file.
 
 mod c_smoke;
-mod std_natives;

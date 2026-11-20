@@ -36,15 +36,18 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
+#include <string_view>
+#include <span>
+#include <expected>
 
 #include "ssl_compat.h"
 
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ev.h>
 
@@ -55,6 +58,7 @@
 #include "buffer.h"
 #include "template.h"
 #include "allocator.h"
+#include "errors.h"
 
 namespace nghttp2 {
 
@@ -69,29 +73,30 @@ struct Config {
   std::string cert_file;
   std::string dh_param_file;
   std::string address;
-  std::string mime_types_file;
-  ev_tstamp stream_read_timeout;
-  ev_tstamp stream_write_timeout;
-  void *data_ptr;
-  size_t padding;
-  size_t num_worker;
-  size_t max_concurrent_streams;
-  ssize_t header_table_size;
-  ssize_t encoder_header_table_size;
-  int window_bits;
-  int connection_window_bits;
-  uint16_t port;
-  bool verbose;
-  bool daemon;
-  bool verify_client;
-  bool no_tls;
-  bool error_gzip;
-  bool early_response;
-  bool hexdump;
-  bool echo_upload;
-  bool no_content_length;
-  bool ktls;
-  Config();
+  std::string mime_types_file{"/etc/mime.types"};
+  std::string_view groups{"X25519:P-256:P-384:P-521"};
+  ev_tstamp stream_read_timeout{1_min};
+  ev_tstamp stream_write_timeout{1_min};
+  void *data_ptr{};
+  size_t padding{};
+  size_t num_worker{1};
+  size_t max_concurrent_streams{100};
+  ssize_t header_table_size{-1};
+  ssize_t encoder_header_table_size{-1};
+  int window_bits{-1};
+  int connection_window_bits{-1};
+  uint16_t port{};
+  bool verbose{};
+  bool daemon{};
+  bool verify_client{};
+  bool no_tls{};
+  bool error_gzip{};
+  bool early_response{};
+  bool hexdump{};
+  bool echo_upload{};
+  bool no_content_length{};
+  bool ktls{};
+  Config() noexcept = default;
   ~Config();
 };
 
@@ -100,17 +105,14 @@ class Http2Handler;
 struct FileEntry {
   FileEntry(std::string path, int64_t length, int64_t mtime, int fd,
             const std::string *content_type,
-            const std::chrono::steady_clock::time_point &last_valid,
+            std::chrono::steady_clock::time_point last_valid,
             bool stale = false)
     : path(std::move(path)),
       length(length),
       mtime(mtime),
       last_valid(last_valid),
       content_type(content_type),
-      dlnext(nullptr),
-      dlprev(nullptr),
       fd(fd),
-      usecount(1),
       stale(stale) {}
   std::string path;
   std::unordered_multimap<std::string, std::unique_ptr<FileEntry>>::iterator it;
@@ -118,9 +120,9 @@ struct FileEntry {
   int64_t mtime;
   std::chrono::steady_clock::time_point last_valid;
   const std::string *content_type;
-  FileEntry *dlnext, *dlprev;
+  FileEntry *dlnext{}, *dlprev{};
   int fd;
-  int usecount;
+  int usecount{1};
   bool stale;
 };
 
@@ -145,19 +147,19 @@ struct RequestHeader {
 };
 
 struct Stream {
-  BlockAllocator balloc;
-  RequestHeader header;
+  BlockAllocator balloc{1024, 1024};
+  RequestHeader header{};
   Http2Handler *handler;
-  FileEntry *file_ent;
+  FileEntry *file_ent{};
   ev_timer rtimer;
   ev_timer wtimer;
-  int64_t body_length;
-  int64_t body_offset;
+  int64_t body_length{};
+  int64_t body_offset{};
   // Total amount of bytes (sum of name and value length) used in
   // headers.
-  size_t header_buffer_size;
+  size_t header_buffer_size{};
   int32_t stream_id;
-  bool echo_upload;
+  bool echo_upload{};
   Stream(Http2Handler *handler, int32_t stream_id);
   ~Stream();
 };
@@ -171,28 +173,34 @@ public:
 
   void remove_self();
   void start_settings_timer();
-  int on_read();
-  int on_write();
-  int connection_made();
-  int verify_alpn_result();
+  std::expected<void, Error> on_read();
+  std::expected<void, Error> on_write();
+  std::expected<void, Error> connection_made();
+  std::expected<void, Error> verify_alpn_result();
 
-  int submit_file_response(const std::string_view &status, Stream *stream,
-                           time_t last_modified, off_t file_length,
-                           const std::string *content_type,
-                           nghttp2_data_provider2 *data_prd);
+  std::expected<void, Error>
+  submit_file_response(std::string_view status, Stream *stream,
+                       time_t last_modified, off_t file_length,
+                       const std::string *content_type,
+                       nghttp2_data_provider2 *data_prd);
 
-  int submit_response(const std::string_view &status, int32_t stream_id,
-                      nghttp2_data_provider2 *data_prd);
+  std::expected<void, Error> submit_response(std::string_view status,
+                                             int32_t stream_id,
+                                             nghttp2_data_provider2 *data_prd);
 
-  int submit_response(const std::string_view &status, int32_t stream_id,
-                      const HeaderRefs &headers,
-                      nghttp2_data_provider2 *data_prd);
+  std::expected<void, Error> submit_response(std::string_view status,
+                                             int32_t stream_id,
+                                             const HeaderRefs &headers,
+                                             nghttp2_data_provider2 *data_prd);
 
-  int submit_non_final_response(const std::string &status, int32_t stream_id);
+  std::expected<void, Error>
+  submit_non_final_response(const std::string &status, int32_t stream_id);
 
-  int submit_push_promise(Stream *stream, const std::string_view &push_path);
+  std::expected<void, Error> submit_push_promise(Stream *stream,
+                                                 std::string_view push_path);
 
-  int submit_rst_stream(Stream *stream, uint32_t error_code);
+  std::expected<void, Error> submit_rst_stream(Stream *stream,
+                                               uint32_t error_code);
 
   void add_stream(int32_t stream_id, std::unique_ptr<Stream> stream);
   void remove_stream(int32_t stream_id);
@@ -203,13 +211,13 @@ public:
   void remove_settings_timer();
   void terminate_session(uint32_t error_code);
 
-  int fill_wb();
+  std::expected<void, Error> fill_wb();
 
-  int read_clear();
-  int write_clear();
-  int tls_handshake();
-  int read_tls();
-  int write_tls();
+  std::expected<void, Error> read_clear();
+  std::expected<void, Error> write_clear();
+  std::expected<void, Error> tls_handshake();
+  std::expected<void, Error> read_tls();
+  std::expected<void, Error> write_tls();
 
   struct ev_loop *get_loop() const;
 
@@ -223,13 +231,12 @@ private:
   ev_timer settings_timerev_;
   std::unordered_map<int32_t, std::unique_ptr<Stream>> id2stream_;
   WriteBuf wb_;
-  std::function<int(Http2Handler &)> read_, write_;
+  std::function<std::expected<void, Error>(Http2Handler &)> read_, write_;
   int64_t session_id_;
-  nghttp2_session *session_;
+  nghttp2_session *session_{};
   Sessions *sessions_;
   SSL *ssl_;
-  const uint8_t *data_pending_;
-  size_t data_pendinglen_;
+  std::span<const uint8_t> data_pending_;
   int fd_;
 };
 
@@ -241,8 +248,7 @@ struct StatusPage {
 class HttpServer {
 public:
   HttpServer(const Config *config);
-  int listen();
-  int run();
+  std::expected<void, Error> run();
   const Config *get_config() const;
   const StatusPage *get_status_page(int status) const;
 
@@ -258,4 +264,4 @@ nghttp2_ssize file_read_callback(nghttp2_session *session, int32_t stream_id,
 
 } // namespace nghttp2
 
-#endif // HTTP_SERVER_H
+#endif // !defined(HTTP_SERVER_H)

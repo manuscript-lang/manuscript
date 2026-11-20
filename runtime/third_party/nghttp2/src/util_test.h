@@ -27,11 +27,11 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif // HAVE_CONFIG_H
+#endif // defined(HAVE_CONFIG_H)
 
 #define MUNIT_ENABLE_ASSERT_ALIASES
 
-#include "munit.h"
+#include "munitxx.h"
 
 namespace shrpx {
 
@@ -69,7 +69,7 @@ munit_void_test_decl(test_util_make_http_hostport)
 munit_void_test_decl(test_util_make_hostport)
 munit_void_test_decl(test_util_random_alpha_digit)
 munit_void_test_decl(test_util_format_hex)
-munit_void_test_decl(test_util_format_upper_hex)
+munit_void_test_decl(test_util_format_upper_hex_uint8)
 munit_void_test_decl(test_util_is_hex_string)
 munit_void_test_decl(test_util_decode_hex)
 munit_void_test_decl(test_util_extract_host)
@@ -86,8 +86,12 @@ munit_void_test_decl(test_util_in_rfc3986_sub_delims)
 munit_void_test_decl(test_util_in_token)
 munit_void_test_decl(test_util_in_attr_char)
 munit_void_test_decl(test_util_upcase)
+munit_void_test_decl(test_util_lowcase)
 munit_void_test_decl(test_util_to_numeric_addr)
+munit_void_test_decl(test_util_fieldeq)
+munit_void_test_decl(test_util_sha256)
+munit_void_test_decl(test_util_sha1)
 
 } // namespace shrpx
 
-#endif // UTIL_TEST_H
+#endif // !defined(UTIL_TEST_H)
