@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "../core/fault.h"
 #include "ms_rt/desc.h"
 
 /* The arguments msrt_start received; msrt_argv and msrt_args read them. */
@@ -28,5 +29,9 @@ void ms_profile_start(void);
 void ms_profile_attach_runtime_thread(void);
 /* Ends profiling and writes what the environment asked for. */
 void ms_profile_finish(void);
+
+/* The promise table calls this when a task that ran under a test output capture ended with a fault; the test runner
+ * takes the record with msrt_test_capture_fault. */
+void ms_test_keep_fault(uint64_t capture, const MsFaultText *text);
 
 #endif
