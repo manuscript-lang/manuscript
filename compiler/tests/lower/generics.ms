@@ -1,3 +1,7 @@
+type Point:
+	x: Int
+	y: Int
+
 fn identity[T](x: T) T:
 	return x
 
@@ -9,6 +13,20 @@ fn second[A, B](a: A, b: B) B:
 
 fn pick[T](a: T, b: T) T:
 	return b
+
+fn wrap[T](a: T) T:
+	return identity(a)
+
+fn wrap_pair[T](a: T, b: T) T:
+	return first(a, b)
+
+fn from_nested() Float:
+	return wrap(wrap_pair(1.5, 2.5)) + wrap(0.5)
+
+fn from_records() Int:
+	p := identity(Point(x: 1, y: 2))
+	q := pick(p, Point(x: 3, y: 4))
+	return q.y
 
 fn from_ints() Int:
 	a := identity(3)
@@ -29,5 +47,12 @@ fn from_text() String:
 	return identity("s")
 
 fn main() Int:
-	if from_bools(false) and mixed(2) > 1.0 and from_floats() > 1.0 and from_text() == "s": return from_ints()
+	if (
+		from_records() > 0
+		and from_nested() > 0.0
+		and from_bools(false)
+		and mixed(2) > 1.0
+		and from_floats() > 1.0
+		and from_text() == "s"
+	): return from_ints()
 	return identity(0)

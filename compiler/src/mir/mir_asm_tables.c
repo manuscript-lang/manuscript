@@ -194,7 +194,10 @@ static void at_put_blob(MsBuf *out, const uint8_t *blob, size_t size, AtPatch *p
  * whose scope belongs to another function than the one holding the code gets a scope of its own: a frame for
  * that callee whose parent is the function (the frame of a wrapper without a position is then left out). */
 
-typedef struct AtClone { uint64_t key; uint32_t id; } AtClone;
+/* A clone is told by the function it lands in, the original scope (0x80000000 | q for the body of q) and the line
+ * of the call it replaces. */
+typedef struct AtCall { uint32_t line, scope; } AtCall; /* the call an inlined body replaces: its line and the scope it was in */
+typedef struct AtClone { uint32_t func, scope; AtCall call; uint32_t id; } AtClone;
 
 typedef struct AtRemap {
     AtMeta *a;
@@ -203,37 +206,37 @@ typedef struct AtRemap {
     MsBuf memo; /* AtClone */
 } AtRemap;
 
-static uint32_t at_memo(AtRemap *r, uint64_t key) {
+static uint32_t at_memo(AtRemap *r, AtClone key) {
     const AtClone *all = ms_buf_items(&r->memo);
     for (size_t i = 0; i < r->memo.len / sizeof *all; i++) {
-        if (all[i].key == key) {
+        if (all[i].func == key.func && all[i].scope == key.scope && all[i].call.line == key.call.line && all[i].call.scope == key.call.scope) {
             return all[i].id;
         }
     }
     return 0;
 }
 
-static uint32_t at_new_scope(AtRemap *r, uint64_t key, MirScope s) {
+static uint32_t at_new_scope(AtRemap *r, AtClone key, MirScope s) {
     MIR_PUSH(&r->a->m, r->a->scopes, r->a->nscopes, r->a->cscopes, MirScope, s);
-    const AtClone c = {key, r->a->nscopes};
-    ms_buf_put(&r->memo, &c, sizeof c);
-    return c.id;
+    key.id = r->a->nscopes;
+    ms_buf_put(&r->memo, &key, sizeof key);
+    return key.id;
 }
 
-/* The scope of function `q`'s own body inlined into function `p`. */
-static uint32_t at_inlined_body(AtRemap *r, uint32_t q, uint32_t p) {
-    const uint64_t key = ((uint64_t)p << 32) | (0x80000000u | q);
+/* The scope of function `q`'s own body inlined into function `p` at `call`. */
+static uint32_t at_inlined_body(AtRemap *r, uint32_t q, uint32_t p, AtCall call) {
+    const AtClone key = {p, 0x80000000u | q, call, 0};
     const uint32_t known = at_memo(r, key);
     if (known != 0) {
         return known;
     }
     const AtFunc *f = &r->a->funcs[q];
-    return at_new_scope(r, key, (MirScope){mir_name(&r->a->m, f->name.ptr, f->name.len), f->file, 0, 0});
+    return at_new_scope(r, key, (MirScope){mir_name(&r->a->m, f->name.ptr, f->name.len), f->file, call.scope, call.line});
 }
 
 /* A copy of scope `c` (a global number) for code in function `p`, its chain ending at the inlined body. */
-static uint32_t at_clone(AtRemap *r, uint32_t c, uint32_t p) {
-    const uint64_t key = ((uint64_t)p << 32) | c;
+static uint32_t at_clone(AtRemap *r, uint32_t c, uint32_t p, AtCall call) {
+    const AtClone key = {p, c, call, 0};
     const uint32_t known = at_memo(r, key);
     if (known != 0) {
         return known;
@@ -241,9 +244,9 @@ static uint32_t at_clone(AtRemap *r, uint32_t c, uint32_t p) {
     MirScope s = r->a->scopes[c - 1];
     const uint32_t q = r->owner[c - 1];
     if (s.parent == 0) {
-        s.parent = at_inlined_body(r, q, p);
+        s.parent = at_inlined_body(r, q, p, call);
     } else if (r->owner[s.parent - 1] != p) {
-        s.parent = at_clone(r, s.parent, p);
+        s.parent = at_clone(r, s.parent, p, call);
     }
     return at_new_scope(r, key, s);
 }
@@ -256,13 +259,19 @@ static void at_remap_scopes(AtMeta *a, AtLoc *all, size_t nlocs) {
             r.owner[a->funcs[f].first_scope + k] = f;
         }
     }
+    /* LLVM's locations carry no call site: the caller's line and scope are those of its own code just before the range. */
+    AtCall *own = MS_NEW_N(&a->m.arena, AtCall, a->nfuncs ? a->nfuncs : 1);
+    memset(own, 0, sizeof *own * (a->nfuncs ? a->nfuncs : 1));
     for (size_t i = 0; i < nlocs; i++) {
         const uint32_t p = all[i].func, c = all[i].scope;
         if (c > r.norig) {
             const uint32_t q = c - r.norig - 1;
-            all[i].scope = q >= a->nfuncs || q == p ? 0 : at_inlined_body(&r, q, p);
+            all[i].scope = q >= a->nfuncs || q == p ? 0 : at_inlined_body(&r, q, p, own[p]);
         } else if (c > 0 && r.owner[c - 1] != p) {
-            all[i].scope = at_clone(&r, c, p);
+            all[i].scope = at_clone(&r, c, p, own[p]);
+        }
+        if (all[i].scope == 0 || all[i].scope <= r.norig) {
+            own[p] = (AtCall){all[i].line, all[i].scope};
         }
     }
     ms_buf_free(&r.memo);

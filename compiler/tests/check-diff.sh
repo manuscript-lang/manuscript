@@ -103,6 +103,16 @@ if ! grep -q 'body_optional_wrap.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_
     echo "FAIL bodies: a value used as an Optional is no longer checked in C (compiler/tests/scope/body_optional_wrap.ms)"
     status=1
 fi
+# A record built with its defaults left out, and passed as an `ok` payload, is claimed.
+if ! grep -q 'body_construct_defaults.ms 5:1$' "$out/bodies.keys" || ! grep -q 'body_construct_defaults.ms 8:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a record built with defaults is no longer checked in C (compiler/tests/scope/body_construct_defaults.ms)"
+    status=1
+fi
+# A function over a type that closes is checked in C: the ownership pass knows it is a resource.
+if ! grep -q 'body_resource_param.ms 11:1$' "$out/bodies.keys" || ! grep -q 'body_resource_param.ms 14:1$' "$out/bodies.keys" || ! grep -q 'body_resource_param.ms 18:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a function over a type that closes is no longer checked in C (compiler/tests/scope/body_resource_param.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else

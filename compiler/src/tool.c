@@ -766,3 +766,15 @@ void ms_tool_node_kinds(ms_list *out) {
         ms_list_push(out, &value);
     }
 }
+
+void ms_tool_keywords(ms_list *out) {
+    for (int kind = MS_T_And; kind <= MS_T_While; kind++) {
+        const char *word = ms_tok_str((MsTok)kind);
+        ms_value value;
+        memset(&value, 0, sizeof value);
+        value.kind = MS_STRING;
+        value.as.buf.data = (const uint8_t *)word;
+        value.as.buf.len = strlen(word);
+        ms_list_push(out, &value);
+    }
+}

@@ -6,6 +6,7 @@
 #define MS_LOWER_INTERNAL_H
 
 #include "ms/check.h"
+#include "ms/ownership.h"
 #include "ms/facts.h"
 #include "ms/lower_scope.h"
 #include "ms/mir_builder.h"
@@ -53,6 +54,7 @@ typedef struct LbJob {
 } LbJob;
 
 typedef struct Lb {
+    MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
     MsCheck *mut; /* the same table, for `ms_def`, which adds rows on demand */
     const MsFacts *facts;
@@ -98,7 +100,7 @@ void lb_reset_state(Lb *lb);
 
 /* lower_closure.c: function values and lambdas. */
 MirTy lb_fn_ty(Lb *lb, MsTy ty);
-bool lb_is_fn(Lb *lb, MirTy ty);
+bool lb_is_fn(const Lb *lb, MirTy ty);
 LbVal lb_lambda(Lb *lb, const MsExpr *e);
 LbVal lb_function_value(Lb *lb, const MsExpr *e);
 LbVal lb_call_value(Lb *lb, const MsExpr *e);
@@ -116,11 +118,12 @@ void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
 void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 void lb_write_back(Lb *lb);
-MirLoc lb_loc(const Lb *lb, MsPos pos);
-void lb_drop(Lb *lb, MirValue v);
-void lb_return_void(Lb *lb);
-void lb_statements(Lb *lb, const MsStmts *body);
-void lb_reset_state(Lb *lb);
+
+/* Lists of scalars (lower_list.c, included after lower_body.c). */
+MirTy lst_type(Lb *lb, MsTy ty);
+bool lb_is_list(const Lb *lb, MirTy ty);
+LbVal lst_literal(Lb *lb, const MsExpr *e);
+LbVal lst_index(Lb *lb, const MsExpr *e);
 
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
