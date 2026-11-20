@@ -71,6 +71,19 @@ void ms_sys_yield(void);
 /* Blocks the calling thread for ms milliseconds. */
 void ms_sys_sleep_ms(uint32_t ms);
 
+/* sys/{posix,windows}/sampler.c: the sampling profiler's clock */
+
+/* Called about `hz` times a second with the program counter and frame pointer of the thread that called
+ * ms_sys_sampler_start. On Unix it runs in a signal handler on that thread (on_target is true, only async-signal-safe
+ * calls are allowed, and the clock counts the process's CPU time). On Windows it runs on a sampler thread while the
+ * target runs again (on_target is false, so the target's thread-local state is not visible; read it through cells
+ * the target published). */
+typedef void (*MsSysSampleFn)(uintptr_t pc, uintptr_t fp, bool on_target, void *context);
+/* Starts sampling the calling thread; false when the platform cannot or one is already running. hz is 1 to 10000. */
+MS_NODISCARD bool ms_sys_sampler_start(int64_t hz, MsSysSampleFn on_sample, void *context);
+/* Stops sampling. When it returns no call to on_sample is running or will start. */
+void ms_sys_sampler_stop(void);
+
 /* ---- descriptors (the reactor's door to the system) ---- */
 
 /* Sets *on to whether fd is in non-blocking mode; false when the system refuses. Unix only; Windows reports false. */
