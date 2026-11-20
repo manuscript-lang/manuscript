@@ -2,11 +2,9 @@
  * a diagnostic, unless it begins with `_`. The body checker counts the reads; this pass reports
  * from those counts, for the functions whose bodies it accepted. */
 #include "ms/check.h"
+#include "ms/facts.h"
 
-static const char unused_plain[] = "local binding %.*s is never read; remove it, use it, or name it with a leading '_' to ignore it";
-static const char unused_fed[] =
-    "local binding %.*s is never read: it is only read to compute its own next value, so nothing observes it; "
-    "remove it, use it elsewhere, or name it with a leading '_' to ignore it";
+#define UNUSED_REMEDY "name it with a leading '_' to ignore it"
 
 static bool unused_is_local(MsBindRole role) {
     return role == MS_ROLE_LET || role == MS_ROLE_VAR || role == MS_ROLE_ARM;
@@ -16,8 +14,13 @@ static void unused_report(MsCheck *c, MsModId module, uint32_t binding) {
     const MsBindings *bindings = &c->mods[module].facts->bindings;
     const MsStr name = ms_name(c->names, bindings->name[binding]);
     const bool fed = (bindings->flags[binding] & MS_BIND_FED) != 0;
-    const char *format = fed ? unused_fed : unused_plain;
-    const MsStr message = ms_arena_fmt(&c->arena, format, (int)name.len, name.ptr);
+    const MsStr message =
+        fed ? ms_arena_fmt(&c->arena,
+                           "local binding %.*s is never read: it is only read to compute its own next value, so "
+                           "nothing observes it; remove it, use it elsewhere, or " UNUSED_REMEDY,
+                           (int)name.len, name.ptr)
+            : ms_arena_fmt(&c->arena, "local binding %.*s is never read; remove it, use it, or " UNUSED_REMEDY,
+                           (int)name.len, name.ptr);
     const MsCheckDiag diag = {.diag = {.pos = bindings->pos[binding], .message = message}, .phase = MS_PHASE_TYPE};
     ms_report(c, module, &diag);
 }

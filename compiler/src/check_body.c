@@ -364,11 +364,13 @@ static const char *body_conversion_hint(const MsBody *b, MsTy actual, MsTy expec
         return "Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)";
     }
     if (expected == b->string_ty && (actual == b->int_ty || actual == b->float_ty || actual == b->bool_ty)) {
-        return actual == b->int_ty
-                   ? "Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\""
-               : actual == b->float_ty
-                   ? "Float does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\""
-                   : "Bool does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"";
+        if (actual == b->int_ty) {
+            return "Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"";
+        }
+        if (actual == b->float_ty) {
+            return "Float does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"";
+        }
+        return "Bool does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"";
     }
     return "";
 }
