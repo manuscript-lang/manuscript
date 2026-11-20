@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/check.h"
 #include "ms/effects.h"
 #include "ms/facts.h"
 #include "ms/walk.h"
