@@ -1048,6 +1048,7 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     }
     switch (inst->op) {
     case MOP_IConst: case MOP_BConst: case MOP_FConst: ll_constant(c, inst); return true;
+    case MOP_ListLen: ll_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_LEN_LEAF); return true;
     case MOP_ICmp: case MOP_UICmp: case MOP_FCmp: ll_compare(c, inst); return true;
     case MOP_Call: return ll_call(c, inst, block, index);
     case MOP_CallRt: return ll_call_rt(c, inst, block, index);
