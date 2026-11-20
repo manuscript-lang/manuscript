@@ -4,7 +4,12 @@
 #ifndef MS_OWNERSHIP_H
 #define MS_OWNERSHIP_H
 
+#include "ms_rt/safe.h"
+
 #include "ms/base.h"
+#include "ms/facts.h"
+#include "ms/tables.h"
+#include "ms/types.h"
 
 /* ---- places: a local binding and a path of projections ---- */
 
@@ -59,5 +64,59 @@ uint32_t ms_bits_count(MsBits s);
 void ms_bits_meet(MsBits into, MsBits from);
 /* Adds the members of `from`. */
 void ms_bits_union(MsBits into, MsBits from);
+
+/* ---- value classes: how a value of a type moves ---- */
+
+/* Ordered, so the class of a container is the largest class of what it holds. */
+typedef enum MsClass {
+    MS_CLASS_COPY,     /* duplicated implicitly: scalars, types of those, plain-word natives */
+    MS_CLASS_MOVE,     /* one owner; moves at its last use, `.clone()` copies */
+    MS_CLASS_RESOURCE  /* a unique resource (`Closeable`): moves and cannot be copied */
+} MsClass;
+
+typedef struct MsClassifier MsClassifier;
+
+/* A classifier over the checker's tables; `check` must outlive it. Results are kept per interned
+ * type, so each type is classified once. Owned: free with ms_classifier_free. */
+MsClassifier *ms_classifier_new(MsCheck *check) MS_NONNULL;
+void ms_classifier_free(MsClassifier *classifier);
+
+/* Declares that values of the type with this identity close themselves (a `Closeable`
+ * implementation, or a `move close()` of the type's own). Later queries see it; call it before
+ * classifying. */
+void ms_classifier_mark_closeable(MsClassifier *classifier, MsSym type_id) MS_NONNULL;
+/* Declares that the interface with this identity has a consuming `close`, so its values own what
+ * they were made from. */
+void ms_classifier_mark_owned_close(MsClassifier *classifier, MsSym interface_id) MS_NONNULL;
+
+MsClass ms_classify(MsClassifier *classifier, MsTy type) MS_NONNULL;
+
+/* ---- liveness: which use of a binding is its last ---- */
+
+typedef enum MsUseState {
+    MS_USE_NONE,  /* not a recorded use */
+    MS_USE_LATER, /* the binding is used again on some path */
+    MS_USE_LAST   /* no later use of the binding can run */
+} MsUseState;
+
+/* By expression node id. `next` is the earliest later use of the same binding, for diagnostics. */
+typedef struct MsLiveness {
+    uint8_t *state; /* MsUseState */
+    uint32_t *next; /* node id, or MS_NONE */
+    MsPos *pos;     /* where the use is written */
+} MsLiveness;
+
+MsLiveness ms_liveness_new(MsArena *arena, uint32_t node_count);
+
+/* Fills the liveness of one function body by a backward walk (`live.rs`). Returns false, leaving
+ * the function unanalysed, for a statement or expression the walk does not handle yet. */
+bool ms_liveness_function(MsLiveness *live, const MsFacts *facts, const MsFunc *function);
+
+/* ---- the pass ---- */
+
+/* Runs the ownership rules over every function whose body the checker accepted, reporting what
+ * the Rust pass reports. A function with a construct the pass does not handle yet is handed back
+ * to the Rust checker: its `body_checked` flag is cleared. Call after ms_module_check_bodies. */
+void ms_module_check_ownership(MsCheck *c, MsModId module);
 
 #endif

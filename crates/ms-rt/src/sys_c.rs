@@ -127,3 +127,13 @@ pub fn sleep_ms(ms: u32) {
     // SAFETY: no pointers.
     unsafe { ms_sys_sleep_ms(ms) }
 }
+
+/// Routes memory-access faults to `on_fault` on the calling thread's alternate stack (Linux and macOS).
+#[cfg(all(unix, ms_c = "ms_sys_fault_handler_install"))]
+pub fn fault_handler_install(on_fault: extern "C" fn(usize)) -> bool {
+    unsafe extern "C" {
+        fn ms_sys_fault_handler_install(on_fault: extern "C" fn(usize)) -> bool;
+    }
+    // SAFETY: installs process-wide handlers that only call `on_fault`.
+    unsafe { ms_sys_fault_handler_install(on_fault) }
+}

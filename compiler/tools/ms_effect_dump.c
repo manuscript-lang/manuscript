@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "ms/effects.h"
+#include "dump_io.h"
 
 static char *read_all(FILE *file, size_t *length) {
     size_t cap = 4096;
@@ -81,12 +82,15 @@ typedef struct Tokens {
 
 static void split_line(char *line, Tokens *t) {
     t->count = 0;
-    for (char *p = strtok(line, " \t\r"); p != NULL && t->count < 16; p = strtok(NULL, " \t\r")) {
+    for (char *p = line; *p != 0 && t->count < 16;) {
+        p += strspn(p, " \t\r");
+        if (*p == 0) break;
         t->word[t->count++] = p;
+        p += strcspn(p, " \t\r");
+        if (*p != 0) *p++ = 0;
     }
 }
 
-static MsStr str_of(char *word) { return (MsStr){word, (uint32_t)strlen(word)}; }
 
 static MsPos pos_of(char **w) {
     return (MsPos){.line = (uint32_t)atoi(w[0]), .column = (uint32_t)atoi(w[1]), .offset = (uint32_t)atoi(w[2])};

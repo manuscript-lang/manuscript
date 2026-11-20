@@ -3,6 +3,7 @@
 #ifndef MS_TOOLS_READ_FILE_H
 #define MS_TOOLS_READ_FILE_H
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 

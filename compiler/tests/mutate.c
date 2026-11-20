@@ -84,8 +84,9 @@ int main(int argc, char **argv) {
         line[strcspn(line, "\r\n")] = 0;
         if (line[0] != 0) {
             files = realloc(files, (nfiles + 1) * sizeof *files);
-            files[nfiles] = malloc(strlen(line) + 1);
-            strcpy(files[nfiles++], line);
+            size_t size = strlen(line) + 1;
+            files[nfiles] = malloc(size);
+            memcpy(files[nfiles++], line, size);
         }
     }
     fclose(list);

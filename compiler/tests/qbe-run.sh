@@ -5,10 +5,9 @@
 set -eu
 out=target/c-compiler/qbe
 mkdir -p "$out"
-cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_mir_qbe.c -o "$out/mir_qbe" -lm
+sh compiler/tests/cbuild.sh ms_mir_qbe qbe
+bin=target/cmake/test/compiler
 q=runtime/third_party/qbe
-cc -std=c99 -O1 -w -I"$q" "$q"/*.c "$q"/amd64/*.c "$q"/arm64/*.c "$q"/rv64/*.c -o "$out/qbe"
 case "$(uname -s)-$(uname -m)" in
 Darwin-arm64) target=arm64_apple ;;
 Darwin-*) target=amd64_apple ;;
@@ -19,13 +18,14 @@ cat > "$out/rt.c" <<'C'
 #include <stdlib.h>
 extern long msmain(void);
 void msrt_fault_int_overflow(void) { exit(134); }
+long msrt_test_add(long a, long b) { return a + b; }
 int main(void) { return (int)msmain(); }
 C
 status=0
 for mir in compiler/tests/qbe/*.mir; do
     name=${mir%.mir}
-    "$out/mir_qbe" "$mir" > "$out/$(basename "$name").ssa"
-    "$out/qbe" -t "$target" "$out/$(basename "$name").ssa" > "$out/$(basename "$name").s"
+    "$bin/ms_mir_qbe" "$mir" > "$out/$(basename "$name").ssa"
+    "$bin/qbe" -t "$target" "$out/$(basename "$name").ssa" > "$out/$(basename "$name").s"
     cc "$out/$(basename "$name").s" "$out/rt.c" -o "$out/$(basename "$name")"
     got=0
     "$out/$(basename "$name")" || got=$?

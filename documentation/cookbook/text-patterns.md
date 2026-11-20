@@ -35,7 +35,8 @@ fn main() Void!:
 
 - `matches` tests, `find_all` lists every match, `capture` returns `[whole, group1, ...]` by position, and `capture_all` does that for every match.
 - `replace_all(text, replacement, none)` writes the replacement literally: `$1` is not expanded. The last argument bounds the output size when the input is untrusted.
-- Matching is linear in the input, so a hostile pattern or text cannot hang the program.
+- Every match runs under fixed step, depth and memory limits, so a hostile pattern or text cannot hang the program. A search that reaches one returns an `EOVERFLOW` error where it can fail and reads as no match from `matches`, `capture` and `capture_named`.
+- Patterns are PCRE2 without back-references, lookaround, recursion, conditionals and backtracking verbs: `compile` returns an error for those.
 
 ## Take a URL apart
 

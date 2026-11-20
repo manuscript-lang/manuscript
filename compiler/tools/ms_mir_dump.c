@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "read_file.h"
 
 #include "ms/mir.h"
 #include "ms/mir_interp.h"
@@ -11,23 +12,6 @@
 #include "ms/mir_layout.h"
 #include "ms/mir_opt.h"
 #include "ms/mir_verify.h"
-
-static bool read_file(const char *path, char **data, size_t *len) {
-    FILE *f = fopen(path, "rb");
-    if (f == NULL) return false;
-    size_t cap = 4096, n = 0;
-    char *buf = malloc(cap);
-    for (;;) {
-        n += fread(buf + n, 1, cap - n, f);
-        if (n < cap) break;
-        cap *= 2;
-        buf = realloc(buf, cap);
-    }
-    fclose(f);
-    *data = buf;
-    *len = n;
-    return true;
-}
 
 /* One line per alternative and per optional type: whether it lives behind a pointer. */
 static void dump_boxing(const MirModule *m, MsBuf *out) {
@@ -271,6 +255,9 @@ static const Pass passes[] = {
     {"reserve", mir_opt_reserve},
     {"appendfast", mir_opt_appendfast},
     {"sortgen", mir_opt_sortgen},
+    {"copyelim", mir_opt_copyelim},
+    {"copytakes", mir_opt_copyelim_takes},
+    {"lastuse", mir_opt_lastuse},
 };
 
 /* Runs the named pass and prints whether it changed the module, then the module. */
@@ -322,7 +309,8 @@ int main(int argc, char **argv) {
          i < argc && (boxing || layout || run || analysis || verify || opt || strcmp(argv[1], "print") == 0); i++) {
         char *src;
         size_t len;
-        if (!read_file(argv[i], &src, &len)) {
+        src = read_whole_file(argv[i], &len);
+        if (src == NULL) {
             fprintf(stderr, "cannot read %s\n", argv[i]);
             return 1;
         }

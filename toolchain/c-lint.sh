@@ -13,9 +13,9 @@ tidy=$(command -v clang-tidy || command -v clang-tidy-18 || command -v clang-tid
 [ -n "$tidy" ] || { echo "c-lint: clang-tidy not found" >&2; exit 1; }
 out=target/c-lint
 rm -rf "$out"; mkdir -p "$out"
-warnings=$(tr '\n' ' ' < toolchain/c-warnings.txt)
-# -Wcomma is clang-only, so it is not in the shared list.
-flags="-std=c11 $warnings -Wcomma -Iruntime/include -Iruntime/core -Iruntime/tests/support -Icompiler/include -Icrates/ms-rt-abi/include -Iruntime/tests $(sh runtime/third_party/libs.sh cflags)"
+# The flags come from the CMake project (cmake/MsLint.cmake, `make c-lint`): warnings, include paths and library headers.
+[ -f "${MS_LINT_FLAGS:-}" ] || { echo "c-lint: run it through CMake (make c-lint or cmake --build <dir> --target c-lint)" >&2; exit 1; }
+flags=$(cat "$MS_LINT_FLAGS")
 # A source under runtime/sys/<os>/ compiles only on that system, so the others are left to that system's build.
 case "$(uname -s)" in Darwin) other='/sys/(linux|glibc|windows)/' ;; *) other='/sys/(darwin|windows)/' ;; esac
 files=$(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2>/dev/null | grep -Ev "$other" | sort)
@@ -56,6 +56,16 @@ for file in $files; do
 done
 wait
 status=0
+# Library calls that take no size and have a bounded replacement (documentation/contributing/c-style.md): sprintf and
+# strcat and strcpy overrun, strtok keeps hidden state, gets cannot be used safely, and Apple's libc deprecates sprintf, so a
+# macOS build fails on it. Use snprintf, memcpy with a checked size, or ms_rt/safe.h (tests: tests/support/append.h).
+banned='(^|[^[:alnum:]_.>])(sprintf|vsprintf|strcpy|stpcpy|strcat|strtok|gets|tmpnam|mktemp)[[:space:]]*\('
+# shellcheck disable=SC2086
+if hits=$(grep -nHE "$banned" $files $(find runtime/include runtime/core runtime/net runtime/std runtime/sys runtime/io runtime/tests compiler/include compiler/src -name '*.h' 2> /dev/null) | grep -vE ':[0-9]+:[[:space:]]*(/?\*|//)'); then
+    echo "$hits" >&2
+    echo "c-lint: sprintf, strcpy, strcat, strtok and the like are banned; use snprintf or a bounded copy" >&2
+    status=1
+fi
 for file in $files; do
     log=$out/$(echo "$file" | tr / _).log
     listed=no

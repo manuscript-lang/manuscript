@@ -28,10 +28,6 @@ bool ms_fs_absolute(MsBytes path, MsFsBuffer *out) {
     return joined;
 }
 
-static bool starts_with(MsBytes text, MsBytes prefix) {
-    return text.len >= prefix.len && (prefix.len == 0 || memcmp(text.ptr, prefix.ptr, prefix.len) == 0);
-}
-
 bool ms_fs_within_path(MsBytes source, MsBytes target, bool *within) {
     MsFsBuffer clean_source = {0};
     MsFsBuffer clean_target = {0};
@@ -40,7 +36,7 @@ bool ms_fs_within_path(MsBytes source, MsBytes target, bool *within) {
         const MsBytes prefix = ms_fs_buffer_view(&clean_source);
         const MsBytes whole = ms_fs_buffer_view(&clean_target);
         const bool rooted = prefix.len > 0 && ms_fs_is_separator(prefix.ptr[prefix.len - 1]);
-        const bool inside = starts_with(whole, prefix) && (rooted || whole.len == prefix.len || ms_fs_is_separator(whole.ptr[prefix.len]));
+        const bool inside = ms_bytes_starts_with(whole, prefix) && (rooted || whole.len == prefix.len || ms_fs_is_separator(whole.ptr[prefix.len]));
         *within = inside;
     }
     ms_fs_buffer_free(&clean_source);

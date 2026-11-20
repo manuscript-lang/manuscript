@@ -43,6 +43,10 @@ void msrt_token_post_remote(uint64_t token, uint64_t value);
 bool ms_sched_cancel_pending(void);
 /* Delivers the pending cancel by return; see the rules above. */
 void ms_sched_cancel_return(void);
+/* The OS code of the first failed write to standard output (0 when none), and a flush of the runtime's buffered
+ * standard output. */
+int32_t ms_sched_stdout_error(void);
+void ms_sched_flush_stdout(void);
 /* Whether a bounded read of the running task has used its time (a wait loop must then fail with a timeout). */
 bool ms_sched_read_limit_passed(void);
 /* Whether the caller is a pool thread. */

@@ -6,14 +6,25 @@ import (
 	msstd_regex_compile,
 	msstd_regex_find_all_spans,
 	msstd_regex_find_span,
-	msstd_regex_named_captures
+	msstd_regex_named_capture_pairs
 ) from "@std/internal/string.ms"
 
-// A compiled regular expression that can be reused across input strings.
+/*
+A compiled regular expression that can be reused across input strings.
+
+Patterns use PCRE2 syntax with Unicode properties (`\p{L}`, `\p{Greek}`) and Unicode-aware `\w`, `\d` and `\b`.
+`$` matches only at the end of the text, and a line break is `\n`. Patterns that need unbounded backtracking or run
+code are rejected by `compile`: back-references (`\1`, `\k<name>`), lookahead and lookbehind, recursion and
+subroutine calls, conditionals, callouts, backtracking verbs (`(*...)`) and `\C`.
+
+Every match runs under fixed limits on steps, nesting depth and memory that a pattern cannot raise, so a hostile
+pattern or text cannot hang the program. A search that reaches a limit returns an `EOVERFLOW` error from the methods
+that can fail, and reads as no match from `matches`, `capture` and `capture_named`.
+*/
 export extern type Regex
 
 // Tests whether any match occurs; anchor the pattern explicitly to require a
-// whole-string match.
+// whole-string match. A search that reaches an engine limit reads as no match.
 fn Regex.matches(text: String) Bool: ...
 
 // Returns the text of each nonoverlapping match in order, without capture groups.
@@ -39,7 +50,11 @@ fn Regex.capture_all(text: String, max_matches: Int?) List[List[String]]!:
 // Returns the first match's named groups that participated; empty map when nothing
 // matches.
 fn Regex.capture_named(text: String) Map[String, String]:
-	return msstd_regex_named_captures(self, text)
+	pairs := msstd_regex_named_capture_pairs(self, text)
+	var out = Map[String, String]()
+	for index in 0..(pairs.length() / 2):
+		out.add(pairs[index * 2].clone(), pairs[index * 2 + 1].clone())
+	return out
 
 // Returns the UTF-8 byte range of the first match, or none when nothing matches.
 fn Regex.find_span(text: String) RegexSpan?:
@@ -51,7 +66,9 @@ fn Regex.find_span(text: String) RegexSpan?:
 fn Regex.split(text: String, max_pieces: Int?) List[String]!: ...
 
 // Like `replace_all`, but expands `$1`, `${name}` and `$$` in `template` from each
-// match. The syntax is Rust's: write `${1}x`, not `$1x`.
+// match. A bare `$name` or `$1` reads every following letter, digit and `_` as part of
+// the name, so write `${1}x`, not `$1x`. A `$` that starts no reference is literal, and
+// a reference to a missing or non-participating group expands to nothing.
 fn Regex.replace_template(text: String, template: String, max_bytes: Int?) String!: ...
 
 // Returns the byte range of each match in `find_all` order, without copying the
