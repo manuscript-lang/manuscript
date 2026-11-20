@@ -29,3 +29,7 @@ platform=$(uname -s | tr '[:upper:]' '[:lower:]')
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include \
     runtime/tests/sys_net_test.c "runtime/sys/$platform/net.c" -o "$out/sys_net_test"
 "$out/sys_net_test"
+# The completion ring has no dependency but the C library.
+cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
+    runtime/tests/io_ring_test.c runtime/io/ring.c -o "$out/io_ring_test"
+"$out/io_ring_test"
