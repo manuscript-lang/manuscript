@@ -724,13 +724,20 @@ static void qbe_mul_flag(QCx *c, uint32_t n, MirValue a, MirValue b, const char 
 }
 
 #define QBE_FAULT_OVERFLOW "$msrt_fault_int_overflow()"
+#define QBE_FAULT_RANGE "$msrt_fault_int_range()"
+
+/* The fault of a signed 64-bit overflow: a sized result reports its type's range instead. */
+static const char *qbe_arith_fault(const QCx *c, const MirInst *inst) {
+    int64_t lo, hi;
+    return mir_sized_result_range(c->m, c->f, inst, &lo, &hi) ? QBE_FAULT_RANGE : QBE_FAULT_OVERFLOW;
+}
 
 static void qbe_checked_arith(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
     const uint32_t n = c->next++;
     char sum[24];
     (void)snprintf(sum, sizeof sum, "%%v%u", inst->res);
     qbe_add_flag(c, n, inst->op == MOP_IAddChk, inst->args[0], inst->args[1], sum);
-    qbe_fault_branch(c, n, QBE_FAULT_OVERFLOW, block, part);
+    qbe_fault_branch(c, n, qbe_arith_fault(c, inst), block, part);
 }
 
 static void qbe_checked_mul(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
@@ -738,7 +745,7 @@ static void qbe_checked_mul(QCx *c, const MirInst *inst, uint32_t block, uint32_
     char prod[24];
     (void)snprintf(prod, sizeof prod, "%%v%u", inst->res);
     qbe_mul_flag(c, n, inst->args[0], inst->args[1], prod);
-    qbe_fault_branch(c, n, QBE_FAULT_OVERFLOW, block, part);
+    qbe_fault_branch(c, n, qbe_arith_fault(c, inst), block, part);
 }
 
 static void qbe_compare(QCx *c, const MirInst *inst) {
@@ -1076,7 +1083,7 @@ static bool qbe_list_write_op(QCx *c, const MirInst *inst, uint32_t block, uint3
     }
 }
 
-static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
+static bool qbe_inst_core(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
     const char *mnemonic = qbe_binary_mnemonic((MirOp)inst->op);
     if (mnemonic != NULL) {
         ms_buf_printf(c->out, "\t%%v%u =%c %s %%v%u, %%v%u\n", inst->res, qbe_vty(c, inst->res),
@@ -1145,6 +1152,22 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
         c->why = mir_op_info[inst->op].name;
         return false;
     }
+}
+
+/* A checked operation on a sized integer also faults when its result leaves the type's range. */
+static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
+    if (!qbe_inst_core(c, inst, block, index, part)) {
+        return false;
+    }
+    int64_t lo, hi;
+    if (!mir_sized_result_range(c->m, c->f, inst, &lo, &hi)) {
+        return true;
+    }
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "\t%%o%ua =w csltl %%v%u, %lld\n\t%%o%ub =w csgtl %%v%u, %lld\n\t%%o%us =w or %%o%ua, %%o%ub\n",
+                  n, inst->res, (long long)lo, n, inst->res, (long long)hi, n, n, n);
+    qbe_fault_branch(c, n, QBE_FAULT_RANGE, block, part);
+    return true;
 }
 
 /* `ret`: nothing, the one leaf, or the leaves written through the hidden result pointer. */

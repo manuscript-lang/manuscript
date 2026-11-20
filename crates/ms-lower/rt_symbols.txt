@@ -461,6 +461,7 @@ msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, 
 msstd_checksum_adler32_update(initial: i64, data: *const VecVal) -> i64
 msstd_checksum_crc32(data: *const VecVal) -> i64
 msstd_checksum_crc32_update(initial: i64, data: *const VecVal) -> i64
+msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=network
 msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=network
 msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=network
 msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=network
