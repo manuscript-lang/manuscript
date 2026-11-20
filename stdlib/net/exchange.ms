@@ -2,7 +2,7 @@ import (
 	Bytes from "@std/bytes.ms",
 	HttpExchange, HttpHeaders, HttpMethod, headers from "@std/net/http.ms",
 	decode_component from "@std/net/url.ms",
-	WebSocket from "@std/net/websocket.ms",
+	WebSocket, web_socket_from from "@std/net/websocket.ms",
 
 	msstd_xchg_finish,
 	msstd_xchg_headers,
@@ -12,8 +12,11 @@ import (
 	msstd_xchg_reset,
 	msstd_xchg_send_head,
 	msstd_xchg_share,
+	msstd_xchg_take_conn,
 	msstd_xchg_target,
 	msstd_xchg_write from "@std/internal/http.ms",
+	msstd_ws_handshake,
+	msstd_ws_serve from "@std/internal/net.ms",
 )
 
 // One HTTP/1 server exchange as the runtime hands it over: the request head, the body
@@ -37,6 +40,8 @@ export type ExchangeLimits:
 	max_response_bytes: Int? = none
 	// Largest response header block in bytes.
 	max_header_bytes: Int? = none
+	// Whether the connection is TLS, which the WebSocket origin check compares against.
+	secure: Bool = false
 
 // A request target split into the routable path and the raw query.
 export type RequestTarget:
@@ -332,8 +337,34 @@ fn var ServerExchange.write_bytes(move data: Bytes) Void!:
 fn var ServerExchange.write(move data: String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-// The WebSocket handshake needs the runtime's server-side socket, which no native
-// provides yet; until it lands every upgrade is refused after the argument checks.
+fn websocket_failure(reason: String) Error:
+	return Error(reason, kind: "EIO")
+
+fn status_reason(status: Int) String:
+	match status:
+		400: return "Bad Request"
+		403: return "Forbidden"
+		405: return "Method Not Allowed"
+		426: return "Upgrade Required"
+		_: return "Error"
+
+// Answers a refused upgrade with its status line, the version the server speaks and a
+// short text body, and closes the connection after it.
+fn var ServerExchange.refuse_upgrade(status: Int, reason: String) Error:
+	var fields = headers()
+	void fields.append("Content-Type", "text/plain; charset=utf-8")
+	void fields.append("Sec-Websocket-Version", "13")
+	void fields.append("X-Content-Type-Options", "nosniff")
+	void fields.append("Connection", "close")
+	body := f"{status_reason(status)}\n".to_bytes()
+	void msstd_xchg_send_head(self.native, status, fields, body.length(), none)
+	void msstd_xchg_write(self.native, body, none)
+	self.status = status
+	self.complete = true
+	return websocket_failure(reason)
+
+// Switches the connection to a WebSocket: the handshake is checked, the 101 head sent,
+// and the connection handed to a session that lives until it is closed.
 fn var ServerExchange.upgrade(
 	allowed_origins: List[String] = [],
 	subprotocols: List[String] = [],
@@ -344,7 +375,38 @@ fn var ServerExchange.upgrade(
 
 	if given := max_message_bytes:
 		if given <= 0: return error(invalid("max_message_bytes must be positive"))
-	return error(Error("http: WebSocket upgrade is not available", kind: "ENOSYS"))
+
+	request := self.headers()
+	var response = headers()
+	host := request.get("Host").get_or("")
+	shake := msstd_ws_handshake(
+		self.method_text,
+		host,
+		self.limits.secure,
+		request,
+		allowed_origins,
+		subprotocols,
+		response,
+	)?
+
+	// An upgrade is HTTP/1 only: a request that is not a handshake is reported as such,
+	// and an acceptable one over HTTP/2 is refused.
+	if self.protocol_text == "HTTP/2.0" or self.protocol_text == "HTTP/2":
+		if shake.status != 101: return error(websocket_failure(shake.reason))
+		return error(invalid("WebSocket upgrade needs HTTP/1.1"))
+
+	// RFC 6455 section 4.2.1: the opening handshake is an HTTP/1.1 (or later) request.
+	if self.protocol_text == "HTTP/1.0":
+		return error(self.refuse_upgrade(400, "websocket: upgrade needs HTTP/1.1"))
+
+	if shake.status != 101: return error(self.refuse_upgrade(shake.status, shake.reason))
+
+	msstd_xchg_send_head(self.native, 101, response, none, none)?
+	self.status = 101
+	self.complete = true
+	connection := msstd_xchg_take_conn(self.native)?
+	native := msstd_ws_serve(connection, shake.subprotocol, max_message_bytes)?
+	return ok(web_socket_from(native))
 
 // Reads the head of `native` into the exchange a handler receives. A target that cannot
 // be routed returns EINVAL for the connection loop to answer with 400.

@@ -33,6 +33,16 @@ export type WebSocketMessage:
 	// Whether the message is text, binary, or a ping.
 	kind: WebSocketKind
 
+// What the server handshake answers: status 101 with the response fields filled in and
+// the selected subprotocol, or the refusal status with its reason.
+export type WebSocketHandshake:
+	// 101 to accept the upgrade, else the status to answer (400, 403, 405 or 426).
+	status: Int
+	// The subprotocol the server selected, empty for none.
+	subprotocol: String
+	// Why a refused upgrade was refused; empty when accepted.
+	reason: String
+
 // A message as the native layer reports it.
 export type RawWebSocketMessage:
 	// The payload bytes; for a text frame they are the UTF-8 encoding of the text.

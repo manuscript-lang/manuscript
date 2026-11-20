@@ -113,6 +113,10 @@ export extern fn msstd_xchg_reset(
 	timeout: Duration?,
 ) Void!
 
+// Takes the connection out of the exchange once a 101 head is sent, for a WebSocket: the
+// bytes the runtime read ahead go with it. An exchange gives its connection up once.
+export extern fn msstd_xchg_take_conn(x: NativeExchange) NativeConnection!
+
 // The accept side of one connection (runtime/include/ms_rt/xchg.h). `next` reads the
 // next request head of an HTTP/1 connection: none when the peer closed before sending a
 // byte, and an error otherwise (a refused head leaves the status to answer in
