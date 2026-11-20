@@ -58,16 +58,23 @@ static BIGNUM *new_bn(void) {
     return bn;
 }
 
-static void release_bn(BIGNUM *bn) {
-    if (bn == NULL) {
-        return;
-    }
+static const BIGNUM *pool_limit(void) {
     Pool *const p = pool();
     if (p->limit == NULL) {
         p->limit = BN_new();
         must(p->limit != NULL && BN_set_bit(p->limit, POOL_MAX_BITS));
     }
-    if (p->count == POOL_SIZE || BN_ucmp(bn, p->limit) >= 0) {
+    return p->limit;
+}
+
+static bool is_wide(const MsBig *a) { return a != NULL && a->bn != NULL && BN_ucmp(a->bn, pool_limit()) >= 0; }
+
+static void release_bn(BIGNUM *bn) {
+    if (bn == NULL) {
+        return;
+    }
+    Pool *const p = pool();
+    if (p->count == POOL_SIZE || BN_ucmp(bn, pool_limit()) >= 0) {
         BN_free(bn);
         return;
     }
@@ -113,6 +120,28 @@ static void result_end(MsBig *out, BIGNUM *result) {
     }
     release_bn(out->bn);
     out->bn = result;
+}
+
+/* Like result_end for an operation whose result can be much smaller than its operands (a difference, a remainder,
+ * a shift right). When an operand was at least POOL_MAX_BITS wide the result moves into a right-sized BIGNUM, and
+ * the context's temporaries are released: a thread does not keep the buffers of the widest value it ever saw.
+ * `wide` is computed before the operation, since `out` may be an operand. */
+static void result_end_shrinking(MsBig *out, BIGNUM *result, bool wide) {
+    BIGNUM *final = result;
+    if (wide) {
+        Pool *const p = pool();
+        BN_CTX_free(p->ctx);
+        p->ctx = NULL;
+        if (BN_ucmp(result, pool_limit()) < 0) {
+            final = BN_dup(result);
+            must(final != NULL);
+            BN_free(result);
+        }
+    }
+    if (out->bn != result) {
+        release_bn(out->bn);
+    }
+    out->bn = final;
 }
 
 /* Runs `op` into a fresh result for binary operations that BN_* permits to share no storage with an operand. */
@@ -217,33 +246,39 @@ void ms_big_add(MsBig *out, const MsBig *a, const MsBig *b) {
 }
 
 void ms_big_sub(MsBig *out, const MsBig *a, const MsBig *b) {
+    const bool wide = is_wide(a) || is_wide(b);
     BIGNUM *const result = result_begin(out, a, b);
     must(BN_sub(result, value_of(a), value_of(b)));
-    result_end(out, result);
+    result_end_shrinking(out, result, wide);
 }
 
 void ms_big_mul(MsBig *out, const MsBig *a, const MsBig *b) { binary(out, a, b, BN_mul); }
 
 void ms_big_divmod(MsBig *quotient, MsBig *remainder, const MsBig *a, const MsBig *b) {
+    const bool wide = is_wide(a) || is_wide(b);
     BIGNUM *const q = new_bn();
     BIGNUM *const r = new_bn();
     BN_CTX *const ctx = new_ctx();
     must(BN_div(q, r, value_of(a), value_of(b), ctx));
     if (quotient != NULL) {
-        result_end(quotient, q);
+        result_end_shrinking(quotient, q, wide);
     } else {
         release_bn(q);
     }
     if (remainder != NULL) {
-        result_end(remainder, r);
+        result_end_shrinking(remainder, r, wide);
     } else {
         release_bn(r);
     }
 }
 
-static int nnmod_op(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx) { return BN_nnmod(r, a, m, ctx); }
-
-void ms_big_mod_floor(MsBig *out, const MsBig *a, const MsBig *m) { binary(out, a, m, nnmod_op); }
+void ms_big_mod_floor(MsBig *out, const MsBig *a, const MsBig *m) {
+    const bool wide = is_wide(a) || is_wide(m);
+    BIGNUM *const result = result_begin(out, a, m);
+    BN_CTX *const ctx = new_ctx();
+    must(BN_nnmod(result, value_of(a), value_of(m), ctx));
+    result_end_shrinking(out, result, wide);
+}
 
 /* ---- shifts and bitwise operations ---- */
 
@@ -257,6 +292,7 @@ void ms_big_shift_left(MsBig *out, const MsBig *a, size_t count) {
 
 /* Rounds toward negative infinity: a negative value that loses a set bit moves one further from zero. */
 void ms_big_shift_right(MsBig *out, const MsBig *a, size_t count) {
+    const bool wide = is_wide(a);
     const BIGNUM *const value = value_of(a);
     const int bits = shift_count(count);
     BIGNUM *const result = new_bn();
@@ -269,7 +305,7 @@ void ms_big_shift_right(MsBig *out, const MsBig *a, size_t count) {
         }
         release_bn(back);
     }
-    result_end(out, result);
+    result_end_shrinking(out, result, wide);
 }
 
 /* The two's complement of `a` as `width` little-endian bytes (width covers the magnitude and a sign bit). */
@@ -430,6 +466,7 @@ void ms_big_sqrt(MsBig *out, const MsBig *a) {
 
 void ms_big_gcd(MsBig *out, const MsBig *a, const MsBig *b) {
     /* Euclid's remainders: BN_gcd is the constant-time binary algorithm, many times slower on wide operands. */
+    const bool wide = is_wide(a) || is_wide(b);
     BIGNUM *larger = new_bn();
     BIGNUM *smaller = new_bn();
     BIGNUM *rest = new_bn();
@@ -444,9 +481,14 @@ void ms_big_gcd(MsBig *out, const MsBig *a, const MsBig *b) {
         smaller = rest;
         rest = next;
     }
-    release_bn(smaller);
-    release_bn(rest);
-    result_end(out, larger);
+    if (wide) { /* the remainders still own buffers as wide as the operands */
+        BN_free(smaller);
+        BN_free(rest);
+    } else {
+        release_bn(smaller);
+        release_bn(rest);
+    }
+    result_end_shrinking(out, larger, wide);
 }
 
 void ms_big_pow_mod(MsBig *out, const MsBig *a, const MsBig *exponent, const MsBig *modulus) {
