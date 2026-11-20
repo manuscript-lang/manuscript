@@ -6,34 +6,34 @@
 
 #include "ms_rt/base.h"
 
-void msstd_crypto_digest(int64_t alg, const ms_vec *data, ms_vec *out);
-uint8_t msstd_crypto_hmac(int64_t alg, const ms_vec *key, const ms_vec *data, ms_vec *out);
-uint8_t msstd_crypto_derive_key(int64_t alg, const ms_vec *password, const ms_vec *salt, int64_t iterations, int64_t length, ms_vec *out);
-uint8_t msstd_crypto_hkdf(int64_t alg, const ms_vec *secret, const ms_vec *salt, const ms_vec *info, int64_t length, ms_vec *out);
-uint8_t msstd_crypto_constant_time_equal(const ms_vec *left, const ms_vec *right);
+void msstd_crypto_digest(int64_t alg, const MsVec *data, MsVec *out);
+uint8_t msstd_crypto_hmac(int64_t alg, const MsVec *key, const MsVec *data, MsVec *out);
+uint8_t msstd_crypto_derive_key(int64_t alg, const MsVec *password, const MsVec *salt, int64_t iterations, int64_t length, MsVec *out);
+uint8_t msstd_crypto_hkdf(int64_t alg, const MsVec *secret, const MsVec *salt, const MsVec *info, int64_t length, MsVec *out);
+uint8_t msstd_crypto_constant_time_equal(const MsVec *left, const MsVec *right);
 void *msstd_crypto_hasher_new(int64_t alg);
-void *msstd_crypto_hmac_hasher_new(int64_t alg, const ms_vec *key);
-void msstd_crypto_hasher_update(void *handle, const ms_vec *data);
-void msstd_crypto_hasher_finish(void *handle, ms_vec *out);
-uint8_t msstd_crypto_seal(const ms_vec *key, const ms_vec *nonce, const ms_vec *data, const ms_vec *aad, ms_vec *out);
-uint8_t msstd_crypto_open(const ms_vec *key, const ms_vec *nonce, const ms_vec *data, const ms_vec *aad, ms_vec *out);
-uint8_t msstd_crypto_aes_ctr(const ms_vec *key, const ms_vec *iv, const ms_vec *data, ms_vec *out);
-uint8_t msstd_crypto_aes_cbc_encrypt(const ms_vec *key, const ms_vec *iv, const ms_vec *data, ms_vec *out);
-uint8_t msstd_crypto_aes_cbc_decrypt(const ms_vec *key, const ms_vec *iv, const ms_vec *data, ms_vec *out);
-uint8_t msstd_crypto_sign(const ms_vec *seed, const ms_vec *data, ms_vec *out);
-uint8_t msstd_crypto_public_key(const ms_vec *seed, ms_vec *out);
-uint8_t msstd_crypto_verify(const ms_vec *key, const ms_vec *data, const ms_vec *signature);
-uint8_t msstd_crypto_ecdsa_generate(int64_t curve, ms_vec *out);
-uint8_t msstd_crypto_rsa_generate(int64_t bits, ms_vec *out);
-uint8_t msstd_crypto_public_key_der(const ms_vec *private_key, ms_vec *out);
-uint8_t msstd_crypto_ecdsa_sign(const ms_vec *private_key, int64_t alg, const ms_vec *data, ms_vec *out);
-uint8_t msstd_crypto_ecdsa_verify(const ms_vec *public_key, int64_t alg, const ms_vec *data, const ms_vec *signature);
-uint8_t msstd_crypto_ecdh_shared_secret(const ms_vec *private_key, const ms_vec *peer, ms_vec *out);
-uint8_t msstd_crypto_rsa_sign(const ms_vec *k, int64_t alg, const ms_vec *data, ms_vec *out);
-uint8_t msstd_crypto_rsa_sign_pss(const ms_vec *k, int64_t alg, const ms_vec *data, ms_vec *out);
-uint8_t msstd_crypto_rsa_verify(const ms_vec *k, int64_t alg, const ms_vec *data, const ms_vec *sig);
-uint8_t msstd_crypto_rsa_verify_pss(const ms_vec *k, int64_t alg, const ms_vec *data, const ms_vec *sig);
-uint8_t msstd_crypto_rsa_encrypt(const ms_vec *public_key, int64_t alg, const ms_vec *message, ms_vec *out);
-uint8_t msstd_crypto_rsa_decrypt(const ms_vec *private_key, int64_t alg, const ms_vec *ciphertext, ms_vec *out);
+void *msstd_crypto_hmac_hasher_new(int64_t alg, const MsVec *key);
+void msstd_crypto_hasher_update(void *handle, const MsVec *data);
+void msstd_crypto_hasher_finish(void *handle, MsVec *out);
+uint8_t msstd_crypto_seal(const MsVec *key, const MsVec *nonce, const MsVec *data, const MsVec *aad, MsVec *out);
+uint8_t msstd_crypto_open(const MsVec *key, const MsVec *nonce, const MsVec *data, const MsVec *aad, MsVec *out);
+uint8_t msstd_crypto_aes_ctr(const MsVec *key, const MsVec *iv, const MsVec *data, MsVec *out);
+uint8_t msstd_crypto_aes_cbc_encrypt(const MsVec *key, const MsVec *iv, const MsVec *data, MsVec *out);
+uint8_t msstd_crypto_aes_cbc_decrypt(const MsVec *key, const MsVec *iv, const MsVec *data, MsVec *out);
+uint8_t msstd_crypto_sign(const MsVec *seed, const MsVec *data, MsVec *out);
+uint8_t msstd_crypto_public_key(const MsVec *seed, MsVec *out);
+uint8_t msstd_crypto_verify(const MsVec *key, const MsVec *data, const MsVec *signature);
+uint8_t msstd_crypto_ecdsa_generate(int64_t curve, MsVec *out);
+uint8_t msstd_crypto_rsa_generate(int64_t bits, MsVec *out);
+uint8_t msstd_crypto_public_key_der(const MsVec *private_key, MsVec *out);
+uint8_t msstd_crypto_ecdsa_sign(const MsVec *private_key, int64_t alg, const MsVec *data, MsVec *out);
+uint8_t msstd_crypto_ecdsa_verify(const MsVec *public_key, int64_t alg, const MsVec *data, const MsVec *signature);
+uint8_t msstd_crypto_ecdh_shared_secret(const MsVec *private_key, const MsVec *peer, MsVec *out);
+uint8_t msstd_crypto_rsa_sign(const MsVec *k, int64_t alg, const MsVec *data, MsVec *out);
+uint8_t msstd_crypto_rsa_sign_pss(const MsVec *k, int64_t alg, const MsVec *data, MsVec *out);
+uint8_t msstd_crypto_rsa_verify(const MsVec *k, int64_t alg, const MsVec *data, const MsVec *sig);
+uint8_t msstd_crypto_rsa_verify_pss(const MsVec *k, int64_t alg, const MsVec *data, const MsVec *sig);
+uint8_t msstd_crypto_rsa_encrypt(const MsVec *public_key, int64_t alg, const MsVec *message, MsVec *out);
+uint8_t msstd_crypto_rsa_decrypt(const MsVec *private_key, int64_t alg, const MsVec *ciphertext, MsVec *out);
 
 #endif
