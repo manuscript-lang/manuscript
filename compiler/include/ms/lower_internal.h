@@ -6,6 +6,7 @@
 #define MS_LOWER_INTERNAL_H
 
 #include "ms/check.h"
+#include "ms/ownership.h"
 #include "ms/facts.h"
 #include "ms/lower_scope.h"
 #include "ms/mir_builder.h"
@@ -53,6 +54,7 @@ typedef struct LbJob {
 } LbJob;
 
 typedef struct Lb {
+    MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
     MsCheck *mut; /* the same table, for `ms_def`, which adds rows on demand */
     const MsFacts *facts;
