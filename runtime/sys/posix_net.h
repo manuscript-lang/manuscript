@@ -6,6 +6,7 @@
 #include <netinet/tcp.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #ifdef MSG_NOSIGNAL
@@ -68,6 +69,13 @@ static int new_socket(const MsAddr *a, int *fd) {
     return MS_SYS_OK;
 }
 
+int ms_sys_net_tcp_socket(const MsAddr *addr, MsSock *out) {
+    int fd;
+    if (new_socket(addr, &fd)) return MS_SYS_ERROR;
+    *out = fd;
+    return MS_SYS_OK;
+}
+
 int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out) {
     int fd;
     if (new_socket(addr, &fd)) return MS_SYS_ERROR;
@@ -81,6 +89,77 @@ int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out) {
     }
     if (bind(fd, (struct sockaddr *)&ss, len) < 0 || listen(fd, backlog) < 0) return fail_close(fd);
     *out = fd;
+    return MS_SYS_OK;
+}
+
+static int unix_address(const char *path, struct sockaddr_un *sun) {
+    memset(sun, 0, sizeof *sun);
+    sun->sun_family = AF_UNIX;
+    const size_t length = strlen(path);
+    if (length == 0 || length >= sizeof sun->sun_path) { /* an empty path would autobind an abstract address */
+        errno = length == 0 ? EINVAL : ENAMETOOLONG;
+        return -1;
+    }
+    memcpy(sun->sun_path, path, length);
+    return 0;
+}
+
+int ms_sys_net_unix_listen(const char *path, int backlog, MsSock *out) {
+    struct sockaddr_un sun;
+    if (unix_address(path, &sun) < 0) return MS_SYS_ERROR;
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return MS_SYS_ERROR;
+    if (prepare(fd) < 0) return fail_close(fd);
+    if (bind(fd, (struct sockaddr *)&sun, sizeof sun) < 0 || listen(fd, backlog) < 0) return fail_close(fd);
+    *out = fd;
+    return MS_SYS_OK;
+}
+
+int ms_sys_net_unix_connect(const char *path, MsSock *out) {
+    struct sockaddr_un sun;
+    if (unix_address(path, &sun) < 0) return MS_SYS_ERROR;
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return MS_SYS_ERROR;
+    int r;
+    do r = connect(fd, (struct sockaddr *)&sun, sizeof sun); while (r < 0 && errno == EINTR);
+    if (r < 0 || prepare(fd) < 0) return fail_close(fd); /* blocking until here, so a full queue waits */
+    *out = fd;
+    return MS_SYS_OK;
+}
+
+int ms_sys_net_udp_bind(const MsAddr *addr, MsSock *out) {
+    int fd = socket(addr->family == 4 ? AF_INET : AF_INET6, SOCK_DGRAM, 0);
+    if (fd < 0) return MS_SYS_ERROR;
+    if (prepare(fd) < 0) return fail_close(fd);
+    struct sockaddr_storage ss;
+    const socklen_t len = to_sockaddr(addr, &ss);
+    if (addr->family == 6) {
+        int off = 0;
+        setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof off);
+    }
+    if (bind(fd, (struct sockaddr *)&ss, len) < 0) return fail_close(fd);
+    *out = fd;
+    return MS_SYS_OK;
+}
+
+int ms_sys_net_udp_recv(MsSock s, void *buf, size_t n, size_t *done, MsAddr *from) {
+    struct sockaddr_storage ss;
+    socklen_t len = sizeof ss;
+    ssize_t r;
+    do r = recvfrom((int)s, buf, n, 0, (struct sockaddr *)&ss, &len); while (r < 0 && errno == EINTR);
+    if (r < 0) return again(errno) ? MS_SYS_AGAIN : MS_SYS_ERROR;
+    *done = (size_t)r;
+    if (from) from_sockaddr(&ss, from);
+    return MS_SYS_OK;
+}
+
+int ms_sys_net_udp_send(MsSock s, const void *buf, size_t n, const MsAddr *to, size_t *done) {
+    struct sockaddr_storage ss;
+    const socklen_t len = to_sockaddr(to, &ss);
+    ssize_t r;
+    do r = sendto((int)s, buf, n, MS_SEND_FLAGS, (struct sockaddr *)&ss, len); while (r < 0 && errno == EINTR);
+    if (r < 0) return again(errno) ? MS_SYS_AGAIN : MS_SYS_ERROR;
+    *done = (size_t)r;
     return MS_SYS_OK;
 }
 
@@ -138,6 +217,7 @@ int ms_sys_net_local_addr(MsSock s, MsAddr *out) {
     struct sockaddr_storage ss;
     socklen_t len = sizeof ss;
     if (getsockname((int)s, (struct sockaddr *)&ss, &len) < 0) return MS_SYS_ERROR;
+    if (ss.ss_family != AF_INET && ss.ss_family != AF_INET6) { errno = EAFNOSUPPORT; return MS_SYS_ERROR; }
     from_sockaddr(&ss, out);
     return MS_SYS_OK;
 }
@@ -146,6 +226,7 @@ int ms_sys_net_peer_addr(MsSock s, MsAddr *out) {
     struct sockaddr_storage ss;
     socklen_t len = sizeof ss;
     if (getpeername((int)s, (struct sockaddr *)&ss, &len) < 0) return MS_SYS_ERROR;
+    if (ss.ss_family != AF_INET && ss.ss_family != AF_INET6) { errno = EAFNOSUPPORT; return MS_SYS_ERROR; }
     from_sockaddr(&ss, out);
     return MS_SYS_OK;
 }
@@ -163,4 +244,18 @@ int ms_sys_net_addr_from_raw(const void *sockaddr, size_t length, MsAddr *out) {
     if ((ss.ss_family != AF_INET && ss.ss_family != AF_INET6) || length < need) return -1;
     from_sockaddr(&ss, out);
     return 0;
+}
+
+size_t ms_sys_net_dns_config(char *out, size_t capacity) {
+    const int fd = open("/etc/resolv.conf", O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return 0;
+    size_t used = 0;
+    while (used < capacity) {
+        const ssize_t r = read(fd, out + used, capacity - used);
+        if (r < 0 && errno == EINTR) continue;
+        if (r <= 0) break;
+        used += (size_t)r;
+    }
+    close(fd);
+    return used;
 }

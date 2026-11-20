@@ -6,7 +6,7 @@
 //! file, `changed N`, the module text, and the cold blocks of each function.
 
 use ms_mir::parse::parse_module;
-use ms_mir::print::print_module;
+use ms_mir::print::print_module_raw as print_module;
 use std::fmt::Write;
 
 fn main() {
@@ -91,9 +91,13 @@ fn main() {
                 }
                 if pass == "slots" {
                     for f in &m.funcs {
-                        let mut v: Vec<_> = ms_mir::slot_scope::confined(&m, f).into_iter().collect();
+                        let mut v: Vec<_> =
+                            ms_mir::slot_scope::confined(&m, f).into_iter().collect();
                         v.sort_unstable_by_key(|(slot, _)| slot.0);
-                        let list: String = v.iter().map(|(s, b)| format!(" %{}={}", s.0, b.0)).collect();
+                        let list: String = v
+                            .iter()
+                            .map(|(s, b)| format!(" %{}={}", s.0, b.0))
+                            .collect();
                         let _ = writeln!(out, "{}:{list}", f.name);
                     }
                     continue;

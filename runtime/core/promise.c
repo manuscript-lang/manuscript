@@ -17,6 +17,7 @@
 #include "queue.h"
 #include "worker.h"
 #include "ms_rt/alloc.h"
+#include "ms_rt/obj.h"
 #include "scheduler.h"
 
 enum PromiseState {
@@ -115,9 +116,6 @@ static MsPromiseUnread unread_hook;
 void ms_promise_set_unread(MsPromiseUnread unread) { unread_hook = unread; }
 
 /* ---- rows ---- */
-
-/* The object module is still the Rust runtime's (rt_calls.h lists what it provides). */
-void msrt_obj_drop(MsObj *object);
 
 static void fail(const char *text) { ms_sched()->hooks.fault(MS_FAULT_KIND_FAULT, text); }
 
@@ -865,6 +863,10 @@ void ms_promise_cancel(MsPromise id) {
 }
 
 void ms_promise_on_cancel(MsPromise id, int64_t cancel) {
+    if (is_foreign(id)) {
+        ms_remote_on_cancel(id, cancel);
+        return;
+    }
     const ptrdiff_t row = row_of(id);
     if (row < 0) {
         return;
@@ -1143,6 +1145,10 @@ MsPromiseProbe ms_promise_probe(MsPromise id) {
 }
 
 void ms_promise_set_grouped(MsPromise id, bool grouped) {
+    if (is_foreign(id)) {
+        ms_remote_set_grouped(id, grouped);
+        return;
+    }
     const ptrdiff_t row = row_of(id);
     if (row < 0) {
         return;
@@ -1155,6 +1161,9 @@ void ms_promise_set_grouped(MsPromise id, bool grouped) {
 }
 
 bool ms_promise_run_inline(MsPromise id) {
+    if (is_foreign(id)) {
+        return ms_remote_run_inline(id);
+    }
     const ptrdiff_t row = row_of(id);
     if (row < 0 || table.hot[row].state != STATE_PENDING || (table.hot[row].flags & FLAG_DEFERRED) == 0) {
         return false;
@@ -1190,7 +1199,77 @@ static void set_tokens(const MsPromise *ids, size_t count, uint64_t from, uint64
     }
 }
 
+/* Whether any id is another isolate's. */
+static bool any_foreign(const MsPromise *ids, size_t count) {
+    for (size_t at = 0; at < count; at++) {
+        if (is_foreign(ids[at])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The first finished id of a list that may hold other isolates' promises (a gone one reads as finished). */
+static ptrdiff_t first_done_mixed(const MsPromise *ids, size_t count) {
+    for (size_t at = 0; at < count; at++) {
+        if (is_foreign(ids[at])) {
+            if (ms_remote_probe(ids[at]) != MS_PROMISE_PENDING) {
+                return (ptrdiff_t)at;
+            }
+            continue;
+        }
+        const ptrdiff_t row = row_of(ids[at]);
+        if (row < 0 || table.hot[row].state != STATE_PENDING) {
+            return (ptrdiff_t)at;
+        }
+    }
+    return -1;
+}
+
+/* wait_any over a list with promises of other isolates: local ones wake the waiter through their token slot, the
+ * others by watching, so one REMOTE token serves all of them. */
+static int64_t wait_any_mixed(const MsPromise *ids, size_t count, int64_t timeout_ns) {
+    int64_t deadline = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
+    deadline = earliest(deadline, ms_task_defer_deadline());
+    ptrdiff_t done = first_done_mixed(ids, count);
+    for (size_t at = 0; done < 0 && at < count; at++) {
+        if (is_foreign(ids[at]) ? ms_remote_run_inline(ids[at]) : run_deferred(ids[at], deadline, false)) {
+            done = first_done_mixed(ids, count);
+        }
+    }
+    for (;;) {
+        if (done >= 0) {
+            return done;
+        }
+        const uint64_t token = ms_token_new(MS_TOKEN_REMOTE);
+        if (token == 0) {
+            fail("promise: out of wait tokens");
+        }
+        set_tokens(ids, count, 0, token);
+        for (size_t at = 0; at < count; at++) {
+            if (is_foreign(ids[at])) {
+                (void)ms_remote_watch_post(ids[at], token);
+            }
+        }
+        uint64_t value = 0;
+        uint32_t result = 0;
+        (void)ms_token_park_at(token, deadline == NO_TIME ? -1 : deadline, &value, &result);
+        set_tokens(ids, count, token, 0);
+        (void)ms_token_free(token);
+        if (result == MS_WAIT_CANCELLED) {
+            ms_cancelled();
+        }
+        done = first_done_mixed(ids, count);
+        if (done < 0 && result == MS_WAIT_TIMEOUT) {
+            return -1;
+        }
+    }
+}
+
 int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_ns) {
+    if (any_foreign(ids, count)) {
+        return wait_any_mixed(ids, count, timeout_ns);
+    }
     int64_t deadline = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
     deadline = earliest(deadline, ms_task_defer_deadline());
     if (first_done(ids, count) < 0) {
@@ -1352,7 +1431,24 @@ static bool fd_ready(uint64_t id, uint32_t bits) {
     return true;
 }
 
+static void drop_queued_work(void *work) { msrt_obj_drop((MsObj *)__builtin_assume_aligned(work, _Alignof(MsObj))); }
+
+/* Mail nobody will read: frees the result block or fault text it carries. Pipe credit no longer matters. */
+static void discard_mail(MsMail *mail) {
+    if (mail->kind != MS_MAIL_PROMISE) {
+        return;
+    }
+    const uint32_t op = (uint32_t)(mail->a & 0xffu);
+    if (op == MAIL_DONE && mail->p != NULL) {
+        msrt_slot_drop((const MsTypeDesc *)mail->q, mail->p);
+        msrt_free(mail->p);
+    } else if (op == MAIL_ENDED) {
+        msrt_free(mail->p);
+    }
+}
+
 void ms_promises_teardown(void) {
+    ms_queue_release(ms_sched()->isolate, drop_queued_work); /* work no thief took; stolen work belongs to the thief */
     ms_groups_teardown();
     ms_cancel_teardown();
     for (size_t row = 0; row < table.count; row++) {
@@ -1378,4 +1474,5 @@ void ms_promise_hooks(MsSchedHooks *hooks) {
     hooks->pending = work_pending;
     ms_group_hooks(hooks);
     hooks->teardown = ms_promises_teardown;
+    hooks->discard_mail = discard_mail;
 }

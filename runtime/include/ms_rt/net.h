@@ -85,19 +85,35 @@ void msstd_headers_names(const void *handle, MsVec *out);
 /* ms-sig: msstd_headers_remove(handle h: *const ObjCell<HeadersH>, name: *const StrVal) -> u8 @domain=HTTP */
 uint8_t msstd_headers_remove(const void *handle, const MsStr *name);
 
-/* One HTTP exchange on a dialed connection: the request out, the response head in, and a body object to read the rest
- * from. HTTP/2 when the connection's TLS handshake negotiated "h2", HTTP/1.1 otherwise. It follows no redirects, keeps
- * no cookies and decodes no content-encoding; that is policy of the standard library. `target` is the path and query,
- * `authority` is host[:port], sent as Host or :authority. Host, Content-Length and Transfer-Encoding (and, for
- * HTTP/2, the connection-specific fields) are written by the exchange, and a request that names one is
- * STATUS_INVALID_INPUT, as is a value holding CR, LF or NUL. A non-empty `body` is sent with its Content-Length.
- *
- * The timeout covers the whole exchange, including the reads of the body. One exchange is open on a connection at a
- * time: a second fetch before the body is closed or dropped is STATUS_BUSY. Closing a body that was read to its end
- * on a keep-alive response (or any HTTP/2 stream) leaves the connection open for the next fetch; anything else closes
- * it, and a later call on it is STATUS_CLOSED. */
-/* ms-sig: msstd_http_fetch(handle c: *const ObjCell<ConnH>, method: *const StrVal, authority: *const StrVal, target: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=network */
-uint8_t msstd_http_fetch(const void *handle, const MsStr *method, const MsStr *authority, const MsStr *target, const void *headers, const MsVec *body, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* The HTTP client (ClientH), over libcurl: one client holds a connection pool (HTTP/2 requests to a host share one
+ * connection), cookies, TLS roots and a network filter. `share` is another handle on the same client. `narrow` adds a
+ * level to the filter (stdlib/net/policy.ms): the host names and CIDR ranges a request may reach, including every
+ * redirect target; STATUS_INVALID_INPUT for a CIDR that is not valid. Narrow before the first request. */
+typedef struct MsNetHttpOptions {
+    MsStr roots_pem;          /* extra trusted roots; empty for the system's */
+    MsStr certificate_pem;    /* a client certificate and its key, or empty */
+    MsStr private_key_pem;
+    MsStr unix_socket;        /* a Unix domain socket path used for every connection instead of TCP, or empty; the URL still
+                                 gives the Host header and scheme. Refused for a narrowed client. */
+    int64_t max_redirects;    /* 0 follows none; negative takes 20 */
+    uint8_t cookies;          /* keep cookies across this client's requests */
+    uint8_t decompress;       /* ask for gzip and deflate and decode them */
+} MsNetHttpOptions;
+/* ms-sig: msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err);
+/* ms-sig: msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle @domain=network */
+void *msstd_client_share(const void *handle);
+/* ms-sig: msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=network */
+uint8_t msstd_client_narrow(const void *handle, const MsVec *hosts, const MsVec *cidrs);
+
+/* One request: the response head in the body object, the body streamed by `msstd_body_read`. `url` is absolute
+ * (http or https); the method, the URL and the fields are checked (STATUS_INVALID_INPUT), and a request whose host,
+ * redirect target or resolved address the filter refuses is STATUS_PERMISSION_DENIED. Host, Content-Length and
+ * Transfer-Encoding are written by the client and refused as caller fields. The timeout covers the whole exchange,
+ * body reads included. Redirects, cookies and decompression follow the client's options; the version is chosen by
+ * ALPN. */
+/* ms-sig: msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr *url, const void *headers, const MsVec *body, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
 
 /* BodyMetadata flattened: the status, a copy of the response headers and the protocol ("HTTP/1.1" or "HTTP/2.0").
  * Valid after the body is closed. */
@@ -109,7 +125,8 @@ typedef struct MsNetBodyMetadata {
 
 /* The response body. `read` returns up to `max` bytes (at most 64 KiB, default 64 KiB) and STATUS_NONE at the end;
  * `read_all` returns the rest, STATUS_LIMIT_EXCEEDED when it passes `max`. The bytes are the message body with the
- * transfer framing removed and the content-encoding untouched. A failed read leaves the connection closed. */
+ * transfer framing removed (and the content-encoding decoded when the client decompresses). Closing a body that was
+ * read to its end returns the connection to the client's pool; any other close drops it. */
 /* ms-sig: msstd_body_read(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_body_read(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err);
 /* ms-sig: msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
@@ -118,6 +135,48 @@ uint8_t msstd_body_read_all(const void *handle, uint8_t has_max, int64_t max, Ms
 void msstd_body_metadata(const void *handle, MsNetBodyMetadata *out);
 /* ms-sig: msstd_body_close(handle b: *const ObjCell<BodyH>) @domain=network */
 void msstd_body_close(const void *handle);
+
+/* Datagram sockets (DgramH): a UDP socket bound to a literal address. Addresses are text, "1.2.3.4:80"; a name is
+ * resolved by the caller. `receive` waits for one datagram of at most `max` bytes (1 to 65535, default 65535): a longer
+ * one is dropped and gives STATUS_LIMIT_EXCEEDED. `send` gives STATUS_LIMIT_EXCEEDED for more than 65535 bytes.
+ * `close` ends all use at once; a call blocked in a wait ends by its deadline or cancellation. Handles follow the
+ * connection handles: `share` is another end, `close_if_last` closes when no other end is open. */
+typedef struct MsNetDatagram {
+    MsVec data;
+    MsStr sender;
+} MsNetDatagram;
+
+/* ms-sig: msstd_dgram_bind(address: *const StrVal, out: *mut *mut ObjCell<DgramH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_dgram_bind(const MsStr *address, void **out, MsStr *err);
+/* ms-sig: msstd_dgram_address(handle s: *const ObjCell<DgramH>, out: *mut StrVal) @domain=network */
+void msstd_dgram_address(const void *handle, MsStr *out);
+/* ms-sig: msstd_dgram_close(handle s: *const ObjCell<DgramH>) @domain=network */
+void msstd_dgram_close(const void *handle);
+/* ms-sig: msstd_dgram_share(handle s: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH> @handle @domain=network */
+void *msstd_dgram_share(const void *handle);
+/* Another handle on the socket that is not an end: it keeps the socket's memory, not its descriptor. */
+/* ms-sig: msstd_dgram_alias(handle s: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH> @handle @domain=network */
+void *msstd_dgram_alias(const void *handle);
+/* ms-sig: msstd_dgram_close_if_last(handle s: *const ObjCell<DgramH>) @domain=network */
+void msstd_dgram_close_if_last(const void *handle);
+/* ms-sig: msstd_dgram_receive(handle s: *const ObjCell<DgramH>, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut DatagramWire, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_dgram_receive(const void *handle, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout, MsNetDatagram *out, MsStr *err);
+/* ms-sig: msstd_dgram_send(handle s: *const ObjCell<DgramH>, data: *const VecVal, address: *const StrVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_dgram_send(const void *handle, const MsVec *data, const MsStr *address, uint8_t has_timeout, int64_t timeout, MsStr *err);
+
+/* Network scopes (ScopeH): what `Network.close` closes. A scope remembers the datagram sockets opened through it and
+ * the scopes derived from it; `close` closes them all (once) and later `track` calls close the socket they are given
+ * and return 0. `child` is a scope that closes with this one. `open` is 1 until the scope is closed. */
+/* ms-sig: msstd_scope_new() -> *mut ObjCell<ScopeH> @handle @domain=network */
+void *msstd_scope_new(void);
+/* ms-sig: msstd_scope_child(handle s: *const ObjCell<ScopeH>) -> *mut ObjCell<ScopeH> @handle @domain=network */
+void *msstd_scope_child(const void *handle);
+/* ms-sig: msstd_scope_open(handle s: *const ObjCell<ScopeH>) -> u8 @domain=network */
+uint8_t msstd_scope_open(const void *handle);
+/* ms-sig: msstd_scope_close(handle s: *const ObjCell<ScopeH>) @domain=network */
+void msstd_scope_close(const void *handle);
+/* ms-sig: msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network */
+uint8_t msstd_scope_track_dgram(const void *handle, const void *socket);
 
 /* The certificate natives of @std/net/tls (runtime/net/tls_natives.c). A Timestamp is two words. */
 typedef struct MsTlsTimestamp {
@@ -131,5 +190,17 @@ uint8_t msstd_tls_parse_certificates(const MsStr *pem, uint8_t has_max, int64_t 
 /* Verifies a chain (leaf first) against the roots for a name at `now`. */
 /* ms-sig: msstd_tls_verify_certificates(chain: *const StrVal, roots: *const StrVal, server_name: *const StrVal, now: *const Timestamp) -> u8 @domain=TLS */
 uint8_t msstd_tls_verify_certificates(const MsStr *chain, const MsStr *roots, const MsStr *server_name, const MsTlsTimestamp *now);
+
+/* Listeners (ListenerH, runtime/net/server_natives.c). `listen` binds one address (an IP literal with a port; port 0
+ * picks one) and `accept` parks the task until a connection arrives: the connection is a ConnH like a dialed one.
+ * `close` stops later accepts; an accept already parked ends when its task is cancelled. */
+/* ms-sig: msstd_net_listen(address: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_net_listen(const MsStr *address, void **out, MsStr *err);
+/* ms-sig: msstd_listener_accept(handle l: *const ObjCell<ListenerH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_listener_accept(const void *handle, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* ms-sig: msstd_listener_address(handle l: *const ObjCell<ListenerH>, out: *mut StrVal) @domain=network */
+void msstd_listener_address(const void *handle, MsStr *out);
+/* ms-sig: msstd_listener_close(handle l: *const ObjCell<ListenerH>) @domain=network */
+void msstd_listener_close(const void *handle);
 
 #endif

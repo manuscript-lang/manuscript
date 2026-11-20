@@ -18,6 +18,7 @@ mod close;
 mod closure;
 mod constmap;
 mod cx;
+mod decimal_literal;
 mod eq;
 mod expr;
 mod external;

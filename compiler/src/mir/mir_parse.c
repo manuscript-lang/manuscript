@@ -229,11 +229,7 @@ static MpTok mpa_lex_string(MpLexer *lx) {
 static MpTok mpa_lex_name(MpLexer *lx) {
     char sigil = lx->text[lx->position++];
     size_t start = lx->position;
-    /* A vtable is named for its impl and position (`@impl:10:0`): a colon before a digit belongs
-     * to the name; the colon that ends a declaration is followed by a space. */
-    while (mpa_lex_more(lx) &&
-           (mpa_ident_char((unsigned char)lx->text[lx->position]) ||
-            (lx->text[lx->position] == ':' && ms_ascii_is_digit((uint8_t)mpa_lex_at(lx, 1))))) {
+    while (mpa_lex_more(lx) && mpa_ident_char((unsigned char)lx->text[lx->position])) {
         lx->position++;
     }
     if (lx->position == start) {
@@ -438,6 +434,7 @@ static MsSym mpa_tsym(const MpCur *c, MpTok t) { return mir_name(c->p->m, t.s, t
 /* ---- types ---- */
 
 static MirTy mpa_parse_ty(MpCur *c);
+static MirTy mpa_parse_ty_base(MpCur *c);
 
 static MirTy mpa_parse_fn_ty(MpCur *c) {
     MirTy *ps = NULL;
@@ -460,7 +457,28 @@ static MirTy mpa_parse_fn_ty(MpCur *c) {
     return mir_ty_fn(c->p->m, ps, n, r, owned);
 }
 
+/* A type, then the implementation scope the printer appends as `@N` (digits only, so a function
+ * name that follows a type is not taken for one). */
 static MirTy mpa_parse_ty(MpCur *c) {
+    const MirTy base = mpa_parse_ty_base(c);
+    const MpTok *next = mpa_c_peek(c);
+    if (next == NULL || next->k != MPT_AT || next->n == 0) {
+        return base;
+    }
+    uint32_t scope = 0;
+    for (uint32_t i = 0; i < next->n; i++) {
+        if (!ms_ascii_is_digit((uint8_t)next->s[i])) {
+            return base;
+        }
+    }
+    if (!mpa_parse_u32(next->s, next->n, &scope)) {
+        return base;
+    }
+    c->pos++;
+    return mir_ty_unscoped(base) | scope << MIR_SCOPE_SHIFT;
+}
+
+static MirTy mpa_parse_ty_base(MpCur *c) {
     MirModule *m = c->p->m;
     MpTok nt = mpa_c_ident(c);
     static const char *const builtin[MIR_BUILTIN_TYPES] = {
@@ -1066,6 +1084,29 @@ static MpResult mpa_parse_result(MpCur *c) {
     return result;
 }
 
+/* The runtime declares one symbol once per instantiation (`msrt_map_new` for each map type), and the
+ * text names only the symbol, so the extern a call means is the one of that name whose signature
+ * its operands and result match. The first of the name stays when none (or all) match. */
+static uint32_t mpa_pick_extern(const MirModule *m, const MirFunc *f, const MirInst *inst,
+                                const MpResult *result) {
+    const uint32_t first = inst->imm.a;
+    const MirTy want = result->present ? result->type : MIR_VOID;
+    for (uint32_t e = 0; e < m->nexterns; e++) {
+        const MirExtern *x = &m->externs[e];
+        if (x->name != m->externs[first].name || x->nparams != inst->nargs || x->ret != want) {
+            continue;
+        }
+        bool same = true;
+        for (uint32_t k = 0; k < x->nparams && same; k++) {
+            same = inst->args[k] < f->nvalues && f->values[inst->args[k]] == x->params[k].ty;
+        }
+        if (same) {
+            return e;
+        }
+    }
+    return first;
+}
+
 static void mpa_parse_instruction(MpCur *c, MirFunc *f, MirBlock b, MpTok mnemonic,
                                   const MpResult *result) {
     MirModule *m = c->p->m;
@@ -1100,6 +1141,9 @@ static void mpa_parse_instruction(MpCur *c, MirFunc *f, MirBlock b, MpTok mnemon
     inst.loc = mpa_optional_location(c);
     if (!mpa_c_done(c)) {
         mpa_perr(c->p, c->line, "unexpected token after instruction");
+    }
+    if (inst.imm.tag == MI_EXT) {
+        inst.imm.a = mpa_pick_extern(m, f, &inst, result);
     }
     if (result->present) {
         inst.res = mpa_define(c, f, result->name, result->type);

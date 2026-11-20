@@ -4,12 +4,14 @@
 # program and a census of why the C build fails (the emitter's reason lines), which is the list of
 # gaps to route to the emitter, lowering and pass owners.
 # Run from the repository root with a built `ms` (`make build`): `sh compiler/tests/build-diff.sh [LIMIT]`.
+# MS_BUILD_DIFF_FLAGS=--static links musl when the system libraries need a newer glibc than the runtime floor.
 # MS_BUILD_DIFF_PROFILE=Debug (default) or Release, as `ms build --build-type`.
 set -u
 limit=${1:-0}
 profile=${MS_BUILD_DIFF_PROFILE:-Debug}
+flags=${MS_BUILD_DIFF_FLAGS:-}
 ms=${MS:-target/release/ms}
-sh compiler/tests/cbuild.sh ms_mir_build qbe > /dev/null
+sh compiler/tests/cbuild.sh ms_mir_build ms_asm_tables qbe > /dev/null
 bin=$(pwd)/target/cmake/test/compiler
 out=target/c-compiler/build-diff
 rm -rf "$out"
@@ -20,8 +22,8 @@ grep -rl "^// conform: .*phase=run" tests/conformance/fixtures --include=*.ms | 
 pass=0 same=0 diff=0 cfail=0 rfail=0
 while read -r src; do
     id=$(echo "$src" | tr '/' '_')
-    "$ms" build --build-type $profile "$src" -o "$out/$id.rust" > "$out/$id.rust.log" 2>&1 || { rfail=$((rfail + 1)); continue; }
-    if ! MS_BACKEND=c "$ms" build --build-type $profile "$src" -o "$out/$id.c" > "$out/$id.c.log" 2>&1; then
+    "$ms" build $flags --build-type $profile "$src" -o "$out/$id.rust" > "$out/$id.rust.log" 2>&1 || { rfail=$((rfail + 1)); continue; }
+    if ! MS_BACKEND=c "$ms" build $flags --build-type $profile "$src" -o "$out/$id.c" > "$out/$id.c.log" 2>&1; then
         cfail=$((cfail + 1))
         echo "cfail $src"
         continue
@@ -39,6 +41,6 @@ echo "--- why the C build fails (count, reason) ---"
 # One reason per emitter line ("fn: reason"), one per failed pass, one per parse error, so a program
 # with several gaps counts under each.
 for log in "$out"/*.c.log; do
-    sed -E 's#/tmp/ms-cbackend-[0-9]+/##; s/^native code generation failed[^:]*: ms_mir_build failed: //' "$log" |
+    sed -E 's#/tmp/ms-cbackend-[0-9]+/##; s/^native code generation failed[^:]*: (ms_mir_build|qbe|cc) failed: //' "$log" |
         awk '/^the C back end cannot write:/ {w=1; next} w && NF {sub(/^[^:]*: /, ""); print "emitter: " $0; next} /does not verify after/ {print "verify: " $0; v=1; next} v && NF {sub(/^[^:]*: /, ""); sub(/%[0-9]+/, "%N"); print "  " $0; v=0; next} !w && NF && !v {print "other: " $0; exit}'
 done | sort | uniq -c | sort -rn | head -n 40

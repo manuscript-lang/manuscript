@@ -477,6 +477,19 @@ static void report_existing(MsFsWatcher *watcher, MsBytes directory, size_t dept
 /* The path a callback names: the row's own path for an event on the row itself, otherwise the entry below it. */
 static bool event_path(const WatchRow *row, const char *filename, bool *self, MsFsBuffer *out) {
     *self = !row->is_directory || filename == NULL || filename[0] == '\0';
+#ifdef __APPLE__
+    /* FSEvents names a change to the watched directory itself by the directory's own name. */
+    if (!*self) {
+        const MsBytes base = ms_fs_path_base(row_bytes(row));
+        if (strlen(filename) == base.len && memcmp(filename, base.ptr, base.len) == 0) {
+            MsFsBuffer child = {0};
+            MsSysStat stat;
+            const bool joined = ms_fs_path_join(row_bytes(row), ms_bytes_of((const uint8_t *)filename, strlen(filename)), &child);
+            *self = joined && ms_fs_stat_bytes(ms_fs_buffer_view(&child), false, &stat) != 0;
+            ms_fs_buffer_free(&child);
+        }
+    }
+#endif
     if (!*self && !WATCH_RECURSIVE_HANDLE) {
         /* inotify reports an event on the watched directory itself under its own name. */
         const MsBytes base = ms_fs_path_base(row_bytes(row));
@@ -552,6 +565,13 @@ static void watch_event(uv_fs_event_t *handle, const char *filename, int events,
     } else if (rename && exists && watcher->recursive && ms_fs_stat_is_directory(&stat)) {
         fresh = true;
     }
+#ifdef __APPLE__
+    /* The ready file of native_wait_ready changes the root's modification time: not an event of the user's. */
+    if (self && exists && row->is_directory && filename != NULL && filename[0] != '\0') {
+        ms_fs_buffer_free(&full_buffer);
+        return;
+    }
+#endif
     queue_event(watcher, full.ptr, full.len, rename);
     /* What was created before the watch existed raised no event of its own. */
     if (fresh) {

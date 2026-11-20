@@ -1,6 +1,7 @@
 /* MIR machine layout (layout.rs): the leaves of every type, their memory layout, the payload slots
  * of alternatives, closure objects, and the pointer and boolean flags the LLVM emitter reads.
  * Everything is computed on first ask and kept in the MirLayouts arena, which owns it. */
+#include <stdlib.h>
 #include <string.h>
 
 #include "ms/mir_layout.h"
@@ -125,6 +126,14 @@ static bool sh_is_map_or_set(const MirLayouts *layouts, const MirTyData *data) {
     MsStr name = ms_name(&layouts->module->names, data->name);
     return (name.len == 3 && memcmp(name.ptr, "Map", 3) == 0) ||
            (name.len == 3 && memcmp(name.ptr, "Set", 3) == 0);
+}
+
+bool mir_ty_is_map_or_set(const MirModule *module, MirTy ty) {
+    const MirTyData *data = mir_ty_data(module, ty);
+    if (data->kind != MK_OBJ) {
+        return false;
+    }
+    return mir_name_is(module, data->name, "Map") || mir_name_is(module, data->name, "Set");
 }
 
 bool mir_type_field_boxed(const MirLayouts *layouts, MirTy field_ty) {
@@ -394,6 +403,21 @@ const MirAltFields *mir_alt_fields(MirLayouts *layouts, uint32_t alt) {
     return &layouts->alt_fields[alt];
 }
 
+bool mir_alt_slot_source(const MirAltFields *fields, uint32_t case_index, uint32_t slot,
+                         uint32_t *operand, uint32_t *leaf) {
+    const uint32_t first = fields->case_start[case_index];
+    for (uint32_t f = first; f < fields->case_start[case_index + 1]; f++) {
+        for (uint32_t k = 0; k < fields->fields[f].nleaves; k++) {
+            if (fields->fields[f].leaves[k] == slot) {
+                *operand = f - first;
+                *leaf = k;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 MirLeafSpan mir_type_block(MirLayouts *layouts, uint32_t type_id) {
     const MirTypeDef *def = &layouts->module->type_defs[type_id];
     MsBuf list = {0};
@@ -408,6 +432,39 @@ MirLeafSpan mir_type_block(MirLayouts *layouts, uint32_t type_id) {
     MirLeafSpan span = sh_keep(layouts, &list);
     ms_buf_free(&list);
     return span;
+}
+
+bool mir_record_block(MirLayouts *layouts, uint32_t type_id, MirRecordBlock *out) {
+    *out = (MirRecordBlock){.def = &layouts->module->type_defs[type_id]};
+    out->leaves = mir_type_block(layouts, type_id);
+    out->offsets = calloc((size_t)out->leaves.len + 1, sizeof *out->offsets);
+    out->starts = calloc((size_t)out->def->nfields + 1, sizeof *out->starts);
+    out->boxed = calloc((size_t)out->def->nfields + 1, sizeof *out->boxed);
+    if (out->offsets == NULL || out->starts == NULL || out->boxed == NULL) {
+        mir_record_block_free(out);
+        return false;
+    }
+    out->size = mir_mem_layout(out->leaves.ptr, out->leaves.len, out->offsets).size;
+    uint32_t at = 0;
+    for (uint32_t k = 0; k < out->def->nfields; k++) {
+        out->starts[k] = at;
+        out->boxed[k] = mir_type_field_boxed(layouts, out->def->fields[k].ty);
+        at += out->boxed[k] ? 1 : mir_leaves(layouts, out->def->fields[k].ty).len;
+    }
+    return true;
+}
+
+void mir_record_block_free(MirRecordBlock *block) {
+    free(block->offsets);
+    free(block->starts);
+    free(block->boxed);
+    *block = (MirRecordBlock){0};
+}
+
+bool mir_opt_has_flag(MirLayouts *layouts, MirTy opt) {
+    const MirTy inner = mir_ty_data(layouts->module, opt)->elem;
+    return !mir_layouts_opt_boxed(layouts, inner) && !mir_opt_is_nullable(layouts, inner) &&
+           !mir_is_str_like(layouts, opt);
 }
 
 bool mir_boxed_block_size(MirLayouts *layouts, MirTy ty, uint32_t *size) {

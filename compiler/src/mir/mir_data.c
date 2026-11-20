@@ -202,6 +202,156 @@ static void md_globals(MdCx *c) {
     }
 }
 
+/* The words of a string literal; the layout is MsStr (runtime/include/ms_rt/string.h). */
+void mir_str_lit_words(const char *text, uint32_t len, bool *is_static, uint64_t *lo, uint64_t *hi) {
+    *is_static = len > MIR_STR_INLINE_MAX;
+    if (*is_static) {
+        bool ascii = true;
+        for (uint32_t i = 0; i < len; i++) {
+            ascii = ascii && (uint8_t)text[i] < 0x80;
+        }
+        *lo = 0;
+        *hi = len | MIR_STR_STATIC | (ascii ? MIR_STR_ASCII : 0);
+        return;
+    }
+    uint8_t words[16] = {0};
+    *lo = 0;
+    memcpy(words, text, len);
+    uint64_t second = 0;
+    for (uint32_t i = 0; i < 8; i++) {
+        *lo |= (uint64_t)words[i] << (8 * i);
+        second |= (uint64_t)words[8 + i] << (8 * i);
+    }
+    *hi = second | MIR_STR_INLINE | ((uint64_t)len << MIR_STR_INLINE_SHIFT);
+}
+
+/* The bytes of every long literal a function uses, each followed by a NUL. */
+static void md_strings(MdCx *c) {
+    MirModule *m = c->m;
+    c->d->strings = MS_NEW_N(&m->arena, uint32_t, m->strings.count);
+    for (uint32_t i = 0; i < m->strings.count; i++) {
+        c->d->strings[i] = MIR_NONE;
+    }
+    for (uint32_t f = 0; f < m->nfuncs; f++) {
+        for (uint32_t b = 0; b < m->funcs[f].nblocks; b++) {
+            const MirBlockData *blk = &m->funcs[f].blocks[b];
+            for (uint32_t k = 0; k < blk->ninsts; k++) {
+                const MirInst *inst = &blk->insts[k];
+                const uint32_t id = inst->imm.a;
+                if (inst->op != MOP_StrLit || m->strings.len[id] <= MIR_STR_INLINE_MAX ||
+                    c->d->strings[id] != MIR_NONE) {
+                    continue;
+                }
+                const uint32_t size = m->strings.len[id] + 1;
+                uint8_t *bytes = MS_NEW_N(&m->arena, uint8_t, size);
+                memcpy(bytes, m->strings.text[id], size - 1);
+                MirDataSym s = {.name = md_name(c, "lit", id), .size = size, .align = 1, .bytes = bytes};
+                c->d->strings[id] = md_new_sym(c, &s);
+            }
+        }
+    }
+}
+
+/* The bytes of one constant list: each value in the width of the element's leaf, little-endian; a
+ * Float32 element holds the bits of a double that are narrowed. */
+static uint8_t *md_list_bytes(MirModule *m, MirLeaf leaf, const MirConsts *list, uint32_t *size) {
+    const uint32_t width = mir_leaf_size(leaf);
+    *size = width * list->n;
+    uint8_t *bytes = MS_NEW_N(&m->arena, uint8_t, *size ? *size : 1);
+    for (uint32_t i = 0; i < list->n; i++) {
+        uint64_t bits = (uint64_t)list->v[i];
+        if (leaf == MIR_LEAF_F32) {
+            double wide = 0;
+            memcpy(&wide, &bits, sizeof wide);
+            const float narrow = (float)wide;
+            uint32_t word = 0;
+            memcpy(&word, &narrow, sizeof word);
+            bits = word;
+        }
+        for (uint32_t b = 0; b < width; b++) {
+            bytes[(size_t)i * width + b] = (uint8_t)(bits >> (8 * b));
+        }
+    }
+    return bytes;
+}
+
+/* One symbol for each constant byte string and constant list a function uses. */
+static void md_consts(MdCx *c) {
+    MirModule *m = c->m;
+    c->d->blobs = MS_NEW_N(&m->arena, uint32_t, m->nblobs ? m->nblobs : 1);
+    c->d->list_consts = MS_NEW_N(&m->arena, uint32_t, m->nlist_consts ? m->nlist_consts : 1);
+    for (uint32_t i = 0; i < m->nblobs; i++) {
+        c->d->blobs[i] = MIR_NONE;
+    }
+    for (uint32_t i = 0; i < m->nlist_consts; i++) {
+        c->d->list_consts[i] = MIR_NONE;
+    }
+    for (uint32_t f = 0; f < m->nfuncs; f++) {
+        for (uint32_t b = 0; b < m->funcs[f].nblocks; b++) {
+            const MirBlockData *blk = &m->funcs[f].blocks[b];
+            for (uint32_t k = 0; k < blk->ninsts; k++) {
+                const MirInst *inst = &blk->insts[k];
+                const uint32_t id = (uint32_t)inst->imm.i;
+                if (inst->op == MOP_BytesLit && id < m->nblobs && c->d->blobs[id] == MIR_NONE &&
+                    m->blobs[id].len > 0) {
+                    MirDataSym s = {.name = md_name(c, "blob", id), .size = m->blobs[id].len, .align = 1,
+                                    .bytes = (const uint8_t *)m->blobs[id].ptr};
+                    c->d->blobs[id] = md_new_sym(c, &s);
+                } else if ((inst->op == MOP_ListConst || inst->op == MOP_ListConstView) &&
+                           id < m->nlist_consts && c->d->list_consts[id] == MIR_NONE &&
+                           m->list_consts[id].n > 0) {
+                    const MirLeafSpan leaves = mir_leaves(c->lay, mir_ty_data(m, m->funcs[f].values[inst->res])->elem);
+                    uint32_t size = 0;
+                    const uint8_t *bytes = md_list_bytes(m, leaves.ptr[0], &m->list_consts[id], &size);
+                    MirDataSym s = {.name = md_name(c, "list", id), .size = size, .align = 16, .bytes = bytes};
+                    c->d->list_consts[id] = md_new_sym(c, &s);
+                }
+            }
+        }
+    }
+}
+
+uint32_t mir_data_unit(const MirData *d, uint32_t alt, uint32_t case_index) {
+    for (uint32_t i = 0; i < d->nunits; i++) {
+        if (d->units[i].alt == alt && d->units[i].case_index == case_index) {
+            return d->units[i].sym;
+        }
+    }
+    return MIR_NONE;
+}
+
+/* A payloadless case of a boxed alternative is one static block, so building it allocates nothing. */
+static void md_unit(MdCx *c, const MirFunc *f, const MirInst *inst) {
+    const uint32_t alt = inst->imm.a, case_index = inst->imm.b;
+    const MirAltDef *def = &c->m->alts[alt];
+    uint32_t size = 0;
+    if (def->cases[case_index].nfields != 0 || mir_data_unit(c->d, alt, case_index) != MIR_NONE ||
+        !mir_boxed_block_size(c->lay, f->values[inst->res], &size)) {
+        return;
+    }
+    size = size < 8 ? 8 : size;
+    uint8_t *bytes = MS_NEW_N(&c->m->arena, uint8_t, size);
+    md_put_word(bytes, case_index);
+    MirDataSym s = {.name = ms_arena_fmt(&c->m->arena, "ms.unit.%u.%u", alt, case_index).ptr,
+                    .size = size, .align = 8, .bytes = bytes};
+    const MirUnit unit = {alt, case_index, md_new_sym(c, &s)};
+    MIR_PUSH(c->m, c->d->units, c->d->nunits, c->d->cunits, MirUnit, unit);
+}
+
+static void md_units(MdCx *c) {
+    for (uint32_t f = 0; f < c->m->nfuncs; f++) {
+        const MirFunc *fn = &c->m->funcs[f];
+        for (uint32_t b = 0; b < fn->nblocks; b++) {
+            for (uint32_t k = 0; k < fn->blocks[b].ninsts; k++) {
+                const MirInst *inst = &fn->blocks[b].insts[k];
+                if (inst->op == MOP_AltNew || inst->op == MOP_AltView) {
+                    md_unit(c, fn, inst);
+                }
+            }
+        }
+    }
+}
+
 void mir_data_build(MirModule *m, const MirGlue *glue, MirData *out) {
     MirLayouts lay;
     mir_layouts_init(&lay, m);
@@ -209,6 +359,9 @@ void mir_data_build(MirModule *m, const MirGlue *glue, MirData *out) {
     MdCx c = {.m = m, .glue = glue, .lay = &lay, .d = out};
     md_globals(&c);
     md_vtables(&c);
+    md_strings(&c);
+    md_consts(&c);
+    md_units(&c);
     md_collect_descs(&c);
     mir_layouts_free(&lay);
 }

@@ -18,7 +18,6 @@ typedef struct MsBody {
     uint32_t lambda_floor;  /* bindings below this id belong to an enclosing function: captured */
     MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
     MsTy invalid_ty;        /* the type of an expression that already drew a diagnostic */
-    bool has_close;         /* the module declares a method named `close` */
     MsTy result;
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */
     uint32_t function;      /* the declaration node of the function being checked */
@@ -46,6 +45,13 @@ bool ms_body_is_list(const MsBody *b, MsTy ty);
 MsTy ms_body_list_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_index(MsBody *b, const MsExpr *e);
+/* Int, Float, Bool or String: what a binding or argument of the handled set may hold. */
+bool ms_body_is_primitive_value(const MsBody *b, MsTy ty);
+/* `ok(v)`, `error(e)` and `some(v)`, the built-in cases of Result and Optional (check_builtin.c). */
+bool ms_body_is_builtin_case(const MsBody *b, MsSym name);
+MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
+/* A call of a generic function of the module (check_generic.c). */
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym);
 /* A call `receiver.name(args)' (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
