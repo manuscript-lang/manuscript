@@ -1,7 +1,5 @@
 //! Process information on Windows: there are no user or group ids; Go reports -1 for each.
-use crate::control::{Info, executable};
-use ms_std_fs::err::{Fail, Res};
-use ms_std_fs::sys;
+use crate::control::{Fail, Info, Res, executable};
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
@@ -15,7 +13,7 @@ fn memory_counters() -> Res<PROCESS_MEMORY_COUNTERS> {
     counters.cb = core::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
     // SAFETY: `counters` is writable for `cb` bytes.
     if unsafe { K32GetProcessMemoryInfo(GetCurrentProcess(), &mut counters, counters.cb) } == 0 {
-        return Err(Fail::raw(sys::errno()));
+        return Err(Fail::os("memory", &std::io::Error::last_os_error()));
     }
     Ok(counters)
 }

@@ -15,14 +15,6 @@ pub mod control;
 #[cfg(windows)]
 #[allow(unsafe_code)]
 mod control_windows;
-#[cfg(unix)]
-#[path = "signals_unix.rs"]
-#[allow(unsafe_code)] // libc signal handling
-pub mod signals;
-#[cfg(windows)]
-#[path = "signals_windows.rs"]
-#[allow(unsafe_code)]
-pub mod signals;
 
 /// Serialises tests that spawn children with tests that change the process environment: `setenv`
 /// may reallocate `environ` while `posix_spawnp` reads it, which makes the spawn fail at random.
@@ -34,10 +26,19 @@ pub(crate) fn environment_guard() -> std::sync::MutexGuard<'static, ()> {
 
 use ms_rt::ffi::ErrOut;
 use ms_rt::ffi::{
-    Has, ObjMut, Object, StatusCode, Str, StrMap, StringList, abi_type, argv, monotonic_nanos,
-    native, start_nanos,
+    StatusCode, Str, StrMap, StringList, abi_type, argv, monotonic_nanos, native, start_nanos,
 };
-use ms_std_fs::fs_status;
+use ms_rt_abi::STATUS_FAILED;
+
+/// A failed query as a status: the text of a `STATUS_FAILED` goes to `err`.
+fn status<T>(r: control::Res<T>, err: &ErrOut) -> Result<T, StatusCode> {
+    r.map_err(|control::Fail { status, message }| {
+        if status == STATUS_FAILED {
+            err.set_bytes(message.unwrap_or_default().as_bytes());
+        }
+        StatusCode(status)
+    })
+}
 
 /// Nanoseconds since the runtime started (or since the first call when it did not record a start).
 fn uptime_ns() -> i64 {
@@ -120,25 +121,6 @@ native! {
         uptime_ns()
     }
 
-    /// `watch_signals`: `signals` is a `List[Int]`; the capacity is a present flag plus the value.
-    fn msstd_process_watch_signals(
-        signals: &[i64],
-        has_capacity: Has,
-        capacity: i64; err: ErrOut) -> Result<Object<signals::Watcher>, StatusCode> {
-        fs_status(signals::Watcher::new(signals, has_capacity.then_some(capacity)), &err).map(Object)
-    }
-
-    /// Waits for the next signal; `STATUS_CLOSED` after `msstd_process_signal_close`.
-    fn msstd_process_signal_next(h: ObjMut<signals::Watcher>; err: ErrOut) -> Result<i64, StatusCode> {
-        let mut h = h;
-        fs_status(h.wait(), &err)
-    }
-
-    fn msstd_process_signal_close(h: ObjMut<signals::Watcher>) -> () {
-        let mut h = h;
-        h.close()
-    }
-
     /// `runtime_counts()` as `Result[RuntimeCounts, ControlError]`: the runtime's work counters.
     fn msstd_process_runtime_counts() -> Result<CountsOut, StatusCode> {
         let mut c = [0u64; 7];
@@ -157,7 +139,7 @@ native! {
     }
 
     fn msstd_process_memory_usage(; err: ErrOut) -> Result<MemoryOut, StatusCode> {
-        fs_status(control::memory_usage(), &err).map(|m| MemoryOut {
+        status(control::memory_usage(), &err).map(|m| MemoryOut {
             heap_used: m[0],
             heap_total: m[1],
             heap_system: m[2],
@@ -167,7 +149,7 @@ native! {
     }
 
     fn msstd_process_info(; err: ErrOut) -> Result<ProcessInfoOut, StatusCode> {
-        fs_status(control::info(), &err).map(|i| ProcessInfoOut {
+        status(control::info(), &err).map(|i| ProcessInfoOut {
             pid: i.pid,
             parent_pid: i.parent_pid,
             executable: Str::from_bytes(&i.executable),
@@ -188,6 +170,6 @@ native! {
 
     /// The live environment as a `Map[String, String]`.
     fn msstd_process_environment_map(; err: ErrOut) -> Result<StrMap, StatusCode> {
-        fs_status(control::environment(), &err).map(StrMap)
+        status(control::environment(), &err).map(StrMap)
     }
 }
