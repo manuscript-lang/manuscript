@@ -168,6 +168,25 @@ typedef enum MirSort { MSORT_NONE, MSORT_GENERIC, MSORT_SPECIALIZED } MirSort;
 
 typedef struct MirCaptureCloser { uint32_t capture, func; } MirCaptureCloser;
 
+/* A callee body inlined into a function: fault traces and profiles show it as its own frame,
+ * called from `call_line` of the enclosing scope. `MirLoc.scope` is one plus an index into
+ * `MirFunc.scopes` (0 is the function itself). */
+typedef struct MirScope {
+    MsSym name;
+    uint32_t file; /* MIR_NONE when unknown */
+    uint32_t parent; /* enclosing scope number */
+    uint32_t call_line;
+} MirScope;
+
+/* A value a debugger shows under its source name; `scope` is the `MirLoc.scope` of the body that
+ * declares it. */
+typedef struct MirNamedValue {
+    MirValue value;
+    MsSym name;
+    bool param; /* a parameter of the body that holds it, not a local */
+    uint32_t scope;
+} MirNamedValue;
+
 typedef struct MirFunc {
     MsSym name;
     MirParam *params;
@@ -196,6 +215,14 @@ typedef struct MirFunc {
     MirTy *captures; /* MFK_CLOSURE */
     uint32_t ncaptures;
     MirLoc loc;
+    MirScope *scopes;
+    uint32_t nscopes, cscopes;
+    MirNamedValue *names;
+    uint32_t nnames, cnames;
+    /* Parameters the caller guarantees alias nothing else: a function with some restores its
+     * cancel slots (see cancel exits). */
+    uint32_t *noalias;
+    uint32_t nnoalias;
     MirTy *values; /* type of every value */
     uint32_t nvalues, cvalues;
     MirBlockData *blocks; /* block 0 is the entry */
