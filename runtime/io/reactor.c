@@ -11,6 +11,7 @@
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c11 */
 
 #include "reactor.h"
+#include "reactor_internal.h"
 #include "ring.h"
 
 #include <stdatomic.h>
@@ -46,6 +47,7 @@ struct MsIoReactor {
     MsIoRow *free_rows; /* owned; closed rows ready for reuse */
     MsIoRing *ring; /* owned */
     bool woken; /* a wake-up was consumed since the wait began */
+    void *platform; /* owned by the platform file (runtime/io/windows), NULL elsewhere */
 };
 
 _Static_assert(sizeof(MsIoReady) == 16, "MsIoReady is shared with poller.rs");
@@ -55,6 +57,34 @@ _Static_assert(sizeof(MsIoWatch) == sizeof(int), "MsIoWatch crosses the ABI as a
 static _Thread_local MsIoReactor *thread_reactor;
 /* The main thread's reactor, for signal handlers. */
 static _Atomic(MsIoReactor *) main_reactor;
+
+uv_loop_t *ms_io_reactor_loop(MsIoReactor *reactor) {
+    return &reactor->loop;
+}
+
+uv_async_t *ms_io_reactor_wake_handle(MsIoReactor *reactor) {
+    return &reactor->wake_handle;
+}
+
+bool ms_io_reactor_push(MsIoReactor *reactor, MsIoEvent event) {
+    return ms_io_ring_push(reactor->ring, event);
+}
+
+bool ms_io_reactor_pending(const MsIoReactor *reactor) {
+    return ms_io_ring_length(reactor->ring) > 0 || reactor->woken;
+}
+
+MsIoReactor *ms_io_reactor_current(void) {
+    return thread_reactor;
+}
+
+void *ms_io_reactor_platform(const MsIoReactor *reactor) {
+    return reactor->platform;
+}
+
+void ms_io_reactor_set_platform(MsIoReactor *reactor, void *platform) {
+    reactor->platform = platform;
+}
 
 static MsIoReactor *reactor_of(const uv_handle_t *handle) {
     return uv_loop_get_data(uv_handle_get_loop(handle));
@@ -131,6 +161,9 @@ static void on_poll(uv_poll_t *handle, int status, int events) {
 }
 
 static void reactor_destroy(MsIoReactor *reactor) {
+#ifdef _WIN32
+    ms_io_windows_close(reactor);
+#endif
     for (size_t index = 0; index < reactor->rows_length; index++) {
         if (reactor->rows[index] != NULL) {
             row_discard(reactor, reactor->rows[index]);
@@ -170,7 +203,11 @@ bool ms_io_open(bool is_main, MsIoReactor **reactor_out) {
     uv_loop_set_data(&reactor->loop, reactor);
     reactor->wake_open = uv_async_init(&reactor->loop, &reactor->wake_handle, on_wake) == 0;
     reactor->timer_open = uv_timer_init(&reactor->loop, &reactor->timer) == 0;
-    if (!reactor->wake_open || !reactor->timer_open) {
+    bool platform_open = true;
+#ifdef _WIN32
+    platform_open = ms_io_windows_open(reactor);
+#endif
+    if (!reactor->wake_open || !reactor->timer_open || !platform_open) {
         reactor_destroy(reactor);
         return false;
     }
@@ -248,7 +285,11 @@ static MsIoWatch row_open(MsIoReactor *reactor, int fd, MsIoRow **row_out) {
     /* uv_poll_init makes the descriptor non-blocking; the owner's choice is restored. */
     bool was_nonblocking = true;
     const bool known = ms_sys_fd_get_nonblocking(fd, &was_nonblocking);
+#ifdef _WIN32
+    const int error = uv_poll_init_socket(&reactor->loop, &row->handle, (uv_os_sock_t)fd); /* a Windows descriptor is a SOCKET */
+#else
     const int error = uv_poll_init(&reactor->loop, &row->handle, fd);
+#endif
     if (error != 0) {
         row->next_free = reactor->free_rows;
         reactor->free_rows = row;
@@ -275,6 +316,11 @@ MsIoWatch ms_io_watch(int fd, uint32_t events) {
     if (reactor == NULL || fd < 0 || !table_reserve(reactor, fd)) {
         return MS_IO_WATCH_FAILED;
     }
+#ifdef _WIN32
+    if (ms_io_windows_owns(reactor, (uintptr_t)fd)) {
+        return MS_IO_WATCH_ARMED; /* a pipe or object reports through its own events */
+    }
+#endif
     MsIoRow *row = reactor->rows[fd];
     if (row == NULL) {
         const MsIoWatch opened = row_open(reactor, fd, &row);
@@ -328,10 +374,16 @@ static void run_bounded(MsIoReactor *reactor, int64_t timeout_ns) {
     if (ms_io_ring_length(reactor->ring) > 0 || reactor->woken) {
         return;
     }
+#ifdef _WIN32
+    if (ms_io_windows_wait(reactor, timeout_ns)) {
+        return;
+    }
+#else
     if (ms_sys_fd_wait_readable(uv_backend_fd(&reactor->loop), timeout_ns)) {
         (void)uv_run(&reactor->loop, UV_RUN_NOWAIT);
         return;
     }
+#endif
     const int64_t millis = (timeout_ns + NANOSECONDS_PER_MILLISECOND - 1) / NANOSECONDS_PER_MILLISECOND;
     (void)uv_timer_start(&reactor->timer, on_timer, (uint64_t)millis, 0);
     (void)uv_run(&reactor->loop, UV_RUN_ONCE);
@@ -366,6 +418,9 @@ bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *cou
         return false;
     }
     reactor->woken = false;
+#ifdef _WIN32
+    ms_io_windows_flush(reactor);
+#endif
     if (timeout_ns == 0 || ms_io_ring_length(reactor->ring) > 0) {
         (void)uv_run(&reactor->loop, UV_RUN_NOWAIT); /* events left from an earlier wait are ready now */
     } else if (timeout_ns > 0) {
