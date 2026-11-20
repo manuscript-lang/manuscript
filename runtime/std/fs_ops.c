@@ -99,7 +99,7 @@ static bool is_link(const MsSysStat *stat) { return (stat->mode & MS_SYS_S_IFMT)
 /* Reads to the end of `fd` into `out`, failing with STATUS_LIMIT_EXCEEDED when more than `max` bytes arrive. A
  * cancellable read checks for a stop request between reads (a pool thread must not) and waits for a pipe or device to
  * be readable. `stat` is the descriptor's fstat, or null when it has none. */
-static void read_limited(MsSysFd fd, int64_t max, bool cancellable, const MsSysStat *stat, MsFsBuffer *out, MsFsFail *fail) {
+void ms_fs_read_limited(MsSysFd fd, int64_t max, bool cancellable, const MsSysStat *stat, MsFsBuffer *out, MsFsFail *fail) {
     size_t first = 0;
     const size_t max_size = max > (int64_t)(SIZE_MAX / 2) ? SIZE_MAX / 2 : (size_t)max;
     if (stat != NULL && is_regular(stat)) {
@@ -227,7 +227,7 @@ static void read_whole_job(void *data) {
     if (!open_regular(job, MS_SYS_O_READ, &fd)) {
         return;
     }
-    read_limited(fd, job->number, false, NULL, &job->text, &job->fail);
+    ms_fs_read_limited(fd, job->number, false, NULL, &job->text, &job->fail);
     const MsSysError closed = ms_sys_fs_close(fd);
     (void)closed;
 }
@@ -255,7 +255,7 @@ static void read_whole_here(FsJob *job) {
     if (have_stat && is_directory(&stat)) {
         fail_invalid(&job->fail);
     } else {
-        read_limited(fd, job->number, true, have_stat ? &stat : NULL, &job->text, &job->fail);
+        ms_fs_read_limited(fd, job->number, true, have_stat ? &stat : NULL, &job->text, &job->fail);
     }
     error = ms_sys_fs_close(fd);
     (void)error;

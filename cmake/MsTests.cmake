@@ -67,13 +67,13 @@ ms_test(sys_thread SOURCES "${_tests}/sys_thread.c" "${_rt}/sys/thread.c" ${_pos
 ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_posix_sources} PLAIN
         INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 
-# std_*: all of runtime/std with the system PCRE2 and libcrypto.
+# std_*: all of runtime/std with the system PCRE2, libcrypto and libuv.
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
   ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c"
-          INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES}
-          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} m ${CMAKE_DL_LIBS})
+          INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES}
+          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
 
 # The HTTP/1 test links the vendored llhttp sources (the same ones the runtime archive compiles).
