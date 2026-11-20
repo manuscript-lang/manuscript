@@ -1177,16 +1177,20 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
 
 /* An expression used as a statement. A `Result` it does not propagate with `?` is a lost failure,
  * and a standalone `?` must have nothing to keep; the other forms are left to the Rust checker. */
-static void body_call_statement(MsBody *b, const MsStmt *s) {
+/* Whether control leaves the statement: it does unless it is a `match` whose every arm returns or breaks. */
+static bool body_call_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *value = s->u.expr;
     const MsTy ty = ms_body_expr(b, value, MS_TY_NONE);
     const bool propagated = value->kind == MS_E_UNARY && value->op == MS_U_TRY;
     if (ty == MS_TY_NONE || (propagated && ty != b->void_ty && ty != b->invalid_ty)) {
         (void)ms_body_unsupported(b);
-        return;
+        return false;
+    }
+    if (value->kind == MS_E_MATCH && !b->match_falls) {
+        return false;
     }
     if (propagated || !ms_ty_is(&b->c->tys, ty, MS_BI_RESULT)) {
-        return;
+        return true;
     }
     const MsStr shown = body_show(b, ty);
     const MsStr message = ms_arena_fmt(
@@ -1195,6 +1199,7 @@ static void body_call_statement(MsBody *b, const MsStmt *s) {
         "or 'match' to handle it, or 'void ...' to drop it on purpose",
         (int)shown.len, shown.ptr);
     body_report(b, s->pos, message);
+    return true;
 }
 
 /* Whether finishing the body, or a bare `return`, is a complete result: the function returns
@@ -1380,7 +1385,7 @@ static bool body_run(MsBody *b, const MsStmts *body) {
             body_jump_statement(b, s);
             falls = false;
             break;
-        case MS_S_CALL: body_call_statement(b, s); break;
+        case MS_S_CALL: falls = body_call_statement(b, s); break;
         case MS_S_FOR: falls = body_for_statement(b, s); break;
         }
     }
@@ -1808,6 +1813,7 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
               .bool_ty = body_primitive(c, "Bool"),
               .string_ty = body_primitive(c, "String"),
               .void_ty = body_primitive(c, "Void"),
+              .never_ty = body_primitive(c, "Never"),
               .methods = methods,
               .invalid_ty = body_invalid(c)};
     body_allocate(&b, facts);
