@@ -529,6 +529,7 @@ bool ms_std_load(MsCheck *c, MsArena *syn, const MsStdFile *in, uint32_t nfiles,
             /* A pure source module: recorded now, checked when a program first imports it. */
             MsModId m = ms_module_add(c, path, &ld->mod);
             c->mods[m].source = true;
+            c->mods[m].text = (MsStr){files[i].text, (uint32_t)files[i].len};
             register_source_stubs(&l, m, &ld->mod);
             continue;
         }
@@ -546,16 +547,19 @@ bool ms_std_load(MsCheck *c, MsArena *syn, const MsStdFile *in, uint32_t nfiles,
             MsModule *nh = half(&l, &ld->mod, nat, nn);
             MsModule *sh = half(&l, &ld->mod, src, ns);
             MsModId nm = ms_module_add(c, path, nh);
+            c->mods[nm].text = (MsStr){files[i].text, (uint32_t)files[i].len};
             ok = register_module(&l, nm, nh);
             if (ok) {
                 MsStr sp = ms_arena_fmt(syn, "%.*s+source", (int)ld->path.len, ld->path.ptr);
                 MsModId sm = ms_module_add(c, intern_str(&l, sp), sh);
                 ok = register_module(&l, sm, sh);
                 c->mods[sm].source = true;
+                c->mods[sm].text = (MsStr){files[i].text, (uint32_t)files[i].len};
             }
             continue;
         }
         MsModId m = ms_module_add(c, path, &ld->mod);
+        c->mods[m].text = (MsStr){files[i].text, (uint32_t)files[i].len};
         ok = register_module(&l, m, &ld->mod);
     }
     if (ok) {
