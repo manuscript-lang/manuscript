@@ -1,0 +1,28 @@
+module "t"
+entry @main
+extern @msrt_promise_start(int) -> int spawns_task
+extern @msrt_task_sleep(int) -> int
+extern @msrt_string_eq(str, str) -> bool string_eq
+
+extern @msrt_cleanup_discard(int) -> void leaf cleanup_discard
+
+fn @close(%p: ptr) -> void {
+b0:
+  %u: void = void
+  ret %u
+}
+
+fn @main() -> int {
+b0:
+  %b: str = str "held"
+  %s: str = clone %b
+  %slot: ptr = slot str
+  put %slot, %s
+  %h: int = cleanup.push @close %slot
+  %t: str = take str %slot
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  put %slot, %t
+  %d: void = call.rt @msrt_cleanup_discard (%h)
+  ret %r
+}
