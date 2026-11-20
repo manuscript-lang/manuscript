@@ -959,13 +959,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-conform"
-version = "0.1.0"
-dependencies = [
- "ms-json",
-]
-
-[[package]]
 name = "ms-decimal"
 version = "0.1.0"
 dependencies = [
@@ -1054,15 +1047,6 @@ dependencies = [
  "ms-std-table",
  "ms-std-terminal",
  "ms-std-time",
-]
-
-[[package]]
-name = "ms-repo-check"
-version = "0.0.0"
-dependencies = [
- "ms-json",
- "ms-syntax",
- "ms-tooling",
 ]
 
 [[package]]
