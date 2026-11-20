@@ -32,9 +32,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <nghttp2/nghttp2.h>
 
@@ -49,47 +49,48 @@ class DownstreamConnectionPool;
 class Http2DownstreamConnection : public DownstreamConnection {
 public:
   Http2DownstreamConnection(Http2Session *http2session);
-  virtual ~Http2DownstreamConnection();
-  virtual int attach_downstream(Downstream *downstream);
-  virtual void detach_downstream(Downstream *downstream);
+  ~Http2DownstreamConnection() override;
+  std::expected<void, Error> attach_downstream(Downstream *downstream) override;
+  std::expected<void, Error> detach_downstream(Downstream *downstream) override;
 
-  virtual int push_request_headers();
-  virtual int push_upload_data_chunk(const uint8_t *data, size_t datalen);
-  virtual int end_upload_data();
+  std::expected<void, Error> push_request_headers() override;
+  std::expected<void, Error>
+  push_upload_data_chunk(std::span<const uint8_t> data) override;
+  std::expected<void, Error> end_upload_data() override;
 
-  virtual void pause_read(IOCtrlReason reason) {}
-  virtual int resume_read(IOCtrlReason reason, size_t consumed);
-  virtual void force_resume_read() {}
+  void pause_read(IOCtrlReason reason) override {}
+  std::expected<void, Error> resume_read(IOCtrlReason reason,
+                                         size_t consumed) override;
+  void force_resume_read() override {}
 
-  virtual int on_read();
-  virtual int on_write();
-  virtual int on_timeout();
+  std::expected<void, Error> on_read() override { return {}; }
+  std::expected<void, Error> on_write() override { return {}; }
+  std::expected<void, Error> on_timeout() override;
 
-  virtual void on_upstream_change(Upstream *upstream) {}
+  void on_upstream_change(Upstream *upstream) override {}
 
   // This object is not poolable because we don't have facility to
   // migrate to another Http2Session object.
-  virtual bool poolable() const { return false; }
+  bool poolable() const override { return false; }
 
-  virtual const std::shared_ptr<DownstreamAddrGroup> &
-  get_downstream_addr_group() const;
-  virtual DownstreamAddr *get_addr() const;
-
-  int send();
+  const std::shared_ptr<DownstreamAddrGroup> &
+  get_downstream_addr_group() const override;
+  DownstreamAddr *get_addr() const override;
 
   void attach_stream_data(StreamData *sd);
   StreamData *detach_stream_data();
 
-  int submit_rst_stream(Downstream *downstream,
-                        uint32_t error_code = NGHTTP2_INTERNAL_ERROR);
+  std::expected<void, Error>
+  submit_rst_stream(Downstream *downstream,
+                    uint32_t error_code = NGHTTP2_INTERNAL_ERROR);
 
-  Http2DownstreamConnection *dlnext, *dlprev;
+  Http2DownstreamConnection *dlnext{}, *dlprev{};
 
 private:
   Http2Session *http2session_;
-  StreamData *sd_;
+  StreamData *sd_{};
 };
 
 } // namespace shrpx
 
-#endif // SHRPX_HTTP2_DOWNSTREAM_CONNECTION_H
+#endif // !defined(SHRPX_HTTP2_DOWNSTREAM_CONNECTION_H)

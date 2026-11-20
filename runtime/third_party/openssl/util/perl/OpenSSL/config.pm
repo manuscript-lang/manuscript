@@ -16,7 +16,9 @@ use warnings;
 use Getopt::Std;
 use File::Basename;
 use File::Spec;
-use IPC::Cmd;
+# Manuscript (runtime/third_party/vendor.sh): IPC::Cmd only guesses the target of the `config` script, and perl 5.42
+# dropped a module it loads, so Configure runs without it when a target is named.
+BEGIN { eval { require IPC::Cmd; 1 } or do { eval 'sub IPC::Cmd::can_run { return undef }' } }
 use POSIX;
 use Config;
 use Carp;

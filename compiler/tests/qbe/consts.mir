@@ -1,0 +1,18 @@
+module "t"
+entry @msmain
+blob 0 "48656c6c6f"
+consts 0 [10, 20, 30]
+
+fn @msmain() -> int {
+b0:
+  %l: list<int> = list.const 0
+  %v: list<int> = list.const.view 0
+  %i: int = iconst 2
+  %a: int = list.get.u %l, %i
+  %b: int = list.get.u %v, %i
+  %y: bytes = bytes 0
+  %n: int = list.len %y
+  %r: int = iadd %a, %b
+  %r2: int = iadd %r, %n
+  ret %r2
+}

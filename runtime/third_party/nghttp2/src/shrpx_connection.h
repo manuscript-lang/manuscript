@@ -29,6 +29,8 @@
 
 #include <sys/uio.h>
 
+#include <expected>
+
 #include <ev.h>
 
 #include "ssl_compat.h"
@@ -36,19 +38,20 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <nghttp2/nghttp2.h>
 
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2_crypto.h>
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 #include "shrpx_rate_limit.h"
 #include "shrpx_error.h"
 #include "memchunk.h"
+#include "errors.h"
 
 namespace shrpx {
 
@@ -106,23 +109,23 @@ struct Connection {
   void prepare_client_handshake();
   void prepare_server_handshake();
 
-  int tls_handshake();
-  int write_tls_pending_handshake();
+  std::expected<void, Error> tls_handshake();
+  std::expected<void, Error> write_tls_pending_handshake();
 
-  int check_http2_requirement();
+  std::expected<void, Error> check_http2_requirement();
 
   // All write_* and writev_clear functions return number of bytes
   // written.  If nothing cannot be written (e.g., there is no
   // allowance in RateLimit or underlying connection blocks), return
-  // 0.  SHRPX_ERR_NETWORK is returned in case of error.
+  // 0.  Error::NETWORK is returned in case of error.
   //
   // All read_* functions return number of bytes read.  If nothing
   // cannot be read (e.g., there is no allowance in Ratelimit or
-  // underlying connection blocks), return 0.  SHRPX_ERR_EOF is
-  // returned in case of EOF and no data was read.  Otherwise
-  // SHRPX_ERR_NETWORK is return in case of error.
-  nghttp2_ssize write_tls(const void *data, size_t len);
-  nghttp2_ssize read_tls(void *data, size_t len);
+  // underlying connection blocks), return empty span.
+  // Error::RECV_EOF is returned in case of EOF and no data was read.
+  // Otherwise Error::NETWORK is return in case of error.
+  std::expected<size_t, Error> write_tls(std::span<const uint8_t> data);
+  std::expected<std::span<uint8_t>, Error> read_tls(std::span<uint8_t> data);
 
   size_t get_tls_write_limit();
   // Updates the number of bytes written in warm up period.
@@ -131,19 +134,20 @@ struct Connection {
   // determine fallback to short record size mode.
   void start_tls_write_idle();
 
-  nghttp2_ssize write_clear(const void *data, size_t len);
-  nghttp2_ssize writev_clear(struct iovec *iov, int iovcnt);
-  nghttp2_ssize read_clear(void *data, size_t len);
+  std::expected<size_t, Error> write_clear(std::span<const uint8_t> data);
+  std::expected<size_t, Error> writev_clear(std::span<struct iovec> iov);
+  std::expected<std::span<uint8_t>, Error> read_clear(std::span<uint8_t> data);
   // Read at most |len| bytes of data from socket without rate limit.
-  nghttp2_ssize read_nolim_clear(void *data, size_t len);
+  std::expected<std::span<uint8_t>, Error>
+  read_nolim_clear(std::span<uint8_t> data);
   // Peek at most |len| bytes of data from socket without rate limit.
-  nghttp2_ssize peek_clear(void *data, size_t len);
+  std::expected<std::span<uint8_t>, Error> peek_clear(std::span<uint8_t> data);
 
   void handle_tls_pending_read();
 
   void set_ssl(SSL *ssl);
 
-  int get_tcp_hint(TCPHint *hint) const;
+  std::expected<TCPHint, Error> get_tcp_hint() const;
 
   // These functions are provided for read timer which is frequently
   // restarted.  We do a trick to make a bit more efficient than just
@@ -159,7 +163,7 @@ struct Connection {
 #ifdef ENABLE_HTTP3
   // This must be the first member of Connection.
   ngtcp2_crypto_conn_ref conn_ref;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   TLSConnection tls;
   ev_io wev;
   ev_io rev;
@@ -186,8 +190,8 @@ struct Connection {
 #ifdef ENABLE_HTTP3
 static_assert(std::is_standard_layout<Connection>::value,
               "Connection is not standard layout");
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 } // namespace shrpx
 
-#endif // SHRPX_CONNECTION_H
+#endif // !defined(SHRPX_CONNECTION_H)

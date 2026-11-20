@@ -329,8 +329,19 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
-    case MS_E_LAMBDA: w->supported = false; return;
-    case MS_E_CALL: own_call(w, e, demand); return;
+    case MS_E_LAMBDA: w->supported = false; return; /* closures and collections are not modeled */
+    case MS_E_CALL:
+        if (ms_call_builds_case(w->facts, e)) {
+            own_expr(w, e->u.call.args.ptr[0].value, DEMAND_READ); /* a primitive payload is copied */
+            return;
+        }
+        // A call that names no function (a method, an interface operation or a function value) is not modeled.
+        if (w->facts->call_callee[e->id] == MS_NONE) {
+            w->supported = false;
+            return;
+        }
+        own_call(w, e, demand);
+        return;
     case MS_E_MATCH: own_match(w, e, demand, false); return;
     }
 }
@@ -341,7 +352,8 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
 static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     const uint32_t sym = w->facts->call_callee[e->id];
     const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
-    if (decl == NULL || decl->kind != MS_D_FN) {
+    // A call to the function being summarized has no summary yet.
+    if (decl == NULL || decl->kind != MS_D_FN || &decl->u.fn == w->function) {
         return NULL;
     }
     const OwnSummary *summary = &w->summaries[decl->id];
@@ -563,7 +575,8 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
         return;
     }
     const OwnSummary *callee = own_callee(w, e);
-    if (callee == NULL || e->u.call.callee->kind != MS_E_NAME) {
+    if (callee == NULL || e->u.call.callee->kind != MS_E_NAME ||
+        e->u.call.args.len != w->check->syms.decl[w->facts->call_callee[e->id]]->u.fn.params.len) {
         w->supported = false;
         return;
     }
@@ -1063,6 +1076,7 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         const MsDecl *d = row->syntax->decls[i];
         if (d->kind == MS_D_FN && facts->body_checked[d->id]) {
             facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, &d->u.fn, by_node);
+            facts->ret_borrowed[d->id] = facts->body_checked[d->id] && w.summaries[d->id].returns_borrow;
         }
     }
     free(w.active.items);

@@ -564,3 +564,15 @@ bool mir_b_finish(MirBuilder *b, uint32_t *id) {
     *id = mir_add_func(b->m, &f);
     return true;
 }
+
+uint32_t mir_b_open_scope(MirBuilder *b, MsSym name, uint32_t file, uint32_t call_line) {
+    const uint32_t outer = b->loc.scope;
+    const MirScope scope = {.name = name, .file = file, .parent = outer, .call_line = call_line};
+    MIR_PUSH(b->m, b->f.scopes, b->f.nscopes, b->f.cscopes, MirScope, scope);
+    b->loc.scope = b->f.nscopes;
+    return outer;
+}
+
+void mir_b_close_scope(MirBuilder *b, uint32_t outer) {
+    b->loc.scope = outer;
+}

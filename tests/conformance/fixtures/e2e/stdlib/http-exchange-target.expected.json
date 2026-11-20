@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "http-exchange-target.ms::an origin-form target splits the path from the raw query",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "http-exchange-target.ms::dot segments and empty segments clean up and never climb above the root",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "http-exchange-target.ms::an absolute-form target carries its authority and defaults the path",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "http-exchange-target.ms::the asterisk form stays as written and a fragment is dropped",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "http-exchange-target.ms::unroutable targets are refused",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN http-exchange-target.ms::an origin-form target splits the path from the raw query\nPASS http-exchange-target.ms::an origin-form target splits the path from the raw query\nRUN http-exchange-target.ms::dot segments and empty segments clean up and never climb above the root\nPASS http-exchange-target.ms::dot segments and empty segments clean up and never climb above the root\nRUN http-exchange-target.ms::an absolute-form target carries its authority and defaults the path\nPASS http-exchange-target.ms::an absolute-form target carries its authority and defaults the path\nRUN http-exchange-target.ms::the asterisk form stays as written and a fragment is dropped\nPASS http-exchange-target.ms::the asterisk form stays as written and a fragment is dropped\nRUN http-exchange-target.ms::unroutable targets are refused\nPASS http-exchange-target.ms::unroutable targets are refused\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -42,7 +42,7 @@ uint32_t ms_isolate_register(MsWakeFn wake, void *argument) {
     return MS_NO_ISOLATE;
 }
 
-void ms_isolate_unregister(uint32_t index) {
+void ms_isolate_unregister(uint32_t index, void (*discard)(MsMail *mail)) {
     if (index >= MS_MAX_ISOLATES) {
         return;
     }
@@ -50,6 +50,9 @@ void ms_isolate_unregister(uint32_t index) {
     MsMail *mail = atomic_exchange(&slots[index].mail, NULL);
     while (mail != NULL) {
         MsMail *const next = mail->next;
+        if (discard != NULL) {
+            discard(mail);
+        }
         msrt_free(mail);
         mail = next;
     }

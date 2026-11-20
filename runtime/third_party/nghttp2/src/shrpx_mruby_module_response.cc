@@ -205,8 +205,6 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   auto &req = downstream->request();
   auto &resp = downstream->response();
-  int rv;
-
   auto &balloc = downstream->get_block_allocator();
 
   if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
@@ -217,16 +215,14 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   mrb_int vallen;
   mrb_get_args(mrb, "|s", &val, &vallen);
 
-  const uint8_t *body = nullptr;
-  size_t bodylen = 0;
+  std::span<const uint8_t> body;
 
   if (resp.http_status == 0) {
     resp.http_status = 200;
   }
 
   if (downstream->expect_response_body() && vallen > 0) {
-    body = reinterpret_cast<const uint8_t *>(val);
-    bodylen = as_unsigned(vallen);
+    body = as_uint8_span(std::span{val, as_unsigned(vallen)});
   }
 
   auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
@@ -240,8 +236,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
 
     resp.fs.content_length = -1;
   } else {
-    auto content_length =
-      util::make_string_ref_uint(balloc, as_unsigned(vallen));
+    auto content_length = util::make_string_ref_uint(balloc, body.size());
 
     if (cl) {
       cl->value = content_length;
@@ -250,7 +245,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
                                http2::HD_CONTENT_LENGTH);
     }
 
-    resp.fs.content_length = vallen;
+    resp.fs.content_length = static_cast<int64_t>(body.size());
   }
 
   auto date = resp.fs.header(http2::HD_DATE);
@@ -264,8 +259,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
 
   auto upstream = downstream->get_upstream();
 
-  rv = upstream->send_reply(downstream, body, bodylen);
-  if (rv != 0) {
+  if (!upstream->send_reply(downstream, body)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "could not send response");
   }
 
@@ -282,7 +276,6 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
   auto &resp = downstream->response();
-  int rv;
 
   if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "response has already been committed");
@@ -353,8 +346,7 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
 
   auto upstream = downstream->get_upstream();
 
-  rv = upstream->on_downstream_header_complete(downstream);
-  if (rv != 0) {
+  if (!upstream->on_downstream_header_complete(downstream)) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "could not send non-final response");
   }
 

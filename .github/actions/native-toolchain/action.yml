@@ -34,7 +34,7 @@ runs:
         update: false
         location: ${{ runner.temp }}
         install: >-
-          ${{ inputs.arch == 'arm64' && 'mingw-w64-clang-aarch64-libuv mingw-w64-clang-aarch64-nghttp2 mingw-w64-clang-aarch64-openssl mingw-w64-clang-aarch64-pcre2 mingw-w64-clang-aarch64-zlib' || 'mingw-w64-clang-x86_64-libuv mingw-w64-clang-x86_64-nghttp2 mingw-w64-clang-x86_64-openssl mingw-w64-clang-x86_64-pcre2 mingw-w64-clang-x86_64-zlib' }}
+          ${{ inputs.arch == 'arm64' && 'mingw-w64-clang-aarch64-libuv mingw-w64-clang-aarch64-nghttp2 mingw-w64-clang-aarch64-openssl mingw-w64-clang-aarch64-pcre2 mingw-w64-clang-aarch64-zlib perl make' || 'mingw-w64-clang-x86_64-libuv mingw-w64-clang-x86_64-nghttp2 mingw-w64-clang-x86_64-openssl mingw-w64-clang-x86_64-pcre2 mingw-w64-clang-x86_64-zlib perl make' }}
     - name: Point the C build at MSYS2
       if: runner.os == 'Windows'
       shell: bash

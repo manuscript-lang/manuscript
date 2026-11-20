@@ -29,7 +29,7 @@ static void order_and_age(void) {
     CHECK(ms_queue_remove(1, 11));
     CHECK(ms_queue_length(1) == 0 && ms_queue_oldest(1) == INT64_MAX);
     CHECK(!ms_queue_steal(1, INT64_MAX, &id, &work));
-    ms_queue_release(1);
+    ms_queue_release(1, NULL);
 }
 
 static void middle_removal(void) {
@@ -44,7 +44,7 @@ static void middle_removal(void) {
     CHECK(ms_queue_steal(2, INT64_MAX, &id, &work) && id == 1);
     CHECK(ms_queue_steal(2, INT64_MAX, &id, &work) && id == 100);
     CHECK(!ms_queue_steal(2, INT64_MAX, &id, &work));
-    ms_queue_release(2);
+    ms_queue_release(2, NULL);
 }
 
 enum { TOTAL = 20000 };
@@ -81,7 +81,7 @@ static void owner_against_thieves(void) {
         pthread_join(threads[i], NULL);
     }
     CHECK(own_sum + atomic_load(&taken_sum) == (uint64_t)TOTAL * (TOTAL + 1) / 2);
-    ms_queue_release(3);
+    ms_queue_release(3, NULL);
 }
 
 int main(void) {

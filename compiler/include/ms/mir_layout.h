@@ -140,8 +140,16 @@ typedef struct MirClosureLayout {
 #define MIR_STACK_HDR_CELL 16
 #define MIR_HDR_CANCEL 8
 
+/* The tag bits of a string's second word (runtime/include/ms_rt/string.h) and the longest inline string. */
+#define MIR_STR_STATIC ((uint64_t)1 << 63)
+#define MIR_STR_INLINE ((uint64_t)1 << 62)
+#define MIR_STR_ASCII ((uint64_t)1 << 61)
+#define MIR_STR_INLINE_SHIFT 56
+#define MIR_STR_INLINE_MAX 15
+
 /* A list or bytes value is three leaves: the element address, the length and the capacity. */
 #define MIR_LIST_LEN_LEAF 1
+#define MIR_LIST_CAP_LEAF 2
 #define MIR_MAP_WORDS 7
 /* A type with more leaves than this is a failure, not a layout. */
 #define MIR_LAYOUT_MAX_LEAVES (1u << 20)
@@ -172,12 +180,39 @@ const MirShape *mir_shape(MirLayouts *layouts, MirTy ty);
 MirLeafSpan mir_leaves(MirLayouts *layouts, MirTy ty);
 MirMemLayout mir_type_mem(MirLayouts *layouts, MirTy ty);
 const MirAltFields *mir_alt_fields(MirLayouts *layouts, uint32_t alt);
+/* The payload leaf of case `case_index` that fills slot `slot` of its alternative: operand `*operand`
+ * (a field), leaf `*leaf` of it. False when the case leaves that slot unused. */
+bool mir_alt_slot_source(const MirAltFields *fields, uint32_t case_index, uint32_t slot,
+                         uint32_t *operand, uint32_t *leaf);
 
 /* The leaves of the heap block behind indirect type `type_id`: its fields' leaves in order,
  * except that a map or set field is one pointer to a header block that exists only while the
  * collection is not the all-zero empty value. */
 MirLeafSpan mir_type_block(MirLayouts *layouts, uint32_t type_id);
+/* The byte offset of field `field` of the inline record `type_id` in its memory image. */
+/* The size in bytes of one element of list type `list`. */
+uint32_t mir_list_elem_size(MirLayouts *layouts, MirTy list);
+uint32_t mir_field_offset(MirLayouts *layouts, uint32_t type_id, uint32_t field);
 bool mir_type_field_boxed(const MirLayouts *layouts, MirTy field_ty);
+/* The heap block behind a record of an indirect type: `leaves` of its fields in order (as
+ * mir_type_block), their byte `offsets`, the index of each field's first leaf in `starts`, and the
+ * block `size`. A map or set field is one pointer word to a header block of MIR_MAP_WORDS words,
+ * null while the collection is empty (`boxed`). Free with mir_record_block_free. */
+typedef struct MirRecordBlock {
+    const MirTypeDef *def;
+    MirLeafSpan leaves;
+    uint32_t *offsets;
+    uint32_t *starts;
+    bool *boxed;
+    uint32_t size;
+} MirRecordBlock;
+
+/* Fills `out` for the indirect record type declaration `type_id`; false when out of memory. */
+bool mir_record_block(MirLayouts *layouts, uint32_t type_id, MirRecordBlock *out);
+void mir_record_block_free(MirRecordBlock *block);
+/* Whether `ty` is a map or set. */
+bool mir_ty_is_map_or_set(const MirModule *module, MirTy ty);
+
 /* The size of the heap block of the boxed alternative `ty`; false for any other type. */
 bool mir_boxed_block_size(MirLayouts *layouts, MirTy ty, uint32_t *size);
 /* The object layout of function `f` (header only when it is not a closure). */
@@ -189,6 +224,10 @@ const bool *mir_bool_leaves(MirLayouts *layouts, MirTy ty);
 
 /* Whether `inner?` is a nullable pointer. */
 bool mir_opt_is_nullable(MirLayouts *layouts, MirTy inner);
+/* Whether the optional `opt` is held as a presence flag followed by its payload leaves. Not so for
+ * a nullable pointer, for a boxed payload (a pointer) or for a string, whose none is the null
+ * pointer with the static tag. */
+bool mir_opt_has_flag(MirLayouts *layouts, MirTy opt);
 /* Whether values of `ty` have the string layout: `String`, and `String?`. */
 bool mir_is_str_like(const MirLayouts *layouts, MirTy ty);
 

@@ -38,7 +38,6 @@ Connections
 
 .. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;<PARAM>]...]
 
-
     Set  backend  host  and   port.   The  multiple  backend
     addresses are  accepted by repeating this  option.  UNIX
     domain socket  can be  specified by prefixing  path name
@@ -560,17 +559,31 @@ Timeout
 
     Default: ``1m``
 
-.. option:: --stream-read-timeout=<DURATION>
+.. option:: --frontend-stream-read-timeout=<DURATION>
 
-    Specify  read timeout  for HTTP/2  streams.  0  means no
-    timeout.
+    Specify read  timeout for  HTTP/2 and HTTP/3  streams in
+    the frontend connection.  0 means no timeout.
 
     Default: ``0``
 
-.. option:: --stream-write-timeout=<DURATION>
+.. option:: --frontend-stream-write-timeout=<DURATION>
 
-    Specify write  timeout for  HTTP/2 streams.  0  means no
-    timeout.
+    Specify write  timeout for HTTP/2 and  HTTP/3 streams in
+    the frontend connection.  0 means no timeout.
+
+    Default: ``1m``
+
+.. option:: --backend-stream-read-timeout=<DURATION>
+
+    Specify read  timeout for HTTP/2 streams  in the backend
+    connection.  0 means no timeout.
+
+    Default: ``0``
+
+.. option:: --backend-stream-write-timeout=<DURATION>
+
+    Specify write timeout for  HTTP/2 streams in the backend
+    connection.  0 means no timeout.
 
     Default: ``1m``
 
@@ -635,6 +648,34 @@ Timeout
 
     Default: ``2m``
 
+.. option:: --frontend-min-write-rate=<SIZE>
+
+    Set the  minimum rate  of stream  data that  client must
+    read from frontend connection.  The <SIZE> specifies the
+    number of bytes per second.  If client is unable to read
+    at least the given rate,  the connection is closed.  The
+    implementation extends the timeout by the stream data to
+    send.    Use  :option:`--frontend-initial-write-rate-timeout`   to
+    specify       the       initial      timeout.        Use
+    :option:`--frontend-max-write-rate-timeout`  to  set  the  maximum
+    timeout.  Setting 0 disables this feature.
+
+    Default: ``0``
+
+.. option:: --frontend-initial-write-rate-timeout=<DURATION>
+
+    Set the initial timeout set by :option:`--frontend-min-write-rate`
+    feature.
+
+    Default: ``10s``
+
+.. option:: --frontend-max-write-rate-timeout=<DURATION>
+
+    Set the maximum timeout set by :option:`--frontend-min-write-rate`
+    feature.
+
+    Default: ``1m``
+
 
 SSL/TLS
 ~~~~~~~
@@ -643,8 +684,8 @@ SSL/TLS
 
     Set allowed  cipher list  for frontend  connection.  The
     format of the string is described in OpenSSL ciphers(1).
-    This option  sets cipher suites for  TLSv1.2 or earlier.
-    Use :option:`--tls13-ciphers` for TLSv1.3.
+    This  option  sets  cipher   suites  for  TLSv1.2.   Use
+    :option:`--tls13-ciphers` for TLSv1.3.
 
     Default: ``ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384``
 
@@ -653,7 +694,7 @@ SSL/TLS
     Set allowed  cipher list  for frontend  connection.  The
     format of the string is described in OpenSSL ciphers(1).
     This  option  sets  cipher   suites  for  TLSv1.3.   Use
-    :option:`--ciphers` for TLSv1.2 or earlier.
+    :option:`--ciphers` for TLSv1.2.
 
     Default: ``TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256``
 
@@ -661,8 +702,8 @@ SSL/TLS
 
     Set  allowed cipher  list for  backend connection.   The
     format of the string is described in OpenSSL ciphers(1).
-    This option  sets cipher suites for  TLSv1.2 or earlier.
-    Use :option:`--tls13-client-ciphers` for TLSv1.3.
+    This  option  sets  cipher   suites  for  TLSv1.2.   Use
+    :option:`--tls13-client-ciphers` for TLSv1.3.
 
     Default: ``ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384``
 
@@ -671,14 +712,14 @@ SSL/TLS
     Set  allowed cipher  list for  backend connection.   The
     format of the string is described in OpenSSL ciphers(1).
     This  option  sets  cipher   suites  for  TLSv1.3.   Use
-    :option:`--tls13-client-ciphers` for TLSv1.2 or earlier.
+    :option:`--client-ciphers` for TLSv1.2.
 
     Default: ``TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256``
 
-.. option:: --ecdh-curves=<LIST>
+.. option:: --groups=<LIST>
 
-    Set  supported  curve  list  for  frontend  connections.
-    <LIST> is a  colon separated list of curve  NID or names
+    Set the  supported group list for  frontend connections.
+    <LIST> is a  colon separated list of group  NID or names
     in the preference order.  The supported curves depend on
     the  linked  OpenSSL  library.  This  function  requires
     OpenSSL >= 1.0.2.
@@ -710,12 +751,12 @@ SSL/TLS
     Specify  additional certificate  and  private key  file.
     nghttpx will  choose certificates based on  the hostname
     indicated by client using TLS SNI extension.  If nghttpx
-    is  built with  OpenSSL  >= 1.0.2,  the shared  elliptic
-    curves (e.g., P-256) between  client and server are also
-    taken into  consideration.  This allows nghttpx  to send
-    ECDSA certificate  to modern clients, while  sending RSA
-    based certificate to older  clients.  This option can be
-    used  multiple  times.
+    is built with OpenSSL >= 1.0.2, the signature algorithms
+    (e.g., ECDSA+SHA256) presented by  client are also taken
+    into consideration.  This allows  nghttpx to send ML-DSA
+    or ECDSA  certificate to  modern clients,  while sending
+    RSA based certificate to older clients.  This option can
+    be used multiple times.
 
     Additional parameter  can be specified in  <PARAM>.  The
     available <PARAM> is "sct-dir=<DIR>".
@@ -776,12 +817,8 @@ SSL/TLS
     :option:`--tls-min-proto-version` and  :option:`\--tls-max-proto-version` are
     enabled.  If the protocol list advertised by client does
     not  overlap  this range,  you  will  receive the  error
-    message "unknown protocol".  If a protocol version lower
-    than TLSv1.2 is specified, make sure that the compatible
-    ciphers are  included in :option:`--ciphers` option.   The default
-    cipher  list  only   includes  ciphers  compatible  with
-    TLSv1.2 or above.  The available versions are:
-    TLSv1.3, TLSv1.2, TLSv1.1, and TLSv1.0
+    message "unknown protocol".  The available versions are:
+    TLSv1.3 and TLSv1.2
 
     Default: ``TLSv1.2``
 
@@ -793,7 +830,7 @@ SSL/TLS
     enabled.  If the protocol list advertised by client does
     not  overlap  this range,  you  will  receive the  error
     message "unknown protocol".  The available versions are:
-    TLSv1.3, TLSv1.2, TLSv1.1, and TLSv1.0
+    TLSv1.3 and TLSv1.2
 
     Default: ``TLSv1.3``
 
@@ -987,6 +1024,22 @@ SSL/TLS
 
     Enable ktls.
 
+.. option:: --ech-config-file=<PATH>
+
+    Read Encrypted  Client Hello (ECH)  server configuration
+    from <PATH>.  See :option:`--ech-retry-config-file` for details.
+
+.. option:: --ech-retry-config-file=<PATH>
+
+    This option and  :option:`--ech-config-file` option read Encrypted
+    Client Hello (ECH) server configuration from <PATH>.  If
+    :option:`--ech-retry-config-file` is used,  the configurations are
+    included in  the retry configurations.  The  file format
+    must  be PEM  ECH  file described  in  RFC 9934.   These
+    options can  be used repeatedly to  read multiple files.
+    :option:`--ech-retry-config-file` must be used  at least once when
+    enabling ECH.
+
 
 HTTP/2
 ~~~~~~
@@ -1045,15 +1098,6 @@ HTTP/2
     padding.  Specify 0 to  disable padding.  This option is
     meant for debugging purpose  and not intended to enhance
     protocol security.
-
-.. option:: --no-server-push
-
-    Disable HTTP/2 server push.  Server push is supported by
-    default mode and HTTP/2  frontend via Link header field.
-    It is  also supported if  both frontend and  backend are
-    HTTP/2 in default mode.  In  this case, server push from
-    backend session is relayed  to frontend, and server push
-    via Link header field is also supported.
 
 .. option:: --frontend-http2-optimize-write-buffer-size
 
@@ -1192,6 +1236,8 @@ Logging
     * $tls_session_reused:  "r"   if  SSL/TLS   session  was
       reused.  Otherwise, "."
     * $tls_sni: SNI server name for SSL/TLS connection.
+    * $tls_ech_accepted: "e" if ECH  was accepted in SSL/TLS
+      session.  Otherwise, "."
     * $backend_host:  backend  host   used  to  fulfill  the
       request.  "-" if backend host is not available.
     * $backend_port:  backend  port   used  to  fulfill  the
@@ -1867,34 +1913,7 @@ SIGUSR2
 SERVER PUSH
 -----------
 
-nghttpx supports HTTP/2 server push in default mode with Link header
-field.  nghttpx looks for Link header field (`RFC 5988
-<http://tools.ietf.org/html/rfc5988>`_) in response headers from
-backend server and extracts URI-reference with parameter
-``rel=preload`` (see `preload
-<http://w3c.github.io/preload/#interoperability-with-http-link-header>`_)
-and pushes those URIs to the frontend client. Here is a sample Link
-header field to initiate server push:
-
-.. code-block:: text
-
-  Link: </fonts/font.woff>; rel=preload
-  Link: </css/theme.css>; rel=preload
-
-Currently, the following restriction is applied for server push:
-
-1. The associated stream must have method "GET" or "POST".  The
-   associated stream's status code must be 200.
-
-This limitation may be loosened in the future release.
-
-nghttpx also supports server push if both frontend and backend are
-HTTP/2 in default mode.  In this case, in addition to server push via
-Link header field, server push from backend is forwarded to frontend
-HTTP/2 session.
-
-HTTP/2 server push will be disabled if :option:`--http2-proxy` is
-used.
+nghttpx does not support HTTP/2 server push.
 
 UNIX DOMAIN SOCKET
 ------------------
@@ -2223,18 +2242,6 @@ respectively.
     .. rb:method:: clear_headers
 
         Clear all existing request header fields.
-
-    .. rb:method:: push(uri)
-
-        Initiate to push resource identified by *uri*.  Only HTTP/2
-        protocol supports this feature.  For the other protocols, this
-        method is noop.  *uri* can be absolute URI, absolute path or
-        relative path to the current request.  For absolute or
-        relative path, scheme and authority are inherited from the
-        current request.  Currently, method is always GET.  nghttpx
-        will issue request to backend servers to fulfill this request.
-        The request and response phase hooks will be called for pushed
-        resource as well.
 
 .. rb:class:: Response
 

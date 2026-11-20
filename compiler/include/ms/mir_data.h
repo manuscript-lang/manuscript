@@ -55,11 +55,22 @@ typedef struct MirDescKey {
     MirRef to;
 } MirDescKey;
 
+/* The shared block of a payloadless case of a boxed alternative: the case index, then zeros. Such
+ * values never allocate, and dropping them frees nothing. */
+typedef struct MirUnit {
+    uint32_t alt, case_index, sym;
+} MirUnit;
+
 typedef struct MirData {
     MirDataSym *syms;
     uint32_t nsyms, csyms;
     uint32_t *globals;    /* symbol of each module global */
     uint32_t *vtables;    /* symbol of each module vtable */
+    MirUnit *units;       /* the unit blocks some function builds */
+    uint32_t nunits, cunits;
+    uint32_t *blobs;      /* by blob id: the symbol holding the constant bytes, MIR_NONE when no function uses it */
+    uint32_t *list_consts; /* by constant list id: the symbol holding its elements, MIR_NONE when unused */
+    uint32_t *strings;    /* by string id: the symbol holding a long literal's bytes, MIR_NONE for a short one or one no function uses */
     MirDescKey *keys;     /* every descriptor key seen, with its target */
     uint32_t nkeys, ckeys;
 } MirData;
@@ -80,6 +91,14 @@ void mir_desc_plan(const MirModule *m, MirLayouts *lay, MirTy key, MirDescPlan *
  * (and any inner descriptor those name). Run after glue, whose functions the symbols point at.
  * Everything lives in the module's arena. */
 void mir_data_build(MirModule *m, const MirGlue *glue, MirData *out);
+
+/* The data symbol of the unit block of case `case_index` of boxed alternative `alt`, or MIR_NONE. */
+uint32_t mir_data_unit(const MirData *d, uint32_t alt, uint32_t case_index);
+
+/* The two words of string literal `text`. A literal of up to 15 bytes is an inline string, so
+ * `*is_static` is false and `lo`, `hi` are the words; a longer one is static data (`strings` above)
+ * whose address is the first word and `hi` the second, flagged ASCII when every byte is. */
+void mir_str_lit_words(const char *text, uint32_t len, bool *is_static, uint64_t *lo, uint64_t *hi);
 
 /* The target of the descriptor for `key`, which `mir_data_build` saw in a function. */
 MirRef mir_data_desc(const MirData *d, MirTy key);

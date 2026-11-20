@@ -24,8 +24,6 @@
  */
 #include "memchunk_test.h"
 
-#include "munitxx.h"
-
 #include <nghttp2/nghttp2.h>
 
 #include "memchunk.h"
@@ -40,64 +38,68 @@ const MunitTest tests[]{
   munit_void_test(test_pool_recycle),
   munit_void_test(test_memchunks_append),
   munit_void_test(test_memchunks_drain),
+  munit_void_test(test_memchunks_remove),
   munit_void_test(test_memchunks_riovec),
+  munit_void_test(test_memchunks_peek),
   munit_void_test(test_memchunks_recycle),
   munit_void_test(test_memchunks_reset),
   munit_void_test(test_memchunks_reserve),
   munit_void_test(test_memchunkbuffer_drain_reset),
+  munit_void_test(test_memchunkbuffer_peek),
   munit_test_end(),
 };
 } // namespace
 
 const MunitSuite memchunk_suite{
-  "/memchunk", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/memchunk",
+  .tests = tests,
 };
 
 void test_pool_recycle(void) {
   MemchunkPool pool;
 
   assert_null(pool.pool);
-  assert_size(0, ==, pool.poolsize);
+  assert_eq(0, pool.poolsize);
   assert_null(pool.freelist);
 
   auto m1 = pool.get();
 
-  assert_ptr_equal(m1, pool.pool);
-  assert_size(MemchunkPool::value_type::size, ==, pool.poolsize);
+  assert_eq(m1, pool.pool);
+  assert_eq(MemchunkPool::value_type::size, pool.poolsize);
   assert_null(pool.freelist);
 
   auto m2 = pool.get();
 
-  assert_ptr_equal(m2, pool.pool);
-  assert_size(2 * MemchunkPool::value_type::size, ==, pool.poolsize);
+  assert_eq(m2, pool.pool);
+  assert_eq(2 * MemchunkPool::value_type::size, pool.poolsize);
   assert_null(pool.freelist);
-  assert_ptr_equal(m1, m2->knext);
+  assert_eq(m1, m2->knext);
   assert_null(m1->knext);
 
   auto m3 = pool.get();
 
-  assert_ptr_equal(m3, pool.pool);
-  assert_size(3 * MemchunkPool::value_type::size, ==, pool.poolsize);
+  assert_eq(m3, pool.pool);
+  assert_eq(3 * MemchunkPool::value_type::size, pool.poolsize);
   assert_null(pool.freelist);
 
   pool.recycle(m3);
 
-  assert_ptr_equal(m3, pool.pool);
-  assert_size(3 * MemchunkPool::value_type::size, ==, pool.poolsize);
-  assert_ptr_equal(m3, pool.freelist);
+  assert_eq(m3, pool.pool);
+  assert_eq(3 * MemchunkPool::value_type::size, pool.poolsize);
+  assert_eq(m3, pool.freelist);
 
   auto m4 = pool.get();
 
-  assert_ptr_equal(m3, m4);
-  assert_ptr_equal(m4, pool.pool);
-  assert_size(3 * MemchunkPool::value_type::size, ==, pool.poolsize);
+  assert_eq(m3, m4);
+  assert_eq(m4, pool.pool);
+  assert_eq(3 * MemchunkPool::value_type::size, pool.poolsize);
   assert_null(pool.freelist);
 
   pool.recycle(m2);
   pool.recycle(m1);
 
-  assert_ptr_equal(m1, pool.freelist);
-  assert_ptr_equal(m2, m1->next);
+  assert_eq(m1, pool.freelist);
+  assert_eq(m2, m1->next);
   assert_null(m2->next);
 }
 
@@ -114,37 +116,35 @@ void test_memchunks_append(void) {
 
   auto m = chunks.tail;
 
-  assert_size(3, ==, m->len());
-  assert_size(13, ==, m->left());
+  assert_eq(3, m->len());
+  assert_eq(13, m->left());
 
   chunks.append("3456789abcdef@"sv);
 
-  assert_size(16, ==, m->len());
-  assert_size(0, ==, m->left());
+  assert_eq(16, m->len());
+  assert_eq(0, m->left());
 
   m = chunks.tail;
 
-  assert_size(1, ==, m->len());
-  assert_size(15, ==, m->left());
-  assert_size(17, ==, chunks.rleft());
+  assert_eq(1, m->len());
+  assert_eq(15, m->left());
+  assert_eq(17, chunks.rleft());
 
-  char buf[16];
+  std::array<uint8_t, 16> buf;
   size_t nread;
 
-  nread = chunks.remove(buf, 8);
+  nread = chunks.remove(std::span{buf}.first(8));
 
-  assert_size(8, ==, nread);
-  assert_memory_equal(nread, "01234567", buf);
-  assert_size(9, ==, chunks.rleft());
+  assert_eq("01234567"sv, as_string_view(std::span{buf}.first(nread)));
+  assert_eq(9, chunks.rleft());
 
-  nread = chunks.remove(buf, sizeof(buf));
+  nread = chunks.remove(buf);
 
-  assert_size(9, ==, nread);
-  assert_memory_equal(nread, "89abcdef@", buf);
-  assert_size(0, ==, chunks.rleft());
+  assert_eq("89abcdef@"sv, as_string_view(std::span{buf}.first(nread)));
+  assert_eq(0, chunks.rleft());
   assert_null(chunks.head);
   assert_null(chunks.tail);
-  assert_size(32, ==, pool.poolsize);
+  assert_eq(32, pool.poolsize);
 }
 
 void test_memchunks_drain(void) {
@@ -157,14 +157,30 @@ void test_memchunks_drain(void) {
 
   nread = chunks.drain(3);
 
-  assert_size(3, ==, nread);
+  assert_eq(3, nread);
 
-  char buf[16];
+  std::array<uint8_t, 16> buf;
 
-  nread = chunks.remove(buf, sizeof(buf));
+  nread = chunks.remove(buf);
 
-  assert_size(7, ==, nread);
-  assert_memory_equal(nread, "3456789", buf);
+  assert_eq("3456789"sv, as_string_view(std::span{buf}.first(nread)));
+}
+
+void test_memchunks_remove(void) {
+  MemchunkPool16 pool;
+  Memchunks16 chunks(&pool);
+
+  chunks.append("0123456789"sv);
+
+  std::array<uint8_t, 16> buf;
+
+  auto nread = chunks.remove(std::span{buf}.first(1));
+
+  assert_eq("0"sv, as_string_view(std::span{buf}.first(nread)));
+
+  nread = chunks.remove(buf);
+
+  assert_eq("123456789"sv, as_string_view(std::span{buf}.first(nread)));
 }
 
 void test_memchunks_riovec(void) {
@@ -175,29 +191,47 @@ void test_memchunks_riovec(void) {
 
   chunks.append(buf.data(), buf.size());
 
-  std::array<struct iovec, 2> iov;
-  auto iovcnt = chunks.riovec(iov.data(), iov.size());
+  std::array<struct iovec, 2> iovbuf;
+  auto iov = chunks.riovec(iovbuf);
 
   auto m = chunks.head;
 
-  assert_int(2, ==, iovcnt);
-  assert_ptr_equal(m->buf.data(), iov[0].iov_base);
-  assert_size(m->len(), ==, iov[0].iov_len);
+  assert_eq(2, iov.size());
+  assert_eq(m->buf.data(), iov[0].iov_base);
+  assert_eq(m->len(), iov[0].iov_len);
 
   m = m->next;
 
-  assert_ptr_equal(m->buf.data(), iov[1].iov_base);
-  assert_size(m->len(), ==, iov[1].iov_len);
+  assert_eq(m->buf.data(), iov[1].iov_base);
+  assert_eq(m->len(), iov[1].iov_len);
 
   chunks.drain(2 * 16);
 
-  iovcnt = chunks.riovec(iov.data(), iov.size());
+  iov = chunks.riovec(iovbuf);
 
-  assert_int(1, ==, iovcnt);
+  assert_eq(1, iov.size());
 
   m = chunks.head;
-  assert_ptr_equal(m->buf.data(), iov[0].iov_base);
-  assert_size(m->len(), ==, iov[0].iov_len);
+  assert_eq(m->buf.data(), iov[0].iov_base);
+  assert_eq(m->len(), iov[0].iov_len);
+}
+
+void test_memchunks_peek(void) {
+  MemchunkPool16 pool;
+  Memchunks16 chunks(&pool);
+
+  assert_true(chunks.peek().empty());
+
+  std::array<char, 3 * 16> buf{};
+
+  chunks.append(buf.data(), buf.size());
+
+  auto data = chunks.peek();
+
+  auto m = chunks.head;
+
+  assert_eq(m->buf.data(), data.data());
+  assert_eq(m->len(), data.size());
 }
 
 void test_memchunks_recycle(void) {
@@ -207,7 +241,7 @@ void test_memchunks_recycle(void) {
     std::array<char, 32> buf{};
     chunks.append(buf.data(), buf.size());
   }
-  assert_size(32, ==, pool.poolsize);
+  assert_eq(32, pool.poolsize);
   assert_not_null(pool.freelist);
 
   auto m = pool.freelist;
@@ -225,11 +259,11 @@ void test_memchunks_reset(void) {
 
   chunks.append(b.data(), b.size());
 
-  assert_size(32, ==, chunks.rleft());
+  assert_eq(32, chunks.rleft());
 
   chunks.reset();
 
-  assert_size(0, ==, chunks.rleft());
+  assert_eq(0, chunks.rleft());
   assert_null(chunks.head);
   assert_null(chunks.tail);
 
@@ -243,21 +277,24 @@ void test_memchunks_reset(void) {
 void test_memchunks_reserve(void) {
   MemchunkPool16 pool;
   Memchunks16 chunks(&pool);
-  std::array<iovec, 2> iov;
+  std::array<iovec, 2> iovbuf;
 
   chunks.append(8, [](auto result) {
     return std::ranges::copy("foobar00"sv, std::move(result)).out;
   });
 
-  assert_size(8, ==, chunks.rleft());
+  assert_eq(8, chunks.rleft());
 
-  auto iovcnt = chunks.riovec(iov.data(), iov.size());
-
-  assert_int(1, ==, iovcnt);
-  assert_stdsv_equal(
-    "foobar00"sv,
-    (std::string_view{reinterpret_cast<const char *>(iov[0].iov_base),
-                      iov[0].iov_len}));
+  assert_eq((std::vector{
+              {
+                "foobar00"sv,
+              },
+            }),
+            chunks.riovec(iovbuf) | std::ranges::views::transform([](auto &&r) {
+              return as_string_view(
+                std::span{static_cast<const char *>(r.iov_base), r.iov_len});
+            }) |
+              std::ranges::to<std::vector>());
 
   chunks.reset();
 
@@ -266,19 +303,19 @@ void test_memchunks_reserve(void) {
     return std::ranges::copy("foobar00"sv, std::move(result)).out;
   });
 
-  assert_size(17, ==, chunks.rleft());
+  assert_eq(17, chunks.rleft());
 
-  iovcnt = chunks.riovec(iov.data(), iov.size());
-
-  assert_int(2, ==, iovcnt);
-  assert_stdsv_equal(
-    "012345678"sv,
-    (std::string_view{reinterpret_cast<const char *>(iov[0].iov_base),
-                      iov[0].iov_len}));
-  assert_stdsv_equal(
-    "foobar00"sv,
-    (std::string_view{reinterpret_cast<const char *>(iov[1].iov_base),
-                      iov[1].iov_len}));
+  assert_eq((std::vector{
+              {
+                "012345678"sv,
+                "foobar00"sv,
+              },
+            }),
+            chunks.riovec(iovbuf) | std::ranges::views::transform([](auto &&r) {
+              return as_string_view(
+                std::span{static_cast<const char *>(r.iov_base), r.iov_len});
+            }) |
+              std::ranges::to<std::vector>());
 }
 
 void test_memchunkbuffer_drain_reset(void) {
@@ -292,10 +329,22 @@ void test_memchunkbuffer_drain_reset(void) {
 
   auto nread = buf.drain_reset(3);
 
-  assert_size(3, ==, nread);
-  assert_true(buf.begin() == buf.chunk->pos);
-  assert_size(7, ==, buf.rleft());
-  assert_true(buf.begin() + buf.rleft() == buf.chunk->last);
+  assert_eq(3, nread);
+  assert_eq(buf.begin(), buf.chunk->pos);
+  assert_eq(7, buf.rleft());
+  assert_eq(buf.begin() + buf.rleft(), buf.chunk->last);
+}
+
+void test_memchunkbuffer_peek(void) {
+  MemchunkPool16 pool;
+  MemchunkBuffer16 buf(&pool);
+
+  buf.ensure_chunk();
+  static constexpr auto data = "0123456789"sv;
+  std::ranges::copy(data, buf.begin());
+  buf.write(data.size());
+
+  assert_eq(data, as_string_view(buf.peek()));
 }
 
 } // namespace nghttp2

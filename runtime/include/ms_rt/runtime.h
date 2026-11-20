@@ -14,6 +14,7 @@
 /* The FaultKind codes of ms-rt-abi that natives raise (the families are ms_rt/fault.h's). */
 #define MS_FAULT_DIVISION_BY_ZERO MS_FAULT_KIND_DIVISION_BY_ZERO
 #define MS_FAULT_OVERFLOW MS_FAULT_KIND_OVERFLOW
+#define MS_FAULT_OUT_OF_MEMORY MS_FAULT_KIND_OUT_OF_MEMORY
 
 /* A presence flag parameter (an `Optional` argument split in two): 0 or 1. */
 typedef uint8_t HasRaw;

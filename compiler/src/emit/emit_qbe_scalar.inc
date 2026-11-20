@@ -290,7 +290,7 @@ static bool qbe_pointer_op(QCx *c, const MirInst *inst, bool *ok) {
     case MOP_FFloor: ms_buf_printf(o, "\t%%v%u =d call $floor(d %%v%u)\n", inst->res, a[0]); return true;
     case MOP_FCeil: ms_buf_printf(o, "\t%%v%u =d call $ceil(d %%v%u)\n", inst->res, a[0]); return true;
     case MOP_FTrunc: ms_buf_printf(o, "\t%%v%u =d call $trunc(d %%v%u)\n", inst->res, a[0]); return true;
-    case MOP_VoidConst: return true;
+    case MOP_VoidConst: case MOP_DepthLeave: return true; /* nothing to write */
     default: return false;
     }
 }
@@ -306,7 +306,7 @@ static uint32_t qbe_splits(const MirModule *m, const MirFunc *f, const MirInst *
     case MOP_NarrowChk:
         return qbe_narrow_extension((MirTyKind)mir_ty_data(m, f->values[inst->res])->kind) != NULL;
     default:
-        return 0;
+        return qbe_record_splits(m, f, inst);
     }
 }
 

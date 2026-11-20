@@ -28,6 +28,10 @@ trim() {
         echo '# curl examples are not built here (vendor.sh).' > "$2/docs/examples/CMakeLists.txt"
     fi
     if [ "$1" = openssl ]; then
+        # The generated configdata.pm runs during the build and loads Pod::Usage for its --help text; MSYS2's perl lacks it.
+        perl -0pi -e 's/^    use Pod::Usage;\n/    # Manuscript (runtime\/third_party\/vendor.sh): perl without Pod::Usage (MSYS2\x27s) only loses the --help text.\n    BEGIN { eval { require Pod::Usage; Pod::Usage->import; 1 } or do { eval \x27sub pod2usage { exit 0 }\x27 } }\n/m' "$2/configdata.pm.in"
+        # Configure loads IPC::Cmd through OpenSSL::config; tolerate a perl without it (see the note in config.pm).
+        perl -0pi -e 's/^use IPC::Cmd;\n/# Manuscript (runtime\/third_party\/vendor.sh): IPC::Cmd only guesses the target of the `config` script, and perl 5.42\n# dropped a module it loads, so Configure runs without it when a target is named.\nBEGIN { eval { require IPC::Cmd; 1 } or do { eval \x27sub IPC::Cmd::can_run { return undef }\x27 } }\n/m' "$2/util/perl/OpenSSL/config.pm"
         find "$2/doc" "$2/fuzz" -type f ! -name build.info -delete
         rm -f "$2"/apps/*.pem
     fi
