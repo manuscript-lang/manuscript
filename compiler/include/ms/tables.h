@@ -71,10 +71,20 @@ void ms_check_init(MsCheck *c, MsNames *names);
 void ms_check_free(MsCheck *c);
 
 MsModId ms_module_add(MsCheck *c, MsSym path, const MsModule *syntax);
-/* Adds a symbol of `module`; exported ones also join the module's export map. Returns the new id,
- * or MS_NONE when the module already has a symbol of this name. */
-MsSymId ms_sym_add(MsCheck *c, MsModId module, MsSym name, MsSym id, MsSymKind kind,
-                   MsNativeKind native, MsSym native_name, bool is_exported, const MsDecl *decl,
-                   uint32_t nvars);
+/* What a symbol is declared with; the rest of its row starts empty. */
+typedef struct MsSymSpec {
+    MsSym name;
+    MsSym id;
+    MsSymKind kind;
+    MsNativeKind native;
+    MsSym native_name;
+    bool is_exported;
+    const MsDecl *decl; /* borrowed from the module's syntax, which outlives the tables */
+    uint32_t nvars;
+} MsSymSpec;
+
+/* Adds a symbol of `module`; exported ones are visible to importers. Returns the new id, or
+ * MS_NONE when the module already has a symbol of this name. */
+MsSymId ms_sym_add(MsCheck *c, MsModId module, const MsSymSpec *spec);
 
 #endif

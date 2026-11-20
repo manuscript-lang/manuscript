@@ -1,0 +1,25 @@
+module "t"
+file 0 "t.ms"
+type P { x: int, ok: bool, y: float }
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %slot: ptr = slot P
+  %a: int = iconst 7
+  %t: bool = bconst true
+  %f: float = fconst 2.5
+  %p: P = type.new P %a, %t, %f
+  store %slot, %p
+  %q: P = load P %slot
+  %x: int = type.get P.x %q
+  %ok: bool = type.get P.ok %q
+  %yy: float = type.get P.y %q
+  %z: float = fconst 2.5
+  %same: bool = fcmp.eq %yy, %z
+  %n: int = b2i %ok
+  %m: int = b2i %same
+  %s: int = iadd %x, %n
+  %r: int = iadd %s, %m
+  ret %r
+}

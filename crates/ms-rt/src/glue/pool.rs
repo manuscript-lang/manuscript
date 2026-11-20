@@ -383,6 +383,113 @@ pub fn try_run<I: Send + Sync + 'static, O: Send + 'static>(
     Ok(output)
 }
 
+/// How a pool job written in C ended, for [`try_run_c`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CWait {
+    /// The job finished and its data is the caller's again.
+    Done,
+    /// The wait timed out; the pool owns the data and drops it once the job is over.
+    TimedOut,
+    /// A stop request ended the wait; the pool owns the data as for a timeout.
+    Cancelled,
+}
+
+/// A job whose function and data live in C. `release` frees `data`; it runs on the runtime thread,
+/// and only for a job whose waiter gave up (`handed_back` stays false for it).
+struct CJob {
+    run: unsafe extern "C" fn(*mut core::ffi::c_void),
+    release: unsafe extern "C" fn(*mut core::ffi::c_void),
+    data: *mut core::ffi::c_void,
+    handed_back: bool,
+}
+
+// SAFETY: the data belongs to the job until it is handed back; only one thread runs it.
+unsafe impl Send for CJob {}
+// SAFETY: as above; the job function is the only reader while it runs.
+unsafe impl Sync for CJob {}
+
+impl Drop for CJob {
+    fn drop(&mut self) {
+        if !self.handed_back {
+            // SAFETY: nobody else holds the data of a job that was given up.
+            unsafe { (self.release)(self.data) };
+        }
+    }
+}
+
+fn run_c(job: &CJob) {
+    // SAFETY: the data is live until the job is handed back or dropped.
+    unsafe { (job.run)(job.data) };
+}
+
+/// [`try_run`] for a job in C: runs `run(data)` on a pool thread and parks the task until it
+/// finishes or `timeout_ns` passes (negative: no limit). On [`CWait::Done`] the data is the
+/// caller's again; otherwise `release(data)` runs on this thread, now or when the abandoned job
+/// ends, and the caller must not touch the data. `run` follows the rules of [`try_run`]: it
+/// must not call into the runtime and must not free what the runtime thread allocated.
+pub fn try_run_c(
+    run: unsafe extern "C" fn(*mut core::ffi::c_void),
+    release: unsafe extern "C" fn(*mut core::ffi::c_void),
+    data: *mut core::ffi::c_void,
+    timeout_ns: i64,
+) -> CWait {
+    let input = CJob {
+        run,
+        release,
+        data,
+        handed_back: false,
+    };
+    let (job, ptr) = submit(Lane::General, input, run_c);
+    let mut value = 0u64;
+    // SAFETY: parks the current task on its own token.
+    let got = unsafe { msrt_token_park(ptr.token(), timeout_ns, &mut value) };
+    let gave_up = got & (WAIT_TIMEOUT | WAIT_CANCELLED) != 0 && give_up(ptr);
+    if !gave_up {
+        if got & WAIT_CANCELLED == 0 {
+            // SAFETY: the job is done and no pool thread holds it; the data goes back to the caller.
+            unsafe { (*job).input.handed_back = true };
+        }
+        // SAFETY: not given up, so the job is done; a cancelled caller's data drops with the job.
+        let _ = unsafe { take(job) };
+    }
+    if got & WAIT_CANCELLED != 0 {
+        return CWait::Cancelled;
+    }
+    if gave_up {
+        CWait::TimedOut
+    } else {
+        CWait::Done
+    }
+}
+
+/// The function and data of a shielded job in C.
+struct CRun {
+    run: unsafe extern "C" fn(*mut core::ffi::c_void),
+    data: *mut core::ffi::c_void,
+}
+
+// SAFETY: the caller keeps the data alive and unused until the shielded wait ends.
+unsafe impl Send for CRun {}
+// SAFETY: as above.
+unsafe impl Sync for CRun {}
+
+fn call_c(input: &CRun, _bytes: &[u8]) {
+    // SAFETY: the data outlives the job because the wait is shielded.
+    unsafe { (input.run)(input.data) };
+}
+
+/// [`run_shielded`] for a job in C: `run(data)` runs on a pool thread and the task parks until
+/// it is done, however long that takes. The data stays the caller's throughout, may lie on the
+/// caller's stack, and is the caller's again on both results. `Err(Cancelled)` when a stop
+/// request arrived meanwhile; the caller then releases what it holds and ends the call with
+/// `cancel_return`. For jobs that always finish.
+pub fn run_shielded_c(
+    run: unsafe extern "C" fn(*mut core::ffi::c_void),
+    data: *mut core::ffi::c_void,
+) -> Result<(), Cancelled> {
+    run_shielded(Lane::General, CRun { run, data }, &[], call_c)
+}
+
 /// A shielded job's input and the caller's bytes it borrows.
 struct Lent<I, O> {
     input: I,
