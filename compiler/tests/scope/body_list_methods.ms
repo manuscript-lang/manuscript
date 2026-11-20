@@ -1,5 +1,5 @@
-// Methods of the built-in List, found through the prelude's impls: the row's List[T] and the
-// receiver's List[Int] are one type.
+// Methods of the built-in List, found through the prelude's impls: the row's List[T]
+// and the receiver's List[Int] are one type.
 fn count(items: List[Int]) Int:
 	return items.length()
 
