@@ -22,6 +22,7 @@
 #include "mir_expand_owned.c"
 #include "mir_cancel_edges.c"
 #include "mir_glue.c"
+#include "mir_data.c"
 #include "mir_persist.c"
 #include "mir_unwind_hash.c"
 #include "mir_unwind_slots.c"
