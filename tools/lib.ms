@@ -85,54 +85,16 @@ export fn file_sha256(path: String) String:
 	data := read_file(path).wait().get()
 	return hex_encode(sha256(data))
 
-// The host triple's architecture field, as `rustc` reports it (`x86_64`, `aarch64`).
-export fn rust_arch() String:
-	for line in capture("rustc", ["-vV"]).split("\n"):
-		if line.starts_with("host: "): return line.slice(
-			6,
-			line.length(),
-		).split("-")[0].clone()
-	return "x86_64"
-
-// Builds the native runtime with allocation counters (`ms-rt` feature `stats`) for the
-// target the programs link against (glibc on Linux, mingw-w64 on Windows) and points
-// MS_RT_LIB at it. The caller's
-// `ms` is the release build (`make build`). Returns a nonzero status when a build fails. LEAK_TARGET_DIR overrides the directory.
+// Builds the native runtime with allocation counters (`ms-rt` feature `stats`) as
+// `target/ms-native/libms_native_stats.a` (`cargo xtask runtime --stats`, the same Rust, C objects
+// and folded libraries as every archive) and points MS_RT_LIB at it. The caller's
+// `ms` is the release build (`make build`). Returns a nonzero status when a build fails.
 export fn use_stats_runtime() Int:
-	stats_target := env("LEAK_TARGET_DIR", "target/leak-stats")
-	var release = "release"
-	var target = ""
-	arch := rust_arch()
-
-	if host() == "linux":
-		target = f"{arch}-unknown-linux-gnu"
-		release = f"{target}/release"
-	else if host() == "windows":
-		target = f"{arch}-pc-windows-gnullvm"
-		release = f"{target}/release"
-
-		mingw := env("MS_MINGW", "target/llvm-bundle/mingw")
-		set_environment(
-			f"CC_{target.replace("-", "_")}",
-			f"{mingw}/bin/{arch}-w64-mingw32-clang",
-		).get()
-
-	set_environment("CARGO_TARGET_DIR", stats_target).get()
-
-	var build = [
-		"build", "--release", "--locked", "-q", "-p", "ms-native", "--features",
-		"ms-rt/stats,ms-native/entry"
-	]
-	if target != "": build = build.concat(["--target", target.clone()])
-
-	var code = run_program("cargo", build)
-	set_environment("CARGO_TARGET_DIR", none).get()
+	// `xtask` builds the counting runtime like every archive: Rust, the C objects and the folded libraries.
+	code := run_program("cargo", ["xtask", "runtime", "--stats"])
 	if code != 0: return code
 
-	code = run_program("cargo", ["xtask", "runtime"])
-	if code != 0: return code
-
-	lib := canonicalize(f"{stats_target}/{release}/libms_native.a").get()
+	lib := canonicalize("target/ms-native/libms_native_stats.a").get()
 	set_environment("MS_RT_LIB", lib).get()
 	return 0
 

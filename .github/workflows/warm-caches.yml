@@ -65,12 +65,10 @@ jobs:
       - name: Build the CLI alone
         run: cargo build --locked -p ms-cli
       # The leak-counting runtime that the ownership count gate and the LLVM corpus link against
-      # (`use_stats_runtime` in tools/lib.ms builds it with these arguments): without this its compile
+      # (`use_stats_runtime` in tools/lib.ms builds it with `cargo xtask runtime --stats`): without this its compile
       # missed the sccache and cost about 65 s in each LLVM pull request job that needs it.
       - name: Build the leak-counting runtime
-        run: |
-          triple=$(rustc -vV | sed -n 's/^host: //p')
-          CARGO_TARGET_DIR=target/leak-stats cargo build --release --locked -q -p ms-native --features ms-rt/stats,ms-native/entry --target "$triple"
+        run: cargo xtask runtime --stats
       - uses: ./.github/actions/sccache-save
         if: ${{ !cancelled() }}
         with:

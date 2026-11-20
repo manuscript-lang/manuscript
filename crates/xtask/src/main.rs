@@ -6,6 +6,8 @@
 //! sampling for `ms profile --allocs`; release packaging asks for it, pull request CI does not.
 //! `runtime --sched-stress` builds `libms_native_stress.a`, the runtime with the scheduler stress mode,
 //! which only `make stress-sched` embeds (in a separate `ms`).
+//! `runtime --stats` builds only `libms_native_stats.a`, the runtime with the ownership counters the
+//! leak, count and cancel checks read (`tools/lib.ms`); like every archive it carries the C objects.
 
 #[path = "../../../runtime/build_c.rs"]
 mod build_c;
@@ -21,6 +23,7 @@ fn main() -> ExitCode {
             match runtime(
                 flag.as_deref() == Some("--alloc-profile"),
                 flag.as_deref() == Some("--sched-stress"),
+                flag.as_deref() == Some("--stats"),
             ) {
                 Ok(archive) => {
                     println!("{}", archive.display());
@@ -47,7 +50,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: cargo xtask runtime [--alloc-profile | --sched-stress] | cargo xtask symbols [--check]"
+                "usage: cargo xtask runtime [--alloc-profile | --sched-stress | --stats] | cargo xtask symbols [--check]"
             );
             ExitCode::from(2)
         }
@@ -694,7 +697,7 @@ fn strip_paths(ty: &str) -> String {
 
 /// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.
 /// On Linux it also leaves `libms_native_musl.a` beside it, the runtime of `ms build --static`.
-fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
+fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathBuf, String> {
     // Cargo can reuse this executable from another checkout when target directories are shared.
     // Its runtime environment names the active package; the compiled path may name the old one.
     let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
@@ -737,7 +740,15 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
             "entry,sched-stress",
         ));
     }
-    if std::env::consts::OS == "linux" {
+    if stats {
+        // The counters are a feature of the runtime, so this is its own build, and the only one asked for.
+        jobs = vec![(
+            out.join("build-stats"),
+            triple.clone(),
+            "libms_native_stats.a",
+            "entry,ms-rt/stats",
+        )];
+    } else if std::env::consts::OS == "linux" {
         jobs.push((
             out.join("build-musl"),
             Some(format!("{arch}-unknown-linux-musl")),
@@ -818,16 +829,22 @@ fn build_archive(
         ])
         .arg(root.join("Cargo.toml"))
         .env("CARGO_TARGET_DIR", target)
-        // `ms-rt`'s build script compiles out the Rust definition of every symbol in `runtime/symbols/<module>.txt`.
-        .env("MS_C_RUNTIME", "1")
         // The runtime ships without debug info; symbol names are enough for the profiler.
         .env("CARGO_PROFILE_RELEASE_DEBUG", "0")
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    if plan.has_reactor() {
-        // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
-        command.env("MS_C_REACTOR", "1");
+    // The counting runtime keeps every Rust definition: its counters live in the Rust allocator, which the
+    // C one (`alloc/c.rs`) does not have, so `ms-rt` does not compile with symbols moved out. The C objects
+    // are still added, and the linker takes one only for a symbol nothing in Rust defines.
+    let counting = features.split(',').any(|f| f == "ms-rt/stats");
+    if !counting {
+        // `ms-rt`'s build script compiles out the Rust definition of every symbol in `runtime/symbols/<module>.txt`.
+        command.env("MS_C_RUNTIME", "1");
+        if plan.has_reactor() {
+            // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
+            command.env("MS_C_REACTOR", "1");
+        }
     }
     if let Some(triple) = triple {
         // The glibc target builds with the host's C compiler.
