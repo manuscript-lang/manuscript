@@ -938,7 +938,7 @@ typedef struct MsReparseBuffer {
     };
 } MsReparseBuffer;
 
-/* ULONG constants, not enumerators: the MSVC ABI types an enumerator as a signed int, which compares badly with a tag. */
+/* Not enumerators: the tags exceed INT_MAX, which an enum constant is under MSVC's rules. */
 static const ULONG MS_REPARSE_TAG_MOUNT_POINT = 0xA0000003u;
 static const ULONG MS_REPARSE_TAG_SYMLINK = 0xA000000Cu;
 enum { MS_REPARSE_BUFFER_SIZE = 16 * 1024 };
