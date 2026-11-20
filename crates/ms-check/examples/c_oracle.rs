@@ -34,7 +34,8 @@ const TYPE_FAMILIES: [&str; 12] = [
 ];
 
 use ms_check::api::ast::{
-    Decl, DeclKind, Expr, ExprKind, NodeId, Param, Stmt, StmtKind, TextPart, TypeKind, TypeParam, TypeRef,
+    Decl, DeclKind, Expr, ExprKind, NodeId, Param, Stmt, StmtKind, TextPart, TypeKind, TypeParam,
+    TypeRef,
 };
 use std::collections::BTreeSet;
 
@@ -310,7 +311,7 @@ fn body_facts(files: &[String]) {
             ms_check::ImportMap::default(),
             ms_check::CheckOptions::default(),
         );
-        if program.symbols.get(&loaded.file).is_none() {
+        if !program.symbols.contains_key(&loaded.file) {
             println!("unchecked");
             continue;
         }
