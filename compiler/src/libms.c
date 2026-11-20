@@ -62,5 +62,7 @@
 #include "ownership_places.c"
 #include "ownership_bits.c"
 #include "ownership_class.c"
+#include "ownership_live.c"
+#include "ownership_walk.c"
 #include "libms_api.c"
 #include "emit_qbe.c"
