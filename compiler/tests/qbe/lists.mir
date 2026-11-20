@@ -1,0 +1,22 @@
+module "t"
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %c: int = iconst 4
+  %l: list<int> = list.new %c
+  %a: int = iconst 7
+  %l2: list<int> = list.push.u %l, %a
+  %b: int = iconst 9
+  %l3: list<int> = list.push.u %l2, %b
+  %i: int = iconst 1
+  %g: int = list.get.u %l3, %i
+  %n: int = list.len %l3
+  %r: int = iadd %g, %n
+  %z: int = iconst 0
+  %e: list<int> = list.new %z
+  %l4: list<int> = list.lit %a, %b
+  %k: int = list.cap %l4
+  %r2: int = iadd %r, %k
+  ret %r2
+}

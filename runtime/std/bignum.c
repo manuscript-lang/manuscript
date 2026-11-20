@@ -16,12 +16,20 @@ enum { BITS_PER_BYTE = 8 };
 
 /* ---- plumbing ---- */
 
-/* Every BN_* call that can fail does so only when memory runs out; the runtime faults as its allocator does. */
+/* A BN_* call fails when OpenSSL's size cap (about 2^29 bits) is reached or when memory runs out; each faults as the
+ * rest of the runtime does. */
 static void must(int ok) {
-    if (ok == 0) {
-        ERR_clear_error();
-        ms_fault_text("bignum: out of memory", 21);
+    if (ok != 0) {
+        return;
     }
+    const int reason = ERR_GET_REASON(ERR_peek_last_error());
+    ERR_clear_error();
+    if (reason == BN_R_BIGNUM_TOO_LONG) {
+        static const char message[] = "bignum: result exceeds the largest supported size";
+        msfault_raise(MS_FAULT_OVERFLOW, message, sizeof message - 1);
+    }
+    static const char message[] = "bignum: out of memory";
+    msfault_raise(MS_FAULT_OUT_OF_MEMORY, message, sizeof message - 1);
 }
 
 /* Decimal and BigInt operations are short and many, so each thread keeps a few released BIGNUMs (and one context)
@@ -421,11 +429,24 @@ void ms_big_sqrt(MsBig *out, const MsBig *a) {
 }
 
 void ms_big_gcd(MsBig *out, const MsBig *a, const MsBig *b) {
-    BIGNUM *const result = new_bn();
+    /* Euclid's remainders: BN_gcd is the constant-time binary algorithm, many times slower on wide operands. */
+    BIGNUM *larger = new_bn();
+    BIGNUM *smaller = new_bn();
+    BIGNUM *rest = new_bn();
     BN_CTX *const ctx = new_ctx();
-    must(BN_gcd(result, value_of(a), value_of(b), ctx));
-    BN_set_negative(result, 0);
-    result_end(out, result);
+    must(BN_copy(larger, value_of(a)) != NULL && BN_copy(smaller, value_of(b)) != NULL);
+    BN_set_negative(larger, 0);
+    BN_set_negative(smaller, 0);
+    while (!BN_is_zero(smaller)) {
+        must(BN_mod(rest, larger, smaller, ctx));
+        BIGNUM *const next = larger;
+        larger = smaller;
+        smaller = rest;
+        rest = next;
+    }
+    release_bn(smaller);
+    release_bn(rest);
+    result_end(out, larger);
 }
 
 void ms_big_pow_mod(MsBig *out, const MsBig *a, const MsBig *exponent, const MsBig *modulus) {
@@ -444,8 +465,10 @@ bool ms_big_inverse_mod(MsBig *out, const MsBig *a, const MsBig *modulus) {
     must(BN_nnmod(base, value_of(a), value_of(modulus), ctx));
     BIGNUM *const result = BN_mod_inverse(NULL, base, value_of(modulus), ctx);
     release_bn(base);
-    ERR_clear_error(); /* no inverse is reported through the error queue */
     if (result == NULL) {
+        const bool none = ERR_GET_REASON(ERR_peek_last_error()) == BN_R_NO_INVERSE;
+        ERR_clear_error();
+        must(none);
         return false;
     }
     result_end(out, result);
@@ -567,7 +590,33 @@ static size_t chunk_of(unsigned radix, uint64_t *power) {
     return digits;
 }
 
+/* Digits of a power-of-two radix packed straight into the little-endian bytes of the value. */
+static void parse_digits_by_bits(MsBig *out, MsBytes digits, unsigned radix) {
+    unsigned bits_per_digit = 1;
+    while ((1u << bits_per_digit) < radix) {
+        bits_per_digit++;
+    }
+    const size_t bytes = (digits.len * bits_per_digit + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
+    uint8_t *const magnitude = msrt_alloc(bytes + 1);
+    memset(magnitude, 0, bytes + 1);
+    for (size_t i = 0; i < digits.len; i++) {
+        const unsigned value = ms_big_digit_value(digits.ptr[digits.len - 1 - i]);
+        for (unsigned k = 0; k < bits_per_digit; k++) {
+            const size_t bit = i * bits_per_digit + k;
+            magnitude[bit / BITS_PER_BYTE] |= (uint8_t)(((value >> k) & 1u) << (bit % BITS_PER_BYTE));
+        }
+    }
+    BIGNUM *const result = new_bn();
+    must(BN_lebin2bn(magnitude, (int)bytes, result) != NULL);
+    msrt_free(magnitude);
+    result_end(out, result);
+}
+
 void ms_big_parse_digits(MsBig *out, MsBytes digits, unsigned radix) {
+    if ((radix & (radix - 1)) == 0) {
+        parse_digits_by_bits(out, digits, radix);
+        return;
+    }
     BIGNUM *const result = new_bn();
     uint64_t chunk_power;
     const size_t chunk = chunk_of(radix, &chunk_power);
