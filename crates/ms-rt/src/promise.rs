@@ -124,6 +124,9 @@ struct Table {
     limit: Vec<i64>,
     /// The cancel switch the promise listens to, or 0.
     cancel: Vec<i64>,
+    /// The notice switch and grace of the promise (`msrt_promise_drain`): ending the promise fires the switch and
+    /// waits up to the grace (negative: without limit) before cancelling. The switch is 0 when there is none.
+    drain: Vec<(i64, i64)>,
     /// The descriptor a readiness wait watches, or -1.
     fd: Vec<i32>,
     /// What a readiness wait asks for.
@@ -186,6 +189,7 @@ impl Table {
             deadline: Vec::new(),
             limit: Vec::new(),
             cancel: Vec::new(),
+            drain: Vec::new(),
             fd: Vec::new(),
             events: Vec::new(),
             retry: Vec::new(),
@@ -492,6 +496,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.deadline.push(i64::MAX);
             t.limit.push(i64::MAX);
             t.cancel.push(0);
+            t.drain.push((0, 0));
             t.fd.push(-1);
             t.events.push(0);
             t.retry.push(None);
@@ -520,6 +525,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
     t.deadline[i] = i64::MAX;
     t.limit[i] = i64::MAX;
     t.cancel[i] = 0;
+    t.drain[i] = (0, 0);
     t.fd[i] = -1;
     t.events[i] = 0;
     t.retry[i] = None;
@@ -1522,6 +1528,23 @@ pub(crate) fn end_started_by_current(base: usize) {
     }
 }
 
+/// Gives promise `id` a notice and a grace for its end: when its owner ends it (by dropping it or by unwinding past
+/// it, never by `msrt_promise_cancel`), the switch `drain` fires first and the work gets `grace_ns` (negative: no
+/// limit) to finish before it is cancelled. Call it after the work has started; a second call replaces the first.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_drain(id: i64, drain: i64, grace_ns: i64) {
+    if is_foreign(id) {
+        ask(id, move || {
+            msrt_promise_drain(id, drain, grace_ns);
+            Answer::Void
+        });
+        return;
+    }
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return };
+    t.drain[i] = (drain, grace_ns);
+}
+
 /// Limits promise `id`: once `timeout_ns` has passed from now (negative: no time at all) and it
 /// has not finished, it is cancelled and a `wait` reports a timeout. A promise with no limit costs
 /// nothing; a second call replaces the first.
@@ -2292,7 +2315,20 @@ pub extern "C-unwind" fn msrt_promise_end(id: i64) -> u8 {
     }
     if t.closure[i] != 0 {
         if t.state[i] == State::Pending {
-            request_cancel(id);
+            let (drain, grace) = core::mem::take(&mut t.drain[i]);
+            if drain == 0 {
+                request_cancel(id);
+            } else {
+                // A notice first: the work finishes within its grace or the limit cancels it.
+                if grace >= 0 {
+                    let limit = crate::sys::monotonic_ns().saturating_add(grace);
+                    if limit < t.limit[i] {
+                        t.limit[i] = limit;
+                        t.limits.push(Reverse((limit, id)));
+                    }
+                }
+                crate::cancel::msrt_cancel_fire(drain);
+            }
         }
         // Join: the task is over when the runner has told us so. Cleanup is not interrupted.
         fault::msrt_shield_enter();
