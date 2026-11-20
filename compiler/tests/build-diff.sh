@@ -36,4 +36,9 @@ while read -r src; do
 done < "$out/files.txt"
 echo "built by both and same: $same; differ: $diff; C build failed: $cfail; Rust build failed: $rfail"
 echo "--- why the C build fails (count, reason) ---"
-cat "$out"/*.c.log 2> /dev/null | grep -E '^[A-Za-z_0-9.$@<>-]+: ' | sed -E 's/^[^:]+: //' | sort | uniq -c | sort -rn | head -n 40
+# One reason per emitter line ("fn: reason"), one per failed pass, one per parse error, so a program
+# with several gaps counts under each.
+for log in "$out"/*.c.log; do
+    sed -E 's#/tmp/ms-cbackend-[0-9]+/##; s/^native code generation failed[^:]*: ms_mir_build failed: //' "$log" |
+        awk '/^the C back end cannot write:/ {w=1; next} w && NF {sub(/^[^:]*: /, ""); print "emitter: " $0; next} /does not verify after/ {print "verify: " $0; v=1; next} v && NF {sub(/^[^:]*: /, ""); sub(/%[0-9]+/, "%N"); print "  " $0; v=0; next} !w && NF && !v {print "other: " $0; exit}'
+done | sort | uniq -c | sort -rn | head -n 40
