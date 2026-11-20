@@ -7,6 +7,7 @@
 #include <string.h>
 #include "ms_rt/chars.h"
 
+#include "ms/text.h"
 #include "ms/lex.h"
 #include "ms/parse.h"
 
@@ -136,9 +137,6 @@ static bool text_is(const Parser *p, MsToken t, const char *w) {
     MsStr s = text(p, t);
     return s.len == strlen(w) && memcmp(s.ptr, w, s.len) == 0;
 }
-static bool str_is(MsStr s, const char *w) {
-    return s.len == strlen(w) && memcmp(s.ptr, w, s.len) == 0;
-}
 static MsSym sym(Parser *p, MsToken t) {
     MsStr s = text(p, t);
     return ms_intern(p->names, s.ptr, s.len);
@@ -224,7 +222,7 @@ static MsStr need_hint(Parser *p, const char *kd, MsToken found) {
     MsTok fk = (MsTok)found.kind;
 #define IS(s) (strcmp(kd, (s)) == 0)
     if (IS(":")) {
-        if (fk == MS_T_Name && str_is(found_text, "is")) {
+        if (fk == MS_T_Name && ms_text_is(found_text, "is")) {
             return LIT(IS_HINT);
         }
         return LIT("; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body");
@@ -263,11 +261,11 @@ static MsStr need_hint(Parser *p, const char *kd, MsToken found) {
         if (fk == MS_T_LParen) {
             return LIT("; give it a name, e.g. fn add(a: Int, b: Int) Int:");
         }
-        if (str_is(found_text, "_")) {
+        if (ms_text_is(found_text, "_")) {
             return LIT("; '_' is a reserved word and cannot be used as a name: loops, parameters and bindings need a real name such as item, unused or ignored");
         }
         const char *fs = ms_tok_str(fk);
-        if (str_is(found_text, fs) && found_text.len > 0 &&
+        if (ms_text_is(found_text, fs) && found_text.len > 0 &&
             ((found_text.ptr[0] >= 'a' && found_text.ptr[0] <= 'z') || (found_text.ptr[0] >= 'A' && found_text.ptr[0] <= 'Z'))) {
             return fmt(p, "; '%.*s' is a reserved word and cannot be used as a name", STR(found_text));
         }
@@ -461,11 +459,11 @@ MS_NODISCARD static bool end(Parser *p) {
     bool prev_new = p->at > 0 && text_is(p, previous(p), "new");
     MsStr prev_word = p->at > 0 ? text(p, previous(p)) : LIT("");
     const char *hint;
-    if (str_is(prev_word, "def") && t.kind == MS_T_Name) {
+    if (ms_text_is(prev_word, "def") && t.kind == MS_T_Name) {
         hint = "; there is no 'def': declare a function with 'fn name(a: Int) Int:'";
-    } else if (str_is(prev_word, "lambda")) {
+    } else if (ms_text_is(prev_word, "lambda")) {
         hint = "; there is no 'lambda': write an anonymous function as 'fn x: x + 1'";
-    } else if (str_is(prev_word, "elif")) {
+    } else if (ms_text_is(prev_word, "elif")) {
         hint = "; there is no 'elif': write 'else if <condition>:' for a further branch";
     } else if (t.kind == MS_T_Name && text_is(p, t, "is")) {
         hint = IS_HINT;
@@ -609,7 +607,7 @@ static bool foreign_declaration(Parser *p, MsToken t, MsStr *message, const char
     MsStr w = text(p, t);
     const char *advice;
     const char *rep = NULL;
-#define IN(s) str_is(w, s)
+#define IN(s) ms_text_is(w, s)
     if (IN("function") || IN("def") || IN("func") || IN("fun") || IN("sub")) {
         rep = "fn";
         advice = "declare a function as 'fn name(a: Int) Int:' with the result type after the parameters";
@@ -769,11 +767,11 @@ MS_NODISCARD static bool named_type(Parser *p, MsTypeRef **out) {
     }
     MsTypeRefs args = {NULL, 0};
     MsStr full_s = ms_name(p->names, full);
-    if (kind(p) == MS_T_LBracket && p->speculative == 0 && str_is(full_s, "Callable")) {
+    if (kind(p) == MS_T_LBracket && p->speculative == 0 && ms_text_is(full_s, "Callable")) {
         fail(p, peek(p), fmt(p, "there is no %.*s[...] type; a function type is written fn(Int) Int: parameter types in parentheses, then the result type", STR(full_s)));
         return false;
     }
-    if (kind(p) == MS_T_LBracket && p->speculative == 0 && str_is(full_s, "Optional")) {
+    if (kind(p) == MS_T_LBracket && p->speculative == 0 && ms_text_is(full_s, "Optional")) {
         fail(p, peek(p), LIT("there is no Optional[T] spelling; write T? instead, e.g. Int? or (fn(Int) Int)?"));
         return false;
     }
@@ -958,7 +956,7 @@ static MsExpr *implicit_none(Parser *p, const MsTypeRef *t) {
     if (t->kind != MS_TYPE_NAMED) {
         return NULL;
     }
-    if (str_is(ms_name(p->names, t->name), "Optional") && t->args.len == 1) {
+    if (ms_text_is(ms_name(p->names, t->name), "Optional") && t->args.len == 1) {
         return mk_name(p, t->pos, intern(p, "none"));
     }
     return NULL;
@@ -1715,7 +1713,7 @@ MS_NODISCARD static bool opaque_declaration(Parser *p, MsToken token, MsDecl **o
 /* A declaration keyword from another language, with the rewrite when there is one. */
 static void report_foreign_declaration(Parser *p, MsToken token, MsStr message, const char *replacement) {
     MsStr word = text(p, token);
-    if (replacement == NULL && (str_is(word, "const") || str_is(word, "val") || str_is(word, "final"))) {
+    if (replacement == NULL && (ms_text_is(word, "const") || ms_text_is(word, "val") || ms_text_is(word, "final"))) {
         MsToken first, last;
         MsStr rewrite;
         if (constant_fix(p, token, &first, &last, &rewrite)) {
@@ -2207,7 +2205,7 @@ static MsExpr *index_set(Parser *p, MsExpr *target, MsExpr *value, bool reread) 
 MS_NODISCARD static bool assign_target(Parser *p, MsToken start, MsExpr *e, MsStmt *st) {
     if (e->kind == MS_E_NAME) {
         MsStr n = ms_name(p->names, e->u.sym);
-        if (!str_is(n, "self") && !str_is(n, "fixture")) {
+        if (!ms_text_is(n, "self") && !ms_text_is(n, "fixture")) {
             st->u.assign.member_target = false;
             st->u.assign.name = e->u.sym;
             return true;
@@ -2281,7 +2279,7 @@ MS_NODISCARD static bool compound(Parser *p, MsToken start, MsExpr *e, MsStmt *s
     return true;
 }
 
-#define IS(s) str_is(n, s)
+#define IS(s) ms_text_is(n, s)
 /* A name that is a keyword in another language, written as a statement: reports how to say it in
  * Manuscript and returns true. */
 static bool report_foreign_keyword(Parser *p, MsToken t, MsStr n) {
@@ -3276,15 +3274,11 @@ static TextParts one_literal(Parser *p, MsStr s) {
     return out;
 }
 
-static bool has_prefix(MsStr s, const char *pre) {
-    return ms_bytes_starts_with(ms_bytes_of((const uint8_t *)s.ptr, s.len), ms_bytes_of((const uint8_t *)pre, strlen(pre)));
-}
-
 /* Decodes a text token into literal and interpolated parts. Only `f"..."` and `f"""` text
  * interpolates; braces are plain in the other forms. */
 MS_NODISCARD static bool text_parts_of(Parser *p, MsToken token, TextParts *out) {
     MsStr full = text(p, token);
-    if (has_prefix(full, "r\"\"\"")) {
+    if (ms_text_starts_with(full, "r\"\"\"")) {
         MsStr body = {full.ptr + 4, full.len - 4 - 3};
         MsStr content;
         size_t indent, f;
@@ -3292,19 +3286,19 @@ MS_NODISCARD static bool text_parts_of(Parser *p, MsToken token, TextParts *out)
         *out = one_literal(p, dedent(p, content, indent));
         return true;
     }
-    if (has_prefix(full, "f\"\"\"")) {
+    if (ms_text_starts_with(full, "f\"\"\"")) {
         MsStr body = {full.ptr + 4, full.len - 4 - 3};
         return text_parts(p, token, body, 4, true, out);
     }
-    if (has_prefix(full, "\"\"\"")) {
+    if (ms_text_starts_with(full, "\"\"\"")) {
         MsStr body = {full.ptr + 3, full.len - 6};
         return text_parts(p, token, body, 3, false, out);
     }
-    if (has_prefix(full, "r\"")) {
+    if (ms_text_starts_with(full, "r\"")) {
         *out = one_literal(p, (MsStr){full.ptr + 2, full.len - 3});
         return true;
     }
-    if (has_prefix(full, "f\"")) {
+    if (ms_text_starts_with(full, "f\"")) {
         MsStr body = {full.ptr + 2, full.len - 3};
         return text_parts(p, token, body, 2, true, out);
     }
@@ -3576,14 +3570,14 @@ MS_NODISCARD static bool payload_bindings(Parser *p) {
 MS_NODISCARD static bool variant_pattern(Parser *p, MsToken start, MsExpr **path, bool *bare) {
     MsExpr *written = NULL;
     if (!case_path(p, &written)) return false;
-    if (written->kind == MS_E_NAME && str_is(ms_name(p->names, written->u.sym), "some") &&
+    if (written->kind == MS_E_NAME && ms_text_is(ms_name(p->names, written->u.sym), "some") &&
         kind(p) == MS_T_LParen && p->speculative == 0) {
         fail(p, peek(p), LIT("there is no some pattern; write the payload name alone, e.g. 'value:' beside 'none:'"));
         return false;
     }
     if (written->kind == MS_E_NAME && kind(p) != MS_T_LParen) {
         MsStr n = ms_name(p->names, written->u.sym);
-        if (!str_is(n, "none") && is_lower_start(n)) {
+        if (!ms_text_is(n, "none") && is_lower_start(n)) {
             MsArmBinding single = {written->u.sym, start.pos};
             push(p, &single, sizeof single);
             *bare = true;

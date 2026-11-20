@@ -345,8 +345,6 @@ static size_t words_of(MsBytes line, MsBytes *words, size_t max) {
     return count;
 }
 
-static bool word_is(MsBytes word, const char *text) { return word.len == strlen(text) && memcmp(word.ptr, text, word.len) == 0; }
-
 static void read_line(MsBytes line, MsDnsConfig *config, bool *domain_only) {
     for (size_t i = 0; i < line.len; i++) {
         if (line.ptr[i] == '#' || line.ptr[i] == ';') {
@@ -359,7 +357,7 @@ static void read_line(MsBytes line, MsDnsConfig *config, bool *domain_only) {
     if (count < 2) {
         return;
     }
-    if (word_is(words[0], "nameserver") && config->server_count < MS_DNS_MAX_SERVERS) {
+    if (ms_bytes_is_text(words[0], "nameserver") && config->server_count < MS_DNS_MAX_SERVERS) {
         char text[MS_NET_ADDR_TEXT_MAX];
         if (words[1].len < 48) {
             const char *plain = (const char *)words[1].ptr;
@@ -371,15 +369,15 @@ static void read_line(MsBytes line, MsDnsConfig *config, bool *domain_only) {
                 config->servers[config->server_count++] = address;
             }
         }
-    } else if (word_is(words[0], "search")) {
+    } else if (ms_bytes_is_text(words[0], "search")) {
         config->search_count = 0;
         *domain_only = false;
         for (size_t i = 1; i < count; i++) {
             add_search(config, (const char *)words[i].ptr, words[i].len);
         }
-    } else if (word_is(words[0], "domain") && *domain_only) {
+    } else if (ms_bytes_is_text(words[0], "domain") && *domain_only) {
         add_search(config, (const char *)words[1].ptr, words[1].len);
-    } else if (word_is(words[0], "options")) {
+    } else if (ms_bytes_is_text(words[0], "options")) {
         for (size_t i = 1; i < count; i++) {
             if (words[i].len > 6 && memcmp(words[i].ptr, "ndots:", 6) == 0) {
                 int64_t value = 0;

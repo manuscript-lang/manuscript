@@ -155,6 +155,14 @@ void ms_sched_stop_remote(uint8_t signal);
 uint32_t ms_sched_attach(MsWakeFn wake, void *argument);
 /* The monotonic clock the scheduler reads, in nanoseconds. */
 int64_t ms_sched_now(void);
+/* The absolute deadline `timeout_ns` from now on that clock, saturating; MS_NO_DEADLINE for a negative timeout. */
+static inline int64_t ms_sched_deadline_after(int64_t timeout_ns) {
+    if (timeout_ns < 0) {
+        return MS_NO_DEADLINE;
+    }
+    const int64_t now = ms_sched_now();
+    return now > INT64_MAX - timeout_ns ? INT64_MAX : now + timeout_ns;
+}
 /* A promise (not a task) waits for `fd`: returns MS_POLL_ARMED, MS_POLL_ALWAYS (ready at once, nothing registered) or
  * MS_POLL_FAILED. The hooks' fd_ready is called with the ready bits. */
 int ms_sched_fd_wait_begin(uint64_t id, int fd, uint32_t events);

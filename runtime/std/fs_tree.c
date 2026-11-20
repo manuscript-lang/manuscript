@@ -113,3 +113,14 @@ void ms_fs_arguments_free(MsFsArguments *arguments) {
         arguments->live = false;
     }
 }
+
+bool ms_fs_names_contain(const MsFsBuffer *names, MsBytes name) {
+    size_t cursor = 0;
+    MsBytes entry;
+    while (ms_fs_names_next(names, &cursor, &entry)) {
+        if (ms_bytes_equal(entry, name)) {
+            return true;
+        }
+    }
+    return false;
+}

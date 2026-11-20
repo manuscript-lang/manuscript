@@ -7,10 +7,6 @@
 
 #include "std_files.h"
 
-static int by_name(const void *a, const void *b) {
-    return strcmp(((const MsStdFile *)a)->name, ((const MsStdFile *)b)->name);
-}
-
 /* One source line of the file as a string literal: escapes keep it valid in any C compiler. */
 static void put_literal_line(FILE *out, const char *text, size_t length) {
     fputs("    \"", out);
@@ -50,7 +46,7 @@ int main(int argc, char **argv) {
         free_std_files(&files);
         return 1;
     }
-    qsort(files.items, files.count, sizeof *files.items, by_name);
+    qsort(files.items, files.count, sizeof *files.items, ms_std_file_by_name);
     FILE *out = fopen(argv[2], "wb");
     if (out == NULL) {
         fprintf(stderr, "cannot write %s\n", argv[2]);

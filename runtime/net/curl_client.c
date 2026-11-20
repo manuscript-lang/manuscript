@@ -539,20 +539,16 @@ static char *terminated(MsBytes text) {
     return copy;
 }
 
-static bool is_method(MsBytes method, const char *name) {
-    return method.len == strlen(name) && memcmp(method.ptr, name, method.len) == 0;
-}
-
 /* The request's method and body on the easy handle. A custom method is used only for the ones curl has no switch
  * for: a custom request would keep the method across a redirect that should turn into a GET. */
 static bool set_method(CURL *easy, const MsCurlRequest *request, char **custom) {
     const MsBytes method = request->method;
     *custom = NULL;
-    if (is_method(method, "HEAD")) {
+    if (ms_bytes_is_text(method, "HEAD")) {
         return curl_easy_setopt(easy, CURLOPT_NOBODY, 1L) == CURLE_OK;
     }
-    const bool has_body = request->body.len > 0 || is_method(method, "POST") || is_method(method, "PUT") || is_method(method, "PATCH");
-    if (!is_method(method, "GET") && !is_method(method, "POST")) {
+    const bool has_body = request->body.len > 0 || ms_bytes_is_text(method, "POST") || ms_bytes_is_text(method, "PUT") || ms_bytes_is_text(method, "PATCH");
+    if (!ms_bytes_is_text(method, "GET") && !ms_bytes_is_text(method, "POST")) {
         *custom = terminated(method);
         if (*custom == NULL || curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, *custom) != CURLE_OK) {
             return false;

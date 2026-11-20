@@ -145,7 +145,6 @@ void ms_headers_field(const MsHeaders *table, size_t i, MsBytes *name, MsBytes *
 
 /* ---- natives ---- */
 
-static MsBytes str_bytes(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
 void *msstd_headers_new(void) {
     MsHeaders *table = ms_headers_new();
@@ -169,7 +168,7 @@ void *msstd_headers_clone(const void *handle) {
 static MsObj *table_clone(MsObj *object) { return msstd_headers_clone(object); }
 
 uint8_t msstd_headers_append(const void *handle, const MsStr *name, const MsVec *value) {
-    const MsBytes field = str_bytes(name);
+    const MsBytes field = msrt_str_bytes(name);
     if (!ms_h1_is_token(field)) {
         return STATUS_INVALID_INPUT;
     }
@@ -179,7 +178,7 @@ uint8_t msstd_headers_append(const void *handle, const MsStr *name, const MsVec 
 uint8_t msstd_headers_values(const void *handle, const MsStr *name, MsVec *out) {
     const MsHeaders *table = ms_headers_of(handle);
     size_t first, end;
-    if (!find_group(table, str_bytes(name), &first, &end)) {
+    if (!find_group(table, msrt_str_bytes(name), &first, &end)) {
         return 0;
     }
     msrt_list_with_capacity(&msrt_desc_bytes, (int64_t)(end - first), out);
@@ -209,7 +208,7 @@ void msstd_headers_names(const void *handle, MsVec *out) {
 uint8_t msstd_headers_remove(const void *handle, const MsStr *name) {
     MsHeaders *table = ms_headers_of(handle);
     size_t first, end;
-    if (!find_group(table, str_bytes(name), &first, &end)) {
+    if (!find_group(table, msrt_str_bytes(name), &first, &end)) {
         return 0;
     }
     memmove(&table->fields[first], &table->fields[end], (table->count - end) * sizeof(Field));

@@ -33,7 +33,7 @@ typedef struct FsJob {
 
 static FsJob job_for(const MsStr *path) {
     FsJob job = {0};
-    job.path = ms_fs_string_bytes(path);
+    job.path = msrt_str_bytes(path);
     return job;
 }
 
@@ -866,8 +866,6 @@ MsSysError ms_fs_eval_symlinks(MsBytes path, MsFsBuffer *out) {
 
 bool ms_fs_same_file(const MsSysStat *a, const MsSysStat *b) { return a->device == b->device && a->inode == b->inode; }
 
-static bool bytes_equal(MsBytes a, MsBytes b) { return a.len == b.len && (a.len == 0 || memcmp(a.ptr, b.ptr, a.len) == 0); }
-
 /* `given` as an absolute path without trailing separators; false (the root itself is refused as invalid) with `fail`
  * set. */
 static bool removal_candidate(MsBytes given, MsBytes cwd, MsFsBuffer *joined, MsFsFail *fail) {
@@ -877,7 +875,7 @@ static bool removal_candidate(MsBytes given, MsBytes cwd, MsFsBuffer *joined, Ms
     bool ok = false;
     if (!built || !ms_fs_path_clean(ms_fs_buffer_view(joined), &clean) || !ms_fs_path_dir(ms_fs_buffer_view(&clean), &parent)) {
         fail_memory(fail);
-    } else if (bytes_equal(ms_fs_buffer_view(&parent), ms_fs_buffer_view(&clean))) {
+    } else if (ms_bytes_equal(ms_fs_buffer_view(&parent), ms_fs_buffer_view(&clean))) {
         fail_invalid(fail);
     } else {
         while (joined->length > 1 && ms_fs_is_separator(joined->data[joined->length - 1])) {
@@ -918,7 +916,7 @@ static bool refuse_ancestors(const MsSysStat *info, MsFsBuffer *start, MsFsFail 
         if (!ms_fs_path_dir(ms_fs_buffer_view(&ancestor), &next)) {
             fail_memory(fail);
             ok = false;
-        } else if (bytes_equal(ms_fs_buffer_view(&next), ms_fs_buffer_view(&ancestor))) {
+        } else if (ms_bytes_equal(ms_fs_buffer_view(&next), ms_fs_buffer_view(&ancestor))) {
             ms_fs_buffer_free(&next);
             break;
         }
@@ -937,7 +935,7 @@ static bool removal_path(MsBytes given, MsFsBuffer *out, MsFsFail *fail) {
     const MsBytes base_name = ms_fs_path_base(given);
     const uint8_t dot[] = {'.'};
     const uint8_t dots[] = {'.', '.'};
-    if (given.len == 0 || bytes_equal(base_name, ms_bytes_of(dot, 1)) || bytes_equal(base_name, ms_bytes_of(dots, 2))) {
+    if (given.len == 0 || ms_bytes_equal(base_name, ms_bytes_of(dot, 1)) || ms_bytes_equal(base_name, ms_bytes_of(dots, 2))) {
         fail_invalid(fail);
         return false;
     }
@@ -1049,7 +1047,7 @@ static void create_link_job(void *data) { pair_job(data, symlink_call, "symlink"
 
 uint8_t msstd_fs_rename(const MsStr *source, const MsStr *destination, MsStr *err) {
     FsJob job = job_for(source);
-    job.other = ms_fs_string_bytes(destination);
+    job.other = msrt_str_bytes(destination);
     run_job(rename_job, &job);
     const uint8_t status = ms_fs_finish_pair(&job.fail, job.path, job.other, err);
     job_free(&job);
@@ -1058,7 +1056,7 @@ uint8_t msstd_fs_rename(const MsStr *source, const MsStr *destination, MsStr *er
 
 uint8_t msstd_fs_hard_link(const MsStr *source, const MsStr *destination, MsStr *err) {
     FsJob job = job_for(source);
-    job.other = ms_fs_string_bytes(destination);
+    job.other = msrt_str_bytes(destination);
     run_job(hard_link_job, &job);
     const uint8_t status = ms_fs_finish(&job.fail, err);
     job_free(&job);
@@ -1067,7 +1065,7 @@ uint8_t msstd_fs_hard_link(const MsStr *source, const MsStr *destination, MsStr 
 
 uint8_t msstd_fs_create_link(const MsStr *path, const MsStr *target, MsStr *err) {
     FsJob job = job_for(path);
-    job.other = ms_fs_string_bytes(target);
+    job.other = msrt_str_bytes(target);
     run_job(create_link_job, &job);
     const uint8_t status = ms_fs_finish_at(&job.fail, job.path, err);
     job_free(&job);
@@ -1243,7 +1241,7 @@ bool ms_fs_make_temporary_directory(MsBytes pattern, MsFsBuffer *out, MsFsFail *
 uint8_t msstd_fs_temporary_directory(const MsStr *pattern, MsStr *out, MsStr *err) {
     MsFsFail fail = {0};
     MsFsBuffer path = {0};
-    if (ms_fs_make_temporary_directory(ms_fs_string_bytes(pattern), &path, &fail)) {
+    if (ms_fs_make_temporary_directory(msrt_str_bytes(pattern), &path, &fail)) {
         ms_fs_write_buffer_string(out, &path);
     }
     ms_fs_buffer_free(&path);

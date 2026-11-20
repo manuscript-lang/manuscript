@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/text.h"
 #include "ms/types.h"
 
 const char *ms_kind_str(MsKind k) {
@@ -11,11 +12,6 @@ const char *ms_kind_str(MsKind k) {
 }
 
 /* ---- built-in tags ---- */
-
-static bool ty_str_is(MsStr s, const char *lit) {
-    size_t n = strlen(lit);
-    return s.len == n && memcmp(s.ptr, lit, n) == 0;
-}
 
 typedef struct {
     const char *name;
@@ -50,7 +46,7 @@ static const NameTag standard_names[] = {
 
 MsBuiltin ms_builtin_primitive(MsStr name) {
     for (size_t i = 0; i < sizeof primitive_names / sizeof *primitive_names; i++) {
-        if (ty_str_is(name, primitive_names[i].name)) {
+        if (ms_text_is(name, primitive_names[i].name)) {
             return primitive_names[i].b;
         }
     }
@@ -63,7 +59,7 @@ MsBuiltin ms_builtin_from_id(MsStr id) {
     }
     MsStr rest = {id.ptr + 5, id.len - 5};
     for (size_t i = 0; i < sizeof standard_names / sizeof *standard_names; i++) {
-        if (ty_str_is(rest, standard_names[i].name)) {
+        if (ms_text_is(rest, standard_names[i].name)) {
             return standard_names[i].b;
         }
     }
@@ -88,7 +84,7 @@ MsBuiltin ms_builtin_source(MsStr module, MsStr name) {
         {"@std/test/test.ms", "TestHooks", MS_BI_TESTHOOKS},
     };
     for (size_t i = 0; i < sizeof rows / sizeof *rows; i++) {
-        if (ty_str_is(module, rows[i].module) && ty_str_is(name, rows[i].name)) {
+        if (ms_text_is(module, rows[i].module) && ms_text_is(name, rows[i].name)) {
             return rows[i].b;
         }
     }
