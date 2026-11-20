@@ -1,0 +1,7 @@
+module "t"
+fn @main() -> int {
+b0:
+  %e: ptr = ptr.null
+  %k: int = closure.cap 0 %e
+  ret %k
+}

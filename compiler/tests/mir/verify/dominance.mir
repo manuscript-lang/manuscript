@@ -1,0 +1,14 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %c: bool = bconst true
+  br_if %c, l(), r()
+l:
+  %x: int = iconst 1
+  br j()
+r:
+  br j()
+j:
+  ret %x
+}

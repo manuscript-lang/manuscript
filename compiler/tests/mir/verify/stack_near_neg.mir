@@ -1,0 +1,7 @@
+module "t"
+fn @main() -> int {
+b0:
+  %b: bool = stack.near -4
+  %z: int = iconst 0
+  ret %z
+}

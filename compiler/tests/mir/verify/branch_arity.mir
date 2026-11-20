@@ -1,0 +1,9 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: int = iconst 1
+  br l()
+l(%p: int):
+  ret %p
+}

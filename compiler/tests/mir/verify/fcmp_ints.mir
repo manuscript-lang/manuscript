@@ -1,0 +1,9 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: int = iconst 1
+  %b: bool = fcmp.lt %a, %a
+  %z: int = iconst 0
+  ret %z
+}

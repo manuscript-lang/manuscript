@@ -13,6 +13,7 @@ use std::fmt::Write;
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut out = String::new();
+    std::panic::set_hook(Box::new(|_| {}));
     match args[0].as_str() {
         "ops" => {
             for op in Op::ALL {
@@ -32,6 +33,19 @@ fn main() {
                 );
             }
         }
+        "verify" => each_module(&args[1..], &mut out, |m, out| {
+            // A mutant can reach an index the verifier does not check: say so, and let the
+            // comparison skip the file.
+            match std::panic::catch_unwind(|| ms_mir::verify::verify_module(m)) {
+                Ok(Ok(())) => out.push_str("ok\n"),
+                Ok(Err(errs)) => {
+                    for e in errs {
+                        let _ = writeln!(out, "{e}");
+                    }
+                }
+                Err(_) => out.push_str("oracle-panic\n"),
+            }
+        }),
         "analysis" => each_module(&args[1..], &mut out, |m, out| {
             for f in &m.funcs {
                 analysis(m, f, out);
@@ -309,10 +323,16 @@ fn analysis(m: &Module, f: &ms_mir::ir::Func, out: &mut String) {
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
             let res = m.result_mode(f, inst).map_or('-', mode_char);
-            let modes: String = ms_mir::verify::arg_modes(m, f, inst)
+            // `call` and `call.rt` give one mode per callee parameter, which differs from the
+            // operand count in an ill-formed instruction; one mode per operand is what matters.
+            let mut modes: String = ms_mir::verify::arg_modes(m, f, inst)
                 .into_iter()
                 .map(mode_char)
+                .take(inst.args.len())
                 .collect();
+            while modes.len() < inst.args.len() {
+                modes.push('B');
+            }
             let views = u8::from(m.result_views(f, inst));
             let owned = ms_mir::verify::indirect_owned(m, f, inst);
             let _ = writeln!(
