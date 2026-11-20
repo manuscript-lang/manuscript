@@ -98,6 +98,11 @@ void ms_check_free(MsCheck *c) {
     ms_map_free(&c->std_types);
     ms_map_free(&c->module_by_path);
     ms_map_free(&c->primitives);
+    free(c->defs);
+    for (uint32_t i = 0; i < c->var_info_cap; i++) {
+        free(c->var_info[i].bounds);
+    }
+    free(c->var_info);
     ms_arena_free(&c->arena);
     *c = (MsCheck){0};
 }
@@ -187,4 +192,24 @@ uint32_t ms_decl_nvars(const MsDecl *d) {
     case MS_D_TEST: return 0;
     }
     return 0;
+}
+
+MsDef *ms_def(MsCheck *c, MsSymId sym) {
+    if (sym >= c->defs_cap) {
+        const uint32_t old = c->defs_cap;
+        c->defs_cap = ms_capacity_for(c->defs_cap, sym + 1);
+        c->defs = ms_array_resize(c->defs, c->defs_cap, sizeof *c->defs);
+        memset(c->defs + old, 0, (size_t)(c->defs_cap - old) * sizeof *c->defs);
+    }
+    return &c->defs[sym];
+}
+
+MsVarInfo *ms_var_info(MsCheck *c, MsTy ty) {
+    if (ty >= c->var_info_cap) {
+        const uint32_t old = c->var_info_cap;
+        c->var_info_cap = ms_capacity_for(c->var_info_cap, ty + 1);
+        c->var_info = ms_array_resize(c->var_info, c->var_info_cap, sizeof *c->var_info);
+        memset(c->var_info + old, 0, (size_t)(c->var_info_cap - old) * sizeof *c->var_info);
+    }
+    return &c->var_info[ty];
 }

@@ -36,6 +36,16 @@ static bool scope_text_is(MsStr s, const char *literal) {
     return s.len == strlen(literal) && memcmp(s.ptr, literal, s.len) == 0;
 }
 
+static bool scope_mentions(MsStr s, const char *needle) {
+    const size_t n = strlen(needle);
+    for (size_t at = 0; at + n <= s.len; at++) {
+        if (memcmp(s.ptr + at, needle, n) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static bool scope_in(MsStr s, const char *const *list, size_t count) {
     for (size_t i = 0; i < count; i++) {
         if (scope_text_is(s, list[i])) {
@@ -74,8 +84,13 @@ MsModId ms_module_find(const MsCheck *c, MsSym path) {
 
 /* ---- diagnostics ---- */
 
-static void scope_report(MsCheck *c, MsModId module, const MsDiag *diag) {
+void ms_report(MsCheck *c, MsModId module, const MsCheckDiag *diag) {
     MsModuleRow *row = &c->mods[module];
+    /* Once an unknown type is reported, `<invalid>` in a later message only restates it. */
+    if (row->unknown_type && diag->phase != MS_PHASE_RESOLUTION &&
+        scope_mentions(diag->diag.message, "<invalid>")) {
+        return;
+    }
     if (row->ndiags == row->diags_cap) {
         row->diags_cap = ms_capacity_for(row->diags_cap, row->ndiags + 1);
         row->diags = ms_array_resize(row->diags, row->diags_cap, sizeof *row->diags);
@@ -84,14 +99,14 @@ static void scope_report(MsCheck *c, MsModId module, const MsDiag *diag) {
 }
 
 static void scope_report_at(MsCheck *c, MsModId module, MsPos pos, MsStr message) {
-    const MsDiag diag = {.pos = pos, .message = message};
-    scope_report(c, module, &diag);
+    const MsCheckDiag diag = {.diag = {.pos = pos, .message = message}, .phase = MS_PHASE_RESOLUTION};
+    ms_report(c, module, &diag);
 }
 
 /* ---- the prelude ---- */
 
 /* Whether `sym` is a declaration every module sees: `print`, or one of the prelude types. */
-static bool scope_is_prelude_symbol(const MsCheck *c, MsSymId sym) {
+bool ms_is_prelude_symbol(const MsCheck *c, MsSymId sym) {
     const MsStr name = ms_name(c->names, c->syms.name[sym]);
     const MsModId owner = c->syms.module[sym];
     if (owner != MS_NONE && scope_text_is(name, "print")) {
@@ -181,12 +196,19 @@ static void scope_declare_primitives(MsCheck *c) {
         } else if (strcmp(written, "Float64") == 0) {
             identity = "Float";
         }
+        const MsSym identity_name = ms_intern_cstr(c->names, identity);
         const MsSymSpec spec = {.name = ms_intern_cstr(c->names, written),
-                                .id = ms_intern_cstr(c->names, identity),
+                                .id = identity_name,
                                 .kind = MS_SYM_TYPE,
                                 .native = MS_NATIVE_SOURCE,
                                 .is_exported = true};
-        (void)ms_map_add(&c->primitives, spec.name, ms_sym_new(c, MS_NONE, &spec));
+        const MsSymId sym = ms_sym_new(c, MS_NONE, &spec);
+        const MsTyDesc type = {.name = identity_name,
+                               .id = identity_name,
+                               .kind = MS_K_PRIMITIVE,
+                               .builtin = ms_builtin_primitive(ms_name(c->names, identity_name))};
+        c->syms.ty[sym] = ms_ty_intern(&c->tys, &type);
+        (void)ms_map_add(&c->primitives, spec.name, sym);
     }
 }
 
@@ -239,8 +261,8 @@ static void scope_add_symbol(MsCheck *c, MsModId module, MsSym name, MsSymId sym
         return;
     }
     const MsStr text = ms_name(c->names, name);
-    const bool existing_is_prelude = scope_is_prelude_symbol(c, existing);
-    if (existing_is_prelude && !scope_is_prelude_symbol(c, sym) && !scope_same_file(c, c->syms.module[existing], module)) {
+    const bool existing_is_prelude = ms_is_prelude_symbol(c, existing);
+    if (existing_is_prelude && !ms_is_prelude_symbol(c, sym) && !scope_same_file(c, c->syms.module[existing], module)) {
         scope_report_at(c, module, pos,
                   ms_arena_fmt(&c->arena,
                                "declaration %.*s reuses a prelude name; rename it, because %.*s always refers to the "
@@ -289,8 +311,9 @@ static void scope_report_failed_import(MsCheck *c, MsModId module, const MsImpor
     end.offset += width;
     end.column += width;
     const MsStr message = ms_export_message(&c->arena, c, item, in_standard, NULL);
-    const MsDiag diag = {.pos = item->name_pos, .has_end = true, .end = end, .message = message};
-    scope_report(c, module, &diag);
+    const MsCheckDiag diag = {.diag = {.pos = item->name_pos, .has_end = true, .end = end, .message = message},
+                              .phase = MS_PHASE_RESOLUTION};
+    ms_report(c, module, &diag);
 }
 
 static void scope_import_symbols(MsCheck *c, MsModId module) {
