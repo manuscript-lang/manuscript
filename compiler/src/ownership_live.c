@@ -29,6 +29,7 @@ typedef struct LiveWalk {
 } LiveWalk;
 
 static void live_expr(LiveWalk *w, const MsExpr *e);
+static void live_block(LiveWalk *w, const MsStmts *body);
 
 static void live_use(LiveWalk *w, const MsExpr *e) {
     const uint32_t binding = w->facts->res_ref[e->id];
@@ -92,6 +93,15 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_MATCH: w->supported = false; return;
     }
 }
+static uint32_t *live_copy_of(const LiveWalk *w, const uint32_t *source) {
+    uint32_t *copy = MS_NEW_N(w->scratch, uint32_t, w->nbindings + 1);
+    memcpy(copy, source, sizeof(uint32_t) * w->nbindings);
+    return copy;
+}
+
+static uint32_t *live_snapshot(const LiveWalk *w) {
+    return live_copy_of(w, w->later);
+}
 
 /* A binding's life starts at its definition: nothing before it uses it. */
 static void live_define(LiveWalk *w, const MsPattern *pattern) {
@@ -99,6 +109,48 @@ static void live_define(LiveWalk *w, const MsPattern *pattern) {
     if (binding != MS_NONE) {
         w->later[binding] = MS_NONE;
     }
+}
+
+static void live_statement(LiveWalk *w, const MsStmt *s);
+
+/* Both branches start from what follows the `if`; afterwards the earlier use on either path counts. */
+static void live_if(LiveWalk *w, const MsStmt *s) {
+    if (s->u.branch.binding != NULL) {
+        w->supported = false;
+        return;
+    }
+    uint32_t *after = live_snapshot(w);
+    live_block(w, &s->u.branch.body);
+    uint32_t *then_later = w->later;
+    w->later = after;
+    live_block(w, &s->u.branch.else_body);
+    live_join(w, then_later);
+    live_expr(w, s->u.branch.cond);
+}
+
+/* A loop's head sees what follows the loop and the next iteration's reads. Passes repeat until
+ * the head stops changing; the last pass leaves the uses the walk reads. */
+static void live_while(LiveWalk *w, const MsStmt *s) {
+    uint32_t *after = live_snapshot(w);
+    uint32_t *head = live_snapshot(w);
+    for (;;) {
+        w->later = live_copy_of(w, head);
+        live_block(w, &s->u.loop.body);
+        live_join(w, after);
+        live_expr(w, s->u.loop.cond);
+        const uint32_t *entry = w->later;
+        bool changed = false;
+        for (uint32_t i = 0; i < w->nbindings; i++) {
+            if (entry[i] != MS_NONE && (head[i] == MS_NONE || entry[i] < head[i])) {
+                head[i] = entry[i];
+                changed = true;
+            }
+        }
+        if (!changed || !w->supported) {
+            break;
+        }
+    }
+    w->later = head;
 }
 
 static void live_statement(LiveWalk *w, const MsStmt *s) {
@@ -114,26 +166,34 @@ static void live_statement(LiveWalk *w, const MsStmt *s) {
             live_expr(w, s->u.expr);
         }
         return;
+    case MS_S_IF: live_if(w, s); return;
+    case MS_S_WHILE: live_while(w, s); return;
     case MS_S_ASSIGN:
     case MS_S_CALL:
     case MS_S_BREAK:
     case MS_S_CONTINUE:
-    case MS_S_IF:
-    case MS_S_WHILE:
     case MS_S_FOR: w->supported = false; return;
     }
 }
 
-bool ms_liveness_function(MsLiveness *live, const MsFacts *facts, const MsFunc *function, MsArena *scratch) {
+static void live_block(LiveWalk *w, const MsStmts *body) {
+    for (uint32_t i = body->len; i > 0; i--) {
+        live_statement(w, body->ptr[i - 1]);
+    }
+}
+
+bool ms_liveness_function(MsLiveness *live, const MsFacts *facts, const MsFunc *function) {
+    MsArena frame = {0}; /* the snapshots of one function */
     LiveWalk w = {.live = live,
                   .facts = facts,
-                  .scratch = scratch,
-                  .later = MS_NEW_N(scratch, uint32_t, facts->bindings.count + 1),
+                  .scratch = &frame,
+                  .later = MS_NEW_N(&frame, uint32_t, facts->bindings.count + 1),
                   .nbindings = facts->bindings.count,
                   .supported = true};
     memset(w.later, 0xff, sizeof(uint32_t) * (size_t)w.nbindings);
     for (uint32_t i = function->body.len; i > 0 && w.supported; i--) {
         live_statement(&w, function->body.ptr[i - 1]);
     }
+    ms_arena_free(&frame);
     return w.supported;
 }
