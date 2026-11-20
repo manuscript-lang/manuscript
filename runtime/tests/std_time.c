@@ -227,7 +227,9 @@ static void system_zone_checks(void) {
     long_name[6000] = 0;
     CHECK(system_zone_is(long_name, "")); /* too long for a zone name: no over-read, an empty answer */
     free(long_name);
+#ifndef _WIN32 /* the Windows environment is UTF-16: a byte string that is not UTF-8 cannot be set */
     CHECK(system_zone_is("\xff\xfe", "")); /* not UTF-8 */
+#endif
 }
 
 static void direct_checks(void) {
