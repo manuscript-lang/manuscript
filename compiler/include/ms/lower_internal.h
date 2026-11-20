@@ -62,4 +62,12 @@ MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);
 LbVal lr_field(Lb *lb, const MsExpr *e);
 
+/* Optional and Result (lower_alt.c, included after lower_body.c). */
+MirTy la_type(Lb *lb, MsTy ty);
+LbVal la_none(Lb *lb, const MsExpr *e);
+LbVal la_case(Lb *lb, const MsExpr *call);
+MirValue la_test(Lb *lb, MirValue subject);
+MirValue la_payload(Lb *lb, MirValue subject);
+LbVal la_try(Lb *lb, const MsExpr *e);
+
 #endif
