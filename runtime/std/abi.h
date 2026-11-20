@@ -1,18 +1,16 @@
-/* The runtime ABI that the std natives share (crates/ms-rt-abi): strings, byte lists, handles and status codes.
-   To move into include/ms_rt.h when the natives are listed in c-symbols.txt. */
+/* What the std natives share: the runtime's string, byte list and object header (ms_rt headers), status codes and the
+   allocator. */
 #ifndef MS_STD_ABI_H
 #define MS_STD_ABI_H
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
-typedef struct { void *ptr; size_t tagged; } msrt_str;
-typedef struct { void *ptr; size_t len, cap; } msrt_vec;
-typedef struct msrt_obj msrt_obj;
-struct msrt_obj {
-    msrt_obj *(*clone)(msrt_obj *);
-    void (*drop)(msrt_obj *);
-};
+#include "ms_rt/string.h"
+
+typedef ms_str msrt_str;
+typedef MsVec msrt_vec;
+typedef MsObj msrt_obj;
 
 enum {
     STATUS_OK = 0,
@@ -27,12 +25,8 @@ enum {
 extern void *msrt_alloc(size_t size);
 extern void msrt_free(void *p);
 
-static inline size_t msrt_str_len(const msrt_str *s) {
-    return s->tagged >> 62 == 1 ? (s->tagged >> 56) & 15 : s->tagged & (((size_t)1 << 31) - 1);
-}
-static inline const char *msrt_str_data(const msrt_str *s) {
-    return s->tagged >> 62 == 1 ? (const char *)s : (const char *)s->ptr;
-}
+static inline size_t msrt_str_len(const msrt_str *s) { return ms_str_len(s); }
+static inline const char *msrt_str_data(const msrt_str *s) { return (const char *)ms_str_data(s); }
 
 /* A Bytes value written as the runtime does: an allocation of exactly len bytes, or null when empty. */
 static inline void msrt_write_bytes(msrt_vec *out, const void *data, size_t len) {

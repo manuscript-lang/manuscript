@@ -14,11 +14,11 @@ extern crate std;
 pub mod civil;
 pub mod core_time;
 mod sys;
-pub mod zone;
 
 pub use core_time as logic;
 
 use alloc::string::String;
+use alloc::vec::Vec;
 use core_time::Ts;
 use ms_rt::ffi::{StatusCode, Str, abi_type, native};
 use ms_rt::glue::{fault, fault_fmt};
@@ -261,13 +261,15 @@ native! {
         logic::to_string(ts(value))
     }
 
+    /// Calendar fields of a timestamp in a zone `offset` seconds east of UTC, named `zone`.
     fn msstd_time_timestamp_calendar(
         value: &Timestamp,
+        offset: i64,
         zone: &str,
-    ) -> Result<CalendarOut, StatusCode> {
-        let c = code(logic::calendar(ts(value), zone))?;
+    ) -> out CalendarOut {
+        let c = logic::calendar(ts(value), offset, zone);
         let v = c.civil;
-        Ok(CalendarOut {
+        CalendarOut {
             year: v.year,
             month: v.month,
             day: v.day,
@@ -279,21 +281,22 @@ native! {
             day_of_year: v.day_of_year,
             offset_seconds: c.offset_seconds,
             zone: Str::new(&c.zone),
-        })
+        }
     }
 
     fn msstd_time_timestamp_format(
         value: &Timestamp,
         pattern: &str,
+        offset: i64,
         zone: &str,
-    ) -> Result<String, StatusCode> {
-        let text = code(logic::format(ts(value), pattern.as_bytes(), zone))?;
-        Ok(String::from_utf8(text)
-            .unwrap_or_else(|error| String::from_utf8_lossy(error.as_bytes()).into_owned()))
+    ) -> String {
+        let text = logic::format(ts(value), pattern.as_bytes(), offset, zone);
+        String::from_utf8(text)
+            .unwrap_or_else(|error| String::from_utf8_lossy(error.as_bytes()).into_owned())
     }
 
-    /// `time.from_calendar(year, month, day, hour, minute, second, nanosecond, zone)`.
-    fn msstd_time_from_calendar(
+    /// Validates calendar fields and returns them as local seconds.
+    fn msstd_time_local_from_calendar(
         year: i64,
         month: i64,
         day: i64,
@@ -301,17 +304,29 @@ native! {
         minute: i64,
         second: i64,
         nanosecond: i64,
-        zone: &str,
-    ) -> Result<Timestamp, StatusCode> {
-        code(logic::from_calendar(
-            year, month, day, hour, minute, second, nanosecond, zone,
+    ) -> Result<i64, StatusCode> {
+        code(logic::local_from_calendar(
+            year, month, day, hour, minute, second, nanosecond,
         ))
-        .map(stamp)
     }
 
-    /// `time.local_zone()`.
-    safe fn msstd_time_local_zone() -> String {
-        zone::local_zone_name()
+    /// The timestamp of local seconds in a zone `offset` seconds east of UTC.
+    fn msstd_time_from_local(
+        local: i64,
+        nanosecond: i64,
+        offset: i64,
+    ) -> Result<Timestamp, StatusCode> {
+        code(logic::from_local(local, nanosecond, offset)).map(stamp)
+    }
+
+    /// How the host names its local zone; see `sys::system_zone`.
+    safe fn msstd_time_system_zone() -> String {
+        sys::system_zone()
+    }
+
+    /// The system zone file, empty when there is none.
+    fn msstd_time_system_zone_file() -> Result<Vec<u8>, StatusCode> {
+        Ok(sys::system_zone_file())
     }
 
     /// `TimeError.message()` for a status code.
