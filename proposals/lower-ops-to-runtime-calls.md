@@ -3,7 +3,7 @@
 ## Summary
 
 - The C backends (`emit_llvm.c`, `emit_qbe.c`) each cover only scalars, records, calls and data; the Rust LLVM emitter spends 2,034 lines in `mir_llvm/{lists,enums,glue,strings}.rs` and 983 in `glue_llvm.rs` on the other ops (LLVM-text builders, so not a one-for-one line count).
-- Add one pass, `mir_lower_ops` (`compiler/src/mir_lower_ops.c`), that rewrites those ops into `call.rt`, loads, stores, arithmetic and branches before any emitter runs. Emitters print scalars, memory, calls and data only.
+- Add one pass, `mir_lower_ops` (`compiler/src/mir/mir_lower_ops.c`), that rewrites those ops into `call.rt`, loads, stores, arithmetic and branches before any emitter runs. Emitters print scalars, memory, calls and data only.
 - Decision requested: build it, starting with strings and clone/drop (stage 1), not one emitter at a time.
 
 ## Status
@@ -24,7 +24,9 @@ Proposal, 2026-11-20, checked against `origin/main` at `72a07024f`. The coordina
 - Stage 1 rewrites only to forms that need no block split:
   - `clone`, `drop`, `drop.if` of plain data: the operand or nothing. `move.out`, `forget`: the operand or nothing.
   - `clone` of a string: `call.rt @msrt_string_clone(&s, &out)`; `drop` of a string: `call.rt @msrt_string_free(&s)`. The runtime tests the tag, so the pass writes no branch. Other types: a call of the glue function from `mir_glue_find`.
+  - `clone`, `drop` of a function, an object other than a map or set, or a nullable-pointer optional: `call.rt @msrt_obj_clone` / `@msrt_obj_drop` on the one pointer.
   - `str.len`: shifts and masks on the tag word.
+  - `inarrow.opt`, `f2i.opt`, `opt.is_some` are scalar compares on the `[flag, value]` leaves, printed by each emitter from `mir_narrow_range`; they need no pass.
 - Later stages, each its own PR once the pass can split a block: `list.*`, `alt.*`, `opt.*`. Ops that move ownership (`alt.take`, `alt.unbox`, `opt.unbox`, `list.set`) must say what happens to the old value's drop before they land; stage 1 leaves them unsupported.
 - Literals: `str` of 15 bytes or fewer is two constant words; longer names a read-only data symbol (bytes plus NUL). Not in stage 1: `mir_data` has no string symbols yet.
 - `emit_qbe.c` rejects any op it cannot print, naming it, so a missed family is a clear error. Values over 16 bytes remain unsupported in QBE until a later stage.
@@ -34,9 +36,9 @@ Proposal, 2026-11-20, checked against `origin/main` at `72a07024f`. The coordina
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `compiler/src/mir_lower_ops.c`, `include/ms/mir_pass.h` | the pass, stage 1: clone, drop, drop.if, move.out, forget, str.len | `compiler/tests/qbe/strings.mir` (runs the lowered program) |
-| `compiler/src/emit_qbe.c`, `compiler/tests/qbe/` | call the pass; programs that clone and drop strings run | `make c-compiler-test` |
-| `compiler/src/emit_llvm.c` | call the pass (the LLVM thread) | its `llvm-run.sh` |
+| `compiler/src/mir/mir_lower_ops.c`, `include/ms/mir_pass.h` | the pass, stage 1: clone, drop, drop.if, move.out, forget, str.len | `compiler/tests/qbe/strings.mir` (runs the lowered program) |
+| `compiler/src/emit/emit_qbe.c`, `compiler/tests/qbe/` | call the pass; programs that clone and drop strings run | `make c-compiler-test` |
+| `compiler/src/emit/emit_llvm.c` | call the pass (the LLVM thread) | its `llvm-run.sh` |
 
 ## Alternatives
 

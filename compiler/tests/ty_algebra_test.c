@@ -1,4 +1,4 @@
-/* Unit test of the type algebra helpers (compiler/src/ty_algebra.c), with the expectations of
+/* Unit test of the type algebra helpers (compiler/src/check/ty_algebra.c), with the expectations of
  * crates/ms-check/src/contracts.rs: shared-node walks, unification of implementations, type sets,
  * and the property tables. */
 #include <stdio.h>

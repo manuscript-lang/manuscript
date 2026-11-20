@@ -4,11 +4,13 @@
  * runtime thread. */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c11 */
 
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <uv.h>
 
+#include "ms_rt/alloc.h"
 #include "ms_rt/process.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_process.h"
@@ -41,6 +43,12 @@ static void fail_host(MsFsFail *fail, MsSysError error, const char *operation) {
 }
 
 static bool in_id_range(int64_t value) { return value >= 0 && value <= MAX_ID; }
+
+/* The runtime's start-up records (src/start.rs until startup moves to C): the arguments the process was started with,
+ * the monotonic time it started at (0 before start) and its work counters. */
+void msrt_argv(MsVec *out);
+int64_t msrt_start_nanos(void);
+void msrt_counts(uint64_t *out);
 
 /* ---- working directory ---- */
 
@@ -93,6 +101,15 @@ uint8_t msstd_process_change_directory(const MsStr *path, MsStr *err) {
 
 /* ---- environment ---- */
 
+/* A variable whose name or value is not UTF-8 cannot be a String; one such variable must not hide the rest (PATH,
+ * the test runner's settings), so listings skip it. */
+static bool usable(const uv_env_item_t *item) {
+    return ms_fs_valid_utf8(ms_bytes_of((const uint8_t *)item->name, strlen(item->name))) &&
+           ms_fs_valid_utf8(ms_bytes_of((const uint8_t *)item->value, strlen(item->value)));
+}
+
+static void new_text(MsStr *out, const char *text) { ms_fs_write_string(out, (const uint8_t *)text, strlen(text)); }
+
 uint8_t msstd_process_environment(MsVec *names, MsVec *values, MsStr *err) {
     MsFsFail fail = {0};
     uv_env_item_t *items = NULL;
@@ -105,17 +122,37 @@ uint8_t msstd_process_environment(MsVec *names, MsVec *values, MsStr *err) {
     msrt_list_with_capacity(&msrt_desc_string, count, names);
     msrt_list_with_capacity(&msrt_desc_string, count, values);
     for (int i = 0; i < count; i++) {
-        const MsBytes name = ms_bytes_of((const uint8_t *)items[i].name, strlen(items[i].name));
-        const MsBytes value = ms_bytes_of((const uint8_t *)items[i].value, strlen(items[i].value));
-        /* One variable that is not UTF-8 must not hide the rest (PATH, the test runner's settings). */
-        if (!ms_fs_valid_utf8(name) || !ms_fs_valid_utf8(value)) {
+        if (!usable(&items[i])) {
             continue;
         }
         MsStr text;
-        ms_fs_write_string(&text, name.ptr, name.len);
+        new_text(&text, items[i].name);
         msrt_list_push(names, &msrt_desc_string, &text);
-        ms_fs_write_string(&text, value.ptr, value.len);
+        new_text(&text, items[i].value);
         msrt_list_push(values, &msrt_desc_string, &text);
+    }
+    uv_os_free_environ(items, count);
+    return finish(&fail, err);
+}
+
+uint8_t msstd_process_environment_map(MsMap *out, MsStr *err) {
+    MsFsFail fail = {0};
+    uv_env_item_t *items = NULL;
+    int count = 0;
+    const int code = uv_os_environ(&items, &count);
+    if (code != 0) {
+        ms_fs_fail_uv(&fail, code, "environ", ms_bytes_of(NULL, 0));
+        return finish(&fail, err);
+    }
+    msrt_map_new(out);
+    for (int i = 0; i < count; i++) {
+        if (!usable(&items[i])) {
+            continue;
+        }
+        MsStr key, value;
+        new_text(&key, items[i].name);
+        new_text(&value, items[i].value);
+        msrt_map_add(out, &msrt_desc_string, &msrt_desc_string, (uint8_t *)&key, (uint8_t *)&value);
     }
     uv_os_free_environ(items, count);
     return finish(&fail, err);
@@ -404,4 +441,127 @@ uint8_t msstd_process_cpu_usage(MsProcessCpu *out, MsStr *err) {
         *out = (MsProcessCpu){.user_microseconds = micros(usage.ru_utime), .system_microseconds = micros(usage.ru_stime)};
     }
     return finish(&fail, err);
+}
+
+/* ---- identity, memory and counters ---- */
+
+#if defined(__APPLE__)
+#define OS_NAME "darwin"
+#elif defined(_WIN32)
+#define OS_NAME "windows"
+#else
+#define OS_NAME "linux"
+#endif
+
+#if defined(__aarch64__) || defined(_M_ARM64)
+#define ARCH_NAME "arm64"
+#else
+#define ARCH_NAME "amd64"
+#endif
+
+/* The path of the running executable; not UTF-8 is unsupported, as for every String the runtime hands out. */
+static bool executable_path(MsStr *out, MsFsFail *fail) {
+    size_t capacity = FIRST_PATH;
+    char *buffer = malloc(capacity);
+    while (buffer != NULL) {
+        size_t size = capacity;
+        const int code = uv_exepath(buffer, &size);
+        if (code == UV_ENOBUFS || (code == 0 && size >= capacity - 1)) {
+            capacity *= 2;
+            char *grown = realloc(buffer, capacity);
+            if (grown == NULL) {
+                break;
+            }
+            buffer = grown;
+            continue;
+        }
+        bool ok = false;
+        if (code != 0) {
+            ms_fs_fail_uv(fail, code, "executable", ms_bytes_of(NULL, 0));
+        } else if (!ms_fs_valid_utf8(ms_bytes_of((const uint8_t *)buffer, size))) {
+            ms_fs_fail_status(fail, STATUS_UNSUPPORTED);
+        } else {
+            ms_fs_write_string(out, (const uint8_t *)buffer, size);
+            ok = true;
+        }
+        free(buffer);
+        return ok;
+    }
+    free(buffer);
+    fail_memory(fail);
+    return false;
+}
+
+uint8_t msstd_process_info(MsProcessInfo *out, MsStr *err) {
+    MsFsFail fail = {0};
+    MsStr executable;
+    if (executable_path(&executable, &fail)) {
+        *out = (MsProcessInfo){
+            .pid = (int64_t)uv_os_getpid(),
+            .parent_pid = (int64_t)uv_os_getppid(),
+            .executable = executable,
+            .uid = ms_sys_process_identity(MS_SYS_ID_UID),
+            .gid = ms_sys_process_identity(MS_SYS_ID_GID),
+            .effective_uid = ms_sys_process_identity(MS_SYS_ID_EUID),
+            .effective_gid = ms_sys_process_identity(MS_SYS_ID_EGID),
+        };
+        msrt_argv(&out->arguments);
+        new_text(&out->os, OS_NAME);
+        new_text(&out->architecture, ARCH_NAME);
+    }
+    return finish(&fail, err);
+}
+
+uint8_t msstd_process_memory_usage(MsProcessMemory *out, MsStr *err) {
+    MsFsFail fail = {0};
+    size_t resident = 0;
+    const int code = uv_resident_set_memory(&resident);
+    if (code != 0) {
+        ms_fs_fail_uv(&fail, code, "resident memory", ms_bytes_of(NULL, 0));
+        return finish(&fail, err);
+    }
+    int64_t heap[2];
+    msrt_heap_stats(heap);
+    const int64_t total = counted(resident);
+    *out = (MsProcessMemory){
+        .heap_used = heap[0],
+        .heap_total = heap[1],
+        .heap_system = heap[1],
+        .external = total > heap[1] ? total - heap[1] : 0,
+        .resident = total,
+    };
+    return finish(&fail, err);
+}
+
+uint8_t msstd_process_runtime_counts(MsProcessCounts *out) {
+    uint64_t words[7];
+    msrt_counts(words);
+    *out = (MsProcessCounts){
+        .allocations = (int64_t)words[0],
+        .allocated_bytes = (int64_t)words[1],
+        .list_copies = (int64_t)words[2],
+        .list_copy_bytes = (int64_t)words[3],
+        .string_clones = (int64_t)words[4],
+        .string_clone_bytes = (int64_t)words[5],
+        .operations = (int64_t)words[6],
+    };
+    return STATUS_OK;
+}
+
+/* Nanoseconds since the runtime started; a program that never recorded a start counts from its first call. */
+int64_t msstd_process_uptime(void) {
+    static _Atomic int64_t first;
+    const int64_t now = ms_sys_monotonic_ns();
+    int64_t origin = msrt_start_nanos();
+    if (origin == 0) {
+        int64_t unset = 0;
+        (void)atomic_compare_exchange_strong(&first, &unset, now);
+        origin = atomic_load(&first);
+    }
+    return now - origin;
+}
+
+uint8_t msstd_process_elapsed(int64_t *out) {
+    *out = msstd_process_uptime();
+    return STATUS_OK;
 }

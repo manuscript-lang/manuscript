@@ -184,6 +184,14 @@ void msrt_string_chars(const MsStr *s, MsVec *out);
 void msrt_string_lines(const MsStr *s, MsVec *out);
 /* ms-sig: msrt_string_fields(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_fields(const MsStr *s, MsVec *out);
+/* The state of a split loop (runtime/core/string_split_iter.c). */
+typedef struct MsSplitIter MsSplitIter;
+/* ms-sig: msrt_string_split_iter(s: *const StrVal, sep: *const StrVal) -> *mut SplitIter @domain=string @iter_of=msrt_string_split @leaf */
+MsSplitIter *msrt_string_split_iter(const MsStr *s, const MsStr *sep);
+/* ms-sig: msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8 @domain=split @leaf */
+uint8_t msrt_split_next(MsSplitIter *iter, MsStr *out);
+/* ms-sig: msrt_string_quote(s: *const StrVal, out: *mut StrVal) @domain=string @leaf */
+void msrt_string_quote(const MsStr *s, MsStr *out);
 /* ms-sig: msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 @domain=string @leaf */
 uint8_t msrt_string_parse_float(const MsStr *s, double *out);
 /* ms-sig: msrt_string_scalar_at(s: *const StrVal, offset: i64, has_default: HasRaw, default: i64) -> i64 @domain=string @leaf @pure */

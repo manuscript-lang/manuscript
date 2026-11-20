@@ -1,5 +1,5 @@
 #!/bin/sh
-# Compares compiler/src/constfold.c with the Rust constant folding it ports
+# Compares compiler/src/syntax/constfold.c with the Rust constant folding it ports
 # (crates/ms-syntax/examples/c_fold_oracle.rs) on random arithmetic over literals. Run from the
 # repository root. FOLD_CASES and FOLD_SEED size and seed the run.
 set -eu

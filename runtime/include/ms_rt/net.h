@@ -119,4 +119,17 @@ void msstd_body_metadata(const void *handle, MsNetBodyMetadata *out);
 /* ms-sig: msstd_body_close(handle b: *const ObjCell<BodyH>) @domain=network */
 void msstd_body_close(const void *handle);
 
+/* The certificate natives of @std/net/tls (runtime/net/tls_natives.c). A Timestamp is two words. */
+typedef struct MsTlsTimestamp {
+    int64_t seconds;
+    int64_t nanos;
+} MsTlsTimestamp;
+
+/* The certificates of a PEM text as a `List[CertificateInfo]`; `max` applies when `has_max`. */
+/* ms-sig: msstd_tls_parse_certificates(pem: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=TLS */
+uint8_t msstd_tls_parse_certificates(const MsStr *pem, uint8_t has_max, int64_t max, MsVec *out);
+/* Verifies a chain (leaf first) against the roots for a name at `now`. */
+/* ms-sig: msstd_tls_verify_certificates(chain: *const StrVal, roots: *const StrVal, server_name: *const StrVal, now: *const Timestamp) -> u8 @domain=TLS */
+uint8_t msstd_tls_verify_certificates(const MsStr *chain, const MsStr *roots, const MsStr *server_name, const MsTlsTimestamp *now);
+
 #endif

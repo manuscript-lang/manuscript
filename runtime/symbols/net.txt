@@ -22,3 +22,5 @@ msstd_headers_values
 msstd_http_fetch
 msstd_net_dial
 msstd_net_lookup
+msstd_tls_parse_certificates
+msstd_tls_verify_certificates
