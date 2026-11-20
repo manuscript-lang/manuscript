@@ -606,6 +606,19 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
     return true;
 }
 
+/* `name[Int](args)`: a call of a generic function of the module with written type arguments. */
+static MsTy body_explicit_call(MsBody *b, const MsExpr *e) {
+    const MsExpr *apply = e->u.call.callee;
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, apply->u.apply.left->u.sym);
+    const MsSyms *syms = &b->c->syms;
+    const bool generic = sym != MS_NONE && syms->kind[sym] == MS_SYM_FN && syms->nvars[sym] != 0 &&
+                         syms->decl[sym] != NULL && syms->decl[sym]->kind == MS_D_FN;
+    if (!generic || ms_body_find_binding(b, apply->u.apply.left->u.sym) != MS_NONE) {
+        return ms_body_unsupported(b);
+    }
+    return ms_body_generic_call(b, e, sym, &apply->u.apply.types);
+}
+
 static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
@@ -614,6 +627,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const uint32_t called = callee->kind == MS_E_NAME ? ms_body_find_binding(b, callee->u.sym) : MS_NONE;
     if (called != MS_NONE) {
         return ms_body_call_value(b, e, called);
+    }
+    if (callee->kind == MS_E_APPLY && callee->u.apply.left->kind == MS_E_NAME) {
+        return body_explicit_call(b, e);
     }
     if (callee->kind != MS_E_NAME) {
         return ms_body_unsupported(b);
@@ -636,7 +652,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return ms_body_unsupported(b);
     }
     if (syms->nvars[sym] != 0) {
-        return ms_body_generic_call(b, e, sym);
+        return ms_body_generic_call(b, e, sym, NULL);
     }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
