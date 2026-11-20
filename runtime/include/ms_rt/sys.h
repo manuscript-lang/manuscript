@@ -57,10 +57,32 @@ typedef struct MsSysThread MsSysThread;
 MS_NODISCARD MsSysThread *ms_sys_thread_spawn(size_t stack, MsSysThreadFn start, void *arg);
 /* Waits for a thread started by ms_sys_thread_spawn and releases its handle. */
 void ms_sys_thread_join(MsSysThread *thread);
+/* A one-bit wake-up between threads, with a timed wait: the sleep of a thread that another thread may cut short. */
+typedef struct MsSysSignal MsSysSignal;
+MS_NODISCARD MsSysSignal *ms_sys_signal_new(void);
+void ms_sys_signal_free(MsSysSignal *signal);
+/* Waits until the signal is sent or timeout_ns pass (negative: until it is sent), then clears it. True when it was
+ * sent. The timeout has the granularity of the system's clock. */
+bool ms_sys_signal_wait(MsSysSignal *signal, int64_t timeout_ns);
+/* Sets the signal; one send wakes one wait, and a send while nobody waits is kept for the next wait. */
+void ms_sys_signal_send(MsSysSignal *signal);
 /* Lets another thread run: the wait of a spin lock. */
 void ms_sys_yield(void);
 /* Blocks the calling thread for ms milliseconds. */
 void ms_sys_sleep_ms(uint32_t ms);
+
+/* sys/{posix,windows}/sampler.c: the sampling profiler's clock */
+
+/* Called about `hz` times a second with the program counter and frame pointer of the thread that called
+ * ms_sys_sampler_start. On Unix it runs in a signal handler on that thread (on_target is true, only async-signal-safe
+ * calls are allowed, and the clock counts the process's CPU time). On Windows it runs on a sampler thread while the
+ * target runs again (on_target is false, so the target's thread-local state is not visible; read it through cells
+ * the target published). */
+typedef void (*MsSysSampleFn)(uintptr_t pc, uintptr_t fp, bool on_target, void *context);
+/* Starts sampling the calling thread; false when the platform cannot or one is already running. hz is 1 to 10000. */
+MS_NODISCARD bool ms_sys_sampler_start(int64_t hz, MsSysSampleFn on_sample, void *context);
+/* Stops sampling. When it returns no call to on_sample is running or will start. */
+void ms_sys_sampler_stop(void);
 
 /* ---- descriptors (the reactor's door to the system) ---- */
 

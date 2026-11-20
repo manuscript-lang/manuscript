@@ -11,7 +11,7 @@ limit=${1:-0}
 profile=${MS_BUILD_DIFF_PROFILE:-Debug}
 flags=${MS_BUILD_DIFF_FLAGS:-}
 ms=${MS:-target/release/ms}
-sh compiler/tests/cbuild.sh ms_mir_build ms_asm_tables qbe > /dev/null
+sh compiler/tests/cbuild.sh ms_mir_build ms_asm_tables > /dev/null
 bin=$(pwd)/target/cmake/test/compiler
 out=target/c-compiler/build-diff
 rm -rf "$out"
@@ -41,6 +41,6 @@ echo "--- why the C build fails (count, reason) ---"
 # One reason per emitter line ("fn: reason"), one per failed pass, one per parse error, so a program
 # with several gaps counts under each.
 for log in "$out"/*.c.log; do
-    sed -E 's#/tmp/ms-cbackend-[0-9]+/##; s/^native code generation failed[^:]*: (ms_mir_build|qbe|cc) failed: //' "$log" |
+    sed -E 's#/tmp/ms-cbackend-[0-9]+/##; s/^native code generation failed[^:]*: (ms_mir_build|clang|cc) failed: //' "$log" |
         awk '/^the C back end cannot write:/ {w=1; next} w && NF {sub(/^[^:]*: /, ""); print "emitter: " $0; next} /^Built / {exit} /does not verify after/ {print "verify: " $0; v=1; next} v && NF {sub(/^[^:]*: /, ""); sub(/%[0-9]+/, "%N"); print "  " $0; v=0; next} !w && NF && !v {print "other: " $0; exit}'
 done | sort | uniq -c | sort -rn | head -n 40

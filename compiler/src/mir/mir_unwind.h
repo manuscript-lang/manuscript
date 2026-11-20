@@ -49,8 +49,9 @@ typedef struct UwCx {
     uint32_t ntargets;
     uint32_t discard;
     UwHash cells;    /* slot -> the type it holds */
-    UwHash closers, with_closers, slot_droppers, raw_closers, partial_closers;
+    UwHash closers, with_closers, slot_droppers, raw_closers, partial_closers, box_closers;
     UwHash raw_values;
+    UwHash box_values; /* method receivers the function then forgets: a `move` receiver, whose payload the callee took */
     UwHash holes;    /* (owner << 32 | field) -> its stand-in value */
     UwHash partials; /* stand-in -> (owner << 32 | field) */
     UwHash proj;     /* projection result -> (owner << 32 | field) */
@@ -88,6 +89,7 @@ bool uw_ext_named(const MirModule *m, const MirInst *inst, const char *name);
 
 /* ---- mir_unwind_closers.c ---- */
 uint32_t uw_raw_closer(UwCx *cx, MirTy ty);
+uint32_t uw_box_closer(UwCx *cx, MirTy ty);
 uint32_t uw_partial_closer(UwCx *cx, MirTy ty, uint32_t r, uint32_t field);
 uint32_t uw_closer(UwCx *cx, MirTy ty);
 uint32_t uw_slot_dropper(UwCx *cx, MirTy ty);

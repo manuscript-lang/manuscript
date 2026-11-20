@@ -626,7 +626,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
         return body_construct(b, e, sym);
     }
-    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
+    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
         syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||
         syms->decl[sym]->u.fn.external) {
         return ms_body_unsupported(b);
@@ -1602,6 +1602,7 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
               .methods = methods,
               .invalid_ty = body_invalid(c)};
     body_allocate(&b, facts);
+    facts->methods = methods == NULL ? NULL : &methods->methods;
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
     // Constants first: a function reads them wherever they are declared.
     for (uint32_t pass = 0; pass < 2; pass++) {

@@ -54,6 +54,13 @@ for set in files fuzz; do
         fi
         tr '\n' '\0' < "$list" | xargs -0 "$oracle" pass "$pass" > "$out/$pass-$set.rust"
         tr '\n' '\0' < "$list" | xargs -0 "$bin/ms_mir_pass" pass "$pass" > "$out/$pass-$set.c"
+        if [ -n "${MS_MIR_FREEZE:-}" ] && [ "$set" = files ]; then
+            # Keeps the Rust output of this pass as the golden the C pass is checked against once
+            # the Rust passes are gone (compiler/tests/mir-pass-frozen.sh).
+            mkdir -p compiler/tests/mir/frozen
+            cp "$list" "compiler/tests/mir/frozen/$pass.list"
+            gzip -9nc "$out/$pass-$set.rust" > "compiler/tests/mir/frozen/$pass.out.gz"
+        fi
         if cmp -s "$out/$pass-$set.rust" "$out/$pass-$set.c"; then
             echo "ok   mir pass $pass $set ($(wc -l < "$list") files)"
         else

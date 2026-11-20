@@ -15,6 +15,24 @@ typedef struct Target {
     bool mutating, consuming;
 } Target;
 
+/* Binds the row's variables by matching its receiver type against the actual one. A built-in
+ * type (`List[T]`) is declared by its standard module as a type and written elsewhere as the
+ * native built-in: they are one type when the name and the arguments agree. */
+static bool row_receiver_fits(const MsBody *b, MsInfer *in, MsTy pattern, MsTy actual) {
+    const MsTyTable *tys = &b->c->tys;
+    const bool same_native = ms_ty_kind(tys, actual) == MS_K_NATIVE && ms_ty_kind(tys, pattern) == MS_K_TYPE &&
+                             tys->name[pattern] == tys->name[actual] && tys->nargs[pattern] == tys->nargs[actual];
+    if (!same_native) {
+        return ms_infer_match(in, pattern, actual) == MS_MATCH_OK;
+    }
+    for (uint32_t i = 0; i < tys->nargs[pattern]; i++) {
+        if (ms_infer_match(in, ms_ty_args(tys, pattern)[i], ms_ty_args(tys, actual)[i]) != MS_MATCH_OK) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* The signature of row `i` for `receiver`: the row's own when it has no type variables, else with
  * the variables its receiver type binds (`WriteStream[T]` against `WriteStream[String]`) applied.
  * MS_TY_NONE when the row does not fit or leaves a variable open. */
@@ -26,7 +44,7 @@ static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver) {
     MsInfer in;
     ms_infer_init(&in, b->c, &b->c->arena, m->vars + m->vars_at[i], m->nvars[i]);
     uint32_t first = 0;
-    if (ms_infer_match(&in, m->receiver[i], receiver) != MS_MATCH_OK || ms_infer_defaults(&in, &first) != 0) {
+    if (!row_receiver_fits(b, &in, m->receiver[i], receiver) || ms_infer_defaults(&in, &first) != 0) {
         return MS_TY_NONE;
     }
     return ms_infer_apply(&in, m->ty[i]);
@@ -149,15 +167,41 @@ static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     return b->c->tys.result[target.sig];
 }
 
+/* The operation `name` of the interfaces that bound the type variable `var`: its own, found in
+ * exactly one bound. `contract` is the bound it comes from. */
+static bool bound_operation(const MsBody *b, MsTy var, MsSym name, Target *out, MsTy *contract) {
+    const MsVarInfo *info = ms_var_info(b->c, var);
+    bool found = false;
+    for (uint32_t i = 0; info != NULL && i < info->nbounds; i++) {
+        Target candidate;
+        if (!operation_of(b, info->bounds[i], name, &candidate)) {
+            continue;
+        }
+        if (found) {
+            return false; /* two bounds offer it */
+        }
+        *out = candidate;
+        *contract = info->bounds[i];
+        found = true;
+    }
+    return found;
+}
+
 /* A method of `receiver_ty` (a type with impls) or an operation of an interface, called on the
  * receiver expression; `binding` is the local it names, or MS_NONE for a temporary, which a
  * mutating method may change. */
 static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uint32_t binding) {
     const MsExpr *callee = e->u.call.callee;
     Target target;
-    const bool resolved = ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT
-                              ? operation_of(b, receiver_ty, callee->u.member.name, &target)
-                              : method_row(b, receiver_ty, callee->u.member.name, &target);
+    MsTy dispatch = receiver_ty; /* the interface an operation is called through */
+    bool resolved;
+    if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_VARIABLE) {
+        resolved = bound_operation(b, receiver_ty, callee->u.member.name, &target, &dispatch);
+    } else if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT) {
+        resolved = operation_of(b, receiver_ty, callee->u.member.name, &target);
+    } else {
+        resolved = method_row(b, receiver_ty, callee->u.member.name, &target);
+    }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved || target.consuming || (target.mutating && immutable) ||
         (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) ||
@@ -165,7 +209,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
         return ms_body_unsupported(b);
     }
     if (target.method == MS_NONE) {
-        b->facts->call_interface[e->id] = receiver_ty;
+        b->facts->call_interface[e->id] = dispatch;
     } else {
         b->facts->call_method[e->id] = target.method;
     }

@@ -1,4 +1,4 @@
-/* The program entry both emitters share: functions get symbols that cannot clash with each other or
+/* The program entry: functions get symbols that cannot clash with each other or
  * with the runtime and libc (a user function may be called `main`, `write` or `cleanup.thunk`), the
  * entry function is renamed `ms_entry`, and a C
  * `main(argc, argv)` hands it to the runtime (`msrt_start`), which runs it on a task stack. A test
@@ -24,23 +24,16 @@ void mir_name_symbols(MirModule *m) {
     }
 }
 
-void mir_emit_entry_main(const MirModule *m, bool llvm, bool tables, MsBuf *out) {
+void mir_emit_entry_main(const MirModule *m, bool tables, MsBuf *out) {
     if (m->entry == MIR_NONE) {
         return;
     }
     /* Without `tables` the argument is null and the runtime has no function or line names for traces;
-     * with them it is `ms_tables`, the block ms_asm_tables appends to the assembly (QBE only so far). */
-    if (llvm) {
-        ms_buf_puts(out,
-                    "declare i32 @msrt_start(ptr, ptr, i32, ptr)\n\n"
-                    "define i32 @main(i32 %argc, ptr %argv) {\n"
-                    "  %r = call i32 @msrt_start(ptr @\"" MIR_ENTRY_SYMBOL "\", ptr null, i32 %argc, ptr %argv)\n"
-                    "  ret i32 %r\n}\n");
-        return;
-    }
+     * with them it is `ms_tables`, the block ms_asm_tables appends to the assembly. */
     ms_buf_printf(out,
-                  "export function w $main(w %%argc, l %%argv) {\n@start\n"
-                  "\t%%r =w call $msrt_start(l $" MIR_ENTRY_SYMBOL ", l %s, w %%argc, l %%argv)\n"
-                  "\tret %%r\n}\n",
-                  tables ? "$ms_tables" : "0");
+                  "%sdeclare i32 @msrt_start(ptr, ptr, i32, ptr)\n\n"
+                  "define i32 @main(i32 %%argc, ptr %%argv) {\n"
+                  "  %%r = call i32 @msrt_start(ptr @\"" MIR_ENTRY_SYMBOL "\", ptr %s, i32 %%argc, ptr %%argv)\n"
+                  "  ret i32 %%r\n}\n",
+                  tables ? "@ms_tables = external global i8\n" : "", tables ? "@ms_tables" : "null");
 }

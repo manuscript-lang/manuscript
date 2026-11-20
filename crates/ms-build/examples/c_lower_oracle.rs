@@ -4,7 +4,6 @@
 
 use ms_driver::{CheckRequest, check_graph, load_file};
 use ms_lower::{Options, lower_program};
-use ms_rt as _;
 
 fn main() {
     let syms = ms_syntax::Names::global();

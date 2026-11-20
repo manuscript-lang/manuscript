@@ -43,6 +43,15 @@ typedef struct LbInst {
     uint32_t func; /* its module function; MIR_NONE once it failed */
 } LbInst;
 
+/* A lambda whose closure function is added but not yet lowered: `func` is its stub and `caps`
+ * the outer bindings its environment holds, in order. */
+typedef struct LbJob {
+    const MsExpr *lambda;
+    uint32_t func;
+    uint32_t *caps;
+    uint32_t ncaps;
+} LbJob;
+
 typedef struct Lb {
     const MsCheck *c;
     MsCheck *mut; /* the same table, for `ms_def`, which adds rows on demand */
@@ -55,6 +64,10 @@ typedef struct Lb {
     MirValue *value_of;
     MirVar *var_of;
     uint32_t *func_of;    /* by symbol id: the module function a call reaches, or MIR_NONE */
+    uint32_t *thunk_of;   /* by symbol id: the closure function forwarding to it, or MIR_NONE */
+    LbJob *jobs;          /* the lambdas made by the function being lowered, to lower after it */
+    uint32_t njobs, cjobs;
+    bool closure;         /* lowering a closure body: no call depth, no `var` parameters */
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
     const MsDecl *decl;   /* the function being lowered */
     /* The instance being lowered or stubbed: its function's variables and what they stand for. */
@@ -67,6 +80,7 @@ typedef struct Lb {
     LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
     uint32_t ndead_insts, cdead_insts;
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
+    MirTy *type_of;       /* by checker type: the record it lowered to, or MIR_NONE */
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
     uint32_t nvars, cvars;
@@ -74,6 +88,20 @@ typedef struct Lb {
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
 
+/* lower_closure.c: function values and lambdas. */
+MirTy lb_fn_ty(Lb *lb, MsTy ty);
+bool lb_is_fn(Lb *lb, MirTy ty);
+LbVal lb_lambda(Lb *lb, const MsExpr *e);
+LbVal lb_function_value(Lb *lb, const MsExpr *e);
+LbVal lb_call_value(Lb *lb, const MsExpr *e);
+/* Lowers the queued lambdas after their maker; `ok` is whether the maker was lowered. */
+bool lb_closures(Lb *lb, bool ok);
+
 #define LB_FAIL ((LbVal){MIR_NONE, false})
+
+/* Records (lower_record.c, included after lower_body.c). */
+MirTy lr_type(Lb *lb, MsTy ty);
+LbVal lr_construct(Lb *lb, const MsExpr *call);
+LbVal lr_field(Lb *lb, const MsExpr *e);
 
 #endif

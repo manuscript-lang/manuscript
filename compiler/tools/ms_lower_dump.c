@@ -12,6 +12,9 @@
 
 #include "ms/check.h"
 #include "ms/lower.h"
+#include "ms/desugar.h"
+#include "ms/methods.h"
+#include "ms/program.h"
 #include "ms/ownership.h"
 #include "ms/mir_pass.h"
 #include "ms/mir_verify.h"
@@ -21,7 +24,6 @@
 #include "mir_run.h"
 #include "read_file.h"
 #include "std_files.h"
-#include "check_program.h"
 
 static bool only_std_imports(const MsModule *module) {
     for (uint32_t i = 0; i < module->nimports; i++) {
@@ -75,7 +77,15 @@ static bool verify_module(const MirModule *mir, const char *path) {
     return ok;
 }
 
-static bool lower_file(MsCheck *check, const StdFiles *std, MsArena *syntax, MsNames *names, const char *path, bool run) {
+/* Checks the bodies of module `id` against a fresh program: a record is admitted only once its
+ * methods are known (one with a `close` needs a cleanup). A module with an inherent error is left
+ * unchecked. */
+static void check_bodies(MsCheck *check, MsModId id, const char *text, size_t length) {
+    ms_program_begin(check);
+    (void)ms_program_check_module(check, id, (MsStr){text, (uint32_t)length});
+}
+
+static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const char *path, bool run) {
     size_t length = 0;
     char *text = read_whole_file(path, &length);
     if (text == NULL) {
@@ -89,9 +99,11 @@ static bool lower_file(MsCheck *check, const StdFiles *std, MsArena *syntax, MsN
             printf("=== %s\n", path);
         }
         const MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
-        check_bodies_with_methods(check, std->items, std->count, id, text, length);
-        // The ownership walk fills `ret_borrowed` and narrows `body_checked` to the functions it handles.
-        ms_module_check_ownership(check, id);
+        check_bodies(check, id, text, length);
+        if (check->mods[id].facts != NULL) { // an inherent error leaves the module unchecked
+            // The ownership walk fills `ret_borrowed` and narrows `body_checked` to the functions it handles.
+            ms_module_check_ownership(check, id);
+        }
         MirModule mir;
         mir_module_init(&mir);
         (void)ms_lower_module(check, id, &mir);
@@ -183,7 +195,7 @@ int main(int argc, char **argv) {
     }
     bool verified = true;
     for (int i = run ? 3 : 2; i < argc; i++) {
-        verified = lower_file(&check, &files, &syntax, &names, argv[i], run) && verified;
+        verified = lower_file(&check, &syntax, &names, argv[i], run) && verified;
     }
     ms_check_free(&check);
     ms_arena_free(&syntax);
