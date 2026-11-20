@@ -3,8 +3,7 @@ fn identity[T](value: T) T:
 	return value
 
 fn larger[T: Comparable](a: T, b: T) T:
-	if a > b:
-		return a
+	if a > b: return a
 	return b
 
 fn pair_first[A, B](a: A, b: B) A:

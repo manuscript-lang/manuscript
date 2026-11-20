@@ -1,4 +1,5 @@
-// Call arguments: one past the last parameter is reported, a mismatch names the argument.
+// Call arguments: one past the last parameter is reported, a mismatch names the
+// argument.
 fn double(n: Int) Int:
 	return n * 2
 
