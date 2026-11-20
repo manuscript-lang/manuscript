@@ -133,6 +133,16 @@ void ms_promise_on_drop(MsPromise id, MsPromiseRetry cancel, uintptr_t state) MS
  * parks on a remote token. Set before the first wait. */
 void ms_promise_set_remote_wake(MsPromise id);
 
+/* ---- ids of another isolate ---- */
+
+/* The calls above accept an id that names another isolate's table: the owner answers by mail (promise_remote.c). The
+ * two below are what that owner-side needs. */
+
+/* The outcome code of a finished promise (see the top), or -1 while it is pending. */
+int64_t ms_promise_outcome(MsPromise id);
+/* Posts the remote token `token` when `id` finishes (at once when it has). */
+void ms_promise_watch(MsPromise id, uint64_t token);
+
 /* Frees the table of this thread; a value nobody took is dropped. */
 void ms_promises_teardown(void);
 

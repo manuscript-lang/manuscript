@@ -20,7 +20,7 @@ About 500 `msrt_*` symbols are exported from `ms-rt` (string 62, list 43, bytes 
 | maps and sets | `msrt_map_*`, `msrt_set_*`, `ms-rt-hot` probes and hashes | yes (counting loop) |
 | text | `split`, `lines`, `chars`, `trim`, `replace`, `upper`, `lower`, `repeat`, `pad_*`, `msrt_string_fmt*` | no (blocked on builders) |
 | bytes builders | `BytesBuilder`, `StringBuilder`, `msrt_bytes_concat`/`append`/`slice`, `msrt_list_extend`/`concat`/`slice` | no (no `.ms` buffer with an inline store) |
-| inflate | `ms-inflate` (898 lines, used by HTTP, archive and streams), `msstd_compress_*` | no |
+| inflate | `msstd_compress_*` and `ms_gunzip_*` on zlib (the Rust `ms-inflate` crate is deleted) | no |
 | codecs | base64, base32, ascii85, `msstd_json_*`, HTML escape | no |
 
 Scratch buffers are read buffers in `ms-std-fs` and `ms-std-net`; they hold I/O state, not a speed fallback.

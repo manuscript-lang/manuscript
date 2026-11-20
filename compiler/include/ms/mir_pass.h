@@ -105,6 +105,7 @@ MirBlock *mir_confined_slots(MsArena *arena, const MirModule *m, const MirFunc *
 typedef struct MirPipelineOptions {
     bool cancel_edges; /* explicit cancel exits (`MS_CANCEL_EDGES`) */
     bool checks;       /* the bounds and none checks `expand` makes explicit */
+    bool count_ops;    /* count executed operations (`ms build --count-ops`) */
     bool verify;       /* verify the module after each step, as the Rust debug build does */
 } MirPipelineOptions;
 
@@ -116,7 +117,7 @@ bool mir_pipeline_prepare(MirModule *m, const MirPipelineOptions *o, MsBuf *erro
  * pass when `o->verify` is set. False with `error` set to the failing pass and the module. */
 bool mir_pipeline_optimize(MirModule *m, MirOptLevel level, const MirPipelineOptions *o, MsBuf *error);
 
-/* After the optimizer: unwind, cancel_edges when on, depth, expand, glue. `glue` receives what glue
+/* After the optimizer: count_ops when on, unwind, cancel_edges when on, depth, expand, glue. `glue` receives what glue
  * made, which backends look up. */
 struct MirGlue;
 bool mir_pipeline_finish(MirModule *m, const MirPipelineOptions *o, struct MirGlue *glue,

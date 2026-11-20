@@ -102,7 +102,11 @@ static void environment_map(void) {
     MsMap *map = (MsMap *)storage;
     CHECK(RUN(msstd_process_environment_map(map, &err)) == STATUS_OK);
     const uint8_t *found = msrt_map_get_ptr(map, &msrt_desc_string, &msrt_desc_string, (const uint8_t *)&name);
-    CHECK(found != NULL && msrt_str_len((const MsStr *)found) == 4);
+    MsStr seen = {0};
+    if (found != NULL) {
+        memcpy(&seen, found, sizeof seen);
+    }
+    CHECK(found != NULL && msrt_str_len(&seen) == 4);
     msrt_map_drop(map, &msrt_desc_string, &msrt_desc_string);
     msrt_string_free(&name);
     msrt_string_free(&value);

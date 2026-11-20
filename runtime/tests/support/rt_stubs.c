@@ -46,6 +46,8 @@ __attribute__((weak)) _Noreturn void msfault_raise(uint8_t kind, const uint8_t *
 }
 
 __attribute__((weak)) _Noreturn void msrt_fault(const uint8_t *msg, size_t len) { msfault_raise(0, msg, len); }
+__attribute__((weak)) _Noreturn void msrt_fault_div_zero(void) { msfault_raise(4, (const uint8_t *)"division by zero", 16); }
+__attribute__((weak)) _Noreturn void msrt_fault_rem_zero(void) { msfault_raise(4, (const uint8_t *)"remainder by zero", 17); }
 
 __attribute__((weak)) _Noreturn void msrt_index_fault(int64_t index, int64_t length) {
     char text[96];
@@ -71,7 +73,6 @@ __attribute__((weak)) void msrt_cleanup_discard(size_t handle) { ms_test_cleanup
 /* The tests run the rollback path: a comparator may jump out. */
 __attribute__((weak)) uint8_t msrt_rollback_needed(void) { return 1; }
 
-MsObj *msrt_obj_clone(MsObj *object) { return object; }
 /* Weak: core_task_abi links the real one (runtime/core/task_abi.c), every other core test runs without a scheduler. */
 __attribute__((weak)) void msrt_task_grow(MsGrowFn shim, void *block) { shim(block); }
 

@@ -12,6 +12,7 @@
 #include "ms_rt/desc.h"
 #include "ms_rt/fault.h"
 #include "ms_rt/map.h"
+#include "ms_rt/obj.h"
 #include "ms_rt/string.h"
 
 /* The families of fault are ms_rt/fault.h's; core files that predate it keep their spellings. */

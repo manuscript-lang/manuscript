@@ -110,6 +110,10 @@ fn main() {
                     diag(&mut out, d);
                 }
             }
+            "format" => match ms_syntax::format::format(&file, text) {
+                Ok(formatted) => out.push_str(&formatted),
+                Err(d) => diag(&mut out, &d),
+            },
             "ids" => match parse(&file, text) {
                 Ok(m) => {
                     node_ids(&mut out, &m);

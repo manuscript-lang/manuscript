@@ -7,6 +7,11 @@
 #define MS_MAX_NESTING 1000
 #define MS_MAX_CHAIN 10000
 
+/* The member name of an index assignment; no source name can spell it. */
+#define MS_INDEX_SET "[]="
+/* Whether `left[index] op= value` is accepted: both parts can be evaluated twice without effect. */
+bool ms_plain_index_target(const MsExpr *left, const MsExpr *index);
+
 /* Parses a whole file strictly: the first error aborts the parse, fills *diag and returns false.
  * Nodes and texts come from `arena`; names are interned in `names`. */
 bool ms_parse(MsArena *arena, MsNames *names, const char *src, size_t len, MsModule *module,

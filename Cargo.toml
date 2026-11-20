@@ -65,13 +65,9 @@ opt-level = 2
 
 # Tests that loop over every split point, byte or random case of a checksum, hash, codec or big-number routine,
 # and the Cranelift code generator's native tests, spent most of the Rust test time unoptimized (checksum 12 s,
-# oracle 14 s, inflate 5 s, ms-clif native 70 s on four cores); optimized they take a fraction, and sccache
+# oracle 14 s, ms-clif native 70 s on four cores); optimized they take a fraction, and sccache
 # caches the build cost. Programs the `ms` binary compiles are no faster for it (measured on yaml, regex, bigint).
-[profile.dev.package.ms-std-bigint]
-opt-level = 2
 [profile.dev.package.ms-clif]
-opt-level = 2
-[profile.dev.package.ms-inflate]
 opt-level = 2
 
 # The RustCrypto crates behind @std/crypto, for the same tests.
