@@ -69,16 +69,9 @@ typedef struct MsUnwind {
     uintptr_t stack_high;
     uintptr_t stack_chain; /* chain cell of the segment below, or 0 on the home segment */
     uint8_t task_cancel;   /* a cancel aimed at this task; 0 when none */
-    bool faulting;         /* a fault is running its cleanups */
+    struct MsFaultFlight *flight; /* the fault being reported on this task, in its raiser's frame, or NULL */
     bool unwind_drops;     /* a guarded task is being left: drop cleanups act now */
 } MsUnwind;
-
-/* A fault message handed from the fault path to the guard that catches it. Owned by the receiver, which frees
- * `bytes` with msrt_free. */
-typedef struct MsFaultText {
-    uint8_t *bytes;
-    size_t length;
-} MsFaultText;
 
 /* ---- the cleanup stack ---- */
 
@@ -94,6 +87,9 @@ void ms_cleanup_discard(size_t handle);
 void ms_cleanup_cancel(size_t handle);
 /* Retires exactly this action without running it; the handle must not be used again. */
 void ms_cleanup_remove(size_t handle);
+/* Runs every cleanup above the innermost guard, innermost first, each shielded from cancellation: the end of a
+ * fault. A cleanup that faults is reported by ms_fault, which comes back here. */
+void ms_cleanup_run_pending(void);
 /* Runs the cleanups above `base`, innermost first, then returns (a cancel exit that goes on returning). */
 void ms_cleanup_unwind_to(size_t base);
 /* Pops the cleanups above `base` without running them. */
