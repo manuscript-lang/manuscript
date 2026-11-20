@@ -6,6 +6,7 @@
 #![allow(unsafe_code)]
 
 pub mod addr;
+mod base64;
 pub mod bound;
 pub mod conn;
 pub mod dn;
@@ -14,7 +15,6 @@ pub mod error;
 pub mod ffi;
 pub mod h2;
 pub mod http;
-mod base64;
 mod idmap;
 pub mod ip;
 pub mod net;
