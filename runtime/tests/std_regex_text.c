@@ -1,6 +1,7 @@
 /* The @std/regex natives that answer with text, against the recorded behavior of the Rust crate they replace:
  * texts, group rows, pieces, replacements, budgets and the Unicode categories. */
 #include "ms_rt/regex.h"
+#include "ms_rt/unicode.h"
 #include "fake_rt.h"
 #include "../std/regex.h"
 #include "ms_rt/strbuild.h"

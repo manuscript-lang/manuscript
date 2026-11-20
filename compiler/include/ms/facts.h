@@ -76,6 +76,7 @@ typedef struct MsFacts {
     uint32_t *arm_case;   /* by match-arm node id: the case index the arm matches */
     /* calls, by call-expression node id */
     uint32_t *call_callee;     /* symbol id of the called function, else MS_NONE */
+    bool *const_use;           /* by name node: a module constant read, which evaluates its initializer */
     uint32_t *call_method;     /* method id when the call is a method call, else MS_NONE */
     MsTy *call_receiver;       /* the receiver's type for a method call */
     MsTy *call_interface;      /* the interface a call dispatches through, else MS_TY_NONE */

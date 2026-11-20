@@ -1263,7 +1263,16 @@ static bool mpa_line_starts(MpLine l, const char *pre) {
 }
 
 /* Everything the parser reads from the text: item lines, and function sources. */
+/* The function names a header gives `slot_result` and `close_exit`, resolved once every function
+ * is declared. */
+typedef struct MpFnRefs {
+    uint32_t id;
+    bool has_slot, has_exit;
+    MpTok slot, exit[2];
+} MpFnRefs;
+
 typedef struct MpUnit {
+    MpFnRefs *refs; /* by function */
     MpItem *items;
     uint32_t item_count, item_capacity;
     MpFnSrc *fns;
@@ -1613,10 +1622,32 @@ static void mpa_declare_items(MpParser *p, MpUnit *unit) {
 }
 
 /* One attribute of a function header, after `fn @name(...) -> type`. */
-static void mpa_function_attribute(MpCur *c, MirModule *m, MirFunc *f) {
+static void mpa_function_attribute(MpCur *c, MirModule *m, MirFunc *f, MpFnRefs *refs) {
     MpTok attribute = mpa_c_ident(c);
     if (mpa_tok_is(&attribute, "export")) {
         f->linkage = ML_EXPORT;
+    } else if (mpa_tok_is(&attribute, "explicit_cancel")) {
+        f->explicit_cancel = true;
+    } else if (mpa_tok_is(&attribute, "noalias")) {
+        uint32_t capacity = 0;
+        mpa_c_expect_p(c, '(');
+        while (!mpa_c_eat_p(c, ')')) {
+            uint32_t index = mpa_imm_u32(c, "parameter index");
+            MIR_PUSH(m, f->noalias, f->nnoalias, capacity, uint32_t, index);
+            mpa_c_eat_p(c, ',');
+        }
+    } else if (mpa_tok_is(&attribute, "slot_result")) {
+        mpa_c_expect_p(c, '(');
+        refs->has_slot = true;
+        refs->slot = mpa_c_at(c);
+        mpa_c_expect_p(c, ')');
+    } else if (mpa_tok_is(&attribute, "close_exit")) {
+        mpa_c_expect_p(c, '(');
+        refs->has_exit = true;
+        refs->exit[0] = mpa_c_at(c);
+        mpa_c_expect_p(c, ',');
+        refs->exit[1] = mpa_c_at(c);
+        mpa_c_expect_p(c, ')');
     } else if (mpa_tok_is(&attribute, "method")) {
         f->kind = MFK_METHOD;
     } else if (mpa_tok_is(&attribute, "sort_cmp")) {
@@ -1646,7 +1677,7 @@ static void mpa_function_attribute(MpCur *c, MirModule *m, MirFunc *f) {
 }
 
 /* The attributes and position between the result type and the opening brace. */
-static void mpa_function_attributes(MpCur *c, MirFunc *f) {
+static void mpa_function_attributes(MpCur *c, MirFunc *f, MpFnRefs *refs) {
     for (;;) {
         if (mpa_c_eat_p(c, '{')) {
             return;
@@ -1655,7 +1686,7 @@ static void mpa_function_attributes(MpCur *c, MirFunc *f) {
             f->loc = mpa_c_peek(c)->loc;
             c->pos++;
         } else if (mpa_c_peek_kind(c, MPT_IDENT)) {
-            mpa_function_attribute(c, c->p->m, f);
+            mpa_function_attribute(c, c->p->m, f, refs);
         } else if (mpa_c_peek(c) == NULL) {
             mpa_perr(c->p, c->line, "expected '{'");
         } else {
@@ -1692,12 +1723,12 @@ static void mpa_declare_function(MpParser *p, MpUnit *unit, uint32_t index) {
     }
     MirFunc f;
     mir_func_init(m, &f, name, params, param_count, ret);
-    mpa_function_attributes(&c, &f);
+    mpa_function_attributes(&c, &f, &unit->refs[index]);
     if (mir_func_by_name(m, name) != MIR_NONE) {
         MsStr text = ms_name(&m->names, name);
         mpa_perr(p, c.line, "function @%.*s defined twice", (int)text.len, text.ptr);
     }
-    mir_add_func(m, &f);
+    unit->refs[index].id = mir_add_func(m, &f);
     unit->param_names[index] = names;
     unit->param_counts[index] = name_count;
 }
@@ -1750,6 +1781,33 @@ static void mpa_define_vtables_and_entry(MpParser *p, const MpUnit *unit) {
     p->m->entry = entry;
 }
 
+/* The function a header attribute names. */
+static uint32_t mpa_named_function(MpParser *p, uint32_t line, MpTok name) {
+    uint32_t id = mir_func_by_name(p->m, mir_name(p->m, name.s, name.n));
+    if (id == MIR_NONE) {
+        mpa_perr(p, line, "unknown function @%.*s", (int)name.n, name.s);
+    }
+    return id;
+}
+
+/* `slot_result` and `close_exit` name functions defined anywhere in the module. */
+static void mpa_resolve_function_refs(MpParser *p, const MpUnit *unit) {
+    for (uint32_t i = 0; i < unit->fn_count; i++) {
+        const MpFnRefs *refs = &unit->refs[i];
+        uint32_t line = unit->fns[i].header.no;
+        MirFunc *f = &p->m->funcs[refs->id];
+        if (refs->has_slot) {
+            f->has_slot_result = true;
+            f->slot_result = mpa_named_function(p, line, refs->slot);
+        }
+        if (refs->has_exit) {
+            f->has_close_exit = true;
+            f->close_exit[0] = mpa_named_function(p, line, refs->exit[0]);
+            f->close_exit[1] = mpa_named_function(p, line, refs->exit[1]);
+        }
+    }
+}
+
 static void mpa_parse_all(MpParser *p, const char *src, size_t len) {
     MpUnit unit = {0};
     mpa_split_lines(p, src, len, &unit);
@@ -1758,9 +1816,12 @@ static void mpa_parse_all(MpParser *p, const char *src, size_t len) {
     mpa_declare_items(p, &unit);
     unit.param_names = MS_NEW_N(&p->m->arena, MpTok *, unit.fn_count + 1);
     unit.param_counts = MS_NEW_N(&p->m->arena, uint32_t, unit.fn_count + 1);
+    unit.refs = MS_NEW_N(&p->m->arena, MpFnRefs, unit.fn_count + 1);
+    memset(unit.refs, 0, sizeof(MpFnRefs) * (unit.fn_count + 1));
     for (uint32_t i = 0; i < unit.fn_count; i++) {
         mpa_declare_function(p, &unit, i);
     }
+    mpa_resolve_function_refs(p, &unit);
     mpa_define_vtables_and_entry(p, &unit);
     for (uint32_t i = 0; i < unit.fn_count; i++) {
         mpa_parse_body(p, i, &unit.fns[i], unit.param_names[i], unit.param_counts[i]);
