@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ms_rt/chars.h"
 
 #include "ms/lex.h"
 #include "ms/parse.h"
@@ -305,19 +306,15 @@ static void fail_fix(Parser *p, MsToken t, MsStr message, MsStr replacement) {
     fail_fix_range(p, t, t, message, replacement);
 }
 
-static bool joins_word(uint8_t b) {
-    return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b == '_';
-}
-
 /* A symbolic operator can touch either operand; its word replacement needs separation wherever it
  * would otherwise join an identifier or number. */
 static void fail_word_operator(Parser *p, MsToken first, MsToken last, MsStr message, const char *word) {
     MsBuf b = {0};
-    if (first.lo > 0 && joins_word((uint8_t)p->src[first.lo - 1])) {
+    if (first.lo > 0 && ms_ascii_is_ident((uint8_t)p->src[first.lo - 1])) {
         ms_buf_putc(&b, ' ');
     }
     ms_buf_puts(&b, word);
-    if (last.hi < p->src_len && joins_word((uint8_t)p->src[last.hi])) {
+    if (last.hi < p->src_len && ms_ascii_is_ident((uint8_t)p->src[last.hi])) {
         ms_buf_putc(&b, ' ');
     }
     MsStr r = {ms_arena_strndup(p->arena, b.data, b.len), (uint32_t)b.len};
@@ -3182,7 +3179,10 @@ static void append_escape(Parser *p, TextCursor *c) {
     uint32_t scalar = 0;
     for (size_t k = digits; k < c->at; k++) {
         uint8_t h = c->raw[k];
-        scalar = scalar * 16 + (uint32_t)(h <= '9' ? h - '0' : (h | 0x20) - 'a' + 10);
+        uint32_t digit = 0;
+        if (ms_hex_digit_value(h, &digit)) { /* the lexer admitted only hex digits */
+            scalar = scalar * 16 + digit;
+        }
     }
     ms_utf8_put(p->bytes, scalar);
     c->at++;

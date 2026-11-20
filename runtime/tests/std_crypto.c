@@ -24,9 +24,14 @@ static vec from_hex(const char *tok) {
     return v;
 }
 
-static void put_hex(char *dst, size_t cap, const vec *v) {
-    msx_append(dst, cap, "x");
-    msx_append_hex(dst, cap, v->ptr, v->len);
+/* The size of the result buffers of the replay loops below. */
+enum { RESULT_CAP = 1 << 16 };
+
+static void put_hex(char *dst, const vec *v) {
+    char *p = dst + strlen(dst);
+    *p++ = 'x';
+    for (size_t i = 0; i < v->len; i++) p += snprintf(p, 3, "%02x", ((uint8_t *)v->ptr)[i]); /* two digits and the NUL */
+    *p = 0;
 }
 
 static const char *status_name(int st) {
@@ -40,20 +45,23 @@ static const char *status_name(int st) {
 }
 
 /* ok <hex> or err <name>; results over 1 KiB are recorded as their length and SHA-256. */
-static void result(char *dst, size_t cap, int st, vec *out) {
+static void result(char *dst, int st, vec *out) {
     if (st) {
-        msx_append(dst, cap, "err %s", status_name(st));
+        snprintf(dst + strlen(dst), RESULT_CAP - strlen(dst), "err %s", status_name(st));
         return;
     }
-    msx_append(dst, cap, "ok ");
+    msx_append(dst, RESULT_CAP, "ok ");
     if (out->len > 1024) {
         vec d = {NULL, 0, 0}, one = {out->ptr, out->len, out->len};
+        char tmp[16] = "";
         msstd_crypto_digest(3, &one, &d);
-        msx_append(dst, cap, "x#%zu:", out->len);
-        msx_append_hex(dst, cap, d.ptr, d.len);
+        snprintf(tmp, sizeof tmp, "x#%zu:", out->len);
+        msx_append(dst, RESULT_CAP, "%s", tmp);
+        put_hex(dst + strlen(dst), &d);
+        memmove(dst + strlen(dst) - 2 * d.len - 1, dst + strlen(dst) - 2 * d.len, 2 * d.len + 1); /* drop the extra x */
         free(d.ptr);
     } else {
-        put_hex(dst, cap, out);
+        put_hex(dst, out);
     }
 }
 
@@ -63,7 +71,7 @@ int main(void) {
         puts("cannot open the oracle");
         return 1;
     }
-    static char line[1 << 20], want[1 << 16], got[1 << 16];
+    static char line[1 << 20], want[1 << 16], got[RESULT_CAP];
     int cases = 0, failures = 0;
     while (fgets(line, sizeof line, f)) {
         line[strcspn(line, "\n")] = 0;
@@ -93,13 +101,13 @@ int main(void) {
         if (!strcmp(kind, "digest")) {
             vec d = from_hex(a[1]);
             msstd_crypto_digest(alg, &d, &out);
-            put_hex(got, sizeof got, &out);
+            put_hex(got, &out);
             free(d.ptr);
         } else if (!strcmp(kind, "hmac")) {
             vec k = from_hex(a[1]), d = from_hex(a[2]);
             st = msstd_crypto_hmac(alg, &k, &d, &out);
             msx_append(got, sizeof got, "%s", "ok ");
-            put_hex(got, sizeof got, &out);
+            put_hex(got, &out);
             free(k.ptr), free(d.ptr);
         } else if (!strcmp(kind, "pbkdf2") || !strcmp(kind, "hkdf")) {
             vec p = from_hex(a[1]), s = from_hex(a[2]);
@@ -110,7 +118,7 @@ int main(void) {
                 st = msstd_crypto_hkdf(alg, &p, &s, &info, strtoll(a[4], NULL, 10), &out);
                 free(info.ptr);
             }
-            result(got, sizeof got, st, &out);
+            result(got, st, &out);
             free(p.ptr), free(s.ptr);
         } else if (!strcmp(kind, "hasher")) {
             vec d1 = from_hex(a[2]), d2 = from_hex(a[3]), key = a[1][0] == '-' ? (vec){0} : from_hex(a[1]);
@@ -120,9 +128,9 @@ int main(void) {
             vec r1 = {0}, r2 = {0};
             msstd_crypto_hasher_finish(h, &r1);
             msstd_crypto_hasher_finish(h, &r2);
-            put_hex(got, sizeof got, &r1);
+            put_hex(got, &r1);
             msx_append(got, sizeof got, "%s", "\t");
-            put_hex(got, sizeof got, &r2);
+            put_hex(got, &r2);
             ((MsObj *)h)->drop(h);
             free(d1.ptr), free(d2.ptr), free(key.ptr), free(r1.ptr), free(r2.ptr);
         } else if (!strcmp(kind, "cteq")) {
@@ -151,7 +159,7 @@ int main(void) {
                                                : msstd_crypto_aes_cbc_decrypt(&x, &iv, &d, &out);
                 free(iv.ptr), free(d.ptr);
             }
-            result(got, sizeof got, st, &out);
+            result(got, st, &out);
             free(x.ptr), free(y.ptr);
         }
         free(out.ptr);

@@ -79,4 +79,13 @@ const MsTy *ms_sym_vars(const MsCheck *c, MsSymId sym, uint32_t *count);
  * and the operations of interfaces and implementations come with the passes that read bodies. */
 void ms_module_resolve_types(MsCheck *c, MsModId module);
 
+/* The symbol `d` declared in the module, unless a duplicate name took its place; MS_NONE then. */
+MsSymId ms_decl_own_symbol(const MsCheck *c, MsModId module, const MsDecl *d);
+
+/* Checks the bodies of the module's functions, after `ms_module_resolve_types`. A function is
+ * checked only when every construct in it is one the pass supports so far (see check_body.c);
+ * for the others no fact is written. Fills `expr_ty`, `res_kind`/`res_ref`, `pattern_binding`,
+ * `bindings` and `body_checked` of the module's facts for the checked ones. */
+void ms_module_check_bodies(MsCheck *c, MsModId module);
+
 #endif

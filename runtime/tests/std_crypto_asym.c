@@ -23,9 +23,14 @@ static vec from_hex(const char *tok) {
     v.len = v.cap = n;
     return v;
 }
-static void put_hex(char *dst, size_t cap, const vec *v) {
-    msx_append(dst, cap, "x");
-    msx_append_hex(dst, cap, v->ptr, v->len);
+/* The size of the result buffers of the replay loops below. */
+enum { RESULT_CAP = 1 << 16 };
+
+static void put_hex(char *dst, const vec *v) {
+    char *p = dst + strlen(dst);
+    *p++ = 'x';
+    for (size_t i = 0; i < v->len; i++) p += snprintf(p, 3, "%02x", ((uint8_t *)v->ptr)[i]); /* two digits and the NUL */
+    *p = 0;
 }
 static const char *status_name(int st) {
     switch (st) {
@@ -36,20 +41,21 @@ static const char *status_name(int st) {
     }
 }
 /* ok <hex> (over 1 KiB: x#length:sha256) or err <name> */
-static void result(char *dst, size_t cap, int st, vec *out) {
+static void result(char *dst, int st, vec *out) {
     if (st) {
-        msx_append(dst, cap, "err %s", status_name(st));
+        snprintf(dst + strlen(dst), RESULT_CAP - strlen(dst), "err %s", status_name(st));
         return;
     }
-    msx_append(dst, cap, "ok ");
+    msx_append(dst, RESULT_CAP, "ok ");
     if (out->len > 1024) {
         vec d = {0};
         msstd_crypto_digest(3, out, &d);
-        msx_append(dst, cap, "x#%zu:", out->len);
-        msx_append_hex(dst, cap, d.ptr, d.len);
+        snprintf(dst + strlen(dst), RESULT_CAP - strlen(dst), "x#%zu:", out->len);
+        char *p = dst + strlen(dst);
+        for (size_t i = 0; i < d.len; i++) p += snprintf(p, 3, "%02x", ((uint8_t *)d.ptr)[i]);
         free(d.ptr);
     } else {
-        put_hex(dst, cap, out);
+        put_hex(dst, out);
     }
 }
 
@@ -69,7 +75,7 @@ int main(void) {
         puts("cannot open the oracle");
         return 1;
     }
-    static char line[1 << 20], want[1 << 16], got[1 << 16];
+    static char line[1 << 20], want[1 << 16], got[RESULT_CAP];
     int cases = 0, failures = 0;
     while (fgets(line, sizeof line, f)) {
         line[strcspn(line, "\n")] = 0;
@@ -121,11 +127,11 @@ int main(void) {
             if (!strncmp(want, "ok ", 3)) {
                 msx_append(got, sizeof got, "%s", st ? "failed" : want);
             } else {
-                result(got, sizeof got, st, &out);
+                result(got, st, &out);
             }
         } else if (!strcmp(kind, "pub")) {
             st = msstd_crypto_public_key_der(&key_named(a[0])->priv, &out);
-            result(got, sizeof got, st, &out);
+            result(got, st, &out);
         } else if (!strcmp(kind, "ecsign")) {
             vec d = from_hex(a[2]);
             st = msstd_crypto_ecdsa_sign(&key_named(a[0])->priv, alg, &d, &out);
@@ -142,11 +148,11 @@ int main(void) {
             free(s.ptr);
         } else if (!strcmp(kind, "ecdh")) {
             st = msstd_crypto_ecdh_shared_secret(&key_named(a[0])->priv, &key_named(a[1])->pub, &out);
-            result(got, sizeof got, st, &out);
+            result(got, st, &out);
         } else if (!strcmp(kind, "rsasign")) {
             vec d = from_hex(a[2]);
             st = msstd_crypto_rsa_sign(&key_named(a[0])->priv, alg, &d, &out);
-            result(got, sizeof got, st, &out);
+            result(got, st, &out);
             free(d.ptr);
         } else if (!strcmp(kind, "rsaenc")) {
             const size_t m_len = (size_t)strtoll(a[2], NULL, 10);
@@ -158,7 +164,7 @@ int main(void) {
         } else if (!strcmp(kind, "rsadec")) {
             vec c = from_hex(a[2]);
             st = msstd_crypto_rsa_decrypt(&key_named(a[0])->priv, alg, &c, &out);
-            result(got, sizeof got, st, &out);
+            result(got, st, &out);
             free(c.ptr);
         } else {
             printf("unknown case %s\n", kind);

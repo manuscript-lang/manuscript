@@ -216,3 +216,57 @@ void ms_dump_module_types(MsBuf *out, const MsCheck *c, MsModId m) {
     }
     free(skip);
 }
+
+/* ---- function bodies ---- */
+
+static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const MsExpr *e) {
+    ms_buf_printf(out, "expr %u ", e->id);
+    ms_ty_show(out, c->names, &c->tys, facts->expr_ty[e->id]);
+    ms_buf_putc(out, '\n');
+    switch ((MsExprKind)e->kind) {
+    case MS_E_TEXT:
+        for (uint32_t i = 0; i < e->u.text.len; i++) {
+            if (e->u.text.ptr[i].expr != NULL) {
+                dump_expr(out, c, facts, e->u.text.ptr[i].expr);
+            }
+        }
+        break;
+    case MS_E_UNARY: dump_expr(out, c, facts, e->u.bin.left); break;
+    case MS_E_BINARY:
+        dump_expr(out, c, facts, e->u.bin.left);
+        dump_expr(out, c, facts, e->u.bin.right);
+        break;
+    case MS_E_NUMBER:
+    case MS_E_BOOL:
+    case MS_E_VOID:
+    case MS_E_NAME:
+    case MS_E_MEMBER:
+    case MS_E_APPLY:
+    case MS_E_INDEX:
+    case MS_E_PROBE:
+    case MS_E_LIST:
+    case MS_E_MAP:
+    case MS_E_LAMBDA:
+    case MS_E_CALL:
+    case MS_E_MATCH: break;
+    }
+}
+
+void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
+    const MsModuleRow *row = &c->mods[m];
+    const MsFacts *facts = row->facts;
+    for (uint32_t i = 0; facts != NULL && facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        if (d->kind != MS_D_FN || !facts->body_checked[d->id]) {
+            continue;
+        }
+        ms_buf_printf(out, "fn %u:%u clean\n", d->pos.line, d->pos.column);
+        for (uint32_t k = 0; k < d->u.fn.body.len; k++) {
+            const MsStmt *s = d->u.fn.body.ptr[k];
+            const MsExpr *value = s->kind == MS_S_BIND ? s->u.bind.value : s->u.expr;
+            if (value != NULL) {
+                dump_expr(out, c, facts, value);
+            }
+        }
+    }
+}

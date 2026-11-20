@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "mir_interp_impl.h"
+#include "ms_rt/chars.h"
 
 #define IP_I64_RANGE 9223372036854775808.0 /* 2^63: Int values are the floats in [-2^63, 2^63) */
 
@@ -805,7 +806,7 @@ static IpFlow ip_op_lists(IpCtx *c) {
 static uint32_t ip_scalar_count(MsStr text) {
     uint32_t scalars = 0;
     for (uint32_t i = 0; i < text.len; i++) {
-        if (((uint8_t)text.ptr[i] & 0xC0u) != 0x80u) {
+        if (!ms_utf8_is_continuation((uint8_t)text.ptr[i])) {
             scalars++;
         }
     }

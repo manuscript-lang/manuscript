@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "append.h"
 
 
 static int failures;
@@ -33,8 +32,11 @@ static int find(const char *p, const char *text, int64_t *span) {
     ms_re_free(re);
     return rc;
 }
+/* The size of the buffers `all` fills. */
+enum { MATCH_LIST_CAP = 256 };
+
 /* All matches of p in text, as "a-b," pairs. */
-static void all(const char *p, const char *text, char *out, size_t cap) {
+static void all(const char *p, const char *text, char *out) {
     char msg[160];
     MsRegex *re = compile(p, msg);
     int64_t slots[64];
@@ -42,7 +44,7 @@ static void all(const char *p, const char *text, char *out, size_t cap) {
     ms_re_iter_init(&it);
     out[0] = 0;
     while (ms_re_next(re, text, strlen(text), &it, slots) == MS_RE_MATCHED)
-        msx_append(out, cap, "%lld-%lld,", (long long)slots[0], (long long)slots[1]);
+        snprintf(out + strlen(out), MATCH_LIST_CAP - strlen(out), "%lld-%lld,", (long long)slots[0], (long long)slots[1]);
     ms_re_iter_done(&it);
     ms_re_free(re);
 }
@@ -106,11 +108,11 @@ int main(void) {
     }
 
     /* Empty matches follow the adjacency rule: "a*" over "a🙂🙂a" is "a", "", "a" at these offsets. */
-    all("a*", "a\xF0\x9F\x99\x82\xF0\x9F\x99\x82" "a", buf, sizeof buf);
+    all("a*", "a\xF0\x9F\x99\x82\xF0\x9F\x99\x82" "a", buf);
     CHECK(strcmp(buf, "0-1,5-5,9-10,") == 0);
-    all("", "ab", buf, sizeof buf);
+    all("", "ab", buf);
     CHECK(strcmp(buf, "0-0,1-1,2-2,") == 0);
-    all("[0-9]+", "a12b3", buf, sizeof buf);
+    all("[0-9]+", "a12b3", buf);
     CHECK(strcmp(buf, "1-3,4-5,") == 0);
 
     /* Limits: catastrophic patterns stop with MS_RE_LIMIT, in the interpreter and the JIT, and a pattern cannot
