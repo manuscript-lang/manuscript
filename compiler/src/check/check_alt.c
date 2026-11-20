@@ -144,14 +144,20 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
     memset(seen, 0, info.ncases * sizeof *seen);
     uint32_t covered = 0;
     bool wildcard = false;
+    // Arms are all values or all statements; statement arms, which end the match as a statement, must
+    // each fall through (one that returns or breaks changes what follows the match).
+    const bool valued = e->u.match.arms.ptr[0]->value != NULL;
     MsTy result = expected;
+    if (!valued && expected != MS_TY_NONE && expected != b->void_ty) {
+        return ms_body_unsupported(b);
+    }
     for (uint32_t i = 0; i < count && b->supported; i++) {
         const MsArm *arm = e->u.match.arms.ptr[i];
         bool is_wildcard = false;
         const uint32_t index = alt_arm_case(b, arm, ty, &info, &is_wildcard);
         const bool last_with_cases_left = i == count - 1 && arm->bindings.len == 0 && covered < info.ncases;
         const bool fresh_case = index != MS_NONE && !seen[index];
-        const bool well_formed = arm->value != NULL && !wildcard &&
+        const bool well_formed = (arm->value != NULL) == valued && !wildcard &&
                                  (is_wildcard ? last_with_cases_left : fresh_case);
         if (!well_formed) {
             return ms_body_unsupported(b);
@@ -166,6 +172,15 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
                 return ms_body_unsupported(b);
             }
         }
+        if (!valued) {
+            const bool falls = ms_body_block(b, &arm->body);
+            alt_close_from(b, first);
+            if (!b->supported || !falls) {
+                return ms_body_unsupported(b);
+            }
+            result = b->void_ty;
+            continue;
+        }
         const MsTy value = ms_body_block_value(b, &arm->body, arm->value, result);
         alt_close_from(b, first);
         if (value == MS_TY_NONE || value == b->void_ty) {
@@ -174,4 +189,56 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
         result = value;
     }
     return wildcard || covered == info.ncases ? result : ms_body_unsupported(b);
+}
+
+/* The case of the enum `ty` that the bare name `name` spells, or MS_NONE. */
+static uint32_t alt_named_case(const MsBody *b, MsTy ty, MsSym name, AltInfo *info) {
+    if (ty == MS_TY_NONE || !alt_info(b, ty, info) || info->optional) {
+        return MS_NONE;
+    }
+    for (uint32_t i = 0; i < info->ncases; i++) {
+        if (alt_case_name(b, info, i) == name) {
+            return i;
+        }
+    }
+    return MS_NONE;
+}
+
+bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name) {
+    AltInfo info = {0};
+    return alt_named_case(b, expected, name, &info) != MS_NONE;
+}
+
+/* `Case(args)` where the context expects the enum that declares `Case`: every argument is
+ * positional and checked against the case's field of that position; the callee resolves to the
+ * case, as `ok(v)` does for a Result. */
+MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected) {
+    const MsExpr *callee = e->u.call.callee;
+    AltInfo info = {0};
+    const uint32_t index = alt_named_case(b, expected, callee->u.sym, &info);
+    if (index == MS_NONE || e->u.call.args.len != alt_case_fields(&info, index)) {
+        return ms_body_unsupported(b);
+    }
+    for (uint32_t slot = 0; slot < e->u.call.args.len; slot++) {
+        const MsTy field = alt_field_ty(b, &info, expected, index, slot);
+        if (e->u.call.args.ptr[slot].has_name || !ms_body_is_admitted(b, field) ||
+            ms_body_expr(b, e->u.call.args.ptr[slot].value, field) == MS_TY_NONE) {
+            return ms_body_unsupported(b);
+        }
+    }
+    b->facts->res_kind[callee->id] = MS_RES_CASE;
+    b->facts->res_ref[callee->id] = index;
+    return expected;
+}
+
+/* A case without payload named where the context expects its enum: `Empty`. */
+MsTy ms_body_case_name(MsBody *b, const MsExpr *e, MsTy expected) {
+    AltInfo info = {0};
+    const uint32_t index = alt_named_case(b, expected, e->u.sym, &info);
+    if (index == MS_NONE || alt_case_fields(&info, index) != 0) {
+        return ms_body_unsupported(b); // a case with a payload is called, not named
+    }
+    b->facts->res_kind[e->id] = MS_RES_CASE;
+    b->facts->res_ref[e->id] = index;
+    return expected;
 }

@@ -114,8 +114,35 @@ static void echo_round(int use_tls, MsTlsCtx *server_context, MsTlsCtx *client_c
     ms_sys_net_close(server.listener);
 }
 
+/* wait_gone returns CLOSED once the peer has closed, and CLOSED again for the stale id. */
+static void gone_round(void) {
+    MsAddr loopback = {4, {127, 0, 0, 1}, 0, 0}, bound;
+    Server server = {.tls = 0, .context = NULL};
+    CHECK(ms_sys_net_tcp_listen(&loopback, 4, &server.listener) == MS_SYS_OK);
+    CHECK(ms_sys_net_local_addr(server.listener, &bound) == MS_SYS_OK);
+    pthread_t thread;
+    CHECK(pthread_create(&thread, NULL, serve, &server) == 0);
+    MsSock client = MS_SOCK_INVALID;
+    const int r = ms_sys_net_tcp_connect(&bound, &client);
+    CHECK(r == MS_SYS_OK || r == MS_SYS_INPROGRESS);
+    MsConnTable *table = ms_conn_table_new(4);
+    const MsConnId id = ms_conn_open(table, (int)client, MS_CONN_HTTP1);
+    if (r == MS_SYS_INPROGRESS) {
+        (void)msrt_task_wait_fd((int32_t)client, MS_WAIT_WRITE, -1);
+        CHECK(ms_sys_net_connect_done(client) == MS_SYS_OK);
+    }
+    CHECK(ms_conn_shutdown_write(table, id, -1) == MS_NET_OK); /* the echo server reads the end and closes */
+    CHECK(ms_conn_wait_gone(table, id, NULL) == MS_NET_CLOSED);
+    CHECK(ms_conn_close_io(table, id) == MS_NET_OK);
+    CHECK(ms_conn_wait_gone(table, id, NULL) == MS_NET_CLOSED); /* a stale id */
+    ms_conn_table_free(table);
+    pthread_join(thread, NULL);
+    ms_sys_net_close(server.listener);
+}
+
 int main(void) {
     echo_round(0, NULL, NULL);
+    gone_round();
     MsTlsCtx *server_context = ms_tls_ctx_new(1, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, NULL, 0);
     MsTlsCtx *client_context = ms_tls_ctx_new(0, NULL, 0, NULL, 0, CERT, sizeof CERT - 1);
     CHECK(server_context != NULL && client_context != NULL);

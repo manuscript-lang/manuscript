@@ -13,13 +13,13 @@ import (
 	NativeHttpClient,
 	RawResponse,
 	StreamingResponse,
+	client_send,
 	headers from "@std/net/http.ms",
 	Network, http_client from "@std/net/net.ms",
 	TlsOptions from "@std/net/tls.ms",
 	Duration, Instant, monotonic, seconds from "@std/time.ms",
 
-	msstd_http_client_request_bytes,
-	msstd_http_client_share from "@std/internal/http.ms",
+	msstd_client_share from "@std/internal/http.ms",
 )
 
 // The request body: empty, text, raw bytes, or JSON text; `fetch` derives a default
@@ -135,7 +135,7 @@ fn Fetcher.fetch(
 	url: String,
 	options: FetchOptions = FetchOptions(),
 ) Promise[FetchResponse]:
-	native := msstd_http_client_share(self.client.native)
+	native := msstd_client_share(self.client.native)
 	owned_url := url.clone()
 	owned_options := options.clone()
 	return promise(
@@ -268,7 +268,7 @@ fn fetched(url: String, options: FetchOptions) FetchResponse!:
 fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchResponse!:
 	started := monotonic()
 	outbound := outgoing(options.clone())
-	body := msstd_http_client_request_bytes(
+	body := client_send(
 		native,
 		options.method.to_string(),
 		url,

@@ -38,7 +38,7 @@ static bool lo_is_obj_like(LoCx *c, MirTy ty) {
     case MK_FN:
         return true;
     case MK_OBJ:
-        return !mir_name_is(c->m, data->name, "Map") && !mir_name_is(c->m, data->name, "Set");
+        return data->obj_class != MIR_OBJ_COLLECTION;
     case MK_OPT:
         return mir_opt_is_nullable(&c->layouts, data->elem) && !mir_opt_is_boxed(c->m, data->elem);
     default:

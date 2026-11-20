@@ -11,7 +11,7 @@
 #[path = "../../../runtime/build_c.rs"]
 mod build_c;
 
-use build_c::{CRuntime, archiver, build_c_runtime, c_compiler};
+use build_c::{CRuntime, archiver, build_c_runtime, c_compiler, run_c_tests};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
@@ -34,6 +34,16 @@ fn main() -> ExitCode {
                 }
             }
         }
+        Some("c-test") => match c_tests() {
+            Ok(report) => {
+                println!("{report}");
+                ExitCode::SUCCESS
+            }
+            Err(message) => {
+                eprintln!("xtask c-test: {message}");
+                ExitCode::FAILURE
+            }
+        },
         Some("symbols") => {
             let check = std::env::args().nth(2).as_deref() == Some("--check");
             match symbols(check) {
@@ -49,7 +59,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: cargo xtask runtime [--alloc-profile | --sched-stress | --stats] | cargo xtask symbols [--check]"
+                "usage: cargo xtask runtime [--alloc-profile | --sched-stress | --stats] | cargo xtask c-test | cargo xtask symbols [--check]"
             );
             ExitCode::from(2)
         }
@@ -98,8 +108,12 @@ fn symbols(check: bool) -> Result<String, String> {
         return Err("collecting the native signatures failed".into());
     }
     let mut table = std::collections::BTreeMap::new();
-    let text =
-        std::fs::read_to_string(&recorded).map_err(|e| format!("{}: {e}", recorded.display()))?;
+    // No Rust crate declares natives once the last `ms-std-*` crate is gone, so no test writes the file.
+    let text = match std::fs::read_to_string(&recorded) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(format!("{}: {e}", recorded.display())),
+    };
     for line in text.lines().filter(|l| !l.is_empty()) {
         let name = line.split('(').next().unwrap_or(line).to_string();
         if let Some(old) = table.insert(name.clone(), line.to_string())
@@ -699,6 +713,25 @@ fn strip_paths(ty: &str) -> String {
     }
     out.push_str(&word);
     out
+}
+
+/// Builds the C unit tests for this host's runtime target and runs them: the Windows leg of `make c-test`.
+fn c_tests() -> Result<String, String> {
+    let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
+    let root = manifest.join("../..");
+    let arch = std::env::consts::ARCH;
+    let triple = match std::env::consts::OS {
+        "linux" => Some(format!("{arch}-unknown-linux-gnu")),
+        "windows" => Some(format!("{arch}-pc-windows-gnullvm")),
+        _ => None,
+    };
+    run_c_tests(
+        &root,
+        &root.join("target/ms-native/c-tests"),
+        triple.as_deref(),
+    )
 }
 
 /// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.

@@ -56,6 +56,9 @@ MS_NODISCARD bool ms_path_abs(MsArena *a, const char *path, const char **out, Ms
 MS_NODISCARD bool ms_path_rel(MsArena *a, const char *base, const char *target, const char **out, MsProjectError *err);
 /* True when `rel` (from ms_path_rel) leaves its base directory. */
 bool ms_path_escapes(const char *rel);
+/* The entry names of `dir` other than `.` and `..`, in byte order. A directory that cannot be opened fails as
+ * `<open_op> <dir>: <reason>`. */
+MS_NODISCARD bool ms_path_list_dir(MsArena *a, const char *dir, const char *open_op, const char *const **names, uint32_t *count, MsProjectError *err);
 MS_NODISCARD bool ms_path_eval_symlinks(MsArena *a, const char *path, const char **out, MsProjectError *err);
 
 
@@ -122,6 +125,8 @@ typedef struct MsProject {
  * commit or the requirement as written), the row ms_tool_dependencies returns. */
 const char *ms_project_dependency_row(MsArena *a, const MsDependency *d);
 
+/* The whole file at `path`, NUL-terminated after its `*length` bytes (which may include NULs); NULL with *err set. */
+const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err);
 /* The nearest ms.toml in `filename`'s directory or above, NULL when there is none. */
 const char *ms_project_find_manifest(MsArena *a, const char *filename);
 MS_NODISCARD bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProjectError *err);

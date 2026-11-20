@@ -95,7 +95,11 @@ static void run_captures_output_and_exit_codes(void) {
     free(ran.out.err.ptr);
     spec = (RunSpec){.script = "kill -9 $$", .max_output = -1, .timeout_ns = -1};
     ran = run_sh(&spec);
+#ifdef _WIN32
+    CHECK(ran.status == STATUS_OK && ran.out.exit_code != 0); /* the shell reports a status, not a signal (#4888) */
+#else
     CHECK(ran.status == STATUS_OK && ran.out.exit_code == -1);
+#endif
 }
 
 static void run_names_a_missing_program(void) {
@@ -121,11 +125,20 @@ static void run_limits_and_timeouts_kill_the_group(void) {
 }
 
 static void run_applies_directory_and_environment(void) {
+#ifdef _WIN32 /* the shell prints POSIX-style directories; the working directory is not checked here (#4888) */
+    RunSpec spec = {.script = "echo \"$MS_PROBE\"", .max_output = -1, .timeout_ns = -1,
+                    .env_name = "MS_PROBE", .env_value = "set"};
+#else
     RunSpec spec = {.script = "pwd -P; echo \"$MS_PROBE\"", .max_output = -1, .timeout_ns = -1, .cwd = "/",
                     .env_name = "MS_PROBE", .env_value = "set"};
+#endif
     Ran ran = run_sh(&spec);
     CHECK(ran.status == STATUS_OK);
+#ifdef _WIN32
+    CHECK(same(&ran.out.out, "set\n"));
+#else
     CHECK(same(&ran.out.out, "/\nset\n"));
+#endif
     free(ran.out.out.ptr);
     free(ran.out.err.ptr);
     spec = (RunSpec){.script = "true", .max_output = -1, .timeout_ns = -1, .cwd = "/definitely/not/here"};

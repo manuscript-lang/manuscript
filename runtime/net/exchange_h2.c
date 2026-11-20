@@ -522,6 +522,14 @@ uint8_t ms_xchg_h2_reset(MsXchgH2 *x, int64_t max, uint8_t has_timeout, int64_t 
     }
 }
 
+uint8_t ms_xchg_h2_wait_gone(MsXchgH2 *x, MsStr *err) {
+    if (x->released != 0) {
+        return STATUS_OK;
+    }
+    const MsNetStatus status = ms_h2_stream_wait_gone(x->conn->serve, x->stream);
+    return status == MS_NET_RESET || status == MS_NET_CLOSED ? STATUS_OK : ms_net_finish(status, 0, err);
+}
+
 void ms_xchg_h2_drop(MsXchgH2 *x) {
     release(x, x->local_ended != 0 ? 0 : ERROR_CANCEL);
     ms_headers_object(x->fields)->drop(ms_headers_object(x->fields));

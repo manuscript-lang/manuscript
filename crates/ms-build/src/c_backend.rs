@@ -52,15 +52,31 @@ fn run(command: &mut Command, what: &str) -> Result<Vec<u8>, String> {
 }
 
 /// Compiles `module` to an object file with the C pipeline.
-pub fn compile(module: &Module, speed: bool, checks: bool) -> Result<Vec<u8>, String> {
-    let dir = std::env::temp_dir().join(format!("ms-cbackend-{}", std::process::id()));
+pub fn compile(
+    module: &Module,
+    speed: bool,
+    checks: bool,
+    keep_ll: bool,
+) -> Result<Vec<u8>, String> {
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let dir = std::env::temp_dir().join(format!(
+        "ms-cbackend-{}-{}",
+        std::process::id(),
+        NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    ));
     std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
-    let result = compile_in(&dir, module, speed, checks);
+    let result = compile_in(&dir, module, speed, checks, keep_ll);
     let _ = std::fs::remove_dir_all(&dir);
     result
 }
 
-fn compile_in(dir: &Path, module: &Module, speed: bool, checks: bool) -> Result<Vec<u8>, String> {
+fn compile_in(
+    dir: &Path,
+    module: &Module,
+    speed: bool,
+    checks: bool,
+    keep_ll: bool,
+) -> Result<Vec<u8>, String> {
     let mir = dir.join("program.mir");
     std::fs::write(&mir, ms_mir::print::print_module_unique(module))
         .map_err(|e| format!("cannot write {}: {e}", mir.display()))?;
@@ -73,9 +89,16 @@ fn compile_in(dir: &Path, module: &Module, speed: bool, checks: bool) -> Result<
     }
     let meta = dir.join("program.meta");
     build.arg("--tables-meta").arg(&meta);
+    let names = dir.join("program.names");
+    std::fs::write(&names, ms_mir::print::display_names(module))
+        .map_err(|e| format!("cannot write {}: {e}", names.display()))?;
+    build.arg("--display-names").arg(&names);
     let ir_text = run(&mut build, "ms_mir_build")?;
     let ir = dir.join("program.ll");
     std::fs::write(&ir, ir_text).map_err(|e| format!("cannot write {}: {e}", ir.display()))?;
+    if keep_ll {
+        std::fs::copy(&ir, "ms-keep.ll").map_err(|e| format!("cannot write ms-keep.ll: {e}"))?;
+    }
     let plain = dir.join("program.plain.s");
     let opt = if speed { "-O3" } else { "-O0" };
     run(

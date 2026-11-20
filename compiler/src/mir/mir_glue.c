@@ -95,7 +95,8 @@ static void gl_sort_unique(GlVec *vec) {
 /* ---- type queries ---- */
 
 static bool gl_is_map_or_set(const MirModule *m, const MirTyData *d) {
-    return d->kind == MK_OBJ && (mir_name_is(m, d->name, "Map") || mir_name_is(m, d->name, "Set"));
+    (void)m;
+    return d->kind == MK_OBJ && d->obj_class == MIR_OBJ_COLLECTION;
 }
 
 static bool gl_is_opt(const MirModule *m, MirTy ty, MirTy *inner) {
