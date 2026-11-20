@@ -326,6 +326,9 @@ fn run_source_command<L: Lower>(
     };
     engine.set_static_libc(inv.static_libc);
     // The Manuscript `ms profile` builds through this CLI and asks for the sampling runtime by variable.
+    // ... and `ms bench --ops` builds with the operation counter on.
+    engine
+        .set_count_ops(inv.command == "build" && std::env::var_os("MS_BUILD_COUNT_OPS").is_some());
     engine.set_profile_allocs(
         inv.allocs
             || (inv.command == "build" && std::env::var_os("MS_BUILD_PROFILE_ALLOCS").is_some()),

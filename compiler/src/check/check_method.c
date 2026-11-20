@@ -15,6 +15,24 @@ typedef struct Target {
     bool mutating, consuming;
 } Target;
 
+/* Binds the row's variables by matching its receiver type against the actual one. A built-in
+ * type (`List[T]`) is declared by its standard module as a type and written elsewhere as the
+ * native built-in: they are one type when the name and the arguments agree. */
+static bool row_receiver_fits(const MsBody *b, MsInfer *in, MsTy pattern, MsTy actual) {
+    const MsTyTable *tys = &b->c->tys;
+    const bool same_native = ms_ty_kind(tys, actual) == MS_K_NATIVE && ms_ty_kind(tys, pattern) == MS_K_TYPE &&
+                             tys->name[pattern] == tys->name[actual] && tys->nargs[pattern] == tys->nargs[actual];
+    if (!same_native) {
+        return ms_infer_match(in, pattern, actual) == MS_MATCH_OK;
+    }
+    for (uint32_t i = 0; i < tys->nargs[pattern]; i++) {
+        if (ms_infer_match(in, ms_ty_args(tys, pattern)[i], ms_ty_args(tys, actual)[i]) != MS_MATCH_OK) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* The signature of row `i` for `receiver`: the row's own when it has no type variables, else with
  * the variables its receiver type binds (`WriteStream[T]` against `WriteStream[String]`) applied.
  * MS_TY_NONE when the row does not fit or leaves a variable open. */
@@ -26,7 +44,7 @@ static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver) {
     MsInfer in;
     ms_infer_init(&in, b->c, &b->c->arena, m->vars + m->vars_at[i], m->nvars[i]);
     uint32_t first = 0;
-    if (ms_infer_match(&in, m->receiver[i], receiver) != MS_MATCH_OK || ms_infer_defaults(&in, &first) != 0) {
+    if (!row_receiver_fits(b, &in, m->receiver[i], receiver) || ms_infer_defaults(&in, &first) != 0) {
         return MS_TY_NONE;
     }
     return ms_infer_apply(&in, m->ty[i]);

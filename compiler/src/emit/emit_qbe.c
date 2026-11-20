@@ -1243,12 +1243,23 @@ static bool qbe_switch(QCx *c, const MirTerm *t, uint32_t block) {
     return true;
 }
 
+/* A conditional branch whose two edges enter the same block with arguments. */
+static bool qbe_reaches_twice(const MirTerm *t) {
+    return t->kind == MT_CONDBR && t->a.block == t->b.block && t->a.nargs > 0;
+}
+
 static bool qbe_term(QCx *c, const MirTerm *t, uint32_t block) {
     switch ((MirTermKind)t->kind) {
     case MT_BR:
         ms_buf_printf(c->out, "\tjmp @b%u\n", t->a.block);
         return true;
     case MT_CONDBR:
+        if (qbe_reaches_twice(t)) {
+            /* Both edges enter one block with arguments: a block each, so its phis can tell them apart. */
+            ms_buf_printf(c->out, "\tjnz %%v%u, @r%u_0, @r%u_1\n@r%u_0\n\tjmp @b%u\n@r%u_1\n\tjmp @b%u\n",
+                          t->value, block, block, block, t->a.block, block, t->b.block);
+            return true;
+        }
         ms_buf_printf(c->out, "\tjnz %%v%u, @b%u, @b%u\n", t->value, t->a.block, t->b.block);
         return true;
     case MT_RET:
@@ -1295,16 +1306,17 @@ static bool qbe_phi_leaf(QCx *c, uint32_t b, uint32_t index, uint32_t leaf, cons
             edges[0] = &t->a;
             edges[1] = &t->b;
         }
-        if (edges[1] != NULL && edges[0]->block == b && edges[1]->block == b && edges[0]->nargs > 0) {
-            c->why = "one block reaches a target twice with arguments";
-            return false;
-        }
+        const bool twice = qbe_reaches_twice(t);
         for (size_t k = 0; k < 2; k++) {
             if (edges[k] == NULL || edges[k]->block != b) {
                 continue;
             }
             ms_buf_printf(c->out, "%s ", first ? "" : ",");
-            qbe_label(c, s, last[s]);
+            if (twice) {
+                ms_buf_printf(c->out, "@r%u_%zu", s, k);
+            } else {
+                qbe_label(c, s, last[s]);
+            }
             ms_buf_putc(c->out, ' ');
             qbe_name(c->out, edges[k]->args[index], leaf);
             first = false;
@@ -1497,7 +1509,7 @@ bool mir_emit_qbe_glued(MirModule *m, MirGlue *glue_in, MsBuf *out, MsBuf *why) 
     return ok;
 }
 
-void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay, MsBuf *out) {
+void mir_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay, bool llvm, MsBuf *out) {
     for (uint32_t i = 0; i < m->nfiles; i++) {
         ms_buf_printf(out, "F %.*s\n", (int)m->files[i].len, m->files[i].ptr);
     }
@@ -1508,7 +1520,8 @@ void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndis
         const MsStr name = ms_name(&m->names, f->name);
         const MsStr shown = i < ndisplay ? ms_name(&m->names, display[i]) : name; /* glue added by the emitter */
         sym.len = 0;
-        qbe_sym(&sym, name);
+        qbe_sym(&sym, name); /* LLVM writes the plain name too: source names are identifiers and dots */
+        (void)llvm;
         ms_buf_printf(out, "Y %.*s\t%d\t%u\t%.*s\n", (int)sym.len - 1, sym.data + 1,
                       f->loc.file == MIR_NONE ? -1 : (int)f->loc.file, f->loc.line, (int)shown.len, shown.ptr);
         for (uint32_t k = 0; k < f->nscopes; k++) {
