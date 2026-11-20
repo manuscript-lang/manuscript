@@ -243,6 +243,8 @@ long ms_tls_write(MsTls *t, const void *buf, size_t n) {
     return rc > 0 ? rc : classify(t, rc);
 }
 
+int ms_tls_pending(const MsTls *t) { return SSL_pending(t->ssl) > 0 || BIO_ctrl_pending(t->in) > 0; }
+
 int ms_tls_shutdown(MsTls *t) { return SSL_shutdown(t->ssl) >= 0 ? 0 : -1; }
 const char *ms_tls_error(MsTls *t) { return t->err; }
 
