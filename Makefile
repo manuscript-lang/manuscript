@@ -245,6 +245,8 @@ c-compiler-test:
 	sh compiler/tests/mir-pass-diff.sh
 	sh compiler/tests/mir-pass-frozen.sh
 	sh compiler/tests/check-diff.sh
+	sh compiler/tests/diag-render-diff.sh
+	sh compiler/tests/entry-diff.sh
 	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
@@ -274,9 +276,11 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/diff.ms
 	"$(RELEASE_MS)" test tools/ms/mark.ms
 	"$(RELEASE_MS)" test tools/ms/html.ms
+	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/matches.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/imports.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a

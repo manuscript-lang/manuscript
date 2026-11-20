@@ -230,7 +230,7 @@ static void scope_add_prelude(MsCheck *c, MsModId module) {
     for (size_t i = 0; i < PRELUDE_NAME_COUNT; i++) {
         const MsSym name = ms_intern_cstr(c->names, scope_prelude_names[i]);
         const MsSymId symbol = ms_map_get(&c->std_types, name);
-        if (symbol == MS_NONE || scope_same_file(c, c->syms.module[symbol], module) || scope_imports_name(syntax, name)) {
+        if (symbol == MS_NONE || c->syms.module[symbol] == module || scope_imports_name(syntax, name)) {
             continue;
         }
         (void)ms_map_add(names, name, symbol);
