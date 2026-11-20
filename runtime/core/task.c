@@ -348,7 +348,9 @@ static void task_main(void) {
 
 MsTaskHandle ms_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t stack_bytes, MsTaskStatus *status) {
     MsSched *const sched = ms_sched();
-    const uint64_t capture = ms_task_running()->capture;
+    MsTask *const spawner = ms_task_running();
+    const uint64_t capture = spawner->capture;
+    const bool born_shielded = ms_task_shielded(spawner);
     const size_t length = stack_bytes == MS_TASK_ROOT_STACK ? MS_STACK_REGION : MS_STACK_SLOT;
     uint8_t *base = NULL;
     MsStackBounds bounds = {0};
@@ -381,6 +383,9 @@ MsTaskHandle ms_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t 
     }
     if ((flags & MS_SPAWN_FATAL) != 0) {
         task->flags |= MS_TASK_FLAG_FATAL;
+    }
+    if (born_shielded) {
+        task->flags |= MS_TASK_FLAG_BORN_SHIELDED;
     }
 #if defined(_WIN32)
     task->teb[0] = bounds.high;

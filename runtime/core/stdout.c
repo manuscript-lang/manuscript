@@ -172,7 +172,7 @@ void msrt_io_flush(void) { ms_sched_flush_stdout(); }
 int64_t msrt_test_capture_new(void) {
     const uint64_t id = atomic_fetch_add_explicit(&next_capture, 1, memory_order_relaxed);
     ms_spin_lock(&captures.lock);
-    if (ms_array_reserve((void **)&captures.items, &captures.capacity, captures.length + 1, sizeof *captures.items)) {
+    if (ms_array_reserve_system((void **)&captures.items, &captures.capacity, captures.length + 1, sizeof *captures.items)) {
         captures.items[captures.length++] = (Capture){.id = id};
     }
     ms_spin_unlock(&captures.lock);

@@ -172,7 +172,7 @@ void ms_test_keep_fault(uint64_t capture, const MsFaultText *text) {
         msrt_free(kept.items[at].bytes); /* only the last fault of a capture is kept */
     } else {
         void *grown = kept.items;
-        if (!ms_array_reserve(&grown, &kept.capacity, kept.length + 1, sizeof kept.items[0])) {
+        if (!ms_array_reserve_system(&grown, &kept.capacity, kept.length + 1, sizeof kept.items[0])) {
             ms_spin_unlock(&kept.lock);
             msrt_free(bytes);
             return;

@@ -20,6 +20,7 @@
 #include "../core/fault.h"
 #include "../core/frames.h"
 #include "../core/promise.h"
+#include "../core/sweep.h"
 #include "../core/task.h"
 #include "../core/unwind.h"
 #include "../core/worker.h"
@@ -192,6 +193,12 @@ static void report_live_by_size(void) {
 /* The counting build: what is still live after the scheduler state was released. */
 static void report_leaks(void) {
     char line[SIZE_CLASS_LINE];
+    char park_text[8];
+    size_t park_size = sizeof park_text;
+    if (uv_os_getenv("MS_PARK_COUNT", park_text, &park_size) == 0) {
+        const int parked = snprintf(line, sizeof line, "ms-rt parks: %llu\n", (unsigned long long)ms_sweep_parks());
+        ms_sys_stderr_write(ms_bytes_of((const uint8_t *)line, (size_t)parked));
+    }
     const int64_t live = msrt_heap_live_total();
     const int length = snprintf(line, sizeof line, "ms-rt live blocks at exit: %lld\n", (long long)live);
     ms_sys_stderr_write(ms_bytes_of((const uint8_t *)line, (size_t)length));
