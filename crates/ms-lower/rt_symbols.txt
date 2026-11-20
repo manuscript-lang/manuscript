@@ -11,9 +11,9 @@
 # borrowing twin of `<sym>` (a lent result, the first element, a one-at-a-time walk).
 msrt_alloc(size: usize) -> *mut u8 @leaf
 msrt_alloc_zeroed(size: usize) -> *mut u8 @leaf
-msrt_args(out: *mut VecVal)
-msrt_args_consume()
-msrt_argv(out: *mut VecVal)
+msrt_args(out: *mut VecVal) @domain=start
+msrt_args_consume() @domain=start
+msrt_argv(out: *mut VecVal) @domain=start
 msrt_bits_bit_and(left: i64, right: i64) -> i64 @leaf @op=and
 msrt_bits_bit_or(left: i64, right: i64) -> i64 @leaf @op=or
 msrt_bits_bit_xor(left: i64, right: i64) -> i64 @leaf @op=xor
@@ -115,24 +115,18 @@ msrt_group_new() -> i64 @domain=promise
 msrt_group_next(group: i64) -> i64 @domain=promise
 msrt_group_poll(group: i64) -> i64 @domain=promise
 msrt_guard_call(code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut StrVal) -> u8 @retains
-msrt_guard_enter(jmp: *mut usize, code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8) -> usize
 msrt_hash_bytes(p: *const u8, len: usize) -> i64 @domain=map @leaf
 msrt_hash_combine(a: i64, b: i64) -> i64 @leaf
 msrt_hash_int(v: i64) -> i64 @domain=map @leaf
 msrt_hash_list(v: *const VecVal, d: ElemDesc) -> i64 @domain=collection @leaf
-msrt_heap_alloc_zeroed_cached(size: usize) -> *mut u8
 msrt_heap_claim()
 msrt_heap_has() -> u8
-msrt_heap_large_request(size: usize) -> usize
 msrt_heap_live_by_size(sizes: *mut usize, counts: *mut i64, capacity: usize) -> usize
 msrt_heap_live_total() -> i64
-msrt_heap_owns(p: *const u8) -> u8
 msrt_heap_release()
 msrt_heap_requested(out: *mut u64)
 msrt_heap_requested_reset()
 msrt_heap_sample_every(period: i64, hook: *mut u8)
-msrt_heap_shared_put(p: *mut u8) -> u8
-msrt_heap_shared_take(size: usize) -> *mut u8
 msrt_heap_stats(out: *mut i64)
 msrt_heap_trim(p: *mut u8, new_size: usize) -> *mut u8
 msrt_heap_usable_size(p: *mut u8) -> usize
@@ -140,12 +134,12 @@ msrt_index_fault(index: i64, length: i64) -> ! @leaf
 msrt_int_compare(a: i64, b: i64) -> i64 @domain=number @leaf
 msrt_int_to_string(v: i64, out: *mut StrVal) @domain=string @leaf
 msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) @domain=string @leaf
-msrt_io_flush()
-msrt_io_write_bytes_stderr(v: *const VecVal)
-msrt_io_write_bytes_stdout(v: *const VecVal)
-msrt_io_write_stderr(s: *const StrVal)
-msrt_io_write_stdout(s: *const StrVal)
-msrt_io_write_stdout_line(s: *const StrVal, end: *const StrVal)
+msrt_io_flush() @domain=I/O
+msrt_io_write_bytes_stderr(v: *const VecVal) @domain=I/O
+msrt_io_write_bytes_stdout(v: *const VecVal) @domain=I/O
+msrt_io_write_stderr(s: *const StrVal) @domain=I/O
+msrt_io_write_stdout(s: *const StrVal) @domain=I/O
+msrt_io_write_stdout_line(s: *const StrVal, end: *const StrVal) @domain=I/O
 msrt_isolate_hdr() -> *mut Hdr
 msrt_list_at(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8) -> *const u8 @domain=collection @leaf
 msrt_list_concat(a: *const VecVal, b: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf
@@ -240,8 +234,8 @@ msrt_pipe_new(capacity: i64) -> i64 @domain=pipe
 msrt_pipe_read(pipe: i64) -> i64 @domain=pipe
 msrt_pipe_try(pipe: i64, d: ValueDesc, out: *mut u8) -> u8 @domain=pipe
 msrt_pipe_write(pipe: i64, value: *mut u8, d: ValueDesc) -> i64 @domain=pipe @takes:value
-msrt_process_exit(code: i64) -> !
-msrt_process_on_exit(hook: extern "C" fn())
+msrt_process_exit(code: i64) -> ! @domain=start
+msrt_process_on_exit(hook: extern "C" fn()) @domain=start
 msrt_promise_cancel(id: i64) @domain=promise
 msrt_promise_defer(id: i64, work: *mut Closure) @domain=promise @keeps:work @retains
 msrt_promise_done(id: i64) -> u8 @domain=promise
@@ -266,8 +260,8 @@ msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 @domain=promise
 msrt_promise_wait_any(ids: *const VecVal, timeout_ns: i64) -> i64 @domain=promise
 msrt_realloc(p: *mut u8, size: usize) -> *mut u8
 msrt_rollback_needed() -> u8 @leaf
-msrt_runtime_limit() -> i64
-msrt_runtime_set_threads(n: i64)
+msrt_runtime_limit() -> i64 @domain=start
+msrt_runtime_set_threads(n: i64) @domain=start
 msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) @domain=set @leaf
 msrt_set_add_copy_w(m: *mut MapVal, kd: KeyDesc, key: *const u8) @domain=set @leaf
 msrt_set_contains_w(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8 @domain=set @leaf @pure
@@ -287,8 +281,8 @@ msrt_slot_drop(d: *const TypeDesc, slot: *mut u8) @leaf
 msrt_slot_eq(d: *const TypeDesc, a: *const u8, b: *const u8) -> u8 @domain=slot @leaf
 msrt_slot_hash(d: *const TypeDesc, slot: *const u8) -> i64 @leaf
 msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8 @domain=split @leaf
-msrt_start(main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8) -> i32
-msrt_start_nanos() -> i64
+msrt_start(main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8) -> i32 @domain=start
+msrt_start_nanos() -> i64 @domain=start
 msrt_str_copy(ptr: *const u8, tagged: usize, out: *mut StrVal) @domain=string @leaf
 msrt_str_free(ptr: *mut u8) @domain=string @leaf
 msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal) @domain=string @leaf
@@ -388,7 +382,7 @@ msrt_task_cancel(handle: u64) @domain=task
 msrt_task_count() -> usize @domain=task
 msrt_task_current() -> u64 @domain=task
 msrt_task_forget_fd(fd: i32) @domain=task
-msrt_task_grow(shim: unsafe extern "C-unwind" fn(*mut u8), block: *mut u8)
+msrt_task_grow(shim: unsafe extern "C-unwind" fn(*mut u8), block: *mut u8) @domain=task
 msrt_task_join(handle: u64, msg_out: *mut StrVal) -> u8 @domain=task
 msrt_task_others_stalled() -> bool @domain=task
 msrt_task_read_limit(timeout_ns: i64) -> i64 @domain=task
@@ -407,12 +401,12 @@ msrt_test_capture_take(id: i64, out: *mut StrVal)
 msrt_test_deadline(on: bool)
 msrt_test_failure(message: *const StrVal, details: *const MapVal)
 msrt_test_record(path: *const StrVal, text: *const StrVal)
-msrt_token_free(id: u64)
-msrt_token_new(flags: u32) -> u64
-msrt_token_park(id: u64, timeout_ns: i64, value_out: *mut u64) -> u32
-msrt_token_park_at(id: u64, at_ns: i64, value_out: *mut u64) -> u32
-msrt_token_post(id: u64, value: u64)
-msrt_token_post_remote(id: u64, value: u64)
+msrt_token_free(id: u64) @domain=task
+msrt_token_new(flags: u32) -> u64 @domain=task
+msrt_token_park(id: u64, timeout_ns: i64, value_out: *mut u64) -> u32 @domain=task
+msrt_token_park_at(id: u64, at_ns: i64, value_out: *mut u64) -> u32 @domain=task
+msrt_token_post(id: u64, value: u64) @domain=task
+msrt_token_post_remote(id: u64, value: u64) @domain=task
 msrt_uint_compare(a: i64, b: i64) -> i64 @domain=number
 msrt_uint_div(a: i64, b: i64) -> i64 @domain=number
 msrt_uint_rem(a: i64, b: i64) -> i64 @domain=number

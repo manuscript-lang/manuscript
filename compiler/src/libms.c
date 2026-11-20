@@ -140,9 +140,9 @@
 #include "emit/emit_entry.c"
 #include "emit/emit_llvm.c"
 #include "emit/emit_program.c"
-/* The project loader needs POSIX; the back end library the Rust `ms` links on every platform leaves it out
- * (cmake/MsCompiler.cmake, target ms_backend). */
-#ifndef MS_LIBMS_NO_PROJECT
+/* The project loader uses POSIX file calls, which the Windows tools do not need; the back end library the Rust
+ * `ms` links leaves it out on every platform (cmake/MsCompiler.cmake, target ms_backend). */
+#if !defined(_WIN32) && !defined(MS_LIBMS_NO_PROJECT)
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/discover.c"

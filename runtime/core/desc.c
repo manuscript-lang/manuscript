@@ -1,6 +1,5 @@
 /* Type descriptors: the builtin descriptors and the drop, copy, equality and hash of the value in a slot.
- * Ported from crates/ms-rt/src/desc.rs. The equality cycle guard (msrt_eq_enter, msrt_eq_leave) stays in Rust
- * with the task switch that saves it.
+ * Ported from crates/ms-rt/src/desc.rs. The equality cycle guard (msrt_eq_enter, msrt_eq_leave) is in eq.c.
  */
 #include "hash.h"
 #include "list_ops.h"

@@ -25,7 +25,7 @@ endif()
 # a gap in Windows coverage tracked by issue #4888: the test moves onto the OS layer (ms_rt/sys.h), or a Windows twin
 # is written, and its name leaves this list. Nothing else is skipped.
 set(MS_POSIX_ONLY_TESTS
-    core_alloc core_fault core_isolate core_pipe core_promise core_streams core_task core_workers staged_sched_pool staged_sched_shims
+    core_alloc core_fault core_isolate core_pipe core_promise core_streams core_task core_workers core_sched_pool core_sched_abi core_stdout core_fault_abi
     conn_io_test dial_test h2_serve_test net_natives_test unix_test
     io_refused ws_socket_test exchange_test exchange_h2_test
     io_completion io_reactor sys_net_test std_signals std_process_state sys_fault)
@@ -39,7 +39,8 @@ endif()
 # Objects of a folder's sources, compiled once for every test that links them.
 function(ms_test_objects name)
   add_library(${name} OBJECT ${ARGN})
-  target_include_directories(${name} PRIVATE "${_rt}/include" "${_rt}/core" "${_rt}/std" "${_tests}/support")
+  target_include_directories(${name} PRIVATE "${_rt}/include" "${_rt}/core" "${_rt}/std" "${_tests}/support"
+                             "${MS_MIMALLOC_DIR}/include")
   target_compile_options(${name} PRIVATE ${_test_flags} ${_lib_compile})
   target_compile_definitions(${name} PRIVATE ${MS_LIBS_DEFINES})
   set_target_properties(${name} PROPERTIES C_EXTENSIONS ON POSITION_INDEPENDENT_CODE OFF)
@@ -65,9 +66,14 @@ function(ms_test name)
   target_compile_options(${name} PRIVATE ${_flags} ${_lib_compile} ${T_FLAGS})
   target_compile_definitions(${name} PRIVATE ${T_DEFINES} ${MS_LIBS_DEFINES})
   target_link_options(${name} PRIVATE ${_flags})
-  target_link_libraries(${name} PRIVATE ${T_LIBS} ${_syslibs})
+  target_link_libraries(${name} PRIVATE ${T_LIBS} ${_syslibs} ms_mimalloc)
   set_target_properties(${name} PROPERTIES C_EXTENSIONS ON RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
   add_test(NAME ${name} COMMAND ${name} WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+  if(MS_SANITIZE AND NOT T_PLAIN)
+    # ASan does not know the scheduler's stack switches, so a libc call on a task stack can trip over stale poison;
+    # mimalloc's purge reads the clock on such a stack. Tests do not need freed memory returned to the OS.
+    set_tests_properties(${name} PROPERTIES ENVIRONMENT "MIMALLOC_PURGE_DELAY=-1")
+  endif()
 endfunction()
 
 file(GLOB _core_sources CONFIGURE_DEPENDS "${_rt}/core/*.c")
@@ -102,7 +108,9 @@ file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
 # core_*: all of runtime/core and this platform's runtime/sys layer, the allocator's live-block counts on.
 # task_abi.c is linked by core_task_abi alone: the other tests stub the task ABI and run without a scheduler.
 set(_task_abi "${_rt}/core/task_abi.c")
-list(REMOVE_ITEM _core_sources "${_task_abi}")
+# fault_abi.c is linked by core_fault_abi alone: the other tests use the weak fault stubs of tests/support.
+set(_fault_abi "${_rt}/core/fault_abi.c")
+list(REMOVE_ITEM _core_sources "${_task_abi}" "${_fault_abi}")
 # The scheduler hooks of the tests (support/sched_env.c) poll descriptors, so they are POSIX-only for now.
 if(MS_WINDOWS)
   list(FILTER _support_sources EXCLUDE REGEX "sched_env\\.c$")
@@ -120,29 +128,20 @@ file(GLOB _core_tests CONFIGURE_DEPENDS "${_tests}/core_*.c")
 foreach(file ${_core_tests})
   get_filename_component(name "${file}" NAME_WE)
   set(_extra "")
+  set(_libs m)
+  set(_include "")
   if(name STREQUAL "core_task_abi")
     set(_extra "${_task_abi}")
+  elseif(name STREQUAL "core_fault_abi")
+    set(_extra "${_fault_abi}")
+  elseif(name STREQUAL "core_sched_pool")
+    # The blocking pool (runtime/std/pool.c) over the real scheduler and task ABI, with libuv's threads.
+    set(_extra "${_task_abi}" "${_rt}/std/pool.c")
+    set(_include ${MS_LIB_uv_INCLUDES})
+    set(_libs ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} m)
   endif()
-  ms_test(${name} SOURCES "${file}" ${_extra} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
+  ms_test(${name} SOURCES "${file}" ${_extra} OBJECTS ms_test_core INCLUDES ${_include} LIBS ${_libs} DEFINES MS_ALLOC_STATS)
 endforeach()
-
-# The staged fault ABI (runtime/staged): defined over the C task and fault path, replacing the weak stubs of the core
-# objects. Nothing builds it into the runtime archive until the Rust fault module is removed.
-ms_test(staged_fault_abi SOURCES "${_tests}/staged_fault_abi.c" "${_rt}/staged/fault_abi.c" OBJECTS ms_test_core
-        INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
-
-# The staged scheduler queries (runtime/staged/sched_shims.c) over the C scheduler.
-ms_test(staged_sched_shims SOURCES "${_tests}/staged_sched_shims.c" "${_rt}/staged/sched_shims.c"
-        OBJECTS ms_test_core INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
-
-# The blocking pool (runtime/std/pool.c) over the C scheduler, with the calls the flip still has to move into core.
-ms_test(staged_sched_pool SOURCES "${_tests}/staged_sched_pool.c" "${_rt}/staged/sched_calls.c" "${_rt}/std/pool.c" "${_task_abi}"
-        OBJECTS ms_test_core INCLUDES "${_rt}/staged" ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} m
-        DEFINES MS_ALLOC_STATS)
-
-# The staged standard output (runtime/staged/stdout.c) over the OS layer's file writes.
-ms_test(staged_stdout SOURCES "${_tests}/staged_stdout.c" "${_rt}/staged/stdout.c"
-        OBJECTS ms_test_core INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
 
 # The OS layer: runtime/sys/<platform> and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
@@ -187,6 +186,15 @@ foreach(file ${_io_tests})
   get_filename_component(name "${file}" NAME_WE)
   ms_test(${name} SOURCES "${file}" ${_io_sources} ${_os_sources} INCLUDES ${MS_LIB_uv_INCLUDES}
           LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
+endforeach()
+
+# The process entry: core, the reactor, the stop thread and the entry sources, with the std layer's stdout stubbed by the test.
+file(GLOB _entry_sources CONFIGURE_DEPENDS "${_rt}/entry/*.c")
+file(GLOB _entry_tests CONFIGURE_DEPENDS "${_tests}/entry_*.c")
+foreach(file ${_entry_tests})
+  get_filename_component(name "${file}" NAME_WE)
+  ms_test(${name} SOURCES "${file}" ${_entry_sources} ${_io_sources} OBJECTS ms_test_core
+          INCLUDES ${MS_LIB_uv_INCLUDES} LIBS m ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} DEFINES MS_ALLOC_STATS)
 endforeach()
 
 # The socket layer: this platform's sources in runtime/sys (linux or darwin); the test needs only the C library.

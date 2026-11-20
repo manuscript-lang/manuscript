@@ -362,12 +362,12 @@ static bool check_native_impl(Loader *l, MsStr file, const MsDecl *d) {
 }
 
 /* The kind of the nominal type a native declaration makes; false for a function, constant or alias. */
-static bool native_nominal_kind(const MsDecl *d, MsStr name, MsKind *kind) {
+static bool native_nominal_kind(const MsDecl *d, MsKind *kind) {
     if (!is_nominal(d)) {
         return false;
     }
     const bool external = d->kind == MS_D_TYPE && d->u.type.external;
-    *kind = (external || sl_str_is(name, "List")) ? MS_K_NATIVE : nominal_kind(d);
+    *kind = external ? MS_K_NATIVE : nominal_kind(d);
     return true;
 }
 
@@ -405,7 +405,7 @@ static bool register_native_decl(Loader *l, MsModId m, MsStr stem, const MsDecl 
         return fail_at(l, "duplicate standard declaration", file, d->pos);
     }
     MsKind kind = MS_K_TYPE;
-    if (!native_nominal_kind(d, name_text, &kind)) {
+    if (!native_nominal_kind(d, &kind)) {
         return true;
     }
     if (ms_map_get(&c->std_types, name) != MS_NONE) {
