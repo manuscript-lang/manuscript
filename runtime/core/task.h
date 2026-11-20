@@ -83,6 +83,15 @@ typedef struct MsSchedHooks {
     void (*mail)(MsMail *mail);
     /* Frees the other tables when the scheduler ends. May be NULL. */
     void (*teardown)(void);
+    /* Before the scheduler blocks with nothing ready: starts work that waits elsewhere (a queued promise of another
+     * isolate) as a task and answers true, or answers false with `*wait_ns` the longest it may block for that
+     * work's sake (negative: no limit). May be NULL. */
+    bool (*idle)(int64_t *wait_ns);
+    /* After the scheduler marked itself sleeping: whether work that idle would take has appeared since, so it must
+     * not block. May be NULL. */
+    bool (*pending)(void);
+    /* A service isolate (a worker) with no task and no timer waits for mail and work instead of being deadlocked. */
+    bool service;
 } MsSchedHooks;
 
 /* Descriptor readiness, supplied by runtime/io (msio_*, one libuv loop per thread). The bits are MS_WAIT_*. */

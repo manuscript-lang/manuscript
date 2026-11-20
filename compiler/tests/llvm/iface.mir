@@ -1,0 +1,41 @@
+module "iface"
+extern @msrt_alloc(int) -> ptr
+extern @msrt_free(ptr)
+iface Area { area(int) -> int }
+vtable @v_int: Area for int { @area_int }
+vtable @v_other: Area for int { @area_other }
+entry @msmain
+fn @area_int(%self: ptr, %k: int) -> int method {
+b0:
+  %n: int = load int %self
+  %r: int = iadd %n, %k
+  ret %r
+}
+fn @area_other(%self: ptr, %k: int) -> int method {
+b0:
+  %n: int = load int %self
+  %r: int = imul %n, %k
+  ret %r
+}
+fn @msmain() -> int {
+b0:
+  %i: int = iconst 4
+  %k: int = iconst 3
+  %s: dyn Area = iface.new @v_int %i
+  %t: bool = iface.is @v_int %s
+  %u: bool = iface.is @v_other %s
+  %d: int = iface.data %s
+  %v: dyn Area = iface.view %s
+  %a: int = call.method Area.area (%v, %k)
+  %tg: int = iface.tag %v
+  %x: int = iadd %a, %k
+  %y: int = iadd %x, %tg
+  br_if %t, b1(%y, %u), b2()
+b1(%z: int, %o: bool):
+  br_if %o, b2(), b3(%z)
+b2:
+  %bad: int = iconst 99
+  ret %bad
+b3(%w: int):
+  ret %w
+}

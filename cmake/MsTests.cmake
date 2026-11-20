@@ -81,6 +81,11 @@ ms_test(staged_fault_abi SOURCES "${_tests}/staged_fault_abi.c" "${_rt}/staged/f
 ms_test(staged_sched_shims SOURCES "${_tests}/staged_sched_shims.c" "${_rt}/staged/sched_shims.c"
         OBJECTS ms_test_core INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
 
+# The blocking pool (runtime/std/pool.c) over the C scheduler, with the calls the flip still has to move into core.
+ms_test(staged_sched_pool SOURCES "${_tests}/staged_sched_pool.c" "${_rt}/staged/sched_calls.c" "${_rt}/std/pool.c" "${_task_abi}"
+        OBJECTS ms_test_core INCLUDES "${_rt}/staged" ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} m
+        DEFINES MS_ALLOC_STATS)
+
 # The staged standard output (runtime/staged/stdout.c) over the OS layer's file writes.
 ms_test(staged_stdout SOURCES "${_tests}/staged_stdout.c" "${_rt}/staged/stdout.c"
         OBJECTS ms_test_core INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)

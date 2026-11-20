@@ -193,7 +193,7 @@ typedef struct MirFunc {
     uint32_t nparams;
     MirTy ret;
     bool ret_borrowed, ret_view;
-    /* Set by passes, not in the text form: a function made only to run while a cancellation
+    /* Set by passes: a function made only to run while a cancellation
      * unwinds; one whose lists are raw slot copies (they own no elements). */
     bool unwind_only, raw_scratch;
     /* In the text form: a function that leaves a cancel by its own explicit exits; the indexes
@@ -207,7 +207,7 @@ typedef struct MirFunc {
     uint32_t slot_result;
     bool has_close_exit;
     uint32_t close_exit[2];
-    /* Set by lowering, not in the text form: a closure function whose environment owns
+    /* Set by lowering: a closure function whose environment owns
      * resources lists the capture index and the function that closes it; a cleanup thunk that
      * closes a value in place names the type of that value. */
     MirCaptureCloser *capture_closers;
@@ -215,7 +215,7 @@ typedef struct MirFunc {
     bool has_slot_close;
     MirTy slot_close;
     bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
-    /* Set by the range pass, not in the text form: a bit set (`nexact` words) of the results of
+    /* Set by the range pass (`exact` lines in the text form): a bit set (`nexact` words) of the results of
      * unchecked integer arithmetic it proved cannot wrap, which later analysis treats as exact.
      * Values are never reused, so a bit stays true as the function is rewritten; the pass
      * replaces the array instead of editing it, so a copy of the function may share it. */
@@ -243,7 +243,7 @@ typedef struct MirTypeDef {
     MsSym name;
     MirField *fields;
     uint32_t nfields;
-    bool indirect; /* one pointer to a heap block (not in the text form: lowering sets it) */
+    bool indirect; /* one pointer to a heap block (`type Name indirect` in the text form) */
 } MirTypeDef;
 
 typedef enum MirStd { MSTD_NONE, MSTD_RESULT, MSTD_COMPARABLE, MSTD_EQUAL } MirStd;
