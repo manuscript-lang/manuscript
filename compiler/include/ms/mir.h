@@ -123,12 +123,12 @@ typedef struct MirParam { MirTy ty; uint8_t mode; } MirParam;
 typedef struct MirBlockParam { MirValue value; uint8_t mode; } MirBlockParam;
 
 typedef struct MirInst {
-    uint8_t op;      /* MirOp */
+    MirValue *args; /* owned by the module arena; passes edit it in place or replace it */
     MirImm imm;
     MirValue res;    /* MIR_NONE when the op defines nothing */
-    MirLoc loc;
-    MirValue *args; /* owned by the module arena; passes edit it in place or replace it */
     uint32_t nargs;
+    MirLoc loc;
+    uint8_t op;      /* MirOp */
 } MirInst;
 
 typedef struct MirTarget {
