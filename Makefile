@@ -221,8 +221,13 @@ stdlib-bench: build
 # The C build: one CMake project (CMakeLists.txt, cmake/) for the runtime archive, its tests and the fuzz harnesses,
 # generated with Ninja; ccache is used when installed. `c-configure` and `c-build` make target/cmake/test (sanitizers on).
 C_BUILD ?= target/cmake/test
-.PHONY: c-configure c-build
-c-configure:
+# The system C libraries the CMake builds find with pkg-config; a fresh machine gets them installed (libs.sh knows apt,
+# Homebrew, apk and the Windows package managers).
+.PHONY: c-deps c-configure c-build
+c-deps:
+	@pkg-config --exists libuv libnghttp2 libssl libcrypto libpcre2-8 zlib libcurl 2>/dev/null || sh runtime/third_party/libs.sh install
+
+c-configure: c-deps
 	cmake -S . -B $(C_BUILD) -G Ninja -DMS_SANITIZE=ON
 
 c-build: c-configure
@@ -235,7 +240,7 @@ c-test: c-build
 # The C style gate (documentation/contributing/c-style.md): strict warnings on every C file, clang-tidy on the
 # files that differ from C_LINT_BASE (all of them when it is unset).
 .PHONY: c-lint
-c-lint:
+c-lint: c-deps
 	cmake -S . -B target/cmake/lint -G Ninja -DMS_BUILD_COMPILER=OFF -DMS_BUILD_TESTS=OFF
 	C_LINT_BASE="$(C_LINT_BASE)" cmake --build target/cmake/lint --target c-lint
 
