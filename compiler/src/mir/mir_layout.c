@@ -222,3 +222,8 @@ uint32_t mir_field_offset(MirLayouts *layouts, uint32_t type_id, uint32_t field)
     free(offsets);
     return offset;
 }
+
+/* The size in bytes of one element of list type `list`. */
+uint32_t mir_list_elem_size(MirLayouts *layouts, MirTy list) {
+    return mir_type_mem(layouts, mir_ty_data(layouts->module, list)->elem).size;
+}

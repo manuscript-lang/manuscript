@@ -89,7 +89,27 @@ static void empty_scope(void) {
     mir_module_free(&m);
 }
 
+/* A debugger scope nests under the open one and positions set inside it carry it. */
+static void debugger_scopes(void) {
+    MirModule m;
+    mir_module_init(&m);
+    MirBuilder b;
+    mir_b_init(&b, &m, ms_intern_cstr(&m.names, "h"), NULL, 0, MIR_INT);
+    const uint32_t outer = mir_b_open_scope(&b, ms_intern_cstr(&m.names, "d"), 0, 7);
+    CHECK(outer == 0 && b.loc.scope == 1);
+    const uint32_t inner = mir_b_open_scope(&b, ms_intern_cstr(&m.names, "e"), 0, 8);
+    CHECK(inner == 1 && b.loc.scope == 2 && b.f.scopes[1].parent == 1 && b.f.scopes[1].call_line == 8);
+    mir_b_close_scope(&b, inner);
+    mir_b_close_scope(&b, outer);
+    CHECK(b.loc.scope == 0 && b.f.nscopes == 2);
+    mir_b_ret(&b, mir_b_iconst(&b, 0));
+    uint32_t id;
+    CHECK(mir_b_finish(&b, &id));
+    mir_module_free(&m);
+}
+
 int main(void) {
+    debugger_scopes();
     early_return_and_fall_through();
     empty_scope();
     return failures == 0 ? 0 : 1;
