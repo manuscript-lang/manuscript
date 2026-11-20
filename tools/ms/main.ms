@@ -19,7 +19,7 @@ import (
 	command_help, command_names, overview from "./help.ms",
 	run_init from "./init.ms",
 	run_profile from "./profile.ms",
-	run_test from "./test/run.ms",
+	run_bench, run_test from "./test/run.ms",
 	run_verify from "./verify.ms",
 )
 
@@ -182,7 +182,7 @@ fn is_source_command(command: String) Bool:
 // Whether the Manuscript front runs these tests: one target that is not a workspace
 // root, and no `--watch`. The rest go to the Rust command line.
 fn front_runs_tests(inv: Invocation) Bool:
-	if inv.watch or inv.targets.length() > 1: return false
+	if inv.watch or inv.targets.length() > 1 or inv.arguments.contains("--ops"): return false
 
 	if inv.filename.ends_with("ms.toml"):
 		manifest := read_file(inv.filename).wait()
@@ -214,6 +214,7 @@ fn run_source_command(args: List[String], usage_text: String) Int:
 
 	if inv.command == "profile": return run_profile(inv)
 	if inv.command == "test" and front_runs_tests(inv): return run_test(inv)
+	if inv.command == "bench" and front_runs_tests(inv): return run_bench(inv)
 
 	return delegate(args)
 
