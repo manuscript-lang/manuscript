@@ -3,7 +3,7 @@ name = "ms-std-core"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
-description = "Small native math, random, encoding and checksum operations"
+description = "Small native encoding and unicode operations"
 autotests = false
 
 [lib]
