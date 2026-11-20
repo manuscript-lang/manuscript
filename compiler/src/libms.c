@@ -66,6 +66,7 @@
 #include "opt_simplify_cfg.c"
 #include "opt_inline.c"
 #include "opt_inline_closure.c"
+#include "opt_pipeline.c"
 #include "hints.c"
 #include "constfold.c"
 #include "lower_body.c"
