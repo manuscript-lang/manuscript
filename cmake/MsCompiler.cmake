@@ -20,11 +20,16 @@ if(MS_SANITIZE)
   list(APPEND _clink -fsanitize=address,undefined)
 endif()
 set(_bin "${CMAKE_BINARY_DIR}/compiler")
+# The compiler allocates with mimalloc, as the runtime does: ms_mimalloc.h is force-included into each source, and
+# every executable links the allocator (libmstool.a and libms_tools.a link into programs that already carry the
+# runtime's).
+list(APPEND _cflags -include "${_c}/include/ms_mimalloc.h")
+set(_mimalloc_include "${MS_MIMALLOC_DIR}/include")
 
 # libms: compiler/src/libms.c includes every other source, so it is one object (static helpers must not share
 # names). Tests and tools link that object.
 add_library(ms_libms OBJECT "${_c}/src/libms.c")
-target_include_directories(ms_libms PUBLIC "${_c}/include" "${_c}/src" "${CMAKE_SOURCE_DIR}/runtime/include" ${MS_LIB_crypto_INCLUDES})
+target_include_directories(ms_libms PUBLIC "${_c}/include" "${_c}/src" "${CMAKE_SOURCE_DIR}/runtime/include" "${_mimalloc_include}" ${MS_LIB_crypto_INCLUDES})
 target_compile_options(ms_libms PRIVATE ${_cflags})
 set_target_properties(ms_libms PROPERTIES C_EXTENSIONS OFF)
 
@@ -37,15 +42,16 @@ function(ms_compiler_exe name)
     list(APPEND _sources $<TARGET_OBJECTS:ms_libms> "${CMAKE_SOURCE_DIR}/runtime/sys/posix/fs.c" "${CMAKE_SOURCE_DIR}/runtime/sys/posix/clock.c")
   endif()
   add_executable(${name} ${_sources})
-  target_include_directories(${name} PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include" ${E_INCLUDES})
+  target_include_directories(${name} PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include" "${_mimalloc_include}"
+                             ${E_INCLUDES})
   if(NOT E_PLAIN)
     target_compile_options(${name} PRIVATE ${_cflags})
     target_link_options(${name} PRIVATE ${_clink})
   else()
-    target_compile_options(${name} PRIVATE -std=c11 -O1 -Wall -Wextra -Werror)
+    target_compile_options(${name} PRIVATE -std=c11 -O1 -Wall -Wextra -Werror -include "${_c}/include/ms_mimalloc.h")
   endif()
   # libms hashes packages with libcrypto (project/packages.c).
-  target_link_libraries(${name} PRIVATE m ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
+  target_link_libraries(${name} PRIVATE m ms_mimalloc ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
   set_target_properties(${name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${_bin}")
   if(E_TEST)
     add_test(NAME ${name} COMMAND ${name} WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
@@ -89,16 +95,18 @@ ms_compiler_exe(effect_graph_gen "${_c}/tests/effect_graph_gen.c" PLAIN)
 # with `--link`. No sanitizers: it links into programs built by `ms`.
 add_library(ms_tool STATIC "${_c}/src/libms.c" "${_c}/src/tool.c")
 target_include_directories(ms_tool PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include"
-                           "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include" ${MS_LIB_crypto_INCLUDES})
-target_compile_options(ms_tool PRIVATE -O1 -g -Wall -Wextra -Werror -Wno-format-truncation)
-set_target_properties(ms_tool PROPERTIES OUTPUT_NAME mstool ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
+                           "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include" "${_mimalloc_include}" ${MS_LIB_crypto_INCLUDES})
+target_compile_options(ms_tool PRIVATE -O1 -g -Wall -Wextra -Werror -Wno-format-truncation
+                       -include "${_c}/include/ms_mimalloc.h")
+set_target_properties(ms_tool PROPERTIES POSITION_INDEPENDENT_CODE ON OUTPUT_NAME mstool ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
 
 # libms_tools.a: libms plus the shim Manuscript `extern fn` declarations call (compiler/tools/tool_shim.c, which
 # includes only ms_abi.h because its names collide with libms's). `make libms-tools` copies it to target/.
 add_library(ms_tools_shim STATIC "${_c}/src/libms.c" "${_c}/tools/tool_shim.c")
 set_source_files_properties("${_c}/src/libms.c" PROPERTIES INCLUDE_DIRECTORIES
-                            "${_c}/include;${_c}/src;${CMAKE_SOURCE_DIR}/runtime/include;${MS_LIB_crypto_INCLUDES}")
+                            "${_c}/include;${_c}/src;${CMAKE_SOURCE_DIR}/runtime/include;${_mimalloc_include};${MS_LIB_crypto_INCLUDES}"
+                            COMPILE_OPTIONS "-include;${_c}/include/ms_mimalloc.h")
 set_source_files_properties("${_c}/tools/tool_shim.c" PROPERTIES INCLUDE_DIRECTORIES
                             "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include")
 target_compile_options(ms_tools_shim PRIVATE -O2)
-set_target_properties(ms_tools_shim PROPERTIES OUTPUT_NAME ms_tools ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
+set_target_properties(ms_tools_shim PROPERTIES POSITION_INDEPENDENT_CODE ON OUTPUT_NAME ms_tools ARCHIVE_OUTPUT_DIRECTORY "${_bin}")

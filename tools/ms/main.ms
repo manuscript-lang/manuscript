@@ -19,7 +19,8 @@ import (
 	rust_cli from "./bridge.ms",
 	spec, takes_value from "./cli.ms",
 	run_explain from "./explain.ms",
-	run_fmt from "./fmt.ms",
+	Printed, run_fmt from "./fmt.ms",
+	run_add, run_install, run_remove from "./install.ms",
 	run_init from "./init.ms",
 	run_profile from "./profile.ms",
 	run_members from "./test/members.ms",
@@ -286,9 +287,24 @@ fn dispatch(args: List[String], matches: Matches) Int:
 
 		return delegate(args)
 
+	if command == "install" or command == "add" or command == "remove":
+		if done := run_manifest_command(args):
+			out(done.stdout)
+			err(done.stderr)
+			return done.status
+
+		return delegate(args)
+
 	if is_source_command(command): return run_source_command(args, matches)
 
 	return delegate(args)
+
+fn run_manifest_command(args: List[String]) Printed?:
+	rest := args.drop(1)
+	if args[0] == "install": return run_install(rest)
+	if args[0] == "add": return run_add(rest)
+
+	return run_remove(rest)
 
 fn main() Int:
 	return run(arguments())

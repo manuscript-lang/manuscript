@@ -80,3 +80,12 @@ fmt --check --json tools/ms/explain.ms tools/ms/main.ms
 fmt --check --json tools/ms/cases.txt
 fmt --check tools/ms
 fmt --check --drop-labels tools/ms/explain.ms
+install --bogus
+install --update
+add
+add https://h/x.git
+add https://h/x.git --tag
+add https://h/x.git --tag a --sha b
+add https://h/x.git --bogus
+remove
+remove @a @b

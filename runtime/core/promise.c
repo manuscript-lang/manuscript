@@ -250,6 +250,9 @@ static void wake(size_t row) {
 /* ---- completion ---- */
 
 static void drop_block(void *block, const MsTypeDesc *desc, int64_t pipe) {
+    if (block == NULL) {
+        return; /* a completion without a value */
+    }
     if (pipe != 0 && unread_hook != NULL) {
         unread_hook(pipe, block, desc);
         return;
@@ -325,6 +328,8 @@ void ms_promise_io_done(MsPromise id) {
     const ptrdiff_t row = row_of(id);
     if (row >= 0) {
         complete((size_t)row, NULL, NULL, false, 0);
+    } else if (is_foreign(id)) {
+        send_done(id, NULL, NULL, false, 0); /* a pipe's last writer closing on another isolate ends a parked reader */
     }
 }
 
@@ -498,7 +503,7 @@ static void start_task(MsPromise id, MsObj *closure) {
 /* Puts the work in this isolate's queue, where its waiter runs it inline or another isolate takes it once it is
  * `age_ns` old. False when workers are off or the queue has no room: the caller starts a task instead. */
 static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns) {
-    if (ms_workers_limit() <= 1) {
+    if (ms_workers_limit() <= 1 || ms_sched_pinned_here()) {
         return false;
     }
     const size_t row = row_or_fault(id);
@@ -525,6 +530,8 @@ void ms_promise_start(MsPromise id, MsObj *closure) {
         start_task(id, closure);
     }
 }
+
+void ms_promise_start_here(MsPromise id, MsObj *closure) { start_task(id, closure); }
 
 void ms_promise_start_spread(MsPromise id, MsObj *closure) {
     if (!queue_work(id, closure, MS_WORKER_BEAT_NS)) {
@@ -591,9 +598,17 @@ static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
         return false;
     }
     const size_t row = (size_t)found;
-    if ((table.hot[row].flags & FLAG_QUEUED) != 0 && !claim_queued(row)) {
+    /* Work taken back from the queue ends only its own promise when it faults, as it would on another isolate. */
+    const bool was_queued = (table.hot[row].flags & FLAG_QUEUED) != 0;
+    if (was_queued && deadline != NO_TIME) {
+        /* Work on this stack notices a limit only at its own waits, so a bounded wait leaves queued work to run as a
+         * task of its own, which a limit can cancel (a consumer that never waits would otherwise outlive it). */
         return false;
     }
+    if (was_queued && !claim_queued(row)) {
+        return false;
+    }
+    guarded = guarded || was_queued;
     table.hot[row].flags &= (uint16_t)~FLAG_DEFERRED;
     MsObj *const closure = table.cold[row].closure;
     table.cold[row].closure = NULL;
@@ -755,6 +770,15 @@ static void promise_mail(MsMail *mail) {
     }
     if (op == MS_MAIL_WATCH) {
         ms_remote_watch(mail);
+        return;
+    }
+    if (op == MS_MAIL_SWITCH) {
+        ms_cancel_serve(mail);
+        return;
+    }
+    if (op == MS_MAIL_CANCEL_ID) {
+        ms_promise_cancel(id);
+        msrt_free(mail);
         return;
     }
     if (op != MAIL_CANCEL) {
@@ -1152,8 +1176,10 @@ bool ms_promise_done(MsPromise id) {
     if (row < 0) {
         return true;
     }
-    if (table.hot[row].state == STATE_PENDING && table.cold[row].closure != NULL) {
-        /* A task that has not run yet gets its turn, so polling done makes progress. */
+    const bool elsewhere = (table.hot[row].flags & (FLAG_QUEUED | FLAG_REMOTE)) != 0;
+    if (table.hot[row].state == STATE_PENDING && (table.cold[row].closure != NULL || elsewhere)) {
+        /* A task that has not run yet gets its turn, and mail from the isolate that took the work is read, so
+         * polling done makes progress. */
         ms_task_yield();
     }
     const ptrdiff_t after = row_of(id);
@@ -1173,6 +1199,14 @@ MsPromiseProbe ms_promise_probe(MsPromise id) {
         return MS_PROMISE_PENDING;
     }
     return ended_without_value(state) ? MS_PROMISE_FAILED_PROBE : MS_PROMISE_DONE_PROBE;
+}
+
+bool ms_promise_completes_elsewhere(MsPromise id) {
+    if (is_foreign(id)) {
+        return true;
+    }
+    const ptrdiff_t row = row_of(id);
+    return row >= 0 && table.hot[row].state == STATE_PENDING && (table.hot[row].flags & FLAG_REMOTE_WAKE) != 0;
 }
 
 void ms_promise_set_grouped(MsPromise id, bool grouped) {
@@ -1199,14 +1233,20 @@ bool ms_promise_run_inline(MsPromise id) {
     if (row < 0 || table.hot[row].state != STATE_PENDING || (table.hot[row].flags & FLAG_DEFERRED) == 0) {
         return false;
     }
-    (void)run_deferred(id, NO_TIME, true);
-    return true;
+    /* False when another isolate took the work from the queue first: the caller must not read that as a run. */
+    return run_deferred(id, NO_TIME, true);
 }
 
 /* ---- waiting for any ---- */
 
 static ptrdiff_t first_done(const MsPromise *ids, size_t count) {
     for (size_t at = 0; at < count; at++) {
+        if (is_foreign(ids[at])) {
+            if (ms_remote_probe(ids[at]) != MS_PROMISE_PENDING) {
+                return (ptrdiff_t)at;
+            }
+            continue;
+        }
         const ptrdiff_t row = row_of(ids[at]);
         if (row < 0 || table.hot[row].state != STATE_PENDING) {
             return (ptrdiff_t)at;
@@ -1217,6 +1257,9 @@ static ptrdiff_t first_done(const MsPromise *ids, size_t count) {
 
 static void set_tokens(const MsPromise *ids, size_t count, uint64_t from, uint64_t to) {
     for (size_t at = 0; at < count; at++) {
+        if (is_foreign(ids[at])) {
+            continue;
+        }
         const ptrdiff_t row = row_of(ids[at]);
         if (row < 0) {
             continue;
@@ -1228,6 +1271,11 @@ static void set_tokens(const MsPromise *ids, size_t count, uint64_t from, uint64
             table.hot[row].token = to;
         }
     }
+}
+
+static bool is_queued(MsPromise id) {
+    const ptrdiff_t row = row_of(id);
+    return row >= 0 && (table.hot[row].flags & FLAG_QUEUED) != 0;
 }
 
 /* Whether any id is another isolate's. */
@@ -1304,7 +1352,11 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
     int64_t deadline = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
     deadline = earliest(deadline, ms_task_defer_deadline());
     if (first_done(ids, count) < 0) {
-        for (size_t at = 0; at < count && run_deferred(ids[at], deadline, false) && first_done(ids, count) < 0; at++) {
+        /* Only work deferred to its waiter runs here; queued work stays for the isolate's idle turn or another's. */
+        for (size_t at = 0; at < count && first_done(ids, count) < 0; at++) {
+            if (!is_queued(ids[at])) {
+                (void)run_deferred(ids[at], deadline, false);
+            }
         }
     }
     for (;;) {
@@ -1312,11 +1364,20 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
         if (done >= 0) {
             return done;
         }
-        const uint64_t token = ms_token_new(0);
+        bool elsewhere = false;
+        for (size_t at = 0; at < count; at++) {
+            elsewhere = elsewhere || ms_promise_completes_elsewhere(ids[at]);
+        }
+        const uint64_t token = ms_token_new(elsewhere ? MS_TOKEN_REMOTE : 0);
         if (token == 0) {
             fail("promise: out of wait tokens");
         }
         set_tokens(ids, count, 0, token);
+        for (size_t at = 0; at < count; at++) {
+            if (is_foreign(ids[at])) {
+                (void)ms_remote_watch_post(ids[at], token); /* an owner that is gone reads as done below */
+            }
+        }
         uint64_t value = 0;
         uint32_t result = 0;
         (void)ms_token_park_at(token, deadline == NO_TIME ? -1 : deadline, &value, &result);
