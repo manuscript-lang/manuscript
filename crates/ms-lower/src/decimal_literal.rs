@@ -31,7 +31,11 @@ pub(crate) fn parse(text: &str, negate: bool) -> Option<DecimalParts> {
     }
     let significant = digits.trim_start_matches('0');
     if significant.is_empty() {
-        return Some(DecimalParts { lo: 0, hi: 0, exp: 0 });
+        return Some(DecimalParts {
+            lo: 0,
+            hi: 0,
+            exp: 0,
+        });
     }
     let trimmed = significant.trim_end_matches('0');
     let quantum = exponent - fraction.len() as i64 + (significant.len() - trimmed.len()) as i64;

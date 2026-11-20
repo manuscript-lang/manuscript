@@ -20,6 +20,7 @@ typedef enum AskOp {
     ASK_ON_CANCEL,
     ASK_GROUPED,
     ASK_RUN,
+    ASK_DRAIN,
 } AskOp;
 
 /* One question. The asker owns it and keeps it alive until the reply token is posted. */
@@ -27,6 +28,7 @@ typedef struct Ask {
     MsPromise id;
     AskOp op;
     int64_t argument;
+    int64_t extra; /* a second argument: the grace of ASK_DRAIN */
     const MsTypeDesc *desc;
     uint8_t *out;
     int64_t answer;
@@ -87,6 +89,11 @@ void ms_remote_on_cancel(MsPromise id, int64_t cancel) { (void)simple(id, ASK_ON
 void ms_remote_set_grouped(MsPromise id, bool grouped) { (void)simple(id, ASK_GROUPED, grouped ? 1 : 0, 0); }
 
 bool ms_remote_run_inline(MsPromise id) { return simple(id, ASK_RUN, 0, 0) != 0; }
+
+void ms_remote_drain(MsPromise id, int64_t drain, int64_t grace_ns) {
+    Ask ask = {.id = id, .op = ASK_DRAIN, .argument = drain, .extra = grace_ns};
+    (void)ask_owner(&ask);
+}
 
 bool ms_remote_watch_post(MsPromise id, uint64_t token) {
     MsMail *const mail = msrt_alloc(sizeof *mail);
@@ -183,6 +190,9 @@ static void answer(Ask *ask) {
         break;
     case ASK_RUN:
         ask->answer = ms_promise_run_inline(ask->id) ? 1 : 0;
+        break;
+    case ASK_DRAIN:
+        ms_promise_drain(ask->id, ask->argument, ask->extra);
         break;
     }
 }
