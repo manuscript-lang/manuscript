@@ -13,7 +13,6 @@ pub mod dn;
 pub mod dns;
 pub mod error;
 pub mod ffi;
-pub mod h2;
 pub mod http;
 mod idmap;
 pub mod ip;

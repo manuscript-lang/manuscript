@@ -81,17 +81,6 @@ thread_local! {
     static TASKS: Cell<bool> = const { Cell::new(false) };
 }
 
-/// Tests: makes this thread's waits park the running `ms-rt` task. Done by the first server
-/// of a test thread, which then holds the scheduler for the rest of the test.
-pub fn use_tasks() {
-    #[cfg(test)]
-    {
-        crate::http::server::serialize_tests();
-        ms_rt::start::attach_test_thread();
-        TASKS.with(|t| t.set(true));
-    }
-}
-
 /// Whether waits park the task: always, except on a test thread without a server.
 pub(crate) fn parks() -> bool {
     #[cfg(test)]

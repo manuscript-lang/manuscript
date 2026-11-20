@@ -49,11 +49,8 @@ native! {
         Object(NetH(root()))
     }
 
-    /// `Network.close()`; closing from a handler of a server this network owns faults.
+    /// `Network.close()`.
     fn msstd_net_network_close(net: ObjRef<NetH>) -> () {
-        if crate::http::server::Reactor::get().in_handler_of_network(&net) {
-            ms_rt::ffi::fault("network cannot close from its own request");
-        }
         net.close();
     }
 
