@@ -1,0 +1,6 @@
+module "t"
+entry @main
+fn @main(%x: int) -> int {
+b0:
+  ret %x
+}

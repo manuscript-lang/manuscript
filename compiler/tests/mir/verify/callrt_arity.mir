@@ -1,0 +1,8 @@
+module "t"
+extern @msrt_print_int(int)
+fn @f() -> int {
+b0:
+  %p: void = call.rt @msrt_print_int ()
+  %z: int = iconst 0
+  ret %z
+}

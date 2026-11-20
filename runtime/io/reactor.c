@@ -1,13 +1,17 @@
 /* reactor.c: the scheduler's descriptor poller on libuv (see reactor.h).
  *
  * Owns one loop per scheduler thread. Each watched descriptor has a row: a uv_poll_t that exists only while the
- * descriptor is watched, or until ms_io_forget when it was watched with MS_IO_KEEP. A watch is one-shot and
+ * descriptor is watched, or until ms_io_forget when it was watched with MS_IO_BIT_KEEP. A watch is one-shot and
  * level-like: libuv reports readiness at the next pass, and the row stops itself once it has reported.
- * Callbacks only fill the ready ring; ms_io_wait hands the ring to the scheduler after the pass.
+ * Callbacks only push completion events (ring.h) naming the descriptor; ms_io_wait pops them after the pass and
+ * folds the events of one descriptor into the (descriptor, bits) the scheduler waits on. A readable row is a
+ * MS_IO_READ event, a writable one MS_IO_WRITE (result 0), and an error or hang-up a MS_IO_READ event whose
+ * result is the negative libuv status.
  */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c11 */
 
 #include "reactor.h"
+#include "ring.h"
 
 #include <stdatomic.h>
 #include <uv.h>
@@ -15,7 +19,8 @@
 #include "ms_rt/sys.h"
 
 enum {
-    READY_RING_CAPACITY = 64,
+    EVENT_CAPACITY = 128, /* two events per ready descriptor; a callback needs room for both */
+    EVENTS_PER_CALLBACK = 2,
     FIRST_TABLE_LENGTH = 64,
     NANOSECONDS_PER_MILLISECOND = 1000000,
 };
@@ -39,8 +44,7 @@ struct MsIoReactor {
     MsIoRow **rows; /* owned; by descriptor, null where none */
     size_t rows_length;
     MsIoRow *free_rows; /* owned; closed rows ready for reuse */
-    MsIoReady ring[READY_RING_CAPACITY];
-    size_t ring_length;
+    MsIoRing *ring; /* owned */
     bool woken; /* a wake-up was consumed since the wait began */
 };
 
@@ -88,30 +92,42 @@ static void row_discard(MsIoReactor *reactor, MsIoRow *row) {
 /* The MS_IO_* bits of what libuv reported. An error counts as everything, hang-up included. */
 static uint32_t readiness_bits(int status, int events) {
     if (status < 0) {
-        return MS_IO_READ | MS_IO_WRITE | MS_IO_HUP;
+        return MS_IO_BIT_READ | MS_IO_BIT_WRITE | MS_IO_BIT_HUP;
     }
     uint32_t bits = 0;
     if ((events & (UV_READABLE | UV_DISCONNECT)) != 0) {
-        bits |= MS_IO_READ;
+        bits |= MS_IO_BIT_READ;
     }
     if ((events & UV_WRITABLE) != 0) {
-        bits |= MS_IO_WRITE;
+        bits |= MS_IO_BIT_WRITE;
     }
     return bits;
+}
+
+/* Pushes the events for one report. Room for all of them was checked by the caller. */
+static void push_report(MsIoReactor *reactor, const MsIoRow *row, int status, uint32_t bits) {
+    const uint64_t id = (uint64_t)row->fd;
+    if (status < 0) {
+        (void)ms_io_ring_push(reactor->ring, (MsIoEvent){.id = id, .result = status, .kind = MS_IO_READ});
+        return;
+    }
+    if ((bits & MS_IO_BIT_READ) != 0) {
+        (void)ms_io_ring_push(reactor->ring, (MsIoEvent){.id = id, .result = 0, .kind = MS_IO_READ});
+    }
+    if ((bits & MS_IO_BIT_WRITE) != 0) {
+        (void)ms_io_ring_push(reactor->ring, (MsIoEvent){.id = id, .result = 0, .kind = MS_IO_WRITE});
+    }
 }
 
 static void on_poll(uv_poll_t *handle, int status, int events) {
     MsIoRow *row = uv_handle_get_data((uv_handle_t *)handle);
     MsIoReactor *reactor = reactor_of((const uv_handle_t *)handle);
-    if (reactor->ring_length == READY_RING_CAPACITY) {
+    if (ms_io_ring_length(reactor->ring) + EVENTS_PER_CALLBACK > EVENT_CAPACITY) {
         return; /* still armed: level-triggered, so the next pass reports it again */
     }
     const uint32_t bits = readiness_bits(status, events);
     row_stop(row);
-    if (bits != 0) {
-        reactor->ring[reactor->ring_length] = (MsIoReady){.fd = (uintptr_t)row->fd, .bits = bits};
-        reactor->ring_length++;
-    }
+    push_report(reactor, row, status, bits);
 }
 
 static void reactor_destroy(MsIoReactor *reactor) {
@@ -135,6 +151,7 @@ static void reactor_destroy(MsIoReactor *reactor) {
         row = next;
     }
     ms_sys_free(reactor->rows);
+    ms_io_ring_free(reactor->ring);
     ms_sys_free(reactor);
 }
 
@@ -144,7 +161,9 @@ bool ms_io_open(bool is_main, MsIoReactor **reactor_out) {
         return false;
     }
     *reactor = (MsIoReactor){0};
-    if (uv_loop_init(&reactor->loop) != 0) {
+    reactor->ring = ms_io_ring_new(EVENT_CAPACITY);
+    if (reactor->ring == NULL || uv_loop_init(&reactor->loop) != 0) {
+        ms_io_ring_free(reactor->ring);
         ms_sys_free(reactor);
         return false;
     }
@@ -246,8 +265,8 @@ static MsIoWatch row_open(MsIoReactor *reactor, int fd, MsIoRow **row_out) {
 
 /* libuv's interest for the bits of `events`; waiting on nothing watches for readability. */
 static int interest_of(uint32_t events) {
-    const bool writes = (events & MS_IO_WRITE) != 0;
-    const bool reads = (events & MS_IO_READ) != 0 || !writes;
+    const bool writes = (events & MS_IO_BIT_WRITE) != 0;
+    const bool reads = (events & MS_IO_BIT_READ) != 0 || !writes;
     return (reads ? UV_READABLE | UV_DISCONNECT : 0) | (writes ? UV_WRITABLE : 0);
 }
 
@@ -264,7 +283,7 @@ MsIoWatch ms_io_watch(int fd, uint32_t events) {
         }
         reactor->rows[fd] = row;
     }
-    row->keep = (events & MS_IO_KEEP) != 0;
+    row->keep = (events & MS_IO_BIT_KEEP) != 0;
     if (uv_poll_start(&row->handle, interest_of(events), on_poll) != 0) {
         row_discard(reactor, row);
         return MS_IO_WATCH_FAILED;
@@ -306,7 +325,7 @@ static void run_bounded(MsIoReactor *reactor, int64_t timeout_ns) {
     /* libuv adds new descriptors to the system poller only inside uv_run, so a pass that does not block comes
      * first: it registers them and collects what is already ready. */
     (void)uv_run(&reactor->loop, UV_RUN_NOWAIT);
-    if (reactor->ring_length > 0 || reactor->woken) {
+    if (ms_io_ring_length(reactor->ring) > 0 || reactor->woken) {
         return;
     }
     if (ms_sys_fd_wait_readable(uv_backend_fd(&reactor->loop), timeout_ns)) {
@@ -319,25 +338,41 @@ static void run_bounded(MsIoReactor *reactor, int64_t timeout_ns) {
     (void)uv_timer_stop(&reactor->timer);
 }
 
+/* Moves queued events into `out`, one entry per descriptor: the events a callback pushes for one descriptor are
+ * adjacent, so each is folded into the previous entry when it names the same descriptor. */
+static size_t drain_events(MsIoReactor *reactor, MsIoReady *out, size_t capacity) {
+    size_t count = 0;
+    MsIoEvent event;
+    while (count < capacity && ms_io_ring_pop(reactor->ring, &event)) {
+        uint32_t bits = MS_IO_BIT_READ;
+        if (event.result < 0) {
+            bits = MS_IO_BIT_READ | MS_IO_BIT_WRITE | MS_IO_BIT_HUP;
+        } else if (event.kind == MS_IO_WRITE) {
+            bits = MS_IO_BIT_WRITE;
+        }
+        if (count > 0 && out[count - 1].fd == (uintptr_t)event.id) {
+            out[count - 1].bits |= bits;
+            continue;
+        }
+        out[count] = (MsIoReady){.fd = (uintptr_t)event.id, .bits = bits};
+        count++;
+    }
+    return count;
+}
+
 bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *count) {
     MsIoReactor *reactor = thread_reactor;
     if (reactor == NULL) {
         return false;
     }
-    reactor->ring_length = 0;
     reactor->woken = false;
-    if (timeout_ns == 0) {
-        (void)uv_run(&reactor->loop, UV_RUN_NOWAIT);
+    if (timeout_ns == 0 || ms_io_ring_length(reactor->ring) > 0) {
+        (void)uv_run(&reactor->loop, UV_RUN_NOWAIT); /* events left from an earlier wait are ready now */
     } else if (timeout_ns > 0) {
         run_bounded(reactor, timeout_ns);
     } else {
         (void)uv_run(&reactor->loop, UV_RUN_ONCE);
     }
-    const size_t ready = reactor->ring_length < capacity ? reactor->ring_length : capacity;
-    for (size_t index = 0; index < ready; index++) {
-        out[index] = reactor->ring[index];
-    }
-    reactor->ring_length = 0;
-    *count = ready;
+    *count = drain_events(reactor, out, capacity);
     return true;
 }
