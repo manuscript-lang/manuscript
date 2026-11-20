@@ -444,6 +444,33 @@ static bool same_target_host(MsBytes a, MsBytes b) {
 
 static bool is_redirect(int status) { return status == 301 || status == 302 || status == 303 || status == 307 || status == 308; }
 
+/* Takes one redirect: closes `transfer`, then replaces `*current` with `location` resolved against it and applies the
+ * method rewrite (301 and 302 turn a POST into a GET, 303 any method but HEAD) and the credential rule for the next
+ * request. On a failure `*current` is unchanged. */
+static uint8_t redirect_step(MsCurlClient *engine, MsCurlTransfer *transfer, int status, long hops, MsBytes location, char **current,
+                             MsBytes *verb, MsBytes *payload, bool *strip, MsStr *err) {
+    char *next = NULL;
+    const bool exhausted = hops >= ms_curl_client_max_redirects(engine);
+    const MsBytes from = ms_bytes_of((const uint8_t *)*current, strlen(*current));
+    const bool resolved = !exhausted && ms_curl_url_resolve(from, location, &next);
+    ms_curl_close(transfer);
+    if (!resolved) {
+        ms_net_write_text(err, exhausted ? "too many redirects" : "invalid redirect location");
+        return STATUS_FAILED;
+    }
+    const bool post = verb->len == 4 && memcmp(verb->ptr, "POST", 4) == 0;
+    if (status == 303 || ((status == 301 || status == 302) && post)) {
+        if (!(verb->len == 4 && memcmp(verb->ptr, "HEAD", 4) == 0)) {
+            *verb = ms_bytes_of((const uint8_t *)"GET", 3);
+        }
+        *payload = ms_bytes_of(NULL, 0);
+    }
+    *strip = *strip || !same_target_host(from, ms_bytes_of((const uint8_t *)next, strlen(next)));
+    free(*current);
+    *current = next;
+    return STATUS_OK;
+}
+
 uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr *url, const void *headers, const MsVec *body,
                            uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
     ms_net_clear_text(err);
@@ -489,23 +516,11 @@ uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr 
         const MsCurlHead head = ms_curl_head(transfer);
         const MsBytes location = follow && is_redirect(head.status) ? location_of(head.lines) : ms_bytes_of(NULL, 0);
         if (location.len > 0) {
-            char *next = NULL;
-            if (hops >= ms_curl_client_max_redirects(engine) || !ms_curl_url_resolve(target, location, &next)) {
-                ms_curl_close(transfer);
+            const uint8_t failed = redirect_step(engine, transfer, head.status, hops, location, &current, &verb, &payload, &strip, err);
+            if (failed != STATUS_OK) {
                 free(current);
-                ms_net_write_text(err, hops >= ms_curl_client_max_redirects(engine) ? "too many redirects" : "invalid redirect location");
-                return STATUS_FAILED;
+                return failed;
             }
-            if (head.status == 303 || ((head.status == 301 || head.status == 302) && verb.len == 4 && memcmp(verb.ptr, "POST", 4) == 0)) {
-                if (!(verb.len == 4 && memcmp(verb.ptr, "HEAD", 4) == 0)) {
-                    verb = ms_bytes_of((const uint8_t *)"GET", 3);
-                }
-                payload = ms_bytes_of(NULL, 0);
-            }
-            strip = strip || !same_target_host(ms_bytes_of((const uint8_t *)current, strlen(current)), ms_bytes_of((const uint8_t *)next, strlen(next)));
-            ms_curl_close(transfer);
-            free(current);
-            current = next;
             hops++;
             continue;
         }
