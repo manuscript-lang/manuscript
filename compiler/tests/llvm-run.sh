@@ -18,4 +18,6 @@ for mir in compiler/tests/run/*.mir compiler/tests/llvm/*.mir compiler/tests/llv
     want=$(cat "$name.exit")
     if [ "$got" = "$want" ]; then echo "ok   llvm $base"; else echo "FAIL llvm $base: exit $got, want $want"; status=1; fi
 done
+# Pointers are `ptr` at a runtime call, so LLVM knows the block `free` takes is a pointer.
+if grep -l 'msrt_free"(i64' "$out"/*.ll; then echo "FAIL llvm: msrt_free takes i64"; status=1; fi
 exit $status
