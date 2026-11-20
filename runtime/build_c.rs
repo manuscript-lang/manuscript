@@ -29,9 +29,7 @@ pub fn musl_compiler() -> PathBuf {
 /// The C compiler for `triple`: llvm-mingw's clang (`MS_MINGW`, else the tree `toolchain/fetch-mingw.sh` leaves
 /// in `target/llvm-bundle/mingw`) for Windows, `musl-gcc` for musl, else `clang`.
 pub fn c_compiler(root: &Path, triple: &str, arch: &str) -> PathBuf {
-    if triple.ends_with("windows-msvc") {
-        PathBuf::from("clang")
-    } else if triple.contains("windows") {
+    if triple.contains("windows") {
         let mingw = std::env::var_os("MS_MINGW")
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("target/llvm-bundle/mingw"));
@@ -79,22 +77,7 @@ fn host_triple() -> Option<String> {
     match std::env::consts::OS {
         "linux" => Some(format!("{arch}-unknown-linux-gnu")),
         "macos" => Some(format!("{arch}-apple-darwin")),
-        // A Windows host builds its unit tests for MSVC, and only the libraries `MSVC_HOST_LIBS` names.
-        "windows" => Some(format!("{arch}-pc-windows-msvc")),
         _ => None,
-    }
-}
-
-/// The libraries built for a Windows MSVC host (`build.sh` `MS_LIBS_ONLY`, CMake `MS_LIBS_ONLY`): the C that the
-/// Rust unit tests call and nothing else, until the other libraries have MSVC builds.
-const MSVC_HOST_LIBS: &str = "z";
-
-/// What `MS_LIBS_ONLY` holds for `triple`: the MSVC host's subset, else empty (every library).
-fn only_libs(triple: &str) -> &'static str {
-    if triple.ends_with("windows-msvc") {
-        MSVC_HOST_LIBS
-    } else {
-        ""
     }
 }
 
@@ -111,7 +94,6 @@ fn libs_prefix(root: &Path, triple: Option<&str>) -> Result<Option<PathBuf>, Str
             .arg(root.join("runtime/third_party/build.sh"))
             .arg(&triple)
             .env("MS_C_LIBS", "pinned")
-            .env("MS_LIBS_ONLY", only_libs(&triple))
             .env("CC", compiler),
         "build.sh",
     )?;
@@ -190,12 +172,13 @@ fn configure_c(
             configure.arg(format!("-DCMAKE_C_COMPILER_TARGET={arch}-pc-windows-msvc"));
         }
     }
+    if triple.is_none() && cfg!(windows) {
+        // A Windows host's unit-test build has no pinned libraries yet; zlib is compiled from the vendored sources.
+        configure.arg("-DMS_LIBS_ONLY=z");
+    }
     if let Some(prefix) = libs_prefix(root, triple)? {
         configure.arg("-DMS_C_LIBS=prefix");
         configure.arg(format!("-DMS_LIBS_PREFIX={}", prefix.display()));
-        if triple.is_none() && cfg!(windows) {
-            configure.arg(format!("-DMS_LIBS_ONLY={MSVC_HOST_LIBS}"));
-        }
         if triple.is_some_and(|t| t.contains("windows")) {
             // The libraries are static archives; their headers say so only when told.
             configure.arg("-DMS_LIBS_DEFINES=NGHTTP2_STATICLIB;PCRE2_STATIC;CURL_STATICLIB");
