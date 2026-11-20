@@ -53,7 +53,12 @@ fn run(command: &mut Command, what: &str) -> Result<Vec<u8>, String> {
 
 /// Compiles `module` to an object file with the C pipeline.
 pub fn compile(module: &Module, speed: bool, checks: bool) -> Result<Vec<u8>, String> {
-    let dir = std::env::temp_dir().join(format!("ms-cbackend-{}", std::process::id()));
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let dir = std::env::temp_dir().join(format!(
+        "ms-cbackend-{}-{}",
+        std::process::id(),
+        NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    ));
     std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
     let result = compile_in(&dir, module, speed, checks);
     let _ = std::fs::remove_dir_all(&dir);
