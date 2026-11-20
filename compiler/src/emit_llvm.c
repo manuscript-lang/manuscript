@@ -773,6 +773,29 @@ static bool ll_return(LCx *c, MirValue value) {
     return true;
 }
 
+/* The runtime function a `fault` terminator calls, and how many zero words it takes. */
+typedef struct LlFault {
+    const char *name;
+    uint32_t words;
+    MirFault kind;
+} LlFault;
+
+static const LlFault ll_faults[] = {
+    {"msrt_fault_int_overflow", 0, MF_INT_OVERFLOW}, {"msrt_fault_div_zero", 0, MF_DIV_BY_ZERO},
+    {"msrt_index_fault", 2, MF_INDEX_OUT_OF_RANGE},  {"msrt_fault_unwrap_none", 0, MF_NONE_UNWRAP},
+    {"msrt_cancelled", 0, MF_CANCELLED},             {"msrt_fault_depth", 0, MF_CALL_DEPTH},
+};
+
+/* A `switch`: the cases by value, the default last. Several cases may share a target. */
+static void ll_switch(LCx *c, const MirTerm *t) {
+    MsBuf *o = c->out;
+    ms_buf_printf(o, "  switch i64 %%v%u, label %%b%u [", t->value, t->b.block);
+    for (uint32_t k = 0; k < t->ncases; k++) {
+        ms_buf_printf(o, "\n    i64 %lld, label %%b%u", (long long)t->cases[k].value, t->cases[k].target.block);
+    }
+    ms_buf_puts(o, "\n  ]\n");
+}
+
 static bool ll_term(LCx *c, const MirTerm *t) {
     MsBuf *o = c->out;
     switch ((MirTermKind)t->kind) {
@@ -782,20 +805,34 @@ static bool ll_term(LCx *c, const MirTerm *t) {
     case MT_CONDBR:
         ms_buf_printf(o, "  br i1 %%v%u, label %%b%u, label %%b%u\n", t->value, t->a.block, t->b.block);
         return true;
+    case MT_SWITCH:
+        ll_switch(c, t);
+        return true;
     case MT_RET:
         return ll_return(c, t->value);
     case MT_UNREACHABLE:
         ms_buf_puts(o, "  unreachable\n");
         return true;
     case MT_FAULT:
-        if (t->fault == MF_INT_OVERFLOW) {
-            ms_buf_puts(o, "  call void @msrt_fault_int_overflow()\n  unreachable\n");
+        if (t->fault == MF_UNREACHABLE) {
+            ms_buf_puts(o, "  unreachable\n");
             return true;
         }
-        c->why = "fault kind";
+        for (size_t k = 0; k < sizeof ll_faults / sizeof ll_faults[0]; k++) {
+            if (ll_faults[k].kind != t->fault) {
+                continue;
+            }
+            ms_buf_printf(o, "  call void @%s(", ll_faults[k].name);
+            for (uint32_t w = 0; w < ll_faults[k].words; w++) {
+                ms_buf_printf(o, "%si64 0", w == 0 ? "" : ", ");
+            }
+            ms_buf_puts(o, ")\n  unreachable\n");
+            return true;
+        }
+        c->why = "fault with a message";
         return false;
     default:
-        c->why = "switch";
+        c->why = "terminator";
         return false;
     }
 }
@@ -828,6 +865,24 @@ static bool ll_types_ok(LCx *c) {
     return true;
 }
 
+/* The edges leaving a block, in a fixed order: a branch has one, a conditional two, a switch its
+ * cases and then its default. */
+static uint32_t ll_edge_count(const MirTerm *t) {
+    switch ((MirTermKind)t->kind) {
+    case MT_BR: return 1;
+    case MT_CONDBR: return 2;
+    case MT_SWITCH: return t->ncases + 1;
+    default: return 0;
+    }
+}
+
+static const MirTarget *ll_edge(const MirTerm *t, uint32_t k) {
+    if (t->kind == MT_SWITCH && k < t->ncases) {
+        return &t->cases[k].target;
+    }
+    return k == 0 && t->kind != MT_SWITCH ? &t->a : &t->b;
+}
+
 /* One phi per leaf of block parameter `index` of block `b`, naming the last piece of each
  * predecessor. */
 static bool ll_phi_leaf(LCx *c, uint32_t b, uint32_t index, uint32_t leaf, const uint32_t *last) {
@@ -840,28 +895,28 @@ static bool ll_phi_leaf(LCx *c, uint32_t b, uint32_t index, uint32_t leaf, const
     bool first = true;
     for (uint32_t s = 0; s < f->nblocks; s++) {
         const MirTerm *t = &f->blocks[s].term;
-        const MirTarget *edges[2] = {NULL, NULL};
-        if (t->kind == MT_BR) {
-            edges[0] = &t->a;
-        } else if (t->kind == MT_CONDBR) {
-            edges[0] = &t->a;
-            edges[1] = &t->b;
+        uint32_t reached = 0;
+        const MirTarget *edge = NULL;
+        for (uint32_t k = 0; k < ll_edge_count(t); k++) {
+            const MirTarget *e = ll_edge(t, k);
+            if (e->block == b) {
+                reached++;
+                edge = e;
+            }
         }
-        if (edges[1] != NULL && edges[0]->block == b && edges[1]->block == b && edges[0]->nargs > 0) {
+        if (reached > 1 && edge->nargs > 0) {
             c->why = "one block reaches a target twice with arguments";
             return false;
         }
-        for (size_t k = 0; k < 2; k++) {
-            if (edges[k] == NULL || edges[k]->block != b) {
-                continue;
-            }
-            ms_buf_printf(c->out, "%s[ ", first ? "" : ", ");
-            ll_name(c->out, edges[k]->args[index], leaf);
-            ms_buf_puts(c->out, ", %");
-            ll_label(c, s, last[s]);
-            ms_buf_puts(c->out, " ]");
-            first = false;
+        if (edge == NULL) {
+            continue;
         }
+        ms_buf_printf(c->out, "%s[ ", first ? "" : ", ");
+        ll_name(c->out, edge->args[index], leaf);
+        ms_buf_puts(c->out, ", %");
+        ll_label(c, s, last[s]);
+        ms_buf_puts(c->out, " ]");
+        first = false;
     }
     ms_buf_putc(c->out, '\n');
     return true;
@@ -997,6 +1052,10 @@ static const char ll_declarations[] =
     "declare void @msrt_fault_div_zero() cold noreturn nounwind\n"
     "declare void @msrt_fault_rem_zero() cold noreturn nounwind\n"
     "declare void @msrt_fault_div_overflow(i64, i64) cold noreturn nounwind\n"
+    "declare void @msrt_index_fault(i64, i64) cold noreturn nounwind\n"
+    "declare void @msrt_fault_unwrap_none() cold noreturn nounwind\n"
+    "declare void @msrt_cancelled() cold noreturn nounwind\n"
+    "declare void @msrt_fault_depth() cold noreturn nounwind\n"
     "declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64)\n"
