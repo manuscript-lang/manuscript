@@ -9,7 +9,7 @@
 #include "../std/abi.h"
 #include "addr_text.h"
 #include "ms_rt/alloc.h"
-#include "datagram.h"
+#include "ms_rt/net.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_net.h"
 #include "ms_sched.h"
@@ -124,6 +124,12 @@ void msstd_dgram_address(const void *handle, MsStr *out) {
 }
 
 void msstd_dgram_close(const void *handle) { core_close(core_of(handle)); }
+
+void *msstd_dgram_alias(const void *handle) {
+    Core *core = core_of(handle);
+    atomic_fetch_add(&core->handles, 1);
+    return handle_new(core);
+}
 
 void *msstd_dgram_share(const void *handle) {
     Core *core = core_of(handle);

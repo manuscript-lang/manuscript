@@ -526,6 +526,14 @@ msstd_decimal_to_fixed(value: *const DecType, digits: i64, has_mode: HasRaw, mod
 msstd_decimal_to_float(a: *const DecType) -> f64 @domain=number @leaf
 msstd_decimal_to_string(a: *const DecType, out: *mut StrVal) @domain=number @leaf
 msstd_decimal_truncate_to_int(a: *const DecType, out: *mut i64) -> u8 @domain=number @leaf
+msstd_dgram_address(handle s: *const ObjCell<DgramH>, out: *mut StrVal) @domain=network
+msstd_dgram_alias(handle s: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH> @domain=network @handle
+msstd_dgram_bind(address: *const StrVal, out: *mut *mut ObjCell<DgramH>, err: ErrSlot) -> u8 @domain=network
+msstd_dgram_close(handle s: *const ObjCell<DgramH>) @domain=network
+msstd_dgram_close_if_last(handle s: *const ObjCell<DgramH>) @domain=network
+msstd_dgram_receive(handle s: *const ObjCell<DgramH>, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut DatagramWire, err: ErrSlot) -> u8 @domain=network
+msstd_dgram_send(handle s: *const ObjCell<DgramH>, data: *const VecVal, address: *const StrVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=network
+msstd_dgram_share(handle s: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH> @domain=network @handle
 msstd_encoding_ascii85_decode(text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=encoding @leaf
 msstd_encoding_ascii85_encode(data: *const VecVal, out: *mut StrVal) @domain=encoding @leaf
 msstd_encoding_base32_decode(text: *const StrVal, hex_alphabet: u8, padded: u8, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=encoding @leaf
@@ -833,6 +841,11 @@ msstd_regex_named_capture_pairs(handle re: *const ObjCell<Regex>, text: *const S
 msstd_regex_replace_all(handle re: *const ObjCell<Regex>, text: *const StrVal, replacement: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=regular expression @leaf
 msstd_regex_replace_template(handle re: *const ObjCell<Regex>, text: *const StrVal, template: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=regular expression @leaf
 msstd_regex_split(handle re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=regular expression @leaf
+msstd_scope_child(handle s: *const ObjCell<ScopeH>) -> *mut ObjCell<ScopeH> @domain=network @handle
+msstd_scope_close(handle s: *const ObjCell<ScopeH>) @domain=network
+msstd_scope_new() -> *mut ObjCell<ScopeH> @domain=network @handle
+msstd_scope_open(handle s: *const ObjCell<ScopeH>) -> u8 @domain=network
+msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network
 msstd_system_cpus(out: *mut VecVal, err: ErrSlot) -> u8 @domain=system
 msstd_system_dev_null(out: *mut StrVal) @domain=system
 msstd_system_end_of_line(out: *mut StrVal) @domain=system

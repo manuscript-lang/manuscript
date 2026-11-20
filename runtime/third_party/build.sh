@@ -20,21 +20,23 @@ hash_input() { cat "$repository/runtime/third_party/c-libs.lock" "$repository/ru
 key=$(hash_input | if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -c1-16)
 if [ "${1:-}" = key ]; then echo "$key"; exit 0; fi
 out=$root/$triple-$mode-$key
-if [ -f "$out/.complete" ]; then echo "$out"; exit 0; fi
+# The folder is printed in the form native tools take: on Windows MSYS paths (/d/a/...) become D:/a/... for CMake.
+emit() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$out"; else echo "$out"; fi; }
+if [ -f "$out/.complete" ]; then emit; exit 0; fi
 # Parallel runs (the glibc, musl and profiling runtime builds of `cargo xtask runtime`) share one output folder, so one
 # builds while the others wait for `.complete`. mkdir is atomic; a lock left by a killed run is reported, not stolen.
 mkdir -p "$root"
 lock=$out.lock
 waited=0
 until mkdir "$lock" 2>/dev/null; do
-    [ -f "$out/.complete" ] && { echo "$out"; exit 0; }
+    [ -f "$out/.complete" ] && { emit; exit 0; }
     [ "$waited" -lt 1800 ] || { echo "build.sh: $lock is held for 30 minutes; remove it if no build is running" >&2; exit 1; }
     sleep 1
     waited=$((waited + 1))
 done
 trap 'rmdir "$lock" 2>/dev/null' EXIT
 trap 'exit 1' INT TERM
-if [ -f "$out/.complete" ]; then echo "$out"; exit 0; fi
+if [ -f "$out/.complete" ]; then emit; exit 0; fi
 rm -rf "$out"
 jobs=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
 mkdir -p "$out/lib" "$out/include"
@@ -147,4 +149,4 @@ case "$triple" in
 esac
 rm -f "$out/step.log"
 touch "$out/.complete"
-echo "$out"
+emit

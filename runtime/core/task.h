@@ -83,6 +83,8 @@ typedef struct MsSchedHooks {
     void (*mail)(MsMail *mail);
     /* Frees the other tables when the scheduler ends. May be NULL. */
     void (*teardown)(void);
+    /* Frees what mail that was never delivered owns (its node is freed by the caller). */
+    void (*discard_mail)(MsMail *mail);
     /* Before the scheduler blocks with nothing ready: starts work that waits elsewhere (a queued promise of another
      * isolate) as a task and answers true, or answers false with `*wait_ns` the longest it may block for that
      * work's sake (negative: no limit). May be NULL. */
