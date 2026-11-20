@@ -546,7 +546,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return (LbVal){result, owns_result || (lb_owns(lb, result_ty) && !borrowed)}; // else a String result is the caller's
 }
 
-static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
+LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
@@ -805,7 +805,7 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except) {
     }
 }
 
-static bool lb_var_owned(const Lb *lb, uint32_t binding) {
+bool lb_var_owned(const Lb *lb, uint32_t binding) {
     for (uint32_t i = 0; i < lb->nvars; i++) {
         if (lb->vars[i].binding == binding) {
             return true;

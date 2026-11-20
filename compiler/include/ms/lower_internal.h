@@ -103,8 +103,6 @@ void lb_statements(Lb *lb, const MsStmts *body);
 void lb_return_void(Lb *lb);
 uint32_t lb_scoped(Lb *lb, const MsStmts *body);          /* lowers `body` in its own scope; its owner depth */
 MirBlock lb_step_block(Lb *lb, LbLoop *loop);             /* where `continue` of `loop` goes */
-bool lb_owns(Lb *lb, MirTy ty);                          /* whether a value of `ty` has an owner to release */
-MirValue lb_move_argument(Lb *lb, const MsExpr *e);       /* lowers `e` as a moved-in operand */
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
 void lb_hold_temp(Lb *lb, MirValue v); /* an owned temporary that lives to the end of the statement */
 MirLoc lb_loc(const Lb *lb, MsPos pos);
@@ -130,6 +128,8 @@ void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
 void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 void lb_write_back(Lb *lb);
+LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
+bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
 bool lb_owns(Lb *lb, MirTy ty);                        /* whether a value of the type is dropped by its holder */
 MirValue lb_move_argument(Lb *lb, const MsExpr *e);    /* an argument for a `move` parameter */
 
