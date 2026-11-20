@@ -11,6 +11,7 @@
 #include <time.h>
 
 #include "ms_rt/string.h"
+#include "ms_rt/sys.h"
 #include "ms_sched.h"
 
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {

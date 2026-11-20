@@ -887,6 +887,7 @@ static bool qbe_function(QCx *c, uint32_t index) {
 bool mir_emit_qbe(MirModule *m, MsBuf *out, MsBuf *why) {
     MirGlue glue = {0};
     mir_glue_run_and_expand(m, &glue);
+    mir_lower_ops(m, &glue);
     MirData data;
     mir_data_build(m, &glue, &data);
     MirLayouts layouts;
