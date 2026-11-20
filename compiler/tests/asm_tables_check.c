@@ -27,7 +27,7 @@ int msrt_start(void *entry, const Tables *t, int argc, char **argv) {
     int bad = check(t != NULL && t->abi == 3, "tables with ABI 3");
     bad |= check(t->nfuncs == 1 && t->nscopes == 2, "one function, two inlined scopes");
     const Func *main_fn = t->nfuncs > 0 ? &t->funcs[0] : NULL;
-    bad |= check(main_fn != NULL && strcmp(t->strings + main_fn->name_offset, "ms_entry") == 0, "the name");
+    bad |= check(main_fn != NULL && strcmp(t->strings + main_fn->name_offset, "msmain") == 0, "the name");
     bad |= check(main_fn != NULL && main_fn->address == (uintptr_t)entry && main_fn->size > 0, "entry address and size");
     bad |= check(main_fn != NULL && main_fn->line == 5, "declaration line");
     uint32_t want_main[] = {6, 7, 8, 9};
