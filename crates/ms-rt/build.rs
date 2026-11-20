@@ -9,8 +9,13 @@ fn main() {
     let dir = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"))
         .join("../../runtime/symbols");
     println!("cargo::rerun-if-changed={}", dir.display());
+    println!("cargo::rerun-if-env-changed=MS_C_REACTOR");
     if std::env::var_os("MS_C_RUNTIME").is_none() {
         return;
+    }
+    // The libuv reactor replaces the mio poller on this build (`cargo xtask runtime` with `MS_UV_DIR`).
+    if std::env::var_os("MS_C_REACTOR").is_some() {
+        println!("cargo::rustc-cfg=ms_c=\"msio_open\"");
     }
     let mut files: Vec<_> = std::fs::read_dir(&dir)
         .expect("read runtime/symbols")
