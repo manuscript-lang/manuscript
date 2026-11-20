@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "ms/dump.h"
+#include "ms/effects.h"
 #include "ms/facts.h"
 #include "ms/walk.h"
 
@@ -17,6 +18,7 @@ typedef struct FactsRow {
     MsBuf key;
     uint32_t line;
     MsBuf body; /* the JSON fields after `line`: slots, result, receiver, tries */
+    MsBuf effects; /* the JSON fields effects, reach, permits and calls */
 } FactsRow;
 
 static void facts_put_str(MsBuf *out, const MsNames *names, MsSym s) {
@@ -130,20 +132,29 @@ static uint32_t facts_tries_of(MsParams params, MsStmts body) {
 }
 
 /* Appends `, "result": ..., "receiver": ..., "tries": N` and the fields no column feeds yet. */
-static void facts_put_tail(MsBuf *out, const MsNames *names, const MsTypeRef *result, const char *receiver, uint32_t tries) {
+/* The tail of an entity: ownership and receiver, tries, and the result slot with type `text` (none when NULL). */
+static void facts_put_tail_text(MsBuf *out, const char *receiver, uint32_t tries, MsBuf *text) {
     ms_buf_puts(out, ", \"result_ownership\": \"\", \"result_borrow\": false, \"receiver\": \"");
     ms_buf_puts(out, receiver);
     ms_buf_printf(out, "\", \"tries\": %u", tries);
     ms_buf_puts(out, ", \"result\": ");
-    if (result == NULL) {
+    if (text == NULL) {
         ms_buf_puts(out, "null");
+        return;
+    }
+    ms_buf_puts(out, "{\"name\": \"\", \"ty\": ");
+    facts_put_json_buf(out, text);
+    ms_buf_puts(out, ", \"exclusive\": false, \"mode\": \"\", \"refs\": []}");
+}
+
+static void facts_put_tail(MsBuf *out, const MsNames *names, const MsTypeRef *result, const char *receiver, uint32_t tries) {
+    if (result == NULL) {
+        facts_put_tail_text(out, receiver, tries, NULL);
         return;
     }
     MsBuf text = {0};
     facts_put_type_text(&text, names, result);
-    ms_buf_puts(out, "{\"name\": \"\", \"ty\": ");
-    facts_put_json_buf(out, &text);
-    ms_buf_puts(out, ", \"exclusive\": false, \"mode\": \"\", \"refs\": []}");
+    facts_put_tail_text(out, receiver, tries, &text);
     ms_buf_free(&text);
 }
 
@@ -338,9 +349,18 @@ static void facts_fill_decl(FactsRow *row, const MsNames *names, const MsDecl *d
     case MS_D_CONST:
         facts_put_str(&row->name, names, d->u.konst.name);
         break;
-    case MS_D_ALIAS:
+    case MS_D_ALIAS: {
         facts_put_str(&row->name, names, d->u.alias.name);
-        break;
+        MsBuf targets = {0};
+        for (uint32_t i = 0; i < d->u.alias.targets.len; i++) {
+            ms_buf_puts(&targets, i == 0 ? "" : " | ");
+            facts_put_type_text(&targets, names, d->u.alias.targets.ptr[i]);
+        }
+        ms_buf_putc(body, ']');
+        facts_put_tail_text(body, "", 0, &targets);
+        ms_buf_free(&targets);
+        return;
+    }
     case MS_D_IMPL:
         facts_put_impl_name(&row->name, names, d);
         break;
@@ -368,7 +388,57 @@ static void facts_fill_method(FactsRow *row, const MsNames *names, const MsDecl 
     facts_put_tail(&row->body, names, m->func.result, mode, facts_tries_of(m->func.params, m->func.body));
 }
 
-void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m) {
+/* `"field": ["a", "b"]` for `count` strings; `key_prefix`, when set, goes in front of each. */
+static void facts_put_strings(MsBuf *out, const char *field, const MsStr *list, uint32_t count, const char *key_prefix) {
+    ms_buf_printf(out, "\"%s\": [", field);
+    for (uint32_t i = 0; i < count; i++) {
+        MsBuf text = {0};
+        if (key_prefix != NULL) {
+            ms_buf_puts(&text, key_prefix);
+        }
+        ms_buf_put(&text, list[i].ptr, list[i].len);
+        ms_buf_puts(out, i == 0 ? "" : ", ");
+        facts_put_json_buf(out, &text);
+        ms_buf_free(&text);
+    }
+    ms_buf_putc(out, ']');
+}
+
+static bool facts_has_default(MsParams params) {
+    for (uint32_t i = 0; i < params.len; i++) {
+        if (params.ptr[i]->def != NULL) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The effect columns of one entity. A function the effect scan cannot see through completely, or
+ * one it does not cover (methods, tests, impls), prints empty lists and `"effects_known": false`.
+ * `calls` stays empty: the scan misses the implicit `close` calls of resource scopes, which Rust
+ * lists, until the effect checker reports them. */
+static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects *rows, uint32_t nrows) {
+    const MsEntityEffects *found = NULL;
+    for (uint32_t r = 0; r < nrows; r++) {
+        found = rows[r].decl == d ? &rows[r] : found;
+    }
+    const bool scanned = d != NULL && (d->kind == MS_D_FN || d->kind == MS_D_CONST);
+    const bool declaration = d != NULL && !scanned && d->kind != MS_D_IMPL && d->kind != MS_D_TEST &&
+                             !(d->kind == MS_D_TYPE && facts_has_default(d->u.type.fields)); /* a default runs code */
+    if (found == NULL || found->partial) {
+        ms_buf_printf(out, "\"effects\": [], \"reach\": [], \"permits\": [], \"calls\": [], \"effects_known\": %s",
+                      declaration ? "true" : "false");
+        return;
+    }
+    facts_put_strings(out, "effects", found->effects, found->neffects, NULL);
+    ms_buf_puts(out, ", ");
+    facts_put_strings(out, "reach", found->effects, found->neffects, NULL);
+    ms_buf_puts(out, ", ");
+    facts_put_strings(out, "permits", found->permits, found->npermits, NULL);
+    ms_buf_puts(out, ", \"calls\": [], \"effects_known\": true");
+}
+
+void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
     const MsModuleRow *row = &c->mods[m];
     const MsModule *module = row->syntax;
     const MsNames *names = c->names;
@@ -376,6 +446,9 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m) {
     facts_put_str(&file, names, row->path);
     ms_buf_putc(&file, '\0');
     MsBuf rows = {0};
+    MsArena scratch = {0};
+    uint32_t neffects = 0;
+    const MsEntityEffects *effect_rows = ms_effect_facts(&scratch, c, m, text, &neffects);
     for (uint32_t i = 0; i < module->ndecls; i++) {
         const MsDecl *d = module->decls[i];
         if (d->synthetic && d->kind == MS_D_INTERFACE) {
@@ -385,6 +458,7 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m) {
                                        d->kind == MS_D_IMPL ? facts_impl_line(module, names, i) : d->pos.line);
         facts_fill_decl(fact, names, d);
         facts_seal_key(fact);
+        facts_put_effects(&fact->effects, d, effect_rows, neffects);
         if (d->kind != MS_D_IMPL) {
             continue;
         }
@@ -393,6 +467,7 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m) {
             FactsRow *method = facts_add_row(&rows, names, file.data, "method", meth->pos.line);
             facts_fill_method(method, names, d, meth);
             facts_seal_key(method);
+            facts_put_effects(&method->effects, NULL, effect_rows, neffects);
         }
     }
     FactsRow *items = ms_buf_items(&rows);
@@ -412,7 +487,8 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m) {
         facts_put_json(out, file.data, file.len - 1);
         ms_buf_printf(out, ", \"kind\": \"%s\", \"name\": ", items[i].kind);
         facts_put_json_buf(out, &items[i].name);
-        ms_buf_printf(out, ", \"line\": %u, \"effects\": [], \"error\": \"\", \"scopes\": 0, \"calls\": [], \"external\": []", items[i].line);
+        ms_buf_printf(out, ", \"line\": %u, \"error\": \"\", \"scopes\": 0, \"external\": [], ", items[i].line);
+        ms_buf_put(out, items[i].effects.data, items[i].effects.len);
         ms_buf_put(out, items[i].body.data, items[i].body.len);
         ms_buf_putc(out, '}');
     }
@@ -421,7 +497,9 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m) {
         ms_buf_free(&items[i].name);
         ms_buf_free(&items[i].key);
         ms_buf_free(&items[i].body);
+        ms_buf_free(&items[i].effects);
     }
+    ms_arena_free(&scratch);
     ms_buf_free(&rows);
     ms_buf_free(&file);
 }

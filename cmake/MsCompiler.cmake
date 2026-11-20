@@ -81,7 +81,9 @@ function(ms_compiler_exe name)
     target_compile_options(${name} PRIVATE -std=c11 -O1 -Wall -Wextra -Werror -include "${_c}/include/ms_mimalloc.h")
   endif()
   if(MS_WINDOWS)
-    # The Windows tools (ms_mir_build, ms_asm_tables) read no project: no libcrypto, libdl or libm.
+    # The Windows tools (ms_mir_build, ms_asm_tables) read no project: no libcrypto, libdl or libm. They still allocate
+    # through the force-included ms_mimalloc.h, so they link the allocator.
+    target_link_libraries(${name} PRIVATE ms_mimalloc)
   else()
     # libms hashes packages with libcrypto (project/packages.c).
     target_link_libraries(${name} PRIVATE m ms_mimalloc ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
@@ -109,7 +111,7 @@ if(MS_WINDOWS)
 endif()
 
 # Unit tests of the checker and the driver; ctest runs them.
-foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test project_discover_test semver_test lock_test resolve_test graph_check_test install_test)
+foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test project_discover_test semver_test lock_test resolve_test graph_check_test install_test embed_test)
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
 ms_compiler_exe(std_embed_test "${_c}/tests/std_embed_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")

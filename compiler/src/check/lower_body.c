@@ -110,7 +110,7 @@ void lb_drop(Lb *lb, MirValue v) {
 
 /* Whether a value of `ty` owns something its holder must release: a String, a function value or a
  * record holding a String. */
-static bool lb_owns(Lb *lb, MirTy ty) {
+bool lb_owns(Lb *lb, MirTy ty) {
     return ty != MIR_NONE && (ty == MIR_STR || lb_is_fn(lb, ty) || mir_needs_drop(lb->m, ty));
 }
 
@@ -431,7 +431,7 @@ static bool lb_names_owned(const Lb *lb, const MsExpr *e) {
  * fails the caller with it. */
 /* A `move` argument: an owned temporary is handed over as it is, an owned name moves out of its
  * scope, and anything else is copied. */
-static MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
+MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
     const LbVal value = lb_expr(lb, e);
     if (!lb->ok || value.owned) {
         return value.v;
@@ -470,6 +470,9 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const uint32_t callee = lb->facts->call_callee[e->id];
     if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
         return la_case(lb, e);
+    }
+    if (callee == MS_NONE && lb->facts->call_method[e->id] != MS_NONE) {
+        return lst_method(lb, e);
     }
     if (callee == MS_NONE) {
         return lb_call_value(lb, e);
@@ -543,7 +546,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return (LbVal){result, owns_result || (lb_owns(lb, result_ty) && !borrowed)}; // else a String result is the caller's
 }
 
-static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
+LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
@@ -741,11 +744,13 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
     }
     const MirTy bound_ty = lb_mir_ty(lb, ty);
     if (bound_ty != MIR_STR && !lb_is_fn(lb, bound_ty) && lb_owns(lb, bound_ty)) {
-        if (!value.owned || s->u.bind.is_mutable) {
+        if (!value.owned || (s->u.bind.is_mutable && !lb_is_list(lb, bound_ty))) {
             lb->ok = false; // a record local is made from a call or a construction, and is not a `var` yet
             return;
         }
-        lscope_own(&lb->scopes, value.v, 0);
+        if (!s->u.bind.is_mutable) {
+            lscope_own(&lb->scopes, value.v, 0); // a `var` is owned at each exit with the value it holds there
+        }
     }
     if (ty == lb->string_ty) {
         if (!value.owned) {
@@ -800,7 +805,7 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except) {
     }
 }
 
-static bool lb_var_owned(const Lb *lb, uint32_t binding) {
+bool lb_var_owned(const Lb *lb, uint32_t binding) {
     for (uint32_t i = 0; i < lb->nvars; i++) {
         if (lb->vars[i].binding == binding) {
             return true;
@@ -841,8 +846,11 @@ static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
         lscope_disown(&lb->scopes, v);
         return (LbVal){v, true};
     }
-    lb->ok = false; // an owned result that is no local: a copy the pass does not make yet
-    return (LbVal){v, true};
+    if (e->kind == MS_E_NAME) {
+        lb->ok = false; // a borrowed parameter handed out as an owned result: left to Rust
+        return (LbVal){v, true};
+    }
+    return (LbVal){lb_copy(lb, v), true}; // a borrowed value that is no local: the caller gets a copy
 }
 
 static void lb_return(Lb *lb, const MsStmt *s) {
@@ -871,7 +879,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
 
 /* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
  * the scope's depth. */
-static uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
+uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
     const uint32_t depth = lscope_push(&lb->scopes);
     lb_statements(lb, body);
     if (!lb->dead) {
@@ -969,7 +977,7 @@ static void lb_while(Lb *lb, const MsStmt *s) {
 }
 
 /* The block `continue` and the end of the body go to; a `for` makes it on first use. */
-static MirBlock lb_step_block(Lb *lb, LbLoop *loop) {
+MirBlock lb_step_block(Lb *lb, LbLoop *loop) {
     if (!loop->stepped) {
         loop->next = mir_b_new_block(&lb->b);
         loop->stepped = true;

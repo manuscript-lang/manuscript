@@ -110,6 +110,14 @@ static uint32_t alt_arm_case(const MsBody *b, const MsArm *arm, MsTy ty, const A
     return MS_NONE;
 }
 
+/* Whether a payload name may name a case or a type rather than bind a value (`Pair(x, NotFound)`):
+ * the Rust checker records those as conflicts and reports no unread binding for them. Names written
+ * in capitals are left to it. */
+static bool alt_name_may_be_case(const MsBody *b, MsSym name) {
+    const MsStr text = ms_name(b->c->names, name);
+    return text.len != 0 && text.ptr[0] >= 'A' && text.ptr[0] <= 'Z';
+}
+
 /* Binds the payload names of `arm` to the case's field types at the scrutinee's type arguments. */
 static bool alt_bind_payload(MsBody *b, const MsArm *arm, MsTy ty, const AltInfo *info, uint32_t index) {
     if (arm->bindings.len != alt_case_fields(info, index)) {
@@ -119,6 +127,9 @@ static bool alt_bind_payload(MsBody *b, const MsArm *arm, MsTy ty, const AltInfo
         const MsSym name = arm->bindings.ptr[slot].name;
         if (alt_is(b, name, "_")) {
             continue;
+        }
+        if (alt_name_may_be_case(b, name)) {
+            return false;
         }
         const MsTy field = alt_field_ty(b, info, ty, index, slot);
         if (ms_body_bind(b, name, field, arm->id, arm->bindings.ptr[slot].pos, 0, MS_ROLE_ARM) == MS_NONE) {
@@ -144,8 +155,9 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
     memset(seen, 0, info.ncases * sizeof *seen);
     uint32_t covered = 0;
     bool wildcard = false;
-    // Arms are all values or all statements; statement arms, which end the match as a statement, must
-    // each fall through (one that returns or breaks changes what follows the match).
+    // Arms are all values or all statements. A statement match falls through when some arm does
+    // (`b->match_falls`); the statement after one whose arms all return or break is unreachable.
+    bool any_falls = false;
     const bool valued = e->u.match.arms.ptr[0]->value != NULL;
     MsTy result = expected;
     if (!valued && expected != MS_TY_NONE && expected != b->void_ty) {
@@ -175,9 +187,10 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
         if (!valued) {
             const bool falls = ms_body_block(b, &arm->body);
             alt_close_from(b, first);
-            if (!b->supported || !falls) {
+            if (!b->supported) {
                 return ms_body_unsupported(b);
             }
+            any_falls = any_falls || falls;
             result = b->void_ty;
             continue;
         }
@@ -188,7 +201,11 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
         }
         result = value;
     }
-    return wildcard || covered == info.ncases ? result : ms_body_unsupported(b);
+    if (!wildcard && covered != info.ncases) {
+        return ms_body_unsupported(b);
+    }
+    b->match_falls = valued || any_falls;
+    return b->match_falls ? result : b->never_ty;
 }
 
 /* The case of the enum `ty` that the bare name `name` spells, or MS_NONE. */

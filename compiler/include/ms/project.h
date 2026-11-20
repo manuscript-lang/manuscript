@@ -131,6 +131,14 @@ const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, M
 const char *ms_project_find_manifest(MsArena *a, const char *filename);
 MS_NODISCARD bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProjectError *err);
 
+/* ---- [embed] (project/embed.c) ---- */
+
+/* The logical path of the generated module that imports of the embed `name` (such as `@assets`) resolve to, under `root`. */
+const char *ms_embed_module_path(MsArena *a, const char *root, const char *name);
+/* The source of that module for the directory `root` (which holds the files): every file as Base64 text. A symbolic
+ * link, names that differ only by letter case, a file over 16 MiB or more than 64 MiB in all is an error. */
+MS_NODISCARD bool ms_embed_generate(MsArena *a, const char *name, const char *root, const char **source, MsProjectError *err);
+
 /* ---- discovery (project/discover.c) ---- */
 
 /* The test files (`test.ms`, `*_test.ms`, `bench.ms`, `*_bench.ms`) below the project root and, with `include_source`,

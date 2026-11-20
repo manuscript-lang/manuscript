@@ -13,6 +13,7 @@
 #include "ms_rt/chars.h"
 
 #include "ms/mir.h"
+#include "ms/text.h"
 
 typedef enum { MPT_IDENT, MPT_VAL, MPT_AT, MPT_NUM, MPT_STR, MPT_LOC, MPT_ARROW, MPT_P } MpTokKind;
 
@@ -135,11 +136,6 @@ static bool mpa_parse_hex_u64(const char *s, size_t n, uint64_t *out) {
 static bool mpa_ident_char(unsigned char c) { return ms_ascii_is_ident(c) || c == '.' || c == '$'; }
 static bool mpa_ws_char(unsigned char c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
 
-static int mpa_hexval(char c) {
-    uint32_t value = 0;
-    return ms_hex_digit_value((uint8_t)c, &value) ? (int)value : -1;
-}
-
 /* A line being tokenized: `text[position]` is the next character. */
 typedef struct MpLexer {
     MpParser *p;
@@ -163,13 +159,13 @@ static char mpa_lex_at(const MpLexer *lx, size_t ahead) {
 static int mpa_hex_escape(const MpLexer *lx) {
     char high = mpa_lex_at(lx, 0);
     char low = mpa_lex_at(lx, 1);
-    if (lx->position + 2 > lx->length || mpa_hexval(low) < 0) {
+    if (lx->position + 2 > lx->length || ms_text_digit_value(low) < 0) {
         return -1;
     }
-    if (mpa_hexval(high) >= 0) {
-        return mpa_hexval(high) * 16 + mpa_hexval(low);
+    if (ms_text_digit_value(high) >= 0) {
+        return ms_text_digit_value(high) * 16 + ms_text_digit_value(low);
     }
-    return high == '+' ? mpa_hexval(low) : -1;
+    return high == '+' ? ms_text_digit_value(low) : -1;
 }
 
 /* Reads one escape after a backslash into `out`. */
@@ -1647,8 +1643,8 @@ static void mpa_item_blob(MpCur *c) {
     }
     char *bytes = ms_alloc(&m->arena, hex.n / 2 + 1, 1);
     for (uint32_t k = 0; k < hex.n; k += 2) {
-        int high = mpa_hexval(hex.s[k]);
-        int low = mpa_hexval(hex.s[k + 1]);
+        int high = ms_text_digit_value(hex.s[k]);
+        int low = ms_text_digit_value(hex.s[k + 1]);
         if (high < 0 || low < 0) {
             mpa_perr(c->p, c->line, "%s", failure);
         }

@@ -23,7 +23,18 @@ fn main() Int:
 	f := flags()
 	n := pass(make())
 	if f[1] or floats(1) or scores() > 5.0: return 1
-	return xs[1] + first(xs) + zs[0] + first(n) + first([1]) + first(empty()) + total(xs) + firstbig(xs) + literal_loop()
+
+	return (
+		xs[1]
+		+ first(xs)
+		+ zs[0]
+		+ first(n)
+		+ first([1])
+		+ first(empty())
+		+ total(xs)
+		+ firstbig(xs)
+		+ literal_loop()
+	)
 
 fn total(xs: List[Int]) Int:
 	var sum = 0
@@ -36,6 +47,7 @@ fn firstbig(xs: List[Int]) Int:
 		if x > 10: return x
 		if x < 0: continue
 		if x == 5: break
+
 	return 0
 
 fn literal_loop() Int:
