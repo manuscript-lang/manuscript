@@ -231,6 +231,7 @@ fn abi_kind(text: &str) -> String {
         ("i32", "int32_t"),
         ("u32", "uint32_t"),
         ("u8", "uint8_t"),
+        ("usize", "size_t"),
         ("f64", "double"),
         ("bool", "bool"),
     ] {
@@ -944,8 +945,9 @@ fn add_c_runtime(
         if !triple.is_some_and(|t| t.contains("windows") || t.contains("musl")) {
             command.arg("-D_FORTIFY_SOURCE=2");
         }
-        // `musl-gcc` already targets musl; a clang for another target needs it named.
-        if let Some(t) = triple.filter(|t| !host && !t.contains("musl")) {
+        // `musl-gcc` already targets musl, and llvm-mingw's clang wrapper mingw-w64 (Rust's `gnullvm` is not a
+        // clang environment); a clang for another target needs it named.
+        if let Some(t) = triple.filter(|t| !host && !t.contains("musl") && !t.contains("windows")) {
             command.arg(format!("--target={t}"));
         }
         let status = command

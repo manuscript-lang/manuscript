@@ -1,0 +1,4 @@
+# Intended differences between the C checker and the Rust oracle. The Rust checker is not fixed
+# (rule 0); the C checker is right, and check-diff.sh must skip the named case for that pass only.
+# Format: pass | issue | what the Rust checker gets wrong
+ownership | #4660 | rejects a value moved in one branch after a `continue` in a nested loop; the C pass must accept it, with a regression test
