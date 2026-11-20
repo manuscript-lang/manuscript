@@ -767,7 +767,7 @@ static uint8_t next_polling(MsFsWatcher *watcher, MsVec *out, MsFsFail *fail) {
             return STATUS_FAILED;
         }
         if (ms_sched_read_limit_passed()) {
-            return STATUS_TIMEOUT;
+            return STATUS_TIMED_OUT;
         }
         uint32_t result = 0;
         if (!wait_for_wake(watcher, watcher->interval_ns, &result)) {
@@ -847,7 +847,7 @@ static uint8_t next_native(MsFsWatcher *watcher, MsVec *out, MsFsFail *fail) {
             return STATUS_FAILED;
         }
         if (ms_sched_read_limit_passed()) {
-            return STATUS_TIMEOUT;
+            return STATUS_TIMED_OUT;
         }
         uint32_t result = 0;
         if (!wait_for_wake(watcher, -1, &result)) {
