@@ -671,6 +671,21 @@ static uint32_t lb_add_stub(Lb *lb, const MsDecl *d, MsSymId sym) {
     return mir_add_func(lb->m, &stub);
 }
 
+/* Whether the checker reported anything inside declaration `index`: on lines from its own to the
+ * next declaration's. A program with a diagnostic does not build, so such a function is not
+ * lowered (its body may be ill-typed). */
+static bool lb_has_diagnostic(const MsModuleRow *row, uint32_t index) {
+    const uint32_t first = row->syntax->decls[index]->pos.line;
+    const uint32_t end = index + 1 < row->syntax->ndecls ? row->syntax->decls[index + 1]->pos.line : UINT32_MAX;
+    for (uint32_t k = 0; k < row->ndiags; k++) {
+        const uint32_t line = row->diags[k].diag.pos.line;
+        if (line >= first && line < end) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* One pass over the module's checked functions: stub each one not in `failed`, then lower them.
  * A function that does not lower is marked in `failed`; true when any new one was. */
 static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
@@ -680,7 +695,7 @@ static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
     MsSymId *syms = MS_NEW_N(&lb->m->arena, MsSymId, (size_t)ndecls + 1);
     for (uint32_t i = 0; i < ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !failed[i];
+        const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !failed[i] && !lb_has_diagnostic(row, i);
         syms[i] = checked ? ms_decl_own_symbol(lb->c, module, d) : MS_NONE;
         if (syms[i] != MS_NONE) {
             lb->func_of[syms[i]] = lb_add_stub(lb, d, syms[i]);

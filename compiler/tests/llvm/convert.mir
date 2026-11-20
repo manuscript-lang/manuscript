@@ -1,0 +1,22 @@
+module "convert"
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %big: int = iconst 3000000000
+  %a: bool = iadd.overflow %big, %big
+  %max: int = iconst 9223372036854775807
+  %one: int = iconst 1
+  %o: bool = iadd.overflow %max, %one
+  %m: bool = imul.overflow %max, %max
+  %small: int = iconst 100
+  %n: int8 = narrow.chk %small
+  %w: int = conv %n
+  %f: float = i2f %w
+  %r: float = f32.round %f
+  %back: int = iconst 7
+  %x: bool = and %o, %m
+  %y: int = b2i %x
+  %sum: int = iadd %w, %y
+  %z: int = iadd %sum, %back
+  ret %z
+}

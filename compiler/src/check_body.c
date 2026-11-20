@@ -40,7 +40,7 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, ty);
     const uint32_t def = tys->def[ty];
-    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE) || tys->nargs[ty] != 0 || def == 0) {
+    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT) || tys->nargs[ty] != 0 || def == 0) {
         return false;
     }
     const MsSymId sym = def - 1;
@@ -51,7 +51,8 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
  * when nothing in the module could make them closeable (a value that closes gets a cleanup the
  * pass does not record yet). */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return body_is_value_type(b, ty) || (!b->has_close && body_is_own_nominal(b, ty));
+    return body_is_value_type(b, ty) || ms_body_is_function_value(b, ty) ||
+           (!b->has_close && body_is_own_nominal(b, ty));
 }
 
 static bool body_is_optional(const MsBody *b, MsTy ty) {
@@ -386,6 +387,10 @@ static MsTy body_constant_use(MsBody *b, const MsExpr *e) {
 static MsTy body_name(MsBody *b, const MsExpr *e) {
     const uint32_t binding = ms_body_find_binding(b, e->u.sym);
     if (binding == MS_NONE && !body_text_is(b, e->u.sym, "none")) {
+        const MsSymId named = ms_map_get(&b->c->mods[b->module].names, e->u.sym);
+        if (named != MS_NONE && b->c->syms.kind[named] == MS_SYM_FN) {
+            return ms_body_function_name(b, e);
+        }
         return body_is_unknown(b, e->u.sym) ? body_unknown_name(b, e) : body_constant_use(b, e);
     }
     if (binding == MS_NONE || body_text_is(b, e->u.sym, "none")) {
@@ -402,7 +407,14 @@ static MsTy body_name(MsBody *b, const MsExpr *e) {
  * lowering cannot handle fails the callers there. */
 static MsTy body_call(MsBody *b, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
-    if (callee->kind != MS_E_NAME || ms_body_find_binding(b, callee->u.sym) != MS_NONE) {
+    if (callee->kind == MS_E_MEMBER) {
+        return ms_body_method_call(b, e);
+    }
+    const uint32_t called = callee->kind == MS_E_NAME ? ms_body_find_binding(b, callee->u.sym) : MS_NONE;
+    if (called != MS_NONE) {
+        return ms_body_call_value(b, e, called);
+    }
+    if (callee->kind != MS_E_NAME) {
         return ms_body_unsupported(b);
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
@@ -420,7 +432,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsArg *arg = &e->u.call.args.ptr[i];
-        if (arg->has_name || (params[i].flags & MS_PARAM_POSITIONAL) != 0 || !body_is_value_type(b, params[i].ty) ||
+        const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
+        if (arg->has_name || (params[i].flags & MS_PARAM_POSITIONAL) != 0 ||
+            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty))) ||
             ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
             return ms_body_unsupported(b);
         }
@@ -629,8 +643,8 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_INDEX:
     case MS_E_PROBE:
     case MS_E_LIST:
-    case MS_E_MAP:
-    case MS_E_LAMBDA: return ms_body_unsupported(b);
+    case MS_E_MAP: return ms_body_unsupported(b);
+    case MS_E_LAMBDA: ty = ms_body_lambda(b, e, expected); break;
     case MS_E_CALL: ty = body_call(b, e); break;
     case MS_E_MATCH: ty = ms_body_match(b, e, expected); break;
     }
@@ -658,7 +672,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
 /* ---- statements ---- */
 
 /* The primitive type a written annotation names, or MS_TY_NONE. */
-static MsTy body_annotation(MsBody *b, const MsTypeRef *t) {
+MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
         return ms_body_unsupported(b);
     }
@@ -677,7 +691,7 @@ static void body_bind_statement(MsBody *b, const MsStmt *s) {
         (void)ms_body_unsupported(b);
         return;
     }
-    const MsTy expected = s->u.bind.ty == NULL ? MS_TY_NONE : body_annotation(b, s->u.bind.ty);
+    const MsTy expected = s->u.bind.ty == NULL ? MS_TY_NONE : ms_body_annotation(b, s->u.bind.ty);
     if (!b->supported) {
         return;
     }
@@ -706,7 +720,7 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     const uint32_t binding = ms_body_find_binding(b, s->u.assign.name);
-    if (binding == MS_NONE) {
+    if (binding == MS_NONE || binding < b->lambda_floor) {
         (void)ms_body_unsupported(b);
         return;
     }
@@ -976,6 +990,12 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->const_use, 0, nodes * sizeof *facts->const_use);
     facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->call_callee, 0xff, nodes * sizeof *facts->call_callee);
+    facts->call_method = MS_NEW_N(arena, uint32_t, nodes);
+    facts->call_receiver = MS_NEW_N(arena, MsTy, nodes);
+    facts->call_interface = MS_NEW_N(arena, MsTy, nodes);
+    memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
+    memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
+    memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);
@@ -1054,7 +1074,7 @@ static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
     b->supported = true;
     MsTy expected = MS_TY_NONE;
     if (d->u.konst.ty != NULL) {
-        expected = body_annotation(b, d->u.konst.ty);
+        expected = ms_body_annotation(b, d->u.konst.ty);
     }
     const bool literal = body_is_constant_expression(d->u.konst.value);
     const MsTy ty = b->supported && literal ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
@@ -1071,6 +1091,10 @@ static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
 }
 
 void ms_module_check_bodies(MsCheck *c, MsModId module) {
+    ms_module_check_bodies_with(c, module, NULL);
+}
+
+void ms_module_check_bodies_with(MsCheck *c, MsModId module, const MsMethodTable *methods) {
     ms_module_resolve_types(c, module);
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
@@ -1086,6 +1110,7 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
               .bool_ty = body_primitive(c, "Bool"),
               .string_ty = body_primitive(c, "String"),
               .void_ty = body_primitive(c, "Void"),
+              .methods = methods,
               .invalid_ty = body_invalid(c),
               .has_close = body_module_has_close(c, row->syntax)};
     body_allocate(&b, facts);
