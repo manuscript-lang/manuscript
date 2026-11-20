@@ -68,6 +68,10 @@ bool ms_isolate_has_mail(void);
 MS_NODISCARD bool ms_isolate_idle_enter(void);
 void ms_isolate_idle_leave(void);
 
+/* The isolates that rest: bit `i` is set when isolate `i` is live and sleeping in its poller. `live` receives the
+ * live isolates in the same bits. Safe from any thread (the watcher reads it). */
+uint64_t ms_isolate_resting(uint64_t *live);
+
 /* Wakes one sleeping isolate other than `except`; false when none sleeps. Safe from any thread. */
 bool ms_isolate_wake_one(uint32_t except);
 
