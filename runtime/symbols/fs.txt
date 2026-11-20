@@ -1,3 +1,24 @@
 # Defined in runtime/std/fs*.c; the Rust ms-std-fs definitions are deleted as each moves.
+msstd_fs_access
 msstd_fs_admit
+msstd_fs_append_file
+msstd_fs_canonicalize
+msstd_fs_chmod
+msstd_fs_chown
+msstd_fs_create_directory
+msstd_fs_create_link
+msstd_fs_exists
+msstd_fs_hard_link
+msstd_fs_list
+msstd_fs_read_file
+msstd_fs_read_link
 msstd_fs_release
+msstd_fs_remove
+msstd_fs_rename
+msstd_fs_set_times
+msstd_fs_stat
+msstd_fs_stat_filesystem
+msstd_fs_temporary_directory
+msstd_fs_temporary_root
+msstd_fs_truncate
+msstd_fs_write_file
