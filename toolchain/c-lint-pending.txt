@@ -28,7 +28,6 @@ runtime/std/regex.c
 runtime/std/regex_abi.c
 runtime/sys/glibc/compat.c
 runtime/sys/linux/net.c
-runtime/sys/mem.c
 runtime/tests/clibs_smoke.c
 runtime/tests/core_alloc.c
 runtime/tests/core_num.c
