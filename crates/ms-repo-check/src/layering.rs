@@ -170,7 +170,7 @@ mod tests {
     #[test]
     fn runtime_crate_may_not_reach_the_compiler() {
         assert!(violation("ms-std-fs", "ms-check").is_some());
-        assert!(violation("ms-std-fs", "ms-std-path").is_none());
+        assert!(violation("ms-std-fs", "ms-rt-abi").is_none());
     }
 
     #[test]
