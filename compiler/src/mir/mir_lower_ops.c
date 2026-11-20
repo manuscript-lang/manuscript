@@ -4,7 +4,8 @@
  *
  * A value that needs no drop is its own clone, so its uses are renamed to the operand. A string is
  * cloned and freed by the runtime, which tests the tag itself, so no block is split. Any other
- * owned type calls its glue function. Runs last, after every pass that reads the ownership ops. */
+ * owned type calls its glue function. `opt.none_owned` becomes `opt.none`. Runs last, after every
+ * pass that reads the ownership ops. */
 #include <string.h>
 
 #include "ms/mir_layout.h"
@@ -103,6 +104,9 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
         return true;
     case MOP_Forget:
         return true;
+    case MOP_OptNoneOwned: /* ownership-only distinction (the optimiser reads it); emitters see opt.none */
+        inst->op = MOP_OptNone;
+        return false;
     case MOP_Clone: {
         const MirTy ty = f->values[inst->args[0]];
         const LoKind kind = lo_kind(c, ty);
