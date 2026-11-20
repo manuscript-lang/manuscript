@@ -416,7 +416,7 @@ fn check_c_abi(
     }
     for header in read_dir("runtime/include/ms_rt", "h")? {
         let module = header.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        if !["base", "runtime", "safe"].contains(&module)
+        if !["base", "runtime", "safe", "chars"].contains(&module)
             && !root.join(format!("runtime/symbols/{module}.txt")).exists()
         {
             return Err(format!(
@@ -796,10 +796,6 @@ fn build_archive(
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
     let plan = build_c_runtime(root, target, triple)?;
-    if plan.has_crypto() {
-        // `ms-native` then leaves the Rust `ms-std-crypto` out: `runtime/std/crypto*.c` define every `msstd_crypto_*`.
-        command.env("MS_C_CRYPTO", "1");
-    }
     if plan.has_reactor() {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");

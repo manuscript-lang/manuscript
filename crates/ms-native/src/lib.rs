@@ -6,14 +6,11 @@
 extern crate ms_rt;
 extern crate ms_std_archive;
 extern crate ms_std_core;
-#[cfg(not(ms_c_crypto))]
-extern crate ms_std_crypto;
 extern crate ms_std_fs;
 extern crate ms_std_io;
 extern crate ms_std_json;
 extern crate ms_std_net;
 extern crate ms_std_process;
-extern crate ms_std_regex;
 extern crate ms_std_system;
 extern crate ms_std_table;
 extern crate ms_std_terminal;
