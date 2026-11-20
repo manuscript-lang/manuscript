@@ -9,7 +9,7 @@ runtime/
   core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num.c so far)
   io/            reactor on libuv (to come)
   net/           http1 (llhttp), tls (OpenSSL), ws frames, h2 (nghttp2) and the connection rows done as tested units; wiring to come
-  std/           natives per stdlib module (to come)
+  std/           natives per stdlib module (path so far; crypto and regex wait on the C libraries)
   third_party/   pinned dependencies and the one build for all of them
   tests/         smoke programs and unit tests (`make c-test`, under ASan and UBSan)
   fuzz/          fuzz harnesses and seed corpus (`make c-fuzz`); nightly
