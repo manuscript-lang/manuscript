@@ -35,6 +35,18 @@ size_t ms_utf8_offset_of(const uint8_t *s, size_t n, size_t count);
 /* Number of scalars in valid UTF-8 (an invalid byte still counts for the scalar it starts). */
 size_t ms_utf8_count(const uint8_t *s, size_t n);
 
+/* Whether the n bytes at s are well-formed UTF-8: no overlong forms, surrogates or scalars above U+10FFFF. */
+static inline bool ms_utf8_is_valid(const uint8_t *s, size_t n) {
+    for (size_t at = 0; at < n;) {
+        const MsRune scalar = ms_utf8_decode(s + at, n - at);
+        if (scalar.rune == MS_RUNE_ERROR && scalar.width == 1) {
+            return false;
+        }
+        at += scalar.width;
+    }
+    return true;
+}
+
 /* Whether every byte is ASCII. */
 bool ms_utf8_is_ascii(const uint8_t *s, size_t n);
 
