@@ -250,6 +250,9 @@ static void wake(size_t row) {
 /* ---- completion ---- */
 
 static void drop_block(void *block, const MsTypeDesc *desc, int64_t pipe) {
+    if (block == NULL) { /* a completion that carries no value */
+        return;
+    }
     if (pipe != 0 && unread_hook != NULL) {
         unread_hook(pipe, block, desc);
         return;
@@ -323,9 +326,11 @@ void ms_promise_io_done_block(MsPromise id, void *block, const MsTypeDesc *desc,
 
 void ms_promise_io_done(MsPromise id) {
     const ptrdiff_t row = row_of(id);
-    if (row >= 0) {
-        complete((size_t)row, NULL, NULL, false, 0);
+    if (row < 0) {
+        send_done(id, NULL, NULL, false, 0); /* another isolate's promise: mail the owner, which is parked on it */
+        return;
     }
+    complete((size_t)row, NULL, NULL, false, 0);
 }
 
 void ms_promise_io_done_int(MsPromise id, int64_t value) {
