@@ -110,7 +110,7 @@ MsLiveness ms_liveness_new(MsArena *arena, uint32_t node_count);
 
 /* Fills the liveness of one function body by a backward walk (`live.rs`). Returns false, leaving
  * the function unanalysed, for a statement or expression the walk does not handle yet. */
-bool ms_liveness_function(MsLiveness *live, const MsFacts *facts, const MsFunc *function, MsArena *scratch);
+bool ms_liveness_function(MsLiveness *live, const MsFacts *facts, const MsFunc *function);
 
 /* ---- the pass ---- */
 

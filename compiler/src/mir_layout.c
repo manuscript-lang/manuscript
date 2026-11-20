@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "ms/mir_layout.h"
+#include "ms/mir_analysis.h"
 
 /* The types visited by one search, so a type reachable twice is walked once. */
 typedef struct BoxSeen {
@@ -169,4 +170,28 @@ bool mir_opt_is_boxed(const MirModule *module, MirTy inner) {
     bool boxed = mir_boxing_opt(&boxing, inner);
     mir_boxing_free(&boxing);
     return boxed;
+}
+
+static bool rt_name_is(const MirModule *m, MsSym sym, const char *text) {
+    const MsStr name = ms_name(&m->names, sym);
+    return name.len == strlen(text) && memcmp(name.ptr, text, name.len) == 0;
+}
+
+/* Whether the runtime takes a value of `ty` as its scalar leaves: scalars, pointers, handles and
+ * the small optionals of them. Anything else crosses as the address of a copy. */
+bool mir_rt_direct(const MirModule *m, MirLayouts *layouts, MirTy ty) {
+    const MirTyData *data = mir_ty_data(m, ty);
+    switch ((MirTyKind)data->kind) {
+    case MK_VOID: case MK_BOOL: case MK_INT: case MK_INT8: case MK_INT16: case MK_INT32:
+    case MK_UINT8: case MK_UINT16: case MK_UINT32: case MK_UINT64: case MK_FLOAT:
+    case MK_FLOAT32: case MK_PTR: case MK_FN: case MK_IFACE:
+        return true;
+    case MK_OBJ:
+        return !rt_name_is(m, data->name, "Map") && !rt_name_is(m, data->name, "Set");
+    case MK_OPT:
+        return mir_opt_is_nullable(layouts, data->elem) || mir_is_scalar(m, data->elem);
+    case MK_STR: case MK_BYTES: case MK_TYPE: case MK_ALT: case MK_LIST:
+        return false;
+    }
+    return false;
 }

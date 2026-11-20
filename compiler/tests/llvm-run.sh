@@ -11,7 +11,12 @@ bin=target/cmake/test/compiler
 cat > "$out/rt.c" <<'C'
 #include <stdlib.h>
 extern long msmain(void);
+long msrt_test_add(long a, long b) { return a + b; }
 void msrt_fault_int_overflow(void) { exit(134); }
+void msrt_fault_int_range(void) { exit(135); }
+void msrt_fault_div_zero(void) { exit(136); }
+void msrt_fault_rem_zero(void) { exit(137); }
+void msrt_fault_div_overflow(long a, long b) { (void)a; (void)b; exit(138); }
 int main(void) { return (int)msmain(); }
 C
 status=0
