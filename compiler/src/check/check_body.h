@@ -48,6 +48,10 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty);
 bool ms_body_is_result(const MsBody *b, MsTy ty);
 MsTy ms_body_list_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected);
+/* Maps (check_map.c): whether `ty` is a `Map` of an admitted key and value, a `Map[K, V]` annotation, a literal. */
+bool ms_body_is_map(const MsBody *b, MsTy ty);
+MsTy ms_body_map_annotation(MsBody *b, const MsTypeRef *t);
+MsTy ms_body_map(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_index(MsBody *b, const MsExpr *e);
 /* Int, Float, Bool or String: what a binding or argument of the handled set may hold. */
 bool ms_body_is_primitive_value(const MsBody *b, MsTy ty);

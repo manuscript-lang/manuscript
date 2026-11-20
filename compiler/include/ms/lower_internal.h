@@ -86,6 +86,10 @@ typedef struct Lb {
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
     uint32_t nvars, cvars;
+    MirValue *temps;      /* the owned temporaries of the statement being lowered, dropped where it ends (newest first) */
+    uint32_t ntemps, ctemps;
+    uint32_t stmt_mark;   /* `ntemps` where the statement being lowered began */
+    uint32_t branching;   /* conditional contexts around the expression being lowered (an arm, a short-circuit's right side) */
     bool dead;            /* control cannot reach the current position */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
@@ -95,6 +99,7 @@ typedef struct Lb {
 void lb_statements(Lb *lb, const MsStmts *body);
 void lb_return_void(Lb *lb);
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
+void lb_hold_temp(Lb *lb, MirValue v); /* an owned temporary that lives to the end of the statement */
 MirLoc lb_loc(const Lb *lb, MsPos pos);
 void lb_reset_state(Lb *lb);
 
@@ -125,6 +130,9 @@ bool lb_is_list(const Lb *lb, MirTy ty);
 LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_index(Lb *lb, const MsExpr *e);
 
+/* Strings built from pieces (lower_text.c, included after lower_body.c). */
+LbVal lt_text(Lb *lb, const MsExpr *e);
+
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);
@@ -133,6 +141,7 @@ LbVal lr_field(Lb *lb, const MsExpr *e);
 /* Optional and Result (lower_alt.c, included after lower_body.c). */
 MirTy la_type(Lb *lb, MsTy ty);
 LbVal la_none(Lb *lb, const MsExpr *e);
+LbVal la_none_owned(Lb *lb, const MsExpr *e);
 LbVal la_case(Lb *lb, const MsExpr *call);
 MirValue la_test(Lb *lb, MirValue subject);
 MirValue la_payload(Lb *lb, MirValue subject);

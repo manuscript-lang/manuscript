@@ -98,7 +98,7 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
  * types. A value that closes is classified a resource by the ownership pass; the lowering leaves
  * it to the Rust lowering until it records the close. */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
+    return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_map(b, ty) || ms_body_is_function_value(b, ty) ||
            body_is_own_nominal(b, ty);
 }
 
@@ -927,9 +927,9 @@ static void body_report_mismatch(MsBody *b, const MsExpr *e, MsTy actual, MsTy e
 /* The type of `e` where `expected` is the type the context wants, or MS_TY_NONE for no
  * expectation. A type that is not the expected one is a diagnostic. */
 /* A value checked against an Optional: `none`, a value of the Optional's own type, or a value of
- * its payload type, which is wrapped in `some` (`some_wrap`). Only a number or a Bool is wrapped, and
- * anything else (a mismatch, which the Rust checker words, or a payload with a cleanup) is left to the
- * Rust checker. */
+ * its payload type, which is wrapped in `some` (`some_wrap`). Anything else (a mismatch, which the
+ * Rust checker words) is left to the Rust checker. A wrapped payload that owns something is a view
+ * of a borrowed value and a wrapper around a fresh one: the ownership pass keeps the fresh ones. */
 static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsTy payload = ms_ty_args(&b->c->tys, expected)[0];
     if (e->kind == MS_E_NAME && body_text_is(b, e->u.sym, "none") && ms_body_find_binding(b, e->u.sym) == MS_NONE) {
@@ -939,7 +939,7 @@ static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     if (ty == MS_TY_NONE || ty == expected) {
         return ty;
     }
-    if (ty != payload || !(ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty)) {
+    if (ty != payload || !body_is_admitted(b, payload)) {
         return ms_body_unsupported(b);
     }
     b->facts->some_wrap[e->id] = true;
@@ -962,11 +962,11 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_UNARY: ty = body_unary(b, e); break;
     case MS_E_BINARY: ty = body_binary(b, e); break;
     case MS_E_MEMBER: ty = body_member(b, e); break;
-    case MS_E_INDEX: ty = ms_body_index(b, e); break;
+    case MS_E_INDEX:
+    case MS_E_APPLY: ty = ms_body_index(b, e); break;
     case MS_E_LIST: ty = ms_body_list(b, e, expected); break;
-    case MS_E_APPLY:
-    case MS_E_PROBE:
-    case MS_E_MAP: return ms_body_unsupported(b);
+    case MS_E_MAP: ty = ms_body_map(b, e, expected); break;
+    case MS_E_PROBE: return ms_body_unsupported(b);
     case MS_E_LAMBDA: ty = ms_body_lambda(b, e, expected); break;
     case MS_E_CALL: ty = body_call(b, e, expected); break;
     case MS_E_MATCH: ty = ms_body_match(b, e, expected); break;
@@ -1026,6 +1026,9 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
         const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
         const bool list = sym != MS_NONE && b->c->syms.ty[sym] != MS_TY_NONE && ms_ty_is(&b->c->tys, b->c->syms.ty[sym], MS_BI_LIST);
         return list ? ms_body_list_annotation(b, t) : body_applied_annotation(b, t);
+    }
+    if (t->kind == MS_TYPE_NAMED && t->args.len == 2) {
+        return ms_body_map_annotation(b, t);
     }
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
         return ms_body_unsupported(b);

@@ -460,6 +460,7 @@ MsNetStatus ms_conn_close_io(MsConnTable *table, MsConnId id) {
     }
     ext_release(row->ext);
     row->ext = NULL;
+    msrt_task_forget_fd(row->fd); /* a task still parked on the descriptor would otherwise leave libuv watching a closed one */
     ms_sys_net_close(row->fd);
     return ms_conn_close(table, id) == 0 ? MS_NET_OK : MS_NET_CLOSED;
 }
