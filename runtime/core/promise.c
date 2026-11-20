@@ -424,6 +424,8 @@ static void start_task(MsPromise id, MsObj *closure) {
 
 void ms_promise_start(MsPromise id, MsObj *closure) { start_task(id, closure); }
 
+void ms_promise_start_spread(MsPromise id, MsObj *closure) { start_task(id, closure); }
+
 void ms_promise_defer(MsPromise id, MsObj *closure) {
     const size_t row = row_or_fault(id);
     table.hot[row].flags |= FLAG_DEFERRED;
