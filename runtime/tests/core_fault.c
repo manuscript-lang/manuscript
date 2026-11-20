@@ -284,12 +284,12 @@ static void log_char(char c) {
     log_text[log_length] = 0;
 }
 
-static void log_cleanup(void *argument) {
+static void log_cleanup(uint8_t *argument) {
     log_char((char)(uintptr_t)argument);
     drops_seen = drops_seen || ms_unwind_drops();
 }
 
-static void faulting_cleanup(void *argument) {
+static void faulting_cleanup(uint8_t *argument) {
     (void)argument;
     ms_fault(MS_FAULT_KIND_FAULT, bytes_of("second"));
 }
@@ -472,7 +472,7 @@ static void child_fatal(void) {
     ms_fault_fatal(MS_FAULT_KIND_OUT_OF_MEMORY, bytes_of("out of memory"));
 }
 
-static void faulting_cleanup_in_oom(void *argument) {
+static void faulting_cleanup_in_oom(uint8_t *argument) {
     (void)argument;
     ms_fault_out_of_memory(8);
 }
