@@ -102,7 +102,10 @@ static bool ll_const_data(LCx *c, const MirInst *inst) {
                       inst->res, inst->res);
         return true;
     }
-    const uint32_t sym = c->data == NULL ? MIR_NONE : (bytes ? c->data->blobs[id] : c->data->list_consts[id]);
+    uint32_t sym = MIR_NONE;
+    if (c->data != NULL) {
+        sym = bytes ? c->data->blobs[id] : c->data->list_consts[id];
+    }
     if (sym == MIR_NONE) {
         c->why = "constant data without a symbol";
         return false;
