@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "ms/effects.h"
+#include "dump_io.h"
 
 static char *read_all(FILE *file, size_t *length) {
     size_t cap = 4096;
@@ -90,7 +91,6 @@ static void split_line(char *line, Tokens *t) {
     }
 }
 
-static MsStr str_of(char *word) { return (MsStr){word, (uint32_t)strlen(word)}; }
 
 static MsPos pos_of(char **w) {
     return (MsPos){.line = (uint32_t)atoi(w[0]), .column = (uint32_t)atoi(w[1]), .offset = (uint32_t)atoi(w[2])};
