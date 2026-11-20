@@ -15,7 +15,12 @@
 
 static MsBytes bytes_of_str(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
-static char lower(char c) { return c >= 'A' && c <= 'Z' ? (char)(c + ('a' - 'A')) : c; }
+static char lower(char c) {
+    if (c < 'A' || c > 'Z') {
+        return c;
+    }
+    return (char)(c + ('a' - 'A'));
+}
 
 /* Whether `name` is `want`, ignoring ASCII case. */
 static bool name_is(MsBytes name, const char *want) {

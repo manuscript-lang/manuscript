@@ -262,6 +262,26 @@ static void live_while(LiveWalk *w, const MsStmt *s) {
     w->later = head;
 }
 
+/* `for i in a..b`: like a `while` whose test reads nothing; the bounds run once before it. */
+static void live_for(LiveWalk *w, const MsStmt *s) {
+    uint32_t *after = live_snapshot(w);
+    uint32_t *head = live_snapshot(w);
+    for (;;) {
+        w->later = live_copy_of(w, head);
+        const LiveLoop here = {after, head, w->loop};
+        w->loop = &here;
+        live_block(w, &s->u.each.body);
+        w->loop = here.outer;
+        live_join(w, after);
+        if (!live_min_into(head, w->later, w->nbindings) || !w->supported) {
+            break;
+        }
+    }
+    w->later = head;
+    live_expr(w, s->u.each.iter->u.call.args.ptr[1].value);
+    live_expr(w, s->u.each.iter->u.call.args.ptr[0].value);
+}
+
 static void live_statement(LiveWalk *w, const MsStmt *s) {
     switch ((MsStmtKind)s->kind) {
     case MS_S_BIND:
@@ -281,7 +301,7 @@ static void live_statement(LiveWalk *w, const MsStmt *s) {
     case MS_S_CONTINUE: live_jump(w, s); return;
     case MS_S_ASSIGN: live_assign(w, s); return;
     case MS_S_CALL: live_expr(w, s->u.expr); return;
-    case MS_S_FOR: w->supported = false; return;
+    case MS_S_FOR: live_for(w, s); return;
     }
 }
 
