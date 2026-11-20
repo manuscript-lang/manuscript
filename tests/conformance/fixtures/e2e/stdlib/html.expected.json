@@ -63,6 +63,11 @@
           "index": 10,
           "name": "html.ms::unescape maps the HTML5 nGt and nLt references to two scalars",
           "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "html.ms::unescape resolves legacy prefixes and the longest entity names",
+          "status": "passed"
         }
       ],
       "summary": {
