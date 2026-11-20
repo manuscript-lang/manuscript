@@ -121,3 +121,80 @@ void lst_for(Lb *lb, const MsStmt *s) {
     lscope_pop(&lb->scopes, true);
     (void)outer;
 }
+
+static bool lst_is(MsStr name, const char *text) {
+    return strlen(text) == name.len && memcmp(name.ptr, text, name.len) == 0;
+}
+
+/* `list.get_or(index, default)`: the element when `index` (negative counts from the end) is in range,
+ * else `default`, which is evaluated first. */
+static LbVal lst_get_or(Lb *lb, MirValue list, const MsExpr *index_expr, const MsExpr *default_expr) {
+    const LbVal index = lb_expr(lb, index_expr);
+    const LbVal fallback = lb->ok ? lb_expr_plain(lb, default_expr) : LB_FAIL; // the checker's `some` wrap is the native's own
+    const MirTy element = mir_ty_data(lb->m, mir_b_ty(&lb->b, list))->elem;
+    if (!lb->ok || fallback.owned || mir_b_ty(&lb->b, fallback.v) != element) { // an Optional default is not the native's plain shape
+        return lb_unsupported(lb);
+    }
+    const MirValue length = mir_b_emit(&lb->b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
+    const MirValue zero = mir_b_iconst(&lb->b, 0);
+    const MirValue negative = mir_b_icmp(&lb->b, MCC_LT, index.v, zero);
+    const MirValue wrapped = mir_b_binop(&lb->b, MOP_IAdd, index.v, length);
+    const MirValue at = mir_b_select(&lb->b, negative, wrapped, index.v);
+    const MirValue not_below = mir_b_icmp(&lb->b, MCC_GE, at, zero);
+    const MirValue below = mir_b_icmp(&lb->b, MCC_LT, at, length);
+    const MirValue inside = mir_b_binop(&lb->b, MOP_And, not_below, below);
+    const MirBlock found = mir_b_new_block(&lb->b);
+    const MirBlock missing = mir_b_new_block(&lb->b);
+    const MirBlock join = mir_b_new_block(&lb->b);
+    const MirValue result = mir_b_add_block_param(&lb->b, join, element, MM_BORROW);
+    mir_b_br_if(&lb->b, inside, found, NULL, 0, missing, NULL, 0);
+    mir_b_seal_block(&lb->b, found);
+    mir_b_seal_block(&lb->b, missing);
+    lb_enter(lb, found);
+    const MirValue args[2] = {list, at};
+    const MirValue item = mir_b_emit(&lb->b, MOP_ListGet, args, 2, (MirImm){0}, element);
+    mir_b_br(&lb->b, join, &item, 1);
+    lb_enter(lb, missing);
+    mir_b_br(&lb->b, join, &fallback.v, 1);
+    mir_b_seal_block(&lb->b, join);
+    lb_enter(lb, join);
+    return (LbVal){result, false};
+}
+
+/* The natives of a list that read it: `length`, `is_empty`, `get` and `get_or`. The receiver is
+ * borrowed; a temporary receiver is dropped after the read (the element needs no drop). Any other
+ * method, and a receiver that is not a list, is left to the Rust lowering. */
+LbVal lst_method(Lb *lb, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    const MsStr name = ms_name(lb->c->names, callee->u.member.name);
+    const uint32_t count = e->u.call.args.len;
+    const bool known = (lst_is(name, "length") || lst_is(name, "is_empty")) ? count == 0
+                       : lst_is(name, "get") ? count == 1
+                       : lst_is(name, "get_or") && count == 2;
+    if (!known || !lb_is_list(lb, lb_mir_ty(lb, lb->facts->call_receiver[e->id]))) {
+        return lb_unsupported(lb);
+    }
+    const LbVal list = lb_expr(lb, callee->u.member.left);
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
+    LbVal result;
+    if (lst_is(name, "get_or")) {
+        result = lst_get_or(lb, list.v, e->u.call.args.ptr[0].value, e->u.call.args.ptr[1].value);
+    } else if (lst_is(name, "get")) {
+        const LbVal at = lb_expr(lb, e->u.call.args.ptr[0].value);
+        const MirValue args[2] = {list.v, at.v};
+        const MirTy element = mir_ty_data(lb->m, mir_b_ty(&lb->b, list.v))->elem;
+        result = (LbVal){mir_b_emit(&lb->b, MOP_ListGet, args, 2, (MirImm){0}, element), false};
+    } else {
+        const MirValue length = mir_b_emit(&lb->b, MOP_ListLen, &list.v, 1, (MirImm){0}, MIR_INT);
+        result = (LbVal){length, false};
+        if (lst_is(name, "is_empty")) {
+            result.v = mir_b_icmp(&lb->b, MCC_EQ, length, mir_b_iconst(&lb->b, 0));
+        }
+    }
+    if (lb->ok && list.owned) {
+        lb_hold_temp(lb, list.v); // a temporary receiver lives to the end of the statement
+    }
+    return lb->ok ? result : LB_FAIL;
+}

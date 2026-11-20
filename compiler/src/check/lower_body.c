@@ -471,6 +471,9 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
         return la_case(lb, e);
     }
+    if (callee == MS_NONE && lb->facts->call_method[e->id] != MS_NONE) {
+        return lst_method(lb, e);
+    }
     if (callee == MS_NONE) {
         return lb_call_value(lb, e);
     }
