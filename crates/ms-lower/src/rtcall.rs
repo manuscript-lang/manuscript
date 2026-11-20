@@ -546,25 +546,6 @@ impl FnLower<'_> {
                         .expect("slot");
                     vals.push(slot);
                 }
-                "env" => {
-                    // The handler of a server: the closure the runtime calls per request.
-                    let input = *inputs
-                        .get(cursor)
-                        .ok_or_else(|| Error::new(format!("{sym}: missing handler")))?;
-                    cursor += 1;
-                    let handler = input
-                        .val
-                        .ok_or_else(|| Error::new(format!("{sym}: missing handler")))?;
-                    // The handler's type names the exchange interface: `fn(var HttpExchange) Void!`.
-                    let exchange = decl
-                        .iter()
-                        .find(|d| d.ty.kind == ms_check::api::types::Kind::Function)
-                        .and_then(|d| d.ty.params.first().map(|q| q.ty.clone()))
-                        .ok_or_else(|| Error::new(format!("{sym}: handler without an exchange")))?;
-                    let exchange = self.mty(&exchange)?;
-                    let env = self.handler_env(handler, exchange)?;
-                    vals.push(env);
-                }
                 _ => {
                     let input = *inputs
                         .get(cursor)
@@ -955,15 +936,6 @@ impl FnLower<'_> {
                     return self.status_optional_result(sym, code, take, result);
                 }
                 return self.status_result(sym, code, None, None, result);
-            }
-            if let (MTy::STR, TyKind::Alt(a)) = (ret, self.b.m.types.kind(result).clone())
-                && self.ok_case_index(a).is_err()
-            {
-                // An `HttpMethod` returned as its token text.
-                let text = self.call_runtime(sym, &vals, MTy::STR)?;
-                let v = self.method_from_text(a, text, 0)?;
-                self.drop_value(text);
-                return Ok(Val { v, own: true });
             }
             if ret == MTy::STR && matches!(self.b.m.types.kind(result), TyKind::Alt(_)) {
                 // A string that cannot fail: `Result[String, E]`.

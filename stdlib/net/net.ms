@@ -16,11 +16,11 @@ import (
 	HttpMethod,
 	HttpServer,
 	HttpServerOptions,
-	NativeServing,
-	NativeWorker,
-	NativeWorkerSpec,
+	NativeConnection,
+	NativeListener,
 	headers,
 	open_client from "@std/net/http.ms",
+	start_server from "@std/net/serve.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
 	Policy,
 	address_allowed,
@@ -36,16 +36,6 @@ import (
 	web_socket_from from "@std/net/websocket.ms",
 	Duration, Instant, Timestamp, monotonic, nanoseconds, sleep from "@std/time.ms",
 
-	msrt_runtime_limit,
-	msrt_runtime_set_threads,
-	msstd_http_serving_accept,
-	msstd_http_serving_address,
-	msstd_http_serving_new,
-	msstd_http_serving_release,
-	msstd_http_serving_spec,
-	msstd_http_serving_worker,
-	msstd_http_worker_adopt,
-	msstd_http_worker_close from "@std/internal/http.ms",
 	msstd_conn_accept_tls,
 	msstd_conn_alias,
 	msstd_conn_close,
@@ -91,9 +81,6 @@ import (
 	msstd_scope_track_listener,
 	msstd_scope_untrack_client from "@std/internal/net.ms",
 )
-
-// The runtime handle behind a `Connection`.
-export extern type NativeConnection
 
 type ConnectionSource:
 	native: NativeConnection
@@ -272,9 +259,6 @@ fn datagram_socket(native: NativeDatagramSocket, policy: Policy) DatagramSocket:
 		output: WriteStream[Datagram](DatagramSink(other, policy)),
 		address: address,
 	)
-
-// The runtime handle behind a `Listener`.
-export extern type NativeListener
 
 // A listening socket that accepts incoming connections. Several tasks may call `accept`
 // on one listener (an accept pool); each incoming connection goes to exactly one of
@@ -986,119 +970,7 @@ export fn serve(
 	handler: fn(var HttpExchange) Void!,
 	options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
-	if cores := options.cores:
-		if cores < 1: return error(Error("network: invalid input", kind: "EINVAL"))
-
-	serving := msstd_http_serving_new(address, options, handler)?
-	bound := msstd_http_serving_address(serving)
-	listening := ServingHandle(serving: serving)
-	if cores := options.cores:
-		msrt_runtime_set_threads(cores)
-
-	// The accept loop owns the listener; each worker owns a share of the options and
-	// handler and a pipe of accepted connections.
-	workers := workers_for(options)
-	accepting := promise(fn: accept_loop(listening, workers))
-	return ok(HttpServer(accepting: accepting, bound: bound, stopped: false))
-
-// The number of worker promises: `options.cores`, else one per core.
-fn workers_for(options: HttpServerOptions) Int:
-	return options.cores.get_or(msrt_runtime_limit())
-
-// The serving, which the accept loop owns and releases (and so closes the listener)
-// when it ends. Workers get a share of what they use, so the listener never leaves its
-// thread.
-type ServingHandle:
-	serving: NativeServing
-
-fn move ServingHandle.close() Void!:
-	msstd_http_serving_release(self.serving)
-
-// One worker's HTTP engine, which owns its connections as poller registrations rather
-// than as tasks. Closing it drains them.
-type WorkerHandle:
-	worker: NativeWorker
-
-fn move WorkerHandle.close() Void!:
-	msstd_http_worker_close(self.worker)
-
-// The accept loop's pipes and workers. Its close, which runs when the loop returns, is
-// cancelled or faults, ends the pipes so the workers drain side by side, then joins
-// them.
-type Accepting:
-	deals: List[WriteStream[Int]]
-	workers: List[Promise[Void]]
-
-fn move Accepting.close() Void!:
-	while not self.deals.is_empty():
-		if deal := self.deals.pop():
-			var closing = deal
-			void closing.close()
-
-	for worker in self.workers:
-		worker.cancel()
-	self.workers = []
-
-// Accepts until the listener fails, dealing each connection to the next worker. An
-// accept that fails for lack of descriptors or memory pauses briefly instead of ending
-// the server.
-fn accept_loop(listening: ServingHandle, count: Int) Void!:
-	var accepting = Accepting(deals: [], workers: [])
-	var i = 0
-
-	while i < count:
-		queue := pipe[Int](1024)
-		accepting.deals.append(queue.writer())
-
-		spec := msstd_http_serving_spec(listening.serving)
-		accepting.workers.append(start_worker(spec, queue))
-		i += 1
-
-	var next = 0
-
-	// The back-off, in nanoseconds, between accept attempts that failed for a reason no
-	// retry fixes (EMFILE, ENFILE, ENOBUFS, ENOMEM): 5 ms, doubling up to 1 s.
-	var pause = 5000000
-
-	while true:
-		accepted := msstd_http_serving_accept(listening.serving)
-
-		if accepted.is_error():
-			if accepted.err().kind == "EBADF": return ok()
-
-			// The runtime already retried the errors of a single connection. What is
-			// left (out of descriptors or memory) waits for something to close, longer
-			// each time.
-			void sleep(nanoseconds(pause)).wait()
-			pause = if pause < 500000000: pause * 2 else: 1000000000
-			continue
-
-		pause = 5000000
-		void accepting.deals[next].write(accepted.get())
-		next = (next + 1) % count
-
-// Starts one worker on the least loaded thread. A returned promise owns what it
-// captures, so the share of the serving and the pipe belong to the worker for as long
-// as it runs.
-fn start_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Promise[Void]:
-	return promise(
-		fn: serve_worker(spec, input),
-		options: PromiseOptions(placement: Placement.Spread)
-	)
-
-// Runs one worker on the thread the runtime placed this promise on: it adopts each
-// connection it is dealt, and the poller drives them from there.
-fn serve_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Void!:
-	engine := WorkerHandle(worker: msstd_http_serving_worker(spec)?)
-
-	while true:
-		item := input.receive()
-		if item.is_error(): break
-
-		if raw := item.get():
-			msstd_http_worker_adopt(engine.worker, raw)
-		else:
-			break
+	return start_server(address, handler, options)
 
 // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and
 // subprotocols in `options`. Handshake headers such as `Upgrade`, `Connection`, `Host`,

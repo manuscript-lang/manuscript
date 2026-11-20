@@ -62,7 +62,7 @@ uint8_t msstd_xchg_write(const void *handle, const MsVec *data, uint8_t has_time
 /* Ends the response (the closing chunk when chunked) and answers whether the connection can carry another request:
  * `*keep` is 1 when the request allowed it, the response was framed, and the request body was read to its end. A
  * body shorter than the declared length is STATUS_INVALID_DATA and the connection is not reusable. */
-/* ms-sig: msstd_xchg_finish(handle x: *const ObjCell<ExchH>, has_timeout: HasRaw, timeout: i64, keep: *mut u8, err: ErrSlot) -> u8 @domain=HTTP */
+/* ms-sig: msstd_xchg_finish(handle x: *const ObjCell<ExchH>, has_timeout: HasRaw, timeout: i64, out: *mut u8, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_xchg_finish(const void *handle, uint8_t has_timeout, int64_t timeout, uint8_t *keep, MsStr *err);
 
 /* Reads and drops what is left of the request body, at most `max` bytes, so the connection can be reused after a
@@ -75,11 +75,42 @@ uint8_t msstd_xchg_reset(const void *handle, int64_t max, uint8_t has_timeout, i
 /* ms-sig: msstd_xchg_share(handle x: *const ObjCell<ExchH>) -> *mut ObjCell<ExchH> @handle @domain=HTTP */
 void *msstd_xchg_share(const void *handle);
 
+/* Parks until the peer is gone from this exchange: an HTTP/1 peer that closed or half-closed its side (bytes it sent
+ * ahead stay queued), an HTTP/2 stream the peer reset or a connection that ended. Returns OK then; the error is the
+ * task's cancellation. A handler runs next to a task waiting here and is cancelled when it returns. */
+/* ms-sig: msstd_xchg_wait_gone(handle x: *const ObjCell<ExchH>, err: ErrSlot) -> u8 @domain=HTTP */
+uint8_t msstd_xchg_wait_gone(const void *handle, MsStr *err);
+
 /* Hands the connection on for a protocol switch (WebSocket) before any response head is sent: the handle is a new
  * stream end of the same connection; bytes read ahead stay on the row and come first from msstd_conn_read. The
  * exchange is spent afterwards. STATUS_INVALID_INPUT once a head was sent. */
 /* ms-sig: msstd_xchg_take_conn(handle x: *const ObjCell<ExchH>, out: *mut *mut ObjCell<ConnH>) -> u8 @domain=HTTP */
 uint8_t msstd_xchg_take_conn(const void *handle, void **out);
+
+/* The count of requests running at once, shared by the tasks of every thread (runtime/net/admission.c). `enter`
+ * is STATUS_LIMIT_EXCEEDED when `max` requests already run (nothing is counted then); `leave` ends one that entered. */
+/* ms-sig: msstd_admit_new(has_max: HasRaw, max: i64) -> *mut ObjCell<AdmitH> @handle @domain=HTTP */
+void *msstd_admit_new(uint8_t has_max, int64_t max);
+/* ms-sig: msstd_admit_share(handle a: *const ObjCell<AdmitH>) -> *mut ObjCell<AdmitH> @handle @domain=HTTP */
+void *msstd_admit_share(const void *handle);
+/* ms-sig: msstd_admit_enter(handle a: *const ObjCell<AdmitH>) -> u8 @domain=HTTP */
+uint8_t msstd_admit_enter(const void *handle);
+/* ms-sig: msstd_admit_leave(handle a: *const ObjCell<AdmitH>) @domain=HTTP */
+void msstd_admit_leave(const void *handle);
+
+/* The request handler of a server, shared by the tasks of every thread (runtime/net/handler.c). `new` takes the
+ * `fn() Void` closure that serves one request: it calls `take` first for the exchange `call` hands it (a new handle on
+ * the one the caller passed), and sets `keep` (1: the connection can carry another request) before it returns. */
+/* ms-sig: msstd_handler_new(run: *mut Closure) -> *mut ObjCell<HandlerH> @handle @keeps:run @domain=HTTP */
+void *msstd_handler_new(void *run);
+/* ms-sig: msstd_handler_share(handle h: *const ObjCell<HandlerH>) -> *mut ObjCell<HandlerH> @handle @domain=HTTP */
+void *msstd_handler_share(const void *handle);
+/* ms-sig: msstd_handler_call(handle h: *const ObjCell<HandlerH>, handle x: *const ObjCell<ExchH>, out: *mut u8, err: ErrSlot) -> u8 @domain=HTTP */
+uint8_t msstd_handler_call(const void *handle, const void *exchange, uint8_t *keep, MsStr *err);
+/* ms-sig: msstd_handler_take() -> *mut ObjCell<ExchH> @handle @domain=HTTP */
+void *msstd_handler_take(void);
+/* ms-sig: msstd_handler_keep(keep: u8) @domain=HTTP */
+void msstd_handler_keep(uint8_t keep);
 
 /* HTTP/2 connections (runtime/net/exchange_h2_natives.c over exchange_h2.c). After a handshake that chose h2 (see
  * msstd_conn_alpn), `open` starts HTTP/2 on the connection (limits of 0 are the defaults, `idle` bounds a wait with

@@ -214,7 +214,7 @@ fn ServerExchange.headers() HttpHeaders:
 	return fields
 
 fn ServerExchange.method() HttpMethod:
-	return method_of(self.method_text)
+	return method_of(self.method_text.clone())
 
 fn ServerExchange.path() String:
 	return self.target.path.clone()
@@ -250,7 +250,11 @@ fn var ServerExchange.read(max_bytes: Int?) Bytes?!:
 		self.received += piece.length()
 		if cap := self.limits.max_body_bytes:
 			if self.received > cap: return error(
-				overflow("request body is over the limit")
+				Error(
+					"http: request body is over the limit",
+					kind: "EOVERFLOW",
+					details: {"limit": "request"},
+				)
 			)
 		return ok(piece)
 
@@ -367,7 +371,9 @@ export fn open_exchange(
 export fn finish_exchange(native: NativeExchange, failure: Error?) Bool:
 	if error_found := failure:
 		var status = 500
-		if error_found.kind == "EOVERFLOW": status = 413
+		// Only a request body over its limit is the client's fault; a response over
+		// its limit is the handler's.
+		if error_found.kind == "EOVERFLOW" and error_found.details.get("limit") == "request": status = 413
 		void msstd_xchg_send_head(native, status, headers(), 0, none)
 		void msstd_xchg_finish(native, none)
 		return false

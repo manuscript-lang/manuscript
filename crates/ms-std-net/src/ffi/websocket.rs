@@ -3,13 +3,13 @@
 
 use super::leaf_opt;
 use super::tls::tls_options;
-use super::{ExchH, HeadersH, NetH, SocketH, opt, report};
+use super::{HeadersH, NetH, SocketH, report};
 use crate::bound::Bound;
 use crate::error::WsErr;
 use crate::http::headers::Headers;
 use crate::ws::dial::{self, Dial};
 use ms_rt::ffi::{
-    Bytes, ErrOut, Has, ObjRef, Object, Out, StatusCode, Str, StringList, abi_type, native,
+    Bytes, ErrOut, ObjRef, Object, Out, StatusCode, Str, StringList, abi_type, native,
 };
 use ms_rt_abi::STATUS_NONE;
 
@@ -103,24 +103,6 @@ native! {
             ),
         };
         out.write(Object(SocketH(Bound::new(report(result, &err)?))));
-        Ok(())
-    }
-
-    /// `HttpExchange.upgrade(origins, subprotocols, max_message_bytes)`.
-    // ms: domain=HTTP
-    fn msstd_http_exchange_upgrade(
-        x: ObjRef<ExchH>,
-        origins: Vec<&str>,
-        subprotocols: Vec<&str>,
-        has_max: Has,
-        max: i64,
-        out: Out<Object<SocketH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let origins: Vec<String> = origins.into_iter().map(str::to_string).collect();
-        let protocols: Vec<String> = subprotocols.into_iter().map(str::to_string).collect();
-        let s = x.upgrade(&origins, &protocols, opt(*has_max, max));
-        out.write(Object(SocketH(Bound::new(report(s, &err)?))));
         Ok(())
     }
 

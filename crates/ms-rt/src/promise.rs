@@ -1708,7 +1708,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi
 /// call, against a task start. Only an unbounded wait does this; a wait with a deadline cannot
 /// stop the work, so it leaves the promise to run as a task.
 fn run_unstarted(id: i64) {
-    let t = table();
+    let mut t = table();
     let Some(i) = index(&t, id) else { return };
     if t.closure[i] == 0 || t.thread[i] != NOT_STARTED || t.flags[i] & WANT_CANCEL != 0 {
         return;
@@ -1716,6 +1716,10 @@ fn run_unstarted(id: i64) {
     let Some(closure) = sched::remove_pending(id, t.queued[i]) else {
         return;
     };
+    // The work leaves its queue and runs on this stack: it is no longer queued, so a cancelled
+    // frame that started it does not end it by joining the work it runs inside.
+    t.queued[i] = 0;
+    drop(t);
     let mut msg = crate::string::NO_STR;
     // SAFETY: the promise owns the closure until `Ended`; the entry calls it as a task would.
     let status =

@@ -251,6 +251,7 @@ static MsExchange *exchange_new(const void *conn, const uint8_t *buffer, size_t 
 }
 
 uint8_t msstd_xchg_next(const void *conn, int64_t head_limit, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     ms_conn_set_refusal(ms_netconn_table(ms_netconn_of(conn)), ms_netconn_id(ms_netconn_of(conn)), 0);
     const MsNetConn *core = ms_netconn_of(conn);
     MsConnTable *table = ms_netconn_table(core);
@@ -306,6 +307,7 @@ int64_t msstd_xchg_reject_status(const void *conn) {
 }
 
 uint8_t msstd_xchg_reject(const void *conn, int64_t status, uint8_t has_timeout, int64_t timeout, MsStr *err) {
+    ms_net_clear_text(err);
     if (status < 400 || status > 599) {
         return STATUS_INVALID_INPUT;
     }
@@ -442,6 +444,7 @@ static uint8_t read_piece(MsExchange *exchange, size_t capacity, int64_t deadlin
 }
 
 uint8_t msstd_xchg_read(const void *handle, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err) {
+    ms_net_clear_text(err);
     MsExchange *exchange = exchange_of(handle);
     if (exchange->h2 != NULL) {
         return ms_xchg_h2_read(exchange->h2, has_max, max, has_timeout, timeout, out, err);
@@ -465,6 +468,7 @@ uint8_t msstd_xchg_read(const void *handle, uint8_t has_max, int64_t max, uint8_
 }
 
 uint8_t msstd_xchg_reset(const void *handle, int64_t max, uint8_t has_timeout, int64_t timeout, MsStr *err) {
+    ms_net_clear_text(err);
     MsExchange *exchange = exchange_of(handle);
     if (exchange->h2 != NULL) {
         return ms_xchg_h2_reset(exchange->h2, max, has_timeout, timeout, err);
@@ -488,6 +492,16 @@ uint8_t msstd_xchg_reset(const void *handle, int64_t max, uint8_t has_timeout, i
             return STATUS_LIMIT_EXCEEDED;
         }
     }
+}
+
+uint8_t msstd_xchg_wait_gone(const void *handle, MsStr *err) {
+    ms_net_clear_text(err);
+    MsExchange *exchange = exchange_of(handle);
+    if (exchange->h2 != NULL) {
+        return ms_xchg_h2_wait_gone(exchange->h2, err);
+    }
+    const MsNetStatus status = ms_conn_wait_gone(table_of(exchange), id_of(exchange));
+    return status == MS_NET_RESET || status == MS_NET_CLOSED ? STATUS_OK : finish_status(exchange, status, err);
 }
 
 /* ---- response ---- */
@@ -533,7 +547,7 @@ static int build_head(char *dst, size_t cap, size_t *used, const MsExchange *exc
         written = ms_h1_write_field(dst, cap, used, "Connection", 10, keep ? "keep-alive" : "close", keep ? 10 : 5);
     }
     if (written != 0) {
-        return written;
+            return written;
     }
     (void)exchange;
     return ms_h1_write_head_end(dst, cap, used);
@@ -553,6 +567,7 @@ static bool headers_ask_close(const MsHeaders *headers) {
 }
 
 uint8_t msstd_xchg_send_head(const void *handle, int64_t status, const void *headers_handle, uint8_t has_length, int64_t length, uint8_t has_timeout, int64_t timeout, MsStr *err) {
+    ms_net_clear_text(err);
     MsExchange *exchange = exchange_of(handle);
     if (exchange->h2 != NULL) {
         return ms_xchg_h2_send_head(exchange->h2, status, headers_handle == NULL ? NULL : ms_headers_of(headers_handle), has_length, length, err);
@@ -586,7 +601,7 @@ uint8_t msstd_xchg_send_head(const void *handle, int64_t status, const void *hea
         capacity *= 2;
     }
     if (built != 0) {
-        free(buffer);
+            free(buffer);
         return STATUS_INVALID_INPUT;
     }
     const MsNetStatus sent = ms_conn_write(table_of(exchange), id_of(exchange), buffer, used, ms_net_deadline_of(has_timeout, timeout));
@@ -607,6 +622,7 @@ uint8_t msstd_xchg_send_head(const void *handle, int64_t status, const void *hea
 }
 
 uint8_t msstd_xchg_write(const void *handle, const MsVec *data, uint8_t has_timeout, int64_t timeout, MsStr *err) {
+    ms_net_clear_text(err);
     MsExchange *exchange = exchange_of(handle);
     if (exchange->h2 != NULL) {
         return ms_xchg_h2_write(exchange->h2, ms_bytes_of(data->ptr, data->len), has_timeout, timeout, err);
@@ -657,6 +673,7 @@ static MsNetStatus unread_input(MsExchange *exchange) {
 }
 
 uint8_t msstd_xchg_finish(const void *handle, uint8_t has_timeout, int64_t timeout, uint8_t *keep, MsStr *err) {
+    ms_net_clear_text(err);
     MsExchange *exchange = exchange_of(handle);
     if (exchange->h2 != NULL) {
         return ms_xchg_h2_finish(exchange->h2, has_timeout, timeout, keep, err);

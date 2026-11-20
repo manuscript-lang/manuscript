@@ -1,11 +1,13 @@
 import (
 	Bytes from "@std/bytes.ms",
-	HttpHeaders, NativeHttpClient from "@std/net/http.ms",
+	HttpHeaders,
+	NativeConnection,
+	NativeHttpClient,
+	NativeListener,
+	NativeTlsServer from "@std/net/http.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
 	Datagram,
-	NativeConnection,
 	NativeDatagramSocket,
-	NativeListener,
 	NativeNetwork,
 	NativeScope from "@std/net/net.ms",
 	CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
@@ -74,6 +76,21 @@ export extern fn msstd_conn_start_tls(
 export extern fn msstd_conn_accept_tls(
 	handle: NativeConnection,
 	options: TlsOptions,
+	timeout: Duration?,
+) NativeConnection!
+
+// The application protocol the handshake chose, such as `h2`; empty for none.
+export extern fn msstd_conn_alpn(handle: NativeConnection) String
+
+// A server TLS context built once, so each accepted connection reuses the parsed
+// certificate: `accept_tls_with` is `accept_tls` on it.
+export extern fn msstd_tls_server_new(options: TlsOptions) NativeTlsServer!
+
+export extern fn msstd_tls_server_share(server: NativeTlsServer) NativeTlsServer
+
+export extern fn msstd_conn_accept_tls_with(
+	handle: NativeConnection,
+	server: NativeTlsServer,
 	timeout: Duration?,
 ) NativeConnection!
 

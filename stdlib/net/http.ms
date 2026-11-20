@@ -1,6 +1,7 @@
 import (
 	Bytes, join from "@std/bytes.ms",
 	Promise,
+	Cancel,
 	PromiseOptions,
 	complete,
 	deferred,
@@ -445,18 +446,23 @@ export type HttpResponse:
 	// `Transfer-Encoding`, and `Connection` are rejected with a 500 error.
 	headers: HttpHeaders = headers()
 
-// The listener, handler, limits, TLS settings and admission count that every connection
-// of one `serve` call shares.
-export extern type NativeServing
+// The runtime's count of requests running at once, for `max_requests`.
+export extern type NativeAdmission
 
-// What one `serve` worker takes from the serving: its options and a borrow of the
-// handler. The serving outlives every worker, which the accept loop joins before
-// releasing it.
-export extern type NativeWorkerSpec
+// A TLS server context built once for the listener.
+export extern type NativeTlsServer
 
-// One worker thread's HTTP engine: the connections it adopted, driven by the poller
-// without a task each.
-export extern type NativeWorker
+// The HTTP/2 state of one connection.
+export extern type NativeH2Conn
+
+// The request handler of a server, called by the tasks of every thread.
+export extern type NativeHandler
+
+// The runtime handle behind a `Connection`.
+export extern type NativeConnection
+
+// The runtime handle behind a `Listener`.
+export extern type NativeListener
 
 // A running HTTP server. Close it, or drop it, to stop accepting and drain.
 export type HttpServer:
@@ -467,13 +473,16 @@ export type HttpServer:
 	bound: String
 	// Whether `close` has been called, so `wait` reports a normal stop.
 	stopped: Bool
+	// Fired by `close`: the accept loop stops accepting and drains its connections.
+	stopping: Cancel
 
 // Stops accepting and asks every connection to finish: idle ones close at once,
 // requests in flight finish within `grace`, then the rest are cancelled. It returns
 // once the server has stopped, and consumes the server.
 fn move HttpServer.close() Void!:
 	self.stopped = true
-	self.accepting.cancel()
+	self.stopping.cancel()
+	void self.accepting.wait()
 
 // Returns the bound local address as `host:port` text, which reveals the port
 // chosen when listening on port 0.

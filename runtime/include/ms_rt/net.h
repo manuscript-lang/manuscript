@@ -207,6 +207,14 @@ uint8_t msstd_scope_track_dgram(const void *handle, const void *socket);
 uint8_t msstd_conn_start_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
 /* ms-sig: msstd_conn_accept_tls(handle c: *const ObjCell<ConnH>, options: *const TlsOptionsWire, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_conn_accept_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* A server context built once and shared by every connection a listener accepts, so the certificate is parsed once
+ * (STATUS_INVALID_INPUT for unusable options). `accept_tls_with` is accept_tls on such a context. */
+/* ms-sig: msstd_tls_server_new(options: *const TlsOptionsWire, out: *mut *mut ObjCell<TlsServerH>) -> u8 @domain=network */
+uint8_t msstd_tls_server_new(const MsNetTlsOptions *options, void **out);
+/* ms-sig: msstd_tls_server_share(handle s: *const ObjCell<TlsServerH>) -> *mut ObjCell<TlsServerH> @handle @domain=network */
+void *msstd_tls_server_share(const void *handle);
+/* ms-sig: msstd_conn_accept_tls_with(handle c: *const ObjCell<ConnH>, handle server: *const ObjCell<TlsServerH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_conn_accept_tls_with(const void *handle, const void *server, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
 /* The application protocol the handshake chose ("h2", "http/1.1"), empty for none or a plain connection. */
 /* ms-sig: msstd_conn_alpn(handle c: *const ObjCell<ConnH>, out: *mut StrVal) @domain=network */
 void msstd_conn_alpn(const void *handle, MsStr *out);
