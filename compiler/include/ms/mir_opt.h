@@ -28,6 +28,8 @@ bool mir_opt_lastuse_func(MirModule *m, MirFunc *f);
 bool mir_opt_simplify(MirModule *m);  /* folding, identities, block cleanup, value numbering, dead code */
 bool mir_opt_simplify_func(MirModule *m, MirFunc *f);
 bool mir_opt_simplify_phis(MirModule *m); /* only trivial block-parameter elimination */
+bool mir_opt_range(MirModule *m);      /* checks the value ranges prove redundant are removed */
+bool mir_opt_range_func(MirModule *m, MirFunc *f);
 bool mir_opt_sortgen(MirModule *m);    /* sorts by a known comparator run as generated code */
 bool mir_opt_appendfast(MirModule *m); /* `string_append` on an owned string with room runs inline */
 
