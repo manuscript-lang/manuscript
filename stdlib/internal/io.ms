@@ -35,7 +35,7 @@ export extern fn msstd_terminal_raw_terminal_read(
 	quick: Bool,
 ) Void?!
 
-export extern fn msstd_terminal_input_text() String
+export extern fn msstd_terminal_input_text(handle: NativeRawTerminal) String
 
 export extern fn msstd_terminal_raw_terminal_set_restore(
 	handle: NativeRawTerminal,

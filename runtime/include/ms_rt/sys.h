@@ -76,6 +76,12 @@ MS_NODISCARD bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns);
  * environment (issue #4647). Linux only; a no-op elsewhere. */
 void ms_sys_sync_environ(void);
 
+/* ---- network interfaces ---- */
+
+/* The system's numeric index of the interface called `name` (NUL-terminated), or 0 when it has none or the host
+ * keys interfaces another way (Windows, where libuv reports friendly names). */
+uint32_t ms_sys_interface_index(const char *name);
+
 /* ---- faults ---- */
 
 /* Called on the faulting thread, on its alternate stack, with the address the faulting access touched. It
