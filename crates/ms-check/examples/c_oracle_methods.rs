@@ -40,12 +40,18 @@ fn variables(syms: Names, vars: &[Ty], dedupe: bool) -> String {
             let mut bounds: Vec<String> = v.bounds().iter().map(|b| show(syms, b)).collect();
             if dedupe {
                 let mut seen = Vec::new();
-                bounds.retain(|b| !seen.contains(b) && {
-                    seen.push(b.clone());
-                    true
+                bounds.retain(|b| {
+                    !seen.contains(b) && {
+                        seen.push(b.clone());
+                        true
+                    }
                 });
             }
-            format!("{} default={default} bounds={}", syms.str(v.name), bounds.join(","))
+            format!(
+                "{} default={default} bounds={}",
+                syms.str(v.name),
+                bounds.join(",")
+            )
         })
         .collect();
     format!("[{}]", each.join("; "))
@@ -84,11 +90,8 @@ fn interface_operations(
             continue;
         };
         for op in def.operations.borrow().iter() {
-            let own = session.operation_variables(&format!(
-                "{}/{}",
-                syms.str(ty.id),
-                syms.str(op.name)
-            ));
+            let own =
+                session.operation_variables(&format!("{}/{}", syms.str(ty.id), syms.str(op.name)));
             let labels: Vec<String> = op
                 .ty
                 .params
@@ -118,23 +121,21 @@ fn interface_operations(
 fn methods(out: &mut String, syms: Names, program: &ms_check::Program, module: &ms_check::ModRef) {
     let mut rows = Vec::new();
     for m in program.methods.iter().filter(|m| m.module == module.file) {
-        let labels: Vec<String> = m
-            .ty
-            .params
-            .iter()
-            .map(|p| {
-                format!(
-                    "{}{}{}",
-                    if p.mutable { "var " } else { "" },
-                    if p.moving { "move " } else { "" },
-                    syms.str(p.name)
-                )
-            })
-            .collect();
-        let at = m
-            .decl
-            .as_ref()
-            .map_or("-".to_string(), |f| format!("{}:{}", f.pos().line, f.pos().column));
+        let labels: Vec<String> =
+            m.ty.params
+                .iter()
+                .map(|p| {
+                    format!(
+                        "{}{}{}",
+                        if p.mutable { "var " } else { "" },
+                        if p.moving { "move " } else { "" },
+                        syms.str(p.name)
+                    )
+                })
+                .collect();
+        let at = m.decl.as_ref().map_or("-".to_string(), |f| {
+            format!("{}:{}", f.pos().line, f.pos().column)
+        });
         let inherent = m.is_inherent(syms);
         let contract = match &m.contract {
             Some(c) if !inherent => show(syms, c),

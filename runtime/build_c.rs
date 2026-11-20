@@ -15,11 +15,6 @@ pub struct CRuntime {
 }
 
 impl CRuntime {
-    /// Whether `runtime/std/crypto*.c` is part of the archive; `ms-native` then leaves the Rust crypto out.
-    pub fn has_crypto(&self) -> bool {
-        self.features.iter().any(|f| f == "crypto")
-    }
-
     /// Whether the libuv reactor (`runtime/io`) is part of the archive; `ms-rt` then leaves its mio poller out.
     pub fn has_reactor(&self) -> bool {
         self.features.iter().any(|f| f == "reactor")
@@ -38,7 +33,11 @@ pub fn c_compiler(root: &Path, triple: &str, arch: &str) -> PathBuf {
         let mingw = std::env::var_os("MS_MINGW")
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("target/llvm-bundle/mingw"));
-        mingw.join("bin").join(format!("{arch}-w64-mingw32-clang"))
+        // CMake wants the full file name of the compiler, and a Windows host's file has the extension.
+        let exe = if cfg!(windows) { ".exe" } else { "" };
+        mingw
+            .join("bin")
+            .join(format!("{arch}-w64-mingw32-clang{exe}"))
     } else if triple.contains("musl") {
         musl_compiler()
     } else {
@@ -150,9 +149,6 @@ pub fn build_c_runtime(root: &Path, work: &Path, triple: Option<&str>) -> Result
             // A Windows host's own build (unit tests) targets MSVC.
             configure.arg(format!("-DCMAKE_C_COMPILER_TARGET={arch}-pc-windows-msvc"));
         }
-    }
-    if std::env::var_os("MS_C_REGEX").is_some() {
-        configure.arg("-DMS_C_REGEX=ON");
     }
     run(&mut configure, "cmake configure")?;
     run(

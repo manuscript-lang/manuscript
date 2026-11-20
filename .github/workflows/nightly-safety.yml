@@ -43,7 +43,7 @@ jobs:
         # header file in a test, which Miri's isolation forbids.
         run: |
           failed=""
-          for crate in ms-rt ms-rt-abi ms-std-core ms-std-bigint ms-std-crypto ms-std-json ms-std-regex ms-std-archive ms-std-system ms-std-terminal; do
+          for crate in ms-rt ms-rt-abi ms-std-core ms-std-bigint ms-std-json ms-std-archive ms-std-system ms-std-terminal; do
             flags="-Zmiri-ignore-leaks"
             [ "$crate" = ms-rt-abi ] && flags="$flags -Zmiri-disable-isolation"
             echo "::group::miri $crate"
