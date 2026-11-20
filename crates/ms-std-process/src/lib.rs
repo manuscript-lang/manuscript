@@ -39,14 +39,13 @@ use alloc::vec::Vec;
 use command::Subprocess;
 use ms_rt::ffi::ErrOut;
 use ms_rt::ffi::{
-    Bytes, Has, IntList, ObjBox, ObjMut, ObjRef, Object, StatusCode, Str, StrMap, StringList, Text,
-    TextList, abi_handle, abi_type, argv, monotonic_nanos, native, start_nanos,
+    Bytes, Has, IntList, ObjMut, ObjRef, Object, PipeEnd, StatusCode, Str, StrMap, StringList,
+    Text, TextList, abi_handle, abi_type, argv, monotonic_nanos, native, start_nanos,
 };
 use ms_rt_abi::STATUS_INVALID_INPUT;
 use ms_std_fs::err::Fail as FsFail;
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::{fs_status, fs_status_at};
-use ms_std_io::stream::Stream;
 
 /// Nanoseconds since the runtime started (or since the first call when it did not record a start).
 fn uptime_ns() -> i64 {
@@ -150,12 +149,12 @@ fn timeout(has: bool, value: i64) -> Res<Option<i64>> {
 
 /// The stream over a subprocess's parent end, or an already closed stream when that standard
 /// stream was not piped.
-pub(crate) fn parent_end(fd: &mut command::Fd, name: &[u8]) -> Stream {
+pub(crate) fn parent_end(fd: &mut command::Fd, name: &[u8]) -> PipeEnd {
     if fd.is_open() {
-        return Stream::new(fd.take(), true, name);
+        return PipeEnd::new(fd.take() as isize, true, name);
     }
-    let mut closed = Stream::new(fd.0, false, name);
-    let _ = closed.close();
+    let mut closed = PipeEnd::new(fd.0 as isize, false, name);
+    closed.close();
     closed
 }
 
@@ -191,7 +190,7 @@ fn valid_command(program: &[u8], args: &[&[u8]]) -> Res<Vec<Vec<u8>>> {
 /// the program may also hold.
 pub struct Child {
     proc: Subprocess,
-    streams: [ObjBox<Stream>; 3],
+    streams: [PipeEnd; 3],
     /// The runtime stream-table id of each pipe once taken (-2 not yet, -1 no pipe).
     ids: [i64; 3],
 }
@@ -200,7 +199,7 @@ impl Drop for Child {
     fn drop(&mut self) {
         self.proc.stop();
         for s in &mut self.streams {
-            let _ = s.get_mut().close();
+            s.close();
         }
     }
 }
@@ -465,9 +464,9 @@ native! {
         });
         let mut p = command_status(program, cwd, spawned, &err)?;
         let streams = [
-            ObjBox::new(parent_end(&mut p.stdin, b"|1")),
-            ObjBox::new(parent_end(&mut p.stdout, b"|0")),
-            ObjBox::new(parent_end(&mut p.stderr, b"|0")),
+            parent_end(&mut p.stdin, b"|1"),
+            parent_end(&mut p.stdout, b"|0"),
+            parent_end(&mut p.stderr, b"|0"),
         ];
         Ok(Object(Child { proc: p, streams, ids: [-2; 3] }))
     }
@@ -510,7 +509,7 @@ native! {
         let mut h = h;
         h.proc.stop();
         for s in &mut h.streams {
-            let _ = s.get_mut().close();
+            s.close();
         }
     }
 
@@ -606,9 +605,9 @@ mod exec {
 }
 
 /// Moves the descriptor of `stream` into the runtime stream table once and answers its id.
-pub(crate) fn stream_id(stream: &mut ObjBox<Stream>, id: &mut i64, writes: bool) -> i64 {
+pub(crate) fn stream_id(stream: &mut PipeEnd, id: &mut i64, writes: bool) -> i64 {
     if *id == -2 {
-        let fd = stream.get_mut().take_fd();
+        let fd = stream.take_fd();
         use ms_rt::streams::{NONBLOCK, OWNS, READS, WRITES};
         *id = if fd < 0 {
             -1

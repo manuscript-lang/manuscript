@@ -1802,3 +1802,64 @@ macro_rules! native {
         $crate::native! { $($rest)* }
     };
 }
+
+/// A name for error messages, as the C stream takes it.
+#[repr(C)]
+struct NameBytes {
+    ptr: *const u8,
+    len: usize,
+}
+
+unsafe extern "C" {
+    /// `runtime/std/stream.c`: a host stream over `fd`, an object released with `msrt_obj_drop`.
+    fn ms_stream_new(fd: isize, owned: bool, name: NameBytes) -> *mut core::ffi::c_void;
+    fn ms_stream_take_fd(stream: *mut core::ffi::c_void) -> i64;
+    fn ms_stream_retire(stream: *mut core::ffi::c_void);
+}
+
+/// A child's parent-side pipe: a C host stream that owns the descriptor until it moves to the runtime stream table.
+pub struct PipeEnd(*mut core::ffi::c_void);
+
+impl PipeEnd {
+    pub fn new(fd: isize, owned: bool, name: &[u8]) -> PipeEnd {
+        // SAFETY: the name is copied before the call returns.
+        PipeEnd(unsafe {
+            ms_stream_new(
+                fd,
+                owned,
+                NameBytes {
+                    ptr: name.as_ptr(),
+                    len: name.len(),
+                },
+            )
+        })
+    }
+
+    /// The descriptor of an owned pipe, which the stream then no longer closes; -1 when closed or borrowed.
+    pub fn take_fd(&mut self) -> i64 {
+        // SAFETY: the stream is live until `drop`.
+        if self.0.is_null() {
+            -1
+        } else {
+            // SAFETY: self.0 is a live stream handle owned by this end.
+            unsafe { ms_stream_take_fd(self.0) }
+        }
+    }
+
+    /// Closes the descriptor once.
+    pub fn close(&mut self) {
+        if !self.0.is_null() {
+            // SAFETY: the stream is live until `drop`.
+            unsafe { ms_stream_retire(self.0) };
+        }
+    }
+}
+
+impl Drop for PipeEnd {
+    fn drop(&mut self) {
+        if !self.0.is_null() {
+            // SAFETY: this box owns the object.
+            unsafe { msrt_obj_drop(self.0.cast()) };
+        }
+    }
+}

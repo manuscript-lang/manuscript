@@ -56,3 +56,22 @@ size_t msrt_cleanup_push(void (*run)(uint8_t *), uint8_t *argument) {
 }
 void msrt_cleanup_discard(size_t handle) { (void)handle; }
 void msrt_string_empty(MsStr *out) { *out = (MsStr){.ptr_word = NULL, .tagged = 0}; }
+int32_t ms_sched_stdout_error(void) { return 0; }
+void ms_sched_flush_stdout(void) {}
+
+/* Watchers park on a token the unit tests never wait for. */
+uint64_t msrt_token_new(uint32_t flags) {
+    (void)flags;
+    return 1;
+}
+void msrt_token_free(uint64_t token) { (void)token; }
+void msrt_token_post_remote(uint64_t token, uint64_t value) {
+    (void)token;
+    (void)value;
+}
+uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) {
+    (void)token;
+    (void)timeout_ns;
+    *value = 0;
+    return 0;
+}

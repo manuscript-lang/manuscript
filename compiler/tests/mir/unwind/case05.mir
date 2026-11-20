@@ -1,0 +1,370 @@
+module "t"
+entry @main
+extern @msrt_promise_start(int) -> int spawns_task
+extern @msrt_task_sleep(int) -> int
+extern @msrt_string_eq(str, str) -> bool string_eq
+fn @main() -> int {
+b0:
+  %n: int = iconst 5
+  %l0: str = str "held"
+  %a0: str = clone %l0
+  %t0: str = clone %l0
+  %r0: int = call.rt @msrt_task_sleep (%n)
+  drop %t0
+  %l1: str = str "held"
+  %a1: str = clone %l1
+  %t1: str = clone %l1
+  %r1: int = call.rt @msrt_task_sleep (%n)
+  drop %t1
+  %l2: str = str "held"
+  %a2: str = clone %l2
+  %t2: str = clone %l2
+  %r2: int = call.rt @msrt_task_sleep (%n)
+  drop %t2
+  %l3: str = str "held"
+  %a3: str = clone %l3
+  %t3: str = clone %l3
+  %r3: int = call.rt @msrt_task_sleep (%n)
+  drop %t3
+  %l4: str = str "held"
+  %a4: str = clone %l4
+  %t4: str = clone %l4
+  %r4: int = call.rt @msrt_task_sleep (%n)
+  drop %t4
+  %l5: str = str "held"
+  %a5: str = clone %l5
+  %t5: str = clone %l5
+  %r5: int = call.rt @msrt_task_sleep (%n)
+  drop %t5
+  %l6: str = str "held"
+  %a6: str = clone %l6
+  %t6: str = clone %l6
+  %r6: int = call.rt @msrt_task_sleep (%n)
+  drop %t6
+  %l7: str = str "held"
+  %a7: str = clone %l7
+  %t7: str = clone %l7
+  %r7: int = call.rt @msrt_task_sleep (%n)
+  drop %t7
+  %l8: str = str "held"
+  %a8: str = clone %l8
+  %t8: str = clone %l8
+  %r8: int = call.rt @msrt_task_sleep (%n)
+  drop %t8
+  %l9: str = str "held"
+  %a9: str = clone %l9
+  %t9: str = clone %l9
+  %r9: int = call.rt @msrt_task_sleep (%n)
+  drop %t9
+  %l10: str = str "held"
+  %a10: str = clone %l10
+  %t10: str = clone %l10
+  %r10: int = call.rt @msrt_task_sleep (%n)
+  drop %t10
+  %l11: str = str "held"
+  %a11: str = clone %l11
+  %t11: str = clone %l11
+  %r11: int = call.rt @msrt_task_sleep (%n)
+  drop %t11
+  %l12: str = str "held"
+  %a12: str = clone %l12
+  %t12: str = clone %l12
+  %r12: int = call.rt @msrt_task_sleep (%n)
+  drop %t12
+  %l13: str = str "held"
+  %a13: str = clone %l13
+  %t13: str = clone %l13
+  %r13: int = call.rt @msrt_task_sleep (%n)
+  drop %t13
+  %l14: str = str "held"
+  %a14: str = clone %l14
+  %t14: str = clone %l14
+  %r14: int = call.rt @msrt_task_sleep (%n)
+  drop %t14
+  %l15: str = str "held"
+  %a15: str = clone %l15
+  %t15: str = clone %l15
+  %r15: int = call.rt @msrt_task_sleep (%n)
+  drop %t15
+  %l16: str = str "held"
+  %a16: str = clone %l16
+  %t16: str = clone %l16
+  %r16: int = call.rt @msrt_task_sleep (%n)
+  drop %t16
+  %l17: str = str "held"
+  %a17: str = clone %l17
+  %t17: str = clone %l17
+  %r17: int = call.rt @msrt_task_sleep (%n)
+  drop %t17
+  %l18: str = str "held"
+  %a18: str = clone %l18
+  %t18: str = clone %l18
+  %r18: int = call.rt @msrt_task_sleep (%n)
+  drop %t18
+  %l19: str = str "held"
+  %a19: str = clone %l19
+  %t19: str = clone %l19
+  %r19: int = call.rt @msrt_task_sleep (%n)
+  drop %t19
+  %l20: str = str "held"
+  %a20: str = clone %l20
+  %t20: str = clone %l20
+  %r20: int = call.rt @msrt_task_sleep (%n)
+  drop %t20
+  %l21: str = str "held"
+  %a21: str = clone %l21
+  %t21: str = clone %l21
+  %r21: int = call.rt @msrt_task_sleep (%n)
+  drop %t21
+  %l22: str = str "held"
+  %a22: str = clone %l22
+  %t22: str = clone %l22
+  %r22: int = call.rt @msrt_task_sleep (%n)
+  drop %t22
+  %l23: str = str "held"
+  %a23: str = clone %l23
+  %t23: str = clone %l23
+  %r23: int = call.rt @msrt_task_sleep (%n)
+  drop %t23
+  %l24: str = str "held"
+  %a24: str = clone %l24
+  %t24: str = clone %l24
+  %r24: int = call.rt @msrt_task_sleep (%n)
+  drop %t24
+  %l25: str = str "held"
+  %a25: str = clone %l25
+  %t25: str = clone %l25
+  %r25: int = call.rt @msrt_task_sleep (%n)
+  drop %t25
+  %l26: str = str "held"
+  %a26: str = clone %l26
+  %t26: str = clone %l26
+  %r26: int = call.rt @msrt_task_sleep (%n)
+  drop %t26
+  %l27: str = str "held"
+  %a27: str = clone %l27
+  %t27: str = clone %l27
+  %r27: int = call.rt @msrt_task_sleep (%n)
+  drop %t27
+  %l28: str = str "held"
+  %a28: str = clone %l28
+  %t28: str = clone %l28
+  %r28: int = call.rt @msrt_task_sleep (%n)
+  drop %t28
+  %l29: str = str "held"
+  %a29: str = clone %l29
+  %t29: str = clone %l29
+  %r29: int = call.rt @msrt_task_sleep (%n)
+  drop %t29
+  %l30: str = str "held"
+  %a30: str = clone %l30
+  %t30: str = clone %l30
+  %r30: int = call.rt @msrt_task_sleep (%n)
+  drop %t30
+  %l31: str = str "held"
+  %a31: str = clone %l31
+  %t31: str = clone %l31
+  %r31: int = call.rt @msrt_task_sleep (%n)
+  drop %t31
+  %l32: str = str "held"
+  %a32: str = clone %l32
+  %t32: str = clone %l32
+  %r32: int = call.rt @msrt_task_sleep (%n)
+  drop %t32
+  %l33: str = str "held"
+  %a33: str = clone %l33
+  %t33: str = clone %l33
+  %r33: int = call.rt @msrt_task_sleep (%n)
+  drop %t33
+  %l34: str = str "held"
+  %a34: str = clone %l34
+  %t34: str = clone %l34
+  %r34: int = call.rt @msrt_task_sleep (%n)
+  drop %t34
+  %l35: str = str "held"
+  %a35: str = clone %l35
+  %t35: str = clone %l35
+  %r35: int = call.rt @msrt_task_sleep (%n)
+  drop %t35
+  %l36: str = str "held"
+  %a36: str = clone %l36
+  %t36: str = clone %l36
+  %r36: int = call.rt @msrt_task_sleep (%n)
+  drop %t36
+  %l37: str = str "held"
+  %a37: str = clone %l37
+  %t37: str = clone %l37
+  %r37: int = call.rt @msrt_task_sleep (%n)
+  drop %t37
+  %l38: str = str "held"
+  %a38: str = clone %l38
+  %t38: str = clone %l38
+  %r38: int = call.rt @msrt_task_sleep (%n)
+  drop %t38
+  %l39: str = str "held"
+  %a39: str = clone %l39
+  %t39: str = clone %l39
+  %r39: int = call.rt @msrt_task_sleep (%n)
+  drop %t39
+  %l40: str = str "held"
+  %a40: str = clone %l40
+  %t40: str = clone %l40
+  %r40: int = call.rt @msrt_task_sleep (%n)
+  drop %t40
+  %l41: str = str "held"
+  %a41: str = clone %l41
+  %t41: str = clone %l41
+  %r41: int = call.rt @msrt_task_sleep (%n)
+  drop %t41
+  %l42: str = str "held"
+  %a42: str = clone %l42
+  %t42: str = clone %l42
+  %r42: int = call.rt @msrt_task_sleep (%n)
+  drop %t42
+  %l43: str = str "held"
+  %a43: str = clone %l43
+  %t43: str = clone %l43
+  %r43: int = call.rt @msrt_task_sleep (%n)
+  drop %t43
+  %l44: str = str "held"
+  %a44: str = clone %l44
+  %t44: str = clone %l44
+  %r44: int = call.rt @msrt_task_sleep (%n)
+  drop %t44
+  %l45: str = str "held"
+  %a45: str = clone %l45
+  %t45: str = clone %l45
+  %r45: int = call.rt @msrt_task_sleep (%n)
+  drop %t45
+  %l46: str = str "held"
+  %a46: str = clone %l46
+  %t46: str = clone %l46
+  %r46: int = call.rt @msrt_task_sleep (%n)
+  drop %t46
+  %l47: str = str "held"
+  %a47: str = clone %l47
+  %t47: str = clone %l47
+  %r47: int = call.rt @msrt_task_sleep (%n)
+  drop %t47
+  %l48: str = str "held"
+  %a48: str = clone %l48
+  %t48: str = clone %l48
+  %r48: int = call.rt @msrt_task_sleep (%n)
+  drop %t48
+  %l49: str = str "held"
+  %a49: str = clone %l49
+  %t49: str = clone %l49
+  %r49: int = call.rt @msrt_task_sleep (%n)
+  drop %t49
+  %l50: str = str "held"
+  %a50: str = clone %l50
+  %t50: str = clone %l50
+  %r50: int = call.rt @msrt_task_sleep (%n)
+  drop %t50
+  %l51: str = str "held"
+  %a51: str = clone %l51
+  %t51: str = clone %l51
+  %r51: int = call.rt @msrt_task_sleep (%n)
+  drop %t51
+  %l52: str = str "held"
+  %a52: str = clone %l52
+  %t52: str = clone %l52
+  %r52: int = call.rt @msrt_task_sleep (%n)
+  drop %t52
+  %l53: str = str "held"
+  %a53: str = clone %l53
+  %t53: str = clone %l53
+  %r53: int = call.rt @msrt_task_sleep (%n)
+  drop %t53
+  %l54: str = str "held"
+  %a54: str = clone %l54
+  %t54: str = clone %l54
+  %r54: int = call.rt @msrt_task_sleep (%n)
+  drop %t54
+  %l55: str = str "held"
+  %a55: str = clone %l55
+  %t55: str = clone %l55
+  %r55: int = call.rt @msrt_task_sleep (%n)
+  drop %t55
+  %l56: str = str "held"
+  %a56: str = clone %l56
+  %t56: str = clone %l56
+  %r56: int = call.rt @msrt_task_sleep (%n)
+  drop %t56
+  %l57: str = str "held"
+  %a57: str = clone %l57
+  %t57: str = clone %l57
+  %r57: int = call.rt @msrt_task_sleep (%n)
+  drop %t57
+  %l58: str = str "held"
+  %a58: str = clone %l58
+  %t58: str = clone %l58
+  %r58: int = call.rt @msrt_task_sleep (%n)
+  drop %t58
+  %l59: str = str "held"
+  %a59: str = clone %l59
+  %t59: str = clone %l59
+  %r59: int = call.rt @msrt_task_sleep (%n)
+  drop %t59
+  drop %a59
+  drop %a58
+  drop %a57
+  drop %a56
+  drop %a55
+  drop %a54
+  drop %a53
+  drop %a52
+  drop %a51
+  drop %a50
+  drop %a49
+  drop %a48
+  drop %a47
+  drop %a46
+  drop %a45
+  drop %a44
+  drop %a43
+  drop %a42
+  drop %a41
+  drop %a40
+  drop %a39
+  drop %a38
+  drop %a37
+  drop %a36
+  drop %a35
+  drop %a34
+  drop %a33
+  drop %a32
+  drop %a31
+  drop %a30
+  drop %a29
+  drop %a28
+  drop %a27
+  drop %a26
+  drop %a25
+  drop %a24
+  drop %a23
+  drop %a22
+  drop %a21
+  drop %a20
+  drop %a19
+  drop %a18
+  drop %a17
+  drop %a16
+  drop %a15
+  drop %a14
+  drop %a13
+  drop %a12
+  drop %a11
+  drop %a10
+  drop %a9
+  drop %a8
+  drop %a7
+  drop %a6
+  drop %a5
+  drop %a4
+  drop %a3
+  drop %a2
+  drop %a1
+  drop %a0
+  ret %n
+}

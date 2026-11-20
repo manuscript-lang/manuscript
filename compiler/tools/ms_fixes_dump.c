@@ -6,14 +6,7 @@
 
 #include "ms/fixes.h"
 #include "ms/parse.h"
-
-static MsStr str_of(const char *s) {
-    return (MsStr){s, (uint32_t)strlen(s)};
-}
-
-static uint32_t number_of(const char *s) {
-    return (uint32_t)strtoul(s, NULL, 10);
-}
+#include "dump_io.h"
 
 static MsPos pos_of(char **f) {
     return (MsPos){number_of(f[0]), number_of(f[1]), number_of(f[2])};
@@ -94,22 +87,6 @@ static void answer_expression(MsArena *arena, char **f, size_t nfields) {
         put_fix(found, fix);
     }
     ms_names_free(&names);
-}
-
-/* Splits `line` at tabs in place; returns the field count (at most `max`). */
-static size_t split_fields(char *line, char **fields, size_t max) {
-    size_t n = 0;
-    char *at = line;
-    while (n < max) {
-        fields[n++] = at;
-        char *tab = strchr(at, '\t');
-        if (tab == NULL) {
-            break;
-        }
-        *tab = 0;
-        at = tab + 1;
-    }
-    return n;
 }
 
 MS_NODISCARD static bool answer(MsArena *arena, char **f, size_t nfields) {
