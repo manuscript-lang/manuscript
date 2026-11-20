@@ -12,7 +12,7 @@ import (
 	read_all from "@std/io/streams.ms",
 	Policy from "@std/net/policy.ms",
 	TlsOptions from "@std/net/tls.ms",
-	NativeWebSocket, WebSocket, web_socket_from from "@std/net/websocket.ms",
+	WebSocket, web_socket_from from "@std/net/websocket.ms",
 	Duration from "@std/time.ms",
 
 	msstd_body_close,
@@ -393,29 +393,6 @@ export interface HttpExchange:
 	var fn write(move data: String) Void!
 	// Writes one chunk of raw bytes with the same rules as write.
 	var fn write_bytes(move data: Bytes) Void!
-
-// The runtime's side of `HttpExchange.upgrade`: it hands back the runtime socket
-// handle, which `exchange_upgrade` turns into a `WebSocket`. Handlers never see this
-// interface.
-export interface RawExchange:
-	// Switches the connection to a WebSocket like `HttpExchange.upgrade`, returning the
-	// runtime socket handle instead of a `WebSocket`.
-	var fn upgrade(
-		allowed_origins: List[String] = [],
-		subprotocols: List[String] = [],
-		max_message_bytes: Int? = none,
-	) NativeWebSocket!
-
-// Runs `HttpExchange.upgrade` on a native exchange. The compiler's forwarder for that
-// call passes the exchange viewed as a `RawExchange`.
-fn exchange_upgrade(
-	var raw: RawExchange,
-	allowed_origins: List[String],
-	subprotocols: List[String],
-	max_message_bytes: Int?,
-) WebSocket!:
-	native := raw.upgrade(allowed_origins, subprotocols, max_message_bytes)?
-	return ok(web_socket_from(native))
 
 // Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:

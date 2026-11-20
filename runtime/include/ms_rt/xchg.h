@@ -130,4 +130,34 @@ void msstd_h2_drain(const void *h2);
 void *msstd_h2_share(const void *h2);
 
 
+/* ---- WebSocket upgrade (runtime/net/ws_server.c) ---- */
+
+/* What a handshake answers: `status` is 101 for an accepted upgrade, whose `response` fields were filled in, or the
+ * refusal to answer (400, 403, 405, 426) with `reason` its text; `subprotocol` is the one selected ("" for none). */
+typedef struct MsNetWsHandshake {
+    int64_t status;
+    MsStr subprotocol;
+    MsStr reason;
+} MsNetWsHandshake;
+
+/* Checks an upgrade request in this order: Connection (token "upgrade"), Upgrade ("websocket"), method GET, a
+ * Sec-WebSocket-Version of 13 (426 when the field is present without it, else 400), the origin, and a Sec-WebSocket-Key
+ * of 16 base64 bytes that appears once. `host` is the request's Host and `tls` whether the connection is TLS. A missing
+ * or empty Origin is accepted; otherwise it must be a bare http(s) origin that equals an entry of `origins` or, with
+ * `origins` empty, has the request's scheme and host (host compared without case). The first subprotocol of
+ * `subprotocols` (server order) that the client offered is selected.
+ *
+ * STATUS_OK with `out->status` 101: `response` holds the fields to send (Upgrade, Connection, Sec-WebSocket-Accept and
+ * the selected Sec-WebSocket-Protocol). STATUS_OK with a refusal status and its text in `out->reason`, such as
+ * "websocket: request origin not allowed": the refusal also wants `Sec-WebSocket-Version: 13` and `Connection: close`
+ * on its response. A subprotocol that is not an HTTP token is STATUS_INVALID_INPUT. */
+/* ms-sig: msstd_ws_handshake(method: *const StrVal, host: *const StrVal, tls: u8, handle request: *const ObjCell<HeadersH>, origins: *const VecVal, subprotocols: *const VecVal, handle response: *const ObjCell<HeadersH>, out: *mut WsHandshakeWire, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_ws_handshake(const MsStr *method, const MsStr *host, uint8_t tls, const void *request, const MsVec *origins, const MsVec *subprotocols, const void *response, MsNetWsHandshake *out, MsStr *err);
+
+/* The session over `conn`, a ConnH taken from an exchange (msstd_xchg_take_conn) after the 101 head was sent; bytes the
+ * HTTP layer read ahead come first. `subprotocol` is the one msstd_ws_handshake selected; `max` limits one message
+ * (default none). The session holds its own handle on the connection; the caller keeps theirs. */
+/* ms-sig: msstd_ws_serve(handle conn: *const ObjCell<ConnH>, subprotocol: *const StrVal, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<SocketH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_ws_serve(const void *conn, const MsStr *subprotocol, uint8_t has_max, int64_t max, void **out, MsStr *err);
+
 #endif

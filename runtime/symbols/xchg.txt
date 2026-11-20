@@ -28,3 +28,5 @@ msstd_h2_run
 msstd_h2_next
 msstd_h2_drain
 msstd_h2_share
+msstd_ws_handshake
+msstd_ws_serve

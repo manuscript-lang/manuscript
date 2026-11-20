@@ -11,7 +11,7 @@ import (
 	NativeDatagramSocket,
 	NativeScope from "@std/net/net.ms",
 	CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
-	NativeWebSocket, RawWebSocketMessage from "@std/net/websocket.ms",
+	NativeWebSocket, RawWebSocketMessage, WebSocketHandshake from "@std/net/websocket.ms",
 	Duration, Timestamp from "@std/time.ms",
 )
 
@@ -193,6 +193,26 @@ export extern fn msstd_dgram_send(
 	address: String,
 	timeout: Duration?,
 ) Void!
+
+// The server side of the opening handshake (runtime/include/ms_rt/xchg.h): checks the
+// request and, when it is acceptable, fills `response` with the fields of the 101 head.
+// An upgrade the request does not ask for comes back as a refusal status, not an error.
+export extern fn msstd_ws_handshake(
+	method: String,
+	host: String,
+	tls: Bool,
+	request: HttpHeaders,
+	origins: List[String],
+	subprotocols: List[String],
+	response: HttpHeaders,
+) WebSocketHandshake!
+
+// The session over a connection taken from an exchange after its 101 head was sent.
+export extern fn msstd_ws_serve(
+	connection: NativeConnection,
+	subprotocol: String,
+	max_message_bytes: Int?,
+) NativeWebSocket!
 
 export extern fn msstd_websocket_close(handle: NativeWebSocket) Void
 
