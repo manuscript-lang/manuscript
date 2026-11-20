@@ -73,6 +73,8 @@ pub fn run(m: &mut Module) -> bool {
         with_closers: HashMap::new(),
         slot_droppers: HashMap::new(),
         raw_closers: HashMap::new(),
+        box_closers: HashMap::new(),
+        box_values: BTreeSet::new(),
         raw_values: BTreeSet::new(),
         holes: BTreeMap::new(),
         partials: BTreeMap::new(),
@@ -118,6 +120,11 @@ struct Cx {
     /// The cleanup that drops what a slot holds, per type held.
     slot_droppers: HashMap<Ty, FuncId>,
     raw_closers: HashMap<Ty, FuncId>,
+    /// Per interface type, the function that frees only the box of an interface value.
+    box_closers: HashMap<Ty, FuncId>,
+    /// Interface values that a method call receives and the function then forgets: a `move`
+    /// receiver, whose payload the implementation took, so only the box is the caller's to free.
+    box_values: BTreeSet<u32>,
     /// The values of the function being rewritten that are raw slot copies.
     raw_values: BTreeSet<u32>,
     /// The stand-in owner of an owner's other fields while one of them is moved out, by the
@@ -276,6 +283,75 @@ fn raw_closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
     let f = b.into_func();
     let id = m.add_func(f);
     cx.raw_closers.insert(ty, id);
+    id
+}
+
+/// The interface values `f` hands to a method call as its receiver and then forgets: the method
+/// takes the payload out of the box, so a cancellation inside the call frees the box only.
+fn moved_receivers(f: &Func) -> BTreeSet<u32> {
+    let insts = || f.blocks.iter().flat_map(|b| &b.insts);
+    let forgotten: BTreeSet<u32> = insts()
+        .filter(|i| i.op == Op::Forget)
+        .filter_map(|i| i.args.first().map(|a| a.0))
+        .collect();
+    insts()
+        .filter(|i| i.op == Op::CallMethod)
+        .filter_map(|i| i.args.first().map(|a| a.0))
+        .filter(|a| forgotten.contains(a))
+        .collect()
+}
+
+/// The function that frees the box of an interface value while an unwind runs, leaving the
+/// payload to the method that took it.
+fn box_closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
+    if let Some(f) = cx.box_closers.get(&ty) {
+        return *f;
+    }
+    let gate = m.add_extern(ExternDef {
+        name: "msrt_unwind_drops".into(),
+        params: Vec::new(),
+        ret: Ty::BOOL,
+        noreturn: false,
+        pure_: false,
+        fresh: false,
+        retains: false,
+        role: ExternRole::None,
+        leaf: true,
+        reads: false,
+    });
+    let mut b = FuncBuilder::new(
+        m,
+        "unwind.free_box",
+        vec![Param {
+            ty,
+            mode: Mode::Move,
+        }],
+        Ty::VOID,
+    );
+    b.func_mut().linkage = Linkage::Internal;
+    b.func_mut().unwind_only = true;
+    let v = b.params()[0];
+    let (run, skip) = (b.new_block(), b.new_block());
+    let on = b.call_rt(gate, &[]);
+    b.br_if(on, run, &[], skip, &[]);
+    b.switch_to(run);
+    let data = b.emit(Op::IfaceData, &[v], Imm::None, Some(Ty::PTR));
+    b.emit(
+        Op::Free,
+        &[data.expect("iface.data result")],
+        Imm::None,
+        None,
+    );
+    b.emit(Op::Forget, &[v], Imm::None, None);
+    let u = b.unit();
+    b.ret(Some(u));
+    b.switch_to(skip);
+    b.emit(Op::Forget, &[v], Imm::None, None);
+    let u = b.unit();
+    b.ret(Some(u));
+    let f = b.into_func();
+    let id = m.add_func(f);
+    cx.box_closers.insert(ty, id);
     id
 }
 
@@ -1619,6 +1695,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
         return false;
     }
     cx.raw_values = raw_slots(m, f);
+    cx.box_values = moved_receivers(f);
     name_holes(m, cx, f, &covered_slot_takes(m, f, false));
     let wrapped = wrap_with_closers(m, cx, f);
     let covered_shields = cover_shielded_slots(m, cx, f);
@@ -2309,6 +2386,8 @@ fn push_each(
         }
         let c = if cx.raw_values.contains(&v.0) {
             raw_closer(m, cx, ty)
+        } else if cx.box_values.contains(&v.0) {
+            box_closer(m, cx, ty)
         } else {
             closer(m, cx, ty)
         };

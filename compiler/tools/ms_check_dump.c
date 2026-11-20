@@ -15,6 +15,8 @@
 #include "ms/dump.h"
 #include "ms/ownership.h"
 #include "ms/parse.h"
+#include "ms/program.h"
+#include "ms/project.h"
 #include "ms/stdlib.h"
 #include "dump_io.h"
 
@@ -53,68 +55,50 @@ static bool only_std_imports(const MsModule *module) {
     return true;
 }
 
-/* The text of the bundled file `path` (`@std/io/io.ms`, or `@std/io/io.ms+source`). */
-static MsStr std_text(const MsCheck *check, MsSym path) {
-    MsStr full = ms_name(check->names, path);
-    const char *plus = memchr(full.ptr, '+', full.len);
-    const size_t len = plus == NULL ? full.len : (size_t)(plus - full.ptr);
-    if (len < 5) {
-        return (MsStr){0};
-    }
-    for (uint32_t i = 0; i < nfiles; i++) {
-        if (strlen(files[i].name) == len - 5 && memcmp(files[i].name, full.ptr + 5, len - 5) == 0) {
-            return (MsStr){files[i].text, (uint32_t)files[i].len};
-        }
-    }
-    return (MsStr){0};
+/* Checks the bodies of module `id` against a fresh program: the library's method table, with the
+ * bundled modules' and the imports' impls (ms_program_check_module). */
+static void check_bodies_with_methods(MsCheck *check, MsModId id, const char *text, size_t length) {
+    ms_program_begin(check);
+    (void)ms_program_check_module(check, id, (MsStr){text, (uint32_t)length});
 }
 
-/* The implementations of the modules `id` imports join the method table first, as the Rust
- * checker's program-wide table has them. */
-static void add_import_methods(MsCheck *check, MsModId id, MsMethodTable *table) {
-    const MsModule *syntax = check->mods[id].syntax;
-    for (uint32_t i = 0; i < syntax->nimports; i++) {
-        const MsStr path = syntax->imports[i].path;
-        for (int half = 0; half < 2; half++) {
-            char buf[512];
-            snprintf(buf, sizeof buf, "%.*s%s", (int)path.len, path.ptr, half == 0 ? "" : "+source");
-            const MsModId m = ms_module_find(check, ms_intern_cstr(check->names, buf));
-            if (m == MS_NONE || m == id || check->mods[m].syntax == NULL) {
-                continue;
-            }
+/* Loads `path` with the project modules it imports (ms_project_load) and adds them to the checker,
+ * dependencies first, each importing through its graph targets. The entry is the last module, named
+ * `main.ms`. False when the graph has diagnostics or the loader does not cover the request. */
+static bool add_project(MsCheck *check, MsNames *names, const char *path, MsModId *entry, MsStr *entry_text) {
+    static MsArena arena;
+    MsGraph graph;
+    MsProjectError error = {0};
+    if (!ms_project_load(&arena, names, path, &graph, &error) || graph.ndiagnostics != 0 || graph.count < 2) {
+        return false;
+    }
+    MsModId *rows = MS_NEW_N(&arena, MsModId, graph.count);
+    for (uint32_t m = 0; m < graph.count; m++) {
+        const bool last = m + 1 == graph.count;
+        const MsSym row_path = ms_intern_cstr(names, last ? "main.ms" : graph.modules[m].path);
+        rows[m] = ms_module_add(check, row_path, &graph.modules[m].syntax);
+        MsModId *targets = MS_NEW_N(&arena, MsModId, graph.modules[m].syntax.nimports + 1);
+        for (uint32_t i = 0; i < graph.modules[m].syntax.nimports; i++) {
+            const int32_t target = graph.modules[m].targets[i];
+            targets[i] = target < 0 ? MS_NONE : rows[target];
+        }
+        ms_module_set_imports(check, rows[m], targets);
+        if (!last) {
             MsInherentError *errors = NULL;
             uint32_t nerrors = 0;
-            const MsStr text = std_text(check, check->mods[m].path);
-            ms_module_desugar(check, m, text, NULL, 0, &errors, &nerrors);
-            ms_module_resolve_types(check, m);
-            ms_module_ensure_operations(check, m, table);
-            ms_module_add_implementations(check, m, table);
+            ms_module_desugar(check, rows[m], (MsStr){graph.modules[m].source, (uint32_t)graph.modules[m].length}, NULL,
+                              0, &errors, &nerrors);
         }
     }
-}
-
-/* Checks the bodies of module `id` with the program's method table: the inherent methods desugared
- * to impls, the interface operations and the implementations resolved first, as the Rust checker
- * does. A module with an inherent error is left unchecked. */
-static void check_bodies_with_methods(MsCheck *check, MsModId id, const char *text, size_t length) {
-    MsInherentError *errors = NULL;
-    uint32_t nerrors = 0;
-    ms_module_desugar(check, id, (MsStr){text, (uint32_t)length}, NULL, 0, &errors, &nerrors);
-    if (nerrors > 0) {
-        return;
-    }
-    ms_module_resolve_types(check, id);
-    MsMethodTable table;
-    ms_methods_init(&table);
-    add_import_methods(check, id, &table);
-    ms_module_ensure_operations(check, id, &table);
-    ms_module_add_implementations(check, id, &table);
-    ms_module_check_bodies_with(check, id, &table);
-    ms_methods_free(&table);
+    *entry = rows[graph.count - 1];
+    *entry_text = (MsStr){graph.modules[graph.count - 1].source, (uint32_t)graph.modules[graph.count - 1].length};
+    return true;
 }
 
 /* Prints the name-resolution diagnostics of each file as `path:line:col: message`, the form
  * `c_oracle --scope` prints. Files that fail to parse or import project modules print nothing. */
+static bool project_mode;
+
 static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *names, int nfiles_in, char **paths,
                                     bool bodies, bool ownership, bool effects, bool facts_json) {
     for (int i = 0; i < nfiles_in; i++) {
@@ -127,28 +111,48 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
         fseek(f, 0, SEEK_SET);
         char *text = malloc((size_t)n + 1);
         const bool read = text != NULL && fread(text, 1, (size_t)n, f) == (size_t)n;
+        char *owned = text;
         fclose(f);
         MsModule *module = MS_NEW(syntax, MsModule);
         MsDiag diag;
-        if (read && ms_parse(syntax, names, text, (size_t)n, module, &diag) && only_std_imports(module)) {
-            MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
+        const bool parsed = read && ms_parse(syntax, names, text, (size_t)n, module, &diag);
+        MsModId id = MS_NONE;
+        MsStr project_text = {0};
+        const char *check_text = text;
+        const bool project = project_mode && parsed && !only_std_imports(module) && bodies && !ownership && !effects && !facts_json &&
+                             add_project(check, names, paths[i], &id, &project_text);
+        if (project) {
+            check_text = project_text.ptr;
+            n = (long)project_text.len;
+        }
+        if ((parsed && only_std_imports(module) && !project_mode) || project) {
+            if (!project) {
+                id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
+            }
             MsBuf dump = {0};
             if (facts_json) {
                 ms_dump_module_facts(&dump, check, id);
                 printf("%.*s", (int)dump.len, (const char *)dump.data);
                 ms_buf_free(&dump);
-                free(text);
+                free(owned);
                 continue;
             }
             printf("== %s\n", paths[i]);
             if (bodies) {
-                check_bodies_with_methods(check, id, text, (size_t)n);
+                check_bodies_with_methods(check, id, check_text, (size_t)n);
+                for (uint32_t k = 0; project && k < check->mods[id].ndiags; k++) {
+                    const MsCheckDiag *d = &check->mods[id].diags[k];
+                    if (d->phase == MS_PHASE_RESOLUTION) {
+                        printf("import %u:%u: %.*s\n", d->diag.pos.line, d->diag.pos.column, (int)d->diag.message.len,
+                               d->diag.message.ptr);
+                    }
+                }
                 if (effects) {
                     // The effect scan reads the facts of every function the body pass checked.
                     ms_dump_module_effects(&dump, check, id);
                     printf("%.*s", (int)dump.len, (const char *)dump.data);
                     ms_buf_free(&dump);
-                    free(text);
+                    free(owned);
                     continue;
                 }
                 // The ownership walk narrows `body_checked` to the functions it handles. The body
@@ -166,12 +170,19 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
                     ms_module_check_unused(check, id);
                     ms_dump_module_ownership(&dump, check, id);
                 } else {
+                    // Functions the ownership walk handed back keep the checker's claim; the dump
+                    // marks them, because Rust's ownership diagnostics inside them have no C twin yet.
+                    bool *declined = claimed == NULL ? NULL : malloc(claims * sizeof *declined);
+                    for (size_t k = 0; declined != NULL && k < claims; k++) {
+                        declined[k] = claimed[k] && !facts->body_checked[k];
+                    }
                     if (claimed != NULL) {
                         memcpy(facts->body_checked, claimed, claims * sizeof *claimed);
                     }
                     free(claimed);
                     ms_module_check_unused(check, id);
-                    ms_dump_module_bodies(&dump, check, id);
+                    ms_dump_module_bodies(&dump, check, id, declined);
+                    free(declined);
                 }
                 printf("%.*s", (int)dump.len, (const char *)dump.data);
             } else {
@@ -185,7 +196,7 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             }
             ms_buf_free(&dump);
         }
-        free(text);
+        free(owned);
     }
 }
 
@@ -193,7 +204,8 @@ int main(int argc, char **argv) {
     const bool ownership = argc >= 3 && strcmp(argv[2], "--ownership") == 0;
     const bool effects = argc >= 3 && strcmp(argv[2], "--effects") == 0;
     const bool facts_json = argc >= 3 && strcmp(argv[2], "--facts") == 0;
-    const bool bodies = ownership || effects || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
+    project_mode = argc >= 3 && strcmp(argv[2], "--project") == 0;
+    const bool bodies = ownership || effects || project_mode || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
     const bool scope = bodies || facts_json || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
     if (argc != 2 && !scope) {
         fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership|--effects|--facts FILE...]\n", stderr);

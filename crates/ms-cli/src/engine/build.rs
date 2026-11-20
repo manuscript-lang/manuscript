@@ -99,7 +99,11 @@ pub(super) fn build<L: Lower>(
         Ok("benches") => Target::Benches,
         _ => Target::Program,
     };
-    let mut compiled = match compile_target(syms, backend, &request.filename, &[], target) {
+    // Further sources of one test run, one per line.
+    let extra: Vec<String> = std::env::var("MS_BUILD_EXTRA")
+        .map(|list| list.lines().map(str::to_string).collect())
+        .unwrap_or_default();
+    let mut compiled = match compile_target(syms, backend, &request.filename, &extra, target) {
         Ok(compiled) => compiled,
         Err(failure) => return Ok(report_failure(&failure, structured, &document, io)),
     };

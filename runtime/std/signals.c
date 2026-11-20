@@ -68,6 +68,10 @@ static uint8_t finish_status(uint8_t status, MsStr *err) {
     return ms_fs_finish(&fail, err);
 }
 
+void msstd_process_stop_hold(void) { ms_sched_stop_hold(); }
+
+void msstd_process_stop_release(void) { ms_sched_stop_release(); }
+
 uint8_t msstd_process_watch_signals(const MsVec *signals, uint8_t has_capacity, int64_t capacity, MsObj **out, MsStr *err) {
     const int64_t size = has_capacity != 0 ? capacity : DEFAULT_CAPACITY;
     if (signals->len == 0 || size < 1 || size > MAX_CAPACITY) {
