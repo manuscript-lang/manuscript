@@ -6,11 +6,10 @@
 // Arguments after `--` go to `conform-run.ms run`. Usage: ms run tools/conform.ms [--
 // extra conform-run.ms run arguments]
 import (
-	arguments from "@std/os/env.ms",
+	arguments, working_directory from "@std/os/env.ms",
 	access, create_directory, read_file, write_file from "@std/os/fs.ms",
-	process_info from "@std/os/process.ms",
 
-	env, exe, host, run_program, use_stats_runtime from "./lib.ms",
+	env, exe, host, run_program, tool_ms, use_stats_runtime from "./lib.ms",
 )
 
 fn main() Int:
@@ -39,8 +38,10 @@ fn main() Int:
 		text += read_file(host_list).wait().get().decode_utf8().get_or("")
 	write_file(allow, text, replace: true).wait().get()
 
-	// The runner is a Manuscript program, started by the `ms` that started this tool.
-	runner := process_info().get().executable.clone()
+	// The runner is a Manuscript program, started by `MS` (default target/release/ms). Not
+	// the running executable: under `ms run` that is this compiled tool, which would start
+	// itself again.
+	runner := tool_ms(working_directory().get())
 
 	// The quick loop tests the release-profile compiler `make build` just produced,
 	// which also checks faster than the debug one; nothing rebuilds it while the tool
