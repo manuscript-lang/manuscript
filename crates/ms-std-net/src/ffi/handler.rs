@@ -2,13 +2,15 @@
 //! dispatcher that calls into compiled code.
 
 use super::ExchH;
-use super::http_client::http_from_code;
 use crate::bound::Bound;
 use crate::error::HttpErr;
 use crate::http::exchange::Exchange;
 use crate::http::server::{Dispatch, Outcome};
 use ms_rt::ffi::{IntoAbi, Object, str_ref, str_release};
-use ms_rt_abi::{Obj, StrVal};
+use ms_rt_abi::{
+    Obj, STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED,
+    STATUS_PERMISSION_DENIED, STATUS_TIMEOUT, StrVal,
+};
 use std::rc::Rc;
 
 use ms_rt::fault::msrt_guard_call;
@@ -122,6 +124,18 @@ unsafe fn closure_code<T: Copy>(env: *mut Obj) -> T {
     const { assert!(size_of::<T>() == size_of::<usize>()) };
     // SAFETY: caller contract; the code word follows the 16-byte header.
     unsafe { std::mem::transmute_copy(&*env.cast::<usize>().add(2)) }
+}
+
+fn http_from_code(status: u8, failed: String) -> HttpErr {
+    match status {
+        STATUS_INVALID_INPUT => HttpErr::InvalidInput,
+        STATUS_INVALID_DATA => HttpErr::InvalidData,
+        STATUS_LIMIT_EXCEEDED => HttpErr::LimitExceeded,
+        STATUS_PERMISSION_DENIED => HttpErr::PermissionDenied,
+        STATUS_CLOSED => HttpErr::Closed,
+        STATUS_TIMEOUT => HttpErr::Timeout,
+        _ => HttpErr::Failed(failed),
+    }
 }
 
 #[cfg(test)]

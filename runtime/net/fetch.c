@@ -1,16 +1,20 @@
 /* The HTTP client natives of ms_rt/net.h: the client object (ClientH), `msstd_client_fetch` and the response body
  * (BodyH), over the libcurl engine of curl_client.h. */
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "../std/abi.h"
+#include "addr_text.h"
 #include "curl_client.h"
+#include "dns_query.h"
 #include "headers.h"
 #include "http1.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/chars.h"
 #include "ms_rt/net.h"
+#include "ms_rt/sys.h"
 #include "status.h"
 
 enum { READ_DEFAULT = 64 * 1024, READ_ALL_LIMIT = 1 << 30 };
@@ -54,6 +58,7 @@ uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err
                                           .certificate_pem = str_bytes(&options->certificate_pem),
                                           .private_key_pem = str_bytes(&options->private_key_pem),
                                           .unix_socket = str_bytes(&options->unix_socket),
+                                          .resolver = str_bytes(&options->resolver),
                                           .max_redirects = options->max_redirects,
                                           .cookies = options->cookies != 0,
                                           .decompress = options->decompress != 0};
@@ -70,6 +75,8 @@ void *msstd_client_share(const void *handle) {
     ms_curl_client_retain(client);
     return client_handle(client);
 }
+
+bool ms_client_same(const void *a, const void *b) { return client_of(a)->client == client_of(b)->client; }
 
 void msstd_client_close(const void *handle) { ms_curl_client_close(client_of(handle)->client); }
 
@@ -149,6 +156,7 @@ static uint8_t body_read_some(BodyObject *body, uint8_t *buffer, size_t capacity
 }
 
 uint8_t msstd_body_read(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err) {
+    ms_net_clear_text(err); /* the caller takes the slot for every status; only STATUS_FAILED writes text */
     BodyObject *body = body_of(handle);
     if (has_max != 0 && max <= 0) {
         return STATUS_INVALID_INPUT;
@@ -171,6 +179,7 @@ uint8_t msstd_body_read(const void *handle, uint8_t has_max, int64_t max, MsVec 
 }
 
 uint8_t msstd_body_read_all(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err) {
+    ms_net_clear_text(err); /* the caller takes the slot for every status; only STATUS_FAILED writes text */
     BodyObject *body = body_of(handle);
     if (has_max != 0 && max < 0) {
         return STATUS_INVALID_INPUT;
@@ -321,22 +330,105 @@ static uint8_t start_failure(MsNetStatus status, MsCurlFault fault, const char *
     return ms_net_finish(status, 0, err);
 }
 
+/* The text of one address for curl's resolve list: IPv6 in brackets. */
+static void add_address(char **list, size_t *length, const MsStr *address) {
+    const bool v6 = memchr(msrt_str_data(address), ':', msrt_str_len(address)) != NULL;
+    const size_t extra = msrt_str_len(address) + 4;
+    char *grown = realloc(*list, *length + extra);
+    if (grown == NULL) {
+        return;
+    }
+    *list = grown;
+    *length += (size_t)snprintf(*list + *length, extra, "%s%s%.*s%s", *length > 0 ? "," : "", v6 ? "[" : "",
+                                (int)msrt_str_len(address), msrt_str_data(address), v6 ? "]" : "");
+}
+
+/* With a client that has its own resolver, "host:port:address,..." for the URL's host from that server; *entry stays NULL
+ * for the system's resolver and for an IP literal. */
+static uint8_t resolve_entry(const MsCurlClient *client, MsBytes url, int64_t deadline, char **entry, MsStr *err) {
+    const char *resolver = ms_curl_client_resolver(client);
+    char host[256];
+    uint16_t port = 0;
+    if (resolver == NULL) {
+        return STATUS_OK;
+    }
+    if (!ms_curl_url_target(url, host, sizeof host, &port)) {
+        return STATUS_INVALID_INPUT;
+    }
+    MsAddr literal;
+    char wrapped[sizeof host + 8];
+    (void)snprintf(wrapped, sizeof wrapped, strchr(host, ':') != NULL ? "[%s]:1" : "%s:1", host);
+    if (ms_net_addr_parse(ms_bytes_of((const uint8_t *)wrapped, strlen(wrapped)), &literal)) {
+        return STATUS_OK;
+    }
+    char *list = NULL;
+    size_t length = 0;
+    uint8_t status = STATUS_OK;
+    MsStr server, name;
+    msrt_string_from_bytes((const uint8_t *)resolver, strlen(resolver), &server);
+    msrt_string_from_bytes((const uint8_t *)host, strlen(host), &name);
+    const int64_t kinds[] = {1, 28}; /* A, AAAA */
+    for (size_t i = 0; i < 2 && status == STATUS_OK; i++) {
+        const int64_t left = deadline < 0 ? 0 : deadline - ms_sys_monotonic_ns();
+        MsVec values, numbers;
+        msrt_list_with_capacity(&msrt_desc_string, 0, &values);
+        msrt_list_with_capacity(&msrt_desc_int, 0, &numbers);
+        const uint8_t found = msstd_dns_query(&server, &name, kinds[i], deadline >= 0, left > 0 ? left : 1, &values, &numbers, err);
+        if (found == STATUS_OK) {
+            const MsStr *items = values.ptr;
+            for (size_t k = 0; k < values.len; k++) {
+                add_address(&list, &length, &items[k]);
+            }
+        } else if (found != STATUS_NONE) {
+            status = found;
+        }
+        msrt_list_drop(&values, &msrt_desc_string);
+        msrt_list_drop(&numbers, &msrt_desc_int);
+    }
+    ms_str_release(&server);
+    ms_str_release(&name);
+    if (status == STATUS_OK && length == 0) {
+        ms_net_write_text(err, "cannot resolve host");
+        status = STATUS_FAILED;
+    }
+    if (status == STATUS_OK) {
+        const size_t size = strlen(host) + length + 16;
+        *entry = malloc(size);
+        if (*entry == NULL) {
+            status = STATUS_FAILED;
+        } else {
+            (void)snprintf(*entry, size, "%s:%u:%.*s", host, (unsigned)port, (int)length, list);
+        }
+    }
+    free(list);
+    return status;
+}
+
 uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr *url, const void *headers, const MsVec *body,
                            uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     Block block = {NULL, NULL, 0, 0};
     const uint8_t prepared = block_make(ms_headers_of(headers), &block);
     if (prepared != STATUS_OK) {
         block_free(&block);
         return prepared;
     }
-    const MsCurlRequest request = {.method = str_bytes(method), .url = str_bytes(url), .head = ms_bytes_of(block.bytes, block.length),
-                                   .fields = block.fields, .nfields = (uint32_t)block.count, .body = ms_bytes_of(body->ptr, body->len)};
     const int64_t deadline = ms_net_deadline_of(has_timeout, timeout);
+    char *entry = NULL;
+    const uint8_t resolved = resolve_entry(client_of(handle)->client, str_bytes(url), deadline, &entry, err);
+    if (resolved != STATUS_OK) {
+        block_free(&block);
+        return resolved;
+    }
+    const MsCurlRequest request = {.method = str_bytes(method), .url = str_bytes(url), .head = ms_bytes_of(block.bytes, block.length),
+                                   .fields = block.fields, .nfields = (uint32_t)block.count, .body = ms_bytes_of(body->ptr, body->len),
+                                   .resolve = entry == NULL ? ms_bytes_of(NULL, 0) : ms_bytes_of((const uint8_t *)entry, strlen(entry))};
     MsCurlTransfer *transfer = NULL;
     MsCurlFault fault = MS_CURL_FAULT_NONE;
     const char *message = "";
     const MsNetStatus started = ms_curl_start(client_of(handle)->client, &request, deadline, &transfer, &fault, &message);
     block_free(&block);
+    free(entry);
     if (started != MS_NET_OK) {
         return start_failure(started, fault, message, err);
     }

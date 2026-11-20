@@ -19,7 +19,8 @@ import (
 	NativeServing,
 	NativeWorker,
 	NativeWorkerSpec,
-	headers from "@std/net/http.ms",
+	headers,
+	open_client from "@std/net/http.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
 	Policy,
 	address_allowed,
@@ -74,9 +75,7 @@ import (
 	msstd_net_lookup,
 	msstd_net_network,
 	msstd_net_network_close,
-	msstd_net_network_http_client,
 	msstd_net_network_lookup,
-	msstd_net_network_request_bytes,
 	msstd_net_network_resolve,
 	msstd_net_network_restrict,
 	msstd_net_network_web_socket,
@@ -86,9 +85,11 @@ import (
 	msstd_scope_new,
 	msstd_scope_open,
 	msstd_scope_share,
+	msstd_scope_track_client,
 	msstd_scope_track_conn,
 	msstd_scope_track_dgram,
-	msstd_scope_track_listener from "@std/internal/net.ms",
+	msstd_scope_track_listener,
+	msstd_scope_untrack_client from "@std/internal/net.ms",
 )
 
 // The runtime handle behind a `Connection`.
@@ -430,6 +431,21 @@ fn permitted_address(policy: Policy, address: String, timeout: Duration?) String
 
 	return error(denied())
 
+// Sends one request on `client` and reads the whole response.
+fn buffered(
+	client: HttpClient,
+	method: HttpMethod,
+	url: String,
+	headers: HttpHeaders,
+	body: Bytes,
+	max_bytes: Int?,
+	timeout: Duration?,
+) ClientResponse!:
+	raw := client.request_raw(method, url, headers, body, max_bytes, timeout)?
+	head := raw.metadata()
+	data := raw.read_all()?
+	return ok(ClientResponse(head: head, body: data))
+
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork
 
@@ -448,6 +464,9 @@ export opaque type Network:
 	policy: Policy
 	// The sockets and derived networks that `close` closes.
 	scope: NativeScope
+	// The DNS server (`ip:port`) HTTP clients resolve names through; empty for the
+	// system's.
+	resolver: String
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A
 // restricted network without listening permission, or an address outside its CIDRs,
@@ -558,7 +577,14 @@ fn Network.connect_unix(path: String, timeout: Duration? = none) Connection!:
 // network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.
 fn Network.http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
-	return msstd_net_network_http_client(self.native, options)
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
+	client := open_client(self.policy, options, self.resolver.clone())?
+	if not msstd_scope_track_client(self.scope, client.native): return error(
+		closed_error()
+	)
+
+	return ok(client)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
 // A restricted network needs `allow_listen` and an IP-literal address inside its
@@ -672,15 +698,29 @@ fn Network.request(
 	body: Writable = "",
 	options: RequestOptions = RequestOptions(),
 ) ClientResponse!:
-	return msstd_net_network_request_bytes(
-		self.native,
-		method.to_string(),
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
+	client := open_client(
+		self.policy,
+		HttpClientOptions(max_redirects: 0),
+		self.resolver.clone(),
+	)?
+	if not msstd_scope_track_client(self.scope, client.native): return error(
+		closed_error()
+	)
+
+	outcome := buffered(
+		client,
+		method,
 		url,
-		options.headers,
+		options.headers.clone(),
 		body.as_bytes(),
 		options.max_bytes,
 		options.timeout,
 	)
+	_forgotten := msstd_scope_untrack_client(self.scope, client.native)
+	_closed := client.close()
+	return outcome
 
 // Looks up DNS records of one `kind` for `name`; each record carries that kind.
 // `options.max_records` and `options.timeout` apply as for `lookup`.
@@ -715,6 +755,7 @@ fn Network.restrict(
 			native: child,
 			policy: policy,
 			scope: msstd_scope_child(self.scope),
+			resolver: self.resolver.clone(),
 		)
 	)
 
@@ -756,6 +797,7 @@ fn Network.with_resolver(address: String) Network!:
 			native: child,
 			policy: self.policy.clone(),
 			scope: msstd_scope_child(self.scope),
+			resolver: address.clone(),
 		)
 	)
 
@@ -796,6 +838,7 @@ fn host_network() Network:
 		native: msstd_net_network(),
 		policy: unrestricted(),
 		scope: msstd_scope_new(),
+		resolver: "",
 	)
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A restricted
