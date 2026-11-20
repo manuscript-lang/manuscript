@@ -262,6 +262,7 @@ pub fn build_c_backend(root: &Path, work: &Path) -> Result<PathBuf, String> {
             "-DMS_BUILD_RUNTIME=OFF",
             "-DMS_BUILD_TESTS=OFF",
             "-DMS_BUILD_COMPILER=ON",
+            "-DMS_BACKEND_ONLY=ON",
             "-DCMAKE_BUILD_TYPE=",
             "-DCMAKE_C_COMPILER=clang",
         ])

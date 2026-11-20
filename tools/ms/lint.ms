@@ -1,15 +1,19 @@
 // Prints the lint findings of each file named on the command line, one per line as
 // `file:line:column: [severity ]CODE: message`, and with `--fix` applies their fix edits
 // until none is left. Usage:
-//   ms run tools/ms/lint.ms --link libmstool.a -- [--fix] file.ms...
+//   ms run tools/ms/lint.ms --link libmstool.a -- [--fix] [--facts=DUMP,STDLIB] file.ms...
+// `--facts` names the `ms_check_dump` program and the standard-library directory; with it the
+// rules that read checker facts run too, on the nodes the C checker typed.
 import (
 	arguments from "@std/os/env.ms",
 	read_file, write_file from "@std/os/fs.ms",
 	quote from "@std/text.ms",
 
+	load_facts from "./lint/facts.ms",
 	Finding from "./lint/finding.ms",
 	apply_fixes from "./lint/fixes.ms",
 	lint_all from "./lint/rules.ms",
+	lint_typed from "./lint/typed.ms",
 )
 
 // The most passes `--fix` makes over a file: a fix can expose another.
@@ -38,9 +42,17 @@ fn fix_file(path: String, original: String) Bool!:
 fn main() Int:
 	var status = 0
 	fix := arguments().contains("--fix")
+	var dump = ""
+	var stdlib = ""
+
+	for argument in arguments():
+		if argument.starts_with("--facts="):
+			pair := argument.slice(8, argument.length()).split(",")
+			dump = pair[0].clone()
+			stdlib = pair[1].clone()
 
 	for path in arguments():
-		if path == "--fix": continue
+		if path == "--fix" or path.starts_with("--facts="): continue
 
 		bytes := read_file(path).wait()
 
@@ -48,6 +60,11 @@ fn main() Int:
 			ok(data):
 				text := data.decode_utf8().get_or("")
 				for finding in lint_all(path, text): print(show(finding))
+				if not dump.is_empty():
+					if facts := load_facts(dump, stdlib, path):
+						for finding in lint_typed(path, text, facts): print(
+							show(finding)
+						)
 
 				if fix:
 					changed := fix_file(path, text)
