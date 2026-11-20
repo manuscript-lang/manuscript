@@ -6,7 +6,6 @@
 //! indices and lengths count Unicode scalars; a string whose scalar count equals its byte length
 //! is ASCII, which every indexing operation exploits.
 //! ms: domain string
-#![cfg_attr(ms_c = "msrt_string_fmt2", allow(dead_code))]
 use crate::alloc;
 use crate::fault;
 use crate::obj;
@@ -14,8 +13,94 @@ use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
     ErrSlot, FrameBuf, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
-    STR_INLINE_MAX, STR_LEN_MASK, StrVal, VecVal,
+    STR_INLINE_MAX, StrVal, VecVal,
 };
+
+// The moved symbols (runtime/symbols/string.txt) are defined by the C runtime; Rust callers and tests reach them here.
+unsafe extern "C-unwind" {
+    pub fn msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64;
+    pub fn msrt_string_length(s: *const StrVal) -> i64;
+    pub fn msrt_string_scalar_length(s: *const StrVal) -> i64;
+    pub fn msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8;
+    pub fn msrt_string_split(s: *const StrVal, sep: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_split_view(s: *const StrVal, sep: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_replace(
+        s: *const StrVal,
+        old: *const StrVal,
+        new: *const StrVal,
+        out: *mut StrVal,
+    );
+    pub fn msrt_string_replace_first(
+        s: *const StrVal,
+        old: *const StrVal,
+        new: *const StrVal,
+        out: *mut StrVal,
+    );
+    pub fn msrt_string_replace_take(
+        s: *mut StrVal,
+        old: *const StrVal,
+        new: *const StrVal,
+        out: *mut StrVal,
+    );
+    pub fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal);
+    pub fn msrt_string_fmt3(mask: i64, a: usize, b: usize, c: usize, out: *mut StrVal);
+    pub fn msrt_string_append_fmt1(s: *const StrVal, mask: i64, a: usize, out: *mut StrVal);
+    pub fn msrt_string_append_fmt2(
+        s: *const StrVal,
+        mask: i64,
+        a: usize,
+        b: usize,
+        out: *mut StrVal,
+    );
+    pub fn msrt_string_append_fmt3(
+        s: *const StrVal,
+        mask: i64,
+        a: usize,
+        b: usize,
+        c: usize,
+        out: *mut StrVal,
+    );
+    pub fn msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal);
+    pub fn msrt_string_clone(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_free(s: *const StrVal);
+    pub fn msrt_string_concat(a: *const StrVal, b: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_concat3(
+        a: *const StrVal,
+        b: *const StrVal,
+        c: *const StrVal,
+        out: *mut StrVal,
+    );
+    pub fn msrt_string_concat4(
+        a: *const StrVal,
+        b: *const StrVal,
+        c: *const StrVal,
+        d: *const StrVal,
+        out: *mut StrVal,
+    );
+    pub fn msrt_string_slice(s: *const StrVal, start: i64, end: i64, out: *mut StrVal);
+    pub fn msrt_string_append(a: *const StrVal, b: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_repeat(s: *const StrVal, count: i64, out: *mut StrVal);
+    pub fn msrt_string_reverse(a: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_trim(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_trim_start(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_trim_end(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_trim_take(s: *mut StrVal, out: *mut StrVal);
+    pub fn msrt_string_trim_start_take(s: *mut StrVal, out: *mut StrVal);
+    pub fn msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal);
+    pub fn msrt_string_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8;
+    pub fn msrt_string_pad_start(
+        s: *const StrVal,
+        target: i64,
+        padding: *const StrVal,
+        out: *mut StrVal,
+    );
+    pub fn msrt_string_pad_end(
+        s: *const StrVal,
+        target: i64,
+        padding: *const StrVal,
+        out: *mut StrVal,
+    );
+}
 
 /// Starts the caller's `err` slot (null when it wants no text) as the empty string, which owns
 /// no allocation, so any status leaves it valid.
@@ -190,57 +275,6 @@ pub unsafe fn cloned(s: &StrVal) -> StrVal {
 }
 
 // The C runtime defines these; Rust callers (ffi, glue) reach them through the same symbols.
-#[cfg(ms_c = "msrt_string_clone")]
-unsafe extern "C-unwind" {
-    pub fn msrt_string_clone(s: *const StrVal, out: *mut StrVal);
-}
-#[cfg(ms_c = "msrt_string_free")]
-unsafe extern "C-unwind" {
-    pub fn msrt_string_free(s: *const StrVal);
-}
-#[cfg(ms_c = "msrt_string_from_bytes")]
-unsafe extern "C-unwind" {
-    pub fn msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal);
-}
-
-/// Writes an owned copy of `s` to `out` (what `.clone()` and every implicit copy of a string do).
-#[cfg(not(ms_c = "msrt_string_clone"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_clone(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a live string.
-    count_copy(1, unsafe { bytes(&*s) }.len());
-    // SAFETY: caller passes a live string and a writable `out`.
-    unsafe { cloned(&*s).write_to(out) }
-}
-
-/// Frees an owned string's bytes (the drop compiled code calls when `cap != 0`).
-#[cfg(not(ms_c = "msrt_str_free"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_str_free(ptr: *mut u8) {
-    // SAFETY: `ptr` is the start of an owned string.
-    unsafe { free_owned(ptr) }
-}
-
-/// Writes a copy of the owned string or view `{ptr, tagged}` to `out`: inline when it fits, so
-/// copying a short string allocates nothing (what compiled code calls to copy a string).
-#[cfg(not(ms_c = "msrt_str_copy"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_str_copy(ptr: *const u8, tagged: usize, out: *mut StrVal) {
-    // SAFETY: an owned string or a view has `len` readable bytes at `ptr`.
-    unsafe { owned_copy(core::slice::from_raw_parts(ptr, tagged & STR_LEN_MASK)).write_to(out) }
-}
-
-/// Frees an owned string.
-#[cfg(not(ms_c = "msrt_string_free"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_free(s: *const StrVal) {
-    // SAFETY: caller owns `s`.
-    unsafe { release(&*s) }
-}
 
 /// An owned copy of `data`: inline when it fits.
 #[inline(never)]
@@ -355,15 +389,6 @@ pub fn empty() -> StrVal {
     StrVal::literal(core::ptr::addr_of_mut!(EMPTY) as *mut u8, 0)
 }
 
-/// Writes the static empty string to `out`.
-#[cfg(not(ms_c = "msrt_string_empty"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_empty(out: *mut StrVal) {
-    // SAFETY: caller passes a writable out.
-    unsafe { (empty()).write_to(out) }
-}
-
 fn ascii_char(b: u8) -> StrVal {
     // SAFETY: as above.
     unsafe { StrVal::literal(core::ptr::addr_of_mut!(ASCII[b as usize]) as *mut u8, 1) }
@@ -379,19 +404,6 @@ pub fn from_bytes(data: &[u8]) -> StrVal {
         _ => {}
     }
     heap_copy(data)
-}
-
-/// The bytes of a string of at most 16 bytes as little-endian bits.
-///
-/// # Safety
-/// `s` is live and at most 16 bytes long.
-#[inline(always)]
-unsafe fn bits(s: &StrVal) -> u128 {
-    if s.is_inline() {
-        return s.inline_bits();
-    }
-    // SAFETY: caller contract.
-    ms_rt_abi::pack(unsafe { bytes(s) })
 }
 
 /// A string for `len` bytes at `p` inside another live string: an inline copy when it fits,
@@ -410,22 +422,6 @@ pub unsafe fn view_of(p: *const u8, len: usize) -> StrVal {
 /// Converts a finished buffer into a string.
 pub fn from_buf(b: Vec<u8>) -> StrVal {
     from_bytes(b.as_slice())
-}
-
-/// New string from raw bytes. Exported for literals built at startup and for the Rust stdlib crates.
-///
-/// # Safety
-/// `ptr..ptr+len` must be readable; `out` writable.
-#[cfg(not(ms_c = "msrt_string_from_bytes"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
-    ptr: *const u8,
-    len: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller contract.
-    unsafe { (from_bytes(core::slice::from_raw_parts(ptr, len))).write_to(out) }
 }
 
 // ---------------------------------------------------------------------------
@@ -459,52 +455,6 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
     }
 }
 
-#[cfg(not(ms_c = "msrt_string_starts_with"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe { bytes(a).starts_with(bytes(v)) as u8 }
-}
-
-#[cfg(not(ms_c = "msrt_string_ends_with"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe { bytes(a).ends_with(bytes(v)) as u8 }
-}
-
-#[cfg(not(ms_c = "msrt_string_compare"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=map
-pub unsafe extern "C-unwind" fn msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64 {
-    // SAFETY: caller passes live strings.
-    unsafe {
-        if (*a).is_inline() && (*b).is_inline() {
-            // Inline bits are zero past the length, so the first byte is the most significant
-            // after a byte swap: equal padded words differ at most in length (a prefix, or a
-            // string that continues with NUL bytes), and the shorter one is smaller.
-            let (x, y) = (
-                (*a).inline_bits().swap_bytes(),
-                (*b).inline_bits().swap_bytes(),
-            );
-            return x.cmp(&y).then((*a).len().cmp(&(*b).len())) as i64;
-        }
-        bytes(a).cmp(bytes(b)) as i64
-    }
-}
-
-/// Hash of a string's bytes (equal strings hash equally).
-///
-#[cfg(not(ms_c = "msrt_string_hash"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=map
-pub unsafe extern "C-unwind" fn msrt_string_hash(s: *const StrVal) -> i64 {
-    // SAFETY: caller passes a live string.
-    hash_bytes(unsafe { bytes(s) }) as i64
-}
-
 #[unsafe(no_mangle)]
 // ms: leaf domain=map
 pub extern "C-unwind" fn msrt_hash_int(v: i64) -> i64 {
@@ -516,22 +466,6 @@ pub extern "C-unwind" fn msrt_hash_int(v: i64) -> i64 {
 pub unsafe extern "C-unwind" fn msrt_hash_bytes(p: *const u8, len: usize) -> i64 {
     // SAFETY: caller passes a readable range.
     hash_bytes(unsafe { core::slice::from_raw_parts(p, len) }) as i64
-}
-
-/// Whether the text is known to be ASCII without a long scan: the flag, the bits of an inline
-/// string, or a check of fewer than [`MEDIUM_HAY`] bytes.
-///
-/// # Safety
-/// `s` must be a live string.
-#[inline(always)]
-unsafe fn short_ascii(s: *const StrVal) -> bool {
-    // SAFETY: caller contract.
-    unsafe {
-        if (*s).is_inline() {
-            return (*s).inline_bits() & 0x8080_8080_8080_8080_8080_8080_8080_8080 == 0;
-        }
-        (*s).flagged_ascii() || ((*s).len() < MEDIUM_HAY && bytes(s).is_ascii())
-    }
 }
 
 /// `find` for a short haystack and a non-empty needle.
@@ -587,53 +521,6 @@ pub(super) fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
     rest.iter().position(|&b| b == c).map(|p| at + p)
 }
 
-/// A one-byte needle in a short text is a short scan; every other search is the general one.
-#[cfg(not(ms_c = "msrt_string_contains"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe {
-        let hay = bytes(a);
-        match bytes(v) {
-            [] => 1,
-            [c] if hay.len() < SHORT_HAY => hay.contains(c) as u8,
-            _ => msrt_string_contains_long(a, v),
-        }
-    }
-}
-
-/// A search in an ASCII text of under [`MEDIUM_HAY`] bytes (a line, a record, a field) is a direct
-/// scan; every other search is the general one.
-#[cfg(not(ms_c = "msrt_string_index_of"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_index_of(
-    a: *const StrVal,
-    v: *const StrVal,
-    out: *mut i64,
-) -> u8 {
-    // SAFETY: caller passes live strings and a writable out.
-    unsafe {
-        let (hay, needle) = (bytes(a), bytes(v));
-        if hay.len() < MEDIUM_HAY && short_ascii(a) {
-            let found = match needle {
-                [] => Some(0),
-                [c] => memchr_short(*c, hay),
-                _ => find_short(hay, needle),
-            };
-            return match found {
-                Some(i) => {
-                    *out = i as i64;
-                    1
-                }
-                None => 0,
-            };
-        }
-        msrt_string_index_of_long(a, v, out)
-    }
-}
-
 /// `String.parse_int()`: present flag, value through `out`.
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
@@ -669,45 +556,6 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
         }
         msrt_string_scalar_at_slow(s, offset, has_default, default)
     }
-}
-
-/// C view: `msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8`
-///
-/// The compiler decides most comparisons inline (the backends decide it from the words; `str.eq_lit`) and calls this
-/// for two distinct blocks of one length.
-#[cfg(not(ms_c = "msrt_string_eq"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe { equal(a, b) as u8 }
-}
-
-/// `is_empty()` for a bound method value; direct calls read the length inline (`str.bytes`).
-#[cfg(not(ms_c = "msrt_string_is_empty"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: *const StrVal) -> u8 {
-    // SAFETY: caller passes a live string.
-    unsafe { (*s).is_empty() as u8 }
-}
-
-/// `length()` for a bound method value: the byte length. Direct calls read it inline (`str.bytes`).
-#[cfg(not(ms_c = "msrt_string_length"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { (*s).len() as i64 }
-}
-
-/// `scalar_length()`: the scalar count, also the `str.len` operation and bound method values.
-#[cfg(not(ms_c = "msrt_string_scalar_length"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: *const StrVal) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { scalar_count(s) as i64 }
 }
 
 /// Whether byte offset `i` of `text` starts a scalar (or is the end).
@@ -808,19 +656,6 @@ pub unsafe fn msrt_string_contains_long(a: *const StrVal, v: *const StrVal) -> u
     }
 }
 
-/// `contains` where the caller knows the needle has two or more bytes (a literal): the general
-/// search without the one-byte checks.
-#[cfg(not(ms_c = "msrt_string_contains_multi"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_contains_multi(
-    a: *const StrVal,
-    v: *const StrVal,
-) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe { find(bytes(a), bytes(v)).is_some() as u8 }
-}
-
 /// Int? result: present flag, value through `out`.
 pub unsafe fn msrt_string_index_of_long(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8 {
     // SAFETY: caller passes live strings and a writable out.
@@ -859,476 +694,6 @@ pub unsafe extern "C-unwind" fn msrt_string_last_index_of(
 // ---------------------------------------------------------------------------
 // Building
 // ---------------------------------------------------------------------------
-
-#[cfg(not(ms_c = "msrt_string_concat"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_concat(
-    a: *const StrVal,
-    b: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_concat_val(a, b)).write_to(out) }
-}
-
-/// `a + b` that moving_params `a`: an owned `a` grows in place, so `s = s + piece` in a loop reuses
-/// one allocation instead of copying the prefix every time.
-///
-/// # Safety
-/// `a` is owned by the caller and dead after the call; `b` is live; `out` is writable.
-#[cfg(not(ms_c = "msrt_string_append"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append(
-    a: *const StrVal,
-    b: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings, gives up `a`, and passes a writable `out`.
-    unsafe {
-        let (sa, la, lb) = (core::ptr::read(a), (*a).len(), (*b).len());
-        let within =
-            |p: *const u8| p >= sa.ptr_word.cast_const() && p <= sa.ptr_word.add(la).cast_const();
-        if !sa.owns() || la == 0 || within((*b).data()) {
-            let s = msrt_string_concat_val(a, b);
-            release(&sa);
-            return s.write_to(out);
-        }
-        if lb == 0 {
-            return sa.write_to(out);
-        }
-        if la + lb > MAX_BYTES {
-            fault::fault(b"string: limit exceeded");
-        }
-        // Only a flagged `a` stays flagged: scanning an unflagged one on every append is quadratic.
-        let ascii = sa.flagged_ascii() && is_ascii(&*b);
-        // Room left in the block is used as is; otherwise the string moves to a block with
-        // slack, so a run of appends reallocates a logarithmic number of times.
-        // The recorded spare room answers without asking the allocator; the answer is kept for
-        // the next append.
-        let need = la + lb + 1;
-        let (p, spare) = if sa.spare() >= lb {
-            (sa.ptr_word, sa.spare() - lb)
-        } else {
-            let room = alloc::usable_size(sa.ptr_word);
-            if room >= need {
-                (sa.ptr_word, room - need)
-            } else {
-                (alloc::realloc(sa.ptr_word, need + need / 2), need / 2)
-            }
-        };
-        core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), p.add(la), lb);
-        *p.add(la + lb) = 0;
-        let r = StrVal::owned(p, la + lb).with_spare(spare);
-        (if ascii { r.with_ascii() } else { r }).write_to(out)
-    }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
-    // SAFETY: caller passes live strings.
-    unsafe {
-        let (la, lb) = ((*a).len(), (*b).len());
-        if lb == 0 {
-            return cloned(&*a);
-        }
-        if la == 0 {
-            return cloned(&*b);
-        }
-        if la + lb <= STR_INLINE_MAX {
-            return StrVal::from_bits(bits(&*a) | (bits(&*b) << (8 * la)), la + lb);
-        }
-        let s = alloc_str(la + lb);
-        core::ptr::copy_nonoverlapping(bytes(a).as_ptr(), s.ptr_word, la);
-        core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), s.ptr_word.add(la), lb);
-        if is_ascii(&*a) && is_ascii(&*b) {
-            s.with_ascii()
-        } else {
-            s
-        }
-    }
-}
-
-/// Joins `parts` into one string with a single allocation (what a chain of `concat` calls
-/// would build with one allocation per link).
-unsafe fn concat_parts(parts: &[*const StrVal]) -> StrVal {
-    // SAFETY: caller passes live strings.
-    unsafe {
-        let total: usize = parts.iter().map(|&p| (*p).len()).sum();
-        if total <= STR_INLINE_MAX {
-            let (mut acc, mut at) = (0u128, 0);
-            for &p in parts {
-                acc |= bits(&*p) << (8 * at);
-                at += (*p).len();
-            }
-            return StrVal::from_bits(acc, total);
-        }
-        let s = alloc_str(total);
-        let mut dst = s.ptr_word;
-        for &p in parts {
-            let b = bytes(p);
-            core::ptr::copy_nonoverlapping(b.as_ptr(), dst, b.len());
-            dst = dst.add(b.len());
-        }
-        s
-    }
-}
-
-/// `a + b + c` with one allocation.
-#[cfg(not(ms_c = "msrt_string_concat3"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_concat3(
-    a: *const StrVal,
-    b: *const StrVal,
-    c: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { concat_parts(&[a, b, c]).write_to(out) }
-}
-
-/// `a + b + c + d` with one allocation.
-#[cfg(not(ms_c = "msrt_string_concat4"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_concat4(
-    a: *const StrVal,
-    b: *const StrVal,
-    c: *const StrVal,
-    d: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { concat_parts(&[a, b, c, d]).write_to(out) }
-}
-
-/// `a + b + c + d + e` with one allocation.
-#[cfg(not(ms_c = "msrt_string_concat5"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_concat5(
-    a: *const StrVal,
-    b: *const StrVal,
-    c: *const StrVal,
-    d: *const StrVal,
-    e: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { concat_parts(&[a, b, c, d, e]).write_to(out) }
-}
-
-/// `a + b + c + d + e + f` with one allocation.
-#[cfg(not(ms_c = "msrt_string_concat6"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_concat6(
-    a: *const StrVal,
-    b: *const StrVal,
-    c: *const StrVal,
-    d: *const StrVal,
-    e: *const StrVal,
-    f: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { concat_parts(&[a, b, c, d, e, f]).write_to(out) }
-}
-
-/// Most parts one `msrt_string_fmtN` joins.
-const MAX_FMT: usize = 6;
-
-/// One digit buffer per part of a join; only the integer parts' are written.
-type Digits<const N: usize> = [core::mem::MaybeUninit<[u8; 20]>; N];
-
-/// The bytes of each part and their total length: part `k` is an `i64` written in decimal into
-/// `digits[k]` when bit `k` of `mask` is set, otherwise a `*const StrVal`.
-///
-/// # Safety
-/// Every part whose mask bit is clear is a live string.
-#[inline(always)]
-unsafe fn part_slices<const N: usize>(
-    mask: i64,
-    parts: [usize; N],
-    digits: &mut Digits<N>,
-) -> ([(*const u8, usize); N], usize) {
-    const { assert!(N <= MAX_FMT) };
-    let mut slices: [(*const u8, usize); N] = [(core::ptr::null(), 0); N];
-    let mut total = 0usize;
-    for (k, p) in parts.into_iter().enumerate() {
-        slices[k] = if (mask >> k) & 1 == 1 {
-            let d = crate::num::format_i64(p as i64, digits[k].write([0u8; 20]));
-            (d.as_ptr(), d.len())
-        } else {
-            // SAFETY: caller contract.
-            let s = unsafe { &*(p as *const StrVal) };
-            (s.data(), s.len())
-        };
-        total += slices[k].1;
-    }
-    (slices, total)
-}
-
-/// Copies each slice to `dst` in order.
-///
-/// # Safety
-/// `dst` has room for every slice, and none overlaps it.
-#[inline(always)]
-unsafe fn copy_slices(slices: &[(*const u8, usize)], mut dst: *mut u8) {
-    for &(ptr, len) in slices {
-        // SAFETY: caller contract.
-        unsafe {
-            core::ptr::copy_nonoverlapping(ptr, dst, len);
-            dst = dst.add(len);
-        }
-    }
-}
-
-/// Joins `parts` with one allocation: part `k` is an `i64` written in decimal when bit `k` of
-/// `mask` is set, otherwise a `*const StrVal`. `f"{name}={n}"` builds its text here without a
-/// temporary string for `n`.
-///
-/// # Safety
-/// Every part whose mask bit is clear is a live string.
-#[inline(always)]
-unsafe fn format_parts<const N: usize>(mask: i64, parts: [usize; N]) -> StrVal {
-    let mut digits: Digits<N> = [core::mem::MaybeUninit::uninit(); N];
-    // SAFETY: caller contract; a fresh string has room for `total` bytes.
-    unsafe {
-        let (slices, total) = part_slices(mask, parts, &mut digits);
-        joined(&[], &slices, total)
-    }
-}
-
-/// One new string holding `head` and then `slices`, `total` bytes in all.
-///
-/// # Safety
-/// Every slice is readable and `total` is their length with `head`'s.
-#[inline(always)]
-unsafe fn joined(head: &[u8], slices: &[(*const u8, usize)], total: usize) -> StrVal {
-    let mut buf = [0u8; 16];
-    let s = if total <= STR_INLINE_MAX {
-        None
-    } else {
-        Some(alloc_str(total))
-    };
-    let dst = match &s {
-        Some(s) => s.ptr_word,
-        None => buf.as_mut_ptr(),
-    };
-    // SAFETY: `dst` has room for `total` bytes and every slice is readable.
-    unsafe {
-        core::ptr::copy_nonoverlapping(head.as_ptr(), dst, head.len());
-        copy_slices(slices, dst.add(head.len()));
-    }
-    match s {
-        Some(s) => s,
-        // `buf` is zero past `total`.
-        None => StrVal::from_bits(u128::from_le_bytes(buf), total),
-    }
-}
-
-/// The join of `a` and `parts` that takes `a`: the parts are written straight onto an owned `a`,
-/// which grows as [`msrt_string_append`] grows it, so `s += f"{k}={n};"` in a loop builds no
-/// temporary string. `mask` is the mask of the join this replaces, with `a` as its part 0: bit
-/// `k + 1` set makes `parts[k]` an integer.
-///
-/// # Safety
-/// `a` is owned by the caller and dead after the call; every part whose mask bit is clear is a
-/// live string.
-#[inline(always)]
-unsafe fn append_parts<const N: usize>(a: *const StrVal, mask: i64, parts: [usize; N]) -> StrVal {
-    let mut digits: Digits<N> = [core::mem::MaybeUninit::uninit(); N];
-    // SAFETY: caller contract.
-    unsafe {
-        let (sa, la, mask) = (core::ptr::read(a), (*a).len(), mask >> 1);
-        let (slices, total) = part_slices(mask, parts, &mut digits);
-        let end = sa.ptr_word.wrapping_add(la).cast_const();
-        // A part that views `a`'s bytes would be read after they move.
-        let within = |&(p, _): &(*const u8, usize)| p >= sa.ptr_word.cast_const() && p <= end;
-        if !sa.owns() || la == 0 || slices.iter().any(within) {
-            let s = joined(bytes(a), &slices, la + total);
-            release(&sa);
-            return s;
-        }
-        if la + total > MAX_BYTES {
-            fault::fault(b"string: limit exceeded");
-        }
-        // Only a flagged `a` stays flagged, and only when every string part is ASCII.
-        let strings = (0..N).filter(|k| (mask >> k) & 1 == 0);
-        let ascii = sa.flagged_ascii()
-            && strings
-                .into_iter()
-                .all(|k| is_ascii(&*(parts[k] as *const StrVal)));
-        let need = la + total + 1;
-        let p = if alloc::usable_size(sa.ptr_word) >= need {
-            sa.ptr_word
-        } else {
-            alloc::realloc(sa.ptr_word, need + need / 2)
-        };
-        copy_slices(&slices, p.add(la));
-        *p.add(la + total) = 0;
-        let r = StrVal::owned(p, la + total);
-        if ascii { r.with_ascii() } else { r }
-    }
-}
-
-/// `f"{a}{b}"` where a part may be an integer: see [`format_parts`].
-#[cfg(not(ms_c = "msrt_string_fmt2"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, [a, b]).write_to(out) }
-}
-
-/// Three parts, any of them integers: see [`format_parts`].
-#[cfg(not(ms_c = "msrt_string_fmt3"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_fmt3(
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, [a, b, c]).write_to(out) }
-}
-
-/// Four parts, any of them integers: see [`format_parts`].
-#[cfg(not(ms_c = "msrt_string_fmt4"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_fmt4(
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    d: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, [a, b, c, d]).write_to(out) }
-}
-
-/// Five parts, any of them integers: see [`format_parts`].
-#[cfg(not(ms_c = "msrt_string_fmt5"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_fmt5(
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    d: usize,
-    e: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, [a, b, c, d, e]).write_to(out) }
-}
-
-/// Six parts, any of them integers: see [`format_parts`].
-#[cfg(not(ms_c = "msrt_string_fmt6"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_fmt6(
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    d: usize,
-    e: usize,
-    f: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, [a, b, c, d, e, f]).write_to(out) }
-}
-
-/// The join of an owned `s` and one part, growing `s`: see [`append_parts`].
-#[cfg(not(ms_c = "msrt_string_append_fmt1"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append_fmt1(
-    s: *const StrVal,
-    mask: i64,
-    a: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
-    unsafe { append_parts(s, mask, [a]).write_to(out) }
-}
-
-/// The join of an owned `s` and two parts, growing `s`: see [`append_parts`].
-#[cfg(not(ms_c = "msrt_string_append_fmt2"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append_fmt2(
-    s: *const StrVal,
-    mask: i64,
-    a: usize,
-    b: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
-    unsafe { append_parts(s, mask, [a, b]).write_to(out) }
-}
-
-/// The join of an owned `s` and three parts, growing `s`: see [`append_parts`].
-#[cfg(not(ms_c = "msrt_string_append_fmt3"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append_fmt3(
-    s: *const StrVal,
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
-    unsafe { append_parts(s, mask, [a, b, c]).write_to(out) }
-}
-
-/// The join of an owned `s` and four parts, growing `s`: see [`append_parts`].
-#[cfg(not(ms_c = "msrt_string_append_fmt4"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append_fmt4(
-    s: *const StrVal,
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    d: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
-    unsafe { append_parts(s, mask, [a, b, c, d]).write_to(out) }
-}
-
-/// The join of an owned `s` and five parts, growing `s`: see [`append_parts`].
-#[cfg(not(ms_c = "msrt_string_append_fmt5"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append_fmt5(
-    s: *const StrVal,
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    d: usize,
-    e: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
-    unsafe { append_parts(s, mask, [a, b, c, d, e]).write_to(out) }
-}
 
 /// A growable byte buffer the text formatters append to, so building a long text is linear.
 pub struct StrBuf(Vec<u8>);
@@ -1375,166 +740,6 @@ unsafe fn msrt_strbuf_finish_val(buf: *mut StrBuf) -> StrVal {
     from_bytes(&buf.0)
 }
 
-#[cfg(not(ms_c = "msrt_string_reverse"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_reverse(a: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_reverse_val(a)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_reverse_val(a: *const StrVal) -> StrVal {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        let text = bytes(a);
-        if is_ascii(&*a) {
-            return build_exact(text.len(), true, |dst| {
-                for (d, &c) in dst.iter_mut().zip(text.iter().rev()) {
-                    *d = c;
-                }
-            });
-        }
-        // Reversing whole scalars keeps each one's width, so the result has the same length. Each
-        // scalar's bytes move as they are: a String is valid UTF-8, so a scalar is a lead byte and
-        // its continuation bytes, and no decode or encode is needed.
-        build_exact(text.len(), false, |dst| {
-            let mut at = 0;
-            let mut end = text.len();
-            while end > 0 {
-                let mut start = end - 1;
-                while start > 0 && end - start < 4 && text[start] & 0xC0 == 0x80 {
-                    start -= 1;
-                }
-                let w = end - start;
-                match w {
-                    1 => dst[at] = text[start],
-                    2 => dst[at..at + 2].copy_from_slice(&text[start..end]),
-                    3 => dst[at..at + 3].copy_from_slice(&text[start..end]),
-                    _ => dst[at..at + 4].copy_from_slice(&text[start..end]),
-                }
-                at += w;
-                end = start;
-            }
-        })
-    }
-}
-
-/// The range of `text` left after trimming. Text whose first and last bytes (the ends asked for)
-/// are ASCII and not white space, the usual case, is decided by those two bytes.
-#[inline(always)]
-fn trim_range(text: &[u8], start: bool, end: bool) -> (usize, usize) {
-    if let (Some(&first), Some(&last)) = (text.first(), text.last()) {
-        let keeps = |b: u8| b < 0x80 && b != b' ' && !(9..=13).contains(&b);
-        if (!start || keeps(first)) && (!end || keeps(last)) {
-            return (0, text.len());
-        }
-    }
-    trim_range_scan(text, start, end)
-}
-
-fn trim_range_scan(text: &[u8], start: bool, end: bool) -> (usize, usize) {
-    let (mut a, mut b) = (0, text.len());
-    // ASCII White_Space is \t \n \v \f \r and the space; anything else below 0x80 ends the scan
-    // without decoding.
-    let ascii_space = |b: u8| b == b' ' || (9..=13).contains(&b);
-    if start {
-        while a < b {
-            if text[a] < 0x80 {
-                if !ascii_space(text[a]) {
-                    break;
-                }
-                a += 1;
-                continue;
-            }
-            let (c, w) = utf8::decode(&text[a..b]);
-            if !utf8::is_space(c) {
-                break;
-            }
-            a += w;
-        }
-    }
-    if end {
-        while b > a {
-            if text[b - 1] < 0x80 {
-                if !ascii_space(text[b - 1]) {
-                    break;
-                }
-                b -= 1;
-                continue;
-            }
-            let (c, w) = utf8::decode_last(&text[a..b]);
-            if !utf8::is_space(c) {
-                break;
-            }
-            b -= w;
-        }
-    }
-    (a, b)
-}
-
-#[inline(always)]
-unsafe fn trimmed(s: *const StrVal, start: bool, end: bool) -> StrVal {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        let text = bytes(s);
-        let (a, b) = trim_range(text, start, end);
-        if a == 0 && b == text.len() {
-            cloned(&*s)
-        } else {
-            from_bytes(&text[a..b])
-        }
-    }
-}
-
-/// Writes a view of `s` without the whitespace the flags name to `out`: no allocation, valid
-/// while `s` is neither changed nor dropped (the borrow check guarantees that).
-#[inline(always)]
-unsafe fn trim_view(s: *const StrVal, start: bool, end: bool, out: *mut StrVal) {
-    // SAFETY: caller passes a live string and a writable `out`.
-    unsafe {
-        let text = bytes(s);
-        let (a, b) = trim_range(text, start, end);
-        let view = if a == b {
-            // An empty result borrows nothing.
-            StrVal::literal((&raw mut EMPTY).cast(), 0)
-        } else if b - a == text.len() && (*s).copies_bitwise() {
-            // Nothing trimmed from an inline or static string: the same two words.
-            StrVal {
-                ptr_word: (*s).ptr_word,
-                tagged: (*s).tagged,
-            }
-        } else {
-            view_of(text[a..b].as_ptr(), b - a)
-        };
-        view.write_to(out)
-    }
-}
-
-#[cfg(not(ms_c = "msrt_string_trim_view"))]
-#[unsafe(no_mangle)]
-// ms: leaf borrows
-pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: forwarded contract.
-    unsafe { trim_view(s, true, true, out) }
-}
-
-#[cfg(not(ms_c = "msrt_string_trim_start_view"))]
-#[unsafe(no_mangle)]
-// ms: leaf borrows
-pub unsafe extern "C-unwind" fn msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: forwarded contract.
-    unsafe { trim_view(s, true, false, out) }
-}
-
-#[cfg(not(ms_c = "msrt_string_trim_end_view"))]
-#[unsafe(no_mangle)]
-// ms: leaf borrows
-pub unsafe extern "C-unwind" fn msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: forwarded contract.
-    unsafe { trim_view(s, false, true, out) }
-}
-
 /// The string over the first `len` bytes of the owned allocation at `ptr`: the same allocation
 /// when it stays on the heap, an inline copy (freeing the buffer) when it fits inline.
 ///
@@ -1551,26 +756,6 @@ unsafe fn finish_owned(ptr: *mut u8, len: usize, ascii: bool) -> StrVal {
         *ptr.add(len) = 0;
         let r = StrVal::owned(ptr, len);
         if ascii { r.with_ascii() } else { r }
-    }
-}
-
-/// `trim`, `trim_start` or `trim_end` of a string that dies at the call: the kept bytes move to
-/// the front of the same allocation.
-///
-/// # Safety
-/// `s` is an owned string the callee takes; `out` is writable.
-unsafe fn trimmed_take(s: *mut StrVal, start: bool, end: bool, out: *mut StrVal) {
-    // SAFETY: caller contract.
-    unsafe {
-        if !(*s).owns() {
-            return trimmed(s, start, end).write_to(out);
-        }
-        let (ptr, ascii) = ((*s).ptr_word, (*s).flagged_ascii());
-        let (a, b) = trim_range(bytes(s), start, end);
-        if a > 0 && b > a {
-            core::ptr::copy(ptr.add(a), ptr, b - a);
-        }
-        finish_owned(ptr, b - a, ascii).write_to(out)
     }
 }
 
@@ -1595,48 +780,6 @@ unsafe fn map_case_take(s: *mut StrVal, upper: bool, out: *mut StrVal) {
         release(&*s);
         r.write_to(out)
     }
-}
-
-#[cfg(not(ms_c = "msrt_string_trim"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh takes_self
-pub unsafe extern "C-unwind" fn msrt_string_trim(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_trim_val(s)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_trim_val(s: *const StrVal) -> StrVal {
-    // SAFETY: forwarded contract.
-    unsafe { trimmed(s, true, true) }
-}
-
-#[cfg(not(ms_c = "msrt_string_trim_start"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh takes_self
-pub unsafe extern "C-unwind" fn msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_trim_start_val(s)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_trim_start_val(s: *const StrVal) -> StrVal {
-    // SAFETY: forwarded contract.
-    unsafe { trimmed(s, true, false) }
-}
-
-#[cfg(not(ms_c = "msrt_string_trim_end"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh takes_self
-pub unsafe extern "C-unwind" fn msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_trim_end_val(s)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_trim_end_val(s: *const StrVal) -> StrVal {
-    // SAFETY: forwarded contract.
-    unsafe { trimmed(s, false, true) }
 }
 
 /// `upper` or `lower` of non-ASCII `text` written straight into a result of the same size, or
@@ -1822,45 +965,6 @@ unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
     unsafe { map_case(s, false) }
 }
 
-/// `trim` of a string that dies at the call (the optimizer rewrites a call whose receiver
-/// drops right after it); same `out` as `msrt_string_trim`.
-///
-/// # Safety
-/// `s` holds an owned string that the callee takes; `out` is writable.
-#[cfg(not(ms_c = "msrt_string_trim_take"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_trim_take(s: *mut StrVal, out: *mut StrVal) {
-    // SAFETY: caller contract.
-    unsafe { trimmed_take(s, true, true, out) }
-}
-
-/// `trim_start` of a string that dies at the call (the optimizer rewrites a call whose receiver
-/// drops right after it); same `out` as `msrt_string_trim_start`.
-///
-/// # Safety
-/// `s` holds an owned string that the callee takes; `out` is writable.
-#[cfg(not(ms_c = "msrt_string_trim_start_take"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_trim_start_take(s: *mut StrVal, out: *mut StrVal) {
-    // SAFETY: caller contract.
-    unsafe { trimmed_take(s, true, false, out) }
-}
-
-/// `trim_end` of a string that dies at the call (the optimizer rewrites a call whose receiver
-/// drops right after it); same `out` as `msrt_string_trim_end`.
-///
-/// # Safety
-/// `s` holds an owned string that the callee takes; `out` is writable.
-#[cfg(not(ms_c = "msrt_string_trim_end_take"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) {
-    // SAFETY: caller contract.
-    unsafe { trimmed_take(s, false, true, out) }
-}
-
 /// `upper` of a string that dies at the call (the optimizer rewrites a call whose receiver
 /// drops right after it); same `out` as `msrt_string_upper`.
 ///
@@ -1883,54 +987,6 @@ pub unsafe extern "C-unwind" fn msrt_string_upper_take(s: *mut StrVal, out: *mut
 pub unsafe extern "C-unwind" fn msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal) {
     // SAFETY: caller contract.
     unsafe { map_case_take(s, false, out) }
-}
-
-/// `repeat`: a count of zero or below, or empty text, gives empty text; output beyond the
-/// string limit faults like `concat`.
-#[cfg(not(ms_c = "msrt_string_repeat"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_repeat(s: *const StrVal, count: i64, out: *mut StrVal) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        if count <= 0 || text.is_empty() {
-            *out = empty();
-            return;
-        }
-        if count as usize > MAX_BYTES / text.len() {
-            fault::fault(b"string: limit exceeded");
-        }
-        let total = text.len() * count as usize;
-        let r = alloc_str(total);
-        fill_repeated(r.ptr_word, text, total);
-        *out = if is_ascii(&*s) { r.with_ascii() } else { r };
-    }
-}
-
-/// Fill an uninitialized destination with a whole number of pattern copies.
-///
-/// # Safety
-/// `dst` has `len` writable bytes, `pattern` is nonempty and independent of the
-/// destination, and `len` is a multiple of `pattern.len()`.
-unsafe fn fill_repeated(dst: *mut u8, pattern: &[u8], len: usize) {
-    // SAFETY: each copy reads only initialized bytes strictly before its destination.
-    unsafe {
-        if len == 0 {
-            return;
-        }
-        if pattern.len() == 1 {
-            core::ptr::write_bytes(dst, pattern[0], len);
-            return;
-        }
-        core::ptr::copy_nonoverlapping(pattern.as_ptr(), dst, pattern.len());
-        let mut filled = pattern.len();
-        while filled < len {
-            let n = filled.min(len - filled);
-            core::ptr::copy_nonoverlapping(dst, dst.add(filled), n);
-            filled += n;
-        }
-    }
 }
 
 /// Copies `n` non-overlapping bytes; up to 16 bytes go through overlapping word moves instead of a call
@@ -1996,201 +1052,9 @@ pub unsafe fn join_strings(items: *const StrVal, n: usize, sep: &[u8]) -> StrVal
     }
 }
 
-/// Pads to `target` scalars with repeated `padding`; a short target or empty padding leaves the text unchanged.
-/// Output beyond the string limit faults like `concat`.
-unsafe fn pad(
-    atstart: bool,
-    s: *const StrVal,
-    target: i64,
-    padding: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable out.
-    unsafe {
-        let text = bytes(s);
-        let needed = target as i128 - scalar_count(s) as i128;
-        let padb = bytes(padding);
-        if needed <= 0 || padb.is_empty() {
-            return cloned(&*s).write_to(out);
-        }
-        let needed = needed as usize;
-        let pcount = scalar_count(padding);
-        let (cycles, rem) = (needed / pcount, needed % pcount);
-        let prefix_end = if rem > 0 {
-            utf8::offset_of(padb, rem)
-        } else {
-            0
-        };
-        let total = text.len() as u128 + cycles as u128 * padb.len() as u128 + prefix_end as u128;
-        if total > MAX_BYTES as u128 {
-            fault::fault(b"string: limit exceeded");
-        }
-        let total = total as usize;
-        let pad_len = total - text.len();
-        // The result is written where it lives: a short one on the stack and then inline, a long
-        // one straight into its allocation, with no temporary buffer.
-        let write = |dst: *mut u8| {
-            let pad_dst = if atstart { dst } else { dst.add(text.len()) };
-            if atstart {
-                core::ptr::copy_nonoverlapping(text.as_ptr(), dst.add(pad_len), text.len());
-            } else {
-                core::ptr::copy_nonoverlapping(text.as_ptr(), dst, text.len());
-            }
-            fill_repeated(pad_dst, padb, cycles * padb.len());
-            core::ptr::copy_nonoverlapping(
-                padb.as_ptr(),
-                pad_dst.add(cycles * padb.len()),
-                prefix_end,
-            );
-        };
-        if total <= STR_INLINE_MAX {
-            let mut buf = [0u8; STR_INLINE_MAX];
-            write(buf.as_mut_ptr());
-            return StrVal::inline(&buf[..total]).write_to(out);
-        }
-        let r = alloc_str(total);
-        write(r.ptr_word);
-        (if is_ascii(&*s) && is_ascii(&*padding) {
-            r.with_ascii()
-        } else {
-            r
-        })
-        .write_to(out)
-    }
-}
-
-#[cfg(not(ms_c = "msrt_string_pad_start"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_pad_start(
-    s: *const StrVal,
-    target: i64,
-    padding: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: forwarded contract.
-    unsafe { pad(true, s, target, padding, out) }
-}
-
-#[cfg(not(ms_c = "msrt_string_pad_end"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_pad_end(
-    s: *const StrVal,
-    target: i64,
-    padding: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: forwarded contract.
-    unsafe { pad(false, s, target, padding, out) }
-}
-
 // ---------------------------------------------------------------------------
 // Slicing
 // ---------------------------------------------------------------------------
-
-/// A copy of `text[a..b]`, sharing nothing; the whole string is cloned when the range covers it.
-unsafe fn sub_bytes(s: *const StrVal, a: usize, b: usize) -> StrVal {
-    // SAFETY: `s` live; `a <= b <= len`.
-    unsafe {
-        let text = bytes(s);
-        if a == 0 && b == text.len() {
-            return cloned(&*s);
-        }
-        from_bytes(&text[a..b])
-    }
-}
-
-/// The byte range `[start, end)` with the bounds of `slice` (a negative bound counts back from the
-/// byte length); `None` unless `0 <= start <= end <= length` and both ends start a scalar.
-unsafe fn byte_range(s: *const StrVal, start: i64, end: i64) -> Option<(usize, usize)> {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        let text = bytes(s);
-        let n = text.len() as i64;
-        let (a, b) = (
-            if start < 0 { n + start } else { start },
-            if end < 0 { n + end } else { end },
-        );
-        if a < 0 || b < a || b > n {
-            return None;
-        }
-        let (a, b) = (a as usize, b as usize);
-        (is_boundary(text, a) && is_boundary(text, b)).then_some((a, b))
-    }
-}
-
-/// `String.slice(start, end)`: an owned copy of the bytes `[start, end)`. Negative bounds count back
-/// from the end, bounds outside the text clamp to it, a start past the end gives empty text, and a
-/// bound inside a scalar moves inward (start forward, end backward) to the nearest boundary, so
-/// the result is always whole characters and the call never fails.
-#[cfg(not(ms_c = "msrt_string_slice"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_slice(
-    s: *const StrVal,
-    start: i64,
-    end: i64,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        let text = bytes(s);
-        let n = text.len() as i64;
-        let resolve = |bound: i64| {
-            (if bound < 0 {
-                n.saturating_add(bound)
-            } else {
-                bound
-            })
-            .clamp(0, n) as usize
-        };
-        let (mut a, mut b) = (resolve(start), resolve(end));
-        while a < b && !is_boundary(text, a) {
-            a += 1;
-        }
-        while b > a && !is_boundary(text, b) {
-            b -= 1;
-        }
-        *out = if a >= b {
-            StrVal::literal((&raw mut EMPTY).cast(), 0)
-        } else {
-            sub_bytes(s, a, b)
-        };
-    }
-}
-
-/// `String.view(start, end)`: the bytes `[start, end)` borrowed from the receiver, nothing
-/// allocated. Bounds as in `slice`; a bound outside the text or inside a scalar faults. Valid while
-/// the receiver is neither changed nor dropped (the borrow check guarantees that).
-///
-/// A flagged-ASCII text with bounds inside it is decided inline by the compiler (`view_guard`);
-/// everything else, including an inline text, comes here.
-#[cfg(not(ms_c = "msrt_string_view"))]
-#[unsafe(no_mangle)]
-// ms: leaf pure borrows domain=string
-pub unsafe extern "C-unwind" fn msrt_string_view(
-    s: *const StrVal,
-    start: i64,
-    end: i64,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes a live string and a writable `out`.
-    unsafe {
-        let Some((a, b)) = byte_range(s, start, end) else {
-            fault::fault_fmt(format_args!(
-                "String.view: bounds {start}..{end} are outside the text or inside a scalar"
-            ));
-        };
-        let view = if a == b {
-            // An empty result borrows nothing.
-            StrVal::literal((&raw mut EMPTY).cast(), 0)
-        } else {
-            view_of(bytes(s)[a..b].as_ptr(), b - a)
-        };
-        view.write_to(out)
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Lists produced from strings (List[String] = VecVal of 8-byte string pointers)
@@ -2260,61 +1124,6 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrVal, out: *mut Ve
         }
         *out = v;
     }
-}
-
-/// The character that starts at byte `at`, which `for c in text.chars()` reaches for a non-ASCII
-/// lead byte (or a stray byte, which reads as U+FFFD): an owned one-character string.
-#[cfg(not(ms_c = "msrt_string_char_at"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_char_at_val(s, at)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_char_at_val(s: *const StrVal, at: i64) -> StrVal {
-    // SAFETY: caller passes a live string and an offset inside it.
-    unsafe {
-        let text = &bytes(s)[at as usize..];
-        let (c, w) = utf8::decode(text);
-        if c == 0xFFFD && w == 1 {
-            from_bytes("\u{FFFD}".as_bytes())
-        } else {
-            from_bytes(&text[..w])
-        }
-    }
-}
-
-/// Byte width of the character that starts at byte `at`.
-#[cfg(not(ms_c = "msrt_string_char_width"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_char_width(s: *const StrVal, at: i64) -> i64 {
-    // SAFETY: caller passes a live string and an offset inside it.
-    unsafe { utf8::decode(&bytes(s)[at as usize..]).1 as i64 }
-}
-
-/// The scalar value and byte width of the character at byte `at` in one decode, as
-/// `scalar << 3 | width`, for the scalar loops that need both.
-#[cfg(not(ms_c = "msrt_string_scalar_step"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_scalar_step(s: *const StrVal, at: i64) -> i64 {
-    // SAFETY: caller passes a live string and an offset inside it.
-    unsafe {
-        let (c, w) = utf8::decode(&bytes(s)[at as usize..]);
-        ((c as i64) << 3) | w as i64
-    }
-}
-
-/// The Unicode scalar value of the character that starts at byte `at`.
-#[cfg(not(ms_c = "msrt_string_scalar_at_byte"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64 {
-    // SAFETY: caller passes a live string and an offset inside it.
-    unsafe { utf8::decode(&bytes(s)[at as usize..]).0 as i64 }
 }
 
 #[unsafe(no_mangle)]
@@ -3018,76 +1827,6 @@ unsafe fn normalize_kind(
 // Conversions to string (Int, Float, Bool)
 // ---------------------------------------------------------------------------
 
-#[cfg(not(ms_c = "msrt_int_to_string"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_int_to_string(v: i64, out: *mut StrVal) {
-    let mut tmp = [0u8; 20];
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_bytes(crate::num::format_i64(v, &mut tmp)).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_uint_to_string"))]
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_uint_to_string(v: i64, out: *mut StrVal) {
-    let mut tmp = [0u8; 20];
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_bytes(crate::num::format_u64(v as u64, &mut tmp)).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_uint_to_string_radix"))]
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal) {
-    if !(2..=36).contains(&radix) {
-        fault::fault_fmt(format_args!(
-            "to_string_radix: radix must be between 2 and 36, found {radix}"
-        ));
-    }
-    let mut b = Vec::new();
-    crate::num::format_radix_u64(v as u64, radix as u32, &mut b);
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_buf(b).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_float32_to_string"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_float32_to_string(v: f64, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { from_bytes(crate::num::float32_text(v).as_slice()).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_float_to_string"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_float_to_string(v: f64, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_bytes(crate::num::float_text(v).as_slice()).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_bool_to_string"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_bool_to_string(v: u8, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_bytes(if v != 0 { b"true" } else { b"false" }).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_int_to_string_radix"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) {
-    if !(2..=36).contains(&radix) {
-        fault::fault_fmt(format_args!(
-            "to_string_radix: radix must be between 2 and 36, found {radix}"
-        ));
-    }
-    let mut b = Vec::new();
-    crate::num::format_radix(v, radix as u32, &mut b);
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_buf(b).write_to(out) }
-}
-
 /// The double-quoted, escaped spelling of a string (as `%q` writes it).
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -3139,34 +1878,31 @@ pub fn count_copy(kind: usize, bytes: usize) {
     }
 }
 
-// Split and replace live in `runtime/core/string_split.c`; the unit tests call them through the linked C archive.
-#[cfg(test)]
-unsafe extern "C-unwind" {
-    pub fn msrt_string_split(s: *const StrVal, sep: *const StrVal, out: *mut VecVal);
-    pub fn msrt_string_split_view(s: *const StrVal, sep: *const StrVal, out: *mut VecVal);
-    pub fn msrt_string_replace(
-        s: *const StrVal,
-        old: *const StrVal,
-        new: *const StrVal,
-        out: *mut StrVal,
-    );
-    pub fn msrt_string_replace_first(
-        s: *const StrVal,
-        old: *const StrVal,
-        new: *const StrVal,
-        out: *mut StrVal,
-    );
-    pub fn msrt_string_replace_take(
-        s: *mut StrVal,
-        old: *const StrVal,
-        new: *const StrVal,
-        out: *mut StrVal,
-    );
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The f-string joins are C (runtime/core/string_join.c); the unit tests link the C runtime.
+    unsafe extern "C-unwind" {
+        fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal);
+        fn msrt_string_fmt3(mask: i64, a: usize, b: usize, c: usize, out: *mut StrVal);
+        fn msrt_string_append_fmt1(s: *const StrVal, mask: i64, a: usize, out: *mut StrVal);
+        fn msrt_string_append_fmt2(
+            s: *const StrVal,
+            mask: i64,
+            a: usize,
+            b: usize,
+            out: *mut StrVal,
+        );
+        fn msrt_string_append_fmt3(
+            s: *const StrVal,
+            mask: i64,
+            a: usize,
+            b: usize,
+            c: usize,
+            out: *mut StrVal,
+        );
+    }
 
     #[test]
     fn find_short_agrees_with_a_naive_search() {
@@ -3245,29 +1981,6 @@ mod tests {
         assert_eq!(build(&mixed), (STATUS_OK, Some(want.into_bytes())));
         for bad in [-1, 0xD800, 0x110000, i64::MIN, i64::MAX] {
             assert_eq!(build(&[65, bad]).0, STATUS_INVALID_INPUT, "{bad}");
-        }
-    }
-
-    #[test]
-    fn short_searches_agree_with_a_naive_scan() {
-        let naive = |h: &[u8], n: &[u8]| {
-            (0..=h.len().saturating_sub(n.len())).find(|&i| h[i..].starts_with(n))
-        };
-        let hay = b"a,bb,,ccc,a,bb\x80,,ccc,a,bb,,ccc,x";
-        for len in 0..hay.len() {
-            let h = &hay[..len];
-            for n in [
-                &b","[..],
-                b"bb",
-                b",,c",
-                b"x",
-                b"\x80",
-                b"zz",
-                b"ccc,a,bb\x80,,c",
-            ] {
-                let want = if n.len() > h.len() { None } else { naive(h, n) };
-                assert_eq!(find(h, n), want, "find {n:?} in {h:?}");
-            }
         }
     }
 
@@ -3573,27 +2286,6 @@ mod tests {
                     release(&src);
                 }
             }
-        }
-    }
-
-    #[test]
-    fn ascii_flag_follows_construction() {
-        let _g = crate::testutil::lock();
-        unsafe {
-            let long = "abcdefghijklmnopqrstuvwxyz";
-            let a = from_bytes(long.as_bytes());
-            assert!(a.flagged_ascii());
-            let u = from_bytes("abcdefghijklmnopqrstuvwxyé".as_bytes());
-            assert!(!u.flagged_ascii());
-            assert_eq!(scalar_count(&u), 26);
-            // concatenation keeps the flag only when both sides are ASCII
-            let c = msrt_string_concat_val(&a, &a);
-            assert!(c.flagged_ascii() && scalar_count(&c) == 52);
-            let d = msrt_string_concat_val(&a, &u);
-            assert!(!d.flagged_ascii() && scalar_count(&d) == 52);
-            // equal strings may differ in the flag
-            let lit = StrVal::literal(long.as_ptr().cast_mut(), long.len());
-            assert!(equal(&a, &lit));
         }
     }
 

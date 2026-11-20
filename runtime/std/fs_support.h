@@ -32,6 +32,9 @@ void ms_fs_fail_raw(MsFsFail *fail, MsSysError error);
 /* An OS failure of `operation` on `count` paths: `open /x: permission denied`. A status other than STATUS_FAILED
  * carries no text. */
 void ms_fs_fail_errno(MsFsFail *fail, MsSysError error, const char *operation, const MsBytes *paths, size_t count);
+/* An OS failure that is always STATUS_FAILED with its text, `read name: reason`, whatever the code means (streams
+ * report every failure so). */
+void ms_fs_fail_os(MsFsFail *fail, MsSysError error, const char *operation, MsBytes name);
 /* The same for one path. */
 void ms_fs_fail_errno_at(MsFsFail *fail, MsSysError error, const char *operation, MsBytes path);
 
@@ -127,6 +130,10 @@ void ms_fs_entry_kind(MsBytes directory, const MsSysDirEntry *entry, bool *is_di
 /* Removes the tree at `path` without following links; a missing path is already removed. */
 void ms_fs_remove_tree(MsBytes path, MsFsFail *fail);
 
+/* Reads to the end of `fd` into `out`, failing with STATUS_LIMIT_EXCEEDED past `max` bytes. A cancellable read checks for
+ * a stop request between reads (a pool thread must not) and waits for a pipe or device to be readable. `stat` is the
+ * descriptor's fstat, or null when it has none. */
+void ms_fs_read_limited(MsSysFd fd, int64_t max, bool cancellable, const MsSysStat *stat, MsFsBuffer *out, MsFsFail *fail);
 /* The absolute, canonical form of an existing path (every link resolved), or the host error. */
 MsSysError ms_fs_eval_symlinks(MsBytes path, MsFsBuffer *out);
 /* os.Remove: the path as a file, then as an empty directory. */

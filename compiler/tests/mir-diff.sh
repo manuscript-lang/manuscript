@@ -13,9 +13,8 @@ seed=${MS_FUZZ_SEED:-1}
 cargo build --release --locked -p ms-mir --example c_oracle
 oracle=target/release/examples/c_oracle
 
-cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_mir_dump.c -o "$out/dump" -lm
-cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/mutate.c -o "$out/mutate"
+sh compiler/tests/cbuild.sh ms_mir_dump mutate
+bin=target/cmake/test/compiler
 
 status=0
 check() {
@@ -30,13 +29,13 @@ check() {
 }
 
 "$oracle" ops > "$out/ops.rust"
-"$out/dump" ops > "$out/ops.c"
+"$bin/ms_mir_dump" ops > "$out/ops.c"
 check ops "$out/ops.rust" "$out/ops.c"
 
 git ls-files '*.mir' > "$out/files.txt"
 rm -rf "$out/fuzz"
 mkdir -p "$out/fuzz"
-"$out/mutate" "$out/fuzz" "$fuzz" "$seed" "$out/files.txt" mir
+"$bin/mutate" "$out/fuzz" "$fuzz" "$seed" "$out/files.txt" mir
 : > "$out/fuzz.txt"
 for f in "$out"/fuzz/*.mir; do
     rc=0
@@ -46,22 +45,22 @@ done
 
 for set in files fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" print > "$out/print-$set.rust"
-    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" print > "$out/print-$set.c"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$bin/ms_mir_dump" print > "$out/print-$set.c"
     check "print $set ($(grep -c '^===' "$out/print-$set.rust") files)" "$out/print-$set.rust" "$out/print-$set.c"
 done
 for set in files fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" analysis > "$out/analysis-$set.rust"
-    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" analysis > "$out/analysis-$set.c"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$bin/ms_mir_dump" analysis > "$out/analysis-$set.c"
     check "analysis $set" "$out/analysis-$set.rust" "$out/analysis-$set.c"
 done
 for set in files fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" verify > "$out/verify-$set.rust"
-    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" verify > "$out/verify-$set.c"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$bin/ms_mir_dump" verify > "$out/verify-$set.c"
     check "verify $set" "$out/verify-$set.rust" "$out/verify-$set.c"
 done
 for set in files fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" boxing > "$out/boxing-$set.rust"
-    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" boxing > "$out/boxing-$set.c"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$bin/ms_mir_dump" boxing > "$out/boxing-$set.c"
     check "boxing $set" "$out/boxing-$set.rust" "$out/boxing-$set.c"
 done
 # A mutant whose types contain themselves by value overflows the Rust layout's stack; the C layout
@@ -72,7 +71,7 @@ while read -r f; do
 done < "$out/fuzz.txt"
 for set in files layout-fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" layout > "$out/layout-$set.rust"
-    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" layout > "$out/layout-$set.c"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$bin/ms_mir_dump" layout > "$out/layout-$set.c"
     check "layout $set" "$out/layout-$set.rust" "$out/layout-$set.c"
 done
 # The interpreter: the program's output, exit code or fault, frames, and the drop and step counts.
@@ -83,7 +82,7 @@ while read -r f; do
 done < "$out/fuzz.txt"
 for set in files run-fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" run > "$out/run-$set.rust"
-    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" run > "$out/run-$set.c"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$bin/ms_mir_dump" run > "$out/run-$set.c"
     check "run $set" "$out/run-$set.rust" "$out/run-$set.c"
 done
 # The optimisation passes: both implementations run one pass on the same verified module.
@@ -94,7 +93,7 @@ if [ -n "${MS_MIR_CORPUS:-}" ]; then find "$MS_MIR_CORPUS" -name '*.mir' | sort 
 tr '\n' '\0' < "$out/opt-files.txt" | xargs -0 "$oracle" verified | tr '\n' '\0' > "$out/verified.0"
 for pass in bytetake strfuse loopslot optparam ifconv reserve appendfast sortgen copyelim copytakes lastuse; do
     xargs -0 "$oracle" opt $pass < "$out/verified.0" > "$out/opt-$pass.rust"
-    xargs -0 "$out/dump" opt $pass < "$out/verified.0" > "$out/opt-$pass.c"
+    xargs -0 "$bin/ms_mir_dump" opt $pass < "$out/verified.0" > "$out/opt-$pass.c"
     check "opt $pass ($(grep -c '^changed true' "$out/opt-$pass.rust") of $(grep -c '^===' "$out/opt-$pass.rust") changed)" "$out/opt-$pass.rust" "$out/opt-$pass.c"
 done
 exit $status

@@ -10,13 +10,12 @@ seed=${IMPORT_SEED:-1}
 
 cargo build --release --locked -p ms-check --example c_import_oracle
 oracle=target/release/examples/c_import_oracle
-cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Wno-format-truncation -Icompiler/include -Iruntime/include -Icompiler/tools compiler/src/libms.c \
-    compiler/tools/ms_import_hints_dump.c -o "$out/import_hints_dump" -lm
+sh compiler/tests/cbuild.sh ms_import_hints_dump
+bin=target/cmake/test/compiler
 
 "$oracle" gen "$cases" "$seed" > "$out/import-hints.cases"
 "$oracle" < "$out/import-hints.cases" > "$out/import-hints.rust"
-"$out/import_hints_dump" stdlib < "$out/import-hints.cases" > "$out/import-hints.c.out"
+"$bin/ms_import_hints_dump" stdlib < "$out/import-hints.cases" > "$out/import-hints.c.out"
 if cmp -s "$out/import-hints.rust" "$out/import-hints.c.out"; then
     echo "import hints: $(wc -l < "$out/import-hints.cases") queries identical"
 else

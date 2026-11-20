@@ -505,3 +505,51 @@ pub unsafe fn thread_join(thread: usize) {
     // SAFETY: forwarded.
     unsafe { pthread_join(thread, core::ptr::null_mut()) };
 }
+
+/// Size of the alternate stack the fault handler runs on.
+#[cfg(not(ms_c = "ms_sys_fault_handler_install"))]
+const ALT_STACK: usize = 64 << 10;
+
+#[cfg(not(ms_c = "ms_sys_fault_handler_install"))]
+static FAULT_CALLBACK: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
+
+#[cfg(not(ms_c = "ms_sys_fault_handler_install"))]
+extern "C" fn on_fault(sig: c_int, info: *const u8, _ctx: *const u8) {
+    // SAFETY: the kernel passes a valid `siginfo_t`; the callback was stored by `fault_handler_install`.
+    unsafe {
+        let addr = info.add(SI_ADDR_OFFSET).cast::<usize>().read_unaligned();
+        let callback = FAULT_CALLBACK.load(core::sync::atomic::Ordering::Acquire);
+        if callback != 0 {
+            let callback: extern "C" fn(usize) = core::mem::transmute(callback);
+            callback(addr);
+        }
+        // Not the callback's: restore the default action and return so the access faults again.
+        sigaction(sig, &sigaction_t::new(0, 0), core::ptr::null_mut());
+    }
+}
+
+/// Routes memory-access faults to `on_fault` on the calling thread's alternate stack.
+#[cfg(not(ms_c = "ms_sys_fault_handler_install"))]
+pub fn fault_handler_install(callback: extern "C" fn(usize)) -> bool {
+    // SAFETY: the alternate stack is never freed; the handler only calls `callback` and async-signal-safe functions.
+    unsafe {
+        let stack = map_anon(ALT_STACK);
+        if stack.is_null() {
+            return false;
+        }
+        let alt = stack_t {
+            ss_sp: stack.cast(),
+            ss_flags: 0,
+            ss_size: ALT_STACK,
+        };
+        if sigaltstack(&alt, core::ptr::null_mut()) != 0 {
+            return false;
+        }
+        FAULT_CALLBACK.store(callback as usize, core::sync::atomic::Ordering::Release);
+        let handler: extern "C" fn(c_int, *const u8, *const u8) = on_fault;
+        let act = sigaction_t::new(handler as *const () as usize, SA_SIGINFO | SA_ONSTACK);
+        sigaction(SIGSEGV, &act, core::ptr::null_mut());
+        sigaction(SIGBUS, &act, core::ptr::null_mut());
+    }
+    true
+}

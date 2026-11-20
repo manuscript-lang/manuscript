@@ -107,7 +107,13 @@ pub fn build_c_runtime(root: &Path, work: &Path, triple: Option<&str>) -> Result
         .arg(root)
         .arg("-B")
         .arg(&build)
-        .args(["-G", "Ninja", "-DMS_BUILD_TESTS=OFF", "-DCMAKE_BUILD_TYPE="])
+        .args([
+            "-G",
+            "Ninja",
+            "-DMS_BUILD_TESTS=OFF",
+            "-DMS_BUILD_COMPILER=OFF",
+            "-DCMAKE_BUILD_TYPE=",
+        ])
         // The build is the same wherever it runs: the caller's flags do not reach it.
         .env_remove("CFLAGS")
         .env_remove("LDFLAGS");

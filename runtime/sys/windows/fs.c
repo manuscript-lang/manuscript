@@ -1249,3 +1249,60 @@ uint32_t ms_sys_fs_random(void) {
     state = (state ^ (state >> 27)) * UINT64_C(0x94D049BB133111EB);
     return (uint32_t)((state ^ (state >> 31)) >> 16);
 }
+
+MsSysFdKind ms_sys_fs_fd_kind(MsSysFd fd) {
+    if (is_invalid(fd)) {
+        return MS_SYS_FD_OTHER;
+    }
+    const HANDLE handle = handle_of(fd);
+    switch (GetFileType(handle)) {
+    case FILE_TYPE_DISK:
+        return MS_SYS_FD_FILE;
+    case FILE_TYPE_PIPE:
+        return MS_SYS_FD_PIPE;
+    case FILE_TYPE_CHAR:
+        return is_console(handle) ? MS_SYS_FD_CONSOLE : MS_SYS_FD_OTHER;
+    default:
+        return MS_SYS_FD_OTHER;
+    }
+}
+
+bool ms_sys_fs_is_output(MsSysFd fd) {
+    return !is_invalid(fd) && (handle_of(fd) == GetStdHandle(STD_OUTPUT_HANDLE) || handle_of(fd) == GetStdHandle(STD_ERROR_HANDLE));
+}
+
+MsSysError ms_sys_fs_redirect_null(int32_t which) {
+    const DWORD slot = which == 0 ? STD_INPUT_HANDLE : which == 1 ? STD_OUTPUT_HANDLE : STD_ERROR_HANDLE;
+    const HANDLE null = CreateFileW(L"NUL", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+                                    FILE_ATTRIBUTE_NORMAL, NULL);
+    if (null == INVALID_HANDLE_VALUE) {
+        return last_error();
+    }
+    /* The handle stays open for the life of the process, as the standard handle it now is. */
+    if (!SetStdHandle(slot, null)) {
+        const MsSysError error = last_error();
+        (void)CloseHandle(null);
+        return error;
+    }
+    return 0;
+}
+
+MsSysError ms_sys_fs_event_new(MsSysFd *event) {
+    const HANDLE handle = CreateEventW(NULL, TRUE, FALSE, NULL);
+    if (handle == NULL) {
+        return last_error();
+    }
+    *event = (MsSysFd)handle;
+    return 0;
+}
+
+void ms_sys_fs_event_signal(MsSysFd event) { (void)SetEvent(handle_of(event)); }
+
+void ms_sys_fs_event_free(MsSysFd event) { (void)CloseHandle(handle_of(event)); }
+
+bool ms_sys_fs_wait_console(MsSysFd fd, MsSysFd event) {
+    const HANDLE handles[2] = {handle_of(fd), handle_of(event)};
+    return WaitForMultipleObjects(2, handles, FALSE, INFINITE) == WAIT_OBJECT_0;
+}
+
+void ms_sys_fs_cancel_io(MsSysFd fd) { (void)CancelIoEx(handle_of(fd), NULL); }

@@ -10,12 +10,12 @@ seed=${FIXES_SEED:-1}
 
 cargo build --release --locked -p ms-syntax --example c_fixes_oracle
 oracle=target/release/examples/c_fixes_oracle
-cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_fixes_dump.c -o "$out/fixes_dump" -lm
+sh compiler/tests/cbuild.sh ms_fixes_dump
+bin=target/cmake/test/compiler
 
 "$oracle" gen "$cases" "$seed" > "$out/fixes.cases"
 "$oracle" < "$out/fixes.cases" > "$out/fixes.rust"
-"$out/fixes_dump" < "$out/fixes.cases" > "$out/fixes.c.out"
+"$bin/ms_fixes_dump" < "$out/fixes.cases" > "$out/fixes.c.out"
 if cmp -s "$out/fixes.rust" "$out/fixes.c.out"; then
     echo "fixes: $(wc -l < "$out/fixes.cases") cases identical"
 else

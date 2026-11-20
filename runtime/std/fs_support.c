@@ -113,6 +113,14 @@ void ms_fs_fail_errno(MsFsFail *fail, MsSysError error, const char *operation, c
     fail_from_buffer(fail, &message, complete);
 }
 
+void ms_fs_fail_os(MsFsFail *fail, MsSysError error, const char *operation, MsBytes name) {
+    MsFsBuffer message = {0};
+    bool complete = ms_fs_buffer_append(&message, (const uint8_t *)operation, strlen(operation)) && ms_fs_buffer_push(&message, ' ') &&
+                    ms_fs_buffer_append(&message, name.ptr, name.len) && ms_fs_buffer_append(&message, (const uint8_t *)": ", 2);
+    complete = complete && append_error_text(&message, error);
+    fail_from_buffer(fail, &message, complete);
+}
+
 void ms_fs_fail_errno_at(MsFsFail *fail, MsSysError error, const char *operation, MsBytes path) {
     ms_fs_fail_errno(fail, error, operation, &path, 1);
 }
