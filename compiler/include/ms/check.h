@@ -88,4 +88,9 @@ MsSymId ms_decl_own_symbol(const MsCheck *c, MsModId module, const MsDecl *d);
  * `bindings` and `body_checked` of the module's facts for the checked ones. */
 void ms_module_check_bodies(MsCheck *c, MsModId module);
 
+/* Reports the locals and match payloads of the checked functions that nothing reads (`unused.rs`).
+ * Like the Rust pass it reports only for a module with no other diagnostic, and it exempts names
+ * that begin with `_`. Call after ms_module_check_bodies (and the ownership pass). */
+void ms_module_check_unused(MsCheck *c, MsModId module);
+
 #endif
