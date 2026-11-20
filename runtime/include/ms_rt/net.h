@@ -178,6 +178,20 @@ void msstd_scope_close(const void *handle);
 /* ms-sig: msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network */
 uint8_t msstd_scope_track_dgram(const void *handle, const void *socket);
 
+/* TLS on a plain connection, in place (runtime/net/tls_conn.c): the handshake runs on the row, then the result is
+ * another handle on the same connection and the caller drops the old one. `start_tls` is the client side (the
+ * options' server_name is sent and verified against roots_pem, the system roots when empty); `accept_tls` is the
+ * server side (certificate_pem and private_key_pem required; with roots_pem or require_client_certificate the client
+ * is asked for a certificate). STATUS_INVALID_INPUT for unusable options or a connection that is already TLS; a failed
+ * or timed out handshake closes the connection. */
+/* ms-sig: msstd_conn_start_tls(handle c: *const ObjCell<ConnH>, options: *const TlsOptionsWire, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_conn_start_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* ms-sig: msstd_conn_accept_tls(handle c: *const ObjCell<ConnH>, options: *const TlsOptionsWire, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_conn_accept_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* The application protocol the handshake chose ("h2", "http/1.1"), empty for none or a plain connection. */
+/* ms-sig: msstd_conn_alpn(handle c: *const ObjCell<ConnH>, out: *mut StrVal) @domain=network */
+void msstd_conn_alpn(const void *handle, MsStr *out);
+
 /* The certificate natives of @std/net/tls (runtime/net/tls_natives.c). A Timestamp is two words. */
 typedef struct MsTlsTimestamp {
     int64_t seconds;
