@@ -951,10 +951,35 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
 
 /* ---- statements ---- */
 
+/* `Name[A, B]` or `T?`: a generic type the module sees, applied to annotations; the application is
+ * kept only when a local can hold it (its arguments admitted and unbounded). */
+static MsTy body_applied_annotation(MsBody *b, const MsTypeRef *t) {
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
+    if (sym == MS_NONE || b->c->syms.kind[sym] != MS_SYM_TYPE || b->c->syms.ty[sym] == MS_TY_NONE ||
+        b->c->syms.nvars[sym] != t->args.len || t->args.len > 8) {
+        return ms_body_unsupported(b);
+    }
+    MsTy args[8];
+    for (uint32_t i = 0; i < t->args.len; i++) {
+        args[i] = ms_body_annotation(b, t->args.ptr[i]);
+        if (args[i] == MS_TY_NONE) {
+            return MS_TY_NONE;
+        }
+    }
+    const MsTy ty = ms_ty_apply(b->c, b->c->syms.ty[sym], args, t->args.len);
+    if (ty == MS_TY_NONE || !body_is_bindable(b, ty)) {
+        return ms_body_unsupported(b);
+    }
+    b->facts->type_ref_ty[t->id] = ty;
+    return ty;
+}
+
 /* The primitive type a written annotation names, or MS_TY_NONE. */
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
-    if (t->kind == MS_TYPE_NAMED && t->args.len == 1) {
-        return ms_body_list_annotation(b, t);
+    if (t->kind == MS_TYPE_NAMED && t->args.len != 0) {
+        const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
+        const bool list = sym != MS_NONE && b->c->syms.ty[sym] != MS_TY_NONE && ms_ty_is(&b->c->tys, b->c->syms.ty[sym], MS_BI_LIST);
+        return list ? ms_body_list_annotation(b, t) : body_applied_annotation(b, t);
     }
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
         return ms_body_unsupported(b);
