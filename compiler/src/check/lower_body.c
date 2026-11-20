@@ -13,6 +13,7 @@
 #include "ms/constfold.h"
 #include "ms/facts.h"
 #include "ms/lower.h"
+#include "ms/lower_scope.h"
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
 
@@ -23,6 +24,7 @@ typedef struct LbLoop {
     struct LbLoop *outer;
     bool broke;   /* a `break` branches to `exit` */
     bool stepped; /* a branch to `next` exists (a `while` has it from the start) */
+    uint32_t scope; /* the depth of the body's ownership scope: `break` and `continue` leave down to it */
 } LbLoop;
 
 /* A lowered expression: the value, and whether the holder must drop it. */
@@ -36,6 +38,7 @@ typedef struct Lb {
     const MsFacts *facts;
     MirModule *m;
     MirBuilder b;
+    LScopes scopes; /* ownership scopes: the function body is depth 0 */
     MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
     /* By binding id: the value a `let` or parameter names, or the variable a `var` is. */
     MirValue *value_of;
@@ -75,8 +78,8 @@ static MirTy lb_mir_ty(const Lb *lb, MsTy ty) {
     return ty == lb->string_ty ? MIR_STR : MIR_NONE;
 }
 
-static MirLoc lb_loc(MsPos pos) {
-    return (MirLoc){.file = 0, .line = pos.line, .col = pos.column, .scope = 0};
+static MirLoc lb_loc(const Lb *lb, MsPos pos) {
+    return (MirLoc){.file = 0, .line = pos.line, .col = pos.column, .scope = lb->b.loc.scope};
 }
 
 static void lb_emit_plain(Lb *lb, MirOp op) {
@@ -518,6 +521,7 @@ static void lb_write_back(Lb *lb) {
 /* Leaves a function that returns nothing. */
 static void lb_return_void(Lb *lb) {
     const MirValue unit = mir_b_unit(&lb->b);
+    lscope_exit_to(&lb->scopes, 0);
     lb_write_back(lb);
     lb_emit_plain(lb, MOP_DepthLeave);
     mir_b_ret(&lb->b, unit);
@@ -537,6 +541,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
         lb->ok = false; // handing out a borrowed String copies it
         return;
     }
+    lscope_exit_to(&lb->scopes, 0);
     lb_write_back(lb);
     lb_emit_plain(lb, MOP_DepthLeave);
     mir_b_ret(&lb->b, value.v);
@@ -544,6 +549,15 @@ static void lb_return(Lb *lb, const MsStmt *s) {
 }
 
 static void lb_statements(Lb *lb, const MsStmts *body);
+
+/* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
+ * the scope's depth. */
+static uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
+    const uint32_t depth = lscope_push(&lb->scopes);
+    lb_statements(lb, body);
+    lscope_pop(&lb->scopes, !lb->dead);
+    return depth;
+}
 
 /* Starts emitting into `block`, which some live edge reaches. */
 static void lb_enter(Lb *lb, MirBlock block) {
@@ -564,13 +578,13 @@ static void lb_if(Lb *lb, const MsStmt *s) {
     mir_b_seal_block(&lb->b, then_block);
     mir_b_seal_block(&lb->b, else_block);
     lb_enter(lb, then_block);
-    lb_statements(lb, &s->u.branch.body);
+    (void)lb_scoped(lb, &s->u.branch.body);
     const bool then_live = !lb->dead;
     if (then_live) {
         mir_b_br(&lb->b, join, NULL, 0);
     }
     lb_enter(lb, else_block);
-    lb_statements(lb, &s->u.branch.else_body);
+    (void)lb_scoped(lb, &s->u.branch.else_body);
     const bool else_live = !lb->dead;
     if (else_live) {
         mir_b_br(&lb->b, join, NULL, 0);
@@ -600,9 +614,9 @@ static void lb_while(Lb *lb, const MsStmt *s) {
     }
     mir_b_seal_block(&lb->b, body);
     lb_enter(lb, body);
-    LbLoop here = {header, exit, lb->loop, false, true};
+    LbLoop here = {header, exit, lb->loop, false, true, lb->scopes.depth};
     lb->loop = &here;
-    lb_statements(lb, &s->u.loop.body);
+    (void)lb_scoped(lb, &s->u.loop.body);
     lb->loop = here.outer;
     if (!lb->dead) {
         mir_b_br(&lb->b, header, NULL, 0);
@@ -641,6 +655,7 @@ static void lb_jump(Lb *lb, const MsStmt *s) {
     if (s->kind == MS_S_BREAK) {
         loop->broke = true;
     }
+    lscope_exit_to(&lb->scopes, loop->scope);
     mir_b_br(&lb->b, s->kind == MS_S_BREAK ? loop->exit : lb_step_block(lb, loop), NULL, 0);
     lb->dead = true;
 }
@@ -682,9 +697,9 @@ static void lb_for(Lb *lb, const MsStmt *s) {
     mir_b_seal_block(&lb->b, body);
     lb_enter(lb, body);
     lb->value_of[binding] = index;
-    LbLoop here = {.exit = exit, .outer = lb->loop};
+    LbLoop here = {.exit = exit, .outer = lb->loop, .scope = lb->scopes.depth};
     lb->loop = &here;
-    lb_statements(lb, &s->u.each.body);
+    (void)lb_scoped(lb, &s->u.each.body);
     lb->loop = here.outer;
     if (!lb->dead) {
         mir_b_br(&lb->b, lb_step_block(lb, &here), NULL, 0);
@@ -706,7 +721,7 @@ static void lb_for(Lb *lb, const MsStmt *s) {
 static void lb_statement(Lb *lb, const MsStmt *s) {
     const MsStmt *outer = lb->stmt;
     lb->stmt = s;
-    mir_b_set_loc(&lb->b, lb_loc(s->pos));
+    mir_b_set_loc(&lb->b, lb_loc(lb, s->pos));
     switch ((MsStmtKind)s->kind) {
     case MS_S_BIND: lb_bind(lb, s); break;
     case MS_S_RETURN: lb_return(lb, s); break;
@@ -720,7 +735,7 @@ static void lb_statement(Lb *lb, const MsStmt *s) {
     }
     lb->stmt = outer;
     if (outer != NULL) {
-        mir_b_set_loc(&lb->b, lb_loc(outer->pos));
+        mir_b_set_loc(&lb->b, lb_loc(lb, outer->pos));
     }
 }
 
@@ -780,7 +795,7 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
     }
     const MsStr name = ms_name(lb->c->names, fn->name);
     mir_b_init(&lb->b, lb->m, mir_name(lb->m, name.ptr, name.len), params, fn->params.len, ret);
-    lb->b.f.loc = lb_loc(d->pos);
+    lb->b.f.loc = lb_loc(lb, d->pos);
     lb_mark_noalias(lb, fn);
     MirValue *values = MS_NEW_N(&lb->m->arena, MirValue, fn->params.len + 1);
     mir_b_params(&lb->b, values, fn->params.len);
@@ -813,6 +828,8 @@ static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
     lb->dead = false;
     lb->loop = NULL;
     lb->stmt = NULL;
+    lscope_init(&lb->scopes, &lb->b);
+    (void)lscope_push(&lb->scopes); // the function's own scope: depth 0
     lb_statements(lb, &d->u.fn.body);
     if (lb->ok && !lb->dead && lb->b.f.ret == MIR_VOID) {
         lb_return_void(lb); // the end of a function that returns nothing

@@ -190,6 +190,8 @@ bool mir_alt_slot_source(const MirAltFields *fields, uint32_t case_index, uint32
  * collection is not the all-zero empty value. */
 MirLeafSpan mir_type_block(MirLayouts *layouts, uint32_t type_id);
 /* The byte offset of field `field` of the inline record `type_id` in its memory image. */
+/* The size in bytes of one element of list type `list`. */
+uint32_t mir_list_elem_size(MirLayouts *layouts, MirTy list);
 uint32_t mir_field_offset(MirLayouts *layouts, uint32_t type_id, uint32_t field);
 bool mir_type_field_boxed(const MirLayouts *layouts, MirTy field_ty);
 /* The heap block behind a record of an indirect type: `leaves` of its fields in order (as

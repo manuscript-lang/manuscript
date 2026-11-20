@@ -52,7 +52,33 @@ static void test_utf8(void) {
           !valid("\xf4\x90\x80\x80", 4) && !valid("\x80", 1));
 }
 
+/* The columns of `text` (a literal), or -1 when the native refuses it. */
+static int64_t columns(const char *text) {
+    const MsStr view = {.bytes = (const uint8_t *)text, .tagged = (UINT64_C(3) << 62) | strlen(text)};
+    int64_t width = 0;
+    return msstd_unicode_display_width(&view, &width) == 0 ? width : -1;
+}
+
+static void test_display_width(void) {
+    CHECK(columns("") == 0 && columns("abc") == 3 && columns("a b") == 3);
+    CHECK(columns("e\xcc\x81") == 1);                       /* e + combining acute */
+    CHECK(columns("\xe7\x95\x8c") == 2);                   /* 界 */
+    CHECK(columns("\xe7\x95\x8c\xe7\x95\x8c") == 4);
+    CHECK(columns("\xc2\xb7") == 1);                      /* · is ambiguous, narrow */
+    CHECK(columns("\xf0\x9f\x91\xa9\xe2\x80\x8d\xf0\x9f\x92\xbb") == 2); /* woman technologist */
+    CHECK(columns("\xf0\x9f\x87\xba\xf0\x9f\x87\xb8") == 2); /* the US flag */
+    CHECK(columns("\xf0\x9f\x87\xba\xf0\x9f\x87\xb8\xf0\x9f\x87\xa8") == 3); /* flag, then a lone indicator */
+    CHECK(columns("1\xef\xb8\x8f\xe2\x83\xa3") == 2);    /* keycap 1 */
+    CHECK(columns("\xe2\x9d\xa4\xef\xb8\x8f") == 2);      /* red heart with VS16 */
+    CHECK(columns("\xe2\x9d\xa4") == 1);                   /* red heart, text presentation */
+    CHECK(columns("\xe1\x84\x80\xe1\x85\xa1") == 2);    /* Hangul jamo syllable */
+    CHECK(columns("\xcc\x81") == 0);                      /* a lone combining mark */
+    CHECK(columns("\t") == -1 && columns("a\n") == -1 && columns("\x1b[31m") == -1 && columns("\x7f") == -1);
+    CHECK(columns("\xc2\x85") == -1 && columns("\xe2\x80\xa8") == -1 && columns("\xe2\x80\xa9") == -1);
+}
+
 int main(void) {
+    test_display_width();
     test_properties();
     test_non_scalars();
     test_utf8();
