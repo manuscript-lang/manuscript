@@ -126,7 +126,7 @@ static void alt_close_from(MsBody *b, uint32_t first) {
 }
 
 MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy ty) {
-    AltInfo info;
+    AltInfo info = {0};
     const uint32_t count = e->u.match.arms.len;
     if (!alt_info(b, ty, &info) || count == 0 || e->u.match.arms.ptr[0]->from_if) {
         return ms_body_unsupported(b);
