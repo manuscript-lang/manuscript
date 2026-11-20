@@ -25,8 +25,8 @@ pub mod watch;
 use alloc::vec::Vec;
 use err::{Fail, Res};
 use ms_rt::ffi::{
-    BytesList, ErrOut, Has, ObjMut, ObjRef, Object, StatusCode, Str,
-    TextList, TypeList, abi_type, native,
+    BytesList, ErrOut, Has, ObjMut, ObjRef, Object, StatusCode, Str, TextList, TypeList, abi_type,
+    native,
 };
 use ms_rt_abi::STATUS_FAILED;
 use stream::Stream;

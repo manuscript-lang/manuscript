@@ -42,79 +42,146 @@ static inline const uint8_t *ms_str_data(const MsStr *s) {
     return ms_str_is_inline(s) ? s->inline_bytes : s->bytes;
 }
 
+/* ms-sig: msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64 @domain=map @leaf @pure */
 int64_t msrt_string_compare(const MsStr *a, const MsStr *b);
+/* ms-sig: msrt_string_hash(s: *const StrVal) -> i64 @domain=map @leaf @pure */
 int64_t msrt_string_hash(const MsStr *s);
+/* ms-sig: msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8 @domain=string @leaf @pure */
 uint8_t msrt_string_eq(const MsStr *a, const MsStr *b);
+/* ms-sig: msrt_string_is_empty(s: *const StrVal) -> u8 @domain=string @leaf @pure */
 uint8_t msrt_string_is_empty(const MsStr *s);
+/* ms-sig: msrt_string_length(s: *const StrVal) -> i64 @domain=string @leaf @pure */
 int64_t msrt_string_length(const MsStr *s);
+/* ms-sig: msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 @domain=string @leaf @pure */
 uint8_t msrt_string_contains(const MsStr *a, const MsStr *v);
+/* ms-sig: msrt_string_contains_multi(a: *const StrVal, v: *const StrVal) -> u8 @domain=string @leaf @pure */
 uint8_t msrt_string_contains_multi(const MsStr *a, const MsStr *v);
+/* ms-sig: msrt_string_count(a: *const StrVal, v: *const StrVal) -> i64 @domain=string @leaf */
 int64_t msrt_string_count(const MsStr *a, const MsStr *v);
+/* ms-sig: msrt_string_scalar_length(s: *const StrVal) -> i64 @domain=string @leaf @pure */
 int64_t msrt_string_scalar_length(const MsStr *s);
+/* ms-sig: msrt_string_char_width(s: *const StrVal, at: i64) -> i64 @domain=string @leaf */
 int64_t msrt_string_char_width(const MsStr *s, int64_t at);
+/* ms-sig: msrt_string_scalar_step(s: *const StrVal, at: i64) -> i64 @domain=string @leaf */
 int64_t msrt_string_scalar_step(const MsStr *s, int64_t at);
+/* ms-sig: msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64 @domain=string @leaf */
 int64_t msrt_string_scalar_at_byte(const MsStr *s, int64_t at);
+/* ms-sig: msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 @domain=string @leaf @pure */
 uint8_t msrt_string_starts_with(const MsStr *a, const MsStr *v);
+/* ms-sig: msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8 @domain=string @leaf @pure */
 uint8_t msrt_string_ends_with(const MsStr *a, const MsStr *v);
 
 /* `to_string` of one value, and `to_string_radix` (a radix outside 2..=36 faults); runtime/core/string_fmt.c. */
+/* ms-sig: msrt_int_to_string(v: i64, out: *mut StrVal) @domain=string @leaf */
 void msrt_int_to_string(int64_t v, MsStr *out);
+/* ms-sig: msrt_uint_to_string(v: i64, out: *mut StrVal) @domain=string */
 void msrt_uint_to_string(int64_t v, MsStr *out);
+/* ms-sig: msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) @domain=string @leaf */
 void msrt_int_to_string_radix(int64_t v, int64_t radix, MsStr *out);
+/* ms-sig: msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal) @domain=string */
 void msrt_uint_to_string_radix(int64_t v, int64_t radix, MsStr *out);
+/* ms-sig: msrt_float_to_string(v: f64, out: *mut StrVal) @domain=string @leaf */
 void msrt_float_to_string(double v, MsStr *out);
+/* ms-sig: msrt_float32_to_string(v: f64, out: *mut StrVal) @domain=string @leaf */
 void msrt_float32_to_string(double v, MsStr *out);
+/* ms-sig: msrt_bool_to_string(v: u8, out: *mut StrVal) @domain=string @leaf */
 void msrt_bool_to_string(uint8_t v, MsStr *out);
 
 /* f-strings (runtime/core/string_join.c): `msrt_string_fmtN` joins N parts, `msrt_string_append_fmtN` joins them onto
  * an owned `s`. Bit k of `mask` makes part k an Int, otherwise it is the address of a string (for append, `s` is
  * part 0 of the mask). */
+/* ms-sig: msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_fmt2(int64_t mask, size_t a, size_t b, MsStr *out);
+/* ms-sig: msrt_string_fmt3(mask: i64, a: usize, b: usize, c: usize, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_fmt3(int64_t mask, size_t a, size_t b, size_t c, MsStr *out);
+/* ms-sig: msrt_string_fmt4(mask: i64, a: usize, b: usize, c: usize, d: usize, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_fmt4(int64_t mask, size_t a, size_t b, size_t c, size_t d, MsStr *out);
+/* ms-sig: msrt_string_fmt5(mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_fmt5(int64_t mask, size_t a, size_t b, size_t c, size_t d, size_t e, MsStr *out);
+/* ms-sig: msrt_string_fmt6(mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, f: usize, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_fmt6(int64_t mask, size_t a, size_t b, size_t c, size_t d, size_t e, size_t f, MsStr *out);
+/* ms-sig: msrt_string_append_fmt1(s: *const StrVal, mask: i64, a: usize, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_append_fmt1(const MsStr *s, int64_t mask, size_t a, MsStr *out);
+/* ms-sig: msrt_string_append_fmt2(s: *const StrVal, mask: i64, a: usize, b: usize, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_append_fmt2(const MsStr *s, int64_t mask, size_t a, size_t b, MsStr *out);
+/* ms-sig: msrt_string_append_fmt3(s: *const StrVal, mask: i64, a: usize, b: usize, c: usize, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_append_fmt3(const MsStr *s, int64_t mask, size_t a, size_t b, size_t c, MsStr *out);
+/* ms-sig: msrt_string_append_fmt4(s: *const StrVal, mask: i64, a: usize, b: usize, c: usize, d: usize, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_append_fmt4(const MsStr *s, int64_t mask, size_t a, size_t b, size_t c, size_t d, MsStr *out);
+/* ms-sig: msrt_string_append_fmt5(s: *const StrVal, mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_append_fmt5(const MsStr *s, int64_t mask, size_t a, size_t b, size_t c, size_t d, size_t e, MsStr *out);
 /* Builders (runtime/core/strbuild.c). */
+/* ms-sig: msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out);
+/* ms-sig: msrt_string_empty(out: *mut StrVal) @domain=string @leaf */
 void msrt_string_empty(MsStr *out);
+/* ms-sig: msrt_string_clone(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_clone(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_str_copy(ptr: *const u8, tagged: usize, out: *mut StrVal) @domain=string @leaf */
 void msrt_str_copy(const uint8_t *ptr, size_t tagged, MsStr *out);
+/* ms-sig: msrt_str_free(ptr: *mut u8) @domain=string @leaf */
 void msrt_str_free(uint8_t *ptr);
+/* ms-sig: msrt_string_free(s: *const StrVal) @domain=string @leaf */
 void msrt_string_free(const MsStr *s);
+/* ms-sig: msrt_string_concat(a: *const StrVal, b: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_concat(const MsStr *a, const MsStr *b, MsStr *out);
+/* ms-sig: msrt_string_append(a: *const StrVal, b: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_append(const MsStr *a, const MsStr *b, MsStr *out);
+/* ms-sig: msrt_string_repeat(s: *const StrVal, count: i64, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_repeat(const MsStr *s, int64_t count, MsStr *out);
+/* ms-sig: msrt_string_reverse(a: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_reverse(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_concat3(a: *const StrVal, b: *const StrVal, c: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_concat3(const MsStr *a, const MsStr *b, const MsStr *c, MsStr *out);
+/* ms-sig: msrt_string_concat4(a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_concat4(const MsStr *a, const MsStr *b, const MsStr *c, const MsStr *d, MsStr *out);
+/* ms-sig: msrt_string_concat5(a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, e: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_concat5(const MsStr *a, const MsStr *b, const MsStr *c, const MsStr *d, const MsStr *e, MsStr *out);
+/* ms-sig: msrt_string_concat6(a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, e: *const StrVal, f: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_concat6(const MsStr *a, const MsStr *b, const MsStr *c, const MsStr *d, const MsStr *e, const MsStr *f, MsStr *out);
+/* ms-sig: msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string @leaf */
 void msrt_string_trim_view(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string @leaf */
 void msrt_string_trim_start_view(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string @leaf */
 void msrt_string_trim_end_view(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_trim(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
 void msrt_string_trim(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
 void msrt_string_trim_start(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
 void msrt_string_trim_end(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_trim_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_trim_take(MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_trim_start_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_trim_start_take(MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_trim_end_take(MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf @pure */
 uint8_t msrt_string_index_of(const MsStr *a, const MsStr *v, int64_t *out);
+/* ms-sig: msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_char_at(const MsStr *s, int64_t at, MsStr *out);
+/* ms-sig: msrt_string_pad_start(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_pad_start(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
+/* ms-sig: msrt_string_pad_end(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_pad_end(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
+/* ms-sig: msrt_string_slice(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_slice(const MsStr *s, int64_t start, int64_t end, MsStr *out);
+/* ms-sig: msrt_string_view(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @borrows @domain=string @leaf @pure */
 void msrt_string_view(const MsStr *s, int64_t start, int64_t end, MsStr *out);
+/* ms-sig: msrt_string_split(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_split(const MsStr *s, const MsStr *sep, MsVec *out);
+/* ms-sig: msrt_string_split_view(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_split_view(const MsStr *s, const MsStr *sep, MsVec *out);
+/* ms-sig: msrt_string_split_view_into(s: *const StrVal, sep: *const StrVal, buf: *mut FrameBuf<StrVal, 8>, out: *mut VecVal) @domain=string @leaf @view_of=msrt_string_split */
 void msrt_string_split_view_into(const MsStr *s, const MsStr *sep, MsStr *buf, MsVec *out);
+/* ms-sig: msrt_string_split_first(s: *const StrVal, sep: *const StrVal, out: *mut StrVal) @domain=string @first_of=msrt_string_split @leaf */
 void msrt_string_split_first(const MsStr *s, const MsStr *sep, MsStr *out);
+/* ms-sig: msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
 void msrt_string_replace(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+/* ms-sig: msrt_string_replace_first(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_replace_first(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+/* ms-sig: msrt_string_replace_take(s: *mut StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_replace_take(MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
 
 #endif
