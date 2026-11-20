@@ -122,10 +122,8 @@ void *msrt_alloc_zeroed(size_t size) {
     return p;
 }
 
-void *msrt_realloc(void *p, size_t size) {
-    if (p == NULL) {
-        return msrt_alloc(size);
-    }
+/* Resizes `p` without counting a request. */
+static void *resize(void *p, size_t size) {
     live_add(p, -1);
     void *const grown = mi_realloc(p, size == 0 ? 1 : size);
     if (UNLIKELY(grown == NULL)) {
@@ -133,6 +131,16 @@ void *msrt_realloc(void *p, size_t size) {
     }
     live_add(grown, 1);
     return grown;
+}
+
+void *msrt_realloc(void *p, size_t size) {
+    if (p == NULL) {
+        return msrt_alloc(size);
+    }
+    if (size > mi_usable_size(p)) {
+        note_request(size); /* a growth is a request, as the ownership counts have always read it; a shrink is not */
+    }
+    return resize(p, size);
 }
 
 void msrt_free(void *p) {
@@ -147,7 +155,7 @@ size_t msrt_heap_usable_size(void *p) { return mi_usable_size(p); }
 
 /* A block of `new_size` bytes holding the first bytes of `p`, which the caller shrinks: the block itself when the
  * smaller size would waste little, else a copy. */
-void *msrt_heap_trim(void *p, size_t new_size) { return msrt_realloc(p, new_size); }
+void *msrt_heap_trim(void *p, size_t new_size) { return p == NULL ? msrt_alloc(new_size) : resize(p, new_size); }
 
 /* ---- per-thread heaps and figures ---- */
 
