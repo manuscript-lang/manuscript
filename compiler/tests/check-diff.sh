@@ -19,6 +19,8 @@ cc $cflags compiler/src/libms.c compiler/tools/ms_check_dump.c -o "$out/check-du
 cc $cflags compiler/src/libms.c compiler/tests/types_test.c -o "$out/types-test"
 cc $cflags compiler/src/libms.c compiler/tools/ms_effect_dump.c -o "$out/effect-dump"
 cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/effect_graph_gen.c -o "$out/effect-graph-gen"
+cc $cflags compiler/src/libms.c compiler/tests/ownership_test.c -o "$out/ownership-test"
+"$out/ownership-test"
 "$out/types-test"
 
 status=0
