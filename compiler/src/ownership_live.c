@@ -148,7 +148,11 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_LIST:
     case MS_E_MAP:
     case MS_E_LAMBDA:
-    case MS_E_CALL: w->supported = false; return;
+    case MS_E_CALL:
+        for (uint32_t i = e->u.call.args.len; i > 0; i--) {
+            live_expr(w, e->u.call.args.ptr[i - 1].value);
+        }
+        return;
     case MS_E_MATCH: live_match(w, e); return;
     }
 }
@@ -234,7 +238,7 @@ static void live_statement(LiveWalk *w, const MsStmt *s) {
     case MS_S_BREAK:
     case MS_S_CONTINUE: live_jump(w, s); return;
     case MS_S_ASSIGN: live_assign(w, s); return;
-    case MS_S_CALL:
+    case MS_S_CALL: live_expr(w, s->u.expr); return;
     case MS_S_FOR: w->supported = false; return;
     }
 }
