@@ -16,13 +16,17 @@ typedef void (*MsSlotCopyRun)(const uint8_t *src, uint8_t *dst);
 
 /* Starts a drop of recursive data: nonzero when the caller must hand the value to msrt_drop_defer and return without
  * calling msrt_drop_leave. */
+/* ms-sig: msrt_drop_enter() -> u64 @leaf */
 uint64_t msrt_drop_enter(void);
 /* Parks the heap block `block` holding a value that `run` drops; the runtime frees the block after `run`. */
+/* ms-sig: msrt_drop_defer(run: RunDrop, block: *mut u8) @leaf */
 void msrt_drop_defer(MsDropRun run, uint8_t *block);
 /* Ends a drop msrt_drop_enter let run; the outermost one drops what was deferred. */
+/* ms-sig: msrt_drop_leave() */
 void msrt_drop_leave(void);
 /* Runs `copy(src, dst)` on a new stack segment: the copy glue of recursive data calls this when the stack is nearly
  * used up, like a recursive function's grow shim (msrt_task_grow). */
+/* ms-sig: msrt_slot_copy_grown(copy: RunCopy, src: *const u8, dst: *mut u8) */
 void msrt_slot_copy_grown(MsSlotCopyRun copy, const uint8_t *src, uint8_t *dst);
 
 #endif
