@@ -21,7 +21,7 @@ typedef enum MsStage {
     MS_STAGE_FORMAT, /* syntax tree and comments to formatted source */
     MS_STAGE_CHECK,  /* names, types, ownership, effects */
     MS_STAGE_LOWER,  /* checked tree to MIR */
-    MS_STAGE_EMIT,   /* MIR to object code (debug: QBE, release: LLVM) */
+    MS_STAGE_EMIT,   /* MIR to object code (LLVM) */
     MS_STAGE_LINK,   /* objects and runtime archive to an executable */
     MS_STAGE_TOOL,   /* the command's own logic: arguments, reports, project files, servers */
     MS_STAGE_COUNT

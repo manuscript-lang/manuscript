@@ -2,8 +2,6 @@
 
 use crate::common;
 
-// Links the runtime symbols referenced by the standard-library crates.
-use ms_rt as _;
 
 use std::cell::Cell;
 use std::io::Read as _;

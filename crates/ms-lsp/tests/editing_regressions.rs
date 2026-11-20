@@ -7,7 +7,6 @@ use ms_lsp::completion::completion_at;
 use ms_lsp::json::{Json, obj};
 use ms_lsp::lint::Tooling;
 use ms_lsp::text::{self, Position, Range};
-use ms_rt as _;
 
 use crate::support;
 use support::Workspace;

@@ -53,3 +53,12 @@ fn heavy[T: Named](value: T, scale: Int) Int:
 
 fn missing[T: Named](value: T) Int:
 	return value.nothing()
+
+fn apply_to[A, B](value: A, transform: fn(A) B) B:
+	return transform(value)
+
+fn count_of[T](items: List[T]) Int:
+	return items.len()
+
+fn same_list[T](items: List[T]) List[T]:
+	return items

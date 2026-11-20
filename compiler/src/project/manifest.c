@@ -1,24 +1,38 @@
-/* ms.toml (project.h): the subset of TOML a manifest of `[project]` and `[aliases]` uses, and its validation. Port of
- * crates/ms-driver/src/project/manifest.rs; messages and locations match it. Anything this reader does not cover
- * (other tables and keys, values that are not strings, TOML syntax errors) fails as MS_PERR_UNSUPPORTED instead of
- * guessing, so the Rust driver reports it. */
+/* ms.toml (project.h): the subset of TOML a manifest uses (string values, inline tables of strings, arrays of
+ * strings), and its validation. Port of crates/ms-driver/src/project/manifest.rs; messages and locations match it.
+ * Anything this reader does not cover (dotted keys, `[dependencies.x]` tables, multi-line strings, TOML syntax errors)
+ * fails as MS_PERR_UNSUPPORTED instead of guessing, so the Rust driver reports it. */
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
+#include "ms/lock.h"
 #include "ms/project.h"
 
 enum { MAX_LINE = 65535 };
 
 typedef enum EntryKind { ENTRY_TABLE, ENTRY_PAIR } EntryKind;
+typedef enum ValueKind { VALUE_STRING, VALUE_SCALAR, VALUE_ARRAY, VALUE_INLINE_TABLE } ValueKind;
+
+/* An element of an array, or a `key = value` of an inline table (`key` is NULL in an array); `value` is NULL for a
+ * number or boolean. */
+typedef struct Field {
+    const char *key;
+    const char *value;
+    bool control;
+    MsPos pos;
+} Field;
 
 /* One table header or `key = "value"` of the document, in order. */
 typedef struct Entry {
     EntryKind kind;
     const char *name; /* table name, or key */
-    const char *value;
+    const char *value; /* a string; NULL for any other kind of value */
+    ValueKind value_kind;
+    const Field *fields; /* an array's elements or an inline table's fields */
+    uint32_t nfields;
     bool control; /* the value holds a control character (even a NUL, which `value` cannot show) */
     MsPos key_pos, value_pos; /* the header for a table */
 } Entry;
@@ -174,7 +188,7 @@ static bool manifest_end_of_line(const Reader *r, size_t *at) {
 /* A number or boolean on one line, skipped. Arrays, tables, dates and bare words are left to the Rust reader. */
 static bool is_scalar_char(char c) { return manifest_is_bare(c) || c == '.' || c == '+'; }
 
-static bool manifest_read_scalar(const Reader *r, size_t *at) {
+static bool manifest_skip_scalar(const Reader *r, size_t *at) {
     char first = '\0';
     if (*at < r->length) {
         first = r->text[*at];
@@ -186,7 +200,118 @@ static bool manifest_read_scalar(const Reader *r, size_t *at) {
     while (*at < r->length && (is_scalar_char(r->text[*at]))) {
         (*at)++;
     }
-    return manifest_end_of_line(r, at);
+    return true;
+}
+
+static bool manifest_read_scalar(const Reader *r, size_t *at) {
+    return manifest_skip_scalar(r, at) && manifest_end_of_line(r, at);
+}
+
+/* A string or scalar inside an array or an inline table. */
+static bool manifest_read_item(const Reader *r, size_t *at, Field *f) {
+    f->pos = manifest_locate(r->text, r->length, *at);
+    if (*at < r->length && (r->text[*at] == '"' || r->text[*at] == '\'')) {
+        return manifest_read_string(r, at, &f->value, &f->control);
+    }
+    return manifest_skip_scalar(r, at);
+}
+
+/* Blanks, comments and line ends between the elements of an array. */
+static void manifest_skip_space(const Reader *r, size_t *at) {
+    for (;;) {
+        manifest_skip_blanks(r, at);
+        if (*at < r->length && r->text[*at] == '#') {
+            while (*at < r->length && r->text[*at] != '\n') {
+                (*at)++;
+            }
+        }
+        if (*at < r->length && (r->text[*at] == '\n' || r->text[*at] == '\r')) {
+            (*at)++;
+            continue;
+        }
+        return;
+    }
+}
+
+static bool manifest_read_key(const Reader *r, size_t *at, const char **out);
+
+/* `{ key = "value", ... }` on one line; the elements go to the entry. */
+static bool manifest_read_inline_table(const Reader *r, size_t *at, Entry *e) {
+    MsBuf fields = {0};
+    (*at)++;
+    manifest_skip_blanks(r, at);
+    bool ok = true;
+    while (ok && !(*at < r->length && r->text[*at] == '}')) {
+        Field f = {0};
+        ok = manifest_read_key(r, at, &f.key);
+        manifest_skip_blanks(r, at);
+        ok = ok && *at < r->length && r->text[*at] == '=';
+        if (ok) {
+            (*at)++;
+            manifest_skip_blanks(r, at);
+            ok = manifest_read_item(r, at, &f);
+        }
+        for (size_t i = 0; ok && i < MS_VEC_LEN(fields, Field); i++) {
+            ok = strcmp(MS_VEC_AT(fields, Field, i).key, f.key) != 0;
+        }
+        if (ok) {
+            MS_VEC_PUSH(fields, Field, f);
+            manifest_skip_blanks(r, at);
+            if (*at < r->length && r->text[*at] == ',') {
+                (*at)++;
+                manifest_skip_blanks(r, at);
+                ok = !(*at < r->length && r->text[*at] == '}'); /* no trailing comma in an inline table */
+            } else {
+                ok = *at < r->length && r->text[*at] == '}';
+            }
+        }
+    }
+    (*at)++;
+    e->value_kind = VALUE_INLINE_TABLE;
+    e->nfields = (uint32_t)MS_VEC_LEN(fields, Field);
+    Field *copy = MS_NEW_N(r->arena, Field, e->nfields + 1);
+    if (e->nfields > 0) {
+        memcpy(copy, ms_buf_items(&fields), e->nfields * sizeof(Field));
+    }
+    e->fields = copy;
+    ms_buf_free(&fields);
+    return ok;
+}
+
+/* `[ "a", "b" ]`, over any number of lines. */
+static bool manifest_read_array(const Reader *r, size_t *at, Entry *e) {
+    MsBuf fields = {0};
+    (*at)++;
+    bool ok = true;
+    for (;;) {
+        manifest_skip_space(r, at);
+        if (*at < r->length && r->text[*at] == ']') {
+            break;
+        }
+        Field f = {0};
+        ok = manifest_read_item(r, at, &f);
+        if (!ok) {
+            break;
+        }
+        MS_VEC_PUSH(fields, Field, f);
+        manifest_skip_space(r, at);
+        if (*at < r->length && r->text[*at] == ',') {
+            (*at)++;
+        } else if (!(*at < r->length && r->text[*at] == ']')) {
+            ok = false;
+            break;
+        }
+    }
+    (*at)++;
+    e->value_kind = VALUE_ARRAY;
+    e->nfields = (uint32_t)MS_VEC_LEN(fields, Field);
+    Field *copy = MS_NEW_N(r->arena, Field, e->nfields + 1);
+    if (e->nfields > 0) {
+        memcpy(copy, ms_buf_items(&fields), e->nfields * sizeof(Field));
+    }
+    e->fields = copy;
+    ms_buf_free(&fields);
+    return ok;
 }
 
 static bool manifest_read_key(const Reader *r, size_t *at, const char **out) {
@@ -267,12 +392,23 @@ static bool manifest_read_document(const Reader *r, size_t at, MsBuf *entries) {
             manifest_skip_blanks(r, &at);
             entry.value_pos = manifest_locate(r->text, r->length, at);
             if (at < r->length && (r->text[at] == '"' || r->text[at] == '\'')) {
+                entry.value_kind = VALUE_STRING;
                 if (!manifest_read_string(r, &at, &entry.value, &entry.control) || !manifest_end_of_line(r, &at)) {
+                    return manifest_unsupported(r, "invalid ms.toml");
+                }
+            } else if (at < r->length && r->text[at] == '{') {
+                if (!manifest_read_inline_table(r, &at, &entry) || !manifest_end_of_line(r, &at)) {
+                    return manifest_unsupported(r, "invalid ms.toml");
+                }
+            } else if (at < r->length && r->text[at] == '[') {
+                if (!manifest_read_array(r, &at, &entry) || !manifest_end_of_line(r, &at)) {
                     return manifest_unsupported(r, "invalid ms.toml");
                 }
             } else if (!manifest_read_scalar(r, &at)) {
                 return manifest_unsupported(r, "invalid ms.toml");
-            } /* else entry.value stays NULL: a number or boolean, which only an unknown key may hold */
+            } else {
+                entry.value_kind = VALUE_SCALAR; /* value stays NULL: a number or boolean, which only an unknown key may hold */
+            }
         }
         if (manifest_seen_before(entries, &entry)) {
             return manifest_unsupported(r, "duplicate key");
@@ -299,17 +435,50 @@ static bool manifest_valid_alias(const char *key) {
     return true;
 }
 
+typedef struct DepRow {
+    MsDependency dep; /* first, so that rows sort by alias */
+    MsPos key_pos, value_pos;
+} DepRow;
+
+typedef struct EffectRow {
+    MsEffectRule rule; /* first, so that rows sort by name */
+    MsPos key_pos;
+} EffectRow;
+
+/* The id of an assigned key (`aliases.@lib`) and where it was written; the Rust reader's `assignments`. */
+typedef struct Assignment {
+    const char *id;
+    MsPos key_pos;
+} Assignment;
+
 typedef struct Builder {
     const Reader *reader;
     MsProject *project;
-    MsBuf aliases; /* MsAlias, sorted when the document is done */
+    MsBuf aliases;      /* MsAlias, sorted when the document is done */
+    MsBuf embed;        /* MsAlias */
+    MsBuf deps;         /* DepRow */
+    MsBuf path_deps;    /* MsAlias, the target as written until it is resolved */
+    MsBuf effects;      /* EffectRow */
+    MsBuf assignments;  /* Assignment */
+    const char **members;
     bool has_name, has_source, has_entry;
     MsPos source_pos, entry_pos;
 } Builder;
 
+static bool manifest_control(const Reader *r, const Entry *e) {
+    return manifest_fail_at(r, e->value_pos, ms_arena_fmt(r->arena, "manifest value for %s contains a NUL or control character; remove it", e->name).ptr);
+}
+
+static bool manifest_valid_name(const char *key) {
+    return manifest_valid_alias(key) && strcmp(key, "@std") != 0;
+}
+
 static bool manifest_add_alias(Builder *b, const Entry *e) {
     const Reader *r = b->reader;
-    if (!manifest_valid_alias(e->name) || strcmp(e->name, "@std") == 0) {
+    if (e->control) {
+        return manifest_control(r, e);
+    }
+    if (!manifest_valid_name(e->name)) {
         const char *hint = "";
         if (strcmp(e->name, "std") != 0 && manifest_valid_alias(ms_arena_fmt(r->arena, "@%s", e->name).ptr)) {
             hint = ms_arena_fmt(r->arena, " (did you mean @%s?)", e->name).ptr;
@@ -319,27 +488,224 @@ static bool manifest_add_alias(Builder *b, const Entry *e) {
     if (e->value[0] == '@') {
         return manifest_fail_at(r, e->value_pos, ms_arena_fmt(r->arena, "invalid alias target %s; map it to a project-local path, not another alias", e->value).ptr);
     }
-    if (e->control) {
-        return manifest_fail_at(r, e->value_pos, ms_arena_fmt(r->arena, "manifest value for %s contains a NUL or control character; remove it", e->name).ptr);
-    }
     MsAlias alias = {.name = e->name, .target = e->value, .key_pos = e->key_pos, .value_pos = e->value_pos};
     MS_VEC_PUSH(b->aliases, MsAlias, alias);
+    return true;
+}
+
+static bool manifest_add_embed(Builder *b, const Entry *e) {
+    const Reader *r = b->reader;
+    if (e->control) {
+        return manifest_control(r, e);
+    }
+    if (!manifest_valid_name(e->name)) {
+        return manifest_fail_at(r, e->key_pos, ms_arena_fmt(r->arena, "invalid or reserved embed name %s; embed names look like @assets (start with @, letters/digits/underscore) and cannot be @std", e->name).ptr);
+    }
+    if (e->value[0] == '@') {
+        return manifest_fail_at(r, e->value_pos, ms_arena_fmt(r->arena, "invalid embed target %s; map it to a project-local directory, not an alias", e->value).ptr);
+    }
+    MsAlias embed = {.name = e->name, .target = e->value, .key_pos = e->key_pos, .value_pos = e->value_pos};
+    MS_VEC_PUSH(b->embed, MsAlias, embed);
+    return true;
+}
+
+typedef struct ListKind {
+    const char *noun, *plural, *example, *first_example;
+    bool spaces; /* directory names may hold spaces; effect patterns may not */
+} ListKind;
+
+static const ListKind manifest_effect_list = {"effect", "effects", "[\"std.net.*\", \"std.fs.read\"]", "\"std.net.*\"", false};
+static const ListKind manifest_member_list = {"member", "members", "[\"app\", \"libs/*\"]", "\"app\"", true};
+
+/* An array of strings; NULL with `*error` set to the Rust message when it is not one. */
+static const char *const *manifest_string_list(const Reader *r, const Entry *e, const ListKind *kind, uint32_t *count, const char **error) {
+    MsArena *a = r->arena;
+    const char *shape = ms_arena_fmt(a, "%s are a list of strings: %s", kind->plural, kind->example).ptr;
+    if (e->value_kind != VALUE_ARRAY) {
+        *error = shape;
+        return NULL;
+    }
+    const char **list = MS_NEW_N(a, const char *, e->nfields + 1);
+    *count = 0;
+    for (uint32_t i = 0; i < e->nfields; i++) {
+        const char *text = e->fields[i].value;
+        if (text == NULL) {
+            *error = shape;
+            return NULL;
+        }
+        bool bad = text[0] == 0 || e->fields[i].control;
+        for (const char *c = text; !bad && *c != 0; c++) {
+            bad = (unsigned char)*c < 0x20 || *c == 0x7f || (!kind->spaces && (*c == ' ' || *c == '\t'));
+        }
+        if (bad) {
+            *error = ms_arena_fmt(a, "invalid %s %s; write one %s per string, such as %s", kind->noun, ms_debug_quote(a, text), kind->spaces ? "directory" : "pattern", kind->first_example).ptr;
+            return NULL;
+        }
+        for (uint32_t k = 0; k < *count; k++) {
+            if (strcmp(list[k], text) == 0) {
+                *error = ms_arena_fmt(a, "%s %s is listed twice; remove one", kind->noun, text).ptr;
+                return NULL;
+            }
+        }
+        list[(*count)++] = text;
+    }
+    return list;
+}
+
+static bool manifest_check_package_name(const Reader *r, const Entry *e) {
+    if (manifest_valid_name(e->name)) {
+        return true;
+    }
+    return manifest_fail_at(r, e->key_pos, ms_arena_fmt(r->arena, "invalid or reserved package name %s; names look like @pg (start with @, letters/digits/underscore) and cannot be @std", e->name).ptr);
+}
+
+static bool manifest_add_effects(Builder *b, const Entry *e) {
+    const Reader *r = b->reader;
+    const char *error = "";
+    EffectRow row = {.rule = {.name = e->name}, .key_pos = e->key_pos};
+    row.rule.patterns = manifest_string_list(r, e, &manifest_effect_list, &row.rule.count, &error);
+    if (row.rule.patterns == NULL) {
+        return manifest_fail_at(r, e->value_pos, ms_arena_fmt(r->arena, "%s: %s", e->name, error).ptr);
+    }
+    if (!manifest_check_package_name(r, e)) {
+        return false;
+    }
+    MS_VEC_PUSH(b->effects, EffectRow, row);
+    return true;
+}
+
+static bool manifest_add_workspace(Builder *b, const Entry *e) {
+    const Reader *r = b->reader;
+    MsProject *p = b->project;
+    if (strcmp(e->name, "members") != 0) {
+        return manifest_fail_at(r, e->key_pos, ms_arena_fmt(r->arena, "unknown workspace key %s; [workspace] accepts members", e->name).ptr);
+    }
+    const char *error = "";
+    p->members = manifest_string_list(r, e, &manifest_member_list, &p->member_count, &error);
+    if (p->members == NULL) {
+        return manifest_fail_at(r, e->value_pos, ms_arena_fmt(r->arena, "members: %s", error).ptr);
+    }
+    return true;
+}
+
+#define MANIFEST_DEP_SHAPE "write { url = \"https://github.com/acme/pg.git\", version = \"1.0\" }, or tag = \"v1.0.0\" or sha = \"<40-digit commit>\" in place of version"
+
+/* A dependency is a table with `url` and exactly one of `tag`, `sha` and `version`, or only `path`. Returns NULL and
+ * fills `row` (or `*path`), or the message. */
+static const char *manifest_dependency(MsArena *a, const Entry *e, DepRow *row, const char **path) {
+    if (e->value_kind != VALUE_INLINE_TABLE) {
+        return "a dependency is a table; " MANIFEST_DEP_SHAPE;
+    }
+    const char *url = NULL, *tag = NULL, *sha = NULL, *version = NULL;
+    *path = NULL;
+    for (uint32_t i = 0; i < e->nfields; i++) {
+        const Field *f = &e->fields[i];
+        if (f->value == NULL || f->control) {
+            return ms_arena_fmt(a, "%s must be a string; " MANIFEST_DEP_SHAPE, f->key).ptr;
+        }
+        const struct {
+            const char *name;
+            const char **slot;
+        } fields[] = {{"url", &url}, {"tag", &tag}, {"sha", &sha}, {"version", &version}, {"path", path}};
+        const char **slot = NULL;
+        for (size_t k = 0; k < sizeof fields / sizeof *fields; k++) {
+            if (strcmp(f->key, fields[k].name) == 0) {
+                slot = fields[k].slot;
+            }
+        }
+        if (slot == NULL) {
+            return ms_arena_fmt(a, "unknown field %s; a dependency has url and one of version, tag or sha, or only path", f->key).ptr;
+        }
+        *slot = f->value;
+    }
+    if (*path != NULL) {
+        if (url != NULL || tag != NULL || sha != NULL || version != NULL || (*path)[0] == 0) {
+            return "a path dependency has only path = \"../member\"";
+        }
+        return NULL;
+    }
+    if (url == NULL) {
+        return "url is missing; " MANIFEST_DEP_SHAPE;
+    }
+    MsDependency *d = &row->dep;
+    d->url = url;
+    const char *reference = "v0.0.0";
+    if (version != NULL && tag == NULL && sha == NULL) {
+        const char *error;
+        d->kind = MS_DEP_VERSION;
+        if (!ms_requirement_parse(a, version, &d->requirement, &error)) {
+            return error;
+        }
+    } else if (tag != NULL && version == NULL && sha == NULL) {
+        d->kind = MS_DEP_TAG;
+        d->reference = reference = tag;
+    } else if (sha != NULL && version == NULL && tag == NULL) {
+        if (!ms_is_hex(sha, strlen(sha)) || strlen(sha) != 40) {
+            return "sha must be the full 40-digit lowercase commit";
+        }
+        d->kind = MS_DEP_SHA;
+        d->reference = reference = sha;
+    } else {
+        return "name exactly one of version, tag and sha; " MANIFEST_DEP_SHAPE;
+    }
+    /* A requirement has no tag to check yet; a url is checked the same way as a pinned spec. */
+    return ms_spec_check(a, ms_arena_fmt(a, "%s#%s", url, reference).ptr);
+}
+
+static bool manifest_add_dependency(Builder *b, const Entry *e) {
+    const Reader *r = b->reader;
+    MsArena *a = r->arena;
+    if (!manifest_check_package_name(r, e)) {
+        return false;
+    }
+    DepRow row = {.dep = {.alias = e->name}, .key_pos = e->key_pos, .value_pos = e->value_pos};
+    const char *path;
+    const char *error = manifest_dependency(a, e, &row, &path);
+    if (error != NULL) {
+        return manifest_fail_at(r, e->value_pos, ms_arena_fmt(a, "dependency %s: %s", e->name, error).ptr);
+    }
+    if (path == NULL) {
+        MS_VEC_PUSH(b->deps, DepRow, row);
+        return true;
+    }
+    MsProjectError cause;
+    const char *target;
+    if (!ms_path_eval_symlinks(a, MS_PATH_JOIN(a, b->project->root, path), &target, &cause)) {
+        return manifest_fail_at(r, e->value_pos, ms_arena_fmt(a, "dependency %s: path %s cannot be resolved: %s", e->name, ms_debug_quote(a, path), ms_project_error_text(a, &cause)).ptr);
+    }
+    MsAlias dep = {.name = e->name, .target = target, .key_pos = e->key_pos, .value_pos = e->value_pos};
+    MS_VEC_PUSH(b->path_deps, MsAlias, dep);
     return true;
 }
 
 static bool manifest_add_project_key(Builder *b, const Entry *e) {
     const Reader *r = b->reader;
     MsProject *p = b->project;
-    if (strcmp(e->name, "version") == 0 || strcmp(e->name, "effects") == 0) {
-        return manifest_unsupported(r, "[project] version and effects");
+    MsArena *a = r->arena;
+    if (strcmp(e->name, "effects") == 0) {
+        const char *error = "";
+        p->effects = manifest_string_list(r, e, &manifest_effect_list, &p->effect_count, &error);
+        if (p->effects == NULL) {
+            return manifest_fail_at(r, e->value_pos, ms_arena_fmt(a, "effects: %s", error).ptr);
+        }
+        return true;
     }
-    if (strcmp(e->name, "name") != 0 && strcmp(e->name, "source") != 0 && strcmp(e->name, "entry") != 0) {
-        return manifest_fail_at(r, e->key_pos, ms_arena_fmt(r->arena, "unknown project key %s; [project] accepts name, source, entry, version, and effects", e->name).ptr);
+    if (strcmp(e->name, "name") != 0 && strcmp(e->name, "source") != 0 && strcmp(e->name, "entry") != 0 && strcmp(e->name, "version") != 0) {
+        return manifest_fail_at(r, e->key_pos, ms_arena_fmt(a, "unknown project key %s; [project] accepts name, source, entry, version, and effects", e->name).ptr);
+    }
+    if (e->value == NULL) {
+        return manifest_unsupported(r, "a value that is not a string");
     }
     if (e->control) {
-        return manifest_fail_at(r, e->value_pos, ms_arena_fmt(r->arena, "manifest value for %s contains a NUL or control character; remove it", e->name).ptr);
+        return manifest_control(r, e);
     }
-    if (strcmp(e->name, "name") == 0) {
+    if (strcmp(e->name, "version") == 0) {
+        const char *error;
+        p->has_version = true;
+        if (!ms_version_parse(a, e->value, &p->version, &error)) {
+            return manifest_fail_at(r, e->value_pos, ms_arena_fmt(a, "version: %s", error).ptr);
+        }
+    } else if (strcmp(e->name, "name") == 0) {
         p->name = e->value;
         b->has_name = true;
     } else if (strcmp(e->name, "source") == 0) {
@@ -364,48 +730,164 @@ static bool manifest_is_file(const char *path) {
     return stat(path, &info) == 0 && S_ISREG(info.st_mode);
 }
 
+typedef enum Section { SECTION_NONE, SECTION_PROJECT, SECTION_ALIASES, SECTION_EMBED, SECTION_DEPENDENCIES, SECTION_EFFECTS, SECTION_WORKSPACE } Section;
+
+static const struct {
+    const char *name;
+    Section section;
+} manifest_sections[] = {{"project", SECTION_PROJECT}, {"aliases", SECTION_ALIASES}, {"embed", SECTION_EMBED}, {"dependencies", SECTION_DEPENDENCIES}, {"effects", SECTION_EFFECTS}, {"workspace", SECTION_WORKSPACE}};
+
+static bool manifest_add_pair(Builder *b, Section section, const Entry *e) {
+    switch (section) {
+    case SECTION_EFFECTS: return manifest_add_effects(b, e);
+    case SECTION_WORKSPACE: return manifest_add_workspace(b, e);
+    case SECTION_DEPENDENCIES: return manifest_add_dependency(b, e);
+    case SECTION_PROJECT: return manifest_add_project_key(b, e);
+    case SECTION_NONE:
+    case SECTION_ALIASES:
+    case SECTION_EMBED: break;
+    }
+    if (e->value == NULL) {
+        return manifest_unsupported(b->reader, "a value that is not a string");
+    }
+    return section == SECTION_EMBED ? manifest_add_embed(b, e) : manifest_add_alias(b, e);
+}
+
 /* Table and key checks in document order, as the Rust reader runs them. */
 static bool manifest_read_entries(Builder *b, const Entry *entries, size_t count) {
     const Reader *r = b->reader;
-    enum { NONE, PROJECT, ALIASES } section = NONE;
+    MsArena *a = r->arena;
+    Section section = SECTION_NONE;
+    const char *section_name = "";
     for (size_t i = 0; i < count; i++) {
         const Entry *e = &entries[i];
         if (e->kind == ENTRY_TABLE) {
-            if (strcmp(e->name, "project") == 0) {
-                section = PROJECT;
-                b->project->location = e->key_pos;
-            } else if (strcmp(e->name, "aliases") == 0) {
-                section = ALIASES;
-            } else if (strcmp(e->name, "embed") == 0 || strcmp(e->name, "dependencies") == 0 ||
-                       strcmp(e->name, "effects") == 0 || strcmp(e->name, "workspace") == 0) {
-                return manifest_unsupported(r, "[embed], [dependencies], [effects] and [workspace]");
-            } else {
+            section = SECTION_NONE;
+            for (size_t k = 0; k < sizeof manifest_sections / sizeof *manifest_sections; k++) {
+                if (strcmp(e->name, manifest_sections[k].name) == 0) {
+                    section = manifest_sections[k].section;
+                    section_name = manifest_sections[k].name;
+                }
+            }
+            if (section == SECTION_NONE) {
                 const char *advice = strcmp(e->name, "package") == 0 ? "rename it to [project] with name, source, and entry" : "ms.toml has no other tables";
-                return manifest_fail_at(r, e->key_pos, ms_arena_fmt(r->arena, "unsupported manifest table [%s]; ms.toml supports only [project], [workspace], [aliases], [embed], [dependencies] and [effects]: %s", e->name, advice).ptr);
+                return manifest_fail_at(r, e->key_pos, ms_arena_fmt(a, "unsupported manifest table [%s]; ms.toml supports only [project], [workspace], [aliases], [embed], [dependencies] and [effects]: %s", e->name, advice).ptr);
+            }
+            if (section == SECTION_PROJECT) {
+                b->project->location = e->key_pos;
+            }
+            if (section == SECTION_WORKSPACE) {
+                b->project->is_workspace = true; /* a bare [workspace] is a root with no members yet */
             }
             continue;
         }
-        if (e->value == NULL && section != NONE) {
-            const bool known = strcmp(e->name, "name") == 0 || strcmp(e->name, "source") == 0 || strcmp(e->name, "entry") == 0;
-            if (section == PROJECT && !known && strcmp(e->name, "version") != 0 && strcmp(e->name, "effects") != 0) {
-                return manifest_fail_at(r, e->key_pos, ms_arena_fmt(r->arena, "unknown project key %s; [project] accepts name, source, entry, version, and effects", e->name).ptr);
-            }
-            return manifest_unsupported(r, "a value that is not a string");
-        }
-        if (section == NONE) {
+        if (section == SECTION_NONE) {
             MsPos start = manifest_locate(r->text, r->length, 0);
-            return manifest_fail_at(r, start, ms_arena_fmt(r->arena, "invalid manifest assignment; %s is not a table, so put it under a [project] table header: ms.toml starts with [project] and name = \"app\" and source = \"src\" under it", e->name).ptr);
+            return manifest_fail_at(r, start, ms_arena_fmt(a, "invalid manifest assignment; %s is not a table, so put it under a [project] table header: ms.toml starts with [project] and name = \"app\" and source = \"src\" under it", e->name).ptr);
         }
-        if (!(section == PROJECT ? manifest_add_project_key(b, e) : manifest_add_alias(b, e))) {
+        Assignment assignment = {.id = ms_arena_fmt(a, "%s.%s", section_name, e->name).ptr, .key_pos = e->key_pos};
+        MS_VEC_PUSH(b->assignments, Assignment, assignment);
+        if (!manifest_add_pair(b, section, e)) {
             return false;
         }
     }
     return true;
 }
 
-static int manifest_alias_order(const void *x, const void *y) {
-    const MsAlias *left = x, *right = y;
-    return strcmp(left->name, right->name);
+/* Orders rows whose first member is the name (MsAlias, DepRow, EffectRow), as the Rust maps iterate. */
+static int manifest_name_order(const void *x, const void *y) {
+    return strcmp(*(const char *const *)x, *(const char *const *)y);
+}
+
+/* The rows of `buf` sorted by name and copied into the arena. */
+static void *manifest_sorted(MsArena *a, MsBuf *buf, size_t size, uint32_t *count) {
+    const size_t n = buf->len / size;
+    void *rows = ms_buf_items(buf);
+    if (n > 1) {
+        qsort(rows, n, size, manifest_name_order);
+    }
+    void *copy = ms_alloc(a, (n + 1) * size, _Alignof(max_align_t));
+    if (n > 0) {
+        memcpy(copy, rows, n * size);
+    }
+    *count = (uint32_t)n;
+    return copy;
+}
+
+static bool manifest_has_name(const MsAlias *rows, uint32_t count, const char *name) {
+    for (uint32_t i = 0; i < count; i++) {
+        if (strcmp(rows[i].name, name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The key that makes a workspace root without [project] invalid: the smallest assignment outside [workspace]. */
+static const Assignment *manifest_stray_assignment(const Builder *b) {
+    const Assignment *stray = NULL;
+    for (size_t i = 0; i < MS_VEC_LEN(b->assignments, Assignment); i++) {
+        const Assignment *x = &MS_VEC_AT(b->assignments, Assignment, i);
+        if (strncmp(x->id, "workspace.", 10) != 0 && (stray == NULL || strcmp(x->id, stray->id) < 0)) {
+            stray = x;
+        }
+    }
+    return stray;
+}
+
+static bool manifest_has_project_key(const Builder *b) {
+    for (size_t i = 0; i < MS_VEC_LEN(b->assignments, Assignment); i++) {
+        if (strncmp(MS_VEC_AT(b->assignments, Assignment, i).id, "project.", 8) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Names declared in more than one place, effects for a name that is no dependency, and the embedded directories. */
+static bool manifest_check_declared(Builder *b) {
+    const Reader *r = b->reader;
+    const MsProject *p = b->project;
+    MsArena *a = r->arena;
+    const DepRow *deps = ms_buf_items(&b->deps);
+    for (uint32_t i = 0; i < p->dependency_count; i++) {
+        if (manifest_has_name(p->aliases, p->alias_count, deps[i].dep.alias) || manifest_has_name(p->embed, p->embed_count, deps[i].dep.alias)) {
+            return manifest_fail_at(r, deps[i].key_pos, ms_arena_fmt(a, "%s is declared in [dependencies] and also as an alias or embed; rename one so an import names a single thing", deps[i].dep.alias).ptr);
+        }
+    }
+    for (uint32_t i = 0; i < p->path_dependency_count; i++) {
+        const MsAlias *dep = &p->path_dependencies[i];
+        if (manifest_has_name(p->aliases, p->alias_count, dep->name) || manifest_has_name(p->embed, p->embed_count, dep->name)) {
+            return manifest_fail_at(r, dep->key_pos, ms_arena_fmt(a, "%s is declared in [dependencies] and also as an alias or embed; rename one so an import names a single thing", dep->name).ptr);
+        }
+    }
+    const EffectRow *effects = ms_buf_items(&b->effects);
+    for (uint32_t i = 0; i < p->allowed_effect_count; i++) {
+        const char *name = effects[i].rule.name;
+        bool known = manifest_has_name(p->path_dependencies, p->path_dependency_count, name);
+        for (uint32_t k = 0; !known && k < p->dependency_count; k++) {
+            known = strcmp(deps[k].dep.alias, name) == 0;
+        }
+        if (!known) {
+            return manifest_fail_at(r, effects[i].key_pos, ms_arena_fmt(a, "[effects] names %s, which is not under [dependencies]; remove it or add the dependency", name).ptr);
+        }
+    }
+    for (uint32_t i = 0; i < p->embed_count; i++) {
+        MsAlias *embed = &p->embed[i];
+        if (manifest_has_name(p->aliases, p->alias_count, embed->name)) {
+            return manifest_fail_at(r, embed->key_pos, ms_arena_fmt(a, "%s is declared in both [aliases] and [embed]; rename one so an import names a single thing", embed->name).ptr);
+        }
+        MsProjectError cause;
+        const char *target;
+        if (!ms_project_source_path(a, p->root, embed->target, &target, &cause)) {
+            return manifest_fail_at(r, embed->value_pos, ms_arena_fmt(a, "embed %s target cannot be resolved: %s; keep embedded directories inside the project root", embed->name, ms_project_error_text(a, &cause)).ptr);
+        }
+        if (!manifest_is_dir(target)) {
+            return manifest_fail_at(r, embed->value_pos, ms_arena_fmt(a, "embed %s must name an existing directory; %s is not one, so create it or fix the path in [embed]", embed->name, ms_project_quote(a, target)).ptr);
+        }
+        embed->target = target;
+    }
+    return true;
 }
 
 /* Required fields, then the paths made canonical (source, entry, aliases), in the order the Rust reader checks them. */
@@ -413,6 +895,16 @@ static bool manifest_finish(Builder *b) {
     const Reader *r = b->reader;
     MsProject *p = b->project;
     MsArena *a = r->arena;
+    if (p->is_workspace) {
+        if (!manifest_has_project_key(b)) { /* a root that only lists members has no source of its own */
+            const Assignment *stray = manifest_stray_assignment(b);
+            if (stray != NULL) {
+                const size_t dot = strcspn(stray->id, ".");
+                return manifest_fail_at(r, stray->key_pos, ms_arena_fmt(a, "a workspace root without [project] holds only [workspace]; move [%.*s] into a member or add a [project] table", (int)dot, stray->id).ptr);
+            }
+            return true;
+        }
+    }
     if (p->name[0] == 0 || p->source[0] == 0) {
         return manifest_fail_at(r, p->location, ms_arena_fmt(a, "[project] requires name and source; missing: %s%s%s, e.g. name = \"app\", source = \"src\" (add entry = \"src/main.ms\" for an executable)", p->name[0] == 0 ? "name" : "", p->name[0] == 0 && p->source[0] == 0 ? ", " : "", p->source[0] == 0 ? "source" : "").ptr);
     }
@@ -443,7 +935,7 @@ static bool manifest_finish(Builder *b) {
             return manifest_fail_at(r, alias->value_pos, ms_arena_fmt(a, "alias %s target cannot be resolved: %s; external Manuscript dependency projects are unsupported, so copy the sources inside this project root and point the alias at that copy", alias->name, ms_project_error_text(a, &cause)).ptr);
         }
     }
-    return true;
+    return manifest_check_declared(b);
 }
 
 static const char *manifest_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err) {
@@ -510,16 +1002,27 @@ bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProject
     bool ok = manifest_read_document(&r, bom, &entries) && manifest_read_entries(&b, ms_buf_items(&entries), MS_VEC_LEN(entries, Entry));
     ms_buf_free(&entries);
     if (ok) {
-        const size_t count = MS_VEC_LEN(b.aliases, MsAlias);
-        out->aliases = MS_NEW_N(a, MsAlias, count);
-        if (count > 0) {
-            memcpy(out->aliases, ms_buf_items(&b.aliases), count * sizeof(MsAlias));
-            qsort(out->aliases, count, sizeof(MsAlias), manifest_alias_order);
+        out->aliases = manifest_sorted(a, &b.aliases, sizeof(MsAlias), &out->alias_count);
+        out->embed = manifest_sorted(a, &b.embed, sizeof(MsAlias), &out->embed_count);
+        out->path_dependencies = manifest_sorted(a, &b.path_deps, sizeof(MsAlias), &out->path_dependency_count);
+        DepRow *deps = manifest_sorted(a, &b.deps, sizeof(DepRow), &out->dependency_count);
+        out->dependencies = MS_NEW_N(a, MsDependency, out->dependency_count + 1);
+        for (uint32_t i = 0; i < out->dependency_count; i++) {
+            out->dependencies[i] = deps[i].dep;
         }
-        out->alias_count = (uint32_t)count;
+        EffectRow *effects = manifest_sorted(a, &b.effects, sizeof(EffectRow), &out->allowed_effect_count);
+        out->allowed_effects = MS_NEW_N(a, MsEffectRule, out->allowed_effect_count + 1);
+        for (uint32_t i = 0; i < out->allowed_effect_count; i++) {
+            out->allowed_effects[i] = effects[i].rule;
+        }
         ok = manifest_finish(&b);
     }
     ms_buf_free(&b.aliases);
+    ms_buf_free(&b.embed);
+    ms_buf_free(&b.deps);
+    ms_buf_free(&b.path_deps);
+    ms_buf_free(&b.effects);
+    ms_buf_free(&b.assignments);
     return ok;
 }
 

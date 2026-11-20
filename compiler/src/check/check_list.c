@@ -18,8 +18,7 @@ bool ms_body_is_list(const MsBody *b, MsTy ty) {
         return false;
     }
     const MsTy element = ms_ty_args(tys, ty)[0];
-    return element == b->int_ty || element == b->float_ty || element == b->bool_ty || element == b->string_ty ||
-           ms_body_is_list(b, element);
+    return ms_body_is_plain_value(b, element) || ms_body_is_list(b, element);
 }
 
 static MsTy list_of(MsBody *b, MsTy element) {
