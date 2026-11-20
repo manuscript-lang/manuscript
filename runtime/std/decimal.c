@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bignum_mag.h"
+#include "bignum.h"
 #include "ms_rt/decimal.h"
 
 typedef unsigned __int128 MsU128;
@@ -83,30 +83,13 @@ static void big_from_coefficient(MsBig *out, const MsDecimal *d) {
     ms_big_set_u128(out, (uint64_t)(magnitude >> 64), (uint64_t)magnitude, value < 0);
 }
 
-enum {
-    DIGITS_PER_LIMB = 19,        /* 10^19 is the largest power of ten in a 64-bit limb */
-    SMALL_COUNT_LIMBS = 8,       /* values up to this many limbs are counted on the stack */
-};
-
-/* Decimal digits of the magnitude of a bignum. Up to eight limbs they are counted by dividing a copy by 10^19;
- * beyond that by an estimate from the bit length that never overshoots (1233 / 4096 is just below log10(2)),
- * raised while the value reaches the next power of ten. */
+/* Decimal digits of the magnitude of a bignum. Up to 128 bits they are counted directly; beyond that by an
+ * estimate from the bit length that never overshoots (1233 / 4096 is just below log10(2)), raised while the
+ * value reaches the next power of ten. */
 static int64_t big_digits(const MsBig *a) {
-    if (a->len == 0) {
-        return 1;
-    }
-    if (a->len <= SMALL_COUNT_LIMBS) {
-        MsLimb work[SMALL_COUNT_LIMBS];
-        memcpy(work, a->limbs, a->len * sizeof(MsLimb));
-        size_t len = a->len;
-        int64_t digits = 0;
-        const MsLimbDivisor divisor = ms_mag_limb_divisor(UINT64_C(10000000000000000000));
-        while (len > 1 || work[0] >= UINT64_C(10000000000000000000)) {
-            (void)ms_mag_divmod_limb(work, len, divisor);
-            len = ms_mag_normal_length(work, len);
-            digits += DIGITS_PER_LIMB;
-        }
-        return digits + (int64_t)digits_of(work[0]);
+    uint64_t high, low;
+    if (ms_big_to_u128(a, &high, &low)) {
+        return (int64_t)digits_of(((MsU128)high << 64) | low);
     }
     size_t digits = (ms_big_bit_length(a) - 1) * 1233 / 4096 + 1;
     MsBig power = MS_BIG_ZERO;
@@ -165,7 +148,7 @@ MS_NODISCARD static bool rounded(const MsBig *coefficient, int64_t exponent, MsD
                                 ? leading - (MS_DECIMAL_DIGITS - 1)
                                 : MS_DECIMAL_MIN_QUANTUM;
     const int64_t drop = quantum - exponent;
-    const bool negative = coefficient->negative;
+    const bool negative = ms_big_sign(coefficient) < 0;
     MsBig kept = MS_BIG_ZERO;
     if (drop <= 0) {
         ms_big_abs(&kept, coefficient);
@@ -338,8 +321,8 @@ void msstd_decimal_divide(const MsDecimal *a, const MsDecimal *b, MsDecimal *out
     MsBig remainder = MS_BIG_ZERO;
     big_from_coefficient(&dividend, a);
     big_from_coefficient(&divisor, b);
-    dividend.negative = false;
-    divisor.negative = false;
+    ms_big_abs(&dividend, &dividend);
+    ms_big_abs(&divisor, &divisor);
     int64_t shift = MS_DECIMAL_DIGITS + 2 + big_digits(&divisor) - big_digits(&dividend);
     shift = shift > 0 ? shift : 0;
     int64_t exponent = a->exponent - b->exponent - shift;
@@ -353,7 +336,9 @@ void msstd_decimal_divide(const MsDecimal *a, const MsDecimal *b, MsDecimal *out
         ms_big_add(&dividend, &dividend, &scale);
         exponent--;
     }
-    dividend.negative = negative && !ms_big_is_zero(&dividend);
+    if (negative) {
+        ms_big_negate(&dividend, &dividend);
+    }
     const bool fits = rounded(&dividend, exponent, out);
     ms_big_free(&dividend);
     ms_big_free(&divisor);
@@ -655,7 +640,7 @@ static void scaled_coefficient(MsBig *out, const MsDecimal *d, int64_t places, M
         ms_big_free(&scale);
         return;
     }
-    const bool negative = out->negative;
+    const bool negative = ms_big_sign(out) < 0;
     if (-shift > MS_DECIMAL_DIGITS) {
         /* The coefficient has at most 34 digits, so twice it is below the divisor: nearest rounding and
          * truncation give zero and only a directed mode moves one unit away. */
@@ -676,7 +661,9 @@ static void scaled_coefficient(MsBig *out, const MsDecimal *d, int64_t places, M
             ms_big_add(out, out, &twice);
         }
     }
-    out->negative = negative && !ms_big_is_zero(out);
+    if (negative) {
+        ms_big_negate(out, out);
+    }
     ms_big_free(&scale);
     ms_big_free(&remainder);
     ms_big_free(&twice);
@@ -693,7 +680,7 @@ uint8_t msstd_decimal_round(const MsDecimal *value, int64_t places, HasRaw has_m
     }
     MsBig scaled = MS_BIG_ZERO;
     scaled_coefficient(&scaled, value, places, rounding);
-    const bool negative = scaled.negative;
+    const bool negative = ms_big_sign(&scaled) < 0;
     MsU128 magnitude = big_magnitude(&scaled); /* below the shift, so at most 35 digits */
     ms_big_free(&scaled);
     int64_t exponent = -places;
@@ -717,7 +704,7 @@ static void format_fixed(const MsBig *scaled, int64_t places, MsStr *out) {
     const size_t padded = count > fraction ? count : fraction + 1; /* an integer digit before the point */
     uint8_t *const text = msrt_alloc(padded + 3);
     size_t length = 0;
-    if (scaled->negative) {
+    if (ms_big_sign(scaled) < 0) {
         text[length++] = '-';
     }
     for (size_t i = 0; i < padded; i++) {

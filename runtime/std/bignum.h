@@ -1,32 +1,29 @@
-/* Arbitrary-precision integers for the BigInt and Decimal natives (runtime/std/bignum.c).
+/* Arbitrary-precision integers for the BigInt and Decimal natives (runtime/std/bignum.c), on OpenSSL's BIGNUM.
  *
- * A MsBig is a sign and a little-endian array of 64-bit limbs without a leading zero limb; zero has no limbs and
- * is never negative. Every operation computes its result in fresh memory and then replaces `out`, so `out` may be
- * the same object as an operand, and the previous contents of `out` are released. A MsBig must be initialised
- * (MS_BIG_ZERO or the result of an earlier call) and released with ms_big_free. Memory comes from the runtime
- * allocator, which faults when it is exhausted, so no function here reports an allocation failure.
+ * A MsBig owns a BIGNUM, or none for zero. Every operation computes its result in fresh memory when it would
+ * overlap an operand, so `out` may be the same object as an operand, and the previous contents of `out` are
+ * released. A MsBig must be initialised (MS_BIG_ZERO or the result of an earlier call) and released with
+ * ms_big_free. An exhausted allocator faults, so no function here reports an allocation failure.
  *
  * Division truncates toward zero, shifts round toward negative infinity and the bitwise operations act on the
- * infinite two's complement form, as Manuscript's BigInt defines them.
+ * infinite two's complement form, as Manuscript's BigInt defines them. BIGNUM has no bitwise operations on
+ * negative values, floor shifts, integer square roots, doubles or two's complement, so bignum.c adds those.
  */
 #ifndef MS_STD_BIGNUM_H
 #define MS_STD_BIGNUM_H
 
+#include <openssl/bn.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #include "ms_rt/runtime.h"
 
-typedef uint64_t MsLimb;
-
 typedef struct MsBig {
-    MsLimb *limbs; /* owned; NULL exactly when len is 0 */
-    size_t len;
-    bool negative;
+    BIGNUM *bn; /* owned; NULL for zero */
 } MsBig;
 
-#define MS_BIG_ZERO ((MsBig){.limbs = NULL, .len = 0, .negative = false})
+#define MS_BIG_ZERO ((MsBig){.bn = NULL})
 
 /* The digits of a radix in 2..36, lowercase; also the validity table of ms_big_digit_value. */
 #define MS_BIG_MIN_RADIX 2u

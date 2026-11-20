@@ -1,116 +1,536 @@
-/* The signed layer of the bignum (see bignum.h): signs, comparison, the bitwise operations, powers, roots, gcd and
- * modular arithmetic, all expressed over the magnitude kernels of bignum_mag.c. Radix conversion lives in
- * bignum_radix.c. */
+/* The bignum of bignum.h on OpenSSL's BIGNUM: arithmetic, comparison, shifts, powers, gcd and modular inverses
+ * are BN_* calls; this file adds what BIGNUM lacks (floor shifts, two's complement bitwise operations, integer
+ * square roots, correctly rounded doubles, 128-bit and int64 conversion, text in any radix). */
 #include "bignum.h"
 
+#include <limits.h>
 #include <math.h>
+#include <openssl/crypto.h>
+#include <openssl/err.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "bignum_mag.h"
+typedef unsigned __int128 U128;
 
-enum { MS_LIMB_BITS = 64 };
+enum { BITS_PER_BYTE = 8 };
 
-/* ---- ownership ---- */
+/* ---- plumbing ---- */
 
-static MsLimb *limbs_new(size_t count) {
-    size_t bytes = 0;
-    if (!ms_size_mul(count, sizeof(MsLimb), &bytes)) {
-        msrt_fault("bignum: value too large", 23);
+/* Every BN_* call that can fail does so only when memory runs out; the runtime faults as its allocator does. */
+static void must(int ok) {
+    if (ok == 0) {
+        ERR_clear_error();
+        msrt_fault("bignum: out of memory", 21);
     }
-    return msrt_alloc(bytes == 0 ? sizeof(MsLimb) : bytes);
 }
 
-void ms_big_free(MsBig *x) {
-    msrt_free(x->limbs);
-    *x = MS_BIG_ZERO;
+/* Decimal and BigInt operations are short and many, so each thread keeps a few released BIGNUMs (and one context)
+ * for reuse instead of going through malloc for every operation; they live until the thread exits. */
+enum { POOL_SIZE = 16, POOL_MAX_BITS = 4096 }; /* larger values are not worth keeping */
+
+typedef struct Pool {
+    BIGNUM *free_list[POOL_SIZE];
+    size_t count;
+    BN_CTX *ctx;
+    BIGNUM *limit; /* 2^POOL_MAX_BITS: BN_ucmp against it is much cheaper than BN_num_bits */
+} Pool;
+
+static Pool *pool(void) {
+    static _Thread_local Pool state;
+    return &state;
 }
 
-/* Replaces `out` with the value of `limbs[0..len)` (taking ownership of the buffer; leading zeros are trimmed). */
-static void install(MsBig *out, MsLimb *limbs, size_t len, bool negative) {
-    const size_t used = ms_mag_normal_length(limbs, len);
-    ms_big_free(out);
-    if (used == 0) {
-        msrt_free(limbs);
+static BIGNUM *new_bn(void) {
+    Pool *const p = pool();
+    if (p->count > 0) {
+        return p->free_list[--p->count];
+    }
+    BIGNUM *const bn = BN_new();
+    must(bn != NULL);
+    return bn;
+}
+
+static void release_bn(BIGNUM *bn) {
+    if (bn == NULL) {
         return;
     }
-    *out = (MsBig){.limbs = limbs, .len = used, .negative = negative};
+    Pool *const p = pool();
+    if (p->limit == NULL) {
+        p->limit = BN_new();
+        must(p->limit != NULL && BN_set_bit(p->limit, POOL_MAX_BITS));
+    }
+    if (p->count == POOL_SIZE || BN_ucmp(bn, p->limit) >= 0) {
+        BN_free(bn);
+        return;
+    }
+    BN_zero(bn);
+    p->free_list[p->count++] = bn;
+}
+
+/* The thread's context for one operation's temporaries. */
+static BN_CTX *new_ctx(void) {
+    Pool *const p = pool();
+    if (p->ctx == NULL) {
+        p->ctx = BN_CTX_new();
+        must(p->ctx != NULL);
+    }
+    return p->ctx;
+}
+
+/* The shared read-only zero that stands in for an operand with no BIGNUM. */
+static const BIGNUM *zero_bn(void) {
+    static _Thread_local BIGNUM *zero;
+    if (zero == NULL) {
+        zero = new_bn();
+        BN_zero(zero);
+    }
+    return zero;
+}
+
+static const BIGNUM *value_of(const MsBig *a) { return a->bn != NULL ? a->bn : zero_bn(); }
+
+/* A scratch BIGNUM for the result of an operation on `a` and `b`: `out`'s own when it is neither operand's. */
+static BIGNUM *result_begin(MsBig *out, const MsBig *a, const MsBig *b) {
+    const bool overlaps = out->bn != NULL && (out->bn == a->bn || (b != NULL && out->bn == b->bn));
+    if (overlaps || out->bn == NULL) {
+        return new_bn();
+    }
+    return out->bn;
+}
+
+/* Makes `result` (from result_begin) the value of `out`. */
+static void result_end(MsBig *out, BIGNUM *result) {
+    if (out->bn == result) {
+        return;
+    }
+    release_bn(out->bn);
+    out->bn = result;
+}
+
+/* Runs `op` into a fresh result for binary operations that BN_* permits to share no storage with an operand. */
+typedef int (*BinaryOp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
+
+static void binary(MsBig *out, const MsBig *a, const MsBig *b, BinaryOp op) {
+    BIGNUM *const result = result_begin(out, a, b);
+    BN_CTX *const ctx = new_ctx();
+    must(op(result, value_of(a), value_of(b), ctx));
+    result_end(out, result);
+}
+
+/* ---- construction and inspection ---- */
+
+void ms_big_free(MsBig *x) {
+    release_bn(x->bn);
+    x->bn = NULL;
 }
 
 void ms_big_copy(MsBig *out, const MsBig *a) {
-    MsLimb *const limbs = limbs_new(a->len);
-    for (size_t i = 0; i < a->len; i++) {
-        limbs[i] = a->limbs[i];
+    if (out->bn == a->bn) {
+        return;
     }
-    install(out, limbs, a->len, a->negative);
+    BIGNUM *const result = new_bn();
+    must(BN_copy(result, value_of(a)) != NULL);
+    result_end(out, result);
 }
 
-void ms_big_set_u64(MsBig *out, uint64_t value) {
-    MsLimb *const limbs = limbs_new(1);
-    limbs[0] = value;
-    install(out, limbs, 1, false);
-}
-
-void ms_big_set_i64(MsBig *out, int64_t value) {
-    const uint64_t magnitude = value < 0 ? 0 - (uint64_t)value : (uint64_t)value;
-    ms_big_set_u64(out, magnitude);
-    out->negative = value < 0;
+/* Sets `out` to the little-endian bytes as a magnitude. */
+static void set_le(MsBig *out, const uint8_t *bytes, size_t length, bool negative) {
+    BIGNUM *const result = new_bn();
+    must(BN_lebin2bn(bytes, (int)length, result) != NULL);
+    BN_set_negative(result, negative && !BN_is_zero(result));
+    result_end(out, result);
 }
 
 void ms_big_set_u128(MsBig *out, uint64_t high, uint64_t low, bool negative) {
-    MsLimb *const limbs = limbs_new(2);
-    limbs[0] = low;
-    limbs[1] = high;
-    install(out, limbs, 2, negative);
+    if (sizeof(BN_ULONG) == sizeof low) { /* two words, no byte shuffling */
+        BIGNUM *const result = new_bn();
+        must(BN_set_word(result, (BN_ULONG)high));
+        if (high != 0) {
+            must(BN_lshift(result, result, 64));
+        }
+        must(BN_add_word(result, (BN_ULONG)low));
+        BN_set_negative(result, negative && !BN_is_zero(result));
+        result_end(out, result);
+        return;
+    }
+    uint8_t bytes[16];
+    for (int i = 0; i < 8; i++) {
+        bytes[i] = (uint8_t)(low >> (BITS_PER_BYTE * i));
+        bytes[8 + i] = (uint8_t)(high >> (BITS_PER_BYTE * i));
+    }
+    set_le(out, bytes, sizeof bytes, negative);
 }
 
-/* ---- inspection ---- */
+void ms_big_set_u64(MsBig *out, uint64_t value) { ms_big_set_u128(out, 0, value, false); }
 
-bool ms_big_is_zero(const MsBig *a) { return a->len == 0; }
+void ms_big_set_i64(MsBig *out, int64_t value) {
+    const uint64_t magnitude = value < 0 ? UINT64_C(0) - (uint64_t)value : (uint64_t)value;
+    ms_big_set_u128(out, 0, magnitude, value < 0);
+}
+
+bool ms_big_is_zero(const MsBig *a) { return a->bn == NULL || BN_is_zero(a->bn); }
 
 int ms_big_sign(const MsBig *a) {
-    if (a->len == 0) {
+    if (ms_big_is_zero(a)) {
         return 0;
     }
-    return a->negative ? -1 : 1;
+    return BN_is_negative(a->bn) ? -1 : 1;
 }
 
-int ms_big_cmp_abs(const MsBig *a, const MsBig *b) { return ms_mag_cmp(a->limbs, a->len, b->limbs, b->len); }
-
-int ms_big_cmp(const MsBig *a, const MsBig *b) {
-    if (a->negative != b->negative) {
-        return a->negative ? -1 : 1;
-    }
-    const int magnitude = ms_big_cmp_abs(a, b);
-    return a->negative ? -magnitude : magnitude;
-}
-
-bool ms_big_is_odd(const MsBig *a) { return a->len > 0 && (a->limbs[0] & 1) != 0; }
-
-size_t ms_big_bit_length(const MsBig *a) {
-    if (a->len == 0) {
-        return 0;
-    }
-    return a->len * MS_LIMB_BITS - (size_t)__builtin_clzll(a->limbs[a->len - 1]);
-}
+int ms_big_cmp(const MsBig *a, const MsBig *b) { return BN_cmp(value_of(a), value_of(b)); }
+int ms_big_cmp_abs(const MsBig *a, const MsBig *b) { return BN_ucmp(value_of(a), value_of(b)); }
+bool ms_big_is_odd(const MsBig *a) { return a->bn != NULL && BN_is_odd(a->bn); }
+size_t ms_big_bit_length(const MsBig *a) { return (size_t)BN_num_bits(value_of(a)); }
 
 bool ms_big_magnitude_bit(const MsBig *a, size_t index) {
-    const size_t limb = index / MS_LIMB_BITS;
-    return limb < a->len && ((a->limbs[limb] >> (index % MS_LIMB_BITS)) & 1) != 0;
+    return index <= INT_MAX && BN_is_bit_set(value_of(a), (int)index);
+}
+
+/* ---- arithmetic ---- */
+
+void ms_big_negate(MsBig *out, const MsBig *a) {
+    ms_big_copy(out, a);
+    if (out->bn != NULL && !BN_is_zero(out->bn)) {
+        BN_set_negative(out->bn, !BN_is_negative(out->bn));
+    }
+}
+
+void ms_big_abs(MsBig *out, const MsBig *a) {
+    ms_big_copy(out, a);
+    if (out->bn != NULL) {
+        BN_set_negative(out->bn, 0);
+    }
+}
+
+void ms_big_add(MsBig *out, const MsBig *a, const MsBig *b) {
+    BIGNUM *const result = result_begin(out, a, b);
+    must(BN_add(result, value_of(a), value_of(b)));
+    result_end(out, result);
+}
+
+void ms_big_sub(MsBig *out, const MsBig *a, const MsBig *b) {
+    BIGNUM *const result = result_begin(out, a, b);
+    must(BN_sub(result, value_of(a), value_of(b)));
+    result_end(out, result);
+}
+
+void ms_big_mul(MsBig *out, const MsBig *a, const MsBig *b) { binary(out, a, b, BN_mul); }
+
+void ms_big_divmod(MsBig *quotient, MsBig *remainder, const MsBig *a, const MsBig *b) {
+    BIGNUM *const q = new_bn();
+    BIGNUM *const r = new_bn();
+    BN_CTX *const ctx = new_ctx();
+    must(BN_div(q, r, value_of(a), value_of(b), ctx));
+    if (quotient != NULL) {
+        result_end(quotient, q);
+    } else {
+        release_bn(q);
+    }
+    if (remainder != NULL) {
+        result_end(remainder, r);
+    } else {
+        release_bn(r);
+    }
+}
+
+static int nnmod_op(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx) { return BN_nnmod(r, a, m, ctx); }
+
+void ms_big_mod_floor(MsBig *out, const MsBig *a, const MsBig *m) { binary(out, a, m, nnmod_op); }
+
+/* ---- shifts and bitwise operations ---- */
+
+static int shift_count(size_t count) { return count > (size_t)INT_MAX ? INT_MAX : (int)count; }
+
+void ms_big_shift_left(MsBig *out, const MsBig *a, size_t count) {
+    BIGNUM *const result = result_begin(out, a, NULL);
+    must(BN_lshift(result, value_of(a), shift_count(count)));
+    result_end(out, result);
+}
+
+/* Rounds toward negative infinity: a negative value that loses a set bit moves one further from zero. */
+void ms_big_shift_right(MsBig *out, const MsBig *a, size_t count) {
+    const BIGNUM *const value = value_of(a);
+    const int bits = shift_count(count);
+    BIGNUM *const result = new_bn();
+    must(BN_rshift(result, value, bits));
+    if (BN_is_negative(value)) {
+        BIGNUM *const back = new_bn();
+        must(BN_lshift(back, result, bits));
+        if (BN_ucmp(back, value) != 0) {
+            must(BN_sub(result, result, BN_value_one()));
+        }
+        release_bn(back);
+    }
+    result_end(out, result);
+}
+
+/* The two's complement of `a` as `width` little-endian bytes (width covers the magnitude and a sign bit). */
+static void to_twos(const BIGNUM *a, uint8_t *bytes, size_t width) {
+    must(BN_bn2lebinpad(a, bytes, (int)width) >= 0);
+    if (!BN_is_negative(a)) {
+        return;
+    }
+    unsigned carry = 1;
+    for (size_t i = 0; i < width; i++) {
+        const unsigned sum = (uint8_t)~bytes[i] + carry;
+        bytes[i] = (uint8_t)sum;
+        carry = sum >> BITS_PER_BYTE;
+    }
+}
+
+/* Sets `out` to the value of `width` two's complement bytes. */
+static void from_twos(MsBig *out, uint8_t *bytes, size_t width) {
+    const bool negative = (bytes[width - 1] & 0x80) != 0;
+    if (negative) {
+        unsigned carry = 1;
+        for (size_t i = 0; i < width; i++) {
+            const unsigned sum = (uint8_t)~bytes[i] + carry;
+            bytes[i] = (uint8_t)sum;
+            carry = sum >> BITS_PER_BYTE;
+        }
+    }
+    set_le(out, bytes, width, negative);
+}
+
+typedef uint8_t (*ByteOp)(uint8_t x, uint8_t y);
+
+static uint8_t byte_and(uint8_t x, uint8_t y) { return (uint8_t)(x & y); }
+static uint8_t byte_or(uint8_t x, uint8_t y) { return (uint8_t)(x | y); }
+static uint8_t byte_xor(uint8_t x, uint8_t y) { return (uint8_t)(x ^ y); }
+
+static void bitwise(MsBig *out, const MsBig *a, const MsBig *b, ByteOp op) {
+    const BIGNUM *const x = value_of(a);
+    const BIGNUM *const y = value_of(b);
+    const int bits = BN_num_bits(x) > BN_num_bits(y) ? BN_num_bits(x) : BN_num_bits(y);
+    const size_t width = (size_t)bits / BITS_PER_BYTE + 1; /* room for the sign bit */
+    uint8_t *const left = msrt_alloc(2 * width);
+    uint8_t *const right = left + width;
+    to_twos(x, left, width);
+    to_twos(y, right, width);
+    for (size_t i = 0; i < width; i++) {
+        left[i] = op(left[i], right[i]);
+    }
+    from_twos(out, left, width);
+    msrt_free(left);
+}
+
+void ms_big_and(MsBig *out, const MsBig *a, const MsBig *b) { bitwise(out, a, b, byte_and); }
+void ms_big_or(MsBig *out, const MsBig *a, const MsBig *b) { bitwise(out, a, b, byte_or); }
+void ms_big_xor(MsBig *out, const MsBig *a, const MsBig *b) { bitwise(out, a, b, byte_xor); }
+
+/* ~a = -a - 1. */
+void ms_big_not(MsBig *out, const MsBig *a) {
+    BIGNUM *const result = result_begin(out, a, NULL);
+    must(BN_set_word(result, 1));
+    BN_set_negative(result, 1);
+    must(BN_sub(result, result, value_of(a)));
+    result_end(out, result);
+}
+
+/* ---- powers, roots and number theory ---- */
+
+/* True when |a| is a power of two other than one (exactly one bit set, above bit 0). */
+static bool is_power_of_two(const BIGNUM *a) {
+    const int bits = BN_num_bits(a);
+    if (bits < 2) {
+        return false;
+    }
+    BIGNUM *const rest = new_bn();
+    must(BN_copy(rest, a) != NULL);
+    must(BN_clear_bit(rest, bits - 1));
+    const bool single = BN_is_zero(rest);
+    release_bn(rest);
+    return single;
+}
+
+/* (+-2^k)^e is +-2^(k*e): one shift, where repeated squaring of a huge power of two would take seconds. */
+static bool pow_of_two(MsBig *out, const BIGNUM *a, uint64_t exponent) {
+    if (!is_power_of_two(a)) {
+        return false;
+    }
+    const uint64_t k = (uint64_t)BN_num_bits(a) - 1;
+    if (exponent > (uint64_t)INT_MAX / k) {
+        msrt_fault("bignum: value too large", 23);
+    }
+    BIGNUM *const result = new_bn();
+    BN_zero(result);
+    must(BN_set_bit(result, (int)(k * exponent)));
+    BN_set_negative(result, BN_is_negative(a) && (exponent & 1) != 0);
+    result_end(out, result);
+    return true;
+}
+
+void ms_big_pow(MsBig *out, const MsBig *a, uint64_t exponent) {
+    if (pow_of_two(out, value_of(a), exponent)) {
+        return;
+    }
+    MsBig power = MS_BIG_ZERO;
+    ms_big_set_u64(&power, exponent);
+    BIGNUM *const result = new_bn();
+    BN_CTX *const ctx = new_ctx();
+    must(BN_exp(result, value_of(a), power.bn, ctx));
+    ms_big_free(&power);
+    result_end(out, result);
+}
+
+enum { POW10_TABLE = 39 }; /* 10^38 is the largest power of ten in 128 bits */
+
+static U128 ten_power_u128(size_t exponent) {
+    U128 value = 1;
+    for (size_t i = 0; i < exponent; i++) {
+        value *= 10;
+    }
+    return value;
+}
+
+void ms_big_pow10(MsBig *out, size_t exponent) {
+    if (exponent < POW10_TABLE) {
+        const U128 value = ten_power_u128(exponent);
+        ms_big_set_u128(out, (uint64_t)(value >> 64), (uint64_t)value, false);
+        return;
+    }
+    MsBig ten = MS_BIG_ZERO;
+    ms_big_set_u64(&ten, 10);
+    ms_big_pow(out, &ten, exponent);
+    ms_big_free(&ten);
+}
+
+/* floor(sqrt(a)) by Newton's iteration from a power of two above the root. */
+void ms_big_sqrt(MsBig *out, const MsBig *a) {
+    if (ms_big_is_zero(a)) {
+        ms_big_set_u64(out, 0);
+        return;
+    }
+    BN_CTX *const ctx = new_ctx();
+    BIGNUM *const x = new_bn();
+    BIGNUM *const y = new_bn();
+    BIGNUM *const quotient = new_bn();
+    must(BN_set_bit(x, (BN_num_bits(a->bn) + 1) / 2));
+    for (;;) {
+        must(BN_div(quotient, NULL, a->bn, x, ctx));
+        must(BN_add(y, x, quotient));
+        must(BN_rshift1(y, y));
+        if (BN_cmp(y, x) >= 0) {
+            break;
+        }
+        must(BN_copy(x, y) != NULL);
+    }
+    release_bn(y);
+    release_bn(quotient);
+    result_end(out, x);
+}
+
+void ms_big_gcd(MsBig *out, const MsBig *a, const MsBig *b) {
+    BIGNUM *const result = new_bn();
+    BN_CTX *const ctx = new_ctx();
+    must(BN_gcd(result, value_of(a), value_of(b), ctx));
+    BN_set_negative(result, 0);
+    result_end(out, result);
+}
+
+void ms_big_pow_mod(MsBig *out, const MsBig *a, const MsBig *exponent, const MsBig *modulus) {
+    BIGNUM *const result = new_bn();
+    BIGNUM *const base = new_bn();
+    BN_CTX *const ctx = new_ctx();
+    must(BN_nnmod(base, value_of(a), value_of(modulus), ctx));
+    must(BN_mod_exp(result, base, value_of(exponent), value_of(modulus), ctx));
+    release_bn(base);
+    result_end(out, result);
+}
+
+bool ms_big_inverse_mod(MsBig *out, const MsBig *a, const MsBig *modulus) {
+    BIGNUM *const base = new_bn();
+    BN_CTX *const ctx = new_ctx();
+    must(BN_nnmod(base, value_of(a), value_of(modulus), ctx));
+    BIGNUM *const result = BN_mod_inverse(NULL, base, value_of(modulus), ctx);
+    release_bn(base);
+    ERR_clear_error(); /* no inverse is reported through the error queue */
+    if (result == NULL) {
+        return false;
+    }
+    result_end(out, result);
+    return true;
+}
+
+/* ---- conversions ---- */
+
+/* The low 64 bits of the magnitude; `a` must have at most 64 bits. */
+static uint64_t low_word(const BIGNUM *a) {
+    uint8_t bytes[8];
+    must(BN_bn2lebinpad(a, bytes, sizeof bytes) >= 0);
+    uint64_t word = 0;
+    for (int i = 7; i >= 0; i--) {
+        word = word << BITS_PER_BYTE | bytes[i];
+    }
+    return word;
+}
+
+/* The nearest double, ties to even: the top 64 bits with a sticky bit for the rest round once in the cast. */
+double ms_big_to_double(const MsBig *a) {
+    const BIGNUM *const value = value_of(a);
+    const int bits = BN_num_bits(value);
+    double magnitude;
+    if (bits <= 64) {
+        magnitude = (double)low_word(value);
+    } else {
+        BIGNUM *const top = new_bn();
+        BIGNUM *const back = new_bn();
+        must(BN_rshift(top, value, bits - 64));
+        must(BN_lshift(back, top, bits - 64));
+        uint64_t word = low_word(top);
+        if (BN_ucmp(back, value) != 0) {
+            word |= 1;
+        }
+        release_bn(top);
+        release_bn(back);
+        magnitude = ldexp((double)word, bits - 64);
+    }
+    return BN_is_negative(value) ? -magnitude : magnitude;
+}
+
+bool ms_big_to_u128(const MsBig *a, uint64_t *high, uint64_t *low) {
+    const BIGNUM *const value = value_of(a);
+    const int bits = BN_num_bits(value);
+    if (bits > 128) {
+        return false;
+    }
+    if (bits <= 64 && sizeof(BN_ULONG) == sizeof *low) {
+        *high = 0;
+        *low = BN_get_word(value);
+        return true;
+    }
+    if (sizeof(BN_ULONG) == sizeof *low) { /* the low word is the value less its high word shifted back */
+        BIGNUM *const part = new_bn();
+        must(BN_rshift(part, value, 64));
+        *high = BN_get_word(part);
+        must(BN_copy(part, value) != NULL);
+        must(BN_mask_bits(part, 64));
+        *low = BN_get_word(part);
+        release_bn(part);
+        return true;
+    }
+    uint8_t bytes[16];
+    must(BN_bn2lebinpad(value, bytes, sizeof bytes) >= 0);
+    *low = 0;
+    *high = 0;
+    for (int i = 7; i >= 0; i--) {
+        *low = *low << BITS_PER_BYTE | bytes[i];
+        *high = *high << BITS_PER_BYTE | bytes[8 + i];
+    }
+    return true;
 }
 
 bool ms_big_to_i64(const MsBig *a, int64_t *out) {
-    if (a->len == 0) {
-        *out = 0;
-        return true;
-    }
-    if (a->len > 1) {
+    const BIGNUM *const value = value_of(a);
+    if (BN_num_bits(value) > 64) {
         return false;
     }
-    const uint64_t magnitude = a->limbs[0];
-    if (a->negative) {
-        if (magnitude > (uint64_t)INT64_MAX + 1) {
+    const uint64_t magnitude = low_word(value);
+    if (BN_is_negative(value)) {
+        if (magnitude > UINT64_C(1) << 63) {
             return false;
         }
-        *out = (int64_t)(0 - magnitude);
+        *out = (int64_t)(UINT64_C(0) - magnitude);
         return true;
     }
     if (magnitude > (uint64_t)INT64_MAX) {
@@ -120,402 +540,88 @@ bool ms_big_to_i64(const MsBig *a, int64_t *out) {
     return true;
 }
 
-bool ms_big_to_u128(const MsBig *a, uint64_t *high, uint64_t *low) {
-    if (a->len > 2) {
-        return false;
+/* ---- text ---- */
+
+uint8_t ms_big_digit_value(uint8_t byte) {
+    if (byte >= '0' && byte <= '9') {
+        return (uint8_t)(byte - '0');
     }
-    *low = a->len > 0 ? a->limbs[0] : 0;
-    *high = a->len > 1 ? a->limbs[1] : 0;
-    return true;
+    if (byte >= 'a' && byte <= 'z') {
+        return (uint8_t)(byte - 'a' + 10);
+    }
+    if (byte >= 'A' && byte <= 'Z') {
+        return (uint8_t)(byte - 'A' + 10);
+    }
+    return 255;
 }
 
-double ms_big_to_double(const MsBig *a) {
-    const size_t bits = ms_big_bit_length(a);
-    if (bits == 0) {
-        return 0.0;
+/* The digits per BN_ULONG chunk of a radix: the largest k with radix^k in a BN_ULONG, and that power. */
+static size_t chunk_of(unsigned radix, uint64_t *power) {
+    size_t digits = 0;
+    uint64_t p = 1;
+    while (p <= (uint64_t)(BN_ULONG)-1 / radix) {
+        p *= radix;
+        digits++;
     }
-    uint64_t mantissa = a->limbs[0];
-    size_t exponent = 0;
-    if (bits > MS_LIMB_BITS) {
-        /* Take the top 64 bits and fold everything below them into the lowest, so the conversion below rounds the
-         * whole value to nearest, ties to even. */
-        exponent = bits - MS_LIMB_BITS;
-        const size_t index = exponent / MS_LIMB_BITS;
-        const unsigned offset = (unsigned)(exponent % MS_LIMB_BITS);
-        mantissa = a->limbs[index] >> offset;
-        bool sticky = offset != 0 && (a->limbs[index] << (MS_LIMB_BITS - offset)) != 0;
-        if (offset != 0) {
-            mantissa |= a->limbs[index + 1] << (MS_LIMB_BITS - offset);
+    *power = p;
+    return digits;
+}
+
+void ms_big_parse_digits(MsBig *out, MsBytes digits, unsigned radix) {
+    BIGNUM *const result = new_bn();
+    uint64_t chunk_power;
+    const size_t chunk = chunk_of(radix, &chunk_power);
+    size_t at = 0;
+    while (at < digits.len) {
+        const size_t take = digits.len - at < chunk ? digits.len - at : chunk;
+        uint64_t word = 0;
+        uint64_t scale = 1;
+        for (size_t i = 0; i < take; i++) {
+            word = word * radix + ms_big_digit_value(digits.ptr[at + i]);
+            scale *= radix;
         }
-        for (size_t i = 0; i < index && !sticky; i++) {
-            sticky = a->limbs[i] != 0;
-        }
-        mantissa |= sticky ? 1 : 0;
+        must(BN_mul_word(result, take == chunk ? chunk_power : scale));
+        must(BN_add_word(result, word));
+        at += take;
     }
-    const double magnitude = ldexp((double)mantissa, exponent > INT32_MAX ? INT32_MAX : (int)exponent);
-    return a->negative ? -magnitude : magnitude;
+    result_end(out, result);
 }
 
-/* ---- sign and addition ---- */
-
-void ms_big_negate(MsBig *out, const MsBig *a) {
-    const bool negative = a->len != 0 && !a->negative;
-    ms_big_copy(out, a);
-    out->negative = negative;
-}
-
-void ms_big_abs(MsBig *out, const MsBig *a) {
-    ms_big_copy(out, a);
-    out->negative = false;
-}
-
-/* out = a + (negate_b ? -b : b). */
-static void add_signed(MsBig *out, const MsBig *a, const MsBig *b, bool negate_b) {
-    const bool b_negative = b->len != 0 && (b->negative != negate_b);
-    const bool a_negative = a->negative;
-    const size_t longest = a->len > b->len ? a->len : b->len;
-    MsLimb *const limbs = limbs_new(longest + 1);
-    size_t len = 0;
-    bool negative = a_negative;
-    if (a_negative == b_negative) {
-        len = ms_mag_add(limbs, a->limbs, a->len, b->limbs, b->len);
-    } else if (ms_mag_cmp(a->limbs, a->len, b->limbs, b->len) >= 0) {
-        len = ms_mag_sub(limbs, a->limbs, a->len, b->limbs, b->len);
-    } else {
-        len = ms_mag_sub(limbs, b->limbs, b->len, a->limbs, a->len);
-        negative = b_negative;
-    }
-    install(out, limbs, len, negative);
-}
-
-void ms_big_add(MsBig *out, const MsBig *a, const MsBig *b) { add_signed(out, a, b, false); }
-
-void ms_big_sub(MsBig *out, const MsBig *a, const MsBig *b) { add_signed(out, a, b, true); }
-
-void ms_big_mul(MsBig *out, const MsBig *a, const MsBig *b) {
-    const bool negative = a->negative != b->negative;
-    if (a->len == 0 || b->len == 0) {
-        ms_big_free(out);
-        return;
-    }
-    size_t total = 0;
-    if (!ms_size_add(a->len, b->len, &total)) {
-        msrt_fault("bignum: product too large", 25);
-    }
-    MsLimb *const limbs = limbs_new(total);
-    const size_t len = ms_mag_mul(limbs, a->limbs, a->len, b->limbs, b->len);
-    install(out, limbs, len, negative);
-}
-
-/* ---- division ---- */
-
-void ms_big_divmod(MsBig *quotient, MsBig *remainder, const MsBig *a, const MsBig *b) {
-    const bool quotient_negative = a->negative != b->negative;
-    const bool remainder_negative = a->negative;
-    MsLimb *q = NULL;
-    MsLimb *r = NULL;
-    size_t q_len = 0;
-    size_t r_len = 0;
-    if (ms_mag_cmp(a->limbs, a->len, b->limbs, b->len) < 0) {
-        q = limbs_new(0);
-        r = limbs_new(a->len);
-        for (size_t i = 0; i < a->len; i++) {
-            r[i] = a->limbs[i];
-        }
-        r_len = a->len;
-    } else {
-        q = limbs_new(a->len - b->len + 1);
-        r = limbs_new(b->len);
-        ms_mag_divmod(q, &q_len, r, &r_len, a->limbs, a->len, b->limbs, b->len);
-    }
-    if (quotient != NULL) {
-        install(quotient, q, q_len, quotient_negative);
-    } else {
-        msrt_free(q);
-    }
-    if (remainder != NULL) {
-        install(remainder, r, r_len, remainder_negative);
-    } else {
-        msrt_free(r);
-    }
-}
-
-void ms_big_mod_floor(MsBig *out, const MsBig *a, const MsBig *m) {
-    MsBig remainder = MS_BIG_ZERO;
-    ms_big_divmod(NULL, &remainder, a, m);
-    if (remainder.negative) {
-        ms_big_add(&remainder, &remainder, m);
-    }
-    ms_big_free(out);
-    *out = remainder;
-}
-
-/* ---- shifts ---- */
-
-void ms_big_shift_left(MsBig *out, const MsBig *a, size_t count) {
-    const bool negative = a->negative;
-    if (a->len == 0) {
-        ms_big_free(out);
-        return;
-    }
-    MsLimb *const limbs = limbs_new(a->len + count / MS_LIMB_BITS + 1);
-    const size_t len = ms_mag_shl(limbs, a->limbs, a->len, count);
-    install(out, limbs, len, negative);
-}
-
-void ms_big_shift_right(MsBig *out, const MsBig *a, size_t count) {
-    const bool negative = a->negative;
-    MsLimb *const limbs = limbs_new(a->len + 1);
-    bool sticky = false;
-    size_t len = ms_mag_shr(limbs, a->limbs, a->len, count, &sticky);
-    if (negative && sticky) { /* floor: a negative value that loses bits moves one further from zero */
-        len = ms_mag_add(limbs, limbs, len, (const MsLimb[]){1}, 1);
-    }
-    install(out, limbs, len, negative);
-}
-
-/* ---- bitwise operations on the infinite two's complement form ---- */
-
-typedef enum MsBitOp { MS_BIT_AND, MS_BIT_OR, MS_BIT_XOR } MsBitOp;
-
-/* Negates the n-limb two's complement number in place. */
-static void twos_negate(MsLimb *x, size_t n) {
-    MsLimb carry = 1;
-    for (size_t i = 0; i < n; i++) {
-        x[i] = ~x[i] + carry;
-        carry = carry != 0 && x[i] == 0;
-    }
-}
-
-/* Writes `a` as n limbs of two's complement; n must exceed a's length. */
-static void to_twos(MsLimb *out, size_t n, const MsBig *a) {
-    for (size_t i = 0; i < n; i++) {
-        out[i] = i < a->len ? a->limbs[i] : 0;
-    }
-    if (a->negative) {
-        twos_negate(out, n);
-    }
-}
-
-static MsLimb apply(MsBitOp op, MsLimb x, MsLimb y) {
-    switch (op) {
-    case MS_BIT_AND: return x & y;
-    case MS_BIT_OR: return x | y;
-    case MS_BIT_XOR: return x ^ y;
-    }
-    return 0;
-}
-
-static void bitwise(MsBig *out, const MsBig *a, const MsBig *b, MsBitOp op) {
-    const size_t n = (a->len > b->len ? a->len : b->len) + 1;
-    MsLimb *const x = limbs_new(n);
-    MsLimb *const y = limbs_new(n);
-    to_twos(x, n, a);
-    to_twos(y, n, b);
-    for (size_t i = 0; i < n; i++) {
-        x[i] = apply(op, x[i], y[i]);
-    }
-    msrt_free(y);
-    const bool negative = (x[n - 1] >> (MS_LIMB_BITS - 1)) != 0;
-    if (negative) {
-        twos_negate(x, n);
-    }
-    install(out, x, n, negative);
-}
-
-void ms_big_and(MsBig *out, const MsBig *a, const MsBig *b) { bitwise(out, a, b, MS_BIT_AND); }
-void ms_big_or(MsBig *out, const MsBig *a, const MsBig *b) { bitwise(out, a, b, MS_BIT_OR); }
-void ms_big_xor(MsBig *out, const MsBig *a, const MsBig *b) { bitwise(out, a, b, MS_BIT_XOR); }
-
-/* ~a = -a - 1. */
-void ms_big_not(MsBig *out, const MsBig *a) {
-    MsBig one = MS_BIG_ZERO;
-    ms_big_set_u64(&one, 1);
-    ms_big_negate(out, a);
-    ms_big_sub(out, out, &one);
-    ms_big_free(&one);
-}
-
-/* ---- powers and roots ---- */
-
-void ms_big_pow(MsBig *out, const MsBig *a, uint64_t exponent) {
-    MsBig result = MS_BIG_ZERO;
-    MsBig base = MS_BIG_ZERO;
-    ms_big_copy(&base, a);
-    ms_big_set_u64(&result, 1);
-    for (unsigned bit = MS_LIMB_BITS; bit > 0; bit--) { /* from the top bit down; leading zero bits keep 1 */
-        ms_big_mul(&result, &result, &result);
-        if (((exponent >> (bit - 1)) & 1) != 0) {
-            ms_big_mul(&result, &result, &base);
+/* Digits of `radix` of the magnitude, least significant first, by dividing a copy by radix^chunk. */
+static uint8_t *digits_by_division(const BIGNUM *a, unsigned radix, size_t *length) {
+    uint64_t chunk_power;
+    const size_t chunk = chunk_of(radix, &chunk_power);
+    BIGNUM *const work = BN_dup(a);
+    must(work != NULL);
+    BN_set_negative(work, 0);
+    const size_t capacity = (size_t)BN_num_bits(a) + 1; /* at most one digit per bit */
+    uint8_t *const reversed = msrt_alloc(capacity + chunk);
+    size_t count = 0;
+    while (!BN_is_zero(work)) {
+        BN_ULONG rest = BN_div_word(work, (BN_ULONG)chunk_power);
+        must(rest != (BN_ULONG)-1);
+        for (size_t i = 0; i < chunk && (rest != 0 || !BN_is_zero(work)); i++) {
+            reversed[count++] = (uint8_t)(rest % radix);
+            rest /= radix;
         }
     }
-    ms_big_free(out);
-    *out = result;
-    ms_big_free(&base);
+    release_bn(work);
+    if (count == 0) {
+        reversed[count++] = 0;
+    }
+    *length = count;
+    return reversed;
 }
 
-/* 10^0 .. 10^19: the largest power of ten in a limb is 10^19. */
-static const uint64_t ten_powers[20] = {
-    UINT64_C(1),
-    UINT64_C(10),
-    UINT64_C(100),
-    UINT64_C(1000),
-    UINT64_C(10000),
-    UINT64_C(100000),
-    UINT64_C(1000000),
-    UINT64_C(10000000),
-    UINT64_C(100000000),
-    UINT64_C(1000000000),
-    UINT64_C(10000000000),
-    UINT64_C(100000000000),
-    UINT64_C(1000000000000),
-    UINT64_C(10000000000000),
-    UINT64_C(100000000000000),
-    UINT64_C(1000000000000000),
-    UINT64_C(10000000000000000),
-    UINT64_C(100000000000000000),
-    UINT64_C(1000000000000000000),
-    UINT64_C(10000000000000000000),
-};
-enum { TEN_POWER_LIMB_DIGITS = 19 };
-
-/* Powers up to 10^38 are two table entries multiplied in 128 bits, which covers every Decimal scale; larger ones
- * raise 10^19 to the whole number of limbs and scale by the rest. */
-void ms_big_pow10(MsBig *out, size_t exponent) {
-    const size_t rest = exponent % TEN_POWER_LIMB_DIGITS;
-    const size_t whole = exponent / TEN_POWER_LIMB_DIGITS;
-    if (whole <= 1) {
-        const unsigned __int128 product = (unsigned __int128)ten_powers[rest] * (whole == 0 ? 1 : ten_powers[TEN_POWER_LIMB_DIGITS]);
-        ms_big_set_u128(out, (uint64_t)(product >> 64), (uint64_t)product, false);
-        return;
+uint8_t *ms_big_digits_new(const MsBig *a, unsigned radix, size_t *length) {
+    uint8_t *const digits = digits_by_division(value_of(a), radix, length);
+    for (size_t i = 0; i < *length / 2; i++) {
+        const uint8_t swap = digits[i];
+        digits[i] = digits[*length - 1 - i];
+        digits[*length - 1 - i] = swap;
     }
-    MsBig limb_power = MS_BIG_ZERO;
-    MsBig scale = MS_BIG_ZERO;
-    ms_big_set_u64(&limb_power, ten_powers[TEN_POWER_LIMB_DIGITS]);
-    ms_big_set_u64(&scale, ten_powers[rest]);
-    ms_big_pow(out, &limb_power, whole);
-    ms_big_mul(out, out, &scale);
-    ms_big_free(&limb_power);
-    ms_big_free(&scale);
-}
-
-/* Newton's iteration from a power of two at or above the root: it decreases until it reaches floor(sqrt(a)). */
-void ms_big_sqrt(MsBig *out, const MsBig *a) {
-    if (a->len == 0) {
-        ms_big_free(out);
-        return;
+    for (size_t i = 0; i < *length; i++) {
+        digits[i] = (uint8_t)"0123456789abcdefghijklmnopqrstuvwxyz"[digits[i]];
     }
-    MsBig x = MS_BIG_ZERO;
-    MsBig y = MS_BIG_ZERO;
-    MsBig one = MS_BIG_ZERO;
-    ms_big_set_u64(&one, 1);
-    ms_big_shift_left(&x, &one, (ms_big_bit_length(a) + 1) / 2);
-    for (;;) {
-        ms_big_divmod(&y, NULL, a, &x);
-        ms_big_add(&y, &y, &x);
-        ms_big_shift_right(&y, &y, 1);
-        if (ms_big_cmp(&y, &x) >= 0) {
-            break;
-        }
-        ms_big_free(&x);
-        x = y;
-        y = MS_BIG_ZERO;
-    }
-    ms_big_free(out);
-    *out = x;
-    ms_big_free(&y);
-    ms_big_free(&one);
-}
-
-void ms_big_gcd(MsBig *out, const MsBig *a, const MsBig *b) {
-    MsBig x = MS_BIG_ZERO;
-    MsBig y = MS_BIG_ZERO;
-    MsBig rest = MS_BIG_ZERO;
-    ms_big_abs(&x, a);
-    ms_big_abs(&y, b);
-    while (y.len != 0) {
-        ms_big_divmod(NULL, &rest, &x, &y);
-        ms_big_free(&x);
-        x = y;
-        y = rest;
-        rest = MS_BIG_ZERO;
-    }
-    ms_big_free(out);
-    *out = x;
-}
-
-/* ---- modular arithmetic ---- */
-
-/* base^exponent mod a one-limb modulus with every value in a machine word: no allocation per step. */
-static void pow_mod_limb(MsBig *out, const MsBig *reduced_base, const MsBig *exponent, MsLimb modulus) {
-    const MsLimbDivisor divisor = ms_mag_limb_divisor(modulus);
-    const MsLimb base = reduced_base->len == 0 ? 0 : reduced_base->limbs[0];
-    MsLimb result = 1 % modulus;
-    for (size_t bit = ms_big_bit_length(exponent); bit > 0; bit--) {
-        result = ms_mag_mul_mod_limb(result, result, divisor);
-        if (ms_big_magnitude_bit(exponent, bit - 1)) {
-            result = ms_mag_mul_mod_limb(result, base, divisor);
-        }
-    }
-    ms_big_set_u64(out, result);
-}
-
-void ms_big_pow_mod(MsBig *out, const MsBig *a, const MsBig *exponent, const MsBig *modulus) {
-    MsBig base = MS_BIG_ZERO;
-    MsBig result = MS_BIG_ZERO;
-    ms_big_mod_floor(&base, a, modulus);
-    if (modulus->len == 1) {
-        pow_mod_limb(out, &base, exponent, modulus->limbs[0]);
-        ms_big_free(&base);
-        return;
-    }
-    ms_big_set_u64(&result, 1);
-    ms_big_mod_floor(&result, &result, modulus); /* 1 mod 1 is 0 */
-    for (size_t bit = ms_big_bit_length(exponent); bit > 0; bit--) {
-        ms_big_mul(&result, &result, &result);
-        ms_big_mod_floor(&result, &result, modulus);
-        if (ms_big_magnitude_bit(exponent, bit - 1)) {
-            ms_big_mul(&result, &result, &base);
-            ms_big_mod_floor(&result, &result, modulus);
-        }
-    }
-    ms_big_free(out);
-    *out = result;
-    ms_big_free(&base);
-}
-
-/* Extended Euclid keeping only the coefficient of a: r0 = t0 * a (mod m) throughout. */
-bool ms_big_inverse_mod(MsBig *out, const MsBig *a, const MsBig *modulus) {
-    MsBig r0 = MS_BIG_ZERO;
-    MsBig r1 = MS_BIG_ZERO;
-    MsBig t0 = MS_BIG_ZERO;
-    MsBig t1 = MS_BIG_ZERO;
-    MsBig q = MS_BIG_ZERO;
-    MsBig next = MS_BIG_ZERO;
-    ms_big_copy(&r0, modulus);
-    ms_big_mod_floor(&r1, a, modulus);
-    ms_big_set_u64(&t1, 1);
-    while (r1.len != 0) {
-        ms_big_divmod(&q, &next, &r0, &r1);
-        ms_big_free(&r0);
-        r0 = r1;
-        r1 = next;
-        next = MS_BIG_ZERO;
-        ms_big_mul(&next, &q, &t1);
-        ms_big_sub(&next, &t0, &next);
-        ms_big_free(&t0);
-        t0 = t1;
-        t1 = next;
-        next = MS_BIG_ZERO;
-    }
-    const bool invertible = r0.len == 1 && r0.limbs[0] == 1;
-    if (invertible) {
-        ms_big_mod_floor(out, &t0, modulus);
-    }
-    ms_big_free(&r0);
-    ms_big_free(&r1);
-    ms_big_free(&t0);
-    ms_big_free(&t1);
-    ms_big_free(&q);
-    return invertible;
+    return digits;
 }

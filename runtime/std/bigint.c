@@ -100,7 +100,9 @@ uint8_t msstd_bigint_parse(const MsStr *text, int64_t radix, HasRaw has_max, int
     }
     MsBig value = MS_BIG_ZERO;
     ms_big_parse_digits(&value, ms_bytes_of(bytes, length), (unsigned)radix);
-    value.negative = negative && value.len != 0;
+    if (negative) {
+        ms_big_negate(&value, &value);
+    }
     return cell_ok(&value, out);
 }
 
@@ -138,7 +140,7 @@ MsBigCell *msstd_bigint_lcm(const MsBigCell *a, const MsBigCell *other) {
     if (!ms_big_is_zero(&divisor)) {
         ms_big_divmod(&result, NULL, &a->value, &divisor);
         ms_big_mul(&result, &result, &other->value);
-        result.negative = false;
+        ms_big_abs(&result, &result);
     }
     ms_big_free(&divisor);
     return cell_new(&result);
@@ -169,7 +171,7 @@ uint8_t msstd_bigint_inverse_mod(const MsBigCell *a, const MsBigCell *modulus, M
         return 0;
     }
     MsBig result = MS_BIG_ZERO;
-    const bool is_one = modulus->value.len == 1 && modulus->value.limbs[0] == 1;
+    const bool is_one = ms_big_bit_length(&modulus->value) == 1; /* the modulus is positive */
     if (!is_one && !ms_big_inverse_mod(&result, &a->value, &modulus->value)) {
         return 0;
     }
@@ -335,7 +337,7 @@ void msstd_bigint_to_string_radix(const MsBigCell *a, int64_t radix, MsStr *out)
     }
     size_t digit_count = 0;
     uint8_t *const digits = ms_big_digits_new(&a->value, (unsigned)radix, &digit_count);
-    if (!a->value.negative) {
+    if (ms_big_sign(&a->value) >= 0) {
         msrt_string_from_bytes(digits, digit_count, out);
         msrt_free(digits);
         return;
