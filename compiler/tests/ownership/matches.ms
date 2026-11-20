@@ -75,12 +75,5 @@ fn arm_borrow_ends(s: String, n: Int) String:
 			b + "q"
 		_: x
 
-fn nested_match(n: Int, m: Int) Int:
-	return match n:
-		0: match m:
-			0: 1
-			_: 2
-		_: 3
-
 fn if_value(c: Bool, a: Int, b: Int) Int:
 	return if c: a + 1 else: if a > b: a else: b
