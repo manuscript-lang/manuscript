@@ -18,6 +18,21 @@ runs:
       if: runner.os == 'Linux' || runner.os == 'macOS'
       shell: bash
       run: sh runtime/third_party/libs.sh install
+    # Windows takes the MSYS2 CLANG64 (x64) or CLANGARM64 (arm64) packages; libs.sh reads them from MS_MSYS2.
+    - name: Install MSYS2 and the C libraries
+      id: msys2
+      if: runner.os == 'Windows'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: ${{ inputs.arch == 'arm64' && 'CLANGARM64' || 'CLANG64' }}
+        update: false
+        location: ${{ runner.temp }}
+        install: >-
+          ${{ inputs.arch == 'arm64' && 'mingw-w64-clang-aarch64-libuv mingw-w64-clang-aarch64-nghttp2 mingw-w64-clang-aarch64-openssl mingw-w64-clang-aarch64-pcre2 mingw-w64-clang-aarch64-zlib' || 'mingw-w64-clang-x86_64-libuv mingw-w64-clang-x86_64-nghttp2 mingw-w64-clang-x86_64-openssl mingw-w64-clang-x86_64-pcre2 mingw-w64-clang-x86_64-zlib' }}
+    - name: Point libs.sh at MSYS2
+      if: runner.os == 'Windows'
+      shell: bash
+      run: echo "MS_MSYS2=$(cygpath -m '${{ steps.msys2.outputs.msys2-location }}')" >> "$GITHUB_ENV"
     # `ms` downloads the pinned lld and LLVM tools into $XDG_CACHE_HOME/ms/{lld,llvm} on first use
     # (manuscript-lang/llvm-bundle, pinned by checksum in toolchain/lld.lock); restoring them keeps CI
     # off the network.
