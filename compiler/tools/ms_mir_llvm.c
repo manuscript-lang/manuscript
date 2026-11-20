@@ -27,8 +27,12 @@ int main(int argc, char **argv) {
         free(src);
         return 1;
     }
+    MirGlue glue = {0};
+    mir_glue_run_and_expand(&m, &glue);
+    MirData data;
+    mir_data_build(&m, &glue, &data);
     MsBuf out = {0}, why = {0};
-    bool ok = mir_emit_llvm(&m, &out, &why);
+    bool ok = mir_emit_llvm(&m, &data, &out, &why);
     if (!ok) fprintf(stderr, "the LLVM emitter cannot write:\n%.*s", (int)why.len, why.data);
     else fwrite(out.data, 1, out.len, stdout);
     ms_buf_free(&out);

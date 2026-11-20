@@ -21,6 +21,8 @@
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
+#include "ms/hints.h"
+#include "ms/import_hints.h"
 
 
 
@@ -144,6 +146,227 @@ static MsTy body_text(MsBody *b, const MsExpr *e) {
     return b->string_ty;
 }
 
+/* ---- unknown names ---- */
+
+/* The advice for a name other languages spell differently: `head`, then for a head that ends
+ * before the name's own mention `name` and `tail`. */
+typedef struct BodyNameHint {
+    const char *name;
+    const char *head;
+    const char *tail; /* NULL when `head` is the whole hint */
+} BodyNameHint;
+
+#define PRINT_HINT                                                                                          \
+    "; there is no ", ": use print(value), which writes any value and a newline; for write errors or bytes " \
+                      "import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")"
+#define SPAWN_HINT                                                                                            \
+    "; there is no free ", ": start concurrent work with promise(fn: ...) from "                           \
+                           "\"@std/concurrency/promise.ms\" and call wait() on the returned Promise"
+#define HANDLE_HINT                                                                                           \
+    "; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", " \
+    "connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"", NULL
+#define NULL_HINT                                                                                             \
+    "; Manuscript has no null: absence is an Optional, written none, and a present value is just the value, " \
+    "which converts where an Optional is expected", NULL
+#define ERROR_HINT                                                                                            \
+    "; write error(cause) for a failed Result, where cause has the Result's error type", NULL
+#define TEXT_HINT "; to make text, interpolate: f\"{value}\", or call value.to_string()", NULL
+#define INT_HINT                                                                                              \
+    "; parse text with text.parse_int(), which returns Int?; Float has truncate_to_int()", NULL
+#define FLOAT_HINT                                                                                            \
+    "; parse text with parse_float (import parse_float from \"@std/math/math.ms\"), which returns a Result; " \
+    "an Int converts with value.to_float()", NULL
+#define COLLECTION_HINT                                                                                       \
+    "; use the prelude List[T] and Map[K, V] types without imports; read a Map with m.keys(), m.values() or " \
+    "m.entries()", NULL
+
+static const BodyNameHint body_name_hints[] = {
+    {"pass", "; 'pass' is not a keyword, so write 'void' for an empty block or match arm", NULL},
+    {"range",
+     "; there is no range function: write start..end for the integers from start up to but excluding end, or "
+     "range_by from \"@std/collections/collections.ms\" for a stepped list",
+     NULL},
+    {"nil", NULL_HINT},
+    {"null", NULL_HINT},
+    {"None", NULL_HINT},
+    {"undefined", NULL_HINT},
+    {"Some", "; there is no Some: a plain value converts where an Optional is expected, so pass it directly", NULL},
+    {"Ok", "; write the lowercase ok(value) for a successful Result", NULL},
+    {"Err", ERROR_HINT},
+    {"err", ERROR_HINT},
+    {"Error", ERROR_HINT},
+    {"True", "; booleans are lowercase: write true and false", NULL},
+    {"False", "; booleans are lowercase: write true and false", NULL},
+    {"len",
+     "; there is no ",
+     "() function: call the length member, e.g. xs.length() (String length is bytes; scalar_length counts "
+     "scalars)"},
+    {"str", TEXT_HINT},
+    {"toString", TEXT_HINT},
+    {"repr", TEXT_HINT},
+    {"sprintf", TEXT_HINT},
+    {"int", INT_HINT},
+    {"parseInt", INT_HINT},
+    {"atoi", INT_HINT},
+    {"Number", INT_HINT},
+    {"parse_int", INT_HINT},
+    {"float", FLOAT_HINT},
+    {"parseFloat", FLOAT_HINT},
+    {"parse_float", FLOAT_HINT},
+    {"Object", COLLECTION_HINT},
+    {"Array", COLLECTION_HINT},
+    {"dict", COLLECTION_HINT},
+    {"list", COLLECTION_HINT},
+    {"Math",
+     "; the math functions (floor, sqrt, pow, ...) are in \"@std/math/math.ms\": import floor from "
+     "\"@std/math/math.ms\"",
+     NULL},
+    {"math",
+     "; the math functions (floor, sqrt, pow, ...) are in \"@std/math/math.ms\": import floor from "
+     "\"@std/math/math.ms\"",
+     NULL},
+    {"console", PRINT_HINT},
+    {"System", PRINT_HINT},
+    {"fmt", PRINT_HINT},
+    {"os", PRINT_HINT},
+    {"println", PRINT_HINT},
+    {"printf", PRINT_HINT},
+    {"puts", PRINT_HINT},
+    {"echo", PRINT_HINT},
+    {"spawn", SPAWN_HINT},
+    {"Promise", SPAWN_HINT},
+    {"Future", SPAWN_HINT},
+    {"Thread", SPAWN_HINT},
+    {"thread", SPAWN_HINT},
+    {"setTimeout", SPAWN_HINT},
+    {"setInterval", SPAWN_HINT},
+    {"filesystem", HANDLE_HINT},
+    {"network", HANDLE_HINT},
+    {"commands", HANDLE_HINT},
+    {"control", HANDLE_HINT},
+    {"system", HANDLE_HINT},
+    {"clock", HANDLE_HINT},
+    {"wall_clock", HANDLE_HINT},
+    {"entropy", HANDLE_HINT},
+    {"terminal", HANDLE_HINT},
+    {"files", HANDLE_HINT},
+};
+
+static const BodyNameHint *body_name_hint(MsStr name) {
+    for (size_t i = 0; i < sizeof body_name_hints / sizeof body_name_hints[0]; i++) {
+        const BodyNameHint *hint = &body_name_hints[i];
+        if (strlen(hint->name) == name.len && memcmp(hint->name, name.ptr, name.len) == 0) {
+            return hint;
+        }
+    }
+    return NULL;
+}
+
+/* Whether a method receiver is in scope, which the hints for `this` and for fields depend on. */
+static bool body_has_receiver(const MsBody *b) {
+    const MsBindings *bindings = &b->facts->bindings;
+    for (uint32_t i = b->first_binding; i < bindings->count; i++) {
+        if (bindings->role[i] == MS_ROLE_SELF) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The names a typo could have meant: the bindings in scope and the module's functions. */
+static size_t body_value_names(MsBody *b, const MsStr **out) {
+    const MsBindings *bindings = &b->facts->bindings;
+    const MsNameMap *names = &b->c->mods[b->module].names;
+    MsStr *list = MS_NEW_N(&b->c->arena, MsStr, (size_t)bindings->count + names->cap);
+    size_t count = 0;
+    for (uint32_t i = b->first_binding; i < bindings->count; i++) {
+        if (!b->closed[i]) {
+            list[count++] = ms_name(b->c->names, bindings->name[i]);
+        }
+    }
+    for (uint32_t i = 0; i < names->cap; i++) {
+        if (names->vals[i] != 0 && b->c->syms.kind[names->vals[i] - 1] == MS_SYM_FN) {
+            list[count++] = ms_name(b->c->names, names->keys[i]);
+        }
+    }
+    *out = list;
+    return count;
+}
+
+/* The text after `unknown binding X`, or NULL when this port cannot say what Rust does yet. */
+static const char *body_unknown_advice(MsBody *b, MsStr name) {
+    if (body_has_receiver(b)) {
+        return NULL;
+    }
+    if (name.len == 4 && memcmp(name.ptr, "this", 4) == 0) {
+        return "; there is no 'this'; inside an impl method the receiver is 'self'";
+    }
+    const BodyNameHint *table = body_name_hint(name);
+    if (table != NULL) {
+        return table->tail == NULL
+                   ? table->head
+                   : ms_arena_fmt(&b->c->arena, "%s%.*s%s", table->head, (int)name.len, name.ptr, table->tail).ptr;
+    }
+    const MsStr import = ms_import_hint(&b->c->arena, b->c, name, b->c->mods[b->module].source);
+    if (import.len != 0) {
+        return ms_arena_strndup(&b->c->arena, import.ptr, import.len);
+    }
+    const MsStr *candidates = NULL;
+    const size_t count = body_value_names(b, &candidates);
+    const MsStr near = ms_did_you_mean(&b->c->arena, name, candidates, count);
+    if (near.len != 0) {
+        return ms_arena_strndup(&b->c->arena, near.ptr, near.len);
+    }
+    return ms_arena_fmt(&b->c->arena,
+                        "; declare it with '%.*s := ...' before use, define 'fn %.*s(...) T:', or import it from "
+                        "a module",
+                        (int)name.len, name.ptr, (int)name.len, name.ptr)
+        .ptr;
+}
+
+/* Whether some type the module can name has an enum case called `name`: such a name is a
+ * constructor, not an unknown. */
+static bool body_is_case_name(const MsBody *b, MsSym name) {
+    const MsNameMap *names = &b->c->mods[b->module].names;
+    for (uint32_t i = 0; i < names->cap; i++) {
+        const uint32_t sym = names->vals[i];
+        if (sym == 0 || sym - 1 >= b->c->defs_cap) {
+            continue;
+        }
+        const MsDef *def = &b->c->defs[sym - 1];
+        for (uint32_t k = 0; k < def->ncases; k++) {
+            if (def->cases[k].name == name) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* A name that is not a binding, a module name, a source location or a case. Reported at the
+ * name; the whole is invalid, which silences what uses it. */
+static MsTy body_unknown_name(MsBody *b, const MsExpr *e) {
+    const MsStr name = ms_name(b->c->names, e->u.sym);
+    const char *advice = body_unknown_advice(b, name);
+    if (advice == NULL) {
+        return ms_body_unsupported(b);
+    }
+    const MsStr message = ms_arena_fmt(&b->c->arena, "unknown binding %.*s%s", (int)name.len, name.ptr, advice);
+    const MsCheckDiag diag = {.diag = {.pos = e->pos, .message = message},
+                              .phase = MS_PHASE_RESOLUTION,
+                              .unknown = e->u.sym};
+    MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
+    return b->invalid_ty;
+}
+
+static bool body_is_unknown(const MsBody *b, MsSym name) {
+    const MsStr text = ms_name(b->c->names, name);
+    const bool source_location = (text.len == 8 && memcmp(text.ptr, "__LINE__", 8) == 0) ||
+                                 (text.len == 8 && memcmp(text.ptr, "__FILE__", 8) == 0);
+    return ms_map_get(&b->c->mods[b->module].names, name) == MS_NONE && !source_location &&
+           !body_is_case_name(b, name);
+}
+
 /* A read of a module constant this pass has checked: a call of no arguments, typed as the
  * constant's initializer. */
 static MsTy body_constant_use(MsBody *b, const MsExpr *e) {
@@ -163,7 +386,7 @@ static MsTy body_constant_use(MsBody *b, const MsExpr *e) {
 static MsTy body_name(MsBody *b, const MsExpr *e) {
     const uint32_t binding = ms_body_find_binding(b, e->u.sym);
     if (binding == MS_NONE && !body_text_is(b, e->u.sym, "none")) {
-        return body_constant_use(b, e);
+        return body_is_unknown(b, e->u.sym) ? body_unknown_name(b, e) : body_constant_use(b, e);
     }
     if (binding == MS_NONE || body_text_is(b, e->u.sym, "none")) {
         return ms_body_unsupported(b);
@@ -355,7 +578,7 @@ static MsStr body_show(MsBody *b, MsTy ty) {
 }
 
 /* What the implicit conversion between two primitives would be, written out; "" for none. */
-static const char *body_conversion_hint(const MsBody *b, MsTy actual, MsTy expected) {
+static const char *body_conversion_hint(MsBody *b, MsTy actual, MsTy expected) {
     if (actual == b->int_ty && expected == b->float_ty) {
         return "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value";
     }
@@ -363,11 +586,11 @@ static const char *body_conversion_hint(const MsBody *b, MsTy actual, MsTy expec
         return "Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)";
     }
     if (expected == b->string_ty && (actual == b->int_ty || actual == b->float_ty || actual == b->bool_ty)) {
-        return actual == b->int_ty
-                   ? "Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\""
-               : actual == b->float_ty
-                   ? "Float does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\""
-                   : "Bool does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"";
+        const MsStr type = body_show(b, actual);
+        return ms_arena_fmt(&b->c->arena,
+                            "%.*s does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"",
+                            (int)type.len, type.ptr)
+            .ptr;
     }
     return "";
 }
@@ -483,9 +706,18 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     const uint32_t binding = ms_body_find_binding(b, s->u.assign.name);
-    if (binding == MS_NONE || (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+    if (binding == MS_NONE) {
         (void)ms_body_unsupported(b);
         return;
+    }
+    if ((b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+        const MsStr name = ms_name(b->c->names, s->u.assign.name);
+        const MsStr message = ms_arena_fmt(&b->c->arena,
+                                           "cannot assign immutable binding %.*s; declare it with 'var %.*s = ...' "
+                                           "instead of '%.*s := ...'",
+                                           (int)name.len, name.ptr, (int)name.len, name.ptr, (int)name.len, name.ptr);
+        const MsCheckDiag diag = {.diag = {.pos = s->pos, .message = message}, .phase = MS_PHASE_TYPE};
+        MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
     }
     const uint32_t reads_before = b->reads[binding];
     (void)ms_body_expr(b, s->u.assign.value, b->facts->bindings.ty[binding]);
@@ -504,11 +736,41 @@ static void body_return_statement(MsBody *b, const MsStmt *s) {
 }
 
 
+static void body_close_scope(MsBody *b, uint32_t scope_start);
+
+/* `if name = optional`: the payload is bound for the then-branch only. */
+static bool body_if_let_statement(MsBody *b, const MsStmt *s) {
+    const MsPattern *pattern = s->u.branch.binding;
+    MsTy payload = MS_TY_NONE;
+    if (pattern->kind != MS_P_NAME || s->u.branch.is_mutable) {
+        (void)ms_body_unsupported(b);
+        return false;
+    }
+    const MsTy ty = ms_body_expr(b, s->u.branch.cond, MS_TY_NONE);
+    if (!ms_body_optional_payload(b, ty, &payload) || !body_is_bindable(b, payload)) {
+        (void)ms_body_unsupported(b);
+        return false;
+    }
+    const uint32_t scope_start = b->facts->bindings.count;
+    const uint32_t binding = ms_body_bind(b, pattern->u.name, payload, pattern->id, 0, MS_ROLE_PATTERN);
+    if (binding == MS_NONE) {
+        return false;
+    }
+    b->facts->pattern_binding[pattern->id] = binding;
+    const bool then_falls = ms_body_block(b, &s->u.branch.body);
+    body_close_scope(b, scope_start);
+    const bool else_falls = s->u.branch.else_body.len == 0 || ms_body_block(b, &s->u.branch.else_body);
+    return then_falls || else_falls;
+}
+
 /* Checks a condition against `Bool`, then the branches; whether control can leave the statement. */
 static bool body_if_statement(MsBody *b, const MsStmt *s) {
+    if (s->u.branch.binding != NULL) {
+        return body_if_let_statement(b, s);
+    }
     const MsExpr *cond = s->u.branch.cond;
     b->context = "an if condition";
-    if (s->u.branch.binding != NULL || ms_body_expr(b, cond, b->bool_ty) == MS_TY_NONE) {
+    if (ms_body_expr(b, cond, b->bool_ty) == MS_TY_NONE) {
         (void)ms_body_unsupported(b);
         return false;
     }
@@ -608,7 +870,7 @@ static void body_statements(MsBody *b, const MsStmts *body) {
     const MsBindings *bindings = &b->facts->bindings;
     for (uint32_t i = b->first_binding; b->supported && i < bindings->count; i++) {
         const bool local = bindings->role[i] == MS_ROLE_LET || bindings->role[i] == MS_ROLE_VAR ||
-                           bindings->role[i] == MS_ROLE_ARM;
+                           bindings->role[i] == MS_ROLE_ARM || bindings->role[i] == MS_ROLE_PATTERN;
         const MsStr name = ms_name(b->c->names, bindings->name[i]);
         const bool ignored = name.len != 0 && name.ptr[0] == '_';
         b->supported = !local || ignored || b->reads[i] != 0;
