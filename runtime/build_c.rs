@@ -224,7 +224,8 @@ pub fn run_c_tests(root: &Path, work: &Path, triple: Option<&str>) -> Result<Str
     let build = work.join("cmake-tests");
     configure_c(root, &build, triple, false, true)?;
     run(
-        Command::new("cmake").arg("--build").arg(&build),
+        // `-k 0` keeps going past a failing file, so one run reports every compile error, not the first.
+        Command::new("cmake").arg("--build").arg(&build).args(["--", "-k", "0"]),
         "cmake build",
     )?;
     run(

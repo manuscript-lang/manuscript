@@ -25,7 +25,7 @@ endif()
 # a gap in Windows coverage tracked by issue #4888: the test moves onto the OS layer (ms_rt/sys.h), or a Windows twin
 # is written, and its name leaves this list. Nothing else is skipped.
 set(MS_POSIX_ONLY_TESTS
-    core_alloc core_fault core_isolate core_pipe core_promise core_streams core_task staged_sched_pool staged_sched_shims
+    core_alloc core_fault core_isolate core_pipe core_promise core_streams core_task core_workers staged_sched_pool staged_sched_shims
     conn_io_test dial_test h2_serve_test net_natives_test unix_test
     io_completion io_reactor sys_net_test std_signals std_process_state sys_fault)
 
