@@ -1,12 +1,15 @@
 /* TLS on connection rows (tls_conn.h). */
 #include "tls_conn.h"
 
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "../std/abi.h"
 #include "conn_object.h"
+#include "ms_rt/alloc.h"
 #include "ms_rt/net.h"
+#include "ms_rt/obj.h"
 #include "status.h"
 
 static MsBytes bytes_of_str(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
@@ -132,6 +135,58 @@ uint8_t msstd_conn_accept_tls(const void *handle, const MsNetTlsOptions *options
     const uint8_t status = upgrade(handle, context, NULL, has_timeout, timeout, out, err);
     ms_tls_ctx_free(context);
     return status;
+}
+
+/* A server context built once for every connection of one listener: a handle shares it, the last one frees it. */
+typedef struct TlsServerState {
+    atomic_uint handles;
+    MsTlsCtx *context;
+} TlsServerState;
+
+typedef struct TlsServerHandle {
+    MsObj header;
+    TlsServerState *state;
+} TlsServerHandle;
+
+static void server_drop(MsObj *object) {
+    TlsServerHandle *handle = (TlsServerHandle *)object;
+    if (atomic_fetch_sub(&handle->state->handles, 1) == 1) {
+        ms_tls_ctx_free(handle->state->context);
+        msrt_free(handle->state);
+    }
+    msrt_free(handle);
+}
+
+static MsObj *server_handle(TlsServerState *state) {
+    TlsServerHandle *handle = msrt_alloc(sizeof *handle);
+    handle->header.clone = NULL;
+    handle->header.drop = server_drop;
+    handle->state = state;
+    return &handle->header;
+}
+
+uint8_t msstd_tls_server_new(const MsNetTlsOptions *options, void **out) {
+    MsTlsCtx *context = NULL;
+    const uint8_t built = ms_net_tls_context(1, options, &context);
+    if (built != STATUS_OK) {
+        return built;
+    }
+    TlsServerState *state = msrt_alloc(sizeof *state);
+    atomic_init(&state->handles, 1);
+    state->context = context;
+    *out = server_handle(state);
+    return STATUS_OK;
+}
+
+void *msstd_tls_server_share(const void *handle) {
+    TlsServerState *state = ((const TlsServerHandle *)handle)->state;
+    atomic_fetch_add(&state->handles, 1);
+    return server_handle(state);
+}
+
+uint8_t msstd_conn_accept_tls_with(const void *handle, const void *server, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
+    return upgrade(handle, ((const TlsServerHandle *)server)->state->context, NULL, has_timeout, timeout, out, err);
 }
 
 void msstd_conn_alpn(const void *handle, MsStr *out) {
