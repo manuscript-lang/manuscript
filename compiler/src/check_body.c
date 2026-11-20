@@ -180,6 +180,37 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
     return body_is_numeric(b, operand_ty) ? operand_ty : ms_body_unsupported(b);
 }
 
+/* `local.field` where the local holds a record this module declares and the field is a Copy
+ * primitive (Int, Float, Bool): the field's type. Anything else a member can be (a method, a case, a module path)
+ * is not checked yet. */
+static MsTy body_member(MsBody *b, const MsExpr *e) {
+    const MsExpr *receiver = e->u.member.left;
+    if (receiver->kind != MS_E_NAME) {
+        return ms_body_unsupported(b);
+    }
+    const MsTy record = ms_body_expr(b, receiver, MS_TY_NONE);
+    if (record == MS_TY_NONE) {
+        return MS_TY_NONE;
+    }
+    const MsTyTable *tys = &b->c->tys;
+    if (ms_ty_kind(tys, record) != MS_K_TYPE || !body_is_own_nominal(b, record)) {
+        return ms_body_unsupported(b);
+    }
+    const MsDef *def = ms_def(b->c, tys->def[record] - 1);
+    for (uint32_t i = 0; def != NULL && i < def->nfields; i++) {
+        if (def->fields[i].name != e->u.member.name) {
+            continue;
+        }
+        if (!body_is_value_type(b, def->fields[i].ty) || def->fields[i].ty == b->string_ty) {
+            break; /* reading a String field borrows or moves it out of its holder */
+        }
+        b->facts->res_kind[e->id] = MS_RES_FIELD;
+        b->facts->res_ref[e->id] = i;
+        return def->fields[i].ty;
+    }
+    return ms_body_unsupported(b);
+}
+
 static bool body_is_ordering(MsBinaryOp op) {
     return op == MS_B_LT || op == MS_B_GT || op == MS_B_LE || op == MS_B_GE;
 }
@@ -237,7 +268,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_NAME: ty = body_name(b, e); break;
     case MS_E_UNARY: ty = body_unary(b, e); break;
     case MS_E_BINARY: ty = body_binary(b, e); break;
-    case MS_E_MEMBER:
+    case MS_E_MEMBER: ty = body_member(b, e); break;
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:
@@ -341,9 +372,24 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
         (void)ms_body_unsupported(b);
         return false;
     }
+    const uint32_t outer_breaks = b->breaks;
+    b->breaks = 0;
+    b->loop_depth++;
     (void)ms_body_block(b, &s->u.loop.body);
-    // Without `break` (unsupported here), `while true` never ends.
-    return !(cond->kind == MS_E_BOOL && cond->u.flag);
+    b->loop_depth--;
+    const bool broke = b->breaks != 0;
+    b->breaks = outer_breaks;
+    // `while true` ends only through a `break`.
+    return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
+}
+
+/* `break` and `continue` leave the innermost loop; outside one they are a diagnostic. */
+static void body_jump_statement(MsBody *b, const MsStmt *s) {
+    if (b->loop_depth == 0) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    b->breaks += s->kind == MS_S_BREAK;
 }
 
 /* Checks the statements of a nested scope in order; whether control falls out of the end. A
@@ -366,9 +412,12 @@ static bool body_run(MsBody *b, const MsStmts *body) {
         case MS_S_IF: falls = body_if_statement(b, s); break;
         case MS_S_WHILE: falls = body_while_statement(b, s); break;
         case MS_S_ASSIGN: body_assign_statement(b, s); break;
-        case MS_S_CALL:
         case MS_S_BREAK:
         case MS_S_CONTINUE:
+            body_jump_statement(b, s);
+            falls = false;
+            break;
+        case MS_S_CALL:
         case MS_S_FOR: (void)ms_body_unsupported(b); break;
         }
     }
@@ -535,6 +584,25 @@ static bool body_module_has_close(const MsCheck *c, const MsModule *syntax) {
     return false;
 }
 
+/* A module constant `NAME := value` (or `NAME: Type := value`) whose initializer is literals and
+ * operators. The Rust checker types it as a function of no parameters, in a scope of its own. */
+static void body_check_constant(MsBody *b, const MsDecl *d) {
+    const uint32_t first_binding = b->facts->bindings.count;
+    const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
+    b->first_binding = first_binding;
+    b->supported = true;
+    MsTy expected = MS_TY_NONE;
+    if (d->u.konst.ty != NULL) {
+        expected = body_annotation(b, d->u.konst.ty);
+    }
+    const MsTy ty = b->supported ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
+    if (b->supported && body_is_value_type(b, ty)) {
+        b->facts->body_checked[d->id] = true;
+    } else {
+        body_undo(b, first_binding, written_start);
+    }
+}
+
 void ms_module_check_bodies(MsCheck *c, MsModId module) {
     ms_module_resolve_types(c, module);
     MsModuleRow *row = &c->mods[module];
@@ -556,9 +624,15 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        const MsSymId sym = d->kind == MS_D_FN && !d->synthetic ? ms_decl_own_symbol(c, module, d) : MS_NONE;
-        if (sym != MS_NONE) {
+        const bool checkable = (d->kind == MS_D_FN || d->kind == MS_D_CONST) && !d->synthetic;
+        const MsSymId sym = checkable ? ms_decl_own_symbol(c, module, d) : MS_NONE;
+        if (sym == MS_NONE) {
+            continue;
+        }
+        if (d->kind == MS_D_FN) {
             body_check_function(&b, d, sym);
+        } else {
+            body_check_constant(&b, d);
         }
     }
     ms_buf_free(&b.written);
