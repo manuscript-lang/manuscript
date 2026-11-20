@@ -8,13 +8,13 @@
 #define LB_MAX_FN_PARAMS 16
 #define LB_MAX_CAPTURES 32
 
-bool lb_is_fn(const Lb *lb, MirTy ty) {
+bool lb_is_fn(Lb *lb, MirTy ty) {
     return ty != MIR_NONE && mir_ty_data(lb->m, mir_ty_unscoped(ty))->kind == MK_FN;
 }
 
 /* The MIR type of a checker function type: parameters that are plain values, and a scalar or
  * nothing as the result. MIR_NONE for anything else. */
-MirTy lb_fn_ty(const Lb *lb, MsTy ty) {
+MirTy lb_fn_ty(Lb *lb, MsTy ty) {
     const MsTyTable *tys = &lb->c->tys;
     const uint32_t count = tys->nparams[ty];
     const MsTyParam *params = ms_ty_params(tys, ty);

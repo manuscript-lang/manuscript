@@ -14,6 +14,7 @@
 
 #include "h2_serve.h"
 #include "headers.h"
+#include "ms_rt/base.h"
 #include "ms_rt/string.h"
 
 typedef struct MsXchgH2Conn MsXchgH2Conn;
@@ -34,6 +35,10 @@ void ms_xchg_h2_conn_drain(MsXchgH2Conn *conn);
 void ms_xchg_h2_conn_free(MsXchgH2Conn *conn);
 /* The serve state, for tests that drive the connection task by hand. */
 MsH2Serve *ms_xchg_h2_conn_serve(MsXchgH2Conn *conn);
+
+/* Wraps a request as the exchange object (ExchH) of the natives of xchg.h, which dispatch to the calls below
+ * (defined in exchange.c). NULL when out of memory. The object drops the request with its last handle. */
+MsObj *ms_exchange_from_h2(MsXchgH2 *request);
 
 /* The request. The strings are valid until the exchange is freed; `protocol` is "HTTP/2.0". */
 MsBytes ms_xchg_h2_method(const MsXchgH2 *x);

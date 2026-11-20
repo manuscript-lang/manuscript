@@ -13,3 +13,8 @@ msstd_xchg_share
 msstd_xchg_take_conn
 msstd_xchg_target
 msstd_xchg_write
+msstd_h2_open
+msstd_h2_run
+msstd_h2_next
+msstd_h2_drain
+msstd_h2_share

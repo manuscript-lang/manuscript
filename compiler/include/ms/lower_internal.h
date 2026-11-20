@@ -60,6 +60,7 @@ typedef struct Lb {
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
     const MsDecl *decl;   /* the function being lowered */
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
+    MirTy *type_of;       /* by checker type: the record it lowered to, or MIR_NONE */
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
     uint32_t nvars, cvars;
@@ -68,8 +69,8 @@ typedef struct Lb {
 } Lb;
 
 /* lower_closure.c: function values and lambdas. */
-MirTy lb_fn_ty(const Lb *lb, MsTy ty);
-bool lb_is_fn(const Lb *lb, MirTy ty);
+MirTy lb_fn_ty(Lb *lb, MsTy ty);
+bool lb_is_fn(Lb *lb, MirTy ty);
 LbVal lb_lambda(Lb *lb, const MsExpr *e);
 LbVal lb_function_value(Lb *lb, const MsExpr *e);
 LbVal lb_call_value(Lb *lb, const MsExpr *e);
@@ -77,5 +78,10 @@ LbVal lb_call_value(Lb *lb, const MsExpr *e);
 bool lb_closures(Lb *lb, bool ok);
 
 #define LB_FAIL ((LbVal){MIR_NONE, false})
+
+/* Records (lower_record.c, included after lower_body.c). */
+MirTy lr_type(Lb *lb, MsTy ty);
+LbVal lr_construct(Lb *lb, const MsExpr *call);
+LbVal lr_field(Lb *lb, const MsExpr *e);
 
 #endif
