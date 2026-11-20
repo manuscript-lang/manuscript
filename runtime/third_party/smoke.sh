@@ -22,3 +22,4 @@ run clibs_smoke_pcre2 -- pcre2
 run http1_test runtime/net/http1.c -- llhttp
 run tls_test runtime/net/tls.c -- ssl crypto
 run ws_test runtime/net/ws.c -- crypto
+run h2_test runtime/net/h2.c -- nghttp2
