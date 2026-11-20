@@ -2,12 +2,14 @@
 
 `libms`, the Manuscript compiler as a C library, replacing the Rust crates one stage at a time. Plan: [plan section 5, "Compiler"](../proposals/c-runtime.md) and the workstream list in the project files. This folder holds the MIR (below) and the front end so far: the lexer with the layout rules (`src/lex.c`), the syntax tree (`include/ms/ast.h`) and the parser (`src/parse.c`). Editor recovery (`partial.rs`), the formatter and diagnostic codes are not ported yet.
 
+`libms`, the Manuscript compiler as a C library, replacing the Rust crates one stage at a time. Plan: [plan section 5, "Compiler"](../proposals/c-runtime.md) and the workstream list in the project files. This folder holds the front end (the lexer with the layout rules `src/lex.c`, the syntax tree `include/ms/ast.h`, the parser `src/parse.c`) and the start of the checker: the tables every pass reads (`types.c`, `tables.c`) and the standard-library loader (`stdlib.c`). Editor recovery (`partial.rs`), the formatter and diagnostic codes are not ported yet.
+
 ```
 compiler/
-  include/ms/   public headers: libms.h (entry points and the stage table), driver.h, base.h (arena, names, diagnostics), token.h, lex.h, ast.h, parse.h, dump.h
+  include/ms/   public headers: libms.h (entry points and the stage table), driver.h, base.h (arena, names, diagnostics), token.h, lex.h, ast.h, parse.h, types.h, tables.h, stdlib.h, dump.h
   src/          one file per stage; libms.c includes them all, and building that one file builds the library
   tools/        ms (the thin executable over the driver), ms_syntax_dump: prints tokens and trees for the comparison below
-  tests/        syntax-diff.sh, mutate.c, driver-test.sh
+  tests/        syntax-diff.sh, mutate.c, driver-test.sh, check-diff.sh, types_test.c
 ```
 
 ## Rules
@@ -30,6 +32,10 @@ compiler/
 `sh compiler/tests/mir-diff.sh` (part of `make c-compiler-test`) compares the opcode tables, then the canonical text of every `.mir` file in the repository and of mutated copies, byte for byte with the Rust printer (`crates/ms-mir/examples/c_oracle.rs`). On rejected input only the error line is compared. The C parser differs from the Rust one in three ways: error messages do not quote tokens, non-ASCII outside string literals is rejected, and a stray token in a function header is an error (the Rust parser loops on it, so such mutants are dropped from the comparison).
 
 Next: verifier, layout tables, then the optimisation passes one at a time, each checked by running both implementations on the same MIR text.
+
+## The checker tables
+
+`MsTyTable` (`types.h`) is the one representation of checked types: a struct of arrays of interned type constructors, indexed by `MsTy`. Equal types share an index, so identity is an integer compare; type variables are never shared. `MsCheck` (`tables.h`) holds the type table, the symbol columns (name, identity text, kind, module, native binding, export flag, declaration, type, variable count) and one row per module with its scope. A pass adds columns beside these, indexed by the same ids. `ms_std_load` (`stdlib.h`) parses the bundled files, splits a file that mixes native operations with bodies into a native half and a `+source` half, and registers symbols as the Rust loader does. `compiler/tests/check-diff.sh` compares the result with `crates/ms-check/examples/c_oracle.rs` byte for byte. Later passes (resolution, types, interfaces, ownership, effects) add their own lines to that script.
 
 ## Driver and stages
 
