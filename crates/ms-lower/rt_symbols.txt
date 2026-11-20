@@ -200,6 +200,7 @@ msrt_map_contains_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8)
 msrt_map_copy(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut MapVal) @domain=map @leaf
 msrt_map_drop(m: *mut MapVal, kd: KeyDesc, vd: ValDesc) @domain=map @leaf
 msrt_map_entry_ptrs(m: *const MapVal, kd: KeyDesc, vd: ValDesc, i: i64, key_out: *mut *const u8, val_out: *mut *const u8) -> u8 @domain=map @leaf
+msrt_map_fill_strings(m: *mut MapVal, vd: ValDesc, keys: *mut StrVal, vals: *mut u8, stride: i64, n: i64) -> i64 @domain=map @leaf
 msrt_map_get(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut u8) -> u8 @domain=map @leaf
 msrt_map_get_ptr(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> *const u8 @domain=map @leaf
 msrt_map_get_ptr_sw8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> *const u8 @domain=map @leaf @pure

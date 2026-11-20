@@ -1669,13 +1669,6 @@ pub(crate) fn cleanup_height() -> usize {
     unsafe { (*CLEANUPS.ptr()).len() }
 }
 
-/// Whether the current task has registered cleanups.
-#[inline]
-pub(crate) fn has_cleanups() -> bool {
-    // SAFETY: the cleanup stack belongs to this isolate and follows the current task.
-    unsafe { !(*CLEANUPS.ptr()).is_empty() }
-}
-
 /// Runs the action behind `handle` (and newer pending ones first).
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -1754,19 +1747,6 @@ pub extern "C-unwind" fn msrt_cleanup_cancel(handle: usize) {
 pub extern "C" fn msrt_unwind_drops() -> u8 {
     // SAFETY: single threaded access.
     u8::from(unsafe { *UNWIND_DROPS.ptr() })
-}
-
-/// True when a callback may leave through a guard or a registered cleanup, so an operation that
-/// owns unpublished state around callbacks must register it for release.
-pub(crate) fn rollback_needed() -> bool {
-    // SAFETY: the current task's header stays live for this call.
-    unsafe {
-        (*msrt_isolate_hdr())
-            .guarded
-            .load(core::sync::atomic::Ordering::Relaxed)
-            != 0
-            || has_cleanups()
-    }
 }
 
 /// Runs `cleanup` if cancellation or a fault leaves `body` by a jump (which skips Rust

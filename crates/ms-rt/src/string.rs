@@ -13,33 +13,9 @@ use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    ErrSlot, FrameBuf, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
-    STR_INLINE_MAX, STR_LEN_MASK, StrVal, VecVal,
+    FrameBuf, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STR_INLINE_MAX,
+    STR_LEN_MASK, StrVal, VecVal,
 };
-
-/// Starts the caller's `err` slot (null when it wants no text) as the empty string, which owns
-/// no allocation, so any status leaves it valid.
-///
-/// # Safety
-/// `err` is null or writable memory for one string.
-pub(crate) unsafe fn init_err(err: ErrSlot) {
-    if !err.0.is_null() {
-        // SAFETY: the caller passes writable memory for one string.
-        unsafe { err.0.write(empty()) }
-    }
-}
-
-/// Stores `msg` in the `err` slot started by [`init_err`]; the status words come first in the
-/// error the program sees, then this detail.
-///
-/// # Safety
-/// As [`init_err`].
-pub(crate) unsafe fn store_err(err: ErrSlot, msg: &str) {
-    if !err.0.is_null() {
-        // SAFETY: the caller passes writable memory for one string; the empty start owns nothing.
-        unsafe { err.0.write(from_bytes(msg.as_bytes())) }
-    }
-}
 
 /// Bytes of a string.
 ///
@@ -4032,8 +4008,8 @@ mod tests {
                     assert!(v.is_inline(), "piece {i} is inline");
                 }
             }
-            crate::vec::drop_list(&mut views, &crate::desc::msrt_desc_string);
-            crate::vec::drop_list(&mut copies, &crate::desc::msrt_desc_string);
+            crate::vec::msrt_list_drop(&mut views, &crate::desc::msrt_desc_string);
+            crate::vec::msrt_list_drop(&mut copies, &crate::desc::msrt_desc_string);
             release(&s);
         }
     }

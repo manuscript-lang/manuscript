@@ -8,8 +8,7 @@
 use crate::alloc;
 use crate::desc::{msrt_desc_string, slot_drop};
 use crate::ffi::{AbiHandle, AbiType, FromAbi, ObjCell, ObjMut};
-use crate::map;
-use crate::map::{LIVE, Layout};
+use crate::map::{self, LIVE, Layout, msrt_map_drop, msrt_map_fill_strings};
 use crate::string::from_bytes;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
@@ -291,8 +290,6 @@ unsafe impl<'a> FromAbi<'a> for ValueOut<'a> {
 
 pub struct TreeBuilder<'a> {
     desc: &'a TypeDesc,
-    /// Layout of a `String`-keyed map of the values.
-    map_layout: Layout,
     ctor: Ctor,
     /// Words per value.
     words: usize,
@@ -315,7 +312,6 @@ impl<'a> TreeBuilder<'a> {
         let words = size / 8;
         TreeBuilder {
             desc,
-            map_layout: map::string_map_layout(desc),
             ctor: ctor.0,
             words,
             vals: Vec::with_capacity(capacity * words),
@@ -403,23 +399,23 @@ impl<'a> TreeBuilder<'a> {
         let (from, key_from) = self.marks.pop().expect("open object");
         let n = self.keys.len() - key_from;
         let mut m = map::empty();
-        m.desc = &msrt_desc_string;
         // SAFETY: the keys and values are live completed slots, consumed by the fill up to the
         // position it returns; the rest are released here.
         let repeated = unsafe {
             let keys = self.keys.as_mut_ptr().add(key_from);
             let vals: *mut u8 = self.vals.as_mut_ptr().add(from).cast();
             let stride = self.words * 8;
-            match map::fill_strings(&mut m, &self.map_layout, keys, vals, stride, n) {
-                Ok(()) => None,
-                Err(at) => {
-                    map::drop_map(&raw mut m, &msrt_desc_string, Some(self.desc));
-                    for i in at..n {
-                        slot_drop(&msrt_desc_string, keys.add(i).cast());
-                        slot_drop(self.desc, vals.add(i * stride));
-                    }
-                    Some(at)
+            let at = msrt_map_fill_strings(&mut m, self.desc, keys, vals, stride as i64, n as i64);
+            if at < 0 {
+                None
+            } else {
+                let at = at as usize;
+                msrt_map_drop(&raw mut m, &msrt_desc_string, self.desc);
+                for i in at..n {
+                    slot_drop(&msrt_desc_string, keys.add(i).cast());
+                    slot_drop(self.desc, vals.add(i * stride));
                 }
+                Some(at)
             }
         };
         self.keys.truncate(key_from);

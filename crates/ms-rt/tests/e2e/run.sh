@@ -7,10 +7,12 @@ root=$(cd "$here/../../../.." && pwd)
 target=${CARGO_TARGET_DIR:-$root/target}
 case "$target" in /*) ;; *) target="$root/$target" ;; esac
 (cd "$root" && cargo build -q --locked -p ms-native --target-dir "$target")
+# The runtime's C half (lists, maps, descriptors, ...) is built by ms-rt's build script beside the Rust half.
+c_archive=$(ls -t "$target"/debug/build/ms-rt-*/out/libms_c.a | head -1)
 work=$(mktemp -d)
 profile_pid=
 trap 'rm -rf "$work"; if [ -n "$profile_pid" ]; then rm -f "/tmp/perf-$profile_pid.map"; fi' EXIT
-cc -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -o "$work/h" "$here/harness.c" "$target/debug/libms_native.a" -lpthread -ldl -lm
+cc -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -o "$work/h" "$here/harness.c" "$target/debug/libms_native.a" "$c_archive" -lpthread -ldl -lm
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 out=$("$work/h" ok 2>"$work/err") && st=0 || st=$?
@@ -67,7 +69,7 @@ grep -q 'busy [0-9]' "$work/prof" || fail "profile: no busy samples: $(cat "$wor
 
 # The adjacent C benchmark is also a native ABI consumer. Check its results,
 # without comparing timings or requiring the Go performance baseline.
-cc -O2 -fno-omit-frame-pointer -o "$work/bench" "$here/../bench/bench.c" "$target/debug/libms_native.a" -lpthread -ldl -lm
+cc -O2 -fno-omit-frame-pointer -o "$work/bench" "$here/../bench/bench.c" "$target/debug/libms_native.a" "$c_archive" -lpthread -ldl -lm
 "$work/bench" >"$work/bench.out" || fail "benchmark: wrong result or exit status"
 for name in list_push_int list_sort_int map_insert_int map_get_int string_concat_len; do
     grep -q "^$name [0-9]" "$work/bench.out" || fail "benchmark: $name missing"
