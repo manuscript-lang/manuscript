@@ -33,7 +33,10 @@ else
 fi
 
 # Effect directives on every source file, then generated graphs, each compared with the Rust result.
-find . -name '*.ms' -not -path './target/*' -not -path './.git/*' | sort > "$out/sources.txt"
+# The fixture is written here because the repository forbids carriage returns in stored files: it has CRLF
+# and CR-only line ends, non-breaking and em spaces, empty names and directives without a separator.
+printf '// ms: allow_effect std.fs.read\r\n//   ms:  allow_effect   db.*  \r\n\r\n\302\240// ms: effect a.b\342\200\203\n// ms: effect  \n// ms:effect x\n// ms: allow_effect\nfn f() {}\n\n// ms: allow_effect *\n\n// ms: effect z\r\r\nfn g() {}\n// plain\nlet x = 1' > "$out/directives-fixture.ms"
+{ find . -name '*.ms' -not -path './target/*' -not -path './.git/*' | sort; echo "$out/directives-fixture.ms"; } > "$out/sources.txt"
 xargs "$effects_oracle" directives < "$out/sources.txt" > "$out/directives.rust"
 xargs "$out/effect-dump" directives < "$out/sources.txt" > "$out/directives.c"
 if cmp -s "$out/directives.rust" "$out/directives.c"; then
