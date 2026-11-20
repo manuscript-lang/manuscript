@@ -1,4 +1,5 @@
 /* UTF-8 decoding. Ported from crates/ms-rt/src/utf8.rs: an invalid byte decodes as U+FFFD with width 1. */
+#include "ms_rt/safe.h"
 #include "ms_rt/utf8.h"
 
 static inline bool cont(const uint8_t *s, size_t n, size_t i, uint8_t lo, uint8_t hi, uint32_t *bits) {
@@ -44,17 +45,11 @@ MsRune ms_utf8_decode_multi(const uint8_t *s, size_t n) {
     return err;
 }
 
-static inline uint64_t load64(const uint8_t *p) {
-    uint64_t v;
-    __builtin_memcpy(&v, p, sizeof v);
-    return v;
-}
-
 bool ms_utf8_is_ascii(const uint8_t *s, size_t n) {
     size_t i = 0;
     uint64_t acc = 0;
     for (; i + 8 <= n; i += 8) {
-        acc |= load64(s + i);
+        acc |= ms_load64(s + i);
     }
     for (; i < n; i++) {
         acc |= s[i];
@@ -68,7 +63,7 @@ size_t ms_utf8_count(const uint8_t *s, size_t n) {
     const uint64_t low = UINT64_C(0x0101010101010101);
     size_t continuation = 0, i = 0;
     for (; i + 8 <= n; i += 8) {
-        uint64_t w = load64(s + i);
+        uint64_t w = ms_load64(s + i);
         continuation += (size_t)__builtin_popcountll((w >> 7) & ~(w >> 6) & low);
     }
     for (; i < n; i++) {
@@ -106,4 +101,15 @@ bool ms_utf8_is_space(uint32_t c) {
     }
     return c == 0x85 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200A) || c == 0x2028 || c == 0x2029 ||
            c == 0x202F || c == 0x205F || c == 0x3000;
+}
+
+/* The byte offset reached by moving `count` scalars forward from the start of the n bytes at s, or n when fewer
+ * remain. */
+size_t ms_utf8_offset_of(const uint8_t *s, size_t n, size_t count) {
+    size_t offset = 0;
+    while (count > 0 && offset < n) {
+        offset += ms_utf8_decode(s + offset, n - offset).width;
+        count--;
+    }
+    return offset;
 }

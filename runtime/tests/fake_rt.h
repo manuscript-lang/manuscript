@@ -46,11 +46,5 @@ void msfault_raise(uint8_t kind, const void *message, size_t length) {
     fprintf(stderr, "FAULT(%u) %.*s\n", kind, (int)length, (const char *)message);
     exit(1);
 }
-/* An owned string (tag bits 00): the allocation and the byte length. */
-void msrt_string_from_bytes(const uint8_t *bytes, size_t length, MsStr *out) {
-    out->ptr_word = malloc(length + 1);
-    memcpy(out->ptr_word, bytes, length);
-    out->tagged = length;
-}
 
 #endif

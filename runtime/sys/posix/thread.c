@@ -14,6 +14,7 @@ extern int pthread_attr_destroy(MsThreadAttr *attr);
 extern int pthread_attr_setstacksize(MsThreadAttr *attr, size_t size);
 extern int pthread_create(uintptr_t *thread, const MsThreadAttr *attr, void *(*start)(void *), void *arg);
 extern int pthread_join(uintptr_t thread, void **result);
+extern int sched_yield(void);
 extern int nanosleep(const MsTimespec *request, MsTimespec *remaining);
 
 #define MS_MILLISECONDS_PER_SECOND 1000
@@ -55,6 +56,8 @@ uintptr_t ms_sys_thread_spawn(size_t stack, void (*start)(void *), void *arg) {
 }
 
 void ms_sys_thread_join(uintptr_t thread) { pthread_join(thread, NULL); }
+
+void ms_sys_yield(void) { sched_yield(); }
 
 void ms_sys_sleep_ms(uint32_t ms) {
     MsTimespec request = {

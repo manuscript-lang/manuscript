@@ -62,6 +62,29 @@ fn codes(out: &mut String, path: &str, text: &str, file: &Arc<str>) {
     }
 }
 
+/// Prints `kind id offset` for the imports, declarations, statements and expressions of a module,
+/// in walk order, to check that node ids are allocated as the C parser allocates them.
+struct IdLines<'a>(&'a mut String);
+
+impl ms_syntax::visit::Visitor for IdLines<'_> {
+    fn stmt(&mut self, s: &ms_syntax::ast::Stmt) {
+        let _ = writeln!(self.0, "S {} {}", s.id.0, s.pos.offset);
+    }
+    fn expr(&mut self, e: &ms_syntax::ast::Expr) {
+        let _ = writeln!(self.0, "E {} {}", e.id.0, e.pos.offset);
+    }
+}
+
+fn node_ids(out: &mut String, m: &ms_syntax::ast::Module) {
+    for i in &m.imports {
+        let _ = writeln!(out, "I {} {}", i.id.0, i.pos.offset);
+    }
+    for d in &m.decls {
+        let _ = writeln!(out, "D {} {}", d.id.0, d.pos.offset);
+        ms_syntax::visit::walk_decl(&mut IdLines(out), d);
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mode = args[0].as_str();
@@ -87,6 +110,13 @@ fn main() {
                     diag(&mut out, d);
                 }
             }
+            "ids" => match parse(&file, text) {
+                Ok(m) => {
+                    node_ids(&mut out, &m);
+                    let _ = writeln!(out, "nodes {}", m.node_count);
+                }
+                Err(d) => diag(&mut out, &d),
+            },
             "tokens" => match lex(&file, text) {
                 Ok(l) => {
                     for t in &l.tokens {

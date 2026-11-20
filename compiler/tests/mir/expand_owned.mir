@@ -1,0 +1,24 @@
+module "expand_owned"
+type Plain { a: int, b: str, c: list<str> }
+alt Shape { Circle(r: int, tag: str), Rect(w: int, h: int), Empty }
+alt Tree { Leaf(v: int), Branch(l: Tree, r: Tree) }
+entry @main
+fn @shapes(%s: Shape, %p: Plain, %o: opt<str>, %t: Tree) -> int {
+b0:
+  %c: Shape = alt.own %s
+  alt.release Shape.Circle %c
+  %tag: str = alt.unbox Shape.Circle.tag %s
+  drop %tag
+  type.release Plain.a %p
+  %v: str = opt.unbox %o
+  drop %v
+  %w: Tree = alt.own %t
+  alt.release Tree.Branch.l %w
+  %z: int = iconst 0
+  ret %z
+}
+fn @main() -> int {
+b0:
+  %z: int = iconst 0
+  ret %z
+}

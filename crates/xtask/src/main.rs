@@ -10,7 +10,7 @@
 #[path = "../../../runtime/build_c.rs"]
 mod build_c;
 
-use build_c::{CRuntime, archiver, c_compiler, compile_c_objects, plan_c_runtime};
+use build_c::{CRuntime, archiver, build_c_runtime, c_compiler};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
@@ -795,12 +795,12 @@ fn build_archive(
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    let plan = plan_c_runtime(root, triple)?;
-    if plan.has_std_source(root, "crypto.c") {
+    let plan = build_c_runtime(root, target, triple)?;
+    if plan.has_crypto() {
         // `ms-native` then leaves the Rust `ms-std-crypto` out: `runtime/std/crypto*.c` define every `msstd_crypto_*`.
         command.env("MS_C_CRYPTO", "1");
     }
-    if plan.has_reactor(root) {
+    if plan.has_reactor() {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
     }
@@ -830,8 +830,7 @@ fn build_archive(
     Ok(archive)
 }
 
-/// Compiles the planned C sources for `triple` and adds the objects, and every member of the libraries they
-/// use, to `archive`.
+/// Adds the C objects the CMake build made for `triple`, and every member of the libraries they use, to `archive`.
 fn add_c_runtime(
     root: &Path,
     target: &Path,
@@ -839,15 +838,27 @@ fn add_c_runtime(
     plan: &CRuntime,
     archive: &Path,
 ) -> Result<(), String> {
-    let files = compile_c_objects(root, target, triple, plan)?;
+    let files = &plan.objects;
     if files.is_empty() {
         return Ok(());
     }
     let ar = archiver(root, triple);
-    let status = Command::new(&ar)
-        .arg("rcs")
-        .arg(archive)
-        .args(&files)
+    let mut command = Command::new(&ar);
+    command.arg("rcs").arg(archive);
+    if cfg!(windows) {
+        // The folded library members overflow Windows' 32 KiB command line; llvm-ar reads a response file.
+        let list = target.join("c-objects/members.rsp");
+        let names: Vec<String> = files
+            .iter()
+            .map(|f| f.to_string_lossy().replace('\\', "/"))
+            .collect();
+        std::fs::write(&list, names.join("\n"))
+            .map_err(|e| format!("write {}: {e}", list.display()))?;
+        command.arg(format!("@{}", list.display()));
+    } else {
+        command.args(files);
+    }
+    let status = command
         .status()
         .map_err(|e| format!("run {}: {e}", ar.display()))?;
     if !status.success() {

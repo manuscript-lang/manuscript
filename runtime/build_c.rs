@@ -1,66 +1,29 @@
 //! The C half of the runtime build, shared by `cargo xtask runtime` (crates/xtask) and the build script of `ms-rt`
-//! (crates/ms-rt/build.rs), which both include this file with `#[path]`: which C sources a target compiles, which
-//! libraries they need (found through `runtime/third_party/libs.sh`), and the objects, library members included.
-//! No `cc` crate: the compilers are run directly.
+//! (crates/ms-rt/build.rs), which both include this file with `#[path]`. What to compile is decided by the CMake
+//! project at the repository root (`CMakeLists.txt`, `cmake/`); this file only picks the compiler and the library
+//! folder for a target, runs `cmake` with Ninja, and reads back the object list it leaves.
 #![allow(dead_code)]
 
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// What `add_c_runtime` compiles and folds into one runtime archive: the C sources for the target, the flags
-/// that find the libraries' headers, and the static archives of every library those sources include.
+/// What the CMake build leaves for one target.
 pub struct CRuntime {
-    pub sources: Vec<PathBuf>,
-    pub cflags: Vec<String>,
-    /// Static archives of the libraries the sources use, to fold into the runtime archive.
-    pub libraries: Vec<PathBuf>,
+    /// Our objects and every member of the libraries they use, to add to the runtime archive.
+    pub objects: Vec<PathBuf>,
+    features: Vec<String>,
 }
 
 impl CRuntime {
-    /// Whether `runtime/std/<name>` is part of the archive.
-    pub fn has_std_source(&self, root: &Path, name: &str) -> bool {
-        let wanted = root.join("runtime/std").join(name);
-        self.sources.contains(&wanted)
+    /// Whether `runtime/std/crypto*.c` is part of the archive; `ms-native` then leaves the Rust crypto out.
+    pub fn has_crypto(&self) -> bool {
+        self.features.iter().any(|f| f == "crypto")
     }
 
     /// Whether the libuv reactor (`runtime/io`) is part of the archive; `ms-rt` then leaves its mio poller out.
-    pub fn has_reactor(&self, root: &Path) -> bool {
-        let io = root.join("runtime/io");
-        self.sources.iter().any(|s| s.starts_with(&io))
+    pub fn has_reactor(&self) -> bool {
+        self.features.iter().any(|f| f == "reactor")
     }
-}
-
-/// The library names (as `libs.sh` knows them) whose headers `source` includes, directly or through a header
-/// of its own folder.
-pub fn libraries_of(source: &Path) -> Vec<&'static str> {
-    const HEADERS: [(&str, &[&str]); 6] = [
-        ("<uv.h>", &["uv"]),
-        ("<llhttp.h>", &["llhttp"]),
-        ("<nghttp2/", &["nghttp2"]),
-        ("<openssl/", &["ssl", "crypto"]),
-        ("<pcre2.h>", &["pcre2"]),
-        ("<zlib.h>", &["z"]),
-    ];
-    let mut text = std::fs::read_to_string(source).unwrap_or_default();
-    let local: Vec<String> = text
-        .lines()
-        .filter_map(|l| l.trim().strip_prefix("#include \""))
-        .filter_map(|l| l.split('"').next())
-        .map(str::to_string)
-        .collect();
-    for header in local {
-        if let Some(dir) = source.parent() {
-            text.push_str(&std::fs::read_to_string(dir.join(header)).unwrap_or_default());
-        }
-    }
-    let mut found = Vec::new();
-    for (include, names) in HEADERS {
-        if text.contains(&format!("#include {include}")) {
-            found.extend_from_slice(names);
-        }
-    }
-    found
 }
 
 /// The C compiler for the musl runtime: musl's own headers decide how libuv and OpenSSL compile (`musl-tools`).
@@ -68,278 +31,143 @@ pub fn musl_compiler() -> PathBuf {
     std::env::var_os("MS_MUSL_CC").map_or_else(|| PathBuf::from("musl-gcc"), PathBuf::from)
 }
 
-/// Runs `libs.sh` (the one place that names library paths) for `triple`. The musl archive takes pinned builds
-/// made with the musl compiler (system packages are glibc's); the others take the system packages.
-pub fn libs_sh(root: &Path, triple: Option<&str>, args: &[&str]) -> Result<Vec<String>, String> {
-    let mut command = Command::new("sh");
-    if triple.is_some_and(|t| t.contains("musl")) {
-        command
-            .env("MS_C_LIBS", "pinned")
-            .env("CC", musl_compiler());
+/// The C compiler for `triple`: llvm-mingw's clang (`MS_MINGW`, else the tree `toolchain/fetch-mingw.sh` leaves
+/// in `target/llvm-bundle/mingw`) for Windows, `musl-gcc` for musl, else `clang`.
+pub fn c_compiler(root: &Path, triple: &str, arch: &str) -> PathBuf {
+    if triple.contains("windows") {
+        let mingw = std::env::var_os("MS_MINGW")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("target/llvm-bundle/mingw"));
+        mingw.join("bin").join(format!("{arch}-w64-mingw32-clang"))
+    } else if triple.contains("musl") {
+        musl_compiler()
+    } else {
+        PathBuf::from("clang")
     }
-    command
-        .arg(root.join("runtime/third_party/libs.sh"))
-        .args(args);
-    if let Some(t) = triple {
-        command.env("MS_C_TRIPLE", t);
-    }
-    let output = command.output().map_err(|e| format!("run libs.sh: {e}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "libs.sh {} failed: {}",
-            args.join(" "),
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-    Ok(String::from_utf8_lossy(&output.stdout)
-        .split_whitespace()
-        .map(str::to_string)
-        .collect())
-}
-
-/// Whether the C libraries are wired for `triple`. Each target joins as its build is proven (workstream W0b);
-/// a source that needs a library the target lacks stays out of that archive and the Rust runtime serves it.
-pub fn c_libs_wired(triple: Option<&str>) -> bool {
-    match std::env::consts::OS {
-        "linux" => triple.is_none_or(|t| t.ends_with("linux-gnu") || t.ends_with("linux-musl")),
-        "macos" => true,
-        _ => false,
-    }
-}
-
-/// Folders of `runtime` that hold code for one platform only: the target's own is compiled, the rest are not.
-pub fn platform_dirs(triple: Option<&str>) -> Vec<&'static str> {
-    let t = triple.map(str::to_string).unwrap_or_else(|| {
-        format!(
-            "{}-{}",
-            std::env::consts::ARCH,
-            match std::env::consts::OS {
-                "linux" => "unknown-linux-gnu",
-                "macos" => "apple-darwin",
-                _ => "pc-windows-gnullvm",
-            }
-        )
-    });
-    let mut dirs = Vec::new();
-    if t.contains("linux") || t.contains("apple") {
-        dirs.push("posix");
-    }
-    if t.contains("linux") {
-        dirs.push("linux");
-    }
-    if t.ends_with("linux-gnu") {
-        dirs.push("glibc");
-    }
-    if t.contains("musl") {
-        dirs.push("musl");
-    }
-    if t.contains("apple") {
-        dirs.push("darwin");
-    }
-    if t.contains("windows") {
-        dirs.push("windows");
-    }
-    dirs
-}
-
-/// Every C source of the runtime (`runtime/{sys,core,io,net,std}`; `third_party` and `tests` are not part of it).
-/// A folder named for a platform (`posix` for Linux and macOS, `linux`, `glibc`, `musl`, `darwin`, `windows`) is compiled only for it.
-pub fn c_sources(dir: &Path, platform: &[&str], found: &mut Vec<PathBuf>) {
-    const PLATFORMS: [&str; 6] = ["posix", "linux", "glibc", "musl", "darwin", "windows"];
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        if path.is_dir() {
-            let other = PLATFORMS.contains(&name.as_ref()) && !platform.contains(&name.as_ref());
-            if name != "third_party" && name != "tests" && !other {
-                c_sources(&path, platform, found);
-            }
-        } else if path.extension().is_some_and(|e| e == "c") {
-            found.push(path);
-        }
-    }
-}
-
-/// Plans the C half of the runtime archive for `triple`.
-pub fn plan_c_runtime(root: &Path, triple: Option<&str>) -> Result<CRuntime, String> {
-    let runtime = root.join("runtime");
-    let platform = platform_dirs(triple);
-    let mut sources = Vec::new();
-    for layer in ["sys", "core", "io", "net", "std"] {
-        c_sources(&runtime.join(layer), &platform, &mut sources);
-    }
-    sources.sort();
-    let wired = c_libs_wired(triple);
-    // The libuv reactor replaces the mio poller, which changes every program; it is opt-in (`MS_C_REACTOR=1`)
-    // until the corpus passes with it on every target (workstream W5).
-    let io = runtime.join("io");
-    let reactor = std::env::var_os("MS_C_REACTOR").is_some();
-    sources.retain(|s| (wired || libraries_of(s).is_empty()) && (reactor || !s.starts_with(&io)));
-    // The PCRE2 regex natives change the pattern dialect, so they join every target together (workstream W8):
-    // opt-in with `MS_C_REGEX=1` until Windows has the libraries too. Removal: delete this filter with `ms-std-regex`.
-    let regex = std::env::var_os("MS_C_REGEX").is_some();
-    sources.retain(|s| {
-        regex
-            || !s
-                .file_name()
-                .is_some_and(|n| n.to_string_lossy().starts_with("regex"))
-    });
-    let mut names: Vec<&str> = sources.iter().flat_map(|s| libraries_of(s)).collect();
-    names.sort_unstable();
-    names.dedup();
-    if names.is_empty() {
-        return Ok(CRuntime {
-            sources,
-            cflags: Vec::new(),
-            libraries: Vec::new(),
-        });
-    }
-    let cflags = libs_sh(root, triple, &["cflags"])?;
-    let mut args = vec!["archives"];
-    args.extend(&names);
-    let libraries = libs_sh(root, triple, &args)?
-        .into_iter()
-        .map(PathBuf::from)
-        .collect();
-    Ok(CRuntime {
-        sources,
-        cflags,
-        libraries,
-    })
 }
 
 /// The archiver for `triple`: llvm-mingw's on Windows, else `ar`.
 pub fn archiver(root: &Path, triple: Option<&str>) -> PathBuf {
     match triple {
+        None if cfg!(windows) => PathBuf::from("llvm-ar"),
         Some(t) if t.contains("windows") => c_compiler(root, t, std::env::consts::ARCH)
             .with_file_name(format!("llvm-ar{}", std::env::consts::EXE_SUFFIX)),
         _ => PathBuf::from("ar"),
     }
 }
 
-/// Compiles the planned C sources for `triple` under `work` and returns the objects: ours, and every member of
-/// the libraries they use (the linker takes a member only when a program reaches it). The objects define the
-/// symbols the Rust runtime compiles out (`runtime/symbols/<module>.txt`).
-pub fn compile_c_objects(
-    root: &Path,
-    work: &Path,
-    triple: Option<&str>,
-    plan: &CRuntime,
-) -> Result<Vec<PathBuf>, String> {
-    let runtime = root.join("runtime");
-    if plan.sources.is_empty() {
-        return Ok(Vec::new());
+/// Runs `program args...` and reports a failure with its output.
+fn run(command: &mut Command, what: &str) -> Result<String, String> {
+    let output = command.output().map_err(|e| {
+        format!("{what}: {e} (the C build needs cmake and ninja: `sh runtime/third_party/libs.sh install`)")
+    })?;
+    if !output.status.success() {
+        return Err(format!(
+            "{what} failed:\n{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
     }
-    let arch = std::env::consts::ARCH;
-    let host = triple.is_none_or(|t| t.ends_with("linux-gnu"));
-    let cc = match triple {
-        Some(t) if t.contains("windows") => c_compiler(root, t, arch),
-        Some(t) if t.contains("musl") => musl_compiler(),
-        _ => PathBuf::from("clang"),
-    };
-    let objects = work.join("c-objects");
-    let _ = std::fs::remove_dir_all(&objects);
-    std::fs::create_dir_all(&objects).map_err(|e| e.to_string())?;
-    let mut files = Vec::new();
-    for (n, source) in plan.sources.iter().enumerate() {
-        let stem = source.file_stem().and_then(|s| s.to_str()).unwrap_or("x");
-        let object = objects.join(format!("{n}-{stem}.o"));
-        let mut command = Command::new(&cc);
-        command
-            .args(["-c", "-O2", "-std=c11", "-fPIC", "-fno-stack-protector"])
-            // A null check stays even where an attribute says the pointer is never null.
-            .args(["-fno-strict-aliasing", "-fno-delete-null-pointer-checks"])
-            // A fault walks frame pointers to name the program line that called into the runtime, and
-            // the Rust runtime is built with them (.cargo/config.toml), so C frames must keep theirs.
-            .arg("-fno-omit-frame-pointer")
-            .args(["-Wall", "-Wextra", "-Werror"])
-            .arg("-I")
-            .arg(runtime.join("include"))
-            .arg("-I")
-            .arg(source.parent().unwrap_or(&runtime))
-            .args(&plan.cflags)
-            .arg("-o")
-            .arg(&object)
-            .arg(source);
-        // glibc and macOS check libc calls whose destination size is known (documentation/contributing/c-style.md).
-        // Level 2: its `__*_chk` entry points are all older than the glibc floor.
-        if !triple.is_some_and(|t| t.contains("windows") || t.contains("musl")) {
-            command.arg("-D_FORTIFY_SOURCE=2");
-        }
-        // `musl-gcc` already targets musl, and llvm-mingw's clang wrapper mingw-w64 (Rust's `gnullvm` is not a
-        // clang environment); a clang for another target needs it named.
-        if let Some(t) = triple.filter(|t| !host && !t.contains("musl") && !t.contains("windows")) {
-            command.arg(format!("--target={t}"));
-        }
-        let status = command
-            .status()
-            .map_err(|e| format!("run {}: {e}", cc.display()))?;
-        if !status.success() {
-            return Err(format!("compiling {} failed", source.display()));
-        }
-        files.push(object);
-    }
-    let ar = archiver(root, triple);
-    let run_ar = |args: &[&OsStr], dir: &Path| -> Result<std::process::Output, String> {
-        Command::new(&ar)
-            .args(args)
-            .current_dir(dir)
-            .output()
-            .map_err(|e| format!("run {}: {e}", ar.display()))
-    };
-    // Each library's members are extracted under a prefix naming the library, so equal member names in two
-    // libraries stay apart (`ar rcs` replaces by name). A library with equal names inside itself cannot be
-    // extracted whole; that is reported, not folded wrong.
-    for (n, library) in plan.libraries.iter().enumerate() {
-        let dir = objects.join(format!("lib{n}"));
-        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-        let listing = run_ar(&["t".as_ref(), library.as_os_str()], &dir)?;
-        if !listing.status.success() {
-            return Err(format!("listing {} failed", library.display()));
-        }
-        let members: Vec<String> = String::from_utf8_lossy(&listing.stdout)
-            .lines()
-            .filter(|m| m.ends_with(".o") || m.ends_with(".obj"))
-            .map(str::to_string)
-            .collect();
-        let mut unique = members.clone();
-        unique.sort();
-        unique.dedup();
-        if unique.len() != members.len() {
-            return Err(format!(
-                "{} has members with equal names",
-                library.display()
-            ));
-        }
-        let extracted = run_ar(&["x".as_ref(), library.as_os_str()], &dir)?;
-        if !extracted.status.success() {
-            return Err(format!("extracting {} failed", library.display()));
-        }
-        let stem = library
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("lib");
-        for member in &members {
-            let renamed = dir.join(format!("{stem}.{member}"));
-            std::fs::rename(dir.join(member), &renamed).map_err(|e| format!("{member}: {e}"))?;
-            files.push(renamed);
-        }
-    }
-    Ok(files)
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-/// The C compiler for the runtime's C sources: `cc` where the target is Linux, else llvm-mingw's clang
-/// (`MS_MINGW`, else the tree `toolchain/fetch-mingw.sh` leaves in `target/llvm-bundle/mingw`).
-pub fn c_compiler(root: &Path, triple: &str, arch: &str) -> PathBuf {
-    if !triple.contains("windows") {
-        return PathBuf::from("cc");
+/// The folder holding the C libraries (`include/`, `lib/lib*.a`) for `triple`, when they do not come from
+/// pkg-config: pinned builds for musl (system packages are glibc's), MSYS2's packages for Windows.
+fn libs_prefix(root: &Path, triple: &str) -> Result<Option<PathBuf>, String> {
+    if triple.contains("musl") {
+        let out = run(
+            Command::new("sh")
+                .arg(root.join("runtime/third_party/build.sh"))
+                .arg(triple)
+                .env("MS_C_LIBS", "pinned")
+                .env("CC", musl_compiler()),
+            "build.sh",
+        )?;
+        return Ok(Some(PathBuf::from(out)));
     }
-    let mingw = std::env::var_os("MS_MINGW")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| root.join("target/llvm-bundle/mingw"));
-    mingw.join("bin").join(format!("{arch}-w64-mingw32-clang"))
+    if triple.contains("windows") {
+        let msys = std::env::var("MS_MSYS2").unwrap_or_else(|_| "C:/msys64".into());
+        let env = if triple.starts_with("aarch64") {
+            "clangarm64"
+        } else {
+            "clang64"
+        };
+        return Ok(Some(PathBuf::from(format!("{msys}/{env}"))));
+    }
+    Ok(None)
+}
+
+/// Configures and builds the C half of the runtime archive for `triple` (the host when `None`) in `work/cmake`
+/// and returns the objects to add to the archive. ccache is used when it is installed (`CMakeLists.txt`).
+pub fn build_c_runtime(root: &Path, work: &Path, triple: Option<&str>) -> Result<CRuntime, String> {
+    let build = work.join("cmake");
+    let arch = std::env::consts::ARCH;
+    let mut configure = Command::new("cmake");
+    configure
+        .arg("-S")
+        .arg(root)
+        .arg("-B")
+        .arg(&build)
+        .args(["-G", "Ninja", "-DMS_BUILD_TESTS=OFF", "-DCMAKE_BUILD_TYPE="])
+        // The build is the same wherever it runs: the caller's flags do not reach it.
+        .env_remove("CFLAGS")
+        .env_remove("LDFLAGS");
+    // A named archiver (llvm-mingw's) is told to CMake; a bare `ar` is found there.
+    let ar = archiver(root, triple);
+    if ar.is_absolute() {
+        configure.arg(format!("-DCMAKE_AR={}", ar.display()));
+    }
+    if let Some(triple) = triple {
+        configure.arg(format!("-DMS_TRIPLE={triple}"));
+        configure.arg(format!(
+            "-DCMAKE_C_COMPILER={}",
+            c_compiler(root, triple, arch).display()
+        ));
+        // `musl-gcc` already targets musl and llvm-mingw's clang wrapper mingw-w64; a clang for another
+        // target is told which.
+        let host = triple.ends_with("linux-gnu");
+        if !host && !triple.contains("musl") && !triple.contains("windows") {
+            configure.arg(format!("-DCMAKE_C_COMPILER_TARGET={triple}"));
+        }
+        if let Some(prefix) = libs_prefix(root, triple)? {
+            configure.arg("-DMS_C_LIBS=prefix");
+            configure.arg(format!("-DMS_LIBS_PREFIX={}", prefix.display()));
+            if triple.contains("windows") {
+                // MSYS2 keeps its headers in one prefix; llvm-mingw's own come first.
+                configure.arg("-DMS_LIBS_IDIRAFTER=ON");
+                configure.arg("-DMS_LIBS_DEFINES=NGHTTP2_STATICLIB;PCRE2_STATIC");
+            }
+        }
+    } else {
+        configure.arg("-DCMAKE_C_COMPILER=clang");
+        if cfg!(windows) {
+            // A Windows host's own build (unit tests) targets MSVC.
+            configure.arg(format!("-DCMAKE_C_COMPILER_TARGET={arch}-pc-windows-msvc"));
+        }
+    }
+    if std::env::var_os("MS_C_REGEX").is_some() {
+        configure.arg("-DMS_C_REGEX=ON");
+    }
+    run(&mut configure, "cmake configure")?;
+    run(
+        Command::new("cmake")
+            .arg("--build")
+            .arg(&build)
+            .args(["--target", "ms_runtime"]),
+        "cmake build",
+    )?;
+    let read = |name: &str| -> Result<Vec<String>, String> {
+        let file = build.join(name);
+        let text =
+            std::fs::read_to_string(&file).map_err(|e| format!("read {}: {e}", file.display()))?;
+        Ok(text.lines().map(str::to_string).collect())
+    };
+    Ok(CRuntime {
+        objects: read("c-objects.txt")?
+            .into_iter()
+            .filter(|l| !l.is_empty())
+            .map(PathBuf::from)
+            .collect(),
+        features: read("c-features.txt")?,
+    })
 }

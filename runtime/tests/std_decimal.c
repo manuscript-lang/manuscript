@@ -40,12 +40,6 @@ void msfault_raise(uint8_t kind, const void *message, size_t length) {
     fault_code = kind;
     longjmp(fault_jump, 1);
 }
-void msrt_string_from_bytes(const uint8_t *bytes, size_t length, MsStr *s) {
-    uint8_t *const copy = malloc(length + 1);
-    memcpy(copy, bytes, length);
-    s->ptr_word = copy;
-    s->tagged = length;
-}
 
 typedef __int128 i128;
 typedef unsigned __int128 u128;

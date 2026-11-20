@@ -1,0 +1,9 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: bool = bconst true
+  br l(%a)
+l(%p: int):
+  ret %p
+}

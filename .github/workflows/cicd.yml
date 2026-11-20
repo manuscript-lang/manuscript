@@ -251,8 +251,23 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+      # The reactor test links libuv, the std tests PCRE2 and OpenSSL: the same system packages the runtime folds in.
+      - name: Install the C libraries
+        if: matrix.check == 'runtime'
+        run: sh runtime/third_party/libs.sh install
+      # ccache (the C build's compiler launcher) keeps the objects between runs; a pull request restores the newest entry.
+      - name: Restore the ccache directory
+        if: matrix.check == 'runtime'
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-c-test-${{ hashFiles('runtime/**', 'CMakeLists.txt', 'cmake/**') }}
+          restore-keys: ccache-c-test-
       - name: Runtime unit tests
         if: matrix.check == 'runtime'
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
+          CCACHE_MAXSIZE: 100M
         run: make c-test
       # The compiler checks run the Rust `ms` (the reference the C front end is compared with).
       - id: sccache

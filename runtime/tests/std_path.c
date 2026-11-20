@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "append.h"
 
 enum { MAX_PATTERN_BYTES = 4096 };
 
@@ -108,11 +109,11 @@ static void limit_cases(void) {
     CHECK(matches(0, long_pattern, "a") == -1);
     char deep[256] = {0};
     for (size_t i = 0; i < 70; i++) {
-        strcat(deep, "@(");
+        msx_append(deep, sizeof deep, "@(");
     }
-    strcat(deep, "a");
+    msx_append(deep, sizeof deep, "a");
     for (size_t i = 0; i < 70; i++) {
-        strcat(deep, ")");
+        msx_append(deep, sizeof deep, ")");
     }
     CHECK(matches(0, deep, "a") == -1); /* more than 64 nested groups */
     CHECK(matches(0, "@(@(@(a)))", "a") == 1);

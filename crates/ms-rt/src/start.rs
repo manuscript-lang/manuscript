@@ -375,16 +375,16 @@ pub unsafe extern "C-unwind" fn msrt_start(
 
 #[cfg(ms_c = "ms_io_open")]
 unsafe extern "C" {
-    fn mssys_sync_environ();
+    fn ms_sys_sync_environ();
 }
 
 /// Makes the program's `environ` agree with the C library's after the library changed it (start-up,
-/// `setenv`); see `mssys_sync_environ` in runtime/include/ms_sys.h. Only the libuv build needs it.
+/// `setenv`); see `ms_sys_sync_environ` in runtime/include/ms_rt/sys.h. Only the libuv build needs it.
 pub fn sync_environ() {
     #[cfg(ms_c = "ms_io_open")]
     // SAFETY: a plain pointer copy; call it where no other thread reads the environment.
     unsafe {
-        mssys_sync_environ();
+        ms_sys_sync_environ();
     }
 }
 

@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "ms/base.h"
+#include "ms_rt/chars.h"
 
 struct MsChunk {
     MsChunk *next;
@@ -324,19 +325,9 @@ int ms_utf8_decode(const char *s, size_t n, uint32_t *scalar) {
 }
 
 void ms_utf8_put(MsBuf *b, uint32_t scalar) {
-    if (scalar < 0x80) {
-        ms_buf_putc(b, (char)scalar);
-    } else if (scalar < 0x800) {
-        ms_buf_putc(b, (char)(0xC0 | (scalar >> 6)));
-        ms_buf_putc(b, (char)(0x80 | (scalar & 0x3F)));
-    } else if (scalar < 0x10000) {
-        ms_buf_putc(b, (char)(0xE0 | (scalar >> 12)));
-        ms_buf_putc(b, (char)(0x80 | ((scalar >> 6) & 0x3F)));
-        ms_buf_putc(b, (char)(0x80 | (scalar & 0x3F)));
-    } else {
-        ms_buf_putc(b, (char)(0xF0 | (scalar >> 18)));
-        ms_buf_putc(b, (char)(0x80 | ((scalar >> 12) & 0x3F)));
-        ms_buf_putc(b, (char)(0x80 | ((scalar >> 6) & 0x3F)));
-        ms_buf_putc(b, (char)(0x80 | (scalar & 0x3F)));
+    uint8_t encoded[4];
+    const size_t width = ms_utf8_encode(scalar, encoded);
+    for (size_t i = 0; i < width; i++) {
+        ms_buf_putc(b, (char)encoded[i]);
     }
 }

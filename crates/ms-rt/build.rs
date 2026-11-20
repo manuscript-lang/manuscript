@@ -2,7 +2,7 @@
 //! and links the objects built from `runtime/**/*.c`; every symbol named in a `runtime/symbols/<module>.txt`
 //! then gets the cfg `ms_c = "<symbol>"`, which compiles its Rust definition out. Without the
 //! variable (unit tests, clippy) the Rust definitions stay, and this script compiles the C itself
-//! (`runtime/build_c.rs`, the code `cargo xtask runtime` uses, no `cc` crate) into `libms_c.a` and links it after
+//! (`runtime/build_c.rs`, the code `cargo xtask runtime` uses: CMake and Ninja, no `cc` crate) into `libms_c.a` and links it after
 //! the Rust code: a symbol whose Rust body was deleted is then defined by its C object, while one Rust still defines
 //! never pulls that object in.
 
@@ -18,17 +18,17 @@ fn main() {
     println!("cargo::rerun-if-changed={}", dir.display());
     println!("cargo::rerun-if-env-changed=MS_C_REACTOR");
     let archive_build = std::env::var_os("MS_C_RUNTIME").is_some();
-    // Test and clippy builds on Linux and macOS link the C runtime. Windows hosts keep the Rust definitions: their
-    // tests build for MSVC, and the runtime's C is built for mingw (`cargo xtask runtime`).
+    // Test and clippy builds link the C runtime. On a Windows host they build for MSVC, so the C is compiled for
+    // MSVC too (clang `--target=<arch>-pc-windows-msvc`), unlike the runtime archive, which targets mingw.
     let native = std::env::var("TARGET").ok() == std::env::var("HOST").ok();
-    let test_c = !archive_build && native && !cfg!(windows);
+    let test_c = !archive_build && native;
     if test_c {
         link_c_runtime(&root);
     }
     if !archive_build {
         return;
     }
-    // The libuv reactor replaces the mio poller on this build (`cargo xtask runtime` with `MS_C_REACTOR=1`).
+    // The libuv reactor replaces the mio poller on this build (`cargo xtask runtime` sets `MS_C_REACTOR` when the plan includes `runtime/io`).
     if std::env::var_os("MS_C_REACTOR").is_some() {
         println!("cargo::rustc-cfg=ms_c=\"ms_io_open\"");
     }
@@ -61,11 +61,19 @@ fn link_c_runtime(root: &std::path::Path) {
         );
     }
     println!("cargo::rerun-if-env-changed=MS_C_REGEX");
+    println!(
+        "cargo::rerun-if-changed={}",
+        root.join("CMakeLists.txt").display()
+    );
+    println!("cargo::rerun-if-changed={}", root.join("cmake").display());
     let out = std::path::PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
-    let plan = build_c::plan_c_runtime(root, None).expect("plan the C runtime");
-    let objects =
-        build_c::compile_c_objects(root, &out, None, &plan).expect("compile the C runtime");
-    let archive = out.join("libms_c.a");
+    let plan = build_c::build_c_runtime(root, &out, None).expect("build the C runtime");
+    let objects = plan.objects;
+    let archive = out.join(if cfg!(windows) {
+        "ms_c.lib"
+    } else {
+        "libms_c.a"
+    });
     let _ = std::fs::remove_file(&archive);
     let ar = build_c::archiver(root, None);
     let status = std::process::Command::new(&ar)

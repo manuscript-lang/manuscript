@@ -34,6 +34,9 @@ bundled!(
     "libntdll.a",
     "libsecur32.a",
     "libuserenv.a",
+    "libiphlpapi.a",
+    "libpsapi.a",
+    "libole32.a",
     "libws2_32.a",
     "libuser32.a",
     "libshell32.a"

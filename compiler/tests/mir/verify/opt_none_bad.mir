@@ -1,0 +1,6 @@
+module "t"
+fn @main() -> int {
+b0:
+  %a: int = opt.none
+  ret %a
+}

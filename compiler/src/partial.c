@@ -2,6 +2,7 @@
  * crates/ms-syntax/src/partial.rs; see there for the reasoning behind each heuristic. */
 #include <stdlib.h>
 #include <string.h>
+#include "ms_rt/chars.h"
 
 #include "ms/lex.h"
 #include "ms/parse.h"
@@ -41,7 +42,7 @@ static size_t pt_trim_start(const char *s, size_t n) {
 static size_t pt_trim_end(const char *s, size_t n) {
     while (n > 0) {
         size_t i = n - 1;
-        while (i > 0 && ((uint8_t)s[i] & 0xC0) == 0x80) {
+        while (i > 0 && ms_utf8_is_continuation((uint8_t)s[i])) {
             i--;
         }
         uint32_t c;
@@ -71,21 +72,13 @@ static bool pt_ends(const char *s, size_t n, const char *suf) {
     return n >= k && memcmp(s + n - k, suf, k) == 0;
 }
 
-static bool pt_word_byte(uint8_t b) {
-    return (b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_';
-}
-
-static bool pt_alpha_byte(uint8_t b) {
-    return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z');
-}
-
 /* The rest after `keyword`, as an offset, or -1 when the source does not start with that word. */
 static long pt_after_keyword(const char *s, size_t n, const char *keyword) {
     size_t k = strlen(keyword);
     if (!pt_starts(s, n, keyword)) {
         return -1;
     }
-    if (n > k && pt_word_byte((uint8_t)s[k])) {
+    if (n > k && ms_ascii_is_ident((uint8_t)s[k])) {
         return -1;
     }
     return (long)k;
@@ -93,7 +86,7 @@ static long pt_after_keyword(const char *s, size_t n, const char *keyword) {
 
 static bool pt_constant_start(const char *s, size_t n) {
     size_t name = 0;
-    while (name < n && pt_word_byte((uint8_t)s[name])) {
+    while (name < n && ms_ascii_is_ident((uint8_t)s[name])) {
         name++;
     }
     if (name == 0 || (s[0] >= '0' && s[0] <= '9')) {
@@ -106,9 +99,10 @@ static bool pt_constant_start(const char *s, size_t n) {
 /* Recognizes declaration starts by token boundary, including contextual words only when their
  * following token selects a declaration. */
 static bool pt_root_start(const char *s, size_t n) {
-    static const char *const keywords[] = {"import", "export", "extern", "type", "enum", "interface", "impl", "test"};
-    for (size_t i = 0; i < sizeof keywords / sizeof keywords[0]; i++) {
-        if (pt_after_keyword(s, n, keywords[i]) >= 0) {
+    static const char *const declaration_words[] = {"import", "export", "extern", "type",
+                                                    "enum",   "interface", "impl", "test"};
+    for (size_t i = 0; i < sizeof declaration_words / sizeof declaration_words[0]; i++) {
+        if (pt_after_keyword(s, n, declaration_words[i]) >= 0) {
             return true;
         }
     }
@@ -122,9 +116,9 @@ static bool pt_root_start(const char *s, size_t n) {
         size_t lo = pt_trim_start(rest, rn);
         rest += lo;
         rn -= lo;
-        bool name_start = rn > 0 && (pt_alpha_byte((uint8_t)rest[0]) || rest[0] == '_');
+        bool name_start = rn > 0 && (ms_ascii_is_alpha((uint8_t)rest[0]) || rest[0] == '_');
         size_t name_end = 0;
-        while (name_end < rn && pt_word_byte((uint8_t)rest[name_end])) {
+        while (name_end < rn && ms_ascii_is_ident((uint8_t)rest[name_end])) {
             name_end++;
         }
         /* A named function needs a parameter or type-parameter list after its name. Inferred

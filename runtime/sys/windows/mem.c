@@ -10,11 +10,11 @@
 #define PAGE_READWRITE 0x04
 #define PAGE_GUARD 0x100
 
-uint8_t *ms_sys_map_anon(size_t len) { return (uint8_t *)VirtualAlloc(NULL, len, MEM_RESERVE, PAGE_NOACCESS); }
+void *ms_sys_map_anon(size_t len) { return VirtualAlloc(NULL, len, MEM_RESERVE, PAGE_NOACCESS); }
 
 /* No usable huge-page advice for a lazily committed reservation: MEM_LARGE_PAGES needs SeLockMemoryPrivilege
  * and cannot be demand-committed (error 1314 even for an administrator, #3710, #3646). */
-void ms_sys_prefer_huge_pages(uint8_t *p, size_t len) { // NOLINT(readability-non-const-parameter): the posix version writes through p
+void ms_sys_prefer_huge_pages(void *p, size_t len) { // NOLINT(readability-non-const-parameter): the posix version writes through p
     (void)p;
     (void)len;
 }
@@ -31,12 +31,12 @@ static _Atomic size_t next_region;
  * any thread that takes the range in between. Each thread claims a slot of the window from one shared counter
  * and reserves exactly that range, so the kernel arbitrates and an occupied slot only moves the counter on.
  * The counter wraps so ranges released at teardown are found again; NULL only when every slot is taken. */
-uint8_t *ms_sys_map_region(size_t len) {
+void *ms_sys_map_region(size_t len) {
     const size_t slots = REGION_WINDOW / len;
     for (size_t attempt = 0; attempt < slots; attempt++) {
         const size_t slot = next_region++ % slots;
         void *const at = (void *)(REGION_BASE + slot * len); // NOLINT(performance-no-int-to-ptr): a fixed address window
-        uint8_t *const region = VirtualAlloc(at, len, MEM_RESERVE, PAGE_NOACCESS);
+        void *const region = VirtualAlloc(at, len, MEM_RESERVE, PAGE_NOACCESS);
         if (region != NULL) {
             return region;
         }
@@ -45,7 +45,7 @@ uint8_t *ms_sys_map_region(size_t len) {
 }
 
 /* The bottom of a reserved stack stays uncommitted and an access to it faults. */
-bool ms_sys_guard(uint8_t *p, size_t len) { // NOLINT(readability-non-const-parameter): the posix version writes through p
+bool ms_sys_guard(void *p, size_t len) { // NOLINT(readability-non-const-parameter): the posix version writes through p
     (void)p;
     (void)len;
     return true;
@@ -77,19 +77,19 @@ static void set_stack_limit(uintptr_t v) {
  * stack the page belongs to. The guard goes under another task's stack while the caller runs on its own, so
  * the limit is put back: left at the other stack's value, a later stack probe (__chkstk) would walk into the
  * other stack's guard page, which the kernel reports as an unhandled guard-page violation (exit 0x80000001). */
-bool ms_sys_commit_guard(uint8_t *p) {
+bool ms_sys_commit_guard(void *p) {
     const uintptr_t limit = stack_limit();
     const bool ok = VirtualAlloc(p, 4096, MEM_COMMIT, PAGE_READWRITE | PAGE_GUARD) != NULL;
     set_stack_limit(limit);
     return ok;
 }
 
-bool ms_sys_commit(uint8_t *p, size_t len) { return VirtualAlloc(p, len, MEM_COMMIT, PAGE_READWRITE) != NULL; }
+bool ms_sys_commit(void *p, size_t len) { return VirtualAlloc(p, len, MEM_COMMIT, PAGE_READWRITE) != NULL; }
 
 /* Decommits; ms_sys_commit makes the range usable again. */
-void ms_sys_release(uint8_t *p, size_t len) { VirtualFree(p, len, MEM_DECOMMIT); }
+void ms_sys_release(void *p, size_t len) { VirtualFree(p, len, MEM_DECOMMIT); }
 
-void ms_sys_unmap(uint8_t *p, size_t len) {
+void ms_sys_unmap(void *p, size_t len) {
     (void)len;
     VirtualFree(p, 0, MEM_RELEASE);
 }
