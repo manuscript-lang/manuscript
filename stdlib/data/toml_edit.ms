@@ -23,9 +23,13 @@ import (
 // A document and its layout. `text` has `\n` line breaks and offsets in `statements`
 // refer to it; `crlf` says the source used `\r\n`, which `to_string` restores.
 export type TomlDocument:
+	// The document with `\n` line breaks.
 	text: String
+	// Whether the source used `\r\n` line breaks, which `to_string` writes back.
 	crlf: Bool
+	// The parsed document, the same value `parse` returns for the text.
 	value: TomlValue
+	// Where each top-level statement sits in `text`, in document order.
 	statements: List[TomlStatement]
 
 fn invalid(message: String) Error:

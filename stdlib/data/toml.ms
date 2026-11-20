@@ -63,8 +63,11 @@ export type TomlOptions:
 // What a top-level statement of a document is: a `[table]` header, a `[[table array]]`
 // header, or a `key = value` pair.
 export enum TomlStatementKind:
+	// A `[table]` header line.
 	Header
+	// A `[[table array]]` header line, which starts the next element of the array.
 	ArrayHeader
+	// A `key = value` line, with a dotted key or not; the value may span several lines.
 	Pair
 
 // Where one statement of a document sits, in byte offsets of `TomlLayout.text`. A
@@ -72,6 +75,7 @@ export enum TomlStatementKind:
 // the line break that ends it, so it covers a trailing comment and a value spread over
 // several lines. Blank and comment lines between statements belong to no statement.
 export type TomlStatement:
+	// Whether the statement is a header, an array header or a key and value.
 	kind: TomlStatementKind
 	// For a header, the table it names; for a pair, the table of the header it follows
 	// (empty before the first header).
@@ -87,7 +91,10 @@ export type TomlStatement:
 export type TomlLayout:
 	// The document with every CRLF turned to LF; offsets refer to this text.
 	text: String
+	// The parsed document, the same value `parse` returns for the text.
 	value: TomlValue
+	// The top-level statements in document order; blank and comment lines are not
+	// listed.
 	statements: List[TomlStatement]
 
 // The document is read as UTF-8 bytes; `pos` is a byte offset and line/column are
