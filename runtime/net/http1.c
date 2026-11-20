@@ -66,25 +66,23 @@ static uint16_t refusal_status(bool too_many, enum llhttp_errno error) {
     return 400;
 }
 
-int ms_h1_parse_request(const char *buf, size_t len, size_t head_limit, MsH1Request *out, uint32_t field_cap) {
+/* Parses a request head with `parser`, which the caller initialized for requests; the parser stays paused at the end of
+   the head on COMPLETE. */
+static int parse_request_with(llhttp_t *p, const char *buf, size_t len, size_t head_limit, MsH1Request *out, uint32_t field_cap) {
     MsH1Field *fields = out->fields;
     memset(out, 0, sizeof *out);
     out->fields = fields;
     if (len > UINT32_MAX) { out->status = 431; return MS_H1_BAD; }
     MsH1State s = {buf, fields, &out->nfields, &out->target, field_cap, 0, 0, 0, 0};
-    llhttp_settings_t cb;
-    head_settings(&cb);
-    cb.on_url = on_first_line;
-    llhttp_t p;
-    llhttp_init(&p, HTTP_REQUEST, &cb);
-    p.data = &s;
-    enum llhttp_errno e = llhttp_execute(&p, buf, len);
+    p->data = &s;
+    enum llhttp_errno e = llhttp_execute(p, buf, len);
     if (e == HPE_PAUSED) {
-        size_t used = (size_t)(llhttp_get_error_pos(&p) - buf);
+        size_t used = (size_t)(llhttp_get_error_pos(p) - buf);
         if (used > head_limit) { out->status = 431; return MS_H1_BAD; }
         out->head_len = (uint32_t)used;
-        out->method = p.method;
-        out->minor = p.http_minor;
+        out->method = p->method;
+        out->minor = p->http_minor;
+        out->keep_alive = (uint8_t)llhttp_should_keep_alive(p);
         return MS_H1_COMPLETE;
     }
     if (e == HPE_OK) {
@@ -95,6 +93,14 @@ int ms_h1_parse_request(const char *buf, size_t len, size_t head_limit, MsH1Requ
     return MS_H1_BAD;
 }
 
+int ms_h1_parse_request(const char *buf, size_t len, size_t head_limit, MsH1Request *out, uint32_t field_cap) {
+    llhttp_settings_t cb;
+    head_settings(&cb);
+    cb.on_url = on_first_line;
+    llhttp_t p;
+    llhttp_init(&p, HTTP_REQUEST, &cb);
+    return parse_request_with(&p, buf, len, head_limit, out, field_cap);
+}
 
 /* The reader's state behind the opaque storage of MsH1Reader. */
 typedef struct {
@@ -158,6 +164,30 @@ int ms_h1_parse_response(MsH1Reader *reader, const char *buf, size_t len, size_t
     return MS_H1_COMPLETE;
 }
 
+void ms_h1_reader_moved(MsH1Reader *reader) {
+    MsH1ReaderState *r = reader_state(reader);
+    r->parser.data = r;
+}
+
+int ms_h1_parse_request_body(MsH1Reader *reader, const char *buf, size_t len, size_t head_limit, MsH1Request *out,
+                             uint32_t field_cap) {
+    MsH1ReaderState *r = reader_state(reader);
+    memset(reader, 0, sizeof *reader);
+    llhttp_settings_t cb;
+    head_settings(&cb);
+    cb.on_url = on_first_line;
+    llhttp_init(&r->parser, HTTP_REQUEST, &cb);
+    const int result = parse_request_with(&r->parser, buf, len, head_limit, out, field_cap);
+    if (result != MS_H1_COMPLETE) return result;
+    /* Without a length or chunked framing llhttp ends the message at the end of the head, but only on the next bytes it
+       sees, which belong to the next request; the head already says there is no body. */
+    r->no_body = (r->parser.flags & F_CHUNKED) == 0 && r->parser.content_length == 0;
+    r->parser.settings = &body_settings;
+    r->parser.data = r;
+    llhttp_resume(&r->parser);
+    return MS_H1_COMPLETE;
+}
+
 int ms_h1_read_body(MsH1Reader *reader, const char *buf, size_t len, MsSpan *data, size_t *used) {
     MsH1ReaderState *r = reader_state(reader);
     *used = 0;
@@ -208,7 +238,7 @@ bool ms_h1_value_has_token(MsBytes value, MsBytes token) {
 
 static int put(char *dst, size_t cap, size_t *used, const char *s, size_t n) {
     if (n > cap - *used) return -1;
-    memcpy(dst + *used, s, n);
+    if (n > 0) memcpy(dst + *used, s, n);
     *used += n;
     return 0;
 }
