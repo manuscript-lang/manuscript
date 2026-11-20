@@ -20,3 +20,4 @@
 #include "ownership_places.c"
 #include "ownership_bits.c"
 #include "libms_api.c"
+#include "emit_qbe.c"
