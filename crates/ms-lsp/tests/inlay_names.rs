@@ -4,7 +4,6 @@ use ms_lsp::analysis::{Document, Documents, analyze};
 use ms_lsp::features::inlay_hints;
 use ms_lsp::json::Json;
 use ms_lsp::text::{Position, Range};
-use ms_rt as _;
 
 use crate::support;
 use support::Workspace;

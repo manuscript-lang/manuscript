@@ -264,10 +264,6 @@ static void live_while(LiveWalk *w, const MsStmt *s) {
 
 /* `for i in a..b`: like a `while` whose test reads nothing; the bounds run once before it. */
 static void live_for(LiveWalk *w, const MsStmt *s) {
-    if (w->facts->each_list[s->id]) {
-        w->supported = false;
-        return;
-    }
     uint32_t *after = live_snapshot(w);
     uint32_t *head = live_snapshot(w);
     for (;;) {
@@ -282,6 +278,10 @@ static void live_for(LiveWalk *w, const MsStmt *s) {
         }
     }
     w->later = head;
+    if (w->facts->each_list[s->id]) {
+        live_expr(w, s->u.each.iter);
+        return;
+    }
     live_expr(w, s->u.each.iter->u.call.args.ptr[1].value);
     live_expr(w, s->u.each.iter->u.call.args.ptr[0].value);
 }

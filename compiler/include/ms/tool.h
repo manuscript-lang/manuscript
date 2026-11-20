@@ -28,6 +28,12 @@ void ms_tool_lex_blocks(const ms_str *text, ms_list *out);
 void ms_tool_token_kinds(ms_list *out);
 
 
+/* Formats `text` (the source formatter, include/ms/format.h) into `out`. Status 0 is success; status 1
+ * is the first syntax error: `code_out` holds its byte offset and `message_out` holds
+ * "<code>\t<line>\t<column>\t<message>" (the stable diagnostic code, 1-based line and byte column).
+ * Invalid UTF-8 reports offset 0 at line 1, column 1. */
+uint8_t ms_tool_format(const ms_str *text, ms_str *out, int64_t *code_out, ms_str *message_out);
+
 /* ---- syntax trees ---- */
 
 /* A parsed module, kept in C. `extern type Tree` on the Manuscript side. A parse that fails still

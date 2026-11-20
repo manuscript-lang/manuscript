@@ -251,13 +251,8 @@ pub fn build_executable(
     };
     let compiled = if crate::c_backend::enabled() {
         // The C pipeline runs the optimizer and the finishing passes itself.
-        crate::c_backend::compile(
-            module,
-            level == Level::Speed,
-            true, // the C pipeline emits LLVM for Debug and Release
-            options.checks,
-        )
-        .map(|object| vec![object])
+        crate::c_backend::compile(module, level == Level::Speed, options.checks)
+            .map(|object| vec![object])
     } else {
         optimize(module, level, cfg!(debug_assertions));
         if build.count_ops {

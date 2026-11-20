@@ -281,7 +281,8 @@ static bool load_import(GraphLoader *l, const char *importer, const char *file, 
 }
 
 static bool load_module(GraphLoader *l, MsSym canonical, const char *file, int32_t *module, LoadFailure *fail) {
-    const char *path = ms_name(&l->paths, canonical).ptr;
+    const MsStr canonical_text = ms_name(&l->paths, canonical);
+    const char *path = ms_arena_strndup(l->arena, canonical_text.ptr, canonical_text.len); /* outlives l->paths */
     size_t length = 0;
     MsProjectError err;
     const char *text = load_read(l->arena, path, &length, &err);

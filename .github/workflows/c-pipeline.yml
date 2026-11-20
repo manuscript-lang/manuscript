@@ -1,0 +1,75 @@
+name: C pipeline platforms
+
+# `MS_BACKEND=c ms build` (MIR text, ms_mir_build, clang, ms_asm_tables) on the platforms the pull request jobs do not
+# run: the corpus of `compiler/tests/build-diff.sh` built by both back ends and compared. Manual runs only; the
+# Linux legs run the same script through `make c-compiler-test`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Programs to build and compare (0 is every `phase=run` program)
+        default: '150'
+      os:
+        description: Platforms
+        type: choice
+        options: [all, darwin, windows]
+        default: all
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-diff:
+    name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }}
+    runs-on: ${{ matrix.leg.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        leg: >-
+          ${{ fromJSON(
+          inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15"}]' ||
+          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
+          '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]') }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-env
+        with:
+          os: ${{ matrix.leg.os }}
+          arch: ${{ matrix.leg.arch }}
+      - name: Build ms and its runtime
+        run: |
+          cargo xtask runtime
+          cargo build --release --locked -p ms-cli
+      - name: Build the C tools
+        run: |
+          cmake -S . -B target/cmake/platform -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build target/cmake/platform --target ms_mir_build ms_asm_tables
+      - name: Hello through the C pipeline
+        run: |
+          printf 'import stdout from "@std/io/io.ms"\n\nexport fn main() Int:\n    _w := stdout().write("hello\\n")\n    return 0\n' > hello.ms
+          MS_BACKEND=c MS_C_BACKEND_DIR="$PWD/target/cmake/platform/compiler" target/release/ms build hello.ms --build-type Debug -o hello
+          ./hello
+      - name: Compare the corpus
+        env:
+          MS_C_TOOLS: ${{ github.workspace }}/target/cmake/platform/compiler
+        run: sh compiler/tests/build-diff.sh '${{ inputs.limit }}' | tee build-diff.log
+      - name: Keep the logs of the programs that differ or fail
+        if: always()
+        run: |
+          mkdir -p keep
+          for f in $(grep -E '^(DIFF|cfail)' build-diff.log | awk '{print $2}'); do
+            id=$(echo "$f" | tr '/' '_')
+            cp target/c-compiler/build-diff/"$id".* keep/ 2>/dev/null || true
+          done
+          cp build-diff.log keep/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: build-diff-${{ matrix.leg.os }}-${{ matrix.leg.arch }}
+          path: keep
