@@ -53,7 +53,7 @@ domains:
       - ".github/workflows/**"
       - "documentation/developer-tooling/implementation.md"
       - "documentation/contributing/**"
-      - "crates/ms-repo-check/**"
+      - "tools/repo-check/**"
       - "Cargo.toml"
       - "Makefile"
   - id: stdlib-design
@@ -67,7 +67,7 @@ domains:
     topics: [test layers, conformance corpus, ms test, fuzzing, fixture migration]
     paths:
       - "tests/**"
-      - "crates/ms-conform/**"
+      - "tools/conform/**"
   - id: benchmarks-and-performance
     file: benchmarks-and-performance/index.md
     topics: [performance benchmarks, ns/op, profiling guide]
