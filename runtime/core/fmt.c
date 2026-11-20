@@ -5,6 +5,7 @@
  * crates/ms-rt/src/num.rs and float_digits.rs; the output is byte-identical to that code.
  */
 #include "ms_rt/fmt.h"
+#include "fmt_fixed.h"
 
 #include "float_table.h"
 
@@ -168,6 +169,20 @@ bool msrt_fmt_u64(uint64_t value, uint8_t *out, size_t capacity, size_t *length)
     MsFmtSink sink = sink_new(out, capacity);
     sink_put_unsigned(&sink, value);
     return sink_finish(&sink, length);
+}
+
+size_t ms_fmt_i64_fixed(int64_t value, uint8_t out[static MS_FMT_INTEGER_CAPACITY]) {
+    const bool negative = value < 0;
+    out[0] = '-'; /* overwritten by the first digit of a value that is not negative */
+    /* The magnitude of INT64_MIN is 2^63, which only the unsigned negation represents. */
+    const uint64_t magnitude = negative ? UINT64_C(0) - (uint64_t)value : (uint64_t)value;
+    size_t written = 0;
+    /* The room is the capacity less the sign, which holds the 19 digits of a magnitude below 2^63 and the 20 of a
+     * UInt64 never written here. */
+    const MsBytesMut room = ms_bytes_mut(out + (negative ? 1 : 0), MS_FMT_INTEGER_CAPACITY - (negative ? 1 : 0));
+    const bool fitted = write_decimal(room, magnitude, &written);
+    (void)fitted; /* a magnitude of at most 2^63 has at most 19 digits */
+    return written + (negative ? 1 : 0);
 }
 
 bool msrt_fmt_i64(int64_t value, uint8_t *out, size_t capacity, size_t *length) {
