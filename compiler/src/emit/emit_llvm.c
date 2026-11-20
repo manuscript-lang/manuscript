@@ -32,6 +32,7 @@ typedef struct LCx {
     const MirData *data; /* the module's static data; NULL when it has none */
     const MirGlue *glue; /* the glue functions, for the closure objects' entries */
     bool *framed;        /* per value of `f`: a closure object kept in the frame */
+    bool *borrowed;      /* per value of `f`: an `iface.borrow` kept in the frame; NULL when none */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -477,6 +478,9 @@ static void ll_frame_slots(LCx *c) {
             } else if (inst->op == MOP_ClosureNew && c->framed[inst->res]) {
                 ms_buf_printf(c->out, "  %%o%u_%u = alloca [%u x i8], align 16\n", b, k,
                               mir_closure_layout(c->layouts, &c->m->funcs[inst->imm.a]).size);
+            } else if (inst->op == MOP_IfaceBorrow && c->borrowed != NULL && c->borrowed[inst->res]) {
+                ms_buf_printf(c->out, "  %%i%u_%u = alloca [%u x i8], align 8\n", b, k,
+                              ll_slot_bytes(c->layouts, c->f->values[inst->args[0]]));
             } else if (inst->op == MOP_CallRt) {
                 ll_frame_rt_call(c, inst, b, k);
             }
@@ -980,9 +984,9 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
     }
 }
 
-#include "emit/emit_llvm_closure.inc"
-#include "emit/emit_llvm_iface.inc"
-#include "emit/emit_llvm_task.inc"
+#include "emit_llvm_closure.inc"
+#include "emit_llvm_iface.inc"
+#include "emit_llvm_task.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
@@ -1295,6 +1299,8 @@ static bool ll_function(LCx *c, uint32_t index) {
         return false;
     }
     mir_framed_closures(c->m, f, c->framed);
+    MsArena scratch = {0};
+    c->borrowed = mir_framed_iface_borrows(&scratch, c->m, f);
     ll_last_pieces(f, last);
     ll_header(c, index);
     bool ok = true;
@@ -1304,6 +1310,8 @@ static bool ll_function(LCx *c, uint32_t index) {
     free(last);
     free(c->framed);
     c->framed = NULL;
+    c->borrowed = NULL;
+    ms_arena_free(&scratch);
     if (ok) {
         ms_buf_puts(c->out, "}\n\n");
     }
@@ -1464,7 +1472,7 @@ bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue,
     mir_layouts_init(&layouts, m);
     bool ok = true;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL};
+        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL};
         if (ll_function(&c, i)) {
             continue;
         }
@@ -1472,7 +1480,7 @@ bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue,
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);
