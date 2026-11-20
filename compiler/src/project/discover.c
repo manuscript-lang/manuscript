@@ -3,7 +3,6 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #endif
-#include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -68,37 +67,19 @@ typedef struct Child {
     bool is_dir;
 } Child;
 
-static int discover_child_order(const void *x, const void *y) {
-    return strcmp(((const Child *)x)->name, ((const Child *)y)->name);
-}
-
 /* The entries of `path` that the walk considers, sorted by name; false with the error filled when unreadable. */
 static bool discover_children(Discovery *d, const char *path, MsBuf *children) {
-    DIR *dir = opendir(path);
-    if (dir == NULL) {
-        ms_project_error_path(d->err, d->arena, "open", path, errno);
+    const char *const *names;
+    uint32_t count;
+    if (!ms_path_list_dir(d->arena, path, "open", &names, &count, d->err)) {
         return false;
     }
-    for (;;) {
-        errno = 0;
-        const struct dirent *entry = readdir(dir);
-        if (entry == NULL) {
-            if (errno != 0) {
-                ms_project_error_path(d->err, d->arena, "readdirent", path, errno);
-                closedir(dir);
-                return false;
-            }
-            break;
-        }
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
-        const char *name = ms_arena_strndup(d->arena, entry->d_name, strlen(entry->d_name));
+    for (uint32_t i = 0; i < count; i++) {
+        const char *name = names[i];
         const char *full = MS_PATH_JOIN(d->arena, path, name);
         struct stat info;
         if (lstat(full, &info) != 0) {
             ms_project_error_path(d->err, d->arena, "lstat", path, errno);
-            closedir(dir);
             return false;
         }
         if (discover_is_directory_link(full, &info)) {
@@ -111,16 +92,10 @@ static bool discover_children(Discovery *d, const char *path, MsBuf *children) {
                 continue;
             }
             ms_project_error_message(d->err, ms_arena_fmt(d->arena, "discovered source path %s is not valid UTF-8; rename the file or directory using valid UTF-8", ms_debug_quote(d->arena, full)).ptr);
-            closedir(dir);
             return false;
         }
         Child child = {.name = name, .is_dir = is_dir};
         MS_VEC_PUSH(*children, Child, child);
-    }
-    closedir(dir);
-    const size_t count = MS_VEC_LEN(*children, Child);
-    if (count > 1) {
-        qsort(ms_buf_items(children), count, sizeof(Child), discover_child_order);
     }
     return true;
 }

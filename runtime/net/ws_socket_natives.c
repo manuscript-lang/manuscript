@@ -1,5 +1,5 @@
 /* The SocketH natives (ws_socket_natives.h): the argument and status mapping over ws_socket.h. */
-#include "ws_socket_natives.h"
+#include "ms_rt/net.h"
 
 #include "../std/abi.h"
 #include "ms_sched.h"

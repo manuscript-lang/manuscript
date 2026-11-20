@@ -58,6 +58,11 @@ uint16_t ms_conn_refusal(MsConnTable *table, MsConnId id);
 MsNetStatus ms_conn_unread(MsConnTable *table, MsConnId id, const uint8_t *data, size_t length);
 /* Writes all `length` bytes. */
 MsNetStatus ms_conn_write(MsConnTable *table, MsConnId id, const uint8_t *data, size_t length, int64_t deadline_ns);
+/* Parks until the peer has ended its side or the connection broke, without taking any bytes: MS_NET_CLOSED when the
+ * peer closed or half-closed, MS_NET_RESET on an error, MS_NET_CANCELLED when the task is cancelled. Bytes the peer
+ * sent ahead (a pipelined request) stay queued and are polled for the end at a low rate until `*handed_on` (may be NULL)
+ * is set, which returns MS_NET_OK: another owner reads the connection now. */
+MsNetStatus ms_conn_wait_gone(MsConnTable *table, MsConnId id, const uint8_t *handed_on);
 /* Runs a TLS handshake to the end (client or server, as the session was made). */
 MsNetStatus ms_conn_handshake(MsConnTable *table, MsConnId id, int64_t deadline_ns);
 /* Half-closes the write side; on TLS it sends close_notify first. */
