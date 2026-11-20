@@ -69,7 +69,6 @@ pub mod sys;
 pub mod sys;
 mod sys_c;
 pub mod task;
-pub mod utf8;
 pub mod vec;
 pub mod watch;
 

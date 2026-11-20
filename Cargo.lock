@@ -646,13 +646,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-inflate"
-version = "0.1.0"
-dependencies = [
- "flate2",
-]
-
-[[package]]
 name = "ms-json"
 version = "0.1.0"
 
@@ -744,11 +737,9 @@ dependencies = [
 name = "ms-std-net"
 version = "0.1.0"
 dependencies = [
- "crc32fast",
  "flate2",
  "httparse",
  "mio",
- "ms-inflate",
  "ms-rt",
  "ms-rt-abi",
  "psl",

@@ -8,7 +8,10 @@
 //! ms: domain string
 use crate::alloc;
 use crate::fault;
-use crate::utf8;
+
+unsafe extern "C-unwind" {
+    fn ms_utf8_count(s: *const u8, n: usize) -> usize;
+}
 use core::ptr::null_mut;
 use ms_rt_abi::{HasRaw, STR_INLINE_MAX, StrVal, VecVal};
 
@@ -447,7 +450,7 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
         if known_ascii(s) {
             return (*s).len();
         }
-        utf8::count(bytes(s))
+        ms_utf8_count(bytes(s).as_ptr(), (*s).len())
     }
 }
 

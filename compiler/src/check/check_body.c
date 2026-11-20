@@ -47,12 +47,57 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
 }
 
-/* A type whose values the pass can pass around: primitives, and the module's own nominal types
- * when nothing in the module could make them closeable (a value that closes gets a cleanup the
- * pass does not record yet). */
+/* Whether a value of the type may have a cleanup the pass does not record yet: it has a `close`
+ * method, or holds a field or payload that does. Without a method table nothing is known. */
+static bool body_text_is(const MsBody *b, MsSym name, const char *text);
+
+static bool body_is_closeable(const MsBody *b, MsTy ty, uint32_t depth) {
+    const MsTyTable *tys = &b->c->tys;
+    if (b->methods == NULL || depth > 4) {
+        return true;
+    }
+    const MsMethods *m = &b->methods->methods;
+    for (uint32_t i = 0; i < m->count; i++) {
+        if (m->receiver[i] == ty && m->decl[i] != NULL && body_text_is(b, m->decl[i]->name, "close")) {
+            return true;
+        }
+    }
+    const uint32_t def = tys->def[ty];
+    if (def == 0 || def - 1 >= b->c->defs_cap) {
+        return false;
+    }
+    const MsDef *d = &b->c->defs[def - 1];
+    for (uint32_t i = 0; i < d->nfields; i++) {
+        const MsTy field = d->fields[i].ty;
+        if (field != MS_TY_NONE && ms_ty_kind(tys, field) != MS_K_VARIABLE && body_is_closeable(b, field, depth + 1)) {
+            return true;
+        }
+    }
+    for (uint32_t k = 0; k < d->ncases; k++) {
+        for (uint32_t i = 0; i < d->cases[k].nfields; i++) {
+            const MsTy field = d->cases[k].fields[i].ty;
+            if (field != MS_TY_NONE && ms_ty_kind(tys, field) != MS_K_VARIABLE &&
+                body_is_closeable(b, field, depth + 1)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* A type whose values the pass can pass around: primitives, lists, function values and nominal
+ * types that cannot need a cleanup (a value that closes gets one the pass does not record yet). */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
-           (!b->has_close && body_is_own_nominal(b, ty));
+           (body_is_own_nominal(b, ty) && !body_is_closeable(b, ty, 0));
+}
+
+/* `Result[T, E]` whose success type the pass can hold (or `Void`); the error type is only ever
+ * passed through by `?`, so any type is accepted for it. */
+static bool body_is_result(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    return ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_RESULT) && tys->nargs[ty] == 2 &&
+           (ms_ty_args(tys, ty)[0] == b->void_ty || body_is_admitted(b, ms_ty_args(tys, ty)[0]));
 }
 
 static bool body_is_optional(const MsBody *b, MsTy ty) {
@@ -63,7 +108,7 @@ static bool body_is_optional(const MsBody *b, MsTy ty) {
 
 /* What a parameter or a local can hold. */
 static bool body_is_bindable(const MsBody *b, MsTy ty) {
-    return body_is_admitted(b, ty) || body_is_optional(b, ty);
+    return body_is_admitted(b, ty) || body_is_optional(b, ty) || body_is_result(b, ty);
 }
 
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
@@ -442,14 +487,30 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
-    return body_is_admitted(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
+    return body_is_bindable(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
+}
+
+/* `call()?` on a `Result[T, E]` inside a function that returns `Result[_, E]`, or on an
+ * `Optional[T]` inside one that returns an Optional or Void: the success value, with the failure
+ * returned from the function. Only the operand of a call is handled, which is a temporary. */
+static MsTy body_try(MsBody *b, const MsExpr *operand) {
+    const MsTyTable *tys = &b->c->tys;
+    const MsTy operand_ty = operand->kind == MS_E_CALL ? ms_body_expr(b, operand, MS_TY_NONE) : MS_TY_NONE;
+    if (operand_ty == MS_TY_NONE) {
+        return ms_body_unsupported(b);
+    }
+    if (body_is_result(b, operand_ty)) {
+        const bool same_error = body_is_result(b, b->result) && ms_ty_args(tys, b->result)[1] == ms_ty_args(tys, operand_ty)[1];
+        return same_error ? ms_ty_args(tys, operand_ty)[0] : ms_body_unsupported(b);
+    }
+    return ms_body_unsupported(b);
 }
 
 static MsTy body_unary(MsBody *b, const MsExpr *e) {
     const MsExpr *operand = e->u.bin.left;
     const MsUnaryOp op = (MsUnaryOp)e->op;
     if (op == MS_U_TRY) {
-        return ms_body_unsupported(b);
+        return body_try(b, operand);
     }
     if (op == MS_U_NEG && operand->kind == MS_E_NUMBER) {
         // A negated literal is typed as the literal; -9223372036854775808 is Int's own case.
@@ -747,10 +808,41 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
     b->facts->assign_binding[s->id] = binding;
 }
 
+/* An expression used as a statement. A `Result` it does not propagate with `?` is a lost failure,
+ * and a standalone `?` must have nothing to keep; the other forms are left to the Rust checker. */
+static void body_call_statement(MsBody *b, const MsStmt *s) {
+    const MsExpr *value = s->u.expr;
+    const MsTy ty = ms_body_expr(b, value, MS_TY_NONE);
+    const bool propagated = value->kind == MS_E_UNARY && value->op == MS_U_TRY;
+    if (ty == MS_TY_NONE || (propagated && ty != b->void_ty && ty != b->invalid_ty)) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    if (propagated || !ms_ty_is(&b->c->tys, ty, MS_BI_RESULT)) {
+        return;
+    }
+    const MsStr shown = body_show(b, ty);
+    const MsStr message = ms_arena_fmt(
+        &b->c->arena,
+        "this statement discards %.*s, so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' "
+        "or 'match' to handle it, or 'void ...' to drop it on purpose",
+        (int)shown.len, shown.ptr);
+    const MsCheckDiag diag = {.diag = {.pos = s->pos, .message = message}, .phase = MS_PHASE_TYPE};
+    MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
+}
+
+/* Whether finishing the body, or a bare `return`, is a complete result: the function returns
+ * `Void`, or `Void!`, for which it means `ok(void)`. */
+static bool body_returns_nothing(const MsBody *b) {
+    const MsTyTable *tys = &b->c->tys;
+    return b->result == b->void_ty ||
+           (body_is_result(b, b->result) && ms_ty_args(tys, b->result)[0] == b->void_ty);
+}
+
 static void body_return_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *value = s->u.expr;
     if (value == NULL) {
-        b->supported = b->supported && b->result == b->void_ty;
+        b->supported = b->supported && body_returns_nothing(b);
         return;
     }
     b->context = "the return value";
@@ -898,7 +990,7 @@ static bool body_run(MsBody *b, const MsStmts *body) {
             body_jump_statement(b, s);
             falls = false;
             break;
-        case MS_S_CALL: (void)ms_body_expr(b, s->u.expr, MS_TY_NONE); break;
+        case MS_S_CALL: body_call_statement(b, s); break;
         case MS_S_FOR: falls = body_for_statement(b, s); break;
         }
     }
@@ -934,7 +1026,7 @@ MsTy ms_body_block_value(MsBody *b, const MsStmts *body, const MsExpr *value, Ms
 static void body_statements(MsBody *b, const MsStmts *body) {
     const bool falls = ms_body_block(b, body);
     // A function that returns a value must end every path with a `return`.
-    if (b->supported && falls && b->result != b->void_ty) {
+    if (b->supported && falls && !body_returns_nothing(b)) {
         (void)ms_body_unsupported(b);
     }
 }
@@ -975,7 +1067,7 @@ static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig
         return false;
     }
     const MsTy result = tys->result[sig];
-    if (!body_is_admitted(b, result) && result != b->void_ty) {
+    if (!body_is_bindable(b, result) && result != b->void_ty) {
         return false;
     }
     const MsTyParam *params = ms_ty_params(tys, sig);
@@ -1065,28 +1157,6 @@ static MsTy body_invalid(MsCheck *c) {
     return ms_ty_intern(&c->tys, &desc);
 }
 
-/* Whether the module declares a method called `close`, inside an `impl` or as `fn Type.close`. */
-static bool body_module_has_close(const MsCheck *c, const MsModule *syntax) {
-    for (uint32_t i = 0; i < syntax->ndecls; i++) {
-        const MsDecl *d = syntax->decls[i];
-        if (d->kind == MS_D_FN) {
-            const MsStr name = ms_name(c->names, d->u.fn.name);
-            if (name.len >= 6 && memcmp(name.ptr + name.len - 6, ".close", 6) == 0) {
-                return true;
-            }
-        }
-        if (d->kind != MS_D_IMPL) {
-            continue;
-        }
-        for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
-            const MsStr name = ms_name(c->names, d->u.impl.methods.ptr[k]->func.name);
-            if (name.len == 5 && memcmp(name.ptr, "close", 5) == 0) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
 
 /* Whether a constant's initializer is literals, text and operators alone: a call, a name or a
  * member in it is another rule's concern (a constant may name only other constants). */
@@ -1161,8 +1231,7 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
               .string_ty = body_primitive(c, "String"),
               .void_ty = body_primitive(c, "Void"),
               .methods = methods,
-              .invalid_ty = body_invalid(c),
-              .has_close = body_module_has_close(c, row->syntax)};
+              .invalid_ty = body_invalid(c)};
     body_allocate(&b, facts);
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
     // Constants first: a function reads them wherever they are declared.

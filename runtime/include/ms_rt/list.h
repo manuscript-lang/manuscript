@@ -6,6 +6,7 @@
 #define MS_RT_LIST_H
 
 #include "ms_rt/desc.h"
+#include "ms_rt/safe.h"
 
 /* Compares two elements: negative when `a` sorts first. `env` is the comparator closure. It is program code, so
  * it can fault or park; the sorts below are not leaf functions. */
@@ -99,6 +100,9 @@ void msrt_list_sorted(const MsList *v, const MsTypeDesc *d, MsCompareFn cmp, uin
 void msrt_list_sorted_by_difference(const MsList *v, const MsTypeDesc *d, MsCompareFn cmp, uint8_t *env, int64_t desc, MsList *out);
 /* ms-sig: msrt_hash_list(v: *const VecVal, d: ElemDesc) -> i64 @domain=collection @leaf */
 int64_t msrt_hash_list(const MsList *v, const MsTypeDesc *d);
+
+/* ms-sig: msrt_fault_destructure(names: i64, elements: i64) -> ! @domain=collection @leaf */
+MS_NORETURN void msrt_fault_destructure(int64_t names, int64_t elements);
 
 /* Deep-copy counters of the counting runtime (zero in every other build): kind 0 is a list, 1 a string. */
 /* ms-sig: msrt_count_copy(kind: i64, bytes: u64) @domain=collection @leaf */
