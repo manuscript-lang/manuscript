@@ -32,6 +32,9 @@ const char *ms_debug_quote(MsArena *a, const char *text) {
 
 /* ---- numbers and identifiers ---- */
 
+/* -1, 0 or 1 as `x` is below, equal to or above `y`. */
+static int semver_order(uint64_t x, uint64_t y) { return (x > y) - (x < y); }
+
 static bool semver_digits(const char *s, size_t n) {
     for (size_t i = 0; i < n; i++) {
         if (s[i] < '0' || s[i] > '9') {
@@ -140,7 +143,7 @@ static int semver_compare_pre(const char *x, const char *y) {
         const bool ynum = semver_number(y, yn, &yv);
         int order;
         if (xnum && ynum) {
-            order = xv < yv ? -1 : xv > yv ? 1 : 0;
+            order = semver_order(xv, yv);
         } else if (xnum) {
             order = -1;
         } else if (ynum) {
@@ -149,7 +152,7 @@ static int semver_compare_pre(const char *x, const char *y) {
             const size_t common = xn < yn ? xn : yn;
             order = memcmp(x, y, common);
             if (order == 0) {
-                order = xn < yn ? -1 : xn > yn ? 1 : 0;
+                order = semver_order(xn, yn);
             }
         }
         if (order != 0) {
@@ -206,7 +209,7 @@ int ms_bucket_compare(MsBucket x, MsBucket y) {
     if (x.kind != y.kind) {
         return x.kind < y.kind ? -1 : 1;
     }
-    return x.number < y.number ? -1 : x.number > y.number ? 1 : 0;
+    return semver_order(x.number, y.number);
 }
 
 const char *ms_bucket_text(MsArena *a, MsBucket b) {
@@ -302,7 +305,8 @@ bool ms_requirement_matches(const MsRequirement *r, const MsVersion *v) {
 
 const char *ms_requirement_text(MsArena *a, const MsRequirement *r) {
     MsBuf out = {0};
-    ms_buf_putc(&out, r->op == MS_REQ_CARET ? '^' : r->op == MS_REQ_TILDE ? '~' : '=');
+    static const char operators[] = {'^', '~', '='};
+    ms_buf_putc(&out, operators[r->op]);
     ms_buf_printf(&out, "%llu", (unsigned long long)r->major);
     if (r->has_minor) {
         ms_buf_printf(&out, ".%llu", (unsigned long long)r->minor);

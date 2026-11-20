@@ -330,7 +330,10 @@ static bool solve_pick_pin(SolveState *s, const char *repo, const SolveAsk *cons
         }
         /* Prefer a tag over a commit as the copy's name, then the smaller spelling. */
         const int left_hex = ms_is_hex(chosen_reference, 40), right_hex = ms_is_hex(reference, 40);
-        const int order = left_hex != right_hex ? (left_hex ? 1 : -1) : strcmp(reference, chosen_reference);
+        int order = left_hex - right_hex;
+        if (order == 0) {
+            order = strcmp(reference, chosen_reference);
+        }
         if (order > 0) {
             chosen_by = ask;
             chosen_url = ask->dep->url;
@@ -421,7 +424,11 @@ static bool solve_choose_repo(SolveState *s, const char *repo, const SolveAsk *c
         const char *reference = updating ? NULL : solve_locked_tag(s, repo, buckets[b], members, nmembers);
         if (reference == NULL) {
             const SolveTags *listed = solve_tags_of(s, url);
-            if (listed == NULL || (reference = solve_best(s, repo, buckets[b], members, nmembers, listed)) == NULL) {
+            if (listed == NULL) {
+                return false;
+            }
+            reference = solve_best(s, repo, buckets[b], members, nmembers, listed);
+            if (reference == NULL) {
                 return false;
             }
         }
