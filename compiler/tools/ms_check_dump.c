@@ -74,9 +74,8 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             MsBuf dump = {0};
             if (bodies) {
                 ms_module_check_bodies(check, id);
-                // The ownership pass drops the functions it does not handle yet, so the body facts are dumped before it.
+                ms_module_check_ownership(check, id);
                 if (ownership) {
-                    ms_module_check_ownership(check, id);
                     ms_dump_module_ownership(&dump, check, id);
                 } else {
                     ms_dump_module_bodies(&dump, check, id);
