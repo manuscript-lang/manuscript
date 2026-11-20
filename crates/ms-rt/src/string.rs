@@ -951,6 +951,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
 ///
 /// # Safety
 /// `a` is owned by the caller and dead after the call; `b` is live; `out` is writable.
+#[cfg(not(ms_c = "msrt_string_append"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_append(

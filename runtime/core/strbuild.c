@@ -211,6 +211,67 @@ void msrt_string_concat(const MsStr *a, const MsStr *b, MsStr *out) {
     *out = (str_is_ascii(a) && str_is_ascii(b)) ? with_ascii_flag(block.str) : block.str;
 }
 
+/* Room after the text and NUL that an owned string records, as a lower bound of what its block holds. */
+#define MS_STR_SPARE_SHIFT 31
+#define MS_STR_SPARE_MASK (((UINT64_C(1) << 30) - 1) << MS_STR_SPARE_SHIFT)
+
+static size_t recorded_spare(const MsStr *s) { return (size_t)((s->tagged & MS_STR_SPARE_MASK) >> MS_STR_SPARE_SHIFT); }
+
+static MsStr with_spare(MsStr s, size_t spare) {
+    const size_t most = (size_t)(MS_STR_SPARE_MASK >> MS_STR_SPARE_SHIFT);
+    s.tagged = (s.tagged & ~MS_STR_SPARE_MASK) | ((uint64_t)(spare > most ? most : spare) << MS_STR_SPARE_SHIFT);
+    return s;
+}
+
+/* Whether `piece` lies inside the text of `s` (or just past its end), so growing `s` in place would move it. */
+static bool lies_within(const MsStr *s, MsBytes piece) {
+    uintptr_t start = (uintptr_t)s->ptr_word;
+    uintptr_t at = (uintptr_t)piece.ptr;
+    return at >= start && at - start <= ms_str_len(s);
+}
+
+/* `a + b` where the caller gives `a` up: an owned `a` grows in place, so `s = s + piece` in a loop reuses one block
+ * and reallocates a logarithmic number of times. Otherwise it is a concatenation and `a` is released. */
+void msrt_string_append(const MsStr *a, const MsStr *b, MsStr *out) {
+    MsStr first = *a;
+    size_t length_a = ms_str_len(&first);
+    MsBytes added = str_bytes(b);
+    size_t total = 0;
+    if (!owns_block(&first) || length_a == 0 || lies_within(&first, added)) {
+        msrt_string_concat(a, b, out);
+        msrt_string_free(&first);
+        return;
+    }
+    if (added.len == 0) {
+        *out = first;
+        return;
+    }
+    if (!ms_size_add(length_a, added.len, &total) || total > MS_STR_MAX_BYTES) {
+        fault_limit();
+    }
+    /* Only a flagged `a` stays flagged: scanning an unflagged one on every append would be quadratic. */
+    bool ascii = (first.tagged & MS_STR_ASCII) != 0 && str_is_ascii(b);
+    size_t need = total + 1;
+    size_t spare = 0;
+    uint8_t *block = first.ptr_word;
+    if (recorded_spare(&first) >= added.len) {
+        spare = recorded_spare(&first) - added.len;
+    } else if (msrt_heap_usable_size(block) >= need) {
+        spare = msrt_heap_usable_size(block) - need;
+    } else {
+        block = msrt_realloc(block, need + need / 2);
+        spare = need / 2;
+    }
+    MsBytesMut tail = {0};
+    if (!ms_bytes_mut_slice(ms_bytes_mut(block, need), length_a, need, &tail)) {
+        fault_limit();
+    }
+    append_bytes(&tail, added);
+    tail.ptr[0] = 0; /* the NUL after the text: the one byte of `tail` left */
+    MsStr grown = with_spare((MsStr){.ptr_word = block, .tagged = total}, spare);
+    *out = ascii ? with_ascii_flag(grown) : grown;
+}
+
 static size_t total_length(const MsStr *const *parts, size_t count) {
     size_t total = 0;
     for (size_t i = 0; i < count; i++) {

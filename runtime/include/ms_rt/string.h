@@ -65,6 +65,7 @@ void msrt_str_copy(const uint8_t *ptr, size_t tagged, MsStr *out);
 void msrt_str_free(uint8_t *ptr);
 void msrt_string_free(const MsStr *s);
 void msrt_string_concat(const MsStr *a, const MsStr *b, MsStr *out);
+void msrt_string_append(const MsStr *a, const MsStr *b, MsStr *out);
 void msrt_string_concat3(const MsStr *a, const MsStr *b, const MsStr *c, MsStr *out);
 void msrt_string_concat4(const MsStr *a, const MsStr *b, const MsStr *c, const MsStr *d, MsStr *out);
 void msrt_string_concat5(const MsStr *a, const MsStr *b, const MsStr *c, const MsStr *d, const MsStr *e, MsStr *out);

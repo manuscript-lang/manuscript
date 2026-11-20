@@ -101,6 +101,33 @@ int main(void) {
     msrt_string_view(&s, 4, 4, &r);
     CHECK(is(&r, ""));
     drop(&s);
+    /* append grows an owned string in place and copies everything else */
+    {
+        MsStr acc = mk("a string longer than fifteen bytes");
+        MsStr piece = mk("-x");
+        char want[1024] = "a string longer than fifteen bytes";
+        for (int i = 0; i < 300; i++) {
+            MsStr next;
+            msrt_string_append(&acc, &piece, &next);
+            acc = next;
+            strcat(want, "-x");
+            CHECK(is(&acc, want));
+        }
+        MsStr self_tail = {.bytes = ms_str_data(&acc) + 5, .tagged = 10 | (UINT64_C(3) << 62)}; /* a view into acc */
+        MsStr both;
+        msrt_string_append(&acc, &self_tail, &both);
+        CHECK(ms_str_len(&both) == strlen(want) + 10);
+        drop(&both);
+        MsStr small = mk("tiny"), joined;
+        msrt_string_append(&small, &piece, &joined); /* inline: concatenated, nothing freed */
+        CHECK(is(&joined, "tiny-x"));
+        MsStr none = mk(""), empty_result;
+        MsStr big = mk("another string past the inline limit");
+        msrt_string_append(&big, &none, &empty_result);
+        CHECK(is(&empty_result, "another string past the inline limit"));
+        drop(&empty_result);
+        drop(&piece);
+    }
     MsStr t = mk("héllo");
     jmp_buf jb;
     ms_test_fault = &jb;
