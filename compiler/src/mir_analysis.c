@@ -479,12 +479,26 @@ bool mir_is_scalar(const MirModule *m, MirTy ty) {
 
 void mir_func_clone(MirModule *m, const MirFunc *f, MirFunc *out) {
     *out = *f;
+    out->scopes = MS_NEW_N(&m->arena, MirScope, (size_t)f->cscopes + 1);
+    out->names = MS_NEW_N(&m->arena, MirNamedValue, (size_t)f->cnames + 1);
+    out->noalias = MS_NEW_N(&m->arena, uint32_t, (size_t)f->nnoalias + 1);
+    if (f->nscopes > 0) {
+        memcpy(out->scopes, f->scopes, sizeof(MirScope) * f->nscopes);
+    }
+    if (f->nnames > 0) {
+        memcpy(out->names, f->names, sizeof(MirNamedValue) * f->nnames);
+    }
+    if (f->nnoalias > 0) {
+        memcpy(out->noalias, f->noalias, sizeof(uint32_t) * f->nnoalias);
+    }
     out->values = MS_NEW_N(&m->arena, MirTy, (size_t)f->cvalues + 1);
     if (f->nvalues > 0) {
         memcpy(out->values, f->values, sizeof(MirTy) * f->nvalues);
     }
     out->blocks = MS_NEW_N(&m->arena, MirBlockData, (size_t)f->cblocks + 1);
-    memcpy(out->blocks, f->blocks, sizeof(MirBlockData) * f->nblocks);
+    if (f->nblocks > 0) {
+        memcpy(out->blocks, f->blocks, sizeof(MirBlockData) * f->nblocks);
+    }
     for (uint32_t b = 0; b < f->nblocks; b++) {
         MirBlockData *dst = &out->blocks[b];
         const MirBlockData *src = &f->blocks[b];

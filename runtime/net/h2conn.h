@@ -70,6 +70,10 @@ int ms_h2conn_usable(MsH2Conn *c);
 
 int ms_h2conn_next(MsH2Conn *c, MsH2ConnEvent *event); /* 0 when none */
 
+/* Calls fn for every stream the connection still holds (open, or closed and not yet released), in no order. fn must
+   not release streams. */
+void ms_h2conn_for_each(MsH2Conn *c, void (*fn)(void *context, int32_t stream, const uint64_t *user), void *context);
+
 /* Per-stream queries; NULL or 0 for an unknown or released stream. The head and trailers are valid until release. */
 const MsH2Head *ms_h2conn_head(const MsH2Conn *c, int32_t stream);
 const MsH2Head *ms_h2conn_trailers(const MsH2Conn *c, int32_t stream);

@@ -23,6 +23,7 @@ enum {
     STATUS_FAILED = 11,
     STATUS_UNAVAILABLE = 12,
     STATUS_TIMED_OUT = 13, /* not STATUS_TIMEOUT: winnt.h defines that macro */
+    STATUS_OUTPUT_LIMIT = 14,
     STATUS_NOT_TERMINAL = 15,
     STATUS_NONE = 16,
     STATUS_BUSY = 17,

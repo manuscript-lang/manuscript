@@ -4,6 +4,7 @@
 #ifndef MS_NET_TLS_H
 #define MS_NET_TLS_H
 #include <stddef.h>
+#include <stdint.h>
 #include "ms_rt/safe.h"
 
 typedef struct MsTlsCtx MsTlsCtx;
@@ -38,6 +39,14 @@ long ms_tls_read(MsTls *t, void *buf, size_t n);
 long ms_tls_write(MsTls *t, const void *buf, size_t n);
 /* The protocol the handshake chose, empty when none; valid until the connection is freed. */
 MsBytes ms_tls_alpn(const MsTls *t);
+/* What the handshake agreed: the protocol version (0x0303 for TLS 1.2, 0x0304 for 1.3) and the cipher suite's IANA
+   number, 0 before the handshake ends. */
+int ms_tls_version(const MsTls *t);
+uint32_t ms_tls_cipher(const MsTls *t);
+/* The peer's certificate chain, leaf first: how many, then the DER bytes of one (malloc'ed, the caller frees them),
+   or NULL for an index past the end. */
+size_t ms_tls_peer_count(const MsTls *t);
+uint8_t *ms_tls_peer_der(const MsTls *t, size_t index, size_t *length);
 /* Queues close_notify. */
 int ms_tls_shutdown(MsTls *t);
 /* The last error as text, empty when none. Valid until the next call on `t`. */

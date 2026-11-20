@@ -66,3 +66,17 @@ msrt_string_index_of
 msrt_string_char_at
 msrt_string_pad_start
 msrt_string_pad_end
+msrt_string_chars
+msrt_string_lines
+msrt_string_fields
+msrt_string_scalar_values
+msrt_string_from_scalars
+msrt_string_to_bytes
+msrt_string_view_bytes
+msrt_strbuf_new
+msrt_strbuf_push
+msrt_strbuf_finish
+msrt_string_parse_int
+msrt_string_index_any
+msrt_string_trim_chars
+msrt_string_last_index_of

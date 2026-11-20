@@ -17,7 +17,6 @@ ms-rt = { path = "../ms-rt" }
 ms-std-bigint = { path = "../ms-std-bigint" }
 ms-std-decimal = { path = "../ms-std-decimal" }
 ms-std-fs = { path = "../ms-std-fs" }
-ms-std-json = { path = "../ms-std-json" }
 ms-std-net = { path = "../ms-std-net" }
 ms-std-process = { path = "../ms-std-process" }
 ms-std-table = { path = "../ms-std-table" }

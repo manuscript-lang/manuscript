@@ -390,7 +390,7 @@ Spawn is an `mmap` plus guard `mprotect` unless a pooled stack (32 kept) is avai
 
 `msrt_<module>_<name>`; modules: `mem`, `rc`, `fault`, `cleanup`, `int`, `float`,
 `bool`, `numbers`, `string`, `bytes`, `list`, `map`, `set`, `strbuilder`, `slot`,
-`eq`, `hash`, `io`, `process`, `profile`. Future crates (`ms-std-fs`, `ms-std-json`...)
+`eq`, `hash`, `io`, `process`, `profile`. Future crates (`ms-std-fs`...)
 use their own prefix and link only when imported; they depend on `ms-rt-abi` and call
 `msrt_*` for allocation and faults. The authoritative symbol list is the `#[no_mangle]`
 items in `ms-rt/src` (`cargo doc -p ms-rt`); language names follow `stdlib/*.ms`

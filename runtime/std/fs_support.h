@@ -38,6 +38,10 @@ void ms_fs_fail_os(MsFsFail *fail, MsSysError error, const char *operation, MsBy
 /* The same for one path. */
 void ms_fs_fail_errno_at(MsFsFail *fail, MsSysError error, const char *operation, MsBytes path);
 
+/* A libuv failure (a negative UV_* code) of `operation` on `name` (empty for none): not found, permission denied and
+ * unsupported keep their status, the rest are STATUS_FAILED with `operation name: reason`. */
+void ms_fs_fail_uv(MsFsFail *fail, int code, const char *operation, MsBytes name);
+
 /* Ends a native: returns the failure's status and always fills `err` for a failure (the caller reads the slot whatever the
  * status; empty when there is no text). STATUS_FAILED stores the failure's text; any other
  * status stores `detail` (the path or paths, "a -> b" for a pair) when there is one. A pending stop request is

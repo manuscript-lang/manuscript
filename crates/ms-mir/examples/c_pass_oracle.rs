@@ -40,6 +40,10 @@ fn main() {
                     }
                 };
                 let _ = writeln!(out, "changed {}", changed as u8);
+                if pass == "debug_types" {
+                    out.push_str(&debug_types_dump(&m));
+                    continue;
+                }
                 out.push_str(&print_module(&m));
                 for f in &m.funcs {
                     let mut cold: Vec<u32> = f.cold.iter().map(|b| b.0).collect();
@@ -52,6 +56,54 @@ fn main() {
         }
     }
     print!("{out}");
+}
+
+/// What `print_debug_types` in `compiler/tools/ms_mir_pass.c` prints.
+fn debug_types_dump(m: &ms_mir::ir::Module) -> String {
+    use ms_mir::debug_types::{DebugKind, Encoding, debug_types_by_ty};
+    let (types, of_ty) = debug_types_by_ty(m);
+    let mut out = String::new();
+    for (i, t) in types.iter().enumerate() {
+        let _ = write!(out, "{i} {} size={} ", t.name, t.size);
+        let members = match &t.kind {
+            DebugKind::Base(e) => {
+                let e = match e {
+                    Encoding::Bool => "bool",
+                    Encoding::Signed => "signed",
+                    Encoding::Unsigned => "unsigned",
+                    Encoding::Float => "float",
+                };
+                let _ = writeln!(out, "base {e}");
+                &[][..]
+            }
+            DebugKind::Pointer(to) => {
+                match to {
+                    Some(to) => {
+                        let _ = writeln!(out, "pointer -> {to}");
+                    }
+                    None => out.push_str("pointer\n"),
+                }
+                &[][..]
+            }
+            DebugKind::Struct(ms) => {
+                out.push_str("struct\n");
+                ms
+            }
+            DebugKind::Union(ms) => {
+                out.push_str("union\n");
+                ms
+            }
+        };
+        for mem in members {
+            let _ = writeln!(out, "  {} @{}: {}", mem.name, mem.offset, mem.ty);
+        }
+    }
+    out.push_str("of_ty");
+    for i in of_ty {
+        let _ = write!(out, " {i}");
+    }
+    out.push('\n');
+    out
 }
 
 /// Runs the pass `name` on `m` and returns whether it reports a change; `compiler/tools/ms_mir_pass.c`
@@ -75,6 +127,15 @@ fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> Result<bool, String> {
         "cancel_edges" => ms_mir::cancel_edges::run(m),
         "depth" => ms_mir::depth::lower(m),
         "glue" => ms_mir::glue::run(m),
+        "debug_types" => true,
+        "finish" => {
+            ms_mir::unwind::run(m);
+            ms_mir::cancel_edges::run(m);
+            ms_mir::depth::lower(m);
+            ms_mir::expand::run(m, true);
+            ms_mir::glue::run_and_expand(m);
+            true
+        }
         "glue_expand" => {
             ms_mir::glue::run_and_expand(m);
             true

@@ -362,6 +362,12 @@ uint32_t ms_h2conn_reset_code(const MsH2Conn *c, int32_t stream) {
     return s != NULL ? s->reset_code : 0;
 }
 
+void ms_h2conn_for_each(MsH2Conn *c, void (*fn)(void *context, int32_t stream, const uint64_t *user), void *context) {
+    for (uint32_t i = 0; i < c->cap; i++) {
+        if (c->streams[i].id != 0) fn(context, c->streams[i].id, &c->streams[i].user);
+    }
+}
+
 uint64_t *ms_h2conn_user(MsH2Conn *c, int32_t stream) {
     MsH2Stream *s = find(c, stream);
     return s != NULL ? &s->user : NULL;
