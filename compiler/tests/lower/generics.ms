@@ -10,6 +10,15 @@ fn second[A, B](a: A, b: B) B:
 fn pick[T](a: T, b: T) T:
 	return b
 
+fn wrap[T](a: T) T:
+	return identity(a)
+
+fn wrap_pair[T](a: T, b: T) T:
+	return first(a, b)
+
+fn from_nested() Float:
+	return wrap(wrap_pair(1.5, 2.5)) + wrap(0.5)
+
 fn from_ints() Int:
 	a := identity(3)
 	b := first(4, 5)
@@ -29,5 +38,5 @@ fn from_text() String:
 	return identity("s")
 
 fn main() Int:
-	if from_bools(false) and mixed(2) > 1.0 and from_floats() > 1.0 and from_text() == "s": return from_ints()
+	if from_nested() > 0.0 and from_bools(false) and mixed(2) > 1.0 and from_floats() > 1.0 and from_text() == "s": return from_ints()
 	return identity(0)

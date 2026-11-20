@@ -112,9 +112,13 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
 
 /* A type whose values the pass can pass around: primitives, lists, function values and nominal
  * types that cannot need a cleanup (a value that closes gets one the pass does not record yet). */
-bool ms_body_is_admitted(const MsBody *b, MsTy ty) {
+static bool body_is_admitted(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
            (body_is_own_nominal(b, ty) && !body_is_closeable(b, ty, 0));
+}
+
+bool ms_body_is_admitted(const MsBody *b, MsTy ty) {
+    return body_is_admitted(b, ty);
 }
 
 /* `Result[T, E]` whose success type the pass can hold (or `Void`); the error type is only ever
@@ -122,18 +126,18 @@ bool ms_body_is_admitted(const MsBody *b, MsTy ty) {
 bool ms_body_is_result(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     return ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_RESULT) && tys->nargs[ty] == 2 &&
-           (ms_ty_args(tys, ty)[0] == b->void_ty || ms_body_is_admitted(b, ms_ty_args(tys, ty)[0]));
+           (ms_ty_args(tys, ty)[0] == b->void_ty || body_is_admitted(b, ms_ty_args(tys, ty)[0]));
 }
 
 static bool body_is_optional(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     return ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_OPTIONAL) && tys->nargs[ty] == 1 &&
-           ms_body_is_admitted(b, ms_ty_args(tys, ty)[0]);
+           body_is_admitted(b, ms_ty_args(tys, ty)[0]);
 }
 
 /* What a parameter or a local can hold. */
 static bool body_is_bindable(const MsBody *b, MsTy ty) {
-    return ty == b->invalid_ty || ms_body_is_admitted(b, ty) || body_is_optional(b, ty) || ms_body_is_result(b, ty);
+    return ty == b->invalid_ty || body_is_admitted(b, ty) || body_is_optional(b, ty) || ms_body_is_result(b, ty);
 }
 
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
@@ -164,7 +168,7 @@ static bool body_is_comparable(const MsBody *b, MsTy ty) {
         return true;
     }
     const MsKind kind = ms_ty_kind(tys, ty);
-    return ms_body_is_admitted(b, ty) && (kind == MS_K_TYPE || kind == MS_K_ALTERNATIVE) &&
+    return body_is_admitted(b, ty) && (kind == MS_K_TYPE || kind == MS_K_ALTERNATIVE) &&
            !ms_ty_is(tys, ty, MS_BI_OPTIONAL) && !ms_ty_is(tys, ty, MS_BI_RESULT) &&
            !ms_ty_is(tys, ty, MS_BI_PROMISE) && !ms_ty_is(tys, ty, MS_BI_ERROR);
 }
@@ -531,16 +535,25 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     const MsSyms *syms = &b->c->syms;
     const MsTy record = syms->ty[sym];
     const MsDef *def = ms_def(b->c, sym);
-    if (syms->module[sym] != b->module || syms->nvars[sym] != 0 || syms->decl[sym] == NULL ||
-        syms->decl[sym]->kind != MS_D_TYPE || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
-        !ms_body_is_admitted(b, record) || def->nfields != e->u.call.args.len) {
+    const MsDecl *decl = syms->decl[sym];
+    const uint32_t nargs = e->u.call.args.len;
+    if (syms->nvars[sym] != 0 || decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.external ||
+        (syms->module[sym] != b->module && decl->u.type.opaque) || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
+        !body_is_admitted(b, record) || nargs > def->nfields || def->nfields != decl->u.type.fields.len) {
         return ms_body_unsupported(b);
     }
     for (uint32_t i = 0; i < def->nfields; i++) {
+        if (i >= nargs) {
+            // A field left out takes its default.
+            if (decl->u.type.fields.ptr[i]->def == NULL) {
+                return ms_body_unsupported(b);
+            }
+            continue;
+        }
         const MsArg *arg = &e->u.call.args.ptr[i];
         const MsTy field = def->fields[i].ty;
         if ((arg->has_name && arg->name != def->fields[i].name) || def->fields[i].flags != 0 ||
-            !ms_body_is_admitted(b, field) || ms_body_expr(b, arg->value, field) == MS_TY_NONE) {
+            !body_is_admitted(b, field) || ms_body_expr(b, arg->value, field) == MS_TY_NONE) {
             return ms_body_unsupported(b);
         }
     }
@@ -584,7 +597,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
         }
         const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
         if ((arg->has_name && (arg->name != params[i].name || (params[i].flags & MS_PARAM_POSITIONAL) != 0)) ||
-            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)) || ms_body_is_admitted(b, params[i].ty) || body_is_optional(b, params[i].ty))) {
+            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)) || body_is_admitted(b, params[i].ty) || body_is_optional(b, params[i].ty))) {
             return false;
         }
         const MsStr name = ms_name(b->c->names, params[i].name);
@@ -606,6 +619,19 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
     return true;
 }
 
+/* `name[Int](args)`: a call of a generic function of the module with written type arguments. */
+static MsTy body_explicit_call(MsBody *b, const MsExpr *e) {
+    const MsExpr *apply = e->u.call.callee;
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, apply->u.apply.left->u.sym);
+    const MsSyms *syms = &b->c->syms;
+    const bool generic = sym != MS_NONE && syms->kind[sym] == MS_SYM_FN && syms->nvars[sym] != 0 &&
+                         syms->decl[sym] != NULL && syms->decl[sym]->kind == MS_D_FN;
+    if (!generic || ms_body_find_binding(b, apply->u.apply.left->u.sym) != MS_NONE) {
+        return ms_body_unsupported(b);
+    }
+    return ms_body_generic_call(b, e, sym, &apply->u.apply.types);
+}
+
 static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
@@ -614,6 +640,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const uint32_t called = callee->kind == MS_E_NAME ? ms_body_find_binding(b, callee->u.sym) : MS_NONE;
     if (called != MS_NONE) {
         return ms_body_call_value(b, e, called);
+    }
+    if (callee->kind == MS_E_APPLY && callee->u.apply.left->kind == MS_E_NAME) {
+        return body_explicit_call(b, e);
     }
     if (callee->kind != MS_E_NAME) {
         return ms_body_unsupported(b);
@@ -636,7 +665,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return ms_body_unsupported(b);
     }
     if (syms->nvars[sym] != 0) {
-        return ms_body_generic_call(b, e, sym);
+        return ms_body_generic_call(b, e, sym, NULL);
     }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
