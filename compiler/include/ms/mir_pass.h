@@ -77,6 +77,10 @@ bool mir_elaborate_with(MirModule *m, bool cancel_exits, MsBuf *error);
  * tasks; the caller decides whether edges are switched on (`MS_CANCEL_EDGES`). */
 bool mir_cancel_edges(MirModule *m);
 
+/* depth: lowers `depth.enter`, the stack-depth check of a recursive function, to `stack.low`, memory
+ * operations and a call of a grow shim. Run after unwind. Returns whether there was one. */
+bool mir_depth_lower(MirModule *m);
+
 /* ---- glue ---- */
 
 /* The kinds of generated helper functions a backend calls instead of writing its own. */

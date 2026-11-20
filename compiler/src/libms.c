@@ -34,6 +34,7 @@
 #include "mir_elaborate_state.c"
 #include "mir_elaborate_emit.c"
 #include "mir_elaborate_close.c"
+#include "mir_depth.c"
 #include "mir_elaborate_cancel.c"
 #include "mir_elaborate_sites.c"
 #include "mir_elaborate_convert.c"

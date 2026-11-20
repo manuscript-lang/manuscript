@@ -73,6 +73,7 @@ fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> Result<bool, String> {
         "expand_owned" => ms_mir::expand_owned::run(m),
         "unwind" => ms_mir::unwind::run(m),
         "cancel_edges" => ms_mir::cancel_edges::run(m),
+        "depth" => ms_mir::depth::lower(m),
         "glue" => ms_mir::glue::run(m),
         "glue_expand" => {
             ms_mir::glue::run_and_expand(m);
