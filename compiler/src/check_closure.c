@@ -148,7 +148,7 @@ MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected) {
     b->lambda_floor = first;
     const MsTyParam *params = ms_ty_params(&b->c->tys, fn);
     for (uint32_t i = 0; i < e->u.lambda.params.len && b->supported; i++) {
-        (void)ms_body_bind(b, e->u.lambda.params.ptr[i]->name, params[i].ty, e->u.lambda.params.ptr[i]->id, 0, MS_ROLE_LAMBDA_PARAM);
+        (void)ms_body_bind(b, e->u.lambda.params.ptr[i]->name, params[i].ty, e->u.lambda.params.ptr[i]->id, e->u.lambda.params.ptr[i]->pos, 0, MS_ROLE_LAMBDA_PARAM);
     }
     const bool falls = b->supported && ms_body_block(b, &e->u.lambda.body);
     const bool complete = !falls || result == b->void_ty;

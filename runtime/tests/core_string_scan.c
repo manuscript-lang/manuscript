@@ -110,6 +110,32 @@ static void test_trim_chars(void) {
     CHECK(trimmed_is("ab\xff", "b", false, true, "ab\xff"));
 }
 
+/* scalar_at with a default of -1: the scalar that starts at `offset`, or -1. */
+static int64_t scalar_at(const char *text, int64_t offset) {
+    MsStr t = make(text);
+    const int64_t scalar = msrt_string_scalar_at(&t, offset, 1, -1);
+    msrt_string_free(&t);
+    return scalar;
+}
+
+static void test_scalar_at(void) {
+    CHECK(scalar_at("h\xc3\xa9llo", 0) == 'h');
+    CHECK(scalar_at("h\xc3\xa9llo", 1) == 0xE9);
+    CHECK(scalar_at("h\xc3\xa9llo", 2) == -1); /* inside a scalar */
+    CHECK(scalar_at("h\xc3\xa9llo", 3) == 'l');
+    CHECK(scalar_at("h\xc3\xa9llo", 6) == -1); /* the end */
+    CHECK(scalar_at("h\xc3\xa9llo", -1) == -1);
+    CHECK(scalar_at("\xf0\x9f\x99\x82", 0) == 0x1F642);
+    CHECK(scalar_at("\xf0\x9f\x99\x82", 1) == -1);
+    CHECK(scalar_at("\xf0\x9f\x99\x82", 3) == -1);
+    CHECK(scalar_at("a\xffz", 1) == 0xFFFD); /* a stray byte starts a scalar and reads as U+FFFD */
+    CHECK(scalar_at("", 0) == -1);
+    MsStr t = make("abc");
+    CHECK(msrt_string_scalar_at(&t, 1, 0, 0) == 'b');
+    CHECK(msrt_string_scalar_at(&t, 9, 1, 77) == 77);
+    msrt_string_free(&t);
+}
+
 static void test_last_index_of(void) {
     CHECK(last_index_of("abcabc", "bc") == 4);
     CHECK(last_index_of("abcabc", "abc") == 3);
@@ -126,6 +152,7 @@ int main(void) {
     test_index_any();
     test_trim_chars();
     test_last_index_of();
+    test_scalar_at();
     puts("core_string_scan ok");
     return 0;
 }

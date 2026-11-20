@@ -11,7 +11,6 @@ crate-type = ["rlib"]
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
-ms-std-fs = { path = "../ms-std-fs" }
 
 [target.'cfg(unix)'.dependencies]
 libc = { version = "0.2", default-features = false }

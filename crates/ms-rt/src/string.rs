@@ -19,6 +19,14 @@ use ms_rt_abi::{
 // The moved symbols (runtime/symbols/string.txt) are defined by the C runtime; Rust callers and tests reach them here.
 unsafe extern "C-unwind" {
     pub fn msrt_string_fields(s: *const StrVal, out: *mut VecVal);
+    pub fn msrt_string_quote(s: *const StrVal, out: *mut StrVal);
+    pub fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8;
+    pub fn msrt_string_scalar_at(
+        s: *const StrVal,
+        offset: i64,
+        has_default: HasRaw,
+        default: i64,
+    ) -> i64;
     pub fn msrt_string_index_any(s: *const StrVal, set: *const StrVal, out: *mut i64) -> u8;
     pub fn msrt_string_last_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8;
     pub fn msrt_string_trim_chars(
@@ -508,55 +516,6 @@ pub(super) fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
         at += 8;
     }
     rest.iter().position(|&b| b == c).map(|p| at + p)
-}
-
-/// `String.scalar_at(offset, default)`: an ASCII byte is its own scalar, one read; anything else
-/// is decoded or rejected by [`msrt_string_scalar_at_slow`].
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
-    s: *const StrVal,
-    offset: i64,
-    has_default: HasRaw,
-    default: i64,
-) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        if let Some(&b) = usize::try_from(offset).ok().and_then(|i| bytes(s).get(i))
-            && b < 0x80
-        {
-            return b as i64;
-        }
-        msrt_string_scalar_at_slow(s, offset, has_default, default)
-    }
-}
-
-/// Whether byte offset `i` of `text` starts a scalar (or is the end).
-#[inline(always)]
-fn is_boundary(text: &[u8], i: usize) -> bool {
-    i == text.len() || text[i] & 0xC0 != 0x80
-}
-
-/// `String.scalar_at(offset, default)`: the scalar that starts at byte `offset`. An offset outside
-/// the text or inside a scalar gives `default`, or a fault without one.
-pub unsafe fn msrt_string_scalar_at_slow(
-    s: *const StrVal,
-    offset: i64,
-    has_default: HasRaw,
-    default: i64,
-) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe {
-        let text = bytes(s);
-        match usize::try_from(offset) {
-            Ok(i) if i < text.len() && is_boundary(text, i) => utf8::decode(&text[i..]).0 as i64,
-            _ if has_default.is_set() => default,
-            _ => fault::fault_fmt(format_args!(
-                "String.scalar_at: offset {offset} does not start a scalar of the {} byte text; pass a default",
-                text.len()
-            )),
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1136,14 +1095,6 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
     }
 }
 
-/// `String.parse_float()`: present flag, value through `out`; the `Result` form is `math.parse_float`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe { u8::from(crate::num::msrt_numbers_parse_float(s, out) == STATUS_OK) }
-}
-
 /// Normalization forms by the spelling `String.normalize` takes.
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -1277,43 +1228,6 @@ unsafe fn normalize_kind(
 // ---------------------------------------------------------------------------
 // Conversions to string (Int, Float, Bool)
 // ---------------------------------------------------------------------------
-
-/// The double-quoted, escaped spelling of a string (as `%q` writes it).
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrVal, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_quote_val(s)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_quote_val(s: *const StrVal) -> StrVal {
-    // SAFETY: caller passes a live string.
-    let text = unsafe { bytes(s) };
-    let mut out = Vec::with_capacity(text.len() + 2);
-    out.push(b'"');
-    let mut i = 0;
-    while i < text.len() {
-        let c = text[i];
-        match c {
-            b'"' => out.extend_from_slice(b"\\\""),
-            b'\\' => out.extend_from_slice(b"\\\\"),
-            b'\n' => out.extend_from_slice(b"\\n"),
-            b'\t' => out.extend_from_slice(b"\\t"),
-            b'\r' => out.extend_from_slice(b"\\r"),
-            0..=0x1f | 0x7f => {
-                const HEX: &[u8; 16] = b"0123456789abcdef";
-                out.extend_from_slice(b"\\x");
-                out.push(HEX[(c >> 4) as usize]);
-                out.push(HEX[(c & 15) as usize]);
-            }
-            _ => out.push(c),
-        }
-        i += 1;
-    }
-    out.push(b'"');
-    from_buf(out)
-}
 
 unsafe extern "C-unwind" {
     /// `[list copies, list bytes, string clones, string bytes]` of the counting runtime (zeros elsewhere).
@@ -1994,12 +1908,6 @@ mod tests {
             assert_eq!(msrt_string_scalar_at(s, 1, HasRaw(0), 0), 0xE9);
             assert_eq!(msrt_string_scalar_at(s, 3, HasRaw(0), 0), 'l' as i64);
             assert_eq!(msrt_string_scalar_at(s, 2, HasRaw(1), -1), -1);
-            testutil::assert_fault(
-                "String.scalar_at: offset 2 does not start a scalar of the 6 byte text; pass a default",
-                || {
-                    msrt_string_scalar_at(s, 2, HasRaw(0), 0);
-                },
-            );
         }
     }
 

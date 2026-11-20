@@ -35,7 +35,7 @@ static bool body_is_value_type(const MsBody *b, MsTy ty) {
     return ty != MS_TY_NONE && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ty == b->string_ty);
 }
 
-/* A `type` or `enum` this module declares without type parameters. */
+/* A `type`, `enum` or interface without type parameters. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, ty);
@@ -44,7 +44,7 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
         return false;
     }
     const MsSymId sym = def - 1;
-    return sym < b->c->syms.count && b->c->syms.module[sym] == b->module && b->c->syms.kind[sym] == MS_SYM_TYPE;
+    return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
 }
 
 /* A type whose values the pass can pass around: primitives, and the module's own nominal types
@@ -100,7 +100,7 @@ uint32_t ms_body_find_binding(const MsBody *b, MsSym name) {
 }
 
 /* Binds a name in the function's one scope. A name already bound there would be a diagnostic. */
-uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, uint8_t flags, MsBindRole role) {
+uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, MsPos pos, uint8_t flags, MsBindRole role) {
     if (!body_text_is(b, name, "_") && ms_body_find_binding(b, name) != MS_NONE) {
         (void)ms_body_unsupported(b);
         return MS_NONE;
@@ -108,11 +108,12 @@ uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, uint8_t fla
     MsBindings *bindings = &b->facts->bindings;
     const uint32_t id = bindings->count++;
     b->closed[id] = false;
-    b->reads[id] = 0;
+    bindings->reads[id] = 0;
+    bindings->pos[id] = pos;
     bindings->name[id] = name;
     bindings->ty[id] = ty;
     bindings->decl_node[id] = node;
-    bindings->callable[id] = 0;
+    bindings->callable[id] = b->function;
     bindings->flags[id] = flags;
     bindings->role[id] = (uint8_t)role;
     return id;
@@ -398,7 +399,7 @@ static MsTy body_name(MsBody *b, const MsExpr *e) {
     }
     b->facts->res_kind[e->id] = MS_RES_BINDING;
     b->facts->res_ref[e->id] = binding;
-    b->reads[binding]++;
+    b->facts->bindings.reads[binding]++;
     return b->facts->bindings.ty[binding];
 }
 
@@ -419,7 +420,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
     const MsSyms *syms = &b->c->syms;
-    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
+    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
         syms->decl[sym] == NULL || syms->nvars[sym] != 0 || syms->decl[sym]->kind != MS_D_FN ||
         syms->decl[sym]->u.fn.external) {
         return ms_body_unsupported(b);
@@ -432,15 +433,16 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsArg *arg = &e->u.call.args.ptr[i];
-        if (arg->has_name || params[i].flags != 0 ||
-            !(body_is_value_type(b, params[i].ty) || ms_body_is_function_value(b, params[i].ty)) ||
+        const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
+        if (arg->has_name || (params[i].flags & MS_PARAM_POSITIONAL) != 0 ||
+            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty))) ||
             ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
             return ms_body_unsupported(b);
         }
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
-    return body_is_value_type(b, result) ? result : ms_body_unsupported(b);
+    return body_is_admitted(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
 }
 
 static MsTy body_unary(MsBody *b, const MsExpr *e) {
@@ -705,7 +707,7 @@ static void body_bind_statement(MsBody *b, const MsStmt *s) {
     }
     const uint8_t flags = s->u.bind.is_mutable ? MS_BIND_MUTABLE : 0;
     const MsBindRole role = s->u.bind.is_mutable ? MS_ROLE_VAR : MS_ROLE_LET;
-    const uint32_t binding = ms_body_bind(b, pattern->u.name, value, pattern->id, flags, role);
+    const uint32_t binding = ms_body_bind(b, pattern->u.name, value, pattern->id, pattern->pos, flags, role);
     if (binding != MS_NONE) {
         b->facts->pattern_binding[pattern->id] = binding;
     }
@@ -732,9 +734,13 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
         const MsCheckDiag diag = {.diag = {.pos = s->pos, .message = message}, .phase = MS_PHASE_TYPE};
         MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
     }
-    const uint32_t reads_before = b->reads[binding];
+    uint32_t *reads = &b->facts->bindings.reads[binding];
+    const uint32_t reads_before = *reads;
     (void)ms_body_expr(b, s->u.assign.value, b->facts->bindings.ty[binding]);
-    b->reads[binding] = reads_before;
+    if (*reads != reads_before) {
+        b->facts->bindings.flags[binding] |= MS_BIND_FED;
+    }
+    *reads = reads_before;
     b->facts->assign_binding[s->id] = binding;
 }
 
@@ -765,7 +771,7 @@ static bool body_if_let_statement(MsBody *b, const MsStmt *s) {
         return false;
     }
     const uint32_t scope_start = b->facts->bindings.count;
-    const uint32_t binding = ms_body_bind(b, pattern->u.name, payload, pattern->id, 0, MS_ROLE_PATTERN);
+    const uint32_t binding = ms_body_bind(b, pattern->u.name, payload, pattern->id, pattern->pos, 0, MS_ROLE_PATTERN);
     if (binding == MS_NONE) {
         return false;
     }
@@ -792,6 +798,20 @@ static bool body_if_statement(MsBody *b, const MsStmt *s) {
     return then_falls || else_falls;
 }
 
+
+/* Whether `callee` names the standard library's `range`. */
+static bool body_is_range(const MsBody *b, const MsExpr *callee) {
+    if (callee->kind != MS_E_NAME || ms_body_find_binding(b, callee->u.sym) != MS_NONE) {
+        return false;
+    }
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
+    if (sym == MS_NONE) {
+        return false;
+    }
+    const MsStr id = ms_name(b->c->names, b->c->syms.id[sym]);
+    return id.len == 22 && memcmp(id.ptr, "@std/collections/range", 22) == 0;
+}
+
 static bool body_while_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *cond = s->u.loop.cond;
     b->context = "a while condition";
@@ -808,6 +828,37 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
     b->breaks = outer_breaks;
     // `while true` ends only through a `break`.
     return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
+}
+
+/* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
+ * loop variable is an immutable Int that lives for the body. */
+static bool body_for_statement(MsBody *b, const MsStmt *s) {
+    const MsExpr *iter = s->u.each.iter;
+    if (iter->kind != MS_E_CALL || iter->u.call.args.len != 2 || !body_is_range(b, iter->u.call.callee)) {
+        (void)ms_body_unsupported(b);
+        return true;
+    }
+    for (uint32_t i = 0; i < 2; i++) {
+        const MsArg *bound = &iter->u.call.args.ptr[i];
+        if (bound->has_name || ms_body_expr(b, bound->value, b->int_ty) == MS_TY_NONE) {
+            (void)ms_body_unsupported(b);
+            return true;
+        }
+    }
+    // The call itself stays untyped: the standard library's signatures are not resolved here yet.
+    b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
+    const uint32_t scope_start = b->facts->bindings.count;
+    (void)ms_body_bind(b, s->u.each.name, b->int_ty, s->id, s->pos, 0, MS_ROLE_LOOP);
+    const uint32_t outer_breaks = b->breaks;
+    b->breaks = 0;
+    b->loop_depth++;
+    if (b->supported) {
+        (void)ms_body_block(b, &s->u.each.body);
+    }
+    b->loop_depth--;
+    b->breaks = outer_breaks;
+    body_close_scope(b, scope_start);
+    return true; // a range ends
 }
 
 /* `break` and `continue` leave the innermost loop; outside one they are a diagnostic. */
@@ -844,8 +895,8 @@ static bool body_run(MsBody *b, const MsStmts *body) {
             body_jump_statement(b, s);
             falls = false;
             break;
-        case MS_S_CALL:
-        case MS_S_FOR: (void)ms_body_unsupported(b); break;
+        case MS_S_CALL: (void)ms_body_expr(b, s->u.expr, MS_TY_NONE); break;
+        case MS_S_FOR: falls = body_for_statement(b, s); break;
         }
     }
     return falls;
@@ -879,15 +930,6 @@ MsTy ms_body_block_value(MsBody *b, const MsStmts *body, const MsExpr *value, Ms
 
 static void body_statements(MsBody *b, const MsStmts *body) {
     const bool falls = ms_body_block(b, body);
-    // A local nothing reads, unless named with a leading `_`, is a diagnostic.
-    const MsBindings *bindings = &b->facts->bindings;
-    for (uint32_t i = b->first_binding; b->supported && i < bindings->count; i++) {
-        const bool local = bindings->role[i] == MS_ROLE_LET || bindings->role[i] == MS_ROLE_VAR ||
-                           bindings->role[i] == MS_ROLE_ARM || bindings->role[i] == MS_ROLE_PATTERN;
-        const MsStr name = ms_name(b->c->names, bindings->name[i]);
-        const bool ignored = name.len != 0 && name.ptr[0] == '_';
-        b->supported = !local || ignored || b->reads[i] != 0;
-    }
     // A function that returns a value must end every path with a `return`.
     if (b->supported && falls && b->result != b->void_ty) {
         (void)ms_body_unsupported(b);
@@ -936,7 +978,7 @@ static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MsParam *p = fn->params.ptr[i];
-        if (!body_default_is_none(b, p) || p->is_mutable || p->moving || !body_is_bindable(b, params[i].ty)) {
+        if (!body_default_is_none(b, p) || !body_is_bindable(b, params[i].ty)) {
             return false;
         }
     }
@@ -953,11 +995,13 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
     const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
     b->first_binding = first_binding;
+    b->function = d->id;
     b->supported = true;
     b->result = b->c->tys.result[sig];
     const MsTyParam *params = ms_ty_params(&b->c->tys, sig);
     for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
-        (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, 0, MS_ROLE_PARAM);
+        const uint8_t flags = (params[i].flags & MS_PARAM_VAR) != 0 ? MS_BIND_MUTABLE : 0;
+        (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, fn->params.ptr[i]->pos, flags, MS_ROLE_PARAM);
     }
     if (b->supported) {
         body_statements(b, &fn->body);
@@ -974,8 +1018,6 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     MsArena *arena = &b->c->arena;
     const size_t nodes = (size_t)facts->node_count + 1;
     b->closed = MS_NEW_N(arena, bool, nodes);
-    b->reads = MS_NEW_N(arena, uint32_t, nodes);
-    memset(b->reads, 0, nodes * sizeof *b->reads);
     memset(b->closed, 0, nodes * sizeof *b->closed);
     facts->expr_ty = MS_NEW_N(arena, MsTy, nodes);
     facts->res_kind = MS_NEW_N(arena, uint8_t, nodes);
@@ -1007,6 +1049,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     bindings->ty = MS_NEW_N(arena, MsTy, nodes);
     bindings->decl_node = MS_NEW_N(arena, uint32_t, nodes);
     bindings->callable = MS_NEW_N(arena, uint32_t, nodes);
+    bindings->reads = MS_NEW_N(arena, uint32_t, nodes);
+    bindings->pos = MS_NEW_N(arena, MsPos, nodes);
     bindings->flags = MS_NEW_N(arena, uint8_t, nodes);
     bindings->role = MS_NEW_N(arena, uint8_t, nodes);
     bindings->count = 0;
@@ -1069,6 +1113,7 @@ static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
     const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
     const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
     b->first_binding = first_binding;
+    b->function = d->id;
     b->supported = true;
     MsTy expected = MS_TY_NONE;
     if (d->u.konst.ty != NULL) {
@@ -1092,8 +1137,12 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
     ms_module_check_bodies_with(c, module, NULL);
 }
 
-void ms_module_check_bodies_with(MsCheck *c, MsModId module, const MsMethodTable *methods) {
+void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *methods) {
     ms_module_resolve_types(c, module);
+    const MsModId intrinsics = ms_map_get(&c->module_by_path, ms_intern_cstr(c->names, "@std/intrinsics.ms"));
+    if (methods != NULL && intrinsics != MS_NONE) {
+        ms_module_ensure_operations(c, intrinsics, methods); // what a primitive receiver offers
+    }
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
     // A module with a declaration-level diagnostic may have signatures the bodies would restate.

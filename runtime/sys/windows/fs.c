@@ -19,6 +19,8 @@ enum {
     MS_ERROR_FILE_EXISTS = 80,
     MS_ERROR_IO_DEVICE = 1117,
     MS_ERROR_INVALID_HANDLE = 6,
+    ERROR_BROKEN_PIPE_CODE = 109,
+    ERROR_NO_DATA_CODE = 232,
     MS_ERROR_NOT_SUPPORTED = 50,
     MS_ERROR_CANT_RESOLVE_FILENAME = 1921,
     MS_ERROR_NO_UNICODE_TRANSLATION = 1113
@@ -1266,6 +1268,10 @@ MsSysFdKind ms_sys_fs_fd_kind(MsSysFd fd) {
         return MS_SYS_FD_OTHER;
     }
 }
+
+bool ms_sys_fs_is_terminal(MsSysFd fd) { return !is_invalid(fd) && is_console(handle_of(fd)); }
+
+bool ms_sys_error_is_broken_pipe(MsSysError error) { return error == ERROR_BROKEN_PIPE_CODE || error == ERROR_NO_DATA_CODE; }
 
 bool ms_sys_fs_is_output(MsSysFd fd) {
     return !is_invalid(fd) && (handle_of(fd) == GetStdHandle(STD_OUTPUT_HANDLE) || handle_of(fd) == GetStdHandle(STD_ERROR_HANDLE));

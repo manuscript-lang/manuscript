@@ -121,7 +121,7 @@ static bool alt_bind_payload(MsBody *b, const MsArm *arm, MsTy ty, const AltInfo
             continue;
         }
         const MsTy field = alt_field_ty(b, info, ty, index, slot);
-        if (ms_body_bind(b, name, field, arm->id, 0, MS_ROLE_ARM) == MS_NONE) {
+        if (ms_body_bind(b, name, field, arm->id, arm->bindings.ptr[slot].pos, 0, MS_ROLE_ARM) == MS_NONE) {
             return false;
         }
     }
