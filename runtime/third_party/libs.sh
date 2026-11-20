@@ -1,6 +1,7 @@
 #!/bin/sh
 # Installs the tools and libraries the C build needs: CMake, Ninja, ccache, pkg-config, and libuv, nghttp2, OpenSSL,
-# PCRE2 and zlib (the system packages CMakeLists.txt finds with pkg-config).
+# PCRE2 and zlib (the system packages CMakeLists.txt finds with pkg-config, for plain CMake dev builds; runtime archives use
+# the prebuilt libraries of toolchain/fetch-c-libs.sh).
 # Usage: libs.sh install
 # Which libraries a build uses is decided by cmake/MsLibs.cmake: system packages (default), the pinned versions
 # in c-libs.lock built by build.sh (musl runtime archives), or the MSYS2 CLANG64 or CLANGARM64 packages (Windows,

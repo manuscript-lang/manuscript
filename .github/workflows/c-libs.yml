@@ -1,0 +1,122 @@
+name: C libraries
+
+# Builds the pinned C libraries (runtime/third_party/c-libs.lock) once per target and publishes them to the release
+# `c-libs-<key>`, like the LLVM tools: every build then downloads the archive that toolchain/c-libs.sums pins
+# (toolchain/fetch-c-libs.sh) instead of building or installing packages. A pull request that changes
+# c-libs.lock or runtime/third_party/build.sh starts it (or run it by hand); it publishes nothing that already exists. Then run
+# `sh toolchain/fetch-c-libs.sh pin <key>` (the key is in the summary) and commit toolchain/c-libs.sums.
+# Linux glibc archives are built in manylinux_2_28 so they keep to the glibc 2.28 floor.
+
+on:
+  workflow_dispatch:
+  # A change to the pins or the build script builds and publishes its archives, so the pull request can pin them.
+  pull_request:
+    paths:
+      - runtime/third_party/c-libs.lock
+      - runtime/third_party/build.sh
+      - .github/workflows/c-libs.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c-libs-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  key:
+    runs-on: ubuntu-24.04
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+      exists: ${{ steps.exists.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # The key does not depend on the triple's compiler, only on the pins and the script, so one value names the release.
+      - id: key
+        run: echo "key=$(sh runtime/third_party/build.sh key x86_64-unknown-linux-gnu | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "c-libs-${{ steps.key.outputs.key }}" >/dev/null 2>&1; then echo exists=true; else echo exists=false; fi >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: key
+    if: needs.key.outputs.exists != 'true'
+    name: build-${{ matrix.triple }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { triple: x86_64-unknown-linux-gnu, runner: ubuntu-24.04, container: 'quay.io/pypa/manylinux_2_28_x86_64' }
+          - { triple: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm, container: 'quay.io/pypa/manylinux_2_28_aarch64' }
+          - { triple: x86_64-unknown-linux-musl, runner: ubuntu-24.04 }
+          - { triple: aarch64-unknown-linux-musl, runner: ubuntu-24.04-arm }
+          - { triple: x86_64-apple-darwin, runner: macos-15-intel }
+          - { triple: aarch64-apple-darwin, runner: macos-15 }
+          - { triple: x86_64-pc-windows-gnullvm, runner: windows-2025, arch: x86_64 }
+          - { triple: aarch64-pc-windows-gnullvm, runner: windows-11-arm, arch: aarch64 }
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # manylinux is run by hand: the Node actions do not start in every container image.
+      - name: Build in manylinux_2_28
+        if: matrix.container
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w "${{ matrix.container }}" sh -c \
+            'yum install -y perl-IPC-Cmd >/dev/null && /opt/python/cp312-cp312/bin/pip install -q cmake ninja && PATH=/opt/python/cp312-cp312/bin:$PATH CC=gcc sh runtime/third_party/build.sh ${{ matrix.triple }}'
+      - name: Build with musl-gcc
+        if: contains(matrix.triple, 'musl')
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools cmake ninja-build
+          CC=musl-gcc sh runtime/third_party/build.sh ${{ matrix.triple }}
+      - name: Build on macOS
+        if: contains(matrix.triple, 'apple')
+        run: |
+          brew install ninja cmake || true
+          CC=clang sh runtime/third_party/build.sh ${{ matrix.triple }}
+      # Windows programs link against llvm-mingw (toolchain/fetch-mingw.sh), so the libraries are built with its clang.
+      - name: Build with llvm-mingw
+        if: contains(matrix.triple, 'windows')
+        run: |
+          mingw="$(MINGW_WORK="$RUNNER_TEMP/llvm-mingw" MINGW_HOST=${{ matrix.arch }} sh toolchain/fetch-mingw.sh | tail -n 1)"
+          PATH="$mingw/bin:$PATH" CC="$mingw/bin/${{ matrix.arch }}-w64-mingw32-clang" sh runtime/third_party/build.sh ${{ matrix.triple }}
+      - name: Pack
+        run: |
+          key=${{ needs.key.outputs.key }}
+          mkdir -p dist
+          tar -czf "dist/c-libs-${{ matrix.triple }}-$key.tar.gz" -C "target/c-libs/${{ matrix.triple }}-pinned-$key" lib include
+      - uses: actions/upload-artifact@v4
+        with:
+          name: c-libs-${{ matrix.triple }}
+          path: dist/*
+
+  publish:
+    needs: [key, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: c-libs-*
+          merge-multiple: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist && sha256sum c-libs-*.tar.gz > SHA256SUMS
+          gh release create "c-libs-${{ needs.key.outputs.key }}" c-libs-*.tar.gz SHA256SUMS --repo "$GITHUB_REPOSITORY" \
+            --title "C libraries ${{ needs.key.outputs.key }}" --notes "Prebuilt static C libraries, built by .github/workflows/c-libs.yml. Pin with: sh toolchain/fetch-c-libs.sh pin ${{ needs.key.outputs.key }}" --target "${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "Published c-libs-${{ needs.key.outputs.key }}. Pin: sh toolchain/fetch-c-libs.sh pin ${{ needs.key.outputs.key }}" >> "$GITHUB_STEP_SUMMARY"

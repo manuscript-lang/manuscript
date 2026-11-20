@@ -70,30 +70,34 @@ fn run(command: &mut Command, what: &str) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-/// The folder holding the C libraries (`include/`, `lib/lib*.a`) for `triple`, when they do not come from
-/// pkg-config: pinned builds for musl (system packages are glibc's), MSYS2's packages for Windows.
-fn libs_prefix(root: &Path, triple: &str) -> Result<Option<PathBuf>, String> {
-    if triple.contains("musl") {
-        let out = run(
-            Command::new("sh")
-                .arg(root.join("runtime/third_party/build.sh"))
-                .arg(triple)
-                .env("MS_C_LIBS", "pinned")
-                .env("CC", musl_compiler()),
-            "build.sh",
-        )?;
-        return Ok(Some(PathBuf::from(out)));
+/// The triple of the machine running the build, for the platforms whose prebuilt libraries match its own target
+/// (Windows hosts build their unit tests for MSVC, which the mingw-built libraries do not serve).
+fn host_triple() -> Option<String> {
+    let arch = std::env::consts::ARCH;
+    match std::env::consts::OS {
+        "linux" => Some(format!("{arch}-unknown-linux-gnu")),
+        "macos" => Some(format!("{arch}-apple-darwin")),
+        _ => None,
     }
-    if triple.contains("windows") {
-        let msys = std::env::var("MS_MSYS2").unwrap_or_else(|_| "C:/msys64".into());
-        let env = if triple.starts_with("aarch64") {
-            "clangarm64"
-        } else {
-            "clang64"
-        };
-        return Ok(Some(PathBuf::from(format!("{msys}/{env}"))));
-    }
-    Ok(None)
+}
+
+/// The folder holding the C libraries (`include/`, `lib/lib*.a`) for `triple` (the host when `None`): the prebuilt
+/// archives of `toolchain/c-libs.sums`, fetched by `toolchain/fetch-c-libs.sh`, which builds them with
+/// `runtime/third_party/build.sh` when none is pinned. `None` when the build takes system packages instead.
+fn libs_prefix(root: &Path, triple: Option<&str>) -> Result<Option<PathBuf>, String> {
+    let Some(triple) = triple.map(str::to_string).or_else(host_triple) else {
+        return Ok(None);
+    };
+    let compiler = c_compiler(root, &triple, std::env::consts::ARCH);
+    let out = run(
+        Command::new("sh")
+            .arg(root.join("toolchain/fetch-c-libs.sh"))
+            .arg(&triple)
+            .env("MS_C_LIBS", "pinned")
+            .env("CC", compiler),
+        "fetch-c-libs.sh",
+    )?;
+    Ok(Some(PathBuf::from(out)))
 }
 
 /// Configures and builds the C half of the runtime archive for `triple` (the host when `None`) in `work/cmake`
@@ -143,20 +147,19 @@ pub fn build_c_runtime(
         if !host && !triple.contains("musl") && !triple.contains("windows") {
             configure.arg(format!("-DCMAKE_C_COMPILER_TARGET={triple}"));
         }
-        if let Some(prefix) = libs_prefix(root, triple)? {
-            configure.arg("-DMS_C_LIBS=prefix");
-            configure.arg(format!("-DMS_LIBS_PREFIX={}", prefix.display()));
-            if triple.contains("windows") {
-                // MSYS2 keeps its headers in one prefix; llvm-mingw's own come first.
-                configure.arg("-DMS_LIBS_IDIRAFTER=ON");
-                configure.arg("-DMS_LIBS_DEFINES=NGHTTP2_STATICLIB;PCRE2_STATIC");
-            }
-        }
     } else {
         configure.arg("-DCMAKE_C_COMPILER=clang");
         if cfg!(windows) {
             // A Windows host's own build (unit tests) targets MSVC.
             configure.arg(format!("-DCMAKE_C_COMPILER_TARGET={arch}-pc-windows-msvc"));
+        }
+    }
+    if let Some(prefix) = libs_prefix(root, triple)? {
+        configure.arg("-DMS_C_LIBS=prefix");
+        configure.arg(format!("-DMS_LIBS_PREFIX={}", prefix.display()));
+        if triple.is_some_and(|t| t.contains("windows")) {
+            // The libraries are static archives; their headers say so only when told.
+            configure.arg("-DMS_LIBS_DEFINES=NGHTTP2_STATICLIB;PCRE2_STATIC;CURL_STATICLIB");
         }
     }
     run(&mut configure, "cmake configure")?;

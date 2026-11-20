@@ -1,9 +1,11 @@
 #!/bin/sh
-# Builds the pinned C libraries the networking runtime links (libuv, nghttp2, OpenSSL, zlib, PCRE2) as static archives,
-# for the musl runtime archive (cmake/MsLibs.cmake takes the folder as MS_LIBS_PREFIX). llhttp is vendored and built by CMake.
+# Builds the pinned C libraries the runtime links (libuv, nghttp2, OpenSSL, zlib, PCRE2, libcurl) as static archives
+# (cmake/MsLibs.cmake takes the folder as MS_LIBS_PREFIX). llhttp is vendored and built by CMake.
 # Sources are pinned in runtime/third_party/c-libs.lock (sha256 checked) and fetched into target/c-libs/src.
-# Output: target/c-libs/<triple>-<key>/{lib,include}. Usage: build.sh [triple]; `build.sh key [triple]` prints the cache key. CC chooses the compiler.
-# Needs a C compiler, make, cmake and perl (OpenSSL's Configure). Using `ms` needs none of them.
+# Output: target/c-libs/<triple>-pinned-<key>/{lib,include}. Usage: build.sh [triple]; `build.sh key [triple]` prints the cache key.
+# CC chooses the compiler (musl-gcc for musl, llvm-mingw's clang for Windows). The .github/workflows/c-libs.yml workflow runs this
+# once per target and publishes the folders; toolchain/fetch-c-libs.sh downloads them, and calls this script only when no
+# published copy is pinned. Needs a C compiler, make, cmake and perl (OpenSSL's Configure). Using `ms` needs none of them.
 # set -eu
 repository=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 triple=${1:-host}
@@ -13,9 +15,10 @@ src=$root/src
 cc=${CC:-cc}
 mode=pinned
 # One build for every dependency. The output folder is named by a hash of everything that decides its contents
-# (pins, this script, the triple, the compilers), so a CI cache keyed on `key` restores it whole and a change to any
-# input starts a clean build of all of them.
-hash_input() { cat "$repository/runtime/third_party/c-libs.lock" "$repository/runtime/third_party/build.sh"; printf '%s\n%s\n%s\n' "$triple" "$("$cc" --version | head -1)" "$mode"; }
+# (pins, this script, the triple), so a published archive and a CI cache keyed on `key` restore it whole and a change
+# to any input starts a clean build of all of them. The compiler is not part of the key: the published archives are the
+# one build everyone uses, so the key must not change with the machine that asks for it.
+hash_input() { cat "$repository/runtime/third_party/c-libs.lock" "$repository/runtime/third_party/build.sh"; printf '%s\n%s\n' "$triple" "$mode"; }
 key=$(hash_input | if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -c1-16)
 if [ "${1:-}" = key ]; then echo "$key"; exit 0; fi
 out=$root/$triple-$mode-$key
@@ -53,7 +56,24 @@ while read -r name version url hash; do
     fetch "$name" "$version" "$url" "$hash"
 done < "$repository/runtime/third_party/c-libs.lock"
 version_of() { awk -v n="$1" '$1==n {print $2}' "$repository/runtime/third_party/c-libs.lock"; }
-cmake_flags="-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$cc -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+cmake_flags="-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$cc -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+command -v ninja >/dev/null 2>&1 && cmake_flags="$cmake_flags -G Ninja"
+arch=${triple%%-*}
+[ "$triple" = host ] && arch=$(uname -m)
+# What the target needs beyond the compiler: OpenSSL's Configure target, CMake's system, the Windows library names.
+case "$triple" in
+*windows*) # llvm-mingw's clang, cross or native; mingw-w64 builds archives named lib*.a.
+    cmake_flags="$cmake_flags -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER_TARGET=$arch-w64-mingw32"
+    ssl_target=mingw64; ssl_extra="--cross-compile-prefix=$arch-w64-mingw32- $([ "$arch" = x86_64 ] || echo no-asm)" ;;
+*apple-darwin*)
+    export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-11.0}
+    case "$arch" in arm64|aarch64) cmake_arch=arm64; ssl_target=darwin64-arm64-cc ;; *) cmake_arch=x86_64; ssl_target=darwin64-x86_64-cc ;; esac
+    cmake_flags="$cmake_flags -DCMAKE_OSX_ARCHITECTURES=$cmake_arch -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
+    ssl_extra="" ;;
+*)
+    case "$arch" in aarch64|arm64) ssl_target=linux-aarch64 ;; x86_64) ssl_target=linux-x86_64 ;; *) ssl_target=linux-generic64 ;; esac
+    ssl_extra="" ;;
+esac
 
 if [ ! -f "$out/lib/libuv.a" ]; then
     build=$root/build/$triple/libuv
@@ -74,7 +94,7 @@ if [ ! -f "$out/lib/libssl.a" ]; then
     # no-secure-memory: its mmap-locked heap needs kernel headers (<linux/mman.h>) that musl-gcc does not see, and we keep no keys in a locked heap.
     build=$root/build/$triple/openssl
     rm -rf "$build"; mkdir -p "$build"
-    (cd "$build" && CC="$cc" perl "$src/openssl-$(version_of openssl)/Configure" no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" >/dev/null \
+    (cd "$build" && CC="$cc" perl "$src/openssl-$(version_of openssl)/Configure" "$ssl_target" $ssl_extra no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" >/dev/null \
         && make -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
         && cp "$src/openssl-$(version_of openssl)"/include/openssl/*.h include/openssl/*.h "$out/include/openssl/")
 fi
@@ -94,6 +114,20 @@ if [ ! -f "$out/lib/libpcre2-8.a" ]; then
     cmake --build "$build" -j "$jobs" >/dev/null
     cp "$build/libpcre2-8.a" "$out/lib/"
     cp "$build/interface/pcre2.h" "$out/include/"
+fi
+if [ ! -f "$out/lib/libcurl.a" ]; then
+    # libcurl: HTTP and HTTPS only (HTTP/2 through nghttp2), on the OpenSSL and zlib built above. No other protocols,
+    # no extra libraries (psl, idn, ssh, brotli, zstd), no executable.
+    build=$root/build/$triple/curl
+    cmake -S "$src/curl-$(version_of curl)" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
+        -DHTTP_ONLY=ON -DCURL_USE_OPENSSL=ON -DUSE_NGHTTP2=ON -DCURL_ZLIB=ON -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF \
+        -DUSE_LIBIDN2=OFF -DCURL_DISABLE_LDAP=ON -DCURL_USE_GSSAPI=OFF -DENABLE_UNIX_SOCKETS=OFF -DCURL_ENABLE_SSL=ON \
+        -DCMAKE_PREFIX_PATH="$out" -DOPENSSL_ROOT_DIR="$out" -DOPENSSL_USE_STATIC_LIBS=ON -DZLIB_ROOT="$out" \
+        -DNGHTTP2_INCLUDE_DIR="$out/include" -DNGHTTP2_LIBRARY="$out/lib/libnghttp2.a" -DCMAKE_USE_SCHANNEL=OFF >/dev/null
+    cmake --build "$build" -j "$jobs" >/dev/null
+    cp "$build"/lib/libcurl.a "$out/lib/"
+    mkdir -p "$out/include/curl"
+    cp "$src/curl-$(version_of curl)"/include/curl/*.h "$out/include/curl/"
 fi
 touch "$out/.complete"
 echo "$out"
