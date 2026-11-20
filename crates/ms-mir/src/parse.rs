@@ -433,10 +433,6 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     });
                     c.eat_p(',');
                 }
-                m.ifaces[id].close = methods
-                    .iter()
-                    .position(|s| s.name == "close")
-                    .map(|k| k as u32);
                 m.ifaces[id].methods = methods;
                 m.ifaces[id].std = parse_std(&mut c)?;
             }
@@ -445,6 +441,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
     }
     // Pass C: module, files, externs, globals, function headers.
     let mut entry_name = None;
+    let mut close_name = None;
     let mut vtable_items = Vec::new();
     let mut glue_items = Vec::new();
     for (n, t) in &toks {
@@ -570,6 +567,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 m.globals.push(GlobalDef { name, ty });
             }
             "entry" => entry_name = Some((c.at()?, *n)),
+            "close" => close_name = Some((c.at()?, *n)),
             "vtable" => vtable_items.push((*n, t.clone())),
             "desc_glue" => glue_items.push((*n, t.clone())),
             "type" | "alt" | "iface" => {}
@@ -785,6 +783,12 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
         let eq = find(&mut c)?;
         let hash = find(&mut c)?;
         m.desc_glue.push((ty, eq, hash));
+    }
+    if let Some((e, n)) = close_name {
+        m.close = Some(m.func_by_name(&e).ok_or_else(|| ParseError {
+            line: n,
+            message: format!("unknown close function @{e}"),
+        })?);
     }
     if let Some((e, n)) = entry_name {
         m.entry = Some(m.func_by_name(&e).ok_or_else(|| ParseError {
