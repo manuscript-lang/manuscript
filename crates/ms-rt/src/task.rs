@@ -231,6 +231,9 @@ struct Task {
     /// Lends of the task's stack to other threads in progress (`pin_current`): while one is
     /// out, the stack keeps its pages.
     pinned: u32,
+    /// The newest promise slot (plus one) whose work this task started and that has not ended,
+    /// or 0: the head of the list `promise::end_started_by_current` walks.
+    started: u32,
     /// The thread environment block's stack fields while the task is switched out.
     #[cfg(windows)]
     teb: [usize; 3],
