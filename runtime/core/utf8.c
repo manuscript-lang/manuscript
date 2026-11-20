@@ -9,37 +9,37 @@ static inline bool cont(const uint8_t *s, size_t n, size_t i, uint8_t lo, uint8_
     return true;
 }
 
-ms_rune ms_utf8_decode_multi(const uint8_t *s, size_t n) {
+MsRune ms_utf8_decode_multi(const uint8_t *s, size_t n) {
     uint8_t b0 = s[0];
     /* Two-byte and the unrestricted three-byte leads, which cover most text, decode with one length
      * check and no range tables; any other shape takes the general path below. */
     if (b0 >= 0xC2 && b0 <= 0xDF && n >= 2 && (s[1] & 0xC0) == 0x80) {
-        return (ms_rune){((b0 & 0x1Fu) << 6) | (s[1] & 0x3Fu), 2};
+        return (MsRune){((b0 & 0x1Fu) << 6) | (s[1] & 0x3Fu), 2};
     }
     if (b0 >= 0xE1 && b0 <= 0xEF && b0 != 0xED && n >= 3 && (s[1] & 0xC0) == 0x80 && (s[2] & 0xC0) == 0x80) {
-        return (ms_rune){((b0 & 0x0Fu) << 12) | ((s[1] & 0x3Fu) << 6) | (s[2] & 0x3Fu), 3};
+        return (MsRune){((b0 & 0x0Fu) << 12) | ((s[1] & 0x3Fu) << 6) | (s[2] & 0x3Fu), 3};
     }
-    ms_rune err = {MS_RUNE_ERROR, 1};
+    MsRune err = {MS_RUNE_ERROR, 1};
     uint32_t c1, c2, c3;
     if (b0 >= 0xC2 && b0 <= 0xDF) {
         if (!cont(s, n, 1, 0x80, 0xBF, &c1)) {
             return err;
         }
-        return (ms_rune){((b0 & 0x1Fu) << 6) | c1, 2};
+        return (MsRune){((b0 & 0x1Fu) << 6) | c1, 2};
     }
     if (b0 >= 0xE0 && b0 <= 0xEF) {
         uint8_t lo = b0 == 0xE0 ? 0xA0 : 0x80, hi = b0 == 0xED ? 0x9F : 0xBF;
         if (!cont(s, n, 1, lo, hi, &c1) || !cont(s, n, 2, 0x80, 0xBF, &c2)) {
             return err;
         }
-        return (ms_rune){((b0 & 0x0Fu) << 12) | (c1 << 6) | c2, 3};
+        return (MsRune){((b0 & 0x0Fu) << 12) | (c1 << 6) | c2, 3};
     }
     if (b0 >= 0xF0 && b0 <= 0xF4) {
         uint8_t lo = b0 == 0xF0 ? 0x90 : 0x80, hi = b0 == 0xF4 ? 0x8F : 0xBF;
         if (!cont(s, n, 1, lo, hi, &c1) || !cont(s, n, 2, 0x80, 0xBF, &c2) || !cont(s, n, 3, 0x80, 0xBF, &c3)) {
             return err;
         }
-        return (ms_rune){((b0 & 0x07u) << 18) | (c1 << 12) | (c2 << 6) | c3, 4};
+        return (MsRune){((b0 & 0x07u) << 18) | (c1 << 12) | (c2 << 6) | c3, 4};
     }
     return err;
 }
@@ -75,4 +75,35 @@ size_t ms_utf8_count(const uint8_t *s, size_t n) {
         continuation += (s[i] & 0xC0) == 0x80;
     }
     return n - continuation;
+}
+
+/* The scalar that ends the n > 0 bytes at s, with its width. A tail that is not a whole scalar decodes as one
+ * invalid byte. */
+MsRune ms_utf8_decode_last(const uint8_t *s, size_t n) {
+    uint8_t b = s[n - 1];
+    if (b < 0x80) {
+        return (MsRune){b, 1};
+    }
+    size_t lim = n > 4 ? n - 4 : 0;
+    size_t start = n - 1;
+    while (start > lim) {
+        start--;
+        if ((s[start] & 0xC0) != 0x80) {
+            break;
+        }
+    }
+    MsRune r = ms_utf8_decode(s + start, n - start);
+    if (start + r.width != n) {
+        return (MsRune){MS_RUNE_ERROR, 1};
+    }
+    return r;
+}
+
+/* Unicode White_Space (what Rust's char::is_whitespace tests). */
+bool ms_utf8_is_space(uint32_t c) {
+    if (c < 0x80) {
+        return c == ' ' || (c >= 9 && c <= 13);
+    }
+    return c == 0x85 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200A) || c == 0x2028 || c == 0x2029 ||
+           c == 0x202F || c == 0x205F || c == 0x3000;
 }
