@@ -47,7 +47,9 @@ arch=${triple%%-*}
 case "$triple" in
 *windows*) # llvm-mingw's clang, cross or native; mingw-w64 builds archives named lib*.a.
     cmake_flags="$cmake_flags -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER_TARGET=$arch-w64-mingw32"
-    ssl_target=mingw64; ssl_extra="--cross-compile-prefix=$arch-w64-mingw32- $([ "$arch" = x86_64 ] || echo no-asm)" ;;
+    # OpenSSL's cross-compile prefix would name a gcc that is not installed; CC (llvm-mingw's clang) and its archiver are used by path.
+    ssl_target=mingw64; ssl_extra="$([ "$arch" = x86_64 ] || echo no-asm)"
+    case "$cc" in */*) tools=$(dirname "$cc"); export AR="$tools/llvm-ar" RANLIB="$tools/llvm-ranlib" ;; esac ;;
 *apple-darwin*)
     export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-11.0}
     case "$arch" in arm64|aarch64) cmake_arch=arm64; ssl_target=darwin64-arm64-cc ;; *) cmake_arch=x86_64; ssl_target=darwin64-x86_64-cc ;; esac
