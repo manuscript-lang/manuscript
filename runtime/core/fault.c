@@ -311,3 +311,6 @@ void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, si
     text->bytes = grown.items;
     text->length = grown.length;
 }
+
+/* The allocator's out-of-memory hook (alloc.h): the full fault path. Weak so a unit test can supply its own. */
+__attribute__((weak)) void msalloc_oom(size_t bytes) { ms_fault_out_of_memory(bytes); }

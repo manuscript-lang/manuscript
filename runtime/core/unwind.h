@@ -57,6 +57,7 @@ typedef struct MsGuardFrame {
     uintptr_t limit;    /* recursion limit at entry */
     uint32_t segment;   /* the stack segment the guard opened on */
     uint32_t shield;    /* shield depth at entry */
+    size_t eq_pairs;    /* equality pairs registered at entry (ms_eq_truncate drops what a fault left behind) */
 } MsGuardFrame;
 
 /* Everything of the unwind machinery that belongs to one task. */
@@ -71,6 +72,9 @@ typedef struct MsUnwind {
     uint8_t task_cancel;   /* a cancel aimed at this task; 0 when none */
     struct MsFaultFlight *flight; /* the fault being reported on this task, in its raiser's frame, or NULL */
     bool unwind_drops;     /* a guarded task is being left: drop cleanups act now */
+    uintptr_t (*eq_pairs)[2]; /* owned: the object pairs an equality comparison of this task is inside (cycle guard) */
+    size_t eq_length;
+    size_t eq_capacity;
 } MsUnwind;
 
 /* ---- the cleanup stack ---- */

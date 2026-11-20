@@ -315,10 +315,10 @@ fn module_methods(module: &ms_syntax::ast::Module) -> Vec<(&ms_syntax::ast::Meth
             continue;
         };
         for (k, m) in im.methods.iter().enumerate() {
-            let end = im
-                .methods
-                .get(k + 1)
-                .map_or_else(|| module.decls.get(i + 1).map_or(u32::MAX, |n| n.pos.line), |n| n.pos.line);
+            let end = im.methods.get(k + 1).map_or_else(
+                || module.decls.get(i + 1).map_or(u32::MAX, |n| n.pos.line),
+                |n| n.pos.line,
+            );
             out.push((m, m.pos.line, end));
         }
     }
