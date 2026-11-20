@@ -101,17 +101,17 @@ typedef struct MsNetHttpOptions {
     uint8_t cookies;          /* keep cookies across this client's requests */
     uint8_t decompress;       /* ask for gzip and deflate and decode them */
 } MsNetHttpOptions;
-/* ms-sig: msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=network */
+/* ms-sig: msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err);
-/* ms-sig: msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle @domain=network */
+/* ms-sig: msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle @domain=HTTP */
 void *msstd_client_share(const void *handle);
 /* Whether two client handles are on the same client (runtime/net/scope.c). */
 bool ms_client_same(const void *a, const void *b);
 /* Ends the client's transfers (a body read or a request in progress returns STATUS_CLOSED) and refuses later requests
  * with STATUS_CLOSED. Safe to repeat. */
-/* ms-sig: msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=network */
+/* ms-sig: msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=HTTP */
 void msstd_client_close(const void *handle);
-/* ms-sig: msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=network */
+/* ms-sig: msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=HTTP */
 uint8_t msstd_client_narrow(const void *handle, const MsVec *hosts, const MsVec *cidrs);
 
 /* One request: the response head in the body object, the body streamed by `msstd_body_read`. `url` is absolute
@@ -120,7 +120,7 @@ uint8_t msstd_client_narrow(const void *handle, const MsVec *hosts, const MsVec 
  * Transfer-Encoding are written by the client and refused as caller fields. The timeout covers the whole exchange,
  * body reads included. Redirects, cookies and decompression follow the client's options; the version is chosen by
  * ALPN. */
-/* ms-sig: msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=network */
+/* ms-sig: msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr *url, const void *headers, const MsVec *body, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
 
 /* BodyMetadata flattened: the status, a copy of the response headers and the protocol ("HTTP/1.1" or "HTTP/2.0").
@@ -135,13 +135,13 @@ typedef struct MsNetBodyMetadata {
  * `read_all` returns the rest, STATUS_LIMIT_EXCEEDED when it passes `max`. The bytes are the message body with the
  * transfer framing removed (and the content-encoding decoded when the client decompresses). Closing a body that was
  * read to its end returns the connection to the client's pool; any other close drops it. */
-/* ms-sig: msstd_body_read(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
+/* ms-sig: msstd_body_read(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_body_read(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err);
-/* ms-sig: msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
+/* ms-sig: msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_body_read_all(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err);
-/* ms-sig: msstd_body_metadata(handle b: *const ObjCell<BodyH>, out: *mut MetadataWire) @domain=network */
+/* ms-sig: msstd_body_metadata(handle b: *const ObjCell<BodyH>, out: *mut MetadataWire) @domain=HTTP */
 void msstd_body_metadata(const void *handle, MsNetBodyMetadata *out);
-/* ms-sig: msstd_body_close(handle b: *const ObjCell<BodyH>) @domain=network */
+/* ms-sig: msstd_body_close(handle b: *const ObjCell<BodyH>) @domain=HTTP */
 void msstd_body_close(const void *handle);
 
 /* Datagram sockets (DgramH): a UDP socket bound to a literal address. Addresses are text, "1.2.3.4:80"; a name is
