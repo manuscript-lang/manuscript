@@ -7,6 +7,7 @@
 
 #include "ms_rt/desc.h"
 #include "ms_rt/alloc.h"
+#include "ms_rt/task.h"
 #include "rt_calls.h"
 #include "rt_stubs.h"
 
@@ -72,7 +73,7 @@ __attribute__((weak)) uint8_t msrt_rollback_needed(void) { return 1; }
 
 MsObj *msrt_obj_clone(MsObj *object) { return object; }
 /* Weak: core_task_abi links the real one (runtime/core/task_abi.c), every other core test runs without a scheduler. */
-__attribute__((weak)) void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block) { shim(block); }
+__attribute__((weak)) void msrt_task_grow(MsGrowFn shim, void *block) { shim(block); }
 
 void msrt_obj_drop(MsObj *object) {
     if (object != NULL && object->drop != NULL) {

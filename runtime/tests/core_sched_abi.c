@@ -1,4 +1,4 @@
-/* Unit test of the staged scheduler queries (runtime/staged/sched_shims.c): the pending-cancel and read-limit
+/* Unit test of the scheduler queries (runtime/core/sched_abi.c): the pending-cancel and read-limit
  * answers, as a task sees them. */
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +9,7 @@
 
 static void expect(bool condition, const char *what) {
     if (!condition) {
-        fprintf(stderr, "staged_sched_shims: failed: %s\n", what);
+        fprintf(stderr, "core_sched_abi: failed: %s\n", what);
         exit(1);
     }
 }
@@ -29,6 +29,6 @@ int main(void) {
     uint8_t outcome = 1;
     MsFaultText text = {0};
     expect(ms_task_run_main(main_task, NULL, 0, &outcome, &text) == MS_TASK_OK && outcome == 0, "the main task ends");
-    puts("staged_sched_shims: ok");
+    puts("core_sched_abi: ok");
     return 0;
 }

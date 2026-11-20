@@ -1,4 +1,4 @@
-/* Unit test of the staged standard output (runtime/staged/stdout.c): buffering, order, the captures, standard error
+/* Unit test of the standard output (runtime/core/stdout.c): buffering, order, the captures, standard error
  * flushing stdout first, and a failed write being remembered. Standard output is pointed at a file for the test. */
 #define _POSIX_C_SOURCE 200809L
 #include <fcntl.h>
@@ -7,17 +7,19 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../staged/stdout.h"
-#include "ms_sched.h"
+#include "../core/task.h"
 #include "ms_rt/alloc.h"
+#include "ms_rt/io.h"
+#include "ms_rt/test.h"
+#include "support/sched_env.h"
 
-/* The core's accessors (runtime/core/task.c); ms_sched.h clashes with task.h, so they are declared here. */
-uint64_t ms_task_capture(void);
-void ms_task_set_capture(uint64_t capture);
+/* ms_sched.h clashes with task.h (the wait bits), so the two calls are declared here. */
+void ms_sched_flush_stdout(void);
+int32_t ms_sched_stdout_error(void);
 
 static void expect(bool condition, const char *what) {
     if (!condition) {
-        fprintf(stderr, "staged_stdout: failed: %s\n", what);
+        fprintf(stderr, "core_stdout: failed: %s\n", what);
         exit(1);
     }
 }
@@ -48,8 +50,9 @@ static void expect_file(const char *path, const char *want, const char *what) {
     expect(count >= 0 && (size_t)count == strlen(want) && memcmp(text, want, (size_t)count) == 0, what);
 }
 
-int main(void) {
-    char path[] = "/tmp/ms_staged_stdout_XXXXXX";
+static void body(void *unused) {
+    (void)unused;
+    char path[] = "/tmp/ms_core_stdout_XXXXXX";
     const int file = mkstemp(path);
     expect(file >= 0, "temporary file");
     expect(dup2(file, 1) == 1, "point stdout at the file");
@@ -96,6 +99,13 @@ int main(void) {
     expect(ms_sched_stdout_error() != 0, "the failed write is remembered");
     ms_sched_flush_stdout();
     unlink(path);
-    puts("staged_stdout: ok");
+}
+
+int main(void) {
+    ms_test_sched_install();
+    uint8_t outcome = 1;
+    MsFaultText text = {0};
+    expect(ms_task_run_main(body, NULL, 0, &outcome, &text) == MS_TASK_OK && outcome == 0, "the main task ends");
+    puts("core_stdout: ok");
     return 0;
 }

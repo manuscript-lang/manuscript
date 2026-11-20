@@ -14,8 +14,6 @@
 #include "ms_rt/test.h"
 #include "support/sched_env.h"
 
-void ms_sched_flush_stdout(void) {}
-int32_t ms_sched_stdout_error(void) { return 0; }
 
 static void expect(int condition, const char *what) {
     if (!condition) {

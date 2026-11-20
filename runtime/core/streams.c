@@ -22,8 +22,6 @@
 #include "promise.h"
 #include "spin.h"
 
-MS_NORETURN void
-msrt_fault(const uint8_t *msg, size_t len);
 
 enum {
     READ_CHUNK = 64 * 1024,  /* bytes a read asks the system for */

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "entry.h"
+#include "ms_rt/start.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/list.h"
 #include "ms_rt/string.h"
@@ -23,15 +24,15 @@ void ms_entry_set_arguments(int argc, const char *const *argv) {
 }
 
 /* A list of the strings argv[first..argc), or an empty list. */
-static void list_of_arguments(int first, MsList *out) {
+static void list_of_arguments(int first, MsVec *out) {
     const size_t count = argument_values != NULL && argument_count > first ? (size_t)(argument_count - first) : 0;
     if (count == 0) {
-        *out = (MsList){0};
+        *out = (MsVec){0};
         return;
     }
     size_t bytes = 0;
     if (!ms_size_mul(count, sizeof(MsStr), &bytes)) {
-        *out = (MsList){0};
+        *out = (MsVec){0};
         return;
     }
     MsStr *const items = msrt_alloc(bytes);
@@ -39,14 +40,14 @@ static void list_of_arguments(int first, MsList *out) {
         const char *const text = argument_values[(size_t)first + i];
         msrt_string_from_bytes((const uint8_t *)text, strlen(text), &items[i]);
     }
-    *out = (MsList){.ptr = (uint8_t *)items, .len = count, .cap = count};
+    *out = (MsVec){.ptr = (uint8_t *)items, .len = count, .cap = count};
 }
 
 /* The whole native argv, argv[0] included (`process.control().info().arguments`). */
-void msrt_argv(MsList *out) { list_of_arguments(0, out); }
+void msrt_argv(MsVec *out) { list_of_arguments(0, out); }
 
 /* argv[1..], less the test selector once the test runner consumed it. */
-void msrt_args(MsList *out) { list_of_arguments(1 + arguments_skipped, out); }
+void msrt_args(MsVec *out) { list_of_arguments(1 + arguments_skipped, out); }
 
 void msrt_args_consume(void) { arguments_skipped = 1; }
 

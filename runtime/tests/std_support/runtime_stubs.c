@@ -10,6 +10,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "ms_rt/start.h"
 #include "ms_rt/string.h"
 #include "ms_rt/sys.h"
 #include "ms_sched.h"

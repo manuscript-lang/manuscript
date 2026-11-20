@@ -59,36 +59,29 @@ file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
 # core_*: all of runtime/core and runtime/sys/posix, the allocator's live-block counts on.
 # task_abi.c is linked by core_task_abi alone: the other tests stub the task ABI and run without a scheduler.
 set(_task_abi "${_rt}/core/task_abi.c")
-list(REMOVE_ITEM _core_sources "${_task_abi}")
+# fault_abi.c is linked by core_fault_abi alone: the other tests use the weak fault stubs of tests/support.
+set(_fault_abi "${_rt}/core/fault_abi.c")
+list(REMOVE_ITEM _core_sources "${_task_abi}" "${_fault_abi}")
 ms_test_objects(ms_test_core ${_core_sources} ${_posix_sources} "${_rt}/sys/strtod.c" ${_support_sources})
 target_compile_definitions(ms_test_core PRIVATE MS_ALLOC_STATS)
 file(GLOB _core_tests CONFIGURE_DEPENDS "${_tests}/core_*.c")
 foreach(file ${_core_tests})
   get_filename_component(name "${file}" NAME_WE)
   set(_extra "")
+  set(_libs m)
+  set(_include "")
   if(name STREQUAL "core_task_abi")
     set(_extra "${_task_abi}")
+  elseif(name STREQUAL "core_fault_abi")
+    set(_extra "${_fault_abi}")
+  elseif(name STREQUAL "core_sched_pool")
+    # The blocking pool (runtime/std/pool.c) over the real scheduler and task ABI, with libuv's threads.
+    set(_extra "${_task_abi}" "${_rt}/std/pool.c")
+    set(_include ${MS_LIB_uv_INCLUDES})
+    set(_libs ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} m)
   endif()
-  ms_test(${name} SOURCES "${file}" ${_extra} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
+  ms_test(${name} SOURCES "${file}" ${_extra} OBJECTS ms_test_core INCLUDES ${_include} LIBS ${_libs} DEFINES MS_ALLOC_STATS)
 endforeach()
-
-# The staged fault ABI (runtime/staged): defined over the C task and fault path, replacing the weak stubs of the core
-# objects. Nothing builds it into the runtime archive until the Rust fault module is removed.
-ms_test(staged_fault_abi SOURCES "${_tests}/staged_fault_abi.c" "${_rt}/staged/fault_abi.c" OBJECTS ms_test_core
-        INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
-
-# The staged scheduler queries (runtime/staged/sched_shims.c) over the C scheduler.
-ms_test(staged_sched_shims SOURCES "${_tests}/staged_sched_shims.c" "${_rt}/staged/sched_shims.c"
-        OBJECTS ms_test_core INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
-
-# The blocking pool (runtime/std/pool.c) over the C scheduler, with the calls the flip still has to move into core.
-ms_test(staged_sched_pool SOURCES "${_tests}/staged_sched_pool.c" "${_rt}/staged/sched_calls.c" "${_rt}/std/pool.c" "${_task_abi}"
-        OBJECTS ms_test_core INCLUDES "${_rt}/staged" ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} m
-        DEFINES MS_ALLOC_STATS)
-
-# The staged standard output (runtime/staged/stdout.c) over the OS layer's file writes.
-ms_test(staged_stdout SOURCES "${_tests}/staged_stdout.c" "${_rt}/staged/stdout.c"
-        OBJECTS ms_test_core INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
 
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
