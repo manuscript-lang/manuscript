@@ -10,7 +10,6 @@ extern crate ms_std_core;
 extern crate ms_std_crypto;
 extern crate ms_std_decimal;
 extern crate ms_std_fs;
-extern crate ms_std_html;
 extern crate ms_std_io;
 extern crate ms_std_json;
 extern crate ms_std_net;
