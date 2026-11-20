@@ -9,10 +9,6 @@
 #include <string.h>
 #include <uv.h>
 
-#ifdef STATUS_TIMEOUT /* winnt.h, through uv.h, after abi.h declared the runtime's */
-#undef STATUS_TIMEOUT
-#endif
-
 /* ---- failures ---- */
 
 uint8_t ms_fs_classify(MsSysError error) {

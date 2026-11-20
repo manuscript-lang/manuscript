@@ -8,12 +8,6 @@
 
 #include "ms_rt/string.h"
 
-/* winnt.h defines STATUS_TIMEOUT as a macro; a file that includes <windows.h> or <uv.h> does so before this header,
- * so the runtime's code wins. */
-#ifdef STATUS_TIMEOUT
-#undef STATUS_TIMEOUT
-#endif
-
 enum {
     STATUS_OK = 0,
     STATUS_INVALID_INPUT = 1,
@@ -28,7 +22,7 @@ enum {
     STATUS_CLOSED = 10,
     STATUS_FAILED = 11,
     STATUS_UNAVAILABLE = 12,
-    STATUS_TIMEOUT = 13,
+    STATUS_TIMED_OUT = 13, /* not STATUS_TIMEOUT: winnt.h defines that macro */
     STATUS_NONE = 16,
     STATUS_BUSY = 17,
     STATUS_AUTHENTICATION_FAILED = 18
