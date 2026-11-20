@@ -70,6 +70,11 @@ foreach(file ${_core_tests})
   ms_test(${name} SOURCES "${file}" ${_extra} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
 endforeach()
 
+# The staged fault ABI (runtime/staged): defined over the C task and fault path, replacing the weak stubs of the core
+# objects. Nothing builds it into the runtime archive until the Rust fault module is removed.
+ms_test(staged_fault_abi SOURCES "${_tests}/staged_fault_abi.c" "${_rt}/staged/fault_abi.c" OBJECTS ms_test_core
+        INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
+
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
 ms_test(sys_mem SOURCES "${_tests}/sys_mem.c" ${_posix_sources} LIBS)

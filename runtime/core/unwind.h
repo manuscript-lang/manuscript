@@ -23,12 +23,12 @@
 #include "fault.h"
 #include "ms_rt/safe.h"
 
-typedef void (*MsCleanupFn)(void *);
+typedef void (*MsCleanupFn)(uint8_t *); /* the argument is the cleanup's own state, as generated code passes it */
 
 /* One registered action. `function` is NULL for an entry removed without disturbing newer ones. */
 typedef struct MsCleanup {
     MsCleanupFn function;
-    void *argument;
+    uint8_t *argument;
 } MsCleanup;
 
 /* The words generated code reads, one block per task stack. Layout is ABI. */
@@ -76,7 +76,7 @@ typedef struct MsUnwind {
 /* ---- the cleanup stack ---- */
 
 /* Pushes an action; the result is its handle (the new height, counted from 1). */
-size_t ms_cleanup_push(MsCleanupFn function, void *argument) MS_NONNULL_ARGS(1);
+size_t ms_cleanup_push(MsCleanupFn function, uint8_t *argument) MS_NONNULL_ARGS(1);
 /* Height of the cleanup stack, to pass to ms_cleanup_unwind_to or ms_cleanup_truncate. */
 size_t ms_cleanup_base(void);
 /* Runs the action behind `handle` and every newer one, innermost first, each shielded from cancellation. */
