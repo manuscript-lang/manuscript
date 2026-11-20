@@ -30,8 +30,7 @@ fn data_exports() -> BTreeSet<String> {
             }
             let name = declaration
                 .split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
-                .filter(|word| runtime_name(word))
-                .next_back();
+                .rfind(|word| runtime_name(word));
             names.extend(name.map(str::to_string));
         }
     }

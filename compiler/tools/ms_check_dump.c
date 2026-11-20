@@ -139,10 +139,10 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             }
             MsBuf dump = {0};
             if (json_mode != 0) {
+                check_bodies_with_methods(check, id, check_text, (size_t)n);
                 if (json_mode == 1) {
-                    ms_dump_module_facts(&dump, check, id);
+                    ms_dump_module_facts(&dump, check, id, (MsStr){check_text, (uint32_t)n});
                 } else {
-                    check_bodies_with_methods(check, id, check_text, (size_t)n);
                     ms_dump_module_nodes(&dump, check, id);
                 }
                 printf("%.*s", (int)dump.len, (const char *)dump.data);
@@ -162,7 +162,7 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
                 }
                 if (effects) {
                     // The effect scan reads the facts of every function the body pass checked.
-                    ms_dump_module_effects(&dump, check, id);
+                    ms_dump_module_effects(&dump, check, id, (MsStr){check_text, (uint32_t)n});
                     printf("%.*s", (int)dump.len, (const char *)dump.data);
                     ms_buf_free(&dump);
                     free(owned);

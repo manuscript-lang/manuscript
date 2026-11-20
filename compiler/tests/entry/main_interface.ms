@@ -1,2 +1,2 @@
 interface main:
-    fn run() Void
+	fn run() Void

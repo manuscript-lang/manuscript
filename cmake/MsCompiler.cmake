@@ -62,7 +62,9 @@ function(ms_compiler_exe name)
     target_compile_options(${name} PRIVATE -std=c11 -O1 -Wall -Wextra -Werror -include "${_c}/include/ms_mimalloc.h")
   endif()
   if(MS_WINDOWS)
-    # The Windows tools (ms_mir_build, ms_asm_tables) read no project: no libcrypto, libdl or libm.
+    # The Windows tools (ms_mir_build, ms_asm_tables) read no project: no libcrypto, libdl or libm. They still allocate
+    # through the force-included ms_mimalloc.h, so they link the allocator.
+    target_link_libraries(${name} PRIVATE ms_mimalloc)
   else()
     # libms hashes packages with libcrypto (project/packages.c).
     target_link_libraries(${name} PRIVATE m ms_mimalloc ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})

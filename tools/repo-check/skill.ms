@@ -12,8 +12,8 @@ import (
 	read_text from "./util.ms",
 )
 
-SKILL := "crates/ms-tooling/data/agent-skill"
-MISTAKES := "crates/ms-tooling/data/mistakes.txt"
+SKILL := "tools/ms/data/agent-skill"
+MISTAKES := "tools/ms/data/mistakes.txt"
 SCRATCH := "target/skill-check"
 EXAMPLES := 25
 MANIFESTS := 6

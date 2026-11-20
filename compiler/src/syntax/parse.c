@@ -1626,6 +1626,7 @@ MS_NODISCARD static bool extern_type_declaration(Parser *p, MsToken token, MsDec
     if (kind(p) == MS_T_Colon) {
         p->at = keyword;
         if (!type_declaration(p, peek(p), out)) return false;
+        (*out)->pos = token.pos; /* the declaration starts at `extern`, where its comment sits above */
         (*out)->u.type.external = true;
         return true;
     }

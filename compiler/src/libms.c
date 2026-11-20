@@ -119,6 +119,7 @@
 #include "check/effect_directives.c"
 #include "check/effect_reach.c"
 #include "check/effect_scan.c"
+#include "check/effect_facts.c"
 #include "syntax/ast_copy.c"
 #include "syntax/desugar.c"
 #include "check/methods.c"
