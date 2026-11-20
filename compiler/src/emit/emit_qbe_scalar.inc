@@ -290,7 +290,7 @@ static bool qbe_pointer_op(QCx *c, const MirInst *inst, bool *ok) {
     case MOP_FFloor: ms_buf_printf(o, "\t%%v%u =d call $floor(d %%v%u)\n", inst->res, a[0]); return true;
     case MOP_FCeil: ms_buf_printf(o, "\t%%v%u =d call $ceil(d %%v%u)\n", inst->res, a[0]); return true;
     case MOP_FTrunc: ms_buf_printf(o, "\t%%v%u =d call $trunc(d %%v%u)\n", inst->res, a[0]); return true;
-    case MOP_VoidConst: return true;
+    case MOP_VoidConst: case MOP_DepthLeave: return true; /* nothing to write */
     default: return false;
     }
 }

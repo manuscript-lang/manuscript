@@ -1,10 +1,11 @@
 /* lower_ops: rewrites the ownership ops a backend would otherwise write itself (`clone`, `drop`,
- * `move.out`, `forget`) into plain calls and copies, so every emitter prints scalars, memory, calls
+ * `move.out`, `forget`, and `str.len`, a runtime call that counts scalars) into plain calls and copies, so every emitter prints scalars, memory, calls
  * and data only (proposals/lower-ops-to-runtime-calls.md, stage 1).
  *
  * A value that needs no drop is its own clone, so its uses are renamed to the operand. A string is
  * cloned and freed by the runtime, which tests the tag itself, so no block is split. Any other
- * owned type calls its glue function. Runs last, after every pass that reads the ownership ops. */
+ * owned type calls its glue function. `opt.none_owned` becomes `opt.none`. Runs last, after every
+ * pass that reads the ownership ops. */
 #include <string.h>
 
 #include "ms/mir_analysis.h"
@@ -21,6 +22,7 @@ typedef struct LoCx {
     uint32_t cleanup_push, cleanup_run, fault_string;
     uint32_t *thunks; /* by function: the cleanup thunk that calls it, MIR_NONE until made */
     uint32_t nthunks;
+    uint32_t string_length; /* msrt_string_scalar_length */
 } LoCx;
 
 typedef enum LoKind { LO_PLAIN, LO_STR, LO_OBJ, LO_GLUE } LoKind;
@@ -108,6 +110,9 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
         return true;
     case MOP_Forget:
         return true;
+    case MOP_OptNoneOwned: /* ownership-only distinction (the optimiser reads it); emitters see opt.none */
+        inst->op = MOP_OptNone;
+        return false;
     case MOP_Clone: {
         const MirTy ty = f->values[inst->args[0]];
         const LoKind kind = lo_kind(c, ty);
@@ -161,6 +166,12 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
         }
         return false;
     }
+    case MOP_StrLen:
+        if (c->string_length == MIR_NONE) {
+            c->string_length = lo_extern(c, "msrt_string_scalar_length", MIR_STR, MIR_INT);
+        }
+        lo_to_call_rt(inst, c->string_length);
+        return false;
     default:
         return false;
     }
@@ -355,7 +366,8 @@ static void lo_function(LoCx *c, MirFunc *f) {
 
 void mir_lower_ops(MirModule *m, const MirGlue *glue) {
     LoCx c = {.m = m, .glue = glue, .string_clone = MIR_NONE, .string_free = MIR_NONE,
-            .obj_clone = MIR_NONE, .obj_drop = MIR_NONE, .cleanup_push = MIR_NONE,
+            .obj_clone = MIR_NONE, .obj_drop = MIR_NONE, .string_length = MIR_NONE,
+            .cleanup_push = MIR_NONE,
             .cleanup_run = MIR_NONE, .fault_string = MIR_NONE, .nthunks = m->nfuncs};
     c.thunks = MS_NEW_N(&m->arena, uint32_t, m->nfuncs ? m->nfuncs : 1);
     for (uint32_t i = 0; i < m->nfuncs; i++) {

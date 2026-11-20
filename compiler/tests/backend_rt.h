@@ -18,6 +18,7 @@ typedef struct List {
 long msrt_test_add(long a, long b);
 void msrt_test_str(long n, Str *out);
 void msrt_test_list(long n, List *out);
+long msrt_test_slen(const Str *s);
 long msrt_test_len(const Str *s);
 void msrt_string_clone(const Str *s, Str *out);
 void msrt_string_free(const Str *s);

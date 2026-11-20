@@ -11,6 +11,11 @@
 long msrt_test_add(long a, long b) { return a + b; }
 void msrt_test_str(long n, Str *out) { out->ptr = calloc((size_t)n + 1, 1); out->tagged = (uint64_t)n; }
 void msrt_test_list(long n, List *out) { out->ptr = NULL; out->len = (uint64_t)n; out->cap = 0; }
+/* The length of a string value of any kind, plus 100 when the bytes of a non-inline one do not start with 'A'. */
+long msrt_test_slen(const Str *s) {
+    if ((s->tagged >> 62) == 1) { return (long)((s->tagged >> 56) & 15); }
+    return (long)(s->tagged & 0x7fffffff) + (s->ptr[0] == 'A' ? 0 : 100);
+}
 long msrt_test_len(const Str *s) { return (long)s->tagged; }
 void msrt_string_clone(const Str *s, Str *out) { out->ptr = malloc(s->tagged + 1); memcpy(out->ptr, s->ptr, s->tagged + 1); out->tagged = s->tagged; }
 void msrt_string_free(const Str *s) { free(s->ptr); }
