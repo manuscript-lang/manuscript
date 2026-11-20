@@ -13,6 +13,11 @@
 /* The row of the module with this path, or MS_NONE. */
 MsModId ms_module_find(const MsCheck *c, MsSym path);
 
+/* The project modules `module`'s imports name: `targets[i]` is the row of what `syntax->imports[i]`
+ * imports, or MS_NONE for a standard-library import. The array has `nimports` entries and must outlive
+ * the checker; call before `ms_module_declare`. Port of the Rust `ImportMap`. */
+void ms_module_set_imports(MsCheck *c, MsModId module, const MsModId *targets);
+
 /* Declares the module's names once; later calls do nothing. Imports of `@std/` modules declare
  * the source module they read first. Imports of other modules are not resolved yet and leave no
  * name behind. */
