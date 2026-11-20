@@ -165,15 +165,6 @@ const EMPTY: VecVal = VecVal {
     cap: 0,
 };
 
-/// Moves `e` (a slot of `d.size` bytes) onto the end.
-///
-/// # Safety
-/// `e` is a live slot of `d`, distinct from the list's storage.
-pub(crate) unsafe fn push(v: &mut VecVal, d: &TypeDesc, e: *const u8) {
-    // SAFETY: caller contract; `msrt_list_push` is defined in C.
-    unsafe { msrt_list_push(v, d, e) }
-}
-
 // ---- construction and lifetime ----
 
 // ---- reads ----

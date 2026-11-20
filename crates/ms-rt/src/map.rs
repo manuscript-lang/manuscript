@@ -138,77 +138,7 @@ unsafe extern "C-unwind" {
     pub fn msrt_set_is_disjoint_from(a: *const MapVal, b: *const MapVal, kd: KeyDesc) -> u8;
 }
 
-/// Top bit of a slot's hash word: set for a live entry, clear for a removed one.
-pub(crate) const LIVE: u64 = 1 << 63;
-
-#[derive(Clone, Copy)]
-pub(crate) struct Layout {
-    pub koff: usize,
-    pub voff: usize,
-    pub stride: usize,
-}
-
-fn align_up(n: usize, a: usize) -> usize {
-    (n + a - 1) & !(a - 1)
-}
-
-/// True for an 8-byte, 8-aligned slot (one load and compare of the descriptor's size and align).
-#[inline(always)]
-pub(crate) fn is_word(d: &TypeDesc) -> bool {
-    (u64::from(d.size) | u64::from(d.align) << 32) == 8 | 8 << 32
-}
-
-#[inline(always)]
-pub(crate) fn layout(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
-    // 8-byte, 8-aligned keys and values (Int, Float, pointers) are the common case; a constant
-    // layout spares the alignment arithmetic on every lookup.
-    if is_word(kd) && vd.is_some_and(is_word) {
-        return Layout {
-            koff: 8,
-            voff: 16,
-            stride: 24,
-        };
-    }
-    // Word-multiple slots (a `String` is two words) need only additions.
-    let (ks, ka) = (kd.size as usize, kd.align);
-    if ka == 8 && ks % 8 == 0 {
-        match vd {
-            Some(v) if v.align == 8 && v.size % 8 == 0 => {
-                let vs = v.size as usize;
-                return Layout {
-                    koff: 8,
-                    voff: 8 + ks,
-                    stride: 8 + ks + vs,
-                };
-            }
-            None => {
-                return Layout {
-                    koff: 8,
-                    voff: 8 + ks,
-                    stride: 8 + ks,
-                };
-            }
-            _ => {}
-        }
-    }
-    layout_general(kd, vd)
-}
-
-pub(crate) fn layout_general(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
-    let ka = (kd.align as usize).max(8);
-    let koff = align_up(8, ka);
-    let ksize = kd.size as usize;
-    let (va, vsize) = vd.map_or((1, 0), |v| ((v.align as usize).max(1), v.size as usize));
-    let voff = align_up(koff + ksize, va);
-    let stride = align_up(voff + vsize, ka.max(va).max(8));
-    Layout { koff, voff, stride }
-}
-
-/// The layout of a map of string keys and `vd` values.
-pub(crate) fn string_map_layout(vd: &TypeDesc) -> Layout {
-    layout(&crate::desc::msrt_desc_string, Some(vd))
-}
-
+#[cfg(test)]
 pub(crate) fn empty() -> MapVal {
     MapVal {
         desc: core::ptr::null(),
@@ -218,19 +148,5 @@ pub(crate) fn empty() -> MapVal {
         used: 0,
         cap: 0,
         mask: 0,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn an_empty_map_is_all_zero_words() {
-        // Generated code builds `ExternRole::MapNew` as zero words instead of calling the runtime.
-        let m = empty();
-        // SAFETY: `MapVal` is `repr(C)` plain words.
-        let words: [usize; MAP_SIZE / 8] = unsafe { core::mem::transmute(m) };
-        assert!(words.iter().all(|w| *w == 0));
     }
 }
