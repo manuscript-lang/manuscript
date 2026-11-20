@@ -13,6 +13,8 @@ Checks: >
   android-cloexec-*,
   -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
   -cert-err33-c,
+  -cert-dcl37-c,
+  -cert-dcl51-cpp,
   -bugprone-easily-swappable-parameters,
   -bugprone-multi-level-implicit-pointer-conversion,
   -bugprone-suspicious-include,
@@ -26,6 +28,7 @@ Checks: >
   -readability-uppercase-literal-suffix
 # Reasons, in order: Annex K (memcpy_s) does not exist on our targets, sizes are checked with ms_rt/safe.h instead;
 # an ignored fprintf result is not a bug, and our own fallible functions carry MS_NODISCARD;
+# the two cert-dcl checks repeat bugprone-reserved-identifier without its list of feature-test macros;
 # two size_t parameters are normal for (pointer, length) ABI calls; allocation helpers take void **;
 # generated tables are .inc files; the parser and tree walkers recurse by design, with a depth limit;
 # freestanding sources use compiler builtins that have no header; constants are named where they carry meaning,
