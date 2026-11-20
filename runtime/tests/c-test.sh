@@ -32,3 +32,8 @@ for t in runtime/tests/io_*.c; do
         -lpthread -o "$out/$name"
     "$out/$name"
 done
+# The socket layer: the sources of this platform in runtime/sys (linux or darwin), the test needs only the C library.
+platform=$(uname -s | tr '[:upper:]' '[:lower:]')
+cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include \
+    runtime/tests/sys_net_test.c "runtime/sys/$platform/net.c" -o "$out/sys_net_test"
+"$out/sys_net_test"
