@@ -1,5 +1,5 @@
 #!/bin/sh
-# Compares compiler/src/import_hints.c with the Rust import hints and export messages on random
+# Compares compiler/src/check/import_hints.c with the Rust import hints and export messages on random
 # queries built from the standard library's own names, misspelled. Run from the repository root.
 # IMPORT_CASES and IMPORT_SEED size and seed the run.
 set -eu

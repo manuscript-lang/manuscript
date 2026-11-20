@@ -1,4 +1,4 @@
-//! Temporary oracle for compiler/src/hints.c: the pure string helpers of crates/ms-check/src/hints.rs,
+//! Temporary oracle for compiler/src/syntax/hints.c: the pure string helpers of crates/ms-check/src/hints.rs,
 //! copied verbatim, behind a line protocol. Deleted with the Rust checker.
 //!   hints_oracle gen COUNT SEED   prints COUNT random cases
 //!   hints_oracle                  answers the cases on stdin, one line each

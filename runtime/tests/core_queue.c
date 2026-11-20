@@ -15,33 +15,35 @@ static int failures;
     } while (0)
 
 static void order_and_age(void) {
-    CHECK(ms_queue_push(1, 10, 100));
-    CHECK(ms_queue_push(1, 11, 200));
-    CHECK(ms_queue_push(1, 12, 300));
+    CHECK(ms_queue_push(1, 10, NULL, 100));
+    CHECK(ms_queue_push(1, 11, NULL, 200));
+    CHECK(ms_queue_push(1, 12, NULL, 300));
     CHECK(ms_queue_length(1) == 3);
     CHECK(ms_queue_oldest(1) == 100);
     uint64_t id = 0;
-    CHECK(!ms_queue_steal(1, 99, &id)); /* nothing old enough */
-    CHECK(ms_queue_steal(1, 150, &id) && id == 10);
+    void *work = NULL;
+    CHECK(!ms_queue_steal(1, 99, &id, &work)); /* nothing old enough */
+    CHECK(ms_queue_steal(1, 150, &id, &work) && id == 10);
     CHECK(ms_queue_remove(1, 12)); /* the newest, by its owner */
     CHECK(!ms_queue_remove(1, 12));
     CHECK(ms_queue_remove(1, 11));
     CHECK(ms_queue_length(1) == 0 && ms_queue_oldest(1) == INT64_MAX);
-    CHECK(!ms_queue_steal(1, INT64_MAX, &id));
+    CHECK(!ms_queue_steal(1, INT64_MAX, &id, &work));
     ms_queue_release(1);
 }
 
 static void middle_removal(void) {
     for (uint64_t i = 1; i <= 100; i++) {
-        CHECK(ms_queue_push(2, i, (int64_t)i));
+        CHECK(ms_queue_push(2, i, NULL, (int64_t)i));
     }
     for (uint64_t i = 2; i <= 99; i++) {
         CHECK(ms_queue_remove(2, i)); /* leaves 1 and 100 */
     }
     uint64_t id = 0;
-    CHECK(ms_queue_steal(2, INT64_MAX, &id) && id == 1);
-    CHECK(ms_queue_steal(2, INT64_MAX, &id) && id == 100);
-    CHECK(!ms_queue_steal(2, INT64_MAX, &id));
+    void *work = NULL;
+    CHECK(ms_queue_steal(2, INT64_MAX, &id, &work) && id == 1);
+    CHECK(ms_queue_steal(2, INT64_MAX, &id, &work) && id == 100);
+    CHECK(!ms_queue_steal(2, INT64_MAX, &id, &work));
     ms_queue_release(2);
 }
 
@@ -52,8 +54,9 @@ static _Atomic int owner_done;
 static void *thief(void *unused) {
     (void)unused;
     uint64_t id = 0;
+    void *work = NULL;
     while (!atomic_load(&owner_done) || ms_queue_length(3) > 0) {
-        if (ms_queue_steal(3, INT64_MAX, &id)) {
+        if (ms_queue_steal(3, INT64_MAX, &id, &work)) {
             atomic_fetch_add(&taken_sum, id);
         }
     }
@@ -68,7 +71,7 @@ static void owner_against_thieves(void) {
     }
     uint64_t own_sum = 0;
     for (uint64_t i = 1; i <= TOTAL; i++) {
-        CHECK(ms_queue_push(3, i, (int64_t)i));
+        CHECK(ms_queue_push(3, i, NULL, (int64_t)i));
         if (i % 3 == 0 && ms_queue_remove(3, i)) {
             own_sum += i;
         }
