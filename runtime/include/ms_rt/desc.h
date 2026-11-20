@@ -84,10 +84,15 @@ extern const MsTypeDesc msrt_desc_bool;
 extern const MsTypeDesc msrt_desc_string;
 extern const MsTypeDesc msrt_desc_bytes;
 
+/* ms-sig: msrt_slot_drop(d: *const TypeDesc, slot: *mut u8) @leaf */
 void msrt_slot_drop(const MsTypeDesc *d, uint8_t *slot);
+/* ms-sig: msrt_slot_copy(d: *const TypeDesc, src: *const u8, dst: *mut u8) @leaf */
 void msrt_slot_copy(const MsTypeDesc *d, const uint8_t *src, uint8_t *dst);
+/* ms-sig: msrt_slot_eq(d: *const TypeDesc, a: *const u8, b: *const u8) -> u8 @domain=slot @leaf */
 uint8_t msrt_slot_eq(const MsTypeDesc *d, const uint8_t *a, const uint8_t *b);
+/* ms-sig: msrt_slot_hash(d: *const TypeDesc, slot: *const u8) -> i64 @leaf */
 int64_t msrt_slot_hash(const MsTypeDesc *d, const uint8_t *slot);
+/* ms-sig: msrt_hash_combine(a: i64, b: i64) -> i64 @leaf */
 int64_t msrt_hash_combine(int64_t a, int64_t b);
 
 #endif
