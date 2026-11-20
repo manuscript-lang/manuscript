@@ -5,7 +5,6 @@ use ms_lsp::json::Json;
 use ms_lsp::nav::{self, Navigate};
 use ms_lsp::symbols::document_symbols;
 use ms_lsp::text::{self, Range};
-use ms_rt as _;
 
 use crate::support;
 use support::Workspace;

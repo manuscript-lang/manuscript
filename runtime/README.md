@@ -36,9 +36,8 @@ Runtime archives link our own builds of vendored sources (Chinmay, 2026-11-20: v
 | OpenSSL | 3.5.4 | TLS and crypto | Apache-2.0 |
 | zlib | 1.3.2 | deflate and inflate | Zlib |
 | PCRE2 | 10.47 | regex (8-bit library, JIT; a match limit bounds backtracking) | BSD-3-Clause |
-| QBE | 1.3 (vendored, unmodified) | debug code generator, built to `bin/qbe` | MIT |
 
-Versions and SHA-256 sums are in `third_party/c-libs.lock`. Chinmay approved libuv, nghttp2, llhttp, OpenSSL, QBE, PCRE2 and zlib on 2026-11-20 (PCRE2 replaced RE2 the same day, to keep C++ out of programs); any other library needs his approval.
+Versions and SHA-256 sums are in `third_party/c-libs.lock`. Chinmay approved libuv, nghttp2, llhttp, OpenSSL, PCRE2 and zlib on 2026-11-20 (PCRE2 replaced RE2 the same day, to keep C++ out of programs); any other library needs his approval.
 
 ## Style and safety
 

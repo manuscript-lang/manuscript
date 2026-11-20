@@ -1,0 +1,11 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+extern @msrt_test_last(str) -> int
+
+fn @msmain() -> int {
+b0:
+  %a: str = str "ABCDEFGHIJKLMNOPQRS"
+  %x: int = call.rt @msrt_test_last (%a)
+  ret %x
+}

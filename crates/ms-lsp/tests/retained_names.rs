@@ -6,7 +6,6 @@ use ms_lsp::index;
 use ms_lsp::nav;
 use ms_lsp::semantic::semantic_tokens;
 use ms_lsp::text;
-use ms_rt as _;
 
 fn with_retained_analysis(check: impl Fn(ms_syntax::Names, &Analysis, &Document)) {
     for newline in ["\n", "\r\n"] {

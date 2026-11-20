@@ -1,7 +1,7 @@
 /* MIR to LLVM IR text.
  *
  * A MIR value is a run of SSA registers, one per leaf (`%v7`, `%v7.1`, ...). The calling
- * convention is the one `emit_qbe.c` writes, so both backends link against the same runtime:
+ * convention is the runtime's:
  * parameters of at most 16 bytes travel as their leaves; a result of more than one leaf is written
  * through a hidden first parameter. Registers hold `i64`, `double` and `i1`; sized integers and
  * Float32 are widened in registers and narrowed only in memory. Checked arithmetic is the
@@ -37,6 +37,7 @@ typedef struct LCx {
     bool export_all;     /* every function gets an external symbol, for the tables unit to address */
     LlDebug *dbg;        /* source places for the fault tables, or NULL */
     uint32_t scope_base; /* module-wide index of the first scope of `f` */
+    uint32_t body_scope; /* the scope number of `f`'s own body: past the module's scopes, one per function */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -622,7 +623,9 @@ static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const 
     }
     const MirLeafSpan leaves = ll_leaves(c, ty);
     for (uint32_t j = 0; j < leaves.len; j++) {
-        ms_buf_printf(args, "%s%s ", args->len > 0 ? ", " : "", ll_leaf_type(leaves.ptr[j]));
+        const char *type = ll_leaf_type(leaves.ptr[j]);
+        /* C expects a `bool` argument zero-extended to a byte; LLVM leaves the upper bits of an i1 undefined. */
+        ms_buf_printf(args, "%s%s%s ", args->len > 0 ? ", " : "", type, strcmp(type, "i1") == 0 ? " zeroext" : "");
         ll_name(args, value, j);
     }
     return true;
@@ -1442,14 +1445,15 @@ static void ll_edge_label(MsBuf *o, const MirTerm *t, uint32_t from, uint32_t k)
 /* A `switch`: the cases by value, the default last. Several cases may share a target. */
 static void ll_switch(LCx *c, const MirTerm *t, uint32_t from) {
     MsBuf *o = c->out;
+    /* One line, so the place tag `ll_debug_tag` adds to each indented line lands after the `]`. */
     ms_buf_printf(o, "  switch i64 %%v%u, label ", t->value);
     ll_edge_label(o, t, from, t->ncases);
     ms_buf_puts(o, " [");
     for (uint32_t k = 0; k < t->ncases; k++) {
-        ms_buf_printf(o, "\n    i64 %lld, label ", (long long)t->cases[k].value);
+        ms_buf_printf(o, " i64 %lld, label ", (long long)t->cases[k].value);
         ll_edge_label(o, t, from, k);
     }
-    ms_buf_puts(o, "\n  ]\n");
+    ms_buf_puts(o, " ]\n");
 }
 
 static bool ll_term(LCx *c, const MirTerm *t, uint32_t from) {
@@ -1588,7 +1592,8 @@ static void ll_place(LCx *c, size_t from, MirLoc loc) {
     }
     const bool known = !mir_loc_none(loc) && loc.line != 0;
     const uint32_t line = known ? loc.line : c->f->loc.line;
-    const uint32_t scope = known && loc.scope != 0 ? c->scope_base + loc.scope : 0;
+    /* Scope 0 is the function itself; LLVM may inline it into another, so it gets a number of its own. */
+    const uint32_t scope = known && loc.scope != 0 ? c->scope_base + loc.scope : c->body_scope;
     ll_debug_tag(c->out, from, ll_debug_location(c->dbg, line, scope));
 }
 
@@ -1816,8 +1821,9 @@ static const char ll_declarations[] =
 
 /* The words of a data symbol: its bytes with each relocation's address in place. */
 static void ll_data_words(const LCx *c, MsBuf *o, const MirDataSym *sym) {
-    ms_buf_printf(o, "[%u x i64] [", sym->size / 8);
-    for (uint32_t w = 0; w < sym->size / 8; w++) {
+    const uint32_t words = (sym->size + 7) / 8; /* the last word is zero padded */
+    ms_buf_printf(o, "[%u x i64] [", words);
+    for (uint32_t w = 0; w < words; w++) {
         const MirReloc *at = NULL;
         for (uint32_t r = 0; r < sym->nrelocs; r++) {
             if (sym->relocs[r].offset == w * 8) {
@@ -1832,7 +1838,7 @@ static void ll_data_words(const LCx *c, MsBuf *o, const MirDataSym *sym) {
             continue;
         }
         uint64_t word = 0;
-        for (uint32_t k = 0; sym->bytes != NULL && k < 8; k++) {
+        for (uint32_t k = 0; sym->bytes != NULL && k < 8 && w * 8 + k < sym->size; k++) {
             word |= (uint64_t)sym->bytes[w * 8 + k] << (8 * k);
         }
         ms_buf_printf(o, "%lld", (long long)word);
@@ -1906,9 +1912,13 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     LlDebug debug = {0};
     ll_debug_init(&debug);
     LlDebug *dbg = places ? &debug : NULL;
-    uint32_t scope_base = 0;
+    uint32_t scope_base = 0, total_scopes = 0;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base};
+        total_scopes += m->funcs[i].nscopes;
+    }
+    for (uint32_t i = 0; i < m->nfuncs; i++) {
+        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base,
+                 total_scopes + i + 1};
         scope_base += m->funcs[i].nscopes;
         if (ll_function(&c, i)) {
             continue;
@@ -1917,7 +1927,7 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);

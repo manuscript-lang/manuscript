@@ -14,6 +14,13 @@ uint8_t ms_net_finish(MsNetStatus status, int code, MsStr *err);
 /* The absolute monotonic deadline for a relative timeout in nanoseconds; -1 for none. */
 int64_t ms_net_deadline_of(uint8_t has_timeout, int64_t timeout);
 void ms_net_write_text(MsStr *out, const char *text);
+/* Makes an error slot a valid empty string. The caller's slot is uninitialized stack and a status other than FAILED
+ * leaves it unwritten, so every native with an `err` parameter calls this on entry. */
+static inline void ms_net_clear_text(MsStr *out) {
+    if (out != NULL) {
+        msrt_string_from_bytes(NULL, 0, out);
+    }
+}
 /* Parks the task until `fd` is ready for `events` (MS_WAIT_READ, MS_WAIT_WRITE) or the absolute deadline passes
  * (negative for none): MS_NET_OK, MS_NET_TIMEOUT or MS_NET_CANCELLED. */
 MsNetStatus ms_net_wait_fd(MsSock fd, uint32_t events, int64_t deadline_ns);
