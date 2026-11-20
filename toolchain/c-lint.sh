@@ -21,7 +21,7 @@ changed=$files
 if [ -n "$base" ]; then
     git rev-parse --verify --quiet "$base^{commit}" > /dev/null || { echo "c-lint: $base is not a commit" >&2; exit 1; }
     # A file written after the guide never joins the pending list.
-    if git diff "$base" -- "$pending" | grep -q '^+[^+]'; then
+    if git cat-file -e "$base:$pending" 2> /dev/null && git diff "$base" -- "$pending" | grep -q '^+[^+]'; then
         echo "c-lint: $pending gained a line; the list only shrinks" >&2; exit 1
     fi
 fi
@@ -54,7 +54,12 @@ for file in $files; do
     listed=no
     grep -Fqx "$file" "$pending" && listed=yes
     if [ -f "$log" ] && [ "$listed" = no ]; then
-        cat "$log"; echo "c-lint: $file fails (documentation/contributing/c-style.md)" >&2; status=1
+        # With a base, only files this change touches fail it: a file another change merged just before the
+        # gate saw it is reported here and fails the nightly run, not every pull request after it.
+        case " $(echo $changed) " in
+            *" $file "*) cat "$log"; echo "c-lint: $file fails (documentation/contributing/c-style.md)" >&2; status=1 ;;
+            *) echo "c-lint: $file fails but this change does not touch it" >&2 ;;
+        esac
     elif [ ! -f "$log" ] && [ "$listed" = yes ]; then
         case " $(echo $changed) " in *" $file "*) echo "c-lint: $file passes now; remove it from $pending" >&2; status=1 ;; esac
     fi
