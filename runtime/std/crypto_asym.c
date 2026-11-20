@@ -16,6 +16,7 @@
 #include <openssl/x509.h>
 
 #include "abi.h"
+#include "ms_rt/crypto.h"
 
 typedef enum { K_NONE, K_P256, K_P384, K_P521, K_X25519, K_ED25519, K_RSA } kind;
 
