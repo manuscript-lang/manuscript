@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "time-zones.ms::named zones match the Go time package",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "time-zones.ms::zone names are exact and unknown names are rejected",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "time-zones.ms::daylight-saving gaps and folds resolve to the earlier offset",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "time-zones.ms::zones round trip across the supported range",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "time-zones.ms::the TZ setting selects the local zone",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "time-zones.ms::a POSIX rule with a short daylight-saving interval resolves gaps and folds",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN time-zones.ms::named zones match the Go time package\nPASS time-zones.ms::named zones match the Go time package\nRUN time-zones.ms::zone names are exact and unknown names are rejected\nPASS time-zones.ms::zone names are exact and unknown names are rejected\nRUN time-zones.ms::daylight-saving gaps and folds resolve to the earlier offset\nPASS time-zones.ms::daylight-saving gaps and folds resolve to the earlier offset\nRUN time-zones.ms::zones round trip across the supported range\nPASS time-zones.ms::zones round trip across the supported range\nRUN time-zones.ms::the TZ setting selects the local zone\nPASS time-zones.ms::the TZ setting selects the local zone\nRUN time-zones.ms::a POSIX rule with a short daylight-saving interval resolves gaps and folds\nPASS time-zones.ms::a POSIX rule with a short daylight-saving interval resolves gaps and folds\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

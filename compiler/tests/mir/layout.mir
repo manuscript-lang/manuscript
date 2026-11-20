@@ -1,0 +1,30 @@
+module "layout"
+iface Area { area() -> int }
+type Plain { a: int, b: str, c: bool }
+type Small { a: int8, b: uint8, c: int16, d: uint16, e: int32, f: uint32, g: float32, h: float }
+type Big { m: Map<str, int>, s: Set<int>, l: list<Plain>, y: bytes, p: ptr, h: obj Handle, mo: opt<obj Handle>, u: uint64 }
+type Node { v: int, next: opt<Node> }
+type Wrap { n: opt<Node>, f: opt<fn(int) -> int>, i: dyn Area, os: opt<str>, oi: opt<int>, ob: opt<bool> }
+alt Shape { Circle(r: int), Rect(w: int, h: int), Named(n: str, f: float, b: bool), Empty }
+alt Mixed { A(x: int8, y: int), B(z: float32, w: uint16, v: bool), C }
+alt Tree { Leaf(v: int), Branch(l: Tree, r: Tree), Tagged(s: str, b: bool) }
+alt Holder { H(p: Plain, o: opt<Small>), N }
+entry @main
+fn @use(%a: Shape, %b: Mixed, %c: Holder, %d: Wrap, %e: Big, %f: Node, %g: opt<Plain>, %h: opt<Mixed>) -> int {
+b0:
+  %z: int = iconst 0
+  ret %z
+}
+fn @clo(%env: ptr, %x: int) -> int closure(int, bool, float32, str) {
+b0:
+  ret %x
+}
+fn @clo2(%env: ptr, %x: int) -> int closure(bool, int8, Small) {
+b0:
+  ret %x
+}
+fn @main() -> int {
+b0:
+  %z: int = iconst 0
+  ret %z
+}
