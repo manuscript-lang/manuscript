@@ -1390,9 +1390,7 @@ static bool gl_eligible(MirModule *m, MirLayouts *lay, MirTy t) {
 
 /* Whether closure object `r` (a value of `f`) lives in `f`'s stack frame: a closure that owns no
  * resource, only dropped, called, or lent to calls that neither keep nor return it. */
-static bool *gl_framed_objects(MsArena *a, const MirModule *m, const MirFunc *f) {
-    bool *framed = MS_NEW_N(a, bool, f->nvalues ? f->nvalues : 1);
-    memset(framed, 0, f->nvalues ? f->nvalues : 1);
+void mir_framed_closures(const MirModule *m, const MirFunc *f, bool *framed) {
     bool any = false;
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
@@ -1405,7 +1403,7 @@ static bool *gl_framed_objects(MsArena *a, const MirModule *m, const MirFunc *f)
         }
     }
     if (!any) {
-        return framed;
+        return;
     }
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         const MirBlockData *blk = &f->blocks[bi];
@@ -1456,7 +1454,6 @@ static bool *gl_framed_objects(MsArena *a, const MirModule *m, const MirFunc *f)
             }
         }
     }
-    return framed;
 }
 
 typedef struct GlClosure {
@@ -1481,7 +1478,9 @@ static void gl_closure_demand(MsArena *a, const MirModule *m, GlClosure **drops,
     uint32_t n = 0, cap = 0;
     for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
         const MirFunc *f = &m->funcs[fi];
-        bool *framed = gl_framed_objects(a, m, f);
+        bool *framed = MS_NEW_N(a, bool, f->nvalues ? f->nvalues : 1);
+        memset(framed, 0, f->nvalues ? f->nvalues : 1);
+        mir_framed_closures(m, f, framed);
         for (uint32_t bi = 0; bi < f->nblocks; bi++) {
             for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
                 const MirInst *inst = &f->blocks[bi].insts[ii];

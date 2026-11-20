@@ -1,0 +1,9 @@
+module "narrow_fault"
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %big: int = iconst 300
+  %n: int8 = narrow.chk %big
+  %w: int = conv %n
+  ret %w
+}

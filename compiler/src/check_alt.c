@@ -39,6 +39,15 @@ static bool alt_info(const MsBody *b, MsTy ty, AltInfo *out) {
     return out->ncases != 0 && out->def.nvars == c->tys.nargs[ty];
 }
 
+bool ms_body_optional_payload(const MsBody *b, MsTy ty, MsTy *payload) {
+    AltInfo info = {0};
+    if (ty == MS_TY_NONE || !alt_info(b, ty, &info) || !info.optional) {
+        return false;
+    }
+    *payload = info.payload;
+    return true;
+}
+
 static MsSym alt_case_name(const MsBody *b, const AltInfo *info, uint32_t index) {
     if (info->optional) {
         return ms_intern_cstr(b->c->names, index == 0 ? "some" : "none");
@@ -112,7 +121,7 @@ static bool alt_bind_payload(MsBody *b, const MsArm *arm, MsTy ty, const AltInfo
             continue;
         }
         const MsTy field = alt_field_ty(b, info, ty, index, slot);
-        if (ms_body_bind(b, name, field, arm->id, 0, MS_ROLE_ARM) == MS_NONE) {
+        if (ms_body_bind(b, name, field, arm->id, arm->bindings.ptr[slot].pos, 0, MS_ROLE_ARM) == MS_NONE) {
             return false;
         }
     }

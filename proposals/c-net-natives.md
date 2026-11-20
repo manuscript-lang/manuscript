@@ -53,3 +53,19 @@ Cancellation: every park returns on cancel, closes nothing itself; `close` is th
 
 - Does `msrt_task_wait_fd` park cheaply enough for 100k idle connections? Measure with `bench/net-idle` before the server loop moves.
 - Worker model for `accept_raw` (threads versus one task per connection): decide with the h2 thread.
+
+## Client natives (agreed with the net-policy thread, 2026-11-20)
+
+The C client behind these is on main: `runtime/net/dial.c`, `http1_exchange.c`, `http2_exchange.c`, `ws_client.c`. Policy (Network restrict, redirects, cookies, content-encoding, retries, pooling, the resolver choice) is `.ms` and calls these between resolve and connect. New names avoid the Rust `msstd_net_network_*` ones until `ms-std-net` is deleted; the handle natives that exist today keep their names and signatures.
+
+| Native | Contract |
+| --- | --- |
+| `msstd_net_lookup(host, port, has_timeout, timeout, out VecVal<Str>, err)` | Reactor DNS (`ms_net_resolve`). Returns address texts (`1.2.3.4:80`, `[::1]:80`), at most 16, in resolver order. Names are not filtered here. |
+| `msstd_net_dial(address, server_name, has_tls, tls TlsOptionsWire, has_timeout, timeout, out ConnH, err)` | One address, TCP then optional TLS (ALPN from `tls.alpn`). `server_name` is the host for SNI and verification. Nothing stays open on failure. |
+| `msstd_http_fetch(conn ConnH, method, authority, target, headers HeadersH, body VecVal, has_timeout, timeout, out status i64, out headers HeadersH, out body BodyH, err)` | One exchange on a dialed row; h2 when the row's ALPN is `h2`, else HTTP/1. No redirects, cookies, decompression. Consumes the row: closing the `BodyH` closes it. A refused field (Host, Content-Length, Transfer-Encoding, connection-specific) is an error. |
+| `msstd_http_body_read`, `_read_all`, `_metadata`, `_close` | Same signatures as today; bytes are the wire body (content-encoding untouched). |
+| `msstd_http_headers_new`, `_append`, `_clone`, `_names`, `_values`, `_remove` | Same signatures as today (case-insensitive names, values as bytes). |
+| `msstd_ws_connect(conn ConnH, authority, target, headers HeadersH, subprotocols VecVal, opts WebSocketOptionsWire, out SocketH, err)` | Upgrade request and check on a dialed row (`ms_ws_write_upgrade`, `ms_ws_check_upgrade`), bytes after the 101 head are kept for the socket. Socket natives keep today's signatures. |
+| `msstd_net_connection_*` | `read`, `write_bytes`, `shutdown_write`, `close`, `share`, `alias`, `close_if_last`, `local_address`, `peer_address`, `tls_info`: today's signatures over a row. |
+
+Errors keep today's texts (`msstd_net_error_message`). Cancel and deadlines follow `conn_io.h`.
