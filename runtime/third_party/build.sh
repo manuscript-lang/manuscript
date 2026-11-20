@@ -53,6 +53,11 @@ case "$triple" in
     case "$arch" in arm64|aarch64) cmake_arch=arm64; ssl_target=darwin64-arm64-cc ;; *) cmake_arch=x86_64; ssl_target=darwin64-x86_64-cc ;; esac
     cmake_flags="$cmake_flags -DCMAKE_OSX_ARCHITECTURES=$cmake_arch -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
     ssl_extra="" ;;
+*-linux-musl)
+    # musl-gcc sees only musl's headers; libuv wants the kernel's (<linux/errqueue.h>), which the distribution keeps beside glibc's.
+    export CFLAGS="${CFLAGS:-} -idirafter /usr/include/$arch-linux-gnu -idirafter /usr/include"
+    case "$arch" in aarch64|arm64) export CFLAGS="$CFLAGS -mno-outline-atomics"; ssl_target=linux-aarch64 ;; x86_64) ssl_target=linux-x86_64 ;; *) ssl_target=linux-generic64 ;; esac
+    ssl_extra="" ;;
 *)
     # Programs link no libgcc or compiler-rt, so atomics must be inline (outline atomics call __aarch64_ldadd8_* and friends).
     case "$arch" in aarch64|arm64) export CFLAGS="${CFLAGS:-} -mno-outline-atomics" ;; esac
