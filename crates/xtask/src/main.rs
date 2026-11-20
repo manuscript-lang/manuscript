@@ -847,7 +847,7 @@ fn add_c_runtime(
     command.arg("rcs").arg(archive);
     if cfg!(windows) {
         // The folded library members overflow Windows' 32 KiB command line; llvm-ar reads a response file.
-        let list = target.join("c-objects/members.rsp");
+        let list = target.join("members.rsp");
         let names: Vec<String> = files
             .iter()
             .map(|f| f.to_string_lossy().replace('\\', "/"))
