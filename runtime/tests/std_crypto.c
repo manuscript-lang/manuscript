@@ -22,10 +22,13 @@ static vec from_hex(const char *tok) {
     return v;
 }
 
+/* The size of the result buffers of the replay loops below. */
+enum { RESULT_CAP = 1 << 16 };
+
 static void put_hex(char *dst, const vec *v) {
     char *p = dst + strlen(dst);
     *p++ = 'x';
-    for (size_t i = 0; i < v->len; i++) p += sprintf(p, "%02x", ((uint8_t *)v->ptr)[i]);
+    for (size_t i = 0; i < v->len; i++) p += snprintf(p, 3, "%02x", ((uint8_t *)v->ptr)[i]); /* two digits and the NUL */
     *p = 0;
 }
 
@@ -42,7 +45,7 @@ static const char *status_name(int st) {
 /* ok <hex> or err <name>; results over 1 KiB are recorded as their length and SHA-256. */
 static void result(char *dst, int st, vec *out) {
     if (st) {
-        sprintf(dst + strlen(dst), "err %s", status_name(st));
+        snprintf(dst + strlen(dst), RESULT_CAP - strlen(dst), "err %s", status_name(st));
         return;
     }
     strcat(dst, "ok ");
@@ -50,7 +53,7 @@ static void result(char *dst, int st, vec *out) {
         vec d = {NULL, 0, 0}, one = {out->ptr, out->len, out->len};
         char tmp[16] = "";
         msstd_crypto_digest(3, &one, &d);
-        sprintf(tmp, "x#%zu:", out->len);
+        snprintf(tmp, sizeof tmp, "x#%zu:", out->len);
         strcat(dst, tmp);
         put_hex(dst + strlen(dst), &d);
         memmove(dst + strlen(dst) - 2 * d.len - 1, dst + strlen(dst) - 2 * d.len, 2 * d.len + 1); /* drop the extra x */
@@ -66,7 +69,7 @@ int main(void) {
         puts("cannot open the oracle");
         return 1;
     }
-    static char line[1 << 20], want[1 << 16], got[1 << 16];
+    static char line[1 << 20], want[1 << 16], got[RESULT_CAP];
     int cases = 0, failures = 0;
     while (fgets(line, sizeof line, f)) {
         line[strcspn(line, "\n")] = 0;
