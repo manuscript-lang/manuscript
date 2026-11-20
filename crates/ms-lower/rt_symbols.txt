@@ -919,3 +919,12 @@ msstd_websocket_receive(handle s: *const ObjCell<SocketH>, out: *mut WebSocketMe
 msstd_websocket_send_bytes(handle s: *const ObjCell<SocketH>, data: *const VecVal, text: u8, err: ErrSlot) -> u8 @domain=WebSocket
 msstd_websocket_share(handle s: *const ObjCell<SocketH>) -> *mut ObjCell<SocketH> @handle @domain=WebSocket
 msstd_websocket_subprotocol(handle s: *const ObjCell<SocketH>, out: *mut StrVal) @domain=WebSocket
+msstd_xchg_finish(handle x: *const ObjCell<ExchH>, has_timeout: HasRaw, timeout: i64, keep: *mut u8, err: ErrSlot) -> u8 @domain=HTTP
+msstd_xchg_head(handle x: *const ObjCell<ExchH>, method: *mut StrVal, target: *mut StrVal, protocol: *mut StrVal, headers: *mut *mut ObjCell<HeadersH>) @domain=HTTP
+msstd_xchg_next(handle c: *const ObjCell<ConnH>, head_limit: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ExchH>, reject: *mut i64, err: ErrSlot) -> u8 @domain=HTTP
+msstd_xchg_read(handle x: *const ObjCell<ExchH>, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=HTTP
+msstd_xchg_reject(handle c: *const ObjCell<ConnH>, status: i64, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP
+msstd_xchg_reset(handle x: *const ObjCell<ExchH>, max: i64, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP
+msstd_xchg_send_head(handle x: *const ObjCell<ExchH>, status: i64, handle headers: *const ObjCell<HeadersH>, has_length: HasRaw, length: i64, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP
+msstd_xchg_take_conn(handle x: *const ObjCell<ExchH>, out: *mut *mut ObjCell<ConnH>) -> u8 @domain=HTTP
+msstd_xchg_write(handle x: *const ObjCell<ExchH>, data: *const VecVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP
