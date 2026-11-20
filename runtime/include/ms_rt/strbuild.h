@@ -179,7 +179,7 @@ static inline MsStr ms_str_cloned(const MsStr *s) {
 }
 
 /* The bytes of a string as a span. */
-static inline MsBytes ms_str_bytes(const MsStr *s) { return ms_bytes(ms_str_data(s), ms_str_len(s)); }
+static inline MsBytes ms_str_bytes(const MsStr *s) { return ms_bytes_of(ms_str_data(s), ms_str_len(s)); }
 
 /* Writes the two words as separate stores: a struct copy may become one 16-byte vector move, which stalls
  * reading words a callee just stored separately. */

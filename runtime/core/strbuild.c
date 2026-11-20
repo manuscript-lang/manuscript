@@ -333,7 +333,7 @@ static void fill_repeated(MsBytesMut destination, MsBytes pattern) {
     size_t filled = pattern.len;
     while (filled < destination.len) {
         size_t step = filled < destination.len - filled ? filled : destination.len - filled;
-        append_bytes(&cursor, ms_bytes(destination.ptr, step));
+        append_bytes(&cursor, ms_bytes_of(destination.ptr, step));
         filled += step;
     }
 }
@@ -401,7 +401,7 @@ static MsStr reversed(const MsStr *s, bool ascii) {
     if (text.len <= MS_STR_INLINE_MAX) {
         MsBytesMut buffer = ms_bytes_mut(small, text.len);
         reverse_into(buffer, text, ascii);
-        return from_bytes(ms_bytes(small, text.len));
+        return from_bytes(ms_bytes_of(small, text.len));
     }
     OwnedBlock block = owned_block_new(text.len);
     reverse_into(block.bytes, text, ascii);
