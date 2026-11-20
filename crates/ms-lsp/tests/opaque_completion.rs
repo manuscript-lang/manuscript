@@ -4,7 +4,6 @@ use ms_lsp::analysis::{Document, Documents, analyze};
 use ms_lsp::completion::{completion_at, signature_help};
 use ms_lsp::nav::{self, Navigate};
 use ms_lsp::text::{self, Range};
-use ms_rt as _;
 
 use crate::support;
 use support::Workspace;
