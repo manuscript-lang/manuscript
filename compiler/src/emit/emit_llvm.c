@@ -330,6 +330,17 @@ static bool ll_store(LCx *c, const MirInst *inst) {
     return ll_leaves_at(c, inst->args[1], base, false);
 }
 
+/* `ptr.field`: the address of a field of the inline record the operand points to. */
+static bool ll_ptr_field(LCx *c, const MirInst *inst) {
+    if (c->m->type_defs[inst->imm.a].indirect) {
+        c->why = "record behind a pointer";
+        return false;
+    }
+    ms_buf_printf(c->out, "  %%v%u = add i64 %%v%u, %u\n", inst->res, inst->args[0],
+                  mir_field_offset(c->layouts, inst->imm.a, inst->imm.b));
+    return true;
+}
+
 /* The leaf range `[start, start + count)` that field `field` of record type `ty` occupies in a
  * value of that type. False when `ty` is not a record held as leaves. */
 static bool ll_field_span(LCx *c, MirTy ty, uint32_t field, uint32_t *start, uint32_t *count) {
@@ -800,7 +811,8 @@ static bool ll_memory_inst(LCx *c, const MirInst *inst, bool *handled) {
     case MOP_GlobalGet: case MOP_GlobalSet: return ll_global(c, inst);
     case MOP_TypeNew: ll_record_new(c, inst); return true;
     case MOP_TypeGet: return ll_record_get(c, inst);
-    case MOP_TypeSet: return ll_record_set(c, inst);
+    case MOP_TypeSet: case MOP_TypeFill: return ll_record_set(c, inst);
+    case MOP_PtrField: return ll_ptr_field(c, inst);
     default:
         *handled = false;
         return true;
