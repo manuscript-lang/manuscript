@@ -1,0 +1,20 @@
+module "switch"
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %k: int = iconst 2
+  switch %k [1: b1(), 2: b2(), 7: b2()] default b3()
+b1():
+  %a: int = iconst 10
+  br b4(%a)
+b2():
+  %b: int = iconst 40
+  br b4(%b)
+b3():
+  %c: int = iconst 1
+  br b4(%c)
+b4(%r: int):
+  %two: int = iconst 2
+  %v: int = iadd %r, %two
+  ret %v
+}

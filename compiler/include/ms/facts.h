@@ -46,6 +46,7 @@ typedef enum MsBindRole {
 /* Methods of a program: what an `impl` supplies, in declaration order (see methods.h). A symbol's
  * signature is its `ty` in `MsSyms`: a function type whose parameters carry the label, type and
  * var/move flags (`ms_ty_params`) and whose result is `tys.result`. */
+enum { MS_METHOD_MUTATING = 1, MS_METHOD_CONSUMING = 2 };
 typedef struct MsMethods {
     MsSym *id;            /* `module/Receiver/Contract/name`, as the Rust checker names it */
     MsTy *receiver;
@@ -53,6 +54,7 @@ typedef struct MsMethods {
     MsTy *ty;             /* the signature, receiver not included */
     const MsFunc **decl;  /* the declaration, or NULL for a property without operations */
     MsNativeKind *native;
+    uint8_t *access;      /* MS_METHOD_MUTATING | MS_METHOD_CONSUMING of the receiver */
     bool *inherent;       /* a type's own method: its contract is the synthesized `Type$methods` */
     MsModId *module;      /* the module that declares the impl */
     bool *local;          /* an extension declared outside the receiver's module: visible there only */
@@ -84,7 +86,6 @@ typedef struct MsFacts {
     MsTy *type_args;
     uint32_t *assign_binding; /* by assignment statement node id: the binding it writes, else MS_NONE */
     bool *body_checked;   /* by declaration node id: the function's body was checked */
-    bool *body_diagnosed; /* by declaration node id: that body has a diagnostic, so it is not lowered */
     MsBindings bindings;
     MsMethods *methods; /* the program's table, shared by every module */
 } MsFacts;
