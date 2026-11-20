@@ -6,6 +6,7 @@
  * value`, `return`, literals, names, `not`, unary `-` and `+`, and the binary operators.
  * A function with anything else is skipped: `lb_function` returns false and adds nothing. */
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -28,6 +29,20 @@ static MsTy lb_primitive(const MsCheck *c, const char *name) {
     return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
 }
 
+/* `ty` as the function being lowered sees it: a variable of the instance is the type it stands
+ * for. A type built from variables (`List[T]`) is not handled yet, and is left as it is. */
+static MsTy lb_ty(const Lb *lb, MsTy ty) {
+    if (lb->nsub == 0 || ms_ty_kind(&lb->c->tys, ty) != MS_K_VARIABLE) {
+        return ty;
+    }
+    for (uint32_t i = 0; i < lb->nsub; i++) { // a variable is matched by id, as the checker's substitution does
+        if (lb->c->tys.id[lb->sub_vars[i]] == lb->c->tys.id[ty]) {
+            return lb->sub_args[i];
+        }
+    }
+    return ty;
+}
+
 /* A record, Optional or Result type. */
 static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
     const MirTy record = lr_type(lb, ty);
@@ -36,6 +51,7 @@ static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
 MirTy lb_mir_ty(Lb *lb, MsTy ty) {
+    ty = lb_ty(lb, ty);
     if (ms_ty_kind(&lb->c->tys, ty) == MS_K_FUNCTION) {
         return lb_fn_ty(lb, ty);
     }
@@ -87,7 +103,7 @@ static MirValue lb_copy(Lb *lb, MirValue v) {
 static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
     const MsStr text = ms_number_canonical(&lb->m->arena, ms_name(lb->c->names, e->u.sym));
     char *digits = ms_arena_strndup(&lb->m->arena, text.ptr, text.len);
-    if (lb->facts->expr_ty[e->id] == lb->float_ty) {
+    if (lb_ty(lb, lb->facts->expr_ty[e->id]) == lb->float_ty) {
         const double value = strtod(digits, NULL);
         MirImm imm = {.tag = MI_FLOAT};
         const double signed_value = negate ? -value : value;
@@ -356,6 +372,29 @@ static MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
     return lb_copy(lb, value.v);
 }
 
+static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
+
+/* The module function a call reaches: the callee's own, or for a generic callee its copy for the
+ * type arguments the checker inferred at this call, seen through the instance being lowered. */
+static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
+    if (callee == MS_NONE) {
+        return MIR_NONE;
+    }
+    if (lb->c->syms.nvars[callee] == 0) {
+        return lb->func_of[callee];
+    }
+    const MsFacts *facts = lb->facts;
+    const uint32_t nargs = facts->call_type_args_len[e->id];
+    if (nargs == 0 || nargs != lb->c->syms.nvars[callee] || nargs > LB_MAX_TARGS) {
+        return MIR_NONE;
+    }
+    MsTy args[LB_MAX_TARGS];
+    for (uint32_t i = 0; i < nargs; i++) {
+        args[i] = lb_ty(lb, facts->type_args[facts->call_type_args_at[e->id] + i]);
+    }
+    return lb_instance(lb, callee, args, nargs);
+}
+
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const uint32_t callee = lb->facts->call_callee[e->id];
     if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
@@ -367,7 +406,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (lb->c->syms.kind[callee] == MS_SYM_TYPE) {
         return lr_construct(lb, e);
     }
-    const uint32_t func = lb->func_of[callee];
+    const uint32_t func = lb_callee_func(lb, e, callee);
     const uint32_t count = e->u.call.args.len;
     if (func == MIR_NONE || count != lb->c->tys.nparams[lb->c->syms.ty[callee]]) {
         return lb_unsupported(lb);
@@ -414,7 +453,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return (LbVal){result, (result_ty == MIR_STR || lb_is_fn(lb, result_ty)) && !borrowed}; // else a String result is the caller's
 }
 
-LbVal lb_expr(Lb *lb, const MsExpr *e) {
+static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
@@ -434,6 +473,20 @@ LbVal lb_expr(Lb *lb, const MsExpr *e) {
     case MS_E_MAP: break;
     }
     return lb_unsupported(lb);
+}
+
+/* `e`, wrapped in `some` where the checker found a payload used for an Optional. */
+LbVal lb_expr(Lb *lb, const MsExpr *e) {
+    const LbVal value = lb_expr_plain(lb, e);
+    if (!lb->ok || !lb->facts->some_wrap[e->id]) {
+        return value;
+    }
+    const MirTy payload = mir_b_ty(&lb->b, value.v);
+    if (value.owned || mir_needs_drop(lb->m, payload)) {
+        return lb_unsupported(lb);
+    }
+    const MirTy ty = mir_ty_opt(lb->m, payload);
+    return (LbVal){mir_b_emit(&lb->b, MOP_OptSome, &value.v, 1, (MirImm){0}, ty), false};
 }
 
 /* ---- match ---- */
@@ -546,7 +599,7 @@ static void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param) {
 static void lb_bind(Lb *lb, const MsStmt *s) {
     const MsPattern *pattern = s->u.bind.pattern;
     const uint32_t binding = lb->facts->pattern_binding[pattern->id];
-    const MsTy ty = lb->facts->bindings.ty[binding];
+    const MsTy ty = lb_ty(lb, lb->facts->bindings.ty[binding]);
     LbVal value = lb_expr(lb, s->u.bind.value);
     if (!lb->ok) {
         return;
@@ -961,7 +1014,8 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
         return false;
     }
     const MsStr name = ms_name(lb->c->names, fn->name);
-    mir_b_init(&lb->b, lb->m, mir_name(lb->m, name.ptr, name.len), params, fn->params.len, ret);
+    mir_b_init(&lb->b, lb->m, lb->has_override ? lb->name_override : mir_name(lb->m, name.ptr, name.len), params,
+               fn->params.len, ret);
     lb->b.f.loc = lb_loc(lb, d->pos);
     lb->b.f.ret_borrowed = lb->facts->ret_borrowed[d->id]; // every result is a reference into the arguments
     lb_mark_noalias(lb, fn);
@@ -1062,9 +1116,111 @@ static uint32_t lb_add_stub(Lb *lb, const MsDecl *d, MsSymId sym) {
     }
     const MsStr name = ms_name(lb->c->names, fn->name);
     MirFunc stub = {0};
-    mir_func_init(lb->m, &stub, mir_name(lb->m, name.ptr, name.len), params, fn->params.len, ret);
+    mir_func_init(lb->m, &stub, lb->has_override ? lb->name_override : mir_name(lb->m, name.ptr, name.len), params,
+                  fn->params.len, ret);
     stub.ret_borrowed = lb->facts->ret_borrowed[d->id]; // callers read it before the body is lowered
     return mir_add_func(lb->m, &stub);
+}
+
+/* ---- generic instances ---- */
+
+static LbInst *lb_find_inst(LbInst *list, uint32_t n, MsSymId sym, const MsTy *args, uint32_t nargs) {
+    for (uint32_t i = 0; i < n; i++) {
+        if (list[i].sym == sym && list[i].nargs == nargs && memcmp(list[i].args, args, nargs * sizeof *args) == 0) {
+            return &list[i];
+        }
+    }
+    return NULL;
+}
+
+static bool lb_push_inst(LbInst **list, uint32_t *n, uint32_t *cap, const LbInst *inst) {
+    if (*n == *cap) {
+        const uint32_t grown = *cap == 0 ? 8 : *cap * 2;
+        LbInst *bigger = realloc(*list, (size_t)grown * sizeof **list);
+        if (bigger == NULL) {
+            return false;
+        }
+        *list = bigger;
+        *cap = grown;
+    }
+    (*list)[(*n)++] = *inst;
+    return true;
+}
+
+/* The copy of the generic function `sym` for `args`, created (with its signature and an empty body)
+ * on first use; MIR_NONE when its signature is not handled or it failed before. Copies are named
+ * `name`, `name.1`, `name.2`, ... in the order they are created. Their bodies are lowered by
+ * `lb_drain_instances` once the module's own functions are. */
+static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
+    if (lb_find_inst(lb->dead_insts, lb->ndead_insts, sym, args, nargs) != NULL) {
+        return MIR_NONE;
+    }
+    const LbInst *known = lb_find_inst(lb->insts, lb->ninsts, sym, args, nargs);
+    if (known != NULL) {
+        return known->func;
+    }
+    LbInst inst = {.sym = sym, .nargs = nargs, .func = MIR_NONE};
+    memcpy(inst.args, args, nargs * sizeof *args);
+    const MsDecl *d = lb->c->syms.decl[sym];
+    const MsDef *def = ms_def(lb->mut, sym);
+    if (d == NULL || d->kind != MS_D_FN || def == NULL || def->nvars != nargs || !lb->facts->body_checked[d->id]) {
+        (void)lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst);
+        return MIR_NONE;
+    }
+    uint32_t serial = 0;
+    for (uint32_t i = 0; i < lb->ninsts; i++) {
+        serial += lb->insts[i].sym == sym ? 1 : 0;
+    }
+    const MsStr base = ms_name(lb->c->names, d->u.fn.name);
+    char *text = MS_NEW_N(&lb->m->arena, char, base.len + 16);
+    const int len = serial == 0 ? snprintf(text, base.len + 16, "%.*s", (int)base.len, base.ptr)
+                                : snprintf(text, base.len + 16, "%.*s.%u", (int)base.len, base.ptr, serial);
+    const MsTy *saved_vars = lb->sub_vars, *saved_args = lb->sub_args;
+    const uint32_t saved_n = lb->nsub;
+    const bool saved_override = lb->has_override;
+    const MsSym saved_name = lb->name_override;
+    lb->sub_vars = def->vars;
+    lb->sub_args = inst.args;
+    lb->nsub = nargs;
+    lb->has_override = true;
+    lb->name_override = mir_name(lb->m, text, (size_t)len);
+    inst.func = lb_add_stub(lb, d, sym);
+    lb->sub_vars = saved_vars;
+    lb->sub_args = saved_args;
+    lb->nsub = saved_n;
+    lb->has_override = saved_override;
+    lb->name_override = saved_name;
+    if (inst.func == MIR_NONE) {
+        (void)lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst);
+        return MIR_NONE;
+    }
+    if (!lb_push_inst(&lb->insts, &lb->ninsts, &lb->cinsts, &inst)) {
+        lb->ok = false;
+        return MIR_NONE;
+    }
+    return inst.func;
+}
+
+/* Lowers the body of every copy created so far, and those the bodies create in turn. A copy that
+ * does not lower is remembered as dead: the next pass makes its callers fail. True when one died. */
+static bool lb_drain_instances(Lb *lb, uint32_t *lowered) {
+    bool died = false;
+    for (uint32_t i = 0; i < lb->ninsts; i++) {
+        const LbInst inst = lb->insts[i]; // the list may grow while the body is lowered
+        lb->sub_vars = ms_def(lb->mut, inst.sym)->vars;
+        lb->sub_args = inst.args;
+        lb->nsub = inst.nargs;
+        lb->has_override = true;
+        lb->name_override = lb->m->funcs[inst.func].name;
+        const bool done = lb_function(lb, lb->c->syms.decl[inst.sym], inst.sym, inst.func);
+        *lowered += done ? 1 : 0;
+        if (!done) {
+            died = lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst) || died;
+        }
+    }
+    lb->nsub = 0;
+    lb->has_override = false;
+    return died;
 }
 
 /* Whether the checker reported anything inside declaration `index`: on lines from its own to the
@@ -1103,6 +1259,7 @@ static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
     }
     bool changed = false;
     *lowered = 0;
+    lb->ninsts = 0;
     for (uint32_t i = 0; i < ndecls; i++) {
         if (syms[i] == MS_NONE) {
             continue;
@@ -1113,19 +1270,20 @@ static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
         changed = changed || !done;
         *lowered += done ? 1 : 0;
     }
-    return changed;
+    return lb_drain_instances(lb, lowered) || changed;
 }
 
 /* A failed function leaves a stub, and calls to it were lowered against it, so the pass repeats
  * without it (its callers then fail too) until a pass loses nothing. That is at most one pass per
  * function; programs lose a function or two. */
-uint32_t ms_lower_module(const MsCheck *c, MsModId module, MirModule *out) {
+uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
     const MsModuleRow *row = &c->mods[module];
     const MsFacts *facts = row->facts;
     if (facts == NULL || facts->body_checked == NULL) {
         return 0;
     }
     Lb lb = {.c = c,
+             .mut = c,
              .facts = facts,
              .m = out,
              .int_ty = lb_primitive(c, "Int"),
@@ -1146,6 +1304,8 @@ uint32_t ms_lower_module(const MsCheck *c, MsModId module, MirModule *out) {
         }
     }
     free(lb.func_of);
+    free(lb.insts);
+    free(lb.dead_insts);
     free(lb.thunk_of);
     free(failed);
     return lowered;

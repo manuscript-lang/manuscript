@@ -10,17 +10,6 @@
 
 #include "ms/lock.h"
 
-typedef enum MsDepKind { MS_DEP_TAG, MS_DEP_SHA, MS_DEP_VERSION } MsDepKind;
-
-/* One entry of `[dependencies]`: `alias = { url = ..., tag | sha | version = ... }`. */
-typedef struct MsDependency {
-    const char *alias;
-    const char *url;
-    MsDepKind kind;
-    const char *reference;       /* the tag or commit (TAG, SHA) */
-    MsRequirement requirement;   /* VERSION */
-} MsDependency;
-
 /* The source as a person would write it: `v1.0.0`, a commit, or `^1.2`. */
 const char *ms_dependency_describe(MsArena *a, const MsDependency *d);
 /* The `url#reference` a lock line records for a tag or a commit; NULL for a requirement. */
