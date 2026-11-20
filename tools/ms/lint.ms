@@ -7,6 +7,8 @@ import (
 	read_file from "@std/os/fs.ms",
 
 	Finding from "./lint/finding.ms",
+	lint_matches from "./lint/matches.ms",
+	lint_terse from "./lint/terse.ms",
 	lint_source from "./lint/text.ms",
 )
 
@@ -23,6 +25,8 @@ fn main() Int:
 			ok(data):
 				text := data.decode_utf8().get_or("")
 				for finding in lint_source(path, text): print(show(finding))
+				for finding in lint_matches(path, text): print(show(finding))
+				for finding in lint_terse(path, text): print(show(finding))
 			error(_failure):
 				print(f"{path}: cannot read")
 				status = 1

@@ -14,4 +14,3 @@ ms-rt-abi = { path = "../ms-rt-abi" }
 workspace = true
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt" }

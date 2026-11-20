@@ -93,6 +93,16 @@ if ! grep -q 'body_imported_call.ms 3:1$' "$out/bodies.keys"; then
     echo "FAIL bodies: a call of an imported function is no longer checked in C (compiler/tests/scope/body_imported_call.ms)"
     status=1
 fi
+# A call that leaves out a parameter with a default, or passes a record, is claimed too.
+if ! grep -q 'body_argument_kinds.ms 11:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a call with a record argument or an omitted default is no longer checked in C (compiler/tests/scope/body_argument_kinds.ms)"
+    status=1
+fi
+# A number returned or passed where an Optional is expected, and `none`, are claimed (`some_wrap`).
+if ! grep -q 'body_optional_wrap.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_optional_wrap.ms 4:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a value used as an Optional is no longer checked in C (compiler/tests/scope/body_optional_wrap.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else

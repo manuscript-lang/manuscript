@@ -4,7 +4,6 @@ use crate::common;
 
 use common::*;
 use ms_driver::{CheckRequest, LoadOptions, check_graph, load_file};
-use ms_rt as _;
 use ms_syntax::{Phase, Pos};
 
 #[test]

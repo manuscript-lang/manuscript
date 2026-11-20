@@ -1,7 +1,7 @@
 /* MIR to LLVM IR text.
  *
  * A MIR value is a run of SSA registers, one per leaf (`%v7`, `%v7.1`, ...). The calling
- * convention is the one `emit_qbe.c` writes, so both backends link against the same runtime:
+ * convention is the runtime's:
  * parameters of at most 16 bytes travel as their leaves; a result of more than one leaf is written
  * through a hidden first parameter. Registers hold `i64`, `double` and `i1`; sized integers and
  * Float32 are widened in registers and narrowed only in memory. Checked arithmetic is the
@@ -37,6 +37,7 @@ typedef struct LCx {
     bool export_all;     /* every function gets an external symbol, for the tables unit to address */
     LlDebug *dbg;        /* source places for the fault tables, or NULL */
     uint32_t scope_base; /* module-wide index of the first scope of `f` */
+    uint32_t body_scope; /* the scope number of `f`'s own body: past the module's scopes, one per function */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -186,6 +187,14 @@ static bool ll_wide_inst(LCx *c, const MirInst *inst) {
     }
 }
 
+static void ll_f32_round(LCx *c, MirValue res, const char *src);
+
+/* Whether the value `v` is a Float32 (one leaf, held in a double register). */
+static bool ll_is_f32(LCx *c, MirValue v) {
+    const MirLeafSpan leaves = ll_leaves(c, c->f->values[v]);
+    return leaves.len == 1 && leaves.ptr[0] == MIR_LEAF_F32;
+}
+
 static void ll_binary_inst(LCx *c, const MirInst *inst, const LlBinary *b) {
     MsBuf *o = c->out;
     const char *ty = ll_vty(c, inst->res);
@@ -194,6 +203,15 @@ static void ll_binary_inst(LCx *c, const MirInst *inst, const LlBinary *b) {
         ms_buf_printf(o, "  %%m%u = and %s %%v%u, 63\n", n, ty, inst->args[1]);
         ms_buf_printf(o, "  %%v%u = %s %s %%v%u, %%m%u\n", inst->res, b->mnemonic, ty,
                       inst->args[0], n);
+        return;
+    }
+    if (strcmp(ty, "double") == 0 && ll_is_f32(c, inst->res)) {
+        /* Float32 lives in a double register: compute in double (exact enough for + - * /), round once to binary32. */
+        const uint32_t n = c->next++;
+        ms_buf_printf(o, "  %%t%u = %s double %%v%u, %%v%u\n", n, b->mnemonic, inst->args[0], inst->args[1]);
+        char src[24];
+        (void)snprintf(src, sizeof src, "%%t%u", n);
+        ll_f32_round(c, inst->res, src);
         return;
     }
     ms_buf_printf(o, "  %%v%u = %s %s %%v%u, %%v%u\n", inst->res, b->mnemonic, ty, inst->args[0],
@@ -610,9 +628,15 @@ static bool ll_call(LCx *c, const MirInst *inst, uint32_t block, uint32_t index)
     return ll_call_to(c, inst, block, index, NULL, NULL);
 }
 
+/* Whether extern `def` is a function of a C library: the runtime's own (`msrt_`, `msstd_`) take a Float32 as a double. */
+static bool ll_extern_is_c(const LCx *c, const MirExtern *def) {
+    const MsStr name = ms_name(&c->m->names, def->name);
+    return !(name.len >= 5 && memcmp(name.ptr, "msrt_", 5) == 0) && !(name.len >= 6 && memcmp(name.ptr, "msstd_", 6) == 0);
+}
+
 /* Appends one argument of a runtime call to `args`: the leaves of `value` when `ty` passes
  * directly, else the address of a stack copy that is written first. `area` names the copy. */
-static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const char *area) {
+static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const char *area, bool c_float) {
     if (!ll_rt_direct(c, ty)) {
         if (!ll_leaves_at(c, value, area, false)) {
             return false;
@@ -622,7 +646,18 @@ static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const 
     }
     const MirLeafSpan leaves = ll_leaves(c, ty);
     for (uint32_t j = 0; j < leaves.len; j++) {
-        ms_buf_printf(args, "%s%s ", args->len > 0 ? ", " : "", ll_leaf_type(leaves.ptr[j]));
+        const char *type = ll_leaf_type(leaves.ptr[j]);
+        if (leaves.ptr[j] == MIR_LEAF_F32 && c_float) {
+            /* A Float32 is a double in registers; a C library function takes a float (the runtime takes a double). */
+            const uint32_t n = c->next++;
+            ms_buf_printf(c->out, "  %%fa%u = fptrunc double ", n);
+            ll_name(c->out, value, j);
+            ms_buf_puts(c->out, " to float\n");
+            ms_buf_printf(args, "%sfloat %%fa%u", args->len > 0 ? ", " : "", n);
+            continue;
+        }
+        /* C expects a `bool` argument zero-extended to a byte; LLVM leaves the upper bits of an i1 undefined. */
+        ms_buf_printf(args, "%s%s%s ", args->len > 0 ? ", " : "", type, strcmp(type, "i1") == 0 ? " zeroext" : "");
         ll_name(args, value, j);
     }
     return true;
@@ -655,7 +690,7 @@ static bool ll_call_rt(LCx *c, const MirInst *inst, uint32_t block, uint32_t ind
     bool ok = true;
     for (uint32_t k = 0; ok && k < inst->nargs; k++) {
         (void)snprintf(area, sizeof area, "%%p%u_%u_%u", block, index, k);
-        ok = ll_rt_argument(c, &args, def->params[k].ty, inst->args[k], area);
+        ok = ll_rt_argument(c, &args, def->params[k].ty, inst->args[k], area, ll_extern_is_c(c, def));
     }
     const MirLeafSpan result = ll_leaves(c, def->ret);
     const bool direct = ll_rt_direct(c, def->ret);
@@ -669,7 +704,8 @@ static bool ll_call_rt(LCx *c, const MirInst *inst, uint32_t block, uint32_t ind
             ms_buf_printf(&args, "%sptr %s", args.len > 0 ? ", " : "", area);
         }
         const LlLeafKind *rk = direct && result.len == 1 ? ll_leaf_kind(result.ptr[0]) : NULL;
-        const bool narrow = rk != NULL && strcmp(rk->reg, rk->mem) != 0;
+        const bool runtime_float = rk != NULL && rk->widen == LL_FPEXT && !ll_extern_is_c(c, def); /* a double */
+        const bool narrow = rk != NULL && strcmp(rk->reg, rk->mem) != 0 && !runtime_float;
         if (narrow) {
             /* The C function returns the narrow type; the attribute makes LLVM trust or provide the high bits. */
             ms_buf_printf(c->out, "  %%v%ur = call %s%s ", inst->res, ll_ret_attribute(rk->widen), rk->mem);
@@ -843,11 +879,10 @@ static bool ll_unary(LCx *c, const MirInst *inst) {
     case MOP_FNeg: ms_buf_printf(o, "  %%v%u = fneg double %%v%u\n", inst->res, inst->args[0]); return true;
     case MOP_I2F:
         if (ll_leaves(c, c->f->values[inst->res]).ptr[0] == MIR_LEAF_F32) {
+            /* One rounding, straight to binary32: through a double it would round twice at the midpoints. */
             const uint32_t n = c->next++;
-            ms_buf_printf(o, "  %%i%u = sitofp i64 %%v%u to double\n", n, inst->args[0]);
-            char src[24];
-            (void)snprintf(src, sizeof src, "%%i%u", n);
-            ll_f32_round(c, inst->res, src);
+            ms_buf_printf(o, "  %%i%u = sitofp i64 %%v%u to float\n  %%v%u = fpext float %%i%u to double\n", n,
+                          inst->args[0], inst->res, n);
             return true;
         }
         ms_buf_printf(o, "  %%v%u = sitofp i64 %%v%u to double\n", inst->res, inst->args[0]);
@@ -860,6 +895,14 @@ static bool ll_unary(LCx *c, const MirInst *inst) {
         return true;
     case MOP_Popcnt: ms_buf_printf(o, "  %%v%u = call i64 @llvm.ctpop.i64(i64 %%v%u)\n", inst->res, inst->args[0]); return true;
     case MOP_FSqrt: case MOP_FAbs: case MOP_FFloor: case MOP_FCeil: case MOP_FTrunc:
+        if (inst->op == MOP_FSqrt && ll_is_f32(c, inst->res)) {
+            const uint32_t n = c->next++;
+            char src[24];
+            (void)snprintf(src, sizeof src, "%%t%u", n);
+            ms_buf_printf(o, "  %%t%u = call double @llvm.sqrt.f64(double %%v%u)\n", n, inst->args[0]);
+            ll_f32_round(c, inst->res, src);
+            return true;
+        }
         ms_buf_printf(o, "  %%v%u = call double @llvm.%s.f64(double %%v%u)\n", inst->res,
                       ll_float_function(inst->op), inst->args[0]);
         return true;
@@ -1589,7 +1632,8 @@ static void ll_place(LCx *c, size_t from, MirLoc loc) {
     }
     const bool known = !mir_loc_none(loc) && loc.line != 0;
     const uint32_t line = known ? loc.line : c->f->loc.line;
-    const uint32_t scope = known && loc.scope != 0 ? c->scope_base + loc.scope : 0;
+    /* Scope 0 is the function itself; LLVM may inline it into another, so it gets a number of its own. */
+    const uint32_t scope = known && loc.scope != 0 ? c->scope_base + loc.scope : c->body_scope;
     ll_debug_tag(c->out, from, ll_debug_location(c->dbg, line, scope));
 }
 
@@ -1749,7 +1793,11 @@ static void ll_declare_externs(LCx *c) {
         }
         const MirLeafSpan result = ll_leaves(c, def->ret);
         const bool direct = ll_rt_direct(c, def->ret);
-        ms_buf_printf(o, "declare %s ", direct && result.len == 1 ? ll_leaf_type(result.ptr[0]) : "void");
+        const char *type = "void";
+        if (direct && result.len == 1) {
+            type = result.ptr[0] == MIR_LEAF_F32 && ll_extern_is_c(c, def) ? "float" : ll_leaf_type(result.ptr[0]);
+        }
+        ms_buf_printf(o, "declare %s ", type);
         ll_sym(o, ms_name(&c->m->names, def->name));
         ms_buf_putc(o, '(');
         bool first = true;
@@ -1761,7 +1809,8 @@ static void ll_declare_externs(LCx *c) {
                 continue;
             }
             for (uint32_t j = 0; j < leaves.len; j++) {
-                ms_buf_printf(o, "%s%s", first ? "" : ", ", ll_leaf_type(leaves.ptr[j]));
+                const char *leaf_type = leaves.ptr[j] == MIR_LEAF_F32 && ll_extern_is_c(c, def) ? "float" : ll_leaf_type(leaves.ptr[j]);
+                ms_buf_printf(o, "%s%s", first ? "" : ", ", leaf_type);
                 first = false;
             }
         }
@@ -1908,9 +1957,13 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     LlDebug debug = {0};
     ll_debug_init(&debug);
     LlDebug *dbg = places ? &debug : NULL;
-    uint32_t scope_base = 0;
+    uint32_t scope_base = 0, total_scopes = 0;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base};
+        total_scopes += m->funcs[i].nscopes;
+    }
+    for (uint32_t i = 0; i < m->nfuncs; i++) {
+        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base,
+                 total_scopes + i + 1};
         scope_base += m->funcs[i].nscopes;
         if (ll_function(&c, i)) {
             continue;
@@ -1919,7 +1972,7 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);

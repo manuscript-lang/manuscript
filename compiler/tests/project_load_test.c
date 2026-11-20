@@ -176,7 +176,7 @@ static void test_project(void) {
     write_file("lib/src/main.ms", "");
     MsProjectError err = {0};
     CHECK(!ms_project_load(&arena, &names, path_of("lib/ms.toml"), &g, &err) && ms_project_error_is_unsupported(&err));
-    write_file("dep/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\nversion = \"1.0.0\"\n");
+    write_file("dep/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\n[dependencies]\n\"@pg\" = { path = \"src\" }\n");
     write_file("dep/src/main.ms", "");
     CHECK(!ms_project_load(&arena, &names, path_of("dep/src/main.ms"), &g, &err) && ms_project_error_is_unsupported(&err));
 }

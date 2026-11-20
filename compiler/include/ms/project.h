@@ -8,6 +8,8 @@
 
 #include "ms/ast.h"
 #include "ms/base.h"
+#include "ms/semver.h"
+#include "ms/tables.h"
 
 typedef enum MsProjectErrorKind {
     MS_PERR_NONE,
@@ -65,9 +67,30 @@ typedef struct MsAlias {
     MsPos key_pos, value_pos;
 } MsAlias;
 
-/* A read manifest. This reader covers `[project]` (name, source, entry) and `[aliases]`; a manifest that uses
- * anything else (version, effects, [embed], [dependencies], [effects], [workspace]) or is not valid TOML fails
- * with MS_PERR_UNSUPPORTED, so the caller can hand the command to the Rust driver. */
+/* ---- [dependencies] ---- */
+
+typedef enum MsDepKind { MS_DEP_TAG, MS_DEP_SHA, MS_DEP_VERSION } MsDepKind;
+
+/* One entry of `[dependencies]`: `alias = { url = ..., tag | sha | version = ... }`. */
+typedef struct MsDependency {
+    const char *alias;
+    const char *url;
+    MsDepKind kind;
+    const char *reference;       /* the tag or commit (TAG, SHA) */
+    MsRequirement requirement;   /* VERSION */
+} MsDependency;
+
+/* `[effects] @pg = ["std.net.*"]`: the effects the project allows a dependency. */
+typedef struct MsEffectRule {
+    const char *name;
+    const char *const *patterns;
+    uint32_t count;
+} MsEffectRule;
+
+/* A read manifest. `[project]`, `[aliases]`, `[embed]`, `[dependencies]` (inline tables), `[effects]` and
+ * `[workspace] members` are read; a manifest that uses another TOML form (dotted keys, `[dependencies.x]` tables,
+ * multi-line strings) or is not valid TOML fails with MS_PERR_UNSUPPORTED, so the caller can hand the command to the
+ * Rust driver. Every list below is sorted by name, as the Rust maps iterate. */
 typedef struct MsProject {
     const char *root;          /* canonical directory holding ms.toml */
     const char *file;          /* base name of the manifest, as diagnostics print it */
@@ -77,6 +100,21 @@ typedef struct MsProject {
     const char *configuration; /* the manifest text as read */
     MsAlias *aliases;          /* sorted by name */
     uint32_t alias_count;
+    MsAlias *embed;            /* [embed]: name and canonical directory */
+    uint32_t embed_count;
+    MsDependency *dependencies; /* [dependencies] with a url */
+    uint32_t dependency_count;
+    MsAlias *path_dependencies; /* [dependencies] written { path = "../member" }: canonical directory */
+    uint32_t path_dependency_count;
+    MsEffectRule *allowed_effects; /* [effects] */
+    uint32_t allowed_effect_count;
+    const char *const *effects; /* [project] effects */
+    uint32_t effect_count;
+    bool is_workspace;          /* a [workspace] table is present */
+    const char *const *members; /* its members, as written */
+    uint32_t member_count;
+    bool has_version;           /* [project] version */
+    MsVersion version;
     MsPos location;            /* the [project] header */
 } MsProject;
 
@@ -138,5 +176,14 @@ typedef struct MsGraph {
  * the request (MS_PERR_UNSUPPORTED in `err`: a library manifest, test discovery, anything the manifest reader
  * leaves out), so the caller can hand the command to the Rust driver. Modules parse into `names` and `a`. */
 MS_NODISCARD bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err);
+
+/* ---- checking a graph (project/graph_check.c) ---- */
+
+/* Adds each module of the graph to the checker, in graph order, with its imports resolved to the modules they name
+ * (`import_targets`; standard-library imports stay MS_NONE). `ids` receives the checker's id of each module. */
+void ms_graph_add_modules(MsCheck *c, MsNames *names, MsArena *a, const MsGraph *graph, MsModId *ids);
+/* Checks the bodies of every module of the graph with the program's method table (ms_program_check_module). Modules
+ * with an inherent error are left unchecked and their ids appear in `unchecked` when it is not NULL; returns how many. */
+uint32_t ms_graph_check(MsCheck *c, const MsGraph *graph, const MsModId *ids, bool *unchecked);
 
 #endif
