@@ -1,0 +1,26 @@
+module "c1"
+extern @msrt_print_int(int)
+entry @main
+fn @g(%n: int) {
+b0:
+  %z: int = iconst 0
+  %c: bool = icmp.le %n, %z
+  br_if %c, done(), rec()
+rec:
+  %one: int = iconst 1
+  %m: int = isub %n, %one
+  %h: int = cleanup.push @g %m
+  cleanup.run %h
+  ret
+done:
+  %u: void = call.rt @msrt_print_int (%n)
+  ret
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 100
+  %h: int = cleanup.push @g %n
+  cleanup.run %h
+  %r: int = iconst 0
+  ret %r
+}

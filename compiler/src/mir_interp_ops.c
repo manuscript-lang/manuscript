@@ -22,6 +22,15 @@ IpFlow ip_raise(MirInterp *it, MirFault kind, const char *fmt, ...) {
     return IP_RAISE;
 }
 
+/* A fault whose message is arbitrary bytes (may hold NUL), copied into the arena. */
+IpFlow ip_raise_text(MirInterp *it, MirFault kind, MsStr message) {
+    it->raw.kind = kind;
+    it->raw.message = (MsStr){.ptr = ms_arena_strndup(&it->arena, message.ptr, message.len),
+                              .len = message.len};
+    it->raw.fuel = false;
+    return IP_RAISE;
+}
+
 IpFlow ip_internal(MirInterp *it, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -901,7 +910,7 @@ static IpFlow ip_op_memory(IpCtx *c) {
     if (c->inst->op == MOP_Slot) {
         if (!ip_has_imm(c, MI_TY, &flow)) return flow;
         if (it->nmemory == it->cmemory) {
-            uint32_t grown = it->cmemory == 0 ? 16 : it->cmemory * 2;
+            uint32_t grown = ip_grow_cap(it->cmemory, 16);
             it->memory = ip_regrow(it->memory, sizeof(MirVal) * it->cmemory, sizeof(MirVal) * grown);
             it->cmemory = grown;
         }
@@ -1064,7 +1073,7 @@ static IpFlow ip_op_call_runtime(IpCtx *c) {
     if (host == NULL) {
         flow = ip_internal(it, "unregistered runtime function %.*s", (int)name.len, name.ptr);
     } else if (!host->fn(host->context, &it->out, args, count, &result, &error)) {
-        flow = ip_raise(it, MF_UNREACHABLE, "%.*s", (int)error.len, error.ptr);
+        flow = ip_raise_text(it, MF_UNREACHABLE, error);
     }
     for (uint32_t i = 0; i < count; i++) {
         mir_val_release(&args[i]);
@@ -1080,7 +1089,7 @@ static IpFlow ip_op_cleanup(IpCtx *c) {
     if (c->inst->op == MOP_CleanupPush) {
         if (!ip_has_imm(c, MI_FUNC, &flow)) return flow;
         if (it->ncleanup == it->ccleanup) {
-            uint32_t grown = it->ccleanup == 0 ? 8 : it->ccleanup * 2;
+            uint32_t grown = ip_grow_cap(it->ccleanup, 8);
             it->cleanup = ip_regrow(it->cleanup, sizeof(IpCleanup) * it->ccleanup, sizeof(IpCleanup) * grown);
             it->ccleanup = grown;
         }

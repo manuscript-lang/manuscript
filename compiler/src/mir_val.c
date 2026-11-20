@@ -67,6 +67,14 @@ static void *ip_xalloc(size_t size) {
     return block;
 }
 
+/* The next capacity for a growing array: doubled from `count`, at least `first`; exhausted at 2^31. */
+uint32_t ip_grow_cap(uint32_t count, uint32_t first) {
+    if (count >= UINT32_MAX / 2) {
+        ip_oom();
+    }
+    return count < first ? first : count * 2;
+}
+
 /* A bigger copy of an array of `old_bytes`; the old one is freed. */
 void *ip_regrow(void *old, size_t old_bytes, size_t new_bytes) {
     void *block = ip_xalloc(new_bytes);
@@ -109,6 +117,9 @@ MirVal ip_aggregate(uint8_t tag, uint32_t id, MirBlob *blob) {
 MirVal ip_str(const char *bytes, size_t length) {
     if (length == 0) {
         return ip_aggregate(MV_STR, 0, NULL);
+    }
+    if (length > UINT32_MAX) {
+        ip_oom();
     }
     MirBlob *blob = ip_xalloc(ip_blob_bytes(length));
     blob->refs = 1;
@@ -189,7 +200,7 @@ void ip_list_push(MirVal *list, MirVal item) {
     MirBlob *blob = list->as.blob;
     if (blob == NULL || blob->count == blob->cap) {
         uint32_t count = blob == NULL ? 0 : blob->count;
-        uint32_t cap = count < 4 ? 4 : count * 2;
+        uint32_t cap = ip_grow_cap(count, 4);
         size_t payload = 0;
         if (!ms_size_mul(cap, sizeof(MirVal), &payload)) {
             ip_oom();
@@ -219,6 +230,70 @@ void ip_list_pop(MirVal *list) {
 
 /* ---- display ---- */
 
+/* printf rounds an exact tie to even where Rust rounds it up. If `value` lies exactly halfway
+ * between two `precision`-digit texts and `text` is the lower one (even last digit), bump it. */
+static void ip_round_half_up(char *text, int precision, double value) {
+    static char exact[1100];
+    snprintf(exact, sizeof exact, "%.*e", 1000, value);
+    char digits[1100];
+    size_t count = 0;
+    for (const char *p = exact; *p != 'e' && *p != '\0'; p++) {
+        if (*p >= '0' && *p <= '9') digits[count++] = *p;
+    }
+    size_t kept = (size_t)precision + 1;
+    if (count <= kept || digits[kept] != '5') {
+        return;
+    }
+    for (size_t i = kept + 1; i < count; i++) {
+        if (digits[i] != '0') return;
+    }
+    char *end = strchr(text, 'e');
+    if (end != NULL && end > text && (end[-1] - '0') % 2 == 0) {
+        end[-1]++;
+    }
+}
+
+/* Writes the shortest `%e` text that reads back as `value`. The correctly rounded n-digit text can
+ * miss while a neighbouring n-digit text hits (Rust then prints the neighbour), so try both. */
+static void ip_shortest(char *text, size_t size, double value) {
+    for (int precision = 0; precision <= 16; precision++) {
+        snprintf(text, size, "%.*e", precision, value);
+        if (strtod(text, NULL) == value) {
+            ip_round_half_up(text, precision, value);
+            return;
+        }
+        char *mark = strchr(text, 'e');
+        if (mark == NULL) {
+            continue;
+        }
+        long exponent = strtol(mark + 1, NULL, 10);
+        unsigned long long mantissa = 0;
+        for (const char *p = text + (text[0] == '-' ? 1 : 0); p < mark; p++) {
+            if (*p != '.') mantissa = mantissa * 10 + (unsigned long long)(*p - '0');
+        }
+        long double best_gap = -1;
+        char best[48] = {0};
+        for (int step = -1; step <= 1; step += 2) {
+            char digits[32];
+            int ndigits = snprintf(digits, sizeof digits, "%llu", mantissa + (unsigned long long)step);
+            char candidate[48];
+            snprintf(candidate, sizeof candidate, "%s%c.%se%ld", value < 0 ? "-" : "", digits[0],
+                     digits + 1, exponent + ndigits - (precision + 1));
+            double back = strtod(candidate, NULL);
+            if (back != value) continue;
+            long double gap = fabsl(strtold(candidate, NULL) - (long double)value);
+            if (best_gap < 0 || gap < best_gap) {
+                best_gap = gap;
+                memcpy(best, candidate, sizeof best);
+            }
+        }
+        if (best_gap >= 0) {
+            memcpy(text, best, 48 < size ? 48 : size);
+            return;
+        }
+    }
+}
+
 /* The shortest text that reads back as `value`, with no exponent (Rust's `{}` for a float). */
 void ip_fmt_float(MsBuf *out, double value) {
     if (isnan(value)) {
@@ -234,12 +309,7 @@ void ip_fmt_float(MsBuf *out, double value) {
         return;
     }
     char text[48] = {0};
-    for (int precision = 0; precision <= 16; precision++) {
-        int written = snprintf(text, sizeof text, "%.*e", precision, value);
-        if (written > 0 && strtod(text, NULL) == value) {
-            break;
-        }
-    }
+    ip_shortest(text, sizeof text, value);
     const char *at = text;
     if (*at == '-') {
         ms_buf_putc(out, '-');

@@ -40,8 +40,8 @@ mkdir -p "$out/fuzz"
 : > "$out/fuzz.txt"
 for f in "$out"/fuzz/*.mir; do
     rc=0
-    timeout 3 "$oracle" print "$f" > /dev/null 2>&1 || rc=$?
-    if [ "$rc" != 124 ]; then echo "$f" >> "$out/fuzz.txt"; fi
+    timeout 3 "$oracle" verify "$f" > "$out/one.txt" 2>&1 || rc=$?
+    if [ "$rc" != 124 ] && ! grep -q '^oracle-panic' "$out/one.txt"; then echo "$f" >> "$out/fuzz.txt"; fi
 done
 
 for set in files fuzz; do
@@ -53,6 +53,11 @@ for set in files fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" analysis > "$out/analysis-$set.rust"
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" analysis > "$out/analysis-$set.c"
     check "analysis $set" "$out/analysis-$set.rust" "$out/analysis-$set.c"
+done
+for set in files fuzz; do
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" verify > "$out/verify-$set.rust"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" verify > "$out/verify-$set.c"
+    check "verify $set" "$out/verify-$set.rust" "$out/verify-$set.c"
 done
 for set in files fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" boxing > "$out/boxing-$set.rust"

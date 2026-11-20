@@ -1,0 +1,63 @@
+module "interp_aggregates"
+extern @msrt_print_int(int)
+extern @msrt_print_bool(bool)
+iface Area { area() -> int }
+alt Shape { Circle(r: int), Rect(w: int, h: int), Empty }
+vtable @v_int: Area for int { @area_int }
+entry @main
+fn @area_int(%self: ptr) -> int method {
+b0:
+  %r: int = iconst 12
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %one: int = iconst 1
+  %m1: int = iconst -1
+  %c1: bool = uicmp.lt %one, %m1
+  %p1: void = call.rt @msrt_print_bool (%c1)
+  %c2: bool = uicmp.ge %one, %m1
+  %p2: void = call.rt @msrt_print_bool (%c2)
+  %big: int = iconst 300
+  %n1: int32 = narrow.chk %one
+  %i: int = iconst 4
+  %s: dyn Area = iface.new @v_int %i
+  %t: bool = iface.is @v_int %s
+  %p3: void = call.rt @msrt_print_bool (%t)
+  %d: int = iface.data %s
+  %p4: void = call.rt @msrt_print_int (%d)
+  %v: dyn Area = iface.view %s
+  %a: int = call.method Area.area (%v)
+  %p5: void = call.rt @msrt_print_int (%a)
+  %c: Shape = alt.new Shape.Circle %i
+  %w: Shape = alt.view Shape.Circle %i
+  %pl: Shape = alt.plain %c
+  %tag: int = alt.tag %pl
+  %p6: void = call.rt @msrt_print_int (%tag)
+  %e: int = alt.get Shape.Circle.r %w
+  %p7: void = call.rt @msrt_print_int (%e)
+  %f: bool = bconst false
+  %tr: bool = bconst true
+  %cap: int = iconst 2
+  %l0: list<int> = list.new %cap
+  %l1: list<int> = list.push %l0, %i
+  %l2: list<int> = list.push %l1, %one
+  %cp: int = list.cap %l2
+  %p8: void = call.rt @msrt_print_int (%cp)
+  %zero: int = iconst 0
+  %g1: int = list.get.nn %l2, %zero
+  %p9: void = call.rt @msrt_print_int (%g1)
+  %l3: list<int> = list.set.nn %l2, %one, %g1
+  %g2: int = list.get.u %l3, %one
+  %p10: void = call.rt @msrt_print_int (%g2)
+  %l4: list<int> = list.set.u %l3, %zero, %g2
+  %l5: list<int> = list.push.u %l4, %i
+  %ln: int = list.len %l5
+  %p11: void = call.rt @msrt_print_int (%ln)
+  %l6: list<int> = list.fill %l5, %zero, %i
+  drop.if %f, %l6
+  free %l6
+  drop %s
+  drop %c
+  ret %zero
+}

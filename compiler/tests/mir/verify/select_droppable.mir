@@ -1,0 +1,10 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %c: bool = bconst true
+  %a: str = str "x"
+  %s: str = select %c, %a, %a
+  %z: int = iconst 0
+  ret %z
+}
