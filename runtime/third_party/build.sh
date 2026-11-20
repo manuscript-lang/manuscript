@@ -16,7 +16,7 @@ mode=pinned
 # (pins, this script, the triple), so a published archive and a CI cache keyed on `key` restore it whole and a change
 # to any input starts a clean build of all of them. The compiler is not part of the key: the published archives are the
 # one build everyone uses, so the key must not change with the machine that asks for it.
-hash_input() { cat "$repository/runtime/third_party/c-libs.lock" "$repository/runtime/third_party/build.sh"; printf '%s\n%s\n' "$triple" "$mode"; }
+hash_input() { cat "$repository/runtime/third_party/c-libs.lock" "$repository/runtime/third_party/build.sh"; printf '%s\n%s\n%s\n' "$triple" "$mode" "${MS_LIBS_ONLY:-}"; }
 key=$(hash_input | if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -c1-16)
 if [ "${1:-}" = key ]; then echo "$key"; exit 0; fi
 out=$root/$triple-$mode-$key
@@ -47,6 +47,10 @@ arch=${triple%%-*}
 [ "$triple" = host ] && arch=$(uname -m)
 # What the target needs beyond the compiler: OpenSSL's Configure target, CMake's system, the Windows library names.
 case "$triple" in
+*windows-msvc*) # A Windows host's own unit-test build: clang for the MSVC target, and only the libraries MS_LIBS_ONLY names.
+    cmake_flags="$cmake_flags -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER_TARGET=$arch-pc-windows-msvc"
+    export AR=llvm-ar RANLIB=llvm-ranlib
+    ssl_target=none; ssl_extra="" ;;
 *windows*) # llvm-mingw's clang, cross or native; mingw-w64 builds archives named lib*.a.
     cmake_flags="$cmake_flags -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER_TARGET=$arch-w64-mingw32"
     # OpenSSL's cross-compile prefix would name a gcc that is not installed; CC (llvm-mingw's clang) and its archiver are used by path.
@@ -69,17 +73,20 @@ case "$triple" in
     ssl_extra="" ;;
 esac
 
+# MS_LIBS_ONLY="uv z" builds just those libraries (the key and the folder still name the triple).
+want() { [ -z "${MS_LIBS_ONLY:-}" ] || case " $MS_LIBS_ONLY " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+
 # Runs a build step with its output held back: a failing step prints the tail of its output and stops the build.
 quiet() { "$@" >"$out/step.log" 2>&1 || { tail -n 60 "$out/step.log" >&2; echo "build.sh: failed: $*" >&2; exit 1; }; }
 
-if [ ! -f "$out/lib/libuv.a" ]; then
+if want uv && [ ! -f "$out/lib/libuv.a" ]; then
     build=$root/build/$triple/libuv
     quiet cmake -S "$vendor/libuv" -B "$build" $cmake_flags -DLIBUV_BUILD_SHARED=OFF -DLIBUV_BUILD_TESTS=OFF -DLIBUV_BUILD_BENCH=OFF
     quiet cmake --build "$build" -j "$jobs"
     cp "$build"/libuv.a "$out/lib/"
     cp -R "$vendor/libuv/include/." "$out/include/"
 fi
-if [ ! -f "$out/lib/libnghttp2.a" ]; then
+if want nghttp2 && [ ! -f "$out/lib/libnghttp2.a" ]; then
     build=$root/build/$triple/nghttp2
     quiet cmake -S "$vendor/nghttp2" -B "$build" $cmake_flags -DENABLE_LIB_ONLY=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF
     quiet cmake --build "$build" -j "$jobs"
@@ -97,7 +104,7 @@ case "$triple" in *windows*) candidates="$msys/usr/bin/perl perl" ;; esac
 for candidate in $candidates; do
     if "$candidate" -e 'exit($^O eq "MSWin32")' >/dev/null 2>&1; then perl=$candidate; break; fi
 done
-if [ ! -f "$out/lib/libssl.a" ]; then
+if want ssl && [ ! -f "$out/lib/libssl.a" ]; then
     [ -n "$perl" ] || { echo "build.sh: no Unix-style perl (OpenSSL's Configure needs one; on Windows install MSYS2's perl)" >&2; exit 1; }
     # CC, AR and RANLIB go to Configure as arguments: it records them in the Makefile, where a variable in the environment was lost under MSYS2 and the build fell back to the first gcc on PATH (x64 objects in an arm64 archive).
     # no-secure-memory: its mmap-locked heap needs kernel headers (<linux/mman.h>) that musl-gcc does not see, and we keep no keys in a locked heap.
@@ -110,16 +117,16 @@ if [ ! -f "$out/lib/libssl.a" ]; then
         && quiet "$ssl_make" -j "$jobs" build_libs && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
         && cp "$vendor/openssl"/include/openssl/*.h include/openssl/*.h "$out/include/openssl/")
 fi
-if [ ! -f "$out/lib/libz.a" ]; then
+if want z && [ ! -f "$out/lib/libz.a" ]; then
     # zlib: the in-memory deflate and inflate code only, compiled directly (no gz file layer, no build system).
     build=$root/build/$triple/zlib
     zsrc=$vendor/zlib
     mkdir -p "$build"
     for f in adler32 compress crc32 deflate infback inffast inflate inftrees trees uncompr zutil; do "$cc" -O2 -fPIC ${CFLAGS:-} -I"$zsrc" -c "$zsrc/$f.c" -o "$build/$f.o"; done
-    ar rcs "$out/lib/libz.a" "$build"/*.o
+    "${AR:-ar}" rcs "$out/lib/libz.a" "$build"/*.o
     cp "$zsrc/zlib.h" "$zsrc/zconf.h" "$out/include/"
 fi
-if [ ! -f "$out/lib/libpcre2-8.a" ]; then
+if want pcre2 && [ ! -f "$out/lib/libpcre2-8.a" ]; then
     # PCRE2, 8-bit library only, with its JIT. Plain C: no C++ runtime in programs.
     build=$root/build/$triple/pcre2
     quiet cmake -S "$vendor/pcre2" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=OFF -DPCRE2_BUILD_PCRE2_32=OFF -DPCRE2_SUPPORT_JIT=ON -DPCRE2_SUPPORT_UNICODE=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_SUPPORT_LIBZ=OFF -DPCRE2_SUPPORT_LIBBZ2=OFF -DPCRE2_SUPPORT_LIBREADLINE=OFF
@@ -127,7 +134,7 @@ if [ ! -f "$out/lib/libpcre2-8.a" ]; then
     cp "$build/libpcre2-8.a" "$out/lib/"
     cp "$build/interface/pcre2.h" "$out/include/"
 fi
-if [ ! -f "$out/lib/libcurl.a" ]; then
+if want curl && [ ! -f "$out/lib/libcurl.a" ]; then
     # libcurl: HTTP and HTTPS only (HTTP/2 through nghttp2, Unix sockets, cookies, proxies), on the OpenSSL and zlib built above. No other protocols,
     # no extra libraries (psl, idn, ssh, brotli, zstd), no executable.
     build=$root/build/$triple/curl
@@ -142,6 +149,7 @@ if [ ! -f "$out/lib/libcurl.a" ]; then
     cp "$vendor/curl"/include/curl/*.h "$out/include/curl/"
 fi
 for a in libuv libnghttp2 libssl libcrypto libz libpcre2-8 libcurl; do
+    case $a in libcrypto) want ssl || continue ;; libpcre2-8) want pcre2 || continue ;; *) want "${a#lib}" || continue ;; esac
     [ -f "$out/lib/$a.a" ] || { echo "build.sh: $a.a was not built for $triple" >&2; exit 1; }
 done
 case "$triple" in
