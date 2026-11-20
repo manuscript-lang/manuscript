@@ -248,6 +248,6 @@ c-tools-test: build target/c-tool/libmstool.a
 	sh tools/ms/search-diff.sh "$(RELEASE_MS)" target/c-tool/model.json target/c-tool/search
 	"$(RELEASE_MS)" run tools/ms/lint_diff.ms --link target/c-tool/libmstool.a -- "$(RELEASE_MS)" target/c-tool/work 3 $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' 'examples/*.ms' 'stdlib/*.ms' | awk 'NR%4==0')
 
-# The C driver: stage table and parse entry point, then the thin `ms` in front of the Rust `ms` (needs make build).
+# The C driver: stage table and parse entry point, then the thin `ms` in front of a stand-in for the Rust `ms` (no Rust build needed).
 c-driver-test:
 	sh compiler/tests/driver-test.sh
