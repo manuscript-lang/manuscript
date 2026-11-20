@@ -6,21 +6,6 @@
       "license": "0BSD OR MIT OR Apache-2.0"
     },
     {
-      "name": "aead",
-      "version": "0.6.1",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "aes",
-      "version": "0.9.4",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "aes-gcm",
-      "version": "0.11.1",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
       "name": "aho-corasick",
       "version": "1.1.5",
       "license": "Unlicense OR MIT"
@@ -61,16 +46,6 @@
       "license": "Apache-2.0 OR MIT"
     },
     {
-      "name": "base16ct",
-      "version": "1.0.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "base64ct",
-      "version": "1.8.3",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
       "name": "bitflags",
       "version": "2.13.2",
       "license": "MIT OR Apache-2.0"
@@ -86,11 +61,6 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "cbc",
-      "version": "0.2.1",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
       "name": "cc",
       "version": "1.9.0",
       "license": "MIT OR Apache-2.0"
@@ -101,21 +71,6 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "cipher",
-      "version": "0.5.2",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "cmov",
-      "version": "0.5.4",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "const-oid",
-      "version": "0.10.2",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
       "name": "core-foundation",
       "version": "0.10.1",
       "license": "MIT OR Apache-2.0"
@@ -123,11 +78,6 @@
     {
       "name": "core-foundation-sys",
       "version": "0.8.7",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "cpubits",
-      "version": "0.1.1",
       "license": "MIT OR Apache-2.0"
     },
     {
@@ -216,49 +166,14 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "crypto-bigint",
-      "version": "0.7.5",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
       "name": "crypto-common",
       "version": "0.2.2",
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "crypto-primes",
-      "version": "0.7.2",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "ctr",
-      "version": "0.10.1",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "ctutils",
-      "version": "0.4.3",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "curve25519-dalek",
-      "version": "5.0.0",
-      "license": "BSD-3-Clause"
-    },
-    {
-      "name": "curve25519-dalek-derive",
-      "version": "0.1.1",
-      "license": "MIT/Apache-2.0"
-    },
-    {
       "name": "data-encoding",
       "version": "2.11.1",
       "license": "MIT"
-    },
-    {
-      "name": "der",
-      "version": "0.8.2",
-      "license": "Apache-2.0 OR MIT"
     },
     {
       "name": "der-parser",
@@ -281,26 +196,6 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "ecdsa",
-      "version": "0.17.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "ed25519",
-      "version": "3.0.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "ed25519-dalek",
-      "version": "3.0.0",
-      "license": "BSD-3-Clause"
-    },
-    {
-      "name": "elliptic-curve",
-      "version": "0.14.1",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
       "name": "equivalent",
       "version": "1.0.3",
       "license": "Apache-2.0 OR MIT"
@@ -309,16 +204,6 @@
       "name": "errno",
       "version": "0.3.14",
       "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "ff",
-      "version": "0.14.0",
-      "license": "MIT/Apache-2.0"
-    },
-    {
-      "name": "fiat-crypto",
-      "version": "0.3.0",
-      "license": "MIT OR Apache-2.0 OR BSD-1-Clause"
     },
     {
       "name": "find-msvc-tools",
@@ -351,11 +236,6 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "ghash",
-      "version": "0.6.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
       "name": "gimli",
       "version": "0.33.0",
       "license": "MIT OR Apache-2.0"
@@ -364,11 +244,6 @@
       "name": "gimli",
       "version": "0.34.0",
       "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "group",
-      "version": "0.14.0",
-      "license": "MIT/Apache-2.0"
     },
     {
       "name": "hashbrown",
@@ -386,16 +261,6 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "hkdf",
-      "version": "0.13.0",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "hmac",
-      "version": "0.13.0",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
       "name": "httparse",
       "version": "1.10.1",
       "license": "MIT OR Apache-2.0"
@@ -408,16 +273,6 @@
     {
       "name": "indexmap",
       "version": "2.14.2",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "inout",
-      "version": "0.2.5",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "keccak",
-      "version": "0.2.2",
       "license": "Apache-2.0 OR MIT"
     },
     {
@@ -443,11 +298,6 @@
     {
       "name": "log",
       "version": "0.4.34",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "md-5",
-      "version": "0.11.0",
       "license": "MIT OR Apache-2.0"
     },
     {
@@ -521,54 +371,9 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "p256",
-      "version": "0.14.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "p384",
-      "version": "0.14.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "p521",
-      "version": "0.14.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "pem-rfc7468",
-      "version": "1.0.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "pkcs1",
-      "version": "0.8.0-rc.5",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "pkcs8",
-      "version": "0.11.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "polyval",
-      "version": "0.7.3",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
       "name": "powerfmt",
       "version": "0.2.1",
       "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "primefield",
-      "version": "0.14.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "primeorder",
-      "version": "0.14.0",
-      "license": "Apache-2.0 OR MIT"
     },
     {
       "name": "proc-macro2",
@@ -621,29 +426,14 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "rfc6979",
-      "version": "0.6.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
       "name": "ring",
       "version": "0.17.14",
       "license": "Apache-2.0 AND ISC"
     },
     {
-      "name": "rsa",
-      "version": "0.10.0-rc.19",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
       "name": "rustc-hash",
       "version": "2.1.3",
       "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "rustc_version",
-      "version": "0.4.1",
-      "license": "MIT OR Apache-2.0"
     },
     {
       "name": "rusticata-macros",
@@ -681,11 +471,6 @@
       "license": "MIT"
     },
     {
-      "name": "sec1",
-      "version": "0.8.1",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
       "name": "security-framework",
       "version": "3.7.0",
       "license": "MIT OR Apache-2.0"
@@ -693,11 +478,6 @@
     {
       "name": "security-framework-sys",
       "version": "2.17.0",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "semver",
-      "version": "1.0.28",
       "license": "MIT OR Apache-2.0"
     },
     {
@@ -716,34 +496,14 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "serdect",
-      "version": "0.4.3",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "sha1",
-      "version": "0.11.0",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
       "name": "sha2",
       "version": "0.11.1",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "sha3",
-      "version": "0.12.0",
       "license": "MIT OR Apache-2.0"
     },
     {
       "name": "shlex",
       "version": "2.0.1",
       "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "signature",
-      "version": "3.0.0",
-      "license": "Apache-2.0 OR MIT"
     },
     {
       "name": "simd-adler32",
@@ -758,16 +518,6 @@
     {
       "name": "socket2",
       "version": "0.6.5",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
-      "name": "spki",
-      "version": "0.8.1",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "sponge-cursor",
-      "version": "0.1.0",
       "license": "MIT OR Apache-2.0"
     },
     {
@@ -871,11 +621,6 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "universal-hash",
-      "version": "0.6.1",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
       "name": "untrusted",
       "version": "0.9.0",
       "license": "ISC"
@@ -954,16 +699,6 @@
       "name": "winnow",
       "version": "1.0.5",
       "license": "MIT"
-    },
-    {
-      "name": "wnaf",
-      "version": "0.14.1",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "x25519-dalek",
-      "version": "3.0.0",
-      "license": "BSD-3-Clause"
     },
     {
       "name": "x509-parser",
