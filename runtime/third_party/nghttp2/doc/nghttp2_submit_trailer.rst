@@ -57,4 +57,5 @@ Synopsis
     :enum:`nghttp2_error.NGHTTP2_ERR_NOMEM`
         Out of memory.
     :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
-        The *stream_id* is 0.
+        The *stream_id* is 0; The required memory for *nva* of length
+        *nvlen* is too large.

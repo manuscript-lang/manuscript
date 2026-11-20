@@ -47,8 +47,8 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
     return;
   }
 
-  if (LOG_ENABLED(INFO)) {
-    MCLOG(INFO, mconn) << "Time out";
+  if (log_enabled(INFO)) {
+    Log{INFO, mconn} << "Time out";
   }
 
   mconn->disconnect();
@@ -60,7 +60,7 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto mconn = static_cast<MemcachedConnection *>(conn->data);
 
-  if (mconn->on_read() != 0) {
+  if (!mconn->on_read()) {
     mconn->reconnect_or_fail();
     return;
   }
@@ -72,7 +72,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto mconn = static_cast<MemcachedConnection *>(conn->data);
 
-  if (mconn->on_write() != 0) {
+  if (!mconn->on_write()) {
     mconn->reconnect_or_fail();
     return;
   }
@@ -84,7 +84,7 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto mconn = static_cast<MemcachedConnection *>(conn->data);
 
-  if (mconn->connected() != 0) {
+  if (!mconn->connected()) {
     mconn->disconnect();
     return;
   }
@@ -98,22 +98,16 @@ constexpr auto read_timeout = 10_s;
 
 MemcachedConnection::MemcachedConnection(const Address *addr,
                                          struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                                         const std::string_view &sni_name,
+                                         std::string_view sni_name,
                                          MemchunkPool *mcpool,
                                          std::mt19937 &gen)
   : conn_(loop, -1, nullptr, mcpool, write_timeout, read_timeout, {}, {},
           connectcb, readcb, timeoutcb, this, 0, 0., Proto::MEMCACHED),
-    do_read_(&MemcachedConnection::noop),
-    do_write_(&MemcachedConnection::noop),
     sni_name_(sni_name),
     connect_blocker_(
       gen, loop, [] {}, [] {}),
-    parse_state_{},
     addr_(addr),
-    ssl_ctx_(ssl_ctx),
-    sendsum_(0),
-    try_count_(0),
-    connected_(false) {}
+    ssl_ctx_(ssl_ctx) {}
 
 MemcachedConnection::~MemcachedConnection() { conn_.disconnect(); }
 
@@ -148,37 +142,38 @@ void MemcachedConnection::disconnect() {
   do_read_ = do_write_ = &MemcachedConnection::noop;
 }
 
-int MemcachedConnection::initiate_connection() {
+std::expected<void, Error> MemcachedConnection::initiate_connection() {
   assert(conn_.fd == -1);
 
   if (ssl_ctx_) {
-    auto ssl = tls::create_ssl(ssl_ctx_);
-    if (!ssl) {
-      return -1;
+    auto maybe_ssl = tls::create_ssl(ssl_ctx_);
+    if (!maybe_ssl) {
+      return std::unexpected{maybe_ssl.error()};
     }
-    conn_.set_ssl(ssl);
+    conn_.set_ssl(*maybe_ssl);
     conn_.tls.client_session_cache = &tls_session_cache_;
   }
 
-  conn_.fd = util::create_nonblock_socket(addr_->su.storage.ss_family);
-
-  if (conn_.fd == -1) {
+  auto maybe_fd = util::create_nonblock_socket(addr_->family());
+  if (!maybe_fd) {
     auto error = errno;
-    MCLOG(WARN, this) << "socket() failed; errno=" << error;
+    Log{WARN, this} << "socket() failed; errno=" << error;
 
-    return -1;
+    return std::unexpected{maybe_fd.error()};
   }
 
+  conn_.fd = *maybe_fd;
+
   int rv;
-  rv = connect(conn_.fd, &addr_->su.sa, addr_->len);
+  rv = connect(conn_.fd, addr_->as_sockaddr(), addr_->size());
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
-    MCLOG(WARN, this) << "connect() failed; errno=" << error;
+    Log{WARN, this} << "connect() failed; errno=" << error;
 
     close(conn_.fd);
     conn_.fd = -1;
 
-    return -1;
+    return std::unexpected{Error::SYSCALL};
   }
 
   if (ssl_ctx_) {
@@ -186,8 +181,9 @@ int MemcachedConnection::initiate_connection() {
       SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name_.data());
     }
 
-    auto session = tls::reuse_tls_session(tls_session_cache_);
-    if (session) {
+    auto maybe_session = tls::reuse_tls_session(tls_session_cache_);
+    if (maybe_session) {
+      auto session = *maybe_session;
       SSL_set_session(conn_.tls.ssl, session);
       SSL_SESSION_free(session);
     }
@@ -195,8 +191,8 @@ int MemcachedConnection::initiate_connection() {
     conn_.prepare_client_handshake();
   }
 
-  if (LOG_ENABLED(INFO)) {
-    MCLOG(INFO, this) << "Connecting to memcached server";
+  if (log_enabled(INFO)) {
+    Log{INFO, this} << "Connecting to memcached server";
   }
 
   ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
@@ -207,25 +203,24 @@ int MemcachedConnection::initiate_connection() {
   conn_.wlimit.startw();
   ev_timer_again(conn_.loop, &conn_.wt);
 
-  return 0;
+  return {};
 }
 
-int MemcachedConnection::connected() {
+std::expected<void, Error> MemcachedConnection::connected() {
   auto sock_error = util::get_socket_error(conn_.fd);
   if (sock_error != 0) {
-    MCLOG(WARN, this) << "memcached connect failed; addr="
-                      << util::to_numeric_addr(addr_)
-                      << ": errno=" << sock_error;
+    Log{WARN, this} << "memcached connect failed; addr="
+                    << util::to_numeric_addr(addr_) << ": errno=" << sock_error;
 
     connect_blocker_.on_failure();
 
     conn_.wlimit.stopw();
 
-    return -1;
+    return std::unexpected{Error::CONNECT_FAIL};
   }
 
-  if (LOG_ENABLED(INFO)) {
-    MCLOG(INFO, this) << "connected to memcached server";
+  if (log_enabled(INFO)) {
+    Log{INFO, this} << "connected to memcached server";
   }
 
   conn_.rlimit.startw();
@@ -238,7 +233,7 @@ int MemcachedConnection::connected() {
     do_read_ = &MemcachedConnection::tls_handshake;
     do_write_ = &MemcachedConnection::tls_handshake;
 
-    return 0;
+    return {};
   }
 
   ev_timer_stop(conn_.loop, &conn_.wt);
@@ -250,37 +245,41 @@ int MemcachedConnection::connected() {
   do_read_ = &MemcachedConnection::read_clear;
   do_write_ = &MemcachedConnection::write_clear;
 
-  return 0;
+  return {};
 }
 
-int MemcachedConnection::on_write() { return do_write_(*this); }
-int MemcachedConnection::on_read() { return do_read_(*this); }
+std::expected<void, Error> MemcachedConnection::on_write() {
+  return do_write_(*this);
+}
+std::expected<void, Error> MemcachedConnection::on_read() {
+  return do_read_(*this);
+}
 
-int MemcachedConnection::tls_handshake() {
+std::expected<void, Error> MemcachedConnection::tls_handshake() {
   ERR_clear_error();
 
   conn_.last_read = std::chrono::steady_clock::now();
 
-  auto rv = conn_.tls_handshake();
-  if (rv == SHRPX_ERR_INPROGRESS) {
-    return 0;
-  }
+  if (auto rv = conn_.tls_handshake(); !rv) {
+    if (rv.error() == Error::TLS_HANDSHAKE_INPROGRESS) {
+      return {};
+    }
 
-  if (rv < 0) {
     connect_blocker_.on_failure();
     return rv;
   }
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "SSL/TLS handshake completed";
+  if (log_enabled(INFO)) {
+    Log{INFO} << "SSL/TLS handshake completed";
   }
 
   auto &tlsconf = get_config()->tls;
 
-  if (!tlsconf.insecure &&
-      tls::check_cert(conn_.tls.ssl, addr_, sni_name_) != 0) {
-    connect_blocker_.on_failure();
-    return -1;
+  if (!tlsconf.insecure) {
+    if (auto rv = tls::check_cert(conn_.tls.ssl, addr_, sni_name_); !rv) {
+      connect_blocker_.on_failure();
+      return rv;
+    }
   }
 
   ev_timer_stop(conn_.loop, &conn_.rt);
@@ -296,21 +295,20 @@ int MemcachedConnection::tls_handshake() {
   return on_write();
 }
 
-int MemcachedConnection::write_tls() {
+std::expected<void, Error> MemcachedConnection::write_tls() {
   if (!connected_) {
-    return 0;
+    return {};
   }
 
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<struct iovec, MAX_WR_IOVCNT> iov;
+  std::array<struct iovec, MAX_WR_IOVCNT> iovbuf;
   std::array<uint8_t, 16_k> buf;
 
   for (; !sendq_.empty();) {
-    auto iovcnt = fill_request_buffer(iov.data(), iov.size());
+    auto iov = fill_request_buffer(iovbuf);
     auto p = std::ranges::begin(buf);
-    for (size_t i = 0; i < iovcnt; ++i) {
-      auto &v = iov[i];
+    for (auto &v : iov) {
       auto n =
         std::min(static_cast<size_t>(std::ranges::end(buf) - p), v.iov_len);
       p =
@@ -321,13 +319,14 @@ int MemcachedConnection::write_tls() {
       }
     }
 
-    auto nwrite =
-      conn_.write_tls(buf.data(), as_unsigned(p - std::ranges::begin(buf)));
-    if (nwrite < 0) {
-      return -1;
+    auto maybe_nwrite = conn_.write_tls({std::ranges::begin(buf), p});
+    if (!maybe_nwrite) {
+      return std::unexpected{maybe_nwrite.error()};
     }
+
+    auto nwrite = *maybe_nwrite;
     if (nwrite == 0) {
-      return 0;
+      return {};
     }
 
     drain_send_queue(as_unsigned(nwrite));
@@ -336,54 +335,56 @@ int MemcachedConnection::write_tls() {
   conn_.wlimit.stopw();
   ev_timer_stop(conn_.loop, &conn_.wt);
 
-  return 0;
+  return {};
 }
 
-int MemcachedConnection::read_tls() {
+std::expected<void, Error> MemcachedConnection::read_tls() {
   if (!connected_) {
-    return 0;
+    return {};
   }
 
   conn_.last_read = std::chrono::steady_clock::now();
 
   for (;;) {
-    auto nread = conn_.read_tls(recvbuf_.last, recvbuf_.wleft());
-
-    if (nread == 0) {
-      return 0;
+    auto maybe_data = conn_.read_tls(recvbuf_.wbuffer());
+    if (!maybe_data) {
+      return std::unexpected{maybe_data.error()};
     }
 
-    if (nread < 0) {
-      return -1;
+    auto data = *maybe_data;
+    if (data.empty()) {
+      return {};
     }
 
-    recvbuf_.write(as_unsigned(nread));
+    recvbuf_.write(data.size());
 
-    if (parse_packet() != 0) {
-      return -1;
+    if (auto rv = parse_packet(); !rv) {
+      return rv;
     }
   }
 
-  return 0;
+  return {};
 }
 
-int MemcachedConnection::write_clear() {
+std::expected<void, Error> MemcachedConnection::write_clear() {
   if (!connected_) {
-    return 0;
+    return {};
   }
 
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<struct iovec, MAX_WR_IOVCNT> iov;
+  std::array<struct iovec, MAX_WR_IOVCNT> iovbuf;
 
   for (; !sendq_.empty();) {
-    auto iovcnt = fill_request_buffer(iov.data(), iov.size());
-    auto nwrite = conn_.writev_clear(iov.data(), static_cast<int>(iovcnt));
-    if (nwrite < 0) {
-      return -1;
+    auto iov = fill_request_buffer(iovbuf);
+    auto maybe_nwrite = conn_.writev_clear(iov);
+    if (!maybe_nwrite) {
+      return std::unexpected{maybe_nwrite.error()};
     }
+
+    auto nwrite = *maybe_nwrite;
     if (nwrite == 0) {
-      return 0;
+      return {};
     }
 
     drain_send_queue(as_unsigned(nwrite));
@@ -392,38 +393,38 @@ int MemcachedConnection::write_clear() {
   conn_.wlimit.stopw();
   ev_timer_stop(conn_.loop, &conn_.wt);
 
-  return 0;
+  return {};
 }
 
-int MemcachedConnection::read_clear() {
+std::expected<void, Error> MemcachedConnection::read_clear() {
   if (!connected_) {
-    return 0;
+    return {};
   }
 
   conn_.last_read = std::chrono::steady_clock::now();
 
   for (;;) {
-    auto nread = conn_.read_clear(recvbuf_.last, recvbuf_.wleft());
-
-    if (nread == 0) {
-      return 0;
+    auto maybe_data = conn_.read_clear(recvbuf_.wbuffer());
+    if (!maybe_data) {
+      return std::unexpected{maybe_data.error()};
     }
 
-    if (nread < 0) {
-      return -1;
+    auto data = *maybe_data;
+    if (data.empty()) {
+      return {};
     }
 
-    recvbuf_.write(as_unsigned(nread));
+    recvbuf_.write(data.size());
 
-    if (parse_packet() != 0) {
-      return -1;
+    if (auto rv = parse_packet(); !rv) {
+      return rv;
     }
   }
 
-  return 0;
+  return {};
 }
 
-int MemcachedConnection::parse_packet() {
+std::expected<void, Error> MemcachedConnection::parse_packet() {
   auto in = recvbuf_.pos;
 
   for (;;) {
@@ -433,21 +434,21 @@ int MemcachedConnection::parse_packet() {
     case MemcachedParseState::HEADER24: {
       if (recvbuf_.last - in < 24) {
         recvbuf_.drain_reset(as_unsigned(in - recvbuf_.pos));
-        return 0;
+        return {};
       }
 
       if (recvq_.empty()) {
-        MCLOG(WARN, this)
+        Log{WARN, this}
           << "Response received, but there is no in-flight request.";
-        return -1;
+        return std::unexpected{Error::MEMCACHED};
       }
 
       auto &req = recvq_.front();
 
       if (*in != MEMCACHED_RES_MAGIC) {
-        MCLOG(WARN, this) << "Response has bad magic: "
-                          << static_cast<uint32_t>(*in);
-        return -1;
+        Log{WARN, this} << "Response has bad magic: "
+                        << static_cast<uint32_t>(*in);
+        return std::unexpected{Error::MEMCACHED};
       }
       ++in;
 
@@ -468,38 +469,38 @@ int MemcachedConnection::parse_packet() {
       in += 8;
 
       if (req->op != parse_state_.op) {
-        MCLOG(WARN, this)
+        Log{WARN, this}
           << "opcode in response does not match to the request: want "
           << static_cast<uint32_t>(req->op) << ", got "
           << static_cast<uint32_t>(parse_state_.op);
-        return -1;
+        return std::unexpected{Error::MEMCACHED};
       }
 
       if (parse_state_.keylen != 0) {
-        MCLOG(WARN, this) << "zero length keylen expected: got "
-                          << parse_state_.keylen;
-        return -1;
+        Log{WARN, this} << "zero length keylen expected: got "
+                        << parse_state_.keylen;
+        return std::unexpected{Error::MEMCACHED};
       }
 
       if (parse_state_.totalbody > 16_k) {
-        MCLOG(WARN, this) << "totalbody is too large: got "
-                          << parse_state_.totalbody;
-        return -1;
+        Log{WARN, this} << "totalbody is too large: got "
+                        << parse_state_.totalbody;
+        return std::unexpected{Error::MEMCACHED};
       }
 
       if (parse_state_.op == MemcachedOp::GET &&
           parse_state_.status_code == MemcachedStatusCode::NO_ERROR &&
           parse_state_.extralen == 0) {
-        MCLOG(WARN, this) << "response for GET does not have extra";
-        return -1;
+        Log{WARN, this} << "response for GET does not have extra";
+        return std::unexpected{Error::MEMCACHED};
       }
 
       if (parse_state_.totalbody <
           parse_state_.keylen + parse_state_.extralen) {
-        MCLOG(WARN, this) << "totalbody is too short: totalbody "
-                          << parse_state_.totalbody << ", want min "
-                          << parse_state_.keylen + parse_state_.extralen;
-        return -1;
+        Log{WARN, this} << "totalbody is too short: totalbody "
+                        << parse_state_.totalbody << ", want min "
+                        << parse_state_.keylen + parse_state_.extralen;
+        return std::unexpected{Error::MEMCACHED};
       }
 
       if (parse_state_.extralen) {
@@ -522,7 +523,7 @@ int MemcachedConnection::parse_packet() {
       in += n;
       if (parse_state_.read_left) {
         recvbuf_.reset();
-        return 0;
+        return {};
       }
       parse_state_.state = MemcachedParseState::VALUE;
       // since we require keylen == 0, totalbody - extralen ==
@@ -543,13 +544,13 @@ int MemcachedConnection::parse_packet() {
       in += n;
       if (parse_state_.read_left) {
         recvbuf_.reset();
-        return 0;
+        return {};
       }
 
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         if (parse_state_.status_code != MemcachedStatusCode::NO_ERROR) {
-          MCLOG(INFO, this) << "response returned error status: "
-                            << static_cast<uint16_t>(parse_state_.status_code);
+          Log{INFO, this} << "response returned error status: "
+                          << static_cast<uint16_t>(parse_state_.status_code);
         }
       }
 
@@ -581,7 +582,7 @@ int MemcachedConnection::parse_packet() {
   assert(in == recvbuf_.last);
   recvbuf_.reset();
 
-  return 0;
+  return {};
 }
 
 #undef DEFAULT_WR_IOVCNT
@@ -593,8 +594,8 @@ int MemcachedConnection::parse_packet() {
 #  define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
 #endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
 
-size_t MemcachedConnection::fill_request_buffer(struct iovec *iov,
-                                                size_t iovlen) {
+std::span<struct iovec>
+MemcachedConnection::fill_request_buffer(std::span<struct iovec> iov) {
   if (sendsum_ == 0) {
     for (auto &req : sendq_) {
       if (req->canceled) {
@@ -611,13 +612,13 @@ size_t MemcachedConnection::fill_request_buffer(struct iovec *iov,
 
     if (sendsum_ == 0) {
       sendq_.clear();
-      return 0;
+      return {};
     }
   }
 
   size_t iovcnt = 0;
   for (auto &buf : sendbufv_) {
-    if (iovcnt + 2 > iovlen) {
+    if (iovcnt + 2 > iov.size()) {
       break;
     }
 
@@ -632,7 +633,7 @@ size_t MemcachedConnection::fill_request_buffer(struct iovec *iov,
     }
   }
 
-  return iovcnt;
+  return iov.first(iovcnt);
 }
 
 void MemcachedConnection::drain_send_queue(size_t nwrite) {
@@ -703,36 +704,37 @@ void MemcachedConnection::make_request(MemcachedSendbuf *sendbuf,
     break;
   }
 
-  headbuf.write(req->key.c_str(), req->key.size());
+  headbuf.write(as_uint8_span(std::span{req->key}));
 
   sendbuf->send_value_left = req->value.size();
 }
 
-int MemcachedConnection::add_request(std::unique_ptr<MemcachedRequest> req) {
+std::expected<void, Error>
+MemcachedConnection::add_request(std::unique_ptr<MemcachedRequest> req) {
   if (connect_blocker_.blocked()) {
-    return -1;
+    return std::unexpected{Error::INTERNAL};
   }
 
   sendq_.push_back(std::move(req));
 
   if (connected_) {
     signal_write();
-    return 0;
+    return {};
   }
 
-  if (conn_.fd == -1 && initiate_connection() != 0) {
-    connect_blocker_.on_failure();
-    disconnect();
-    return -1;
+  if (conn_.fd == -1) {
+    if (auto rv = initiate_connection(); !rv) {
+      connect_blocker_.on_failure();
+      disconnect();
+      return rv;
+    }
   }
 
-  return 0;
+  return {};
 }
 
 // TODO should we start write timer too?
 void MemcachedConnection::signal_write() { conn_.wlimit.startw(); }
-
-int MemcachedConnection::noop() { return 0; }
 
 void MemcachedConnection::reconnect_or_fail() {
   if (!connected_ || (recvq_.empty() && sendq_.empty())) {
@@ -743,9 +745,9 @@ void MemcachedConnection::reconnect_or_fail() {
   constexpr size_t MAX_TRY_COUNT = 3;
 
   if (++try_count_ >= MAX_TRY_COUNT) {
-    if (LOG_ENABLED(INFO)) {
-      MCLOG(INFO, this) << "Tried " << MAX_TRY_COUNT
-                        << " times, and all failed.  Aborting";
+    if (log_enabled(INFO)) {
+      Log{INFO, this} << "Tried " << MAX_TRY_COUNT
+                      << " times, and all failed.  Aborting";
     }
     try_count_ = 0;
     disconnect();
@@ -755,9 +757,9 @@ void MemcachedConnection::reconnect_or_fail() {
   std::vector<std::unique_ptr<MemcachedRequest>> q;
   q.reserve(recvq_.size() + sendq_.size());
 
-  if (LOG_ENABLED(INFO)) {
-    MCLOG(INFO, this) << "Retry connection, enqueue "
-                      << recvq_.size() + sendq_.size() << " request(s) again";
+  if (log_enabled(INFO)) {
+    Log{INFO, this} << "Retry connection, enqueue "
+                    << recvq_.size() + sendq_.size() << " request(s) again";
   }
 
   q.insert(std::ranges::end(q),
@@ -776,7 +778,7 @@ void MemcachedConnection::reconnect_or_fail() {
                 std::make_move_iterator(std::ranges::begin(q)),
                 std::make_move_iterator(std::ranges::end(q)));
 
-  if (initiate_connection() != 0) {
+  if (!initiate_connection()) {
     connect_blocker_.on_failure();
     disconnect();
     return;

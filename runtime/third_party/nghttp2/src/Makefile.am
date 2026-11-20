@@ -47,6 +47,7 @@ AM_CPPFLAGS = \
 	@LIBNGHTTP3_CFLAGS@ \
 	@LIBNGTCP2_CRYPTO_WOLFSSL_CFLAGS@ \
 	@LIBNGTCP2_CRYPTO_QUICTLS_CFLAGS@ \
+	@LIBNGTCP2_CRYPTO_LIBRESSL_CFLAGS@ \
 	@LIBNGTCP2_CRYPTO_BORINGSSL_CFLAGS@ \
 	@LIBNGTCP2_CRYPTO_OSSL_CFLAGS@ \
 	@LIBNGTCP2_CFLAGS@ \
@@ -71,6 +72,7 @@ LDADD = $(top_builddir)/lib/libnghttp2.la \
 	@LIBNGHTTP3_LIBS@ \
 	@LIBNGTCP2_CRYPTO_WOLFSSL_LIBS@ \
 	@LIBNGTCP2_CRYPTO_QUICTLS_LIBS@ \
+	@LIBNGTCP2_CRYPTO_LIBRESSL_LIBS@ \
 	@LIBNGTCP2_CRYPTO_BORINGSSL_LIBS@ \
 	@LIBNGTCP2_CRYPTO_OSSL_LIBS@ \
 	@LIBNGTCP2_LIBS@ \
@@ -90,10 +92,10 @@ if ENABLE_APP
 bin_PROGRAMS += nghttp nghttpd nghttpx
 
 HELPER_OBJECTS = util.cc \
-	http2.cc timegm.c app_helper.cc nghttp2_gzip.c
+	http2.cc timegm.c app_helper.cc nghttp2_gzip.c network.cc
 HELPER_HFILES = util.h \
 	http2.h timegm.h app_helper.h nghttp2_config.h \
-	nghttp2_gzip.h network.h
+	nghttp2_gzip.h network.h errors.h
 
 HTML_PARSER_OBJECTS =
 HTML_PARSER_HFILES = HtmlParser.h
@@ -118,7 +120,9 @@ h2load_SOURCES = util.cc util.h \
 	tls.cc tls.h ssl_compat.h \
 	h2load_session.h \
 	h2load_http2_session.cc h2load_http2_session.h \
-	h2load_http1_session.cc h2load_http1_session.h
+	h2load_http1_session.cc h2load_http1_session.h \
+	network.cc network.h \
+	errors.h
 
 if ENABLE_HTTP3
 h2load_SOURCES += \
@@ -130,6 +134,7 @@ NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
 	app_helper.cc app_helper.h \
 	tls.cc tls.h ssl_compat.h \
+	network.cc network.h \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
 	shrpx_accept_handler.cc shrpx_accept_handler.h \
@@ -171,6 +176,7 @@ NGHTTPX_SRCS = \
 	shrpx_dual_dns_resolver.cc shrpx_dual_dns_resolver.h \
 	shrpx_dns_tracker.cc shrpx_dns_tracker.h \
 	buffer.h memchunk.h template.h allocator.h \
+	errors.h \
 	xsi_strerror.c xsi_strerror.h
 
 if HAVE_MRUBY
@@ -202,7 +208,9 @@ nghttpx_LDADD = libnghttpx.a ${LDADD}
 
 if HAVE_MRUBY
 libnghttpx_a_CPPFLAGS += \
-	-I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@
+	-I${top_srcdir}/third-party/mruby/include \
+	-I${top_builddir}/third-party/mruby/build/include \
+	@LIBMRUBY_CFLAGS@
 nghttpx_LDADD += -L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
 endif # HAVE_MRUBY
 
@@ -227,6 +235,8 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	memchunk_test.cc memchunk_test.h \
 	template_test.cc template_test.h \
 	base64_test.cc base64_test.h \
+	network_test.cc network_test.h \
+	allocator_test.cc allocator_test.h \
 	$(top_srcdir)/tests/munit/munit.c $(top_srcdir)/tests/munit/munit.h \
 	$(top_srcdir)/tests/munit/munitxx.h
 if ENABLE_HTTP3
@@ -239,7 +249,9 @@ nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @TESTLDADD@
 
 if HAVE_MRUBY
 nghttpx_unittest_CPPFLAGS += \
-	-I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@
+	-I${top_srcdir}/third-party/mruby/include \
+	-I${top_builddir}/third-party/mruby/build/include \
+	@LIBMRUBY_CFLAGS@
 nghttpx_unittest_LDADD += \
 	-L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
 endif # HAVE_MRUBY
@@ -260,7 +272,9 @@ bin_PROGRAMS += inflatehd deflatehd
 HPACK_TOOLS_COMMON_SRCS = \
 	comp_helper.c comp_helper.h \
 	util.cc util.h \
-	timegm.c timegm.h
+	timegm.c timegm.h \
+	tls.cc tls.h \
+	network.cc network.h
 
 inflatehd_SOURCES = inflatehd.cc $(HPACK_TOOLS_COMMON_SRCS)
 

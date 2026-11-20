@@ -61,7 +61,8 @@ Synopsis
         reached.
     :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
         The *stream_id* is 0; The *stream_id* does not designate stream
-        that peer initiated.
+        that peer initiated; The required memory for *nva* of length
+        *nvlen* is too large.
     :enum:`nghttp2_error.NGHTTP2_ERR_STREAM_CLOSED`
         The stream was already closed; or the *stream_id* is invalid.
     

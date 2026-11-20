@@ -30,8 +30,8 @@
 #include <stdint.h>
 
 #include <functional>
-#include <optional>
 #include <span>
+#include <expected>
 
 #include "ssl_compat.h"
 
@@ -39,16 +39,17 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/evp.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/evp.h>
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ngtcp2/ngtcp2.h>
 
 #include "siphash.h"
 #include "template.h"
 #include "network.h"
+#include "errors.h"
 
 using namespace nghttp2;
 
@@ -58,7 +59,9 @@ std::span<uint64_t, 2> generate_siphash_key();
 
 namespace std {
 template <> struct hash<ngtcp2_cid> {
-  hash() { std::ranges::copy(shrpx::generate_siphash_key(), key.begin()); }
+  hash() {
+    std::ranges::copy(shrpx::generate_siphash_key(), std::ranges::begin(key));
+  }
 
   std::size_t operator()(const ngtcp2_cid &cid) const noexcept {
     return static_cast<size_t>(siphash24(key, {cid.data, cid.datalen}));
@@ -76,45 +79,33 @@ struct UpstreamAddr;
 struct QUICKeyingMaterials;
 struct QUICKeyingMaterial;
 
-constexpr size_t SHRPX_QUIC_CID_WORKER_ID_OFFSET = 1;
-constexpr size_t SHRPX_QUIC_SERVER_IDLEN = 4;
-constexpr size_t SHRPX_QUIC_SOCK_IDLEN = 4;
-constexpr size_t SHRPX_QUIC_WORKER_IDLEN =
+inline constexpr size_t SHRPX_QUIC_CID_WORKER_ID_OFFSET = 1;
+inline constexpr size_t SHRPX_QUIC_SERVER_IDLEN = 4;
+inline constexpr size_t SHRPX_QUIC_SOCK_IDLEN = 4;
+inline constexpr size_t SHRPX_QUIC_WORKER_IDLEN =
   SHRPX_QUIC_SERVER_IDLEN + SHRPX_QUIC_SOCK_IDLEN;
-constexpr size_t SHRPX_QUIC_CLIENT_IDLEN = 8;
-constexpr size_t SHRPX_QUIC_DECRYPTED_DCIDLEN =
+inline constexpr size_t SHRPX_QUIC_CLIENT_IDLEN = 8;
+inline constexpr size_t SHRPX_QUIC_DECRYPTED_DCIDLEN =
   SHRPX_QUIC_WORKER_IDLEN + SHRPX_QUIC_CLIENT_IDLEN;
-constexpr size_t SHRPX_QUIC_SCIDLEN =
+inline constexpr size_t SHRPX_QUIC_SCIDLEN =
   SHRPX_QUIC_CID_WORKER_ID_OFFSET + SHRPX_QUIC_DECRYPTED_DCIDLEN;
-constexpr size_t SHRPX_QUIC_CID_ENCRYPTION_KEYLEN = 16;
-constexpr size_t SHRPX_QUIC_CONN_CLOSE_PKTLEN = 256;
-constexpr size_t SHRPX_QUIC_STATELESS_RESET_BURST = 100;
-constexpr size_t SHRPX_QUIC_SECRET_RESERVEDLEN = 4;
-constexpr size_t SHRPX_QUIC_SECRETLEN = 32;
-constexpr size_t SHRPX_QUIC_SALTLEN = 32;
-constexpr uint8_t SHRPX_QUIC_DCID_KM_ID_MASK = 0xe0;
+inline constexpr size_t SHRPX_QUIC_CID_ENCRYPTION_KEYLEN = 16;
+inline constexpr size_t SHRPX_QUIC_STATELESS_RESET_BURST = 100;
+inline constexpr size_t SHRPX_QUIC_SECRET_RESERVEDLEN = 4;
+inline constexpr size_t SHRPX_QUIC_SECRETLEN = 32;
+inline constexpr size_t SHRPX_QUIC_SALTLEN = 32;
+inline constexpr uint8_t SHRPX_QUIC_DCID_KM_ID_MASK = 0xE0;
 
 struct WorkerID {
-  union {
-    struct {
-      uint32_t server;
-      uint16_t worker_process;
-      uint16_t thread;
-    };
-    uint64_t worker;
-  };
+  uint32_t server;
+  uint16_t worker_process;
+  uint16_t thread;
+
+  auto operator<=>(const WorkerID &) const = default;
 };
 
 static_assert(sizeof(WorkerID) == SHRPX_QUIC_WORKER_IDLEN,
               "WorkerID length assertion failure");
-
-inline bool operator==(const WorkerID &lhd, const WorkerID &rhd) {
-  return lhd.worker == rhd.worker;
-}
-
-inline bool operator!=(const WorkerID &lhd, const WorkerID &rhd) {
-  return lhd.worker != rhd.worker;
-}
 
 struct ConnectionID {
   WorkerID worker;
@@ -123,57 +114,69 @@ struct ConnectionID {
 
 ngtcp2_tstamp quic_timestamp();
 
+std::expected<void, Error> quic_send_packet(const UpstreamAddr *faddr,
+                                            const Address &remote_sa,
+                                            const Address &local_sa,
+                                            std::span<const uint8_t> data);
+
 int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      socklen_t remote_salen, const sockaddr *local_sa,
                      socklen_t local_salen, const ngtcp2_pkt_info &pi,
                      std::span<const uint8_t> data, size_t gso_size);
 
-int generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,
-                                      uint8_t km_id, EVP_CIPHER_CTX *ctx);
+std::expected<void, Error>
+generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,
+                                  uint8_t km_id, EVP_CIPHER_CTX *ctx);
 
-int generate_quic_connection_id(ngtcp2_cid &cid, const WorkerID &wid,
-                                uint8_t km_id, EVP_CIPHER_CTX *ctx);
+std::expected<void, Error> generate_quic_connection_id(ngtcp2_cid &cid,
+                                                       const WorkerID &wid,
+                                                       uint8_t km_id,
+                                                       EVP_CIPHER_CTX *ctx);
 
-int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
-                               EVP_CIPHER_CTX *ctx);
+std::expected<void, Error>
+encrypt_quic_connection_id(std::span<uint8_t> dest,
+                           std::span<const uint8_t> src, EVP_CIPHER_CTX *ctx);
 
-int decrypt_quic_connection_id(ConnectionID &dest, const uint8_t *src,
-                               EVP_CIPHER_CTX *ctx);
+std::expected<void, Error>
+decrypt_quic_connection_id(ConnectionID &dest, std::span<const uint8_t> src,
+                           EVP_CIPHER_CTX *ctx);
 
-int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
-                                       const Address &remote_addr,
-                                       const Address &local_addr,
-                                       const ngtcp2_cid &cid);
+std::expected<void, Error>
+generate_quic_hashed_connection_id(ngtcp2_cid &dest, const Address &remote_addr,
+                                   const Address &local_addr,
+                                   const ngtcp2_cid &cid);
 
-int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid &cid,
-                                        const uint8_t *secret,
-                                        size_t secretlen);
+std::expected<void, Error> generate_quic_stateless_reset_token(
+  std::span<uint8_t, NGTCP2_STATELESS_RESET_TOKENLEN> token,
+  const ngtcp2_cid &cid, std::span<const uint8_t> secret);
 
-std::optional<std::span<const uint8_t>>
+std::expected<std::span<const uint8_t>, Error>
 generate_retry_token(std::span<uint8_t> token, uint32_t version,
                      const sockaddr *sa, socklen_t salen,
                      const ngtcp2_cid &retry_scid, const ngtcp2_cid &odcid,
                      std::span<const uint8_t> secret);
 
-int verify_retry_token(ngtcp2_cid &odcid, std::span<const uint8_t> token,
-                       uint32_t version, const ngtcp2_cid &dcid,
-                       const sockaddr *sa, socklen_t salen,
-                       std::span<const uint8_t> secret);
+std::expected<void, Error>
+verify_retry_token(ngtcp2_cid &odcid, std::span<const uint8_t> token,
+                   uint32_t version, const ngtcp2_cid &dcid, const sockaddr *sa,
+                   socklen_t salen, std::span<const uint8_t> secret);
 
-std::optional<std::span<const uint8_t>>
+std::expected<std::span<const uint8_t>, Error>
 generate_token(std::span<uint8_t> token, const sockaddr *sa, size_t salen,
                std::span<const uint8_t> secret, uint8_t km_id);
 
-int verify_token(std::span<const uint8_t> token, const sockaddr *sa,
-                 socklen_t salen, std::span<const uint8_t> secret);
+std::expected<void, Error> verify_token(std::span<const uint8_t> token,
+                                        const sockaddr *sa, socklen_t salen,
+                                        std::span<const uint8_t> secret);
 
-int generate_quic_connection_id_encryption_key(std::span<uint8_t> key,
-                                               std::span<const uint8_t> secret,
-                                               std::span<const uint8_t> salt);
+std::expected<void, Error>
+generate_quic_connection_id_encryption_key(std::span<uint8_t> key,
+                                           std::span<const uint8_t> secret,
+                                           std::span<const uint8_t> salt);
 
 const QUICKeyingMaterial *
 select_quic_keying_material(const QUICKeyingMaterials &qkms, uint8_t km_id);
 
 } // namespace shrpx
 
-#endif // SHRPX_QUIC_H
+#endif // !defined(SHRPX_QUIC_H)
