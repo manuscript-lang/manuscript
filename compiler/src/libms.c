@@ -18,6 +18,7 @@
 #include "mir_parse.c"
 #include "hints.c"
 #include "constfold.c"
+#include "effects.c"
 #include "ty_subst.c"
 #include "recursion.c"
 #include "import_hints.c"
