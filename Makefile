@@ -235,6 +235,7 @@ c-compiler-test:
 	sh compiler/tests/mir-diff.sh
 	sh compiler/tests/mir-pass-diff.sh
 	sh compiler/tests/check-diff.sh
+	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
 	sh compiler/tests/fixes-diff.sh
