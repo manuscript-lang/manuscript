@@ -18,6 +18,9 @@ typedef struct List {
 long msrt_test_add(long a, long b);
 void msrt_test_str(long n, Str *out);
 void msrt_test_list(long n, List *out);
+void msrt_test_ints(List *out);
+void msrt_test_map(int64_t *out);
+long msrt_test_mapsum(const int64_t *w);
 long msrt_test_slen(const Str *s);
 long msrt_test_len(const Str *s);
 void msrt_string_clone(const Str *s, Str *out);

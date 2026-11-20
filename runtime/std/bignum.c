@@ -2,6 +2,7 @@
  * are BN_* calls; this file adds what BIGNUM lacks (floor shifts, two's complement bitwise operations, integer
  * square roots, correctly rounded doubles, 128-bit and int64 conversion, text in any radix). */
 #include "bignum.h"
+#include "bignum_ntt.h"
 
 #include <limits.h>
 #include <math.h>
@@ -16,12 +17,20 @@ enum { BITS_PER_BYTE = 8 };
 
 /* ---- plumbing ---- */
 
-/* Every BN_* call that can fail does so only when memory runs out; the runtime faults as its allocator does. */
+/* A BN_* call fails when OpenSSL's size cap (about 2^29 bits) is reached or when memory runs out; each faults as the
+ * rest of the runtime does. */
 static void must(int ok) {
-    if (ok == 0) {
-        ERR_clear_error();
-        ms_fault_text("bignum: out of memory", 21);
+    if (ok != 0) {
+        return;
     }
+    const int reason = ERR_GET_REASON(ERR_peek_last_error());
+    ERR_clear_error();
+    if (reason == BN_R_BIGNUM_TOO_LONG) {
+        static const char message[] = "bignum: result exceeds the largest supported size";
+        msfault_raise(MS_FAULT_OVERFLOW, message, sizeof message - 1);
+    }
+    static const char message[] = "bignum: out of memory";
+    msfault_raise(MS_FAULT_OUT_OF_MEMORY, message, sizeof message - 1);
 }
 
 /* Decimal and BigInt operations are short and many, so each thread keeps a few released BIGNUMs (and one context)
@@ -50,16 +59,23 @@ static BIGNUM *new_bn(void) {
     return bn;
 }
 
-static void release_bn(BIGNUM *bn) {
-    if (bn == NULL) {
-        return;
-    }
+static const BIGNUM *pool_limit(void) {
     Pool *const p = pool();
     if (p->limit == NULL) {
         p->limit = BN_new();
         must(p->limit != NULL && BN_set_bit(p->limit, POOL_MAX_BITS));
     }
-    if (p->count == POOL_SIZE || BN_ucmp(bn, p->limit) >= 0) {
+    return p->limit;
+}
+
+static bool is_wide(const MsBig *a) { return a != NULL && a->bn != NULL && BN_ucmp(a->bn, pool_limit()) >= 0; }
+
+static void release_bn(BIGNUM *bn) {
+    if (bn == NULL) {
+        return;
+    }
+    Pool *const p = pool();
+    if (p->count == POOL_SIZE || BN_ucmp(bn, pool_limit()) >= 0) {
         BN_free(bn);
         return;
     }
@@ -105,6 +121,28 @@ static void result_end(MsBig *out, BIGNUM *result) {
     }
     release_bn(out->bn);
     out->bn = result;
+}
+
+/* Like result_end for an operation whose result can be much smaller than its operands (a difference, a remainder,
+ * a shift right). When an operand was at least POOL_MAX_BITS wide the result moves into a right-sized BIGNUM, and
+ * the context's temporaries are released: a thread does not keep the buffers of the widest value it ever saw.
+ * `wide` is computed before the operation, since `out` may be an operand. */
+static void result_end_shrinking(MsBig *out, BIGNUM *result, bool wide) {
+    BIGNUM *final = result;
+    if (wide) {
+        Pool *const p = pool();
+        BN_CTX_free(p->ctx);
+        p->ctx = NULL;
+        if (BN_ucmp(result, pool_limit()) < 0) {
+            final = BN_dup(result);
+            must(final != NULL);
+            BN_free(result);
+        }
+    }
+    if (out->bn != result) {
+        release_bn(out->bn);
+    }
+    out->bn = final;
 }
 
 /* Runs `op` into a fresh result for binary operations that BN_* permits to share no storage with an operand. */
@@ -209,33 +247,64 @@ void ms_big_add(MsBig *out, const MsBig *a, const MsBig *b) {
 }
 
 void ms_big_sub(MsBig *out, const MsBig *a, const MsBig *b) {
+    const bool wide = is_wide(a) || is_wide(b);
     BIGNUM *const result = result_begin(out, a, b);
     must(BN_sub(result, value_of(a), value_of(b)));
-    result_end(out, result);
+    result_end_shrinking(out, result, wide);
 }
 
-void ms_big_mul(MsBig *out, const MsBig *a, const MsBig *b) { binary(out, a, b, BN_mul); }
+enum { NTT_MIN_BITS = 1 << 16 }; /* below this OpenSSL's Karatsuba multiply is faster than the transforms */
+
+/* Wide products go through number-theoretic transforms. The cheap pool-limit test rejects small operands first. */
+static bool use_transform(const BIGNUM *a, const BIGNUM *b) {
+    if (BN_ucmp(a, pool_limit()) < 0 || BN_ucmp(b, pool_limit()) < 0) {
+        return false;
+    }
+    return BN_num_bits(a) >= NTT_MIN_BITS && BN_num_bits(b) >= NTT_MIN_BITS;
+}
+
+void ms_big_mul(MsBig *out, const MsBig *a, const MsBig *b) {
+    const BIGNUM *const x = value_of(a);
+    const BIGNUM *const y = value_of(b);
+    if (use_transform(x, y)) {
+        BIGNUM *const result = result_begin(out, a, b);
+        if (ms_ntt_multiply(result, x, y)) {
+            BN_set_negative(result, BN_is_negative(x) != BN_is_negative(y));
+            result_end(out, result);
+            return;
+        }
+        if (result != out->bn) {
+            release_bn(result);
+        }
+    }
+    binary(out, a, b, BN_mul);
+}
 
 void ms_big_divmod(MsBig *quotient, MsBig *remainder, const MsBig *a, const MsBig *b) {
+    const bool wide = is_wide(a) || is_wide(b);
     BIGNUM *const q = new_bn();
     BIGNUM *const r = new_bn();
     BN_CTX *const ctx = new_ctx();
     must(BN_div(q, r, value_of(a), value_of(b), ctx));
     if (quotient != NULL) {
-        result_end(quotient, q);
+        result_end_shrinking(quotient, q, wide);
     } else {
         release_bn(q);
     }
     if (remainder != NULL) {
-        result_end(remainder, r);
+        result_end_shrinking(remainder, r, wide);
     } else {
         release_bn(r);
     }
 }
 
-static int nnmod_op(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx) { return BN_nnmod(r, a, m, ctx); }
-
-void ms_big_mod_floor(MsBig *out, const MsBig *a, const MsBig *m) { binary(out, a, m, nnmod_op); }
+void ms_big_mod_floor(MsBig *out, const MsBig *a, const MsBig *m) {
+    const bool wide = is_wide(a) || is_wide(m);
+    BIGNUM *const result = result_begin(out, a, m);
+    BN_CTX *const ctx = new_ctx();
+    must(BN_nnmod(result, value_of(a), value_of(m), ctx));
+    result_end_shrinking(out, result, wide);
+}
 
 /* ---- shifts and bitwise operations ---- */
 
@@ -249,6 +318,7 @@ void ms_big_shift_left(MsBig *out, const MsBig *a, size_t count) {
 
 /* Rounds toward negative infinity: a negative value that loses a set bit moves one further from zero. */
 void ms_big_shift_right(MsBig *out, const MsBig *a, size_t count) {
+    const bool wide = is_wide(a);
     const BIGNUM *const value = value_of(a);
     const int bits = shift_count(count);
     BIGNUM *const result = new_bn();
@@ -261,7 +331,7 @@ void ms_big_shift_right(MsBig *out, const MsBig *a, size_t count) {
         }
         release_bn(back);
     }
-    result_end(out, result);
+    result_end_shrinking(out, result, wide);
 }
 
 /* The two's complement of `a` as `width` little-endian bytes (width covers the magnitude and a sign bit). */
@@ -360,8 +430,32 @@ static bool pow_of_two(MsBig *out, const BIGNUM *a, uint64_t exponent) {
     return true;
 }
 
+/* Left-to-right square and multiply through ms_big_mul, so wide squares take the transform. */
+static void pow_by_squaring(MsBig *out, const MsBig *a, uint64_t exponent) {
+    MsBig base = MS_BIG_ZERO;
+    ms_big_copy(&base, a);
+    MsBig result = MS_BIG_ZERO;
+    ms_big_set_u64(&result, 1);
+    for (int bit = 63 - __builtin_clzll(exponent); bit >= 0; bit--) {
+        ms_big_mul(&result, &result, &result);
+        if (((exponent >> bit) & 1) != 0) {
+            ms_big_mul(&result, &result, &base);
+        }
+    }
+    ms_big_free(&base);
+    ms_big_free(out);
+    *out = result;
+}
+
+enum { POW_BY_SQUARING_BITS = 1 << 16 }; /* results this wide gain from the transform multiply */
+
 void ms_big_pow(MsBig *out, const MsBig *a, uint64_t exponent) {
     if (pow_of_two(out, value_of(a), exponent)) {
+        return;
+    }
+    const uint64_t estimate = (uint64_t)BN_num_bits(value_of(a)) * (exponent > POW_BY_SQUARING_BITS ? POW_BY_SQUARING_BITS : exponent);
+    if (exponent > 1 && estimate >= POW_BY_SQUARING_BITS) {
+        pow_by_squaring(out, a, exponent);
         return;
     }
     MsBig power = MS_BIG_ZERO;
@@ -421,11 +515,30 @@ void ms_big_sqrt(MsBig *out, const MsBig *a) {
 }
 
 void ms_big_gcd(MsBig *out, const MsBig *a, const MsBig *b) {
-    BIGNUM *const result = new_bn();
+    /* Euclid's remainders: BN_gcd is the constant-time binary algorithm, many times slower on wide operands. */
+    const bool wide = is_wide(a) || is_wide(b);
+    BIGNUM *larger = new_bn();
+    BIGNUM *smaller = new_bn();
+    BIGNUM *rest = new_bn();
     BN_CTX *const ctx = new_ctx();
-    must(BN_gcd(result, value_of(a), value_of(b), ctx));
-    BN_set_negative(result, 0);
-    result_end(out, result);
+    must(BN_copy(larger, value_of(a)) != NULL && BN_copy(smaller, value_of(b)) != NULL);
+    BN_set_negative(larger, 0);
+    BN_set_negative(smaller, 0);
+    while (!BN_is_zero(smaller)) {
+        must(BN_mod(rest, larger, smaller, ctx));
+        BIGNUM *const next = larger;
+        larger = smaller;
+        smaller = rest;
+        rest = next;
+    }
+    if (wide) { /* the remainders still own buffers as wide as the operands */
+        BN_free(smaller);
+        BN_free(rest);
+    } else {
+        release_bn(smaller);
+        release_bn(rest);
+    }
+    result_end_shrinking(out, larger, wide);
 }
 
 void ms_big_pow_mod(MsBig *out, const MsBig *a, const MsBig *exponent, const MsBig *modulus) {
@@ -444,8 +557,10 @@ bool ms_big_inverse_mod(MsBig *out, const MsBig *a, const MsBig *modulus) {
     must(BN_nnmod(base, value_of(a), value_of(modulus), ctx));
     BIGNUM *const result = BN_mod_inverse(NULL, base, value_of(modulus), ctx);
     release_bn(base);
-    ERR_clear_error(); /* no inverse is reported through the error queue */
     if (result == NULL) {
+        const bool none = ERR_GET_REASON(ERR_peek_last_error()) == BN_R_NO_INVERSE;
+        ERR_clear_error();
+        must(none);
         return false;
     }
     result_end(out, result);
@@ -567,7 +682,33 @@ static size_t chunk_of(unsigned radix, uint64_t *power) {
     return digits;
 }
 
+/* Digits of a power-of-two radix packed straight into the little-endian bytes of the value. */
+static void parse_digits_by_bits(MsBig *out, MsBytes digits, unsigned radix) {
+    unsigned bits_per_digit = 1;
+    while ((1u << bits_per_digit) < radix) {
+        bits_per_digit++;
+    }
+    const size_t bytes = (digits.len * bits_per_digit + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
+    uint8_t *const magnitude = msrt_alloc(bytes + 1);
+    memset(magnitude, 0, bytes + 1);
+    for (size_t i = 0; i < digits.len; i++) {
+        const unsigned value = ms_big_digit_value(digits.ptr[digits.len - 1 - i]);
+        for (unsigned k = 0; k < bits_per_digit; k++) {
+            const size_t bit = i * bits_per_digit + k;
+            magnitude[bit / BITS_PER_BYTE] |= (uint8_t)(((value >> k) & 1u) << (bit % BITS_PER_BYTE));
+        }
+    }
+    BIGNUM *const result = new_bn();
+    must(BN_lebin2bn(magnitude, (int)bytes, result) != NULL);
+    msrt_free(magnitude);
+    result_end(out, result);
+}
+
 void ms_big_parse_digits(MsBig *out, MsBytes digits, unsigned radix) {
+    if ((radix & (radix - 1)) == 0) {
+        parse_digits_by_bits(out, digits, radix);
+        return;
+    }
     BIGNUM *const result = new_bn();
     uint64_t chunk_power;
     const size_t chunk = chunk_of(radix, &chunk_power);

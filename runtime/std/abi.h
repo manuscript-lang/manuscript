@@ -84,4 +84,9 @@ static inline void msrt_write_bytes(MsVec *out, const void *data, size_t len) {
     memcpy(out->ptr, data, len);
     out->len = out->cap = len;
 }
+
+/* The start-up records of the startup code (crates/ms-rt/src/start.rs): the arguments the process was started with and
+ * the monotonic time it started at (0 before start). */
+void msrt_argv(MsVec *out);
+int64_t msrt_start_nanos(void);
 #endif

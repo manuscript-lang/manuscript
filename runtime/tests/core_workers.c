@@ -157,7 +157,7 @@ static void use_foreign_promises(Cross *work) {
     expect(ms_promise_take(work->dep, &msrt_desc_int, (uint8_t *)&value), "foreign take");
     ms_promise_cancel(work->victim);
     expect(ms_promise_wait(work->victim, -1) == MS_PROMISE_CANCELLED, "foreign wait: cancelled");
-    const int64_t twice = value * 2;
+    int64_t twice = value * 2;
     ms_promise_put(work->id, (uint8_t *)&twice, &msrt_desc_int, false);
 }
 
@@ -252,6 +252,14 @@ static void many_promises_all_finish(void) {
     expect(sum == (int64_t)MANY * (MANY - 1) / 2, "many: every value arrived once");
 }
 
+/* Work started and never waited for: what a worker took or what is still queued must be freed at teardown. */
+static void abandoned_work_is_freed(void) {
+    for (int i = 0; i < 20; i++) {
+        const MsPromise id = ms_promise_new();
+        ms_promise_start(id, (MsObj *)make_work(id, put_value, i));
+    }
+}
+
 static void entry(void *argument) {
     (void)argument;
     queued_work_runs_inline();
@@ -259,6 +267,7 @@ static void entry(void *argument) {
     cancel_reaches_the_worker();
     foreign_operations();
     many_promises_all_finish();
+    abandoned_work_is_freed();
 }
 
 int main(void) {

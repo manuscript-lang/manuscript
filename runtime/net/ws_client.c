@@ -54,3 +54,68 @@ int ms_ws_check_upgrade(const char *base, const MsH1Response *response, const ch
     }
     return 0;
 }
+
+static MsBytes trimmed(MsBytes text) {
+    size_t start = 0, end = text.len;
+    while (start < end && (text.ptr[start] == ' ' || text.ptr[start] == '\t')) start++;
+    while (end > start && (text.ptr[end - 1] == ' ' || text.ptr[end - 1] == '\t')) end--;
+    return ms_bytes_of(text.ptr + start, end - start);
+}
+
+/* The next `separator`-delimited piece of *rest, trimmed; false when none is left. */
+static bool next_piece(MsBytes *rest, uint8_t separator, MsBytes *piece) {
+    if (rest->len == 0) return false;
+    size_t end = 0;
+    while (end < rest->len && rest->ptr[end] != separator) end++;
+    *piece = trimmed(ms_bytes_of(rest->ptr, end));
+    const size_t used = end < rest->len ? end + 1 : end;
+    *rest = ms_bytes_of(rest->ptr + used, rest->len - used);
+    return true;
+}
+
+static bool lists_token(MsBytes list, MsBytes token) {
+    MsBytes piece;
+    while (next_piece(&list, ',', &piece)) {
+        if (ms_bytes_equal(piece, token)) return true;
+    }
+    return false;
+}
+
+/* The first permessage-deflate element of the extensions, whether its parameters are the ones we offered. */
+static bool deflate_extension(MsBytes extensions, bool *found) {
+    MsBytes element;
+    *found = false;
+    while (next_piece(&extensions, ',', &element)) {
+        MsBytes name;
+        if (!next_piece(&element, ';', &name) || !ms_ascii_equal_fold(name, LITERAL("permessage-deflate"))) continue;
+        *found = true;
+        bool server = false, client = false;
+        MsBytes parameter;
+        while (next_piece(&element, ';', &parameter)) {
+            MsBytes key;
+            if (!next_piece(&parameter, '=', &key)) continue;
+            server = server || ms_ascii_equal_fold(key, LITERAL("server_no_context_takeover"));
+            client = client || ms_ascii_equal_fold(key, LITERAL("client_no_context_takeover"));
+        }
+        return server && client;
+    }
+    return true;
+}
+
+int ms_ws_client_accept(const char *base, const MsH1Response *response, const char *key, MsBytes offered,
+                        MsWsAccepted *out, const char **why) {
+    if (ms_ws_check_upgrade(base, response, key, why) != 0) return -1;
+    const MsBytes chosen = trimmed(field_value(base, response, "Sec-WebSocket-Protocol"));
+    if (chosen.len > 0 && !lists_token(offered, chosen)) {
+        *why = "the response selects a subprotocol that was not offered";
+        return -1;
+    }
+    bool found;
+    if (!deflate_extension(field_value(base, response, "Sec-WebSocket-Extensions"), &found)) {
+        *why = "invalid compression negotiation";
+        return -1;
+    }
+    out->subprotocol = chosen;
+    out->compress = found;
+    return 0;
+}

@@ -155,7 +155,12 @@ fn find_renamed(m: &Module) -> HashMap<usize, String> {
     let mut seen: HashMap<&str, usize> = HashMap::new();
     let taken: std::collections::HashSet<&str> = printed.iter().map(String::as_str).collect();
     let mut renamed = HashMap::new();
-    for (i, base) in printed.iter().enumerate() {
+    // A function with a source position keeps its name; the generated entry wrapper that shares
+    // it (`main`) is the one renamed, so a trace names the user's function.
+    let mut order: Vec<usize> = (0..printed.len()).collect();
+    order.sort_by_key(|&i| m.funcs[i].loc.line == 0);
+    for i in order {
+        let base = &printed[i];
         let count = seen.entry(base.as_str()).or_insert(0);
         *count += 1;
         if *count > 1 {
@@ -239,6 +244,13 @@ pub fn print_module(m: &Module) -> String {
 /// reference names one declaration.
 pub fn print_module_unique(m: &Module) -> String {
     print_module_with(m, true)
+}
+
+/// As [`print_module`] with every function under its own name, even when two share one: the
+/// pass oracles compare the text of what a pass built against the C pass's, which keeps names
+/// as they are.
+pub fn print_module_raw(m: &Module) -> String {
+    print_module_text(m)
 }
 
 fn print_module_with(m: &Module, unique_decls: bool) -> String {
@@ -389,7 +401,7 @@ fn print_module_text(m: &Module) -> String {
         let _ = writeln!(
             o,
             "vtable @{}: {} for {} {{ {} }}",
-            v.name,
+            sanitized(&v.name),
             iface_label(m, v.iface.index()),
             ty_str(m, v.data_ty),
             ms.join(", ")
@@ -664,7 +676,7 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
             }
             s
         }
-        Imm::Vtable(v) => format!("@{}", m.vtables[v.index()].name),
+        Imm::Vtable(v) => format!("@{}", sanitized(&m.vtables[v.index()].name)),
         Imm::Global(g) => format!("@{}", m.globals[g.index()].name),
         Imm::Method(ifc, k) => format!(
             "{}.{}",

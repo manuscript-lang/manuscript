@@ -299,14 +299,14 @@ static bool qbe_pointer_op(QCx *c, const MirInst *inst, bool *ok) {
 static uint32_t qbe_splits(const MirModule *m, const MirFunc *f, const MirInst *inst) {
     switch ((MirOp)inst->op) {
     case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk: case MOP_IntOverflowIf:
-    case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk: case MOP_Poll:
+    case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk: case MOP_Poll: case MOP_ListNew:
         return 1;
     case MOP_SDivChk:
         return 2;
     case MOP_NarrowChk:
         return qbe_narrow_extension((MirTyKind)mir_ty_data(m, f->values[inst->res])->kind) != NULL;
     default:
-        return 0;
+        return qbe_record_splits(m, f, inst);
     }
 }
 

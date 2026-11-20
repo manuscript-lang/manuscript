@@ -73,6 +73,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/net/mail.ms`: Address, Message, decode_words, parse_address, parse_address_list, parse_message
 - `@std/net/mime.ms`: HeaderField, Headers, MediaType, Part, encode_multipart, extension_for_media_type, form_part, format_media_type, media_type_for_extension, multipart_boundary, multipart_parts, parse_headers, parse_media_type, parse_multipart
 - `@std/net/net.ms`: Connection, ConnectionInfo, Datagram, DatagramSocket, DnsOptions, Listener, NativeConnection, NativeDatagramSocket, NativeListener, NativeNetwork, Network, PendingConnection, RequestOptions, accept_tls, bind_datagram, connect, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, resolve_dns, restrict, serve, start_tls, web_socket, with_resolver
+- `@std/net/policy.ms`: Level, Policy, address_allowed, fold_host, host_allowed, listen_allowed, narrow, unix_allowed, unrestricted
 - `@std/net/router.ms`: Route, RouteParams, Router, Segment, access_log, request_id, with_request_headers
 - `@std/net/sse.ms`: SseEvent, SseLimits, sse_events
 - `@std/net/tls.ms`: CertificateInfo, TlsInfo, TlsOptions, parse_certificates, verify_certificates

@@ -10,20 +10,7 @@
 #include "ms_rt/chars.h"
 #include "ms_rt/safe.h"
 #include "ms_rt/unicode.h"
-
-/* A property PCRE2 answers: a pattern that matches exactly the one scalar's bytes when the scalar has it. */
-typedef enum Property {
-    PROPERTY_PUNCTUATION,
-    PROPERTY_SYMBOL,
-    PROPERTY_MARK,
-    PROPERTY_ALPHABETIC,
-    PROPERTY_NUMERIC,
-    PROPERTY_ALPHANUMERIC,
-    PROPERTY_LOWERCASE,
-    PROPERTY_UPPERCASE,
-    PROPERTY_WHITESPACE,
-    PROPERTY_COUNT
-} Property;
+#include "unicode_property.h"
 
 static const char *const property_patterns[PROPERTY_COUNT] = {
     [PROPERTY_PUNCTUATION] = "^\\p{P}$",
@@ -35,6 +22,9 @@ static const char *const property_patterns[PROPERTY_COUNT] = {
     [PROPERTY_LOWERCASE] = "^\\p{Lowercase}$",
     [PROPERTY_UPPERCASE] = "^\\p{Uppercase}$",
     [PROPERTY_WHITESPACE] = "^\\p{White_Space}$",
+    [PROPERTY_EMOJI] = "^\\p{Emoji}$",
+    [PROPERTY_EXTENDED_PICTOGRAPHIC] = "^\\p{Extended_Pictographic}$",
+    [PROPERTY_EMOJI_MODIFIER_BASE] = "^\\p{Emoji_Modifier_Base}$",
 };
 
 /* One compiled pattern per property, shared by every thread: a pattern is immutable once compiled, so a thread that
@@ -63,7 +53,7 @@ static pcre2_code *property_code(Property property) {
 
 static bool is_scalar(int64_t value) { return value >= 0 && value <= 0x10FFFF && (value < 0xD800 || value > 0xDFFF); }
 
-static bool has_property(int64_t value, Property property) {
+bool ms_unicode_has_property(int64_t value, Property property) {
     uint8_t encoded[4];
     if (!is_scalar(value)) {
         return false;
@@ -81,7 +71,7 @@ static uint8_t classify(int64_t value, bool (*ascii)(uint8_t), Property property
     if (value >= 0 && value < 0x80) {
         return ascii((uint8_t)value);
     }
-    return has_property(value, property);
+    return ms_unicode_has_property(value, property);
 }
 
 static bool ascii_numeric(uint8_t b) { return ms_ascii_is_digit(b); }
@@ -115,5 +105,5 @@ static Property category_property(const MsStr *category) {
 
 uint8_t msstd_unicode_in_category(int64_t value, const MsStr *category) {
     const Property property = category_property(category);
-    return property != PROPERTY_COUNT && has_property(value, property);
+    return property != PROPERTY_COUNT && ms_unicode_has_property(value, property);
 }

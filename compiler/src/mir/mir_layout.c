@@ -1,5 +1,6 @@
 /* MIR layout: boxing of recursive alternatives and optionals (ir/module.rs `Boxing`). Owns the
  * memo tables of a MirBoxing; the module it reads belongs to the caller. */
+#include <stdlib.h>
 #include <string.h>
 
 #include "ms/mir_layout.h"
@@ -189,4 +190,40 @@ bool mir_rt_direct(const MirModule *m, MirLayouts *layouts, MirTy ty) {
         return false;
     }
     return false;
+}
+
+/* The byte offset of field `field` of the inline record `type_id` inside its memory image: its
+ * fields' leaves in order, each at its natural offset. 0 when the leaves cannot be gathered. */
+uint32_t mir_field_offset(MirLayouts *layouts, uint32_t type_id, uint32_t field) {
+    const MirTypeDef *def = &layouts->module->type_defs[type_id];
+    uint32_t total = 0;
+    uint32_t start = 0;
+    for (uint32_t k = 0; k < def->nfields; k++) {
+        if (k == field) {
+            start = total;
+        }
+        total += mir_leaves(layouts, def->fields[k].ty).len;
+    }
+    MirLeaf *all = calloc((size_t)total + 1, sizeof *all); /* owned, freed below */
+    uint32_t *offsets = calloc((size_t)total + 1, sizeof *offsets); /* owned, freed below */
+    uint32_t offset = 0;
+    if (all != NULL && offsets != NULL) {
+        uint32_t at = 0;
+        for (uint32_t k = 0; k < def->nfields; k++) {
+            const MirLeafSpan leaves = mir_leaves(layouts, def->fields[k].ty);
+            for (uint32_t j = 0; j < leaves.len; j++) {
+                all[at++] = leaves.ptr[j];
+            }
+        }
+        (void)mir_mem_layout(all, total, offsets);
+        offset = start < total ? offsets[start] : 0;
+    }
+    free(all);
+    free(offsets);
+    return offset;
+}
+
+/* The size in bytes of one element of list type `list`. */
+uint32_t mir_list_elem_size(MirLayouts *layouts, MirTy list) {
+    return mir_type_mem(layouts, mir_ty_data(layouts->module, list)->elem).size;
 }

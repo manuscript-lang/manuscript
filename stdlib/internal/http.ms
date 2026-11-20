@@ -1,5 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
+	NativeExchange from "@std/net/exchange.ms",
 	HttpExchange,
 	HttpHeaders,
 	HttpResponseMetadata,
@@ -88,3 +89,45 @@ export extern fn msstd_http_headers_new() HttpHeaders
 export extern fn msrt_runtime_set_threads(n: Int) Void
 
 export extern fn msrt_runtime_limit() Int
+
+// The server side of one HTTP/1 exchange (runtime/include/ms_rt/xchg.h). `timeout` is a
+// per-call budget; none waits until the task is cancelled.
+
+export extern fn msstd_xchg_method(x: NativeExchange) String
+
+export extern fn msstd_xchg_target(x: NativeExchange) String
+
+export extern fn msstd_xchg_protocol(x: NativeExchange) String
+
+export extern fn msstd_xchg_headers(x: NativeExchange) HttpHeaders
+
+export extern fn msstd_xchg_share(x: NativeExchange) NativeExchange
+
+export extern fn msstd_xchg_read(
+	x: NativeExchange,
+	max_bytes: Int?,
+	timeout: Duration?,
+) Bytes?!
+
+export extern fn msstd_xchg_send_head(
+	x: NativeExchange,
+	status: Int,
+	headers: HttpHeaders,
+	length: Int?,
+	timeout: Duration?,
+) Void!
+
+export extern fn msstd_xchg_write(
+	x: NativeExchange,
+	data: Bytes,
+	timeout: Duration?,
+) Void!
+
+// Ends the response; true when the connection can carry another request.
+export extern fn msstd_xchg_finish(x: NativeExchange, timeout: Duration?) Bool!
+
+export extern fn msstd_xchg_reset(
+	x: NativeExchange,
+	max_bytes: Int,
+	timeout: Duration?,
+) Void!

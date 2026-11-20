@@ -5,6 +5,9 @@
 #include <string.h>
 
 #define MS_TEST_OWN_FAULTS
+#include <openssl/bn.h>
+
+#include "../std/bignum_ntt.h"
 #include "fake_rt.h"
 #include "ms_rt/bigint.h"
 #include "ms_rt/runtime.h"
@@ -315,7 +318,30 @@ static void run_direct(void) {
     drop(edge);
 }
 
+/* The transform product equals OpenSSL's for operands of unequal and equal widths, and for a square. */
+static void run_transform_product(void) {
+    static const int widths[][2] = {{70000, 70000}, {300000, 65537}, {1000, 200000}, {1500000, 1500000}};
+    BN_CTX *const ctx = BN_CTX_new();
+    for (size_t i = 0; i < sizeof widths / sizeof widths[0]; i++) {
+        BIGNUM *const a = BN_new(), *const b = BN_new(), *const want = BN_new(), *const got = BN_new();
+        CHECK(BN_rand(a, widths[i][0], BN_RAND_TOP_ONE, BN_RAND_BOTTOM_ANY) == 1);
+        CHECK(BN_rand(b, widths[i][1], BN_RAND_TOP_ONE, BN_RAND_BOTTOM_ANY) == 1);
+        CHECK(BN_mul(want, a, b, ctx) == 1);
+        CHECK(ms_ntt_multiply(got, a, b));
+        CHECK(BN_cmp(want, got) == 0);
+        CHECK(BN_sqr(want, a, ctx) == 1);
+        CHECK(ms_ntt_multiply(got, a, a));
+        CHECK(BN_cmp(want, got) == 0);
+        BN_free(a);
+        BN_free(b);
+        BN_free(want);
+        BN_free(got);
+    }
+    BN_CTX_free(ctx);
+}
+
 int main(void) {
+    run_transform_product();
     run_direct();
     run_table("runtime/tests/oracle/bigint.tsv");
     (void)op_failed;
