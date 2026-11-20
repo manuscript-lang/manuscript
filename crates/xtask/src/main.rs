@@ -701,9 +701,8 @@ fn add_c_runtime(
 ) -> Result<(), String> {
     let runtime = root.join("runtime");
     let mut sources = Vec::new();
-    // `net` is not here yet: it includes llhttp and libc headers, and joins once it exports symbols and the
-    // build links the third-party libraries. Its unit tests run through runtime/third_party/smoke.sh.
-    for layer in ["sys", "core", "io", "std"] {
+    // `io`, `net` and `std` join when their sources build for every target (libc headers, third-party includes).
+    for layer in ["sys", "core"] {
         c_sources(&runtime.join(layer), &mut sources);
     }
     sources.sort();
