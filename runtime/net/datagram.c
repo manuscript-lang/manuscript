@@ -90,7 +90,7 @@ static void write_address(MsStr *out, const MsAddr *address) {
 }
 
 uint8_t msstd_dgram_bind(const MsStr *address, void **out, MsStr *err) {
-    ms_net_clear_text(err);
+    ms_net_clear_text(err); /* the caller reads the slot for every failure status; only STATUS_FAILED sets text */
     MsAddr local;
     if (!ms_net_addr_parse(ms_bytes_of((const uint8_t *)msrt_str_data(address), msrt_str_len(address)), &local)) {
         return STATUS_INVALID_INPUT;
@@ -150,7 +150,7 @@ void msstd_dgram_close_if_last(const void *handle) {
  * the buffer holds one byte more than the limit so that a longer one is seen as such. */
 uint8_t msstd_dgram_receive(const void *handle, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout,
                             MsNetDatagram *out, MsStr *err) {
-    ms_net_clear_text(err);
+    ms_net_clear_text(err); /* the caller reads the slot for every failure status; only STATUS_FAILED sets text */
     Core *core = core_of(handle);
     if (has_max != 0 && (max < 1 || max > DATAGRAM_MAX)) {
         return STATUS_INVALID_INPUT;
@@ -201,7 +201,7 @@ uint8_t msstd_dgram_receive(const void *handle, uint8_t has_max, int64_t max, ui
 
 uint8_t msstd_dgram_send(const void *handle, const MsVec *data, const MsStr *address, uint8_t has_timeout, int64_t timeout,
                          MsStr *err) {
-    ms_net_clear_text(err);
+    ms_net_clear_text(err); /* the caller reads the slot for every failure status; only STATUS_FAILED sets text */
     Core *core = core_of(handle);
     MsAddr target;
     if (!ms_net_addr_parse(ms_bytes_of((const uint8_t *)msrt_str_data(address), msrt_str_len(address)), &target)) {
