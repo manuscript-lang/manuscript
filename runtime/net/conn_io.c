@@ -221,10 +221,10 @@ MsNetStatus ms_conn_wait_gone(MsConnTable *table, MsConnId id, const uint8_t *ha
             return MS_NET_RESET;
         }
         if (result == MS_SYS_OK) {
-            /* Queued bytes hide a FIN behind them, so a connection whose reads another owner took (an upgrade) is no
-             * longer watched. */
-            if (handed_on != NULL && __atomic_load_n(handed_on, __ATOMIC_ACQUIRE) != 0) {
-                return MS_NET_OK;
+            /* Queued bytes hide a FIN behind them; once another owner took the reads (an upgrade) the system is asked
+             * whether the peer ended its side. */
+            if (handed_on != NULL && __atomic_load_n(handed_on, __ATOMIC_ACQUIRE) != 0 && ms_sys_net_peer_ended(row->fd) != 0) {
+                return MS_NET_CLOSED;
             }
             if ((msrt_task_sleep(GONE_POLL_NS) & MS_WAIT_CANCELLED) != 0) {
                 return MS_NET_CANCELLED;
