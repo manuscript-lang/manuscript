@@ -483,9 +483,18 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     const uint32_t binding = ms_body_find_binding(b, s->u.assign.name);
-    if (binding == MS_NONE || (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+    if (binding == MS_NONE) {
         (void)ms_body_unsupported(b);
         return;
+    }
+    if ((b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+        const MsStr name = ms_name(b->c->names, s->u.assign.name);
+        const MsStr message = ms_arena_fmt(&b->c->arena,
+                                           "cannot assign immutable binding %.*s; declare it with 'var %.*s = ...' "
+                                           "instead of '%.*s := ...'",
+                                           (int)name.len, name.ptr, (int)name.len, name.ptr, (int)name.len, name.ptr);
+        const MsCheckDiag diag = {.diag = {.pos = s->pos, .message = message}, .phase = MS_PHASE_TYPE};
+        MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
     }
     const uint32_t reads_before = b->reads[binding];
     (void)ms_body_expr(b, s->u.assign.value, b->facts->bindings.ty[binding]);
