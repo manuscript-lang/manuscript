@@ -20,8 +20,8 @@
 static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
 
-bool ms_sched_cancel_pending(void) { return false; }
-void ms_sched_cancel_return(void) {}
+__attribute__((weak)) bool ms_sched_cancel_pending(void) { return false; }
+__attribute__((weak)) void ms_sched_cancel_return(void) {}
 
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
     struct pollfd p = {.fd = fd, .events = (short)((events & MS_WAIT_READ ? POLLIN : 0) | (events & MS_WAIT_WRITE ? POLLOUT : 0))};
