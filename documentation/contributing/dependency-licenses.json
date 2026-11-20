@@ -683,6 +683,11 @@
       "license": "MIT"
     },
     {
+      "name": "mimalloc",
+      "version": "3.7.0",
+      "license": "MIT"
+    },
+    {
       "name": "nghttp2",
       "version": "1.71.0",
       "license": "MIT"

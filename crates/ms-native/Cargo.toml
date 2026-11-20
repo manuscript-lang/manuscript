@@ -4,7 +4,6 @@ version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
 description = "The static library compiled Manuscript programs link: ms-rt plus every ms-std-* native crate in one archive"
-autotests = false
 
 [lib]
 crate-type = ["staticlib"]
@@ -16,8 +15,6 @@ doctest = false
 ms-rt = { path = "../ms-rt" }
 
 [features]
-# The glibc process entry (`_start`); only the archive `ms` links enables it, since a test binary has crt1's.
-entry = []
 # The runtime with allocation sampling, for `ms profile --allocs` (`cargo xtask runtime --alloc-profile`).
 alloc-profile = ["ms-rt/alloc-profile"]
 # The runtime with the scheduler stress mode, for `make stress-sched` (`cargo xtask runtime --sched-stress`).
@@ -28,7 +25,3 @@ ms-rt-abi = { path = "../ms-rt-abi" }
 
 [lints]
 workspace = true
-
-[[test]]
-name = "it"
-path = "tests/main.rs"

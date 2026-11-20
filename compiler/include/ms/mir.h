@@ -274,7 +274,6 @@ typedef struct MirMethodSig {
 typedef struct MirIfaceDef {
     MsSym name;
     uint8_t std;
-    uint32_t close; /* vtable slot of `close`, MIR_NONE if none */
     MirMethodSig *methods;
     uint32_t nmethods;
 } MirIfaceDef;
@@ -346,6 +345,7 @@ typedef struct MirModule {
     MirFunc *funcs;
     uint32_t nfuncs, cfuncs;
     uint32_t entry; /* function id or MIR_NONE */
+    uint32_t close; /* the `fn(move T) -> int` that kind-1 `scope.own` owners close with, or MIR_NONE */
     MirSymMap by_func, by_type, by_alt, by_iface, by_vtable, by_global, by_extern;
 } MirModule;
 

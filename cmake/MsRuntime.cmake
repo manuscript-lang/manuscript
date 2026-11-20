@@ -3,7 +3,7 @@
 #   c-objects.txt   one path per line: our objects and the library members, which `ar` adds to the runtime archive
 #   c-features.txt  which optional parts the archive has (reactor), which the Rust build then leaves out
 # in the build folder. The linker takes a member only when a program reaches it.
-set(MS_RUNTIME_LAYERS sys core io net std)
+set(MS_RUNTIME_LAYERS sys core io entry net std)
 
 # The library names (as MS_LIB_NAMES and llhttp) whose headers `source` includes, directly or through a header
 # of its own folder.
@@ -19,7 +19,7 @@ function(ms_libraries_of source out)
     endif()
   endforeach()
   set(_found "")
-  foreach(_rule "<uv.h>=uv" "<llhttp.h>=llhttp" "<nghttp2/=nghttp2" "<openssl/=ssl;crypto" "<pcre2.h>=pcre2" "<zlib.h>=z" "<curl/=curl")
+  foreach(_rule "<uv.h>=uv" "<llhttp.h>=llhttp" "<mimalloc.h>=mimalloc" "<nghttp2/=nghttp2" "<openssl/=ssl;crypto" "<pcre2.h>=pcre2" "<zlib.h>=z" "<curl/=curl")
     string(REGEX MATCH "^([^=]*)=(.*)$" _unused "${_rule}")
     string(FIND "${_text}" "#include ${CMAKE_MATCH_1}" _at)
     if(NOT _at EQUAL -1)
@@ -50,6 +50,10 @@ foreach(source ${_sources})
   if(_skip)
     continue()
   endif()
+  # The glibc process entry belongs to the archive programs link, which has no crt1.o; a test binary has one.
+  if(_rel STREQUAL "sys/glibc/start.c" AND NOT MS_PROCESS_ENTRY)
+    continue()
+  endif()
   ms_libraries_of("${source}" _needs)
   set(_missing OFF)
   foreach(lib ${_needs})
@@ -67,6 +71,8 @@ foreach(source ${_sources})
   foreach(lib ${_needs})
     if(lib STREQUAL "llhttp")
       list(APPEND _includes "${MS_LLHTTP_DIR}/include")
+    elseif(lib STREQUAL "mimalloc")
+      list(APPEND _includes "${MS_MIMALLOC_DIR}/include")
     else()
       list(APPEND _includes ${MS_LIB_${lib}_INCLUDES})
     endif()
@@ -111,6 +117,8 @@ set(_archives "")
 foreach(lib ${_used_libs})
   if(lib STREQUAL "llhttp")
     list(APPEND _archives "$<TARGET_FILE:ms_llhttp>")
+  elseif(lib STREQUAL "mimalloc")
+    list(APPEND _archives "$<TARGET_FILE:ms_mimalloc>")
   else()
     list(APPEND _archives ${MS_LIB_${lib}_ARCHIVES})
   endif()
@@ -131,7 +139,7 @@ add_custom_command(
           -DOUT=${CMAKE_BINARY_DIR}/c-objects.txt -P ${CMAKE_SOURCE_DIR}/cmake/FoldArchives.cmake
   # The object files themselves, not the target: an OBJECT library has no output file, so a dependency on its name
   # would let the folded copies in c-members go stale after a source changes.
-  DEPENDS $<TARGET_OBJECTS:ms_runtime_objects> ms_llhttp ${_library_targets} "${CMAKE_BINARY_DIR}/c-object-files.txt"
+  DEPENDS $<TARGET_OBJECTS:ms_runtime_objects> ms_llhttp ${_library_targets} ms_mimalloc "${CMAKE_BINARY_DIR}/c-object-files.txt"
           "${CMAKE_BINARY_DIR}/c-library-files.txt" ${_archives}
           "${CMAKE_SOURCE_DIR}/cmake/FoldArchives.cmake"
   COMMENT "Folding the C libraries into the runtime objects"

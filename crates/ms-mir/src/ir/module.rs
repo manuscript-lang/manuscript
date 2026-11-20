@@ -28,6 +28,7 @@ impl Module {
             globals: Vec::new(),
             funcs: Vec::new(),
             entry: None,
+            close: None,
             desc_glue: Vec::new(),
             drop_glue: Default::default(),
             clone_glue: Default::default(),

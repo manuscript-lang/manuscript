@@ -99,4 +99,12 @@ int64_t msrt_hash_bytes(const uint8_t *p, size_t len);
 /* ms-sig: msrt_hash_int(v: i64) -> i64 @domain=map @leaf */
 int64_t msrt_hash_int(int64_t v);
 
+/* The equality cycle guard (runtime/core/eq.c): registers the pair of objects being compared, 1, or 0 when the pair is
+ * already being compared (a cycle, which the comparison treats as equal). */
+/* ms-sig: msrt_eq_enter(a: *const u8, b: *const u8) -> u8 @leaf */
+uint8_t msrt_eq_enter(const uint8_t *a, const uint8_t *b);
+/* Ends the innermost registration. */
+/* ms-sig: msrt_eq_leave(a: *const u8, b: *const u8) @leaf */
+void msrt_eq_leave(const uint8_t *a, const uint8_t *b);
+
 #endif
