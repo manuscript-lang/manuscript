@@ -5,6 +5,7 @@
  * on is looked at again. Timers are a heap with lazy deletion (timers.h).
  */
 #include "array.h"
+#include "ms_rt/alloc.h"
 #include "scheduler.h"
 
 enum {
@@ -425,6 +426,27 @@ static void abandon_wait(MsSched *sched) {
     current->state = MS_STATE_RUNNING;
 }
 
+bool ms_park_drain_mail(MsSched *sched) {
+    MsMail *mail = ms_isolate_take();
+    const size_t before = sched->ready_length;
+    while (mail != NULL) {
+        MsMail *const next = mail->next;
+        if (mail->kind == MS_MAIL_TOKEN) {
+            ms_token_post(mail->a, mail->b);
+            msrt_free(mail);
+        } else if (mail->kind == MS_MAIL_STOP) {
+            ms_sched_stop((uint8_t)mail->a);
+            msrt_free(mail);
+        } else if (sched->hooks.mail != NULL) {
+            sched->hooks.mail(mail);
+        } else {
+            msrt_free(mail);
+        }
+        mail = next;
+    }
+    return sched->ready_length != before;
+}
+
 void ms_park_idle(MsSched *sched) {
     for (;;) {
         /* Tasks in a shielded cleanup keep waiting; they see the stop request afterwards. */
@@ -439,6 +461,9 @@ void ms_park_idle(MsSched *sched) {
         if (sched->ready_length != 0) {
             return;
         }
+        if (ms_isolate_has_mail() && ms_park_drain_mail(sched)) {
+            return;
+        }
         const int64_t timeout_ns = timed ? next_timeout(sched, now) : -1;
         if (timeout_ns < 0 && sched->fd_waiting == 0 && sched->remote_tokens == 0) {
             abandon_wait(sched);
@@ -448,7 +473,11 @@ void ms_park_idle(MsSched *sched) {
         if (sched->hooks.flush_output != NULL) {
             sched->hooks.flush_output();
         }
+        if (!ms_isolate_idle_enter()) {
+            continue; /* mail arrived since the look above */
+        }
         ms_park_poll(sched, timeout_ns);
+        ms_isolate_idle_leave();
     }
 }
 

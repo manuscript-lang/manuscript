@@ -68,6 +68,7 @@ typedef struct MsTask {
     uint32_t wait_events;
     int32_t wait_fd;
     MsNode wait_node; /* this task's waiter node on wait_fd */
+    void *watch;            /* see ms_task_set_watch */
     int64_t defer_at;       /* deadline of the deferred promise this task runs, 0 when none */
     uint32_t started_head;  /* first promise this task started (row + 1), 0 for none */
     uint32_t segment; /* the segment the task runs on: 0 is the home slot, k is segments[k - 1] */
@@ -200,6 +201,8 @@ void ms_park_wake(MsSched *sched, MsTask *task, uint32_t result);
 void ms_park_set_deadline(MsSched *sched, MsTask *task, int64_t at_ns);
 /* Registers the running task as a waiter of `fd` for `events`; false when `fd` cannot be waited on. On true,
  * `*ready_now` says it is ready at once and nothing was registered. */
+/* Handles the mail queued for this isolate; true when it made a task ready. */
+bool ms_park_drain_mail(MsSched *sched);
 MS_NODISCARD bool ms_park_watch(MsSched *sched, MsTask *task, int fd, uint32_t events, bool *ready_now);
 /* Cancels tasks whose time limit passed and wakes timers that expired. */
 void ms_park_expire(MsSched *sched, int64_t now);

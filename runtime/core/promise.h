@@ -64,6 +64,9 @@ bool ms_promise_done(MsPromise id);
 /* Waits up to `timeout_ns` (negative: no limit) and returns an outcome code. A cancel arriving while it waits ends
  * the promise and unwinds the caller. */
 int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns);
+/* Makes the promise listen to the cancel switch `cancel`: when it fires the promise is cancelled. Call it once the work
+ * has started. Replaces an earlier switch. */
+void ms_promise_on_cancel(MsPromise id, int64_t cancel);
 /* Cancels the promise if unfinished, without waiting. */
 void ms_promise_cancel(MsPromise id);
 /* Ends the promise's limit `timeout_ns` from now: it is cancelled and a wait reports a timeout. */
@@ -75,10 +78,28 @@ void ms_promise_drop(MsPromise id);
 /* The report of the fault that failed the promise (owned by the caller); length 0 when none. */
 MsFaultText ms_promise_fault_report(MsPromise id);
 
+/* What a wait group needs to know of a promise. */
+typedef enum MsPromiseProbe {
+    MS_PROMISE_GONE = 0, /* closed or stale */
+    MS_PROMISE_PENDING,
+    MS_PROMISE_DONE_PROBE,   /* finished with a value */
+    MS_PROMISE_FAILED_PROBE, /* finished without a value: an error, a fault or a cancel */
+} MsPromiseProbe;
+MsPromiseProbe ms_promise_probe(MsPromise id);
+/* Marks a pending promise as a wait group member: ms_group_finished is called when it finishes. */
+void ms_promise_set_grouped(MsPromise id, bool grouped);
+/* Runs deferred work on the caller's stack, when `id` has some; true when it ran. */
+bool ms_promise_run_inline(MsPromise id);
+/* The index in `ids` of the first of `count` promises to finish, waiting up to `timeout_ns` (negative: no limit);
+ * -1 on timeout. A cancel unwinds the caller. */
+int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_ns);
+
 /* ---- work ---- */
 
 /* Runs `closure` (a function value, owned by the promise) as a task of this thread. Starting twice faults. */
 void ms_promise_start(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
+/* Like start, but on the least loaded isolate (with one isolate, here). */
+void ms_promise_start_spread(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
 /* Like start, but with no other task running the work waits for its waiter (runs on the waiter's stack). */
 void ms_promise_start_idle(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
 /* The work is not run until a waiter asks for it. */

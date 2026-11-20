@@ -220,6 +220,9 @@ static void service(MsSched *sched) {
     }
     /* A poll is a system call: a busy queue polls once per POLL_EVERY switches, an empty queue blocks in the idle
      * path, which polls. */
+    if (ms_isolate_has_mail()) {
+        (void)ms_park_drain_mail(sched);
+    }
     sched->switches_since_poll++;
     if (sched->fd_waiting != 0 && sched->switches_since_poll >= POLL_EVERY) {
         sched->switches_since_poll = 0;
@@ -598,5 +601,17 @@ int64_t ms_task_set_defer_deadline(int64_t at_ns) {
     }
     const int64_t previous = task->defer_at == 0 ? MS_NO_DEADLINE : task->defer_at;
     task->defer_at = at_ns == MS_NO_DEADLINE ? 0 : at_ns;
+    return previous;
+}
+
+void *ms_task_watch(void) { return ms_sched()->current == NULL ? NULL : ms_sched()->current->watch; }
+
+void *ms_task_set_watch(void *watch) {
+    MsTask *const task = ms_sched()->current;
+    if (task == NULL) {
+        return NULL;
+    }
+    void *const previous = task->watch;
+    task->watch = watch;
     return previous;
 }
