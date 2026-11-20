@@ -127,10 +127,6 @@ static bool discover_walk(Discovery *d, const char *root) {
     return discover_entry(d, root, ms_path_base(d->arena, root), S_ISDIR(info.st_mode));
 }
 
-static int discover_path_order(const void *x, const void *y) {
-    return strcmp(*(const char *const *)x, *(const char *const *)y);
-}
-
 bool ms_project_discover(MsArena *a, const MsProject *project, bool include_source, const char ***paths, uint32_t *count, MsProjectError *err) {
     Discovery d = {.arena = a, .project = project, .include_source = include_source, .err = err};
     bool ok = true;
@@ -146,7 +142,7 @@ bool ms_project_discover(MsArena *a, const MsProject *project, bool include_sour
     const char **found = MS_NEW_N(a, const char *, total + 1);
     size_t unique = 0;
     if (ok && total > 0) {
-        qsort(ms_buf_items(&d.files), total, sizeof(const char *), discover_path_order);
+        qsort(ms_buf_items(&d.files), total, sizeof(const char *), ms_cmp_cstr);
         for (size_t i = 0; i < total; i++) {
             const char *path = MS_VEC_AT(d.files, const char *, i);
             if (unique == 0 || strcmp(found[unique - 1], path) != 0) {

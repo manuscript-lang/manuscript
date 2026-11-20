@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "ms/project.h"
+#include "ms/text.h"
 
 typedef enum EditLineKind { EDIT_BLANK, EDIT_COMMENT, EDIT_HEADER, EDIT_KEY } EditLineKind;
 
@@ -30,10 +31,6 @@ static bool edit_unsupported(MsProjectError *err, const char *what) {
     return false;
 }
 
-static bool edit_bare_char(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
-}
-
 /* The key or table name at `*p` (bare, or quoted without escapes), advancing past it. NULL when it is neither. */
 static const char *edit_name(MsArena *a, const char **p, const char *end) {
     const char *s = *p;
@@ -46,7 +43,7 @@ static const char *edit_name(MsArena *a, const char **p, const char *end) {
         return ms_arena_strndup(a, s + 1, (size_t)(close - s - 1));
     }
     const char *e = s;
-    while (e < end && edit_bare_char(*e)) {
+    while (e < end && ms_text_is_bare_key_char(*e)) {
         e++;
     }
     if (e == s) {
@@ -223,7 +220,7 @@ static const char *edit_quote(MsArena *a, const char *s, MsProjectError *err) {
 static const char *edit_key(MsArena *a, const char *name, MsProjectError *err) {
     bool bare = name[0] != 0;
     for (const char *p = name; *p != 0; p++) {
-        bare = bare && edit_bare_char(*p);
+        bare = bare && ms_text_is_bare_key_char(*p);
     }
     return bare ? name : edit_quote(a, name, err);
 }

@@ -10,6 +10,7 @@
 
 #include "ms/lock.h"
 #include "ms/project.h"
+#include "ms/text.h"
 #include "ms/resolve.h"
 
 enum { MAX_LINE = 65535 };
@@ -82,10 +83,6 @@ static bool manifest_unsupported(const Reader *r, const char *what) {
 }
 
 /* ---- reading the document ---- */
-
-static bool manifest_is_bare(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
-}
 
 static int manifest_hex_digit(char c) {
     if (c >= '0' && c <= '9') return c - '0';
@@ -187,7 +184,7 @@ static bool manifest_end_of_line(const Reader *r, size_t *at) {
 }
 
 /* A number or boolean on one line, skipped. Arrays, tables, dates and bare words are left to the Rust reader. */
-static bool is_scalar_char(char c) { return manifest_is_bare(c) || c == '.' || c == '+'; }
+static bool is_scalar_char(char c) { return ms_text_is_bare_key_char(c) || c == '.' || c == '+'; }
 
 static bool manifest_skip_scalar(const Reader *r, size_t *at) {
     char first = '\0';
@@ -321,7 +318,7 @@ static bool manifest_read_key(const Reader *r, size_t *at, const char **out) {
         return manifest_read_string(r, at, out, &control);
     }
     const size_t start = *at;
-    while (*at < r->length && manifest_is_bare(r->text[*at])) {
+    while (*at < r->length && ms_text_is_bare_key_char(r->text[*at])) {
         (*at)++;
     }
     if (*at == start) {

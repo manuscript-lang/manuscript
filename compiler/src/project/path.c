@@ -393,10 +393,6 @@ bool ms_path_eval_symlinks(MsArena *a, const char *input, const char **out, MsPr
 
 /* ---- directories ---- */
 
-static int path_name_order(const void *left, const void *right) {
-    return strcmp(*(const char *const *)left, *(const char *const *)right);
-}
-
 bool ms_path_list_dir(MsArena *a, const char *dir, const char *open_op, const char *const **names, uint32_t *count, MsProjectError *err) {
     MsSysDir *handle;
     MsSysError failure = ms_sys_fs_dir_open(dir, &handle);
@@ -423,7 +419,7 @@ bool ms_path_list_dir(MsArena *a, const char *dir, const char *open_op, const ch
     }
     ms_buf_free(&found);
     if (*count > 1) {
-        qsort(sorted, *count, sizeof(const char *), path_name_order);
+        qsort(sorted, *count, sizeof(const char *), ms_cmp_cstr);
     }
     *names = sorted;
     return true;

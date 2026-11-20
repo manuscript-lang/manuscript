@@ -66,10 +66,6 @@ typedef struct IndexWalk {
     MsBuf paths; /* const char *, relative with `/` */
 } IndexWalk;
 
-static int index_compare(const void *left, const void *right) {
-    return strcmp(*(const char *const *)left, *(const char *const *)right);
-}
-
 static bool index_collect(IndexWalk *w, const char *dir, const char *prefix) {
     const char *const *names;
     uint32_t count;
@@ -116,7 +112,7 @@ bool ms_package_index(MsArena *a, const char *dir, MsStr *index, MsProjectError 
     const size_t count = MS_VEC_LEN(walk.paths, const char *);
     const char **paths = ms_buf_items(&walk.paths);
     if (count > 1) {
-        qsort(paths, count, sizeof(const char *), index_compare);
+        qsort(paths, count, sizeof(const char *), ms_cmp_cstr);
     }
     MsBuf text = {0};
     uint64_t total = 0;

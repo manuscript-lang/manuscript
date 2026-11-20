@@ -17,3 +17,5 @@ scope_is_nominal_decl
 scope_symbol_kind
 ty_invalid
 unescape
+index_parts
+ms_expr_index

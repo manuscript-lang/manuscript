@@ -95,6 +95,11 @@ static inline int ms_text_digit_value(char c) {
     return ms_hex_digit_value((uint8_t)c, &value) ? (int)value : -1;
 }
 
+/* A character of a bare TOML key: a letter, digit, underscore or dash. */
+static inline bool ms_text_is_bare_key_char(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
+}
+
 static inline MsStr ms_text_drop_front(MsStr text, size_t count) {
     return (MsStr){text.ptr + count, (uint32_t)(text.len - count)};
 }
