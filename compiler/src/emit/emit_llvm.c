@@ -645,6 +645,12 @@ static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const 
         ms_buf_printf(args, "%sptr %s", args->len > 0 ? ", " : "", area);
         return true;
     }
+    if (ty == MIR_PTR) {
+        char address[32];
+        ll_pointer(c, value, address, sizeof address);
+        ms_buf_printf(args, "%sptr %s", args->len > 0 ? ", " : "", address);
+        return true;
+    }
     const MirLeafSpan leaves = ll_leaves(c, ty);
     for (uint32_t j = 0; j < leaves.len; j++) {
         const char *type = ll_leaf_type(leaves.ptr[j]);
@@ -1806,7 +1812,7 @@ static void ll_declare_externs(LCx *c) {
         bool first = true;
         for (uint32_t k = 0; k < def->nparams; k++) {
             const MirLeafSpan leaves = ll_leaves(c, def->params[k].ty);
-            if (!ll_rt_direct(c, def->params[k].ty)) {
+            if (def->params[k].ty == MIR_PTR || !ll_rt_direct(c, def->params[k].ty)) {
                 ms_buf_printf(o, "%sptr", first ? "" : ", ");
                 first = false;
                 continue;
