@@ -1,9 +1,21 @@
 #include "h2.h"
 #include <nghttp2/nghttp2.h>
+#include "ms_rt/safe.h"
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct MsH2Body { uint8_t *data; size_t len, off; struct MsH2Body *prev, *next; } MsH2Body;
+/* The body of one stream while it is sent: queued bytes data[off..len), then optionally a trailer block. */
+typedef struct MsH2Body {
+    uint8_t *data;              /* owned */
+    size_t len, off, cap;
+    nghttp2_nv *trailers;       /* owned, names and values point into trailer_text */
+    char *trailer_text;         /* owned */
+    size_t ntrailers;
+    int32_t stream;             /* the stream it feeds */
+    uint8_t ended;              /* no more bytes will be queued */
+    uint8_t blocked;            /* a send was cut short: raise MS_H2_WRITABLE when the queue drains */
+    struct MsH2Body *prev, *next;
+} MsH2Body;
 
 struct MsH2 {
     nghttp2_session *session;
@@ -106,7 +118,7 @@ static int on_data_chunk(nghttp2_session *s, uint8_t flags, int32_t stream, cons
 static void drop(MsH2 *h, MsH2Body *b) {
     if (b->prev) b->prev->next = b->next; else h->bodies = b->next;
     if (b->next) b->next->prev = b->prev;
-    free(b->data); free(b);
+    free(b->data); free(b->trailers); free(b->trailer_text); free(b);
 }
 
 static int on_stream_close(nghttp2_session *s, int32_t stream, uint32_t code, void *u) {
@@ -119,16 +131,32 @@ static int on_stream_close(nghttp2_session *s, int32_t stream, uint32_t code, vo
     return 0;
 }
 
+/* nghttp2 asks for the next bytes of a body: none queued yet defers the stream until ms_h2_send resumes it. */
 static ssize_t read_body(nghttp2_session *s, int32_t stream, uint8_t *buf, size_t len, uint32_t *flags,
                          nghttp2_data_source *src, void *u) {
-    (void)s; (void)stream; (void)u;
+    MsH2 *h = u;
     MsH2Body *b = src->ptr;
-    size_t n = b->len - b->off < len ? b->len - b->off : len;
+    size_t queued = b->len - b->off;
+    if (queued == 0 && !b->ended) return NGHTTP2_ERR_DEFERRED;
+    size_t n = queued < len ? queued : len;
     memcpy(buf, b->data + b->off, n);
     b->off += n;
-    if (b->off == b->len) *flags |= NGHTTP2_DATA_FLAG_EOF;
+    if (b->off == b->len) b->off = b->len = 0;
+    if (b->blocked && b->len - b->off < MS_H2_SEND_HOLD / 2) {
+        b->blocked = 0;
+        if (push(h, MS_H2_WRITABLE, stream) == NULL) return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+    if (b->ended && b->len == b->off) {
+        *flags |= NGHTTP2_DATA_FLAG_EOF;
+        if (b->ntrailers) {
+            *flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
+            if (nghttp2_submit_trailer(s, stream, b->trailers, b->ntrailers)) return NGHTTP2_ERR_CALLBACK_FAILURE;
+        }
+    }
     return (ssize_t)n;
 }
+
+static int submit_limits(MsH2 *h, const MsH2Limits *limits);
 
 MsH2 *ms_h2_new(int server, const MsH2Limits *limits) {
     MsH2 *h = calloc(1, sizeof *h);
@@ -140,15 +168,34 @@ MsH2 *ms_h2_new(int server, const MsH2Limits *limits) {
     nghttp2_session_callbacks_set_on_frame_recv_callback(cb, on_frame_recv);
     nghttp2_session_callbacks_set_on_data_chunk_recv_callback(cb, on_data_chunk);
     nghttp2_session_callbacks_set_on_stream_close_callback(cb, on_stream_close);
-    int rc = server ? nghttp2_session_server_new(&h->session, cb, h) : nghttp2_session_client_new(&h->session, cb, h);
+    /* Receive windows are returned by ms_h2_consume, so a reader that stops reading stops the peer. The flood
+       limits (queued acknowledgements, reset bursts) are nghttp2's defaults. */
+    nghttp2_option *opt;
+    if (nghttp2_option_new(&opt)) { nghttp2_session_callbacks_del(cb); free(h); return NULL; }
+    nghttp2_option_set_no_auto_window_update(opt, 1);
+    int rc = server ? nghttp2_session_server_new2(&h->session, cb, h, opt) : nghttp2_session_client_new2(&h->session, cb, h, opt);
+    nghttp2_option_del(opt);
     nghttp2_session_callbacks_del(cb);
     if (rc) { free(h); return NULL; }
-    nghttp2_settings_entry iv[2];
-    size_t n = 0;
-    if (limits && limits->max_concurrent_streams) iv[n++] = (nghttp2_settings_entry){NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, limits->max_concurrent_streams};
-    if (limits && limits->max_header_list_size) iv[n++] = (nghttp2_settings_entry){NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE, limits->max_header_list_size};
-    if (nghttp2_submit_settings(h->session, NGHTTP2_FLAG_NONE, iv, n)) { ms_h2_free(h); return NULL; }
+    if (submit_limits(h, limits)) { ms_h2_free(h); return NULL; }
     return h;
+}
+
+/* The initial SETTINGS frame and the connection receive window. */
+static int submit_limits(MsH2 *h, const MsH2Limits *limits) {
+    nghttp2_settings_entry iv[3];
+    size_t n = 0;
+    if (limits != NULL && limits->max_concurrent_streams)
+        iv[n++] = (nghttp2_settings_entry){NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, limits->max_concurrent_streams};
+    if (limits != NULL && limits->max_header_list_size)
+        iv[n++] = (nghttp2_settings_entry){NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE, limits->max_header_list_size};
+    if (limits != NULL && limits->stream_window)
+        iv[n++] = (nghttp2_settings_entry){NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, limits->stream_window};
+    if (nghttp2_submit_settings(h->session, NGHTTP2_FLAG_NONE, iv, n)) return -1;
+    if (limits != NULL && limits->connection_window > NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE &&
+        limits->connection_window <= (uint32_t)NGHTTP2_MAX_WINDOW_SIZE)
+        return nghttp2_session_set_local_window_size(h->session, NGHTTP2_FLAG_NONE, 0, (int32_t)limits->connection_window);
+    return 0;
 }
 
 void ms_h2_free(MsH2 *h) {
@@ -224,40 +271,137 @@ static nghttp2_nv *convert(const MsH2Nv *nv, size_t n) {
     return out;
 }
 
-static MsH2Body *make_body(MsH2 *h, const void *data, size_t len) {
-    if (len == 0) return NULL;
-    MsH2Body *b = malloc(sizeof *b);
-    if (!b) return NULL;
-    b->data = malloc(len); b->len = len; b->off = 0;
-    if (!b->data) { free(b); return NULL; }
-    memcpy(b->data, data, len);
-    b->prev = NULL; b->next = h->bodies;
+/* A body for a stream about to open. The stream owns it once nghttp2 has it; until then a failure drops it. */
+static MsH2Body *body_new(MsH2 *h) {
+    MsH2Body *b = calloc(1, sizeof *b);
+    if (b == NULL) return NULL;
+    b->next = h->bodies;
     if (h->bodies) h->bodies->prev = b;
     h->bodies = b;
     return b;
 }
 
-int32_t ms_h2_submit_request(MsH2 *h, const MsH2Nv *nv, size_t nnv, const void *body, size_t body_len) {
+/* Appends to the queue, ignoring the hold limit. Returns 0 or -1 on allocation failure or size overflow. */
+static int body_append(MsH2Body *b, const void *data, size_t n) {
+    if (b->off == b->len) b->off = b->len = 0;
+    size_t need;
+    if (n == 0) return 0;
+    if (!ms_size_add(b->len, n, &need)) return -1;
+    if (need > b->cap) {
+        size_t cap = b->cap ? b->cap : 4096;
+        while (cap < need) {
+            if (!ms_size_mul(cap, 2, &cap)) return -1;
+        }
+        uint8_t *grown = realloc(b->data, cap);
+        if (grown == NULL) return -1;
+        b->data = grown; b->cap = cap;
+    }
+    memcpy(b->data + b->len, data, n);
+    b->len = need;
+    return 0;
+}
+
+/* The body of a stream. A client stream exists inside nghttp2 only once its head went out, so a stream whose head
+   is still queued is found by scanning the bodies (at most one per open stream). */
+static MsH2Body *body_of(MsH2 *h, int32_t stream) {
+    MsH2Body *b = nghttp2_session_get_stream_user_data(h->session, stream);
+    for (b = b ? b : h->bodies; b != NULL && b->stream != stream; b = b->next) {}
+    return b;
+}
+
+static void body_resume(MsH2 *h, int32_t stream) {
+    (void)nghttp2_session_resume_data(h->session, stream); /* only fails for a stream that is already gone */
+}
+
+int32_t ms_h2_open(MsH2 *h, const MsH2Nv *nv, size_t nnv, int has_body) {
     nghttp2_nv *v = convert(nv, nnv);
-    MsH2Body *b = make_body(h, body, body_len);
-    if (!v || (body_len && !b)) { free(v); return -1; }
+    MsH2Body *b = has_body ? body_new(h) : NULL;
+    if (!v || (has_body && !b)) { free(v); return -1; }
     nghttp2_data_provider prov = {{.ptr = b}, read_body};
     int32_t id = nghttp2_submit_request(h->session, NULL, v, nnv, b ? &prov : NULL, b);
     free(v);
     if (id < 0 && b) drop(h, b);
+    if (id >= 0 && b) b->stream = id;
     return id;
 }
 
-int ms_h2_submit_response(MsH2 *h, int32_t stream, const MsH2Nv *nv, size_t nnv, const void *body, size_t body_len) {
+int ms_h2_respond(MsH2 *h, int32_t stream, const MsH2Nv *nv, size_t nnv, int has_body) {
     nghttp2_nv *v = convert(nv, nnv);
-    MsH2Body *b = make_body(h, body, body_len);
-    if (!v || (body_len && !b)) { free(v); return -1; }
-    if (b) nghttp2_session_set_stream_user_data(h->session, stream, b);
+    MsH2Body *b = has_body ? body_new(h) : NULL;
+    if (!v || (has_body && !b)) { free(v); return -1; }
+    if (b) { b->stream = stream; nghttp2_session_set_stream_user_data(h->session, stream, b); }
     nghttp2_data_provider prov = {{.ptr = b}, read_body};
     int rc = nghttp2_submit_response(h->session, stream, v, nnv, b ? &prov : NULL);
     free(v);
     if (rc && b) { nghttp2_session_set_stream_user_data(h->session, stream, NULL); drop(h, b); }
     return rc ? -1 : 0;
+}
+
+long ms_h2_send(MsH2 *h, int32_t stream, const void *data, size_t n, int end) {
+    MsH2Body *b = body_of(h, stream);
+    if (b == NULL || b->ended) return -1;
+    size_t queued = b->len - b->off;
+    size_t room = queued < MS_H2_SEND_HOLD ? MS_H2_SEND_HOLD - queued : 0;
+    size_t take = n < room ? n : room;
+    if (body_append(b, data, take)) return -1;
+    if (take < n) b->blocked = 1;
+    else if (end) b->ended = 1;
+    body_resume(h, stream);
+    return (long)take;
+}
+
+int ms_h2_trailers(MsH2 *h, int32_t stream, const MsH2Nv *nv, size_t nnv) {
+    MsH2Body *b = body_of(h, stream);
+    if (b == NULL || b->ended || nnv == 0) return -1;
+    size_t text = 0;
+    for (size_t i = 0; i < nnv; i++) {
+        if (!ms_size_add(text, nv[i].name_len, &text) || !ms_size_add(text, nv[i].value_len, &text)) return -1;
+    }
+    nghttp2_nv *copies = malloc(nnv * sizeof *copies);
+    char *bytes = malloc(text ? text : 1);
+    if (copies == NULL || bytes == NULL) { free(copies); free(bytes); return -1; }
+    char *at = bytes;
+    for (size_t i = 0; i < nnv; i++) {
+        memcpy(at, nv[i].name, nv[i].name_len);
+        uint8_t *name = (uint8_t *)at;
+        at += nv[i].name_len;
+        memcpy(at, nv[i].value, nv[i].value_len);
+        copies[i] = (nghttp2_nv){name, (uint8_t *)at, nv[i].name_len, nv[i].value_len, NGHTTP2_NV_FLAG_NONE};
+        at += nv[i].value_len;
+    }
+    b->trailers = copies; b->trailer_text = bytes; b->ntrailers = nnv; b->ended = 1;
+    body_resume(h, stream);
+    return 0;
+}
+
+int ms_h2_consume(MsH2 *h, int32_t stream, size_t n) {
+    return nghttp2_session_consume(h->session, stream, n) ? -1 : 0;
+}
+
+int32_t ms_h2_submit_request(MsH2 *h, const MsH2Nv *nv, size_t nnv, const void *body, size_t body_len) {
+    int32_t id = ms_h2_open(h, nv, nnv, body_len > 0);
+    if (id < 0 || body_len == 0) return id;
+    MsH2Body *b = body_of(h, id);
+    if (b == NULL || body_append(b, body, body_len)) {
+        (void)ms_h2_reset(h, id, NGHTTP2_INTERNAL_ERROR);
+        return -1;
+    }
+    b->ended = 1;
+    body_resume(h, id);
+    return id;
+}
+
+int ms_h2_submit_response(MsH2 *h, int32_t stream, const MsH2Nv *nv, size_t nnv, const void *body, size_t body_len) {
+    if (ms_h2_respond(h, stream, nv, nnv, body_len > 0)) return -1;
+    if (body_len == 0) return 0;
+    MsH2Body *b = body_of(h, stream);
+    if (b == NULL || body_append(b, body, body_len)) {
+        (void)ms_h2_reset(h, stream, NGHTTP2_INTERNAL_ERROR);
+        return -1;
+    }
+    b->ended = 1;
+    body_resume(h, stream);
+    return 0;
 }
 
 int ms_h2_reset(MsH2 *h, int32_t stream, uint32_t code) { return nghttp2_submit_rst_stream(h->session, NGHTTP2_FLAG_NONE, stream, code) ? -1 : 0; }
