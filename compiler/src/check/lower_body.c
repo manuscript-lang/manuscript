@@ -54,7 +54,11 @@ static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
         return MIR_NONE; // its close is not recorded yet
     }
     const MirTy record = lr_type(lb, ty);
-    return record != MIR_NONE ? record : la_type(lb, ty);
+    if (record != MIR_NONE) {
+        return record;
+    }
+    const MirTy user_enum = le_type(lb, ty);
+    return user_enum != MIR_NONE ? user_enum : la_type(lb, ty);
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
@@ -192,6 +196,9 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
     if (facts->res_kind[e->id] == MS_RES_SYMBOL) {
         return lb_function_value(lb, e);
     }
+    if (facts->res_kind[e->id] == MS_RES_CASE) {
+        return la_nullary(lb, e);
+    }
     if (facts->res_kind[e->id] != MS_RES_BINDING) {
         return facts->res_kind[e->id] == MS_RES_NONE ? la_none(lb, e) : lb_unsupported(lb);
     }
@@ -205,6 +212,7 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
 /* ---- operators ---- */
 
 static LbVal lb_match(Lb *lb, const MsExpr *e);
+static void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param);
 
 static LbVal lb_unary(Lb *lb, const MsExpr *e) {
     const MsExpr *operand = e->u.bin.left;
@@ -564,11 +572,12 @@ LbVal lb_expr(Lb *lb, const MsExpr *e) {
         return value;
     }
     const MirTy payload = mir_b_ty(&lb->b, value.v);
-    if (value.owned || mir_needs_drop(lb->m, payload)) {
-        return lb_unsupported(lb);
+    const bool owns = lb_owns(lb, payload);
+    if (value.owned != owns) {
+        return lb_unsupported(lb); // a borrowed payload stays a view, an owned one is wrapped (the ownership pass decides which)
     }
     const MirTy ty = mir_ty_opt(lb->m, payload);
-    return (LbVal){mir_b_emit(&lb->b, MOP_OptSome, &value.v, 1, (MirImm){0}, ty), false};
+    return (LbVal){mir_b_emit(&lb->b, MOP_OptSome, &value.v, 1, (MirImm){0}, ty), owns};
 }
 
 /* ---- match ---- */
@@ -617,6 +626,18 @@ static LbArms lb_open_arms(Lb *lb, const MsExpr *e) {
 static void lb_dispatch(Lb *lb, const MsExpr *e, MirValue scrutinee, const LbArms *arms) {
     const MsArm *const *list = (const MsArm *const *)e->u.match.arms.ptr;
     const uint32_t count = e->u.match.arms.len;
+    if (mir_ty_data(lb->m, mir_b_ty(&lb->b, scrutinee))->kind == MK_ALT) {
+        const MirValue tag = mir_b_emit(&lb->b, MOP_AltTag, &scrutinee, 1, (MirImm){0}, MIR_INT);
+        MirCase *cases = MS_NEW_N(&lb->m->arena, MirCase, count);
+        uint32_t ncases = 0;
+        for (uint32_t i = 0; i < count; i++) {
+            if ((int64_t)i != arms->wildcard) {
+                cases[ncases++] = (MirCase){lb->facts->arm_case[list[i]->id], {arms->blocks[i], NULL, 0}};
+            }
+        }
+        mir_b_switch(&lb->b, tag, cases, ncases, arms->fallback);
+        return;
+    }
     if (mir_b_ty(&lb->b, scrutinee) == MIR_INT) {
         MirCase *cases = MS_NEW_N(&lb->m->arena, MirCase, count);
         uint32_t ncases = 0;
@@ -637,13 +658,33 @@ static void lb_dispatch(Lb *lb, const MsExpr *e, MirValue scrutinee, const LbArm
     mir_b_br_if(&lb->b, scrutinee, when_true, NULL, 0, when_false, NULL, 0);
 }
 
+/* Binds the names an arm gives to the payload of its case: each is the matching field of the
+ * scrutinee, read with `alt.get`. The checker bound them to this arm's node. */
+static void lb_bind_arm(Lb *lb, const MsArm *arm, MirValue subject) {
+    const MirTyData *data = mir_ty_data(lb->m, mir_b_ty(&lb->b, subject));
+    const uint32_t index = lb->facts->arm_case[arm->id];
+    const MsBindings *bindings = &lb->facts->bindings;
+    for (uint32_t slot = 0; slot < arm->bindings.len; slot++) {
+        for (uint32_t binding = 0; binding < bindings->count; binding++) {
+            if (bindings->decl_node[binding] != arm->id || bindings->name[binding] != arm->bindings.ptr[slot].name) {
+                continue;
+            }
+            const MirImm field = {.tag = MI_ALTFIELD, .a = data->id, .b = index, .c = slot};
+            const MirTy ty = lb->m->alts[data->id].cases[index].fields[slot].ty;
+            lb->value_of[binding] = mir_b_emit(&lb->b, MOP_AltGet, &subject, 1, field, ty);
+            lb_name_value(lb, lb->value_of[binding], arm->bindings.ptr[slot].name, false);
+        }
+    }
+}
+
 /* `match` over literal arms with one value each. A Bool match is also how `if c: a else: b` is
  * written. Every arm's value joins in one block parameter. */
 static LbVal lb_match(Lb *lb, const MsExpr *e) {
     const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     const LbVal scrutinee = lb_expr(lb, e->u.match.scrutinee);
     const MirTy scrutinee_ty = lb->ok ? mir_b_ty(&lb->b, scrutinee.v) : MIR_NONE;
-    const bool aggregate = lb->ok && mir_ty_data(lb->m, scrutinee_ty)->kind >= MK_TYPE; // arms on a case: not lowered yet
+    const MirTyKind scrutinee_kind = lb->ok ? mir_ty_data(lb->m, scrutinee_ty)->kind : MK_INT;
+    const bool aggregate = lb->ok && scrutinee_kind >= MK_TYPE && scrutinee_kind != MK_ALT; // a record: not matched
     if (!lb->ok || result_ty == MIR_NONE || lb_owns(lb, result_ty) || scrutinee_ty == MIR_STR || aggregate ||
         lb_is_fn(lb, result_ty)) {
         return lb_unsupported(lb); // a String result or scrutinee is owned: ownership comes later
@@ -659,6 +700,9 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
     for (uint32_t i = 0; i < e->u.match.arms.len && lb->ok; i++) {
         mir_b_seal_block(&lb->b, arms.blocks[i]);
         mir_b_switch_to(&lb->b, arms.blocks[i]);
+        if (scrutinee_kind == MK_ALT) {
+            lb_bind_arm(lb, e->u.match.arms.ptr[i], scrutinee.v);
+        }
         lb->branching++;
         const LbVal value = lb_expr(lb, e->u.match.arms.ptr[i]->value);
         lb->branching--;
@@ -784,6 +828,9 @@ void lb_return_void(Lb *lb) {
 
 /* A borrowed String leaves the function: an owned name moves out as an owned value. */
 static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
+    if (e->kind == MS_E_NAME && lb->facts->res_kind[e->id] == MS_RES_NONE) {
+        return la_none_owned(lb, e); // `none` where the holder owns what it holds
+    }
     if (lb_names_var(lb, e)) {
         if (mir_b_ty(&lb->b, v) != MIR_STR) {
             lb->ok = false; // a `var` list that leaves is wrapped in an Optional the pass does not make yet
@@ -992,7 +1039,7 @@ static void lb_assign(Lb *lb, const MsStmt *s) {
  * stepped by one after the body or a `continue`. The loop variable is the counter's current value. */
 static void lb_for(Lb *lb, const MsStmt *s) {
     if (lb->facts->each_list[s->id]) {
-        lb->ok = false; // a list loop is not lowered yet
+        lst_for(lb, s);
         return;
     }
     const MsExpr *range = s->u.each.iter;

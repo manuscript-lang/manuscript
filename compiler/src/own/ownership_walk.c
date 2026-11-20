@@ -329,7 +329,26 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
     own_move_out(w, e, binding);
 }
 
+/* Whether `e` makes a new value (a concatenation, a text, a record built here) rather than naming
+ * or returning one that lives elsewhere. */
+static bool own_is_constructor(const OwnWalk *w, const MsExpr *e);
+
+static bool own_is_fresh(const OwnWalk *w, const MsExpr *e) {
+    return e->kind == MS_E_BINARY || e->kind == MS_E_TEXT || (e->kind == MS_E_CALL && own_is_constructor(w, e));
+}
+
+/* A payload wrapped in `some` where an Optional is expected: a value that owns something wraps only
+ * when it is fresh; a borrowed one stays a view (`opt.view`), which this pass does not decide yet. */
+static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
+    const MsTy optional = w->facts->expr_ty[e->id];
+    if (w->facts->some_wrap[e->id] && ms_classify(w->classifier, ms_ty_args(&w->check->tys, optional)[0]) != MS_CLASS_COPY &&
+        !own_is_fresh(w, e)) {
+        w->supported = false;
+    }
+}
+
 static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
+    own_check_wrap(w, e);
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER:
     case MS_E_BOOL:
@@ -849,6 +868,12 @@ static void own_returned_borrow_call(OwnWalk *w, const MsExpr *e) {
     own_expr(w, e, DEMAND_READ);
 }
 
+/* Whether the call goes through a function-typed local: its result is a new value. */
+static bool own_is_value_call(const OwnWalk *w, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    return callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_BINDING;
+}
+
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
@@ -860,7 +885,7 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE);
         return;
     }
-    if (e->kind == MS_E_CALL && !own_is_constructor(w, e)) {
+    if (e->kind == MS_E_CALL && !own_is_constructor(w, e) && !own_is_value_call(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
         if (callee == NULL || (callee->returns_borrow && own_is_self_call(w, e))) {
             w->supported = false;

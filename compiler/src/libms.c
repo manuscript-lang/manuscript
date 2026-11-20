@@ -7,6 +7,7 @@
 #include "syntax/lex.c"
 #include "syntax/dump_base.c"
 #include "syntax/diag.c"
+#include "syntax/diag_render.c"
 #include "syntax/parse.c"
 #include "syntax/partial.c"
 #include "syntax/dump.c"
@@ -84,6 +85,7 @@
 #include "check/lower_body.c"
 #include "check/lower_record.c"
 #include "check/lower_list.c"
+#include "check/lower_enum.c"
 #include "check/lower_text.c"
 #include "check/lower_alt.c"
 #include "check/lower_closure.c"
@@ -147,4 +149,5 @@
 #include "project/solve.c"
 #include "project/packages.c"
 #include "project/install.c"
+
 #include "project/graph_check.c"
