@@ -50,3 +50,21 @@ int64_t ms_net_deadline_of(uint8_t has_timeout, int64_t timeout) {
     return timeout > INT64_MAX - now ? INT64_MAX : now + timeout;
 }
 
+
+MsNetStatus ms_net_wait_fd(MsSock fd, uint32_t events, int64_t deadline_ns) {
+    int64_t timeout_ns = -1;
+    if (deadline_ns >= 0) {
+        timeout_ns = deadline_ns - ms_sys_monotonic_ns();
+        if (timeout_ns <= 0) {
+            return MS_NET_TIMEOUT;
+        }
+    }
+    const uint32_t got = msrt_task_wait_fd((int32_t)fd, events, timeout_ns);
+    if ((got & MS_WAIT_CANCELLED) != 0) {
+        return MS_NET_CANCELLED;
+    }
+    if ((got & MS_WAIT_TIMEOUT) != 0 && (got & (MS_WAIT_READ | MS_WAIT_WRITE | MS_WAIT_HUP)) == 0) {
+        return MS_NET_TIMEOUT;
+    }
+    return MS_NET_OK;
+}

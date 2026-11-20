@@ -58,4 +58,8 @@ int ms_sys_net_error(void);
 /* Reads an IPv4 or IPv6 socket address, as the resolver returns it, into `out`. -1 for another family or a short one. */
 int ms_sys_net_addr_from_raw(const void *sockaddr, size_t length, MsAddr *out);
 
+/* The host's resolver configuration as resolv.conf text, written to out[capacity]; returns its length (0 when there is
+ * none). On Windows it is made from the DNS servers and suffixes of the operational adapters. */
+size_t ms_sys_net_dns_config(char *out, size_t capacity);
+
 #endif

@@ -19,7 +19,7 @@ typedef struct LoCx {
     MirLayouts layouts;
     uint32_t string_clone, string_free; /* extern ids, MIR_NONE until first used */
     uint32_t obj_clone, obj_drop;
-    uint32_t cleanup_push, cleanup_run, fault_string;
+    uint32_t cleanup_push, cleanup_run, fault_string, string_eq;
     uint32_t *thunks; /* by function: the cleanup thunk that calls it, MIR_NONE until made */
     uint32_t nthunks;
     uint32_t string_length; /* msrt_string_scalar_length */
@@ -189,7 +189,7 @@ static uint32_t lo_rt(LoCx *c, uint32_t *cache, const char *name, const MirTy *p
     for (uint32_t k = 0; k < n; k++) {
         def.params[k] = (MirParam){params[k], MM_BORROW};
     }
-    *cache = mir_add_extern(c->m, &def);
+    *cache = mir_extern_intern(c->m, &def);
     return *cache;
 }
 
@@ -366,6 +366,37 @@ static void lo_list_drops(LoCx *c, MirFunc *f) {
     }
 }
 
+/* `str.eq_lit s` with literal L becomes `msrt_string_eq(s, str L)`. */
+static void lo_str_eq_lits(LoCx *c, MirFunc *f) {
+    static const MirTy two_strs[2] = {MIR_STR, MIR_STR};
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        uint32_t lits = 0;
+        for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+            lits += f->blocks[b].insts[k].op == MOP_StrEqLit;
+        }
+        if (lits == 0) {
+            continue;
+        }
+        MirInst *out = MS_NEW_N(&c->m->arena, MirInst, f->blocks[b].ninsts + lits);
+        uint32_t n = 0;
+        for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+            const MirInst held = f->blocks[b].insts[k];
+            if (held.op != MOP_StrEqLit) {
+                out[n++] = held;
+                continue;
+            }
+            const MirValue lit = mir_new_value(c->m, f, MIR_STR);
+            MirValue args[2] = {held.args[0], lit};
+            out[n++] = mir_inst(MOP_StrLit, held.imm, lit, held.loc, NULL, 0);
+            out[n++] = mir_inst(MOP_CallRt,
+                                mir_imm_ext(lo_rt(c, &c->string_eq, "msrt_string_eq", two_strs, 2, MIR_BOOL)),
+                                held.res, held.loc, mir_args_copy(c->m, args, 2), 2);
+        }
+        f->blocks[b].insts = out;
+        f->blocks[b].ninsts = f->blocks[b].cinsts = n;
+    }
+}
+
 /* `drop.if flag v` ends its block with a branch on `flag` to a block that drops `v` and on to a
  * block holding the rest, so the drop that remains is a plain `drop`. Blocks the split makes are
  * visited too, for a second `drop.if`. */
@@ -448,6 +479,7 @@ static void lo_expand_sets(LoCx *c, MirFunc *f) {
 
 static void lo_function(LoCx *c, MirFunc *f) {
     lo_list_drops(c, f);
+    lo_str_eq_lits(c, f);
     lo_expand_sets(c, f);
     lo_split_drop_ifs(c->m, f);
     lo_expand_cleanups(c, f);
@@ -468,7 +500,7 @@ void mir_lower_ops(MirModule *m, const MirGlue *glue) {
     LoCx c = {.m = m, .glue = glue, .string_clone = MIR_NONE, .string_free = MIR_NONE,
             .obj_clone = MIR_NONE, .obj_drop = MIR_NONE, .string_length = MIR_NONE,
             .cleanup_push = MIR_NONE,
-            .cleanup_run = MIR_NONE, .fault_string = MIR_NONE, .nthunks = m->nfuncs};
+            .cleanup_run = MIR_NONE, .fault_string = MIR_NONE, .string_eq = MIR_NONE, .nthunks = m->nfuncs};
     c.thunks = MS_NEW_N(&m->arena, uint32_t, m->nfuncs ? m->nfuncs : 1);
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         c.thunks[i] = MIR_NONE;
