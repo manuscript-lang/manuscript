@@ -32,6 +32,8 @@ typedef struct Lb {
     MirValue *value_of;
     MirVar *var_of;
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
+    const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
+    bool dead;            /* control cannot reach the current position */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
 
@@ -112,6 +114,7 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
 /* ---- operators ---- */
 
 static LbVal lb_expr(Lb *lb, const MsExpr *e);
+static LbVal lb_match(Lb *lb, const MsExpr *e);
 
 static LbVal lb_unary(Lb *lb, const MsExpr *e) {
     const MsExpr *operand = e->u.bin.left;
@@ -265,6 +268,7 @@ static LbVal lb_expr(Lb *lb, const MsExpr *e) {
     case MS_E_NAME: return lb_name(lb, e);
     case MS_E_UNARY: return lb_unary(lb, e);
     case MS_E_BINARY: return lb_binary(lb, e);
+    case MS_E_MATCH: return lb_match(lb, e);
     case MS_E_VOID:
     case MS_E_MEMBER:
     case MS_E_APPLY:
@@ -273,10 +277,105 @@ static LbVal lb_expr(Lb *lb, const MsExpr *e) {
     case MS_E_LIST:
     case MS_E_MAP:
     case MS_E_LAMBDA:
-    case MS_E_CALL:
-    case MS_E_MATCH: break;
+    case MS_E_CALL: break;
     }
     return lb_unsupported(lb);
+}
+
+/* ---- match ---- */
+
+static bool lb_is_wildcard(const Lb *lb, const MsExpr *path) {
+    if (path->kind != MS_E_NAME) {
+        return false;
+    }
+    const MsStr name = ms_name(lb->c->names, path->u.sym);
+    return name.len == 1 && name.ptr[0] == '_';
+}
+
+/* The value of an integer literal arm: a number, or a negated one. */
+static int64_t lb_literal_arm(Lb *lb, const MsExpr *path) {
+    const bool negated = path->kind == MS_E_UNARY;
+    const MsExpr *number = negated ? path->u.bin.left : path;
+    const MsStr text = ms_number_canonical(&lb->m->arena, ms_name(lb->c->names, number->u.sym));
+    char *digits = ms_arena_strndup(&lb->m->arena, text.ptr, text.len);
+    const int64_t value = (int64_t)strtoull(digits, NULL, 10);
+    return negated ? -value : value;
+}
+
+/* Where each arm's block is, and the block the arms not named go to. */
+typedef struct LbArms {
+    MirBlock *blocks;
+    MirBlock join;
+    MirBlock fallback;
+    int64_t wildcard; /* arm index of `_`, or -1 */
+} LbArms;
+
+static LbArms lb_open_arms(Lb *lb, const MsExpr *e) {
+    const uint32_t count = e->u.match.arms.len;
+    LbArms arms = {.blocks = MS_NEW_N(&lb->m->arena, MirBlock, count), .wildcard = -1};
+    for (uint32_t i = 0; i < count; i++) {
+        arms.blocks[i] = mir_b_new_block(&lb->b);
+        if (lb_is_wildcard(lb, e->u.match.arms.ptr[i]->path)) {
+            arms.wildcard = i;
+        }
+    }
+    arms.join = mir_b_new_block(&lb->b);
+    arms.fallback = arms.wildcard >= 0 ? arms.blocks[arms.wildcard] : mir_b_new_block(&lb->b);
+    return arms;
+}
+
+/* Branches on the scrutinee once: a `switch` over the literal arms of an Int, a `br_if` over a Bool. */
+static void lb_dispatch(Lb *lb, const MsExpr *e, MirValue scrutinee, const LbArms *arms) {
+    const MsArm *const *list = (const MsArm *const *)e->u.match.arms.ptr;
+    const uint32_t count = e->u.match.arms.len;
+    if (mir_b_ty(&lb->b, scrutinee) == MIR_INT) {
+        MirCase *cases = MS_NEW_N(&lb->m->arena, MirCase, count);
+        uint32_t ncases = 0;
+        for (uint32_t i = 0; i < count; i++) {
+            if ((int64_t)i != arms->wildcard) {
+                cases[ncases++] = (MirCase){lb_literal_arm(lb, list[i]->path), {arms->blocks[i], NULL, 0}};
+            }
+        }
+        mir_b_switch(&lb->b, scrutinee, cases, ncases, arms->fallback);
+        return;
+    }
+    MirBlock when_true = arms->fallback, when_false = arms->fallback;
+    for (uint32_t i = 0; i < count; i++) {
+        if (list[i]->path->kind == MS_E_BOOL) {
+            (list[i]->path->u.flag ? &when_true : &when_false)[0] = arms->blocks[i];
+        }
+    }
+    mir_b_br_if(&lb->b, scrutinee, when_true, NULL, 0, when_false, NULL, 0);
+}
+
+/* `match` over literal arms with one value each. A Bool match is also how `if c: a else: b` is
+ * written. Every arm's value joins in one block parameter. */
+static LbVal lb_match(Lb *lb, const MsExpr *e) {
+    const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    const LbVal scrutinee = lb_expr(lb, e->u.match.scrutinee);
+    const MirTy scrutinee_ty = lb->ok ? mir_b_ty(&lb->b, scrutinee.v) : MIR_NONE;
+    if (!lb->ok || result_ty == MIR_NONE || result_ty == MIR_STR || scrutinee_ty == MIR_STR) {
+        return lb_unsupported(lb); // a String result or scrutinee is owned: ownership comes later
+    }
+    const LbArms arms = lb_open_arms(lb, e);
+    const MirValue result = mir_b_add_block_param(&lb->b, arms.join, result_ty, MM_BORROW);
+    lb_dispatch(lb, e, scrutinee.v, &arms);
+    if (arms.wildcard < 0) {
+        mir_b_seal_block(&lb->b, arms.fallback);
+        mir_b_switch_to(&lb->b, arms.fallback);
+        mir_b_unreachable(&lb->b);
+    }
+    for (uint32_t i = 0; i < e->u.match.arms.len && lb->ok; i++) {
+        mir_b_seal_block(&lb->b, arms.blocks[i]);
+        mir_b_switch_to(&lb->b, arms.blocks[i]);
+        const LbVal value = lb_expr(lb, e->u.match.arms.ptr[i]->value);
+        if (lb->ok) {
+            mir_b_br(&lb->b, arms.join, &value.v, 1);
+        }
+    }
+    mir_b_seal_block(&lb->b, arms.join);
+    mir_b_switch_to(&lb->b, arms.join);
+    return (LbVal){result, false};
 }
 
 /* ---- statements ---- */
@@ -316,22 +415,106 @@ static void lb_return(Lb *lb, const MsStmt *s) {
     }
     lb_emit_plain(lb, MOP_DepthLeave);
     mir_b_ret(&lb->b, value.v);
+    lb->dead = true;
 }
 
+static void lb_statements(Lb *lb, const MsStmts *body);
+
+/* Starts emitting into `block`, which some live edge reaches. */
+static void lb_enter(Lb *lb, MirBlock block) {
+    mir_b_switch_to(&lb->b, block);
+    lb->dead = false;
+}
+
+/* `if cond: then else: else`; the else branch may be empty. */
+static void lb_if(Lb *lb, const MsStmt *s) {
+    const LbVal cond = lb_expr(lb, s->u.branch.cond);
+    if (!lb->ok) {
+        return;
+    }
+    const MirBlock then_block = mir_b_new_block(&lb->b);
+    const MirBlock else_block = mir_b_new_block(&lb->b);
+    const MirBlock join = mir_b_new_block(&lb->b);
+    mir_b_br_if(&lb->b, cond.v, then_block, NULL, 0, else_block, NULL, 0);
+    mir_b_seal_block(&lb->b, then_block);
+    mir_b_seal_block(&lb->b, else_block);
+    lb_enter(lb, then_block);
+    lb_statements(lb, &s->u.branch.body);
+    const bool then_live = !lb->dead;
+    if (then_live) {
+        mir_b_br(&lb->b, join, NULL, 0);
+    }
+    lb_enter(lb, else_block);
+    lb_statements(lb, &s->u.branch.else_body);
+    const bool else_live = !lb->dead;
+    if (else_live) {
+        mir_b_br(&lb->b, join, NULL, 0);
+    }
+    mir_b_seal_block(&lb->b, join);
+    mir_b_switch_to(&lb->b, join);
+    lb->dead = !then_live && !else_live;
+}
+
+/* `while cond: body`. `while true` leaves only through `return` or a fault. */
+static void lb_while(Lb *lb, const MsStmt *s) {
+    const MsExpr *cond = s->u.loop.cond;
+    const MirBlock header = mir_b_new_block(&lb->b);
+    const MirBlock body = mir_b_new_block(&lb->b);
+    const MirBlock exit = mir_b_new_block(&lb->b);
+    mir_b_br(&lb->b, header, NULL, 0);
+    lb_enter(lb, header);
+    const bool forever = cond->kind == MS_E_BOOL && cond->u.flag;
+    if (forever) {
+        mir_b_br(&lb->b, body, NULL, 0);
+    } else {
+        const LbVal test = lb_expr(lb, cond);
+        if (!lb->ok) {
+            return;
+        }
+        mir_b_br_if(&lb->b, test.v, body, NULL, 0, exit, NULL, 0);
+    }
+    mir_b_seal_block(&lb->b, body);
+    lb_enter(lb, body);
+    lb_statements(lb, &s->u.loop.body);
+    if (!lb->dead) {
+        mir_b_br(&lb->b, header, NULL, 0);
+    }
+    mir_b_seal_block(&lb->b, header);
+    mir_b_seal_block(&lb->b, exit);
+    lb_enter(lb, exit);
+    if (forever) {
+        mir_b_unreachable(&lb->b);
+        lb->dead = true;
+    }
+}
+
+/* Lowers a statement; every instruction in it reports the statement's own position, and the
+ * enclosing statement's position comes back once it ends. */
 static void lb_statement(Lb *lb, const MsStmt *s) {
+    const MsStmt *outer = lb->stmt;
+    lb->stmt = s;
     mir_b_set_loc(&lb->b, lb_loc(s->pos));
     switch ((MsStmtKind)s->kind) {
-    case MS_S_BIND: lb_bind(lb, s); return;
-    case MS_S_RETURN: lb_return(lb, s); return;
+    case MS_S_BIND: lb_bind(lb, s); break;
+    case MS_S_RETURN: lb_return(lb, s); break;
+    case MS_S_IF: lb_if(lb, s); break;
+    case MS_S_WHILE: lb_while(lb, s); break;
     case MS_S_ASSIGN:
     case MS_S_CALL:
     case MS_S_BREAK:
     case MS_S_CONTINUE:
-    case MS_S_IF:
-    case MS_S_WHILE:
-    case MS_S_FOR: break;
+    case MS_S_FOR: lb->ok = false; break;
     }
-    lb->ok = false;
+    lb->stmt = outer;
+    if (outer != NULL) {
+        mir_b_set_loc(&lb->b, lb_loc(outer->pos));
+    }
+}
+
+static void lb_statements(Lb *lb, const MsStmts *body) {
+    for (uint32_t i = 0; i < body->len && lb->ok && !lb->dead; i++) {
+        lb_statement(lb, body->ptr[i]);
+    }
 }
 
 /* ---- functions ---- */
@@ -372,11 +555,11 @@ static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym) {
     if (!lb->ok) {
         return false;
     }
-    const MsStmts *body = &d->u.fn.body;
-    for (uint32_t i = 0; i < body->len && lb->ok; i++) {
-        lb_statement(lb, body->ptr[i]);
-    }
+    lb->dead = false;
+    lb->stmt = NULL;
+    lb_statements(lb, &d->u.fn.body);
     uint32_t id = 0;
+    lb->ok = lb->ok && lb->dead; // a path that ends without `return` is a Void function's
     if (!lb->ok) {
         MirFunc discarded;
         const bool built = mir_b_into_func(&lb->b, &discarded); // frees the builder's scratch tables
