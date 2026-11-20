@@ -130,7 +130,6 @@
 #include "format/format.c"
 #include "libms_api.c"
 #include "emit/emit_entry.c"
-#include "emit/emit_qbe.c"
 #include "emit/emit_llvm.c"
 #include "project/path.c"
 #include "project/manifest.c"

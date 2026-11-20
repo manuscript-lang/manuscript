@@ -402,7 +402,8 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
         }
     }
     const bool borrowed = lb->m->funcs[func].ret_borrowed; // a reference into the arguments
-    return (LbVal){result, mir_b_ty(&lb->b, result) == MIR_STR && !borrowed}; // else a String result is the caller's
+    const MirTy result_ty = mir_b_ty(&lb->b, result);
+    return (LbVal){result, (result_ty == MIR_STR || lb_is_fn(lb, result_ty)) && !borrowed}; // else a String result is the caller's
 }
 
 static LbVal lb_expr(Lb *lb, const MsExpr *e) {
@@ -649,7 +650,8 @@ static void lb_return(Lb *lb, const MsStmt *s) {
     if (!lb->ok) {
         return;
     }
-    if (mir_b_ty(&lb->b, value.v) == MIR_STR && !value.owned && !lb->b.f.ret_borrowed) {
+    const MirTy value_ty = mir_b_ty(&lb->b, value.v);
+    if ((value_ty == MIR_STR || lb_is_fn(lb, value_ty)) && !value.owned && !lb->b.f.ret_borrowed) {
         value = lb_hand_out(lb, s->u.expr, value.v);
     }
     const bool leaves_var = !lb->b.f.ret_borrowed && lb_names_var(lb, s->u.expr);
@@ -897,9 +899,6 @@ static bool lb_signature(Lb *lb, const MsFunc *fn, MsSymId sym, MirParam *params
     const MsTyParam *sig_params = ms_ty_params(&lb->c->tys, sig);
     const MsTy result = lb->c->tys.result[sig];
     *ret = result == lb->void_ty ? MIR_VOID : lb_mir_ty(lb, result);
-    if (lb_is_fn(lb, *ret)) {
-        return false; // a function value that leaves its function is not handled yet
-    }
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MirTy ty = lb_mir_ty(lb, sig_params[i].ty);
         const bool moving = fn->params.ptr[i]->moving;
