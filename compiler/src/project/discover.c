@@ -81,7 +81,7 @@ static bool discover_children(Discovery *d, const char *path, MsBuf *children) {
     }
     for (;;) {
         errno = 0;
-        const struct dirent *entry = readdir(dir);
+        const struct dirent *entry = readdir(dir); // NOLINT(concurrency-mt-unsafe): one directory stream per walk, never shared
         if (entry == NULL) {
             if (errno != 0) {
                 ms_project_error_path(d->err, d->arena, "readdirent", path, errno);

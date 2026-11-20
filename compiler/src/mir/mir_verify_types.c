@@ -433,7 +433,7 @@ static MsStr mvt_base_name(const MvtCx *c, MsSym s) {
         end--;
     }
     if (end > 0 && end < n.len && n.ptr[end - 1] == '$') {
-        n.len = end - 1;
+        n.len = (uint32_t)(end - 1);
     }
     return n;
 }

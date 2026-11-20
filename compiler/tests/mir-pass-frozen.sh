@@ -19,6 +19,8 @@ status=0
 for list in compiler/tests/mir/frozen/*.list; do
     pass=$(basename "$list" .list)
     tr '\n' '\0' < "$list" | xargs -0 "$bin" pass "$pass" > "$out/$pass.c"
+    # Goldens name the repository as <repo>, so they do not depend on the checkout's path.
+    sed -i.bak "s|$PWD/|<repo>/|g" "$out/$pass.c" && rm -f "$out/$pass.c.bak"
     if [ -n "${MS_MIR_REFRESH:-}" ]; then
         gzip -9nc "$out/$pass.c" > "compiler/tests/mir/frozen/$pass.out.gz"
         echo "refreshed $pass"
