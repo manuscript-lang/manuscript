@@ -22,6 +22,9 @@ typedef struct MsArena {
 
 void *ms_alloc(MsArena *a, size_t size, size_t align);
 void ms_arena_free(MsArena *a);
+/* Forgets everything allocated, keeping the newest chunk for reuse: a scratch arena used once per
+ * function costs no malloc and free each time. */
+void ms_arena_reset(MsArena *a);
 #define MS_NEW(a, T) ((T *)ms_alloc((a), sizeof(T), _Alignof(T)))
 #define MS_NEW_N(a, T, n) ((T *)ms_alloc((a), sizeof(T) * (size_t)(n), _Alignof(T)))
 

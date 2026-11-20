@@ -6,6 +6,7 @@
 #define MS_MIR_PASS_H
 
 #include "ms/mir.h"
+#include "ms/mir_opt.h"
 
 /* ---- shared helpers ---- */
 
@@ -95,11 +96,16 @@ bool *mir_framed_closure_objects(MsArena *arena, const MirModule *m, const MirFu
 bool mir_holds_object(const MirModule *m, MirTy t);
 void mir_object_copies(const MirModule *m, MsBuf *out);
 
+/* slot_scope: per value of `f` (`nvalues` entries, in `arena`), the block a stack `slot` is confined
+ * to (see mir_slot_scope.c), MIR_NONE for every other value; NULL when `f` has no slot. */
+MirBlock *mir_confined_slots(MsArena *arena, const MirModule *m, const MirFunc *f);
+
 /* ---- pipeline ---- */
 
 typedef struct MirPipelineOptions {
     bool cancel_edges; /* explicit cancel exits (`MS_CANCEL_EDGES`) */
     bool checks;       /* the bounds and none checks `expand` makes explicit */
+    bool count_ops;    /* count executed operations (`ms build --count-ops`) */
     bool verify;       /* verify the module after each step, as the Rust debug build does */
 } MirPipelineOptions;
 
@@ -107,7 +113,11 @@ typedef struct MirPipelineOptions {
  * to the message. */
 bool mir_pipeline_prepare(MirModule *m, const MirPipelineOptions *o, MsBuf *error);
 
-/* After the optimizer: unwind, cancel_edges when on, depth, expand, glue. `glue` receives what glue
+/* Between prepare and finish: the optimizer for `level` (opt_pipeline.c), re-verifying after every
+ * pass when `o->verify` is set. False with `error` set to the failing pass and the module. */
+bool mir_pipeline_optimize(MirModule *m, MirOptLevel level, const MirPipelineOptions *o, MsBuf *error);
+
+/* After the optimizer: count_ops when on, unwind, cancel_edges when on, depth, expand, glue. `glue` receives what glue
  * made, which backends look up. */
 struct MirGlue;
 bool mir_pipeline_finish(MirModule *m, const MirPipelineOptions *o, struct MirGlue *glue,

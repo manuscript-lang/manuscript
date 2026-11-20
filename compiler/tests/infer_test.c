@@ -1,4 +1,4 @@
-/* Unit test of the type argument inference (compiler/src/infer.c): binding from argument types,
+/* Unit test of the type argument inference (compiler/src/check/infer.c): binding from argument types,
  * conflicts, explicit arguments, defaults, and the shared-node walk. */
 #include <stdio.h>
 #include <string.h>

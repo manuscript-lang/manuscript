@@ -698,6 +698,11 @@
   ],
   "c_libraries": [
     {
+      "name": "curl",
+      "version": "8.23.0",
+      "license": "curl"
+    },
+    {
       "name": "libuv",
       "version": "1.51.0",
       "license": "MIT"
@@ -721,11 +726,6 @@
       "name": "pcre2",
       "version": "10.47",
       "license": "BSD-3-Clause"
-    },
-    {
-      "name": "yyjson",
-      "version": "0.10.0",
-      "license": "MIT"
     },
     {
       "name": "zlib",

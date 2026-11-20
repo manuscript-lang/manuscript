@@ -88,3 +88,6 @@ msrt_string_upper_take
 msrt_string_lower_take
 msrt_string_normalize
 msrt_string_normalize_kind
+msrt_string_quote
+msrt_string_split_iter
+msrt_split_next
