@@ -45,6 +45,9 @@ static MsTy lb_ty(const Lb *lb, MsTy ty) {
 
 /* A record, Optional or Result type. */
 static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
+    if (ms_classify(lb->classifier, ty) == MS_CLASS_RESOURCE) {
+        return MIR_NONE; // its close is not recorded yet
+    }
     const MirTy record = lr_type(lb, ty);
     return record != MIR_NONE ? record : la_type(lb, ty);
 }
@@ -1290,6 +1293,8 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
              .bool_ty = lb_primitive(c, "Bool"),
              .string_ty = lb_primitive(c, "String"),
              .void_ty = lb_primitive(c, "Void")};
+    lb.classifier = ms_classifier_new(c);
+    ms_classifier_mark_methods(lb.classifier, facts->methods);
     bool *failed = calloc((size_t)row->syntax->ndecls + 1, sizeof *failed);
     lb.func_of = calloc((size_t)c->syms.count + 1, sizeof *lb.func_of);
     lb.thunk_of = calloc((size_t)c->syms.count + 1, sizeof *lb.thunk_of);
@@ -1302,6 +1307,7 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
             break;
         }
     }
+    ms_classifier_free(lb.classifier);
     free(lb.func_of);
     free(lb.insts);
     free(lb.dead_insts);

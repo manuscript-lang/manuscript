@@ -282,6 +282,10 @@ static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
         w->supported = false; /* a resource var parameter has its own message */
         return;
     }
+    if (w->class_of[binding] == MS_CLASS_RESOURCE && w->is_param[binding] && w->param_mode[binding] != 2) {
+        w->supported = false; /* a resource handed on by a parameter not declared `move` has its own message */
+        return;
+    }
     if (w->perm[binding] == PERM_BORROWED) {
         own_error_borrowed_move(w, e, binding);
     } else if (w->is_param[binding] && w->perm[binding] == PERM_MUTABLE) {
@@ -751,6 +755,27 @@ static bool own_is_self_call(const OwnWalk *w, const MsExpr *e) {
     return sym != MS_NONE && w->check->syms.decl[sym] != NULL && &w->check->syms.decl[sym]->u.fn == w->function;
 }
 
+/* `return f(a)` where `f` returns a reference into `a`: this function hands back a reference into
+ * its own parameters when every source is one, and is left to Rust otherwise. */
+static void own_returned_borrow_call(OwnWalk *w, const MsExpr *e) {
+    uint32_t origins[4];
+    uint32_t count = 0;
+    if (!own_call_origins(w, e, origins, &count) || count == 0) {
+        w->supported = false;
+        return;
+    }
+    for (uint32_t i = 0; i < count; i++) {
+        if (!w->is_param[origins[i]] || w->param_mode[origins[i]] == 2) { /* a `move` parameter is owned */
+            w->supported = false;
+            return;
+        }
+        w->borrowed_params |= 1u << w->param_index[origins[i]];
+    }
+    w->borrowed_return = w->has_borrowed_return ? w->borrowed_return : e->pos;
+    w->has_borrowed_return = true;
+    own_expr(w, e, DEMAND_READ);
+}
+
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
@@ -764,7 +789,12 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
     }
     if (e->kind == MS_E_CALL && !own_is_constructor(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
-        w->supported = w->supported && callee != NULL && !callee->returns_borrow;
+        if (callee == NULL || (callee->returns_borrow && own_is_self_call(w, e))) {
+            w->supported = false;
+        } else if (callee->returns_borrow) {
+            own_returned_borrow_call(w, e);
+            return;
+        }
     }
     if (e->kind == MS_E_CALL && own_is_self_call(w, e)) {
         own_expr(w, e, DEMAND_MOVE); /* returns whatever this function returns: neither kind of return */
@@ -1248,6 +1278,7 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
     MsLiveness live = ms_liveness_new(&scratch, facts);
     OwnWalk w = {.check = c, .module = module, .facts = facts, .live = &live,
                  .classifier = ms_classifier_new(c)};
+    ms_classifier_mark_methods(w.classifier, facts->methods);
     own_allocate(&w, &scratch);
     const uint32_t *by_node = own_bindings_by_node(facts, &scratch);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {

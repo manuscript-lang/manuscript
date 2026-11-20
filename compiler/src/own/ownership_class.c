@@ -53,6 +53,36 @@ void ms_classifier_mark_closeable(MsClassifier *classifier, MsSym type_id) {
     (void)ms_map_add(&classifier->closeable, type_id, 1);
 }
 
+static bool row_named_close(const MsCheck *check, MsSym name) {
+    const MsStr text = ms_name(check->names, name);
+    return text.len == 5 && memcmp(text.ptr, "close", 5) == 0;
+}
+
+/* `Method::closes`: a `Closeable` implementation, or a type's own `close()` that returns
+ * `Void!`, which satisfies `Closeable` by shape. */
+static bool row_closes(const MsCheck *check, const MsMethods *rows, uint32_t i) {
+    const MsTyTable *tys = &check->tys;
+    if (rows->contract[i] != MS_TY_NONE && ms_ty_is(tys, rows->contract[i], MS_BI_CLOSEABLE)) {
+        return true;
+    }
+    const MsFunc *decl = rows->decl[i];
+    if (!rows->inherent[i] || decl == NULL || !row_named_close(check, decl->name) ||
+        tys->nparams[rows->ty[i]] != 0) {
+        return false;
+    }
+    const MsTy result = tys->result[rows->ty[i]];
+    return ms_ty_is(tys, result, MS_BI_RESULT) && tys->nargs[result] == 2 &&
+           ms_ty_is(tys, ms_ty_args(tys, result)[0], MS_BI_VOID) && ms_ty_is(tys, ms_ty_args(tys, result)[1], MS_BI_ERROR);
+}
+
+void ms_classifier_mark_methods(MsClassifier *classifier, const MsMethods *rows) {
+    for (uint32_t i = 0; rows != NULL && i < rows->count; i++) {
+        if (row_closes(classifier->check, rows, i)) {
+            ms_classifier_mark_closeable(classifier, classifier->check->tys.id[rows->receiver[i]]);
+        }
+    }
+}
+
 void ms_classifier_mark_owned_close(MsClassifier *classifier, MsSym interface_id) {
     (void)ms_map_add(&classifier->owned_close, interface_id, 1);
 }
