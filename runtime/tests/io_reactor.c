@@ -43,13 +43,13 @@ static void test_readable_pipe_reports_once(void) {
     CHECK(pipe(fds) == 0);
     MsIoReactor *reactor = open_reactor();
     MsIoReady ready[CAPACITY];
-    CHECK(ms_io_watch(fds[0], MS_IO_READ) == MS_IO_WATCH_ARMED);
+    CHECK(ms_io_watch(fds[0], MS_IO_BIT_READ) == MS_IO_WATCH_ARMED);
     CHECK(wait_for(0, ready) == 0);
     write_byte(fds[1]);
     CHECK(wait_for(-1, ready) == 1);
-    CHECK(ready[0].fd == (uintptr_t)fds[0] && (ready[0].bits & MS_IO_READ) != 0);
+    CHECK(ready[0].fd == (uintptr_t)fds[0] && (ready[0].bits & MS_IO_BIT_READ) != 0);
     CHECK(wait_for(0, ready) == 0); /* one-shot */
-    CHECK(ms_io_watch(fds[0], MS_IO_READ) == MS_IO_WATCH_ARMED); /* level-like: still readable */
+    CHECK(ms_io_watch(fds[0], MS_IO_BIT_READ) == MS_IO_WATCH_ARMED); /* level-like: still readable */
     CHECK(wait_for(0, ready) == 1);
     ms_io_close(false);
     close(fds[0]);
@@ -92,8 +92,8 @@ static void test_regular_file_is_ready_at_once(void) {
     MsIoReactor *reactor = open_reactor();
     const int fd = open("/dev/null", O_RDONLY);
     CHECK(fd >= 0);
-    CHECK(ms_io_watch(fd, MS_IO_READ) == MS_IO_WATCH_ALWAYS);
-    CHECK(ms_io_watch(-1, MS_IO_READ) == MS_IO_WATCH_FAILED);
+    CHECK(ms_io_watch(fd, MS_IO_BIT_READ) == MS_IO_WATCH_ALWAYS);
+    CHECK(ms_io_watch(-1, MS_IO_BIT_READ) == MS_IO_WATCH_FAILED);
     close(fd);
     ms_io_close(false);
     (void)reactor;
@@ -103,7 +103,7 @@ static void test_blocking_descriptor_stays_blocking(void) {
     int fds[2];
     CHECK(pipe(fds) == 0);
     MsIoReactor *reactor = open_reactor();
-    CHECK(ms_io_watch(fds[0], MS_IO_READ) == MS_IO_WATCH_ARMED);
+    CHECK(ms_io_watch(fds[0], MS_IO_BIT_READ) == MS_IO_WATCH_ARMED);
     CHECK((fcntl(fds[0], F_GETFL) & O_NONBLOCK) == 0);
     ms_io_close(false);
     close(fds[0]);
@@ -116,11 +116,11 @@ static void test_kept_and_forgotten_handles(void) {
     CHECK(pipe(fds) == 0);
     MsIoReactor *reactor = open_reactor();
     MsIoReady ready[CAPACITY];
-    CHECK(ms_io_watch(fds[0], MS_IO_READ | MS_IO_KEEP) == MS_IO_WATCH_ARMED);
+    CHECK(ms_io_watch(fds[0], MS_IO_BIT_READ | MS_IO_BIT_KEEP) == MS_IO_WATCH_ARMED);
     ms_io_unwatch(fds[0]);
     write_byte(fds[1]);
     CHECK(wait_for(0, ready) == 0); /* unwatched: nothing reported */
-    CHECK(ms_io_watch(fds[0], MS_IO_READ | MS_IO_KEEP) == MS_IO_WATCH_ARMED);
+    CHECK(ms_io_watch(fds[0], MS_IO_BIT_READ | MS_IO_BIT_KEEP) == MS_IO_WATCH_ARMED);
     CHECK(wait_for(0, ready) == 1);
     ms_io_forget(fds[0]);
     close(fds[0]);
