@@ -67,6 +67,9 @@ size_t msrt_cleanup_push(void (*run)(uint8_t *), uint8_t *arg) {
 
 void msrt_cleanup_discard(size_t handle) { ms_test_cleanups = handle - 1; }
 
+/* The tests run the rollback path: a comparator may jump out. */
+uint8_t msrt_rollback_needed(void) { return 1; }
+
 MsObj *msrt_obj_clone(MsObj *object) { return object; }
 void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block) { shim(block); }
 
