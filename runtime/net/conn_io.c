@@ -2,6 +2,7 @@
 #include "conn_io.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "ms_rt/safe.h"
 #include "ms_rt/sys.h"
@@ -270,9 +271,55 @@ MsNetStatus ms_conn_read(MsConnTable *table, MsConnId id, uint8_t *buffer, size_
         *count = 0;
         return MS_NET_OK;
     }
+    MsConnExt *ext = ext_of(row);
+    if (ext != NULL && ext->unread_length > 0) {
+        const size_t taken = ext->unread_length < capacity ? ext->unread_length : capacity;
+        memcpy(buffer, ext->unread, taken);
+        ext->unread_length -= taken;
+        memmove(ext->unread, ext->unread + taken, ext->unread_length);
+        *count = taken;
+        return MS_NET_OK;
+    }
     MsTls *tls = tls_of(row);
     return tls == NULL ? socket_read(row, buffer, capacity, deadline_ns, count)
                        : tls_read(row, tls, buffer, capacity, deadline_ns, count);
+}
+
+void ms_conn_set_refusal(MsConnTable *table, MsConnId id, uint16_t status) {
+    MsConn *row = usable(table, id);
+    MsConnExt *ext = row == NULL ? NULL : ext_ensure(row);
+    if (ext != NULL) {
+        ext->refusal = status;
+    }
+}
+
+uint16_t ms_conn_refusal(MsConnTable *table, MsConnId id) {
+    MsConn *row = usable(table, id);
+    const MsConnExt *ext = row == NULL ? NULL : row->ext;
+    return ext == NULL ? 0 : ext->refusal;
+}
+
+MsNetStatus ms_conn_unread(MsConnTable *table, MsConnId id, const uint8_t *data, size_t length) {
+    MsConn *row = usable(table, id);
+    if (row == NULL) {
+        return MS_NET_CLOSED;
+    }
+    if (length == 0) {
+        return MS_NET_OK;
+    }
+    MsConnExt *ext = ext_ensure(row);
+    uint8_t *grown = ext == NULL ? NULL : malloc(length + ext->unread_length);
+    if (grown == NULL) {
+        return MS_NET_FAILED;
+    }
+    memcpy(grown, data, length);
+    if (ext->unread_length > 0) {
+        memcpy(grown + length, ext->unread, ext->unread_length);
+    }
+    free(ext->unread);
+    ext->unread = grown;
+    ext->unread_length += length;
+    return MS_NET_OK;
 }
 
 static MsNetStatus tls_write(MsConn *row, MsTls *tls, const uint8_t *data, size_t length, int64_t deadline_ns) {
@@ -347,6 +394,7 @@ static void ext_release(MsConnExt *ext) {
     if (ext->tls != NULL) {
         ms_tls_free(ext->tls);
     }
+    free(ext->unread);
     free(ext);
 }
 
