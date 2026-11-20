@@ -182,8 +182,6 @@ uint8_t msstd_process_set_environment(const MsStr *name, uint8_t has_value, cons
     if (code != 0) {
         ms_fs_fail_uv(&fail, code, "setenv", key);
     }
-    /* The C library may have moved its environment; programs read this program's copy. */
-    ms_sys_sync_environ();
     return finish(&fail, err);
 }
 
