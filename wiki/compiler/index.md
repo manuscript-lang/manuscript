@@ -41,3 +41,4 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [The C front end is diffed against the Rust one, not rewritten from the docs](the-c-front-end-is-diffed-against-rust-not-reimplemented-from-the-docs.md): `make c-compiler-test` compares tokens (later trees) and diagnostics byte for byte on the corpus and on mutants.
 - [The C lowering makes one copy per type-argument list](the-c-lowering-makes-one-copy-per-type-argument-list.md): the checker records the type arguments; copies are named by creation order and compared by signature.
 - [C MIR passes: shallow clones, unity build, unzeroed allocations](c-mir-passes-share-arrays-and-a-unity-build.md): what bit the port of the optimiser to C, and that it is not a perf target.
+- [The C ownership classifier learns closeable types from method rows](c-checker-learns-closeable-types-from-method-rows.md): why the checker refused every type that closes, what the walk and lowering still decline.
