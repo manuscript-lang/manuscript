@@ -125,17 +125,6 @@ static void finish_head(MsCurlTransfer *transfer) {
     wake_waiter(transfer);
 }
 
-/* The host of `location` resolved against the transfer's current URL, or false. */
-static bool redirect_host(MsCurlTransfer *transfer, const char *location, char **host) {
-    char *current = NULL;
-    CURLU *url = curl_url();
-    bool ok = url != NULL && curl_easy_getinfo(transfer->easy, CURLINFO_EFFECTIVE_URL, &current) == CURLE_OK && current != NULL &&
-              curl_url_set(url, CURLUPART_URL, current, 0) == CURLUE_OK && curl_url_set(url, CURLUPART_URL, location, 0) == CURLUE_OK &&
-              curl_url_get(url, CURLUPART_HOST, host, 0) == CURLUE_OK;
-    curl_url_cleanup(url);
-    return ok;
-}
-
 /* `host` without the brackets of an IPv6 literal. */
 static MsBytes bare_host(const char *host) {
     size_t length = strlen(host);
@@ -167,31 +156,6 @@ static size_t on_header(char *line, size_t size, size_t count, void *argument) {
         transfer->response_code = code;
         uv_mutex_unlock(&driver.lock);
         return length;
-    }
-    if (length > 2 && transfer->response_code >= 300 && transfer->response_code < 400 && starts_with_fold(line, length, "location:")) {
-        char *value = malloc(length + 1), *host = NULL;
-        size_t at = 9;
-        while (at < length && (line[at] == ' ' || line[at] == '\t')) {
-            at++;
-        }
-        size_t end = length;
-        while (end > at && (line[end - 1] == '\r' || line[end - 1] == '\n' || line[end - 1] == ' ')) {
-            end--;
-        }
-        bool denied = value == NULL; /* a target that cannot be checked is refused */
-        if (value != NULL) {
-            memcpy(value, line + at, end - at);
-            value[end - at] = 0;
-            denied = !redirect_host(transfer, value, &host) || !ms_net_filter_host_allowed(transfer->client->filter, bare_host(host));
-            curl_free(host);
-        }
-        free(value);
-        if (denied) {
-            uv_mutex_lock(&driver.lock);
-            transfer->fault = MS_CURL_FAULT_DENIED;
-            uv_mutex_unlock(&driver.lock);
-            return 0;
-        }
     }
     uv_mutex_lock(&driver.lock);
     if (!transfer->head_ready && length > 2 && transfer->lines_length + length <= (size_t)256 * 1024) { /* the blank line and trailers are not kept */
@@ -656,7 +620,7 @@ static bool configure(MsCurlTransfer *transfer, const MsCurlRequest *request, co
               curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, on_header) == CURLE_OK && curl_easy_setopt(easy, CURLOPT_HEADERDATA, transfer) == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https") == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_REDIR_PROTOCOLS_STR, "http,https") == CURLE_OK &&
-              curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, client->max_redirects > 0 && client->resolver == NULL ? 1L : 0L) == CURLE_OK &&
+              curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, 0L) == CURLE_OK /* the caller follows redirects */ &&
               curl_easy_setopt(easy, CURLOPT_MAXREDIRS, client->max_redirects) == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS, milliseconds) == CURLE_OK && curl_easy_setopt(easy, CURLOPT_USERAGENT, "manuscript") == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_PATH_AS_IS, 1L) == CURLE_OK && /* the server sees the path as written */

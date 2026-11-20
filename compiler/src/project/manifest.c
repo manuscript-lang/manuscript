@@ -421,7 +421,7 @@ static bool manifest_read_document(const Reader *r, size_t at, MsBuf *entries) {
 
 /* ---- validation ---- */
 
-static bool manifest_valid_alias(const char *key) {
+bool ms_manifest_valid_alias(const char *key) {
     if (key[0] != '@' || key[1] == 0) {
         return false;
     }
@@ -471,7 +471,7 @@ static bool manifest_control(const Reader *r, const Entry *e) {
 }
 
 static bool manifest_valid_name(const char *key) {
-    return manifest_valid_alias(key) && strcmp(key, "@std") != 0;
+    return ms_manifest_valid_alias(key) && strcmp(key, "@std") != 0;
 }
 
 static bool manifest_add_alias(Builder *b, const Entry *e) {
@@ -481,7 +481,7 @@ static bool manifest_add_alias(Builder *b, const Entry *e) {
     }
     if (!manifest_valid_name(e->name)) {
         const char *hint = "";
-        if (strcmp(e->name, "std") != 0 && manifest_valid_alias(ms_arena_fmt(r->arena, "@%s", e->name).ptr)) {
+        if (strcmp(e->name, "std") != 0 && ms_manifest_valid_alias(ms_arena_fmt(r->arena, "@%s", e->name).ptr)) {
             hint = ms_arena_fmt(r->arena, " (did you mean @%s?)", e->name).ptr;
         }
         return manifest_fail_at(r, e->key_pos, ms_arena_fmt(r->arena, "invalid or reserved alias %s%s; aliases look like @lib (start with @, letters/digits/underscore), cannot be @std, and must map to a path, not another alias", e->name, hint).ptr);
@@ -935,7 +935,7 @@ static bool manifest_finish(Builder *b) {
     return manifest_check_declared(b);
 }
 
-static const char *manifest_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err) {
+const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err) {
     FILE *f = fopen(path, "rbe");
     if (f == NULL) {
         ms_project_error_path(err, a, "open", path, errno);
@@ -973,7 +973,7 @@ bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProject
     *out = (MsProject){.root = root, .file = ms_path_base(a, absolute), .name = "", .source = "", .entry = ""};
     out->location = (MsPos){.line = 1, .column = 1};
     size_t length = 0;
-    out->configuration = manifest_read_file(a, absolute, &length, err);
+    out->configuration = ms_project_read_file(a, absolute, &length, err);
     if (out->configuration == NULL) {
         return false;
     }

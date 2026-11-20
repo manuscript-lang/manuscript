@@ -7,11 +7,7 @@
 #include "ms/check.h"
 #include "ms/import_hints.h"
 
-enum { PRIMITIVE_COUNT = 16, PRELUDE_NAME_COUNT = 13, CONSTRUCTOR_COUNT = 4 };
-
-static const char *const scope_primitives[PRIMITIVE_COUNT] = {
-    "Bool",  "Int",    "Float",  "Int8",   "Int16",   "Int32",   "Int64",   "UInt8",
-    "UInt16", "UInt32", "UInt64", "Float32", "Float64", "String", "Void", "Never"};
+enum { PRELUDE_NAME_COUNT = 13, CONSTRUCTOR_COUNT = 4 };
 
 /* Types every module sees without an import (`STANDARD_PRELUDE_NAMES`). */
 static const char *const scope_prelude_names[PRELUDE_NAME_COUNT] = {
@@ -169,8 +165,8 @@ static void scope_declare_primitives(MsCheck *c) {
     if (c->primitives.count != 0) {
         return;
     }
-    for (size_t i = 0; i < PRIMITIVE_COUNT; i++) {
-        const char *written = scope_primitives[i];
+    for (size_t i = 0; i < ms_primitive_count(); i++) {
+        const char *written = ms_primitive_name(i);
         /* `Int64` and `Float64` are the default widths: the same type as `Int` and `Float`. */
         const char *identity = written;
         if (strcmp(written, "Int64") == 0) {
@@ -225,8 +221,8 @@ static void scope_add_prelude(MsCheck *c, MsModId module) {
 
 static void scope_begin_module(MsCheck *c, MsModId module) {
     scope_declare_primitives(c);
-    for (size_t i = 0; i < PRIMITIVE_COUNT; i++) {
-        const MsSym name = ms_intern_cstr(c->names, scope_primitives[i]);
+    for (size_t i = 0; i < ms_primitive_count(); i++) {
+        const MsSym name = ms_intern_cstr(c->names, ms_primitive_name(i));
         (void)ms_map_add(&c->mods[module].names, name, ms_map_get(&c->primitives, name));
     }
     scope_add_prelude(c, module);
