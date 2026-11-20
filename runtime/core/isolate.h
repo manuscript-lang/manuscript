@@ -44,9 +44,9 @@ typedef void (*MsWakeFn)(void *argument);
 
 /* Registers the calling thread; returns its index, or MS_NO_ISOLATE when all are taken. */
 uint32_t ms_isolate_register(MsWakeFn wake, void *argument);
-/* Ends the registration; mail that arrives afterwards is refused, and what is queued is freed by the caller's
- * last ms_isolate_take. */
-void ms_isolate_unregister(uint32_t index);
+/* Ends the registration; mail that arrives afterwards is refused. Mail still queued goes to `discard` (may be
+ * NULL) to free its payload, then its node is freed. */
+void ms_isolate_unregister(uint32_t index, void (*discard)(MsMail *mail));
 /* This thread's index, or MS_NO_ISOLATE. */
 uint32_t ms_isolate_self(void);
 /* Whether `index` is a live isolate. */

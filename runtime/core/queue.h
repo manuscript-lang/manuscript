@@ -23,7 +23,7 @@ MS_NODISCARD bool ms_queue_steal(uint32_t isolate, int64_t not_after_ns, uint64_
 /* How many entries wait on `isolate`, and the time the oldest was queued (INT64_MAX when none). */
 size_t ms_queue_length(uint32_t isolate);
 int64_t ms_queue_oldest(uint32_t isolate);
-/* Frees the queue of `isolate` (its owner is gone); entries are dropped. */
-void ms_queue_release(uint32_t isolate);
+/* Frees the queue of `isolate` (its owner is gone); each entry still queued goes to `drop` (may be NULL). */
+void ms_queue_release(uint32_t isolate, void (*drop)(void *work));
 
 #endif
