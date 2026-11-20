@@ -119,19 +119,14 @@ msrt_hash_bytes(p: *const u8, len: usize) -> i64 @domain=map @leaf
 msrt_hash_combine(a: i64, b: i64) -> i64 @leaf
 msrt_hash_int(v: i64) -> i64 @domain=map @leaf
 msrt_hash_list(v: *const VecVal, d: ElemDesc) -> i64 @domain=collection @leaf
-msrt_heap_alloc_zeroed_cached(size: usize) -> *mut u8
 msrt_heap_claim()
 msrt_heap_has() -> u8
-msrt_heap_large_request(size: usize) -> usize
 msrt_heap_live_by_size(sizes: *mut usize, counts: *mut i64, capacity: usize) -> usize
 msrt_heap_live_total() -> i64
-msrt_heap_owns(p: *const u8) -> u8
 msrt_heap_release()
 msrt_heap_requested(out: *mut u64)
 msrt_heap_requested_reset()
 msrt_heap_sample_every(period: i64, hook: *mut u8)
-msrt_heap_shared_put(p: *mut u8) -> u8
-msrt_heap_shared_take(size: usize) -> *mut u8
 msrt_heap_stats(out: *mut i64)
 msrt_heap_trim(p: *mut u8, new_size: usize) -> *mut u8
 msrt_heap_usable_size(p: *mut u8) -> usize

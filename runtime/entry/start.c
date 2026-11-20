@@ -298,6 +298,10 @@ MS_NODISCARD static bool open_scheduler(void) {
     return true;
 }
 
+/* Gives the calling thread a reactor and scheduler without starting a program: the Rust unit tests of ms-std-net run
+ * their tasks this way. Once per thread; false when the reactor cannot open. */
+bool ms_start_attach_thread(void) { return open_scheduler(); }
+
 /* The runtime thread: runs main as the isolate's main task and ends the scheduler. */
 static void runtime_thread(void *argument) {
     (void)argument;

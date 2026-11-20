@@ -28,7 +28,7 @@ __attribute__((weak)) void ms_sched_cancel_return(void) {}
 uint64_t msrt_token_new(uint32_t flags) { (void)flags; return 1; }
 uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) { (void)token; (void)timeout_ns; *value = 0; return MS_WAIT_CANCELLED; }
 void msrt_token_free(uint64_t token) { (void)token; }
-void msrt_token_post_remote(uint64_t token, uint64_t value) { (void)token; (void)value; }
+__attribute__((weak)) void msrt_token_post_remote(uint64_t token, uint64_t value) { (void)token; (void)value; }
 
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
     struct pollfd p = {.fd = fd, .events = (short)((events & MS_WAIT_READ ? POLLIN : 0) | (events & MS_WAIT_WRITE ? POLLOUT : 0))};

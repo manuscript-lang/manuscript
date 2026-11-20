@@ -196,20 +196,3 @@ void msrt_heap_requested_reset(void) {
     atomic_store_explicit(&released[0], 0, memory_order_relaxed);
     atomic_store_explicit(&released[1], 0, memory_order_relaxed);
 }
-
-/* ---- for the Rust runtime until crates/ms-rt is deleted (the flip) ---- */
-
-uint8_t msrt_heap_owns(const void *p) { return mi_is_in_heap_region(p) ? 1 : 0; }
-void *msrt_heap_alloc_zeroed_cached(size_t size) {
-    (void)size;
-    return NULL;
-}
-size_t msrt_heap_large_request(size_t size) { return mi_good_size(size); }
-void *msrt_heap_shared_take(size_t size) {
-    (void)size;
-    return NULL;
-}
-uint8_t msrt_heap_shared_put(void *p) {
-    (void)p;
-    return 0;
-}

@@ -24,7 +24,7 @@ fn main() {
 /// (a bundled copy would land in `libms_native.a` beside the objects `cargo xtask runtime` adds) (an archive:
 /// the linker takes an object only for a symbol nothing else defines).
 fn link_c_runtime(root: &std::path::Path) {
-    for dir in ["include", "sys", "core", "io", "net", "std"] {
+    for dir in ["include", "sys", "core", "io", "entry", "net", "std"] {
         println!(
             "cargo::rerun-if-changed={}",
             root.join("runtime").join(dir).display()

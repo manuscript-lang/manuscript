@@ -19,20 +19,10 @@ void msrt_heap_claim(void);
 void msrt_heap_release(void);
 /* ms-sig: msrt_heap_has() -> u8 */
 uint8_t msrt_heap_has(void);
-/* ms-sig: msrt_heap_owns(p: *const u8) -> u8 */
-uint8_t msrt_heap_owns(const void *p);
 /* ms-sig: msrt_heap_usable_size(p: *mut u8) -> usize */
 size_t msrt_heap_usable_size(void *p);
 /* ms-sig: msrt_heap_trim(p: *mut u8, new_size: usize) -> *mut u8 */
 void *msrt_heap_trim(void *p, size_t new_size);
-/* ms-sig: msrt_heap_alloc_zeroed_cached(size: usize) -> *mut u8 */
-void *msrt_heap_alloc_zeroed_cached(size_t size);
-/* ms-sig: msrt_heap_large_request(size: usize) -> usize */
-size_t msrt_heap_large_request(size_t size);
-/* ms-sig: msrt_heap_shared_take(size: usize) -> *mut u8 */
-void *msrt_heap_shared_take(size_t size);
-/* ms-sig: msrt_heap_shared_put(p: *mut u8) -> u8 */
-uint8_t msrt_heap_shared_put(void *p);
 /* ms-sig: msrt_heap_stats(out: *mut i64) */
 void msrt_heap_stats(int64_t *out);
 /* ms-sig: msrt_heap_requested(out: *mut u64) */

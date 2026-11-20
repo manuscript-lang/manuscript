@@ -87,6 +87,7 @@ pub fn use_tasks() {
     #[cfg(test)]
     {
         crate::http::server::serialize_tests();
+        ms_rt::start::attach_test_thread();
         TASKS.with(|t| t.set(true));
     }
 }
