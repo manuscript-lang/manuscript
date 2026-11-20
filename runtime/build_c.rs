@@ -81,9 +81,9 @@ fn host_triple() -> Option<String> {
     }
 }
 
-/// The folder holding the C libraries (`include/`, `lib/lib*.a`) for `triple` (the host when `None`): the prebuilt
-/// archives of `toolchain/c-libs.sums`, fetched by `toolchain/fetch-c-libs.sh`, which builds them with
-/// `runtime/third_party/build.sh` when none is pinned. `None` when the build takes system packages instead.
+/// The folder holding the C libraries (`include/`, `lib/lib*.a`) for `triple` (the host when `None`): the vendored
+/// sources of `runtime/third_party`, built by `runtime/third_party/build.sh` (once per target and key, then reused).
+/// `None` when the build takes system packages instead.
 fn libs_prefix(root: &Path, triple: Option<&str>) -> Result<Option<PathBuf>, String> {
     let Some(triple) = triple.map(str::to_string).or_else(host_triple) else {
         return Ok(None);
@@ -91,11 +91,11 @@ fn libs_prefix(root: &Path, triple: Option<&str>) -> Result<Option<PathBuf>, Str
     let compiler = c_compiler(root, &triple, std::env::consts::ARCH);
     let out = run(
         Command::new("sh")
-            .arg(root.join("toolchain/fetch-c-libs.sh"))
+            .arg(root.join("runtime/third_party/build.sh"))
             .arg(&triple)
             .env("MS_C_LIBS", "pinned")
             .env("CC", compiler),
-        "fetch-c-libs.sh",
+        "build.sh",
     )?;
     Ok(Some(PathBuf::from(out)))
 }

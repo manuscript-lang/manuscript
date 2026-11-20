@@ -1,4 +1,5 @@
-# name version url sha256 (checked by runtime/third_party/build.sh; llhttp is vendored under runtime/third_party/llhttp).
+# name version url sha256: the upstream tarball each folder under runtime/third_party was vendored from (tests and docs removed).
+# Bumping a library means replacing its folder with the new release and updating its row; build.sh keys its output on this file.
 libuv 1.51.0 https://dist.libuv.org/dist/v1.51.0/libuv-v1.51.0.tar.gz 5f0557b90b1106de71951a3c3931de5e0430d78da1d9a10287ebc7a3f78ef8eb
 nghttp2 1.66.0 https://github.com/nghttp2/nghttp2/releases/download/v1.66.0/nghttp2-1.66.0.tar.xz 00ba1bdf0ba2c74b2a4fe6c8b1069dc9d82f82608af24442d430df97c6f9e631
 openssl 3.5.4 https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz 967311f84955316969bdb1d8d4b983718ef42338639c621ec4c34fddef355e99
