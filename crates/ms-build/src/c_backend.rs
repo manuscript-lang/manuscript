@@ -73,6 +73,10 @@ fn compile_in(dir: &Path, module: &Module, speed: bool, checks: bool) -> Result<
     }
     let meta = dir.join("program.meta");
     build.arg("--tables-meta").arg(&meta);
+    let names = dir.join("program.names");
+    std::fs::write(&names, ms_mir::print::display_names(module))
+        .map_err(|e| format!("cannot write {}: {e}", names.display()))?;
+    build.arg("--display-names").arg(&names);
     let ir_text = run(&mut build, "ms_mir_build")?;
     let ir = dir.join("program.ll");
     std::fs::write(&ir, ir_text).map_err(|e| format!("cannot write {}: {e}", ir.display()))?;

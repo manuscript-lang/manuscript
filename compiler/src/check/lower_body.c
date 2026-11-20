@@ -18,6 +18,7 @@
 #include "ms/lower_scope.h"
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
+#include "ms/ty_algebra.h"
 
 LbVal lb_unsupported(Lb *lb) {
     lb->ok = false;
@@ -29,22 +30,29 @@ static MsTy lb_primitive(const MsCheck *c, const char *name) {
     return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
 }
 
-/* `ty` as the function being lowered sees it: a variable of the instance is the type it stands
- * for. A type built from variables (`List[T]`) is not handled yet, and is left as it is. */
-static MsTy lb_ty(const Lb *lb, MsTy ty) {
-    if (lb->nsub == 0 || ms_ty_kind(&lb->c->tys, ty) != MS_K_VARIABLE) {
+/* `ty` as the function being lowered sees it: the variables of the instance are the types they
+ * stand for, through arguments, parameters and results (`List[T]` becomes `List[Int]`). A variable
+ * is matched by id, as the checker's substitution does. */
+static MsTy lb_ty(Lb *lb, MsTy ty) {
+    if (lb->nsub == 0 || ty == MS_TY_NONE) {
         return ty;
     }
-    for (uint32_t i = 0; i < lb->nsub; i++) { // a variable is matched by id, as the checker's substitution does
-        if (lb->c->tys.id[lb->sub_vars[i]] == lb->c->tys.id[ty]) {
-            return lb->sub_args[i];
-        }
+    MsArena scratch = {0};
+    if (ms_ty_kind(&lb->c->tys, ty) != MS_K_VARIABLE && !ms_ty_has_variable(&lb->c->tys, &scratch, ty)) {
+        ms_arena_free(&scratch);
+        return ty;
     }
-    return ty;
+    const MsTySubst subst = {lb->sub_vars, lb->sub_args, lb->nsub};
+    const MsTy result = ms_ty_subst(&lb->mut->tys, &scratch, ty, &subst);
+    ms_arena_free(&scratch);
+    return result;
 }
 
 /* A record, Optional or Result type. */
 static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
+    if (ms_classify(lb->classifier, ty) == MS_CLASS_RESOURCE) {
+        return MIR_NONE; // its close is not recorded yet
+    }
     const MirTy record = lr_type(lb, ty);
     return record != MIR_NONE ? record : la_type(lb, ty);
 }
@@ -1290,6 +1298,8 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
              .bool_ty = lb_primitive(c, "Bool"),
              .string_ty = lb_primitive(c, "String"),
              .void_ty = lb_primitive(c, "Void")};
+    lb.classifier = ms_classifier_new(c);
+    ms_classifier_mark_methods(lb.classifier, facts->methods);
     bool *failed = calloc((size_t)row->syntax->ndecls + 1, sizeof *failed);
     lb.func_of = calloc((size_t)c->syms.count + 1, sizeof *lb.func_of);
     lb.thunk_of = calloc((size_t)c->syms.count + 1, sizeof *lb.thunk_of);
@@ -1302,6 +1312,7 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
             break;
         }
     }
+    ms_classifier_free(lb.classifier);
     free(lb.func_of);
     free(lb.insts);
     free(lb.dead_insts);
