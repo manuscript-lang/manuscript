@@ -49,6 +49,14 @@ else()
   set(MS_LIBS_WIRED OFF)
 endif()
 
+# A Windows host's own build (MS_TRIPLE empty) targets MSVC: only libuv is built (from the vendored sources, by
+# cmake/MsLibs.cmake), so the reactor serves the unit tests of the Rust crates; the other libraries stay out.
+if(MS_WINDOWS AND MS_TRIPLE STREQUAL "")
+  set(MS_HOST_MSVC ON)
+else()
+  set(MS_HOST_MSVC OFF)
+endif()
+
 # Flags every runtime and test source gets (documentation/contributing/c-style.md has the warnings).
 set(MS_C_FLAGS -fno-stack-protector
     # A null check stays even where an attribute says the pointer is never null.

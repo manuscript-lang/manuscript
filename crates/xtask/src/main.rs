@@ -848,7 +848,7 @@ fn build_archive(
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
     if plan.has_reactor() {
-        // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
+        // `ms-rt` then takes the reactor's poller; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
     }
     if let Some(triple) = triple {

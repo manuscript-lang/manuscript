@@ -22,7 +22,6 @@ sched-stress = []
 [dependencies]
 memchr = "2.8.3"
 ms-rt-abi = { path = "../ms-rt-abi" }
-mio = { version = "1", default-features = false, features = ["os-poll", "os-ext", "net"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = { version = "0.2", default-features = false }

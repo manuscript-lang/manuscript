@@ -19,7 +19,8 @@ fn main() {
     println!("cargo::rerun-if-env-changed=MS_C_REACTOR");
     let archive_build = std::env::var_os("MS_C_RUNTIME").is_some();
     // Test and clippy builds link the C runtime. On a Windows host they build for MSVC, so the C is compiled for
-    // MSVC too (clang `--target=<arch>-pc-windows-msvc`), unlike the runtime archive, which targets mingw.
+    // MSVC too (clang `--target=<arch>-pc-windows-msvc`), unlike the runtime archive, which targets mingw. Only
+    // libuv is wired there (cmake/MsLibs.cmake), which is what the reactor needs.
     let native = std::env::var("TARGET").ok() == std::env::var("HOST").ok();
     let test_c = !archive_build && native;
     if test_c && link_c_runtime(&root) {
@@ -85,5 +86,14 @@ fn link_c_runtime(root: &std::path::Path) -> bool {
     assert!(status.success(), "ar failed");
     println!("cargo::rustc-link-search=native={}", out.display());
     println!("cargo::rustc-link-lib=static:-bundle=ms_c");
+    if cfg!(windows) {
+        // What libuv and the Windows layer of the runtime call (the MSVC host build links libuv from its vendored sources).
+        for lib in [
+            "ws2_32", "iphlpapi", "userenv", "psapi", "dbghelp", "user32", "advapi32", "ole32", "shell32",
+            "bcrypt", "mswsock", "ntdll",
+        ] {
+            println!("cargo::rustc-link-lib={lib}");
+        }
+    }
     plan.has_reactor()
 }
