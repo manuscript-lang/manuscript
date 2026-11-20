@@ -4,9 +4,9 @@
 
 use ms_mir::ir::{Boxing, Op};
 use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
-use ms_mir::types::{AltId, Ty, TyKind};
 use ms_mir::parse::parse_module;
 use ms_mir::print::print_module;
+use ms_mir::types::{AltId, Ty, TyKind};
 use std::fmt::Write;
 
 fn main() {
@@ -87,7 +87,10 @@ fn main() {
 }
 
 fn leaf_list(leaves: &[Leaf]) -> String {
-    let names: Vec<String> = leaves.iter().map(|l| format!("{l:?}").to_lowercase()).collect();
+    let names: Vec<String> = leaves
+        .iter()
+        .map(|l| format!("{l:?}").to_lowercase())
+        .collect();
     names.join(",")
 }
 
