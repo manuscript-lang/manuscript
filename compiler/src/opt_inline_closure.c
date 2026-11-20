@@ -885,10 +885,8 @@ static bool ic_specialized_thunk(MirModule *m, uint32_t thunk, uint32_t g, MirFu
         return false;
     }
     const MsStr name = ms_name(&m->names, code->name);
-    char *text = ms_alloc(&m->arena, (size_t)name.len + 10, 1);
-    memcpy(text, "sort.cmp.", 9);
-    memcpy(text + 9, name.ptr, name.len);
-    t->name = mir_name(m, text, (size_t)name.len + 9);
+    const MsStr full = ms_arena_fmt(&m->arena, "sort.cmp.%.*s", (int)name.len, name.ptr);
+    t->name = mir_name(m, full.ptr, full.len);
     t->sort = MSORT_SPECIALIZED;
     MirParam *params = MS_NEW_N(&m->arena, MirParam, (size_t)t->nparams + 1);
     memcpy(params, t->params, sizeof(MirParam) * t->nparams);

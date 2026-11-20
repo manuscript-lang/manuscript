@@ -440,9 +440,9 @@ static bool il_is_const_op(uint8_t op) {
 
 static void il_note_consts(IlRun *r, uint32_t first_block) {
     const MirFunc *f = &r->m->funcs[r->fi];
-    if (f->nvalues > r->nconsts) {
+    if (f->nvalues > r->nconsts || r->consts == NULL) {
         uint8_t *grown = il_zeroed(r->arena, f->nvalues, 1);
-        if (r->nconsts > 0) {
+        if (r->consts != NULL) {
             memcpy(grown, r->consts, r->nconsts);
         }
         r->consts = grown;
