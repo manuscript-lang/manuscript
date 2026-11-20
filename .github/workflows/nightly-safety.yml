@@ -11,6 +11,7 @@ name: Nightly safety
 #   stress-sched  runs the stdlib sweep under the scheduler stress mode
 #   bench-gate    `ms bench` on bench/perf/guards; fails when an allocation or copy count rose more than 3% over baseline.json
 #   c-safety      the C runtime unit tests and fuzz harnesses (runtime/fuzz) under AddressSanitizer and UBSan on Linux and macOS, then libFuzzer on Linux
+#   c-compiler-test  the C front end against the Rust one on the corpus and 50,000 mutated files
 #   perf-counts   instructions of the suite and guard programs under callgrind against bench/perf/counts.txt; opens an issue when one is over 3% higher
 
 on:
@@ -59,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, drift-check, poison-check, view-matrix, ownership-fuzz, stress-sched, bench-gate]
+        check: [cancel-sweep, drift-check, poison-check, view-matrix, ownership-fuzz, stress-sched, bench-gate, c-compiler-test]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-env
@@ -67,6 +68,8 @@ jobs:
           os: linux
           arch: amd64
       - run: make ${{ matrix.check }}
+        env:
+          MS_FUZZ: 50000
 
   c-safety:
     if: github.ref == 'refs/heads/main'
