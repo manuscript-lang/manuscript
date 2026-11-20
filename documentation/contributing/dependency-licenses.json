@@ -416,26 +416,6 @@
       "license": "MIT OR Apache-2.0"
     },
     {
-      "name": "jiff",
-      "version": "0.2.43",
-      "license": "Unlicense OR MIT"
-    },
-    {
-      "name": "jiff-core",
-      "version": "0.1.8",
-      "license": "Unlicense OR MIT"
-    },
-    {
-      "name": "jiff-static",
-      "version": "0.2.43",
-      "license": "Unlicense OR MIT"
-    },
-    {
-      "name": "jiff-tzdb",
-      "version": "0.1.9",
-      "license": "Unlicense OR MIT"
-    },
-    {
       "name": "keccak",
       "version": "0.2.2",
       "license": "Apache-2.0 OR MIT"
@@ -573,16 +553,6 @@
     {
       "name": "polyval",
       "version": "0.7.3",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "portable-atomic",
-      "version": "1.15.0",
-      "license": "Apache-2.0 OR MIT"
-    },
-    {
-      "name": "portable-atomic-util",
-      "version": "0.2.8",
       "license": "Apache-2.0 OR MIT"
     },
     {
