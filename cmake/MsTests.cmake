@@ -7,7 +7,8 @@ endif()
 set(_tests "${CMAKE_SOURCE_DIR}/runtime/tests")
 set(_rt "${CMAKE_SOURCE_DIR}/runtime")
 
-set(_test_flags -O1 -g -Wall -Wextra -Werror)
+# Frame pointers, as in every runtime build: the fault report walks them.
+set(_test_flags -O1 -g -Wall -Wextra -Werror -fno-omit-frame-pointer)
 set(_plain_flags -O0 -g -Wall -Wextra -Werror)
 if(MS_SANITIZE)
   list(APPEND _test_flags -fsanitize=address,undefined -fno-sanitize-recover=undefined)
@@ -77,13 +78,14 @@ ms_test(sys_thread SOURCES "${_tests}/sys_thread.c" "${_rt}/sys/thread.c" ${_pos
 ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_posix_sources} PLAIN
         INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 
-# std_*: all of runtime/std with the system PCRE2, libcrypto and libuv.
+# std_*: all of runtime/std with the system PCRE2, libcrypto, libuv and zlib.
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c"
-          INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES}
-          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} m ${CMAKE_DL_LIBS})
+  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c" "${_rt}/sys/posix/fd.c"
+          "${_rt}/sys/posix/ifindex.c"
+          INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_z_INCLUDES}
+          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
 
 # The JSON test replays the recorded corpus against the natives over the real runtime/core.
@@ -148,14 +150,22 @@ ms_test(http1_exchange_test SOURCES "${_tests}/http1_exchange_test.c" "${_rt}/ne
         ${_io_sources} ${_posix_sources}
         OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} pthread)
+ms_test(http2_exchange_test SOURCES "${_tests}/http2_exchange_test.c" "${_rt}/net/http2_exchange.c" "${_rt}/net/h2conn.c"
+        "${_rt}/net/h2.c" "${_rt}/net/dial.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
+        "${_rt}/sys/${_platform}/net.c" ${_io_sources} ${_posix_sources}
+        OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_nghttp2_INCLUDES}
+        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_nghttp2_LINK} ${CMAKE_DL_LIBS} pthread)
 ms_test(h2_test SOURCES "${_tests}/h2_test.c" "${_rt}/net/h2.c" INCLUDES ${MS_LIB_nghttp2_INCLUDES}
         LIBS ${MS_LIB_nghttp2_LINK})
+ms_test(h2conn_test SOURCES "${_tests}/h2conn_test.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c"
+        INCLUDES ${MS_LIB_nghttp2_INCLUDES} LIBS ${MS_LIB_nghttp2_LINK})
 
 # Fuzz harnesses (runtime/fuzz/*_fuzz.c): built always, run by `make c-fuzz` over runtime/fuzz/corpus/<name>
 # (the driver takes -n <inputs> -s <seed> <files>; MS_FUZZER=libfuzzer builds coverage-guided ones instead).
 set(MS_FUZZER "driver" CACHE STRING "driver, or libfuzzer (clang with the libFuzzer runtime)")
 set(_fuzz_deps_http1 "${_rt}/net/http1.c")
 set(_fuzz_deps_num "${_rt}/core/num.c")
+set(_fuzz_deps_h2conn "${_rt}/net/h2conn.c" "${_rt}/net/h2.c")
 file(GLOB _fuzzers CONFIGURE_DEPENDS "${_rt}/fuzz/*_fuzz.c")
 foreach(file ${_fuzzers})
   get_filename_component(name "${file}" NAME_WE)
@@ -164,16 +174,21 @@ foreach(file ${_fuzzers})
     message(FATAL_ERROR "runtime/fuzz/${name}.c has no dependency list in cmake/MsTests.cmake")
   endif()
   set(_objects "")
+  set(_fuzz_libs m)
+  set(_fuzz_includes "${_llhttp}/include")
   if(short STREQUAL "http1")
     set(_objects ms_test_llhttp)
+  elseif(short STREQUAL "h2conn")
+    set(_fuzz_libs ${MS_LIB_nghttp2_LINK} m)
+    set(_fuzz_includes ${MS_LIB_nghttp2_INCLUDES})
   endif()
   if(MS_FUZZER STREQUAL "libfuzzer")
-    ms_test(${name} SOURCES "${file}" ${_fuzz_deps_${short}} OBJECTS ${_objects} INCLUDES "${_llhttp}/include"
-            LIBS m FLAGS -fsanitize=fuzzer-no-link)
+    ms_test(${name} SOURCES "${file}" ${_fuzz_deps_${short}} OBJECTS ${_objects} INCLUDES ${_fuzz_includes}
+            LIBS ${_fuzz_libs} FLAGS -fsanitize=fuzzer-no-link)
     target_link_options(${name} PRIVATE -fsanitize=fuzzer)
   else()
     ms_test(${name} SOURCES "${file}" "${_rt}/fuzz/driver.c" ${_fuzz_deps_${short}} OBJECTS ${_objects}
-            INCLUDES "${_llhttp}/include" LIBS m)
+            INCLUDES ${_fuzz_includes} LIBS ${_fuzz_libs})
   endif()
   set_property(TEST ${name} PROPERTY DISABLED TRUE)
 endforeach()
