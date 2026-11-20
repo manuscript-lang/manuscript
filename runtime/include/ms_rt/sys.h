@@ -1,4 +1,4 @@
-/* ms_sys.h: the operating-system layer. runtime/sys is the only code that makes system calls for our own
+/* ms_rt/sys.h: the operating-system layer. runtime/sys is the only code that makes system calls for our own
  * runtime; everything above it calls these functions.
  *
  * Rules: include only freestanding headers; declare the few OS functions a file needs by hand next to the
@@ -6,16 +6,14 @@
  * One implementation per OS family: sys/posix (Linux and macOS, constants selected by __APPLE__) and
  * sys/windows. Every function here has the same contract on both.
  *
- * These are internal to the runtime: programs never call them, so they are not in ms_rt.h and not in the
- * native symbol table. A function listed in runtime/c-symbols.txt is defined in C and its Rust definition
+ * These are internal to the runtime: programs never call them, so they are not natives and have no recorded
+ * signature. A function listed in runtime/symbols/sys.txt is defined in C and its Rust definition
  * in ms-rt/src/sys*.rs is compiled out.
  */
-#ifndef MS_SYS_H
-#define MS_SYS_H
+#ifndef MS_RT_SYS_H
+#define MS_RT_SYS_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include "ms_rt/base.h"
 
 /* sys/{posix,windows}/mem.c: address-space reservations. */
 
@@ -45,7 +43,8 @@ int64_t mssys_monotonic_ns(void);
 
 /* Starts a thread running start(arg). stack 0 takes the default size, else it is the stack size in bytes.
  * Returns a handle for mssys_thread_join, or 0 on failure. */
-uintptr_t mssys_thread_spawn(size_t stack, void (*start)(void *), void *arg);
+typedef void (*mssys_thread_fn)(void *);
+uintptr_t mssys_thread_spawn(size_t stack, mssys_thread_fn start, void *arg);
 /* Waits for a thread started by mssys_thread_spawn and releases its handle. */
 void mssys_thread_join(uintptr_t thread);
 /* Blocks the calling thread for ms milliseconds. */

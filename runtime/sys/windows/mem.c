@@ -1,5 +1,5 @@
 /* Address-space reservations on Windows: reserve with MEM_RESERVE, commit ranges on demand. */
-#include "ms_sys.h"
+#include "ms_rt/sys.h"
 
 __declspec(dllimport) void *__stdcall VirtualAlloc(void *addr, size_t len, uint32_t kind, uint32_t protect);
 __declspec(dllimport) int __stdcall VirtualFree(void *addr, size_t len, uint32_t kind);

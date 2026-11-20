@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "ms_sys.h"
+#include "ms_rt/sys.h"
 
 #define CHECK(c)                                                  \
     do {                                                          \

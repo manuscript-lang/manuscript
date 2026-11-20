@@ -7,7 +7,7 @@ use core::ffi::{c_char, c_int, c_long, c_void};
 
 pub type size_t = usize;
 
-/// Functions `runtime/sys` defines in C (`runtime/c-symbols.txt`); empty unless `cargo xtask runtime` builds.
+/// Functions `runtime/sys` defines in C (`runtime/symbols/sys.txt`); empty unless `cargo xtask runtime` builds.
 #[allow(unused_imports)]
 pub use crate::sys_c::*;
 

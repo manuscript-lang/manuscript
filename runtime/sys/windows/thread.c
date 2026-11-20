@@ -1,5 +1,5 @@
 /* Threads and sleeping on Windows. */
-#include "ms_sys.h"
+#include "ms_rt/sys.h"
 
 __declspec(dllimport) void *__stdcall CreateThread(void *attrs, size_t stack, uint32_t(__stdcall *start)(void *), void *arg,
                                                    uint32_t flags, uint32_t *id);

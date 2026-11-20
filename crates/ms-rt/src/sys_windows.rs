@@ -26,7 +26,7 @@ type HANDLE = *mut c_void;
 type BOOL = i32;
 type DWORD = u32;
 
-/// Functions `runtime/sys` defines in C (`runtime/c-symbols.txt`); empty unless `cargo xtask runtime` builds.
+/// Functions `runtime/sys` defines in C (`runtime/symbols/sys.txt`); empty unless `cargo xtask runtime` builds.
 #[allow(unused_imports)]
 pub use crate::sys_c::*;
 

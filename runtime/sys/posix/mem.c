@@ -1,6 +1,6 @@
 /* Address-space reservations on Linux and macOS. The kernel commits a page on first touch, so a reservation
  * is mapped readable and writable up front and mssys_commit has nothing to do. */
-#include "ms_sys.h"
+#include "ms_rt/sys.h"
 
 extern void *mmap(void *addr, size_t len, int prot, int flags, int fd, int64_t off);
 extern int munmap(void *addr, size_t len);

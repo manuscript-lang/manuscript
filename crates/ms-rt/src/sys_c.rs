@@ -1,6 +1,6 @@
-//! Forwards of the operating-system functions that `runtime/sys` defines in C (`runtime/c-symbols.txt`).
+//! Forwards of the operating-system functions that `runtime/sys` defines in C (`runtime/symbols/sys.txt`).
 //! Each one stands in for the Rust definition in `sys.rs` / `sys_windows.rs`, which is compiled out of the
-//! archive; plain `cargo test` keeps the Rust definitions. Contracts are in `runtime/include/ms_sys.h`.
+//! archive; plain `cargo test` keeps the Rust definitions. Contracts are in `runtime/include/ms_rt/sys.h`.
 
 #[cfg(ms_c = "mssys_map_anon")]
 pub fn map_anon(len: usize) -> *mut u8 {
