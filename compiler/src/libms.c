@@ -37,6 +37,7 @@
 #include "opt_sortgen.c"
 #include "hints.c"
 #include "constfold.c"
+#include "lower_body.c"
 #include "walk.c"
 #include "ty_subst.c"
 #include "ty_algebra.c"
