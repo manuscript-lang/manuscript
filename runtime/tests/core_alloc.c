@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 #include "../core/alloc.h"
-#include "ms_sys.h"
+#include "ms_rt/sys.h"
 
 static void check(bool ok, int line, const char *text) {
     if (!ok) {
@@ -158,7 +158,7 @@ static void large_blocks_are_reused(void) {
     uint8_t *a = msrt_alloc(100000);
     /* The system may round a block up past its class (macOS does); a freed block is filed under the
      * largest class that fits its usable size. */
-    size_t usable = mssys_malloc_size(a);
+    size_t usable = ms_sys_malloc_size(a);
     size_t size = usable;
     while (msrt_heap_large_request(size) != size) size--;
     a[99999] = 7;
@@ -343,14 +343,14 @@ static size_t mapped_n;
 
 static void *limited_map(size_t len) {
     if (len > map_limit) return 0;
-    void *p = mssys_map(len);
+    void *p = ms_sys_map_anon(len);
     mapped[mapped_n].p = p;
     mapped[mapped_n++].len = len;
     return p;
 }
 
 static void limited_unmap(void *p, size_t len) {
-    mssys_unmap(p, len);
+    ms_sys_unmap(p, len);
     for (size_t i = 0; i < mapped_n; i++) {
         if (mapped[i].p == p) mapped[i] = mapped[--mapped_n];
     }
@@ -378,7 +378,7 @@ static void a_refused_reservation_is_halved_until_it_fits(void) {
         CHECK(r.pages_len == pages >> kept);
         CHECK((size_t)1 << r.grow_bits == ((size_t)1 << 30) >> kept);
         CHECK(mapped_n == 3); /* only the accepted mappings stay */
-        for (size_t i = 0; i < mapped_n; i++) mssys_unmap(mapped[i].p, mapped[i].len);
+        for (size_t i = 0; i < mapped_n; i++) ms_sys_unmap(mapped[i].p, mapped[i].len);
     }
     MsAllocRegion r;
     CHECK(!msalloc_reserve(refuse_map, never_unmap, &r));

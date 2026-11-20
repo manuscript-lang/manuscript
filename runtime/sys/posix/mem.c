@@ -27,14 +27,14 @@ extern int mprotect(void *addr, size_t len, int prot);
 #define MADV_GUARD_INSTALL 102 /* Linux 6.13: a guard region that splits no mapping */
 #endif
 
-uint8_t *ms_sys_map_anon(size_t len) {
+void *ms_sys_map_anon(size_t len) {
     void *const memory = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
     return (intptr_t)memory == MS_MAP_FAILED_ADDRESS ? NULL : memory;
 }
 
 /* macOS superpages exist only on Intel, are wired and cannot back a 256 GiB reservation; Apple Silicon
  * uses 16 KiB base pages. Windows large pages need SeLockMemoryPrivilege and are not demand-committed. */
-void ms_sys_prefer_huge_pages(uint8_t *p, size_t len) {
+void ms_sys_prefer_huge_pages(void *p, size_t len) {
 #ifdef MADV_HUGEPAGE
     madvise(p, len, MADV_HUGEPAGE);
 #else
@@ -43,11 +43,15 @@ void ms_sys_prefer_huge_pages(uint8_t *p, size_t len) {
 #endif
 }
 
-void ms_sys_unmap(uint8_t *p, size_t len) { munmap(p, len); }
+void ms_sys_unmap(void *p, size_t len) { munmap(p, len); }
 
-uint8_t *ms_sys_map_region(size_t len) {
+void *ms_sys_map_region(size_t len) {
     /* Map twice the size, then give back the unaligned head and tail. */
-    uint8_t *const raw = ms_sys_map_anon(2 * len);
+    size_t doubled = 0;
+    if (!ms_size_mul(len, 2, &doubled)) {
+        return NULL;
+    }
+    uint8_t *const raw = ms_sys_map_anon(doubled);
     if (raw == NULL) {
         return NULL;
     }
@@ -67,21 +71,21 @@ uint8_t *ms_sys_map_region(size_t len) {
     return region;
 }
 
-bool ms_sys_commit(uint8_t *p, size_t len) { // NOLINT(readability-non-const-parameter): the Windows version writes through p
+bool ms_sys_commit(void *p, size_t len) { // NOLINT(readability-non-const-parameter): the Windows version writes through p
     (void)p;
     (void)len;
     return true;
 }
 
-bool ms_sys_commit_guard(uint8_t *p) { // NOLINT(readability-non-const-parameter): the Windows version writes through p
+bool ms_sys_commit_guard(void *p) { // NOLINT(readability-non-const-parameter): the Windows version writes through p
     (void)p;
     return true;
 }
 
 /* Linux zero-fills released pages; macOS frees them lazily and may keep the old contents. */
-void ms_sys_release(uint8_t *p, size_t len) { madvise(p, len, MADV_DONTNEED); }
+void ms_sys_release(void *p, size_t len) { madvise(p, len, MADV_DONTNEED); }
 
-bool ms_sys_guard(uint8_t *p, size_t len) {
+bool ms_sys_guard(void *p, size_t len) {
 #ifdef MADV_GUARD_INSTALL
     if (madvise(p, len, MADV_GUARD_INSTALL) == 0) {
         return true;

@@ -28,7 +28,7 @@ fn main() {
     if !archive_build {
         return;
     }
-    // The libuv reactor replaces the mio poller on this build (`cargo xtask runtime` with `MS_C_REACTOR=1`).
+    // The libuv reactor replaces the mio poller on this build (`cargo xtask runtime` sets `MS_C_REACTOR` when the plan includes `runtime/io`).
     if std::env::var_os("MS_C_REACTOR").is_some() {
         println!("cargo::rustc-cfg=ms_c=\"ms_io_open\"");
     }
