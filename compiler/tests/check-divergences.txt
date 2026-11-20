@@ -2,3 +2,4 @@
 # (rule 0); the C checker is right, and check-diff.sh must skip the named case for that pass only.
 # Format: pass | issue | what the Rust checker gets wrong
 ownership | #4660 | rejects a value moved in one branch after a `continue` in a nested loop; the C pass must accept it, with a regression test
+desugar, methods | design (Chinmay: methods attach to their type directly) | the Rust checker rewrites a type's own methods into a synthesized `Type$methods` interface and impl, merges blocks of one receiver form, and renumbers the copies. The C checker keeps the written blocks and keys the method table by type, so check-diff.sh compares only the methods of such blocks (sorted), prints no `$methods` contract, states a written bound once, reports a repeated method once (no second "duplicate operation" from the synthesized interface), and does not compare the node count; diagnostics and which calls resolve are unchanged

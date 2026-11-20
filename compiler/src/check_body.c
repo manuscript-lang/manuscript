@@ -17,47 +17,38 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "check_body.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
 
-typedef struct Body {
-    MsCheck *c;
-    MsModId module;
-    MsFacts *facts;
-    MsLiteralFacts *literals;
-    MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
-    MsTy result;
-    uint32_t first_binding; /* the bindings from here on belong to the function being checked */
-    MsBuf written;          /* expression ids whose type this function wrote, to undo them */
-    bool supported;         /* false once a construct outside the handled set is met */
-} Body;
+
 
 static MsTy body_primitive(const MsCheck *c, const char *name) {
     const MsSymId sym = ms_map_get(&c->primitives, ms_intern_cstr(c->names, name));
     return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
 }
 
-static bool body_is_value_type(const Body *b, MsTy ty) {
+static bool body_is_value_type(const MsBody *b, MsTy ty) {
     return ty != MS_TY_NONE && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ty == b->string_ty);
 }
 
-static bool body_is_numeric(const Body *b, MsTy ty) {
+static bool body_is_numeric(const MsBody *b, MsTy ty) {
     return ty == b->int_ty || ty == b->float_ty;
 }
 
 /* Gives up on the function; the caller returns `<invalid>` (MS_TY_NONE) up the tree. */
-static MsTy body_unsupported(Body *b) {
+MsTy ms_body_unsupported(MsBody *b) {
     b->supported = false;
     return MS_TY_NONE;
 }
 
-static bool body_text_is(const Body *b, MsSym name, const char *text) {
+static bool body_text_is(const MsBody *b, MsSym name, const char *text) {
     const MsStr s = ms_name(b->c->names, name);
     return s.len == strlen(text) && memcmp(s.ptr, text, s.len) == 0;
 }
 
-static MsTy body_record(Body *b, uint32_t node, MsTy ty) {
+MsTy ms_body_record(MsBody *b, uint32_t node, MsTy ty) {
     b->facts->expr_ty[node] = ty;
     MS_VEC_PUSH(b->written, uint32_t, node);
     return ty;
@@ -65,10 +56,10 @@ static MsTy body_record(Body *b, uint32_t node, MsTy ty) {
 
 /* ---- bindings ---- */
 
-static uint32_t body_find_binding(const Body *b, MsSym name) {
+uint32_t ms_body_find_binding(const MsBody *b, MsSym name) {
     const MsBindings *bindings = &b->facts->bindings;
     for (uint32_t i = bindings->count; i > b->first_binding; i--) {
-        if (bindings->name[i - 1] == name) {
+        if (bindings->name[i - 1] == name && !b->closed[i - 1]) {
             return i - 1;
         }
     }
@@ -76,13 +67,14 @@ static uint32_t body_find_binding(const Body *b, MsSym name) {
 }
 
 /* Binds a name in the function's one scope. A name already bound there would be a diagnostic. */
-static uint32_t body_bind(Body *b, MsSym name, MsTy ty, uint32_t node, uint8_t flags, MsBindRole role) {
-    if (!body_text_is(b, name, "_") && body_find_binding(b, name) != MS_NONE) {
-        (void)body_unsupported(b);
+uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, uint8_t flags, MsBindRole role) {
+    if (!body_text_is(b, name, "_") && ms_body_find_binding(b, name) != MS_NONE) {
+        (void)ms_body_unsupported(b);
         return MS_NONE;
     }
     MsBindings *bindings = &b->facts->bindings;
     const uint32_t id = bindings->count++;
+    b->closed[id] = false;
     bindings->name[id] = name;
     bindings->ty[id] = ty;
     bindings->decl_node[id] = node;
@@ -92,41 +84,39 @@ static uint32_t body_bind(Body *b, MsSym name, MsTy ty, uint32_t node, uint8_t f
     return id;
 }
 
-/* ---- expressions ---- */
 
-static MsTy body_expr(Body *b, const MsExpr *e, MsTy expected);
 
-static MsTy body_number(Body *b, const MsExpr *e) {
+static MsTy body_number(MsBody *b, const MsExpr *e) {
     MsCheck *c = b->c;
     const MsStr text = ms_number_canonical(&c->arena, ms_name(c->names, e->u.sym));
     if (ms_number_is_decimal(text)) {
-        return body_unsupported(b);
+        return ms_body_unsupported(b);
     }
     char *digits = ms_arena_strndup(&c->arena, text.ptr, text.len);
     char *end = NULL;
     errno = 0;
     if (ms_number_is_fractional(text)) {
         const double value = strtod(digits, &end);
-        return *end != '\0' || isinf(value) ? body_unsupported(b) : b->float_ty;
+        return *end != '\0' || isinf(value) ? ms_body_unsupported(b) : b->float_ty;
     }
     (void)strtoll(digits, &end, 10);
-    return *end != '\0' || errno != 0 ? body_unsupported(b) : b->int_ty;
+    return *end != '\0' || errno != 0 ? ms_body_unsupported(b) : b->int_ty;
 }
 
-static MsTy body_text(Body *b, const MsExpr *e) {
+static MsTy body_text(MsBody *b, const MsExpr *e) {
     for (uint32_t i = 0; i < e->u.text.len; i++) {
         const MsExpr *part = e->u.text.ptr[i].expr;
-        if (part != NULL && body_expr(b, part, MS_TY_NONE) == MS_TY_NONE) {
+        if (part != NULL && ms_body_expr(b, part, MS_TY_NONE) == MS_TY_NONE) {
             return MS_TY_NONE;
         }
     }
     return b->string_ty;
 }
 
-static MsTy body_name(Body *b, const MsExpr *e) {
-    const uint32_t binding = body_find_binding(b, e->u.sym);
+static MsTy body_name(MsBody *b, const MsExpr *e) {
+    const uint32_t binding = ms_body_find_binding(b, e->u.sym);
     if (binding == MS_NONE || body_text_is(b, e->u.sym, "none")) {
-        return body_unsupported(b);
+        return ms_body_unsupported(b);
     }
     b->facts->res_kind[e->id] = MS_RES_BINDING;
     b->facts->res_ref[e->id] = binding;
@@ -134,29 +124,29 @@ static MsTy body_name(Body *b, const MsExpr *e) {
     return b->facts->bindings.ty[binding];
 }
 
-static MsTy body_unary(Body *b, const MsExpr *e) {
+static MsTy body_unary(MsBody *b, const MsExpr *e) {
     const MsExpr *operand = e->u.bin.left;
     const MsUnaryOp op = (MsUnaryOp)e->op;
     if (op == MS_U_TRY) {
-        return body_unsupported(b);
+        return ms_body_unsupported(b);
     }
     if (op == MS_U_NEG && operand->kind == MS_E_NUMBER) {
         // A negated literal is typed as the literal; -9223372036854775808 is Int's own case.
         const MsStr text = ms_number_canonical(&b->c->arena, ms_name(b->c->names, operand->u.sym));
         if (text.len == 19 && memcmp(text.ptr, "9223372036854775808", 19) == 0) {
-            return body_unsupported(b);
+            return ms_body_unsupported(b);
         }
         const MsTy literal = body_number(b, operand);
-        return literal == MS_TY_NONE ? literal : body_record(b, operand->id, literal);
+        return literal == MS_TY_NONE ? literal : ms_body_record(b, operand->id, literal);
     }
-    const MsTy operand_ty = body_expr(b, operand, MS_TY_NONE);
+    const MsTy operand_ty = ms_body_expr(b, operand, MS_TY_NONE);
     if (operand_ty == MS_TY_NONE) {
         return MS_TY_NONE;
     }
     if (op == MS_U_NOT) {
-        return operand_ty == b->bool_ty ? b->bool_ty : body_unsupported(b);
+        return operand_ty == b->bool_ty ? b->bool_ty : ms_body_unsupported(b);
     }
-    return body_is_numeric(b, operand_ty) ? operand_ty : body_unsupported(b);
+    return body_is_numeric(b, operand_ty) ? operand_ty : ms_body_unsupported(b);
 }
 
 static bool body_is_ordering(MsBinaryOp op) {
@@ -164,45 +154,45 @@ static bool body_is_ordering(MsBinaryOp op) {
 }
 
 /* Integer arithmetic over constants that always faults is a diagnostic. */
-static bool body_constant_fault(Body *b, const MsExpr *e) {
+static bool body_constant_fault(MsBody *b, const MsExpr *e) {
     const MsStr fault = ms_constant_arithmetic_fault(&b->c->arena, b->literals, (MsBinaryOp)e->op, e->u.bin.left,
                                                      e->u.bin.right, "Int", INT64_MIN, INT64_MAX);
     return fault.len != 0;
 }
 
-static MsTy body_binary(Body *b, const MsExpr *e) {
+static MsTy body_binary(MsBody *b, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
-    const MsTy left = body_expr(b, e->u.bin.left, MS_TY_NONE);
-    const MsTy right = left == MS_TY_NONE ? MS_TY_NONE : body_expr(b, e->u.bin.right, MS_TY_NONE);
+    const MsTy left = ms_body_expr(b, e->u.bin.left, MS_TY_NONE);
+    const MsTy right = left == MS_TY_NONE ? MS_TY_NONE : ms_body_expr(b, e->u.bin.right, MS_TY_NONE);
     if (right == MS_TY_NONE) {
         return MS_TY_NONE;
     }
     if (op == MS_B_AND || op == MS_B_OR) {
-        return left == b->bool_ty && right == b->bool_ty ? b->bool_ty : body_unsupported(b);
+        return left == b->bool_ty && right == b->bool_ty ? b->bool_ty : ms_body_unsupported(b);
     }
     if (left != right || !body_is_value_type(b, left)) {
-        return body_unsupported(b);
+        return ms_body_unsupported(b);
     }
     if (op == MS_B_EQ || op == MS_B_NE) {
         return b->bool_ty;
     }
     if (body_is_ordering(op)) {
-        return left == b->bool_ty ? body_unsupported(b) : b->bool_ty;
+        return left == b->bool_ty ? ms_body_unsupported(b) : b->bool_ty;
     }
     if (left == b->string_ty) {
-        return op == MS_B_ADD ? left : body_unsupported(b);
+        return op == MS_B_ADD ? left : ms_body_unsupported(b);
     }
     const bool numeric = body_is_numeric(b, left);
     const bool remainder_of_float = op == MS_B_REM && left != b->int_ty;
     if (!numeric || remainder_of_float || (left == b->int_ty && body_constant_fault(b, e))) {
-        return body_unsupported(b);
+        return ms_body_unsupported(b);
     }
     return left;
 }
 
 /* The type of `e` where `expected` is the type the context wants, or MS_TY_NONE for no
  * expectation. A type that is not the expected one is a diagnostic. */
-static MsTy body_expr(Body *b, const MsExpr *e, MsTy expected) {
+MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     MsTy ty = MS_TY_NONE;
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: ty = body_number(b, e); break;
@@ -219,90 +209,124 @@ static MsTy body_expr(Body *b, const MsExpr *e, MsTy expected) {
     case MS_E_LIST:
     case MS_E_MAP:
     case MS_E_LAMBDA:
-    case MS_E_CALL:
-    case MS_E_MATCH: return body_unsupported(b);
+    case MS_E_CALL: return ms_body_unsupported(b);
+    case MS_E_MATCH: ty = ms_body_match(b, e, expected); break;
     }
     if (ty == MS_TY_NONE) {
         return ty;
     }
     if (expected != MS_TY_NONE && ty != expected) {
-        return body_unsupported(b);
+        return ms_body_unsupported(b);
     }
-    return body_record(b, e->id, ty);
+    return ms_body_record(b, e->id, ty);
 }
 
 /* ---- statements ---- */
 
 /* The primitive type a written annotation names, or MS_TY_NONE. */
-static MsTy body_annotation(Body *b, const MsTypeRef *t) {
+static MsTy body_annotation(MsBody *b, const MsTypeRef *t) {
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
-        return body_unsupported(b);
+        return ms_body_unsupported(b);
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
     if (!body_is_value_type(b, ty) || b->c->syms.decl[sym] != NULL) {
-        return body_unsupported(b);
+        return ms_body_unsupported(b);
     }
     b->facts->type_ref_ty[t->id] = ty;
     return ty;
 }
 
-static void body_bind_statement(Body *b, const MsStmt *s) {
+static void body_bind_statement(MsBody *b, const MsStmt *s) {
     const MsPattern *pattern = s->u.bind.pattern;
     if (pattern->kind != MS_P_NAME || s->u.bind.has_group) {
-        (void)body_unsupported(b);
+        (void)ms_body_unsupported(b);
         return;
     }
     const MsTy expected = s->u.bind.ty == NULL ? MS_TY_NONE : body_annotation(b, s->u.bind.ty);
     if (!b->supported) {
         return;
     }
-    const MsTy value = body_expr(b, s->u.bind.value, expected);
+    const MsTy value = ms_body_expr(b, s->u.bind.value, expected);
     if (value == MS_TY_NONE || !body_is_value_type(b, value)) {
-        (void)body_unsupported(b);
+        (void)ms_body_unsupported(b);
         return;
     }
     const uint8_t flags = s->u.bind.is_mutable ? MS_BIND_MUTABLE : 0;
     const MsBindRole role = s->u.bind.is_mutable ? MS_ROLE_VAR : MS_ROLE_LET;
-    const uint32_t binding = body_bind(b, pattern->u.name, value, pattern->id, flags, role);
+    const uint32_t binding = ms_body_bind(b, pattern->u.name, value, pattern->id, flags, role);
     if (binding != MS_NONE) {
         b->facts->pattern_binding[pattern->id] = binding;
     }
 }
 
-static void body_return_statement(Body *b, const MsStmt *s) {
+static void body_return_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *value = s->u.expr;
     if (value == NULL) {
         b->supported = b->supported && b->result == b->void_ty;
         return;
     }
-    (void)body_expr(b, value, b->result);
+    (void)ms_body_expr(b, value, b->result);
 }
 
-/* Checks the statements in order. A statement after a `return` is left to the Rust checker. */
-static void body_statements(Body *b, const MsStmts *body) {
-    bool reachable = true;
+
+/* Checks a condition against `Bool`, then the branches; whether control can leave the statement. */
+static bool body_if_statement(MsBody *b, const MsStmt *s) {
+    const MsExpr *cond = s->u.branch.cond;
+    if (s->u.branch.binding != NULL || ms_body_expr(b, cond, b->bool_ty) == MS_TY_NONE) {
+        (void)ms_body_unsupported(b);
+        return false;
+    }
+    const bool then_falls = ms_body_block(b, &s->u.branch.body);
+    const bool else_falls = s->u.branch.else_body.len == 0 || ms_body_block(b, &s->u.branch.else_body);
+    return then_falls || else_falls;
+}
+
+static bool body_while_statement(MsBody *b, const MsStmt *s) {
+    const MsExpr *cond = s->u.loop.cond;
+    if (ms_body_expr(b, cond, b->bool_ty) == MS_TY_NONE) {
+        (void)ms_body_unsupported(b);
+        return false;
+    }
+    (void)ms_body_block(b, &s->u.loop.body);
+    // Without `break` (unsupported here), `while true` never ends.
+    return !(cond->kind == MS_E_BOOL && cond->u.flag);
+}
+
+/* Checks the statements of a nested scope in order; whether control falls out of the end. A
+ * statement after one that never falls through is left to the Rust checker. */
+bool ms_body_block(MsBody *b, const MsStmts *body) {
+    const uint32_t scope_start = b->facts->bindings.count;
+    bool falls = true;
     for (uint32_t i = 0; i < body->len && b->supported; i++) {
         const MsStmt *s = body->ptr[i];
-        if (!reachable) {
-            (void)body_unsupported(b);
-            return;
+        if (!falls) {
+            (void)ms_body_unsupported(b);
+            break;
         }
         switch ((MsStmtKind)s->kind) {
         case MS_S_BIND: body_bind_statement(b, s); break;
         case MS_S_RETURN:
             body_return_statement(b, s);
-            reachable = false;
+            falls = false;
             break;
+        case MS_S_IF: falls = body_if_statement(b, s); break;
+        case MS_S_WHILE: falls = body_while_statement(b, s); break;
         case MS_S_ASSIGN:
         case MS_S_CALL:
         case MS_S_BREAK:
         case MS_S_CONTINUE:
-        case MS_S_IF:
-        case MS_S_WHILE:
-        case MS_S_FOR: (void)body_unsupported(b); break;
+        case MS_S_FOR: (void)ms_body_unsupported(b); break;
         }
     }
+    for (uint32_t i = scope_start; i < b->facts->bindings.count; i++) {
+        b->closed[i] = true;
+    }
+    return falls;
+}
+
+static void body_statements(MsBody *b, const MsStmts *body) {
+    const bool falls = ms_body_block(b, body);
     // A local nothing reads, unless named with a leading `_`, is a diagnostic.
     const MsBindings *bindings = &b->facts->bindings;
     for (uint32_t i = b->first_binding; b->supported && i < bindings->count; i++) {
@@ -312,14 +336,14 @@ static void body_statements(Body *b, const MsStmts *body) {
         b->supported = !local || ignored || (bindings->flags[i] & MS_BIND_READ) != 0;
     }
     // A function that returns a value must end every path with a `return`.
-    if (b->supported && reachable && b->result != b->void_ty) {
-        (void)body_unsupported(b);
+    if (b->supported && falls && b->result != b->void_ty) {
+        (void)ms_body_unsupported(b);
     }
 }
 
 /* ---- functions ---- */
 
-static void body_undo(Body *b, uint32_t first_binding, size_t written_start) {
+static void body_undo(MsBody *b, uint32_t first_binding, size_t written_start) {
     const uint32_t *ids = ms_buf_items(&b->written);
     for (size_t i = written_start; i < MS_VEC_LEN(b->written, uint32_t); i++) {
         b->facts->expr_ty[ids[i]] = MS_TY_NONE;
@@ -330,7 +354,7 @@ static void body_undo(Body *b, uint32_t first_binding, size_t written_start) {
     b->facts->bindings.count = first_binding;
 }
 
-static bool body_signature_supported(const Body *b, const MsFunc *fn, MsTy sig) {
+static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig) {
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != fn->params.len || fn->type_params.len != 0) {
         return false;
@@ -349,7 +373,7 @@ static bool body_signature_supported(const Body *b, const MsFunc *fn, MsTy sig) 
     return true;
 }
 
-static void body_check_function(Body *b, const MsDecl *d, MsSymId sym) {
+static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     const MsFunc *fn = &d->u.fn;
     const MsTy sig = b->c->syms.ty[sym];
     if (fn->external || b->c->syms.nvars[sym] != 0 || !body_signature_supported(b, fn, sig)) {
@@ -362,7 +386,7 @@ static void body_check_function(Body *b, const MsDecl *d, MsSymId sym) {
     b->result = b->c->tys.result[sig];
     const MsTyParam *params = ms_ty_params(&b->c->tys, sig);
     for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
-        (void)body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, 0, MS_ROLE_PARAM);
+        (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, 0, MS_ROLE_PARAM);
     }
     if (b->supported) {
         body_statements(b, &fn->body);
@@ -374,9 +398,11 @@ static void body_check_function(Body *b, const MsDecl *d, MsSymId sym) {
     }
 }
 
-static void body_allocate(Body *b, MsFacts *facts) {
+static void body_allocate(MsBody *b, MsFacts *facts) {
     MsArena *arena = &b->c->arena;
     const size_t nodes = (size_t)facts->node_count + 1;
+    b->closed = MS_NEW_N(arena, bool, nodes);
+    memset(b->closed, 0, nodes * sizeof *b->closed);
     facts->expr_ty = MS_NEW_N(arena, MsTy, nodes);
     facts->res_kind = MS_NEW_N(arena, uint8_t, nodes);
     facts->res_ref = MS_NEW_N(arena, uint32_t, nodes);
@@ -406,7 +432,7 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
     if (facts->body_checked != NULL || row->ndiags != 0) {
         return;
     }
-    Body b = {.c = c,
+    MsBody b = {.c = c,
               .module = module,
               .facts = facts,
               .int_ty = body_primitive(c, "Int"),

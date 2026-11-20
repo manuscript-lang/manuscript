@@ -2,8 +2,12 @@
 #ifndef MS_RT_STRING_H
 #define MS_RT_STRING_H
 
+/* ms: domain string */
+
 #include "ms_rt/alloc.h"
 #include "ms_rt/base.h"
+
+/* ms: domain string */
 
 /* A string value: two words (crates/ms-rt-abi StrVal). The top bits of `tagged` say what the bytes are:
  * 00 owned allocation at `ptr_word`, 01 inline (the bytes are the value itself, `inline_bytes`, length in bits
@@ -50,6 +54,7 @@ uint8_t msrt_string_is_empty(const MsStr *s);
 int64_t msrt_string_length(const MsStr *s);
 uint8_t msrt_string_contains(const MsStr *a, const MsStr *v);
 uint8_t msrt_string_contains_multi(const MsStr *a, const MsStr *v);
+/* ms-sig: msrt_string_count(a: *const StrVal, v: *const StrVal) -> i64 @domain=string @leaf */
 int64_t msrt_string_count(const MsStr *a, const MsStr *v);
 int64_t msrt_string_scalar_length(const MsStr *s);
 int64_t msrt_string_char_width(const MsStr *s, int64_t at);
@@ -67,26 +72,43 @@ static inline void ms_str_release(const MsStr *s) {
 
 
 /* `to_string` of one value, and `to_string_radix` (a radix outside 2..=36 faults); runtime/core/string_fmt.c. */
+/* ms-sig: msrt_int_to_string(v: i64, out: *mut StrVal) @leaf */
 void msrt_int_to_string(int64_t v, MsStr *out);
+/* ms-sig: msrt_uint_to_string(v: i64, out: *mut StrVal) */
 void msrt_uint_to_string(int64_t v, MsStr *out);
+/* ms-sig: msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) @leaf */
 void msrt_int_to_string_radix(int64_t v, int64_t radix, MsStr *out);
+/* ms-sig: msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal) */
 void msrt_uint_to_string_radix(int64_t v, int64_t radix, MsStr *out);
+/* ms-sig: msrt_float_to_string(v: f64, out: *mut StrVal) @leaf */
 void msrt_float_to_string(double v, MsStr *out);
+/* ms-sig: msrt_float32_to_string(v: f64, out: *mut StrVal) @leaf */
 void msrt_float32_to_string(double v, MsStr *out);
+/* ms-sig: msrt_bool_to_string(v: u8, out: *mut StrVal) @leaf */
 void msrt_bool_to_string(uint8_t v, MsStr *out);
 
 /* f-strings (runtime/core/string_join.c): `msrt_string_fmtN` joins N parts, `msrt_string_append_fmtN` joins them onto
  * an owned `s`. Bit k of `mask` makes part k an Int, otherwise it is the address of a string (for append, `s` is
  * part 0 of the mask). */
+/* ms-sig: msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal) @fresh @leaf */
 void msrt_string_fmt2(int64_t mask, size_t a, size_t b, MsStr *out);
+/* ms-sig: msrt_string_fmt3(mask: i64, a: usize, b: usize, c: usize, out: *mut StrVal) @fresh @leaf */
 void msrt_string_fmt3(int64_t mask, size_t a, size_t b, size_t c, MsStr *out);
+/* ms-sig: msrt_string_fmt4(mask: i64, a: usize, b: usize, c: usize, d: usize, out: *mut StrVal) @fresh @leaf */
 void msrt_string_fmt4(int64_t mask, size_t a, size_t b, size_t c, size_t d, MsStr *out);
+/* ms-sig: msrt_string_fmt5(mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, out: *mut StrVal) @fresh @leaf */
 void msrt_string_fmt5(int64_t mask, size_t a, size_t b, size_t c, size_t d, size_t e, MsStr *out);
+/* ms-sig: msrt_string_fmt6(mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, f: usize, out: *mut StrVal) @fresh @leaf */
 void msrt_string_fmt6(int64_t mask, size_t a, size_t b, size_t c, size_t d, size_t e, size_t f, MsStr *out);
+/* ms-sig: msrt_string_append_fmt1(s: *const StrVal, mask: i64, a: usize, out: *mut StrVal) @fresh @leaf */
 void msrt_string_append_fmt1(const MsStr *s, int64_t mask, size_t a, MsStr *out);
+/* ms-sig: msrt_string_append_fmt2(s: *const StrVal, mask: i64, a: usize, b: usize, out: *mut StrVal) @fresh @leaf */
 void msrt_string_append_fmt2(const MsStr *s, int64_t mask, size_t a, size_t b, MsStr *out);
+/* ms-sig: msrt_string_append_fmt3(s: *const StrVal, mask: i64, a: usize, b: usize, c: usize, out: *mut StrVal) @fresh @leaf */
 void msrt_string_append_fmt3(const MsStr *s, int64_t mask, size_t a, size_t b, size_t c, MsStr *out);
+/* ms-sig: msrt_string_append_fmt4(s: *const StrVal, mask: i64, a: usize, b: usize, c: usize, d: usize, out: *mut StrVal) @fresh @leaf */
 void msrt_string_append_fmt4(const MsStr *s, int64_t mask, size_t a, size_t b, size_t c, size_t d, MsStr *out);
+/* ms-sig: msrt_string_append_fmt5(s: *const StrVal, mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, out: *mut StrVal) @fresh @leaf */
 void msrt_string_append_fmt5(const MsStr *s, int64_t mask, size_t a, size_t b, size_t c, size_t d, size_t e, MsStr *out);
 /* Builders (runtime/core/strbuild.c). */
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out);
@@ -118,12 +140,19 @@ void msrt_string_pad_start(const MsStr *s, int64_t target, const MsStr *padding,
 void msrt_string_pad_end(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
 void msrt_string_slice(const MsStr *s, int64_t start, int64_t end, MsStr *out);
 void msrt_string_view(const MsStr *s, int64_t start, int64_t end, MsStr *out);
+/* ms-sig: msrt_string_split(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_split(const MsStr *s, const MsStr *sep, MsVec *out);
+/* ms-sig: msrt_string_split_view(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_split_view(const MsStr *s, const MsStr *sep, MsVec *out);
+/* ms-sig: msrt_string_split_view_into(s: *const StrVal, sep: *const StrVal, buf: *mut FrameBuf<StrVal, 8>, out: *mut VecVal) @domain=string @leaf @view_of=msrt_string_split */
 void msrt_string_split_view_into(const MsStr *s, const MsStr *sep, MsStr *buf, MsVec *out);
+/* ms-sig: msrt_string_split_first(s: *const StrVal, sep: *const StrVal, out: *mut StrVal) @domain=string @first_of=msrt_string_split @leaf */
 void msrt_string_split_first(const MsStr *s, const MsStr *sep, MsStr *out);
+/* ms-sig: msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
 void msrt_string_replace(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+/* ms-sig: msrt_string_replace_first(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_replace_first(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+/* ms-sig: msrt_string_replace_take(s: *mut StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_replace_take(MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
 
 #endif
