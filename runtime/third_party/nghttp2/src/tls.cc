@@ -28,13 +28,12 @@
 #include <cstring>
 #include <vector>
 #include <mutex>
-#include <iostream>
 #include <fstream>
 
 #ifdef HAVE_LIBBROTLI
 #  include <brotli/encode.h>
 #  include <brotli/decode.h>
-#endif // HAVE_LIBBROTLI
+#endif // defined(HAVE_LIBBROTLI)
 
 #include "ssl_compat.h"
 
@@ -42,10 +41,10 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/crypto.h>
 #  include <wolfssl/openssl/conf.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/crypto.h>
 #  include <openssl/conf.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 namespace nghttp2 {
 
@@ -60,7 +59,7 @@ std::string_view get_tls_protocol(SSL *ssl) {
 #ifdef TLS1_3_VERSION
   case TLS1_3_VERSION:
     return "TLSv1.3"sv;
-#endif // TLS1_3_VERSION
+#endif // defined(TLS1_3_VERSION)
   case TLS1_2_VERSION:
     return "TLSv1.2"sv;
   case TLS1_1_VERSION:
@@ -125,14 +124,15 @@ bool check_http2_requirement(SSL *ssl) {
   return check_http2_tls_version(ssl) && !check_http2_cipher_block_list(ssl);
 }
 
-int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
+std::expected<void, Error> ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min,
+                                                      int max) {
   if (SSL_CTX_set_min_proto_version(
         ssl_ctx, static_cast<nghttp2_ssl_proto_version_type>(min)) != 1 ||
       SSL_CTX_set_max_proto_version(
         ssl_ctx, static_cast<nghttp2_ssl_proto_version_type>(max)) != 1) {
-    return -1;
+    return std::unexpected{Error::CRYPTO};
   }
-  return 0;
+  return {};
 }
 
 #if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
@@ -184,7 +184,8 @@ int cert_decompress(SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
 
   return 1;
 }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // defined(HAVE_LIBBROTLI)
 
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
   defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                     \
@@ -200,28 +201,71 @@ void keylog_callback(const SSL *ssl, const char *line) {
 }
 } // namespace
 
-int setup_keylog_callback(SSL_CTX *ssl_ctx) {
+std::expected<void, Error> setup_keylog_callback(SSL_CTX *ssl_ctx) {
   auto keylog_filename = getenv("SSLKEYLOGFILE");
   if (!keylog_filename) {
-    return 0;
+    return {};
   }
 
   keylog_file.open(keylog_filename, std::ios_base::app);
   if (!keylog_file) {
-    return -1;
+    return std::unexpected{Error::IO};
   }
 
   SSL_CTX_set_keylog_callback(ssl_ctx, keylog_callback);
 
-  return 0;
+  return {};
 }
-#else  // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_BORINGSSL &&
-       // !NGHTTP2_OPENSSL_IS_LIBRESSL && !(NGHTTP2_OPENSSL_IS_WOLFSSL &&
-       // HAVE_SECRET_CALLBACK)
-int setup_keylog_callback(SSL_CTX *ssl_ctx) { return 0; }
-#endif // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_BORINGSSL &&
-       // !NGHTTP2_OPENSSL_IS_LIBRESSL && !(NGHTTP2_OPENSSL_IS_WOLFSSL &&
-       // HAVE_SECRET_CALLBACK)
+#else  // !defined(NGHTTP2_GENUINE_OPENSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL) &&
+       // (!defined(NGHTTP2_OPENSSL_IS_WOLFSSL) ||
+       // !defined(HAVE_SECRET_CALLBACK))
+std::expected<void, Error> setup_keylog_callback(SSL_CTX *ssl_ctx) {
+  return {};
+}
+#endif // !defined(NGHTTP2_GENUINE_OPENSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL) &&
+       // (!defined(NGHTTP2_OPENSSL_IS_WOLFSSL) ||
+       // !defined(HAVE_SECRET_CALLBACK))
+
+#if OPENSSL_3_0_0_API
+const EVP_CIPHER *aes_128_cbc() {
+  static const auto c = EVP_CIPHER_fetch(nullptr, "AES-128-CBC", nullptr);
+  return c;
+}
+
+const EVP_CIPHER *aes_256_cbc() {
+  static const auto c = EVP_CIPHER_fetch(nullptr, "AES-256-CBC", nullptr);
+  return c;
+}
+
+const EVP_CIPHER *aes_128_ecb() {
+  static const auto c = EVP_CIPHER_fetch(nullptr, "AES-128-ECB", nullptr);
+  return c;
+}
+
+const EVP_MD *sha256() {
+  static const auto md = EVP_MD_fetch(nullptr, "sha256", nullptr);
+  return md;
+}
+
+const EVP_MD *sha1() {
+  static const auto md = EVP_MD_fetch(nullptr, "sha1", nullptr);
+  return md;
+}
+#else  //  !OPENSSL_3_0_0_API
+const EVP_CIPHER *aes_128_cbc() { return EVP_aes_128_cbc(); }
+
+const EVP_CIPHER *aes_256_cbc() { return EVP_aes_256_cbc(); }
+
+const EVP_CIPHER *aes_128_ecb() { return EVP_aes_128_ecb(); }
+
+const EVP_MD *sha256() { return EVP_sha256(); }
+
+const EVP_MD *sha1() { return EVP_sha1(); }
+#endif //  !OPENSSL_3_0_0_API
 
 } // namespace tls
 

@@ -202,6 +202,97 @@ static void md_globals(MdCx *c) {
     }
 }
 
+/* The words of a string literal; the layout is MsStr (runtime/include/ms_rt/string.h). */
+void mir_str_lit_words(const char *text, uint32_t len, bool *is_static, uint64_t *lo, uint64_t *hi) {
+    *is_static = len > MIR_STR_INLINE_MAX;
+    if (*is_static) {
+        bool ascii = true;
+        for (uint32_t i = 0; i < len; i++) {
+            ascii = ascii && (uint8_t)text[i] < 0x80;
+        }
+        *lo = 0;
+        *hi = len | MIR_STR_STATIC | (ascii ? MIR_STR_ASCII : 0);
+        return;
+    }
+    uint8_t words[16] = {0};
+    *lo = 0;
+    memcpy(words, text, len);
+    uint64_t second = 0;
+    for (uint32_t i = 0; i < 8; i++) {
+        *lo |= (uint64_t)words[i] << (8 * i);
+        second |= (uint64_t)words[8 + i] << (8 * i);
+    }
+    *hi = second | MIR_STR_INLINE | ((uint64_t)len << MIR_STR_INLINE_SHIFT);
+}
+
+/* The bytes of every long literal a function uses, each followed by a NUL. */
+static void md_strings(MdCx *c) {
+    MirModule *m = c->m;
+    c->d->strings = MS_NEW_N(&m->arena, uint32_t, m->strings.count);
+    for (uint32_t i = 0; i < m->strings.count; i++) {
+        c->d->strings[i] = MIR_NONE;
+    }
+    for (uint32_t f = 0; f < m->nfuncs; f++) {
+        for (uint32_t b = 0; b < m->funcs[f].nblocks; b++) {
+            const MirBlockData *blk = &m->funcs[f].blocks[b];
+            for (uint32_t k = 0; k < blk->ninsts; k++) {
+                const MirInst *inst = &blk->insts[k];
+                const uint32_t id = inst->imm.a;
+                if (inst->op != MOP_StrLit || m->strings.len[id] <= MIR_STR_INLINE_MAX ||
+                    c->d->strings[id] != MIR_NONE) {
+                    continue;
+                }
+                const uint32_t size = m->strings.len[id] + 1;
+                uint8_t *bytes = MS_NEW_N(&m->arena, uint8_t, size);
+                memcpy(bytes, m->strings.text[id], size - 1);
+                MirDataSym s = {.name = md_name(c, "lit", id), .size = size, .align = 1, .bytes = bytes};
+                c->d->strings[id] = md_new_sym(c, &s);
+            }
+        }
+    }
+}
+
+uint32_t mir_data_unit(const MirData *d, uint32_t alt, uint32_t case_index) {
+    for (uint32_t i = 0; i < d->nunits; i++) {
+        if (d->units[i].alt == alt && d->units[i].case_index == case_index) {
+            return d->units[i].sym;
+        }
+    }
+    return MIR_NONE;
+}
+
+/* A payloadless case of a boxed alternative is one static block, so building it allocates nothing. */
+static void md_unit(MdCx *c, const MirFunc *f, const MirInst *inst) {
+    const uint32_t alt = inst->imm.a, case_index = inst->imm.b;
+    const MirAltDef *def = &c->m->alts[alt];
+    uint32_t size = 0;
+    if (def->cases[case_index].nfields != 0 || mir_data_unit(c->d, alt, case_index) != MIR_NONE ||
+        !mir_boxed_block_size(c->lay, f->values[inst->res], &size)) {
+        return;
+    }
+    size = size < 8 ? 8 : size;
+    uint8_t *bytes = MS_NEW_N(&c->m->arena, uint8_t, size);
+    md_put_word(bytes, case_index);
+    MirDataSym s = {.name = ms_arena_fmt(&c->m->arena, "ms.unit.%u.%u", alt, case_index).ptr,
+                    .size = size, .align = 8, .bytes = bytes};
+    const MirUnit unit = {alt, case_index, md_new_sym(c, &s)};
+    MIR_PUSH(c->m, c->d->units, c->d->nunits, c->d->cunits, MirUnit, unit);
+}
+
+static void md_units(MdCx *c) {
+    for (uint32_t f = 0; f < c->m->nfuncs; f++) {
+        const MirFunc *fn = &c->m->funcs[f];
+        for (uint32_t b = 0; b < fn->nblocks; b++) {
+            for (uint32_t k = 0; k < fn->blocks[b].ninsts; k++) {
+                const MirInst *inst = &fn->blocks[b].insts[k];
+                if (inst->op == MOP_AltNew || inst->op == MOP_AltView) {
+                    md_unit(c, fn, inst);
+                }
+            }
+        }
+    }
+}
+
 void mir_data_build(MirModule *m, const MirGlue *glue, MirData *out) {
     MirLayouts lay;
     mir_layouts_init(&lay, m);
@@ -209,6 +300,8 @@ void mir_data_build(MirModule *m, const MirGlue *glue, MirData *out) {
     MdCx c = {.m = m, .glue = glue, .lay = &lay, .d = out};
     md_globals(&c);
     md_vtables(&c);
+    md_strings(&c);
+    md_units(&c);
     md_collect_descs(&c);
     mir_layouts_free(&lay);
 }

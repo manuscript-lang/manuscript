@@ -22,16 +22,16 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_HTTP2_TEST_H
-#define SHRPX_HTTP2_TEST_H
+#ifndef HTTP2_TEST_H
+#define HTTP2_TEST_H
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif // HAVE_CONFIG_H
+#endif // defined(HAVE_CONFIG_H)
 
 #define MUNIT_ENABLE_ASSERT_ALIASES
 
-#include "munit.h"
+#include "munitxx.h"
 
 namespace shrpx {
 
@@ -45,16 +45,14 @@ munit_void_test_decl(test_http2_rewrite_location_uri)
 munit_void_test_decl(test_http2_parse_http_status_code)
 munit_void_test_decl(test_http2_index_header)
 munit_void_test_decl(test_http2_lookup_token)
-munit_void_test_decl(test_http2_parse_link_header)
 munit_void_test_decl(test_http2_path_join)
 munit_void_test_decl(test_http2_normalize_path)
 munit_void_test_decl(test_http2_rewrite_clean_path)
-munit_void_test_decl(test_http2_get_pure_path_component)
-munit_void_test_decl(test_http2_construct_push_component)
 munit_void_test_decl(test_http2_contains_trailers)
 munit_void_test_decl(test_http2_check_transfer_encoding)
 munit_void_test_decl(test_http2_capitalize)
+munit_void_test_decl(test_http2_make_websocket_accept_token)
 
 } // namespace shrpx
 
-#endif // SHRPX_HTTP2_TEST_H
+#endif // !defined(HTTP2_TEST_H)
