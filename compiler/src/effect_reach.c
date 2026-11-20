@@ -123,7 +123,7 @@ typedef struct Graph {
 } Graph;
 
 /* The node with this id, or NO_NODE. */
-static uint32_t node_of(const Graph *graph, uint32_t id) {
+static uint32_t reach_node_of(const Graph *graph, uint32_t id) {
     uint32_t low = 0;
     uint32_t high = graph->count;
     while (low < high) {
@@ -172,7 +172,7 @@ static void build_callers(MsArena *arena, Graph *graph) {
     memset(start, 0, ((size_t)graph->count + 1) * sizeof *start);
     for (uint32_t i = 0; i < graph->count; i++) {
         for (uint32_t e = 0; e < graph->nodes[i].nedges; e++) {
-            uint32_t callee = node_of(graph, graph->nodes[i].edges[e].callee);
+            uint32_t callee = reach_node_of(graph, graph->nodes[i].edges[e].callee);
             if (callee != NO_NODE) {
                 start[callee + 1]++;
             }
@@ -186,7 +186,7 @@ static void build_callers(MsArena *arena, Graph *graph) {
     memcpy(fill, start, graph->count * sizeof *fill);
     for (uint32_t i = 0; i < graph->count; i++) {
         for (uint32_t e = 0; e < graph->nodes[i].nedges; e++) {
-            uint32_t callee = node_of(graph, graph->nodes[i].edges[e].callee);
+            uint32_t callee = reach_node_of(graph, graph->nodes[i].edges[e].callee);
             if (callee != NO_NODE) {
                 callers[fill[callee]++] = i;
             }
@@ -296,7 +296,7 @@ static uint32_t step_candidates(const Graph *graph, Search *search, uint32_t at,
     const MsReachNode *node = &graph->nodes[at];
     uint32_t found = 0;
     for (uint32_t e = 0; e < node->nedges; e++) {
-        uint32_t callee = node_of(graph, node->edges[e].callee);
+        uint32_t callee = reach_node_of(graph, node->edges[e].callee);
         bool usable = callee != NO_NODE && callee != start && bit_has(&graph->out, callee, bit) &&
                       search->seen[callee] != search->generation;
         if (usable) {
@@ -397,7 +397,7 @@ static SharedPaths shared_paths_new(MsArena *arena, const Graph *graph, Search *
     for (uint32_t i = 0; i < graph->count; i++) {
         shared.next[i] = NO_NODE;
         for (uint32_t e = 0; e < graph->nodes[i].nedges; e++) {
-            uint32_t callee = node_of(graph, graph->nodes[i].edges[e].callee);
+            uint32_t callee = reach_node_of(graph, graph->nodes[i].edges[e].callee);
             if (callee == NO_NODE || callee == i || distance[callee] == NO_NODE) {
                 continue;
             }
@@ -474,7 +474,7 @@ static MsPos violation_pos(const Graph *graph, uint32_t node, const uint32_t *pa
     const MsReachNode *from = &graph->nodes[node];
     uint32_t first = length > 1 ? path[1] : node;
     for (uint32_t e = 0; e < from->nedges; e++) {
-        if (node_of(graph, from->edges[e].callee) == first) {
+        if (reach_node_of(graph, from->edges[e].callee) == first) {
             return from->edges[e].pos;
         }
     }
