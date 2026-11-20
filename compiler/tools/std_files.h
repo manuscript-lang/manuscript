@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 
 #include "ms/stdlib.h"
+#include "read_file.h"
 
 typedef struct StdFiles {
     MsStdFile *items;
@@ -22,26 +23,6 @@ static bool ends_with(const char *s, const char *suffix) {
     size_t a = strlen(s);
     size_t b = strlen(suffix);
     return a >= b && strcmp(s + a - b, suffix) == 0;
-}
-
-static char *read_whole_file(const char *path, size_t *length) {
-    FILE *f = fopen(path, "rb");
-    if (f == NULL) {
-        return NULL;
-    }
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *text = malloc((size_t)size + 1);
-    bool ok = text != NULL && fread(text, 1, (size_t)size, f) == (size_t)size;
-    fclose(f);
-    if (!ok) {
-        free(text);
-        return NULL;
-    }
-    text[size] = 0;
-    *length = (size_t)size;
-    return text;
 }
 
 static bool add_std_file(StdFiles *files, const char *dir, const char *rel, const char *name) {

@@ -251,6 +251,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+      # The reactor test links libuv, the std tests PCRE2 and OpenSSL: the same system packages the runtime folds in.
+      - name: Install the C libraries
+        if: matrix.check == 'runtime'
+        run: sh runtime/third_party/libs.sh install
       - name: Runtime unit tests
         if: matrix.check == 'runtime'
         run: make c-test
