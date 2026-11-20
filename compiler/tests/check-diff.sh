@@ -26,9 +26,11 @@ cc $cflags compiler/src/libms.c compiler/tools/ms_check_dump.c -o "$out/check-du
 cc $cflags compiler/src/libms.c compiler/tests/types_test.c -o "$out/types-test" -lm
 cc $cflags compiler/src/libms.c compiler/tests/ownership_test.c -o "$out/ownership-test" -lm
 cc $cflags compiler/src/libms.c compiler/tests/recursion_test.c -o "$out/recursion-test" -lm
+cc $cflags compiler/src/libms.c compiler/tests/ty_algebra_test.c -o "$out/ty-algebra-test" -lm
 "$out/ownership-test"
 "$out/types-test"
 "$out/recursion-test"
+"$out/ty-algebra-test"
 
 status=0
 "$oracle" > "$out/tables.rust"
