@@ -848,6 +848,10 @@ fn add_c_runtime(
     if cfg!(windows) {
         // The folded library members overflow Windows' 32 KiB command line; llvm-ar reads a response file.
         let list = target.join("c-objects/members.rsp");
+        if let Some(folder) = list.parent() {
+            std::fs::create_dir_all(folder)
+                .map_err(|e| format!("create {}: {e}", folder.display()))?;
+        }
         let names: Vec<String> = files
             .iter()
             .map(|f| f.to_string_lossy().replace('\\', "/"))
