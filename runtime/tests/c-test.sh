@@ -13,6 +13,12 @@ for t in runtime/tests/core_*.c; do
         -lm -lpthread -o "$out/$name"
     "$out/$name"
 done
+# The OS layer: runtime/sys/posix (the Windows layer is covered by the conformance corpus on Windows).
+for t in runtime/tests/sys_mem.c runtime/tests/sys_thread.c; do
+    name=$(basename "$t" .c)
+    cc $flags "$t" runtime/sys/posix/*.c -lpthread -o "$out/$name"
+    "$out/$name"
+done
 for t in runtime/tests/std_*.c; do
     name=$(basename "$t" .c)
     # shellcheck disable=SC2046

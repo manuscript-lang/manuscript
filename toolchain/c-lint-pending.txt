@@ -10,8 +10,6 @@ compiler/src/parse.c
 compiler/src/stdlib.c
 compiler/src/tables.c
 compiler/src/types.c
-runtime/core/alloc.c
-runtime/core/region.c
 runtime/core/string.c
 runtime/core/utf8.c
 runtime/fuzz/http1_fuzz.c
@@ -30,7 +28,6 @@ runtime/sys/glibc/compat.c
 runtime/sys/linux/net.c
 runtime/sys/mem.c
 runtime/tests/clibs_smoke.c
-runtime/tests/core_alloc.c
 runtime/tests/core_num.c
 runtime/tests/core_string.c
 runtime/tests/std_crypto.c
