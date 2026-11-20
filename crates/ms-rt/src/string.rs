@@ -1840,18 +1840,17 @@ unsafe fn msrt_string_quote_val(s: *const StrVal) -> StrVal {
     from_buf(out)
 }
 
-crate::isolate_static! {
-/// Deep copies the runtime performed, `[list copies, list bytes, string clones, string bytes]` (counted by every runtime).
-    pub static COPY_COUNTS: [u64; 4] = [0; 4];
+unsafe extern "C-unwind" {
+    /// `[list copies, list bytes, string clones, string bytes]` of the counting runtime (zeros elsewhere).
+    pub fn msrt_copy_counts(out: *mut u64);
 }
-/// Records one deep copy of `kind` (0 list, 1 string) moving `bytes` bytes.
-pub fn count_copy(kind: usize, bytes: usize) {
-    // SAFETY: single threaded access to the counters.
-    unsafe {
-        let c = &mut *COPY_COUNTS.ptr();
-        c[kind * 2] += 1;
-        c[kind * 2 + 1] += bytes as u64;
-    }
+
+/// The deep copies the runtime performed, counted by the C runtime.
+pub fn copy_counts() -> [u64; 4] {
+    let mut counts = [0; 4];
+    // SAFETY: `counts` has the four words the C side writes.
+    unsafe { msrt_copy_counts(counts.as_mut_ptr()) };
+    counts
 }
 
 #[cfg(test)]

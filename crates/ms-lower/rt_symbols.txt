@@ -68,6 +68,8 @@ msrt_cleanup_remove(handle: usize) @leaf
 msrt_cleanup_run(handle: usize) @leaf
 msrt_cleanup_truncate(base: usize) @domain=unwind @leaf
 msrt_cleanup_unwind_to(base: usize)
+msrt_copy_counts(out: *mut u64) @domain=collection @leaf
+msrt_count_copy(kind: i64, bytes: u64) @domain=collection @leaf
 msrt_counts(out: *mut u64)
 msrt_drop_defer(run: RunDrop, block: *mut u8) @leaf
 msrt_drop_enter() -> u64 @leaf

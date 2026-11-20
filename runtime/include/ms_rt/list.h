@@ -100,4 +100,10 @@ void msrt_list_sorted_by_difference(const MsList *v, const MsTypeDesc *d, MsComp
 /* ms-sig: msrt_hash_list(v: *const VecVal, d: ElemDesc) -> i64 @domain=collection @leaf */
 int64_t msrt_hash_list(const MsList *v, const MsTypeDesc *d);
 
+/* Deep-copy counters of the counting runtime (zero in every other build): kind 0 is a list, 1 a string. */
+/* ms-sig: msrt_count_copy(kind: i64, bytes: u64) @domain=collection @leaf */
+void msrt_count_copy(int64_t kind, uint64_t bytes);
+/* ms-sig: msrt_copy_counts(out: *mut u64) @domain=collection @leaf */
+void msrt_copy_counts(uint64_t *out);
+
 #endif

@@ -202,6 +202,8 @@ static bool varying_bits(const int64_t *items, size_t count, unsigned *low, unsi
 }
 
 /* A list of this many Ints or fewer is cheaper to sort in place with no first partition. */
+/* Ints that sort without a heap buffer (16 KiB of stack). */
+#define STACK_SPARE_ITEMS ((size_t)2048)
 #define PARTITION_MIN ((size_t)1 << 13)
 
 /* Sorts a long list by one partition on its top byte, then each part (a few thousand Ints, which stay in
@@ -241,7 +243,11 @@ static void radix_sort_ints(MsList *list) {
     if (!varying_bits(items, list->len, &low, &high)) {
         return;
     }
-    int64_t *spare = (int64_t *)__builtin_assume_aligned(msrt_alloc(list->len * sizeof(int64_t)), _Alignof(int64_t));
+    /* A short list sorts in a stack buffer: no allocation, and nothing to unwind if the run is cancelled. */
+    int64_t stack_spare[STACK_SPARE_ITEMS];
+    const bool on_stack = list->len <= STACK_SPARE_ITEMS;
+    int64_t *spare = on_stack ? stack_spare
+                              : (int64_t *)__builtin_assume_aligned(msrt_alloc(list->len * sizeof(int64_t)), _Alignof(int64_t));
     if (list->len >= PARTITION_MIN && high - low >= RADIX_BITS * 2) {
         partition_sort_ints(items, spare, list->len, low, high);
     } else {
@@ -250,7 +256,9 @@ static void radix_sort_ints(MsList *list) {
             __builtin_memcpy(items, sorted, list->len * sizeof(int64_t));
         }
     }
-    msrt_free(spare);
+    if (!on_stack) {
+        msrt_free(spare);
+    }
 }
 
 static void reverse_ints(MsList *list) {
