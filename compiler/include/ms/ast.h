@@ -1,0 +1,342 @@
+/* The untyped syntax tree. Mirrors crates/ms-syntax/src/ast.rs: the same shapes, positions and
+ * node ids (dense per module, allocated in the same order). Nodes live in the parse arena and are
+ * referenced by pointer; lists are (pointer, length) pairs of node pointers. */
+#ifndef MS_AST_H
+#define MS_AST_H
+
+#include "ms/base.h"
+
+typedef struct MsTypeRef MsTypeRef;
+typedef struct MsExpr MsExpr;
+typedef struct MsStmt MsStmt;
+typedef struct MsParam MsParam;
+typedef struct MsPattern MsPattern;
+
+#define MS_LIST(T, name)                                                                           \
+    typedef struct {                                                                               \
+        T **ptr;                                                                                   \
+        uint32_t len;                                                                              \
+    } name
+
+MS_LIST(MsTypeRef, MsTypeRefs);
+
+typedef struct MsTypeParam {
+    uint32_t id;
+    MsPos pos;
+    MsSym name;
+    MsTypeRefs bounds;
+    MsTypeRef *def; /* default type argument, or NULL */
+} MsTypeParam;
+
+MS_LIST(MsParam, MsParams);
+MS_LIST(MsStmt, MsStmts);
+MS_LIST(MsExpr, MsExprs);
+MS_LIST(MsPattern, MsPatterns);
+MS_LIST(MsTypeParam, MsTypeParams);
+
+/* ---- types ---- */
+
+typedef enum MsTypeKind { MS_TYPE_NAMED, MS_TYPE_FN } MsTypeKind;
+
+struct MsTypeRef {
+    uint32_t id;
+    MsPos pos;
+    uint8_t kind;
+    MsSym name;      /* named: possibly dotted */
+    MsTypeRefs args; /* named */
+    MsParams params; /* fn */
+    MsTypeRef *result; /* fn */
+};
+
+struct MsParam {
+    uint32_t id;
+    MsPos pos;
+    MsSym name;
+    MsTypeRef *ty; /* NULL only for lambda parameters with inferred types */
+    MsExpr *def;   /* default value or NULL */
+    bool mutable_;
+    bool moving;
+};
+
+/* ---- expressions ---- */
+
+typedef enum MsExprKind {
+    MS_E_NUMBER, MS_E_BOOL, MS_E_VOID, MS_E_TEXT, MS_E_NAME, MS_E_MEMBER, MS_E_APPLY, MS_E_INDEX,
+    MS_E_PROBE, MS_E_LIST, MS_E_MAP, MS_E_UNARY, MS_E_BINARY, MS_E_LAMBDA, MS_E_CALL, MS_E_MATCH
+} MsExprKind;
+
+typedef enum MsUnaryOp { MS_U_NOT, MS_U_NEG, MS_U_PLUS, MS_U_TRY } MsUnaryOp;
+typedef enum MsBinaryOp {
+    MS_B_OR, MS_B_AND, MS_B_EQ, MS_B_NE, MS_B_LT, MS_B_GT, MS_B_LE, MS_B_GE, MS_B_ADD, MS_B_SUB,
+    MS_B_MUL, MS_B_DIV, MS_B_REM
+} MsBinaryOp;
+
+const char *ms_unary_str(MsUnaryOp op);
+const char *ms_binary_str(MsBinaryOp op);
+int ms_binary_precedence(MsBinaryOp op);
+
+typedef struct MsTextPart {
+    MsStr lit;    /* literal text with escapes decoded; unused when expr is set */
+    MsExpr *expr; /* interpolated expression, or NULL for a literal */
+} MsTextPart;
+
+typedef struct MsArg {
+    MsPos pos;
+    bool has_name;
+    MsSym name;
+    MsExpr *value;
+} MsArg;
+
+typedef struct MsMapEntry {
+    MsExpr *key, *value;
+} MsMapEntry;
+
+typedef struct MsArmBinding {
+    MsSym name;
+    MsPos pos;
+} MsArmBinding;
+
+typedef struct MsArm {
+    uint32_t id;
+    MsPos pos;
+    MsExpr *path;
+    struct {
+        MsArmBinding *ptr;
+        uint32_t len;
+    } bindings;
+    MsStmts body;
+    MsExpr *value; /* final expression, or NULL (yields Void) */
+    bool from_if;
+    bool bare;
+} MsArm;
+
+struct MsExpr {
+    uint32_t id;
+    MsPos pos, end;
+    uint8_t kind; /* MsExprKind */
+    uint8_t op;   /* MsUnaryOp or MsBinaryOp */
+    union {
+        MsSym sym;  /* NUMBER (spelling), NAME */
+        bool flag;  /* BOOL */
+        struct {
+            MsTextPart *ptr;
+            uint32_t len;
+        } text;
+        struct {
+            MsExpr *left;
+            MsSym name;
+        } member;
+        struct {
+            MsExpr *left;
+            MsTypeRefs types;
+            MsExpr *value; /* value reading of a single type argument, or NULL */
+        } apply;
+        struct {
+            MsExpr *left, *right; /* INDEX (left, index), BINARY; PROBE and UNARY use left */
+        } bin;
+        MsExprs list;
+        struct {
+            MsMapEntry *ptr;
+            uint32_t len;
+        } map;
+        struct {
+            MsParams params;
+            MsTypeRef *result;
+            MsStmts body;
+        } lambda;
+        struct {
+            MsExpr *callee;
+            struct {
+                MsArg *ptr;
+                uint32_t len;
+            } args;
+        } call;
+        struct {
+            MsExpr *scrutinee;
+            struct {
+                MsArm **ptr;
+                uint32_t len;
+            } arms;
+        } match;
+    } u;
+};
+
+/* ---- patterns and statements ---- */
+
+typedef enum MsPatternKind { MS_P_NAME, MS_P_LIST, MS_P_TYPE } MsPatternKind;
+
+typedef struct MsPatternField {
+    MsPos pos;
+    MsSym name;
+    MsPattern *pattern;
+} MsPatternField;
+
+struct MsPattern {
+    uint32_t id;
+    MsPos pos;
+    uint8_t kind;
+    union {
+        MsSym name;
+        MsPatterns list;
+        struct {
+            MsPatternField *ptr;
+            uint32_t len;
+        } fields;
+    } u;
+};
+
+typedef enum MsStmtKind {
+    MS_S_BIND, MS_S_ASSIGN, MS_S_CALL, MS_S_RETURN, MS_S_BREAK, MS_S_CONTINUE, MS_S_IF, MS_S_WHILE,
+    MS_S_FOR
+} MsStmtKind;
+
+struct MsStmt {
+    uint32_t id;
+    MsPos pos;
+    uint8_t kind;
+    union {
+        struct {
+            bool mutable_;
+            MsPattern *pattern;
+            MsTypeRef *ty;
+            MsExpr *value;
+            bool has_group;
+            MsPos group;
+        } bind;
+        struct {
+            bool member_target; /* target is a member expression, else the name */
+            MsSym name;
+            MsExpr *target;
+            bool has_compound;
+            uint8_t compound; /* MsBinaryOp */
+            MsExpr *value;
+        } assign;
+        MsExpr *expr; /* CALL; RETURN (NULL for a bare return) */
+        struct {
+            MsPattern *binding;
+            bool mutable_;
+            MsExpr *cond;
+            MsStmts body, else_body;
+        } if_;
+        struct {
+            MsExpr *cond;
+            MsStmts body;
+        } while_;
+        struct {
+            MsSym name;
+            MsExpr *iter;
+            MsStmts body;
+        } for_;
+    } u;
+};
+
+/* ---- declarations ---- */
+
+typedef struct MsFunc {
+    MsSym name;
+    MsTypeParams type_params;
+    MsParams params;
+    MsTypeRef *result;
+    MsStmts body;
+    bool external;
+} MsFunc;
+
+typedef struct MsMethod {
+    uint32_t id;
+    MsPos pos;
+    MsPos var_at;
+    MsFunc func;
+    bool mutating;
+    bool consuming;
+    MsTypeRefs receiver_args;
+} MsMethod;
+
+typedef struct MsCase {
+    uint32_t id;
+    MsPos pos;
+    MsSym name;
+    MsParams fields;
+} MsCase;
+
+typedef enum MsDeclKind {
+    MS_D_FN, MS_D_CONST, MS_D_TYPE, MS_D_ENUM, MS_D_ALIAS, MS_D_INTERFACE, MS_D_IMPL, MS_D_TEST
+} MsDeclKind;
+
+typedef struct MsDecl {
+    uint32_t id;
+    MsPos pos;
+    bool export_;
+    bool synthetic;
+    uint8_t kind;
+    union {
+        MsFunc fn;
+        struct {
+            MsSym name;
+            MsTypeRef *ty;
+            MsExpr *value;
+            MsPos init_pos;
+        } konst;
+        struct {
+            MsSym name;
+            MsTypeParams type_params;
+            MsParams fields;
+            bool external, opaque;
+        } type;
+        struct {
+            MsSym name;
+            MsTypeParams type_params;
+            struct {
+                MsCase **ptr;
+                uint32_t len;
+            } cases;
+            bool opaque;
+        } enum_;
+        struct {
+            MsSym name;
+            MsTypeParams type_params;
+            MsTypeRefs targets;
+        } alias;
+        struct {
+            MsSym name;
+            MsTypeParams type_params;
+            struct {
+                MsMethod **ptr;
+                uint32_t len;
+            } methods;
+        } iface;
+        struct {
+            MsTypeRef *contract; /* NULL for `impl Type` */
+            MsTypeRef *receiver;
+            MsTypeParams bounds;
+            struct {
+                MsMethod **ptr;
+                uint32_t len;
+            } methods;
+        } impl;
+        struct {
+            MsStr name;
+            MsStmts body;
+            bool bench;
+            int64_t per;
+        } test;
+    } u;
+} MsDecl;
+
+typedef struct MsImport {
+    uint32_t id;
+    MsPos pos;      /* the `import` keyword */
+    MsPos clause;   /* first name of this binding's clause */
+    MsPos name_pos;
+    MsSym name;
+    MsStr path;
+} MsImport;
+
+typedef struct MsModule {
+    MsImport *imports;
+    uint32_t nimports;
+    MsDecl **decls;
+    uint32_t ndecls;
+    uint32_t node_count; /* node ids are 0..node_count */
+} MsModule;
+
+#endif
