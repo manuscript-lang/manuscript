@@ -15,6 +15,7 @@
 #include "ms/mir_analysis.h"
 #include "ms/mir_data.h"
 #include "ms/mir_layout.h"
+#include "ms/mir_asm_tables.h"
 
 /* Values of at most this many bytes are passed as their leaves; larger ones are not supported yet. */
 #define QBE_DIRECT_BYTES 16
@@ -30,6 +31,8 @@ typedef struct QCx {
     bool *borrowed;      /* per value of `f`: an `iface.borrow` kept in the frame; NULL when none */
     uint32_t next;       /* counter for generated names */
     const char *why;
+    uint32_t scope_base; /* module-wide index of the first scope of `f` */
+    MirLoc loc;          /* the last source place written as a `dbg` line in this function */
 } QCx;
 
 /* What QBE needs to know about each kind of leaf, indexed by `MirLeaf`: the register type
@@ -1287,6 +1290,17 @@ static bool qbe_entry(QCx *c) {
     return true;
 }
 
+/* `dbgloc <line>, <scope>` makes QBE write `.loc 1 <line> <scope>`: the fault tables are built from the
+ * assembly (compiler/tools/ms_asm_tables.c), which turns each into a code range. The scope is
+ * module-wide (0 is the function itself) and the column carries it. */
+static void qbe_dbg(QCx *c, MirLoc loc) {
+    if (mir_loc_none(loc) || (loc.line == c->loc.line && loc.scope == c->loc.scope)) {
+        return;
+    }
+    c->loc = loc;
+    ms_buf_printf(c->out, "\tdbgloc %u, %u\n", loc.line, loc.scope == 0 ? 0 : c->scope_base + loc.scope);
+}
+
 static bool qbe_block(QCx *c, uint32_t b, const uint32_t *last) {
     const MirBlockData *block = &c->f->blocks[b];
     ms_buf_printf(c->out, "@b%u\n", b);
@@ -1300,10 +1314,12 @@ static bool qbe_block(QCx *c, uint32_t b, const uint32_t *last) {
     }
     uint32_t part = 0;
     for (uint32_t k = 0; k < block->ninsts; k++) {
+        qbe_dbg(c, block->insts[k].loc);
         if (!qbe_inst(c, &block->insts[k], b, k, &part)) {
             return false;
         }
     }
+    qbe_dbg(c, block->term_loc);
     return qbe_term(c, &block->term, b);
 }
 
@@ -1403,11 +1419,14 @@ bool mir_emit_qbe_glued(MirModule *m, MirGlue *glue_in, MsBuf *out, MsBuf *why) 
     mir_layouts_init(&layouts, m);
     bool ok = true;
     for (uint32_t i = 0; i < data.nsyms; i++) {
-        const QCx c = {m, NULL, out, &layouts, &data, &glue, NULL, NULL, 0, NULL};
+        const QCx c = {m, NULL, out, &layouts, &data, &glue, NULL, NULL, 0, NULL, 0, {0}};
         qbe_data_sym(&c, &data.syms[i]);
     }
+    ms_buf_puts(out, "dbgfile \"ms\"\n\n");
+    uint32_t scope_base = 0;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        QCx c = {m, &m->funcs[i], out, &layouts, &data, &glue, NULL, NULL, 0, NULL};
+        QCx c = {m, &m->funcs[i], out, &layouts, &data, &glue, NULL, NULL, 0, NULL, scope_base, {0}};
+        scope_base += m->funcs[i].nscopes;
         if (qbe_function(&c, i)) {
             continue;
         }
@@ -1417,4 +1436,28 @@ bool mir_emit_qbe_glued(MirModule *m, MirGlue *glue_in, MsBuf *out, MsBuf *why) 
     }
     mir_layouts_free(&layouts);
     return ok;
+}
+
+void mir_qbe_tables_meta(const MirModule *m, MsBuf *out) {
+    for (uint32_t i = 0; i < m->nfiles; i++) {
+        ms_buf_printf(out, "F %.*s\n", (int)m->files[i].len, m->files[i].ptr);
+    }
+    MsBuf sym = {0};
+    uint32_t base = 0;
+    for (uint32_t i = 0; i < m->nfuncs; i++) {
+        const MirFunc *f = &m->funcs[i];
+        const MsStr name = ms_name(&m->names, f->name);
+        sym.len = 0;
+        qbe_sym(&sym, name);
+        ms_buf_printf(out, "Y %.*s\t%d\t%u\t%.*s\n", (int)sym.len - 1, sym.data + 1,
+                      f->loc.file == MIR_NONE ? -1 : (int)f->loc.file, f->loc.line, (int)name.len, name.ptr);
+        for (uint32_t k = 0; k < f->nscopes; k++) {
+            const MirScope *s = &f->scopes[k];
+            const MsStr sn = ms_name(&m->names, s->name);
+            ms_buf_printf(out, "S %d\t%u\t%u\t%.*s\n", s->file == MIR_NONE ? -1 : (int)s->file,
+                          s->parent == 0 ? 0 : base + s->parent, s->call_line, (int)sn.len, sn.ptr);
+        }
+        base += f->nscopes;
+    }
+    ms_buf_free(&sym);
 }

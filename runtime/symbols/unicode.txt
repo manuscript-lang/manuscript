@@ -1,4 +1,5 @@
 # Defined in runtime/std/unicode.c.
+msstd_unicode_display_width
 msstd_unicode_in_category
 msstd_unicode_is_alphabetic
 msstd_unicode_is_alphanumeric

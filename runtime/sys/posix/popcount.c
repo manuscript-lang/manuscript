@@ -6,6 +6,8 @@
 
 #if defined(__x86_64__) || defined(__i386__)
 
+/* The name is the compiler runtime's (libgcc ABI), so it cannot avoid the reserved prefix. */
+// NOLINTBEGIN(bugprone-reserved-identifier)
 __attribute__((weak)) int __popcountdi2(int64_t value);
 
 __attribute__((weak)) int __popcountdi2(int64_t value) {
@@ -15,6 +17,7 @@ __attribute__((weak)) int __popcountdi2(int64_t value) {
     v = (v + (v >> 4)) & 0x0F0F0F0F0F0F0F0FULL;
     return (int)((v * 0x0101010101010101ULL) >> 56);
 }
+// NOLINTEND(bugprone-reserved-identifier)
 
 #else
 
