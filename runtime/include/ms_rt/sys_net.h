@@ -24,6 +24,9 @@ enum {
     MS_SYS_ERROR = -1      /* see ms_sys_net_error() */
 };
 
+/* A new non-blocking TCP socket of the family of `addr`, not bound or connected. For a library that connects the
+ * socket itself (libcurl's open-socket callback). */
+int ms_sys_net_tcp_socket(const MsAddr *addr, MsSock *out);
 /* A listening socket on `addr` (port 0 picks one; read it back with ms_sys_net_local_addr). */
 int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out);
 /* Starts a connection: OK when connected at once, INPROGRESS otherwise. */

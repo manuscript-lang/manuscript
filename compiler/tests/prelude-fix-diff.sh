@@ -1,5 +1,5 @@
 #!/bin/sh
-# Compares compiler/src/prelude_fix.c with the redundant-prelude-import fix of
+# Compares compiler/src/syntax/prelude_fix.c with the redundant-prelude-import fix of
 # crates/ms-check/src/prelude_imports.rs (crates/ms-syntax/examples/c_prelude_fix_oracle.rs holds it
 # verbatim) on random import statements. Run from the repository root. PRELUDE_FIX_CASES and
 # PRELUDE_FIX_SEED size and seed the run.

@@ -1,0 +1,22 @@
+module "closure_heap"
+entry @msmain
+fn @make(%k: int) -> fn(int) -> int {
+b0:
+  %c: fn(int) -> int = closure.new @addk %k
+  ret %c
+}
+fn @msmain() -> int {
+b0:
+  %k: int = iconst 30
+  %c: fn(int) -> int = call @make (%k)
+  %x: int = iconst 12
+  %r: int = call.ind (%c, %x)
+  drop %c
+  ret %r
+}
+fn @addk(%env: ptr, %x: int) -> int closure(int) {
+b0:
+  %k: int = closure.cap 0 %env
+  %s: int = iadd %x, %k
+  ret %s
+}

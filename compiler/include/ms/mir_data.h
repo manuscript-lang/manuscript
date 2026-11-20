@@ -19,7 +19,7 @@ enum {
 /* The descriptor's word offsets (MsTypeDesc): size and alignment, kind, then the addresses. */
 enum {
     MIR_DESC_BYTES = 64, MIR_DESC_INNER0 = 16, MIR_DESC_INNER1 = 24, MIR_DESC_DROP = 32,
-    MIR_DESC_COPY = 40
+    MIR_DESC_COPY = 40, MIR_DESC_EQ = 48, MIR_DESC_HASH = 56
 };
 
 /* The scope of a key whose type is plain bits whatever it holds (a forgotten value). */
@@ -70,6 +70,8 @@ typedef struct MirDescPlan {
     uint32_t size, align, kind;
     MirTy inner[2];       /* element, or key and value, under the scope of `key`; MIR_NONE if none */
     MirTy slot_glue;      /* the unscoped type whose slot drop and copy glue it points at, or MIR_NONE */
+    bool has_eq_hash;     /* the type has `Equal` and `Hashable` glue (`MirModule.desc_glue`) */
+    uint32_t eq, hash;    /* their function ids */
 } MirDescPlan;
 
 void mir_desc_plan(const MirModule *m, MirLayouts *lay, MirTy key, MirDescPlan *out);

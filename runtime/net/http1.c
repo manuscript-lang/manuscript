@@ -243,6 +243,18 @@ static int is_token(unsigned char c) {
     return c && strchr("!#$%&'*+-.^_`|~", c) != NULL;
 }
 
+bool ms_h1_is_token(MsBytes text) {
+    if (text.len == 0) {
+        return false;
+    }
+    for (size_t i = 0; i < text.len; i++) {
+        if (!is_token(text.ptr[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 int ms_h1_write_request_line(char *dst, size_t cap, size_t *used, const char *method, size_t method_len,
                              const char *target, size_t target_len) {
     if (method_len == 0 || target_len == 0) return -2;

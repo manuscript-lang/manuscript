@@ -1,0 +1,15 @@
+[Wiki](../index.md) › [Compiler and build](index.md)
+
+# C MIR passes: shallow clones share arrays, the build is one unit, allocations are not zeroed
+
+Verified (port of `crates/ms-mir/src/opt` to `compiler/src/opt_*.c`, 2026-11): every pass and both pipelines are byte-identical to Rust on the corpus under ASan/UBSan.
+
+- `mir_func_clone` shares operand arrays, target args and switch cases; a pass that edits a clone's instructions in place must use `mir_func_deep_clone` (`opt_inline.c`), which copies cases before targets. Anything new on `MirFunc` (scopes, names, noalias) must be added to both clones and to the substitution and inlining remaps, or it silently goes stale.
+- `libms.c` includes every `.c`, so file-scope statics need a file prefix (`il_`, `ic_`, `op_`, `sm_`...).
+- `MS_NEW_N` does not zero. Use a zeroing helper wherever a field is read before it is written; the analyzer reports the symptom as a null or uninitialised read.
+- A fixture added under `compiler/tests` must pass `ms fmt` (run `ms fmt compiler/tests` before pushing), or the Rust fixture-format test fails.
+- Perf check (2026-11-20): the whole speed pipeline takes about 3 ms and 13 MB on the largest corpus module, so the optimiser is not a perf or memory target.
+
+Apply when: adding or changing a C MIR pass or a `MirFunc` field.
+Evidence: `compiler/tests/mir-diff.sh`, `compiler/src/opt/opt_inline.c`, issue #4816.
+Verify: `mir-diff.sh` shows no FAIL.
