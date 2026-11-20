@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz
+.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -218,6 +218,35 @@ c-compiler-test:
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
 	sh compiler/tests/qbe-run.sh
+
+# libms with the tool entry points (compiler/include/ms/tool.h): the archive a Manuscript tool links with `--link`.
+target/c-tool/libmstool.a: compiler/src/tool.c compiler/include/ms/tool.h $(wildcard compiler/src/*.c compiler/include/ms/*.h)
+	mkdir -p target/c-tool
+	cc -std=c11 -O1 -g -Wall -Wextra -Werror -Icompiler/include -Iruntime/include -c compiler/src/libms.c -o target/c-tool/libms.o
+	cc -std=c11 -O1 -g -Wall -Wextra -Werror -Icompiler/include -Iruntime/include -Icrates/ms-rt-abi/include -c compiler/src/tool.c -o target/c-tool/tool.o
+	ar rcs $@ target/c-tool/libms.o target/c-tool/tool.o
+
+# The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; and `search_symbol` against the Rust one.
+c-tools-test: build target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
+	cc -std=c11 -O1 -Wno-maybe-uninitialized -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_syntax_dump.c -o target/c-tool/ms_syntax_dump
+	git ls-files '*.ms' > target/c-tool/files.txt
+	target/c-tool/ms_syntax_dump ast $$(cat target/c-tool/files.txt) | sed -E 's/^(error [0-9]+:[0-9]+:[0-9]+) .*/\1/' > target/c-tool/ast.c.txt
+	"$(RELEASE_MS)" run tools/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt
+	cmp target/c-tool/ast.c.txt target/c-tool/ast.ms.txt
+	cargo run -q --release --locked -p ms-tooling --example api_model > target/c-tool/model.json
+	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -coverage target/c-tool/coverage.rust.json -artifacts target/c-tool/docs.rust -static target/c-tool/static.rust
+	rm -rf target/c-tool/docs.ms
+	"$(RELEASE_MS)" run tools/ms/docgen.ms -- target/c-tool/model.json target/c-tool/docs.ms
+	diff -r target/c-tool/docs.rust/documentation target/c-tool/docs.ms/documentation
+	cmp target/c-tool/static.rust/stdlib.md target/c-tool/docs.ms/website/static/stdlib.md
+	cmp target/c-tool/static.rust/stdlib.json target/c-tool/docs.ms/website/static/stdlib.json
+	"$(RELEASE_MS)" run tools/ms/doc_inventory.ms -- target/c-tool/model.json crates/ms-tooling/data/description_backlog.json target/c-tool/coverage.ms.json
+	cmp target/c-tool/coverage.rust.json target/c-tool/coverage.ms.json
+	"$(RELEASE_MS)" test tools/ms/doc_inventory.ms
+	"$(RELEASE_MS)" build tools/ms/search.ms -o target/c-tool/search
+	sh tools/ms/search-diff.sh "$(RELEASE_MS)" target/c-tool/model.json target/c-tool/search
+	"$(RELEASE_MS)" run tools/ms/lint_diff.ms --link target/c-tool/libmstool.a -- "$(RELEASE_MS)" target/c-tool/work 3 $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' 'examples/*.ms' 'stdlib/*.ms' | awk 'NR%4==0')
 
 # The C driver: stage table and parse entry point, then the thin `ms` in front of a stand-in for the Rust `ms` (no Rust build needed).
 c-driver-test:
