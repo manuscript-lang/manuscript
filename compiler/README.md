@@ -45,7 +45,7 @@ Next: the remaining optimisation passes one at a time, each checked by running b
 
 ## LLVM emitter
 
-`include/ms/emit_llvm.h` and `src/emit_llvm.c` write LLVM IR text from MIR for release builds (the Rust `ms-mir-llvm` is the one they replace). They take the scalar subset the QBE emitter takes, with the same calling convention, and are written in C's own terms (flat buffers, tables of leaf kinds), not as a copy of the Rust builders. Contract: `compiler/tests/llvm-run.sh` (part of `make c-compiler-test`) compiles the programs in `tests/qbe/` and `tests/llvm/` with clang, runs them and compares exit statuses. No text comparison with the Rust output: its metadata numbering is incidental.
+`include/ms/emit_llvm.h` and `src/emit_llvm.c` write LLVM IR text from MIR for release builds (the Rust `ms-mir-llvm` is the one they replace). They take the scalar subset the QBE emitter takes, with the same calling convention, and are written in C's own terms (flat buffers, tables of leaf kinds), not as a copy of the Rust builders. Contract: `compiler/tests/llvm-run.sh` (part of `make c-compiler-test`) compiles the programs in `tests/qbe/` and `tests/llvm/` with clang, runs them and compares exit statuses. Static data (descriptors, vtables, globals) comes from `mir_data` (`include/ms/mir_data.h`), the table the QBE emitter prints too; `mir_emit_llvm` takes it and prints the definitions and the `typedesc` and `global.get`/`global.set` operations. No text comparison with the Rust output: its metadata numbering is incidental.
 
 ## The checker tables
 
