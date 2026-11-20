@@ -88,6 +88,15 @@ void ms_report(MsCheck *c, MsModId module, const MsCheckDiag *diag) {
         scope_mentions(diag->diag.message, "<invalid>")) {
         return;
     }
+    /* One message at one position is reported once (the Rust checker's `unique_diagnostics`). */
+    for (uint32_t i = 0; i < row->ndiags; i++) {
+        const MsDiag *old = &row->diags[i].diag;
+        if (old->pos.offset == diag->diag.pos.offset && old->pos.line == diag->diag.pos.line &&
+            old->pos.column == diag->diag.pos.column && old->message.len == diag->diag.message.len &&
+            memcmp(old->message.ptr, diag->diag.message.ptr, old->message.len) == 0) {
+            return;
+        }
+    }
     if (row->ndiags == row->diags_cap) {
         row->diags_cap = ms_capacity_for(row->diags_cap, row->ndiags + 1);
         row->diags = ms_array_resize(row->diags, row->diags_cap, sizeof *row->diags);

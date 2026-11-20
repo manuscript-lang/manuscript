@@ -102,6 +102,7 @@
 #include "check/stdlib.c"
 #include "check/check_scope.c"
 #include "check/check_entry.c"
+#include "check/check_public.c"
 #include "check/check_types.c"
 #include "check/check_decls.c"
 #include "check/check_list.c"

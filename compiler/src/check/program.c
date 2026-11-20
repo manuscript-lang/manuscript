@@ -6,6 +6,7 @@
 #include "ms/desugar.h"
 #include "ms/methods.h"
 #include "ms/program.h"
+#include "ms/public_sig.h"
 #include "ms/stdlib.h"
 
 /* The modules whose methods every module sees: the prelude's types (`List`, `Optional`, `Result`,
@@ -100,6 +101,7 @@ bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
     c->mods[module].impls_added = true;
     ms_module_ensure_operations(c, module, c->methods);
     ms_module_add_implementations(c, module, c->methods);
+    ms_module_check_public(c, module, c->methods);
     ms_module_check_bodies_with(c, module, c->methods);
     return true;
 }
