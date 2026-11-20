@@ -1,0 +1,10 @@
+module "m1"
+extern @msrt_fault(str)
+entry @main
+fn @main() -> int {
+b0:
+  %s: str = str "a\x00b%s"
+  %u: void = call.rt @msrt_fault (%s)
+  %r: int = iconst 0
+  ret %r
+}

@@ -37,6 +37,10 @@ compiler/
 
 Next: the remaining optimisation passes one at a time, each checked by running both implementations on the same MIR text.
 
+### MIR passes
+
+`include/ms/mir_pass.h` declares the ownership and expansion passes and their shared helpers (`src/mir_pass.c`); each pass is one file, `src/mir_<name>.c`: `exit_drops` and `expand` so far. A pass rewrites the module in place, builds what it adds in the module's arena and returns whether it changed anything. `mir-pass-diff.sh` runs every pass on the `.mir` files that parse and verify (the corpus and the mutants) in both implementations (`c_pass_oracle pass NAME`, `ms_mir_pass pass NAME`) and compares the printed module, a `changed` flag and the cold blocks byte for byte. To add a pass: write it, add its name to `run_pass` in both tools and to `PASSES` in `compiler/tests/mir-pass-diff.sh`.
+
 ## The checker tables
 
 `MsTyTable` (`types.h`) is the one representation of checked types: a struct of arrays of interned type constructors, indexed by `MsTy`. Equal types share an index, so identity is an integer compare; type variables are never shared. `MsCheck` (`tables.h`) holds the type table, the symbol columns (name, identity text, kind, module, native binding, export flag, declaration, type, variable count) and one row per module with its scope. A pass adds columns beside these, indexed by the same ids. `ms_std_load` (`stdlib.h`) parses the bundled files, splits a file that mixes native operations with bodies into a native half and a `+source` half, and registers symbols as the Rust loader does. `compiler/tests/check-diff.sh` compares the result with `crates/ms-check/examples/c_oracle.rs` byte for byte. Later passes (resolution, types, interfaces, ownership, effects) add their own lines to that script.

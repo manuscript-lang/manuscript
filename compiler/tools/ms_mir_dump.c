@@ -183,13 +183,17 @@ static void dump_run(const MirModule *m, MsBuf *out) {
         const MirInterpFault *f = mir_interp_fault(interp);
         int length = 0;
         const char *message = plain_text(f->message, &length);
-        ms_buf_printf(out, "fault %s %.*s fuel=%d\n", fault_name(f->kind), length, message, f->fuel_exhausted ? 1 : 0);
+        ms_buf_printf(out, "fault %s ", fault_name(f->kind));
+        ms_buf_put(out, message, (size_t)length);
+        ms_buf_printf(out, " fuel=%d\n", f->fuel_exhausted ? 1 : 0);
         for (uint32_t i = 0; i < f->nstack; i++) {
             ms_buf_printf(out, "  at %.*s\n", (int)f->stack[i].len, f->stack[i].ptr);
         }
         for (uint32_t i = 0; i < f->ncleanup_faults; i++) {
             message = plain_text(f->cleanup_faults[i], &length);
-            ms_buf_printf(out, "  cleanup %.*s\n", length, message);
+            ms_buf_puts(out, "  cleanup ");
+            ms_buf_put(out, message, (size_t)length);
+            ms_buf_putc(out, '\n');
         }
     }
     ms_buf_printf(out, "drops %llu steps %llu\n", (unsigned long long)mir_interp_drops(interp),

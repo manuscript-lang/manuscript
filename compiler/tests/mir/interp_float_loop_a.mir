@@ -1,0 +1,26 @@
+module "f3"
+extern @msrt_print_float(float)
+entry @main
+fn @main() -> int {
+b0:
+  %x0: float = fconst 1.0
+  %m: float = fconst 2.0
+  %a: float = fconst 3.0
+  %i0: int = iconst 0
+  br loop(%x0, %i0)
+loop(%x: float, %i: int):
+  %u: void = call.rt @msrt_print_float (%x)
+  %y: float = fmul %x, %m
+  %q: float = fdiv %y, %a
+  %s: float = fsqrt %y
+  %u2: void = call.rt @msrt_print_float (%q)
+  %u3: void = call.rt @msrt_print_float (%s)
+  %one: int = iconst 1
+  %j: int = iadd %i, %one
+  %lim: int = iconst 1000
+  %c: bool = icmp.lt %j, %lim
+  br_if %c, loop(%y, %j), done()
+done:
+  %r: int = iconst 0
+  ret %r
+}
