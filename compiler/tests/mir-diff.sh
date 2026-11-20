@@ -14,7 +14,7 @@ cargo build --release --locked -p ms-mir --example c_oracle
 oracle=target/release/examples/c_oracle
 
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_mir_dump.c -o "$out/dump"
+    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_mir_dump.c -o "$out/dump" -lm
 cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/mutate.c -o "$out/mutate"
 
 status=0
@@ -64,5 +64,16 @@ for set in files layout-fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" layout > "$out/layout-$set.rust"
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" layout > "$out/layout-$set.c"
     check "layout $set" "$out/layout-$set.rust" "$out/layout-$set.c"
+done
+# The interpreter: the program's output, exit code or fault, frames, and the drop and step counts.
+# A mutant that panics the Rust interpreter (a malformed operand it indexes blindly) is left out.
+: > "$out/run-fuzz.txt"
+while read -r f; do
+    if timeout 10 "$oracle" run "$f" > /dev/null 2>&1; then echo "$f" >> "$out/run-fuzz.txt"; fi
+done < "$out/fuzz.txt"
+for set in files run-fuzz; do
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" run > "$out/run-$set.rust"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" run > "$out/run-$set.c"
+    check "run $set" "$out/run-$set.rust" "$out/run-$set.c"
 done
 exit $status

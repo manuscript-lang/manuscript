@@ -12,7 +12,7 @@ fn unhex(s: &str) -> String {
 
 #[test]
 fn matches_oracle() {
-    let text = include_str!("golden/glob_golden.txt");
+    let text = include_str!("../../../runtime/tests/golden/glob_golden.txt");
     let mut checked = 0;
     let mut current: Option<(String, Option<Glob>)> = None;
     for line in text.lines() {

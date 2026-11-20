@@ -188,7 +188,22 @@ pub unsafe fn cloned(s: &StrVal) -> StrVal {
     unsafe { owned_copy(bytes(s)) }
 }
 
+// The C runtime defines these; Rust callers (ffi, glue) reach them through the same symbols.
+#[cfg(ms_c = "msrt_string_clone")]
+unsafe extern "C-unwind" {
+    pub fn msrt_string_clone(s: *const StrVal, out: *mut StrVal);
+}
+#[cfg(ms_c = "msrt_string_free")]
+unsafe extern "C-unwind" {
+    pub fn msrt_string_free(s: *const StrVal);
+}
+#[cfg(ms_c = "msrt_string_from_bytes")]
+unsafe extern "C-unwind" {
+    pub fn msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal);
+}
+
 /// Writes an owned copy of `s` to `out` (what `.clone()` and every implicit copy of a string do).
+#[cfg(not(ms_c = "msrt_string_clone"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_clone(s: *const StrVal, out: *mut StrVal) {
@@ -199,6 +214,7 @@ pub unsafe extern "C-unwind" fn msrt_string_clone(s: *const StrVal, out: *mut St
 }
 
 /// Frees an owned string's bytes (the drop compiled code calls when `cap != 0`).
+#[cfg(not(ms_c = "msrt_str_free"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_str_free(ptr: *mut u8) {
@@ -208,6 +224,7 @@ pub unsafe extern "C-unwind" fn msrt_str_free(ptr: *mut u8) {
 
 /// Writes a copy of the owned string or view `{ptr, tagged}` to `out`: inline when it fits, so
 /// copying a short string allocates nothing (what compiled code calls to copy a string).
+#[cfg(not(ms_c = "msrt_str_copy"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_str_copy(ptr: *const u8, tagged: usize, out: *mut StrVal) {
@@ -216,6 +233,7 @@ pub unsafe extern "C-unwind" fn msrt_str_copy(ptr: *const u8, tagged: usize, out
 }
 
 /// Frees an owned string.
+#[cfg(not(ms_c = "msrt_string_free"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_free(s: *const StrVal) {
@@ -337,6 +355,7 @@ pub fn empty() -> StrVal {
 }
 
 /// Writes the static empty string to `out`.
+#[cfg(not(ms_c = "msrt_string_empty"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_empty(out: *mut StrVal) {
@@ -396,6 +415,7 @@ pub fn from_buf(b: Vec<u8>) -> StrVal {
 ///
 /// # Safety
 /// `ptr..ptr+len` must be readable; `out` writable.
+#[cfg(not(ms_c = "msrt_string_from_bytes"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
@@ -752,6 +772,7 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     clippy::large_enum_variant,
     reason = "lives on the stack for one call; boxing would allocate"
 )]
+#[cfg(not(ms_c = "msrt_string_split"))]
 enum Needle<'a> {
     Byte(u8),
     /// A needle of two or more bytes in a text shorter than [`MEDIUM_HAY`]: scanned directly, so no
@@ -760,6 +781,7 @@ enum Needle<'a> {
     Bytes(memchr::memmem::Finder<'a>),
 }
 
+#[cfg(not(ms_c = "msrt_string_split"))]
 impl<'a> Needle<'a> {
     fn new(needle: &'a [u8]) -> Self {
         match needle {
@@ -805,6 +827,7 @@ impl<'a> Needle<'a> {
 }
 
 /// Bytes scanned as words before a long haystack goes to a vector searcher (below [`SHORT_HAY`]).
+#[cfg(not(ms_c = "msrt_string_split"))]
 const NEAR: usize = 16;
 
 /// Haystacks shorter than this are scanned byte by byte: the vector searchers' setup costs more
@@ -914,6 +937,7 @@ pub unsafe extern "C-unwind" fn msrt_string_last_index_of(
 // Building
 // ---------------------------------------------------------------------------
 
+#[cfg(not(ms_c = "msrt_string_concat"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_concat(
@@ -1028,6 +1052,7 @@ unsafe fn concat_parts(parts: &[*const StrVal]) -> StrVal {
 }
 
 /// `a + b + c` with one allocation.
+#[cfg(not(ms_c = "msrt_string_concat3"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_concat3(
@@ -1041,6 +1066,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat3(
 }
 
 /// `a + b + c + d` with one allocation.
+#[cfg(not(ms_c = "msrt_string_concat4"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_concat4(
@@ -1055,6 +1081,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat4(
 }
 
 /// `a + b + c + d + e` with one allocation.
+#[cfg(not(ms_c = "msrt_string_concat5"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_concat5(
@@ -1070,6 +1097,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat5(
 }
 
 /// `a + b + c + d + e + f` with one allocation.
+#[cfg(not(ms_c = "msrt_string_concat6"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_concat6(
@@ -1548,6 +1576,7 @@ unsafe fn trim_view(s: *const StrVal, start: bool, end: bool, out: *mut StrVal) 
     }
 }
 
+#[cfg(not(ms_c = "msrt_string_trim_view"))]
 #[unsafe(no_mangle)]
 // ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) {
@@ -1555,6 +1584,7 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mu
     unsafe { trim_view(s, true, true, out) }
 }
 
+#[cfg(not(ms_c = "msrt_string_trim_start_view"))]
 #[unsafe(no_mangle)]
 // ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) {
@@ -1562,6 +1592,7 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_start_view(s: *const StrVal, ou
     unsafe { trim_view(s, true, false, out) }
 }
 
+#[cfg(not(ms_c = "msrt_string_trim_end_view"))]
 #[unsafe(no_mangle)]
 // ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) {
@@ -1960,6 +1991,7 @@ unsafe fn fill_repeated(dst: *mut u8, pattern: &[u8], len: usize) {
     }
 }
 
+#[cfg(not(ms_c = "msrt_string_replace"))]
 fn count_matches(text: &[u8], old: &[u8]) -> usize {
     let mut n = 0;
     let mut i = 0;
@@ -2035,6 +2067,7 @@ pub unsafe fn join_strings(items: *const StrVal, n: usize, sep: &[u8]) -> StrVal
 }
 
 /// Replace the first `n` occurrences (n < 0 means all).
+#[cfg(not(ms_c = "msrt_string_replace"))]
 fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> Vec<u8> {
     let mut out = Vec::with_capacity(text.len());
     if old.is_empty() {
@@ -2076,6 +2109,7 @@ fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> Vec<u8> {
 
 /// The result of replacing the first `matches` occurrences of a non-empty `old` (all of them if
 /// `matches` is the full count), written straight into one new string.
+#[cfg(not(ms_c = "msrt_string_replace"))]
 fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal {
     if matches == 0 {
         return from_bytes(text);
@@ -2108,6 +2142,7 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
     }
 }
 
+#[cfg(not(ms_c = "msrt_string_replace_first"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_replace_first(
@@ -2156,6 +2191,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_first(
 ///
 /// # Safety
 /// `s` is live and `old` is non-empty.
+#[cfg(not(ms_c = "msrt_string_replace"))]
 unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal {
     // SAFETY: caller passes a live string; the block holds `text.len() + 1` bytes and the loop writes
     // at most `text.len()` of them, since every replacement is no longer than the match it replaces.
@@ -2202,6 +2238,7 @@ unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal 
 }
 
 /// Replaces every nonoverlapping occurrence; output beyond the string limit faults like `concat`.
+#[cfg(not(ms_c = "msrt_string_replace"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_replace(
@@ -2244,6 +2281,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace(
 /// # Safety
 /// `s` holds an owned string that the callee takes; `old`, `new` are live and distinct from `s`;
 /// `out` is writable.
+#[cfg(not(ms_c = "msrt_string_replace_take"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_replace_take(
@@ -2406,6 +2444,7 @@ unsafe fn byte_range(s: *const StrVal, start: i64, end: i64) -> Option<(usize, u
 /// from the end, bounds outside the text clamp to it, a start past the end gives empty text, and a
 /// bound inside a scalar moves inward (start forward, end backward) to the nearest boundary, so
 /// the result is always whole characters and the call never fails.
+#[cfg(not(ms_c = "msrt_string_slice"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_slice(
@@ -2447,6 +2486,7 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
 ///
 /// A flagged-ASCII text with bounds inside it is decided inline by the compiler (`view_guard`);
 /// everything else, including an inline text, comes here.
+#[cfg(not(ms_c = "msrt_string_view"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure borrows domain=string
 pub unsafe extern "C-unwind" fn msrt_string_view(
@@ -2850,6 +2890,7 @@ fn find_newline(text: &[u8]) -> Option<usize> {
     memchr(b'\n', &text[SHORT_HAY..]).map(|at| at + SHORT_HAY)
 }
 
+#[cfg(not(ms_c = "msrt_string_split"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_split(
@@ -2863,6 +2904,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
 
 /// `let parts = text.split(separator)` where `text` outlives `parts` unchanged and nothing keeps
 /// `parts` or its pieces without copying them: the pieces are views of `text`.
+#[cfg(not(ms_c = "msrt_string_split_view"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_split_view(
@@ -2889,6 +2931,7 @@ const _: () = assert!(size_of::<FrameBuf<StrVal, 8>>() == SPLIT_BUF * size_of::<
 ///
 /// # Safety
 /// As `msrt_string_split_view`; `buf` outlives the list and its pieces.
+#[cfg(not(ms_c = "msrt_string_split_view_into"))]
 #[unsafe(no_mangle)]
 // ms: leaf view_of=msrt_string_split
 pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
@@ -2925,6 +2968,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
 /// `text.split(separator)[0]` where `text` outlives the piece: the first piece, a view of
 /// `text`, found without building the list. Faults like an index of an empty list when `text`
 /// is empty and `separator` is not.
+#[cfg(not(ms_c = "msrt_string_split_first"))]
 #[unsafe(no_mangle)]
 // ms: leaf first_of=msrt_string_split
 pub unsafe extern "C-unwind" fn msrt_string_split_first(
@@ -2954,6 +2998,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_first(
     }
 }
 
+#[cfg(not(ms_c = "msrt_string_split"))]
 #[inline(always)]
 unsafe fn split_into(
     s: *const StrVal,
@@ -3014,6 +3059,7 @@ unsafe fn split_into(
 
 /// Texts up to this many bytes split at a one-byte separator in one pass over their words: a
 /// record's fields are a few bytes apart, where a search per piece costs more than the scan.
+#[cfg(not(ms_c = "msrt_string_split"))]
 const ONE_PASS_SPLIT: usize = 128;
 
 /// The pieces of `text` between bytes equal to `sep`, found by testing eight bytes at a time and taking
@@ -3021,6 +3067,7 @@ const ONE_PASS_SPLIT: usize = 128;
 ///
 /// # Safety
 /// `v` holds a list of `StrVal`s with room for its first piece.
+#[cfg(not(ms_c = "msrt_string_split"))]
 #[inline(always)]
 unsafe fn split_bytes_once<const STACK: bool>(
     text: &[u8],
@@ -3063,6 +3110,7 @@ unsafe fn split_bytes_once<const STACK: bool>(
 }
 
 /// `push_str`, or with `STACK` (the list is a caller's fixed buffer) `false` when it is full.
+#[cfg(not(ms_c = "msrt_string_split"))]
 #[inline(always)]
 unsafe fn put<const STACK: bool>(v: &mut VecVal, p: StrVal) -> bool {
     if STACK && v.len == v.cap {

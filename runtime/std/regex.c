@@ -3,10 +3,10 @@
 #include "regex.h"
 
 #include <pcre2.h>
+#include <stdio.h>
 #include <string.h>
 
-extern void *msrt_alloc(size_t size);
-extern void msrt_free(void *p);
+#include "ms_rt/alloc.h"
 
 /* PCRE2 allocates through the runtime, so its memory is the program's memory. */
 static void *re_alloc(PCRE2_SIZE size, void *unused) {
@@ -18,7 +18,7 @@ static void re_free(void *p, void *unused) {
     if (p) msrt_free(p);
 }
 
-struct ms_re {
+struct MsRegex {
     pcre2_code *code;
     pcre2_match_context *ctx; /* limits; read-only during matching, so a handle may be used from many threads */
     uint32_t slots;
@@ -108,12 +108,15 @@ static void put_message(char *msg, size_t cap, const char *reason, size_t column
     for (const char *s = at; *s && used + 1 < cap; s++) msg[used++] = *s;
     char digits[24];
     size_t nd = 0;
-    do digits[nd++] = (char)('0' + column % 10), column /= 10; while (column);
+    do {
+        digits[nd++] = (char)('0' + column % 10);
+        column /= 10;
+    } while (column);
     while (nd && used + 1 < cap) msg[used++] = digits[--nd];
     msg[used] = 0;
 }
 
-ms_re *ms_re_compile(const char *pattern, size_t len, char *msg, size_t cap) {
+MsRegex *ms_re_compile(const char *pattern, size_t len, char *msg, size_t cap) {
     size_t at = 0;
     if (len > MS_RE_PATTERN_MAX) {
         put_message(msg, cap, "pattern is too long", 1);
@@ -137,10 +140,10 @@ ms_re *ms_re_compile(const char *pattern, size_t len, char *msg, size_t cap) {
     uint32_t options = PCRE2_UTF | PCRE2_UCP | PCRE2_DOLLAR_ENDONLY | PCRE2_NEVER_BACKSLASH_C;
     pcre2_code *code = pcre2_compile((PCRE2_SPTR)pattern, len, options, &code_err, &off, cc);
     pcre2_compile_context_free(cc);
-    ms_re *re = NULL;
+    MsRegex *re = NULL;
     if (!code) {
         PCRE2_UCHAR buf[160];
-        if (pcre2_get_error_message(code_err, buf, sizeof buf) < 0) strcpy((char *)buf, "invalid pattern");
+        if (pcre2_get_error_message(code_err, buf, sizeof buf) < 0) snprintf((char *)buf, sizeof buf, "invalid pattern");
         put_message(msg, cap, (const char *)buf, column_of(pattern, off));
         goto out;
     }
@@ -173,16 +176,16 @@ out:
     return re;
 }
 
-void ms_re_free(ms_re *re) {
+void ms_re_free(MsRegex *re) {
     if (!re) return;
     pcre2_match_context_free(re->ctx);
     pcre2_code_free(re->code);
     msrt_free(re);
 }
 
-size_t ms_re_slots(const ms_re *re) { return re->slots; }
+size_t ms_re_slots(const MsRegex *re) { return re->slots; }
 
-const char *ms_re_group_name(const ms_re *re, size_t i, size_t *len) {
+const char *ms_re_group_name(const MsRegex *re, size_t i, size_t *len) {
     uint32_t count = 0, size = 0;
     PCRE2_SPTR table = NULL;
     pcre2_pattern_info(re->code, PCRE2_INFO_NAMECOUNT, &count);
@@ -200,7 +203,7 @@ const char *ms_re_group_name(const ms_re *re, size_t i, size_t *len) {
 
 /* ---- matching ------------------------------------------------------------------------------------------------ */
 
-static pcre2_match_data *scratch_for(const ms_re *re, void **cache) {
+static pcre2_match_data *scratch_for(const MsRegex *re, void **cache) {
     if (cache && *cache) return *cache;
     pcre2_general_context *gc = pcre2_general_context_create(re_alloc, re_free, NULL);
     pcre2_match_data *md = gc ? pcre2_match_data_create(re->slots, gc) : NULL;
@@ -209,7 +212,7 @@ static pcre2_match_data *scratch_for(const ms_re *re, void **cache) {
     return md;
 }
 
-static int run(const ms_re *re, pcre2_match_data *md, const char *text, size_t len, size_t start) {
+static int run(const MsRegex *re, pcre2_match_data *md, const char *text, size_t len, size_t start) {
     int rc = pcre2_match(re->code, (PCRE2_SPTR)text, len, start, PCRE2_NO_UTF_CHECK, md, re->ctx);
     if (rc == PCRE2_ERROR_JIT_STACKLIMIT) {
         /* The default JIT stack (32 KiB) was too small: retry once on a stack that grows to the cap. */
@@ -232,16 +235,17 @@ static int run(const ms_re *re, pcre2_match_data *md, const char *text, size_t l
     return MS_RE_FAULT;
 }
 
-static void read_slots(const ms_re *re, pcre2_match_data *md, int64_t *slots) {
+static void read_slots(const MsRegex *re, pcre2_match_data *md, int64_t *slots) {
     const PCRE2_SIZE *ov = pcre2_get_ovector_pointer(md);
     for (uint32_t i = 0; i < re->slots; i++) {
-        int set = ov[2 * i] != PCRE2_UNSET;
-        slots[2 * i] = set ? (int64_t)ov[2 * i] : -1;
-        slots[2 * i + 1] = set ? (int64_t)ov[2 * i + 1] : -1;
+        int set = ov[(size_t)i * 2] != PCRE2_UNSET;
+        const size_t first = (size_t)i * 2;
+        slots[first] = set ? (int64_t)ov[first] : -1;
+        slots[first + 1] = set ? (int64_t)ov[first + 1] : -1;
     }
 }
 
-int ms_re_match(const ms_re *re, const char *text, size_t len, size_t start, int64_t *slots) {
+int ms_re_match(const MsRegex *re, const char *text, size_t len, size_t start, int64_t *slots) {
     pcre2_match_data *md = scratch_for(re, NULL);
     if (!md) return MS_RE_LIMIT;
     int rc = run(re, md, text, len, start);
@@ -250,18 +254,18 @@ int ms_re_match(const ms_re *re, const char *text, size_t len, size_t start, int
     return rc;
 }
 
-void ms_re_iter_init(ms_re_iter *it) {
+void ms_re_iter_init(MsRegexIter *it) {
     it->pos = 0;
     it->prev_end = SIZE_MAX;
     it->scratch = NULL;
 }
 
-void ms_re_iter_done(ms_re_iter *it) {
+void ms_re_iter_done(MsRegexIter *it) {
     if (it->scratch) pcre2_match_data_free(it->scratch);
     it->scratch = NULL;
 }
 
-int ms_re_next(const ms_re *re, const char *text, size_t len, ms_re_iter *it, int64_t *slots) {
+int ms_re_next(const MsRegex *re, const char *text, size_t len, MsRegexIter *it, int64_t *slots) {
     pcre2_match_data *md = scratch_for(re, &it->scratch);
     if (!md) return MS_RE_LIMIT;
     while (it->pos <= len) {

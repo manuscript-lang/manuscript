@@ -8,10 +8,6 @@
 
 #include "ms_rt/string.h"
 
-typedef MsStr msrt_str;
-typedef MsVec msrt_vec;
-typedef MsObj msrt_obj;
-
 enum {
     STATUS_OK = 0,
     STATUS_INVALID_INPUT = 1,
@@ -22,18 +18,20 @@ enum {
     STATUS_AUTHENTICATION_FAILED = 18
 };
 
-extern void *msrt_alloc(size_t size);
-extern void msrt_free(void *p);
-/* Raises a fault with this message (crates/ms-rt fault.rs); never returns. */
-extern _Noreturn void msrt_fault(const void *message, size_t length);
-/* The same for a fault of a family: a runtime FaultKind code (4 division by zero, 5 overflow). */
-extern _Noreturn void msfault_raise(uint8_t kind, const void *message, size_t length);
+#include "ms_rt/alloc.h"
 
-static inline size_t msrt_str_len(const msrt_str *s) { return ms_str_len(s); }
-static inline const char *msrt_str_data(const msrt_str *s) { return (const char *)ms_str_data(s); }
+/* The runtime's list functions (compiler-emitted descriptors say how an element is stored); msrt_desc_int is the
+   descriptor of List[Int]. */
+extern const unsigned char msrt_desc_int[];
+void msrt_list_with_capacity(const void *desc, int64_t cap, MsVec *out);
+void msrt_list_push(MsVec *v, const void *desc, const void *elem);
+void msrt_list_drop(MsVec *v, const void *desc);
+
+static inline size_t msrt_str_len(const MsStr *s) { return ms_str_len(s); }
+static inline const char *msrt_str_data(const MsStr *s) { return (const char *)ms_str_data(s); }
 
 /* A Bytes value written as the runtime does: an allocation of exactly len bytes, or null when empty. */
-static inline void msrt_write_bytes(msrt_vec *out, const void *data, size_t len) {
+static inline void msrt_write_bytes(MsVec *out, const void *data, size_t len) {
     if (len == 0) {
         out->ptr = NULL;
         out->len = out->cap = 0;

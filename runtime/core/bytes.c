@@ -13,7 +13,7 @@ _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, "msrt_bytes_read_word 
 
 static const MsList empty_bytes = {0};
 
-static MsBytes contents(const MsList *bytes) { return ms_bytes(bytes->ptr, bytes->len); }
+static MsBytes contents(const MsList *bytes) { return ms_bytes_of(bytes->ptr, bytes->len); }
 
 /* A fresh buffer holding a copy of `data`; empty data gives the empty list. */
 static MsList copy_of(MsBytes data) {
@@ -228,7 +228,7 @@ void msrt_bytes_split(const MsList *b, const MsList *sep, MsList *out) {
     MsList parts = empty_bytes;
     if (sep->len == 0) { /* every byte on its own */
         for (size_t i = 0; i < b->len; i++) {
-            push_part(&parts, ms_bytes(b->ptr + i, 1));
+            push_part(&parts, ms_bytes_of(b->ptr + i, 1));
         }
         *out = parts;
         return;
@@ -237,10 +237,10 @@ void msrt_bytes_split(const MsList *b, const MsList *sep, MsList *out) {
     for (;;) {
         const size_t found = ms_find(b->ptr + start, b->len - start, sep->ptr, sep->len);
         if (found == SIZE_MAX) {
-            push_part(&parts, ms_bytes(b->ptr + start, b->len - start));
+            push_part(&parts, ms_bytes_of(b->ptr + start, b->len - start));
             break;
         }
-        push_part(&parts, ms_bytes(b->ptr + start, found));
+        push_part(&parts, ms_bytes_of(b->ptr + start, found));
         start += found + sep->len;
     }
     *out = parts;
