@@ -341,9 +341,24 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
         (void)ms_body_unsupported(b);
         return false;
     }
+    const uint32_t outer_breaks = b->breaks;
+    b->breaks = 0;
+    b->loop_depth++;
     (void)ms_body_block(b, &s->u.loop.body);
-    // Without `break` (unsupported here), `while true` never ends.
-    return !(cond->kind == MS_E_BOOL && cond->u.flag);
+    b->loop_depth--;
+    const bool broke = b->breaks != 0;
+    b->breaks = outer_breaks;
+    // `while true` ends only through a `break`.
+    return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
+}
+
+/* `break` and `continue` leave the innermost loop; outside one they are a diagnostic. */
+static void body_jump_statement(MsBody *b, const MsStmt *s) {
+    if (b->loop_depth == 0) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    b->breaks += s->kind == MS_S_BREAK;
 }
 
 /* Checks the statements of a nested scope in order; whether control falls out of the end. A
@@ -366,9 +381,12 @@ static bool body_run(MsBody *b, const MsStmts *body) {
         case MS_S_IF: falls = body_if_statement(b, s); break;
         case MS_S_WHILE: falls = body_while_statement(b, s); break;
         case MS_S_ASSIGN: body_assign_statement(b, s); break;
-        case MS_S_CALL:
         case MS_S_BREAK:
         case MS_S_CONTINUE:
+            body_jump_statement(b, s);
+            falls = false;
+            break;
+        case MS_S_CALL:
         case MS_S_FOR: (void)ms_body_unsupported(b); break;
         }
     }
@@ -406,7 +424,8 @@ static void body_statements(MsBody *b, const MsStmts *body) {
     // A local nothing reads, unless named with a leading `_`, is a diagnostic.
     const MsBindings *bindings = &b->facts->bindings;
     for (uint32_t i = b->first_binding; b->supported && i < bindings->count; i++) {
-        const bool local = bindings->role[i] == MS_ROLE_LET || bindings->role[i] == MS_ROLE_VAR;
+        const bool local = bindings->role[i] == MS_ROLE_LET || bindings->role[i] == MS_ROLE_VAR ||
+                           bindings->role[i] == MS_ROLE_ARM;
         const MsStr name = ms_name(b->c->names, bindings->name[i]);
         const bool ignored = name.len != 0 && name.ptr[0] == '_';
         b->supported = !local || ignored || b->reads[i] != 0;
@@ -430,6 +449,11 @@ static void body_undo(MsBody *b, uint32_t first_binding, size_t written_start) {
     b->facts->bindings.count = first_binding;
 }
 
+/* A parameter has no default, or the `none` of an `Optional` (which `T?` implies). */
+static bool body_default_is_none(const MsBody *b, const MsParam *p) {
+    return p->def == NULL || (p->def->kind == MS_E_NAME && body_text_is(b, p->def->u.sym, "none"));
+}
+
 static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig) {
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != fn->params.len || fn->type_params.len != 0) {
@@ -442,7 +466,7 @@ static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MsParam *p = fn->params.ptr[i];
-        if (p->def != NULL || p->is_mutable || p->moving || !body_is_bindable(b, params[i].ty)) {
+        if (!body_default_is_none(b, p) || p->is_mutable || p->moving || !body_is_bindable(b, params[i].ty)) {
             return false;
         }
     }
@@ -485,6 +509,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->res_kind = MS_NEW_N(arena, uint8_t, nodes);
     facts->res_ref = MS_NEW_N(arena, uint32_t, nodes);
     facts->pattern_binding = MS_NEW_N(arena, uint32_t, nodes);
+    facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
