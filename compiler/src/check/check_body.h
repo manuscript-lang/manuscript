@@ -47,6 +47,9 @@ MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_index(MsBody *b, const MsExpr *e);
 /* Int, Float, Bool or String: what a binding or argument of the handled set may hold. */
 bool ms_body_is_primitive_value(const MsBody *b, MsTy ty);
+/* `ok(v)`, `error(e)` and `some(v)`, the built-in cases of Result and Optional (check_builtin.c). */
+bool ms_body_is_builtin_case(const MsBody *b, MsSym name);
+MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
 /* A call of a generic function of the module (check_generic.c). */
 MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym);
 /* A call `receiver.name(args)' (check_method.c). */
