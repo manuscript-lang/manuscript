@@ -12,9 +12,9 @@ cargo build --release --locked -p ms-check --example c_oracle
 oracle=target/release/examples/c_oracle
 
 cflags="-std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Wno-format-truncation -Icompiler/include -Iruntime/include"
-cc $cflags compiler/src/libms.c compiler/tools/ms_check_dump.c -o "$out/check-dump"
-cc $cflags compiler/src/libms.c compiler/tests/types_test.c -o "$out/types-test"
-cc $cflags compiler/src/libms.c compiler/tests/ownership_test.c -o "$out/ownership-test"
+cc $cflags compiler/src/libms.c compiler/tools/ms_check_dump.c -o "$out/check-dump" -lm
+cc $cflags compiler/src/libms.c compiler/tests/types_test.c -o "$out/types-test" -lm
+cc $cflags compiler/src/libms.c compiler/tests/ownership_test.c -o "$out/ownership-test" -lm
 "$out/ownership-test"
 "$out/types-test"
 

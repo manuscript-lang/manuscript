@@ -2,11 +2,12 @@
 //! parse error), so the C MIR in `compiler/` can be compared with it byte for byte
 //! (`make c-compiler-test`). Temporary tooling for the C rewrite: delete it with `ms-mir`.
 
+use ms_mir::interp::Interp;
 use ms_mir::ir::{Boxing, Mode, Module, Op};
 use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
-use ms_mir::types::{AltId, Ty, TyKind};
 use ms_mir::parse::parse_module;
 use ms_mir::print::print_module;
+use ms_mir::types::{AltId, Ty, TyKind};
 use std::fmt::Write;
 
 fn main() {
@@ -82,6 +83,19 @@ fn main() {
                 }
             }
         }
+        "run" => {
+            for path in &args[1..] {
+                let _ = writeln!(out, "=== {path}");
+                let Some(m) = std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|t| parse_module(&t).ok())
+                else {
+                    out.push_str("error\n");
+                    continue;
+                };
+                run_module(&m, &mut out);
+            }
+        }
         "layout" => {
             for path in &args[1..] {
                 let _ = writeln!(out, "=== {path}");
@@ -116,7 +130,10 @@ fn main() {
 }
 
 fn leaf_list(leaves: &[Leaf]) -> String {
-    let names: Vec<String> = leaves.iter().map(|l| format!("{l:?}").to_lowercase()).collect();
+    let names: Vec<String> = leaves
+        .iter()
+        .map(|l| format!("{l:?}").to_lowercase())
+        .collect();
     names.join(",")
 }
 
@@ -194,6 +211,50 @@ fn dump_layout(m: &ms_mir::ir::Module, out: &mut String) {
             .collect();
         let _ = writeln!(out, "closure {i} size={} caps={}", c.size, caps.join(" "));
     }
+}
+
+/// Internal faults quote the interpreter's own debug output, which the C version does not copy.
+fn plain(message: &str) -> &str {
+    if message.starts_with("interpreter:") || message.starts_with("entry returned") {
+        "interpreter"
+    } else {
+        message
+    }
+}
+
+/// Runs the entry and prints what the C interpreter prints: the program's output, its exit code
+/// or fault (kind, message, frames, cleanup faults) and the drop and step counts.
+fn run_module(m: &ms_mir::ir::Module, out: &mut String) {
+    if ms_mir::expand_owned::needed(m) {
+        out.push_str("skip expand\n");
+        return;
+    }
+    let mut it = Interp::new(m);
+    it.set_fuel(Some(2_000_000));
+    let result = it.run_entry();
+    let _ = writeln!(out, "stdout={}", it.stdout().replace('\n', "\\n"));
+    match result {
+        Ok(code) => {
+            let _ = writeln!(out, "exit {code}");
+        }
+        Err(f) => {
+            let kind = format!("{:?}", f.kind);
+            let kind = kind.split('(').next().unwrap_or("");
+            let _ = writeln!(
+                out,
+                "fault {kind} {} fuel={}",
+                plain(&f.message),
+                f.fuel_exhausted as u8
+            );
+            for s in &f.stack {
+                let _ = writeln!(out, "  at {s}");
+            }
+            for c in &f.cleanup_faults {
+                let _ = writeln!(out, "  cleanup {}", plain(c));
+            }
+        }
+    }
+    let _ = writeln!(out, "drops {} steps {}", it.drops(), it.steps());
 }
 
 fn each_module(paths: &[String], out: &mut String, mut run: impl FnMut(&Module, &mut String)) {

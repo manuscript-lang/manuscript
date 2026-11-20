@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "ms/mir.h"
+#include "ms/mir_interp.h"
 #include "ms/mir_analysis.h"
 #include "ms/mir_layout.h"
 #include "ms/mir_opt.h"
@@ -125,6 +126,76 @@ static void dump_layout(const MirModule *m, MsBuf *out) {
     mir_layouts_free(&lay);
 }
 
+/* The owned shorthands the Rust interpreter expands first; the C one does not, so such modules are skipped. */
+static bool has_shorthand(const MirModule *m) {
+    for (uint32_t f = 0; f < m->nfuncs; f++) {
+        for (uint32_t b = 0; b < m->funcs[f].nblocks; b++) {
+            for (uint32_t i = 0; i < m->funcs[f].blocks[b].ninsts; i++) {
+                switch ((MirOp)m->funcs[f].blocks[b].insts[i].op) {
+                case MOP_AltOwn: case MOP_AltUnbox: case MOP_AltRelease: case MOP_TypeRelease:
+                case MOP_OptUnbox: case MOP_OptUnwrap:
+                    return true;
+                default:
+                    break;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+/* Internal faults quote debug output the C version does not copy: compare only that they happened. */
+static const char *plain_text(MsStr text, int *length) {
+    if ((text.len >= 12 && strncmp(text.ptr, "interpreter:", 12) == 0) ||
+        (text.len >= 14 && strncmp(text.ptr, "entry returned", 14) == 0)) {
+        *length = 11;
+        return "interpreter";
+    }
+    *length = (int)text.len;
+    return text.ptr;
+}
+
+static const char *fault_name(MirFault kind) {
+    static const char *const names[] = {"IntOverflow", "DivByZero", "IndexOutOfRange", "NoneUnwrap",
+                                        "Cancelled", "CallDepth", "Unreachable", "Message"};
+    return names[kind];
+}
+
+static void dump_run(const MirModule *m, MsBuf *out) {
+    if (has_shorthand(m)) {
+        ms_buf_puts(out, "skip expand\n");
+        return;
+    }
+    MirInterp *interp = mir_interp_new(m);
+    mir_interp_set_fuel(interp, 2000000);
+    int64_t code = 0;
+    bool ok = mir_interp_run_entry(interp, &code);
+    MsStr text = mir_interp_stdout(interp);
+    ms_buf_puts(out, "stdout=");
+    for (uint32_t i = 0; i < text.len; i++) {
+        if (text.ptr[i] == '\n') ms_buf_puts(out, "\\n"); else ms_buf_putc(out, text.ptr[i]);
+    }
+    ms_buf_putc(out, '\n');
+    if (ok) {
+        ms_buf_printf(out, "exit %lld\n", (long long)code);
+    } else {
+        const MirInterpFault *f = mir_interp_fault(interp);
+        int length = 0;
+        const char *message = plain_text(f->message, &length);
+        ms_buf_printf(out, "fault %s %.*s fuel=%d\n", fault_name(f->kind), length, message, f->fuel_exhausted ? 1 : 0);
+        for (uint32_t i = 0; i < f->nstack; i++) {
+            ms_buf_printf(out, "  at %.*s\n", (int)f->stack[i].len, f->stack[i].ptr);
+        }
+        for (uint32_t i = 0; i < f->ncleanup_faults; i++) {
+            message = plain_text(f->cleanup_faults[i], &length);
+            ms_buf_printf(out, "  cleanup %.*s\n", length, message);
+        }
+    }
+    ms_buf_printf(out, "drops %llu steps %llu\n", (unsigned long long)mir_interp_drops(interp),
+                  (unsigned long long)mir_interp_steps(interp));
+    mir_interp_free(interp);
+}
+
 static char mode_char(MirMode mode) {
     return mode == MM_MOVE ? 'M' : mode == MM_VAR ? 'V' : 'B';
 }
@@ -213,7 +284,7 @@ static void dump_analysis(const MirModule *m, MsBuf *out) {
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fputs("usage: ms_mir_dump print|analysis|ops FILE...\n       ms_mir_dump opt PASS FILE...\n", stderr);
+        fputs("usage: ms_mir_dump print|ops FILE...\n", stderr);
         return 2;
     }
     MsBuf out = {0};
@@ -223,11 +294,11 @@ int main(int argc, char **argv) {
             ms_buf_printf(&out, "%s imm=%d res=%d fx=%d\n", o->name, o->imm, o->has_result, o->effects);
         }
     }
-    bool boxing = strcmp(argv[1], "boxing") == 0, layout = strcmp(argv[1], "layout") == 0;
+    bool boxing = strcmp(argv[1], "boxing") == 0, layout = strcmp(argv[1], "layout") == 0, run = strcmp(argv[1], "run") == 0;
     const bool analysis = strcmp(argv[1], "analysis") == 0, opt = strcmp(argv[1], "opt") == 0;
     const char *pass = opt && argc > 2 ? argv[2] : "";
     for (int i = opt ? 3 : 2;
-         i < argc && (boxing || layout || analysis || opt || strcmp(argv[1], "print") == 0); i++) {
+         i < argc && (boxing || layout || run || analysis || opt || strcmp(argv[1], "print") == 0); i++) {
         char *src;
         size_t len;
         if (!read_file(argv[i], &src, &len)) {
@@ -236,7 +307,7 @@ int main(int argc, char **argv) {
         }
         ms_buf_printf(&out, "=== %s\n", argv[i]);
         if (!ms_utf8_valid(src, len)) {
-            ms_buf_puts(&out, boxing || layout ? "error\n" : "error invalid-utf8\n");
+            ms_buf_puts(&out, boxing || layout || run ? "error\n" : "error invalid-utf8\n");
             free(src);
             continue;
         }
@@ -244,9 +315,9 @@ int main(int argc, char **argv) {
         mir_module_init(&m);
         uint32_t line;
         MsStr msg;
-        if (boxing || layout) {
+        if (boxing || layout || run) {
             if (mir_parse(&m, src, len, &line, &msg)) {
-                (boxing ? dump_boxing : dump_layout)(&m, &out);
+                (boxing ? dump_boxing : layout ? dump_layout : dump_run)(&m, &out);
             } else {
                 ms_buf_puts(&out, "error\n");
             }

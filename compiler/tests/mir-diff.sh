@@ -14,7 +14,7 @@ cargo build --release --locked -p ms-mir --example c_oracle
 oracle=target/release/examples/c_oracle
 
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_mir_dump.c -o "$out/dump"
+    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_mir_dump.c -o "$out/dump" -lm
 cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/mutate.c -o "$out/mutate"
 
 status=0
@@ -70,7 +70,17 @@ for set in files layout-fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" layout > "$out/layout-$set.c"
     check "layout $set" "$out/layout-$set.rust" "$out/layout-$set.c"
 done
-
+# The interpreter: the program's output, exit code or fault, frames, and the drop and step counts.
+# A mutant that panics the Rust interpreter (a malformed operand it indexes blindly) is left out.
+: > "$out/run-fuzz.txt"
+while read -r f; do
+    if timeout 10 "$oracle" run "$f" > /dev/null 2>&1; then echo "$f" >> "$out/run-fuzz.txt"; fi
+done < "$out/fuzz.txt"
+for set in files run-fuzz; do
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" run > "$out/run-$set.rust"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" run > "$out/run-$set.c"
+    check "run $set" "$out/run-$set.rust" "$out/run-$set.c"
+done
 # The optimisation passes: both implementations run one pass on the same verified module.
 # MS_MIR_CORPUS names a folder of unoptimised modules (`ms emit` of the conformance fixtures) that
 # is checked as well.
@@ -83,3 +93,4 @@ for pass in bytetake strfuse loopslot optparam ifconv reserve; do
     check "opt $pass ($(grep -c '^changed true' "$out/opt-$pass.rust") of $(grep -c '^===' "$out/opt-$pass.rust") changed)" "$out/opt-$pass.rust" "$out/opt-$pass.c"
 done
 exit $status
+
