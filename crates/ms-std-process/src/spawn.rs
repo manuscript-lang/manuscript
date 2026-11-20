@@ -222,28 +222,12 @@ impl Child {
         {
             use std::os::windows::io::AsRawHandle;
             use windows_sys::Win32::System::JobObjects::{
-                AssignProcessToJobObject, CreateJobObjectW, JOB_OBJECT_LIMIT_BREAKAWAY_OK,
-                JOBOBJECT_BASIC_LIMIT_INFORMATION, JobObjectBasicLimitInformation,
-                SetInformationJobObject,
+                AssignProcessToJobObject, CreateJobObjectW,
             };
             // SAFETY: plain job creation; a failed assignment (the process may already be in a
             // job without nesting support) leaves only the process itself killable.
             let job = unsafe { CreateJobObjectW(core::ptr::null(), core::ptr::null()) };
             if !job.is_null() {
-                // A program that makes a job of its own for its children (CMake through libuv) fails
-                // to join one nested under a job that does not allow breakaway
-                // (`AssignProcessToJobObject: (50)`); nothing breaks away unless it asks to.
-                // SAFETY: the structure is zeroed apart from the flag and the size matches.
-                unsafe {
-                    let mut info: JOBOBJECT_BASIC_LIMIT_INFORMATION = core::mem::zeroed();
-                    info.LimitFlags = JOB_OBJECT_LIMIT_BREAKAWAY_OK;
-                    SetInformationJobObject(
-                        job,
-                        JobObjectBasicLimitInformation,
-                        core::ptr::addr_of!(info).cast(),
-                        core::mem::size_of::<JOBOBJECT_BASIC_LIMIT_INFORMATION>() as u32,
-                    );
-                }
                 // SAFETY: both handles are open.
                 unsafe { AssignProcessToJobObject(job, inner.as_raw_handle() as _) };
             }
