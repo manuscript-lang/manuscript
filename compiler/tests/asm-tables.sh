@@ -17,8 +17,13 @@ esac
 export ASAN_OPTIONS=detect_leaks=0
 "$bin/ms_mir_build" compiler/tests/qbe/lines.mir --opt none --tables-meta "$out/lines.meta" > "$out/lines.ssa"
 "$bin/qbe" -t "$target" "$out/lines.ssa" > "$out/lines.s"
-# A function the assembly lacks (LLVM inlined and removed it) is left out of the tables.
-printf 'Y removed_function\t0\t1\tremoved_function\n' >> "$out/lines.meta"
+# A function the assembly lacks (LLVM inlined and removed it) is left out of the tables. It is listed first, so
+# the functions kept are numbered differently in the tables than in the meta file.
+{
+    printf 'Y removed_function\t0\t1\tremoved_function\n'
+    cat "$out/lines.meta"
+} > "$out/lines.meta.tmp"
+mv "$out/lines.meta.tmp" "$out/lines.meta"
 "$bin/ms_asm_tables" "$out/lines.meta" "$out/lines.s" --prefix "$prefix" > "$out/lines.tables.s"
 cc "$out/lines.tables.s" compiler/tests/asm_tables_check.c -o "$out/lines"
 "$out/lines" && echo "ok   asm-tables lines"

@@ -8,6 +8,7 @@
 typedef struct AtFunc {
     MsStr sym, name;
     uint32_t file, line;
+    uint32_t number; /* its place in the meta file, which names its `.Lmse` end label */
     bool seen;
 } AtFunc;
 
@@ -165,7 +166,7 @@ static void at_put_blob(MsBuf *out, const uint8_t *blob, size_t size, AtPatch *p
             case AT_FUNC_ADDR: ms_buf_printf(out, "\t.quad %s%.*s\n", prefix, (int)f->sym.len, f->sym.ptr); at += 8; break;
             case AT_LOC_ADDR: ms_buf_printf(out, "\t.quad .Lmsl%zu\n", pt->value); at += 8; break;
             case AT_FUNC_SIZE:
-                ms_buf_printf(out, "\t.long .Lmse%zu-%s%.*s\n", pt->value, prefix, (int)f->sym.len, f->sym.ptr);
+                ms_buf_printf(out, "\t.long .Lmse%u-%s%.*s\n", f->number, prefix, (int)f->sym.len, f->sym.ptr);
                 at += 4;
                 break;
             case AT_BLOB_ADDR: ms_buf_printf(out, "\t.quad %sms_tables+%zu\n", prefix, pt->value); at += 8; break;
@@ -253,6 +254,7 @@ static void at_scan(AtMeta *a, const AtKey *sorted, const char *asm_text, size_t
             const uint32_t f = at_find(sorted, a->nfuncs, (MsStr){p + plen, (uint32_t)(label - plen)});
             if (f != UINT32_MAX && !a->funcs[f].seen) {
                 a->funcs[f].seen = true;
+                a->funcs[f].number = f;
                 cur = (int)f;
             }
         } else if (is_loc && l.line != 0) { /* line 0 is code LLVM made up: the range before it goes on */
