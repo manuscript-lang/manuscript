@@ -81,6 +81,7 @@ static bool discover_children(Discovery *d, const char *path, MsBuf *children) {
     }
     for (;;) {
         errno = 0;
+        // NOLINTNEXTLINE(concurrency-mt-unsafe): one thread reads a directory handle; readdir is safe per stream.
         const struct dirent *entry = readdir(dir);
         if (entry == NULL) {
             if (errno != 0) {

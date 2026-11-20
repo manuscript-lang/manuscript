@@ -198,6 +198,7 @@ pub fn compile(
     result
 }
 
+<<<<<<< HEAD
 fn compile_in(
     dir: &Path,
     module: &Module,
@@ -208,6 +209,36 @@ fn compile_in(
     let (ir_text, meta) = ir_of(&ms_mir::print::print_module_unique(module), speed, checks)?;
     let tools: PathBuf = llvm_tools(build).map_err(|e| e.to_string())?.ok_or(
         "no LLVM tools are available for this platform; set MS_LLVM_TOOLS to a directory with opt and llc",
+=======
+fn compile_in(dir: &Path, module: &Module, speed: bool, checks: bool) -> Result<Vec<u8>, String> {
+    let mir = dir.join("program.mir");
+    std::fs::write(&mir, ms_mir::print::print_module_unique(module))
+        .map_err(|e| format!("cannot write {}: {e}", mir.display()))?;
+    let mut build = Command::new(tool("ms_mir_build")?);
+    build
+        .arg(&mir)
+        .args(["--opt", if speed { "speed" } else { "none" }]);
+    if !checks {
+        build.arg("--no-checks");
+    }
+    let meta = dir.join("program.meta");
+    build.arg("--tables-meta").arg(&meta);
+    let names = dir.join("program.names");
+    std::fs::write(&names, ms_mir::print::display_names(module))
+        .map_err(|e| format!("cannot write {}: {e}", names.display()))?;
+    build.arg("--display-names").arg(&names);
+    let ir_text = run(&mut build, "ms_mir_build")?;
+    let ir = dir.join("program.ll");
+    std::fs::write(&ir, ir_text).map_err(|e| format!("cannot write {}: {e}", ir.display()))?;
+    let plain = dir.join("program.plain.s");
+    let opt = if speed { "-O3" } else { "-O0" };
+    run(
+        Command::new("clang")
+            .args(["-S", opt, "-o"])
+            .arg(&plain)
+            .arg(&ir),
+        "clang",
+>>>>>>> origin/main
     )?;
     let tool =
         |name: &str| Command::new(tools.join(format!("{name}{}", std::env::consts::EXE_SUFFIX)));
