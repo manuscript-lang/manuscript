@@ -52,6 +52,29 @@ int main(void) {
     CHECK(strstr(why, "Connection") != NULL);
     CHECK(check("HTTP/1.1 101 X\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n", sample, &why) == -1);
 
+    /* negotiation: the subprotocol must be one offered, and deflate needs both no-context-takeover parameters */
+    {
+        const char *head = "HTTP/1.1 101 X\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                           "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n";
+        char answer[512];
+        MsH1Response response; MsH1Field fields[8]; MsH1Reader reader;
+        MsWsAccepted accepted;
+        snprintf(answer, sizeof answer, "%sSec-WebSocket-Protocol: chat\r\n\r\n", head);
+        response.fields = fields;
+        CHECK(ms_h1_parse_response(&reader, answer, strlen(answer), 1 << 16, &response, 8, 0) == MS_H1_COMPLETE);
+        CHECK(ms_ws_client_accept(answer, &response, sample, LITERAL("other, chat"), &accepted, &why) == 0);
+        CHECK(accepted.subprotocol.len == 4 && memcmp(accepted.subprotocol.ptr, "chat", 4) == 0 && !accepted.compress);
+        CHECK(ms_ws_client_accept(answer, &response, sample, LITERAL("other"), &accepted, &why) == -1 && strstr(why, "not offered") != NULL);
+        CHECK(ms_ws_client_accept(answer, &response, sample, LITERAL(""), &accepted, &why) == -1);
+        snprintf(answer, sizeof answer, "%sSec-WebSocket-Extensions: x-other, Permessage-Deflate; client_no_context_takeover; "
+                 "server_no_context_takeover=\"1\"\r\n\r\n", head);
+        CHECK(ms_h1_parse_response(&reader, answer, strlen(answer), 1 << 16, &response, 8, 0) == MS_H1_COMPLETE);
+        CHECK(ms_ws_client_accept(answer, &response, sample, LITERAL(""), &accepted, &why) == 0 && accepted.compress && accepted.subprotocol.len == 0);
+        snprintf(answer, sizeof answer, "%sSec-WebSocket-Extensions: permessage-deflate; server_no_context_takeover\r\n\r\n", head);
+        CHECK(ms_h1_parse_response(&reader, answer, strlen(answer), 1 << 16, &response, 8, 0) == MS_H1_COMPLETE);
+        CHECK(ms_ws_client_accept(answer, &response, sample, LITERAL(""), &accepted, &why) == -1 && strstr(why, "compression") != NULL);
+    }
+
     /* tokens and fields */
     CHECK(ms_h1_value_has_token(LITERAL(" keep-alive ,\tUPGRADE"), LITERAL("upgrade")));
     CHECK(!ms_h1_value_has_token(LITERAL("upgrades"), LITERAL("upgrade")));

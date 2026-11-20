@@ -163,6 +163,12 @@ ms_test(ws_socket_test SOURCES "${_tests}/ws_socket_test.c" "${_rt}/net/ws_socke
         "${_rt}/sys/${_platform}/net.c" OBJECTS ms_test_core ms_test_llhttp
         INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_z_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_z_LINK} ${CMAKE_DL_LIBS} pthread m DEFINES MS_ALLOC_STATS)
+ms_test(ws_dial_test SOURCES "${_tests}/ws_dial_test.c" "${_rt}/net/ws_dial.c" "${_rt}/net/ws_client.c" "${_rt}/net/ws_socket.c"
+        "${_rt}/net/ws_codec.c" "${_rt}/net/ws.c" "${_rt}/net/headers.c"
+        "${_rt}/net/conn_object.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
+        "${_rt}/sys/${_platform}/net.c" OBJECTS ms_test_core ms_test_llhttp
+        INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_z_INCLUDES}
+        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_z_LINK} ${CMAKE_DL_LIBS} pthread m DEFINES MS_ALLOC_STATS)
 ms_test(ws_client_test SOURCES "${_tests}/ws_client_test.c" "${_rt}/net/ws_client.c" "${_rt}/net/ws.c" "${_rt}/net/http1.c"
         OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_crypto_INCLUDES}
         LIBS ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
