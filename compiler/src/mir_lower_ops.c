@@ -1,0 +1,150 @@
+/* lower_ops: rewrites the ownership ops a backend would otherwise write itself (`clone`, `drop`,
+ * `move.out`, `forget`) into plain calls and copies, so every emitter prints scalars, memory, calls
+ * and data only (proposals/lower-ops-to-runtime-calls.md, stage 1).
+ *
+ * A value that needs no drop is its own clone, so its uses are renamed to the operand. A string is
+ * cloned and freed by the runtime, which tests the tag itself, so no block is split. Any other
+ * owned type calls its glue function. Runs last, after every pass that reads the ownership ops. */
+#include <string.h>
+
+#include "ms/mir_layout.h"
+#include "ms/mir_pass.h"
+
+typedef struct LoCx {
+    MirModule *m;
+    const MirGlue *glue;
+    MirLayouts layouts;
+    uint32_t string_clone, string_free; /* extern ids, MIR_NONE until first used */
+} LoCx;
+
+typedef enum LoKind { LO_PLAIN, LO_STR, LO_GLUE } LoKind;
+
+static LoKind lo_kind(LoCx *c, MirTy ty) {
+    if (!mir_needs_drop(c->m, ty)) {
+        return LO_PLAIN;
+    }
+    return mir_is_str_like(&c->layouts, ty) ? LO_STR : LO_GLUE;
+}
+
+static uint32_t lo_extern(LoCx *c, const char *name, MirTy ret) {
+    MirExtern def = {.name = mir_name(c->m, name, strlen(name)), .nparams = 1, .ret = ret,
+                     .fresh = ret != MIR_VOID, .leaf = true, .role = MR_NONE};
+    def.params = MS_NEW_N(&c->m->arena, MirParam, 1);
+    def.params[0] = (MirParam){MIR_STR, MM_BORROW};
+    return mir_add_extern(c->m, &def);
+}
+
+static void lo_use(MirValue *use, MirValue from, MirValue to) {
+    if (*use == from) {
+        *use = to;
+    }
+}
+
+static void lo_target_uses(MirTarget *t, MirValue from, MirValue to) {
+    for (uint32_t i = 0; i < t->nargs; i++) {
+        lo_use(&t->args[i], from, to);
+    }
+}
+
+/* Every use of `from` in `f` becomes `to` (the same type). */
+static void lo_replace_uses(MirFunc *f, MirValue from, MirValue to) {
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        MirBlockData *blk = &f->blocks[b];
+        for (uint32_t k = 0; k < blk->ninsts; k++) {
+            for (uint32_t a = 0; a < blk->insts[k].nargs; a++) {
+                lo_use(&blk->insts[k].args[a], from, to);
+            }
+        }
+        MirTerm *t = &blk->term;
+        lo_use(&t->value, from, to);
+        lo_target_uses(&t->a, from, to);
+        lo_target_uses(&t->b, from, to);
+        for (uint32_t i = 0; i < t->ncases; i++) {
+            lo_target_uses(&t->cases[i].target, from, to);
+        }
+    }
+}
+
+static void lo_to_call_rt(MirInst *inst, uint32_t ext) {
+    inst->op = MOP_CallRt;
+    inst->imm = mir_imm_ext(ext);
+}
+
+static void lo_to_call(MirInst *inst, uint32_t func) {
+    inst->op = MOP_Call;
+    inst->imm = (MirImm){.tag = MI_FUNC, .a = func};
+}
+
+/* Rewrites `inst` in place, or returns true when it is to be removed. `f` is the function. */
+static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
+    switch ((MirOp)inst->op) {
+    case MOP_MoveOut:
+        lo_replace_uses(f, inst->res, inst->args[0]);
+        return true;
+    case MOP_Forget:
+        return true;
+    case MOP_Clone: {
+        const MirTy ty = f->values[inst->args[0]];
+        const LoKind kind = lo_kind(c, ty);
+        if (kind == LO_PLAIN) {
+            lo_replace_uses(f, inst->res, inst->args[0]);
+            return true;
+        }
+        if (kind == LO_STR) {
+            if (c->string_clone == MIR_NONE) {
+                c->string_clone = lo_extern(c, "msrt_string_clone", MIR_STR);
+            }
+            lo_to_call_rt(inst, c->string_clone);
+            return false;
+        }
+        const uint32_t glue = mir_glue_find(c->glue, MG_CLONE, ty, 0, 0);
+        if (glue != MIR_NONE) {
+            lo_to_call(inst, glue);
+        }
+        return false;
+    }
+    case MOP_Drop: {
+        const MirTy ty = f->values[inst->args[0]];
+        const LoKind kind = lo_kind(c, ty);
+        if (kind == LO_PLAIN) {
+            return true;
+        }
+        if (kind == LO_STR) {
+            if (c->string_free == MIR_NONE) {
+                c->string_free = lo_extern(c, "msrt_string_free", MIR_VOID);
+            }
+            lo_to_call_rt(inst, c->string_free);
+            return false;
+        }
+        const uint32_t glue = mir_glue_find(c->glue, MG_DROP, ty, 0, 0);
+        if (glue != MIR_NONE) {
+            lo_to_call(inst, glue);
+        }
+        return false;
+    }
+    default:
+        return false;
+    }
+}
+
+static void lo_function(LoCx *c, MirFunc *f) {
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        MirBlockData *blk = &f->blocks[b];
+        uint32_t kept = 0;
+        for (uint32_t k = 0; k < blk->ninsts; k++) {
+            if (!lo_inst(c, f, &blk->insts[k])) {
+                blk->insts[kept++] = blk->insts[k];
+            }
+        }
+        blk->ninsts = kept;
+    }
+}
+
+void mir_lower_ops(MirModule *m, const MirGlue *glue) {
+    LoCx c = {.m = m, .glue = glue, .string_clone = MIR_NONE, .string_free = MIR_NONE};
+    mir_layouts_init(&c.layouts, m);
+    for (uint32_t i = 0; i < m->nfuncs; i++) {
+        lo_function(&c, &m->funcs[i]);
+    }
+    mir_layouts_free(&c.layouts);
+}
