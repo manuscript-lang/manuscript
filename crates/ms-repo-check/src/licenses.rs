@@ -8,6 +8,43 @@ use std::process::Command;
 const INVENTORY: &str = "documentation/contributing/dependency-licenses.json";
 const NOTICE_ROOTS: [&str; 2] = ["website/themes/hugo-book", "skills"];
 
+/// The licenses of the C libraries folded into the runtime archives (`runtime/third_party/c-libs.lock` pins the
+/// versions of all but llhttp, which is vendored). Programs carry their members, so their notices belong here.
+const C_LIBRARIES: [(&str, &str); 6] = [
+    ("libuv", "MIT"),
+    ("llhttp", "MIT"),
+    ("nghttp2", "MIT"),
+    ("openssl", "Apache-2.0"),
+    ("pcre2", "BSD-3-Clause"),
+    ("zlib", "Zlib"),
+];
+const VENDORED_VERSIONS: [(&str, &str); 1] = [("llhttp", "9.2.1")];
+
+/// (name, version, license) of each C library, with the version from the lock file.
+fn c_libraries() -> Result<Vec<(String, String, String)>, String> {
+    let lock = "runtime/third_party/c-libs.lock";
+    let text = std::fs::read_to_string(lock).map_err(|e| format!("{lock}: {e}"))?;
+    let version = |name: &str| {
+        text.lines()
+            .filter_map(|l| {
+                let mut words = l.split_whitespace();
+                (words.next() == Some(name)).then(|| words.next().map(str::to_string))?
+            })
+            .next()
+            .or_else(|| {
+                VENDORED_VERSIONS
+                    .iter()
+                    .find(|(n, _)| *n == name)
+                    .map(|(_, v)| v.to_string())
+            })
+            .ok_or(format!("{lock}: no version of {name}"))
+    };
+    C_LIBRARIES
+        .iter()
+        .map(|(name, license)| Ok((name.to_string(), version(name)?, license.to_string())))
+        .collect()
+}
+
 /// Writes the inventory, or with `check` fails when the checked-in file differs.
 pub fn run(check: bool) -> Result<(), String> {
     let mut crates = cargo_crates()?;
@@ -22,6 +59,21 @@ pub fn run(check: bool) -> Result<(), String> {
             "crates",
             Json::Arr(
                 crates
+                    .into_iter()
+                    .map(|(name, version, license)| {
+                        obj([
+                            ("name", Json::str(name)),
+                            ("version", Json::str(version)),
+                            ("license", Json::str(license)),
+                        ])
+                    })
+                    .collect(),
+            ),
+        ),
+        (
+            "c_libraries",
+            Json::Arr(
+                c_libraries()?
                     .into_iter()
                     .map(|(name, version, license)| {
                         obj([

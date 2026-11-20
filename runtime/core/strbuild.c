@@ -1,11 +1,9 @@
 /* String primitives that build strings: construction, copies, concatenation, trimmed views, slices and views.
- * Ported from crates/ms-rt/src/string.rs. Memory comes from the allocator's exported ABI (msrt_alloc,
- * msrt_free) until the allocator itself moves to C. */
+ * Ported from crates/ms-rt/src/string.rs. Memory comes from the allocator (ms_rt/alloc.h). */
 #include "ms_rt/string.h"
+#include "ms_rt/alloc.h"
 #include "ms_rt/utf8.h"
 
-extern uint8_t *msrt_alloc(size_t size);
-extern void msrt_free(uint8_t *p);
 extern _Noreturn void msrt_fault(const uint8_t *msg, size_t len);
 /* Two bytes per ASCII character, the second a NUL: the one-character strings are static (defined with the
  * Rust string module for now). */

@@ -1,4 +1,4 @@
-/* Unit test for runtime/core/strbuild.c; `make c-test` builds it with ASan and UBSan. Allocator and fault come from rt_stubs.c. */
+/* Unit test for runtime/core/strbuild.c; `make c-test` builds it with ASan and UBSan. Fault and the ASCII table come from support/fault.c. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
