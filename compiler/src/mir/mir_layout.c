@@ -183,7 +183,7 @@ bool mir_rt_direct(const MirModule *m, MirLayouts *layouts, MirTy ty) {
     case MK_FLOAT32: case MK_PTR: case MK_FN: case MK_IFACE:
         return true;
     case MK_OBJ:
-        return !mir_name_is(m, data->name, "Map") && !mir_name_is(m, data->name, "Set");
+        return data->obj_class != MIR_OBJ_COLLECTION;
     case MK_OPT:
         return mir_opt_is_nullable(layouts, data->elem) || mir_is_scalar(m, data->elem);
     case MK_STR: case MK_BYTES: case MK_TYPE: case MK_ALT: case MK_LIST:
