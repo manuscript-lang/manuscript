@@ -20,6 +20,5 @@ fn scale(x: Float, k: Float) Float:
 	return x * k
 
 fn main() Int:
-	if even(10) and scale(1.5, 2.0) > 2.0:
-		return twice(3) + fib(10)
+	if even(10) and scale(1.5, 2.0) > 2.0: return twice(3) + fib(10)
 	return add(1, 2)
