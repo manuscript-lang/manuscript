@@ -22,7 +22,7 @@ Range proofs are already in MIR (`ms-mir/src/opt/range.rs`: intervals, induction
 
 Apply when: adding facts to the direct LLVM emitter.
 Evidence: [module and units](../../crates/ms-mir-llvm/src/llvm_ir.rs), [direct emitter](../../crates/ms-mir-llvm/src/mir_llvm/mod.rs), `make drift-check`.
-Verify: `ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test`.
+Verify: `ms run tools/conform-run.ms -- diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test`.
 
 ## Direct MIR emission (stage 1, 2026-11-13)
 

@@ -8,6 +8,10 @@
  * The ring cannot grow inside a callback, so its capacity is fixed when the loop opens. Size it to the
  * most operations that can be in flight at once (two per connection row: one read, one write); a push
  * that finds it full is a programming error, counted by ms_io_ring_dropped and never silently lost.
+ *
+ * Readiness is level-triggered and libuv polls several times per loop pass, so a row nobody has served yet is
+ * reported again. The pusher keeps one flag per row ("event queued", cleared when the row is served) and does not
+ * push a second event; without it a loop pass with many readable rows overflows any fixed capacity.
  */
 #ifndef MS_IO_RING_H
 #define MS_IO_RING_H
