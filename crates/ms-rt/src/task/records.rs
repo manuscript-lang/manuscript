@@ -289,12 +289,11 @@ pub(crate) fn swap_started_head(handle: u64, head: u32) -> Option<u32> {
 /// The head of the list of promises task `handle` started, or 0.
 pub(crate) fn started_head(handle: u64) -> u32 {
     let t = lookup(handle);
-    // SAFETY: a live record of this thread's scheduler.
     if t.is_null() {
-        0
-    } else {
-        unsafe { (*t).started }
+        return 0;
     }
+    // SAFETY: a live record of this thread's scheduler.
+    unsafe { (*t).started }
 }
 
 /// Returns a stack lent with [`lend_current`]; nothing to do when the task has ended since.
