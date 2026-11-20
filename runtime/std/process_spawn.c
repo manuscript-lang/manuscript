@@ -32,7 +32,9 @@
 #include "ms_sched.h"
 
 #ifdef _WIN32
+#define PSAPI_VERSION 2 /* GetProcessMemoryInfo from kernel32, so no extra library */
 #include <windows.h>
+#include <psapi.h>
 #else
 #include <fcntl.h>
 #include <signal.h>
@@ -344,6 +346,7 @@ static int64_t resident_peak(const MsChild *child) {
     fclose(file);
     return kilobytes * 1024;
 #elif defined(_WIN32)
+    (void)child;
     return 0; /* read from the process handle when it exits */
 #else
     (void)child;
