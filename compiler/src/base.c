@@ -112,14 +112,14 @@ void *ms_buf_push(MsBuf *b, size_t n) {
         while (cap < b->len + n) {
             cap *= 2;
         }
-        char *d = realloc(b->data, cap);
+        void *d = realloc(b->data, cap);
         if (d == NULL) {
             ms_oom();
         }
         b->data = d;
         b->cap = cap;
     }
-    void *p = b->data + b->len;
+    void *p = (char *)b->data + b->len;
     b->len += n;
     return p;
 }

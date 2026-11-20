@@ -10,6 +10,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef MS_NODISCARD
+#define MS_NODISCARD __attribute__((warn_unused_result))
+#endif
+#ifndef MS_PRINTF
+#define MS_PRINTF(format_index, first_arg) __attribute__((format(printf, format_index, first_arg)))
+#endif
+
 /* ---- arena ---- */
 
 typedef struct MsChunk MsChunk;
@@ -36,7 +43,7 @@ MsStr ms_arena_vfmt(MsArena *a, const char *fmt, va_list ap) __attribute__((form
 /* ---- growable byte stack: the scratch space lists are built in before they are copied out ---- */
 
 typedef struct MsBuf {
-    char *data;
+    void *data;
     size_t len, cap;
 } MsBuf;
 

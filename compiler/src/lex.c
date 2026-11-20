@@ -1,6 +1,7 @@
 /* The lexer with layout. A port of crates/ms-syntax/src/lexer.rs: the same tokens, the same
- * messages, the same positions. Errors unwind with longjmp to the entry point; everything is
- * allocated from the caller's arena, so nothing needs cleaning up. */
+ * messages, the same positions. A scan function that fails records the diagnostic and returns
+ * false, and every caller passes the false on; everything is allocated from the caller's arena, so
+ * nothing needs cleaning up. */
 #include <stdlib.h>
 #include <string.h>
 
@@ -51,7 +52,6 @@ typedef struct Scanner {
     MsBuf *prefixes; /* bool per physical line: is a delimiter open there (recovery) */
     const bool *stop_at;
     size_t nstop;
-    jmp_buf jb;
     MsDiag *diag;
 } Scanner;
 
@@ -80,23 +80,21 @@ static bool bindigit(uint8_t b) {
 static bool graphic(uint8_t b) {
     return b > 0x20 && b < 0x7f;
 }
+static bool is_word_byte(uint8_t b) {
+    return letter(b) || digit(b);
+}
 
 /* ---- errors ---- */
-
-static void throw_diag(Scanner *s) __attribute__((noreturn));
-static void throw_diag(Scanner *s) {
-    longjmp(s->jb, 1);
-}
 
 static MsPos spos(const Scanner *s) {
     uint32_t offset = (uint32_t)s->offset + s->base_offset;
     if (s->line_offsets != NULL) {
         offset += s->line_offsets[s->line - s->base_line - 1];
     }
-    MsPos p = {offset, s->line, s->column};
-    return p;
+    return (MsPos){.offset = offset, .line = s->line, .column = s->column};
 }
 
+/* Starts the diagnostic for the scan in progress; the caller fills the optional range and fix. */
 static MsDiag *new_diag(Scanner *s, MsPos pos, MsStr message) {
     memset(s->diag, 0, sizeof *s->diag);
     s->diag->pos = pos;
@@ -104,35 +102,48 @@ static MsDiag *new_diag(Scanner *s, MsPos pos, MsStr message) {
     return s->diag;
 }
 
-static void fail_at_str(Scanner *s, MsPos pos, MsStr message) __attribute__((noreturn));
-static void fail_at_str(Scanner *s, MsPos pos, MsStr message) {
+/* The fail_* functions record a diagnostic and return false, so a scanner function reports its
+ * failure with `return fail_...(...)` and every caller passes that false on. */
+static bool fail_at_str(Scanner *s, MsPos pos, MsStr message) {
     new_diag(s, pos, message);
-    throw_diag(s);
+    return false;
 }
-static void fail_str(Scanner *s, MsStr message) __attribute__((noreturn));
-static void fail_str(Scanner *s, MsStr message) {
-    fail_at_str(s, spos(s), message);
+
+static bool fail_str(Scanner *s, MsStr message) {
+    return fail_at_str(s, spos(s), message);
+}
+
+static bool fail_fmt(Scanner *s, const char *format, ...) MS_PRINTF(2, 3);
+static bool fail_fmt(Scanner *s, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    MsStr message = ms_arena_vfmt(s->arena, format, args);
+    va_end(args);
+    return fail_str(s, message);
+}
+
+static bool fail_at_fmt(Scanner *s, MsPos pos, const char *format, ...) MS_PRINTF(3, 4);
+static bool fail_at_fmt(Scanner *s, MsPos pos, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    MsStr message = ms_arena_vfmt(s->arena, format, args);
+    va_end(args);
+    return fail_at_str(s, pos, message);
 }
 
 #define LIT(text) ((MsStr){(text), (uint32_t)(sizeof(text) - 1)})
-#define FAIL(s, text) fail_str((s), LIT(text))
-#define FAIL_AT(s, pos, text) fail_at_str((s), (pos), LIT(text))
-#define FAILF(s, ...) fail_str((s), ms_arena_fmt((s)->arena, __VA_ARGS__))
-#define FAIL_ATF(s, pos, ...) fail_at_str((s), (pos), ms_arena_fmt((s)->arena, __VA_ARGS__))
 
 /* Reports a character whose first byte was just consumed: the cursor may be inside its UTF-8
  * encoding, so it is not itself a diagnostic boundary. */
-static void fail_previous_byte(Scanner *s, MsStr message) __attribute__((noreturn));
-static void fail_previous_byte(Scanner *s, MsStr message) {
-    MsPos p = spos(s);
-    p.offset -= 1;
-    p.column -= 1;
-    fail_at_str(s, p, message);
+static bool fail_previous_byte(Scanner *s, MsStr message) {
+    MsPos pos = spos(s);
+    pos.offset -= 1;
+    pos.column -= 1;
+    return fail_at_str(s, pos, message);
 }
 
 /* Fails on the single ASCII character at the cursor, with its range and the fix when one exists. */
-static void fail_char(Scanner *s, MsStr message, const char *replacement) __attribute__((noreturn));
-static void fail_char(Scanner *s, MsStr message, const char *replacement) {
+static bool fail_char(Scanner *s, MsStr message, const char *replacement) {
     MsPos pos = spos(s);
     MsPos end = {pos.offset + 1, pos.line, pos.column + 1};
     MsDiag *d = new_diag(s, pos, message);
@@ -145,16 +156,15 @@ static void fail_char(Scanner *s, MsStr message, const char *replacement) {
         d->replacement.ptr = replacement;
         d->replacement.len = (uint32_t)strlen(replacement);
     }
-    throw_diag(s);
+    return false;
 }
 
 /* Fails on the source range [start, cursor). */
-static void fail_range(Scanner *s, MsPos start, MsStr message) __attribute__((noreturn));
-static void fail_range(Scanner *s, MsPos start, MsStr message) {
+static bool fail_range(Scanner *s, MsPos start, MsStr message) {
     MsDiag *d = new_diag(s, start, message);
     d->has_end = true;
     d->end = spos(s);
-    throw_diag(s);
+    return false;
 }
 
 /* ---- Rust's `{:?}` for a char ---- */
@@ -312,28 +322,29 @@ static bool trailing_semicolon(const Scanner *s) {
 
 /* ---- comments ---- */
 
-static void skip_comment(Scanner *s) {
+MS_NODISCARD static bool skip_comment(Scanner *s) {
     while (s->offset < s->n && s->src[s->offset] != '\n') {
         if (s->src[s->offset] == '\r') {
-            FAIL(s, "lone carriage returns are not allowed in comments; use line endings of LF or CRLF");
+            return fail_str(s, LIT("lone carriage returns are not allowed in comments; use line endings of LF or CRLF"));
         }
         if (bidi_control_at(s, s->offset)) {
-            FAIL(s, BIDI_COMMENT);
+            return fail_str(s, LIT(BIDI_COMMENT));
         }
         advance(s);
     }
+    return true;
 }
 
 /* Consumes a block comment, which does not nest, and the blanks and optional `//` comment after
  * its `*​/`; the cursor ends at the line's newline. */
-static void skip_block_comment(Scanner *s) {
+MS_NODISCARD static bool skip_block_comment(Scanner *s) {
     MsPos open = spos(s);
     size_t start = s->offset;
     advance(s);
     advance(s);
     for (;;) {
         if (s->offset >= s->n) {
-            FAIL_AT(s, open, "unterminated block comment; close it with '*/'");
+            return fail_at_str(s, open, LIT("unterminated block comment; close it with '*/'"));
         }
         uint8_t b = s->src[s->offset];
         if (b == '*' && at(s, s->offset + 1) == '/') {
@@ -344,13 +355,13 @@ static void skip_block_comment(Scanner *s) {
             break;
         }
         if (b == '/' && at(s, s->offset + 1) == '*') {
-            FAIL(s, "block comments do not nest; remove the inner '/*'");
+            return fail_str(s, LIT("block comments do not nest; remove the inner '/*'"));
         }
         if (b == '\r') {
-            FAIL(s, "lone carriage returns are not allowed in comments; use line endings of LF or CRLF");
+            return fail_str(s, LIT("lone carriage returns are not allowed in comments; use line endings of LF or CRLF"));
         }
         if (bidi_control_at(s, s->offset)) {
-            FAIL(s, BIDI_COMMENT);
+            return fail_str(s, LIT(BIDI_COMMENT));
         }
         advance(s);
     }
@@ -358,18 +369,21 @@ static void skip_block_comment(Scanner *s) {
         advance(s);
     }
     if (s->offset < s->n && at_line_comment(s)) {
-        skip_comment(s);
-        return;
+        if (!skip_comment(s)) {
+            return false;
+        }
+        return true;
     }
     if (s->offset < s->n && s->src[s->offset] != '\n') {
-        FAIL(s, "code cannot follow a block comment on the same line; start a new line");
+        return fail_str(s, LIT("code cannot follow a block comment on the same line; start a new line"));
     }
+    return true;
 }
 
 /* ---- numbers ---- */
 
 /* Consumes digits accepted by `ok`, allowing `_` only between two digits. */
-static void scan_digits(Scanner *s, bool (*ok)(uint8_t), bool after_digit) {
+MS_NODISCARD static bool scan_digits(Scanner *s, bool (*ok)(uint8_t), bool after_digit) {
     while (s->offset < s->n) {
         uint8_t b = s->src[s->offset];
         if (ok(b)) {
@@ -377,7 +391,7 @@ static void scan_digits(Scanner *s, bool (*ok)(uint8_t), bool after_digit) {
         } else if (b == '_') {
             bool next_ok = s->offset + 1 < s->n && ok(s->src[s->offset + 1]);
             if (!after_digit || !next_ok) {
-                FAIL(s, "a digit separator goes between two digits; write e.g. 1_000_000 or 0xFF_FF");
+                return fail_str(s, LIT("a digit separator goes between two digits; write e.g. 1_000_000 or 0xFF_FF"));
             }
             after_digit = false;
         } else {
@@ -385,89 +399,107 @@ static void scan_digits(Scanner *s, bool (*ok)(uint8_t), bool after_digit) {
         }
         advance(s);
     }
+    return true;
 }
 
-static void scan_number(Scanner *s, MsPos p) {
-    size_t n = s->n;
-    size_t start = s->offset;
+/* A `0x` or `0b` literal: the prefix is at the cursor's `start`, `ok` accepts its digits. */
+MS_NODISCARD static bool scan_radix_number(Scanner *s, MsPos p, size_t start, bool (*ok)(uint8_t)) {
     advance(s);
-    if (s->src[start] == '0' && s->offset < n) {
-        bool (*ok)(uint8_t) = NULL;
-        if (s->src[s->offset] == 'x') {
-            ok = hexdigit;
-        } else if (s->src[s->offset] == 'b') {
-            ok = bindigit;
-        }
-        if (ok != NULL) {
-            advance(s);
-            if (s->offset == n || !ok(s->src[s->offset])) {
-                FAIL(s, "a hexadecimal or binary literal requires digits after the prefix; write e.g. 0xFF or 0b1010");
-            }
-            scan_digits(s, ok, false);
-            if (s->offset < n && (letter(s->src[s->offset]) || digit(s->src[s->offset]))) {
-                FAIL(s, "invalid digit in a hexadecimal or binary literal; 0x takes 0-9 and a-f, 0b takes 0 and 1");
-            }
-            emit(s, MS_T_Number, start, s->offset, p);
-            return;
-        }
+    if (s->offset == s->n || !ok(s->src[s->offset])) {
+        return fail_str(s, LIT("a hexadecimal or binary literal requires digits after the prefix; write e.g. 0xFF or 0b1010"));
     }
-    if (s->src[start] == '0' && s->offset < n && (digit(s->src[s->offset]) || s->src[s->offset] == '_')) {
-        FAIL(s, "leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042");
+    if (!scan_digits(s, ok, false)) {
+        return false;
     }
-    scan_digits(s, digit, true);
-    if (s->offset + 1 < n && s->src[s->offset] == '.' && digit(s->src[s->offset + 1])) {
-        advance(s);
-        scan_digits(s, digit, false);
-    }
-    if (s->offset < n && (s->src[s->offset] == 'e' || s->src[s->offset] == 'E')) {
-        advance(s);
-        if (s->offset < n && (s->src[s->offset] == '+' || s->src[s->offset] == '-')) {
-            advance(s);
-        }
-        if (s->offset == n || !digit(s->src[s->offset])) {
-            FAIL(s, "an exponent requires digits; write e.g. 1e3 or 2.5e-4");
-        }
-        while (s->offset < n && digit(s->src[s->offset])) {
-            advance(s);
-        }
-    }
-    if (s->offset < n && s->src[s->offset] == 'd') {
-        advance(s);
-    }
-    if (s->offset < n && letter(s->src[s->offset])) {
-        while (s->offset < n && (letter(s->src[s->offset]) || digit(s->src[s->offset]))) {
-            advance(s);
-        }
-        const char *word = s->text + start;
-        size_t wl = s->offset - start;
-        bool has_underscore = memchr(word, '_', wl) != NULL;
-        MsStr message;
-        if (wl > 1 && (memcmp(word, "0X", 2) == 0 || memcmp(word, "0B", 2) == 0)) {
-            message = ms_arena_fmt(s->arena,
-                                   "invalid number %.*s; the prefix is lowercase, so write 0%c%.*s",
-                                   (int)wl, word, word[1] + ('a' - 'A'), (int)(wl - 2), word + 2);
-        } else if (wl > 1 && (memcmp(word, "0o", 2) == 0 || memcmp(word, "0O", 2) == 0)) {
-            message = ms_arena_fmt(s->arena,
-                                   "invalid number %.*s; octal literals do not exist, so write the value in decimal, hexadecimal (0x) or binary (0b)",
-                                   (int)wl, word);
-        } else if (has_underscore) {
-            message = ms_arena_fmt(s->arena,
-                                   "invalid number %.*s; a digit separator goes between two digits of the integer or fraction part, e.g. 1_000_000",
-                                   (int)wl, word);
-        } else {
-            message = ms_arena_fmt(s->arena,
-                                   "invalid number %.*s; the only numeric suffix is d for Decimal (1.5d), so put a space or operator after the number",
-                                   (int)wl, word);
-        }
-        fail_range(s, p, message);
+    if (s->offset < s->n && is_word_byte(s->src[s->offset])) {
+        return fail_str(s, LIT("invalid digit in a hexadecimal or binary literal; 0x takes 0-9 and a-f, 0b takes 0 and 1"));
     }
     emit(s, MS_T_Number, start, s->offset, p);
+    return true;
+}
+
+/* The digits after the `e` of a floating-point exponent, with an optional sign. */
+MS_NODISCARD static bool scan_exponent(Scanner *s) {
+    advance(s);
+    if (s->offset < s->n && (s->src[s->offset] == '+' || s->src[s->offset] == '-')) {
+        advance(s);
+    }
+    if (s->offset == s->n || !digit(s->src[s->offset])) {
+        return fail_str(s, LIT("an exponent requires digits; write e.g. 1e3 or 2.5e-4"));
+    }
+    while (s->offset < s->n && digit(s->src[s->offset])) {
+        advance(s);
+    }
+    return true;
+}
+
+static bool word_has_prefix(const char *word, size_t length, const char *a, const char *b) {
+    return length > 1 && (memcmp(word, a, 2) == 0 || memcmp(word, b, 2) == 0);
+}
+
+/* A number followed by letters: names what went wrong from the whole word. */
+static bool fail_number_suffix(Scanner *s, MsPos p, size_t start) {
+    while (s->offset < s->n && is_word_byte(s->src[s->offset])) {
+        advance(s);
+    }
+    const char *word = s->text + start;
+    size_t length = s->offset - start;
+    if (word_has_prefix(word, length, "0X", "0B")) {
+        MsStr message = ms_arena_fmt(s->arena,
+            "invalid number %.*s; the prefix is lowercase, so write 0%c%.*s",
+            (int)length, word, word[1] + ('a' - 'A'), (int)(length - 2), word + 2);
+        return fail_range(s, p, message);
+    }
+    const char *reason = NULL;
+    if (word_has_prefix(word, length, "0o", "0O")) {
+        reason = "octal literals do not exist, so write the value in decimal, hexadecimal (0x) or binary (0b)";
+    } else if (memchr(word, '_', length) != NULL) {
+        reason = "a digit separator goes between two digits of the integer or fraction part, e.g. 1_000_000";
+    } else {
+        reason = "the only numeric suffix is d for Decimal (1.5d), so put a space or operator after the number";
+    }
+    return fail_range(s, p, ms_arena_fmt(s->arena, "invalid number %.*s; %s", (int)length, word, reason));
+}
+
+MS_NODISCARD static bool scan_number(Scanner *s, MsPos p) {
+    size_t start = s->offset;
+    advance(s);
+    bool zero = s->src[start] == '0' && s->offset < s->n;
+    if (zero && s->src[s->offset] == 'x') {
+        return scan_radix_number(s, p, start, hexdigit);
+    }
+    if (zero && s->src[s->offset] == 'b') {
+        return scan_radix_number(s, p, start, bindigit);
+    }
+    if (zero && (digit(s->src[s->offset]) || s->src[s->offset] == '_')) {
+        return fail_str(s, LIT("leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042"));
+    }
+    if (!scan_digits(s, digit, true)) {
+        return false;
+    }
+    if (s->offset + 1 < s->n && s->src[s->offset] == '.' && digit(s->src[s->offset + 1])) {
+        advance(s);
+        if (!scan_digits(s, digit, false)) {
+            return false;
+        }
+    }
+    if (s->offset < s->n && (s->src[s->offset] == 'e' || s->src[s->offset] == 'E') && !scan_exponent(s)) {
+        return false;
+    }
+    if (s->offset < s->n && s->src[s->offset] == 'd') {
+        advance(s);
+    }
+    if (s->offset < s->n && letter(s->src[s->offset])) {
+        return fail_number_suffix(s, p, start);
+    }
+    emit(s, MS_T_Number, start, s->offset, p);
+    return true;
 }
 
 /* ---- text ---- */
 
-static void scan_string(Scanner *s, bool interpolating);
-static void scan_multiline(Scanner *s, bool raw, bool interpolating);
+MS_NODISCARD static bool scan_string(Scanner *s, bool interpolating);
+MS_NODISCARD static bool scan_multiline(Scanner *s, bool raw, bool interpolating);
 
 static const MsRange *find_range(const MsRange *r, size_t n, size_t start) {
     size_t lo = 0, hi = n;
@@ -497,22 +529,22 @@ MsPos ms_bounds_restore_offset(const MsBounds *b, MsPos from, MsPos to) {
 }
 
 /* Validates the escape after a consumed backslash. */
-static void scan_escape(Scanner *s, bool interpolating) {
+MS_NODISCARD static bool scan_escape(Scanner *s, bool interpolating) {
     size_t n = s->n;
     MsPos backslash = spos(s);
     backslash.column -= 1;
     backslash.offset -= 1;
     if (s->offset == n) {
-        FAIL(s, "unterminated text escape; a backslash needs a following character, e.g. \\n");
+        return fail_str(s, LIT("unterminated text escape; a backslash needs a following character, e.g. \\n"));
     }
     uint8_t c = advance(s);
     if (c == 'u') {
         if (s->offset == n || advance(s) != '{') {
             MsStr message = LIT("Unicode escapes use \\u{H}; write 1 to 6 hexadecimal digits in braces, e.g. \\u{1F600}");
             if (s->src[s->offset - 1] < 0x80) {
-                fail_str(s, message);
+                return fail_str(s, message);
             }
-            fail_previous_byte(s, message);
+            return fail_previous_byte(s, message);
         }
         size_t start = s->offset;
         uint64_t value = 0;
@@ -528,9 +560,9 @@ static void scan_escape(Scanner *s, bool interpolating) {
             } else {
                 MsStr message = LIT("invalid Unicode scalar escape; use only hexadecimal digits 0-9 and a-f inside \\u{...}");
                 if (ch < 0x80) {
-                    fail_str(s, message);
+                    return fail_str(s, message);
                 }
-                fail_previous_byte(s, message);
+                return fail_previous_byte(s, message);
             }
             /* saturating_mul(16).saturating_add(d) */
             value = value > (UINT64_MAX - d) / 16 ? UINT64_MAX : value * 16 + d;
@@ -538,11 +570,11 @@ static void scan_escape(Scanner *s, bool interpolating) {
         size_t digits = s->offset - start;
         if (s->offset == n || digits < 1 || digits > 6 || value > 0x10ffff ||
             (value >= 0xd800 && value <= 0xdfff)) {
-            FAIL(s, "invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)");
+            return fail_str(s, LIT("invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)"));
         }
         advance(s);
     } else if (!interpolating && (c == '{' || c == '}')) {
-        FAIL_AT(s, backslash, PLAIN_BRACE_ESCAPE);
+        return fail_at_str(s, backslash, LIT(PLAIN_BRACE_ESCAPE));
     } else if (!(c != 0 && strchr("\"\\nrt{}", c) != NULL)) {
         MsStr escape;
         if (graphic(c)) {
@@ -554,10 +586,11 @@ static void scan_escape(Scanner *s, bool interpolating) {
             escape = ms_arena_fmt(s->arena, ": a backslash followed by %.*s", (int)q.len, q.ptr);
         }
         const char *braces = interpolating ? "\\{ \\} (f text only) " : "";
-        FAIL_ATF(s, backslash,
+        return fail_at_fmt(s, backslash,
                  "unknown text escape%.*s; valid escapes are \\n \\t \\r \\\\ \\\" %sand \\u{H}",
                  (int)escape.len, escape.ptr, braces);
     }
+    return true;
 }
 
 static bool text_is_blank(const char *p, size_t n) {
@@ -577,26 +610,30 @@ static bool text_is_blank(const char *p, size_t n) {
     return true;
 }
 
-static void interpolation_body(Scanner *s, MsPos open) {
+MS_NODISCARD static bool interpolation_body(Scanner *s, MsPos open) {
     size_t n = s->n;
     int depth = 1;
     size_t start = s->offset;
     while (s->offset < n) {
         uint8_t b = s->src[s->offset];
         if (b == '\n' || b == '\r' || at_line_comment(s) || at_block_comment(s)) {
-            FAIL_AT(s, open, "newlines and comments are not allowed inside interpolation; keep the expression on one line, or bind it to a name first and interpolate the name (" BRACE_HINT ")");
+            return fail_at_str(s, open, LIT("newlines and comments are not allowed inside interpolation; keep the expression on one line, or bind it to a name first and interpolate the name (" BRACE_HINT ")"));
         }
         if (b == '\\') {
-            FAIL_AT(s, open, "a backslash cannot appear in the interpolated expression (" BRACE_HINT ")");
+            return fail_at_str(s, open, LIT("a backslash cannot appear in the interpolated expression (" BRACE_HINT ")"));
         }
         if (b == '"') {
-            scan_string(s, false);
+            if (!scan_string(s, false)) {
+                return false;
+            }
             continue;
         }
         bool after_word = s->offset > 0 && (letter(s->src[s->offset - 1]) || digit(s->src[s->offset - 1]));
         if (b == 'f' && at(s, s->offset + 1) == '"' && !after_word) {
             advance(s);
-            scan_string(s, true);
+            if (!scan_string(s, true)) {
+                return false;
+            }
             continue;
         }
         if (b == 'r' && at(s, s->offset + 1) == '"' && !starts_with(s, s->offset + 2, "\"\"") &&
@@ -607,20 +644,20 @@ static void interpolation_body(Scanner *s, MsPos open) {
             advance(s);
             for (;;) {
                 if (s->offset >= n) {
-                    FAIL_AT(s, opened, "unterminated raw text literal; add the closing '\"' on the same line");
+                    return fail_at_str(s, opened, LIT("unterminated raw text literal; add the closing '\"' on the same line"));
                 }
                 uint8_t c = advance(s);
                 if (c == '"') {
                     break;
                 }
                 if (c == '\n') {
-                    FAIL_AT(s, opened, "unterminated raw text literal; r\"...\" must close on the same line and cannot hold a quote, so add the quote or use r\"\"\" multi-line raw text");
+                    return fail_at_str(s, opened, LIT("unterminated raw text literal; r\"...\" must close on the same line and cannot hold a quote, so add the quote or use r\"\"\" multi-line raw text"));
                 }
                 if (c < 32) {
-                    FAIL(s, "literal control characters are not allowed in text; use r\"\"\" raw text for tabs, or write an escape such as \\t in non-raw text");
+                    return fail_str(s, LIT("literal control characters are not allowed in text; use r\"\"\" raw text for tabs, or write an escape such as \\t in non-raw text"));
                 }
                 if (c == 0xE2 && bidi_control_at(s, s->offset - 1)) {
-                    fail_previous_byte(s, LIT(BIDI_TEXT));
+                    return fail_previous_byte(s, LIT(BIDI_TEXT));
                 }
             }
             continue;
@@ -633,46 +670,52 @@ static void interpolation_body(Scanner *s, MsPos open) {
             depth--;
             if (depth == 0) {
                 if (text_is_blank(s->text + start, s->offset - 1 - start)) {
-                    FAIL(s, "empty interpolation; put an expression between the braces, or write \\{ for a literal brace");
+                    return fail_str(s, LIT("empty interpolation; put an expression between the braces, or write \\{ for a literal brace"));
                 }
-                return;
+                return true;
             }
         }
     }
-    FAIL_AT(s, open, "unterminated interpolation; add the closing } before the closing quote (" BRACE_HINT ")");
+    return fail_at_str(s, open, LIT("unterminated interpolation; add the closing } before the closing quote (" BRACE_HINT ")"));
+    return true;
 }
 
-static void scan_interpolation(Scanner *s) {
+MS_NODISCARD static bool scan_interpolation(Scanner *s) {
     size_t start = s->boundary_origin + s->offset - 1;
     MsPos open = spos(s);
     open.column -= 1;
     open.offset -= 1;
     if (VLEN(s->interpolations, MsPos) >= MAX_INTERPOLATION_DEPTH) {
-        FAIL_ATF(s, open,
+        return fail_at_fmt(s, open,
                  "nesting exceeds %d levels; split the expression, type, or block into named parts",
                  MAX_INTERPOLATION_DEPTH);
     }
     VPUSH(s->interpolations, MsPos, open);
-    interpolation_body(s, open);
+    if (!interpolation_body(s, open)) {
+        return false;
+    }
     VPOP(s->interpolations, MsPos);
     MsRange r = {start, s->boundary_origin + s->offset};
     VPUSH(s->interps, MsRange, r);
+    return true;
 }
 
 /* Scans `"..."` text, or `f"..."` text when `interpolating` (the caller has consumed the `f`).
  * Braces are plain characters unless interpolating. */
-static void scan_string(Scanner *s, bool interpolating) {
+MS_NODISCARD static bool scan_string(Scanner *s, bool interpolating) {
     size_t start = s->offset;
     if (starts_with(s, start, "\"\"\"")) {
-        scan_multiline(s, false, interpolating);
-        return;
+        if (!scan_multiline(s, false, interpolating)) {
+            return false;
+        }
+        return true;
     }
     if (s->cached != NULL) {
         const MsRange *r = find_range(s->cached->strings, s->cached->nstrings, s->boundary_origin + start);
         if (r != NULL) {
             s->column += (uint32_t)(r->end - s->boundary_origin - start);
             s->offset = r->end - s->boundary_origin;
-            return;
+            return true;
         }
     }
     size_t n = s->n;
@@ -685,53 +728,59 @@ static void scan_string(Scanner *s, bool interpolating) {
                 MsRange r = {s->boundary_origin + start, s->boundary_origin + s->offset};
                 VPUSH(s->strings, MsRange, r);
             }
-            return;
+            return true;
         }
         if (b == '\n') {
             if (VLEN(s->interpolations, MsPos) != 0) {
-                MsPos at_ = VLAST(s->interpolations, MsPos);
-                FAIL_AT(s, at_, "unterminated interpolation; the quote after this '{' opens a nested text that never closes (" BRACE_HINT ")");
+                MsPos brace = VLAST(s->interpolations, MsPos);
+                return fail_at_str(s, brace, LIT("unterminated interpolation; the quote after this '{' opens a nested text that never closes (" BRACE_HINT ")"));
             }
-            FAIL_AT(s, opened, "unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break");
+            return fail_at_str(s, opened, LIT("unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break"));
         }
         if (b < 32) {
-            FAIL(s, "literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}");
+            return fail_str(s, LIT("literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}"));
         }
         if (b == 0xE2 && bidi_control_at(s, s->offset - 1)) {
-            fail_previous_byte(s, LIT(BIDI_TEXT));
+            return fail_previous_byte(s, LIT(BIDI_TEXT));
         }
         if (b == '\\') {
-            scan_escape(s, interpolating);
+            if (!scan_escape(s, interpolating)) {
+                return false;
+            }
         } else if (interpolating && b == '{') {
-            scan_interpolation(s);
+            if (!scan_interpolation(s)) {
+                return false;
+            }
         } else if (interpolating && b == '}') {
-            FAIL(s, UNMATCHED_BRACE);
+            return fail_str(s, LIT(UNMATCHED_BRACE));
         }
     }
-    FAIL_AT(s, opened, "unterminated text literal; add the closing '\"' on the same line");
+    return fail_at_str(s, opened, LIT("unterminated text literal; add the closing '\"' on the same line"));
+    return true;
 }
 
 /* Scans one-line raw text `r"..."`: every character is literal up to the first `"`. */
-static void scan_raw_line(Scanner *s) {
+MS_NODISCARD static bool scan_raw_line(Scanner *s) {
     MsPos opened = spos(s);
     advance(s);
     advance(s);
     while (s->offset < s->n) {
         uint8_t b = advance(s);
         if (b == '"') {
-            return;
+            return true;
         }
         if (b == '\n') {
-            FAIL_AT(s, opened, "unterminated raw text literal; r\"...\" must close on the same line and cannot hold a quote, so add the quote or use r\"\"\" multi-line raw text");
+            return fail_at_str(s, opened, LIT("unterminated raw text literal; r\"...\" must close on the same line and cannot hold a quote, so add the quote or use r\"\"\" multi-line raw text"));
         }
         if (b < 32) {
-            FAIL(s, "literal control characters are not allowed in text; use r\"\"\" raw text for tabs, or write an escape such as \\t in non-raw text");
+            return fail_str(s, LIT("literal control characters are not allowed in text; use r\"\"\" raw text for tabs, or write an escape such as \\t in non-raw text"));
         }
         if (b == 0xE2 && bidi_control_at(s, s->offset - 1)) {
-            fail_previous_byte(s, LIT(BIDI_TEXT));
+            return fail_previous_byte(s, LIT(BIDI_TEXT));
         }
     }
-    FAIL_AT(s, opened, "unterminated raw text literal; add the closing '\"' on the same line");
+    return fail_at_str(s, opened, LIT("unterminated raw text literal; add the closing '\"' on the same line"));
+    return true;
 }
 
 typedef struct LinePos {
@@ -739,86 +788,98 @@ typedef struct LinePos {
     MsPos pos;
 } LinePos;
 
-/* Scans `"""` text (and `r"""` raw text when `raw`): the opening quotes end their line, the
- * closing quotes start theirs, and every content line carries the closing line's indentation. */
-static void scan_multiline(Scanner *s, bool raw, bool interpolating) {
-    MsPos opened = spos(s);
-    if (VLEN(s->interpolations, MsPos) != 0) {
-        FAIL(s, "multi-line text cannot appear inside an interpolation; bind it to a name first and interpolate the name");
+static bool blank_line(const uint8_t *line, size_t length) {
+    for (size_t i = 0; i < length; i++) {
+        if (line[i] != ' ' && line[i] != '\t') {
+            return false;
+        }
     }
-    size_t n = s->n;
-    for (int i = 0; i < (raw ? 4 : 3); i++) {
-        advance(s);
+    return true;
+}
+
+/* Every content line must carry the closing line's indentation; `quote` is the closing quotes'
+ * offset and `indent_len` that indentation's width. */
+static bool check_text_indentation(Scanner *s, const MsBuf *lines, size_t quote, size_t indent_len,
+                                   size_t line_start) {
+    const uint8_t *indent = s->src + line_start;
+    for (size_t k = 0; k < VLEN(*lines, LinePos); k++) {
+        LinePos line = VAT(*lines, LinePos, k);
+        const uint8_t *rest = s->src + line.at;
+        size_t rest_len = s->n - line.at;
+        const uint8_t *newline = memchr(rest, '\n', rest_len);
+        size_t line_len = newline != NULL ? (size_t)(newline - rest) : rest_len;
+        bool has_prefix = line_len >= indent_len && memcmp(rest, indent, indent_len) == 0;
+        if (line.at < quote && !blank_line(rest, line_len) && !has_prefix) {
+            return fail_at_str(s, line.pos, LIT("text line is indented less than the closing '\"\"\"'; indent it to the closing quotes' column, or move the closing quotes left"));
+        }
     }
-    if (s->offset == n || s->src[s->offset] != '\n') {
-        FAIL_AT(s, opened, "multi-line text must start on the line after its opening '\"\"\"'; add a line break after the opening quotes");
+    return true;
+}
+
+/* The cursor is just past the first closing quote: checks the closing line and consumes the rest. */
+static bool finish_multiline(Scanner *s, const MsBuf *lines, size_t line_start) {
+    size_t quote = s->offset - 1;
+    size_t indent_len = quote - line_start;
+    if (!blank_line(s->src + line_start, indent_len)) {
+        return fail_previous_byte(s, LIT("multi-line text closes with '\"\"\"' alone on its own line; move the closing quotes to a new line (a '\"\"\"' inside the text is not allowed, so write \\\" for a quote in non-raw text)"));
     }
+    if (!check_text_indentation(s, lines, quote, indent_len, line_start)) {
+        return false;
+    }
+    advance(s);
+    advance(s);
+    return true;
+}
+
+/* The body of a multi-line text; `lines` collects where each content line starts. */
+MS_NODISCARD static bool scan_multiline_body(Scanner *s, bool raw, bool interpolating, MsPos opened,
+                                             MsBuf *lines) {
     size_t line_start = s->offset + 1;
-    MsBuf lines = {0};
-    while (s->offset < n) {
+    while (s->offset < s->n) {
         uint8_t b = advance(s);
         if (b == '\n') {
             line_start = s->offset;
-            LinePos lp = {line_start, spos(s)};
-            VPUSH(lines, LinePos, lp);
+            VPUSH(*lines, LinePos, ((LinePos){line_start, spos(s)}));
+        } else if (b == '"' && starts_with(s, s->offset, "\"\"")) {
+            return finish_multiline(s, lines, line_start);
+        } else if (b < 32 && b != '\t') {
+            return fail_str(s, LIT("literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}"));
+        } else if (b == 0xE2 && bidi_control_at(s, s->offset - 1)) {
+            return fail_previous_byte(s, LIT(BIDI_TEXT));
+        } else if (raw) {
             continue;
-        }
-        if (b == '"' && starts_with(s, s->offset, "\"\"")) {
-            size_t quote = s->offset - 1;
-            const uint8_t *indent = s->src + line_start;
-            size_t indent_len = quote - line_start;
-            for (size_t i = 0; i < indent_len; i++) {
-                if (indent[i] != ' ' && indent[i] != '\t') {
-                    ms_buf_free(&lines);
-                    fail_previous_byte(s, LIT("multi-line text closes with '\"\"\"' alone on its own line; move the closing quotes to a new line (a '\"\"\"' inside the text is not allowed, so write \\\" for a quote in non-raw text)"));
-                }
+        } else if (b == '\\') {
+            if (!scan_escape(s, interpolating)) {
+                return false;
             }
-            for (size_t k = 0; k < VLEN(lines, LinePos); k++) {
-                LinePos lp = VAT(lines, LinePos, k);
-                const uint8_t *rest = s->src + lp.at;
-                size_t rest_len = n - lp.at;
-                const uint8_t *nl = memchr(rest, '\n', rest_len);
-                size_t line_len = nl != NULL ? (size_t)(nl - rest) : rest_len;
-                bool blank = true;
-                for (size_t i = 0; i < line_len; i++) {
-                    if (rest[i] != ' ' && rest[i] != '\t') {
-                        blank = false;
-                        break;
-                    }
-                }
-                bool has_prefix = line_len >= indent_len && memcmp(rest, indent, indent_len) == 0;
-                if (lp.at < quote && !blank && !has_prefix) {
-                    ms_buf_free(&lines);
-                    fail_at_str(s, lp.pos, LIT("text line is indented less than the closing '\"\"\"'; indent it to the closing quotes' column, or move the closing quotes left"));
-                }
-            }
-            ms_buf_free(&lines);
-            advance(s);
-            advance(s);
-            return;
-        }
-        if (b < 32 && b != '\t') {
-            ms_buf_free(&lines);
-            FAIL(s, "literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}");
-        }
-        if (b == 0xE2 && bidi_control_at(s, s->offset - 1)) {
-            ms_buf_free(&lines);
-            fail_previous_byte(s, LIT(BIDI_TEXT));
-        }
-        if (raw) {
-            continue;
-        }
-        if (b == '\\') {
-            scan_escape(s, interpolating);
         } else if (interpolating && b == '{') {
-            scan_interpolation(s);
+            if (!scan_interpolation(s)) {
+                return false;
+            }
         } else if (interpolating && b == '}') {
-            ms_buf_free(&lines);
-            FAIL(s, UNMATCHED_BRACE);
+            return fail_str(s, LIT(UNMATCHED_BRACE));
         }
     }
+    return fail_at_str(s, opened, LIT("unterminated multi-line text; close it with '\"\"\"' alone on its own line"));
+}
+
+/* Scans `"""` text (and `r"""` raw text when `raw`): the opening quotes end their line, the
+ * closing quotes start theirs, and every content line carries the closing line's indentation. */
+MS_NODISCARD static bool scan_multiline(Scanner *s, bool raw, bool interpolating) {
+    MsPos opened = spos(s);
+    if (VLEN(s->interpolations, MsPos) != 0) {
+        return fail_str(s, LIT("multi-line text cannot appear inside an interpolation; bind it to a name first and interpolate the name"));
+    }
+    for (int i = 0; i < (raw ? 4 : 3); i++) {
+        advance(s);
+    }
+    if (s->offset == s->n || s->src[s->offset] != '\n') {
+        return fail_at_str(s, opened, LIT("multi-line text must start on the line after its opening '\"\"\"'; add a line break after the opening quotes"));
+    }
+    MsBuf lines = {0}; /* LinePos */
+    bool ok = scan_multiline_body(s, raw, interpolating, opened, &lines);
     ms_buf_free(&lines);
-    FAIL_AT(s, opened, "unterminated multi-line text; close it with '\"\"\"' alone on its own line");
+    return ok;
 }
 
 /* ---- layout helpers ---- */
@@ -1003,396 +1064,548 @@ static const char *character_hint(uint8_t b) {
 
 /* ---- the main loop ---- */
 
-static void run(Scanner *s) {
-    size_t n = s->n;
-    bool pending = false;
-    size_t header_indent = 0, pending_depth = 0, header_start = 0;
-    bool continuing = false;
-    size_t statement_indent = 0;
-    while (s->offset < n) {
-        if (s->prefixes != NULL) {
-            bool open = VLEN(s->delimiters, char) != 0;
-            /* Lines inside a multi-line text were consumed by one token. */
-            size_t line = s->line - s->base_line - 1;
-            while (s->prefixes->len < line) {
-                ms_buf_putc(s->prefixes, 1);
+/* What the layout rules carry from one line to the next. */
+typedef struct LineLayout {
+    size_t header_indent;    /* indentation of the line that ended with ':' */
+    size_t header_start;     /* where that header's statement began, when it spans lines */
+    size_t pending_depth;    /* delimiter depth at that header */
+    size_t statement_indent; /* indentation of the statement being scanned */
+    bool pending;            /* the previous line ended with ':' and a suite may start */
+    bool continuing;         /* the next line starts with '.' or '|' and continues this statement */
+} LineLayout;
+
+/* What the token scan of one line needs to know about its indentation. */
+typedef struct LineInfo {
+    size_t leading;
+    size_t top_indent; /* indentation of the innermost open suite */
+    size_t top_depth;  /* delimiter depth at which that suite opened */
+} LineInfo;
+
+static size_t open_delimiters(const Scanner *s) {
+    return VLEN(s->delimiters, char);
+}
+
+static char closer_of(char open) {
+    switch (open) {
+    case '(':
+        return ')';
+    case '[':
+        return ']';
+    default:
+        return '}';
+    }
+}
+
+/* Recovery's per-line flag: whether a delimiter is open there. */
+static void put_prefix_flag(MsBuf *prefixes, bool open) {
+    ms_buf_putc(prefixes, open ? '\1' : '\0');
+}
+
+/* Lines inside a multi-line text were consumed by one token, so they count as open. */
+static void pad_prefix_flags(const Scanner *s) {
+    size_t line = s->line - s->base_line - 1;
+    while (s->prefixes->len < line) {
+        put_prefix_flag(s->prefixes, true);
+    }
+}
+
+/* In recovery mode, records whether a delimiter is open at the start of this line. Returns true
+ * when the pass should stop here. */
+static bool prefix_pass_stops(Scanner *s) {
+    if (s->prefixes == NULL) {
+        return false;
+    }
+    bool open = open_delimiters(s) != 0;
+    pad_prefix_flags(s);
+    put_prefix_flag(s->prefixes, open);
+    size_t index = s->prefixes->len - 1;
+    return index < s->nstop && s->stop_at[index] && !open;
+}
+
+/* Measures the indentation: a tab is one indent level of four columns. */
+static bool read_leading_space(Scanner *s, size_t *leading) {
+    bool spaced = false;
+    *leading = 0;
+    while (s->offset < s->n && (s->src[s->offset] == ' ' || s->src[s->offset] == '\t')) {
+        if (s->src[s->offset] == '\t') {
+            if (spaced) {
+                return fail_str(s, LIT("a tab cannot follow spaces in indentation; indent with tabs, then align with spaces"));
             }
-            ms_buf_putc(s->prefixes, open);
-            if (s->prefixes->len - 1 < s->nstop && s->stop_at[s->prefixes->len - 1] && !open) {
-                return;
-            }
-        }
-        /* A leading tab is one indent level: four columns. */
-        size_t leading = 0;
-        bool spaced = false;
-        while (s->offset < n && (s->src[s->offset] == ' ' || s->src[s->offset] == '\t')) {
-            if (s->src[s->offset] == '\t') {
-                if (spaced) {
-                    FAIL(s, "a tab cannot follow spaces in indentation; indent with tabs, then align with spaces");
-                }
-                advance(s);
-                s->column += 3;
-                leading += 4;
-            } else {
-                advance(s);
-                spaced = true;
-                leading += 1;
-            }
-        }
-        if (s->offset == n) {
-            break;
-        }
-        if (at_line_comment(s)) {
-            skip_comment(s);
-            if (s->offset < n) {
-                advance(s);
-            }
-            continue;
-        }
-        if (at_block_comment(s)) {
-            skip_block_comment(s);
-            if (s->offset < n) {
-                advance(s);
-            }
-            continue;
-        }
-        if (s->src[s->offset] == '\n') {
             advance(s);
-            continue;
-        }
-        if (!s->virtual_paren && leading % 4 != 0) {
-            const char *inside = VLEN(s->delimiters, char) == 0 ? ""
-                : "; a line inside brackets is indented by fours too, so do not align it with the opening bracket";
-            FAILF(s, "indentation must be a multiple of four spaces, found %zu; use %zu or %zu%s",
-                  leading, leading / 4 * 4, leading / 4 * 4 + 4, inside);
-        }
-        if (continuing) {
-            if (leading != statement_indent + 4) {
-                FAILF(s, "a line starting with '.' or '|' continues the previous statement and must be indented four spaces past it, to %zu spaces, found %zu",
-                      statement_indent + 4, leading);
-            }
-            continuing = false;
+            s->column += 3;
+            *leading += 4;
         } else {
-            if (VLEN(s->delimiters, char) == VLAST(s->levels, Level).depth) {
-                statement_indent = leading;
-            }
-            bool started_suite = false;
-            if (pending) {
-                if (leading == header_indent + 4) {
-                    Level lv = {leading, pending_depth};
-                    VPUSH(s->levels, Level, lv);
-                    emit_layout(s, MS_T_Indent);
-                    started_suite = true;
-                } else if (leading > header_start && leading <= header_indent) {
-                    FAILF(s, "a suite begins four spaces after the line that ends with ':' (at %zu spaces); indent this line to %zu, or move that closing line back to %zu spaces",
-                          header_indent, header_indent + 4, header_start);
-                } else if (leading <= header_indent) {
-                    /* An empty declaration suite has the same layout boundaries as a populated one. */
-                    emit_layout(s, MS_T_Indent);
-                    emit_layout(s, MS_T_Dedent);
-                } else {
-                    FAILF(s, "a suite must begin exactly four spaces after its header; the header is at %zu spaces, so indent this line to %zu",
-                          header_indent, header_indent + 4);
-                }
-                pending = false;
-            }
-            if (!started_suite) {
-                /* A continuation line inside delimiters opened within a level does not close that
-                 * level; only suites opened inside the open delimiters can. */
-                while (VLEN(s->levels, Level) > 1) {
-                    Level top = VLAST(s->levels, Level);
-                    if (!(leading < top.indent && top.depth >= VLEN(s->delimiters, char))) {
-                        break;
-                    }
-                    VPOP(s->levels, Level);
-                    emit_layout(s, MS_T_Dedent);
-                }
-                Level top = VLAST(s->levels, Level);
-                if (VLEN(s->delimiters, char) == top.depth && leading != top.indent) {
-                    if (leading > top.indent) {
-                        if (missing_colon(s)) {
-                            throw_diag(s);
-                        }
-                        const char *hint = continuation_hint(s);
-                        FAILF(s, "unexpected indentation, %zu spaces where %zu are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it%s",
-                              leading, top.indent, hint);
-                    }
-                    FAILF(s, "inconsistent dedent to %zu spaces; enclosing blocks are indented at %zu or %zu spaces, so align with one of them",
-                          leading, top.indent, top.indent >= 4 ? top.indent - 4 : 0);
-                }
-            }
-        }
-        Level top = VLAST(s->levels, Level);
-        size_t top_indent = top.indent, top_depth = top.depth;
-        if (ntokens(s) != 0 && last_kind(s) == MS_T_Dedent && VLEN(s->delimiters, char) == top_depth) {
-            emit_layout(s, MS_T_Newline);
-        }
-        size_t line_start = ntokens(s);
-        while (s->offset < n && s->src[s->offset] != '\n') {
-            uint8_t b = s->src[s->offset];
-            MsPos p = spos(s);
-            if (b == ' ') {
-                advance(s);
-                continue;
-            }
-            if (at_line_comment(s)) {
-                skip_comment(s);
-                break;
-            }
-            if (at_block_comment(s)) {
-                FAIL(s, "a block comment must start its own line; write a trailing comment with '//'");
-            }
-            if (b == '\t' || b == '\r') {
-                FAIL(s, "tabs are allowed only in indentation, and lone carriage returns not at all; use spaces between tokens, and line endings of LF or CRLF");
-            }
-            if (b == 'r' && at(s, s->offset + 1) == '"') {
-                size_t start = s->offset;
-                if (starts_with(s, s->offset + 1, "\"\"\"")) {
-                    scan_multiline(s, true, false);
-                } else {
-                    scan_raw_line(s);
-                }
-                emit(s, MS_T_String, start, s->offset, p);
-                continue;
-            }
-            if (b == '"' || (b == 'f' && at(s, s->offset + 1) == '"')) {
-                size_t start = s->offset;
-                bool formatted = b == 'f';
-                if (formatted) {
-                    advance(s);
-                }
-                scan_string(s, formatted);
-                emit(s, MS_T_String, start, s->offset, p);
-                continue;
-            }
-            if (letter(b)) {
-                size_t start = s->offset;
-                size_t i = start;
-                while (i < n && (letter(s->src[i]) || digit(s->src[i]))) {
-                    i++;
-                }
-                s->column += (uint32_t)(i - start);
-                s->offset = i;
-                MsTok kind = ms_tok_from_word(s->text + start, i - start);
-                if (ms_tok_is_contextual(kind) && names_a_member(s, i)) {
-                    kind = MS_T_Name;
-                }
-                if (kind == MS_T_Fn || kind == MS_T_Match) {
-                    VPUSH(s->function_depths, size_t, VLEN(s->delimiters, char));
-                }
-                emit(s, kind, start, i, p);
-                continue;
-            }
-            if (digit(b)) {
-                scan_number(s, p);
-                continue;
-            }
-            if (b == '.' && at(s, s->offset + 1) == '.' && at(s, s->offset + 2) == '.') {
-                size_t start = s->offset;
-                advance(s);
-                advance(s);
-                advance(s);
-                emit(s, MS_T_Ellipsis, start, start + 3, p);
-                continue;
-            }
-            int two = -1;
-            int nx = at(s, s->offset + 1);
-            if (b == '.' && nx == '.') {
-                two = MS_T_DotDot;
-            } else if (b == '-' && nx == '>') {
-                two = MS_T_Arrow;
-            } else if (b == ':' && nx == '=') {
-                two = MS_T_ColonAssign;
-            } else if (b == '=' && nx == '=') {
-                two = MS_T_EqEq;
-            } else if (b == '!' && nx == '=') {
-                two = MS_T_NotEq;
-            } else if (b == '<' && nx == '=') {
-                two = MS_T_Le;
-            } else if (b == '>' && nx == '=') {
-                two = MS_T_Ge;
-            }
-            if (two >= 0) {
-                size_t start = s->offset;
-                advance(s);
-                advance(s);
-                emit(s, (MsTok)two, start, start + 2, p);
-                continue;
-            }
-            /* `!` directly after a type-ending character is the Result suffix of `T!` or `T!E`;
-             * anywhere else it stays the removed negation. */
-            bool result_suffix = false;
-            if (b == '!' && s->offset > 0 && ntokens(s) != 0) {
-                int lk = last_kind(s);
-                uint8_t pb = s->src[s->offset - 1];
-                result_suffix =
-                    (lk == MS_T_Name || lk == MS_T_RBracket || lk == MS_T_RParen ||
-                     lk == MS_T_Question || lk == MS_T_Bang) &&
-                    (letter(pb) || digit(pb) || pb == ']' || pb == ')' || pb == '?' || pb == '!');
-            }
-            MsTok kind;
-            switch (b) {
-            case '!':
-                if (!result_suffix) {
-                    goto unexpected;
-                }
-                kind = MS_T_Bang;
-                break;
-            case '(': kind = MS_T_LParen; break;
-            case ')': kind = MS_T_RParen; break;
-            case '[': kind = MS_T_LBracket; break;
-            case ']': kind = MS_T_RBracket; break;
-            case '{': kind = MS_T_LBrace; break;
-            case '}': kind = MS_T_RBrace; break;
-            case ':': kind = MS_T_Colon; break;
-            case ',': kind = MS_T_Comma; break;
-            case '.': kind = MS_T_Dot; break;
-            case '?': kind = MS_T_Question; break;
-            case '+': kind = MS_T_Plus; break;
-            case '-': kind = MS_T_Minus; break;
-            case '*': kind = MS_T_Star; break;
-            case '/': kind = MS_T_Slash; break;
-            case '%': kind = MS_T_Percent; break;
-            case '<': kind = MS_T_Lt; break;
-            case '>': kind = MS_T_Gt; break;
-            case '=': kind = MS_T_Assign; break;
-            case '&': kind = MS_T_Amp; break;
-            case '|': kind = MS_T_Pipe; break;
-            default:
-            unexpected: {
-                if (b >= 0x80) {
-                    uint32_t c;
-                    ms_utf8_decode(s->text + s->offset, n - s->offset, &c);
-                    MsStr q = quote_rune_str(s, c);
-                    FAILF(s, "unexpected source character %.*s; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCII",
-                          (int)q.len, q.ptr);
-                }
-                MsStr q = quote_rune_str(s, b);
-                const char *replacement = NULL;
-                if (b == ';' && trailing_semicolon(s)) {
-                    replacement = ""; /* removing a mid-line `;` would fuse two statements */
-                } else if (b == '!') {
-                    replacement = "not ";
-                } else if (b == '#') {
-                    replacement = "//";
-                }
-                fail_char(s, ms_arena_fmt(s->arena, "unexpected source character %.*s%s", (int)q.len, q.ptr,
-                                          character_hint(b)), replacement);
-            }
-            }
-            if (b == '(' || b == '[' || b == '{') {
-                VPUSH(s->delimiters, char, (char)b);
-                VPUSH(s->opened, MsPos, p);
-                if (b == '(' && last_kind(s) == MS_T_Var) {
-                    VPUSH(s->groups, size_t, VLEN(s->delimiters, char));
-                }
-            }
-            if (b == ')' || b == ']' || b == '}') {
-                if (s->virtual_paren && VLEN(s->delimiters, char) == 1 && VAT(s->delimiters, char, 0) == '(' && b == ')') {
-                    /* The physical wrapper would leave its own closing parenthesis unmatched; use
-                     * that path for its exact error. */
-                    FAIL(s, "interpolation closes the virtual parenthesis");
-                }
-                if (VLEN(s->delimiters, char) == 0) {
-                    /* A lone `}` left behind by a braced block is removed by the fix. */
-                    const char *fix = (b == '}' && trailing_semicolon(s)) ? "" : NULL;
-                    fail_char(s, ms_arena_fmt(s->arena, "unmatched closing delimiter '%c'; remove it or add the matching opener before it", b), fix);
-                }
-                if (VLEN(s->levels, Level) > 1 && VLEN(s->delimiters, char) <= top_depth && leading >= top_indent) {
-                    FAIL(s, "an outer delimiter cannot close inside a function suite; close the bracket on the line where the function body ends, or dedent the body");
-                }
-                char open = VLAST(s->delimiters, char);
-                char want = open == '(' ? ')' : open == '[' ? ']' : '}';
-                if ((char)b != want) {
-                    MsPos where_ = VLAST(s->opened, MsPos);
-                    FAILF(s, "mismatched closing delimiter '%c'; the '%c' opened at line %u:%u needs '%c'",
-                          b, open, where_.line, where_.column, want);
-                }
-                if (VLEN(s->groups, size_t) != 0 && VLAST(s->groups, size_t) == VLEN(s->delimiters, char)) {
-                    VPOP(s->groups, size_t);
-                }
-                VPOP(s->delimiters, char);
-                VPOP(s->opened, MsPos);
-                while (VLEN(s->function_depths, size_t) != 0 &&
-                       VLAST(s->function_depths, size_t) > VLEN(s->delimiters, char)) {
-                    VPOP(s->function_depths, size_t);
-                }
-            }
-            size_t start = s->offset;
             advance(s);
-            emit(s, kind, start, start + 1, p);
-        }
-        if (s->virtual_paren && s->offset == n) {
-            if (!(VLEN(s->delimiters, char) == 1 && VAT(s->delimiters, char, 0) == '(')) {
-                /* The wrapper's closing parenthesis reports this error. */
-                FAIL(s, "interpolation leaves a delimiter open");
-            }
-            VPOP(s->delimiters, char);
-            VPOP(s->opened, MsPos);
-            s->groups.len = 0;
-            s->function_depths.len = 0;
-            emit_layout(s, MS_T_RParen);
-        }
-        if (ntokens(s) > line_start) {
-            int lk = last_kind(s);
-            bool has_function = false;
-            for (size_t i = 0; i < VLEN(s->function_depths, size_t); i++) {
-                if (VAT(s->function_depths, size_t, i) == VLEN(s->delimiters, char)) {
-                    has_function = true;
-                    break;
-                }
-            }
-            if (lk == MS_T_Colon && (VLEN(s->delimiters, char) == top_depth || has_function)) {
-                pending = true;
-                header_indent = leading;
-                header_start = statement_indent;
-                pending_depth = VLEN(s->delimiters, char);
-                emit_layout(s, MS_T_Newline);
-                s->function_depths.len = 0;
-            } else if (VLEN(s->delimiters, char) == top_depth) {
-                s->function_depths.len = 0;
-                if (continues_next(s)) {
-                    continuing = true;
-                } else {
-                    emit_layout(s, MS_T_Newline);
-                }
-            } else if (VLEN(s->groups, size_t) != 0 && VLAST(s->groups, size_t) == VLEN(s->delimiters, char)) {
-                /* A `var (` group holds one binding per line, so its lines end like statements
-                 * even though a delimiter is open. */
-                emit_layout(s, MS_T_Newline);
-            }
-        }
-        if (s->offset < n) {
-            advance(s);
+            spaced = true;
+            *leading += 1;
         }
     }
-    if (pending) {
+    return true;
+}
+
+/* Consumes a line that holds no code (a comment or an empty line) and sets *skipped. */
+static bool skip_blank_line(Scanner *s, bool *skipped) {
+    *skipped = true;
+    if (at_line_comment(s)) {
+        if (!skip_comment(s)) {
+            return false;
+        }
+    } else if (at_block_comment(s)) {
+        if (!skip_block_comment(s)) {
+            return false;
+        }
+    } else if (s->src[s->offset] != '\n') {
+        *skipped = false;
+        return true;
+    }
+    if (s->offset < s->n) {
+        advance(s);
+    }
+    return true;
+}
+
+static bool fail_indent_width(Scanner *s, size_t leading) {
+    const char *inside = open_delimiters(s) == 0 ? ""
+        : "; a line inside brackets is indented by fours too, so do not align it with the opening bracket";
+    return fail_fmt(s, "indentation must be a multiple of four spaces, found %zu; use %zu or %zu%s",
+                    leading, leading / 4 * 4, leading / 4 * 4 + 4, inside);
+}
+
+/* The line after a ':' header: it opens the suite, or it is an empty declaration suite. */
+static bool resolve_pending_suite(Scanner *s, LineLayout *layout, size_t leading, bool *started) {
+    if (leading == layout->header_indent + 4) {
+        VPUSH(s->levels, Level, ((Level){leading, layout->pending_depth}));
+        emit_layout(s, MS_T_Indent);
+        *started = true;
+    } else if (leading > layout->header_start && leading <= layout->header_indent) {
+        return fail_fmt(s, "a suite begins four spaces after the line that ends with ':' (at %zu spaces); indent this line to %zu, or move that closing line back to %zu spaces",
+                        layout->header_indent, layout->header_indent + 4, layout->header_start);
+    } else if (leading <= layout->header_indent) {
+        /* An empty declaration suite has the same layout boundaries as a populated one. */
+        emit_layout(s, MS_T_Indent);
+        emit_layout(s, MS_T_Dedent);
+    } else {
+        return fail_fmt(s, "a suite must begin exactly four spaces after its header; the header is at %zu spaces, so indent this line to %zu",
+                        layout->header_indent, layout->header_indent + 4);
+    }
+    layout->pending = false;
+    return true;
+}
+
+static bool fail_unexpected_indent(Scanner *s, size_t leading, size_t expected) {
+    if (missing_colon(s)) {
+        return false;
+    }
+    const char *hint = continuation_hint(s);
+    return fail_fmt(s, "unexpected indentation, %zu spaces where %zu are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it%s",
+                    leading, expected, hint);
+}
+
+/* Closes the suites this line dedents out of, then checks it lines up with the one it is in. */
+static bool align_to_level(Scanner *s, size_t leading) {
+    /* A continuation line inside delimiters opened within a level does not close that level; only
+     * suites opened inside the open delimiters can. */
+    while (VLEN(s->levels, Level) > 1) {
+        Level top = VLAST(s->levels, Level);
+        if (!(leading < top.indent && top.depth >= open_delimiters(s))) {
+            break;
+        }
+        VPOP(s->levels, Level);
+        emit_layout(s, MS_T_Dedent);
+    }
+    Level top = VLAST(s->levels, Level);
+    if (open_delimiters(s) != top.depth || leading == top.indent) {
+        return true;
+    }
+    if (leading > top.indent) {
+        return fail_unexpected_indent(s, leading, top.indent);
+    }
+    return fail_fmt(s, "inconsistent dedent to %zu spaces; enclosing blocks are indented at %zu or %zu spaces, so align with one of them",
+                    leading, top.indent, top.indent >= 4 ? top.indent - 4 : 0);
+}
+
+/* Opens or closes suites for a line of code with `leading` columns of indentation. */
+static bool apply_layout(Scanner *s, LineLayout *layout, size_t leading) {
+    if (!s->virtual_paren && leading % 4 != 0) {
+        return fail_indent_width(s, leading);
+    }
+    if (layout->continuing) {
+        if (leading != layout->statement_indent + 4) {
+            return fail_fmt(s, "a line starting with '.' or '|' continues the previous statement and must be indented four spaces past it, to %zu spaces, found %zu",
+                            layout->statement_indent + 4, leading);
+        }
+        layout->continuing = false;
+        return true;
+    }
+    if (open_delimiters(s) == VLAST(s->levels, Level).depth) {
+        layout->statement_indent = leading;
+    }
+    bool started_suite = false;
+    if (layout->pending && !resolve_pending_suite(s, layout, leading, &started_suite)) {
+        return false;
+    }
+    return started_suite || align_to_level(s, leading);
+}
+
+/* ---- tokens ---- */
+
+static void scan_word(Scanner *s, MsPos pos) {
+    size_t start = s->offset;
+    size_t end = start;
+    while (end < s->n && is_word_byte(s->src[end])) {
+        end++;
+    }
+    s->column += (uint32_t)(end - start);
+    s->offset = end;
+    MsTok kind = ms_tok_from_word(s->text + start, end - start);
+    if (ms_tok_is_contextual(kind) && names_a_member(s, end)) {
+        kind = MS_T_Name;
+    }
+    if (kind == MS_T_Fn || kind == MS_T_Match) {
+        VPUSH(s->function_depths, size_t, open_delimiters(s));
+    }
+    emit(s, kind, start, end, pos);
+}
+
+static bool scan_raw_text_token(Scanner *s, MsPos pos) {
+    size_t start = s->offset;
+    bool ok = starts_with(s, s->offset + 1, "\"\"\"") ? scan_multiline(s, true, false) : scan_raw_line(s);
+    if (ok) {
+        emit(s, MS_T_String, start, s->offset, pos);
+    }
+    return ok;
+}
+
+static bool scan_text_token(Scanner *s, MsPos pos) {
+    size_t start = s->offset;
+    bool formatted = s->src[start] == 'f';
+    if (formatted) {
+        advance(s);
+    }
+    if (!scan_string(s, formatted)) {
+        return false;
+    }
+    emit(s, MS_T_String, start, s->offset, pos);
+    return true;
+}
+
+/* The two-character operator at the cursor, or -1. */
+static int two_char_kind(uint8_t first, int second) {
+    switch (first) {
+    case '.': return second == '.' ? MS_T_DotDot : -1;
+    case '-': return second == '>' ? MS_T_Arrow : -1;
+    case ':': return second == '=' ? MS_T_ColonAssign : -1;
+    case '=': return second == '=' ? MS_T_EqEq : -1;
+    case '!': return second == '=' ? MS_T_NotEq : -1;
+    case '<': return second == '=' ? MS_T_Le : -1;
+    case '>': return second == '=' ? MS_T_Ge : -1;
+    default: return -1;
+    }
+}
+
+static bool scan_operator_token(Scanner *s, MsPos pos, size_t length, MsTok kind) {
+    size_t start = s->offset;
+    for (size_t i = 0; i < length; i++) {
+        advance(s);
+    }
+    emit(s, kind, start, start + length, pos);
+    return true;
+}
+
+/* `!` directly after a type-ending character is the Result suffix of `T!` or `T!E`; anywhere else
+ * it stays the removed negation. */
+static bool bang_is_result_suffix(const Scanner *s) {
+    if (s->offset == 0 || ntokens(s) == 0) {
+        return false;
+    }
+    int last = last_kind(s);
+    uint8_t before = s->src[s->offset - 1];
+    bool after_type = last == MS_T_Name || last == MS_T_RBracket || last == MS_T_RParen ||
+                      last == MS_T_Question || last == MS_T_Bang;
+    return after_type && (is_word_byte(before) || before == ']' || before == ')' || before == '?' || before == '!');
+}
+
+/* The kind of a single-character token, or MS_T_Eof when the character is not one. */
+static MsTok single_char_kind(uint8_t b) {
+    switch (b) {
+    case '(': return MS_T_LParen;
+    case ')': return MS_T_RParen;
+    case '[': return MS_T_LBracket;
+    case ']': return MS_T_RBracket;
+    case '{': return MS_T_LBrace;
+    case '}': return MS_T_RBrace;
+    case ':': return MS_T_Colon;
+    case ',': return MS_T_Comma;
+    case '.': return MS_T_Dot;
+    case '?': return MS_T_Question;
+    case '+': return MS_T_Plus;
+    case '-': return MS_T_Minus;
+    case '*': return MS_T_Star;
+    case '/': return MS_T_Slash;
+    case '%': return MS_T_Percent;
+    case '<': return MS_T_Lt;
+    case '>': return MS_T_Gt;
+    case '=': return MS_T_Assign;
+    case '&': return MS_T_Amp;
+    case '|': return MS_T_Pipe;
+    default: return MS_T_Eof;
+    }
+}
+
+static bool fail_unexpected_char(Scanner *s, uint8_t b) {
+    if (b >= 0x80) {
+        uint32_t scalar = 0;
+        ms_utf8_decode(s->text + s->offset, s->n - s->offset, &scalar);
+        MsStr quoted = quote_rune_str(s, scalar);
+        return fail_fmt(s, "unexpected source character %.*s; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCII",
+                        (int)quoted.len, quoted.ptr);
+    }
+    MsStr quoted = quote_rune_str(s, b);
+    const char *replacement = NULL;
+    if (b == ';' && trailing_semicolon(s)) {
+        replacement = ""; /* removing a mid-line `;` would fuse two statements */
+    } else if (b == '!') {
+        replacement = "not ";
+    } else if (b == '#') {
+        replacement = "//";
+    }
+    MsStr message = ms_arena_fmt(s->arena, "unexpected source character %.*s%s", (int)quoted.len, quoted.ptr,
+                                 character_hint(b));
+    return fail_char(s, message, replacement);
+}
+
+static void open_delimiter(Scanner *s, MsPos pos, uint8_t b) {
+    VPUSH(s->delimiters, char, (char)b);
+    VPUSH(s->opened, MsPos, pos);
+    if (b == '(' && last_kind(s) == MS_T_Var) {
+        VPUSH(s->groups, size_t, open_delimiters(s));
+    }
+}
+
+static bool close_delimiter(Scanner *s, const LineInfo *info, uint8_t b) {
+    if (s->virtual_paren && open_delimiters(s) == 1 && VAT(s->delimiters, char, 0) == '(' && b == ')') {
+        /* The physical wrapper would leave its own closing parenthesis unmatched; use that path
+         * for its exact error. */
+        return fail_str(s, LIT("interpolation closes the virtual parenthesis"));
+    }
+    if (open_delimiters(s) == 0) {
+        /* A lone `}` left behind by a braced block is removed by the fix. */
+        const char *fix = (b == '}' && trailing_semicolon(s)) ? "" : NULL;
+        MsStr message = ms_arena_fmt(s->arena, "unmatched closing delimiter '%c'; remove it or add the matching opener before it", b);
+        return fail_char(s, message, fix);
+    }
+    if (VLEN(s->levels, Level) > 1 && open_delimiters(s) <= info->top_depth && info->leading >= info->top_indent) {
+        return fail_str(s, LIT("an outer delimiter cannot close inside a function suite; close the bracket on the line where the function body ends, or dedent the body"));
+    }
+    char open = VLAST(s->delimiters, char);
+    if ((char)b != closer_of(open)) {
+        MsPos opener = VLAST(s->opened, MsPos);
+        return fail_fmt(s, "mismatched closing delimiter '%c'; the '%c' opened at line %u:%u needs '%c'",
+                        b, open, opener.line, opener.column, closer_of(open));
+    }
+    if (VLEN(s->groups, size_t) != 0 && VLAST(s->groups, size_t) == open_delimiters(s)) {
+        VPOP(s->groups, size_t);
+    }
+    VPOP(s->delimiters, char);
+    VPOP(s->opened, MsPos);
+    while (VLEN(s->function_depths, size_t) != 0 && VLAST(s->function_depths, size_t) > open_delimiters(s)) {
+        VPOP(s->function_depths, size_t);
+    }
+    return true;
+}
+
+/* Scans a punctuation token: an operator, a delimiter, or a character that is not Manuscript. */
+static bool scan_symbol(Scanner *s, const LineInfo *info, MsPos pos, uint8_t b) {
+    if (b == '.' && at(s, s->offset + 1) == '.' && at(s, s->offset + 2) == '.') {
+        return scan_operator_token(s, pos, 3, MS_T_Ellipsis);
+    }
+    int two = two_char_kind(b, at(s, s->offset + 1));
+    if (two >= 0) {
+        return scan_operator_token(s, pos, 2, (MsTok)two);
+    }
+    MsTok kind = single_char_kind(b);
+    if (b == '!' && bang_is_result_suffix(s)) {
+        kind = MS_T_Bang;
+    }
+    if (kind == MS_T_Eof) {
+        return fail_unexpected_char(s, b);
+    }
+    if (b == '(' || b == '[' || b == '{') {
+        open_delimiter(s, pos, b);
+    } else if ((b == ')' || b == ']' || b == '}') && !close_delimiter(s, info, b)) {
+        return false;
+    }
+    return scan_operator_token(s, pos, 1, kind);
+}
+
+/* Scans one token or blank at the cursor; sets *line_done when a comment ends the line. */
+static bool scan_token(Scanner *s, const LineInfo *info, bool *line_done) {
+    uint8_t b = s->src[s->offset];
+    MsPos pos = spos(s);
+    if (b == ' ') {
+        advance(s);
+        return true;
+    }
+    if (at_line_comment(s)) {
+        *line_done = true;
+        return skip_comment(s);
+    }
+    if (at_block_comment(s)) {
+        return fail_str(s, LIT("a block comment must start its own line; write a trailing comment with '//'"));
+    }
+    if (b == '\t' || b == '\r') {
+        return fail_str(s, LIT("tabs are allowed only in indentation, and lone carriage returns not at all; use spaces between tokens, and line endings of LF or CRLF"));
+    }
+    if (b == 'r' && at(s, s->offset + 1) == '"') {
+        return scan_raw_text_token(s, pos);
+    }
+    if (b == '"' || (b == 'f' && at(s, s->offset + 1) == '"')) {
+        return scan_text_token(s, pos);
+    }
+    if (letter(b)) {
+        scan_word(s, pos);
+        return true;
+    }
+    if (digit(b)) {
+        return scan_number(s, pos);
+    }
+    return scan_symbol(s, info, pos, b);
+}
+
+static bool scan_line_tokens(Scanner *s, const LineInfo *info) {
+    bool line_done = false;
+    while (!line_done && s->offset < s->n && s->src[s->offset] != '\n') {
+        if (!scan_token(s, info, &line_done)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* ---- end of a line ---- */
+
+static bool function_open_at_depth(const Scanner *s) {
+    for (size_t i = 0; i < VLEN(s->function_depths, size_t); i++) {
+        if (VAT(s->function_depths, size_t, i) == open_delimiters(s)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The wrapper's closing parenthesis ends an interpolation's tokens. */
+static bool close_virtual_paren(Scanner *s) {
+    if (!s->virtual_paren || s->offset != s->n) {
+        return true;
+    }
+    if (!(open_delimiters(s) == 1 && VAT(s->delimiters, char, 0) == '(')) {
+        /* The wrapper's closing parenthesis reports this error. */
+        return fail_str(s, LIT("interpolation leaves a delimiter open"));
+    }
+    VPOP(s->delimiters, char);
+    VPOP(s->opened, MsPos);
+    s->groups.len = 0;
+    s->function_depths.len = 0;
+    emit_layout(s, MS_T_RParen);
+    return true;
+}
+
+/* Ends the line: it opens a suite (`:`), continues (`.` or `|` next), or ends its statement. */
+static void end_line(Scanner *s, LineLayout *layout, const LineInfo *info, size_t line_start,
+                     size_t leading) {
+    if (ntokens(s) <= line_start) {
+        return;
+    }
+    if (last_kind(s) == MS_T_Colon && (open_delimiters(s) == info->top_depth || function_open_at_depth(s))) {
+        layout->pending = true;
+        layout->header_indent = leading;
+        layout->header_start = layout->statement_indent;
+        layout->pending_depth = open_delimiters(s);
+        emit_layout(s, MS_T_Newline);
+        s->function_depths.len = 0;
+    } else if (open_delimiters(s) == info->top_depth) {
+        s->function_depths.len = 0;
+        if (continues_next(s)) {
+            layout->continuing = true;
+        } else {
+            emit_layout(s, MS_T_Newline);
+        }
+    } else if (VLEN(s->groups, size_t) != 0 && VLAST(s->groups, size_t) == open_delimiters(s)) {
+        /* A `var (` group holds one binding per line, so its lines end like statements even
+         * though a delimiter is open. */
+        emit_layout(s, MS_T_Newline);
+    }
+}
+
+static bool fail_unterminated_delimiter(Scanner *s) {
+    char open = VLAST(s->delimiters, char);
+    MsPos opener = VLAST(s->opened, MsPos);
+    MsStr message = ms_arena_fmt(s->arena,
+        "unterminated delimiter '%c' opened at line %u:%u; add the matching '%c' before the end of the file",
+        open, opener.line, opener.column, closer_of(open));
+    new_diag(s, spos(s), message)->opener_line = opener.line;
+    return false;
+}
+
+static bool finish_input(Scanner *s, const LineLayout *layout) {
+    if (layout->pending) {
         emit_layout(s, MS_T_Indent);
         emit_layout(s, MS_T_Dedent);
     }
     if (s->prefixes != NULL) {
-        /* Lines consumed by a final multi-line text token are inside it. */
-        size_t line = s->line - s->base_line - 1;
-        while (s->prefixes->len < line) {
-            ms_buf_putc(s->prefixes, 1);
-        }
-        ms_buf_putc(s->prefixes, VLEN(s->delimiters, char) != 0);
+        pad_prefix_flags(s);
+        put_prefix_flag(s->prefixes, open_delimiters(s) != 0);
     }
-    if (VLEN(s->delimiters, char) != 0) {
-        char open = VLAST(s->delimiters, char);
-        MsPos where_ = VLAST(s->opened, MsPos);
-        char close = open == '(' ? ')' : open == '[' ? ']' : '}';
-        MsDiag *d = new_diag(s, spos(s),
-            ms_arena_fmt(s->arena, "unterminated delimiter '%c' opened at line %u:%u; add the matching '%c' before the end of the file",
-                         open, where_.line, where_.column, close));
-        d->opener_line = where_.line;
-        throw_diag(s);
+    if (open_delimiters(s) != 0) {
+        return fail_unterminated_delimiter(s);
     }
     while (VLEN(s->levels, Level) > 1) {
         VPOP(s->levels, Level);
         emit_layout(s, MS_T_Dedent);
     }
     emit_layout(s, MS_T_Eof);
+    return true;
+}
+
+/* Scans the whole source. Returns false with the diagnostic in s->diag on the first error. */
+MS_NODISCARD static bool run(Scanner *s) {
+    LineLayout layout = {0};
+    while (s->offset < s->n) {
+        if (prefix_pass_stops(s)) {
+            return true;
+        }
+        size_t leading = 0;
+        if (!read_leading_space(s, &leading)) {
+            return false;
+        }
+        if (s->offset == s->n) {
+            break;
+        }
+        bool skipped = false;
+        if (!skip_blank_line(s, &skipped)) {
+            return false;
+        }
+        if (skipped) {
+            continue;
+        }
+        if (!apply_layout(s, &layout, leading)) {
+            return false;
+        }
+        Level top = VLAST(s->levels, Level);
+        LineInfo info = {.leading = leading, .top_indent = top.indent, .top_depth = top.depth};
+        if (ntokens(s) != 0 && last_kind(s) == MS_T_Dedent && open_delimiters(s) == top.depth) {
+            emit_layout(s, MS_T_Newline);
+        }
+        size_t line_start = ntokens(s);
+        if (!scan_line_tokens(s, &info) || !close_virtual_paren(s)) {
+            return false;
+        }
+        end_line(s, &layout, &info, line_start, leading);
+        if (s->offset < s->n) {
+            advance(s);
+        }
+    }
+    return finish_input(s, &layout);
 }
 
 /* ---- entry points ---- */
@@ -1415,8 +1628,7 @@ static void scanner_init(Scanner *s, MsArena *arena, const char *text, size_t le
     s->column = 1;
     s->line_offsets = line_offsets;
     s->diag = diag;
-    Level base = {0, 0};
-    VPUSH(s->levels, Level, base);
+    VPUSH(s->levels, Level, ((Level){0, 0}));
 }
 
 static void scanner_free(Scanner *s) {
@@ -1432,6 +1644,7 @@ static void scanner_free(Scanner *s) {
     ms_buf_free(&s->blocks);
 }
 
+/* Copies a scratch vector into the arena; the result is never NULL. */
 static void *copy_out(MsArena *a, const MsBuf *b, size_t align) {
     void *p = ms_alloc(a, b->len ? b->len : 1, align);
     if (b->len != 0) {
@@ -1440,94 +1653,112 @@ static void *copy_out(MsArena *a, const MsBuf *b, size_t align) {
     return p;
 }
 
-/* Replaces CRLF with LF and records, per normalised line, how many CR bytes precede it. */
-static const char *normalize(MsArena *a, const char *src, size_t len, size_t *out_len, uint32_t **offsets) {
-    *offsets = NULL;
-    bool crlf = false;
-    size_t newlines = 0;
+static size_t count_newlines(const char *src, size_t len) {
+    size_t n = 0;
     for (size_t i = 0; i < len; i++) {
-        if (src[i] == '\n') {
-            newlines++;
-            if (i > 0 && src[i - 1] == '\r') {
-                crlf = true;
-            }
+        n += src[i] == '\n';
+    }
+    return n;
+}
+
+static bool has_crlf(const char *src, size_t len) {
+    for (size_t i = 1; i < len; i++) {
+        if (src[i] == '\n' && src[i - 1] == '\r') {
+            return true;
         }
     }
-    if (!crlf) {
+    return false;
+}
+
+/* Replaces CRLF with LF and records, per normalised line, how many CR bytes precede it. The result
+ * is `src` itself, with no offsets, when the source has no CRLF. */
+static const char *normalize(MsArena *a, const char *src, size_t len, size_t *out_len, uint32_t **offsets) {
+    *offsets = NULL;
+    if (!has_crlf(src, len)) {
         *out_len = len;
         return src;
     }
     char *dst = ms_alloc(a, len + 1, 1);
-    uint32_t *offs = MS_NEW_N(a, uint32_t, newlines + 1);
-    size_t w = 0, k = 0;
+    uint32_t *offs = MS_NEW_N(a, uint32_t, count_newlines(src, len) + 1);
+    size_t written = 0;
+    size_t lines = 0;
     uint32_t removed = 0;
-    offs[k++] = 0;
+    offs[lines++] = 0;
     for (size_t i = 0; i < len; i++) {
         if (src[i] == '\r' && i + 1 < len && src[i + 1] == '\n') {
             continue; /* the LF follows */
         }
-        dst[w++] = src[i];
+        dst[written++] = src[i];
         if (src[i] == '\n') {
-            if (i > 0 && src[i - 1] == '\r') {
-                removed++;
-            }
-            offs[k++] = removed;
+            removed += i > 0 && src[i - 1] == '\r';
+            offs[lines++] = removed;
         }
     }
-    dst[w] = 0;
-    *out_len = w;
+    dst[written] = 0;
+    *out_len = written;
     *offsets = offs;
     return dst;
+}
+
+static void sort_ranges(MsBuf *ranges) {
+    if (ranges->len != 0) {
+        qsort(ranges->data, VLEN(*ranges, MsRange), sizeof(MsRange), range_cmp);
+    }
+}
+
+static void export_lexed(Scanner *s, uint32_t *offsets, MsLexed *out) {
+    sort_ranges(&s->strings);
+    sort_ranges(&s->interps);
+    out->source = s->text;
+    out->source_len = s->n;
+    out->tokens = copy_out(s->arena, &s->tokens, _Alignof(MsToken));
+    out->ntokens = ntokens(s);
+    out->blocks = copy_out(s->arena, &s->blocks, _Alignof(MsRange));
+    out->nblocks = VLEN(s->blocks, MsRange);
+    out->bounds.strings = copy_out(s->arena, &s->strings, _Alignof(MsRange));
+    out->bounds.nstrings = VLEN(s->strings, MsRange);
+    out->bounds.interps = copy_out(s->arena, &s->interps, _Alignof(MsRange));
+    out->bounds.ninterps = VLEN(s->interps, MsRange);
+    out->bounds.line_offsets = offsets;
+    out->bounds.base_line = s->base_line;
 }
 
 static bool lex_run(MsArena *arena, const char *text, size_t nlen, uint32_t base_offset, uint32_t base_line,
                     uint32_t *offsets, MsLexed *out, MsDiag *diag) {
     Scanner s;
     scanner_init(&s, arena, text, nlen, base_offset, base_line, offsets, diag);
-    if (setjmp(s.jb) != 0) {
-        scanner_free(&s);
-        return false;
+    bool ok = run(&s);
+    if (ok) {
+        export_lexed(&s, offsets, out);
     }
-    run(&s);
-    if (s.strings.len != 0) {
-        qsort(s.strings.data, VLEN(s.strings, MsRange), sizeof(MsRange), range_cmp);
-    }
-    if (s.interps.len != 0) {
-        qsort(s.interps.data, VLEN(s.interps, MsRange), sizeof(MsRange), range_cmp);
-    }
-    out->source = text;
-    out->source_len = nlen;
-    out->tokens = copy_out(arena, &s.tokens, _Alignof(MsToken));
-    out->ntokens = ntokens(&s);
-    out->blocks = copy_out(arena, &s.blocks, _Alignof(MsRange));
-    out->nblocks = VLEN(s.blocks, MsRange);
-    out->bounds.strings = copy_out(arena, &s.strings, _Alignof(MsRange));
-    out->bounds.nstrings = VLEN(s.strings, MsRange);
-    out->bounds.interps = copy_out(arena, &s.interps, _Alignof(MsRange));
-    out->bounds.ninterps = VLEN(s.interps, MsRange);
-    out->bounds.line_offsets = offsets;
-    out->bounds.base_line = base_line;
     scanner_free(&s);
-    return true;
+    return ok;
+}
+
+static bool fail_source(MsDiag *diag, MsPos pos, MsStr message) {
+    memset(diag, 0, sizeof *diag);
+    diag->pos = pos;
+    diag->message = message;
+    return false;
+}
+
+static bool has_byte_order_mark(const char *src, size_t len) {
+    return len >= 3 && memcmp(src, "\xEF\xBB\xBF", 3) == 0;
 }
 
 bool ms_lex_at(MsArena *arena, const char *src, size_t len, uint32_t base_offset, uint32_t base_line,
                MsLexed *out, MsDiag *diag) {
     memset(out, 0, sizeof *out);
     if (!ms_utf8_valid(src, len)) {
-        memset(diag, 0, sizeof *diag);
-        diag->pos = (MsPos){0, 1, 1};
-        diag->message = LIT("source must be valid UTF-8; re-save the file with UTF-8 encoding");
-        return false;
+        return fail_source(diag, (MsPos){0, 1, 1},
+                           LIT("source must be valid UTF-8; re-save the file with UTF-8 encoding"));
     }
-    if (len >= 3 && memcmp(src, "\xEF\xBB\xBF", 3) == 0) {
-        memset(diag, 0, sizeof *diag);
-        diag->pos = (MsPos){base_offset, base_line + 1, 1};
-        diag->message = LIT("a byte-order mark is not allowed; save the file as UTF-8 without BOM");
-        return false;
+    if (has_byte_order_mark(src, len)) {
+        return fail_source(diag, (MsPos){base_offset, base_line + 1, 1},
+                           LIT("a byte-order mark is not allowed; save the file as UTF-8 without BOM"));
     }
-    size_t nlen;
-    uint32_t *offsets;
+    size_t nlen = 0;
+    uint32_t *offsets = NULL;
     const char *text = normalize(arena, src, len, &nlen, &offsets);
     return lex_run(arena, text, nlen, base_offset, base_line, offsets, out, diag);
 }
@@ -1545,14 +1776,14 @@ bool ms_lex_interpolation(MsArena *arena, const char *src, size_t len, size_t or
     s.virtual_paren = true;
     VPUSH(s.delimiters, char, '(');
     VPUSH(s.opened, MsPos, ((MsPos){0, 1, 1}));
-    if (setjmp(s.jb) != 0) {
+    if (!run(&s)) {
         scanner_free(&s);
         return false;
     }
-    run(&s);
-    size_t nt = ntokens(&s);
-    size_t closing = nt - 3;
-    memmove(tokat(&s, closing), tokat(&s, closing + 1), (nt - closing - 1) * sizeof(MsToken));
+    /* Drop the wrapper's closing parenthesis: it sits just before Newline and Eof. */
+    size_t total = ntokens(&s);
+    size_t closing = total - 3;
+    memmove(tokat(&s, closing), tokat(&s, closing + 1), (total - closing - 1) * sizeof(MsToken));
     s.tokens.len -= sizeof(MsToken);
     *tokens = copy_out(arena, &s.tokens, _Alignof(MsToken));
     *count = ntokens(&s);
@@ -1562,25 +1793,28 @@ bool ms_lex_interpolation(MsArena *arena, const char *src, size_t len, size_t or
 
 /* ---- editor recovery ---- */
 
-static size_t count_newlines(const char *src, size_t len) {
-    size_t n = 0;
-    for (size_t i = 0; i < len; i++) {
-        n += src[i] == '\n';
-    }
-    return n;
+/* Recovery reads past lexical errors; the strict parse is the one that reports them. */
+static void ignore_failure(bool ok) {
+    (void)ok;
+}
+
+/* One flag per physical line, all false. */
+static bool *new_line_flags(MsArena *arena, const char *src, size_t len, size_t *count) {
+    size_t lines = count_newlines(src, len) + 1;
+    bool *flags = MS_NEW_N(arena, bool, lines);
+    memset(flags, 0, lines);
+    *count = lines;
+    return flags;
 }
 
 bool *ms_unterminated_prefixes(MsArena *arena, const char *src, size_t len, const bool *stop_at,
                                size_t nstop, size_t *count) {
-    size_t lines = count_newlines(src, len) + 1;
-    bool *out = MS_NEW_N(arena, bool, lines);
-    memset(out, 0, lines);
-    *count = lines;
-    if (len >= 3 && memcmp(src, "\xEF\xBB\xBF", 3) == 0) {
+    bool *out = new_line_flags(arena, src, len, count);
+    if (has_byte_order_mark(src, len)) {
         return out;
     }
-    size_t nlen;
-    uint32_t *offsets;
+    size_t nlen = 0;
+    uint32_t *offsets = NULL;
     const char *text = normalize(arena, src, len, &nlen, &offsets);
     MsDiag diag;
     MsBuf prefixes = {0};
@@ -1589,131 +1823,169 @@ bool *ms_unterminated_prefixes(MsArena *arena, const char *src, size_t len, cons
     s.prefixes = &prefixes;
     s.stop_at = stop_at;
     s.nstop = nstop;
-    if (setjmp(s.jb) == 0) {
-        run(&s);
-    }
-    for (size_t i = 0; i < lines && i < prefixes.len; i++) {
-        out[i] = ((const bool *)prefixes.data)[i];
+    /* A lexical error ends the pass; the flags gathered so far are what recovery needs. */
+    ignore_failure(run(&s));
+    const bool *seen = (const bool *)prefixes.data;
+    for (size_t i = 0; i < *count && i < prefixes.len; i++) {
+        out[i] = seen[i];
     }
     scanner_free(&s);
     ms_buf_free(&prefixes);
     return out;
 }
 
+/* Walks the source the way recovery needs: it only tracks bracket depth and where texts end. */
+typedef struct Walk {
+    Scanner scanner;
+    size_t depth;
+    bool invalid_text_header;
+    uint32_t leading_line; /* the line whose first token is known */
+    size_t first_token;    /* offset of that first token */
+} Walk;
+
+static bool after_word_byte(const Scanner *s, size_t distance) {
+    return s->offset >= distance && is_word_byte(s->src[s->offset - distance]);
+}
+
+static void skip_opaque_line_comment(Scanner *s) {
+    while (s->offset < s->n && s->src[s->offset] != '\n') {
+        advance(s);
+    }
+}
+
+/* Comments do not nest. Even a malformed comment remains opaque up to its first closer (or EOF);
+ * strict lexing reports the error. */
+static void skip_opaque_block_comment(Scanner *s) {
+    advance(s);
+    advance(s);
+    while (s->offset < s->n) {
+        bool closes = starts_with(s, s->offset, "*/");
+        advance(s);
+        if (closes) {
+            advance(s);
+            return;
+        }
+    }
+}
+
+/* One-line raw text ends at its first quote; no escapes. */
+static void skip_opaque_raw_line(Scanner *s) {
+    advance(s);
+    advance(s);
+    while (s->offset < s->n) {
+        uint8_t byte = advance(s);
+        if (byte == '"' || byte == '\n') {
+            return;
+        }
+    }
+}
+
+static void note_first_token(Walk *w) {
+    Scanner *s = &w->scanner;
+    if (w->leading_line == s->line) {
+        return;
+    }
+    w->leading_line = s->line;
+    size_t k = s->offset - (s->column - 1);
+    while (k < s->n && (s->src[k] == ' ' || s->src[k] == '\t')) {
+        k++;
+    }
+    w->first_token = k;
+}
+
+static void skip_opaque_triple_body(Scanner *s, bool raw) {
+    while (s->offset < s->n) {
+        if (starts_with(s, s->offset, "\"\"\"")) {
+            advance(s);
+            advance(s);
+            advance(s);
+            return;
+        }
+        uint8_t byte = advance(s);
+        if (!raw && byte == '\\' && s->offset < s->n) {
+            advance(s);
+        }
+    }
+}
+
+static void skip_opaque_triple_text(Walk *w) {
+    Scanner *s = &w->scanner;
+    bool raw = s->src[s->offset] == 'r';
+    note_first_token(w);
+    bool standalone = s->offset == w->first_token;
+    for (int k = 0; k < (raw ? 4 : 3); k++) {
+        advance(s);
+    }
+    /* A malformed header's standalone closer must not become a fresh opener. A literal in a new
+     * expression (including a standalone delimiter continuation) supersedes that malformed
+     * header. */
+    bool body = at(s, s->offset) == '\n';
+    bool closing_invalid = w->invalid_text_header && standalone && !raw && w->depth == 0;
+    w->invalid_text_header = !body;
+    if (body && !closing_invalid) {
+        skip_opaque_triple_body(s, raw);
+    }
+}
+
 /* Recovery looks only at where a text ends; its lexical errors are the strict parse's to report. */
-static void scan_string_ignoring_errors(Scanner *s, bool formatted) {
-    if (setjmp(s->jb) == 0) {
-        scan_string(s, formatted);
+static void skip_quoted_text(Scanner *s) {
+    bool formatted = s->offset > 0 && s->src[s->offset - 1] == 'f' && !after_word_byte(s, 2);
+    ignore_failure(scan_string(s, formatted));
+}
+
+static void count_bracket(Walk *w) {
+    uint8_t b = advance(&w->scanner);
+    if (b == '(' || b == '[' || b == '{') {
+        w->depth++;
+    } else if ((b == ')' || b == ']' || b == '}') && w->depth > 0) {
+        w->depth--;
+    }
+}
+
+/* Consumes one lexical element at the cursor. */
+static void walk_step(Walk *w) {
+    Scanner *s = &w->scanner;
+    if (at_line_comment(s)) {
+        skip_opaque_line_comment(s);
+    } else if (at_block_comment(s)) {
+        skip_opaque_block_comment(s);
+    } else if (starts_with(s, s->offset, "f\"") && !after_word_byte(s, 1)) {
+        advance(s); /* the prefix of interpolating text; the quote is handled next */
+    } else if (starts_with(s, s->offset, "r\"") && !starts_with(s, s->offset + 2, "\"\"") &&
+               !after_word_byte(s, 1)) {
+        skip_opaque_raw_line(s);
+    } else if (starts_with(s, s->offset, "r\"\"\"") || starts_with(s, s->offset, "\"\"\"")) {
+        skip_opaque_triple_text(w);
+    } else if (s->src[s->offset] == '"') {
+        skip_quoted_text(s);
+    } else {
+        count_bracket(w);
     }
 }
 
 bool *ms_recovery_continuations(MsArena *arena, const char *src, size_t len, const bool *roots,
                                 size_t nroots, size_t *count) {
-    size_t lines = count_newlines(src, len) + 1;
-    bool *out = MS_NEW_N(arena, bool, lines);
-    memset(out, 0, lines);
-    *count = lines;
-    size_t nlen;
-    uint32_t *offsets;
+    bool *out = new_line_flags(arena, src, len, count);
+    size_t nlen = 0;
+    uint32_t *offsets = NULL;
     const char *text = normalize(arena, src, len, &nlen, &offsets);
     MsDiag diag;
-    Scanner s;
-    scanner_init(&s, arena, text, nlen, 0, 0, offsets, &diag);
-    size_t depth = 0;
-    bool invalid_text_header = false;
-    uint32_t leading_line = 0;
-    size_t first_token = 0;
-    while (s.offset < s.n) {
-        size_t first = s.line - 1;
-        if (s.column == 1 && first < nroots && roots[first]) {
-            depth = 0;
+    Walk w = {0};
+    Scanner *s = &w.scanner;
+    scanner_init(s, arena, text, nlen, 0, 0, offsets, &diag);
+    while (s->offset < s->n) {
+        size_t first = s->line - 1;
+        if (s->column == 1 && first < nroots && roots[first]) {
+            w.depth = 0;
         }
-        if (at_line_comment(&s)) {
-            while (s.offset < s.n && s.src[s.offset] != '\n') {
-                advance(&s);
-            }
-        } else if (at_block_comment(&s)) {
-            advance(&s);
-            advance(&s);
-            /* Comments do not nest. Even a malformed comment remains opaque up to its first
-             * closer (or EOF); strict lexing reports the error. */
-            while (s.offset < s.n) {
-                if (starts_with(&s, s.offset, "*/")) {
-                    advance(&s);
-                    advance(&s);
-                    break;
-                }
-                advance(&s);
-            }
-        } else if (starts_with(&s, s.offset, "f\"") &&
-                   !(s.offset > 0 && (letter(s.src[s.offset - 1]) || digit(s.src[s.offset - 1])))) {
-            /* The prefix of interpolating text; the quote is handled next. */
-            advance(&s);
-        } else if (starts_with(&s, s.offset, "r\"") && !starts_with(&s, s.offset + 2, "\"\"") &&
-                   !(s.offset > 0 && (letter(s.src[s.offset - 1]) || digit(s.src[s.offset - 1])))) {
-            /* One-line raw text ends at its first quote; no escapes. */
-            advance(&s);
-            advance(&s);
-            while (s.offset < s.n) {
-                uint8_t byte = advance(&s);
-                if (byte == '"' || byte == '\n') {
-                    break;
-                }
-            }
-        } else if (starts_with(&s, s.offset, "r\"\"\"") || starts_with(&s, s.offset, "\"\"\"")) {
-            bool raw = s.src[s.offset] == 'r';
-            if (leading_line != s.line) {
-                leading_line = s.line;
-                size_t line_start = s.offset - (s.column - 1);
-                size_t k = line_start;
-                while (k < s.n && (s.src[k] == ' ' || s.src[k] == '\t')) {
-                    k++;
-                }
-                first_token = k;
-            }
-            bool standalone = s.offset == first_token;
-            for (int k = 0; k < (raw ? 4 : 3); k++) {
-                advance(&s);
-            }
-            /* A malformed header's standalone closer must not become a fresh opener. A literal in
-             * a new expression (including a standalone delimiter continuation) supersedes that
-             * malformed header. */
-            bool body = at(&s, s.offset) == '\n';
-            bool closing_invalid = invalid_text_header && standalone && !raw && depth == 0;
-            invalid_text_header = !body;
-            if (body && !closing_invalid) {
-                while (s.offset < s.n) {
-                    if (starts_with(&s, s.offset, "\"\"\"")) {
-                        for (int k = 0; k < 3; k++) {
-                            advance(&s);
-                        }
-                        break;
-                    }
-                    uint8_t byte = advance(&s);
-                    if (!raw && byte == '\\' && s.offset < s.n) {
-                        advance(&s);
-                    }
-                }
-            }
-        } else if (s.src[s.offset] == '"') {
-            bool formatted = s.offset > 0 && s.src[s.offset - 1] == 'f' &&
-                             !(s.offset > 1 && (letter(s.src[s.offset - 2]) || digit(s.src[s.offset - 2])));
-            scan_string_ignoring_errors(&s, formatted);
-        } else {
-            uint8_t b = advance(&s);
-            if (b == '(' || b == '[' || b == '{') {
-                depth++;
-            } else if ((b == ')' || b == ']' || b == '}') && depth > 0) {
-                depth--;
-            }
-        }
+        walk_step(&w);
         /* An invalid single-line string may consume its newline before failing; the following
          * line still starts independently. */
-        size_t last = s.line - 1 - (s.column == 1);
-        for (size_t i = first + 1; i <= last && i < lines; i++) {
+        size_t last = s->line - 1 - (s->column == 1);
+        for (size_t i = first + 1; i <= last && i < *count; i++) {
             out[i] = true;
         }
     }
-    scanner_free(&s);
+    scanner_free(s);
     return out;
 }

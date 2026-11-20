@@ -188,7 +188,7 @@ static void *finish(Parser *p, size_t m, uint32_t *len, size_t size, size_t alig
     *len = (uint32_t)(bytes / size);
     void *out = ms_alloc(p->arena, bytes ? bytes : 1, align);
     if (bytes != 0) {
-        memcpy(out, p->scratch->data + m, bytes);
+        memcpy(out, (char *)p->scratch->data + m, bytes);
     }
     p->scratch->len = m;
     return out;
@@ -732,7 +732,7 @@ static MsTypeRef *named_type(Parser *p) {
             MsStr t = text(p, part);
             ms_buf_put(p->bytes, t.ptr, t.len);
         }
-        full = ms_intern(p->names, p->bytes->data + bm, p->bytes->len - bm);
+        full = ms_intern(p->names, (char *)p->bytes->data + bm, p->bytes->len - bm);
         p->bytes->len = bm;
     }
     MsTypeRefs args = {NULL, 0};
@@ -1329,7 +1329,7 @@ static MsDecl *type_declaration(Parser *p, MsToken token) {
                 MsBuf names = {0};
                 type_param_names(p, &names, tps);
                 MsStr nt = ms_name(p->names, name);
-                MsStr msg = fmt(p, "a type declares only fields; write its methods after it as 'fn %.*s%.*s.name(...)'", STR(nt), (int)names.len, names.data ? names.data : "");
+                MsStr msg = fmt(p, "a type declares only fields; write its methods after it as 'fn %.*s%.*s.name(...)'", STR(nt), (int)names.len, names.data ? (const char *)names.data : "");
                 ms_buf_free(&names);
                 fail(p, previous(p), msg);
             }
@@ -2689,7 +2689,7 @@ static MsStr dedent(Parser *p, MsStr content, size_t indent) {
             line_begin = true;
         }
     }
-    MsStr out = {ms_arena_strndup(p->arena, p->bytes->data + bm, p->bytes->len - bm), (uint32_t)(p->bytes->len - bm)};
+    MsStr out = {ms_arena_strndup(p->arena, (char *)p->bytes->data + bm, p->bytes->len - bm), (uint32_t)(p->bytes->len - bm)};
     p->bytes->len = bm;
     return out;
 }
@@ -2723,7 +2723,7 @@ static TextParts text_parts(Parser *p, MsToken token, MsStr raw, size_t quotes, 
 #define FLUSH()                                                                                    \
     do {                                                                                           \
         if (p->bytes->len != bm) {                                                                 \
-            MsTextPart part = {{ms_arena_strndup(p->arena, p->bytes->data + bm, p->bytes->len - bm), \
+            MsTextPart part = {{ms_arena_strndup(p->arena, (char *)p->bytes->data + bm, p->bytes->len - bm), \
                                 (uint32_t)(p->bytes->len - bm)}, NULL};                            \
             push(p, &part, sizeof part);                                                           \
             p->bytes->len = bm;                                                                    \
