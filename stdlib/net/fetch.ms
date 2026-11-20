@@ -13,8 +13,8 @@ import (
 	NativeHttpClient,
 	RawResponse,
 	StreamingResponse,
-	headers,
-	send from "@std/net/http.ms",
+	client_send,
+	headers from "@std/net/http.ms",
 	Network, http_client from "@std/net/net.ms",
 	TlsOptions from "@std/net/tls.ms",
 	Duration, Instant, monotonic, seconds from "@std/time.ms",
@@ -268,7 +268,7 @@ fn fetched(url: String, options: FetchOptions) FetchResponse!:
 fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchResponse!:
 	started := monotonic()
 	outbound := outgoing(options.clone())
-	body := send(
+	body := client_send(
 		native,
 		options.method.to_string(),
 		url,

@@ -64,6 +64,10 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty);
 /* `ok(v)`, `error(e)` and `some(v)`, the built-in cases of Result and Optional (check_builtin.c). */
 bool ms_body_is_builtin_case(const MsBody *b, MsSym name);
 MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
+/* An enum case called like a function where the context expects its enum (check_alt.c). */
+bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name);
+MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected);
+MsTy ms_body_case_name(MsBody *b, const MsExpr *e, MsTy expected);
 /* A call of a generic function of the module (check_generic.c). */
 /* `written` is the explicit type arguments of `f[Int](x)`, or NULL. */
 MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
