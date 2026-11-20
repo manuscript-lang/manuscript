@@ -78,6 +78,7 @@ pub(super) unsafe fn new_task(ctx: Ctx) -> *mut Task {
             frozen_len: 0,
             parked_round: 0,
             pinned: 0,
+            started: 0,
             #[cfg(windows)]
             teb: sys::teb_stack(),
             segs: Vec::new(),
@@ -272,6 +273,28 @@ pub(crate) unsafe fn lend_current() -> u64 {
 pub(crate) unsafe fn current_handle() -> u64 {
     // SAFETY: called on the runtime thread by the running task.
     unsafe { (*ensure_init()).handle }
+}
+
+/// Swaps the head of the list of promises task `handle` started (slot plus one, or 0) for `head`
+/// and returns the old head; `None` when the task has ended.
+pub(crate) fn swap_started_head(handle: u64, head: u32) -> Option<u32> {
+    let t = lookup(handle);
+    if t.is_null() {
+        return None;
+    }
+    // SAFETY: a live record of this thread's scheduler.
+    Some(unsafe { core::mem::replace(&mut (*t).started, head) })
+}
+
+/// The head of the list of promises task `handle` started, or 0.
+pub(crate) fn started_head(handle: u64) -> u32 {
+    let t = lookup(handle);
+    // SAFETY: a live record of this thread's scheduler.
+    if t.is_null() {
+        0
+    } else {
+        unsafe { (*t).started }
+    }
 }
 
 /// Returns a stack lent with [`lend_current`]; nothing to do when the task has ended since.
