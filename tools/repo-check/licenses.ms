@@ -11,6 +11,47 @@ import (
 
 INVENTORY := "documentation/contributing/dependency-licenses.json"
 NOTICE_ROOTS := ["website/themes/hugo-book", "skills"]
+// The licenses of the C libraries folded into the runtime archives.
+// `runtime/third_party/c-libs.lock` pins the versions of all but llhttp, which is
+// vendored. Programs carry their members, so their notices belong in the inventory.
+// Rows are `name license`.
+C_LIBRARIES := [
+	"libuv MIT", "llhttp MIT", "nghttp2 MIT", "openssl Apache-2.0",
+	"pcre2 BSD-3-Clause", "zlib Zlib"
+]
+VENDORED_VERSIONS := ["llhttp 9.2.1"]
+
+// `name\tversion\tlicense` rows of the C libraries, versions from the lock file; an error text
+// when one is missing.
+fn c_library_rows() Result[List[String], Error]:
+	lock := "runtime/third_party/c-libs.lock"
+	text := read_text(lock).ok_or(Error(f"{lock}: cannot read"))?
+	var rows = List[String]()
+
+	for row in C_LIBRARIES:
+		parts := row.split(" ")
+		name := parts[0].clone()
+		var version = ""
+
+		for line in text.lines():
+			words := line.fields()
+
+			if words.length() > 1 and words[0] == name:
+				version = words[1].clone()
+				break
+
+		if version.is_empty():
+			for vendored in VENDORED_VERSIONS:
+				if vendored.starts_with(name + " "): version = (
+					vendored
+					.split(" ")[1]
+					.clone()
+				)
+		if version.is_empty(): return error(Error(f"{lock}: no version of {name}"))
+
+		rows.append(f"{name}\t{version}\t{parts[1]}")
+
+	return ok(rows)
 
 // A JSON string with Go's HTML-safe escapes, the form the inventory has always had.
 fn quoted(text: String) String:
@@ -78,44 +119,42 @@ fn collect_notices(dir: String, var rows: List[String]) Void:
 		):
 			rows.append(f"{path}\t{file_sha256(path)}")
 
-fn document(crates: List[String], notices: List[String]) String:
-	var out = "{\n  \"crates\": [\n"
-	var first = true
+// A JSON array of objects: `rows` are tab-separated, one value per key.
+fn objects(rows: List[String], keys: List[String]) String:
+	var out = ""
 
-	for row in crates:
-		parts := row.split("\t")
-		if not first: out += ",\n"
-		first = false
-		out += (
-			"    {\n      \"name\": "
-			+ quoted(parts[0])
-			+ ",\n      \"version\": "
-			+ quoted(parts[1])
-		)
-		out += ",\n      \"license\": " + quoted(parts[2]) + "\n    }"
+	for at in 0..rows.length():
+		parts := rows[at].split("\t")
+		if at > 0: out += ",\n"
+		out += "    {\n"
 
-	out += "\n  ],\n  \"notices\": ["
+		for k in 0..keys.length():
+			if k > 0: out += ",\n"
+			out += "      " + quoted(keys[k]) + ": " + quoted(parts[k])
 
-	if notices.is_empty():
-		out += "]\n}\n"
-		return out
+		out += "\n    }"
 
-	out += "\n"
-	first = true
+	return out
 
-	for row in notices:
-		parts := row.split("\t")
-		if not first: out += ",\n"
-		first = false
-		out += (
-			"    {\n      \"path\": "
-			+ quoted(parts[0])
-			+ ",\n      \"sha256\": "
-			+ quoted(parts[1])
-			+ "\n    }"
-		)
+fn array(name: String, rows: List[String], keys: List[String], last: Bool) String:
+	tail := if last: "" else: ","
+	if rows.is_empty(): return "  " + quoted(name) + ": []" + tail + "\n"
 
-	return out + "\n  ]\n}\n"
+	return "  " + quoted(name) + ": [\n" + objects(rows, keys) + "\n  ]" + tail + "\n"
+
+fn document(
+	crates: List[String],
+	c_libraries: List[String],
+	notices: List[String],
+) String:
+	version_keys := ["name", "version", "license"]
+	return (
+		"{\n"
+		+ array("crates", crates, version_keys, false)
+		+ array("c_libraries", c_libraries, version_keys, false)
+		+ array("notices", notices, ["path", "sha256"], true)
+		+ "}\n"
+	)
 
 // Writes the inventory, or with `check` compares it. Returns an error message, "" on
 // success.
@@ -127,7 +166,10 @@ export fn licenses(check: Bool) String:
 	for root in NOTICE_ROOTS: collect_notices(root, notices)
 	notices.sort()
 
-	text := document(crates.get(), notices)
+	c_libraries := c_library_rows()
+	if c_libraries.is_error(): return c_libraries.err().message
+
+	text := document(crates.get(), c_libraries.get(), notices)
 
 	if check:
 		actual := read_text(INVENTORY).get_or("")
