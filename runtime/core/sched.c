@@ -76,7 +76,7 @@ void ms_sched_teardown(void) {
         return;
     }
     if (ms_isolate_self() != MS_NO_ISOLATE) {
-        ms_isolate_unregister(ms_isolate_self());
+        ms_isolate_unregister(ms_isolate_self(), sched->hooks.discard_mail);
     }
     if (sched->hooks.teardown != NULL) {
         sched->hooks.teardown();

@@ -152,12 +152,18 @@ int64_t ms_queue_oldest(uint32_t isolate) {
     return oldest;
 }
 
-void ms_queue_release(uint32_t isolate) {
+void ms_queue_release(uint32_t isolate, void (*drop)(void *work)) {
     Queue *const queue = queue_of(isolate);
     if (queue == NULL) {
         return;
     }
     lock(queue);
+    for (size_t i = 0; drop != NULL && i < queue->length; i++) {
+        const Entry *const entry = &queue->items[(queue->head + i) % queue->capacity];
+        if (entry->id != 0) {
+            drop(entry->work);
+        }
+    }
     msrt_free(queue->items);
     queue->items = NULL;
     queue->capacity = 0;
