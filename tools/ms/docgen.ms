@@ -144,7 +144,7 @@ fn hex4(value: Int) String:
 
 // A JSON string as Go's encoding/json writes it (`<`, `>`, `&`, U+2028 and U+2029
 // escaped).
-fn json_string(text: String) String:
+export fn json_string(text: String) String:
 	var out = "\""
 
 	for ch in text.chars():
@@ -170,10 +170,10 @@ fn json_string(text: String) String:
 
 	return out.concat("\"")
 
-fn indent(depth: Int) String: "  ".repeat(depth)
+export fn indent(depth: Int) String: "  ".repeat(depth)
 
 // A JSON array of strings at `depth`, or `[]`.
-fn string_array(items: List[String], depth: Int) String:
+export fn string_array(items: List[String], depth: Int) String:
 	if items.is_empty(): return "[]"
 
 	var out = "["
