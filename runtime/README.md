@@ -8,10 +8,11 @@ runtime/
   sys/           per-OS code: linux, darwin, windows (to come)
   core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num.c so far)
   io/            reactor on libuv (to come)
-  net/           http1 (llhttp) and tls (OpenSSL) done; http2 (nghttp2), websocket to come
+  net/           http1 (llhttp), tls (OpenSSL) and ws frames done; http2 (nghttp2) to come
   std/           natives per stdlib module (to come)
   third_party/   pinned dependencies and the one build for all of them
-  tests/         smoke programs and, later, unit tests
+  tests/         smoke programs and unit tests (`make c-test`, under ASan and UBSan)
+  fuzz/          fuzz harnesses and seed corpus (`make c-fuzz`); nightly
 ```
 
 Layering: `sys` < `core` < `io` < `net` and `std`. `core` never includes libuv.
