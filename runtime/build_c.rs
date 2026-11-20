@@ -57,9 +57,21 @@ pub fn archiver(root: &Path, triple: Option<&str>) -> PathBuf {
 
 /// Runs `program args...` and reports a failure with its output.
 fn run(command: &mut Command, what: &str) -> Result<String, String> {
-    let output = command.output().map_err(|e| {
-        format!("{what}: {e} (the C build needs cmake and ninja: `sh runtime/third_party/libs.sh install`)")
-    })?;
+    let mut attempts = 0;
+    let output = loop {
+        let output = command.output().map_err(|e| {
+            format!("{what}: {e} (the C build needs cmake and ninja: `sh runtime/third_party/libs.sh install`)")
+        })?;
+        attempts += 1;
+        // Workaround for #4794: CMake on a Windows runner sometimes cannot put a child in its job
+        // object ("AssignProcessToJobObject: (50)"); the same command succeeds when run again.
+        let flaky = cfg!(windows)
+            && !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("AssignProcessToJobObject");
+        if !flaky || attempts == 4 {
+            break output;
+        }
+    };
     if !output.status.success() {
         return Err(format!(
             "{what} failed:\n{}{}",
