@@ -34,18 +34,18 @@ uint8_t msstd_xchg_reject(const void *conn, int64_t status, uint8_t has_timeout,
  * "HTTP/1.1", and the fields (names in canonical form, values as bytes) as a table the exchange keeps: the handle is
  * the caller's own. */
 /* ms-sig: msstd_xchg_method(handle x: *const ObjCell<ExchH>, out: *mut StrVal) @domain=HTTP */
-void msstd_xchg_method(const void *exchange, MsStr *out);
+void msstd_xchg_method(const void *handle, MsStr *out);
 /* ms-sig: msstd_xchg_target(handle x: *const ObjCell<ExchH>, out: *mut StrVal) @domain=HTTP */
-void msstd_xchg_target(const void *exchange, MsStr *out);
+void msstd_xchg_target(const void *handle, MsStr *out);
 /* ms-sig: msstd_xchg_protocol(handle x: *const ObjCell<ExchH>, out: *mut StrVal) @domain=HTTP */
-void msstd_xchg_protocol(const void *exchange, MsStr *out);
+void msstd_xchg_protocol(const void *handle, MsStr *out);
 /* ms-sig: msstd_xchg_headers(handle x: *const ObjCell<ExchH>) -> *mut ObjCell<HeadersH> @handle @domain=HTTP */
-void *msstd_xchg_headers(const void *exchange);
+void *msstd_xchg_headers(const void *handle);
 
 /* The next piece of the request body with the framing removed: STATUS_OK with up to `max` bytes (default 64 KiB),
  * STATUS_NONE at the end of the body. A truncated or malformed body is STATUS_INVALID_DATA. */
 /* ms-sig: msstd_xchg_read(handle x: *const ObjCell<ExchH>, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=HTTP */
-uint8_t msstd_xchg_read(const void *exchange, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err);
+uint8_t msstd_xchg_read(const void *handle, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err);
 
 /* Sends the response head. With `has_length` the body is `length` bytes (Content-Length), else it is chunked
  * (HTTP/1.1) or runs to the close (HTTP/1.0). `headers` are the response fields; a Content-Length or
@@ -53,32 +53,50 @@ uint8_t msstd_xchg_read(const void *exchange, uint8_t has_max, int64_t max, uint
  * split the response, the status is not 100 to 999, or a head was already sent. A 1xx status sends the head only and
  * leaves the final one to come. */
 /* ms-sig: msstd_xchg_send_head(handle x: *const ObjCell<ExchH>, status: i64, handle headers: *const ObjCell<HeadersH>, has_length: HasRaw, length: i64, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP */
-uint8_t msstd_xchg_send_head(const void *exchange, int64_t status, const void *headers, uint8_t has_length, int64_t length, uint8_t has_timeout, int64_t timeout, MsStr *err);
+uint8_t msstd_xchg_send_head(const void *handle, int64_t status, const void *headers_handle, uint8_t has_length, int64_t length, uint8_t has_timeout, int64_t timeout, MsStr *err);
 
 /* Writes body bytes after the head. More than the declared length is STATUS_OUT_OF_RANGE and sends nothing. */
 /* ms-sig: msstd_xchg_write(handle x: *const ObjCell<ExchH>, data: *const VecVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP */
-uint8_t msstd_xchg_write(const void *exchange, const MsVec *data, uint8_t has_timeout, int64_t timeout, MsStr *err);
+uint8_t msstd_xchg_write(const void *handle, const MsVec *data, uint8_t has_timeout, int64_t timeout, MsStr *err);
 
 /* Ends the response (the closing chunk when chunked) and answers whether the connection can carry another request:
  * `*keep` is 1 when the request allowed it, the response was framed, and the request body was read to its end. A
  * body shorter than the declared length is STATUS_INVALID_DATA and the connection is not reusable. */
 /* ms-sig: msstd_xchg_finish(handle x: *const ObjCell<ExchH>, has_timeout: HasRaw, timeout: i64, keep: *mut u8, err: ErrSlot) -> u8 @domain=HTTP */
-uint8_t msstd_xchg_finish(const void *exchange, uint8_t has_timeout, int64_t timeout, uint8_t *keep, MsStr *err);
+uint8_t msstd_xchg_finish(const void *handle, uint8_t has_timeout, int64_t timeout, uint8_t *keep, MsStr *err);
 
 /* Reads and drops what is left of the request body, at most `max` bytes, so the connection can be reused after a
  * handler that did not read it. STATUS_LIMIT_EXCEEDED when more is left: close the connection instead. */
 /* ms-sig: msstd_xchg_reset(handle x: *const ObjCell<ExchH>, max: i64, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP */
-uint8_t msstd_xchg_reset(const void *exchange, int64_t max, uint8_t has_timeout, int64_t timeout, MsStr *err);
+uint8_t msstd_xchg_reset(const void *handle, int64_t max, uint8_t has_timeout, int64_t timeout, MsStr *err);
 
 /* Another handle on the same exchange: the handler owns one as its `HttpExchange`, the connection loop keeps the other
  * to finish the response after the handler returns. The exchange ends with its last handle. */
 /* ms-sig: msstd_xchg_share(handle x: *const ObjCell<ExchH>) -> *mut ObjCell<ExchH> @handle @domain=HTTP */
-void *msstd_xchg_share(const void *exchange);
+void *msstd_xchg_share(const void *handle);
 
 /* Hands the connection on for a protocol switch (WebSocket) before any response head is sent: the handle is a new
  * stream end of the same connection; bytes read ahead stay on the row and come first from msstd_conn_read. The
  * exchange is spent afterwards. STATUS_INVALID_INPUT once a head was sent. */
 /* ms-sig: msstd_xchg_take_conn(handle x: *const ObjCell<ExchH>, out: *mut *mut ObjCell<ConnH>) -> u8 @domain=HTTP */
-uint8_t msstd_xchg_take_conn(const void *exchange, void **out);
+uint8_t msstd_xchg_take_conn(const void *handle, void **out);
+
+/* HTTP/2 connections (runtime/net/exchange_h2_natives.c over exchange_h2.c). After a handshake that chose h2 (see
+ * msstd_conn_alpn), `open` starts HTTP/2 on the connection (limits of 0 are the defaults, `idle` bounds a wait with
+ * no stream open). One task runs `run` for the life of the connection; another loops on `next`, which answers an
+ * exchange for each request (the same ExchH the msstd_xchg_* natives above work on, so a handler cannot tell h1 from
+ * h2) and STATUS_NONE once the connection is over. `drain` sends GOAWAY and lets requests in flight finish. */
+/* ms-sig: msstd_h2_open(handle c: *const ObjCell<ConnH>, max_streams: i64, max_header_list: i64, stream_window: i64, connection_window: i64, has_idle: HasRaw, idle: i64, out: *mut *mut ObjCell<H2ConnH>, err: ErrSlot) -> u8 @domain=HTTP */
+uint8_t msstd_h2_open(const void *conn, int64_t max_streams, int64_t max_header_list, int64_t stream_window, int64_t connection_window, uint8_t has_idle, int64_t idle, void **out, MsStr *err);
+/* ms-sig: msstd_h2_run(handle h: *const ObjCell<H2ConnH>, err: ErrSlot) -> u8 @domain=HTTP */
+uint8_t msstd_h2_run(const void *h2, MsStr *err);
+/* ms-sig: msstd_h2_next(handle h: *const ObjCell<H2ConnH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ExchH>, err: ErrSlot) -> u8 @domain=HTTP */
+uint8_t msstd_h2_next(const void *h2, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* ms-sig: msstd_h2_drain(handle h: *const ObjCell<H2ConnH>) @domain=HTTP */
+void msstd_h2_drain(const void *h2);
+/* Another handle on the same connection, for the task that runs it. */
+/* ms-sig: msstd_h2_share(handle h: *const ObjCell<H2ConnH>) -> *mut ObjCell<H2ConnH> @handle @domain=HTTP */
+void *msstd_h2_share(const void *h2);
+
 
 #endif

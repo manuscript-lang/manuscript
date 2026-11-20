@@ -77,6 +77,23 @@ static void ll_iface_destroy(LCx *c, const MirInst *inst) {
     ms_buf_printf(c->out, "  call void %%k%u(i64 %%v%u)\n", n, inst->args[0]);
 }
 
+/* `clone` of an interface value: the payload copier sits in the vtable after the methods. The copy
+ * owns its payload whatever the source did, so the tag bits come off. */
+static bool ll_iface_clone(LCx *c, const MirInst *inst) {
+    const MirTyData *d = mir_ty_data(c->m, c->f->values[inst->args[0]]);
+    if (d->kind != MK_IFACE) {
+        return false;
+    }
+    char table[24];
+    ll_untag(c, inst->args[0], table, sizeof table);
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "  %%t%ua = add i64 %s, %u\n  %%p%u = inttoptr i64 %%t%ua to ptr\n  %%k%u = load ptr, ptr %%p%u\n",
+                  n, table, 8 * (1 + c->m->ifaces[d->id].nmethods), n, n, n, n);
+    ms_buf_printf(c->out, "  %%v%u = call i64 %%k%u(i64 %%v%u)\n  %%v%u.1 = add i64 %s, 0\n", inst->res, n,
+                  inst->args[0], inst->res, table);
+    return true;
+}
+
 /* The interface operations; `*handled` says whether `inst` is one. */
 static bool ll_iface_op(LCx *c, const MirInst *inst, uint32_t block, uint32_t index, bool *handled) {
     *handled = true;
@@ -94,6 +111,12 @@ static bool ll_iface_op(LCx *c, const MirInst *inst, uint32_t block, uint32_t in
         ll_untag(c, inst->args[0], table, sizeof table);
         ms_buf_printf(c->out, "  %%v%u = add i64 %%v%u, 0\n  %%v%u.1 = or i64 %s, %d\n", inst->res,
                       inst->args[0], inst->res, table, LL_TAG_VIEW);
+        return true;
+    case MOP_Clone:
+        if (ll_iface_clone(c, inst)) {
+            return true;
+        }
+        *handled = false;
         return true;
     case MOP_IfaceIs: {
         char want[24];

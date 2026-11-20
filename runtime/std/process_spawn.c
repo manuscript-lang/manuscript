@@ -801,6 +801,8 @@ int64_t msstd_process_subprocess_max_resident(MsObj *object) {
     return peak;
 }
 
+int64_t msstd_process_subprocess_pid(MsObj *object) { return ((MsChild *)object)->pid; }
+
 void msstd_process_subprocess_terminate(MsObj *object) { child_signal((MsChild *)object, false); }
 
 void msstd_process_subprocess_kill(MsObj *object) { child_signal((MsChild *)object, true); }

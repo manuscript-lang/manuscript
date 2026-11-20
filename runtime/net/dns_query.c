@@ -181,7 +181,7 @@ static void write_records(const MsDnsResponse *response, uint16_t type, int64_t 
 uint8_t msstd_dns_query(const MsStr *server, const MsStr *name, int64_t kind, uint8_t has_timeout, int64_t timeout,
                         MsVec *out, MsStr *err) {
     const uint16_t type = type_of_kind(kind);
-    msrt_string_from_bytes(NULL, 0, err); /* the caller reads the slot on every failure, and a loop reuses it */
+    ms_net_clear_text(err);
     MsAddr target;
     const MsBytes name_bytes = ms_bytes_of((const uint8_t *)msrt_str_data(name), msrt_str_len(name));
     if (!ms_net_addr_parse(ms_bytes_of((const uint8_t *)msrt_str_data(server), msrt_str_len(server)), &target) ||

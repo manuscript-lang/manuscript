@@ -1,7 +1,6 @@
 //! Natives for `@std/net/net.ms`.
 //! ms: domain network
 
-use super::tls::TlsOptionsWire;
 use super::{ConnH, DgramH, ListenerH, NetH, opt, report};
 use crate::bound::Bound;
 use crate::error::NetErr;
@@ -11,10 +10,7 @@ use crate::net::root;
 use ms_rt::ffi::ErrSlot;
 #[cfg(test)]
 use ms_rt::ffi::HasRaw;
-use ms_rt::ffi::{
-    Bytes, ErrOut, Has, ObjRef, Object, Out, StatusCode, Str, abi_type,
-    native,
-};
+use ms_rt::ffi::{Bytes, ErrOut, Has, ObjRef, Object, Out, StatusCode, Str, abi_type, native};
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
     STATUS_PERMISSION_DENIED, STATUS_TIMEOUT, STATUS_UNSUPPORTED,
@@ -167,34 +163,6 @@ native! {
     /// Closes the connection when `c` is its last open end; an end that closes first leaves it open for the other.
     fn msstd_net_connection_close_if_last(c: ObjRef<ConnH>) -> () {
         c.close_end();
-    }
-
-    /// `start_tls(connection, options, timeout)`: the TLS connection that replaces `c`.
-    fn msstd_net_connection_start_tls(
-        c: ObjRef<ConnH>,
-        opts: &TlsOptionsWire,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<Object<ConnH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let upgraded = c.start_tls(&opts.to_options(), opt(*has_timeout, timeout));
-        out.write(Object(ConnH(Bound::new(report(upgraded, &err)?))));
-        Ok(())
-    }
-
-    /// `accept_tls(connection, options, timeout)`: the TLS connection that replaces `c`.
-    fn msstd_net_connection_accept_tls(
-        c: ObjRef<ConnH>,
-        opts: &TlsOptionsWire,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<Object<ConnH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let upgraded = c.accept_tls(&opts.to_options(), opt(*has_timeout, timeout));
-        out.write(Object(ConnH(Bound::new(report(upgraded, &err)?))));
-        Ok(())
     }
 
     /// `Connection.local_address()`.
@@ -360,10 +328,7 @@ fn _normalize(ip: IpAddr) -> IpAddr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ms_rt::ffi::{
-        bytes_ref, new_string, str_ref, str_release, take_string,
-        write_string_list,
-    };
+    use ms_rt::ffi::{bytes_ref, new_string, str_ref, str_release, take_string, write_string_list};
     use ms_rt_abi::{STATUS_FAILED, STATUS_INVALID_DATA, STATUS_PERMISSION_DENIED, StrVal, VecVal};
     use std::mem::MaybeUninit;
     use std::ptr::null_mut;

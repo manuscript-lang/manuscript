@@ -6,6 +6,7 @@
 
 #include "../std/abi.h"
 #include "addr_text.h"
+#include "status.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/net.h"
 #include "ms_rt/safe.h"
@@ -110,7 +111,7 @@ static bool parse_ip(const MsStr *text, MsIpCell **out) {
 }
 
 uint8_t msstd_net_parse_ip(const MsStr *text, MsIpCell **out, MsStr *err) {
-    msrt_string_from_bytes(NULL, 0, err); /* the caller reads the slot on every failure */
+    ms_net_clear_text(err);
     return parse_ip(text, out) ? STATUS_OK : STATUS_INVALID_DATA;
 }
 
@@ -180,7 +181,7 @@ static bool parse_cidr(const MsStr *text, MsCidrCell **out) {
 }
 
 uint8_t msstd_net_parse_cidr(const MsStr *text, MsCidrCell **out, MsStr *err) {
-    msrt_string_from_bytes(NULL, 0, err); /* the caller reads the slot on every failure */
+    ms_net_clear_text(err);
     return parse_cidr(text, out) ? STATUS_OK : STATUS_INVALID_DATA;
 }
 

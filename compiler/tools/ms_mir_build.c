@@ -4,7 +4,7 @@
  * prints), runs the optimizer and the finishing passes (`mir_optimize`, `mir_pipeline_finish`) and
  * prints QBE SSA text (debug builds) or LLVM IR text (release builds) on standard output. Exit 1
  * with the reason on stderr when a pass fails or the emitter cannot write something yet. With
- * `--tables-meta` (QBE) the program passes `ms_tables` to the runtime and PATH gets the description
+ * `--tables-meta` the program passes `ms_tables` to the runtime and PATH gets the description
  * `ms_asm_tables` turns into fault tables once the assembly exists. The Rust
  * `ms` runs this when `MS_BACKEND=c` is set (crates/ms-build/src/c_backend.rs). */
 #include <stdio.h>
@@ -24,9 +24,9 @@ static int fail(const char *what, const MsBuf *text) {
 }
 
 /* The description of the functions and scopes that ms_asm_tables needs to build the fault tables. */
-static bool write_meta(const MirModule *m, const char *path) {
+static bool write_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay, bool llvm, const char *path) {
     MsBuf meta = {0};
-    mir_qbe_tables_meta(m, &meta);
+    mir_tables_meta(m, display, ndisplay, llvm, &meta);
     FILE *f = fopen(path, "wb");
     const bool ok = f != NULL && fwrite(meta.data, 1, meta.len, f) == meta.len && fclose(f) == 0;
     if (!ok) {
@@ -90,20 +90,26 @@ int main(int argc, char **argv) {
     }
     MsBuf out = {0}, why = {0};
     bool ok;
+    const uint32_t ndisplay = m.nfuncs; // the emitter may add glue after this
+    MsSym *display = MS_NEW_N(&m.arena, MsSym, (size_t)ndisplay + 1); // names the fault tables show
+    for (uint32_t i = 0; i < ndisplay; i++) {
+        display[i] = m.funcs[i].name;
+    }
     mir_name_symbols(&m);
     if (llvm) {
         mir_lower_ops(&m, &glue);
         MirData data;
         mir_data_build(&m, &glue, &data);
-        ok = mir_emit_llvm(&m, &data, &glue, &out, &why);
+        ok = tables_meta != NULL ? mir_emit_llvm_places(&m, &data, &glue, &out, &why)
+                                 : mir_emit_llvm(&m, &data, &glue, &out, &why);
     } else {
         ok = mir_emit_qbe_glued(&m, &glue, &out, &why);
     }
     if (!ok) {
         return fail("the C back end cannot write:\n", &why);
     }
-    mir_emit_entry_main(&m, llvm, tables_meta != NULL && !llvm, &out);
-    if (tables_meta != NULL && !llvm && !write_meta(&m, tables_meta)) {
+    mir_emit_entry_main(&m, llvm, tables_meta != NULL, &out);
+    if (tables_meta != NULL && !write_meta(&m, display, ndisplay, llvm, tables_meta)) {
         return 1;
     }
     fwrite(out.data, 1, out.len, stdout);

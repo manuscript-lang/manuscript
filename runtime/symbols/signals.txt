@@ -2,3 +2,5 @@
 msstd_process_signal_close
 msstd_process_signal_next
 msstd_process_watch_signals
+msstd_process_stop_hold
+msstd_process_stop_release

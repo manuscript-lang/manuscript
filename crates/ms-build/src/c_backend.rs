@@ -79,19 +79,18 @@ fn compile_in(
         build.arg("--no-checks");
     }
     let meta = dir.join("program.meta");
-    if !llvm {
-        build.arg("--tables-meta").arg(&meta);
-    }
+    build.arg("--tables-meta").arg(&meta);
     let text = run(&mut build, "ms_mir_build")?;
     let object = dir.join("program.o");
+    let plain = dir.join("program.plain.s");
     if llvm {
         let ir = dir.join("program.ll");
         std::fs::write(&ir, text).map_err(|e| format!("cannot write {}: {e}", ir.display()))?;
         let opt = if speed { "-O3" } else { "-O0" };
         run(
             Command::new("clang")
-                .args(["-c", opt, "-o"])
-                .arg(&object)
+                .args(["-S", opt, "-o"])
+                .arg(&plain)
                 .arg(&ir),
             "clang",
         )?;
@@ -99,6 +98,8 @@ fn compile_in(
         let target = match (std::env::consts::OS, std::env::consts::ARCH) {
             ("macos", "aarch64") => "arm64_apple",
             ("macos", _) => "amd64_apple",
+            ("windows", "aarch64") => "arm64", // QBE has no arm64_win; see `elf_only_removed`
+            ("windows", _) => "amd64_win",
             (_, "aarch64") => "arm64",
             _ => "amd64_sysv",
         };
@@ -108,22 +109,44 @@ fn compile_in(
             Command::new(tool("qbe")?).args(["-t", target]).arg(&ssa),
             "qbe",
         )?;
-        // The fault tables: ms_asm_tables labels the assembly and appends them (no debug info is read).
-        let plain = dir.join("program.plain.s");
+        // QBE's arm64 text is ELF-flavoured; on Windows (COFF) the directives that only ELF has are dropped.
+        let asm = if std::env::consts::OS == "windows" && target == "arm64" {
+            elf_only_removed(&asm)
+        } else {
+            asm
+        };
         std::fs::write(&plain, asm)
             .map_err(|e| format!("cannot write {}: {e}", plain.display()))?;
-        let mut tables = Command::new(tool("ms_asm_tables")?);
-        tables.arg(&meta).arg(&plain);
-        if std::env::consts::OS == "macos" {
-            tables.args(["--prefix", "_"]);
-        }
-        let asm = run(&mut tables, "ms_asm_tables")?;
-        let s = dir.join("program.s");
-        std::fs::write(&s, asm).map_err(|e| format!("cannot write {}: {e}", s.display()))?;
-        run(
-            Command::new("cc").arg("-c").arg("-o").arg(&object).arg(&s),
-            "cc",
-        )?;
     }
+    // The fault tables: ms_asm_tables labels the assembly and appends them (no debug info is read).
+    // Release builds drop the `.loc` lines afterwards, so the object carries no line tables.
+    let mut tables = Command::new(tool("ms_asm_tables")?);
+    tables.arg(&meta).arg(&plain);
+    if std::env::consts::OS == "macos" {
+        tables.args(["--prefix", "_"]);
+    }
+    if llvm {
+        tables.arg("--strip-lines");
+    }
+    let asm = run(&mut tables, "ms_asm_tables")?;
+    let s = dir.join("program.s");
+    std::fs::write(&s, asm).map_err(|e| format!("cannot write {}: {e}", s.display()))?;
+    run(
+        Command::new(if llvm { "clang" } else { "cc" })
+            .arg("-c")
+            .arg("-o")
+            .arg(&object)
+            .arg(&s),
+        if llvm { "clang" } else { "cc" },
+    )?;
     std::fs::read(&object).map_err(|e| format!("cannot read {}: {e}", object.display()))
+}
+
+/// `asm` without the lines only ELF assemblers take: `.type`, `.size` and the `.note.GNU-stack` section.
+fn elf_only_removed(asm: &[u8]) -> Vec<u8> {
+    let text = String::from_utf8_lossy(asm);
+    text.lines()
+        .filter(|l| !(l.starts_with(".type") || l.starts_with(".size") || l.contains("GNU-stack")))
+        .flat_map(|l| l.bytes().chain(std::iter::once(b'\n')))
+        .collect()
 }

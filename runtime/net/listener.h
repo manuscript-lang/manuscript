@@ -21,6 +21,8 @@ MS_NODISCARD MsNetStatus ms_listener_open(const MsAddr *address, int backlog, Ms
  * drops. */
 MS_NODISCARD MsNetStatus ms_listener_open_unix(MsBytes path, int backlog, MsObj **out, int *error_code);
 
+/* Another handle on the same listener (a heap MsObj the runtime drops). */
+MsObj *ms_listener_share(const void *handle);
 /* The listener behind a handle. */
 MsListener *ms_listener_of(const void *handle);
 

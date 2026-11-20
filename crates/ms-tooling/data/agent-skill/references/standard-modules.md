@@ -23,7 +23,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/collections/itertools.ms`: Run, accumulate, combinations, cycle, group_runs, pairwise, permutations, product, zip_longest
 - `@std/collections/queue.ms`: HeapEntry, PriorityQueue, Queue
 - `@std/collections/sorted.ms`: SortedEntry, SortedMap, SortedSet
-- `@std/concurrency/promise.ms`: Cancel, Placement, Promise, PromiseOptions, Signal, adopt, cancel_switch, complete, deferred, promise, promise_when_idle, set_options, wait_all, wait_first
+- `@std/concurrency/promise.ms`: Cancel, Placement, Promise, PromiseOptions, Signal, adopt, cancel_switch, complete, deferred, promise, promise_when_idle, set_options, wait_all, wait_any, wait_first
 - `@std/concurrency/resilience.ms`: CircuitBreaker, CircuitError, RateLimiter, RetryPolicy, Throttle, map_concurrent, rate_limiter, retry
 - `@std/core.ms`: Clonable, Closeable, Comparable, Data, Equal, Error, Hashable, Iterator, Optional, Result, Stringable, Writable, join_errors, panic, print, wrap_error
 - `@std/crypto/blake2.ms`: blake2b, blake2s
@@ -74,7 +74,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/net/ip.ms`: Cidr, DnsKind, DnsRecord, IpAddress, IpFamily, contains_ip, parse_cidr, parse_ip
 - `@std/net/mail.ms`: Address, Message, decode_words, parse_address, parse_address_list, parse_message
 - `@std/net/mime.ms`: HeaderField, Headers, MediaType, Part, encode_multipart, extension_for_media_type, form_part, format_media_type, media_type_for_extension, multipart_boundary, multipart_parts, parse_headers, parse_media_type, parse_multipart
-- `@std/net/net.ms`: Connection, ConnectionInfo, Datagram, DatagramSocket, DnsOptions, Listener, NativeConnection, NativeDatagramSocket, NativeListener, NativeNetwork, Network, PendingConnection, RequestOptions, accept_tls, bind_datagram, connect, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, resolve_dns, restrict, serve, start_tls, web_socket, with_resolver
+- `@std/net/net.ms`: Connection, ConnectionInfo, Datagram, DatagramSocket, DnsOptions, Listener, NativeConnection, NativeDatagramSocket, NativeListener, NativeNetwork, NativeScope, Network, PendingConnection, RequestOptions, accept_tls, bind_datagram, connect, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, resolve_dns, restrict, serve, start_tls, web_socket, with_resolver
 - `@std/net/policy.ms`: Level, Policy, address_allowed, fold_host, host_allowed, listen_allowed, narrow, unix_allowed, unrestricted
 - `@std/net/router.ms`: Route, RouteParams, Router, Segment, access_log, request_id, with_request_headers
 - `@std/net/sse.ms`: SseEvent, SseLimits, sse_events
@@ -84,7 +84,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/os/env.ms`: arguments, change_directory, environment, home_directory, load_environment, set_environment, which, working_directory
 - `@std/os/fs.ms`: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, OpenMode, OpenOptions, PathEntry, RawWatcher, Seek, TemporaryDirectory, WatchOptions, access, append_file, canonicalize, chmod, chown, copy, create_directory, create_hard_link, create_symlink, exists, glob, list, move, open, open_directory, read_file, read_symlink, remove, rename, set_times, stat, stat_filesystem, temporary, temporary_directory, temporary_root, truncate, watch, write_atomic, write_file
 - `@std/os/path.ms`: Glob, PathOperations, PathParts, basename, basename_without, compile_glob, delimiter, dirname, extension, format, is_absolute, join, matches_glob, normalize, parse, posix, relative, resolve, separator, stem, to_namespaced_path, win32, with_extension
-- `@std/os/process.ms`: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, get_priority, groups, initialize_groups, process_info, replace, resource_usage, run, send_signal, set_groups, set_identity, set_priority, set_title, spawn, title, umask, watch_signals
+- `@std/os/process.ms`: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, StopHold, Subprocess, cpu_usage, get_priority, groups, hold_stop, initialize_groups, process_info, replace, resource_usage, run, send_signal, set_groups, set_identity, set_priority, set_title, spawn, title, umask, watch_signals
 - `@std/os/system.ms`: CpuInfo, Endianness, MemoryUsage, NetworkInterface, Os, RuntimeCounts, SystemInfo, SystemMetrics, UserInfo, available_memory, constants, constrained_memory, cpus, dev_null, end_of_line, endianness, hostname, machine, memory_usage, metrics, network_interfaces, os, os_release, os_version, runtime_counts, system_info, uptime, user_info
 - `@std/os/tree.ms`: EmbeddedTree, FileTree, HostTree, MemoryTree, WalkEntry, embedded_tree, host_tree, memory_tree, msstd_embed_bytes, walk
 - `@std/random.ms`: SeededRandom, choice, float, random_bytes, sample, secure_int, seeded, shuffle, token, ulid, weighted_choice

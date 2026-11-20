@@ -11,11 +11,19 @@ import (
 	edit_distance from "@std/data/diff.ms",
 	stderr, stdout from "@std/io/io.ms",
 	arguments, environment from "@std/os/env.ms",
-	exists from "@std/os/fs.ms",
+	exists, read_file from "@std/os/fs.ms",
 	SpawnOptions, Stdio, spawn from "@std/os/process.ms",
 
 	Invocation, parse_invocation, requests_help, takes_value, validate from "./args.ms",
+	rust_cli from "./bridge.ms",
+	run_explain from "./explain.ms",
 	command_help, command_names, overview from "./help.ms",
+	run_init from "./init.ms",
+	run_profile from "./profile.ms",
+	run_members from "./test/members.ms",
+	run_bench, run_test from "./test/run.ms",
+	run_verify from "./verify.ms",
+	root_members from "./workspace.ms",
 )
 
 fn out(text: String) Void:
@@ -146,7 +154,7 @@ fn run_help(args: List[String]) Int:
 // Hands the whole command to the Rust `ms`.
 fn delegate(args: List[String]) Int:
 	env := environment().get_or(Map[String, String]())
-	program := env.get_or("MS_RUST_CLI", "ms-rust")
+	program := rust_cli()
 
 	if env.contains("MS_CLI_PLAN"):
 		out(f"delegate {args.join(" ")}\n")
@@ -168,11 +176,64 @@ fn delegate(args: List[String]) Int:
 
 	return child.get().wait().get_or(70)
 
+fn run_explain_command(args: List[String]) Int:
+	got := run_explain(args)
+	out(got.stdout)
+	err(got.stderr)
+	return got.status
+
 fn is_source_command(command: String) Bool:
 	return [
 		"check", "lint", "build", "emit", "run", "test", "bench", "inspect", "diagram",
 		"profile"
 	].contains(command)
+
+// Runs `ms test` or `ms bench` in the front; none when the Rust command line must: a
+// `--watch`, several targets that are not all manifests, or a workspace root whose members
+// need the Rust command line to explain them.
+fn run_tests(args: List[String], inv: Invocation) Int?:
+	if inv.watch: return none
+
+	bench := inv.command == "bench"
+	manifests := inv.targets.filter(fn target: target.ends_with("ms.toml"))
+
+	if inv.targets.length() > 1:
+		if bench: return none
+		if manifests.length() == inv.targets.length(): return run_members(
+			args,
+			inv,
+			manifests,
+		)
+
+	if not inv.filename.ends_with("ms.toml"):
+		return if bench: run_bench(inv) else: run_test(inv)
+
+	text := read_file(inv.filename).wait()
+	if text.is_error(): return none
+
+	members := root_members(inv.filename)
+
+	if members.is_none():
+		if text.get().decode_utf8().get_or("").contains("[workspace]"): return none
+		return if bench: run_bench(inv) else: run_test(inv)
+
+	var found = List[String]()
+	for member in members.get(): found.append(member.manifest.clone())
+
+	if bench:
+		var names = List[String]()
+		for member in members.get(): names.append(member.name.clone())
+		err(
+			f"ms bench: {inv.filename} is a workspace root; name one member's ms.toml instead, such as {found[0]} (members: {names.join(", ")})\n"
+		)
+		return 2
+
+	if found.length() > 1: return run_members(args, inv, found)
+
+	var single = inv.clone()
+	single.filename = found[0].clone()
+	single.targets = [found[0].clone()]
+	return run_test(single)
 
 fn run_source_command(args: List[String], usage_text: String) Int:
 	if args.length() < 2:
@@ -195,6 +256,10 @@ fn run_source_command(args: List[String], usage_text: String) Int:
 		err(checked.err().message + "\n")
 		return 2
 
+	if inv.command == "profile": return run_profile(inv)
+
+	if inv.command == "test" or inv.command == "bench":
+		if status := run_tests(args, inv): return status
 	return delegate(args)
 
 export fn run(given: List[String]) Int:
@@ -232,6 +297,9 @@ export fn run(given: List[String]) Int:
 		return 0
 
 	if args[0] == "help": return run_help(args.drop(1))
+	if args[0] == "init": return run_init(args.drop(1))
+	if args[0] == "explain": return run_explain_command(args.drop(1))
+	if args[0] == "verify": return run_verify(args.drop(1))
 	if is_source_command(args[0]): return run_source_command(args, usage_text)
 
 	return delegate(args)

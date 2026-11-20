@@ -106,6 +106,30 @@ test "an empty Unix socket path is invalid input":
 		Error("network: invalid input", kind: "EINVAL"),
 	)?
 
+test "a Unix domain socket carries bytes both ways and a restricted network refuses it":
+	probe := listen("127.0.0.1:0")?
+	port := probe.address().rsplit_once(":").get().after
+	path := f"ms-net-unix-{port}.sock"
+	listener := listen_unix(path)?
+	expect_equal(listener.address(), path)?
+
+	var client = connect_unix(path, timeout: 2.seconds()).wait()?
+	var server = listener.accept(2.seconds()).wait()?
+	client.output.write("ping".to_bytes())?
+	expect_equal((within(server.input, 2.seconds())?).get(), "ping".to_bytes())?
+	server.output.write("pong".to_bytes())?
+	expect_equal((within(client.input, 2.seconds())?).get(), "pong".to_bytes())?
+
+	sealed := restrict([], ["127.0.0.0/8"], allow_listen: true)?
+	expect_equal(
+		expect_error(sealed.connect_unix(path))?,
+		Error("network: permission denied", kind: "EACCES"),
+	)?
+	expect_equal(
+		expect_error(sealed.listen_unix(path))?,
+		Error("network: permission denied", kind: "EACCES"),
+	)?
+
 test "UDP loopback preserves datagram data and sender":
 	var receiver = bind_datagram("127.0.0.1:0")?
 	var sender = bind_datagram("127.0.0.1:0")?
@@ -162,6 +186,21 @@ test "a restricted network binds and sends datagrams only where it allows":
 
 	packet := (within(open.input, 2.seconds())?).get()
 	expect_equal(packet.data, "x".to_bytes())?
+
+test "closing a network closes its datagram sockets and refuses new ones":
+	var net = restrict([], ["127.0.0.0/8"], allow_listen: true)?
+	var socket = net.bind_datagram("127.0.0.1:0")?
+	var peer = bind_datagram("127.0.0.1:0")?
+	net.close()
+
+	closed := Error("network: resource is closed", kind: "EBADF")
+	expect_equal(expect_error(net.bind_datagram("127.0.0.1:0"))?, closed)?
+
+	e := (
+		socket.output.write(Datagram("x".to_bytes(), peer.address.clone()))
+		| expect_error?
+	)
+	expect_equal(e.kind.get_or(""), "EBADF")?
 
 test "typed addresses preserve normalization and reject zones":
 	ip := parse_ip("::ffff:192.0.2.1")?

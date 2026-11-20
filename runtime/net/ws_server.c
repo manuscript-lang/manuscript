@@ -15,7 +15,12 @@
 
 static MsBytes bytes_of_str(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
-static char lower(char c) { return c >= 'A' && c <= 'Z' ? (char)(c + ('a' - 'A')) : c; }
+static char lower(char c) {
+    if (c < 'A' || c > 'Z') {
+        return c;
+    }
+    return (char)(c + ('a' - 'A'));
+}
 
 /* Whether `name` is `want`, ignoring ASCII case. */
 static bool name_is(MsBytes name, const char *want) {
@@ -151,6 +156,7 @@ static uint8_t refuse(int64_t answer, const char *text, int64_t *status, MsStr *
 
 uint8_t msstd_ws_handshake(const MsStr *method, const MsStr *host, uint8_t tls, const void *request, const MsVec *origins,
                            const MsVec *subprotocols, const void *response, int64_t *status, MsStr *subprotocol, MsStr *err) {
+    ms_net_clear_text(err);
     const MsStr *protocols = subprotocols->ptr;
     for (size_t i = 0; i < subprotocols->len; i++) {
         if (!ms_h1_is_token(bytes_of_str(&protocols[i]))) {
@@ -204,6 +210,7 @@ uint8_t msstd_ws_handshake(const MsStr *method, const MsStr *host, uint8_t tls, 
 }
 
 uint8_t msstd_ws_serve(const void *conn, const MsStr *subprotocol, uint8_t has_max, int64_t max, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     if (has_max != 0 && max <= 0) {
         return STATUS_INVALID_INPUT;
     }

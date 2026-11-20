@@ -13,6 +13,7 @@
 #include "ms_rt/sys_fs.h"
 #include "ms_sched.h"
 #include "status.h"
+#include "tls_conn.h"
 
 enum { READ_DEFAULT = 64 * 1024, READ_LIMIT = 1024 * 1024, TABLE_ROWS = 1 };
 
@@ -46,6 +47,7 @@ static void write_address(MsStr *out, const MsAddr *address) {
 /* ---- lookup ---- */
 
 uint8_t msstd_net_lookup(const MsStr *host, int64_t port, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err) {
+    ms_net_clear_text(err);
     char *name = copy_text(host);
     if (name == NULL || port < 0 || port > 65535) {
         free(name);
@@ -72,57 +74,9 @@ uint8_t msstd_net_lookup(const MsStr *host, int64_t port, uint8_t has_timeout, i
 
 /* ---- dial ---- */
 
-/* The comma-separated ALPN names of the options' list, or NULL when there are none (or one holds a comma). */
-static char *alpn_names(const MsVec *list) {
-    const MsStr *items = list->ptr;
-    size_t total = 1;
-    for (size_t i = 0; i < list->len; i++) {
-        total += msrt_str_len(&items[i]) + 1;
-    }
-    char *names = malloc(total);
-    size_t used = 0;
-    for (size_t i = 0; names != NULL && i < list->len; i++) {
-        const size_t length = msrt_str_len(&items[i]);
-        if (memchr(msrt_str_data(&items[i]), ',', length) != NULL) {
-            free(names);
-            return NULL;
-        }
-        memcpy(names + used, msrt_str_data(&items[i]), length);
-        used += length;
-        names[used++] = ',';
-    }
-    if (names != NULL) {
-        names[used > 0 ? used - 1 : 0] = 0;
-    }
-    return names;
-}
-
-/* A client context for the options, or NULL (the reason in *err). */
-static MsTlsCtx *client_context(const MsNetTlsOptions *options, MsStr *err) {
-    const MsBytes roots = bytes_of_str(&options->roots_pem);
-    const MsBytes certificate = bytes_of_str(&options->certificate_pem);
-    const MsBytes key = bytes_of_str(&options->private_key_pem);
-    MsTlsCtx *context = ms_tls_ctx_new(0, (const char *)certificate.ptr, certificate.len, (const char *)key.ptr, key.len,
-                                       roots.len == 0 ? NULL : (const char *)roots.ptr, roots.len);
-    if (context == NULL) {
-        ms_net_write_text(err, "invalid TLS options");
-        return NULL;
-    }
-    if (options->alpn.len > 0) {
-        char *names = alpn_names(&options->alpn);
-        const bool set = names != NULL && ms_tls_ctx_set_alpn(context, names) == 0;
-        free(names);
-        if (!set) {
-            ms_tls_ctx_free(context);
-            ms_net_write_text(err, "invalid ALPN protocol list");
-            return NULL;
-        }
-    }
-    return context;
-}
-
 uint8_t msstd_net_dial(const MsStr *address, const MsStr *server_name, uint8_t has_tls, const MsNetTlsOptions *tls,
                        uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     MsAddr target;
     if (!ms_net_addr_parse(bytes_of_str(address), &target)) {
         return STATUS_INVALID_INPUT;
@@ -135,10 +89,10 @@ uint8_t msstd_net_dial(const MsStr *address, const MsStr *server_name, uint8_t h
             free(name);
             return STATUS_INVALID_INPUT;
         }
-        context = client_context(tls, err);
-        if (context == NULL) {
+        const uint8_t built = ms_net_tls_context(0, tls, &context);
+        if (built != STATUS_OK) {
             free(name);
-            return STATUS_FAILED;
+            return built;
         }
     }
     MsConnTable *table = ms_conn_table_new(TABLE_ROWS);
@@ -159,6 +113,7 @@ uint8_t msstd_net_dial(const MsStr *address, const MsStr *server_name, uint8_t h
 /* ---- connection handles ---- */
 
 uint8_t msstd_conn_read(const void *handle, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err) {
+    ms_net_clear_text(err);
     const MsNetConn *conn = ms_netconn_of(handle);
     if (has_max != 0 && max < 0) {
         return STATUS_INVALID_INPUT;
@@ -188,12 +143,14 @@ uint8_t msstd_conn_read(const void *handle, uint8_t has_max, int64_t max, uint8_
 }
 
 uint8_t msstd_conn_write_bytes(const void *handle, const MsVec *data, uint8_t has_timeout, int64_t timeout, MsStr *err) {
+    ms_net_clear_text(err);
     const MsNetConn *conn = ms_netconn_of(handle);
     const MsNetStatus status = ms_conn_write(ms_netconn_table(conn), ms_netconn_id(conn), data->ptr, data->len, ms_net_deadline_of(has_timeout, timeout));
     return ms_net_finish(status, ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
 }
 
 uint8_t msstd_conn_shutdown_write(const void *handle, MsStr *err) {
+    ms_net_clear_text(err);
     const MsNetConn *conn = ms_netconn_of(handle);
     const MsNetStatus status = ms_conn_shutdown_write(ms_netconn_table(conn), ms_netconn_id(conn), -1);
     return ms_net_finish(status, ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
@@ -239,6 +196,6 @@ uint8_t msstd_conn_tls_info(const void *handle, MsNetTlsInfo *out) {
         free(der);
         msrt_list_push(&out->peer_certificates, &msrt_desc_bytes, &certificate);
     }
-    out->verified = 1; /* a client handshake that completed has verified the peer */
+    out->verified = ms_tls_verified(session);
     return 1;
 }

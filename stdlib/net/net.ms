@@ -27,13 +27,14 @@ import (
 	host_allowed,
 	listen_allowed,
 	narrow,
+	unix_allowed,
 	unrestricted from "@std/net/policy.ms",
 	TlsInfo, TlsOptions from "@std/net/tls.ms",
 	WebSocket,
 	WebSocketOptions,
 	WebSocketWire,
 	web_socket_from from "@std/net/websocket.ms",
-	Duration, Timestamp, nanoseconds, sleep from "@std/time.ms",
+	Duration, Instant, Timestamp, monotonic, nanoseconds, sleep from "@std/time.ms",
 
 	msrt_runtime_limit,
 	msrt_runtime_set_threads,
@@ -45,45 +46,48 @@ import (
 	msstd_http_serving_worker,
 	msstd_http_worker_adopt,
 	msstd_http_worker_close from "@std/internal/http.ms",
+	msstd_conn_accept_tls,
+	msstd_conn_alias,
+	msstd_conn_close,
+	msstd_conn_close_if_last,
+	msstd_conn_local_address,
+	msstd_conn_peer_address,
+	msstd_conn_read,
+	msstd_conn_share,
+	msstd_conn_shutdown_write,
+	msstd_conn_start_tls,
+	msstd_conn_tls_info,
+	msstd_conn_write_bytes,
 	msstd_dgram_address,
 	msstd_dgram_bind,
 	msstd_dgram_close_if_last,
 	msstd_dgram_receive,
 	msstd_dgram_send,
 	msstd_dgram_share,
-	msstd_net_connection_accept_tls,
-	msstd_net_connection_adopt,
-	msstd_net_connection_alias,
-	msstd_net_connection_close,
-	msstd_net_connection_close_if_last,
-	msstd_net_connection_local_address,
-	msstd_net_connection_peer_address,
-	msstd_net_connection_read,
-	msstd_net_connection_share,
-	msstd_net_connection_shutdown_write,
-	msstd_net_connection_start_tls,
-	msstd_net_connection_tls_info,
-	msstd_net_connection_write_bytes,
-	msstd_net_listener_accept,
-	msstd_net_listener_accept_raw,
-	msstd_net_listener_address,
-	msstd_net_listener_close,
-	msstd_net_listener_share,
+	msstd_listener_accept,
+	msstd_listener_address,
+	msstd_listener_close,
+	msstd_listener_share,
+	msstd_net_dial,
+	msstd_net_dial_unix,
+	msstd_net_listen,
+	msstd_net_listen_unix,
 	msstd_net_lookup,
 	msstd_net_network,
 	msstd_net_network_close,
-	msstd_net_network_connect,
-	msstd_net_network_connect_tls_config,
-	msstd_net_network_connect_unix,
 	msstd_net_network_http_client,
-	msstd_net_network_listen,
-	msstd_net_network_listen_tls,
-	msstd_net_network_listen_unix,
 	msstd_net_network_request_bytes,
 	msstd_net_network_restrict,
 	msstd_net_network_web_socket,
 	msstd_net_network_with_resolver,
-	msstd_net_pending_release from "@std/internal/net.ms",
+	msstd_scope_child,
+	msstd_scope_close,
+	msstd_scope_new,
+	msstd_scope_open,
+	msstd_scope_share,
+	msstd_scope_track_conn,
+	msstd_scope_track_dgram,
+	msstd_scope_track_listener from "@std/internal/net.ms",
 )
 
 // The runtime handle behind a `Connection`.
@@ -94,17 +98,17 @@ type ConnectionSource:
 
 // Waits for the next chunk; none at the end of the stream.
 fn var ConnectionSource.next() Bytes?!:
-	return msstd_net_connection_read(self.native, none, none)
+	return msstd_conn_read(self.native, none, none)
 
 // Closes the socket when the output end is already closed.
 fn move ConnectionSource.close() Void!:
-	msstd_net_connection_close_if_last(self.native)
+	msstd_conn_close_if_last(self.native)
 
 type ConnectionSink:
 	native: NativeConnection
 
 fn var ConnectionSink.write(move value: Bytes) Void!:
-	return msstd_net_connection_write_bytes(self.native, value, none)
+	return msstd_conn_write_bytes(self.native, value, none)
 
 fn var ConnectionSink.flush() Void!:
 	return ok()
@@ -112,8 +116,8 @@ fn var ConnectionSink.flush() Void!:
 // Half-closes the connection so the peer sees the end of the stream; the socket
 // closes once the input is closed too.
 fn move ConnectionSink.close() Void!:
-	void msstd_net_connection_shutdown_write(self.native)
-	msstd_net_connection_close_if_last(self.native)
+	void msstd_conn_shutdown_write(self.native)
+	msstd_conn_close_if_last(self.native)
 
 // What is known about a connection, available after its streams are moved elsewhere.
 export type ConnectionInfo:
@@ -154,16 +158,13 @@ fn move Connection.close() Void!:
 
 // Wraps a native socket into a `Connection`.
 fn connection(native: NativeConnection) Connection:
-	local := msstd_net_connection_local_address(native)
-	peer := msstd_net_connection_peer_address(native)
+	local := msstd_conn_local_address(native)
+	peer := msstd_conn_peer_address(native)
 	var tls: TlsInfo? = none
+	if found := msstd_conn_tls_info(native): tls = found
 
-	match msstd_net_connection_tls_info(native):
-		ok(found): tls = found
-		error(_): tls = none
-
-	other := msstd_net_connection_share(native)
-	upgradable := msstd_net_connection_alias(native)
+	other := msstd_conn_share(native)
+	upgradable := msstd_conn_alias(native)
 	return Connection(
 		input: ReadStream[Bytes](ConnectionSource(native)),
 		output: WriteStream[Bytes](ConnectionSink(other)),
@@ -192,7 +193,7 @@ export fn start_tls(
 	if options.server_name.is_empty():
 		return error(Error("network: invalid input", kind: "EINVAL"))
 
-	upgraded := msstd_net_connection_start_tls(plain.native, options, timeout)?
+	upgraded := msstd_conn_start_tls(plain.native, options, timeout)?
 	return ok(connection(upgraded))
 
 // Upgrades a plain TCP connection to TLS in place on the server side: it accepts the
@@ -204,7 +205,7 @@ export fn accept_tls(
 	options: TlsOptions = TlsOptions(),
 	timeout: Duration? = none,
 ) Connection!:
-	upgraded := msstd_net_connection_accept_tls(plain.native, options, timeout)?
+	upgraded := msstd_conn_accept_tls(plain.native, options, timeout)?
 	return ok(connection(upgraded))
 
 // One datagram. When received, `address` is where it came from; when written, where it
@@ -279,20 +280,29 @@ export extern type NativeListener
 export opaque type Listener:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeListener
+	// The scope of the network that opened this listener, which tracks its connections.
+	scope: NativeScope
+	// The TLS settings every accepted connection is upgraded with, none for plain TCP.
+	tls: TlsOptions?
+	// The time budget of each TLS handshake.
+	handshake: Duration?
 
 // Stops accepting, interrupts a pending `accept`, and waits for it to stop.
 // Safe to call repeatedly; connections already accepted stay open.
 fn move Listener.close() Void!:
-	msstd_net_listener_close(self.native)
+	msstd_listener_close(self.native)
 
 // Starts waiting for the next incoming connection and returns its promise. A
 // timeout gives ETIMEDOUT and a closed listener gives EBADF from `wait`. On a TLS
 // listener the handshake completes before the connection is returned; a failed
 // handshake drops that connection and gives EIO.
 fn Listener.accept(timeout: Duration? = none) Promise[Connection]:
-	native := msstd_net_listener_share(self.native)
+	native := msstd_listener_share(self.native)
+	tls := self.tls.clone()
+	scope := msstd_scope_share(self.scope)
+	handshake := self.handshake.clone()
 	return promise(
-		fn: accepted(native, timeout),
+		fn: accepted(native, scope, tls, handshake, timeout),
 		options: PromiseOptions(placement: Placement.Here)
 	)
 
@@ -301,7 +311,7 @@ fn Listener.accept(timeout: Duration? = none) Promise[Connection]:
 // `wait`, as for `accept`. A TLS listener gives EINVAL: its handshake belongs to the
 // accepting thread.
 fn Listener.accept_pending(timeout: Duration? = none) Promise[PendingConnection]:
-	native := msstd_net_listener_share(self.native)
+	native := msstd_listener_share(self.native)
 	return promise(
 		fn: accepted_pending(native, timeout),
 		options: PromiseOptions(placement: Placement.Here)
@@ -310,14 +320,36 @@ fn Listener.accept_pending(timeout: Duration? = none) Promise[PendingConnection]
 // Returns the bound local address as `host:port` text, which reveals the port
 // chosen when listening on port 0.
 fn Listener.address() String:
-	return msstd_net_listener_address(self.native)
+	return msstd_listener_address(self.native)
 
 // The work of `accept`, on its own handle on the listener.
-fn accepted(native: NativeListener, timeout: Duration?) Connection!:
-	return ok(connection(msstd_net_listener_accept(native, timeout)?))
+fn accepted(
+	native: NativeListener,
+	scope: NativeScope,
+	tls: TlsOptions?,
+	handshake: Duration?,
+	timeout: Duration?,
+) Connection!:
+	raw := msstd_listener_accept(native, timeout)?
+
+	if options := tls:
+		secured := msstd_conn_accept_tls(raw, options, handshake)?
+		return tracked(scope, secured)
+
+	return tracked(scope, raw)
+
+// Registers an accepted connection with its network's scope.
+fn tracked(scope: NativeScope, native: NativeConnection) Connection!:
+	if not msstd_scope_track_conn(scope, native): return error(closed_error())
+	return ok(connection(native))
 
 fn accepted_pending(native: NativeListener, timeout: Duration?) PendingConnection!:
-	return ok(PendingConnection(raw: msstd_net_listener_accept_raw(native, timeout)?))
+	return ok(
+		PendingConnection(
+			native: msstd_listener_accept(native, timeout)?,
+			taken: false,
+		)
+	)
 
 // An accepted connection that no thread has taken yet. A connection belongs to the
 // thread that uses it, so accepting and using it are two steps: the listener's thread
@@ -325,23 +357,24 @@ fn accepted_pending(native: NativeListener, timeout: Duration?) PendingConnectio
 // a promise placed with `Placement.Spread` to serve connections on every core, as
 // `serve` does for HTTP. Closing it without adopting closes the socket.
 export opaque type PendingConnection:
-	// The socket handle, or -1 once adopted or closed.
-	raw: Int
+	// The accepted socket.
+	native: NativeConnection
+	// Whether it was adopted or closed.
+	taken: Bool
 
 // Closes the socket unless it was adopted. Safe to call repeatedly.
-fn move PendingConnection.close() Void!:
-	if self.raw >= 0:
-		msstd_net_pending_release(self.raw)
-		self.raw = -1
+fn var PendingConnection.close() Void!:
+	if not self.taken:
+		self.taken = true
+		msstd_conn_close(self.native)
 
 // Turns the pending connection into a `Connection` owned by the calling thread.
 // Adopting twice returns EBADF.
 fn var PendingConnection.adopt() Connection!:
-	if self.raw < 0: return error(Error("network: closed", kind: "EBADF"))
+	if self.taken: return error(closed_error())
 
-	raw := self.raw
-	self.raw = -1
-	return ok(connection(msstd_net_connection_adopt(raw)?))
+	self.taken = true
+	return ok(connection(msstd_conn_share(self.native)))
 
 // A host and port split from `host:port` text.
 type HostPort:
@@ -371,6 +404,9 @@ fn literal_address(host: String, port: Int) String:
 fn invalid_address() Error:
 	return Error("network: invalid input", kind: "EINVAL")
 
+fn closed_error() Error:
+	return Error("network: resource is closed", kind: "EBADF")
+
 fn denied() Error:
 	return Error("network: permission denied", kind: "EACCES")
 
@@ -393,25 +429,12 @@ fn permitted_address(policy: Policy, address: String, timeout: Duration?) String
 
 	return error(denied())
 
-// Binds a datagram socket: listening must be allowed, an empty host means every
-// interface (IPv6 where the host has it, else IPv4), and a name is resolved to its
-// first allowed address.
-fn bind_socket(policy: Policy, address: String) NativeDatagramSocket!:
-	found := split_host_port(address)
-	if not found.is_some(): return error(invalid_address())
-
-	target := found.get()
-	if not listen_allowed(policy, target.host): return error(denied())
-	if not target.host.is_empty():
-		return msstd_dgram_bind(permitted_address(policy, address, none)?)
-
-	wide := msstd_dgram_bind(literal_address("::", target.port))
-	if wide.is_ok(): return wide
-
-	return msstd_dgram_bind(literal_address("0.0.0.0", target.port))
-
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork
+
+// What a `Network` closes: the sockets opened through it and the networks derived from
+// it.
+export extern type NativeScope
 
 // A set of network permissions and a resolver for the connections, listeners, sockets,
 // and HTTP clients opened through it. The host network that the module-level functions
@@ -424,19 +447,37 @@ export opaque type Network:
 	policy: Policy
 	// The DNS server (`ip:port`) that names resolve through; empty for the system resolver.
 	resolver: String
+	// The sockets and derived networks that `close` closes.
+	scope: NativeScope
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A
 // restricted network without listening permission, or an address outside its CIDRs,
 // returns EACCES.
 fn Network.bind_datagram(address: String) DatagramSocket!:
-	native := bind_socket(self.policy, address)?
-	return ok(datagram_socket(native, self.policy.clone()))
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
+	var failure = denied()
+
+	for target in self.bind_targets(address)?:
+		bound := msstd_dgram_bind(target)
+
+		if bound.is_error():
+			failure = bound.err()
+			continue
+
+		native := bound.get()
+		if not msstd_scope_track_dgram(self.scope, native): return error(closed_error())
+
+		return ok(datagram_socket(native, self.policy.clone()))
+
+	return error(failure)
 
 // Cancels in-flight calls and closes every connection, listener, socket, HTTP
 // client, and server this network opened, including those of derived networks. Safe
 // to call repeatedly. A request handler of a server on this network cannot close it
 // and faults.
 fn Network.close() Void:
+	msstd_scope_close(self.scope)
 	msstd_net_network_close(self.native)
 
 // Resolves `address` (`host:port`) and opens a TCP connection to the first
@@ -453,27 +494,66 @@ fn Network.connect(
 	tls: TlsOptions? = none,
 	timeout: Duration? = none,
 ) Connection!:
-	if options := tls:
-		if options.server_name.is_empty():
-			return error(Error("network: invalid input", kind: "EINVAL"))
-		return ok(
-			connection(
-				msstd_net_network_connect_tls_config(
-					self.native,
-					address,
-					options,
-					timeout,
-				)?
-			)
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
+	found := split_host_port(address)
+	if not found.is_some(): return error(invalid_address())
+
+	var options = TlsOptions()
+
+	if given := tls:
+		if given.server_name.is_empty(): return error(invalid_address())
+
+		options = given.clone()
+
+	target := found.get()
+	if not host_allowed(self.policy, target.host): return error(denied())
+
+	started := monotonic()
+	var refused = denied()
+
+	for ip in self.addresses_of(target.host, timeout.clone())?:
+		if not address_allowed(self.policy, ip): continue
+
+		left := remaining(started, timeout.clone())?
+		dialed := msstd_net_dial(
+			literal_address(ip, target.port),
+			"",
+			tls.is_some(),
+			options,
+			left,
 		)
 
-	return ok(connection(msstd_net_network_connect(self.native, address, timeout)?))
+		if dialed.is_error():
+			refused = dialed.err()
+			continue
 
+		native := dialed.get()
+		if not msstd_scope_track_conn(self.scope, native): return error(closed_error())
+
+		return ok(connection(native))
+
+	return error(refused)
+
+// The addresses a host name stands for, as IP text: a literal is itself, a name goes
+// through this network's resolver.
+fn Network.addresses_of(host: String, timeout: Duration?) List[String]!:
+	if parse_ip(host).is_ok(): return ok([host.clone()])
+	return self.lookup(host, DnsOptions(timeout: timeout))
+
+// The time left of `timeout` since `started`, or ETIMEDOUT when none is.
 // Connects to the Unix domain socket at `path`. Any restricted network returns
 // EACCES because Unix sockets bypass host and CIDR checks, and an empty path
-// returns EINVAL. `timeout` bounds the attempt.
+// returns EINVAL.
 fn Network.connect_unix(path: String, timeout: Duration? = none) Connection!:
-	return ok(connection(msstd_net_network_connect_unix(self.native, path, timeout)?))
+	if not msstd_scope_open(self.scope): return error(closed_error())
+	if not unix_allowed(self.policy): return error(denied())
+	if path.is_empty(): return error(invalid_address())
+
+	native := msstd_net_dial_unix(path)?
+	if not msstd_scope_track_conn(self.scope, native): return error(closed_error())
+
+	return ok(connection(native))
 
 // Creates a reusable HTTP client with connection pooling that dials through this
 // network, so its restrictions and resolver apply to every request and redirect.
@@ -486,7 +566,40 @@ fn Network.http_client(options: HttpClientOptions = HttpClientOptions()) HttpCli
 // CIDRs, otherwise EACCES is returned. An address that is not an IP literal with a
 // port returns EINVAL.
 fn Network.listen(address: String) Listener!:
-	return msstd_net_network_listen(self.native, address)
+	return self.listening(self.listen_native(address)?, none, none)
+
+// Binds a TCP listener on the first address the policy allows.
+fn Network.listen_native(address: String) NativeListener!:
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
+	var failure = denied()
+
+	for target in self.bind_targets(address)?:
+		opened := msstd_net_listen(target)
+
+		if opened.is_error():
+			failure = opened.err()
+			continue
+
+		return ok(opened.get())
+
+	return error(failure)
+
+// Wraps a bound listener and registers it with this network's scope.
+fn Network.listening(
+	native: NativeListener,
+	tls: TlsOptions?,
+	handshake: Duration?,
+) Listener!:
+	if not msstd_scope_track_listener(self.scope, native): return error(closed_error())
+	return ok(
+		Listener(
+			native: native,
+			tls: tls,
+			handshake: handshake,
+			scope: msstd_scope_share(self.scope),
+		)
+	)
 
 // Listens for TCP connections on `address` and completes a TLS handshake for each
 // accepted connection, within `timeout` when supplied.
@@ -496,12 +609,46 @@ fn Network.listen_tls(
 	options: TlsOptions,
 	timeout: Duration? = none,
 ) Listener!:
-	return msstd_net_network_listen_tls(self.native, address, options, timeout)
+	if options.certificate_pem.is_empty() or options.private_key_pem.is_empty():
+		return error(invalid_address())
+
+	native := self.listen_native(address)?
+	return self.listening(native, options.clone(), timeout)
 
 // Listens on a Unix domain socket at `path`.
 // Any restricted network returns EACCES, and an empty path returns EINVAL.
 fn Network.listen_unix(path: String) Listener!:
-	return msstd_net_network_listen_unix(self.native, path)
+	if not msstd_scope_open(self.scope): return error(closed_error())
+	if not unix_allowed(self.policy): return error(denied())
+	if path.is_empty(): return error(invalid_address())
+
+	return self.listening(msstd_net_listen_unix(path)?, none, none)
+
+// The literal addresses a socket may bind for `address`: listening must be allowed, an
+// empty host means every interface (IPv6 where the host has it, else IPv4), and a name
+// stands for the allowed addresses it resolves to.
+fn Network.bind_targets(address: String) List[String]!:
+	found := split_host_port(address)
+	if not found.is_some(): return error(invalid_address())
+
+	target := found.get()
+	if not listen_allowed(self.policy, target.host): return error(denied())
+	if target.host.is_empty():
+		return ok(
+			[
+				literal_address("::", target.port),
+				literal_address("0.0.0.0", target.port),
+			]
+		)
+
+	var targets: List[String] = []
+	for ip in self.addresses_of(target.host, none)?:
+		if address_allowed(self.policy, ip): targets.append(
+			literal_address(ip, target.port)
+		)
+	if targets.is_empty(): return error(denied())
+
+	return ok(targets)
 
 /*
 Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
@@ -560,7 +707,14 @@ fn Network.restrict(
 ) Network!:
 	policy := narrow(self.policy, hosts, cidrs, allow_listen)?
 	child := msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)?
-	return ok(Network(native: child, policy: policy, resolver: self.resolver.clone()))
+	return ok(
+		Network(
+			native: child,
+			policy: policy,
+			resolver: self.resolver.clone(),
+			scope: msstd_scope_child(self.scope),
+		)
+	)
 
 // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and
 // subprotocols in `options`. Handshake headers such as `Upgrade`, `Connection`,
@@ -595,7 +749,14 @@ fn Network.web_socket(
 // address that is not an IP literal with a port returns EINVAL.
 fn Network.with_resolver(address: String) Network!:
 	child := msstd_net_network_with_resolver(self.native, address)?
-	return ok(Network(native: child, policy: self.policy.clone(), resolver: address))
+	return ok(
+		Network(
+			native: child,
+			policy: self.policy.clone(),
+			resolver: address,
+			scope: msstd_scope_child(self.scope),
+		)
+	)
 
 /*
 Per-call settings of a buffered `request`: the headers to send, a bound on the response body, and a time budget.
@@ -618,9 +779,24 @@ export type DnsOptions:
 	// Time budget for the query; ETIMEDOUT when it elapses. none waits indefinitely.
 	timeout: Duration? = none
 
+fn remaining(started: Instant, timeout: Duration?) Duration?!:
+	if limit := timeout:
+		left := limit.subtract(monotonic().difference(started))
+		if left.compare(nanoseconds(0)) <= 0:
+			return error(Error("network: timed out", kind: "ETIMEDOUT"))
+
+		return ok(left)
+
+	return ok(none)
+
 // The network of the current host.
 fn host_network() Network:
-	return Network(native: msstd_net_network(), policy: unrestricted(), resolver: "")
+	return Network(
+		native: msstd_net_network(),
+		policy: unrestricted(),
+		resolver: "",
+		scope: msstd_scope_new(),
+	)
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A restricted
 // network without listening permission, or an address outside its CIDRs, returns
@@ -646,8 +822,9 @@ export fn connect(
 ) Promise[Connection]:
 	owned_address := address.clone()
 	owned_tls := tls.clone()
+	owned_timeout := timeout.clone()
 	return promise(
-		fn: host_network().connect(owned_address, owned_tls, timeout),
+		fn: host_network().connect(owned_address, owned_tls, owned_timeout),
 		options: PromiseOptions(placement: Placement.Here)
 	)
 

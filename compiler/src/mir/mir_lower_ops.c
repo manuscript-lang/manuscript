@@ -8,9 +8,9 @@
  * pass that reads the ownership ops. */
 #include <string.h>
 
-#include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
 #include "ms/mir_layout.h"
+#include "ms/mir_analysis.h"
 #include "ms/mir_pass.h"
 
 typedef struct LoCx {
@@ -23,6 +23,9 @@ typedef struct LoCx {
     uint32_t *thunks; /* by function: the cleanup thunk that calls it, MIR_NONE until made */
     uint32_t nthunks;
     uint32_t string_length; /* msrt_string_scalar_length */
+    MirTy *release_tys; /* the list types `list.release` is applied to, and the function made for each */
+    uint32_t *release_fns;
+    uint32_t nreleases;
 } LoCx;
 
 typedef enum LoKind { LO_PLAIN, LO_STR, LO_OBJ, LO_GLUE } LoKind;
@@ -102,6 +105,17 @@ static void lo_to_call(MirInst *inst, uint32_t func) {
     inst->imm = (MirImm){.tag = MI_FUNC, .a = func};
 }
 
+/* `list.release l, from` calls the function made for the type of `l`. */
+static void lo_list_release(const LoCx *c, const MirFunc *f, MirInst *inst) {
+    const MirTy ty = f->values[inst->args[0]];
+    for (uint32_t i = 0; i < c->nreleases; i++) {
+        if (c->release_tys[i] == ty) {
+            lo_to_call(inst, c->release_fns[i]);
+            return;
+        }
+    }
+}
+
 /* Rewrites `inst` in place, or returns true when it is to be removed. `f` is the function. */
 static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
     switch ((MirOp)inst->op) {
@@ -166,6 +180,9 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
         }
         return false;
     }
+    case MOP_ListRelease:
+        lo_list_release(c, f, inst);
+        return false;
     case MOP_StrLen:
         if (c->string_length == MIR_NONE) {
             c->string_length = lo_extern(c, "msrt_string_scalar_length", MIR_STR, MIR_INT);
@@ -229,6 +246,42 @@ static void lo_make_thunks(LoCx *c) {
                 if (inst->op == MOP_CleanupPush) {
                     (void)lo_cleanup_thunk(c, inst->imm.a);
                     f = &c->m->funcs[i];
+                }
+            }
+        }
+    }
+}
+
+/* The function behind `list.release` of every list type that has one, made before any function is rewritten for the
+ * same reason as the thunks. */
+static void lo_make_releases(LoCx *c) {
+    const uint32_t count = c->nthunks;
+    uint32_t total = 0;
+    for (uint32_t i = 0; i < count; i++) {
+        for (uint32_t b = 0; b < c->m->funcs[i].nblocks; b++) {
+            for (uint32_t k = 0; k < c->m->funcs[i].blocks[b].ninsts; k++) {
+                total += c->m->funcs[i].blocks[b].insts[k].op == MOP_ListRelease;
+            }
+        }
+    }
+    c->release_tys = MS_NEW_N(&c->m->arena, MirTy, total ? total : 1);
+    c->release_fns = MS_NEW_N(&c->m->arena, uint32_t, total ? total : 1);
+    for (uint32_t i = 0; i < count; i++) {
+        for (uint32_t b = 0; b < c->m->funcs[i].nblocks; b++) {
+            for (uint32_t k = 0; k < c->m->funcs[i].blocks[b].ninsts; k++) {
+                const MirInst *inst = &c->m->funcs[i].blocks[b].insts[k];
+                if (inst->op != MOP_ListRelease) {
+                    continue;
+                }
+                const MirTy ty = c->m->funcs[i].values[inst->args[0]];
+                bool known = false;
+                for (uint32_t r = 0; r < c->nreleases && !known; r++) {
+                    known = c->release_tys[r] == ty;
+                }
+                if (!known) {
+                    const uint32_t fn = mir_glue_list_release(c->m, ty);
+                    c->release_tys[c->nreleases] = ty;
+                    c->release_fns[c->nreleases++] = fn;
                 }
             }
         }
@@ -397,6 +450,64 @@ static void lo_str_eq_lits(LoCx *c, MirFunc *f) {
     }
 }
 
+/* A clone of bytes, or of a list whose elements own nothing, is one block copy by the runtime.
+ * A list's copy needs the element descriptor, which this pass makes a value of its own. */
+static bool lo_is_block_clone(LoCx *c, const MirFunc *f, const MirInst *inst) {
+    if (inst->op != MOP_Clone || inst->nargs == 0) {
+        return false;
+    }
+    const MirTyData *d = mir_ty_data(c->m, f->values[inst->args[0]]);
+    return d->kind == MK_BYTES || (d->kind == MK_LIST && !mir_needs_drop(c->m, d->elem));
+}
+
+static uint32_t lo_block_copy_extern(LoCx *c, MirTy list, bool bytes) {
+    MirExtern def = {.name = mir_name(c->m, bytes ? "msrt_bytes_copy" : "msrt_list_copy", bytes ? 15 : 14),
+                     .nparams = bytes ? 1 : 2, .ret = list, .fresh = true, .leaf = true, .role = MR_NONE};
+    def.params = MS_NEW_N(&c->m->arena, MirParam, def.nparams);
+    def.params[0] = (MirParam){list, MM_BORROW};
+    if (!bytes) {
+        def.params[1] = (MirParam){MIR_PTR, MM_BORROW};
+    }
+    return mir_extern_intern(c->m, &def);
+}
+
+static void lo_block_clones(LoCx *c, MirFunc *f) {
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        uint32_t extra = 0;
+        for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+            extra += lo_is_block_clone(c, f, &f->blocks[b].insts[k]) ? 1 : 0;
+        }
+        if (extra == 0) {
+            continue;
+        }
+        MirInst *out = MS_NEW_N(&c->m->arena, MirInst, f->blocks[b].ninsts + extra);
+        uint32_t n = 0;
+        for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+            MirInst inst = f->blocks[b].insts[k];
+            if (!lo_is_block_clone(c, f, &inst)) {
+                out[n++] = inst;
+                continue;
+            }
+            const MirTy list = f->values[inst.args[0]];
+            const MirTyData *d = mir_ty_data(c->m, list);
+            MirValue args[2] = {inst.args[0], MIR_NONE};
+            uint32_t nargs = 1;
+            if (d->kind == MK_LIST) {
+                args[1] = mir_new_value(c->m, f, MIR_PTR);
+                out[n++] = mir_inst(MOP_TypeDesc, (MirImm){.tag = MI_TY, .a = d->elem}, args[1], inst.loc, NULL, 0);
+                nargs = 2;
+            }
+            inst.op = MOP_CallRt;
+            inst.imm = mir_imm_ext(lo_block_copy_extern(c, list, d->kind == MK_BYTES));
+            inst.args = mir_args_copy(c->m, args, nargs);
+            inst.nargs = nargs;
+            out[n++] = inst;
+        }
+        f->blocks[b].insts = out;
+        f->blocks[b].ninsts = f->blocks[b].cinsts = n;
+    }
+}
+
 /* `drop.if flag v` ends its block with a branch on `flag` to a block that drops `v` and on to a
  * block holding the rest, so the drop that remains is a plain `drop`. Blocks the split makes are
  * visited too, for a second `drop.if`. */
@@ -480,6 +591,7 @@ static void lo_expand_sets(LoCx *c, MirFunc *f) {
 static void lo_function(LoCx *c, MirFunc *f) {
     lo_list_drops(c, f);
     lo_str_eq_lits(c, f);
+    lo_block_clones(c, f);
     lo_expand_sets(c, f);
     lo_split_drop_ifs(c->m, f);
     lo_expand_cleanups(c, f);
@@ -506,9 +618,13 @@ void mir_lower_ops(MirModule *m, const MirGlue *glue) {
         c.thunks[i] = MIR_NONE;
     }
     lo_make_thunks(&c);
+    lo_make_releases(&c);
     mir_layouts_init(&c.layouts, m);
     for (uint32_t i = 0; i < c.nthunks; i++) {
         lo_function(&c, &m->funcs[i]);
+    }
+    for (uint32_t i = 0; i < c.nreleases; i++) {
+        lo_function(&c, &m->funcs[c.release_fns[i]]);
     }
     mir_layouts_free(&c.layouts);
 }
