@@ -33,6 +33,36 @@ static bool body_is_value_type(const MsBody *b, MsTy ty) {
     return ty != MS_TY_NONE && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ty == b->string_ty);
 }
 
+/* A `type` or `enum` this module declares without type parameters. */
+static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    const MsKind kind = ms_ty_kind(tys, ty);
+    const uint32_t def = tys->def[ty];
+    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE) || tys->nargs[ty] != 0 || def == 0) {
+        return false;
+    }
+    const MsSymId sym = def - 1;
+    return sym < b->c->syms.count && b->c->syms.module[sym] == b->module && b->c->syms.kind[sym] == MS_SYM_TYPE;
+}
+
+/* A type whose values the pass can pass around: primitives, and the module's own nominal types
+ * when nothing in the module could make them closeable (a value that closes gets a cleanup the
+ * pass does not record yet). */
+static bool body_is_admitted(const MsBody *b, MsTy ty) {
+    return body_is_value_type(b, ty) || (!b->has_close && body_is_own_nominal(b, ty));
+}
+
+static bool body_is_optional(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    return ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_OPTIONAL) && tys->nargs[ty] == 1 &&
+           body_is_admitted(b, ms_ty_args(tys, ty)[0]);
+}
+
+/* What a parameter or a local can hold. */
+static bool body_is_bindable(const MsBody *b, MsTy ty) {
+    return body_is_admitted(b, ty) || body_is_optional(b, ty);
+}
+
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
     return ty == b->int_ty || ty == b->float_ty;
 }
@@ -194,6 +224,10 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
  * expectation. A type that is not the expected one is a diagnostic. */
 MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     MsTy ty = MS_TY_NONE;
+    // A value checked against an Optional may be wrapped in `some`; that is not recorded yet.
+    if (expected != MS_TY_NONE && ms_ty_is(&b->c->tys, expected, MS_BI_OPTIONAL)) {
+        return ms_body_unsupported(b);
+    }
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: ty = body_number(b, e); break;
     case MS_E_BOOL: ty = b->bool_ty; break;
@@ -248,7 +282,7 @@ static void body_bind_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     const MsTy value = ms_body_expr(b, s->u.bind.value, expected);
-    if (value == MS_TY_NONE || !body_is_value_type(b, value)) {
+    if (value == MS_TY_NONE || !body_is_bindable(b, value)) {
         (void)ms_body_unsupported(b);
         return;
     }
@@ -295,8 +329,8 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
 
 /* Checks the statements of a nested scope in order; whether control falls out of the end. A
  * statement after one that never falls through is left to the Rust checker. */
-bool ms_body_block(MsBody *b, const MsStmts *body) {
-    const uint32_t scope_start = b->facts->bindings.count;
+/* Checks the statements in the current scope; whether control falls out of the end. */
+static bool body_run(MsBody *b, const MsStmts *body) {
     bool falls = true;
     for (uint32_t i = 0; i < body->len && b->supported; i++) {
         const MsStmt *s = body->ptr[i];
@@ -319,10 +353,33 @@ bool ms_body_block(MsBody *b, const MsStmts *body) {
         case MS_S_FOR: (void)ms_body_unsupported(b); break;
         }
     }
+    return falls;
+}
+
+static void body_close_scope(MsBody *b, uint32_t scope_start) {
     for (uint32_t i = scope_start; i < b->facts->bindings.count; i++) {
         b->closed[i] = true;
     }
+}
+
+bool ms_body_block(MsBody *b, const MsStmts *body) {
+    const uint32_t scope_start = b->facts->bindings.count;
+    const bool falls = body_run(b, body);
+    body_close_scope(b, scope_start);
     return falls;
+}
+
+MsTy ms_body_block_value(MsBody *b, const MsStmts *body, const MsExpr *value, MsTy expected) {
+    const uint32_t scope_start = b->facts->bindings.count;
+    const bool falls = body_run(b, body);
+    MsTy ty = MS_TY_NONE;
+    if (b->supported && falls) {
+        ty = ms_body_expr(b, value, expected);
+    } else {
+        (void)ms_body_unsupported(b);
+    }
+    body_close_scope(b, scope_start);
+    return ty;
 }
 
 static void body_statements(MsBody *b, const MsStmts *body) {
@@ -360,13 +417,13 @@ static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig
         return false;
     }
     const MsTy result = tys->result[sig];
-    if (!body_is_value_type(b, result) && result != b->void_ty) {
+    if (!body_is_admitted(b, result) && result != b->void_ty) {
         return false;
     }
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MsParam *p = fn->params.ptr[i];
-        if (p->def != NULL || p->is_mutable || p->moving || !body_is_value_type(b, params[i].ty)) {
+        if (p->def != NULL || p->is_mutable || p->moving || !body_is_bindable(b, params[i].ty)) {
             return false;
         }
     }
@@ -424,6 +481,29 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     bindings->count = 0;
 }
 
+/* Whether the module declares a method called `close`, inside an `impl` or as `fn Type.close`. */
+static bool body_module_has_close(const MsCheck *c, const MsModule *syntax) {
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        const MsDecl *d = syntax->decls[i];
+        if (d->kind == MS_D_FN) {
+            const MsStr name = ms_name(c->names, d->u.fn.name);
+            if (name.len >= 6 && memcmp(name.ptr + name.len - 6, ".close", 6) == 0) {
+                return true;
+            }
+        }
+        if (d->kind != MS_D_IMPL) {
+            continue;
+        }
+        for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
+            const MsStr name = ms_name(c->names, d->u.impl.methods.ptr[k]->func.name);
+            if (name.len == 5 && memcmp(name.ptr, "close", 5) == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void ms_module_check_bodies(MsCheck *c, MsModId module) {
     ms_module_resolve_types(c, module);
     MsModuleRow *row = &c->mods[module];
@@ -439,7 +519,8 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
               .float_ty = body_primitive(c, "Float"),
               .bool_ty = body_primitive(c, "Bool"),
               .string_ty = body_primitive(c, "String"),
-              .void_ty = body_primitive(c, "Void")};
+              .void_ty = body_primitive(c, "Void"),
+              .has_close = body_module_has_close(c, row->syntax)};
     body_allocate(&b, facts);
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {

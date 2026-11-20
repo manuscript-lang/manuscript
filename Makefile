@@ -240,6 +240,7 @@ c-compiler-test:
 	sh compiler/tests/prelude-fix-diff.sh
 	sh compiler/tests/import-hints-diff.sh
 	sh compiler/tests/qbe-run.sh
+	sh compiler/tests/llvm-run.sh
 
 # libms with the tool entry points (compiler/include/ms/tool.h): the archive a Manuscript tool links with `--link`.
 .PHONY: FORCE
