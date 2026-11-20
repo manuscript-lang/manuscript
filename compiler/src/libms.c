@@ -4,3 +4,5 @@
 #include "token.c"
 #include "lex.c"
 #include "dump_base.c"
+#include "parse.c"
+#include "dump.c"

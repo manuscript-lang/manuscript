@@ -1,0 +1,11 @@
+[Wiki](../index.md) › [Runtime](index.md)
+
+# Regex runs on PCRE2 under hard limits and a screened dialect
+
+Verified (2026-11-20, Linux x86-64, system PCRE2 10.42): `runtime/std/regex.c` wraps PCRE2 in UTF and Unicode-property mode; `regex_abi.c` is the `@std/regex` native layer and returns only integer offsets, so strings, maps and templates are built in `stdlib/regex.ms`. PCRE2 backtracks, so every match call runs with the match (10M steps), depth (250k) and heap (32 MiB) limits set on the pattern's context; a pattern's own `(*LIMIT_...)` can only lower them, and the screen refuses `(*` anyway. The JIT ignores depth and heap, so it runs on its default 32 KiB stack and, on `PCRE2_ERROR_JIT_STACKLIMIT`, one retry on a stack capped at 64 MiB (`(a|b)*` over 2 MB needs about that; 8 MiB failed at 400 KB). A limit is `STATUS_LIMIT_EXCEEDED`, the same error as an exhausted budget.
+
+Dialect decision: PCRE2 syntax minus what backtracks without bound or runs code. A scan of the pattern text (skipping escapes, classes, `\Q..\E`, comments) refuses lookahead, lookbehind, recursion, subroutine calls, conditionals, callouts, verbs and `\g`, `\k`, `(?P=n)`; after compiling, `PCRE2_INFO_BACKREFMAX` refuses `\1`. `$` is end-of-text only (`DOLLAR_ENDONLY`), the newline is `\n`, `\C` is refused, no UTF check runs at match time (a String is valid UTF-8). Differences from the old `regex` crate dialect that remain: a malformed repeat such as `a{` is literal text, `\p{Script=Greek}` is spelled `\p{Greek}`, `A` is `\x{41}`, `\<` and `\>` are literal, and error texts are PCRE2's.
+
+Open: `Regex.matches` returns Bool, so a match that reaches a limit reads as no match; making it fallible changes the stdlib signature.
+
+Apply when: changing `runtime/std/regex*.c`, the limits, or the accepted syntax. Evidence: `runtime/tests/std_regex.c`, `std_regex_abi.c` (`make c-test`). Verify: `make c-test`; conformance fixtures under `tests/conformance/fixtures/e2e/stdlib/regex*.ms` once the natives are wired.

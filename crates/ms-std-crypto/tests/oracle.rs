@@ -49,7 +49,7 @@ fn flag(b: bool) -> String {
 
 #[test]
 fn matches_oracle() {
-    let data = include_str!("oracle/crypto.tsv");
+    let data = include_str!("../../../runtime/tests/oracle/crypto.tsv");
     let mut n = 0;
     for line in data.lines().filter(|l| !l.starts_with('#')) {
         let f: Vec<&str> = line.split('\t').collect();
