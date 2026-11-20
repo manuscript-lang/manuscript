@@ -51,12 +51,19 @@ file(GLOB _std_support CONFIGURE_DEPENDS "${_tests}/std_support/*.c")
 file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
 
 # core_*: all of runtime/core and runtime/sys/posix, the allocator's live-block counts on.
+# task_abi.c is linked by core_task_abi alone: the other tests stub the task ABI and run without a scheduler.
+set(_task_abi "${_rt}/core/task_abi.c")
+list(REMOVE_ITEM _core_sources "${_task_abi}")
 ms_test_objects(ms_test_core ${_core_sources} ${_posix_sources} ${_support_sources})
 target_compile_definitions(ms_test_core PRIVATE MS_ALLOC_STATS)
 file(GLOB _core_tests CONFIGURE_DEPENDS "${_tests}/core_*.c")
 foreach(file ${_core_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
+  set(_extra "")
+  if(name STREQUAL "core_task_abi")
+    set(_extra "${_task_abi}")
+  endif()
+  ms_test(${name} SOURCES "${file}" ${_extra} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
 endforeach()
 
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which

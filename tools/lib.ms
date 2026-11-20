@@ -94,9 +94,9 @@ export fn rust_arch() String:
 		).split("-")[0].clone()
 	return "x86_64"
 
-// Builds the native runtime with allocation counters (`ms-rt` feature `stats`, the C allocator built with
-// MS_ALLOC_STATS) and points MS_RT_LIB at it. The caller's `ms` is the release build (`make build`).
-// Returns a nonzero status when a build fails.
+// Builds the native runtime with allocation counters (`ms-rt` feature `stats`, the C
+// allocator built with MS_ALLOC_STATS) and points MS_RT_LIB at it. The caller's `ms` is
+// the release build (`make build`). Returns a nonzero status when a build fails.
 export fn use_stats_runtime() Int:
 	code := run_program("cargo", ["xtask", "runtime", "--stats"])
 	if code != 0: return code
