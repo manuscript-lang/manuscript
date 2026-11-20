@@ -32,6 +32,9 @@ static int find(const char *p, const char *text, int64_t *span) {
     ms_re_free(re);
     return rc;
 }
+/* The size of the buffers `all` fills. */
+enum { MATCH_LIST_CAP = 256 };
+
 /* All matches of p in text, as "a-b," pairs. */
 static void all(const char *p, const char *text, char *out) {
     char msg[160];
@@ -41,7 +44,7 @@ static void all(const char *p, const char *text, char *out) {
     ms_re_iter_init(&it);
     out[0] = 0;
     while (ms_re_next(re, text, strlen(text), &it, slots) == MS_RE_MATCHED)
-        sprintf(out + strlen(out), "%lld-%lld,", (long long)slots[0], (long long)slots[1]);
+        snprintf(out + strlen(out), MATCH_LIST_CAP - strlen(out), "%lld-%lld,", (long long)slots[0], (long long)slots[1]);
     ms_re_iter_done(&it);
     ms_re_free(re);
 }
