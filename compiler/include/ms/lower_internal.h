@@ -125,6 +125,9 @@ bool lb_is_list(const Lb *lb, MirTy ty);
 LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_index(Lb *lb, const MsExpr *e);
 
+/* Strings built from pieces (lower_text.c, included after lower_body.c). */
+LbVal lt_text(Lb *lb, const MsExpr *e);
+
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);
