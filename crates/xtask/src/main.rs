@@ -783,7 +783,8 @@ fn add_c_runtime(
         }
         command.arg("-o").arg(&object).arg(source);
         // The musl archive is built on a glibc host: the sources use no libc header, so only the target differs.
-        if let Some(t) = triple.filter(|_| !host) {
+        // llvm-mingw's clang wrapper already targets mingw-w64; Rust's `gnullvm` is not a clang environment.
+        if let Some(t) = triple.filter(|t| !host && !t.contains("windows")) {
             command.arg(format!("--target={t}"));
         }
         let status = command
