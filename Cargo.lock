@@ -1052,7 +1052,6 @@ dependencies = [
  "ms-std-system",
  "ms-std-table",
  "ms-std-terminal",
- "ms-std-time",
 ]
 
 [[package]]
@@ -1232,15 +1231,6 @@ dependencies = [
  "ms-rt",
  "ms-rt-abi",
  "rustix",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "ms-std-time"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
  "windows-sys 0.61.2",
 ]
 

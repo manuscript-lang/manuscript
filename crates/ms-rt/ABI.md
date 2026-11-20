@@ -52,7 +52,7 @@ recorded here before it is committed.)_
   entry (bit 0 directory, bit 1 symlink). Streams are refcounted `Handle<Stream>` objects (`Obj` header, then the value); reads and writes
   poll in 50 ms slices so cancellation interrupts them. `STATUS_NONE` from `read`/`read_line` means end of stream. Generic `io.copy`,
   `read_all` and `read_line` over user-defined `ReadStream`s stay compiler-lowered.
-- **v2.3 (`ms-std-time`, `ms_rt::glue`).** `msstd_time_*` covers `@std/time`. `Duration` is an `i64` of nanoseconds by value.
+- **v2.3 (`runtime/std/time*.c`).** `msstd_time_*` covers `@std/time`. `Duration` is an `i64` of nanoseconds by value.
   `Timestamp` is `repr(C) { seconds: i64, nanos: i64 }` and `Instant` is `repr(C) { domain: u64, tick: i64 }`; both are passed by pointer
   and returned through a trailing `out`. `msstd_time_clock_now` uses domain 1 (the process monotonic clock); `Date` is returned as
   `CalendarOut` (ten `i64` fields in declaration order, then an owned zone-name string). Fallible calls return `STATUS_*` codes (`TimeError`
