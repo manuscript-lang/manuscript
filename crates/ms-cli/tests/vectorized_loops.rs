@@ -51,11 +51,13 @@ fn element_wise_list_loops_are_vectorized() {
     let text = String::from_utf8_lossy(&remarks.stderr).into_owned();
     let _ = std::fs::remove_dir_all(&dir);
     assert!(remarks.status.success(), "{text}");
-    // LLVM reports a loop at the line of its body: lines 3 and 7 of `k.ms` are the loops of `fma`
-    // and `scale`.
-    for line in ["k.ms:3:0: vectorized loop", "k.ms:7:0: vectorized loop"] {
+    // LLVM reports a loop at its `for` line, with the scope in the column: lines 2 and 6 of `k.ms` are
+    // the loops of `fma` and `scale`.
+    for line in [2, 6] {
+        let prefix = format!("remark: k.ms:{line}:");
         assert!(
-            text.contains(line),
+            text.lines()
+                .any(|l| l.starts_with(&prefix) && l.contains(": vectorized loop")),
             "a list loop is not vectorized:\n{text}"
         );
     }
