@@ -36,6 +36,7 @@
 #include "opt_sortgen_drift.c"
 #include "opt_sortgen.c"
 #include "opt_copyelim.c"
+#include "opt_lastuse.c"
 #include "hints.c"
 #include "constfold.c"
 #include "walk.c"
