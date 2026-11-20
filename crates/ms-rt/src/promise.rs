@@ -1719,7 +1719,6 @@ fn run_unstarted(id: i64) {
     // The work leaves its queue and runs on this stack: it is no longer queued, so a cancelled
     // frame that started it does not end it by joining the work it runs inside.
     t.queued[i] = 0;
-    drop(t);
     let mut msg = crate::string::NO_STR;
     // SAFETY: the promise owns the closure until `Ended`; the entry calls it as a task would.
     let status =

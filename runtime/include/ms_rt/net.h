@@ -261,6 +261,9 @@ typedef struct MsNetDnsRecord {
  * Without a timeout the wait ends after 5 seconds. */
 /* ms-sig: msstd_dns_query(server: *const StrVal, name: *const StrVal, kind: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_dns_query(const MsStr *server, const MsStr *name, int64_t kind, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err);
+/* The element descriptor of the `List[DnsRecord]` msstd_dns_query fills, for a C caller that drops the list. */
+struct MsTypeDesc;
+extern const struct MsTypeDesc ms_net_dns_record_desc;
 
 /* The host's resolver at the layout of `DnsConfig`: servers as "ip:53" text (the loopback pair when it names none),
  * the search suffixes without a final dot, and ndots. */
