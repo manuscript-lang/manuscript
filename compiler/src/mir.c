@@ -258,6 +258,15 @@ uint32_t mir_add_func(MirModule *m, const MirFunc *f) {
     return m->nfuncs - 1;
 }
 
+void mir_funcs_reindex(MirModule *m) {
+    for (uint32_t i = 0; i < m->by_func.cap; i++) {
+        m->by_func.v[i] = MIR_NONE;
+    }
+    for (uint32_t i = 0; i < m->nfuncs; i++) {
+        symmap_add(m, &m->by_func, m->funcs[i].name, i);
+    }
+}
+
 uint32_t mir_add_type(MirModule *m, MsSym name) {
     MirTypeDef d = {.name = name};
     MIR_PUSH(m, m->type_defs, m->ntype_defs, m->ctype_defs, MirTypeDef, d);
