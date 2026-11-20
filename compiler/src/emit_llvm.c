@@ -738,6 +738,64 @@ static bool ll_memory_inst(LCx *c, const MirInst *inst, bool *handled) {
     }
 }
 
+/* ---- raw pointers ---- */
+
+/* The memory type of an unsigned access `bytes` wide: `ptr.loadu` and `ptr.storeu` take 1, 2, 4 or
+ * 8, and any other width is a word. */
+static const char *ll_word_type(int64_t bytes) {
+    switch (bytes) {
+    case 1: return "i8";
+    case 2: return "i16";
+    case 4: return "i32";
+    default: return "i64";
+    }
+}
+
+/* `ptr.null`, `ptr.is_null`, `ptr.add`, `ptr.loadu`, `ptr.storeu`; false when `inst` is none. */
+static bool ll_pointer_op(LCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const int64_t width = inst->imm.tag == MI_INT ? inst->imm.i : 8;
+    const char *type = ll_word_type(width);
+    const bool word = type[1] == '6' && type[2] == '4';
+    switch ((MirOp)inst->op) {
+    case MOP_PtrNull:
+        ms_buf_printf(o, "  %%v%u = add i64 0, 0\n", inst->res);
+        return true;
+    case MOP_PtrIsNull:
+        ms_buf_printf(o, "  %%v%u = icmp eq i64 %%v%u, 0\n", inst->res, inst->args[0]);
+        return true;
+    case MOP_PtrAdd:
+        ms_buf_printf(o, "  %%v%u = add i64 %%v%u, %%v%u\n", inst->res, inst->args[0], inst->args[1]);
+        return true;
+    case MOP_PtrLoadU: {
+        char base[24];
+        ll_pointer(c, inst->args[0], base, sizeof base);
+        const uint32_t n = c->next++;
+        ms_buf_printf(o, "  %%l%u = load %s, ptr %s\n", n, type, base);
+        if (word) {
+            ms_buf_printf(o, "  %%v%u = or i64 %%l%u, 0\n", inst->res, n);
+        } else {
+            ms_buf_printf(o, "  %%v%u = zext %s %%l%u to i64\n", inst->res, type, n);
+        }
+        return true;
+    }
+    case MOP_PtrStoreU: {
+        char base[24];
+        ll_pointer(c, inst->args[0], base, sizeof base);
+        const uint32_t n = c->next++;
+        if (word) {
+            ms_buf_printf(o, "  store i64 %%v%u, ptr %s\n", inst->args[1], base);
+        } else {
+            ms_buf_printf(o, "  %%t%u = trunc i64 %%v%u to %s\n  store %s %%t%u, ptr %s\n", n, inst->args[1], type,
+                          type, n, base);
+        }
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
 /* ---- conversions and checks on sizes ---- */
 
 /* The width and signedness of the sized integer kinds `narrow.chk` checks against. */
@@ -849,7 +907,7 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     case MOP_CallRt: return ll_call_rt(c, inst, block, index);
     case MOP_SDivChk: case MOP_SRemChk: ll_checked_div(c, inst, block, part); return true;
     default:
-        if (ll_convert(c, inst, block, part)) {
+        if (ll_convert(c, inst, block, part) || ll_pointer_op(c, inst)) {
             return true;
         }
         c->why = mir_op_info[inst->op].name;
