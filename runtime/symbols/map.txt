@@ -42,3 +42,4 @@ msrt_set_symmetric_difference
 msrt_set_is_subset_of
 msrt_set_is_superset_of
 msrt_set_is_disjoint_from
+msrt_map_fill_strings

@@ -71,7 +71,7 @@ fi
 "$oracle" --bodies $files > "$out/bodies.rust"
 "$bin/ms_check_dump" stdlib --bodies $files > "$out/bodies.c"
 keyed() {
-    awk '/^== / { file = $2; key = ""; next } /^fn / { key = file " " $2 } key != "" { print key "|" $0 }' "$1"
+    awk '/^== / { file = $2; key = ""; next } /^(fn|const) / { key = file " " $2 } key != "" { print key "|" $0 }' "$1"
 }
 keyed "$out/bodies.c" > "$out/bodies.c.keyed"
 cut -d'|' -f1 "$out/bodies.c.keyed" | sort -u > "$out/bodies.keys"
