@@ -61,6 +61,10 @@ typedef struct MsCurlRequest {
 
 /* The resolver text the client was made with, NUL-terminated, or NULL. */
 const char *ms_curl_client_resolver(const MsCurlClient *client);
+/* The most redirects the client follows. */
+long ms_curl_client_max_redirects(const MsCurlClient *client);
+/* `reference` resolved against `base` as a URL, in memory from malloc (*out); false when either does not parse. */
+bool ms_curl_url_resolve(MsBytes base, MsBytes reference, char **out);
 /* The host (without brackets) and port of an http or https URL; false when it cannot be parsed. */
 bool ms_curl_url_target(MsBytes url, char *host, size_t capacity, uint16_t *port);
 

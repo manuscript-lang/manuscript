@@ -55,7 +55,6 @@ struct MsCurlTransfer {
     MsCurlClient *client;
     struct curl_slist *fields;
     struct curl_slist *resolve;
-    char *pinned_host; /* with a resolver: the one host this transfer may reach */
     char error[CURL_ERROR_SIZE];
     /* guarded by the driver lock from here */
     uint8_t *buffer;
@@ -147,11 +146,6 @@ static bool starts_with_fold(const char *line, size_t length, const char *prefix
 
 /* Collects the header lines of the response in progress; a new status line starts over (redirects and interim
  * responses come first). A Location the client may not follow ends the transfer before the next hop connects. */
-/* Whether `host` is the NUL-terminated `pinned`, ignoring ASCII case. */
-static bool same_host(const char *pinned, MsBytes host) {
-    return strlen(pinned) == host.len && ms_ascii_equal_fold(ms_bytes_of((const uint8_t *)pinned, host.len), host);
-}
-
 static size_t on_header(char *line, size_t size, size_t count, void *argument) {
     MsCurlTransfer *transfer = argument;
     const size_t length = size * count;
@@ -182,8 +176,7 @@ static size_t on_header(char *line, size_t size, size_t count, void *argument) {
         if (value != NULL) {
             memcpy(value, line + at, end - at);
             value[end - at] = 0;
-            denied = !redirect_host(transfer, value, &host) || !ms_net_filter_host_allowed(transfer->client->filter, bare_host(host)) ||
-                     (transfer->pinned_host != NULL && !same_host(transfer->pinned_host, bare_host(host)));
+            denied = !redirect_host(transfer, value, &host) || !ms_net_filter_host_allowed(transfer->client->filter, bare_host(host));
             curl_free(host);
         }
         free(value);
@@ -290,7 +283,6 @@ static void destroy_transfer(MsCurlTransfer *transfer) {
     curl_easy_cleanup(transfer->easy);
     curl_slist_free_all(transfer->fields);
     curl_slist_free_all(transfer->resolve);
-    free(transfer->pinned_host);
     ms_curl_client_release(transfer->client);
     free(transfer->buffer);
     free(transfer->lines);
@@ -486,6 +478,22 @@ void ms_curl_client_close(MsCurlClient *client) {
 
 const char *ms_curl_client_resolver(const MsCurlClient *client) { return client->resolver; }
 
+long ms_curl_client_max_redirects(const MsCurlClient *client) { return client->max_redirects; }
+
+bool ms_curl_url_resolve(MsBytes base, MsBytes reference, char **out) {
+    char *base_text = terminated(base), *reference_text = terminated(reference), *found = NULL;
+    CURLU *handle = curl_url();
+    bool ok = base_text != NULL && reference_text != NULL && handle != NULL && curl_url_set(handle, CURLUPART_URL, base_text, 0) == CURLUE_OK &&
+              curl_url_set(handle, CURLUPART_URL, reference_text, 0) == CURLUE_OK && curl_url_get(handle, CURLUPART_URL, &found, 0) == CURLUE_OK;
+    *out = ok ? strdup(found) : NULL;
+    ok = *out != NULL;
+    curl_free(found);
+    curl_url_cleanup(handle);
+    free(base_text);
+    free(reference_text);
+    return ok;
+}
+
 bool ms_curl_url_target(MsBytes url, char *host, size_t capacity, uint16_t *port) {
     char *text = terminated(url), *found = NULL, *service = NULL;
     CURLU *handle = curl_url();
@@ -611,7 +619,7 @@ static bool configure(MsCurlTransfer *transfer, const MsCurlRequest *request, co
               curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, on_header) == CURLE_OK && curl_easy_setopt(easy, CURLOPT_HEADERDATA, transfer) == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https") == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_REDIR_PROTOCOLS_STR, "http,https") == CURLE_OK &&
-              curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, client->max_redirects > 0 ? 1L : 0L) == CURLE_OK &&
+              curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, client->max_redirects > 0 && client->resolver == NULL ? 1L : 0L) == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_MAXREDIRS, client->max_redirects) == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS, milliseconds) == CURLE_OK && curl_easy_setopt(easy, CURLOPT_USERAGENT, "manuscript") == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_PROXY, "") == CURLE_OK; /* a proxy would resolve names itself and bypass the address filter */
@@ -703,15 +711,8 @@ MsNetStatus ms_curl_start(MsCurlClient *client, const MsCurlRequest *request, in
         transfer->resolve = entry == NULL ? NULL : curl_slist_append(NULL, entry);
         free(entry);
     }
-    if (client->resolver != NULL) { /* a redirect cannot be resolved, so the transfer stays on this host */
-        char host[256];
-        uint16_t port = 0;
-        if (ms_curl_url_target(request->url, host, sizeof host, &port)) {
-            transfer->pinned_host = strdup(host);
-        }
-    }
     const bool ready = transfer->buffer != NULL && transfer->easy != NULL && (request->nfields == 0 || transfer->fields != NULL) &&
-                       (request->resolve.len == 0 || transfer->resolve != NULL) && (client->resolver == NULL || transfer->pinned_host != NULL);
+                       (request->resolve.len == 0 || transfer->resolve != NULL);
     const bool configured = ready && configure(transfer, request, url, deadline_ns, &custom);
     free(url);
     free(custom); /* curl copies the strings it is given */

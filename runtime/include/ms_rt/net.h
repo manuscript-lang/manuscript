@@ -93,8 +93,8 @@ typedef struct MsNetHttpOptions {
     MsStr roots_pem;          /* extra trusted roots; empty for the system's */
     MsStr certificate_pem;    /* a client certificate and its key, or empty */
     MsStr private_key_pem;
-    MsStr resolver;           /* "ip:port" of the DNS server that resolves this client's names, or empty for the system's; a
-                                 request's redirects then stay on its host */
+    MsStr resolver;           /* "ip:port" of the DNS server that resolves this client's names, or empty for the system's;
+                                 redirects are then followed by the client natives, resolving each new host through it */
     MsStr unix_socket;        /* a Unix domain socket path used for every connection instead of TCP, or empty; the URL still
                                  gives the Host header and scheme. Refused for a narrowed client. */
     int64_t max_redirects;    /* 0 follows none; negative takes 20 */
