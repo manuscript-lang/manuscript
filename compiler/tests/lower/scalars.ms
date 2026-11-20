@@ -16,10 +16,8 @@ fn greet(name: String) String:
 	return name + "!"
 
 fn main() Int:
-	if less(mix(2, 3), 4) and invert(false):
-		return 1
-	if neg(1.5) > 0.0:
-		return 2
-	if greet("a") == "a!":
-		return 3
+	if less(mix(2, 3), 4) and invert(false): return 1
+	if neg(1.5) > 0.0: return 2
+	if greet("a") == "a!": return 3
+
 	return 0
