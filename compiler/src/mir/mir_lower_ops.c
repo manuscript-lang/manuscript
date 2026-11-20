@@ -405,8 +405,49 @@ static void lo_split_drop_ifs(MirModule *m, MirFunc *f) {
     }
 }
 
+/* Whether `inst` is a `type.set` of a field that owns something, on a record behind a pointer. */
+static bool lo_is_dropping_set(const LoCx *c, const MirFunc *f, const MirInst *inst) {
+    if (inst->op != MOP_TypeSet) {
+        return false;
+    }
+    const MirTyData *data = mir_ty_data(c->m, f->values[inst->args[0]]);
+    return data->kind == MK_TYPE && c->m->type_defs[data->id].indirect &&
+           mir_needs_drop(c->m, c->m->type_defs[data->id].fields[inst->imm.b].ty);
+}
+
+/* `type.set` of an owning field of a record behind a pointer drops the old value first; the emitters
+ * only write the field (`type.fill`), so the drop becomes `type.get` and `drop` before it. */
+static void lo_expand_sets(LoCx *c, MirFunc *f) {
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        MirBlockData *blk = &f->blocks[b];
+        uint32_t sets = 0;
+        for (uint32_t k = 0; k < blk->ninsts; k++) {
+            sets += lo_is_dropping_set(c, f, &blk->insts[k]);
+        }
+        if (sets == 0) {
+            continue;
+        }
+        MirInst *out = MS_NEW_N(&c->m->arena, MirInst, blk->ninsts + 2 * sets);
+        uint32_t n = 0;
+        for (uint32_t k = 0; k < blk->ninsts; k++) {
+            MirInst held = blk->insts[k];
+            if (lo_is_dropping_set(c, f, &held)) {
+                const MirTyData *data = mir_ty_data(c->m, f->values[held.args[0]]);
+                const MirValue old = mir_new_value(c->m, f, c->m->type_defs[data->id].fields[held.imm.b].ty);
+                out[n++] = mir_inst(MOP_TypeGet, held.imm, old, held.loc, mir_args_copy(c->m, held.args, 1), 1);
+                out[n++] = mir_inst(MOP_Drop, mir_imm_none(), MIR_NONE, held.loc, mir_args_copy(c->m, &old, 1), 1);
+                held.op = MOP_TypeFill;
+            }
+            out[n++] = held;
+        }
+        blk->insts = out;
+        blk->ninsts = blk->cinsts = n;
+    }
+}
+
 static void lo_function(LoCx *c, MirFunc *f) {
     lo_list_drops(c, f);
+    lo_expand_sets(c, f);
     lo_split_drop_ifs(c->m, f);
     lo_expand_cleanups(c, f);
     lo_fault_messages(c, f);

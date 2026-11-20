@@ -1,0 +1,22 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+extern @msrt_test_str(int) -> str
+extern @msrt_test_len(str) -> int
+
+fn @msmain() -> int {
+b0:
+  %none: opt<str> = opt.none
+  %a: bool = opt.is_some %none
+  %n: int = iconst 5
+  %s: str = call.rt @msrt_test_str (%n)
+  %some: opt<str> = opt.some %s
+  %b: bool = opt.is_some %some
+  %got: str = opt.get %some
+  %len: int = call.rt @msrt_test_len (%got)
+  %ia: int = b2i %a
+  %ib: int = b2i %b
+  %x: int = iadd %len, %ib
+  %r: int = iadd %x, %ia
+  ret %r
+}

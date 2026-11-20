@@ -838,18 +838,9 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
     case MOP_Slot: return true; /* allocated at the top of the entry block */
     case MOP_Load: case MOP_Take: return qbe_load(c, inst);
     case MOP_Store: case MOP_Put: return qbe_store(c, inst);
-    case MOP_TypeNew:
-        if (qbe_is_indirect_record(c, c->f->values[inst->res])) {
-            return qbe_indirect_new(c, inst);
-        }
-        qbe_record_new(c, inst);
-        return true;
-    case MOP_TypeGet:
-        return qbe_is_indirect_record(c, c->f->values[inst->args[0]]) ? qbe_indirect_get(c, inst)
-                                                                      : qbe_record_get(c, inst);
-    case MOP_TypeSet: case MOP_TypeFill:
-        return qbe_is_indirect_record(c, c->f->values[inst->args[0]]) ? qbe_indirect_set(c, inst)
-                                                                      : qbe_record_set(c, inst);
+    case MOP_TypeNew: qbe_record_new(c, inst); return true;
+    case MOP_TypeGet: return qbe_record_get(c, inst);
+    case MOP_TypeSet: case MOP_TypeFill: return qbe_record_set(c, inst);
     case MOP_PtrField: return qbe_ptr_field(c, inst);
     default:
         *handled = false;
@@ -899,9 +890,8 @@ static bool qbe_opt_some(QCx *c, const MirInst *inst) {
         (void)snprintf(base, sizeof base, "%%v%u", inst->res);
         return leaves.len == 0 || qbe_store_leaves(c, inst->args[0], base);
     }
-    const bool nullable = mir_opt_is_nullable(c->layouts, inner) || mir_is_str_like(c->layouts, c->f->values[inst->res]);
     uint32_t at = 0;
-    if (!nullable) {
+    if (mir_opt_has_flag(c->layouts, c->f->values[inst->res])) {
         ms_buf_printf(o, "\t%%v%u =w copy 1\n", inst->res);
         at = 1;
     }
@@ -921,7 +911,7 @@ static bool qbe_opt_get(QCx *c, const MirInst *inst) {
         (void)snprintf(base, sizeof base, "%%v%u", inst->args[0]);
         return qbe_load_leaves(c, inst->res, base);
     }
-    const uint32_t skip = (mir_opt_is_nullable(c->layouts, inner) || mir_is_str_like(c->layouts, ty)) ? 0 : 1;
+    const uint32_t skip = mir_opt_has_flag(c->layouts, ty) ? 1 : 0;
     const uint32_t n = qbe_leaves(c, c->f->values[inst->res]).len;
     for (uint32_t k = 0; k < n; k++) {
         qbe_copy_leaf(c, inst->res, k, inst->args[0], skip + k);
@@ -1049,6 +1039,10 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
         return true;
     }
     bool handled = false;
+    const bool indirect_ok = qbe_indirect_op(c, inst, block, part, &handled);
+    if (handled) {
+        return indirect_ok;
+    }
     const bool ok = qbe_memory_inst(c, inst, &handled);
     if (handled) {
         return ok;
