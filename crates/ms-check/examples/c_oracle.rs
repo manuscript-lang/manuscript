@@ -292,6 +292,13 @@ fn body_stmts(body: &[Stmt], out: &mut Vec<NodeId>) {
                 body_exprs(cond, out);
                 body_stmts(body, out);
             }
+            StmtKind::For { iter, body, .. } => {
+                // The C checker leaves the range call untyped; its bounds are compared.
+                if let ExprKind::Call { args, .. } = &iter.kind {
+                    args.iter().for_each(|a| body_exprs(&a.value, out));
+                }
+                body_stmts(body, out);
+            }
             _ => {}
         }
     }
