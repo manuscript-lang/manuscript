@@ -23,6 +23,9 @@ typedef struct LoCx {
     uint32_t *thunks; /* by function: the cleanup thunk that calls it, MIR_NONE until made */
     uint32_t nthunks;
     uint32_t string_length; /* msrt_string_scalar_length */
+    MirTy *release_tys; /* the list types `list.release` is applied to, and the function made for each */
+    uint32_t *release_fns;
+    uint32_t nreleases;
 } LoCx;
 
 typedef enum LoKind { LO_PLAIN, LO_STR, LO_OBJ, LO_GLUE } LoKind;
@@ -102,6 +105,17 @@ static void lo_to_call(MirInst *inst, uint32_t func) {
     inst->imm = (MirImm){.tag = MI_FUNC, .a = func};
 }
 
+/* `list.release l, from` calls the function made for the type of `l`. */
+static void lo_list_release(const LoCx *c, const MirFunc *f, MirInst *inst) {
+    const MirTy ty = f->values[inst->args[0]];
+    for (uint32_t i = 0; i < c->nreleases; i++) {
+        if (c->release_tys[i] == ty) {
+            lo_to_call(inst, c->release_fns[i]);
+            return;
+        }
+    }
+}
+
 /* Rewrites `inst` in place, or returns true when it is to be removed. `f` is the function. */
 static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
     switch ((MirOp)inst->op) {
@@ -166,6 +180,9 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
         }
         return false;
     }
+    case MOP_ListRelease:
+        lo_list_release(c, f, inst);
+        return false;
     case MOP_StrLen:
         if (c->string_length == MIR_NONE) {
             c->string_length = lo_extern(c, "msrt_string_scalar_length", MIR_STR, MIR_INT);
@@ -229,6 +246,42 @@ static void lo_make_thunks(LoCx *c) {
                 if (inst->op == MOP_CleanupPush) {
                     (void)lo_cleanup_thunk(c, inst->imm.a);
                     f = &c->m->funcs[i];
+                }
+            }
+        }
+    }
+}
+
+/* The function behind `list.release` of every list type that has one, made before any function is rewritten for the
+ * same reason as the thunks. */
+static void lo_make_releases(LoCx *c) {
+    const uint32_t count = c->nthunks;
+    uint32_t total = 0;
+    for (uint32_t i = 0; i < count; i++) {
+        for (uint32_t b = 0; b < c->m->funcs[i].nblocks; b++) {
+            for (uint32_t k = 0; k < c->m->funcs[i].blocks[b].ninsts; k++) {
+                total += c->m->funcs[i].blocks[b].insts[k].op == MOP_ListRelease;
+            }
+        }
+    }
+    c->release_tys = MS_NEW_N(&c->m->arena, MirTy, total ? total : 1);
+    c->release_fns = MS_NEW_N(&c->m->arena, uint32_t, total ? total : 1);
+    for (uint32_t i = 0; i < count; i++) {
+        for (uint32_t b = 0; b < c->m->funcs[i].nblocks; b++) {
+            for (uint32_t k = 0; k < c->m->funcs[i].blocks[b].ninsts; k++) {
+                const MirInst *inst = &c->m->funcs[i].blocks[b].insts[k];
+                if (inst->op != MOP_ListRelease) {
+                    continue;
+                }
+                const MirTy ty = c->m->funcs[i].values[inst->args[0]];
+                bool known = false;
+                for (uint32_t r = 0; r < c->nreleases && !known; r++) {
+                    known = c->release_tys[r] == ty;
+                }
+                if (!known) {
+                    const uint32_t fn = mir_glue_list_release(c->m, ty);
+                    c->release_tys[c->nreleases] = ty;
+                    c->release_fns[c->nreleases++] = fn;
                 }
             }
         }
@@ -565,9 +618,13 @@ void mir_lower_ops(MirModule *m, const MirGlue *glue) {
         c.thunks[i] = MIR_NONE;
     }
     lo_make_thunks(&c);
+    lo_make_releases(&c);
     mir_layouts_init(&c.layouts, m);
     for (uint32_t i = 0; i < c.nthunks; i++) {
         lo_function(&c, &m->funcs[i]);
+    }
+    for (uint32_t i = 0; i < c.nreleases; i++) {
+        lo_function(&c, &m->funcs[c.release_fns[i]]);
     }
     mir_layouts_free(&c.layouts);
 }
