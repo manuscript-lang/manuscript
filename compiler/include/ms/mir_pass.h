@@ -96,6 +96,10 @@ bool *mir_framed_closure_objects(MsArena *arena, const MirModule *m, const MirFu
 bool mir_holds_object(const MirModule *m, MirTy t);
 void mir_object_copies(const MirModule *m, MsBuf *out);
 
+/* slot_scope: per value of `f` (`nvalues` entries, in `arena`), the block a stack `slot` is confined
+ * to (see mir_slot_scope.c), MIR_NONE for every other value; NULL when `f` has no slot. */
+MirBlock *mir_confined_slots(MsArena *arena, const MirModule *m, const MirFunc *f);
+
 /* ---- pipeline ---- */
 
 typedef struct MirPipelineOptions {

@@ -66,7 +66,51 @@ static void usage_and_directory(void) {
     msrt_string_free(&missing);
 }
 
+static void identity_and_counters(void) {
+    MsProcessInfo info;
+    CHECK(RUN(msstd_process_info(&info, &err)) == STATUS_OK);
+    CHECK(info.pid == (int64_t)getpid() && info.parent_pid == (int64_t)getppid());
+    CHECK(info.uid == (int64_t)getuid() && info.effective_gid == (int64_t)getegid());
+    CHECK(msrt_str_len(&info.executable) > 0 && info.arguments.len == 0);
+#if defined(__APPLE__)
+    CHECK(msrt_str_len(&info.os) == 6 && memcmp(ms_str_data(&info.os), "darwin", 6) == 0);
+#else
+    CHECK(msrt_str_len(&info.os) == 5 && memcmp(ms_str_data(&info.os), "linux", 5) == 0);
+#endif
+    msrt_string_free(&info.executable);
+    msrt_string_free(&info.os);
+    msrt_string_free(&info.architecture);
+
+    MsProcessMemory memory;
+    CHECK(RUN(msstd_process_memory_usage(&memory, &err)) == STATUS_OK);
+    CHECK(memory.resident > 0 && memory.external >= 0 && memory.heap_total >= memory.heap_used);
+
+    MsProcessCounts counts;
+    CHECK(msstd_process_runtime_counts(&counts) == STATUS_OK && counts.allocations >= 0);
+
+    int64_t first = msstd_process_uptime();
+    int64_t second = 0;
+    CHECK(msstd_process_elapsed(&second) == STATUS_OK);
+    CHECK(first >= 0 && second >= first);
+}
+
+static void environment_map(void) {
+    MsStr name = make("MS_PROCESS_MAP");
+    MsStr value = make("seen");
+    CHECK(RUN(msstd_process_set_environment(&name, 1, &value, &err)) == STATUS_OK);
+    _Alignas(8) uint8_t storage[56]; /* sizeof(MsMap), which std code only handles by address */
+    MsMap *map = (MsMap *)storage;
+    CHECK(RUN(msstd_process_environment_map(map, &err)) == STATUS_OK);
+    const uint8_t *found = msrt_map_get_ptr(map, &msrt_desc_string, &msrt_desc_string, (const uint8_t *)&name);
+    CHECK(found != NULL && msrt_str_len((const MsStr *)found) == 4);
+    msrt_map_drop(map, &msrt_desc_string, &msrt_desc_string);
+    msrt_string_free(&name);
+    msrt_string_free(&value);
+}
+
 int main(void) {
+    identity_and_counters();
+    environment_map();
     environment_round_trip();
     validation();
     usage_and_directory();

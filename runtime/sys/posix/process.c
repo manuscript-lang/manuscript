@@ -21,6 +21,16 @@ typedef gid_t MsGroupId;
 
 enum { FIRST_GROUPS = 32, TITLE_LIMIT = 4096, PASSWD_BUFFER = 1024 };
 
+int64_t ms_sys_process_identity(MsSysIdentity which) {
+    switch (which) {
+    case MS_SYS_ID_UID: return (int64_t)getuid();
+    case MS_SYS_ID_GID: return (int64_t)getgid();
+    case MS_SYS_ID_EUID: return (int64_t)geteuid();
+    case MS_SYS_ID_EGID: return (int64_t)getegid();
+    }
+    return -1;
+}
+
 MsSysError ms_sys_process_umask(uint32_t mask, uint32_t *previous) {
     *previous = (uint32_t)umask((mode_t)mask);
     return 0;

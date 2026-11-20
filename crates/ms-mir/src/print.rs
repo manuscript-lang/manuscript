@@ -18,6 +18,15 @@ use crate::types::{Ty, TyKind};
 use std::collections::HashMap;
 use std::fmt::Write;
 
+/// A location as `file:line:col`, with `:scope` when it belongs to an inlined callee.
+fn loc_str(l: Loc) -> String {
+    if l.scope == 0 {
+        l.to_string()
+    } else {
+        format!("{l}:{}", l.scope)
+    }
+}
+
 /// Renders a type.
 pub fn ty_str(m: &Module, t: Ty) -> String {
     let mut s = String::new();
@@ -143,7 +152,8 @@ pub fn print_module(m: &Module) -> String {
             .iter()
             .map(|(n, t)| format!("{n}: {}", ty_str(m, *t)))
             .collect();
-        let _ = writeln!(o, "type {} {{ {} }}", r.name, fields.join(", "));
+        let indirect = if r.indirect { " indirect" } else { "" };
+        let _ = writeln!(o, "type {}{indirect} {{ {} }}", r.name, fields.join(", "));
     }
     for a in &m.alts {
         let cases: Vec<String> = a
@@ -244,6 +254,15 @@ pub fn print_module(m: &Module) -> String {
             ms.join(", ")
         );
     }
+    for &(ty, eq, hash) in &m.desc_glue {
+        let _ = writeln!(
+            o,
+            "desc_glue {} @{} @{}",
+            ty_str(m, ty),
+            m.funcs[eq.index()].name,
+            m.funcs[hash.index()].name
+        );
+    }
     if let Some(e) = m.entry {
         let _ = writeln!(o, "entry @{}", m.funcs[e.index()].name);
     }
@@ -334,8 +353,32 @@ pub fn print_func(m: &Module, f: &Func) -> String {
             m.funcs[a.0 as usize].name, m.funcs[b.0 as usize].name
         );
     }
+    for (set, word) in [
+        (f.ret_borrowed, "ret_borrowed"),
+        (f.ret_view, "ret_view"),
+        (f.scoped, "scoped"),
+        (f.keeps_scoped, "keeps_scoped"),
+        (f.unwind_only, "unwind_only"),
+        (f.raw_scratch, "raw_scratch"),
+    ] {
+        if set {
+            o.push(' ');
+            o.push_str(word);
+        }
+    }
+    if let Some(t) = f.slot_close {
+        let _ = write!(o, " slot_close({})", ty_str(m, t));
+    }
+    if !f.capture_closers.is_empty() {
+        let cs: Vec<String> = f
+            .capture_closers
+            .iter()
+            .map(|(i, g)| format!("{i} @{}", m.funcs[g.0 as usize].name))
+            .collect();
+        let _ = write!(o, " capture_closers({})", cs.join(", "));
+    }
     if !f.loc.is_none() {
-        let _ = write!(o, " !{}", f.loc);
+        let _ = write!(o, " !{}", loc_str(f.loc));
     }
     o.push_str(" {\n");
     for (bi, b) in f.blocks.iter().enumerate() {
@@ -363,16 +406,48 @@ pub fn print_func(m: &Module, f: &Func) -> String {
             }
             o.push_str(&print_inst(m, i, &n));
             if !i.loc.is_none() {
-                let _ = write!(o, " !{}", i.loc);
+                let _ = write!(o, " !{}", loc_str(i.loc));
             }
             o.push('\n');
         }
         o.push_str("  ");
         o.push_str(&print_term(m, &b.term, &n));
         if !b.term_loc.is_none() {
-            let _ = write!(o, " !{}", b.term_loc);
+            let _ = write!(o, " !{}", loc_str(b.term_loc));
         }
         o.push('\n');
+    }
+    // Debugger and range facts, only when a function has them: the inlined scopes, the named
+    // values and the results proved exact, in that order.
+    for sc in &f.scopes {
+        let _ = writeln!(
+            o,
+            "  scope {} {} {} {}",
+            quote(&sc.name),
+            sc.file,
+            sc.parent,
+            sc.call_line
+        );
+    }
+    for nv in &f.names {
+        if let Some(&i) = names.get(&nv.value) {
+            let _ = writeln!(
+                o,
+                "  name %{i} {} {} {}",
+                quote(&nv.name),
+                if nv.param { "param" } else { "local" },
+                nv.scope
+            );
+        }
+    }
+    let mut exact: Vec<usize> = f
+        .exact
+        .iter()
+        .filter_map(|v| names.get(v).copied())
+        .collect();
+    exact.sort_unstable();
+    for i in exact {
+        let _ = writeln!(o, "  exact %{i}");
     }
     o.push_str("}\n");
     o

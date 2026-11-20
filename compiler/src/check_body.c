@@ -51,7 +51,7 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
  * when nothing in the module could make them closeable (a value that closes gets a cleanup the
  * pass does not record yet). */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return body_is_value_type(b, ty) || ms_body_is_function_value(b, ty) ||
+    return body_is_value_type(b, ty) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
            (!b->has_close && body_is_own_nominal(b, ty));
 }
 
@@ -640,10 +640,10 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_UNARY: ty = body_unary(b, e); break;
     case MS_E_BINARY: ty = body_binary(b, e); break;
     case MS_E_MEMBER: ty = body_member(b, e); break;
+    case MS_E_INDEX: ty = ms_body_index(b, e); break;
+    case MS_E_LIST: ty = ms_body_list(b, e, expected); break;
     case MS_E_APPLY:
-    case MS_E_INDEX:
     case MS_E_PROBE:
-    case MS_E_LIST:
     case MS_E_MAP: return ms_body_unsupported(b);
     case MS_E_LAMBDA: ty = ms_body_lambda(b, e, expected); break;
     case MS_E_CALL: ty = body_call(b, e); break;
@@ -674,6 +674,9 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
 
 /* The primitive type a written annotation names, or MS_TY_NONE. */
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
+    if (t->kind == MS_TYPE_NAMED && t->args.len == 1) {
+        return ms_body_list_annotation(b, t);
+    }
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
         return ms_body_unsupported(b);
     }
