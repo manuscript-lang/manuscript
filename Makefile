@@ -220,7 +220,8 @@ c-test: c-build
 # files that differ from C_LINT_BASE (all of them when it is unset).
 .PHONY: c-lint
 c-lint:
-	sh toolchain/c-lint.sh $(C_LINT_BASE)
+	cmake -S . -B target/cmake/lint -G Ninja -DMS_BUILD_COMPILER=OFF -DMS_BUILD_TESTS=OFF
+	C_LINT_BASE="$(C_LINT_BASE)" cmake --build target/cmake/lint --target c-lint
 
 # The C runtime fuzz harnesses (runtime/fuzz) under AddressSanitizer and UBSan; FUZZ_RUNS, FUZZ_SEED, FUZZER=libfuzzer.
 c-fuzz:
