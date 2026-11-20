@@ -17,19 +17,30 @@
 
 /* Reads the next request head from the connection (the bytes left over by the previous exchange come first) and
  * answers an exchange for it. STATUS_NONE: the peer closed before sending a byte, so there is no exchange.
- * STATUS_INVALID_DATA: the head is malformed or longer than `head_limit`; `*reject` is the status to answer (400,
- * 431 or 501) with msstd_xchg_reject. `*reject` is 0 in every other case. */
-/* ms-sig: msstd_xchg_next(handle c: *const ObjCell<ConnH>, head_limit: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ExchH>, reject: *mut i64, err: ErrSlot) -> u8 @domain=HTTP */
-uint8_t msstd_xchg_next(const void *conn, int64_t head_limit, uint8_t has_timeout, int64_t timeout, void **out, int64_t *reject, MsStr *err);
+ * STATUS_INVALID_DATA: the head is malformed or longer than `head_limit`; msstd_xchg_reject_status then answers the
+ * status to send (400, 431 or 501) with msstd_xchg_reject. */
+/* ms-sig: msstd_xchg_next(handle c: *const ObjCell<ConnH>, head_limit: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ExchH>, err: ErrSlot) -> u8 @domain=HTTP */
+uint8_t msstd_xchg_next(const void *conn, int64_t head_limit, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+
+/* The status to answer for the head the last msstd_xchg_next on this connection refused; 0 when it did not refuse one. */
+/* ms-sig: msstd_xchg_reject_status(handle c: *const ObjCell<ConnH>) -> i64 @domain=HTTP */
+int64_t msstd_xchg_reject_status(const void *conn);
 
 /* Answers a refused head: the status line, `Connection: close` and an empty body; the connection is not reusable. */
 /* ms-sig: msstd_xchg_reject(handle c: *const ObjCell<ConnH>, status: i64, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_xchg_reject(const void *conn, int64_t status, uint8_t has_timeout, int64_t timeout, MsStr *err);
 
-/* The request line and fields: the method as sent, the request target as sent, "HTTP/1.0" or "HTTP/1.1", and the
- * fields (names in canonical form, values as bytes) as a table the exchange keeps: the handle is the caller's own. */
-/* ms-sig: msstd_xchg_head(handle x: *const ObjCell<ExchH>, method: *mut StrVal, target: *mut StrVal, protocol: *mut StrVal, headers: *mut *mut ObjCell<HeadersH>) @domain=HTTP */
-void msstd_xchg_head(const void *exchange, MsStr *method, MsStr *target, MsStr *protocol, void **headers);
+/* The request line and fields, one native each: the method as sent, the request target as sent, "HTTP/1.0" or
+ * "HTTP/1.1", and the fields (names in canonical form, values as bytes) as a table the exchange keeps: the handle is
+ * the caller's own. */
+/* ms-sig: msstd_xchg_method(handle x: *const ObjCell<ExchH>, out: *mut StrVal) @domain=HTTP */
+void msstd_xchg_method(const void *exchange, MsStr *out);
+/* ms-sig: msstd_xchg_target(handle x: *const ObjCell<ExchH>, out: *mut StrVal) @domain=HTTP */
+void msstd_xchg_target(const void *exchange, MsStr *out);
+/* ms-sig: msstd_xchg_protocol(handle x: *const ObjCell<ExchH>, out: *mut StrVal) @domain=HTTP */
+void msstd_xchg_protocol(const void *exchange, MsStr *out);
+/* ms-sig: msstd_xchg_headers(handle x: *const ObjCell<ExchH>) -> *mut ObjCell<HeadersH> @handle @domain=HTTP */
+void *msstd_xchg_headers(const void *exchange);
 
 /* The next piece of the request body with the framing removed: STATUS_OK with up to `max` bytes (default 64 KiB),
  * STATUS_NONE at the end of the body. A truncated or malformed body is STATUS_INVALID_DATA. */
@@ -58,6 +69,11 @@ uint8_t msstd_xchg_finish(const void *exchange, uint8_t has_timeout, int64_t tim
  * handler that did not read it. STATUS_LIMIT_EXCEEDED when more is left: close the connection instead. */
 /* ms-sig: msstd_xchg_reset(handle x: *const ObjCell<ExchH>, max: i64, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_xchg_reset(const void *exchange, int64_t max, uint8_t has_timeout, int64_t timeout, MsStr *err);
+
+/* Another handle on the same exchange: the handler owns one as its `HttpExchange`, the connection loop keeps the other
+ * to finish the response after the handler returns. The exchange ends with its last handle. */
+/* ms-sig: msstd_xchg_share(handle x: *const ObjCell<ExchH>) -> *mut ObjCell<ExchH> @handle @domain=HTTP */
+void *msstd_xchg_share(const void *exchange);
 
 /* Hands the connection on for a protocol switch (WebSocket) before any response head is sent: the handle is a new
  * stream end of the same connection; bytes read ahead stay on the row and come first from msstd_conn_read. The
