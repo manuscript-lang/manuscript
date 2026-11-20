@@ -1,6 +1,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	NativeExchange from "@std/net/exchange.ms",
+	HttpClientWire,
 	HttpExchange,
 	HttpHeaders,
 	HttpResponseMetadata,
@@ -14,19 +15,30 @@ import (
 	Duration from "@std/time.ms",
 )
 
-export extern fn msstd_http_client_close(handle: NativeHttpClient) Void
+// The HTTP client natives (runtime/net/fetch.c).
+export extern fn msstd_client_new(options: HttpClientWire) NativeHttpClient!
 
-export extern fn msstd_http_client_share(handle: NativeHttpClient) NativeHttpClient
+// Another handle on the same client, for a promise that sends a request on it.
+export extern fn msstd_client_share(handle: NativeHttpClient) NativeHttpClient
 
-export extern fn msstd_http_client_request_bytes(
+// Ends the client's transfers and refuses later requests.
+export extern fn msstd_client_close(handle: NativeHttpClient) Void
+
+// Adds one level to the client's host and address filter; before the first request.
+export extern fn msstd_client_narrow(
+	handle: NativeHttpClient,
+	hosts: List[String],
+	cidrs: List[String],
+) Void!
+
+export extern fn msstd_client_fetch(
 	handle: NativeHttpClient,
 	method: String,
 	url: String,
 	headers: HttpHeaders,
 	body: Bytes,
-	max_response_bytes: Int?,
 	timeout: Duration?,
-) RawResponse!
+) NativeResponseBody!
 
 export extern fn msstd_http_serving_new(
 	address: String,
@@ -53,37 +65,29 @@ export extern fn msstd_http_worker_close(worker: NativeWorker) Void
 
 export extern fn msstd_http_serving_release(serving: NativeServing) Void
 
-export extern fn msstd_http_body_close(handle: NativeResponseBody) Void
+export extern fn msstd_body_close(handle: NativeResponseBody) Void
 
-export extern fn msstd_http_body_metadata(
-	handle: NativeResponseBody
-) HttpResponseMetadata
+export extern fn msstd_body_metadata(handle: NativeResponseBody) HttpResponseMetadata
 
-export extern fn msstd_http_body_read(
-	handle: NativeResponseBody,
-	max_bytes: Int?,
-) Bytes?!
+export extern fn msstd_body_read(handle: NativeResponseBody, max_bytes: Int?) Bytes?!
 
-export extern fn msstd_http_body_read_all(handle: NativeResponseBody) Bytes!
+export extern fn msstd_body_read_all(handle: NativeResponseBody, max_bytes: Int?) Bytes!
 
-export extern fn msstd_http_headers_append(
+export extern fn msstd_headers_append(
 	headers: HttpHeaders,
 	name: String,
 	value: Bytes,
 ) Void!
 
-export extern fn msstd_http_headers_values(
-	value: HttpHeaders,
-	name: String,
-) List[Bytes]?
+export extern fn msstd_headers_values(value: HttpHeaders, name: String) List[Bytes]?
 
-export extern fn msstd_http_headers_names(value: HttpHeaders) List[String]
+export extern fn msstd_headers_names(value: HttpHeaders) List[String]
 
-export extern fn msstd_http_headers_remove(value: HttpHeaders, name: String) Bool
+export extern fn msstd_headers_remove(value: HttpHeaders, name: String) Bool
 
-export extern fn msstd_http_headers_clone(value: HttpHeaders) HttpHeaders
+export extern fn msstd_headers_clone(value: HttpHeaders) HttpHeaders
 
-export extern fn msstd_http_headers_new() HttpHeaders
+export extern fn msstd_headers_new() HttpHeaders
 
 // Limits the scheduler threads the runtime starts to `n` (at least 1).
 export extern fn msrt_runtime_set_threads(n: Int) Void

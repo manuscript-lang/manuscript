@@ -19,7 +19,8 @@ import (
 	NativeServing,
 	NativeWorker,
 	NativeWorkerSpec,
-	headers from "@std/net/http.ms",
+	headers,
+	open_client from "@std/net/http.ms",
 	dns_lookup, dns_resolve from "@std/net/dns.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
 	Policy,
@@ -75,8 +76,6 @@ import (
 	msstd_net_lookup,
 	msstd_net_network,
 	msstd_net_network_close,
-	msstd_net_network_http_client,
-	msstd_net_network_request_bytes,
 	msstd_net_network_restrict,
 	msstd_net_network_web_socket,
 	msstd_net_network_with_resolver,
@@ -429,6 +428,21 @@ fn permitted_address(policy: Policy, address: String, timeout: Duration?) String
 
 	return error(denied())
 
+// Sends one request on `client` and reads the whole response.
+fn buffered(
+	client: HttpClient,
+	method: HttpMethod,
+	url: String,
+	headers: HttpHeaders,
+	body: Bytes,
+	max_bytes: Int?,
+	timeout: Duration?,
+) ClientResponse!:
+	raw := client.request_raw(method, url, headers, body, max_bytes, timeout)?
+	head := raw.metadata()
+	data := raw.read_all()?
+	return ok(ClientResponse(head: head, body: data))
+
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork
 
@@ -559,7 +573,7 @@ fn Network.connect_unix(path: String, timeout: Duration? = none) Connection!:
 // network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.
 fn Network.http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
-	return msstd_net_network_http_client(self.native, options)
+	return open_client(self.policy, options)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
 // A restricted network needs `allow_listen` and an IP-literal address inside its
@@ -668,15 +682,18 @@ fn Network.request(
 	body: Writable = "",
 	options: RequestOptions = RequestOptions(),
 ) ClientResponse!:
-	return msstd_net_network_request_bytes(
-		self.native,
-		method.to_string(),
+	client := open_client(self.policy, HttpClientOptions(max_redirects: 0))?
+	outcome := buffered(
+		client,
+		method,
 		url,
-		options.headers,
+		options.headers.clone(),
 		body.as_bytes(),
 		options.max_bytes,
 		options.timeout,
 	)
+	_closed := client.close()
+	return outcome
 
 // Looks up DNS records of one `kind` for `name`; each record carries that kind.
 // `options.max_records` and `options.timeout` apply as for `lookup`.
