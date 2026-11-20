@@ -686,6 +686,27 @@ static bool body_module_has_close(const MsCheck *c, const MsModule *syntax) {
     return false;
 }
 
+/* Whether a constant's initializer is literals, text and operators alone: a call, a name or a
+ * member in it is another rule's concern (a constant may name only other constants). */
+static bool body_is_constant_expression(const MsExpr *e) {
+    switch ((MsExprKind)e->kind) {
+    case MS_E_NUMBER:
+    case MS_E_BOOL:
+    case MS_E_VOID: return true;
+    case MS_E_TEXT:
+        for (uint32_t i = 0; i < e->u.text.len; i++) {
+            const MsExpr *part = e->u.text.ptr[i].expr;
+            if (part != NULL && !body_is_constant_expression(part)) {
+                return false;
+            }
+        }
+        return true;
+    case MS_E_UNARY: return body_is_constant_expression(e->u.bin.left);
+    case MS_E_BINARY: return body_is_constant_expression(e->u.bin.left) && body_is_constant_expression(e->u.bin.right);
+    default: return false;
+    }
+}
+
 /* A module constant `NAME := value` (or `NAME: Type := value`) whose initializer is literals and
  * operators. The Rust checker types it as a function of no parameters, in a scope of its own. */
 static void body_check_constant(MsBody *b, const MsDecl *d) {
@@ -698,8 +719,9 @@ static void body_check_constant(MsBody *b, const MsDecl *d) {
     if (d->u.konst.ty != NULL) {
         expected = body_annotation(b, d->u.konst.ty);
     }
-    const MsTy ty = b->supported ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
-    if (b->supported && body_is_value_type(b, ty)) {
+    const bool literal = body_is_constant_expression(d->u.konst.value);
+    const MsTy ty = b->supported && literal ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
+    if (b->supported && literal && body_is_value_type(b, ty)) {
         b->facts->body_checked[d->id] = true;
         body_commit_diags(b, diags_start);
     } else {
