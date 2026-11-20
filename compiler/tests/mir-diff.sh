@@ -49,4 +49,20 @@ for set in files fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" print > "$out/print-$set.c"
     check "print $set ($(grep -c '^===' "$out/print-$set.rust") files)" "$out/print-$set.rust" "$out/print-$set.c"
 done
+for set in files fuzz; do
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" boxing > "$out/boxing-$set.rust"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" boxing > "$out/boxing-$set.c"
+    check "boxing $set" "$out/boxing-$set.rust" "$out/boxing-$set.c"
+done
+# A mutant whose types contain themselves by value overflows the Rust layout's stack; the C layout
+# reports it as failed instead, so such mutants are left out of the layout comparison.
+: > "$out/layout-fuzz.txt"
+while read -r f; do
+    if timeout 3 "$oracle" layout "$f" > /dev/null 2>&1; then echo "$f" >> "$out/layout-fuzz.txt"; fi
+done < "$out/fuzz.txt"
+for set in files layout-fuzz; do
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" layout > "$out/layout-$set.rust"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" layout > "$out/layout-$set.c"
+    check "layout $set" "$out/layout-$set.rust" "$out/layout-$set.c"
+done
 exit $status

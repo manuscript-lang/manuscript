@@ -29,6 +29,8 @@ compiler/
 
 `sh compiler/tests/mir-diff.sh` (part of `make c-compiler-test`) compares the opcode tables, then the canonical text of every `.mir` file in the repository and of mutated copies, byte for byte with the Rust printer (`crates/ms-mir/examples/c_oracle.rs`). On rejected input only the error line is compared. The C parser differs from the Rust one in three ways: error messages do not quote tokens, non-ASCII outside string literals is rejected, and a stray token in a function header is an error (the Rust parser loops on it, so such mutants are dropped from the comparison).
 
+`include/ms/mir_layout.h` and `src/mir_layout.c` hold the boxing decision (`MirBoxing`, `mir_alt_is_boxed`, `mir_opt_is_boxed`: which recursive alternatives and optionals live behind a pointer), compared with the Rust `Boxing` by `mir-diff.sh` on every `.mir` file and mutant. `src/mir_shape.c` is `layout.rs`: leaves, memory layout, alternative payload slots, indirect type blocks, closure objects and the pointer and boolean leaf flags (`MirLayouts`), compared by `mir-diff.sh` the same way. A type nested too deep or with over a million leaves sets `MirLayouts.failed` and gets an empty shape; the Rust version overflows its stack there.
+
 Next: verifier, layout tables, then the optimisation passes one at a time, each checked by running both implementations on the same MIR text.
 
 ## The checker tables
