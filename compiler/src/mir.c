@@ -71,6 +71,19 @@ static void ty_rehash(MirModule *m, uint32_t cap) {
     }
 }
 
+bool mir_ty_find(const MirModule *m, const MirTyData *d, MirTy *out) {
+    const MirTyTable *t = &m->types;
+    uint32_t slot = (uint32_t)ty_hash(d) & t->mask;
+    while (t->index[slot] != 0) {
+        if (ty_eq(&t->kinds[t->index[slot] - 1], d)) {
+            *out = t->index[slot] - 1;
+            return true;
+        }
+        slot = (slot + 1) & t->mask;
+    }
+    return false;
+}
+
 MirTy mir_ty_intern(MirModule *m, const MirTyData *d) {
     MirTyTable *t = &m->types;
     uint32_t slot = (uint32_t)ty_hash(d) & t->mask;
