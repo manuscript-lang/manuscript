@@ -3,6 +3,8 @@
 # Run from the repository root: `make c-compiler-test` runs this after syntax-diff.sh.
 #   tables  the bundled standard library as loaded into the symbol tables (crates/ms-check c_oracle)
 #   scope   the name-resolution diagnostics of every fixture that imports only `@std/` modules
+#   bodies  the expression types of the functions whose bodies the C pass checks (only those: it
+#           leaves a function with an unhandled construct to the Rust checker), with no Rust diagnostic inside
 #   effect directives  the `// ms: effect` and `allow_effect` lines of every .ms file in the repository
 #   effect graph  reachability and violations over generated reference graphs (MS_EFFECT_GRAPHS, default 500)
 # The set of compared things grows with each checker pass the C side gains; a pass is not
@@ -57,6 +59,27 @@ if cmp -s "$out/scope.rust" "$out/scope.c" && [ -s "$out/scope.rust" ]; then
 else
     echo "FAIL scope: first difference"
     diff "$out/scope.rust" "$out/scope.c" | head -20 || true
+    status=1
+fi
+
+# Function bodies: the facts of every function the C pass checked, against the Rust checker's.
+# Each line is keyed by file and function so that only the functions C claims are compared; a Rust
+# diagnostic inside one of them shows as `dirty`, which the C side never prints.
+"$oracle" --bodies $files > "$out/bodies.rust"
+"$out/check-dump" stdlib --bodies $files > "$out/bodies.c"
+keyed() {
+    awk '/^== / { file = $2; key = ""; next } /^fn / { key = file " " $2 } key != "" { print key "|" $0 }' "$1"
+}
+keyed "$out/bodies.c" > "$out/bodies.c.keyed"
+cut -d'|' -f1 "$out/bodies.c.keyed" | sort -u > "$out/bodies.keys"
+keyed "$out/bodies.rust" | awk -F'|' -v list="$out/bodies.keys" '
+    BEGIN { while ((getline line < list) > 0) keep[line] = 1 }
+    $1 in keep' > "$out/bodies.rust.keyed"
+if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
+    echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
+else
+    echo "FAIL bodies: first difference"
+    diff "$out/bodies.rust.keyed" "$out/bodies.c.keyed" | head -20 || true
     status=1
 fi
 
