@@ -4,17 +4,13 @@
 #include "ms_rt/chars.h"
 
 #include "ms/constfold.h"
+#include "ms/text.h"
 
 #define MAX_MEMO_RANGES 8
 
 /* ---- number literals ---- */
 
 /* The value of a digit of any radix up to 16, or -1. */
-static int digit_value(char c) {
-    uint32_t value = 0;
-    return ms_hex_digit_value((uint8_t)c, &value) ? (int)value : -1;
-}
-
 __extension__ typedef unsigned __int128 MsUint128;
 
 /* Parses `digits` (no separators) as an unsigned number of the radix; false when it is empty, has
@@ -25,7 +21,7 @@ static bool parse_u128(const char *digits, size_t n, unsigned radix, MsUint128 *
     }
     MsUint128 value = 0;
     for (size_t i = 0; i < n; i++) {
-        int digit = digit_value(digits[i]);
+        int digit = ms_text_digit_value(digits[i]);
         if (digit < 0 || (unsigned)digit >= radix) {
             return false;
         }

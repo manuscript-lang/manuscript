@@ -140,6 +140,71 @@ uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *messa
     return status;
 }
 
+/* One row of `ms_tool_project`: its kind, then its fields, separated by tabs. */
+static void push_row(MsArena *a, ms_list *out, const char *kind, const char *first, const char *second) {
+    if (first == NULL) {
+        push_text(out, kind);
+    } else if (second == NULL) {
+        push_text(out, ms_arena_fmt(a, "%s\t%s", kind, first).ptr);
+    } else {
+        push_text(out, ms_arena_fmt(a, "%s\t%s\t%s", kind, first, second).ptr);
+    }
+}
+
+static void push_aliases(MsArena *a, ms_list *out, const char *kind, const MsAlias *aliases, uint32_t count) {
+    for (uint32_t i = 0; i < count; i++) {
+        push_row(a, out, kind, aliases[i].name, aliases[i].target);
+    }
+}
+
+uint8_t ms_tool_project(const ms_str *manifest, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest));
+    MsProject p;
+    MsProjectError error = {0};
+    uint8_t status = 0;
+    if (!ms_project_read(&arena, path, &p, &error)) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    } else {
+        push_row(&arena, out, "root", p.root, NULL);
+        push_row(&arena, out, "file", p.file, NULL);
+        push_row(&arena, out, "name", p.name, NULL);
+        push_row(&arena, out, "source", p.source, NULL);
+        push_row(&arena, out, "entry", p.entry, NULL);
+        if (p.has_version) {
+            push_row(&arena, out, "version", ms_version_text(&arena, &p.version), NULL);
+        }
+        push_aliases(&arena, out, "alias", p.aliases, p.alias_count);
+        push_aliases(&arena, out, "embed", p.embed, p.embed_count);
+        push_aliases(&arena, out, "path", p.path_dependencies, p.path_dependency_count);
+        for (uint32_t i = 0; i < p.dependency_count; i++) {
+            push_row(&arena, out, "dep", ms_project_dependency_row(&arena, &p.dependencies[i]), NULL);
+        }
+        for (uint32_t i = 0; i < p.allowed_effect_count; i++) {
+            const MsEffectRule *rule = &p.allowed_effects[i];
+            MsBuf patterns = {0};
+            for (uint32_t k = 0; k < rule->count; k++) {
+                ms_buf_printf(&patterns, "%s%s", k > 0 ? "\t" : "", rule->patterns[k]);
+            }
+            push_row(&arena, out, "allow", rule->name, ms_arena_strndup(&arena, patterns.data == NULL ? "" : patterns.data, patterns.len));
+            ms_buf_free(&patterns);
+        }
+        for (uint32_t i = 0; i < p.effect_count; i++) {
+            push_row(&arena, out, "effect", p.effects[i], NULL);
+        }
+        if (p.is_workspace) {
+            push_row(&arena, out, "workspace", NULL, NULL);
+        }
+        for (uint32_t i = 0; i < p.member_count; i++) {
+            push_row(&arena, out, "member", p.members[i], NULL);
+        }
+    }
+    ms_arena_free(&arena);
+    return status;
+}
+
 uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out) {
     MsArena arena = {0};
     const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(target), ms_str_len(target));

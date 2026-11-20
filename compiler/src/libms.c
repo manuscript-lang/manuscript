@@ -147,6 +147,7 @@
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/discover.c"
+#include "project/embed.c"
 #include "project/resolve.c"
 #include "project/load.c"
 #include "project/semver.c"

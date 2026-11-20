@@ -196,9 +196,14 @@ LbVal lst_method(Lb *lb, const MsExpr *e) {
     if (lst_is(name, "append") && count == 1) {
         return lst_append(lb, e);
     }
-    const bool known = (lst_is(name, "length") || lst_is(name, "is_empty")) ? count == 0
-                       : lst_is(name, "get") ? count == 1
-                       : lst_is(name, "get_or") && count == 2;
+    bool known = false;
+    if (lst_is(name, "length") || lst_is(name, "is_empty")) {
+        known = count == 0;
+    } else if (lst_is(name, "get")) {
+        known = count == 1;
+    } else if (lst_is(name, "get_or")) {
+        known = count == 2;
+    }
     if (!known || !lb_is_list(lb, lb_mir_ty(lb, lb->facts->call_receiver[e->id]))) {
         return lb_unsupported(lb);
     }

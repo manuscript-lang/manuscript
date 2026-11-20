@@ -39,11 +39,6 @@ static uint32_t uws_common(const UwStacks *s, uint32_t a, uint32_t b) {
     return a;
 }
 
-static int uw_cmp_u32_flow(const void *x, const void *y) {
-    const uint32_t a = *(const uint32_t *)x, b = *(const uint32_t *)y;
-    return a < b ? -1 : a > b;
-}
-
 /* How to bring `stack` to the owners in `target`: the first entry whose owner died is discarded
  * with every newer one, and the owners above it that live, and the ones not yet held, are
  * registered again. */
@@ -70,7 +65,7 @@ UwPlan uws_plan(UwStacks *s, uint32_t stack, const OwnerSet *target) {
             }
             plan.keep = top->parent;
         }
-        qsort(added, nadded, sizeof *added, uw_cmp_u32_flow);
+        qsort(added, nadded, sizeof *added, ms_cmp_u32);
     }
     plan.added = added;
     plan.nadded = nadded;
@@ -166,15 +161,6 @@ typedef struct UwGraph {
     uint32_t *pos; /* reverse post-order position, UW_INF when unreachable */
 } UwGraph;
 
-static bool uw_list_has(const uint32_t *v, uint32_t n, uint32_t x) {
-    for (uint32_t i = 0; i < n; i++) {
-        if (v[i] == x) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static UwGraph uw_graph(MsArena *a, const MirFunc *f, const MirBlock *rpo, uint32_t nrpo) {
     const uint32_t n = f->nblocks;
     UwGraph g = {.n = n, .succs = MS_NEW_N(a, uint32_t *, n), .nsuccs = MS_NEW_N(a, uint32_t, n),
@@ -191,7 +177,7 @@ static UwGraph uw_graph(MsArena *a, const MirFunc *f, const MirBlock *rpo, uint3
         g.pos[b] = i;
         for (uint32_t k = 0; k < mir_term_ntargets(&f->blocks[b].term); k++) {
             const uint32_t t = mir_term_target_const(&f->blocks[b].term, k)->block;
-            if (!uw_list_has(g.succs[b], g.nsuccs[b], t)) {
+            if (!ms_u32_contains(g.succs[b], g.nsuccs[b], t)) {
                 g.succs[b][g.nsuccs[b]++] = t;
                 g.npreds[t]++;
             }

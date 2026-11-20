@@ -6,22 +6,7 @@
 #include "../io/reactor.h"
 #include "ms_rt/sys.h"
 #include "ms_sched.h"
-
-/* The nanoseconds a park may take before `deadline_ns`: -1 for no deadline, 0 once it has passed. */
-static int64_t time_left(int64_t deadline_ns) {
-    if (deadline_ns < 0) {
-        return -1;
-    }
-    const int64_t left = deadline_ns - ms_sys_monotonic_ns();
-    return left > 0 ? left : 0;
-}
-
-static MsNetStatus wait_status(uint32_t result) {
-    if ((result & MS_WAIT_CANCELLED) != 0) {
-        return MS_NET_CANCELLED;
-    }
-    return (result & MS_WAIT_TIMEOUT) != 0 ? MS_NET_TIMEOUT : MS_NET_OK;
-}
+#include "status.h"
 
 /* Copies the addresses of a finished lookup into `out`. */
 static void collect(const MsIoAddresses *found, MsNetAddresses *out) {
@@ -50,9 +35,9 @@ MsNetStatus ms_net_resolve(const char *host, uint16_t port, int64_t deadline_ns,
         return MS_NET_FAILED;
     }
     uint64_t value = 0;
-    const uint32_t result = msrt_token_park(token, time_left(deadline_ns), &value);
+    const uint32_t result = msrt_token_park(token, ms_net_time_left(deadline_ns), &value);
     msrt_token_free(token);
-    const MsNetStatus ended = wait_status(result);
+    const MsNetStatus ended = ms_net_wait_status(result);
     if (ended != MS_NET_OK) {
         ms_io_addresses_abandon(found); /* the lookup is still running: libuv releases it when it ends */
         return ended;
@@ -69,7 +54,7 @@ MsNetStatus ms_net_resolve(const char *host, uint16_t port, int64_t deadline_ns,
 
 /* Waits for a connect that is in progress, then asks the system how it ended. */
 static MsNetStatus finish_connect(MsSock socket, int64_t deadline_ns, int *error_code) {
-    const MsNetStatus waited = wait_status(msrt_task_wait_fd((int32_t)socket, MS_WAIT_WRITE, time_left(deadline_ns)));
+    const MsNetStatus waited = ms_net_wait_status(msrt_task_wait_fd((int32_t)socket, MS_WAIT_WRITE, ms_net_time_left(deadline_ns)));
     if (waited != MS_NET_OK) {
         return waited;
     }

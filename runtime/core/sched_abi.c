@@ -5,6 +5,7 @@
 #include <stdatomic.h>
 
 #include "ms_sched.h"
+#include "scheduler.h"
 #include "isolate.h"
 #include "task.h"
 #include "unwind.h"

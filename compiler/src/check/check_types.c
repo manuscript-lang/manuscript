@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "ms/check.h"
+#include "ms/text.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
 
@@ -12,10 +13,6 @@
 
 static MsStr ty_text(const MsCheck *c, MsSym name) {
     return ms_name(c->names, name);
-}
-
-static bool ty_is_text(MsStr s, const char *literal) {
-    return s.len == strlen(literal) && memcmp(s.ptr, literal, s.len) == 0;
 }
 
 static void ty_report(MsResolver *r, MsPhase phase, MsPos pos, MsStr message, MsSym unknown) {
@@ -160,7 +157,7 @@ static MsStr *ty_type_names(MsResolver *r, size_t *count) {
             continue;
         }
         const MsStr name = ty_text(r->c, names->keys[i]);
-        if (r->c->syms.kind[names->vals[i] - 1] == MS_SYM_TYPE && !ty_is_text(name, "Optional")) {
+        if (r->c->syms.kind[names->vals[i] - 1] == MS_SYM_TYPE && !ms_text_is(name, "Optional")) {
             out[n++] = name;
         }
     }
@@ -189,7 +186,7 @@ static MsStr ty_unknown_message(MsResolver *r, MsSym name_sym) {
     }
     for (size_t i = 0; i < sizeof ty_spelling_hints / sizeof *ty_spelling_hints; i++) {
         for (size_t k = 0; ty_spelling_hints[i].names[k] != NULL; k++) {
-            if (ty_is_text(name, ty_spelling_hints[i].names[k])) {
+            if (ms_text_is(name, ty_spelling_hints[i].names[k])) {
                 return ms_arena_fmt(&c->arena, "%.*s%s", (int)message.len, message.ptr, ty_spelling_hints[i].advice);
             }
         }
@@ -402,7 +399,7 @@ static MsTy ty_resolve_named(MsResolver *r, const MsTypeRef *t) {
         c->mods[r->module].unknown_type = true;
         return ty_invalid(c);
     }
-    if (ty_is_text(ty_text(c, name), "Self") && t->args.len == 0 && c->tys.nargs[base] != 0) {
+    if (ms_text_is(ty_text(c, name), "Self") && t->args.len == 0 && c->tys.nargs[base] != 0) {
         /* `Self` in an implementation already carries the receiver's arguments. */
         r->refs[t->id] = base;
         return base;
@@ -506,8 +503,8 @@ static bool ty_is_intrinsic_parameter(MsResolver *r, MsSym name_sym) {
         return true;
     }
     const MsStr name = ty_text(c, name_sym);
-    return ty_is_text(name, "Equal") || ty_is_text(name, "Comparable") || ty_is_text(name, "Hashable") ||
-           ty_is_text(name, "Clonable");
+    return ms_text_is(name, "Equal") || ms_text_is(name, "Comparable") || ms_text_is(name, "Hashable") ||
+           ms_text_is(name, "Clonable");
 }
 
 MsTy *ms_declare_type_variables(MsResolver *r, MsSymId owner, const MsTypeParams *params) {
