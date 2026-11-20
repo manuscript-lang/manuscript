@@ -14,7 +14,7 @@ cargo build --release --locked -p ms-mir --example c_oracle
 oracle=target/release/examples/c_oracle
 
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include compiler/src/libms.c compiler/tools/ms_mir_dump.c -o "$out/dump"
+    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_mir_dump.c -o "$out/dump"
 cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/mutate.c -o "$out/mutate"
 
 status=0
