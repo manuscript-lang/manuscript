@@ -103,7 +103,7 @@
 #include "syntax/desugar.c"
 #include "check/methods.c"
 #include "check/impls.c"
-#include "implements.c"
+#include "check/implements.c"
 #include "check/dump_methods.c"
 #include "own/ownership_places.c"
 #include "own/ownership_bits.c"
