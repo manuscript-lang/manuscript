@@ -17,6 +17,7 @@
 #include "ms/walk.h"
 #include "ms/stdlib.h"
 #include "mir_run.h"
+#include "ms/mir_pass.h"
 #include "read_file.h"
 #include "std_files.h"
 
@@ -91,6 +92,13 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         mir_module_init(&mir);
         (void)ms_lower_module(check, id, &mir);
         verified = verify_module(&mir, path);
+        MsBuf elaborate_error = {0};
+        if (!mir_elaborate(&mir, &elaborate_error)) { // Rust's output has its drops placed
+            fprintf(stderr, "%s: elaborate: %.*s\n", path, (int)elaborate_error.len,
+                    (const char *)elaborate_error.data);
+            verified = false;
+        }
+        ms_buf_free(&elaborate_error);
         if (run) {
             run_module(&mir, path);
         }
