@@ -21,7 +21,7 @@ typedef struct {
     uint64_t payload_len;
 } MsWsHead;
 
-enum { MS_WS_PARTIAL = 0, MS_WS_OK = 1, MS_WS_BAD = 2 };
+enum { MS_WS_PARTIAL = 0, MS_WS_OK = 1, MS_WS_BAD = 2, MS_WS_TOO_BIG = 3 /* the payload length passes 2^63 - 1 */ };
 
 /* Parses one frame header from buf[0..len). BAD fills `reason` (at most `cap` bytes, NUL-terminated) with the
    comma-separated failure text, for example "RSV1 set, bad MASK". The checks that need only the first two bytes
