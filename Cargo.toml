@@ -8,7 +8,6 @@ default-members = [
     "crates/ms-cli",
     "crates/ms-clif",
     "crates/ms-mir-llvm",
-    "crates/ms-conform",
     "crates/ms-build",
     "crates/ms-driver",
     "crates/ms-json",

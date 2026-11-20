@@ -1002,13 +1002,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-conform"
-version = "0.1.0"
-dependencies = [
- "ms-json",
-]
-
-[[package]]
 name = "ms-decimal"
 version = "0.1.0"
 dependencies = [

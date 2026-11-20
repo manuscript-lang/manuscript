@@ -85,8 +85,7 @@ llvm-report: build
 # Backend drift: the run and test phases of the corpus under LLVM (Release default) and under Cranelift
 # (MS_BACKEND=cranelift), compared directly; any differing stdout, stderr or exit status fails.
 drift-check: build
-	cargo build --release --locked -q -p ms-conform
-	target/release/ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
+	$(MS) run tools/conform-run.ms -- diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
 
 # The corpus under both backends with every dead statement stack slot filled with a pattern (MS_POISON_SLOTS=1), so a
 # pointer that outlives its slot fails in every build, not only where the backend happens to reuse the slot.

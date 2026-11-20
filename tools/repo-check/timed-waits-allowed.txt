@@ -19,7 +19,6 @@ crates/ms-clif/src/link/fetch.rs 1 the pause before retrying a failed tools down
 crates/ms-clif/src/link/lld/glibc_stubs/tests.rs 2 test: channel deadline of a hung link, not a wait for time
 crates/ms-clif/src/link/lld/tests.rs 2 test: channel deadline of a hung link, not a wait for time
 crates/ms-clif/tests/native.rs 1 test: lets time pass
-crates/ms-conform/src/exec.rs 2 deadlines: the run timeout and the grace for a killed child to be reaped
 crates/ms-lsp/tests/supervise.rs 1 test: lets time pass
 crates/ms-mir/tests/unwind.rs 1 test: lets time pass
 crates/ms-rt/src/fault.rs 1 test: proves a publication stays blocked while a reader is inside
