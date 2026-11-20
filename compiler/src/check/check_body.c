@@ -47,12 +47,49 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
 }
 
-/* A type whose values the pass can pass around: primitives, and the module's own nominal types
- * when nothing in the module could make them closeable (a value that closes gets a cleanup the
- * pass does not record yet). */
+/* Whether a value of the type may have a cleanup the pass does not record yet: it has a `close`
+ * method, or holds a field or payload that does. Without a method table nothing is known. */
+static bool body_text_is(const MsBody *b, MsSym name, const char *text);
+
+static bool body_is_closeable(const MsBody *b, MsTy ty, uint32_t depth) {
+    const MsTyTable *tys = &b->c->tys;
+    if (b->methods == NULL || depth > 4) {
+        return true;
+    }
+    const MsMethods *m = &b->methods->methods;
+    for (uint32_t i = 0; i < m->count; i++) {
+        if (m->receiver[i] == ty && m->decl[i] != NULL && body_text_is(b, m->decl[i]->name, "close")) {
+            return true;
+        }
+    }
+    const uint32_t def = tys->def[ty];
+    if (def == 0 || def - 1 >= b->c->defs_cap) {
+        return false;
+    }
+    const MsDef *d = &b->c->defs[def - 1];
+    for (uint32_t i = 0; i < d->nfields; i++) {
+        const MsTy field = d->fields[i].ty;
+        if (field != MS_TY_NONE && ms_ty_kind(tys, field) != MS_K_VARIABLE && body_is_closeable(b, field, depth + 1)) {
+            return true;
+        }
+    }
+    for (uint32_t k = 0; k < d->ncases; k++) {
+        for (uint32_t i = 0; i < d->cases[k].nfields; i++) {
+            const MsTy field = d->cases[k].fields[i].ty;
+            if (field != MS_TY_NONE && ms_ty_kind(tys, field) != MS_K_VARIABLE &&
+                body_is_closeable(b, field, depth + 1)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* A type whose values the pass can pass around: primitives, lists, function values and nominal
+ * types that cannot need a cleanup (a value that closes gets one the pass does not record yet). */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
-           (!b->has_close && body_is_own_nominal(b, ty));
+           (body_is_own_nominal(b, ty) && !body_is_closeable(b, ty, 0));
 }
 
 /* `Result[T, E]` whose success type the pass can hold (or `Void`); the error type is only ever
@@ -1120,28 +1157,6 @@ static MsTy body_invalid(MsCheck *c) {
     return ms_ty_intern(&c->tys, &desc);
 }
 
-/* Whether the module declares a method called `close`, inside an `impl` or as `fn Type.close`. */
-static bool body_module_has_close(const MsCheck *c, const MsModule *syntax) {
-    for (uint32_t i = 0; i < syntax->ndecls; i++) {
-        const MsDecl *d = syntax->decls[i];
-        if (d->kind == MS_D_FN) {
-            const MsStr name = ms_name(c->names, d->u.fn.name);
-            if (name.len >= 6 && memcmp(name.ptr + name.len - 6, ".close", 6) == 0) {
-                return true;
-            }
-        }
-        if (d->kind != MS_D_IMPL) {
-            continue;
-        }
-        for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
-            const MsStr name = ms_name(c->names, d->u.impl.methods.ptr[k]->func.name);
-            if (name.len == 5 && memcmp(name.ptr, "close", 5) == 0) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
 
 /* Whether a constant's initializer is literals, text and operators alone: a call, a name or a
  * member in it is another rule's concern (a constant may name only other constants). */
@@ -1216,8 +1231,7 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
               .string_ty = body_primitive(c, "String"),
               .void_ty = body_primitive(c, "Void"),
               .methods = methods,
-              .invalid_ty = body_invalid(c),
-              .has_close = body_module_has_close(c, row->syntax)};
+              .invalid_ty = body_invalid(c)};
     body_allocate(&b, facts);
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
     // Constants first: a function reads them wherever they are declared.
