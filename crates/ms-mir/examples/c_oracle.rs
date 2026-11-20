@@ -317,10 +317,16 @@ fn analysis(m: &Module, f: &ms_mir::ir::Func, out: &mut String) {
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
             let res = m.result_mode(f, inst).map_or('-', mode_char);
-            let modes: String = ms_mir::verify::arg_modes(m, f, inst)
+            // `call` and `call.rt` give one mode per callee parameter, which differs from the
+            // operand count in an ill-formed instruction; one mode per operand is what matters.
+            let mut modes: String = ms_mir::verify::arg_modes(m, f, inst)
                 .into_iter()
                 .map(mode_char)
+                .take(inst.args.len())
                 .collect();
+            while modes.len() < inst.args.len() {
+                modes.push('B');
+            }
             let views = u8::from(m.result_views(f, inst));
             let owned = ms_mir::verify::indirect_owned(m, f, inst);
             let _ = writeln!(out, "{bi}.{ii} res={res} views={views} owned={owned:x} args={modes}");

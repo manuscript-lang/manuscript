@@ -57,7 +57,7 @@ static ms_u128_t pack_bits(MsBytes bytes) {
     return bits;
 }
 
-static MsBytes str_bytes(const MsStr *s) { return ms_bytes(ms_str_data(s), ms_str_len(s)); }
+static MsBytes str_bytes(const MsStr *s) { return ms_bytes_of(ms_str_data(s), ms_str_len(s)); }
 
 /* The bytes of a string of at most 16 bytes as little-endian bits. */
 static ms_u128_t str_bits(const MsStr *s) {
@@ -164,7 +164,7 @@ static MsStr view_of(MsBytes bytes) {
     return (MsStr){.bytes = bytes.ptr, .tagged = bytes.len | MS_STR_TAG_VIEW};
 }
 
-void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) { *out = from_bytes(ms_bytes(ptr, len)); }
+void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) { *out = from_bytes(ms_bytes_of(ptr, len)); }
 
 void msrt_string_empty(MsStr *out) { *out = make_empty(); }
 
@@ -172,7 +172,7 @@ void msrt_string_clone(const MsStr *s, MsStr *out) { *out = cloned(s); }
 
 /* `tagged` is the second word of an owned string or a view, never of an inline string. */
 void msrt_str_copy(const uint8_t *ptr, size_t tagged, MsStr *out) {
-    *out = owned_copy(ms_bytes(ptr, tagged & MS_STR_LEN_MASK));
+    *out = owned_copy(ms_bytes_of(ptr, tagged & MS_STR_LEN_MASK));
 }
 
 void msrt_str_free(uint8_t *ptr) { msrt_free(ptr); }
@@ -413,7 +413,7 @@ static char *format_i64(int64_t value, char *end) {
 
 /* Appends `text` to the message being built in `message`, which the caller sized for it. */
 static void message_append(MsBytesMut *message, const char *text, size_t length) {
-    append_bytes(message, ms_bytes((const uint8_t *)text, length));
+    append_bytes(message, ms_bytes_of((const uint8_t *)text, length));
 }
 
 static void message_append_number(MsBytesMut *message, int64_t value) {
