@@ -1,508 +1,784 @@
-/* Number to text: decimal and radix integers, shortest round-trip floats, and the precision forms. They write into
- * a caller's buffer and allocate nothing, so one copy serves interpolation, to_string and the JSON encoder.
- * Ported from crates/ms-rt/src/num.rs and float_digits.rs; the output is byte-identical. */
+/* Number to text: decimal and radix integers, shortest round-trip floats, and the precision forms.
+ *
+ * Everything writes through a MsFmtSink into a buffer the caller owns and sizes; nothing allocates and nothing
+ * can write past the end. One copy serves interpolation, to_string and the JSON encoder. Ported from
+ * crates/ms-rt/src/num.rs and float_digits.rs; the output is byte-identical to that code.
+ */
 #include "ms_rt/fmt.h"
 
 #include "float_table.h"
 
-typedef unsigned __int128 u128;
+typedef unsigned __int128 MsU128;
 
-static size_t put(uint8_t *out, size_t n, const void *bytes, size_t len) {
-    const uint8_t *src = bytes;
-    for (size_t i = 0; i < len; i++) {
-        out[n + i] = src[i];
-    }
-    return n + len;
+/* ---- the output sink ---- */
+
+/* Bytes are appended until the buffer is full. A write that does not fit sets `overflowed` and every later write
+ * does nothing, so a formatter writes straight through and the entry point checks once at the end. */
+typedef struct MsFmtSink {
+    MsBytesMut buffer; /* borrowed from the caller */
+    size_t length;     /* bytes written so far, at most buffer.len */
+    bool overflowed;
+} MsFmtSink;
+
+static MsFmtSink sink_new(uint8_t *out, size_t capacity) {
+    return (MsFmtSink){.buffer = ms_bytes_mut(out, capacity), .length = 0, .overflowed = false};
 }
 
-static size_t put_str(uint8_t *out, size_t n, const char *s) {
-    size_t len = 0;
-    while (s[len]) {
-        len++;
+static void sink_put(MsFmtSink *sink, MsBytes bytes) {
+    if (sink->overflowed) {
+        return;
     }
-    return put(out, n, s, len);
+    MsBytesMut room = {0};
+    if (!ms_bytes_mut_slice(sink->buffer, sink->length, sink->buffer.len, &room) || !ms_bytes_copy(room, bytes)) {
+        sink->overflowed = true;
+        return;
+    }
+    sink->length += bytes.len; /* the copy fit, so this stays within buffer.len */
 }
 
-static size_t put_zeros(uint8_t *out, size_t n, size_t count) {
+static void sink_put_byte(MsFmtSink *sink, uint8_t byte) {
+    sink_put(sink, ms_bytes(&byte, 1));
+}
+
+static void sink_put_text(MsFmtSink *sink, const char *text) {
+    for (const char *c = text; *c != '\0'; c++) {
+        sink_put_byte(sink, (uint8_t)*c);
+    }
+}
+
+static void sink_put_zeros(MsFmtSink *sink, size_t count) {
     for (size_t i = 0; i < count; i++) {
-        out[n + i] = '0';
+        sink_put_byte(sink, '0');
     }
-    return n + count;
 }
 
-static const char pairs[201] =
+/* Reports the sink as the entry points do: true with the length written, or false when anything overflowed. */
+MS_NODISCARD static bool sink_finish(const MsFmtSink *sink, size_t *length) {
+    if (sink->overflowed) {
+        return false;
+    }
+    *length = sink->length;
+    return true;
+}
+
+/* ---- integers ---- */
+
+#define MS_U64_DIGITS 20
+
+static const char decimal_pairs[] =
     "0001020304050607080910111213141516171819"
     "2021222324252627282930313233343536373839"
     "4041424344454647484950515253545556575859"
     "6061626364656667686970717273747576777879"
     "8081828384858687888990919293949596979899";
+_Static_assert(sizeof decimal_pairs == 201, "two digits for each of 0..99 and the terminator");
 
-size_t msrt_fmt_u64(uint64_t n, uint8_t *out) {
-    uint8_t tmp[20];
-    size_t i = sizeof tmp;
-    while (n >= 100) {
-        size_t r = (size_t)(n % 100) * 2;
-        n /= 100;
-        i -= 2;
-        tmp[i] = (uint8_t)pairs[r];
-        tmp[i + 1] = (uint8_t)pairs[r + 1];
+typedef struct MsDecimal {
+    uint8_t bytes[MS_U64_DIGITS];
+} MsDecimal;
+
+/* The decimal digits of `value`, as a view into the tail of `scratch`. Two digits at a time: a UInt64 has at
+ * most 20, so `position` never goes below 0. */
+static MsBytes decimal_digits(uint64_t value, MsDecimal *scratch) {
+    size_t position = MS_U64_DIGITS;
+    while (value >= 100 && position > 2) {
+        const size_t pair = (size_t)(value % 100) * 2;
+        value /= 100;
+        position -= 2;
+        scratch->bytes[position] = (uint8_t)decimal_pairs[pair];
+        scratch->bytes[position + 1] = (uint8_t)decimal_pairs[pair + 1];
     }
-    if (n >= 10) {
-        size_t r = (size_t)n * 2;
-        i -= 2;
-        tmp[i] = (uint8_t)pairs[r];
-        tmp[i + 1] = (uint8_t)pairs[r + 1];
-    } else {
-        tmp[--i] = (uint8_t)('0' + n);
+    if (value >= 10 && position > 1) {
+        const size_t pair = (size_t)value * 2;
+        position -= 2;
+        scratch->bytes[position] = (uint8_t)decimal_pairs[pair];
+        scratch->bytes[position + 1] = (uint8_t)decimal_pairs[pair + 1];
+    } else if (position > 0) {
+        position -= 1;
+        scratch->bytes[position] = (uint8_t)('0' + value);
     }
-    return put(out, 0, tmp + i, sizeof tmp - i);
+    MsBytes digits = {0};
+    return ms_bytes_slice(ms_bytes(scratch->bytes, MS_U64_DIGITS), position, MS_U64_DIGITS, &digits) ? digits
+                                                                                                      : ms_bytes(NULL, 0);
 }
 
-size_t msrt_fmt_i64(int64_t v, uint8_t *out) {
-    if (v >= 0) {
-        return msrt_fmt_u64((uint64_t)v, out);
-    }
-    out[0] = '-';
-    return 1 + msrt_fmt_u64(UINT64_C(0) - (uint64_t)v, out + 1);
+static void sink_put_unsigned(MsFmtSink *sink, uint64_t value) {
+    MsDecimal scratch = {0};
+    sink_put(sink, decimal_digits(value, &scratch));
 }
 
-size_t msrt_fmt_radix(uint64_t n, uint32_t radix, uint8_t negative, uint8_t *out) {
-    uint8_t tmp[65];
-    size_t i = sizeof tmp;
+static void sink_put_signed(MsFmtSink *sink, int64_t value) {
+    if (value < 0) {
+        sink_put_byte(sink, '-');
+    }
+    /* The magnitude of INT64_MIN is 2^63, which only the unsigned negation represents. */
+    sink_put_unsigned(sink, value < 0 ? UINT64_C(0) - (uint64_t)value : (uint64_t)value);
+}
+
+bool msrt_fmt_u64(uint64_t value, uint8_t *out, size_t capacity, size_t *length) {
+    MsFmtSink sink = sink_new(out, capacity);
+    sink_put_unsigned(&sink, value);
+    return sink_finish(&sink, length);
+}
+
+bool msrt_fmt_i64(int64_t value, uint8_t *out, size_t capacity, size_t *length) {
+    MsFmtSink sink = sink_new(out, capacity);
+    sink_put_signed(&sink, value);
+    return sink_finish(&sink, length);
+}
+
+#define MS_RADIX_MIN 2
+#define MS_RADIX_MAX 36
+#define MS_RADIX_DIGITS 64
+
+bool msrt_fmt_radix(uint64_t magnitude, uint32_t radix, uint8_t negative, uint8_t *out, size_t capacity, size_t *length) {
+    if (radix < MS_RADIX_MIN || radix > MS_RADIX_MAX) {
+        return false;
+    }
+    uint8_t reversed[MS_RADIX_DIGITS] = {0}; /* a UInt64 has at most 64 binary digits */
+    size_t count = 0;
     do {
-        uint32_t d = (uint32_t)(n % radix);
-        tmp[--i] = (uint8_t)(d < 10 ? '0' + d : 'a' + d - 10);
-        n /= radix;
-    } while (n != 0);
-    if (negative) {
-        tmp[--i] = '-';
+        const uint32_t digit = (uint32_t)(magnitude % radix);
+        reversed[count] = (uint8_t)(digit < 10 ? '0' + digit : 'a' + (digit - 10));
+        count++;
+        magnitude /= radix;
+    } while (magnitude != 0 && count < MS_COUNT_OF(reversed));
+    MsFmtSink sink = sink_new(out, capacity);
+    if (negative != 0) {
+        sink_put_byte(&sink, '-');
     }
-    return put(out, 0, tmp + i, sizeof tmp - i);
+    while (count > 0) {
+        count--;
+        sink_put_byte(&sink, reversed[count]);
+    }
+    return sink_finish(&sink, length);
 }
 
-/* ---- Shortest digits: Schubfach (Giulietti, 2020), as crates/ms-rt/src/float_digits.rs ---- */
+/* ---- shortest digits: Schubfach (Giulietti, 2020), as crates/ms-rt/src/float_digits.rs ---- */
 
 #define MASK63 ((UINT64_C(1) << 63) - 1)
 
-static int flog10_pow2(int e) { return (int)(((int64_t)e * INT64_C(677859288149821)) >> 51); }
-static int flog10_three_quarters_pow2(int e) {
+/* The layout of an IEEE 754 binary format. */
+typedef struct MsFloatFormat {
+    int mantissa_bits;
+    int bias;
+} MsFloatFormat;
+
+static const MsFloatFormat binary64_format = {.mantissa_bits = 52, .bias = 1023};
+static const MsFloatFormat binary32_format = {.mantissa_bits = 23, .bias = 127};
+
+/* Floor of a scaled product, by a shift of a signed value: the compilers we build with shift arithmetically. */
+static int floor_log10_pow2(int e) {
+    return (int)(((int64_t)e * INT64_C(677859288149821)) >> 51);
+}
+
+static int floor_log10_three_quarters_pow2(int e) {
     return (int)(((int64_t)e * INT64_C(677859288149821) - INT64_C(281337023816645)) >> 51);
 }
-static int flog2_pow10(int e) { return (int)(((int64_t)e * INT64_C(935039633142891)) >> 48); }
+
+static int floor_log2_pow10(int e) {
+    return (int)(((int64_t)e * INT64_C(935039633142891)) >> 48);
+}
 
 /* g * cp / 2^127 rounded to odd, where g = g1 * 2^63 + g0. */
 static uint64_t round_to_odd(uint64_t g1, uint64_t g0, uint64_t cp) {
-    uint64_t x1 = (uint64_t)(((u128)g0 * cp) >> 64);
-    u128 y = (u128)g1 * cp;
-    uint64_t y1 = (uint64_t)(y >> 64), y0 = (uint64_t)y;
-    uint64_t z = (y0 >> 1) + x1;
-    uint64_t high = y1 + (z >> 63);
+    const uint64_t x1 = (uint64_t)(((MsU128)g0 * cp) >> 64);
+    const MsU128 y = (MsU128)g1 * cp;
+    const uint64_t y1 = (uint64_t)(y >> 64);
+    const uint64_t y0 = (uint64_t)y;
+    const uint64_t z = (y0 >> 1) + x1;
+    const uint64_t high = y1 + (z >> 63);
     return high | (((z & MASK63) + MASK63) >> 63);
 }
 
-/* The digits d and exponent e of the shortest decimal d * 10^e that rounds to the value c * 2^q, no trailing zero
- * stripped yet. qmin and cmin are the format's smallest exponent and its implicit bit. */
-static uint64_t to_decimal(int q, uint64_t c, int qmin, uint64_t cmin, int *exp10) {
-    uint64_t out = c & 1;
-    uint64_t cb = c << 2;
-    uint64_t cbr = cb + 2;
-    uint64_t cbl;
-    int k;
-    if (c != cmin || q == qmin) {
-        cbl = cb - 2;
-        k = flog10_pow2(q);
-    } else {
-        cbl = cb - 1;
-        k = flog10_three_quarters_pow2(q);
-    }
-    unsigned h = (unsigned)(q + flog2_pow10(-k) + 2);
-    const uint64_t *g = ms_float_g[k - MS_FLOAT_K_MIN];
-    uint64_t vb = round_to_odd(g[0], g[1], cb << h);
-    uint64_t vbl = round_to_odd(g[0], g[1], cbl << h);
-    uint64_t vbr = round_to_odd(g[0], g[1], cbr << h);
-    *exp10 = k;
-
-    uint64_t s = vb >> 2;
-    if (s >= 10) {
-        uint64_t sp10 = 10 * (s / 10);
-        uint64_t tp10 = sp10 + 10;
-        bool up_in = vbl + out <= sp10 << 2;
-        bool wp_in = (tp10 << 2) + out <= vbr;
-        if (up_in != wp_in) {
-            return up_in ? sp10 : tp10;
-        }
-    }
-    uint64_t t = s + 1;
-    bool u_in = vbl + out <= s << 2;
-    bool w_in = (t << 2) + out <= vbr;
-    if (u_in != w_in) {
-        return u_in ? s : t;
-    }
-    int64_t cmp = (int64_t)vb - (int64_t)((s + t) << 1);
-    bool pick_s = cmp < 0 || (cmp == 0 && (s & 1) == 0);
-    return pick_s ? s : t;
-}
-
-/* Shortest digits of a finite positive value into buf (at most 17); returns the count, *exp the decimal exponent of
- * the first digit. */
-static size_t shortest(uint64_t bits, int mantissa_bits, int bias, uint8_t *buf, int *exp) {
-    int biased = (int)(bits >> mantissa_bits) & 0x7ff; /* the sign bit is already clear */
-    uint64_t fraction = bits & ((UINT64_C(1) << mantissa_bits) - 1);
-    uint64_t cmin = UINT64_C(1) << mantissa_bits;
-    int qmin = 1 - bias - mantissa_bits;
+/* A finite positive value as c * 2^q, with the format's smallest exponent and implicit bit. */
+typedef struct MsBinaryValue {
     int q;
     uint64_t c;
-    if (biased != 0) {
-        q = biased - bias - mantissa_bits;
-        c = fraction | cmin;
-    } else {
-        q = qmin;
-        c = fraction;
+    int q_min;
+    uint64_t c_min;
+} MsBinaryValue;
+
+static MsBinaryValue split_binary(uint64_t bits, MsFloatFormat format) {
+    const uint64_t c_min = UINT64_C(1) << format.mantissa_bits;
+    const int biased = (int)((bits >> format.mantissa_bits) & 0x7ff); /* the sign bit is already clear */
+    const uint64_t fraction = bits & (c_min - 1);
+    const int q_min = 1 - format.bias - format.mantissa_bits;
+    if (biased == 0) {
+        return (MsBinaryValue){.q = q_min, .c = fraction, .q_min = q_min, .c_min = c_min};
     }
-    int e10;
-    uint64_t d = to_decimal(q, c, qmin, cmin, &e10);
-    while (d % 10 == 0) {
-        d /= 10;
-        e10++;
-    }
-    size_t n = msrt_fmt_u64(d, buf);
-    *exp = e10 + (int)n - 1;
-    return n;
+    return (MsBinaryValue){
+        .q = biased - format.bias - format.mantissa_bits, .c = fraction | c_min, .q_min = q_min, .c_min = c_min};
 }
 
-/* Plain notation for exponents in -6..=20, else scientific; trailing zeros of the digits are dropped first. */
-static size_t render_decimal(const uint8_t *digits, size_t n, int exponent, bool negative, uint8_t *out) {
-    while (n > 1 && digits[n - 1] == '0') {
-        n--;
+/* The decimal d * 10^exponent nearest to the value among the shortest ones that round to it (an exact tie takes
+ * the even digit); d may still end in zeros. False if the power-of-ten table has no entry, which no finite
+ * value reaches. */
+MS_NODISCARD static bool schubfach(MsBinaryValue value, uint64_t *digits, int *exponent) {
+    const uint64_t out = value.c & 1;
+    const uint64_t cb = value.c << 2;
+    const uint64_t cbr = cb + 2;
+    const bool lower_gap_is_half = value.c == value.c_min && value.q != value.q_min;
+    const uint64_t cbl = lower_gap_is_half ? cb - 1 : cb - 2;
+    const int k = lower_gap_is_half ? floor_log10_three_quarters_pow2(value.q) : floor_log10_pow2(value.q);
+    const int shift = value.q + floor_log2_pow10(-k) + 2;
+    const int table_index = k - MS_FLOAT_K_MIN;
+    if (table_index < 0 || (size_t)table_index >= MS_COUNT_OF(ms_float_g) || shift < 0 || shift > 8) {
+        return false;
     }
-    size_t at = 0;
+    const uint64_t g1 = ms_float_g[table_index][0];
+    const uint64_t g0 = ms_float_g[table_index][1];
+    const uint64_t vb = round_to_odd(g1, g0, cb << shift);
+    const uint64_t vbl = round_to_odd(g1, g0, cbl << shift);
+    const uint64_t vbr = round_to_odd(g1, g0, cbr << shift);
+    *exponent = k;
+
+    const uint64_t s = vb >> 2;
+    if (s >= 10) {
+        /* A multiple of ten inside the interval gives one digit fewer than `s` does. */
+        const uint64_t s_tens = 10 * (s / 10);
+        const uint64_t t_tens = s_tens + 10;
+        const bool lower_in = vbl + out <= s_tens << 2;
+        const bool upper_in = (t_tens << 2) + out <= vbr;
+        if (lower_in != upper_in) {
+            *digits = lower_in ? s_tens : t_tens;
+            return true;
+        }
+    }
+    const uint64_t t = s + 1;
+    const bool s_in = vbl + out <= s << 2;
+    const bool t_in = (t << 2) + out <= vbr;
+    if (s_in != t_in) {
+        *digits = s_in ? s : t;
+        return true;
+    }
+    /* Both or neither is inside: the one nearer the value, an exact tie going to the even one. */
+    const int64_t cmp = (int64_t)vb - (int64_t)((s + t) << 1);
+    *digits = (cmp < 0 || (cmp == 0 && (s & 1) == 0)) ? s : t;
+    return true;
+}
+
+/* Decimal digits with the decimal exponent of the first one: 12.5 is "125" with exponent 1. A shortest form has at
+ * most 17 digits and an integer 20; the precision forms keep up to MS_KEPT_CAPACITY. */
+#define MS_KEPT_CAPACITY 128
+#define MS_DIGITS_CAPACITY MS_KEPT_CAPACITY
+
+typedef struct MsDigits {
+    uint8_t text[MS_DIGITS_CAPACITY];
+    size_t length;
+    int exponent;
+} MsDigits;
+
+static MsDigits digits_of_unsigned(uint64_t value, int exponent_of_last_digit) {
+    MsDecimal scratch = {0};
+    const MsBytes text = decimal_digits(value, &scratch);
+    MsDigits digits = {.text = {0}, .length = 0, .exponent = 0};
+    for (size_t i = 0; i < text.len && i < MS_DIGITS_CAPACITY; i++) {
+        digits.text[i] = text.ptr[i];
+        digits.length++;
+    }
+    /* `length` is at most 20, so the conversion is exact. */
+    digits.exponent = exponent_of_last_digit + (int)digits.length - 1;
+    return digits;
+}
+
+/* The shortest digits of the finite positive value with the given sign-cleared bits. */
+MS_NODISCARD static bool shortest_digits(uint64_t bits, MsFloatFormat format, MsDigits *out) {
+    uint64_t scaled = 0;
+    int exponent = 0;
+    if (!schubfach(split_binary(bits, format), &scaled, &exponent)) {
+        return false;
+    }
+    while (scaled % 10 == 0) {
+        scaled /= 10;
+        exponent++;
+    }
+    *out = digits_of_unsigned(scaled, exponent);
+    return true;
+}
+
+/* ---- float text ---- */
+
+/* Plain notation for exponents in -6..=20, else scientific. */
+#define MS_PLAIN_EXPONENT_MIN (-6)
+#define MS_PLAIN_EXPONENT_MAX 20
+
+static void sink_put_slice(MsFmtSink *sink, const MsDigits *digits, size_t start, size_t end) {
+    MsBytes piece = {0};
+    if (ms_bytes_slice(ms_bytes(digits->text, digits->length), start, end, &piece)) {
+        sink_put(sink, piece);
+    } else {
+        sink->overflowed = true;
+    }
+}
+
+static void sink_put_plain(MsFmtSink *sink, const MsDigits *digits) {
+    const int point = digits->exponent + 1; /* digits before the decimal point */
+    if (point <= 0) {
+        sink_put_text(sink, "0.");
+        sink_put_zeros(sink, (size_t)-point);
+        sink_put_slice(sink, digits, 0, digits->length);
+    } else if ((size_t)point >= digits->length) {
+        sink_put_slice(sink, digits, 0, digits->length);
+        sink_put_zeros(sink, (size_t)point - digits->length);
+    } else {
+        sink_put_slice(sink, digits, 0, (size_t)point);
+        sink_put_byte(sink, '.');
+        sink_put_slice(sink, digits, (size_t)point, digits->length);
+    }
+}
+
+static void sink_put_scientific(MsFmtSink *sink, const MsDigits *digits) {
+    sink_put_slice(sink, digits, 0, 1);
+    if (digits->length > 1) {
+        sink_put_byte(sink, '.');
+        sink_put_slice(sink, digits, 1, digits->length);
+    }
+    sink_put_byte(sink, 'e');
+    if (digits->exponent >= 0) {
+        sink_put_byte(sink, '+');
+    }
+    sink_put_signed(sink, digits->exponent);
+}
+
+/* The digits as the shortest float text, trailing zeros dropped first. */
+static void sink_put_decimal_text(MsFmtSink *sink, MsDigits digits, bool negative) {
+    while (digits.length > 1 && digits.text[digits.length - 1] == '0') {
+        digits.length--;
+    }
     if (negative) {
-        out[at++] = '-';
+        sink_put_byte(sink, '-');
     }
-    if (exponent >= -6 && exponent <= 20) {
-        int point = exponent + 1;
-        if (point <= 0) {
-            at = put_str(out, at, "0.");
-            at = put_zeros(out, at, (size_t)-point);
-            at = put(out, at, digits, n);
-        } else if ((size_t)point >= n) {
-            at = put(out, at, digits, n);
-            at = put_zeros(out, at, (size_t)point - n);
-        } else {
-            at = put(out, at, digits, (size_t)point);
-            out[at++] = '.';
-            at = put(out, at, digits + point, n - (size_t)point);
-        }
-        return at;
-    }
-    out[at++] = digits[0];
-    if (n > 1) {
-        out[at++] = '.';
-        at = put(out, at, digits + 1, n - 1);
-    }
-    out[at++] = 'e';
-    if (exponent >= 0) {
-        out[at++] = '+';
-    }
-    return at + msrt_fmt_i64(exponent, out + at);
-}
-
-static double bits_double(uint64_t bits) {
-    double v;
-    __builtin_memcpy(&v, &bits, sizeof v);
-    return v;
-}
-
-size_t msrt_fmt_float(double v, uint8_t *out) {
-    uint64_t bits;
-    __builtin_memcpy(&bits, &v, sizeof bits);
-    bool negative = (bits >> 63) != 0;
-    double a = bits_double(bits & ~(UINT64_C(1) << 63));
-    if (v != v) {
-        return put_str(out, 0, "NaN");
-    }
-    if (a - a != 0.0) {
-        return put_str(out, 0, negative ? "-Infinity" : "Infinity");
-    }
-    if (a == 0.0) {
-        return put_str(out, 0, negative ? "-0" : "0");
-    }
-    uint8_t digits[24];
-    int exp;
-    size_t n;
-    if (a < 9.007199254740992e15 && a == (double)(int64_t)a) {
-        n = msrt_fmt_u64((uint64_t)a, digits);
-        exp = (int)n - 1;
+    if (digits.exponent >= MS_PLAIN_EXPONENT_MIN && digits.exponent <= MS_PLAIN_EXPONENT_MAX) {
+        sink_put_plain(sink, &digits);
     } else {
-        n = shortest(bits & ~(UINT64_C(1) << 63), 52, 1023, digits, &exp);
+        sink_put_scientific(sink, &digits);
     }
-    return render_decimal(digits, n, exp, negative, out);
 }
 
-size_t msrt_fmt_float32(double v, uint8_t *out) {
-    float x = (float)v;
-    if (x != x || x - x != 0.0f || x == 0.0f) {
-        return msrt_fmt_float((double)x, out);
-    }
-    uint32_t bits;
-    __builtin_memcpy(&bits, &x, sizeof bits);
-    uint8_t digits[24];
-    int exp;
-    size_t n = shortest(bits & 0x7fffffffu, 23, 127, digits, &exp);
-    return render_decimal(digits, n, exp, (bits >> 31) != 0, out);
+static uint64_t double_bits(double value) {
+    uint64_t bits = 0;
+    __builtin_memcpy(&bits, &value, sizeof bits);
+    return bits;
 }
 
-/* ---- Precision forms: exact decimal expansion, rounded half to even ---- */
+static uint32_t float_bits(float value) {
+    uint32_t bits = 0;
+    __builtin_memcpy(&bits, &value, sizeof bits);
+    return bits;
+}
 
-#define LIMB_BASE 1000000000u
-#define MAX_LIMBS 96 /* c * 5^1074 has at most 2^53 * 10^751 < 10^768 */
+#define SIGN_BIT_64 (UINT64_C(1) << 63)
 
-/* The exact decimal digits of the positive finite value c * 2^q into digits (most significant first, no leading
- * zero); *point is the exponent of the first digit. Returns the digit count. */
-static size_t exact_digits(uint64_t c, int q, uint8_t *digits, int *point) {
-    uint32_t limb[MAX_LIMBS + 8];
-    size_t n = 0;
-    /* little-endian base 1e9 */
-    for (uint64_t t = c; t != 0; t /= LIMB_BASE) {
-        limb[n++] = (uint32_t)(t % LIMB_BASE);
-    }
-    int shift10 = 0; /* the value is limbs * 10^shift10 */
-    if (q >= 0) {
-        for (int i = 0; i < q; i++) {
-            uint64_t carry = 0;
-            for (size_t j = 0; j < n; j++) {
-                uint64_t t = (uint64_t)limb[j] * 2 + carry;
-                limb[j] = (uint32_t)(t % LIMB_BASE);
-                carry = t / LIMB_BASE;
-            }
-            if (carry) {
-                limb[n++] = (uint32_t)carry;
-            }
-        }
+/* NaN, an infinity or a zero: the values with fixed text. Returns whether `value` was one of them. */
+static bool sink_put_special(MsFmtSink *sink, double value) {
+    const bool negative = (double_bits(value) & SIGN_BIT_64) != 0;
+    if (__builtin_isnan(value)) {
+        sink_put_text(sink, "NaN");
+    } else if (__builtin_isinf(value)) {
+        sink_put_text(sink, negative ? "-Infinity" : "Infinity");
+    } else if (value == 0.0) {
+        sink_put_text(sink, negative ? "-0" : "0");
     } else {
-        /* c * 2^q = c * 5^-q / 10^-q */
-        for (int left = -q; left > 0;) {
-            int step = left > 13 ? 13 : left;
-            uint64_t m = 1;
-            for (int i = 0; i < step; i++) {
-                m *= 5;
-            }
-            uint64_t carry = 0;
-            for (size_t j = 0; j < n; j++) {
-                u128 t = (u128)limb[j] * m + carry;
-                limb[j] = (uint32_t)(t % LIMB_BASE);
-                carry = (uint64_t)(t / LIMB_BASE);
-            }
-            while (carry) {
-                limb[n++] = (uint32_t)(carry % LIMB_BASE);
-                carry /= LIMB_BASE;
-            }
-            left -= step;
-        }
-        shift10 = q;
+        return false;
     }
-    size_t count = 0;
-    uint8_t text[9];
-    for (size_t j = n; j-- > 0;) {
-        uint32_t t = limb[j];
-        for (int i = 8; i >= 0; i--) {
-            text[i] = (uint8_t)('0' + t % 10);
-            t /= 10;
-        }
-        size_t from = 0;
-        if (count == 0) {
-            while (from < 8 && text[from] == '0') {
-                from++;
-            }
-        }
-        count = put(digits, count, text + from, 9 - from);
-    }
-    *point = (int)count - 1 + shift10;
-    return count;
+    return true;
 }
 
-static bool any_nonzero(const uint8_t *digits, size_t n) {
-    for (size_t i = 0; i < n; i++) {
-        if (digits[i] != '0') {
+/* An integral magnitude below 2^53 is exactly representable: its digits are the integer itself. */
+#define MS_EXACT_INTEGER_LIMIT 9007199254740992.0
+
+static bool float_digits(double magnitude, MsDigits *digits) {
+    if (magnitude < MS_EXACT_INTEGER_LIMIT && magnitude == (double)(int64_t)magnitude) {
+        *digits = digits_of_unsigned((uint64_t)magnitude, 0);
+        return true;
+    }
+    return shortest_digits(double_bits(magnitude), binary64_format, digits);
+}
+
+static bool sink_put_float(MsFmtSink *sink, double value) {
+    if (sink_put_special(sink, value)) {
+        return true;
+    }
+    const bool negative = value < 0.0;
+    MsDigits digits = {.text = {0}, .length = 0, .exponent = 0};
+    if (!float_digits(negative ? -value : value, &digits)) {
+        return false;
+    }
+    sink_put_decimal_text(sink, digits, negative);
+    return true;
+}
+
+bool msrt_fmt_float(double value, uint8_t *out, size_t capacity, size_t *length) {
+    MsFmtSink sink = sink_new(out, capacity);
+    return sink_put_float(&sink, value) && sink_finish(&sink, length);
+}
+
+bool msrt_fmt_float32(double value, uint8_t *out, size_t capacity, size_t *length) {
+    const float narrowed = (float)value;
+    MsFmtSink sink = sink_new(out, capacity);
+    if (sink_put_special(&sink, (double)narrowed)) {
+        return sink_finish(&sink, length);
+    }
+    MsDigits digits = {.text = {0}, .length = 0, .exponent = 0};
+    const uint32_t bits = float_bits(narrowed);
+    if (!shortest_digits(bits & 0x7fffffffu, binary32_format, &digits)) {
+        return false;
+    }
+    sink_put_decimal_text(&sink, digits, (bits >> 31) != 0);
+    return sink_finish(&sink, length);
+}
+
+/* ---- precision forms: the exact decimal expansion, rounded half to even ---- */
+
+#define MS_LIMB_BASE 1000000000u
+#define MS_LIMB_DIGITS 9
+/* c * 5^1074 is below 10^768; the limbs also hold c * 2^971. */
+#define MS_LIMB_CAPACITY 96
+#define MS_EXACT_DIGITS_CAPACITY ((size_t)MS_LIMB_CAPACITY * MS_LIMB_DIGITS)
+/* The most digits any precision form keeps is MS_KEPT_CAPACITY: 22 before the point and 100 after, plus a carry. */
+#define MS_PRECISION_MAX 100
+
+/* A non-negative integer in base 10^9, least significant limb first. */
+typedef struct MsBigNumber {
+    uint32_t limbs[MS_LIMB_CAPACITY];
+    size_t count;
+} MsBigNumber;
+
+static MsBigNumber big_from_unsigned(uint64_t value) {
+    MsBigNumber number = {.limbs = {0}, .count = 0};
+    for (; value != 0; value /= MS_LIMB_BASE) {
+        number.limbs[number.count++] = (uint32_t)(value % MS_LIMB_BASE); /* a UInt64 has at most 3 limbs */
+    }
+    return number;
+}
+
+/* number *= multiplier; false when the result needs more limbs than there are. */
+MS_NODISCARD static bool big_multiply(MsBigNumber *number, uint32_t multiplier) {
+    uint64_t carry = 0;
+    for (size_t i = 0; i < number->count; i++) {
+        const MsU128 product = (MsU128)number->limbs[i] * multiplier + carry;
+        number->limbs[i] = (uint32_t)(product % MS_LIMB_BASE);
+        carry = (uint64_t)(product / MS_LIMB_BASE);
+    }
+    for (; carry != 0; carry /= MS_LIMB_BASE) {
+        if (number->count >= MS_LIMB_CAPACITY) {
+            return false;
+        }
+        number->limbs[number->count++] = (uint32_t)(carry % MS_LIMB_BASE);
+    }
+    return true;
+}
+
+/* number *= base^exponent, in steps whose multiplier fits 32 bits. */
+MS_NODISCARD static bool big_multiply_power(MsBigNumber *number, uint32_t base, int exponent, int step_limit) {
+    for (int left = exponent; left > 0;) {
+        const int step = left < step_limit ? left : step_limit;
+        uint32_t multiplier = 1;
+        for (int i = 0; i < step; i++) {
+            multiplier *= base;
+        }
+        if (!big_multiply(number, multiplier)) {
+            return false;
+        }
+        left -= step;
+    }
+    return true;
+}
+
+/* Decimal digits, most significant first without leading zeros, and the exponent of the first. */
+typedef struct MsExactDigits {
+    uint8_t text[MS_EXACT_DIGITS_CAPACITY];
+    size_t length;
+    int point;
+} MsExactDigits;
+
+static void exact_push_limb(MsExactDigits *digits, uint32_t limb) {
+    uint8_t text[MS_LIMB_DIGITS] = {0};
+    for (size_t i = MS_LIMB_DIGITS; i > 0; i--) {
+        text[i - 1] = (uint8_t)('0' + limb % 10);
+        limb /= 10;
+    }
+    size_t first = 0;
+    while (digits->length == 0 && first < MS_LIMB_DIGITS - 1 && text[first] == '0') {
+        first++; /* no leading zeros in the number */
+    }
+    for (size_t i = first; i < MS_LIMB_DIGITS && digits->length < MS_EXACT_DIGITS_CAPACITY; i++) {
+        digits->text[digits->length++] = text[i];
+    }
+}
+
+/* The exact decimal expansion of the positive value c * 2^q. A negative q is c * 5^-q divided by 10^-q, so the
+ * digits are those of an integer and only the exponent moves. */
+MS_NODISCARD static bool exact_expansion(uint64_t c, int q, MsExactDigits *digits) {
+    MsBigNumber number = big_from_unsigned(c);
+    const bool grown = q >= 0 ? big_multiply_power(&number, 2, q, 29) : big_multiply_power(&number, 5, -q, 13);
+    if (!grown) {
+        return false;
+    }
+    digits->length = 0;
+    for (size_t i = number.count; i > 0; i--) {
+        exact_push_limb(digits, number.limbs[i - 1]);
+    }
+    const int decimal_shift = q < 0 ? q : 0;
+    digits->point = (int)digits->length - 1 + decimal_shift; /* length is at most 864 */
+    return true;
+}
+
+/* The leading `keep` digits of the expansion (zero-padded when it is shorter) rounded half to even, and the
+ * exponent of the first kept digit, which grows by one when the rounding carries out. */
+typedef struct MsKept {
+    uint8_t text[MS_KEPT_CAPACITY];
+    size_t length;
+    int point;
+} MsKept;
+
+static bool any_nonzero(const MsExactDigits *digits, size_t from) {
+    for (size_t i = from; i < digits->length; i++) {
+        if (digits->text[i] != '0') {
             return true;
         }
     }
     return false;
 }
 
-/* Rounds the digit string to keep digits (half to even); returns the new exponent of the first digit and sets the
- * kept digits, padded with zeros, in out[0..keep]. */
-static int round_digits(const uint8_t *digits, size_t n, int point, size_t keep, uint8_t *out) {
-    for (size_t i = 0; i < keep; i++) {
-        out[i] = i < n ? digits[i] : '0';
-    }
-    if (n <= keep) {
-        return point;
-    }
-    bool up;
-    if (digits[keep] != '5') {
-        up = digits[keep] > '5';
-    } else {
-        up = any_nonzero(digits + keep + 1, n - keep - 1) || (keep > 0 && ((out[keep - 1] - '0') & 1));
-    }
-    if (up) {
-        size_t i = keep;
-        while (i > 0 && out[i - 1] == '9') {
-            out[--i] = '0';
-        }
-        if (i == 0) {
-            out[0] = '1';
-            for (size_t j = 1; j < keep; j++) {
-                out[j] = '0';
-            }
-            return point + 1;
-        }
-        out[i - 1]++;
-    }
-    return point;
+static uint8_t exact_digit(const MsExactDigits *digits, size_t index) {
+    return index < digits->length ? digits->text[index] : '0';
 }
 
-/* The common case of to_fixed without the exact expansion: up to 15 fractional digits, a value below 2^53 in
- * magnitude, so c * 2^q * 10^digits is an integer product that fits 128 bits, divided by a power of two with the
- * remainder deciding the rounding (a tie goes to the even last digit). Returns false, writing nothing, when the
- * scaled result does not fit 64 bits or the value is not a fraction (q > 0). */
-static bool fixed_fast(bool negative, uint64_t c, int q, size_t digits, uint8_t *out, size_t *len) {
-    if (digits > 15 || q > 0) {
+/* Whether the digits after the first `keep` are above half a unit, or exactly half with an odd last kept digit. */
+static bool rounds_up(const MsExactDigits *digits, const MsKept *kept) {
+    const size_t keep = kept->length;
+    const uint8_t next = exact_digit(digits, keep);
+    if (next != '5') {
+        return next > '5';
+    }
+    if (any_nonzero(digits, keep + 1)) {
+        return true;
+    }
+    return keep > 0 && ((kept->text[keep - 1] - '0') & 1) != 0;
+}
+
+/* Rounds to `keep` digits, 1..=MS_KEPT_CAPACITY. */
+MS_NODISCARD static bool round_digits(const MsExactDigits *digits, size_t keep, MsKept *kept) {
+    if (keep == 0 || keep > MS_KEPT_CAPACITY) {
         return false;
     }
-    uint64_t scale = 1;
-    for (size_t i = 0; i < digits; i++) {
-        scale *= 10;
+    kept->length = keep;
+    kept->point = digits->point;
+    for (size_t i = 0; i < keep; i++) {
+        kept->text[i] = exact_digit(digits, i);
     }
-    u128 product = (u128)c * scale;
-    unsigned shift = (unsigned)-q;
-    u128 scaled;
-    if (shift >= 128) {
-        scaled = 0;
-    } else if (shift == 0) {
-        scaled = product;
+    if (!rounds_up(digits, kept)) {
+        return true;
+    }
+    size_t i = keep;
+    while (i > 0 && kept->text[i - 1] == '9') {
+        i--;
+        kept->text[i] = '0';
+    }
+    if (i == 0) {
+        kept->text[0] = '1'; /* 99.9 rounded up is 100: the leading digit and the exponent move */
+        kept->point++;
     } else {
-        u128 whole = product >> shift;
-        u128 rest = product & (((u128)1 << shift) - 1);
-        u128 half = (u128)1 << (shift - 1);
-        scaled = whole + (rest > half || (rest == half && (whole & 1)));
+        kept->text[i - 1]++;
     }
-    if (scaled >> 64) {
-        return false;
-    }
-    uint64_t total = (uint64_t)scaled;
-    size_t at = 0;
-    if (negative) {
-        out[at++] = '-';
-    }
-    at += msrt_fmt_u64(total / scale, out + at);
-    if (digits > 0) {
-        out[at++] = '.';
-        uint8_t frac[20];
-        size_t n = msrt_fmt_u64(total % scale, frac);
-        at = put_zeros(out, at, digits - n);
-        at = put(out, at, frac, n);
-    }
-    *len = at;
     return true;
 }
 
-/* The scratch the exact expansion needs: 770 digits. */
-#define EXACT_MAX 800
+static uint8_t kept_digit_at(const MsKept *kept, int exponent) {
+    const int index = kept->point - exponent;
+    return index >= 0 && (size_t)index < kept->length ? kept->text[index] : '0';
+}
 
-size_t msrt_fmt_float_precision(double v, uint8_t format, int64_t digits, uint8_t *out) {
-    uint64_t bits;
-    __builtin_memcpy(&bits, &v, sizeof bits);
-    bool negative = (bits >> 63) != 0;
-    double a = bits_double(bits & ~(UINT64_C(1) << 63));
-    if (v != v || a - a != 0.0 || (format == 'f' && a >= 1e21)) {
-        return msrt_fmt_float(v, out);
+/* The fast path of to_fixed: up to 15 fractional digits of a value below 2^53, where c * 2^q * 10^digits is an
+ * integer product that fits 128 bits. It is divided by a power of two, the remainder deciding the rounding (a
+ * tie goes to the even last digit). */
+#define MS_FIXED_FAST_DIGITS 15
+
+typedef struct MsFixedRequest {
+    bool negative;
+    uint64_t c;
+    int q;
+    size_t digits;
+} MsFixedRequest;
+
+/* The value scaled to an integer count of 10^-digits, rounded; false when it does not fit 64 bits or the
+ * request is out of this path's range. */
+MS_NODISCARD static bool fixed_scaled(MsFixedRequest request, uint64_t scale, uint64_t *scaled) {
+    if (request.q > 0) {
+        return false;
     }
-    size_t want = (size_t)digits;
-    int biased = (int)((bits >> 52) & 0x7ff);
-    uint64_t fraction = bits & ((UINT64_C(1) << 52) - 1);
-    uint64_t c = biased == 0 ? fraction : (fraction | (UINT64_C(1) << 52));
-    int q = biased == 0 ? -1074 : biased - 1075;
+    const MsU128 product = (MsU128)request.c * scale;
+    const unsigned shift = (unsigned)-request.q;
+    MsU128 rounded = product;
+    if (shift >= 128) {
+        rounded = 0;
+    } else if (shift > 0) {
+        const MsU128 whole = product >> shift;
+        const MsU128 rest = product & (((MsU128)1 << shift) - 1);
+        const MsU128 half = (MsU128)1 << (shift - 1);
+        rounded = whole + ((rest > half || (rest == half && (whole & 1) != 0)) ? 1 : 0);
+    }
+    if ((rounded >> 64) != 0) {
+        return false;
+    }
+    *scaled = (uint64_t)rounded;
+    return true;
+}
 
-    if (format == 'f') {
-        size_t len;
-        if (fixed_fast(negative, c, q, want, out, &len)) {
-            return len;
+static bool sink_put_fixed_fast(MsFmtSink *sink, MsFixedRequest request) {
+    if (request.digits > MS_FIXED_FAST_DIGITS) {
+        return false;
+    }
+    uint64_t scale = 1;
+    for (size_t i = 0; i < request.digits; i++) {
+        scale *= 10;
+    }
+    uint64_t scaled = 0;
+    if (!fixed_scaled(request, scale, &scaled)) {
+        return false;
+    }
+    if (request.negative) {
+        sink_put_byte(sink, '-');
+    }
+    sink_put_unsigned(sink, scaled / scale);
+    if (request.digits > 0) {
+        MsDecimal scratch = {0};
+        const MsBytes fraction = decimal_digits(scaled % scale, &scratch);
+        sink_put_byte(sink, '.');
+        sink_put_zeros(sink, request.digits - fraction.len);
+        sink_put(sink, fraction);
+    }
+    return true;
+}
+
+/* A value split for the precision forms. */
+typedef struct MsPrecisionValue {
+    bool negative;
+    uint64_t c; /* zero for 0.0 */
+    int q;
+} MsPrecisionValue;
+
+static MsPrecisionValue split_precision(double value) {
+    const uint64_t bits = double_bits(value);
+    const int biased = (int)((bits >> 52) & 0x7ff);
+    const uint64_t fraction = bits & ((UINT64_C(1) << 52) - 1);
+    const bool normal = biased != 0;
+    return (MsPrecisionValue){.negative = (bits & SIGN_BIT_64) != 0,
+                              .c = normal ? (fraction | (UINT64_C(1) << 52)) : fraction,
+                              .q = normal ? biased - 1075 : -1074};
+}
+
+/* to_fixed through the exact expansion: digits are kept down to 10^-want. */
+static bool sink_put_fixed_exact(MsFmtSink *sink, MsPrecisionValue value, size_t want) {
+    MsExactDigits exact = {.text = {0}, .length = 0, .point = 0};
+    MsKept kept = {.text = {0}, .length = 0, .point = 0};
+    if (value.c != 0) {
+        if (!exact_expansion(value.c, value.q, &exact)) {
+            return false;
         }
-    }
-    uint8_t exact[EXACT_MAX];
-    uint8_t kept[EXACT_MAX];
-    size_t n = 0;
-    int point = 0;
-    if (c != 0) {
-        n = exact_digits(c, q, exact, &point);
-    }
-    size_t at = 0;
-    if (negative) {
-        out[at++] = '-';
-    }
-    if (format == 'f') {
-        /* Digits are kept down to 10^-want. kept[i] has the exponent p - i. */
-        int keep = point + 1 + (int)want;
-        size_t len = 0;
-        int p = point;
-        if (c != 0 && keep > 0) {
-            p = round_digits(exact, n, point, (size_t)keep, kept);
-            len = (size_t)keep;
-        } else if (c != 0 && keep == 0 && (exact[0] > '5' || (exact[0] == '5' && any_nonzero(exact + 1, n - 1)))) {
+        const int keep = exact.point + 1 + (int)want;
+        if (keep > 0 && !round_digits(&exact, (size_t)keep, &kept)) {
+            return false;
+        }
+        if (keep == 0 && (exact.text[0] > '5' || (exact.text[0] == '5' && any_nonzero(&exact, 1)))) {
             /* Below one unit of the last place but above half of it: rounds up to that unit. */
-            kept[0] = '1';
-            len = 1;
-            p = -(int)want;
+            kept = (MsKept){.text = {'1'}, .length = 1, .point = -(int)want};
         }
-        if (p < 0 || len == 0) {
-            out[at++] = '0';
-        } else {
-            for (int e = p; e >= 0; e--) {
-                out[at++] = (size_t)(p - e) < len ? kept[p - e] : '0';
-            }
-        }
-        if (want > 0) {
-            out[at++] = '.';
-            for (size_t i = 0; i < want; i++) {
-                int idx = p + 1 + (int)i;
-                out[at++] = len != 0 && idx >= 0 && (size_t)idx < len ? kept[idx] : '0';
-            }
-        }
-        return at;
     }
-    /* 'e': digits after the first; 'g': digits - 1 after the first */
-    size_t after = format == 'g' ? want - 1 : want;
-    int e10 = 0;
-    if (c == 0) {
-        for (size_t i = 0; i <= after; i++) {
-            kept[i] = '0';
-        }
+    if (value.negative) {
+        sink_put_byte(sink, '-');
+    }
+    if (kept.length == 0 || kept.point < 0) {
+        sink_put_byte(sink, '0');
     } else {
-        e10 = round_digits(exact, n, point, after + 1, kept);
-    }
-    if (format == 'g' && e10 >= -6 && e10 < (int)want) {
-        int pt = e10 + 1;
-        if (pt <= 0) {
-            at = put_str(out, at, "0.");
-            at = put_zeros(out, at, (size_t)-pt);
+        for (int e = kept.point; e >= 0; e--) {
+            sink_put_byte(sink, kept_digit_at(&kept, e));
         }
-        for (size_t i = 0; i <= after; i++) {
-            if (pt > 0 && i == (size_t)pt) {
-                out[at++] = '.';
-            }
-            out[at++] = kept[i];
-        }
-        return at;
     }
-    out[at++] = kept[0];
+    if (want > 0) {
+        sink_put_byte(sink, '.');
+        for (size_t i = 0; i < want; i++) {
+            sink_put_byte(sink, kept_digit_at(&kept, -1 - (int)i));
+        }
+    }
+    return true;
+}
+
+typedef enum MsPrecisionForm {
+    MS_FORM_FIXED,       /* 'f': digits after the point */
+    MS_FORM_EXPONENTIAL, /* 'e': digits after the first digit */
+    MS_FORM_PRECISION,   /* 'g': significant digits, plain notation for exponents -6..digits */
+} MsPrecisionForm;
+
+static bool parse_form(uint8_t letter, MsPrecisionForm *form) {
+    switch (letter) {
+    case 'f': *form = MS_FORM_FIXED; return true;
+    case 'e': *form = MS_FORM_EXPONENTIAL; return true;
+    case 'g': *form = MS_FORM_PRECISION; return true;
+    default: return false;
+    }
+}
+
+/* The scientific forms: `after` digits follow the first, rounded from the exact expansion. */
+static bool sink_put_significant(MsFmtSink *sink, MsPrecisionValue value, MsPrecisionForm form, size_t digits) {
+    const size_t after = form == MS_FORM_PRECISION ? digits - 1 : digits;
+    MsKept kept = {.text = {0}, .length = after + 1, .point = 0}; /* 0.0 keeps zeros at exponent 0 */
+    for (size_t i = 0; i < kept.length && i < MS_KEPT_CAPACITY; i++) {
+        kept.text[i] = '0';
+    }
+    if (value.c != 0) {
+        MsExactDigits exact = {.text = {0}, .length = 0, .point = 0};
+        if (!exact_expansion(value.c, value.q, &exact) || !round_digits(&exact, after + 1, &kept)) {
+            return false;
+        }
+    }
+    if (value.negative) {
+        sink_put_byte(sink, '-');
+    }
+    const int exponent = kept.point;
+    if (form == MS_FORM_PRECISION && exponent >= MS_PLAIN_EXPONENT_MIN && exponent < (int)digits) {
+        MsDigits plain = {.text = {0}, .length = kept.length, .exponent = exponent};
+        for (size_t i = 0; i < kept.length; i++) {
+            plain.text[i] = kept.text[i];
+        }
+        sink_put_plain(sink, &plain);
+        return true;
+    }
+    sink_put_byte(sink, kept.text[0]);
     if (after > 0) {
-        out[at++] = '.';
-        at = put(out, at, kept + 1, after);
+        sink_put_byte(sink, '.');
+        for (size_t i = 1; i <= after; i++) {
+            sink_put_byte(sink, kept.text[i]);
+        }
     }
-    out[at++] = 'e';
-    if (e10 >= 0) {
-        out[at++] = '+';
+    sink_put_byte(sink, 'e');
+    if (exponent >= 0) {
+        sink_put_byte(sink, '+');
     }
-    return at + msrt_fmt_i64(e10, out + at);
+    sink_put_signed(sink, exponent);
+    return true;
+}
+
+bool msrt_fmt_float_precision(double value, uint8_t format, int64_t digits, uint8_t *out, size_t capacity, size_t *length) {
+    MsPrecisionForm form = MS_FORM_FIXED;
+    const int64_t minimum = format == 'g' ? 1 : 0;
+    if (!parse_form(format, &form) || digits < minimum || digits > MS_PRECISION_MAX) {
+        return false;
+    }
+    MsFmtSink sink = sink_new(out, capacity);
+    const bool fixed_overflows_precision = form == MS_FORM_FIXED && (value >= 1e21 || value <= -1e21);
+    if (__builtin_isnan(value) || __builtin_isinf(value) || fixed_overflows_precision) {
+        return sink_put_float(&sink, value) && sink_finish(&sink, length);
+    }
+    const MsPrecisionValue split = split_precision(value);
+    bool written = false;
+    if (form == MS_FORM_FIXED) {
+        const MsFixedRequest request = {.negative = split.negative, .c = split.c, .q = split.q, .digits = (size_t)digits};
+        written = sink_put_fixed_fast(&sink, request) || sink_put_fixed_exact(&sink, split, (size_t)digits);
+    } else {
+        written = sink_put_significant(&sink, split, form, (size_t)digits);
+    }
+    return written && sink_finish(&sink, length);
 }

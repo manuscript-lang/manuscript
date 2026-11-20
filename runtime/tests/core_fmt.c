@@ -16,72 +16,80 @@ static void check(bool ok, int line, const char *text) {
 }
 #define CHECK(cond) check((cond), __LINE__, #cond)
 
-/* Buffers of exactly the documented size, so the sanitizer sees any overrun. */
-static char *run(size_t cap, size_t (*f)(uint8_t *, void *), void *arg) {
-    uint8_t *buf = malloc(cap);
-    size_t n = f(buf, arg);
-    CHECK(n <= cap);
-    char *text = malloc(n + 1);
-    memcpy(text, buf, n);
-    text[n] = 0;
-    free(buf);
+/* Each formatter runs against a heap buffer of exactly the documented capacity, so the sanitizer sees any overrun. */
+typedef struct Request {
+    double value;
+    uint64_t number;
+    uint32_t radix;
+    uint8_t flag;
+    char form;
+    int64_t digits;
+} Request;
+
+typedef bool (*Formatter)(const Request *request, uint8_t *out, size_t capacity, size_t *length);
+
+static bool run_u64(const Request *r, uint8_t *out, size_t capacity, size_t *length) {
+    return msrt_fmt_u64(r->number, out, capacity, length);
+}
+static bool run_i64(const Request *r, uint8_t *out, size_t capacity, size_t *length) {
+    return msrt_fmt_i64((int64_t)r->number, out, capacity, length);
+}
+static bool run_radix(const Request *r, uint8_t *out, size_t capacity, size_t *length) {
+    return msrt_fmt_radix(r->number, r->radix, r->flag, out, capacity, length);
+}
+static bool run_float(const Request *r, uint8_t *out, size_t capacity, size_t *length) {
+    return msrt_fmt_float(r->value, out, capacity, length);
+}
+static bool run_float32(const Request *r, uint8_t *out, size_t capacity, size_t *length) {
+    return msrt_fmt_float32(r->value, out, capacity, length);
+}
+static bool run_precision(const Request *r, uint8_t *out, size_t capacity, size_t *length) {
+    return msrt_fmt_float_precision(r->value, (uint8_t)r->form, r->digits, out, capacity, length);
+}
+
+static char *format(Formatter run, const Request *request, size_t capacity, bool *ok) {
+    uint8_t *buffer = malloc(capacity);
+    size_t length = 0;
+    *ok = run(request, buffer, capacity, &length);
+    char *text = calloc(length + 1, 1);
+    if (*ok) {
+        memcpy(text, buffer, length);
+    }
+    free(buffer);
     return text;
 }
 
-struct fl { double v; };
-static size_t f_float(uint8_t *o, void *a) { return msrt_fmt_float(((struct fl *)a)->v, o); }
-static size_t f_float32(uint8_t *o, void *a) { return msrt_fmt_float32(((struct fl *)a)->v, o); }
-struct pr { double v; char fmt; int64_t digits; };
-static size_t f_prec(uint8_t *o, void *a) {
-    struct pr *p = a;
-    return msrt_fmt_float_precision(p->v, (uint8_t)p->fmt, p->digits, o);
-}
-struct in { uint64_t n; uint32_t radix; uint8_t neg; };
-static size_t f_i64(uint8_t *o, void *a) { return msrt_fmt_i64((int64_t)((struct in *)a)->n, o); }
-static size_t f_u64(uint8_t *o, void *a) { return msrt_fmt_u64(((struct in *)a)->n, o); }
-static size_t f_radix(uint8_t *o, void *a) {
-    struct in *p = a;
-    return msrt_fmt_radix(p->n, p->radix, p->neg, o);
+static void expect(Formatter run, const Request *request, size_t capacity, const char *want) {
+    bool ok = false;
+    char *got = format(run, request, capacity, &ok);
+    if (!ok || strcmp(got, want) != 0) {
+        fprintf(stderr, "core_fmt.c: ok=%d got \"%s\" want \"%s\" (value %.17g)\n", ok, got, want, request->value);
+        abort();
+    }
+    free(got);
 }
 
 static void flt(double v, const char *want) {
-    struct fl a = {v};
-    char *got = run(40, f_float, &a);
-    if (strcmp(got, want)) {
-        fprintf(stderr, "float %.17g: got %s want %s\n", v, got, want);
-        abort();
-    }
-    free(got);
+    expect(run_float, &(Request){.value = v}, MS_FMT_FLOAT_CAPACITY, want);
 }
 static void flt32(double v, const char *want) {
-    struct fl a = {v};
-    char *got = run(40, f_float32, &a);
-    if (strcmp(got, want)) {
-        fprintf(stderr, "float32 %.9g: got %s want %s\n", v, got, want);
-        abort();
-    }
-    free(got);
+    expect(run_float32, &(Request){.value = v}, MS_FMT_FLOAT_CAPACITY, want);
 }
-static void prec(double v, char fmt, int64_t digits, const char *want) {
-    struct pr a = {v, fmt, digits};
-    char *got = run(160, f_prec, &a);
-    if (strcmp(got, want)) {
-        fprintf(stderr, "precision %.17g %c %lld: got %s want %s\n", v, fmt, (long long)digits, got, want);
-        abort();
-    }
-    free(got);
+static void prec(double v, char form, int64_t digits, const char *want) {
+    expect(run_precision, &(Request){.value = v, .form = form, .digits = digits}, MS_FMT_PRECISION_CAPACITY, want);
 }
 static void integer(int64_t v, const char *want) {
-    struct in a = {(uint64_t)v, 0, 0};
-    char *got = run(20, f_i64, &a);
-    CHECK(strcmp(got, want) == 0);
-    free(got);
+    expect(run_i64, &(Request){.number = (uint64_t)v}, MS_FMT_INTEGER_CAPACITY, want);
 }
-static void radix(uint64_t n, uint32_t r, uint8_t neg, const char *want) {
-    struct in a = {n, r, neg};
-    char *got = run(65, f_radix, &a);
-    CHECK(strcmp(got, want) == 0);
-    free(got);
+static void radix(uint64_t n, uint32_t r, uint8_t negative, const char *want) {
+    expect(run_radix, &(Request){.number = n, .radix = r, .flag = negative}, MS_FMT_RADIX_CAPACITY, want);
+}
+
+/* A buffer one byte too small, an unknown form and an out-of-range radix or digit count are refused. */
+static void refuses(Formatter run, const Request *request, size_t capacity) {
+    bool ok = true;
+    free(format(run, request, capacity, &ok));
+    CHECK(!ok);
 }
 
 static uint64_t state = 0x9e3779b97f4a7c15ULL;
@@ -101,10 +109,7 @@ int main(void) {
     integer(-1, "-1");
     integer(INT64_MAX, "9223372036854775807");
     integer(INT64_MIN, "-9223372036854775808");
-    struct in u = {UINT64_MAX, 0, 0};
-    char *text = run(20, f_u64, &u);
-    CHECK(strcmp(text, "18446744073709551615") == 0);
-    free(text);
+    expect(run_u64, &(Request){.number = UINT64_MAX}, MS_FMT_INTEGER_CAPACITY, "18446744073709551615");
     radix(255, 16, 0, "ff");
     radix(255, 2, 0, "11111111");
     radix(35, 36, 0, "z");
@@ -115,9 +120,9 @@ int main(void) {
 
     flt(0.0, "0");
     flt(-0.0, "-0");
-    flt(NAN, "NaN");
-    flt(INFINITY, "Infinity");
-    flt(-INFINITY, "-Infinity");
+    flt((double)NAN, "NaN");
+    flt((double)INFINITY, "Infinity");
+    flt((double)-INFINITY, "-Infinity");
     flt(1.0, "1");
     flt(-2.5, "-2.5");
     flt(0.1, "0.1");
@@ -132,13 +137,13 @@ int main(void) {
     flt(2.2250738585072014e-308, "2.2250738585072014e-308");
     flt(4.35, "4.35");
     flt(0.3, "0.3");
-    flt32(0.1f, "0.1");
+    flt32((double)0.1f, "0.1");
     flt32(16777216.0, "16777216");
     flt32(3.4028234663852886e38, "3.4028235e+38");
     flt32(1e-45, "1e-45");
     flt32(-0.0, "-0");
-    flt32(1.0e10f, "10000000000");
-    flt32(0.3f, "0.3");
+    flt32((double)1.0e10f, "10000000000");
+    flt32((double)0.3f, "0.3");
 
     prec(1.0, 'f', 2, "1.00");
     prec(0.5, 'f', 0, "0");
@@ -152,7 +157,7 @@ int main(void) {
     prec(2.675, 'f', 2, "2.67");
     prec(-0.0, 'f', 2, "-0.00");
     prec(1e21, 'f', 2, "1e+21");
-    prec(NAN, 'f', 2, "NaN");
+    prec((double)NAN, 'f', 2, "NaN");
     prec(123.456, 'e', 2, "1.23e+2");
     prec(0.0, 'e', 2, "0.00e+0");
     prec(9.5, 'e', 0, "1e+1");
@@ -171,15 +176,14 @@ int main(void) {
         if (v != v || v - v != 0.0) {
             continue;
         }
-        struct fl a = {v};
-        char *got = run(40, f_float, &a);
-        CHECK(strtod(got, NULL) == v);
+        bool ok = false;
+        char *got = format(run_float, &(Request){.value = v}, MS_FMT_FLOAT_CAPACITY, &ok);
+        CHECK(ok && strtod(got, NULL) == v);
         free(got);
         float x = (float)v;
         if (x - x == 0.0f && x != 0.0f) {
-            a.v = (double)x;
-            got = run(40, f_float32, &a);
-            CHECK(strtof(got, NULL) == x);
+            got = format(run_float32, &(Request){.value = (double)x}, MS_FMT_FLOAT_CAPACITY, &ok);
+            CHECK(ok && strtof(got, NULL) == x);
             free(got);
         }
     }
@@ -196,7 +200,7 @@ int main(void) {
         if (v != v || v - v != 0.0) {
             continue;
         }
-        int64_t d = (int64_t)(next() % 101);
+        const int64_t d = (int64_t)(next() % 101);
         char want[400];
         if (fabs(v) < 1e21) {
             snprintf(want, sizeof want, "%.*f", (int)d, v);
@@ -214,6 +218,15 @@ int main(void) {
         snprintf(fixed, sizeof fixed, "%.*se%s%s", (int)(e - want), want, sign == '-' ? "-" : "+", digits);
         prec(v, 'e', d, fixed);
     }
+    refuses(run_float, &(Request){.value = 1.5}, 2);
+    refuses(run_float, &(Request){.value = 0.1}, 2);
+    refuses(run_i64, &(Request){.number = (uint64_t)INT64_MIN}, MS_FMT_INTEGER_CAPACITY - 1);
+    refuses(run_radix, &(Request){.number = 5, .radix = 1}, MS_FMT_RADIX_CAPACITY);
+    refuses(run_radix, &(Request){.number = 5, .radix = 37}, MS_FMT_RADIX_CAPACITY);
+    refuses(run_precision, &(Request){.value = 1.0, .form = 'x', .digits = 2}, MS_FMT_PRECISION_CAPACITY);
+    refuses(run_precision, &(Request){.value = 1.0, .form = 'f', .digits = 101}, MS_FMT_PRECISION_CAPACITY);
+    refuses(run_precision, &(Request){.value = 1.0, .form = 'g', .digits = 0}, MS_FMT_PRECISION_CAPACITY);
+    refuses(run_precision, &(Request){.value = 1.0, .form = 'f', .digits = 50}, 10);
     puts("core_fmt ok");
     return 0;
 }

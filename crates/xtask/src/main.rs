@@ -322,7 +322,10 @@ fn check_c_abi(
     }
     for header in read_dir("runtime/include/ms_rt", "h")? {
         let module = header.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        if module != "base" && !root.join(format!("runtime/symbols/{module}.txt")).exists() {
+        if module != "base"
+            && module != "safe"
+            && !root.join(format!("runtime/symbols/{module}.txt")).exists()
+        {
             return Err(format!(
                 "ms_rt/{module}.h has no runtime/symbols/{module}.txt"
             ));
