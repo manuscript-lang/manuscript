@@ -93,6 +93,7 @@ ms_test(staged_stdout SOURCES "${_tests}/staged_stdout.c" "${_rt}/staged/stdout.
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
 ms_test(sys_mem SOURCES "${_tests}/sys_mem.c" ${_posix_sources} LIBS)
+ms_test(sys_mem_x86 SOURCES "${_tests}/sys_mem_x86.c" "${_rt}/sys/mem_x86.c" LIBS)
 ms_test(sys_thread SOURCES "${_tests}/sys_thread.c" "${_rt}/sys/thread.c" ${_posix_sources}
         INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_posix_sources} PLAIN
@@ -157,14 +158,15 @@ ms_test(ws_test SOURCES "${_tests}/ws_test.c" "${_rt}/net/ws.c" INCLUDES ${MS_LI
 ms_test(ws_codec_test SOURCES "${_tests}/ws_codec_test.c" "${_rt}/net/ws_codec.c" "${_rt}/net/ws.c" OBJECTS ms_test_core
         INCLUDES ${MS_LIB_crypto_INCLUDES} ${MS_LIB_z_INCLUDES}
         LIBS ${MS_LIB_crypto_LINK} ${MS_LIB_z_LINK} ${CMAKE_DL_LIBS} m DEFINES MS_ALLOC_STATS)
-ms_test(ws_socket_test SOURCES "${_tests}/ws_socket_test.c" "${_rt}/net/ws_socket.c" "${_rt}/net/ws_codec.c" "${_rt}/net/ws.c"
+ms_test(ws_socket_test SOURCES "${_tests}/ws_socket_test.c" "${_rt}/net/ws_socket.c" "${_rt}/net/ws_handle.c" "${_rt}/net/ws_codec.c" "${_rt}/net/ws.c"
         "${_rt}/net/conn_object.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
         "${_rt}/sys/${_platform}/net.c" OBJECTS ms_test_core ms_test_llhttp
         INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_z_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_z_LINK} ${CMAKE_DL_LIBS} pthread m DEFINES MS_ALLOC_STATS)
-ms_test(ws_natives_test SOURCES "${_tests}/ws_natives_test.c" "${_rt}/net/ws_natives.c" "${_rt}/net/ws_socket.c"
-        "${_rt}/net/ws_codec.c" "${_rt}/net/ws.c" "${_rt}/net/conn_object.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c"
-        "${_rt}/net/http1.c" "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c" OBJECTS ms_test_core ms_test_llhttp
+ms_test(ws_dial_test SOURCES "${_tests}/ws_dial_test.c" "${_rt}/net/ws_dial.c" "${_rt}/net/ws_client.c" "${_rt}/net/ws_socket.c"
+        "${_rt}/net/ws_codec.c" "${_rt}/net/ws.c" "${_rt}/net/headers.c"
+        "${_rt}/net/conn_object.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
+        "${_rt}/sys/${_platform}/net.c" OBJECTS ms_test_core ms_test_llhttp
         INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_z_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_z_LINK} ${CMAKE_DL_LIBS} pthread m DEFINES MS_ALLOC_STATS)
 ms_test(ws_client_test SOURCES "${_tests}/ws_client_test.c" "${_rt}/net/ws_client.c" "${_rt}/net/ws.c" "${_rt}/net/http1.c"

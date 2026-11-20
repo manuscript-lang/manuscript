@@ -2,7 +2,7 @@
 # Fails when the static C libraries built for a glibc target call anything glibc 2.28 does not export (the floor programs
 # link against): `sh toolchain/check-glibc-archives.sh <folder with lib/*.a> <x86_64|aarch64>`. A symbol is fine when it is
 # in toolchain/glibc/<arch>.symbols, defined by the libraries themselves, defined by runtime/sys/glibc/compat.c, or in the
-# `stat` family that crates/ms-native/src/entry.rs defines, or `__clear_cache`, which runtime/sys/posix/clear_cache.c defines (PCRE2's JIT on arm64). Newer glibc headers redirect `sscanf` and `strtol` to
+# `stat` family that crates/ms-native/src/entry.rs defines, or `__clear_cache` and `__popcountdi2`, which runtime/sys/posix/clear_cache.c and popcount.c define (PCRE2's JIT on arm64). Newer glibc headers redirect `sscanf` and `strtol` to
 # `__isoc23_*` names when _GNU_SOURCE is on, and the libraries are built on a current distribution, so this runs after every build.
 set -eu
 repository=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
@@ -13,7 +13,7 @@ trap 'rm -rf "$work"' EXIT
 cc=${CC:-cc}
 "$cc" -std=c11 -c -w -o "$work/compat.o" "$repository/runtime/sys/glibc/compat.c"
 nm -g --defined-only "$work/compat.o" | awk 'NF == 3 {print $3}' > "$work/compat"
-printf '%s\n' stat fstat lstat stat64 fstat64 lstat64 fstatat fstatat64 mknod mknodat __clear_cache > "$work/stat"
+printf '%s\n' stat fstat lstat stat64 fstat64 lstat64 fstatat fstatat64 mknod mknodat __clear_cache __popcountdi2 > "$work/stat"
 awk '$1 !~ /^#/ {print $3}' "$repository/toolchain/glibc/$arch.symbols" > "$work/abi"
 # nm prints `archive:member:` header lines and the symbols after them; a defined symbol has a type letter other than U.
 nm -g --defined-only "$folder"/lib/*.a 2>/dev/null | awk 'NF == 3 {print $3}' > "$work/defined"

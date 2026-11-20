@@ -349,6 +349,17 @@ static bool ll_store(LCx *c, const MirInst *inst) {
     return ll_leaves_at(c, inst->args[1], base, false);
 }
 
+/* `ptr.field`: the address of a field of the inline record the operand points to. */
+static bool ll_ptr_field(LCx *c, const MirInst *inst) {
+    if (c->m->type_defs[inst->imm.a].indirect) {
+        c->why = "record behind a pointer";
+        return false;
+    }
+    ms_buf_printf(c->out, "  %%v%u = add i64 %%v%u, %u\n", inst->res, inst->args[0],
+                  mir_field_offset(c->layouts, inst->imm.a, inst->imm.b));
+    return true;
+}
+
 /* The leaf range `[start, start + count)` that field `field` of record type `ty` occupies in a
  * value of that type. False when `ty` is not a record held as leaves. */
 static bool ll_field_span(LCx *c, MirTy ty, uint32_t field, uint32_t *start, uint32_t *count) {
@@ -386,6 +397,8 @@ static void ll_copy_leaf(LCx *c, MirValue dst, uint32_t out_index, MirValue src,
     ll_name(o, src, src_index);
     ms_buf_puts(o, identity);
 }
+
+#include "emit_llvm_record.inc"
 
 /* `type.new`: the leaves of the fields in order. */
 static void ll_record_new(LCx *c, const MirInst *inst) {
@@ -817,9 +830,19 @@ static bool ll_memory_inst(LCx *c, const MirInst *inst, bool *handled) {
     case MOP_Store: case MOP_Put: return ll_store(c, inst);
     case MOP_TypeDesc: return ll_typedesc(c, inst);
     case MOP_GlobalGet: case MOP_GlobalSet: return ll_global(c, inst);
-    case MOP_TypeNew: ll_record_new(c, inst); return true;
-    case MOP_TypeGet: return ll_record_get(c, inst);
-    case MOP_TypeSet: return ll_record_set(c, inst);
+    case MOP_TypeNew:
+        if (ll_is_indirect_record(c, c->f->values[inst->res])) {
+            return ll_indirect_new(c, inst);
+        }
+        ll_record_new(c, inst);
+        return true;
+    case MOP_TypeGet:
+        return ll_is_indirect_record(c, c->f->values[inst->args[0]]) ? ll_indirect_get(c, inst)
+                                                                     : ll_record_get(c, inst);
+    case MOP_TypeSet: case MOP_TypeFill:
+        return ll_is_indirect_record(c, c->f->values[inst->args[0]]) ? ll_indirect_set(c, inst)
+                                                                     : ll_record_set(c, inst);
+    case MOP_PtrField: return ll_ptr_field(c, inst);
     default:
         *handled = false;
         return true;
@@ -999,7 +1022,7 @@ static void ll_alt_tag(LCx *c, const MirInst *inst) {
     }
 }
 
-/* `opt.some`: a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
+/* `opt.some`, `opt.view` (the same leaves; the view borrows its payload): a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
  * payload itself, any other is the payload after a presence flag. */
 static bool ll_opt_some(LCx *c, const MirInst *inst) {
     const MirTy inner = mir_ty_data(c->m, c->f->values[inst->res])->elem;
@@ -1068,7 +1091,7 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
         ll_opt_convert(c, inst);
         return true;
     case MOP_AltTag: ll_alt_tag(c, inst); return true;
-    case MOP_OptSome: return ll_opt_some(c, inst);
+    case MOP_OptSome: case MOP_OptView: return ll_opt_some(c, inst);
     case MOP_OptGet: return ll_opt_get(c, inst);
     case MOP_OptIsSome:
         ll_opt_is_some(c, inst);
@@ -1090,6 +1113,8 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
 
 #include "emit_llvm_closure.inc"
 #include "emit_llvm_iface.inc"
+#include "emit_llvm_enum.inc"
+#include "emit_llvm_list.inc"
 #include "emit_llvm_task.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
@@ -1123,6 +1148,14 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     const bool iface_ok = ll_iface_op(c, inst, block, index, &handled);
     if (handled) {
         return iface_ok;
+    }
+    const bool enum_ok = ll_enum_op(c, inst, &handled);
+    if (handled) {
+        return enum_ok;
+    }
+    const bool list_ok = ll_list_op(c, inst, &handled);
+    if (handled) {
+        return list_ok;
     }
     const bool task_ok = ll_task_op(c, inst, block, part, &handled);
     if (handled) {
@@ -1453,6 +1486,9 @@ static void ll_declare_heap(const LCx *c) {
     }
     if (ll_extern_named(c, "msrt_free") == MIR_NONE) {
         ms_buf_puts(c->out, "declare void @\"msrt_free\"(i64)\n");
+    }
+    if (ll_extern_named(c, "msrt_string_free") == MIR_NONE) {
+        ms_buf_puts(c->out, "declare void @\"msrt_string_free\"(ptr)\n");
     }
 }
 

@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "../net/ws_natives.h"
 #include "../net/ws_socket.h"
 #include "ms_rt/sys.h"
 #include "ms_sched.h"
@@ -177,6 +178,15 @@ static void test_refs(void) {
     close_pair(&p);
 }
 
+static void test_handle(void) {
+    Pair p = open_pair(false, UINT64_MAX);
+    MsObj *handle = ms_ws_handle_new(ms_ws_socket_retain(p.client));
+    CHECK(handle != NULL && ms_ws_handle_socket(handle) == p.client && ms_ws_socket_refs(p.client) == 2);
+    handle->drop(handle);
+    CHECK(ms_ws_socket_refs(p.client) == 1);
+    close_pair(&p);
+}
+
 int main(void) {
     test_echo_both_ways();
     test_ping_is_answered();
@@ -186,6 +196,7 @@ int main(void) {
     test_close_handshake();
     test_compression();
     test_refs();
+    test_handle();
     puts("ws_socket_test: ok");
     return 0;
 }
