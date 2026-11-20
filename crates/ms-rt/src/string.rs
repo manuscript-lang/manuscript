@@ -12,8 +12,8 @@ use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    ErrSlot, FrameBuf, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
-    STR_INLINE_MAX, StrVal, VecVal,
+    FrameBuf, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STR_INLINE_MAX,
+    StrVal, VecVal,
 };
 
 // The moved symbols (runtime/symbols/string.txt) are defined by the C runtime; Rust callers and tests reach them here.
@@ -100,30 +100,6 @@ unsafe extern "C-unwind" {
         padding: *const StrVal,
         out: *mut StrVal,
     );
-}
-
-/// Starts the caller's `err` slot (null when it wants no text) as the empty string, which owns
-/// no allocation, so any status leaves it valid.
-///
-/// # Safety
-/// `err` is null or writable memory for one string.
-pub(crate) unsafe fn init_err(err: ErrSlot) {
-    if !err.0.is_null() {
-        // SAFETY: the caller passes writable memory for one string.
-        unsafe { err.0.write(empty()) }
-    }
-}
-
-/// Stores `msg` in the `err` slot started by [`init_err`]; the status words come first in the
-/// error the program sees, then this detail.
-///
-/// # Safety
-/// As [`init_err`].
-pub(crate) unsafe fn store_err(err: ErrSlot, msg: &str) {
-    if !err.0.is_null() {
-        // SAFETY: the caller passes writable memory for one string; the empty start owns nothing.
-        unsafe { err.0.write(from_bytes(msg.as_bytes())) }
-    }
 }
 
 /// Bytes of a string.
@@ -1864,18 +1840,17 @@ unsafe fn msrt_string_quote_val(s: *const StrVal) -> StrVal {
     from_buf(out)
 }
 
-crate::isolate_static! {
-/// Deep copies the runtime performed, `[list copies, list bytes, string clones, string bytes]` (counted by every runtime).
-    pub static COPY_COUNTS: [u64; 4] = [0; 4];
+unsafe extern "C-unwind" {
+    /// `[list copies, list bytes, string clones, string bytes]` of the counting runtime (zeros elsewhere).
+    pub fn msrt_copy_counts(out: *mut u64);
 }
-/// Records one deep copy of `kind` (0 list, 1 string) moving `bytes` bytes.
-pub fn count_copy(kind: usize, bytes: usize) {
-    // SAFETY: single threaded access to the counters.
-    unsafe {
-        let c = &mut *COPY_COUNTS.ptr();
-        c[kind * 2] += 1;
-        c[kind * 2 + 1] += bytes as u64;
-    }
+
+/// The deep copies the runtime performed, counted by the C runtime.
+pub fn copy_counts() -> [u64; 4] {
+    let mut counts = [0; 4];
+    // SAFETY: `counts` has the four words the C side writes.
+    unsafe { msrt_copy_counts(counts.as_mut_ptr()) };
+    counts
 }
 
 #[cfg(test)]

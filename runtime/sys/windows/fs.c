@@ -862,8 +862,9 @@ static bool target_is_directory(const WCHAR *link_path, const WCHAR *target) {
     WCHAR joined[2 * MAX_PATH];
     const bool absolute = target[0] == L'\\' || (target[0] != L'\0' && target[1] == L':');
     if (absolute) {
-        (void)wcsncpy(joined, target, MS_COUNT_OF(joined) - 1);
-        joined[MS_COUNT_OF(joined) - 1] = L'\0';
+        const size_t length = wcsnlen(target, MS_COUNT_OF(joined) - 1);
+        memcpy(joined, target, length * sizeof *joined);
+        joined[length] = L'\0';
     } else {
         const WCHAR *slash = wcsrchr(link_path, L'\\');
         const size_t prefix = slash != NULL ? (size_t)(slash - link_path) + 1 : 0;
@@ -871,7 +872,7 @@ static bool target_is_directory(const WCHAR *link_path, const WCHAR *target) {
             return false;
         }
         memcpy(joined, link_path, prefix * sizeof *joined);
-        wcscpy(joined + prefix, target);
+        memcpy(joined + prefix, target, (wcslen(target) + 1) * sizeof *joined);
     }
     const DWORD attributes = GetFileAttributesW(joined);
     return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
@@ -937,11 +938,10 @@ typedef struct MsReparseBuffer {
     };
 } MsReparseBuffer;
 
-enum {
-    MS_REPARSE_TAG_MOUNT_POINT = 0xA0000003u,
-    MS_REPARSE_TAG_SYMLINK = 0xA000000Cu,
-    MS_REPARSE_BUFFER_SIZE = 16 * 1024
-};
+/* Not enumerators: the tags exceed INT_MAX, which an enum constant is under MSVC's rules. */
+static const ULONG MS_REPARSE_TAG_MOUNT_POINT = 0xA0000003u;
+static const ULONG MS_REPARSE_TAG_SYMLINK = 0xA000000Cu;
+enum { MS_REPARSE_BUFFER_SIZE = 16 * 1024 };
 
 /* The target text inside a reparse buffer, in UTF-16 units. */
 typedef struct ReparseTarget {
@@ -1269,6 +1269,11 @@ MsSysFdKind ms_sys_fs_fd_kind(MsSysFd fd) {
 
 bool ms_sys_fs_is_output(MsSysFd fd) {
     return !is_invalid(fd) && (handle_of(fd) == GetStdHandle(STD_OUTPUT_HANDLE) || handle_of(fd) == GetStdHandle(STD_ERROR_HANDLE));
+}
+
+MsSysFd ms_sys_fs_standard(int32_t which) {
+    const DWORD slot = which == 0 ? STD_INPUT_HANDLE : which == 1 ? STD_OUTPUT_HANDLE : STD_ERROR_HANDLE;
+    return (MsSysFd)GetStdHandle(slot);
 }
 
 MsSysError ms_sys_fs_redirect_null(int32_t which) {
