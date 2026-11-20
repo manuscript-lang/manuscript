@@ -100,6 +100,7 @@
 #include "check/check_method.c"
 #include "check/check_closure.c"
 #include "check/check_generic.c"
+#include "check/check_builtin.c"
 #include "check/dump_check.c"
 #include "check/effect_directives.c"
 #include "check/effect_reach.c"

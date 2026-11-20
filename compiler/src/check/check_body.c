@@ -559,7 +559,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, uint32_t nparams, cons
     return true;
 }
 
-static MsTy body_call(MsBody *b, const MsExpr *e) {
+static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
         return ms_body_method_call(b, e);
@@ -577,6 +577,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
     const MsSyms *syms = &b->c->syms;
+    if (sym == MS_NONE && ms_body_is_builtin_case(b, callee->u.sym)) {
+        return ms_body_builtin_call(b, e, expected);
+    }
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
         return body_construct(b, e, sym);
     }
@@ -827,7 +830,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_PROBE:
     case MS_E_MAP: return ms_body_unsupported(b);
     case MS_E_LAMBDA: ty = ms_body_lambda(b, e, expected); break;
-    case MS_E_CALL: ty = body_call(b, e); break;
+    case MS_E_CALL: ty = body_call(b, e, expected); break;
     case MS_E_MATCH: ty = ms_body_match(b, e, expected); break;
     }
     if (ty == MS_TY_NONE) {

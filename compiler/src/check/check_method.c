@@ -75,10 +75,14 @@ static bool intrinsic_in(const MsBody *b, const char *iface_name, MsSym name, Ta
 
 /* An operation of a primitive receiver: its own interface, then the one every value has. */
 static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
-    const char *own = receiver == b->string_ty ? "StringOperations"
-                      : receiver == b->int_ty  ? "IntOperations"
-                      : receiver == b->float_ty ? "FloatOperations"
-                                                : NULL;
+    const char *own = NULL;
+    if (receiver == b->string_ty) {
+        own = "StringOperations";
+    } else if (receiver == b->int_ty) {
+        own = "IntOperations";
+    } else if (receiver == b->float_ty) {
+        own = "FloatOperations";
+    }
     return (own != NULL && intrinsic_in(b, own, name, out)) || intrinsic_in(b, "ValueOperations", name, out);
 }
 
