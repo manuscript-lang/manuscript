@@ -31,11 +31,11 @@ static const char *md_name(int64_t index) {
     return index >= 0 && index < 9 ? names[index] : NULL;
 }
 
-static const uint8_t *bytes_of(const ms_vec *v) { return v->ptr ? v->ptr : (const uint8_t *)""; }
+static const uint8_t *bytes_of(const MsVec *v) { return v->ptr ? v->ptr : (const uint8_t *)""; }
 
 /* ---- digests, HMAC, key derivation --------------------------------------------------------------------------- */
 
-void msstd_crypto_digest(int64_t alg, const ms_vec *data, ms_vec *out) {
+void msstd_crypto_digest(int64_t alg, const MsVec *data, MsVec *out) {
     const EVP_MD *md = md_of(alg);
     uint8_t buf[EVP_MAX_MD_SIZE];
     unsigned n = 0;
@@ -43,7 +43,7 @@ void msstd_crypto_digest(int64_t alg, const ms_vec *data, ms_vec *out) {
     msrt_write_bytes(out, buf, n);
 }
 
-uint8_t msstd_crypto_hmac(int64_t alg, const ms_vec *key, const ms_vec *data, ms_vec *out) {
+uint8_t msstd_crypto_hmac(int64_t alg, const MsVec *key, const MsVec *data, MsVec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
     uint8_t buf[EVP_MAX_MD_SIZE];
@@ -55,8 +55,8 @@ uint8_t msstd_crypto_hmac(int64_t alg, const ms_vec *key, const ms_vec *data, ms
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_derive_key(int64_t alg, const ms_vec *password, const ms_vec *salt, int64_t iterations,
-                                int64_t length, ms_vec *out) {
+uint8_t msstd_crypto_derive_key(int64_t alg, const MsVec *password, const MsVec *salt, int64_t iterations,
+                                int64_t length, MsVec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
     if (iterations <= 0 || iterations > INT_MAX || length <= 0 || length > 1048576) return STATUS_INVALID_INPUT;
@@ -72,8 +72,8 @@ uint8_t msstd_crypto_derive_key(int64_t alg, const ms_vec *password, const ms_ve
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_hkdf(int64_t alg, const ms_vec *secret, const ms_vec *salt, const ms_vec *info,
-                          int64_t length, ms_vec *out) {
+uint8_t msstd_crypto_hkdf(int64_t alg, const MsVec *secret, const MsVec *salt, const MsVec *info,
+                          int64_t length, MsVec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
     int64_t size = EVP_MD_get_size(md);
@@ -116,7 +116,7 @@ uint8_t msstd_crypto_hkdf(int64_t alg, const ms_vec *secret, const ms_vec *salt,
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_constant_time_equal(const ms_vec *left, const ms_vec *right) {
+uint8_t msstd_crypto_constant_time_equal(const MsVec *left, const MsVec *right) {
     return left->len == right->len && (left->len == 0 || CRYPTO_memcmp(left->ptr, right->ptr, left->len) == 0);
 }
 
@@ -124,12 +124,12 @@ uint8_t msstd_crypto_constant_time_equal(const ms_vec *left, const ms_vec *right
 
 /* finish returns the output and resets to the initial state, so the initial state is kept beside the running one. */
 typedef struct {
-    ms_obj header;
+    MsObj header;
     EVP_MD_CTX *md_init, *md_cur;
     EVP_MAC_CTX *mac_init, *mac_cur;
 } MsHasher;
 
-static void hasher_drop(ms_obj *o) {
+static void hasher_drop(MsObj *o) {
     MsHasher *h = (MsHasher *)o;
     EVP_MD_CTX_free(h->md_init);
     EVP_MD_CTX_free(h->md_cur);
@@ -158,7 +158,7 @@ void *msstd_crypto_hasher_new(int64_t alg) {
     return h;
 }
 
-void *msstd_crypto_hmac_hasher_new(int64_t alg, const ms_vec *key) {
+void *msstd_crypto_hmac_hasher_new(int64_t alg, const MsVec *key) {
     const char *name = md_name(alg);
     MsHasher *h = hasher_alloc();
     EVP_MAC *mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
@@ -177,7 +177,7 @@ void *msstd_crypto_hmac_hasher_new(int64_t alg, const ms_vec *key) {
     return h;
 }
 
-void msstd_crypto_hasher_update(void *handle, const ms_vec *data) {
+void msstd_crypto_hasher_update(void *handle, const MsVec *data) {
     MsHasher *h = handle;
     if (!data->len) return;
     if (h->md_cur)
@@ -186,7 +186,7 @@ void msstd_crypto_hasher_update(void *handle, const ms_vec *data) {
         EVP_MAC_update(h->mac_cur, data->ptr, data->len);
 }
 
-void msstd_crypto_hasher_finish(void *handle, ms_vec *out) {
+void msstd_crypto_hasher_finish(void *handle, MsVec *out) {
     MsHasher *h = handle;
     uint8_t buf[EVP_MAX_MD_SIZE];
     size_t n = 0;
@@ -205,7 +205,7 @@ void msstd_crypto_hasher_finish(void *handle, ms_vec *out) {
 
 /* ---- AES ----------------------------------------------------------------------------------------------------- */
 
-static int key_ok(const ms_vec *key) { return key->len == 16 || key->len == 24 || key->len == 32; }
+static int key_ok(const MsVec *key) { return key->len == 16 || key->len == 24 || key->len == 32; }
 
 static const EVP_CIPHER *aes(const char *mode, size_t key_len) {
     static const char *const gcm[] = {"AES-128-GCM", "AES-192-GCM", "AES-256-GCM"};
@@ -222,8 +222,8 @@ static const EVP_CIPHER *aes(const char *mode, size_t key_len) {
 
 enum { TAG = 16 };
 
-uint8_t msstd_crypto_seal(const ms_vec *key, const ms_vec *nonce, const ms_vec *data, const ms_vec *aad,
-                          ms_vec *out) {
+uint8_t msstd_crypto_seal(const MsVec *key, const MsVec *nonce, const MsVec *data, const MsVec *aad,
+                          MsVec *out) {
     if (!key_ok(key) || nonce->len != 12 || (uint64_t)data->len > ((1ull << 32) - 2) * 16) return STATUS_INVALID_INPUT;
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     uint8_t *buf = msrt_alloc(data->len + TAG);
@@ -245,8 +245,8 @@ uint8_t msstd_crypto_seal(const ms_vec *key, const ms_vec *nonce, const ms_vec *
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_open(const ms_vec *key, const ms_vec *nonce, const ms_vec *data, const ms_vec *aad,
-                          ms_vec *out) {
+uint8_t msstd_crypto_open(const MsVec *key, const MsVec *nonce, const MsVec *data, const MsVec *aad,
+                          MsVec *out) {
     if (!key_ok(key) || nonce->len != 12) return STATUS_INVALID_INPUT;
     if (data->len < TAG) return STATUS_AUTHENTICATION_FAILED;
     size_t len = data->len - TAG;
@@ -278,7 +278,7 @@ uint8_t msstd_crypto_open(const ms_vec *key, const ms_vec *nonce, const ms_vec *
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_aes_ctr(const ms_vec *key, const ms_vec *iv, const ms_vec *data, ms_vec *out) {
+uint8_t msstd_crypto_aes_ctr(const MsVec *key, const MsVec *iv, const MsVec *data, MsVec *out) {
     if (!key_ok(key) || iv->len != 16) return STATUS_INVALID_INPUT;
     if (!data->len) return msrt_write_bytes(out, NULL, 0), STATUS_OK;
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
@@ -299,7 +299,7 @@ uint8_t msstd_crypto_aes_ctr(const ms_vec *key, const ms_vec *iv, const ms_vec *
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_aes_cbc_encrypt(const ms_vec *key, const ms_vec *iv, const ms_vec *data, ms_vec *out) {
+uint8_t msstd_crypto_aes_cbc_encrypt(const MsVec *key, const MsVec *iv, const MsVec *data, MsVec *out) {
     if (!key_ok(key) || iv->len != 16) return STATUS_INVALID_INPUT;
     size_t total_len = data->len + (16 - data->len % 16);
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
@@ -322,7 +322,7 @@ uint8_t msstd_crypto_aes_cbc_encrypt(const ms_vec *key, const ms_vec *iv, const 
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_aes_cbc_decrypt(const ms_vec *key, const ms_vec *iv, const ms_vec *data, ms_vec *out) {
+uint8_t msstd_crypto_aes_cbc_decrypt(const MsVec *key, const MsVec *iv, const MsVec *data, MsVec *out) {
     if (!key_ok(key) || iv->len != 16 || data->len == 0 || data->len % 16) return STATUS_INVALID_INPUT;
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     uint8_t *buf = msrt_alloc(data->len);
@@ -357,7 +357,7 @@ uint8_t msstd_crypto_aes_cbc_decrypt(const ms_vec *key, const ms_vec *iv, const 
 
 /* ---- Ed25519 ------------------------------------------------------------------------------------------------- */
 
-uint8_t msstd_crypto_sign(const ms_vec *seed, const ms_vec *data, ms_vec *out) {
+uint8_t msstd_crypto_sign(const MsVec *seed, const MsVec *data, MsVec *out) {
     if (seed->len != 32) return STATUS_INVALID_INPUT;
     EVP_PKEY *key = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, NULL, seed->ptr, 32);
     EVP_MD_CTX *ctx = key ? EVP_MD_CTX_new() : NULL;
@@ -372,7 +372,7 @@ uint8_t msstd_crypto_sign(const ms_vec *seed, const ms_vec *data, ms_vec *out) {
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_public_key(const ms_vec *seed, ms_vec *out) {
+uint8_t msstd_crypto_public_key(const MsVec *seed, MsVec *out) {
     if (seed->len != 32) return STATUS_INVALID_INPUT;
     EVP_PKEY *key = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, NULL, seed->ptr, 32);
     uint8_t pub[32];
@@ -384,7 +384,7 @@ uint8_t msstd_crypto_public_key(const ms_vec *seed, ms_vec *out) {
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_verify(const ms_vec *key, const ms_vec *data, const ms_vec *signature) {
+uint8_t msstd_crypto_verify(const MsVec *key, const MsVec *data, const MsVec *signature) {
     if (key->len != 32 || signature->len != 64) return 0;
     EVP_PKEY *pkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, key->ptr, 32);
     EVP_MD_CTX *ctx = pkey ? EVP_MD_CTX_new() : NULL;

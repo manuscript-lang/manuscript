@@ -31,7 +31,7 @@ static inline uint64_t hash_inline(size_t n, uint64_t lo, uint64_t hi) {
     return fold(fold(h ^ lo, K1) ^ hi, K0);
 }
 
-int64_t msrt_string_hash(const ms_str *s) {
+int64_t msrt_string_hash(const MsStr *s) {
     size_t n = ms_str_len(s);
     if (ms_str_is_inline(s)) {
         uint64_t hi = s->tagged & ((UINT64_C(1) << MS_STR_INLINE_SHIFT) - 1);
@@ -54,7 +54,7 @@ int64_t msrt_string_hash(const ms_str *s) {
 }
 
 /* Whether two strings hold the same bytes: overlapping word compares for up to 16 bytes. */
-static inline bool bytes_eq(const ms_str *a, const ms_str *b) {
+static inline bool bytes_eq(const MsStr *a, const MsStr *b) {
     size_t n = ms_str_len(a);
     if (n != ms_str_len(b)) {
         return false;
@@ -73,7 +73,7 @@ static inline bool bytes_eq(const ms_str *a, const ms_str *b) {
     return __builtin_memcmp(p, q, n) == 0;
 }
 
-uint8_t msrt_string_eq(const ms_str *a, const ms_str *b) {
+uint8_t msrt_string_eq(const MsStr *a, const MsStr *b) {
     return (a->ptr_word == b->ptr_word && a->tagged == b->tagged) || bytes_eq(a, b);
 }
 
@@ -89,11 +89,11 @@ static inline int64_t compare_memory(const uint8_t *pa, size_t la, const uint8_t
     return (int64_t)(la > lb) - (int64_t)(la < lb);
 }
 
-static __attribute__((noinline)) int64_t compare_mixed(const ms_str *a, const ms_str *b) {
+static __attribute__((noinline)) int64_t compare_mixed(const MsStr *a, const MsStr *b) {
     return compare_memory(ms_str_data(a), ms_str_len(a), ms_str_data(b), ms_str_len(b));
 }
 
-int64_t msrt_string_compare(const ms_str *a, const ms_str *b) {
+int64_t msrt_string_compare(const MsStr *a, const MsStr *b) {
     uint64_t ta = a->tagged, tb = b->tagged;
     if ((ta >> 62) != 1 && (tb >> 62) != 1) {
         /* Neither is inline: the address word and the length field are read directly. */
@@ -118,22 +118,22 @@ int64_t msrt_string_compare(const ms_str *a, const ms_str *b) {
     return x < y ? -1 : 1;
 }
 
-uint8_t msrt_string_is_empty(const ms_str *s) { return ms_str_len(s) == 0; }
+uint8_t msrt_string_is_empty(const MsStr *s) { return ms_str_len(s) == 0; }
 
-int64_t msrt_string_length(const ms_str *s) { return (int64_t)ms_str_len(s); }
+int64_t msrt_string_length(const MsStr *s) { return (int64_t)ms_str_len(s); }
 
-uint8_t msrt_string_starts_with(const ms_str *a, const ms_str *v) {
+uint8_t msrt_string_starts_with(const MsStr *a, const MsStr *v) {
     size_t n = ms_str_len(v);
     return n <= ms_str_len(a) && (n == 0 || __builtin_memcmp(ms_str_data(a), ms_str_data(v), n) == 0);
 }
 
-uint8_t msrt_string_ends_with(const ms_str *a, const ms_str *v) {
+uint8_t msrt_string_ends_with(const MsStr *a, const MsStr *v) {
     size_t n = ms_str_len(v), m = ms_str_len(a);
     return n <= m && (n == 0 || __builtin_memcmp(ms_str_data(a) + (m - n), ms_str_data(v), n) == 0);
 }
 
 /* Whether s is known to be ASCII without scanning heap bytes: flagged, or inline with clear high bits. */
-static inline bool known_ascii(const ms_str *s) {
+static inline bool known_ascii(const MsStr *s) {
     if (ms_str_is_inline(s)) {
         const uint64_t high = UINT64_C(0x8080808080808080);
         return ((uint64_t)(uintptr_t)s->ptr_word & high) == 0 && (s->tagged & (high >> 8)) == 0;
@@ -142,7 +142,7 @@ static inline bool known_ascii(const ms_str *s) {
 }
 
 /* The scalar count: the byte length for a string known to be ASCII, else counted on each call. */
-int64_t msrt_string_scalar_length(const ms_str *s) {
+int64_t msrt_string_scalar_length(const MsStr *s) {
     size_t n = ms_str_len(s);
     if (known_ascii(s)) {
         return (int64_t)n;
@@ -151,7 +151,7 @@ int64_t msrt_string_scalar_length(const ms_str *s) {
 }
 
 /* The scalar that starts at byte `at`; an offset outside the string reads as an invalid byte. */
-static inline ms_rune rune_at(const ms_str *s, int64_t at) {
+static inline ms_rune rune_at(const MsStr *s, int64_t at) {
     size_t n = ms_str_len(s);
     if (at < 0 || (uint64_t)at >= n) {
         return (ms_rune){MS_RUNE_ERROR, 1};
@@ -160,26 +160,26 @@ static inline ms_rune rune_at(const ms_str *s, int64_t at) {
 }
 
 /* Byte width of the character that starts at byte `at`. */
-int64_t msrt_string_char_width(const ms_str *s, int64_t at) { return rune_at(s, at).width; }
+int64_t msrt_string_char_width(const MsStr *s, int64_t at) { return rune_at(s, at).width; }
 
 /* The scalar value and byte width of the character at byte `at` in one decode, as scalar << 3 | width. */
-int64_t msrt_string_scalar_step(const ms_str *s, int64_t at) {
+int64_t msrt_string_scalar_step(const MsStr *s, int64_t at) {
     ms_rune r = rune_at(s, at);
     return (int64_t)(((uint64_t)r.rune << 3) | r.width);
 }
 
 /* The Unicode scalar value of the character that starts at byte `at`. */
-int64_t msrt_string_scalar_at_byte(const ms_str *s, int64_t at) { return rune_at(s, at).rune; }
+int64_t msrt_string_scalar_at_byte(const MsStr *s, int64_t at) { return rune_at(s, at).rune; }
 
-uint8_t msrt_string_contains(const ms_str *a, const ms_str *v) {
+uint8_t msrt_string_contains(const MsStr *a, const MsStr *v) {
     return ms_find(ms_str_data(a), ms_str_len(a), ms_str_data(v), ms_str_len(v)) != SIZE_MAX;
 }
 
 /* contains where the caller knows the needle has two or more bytes (a literal). */
-uint8_t msrt_string_contains_multi(const ms_str *a, const ms_str *v) { return msrt_string_contains(a, v); }
+uint8_t msrt_string_contains_multi(const MsStr *a, const MsStr *v) { return msrt_string_contains(a, v); }
 
 /* Non-overlapping occurrences of v in a; an empty v counts the scalars plus one. */
-int64_t msrt_string_count(const ms_str *a, const ms_str *v) {
+int64_t msrt_string_count(const MsStr *a, const MsStr *v) {
     size_t m = ms_str_len(v);
     if (m == 0) {
         return msrt_string_scalar_length(a) + 1;

@@ -20,7 +20,7 @@
 
 typedef enum { K_NONE, K_P256, K_P384, K_P521, K_X25519, K_ED25519, K_RSA } MsKeyKind;
 
-static const uint8_t *bytes_of(const ms_vec *v) { return v->ptr ? v->ptr : (const uint8_t *)""; }
+static const uint8_t *bytes_of(const MsVec *v) { return v->ptr ? v->ptr : (const uint8_t *)""; }
 
 static const EVP_MD *md_of(int64_t index) {
     switch (index) {
@@ -37,7 +37,7 @@ static const EVP_MD *md_of(int64_t index) {
     }
 }
 
-static int digest_of(const EVP_MD *md, const ms_vec *data, uint8_t *out, unsigned *n) {
+static int digest_of(const EVP_MD *md, const MsVec *data, uint8_t *out, unsigned *n) {
     return EVP_Digest(bytes_of(data), data->len, out, n, md, NULL);
 }
 
@@ -221,7 +221,7 @@ static EVP_PKEY *parse_private_25519(const uint8_t *der, MsKeyKind *which) {
 }
 
 /* A PKCS#8 private key; *which says what it is. NULL when it is none of the supported kinds or fails Go's checks. */
-static EVP_PKEY *parse_private(const ms_vec *v, MsKeyKind *which) {
+static EVP_PKEY *parse_private(const MsVec *v, MsKeyKind *which) {
     *which = K_NONE;
     const size_t len = first_element(bytes_of(v), v->len);
     if (!len) return NULL;
@@ -264,7 +264,7 @@ static EVP_PKEY *parse_private(const ms_vec *v, MsKeyKind *which) {
     return key;
 }
 
-static EVP_PKEY *parse_public(const ms_vec *v, MsKeyKind *which) {
+static EVP_PKEY *parse_public(const MsVec *v, MsKeyKind *which) {
     *which = K_NONE;
     const uint8_t *der = bytes_of(v);
     if (v->len == 44) {
@@ -296,14 +296,14 @@ static EVP_PKEY *parse_public(const ms_vec *v, MsKeyKind *which) {
     return key;
 }
 
-static void put(ms_vec *out, unsigned char *der, int n) {
+static void put(MsVec *out, unsigned char *der, int n) {
     msrt_write_bytes(out, der, n > 0 ? (size_t)n : 0);
     OPENSSL_free(der);
 }
 
 /* ---- keys ---------------------------------------------------------------------------------------------------- */
 
-uint8_t msstd_crypto_ecdsa_generate(int64_t curve, ms_vec *out) {
+uint8_t msstd_crypto_ecdsa_generate(int64_t curve, MsVec *out) {
     if (curve == 3) {
         uint8_t k[32], der[48];
         if (RAND_bytes(k, sizeof k) != 1) return STATUS_INVALID_INPUT;
@@ -327,7 +327,7 @@ uint8_t msstd_crypto_ecdsa_generate(int64_t curve, ms_vec *out) {
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_rsa_generate(int64_t bits, ms_vec *out) {
+uint8_t msstd_crypto_rsa_generate(int64_t bits, MsVec *out) {
     if (bits < 2048 || bits > 8192) return STATUS_INVALID_INPUT;
     EVP_PKEY *key = EVP_PKEY_Q_keygen(NULL, NULL, "RSA", (size_t)bits);
     PKCS8_PRIV_KEY_INFO *info = key ? EVP_PKEY2PKCS8(key) : NULL;
@@ -341,7 +341,7 @@ uint8_t msstd_crypto_rsa_generate(int64_t bits, ms_vec *out) {
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_public_key_der(const ms_vec *private_key, ms_vec *out) {
+uint8_t msstd_crypto_public_key_der(const MsVec *private_key, MsVec *out) {
     MsKeyKind which;
     EVP_PKEY *key = parse_private(private_key, &which);
     if (!key) return STATUS_INVALID_INPUT;
@@ -365,7 +365,7 @@ uint8_t msstd_crypto_public_key_der(const ms_vec *private_key, ms_vec *out) {
 
 /* ---- ECDSA and ECDH ------------------------------------------------------------------------------------------ */
 
-uint8_t msstd_crypto_ecdsa_sign(const ms_vec *private_key, int64_t alg, const ms_vec *data, ms_vec *out) {
+uint8_t msstd_crypto_ecdsa_sign(const MsVec *private_key, int64_t alg, const MsVec *data, MsVec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
     MsKeyKind which;
@@ -387,7 +387,7 @@ uint8_t msstd_crypto_ecdsa_sign(const ms_vec *private_key, int64_t alg, const ms
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_ecdsa_verify(const ms_vec *public_key, int64_t alg, const ms_vec *data, const ms_vec *signature) {
+uint8_t msstd_crypto_ecdsa_verify(const MsVec *public_key, int64_t alg, const MsVec *data, const MsVec *signature) {
     const EVP_MD *md = md_of(alg);
     MsKeyKind which;
     EVP_PKEY *key = md ? parse_public(public_key, &which) : NULL;
@@ -405,7 +405,7 @@ uint8_t msstd_crypto_ecdsa_verify(const ms_vec *public_key, int64_t alg, const m
     return (uint8_t)ok;
 }
 
-uint8_t msstd_crypto_ecdh_shared_secret(const ms_vec *private_key, const ms_vec *peer, ms_vec *out) {
+uint8_t msstd_crypto_ecdh_shared_secret(const MsVec *private_key, const MsVec *peer, MsVec *out) {
     MsKeyKind mine, theirs;
     EVP_PKEY *a = parse_private(private_key, &mine), *b = parse_public(peer, &theirs);
     uint8_t secret[66];
@@ -433,7 +433,7 @@ uint8_t msstd_crypto_ecdh_shared_secret(const ms_vec *private_key, const ms_vec 
 
 /* ---- RSA ----------------------------------------------------------------------------------------------------- */
 
-static EVP_PKEY *rsa_private(const ms_vec *v) {
+static EVP_PKEY *rsa_private(const MsVec *v) {
     MsKeyKind which;
     EVP_PKEY *key = parse_private(v, &which);
     if (key && which != K_RSA) {
@@ -443,7 +443,7 @@ static EVP_PKEY *rsa_private(const ms_vec *v) {
     return key;
 }
 
-static EVP_PKEY *rsa_public(const ms_vec *v) {
+static EVP_PKEY *rsa_public(const MsVec *v) {
     MsKeyKind which;
     EVP_PKEY *key = parse_public(v, &which);
     EVP_PKEY_CTX *check = key && which == K_RSA ? EVP_PKEY_CTX_new(key, NULL) : NULL;
@@ -457,7 +457,7 @@ static EVP_PKEY *rsa_public(const ms_vec *v) {
 }
 
 /* padding: 0 PKCS#1 v1.5, 1 PSS with a digest-sized salt. Signs the digest of data. */
-static uint8_t rsa_sign_with(const ms_vec *private_key, int64_t alg, const ms_vec *data, int pss, ms_vec *out) {
+static uint8_t rsa_sign_with(const MsVec *private_key, int64_t alg, const MsVec *data, int pss, MsVec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
     EVP_PKEY *key = rsa_private(private_key);
@@ -484,7 +484,7 @@ static uint8_t rsa_sign_with(const ms_vec *private_key, int64_t alg, const ms_ve
     return STATUS_OK;
 }
 
-static uint8_t rsa_verify_with(const ms_vec *public_key, int64_t alg, const ms_vec *data, const ms_vec *signature,
+static uint8_t rsa_verify_with(const MsVec *public_key, int64_t alg, const MsVec *data, const MsVec *signature,
                                int pss) {
     const EVP_MD *md = md_of(alg);
     EVP_PKEY *key = md ? rsa_public(public_key) : NULL;
@@ -503,16 +503,16 @@ static uint8_t rsa_verify_with(const ms_vec *public_key, int64_t alg, const ms_v
     return (uint8_t)ok;
 }
 
-uint8_t msstd_crypto_rsa_sign(const ms_vec *k, int64_t alg, const ms_vec *data, ms_vec *out) {
+uint8_t msstd_crypto_rsa_sign(const MsVec *k, int64_t alg, const MsVec *data, MsVec *out) {
     return rsa_sign_with(k, alg, data, 0, out);
 }
-uint8_t msstd_crypto_rsa_sign_pss(const ms_vec *k, int64_t alg, const ms_vec *data, ms_vec *out) {
+uint8_t msstd_crypto_rsa_sign_pss(const MsVec *k, int64_t alg, const MsVec *data, MsVec *out) {
     return rsa_sign_with(k, alg, data, 1, out);
 }
-uint8_t msstd_crypto_rsa_verify(const ms_vec *k, int64_t alg, const ms_vec *data, const ms_vec *sig) {
+uint8_t msstd_crypto_rsa_verify(const MsVec *k, int64_t alg, const MsVec *data, const MsVec *sig) {
     return rsa_verify_with(k, alg, data, sig, 0);
 }
-uint8_t msstd_crypto_rsa_verify_pss(const ms_vec *k, int64_t alg, const ms_vec *data, const ms_vec *sig) {
+uint8_t msstd_crypto_rsa_verify_pss(const MsVec *k, int64_t alg, const MsVec *data, const MsVec *sig) {
     return rsa_verify_with(k, alg, data, sig, 1);
 }
 
@@ -530,7 +530,7 @@ static EVP_PKEY_CTX *oaep_ctx(EVP_PKEY *key, const EVP_MD *md, int encrypt) {
     return ctx;
 }
 
-uint8_t msstd_crypto_rsa_encrypt(const ms_vec *public_key, int64_t alg, const ms_vec *message, ms_vec *out) {
+uint8_t msstd_crypto_rsa_encrypt(const MsVec *public_key, int64_t alg, const MsVec *message, MsVec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
     EVP_PKEY *key = rsa_public(public_key);
@@ -550,7 +550,7 @@ uint8_t msstd_crypto_rsa_encrypt(const ms_vec *public_key, int64_t alg, const ms
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_rsa_decrypt(const ms_vec *private_key, int64_t alg, const ms_vec *ciphertext, ms_vec *out) {
+uint8_t msstd_crypto_rsa_decrypt(const MsVec *private_key, int64_t alg, const MsVec *ciphertext, MsVec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
     EVP_PKEY *key = rsa_private(private_key);

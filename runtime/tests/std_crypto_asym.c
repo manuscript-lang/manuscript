@@ -5,7 +5,7 @@
 #include "ms_rt/crypto.h"
 #include "fake_rt.h"
 
-typedef ms_vec vec;
+typedef MsVec vec;
 
 static vec from_hex(const char *tok) {
     vec v = {NULL, 0, 0};

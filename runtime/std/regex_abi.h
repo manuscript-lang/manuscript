@@ -8,12 +8,12 @@
 #include "ms_rt/string.h"
 
 /* On success *out is a new handle object (owned by the caller); on failure *err, when not null, is an owned message. */
-uint8_t msstd_regex_compile(const ms_str *pattern, void **out, ms_str *err);
-uint8_t msstd_regex_matches(const void *handle, const ms_str *text);
-uint8_t msstd_regex_find_span(const void *handle, const ms_str *text, ms_vec *out);
-uint8_t msstd_regex_find_all_spans(const void *handle, const ms_str *text, uint8_t has_max, int64_t max, ms_vec *out);
-uint8_t msstd_regex_capture_spans(const void *handle, const ms_str *text, uint8_t has_max, int64_t max, ms_vec *out);
-uint8_t msstd_regex_capture_all_spans(const void *handle, const ms_str *text, uint8_t has_matches, int64_t max_matches,
-                                      uint8_t has_captures, int64_t max_captures, ms_vec *out);
+uint8_t msstd_regex_compile(const MsStr *pattern, void **out, MsStr *err);
+uint8_t msstd_regex_matches(const void *handle, const MsStr *text);
+uint8_t msstd_regex_find_span(const void *handle, const MsStr *text, MsVec *out);
+uint8_t msstd_regex_find_all_spans(const void *handle, const MsStr *text, uint8_t has_max, int64_t max, MsVec *out);
+uint8_t msstd_regex_capture_spans(const void *handle, const MsStr *text, uint8_t has_max, int64_t max, MsVec *out);
+uint8_t msstd_regex_capture_all_spans(const void *handle, const MsStr *text, uint8_t has_matches, int64_t max_matches,
+                                      uint8_t has_captures, int64_t max_captures, MsVec *out);
 
 #endif

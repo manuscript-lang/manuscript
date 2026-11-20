@@ -12,21 +12,21 @@
 static int failures;
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); failures++; } } while (0)
 
-static ms_str lit(const char *s) { ms_str v = {(uint8_t *)(uintptr_t)s, strlen(s) | ((size_t)2 << 62)}; return v; }
+static MsStr lit(const char *s) { MsStr v = {(uint8_t *)(uintptr_t)s, strlen(s) | ((size_t)2 << 62)}; return v; }
 static void *compile(const char *p) {
     void *h = NULL;
-    ms_str pat = lit(p);
+    MsStr pat = lit(p);
     CHECK(msstd_regex_compile(&pat, &h, NULL) == 0);
     return h;
 }
-static void drop(void *h) { ((ms_obj *)h)->drop(h); }
-static int vec_is(const ms_vec *v, size_t n, const int64_t *want) {
+static void drop(void *h) { ((MsObj *)h)->drop(h); }
+static int vec_is(const MsVec *v, size_t n, const int64_t *want) {
     return v->len == n && (n == 0 || memcmp(v->ptr, want, n * 8) == 0);
 }
 
 int main(void) {
-    ms_vec v;
-    ms_str text;
+    MsVec v;
+    MsStr text;
 
     void *re = compile("[0-9]+");
     text = lit("a12b3");
@@ -60,7 +60,7 @@ int main(void) {
     /* compile errors come back as owned text */
     {
         void *h = NULL;
-        ms_str bad = lit("(?=a)"), err = {0, 0};
+        MsStr bad = lit("(?=a)"), err = {0, 0};
         CHECK(msstd_regex_compile(&bad, &h, &err) == 4 && h == NULL);
         CHECK(err.tagged == strlen("lookahead is not supported at column 1") && memcmp(err.ptr_word, "lookahead", 9) == 0);
         free(err.ptr_word);

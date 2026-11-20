@@ -4,7 +4,7 @@
 #include "ms_rt/crypto.h"
 #include "fake_rt.h"
 
-typedef ms_vec vec;
+typedef MsVec vec;
 
 /* The fake runtime stores 8-byte elements; Bytes here are byte buffers, as the real runtime writes them. */
 static vec from_hex(const char *tok) {
@@ -121,7 +121,7 @@ int main(void) {
             put_hex(got, &r1);
             strcat(got, "\t");
             put_hex(got, &r2);
-            ((ms_obj *)h)->drop(h);
+            ((MsObj *)h)->drop(h);
             free(d1.ptr), free(d2.ptr), free(key.ptr), free(r1.ptr), free(r2.ptr);
         } else if (!strcmp(kind, "cteq")) {
             vec l = from_hex(a[0]), r = from_hex(a[1]);

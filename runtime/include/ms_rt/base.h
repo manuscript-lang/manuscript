@@ -19,17 +19,17 @@
 #include <stdint.h>
 
 /* A list or Bytes value: three words (crates/ms-rt-abi VecVal). An empty Bytes has a null `ptr`. */
-typedef struct ms_vec {
+typedef struct MsVec {
     void *ptr;
     size_t len, cap;
-} ms_vec;
+} MsVec;
 
 /* The 16-byte header every heap object starts with (crates/ms-rt-abi Obj): `clone` is null for a value with one
  * owner; `drop` drops the children and frees the object with msrt_free. */
-typedef struct ms_obj ms_obj;
-struct ms_obj {
-    ms_obj *(*clone)(ms_obj *);
-    void (*drop)(ms_obj *);
+typedef struct MsObj MsObj;
+struct MsObj {
+    MsObj *(*clone)(MsObj *);
+    void (*drop)(MsObj *);
 };
 
 #endif
