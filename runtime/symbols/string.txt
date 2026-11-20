@@ -1,0 +1,12 @@
+# Runtime symbols of ms_rt/string.h defined in C (runtime/core/string.c); one per line.
+msrt_string_compare
+msrt_string_hash
+msrt_string_eq
+msrt_string_is_empty
+msrt_string_length
+msrt_string_starts_with
+msrt_string_ends_with
+msrt_string_scalar_length
+msrt_string_char_width
+msrt_string_scalar_step
+msrt_string_scalar_at_byte
