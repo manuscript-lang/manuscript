@@ -255,6 +255,8 @@ static const Pass passes[] = {
     {"reserve", mir_opt_reserve},
     {"appendfast", mir_opt_appendfast},
     {"sortgen", mir_opt_sortgen},
+    {"copyelim", mir_opt_copyelim},
+    {"copytakes", mir_opt_copyelim_takes},
 };
 
 /* Runs the named pass and prints whether it changed the module, then the module. */
