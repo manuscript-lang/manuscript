@@ -564,11 +564,12 @@ LbVal lb_expr(Lb *lb, const MsExpr *e) {
         return value;
     }
     const MirTy payload = mir_b_ty(&lb->b, value.v);
-    if (value.owned || mir_needs_drop(lb->m, payload)) {
-        return lb_unsupported(lb);
+    const bool owns = lb_owns(lb, payload);
+    if (value.owned != owns) {
+        return lb_unsupported(lb); // a borrowed payload stays a view, an owned one is wrapped (the ownership pass decides which)
     }
     const MirTy ty = mir_ty_opt(lb->m, payload);
-    return (LbVal){mir_b_emit(&lb->b, MOP_OptSome, &value.v, 1, (MirImm){0}, ty), false};
+    return (LbVal){mir_b_emit(&lb->b, MOP_OptSome, &value.v, 1, (MirImm){0}, ty), owns};
 }
 
 /* ---- match ---- */
@@ -784,6 +785,9 @@ void lb_return_void(Lb *lb) {
 
 /* A borrowed String leaves the function: an owned name moves out as an owned value. */
 static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
+    if (e->kind == MS_E_NAME && lb->facts->res_kind[e->id] == MS_RES_NONE) {
+        return la_none_owned(lb, e); // `none` where the holder owns what it holds
+    }
     if (lb_names_var(lb, e)) {
         if (mir_b_ty(&lb->b, v) != MIR_STR) {
             lb->ok = false; // a `var` list that leaves is wrapped in an Optional the pass does not make yet
