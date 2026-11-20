@@ -306,6 +306,10 @@ fn abi_kind(text: &str) -> String {
         "ValueDesc",
         "CmpFn",
         "MsCompareFn",
+        "RunDrop",
+        "MsDropRun",
+        "RunCopy",
+        "MsSlotCopyRun",
         "ErrSlot",
     ] {
         if word(alias) {
