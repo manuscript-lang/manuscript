@@ -1091,7 +1091,6 @@ dependencies = [
  "ms-std-table",
  "ms-std-terminal",
  "ms-std-time",
- "ms-std-url",
 ]
 
 [[package]]
@@ -1288,14 +1287,6 @@ name = "ms-std-time"
 version = "0.1.0"
 dependencies = [
  "jiff",
- "ms-rt",
- "ms-rt-abi",
-]
-
-[[package]]
-name = "ms-std-url"
-version = "0.1.0"
-dependencies = [
  "ms-rt",
  "ms-rt-abi",
 ]
