@@ -203,3 +203,4 @@ c-fuzz:
 # The C compiler front end against the Rust one, token for token, on the corpus and on mutated copies; nightly runs more mutants.
 c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
+	sh compiler/tests/mir-diff.sh

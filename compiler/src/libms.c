@@ -6,3 +6,6 @@
 #include "dump_base.c"
 #include "parse.c"
 #include "dump.c"
+#include "mir.c"
+#include "mir_print.c"
+#include "mir_parse.c"
