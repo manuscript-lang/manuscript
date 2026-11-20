@@ -530,3 +530,45 @@ status 2
 cli: unknown flag --bogus
 Run 'ms help fmt' for usage.
 
+== install --bogus
+status 2
+--- stderr
+cli: unknown flag --bogus
+Run 'ms help install' for usage.
+
+== install --update
+status 2
+--- stderr
+cli: flag --update needs a value
+Run 'ms help install' for usage.
+
+== add
+status 2
+--- stderr
+cli: missing required url
+Run 'ms help add' for usage.
+
+== add https://h/x.git --tag
+status 2
+--- stderr
+cli: flag --tag needs a value
+Run 'ms help add' for usage.
+
+== add https://h/x.git --bogus
+status 2
+--- stderr
+cli: unknown flag --bogus
+Run 'ms help add' for usage.
+
+== remove
+status 2
+--- stderr
+cli: missing required name
+Run 'ms help remove' for usage.
+
+== remove @a @b
+status 2
+--- stderr
+cli: unexpected argument @b
+Run 'ms help remove' for usage.
+

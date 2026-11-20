@@ -95,11 +95,3 @@ add_library(ms_llhttp STATIC "${MS_LLHTTP_DIR}/src/api.c" "${MS_LLHTTP_DIR}/src/
                              "${MS_LLHTTP_DIR}/src/llhttp.c")
 target_include_directories(ms_llhttp PUBLIC "${MS_LLHTTP_DIR}/include")
 target_compile_options(ms_llhttp PRIVATE -O2 -w ${MS_C_FLAGS})
-
-# mimalloc: the runtime's allocator, built as one object from its static.c, no libc override.
-set(MS_MIMALLOC_DIR "${CMAKE_SOURCE_DIR}/runtime/third_party/mimalloc")
-add_library(ms_mimalloc STATIC "${MS_MIMALLOC_DIR}/src/static.c")
-target_include_directories(ms_mimalloc PUBLIC "${MS_MIMALLOC_DIR}/include")
-target_include_directories(ms_mimalloc PRIVATE "${MS_MIMALLOC_DIR}/src")
-target_compile_options(ms_mimalloc PRIVATE -O2 -w ${MS_C_FLAGS})
-target_compile_definitions(ms_mimalloc PRIVATE MI_SECURE=0 MI_DEBUG=0 NDEBUG)
