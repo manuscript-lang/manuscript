@@ -409,6 +409,13 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
 
 /* ---- statements ---- */
 
+/* Names `value` for a debugger, as the Rust lowering does: parameters and single-definition locals. */
+static void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param) {
+    const MsStr text = ms_name(lb->c->names, name);
+    const MirNamedValue named = {value, mir_name(lb->m, text.ptr, text.len), param, 0};
+    MIR_PUSH(lb->m, lb->b.f.names, lb->b.f.nnames, lb->b.f.cnames, MirNamedValue, named);
+}
+
 static void lb_bind(Lb *lb, const MsStmt *s) {
     const MsPattern *pattern = s->u.bind.pattern;
     const uint32_t binding = lb->facts->pattern_binding[pattern->id];
@@ -426,6 +433,9 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
         mir_b_def_var(&lb->b, lb->var_of[binding], value.v);
     } else {
         lb->value_of[binding] = value.v;
+        if (pattern->kind == MS_P_NAME) {
+            lb_name_value(lb, value.v, pattern->u.name, false);
+        }
     }
 }
 
@@ -586,7 +596,8 @@ static bool lb_signature(Lb *lb, const MsFunc *fn, MsSymId sym, MirParam *params
     *ret = lb_mir_ty(lb, lb->c->tys.result[sig]);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MirTy ty = lb_mir_ty(lb, sig_params[i].ty);
-        if (ty == MIR_NONE) {
+        // `var` and `move` parameters need a pass-by-reference and a hand-over this pass does not lower yet.
+        if (ty == MIR_NONE || fn->params.ptr[i]->is_mutable || fn->params.ptr[i]->moving) {
             return false;
         }
         params[i] = (MirParam){ty, MM_BORROW};
@@ -609,6 +620,7 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
     mir_b_params(&lb->b, values, fn->params.len);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         lb->value_of[lb->binding_at[fn->params.ptr[i]->id]] = values[i];
+        lb_name_value(lb, values[i], fn->params.ptr[i]->name, true);
     }
     lb_emit_plain(lb, MOP_DepthEnter);
     return true;
