@@ -245,6 +245,7 @@ msrt_process_on_exit(hook: extern "C" fn())
 msrt_promise_cancel(id: i64) @domain=promise
 msrt_promise_defer(id: i64, work: *mut Closure) @domain=promise @keeps:work @retains
 msrt_promise_done(id: i64) -> u8 @domain=promise
+msrt_promise_drain(id: i64, drain: i64, grace_ns: i64) @domain=promise
 msrt_promise_drop(id: i64) @domain=promise
 msrt_promise_end(id: i64) -> u8 @domain=promise
 msrt_promise_fault_report(id: i64, out: *mut StrVal) @domain=promise

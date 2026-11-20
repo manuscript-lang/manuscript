@@ -96,6 +96,7 @@ typedef struct Work {
     int64_t sleep_ns;
     bool fail;
     bool fault;
+    int64_t notice; /* a switch the work polls: it finishes once it has fired */
 } Work;
 
 static size_t drops;
@@ -123,6 +124,16 @@ static void put_value(Work *work) {
         ms_sched()->hooks.fault(MS_FAULT_KIND_FAULT, "boom");
     }
     ms_promise_put(work->id, (uint8_t *)&work->value, &msrt_desc_int, work->fail);
+}
+
+/* Works until the notice switch fires, then finishes with its value. */
+static void until_notice(Work *work) {
+    while (!ms_cancel_fired(work->notice)) {
+        if (ms_task_sleep(2LL * 1000 * 1000) == MS_WAIT_CANCELLED) {
+            ms_cancelled();
+        }
+    }
+    ms_promise_put(work->id, (uint8_t *)&work->value, &msrt_desc_int, false);
 }
 
 static void sleep_forever(Work *work) {
@@ -404,6 +415,82 @@ static void test_cancel_switch(void) {
     expect(!ms_cancel_fired(unfired), "a freed switch reads as not fired");
 }
 
+static MsPromise start_drainable(int64_t notice, int64_t grace_ns, void (*code)(Work *)) {
+    const MsPromise id = ms_promise_new();
+    Work *const work = make_work(id, code);
+    work->value = 41;
+    work->sleep_ns = 10LL * 1000 * 1000 * 1000;
+    work->notice = notice;
+    ms_promise_start(id, &work->header);
+    ms_promise_drain(id, notice, grace_ns);
+    ms_task_yield();
+    return id;
+}
+
+/* Ending a promise with a drain switch tells it first: work that winds down on the notice keeps its result. */
+static void test_drain_notice(void) {
+    const int64_t notice = ms_cancel_new();
+    const MsPromise id = start_drainable(notice, -1, until_notice);
+    expect(ms_promise_end(id), "the notice let the work finish with a value");
+    expect(ms_cancel_fired(notice), "ending fired the switch");
+    expect(take_int(id) == 41, "the value is the work's own");
+    ms_promise_drop(id);
+    ms_cancel_free(notice);
+}
+
+/* Work that ignores the notice is cancelled when its grace runs out; an explicit cancel gives no notice. */
+static void test_drain_grace(void) {
+    const int64_t notice = ms_cancel_new();
+    const MsPromise id = start_drainable(notice, 20LL * 1000 * 1000, sleep_forever);
+    const int64_t start = ms_sched_now();
+    expect(!ms_promise_end(id), "work that ignores the notice ends without a value");
+    expect(ms_sched_now() - start >= 15LL * 1000 * 1000, "it had its grace first");
+    expect(ms_cancel_fired(notice), "the notice went out");
+    ms_promise_drop(id);
+    ms_cancel_free(notice);
+
+    const int64_t quiet = ms_cancel_new();
+    const MsPromise cancelled = start_drainable(quiet, -1, sleep_forever);
+    ms_promise_cancel(cancelled);
+    expect(ms_promise_wait(cancelled, -1) == MS_PROMISE_CANCELLED, "an explicit cancel is at once");
+    expect(!ms_cancel_fired(quiet), "and gives no notice");
+    ms_promise_drop(cancelled);
+    ms_cancel_free(quiet);
+}
+
+static int64_t unwind_notice;
+static MsPromise unwound_id;
+
+static void drainer(void *argument) {
+    (void)argument;
+    unwound_id = start_drainable(unwind_notice, -1, until_notice);
+    for (;;) {
+        if (ms_task_sleep(100LL * 1000 * 1000 * 1000) == MS_WAIT_CANCELLED) {
+            ms_cancelled();
+        }
+    }
+}
+
+/* A cancelled frame drains its started promises instead of cancelling them. */
+static void test_drain_on_unwind(void) {
+    unwind_notice = ms_cancel_new();
+    MsTaskStatus status = MS_TASK_OK;
+    const MsTaskHandle owner = ms_task_spawn(drainer, NULL, 0, 0, &status);
+    expect(owner != 0, "spawn owner");
+    for (int i = 0; i < 3; i++) {
+        ms_task_yield();
+    }
+    ms_task_cancel(owner);
+    uint8_t outcome = 0;
+    MsFaultText text = {0};
+    expect(ms_task_join(owner, &outcome, &text) == MS_TASK_OK && outcome == 2, "owner cancelled");
+    expect(ms_cancel_fired(unwind_notice), "unwinding fired the notice");
+    expect(ms_promise_wait(unwound_id, -1) == MS_PROMISE_OK, "the drained work finished");
+    expect(take_int(unwound_id) == 41, "with its own value");
+    ms_promise_drop(unwound_id);
+    ms_cancel_free(unwind_notice);
+}
+
 /* A frame that started many promises: cancelling it ends them all, linearly. */
 enum { MANY = 20000 };
 static MsPromise many_ids[MANY];
@@ -462,6 +549,9 @@ static void entry(void *argument) {
     test_wait_any();
     test_group();
     test_cancel_switch();
+    test_drain_notice();
+    test_drain_grace();
+    test_drain_on_unwind();
     test_run_watched();
     test_cancelled_frame_ends_its_promises();
 }
