@@ -28,6 +28,9 @@ static inline size_t ms_find(const uint8_t *hay, size_t n, const uint8_t *needle
     return ms_find_big(hay, n, needle, m);
 }
 
+/* The last offset of the m bytes at needle in the n bytes at hay (an empty needle matches at n), or SIZE_MAX. */
+size_t ms_rfind(const uint8_t *hay, size_t n, const uint8_t *needle, size_t m);
+
 /* A needle prepared for many searches of one text (every piece of a split, every match of a replace): the
  * rare byte of a long needle is chosen once. A search of a text under MS_MEDIUM_HAY bytes needs no preparation. */
 typedef struct MsNeedle {
