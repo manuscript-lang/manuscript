@@ -9,6 +9,7 @@
 typedef struct Entry {
     uint64_t id; /* 0: removed from the middle, skipped */
     int64_t at;
+    void *work;
 } Entry;
 
 /* A ring of entries, `head` the oldest. Every field is guarded by `lock`. */
@@ -62,7 +63,7 @@ static bool grow(Queue *queue) {
     return true;
 }
 
-bool ms_queue_push(uint32_t isolate, uint64_t id, int64_t now_ns) {
+bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, int64_t now_ns) {
     Queue *const queue = queue_of(isolate);
     if (queue == NULL || id == 0) {
         return false;
@@ -72,7 +73,7 @@ bool ms_queue_push(uint32_t isolate, uint64_t id, int64_t now_ns) {
         unlock(queue);
         return false;
     }
-    queue->items[slot(queue, queue->length)] = (Entry){id, now_ns};
+    queue->items[slot(queue, queue->length)] = (Entry){id, now_ns, work};
     queue->length++;
     atomic_fetch_add_explicit(&queue->live, 1, memory_order_relaxed);
     unlock(queue);
@@ -102,7 +103,7 @@ bool ms_queue_remove(uint32_t isolate, uint64_t id) {
     return found;
 }
 
-bool ms_queue_steal(uint32_t isolate, int64_t not_after_ns, uint64_t *id) {
+bool ms_queue_steal(uint32_t isolate, int64_t not_after_ns, uint64_t *id, void **work) {
     Queue *const queue = queue_of(isolate);
     if (queue == NULL) {
         return false;
@@ -115,6 +116,7 @@ bool ms_queue_steal(uint32_t isolate, int64_t not_after_ns, uint64_t *id) {
     trim(queue);
     if (queue->length > 0 && queue->items[queue->head].at <= not_after_ns) {
         *id = queue->items[queue->head].id;
+        *work = queue->items[queue->head].work;
         queue->items[queue->head].id = 0;
         atomic_fetch_sub_explicit(&queue->live, 1, memory_order_relaxed);
         trim(queue);
