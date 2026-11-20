@@ -774,6 +774,10 @@ fn libs_sh(root: &Path, triple: Option<&str>, args: &[&str]) -> Result<Vec<Strin
             .env("MS_C_LIBS", "pinned")
             .env("CC", musl_compiler());
     }
+    if let Some(t) = triple.filter(|t| t.contains("windows")) {
+        // llhttp is compiled by build.sh with llvm-mingw's clang; the other libraries are MSYS2 packages.
+        command.env("CC", c_compiler(root, t, std::env::consts::ARCH));
+    }
     command
         .arg(root.join("runtime/third_party/libs.sh"))
         .args(args);
@@ -797,8 +801,11 @@ fn libs_sh(root: &Path, triple: Option<&str>, args: &[&str]) -> Result<Vec<Strin
 /// Whether the C libraries are wired for `triple`. Each target joins as its build is proven (workstream W0b);
 /// a source that needs a library the target lacks stays out of that archive and the Rust runtime serves it.
 fn c_libs_wired(triple: Option<&str>) -> bool {
-    std::env::consts::OS == "linux"
-        && triple.is_none_or(|t| t.ends_with("linux-gnu") || t.ends_with("linux-musl"))
+    match std::env::consts::OS {
+        "linux" => triple.is_none_or(|t| t.ends_with("linux-gnu") || t.ends_with("linux-musl")),
+        "windows" => triple.is_some_and(|t| t.ends_with("windows-gnullvm")),
+        _ => false,
+    }
 }
 
 /// Folders of `runtime` that hold code for one platform only: the target's own is compiled, the rest are not.
