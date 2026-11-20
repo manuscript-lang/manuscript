@@ -213,7 +213,11 @@ static int write_request_head(Out *out, const MsHttpRequest *request) {
 MsNetStatus ms_http1_exchange(MsConnTable *table, MsConnId id, const MsHttpRequest *request, int64_t deadline_ns,
                               MsHttpResponse *response, MsHttpBody **body_out) {
     Out out = {NULL, 0, 0};
-    if (!head_capacity(request, &out.capacity) || (out.bytes = malloc(out.capacity)) == NULL) {
+    if (!head_capacity(request, &out.capacity)) {
+        return MS_NET_FAILED;
+    }
+    out.bytes = malloc(out.capacity);
+    if (out.bytes == NULL) {
         return MS_NET_FAILED;
     }
     if (write_request_head(&out, request) != 0) {
