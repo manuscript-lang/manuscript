@@ -317,6 +317,23 @@ pub fn print_func(m: &Module, f: &Func) -> String {
         SortThunk::Generic => o.push_str(" sort_cmp"),
         SortThunk::Specialized => o.push_str(" sort_cmp_for"),
     }
+    if f.explicit_cancel {
+        o.push_str(" explicit_cancel");
+    }
+    if !f.noalias.is_empty() {
+        let ns: Vec<String> = f.noalias.iter().map(u32::to_string).collect();
+        let _ = write!(o, " noalias({})", ns.join(", "));
+    }
+    if let Some(s) = f.slot_result {
+        let _ = write!(o, " slot_result(@{})", m.funcs[s.0 as usize].name);
+    }
+    if let Some((a, b)) = f.close_exit {
+        let _ = write!(
+            o,
+            " close_exit(@{}, @{})",
+            m.funcs[a.0 as usize].name, m.funcs[b.0 as usize].name
+        );
+    }
     if !f.loc.is_none() {
         let _ = write!(o, " !{}", f.loc);
     }

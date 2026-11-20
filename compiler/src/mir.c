@@ -179,6 +179,11 @@ static bool needs_drop_in(const MirModule *m, MirTy ty, MirTy *seen, uint32_t *n
     }
 }
 
+bool mir_name_is(const MirModule *m, MsSym sym, const char *text) {
+    const MsStr name = ms_name(&m->names, sym);
+    return name.len == strlen(text) && memcmp(name.ptr, text, name.len) == 0;
+}
+
 bool mir_needs_drop(const MirModule *m, MirTy ty) {
     /* The recursion depth is bounded by the number of declarations. */
     uint32_t cap = m->ntype_defs + m->nalts + 1, n = 0;
@@ -256,6 +261,15 @@ uint32_t mir_add_func(MirModule *m, const MirFunc *f) {
     MIR_PUSH(m, m->funcs, m->nfuncs, m->cfuncs, MirFunc, *f);
     symmap_add(m, &m->by_func, f->name, m->nfuncs - 1);
     return m->nfuncs - 1;
+}
+
+void mir_funcs_reindex(MirModule *m) {
+    for (uint32_t i = 0; i < m->by_func.cap; i++) {
+        m->by_func.v[i] = MIR_NONE;
+    }
+    for (uint32_t i = 0; i < m->nfuncs; i++) {
+        symmap_add(m, &m->by_func, m->funcs[i].name, i);
+    }
 }
 
 uint32_t mir_add_type(MirModule *m, MsSym name) {

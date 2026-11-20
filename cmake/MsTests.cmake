@@ -7,7 +7,8 @@ endif()
 set(_tests "${CMAKE_SOURCE_DIR}/runtime/tests")
 set(_rt "${CMAKE_SOURCE_DIR}/runtime")
 
-set(_test_flags -O1 -g -Wall -Wextra -Werror)
+# Frame pointers, as in every runtime build: the fault report walks them.
+set(_test_flags -O1 -g -Wall -Wextra -Werror -fno-omit-frame-pointer)
 set(_plain_flags -O0 -g -Wall -Wextra -Werror)
 if(MS_SANITIZE)
   list(APPEND _test_flags -fsanitize=address,undefined -fno-sanitize-recover=undefined)
@@ -51,12 +52,19 @@ file(GLOB _std_support CONFIGURE_DEPENDS "${_tests}/std_support/*.c")
 file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
 
 # core_*: all of runtime/core and runtime/sys/posix, the allocator's live-block counts on.
+# task_abi.c is linked by core_task_abi alone: the other tests stub the task ABI and run without a scheduler.
+set(_task_abi "${_rt}/core/task_abi.c")
+list(REMOVE_ITEM _core_sources "${_task_abi}")
 ms_test_objects(ms_test_core ${_core_sources} ${_posix_sources} ${_support_sources})
 target_compile_definitions(ms_test_core PRIVATE MS_ALLOC_STATS)
 file(GLOB _core_tests CONFIGURE_DEPENDS "${_tests}/core_*.c")
 foreach(file ${_core_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
+  set(_extra "")
+  if(name STREQUAL "core_task_abi")
+    set(_extra "${_task_abi}")
+  endif()
+  ms_test(${name} SOURCES "${file}" ${_extra} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
 endforeach()
 
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which
@@ -67,13 +75,14 @@ ms_test(sys_thread SOURCES "${_tests}/sys_thread.c" "${_rt}/sys/thread.c" ${_pos
 ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_posix_sources} PLAIN
         INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 
-# std_*: all of runtime/std with the system PCRE2, libcrypto and libuv.
+# std_*: all of runtime/std with the system PCRE2, libcrypto, libuv and zlib.
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c"
-          INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES}
-          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} m ${CMAKE_DL_LIBS})
+  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c" "${_rt}/sys/posix/fd.c"
+          "${_rt}/sys/posix/ifindex.c"
+          INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_z_INCLUDES}
+          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
 
 # The HTTP/1 test links the vendored llhttp sources (the same ones the runtime archive compiles).

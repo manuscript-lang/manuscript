@@ -73,10 +73,19 @@ bool ms_sys_fd_readable_now(int fd);
 /* Sleeps until fd is readable or timeout_ns pass, with nanosecond resolution; a signal or an error ends it early.
  * False where the system has no such wait (only Linux does), so the caller waits another way. */
 MS_NODISCARD bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns);
+/* Sets *ready to whether fd can be read (or written, when `writes`) without blocking, a hang-up or error counting as
+ * ready. False where the system cannot tell. Unix only; Windows reports false. */
+MS_NODISCARD bool ms_sys_fd_ready(int fd, bool writes, bool *ready);
 /* Makes the process's environ agree with the C library's own copy. A static library built without -fPIC makes the
  * linker copy environ into the program, and glibc fills only its own, so readers of the copy would see an empty
  * environment (issue #4647). Linux only; a no-op elsewhere. */
 void ms_sys_sync_environ(void);
+
+/* ---- network interfaces ---- */
+
+/* The system's numeric index of the interface called `name` (NUL-terminated), or 0 when it has none or the host
+ * keys interfaces another way (Windows, where libuv reports friendly names). */
+uint32_t ms_sys_interface_index(const char *name);
 
 /* ---- faults ---- */
 
@@ -88,5 +97,40 @@ typedef void (*MsSysFaultFn)(uintptr_t address);
  * SIGBUS) to on_fault, so a stack overflow can be reported by name; call it on each thread that may overflow.
  * The alternate stack lives as long as the process. Linux and macOS only: Windows reports false. */
 MS_NODISCARD bool ms_sys_fault_handler_install(MsSysFaultFn on_fault);
+
+/* sys/{posix,windows}/report.c: how a fault reaches the outside. None of these allocates or takes a lock, so a fault
+ * that cannot allocate can still be reported. */
+
+/* Writes `bytes` to standard error, all of it unless the system refuses; errors are ignored (nothing else can be
+ * done with them). */
+void ms_sys_stderr_write(MsBytes bytes);
+/* Ends the process at once with `status`: no handlers, no flushing, no cleanup of any kind. */
+MS_NORETURN void ms_sys_exit_now(int status);
+/* The id of this process, which a fault record carries so the CLI ignores a record a descendant left behind. */
+uint32_t ms_sys_process_id(void);
+/* Creates or truncates the file the MS_FAULT_RECORD environment variable names and writes `bytes` to it; nothing
+ * happens when the variable is unset or the file cannot be written. */
+void ms_sys_fault_record_write(MsBytes bytes);
+
+#ifdef _WIN32
+/* sys/windows/frames.c: generated code does not keep its frame register on its own frame record, so the walk starts
+ * from the native unwind data of the runtime's own frames and then scans for records (ms_frames_scan_record). */
+
+/* The first frame of generated code above the function at `anchor`: its pc, stack pointer and frame register, and
+ * the number of logical frames the walk may still visit (accounting begins with the anchor's callers). `is_source`
+ * says whether a pc lies in generated code. False when native unwind data ends before one is found. */
+typedef struct MsSysNativeStart {
+    uintptr_t pc;
+    uintptr_t sp;
+    uintptr_t fp;
+    size_t budget;
+} MsSysNativeStart;
+MS_NODISCARD bool ms_sys_native_start(uintptr_t anchor, bool (*is_source)(uintptr_t, void *), void *context,
+                                      size_t budget, MsSysNativeStart *start);
+/* Whether native unwind data covers `pc`: the runtime and the system have it, generated code does not. */
+bool ms_sys_has_unwind_data(uintptr_t pc);
+/* The bounds of the calling thread's stack. */
+void ms_sys_stack_bounds(uintptr_t *low, uintptr_t *high);
+#endif
 
 #endif
