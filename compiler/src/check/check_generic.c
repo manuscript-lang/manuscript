@@ -21,11 +21,13 @@ static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, MsInfer *in)
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsArg *arg = &e->u.call.args.ptr[i];
-        const bool fixed = !ms_ty_has_variable(tys, &b->c->arena, params[i].ty);
-        if (arg->has_name || params[i].flags != 0 || (fixed && !ms_body_is_plain_value(b, params[i].ty))) {
+        // Explicit type arguments already fix some variables: the argument is checked against that.
+        const MsTy want = ms_infer_apply(in, params[i].ty);
+        const bool fixed = !ms_ty_has_variable(tys, &b->c->arena, want);
+        if (arg->has_name || params[i].flags != 0 || (fixed && !ms_body_is_plain_value(b, want))) {
             return false;
         }
-        const MsTy actual = ms_body_expr(b, arg->value, fixed ? params[i].ty : MS_TY_NONE);
+        const MsTy actual = ms_body_expr(b, arg->value, fixed ? want : MS_TY_NONE);
         if (actual == MS_TY_NONE || !ms_body_is_plain_value(b, actual) || ms_infer_match(in, params[i].ty, actual) != MS_MATCH_OK) {
             return false;
         }
@@ -76,7 +78,7 @@ static void generic_record_type_args(MsBody *b, const MsExpr *e, const MsInfer *
     }
 }
 
-MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym) {
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written) {
     if (b->c->syms.module[sym] != b->module) {
         return ms_body_unsupported(b); /* an imported generic: its declaration ids belong to another module */
     }
@@ -84,6 +86,22 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym) {
     const MsTy sig = b->c->syms.ty[sym];
     MsInfer in;
     ms_infer_init(&in, b->c, &b->c->arena, def->vars, def->nvars);
+    if (written != NULL) {
+        // `f[Int](x)`: the written arguments bind the first variables, the rest are inferred.
+        MsTy given[16];
+        if (written->len == 0 || written->len > 16 || written->len > def->nvars) {
+            return ms_body_unsupported(b);
+        }
+        for (uint32_t i = 0; i < written->len; i++) {
+            given[i] = ms_body_annotation(b, written->ptr[i]);
+            if (given[i] == MS_TY_NONE) {
+                return MS_TY_NONE;
+            }
+        }
+        if (!ms_infer_give(&in, given, written->len)) {
+            return ms_body_unsupported(b);
+        }
+    }
     uint32_t first = 0;
     if (!generic_arguments(b, e, sig, &in) || ms_infer_defaults(&in, &first) != 0 || !generic_bounds(b, &in)) {
         return ms_body_unsupported(b);

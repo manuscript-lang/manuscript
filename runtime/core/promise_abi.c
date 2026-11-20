@@ -44,6 +44,8 @@ void msrt_promise_limit(int64_t id, int64_t timeout_ns) { ms_promise_limit(id, t
 int64_t msrt_promise_new(void) { return ms_promise_new(); }
 void msrt_promise_on_cancel(int64_t id, int64_t cancel) { ms_promise_on_cancel(id, cancel); }
 
+void msrt_promise_drain(int64_t id, int64_t drain, int64_t grace_ns) { ms_promise_drain(id, drain, grace_ns); }
+
 void msrt_promise_put(int64_t id, uint8_t *value, const MsTypeDesc *d, int64_t failed) {
     ms_promise_put(id, value, d, failed != 0);
 }
