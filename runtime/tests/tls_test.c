@@ -3,29 +3,10 @@
 #include <stdio.h>
 #include <string.h>
 #include "../net/tls.h"
+#include "test_cert.h"
 
 static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
-
-/* Self-signed test certificate for localhost, valid for a century, and its key. Test data only. */
-static const char CERT[] =
-    "-----BEGIN CERTIFICATE-----\n"
-    "MIIBlTCCATugAwIBAgIUTDhnP9MmNSVMFrvncmvJP86XTR8wCgYIKoZIzj0EAwIw\n"
-    "FDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MTEyMDAyMTMxMFoYDzIxMjYxMDI3\n"
-    "MDIxMzEwWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO\n"
-    "PQMBBwNCAARHmnJyhZTZnbl0vbF9TaF1HulFlgFb/bGF71ImMBXFCJ6WNYt4FAm6\n"
-    "vn4+mYYklmMtugKrV/wNuR7z3zBv/SG+o2kwZzAdBgNVHQ4EFgQU08J2xEUzFYzx\n"
-    "KqmJR0ydcM12/IgwHwYDVR0jBBgwFoAU08J2xEUzFYzxKqmJR0ydcM12/IgwDwYD\n"
-    "VR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID\n"
-    "SAAwRQIhAKx3oXUlFf3VrCtYMlW4jjmc5dJn3kQEmPIVMVu7RSpZAiBMZmgMpVuE\n"
-    "SRENQTzn+YxHjrZr5itiG0+3TZS6ScfnuQ==\n"
-    "-----END CERTIFICATE-----\n";
-static const char KEY[] =
-    "-----BEGIN PRIVATE KEY-----\n"
-    "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgLrAoU9fnE4ctW88E\n"
-    "ztzdELEzBjsZWorHGzje5quaQXKhRANCAARHmnJyhZTZnbl0vbF9TaF1HulFlgFb\n"
-    "/bGF71ImMBXFCJ6WNYt4FAm6vn4+mYYklmMtugKrV/wNuR7z3zBv/SG+\n"
-    "-----END PRIVATE KEY-----\n";
 
 /* Moves pending ciphertext one way. */
 static void pump(MsTls *from, MsTls *to) {

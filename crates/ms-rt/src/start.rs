@@ -45,9 +45,15 @@ fn stop_requested(sig: i32) {
         unsafe { sys::_exit(FaultKind::IncompleteCleanup.exit_status()) }
     }
     fault::raise_main_cancel(sig as u8);
-    crate::cabi::run_stop_hooks();
+    // SAFETY: runs the hooks `ms_on_stop` registered; they are async-signal-safe by contract.
+    unsafe { ms_stop_hooks_run() };
     arm_grace_timer();
     crate::task::kick();
+}
+
+unsafe extern "C" {
+    /// Runs the stop hooks of user extern shims (runtime/core/cabi.c).
+    fn ms_stop_hooks_run();
 }
 
 /// Reports a stop that cleanup did not survive, on standard error and in the fault record.
