@@ -16,6 +16,7 @@ import (
 
 	Invocation, parse_invocation, requests_help, takes_value, validate from "./args.ms",
 	command_help, command_names, overview from "./help.ms",
+	run_init from "./init.ms",
 )
 
 fn out(text: String) Void:
@@ -232,6 +233,7 @@ export fn run(given: List[String]) Int:
 		return 0
 
 	if args[0] == "help": return run_help(args.drop(1))
+	if args[0] == "init": return run_init(args.drop(1))
 	if is_source_command(args[0]): return run_source_command(args, usage_text)
 
 	return delegate(args)

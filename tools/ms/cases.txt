@@ -59,3 +59,6 @@ check a.ms --check
 build a.ms --list
 --version
 version x
+init a b
+init -x
+init --lib --workspace
