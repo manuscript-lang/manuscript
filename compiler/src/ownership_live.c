@@ -19,12 +19,20 @@ MsLiveness ms_liveness_new(MsArena *arena, uint32_t node_count) {
     return live;
 }
 
+/* What `break` and `continue` reach in the innermost loop: the state after the loop and the
+ * state at its head. */
+typedef struct LiveLoop {
+    const uint32_t *after, *head;
+    const struct LiveLoop *outer;
+} LiveLoop;
+
 typedef struct LiveWalk {
     MsLiveness *live;
     const MsFacts *facts;
     MsArena *scratch;
     uint32_t *later; /* by binding id: the earliest later use, or MS_NONE */
     uint32_t nbindings;
+    const LiveLoop *loop;
     bool supported;
 } LiveWalk;
 
@@ -135,7 +143,10 @@ static void live_while(LiveWalk *w, const MsStmt *s) {
     uint32_t *head = live_snapshot(w);
     for (;;) {
         w->later = live_copy_of(w, head);
+        const LiveLoop here = {after, head, w->loop};
+        w->loop = &here;
         live_block(w, &s->u.loop.body);
+        w->loop = here.outer;
         live_join(w, after);
         live_expr(w, s->u.loop.cond);
         const uint32_t *entry = w->later;
@@ -168,10 +179,10 @@ static void live_statement(LiveWalk *w, const MsStmt *s) {
         return;
     case MS_S_IF: live_if(w, s); return;
     case MS_S_WHILE: live_while(w, s); return;
+    case MS_S_BREAK: w->later = live_copy_of(w, w->loop->after); return;
+    case MS_S_CONTINUE: w->later = live_copy_of(w, w->loop->head); return;
     case MS_S_ASSIGN:
     case MS_S_CALL:
-    case MS_S_BREAK:
-    case MS_S_CONTINUE:
     case MS_S_FOR: w->supported = false; return;
     }
 }
