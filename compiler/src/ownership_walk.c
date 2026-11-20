@@ -931,7 +931,10 @@ static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const uin
         const MsParam *param = function->params.ptr[i];
         own_declare(w, binding, param->is_mutable ? PERM_MUTABLE : PERM_IMMUTABLE, true);
         w->param_index[binding] = i;
-        w->param_mode[binding] = param->is_mutable ? 1 : (param->moving ? 2 : 0);
+        w->param_mode[binding] = param->is_mutable ? 1 : 0;
+        if (param->moving && !param->is_mutable) {
+            w->param_mode[binding] = 2;
+        }
     }
 }
 
