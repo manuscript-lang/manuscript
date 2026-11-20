@@ -21,6 +21,7 @@ mod opt_simplify;
 mod opt_strfuse;
 mod outline;
 mod persist;
+mod state_machine;
 mod text;
 mod unwind;
 mod view_provenance;
