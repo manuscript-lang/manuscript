@@ -7,6 +7,7 @@
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
+#include "ms/methods.h"
 
 typedef struct MsBody {
     MsCheck *c;
@@ -14,6 +15,9 @@ typedef struct MsBody {
     MsFacts *facts;
     MsLiteralFacts *literals;
     MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
+    uint32_t lambda_floor;  /* bindings below this id belong to an enclosing function: captured */
+    const MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
+    MsTy invalid_ty;        /* the type of an expression that already drew a diagnostic */
     bool has_close;         /* the module declares a method named `close` */
     MsTy result;
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */
@@ -22,9 +26,22 @@ typedef struct MsBody {
     uint32_t loop_depth;    /* loops around the statement being checked */
     uint32_t breaks;        /* `break`s seen for the innermost loop */
     MsBuf written;          /* expression ids whose type this function wrote, to undo them */
+    MsBuf diags;            /* MsCheckDiag of the function being checked, reported once it is claimed */
+    const char *context;    /* what the next `ms_body_expr` value is for ("the return value"), or NULL */
     bool supported;         /* false once a construct outside the handled set is met */
 } MsBody;
 
+/* A parameter or local of this type can be called and passed around (check_closure.c). */
+bool ms_body_is_function_value(const MsBody *b, MsTy ty);
+/* `callee(args)` through the function-typed binding `binding`. */
+MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding);
+/* A module function named as a value; an anonymous function. */
+MsTy ms_body_function_name(MsBody *b, const MsExpr *e);
+MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected);
+/* The primitive type a written annotation names, or MS_TY_NONE after giving up. */
+MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
+/* A call `receiver.name(args)` (check_method.c). */
+MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
 MsTy ms_body_unsupported(MsBody *b);
 /* Records the type of expression node `node` and returns it. */
@@ -43,6 +60,8 @@ uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, uint8_t fla
 /* The visible binding of `name`, or MS_NONE. */
 uint32_t ms_body_find_binding(const MsBody *b, MsSym name);
 /* A `match` over an enum or `Optional` scrutinee of type `ty` (check_alt.c). */
+/* Whether `ty` is an `Optional`, and its payload type (check_alt.c). */
+bool ms_body_optional_payload(const MsBody *b, MsTy ty, MsTy *payload);
 MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy ty);
 /* A `match` expression (check_match.c). */
 MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected);

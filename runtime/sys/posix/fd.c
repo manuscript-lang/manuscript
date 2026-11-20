@@ -90,6 +90,12 @@ void ms_sys_sync_environ(void) {
     environ = __environ;
 }
 
+char **ms_sys_swap_libc_environ(char **replacement) {
+    char **previous = __environ;
+    __environ = replacement;
+    return previous;
+}
+
 #else
 
 bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {
@@ -99,5 +105,7 @@ bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {
 }
 
 void ms_sys_sync_environ(void) {}
+
+char **ms_sys_swap_libc_environ(char **replacement) { return replacement; }
 
 #endif

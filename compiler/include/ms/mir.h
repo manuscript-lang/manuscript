@@ -194,9 +194,19 @@ typedef struct MirFunc {
     MirTy ret;
     bool ret_borrowed, ret_view;
     /* Set by passes, not in the text form: a function made only to run while a cancellation
-     * unwinds; one that leaves a cancel by its own explicit exits; one whose lists are raw slot
-     * copies (they own no elements). */
-    bool unwind_only, explicit_cancel, raw_scratch;
+     * unwinds; one whose lists are raw slot copies (they own no elements). */
+    bool unwind_only, raw_scratch;
+    /* In the text form: a function that leaves a cancel by its own explicit exits; the indexes
+     * of its pointer parameters no other memory overlaps (`var` parameters); on a `slot_close`
+     * thunk, the function running the same close for its result; on a function with fallible
+     * closing owners, the (plain, pending) functions that turn a close error into its result. */
+    bool explicit_cancel;
+    uint32_t *noalias;
+    uint32_t nnoalias;
+    bool has_slot_result;
+    uint32_t slot_result;
+    bool has_close_exit;
+    uint32_t close_exit[2];
     /* Set by lowering, not in the text form: a closure function whose environment owns
      * resources lists the capture index and the function that closes it; a cleanup thunk that
      * closes a value in place names the type of that value. */
