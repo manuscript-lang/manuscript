@@ -15,18 +15,11 @@
 #define MS_WINAPI_CALLBACK
 #endif
 
-typedef uint32_t(MS_WINAPI_CALLBACK *WinThreadEntry)(void *);
-
 // NOLINTBEGIN(readability-identifier-naming): the names are Win32's
 MS_WINAPI int QueryPerformanceCounter(int64_t *count);
 MS_WINAPI int QueryPerformanceFrequency(int64_t *frequency);
 MS_WINAPI void *VirtualAlloc(void *address, size_t length, uint32_t kind, uint32_t protection);
 MS_WINAPI int VirtualFree(void *address, size_t length, uint32_t kind);
-MS_WINAPI uintptr_t CreateThread(void *attributes, size_t stack, WinThreadEntry entry, void *argument,
-                                 uint32_t flags, uint32_t *id);
-MS_WINAPI uint32_t WaitForSingleObject(uintptr_t handle, uint32_t milliseconds);
-MS_WINAPI int CloseHandle(uintptr_t handle);
-MS_WINAPI void Sleep(uint32_t milliseconds);
 MS_WINAPI int SwitchToThread(void);
 // NOLINTEND(readability-identifier-naming)
 

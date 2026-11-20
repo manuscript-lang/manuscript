@@ -7,7 +7,6 @@ extern crate ms_rt;
 extern crate ms_std_archive;
 extern crate ms_std_core;
 extern crate ms_std_fs;
-extern crate ms_std_io;
 extern crate ms_std_json;
 extern crate ms_std_net;
 extern crate ms_std_process;

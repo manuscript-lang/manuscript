@@ -221,7 +221,12 @@ void ms_dump_module_types(MsBuf *out, const MsCheck *c, MsModId m) {
 
 static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const MsExpr *e) {
     ms_buf_printf(out, "expr %u ", e->id);
-    ms_ty_show(out, c->names, &c->tys, facts->expr_ty[e->id]);
+    // A node the checker never typed (the `_` of a match arm) is `-`.
+    if (facts->expr_ty[e->id] == MS_TY_NONE) {
+        ms_buf_putc(out, '-');
+    } else {
+        ms_ty_show(out, c->names, &c->tys, facts->expr_ty[e->id]);
+    }
     ms_buf_putc(out, '\n');
     switch ((MsExprKind)e->kind) {
     case MS_E_TEXT:
@@ -236,6 +241,16 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
         dump_expr(out, c, facts, e->u.bin.left);
         dump_expr(out, c, facts, e->u.bin.right);
         break;
+    case MS_E_MATCH:
+        dump_expr(out, c, facts, e->u.match.scrutinee);
+        for (uint32_t i = 0; i < e->u.match.arms.len; i++) {
+            const MsArm *arm = e->u.match.arms.ptr[i];
+            dump_expr(out, c, facts, arm->path);
+            if (arm->value != NULL) {
+                dump_expr(out, c, facts, arm->value);
+            }
+        }
+        break;
     case MS_E_NUMBER:
     case MS_E_BOOL:
     case MS_E_VOID:
@@ -247,8 +262,7 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
     case MS_E_LIST:
     case MS_E_MAP:
     case MS_E_LAMBDA:
-    case MS_E_CALL:
-    case MS_E_MATCH: break;
+    case MS_E_CALL: break;
     }
 }
 

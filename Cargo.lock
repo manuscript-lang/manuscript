@@ -716,7 +716,6 @@ dependencies = [
  "ms-std-archive",
  "ms-std-core",
  "ms-std-fs",
- "ms-std-io",
  "ms-std-json",
  "ms-std-net",
  "ms-std-process",
@@ -771,15 +770,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-io"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
- "ms-std-fs",
-]
-
-[[package]]
 name = "ms-std-json"
 version = "0.1.0"
 dependencies = [
@@ -817,7 +807,6 @@ dependencies = [
  "ms-rt",
  "ms-rt-abi",
  "ms-std-fs",
- "ms-std-io",
  "windows-sys 0.61.2",
 ]
 

@@ -52,10 +52,8 @@ fn Regex.capture_all(text: String, max_matches: Int?) List[List[String]]!:
 fn Regex.capture_named(text: String) Map[String, String]:
 	pairs := msstd_regex_named_capture_pairs(self, text)
 	var out = Map[String, String]()
-
 	for index in 0..(pairs.length() / 2):
 		out.add(pairs[index * 2].clone(), pairs[index * 2 + 1].clone())
-
 	return out
 
 // Returns the UTF-8 byte range of the first match, or none when nothing matches.
@@ -68,9 +66,9 @@ fn Regex.find_span(text: String) RegexSpan?:
 fn Regex.split(text: String, max_pieces: Int?) List[String]!: ...
 
 // Like `replace_all`, but expands `$1`, `${name}` and `$$` in `template` from each
-// match. A bare `$name` or `$1` reads every following letter, digit and `_` as part of the
-// name, so write `${1}x`, not `$1x`. A `$` that starts no reference is literal, and a
-// reference to a missing or non-participating group expands to nothing.
+// match. A bare `$name` or `$1` reads every following letter, digit and `_` as part of
+// the name, so write `${1}x`, not `$1x`. A `$` that starts no reference is literal, and
+// a reference to a missing or non-participating group expands to nothing.
 fn Regex.replace_template(text: String, template: String, max_bytes: Int?) String!: ...
 
 // Returns the byte range of each match in `find_all` order, without copying the

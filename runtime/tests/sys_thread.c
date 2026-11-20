@@ -17,9 +17,9 @@ static void bump(void *arg) { *(int *)arg += 41; }
 int main(void) {
     /* The argument reaches the thread and the join waits for it, with the default and with a given stack. */
     int a = 1, b = 1;
-    uintptr_t t1 = ms_sys_thread_spawn(0, bump, &a);
-    uintptr_t t2 = ms_sys_thread_spawn((size_t)1 << 20, bump, &b);
-    CHECK(t1 != 0 && t2 != 0);
+    MsSysThread *t1 = ms_sys_thread_spawn(0, bump, &a);
+    MsSysThread *t2 = ms_sys_thread_spawn((size_t)1 << 20, bump, &b);
+    CHECK(t1 != NULL && t2 != NULL);
     ms_sys_thread_join(t1);
     ms_sys_thread_join(t2);
     CHECK(a == 42 && b == 42);
