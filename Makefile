@@ -44,7 +44,7 @@ libms-tools: target/libms_tools.a
 
 target/libms_tools.a: compiler/src/*.c compiler/include/ms/*.h compiler/tools/tool_shim.c compiler/tools/tool_shim.h
 	mkdir -p target
-	$(CC) -O2 -c compiler/src/libms.c -Icompiler/include -Icompiler/src -o target/libms.o
+	$(CC) -O2 -c compiler/src/libms.c -Icompiler/include -Icompiler/src -Iruntime/include -o target/libms.o
 	$(CC) -O2 -c compiler/tools/tool_shim.c -Icrates/ms-rt-abi/include -o target/tool_shim.o
 	ar rcs $@ target/libms.o target/tool_shim.o
 
