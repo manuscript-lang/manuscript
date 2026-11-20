@@ -47,6 +47,7 @@ static void write_address(MsStr *out, const MsAddr *address) {
 /* ---- lookup ---- */
 
 uint8_t msstd_net_lookup(const MsStr *host, int64_t port, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err) {
+    ms_net_clear_text(err);
     char *name = copy_text(host);
     if (name == NULL || port < 0 || port > 65535) {
         free(name);
@@ -75,6 +76,7 @@ uint8_t msstd_net_lookup(const MsStr *host, int64_t port, uint8_t has_timeout, i
 
 uint8_t msstd_net_dial(const MsStr *address, const MsStr *server_name, uint8_t has_tls, const MsNetTlsOptions *tls,
                        uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     MsAddr target;
     if (!ms_net_addr_parse(bytes_of_str(address), &target)) {
         return STATUS_INVALID_INPUT;
@@ -111,6 +113,7 @@ uint8_t msstd_net_dial(const MsStr *address, const MsStr *server_name, uint8_t h
 /* ---- connection handles ---- */
 
 uint8_t msstd_conn_read(const void *handle, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err) {
+    ms_net_clear_text(err);
     const MsNetConn *conn = ms_netconn_of(handle);
     if (has_max != 0 && max < 0) {
         return STATUS_INVALID_INPUT;
@@ -140,12 +143,14 @@ uint8_t msstd_conn_read(const void *handle, uint8_t has_max, int64_t max, uint8_
 }
 
 uint8_t msstd_conn_write_bytes(const void *handle, const MsVec *data, uint8_t has_timeout, int64_t timeout, MsStr *err) {
+    ms_net_clear_text(err);
     const MsNetConn *conn = ms_netconn_of(handle);
     const MsNetStatus status = ms_conn_write(ms_netconn_table(conn), ms_netconn_id(conn), data->ptr, data->len, ms_net_deadline_of(has_timeout, timeout));
     return ms_net_finish(status, ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
 }
 
 uint8_t msstd_conn_shutdown_write(const void *handle, MsStr *err) {
+    ms_net_clear_text(err);
     const MsNetConn *conn = ms_netconn_of(handle);
     const MsNetStatus status = ms_conn_shutdown_write(ms_netconn_table(conn), ms_netconn_id(conn), -1);
     return ms_net_finish(status, ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
