@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal with a feasibility sketch, 2026-11-20, main `fd2c28aa`. Direction: "yes go for it" (Chinmay). Independent review (Fable) found the first draft's prototype unsound on loops, holes and slots and its baseline inflated; this version fixes the first two in code, refuses the third, and corrects the baseline.
+Proposal with a feasibility sketch (not in the tree), 2026-11-20, main `fd2c28aa`. Direction: "yes go for it" (Chinmay). Independent review (Fable) found the first draft's prototype unsound on loops, holes and slots and its baseline inflated; this version fixes the first two in code, refuses the third, and corrects the baseline.
 
 ## Problem
 
@@ -19,7 +19,7 @@ Proposal with a feasibility sketch, 2026-11-20, main `fd2c28aa`. Direction: "yes
 
 ## Design
 
-**Sketch** (`crates/ms-mir/src/state_machine.rs`, `tests/state_machine.rs`). `convert` ends each block at a wait and splits the function into `f.start`, `f.step(Frame) -> Frame` and `f.cancel(Frame)`. A wait `r = call.rt @w(a)` becomes `tk = @w_begin(a)`, save the live values, return; state `k` resumes with `r = @w_result(tk)`. The code reachable from each resume point is cloned, frame slots are shared by type. Tested on an echo loop in both branch orders (verifier accepts, interpreter output equals the original, `cancel` frees the saved tag exactly once from every state). It refuses slots, moved-out fields (holes), depth ops, the cleanup stack and polls, because the sketch does not model them. It is a feasibility sketch of the form the real pass will not take (frame by value, clone per wait).
+**Sketch** (Rust, kept out of the tree because new compiler work is written in C: `w13/mir-sketch/` in the project files). `convert` ends each block at a wait and splits the function into `f.start`, `f.step(Frame) -> Frame` and `f.cancel(Frame)`. A wait `r = call.rt @w(a)` becomes `tk = @w_begin(a)`, save the live values, return; state `k` resumes with `r = @w_result(tk)`. The code reachable from each resume point is cloned, frame slots are shared by type. Tested on an echo loop in both branch orders (verifier accepts, interpreter output equals the original, `cancel` frees the saved tag exactly once from every state). It refuses slots, moved-out fields (holes), depth ops, the cleanup stack and polls, because the sketch does not model them. It is a feasibility sketch of the form the real pass will not take (frame by value, clone per wait).
 
 **Real shape** (`ms emit examples/websocket-echo`, 150 functions, 73 externs, 15 `leaf`).
 - `echo` calls `ReadStream.next`, which reaches `msstd_websocket_receive` through `call.method`; every function on the path becomes a state machine and a caller stores its callee's frame.
@@ -40,7 +40,7 @@ Proposal with a feasibility sketch, 2026-11-20, main `fd2c28aa`. Direction: "yes
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-mir/src/state_machine.rs` | the transform, then the in-place form | `tests/state_machine.rs`, conformance |
+| MIR in C (W18) | the transform in its in-place form, written once there | MIR interpreter test, conformance |
 | `crates/ms-mir/src/unwind.rs`, `cancel_exit.rs` | cancel and fault exits from frame state | sweep (#4052), cancel fixtures |
 | `crates/ms-lower`, `ms-check` | `waits` natives, "may wait" effect, calling form | effect fixtures |
 | `runtime/` (W5, W11) | begin/result/cancel natives, task = frame | `make c-test`, corpus |

@@ -26,7 +26,6 @@ pub mod parse;
 pub mod persist;
 pub mod print;
 pub mod slot_scope;
-pub mod state_machine;
 pub mod statics;
 pub mod types;
 pub mod unwind;
