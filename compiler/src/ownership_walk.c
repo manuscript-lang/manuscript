@@ -324,10 +324,17 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         own_expr(w, e->u.bin.right, DEMAND_READ);
         return;
     case MS_E_MEMBER: own_expr(w, e->u.member.left, DEMAND_READ); return; /* a copied field reads its holder */
+    case MS_E_INDEX: /* only a scalar element is read: the checker admits no other */
+        own_expr(w, e->u.bin.left, DEMAND_READ);
+        own_expr(w, e->u.bin.right, DEMAND_READ);
+        return;
+    case MS_E_LIST: /* each entry moves into the list */
+        for (uint32_t i = 0; i < e->u.list.len; i++) {
+            own_expr(w, e->u.list.ptr[i], DEMAND_MOVE);
+        }
+        return;
     case MS_E_APPLY:
-    case MS_E_INDEX:
     case MS_E_PROBE:
-    case MS_E_LIST:
     case MS_E_MAP:
     case MS_E_LAMBDA: w->supported = false; return;
     case MS_E_CALL: own_call(w, e, demand); return;
@@ -438,8 +445,8 @@ static bool own_mentions(const OwnWalk *w, const MsExpr *e, uint32_t binding) {
         }
         return false;
     case MS_E_MEMBER:
+    case MS_E_INDEX: return own_mentions(w, e->u.bin.left, binding) || own_mentions(w, e->u.bin.right, binding);
     case MS_E_APPLY:
-    case MS_E_INDEX:
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
@@ -528,6 +535,10 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
             if (binding != MS_NONE) {
                 own_mutate(w, arg, binding);
                 continue;
+            }
+            if (arg->kind == MS_E_INDEX || arg->kind == MS_E_MEMBER) {
+                w->supported = false; /* a part of a variable is a place too: changing it is left to Rust */
+                return;
             }
             own_error(w, arg->pos,
                       ms_arena_fmt(&w->check->arena, "%s",
