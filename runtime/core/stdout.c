@@ -84,6 +84,14 @@ void ms_sched_flush_stdout(void) {
     ms_spin_unlock(&out.lock);
 }
 
+void ms_sched_release_stdout(void) {
+    ms_spin_lock(&out.lock);
+    flush_locked();
+    msrt_free(out.buffer.items);
+    out.buffer = (Bytes){0};
+    ms_spin_unlock(&out.lock);
+}
+
 static bool is_terminal(void) {
     int state = atomic_load_explicit(&terminal_state, memory_order_relaxed);
     if (state == 0) {

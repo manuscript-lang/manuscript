@@ -162,12 +162,34 @@ static void report_overflow(uintptr_t address) {
 }
 
 #ifdef MS_ALLOC_STATS
+/* Which size classes still hold blocks: a flaky leak names its blocks by size (0 is the large blocks). */
+static void report_live_by_size(void) {
+    enum { CLASSES = 64 };
+    size_t sizes[CLASSES];
+    int64_t counts[CLASSES];
+    const size_t found = msrt_heap_live_by_size(sizes, counts, CLASSES);
+    char line[SIZE_CLASS_LINE * 4];
+    int length = snprintf(line, sizeof line, "ms-rt live blocks by size:");
+    for (size_t i = 0; i < found && length > 0 && (size_t)length < sizeof line - SIZE_CLASS_LINE; i++) {
+        if (sizes[i] == 0) {
+            length += snprintf(line + length, sizeof line - (size_t)length, " large=%lld", (long long)counts[i]);
+        } else {
+            length += snprintf(line + length, sizeof line - (size_t)length, " %zuB=%lld", sizes[i], (long long)counts[i]);
+        }
+    }
+    line[length++] = '\n';
+    ms_sys_stderr_write(ms_bytes_of((const uint8_t *)line, (size_t)length));
+}
+
 /* The counting build: what is still live after the scheduler state was released. */
 static void report_leaks(void) {
     char line[SIZE_CLASS_LINE];
     const int64_t live = msrt_heap_live_total();
     const int length = snprintf(line, sizeof line, "ms-rt live blocks at exit: %lld\n", (long long)live);
     ms_sys_stderr_write(ms_bytes_of((const uint8_t *)line, (size_t)length));
+    if (live != 0) {
+        report_live_by_size();
+    }
     uint64_t requested[2] = {0};
     msrt_heap_requested(requested);
     uint64_t copies[4] = {0};
@@ -288,6 +310,7 @@ static void runtime_thread(void *argument) {
     ms_sched_clear_stop_target();
     ms_sched_teardown();
     ms_io_close(true);
+    ms_sched_release_stdout();
 #ifdef MS_ALLOC_STATS
     report_leaks();
 #endif
