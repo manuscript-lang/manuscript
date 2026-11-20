@@ -83,3 +83,22 @@ void ms_netconn_close_if_last(const void *handle) {
         ms_netconn_close(handle);
     }
 }
+
+MsObj *ms_netconn_take(const void *handle) {
+    MsNetConn *old = ms_netconn_of(handle);
+    MsConnTable *stale = ms_conn_table_new(1); /* the old core's table: no row, so every call on it is closed */
+    if (stale == NULL) {
+        return NULL;
+    }
+    MsObj *taken = ms_netconn_new(old->table, old->id);
+    if (taken == NULL) { /* ms_netconn_new has closed the row and freed the table */
+        old->table = stale;
+        atomic_store(&old->closed, true);
+        return NULL;
+    }
+    old->table = stale;
+    old->id = 0;
+    atomic_store(&old->closed, true);
+    return taken;
+}
+
