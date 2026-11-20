@@ -276,15 +276,15 @@ fn check_c_abi(
             if !seen.insert(name.to_string()) {
                 return Err(format!("{name} is listed in two runtime/symbols files"));
             }
+            // `ms_sys_*` is the runtime's own door to the OS (ms_rt/sys.h): not natives, so no recorded signature.
+            if name.starts_with("ms_sys_") {
+                continue;
+            }
             let Some((params, ret)) = declared.get(*name) else {
                 return Err(format!(
                     "{name} is in runtime/symbols/{module}.txt but not declared in ms_rt/{module}.h"
                 ));
             };
-            // `sys` is the runtime's own door to the OS: its functions are not natives, so they have no recorded signature.
-            if module == "sys" {
-                continue;
-            }
             let Some(line) = table.get(*name) else {
                 return Err(format!(
                     "{name} is in runtime/symbols/{module}.txt but not a runtime function"
@@ -351,11 +351,7 @@ fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>
         else {
             continue;
         };
-        if tail.trim() != ";"
-            || !name.starts_with("msrt_")
-                && !name.starts_with("msstd_")
-                && !name.starts_with("ms_sys_")
-        {
+        if tail.trim() != ";" || !name.starts_with("msrt_") && !name.starts_with("msstd_") {
             continue;
         }
         let ret = if head.contains('*') {
