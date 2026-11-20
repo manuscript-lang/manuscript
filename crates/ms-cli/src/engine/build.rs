@@ -5,7 +5,7 @@ use std::path::Path;
 use ms_build::Lower;
 use ms_driver::project::pathops;
 
-use super::{Engine, Failure, compile};
+use super::{Engine, Failure, Target, compile_target};
 use crate::backend::{BackendResult, BuildRequest, Io};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::json::Json;
@@ -91,7 +91,15 @@ pub(super) fn build<L: Lower>(
         )
     };
 
-    let mut compiled = match compile(syms, backend, &request.filename, false) {
+    // The Manuscript `ms test` and `ms bench` build their executables here: the variable picks
+    // the target and a `<output>.tests` file lists the source root, the project root and the
+    // test or bench identities in index order.
+    let target = match std::env::var("MS_BUILD_TARGET").as_deref() {
+        Ok("tests") => Target::Tests,
+        Ok("benches") => Target::Benches,
+        _ => Target::Program,
+    };
+    let mut compiled = match compile_target(syms, backend, &request.filename, &[], target) {
         Ok(compiled) => compiled,
         Err(failure) => return Ok(report_failure(&failure, structured, &document, io)),
     };
@@ -155,6 +163,17 @@ pub(super) fn build<L: Lower>(
         &request.link,
     ) {
         return Ok(fail(io, &compiled.source_root, "build", &message));
+    }
+    if target != Target::Program {
+        let mut listing = format!("{}\n{}\n", compiled.source_root, compiled.project_root);
+        for name in &compiled.tests {
+            listing.push_str(name);
+            listing.push('\n');
+        }
+        if let Err(error) = std::fs::write(format!("{output}.tests"), listing) {
+            let message = format!("cannot write {output}.tests: {error}");
+            return Ok(fail(io, &compiled.source_root, "build", &message));
+        }
     }
     if structured {
         return Ok(emit_json(
