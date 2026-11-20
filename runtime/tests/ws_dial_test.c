@@ -178,10 +178,6 @@ int main(void) {
         CHECK(ms_ws_socket_send(session, text("hi"), true, after_ms(5000)) == MS_WSS_OK);
         ms_sys_thread_join(thread);
         ((MsObj *)handle)->drop(handle);
-        msrt_list_drop(&names, &msrt_desc_string);
-        ms_str_release(&authority);
-        ms_str_release(&target);
-        ms_str_release(&none);
         ((MsObj *)conn)->drop(conn);
         msrt_string_free(&authority);
         msrt_string_free(&target);
