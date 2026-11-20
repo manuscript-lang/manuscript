@@ -12,6 +12,8 @@ unsafe extern "C" {
     fn ms_io_unwatch(fd: i32);
     fn ms_io_forget(fd: i32);
     fn ms_io_wait(timeout_ns: i64, out: *mut Ready, capacity: usize, count: *mut usize) -> bool;
+    fn ms_io_set_completion_sink(sink: Option<unsafe extern "C" fn(u64, i32, u32)>);
+    fn ms_sched_post_completion(id: u64, result: i32, kind: u32);
 }
 
 /// The reactor `ms_io_wake` takes, movable into the isolate's wake closure.
@@ -28,6 +30,8 @@ pub unsafe fn create() -> i32 {
     if !unsafe { ms_io_open(main, &mut reactor) } {
         fault::fault(b"cannot create the I/O poller");
     }
+    // SAFETY: the sink posts to this thread's scheduler, which is the thread that runs the reactor's wait.
+    unsafe { ms_io_set_completion_sink(Some(ms_sched_post_completion)) };
     let wake = WakeHandle(reactor);
     crate::isolate::set_wake(Some(Box::new(move || {
         let w = &wake;

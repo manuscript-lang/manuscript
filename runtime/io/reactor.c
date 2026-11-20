@@ -47,6 +47,7 @@ struct MsIoReactor {
     MsIoRing *ring;        /* owned; readiness of watched descriptors */
     MsIoRing *completions; /* owned; finished work and resolutions */
     uint32_t pending;      /* submitted completions not yet pushed */
+    MsIoCompletionSink sink; /* receives completions in ms_io_wait, or null */
     bool woken; /* a wake-up was consumed since the wait began */
 };
 
@@ -365,6 +366,8 @@ static size_t drain_events(MsIoReactor *reactor, MsIoReady *out, size_t capacity
     return count;
 }
 
+static void deliver_completions(MsIoReactor *reactor);
+
 bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *count) {
     MsIoReactor *reactor = thread_reactor;
     if (reactor == NULL) {
@@ -379,6 +382,7 @@ bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *cou
         (void)uv_run(&reactor->loop, UV_RUN_ONCE);
     }
     *count = drain_events(reactor, out, capacity);
+    deliver_completions(reactor);
     return true;
 }
 
@@ -441,12 +445,20 @@ bool ms_io_work(MsIoWorkFn work, void *argument, uint64_t id) {
 struct MsIoAddresses {
     uv_getaddrinfo_t request;
     uint64_t id;
+    bool finished;  /* libuv has ended the request: its completion is pushed */
+    bool abandoned; /* the caller gave up before that; the callback releases the record */
 };
 
 static void on_resolved(uv_getaddrinfo_t *request, int status, struct addrinfo *list) {
     (void)list; /* stays in request->addrinfo until ms_io_addresses_free */
-    const MsIoAddresses *addresses = request->data;
+    MsIoAddresses *addresses = request->data;
     MsIoReactor *reactor = uv_loop_get_data(request->loop);
+    addresses->finished = true;
+    if (addresses->abandoned) {
+        reactor->pending--;
+        ms_io_addresses_free(addresses);
+        return;
+    }
     completion_push(reactor, (MsIoEvent){.id = addresses->id, .result = status, .kind = MS_IO_RESOLVE});
 }
 
@@ -496,6 +508,30 @@ bool ms_io_addresses_at(const MsIoAddresses *addresses, size_t index, MsIoAddres
 void ms_io_addresses_free(MsIoAddresses *addresses) {
     uv_freeaddrinfo(addresses->request.addrinfo);
     ms_sys_free(addresses);
+}
+
+void ms_io_addresses_abandon(MsIoAddresses *addresses) {
+    if (addresses->finished) {
+        ms_io_addresses_free(addresses); /* its completion is queued or collected; the id no longer matters */
+        return;
+    }
+    addresses->abandoned = true;
+    (void)uv_cancel((uv_req_t *)&addresses->request);
+}
+
+void ms_io_set_completion_sink(MsIoCompletionSink sink) {
+    MsIoReactor *reactor = thread_reactor;
+    if (reactor != NULL) {
+        reactor->sink = sink;
+    }
+}
+
+/* Hands every queued completion to the sink, outside any libuv callback. */
+static void deliver_completions(MsIoReactor *reactor) {
+    MsIoEvent event;
+    while (reactor->sink != NULL && ms_io_ring_pop(reactor->completions, &event)) {
+        reactor->sink(event.id, event.result, event.kind);
+    }
 }
 
 bool ms_io_completion(MsIoEvent *event) {
