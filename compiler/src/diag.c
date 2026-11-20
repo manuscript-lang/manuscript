@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <string.h>
+#include "ms_rt/chars.h"
 
 #include "ms/diag.h"
 
@@ -160,7 +161,7 @@ const MsSubcode *ms_subcode_for(const char *family, MsStr message) {
 
 static bool dg_ieq(const char *a, const char *b) {
     for (; *a != 0 && *b != 0; a++, b++) {
-        if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) {
+        if (ms_ascii_to_lower((uint8_t)*a) != ms_ascii_to_lower((uint8_t)*b)) {
             return false;
         }
     }

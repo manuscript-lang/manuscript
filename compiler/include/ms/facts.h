@@ -37,7 +37,7 @@ typedef struct MsBindings {
     uint8_t *role;        /* MsBindRole */
     uint32_t count;
 } MsBindings;
-enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2 };
+enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2, MS_BIND_READ = 4 };
 typedef enum MsBindRole {
     MS_ROLE_PARAM, MS_ROLE_SELF, MS_ROLE_LET, MS_ROLE_VAR, MS_ROLE_PATTERN, MS_ROLE_LOOP,
     MS_ROLE_ARM, MS_ROLE_LAMBDA_PARAM
@@ -81,6 +81,7 @@ typedef struct MsFacts {
     MsTy *call_interface;      /* the interface a call dispatches through, else MS_TY_NONE */
     uint32_t *call_type_args_at, *call_type_args_len; /* into `type_args` */
     MsTy *type_args;
+    bool *body_checked;   /* by declaration node id: the function's body was checked */
     MsBindings bindings;
     MsMethods *methods; /* the program's table, shared by every module */
 } MsFacts;

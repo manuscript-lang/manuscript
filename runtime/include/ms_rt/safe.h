@@ -74,6 +74,22 @@ MS_NODISCARD MS_NONNULL static inline bool ms_size_sub(size_t a, size_t b, size_
     return true;
 }
 
+/* ---- word loads ---- */
+
+/* The native-endian word at p, read with memcpy so alignment and aliasing never matter. The caller guarantees
+ * that 8 (or 4) bytes are readable. */
+static inline uint64_t ms_load64(const uint8_t *p) {
+    uint64_t v;
+    __builtin_memcpy(&v, p, sizeof v);
+    return v;
+}
+
+static inline uint32_t ms_load32(const uint8_t *p) {
+    uint32_t v;
+    __builtin_memcpy(&v, p, sizeof v);
+    return v;
+}
+
 /* ---- spans ---- */
 
 /* Read-only bytes: borrowed, never freed through the span. `ptr` may be null only when `len` is 0. */

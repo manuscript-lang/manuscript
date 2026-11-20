@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "ms/base.h"
+#include "ms_rt/chars.h"
 
 static inline bool ms_text_is_unicode_space(uint32_t scalar) {
     if (scalar == ' ' || (scalar >= 0x09 && scalar <= 0x0D)) {
@@ -30,7 +31,7 @@ static inline uint32_t ms_text_scalar_at(MsStr text, uint32_t at, int *length) {
 /* The start of the last scalar that ends at text[end]. */
 static inline uint32_t ms_text_last_scalar_start(MsStr text, uint32_t end) {
     uint32_t start = end - 1;
-    while (start > 0 && ((uint8_t)text.ptr[start] & 0xC0u) == 0x80u) {
+    while (start > 0 && ms_utf8_is_continuation((uint8_t)text.ptr[start])) {
         start--;
     }
     return start;

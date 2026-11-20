@@ -14,7 +14,7 @@ static bool decl_has_symbol(const MsDecl *d) {
 }
 
 /* The symbol `d` declared in the module, unless a duplicate name took its place. */
-static MsSymId decl_own_symbol(const MsCheck *c, MsModId module, const MsDecl *d) {
+MsSymId ms_decl_own_symbol(const MsCheck *c, MsModId module, const MsDecl *d) {
     const MsSymId sym = ms_map_get(&c->mods[module].names, ms_decl_name(d));
     return sym != MS_NONE && c->syms.decl[sym] == d ? sym : MS_NONE;
 }
@@ -84,7 +84,7 @@ static void declare_type_variables(MsResolver *r) {
     const MsModule *syntax = c->mods[r->module].syntax;
     for (uint32_t i = 0; i < syntax->ndecls; i++) {
         const MsDecl *d = syntax->decls[i];
-        const MsSymId sym = decl_has_symbol(d) ? decl_own_symbol(c, r->module, d) : MS_NONE;
+        const MsSymId sym = decl_has_symbol(d) ? ms_decl_own_symbol(c, r->module, d) : MS_NONE;
         if (sym == MS_NONE) {
             continue;
         }
@@ -140,7 +140,7 @@ static void defaults_of(DefaultsWalk *w, uint32_t index) {
     w->state[index] = DEFAULTS_STARTED;
     const MsDecl *d = w->syntax->decls[index];
     MsCheck *c = w->r->c;
-    const MsSymId sym = decl_has_symbol(d) ? decl_own_symbol(c, w->r->module, d) : MS_NONE;
+    const MsSymId sym = decl_has_symbol(d) ? ms_decl_own_symbol(c, w->r->module, d) : MS_NONE;
     if (sym != MS_NONE) {
         const MsTypeParams *params = decl_params(d);
         for (uint32_t i = 0; i < params->len; i++) {
@@ -181,7 +181,7 @@ static void resolve_declaration_bounds(MsResolver *r) {
         for (uint32_t k = 0; k < params->len; k++) {
             bounded = bounded || params->ptr[k]->bounds.len != 0;
         }
-        const MsSymId sym = bounded ? decl_own_symbol(c, r->module, d) : MS_NONE;
+        const MsSymId sym = bounded ? ms_decl_own_symbol(c, r->module, d) : MS_NONE;
         if (sym == MS_NONE) {
             continue;
         }
@@ -198,7 +198,7 @@ static void resolve_aliases(MsResolver *r) {
     const MsModule *syntax = r->c->mods[r->module].syntax;
     for (uint32_t i = 0; i < syntax->ndecls; i++) {
         const MsDecl *d = syntax->decls[i];
-        const MsSymId sym = d->kind == MS_D_ALIAS ? decl_own_symbol(r->c, r->module, d) : MS_NONE;
+        const MsSymId sym = d->kind == MS_D_ALIAS ? ms_decl_own_symbol(r->c, r->module, d) : MS_NONE;
         if (sym != MS_NONE) {
             (void)ms_alias_target(r, sym);
         }
@@ -248,7 +248,7 @@ static void resolve_signatures(MsResolver *r) {
     for (uint32_t i = 0; i < syntax->ndecls; i++) {
         const MsDecl *d = syntax->decls[i];
         const bool resolvable = decl_has_symbol(d) && d->kind != MS_D_CONST && d->kind != MS_D_ALIAS;
-        const MsSymId sym = resolvable ? decl_own_symbol(c, r->module, d) : MS_NONE;
+        const MsSymId sym = resolvable ? ms_decl_own_symbol(c, r->module, d) : MS_NONE;
         if (sym == MS_NONE) {
             continue;
         }

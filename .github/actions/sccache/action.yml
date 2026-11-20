@@ -23,6 +23,13 @@ runs:
     - name: Keep the sccache directory in runner storage
       shell: bash
       run: echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
+    # The C half of the runtime (CMakeLists.txt) uses ccache as its compiler launcher when it is installed
+    # (native-toolchain installs it); its directory rides in the same cache entry, capped so six legs fit the 10 GB.
+    - name: Keep the ccache directory in runner storage
+      shell: bash
+      run: |
+        echo "CCACHE_DIR=$RUNNER_TEMP/ccache" >> "$GITHUB_ENV"
+        echo "CCACHE_MAXSIZE=150M" >> "$GITHUB_ENV"
     # One entry per run, saved from main: the key ends in the run id, so every manual main run writes
     # a fresh cache holding what it compiled, and a restore takes the newest entry for the prefix (the
     # prune workflow keeps only that one). sccache entries are content-addressed, so an entry from an
@@ -36,5 +43,6 @@ runs:
           ~/.cargo/registry/cache
           ~/.cargo/git/db
           ${{ runner.temp }}/sccache
+          ${{ runner.temp }}/ccache
         key: ${{ inputs.prefix }}${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
         restore-keys: ${{ inputs.prefix }}
