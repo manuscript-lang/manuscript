@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/diag.h"
+#include "ms/format.h"
 #include "ms/lex.h"
 #include "ms/parse.h"
 #include "ms/tool.h"
@@ -44,6 +46,40 @@ uint8_t ms_tool_lex(const ms_str *text, ms_list *out, int64_t *code_out, ms_str 
         push_int(out, t->end.line);
         push_int(out, t->end.column);
     }
+    ms_arena_free(&arena);
+    return 0;
+}
+
+/* Reports a syntax error in the header form of ms_tool_format. */
+static void format_failure(const char *code, const MsDiag *diag, int64_t offset, int64_t *code_out,
+                           ms_str *message_out) {
+    MsBuf text = {0};
+    ms_buf_printf(&text, "%s\t%lld\t%lld\t", code, (long long)diag->pos.line, (long long)diag->pos.column);
+    ms_buf_put(&text, diag->message.ptr, diag->message.len);
+    ms_string_new((const uint8_t *)text.data, text.len, message_out);
+    ms_buf_free(&text);
+    *code_out = offset;
+}
+
+uint8_t ms_tool_format(const ms_str *text, ms_str *out, int64_t *code_out, ms_str *message_out) {
+    MsArena arena = {0};
+    MsBuf formatted = {0};
+    MsDiag diag;
+    const char *src = (const char *)ms_str_data(text);
+    size_t len = ms_str_len(text);
+    if (!ms_utf8_valid(src, len)) {
+        MsDiag invalid = {.pos = {.offset = 0, .line = 1, .column = 1}, .message = {"invalid UTF-8", 13}};
+        format_failure(ms_code_for("parse", invalid.message), &invalid, 0, code_out, message_out);
+        return 1;
+    }
+    if (!ms_format(&arena, src, len, &formatted, &diag)) {
+        format_failure(ms_code_for("parse", diag.message), &diag, diag.pos.offset, code_out, message_out);
+        ms_buf_free(&formatted);
+        ms_arena_free(&arena);
+        return 1;
+    }
+    ms_string_new((const uint8_t *)formatted.data, formatted.len, out);
+    ms_buf_free(&formatted);
     ms_arena_free(&arena);
     return 0;
 }
