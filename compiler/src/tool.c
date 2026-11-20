@@ -184,7 +184,7 @@ static void enc_types(Enc *e, MsTypeRef *const *ts, uint32_t n, int *kids) {
 }
 
 static void enc_param(Enc *e, const MsParam *p, int *kids) {
-    size_t at = rec(e, N_Param, p->id, p->pos, NOPOS, (p->mutable_ ? 1 : 0) | (p->moving ? 2 : 0), p->name, -1);
+    size_t at = rec(e, N_Param, p->id, p->pos, NOPOS, (p->is_mutable ? 1 : 0) | (p->moving ? 2 : 0), p->name, -1);
     KID(kids);
     int k = 0;
     enc_type(e, p->ty, &k);
@@ -428,7 +428,7 @@ static void enc_stmt(Enc *e, const MsStmt *s, int *kids) {
 #define OPEN(kind, flags, a, b) (at = rec(e, kind, s->id, s->pos, NOPOS, flags, a, b), KID(kids))
     switch (s->kind) {
     case MS_S_BIND:
-        OPEN(N_Bind, (s->u.bind.mutable_ ? 1 : 0) | (s->u.bind.has_group ? 2 : 0), -1, -1);
+        OPEN(N_Bind, (s->u.bind.is_mutable ? 1 : 0) | (s->u.bind.has_group ? 2 : 0), -1, -1);
         if (s->u.bind.has_group) {
             const size_t base = at * MS_TOOL_NODE_WIDTH;
             field_store(e->out, base + 5, s->u.bind.group.offset);
@@ -457,21 +457,21 @@ static void enc_stmt(Enc *e, const MsStmt *s, int *kids) {
     case MS_S_BREAK: OPEN(N_Break, 0, -1, -1); break;
     case MS_S_CONTINUE: OPEN(N_Continue, 0, -1, -1); break;
     case MS_S_IF:
-        OPEN(N_If, s->u.if_.mutable_ ? 1 : 0, -1, -1);
-        enc_pattern(e, s->u.if_.binding, &k);
-        enc_expr(e, s->u.if_.cond, &k);
-        enc_body(e, s->u.if_.body.ptr, s->u.if_.body.len, &k);
-        enc_body(e, s->u.if_.else_body.ptr, s->u.if_.else_body.len, &k);
+        OPEN(N_If, s->u.branch.is_mutable ? 1 : 0, -1, -1);
+        enc_pattern(e, s->u.branch.binding, &k);
+        enc_expr(e, s->u.branch.cond, &k);
+        enc_body(e, s->u.branch.body.ptr, s->u.branch.body.len, &k);
+        enc_body(e, s->u.branch.else_body.ptr, s->u.branch.else_body.len, &k);
         break;
     case MS_S_WHILE:
         OPEN(N_While, 0, -1, -1);
-        enc_expr(e, s->u.while_.cond, &k);
-        enc_body(e, s->u.while_.body.ptr, s->u.while_.body.len, &k);
+        enc_expr(e, s->u.loop.cond, &k);
+        enc_body(e, s->u.loop.body.ptr, s->u.loop.body.len, &k);
         break;
     default:
-        OPEN(N_For, 0, s->u.for_.name, -1);
-        enc_expr(e, s->u.for_.iter, &k);
-        enc_body(e, s->u.for_.body.ptr, s->u.for_.body.len, &k);
+        OPEN(N_For, 0, s->u.each.name, -1);
+        enc_expr(e, s->u.each.iter, &k);
+        enc_body(e, s->u.each.body.ptr, s->u.each.body.len, &k);
         break;
     }
     patch(e, at, k);
@@ -508,7 +508,7 @@ static void enc_methods(Enc *e, MsMethod **ms, uint32_t n, int *kids) {
 }
 
 static void enc_decl(Enc *e, const MsDecl *d, int *kids) {
-    int64_t base = (d->export_ ? 1 : 0) | (d->synthetic ? 2 : 0);
+    int64_t base = (d->is_exported ? 1 : 0) | (d->synthetic ? 2 : 0);
     size_t at;
     int k = 0;
 #define OPEN(kind, flags, a, b) (at = rec(e, kind, d->id, d->pos, NOPOS, base | (flags), a, b), KID(kids))
@@ -529,12 +529,12 @@ static void enc_decl(Enc *e, const MsDecl *d, int *kids) {
         enc_params(e, d->u.type.fields.ptr, d->u.type.fields.len, &k);
         break;
     case MS_D_ENUM: {
-        OPEN(N_Enum, d->u.enum_.opaque ? 8 : 0, d->u.enum_.name, -1);
-        enc_type_params(e, d->u.enum_.type_params, &k);
+        OPEN(N_Enum, d->u.enumeration.opaque ? 8 : 0, d->u.enumeration.name, -1);
+        enc_type_params(e, d->u.enumeration.type_params, &k);
         size_t lat = list_open(e, &k);
         int lk = 0;
-        for (uint32_t i = 0; i < d->u.enum_.cases.len; i++) {
-            const MsCase *c = d->u.enum_.cases.ptr[i];
+        for (uint32_t i = 0; i < d->u.enumeration.cases.len; i++) {
+            const MsCase *c = d->u.enumeration.cases.ptr[i];
             size_t cat = rec(e, N_Case, c->id, c->pos, NOPOS, 0, c->name, -1);
             KID(&lk);
             int ck = 0;
