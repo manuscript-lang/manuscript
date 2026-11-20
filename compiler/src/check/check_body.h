@@ -43,6 +43,8 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
  * a list literal and an index expression. */
 bool ms_body_is_list(const MsBody *b, MsTy ty);
 bool ms_body_is_handle(const MsBody *b, MsTy ty);
+/* A type whose values the pass can pass around (see check_body.c). */
+bool ms_body_is_admitted(const MsBody *b, MsTy ty);
 bool ms_body_is_result(const MsBody *b, MsTy ty);
 MsTy ms_body_list_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected);

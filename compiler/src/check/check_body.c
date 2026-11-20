@@ -112,7 +112,7 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
 
 /* A type whose values the pass can pass around: primitives, lists, function values and nominal
  * types that cannot need a cleanup (a value that closes gets one the pass does not record yet). */
-static bool body_is_admitted(const MsBody *b, MsTy ty) {
+bool ms_body_is_admitted(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
            (body_is_own_nominal(b, ty) && !body_is_closeable(b, ty, 0));
 }
@@ -122,18 +122,18 @@ static bool body_is_admitted(const MsBody *b, MsTy ty) {
 bool ms_body_is_result(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     return ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_RESULT) && tys->nargs[ty] == 2 &&
-           (ms_ty_args(tys, ty)[0] == b->void_ty || body_is_admitted(b, ms_ty_args(tys, ty)[0]));
+           (ms_ty_args(tys, ty)[0] == b->void_ty || ms_body_is_admitted(b, ms_ty_args(tys, ty)[0]));
 }
 
 static bool body_is_optional(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     return ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_OPTIONAL) && tys->nargs[ty] == 1 &&
-           body_is_admitted(b, ms_ty_args(tys, ty)[0]);
+           ms_body_is_admitted(b, ms_ty_args(tys, ty)[0]);
 }
 
 /* What a parameter or a local can hold. */
 static bool body_is_bindable(const MsBody *b, MsTy ty) {
-    return ty == b->invalid_ty || body_is_admitted(b, ty) || body_is_optional(b, ty) || ms_body_is_result(b, ty);
+    return ty == b->invalid_ty || ms_body_is_admitted(b, ty) || body_is_optional(b, ty) || ms_body_is_result(b, ty);
 }
 
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
@@ -164,7 +164,7 @@ static bool body_is_comparable(const MsBody *b, MsTy ty) {
         return true;
     }
     const MsKind kind = ms_ty_kind(tys, ty);
-    return body_is_admitted(b, ty) && (kind == MS_K_TYPE || kind == MS_K_ALTERNATIVE) &&
+    return ms_body_is_admitted(b, ty) && (kind == MS_K_TYPE || kind == MS_K_ALTERNATIVE) &&
            !ms_ty_is(tys, ty, MS_BI_OPTIONAL) && !ms_ty_is(tys, ty, MS_BI_RESULT) &&
            !ms_ty_is(tys, ty, MS_BI_PROMISE) && !ms_ty_is(tys, ty, MS_BI_ERROR);
 }
@@ -533,14 +533,14 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     const MsDef *def = ms_def(b->c, sym);
     if (syms->module[sym] != b->module || syms->nvars[sym] != 0 || syms->decl[sym] == NULL ||
         syms->decl[sym]->kind != MS_D_TYPE || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
-        !body_is_admitted(b, record) || def->nfields != e->u.call.args.len) {
+        !ms_body_is_admitted(b, record) || def->nfields != e->u.call.args.len) {
         return ms_body_unsupported(b);
     }
     for (uint32_t i = 0; i < def->nfields; i++) {
         const MsArg *arg = &e->u.call.args.ptr[i];
         const MsTy field = def->fields[i].ty;
         if ((arg->has_name && arg->name != def->fields[i].name) || def->fields[i].flags != 0 ||
-            !body_is_admitted(b, field) || ms_body_expr(b, arg->value, field) == MS_TY_NONE) {
+            !ms_body_is_admitted(b, field) || ms_body_expr(b, arg->value, field) == MS_TY_NONE) {
             return ms_body_unsupported(b);
         }
     }
@@ -584,7 +584,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
         }
         const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
         if ((arg->has_name && (arg->name != params[i].name || (params[i].flags & MS_PARAM_POSITIONAL) != 0)) ||
-            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)) || body_is_admitted(b, params[i].ty) || body_is_optional(b, params[i].ty))) {
+            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)) || ms_body_is_admitted(b, params[i].ty) || body_is_optional(b, params[i].ty))) {
             return false;
         }
         const MsStr name = ms_name(b->c->names, params[i].name);
