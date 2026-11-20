@@ -43,7 +43,8 @@ import expect_equal from "@std/test/test.ms"
 - `@std/data/pem.ms`: PemBlock, encode_all, encode_block, parse
 - `@std/data/quote.ms`: quote_text
 - `@std/data/semver.ms`: Version, parse
-- `@std/data/toml.ms`: TomlOptions, TomlValue, parse, stringify
+- `@std/data/toml.ms`: TomlLayout, TomlOptions, TomlStatement, TomlStatementKind, TomlValue, dotted, format_key, inline_value, layout, parse, stringify
+- `@std/data/toml_edit.ms`: TomlDocument, is_inline_table, parse_document, remove_key, set_key, to_string, value_at
 - `@std/data/utf8.ms`: Utf8Error, Utf8Scalar, decode_first, decode_last, is_valid
 - `@std/data/uuid.ms`: namespace_dns, namespace_oid, namespace_url, namespace_x500, uuid_v4, uuid_v5, uuid_v7, uuid_version
 - `@std/data/xml.ms`: XmlAttribute, XmlNode, escape_attribute, escape_text, parse, stringify
