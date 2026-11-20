@@ -7,10 +7,10 @@
 /* A string value: two words (crates/ms-rt-abi StrVal). The top bits of `tagged` say what the bytes are:
  * 00 owned allocation at `ptr_word`, 01 inline (bytes start at the value's own address, length in
  * bits 56..59), 10 static, 11 view. Inline strings keep the bytes past their length zero. */
-typedef struct ms_str {
+typedef struct ms_str { // NOLINT(readability-identifier-naming): ABI name; renamed with the core string port
     uint8_t *ptr_word;
     uint64_t tagged;
-} ms_str;
+} ms_str; // NOLINT(readability-identifier-naming): see above
 
 #define MS_STR_INLINE_SHIFT 56
 #define MS_STR_INLINE_MAX 15

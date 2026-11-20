@@ -1,113 +1,70 @@
-//! Zones: UTC, fixed offsets such as `+05:30`, the host's local zone and IANA names (bundled data).
-use crate::civil::civil_of;
+//! The zone database behind the C time natives (runtime/std/time_zone.c): IANA names from the bundled tzdb and the
+//! host's local zone. UTC and fixed offsets are handled in C. This crate goes away when the zone data is read in C.
 use alloc::string::{String, ToString};
 use jiff::tz::{AmbiguousOffset, TimeZone};
 
-pub enum Zone {
-    Utc,
-    Fixed { seconds: i32, name: String },
-    Named(TimeZone),
-}
-
-/// `^[+-](?:[01][0-9]|2[0-3]):[0-5][0-9]$`
-fn fixed_offset(zone: &str) -> Option<i32> {
-    let b = zone.as_bytes();
-    if b.len() != 6 || !(b[0] == b'+' || b[0] == b'-') || b[3] != b':' {
-        return None;
+/// Resolves `Local` or an IANA name; `None` for anything else (names are case-sensitive, as in Go).
+pub fn load(zone: &str) -> Option<TimeZone> {
+    if zone == "Local" {
+        return Some(TimeZone::system());
     }
-    let d = |i: usize| b[i].is_ascii_digit().then(|| (b[i] - b'0') as i32);
-    let hours = d(1)? * 10 + d(2)?;
-    let minutes = d(4)? * 10 + d(5)?;
-    if hours > 23 || minutes > 59 {
-        return None;
-    }
-    let seconds = hours * 3_600 + minutes * 60;
-    Some(if b[0] == b'-' { -seconds } else { seconds })
-}
-
-impl Zone {
-    /// Resolves `UTC`, the empty string, `Local`, a fixed offset or an IANA name.
-    pub fn load(zone: &str) -> Option<Zone> {
-        match zone {
-            "UTC" | "" => return Some(Zone::Utc),
-            "Local" => return Some(local()),
-            _ => {}
-        }
-        if let Some(seconds) = fixed_offset(zone) {
-            return Some(Zone::Fixed {
-                seconds,
-                name: zone.to_string(),
-            });
-        }
-        named(zone)
-    }
-
-    /// Offset east of UTC in seconds and the zone abbreviation at a Unix time.
-    pub fn at(&self, unix: i64) -> (i64, String) {
-        match self {
-            Zone::Utc => (0, "UTC".to_string()),
-            Zone::Fixed { seconds, name } => (*seconds as i64, name.clone()),
-            Zone::Named(tz) => {
-                let ts = jiff::Timestamp::from_second(unix).unwrap_or(if unix < 0 {
-                    jiff::Timestamp::MIN
-                } else {
-                    jiff::Timestamp::MAX
-                });
-                let info = tz.to_offset_info(ts);
-                (
-                    info.offset().seconds() as i64,
-                    info.abbreviation().to_string(),
-                )
-            }
-        }
-    }
-
-    /// Resolves validated local fields, choosing the pre-transition offset in gaps and folds.
-    pub fn offset_for_local(&self, local: i64, nanos: i64) -> i64 {
-        let tz = match self {
-            Zone::Utc => return 0,
-            Zone::Fixed { seconds, .. } => return i64::from(*seconds),
-            Zone::Named(tz) => tz,
-        };
-        let civil = civil_of(local, nanos);
-        let datetime = jiff::civil::DateTime::new(
-            civil.year as i16,
-            civil.month as i8,
-            civil.day as i8,
-            civil.hour as i8,
-            civil.minute as i8,
-            civil.second as i8,
-            civil.nanosecond as i32,
-        )
-        .expect("from_calendar validates civil fields");
-        // Inspect the raw offset rather than constructing a Jiff Timestamp, whose
-        // supported range excludes part of Manuscript's final UTC day.
-        let offset = match tz.to_ambiguous_timestamp(datetime).offset() {
-            AmbiguousOffset::Unambiguous { offset } => offset,
-            AmbiguousOffset::Gap { before, .. } | AmbiguousOffset::Fold { before, .. } => before,
-        };
-        i64::from(offset.seconds())
-    }
-}
-
-fn named(name: &str) -> Option<Zone> {
-    if name.contains("..") || name.starts_with('/') || name.starts_with('\\') {
+    if zone.contains("..") || zone.starts_with('/') || zone.starts_with('\\') {
         return None;
     }
     // The bundled database matches names case-insensitively; Go reads zoneinfo files by exact name.
-    let tz = TimeZone::get(name).ok()?;
-    (tz.iana_name() == Some(name)).then_some(Zone::Named(tz))
+    let tz = TimeZone::get(zone).ok()?;
+    (tz.iana_name() == Some(zone)).then_some(tz)
 }
 
-/// The host's local zone as jiff reads it: `TZ`, then `/etc/localtime` on Unix and the system
-/// setting on Windows, else UTC.
-pub fn local() -> Zone {
-    Zone::Named(jiff::tz::TimeZone::system())
+/// Offset east of UTC in seconds and the zone abbreviation at a Unix time.
+pub fn at(tz: &TimeZone, unix: i64) -> (i64, String) {
+    let ts = jiff::Timestamp::from_second(unix).unwrap_or(if unix < 0 {
+        jiff::Timestamp::MIN
+    } else {
+        jiff::Timestamp::MAX
+    });
+    let info = tz.to_offset_info(ts);
+    (
+        i64::from(info.offset().seconds()),
+        info.abbreviation().to_string(),
+    )
+}
+
+/// Local calendar fields the caller has validated (year 1 to 9999, a real day, a time of day).
+pub struct LocalFields {
+    pub year: i64,
+    pub month: i64,
+    pub day: i64,
+    pub hour: i64,
+    pub minute: i64,
+    pub second: i64,
+    pub nanosecond: i64,
+}
+
+/// The offset for validated local fields, choosing the pre-transition offset in gaps and folds.
+pub fn offset_for_local(tz: &TimeZone, f: &LocalFields) -> i64 {
+    let datetime = jiff::civil::DateTime::new(
+        f.year as i16,
+        f.month as i8,
+        f.day as i8,
+        f.hour as i8,
+        f.minute as i8,
+        f.second as i8,
+        f.nanosecond as i32,
+    )
+    .expect("from_calendar validates civil fields");
+    // Inspect the raw offset rather than constructing a Jiff Timestamp, whose
+    // supported range excludes part of Manuscript's final UTC day.
+    let offset = match tz.to_ambiguous_timestamp(datetime).offset() {
+        AmbiguousOffset::Unambiguous { offset } => offset,
+        AmbiguousOffset::Gap { before, .. } | AmbiguousOffset::Fold { before, .. } => before,
+    };
+    i64::from(offset.seconds())
 }
 
 /// `time.local_zone()`: the IANA name of the local zone, `UTC` when it has none.
 pub fn local_zone_name() -> String {
-    jiff::tz::TimeZone::system()
+    TimeZone::system()
         .iana_name()
         .map_or_else(|| "UTC".to_string(), ToString::to_string)
 }

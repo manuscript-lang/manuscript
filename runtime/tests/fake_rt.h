@@ -2,28 +2,31 @@
 #ifndef MS_TEST_FAKE_RT_H
 #define MS_TEST_FAKE_RT_H
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct { int64_t *ptr; size_t len, cap; } fake_vec;
-
-const unsigned char msrt_desc_int[1];
 void *msrt_alloc(size_t n) { return malloc(n); }
 void msrt_free(void *p) { free(p); }
-void msrt_list_with_capacity(const void *d, int64_t cap, fake_vec *out) {
-    (void)d;
-    out->ptr = cap ? malloc((size_t)cap * 8) : NULL;
-    out->len = 0;
-    out->cap = (size_t)cap;
+#include "fake_list.h"
+
+/* Faults end the test with the message; the real runtime records and unwinds. */
+void msrt_fault(const void *message, size_t length) {
+    fprintf(stderr, "FAULT %.*s\n", (int)length, (const char *)message);
+    exit(1);
 }
-void msrt_list_push(fake_vec *v, const void *d, const void *e) {
-    (void)d;
-    if (v->len == v->cap) {
-        v->cap = v->cap ? v->cap * 2 : 4;
-        v->ptr = realloc(v->ptr, v->cap * 8);
-    }
-    memcpy(v->ptr + v->len++, e, 8);
+void msrt_fault_kind(uint8_t kind, const void *message, size_t length) {
+    fprintf(stderr, "FAULT(%u) %.*s\n", kind, (int)length, (const char *)message);
+    exit(1);
 }
-void msrt_list_drop(fake_vec *v, const void *d) { (void)d; free(v->ptr); }
+/* An owned string (tag bits 00): the allocation and the byte length. */
+void msrt_string_from_bytes(const uint8_t *bytes, size_t length, void *out) {
+    struct { uint8_t *ptr; uint64_t tagged; } *s = out;
+    s->ptr = malloc(length + 1);
+    memcpy(s->ptr, bytes, length);
+    s->tagged = length;
+}
+
+#include "fake_zone.h"
 
 #endif

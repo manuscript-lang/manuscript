@@ -1,5 +1,5 @@
 //! Exact decimal arithmetic behind `@std/math/decimal.ms`: pure Rust, no runtime dependency, so the
-//! compiler can fold `Decimal` literals with it and `ms-std-decimal` can wrap it in the C ABI.
+//! compiler can fold `Decimal` literals with it (the runtime natives are C).
 //!
 //! A `Decimal` is `coefficient * 10^exponent` with at most 34 significant digits and the
 //! coefficient free of trailing zeros, so equal values have equal representations. Operators

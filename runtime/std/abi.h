@@ -26,6 +26,10 @@ enum {
 
 extern void *msrt_alloc(size_t size);
 extern void msrt_free(void *p);
+/* Raises a fault with this message (crates/ms-rt fault.rs); never returns. */
+extern _Noreturn void msrt_fault(const void *message, size_t length);
+/* The same for a fault of a family: a runtime FaultKind code (4 division by zero, 5 overflow). */
+extern _Noreturn void msrt_fault_kind(uint8_t kind, const void *message, size_t length);
 
 static inline size_t msrt_str_len(const msrt_str *s) {
     return s->tagged >> 62 == 1 ? (s->tagged >> 56) & 15 : s->tagged & (((size_t)1 << 31) - 1);

@@ -1090,10 +1090,8 @@ dependencies = [
  "ms-rt",
  "ms-rt-abi",
  "ms-std-archive",
- "ms-std-bigint",
  "ms-std-core",
  "ms-std-crypto",
- "ms-std-decimal",
  "ms-std-fs",
  "ms-std-io",
  "ms-std-json",
@@ -1143,16 +1141,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-bigint"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
- "num-bigint 0.5.1",
- "num-traits",
-]
-
-[[package]]
 name = "ms-std-core"
 version = "0.1.0"
 dependencies = [
@@ -1188,14 +1176,6 @@ dependencies = [
  "sha3",
  "subtle",
  "x25519-dalek",
-]
-
-[[package]]
-name = "ms-std-decimal"
-version = "0.1.0"
-dependencies = [
- "ms-decimal",
- "ms-rt",
 ]
 
 [[package]]

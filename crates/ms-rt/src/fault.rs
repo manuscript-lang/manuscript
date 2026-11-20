@@ -1515,6 +1515,16 @@ pub unsafe extern "C-unwind" fn msrt_fault(msg: *const u8, len: usize) -> ! {
     fault(unsafe { core::slice::from_raw_parts(msg, len) })
 }
 
+/// A fault of a family (a `FaultKind` code) for natives written in C, which cannot reach `fault_kind`.
+/// Removed when the fault module itself moves to C.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_fault_kind(kind: u8, msg: *const u8, len: usize) -> ! {
+    // SAFETY: caller passes a readable range.
+    fault_kind(FaultKind::from_code(kind), unsafe {
+        core::slice::from_raw_parts(msg, len)
+    })
+}
+
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_fault_string(s: *const ms_rt_abi::StrVal) -> ! {

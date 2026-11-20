@@ -73,8 +73,6 @@ opt-level = 2
 opt-level = 2
 [profile.dev.package.ms-std-crypto]
 opt-level = 2
-[profile.dev.package.ms-std-bigint]
-opt-level = 2
 [profile.dev.package.ms-std-archive]
 opt-level = 2
 [profile.dev.package.ms-clif]
