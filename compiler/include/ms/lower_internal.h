@@ -33,8 +33,19 @@ typedef struct LbVal {
     bool owned;
 } LbVal;
 
+/* One copy of a generic function: the type arguments it was made for, in the order of the
+ * function's variables. */
+#define LB_MAX_TARGS 8
+typedef struct LbInst {
+    MsSymId sym;
+    uint32_t nargs;
+    MsTy args[LB_MAX_TARGS];
+    uint32_t func; /* its module function; MIR_NONE once it failed */
+} LbInst;
+
 typedef struct Lb {
     const MsCheck *c;
+    MsCheck *mut; /* the same table, for `ms_def`, which adds rows on demand */
     const MsFacts *facts;
     MirModule *m;
     MirBuilder b;
@@ -46,6 +57,15 @@ typedef struct Lb {
     uint32_t *func_of;    /* by symbol id: the module function a call reaches, or MIR_NONE */
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
     const MsDecl *decl;   /* the function being lowered */
+    /* The instance being lowered or stubbed: its function's variables and what they stand for. */
+    const MsTy *sub_vars, *sub_args;
+    uint32_t nsub;
+    MsSym name_override; /* the instance's name, when `has_override` */
+    bool has_override;
+    LbInst *insts;        /* this pass's instances, in creation order (malloc) */
+    uint32_t ninsts, cinsts;
+    LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
+    uint32_t ndead_insts, cdead_insts;
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */

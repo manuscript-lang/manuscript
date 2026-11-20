@@ -1463,6 +1463,10 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
     memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
+    facts->call_type_args_at = MS_NEW_N(arena, uint32_t, nodes);
+    facts->call_type_args_len = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->call_type_args_at, 0, nodes * sizeof *facts->call_type_args_at);
+    memset(facts->call_type_args_len, 0, nodes * sizeof *facts->call_type_args_len);
     facts->lambda_first = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
     facts->each_list = MS_NEW_N(arena, bool, nodes);
