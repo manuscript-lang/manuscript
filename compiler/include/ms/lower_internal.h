@@ -13,6 +13,9 @@
 
 /* The loop being lowered: where `continue` and `break` go. Lives on the lowering's stack. A
  * `for` has a step block that only exists once something branches to it. */
+/* `type_of` of a record whose fields are being lowered: reaching it again means the record holds itself. */
+#define LB_TYPE_PENDING (MIR_NONE - 1)
+
 typedef struct LbLoop {
     MirBlock next, exit; /* `continue` goes to `next`, `break` to `exit` */
     struct LbLoop *outer;
@@ -82,7 +85,7 @@ typedef struct Lb {
     LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
     uint32_t ndead_insts, cdead_insts;
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
-    MirTy *type_of;       /* by checker type: the record it lowered to, or MIR_NONE */
+    MirTy *type_of;       /* by checker type: the record it lowered to, MIR_NONE, or LB_TYPE_PENDING while its fields lower */
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
     uint32_t nvars, cvars;
