@@ -45,6 +45,7 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty) {
 }
 
 static bool body_is_admitted(const MsBody *b, MsTy ty);
+static bool body_is_bindable(const MsBody *b, MsTy ty);
 
 /* A `type`, `enum` or interface the program declares, whose type arguments (if it has any) are
  * themselves admitted. */
@@ -63,12 +64,14 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     if (tys->nargs[ty] == 0) {
         return true;
     }
-    const MsDef *definition = ms_def(b->c, sym);
-    if (definition == NULL || definition->nvars < tys->nargs[ty]) {
+    uint32_t nvars = 0;
+    const MsTy *vars = ms_sym_vars(b->c, sym, &nvars);
+    if (vars == NULL || nvars < tys->nargs[ty]) {
         return false;
     }
     for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
-        if (!body_is_admitted(b, ms_ty_args(tys, ty)[i]) || ms_var_info(b->c, definition->vars[i])->nbounds != 0) {
+        const MsTy arg = ms_ty_args(tys, ty)[i];
+        if (arg == b->invalid_ty || !(arg == b->void_ty || body_is_bindable(b, arg)) || ms_var_info(b->c, vars[i])->nbounds != 0) {
             return false;
         }
     }
