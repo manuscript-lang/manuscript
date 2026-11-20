@@ -229,13 +229,7 @@ static MpTok mpa_lex_string(MpLexer *lx) {
 static MpTok mpa_lex_name(MpLexer *lx) {
     char sigil = lx->text[lx->position++];
     size_t start = lx->position;
-    /* A vtable is named for its impl and position (`@impl:10:0`, `@handle:http:3`): a colon before a
-     * name character belongs to the name; the colon that ends a declaration is followed by a space. A
-     * `%` value never has one: `%n:int` is the value `n`, then its type (Rust reads it so). */
-    while (mpa_lex_more(lx) &&
-           (mpa_ident_char((unsigned char)lx->text[lx->position]) ||
-            (sigil == '@' && lx->position > start && lx->text[lx->position] == ':' &&
-             mpa_ident_char((unsigned char)mpa_lex_at(lx, 1))))) {
+    while (mpa_lex_more(lx) && mpa_ident_char((unsigned char)lx->text[lx->position])) {
         lx->position++;
     }
     if (lx->position == start) {

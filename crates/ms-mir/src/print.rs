@@ -396,7 +396,7 @@ fn print_module_text(m: &Module) -> String {
         let _ = writeln!(
             o,
             "vtable @{}: {} for {} {{ {} }}",
-            v.name,
+            sanitized(&v.name),
             iface_label(m, v.iface.index()),
             ty_str(m, v.data_ty),
             ms.join(", ")
@@ -671,7 +671,7 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
             }
             s
         }
-        Imm::Vtable(v) => format!("@{}", m.vtables[v.index()].name),
+        Imm::Vtable(v) => format!("@{}", sanitized(&m.vtables[v.index()].name)),
         Imm::Global(g) => format!("@{}", m.globals[g.index()].name),
         Imm::Method(ifc, k) => format!(
             "{}.{}",
