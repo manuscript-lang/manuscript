@@ -200,6 +200,7 @@ c-test:
 c-fuzz:
 	sh runtime/tests/fuzz.sh
 
-# The C compiler front end against the Rust one, token for token, on the corpus and on mutated copies; nightly runs more mutants.
+# The C compiler front end and checker against the Rust ones, byte for byte (syntax on the corpus and on mutated copies, checker tables on the standard library); nightly runs more mutants.
 c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
+	sh compiler/tests/check-diff.sh
