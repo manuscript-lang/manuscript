@@ -1,12 +1,12 @@
 # runtime
 
-The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt` and `ms-std-*` crates step by step. Plan and reasons: [proposals/c-runtime.md](../proposals/c-runtime.md). Only the third-party build exists so far.
+The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt` and `ms-std-*` crates step by step. Plan and reasons: [proposals/c-runtime.md](../proposals/c-runtime.md). The third-party build and the C build (`runtime/core/num.c` so far) exist; `runtime/c-symbols.txt` lists the symbols defined in C, and [the wiki page](../wiki/runtime/a-runtime-symbol-moves-to-c-by-listing-it-in-c-symbols.md) says how a symbol moves.
 
 ```
 runtime/
-  include/       ms_rt.h, the ABI (to come)
+  include/       ms_rt.h, the ABI
   sys/           per-OS code: linux, darwin, windows (to come)
-  core/          alloc, task, sched, fault, string, vec, map, promise, pipe (to come)
+  core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num.c so far)
   io/            reactor on libuv (to come)
   net/           http1 (llhttp) done; http2 (nghttp2), tls (OpenSSL), websocket to come
   std/           natives per stdlib module (to come)

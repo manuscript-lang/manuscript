@@ -190,6 +190,7 @@ fn symbols(check: bool) -> Result<String, String> {
         }
         out.push('\n');
     }
+    check_c_abi(&root, &table)?;
     let path = root.join("crates/ms-lower/rt_symbols.txt");
     if check {
         let have = std::fs::read_to_string(&path).unwrap_or_default();
@@ -211,6 +212,123 @@ fn symbols(check: bool) -> Result<String, String> {
         path.display(),
         table.len()
     ))
+}
+
+/// The scalar kind of a Rust parameter type or a C declaration (`ptr` for any pointer), so the two spellings compare.
+fn abi_kind(text: &str) -> String {
+    let text = text.trim();
+    if text.contains('*') {
+        return "ptr".into();
+    }
+    let word = |w: &str| {
+        text.split(|c: char| !c.is_alphanumeric() && c != '_')
+            .any(|t| t == w)
+    };
+    for (rust, c) in [
+        ("i64", "int64_t"),
+        ("u64", "uint64_t"),
+        ("i32", "int32_t"),
+        ("u32", "uint32_t"),
+        ("u8", "uint8_t"),
+        ("f64", "double"),
+        ("bool", "bool"),
+    ] {
+        if word(rust) || word(c) {
+            return rust.into();
+        }
+    }
+    text.into()
+}
+
+/// Every symbol of `runtime/c-symbols.txt` has a prototype in `runtime/include/ms_rt.h` with the parameters and
+/// result of its recorded signature, and every C function the header declares is listed (the two cannot drift).
+fn check_c_abi(
+    root: &Path,
+    table: &std::collections::BTreeMap<String, String>,
+) -> Result<(), String> {
+    let listed = std::fs::read_to_string(root.join("runtime/c-symbols.txt")).unwrap_or_default();
+    let listed: std::collections::BTreeSet<&str> = listed
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .collect();
+    let header = std::fs::read_to_string(root.join("runtime/include/ms_rt.h"))
+        .map_err(|e| format!("runtime/include/ms_rt.h: {e}"))?;
+    let mut declared = std::collections::BTreeMap::new();
+    for line in header.lines() {
+        let Some((head, rest)) = line.split_once('(') else {
+            continue;
+        };
+        let Some((params, tail)) = rest.split_once(')') else {
+            continue;
+        };
+        let Some((ret, name)) = head
+            .trim()
+            .rsplit_once(|c: char| c.is_whitespace() || c == '*')
+        else {
+            continue;
+        };
+        if tail.trim() != ";" || !name.starts_with("msrt_") && !name.starts_with("msstd_") {
+            continue;
+        }
+        let ret = if head.contains('*') {
+            "ptr".to_string()
+        } else {
+            abi_kind(ret)
+        };
+        let params: Vec<String> = params
+            .split(',')
+            .map(str::trim)
+            .filter(|p| !p.is_empty() && *p != "void")
+            .map(abi_kind)
+            .collect();
+        declared.insert(name.to_string(), (params, ret));
+    }
+    for name in &listed {
+        let Some((params, ret)) = declared.get(*name) else {
+            return Err(format!(
+                "{name} is in runtime/c-symbols.txt but not declared in ms_rt.h"
+            ));
+        };
+        let Some(line) = table.get(*name) else {
+            return Err(format!(
+                "{name} is in runtime/c-symbols.txt but not a runtime function"
+            ));
+        };
+        let (rust_params, rust_ret) = line
+            .split_once('(')
+            .and_then(|(_, r)| r.rsplit_once(')'))
+            .map(|(p, r)| {
+                (
+                    p,
+                    r.trim().strip_prefix("->").map(str::trim).unwrap_or("()"),
+                )
+            })
+            .ok_or_else(|| format!("{name}: unreadable signature `{line}`"))?;
+        let rust_params: Vec<String> = rust_params
+            .split(',')
+            .filter(|p| !p.trim().is_empty())
+            .map(|p| abi_kind(p.split_once(':').map_or(p, |(_, t)| t)))
+            .collect();
+        let rust_ret = if rust_ret == "()" {
+            "void".to_string()
+        } else {
+            abi_kind(rust_ret)
+        };
+        if &rust_params != params || &rust_ret != ret {
+            return Err(format!(
+                "{name}: ms_rt.h says ({}) -> {ret}, the runtime signature is ({}) -> {rust_ret}",
+                params.join(", "),
+                rust_params.join(", ")
+            ));
+        }
+    }
+    if let Some(name) = declared.keys().find(|n| !listed.contains(n.as_str())) {
+        return Err(format!(
+            "{name} is declared in ms_rt.h but not in runtime/c-symbols.txt"
+        ));
+    }
+    Ok(())
 }
 
 fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -521,6 +639,8 @@ fn build_archive(
         ])
         .arg(root.join("Cargo.toml"))
         .env("CARGO_TARGET_DIR", target)
+        // `ms-rt`'s build script compiles out the Rust definition of every symbol in `runtime/c-symbols.txt`.
+        .env("MS_C_RUNTIME", "1")
         // The runtime ships without debug info; symbol names are enough for the profiler.
         .env("CARGO_PROFILE_RELEASE_DEBUG", "0")
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
@@ -548,7 +668,98 @@ fn build_archive(
     let archive = out.join(name);
     std::fs::copy(&built, &archive).map_err(|e| format!("copy {}: {e}", built.display()))?;
     strip_debug(&archive);
+    add_c_runtime(root, target, triple, &archive)?;
     Ok(archive)
+}
+
+/// Every C source of the runtime (`runtime/{sys,core,io,net,std}`; `third_party` and `tests` are not part of it).
+fn c_sources(dir: &Path, found: &mut Vec<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = entry.file_name();
+        if path.is_dir() {
+            if name != "third_party" && name != "tests" {
+                c_sources(&path, found);
+            }
+        } else if path.extension().is_some_and(|e| e == "c") {
+            found.push(path);
+        }
+    }
+}
+
+/// Compiles `runtime/**/*.c` for `triple` and adds the objects to `archive`, where they define the
+/// symbols the Rust runtime compiled out (`runtime/c-symbols.txt`). The sources include only
+/// freestanding headers, so one clang call per file serves glibc, musl and mingw targets alike.
+fn add_c_runtime(
+    root: &Path,
+    target: &Path,
+    triple: Option<&str>,
+    archive: &Path,
+) -> Result<(), String> {
+    let runtime = root.join("runtime");
+    let mut sources = Vec::new();
+    for layer in ["sys", "core", "io", "net", "std"] {
+        c_sources(&runtime.join(layer), &mut sources);
+    }
+    sources.sort();
+    if sources.is_empty() {
+        return Ok(());
+    }
+    let arch = std::env::consts::ARCH;
+    let host = triple.is_none_or(|t| t.ends_with("linux-gnu"));
+    let cc = match triple {
+        Some(t) if t.contains("windows") => c_compiler(root, t, arch),
+        _ => PathBuf::from("clang"),
+    };
+    let objects = target.join("c-objects");
+    let _ = std::fs::remove_dir_all(&objects);
+    std::fs::create_dir_all(&objects).map_err(|e| e.to_string())?;
+    let mut files = Vec::new();
+    for (n, source) in sources.iter().enumerate() {
+        let stem = source.file_stem().and_then(|s| s.to_str()).unwrap_or("x");
+        let object = objects.join(format!("{n}-{stem}.o"));
+        let mut command = Command::new(&cc);
+        command
+            .args(["-c", "-O2", "-std=c11", "-fPIC", "-fno-stack-protector"])
+            .args(["-fno-strict-aliasing", "-Wall", "-Wextra", "-Werror"])
+            .arg("-I")
+            .arg(runtime.join("include"))
+            .arg("-o")
+            .arg(&object)
+            .arg(source);
+        // The musl archive is built on a glibc host: the sources use no libc header, so only the target differs.
+        if let Some(t) = triple.filter(|_| !host) {
+            command.arg(format!("--target={t}"));
+        }
+        let status = command
+            .status()
+            .map_err(|e| format!("run {}: {e}", cc.display()))?;
+        if !status.success() {
+            return Err(format!("compiling {} failed", source.display()));
+        }
+        files.push(object);
+    }
+    let ar = if triple.is_some_and(|t| t.contains("windows")) {
+        cc.with_file_name(format!("llvm-ar{}", std::env::consts::EXE_SUFFIX))
+    } else {
+        PathBuf::from("ar")
+    };
+    let status = Command::new(&ar)
+        .arg("rcs")
+        .arg(archive)
+        .args(&files)
+        .status()
+        .map_err(|e| format!("run {}: {e}", ar.display()))?;
+    if !status.success() {
+        return Err(format!(
+            "adding the C objects to {} failed",
+            archive.display()
+        ));
+    }
+    Ok(())
 }
 
 /// The C compiler for the runtime's C sources: `cc` where the target is Linux, else llvm-mingw's clang

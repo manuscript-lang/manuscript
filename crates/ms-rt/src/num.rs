@@ -828,6 +828,7 @@ pub unsafe extern "C-unwind" fn msrt_float_to_float32(v: f64, out: *mut f32) -> 
 }
 
 /// `Float.compare`: a total order in which `-0.0 == 0.0` and NaN is equal to itself and sorts last.
+#[cfg(not(ms_c = "msrt_float_compare"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub extern "C-unwind" fn msrt_float_compare(a: f64, b: f64) -> i64 {
@@ -838,6 +839,7 @@ pub extern "C-unwind" fn msrt_float_compare(a: f64, b: f64) -> i64 {
 }
 
 /// `Int.compare`.
+#[cfg(not(ms_c = "msrt_int_compare"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub extern "C-unwind" fn msrt_int_compare(a: i64, b: i64) -> i64 {
@@ -845,6 +847,7 @@ pub extern "C-unwind" fn msrt_int_compare(a: i64, b: i64) -> i64 {
 }
 
 /// `UInt64.compare`: the operands are bit patterns.
+#[cfg(not(ms_c = "msrt_uint_compare"))]
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_uint_compare(a: i64, b: i64) -> i64 {
     let (a, b) = (a as u64, b as u64);
@@ -870,12 +873,14 @@ pub extern "C-unwind" fn msrt_uint_rem(a: i64, b: i64) -> i64 {
 }
 
 /// `UInt64.to_float`.
+#[cfg(not(ms_c = "msrt_uint_to_float"))]
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_uint_to_float(v: i64) -> f64 {
     v as u64 as f64
 }
 
 /// `UInt64.to_float32`: round once to binary32, then widen for the runtime ABI.
+#[cfg(not(ms_c = "msrt_uint_to_float32"))]
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_uint_to_float32(v: i64) -> f64 {
     f64::from(v as u64 as f32)
