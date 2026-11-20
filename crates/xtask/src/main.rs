@@ -757,13 +757,41 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             "entry",
         ));
     }
+    // The C half does not depend on the Rust features, so each triple's CMake build runs once and its
+    // objects go into every archive of that triple (CMake started beside a running build also fails on
+    // Windows with `AssignProcessToJobObject: (50) The request is not supported`, so they run one by one).
+    // The counting runtime (`stats`) is the one C build that differs: its allocator counts live blocks.
+    let mut plans: Vec<(Option<String>, bool, Result<CRuntime, String>)> = Vec::new();
+    for (dir, triple, _, features) in &jobs {
+        let stats = features.contains("stats");
+        if !plans.iter().any(|(t, s, _)| t == triple && *s == stats) {
+            plans.push((
+                triple.clone(),
+                stats,
+                build_c_runtime(&root, dir, triple.as_deref(), stats),
+            ));
+        }
+    }
+    let plan_of = |triple: &Option<String>, stats: bool| {
+        plans
+            .iter()
+            .find(|(t, s, _)| t == triple && *s == stats)
+            .expect("a plan for every job's triple")
+            .2
+            .as_ref()
+    };
     let mut built = std::thread::scope(|scope| {
         let handles: Vec<_> = jobs
             .iter()
             .map(|(dir, triple, name, features)| {
                 let (root, out) = (&root, &out);
-                scope
-                    .spawn(move || build_archive(root, out, dir, triple.as_deref(), name, features))
+                let plan = plan_of(triple, features.contains("stats"));
+                scope.spawn(move || match plan {
+                    Ok(plan) => {
+                        build_archive(root, out, dir, triple.as_deref(), name, features, plan)
+                    }
+                    Err(message) => Err(message.clone()),
+                })
             })
             .collect();
         handles
@@ -787,6 +815,7 @@ fn build_archive(
     triple: Option<&str>,
     name: &str,
     features: &str,
+    plan: &CRuntime,
 ) -> Result<PathBuf, String> {
     let arch = std::env::consts::ARCH;
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
@@ -811,7 +840,6 @@ fn build_archive(
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    let plan = build_c_runtime(root, target, triple, features.contains("stats"))?;
     if plan.has_reactor() {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
@@ -837,7 +865,7 @@ fn build_archive(
     let built = release.join("libms_native.a");
     let archive = out.join(name);
     std::fs::copy(&built, &archive).map_err(|e| format!("copy {}: {e}", built.display()))?;
-    add_c_runtime(root, target, triple, &plan, &archive)?;
+    add_c_runtime(root, triple, plan, &archive)?;
     strip_debug(&archive);
     Ok(archive)
 }
@@ -845,7 +873,6 @@ fn build_archive(
 /// Adds the C objects the CMake build made for `triple`, and every member of the libraries they use, to `archive`.
 fn add_c_runtime(
     root: &Path,
-    target: &Path,
     triple: Option<&str>,
     plan: &CRuntime,
     archive: &Path,
@@ -856,10 +883,11 @@ fn add_c_runtime(
     }
     let ar = archiver(root, triple);
     let mut command = Command::new(&ar);
+    let mut response = None;
     command.arg("rcs").arg(archive);
     if cfg!(windows) {
         // The folded library members overflow Windows' 32 KiB command line; llvm-ar reads a response file.
-        let list = target.join("c-objects/members.rsp");
+        let list = archive.with_extension("rsp");
         let names: Vec<String> = files
             .iter()
             .map(|f| f.to_string_lossy().replace('\\', "/"))
@@ -867,12 +895,16 @@ fn add_c_runtime(
         std::fs::write(&list, names.join("\n"))
             .map_err(|e| format!("write {}: {e}", list.display()))?;
         command.arg(format!("@{}", list.display()));
+        response = Some(list);
     } else {
         command.args(files);
     }
     let status = command
         .status()
         .map_err(|e| format!("run {}: {e}", ar.display()))?;
+    if let Some(list) = response {
+        let _ = std::fs::remove_file(list);
+    }
     if !status.success() {
         return Err(format!(
             "adding the C objects to {} failed",
