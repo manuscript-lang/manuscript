@@ -14,6 +14,5 @@ fn far(p: Point) Bool:
 	return p.x * p.x + p.y * p.y > 100
 
 fn scaled(s: Style) Float:
-	if s.shown:
-		return s.scale * 2.0
+	if s.shown: return s.scale * 2.0
 	return s.scale
