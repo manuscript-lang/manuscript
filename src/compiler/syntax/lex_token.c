@@ -142,9 +142,9 @@ static bool fail_unexpected_char(Scanner *s, uint8_t b) {
     MsRune rune = ms_utf8_decode(s->src + s->offset, s->n - s->offset);
     MsSpan quoted = lex_quote_rune(s, rune.rune);
     return lex_fail_format(s,
-                           "unexpected source character %.*s; non-ASCII characters are only allowed inside "
+                           "unexpected source character %S; non-ASCII characters are only allowed inside "
                            "text and comments, and identifiers are ASCII",
-                           (int)quoted.len, quoted.ptr);
+                           quoted);
   }
   MsSpan quoted = lex_quote_rune(s, b);
   const char *replacement = NULL;
@@ -155,8 +155,8 @@ static bool fail_unexpected_char(Scanner *s, uint8_t b) {
   } else if (b == '#') {
     replacement = "//";
   }
-  MsSpan message = ms_message_format(s->arena, "unexpected source character %.*s%s", (int)quoted.len,
-                                     quoted.ptr, lex_character_hint(b));
+  MsSpan message = ms_message_format(s->arena, "unexpected source character %S%s", quoted,
+                                     lex_character_hint(b));
   return lex_fail_char(s, message, replacement);
 }
 
