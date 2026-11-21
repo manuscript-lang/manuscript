@@ -719,12 +719,15 @@ static MsTy body_explicit_call(MsBody *b, const MsExpr *e) {
     const MsExpr *apply = e->u.call.callee;
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, apply->u.apply.left->u.sym);
     const MsSyms *syms = &b->c->syms;
-    const bool generic = sym != MS_NONE && syms->kind[sym] == MS_SYM_FN && syms->nvars[sym] != 0 &&
-                         syms->decl[sym] != NULL && syms->decl[sym]->kind == MS_D_FN;
-    if (!generic || ms_body_find_binding(b, apply->u.apply.left->u.sym) != MS_NONE) {
+    if (ms_body_find_binding(b, apply->u.apply.left->u.sym) != MS_NONE || sym == MS_NONE) {
         return ms_body_unsupported(b);
     }
-    return ms_body_generic_call(b, e, sym, &apply->u.apply.types);
+    if (syms->kind[sym] == MS_SYM_TYPE) {
+        return ms_body_generic_construct(b, e, sym, &apply->u.apply.types);
+    }
+    const bool generic = syms->kind[sym] == MS_SYM_FN && syms->nvars[sym] != 0 && syms->decl[sym] != NULL &&
+                         syms->decl[sym]->kind == MS_D_FN;
+    return generic ? ms_body_generic_call(b, e, sym, &apply->u.apply.types) : ms_body_unsupported(b);
 }
 
 static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
@@ -755,7 +758,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return ms_body_case_call(b, e, expected);
     }
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
-        return body_construct(b, e, sym);
+        return syms->nvars[sym] != 0 ? ms_body_generic_construct(b, e, sym, NULL) : body_construct(b, e, sym);
     }
     if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
         syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||

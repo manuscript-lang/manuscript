@@ -313,7 +313,7 @@ static MirCc lb_cc(MsBinaryOp op) {
 }
 
 /* The runtime function that joins two strings, declared on first use. */
-static uint32_t lb_string_concat(Lb *lb) {
+uint32_t lb_string_concat(Lb *lb) {
     const MsSym name = mir_name(lb->m, "msrt_string_concat", strlen("msrt_string_concat"));
     const uint32_t found = mir_extern_by_name(lb->m, name);
     if (found != MIR_NONE) {
@@ -488,6 +488,9 @@ static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
     }
     if (lb->c->syms.nvars[callee] == 0) {
         return lb->func_of[callee];
+    }
+    if (lb->c->syms.module[callee] != lb->module) {
+        return MIR_NONE; // its declaration ids and facts belong to another module
     }
     const MsFacts *facts = lb->facts;
     const uint32_t nargs = facts->call_type_args_len[e->id];
