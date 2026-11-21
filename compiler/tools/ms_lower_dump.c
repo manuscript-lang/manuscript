@@ -88,20 +88,11 @@ static bool program_function_diverges(const MsNames *names, const MsModule *cons
 /* Every function C lowered must pass the MIR verifier, whatever Rust did. */
 static bool verify_module(const MirModule *mir, const char *path) {
     MirVerifyErrors errors = {0};
-    bool ok = mir_verify_module(mir, false, &errors);
-    ok = ok || errors.count != 0; // the rows below decide
+    const bool ok = mir_verify_module(mir, false, &errors);
     for (uint32_t i = 0; i < errors.count; i++) {
         MsBuf text = {0};
         mir_verify_error_text(&errors.errors[i], &text);
-        // Before the elaborate pass a resource's `scope.own` names the address of its slot, which the
-        // verifier (written for the pass's output, where the scope markers are gone) does not take.
-        static const char owner_slot[] = "scope.own takes a value that needs a drop";
-        const bool slot_owner = text.len >= sizeof owner_slot - 1 &&
-                                memcmp((const char *)text.data + text.len - (sizeof owner_slot - 1), owner_slot, sizeof owner_slot - 1) == 0;
-        if (!slot_owner) {
-            fprintf(stderr, "%s: verify: %.*s\n", path, (int)text.len, (const char *)text.data);
-            ok = false;
-        }
+        fprintf(stderr, "%s: verify: %.*s\n", path, (int)text.len, (const char *)text.data);
         ms_buf_free(&text);
     }
     mir_verify_errors_free(&errors);
