@@ -73,6 +73,11 @@ static bool verify_module(const MirModule *mir, const char *path) {
  * unchecked. */
 static void check_bodies(MsCheck *check, MsModId id, const char *text, size_t length) {
     ms_program_begin(check);
+    // The core library declares `Error`, whose field defaults a construction in the module takes.
+    const MsModId core = ms_map_get(&check->module_by_path, ms_intern_cstr(check->names, "@std/core.ms"));
+    if (core != MS_NONE) {
+        ms_module_check_bodies_with(check, core, check->methods);
+    }
     (void)ms_program_check_module(check, id, (MsStr){text, (uint32_t)length});
 }
 
