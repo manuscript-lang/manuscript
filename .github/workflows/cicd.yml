@@ -265,8 +265,8 @@ jobs:
               return 0
           EOF
           "$GITHUB_WORKSPACE/target/release/ms" build f.ms -o prog 2>&1 | tail -5
-          ./prog; echo "exit=$?"
-          lldb -b -o 'process launch' -o 'bt all' -o 'register read' -o 'disassemble -p -c 8' -- ./prog 2>&1 | tail -80
+          ./prog || echo "exit=$?"
+          lldb -b -o 'process launch' -o 'bt all' -o 'register read' -o 'disassemble -p -c 8' -- ./prog 2>&1 | tail -90 || true
 
   # C checks, in jobs of their own so the Rust jobs stay under ten minutes: only a pull request that touches the C
   # runtime or compiler (`due` decides from the scope) starts them. `runtime`: the unit tests under AddressSanitizer
