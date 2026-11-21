@@ -20,6 +20,7 @@ typedef struct FactsRow {
     MsBuf body; /* the JSON fields after `line`: slots, result, receiver, tries */
     MsBuf effects; /* the JSON fields effects, reach, permits and calls */
     MsBuf meta;    /* the JSON fields ty, error and exported */
+    uint32_t first, last; /* the lines the entity owns: its own line to the line before the next entity */
 } FactsRow;
 
 static void facts_put_str(MsBuf *out, const MsNames *names, MsSym s) {
@@ -447,8 +448,8 @@ static MsStr facts_error_type(MsStr ty) {
     return none;
 }
 
-/* The `ty`, `error` and `exported` fields. Only a function has a type here: the other kinds print "". */
-static void facts_put_meta(MsBuf *out, const MsCheck *c, MsModId m, const MsDecl *d) {
+/* The `ty`, `error`, `exported` and `label` fields (`label` is "Receiver.method" for a method). Only a function has a type here: the other kinds print "". */
+static void facts_put_meta(MsBuf *out, const MsCheck *c, MsModId m, const MsDecl *d, const MsBuf *label) {
     MsBuf ty = {0};
     const MsSymId sym = d != NULL && d->kind == MS_D_FN ? ms_decl_own_symbol(c, m, d) : MS_NONE;
     if (sym != MS_NONE && c->syms.ty[sym] != MS_TY_NONE) {
@@ -462,6 +463,12 @@ static void facts_put_meta(MsBuf *out, const MsCheck *c, MsModId m, const MsDecl
     ms_buf_puts(out, ", \"error\": ");
     facts_put_json_buf(out, &text);
     ms_buf_printf(out, ", \"exported\": %s", d != NULL && d->is_exported ? "true" : "false");
+    ms_buf_puts(out, ", \"label\": ");
+    if (label == NULL) {
+        ms_buf_puts(out, "\"\"");
+    } else {
+        facts_put_json_buf(out, label);
+    }
     ms_buf_free(&text);
     ms_buf_free(&ty);
 }
@@ -546,6 +553,10 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
     facts_put_str(&file, names, row->path);
     ms_buf_putc(&file, '\0');
     MsBuf rows = {0};
+    uint32_t total_lines = 1; /* the lines of the source, as the Rust side counts them: newlines plus one */
+    for (uint32_t i = 0; i < text.len; i++) {
+        total_lines += text.ptr[i] == '\n' ? 1 : 0;
+    }
     MsArena scratch = {0};
     uint32_t neffects = 0;
     const MsEntityEffects *effect_rows = ms_effect_facts(&scratch, c, m, text, &neffects);
@@ -559,7 +570,10 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
         facts_fill_decl(fact, names, d);
         facts_seal_key(fact);
         facts_put_effects(&fact->effects, d, effect_rows, neffects);
-        facts_put_meta(&fact->meta, c, m, d);
+        facts_put_meta(&fact->meta, c, m, d, NULL);
+        fact->first = d->pos.line;
+        const uint32_t decl_last = i + 1 < module->ndecls ? module->decls[i + 1]->pos.line - 1 : total_lines;
+        fact->last = decl_last;
         if (d->kind != MS_D_IMPL) {
             continue;
         }
@@ -569,7 +583,14 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
             facts_fill_method(method, names, d, meth);
             facts_seal_key(method);
             facts_put_effects(&method->effects, NULL, effect_rows, neffects);
-            facts_put_meta(&method->meta, c, m, NULL);
+            MsBuf label = {0};
+            facts_put_str(&label, names, d->u.impl.receiver->kind == MS_TYPE_NAMED ? d->u.impl.receiver->name : 0);
+            ms_buf_putc(&label, '.');
+            facts_put_str(&label, names, meth->func.name);
+            facts_put_meta(&method->meta, c, m, NULL, &label);
+            ms_buf_free(&label);
+            method->first = meth->pos.line;
+            method->last = k + 1 < d->u.impl.methods.len ? d->u.impl.methods.ptr[k + 1]->pos.line - 1 : decl_last;
         }
     }
     FactsRow *items = ms_buf_items(&rows);
@@ -589,7 +610,8 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
         facts_put_json(out, file.data, file.len - 1);
         ms_buf_printf(out, ", \"kind\": \"%s\", \"name\": ", items[i].kind);
         facts_put_json_buf(out, &items[i].name);
-        ms_buf_printf(out, ", \"line\": %u, \"scopes\": 0, \"external\": [], ", items[i].line);
+        ms_buf_printf(out, ", \"line\": %u, \"scopes\": 0, \"external\": [], \"first\": %u, \"last\": %u, ", items[i].line,
+                      items[i].first, items[i].last);
         ms_buf_put(out, items[i].effects.data, items[i].effects.len);
         ms_buf_put(out, items[i].meta.data, items[i].meta.len);
         ms_buf_put(out, items[i].body.data, items[i].body.len);

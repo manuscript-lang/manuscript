@@ -34,7 +34,6 @@ flate2 = { version = "1", default-features = false, features = ["rust_backend"] 
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 
 [dev-dependencies]
-ms-clif = { path = "../ms-clif" }
 object = { version = "0.40", default-features = false, features = ["read_core", "archive", "elf", "macho", "coff"] }
 
 [target.'cfg(unix)'.dev-dependencies]

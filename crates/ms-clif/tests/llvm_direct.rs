@@ -3,7 +3,7 @@
 
 use crate::native::{Outcome, dir, module, run_native, runtime};
 use crate::support;
-use ms_clif::BuildOptions;
+use ms_build::BuildOptions;
 use std::process::Command;
 
 /// Compiles `src` with LLVM (direct emission on), links it with the test runtime and runs it.
