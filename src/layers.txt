@@ -1,0 +1,15 @@
+# Layer table read by ms_lint. An include may point only at a layer listed after the colon.
+# Format: <directory>: <allowed include directories>
+base:
+abi: base
+runtime: base abi
+compiler/syntax: base abi
+compiler/project: base abi compiler/syntax
+compiler/check: base abi compiler/syntax compiler/project
+compiler/own: base abi compiler/check
+compiler/lower: base abi compiler/check compiler/own
+compiler/mir: base abi compiler/lower
+compiler/opt: base abi compiler/mir
+compiler/emit: base abi compiler/mir compiler/opt
+compiler/link: base abi compiler/emit
+driver: base abi compiler
