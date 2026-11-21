@@ -151,13 +151,12 @@ bool lb_owns(Lb *lb, MirTy ty) {
     return ty != MIR_NONE && (ty == MIR_STR || lb_is_fn(lb, ty) || mir_needs_drop(lb->m, ty) || lc_is_resource(lb, ty));
 }
 
-/* An owned temporary of the statement: dropped where the statement ends, newest first, or where the
- * condition of an `if` has its value. Where no such end exists (a loop's condition, an arm or the right
- * side of `and`/`or`) it is dropped now. */
+/* An owned temporary of the statement: dropped where the statement ends, newest first. Where no such
+ * end exists (inside a condition, an arm or the right side of `and`/`or`) it is dropped now. */
 void lb_hold_temp(Lb *lb, MirValue v) {
     const bool simple = lb->stmt != NULL && lb->branching == 0 &&
                         (lb->stmt->kind == MS_S_BIND || lb->stmt->kind == MS_S_RETURN ||
-                         lb->stmt->kind == MS_S_ASSIGN || lb->stmt->kind == MS_S_CALL || lb->in_condition);
+                         lb->stmt->kind == MS_S_ASSIGN || lb->stmt->kind == MS_S_CALL || lb->stmt->kind == MS_S_IF);
     if (!simple) {
         lb_drop(lb, v);
         return;
@@ -408,8 +407,8 @@ static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     if (op == MS_B_ADD && ty == MIR_STR) {
         return lb_concat(lb, left, right);
     }
-    if (lb_owns(lb, ty)) {
-        return LB_UNSUPPORTED(lb);
+    if (lb_owns(lb, ty) || (ty != MIR_INT && ty != MIR_FLOAT && ty != MIR_BOOL)) {
+        return LB_UNSUPPORTED(lb); // the operations of the sized numbers and the other native types are not lowered yet
     }
     const MirOp arithmetic = lb_arithmetic_op(op, ty);
     if (arithmetic == MOP_COUNT) {
@@ -470,6 +469,9 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
     if (!lb->ok) {
         return LB_FAIL;
+    }
+    if (mir_b_ty(&lb->b, left.v) != mir_b_ty(&lb->b, right.v)) {
+        return LB_UNSUPPORTED(lb); // an Optional beside the plain value it wraps
     }
     if ((op == MS_B_EQ || op == MS_B_NE) && lb_is_aggregate(lb, mir_b_ty(&lb->b, left.v))) {
         return lq_equal(lb, left, right, op == MS_B_NE);
@@ -775,8 +777,8 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (dispatch != MS_TY_NONE && ms_ty_kind(&lb->c->tys, lb->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
         return li_call(lb, e);
     }
-    if (callee == MS_NONE && dispatch != MS_TY_NONE && lb->facts->call_borrows[e->id]) {
-        return LB_UNSUPPORTED(lb); // the borrowing twin of the runtime function and the scan of `for c in s.chars()` are not lowered yet
+    if (callee == MS_NONE && dispatch != MS_TY_NONE && lb->facts->call_borrows[e->id] && lb->iterable != e) {
+        return LB_UNSUPPORTED(lb); // a borrowed result used elsewhere is lent by a twin that is not lowered yet
     }
     if (callee == MS_NONE && dispatch != MS_TY_NONE) {
         return lb_native_method(lb, e); // an operation of a primitive: its runtime function
@@ -1420,16 +1422,11 @@ static void lb_bind_payload(Lb *lb, const MsPattern *pattern, MirValue payload) 
 
 /* `if cond: then else: else`; the else branch may be empty. */
 static void lb_if(Lb *lb, const MsStmt *s) {
-    // A plain condition keeps its temporaries until it has its value: `if a.add(b).sign() == 0`
-    // compares before the sum is dropped. An `if name := value` may bind into one, so it keeps none.
-    const uint32_t mark = lb->ntemps;
-    lb->in_condition = s->u.branch.binding == NULL;
+    const uint32_t temps = lb->ntemps;
     LbVal cond = lb_expr(lb, s->u.branch.cond);
-    lb->in_condition = false;
     if (!lb->ok) {
         return;
     }
-    lb_release_temps(lb, mark);
     const MirValue subject = cond.v; // an `if name := value` unwraps it in the then-branch
     if (s->u.branch.binding != NULL && mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->kind != MK_OPT) {
         (void)LB_UNSUPPORTED(lb); // a Result's Ok payload: the release of the rest is not lowered yet
@@ -1438,6 +1435,7 @@ static void lb_if(Lb *lb, const MsStmt *s) {
     if (s->u.branch.binding != NULL) {
         cond.v = la_test(lb, subject);
     }
+    lb_release_temps(lb, temps); // the condition's temporaries end with the condition
     const MirBlock then_block = mir_b_new_block(&lb->b);
     const MirBlock else_block = mir_b_new_block(&lb->b);
     const MirBlock join = mir_b_new_block(&lb->b);

@@ -184,13 +184,14 @@ typedef struct Lb {
     uint32_t ntemps, ctemps;
     uint32_t stmt_mark;   /* `ntemps` where the statement being lowered began */
     uint32_t branching;   /* conditional contexts around the expression being lowered (an arm, a short-circuit's right side) */
-    bool in_condition;    /* the condition of an `if` is being lowered: its temporaries live until it is computed */
     MsBuf *why;           /* NULL, or where each function that does not lower is listed (`ms_lower_program_why`) */
     const char *fail_site; /* the lowering source line that refused the function being lowered, when known */
     int fail_line;
     const MsStmt *fail_stmt; /* the statement being lowered then, or NULL */
     bool first_pass;      /* the report lists the functions the checker did not record once, in the first pass */
     bool dead;            /* control cannot reach the current position */
+    const MsExpr *iterable; /* the `for` iterable being lowered: a native call there yields a list the loop owns, never a view */
+    bool twin_ok;         /* the native call being marshalled is that iterable, so its base function (not a borrowing twin) is right */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
 

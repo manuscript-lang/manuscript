@@ -1168,9 +1168,50 @@ static void node_spans(const Tree *t, uint32_t count, int64_t *start, int64_t *e
     }
 }
 
+/* One row per binding of the module's facts. */
+static void analyze_binding_rows(Analysis *a, const MsCheck *check, const MsFacts *facts) {
+    const MsBindings *b = &facts->bindings;
+    for (uint32_t k = 0; k < b->count; k++) {
+        const MsStr name = ms_name(check->names, b->name[k]);
+        put_row(a, put_name(a, name.ptr, name.len));
+        put_row(a, put_type(a, check, b->ty[k]));
+        put_row(a, b->decl_node[k]);
+        put_row(a, b->pos[k].line);
+        put_row(a, b->pos[k].column);
+        put_row(a, b->pos[k].offset);
+        put_row(a, b->role[k]);
+        put_row(a, b->flags[k]);
+        put_row(a, b->reads[k]);
+    }
+}
+
+/* Every symbol a name resolved to (`seen`), once, in id order. */
+static void analyze_symbol_rows(Analysis *a, const MsCheck *check, MsModId id, const bool *seen) {
+    const MsNames *table = check->names;
+    for (uint32_t s = 0; seen != NULL && s < check->syms.count; s++) {
+        if (!seen[s]) {
+            continue;
+        }
+        const MsStr name = ms_name(table, check->syms.name[s]);
+        const MsModId home = check->syms.module[s];
+        const MsStr path = home == MS_NONE ? (MsStr){"", 0} : ms_name(table, check->mods[home].path);
+        const MsDecl *decl = check->syms.decl[s];
+        put_row(a, s);
+        put_row(a, put_name(a, name.ptr, name.len));
+        put_row(a, check->syms.kind[s]);
+        put_row(a, put_name(a, path.ptr, path.len));
+        put_row(a, home == id ? 1 : 0);
+        put_row(a, check->syms.is_exported[s] ? 1 : 0);
+        put_row(a, decl == NULL ? -1 : (int64_t)decl->id);
+        put_row(a, decl == NULL ? 0 : decl->pos.offset);
+        put_row(a, decl == NULL ? 0 : decl->pos.line);
+        put_row(a, decl == NULL ? 0 : decl->pos.column);
+        put_row(a, put_type(a, check, check->syms.ty[s]));
+    }
+}
+
 static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id, const char *src, size_t len) {
     const MsFacts *facts = check->mods[id].facts;
-    const MsNames *table = check->names;
     if (facts == NULL) {
         return;
     }
@@ -1210,40 +1251,8 @@ static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id, const c
         put_row(a, put_type(a, check, facts->type_ref_ty[n]));
         put_row(a, facts->call_callee[n] == MS_NONE ? -1 : (int64_t)facts->call_callee[n]);
     }
-    const MsBindings *b = &facts->bindings;
-    for (uint32_t k = 0; k < b->count; k++) {
-        const MsStr name = ms_name(table, b->name[k]);
-        put_row(a, put_name(a, name.ptr, name.len));
-        put_row(a, put_type(a, check, b->ty[k]));
-        put_row(a, b->decl_node[k]);
-        put_row(a, b->pos[k].line);
-        put_row(a, b->pos[k].column);
-        put_row(a, b->pos[k].offset);
-        put_row(a, b->role[k]);
-        put_row(a, b->flags[k]);
-        put_row(a, b->reads[k]);
-    }
-    /* Every symbol a name resolved to, once, in id order. */
-    for (uint32_t s = 0; seen != NULL && s < check->syms.count; s++) {
-        if (!seen[s]) {
-            continue;
-        }
-        const MsStr name = ms_name(table, check->syms.name[s]);
-        const MsModId home = check->syms.module[s];
-        const MsStr path = home == MS_NONE ? (MsStr){"", 0} : ms_name(table, check->mods[home].path);
-        const MsDecl *decl = check->syms.decl[s];
-        put_row(a, s);
-        put_row(a, put_name(a, name.ptr, name.len));
-        put_row(a, check->syms.kind[s]);
-        put_row(a, put_name(a, path.ptr, path.len));
-        put_row(a, home == id ? 1 : 0);
-        put_row(a, check->syms.is_exported[s] ? 1 : 0);
-        put_row(a, decl == NULL ? -1 : (int64_t)decl->id);
-        put_row(a, decl == NULL ? 0 : decl->pos.offset);
-        put_row(a, decl == NULL ? 0 : decl->pos.line);
-        put_row(a, decl == NULL ? 0 : decl->pos.column);
-        put_row(a, put_type(a, check, check->syms.ty[s]));
-    }
+    analyze_binding_rows(a, check, facts);
+    analyze_symbol_rows(a, check, id, seen);
     free(seen);
     analyze_ownership(a, check, facts);
     for (size_t i = 0; i < a->neffects; i++) {
@@ -1280,7 +1289,7 @@ static void analyze_project(Analysis *a, MsCheck *check, MsNames *table, const c
         for (uint32_t i = 0; i < graph.count; i++) {
             ms_module_check_ownership(check, ids[i]);
         }
-        analyze_facts(a, check, ids[graph.count - 1], (const char *)graph.modules[graph.count - 1].source, graph.modules[graph.count - 1].length);
+        analyze_facts(a, check, ids[graph.count - 1], graph.modules[graph.count - 1].source, graph.modules[graph.count - 1].length);
     }
     ms_arena_free(&graph_arena);
 }
