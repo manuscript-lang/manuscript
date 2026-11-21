@@ -128,7 +128,7 @@ void msrt_string_append_fmt5(const MsStr *s, int64_t mask, size_t a, size_t b, s
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out);
 /* ms-sig: msrt_string_empty(out: *mut StrVal) @domain=string @leaf */
 void msrt_string_empty(MsStr *out);
-/* ms-sig: msrt_string_clone(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf */
+/* ms-sig: msrt_string_clone(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @op=clone @imm=1 */
 void msrt_string_clone(const MsStr *s, MsStr *out);
 /* ms-sig: msrt_str_copy(ptr: *const u8, tagged: usize, out: *mut StrVal) @domain=string @leaf */
 void msrt_str_copy(const uint8_t *ptr, size_t tagged, MsStr *out);

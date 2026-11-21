@@ -1,5 +1,5 @@
 # Runtime-internal symbols of ms_rt/fmt.h defined in C (runtime/core/fmt.c); one per line. Rust calls them
-# through the shims in crates/ms-rt/src/num.rs when the archive is built by `cargo xtask runtime`.
+# through the shims in crates/ms-rt/src/num.rs when the archive is built by `cmake -P cmake/BuildRuntime.cmake`.
 msrt_fmt_u64
 msrt_fmt_i64
 msrt_fmt_radix

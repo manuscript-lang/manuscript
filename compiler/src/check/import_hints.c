@@ -12,9 +12,10 @@
 #define HINT_LIST_LIMIT 12
 
 /* Source-backed prelude names (STANDARD_PRELUDE_NAMES) and functions (STANDARD_PRELUDE_FUNCTIONS). */
-static const char *const prelude_names[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable",
+const char *const ms_prelude_names[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable",
                                             "Optional", "Result", "Error", "List", "Map", "Set",
                                             "ListEntry", "MapEntry"};
+const size_t ms_prelude_name_count = sizeof ms_prelude_names / sizeof *ms_prelude_names;
 static const char *const prelude_function_module = "@std/core.ms";
 static const char *const prelude_function = "print";
 
@@ -172,8 +173,8 @@ bool ms_standard_import_ok(MsArena *arena, const MsCheck *c, MsStr path, MsStr n
 /* ---- import hints ---- */
 
 static bool is_prelude_name(MsStr name) {
-    for (size_t i = 0; i < MS_COUNT_OF(prelude_names); i++) {
-        if (ms_str_equal(name, cstr(prelude_names[i]))) {
+    for (size_t i = 0; i < MS_COUNT_OF(ms_prelude_names); i++) {
+        if (ms_str_equal(name, cstr(ms_prelude_names[i]))) {
             return true;
         }
     }

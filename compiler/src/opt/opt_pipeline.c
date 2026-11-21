@@ -133,8 +133,8 @@ static bool op_exit_drops(MirModule *m) {
 }
 
 static const OpStep op_early_steps[] = {
-    {"simplify", mir_opt_simplify}, {"copyelim", mir_opt_copyelim}, {"inline", mir_opt_inline},
-    {"strfuse", op_strfuse},        {"loopslot", mir_opt_loopslot},
+    {"simplify", mir_opt_simplify}, {"copyelim", mir_opt_copyelim}, {"probe", mir_opt_probe},
+    {"inline", mir_opt_inline},     {"strfuse", op_strfuse},        {"loopslot", mir_opt_loopslot},
 };
 
 static const OpStep op_late_steps[] = {

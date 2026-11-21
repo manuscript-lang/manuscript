@@ -197,7 +197,11 @@ static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Targ
     } else if (receiver == b->float_ty) {
         own = "FloatOperations";
     }
+    // `Int` shares the generic integer interfaces, applied to itself, after its own.
+    const bool integer = receiver == b->int_ty;
     return (own != NULL && intrinsic_in(b, own, receiver, name, out)) ||
+           (integer && (intrinsic_in(b, "IntegerOperations", receiver, name, out) ||
+                        intrinsic_in(b, "SignedIntegerOperations", receiver, name, out))) ||
            intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
 }
 
@@ -237,6 +241,13 @@ static bool value_clonable(const MsBody *b, MsTy ty, uint32_t depth) {
         }
         return plain;
     }
+    case MS_K_ALTERNATIVE: {
+        bool plain = ms_ty_is(tys, ty, MS_BI_OPTIONAL) || ms_ty_is(tys, ty, MS_BI_RESULT);
+        for (uint32_t i = 0; plain && i < tys->nargs[ty]; i++) {
+            plain = value_clonable(b, ms_ty_args(tys, ty)[i], depth + 1);
+        }
+        return plain;
+    }
     case MS_K_TYPE: {
         Target closing;
         const MsDef *def = tys->def[ty] == 0 ? NULL : ms_def(b->c, tys->def[ty] - 1);
@@ -257,6 +268,9 @@ static bool value_clonable(const MsBody *b, MsTy ty, uint32_t depth) {
 static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, receiver);
+    if (kind == MS_K_VARIABLE) {
+        return intrinsic_in(b, "ValueOperations", receiver, name, out); // every value shows as text
+    }
     if (kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_NATIVE) {
         return false;
     }
@@ -327,6 +341,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
             return false;
         }
         target->sig = ms_infer_apply(&target->in, sig);
+        ms_body_record_function_arguments(b, e, target->sig, slot);
     }
     const MsTy result = tys->result[target->sig];
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty ||
@@ -400,7 +415,8 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     MsTy dispatch = receiver_ty; /* the interface an operation is called through */
     bool resolved;
     if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_VARIABLE) {
-        resolved = bound_operation(b, receiver_ty, name, &target, &dispatch);
+        resolved = bound_operation(b, receiver_ty, name, &target, &dispatch) ||
+                   value_operation(b, receiver_ty, name, &target);
     } else if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT) {
         resolved = operation_of(b, receiver_ty, name, &target);
     } else {
@@ -408,7 +424,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
                    value_operation(b, receiver_ty, name, &target);
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
-    if (!resolved || target.consuming || (target.mutating && immutable) ||
+    if (!resolved || (target.consuming && target.method == MS_NONE) || (target.mutating && immutable) ||
         (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) ||
         !arguments_fit(b, e, &target)) {
         return ms_body_unsupported(b);
