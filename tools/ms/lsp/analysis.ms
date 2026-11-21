@@ -67,10 +67,18 @@ export type SymbolFact:
 	column: Int
 	type_text: String
 
+// A call of a method: the call expression and where the method's name is declared,
+// which names the method across documents.
+export type MethodFact:
+	node: Int
+	module: String
+	offset: Int
+
 export type Facts:
 	nodes: List[NodeFact]
 	bindings: List[BindingFact]
 	symbols: List[SymbolFact]
+	methods: List[MethodFact] = []
 
 export enum AnalyzeError:
 	Syntax(message: String)
@@ -100,7 +108,7 @@ export fn analyze_in(
 
 	rows := ms_tool_analysis_rows(analysis)
 	names := ms_tool_analysis_names(analysis)
-	var facts = Facts([], [], [])
+	var facts = Facts([], [], [], [])
 	if rows.is_empty(): return ok(facts)
 
 	var at = 3
@@ -165,6 +173,16 @@ export fn analyze_in(
 		facts.nodes[index].end = rows[at + 1]
 		at += 2
 
+	// The conflict rows are eight columns each; the method rows follow them.
+	at += rows[at] * 8 + 1
+	for row in 0..rows[at]:
+		facts.methods.append(
+			MethodFact(
+				rows[at + 1 + row * 3],
+				text_of(names, rows[at + 2 + row * 3]),
+				rows[at + 3 + row * 3],
+			)
+		)
 	return ok(facts)
 
 test "the checker types a local and resolves its use":

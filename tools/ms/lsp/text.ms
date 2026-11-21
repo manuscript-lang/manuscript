@@ -2,7 +2,12 @@
 // against documents held as UTF-8 text. The server advertises `utf-16` position
 // encoding, as crates/ms-lsp/src/text.rs does. A character offset past the end of its
 // line stops at the line end; one inside a surrogate pair stops before the pair.
-import expect_equal from "@std/test/test.ms"
+import (
+	JsonValue from "@std/data/json.ms",
+	expect_equal from "@std/test/test.ms",
+
+	field, number, object from "./rpc.ms",
+)
 
 export type Position:
 	line: Int
@@ -59,6 +64,25 @@ export fn position_at(text: String, offset: Int) Position:
 	for ch in head.view(start, head.length()).chars():
 		units += utf16_width(ch.scalar_at(0))
 	return Position(line: line, character: units)
+
+// An LSP position object for byte `offset`.
+export fn position_json(text: String, offset: Int) JsonValue:
+	at := position_at(text, offset)
+	return object(
+		[
+			field("line", number(at.line)),
+			field("character", number(at.character)),
+		]
+	)
+
+// An LSP range object for the bytes from `start` to `end`.
+export fn range_json(text: String, start: Int, end: Int) JsonValue:
+	return object(
+		[
+			field("start", position_json(text, start)),
+			field("end", position_json(text, end)),
+		]
+	)
 
 // Replaces the bytes from `start` to `end` (positions) with `replacement`.
 export fn replace_range(

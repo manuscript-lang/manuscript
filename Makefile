@@ -199,10 +199,10 @@ dist: build
 dist-check: dist
 	$(MS) run tools/dist-check.ms
 
-# The language server written in Manuscript (tools/lsp): its unit tests and a check of the entry point.
-lsp-test: build
-	"$(RELEASE_MS)" test tools/lsp/frame.ms tools/lsp/text.ms tools/lsp/uri.ms tools/lsp/structure.ms tools/lsp/server.ms tools/lsp/check.ms
-	"$(RELEASE_MS)" check tools/lsp/main.ms
+# The language server written in Manuscript (tools/ms/lsp): its unit tests and a check of the entry point.
+lsp-test: build target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lsp/frame.ms tools/ms/lsp/text.ms tools/ms/lsp/uri.ms tools/ms/lsp/structure.ms tools/ms/lsp/server.ms tools/ms/lsp/check.ms tools/ms/lsp/analysis.ms tools/ms/lsp/navigate.ms tools/ms/lsp/index.ms tools/ms/lsp/refs.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" check tools/ms/lsp/main.ms
 
 agent-bench-check: build
 	PATH="$(dir $(RELEASE_MS)):$$PATH" "$(RELEASE_MS)" run bench/agent/run.ms -- oracle
@@ -313,8 +313,6 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/cli.ms
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
 	"$(RELEASE_MS)" test tools/ms/install.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/lsp/analysis.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/lsp/navigate.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/project.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/workspace.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a

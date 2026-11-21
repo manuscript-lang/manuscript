@@ -5,8 +5,16 @@
 // facts directly.
 import (
 	JsonValue, parse from "@std/data/json.ms",
+	basename from "@std/os/path.ms",
 	expect_equal from "@std/test/test.ms",
 
+	Occurrence from "./index.ms",
+	Renamed,
+	highlights,
+	plan_rename,
+	prepare_rename,
+	references,
+	rename_edit from "./refs.ms",
 	Field,
 	error_message,
 	field,
@@ -19,7 +27,7 @@ import (
 	result_message,
 	string_at from "./rpc.ms",
 	document_symbols, folding_ranges from "./structure.ms",
-	Position, offset_at, position_at, replace_range from "./text.ms",
+	Position, offset_at, position_at, range_json, replace_range from "./text.ms",
 	filename, is_file from "./uri.ms",
 )
 
@@ -55,6 +63,9 @@ export type Backend:
 	hover: fn(String, String, Int) Found?
 	// Where the name at the byte offset is declared, in the same buffer.
 	definition: fn(String, String, Int) Found?
+	// Where every declared name of a buffer is declared and used (path, text); empty
+	// when the buffer does not check.
+	index: fn(String, String) List[Occurrence]
 	// The diagnostics of one open document: file path and buffer text.
 	check: fn(String, String) List[JsonValue]
 	// The formatted text of a buffer, or why it cannot be formatted.
@@ -85,23 +96,6 @@ fn request_offset(text: String, params: JsonValue) Int:
 		),
 	)
 
-fn position_json(text: String, offset: Int) JsonValue:
-	at := position_at(text, offset)
-	return object(
-		[
-			field("line", number(at.line)),
-			field("character", number(at.character)),
-		]
-	)
-
-fn range_json(text: String, start: Int, end: Int) JsonValue:
-	return object(
-		[
-			field("start", position_json(text, start)),
-			field("end", position_json(text, end)),
-		]
-	)
-
 fn capabilities(server: Server) JsonValue:
 	return object(
 		[
@@ -126,6 +120,27 @@ fn capabilities(server: Server) JsonValue:
 						field(
 							"definitionProvider",
 							JsonValue.BoolValue(true),
+						),
+						field(
+							"referencesProvider",
+							JsonValue.BoolValue(true),
+						),
+						field(
+							"documentHighlightProvider",
+							JsonValue.BoolValue(true),
+						),
+						field(
+							"renameProvider",
+							object(
+								[
+									field(
+										"prepareProvider",
+										JsonValue.BoolValue(
+											true
+										),
+									)
+								]
+							),
 						),
 					]
 				),
@@ -398,6 +413,56 @@ fn var Server.handle(body: String, backend: Backend) Outcome:
 					),
 				]
 			)
+	else if (
+		method == "textDocument/references"
+		or method == "textDocument/documentHighlight"
+	):
+		uri := string_at(params, ["textDocument", "uri"])
+		document := self.documents.get(uri)
+		result = JsonValue.Null
+
+		if document.is_some() and is_file(uri):
+			text := document.get().text
+			offset := request_offset(text, params)
+			found := backend.index(filename(uri), text)
+			include := params.get_in(["context", "includeDeclaration"]).map(
+				fn(flag: JsonValue) Bool: flag.as_bool().get_or(false)
+			).get_or(false)
+
+			if method == "textDocument/references":
+				result = references(uri, text, found, offset, include)
+			else: result = highlights(text, found, offset)
+	else if method == "textDocument/prepareRename" or method == "textDocument/rename":
+		uri := string_at(params, ["textDocument", "uri"])
+		document := self.documents.get(uri).map(
+			fn(found: Document) Document: found.clone()
+		)
+
+		if document.is_none() or not is_file(uri): failure = "document is not open"
+		else:
+			text := document.get().text
+			path := filename(uri)
+			offset := request_offset(text, params)
+			found := backend.index(path, text)
+			name := string_at(params, ["newName"])
+
+			if found.is_empty(): failure = "rename requires a checked document"
+			else if method == "textDocument/prepareRename":
+				prepared := prepare_rename(text, found, offset)
+
+				if prepared.is_error(): failure = prepared.err().message
+				else: result = prepared.get()
+			else if name.is_empty(): failure = "new name is empty"
+			else:
+				plan := plan_rename(text, found, offset, name)
+				failure = rename_failure(plan, backend, path, text)
+				if failure.is_empty(): result = rename_edit(
+					uri,
+					document.get().version,
+					text,
+					plan.get(),
+					name,
+				)
 	else if method == "textDocument/formatting":
 		uri := string_at(params, ["textDocument", "uri"])
 		document := self.documents.get(uri).map(
@@ -431,6 +496,25 @@ fn var Server.handle(body: String, backend: Backend) Outcome:
 
 	return out
 
+// Why a planned rename is refused: the plan itself, a buffer that does not check now
+// (the occurrences cannot be trusted), or edits that leave it not checking.
+fn rename_failure(
+	plan: Result[Renamed, Error],
+	backend: Backend,
+	path: String,
+	text: String,
+) String:
+	if plan.is_error(): return plan.err().message
+
+	before := backend.check(path, text)
+	if not before.is_empty(): return f"rename requires a clean workspace: {basename(path)}"
+
+	after := backend.check(path, plan.get().updated)
+	if after.is_empty(): return ""
+
+	reason := string_at(after[0], ["message"])
+	return f"rename would break {basename(path)}: {reason}"
+
 // The messages that bring the diagnostics of every changed open document up to date,
 // using `check` to compute the diagnostics of one document.
 fn var Server.publish(backend: Backend) List[String]:
@@ -452,6 +536,8 @@ fn shout(path: String, source: String) Result[String, Error]:
 	if source.contains("bad"): return error(Error("cannot parse"))
 	return ok(source.upper())
 
+fn no_index(path: String, source: String) List[Occurrence]: []
+
 fn nothing_found(path: String, source: String, offset: Int) Found?: none
 
 // A fixed answer: the first word of the buffer.
@@ -459,6 +545,7 @@ fn first_word(path: String, source: String, offset: Int) Found?:
 	return Found(text: "word: String", start: 0, end: 5)
 
 fn fake() Backend: Backend(
+	index: no_index,
 	check: no_diagnostics,
 	format: shout,
 	hover: first_word,
@@ -668,3 +755,96 @@ test "hover and definition answer with a range, and nothing for an unknown buffe
 		fake(),
 	)
 	expect_equal(unknown.messages[0].contains("\"result\":null"), true)?
+
+// The occurrences of `x := 1\nreturn x`, written as the real index would.
+fn two_uses(path: String, source: String) List[Occurrence]:
+	return [
+		Occurrence(key: "b:0", name: "x", start: 0, end: 1, declaration: true),
+		Occurrence(
+			key: "b:0",
+			name: "x",
+			start: 14,
+			end: 15,
+			declaration: false,
+		),
+	]
+
+fn broken_after(path: String, source: String) List[JsonValue]:
+	if source.starts_with("y"): return [
+		object([field("message", json_text("unknown name"))])
+	]
+	return []
+
+fn indexed() Backend: Backend(
+	index: two_uses,
+	check: broken_after,
+	format: shout,
+	hover: first_word,
+	definition: first_word,
+)
+
+fn open_buffer(var server: Server, backend: Backend) Void:
+	server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}",
+		backend,
+	)
+	server.handle(
+		"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\",\"version\":3,\"text\":\"x := 1\\nreturn x\\n\"}}}",
+		backend,
+	)
+	server.publish(backend)
+
+test "references and highlights answer from the index":
+	var server = Server(version: "0")
+	open_buffer(server, indexed())
+
+	found := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":30,\"method\":\"textDocument/references\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"},\"position\":{\"line\":1,\"character\":7},\"context\":{\"includeDeclaration\":false}}}",
+		indexed(),
+	)
+	expect_equal(
+		found.messages[0],
+		"{\"jsonrpc\":\"2.0\",\"id\":30,\"result\":[{\"uri\":\"file:///a.ms\",\"range\":{\"start\":{\"line\":1,\"character\":7},\"end\":{\"line\":1,\"character\":8}}}]}",
+	)?
+
+	marked := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":31,\"method\":\"textDocument/documentHighlight\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"},\"position\":{\"line\":0,\"character\":0}}}",
+		indexed(),
+	)
+	expect_equal(marked.messages[0].count("\"kind\":2"), 2)?
+
+test "rename answers a versioned edit, and prepareRename the declaration":
+	var server = Server(version: "0")
+	open_buffer(server, indexed())
+
+	prepared := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":32,\"method\":\"textDocument/prepareRename\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"},\"position\":{\"line\":1,\"character\":7}}}",
+		indexed(),
+	)
+	expect_equal(prepared.messages[0].contains("\"placeholder\":\"x\""), true)?
+
+	renamed := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":33,\"method\":\"textDocument/rename\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"},\"position\":{\"line\":0,\"character\":0},\"newName\":\"count\"}}",
+		indexed(),
+	)
+	message := renamed.messages[0]
+	expect_equal(message.contains("\"version\":3"), true)?
+	expect_equal(message.count("\"newText\":\"count\""), 2)?
+
+test "a rename is refused when the name is bad, written already, or breaks the buffer":
+	var server = Server(version: "0")
+	open_buffer(server, indexed())
+
+	ask := "{\"jsonrpc\":\"2.0\",\"id\":34,\"method\":\"textDocument/rename\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"},\"position\":{\"line\":0,\"character\":0},\"newName\":\""
+	bad := server.handle(ask.concat("two words\"}}"), indexed())
+	expect_equal(bad.messages[0].contains("must be a Manuscript identifier"), true)?
+
+	empty := server.handle(ask.concat("\"}}"), indexed())
+	expect_equal(empty.messages[0].contains("new name is empty"), true)?
+
+	// The edit would leave `y := 1` which the stand-in checker rejects.
+	broken := server.handle(ask.concat("y\"}}"), indexed())
+	expect_equal(
+		broken.messages[0].contains("rename would break a.ms: unknown name"),
+		true,
+	)?

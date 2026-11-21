@@ -1130,6 +1130,29 @@ static void analyze_conflicts(Analysis *a, const MsCheck *check, const MsFacts *
     }
 }
 
+/* The method rows, after the conflict rows: the count of calls of a method and for each the call's node id, the module
+ * path the method is declared in, and the byte offset of its name there (-1 for a method declared by the runtime or
+ * without a position). The module and offset name the method across documents. */
+static void analyze_methods(Analysis *a, const MsCheck *check, const MsFacts *facts) {
+    const MsMethods *methods = facts->methods;
+    int64_t count = 0;
+    for (uint32_t n = 0; methods != NULL && n <= facts->node_count; n++) {
+        count += facts->call_method[n] != MS_NONE && facts->call_method[n] < methods->count;
+    }
+    put_row(a, count);
+    for (uint32_t n = 0; methods != NULL && n <= facts->node_count; n++) {
+        const uint32_t m = facts->call_method[n];
+        if (m == MS_NONE || m >= methods->count) {
+            continue;
+        }
+        const MsModId home = methods->module[m];
+        const MsStr path = home == MS_NONE ? (MsStr){"", 0} : ms_name(check->names, check->mods[home].path);
+        put_row(a, n);
+        put_row(a, put_name(a, path.ptr, path.len));
+        put_row(a, methods->decl[m] == NULL ? -1 : (int64_t)methods->pos[m].offset);
+    }
+}
+
 /* Takes the effect rows of module `id`: 1 when the scan saw every callable it reached (a missing violation proves
  * nothing otherwise), the count of violations of the module's own callables, and for each its offset, line, column and
  * the message `ms lint` prints as MSL116. Run before the ownership pass, which leaves a function it cannot follow
@@ -1269,6 +1292,7 @@ static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id, const c
     free(end);
     tree_drop(&tree);
     analyze_conflicts(a, check, facts);
+    analyze_methods(a, check, facts);
 }
 
 /* Loads the project `path` belongs to, with `overlay` (path, text pairs) in place of disk, and checks every module of

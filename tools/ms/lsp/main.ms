@@ -6,10 +6,12 @@ import (
 	Bytes from "@std/bytes.ms",
 	stderr, stdin, stdout_bytes from "@std/io/io.ms",
 
+	parse from "../syntax.ms",
 	analyze_in from "./analysis.ms",
 	check_document from "./check.ms",
 	format_document from "./format.ms",
 	Framer, encode from "./frame.ms",
+	Occurrence, occurrences from "./index.ms",
 	definition, hover from "./navigate.ms",
 	Backend, Found, Next, Server from "./server.ms",
 )
@@ -28,6 +30,13 @@ fn definition_at(path: String, text: String, offset: Int) Found?:
 	target := definition(facts.get(), text, offset)?
 	return Found(text: "", start: target.start, end: target.end)
 
+fn index_of(path: String, text: String) List[Occurrence]:
+	facts := analyze_in(path, text, [])
+	tree := parse(text)
+	if facts.is_error() or tree.is_error(): return []
+
+	return occurrences(text, facts.get(), tree.get(), path)
+
 fn send(messages: List[String]) Void!:
 	var out = stdout_bytes()
 	for message in messages:
@@ -39,6 +48,7 @@ fn serve() Int!:
 	var framer = Framer()
 	var server = Server(version: "dev")
 	backend := Backend(
+		index: index_of,
 		check: check_document,
 		format: format_document,
 		hover: hover_at,

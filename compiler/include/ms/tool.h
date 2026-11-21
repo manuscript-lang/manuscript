@@ -187,7 +187,9 @@ void ms_tool_keywords(ms_list *out);
  * column and message; then the span of each node row in order, as start and end offsets in the text; then the conflict
  * rows (MSL106): the count of capitalised match payload names that coincide with a type or a case and for each its
  * arm's node id, the name's offset, line and column, what it coincides with, the payload's type, the nested pattern to
- * write and, for an arm of a match over an interface value, the type it names (-1 for none of the last two).
+ * write and, for an arm of a match over an interface value, the type it names (-1 for none of the last two); then the
+ * method rows: the count of calls of a method and for each the call's node id, the module path the method is declared in
+ * (a name index) and the byte offset of its name there (-1 for none).
  * Every name, module path and type text is an index into the names (-1 for none); types print as source reads them.
  */
 #define MS_TOOL_ANALYZE_NODE_WIDTH 6
