@@ -49,3 +49,17 @@ MS_ORACLE_DIR=<dir> cmake --build --preset debug --target conform-c
 
 prints `phase: passed/total` for `parse`, `check`, `run` and `test`. Select a subset with
 `-DMS_CONFORM_EXTRA="--tag;tier-core"`. A PR that lowers any phase count is not merged.
+
+## Command fixtures
+
+Commands the corpus does not cover (`lint`, `inspect`, `init`, ...) have fixtures under
+`tests/conformance/commands/<command>/<name>/`: `args`, optional `input/`, and `expected/`
+(`stdout`, `stderr`, `status`, `tree/`). Record from the oracle and replay with the Manuscript
+runner, one PR per command:
+
+```sh
+MS=<oracle ms> <oracle ms> run tools/command-fixtures.ms -- record [--only-missing] [prefix]
+MS=<ms under test> <oracle ms> run tools/command-fixtures.ms -- check
+```
+
+`check` prints `commands: passed/total`.
