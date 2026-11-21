@@ -141,6 +141,16 @@ if ! grep -q 'body_optional_sized.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body
     echo "FAIL bodies: a literal given for an Optional sized number is no longer checked in C (compiler/tests/scope/body_optional_sized.ms)"
     status=1
 fi
+# `Void` as a type argument (`Result[Void, Error]`) is an annotation C accepts.
+if ! grep -q 'body_void_argument.ms 1:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a Void type argument is no longer checked in C (compiler/tests/scope/body_void_argument.ms)"
+    status=1
+fi
+# A value given for an instance of a generic interface (`Src[Int]`) that it fits by its methods is claimed.
+if ! grep -q 'body_generic_interface_shape.ms 17:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a value for a generic interface instance is no longer checked in C (compiler/tests/scope/body_generic_interface_shape.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else

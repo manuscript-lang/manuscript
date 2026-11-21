@@ -343,6 +343,33 @@ bool ms_doc_has_marker(MsStr source, size_t offset, const char *marker) {
     return found;
 }
 
+bool ms_doc_marker_args(MsStr source, size_t offset, const char *marker, MsStr *args) {
+    if (offset > source.len) {
+        return false;
+    }
+    size_t line_start = offset;
+    while (line_start > 0 && source.ptr[line_start - 1] != '\n') {
+        line_start--;
+    }
+    DocLines l;
+    doc_lines_init(&l, source, line_start);
+    bool found = false;
+    char prefix[64];
+    const int prefix_len = snprintf(prefix, sizeof prefix, "// ms: %s ", marker);
+    for (size_t i = 0; !found && doc_lines_fill(&l, i); i++) {
+        const MsStr line = doc_trim(doc_trim_cr(l.lines[i]));
+        if (!ms_str_starts(line, "//")) {
+            break;
+        }
+        if (prefix_len > 0 && line.len > (size_t)prefix_len && memcmp(line.ptr, prefix, (size_t)prefix_len) == 0) {
+            *args = doc_trim((MsStr){line.ptr + prefix_len, line.len - (size_t)prefix_len});
+            found = true;
+        }
+    }
+    free(l.lines);
+    return found;
+}
+
 size_t ms_doc_effect_lines(MsStr source, size_t offset, MsStr *names, size_t max) {
     if (offset > source.len) {
         return 0;

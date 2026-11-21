@@ -23,4 +23,15 @@ fn f(xs: List[Int]) Int:
 	return xs[xs.length() - 1]
 
 fn main() Int:
-	return a() + b(0) + c(Box(items: [4]), 0) + d([5], 0) + e([[6]], 0) + f([7])
+	return (
+		a()
+		+ b(0)
+		+ c(Box(items: [4]), 0)
+		+ d([5], 0)
+		+ e([[6]], 0)
+		+ f([7])
+		+ g([8])
+	)
+
+fn g(xs: List[Int]) Int:
+	return [[xs[0], 2]][0][1]
