@@ -56,7 +56,7 @@ for file in "$@"; do
 				# shellcheck disable=SC2086
 				want=$(cd "$work/base" && "$dev" report "$name" "../head/$name" --stats 2 1 7 3 $options $extra 2>&1) || true
 				# shellcheck disable=SC2086
-				got=$("$report" "$work/base.json" "$work/head.json" --stats 2 1 7 3 $options $extra 2>&1) || true
+				got=$("$report" "$work/base.json" "$work/head.json" --stats=2,1,7,3 $options $extra 2>&1) || true
 				[ "$want" = "$got" ] && continue
 				case "$want" in *"a key comes from base or head"*) continue ;; esac
 				echo "report differs: $file $variant options='$options $extra'"

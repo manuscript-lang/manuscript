@@ -5,11 +5,12 @@
 // Prints problems to standard error and exits 1 when there are any; writes the
 // inventory as JSON.
 import (
+	Arg, Command, Matches from "@std/cli/command.ms",
 	parse from "@std/data/json.ms",
-	arguments from "@std/os/env.ms",
 	read_file, write_file from "@std/os/fs.ms",
 	is_alphabetic, is_lowercase, is_numeric, is_uppercase from "@std/unicode.ms",
 
+	run_tool from "./cli.ms",
 	Module from "./docgen.ms",
 )
 
@@ -228,10 +229,11 @@ fn to_json(report: Inventory) String:
 // ms: allow_effect std.env.read
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.fs.write
-fn main() Void!:
-	args := arguments()
-	model := parse[Model](read_file(args[0]).wait()?.decode_utf8().get_or(""))?
-	policy := parse[Policy](read_file(args[1]).wait()?.decode_utf8().get_or(""))?
+fn show(m: Matches) Void!:
+	model := parse[Model](read_file(m.string("model")).wait()?.decode_utf8().get_or(""))?
+	policy := parse[Policy](
+		read_file(m.string("backlog")).wait()?.decode_utf8().get_or("")
+	)?
 	if policy.format != 1: return error(
 		Error(f"unsupported description policy format {policy.format}")
 	)
@@ -243,7 +245,10 @@ fn main() Void!:
 	print(
 		f"Description quality: {report.qualified_declarations}/{report.declarations} declarations, {report.qualified_members}/{report.members} members pass structural checks; semantic review remains required"
 	)
-	if args.length() > 2: write_file(args[2], to_json(report).to_bytes()).wait()?
+	if coverage := m.string_or_none("coverage"): write_file(
+		coverage,
+		to_json(report).to_bytes(),
+	).wait()?
 
 	problems := check(report, policy)
 	for problem in problems: print(f"API description: {problem}")
@@ -274,3 +279,21 @@ test "a description that restates the name is rejected":
 
 test "a description with new words qualifies":
 	expect_equal(probe("Counts the entries waiting in the queue"), "")?
+
+fn inventory_tool() Command:
+	return Command(
+		name: "doc_inventory.ms",
+		about: "Count the described API declarations and check them against the policy",
+		args: [
+			Arg("model", help: "The model JSON"),
+			Arg("backlog", help: "The description policy JSON"),
+			Arg(
+				"coverage",
+				help: "Where to write the coverage JSON",
+				required: false,
+			),
+		],
+	)
+
+fn main() Int:
+	return run_tool(inventory_tool(), show)

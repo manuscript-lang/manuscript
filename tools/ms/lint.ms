@@ -5,10 +5,11 @@
 // `--facts` names the `ms_check_dump` program and the standard-library directory; with it the
 // rules that read checker facts run too, on the nodes the C checker typed.
 import (
-	arguments from "@std/os/env.ms",
+	Arg, Command, Flag, FlagKind, Matches from "@std/cli/command.ms",
 	read_file, write_file from "@std/os/fs.ms",
 	quote from "@std/text.ms",
 
+	run_program from "./cli.ms",
 	load_facts from "./lint/facts.ms",
 	Finding from "./lint/finding.ms",
 	apply_fixes from "./lint/fixes.ms",
@@ -39,21 +40,36 @@ fn fix_file(path: String, original: String) Bool!:
 	write_file(path, text, replace: true).wait()?
 	return ok(true)
 
-fn main() Int:
+fn lint_tool() Command:
+	return Command(
+		name: "lint.ms",
+		about: "Lint .ms files with the Manuscript rules",
+		args: [Arg("files", rest: true, help: "The .ms files to lint")],
+		flags: [
+			Flag(
+				"fix",
+				FlagKind.Bool,
+				help: "Apply machine-applicable fixes in place",
+			),
+			Flag(
+				"facts",
+				help: "DUMP,STDLIB: the ms_check_dump program and the stdlib directory it reads",
+			),
+		],
+	)
+
+fn lint_files(m: Matches) Int!:
 	var status = 0
-	fix := arguments().contains("--fix")
+	fix := m.bool("fix")
 	var dump = ""
 	var stdlib = ""
 
-	for argument in arguments():
-		if argument.starts_with("--facts="):
-			pair := argument.slice(8, argument.length()).split(",")
-			dump = pair[0].clone()
-			stdlib = pair[1].clone()
+	if facts := m.string_or_none("facts"):
+		pair := facts.split(",")
+		dump = pair[0].clone()
+		stdlib = pair[1].clone()
 
-	for path in arguments():
-		if path == "--fix" or path.starts_with("--facts="): continue
-
+	for path in m.list("files"):
 		bytes := read_file(path).wait()
 
 		match bytes:
@@ -76,4 +92,7 @@ fn main() Int:
 				print(f"{path}: cannot read")
 				status = 1
 
-	return status
+	return ok(status)
+
+fn main() Int:
+	return run_program(lint_tool(), lint_files)

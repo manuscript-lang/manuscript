@@ -11,7 +11,7 @@ import (
 	BytesBuilder from "@std/bytes.ms",
 	parse from "@std/data/json.ms",
 	stderr, stdin, stdout from "@std/io/io.ms",
-	arguments, environment from "@std/os/env.ms",
+	environment from "@std/os/env.ms",
 	GlobOptions,
 	canonicalize,
 	create_directory,
@@ -24,6 +24,7 @@ import (
 	RunOptions, run from "@std/os/process.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 
+	tool_matches, tree_tool, usage_status from "./cli.ms",
 	DiffFile, parse_diff, reverse_apply from "./diff.ms",
 	explain, explain_json from "./mark.ms",
 	DiffStats, ReviewOptions, diff_report, project_report, render from "./report.ms",
@@ -296,47 +297,26 @@ export fn review(request: ReviewRequest) String!:
 		)
 	)
 
-fn usage() Error:
-	return Error(
-		"usage: review_cmd.ms FILE [--diff PATCH|-] [--format ascii|markdown|json] [--all] [--effect NAME] [--explain ID]"
-	)
-
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.fs.write
 // ms: allow_effect std.env.read
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
 fn main() Int:
-	args := arguments()
-	var request = ReviewRequest(file: "")
-	var i = 0
+	parsed := tool_matches(tree_tool("review", []))
+	if parsed.is_error(): return usage_status(parsed.err())
 
-	while i < args.length():
-		option := args[i].clone()
-		i += 1
-
-		if option == "--all": request.all = true
-		else if option == "--diff":
-			request.diff = args.get_or(i, "")
-			i += 1
-		else if option == "--format":
-			request.format = args.get_or(i, "")
-			i += 1
-		else if option == "--effect":
-			request.effect = args.get_or(i, "")
-			i += 1
-		else if option == "--explain":
-			request.explain = args.get_or(i, "")
-			i += 1
-		else if option.starts_with("--") or not request.file.is_empty():
-			stderr().write(usage().message + "\n").get()
-			return 2
-		else: request.file = option
-
-	if request.file.is_empty():
-		stderr().write(usage().message + "\n").get()
-		return 2
-
+	m := parsed.get()
+	request := ReviewRequest(
+		file: m.string("file"),
+		all: m.bool("all"),
+		diff: m.string_or_none("diff").get_or(""),
+		format: if m.bool("json"): "json" else: m.string_or_none(
+			"format"
+		).get_or("ascii"),
+		effect: m.string_or_none("effect").get_or(""),
+		explain: m.string_or_none("explain").get_or(""),
+	)
 	printed := review(request)
 
 	if printed.is_error():
