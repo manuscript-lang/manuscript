@@ -115,8 +115,8 @@ void mir_b_init_fast_path(MirBuilder *b, MirModule *m, MsSym name, const MirPara
 }
 
 void mir_b_params(const MirBuilder *b, MirValue *out, uint32_t n) {
-    for (uint32_t i = 0; i < n && i < b->f.blocks[0].nparams; i++) {
-        out[i] = b->f.blocks[0].params[i].value;
+    for (uint32_t i = 0; i < n; i++) {
+        out[i] = i < b->f.blocks[0].nparams ? b->f.blocks[0].params[i].value : MIR_NONE; /* every slot is written */
     }
 }
 
