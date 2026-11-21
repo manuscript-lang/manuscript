@@ -497,7 +497,7 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
 
 /* Appends `module` and then the project modules it imports, each once, in import order: the order
  * in which the program's source files are first reached from the entry. */
-static void lb_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modules, uint32_t *n) {
+void ms_module_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modules, uint32_t *n) {
     if (seen[module]) {
         return;
     }
@@ -506,7 +506,7 @@ static void lb_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modu
     const MsModuleRow *row = &c->mods[module];
     for (uint32_t i = 0; row->import_targets != NULL && i < row->syntax->nimports; i++) {
         if (row->import_targets[i] != MS_NONE) {
-            lb_reach(c, row->import_targets[i], seen, modules, n);
+            ms_module_reach(c, row->import_targets[i], seen, modules, n);
         }
     }
 }
@@ -524,7 +524,7 @@ uint32_t ms_lower_program_why(MsCheck *c, MsModId entry, MirModule *out, MsBuf *
         return 0;
     }
     uint32_t n = 0;
-    lb_reach(c, entry, seen, modules, &n); // the entry first: its source file is file 0
+    ms_module_reach(c, entry, seen, modules, &n); // the entry first: its source file is file 0
     for (uint32_t i = 0; i < c->nmods; i++) {
         if (!seen[i]) {
             modules[n++] = i; // the standard library's modules, which no import target names
