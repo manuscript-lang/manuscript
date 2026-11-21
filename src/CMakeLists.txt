@@ -1,3 +1,4 @@
+add_subdirectory(third_party)
 add_subdirectory(base)
 add_subdirectory(abi)
 add_subdirectory(runtime)
