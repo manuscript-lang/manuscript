@@ -33,6 +33,11 @@ typedef void (*MsStopExpiredFn)(void);
  * is left running then. */
 MS_NODISCARD bool ms_io_stop_start(MsStopFn on_stop, MsStopExpiredFn on_expired);
 
+/* Raises a stop request from this process, as the signal would: `signal` is SIGINT or SIGTERM (2 or 15). Windows has
+ * no signal a process can send itself, so `send_signal` of its own id comes here. Safe from any thread once
+ * ms_io_stop_start succeeded; does nothing before. */
+void ms_io_stop_raise(int signal);
+
 /* Arms the grace timer: `on_expired` runs `seconds` from now unless ms_io_stop_end comes first. Arming again
  * restarts it. Safe from any thread once ms_io_stop_start succeeded. */
 void ms_io_stop_arm(uint32_t seconds);

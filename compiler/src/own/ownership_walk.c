@@ -362,6 +362,9 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
             w->captured[w->ncaptured++] = own_resolve(w, binding);
         }
     }
+    if (binding < w->floor && w->lambda_escaping && w->perm[binding] == PERM_MUTABLE) {
+        OWN_DECLINE(w); /* an escaping closure copies a `var`: a later use of it is an error left to Rust */
+    }
     if (demand == DEMAND_MOVE && w->closure_holds[binding]) {
         OWN_DECLINE(w); /* the closure would outlive the locals it borrows */
     }

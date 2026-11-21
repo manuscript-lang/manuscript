@@ -29,6 +29,7 @@ typedef enum MsRtParam {
     MS_RT_KEY_REF,  /* a key passed by address: stored in a slot the call borrows */
     MS_RT_HANDLE,   /* `handle x: *const ObjCell<T>`: a runtime object, borrowed */
     MS_RT_OUT_HANDLE, /* `out: *mut *mut ObjCell<T>`: the runtime object the call creates, written through a pointer */
+    MS_RT_OUT_SCALAR, /* `out: *mut i64|f64|u8`: an Int, Float or Bool the call writes through a pointer */
     MS_RT_ERR,      /* the trailing `ErrSlot`: a string the call writes the failure text to */
     MS_RT_HAS,      /* `HasRaw`: an optional scalar crosses as `has, value`; the next parameter is the value and takes no argument */
     MS_RT_OTHER     /* anything the lowering does not marshal: a handle, a slot, an error slot */
@@ -51,12 +52,30 @@ typedef struct MsRtFn {
     bool pure;    /* only reads memory and cannot fault (`@pure`) */
     bool fresh;   /* `@fresh`: the result is a new value, never a reference into an argument */
     bool has_imm; /* `@imm=<n>`: the `@op=` instruction carries the integer `imm` */
+    const char *domain; /* `@domain=`: how its failures name their module ("network"), or "" */
 } MsRtFn;
 
 /* Whether `fn` reports failure by a status the caller turns into a `Result` (see lower_extern.c). */
 static inline bool ms_rt_has_err_slot(const MsRtFn *fn) {
     return fn->nparams > 0 && fn->params[fn->nparams - 1] == MS_RT_ERR;
 }
+
+/* One row of a native's status table: the error `kind` (`ENOENT`) and the message `words` of a nonzero `status`;
+ * words `-` mean the native's own text is the whole message. */
+typedef struct MsStatusRow {
+    int64_t status;
+    const char *kind;
+    const char *words;
+} MsStatusRow;
+typedef struct MsStatusWords {
+    const char *symbol;
+    int64_t status;
+    const char *words;
+} MsStatusWords;
+
+/* The rows of `fn`'s status table in status order, with the words its module words differently (stdlib `// ms: words`);
+ * returns the row count and fills `out` up to `cap`. */
+size_t ms_rt_status_rows(const MsRtFn *fn, MsStatusRow *out, size_t cap);
 
 /* The function named `symbol`, or NULL. */
 const MsRtFn *ms_rt_fn_find(const char *symbol, size_t length);

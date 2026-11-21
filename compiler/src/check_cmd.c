@@ -18,6 +18,26 @@
 #include "ms/project.h"
 #include "ms/stdlib.h"
 
+/* An inherent `impl` of a type this module declares: every method's body was claimed by the body and
+ * ownership passes. An implementation of an interface, and methods added to another module's type, keep the
+ * Rust checker's contract and ownership-of-type rules. */
+static bool check_methods_covered(const MsCheck *c, MsModId id, const MsDecl *d) {
+    const MsModuleRow *row = &c->mods[id];
+    if (d->u.impl.contract != NULL || d->u.impl.receiver == NULL || row->facts == NULL) {
+        return false;
+    }
+    const MsSymId type = ms_map_get(&row->names, d->u.impl.receiver->name);
+    if (type == MS_NONE || c->syms.module[type] != id) {
+        return false;
+    }
+    for (uint32_t i = 0; i < d->u.impl.methods.len; i++) {
+        if (!row->facts->body_checked[d->u.impl.methods.ptr[i]->id]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* Every default of the type's fields was typed by the body pass; a default it declined (a conversion Rust
  * rewrites) has no diagnostic here and stays with Rust. */
 static bool check_defaults_covered(const MsModuleRow *row, const MsDecl *d) {
@@ -36,7 +56,7 @@ static bool check_module_covered(const MsCheck *c, MsModId id) {
     const MsModuleRow *row = &c->mods[id];
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        if (d->kind == MS_D_IMPL) {
+        if (d->kind == MS_D_IMPL && !check_methods_covered(c, id, d)) {
             return false;
         }
         if (d->kind == MS_D_TEST && (row->facts == NULL || !row->facts->body_checked[d->id])) {
