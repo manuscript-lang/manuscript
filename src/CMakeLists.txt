@@ -1,4 +1,5 @@
 add_subdirectory(base)
+add_subdirectory(compiler)
 add_subdirectory(driver)
 add_subdirectory(lint)
 
