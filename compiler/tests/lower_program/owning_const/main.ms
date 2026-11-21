@@ -29,6 +29,12 @@ fn bound() String:
 fn second() String:
 	return names[1]
 
+fn sizes() Int:
+	return names.length() + greeting.length() + primes.length()
+
+fn upper() String:
+	return greeting.upper()
+
 fn main() Void:
 	print(greeting)
 	print(joined)
@@ -38,3 +44,5 @@ fn main() Void:
 	print(shout())
 	print(copy())
 	print(bound())
+	print(sizes())
+	print(upper())
