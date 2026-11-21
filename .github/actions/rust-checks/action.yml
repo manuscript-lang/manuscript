@@ -171,8 +171,8 @@ runs:
         echo "=== accept_park (default threads)"; timeout 40 "$ms" run probe/accept_park.ms 2>&1 | tail -60 || true
         echo "=== accept_park (1 thread)"; MS_THREADS=1 timeout 40 "$ms" run probe/accept_park.ms 2>&1 | tail -60 || true
         for t in "a promise that accepts on a listener runs where the listener lives" "TCP loopback writes reads half close and EOF"; do
-          echo "=== net.ms: $t"; timeout 60 "$ms" test tests/conformance/fixtures/e2e/stdlib/net.ms --test "$t" 2>&1 | tail -80 || true
-          echo "=== net.ms 1 thread: $t"; MS_THREADS=1 timeout 60 "$ms" test tests/conformance/fixtures/e2e/stdlib/net.ms --test "$t" 2>&1 | tail -80 || true
+          echo "=== net.ms: $t"; timeout 60 "$ms" test tests/conformance/fixtures/e2e/stdlib/net.ms --test "net.ms::$t" 2>&1 | tail -80 || true
+          echo "=== net.ms 1 thread: $t"; MS_THREADS=1 timeout 60 "$ms" test tests/conformance/fixtures/e2e/stdlib/net.ms --test "net.ms::$t" 2>&1 | tail -80 || true
         done
         exit 1
     # The C unit tests, as `make c-test` runs them on Linux and macOS, built for windows-gnullvm with the same

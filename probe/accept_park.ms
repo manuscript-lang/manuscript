@@ -1,4 +1,4 @@
-import connect, listen from "@std/net/net.ms"
+import Listener, connect, listen from "@std/net/net.ms"
 import promise from "@std/concurrency/promise.ms"
 import seconds from "@std/time.ms"
 
