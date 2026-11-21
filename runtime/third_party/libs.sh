@@ -23,7 +23,18 @@ install)
         sudo=; [ "$(id -u)" = 0 ] || sudo=sudo
         $sudo dnf install -y epel-release dnf-plugins-core
         $sudo dnf config-manager --set-enabled powertools
-        $sudo dnf install -y pkgconf-pkg-config cmake ninja-build ccache clang perl-core musl-gcc musl-libc-static libuv-devel libnghttp2-devel openssl-devel pcre2-devel zlib-devel libcurl-devel
+        $sudo dnf install -y pkgconf-pkg-config cmake ninja-build ccache clang perl-core libuv-devel libnghttp2-devel openssl-devel pcre2-devel zlib-devel libcurl-devel
+        # AlmaLinux 8 has no musl-gcc package (apt's musl-tools); build musl, which the `--static` runtime uses.
+        if ! command -v musl-gcc >/dev/null 2>&1; then
+            musl=musl-1.2.5
+            work=$(mktemp -d)
+            curl -fsSL "https://musl.libc.org/releases/$musl.tar.gz" -o "$work/$musl.tar.gz"
+            echo "a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4  $work/$musl.tar.gz" | sha256sum -c -
+            tar -xzf "$work/$musl.tar.gz" -C "$work"
+            (cd "$work/$musl" && ./configure --prefix=/usr/local/musl >/dev/null && make -j"$(nproc)" >/dev/null && $sudo make install >/dev/null)
+            $sudo ln -sf /usr/local/musl/bin/musl-gcc /usr/local/bin/musl-gcc
+            rm -rf "$work"
+        fi
     elif [ -x "${MS_MSYS2:-C:/msys64}/usr/bin/pacman.exe" ]; then
         case "${PROCESSOR_ARCHITECTURE:-}" in ARM64) env=clangarm64 ;; *) env=clang64 ;; esac
         pre=mingw-w64-clang-$(if [ "$env" = clangarm64 ]; then echo aarch64; else echo x86_64; fi)
