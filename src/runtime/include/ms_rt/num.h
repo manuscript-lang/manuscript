@@ -5,9 +5,9 @@
 #include "ms_rt/base.h"
 #include "ms_rt/string.h"
 
-/* ms-sig: msrt_float_compare(a: f64, b: f64) -> i64 @domain=number @leaf */
+/* ms-sig: msrt_float_compare(a: f64, b: f64) -> i64 @domain=number @leaf @seq=fcmp.lt:$0:$1>bool,fcmp.gt:$0:$1>bool,iconst:#-1>int,iconst:#1>int,iconst:#0>int,fcmp.ne:$0:$0>bool,fcmp.ne:$1:$1>bool,select:%6:%4:%3>int,select:%6:%2:%4>int,select:%5:%7:%8>int,select:%1:%3:%9>int,select:%0:%2:%10>int */
 int64_t msrt_float_compare(double a, double b);
-/* ms-sig: msrt_int_compare(a: i64, b: i64) -> i64 @domain=number @leaf */
+/* ms-sig: msrt_int_compare(a: i64, b: i64) -> i64 @domain=number @leaf @seq=icmp.lt:$0:$1>bool,icmp.gt:$0:$1>bool,iconst:#-1>int,iconst:#1>int,iconst:#0>int,select:%1:%3:%4>int,select:%0:%2:%5>int */
 int64_t msrt_int_compare(int64_t a, int64_t b);
 /* ms-sig: msrt_uint_compare(a: i64, b: i64) -> i64 @domain=number */
 int64_t msrt_uint_compare(int64_t a, int64_t b);
