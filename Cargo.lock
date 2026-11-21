@@ -444,15 +444,18 @@ dependencies = [
 name = "ms-build"
 version = "0.0.0"
 dependencies = [
- "gimli 0.34.0",
+ "flate2",
+ "httparse",
  "ms-check",
  "ms-clif",
  "ms-driver",
  "ms-lower",
  "ms-mir",
- "ms-mir-llvm",
  "ms-syntax",
  "object",
+ "rustls",
+ "rustls-native-certs",
+ "sha2",
 ]
 
 [[package]]
@@ -470,7 +473,6 @@ dependencies = [
  "libc",
  "ms-build",
  "ms-check",
- "ms-clif",
  "ms-driver",
  "ms-json",
  "ms-lsp",
@@ -491,16 +493,10 @@ dependencies = [
  "cranelift-module",
  "cranelift-native",
  "cranelift-object",
- "flate2",
  "gimli 0.34.0",
- "httparse",
  "ms-build",
  "ms-mir",
  "ms-rt-abi",
- "object",
- "rustls",
- "rustls-native-certs",
- "sha2",
  "target-lexicon",
 ]
 
@@ -542,31 +538,6 @@ name = "ms-mir"
 version = "0.0.0"
 dependencies = [
  "ms-mir",
- "ms-rt-abi",
-]
-
-[[package]]
-name = "ms-mir-llvm"
-version = "0.0.0"
-dependencies = [
- "ms-mir",
- "ms-rt-abi",
-]
-
-[[package]]
-name = "ms-native"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
-]
-
-[[package]]
-name = "ms-rt"
-version = "0.1.0"
-dependencies = [
- "libc",
- "memchr",
  "ms-rt-abi",
 ]
 

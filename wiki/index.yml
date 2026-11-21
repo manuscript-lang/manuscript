@@ -79,6 +79,4 @@ domains:
     file: llvm-langref/index.md
     topics: [LLVM IR, language reference, instructions, intrinsics, attributes, metadata, direct LLVM emission]
     paths:
-      - "crates/ms-mir-llvm/src/mir_llvm/**"
-      - "crates/ms-mir-llvm/**"
       - "crates/ms-build/src/llvm/**"

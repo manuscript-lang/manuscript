@@ -3,6 +3,7 @@
  * from the checked bodies (effect_scan.c) and the directive lines of each callable's source
  * (effect_directives.c), then resolves it (effect_reach.c). A callable the scan cannot see through
  * yet is reported `partial`, never as an empty answer. */
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -69,10 +70,52 @@ static MsSym fx_decl_name(const MsDecl *d) {
     }
 }
 
+static uint32_t fx_edges(Fx *fx, uint32_t i, const MsScanNode *scan) {
+    MsReachEdge *edges = MS_NEW_N(fx->arena, MsReachEdge, (size_t)scan->nedges + 1);
+    for (uint32_t k = 0; k < scan->nedges; k++) {
+        edges[k] = (MsReachEdge){.callee = fx_add(fx, scan->edges[k].callee), .pos = scan->edges[k].pos};
+    }
+    fx->reach[i].edges = edges; // `fx_add` may have moved the array: write through the index
+    fx->reach[i].nedges = scan->nedges;
+    fx->nodes[i].partial = scan->partial;
+    return scan->nedges;
+}
+
+/* Fills node `i` of a source method: its directives above the method, and its edges when the scan
+ * can read the body (a method of the project module the checker checked). */
+static void fx_fill_method(Fx *fx, uint32_t i, uint32_t row) {
+    const MsCheck *c = fx->c;
+    const MsMethods *methods = fx->c->mods[fx->project].facts->methods;
+    const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
+    const MsModId m = methods->module[row];
+    MsReachNode *node = &fx->reach[i];
+    const MsSourceLines *lines = fx_lines(fx, m);
+    const MsDirectives above = ms_lines_above(fx->arena, *lines, method->pos.line);
+    node->file = ms_name(c->names, c->mods[m].path);
+    node->label = ms_name(c->names, method->func.name);
+    node->pos = method->pos;
+    node->project = m == fx->project;
+    node->declared = above.declared.names;
+    node->ndeclared = above.declared.count;
+    node->allow_fn = above.allow;
+    node->allow_file = fx->header[m].allow;
+    const MsFacts *facts = c->mods[m].facts;
+    if (m == fx->project && facts != NULL && facts->body_checked != NULL && facts->body_checked[method->id]) {
+        const MsScanNode scan = ms_effect_scan_method(fx->arena, c, m, method);
+        fx_edges(fx, i, &scan);
+    } else if (node->ndeclared == 0) {
+        fx->nodes[i].partial = true;
+    }
+}
+
 /* Fills node `i`: its directives, and its edges when the scan can read the body. */
 static void fx_fill(Fx *fx, uint32_t i) {
     const MsCheck *c = fx->c;
     const MsSymId sym = fx->nodes[i].sym;
+    if (sym >= c->syms.count) {
+        fx_fill_method(fx, i, sym - c->syms.count);
+        return;
+    }
     const MsDecl *d = c->syms.decl[sym];
     const MsModId m = c->syms.module[sym];
     MsReachNode *node = &fx->reach[i];
@@ -95,13 +138,7 @@ static void fx_fill(Fx *fx, uint32_t i) {
     if (m == fx->project && c->mods[m].facts != NULL && c->mods[m].facts->body_checked != NULL &&
         c->mods[m].facts->body_checked[d->id]) {
         const MsScanNode scan = ms_effect_scan_decl(fx->arena, c, m, d);
-        MsReachEdge *edges = MS_NEW_N(fx->arena, MsReachEdge, (size_t)scan.nedges + 1);
-        for (uint32_t k = 0; k < scan.nedges; k++) {
-            edges[k] = (MsReachEdge){.callee = fx_add(fx, scan.edges[k].callee), .pos = scan.edges[k].pos};
-        }
-        fx->reach[i].edges = edges; // `fx_add` may have moved the array: write through the index
-        fx->reach[i].nedges = scan.nedges;
-        fx->nodes[i].partial = scan.partial;
+        fx_edges(fx, i, &scan);
     } else if (node->ndeclared == 0) {
         fx->nodes[i].partial = true; // a body nobody has checked: what it reaches is unknown
     }
@@ -142,7 +179,18 @@ static void sites_expr(void *ctx, const MsExpr *e) {
     if (e->kind != MS_E_CALL) {
         return;
     }
-    if (s->facts->call_method[e->id] != MS_NONE || s->facts->call_interface[e->id] != MS_TY_NONE) {
+    const uint32_t row = s->facts->call_method[e->id];
+    if (row != MS_NONE && ms_effect_method_is_node(s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
+        const MsMethods *methods = s->facts->methods;
+        const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
+        if (methods->module[row] == s->project) {
+            sites_push(s, &s->calls, &s->ncalls, &s->ccalls, ms_name(s->c->names, method->func.name));
+        } else {
+            s->partial = true;
+        }
+        return;
+    }
+    if (row != MS_NONE || s->facts->call_interface[e->id] != MS_TY_NONE) {
         s->partial = true;
         return;
     }
@@ -190,8 +238,9 @@ MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId modul
         return NULL;
     }
     Fx fx = {.arena = arena, .c = c, .project = module, .text = text};
-    fx.index = MS_NEW_N(arena, uint32_t, (size_t)c->syms.count + 1);
-    memset(fx.index, 0, ((size_t)c->syms.count + 1) * sizeof *fx.index);
+    const size_t nkeys = (size_t)c->syms.count + row->facts->methods->count + 1;
+    fx.index = MS_NEW_N(arena, uint32_t, nkeys);
+    memset(fx.index, 0, nkeys * sizeof *fx.index);
     fx.lines = MS_NEW_N(arena, MsSourceLines, (size_t)c->nmods + 1);
     fx.have_lines = MS_NEW_N(arena, bool, (size_t)c->nmods + 1);
     memset(fx.have_lines, 0, ((size_t)c->nmods + 1) * sizeof *fx.have_lines);

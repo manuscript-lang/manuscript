@@ -170,7 +170,9 @@ for side in rust c; do
 done
 keyed "$out/effects.c" > "$out/effects.c.keyed"
 cut -d'|' -f1 "$out/effects.c.keyed" | sort -u > "$out/effects.keys"
-keyed "$out/effects.rust" | awk -F'|' -v list="$out/effects.keys" '
+# A method has no symbol name: the Rust scan's serial method ids and the C scan's method nodes both read `method`.
+sed -E 's/^edge [^ ]*method[0-9]+ /edge method /' "$out/effects.rust" > "$out/effects.rust.normal"
+keyed "$out/effects.rust.normal" | awk -F'|' -v list="$out/effects.keys" '
     BEGIN { while ((getline line < list) > 0) keep[line] = 1 }
     $1 in keep' > "$out/effects.rust.keyed"
 if cmp -s "$out/effects.rust.keyed" "$out/effects.c.keyed" && [ -s "$out/effects.c.keyed" ]; then

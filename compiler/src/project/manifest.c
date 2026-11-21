@@ -723,7 +723,7 @@ static bool manifest_is_dir(const char *path) {
     return stat(path, &info) == 0 && S_ISDIR(info.st_mode);
 }
 
-static bool manifest_is_file(const char *path) {
+bool ms_project_is_file(const char *path) {
     struct stat info;
     return stat(path, &info) == 0 && S_ISREG(info.st_mode);
 }
@@ -919,7 +919,7 @@ static bool manifest_finish(Builder *b) {
         if (strcmp(ms_path_ext(p->entry), ".ms") != 0) {
             return manifest_fail_at(r, b->entry_pos, "entry requires .ms extension; set entry to a .ms file such as \"src/main.ms\"");
         }
-        if (!manifest_is_file(p->entry)) {
+        if (!ms_project_is_file(p->entry)) {
             return manifest_fail_at(r, b->entry_pos, ms_arena_fmt(a, "project entry must be an existing regular file; create %s or fix entry in [project]", p->entry).ptr);
         }
     }

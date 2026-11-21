@@ -1,4 +1,4 @@
-/* The symbol and line tables handed to `msrt_start` (crates/ms-rt/ABI.md), shared by the backends
+/* The symbol and line tables handed to `msrt_start` (crates/ms-rt-abi/ABI.md), shared by the backends
  * (fault_tables.rs). Code addresses are left zero: the backend relocates the entries in `pcs` and
  * the table's own pointers in `pointers`. */
 #ifndef MS_MIR_TABLES_H

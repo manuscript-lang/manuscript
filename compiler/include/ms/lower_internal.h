@@ -141,6 +141,10 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over 
 /* A call of module function `func` of signature `sig`; `receiver` is the method receiver, else NULL. */
 LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating);
 
+/* Interface values (lower_iface.c, included after lower_body.c). */
+MirTy li_type(Lb *lb, MsTy ty);
+LbVal li_call(Lb *lb, const MsExpr *e);
+
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
