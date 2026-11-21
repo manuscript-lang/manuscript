@@ -79,20 +79,10 @@ static void leave(Core *core) {
     release_if_idle(core);
 }
 
-static void write_address(MsStr *out, const MsAddr *address) {
-    char text[MS_NET_ADDR_TEXT_MAX];
-    size_t length = 0;
-    if (ms_net_addr_format(address, text, sizeof text, &length)) {
-        msrt_string_from_bytes((const uint8_t *)text, length, out);
-    } else {
-        msrt_string_from_bytes(NULL, 0, out);
-    }
-}
-
 uint8_t msstd_dgram_bind(const MsStr *address, void **out, MsStr *err) {
     ms_net_clear_text(err); /* the caller reads the slot for every failure status; only STATUS_FAILED sets text */
     MsAddr local;
-    if (!ms_net_addr_parse(ms_bytes_of((const uint8_t *)msrt_str_data(address), msrt_str_len(address)), &local)) {
+    if (!ms_net_addr_parse(msrt_str_bytes(address), &local)) {
         return STATUS_INVALID_INPUT;
     }
     MsSock fd = MS_SOCK_INVALID;
@@ -117,7 +107,7 @@ void msstd_dgram_address(const void *handle, MsStr *out) {
         const bool known = ms_sys_net_local_addr(core->fd, &address) == MS_SYS_OK;
         leave(core);
         if (known) {
-            write_address(out, &address);
+            ms_net_write_address(out, &address);
             return;
         }
     }
@@ -193,7 +183,7 @@ uint8_t msstd_dgram_receive(const void *handle, uint8_t has_max, int64_t max, ui
     leave(core);
     if (status == MS_NET_OK && !too_big) {
         msrt_write_bytes(&out->data, buffer, count);
-        write_address(&out->sender, &from);
+        ms_net_write_address(&out->sender, &from);
     }
     free(buffer);
     return too_big ? STATUS_LIMIT_EXCEEDED : ms_net_finish(status, code, err);
@@ -204,7 +194,7 @@ uint8_t msstd_dgram_send(const void *handle, const MsVec *data, const MsStr *add
     ms_net_clear_text(err); /* the caller reads the slot for every failure status; only STATUS_FAILED sets text */
     Core *core = core_of(handle);
     MsAddr target;
-    if (!ms_net_addr_parse(ms_bytes_of((const uint8_t *)msrt_str_data(address), msrt_str_len(address)), &target)) {
+    if (!ms_net_addr_parse(msrt_str_bytes(address), &target)) {
         return STATUS_INVALID_INPUT;
     }
     if (data->len > DATAGRAM_MAX) {

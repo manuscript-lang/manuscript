@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "ms_rt/safe.h"
 
@@ -21,12 +22,35 @@ typedef struct MsArena {
 } MsArena;
 
 void *ms_alloc(MsArena *a, size_t size, size_t align);
+/* `count` zero-filled elements of `size` bytes, plus one spare element so a count of zero still has an address. */
+void *ms_alloc_zeroed(MsArena *a, size_t count, size_t size);
 void ms_arena_free(MsArena *a);
 /* Forgets everything allocated, keeping the newest chunk for reuse: a scratch arena used once per
  * function costs no malloc and free each time. */
 void ms_arena_reset(MsArena *a);
 #define MS_NEW(a, T) ((T *)ms_alloc((a), sizeof(T), _Alignof(T)))
 #define MS_NEW_N(a, T, n) ((T *)ms_alloc((a), sizeof(T) * (size_t)(n), _Alignof(T)))
+
+/* qsort order for uint32_t elements. */
+static inline int ms_cmp_u32(const void *x, const void *y) {
+    const uint32_t a = *(const uint32_t *)x, b = *(const uint32_t *)y;
+    return a < b ? -1 : a > b;
+}
+
+/* qsort order for `const char *` elements. */
+static inline int ms_cmp_cstr(const void *x, const void *y) {
+    return strcmp(*(const char *const *)x, *(const char *const *)y);
+}
+
+/* Whether `x` is among v[0..n]. */
+static inline bool ms_u32_contains(const uint32_t *v, uint32_t n, uint32_t x) {
+    for (uint32_t i = 0; i < n; i++) {
+        if (v[i] == x) {
+            return true;
+        }
+    }
+    return false;
+}
 
 /* Arrays that grow by doubling. `ms_capacity_for` is the capacity (at least 64, doubling from
  * `current`) that holds `needed` elements; `ms_array_resize` returns `array` resized to that

@@ -11,20 +11,11 @@ limit=${1:-0}
 profile=${MS_BUILD_DIFF_PROFILE:-Debug}
 flags=${MS_BUILD_DIFF_FLAGS:-}
 ms=${MS:-target/release/ms}
-# MS_C_TOOLS: a folder that already holds ms_mir_build and ms_asm_tables (the platform CI builds them without the
-# sanitizers); else they are built here with the sanitizers on.
-if [ -n "${MS_C_TOOLS:-}" ]; then
-    bin=$MS_C_TOOLS
-else
-    sh compiler/tests/cbuild.sh ms_mir_build ms_asm_tables > /dev/null
-    bin=$(pwd)/target/cmake/test/compiler
-fi
 exe=
 case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) exe=.exe ;; esac
 out=target/c-compiler/build-diff
 rm -rf "$out"
 mkdir -p "$out"
-export ASAN_OPTIONS=detect_leaks=0 MS_C_BACKEND_DIR=$bin
 grep -rl "^// conform: .*phase=run" tests/conformance/fixtures --include=*.ms | sort > "$out/files.txt"
 [ "$limit" -gt 0 ] && head -n "$limit" "$out/files.txt" > "$out/files.cut" && mv "$out/files.cut" "$out/files.txt"
 pass=0 same=0 diff=0 cfail=0 rfail=0

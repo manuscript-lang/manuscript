@@ -9,11 +9,16 @@
 
 typedef void (*MsInitFn)(int, char **, char **);
 
+// NOLINTBEGIN(bugprone-reserved-identifier,readability-identifier-naming): the names are the linker's and glibc's
 extern const MsInitFn __init_array_start[];
 extern const MsInitFn __init_array_end[];
+// NOLINTEND(bugprone-reserved-identifier,readability-identifier-naming)
+
+void ms_run_init_array(int argc, char **argv, char **envp); /* called from the `_start` assembly below */
 
 /* Runs the executable's `.init_array` (Rust `std` records the arguments there). glibc runs the loaded libraries'
  * own; `fini` stays null because the loader runs the executable's `.fini_array`. */
+void ms_run_init_array(int argc, char **argv, char **envp);
 void ms_run_init_array(int argc, char **argv, char **envp) {
     for (const MsInitFn *at = __init_array_start; at < __init_array_end; at++) {
         (*at)(argc, argv, envp);
@@ -66,10 +71,31 @@ enum { STAT_VERSION = 1 };
 enum { STAT_VERSION = 0 };
 #endif
 
+// NOLINTBEGIN(bugprone-reserved-identifier): glibc's versioned stat entry points
 int __xstat64(int version, const char *path, void *buffer);
 int __lxstat64(int version, const char *path, void *buffer);
 int __fxstat64(int version, int descriptor, void *buffer);
 int __fxstatat64(int version, int directory, const char *path, void *buffer, int flags);
+// NOLINTEND(bugprone-reserved-identifier)
+
+/* Declared here because the C library's own headers give these other types and are not included. */
+int stat64(const char *path, void *buffer);
+int stat(const char *path, void *buffer);
+int lstat64(const char *path, void *buffer);
+int lstat(const char *path, void *buffer);
+int fstat64(int descriptor, void *buffer);
+int fstat(int descriptor, void *buffer);
+int fstatat64(int directory, const char *path, void *buffer, int flags);
+int fstatat(int directory, const char *path, void *buffer, int flags);
+
+int stat64(const char *path, void *buffer);
+int stat(const char *path, void *buffer);
+int lstat64(const char *path, void *buffer);
+int lstat(const char *path, void *buffer);
+int fstat64(int descriptor, void *buffer);
+int fstat(int descriptor, void *buffer);
+int fstatat64(int directory, const char *path, void *buffer, int flags);
+int fstatat(int directory, const char *path, void *buffer, int flags);
 
 /* `stat64` and its plain-named twin (the same layout on 64-bit Linux, for objects passed with `--link`) over the
  * versioned glibc call, as `libc_nonshared.a` does. */
