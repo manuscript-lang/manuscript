@@ -1,0 +1,37 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "an immutable binding uses ':=' after its type: write 'x: Type := value'; '=' binds only after 'var'",
+      "position": {
+        "file": "main.ms",
+        "line": 2,
+        "column": 12,
+        "offset": 24
+      },
+      "end": {
+        "file": "main.ms",
+        "line": 2,
+        "column": 13,
+        "offset": 25
+      },
+      "fix": {
+        "position": {
+          "file": "main.ms",
+          "line": 2,
+          "column": 12,
+          "offset": 24
+        },
+        "end": {
+          "file": "main.ms",
+          "line": 2,
+          "column": 13,
+          "offset": 25
+        },
+        "replacement": ":="
+      }
+    }
+  ]
+}
