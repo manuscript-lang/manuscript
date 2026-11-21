@@ -194,6 +194,9 @@ static inline bool lb_is_scalar(MirTy ty) {
     return ty == MIR_INT || ty == MIR_FLOAT || ty == MIR_BOOL;
 }
 
+/* The runtime function that joins two strings, declared on first use. */
+uint32_t lb_string_concat(Lb *lb);
+
 MirTy lm_type(Lb *lb, MsTy ty);
 bool lb_is_map(const Lb *lb, MirTy ty);
 LbVal lm_literal(Lb *lb, const MsExpr *e);

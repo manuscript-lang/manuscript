@@ -16,6 +16,7 @@
 #include "mir/mir_layout.c"
 #include "mir/mir_shape.c"
 #include "mir/mir_val.c"
+#include "mir/mir_interp_map.c"
 #include "mir/mir_interp_ops.c"
 #include "mir/mir_interp.c"
 #include "mir/mir_parse.c"
