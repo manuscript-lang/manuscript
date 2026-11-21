@@ -1,0 +1,91 @@
+{
+  "format": 2,
+  "mode": "project",
+  "input": "project (no diff)",
+  "result": "2 modules, 7 entities",
+  "base_checked": null,
+  "sections": [
+    {
+      "title": "SUMMARY",
+      "lines": [
+        "modules               2",
+        "entities              7",
+        "exported              1",
+        "tests                 1",
+        "resource scopes       0"
+      ]
+    },
+    {
+      "title": "PUBLIC SURFACE",
+      "headers": [
+        "ENTITY",
+        "KIND",
+        "TYPE",
+        "WHERE"
+      ],
+      "rows": [
+        [
+          "parse_total",
+          "fn",
+          "fn(List[String]) Int",
+          "src/shapes.ms:15"
+        ]
+      ]
+    },
+    {
+      "title": "ENTRY POINTS",
+      "headers": [
+        "ENTITY",
+        "KIND",
+        "EFFECTS",
+        "WHERE"
+      ],
+      "rows": [
+        [
+          "main total",
+          "test",
+          "none",
+          "src/main.ms:12"
+        ]
+      ]
+    },
+    {
+      "title": "ERROR TYPES",
+      "headers": [
+        "TYPE",
+        "FUNCTIONS"
+      ],
+      "rows": [
+        [
+          "Failure",
+          "1"
+        ]
+      ]
+    },
+    {
+      "title": "RESOURCES",
+      "headers": [
+        "ENTITY",
+        "WITH",
+        "WHERE"
+      ]
+    },
+    {
+      "title": "DEPENDENCIES",
+      "lines": [
+        "src/main.ms imports ./shapes.ms, @std/test/test.ms",
+        "src/shapes.ms imports none"
+      ]
+    },
+    {
+      "title": "READING THIS REPORT",
+      "lines": [
+        "Static analysis of checked source; tests are not run.",
+        "INTERNAL means no tracked contract, effect, error-flow, or resource change; runtime behavior can still change.",
+        "Use --explain \u003cnumber|id\u003e with --diff for evidence and a focused diagram."
+      ]
+    }
+  ],
+  "findings": [],
+  "digest": "sha256:126d19de47d67aecad521f1f74cd2f57c6f611b68764241439ef46124c3a882f"
+}

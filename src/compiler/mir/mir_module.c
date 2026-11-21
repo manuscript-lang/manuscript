@@ -4,6 +4,7 @@
  * Declaration indexes are dense arrays by interned name id (no hashing); the first declaration of a name
  * wins. Lists that grow are base lists, freed by mir_module_free; everything else is in the module arena. */
 #include "compiler/mir/mir.h"
+#include "compiler/mir/mir_analysis.h"
 
 #include "base/fatal.h"
 
@@ -26,24 +27,9 @@ void mir_module_init(MirModule *module) {
   }
 }
 
-static void free_block(MirBlockData *block) {
-  mir_block_param_list_free(&block->params);
-  mir_inst_list_free(&block->insts);
-}
-
-static void free_func(MirFunc *func) {
-  for (size_t index = 0; index < func->blocks.len; index++) {
-    free_block(&func->blocks.ptr[index]);
-  }
-  mir_block_list_free(&func->blocks);
-  mir_scope_list_free(&func->scopes);
-  mir_named_value_list_free(&func->names);
-  mir_tylist_free(&func->values);
-}
-
 void mir_module_free(MirModule *module) {
   for (size_t index = 0; index < module->funcs.len; index++) {
-    free_func(&module->funcs.ptr[index]);
+    mir_func_release(&module->funcs.ptr[index]);
   }
   mir_func_list_free(&module->funcs);
   mir_type_def_list_free(&module->type_defs);

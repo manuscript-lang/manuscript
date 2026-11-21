@@ -1,0 +1,2 @@
+unknown command: frobnicate
+Commands: check, lint, build, emit, run, test, bench, fmt, verify, inspect, diagram, review, profile, init, install, add, remove, lsp, search_symbol, explain, help, version. Run 'ms --help' for details.

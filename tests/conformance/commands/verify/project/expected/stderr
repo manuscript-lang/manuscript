@@ -1,0 +1,2 @@
+  src/shapes.ms:16:5: Total with `xs.sum()` or `xs.map(...).sum()` instead of a loop that adds
+lint warnings do not fail verify; pass --deny-warnings to fail on them

@@ -1,0 +1,10 @@
+Usage: ms help [command]
+
+Show the command list, or detailed usage for one command.
+
+Options:
+  -h, --help  Show this help without executing the command
+
+Examples:
+  ms help
+  ms help run

@@ -1,0 +1,5 @@
+MODULES VIEW
+|- src/main.ms
+|  |- ./shapes.ms
+|  `- @std/test/test.ms
+`- src/shapes.ms
