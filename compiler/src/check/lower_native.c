@@ -302,15 +302,12 @@ static bool ln_param(Lb *lb, LnCall *call, const MsRtFn *fn, uint32_t *at, const
         return false;
     }
     if (kind == MS_RT_ERR || kind == MS_RT_OUT_HANDLE || kind == MS_RT_OUT_SCALAR ||
-        (status != NULL && (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST))) {
+        (status != NULL && (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST || kind == MS_RT_OUT_RECORD))) {
         return ln_slot_param(lb, call, kind, status, slots);
     }
     if (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST || (kind == MS_RT_OUT_RECORD && status == NULL)) {
         call->has_out = true;
         return true;
-    }
-    if (kind == MS_RT_OUT_RECORD) {
-        return false; // a record beside a status needs the status split to build it
     }
     if (kind == MS_RT_DESC || kind == MS_RT_KEY_DESC || kind == MS_RT_VAL_DESC) {
         call->is_desc[call->count] = true;
@@ -389,7 +386,7 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
         }
     }
     const bool missing_result = call.has_out && (result_ty == MIR_NONE || result_ty == MIR_VOID);
-    if (call.next != nargs || missing_result || fn->twinned) { // a twinned result may be a view into an argument; choosing the twin is not lowered here yet
+    if (call.next != nargs || missing_result || (fn->twinned && !lb->twin_ok)) { // a twinned result may be a view into an argument; choosing the twin is not lowered here yet
         return false;
     }
     return ln_emit(lb, fn, &call, result_ty, status, out);
@@ -519,7 +516,9 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     if (!lb->ok) {
         return LB_FAIL;
     }
+    lb->twin_ok = lb->iterable == e;
     const LbVal call = lb_native_call(lb, fn, args, nargs + 1, result_ty);
+    lb->twin_ok = false;
     if (!lb->ok) {
         return LB_FAIL;
     }

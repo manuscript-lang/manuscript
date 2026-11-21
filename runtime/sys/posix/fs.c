@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <uv.h>
 
 #ifdef __linux__
 #include <sys/ioctl.h>
@@ -212,13 +214,27 @@ static int host_open_flags(int32_t flags) {
 
 /* ---- opening and descriptors ---- */
 
+/* The result of a finished synchronous libuv request: the count it transferred, or the negative errno. The request is
+ * cleaned up. libuv retries an interrupted call itself, as MS_RETRY_INTERRUPTED does for the calls it does not own. */
+static ssize_t uv_result(uv_fs_t *req) {
+    const ssize_t result = (ssize_t)req->result;
+    uv_fs_req_cleanup(req);
+    return result;
+}
+
+static MsSysError uv_status(uv_fs_t *req) {
+    const ssize_t result = uv_result(req);
+    return result < 0 ? (MsSysError)-result : 0;
+}
+
 MsSysError ms_sys_fs_open(const char *path, int32_t flags, uint32_t mode, MsSysFd *fd) {
-    int opened = -1;
-    MS_RETRY_INTERRUPTED(opened, open(path, host_open_flags(flags), (mode_t)mode));
+    uv_fs_t req;
+    const ssize_t opened = uv_fs_open(NULL, &req, path, host_open_flags(flags), (int)mode, NULL);
+    uv_fs_req_cleanup(&req);
     if (opened < 0) {
-        return last_error();
+        return (MsSysError)-opened;
     }
-    *fd = opened;
+    *fd = (MsSysFd)opened;
     return 0;
 }
 
@@ -227,7 +243,9 @@ MsSysError ms_sys_fs_close(MsSysFd fd) {
         return EBADF;
     }
     /* Never retried: even an interrupted close can have released the descriptor. */
-    return status_of(close((int)fd));
+    uv_fs_t req;
+    (void)uv_fs_close(NULL, &req, (uv_file)fd, NULL);
+    return uv_status(&req);
 }
 
 MsSysError ms_sys_fs_dup(MsSysFd fd, MsSysFd *out) {
@@ -249,56 +267,39 @@ void ms_sys_fs_set_blocking(MsSysFd fd) {
     }
 }
 
-MsSysError ms_sys_fs_read(MsSysFd fd, uint8_t *buffer, size_t capacity, size_t *count) {
+/* Reads or writes at the current position (`offset` -1) or at `offset`, without moving the position. */
+static MsSysError transfer(bool writing, MsSysFd fd, uint8_t *buffer, size_t length, int64_t offset, size_t *count) {
     if (fd < 0) {
         return EBADF;
     }
-    ssize_t transferred = -1;
-    MS_RETRY_INTERRUPTED(transferred, read((int)fd, buffer, capacity));
+    uv_fs_t req;
+    uv_buf_t buf = uv_buf_init((char *)buffer, (unsigned int)length);
+    if (length > (size_t)UINT_MAX) {
+        buf.len = UINT_MAX; /* a short transfer, as the callers of read and write already handle */
+    }
+    (void)(writing ? uv_fs_write(NULL, &req, (uv_file)fd, &buf, 1, offset, NULL) : uv_fs_read(NULL, &req, (uv_file)fd, &buf, 1, offset, NULL));
+    const ssize_t transferred = uv_result(&req);
     if (transferred < 0) {
-        return last_error();
+        return (MsSysError)-transferred;
     }
     *count = (size_t)transferred;
     return 0;
+}
+
+MsSysError ms_sys_fs_read(MsSysFd fd, uint8_t *buffer, size_t capacity, size_t *count) {
+    return transfer(false, fd, buffer, capacity, -1, count);
 }
 
 MsSysError ms_sys_fs_write(MsSysFd fd, const uint8_t *data, size_t length, size_t *count) {
-    if (fd < 0) {
-        return EBADF;
-    }
-    ssize_t transferred = -1;
-    MS_RETRY_INTERRUPTED(transferred, write((int)fd, data, length));
-    if (transferred < 0) {
-        return last_error();
-    }
-    *count = (size_t)transferred;
-    return 0;
+    return transfer(true, fd, (uint8_t *)(uintptr_t)data, length, -1, count);
 }
 
 MsSysError ms_sys_fs_pread(MsSysFd fd, uint8_t *buffer, size_t capacity, int64_t offset, size_t *count) {
-    if (fd < 0) {
-        return EBADF;
-    }
-    ssize_t transferred = -1;
-    MS_RETRY_INTERRUPTED(transferred, pread((int)fd, buffer, capacity, (off_t)offset));
-    if (transferred < 0) {
-        return last_error();
-    }
-    *count = (size_t)transferred;
-    return 0;
+    return transfer(false, fd, buffer, capacity, offset, count);
 }
 
 MsSysError ms_sys_fs_pwrite(MsSysFd fd, const uint8_t *data, size_t length, int64_t offset, size_t *count) {
-    if (fd < 0) {
-        return EBADF;
-    }
-    ssize_t transferred = -1;
-    MS_RETRY_INTERRUPTED(transferred, pwrite((int)fd, data, length, (off_t)offset));
-    if (transferred < 0) {
-        return last_error();
-    }
-    *count = (size_t)transferred;
-    return 0;
+    return transfer(true, fd, (uint8_t *)(uintptr_t)data, length, offset, count);
 }
 
 MsSysError ms_sys_fs_seek(MsSysFd fd, int64_t offset, int32_t origin, int64_t *position) {
@@ -325,24 +326,19 @@ MsSysError ms_sys_fs_truncate_fd(MsSysFd fd, int64_t size) {
     if (fd < 0) {
         return EBADF;
     }
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, ftruncate((int)fd, (off_t)size));
-    return status_of(result);
+    uv_fs_t req;
+    (void)uv_fs_ftruncate(NULL, &req, (uv_file)fd, size, NULL);
+    return uv_status(&req);
 }
 
-/* Flushes to stable storage; macOS needs F_FULLFSYNC for the data to reach the disk. */
+/* Flushes to stable storage; libuv uses F_FULLFSYNC on macOS, where the data would not reach the disk otherwise. */
 static MsSysError flush_to_disk(MsSysFd fd, bool data_only) {
     if (fd < 0) {
         return EBADF;
     }
-    int result = -1;
-#ifdef __APPLE__
-    (void)data_only;
-    MS_RETRY_INTERRUPTED(result, fcntl((int)fd, F_FULLFSYNC));
-#else
-    MS_RETRY_INTERRUPTED(result, data_only ? fdatasync((int)fd) : fsync((int)fd));
-#endif
-    return status_of(result);
+    uv_fs_t req;
+    (void)(data_only ? uv_fs_fdatasync(NULL, &req, (uv_file)fd, NULL) : uv_fs_fsync(NULL, &req, (uv_file)fd, NULL));
+    return uv_status(&req);
 }
 
 MsSysError ms_sys_fs_sync(MsSysFd fd) { return flush_to_disk(fd, false); }
@@ -475,30 +471,6 @@ static void fill_from_stat(const struct stat *source, MsSysStat *out) {
 #endif
 }
 
-MsSysError ms_sys_fs_stat(const char *path, bool follow, MsSysStat *out) {
-#ifdef __linux__
-    struct MsStatx extended;
-    const int flags = follow ? 0 : AT_SYMLINK_NOFOLLOW;
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, ms_statx(AT_FDCWD, path, flags, &extended));
-    if (result == 0) {
-        fill_from_statx(&extended, out);
-        return 0;
-    }
-    if (errno != ENOSYS) {
-        return last_error();
-    }
-#endif
-    struct stat plain;
-    int plain_result = -1;
-    MS_RETRY_INTERRUPTED(plain_result, follow ? stat(path, &plain) : lstat(path, &plain));
-    if (plain_result < 0) {
-        return last_error();
-    }
-    fill_from_stat(&plain, out);
-    return 0;
-}
-
 MsSysError ms_sys_fs_fstat(MsSysFd fd, MsSysStat *out) {
     if (fd < 0) {
         return EBADF;
@@ -522,25 +494,6 @@ MsSysError ms_sys_fs_fstat(MsSysFd fd, MsSysStat *out) {
         return last_error();
     }
     fill_from_stat(&plain, out);
-    return 0;
-}
-
-MsSysError ms_sys_fs_stat_filesystem(const char *path, MsSysFsStat *out) {
-    struct statfs source;
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, statfs(path, &source));
-    if (result < 0) {
-        return last_error();
-    }
-    *out = (MsSysFsStat){
-        .kind = (int64_t)source.f_type,
-        .block_size = (int64_t)source.f_bsize,
-        .blocks = (int64_t)source.f_blocks,
-        .blocks_free = (int64_t)source.f_bfree,
-        .blocks_available = (int64_t)source.f_bavail,
-        .files = (int64_t)source.f_files,
-        .files_free = (int64_t)source.f_ffree,
-    };
     return 0;
 }
 
@@ -601,64 +554,6 @@ MsSysError ms_sys_fs_clone_file(MsSysFd output, MsSysFd input) {
 
 /* ---- changing files by path ---- */
 
-MsSysError ms_sys_fs_mkdir(const char *path, uint32_t mode) {
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, mkdir(path, (mode_t)mode));
-    return status_of(result);
-}
-
-MsSysError ms_sys_fs_unlink(const char *path) { return status_of(unlink(path)); }
-
-MsSysError ms_sys_fs_rmdir(const char *path) { return status_of(rmdir(path)); }
-
-MsSysError ms_sys_fs_rename(const char *from, const char *to) { return status_of(rename(from, to)); }
-
-MsSysError ms_sys_fs_link(const char *from, const char *to) { return status_of(link(from, to)); }
-
-MsSysError ms_sys_fs_symlink(const char *target, const char *path) { return status_of(symlink(target, path)); }
-
-MsSysError ms_sys_fs_readlink(const char *path, char **target, size_t *length) {
-    size_t capacity = 256;
-    for (;;) {
-        char *buffer = malloc(capacity);
-        if (buffer == NULL) {
-            return ENOMEM;
-        }
-        const ssize_t written = readlink(path, buffer, capacity - 1);
-        if (written < 0) {
-            const MsSysError error = last_error();
-            free(buffer);
-            return error;
-        }
-        if ((size_t)written < capacity - 1) {
-            buffer[written] = '\0';
-            *target = buffer;
-            *length = (size_t)written;
-            return 0;
-        }
-        free(buffer);
-        if (!ms_size_mul(capacity, 2, &capacity)) {
-            return ENAMETOOLONG;
-        }
-    }
-}
-
-MsSysError ms_sys_fs_canonicalize(const char *path, char **resolved, size_t *length) {
-    char *absolute = realpath(path, NULL);
-    if (absolute == NULL) {
-        return last_error();
-    }
-    *resolved = absolute;
-    *length = strlen(absolute);
-    return 0;
-}
-
-MsSysError ms_sys_fs_chmod(const char *path, uint32_t mode) {
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, chmod(path, (mode_t)mode));
-    return status_of(result);
-}
-
 MsSysError ms_sys_fs_chmod_link(const char *path, uint32_t mode) {
 #ifdef __APPLE__
     int result = -1;
@@ -669,30 +564,6 @@ MsSysError ms_sys_fs_chmod_link(const char *path, uint32_t mode) {
     (void)mode;
     return ENOTSUP;
 #endif
-}
-
-MsSysError ms_sys_fs_chown(const char *path, int64_t uid, int64_t gid, bool follow) {
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, follow ? chown(path, id_of(uid), (gid_t)id_of(gid))
-                                        : lchown(path, id_of(uid), (gid_t)id_of(gid)));
-    return status_of(result);
-}
-
-MsSysError ms_sys_fs_truncate(const char *path, int64_t size) {
-    MsSysFd fd = MS_SYS_FD_INVALID;
-    MsSysError error = ms_sys_fs_open(path, MS_SYS_O_WRITE, 0, &fd);
-    if (error != 0) {
-        return error;
-    }
-    error = ms_sys_fs_truncate_fd(fd, size);
-    ms_sys_fs_close_quietly(fd);
-    return error;
-}
-
-MsSysError ms_sys_fs_access(const char *path, int32_t mode) {
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, access(path, mode));
-    return status_of(result);
 }
 
 /* Opens a file to set its times: reading is enough, writing is the fallback for a file only writable. */
@@ -719,72 +590,6 @@ MsSysError ms_sys_fs_set_times(const char *path, MsSysTime accessed, MsSysTime m
     error = ms_sys_fs_set_times_fd(fd, accessed, modified);
     ms_sys_fs_close_quietly(fd);
     return error;
-}
-
-/* ---- directories ---- */
-
-struct MsSysDir {
-    DIR *handle; /* owned */
-};
-
-MsSysError ms_sys_fs_dir_open(const char *path, MsSysDir **dir) {
-    MsSysDir *created = malloc(sizeof *created);
-    if (created == NULL) {
-        return ENOMEM;
-    }
-    created->handle = opendir(path);
-    if (created->handle == NULL) {
-        const MsSysError error = last_error();
-        free(created);
-        return error;
-    }
-    *dir = created;
-    return 0;
-}
-
-static uint8_t kind_of_dirent(unsigned char type) {
-    switch (type) {
-    case DT_DIR:
-        return MS_SYS_DT_DIR;
-    case DT_REG:
-        return MS_SYS_DT_REG;
-    case DT_LNK:
-        return MS_SYS_DT_LNK;
-    default:
-        return MS_SYS_DT_UNKNOWN;
-    }
-}
-
-MsSysError ms_sys_fs_dir_read(MsSysDir *dir, MsSysDirEntry *entry, bool *found) {
-    for (;;) {
-        errno = 0;
-        // NOLINTNEXTLINE(concurrency-mt-unsafe): one thread reads a directory handle; readdir is safe per stream.
-        const struct dirent *next = readdir(dir->handle);
-        if (next == NULL) {
-            *found = false;
-            return errno;
-        }
-        const char *name = next->d_name;
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
-            continue;
-        }
-        const size_t length = strnlen(name, sizeof next->d_name < MS_SYS_NAME_MAX ? sizeof next->d_name : MS_SYS_NAME_MAX - 1);
-        memcpy(entry->name, name, length);
-        entry->name[length] = '\0';
-        entry->name_length = length;
-        entry->kind = kind_of_dirent(next->d_type);
-        *found = true;
-        return 0;
-    }
-}
-
-void ms_sys_fs_dir_close(MsSysDir *dir) {
-    if (dir == NULL) {
-        return;
-    }
-    (void)closedir(dir->handle);
-    dir->handle = NULL;
-    free(dir);
 }
 
 /* ---- the process's view ---- */
