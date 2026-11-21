@@ -22,6 +22,10 @@ typedef enum MsRtParam {
     MS_RT_BOOL,
     MS_RT_OUT_STR,  /* the result, a string, written through a pointer */
     MS_RT_OUT_LIST, /* the result, a list, written through a pointer */
+    MS_RT_MAP,      /* a map, borrowed */
+    MS_RT_KEY_DESC, /* the descriptor of a map's key type */
+    MS_RT_VAL_DESC, /* the descriptor of a map's value type */
+    MS_RT_KEY_REF,  /* a key passed by address: stored in a slot the call borrows */
     MS_RT_OTHER     /* anything the lowering does not marshal: a handle, a slot, an error slot */
 } MsRtParam;
 
@@ -35,9 +39,21 @@ typedef struct MsRtFn {
     MsRtRet ret;
     bool leaf;
     bool twinned; /* a borrowing twin exists (`@view_of=` and siblings): the result may be lent */
+    bool pure;    /* only reads memory and cannot fault (`@pure`) */
+    const char *word_twin; /* its specialisation for a one-word key over a one-word value, or "" */
+    const char *text_twin; /* its specialisation for a String key over a one-word value, or "" */
+    bool fresh;   /* `@fresh`: the result is a new value, never a reference into an argument */
+    bool has_imm; /* `@imm=<n>`: the `@op=` instruction carries the integer `imm` */
+    int64_t imm;
 } MsRtFn;
 
 /* The function named `symbol`, or NULL. */
 const MsRtFn *ms_rt_fn_find(const char *symbol, size_t length);
+
+struct MsCheck;
+
+/* The runtime function that implements `method` of the receiver type `receiver` (`msrt_<type>_<method>`,
+ * the type in lower case), or NULL. */
+const MsRtFn *ms_rt_method_fn(const struct MsCheck *c, uint32_t receiver, uint32_t method);
 
 #endif

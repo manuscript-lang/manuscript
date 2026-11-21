@@ -1,9 +1,9 @@
 type Secret:
-    a: Int
+	a: Int
 
 export type Holder:
-    inner: Secret
-    other: Secret
+	inner: Secret
+	other: Secret
 
 fn main() Void:
-    return
+	return

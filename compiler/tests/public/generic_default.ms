@@ -1,8 +1,8 @@
 type Secret:
-    a: Int
+	a: Int
 
 export type Box[T = Secret]:
-    value: T
+	value: T
 
 fn main() Void:
-    return
+	return

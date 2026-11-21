@@ -29,7 +29,7 @@ verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
 # Builds the native C runtime into target/ms-native; every build of ms-cli embeds it.
 runtime:
-	cargo xtask runtime
+	cmake -P cmake/BuildRuntime.cmake
 
 check: runtime
 	cargo xtask symbols --check
@@ -305,6 +305,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/recursion.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/defaults.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/counter.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/flush.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/effects.ms --link target/c-tool/libmstool.a
 
 	"$(RELEASE_MS)" test tools/ms/lint/analysis.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/skill_calls.ms --link target/c-tool/libmstool.a

@@ -69,17 +69,38 @@ typedef struct LbCallable {
     bool mutating;  /* the receiver is a `var` one */
 } LbCallable;
 
-/* An impl method the module wrote: its row, where it starts, and the source lines it owns. */
+/* What the lowering reads of one source module: its facts, and the tables its node and binding ids
+ * index. A body is lowered with its own module's view entered (`lb_view_enter`). */
+typedef struct LbView {
+    MsModId module;
+    const MsFacts *facts;
+    uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE (output arena, per pass) */
+    MirValue *value_of;   /* by binding id (output arena, per pass) */
+    MirVar *var_of;       /* by binding id (output arena, per pass) */
+    bool *failed;         /* by declaration: it did not lower in an earlier pass (malloc) */
+} LbView;
+
+/* An impl method a lowered module wrote: its row, where it starts, and the source lines it owns. */
 typedef struct LbMethodRow {
-    const MsMethod *method; /* NULL for a row no method of this module carries */
+    const MsMethod *method; /* NULL for a row no method of the lowered modules carries */
+    uint32_t view;          /* the view of the module that wrote it */
     MsPos owner_pos;        /* where the impl declaration starts: the method's location in MIR */
     uint32_t first_line, end_line;
 } LbMethodRow;
 
+/* The function comparing two values of `ty`, or MIR_NONE when `ty` cannot be compared (lower_eq.c). */
+typedef struct LbEq {
+    MirTy ty;
+    uint32_t func;
+} LbEq;
+
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
-    MsModId module; /* the module being lowered: a callee another module declares is not lowered here */
+    LbView *views;  /* the modules being lowered into `m` (malloc) */
+    uint32_t nviews;
+    uint32_t view;  /* the entered view: `module`, `facts`, `binding_at`, `value_of` and `var_of` are its */
+    MsModId module; /* the module whose body is being lowered */
     MsCheck *mut; /* the same table, for `ms_def`, which adds rows on demand */
     const MsFacts *facts;
     MirModule *m;
@@ -105,6 +126,8 @@ typedef struct Lb {
     bool has_override;
     LbInst *insts;        /* this pass's instances, in creation order (malloc) */
     uint32_t ninsts, cinsts;
+    LbEq *eqs;            /* this pass's equality functions (module arena) */
+    uint32_t neqs, ceqs;
     LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
     uint32_t ndead_insts, cdead_insts;
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
@@ -150,8 +173,9 @@ LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed a
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
-uint32_t lm_prepare(Lb *lb, MsModId module);                              /* the method rows; their count */
-void lm_stubs(Lb *lb, MsModId module, uint32_t nrows, const bool *failed); /* a stub for each method to lower */
+uint32_t lb_view_enter(Lb *lb, uint32_t view); /* reads module `view` from here on; returns the view it left */
+uint32_t lm_prepare(Lb *lb);                                 /* the method rows of every view; their count */
+void lm_stubs(Lb *lb, uint32_t nrows, const bool *failed);   /* a stub for each method to lower */
 bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered);   /* true when one did not lower */
 
 /* lower_closure.c: function values and lambdas. */
@@ -187,7 +211,6 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 /* Stores `value` in the stack slot `slot`. */
-void lb_store(Lb *lb, MirValue slot, MirValue value);
 
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */
 static inline bool lb_is_scalar(MirTy ty) {
@@ -201,9 +224,23 @@ MirTy lm_type(Lb *lb, MsTy ty);
 bool lb_is_map(const Lb *lb, MirTy ty);
 LbVal lm_literal(Lb *lb, const MsExpr *e);
 LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at);
+struct MsRtFn;
+/* The runtime function `name` over these borrowed parameters, declared once per signature. */
+uint32_t lb_runtime_extern(Lb *lb, const char *name, const MirTy *params, uint32_t nparams, MirTy ret, uint8_t role,
+                           bool reads);
+/* The entry of `generic` that fits a map of `key` and `value` (its declared specialisation, else itself). */
+const struct MsRtFn *lm_specialize(Lb *lb, const struct MsRtFn *generic, MirTy key, MirTy value, uint8_t *role);
+
+/* Equality of records, enums, optionals and lists (lower_eq.c, included after lower_closure.c). */
+LbVal lq_equal(Lb *lb, LbVal x, LbVal y, bool negate);
 
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);
+LbVal lt_scalar_text(Lb *lb, MsTy checked, MirValue v);
+uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want);
+
+/* Structural text of a record or enum (lower_format.c, included after lower_text.c). */
+LbVal lf_text(Lb *lb, LbVal value);
 
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);
@@ -211,6 +248,7 @@ MirTy le_type(Lb *lb, MsTy ty);
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);
+LbVal lm_empty(Lb *lb, MirTy ty);
 LbVal lr_field(Lb *lb, const MsExpr *e);
 
 /* Optional and Result (lower_alt.c, included after lower_body.c). */

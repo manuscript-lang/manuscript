@@ -96,6 +96,11 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         }
         const MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
         ms_program_begin(check);
+        // The core library declares `Error`, whose field defaults a construction in the module takes.
+        const MsModId core = ms_map_get(&check->module_by_path, ms_intern_cstr(check->names, "@std/core.ms"));
+        if (core != MS_NONE) {
+            ms_module_check_bodies_with(check, core, check->methods);
+        }
         (void)ms_program_check_module(check, id, (MsStr){text, (uint32_t)length});
         if (check->mods[id].facts != NULL) { // an inherent error leaves the module unchecked
             // The ownership walk fills `ret_borrowed` and narrows `body_checked` to the functions it handles.

@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*"]
-# A bare `cargo build/test/check` covers the compiler and tools. The native runtime (C, in `runtime/`) is built by `cargo xtask runtime` and embedded by `ms-cli`'s build script; test it with `-p` or
+# A bare `cargo build/test/check` covers the compiler and tools. The native runtime (C, in `runtime/`) is built by `cmake -P cmake/BuildRuntime.cmake` and embedded by `ms-cli`'s build script; test it with `-p` or
 # `--workspace`.
 default-members = [
     "crates/ms-check",
