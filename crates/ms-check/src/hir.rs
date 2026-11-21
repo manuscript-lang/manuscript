@@ -15,6 +15,11 @@ impl Program {
     pub fn hir(&self) -> Hir<'_> {
         Hir { program: self }
     }
+
+    /// Whether ownership was checked: it is only for a program that type checks.
+    pub fn ownership_checked(&self) -> bool {
+        self.ownership_shared.engine.borrow().is_some()
+    }
 }
 
 /// Query entry point; see [`Program::hir`].
