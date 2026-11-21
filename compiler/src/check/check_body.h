@@ -101,7 +101,7 @@ void ms_body_close_from(MsBody *b, uint32_t first); /* the bindings declared sin
 void ms_body_check_home(MsBody *b, MsSymId sym); /* type the field defaults of the module that declares `sym` */
 bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in); /* one argument of an open signature: checked against its parameter, or binding its variables */
 MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
-MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written, MsTy expected);
 /* A call `receiver.name(args)' (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 bool ms_body_reordered(const MsExpr *call, const uint32_t *slot); /* some argument is not at its parameter's index */

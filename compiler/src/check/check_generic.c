@@ -180,7 +180,36 @@ static void generic_record_type_args(MsBody *b, const MsExpr *e, const MsInfer *
     }
 }
 
-MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written) {
+/* Variables the arguments left unbound take their type from the type the context expects of the
+ * call's result (`x: List[Int] := empty()`). A variable with a default keeps it when it already fits
+ * the expected type, which this does not judge: those calls, and a result the expected type
+ * contradicts (Rust reports a conflict), stay declined. */
+static bool generic_from_expected(MsBody *b, MsInfer *in, MsTy result, MsTy expected) {
+    uint32_t unbound = 0;
+    for (uint32_t i = 0; i < in->nvars; i++) {
+        const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
+        if (in->bound[i] != MS_TY_NONE) {
+            continue;
+        }
+        if (info != NULL && info->def != MS_TY_NONE) {
+            return false;
+        }
+        unbound++;
+    }
+    if (unbound == 0 || expected == MS_TY_NONE || expected == b->invalid_ty || ms_body_has_invalid(b, expected)) {
+        return unbound == 0;
+    }
+    MsInfer trial = *in;
+    trial.bound = MS_NEW_N(&b->c->arena, MsTy, (size_t)in->nvars + 1);
+    memcpy(trial.bound, in->bound, in->nvars * sizeof *trial.bound);
+    if (ms_infer_match(&trial, result, expected) != MS_MATCH_OK) {
+        return false;
+    }
+    memcpy(in->bound, trial.bound, in->nvars * sizeof *trial.bound);
+    return true;
+}
+
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written, MsTy expected) {
     const MsDef *def = ms_def(b->c, sym);
     const MsTy sig = b->c->syms.ty[sym];
     MsInfer in;
@@ -203,7 +232,16 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
     }
     uint32_t first = 0;
     uint32_t slot[16];
-    if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in, slot) || ms_infer_defaults(&in, &first) != 0 || !generic_bounds(b, &in)) {
+    if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in, slot)) {
+        return ms_body_unsupported(b);
+    }
+    if (!generic_from_expected(b, &in, b->c->tys.result[sig], expected)) {
+        return ms_body_unsupported(b);
+    }
+    if (ms_infer_defaults(&in, &first) != 0) {
+        return ms_body_unsupported(b);
+    }
+    if (!generic_bounds(b, &in)) {
         return ms_body_unsupported(b);
     }
     for (uint32_t i = 0; i < in.nvars; i++) {
