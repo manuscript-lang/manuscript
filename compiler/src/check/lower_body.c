@@ -1438,8 +1438,9 @@ static void lb_return(Lb *lb, const MsStmt *s) {
 static uint32_t lb_scoped_taking(Lb *lb, const MsStmts *body, const MsPattern *pattern, MirValue taken) {
     const uint32_t depth = lscope_push(&lb->scopes);
     if (pattern != NULL) {
-        const MirTy elem = mir_ty_data(lb->m, mir_b_ty(&lb->b, taken))->elem;
-        const MirValue part = mir_b_emit(&lb->b, MOP_OptUnbox, &taken, 1, (MirImm){0}, elem);
+        const MirTyData *holder = mir_ty_data(lb->m, mir_b_ty(&lb->b, taken));
+        const MirValue part = holder->kind == MK_OPT ? mir_b_emit(&lb->b, MOP_OptUnbox, &taken, 1, (MirImm){0}, holder->elem)
+                                                     : la_take_ok(lb, taken); // a Result's Ok value moves out, the rest is released
         lb_own_payload(lb, lb->facts->pattern_binding[pattern->id], pattern->u.name, part);
     }
     lb_statements(lb, body);
@@ -1477,8 +1478,10 @@ static void lb_if(Lb *lb, const MsStmt *s) {
         return;
     }
     const MirValue subject = cond.v; // an `if name := value` unwraps it in the then-branch
-    if (s->u.branch.binding != NULL && mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->kind != MK_OPT) {
-        (void)LB_UNSUPPORTED(lb); // a Result's Ok payload: the release of the rest is not lowered yet
+    const MirTyData *held = mir_ty_data(lb->m, mir_b_ty(&lb->b, subject));
+    const bool result_subject = held->kind == MK_ALT && lb->m->alts[held->id].std == MSTD_RESULT;
+    if (s->u.branch.binding != NULL && held->kind != MK_OPT && !(result_subject && cond.owned)) {
+        (void)LB_UNSUPPORTED(lb); // a borrowed Result keeps its Ok value: read in place, not lowered yet
         return;
     }
     if (s->u.branch.binding != NULL) {
@@ -1492,7 +1495,8 @@ static void lb_if(Lb *lb, const MsStmt *s) {
     mir_b_seal_block(&lb->b, then_block);
     mir_b_seal_block(&lb->b, else_block);
     lb_enter(lb, then_block);
-    const bool takes = s->u.branch.binding != NULL && cond.owned && lb_owns(lb, mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->elem);
+    const MirTy payload_ty = result_subject ? lb->m->alts[held->id].cases[LA_OK].fields[0].ty : held->elem;
+    const bool takes = s->u.branch.binding != NULL && cond.owned && (result_subject || lb_owns(lb, payload_ty)); // an owned Result's holder needs a drop whatever its Ok value is
     if (s->u.branch.binding != NULL && !takes) {
         lb_bind_payload(lb, s->u.branch.binding, la_payload(lb, subject, !cond.owned));
     }
