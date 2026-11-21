@@ -144,6 +144,7 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
 /* Interface values (lower_iface.c, included after lower_body.c). */
 MirTy li_type(Lb *lb, MsTy ty);
 LbVal li_call(Lb *lb, const MsExpr *e);
+LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed as an interface */
 
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */

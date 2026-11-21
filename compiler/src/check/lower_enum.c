@@ -43,7 +43,7 @@ MirTy le_type(Lb *lb, MsTy ty) {
         MirField *fields = MS_NEW_N(&lb->m->arena, MirField, (size_t)row->nfields + 1);
         for (uint32_t slot = 0; slot < row->nfields; slot++) {
             const MirTy payload = lb_mir_ty(lb, le_field_ty(lb, def, ty, row->fields[slot].ty));
-            if (payload == MIR_NONE || mir_needs_drop(lb->m, payload)) {
+            if (payload == MIR_NONE) {
                 lb->type_of[ty] = MIR_NONE;
                 return MIR_NONE;
             }

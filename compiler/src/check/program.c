@@ -65,11 +65,36 @@ static void program_add_impls(MsCheck *c, MsModId m) {
     ms_module_add_implementations(c, m, c->methods);
 }
 
-/* A bundled module by path, with its `+source` half. */
+static void program_add_bundled(MsCheck *c, MsStr path);
+
+/* The bundled modules `m` imports, and theirs: a value of a type one of them declares (a `Promise`
+ * returned by a function of `@std/process.ms`) has the methods the type's own module gives it,
+ * whether or not the program imports that module. */
+static void program_add_imported_bundled(MsCheck *c, MsModId m) {
+    const MsModule *syntax = c->mods[m].syntax;
+    for (uint32_t i = 0; syntax != NULL && i < syntax->nimports; i++) {
+        const MsModId target = c->mods[m].import_targets == NULL ? MS_NONE : c->mods[m].import_targets[i];
+        if (target == MS_NONE) {
+            program_add_bundled(c, syntax->imports[i].path);
+        }
+    }
+}
+
+/* A bundled module by path, with its `+source` half and the bundled modules they import. */
 static void program_add_bundled(MsCheck *c, MsStr path) {
-    program_add_impls(c, ms_module_find(c, ms_intern(c->names, path.ptr, path.len)));
+    const MsModId native = ms_module_find(c, ms_intern(c->names, path.ptr, path.len));
+    const bool fresh = native != MS_NONE && !c->mods[native].impls_added;
+    program_add_impls(c, native);
     const MsStr source = ms_arena_fmt(&c->arena, "%.*s+source", (int)path.len, path.ptr);
-    program_add_impls(c, ms_module_find(c, ms_intern(c->names, source.ptr, source.len)));
+    const MsModId half = ms_module_find(c, ms_intern(c->names, source.ptr, source.len));
+    const bool half_fresh = half != MS_NONE && !c->mods[half].impls_added;
+    program_add_impls(c, half);
+    if (fresh) {
+        program_add_imported_bundled(c, native);
+    }
+    if (half_fresh) {
+        program_add_imported_bundled(c, half);
+    }
 }
 
 bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
