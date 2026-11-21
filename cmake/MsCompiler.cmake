@@ -23,7 +23,7 @@ set_target_properties(ms_backend PROPERTIES C_EXTENSIONS OFF POSITION_INDEPENDEN
 if(MS_BACKEND_ONLY)
   return()
 endif()
-if(NOT MS_BUILD_RUNTIME)
+if(NOT MS_BUILD_RUNTIME AND NOT MS_WINDOWS)
   # libms hashes packages with libcrypto (project/packages.c); a build without the runtime has no MsLibs.cmake to name it.
   find_package(OpenSSL REQUIRED)
   set(MS_LIB_crypto_INCLUDES ${OPENSSL_INCLUDE_DIR})
