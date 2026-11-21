@@ -35,7 +35,7 @@ typedef enum MsRtParam {
     MS_RT_OTHER     /* anything the lowering does not marshal: a handle, a slot, an error slot */
 } MsRtParam;
 
-typedef enum MsRtRet { MS_RT_RET_VOID, MS_RT_RET_INT, MS_RT_RET_FLOAT, MS_RT_RET_BOOL, MS_RT_RET_OTHER } MsRtRet;
+typedef enum MsRtRet { MS_RT_RET_VOID, MS_RT_RET_INT, MS_RT_RET_FLOAT, MS_RT_RET_BOOL, MS_RT_RET_HANDLE, MS_RT_RET_OTHER } MsRtRet;
 
 typedef struct MsRtFn {
     const char *symbol;
