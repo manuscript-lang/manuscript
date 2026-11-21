@@ -1,8 +1,9 @@
-/* `ms check FILE.ms [--json]` in C (ms_check_run; the driver and the Manuscript front call it). The command reads the file with the project modules it imports, runs the
- * checker passes the C side has (names, types, bodies, ownership, unused bindings) over every module, and
- * reports `Checked FILE` (or the empty `--json` document) when nothing is wrong. Anything else is handed to
- * the Rust `ms`: another flag or target, a project the C loader does not read, a function or declaration the
- * C passes do not cover (their silence proves nothing), and every diagnostic, which the Rust command renders. */
+/* `ms check FILE.ms... [--json [--with-text [--each]]]` in C (ms_check_run; the driver and the Manuscript front call
+ * it). The command reads the file with the project modules it imports, runs the checker passes the C side has (names,
+ * types, bodies, ownership, unused bindings) over every module, and reports the diagnostics as the Rust command
+ * renders them, or `Checked FILE` (the empty document with `--json`) when nothing is wrong. Anything else is handed to
+ * the Rust `ms`: another flag or target, a project the C loader does not read, a function or declaration the C passes
+ * do not cover (their silence proves nothing), and a diagnostic whose rendering C cannot match yet (check_renderable). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -258,9 +259,12 @@ static bool check_in_position_order(const MsReport *reports, size_t count) {
 
 /* Whether the C answer for these diagnostics equals the Rust one. NULL, or why not. */
 static const char *check_renderable(const MsCheckRun *run, bool json) {
-    /* JSON diagnostics carry the machine-applicable `fix` the C passes do not all build yet. */
-    if (json && run->nreports != 0 && getenv("MS_EXPERIMENT_JSON") == NULL) {
-        return "a diagnostic in the JSON document (its fix is not built in C yet)";
+    /* The ownership pass does not build the `var` edit of a change to an immutable place yet. */
+    for (size_t i = 0; json && i < run->nreports; i++) {
+        const MsDiag *diag = &run->reports[i].diag;
+        if (!diag->has_fix && ms_str_starts(diag->message, "cannot change `")) {
+            return "a change to an immutable place in the JSON document (its fix is not built in C yet)";
+        }
     }
     /* The terminal report names project modules in `add: import` suggestions the C hints do not read. */
     for (size_t i = 0; i < run->nreports; i++) {

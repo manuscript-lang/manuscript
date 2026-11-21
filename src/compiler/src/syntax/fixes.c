@@ -165,6 +165,20 @@ bool ms_fix_for(MsArena *arena, MsStr message, MsPos pos, size_t len, MsFix *out
     return true;
 }
 
+void ms_diag_set_fix(MsDiag *diag, MsFix fix) {
+    diag->has_fix = true;
+    diag->fix_pos = fix.pos;
+    diag->fix_end = fix.end;
+    diag->replacement = fix.replacement;
+}
+
+void ms_diag_fix_name(MsArena *arena, MsDiag *diag, size_t len) {
+    MsFix fix;
+    if (ms_fix_for(arena, diag->message, diag->pos, len, &fix)) {
+        ms_diag_set_fix(diag, fix);
+    }
+}
+
 /* ---- declaration fixes ---- */
 
 /* How a declaration continues after its name: `name := v`, `name: T := v` or a parameter. */

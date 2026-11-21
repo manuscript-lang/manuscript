@@ -4,6 +4,7 @@
  * crates/ms-check/src/checker.rs. */
 #include <string.h>
 
+#include "ms/fixes.h"
 #include "ms/check.h"
 #include "ms/text.h"
 #include "ms/hints.h"
@@ -16,7 +17,10 @@ static MsStr ty_text(const MsCheck *c, MsSym name) {
 }
 
 static void ty_report(MsResolver *r, MsPhase phase, MsPos pos, MsStr message, MsSym unknown) {
-    const MsCheckDiag diag = {.diag = {.pos = pos, .message = message}, .phase = phase, .unknown = unknown};
+    MsCheckDiag diag = {.diag = {.pos = pos, .message = message}, .phase = phase, .unknown = unknown};
+    if (unknown != MS_NONE) { // an unknown name carries the one edit its message names
+        ms_diag_fix_name(&r->c->arena, &diag.diag, ty_text(r->c, unknown).len);
+    }
     ms_report(r->c, r->module, &diag);
 }
 

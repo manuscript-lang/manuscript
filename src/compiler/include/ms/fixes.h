@@ -15,6 +15,13 @@
 /* The fix for a diagnostic at `pos` whose offending name has `len` bytes. */
 MS_NODISCARD bool ms_fix_for(MsArena *arena, MsStr message, MsPos pos, size_t len, MsFix *out);
 
+/* Records `fix` as the edit `diag` carries. */
+void ms_diag_set_fix(MsDiag *diag, MsFix fix);
+
+/* Gives `diag`, a diagnostic about the `len`-byte name at its position, the fix its message names (ms_fix_for), if
+ * it names exactly one. */
+void ms_diag_fix_name(MsArena *arena, MsDiag *diag, size_t len);
+
 /* The `var` form of the immutable binding `name := v` or `name: T := v` declared at `decl`; none
  * unless the source reads a plain name there, so patterns and loop variables get no edit. */
 MS_NODISCARD bool ms_binding_to_var(MsArena *arena, MsStr source, MsPos decl, MsFix *out);

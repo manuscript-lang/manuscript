@@ -25,6 +25,7 @@
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
+#include "ms/fixes.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
 
@@ -256,6 +257,20 @@ MsTy ms_body_unsupported_at(MsBody *b, const char *file, int line) {
 static void body_report(MsBody *b, MsPos pos, MsStr message) {
     const MsCheckDiag diag = {.diag = {.pos = pos, .message = message}, .phase = MS_PHASE_TYPE};
     MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
+}
+
+/* A type diagnostic at `pos` that carries the edit `fix` when `fixed`. */
+static void body_report_fix(MsBody *b, MsPos pos, MsStr message, bool fixed, MsFix fix) {
+    MsCheckDiag diag = {.diag = {.pos = pos, .message = message}, .phase = MS_PHASE_TYPE};
+    if (fixed) {
+        ms_diag_set_fix(&diag.diag, fix);
+    }
+    MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
+}
+
+/* The text of the module being checked. */
+static MsStr body_source(const MsBody *b) {
+    return b->c->mods[b->module].text;
 }
 
 void ms_body_report(MsBody *b, MsPos pos, MsStr message) {
@@ -652,9 +667,8 @@ static MsTy body_unknown_name_at(MsBody *b, MsPos pos, MsSym sym) {
         return ms_body_unsupported(b);
     }
     const MsStr message = ms_arena_fmt(&b->c->arena, "unknown binding %.*s%s", (int)name.len, name.ptr, advice);
-    const MsCheckDiag diag = {.diag = {.pos = pos, .message = message},
-                              .phase = MS_PHASE_RESOLUTION,
-                              .unknown = sym};
+    MsCheckDiag diag = {.diag = {.pos = pos, .message = message}, .phase = MS_PHASE_RESOLUTION, .unknown = sym};
+    ms_diag_fix_name(&b->c->arena, &diag.diag, name.len); // the one edit the message names
     MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
     return b->invalid_ty;
 }
@@ -1221,7 +1235,17 @@ static MsTy body_report_operands(MsBody *b, const MsExpr *e, MsTy left, MsTy rig
     const MsStr message = ms_arena_fmt(
         &b->c->arena, "operator operands require the same independently known type, found %.*s %s %.*s; %s", (int)l.len,
         l.ptr, ms_binary_str(op), (int)r.len, r.ptr, body_operand_hint(b, op, left, right));
-    body_report(b, e->pos, message);
+    // An Int beside a Float converts to Float; the target of `x += y` is not rewritten.
+    const MsStr source = body_source(b);
+    const MsStr sign = {ms_binary_str(op), (uint32_t)strlen(ms_binary_str(op))};
+    MsFix fix = {0};
+    bool fixed = false;
+    if (left == b->int_ty && right == b->float_ty) {
+        fixed = !ms_is_compound_operator(source, e->pos, sign) && ms_to_float(&b->c->arena, source, e->u.bin.left, &fix);
+    } else if (left == b->float_ty && right == b->int_ty) {
+        fixed = ms_to_float(&b->c->arena, source, e->u.bin.right, &fix);
+    }
+    body_report_fix(b, e->pos, message, fixed, fix);
     const bool comparison = op == MS_B_EQ || op == MS_B_NE || body_is_ordering(op);
     return comparison ? b->bool_ty : b->invalid_ty;
 }
@@ -1497,7 +1521,9 @@ static void body_report_mismatch(MsBody *b, const MsExpr *e, MsTy actual, MsTy e
     const MsStr where = *context == '\0' ? (MsStr){"", 0} : ms_arena_fmt(&b->c->arena, " (in %s)", context);
     const MsStr message = ms_arena_fmt(&b->c->arena, "expected %.*s, found %.*s%.*s%s%s", (int)want.len, want.ptr,
                                        (int)found.len, found.ptr, (int)where.len, where.ptr, *hint != '\0' ? "; " : "", hint);
-    body_report(b, e->pos, message);
+    MsFix fix = {0};
+    const bool fixed = ms_conversion_fix(&b->c->arena, body_source(b), e, found, want, &fix);
+    body_report_fix(b, e->pos, message, fixed, fix);
 }
 
 /* The type of `e` where `expected` is the type the context wants, or MS_TY_NONE for no
@@ -1817,7 +1843,9 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
                                            "cannot assign immutable binding %.*s; declare it with 'var %.*s = ...' "
                                            "instead of '%.*s := ...'",
                                            (int)name.len, name.ptr, (int)name.len, name.ptr, (int)name.len, name.ptr);
-        body_report(b, s->pos, message);
+        MsFix fix = {0};
+        const bool fixed = ms_binding_to_var(&b->c->arena, body_source(b), b->facts->bindings.pos[binding], &fix);
+        body_report_fix(b, s->pos, message, fixed, fix);
     }
     uint32_t *reads = &b->facts->bindings.reads[binding];
     const uint32_t reads_before = *reads;
