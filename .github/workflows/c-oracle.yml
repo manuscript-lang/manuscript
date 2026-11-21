@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: 660429d4
+          ref: 660429d4bcd1f052a7477df1c668ce7bdac32ce4
       - uses: ./.github/actions/rust-env
         with:
           os: ${{ matrix.os }}
