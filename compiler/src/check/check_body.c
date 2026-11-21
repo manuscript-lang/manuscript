@@ -2499,6 +2499,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->refusal, 0, nodes * sizeof *facts->refusal);
     facts->param_consumed = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->param_consumed, 0, nodes * sizeof *facts->param_consumed);
+    facts->param_consumed_at = MS_NEW_N(arena, const MsPos *, nodes);
+    memset(facts->param_consumed_at, 0, nodes * sizeof *facts->param_consumed_at);
     facts->ret_borrowed = MS_NEW_N(arena, bool, nodes);
     memset(facts->ret_borrowed, 0, nodes * sizeof *facts->ret_borrowed);
     facts->const_use = MS_NEW_N(arena, bool, nodes);

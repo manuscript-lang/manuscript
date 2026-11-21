@@ -41,6 +41,7 @@ typedef struct OwnSummary {
     uint32_t borrowed_params;
     uint32_t consumed;       /* bit i: the function moves its plain parameter i, so callers hand it over */
     const MsPos *consumed_at; /* where, by parameter; NULL when nothing is consumed */
+    MsStr file;              /* the module path the positions are in: empty for the module being walked */
     bool usable;
     MsSite declined; /* where the walk gave up when it is not usable; no file when liveness did */
     bool returns_borrow;
@@ -80,6 +81,7 @@ typedef struct OwnWalk {
     uint32_t pending_base; /* the pending holders below it belong to an enclosing statement */
     MsSym note_param;   /* while a move argument is walked: the callee's parameter that consumes it, else MS_NONE */
     MsPos note_at;
+    MsStr note_file;    /* the module path `note_at` is in, empty for the one being walked */
     MsPos borrowed_return, owned_return; /* the first return of each kind in the function */
     bool has_borrowed_return, has_owned_return;
     uint32_t hidden;    /* hidden `for` holders handed out so far */
@@ -282,7 +284,7 @@ static MsStr own_consumed_note(OwnWalk *w) {
         return (MsStr){.ptr = "", .len = 0};
     }
     const MsStr param = ms_name(w->check->names, w->note_param);
-    const MsStr file = ms_name(w->check->names, w->check->mods[w->module].path);
+    const MsStr file = w->note_file.len != 0 ? w->note_file : ms_name(w->check->names, w->check->mods[w->module].path);
     return ms_arena_fmt(&w->check->arena, "; the callee consumes its parameter `%.*s` at %.*s:%u:%u (clone it there to avoid the move)",
                         (int)param.len, param.ptr, (int)file.len, file.ptr, w->note_at.line, w->note_at.column);
 }
@@ -521,8 +523,18 @@ static const OwnSummary *own_foreign_callee(const OwnWalk *w, const MsExpr *e, M
         ms_module_check_ownership(c, home);
     }
     if (facts->body_checked != NULL && facts->ownership_done && facts->body_checked[decl->id]) {
-        // Walked by that module: it moves no parameter and its result borrows from none.
-        return facts->param_consumed[decl->id] == 0 && !facts->ret_borrowed[decl->id] ? &foreign : NULL;
+        // Walked by that module: a result that borrows from a parameter names positions in that file, which
+        // is left alone; the parameters it moves are handed over, and a diagnostic names where.
+        const uint32_t consumed = facts->param_consumed[decl->id];
+        if (facts->ret_borrowed[decl->id]) {
+            return NULL;
+        }
+        if (consumed == 0) {
+            return &foreign;
+        }
+        OwnSummary *summary = MS_NEW(&c->arena, OwnSummary);
+        *summary = (OwnSummary){.usable = true, .consumed = consumed, .consumed_at = facts->param_consumed_at[decl->id], .file = ms_name(c->names, c->mods[home].path)};
+        return summary;
     }
     // Not walked: nothing is borrowed or moved when no parameter can be (every one copies).
     const MsTyTable *tys = &c->tys;
@@ -791,8 +803,10 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
             own_require_declared_move(w, arg);
             w->note_param = callee->consumed_at != NULL && (callee->consumed >> i & 1u) != 0 ? param->name : MS_NONE;
             w->note_at = w->note_param == MS_NONE ? w->note_at : callee->consumed_at[i];
+            w->note_file = callee->file;
             own_expr(w, arg, DEMAND_MOVE);
             w->note_param = MS_NONE;
+            w->note_file = (MsStr){0};
         } else {
             own_expr(w, arg, DEMAND_READ);
         }
@@ -2007,6 +2021,7 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
             }
             facts->ret_borrowed[d->id] = facts->body_checked[d->id] && w.summaries[d->id].returns_borrow;
             facts->param_consumed[d->id] = facts->body_checked[d->id] ? w.summaries[d->id].consumed : 0;
+            facts->param_consumed_at[d->id] = facts->body_checked[d->id] ? w.summaries[d->id].consumed_at : NULL;
         }
     }
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
