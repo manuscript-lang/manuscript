@@ -12,7 +12,7 @@ const MUSL_FILES: [&str; 5] = ["crt1.o", "crti.o", "crtn.o", "libc.a", "libunwin
 /// Files copied from llvm-mingw's `<arch>-w64-mingw32/lib`: the C startup object, the CRT and unwinder
 /// libraries, and the import libraries for every DLL the runtime (Rust's `std` plus the standard library
 /// crates) calls.
-const MINGW_FILES: [&str; 21] = [
+const MINGW_FILES: [&str; 22] = [
     "crt2.o",
     "libmingw32.a",
     "libmingwex.a",
@@ -34,6 +34,7 @@ const MINGW_FILES: [&str; 21] = [
     "libws2_32.a",
     "libuser32.a",
     "libshell32.a",
+    "libsynchronization.a",
 ];
 
 pub fn bundle() {
@@ -60,6 +61,18 @@ pub fn bundle() {
             assert_no_line_tables(&to, name);
             names.push(name.to_string());
         }
+        // The compiler-rt builtins carry what the C objects call but no mingw library defines: the stack probe
+        // `___chkstk_ms` and 128-bit helpers. The runtime archive no longer brings Rust's compiler_builtins.
+        let clang = mingw().join(format!("bin/{arch}-w64-mingw32-clang"));
+        let printed = Command::new(&clang)
+            .args(["--rtlib=compiler-rt", "--print-libgcc-file-name"])
+            .output()
+            .expect("run llvm-mingw clang");
+        let builtins = PathBuf::from(String::from_utf8_lossy(&printed.stdout).trim());
+        let to = bundle.join("libclang_rt.builtins.a");
+        copy(&builtins, &to, "the compiler-rt builtins");
+        strip_debug(&to, Some(&mingw().join("bin/llvm-strip")));
+        names.push("libclang_rt.builtins.a".to_string());
     }
     println!(
         "cargo:rustc-env=MS_EXE_SUFFIX={}",
