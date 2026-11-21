@@ -1,6 +1,7 @@
 /* The directory operations of base/file.h on POSIX hosts. */
 #ifndef _WIN32
 #define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700
 #if defined(__APPLE__)
 #define _DARWIN_C_SOURCE
 #endif
@@ -92,6 +93,19 @@ void ms_path_remove(MsSpan path) {
     (void)rmdir(name.ptr);
   }
   ms_os_text_free(&name);
+}
+
+bool ms_file_real_path(MsSpan path, MsString *out) {
+  MsOsText name = ms_os_text_new(path);
+  char buffer[MAX_PATH_BYTES];
+  const char *found = realpath(name.ptr, buffer);
+  ms_os_text_free(&name);
+  if (found == NULL) {
+    return false;
+  }
+  ms_string_release(out);
+  *out = ms_string_from_span(ms_span_of_text(buffer));
+  return true;
 }
 
 bool ms_dir_current(MsString *path) {

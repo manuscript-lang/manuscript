@@ -44,6 +44,29 @@ int64_t ms_sys_monotonic_ns(void);
 
 /* sys/{posix,windows}/yield.c */
 
+/* sys/thread.c (libuv): threads and the signal between them. */
+
+/* Starts a thread running start(arg). `stack` 0 takes the default size, else it is the stack size in bytes.
+ * Returns a handle for ms_sys_thread_join, or NULL on failure. */
+typedef void (*MsSysThreadFn)(void *);
+typedef struct MsSysThread MsSysThread;
+MS_NODISCARD MsSysThread *ms_sys_thread_spawn(size_t stack, MsSysThreadFn start, void *arg);
+/* Waits for a thread started by ms_sys_thread_spawn and releases its handle. */
+void ms_sys_thread_join(MsSysThread *thread);
+/* How many threads the machine can run at once (at least 1). */
+uint32_t ms_sys_available_cores(void);
+/* A one-bit wake-up between threads, with a timed wait: the sleep of a thread that another thread may cut short. */
+typedef struct MsSysSignal MsSysSignal;
+MS_NODISCARD MsSysSignal *ms_sys_signal_new(void);
+void ms_sys_signal_free(MsSysSignal *signal);
+/* Waits until the signal is sent or timeout_ns pass (negative: until it is sent), then clears it. True when it was
+ * sent. */
+bool ms_sys_signal_wait(MsSysSignal *signal, int64_t timeout_ns);
+/* Sets the signal; one send wakes one wait, and a send while nobody waits is kept for the next wait. */
+void ms_sys_signal_send(MsSysSignal *signal);
+
+/* sys/{posix,windows}/yield.c */
+
 /* Lets another thread run: the wait of a spin lock. */
 void ms_sys_yield(void);
 
@@ -91,6 +114,16 @@ typedef void (*MsSysFaultFn)(uintptr_t address);
  * SIGBUS) to on_fault, so a stack overflow can be reported by name; call it on each thread that may overflow.
  * Linux and macOS only: Windows reports false. */
 MS_NODISCARD bool ms_sys_fault_handler_install(MsSysFaultFn on_fault);
+
+/* sys/{posix,windows}/stdout.c: the program's standard output. */
+
+/* Writes the front of `bytes` to standard output with one system write; *written is how many it took. Returns 0, or the
+ * system's error code (errno, GetLastError) when it took none. */
+int32_t ms_sys_stdout_write(MsSpan bytes, size_t *written) MS_NONNULL;
+/* Whether standard output is a terminal (a console on Windows). */
+bool ms_sys_stdout_is_terminal(void);
+/* Whether `code` from ms_sys_stdout_write means the reader went away, which the program does not report. */
+bool ms_sys_error_is_broken_pipe(int32_t code);
 
 /* sys/{posix,windows}/report.c: how a fault reaches the outside. None of these allocates or takes a lock, so a fault
  * that cannot allocate can still be reported. */

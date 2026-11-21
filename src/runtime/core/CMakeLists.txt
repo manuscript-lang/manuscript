@@ -1,4 +1,4 @@
-add_library(ms_core STATIC alloc.c context.c stack.c timers.c queue.c frames.c record.c)
+add_library(ms_core STATIC alloc.c context.c stack.c timers.c queue.c frames.c record.c isolate.c watch.c unwind.c fault.c sched.c segment.c park.c token.c task.c eq.c fault_kept.c fault_abi.c task_abi.c obj.c promise.c promise_end.c promise_wait.c promise_abi.c promise_remote.c group.c cancel.c worker.c)
 ms_target_defaults(ms_core)
 target_link_libraries(ms_core PUBLIC ms_sys ms_base mimalloc)
 

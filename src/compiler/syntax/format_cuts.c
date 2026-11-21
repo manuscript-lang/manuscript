@@ -1,4 +1,5 @@
 /* syntax/format_cuts.c: the suites of callbacks and calls that the layout keeps whole. */
+#include "base/sort.h"
 #include "compiler/syntax/format_layout.h"
 #include "compiler/syntax/walk.h"
 
@@ -89,9 +90,10 @@ static void cuts_leave(void *ctx, const MsExpr *e) {
   }
 }
 
-static int range_order(const void *a, const void *b) {
-  const MsByteRange *x = a;
-  const MsByteRange *y = b;
+static int64_t range_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const MsByteRange *x = (const void *)a;
+  const MsByteRange *y = (const void *)b;
   if (x->start != y->start) {
     return x->start < y->start ? -1 : 1;
   }
@@ -121,7 +123,7 @@ bool lay_compact_callback_suites(Fmt *f, const MsModule *module, const MsToken *
     return false;
   }
   MsByteRange *cuts = s.cuts.ptr;
-  qsort(cuts, count, sizeof *cuts, range_order);
+  ms_sort((uint8_t *)cuts, count, sizeof *cuts, range_order, NULL);
   FmtEdit *edits = MS_ARENA_NEW_ARRAY(f->arena, FmtEdit, count);
   size_t kept = 0;
   for (size_t i = 0; i < count; i++) {

@@ -1,4 +1,5 @@
 /* syntax/format_group.c: statement grouping: wrapping the expressions of one statement. */
+#include "base/sort.h"
 #include "compiler/syntax/format_layout.h"
 #include "compiler/syntax/walk.h"
 
@@ -329,9 +330,10 @@ static void group_stmt(void *ctx, const MsStmt *s) {
   group_wrap(g, group_value_start(g, s, value, start), value->end.offset);
 }
 
-static int fmt_edit_order(const void *a, const void *b) {
-  const FmtEdit *x = a;
-  const FmtEdit *y = b;
+static int64_t fmt_edit_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const FmtEdit *x = (const void *)a;
+  const FmtEdit *y = (const void *)b;
   if (x->from != y->from) {
     return x->from < y->from ? -1 : 1;
   }
@@ -341,9 +343,10 @@ static int fmt_edit_order(const void *a, const void *b) {
   return fmt_compare(x->text, y->text);
 }
 
-static int insert_order(const void *a, const void *b) {
-  const Edit *x = a;
-  const Edit *y = b;
+static int64_t insert_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const Edit *x = (const void *)a;
+  const Edit *y = (const void *)b;
   if (x->offset != y->offset) {
     return x->offset < y->offset ? -1 : 1;
   }
@@ -375,7 +378,7 @@ static MsSpan group_apply_inserts(Fmt *f, MsSpan source, Grouper *g) {
   const size_t count = g->insert.len;
   Edit *ops = g->insert.ptr;
   if (count > 1) {
-    qsort(ops, count, sizeof *ops, insert_order);
+    ms_sort((uint8_t *)ops, count, sizeof *ops, insert_order, NULL);
   }
   FmtEdit *edits = MS_ARENA_NEW_ARRAY(f->arena, FmtEdit, count + 1);
   size_t nedits = 0;
@@ -434,7 +437,7 @@ bool fmt_group_statement_expressions(Fmt *f, MsSpan source, bool strip, MsSpan *
     const size_t count = g.remove.len;
     FmtEdit *edits = g.remove.ptr;
     if (count > 1) {
-      qsort(edits, count, sizeof *edits, fmt_edit_order);
+      ms_sort((uint8_t *)edits, count, sizeof *edits, fmt_edit_order, NULL);
     }
     *out = fmt_apply_edits(f, source, edits, count);
   } else {

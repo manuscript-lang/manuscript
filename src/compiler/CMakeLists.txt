@@ -1,5 +1,7 @@
 add_subdirectory(mir)
 add_subdirectory(syntax)
+add_subdirectory(project)
 add_subdirectory(emit)
 add_subdirectory(link)
 add_subdirectory(check)
+add_subdirectory(own)

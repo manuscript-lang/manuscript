@@ -1,6 +1,7 @@
 /* Owns the lexer entry points: input checks, the line loop and the exported token arrays. */
 #include <stdlib.h>
 #include "base/fatal.h"
+#include "base/sort.h"
 
 #include "compiler/syntax/lex_internal.h"
 
@@ -152,15 +153,18 @@ static void scanner_free(Scanner *s) {
   range_list_free(&s->blocks);
 }
 
-static int compare_ranges(const void *left, const void *right) {
-  size_t x = ((const MsByteRange *)left)->start;
-  size_t y = ((const MsByteRange *)right)->start;
+static int64_t compare_ranges(uint8_t *env, const uint8_t *left, const uint8_t *right) {
+  (void)env;
+  const MsByteRange *a = (const void *)left;
+  const MsByteRange *b = (const void *)right;
+  size_t x = a->start;
+  size_t y = b->start;
   return x < y ? -1 : x > y;
 }
 
 static void sort_ranges(RangeList *ranges) {
   if (ranges->len != 0) {
-    qsort(ranges->ptr, ranges->len, sizeof(MsByteRange), compare_ranges);
+    ms_sort((uint8_t *)ranges->ptr, ranges->len, sizeof(MsByteRange), compare_ranges, NULL);
   }
 }
 
