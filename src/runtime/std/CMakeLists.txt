@@ -54,3 +54,8 @@ add_library(ms_std_crypto STATIC crypto.c crypto_asym.c)
 ms_target_defaults(ms_std_crypto)
 add_dependencies(ms_std_crypto openssl_build)
 target_link_libraries(ms_std_crypto PUBLIC ms_base ms_values openssl_crypto)
+
+# @std/os/path: glob compilation and matching, with brace expansion.
+add_library(ms_std_path STATIC path_brace.c path_glob.c path_syntax.c)
+ms_target_defaults(ms_std_path)
+target_link_libraries(ms_std_path PUBLIC ms_base)
