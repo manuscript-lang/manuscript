@@ -1,14 +1,11 @@
 /* Unit test of package dependencies in the module graph (compiler/src/project/attach.c): a project installed from a
  * local git repository loads with its package modules, and the lock, the cache and the effect rules are enforced.
  * Needs `git` on PATH. */
-#define _XOPEN_SOURCE 700
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
+#include "host_test.h"
 #include "ms/packages.h"
 
 static int failures;
@@ -22,20 +19,7 @@ static int failures;
     } while (0)
 
 static MsArena arena;
-static char root[64];
-
-static void run(const char *format, ...) __attribute__((format(printf, 1, 2)));
-static void run(const char *format, ...) {
-    char command[1024];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(command, sizeof command, format, args);
-    va_end(args);
-    if (system(command) != 0) {
-        fprintf(stderr, "command failed: %s\n", command);
-        failures++;
-    }
-}
+static char root[256];
 
 static const char *path(const char *name) {
     return MS_PATH_JOIN(&arena, root, name);
@@ -45,7 +29,7 @@ static void write_file(const char *name, const char *text) {
     char *copy = ms_arena_strndup(&arena, path(name), strlen(path(name)));
     for (char *slash = strchr(copy + strlen(root) + 1, '/'); slash != NULL; slash = strchr(slash + 1, '/')) {
         *slash = 0;
-        mkdir(copy, 0700);
+        host_mkdir(copy);
         *slash = '/';
     }
     FILE *f = fopen(copy, "w");
@@ -56,21 +40,53 @@ static void write_file(const char *name, const char *text) {
     }
 }
 
-/* A package repository `name` at `version` (ms.toml and one source file), committed and tagged `tag`. */
-static void commit_package(const char *name, const char *version, const char *tag) {
-    write_file(MS_PATH_JOIN(&arena, name, "ms.toml"),
-               ms_arena_fmt(&arena, "[project]\nname = \"%s\"\nsource = \"src\"\nversion = \"%s\"\neffects = [\"std.fs.read\"]\n", name, version).ptr);
-    write_file(MS_PATH_JOIN(&arena, name, "src/lib.ms"), ms_arena_fmt(&arena, "// %s\n", version).ptr);
-    run("cd %s/%s && git add -A && git commit -q -m %s && git tag %s", root, name, tag, tag);
+/* The `file://` URL of the repository `name`. */
+static const char *repository_url(const char *name) {
+    const char *directory = path(name);
+    return ms_arena_fmt(&arena, "file://%s%s", directory[0] == '/' ? "" : "/", directory).ptr;
 }
 
-static void make_repository(const char *name) {
-    run("mkdir -p %s/%s && cd %s/%s && git init -q -b main && git config user.email t@example.com && git config user.name t",
-        root, name, root, name);
+/* A package repository `name` at `version` (ms.toml and one source file), committed and tagged `tag`, plus `extra`. */
+static void commit_files(const char *name, const char *version, const char *tag, const HostFile *extra, size_t extra_count) {
+    HostFile files[8] = {
+        {"ms.toml",
+         ms_arena_fmt(&arena, "[project]\nname = \"%s\"\nsource = \"src\"\nversion = \"%s\"\neffects = [\"std.fs.read\"]\n", name, version).ptr,
+         "100644"},
+        {"src/lib.ms", ms_arena_fmt(&arena, "// %s\n", version).ptr, "100644"},
+    };
+    for (size_t i = 0; i < extra_count; i++) {
+        files[2 + i] = extra[i];
+    }
+    CHECK(host_git_commit(&arena, path(name), path("scratch"), files, 2 + extra_count, tag));
 }
+
+static void commit_package(const char *name, const char *version, const char *tag) { commit_files(name, version, tag, NULL, 0); }
+
+/* Makes every copy in the cache writable and edits its source. */
+static void tamper_cache(void) {
+    const char *const *names;
+    uint32_t count;
+    MsProjectError err = {0};
+    CHECK(ms_path_list_dir(&arena, path("cache"), "open", &names, &count, &err));
+    for (uint32_t i = 0; i < count; i++) {
+        const char *file = MS_PATH_JOIN(&arena, path("cache"), names[i], "src/lib.ms");
+        if (host_exists(file)) {
+            const MsSysError writable = ms_sys_fs_chmod(file, 0644);
+            CHECK(writable == 0);
+            FILE *f = fopen(file, "w");
+            CHECK(f != NULL);
+            if (f != NULL) {
+                fputs("tampered\n", f);
+                fclose(f);
+            }
+        }
+    }
+}
+
+static void make_repository(const char *name) { CHECK(host_git_init(&arena, path(name))); }
 
 static void write_project(const char *effects) {
-    write_file("project/ms.toml", ms_arena_fmt(&arena, "[project]\nname = \"app\"\nsource = \"src\"\nentry = \"src/main.ms\"\n[dependencies]\n\"@wire\" = { url = \"file://%s/wire\", tag = \"v1.1.0\" }\n%s", root, effects).ptr);
+    write_file("project/ms.toml", ms_arena_fmt(&arena, "[project]\nname = \"app\"\nsource = \"src\"\nentry = \"src/main.ms\"\n[dependencies]\n\"@wire\" = { url = \"%s\", tag = \"v1.1.0\" }\n%s", repository_url("wire"), effects).ptr);
     write_file("project/src/main.ms", "import (\n\tx from \"@wire/lib.ms\",\n)\nfn main() Int:\n\treturn 0\n");
 }
 
@@ -103,13 +119,13 @@ static const char *load_entry(const char *entry, bool with_packages) {
 }
 
 int main(void) {
-    snprintf(root, sizeof root, "/tmp/ms-attach-test-XXXXXX");
-    if (mkdtemp(root) == NULL) {
+    if (!host_make_root(root, sizeof root, "ms-attach-test")) {
         return 1;
     }
-    setenv("MS_PACKAGE_CACHE", path("cache"), 1);
-    setenv("GIT_CONFIG_GLOBAL", "/dev/null", 1);
-    setenv("GIT_CONFIG_SYSTEM", "/dev/null", 1);
+    host_mkdir(path("scratch"));
+    host_set_env("MS_PACKAGE_CACHE", path("cache"));
+    host_set_env("GIT_CONFIG_GLOBAL", "/dev/null");
+    host_set_env("GIT_CONFIG_SYSTEM", "/dev/null");
 
     make_repository("wire");
     commit_package("wire", "1.1.0", "v1.1.0");
@@ -134,7 +150,7 @@ int main(void) {
     CHECK(strncmp(load(false), "unsupported: ", 13) == 0);
 
     /* A copy edited in the cache is refused as it is read. */
-    run("cd %s && for d in */; do chmod -R u+w \"$d\"; echo tampered > \"$d/src/lib.ms\"; done", path("cache"));
+    tamper_cache();
     CHECK(strstr(load(true), "error: @") != NULL && strstr(load(true), "does not match ms.lock; run `ms install` to restore it") != NULL);
 
     /* A workspace: the app imports the lib through a path dependency, and both share the root's lock. */
@@ -159,12 +175,12 @@ int main(void) {
     write_file("ws/app/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\nentry = \"src/main.ms\"\n[dependencies]\n\"@util\" = { path = \"../libs/util\" }\n");
     write_file("ws/libs/util/ms.lock", "");
     CHECK(strstr(load_entry(path("ws/app/src/main.ms"), true), "error: workspace member libs/util has its own ms.lock") != NULL);
-    run("rm %s", path("ws/libs/util/ms.lock"));
+    CHECK(ms_sys_fs_unlink(path("ws/libs/util/ms.lock")) == 0);
     write_file("ws/libs/dup/ms.toml", "[project]\nname = \"util\"\nsource = \"src\"\n");
     write_file("ws/libs/dup/src/x.ms", "// x\n");
     CHECK(strstr(load_entry(path("ws/app/src/main.ms"), true), "error: workspace members libs/dup and libs/util are both named \"util\"; rename one in [project]") != NULL);
 
-    run("chmod -R u+w %s && rm -rf %s", root, root);
+    host_remove_tree(root);
     if (failures == 0) {
         puts("attach_test: ok");
     }

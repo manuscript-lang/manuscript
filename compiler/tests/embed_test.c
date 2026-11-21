@@ -1,17 +1,15 @@
 /* Unit test of `[embed]` (compiler/src/project/embed.c): the generated module is what the Rust driver writes
  * (crates/ms-driver/src/project/embed.rs), and a project that embeds a directory loads. */
-#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
+#include "host_test.h"
 #include "ms/project.h"
 
 static int failures;
 static MsArena arena;
-static char root[64];
+static char root[256];
 
 #define CHECK(cond)                                                                                \
     do {                                                                                           \
@@ -26,7 +24,7 @@ static const char *path(const char *name) {
 }
 
 static void make_dir(const char *name) {
-    CHECK(mkdir(path(name), 0700) == 0);
+    CHECK(ms_sys_fs_mkdir(path(name), 0700) == 0);
 }
 
 static void write_bytes(const char *name, const void *bytes, size_t length) {
@@ -48,8 +46,7 @@ static const char *generate(const char *directory) {
 }
 
 int main(void) {
-    snprintf(root, sizeof root, "/tmp/ms-embed-test-XXXXXX");
-    if (mkdtemp(root) == NULL) {
+    if (!host_make_root(root, sizeof root, "ms-embed-test")) {
         return 1;
     }
     make_dir("assets");
@@ -93,7 +90,7 @@ int main(void) {
 
     /* A link is refused, and so are names that differ only by letter case. */
     make_dir("linked");
-    CHECK(symlink("x", path("linked/l")) == 0);
+    CHECK(host_symlink("x", path("linked/l")));
     CHECK(strcmp(generate("linked"), "error: embedded l is a symbolic link; copy the file into the directory instead, since links are not followed") == 0);
     make_dir("cased");
     write_bytes("cased/a.txt", "a", 1);
@@ -120,9 +117,7 @@ int main(void) {
     CHECK(graph.count == 2 && strstr(graph.modules[0].source, "export fn files() EmbeddedTree:") != NULL);
     ms_names_free(&names);
 
-    char command[200];
-    snprintf(command, sizeof command, "rm -rf %s", root);
-    CHECK(system(command) == 0);
+    host_remove_tree(root);
     ms_arena_free(&arena);
     if (failures != 0) {
         fprintf(stderr, "%d failure(s)\n", failures);

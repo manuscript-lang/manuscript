@@ -3,11 +3,10 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L /* lstat; libms.c defines it first for the whole unit */
 #endif
-#include <errno.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "ms/project.h"
+#include "project/host.h"
 
 const char *ms_project_quote(MsArena *a, const char *text) {
     MsBuf out = {0};
@@ -181,8 +180,9 @@ typedef enum ResolveNew { RESOLVE_NOT_NEW, RESOLVE_NEW, RESOLVE_NEW_FAILED } Res
 
 /* A path that does not exist yet and that the overlay holds: the canonical path of its directory plus its name. */
 static ResolveNew resolve_overlay_new(MsArena *a, const char *full, const MsOverlay *overlay, const char **canonical, MsProjectError *err) {
-    struct stat info;
-    if (lstat(full, &info) == 0 || errno != ENOENT) { /* a dangling link is an existing entry, not a new editor file */
+    MsSysStat info;
+    const MsSysError failure = ms_sys_fs_stat(full, false, &info);
+    if (failure == 0 || !host_missing(failure)) { /* a dangling link is an existing entry, not a new editor file */
         return RESOLVE_NOT_NEW;
     }
     const char *parent;
@@ -322,12 +322,13 @@ static bool resolve_import_target(MsArena *a, const MsProject *project, const ch
         if (base == NULL || base[0] == 0) {
             return resolve_fail_message(err, ms_arena_fmt(a, "unknown import alias %s%s", alias, resolve_alias_hint(a, p)).ptr);
         }
-        struct stat info;
-        if (stat(base, &info) != 0) {
-            ms_project_error_path(err, a, "stat", base, errno);
+        MsSysStat info;
+        const MsSysError failure = ms_sys_fs_stat(base, true, &info);
+        if (failure != 0) {
+            ms_project_error_path(err, a, "stat", base, failure);
             return false;
         }
-        if (S_ISDIR(info.st_mode)) {
+        if (host_is_dir(&info)) {
             if (remainder[0] == 0 || strcmp(ms_path_ext(remainder), ".ms") != 0) {
                 return resolve_fail_message(err, ms_arena_fmt(a, "directory alias requires a .ms path; write \"%s/<file>.ms\"", alias).ptr);
             }

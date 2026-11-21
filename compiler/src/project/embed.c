@@ -4,11 +4,10 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L /* lstat; libms.c defines it first for the whole unit */
 #endif
-#include <errno.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "ms/project.h"
+#include "project/host.h"
 
 #define EMBED_MAX_FILE ((uint64_t)16 << 20)
 #define EMBED_MAX_TOTAL ((uint64_t)64 << 20)
@@ -52,20 +51,21 @@ static bool embed_walk(EmbedWalk *w, const char *directory, const char *relative
         }
         const char *path = relative[0] == 0 ? names[i] : ms_arena_fmt(w->arena, "%s/%s", relative, names[i]).ptr;
         const char *source = MS_PATH_JOIN(w->arena, directory, names[i]);
-        struct stat info;
-        if (lstat(source, &info) != 0) {
-            ms_project_error_path(w->err, w->arena, "stat", source, errno);
+        MsSysStat info;
+        const MsSysError failure = ms_sys_fs_stat(source, false, &info);
+        if (failure != 0) {
+            ms_project_error_path(w->err, w->arena, "stat", source, failure);
             return false;
         }
-        if (S_ISLNK(info.st_mode)) {
+        if (host_is_link(&info)) {
             ms_project_error_message(w->err, ms_arena_fmt(w->arena, "embedded %s is a symbolic link; copy the file into the directory instead, since links are not followed", path).ptr);
             return false;
         }
-        if (!S_ISDIR(info.st_mode) && !S_ISREG(info.st_mode)) {
+        if (!host_is_dir(&info) && !host_is_reg(&info)) {
             ms_project_error_message(w->err, ms_arena_fmt(w->arena, "embedded %s is neither a file nor a directory; remove it", path).ptr);
             return false;
         }
-        const EmbedFound found = {.path = path, .source = source, .directory = S_ISDIR(info.st_mode)};
+        const EmbedFound found = {.path = path, .source = source, .directory = host_is_dir(&info)};
         MS_VEC_PUSH(w->found, EmbedFound, found);
         if (found.directory && !embed_walk(w, source, path)) {
             return false;

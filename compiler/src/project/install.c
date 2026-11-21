@@ -1,38 +1,45 @@
 /* `ms install`: the git remote the resolver talks to, the download into the package cache, and the install
  * procedure. Port of crates/ms-cli/src/fetch.rs. See ms/packages.h. */
-#ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200809L /* lstat, strerror_r; libms.c defines it first for the whole unit */
-#endif
 #include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <signal.h>
-#include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 #include "ms/packages.h"
-
-extern char **environ;
+#include "ms_rt/sys_process.h"
+#include "project/host.h"
 
 #define COMMIT_DIGITS 40
-#define PIPE_READ 0
-#define PIPE_WRITE 1
 
 /* ---- operating-system errors, spelled as Rust's io::Error does ---- */
 
-static const char *install_os_error(MsArena *a, int err_no) {
-    char message[128] = "unknown error";
-    if (strerror_r(err_no, message, sizeof message) != 0) {
-        snprintf(message, sizeof message, "errno %d", err_no);
+static const char *install_os_error(MsArena *a, MsSysError code) {
+    char message[256];
+    (void)ms_sys_fs_error_text(code, message, sizeof message);
+    return ms_arena_fmt(a, "%s (os error %d)", message, code).ptr;
+}
+
+/* Drops the result of a best-effort call. */
+static void install_ignore(MsSysError code) { (void)code; }
+
+/* A name that differs between processes and between calls, for temporary paths. */
+static unsigned long install_unique(void) { return (unsigned long)ms_sys_fs_random(); }
+
+/* Writes `length` bytes to `path`, replacing it. */
+static MsSysError install_write_file(const char *path, const char *bytes, size_t length) {
+    MsSysFd fd;
+    MsSysError failure = ms_sys_fs_open(path, MS_SYS_O_WRITE | MS_SYS_O_CREATE | MS_SYS_O_TRUNCATE, 0666, &fd);
+    if (failure != 0) {
+        return failure;
     }
-    return ms_arena_fmt(a, "%s (os error %d)", message, err_no).ptr;
+    size_t done = 0;
+    while (failure == 0 && done < length) {
+        size_t count = 0;
+        failure = ms_sys_fs_write(fd, (const uint8_t *)bytes + done, length - done, &count);
+        done += count;
+    }
+    const MsSysError closed = ms_sys_fs_close(fd);
+    return failure != 0 ? failure : closed;
 }
 
 /* ---- directories ---- */
@@ -44,8 +51,9 @@ static bool install_make_dirs(MsArena *a, const char *path, const char **error) 
         const bool last = *at == 0;
         if (*at == '/' || last) {
             *at = 0;
-            if (mkdir(copy, 0777) != 0 && errno != EEXIST) {
-                *error = ms_arena_fmt(a, "create %s: %s", path, install_os_error(a, errno)).ptr;
+            const MsSysError failure = ms_sys_fs_mkdir(copy, 0777);
+            if (failure != 0 && !host_exists_error(failure)) {
+                *error = ms_arena_fmt(a, "create %s: %s", path, install_os_error(a, failure)).ptr;
                 return false;
             }
             if (last) {
@@ -57,37 +65,40 @@ static bool install_make_dirs(MsArena *a, const char *path, const char **error) 
 }
 
 /* Removes a tree even when git made some of it read-only. A path that is already gone is not a failure. */
-static bool install_remove_all(MsArena *a, const char *path, const char **error) {
-    struct stat info;
-    if (lstat(path, &info) != 0) {
-        if (errno == ENOENT) {
+bool ms_remove_all(MsArena *a, const char *path, const char **error) {
+    MsSysStat info;
+    MsSysError failure = ms_sys_fs_stat(path, false, &info);
+    if (failure != 0) {
+        if (host_missing(failure)) {
             return true;
         }
-        *error = ms_arena_fmt(a, "remove %s: %s", path, install_os_error(a, errno)).ptr;
+        *error = ms_arena_fmt(a, "remove %s: %s", path, install_os_error(a, failure)).ptr;
         return false;
     }
-    if (S_ISDIR(info.st_mode)) {
-        (void)chmod(path, 0755);
+    if (host_is_dir(&info)) {
+        install_ignore(ms_sys_fs_chmod(path, 0755));
         const char *const *names;
         uint32_t count;
-        MsProjectError failure = {0};
-        if (!ms_path_list_dir(a, path, "remove", &names, &count, &failure)) {
-            *error = ms_project_error_text(a, &failure);
+        MsProjectError listing = {0};
+        if (!ms_path_list_dir(a, path, "remove", &names, &count, &listing)) {
+            *error = ms_project_error_text(a, &listing);
             return false;
         }
         for (uint32_t i = 0; i < count; i++) {
-            if (!install_remove_all(a, MS_PATH_JOIN(a, path, names[i]), error)) {
+            if (!ms_remove_all(a, MS_PATH_JOIN(a, path, names[i]), error)) {
                 return false;
             }
         }
-        if (rmdir(path) != 0) {
-            *error = ms_arena_fmt(a, "remove %s: %s", path, install_os_error(a, errno)).ptr;
+        failure = ms_sys_fs_rmdir(path);
+        if (failure != 0) {
+            *error = ms_arena_fmt(a, "remove %s: %s", path, install_os_error(a, failure)).ptr;
             return false;
         }
         return true;
     }
-    if (unlink(path) != 0) {
-        *error = ms_arena_fmt(a, "remove %s: %s", path, install_os_error(a, errno)).ptr;
+    failure = ms_sys_fs_unlink(path);
+    if (failure != 0) {
+        *error = ms_arena_fmt(a, "remove %s: %s", path, install_os_error(a, failure)).ptr;
         return false;
     }
     return true;
@@ -101,18 +112,18 @@ static void install_read_only(MsArena *a, const char *dir) {
     if (ms_path_list_dir(a, dir, "read directory", &names, &count, &failure)) {
         for (uint32_t i = 0; i < count; i++) {
             const char *path = MS_PATH_JOIN(a, dir, names[i]);
-            struct stat info;
-            if (lstat(path, &info) != 0) {
+            MsSysStat info;
+            if (ms_sys_fs_stat(path, false, &info) != 0) {
                 continue;
             }
-            if (S_ISDIR(info.st_mode)) {
+            if (host_is_dir(&info)) {
                 install_read_only(a, path);
             } else {
-                (void)chmod(path, info.st_mode & 07555);
+                install_ignore(ms_sys_fs_chmod(path, info.mode & 07555));
             }
         }
     }
-    (void)chmod(dir, 0555);
+    install_ignore(ms_sys_fs_chmod(dir, 0555));
 }
 
 /* ---- git ---- */
@@ -162,50 +173,14 @@ static const char *install_trim(MsArena *a, const char *text, size_t length) {
     return ms_arena_strndup(a, text, length);
 }
 
-/* Reads both pipes until each closes, so a chatty git cannot block on a full one. */
-static void install_drain(int out_fd, int err_fd, MsBuf *out, MsBuf *err) {
-    struct pollfd fds[2] = {{.fd = out_fd, .events = POLLIN}, {.fd = err_fd, .events = POLLIN}};
-    MsBuf *sinks[2] = {out, err};
-    int open_count = 2;
-    char chunk[4096];
-    while (open_count > 0) {
-        if (poll(fds, 2, -1) < 0 && errno != EINTR) {
-            return;
-        }
-        for (int i = 0; i < 2; i++) {
-            if (fds[i].fd < 0 || (fds[i].revents & (POLLIN | POLLHUP | POLLERR)) == 0) {
-                continue;
-            }
-            const ssize_t n = read(fds[i].fd, chunk, sizeof chunk);
-            if (n > 0) {
-                ms_buf_put(sinks[i], chunk, (size_t)n);
-            } else if (n == 0 || errno != EINTR) {
-                fds[i].fd = -1;
-                open_count--;
-            }
-        }
-    }
-}
-
 /* The environment git runs in: no prompts, no localisation, and only the transports a package may use. */
 static char *const *install_git_environment(MsArena *a, const char *protocols) {
-    size_t count = 0;
-    while (environ[count] != NULL) {
-        count++;
-    }
-    char **env = MS_NEW_N(a, char *, count + 4);
-    size_t used = 0;
-    for (size_t i = 0; i < count; i++) {
-        if (strncmp(environ[i], "GIT_TERMINAL_PROMPT=", 20) != 0 && strncmp(environ[i], "LC_ALL=", 7) != 0 &&
-            strncmp(environ[i], "GIT_ALLOW_PROTOCOL=", 19) != 0) {
-            env[used++] = environ[i];
-        }
-    }
-    env[used++] = ms_arena_strndup(a, "GIT_TERMINAL_PROMPT=0", 21);
-    env[used++] = ms_arena_strndup(a, "LC_ALL=C", 8);
+    char **env = MS_NEW_N(a, char *, 4);
+    env[0] = ms_arena_strndup(a, "GIT_TERMINAL_PROMPT=0", 21);
+    env[1] = ms_arena_strndup(a, "LC_ALL=C", 8);
     const MsStr allow = ms_arena_fmt(a, "GIT_ALLOW_PROTOCOL=%s", protocols);
-    env[used++] = ms_arena_strndup(a, allow.ptr, allow.len);
-    env[used] = NULL;
+    env[2] = ms_arena_strndup(a, allow.ptr, allow.len);
+    env[3] = NULL;
     return env;
 }
 
@@ -213,70 +188,42 @@ static char *const *install_git_environment(MsArena *a, const char *protocols) {
  * failed: <stderr>` with credentials removed. */
 static bool install_git(MsArena *a, const char *dir, const char *protocols, const char *const *args, const char **output,
                         const char **error) {
-    static const char *const options[] = {"git", "-c", "core.autocrlf=false", "-c", "core.safecrlf=false", "-c",
-                                          "advice.detachedHead=false",
-                                          /* A server that stops sending must fail the install, not hang it. */
-                                          "-c", "http.lowSpeedLimit=1000", "-c", "http.lowSpeedTime=30"};
+    static char git[] = "git";
+    static char *const options[] = {git, "-c", "core.autocrlf=false", "-c", "core.safecrlf=false", "-c",
+                                    "advice.detachedHead=false",
+                                    /* A server that stops sending must fail the install, not hang it. */
+                                    "-c", "http.lowSpeedLimit=1000", "-c", "http.lowSpeedTime=30"};
     MsBuf argv = {0};
     for (size_t i = 0; i < sizeof options / sizeof options[0]; i++) {
-        MS_VEC_PUSH(argv, const char *, options[i]);
+        MS_VEC_PUSH(argv, char *, options[i]);
     }
     if (dir != NULL) {
-        MS_VEC_PUSH(argv, const char *, "-C");
-        MS_VEC_PUSH(argv, const char *, dir);
+        MS_VEC_PUSH(argv, char *, ms_arena_strndup(a, "-C", 2));
+        MS_VEC_PUSH(argv, char *, ms_arena_strndup(a, dir, strlen(dir)));
     }
     MsBuf joined = {0};
     for (const char *const *arg = args; *arg != NULL; arg++) {
-        MS_VEC_PUSH(argv, const char *, *arg);
+        MS_VEC_PUSH(argv, char *, ms_arena_strndup(a, *arg, strlen(*arg)));
         ms_buf_puts(&joined, arg == args ? "" : " ");
         ms_buf_puts(&joined, *arg);
     }
-    MS_VEC_PUSH(argv, const char *, NULL);
+    MS_VEC_PUSH(argv, char *, NULL);
 
-    int out_pipe[2], err_pipe[2];
-    // NOLINTNEXTLINE(android-cloexec-pipe): both ends get FD_CLOEXEC below, and the compiler starts no threads.
-    if (pipe(out_pipe) != 0 || pipe(err_pipe) != 0) {
-        *error = ms_arena_fmt(a, "cannot run git (%s); install git and put it on PATH", install_os_error(a, errno)).ptr;
-        ms_buf_free(&argv);
-        ms_buf_free(&joined);
-        return false;
-    }
-    for (int i = 0; i < 2; i++) {
-        (void)fcntl(out_pipe[i], F_SETFD, FD_CLOEXEC);
-        (void)fcntl(err_pipe[i], F_SETFD, FD_CLOEXEC);
-    }
-    posix_spawn_file_actions_t actions;
-    posix_spawn_file_actions_init(&actions);
-    posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0);
-    posix_spawn_file_actions_adddup2(&actions, out_pipe[PIPE_WRITE], STDOUT_FILENO);
-    posix_spawn_file_actions_adddup2(&actions, err_pipe[PIPE_WRITE], STDERR_FILENO);
-    pid_t pid = 0;
-    const int spawned = posix_spawnp(&pid, "git", &actions, NULL, (char *const *)ms_buf_items(&argv),
-                                     install_git_environment(a, protocols));
-    posix_spawn_file_actions_destroy(&actions);
-    close(out_pipe[PIPE_WRITE]);
-    close(err_pipe[PIPE_WRITE]);
+    MsSysRun run;
+    const MsSysError failure = ms_sys_process_run((char *const *)ms_buf_items(&argv), install_git_environment(a, protocols), NULL, false, &run);
     bool ok = false;
-    if (spawned != 0) {
-        *error = ms_arena_fmt(a, "cannot run git (%s); install git and put it on PATH", install_os_error(a, spawned)).ptr;
+    if (failure != 0) {
+        *error = ms_arena_fmt(a, "cannot run git (%s); install git and put it on PATH", install_os_error(a, failure)).ptr;
     } else {
-        MsBuf out = {0}, err = {0};
-        install_drain(out_pipe[PIPE_READ], err_pipe[PIPE_READ], &out, &err);
-        int status = 0;
-        while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
-        }
-        ok = WIFEXITED(status) && WEXITSTATUS(status) == 0;
+        ok = run.code == 0;
         if (ok) {
-            *output = ms_arena_strndup(a, out.data == NULL ? "" : out.data, out.len);
+            *output = ms_arena_strndup(a, run.out, run.out_length);
         } else {
             *error = ms_arena_fmt(a, "git %s failed: %s", install_redact(a, ms_arena_strndup(a, joined.data == NULL ? "" : joined.data, joined.len)),
-                                  install_redact(a, install_trim(a, err.data == NULL ? "" : err.data, err.len))).ptr;
+                                  install_redact(a, install_trim(a, run.err, run.err_length))).ptr;
         }
-        ms_buf_free(&out);
-        ms_buf_free(&err);
+        ms_sys_process_run_free(&run);
     }
-    close(out_pipe[PIPE_READ]);
-    close(err_pipe[PIPE_READ]);
     ms_buf_free(&argv);
     ms_buf_free(&joined);
     return ok;
@@ -286,6 +233,16 @@ static bool install_git(MsArena *a, const char *dir, const char *protocols, cons
     install_git((a), (dir), (protocols), (const char *const[]){__VA_ARGS__, NULL}, (output), (error))
 
 /* ---- portability and validity of a download ---- */
+
+/* Whether the first `length` bytes of `left` and `right` are equal, ignoring ASCII case. */
+static bool install_same_text(const char *left, const char *right, size_t length) {
+    for (size_t i = 0; i < length; i++) {
+        if (tolower((unsigned char)left[i]) != tolower((unsigned char)right[i])) {
+            return false;
+        }
+    }
+    return true;
+}
 
 /* Whether Windows can create a file or directory called `name`. */
 static bool install_portable_name(const char *name) {
@@ -303,7 +260,7 @@ static bool install_portable_name(const char *name) {
     }
     const size_t stem_length = strcspn(name, ".");
     for (size_t i = 0; i < sizeof reserved / sizeof reserved[0]; i++) {
-        if (strlen(reserved[i]) == stem_length && strncasecmp(name, reserved[i], stem_length) == 0) {
+        if (strlen(reserved[i]) == stem_length && install_same_text(name, reserved[i], stem_length)) {
             return false;
         }
     }
@@ -385,8 +342,8 @@ static const char *install_strip(MsArena *a, const char *text, const char *needl
  * look like a nested package in diagnostics). The checker enforces everything about its source. */
 static bool install_validate(MsArena *a, const char *key, const char *dir, const char **error) {
     const char *manifest = MS_PATH_JOIN(a, dir, "ms.toml");
-    struct stat info;
-    if (stat(manifest, &info) != 0 || !S_ISREG(info.st_mode)) {
+    MsSysStat info;
+    if (ms_sys_fs_stat(manifest, true, &info) != 0 || !host_is_reg(&info)) {
         *error = ms_arena_fmt(a, "package %s has no ms.toml at its root", key).ptr;
         return false;
     }
@@ -445,22 +402,24 @@ static bool install_store(MsArena *a, const char *temporary, const char *root, c
         return true;
     }
     const char *index_file = MS_PATH_JOIN(a, root, ms_arena_fmt(a, "%s.index", hash).ptr);
-    const char *staged = MS_PATH_JOIN(a, root, ms_arena_fmt(a, ".tmp-%ld.index", (long)getpid()).ptr);
-    FILE *f = fopen(staged, "wbe");
-    if (f == NULL || fwrite(index.ptr, 1, index.len, f) != index.len || fclose(f) != 0) {
-        *error = ms_arena_fmt(a, "write %s: %s", staged, install_os_error(a, errno)).ptr;
+    const char *staged = MS_PATH_JOIN(a, root, ms_arena_fmt(a, ".tmp-%lu.index", install_unique()).ptr);
+    MsSysError failure = install_write_file(staged, index.ptr, index.len);
+    if (failure != 0) {
+        *error = ms_arena_fmt(a, "write %s: %s", staged, install_os_error(a, failure)).ptr;
         return false;
     }
-    if (rename(staged, index_file) != 0) {
-        *error = ms_arena_fmt(a, "write %s: %s", index_file, install_os_error(a, errno)).ptr;
+    failure = ms_sys_fs_rename(staged, index_file);
+    if (failure != 0) {
+        *error = ms_arena_fmt(a, "write %s: %s", index_file, install_os_error(a, failure)).ptr;
         return false;
     }
-    struct stat info;
-    if (lstat(destination, &info) == 0 && !ms_package_cached_intact(a, root, hash) && !install_remove_all(a, destination, error)) {
+    MsSysStat info;
+    if (ms_sys_fs_stat(destination, false, &info) == 0 && !ms_package_cached_intact(a, root, hash) && !ms_remove_all(a, destination, error)) {
         return false;
     }
-    if (rename(temporary, destination) != 0 && !ms_package_cached_intact(a, root, hash)) {
-        *error = ms_arena_fmt(a, "store %s: %s", destination, install_os_error(a, errno)).ptr;
+    failure = ms_sys_fs_rename(temporary, destination);
+    if (failure != 0 && !ms_package_cached_intact(a, root, hash)) {
+        *error = ms_arena_fmt(a, "store %s: %s", destination, install_os_error(a, failure)).ptr;
         return false;
     }
     install_read_only(a, destination);
@@ -503,7 +462,7 @@ static bool install_download_into(MsArena *a, const char *key, const char *url, 
     const char *commit;
     if (!install_fetch_commit(a, key, url, reference, locked, temporary, protocols, &commit, error) ||
         !install_reject_unportable(a, key, temporary, protocols, error) ||
-        !install_remove_all(a, MS_PATH_JOIN(a, temporary, ".git"), error)) {
+        !ms_remove_all(a, MS_PATH_JOIN(a, temporary, ".git"), error)) {
         return false;
     }
     MsStr index;
@@ -536,12 +495,13 @@ static bool install_download(Remote *r, MsArena *a, const char *url, const char 
     }
     reference++;
     const char *root = r->cache;
-    const char *temporary = MS_PATH_JOIN(a, root, ms_arena_fmt(a, ".tmp-%ld", (long)getpid()).ptr);
+    const char *temporary = MS_PATH_JOIN(a, root, ms_arena_fmt(a, ".tmp-%lu", install_unique()).ptr);
     const char *ignored;
-    bool ok = install_make_dirs(a, root, error) && install_remove_all(a, temporary, error) && install_make_dirs(a, temporary, error) &&
+    bool ok = install_make_dirs(a, root, error) && ms_remove_all(a, temporary, error) && install_make_dirs(a, temporary, error) &&
               install_download_into(a, url, url, ms_arena_strndup(a, reference, strlen(reference)), locked, temporary, root,
                                     install_protocols(nested), out, error);
-    (void)install_remove_all(a, temporary, &ignored);
+    const bool removed = ms_remove_all(a, temporary, &ignored); /* a leftover is replaced by the next download */
+    (void)removed;
     if (ok) {
         out->entry.spec = spec;
     }
@@ -649,7 +609,7 @@ static bool install_in_workspace(MsArena *a, const char *directory) {
         const char *candidate = MS_PATH_JOIN(a, dir, "ms.toml");
         MsProject project;
         MsProjectError failure = {0};
-        if (access(candidate, F_OK) == 0) {
+        if (ms_sys_fs_access(candidate, 0) == 0) {
             if (ms_project_read(a, candidate, &project, &failure) && project.is_workspace) {
                 return true;
             }
@@ -695,12 +655,12 @@ static bool install_write_lock(MsArena *a, const char *root, const MsResolved *r
         return false;
     }
     if (empty) {
-        (void)unlink(path);
+        install_ignore(ms_sys_fs_unlink(path));
         return true;
     }
-    FILE *f = fopen(path, "wbe");
-    if (f == NULL || fputs(text, f) == EOF || fclose(f) != 0) {
-        ms_project_error_message(err, ms_arena_fmt(a, "write %s: %s", path, install_os_error(a, errno)).ptr);
+    const MsSysError failure = install_write_file(path, text, strlen(text));
+    if (failure != 0) {
+        ms_project_error_message(err, ms_arena_fmt(a, "write %s: %s", path, install_os_error(a, failure)).ptr);
         return false;
     }
     return true;

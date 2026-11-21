@@ -1,10 +1,10 @@
 /* ms.lock and dependency specs (lock.h). */
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "ms/lock.h"
+#include "ms/project.h"
 
 static bool lock_space(char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\v' || c == '\f'; }
 
@@ -217,30 +217,15 @@ bool ms_lock_parse(MsArena *a, const char *text, MsLock *out, MsProjectError *er
 bool ms_lock_read(MsArena *a, const char *root, MsLock *out, MsProjectError *err) {
     *out = (MsLock){0};
     const char *path = MS_PATH_JOIN(a, root, "ms.lock");
-    FILE *f = fopen(path, "rbe");
-    if (f == NULL) {
-        if (errno == ENOENT) {
-            out->entries = MS_NEW(a, MsLockEntry);
-            return true;
+    size_t length = 0;
+    const char *text = ms_project_read_file(a, path, &length, err);
+    if (text == NULL) {
+        if (!ms_project_error_not_exist(err)) {
+            return false;
         }
-        ms_project_error_path(err, a, "open", path, errno);
-        return false;
+        out->entries = MS_NEW(a, MsLockEntry);
+        return true;
     }
-    MsBuf data = {0};
-    char chunk[4096];
-    size_t n;
-    while ((n = fread(chunk, 1, sizeof chunk, f)) > 0) {
-        ms_buf_put(&data, chunk, n);
-    }
-    const bool failed = ferror(f) != 0;
-    fclose(f);
-    if (failed) {
-        ms_buf_free(&data);
-        ms_project_error_path(err, a, "read", path, EIO);
-        return false;
-    }
-    char *text = ms_arena_strndup(a, data.data == NULL ? "" : data.data, data.len);
-    ms_buf_free(&data);
     return ms_lock_parse(a, text, out, err);
 }
 

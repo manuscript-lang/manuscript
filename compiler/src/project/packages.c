@@ -1,17 +1,11 @@
 /* The package cache: where packages live, the index that names their files, and the hash of that index. Port of the
  * cache half of crates/ms-driver/src/project/packages.rs. See ms/packages.h. */
-#ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200809L /* lstat; libms.c defines it first for the whole unit */
-#endif
-#include <errno.h>
-#include <fcntl.h>
 #include <openssl/evp.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #include "ms/packages.h"
+#include "project/host.h"
 
 /* The most bytes one package may hold. */
 #define PACKAGE_MAX_BYTES ((uint64_t)64 << 20)
@@ -28,12 +22,18 @@ const char *ms_package_cache_dir(MsArena *a) {
     if (override != NULL) {
         return override;
     }
-    const char *base = package_env("XDG_CACHE_HOME");
+    const char *base = package_env("LOCALAPPDATA"); /* set on Windows only */
+    if (base == NULL) {
+        base = package_env("XDG_CACHE_HOME");
+    }
     if (base == NULL && package_env("HOME") != NULL) {
         base = MS_PATH_JOIN(a, package_env("HOME"), ".cache");
     }
     if (base == NULL) {
-        base = "/tmp";
+        char *temporary = NULL;
+        size_t length = 0;
+        base = ms_sys_fs_temp_directory(&temporary, &length) == 0 ? ms_arena_strndup(a, temporary, length) : "/tmp";
+        free(temporary);
     }
     return MS_PATH_JOIN(a, base, "ms", "packages");
 }
@@ -83,16 +83,17 @@ static bool index_collect(IndexWalk *w, const char *dir, const char *prefix) {
         }
         const char *relative = ms_arena_fmt(w->arena, "%s%s", prefix, name).ptr;
         const char *path = MS_PATH_JOIN(w->arena, dir, name);
-        struct stat info;
-        if (lstat(path, &info) != 0) {
-            ms_project_error_path(w->err, w->arena, "stat", relative, errno);
+        MsSysStat info;
+        const MsSysError failure = ms_sys_fs_stat(path, false, &info);
+        if (failure != 0) {
+            ms_project_error_path(w->err, w->arena, "stat", relative, failure);
             return false;
         }
-        if (S_ISLNK(info.st_mode)) {
+        if (host_is_link(&info)) {
             ms_project_error_message(w->err, ms_arena_fmt(w->arena, "package contains the symbolic link %s; a package holds regular files only", relative).ptr);
             return false;
         }
-        if (S_ISDIR(info.st_mode)) {
+        if (host_is_dir(&info)) {
             if (!index_collect(w, path, ms_arena_fmt(w->arena, "%s/", relative).ptr)) {
                 return false;
             }

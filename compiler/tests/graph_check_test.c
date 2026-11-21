@@ -1,12 +1,10 @@
 /* Unit test of checking a loaded graph (compiler/src/project/graph_check.c): the project loader's modules reach the
  * checker with their imports resolved, so a call into another module is type-checked. */
-#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
+#include "host_test.h"
 #include "ms/project.h"
 
 static int failures;
@@ -20,7 +18,7 @@ static int failures;
     } while (0)
 
 static MsArena arena;
-static char root[64];
+static char root[256];
 
 static void write_file(const char *name, const char *text) {
     const char *path = MS_PATH_JOIN(&arena, root, name);
@@ -33,8 +31,7 @@ static void write_file(const char *name, const char *text) {
 }
 
 int main(void) {
-    snprintf(root, sizeof root, "%s", "/tmp/ms_graph_XXXXXX");
-    CHECK(mkdtemp(root) != NULL);
+    CHECK(host_make_root(root, sizeof root, "ms_graph"));
     write_file("lib.ms", "export fn double(x: Int) Int: return x * 2\n");
     write_file("main.ms", "import double from \"./lib.ms\"\nfn main() Void:\n    ok: Int := double(2)\n    bad: String := double(2)\n");
     MsNames names;
@@ -64,9 +61,7 @@ int main(void) {
     CHECK(check.mods[ids[0]].ndiags == 0);
     ms_check_free(&check);
     ms_names_free(&names);
-    CHECK(unlink(MS_PATH_JOIN(&arena, root, "lib.ms")) == 0);
-    CHECK(unlink(MS_PATH_JOIN(&arena, root, "main.ms")) == 0);
-    CHECK(rmdir(root) == 0);
+    host_remove_tree(root);
     ms_arena_free(&arena);
     if (failures != 0) {
         fprintf(stderr, "%d failure(s)\n", failures);

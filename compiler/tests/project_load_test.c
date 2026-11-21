@@ -1,12 +1,10 @@
 /* Unit test of the module graph loader (compiler/src/project/load.c), with the cases of crates/ms-driver/src/load.rs
  * and tests/load.rs. */
-#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
+#include "host_test.h"
 #include "ms/project.h"
 
 static int failures;
@@ -30,7 +28,7 @@ static int failures;
 
 static MsArena arena;
 static MsNames names;
-static char root[64];
+static char root[256];
 
 static const char *path_of(const char *name) { return MS_PATH_JOIN(&arena, root, name); }
 
@@ -39,7 +37,7 @@ static void write_file(const char *name, const char *text) {
     char *copy = ms_arena_strndup(&arena, path, strlen(path));
     for (char *slash = strchr(copy + strlen(root) + 1, '/'); slash != NULL; slash = strchr(slash + 1, '/')) {
         *slash = 0;
-        mkdir(copy, 0700);
+        host_mkdir(copy);
         *slash = '/';
     }
     FILE *f = fopen(path, "w");
@@ -229,8 +227,7 @@ static void test_overlay(void) {
 }
 
 int main(void) {
-    snprintf(root, sizeof root, "%s", "/tmp/ms_load_XXXXXX");
-    CHECK(mkdtemp(root) != NULL);
+    CHECK(host_make_root(root, sizeof root, "ms_load"));
     ms_names_init(&names);
     test_chain();
     test_cycle();
@@ -238,9 +235,7 @@ int main(void) {
     test_parse_errors();
     test_project();
     test_overlay();
-    char command[160];
-    snprintf(command, sizeof command, "rm -rf %s", root);
-    CHECK(system(command) == 0);
+    host_remove_tree(root);
     ms_names_free(&names);
     ms_arena_free(&arena);
     if (failures != 0) {

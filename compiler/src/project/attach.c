@@ -1,11 +1,10 @@
 /* Package dependencies of a project (project.h): every `[dependencies]` url is resolved through ms.lock and the
  * read-only package cache, recursively, so a locked project builds offline. Port of `attach` and its helpers in
  * crates/ms-driver/src/project/packages.rs. Path dependencies and workspaces are not covered. */
-#include <errno.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "ms/packages.h"
+#include "project/host.h"
 
 #define ATTACH_MAX_DEPTH 8
 
@@ -198,8 +197,8 @@ static bool attach_manifest_failed(MsArena *a, const char *id, const MsProjectEr
 static MsPackage *attach_load_copy(Attach *t, const char *id, const MsLockEntry *entry, MsProjectError *err) {
     MsArena *a = t->arena;
     const char *directory = MS_PATH_JOIN(a, t->cache, entry->sha256);
-    struct stat info;
-    if (stat(directory, &info) != 0 || !S_ISDIR(info.st_mode)) {
+    MsSysStat info;
+    if (ms_sys_fs_stat(directory, true, &info) != 0 || !host_is_dir(&info)) {
         attach_fail(err, ms_arena_fmt(a, "package %s (%s) is not in the cache %s; run `ms install` to download it", id, entry->spec, directory).ptr);
         return NULL;
     }
@@ -366,8 +365,8 @@ bool ms_project_attach(MsArena *a, MsProject *p, MsProjectError *err) {
     /* Package files are named `@name/...`; a project path with that spelling would be mistaken for package code. */
     for (uint32_t i = 0; i < p->dependency_count + p->path_dependency_count; i++) {
         const char *alias = i < p->dependency_count ? p->dependencies[i].alias : p->path_dependencies[i - p->dependency_count].name;
-        struct stat info;
-        if (stat(MS_PATH_JOIN(a, p->root, alias), &info) == 0) {
+        MsSysStat info;
+        if (ms_sys_fs_stat(MS_PATH_JOIN(a, p->root, alias), true, &info) == 0) {
             return attach_fail(err, ms_arena_fmt(a, "the project has a file or directory named %s, which is also a dependency name; rename it, names starting with @ are reserved for packages", alias).ptr);
         }
     }

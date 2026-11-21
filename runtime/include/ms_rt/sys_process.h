@@ -26,6 +26,27 @@ MS_NODISCARD MsSysError ms_sys_process_set_identity(MsSysIdentity which, uint32_
 /* The group ids of user `name` (its primary group included); MS_SYS_ERR_NOT_FOUND for an unknown user. */
 MS_NODISCARD MsSysError ms_sys_process_user_groups(const char *name, int64_t **list, size_t *count);
 
+/* ---- running a program to completion ---- */
+
+/* What a program run wrote. `out` and `err` are malloc'd and NUL-terminated (`err` is NULL when the run merged the two);
+ * the caller frees them. `code` is the exit status, or -1 when a signal ended the program. */
+typedef struct MsSysRun {
+    int32_t code;
+    char *out;
+    size_t out_length;
+    char *err;
+    size_t err_length;
+} MsSysRun;
+
+/* Runs `argv[0]` (looked up on PATH; argv ends with NULL) to completion with no standard input, and captures its
+ * output. `env` lists `NAME=value` strings (ending with NULL, or NULL for none) that replace or add to this process's
+ * environment in the program's. `cwd` is the working directory, or NULL for this process's. `merge` sends the
+ * program's standard error into `out`. Fails when the program cannot be started (MS_SYS_ERR_NOT_FOUND for a missing
+ * one); a nonzero exit is not a failure here. */
+MS_NODISCARD MsSysError ms_sys_process_run(char *const *argv, char *const *env, const char *cwd, bool merge,
+                                           MsSysRun *run);
+void ms_sys_process_run_free(MsSysRun *run);
+
 /* The process title: the short command name on Linux (/proc comm), the console title on Windows, unsupported
  * elsewhere. Text is not NUL-terminated. */
 MS_NODISCARD MsSysError ms_sys_process_title(char **text, size_t *length);

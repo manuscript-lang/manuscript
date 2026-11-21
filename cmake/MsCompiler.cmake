@@ -73,9 +73,14 @@ function(ms_compiler_exe name)
   if(E_WITH_LIBMS)
     # libms lists directories through the OS layer, which a Manuscript program gets from the runtime archive.
     list(APPEND _sources $<TARGET_OBJECTS:ms_libms>)
-    if(NOT MS_WINDOWS)
-      list(APPEND _sources "${CMAKE_SOURCE_DIR}/runtime/sys/posix/fs.c" "${CMAKE_SOURCE_DIR}/runtime/sys/posix/clock.c")
+    if(MS_WINDOWS)
+      set(_os windows)
+    else()
+      set(_os posix)
     endif()
+    foreach(_file fs clock spawn)
+      list(APPEND _sources "${CMAKE_SOURCE_DIR}/runtime/sys/${_os}/${_file}.c")
+    endforeach()
   endif()
   add_executable(${name} ${_sources})
   target_include_directories(${name} PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include" "${_mimalloc_include}"
@@ -87,11 +92,10 @@ function(ms_compiler_exe name)
     target_compile_options(${name} PRIVATE -std=c11 -O1 -Wall -Wextra -Werror -include "${_c}/include/ms_mimalloc.h")
   endif()
   if(MS_WINDOWS)
-    # The Windows tools (ms_mir_build, ms_asm_tables) read no project: no libcrypto, libdl or libm. They still allocate
-    # through the force-included ms_mimalloc.h, so they link the allocator.
-    target_link_libraries(${name} PRIVATE ms_mimalloc)
+    # No libm or libdl; libms hashes packages with libcrypto (project/packages.c) and allocates through the
+    # force-included ms_mimalloc.h.
+    target_link_libraries(${name} PRIVATE ms_mimalloc ${MS_LIB_crypto_LINK})
   else()
-    # libms hashes packages with libcrypto (project/packages.c).
     target_link_libraries(${name} PRIVATE m ms_mimalloc ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
   endif()
   set_target_properties(${name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${_bin}")
@@ -105,21 +109,21 @@ endfunction()
 file(GLOB _tools CONFIGURE_DEPENDS "${_c}/tools/ms_*.c")
 foreach(file ${_tools})
   get_filename_component(name "${file}" NAME_WE)
-  # Windows builds only the tools of the C pipeline (`MS_BACKEND=c`): the rest read the project with POSIX calls.
-  if(MS_WINDOWS AND NOT name MATCHES "^ms_(mir_build|asm_tables)$")
+  # The back end (compiler/src/build/) is not on Windows yet, so the tools that drive it are not built there.
+  if(MS_WINDOWS AND name MATCHES "^ms_(build_link|build_object|macho_symbols)$")
     continue()
   endif()
   ms_compiler_exe(${name} "${file}" WITH_LIBMS INCLUDES "${_c}/tools")
 endforeach()
 
-if(MS_WINDOWS)
-  return()
-endif()
-
-# Unit tests of the checker and the driver; ctest runs them.
+# Unit tests of the checker and the project loader; ctest runs them.
 foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test project_discover_test semver_test lock_test resolve_test graph_check_test install_test embed_test attach_test)
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
+
+if(MS_WINDOWS)
+  return() # the driver, the embedded standard library and the `ms` front follow the back end
+endif()
 ms_compiler_exe(std_embed_test "${_c}/tests/std_embed_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
 ms_compiler_exe(package_check_test "${_c}/tests/package_check_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
 ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST)

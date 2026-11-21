@@ -1,11 +1,9 @@
 /* Unit test of project paths (compiler/src/project/path.c), with the vectors of crates/ms-driver pathops tests. */
-#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
+#include "host_test.h"
 #include "ms/project.h"
 
 static int failures;
@@ -79,13 +77,13 @@ static void test_rel(MsArena *a) {
 }
 
 static void test_symlinks(MsArena *a) {
-    char root[] = "/tmp/ms_project_path_XXXXXX";
-    CHECK(mkdtemp(root) != NULL);
+    char root[256];
+    CHECK(host_make_root(root, sizeof root, "ms-path-test"));
     const char *dir = MS_PATH_JOIN(a, root, "real");
-    CHECK(mkdir(dir, 0700) == 0);
-    CHECK(symlink("real", MS_PATH_JOIN(a, root, "link")) == 0);
-    CHECK(symlink("link", MS_PATH_JOIN(a, root, "chain")) == 0);
-    CHECK(symlink("loop", MS_PATH_JOIN(a, root, "loop")) == 0);
+    host_mkdir(dir);
+    CHECK(host_symlink("real", MS_PATH_JOIN(a, root, "link")));
+    CHECK(host_symlink("link", MS_PATH_JOIN(a, root, "chain")));
+    CHECK(host_symlink("loop", MS_PATH_JOIN(a, root, "loop")));
     const char *file = MS_PATH_JOIN(a, dir, "f");
     FILE *f = fopen(file, "w");
     CHECK(f != NULL);
@@ -104,21 +102,16 @@ static void test_symlinks(MsArena *a) {
 
     CHECK(!ms_path_eval_symlinks(a, MS_PATH_JOIN(a, root, "missing"), &got, &err));
     CHECK(ms_project_error_not_exist(&err));
-    CHECK_STR(ms_project_error_text(a, &err), ms_arena_fmt(a, "lstat %s: no such file or directory", MS_PATH_JOIN(a, real_root, "missing")).ptr);
+    CHECK(err.kind == MS_PERR_PATH && strcmp(err.path, MS_PATH_JOIN(a, real_root, "missing")) == 0);
     CHECK(!ms_path_eval_symlinks(a, MS_PATH_JOIN(a, root, "loop"), &got, &err));
     CHECK_STR(ms_project_error_text(a, &err), "EvalSymlinks: too many links");
     CHECK(!ms_path_eval_symlinks(a, MS_PATH_JOIN(a, file, "x"), &got, &err));
-    CHECK_STR(ms_project_error_text(a, &err), "not a directory");
+    CHECK(err.kind == MS_PERR_ERRNO && ms_sys_fs_error_kind(err.err_no) == MS_SYS_ERR_NOT_DIRECTORY);
 
     const char *abs;
     CHECK(ms_path_abs(a, "x/../y", &abs, &err));
     CHECK(ms_path_is_abs(abs));
-    unlink(file);
-    unlink(MS_PATH_JOIN(a, root, "chain"));
-    unlink(MS_PATH_JOIN(a, root, "link"));
-    unlink(MS_PATH_JOIN(a, root, "loop"));
-    rmdir(dir);
-    rmdir(root);
+    host_remove_tree(root);
 }
 
 int main(void) {
