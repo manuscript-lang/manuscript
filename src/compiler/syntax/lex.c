@@ -128,8 +128,7 @@ MS_NODISCARD static bool run(Scanner *s) {
 
 /* ---- entry points ---- */
 
-static void scanner_init(Scanner *s, MsArena *arena, MsSpan text, const uint32_t *line_offsets,
-                         MsDiag *diag) {
+void lex_scanner_init(Scanner *s, MsArena *arena, MsSpan text, const uint32_t *line_offsets, MsDiag *diag) {
   *s = (Scanner){.arena = arena,
                  .src = text.ptr,
                  .n = text.len,
@@ -140,7 +139,7 @@ static void scanner_init(Scanner *s, MsArena *arena, MsSpan text, const uint32_t
   level_list_push(&s->levels, (Level){0, 0});
 }
 
-static void scanner_free(Scanner *s) {
+void lex_scanner_free(Scanner *s) {
   token_list_free(&s->tokens);
   level_list_free(&s->levels);
   byte_list_free(&s->delimiters);
@@ -187,7 +186,7 @@ static size_t count_newlines(MsSpan source) {
 
 /* Replaces CRLF with LF and records, per normalised line, how many CR bytes precede it. The result is
  * `source` itself, with no offsets, when the source has no CRLF. */
-static MsSpan normalize(MsArena *arena, MsSpan source, const uint32_t **offsets) {
+MsSpan lex_normalize(MsArena *arena, MsSpan source, const uint32_t **offsets) {
   *offsets = NULL;
   if (!has_crlf(source)) {
     return source;
@@ -249,38 +248,48 @@ static bool fail_source(MsDiag *diag, MsPos pos, const char *message) {
 }
 
 bool ms_lex(MsArena *arena, MsSpan source, MsLexed *out, MsDiag *diag) {
+  return ms_lex_at(arena, source, 0, 0, out, diag);
+}
+
+bool ms_lex_at(MsArena *arena, MsSpan source, uint32_t base_offset, uint32_t base_line, MsLexed *out,
+               MsDiag *diag) {
   *out = (MsLexed){0};
+  MsPos origin = {base_offset, base_line + 1, 1};
   if (!ms_utf8_is_valid(source.ptr, source.len)) {
-    return fail_source(diag, (MsPos){0, 1, 1},
+    return fail_source(diag, origin,
                        "source must be valid UTF-8; re-save the file with UTF-8 encoding");
   }
   if (ms_span_starts_with(source, ms_span_of_text("\xEF\xBB\xBF"))) {
-    return fail_source(diag, (MsPos){0, 1, 1},
+    return fail_source(diag, origin,
                        "a byte-order mark is not allowed; save the file as UTF-8 without BOM");
   }
   const uint32_t *offsets = NULL;
-  MsSpan text = normalize(arena, source, &offsets);
+  MsSpan text = lex_normalize(arena, source, &offsets);
   Scanner s;
-  scanner_init(&s, arena, text, offsets, diag);
+  lex_scanner_init(&s, arena, text, offsets, diag);
+  s.base_offset = base_offset;
+  s.base_line = base_line;
+  s.line = base_line + 1;
   bool ok = run(&s);
   if (ok) {
     export_lexed(&s, offsets, out);
+    out->bounds.base_line = base_line;
   }
-  scanner_free(&s);
+  lex_scanner_free(&s);
   return ok;
 }
 
 bool ms_lex_interpolation(MsArena *arena, MsSpan source, size_t origin, const MsBounds *bounds,
                           MsToken **tokens, size_t *count, MsDiag *diag) {
   Scanner s;
-  scanner_init(&s, arena, source, NULL, diag);
+  lex_scanner_init(&s, arena, source, NULL, diag);
   s.cached = bounds;
   s.boundary_origin = origin;
   s.virtual_paren = true;
   byte_list_push(&s.delimiters, '(');
   pos_list_push(&s.opened, (MsPos){0, 1, 1});
   if (!run(&s)) {
-    scanner_free(&s);
+    lex_scanner_free(&s);
     return false;
   }
   /* Drop the wrapper's closing parenthesis: it sits just before Newline and Eof. */
@@ -290,6 +299,6 @@ bool ms_lex_interpolation(MsArena *arena, MsSpan source, size_t origin, const Ms
   s.tokens.len--;
   *tokens = copy_out(arena, s.tokens.ptr, s.tokens.len, sizeof(MsToken), _Alignof(MsToken));
   *count = s.tokens.len;
-  scanner_free(&s);
+  lex_scanner_free(&s);
   return true;
 }

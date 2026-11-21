@@ -8,6 +8,7 @@
 
 #include "base/file.h"
 #include "base/path.h"
+#include "base/sort.h"
 #include "compiler/check/program.h"
 #include "compiler/own/own.h"
 #include "compiler/project/project.h"
@@ -109,6 +110,25 @@ static void add_graph_findings(const MsGraph *graph, FindingList *findings) {
     const char *phase = diag->phase == MS_GRAPH_PARSE ? "parse" : "resolution";
     finding_list_push(findings, (Finding){.file = diag->file, .phase = phase, .diag = diag->diag});
   }
+}
+
+/* Diagnostics by file, line and column; the sort is stable, so ties keep the order the phases produced them in. */
+static int64_t compare_findings(uint8_t *env, const uint8_t *left, const uint8_t *right) {
+  (void)env;
+  const Finding *a = (const void *)left;
+  const Finding *b = (const void *)right;
+  const size_t common = a->file.len < b->file.len ? a->file.len : b->file.len;
+  const int order = common == 0 ? 0 : __builtin_memcmp(a->file.ptr, b->file.ptr, common);
+  if (order != 0) {
+    return order < 0 ? -1 : 1;
+  }
+  if (a->file.len != b->file.len) {
+    return a->file.len < b->file.len ? -1 : 1;
+  }
+  if (a->diag.pos.line != b->diag.pos.line) {
+    return a->diag.pos.line < b->diag.pos.line ? -1 : 1;
+  }
+  return a->diag.pos.column < b->diag.pos.column ? -1 : a->diag.pos.column > b->diag.pos.column;
 }
 
 static void add_check_findings(const MsCheckProgram *program, const MsNames *names, FindingList *findings) {
@@ -219,6 +239,9 @@ int ms_check_command(int argc, char **argv) {
     ms_check_graph(&program, &names, &graph);
     ms_own_check(&program);
     add_check_findings(&program, &names, &findings);
+  }
+  if (findings.len > 1) {
+    ms_sort((uint8_t *)findings.ptr, findings.len, sizeof(Finding), compare_findings, NULL);
   }
   report(&findings, &options, graph.source_root, program.names == NULL ? 0 : project_modules(&program, &names),
          graph.project_root.len != 0);
