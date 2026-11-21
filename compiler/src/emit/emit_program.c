@@ -11,8 +11,7 @@
 #include "ms/mir_asm_tables.h"
 #include "ms/mir_opt.h"
 
-/* Hands the bytes of `buf` to the caller and leaves `buf` empty. */
-static MsBackendText be_take(MsBuf *buf) {
+MsBackendText ms_backend_take(MsBuf *buf) {
     const MsBackendText text = {buf->len != 0 ? buf->data : NULL, buf->len};
     if (buf->len == 0) {
         ms_buf_free(buf);
@@ -114,12 +113,12 @@ bool ms_backend_ir(const char *mir, size_t mir_len, const char *name, const char
     if (!ok) {
         ms_buf_free(&ir_buf);
         ms_buf_free(&meta_buf);
-        *why = be_take(&why_buf);
+        *why = ms_backend_take(&why_buf);
         return false;
     }
     ms_buf_free(&why_buf);
-    *ir = be_take(&ir_buf);
-    *meta = be_take(&meta_buf);
+    *ir = ms_backend_take(&ir_buf);
+    *meta = ms_backend_take(&meta_buf);
     return true;
 }
 
@@ -138,11 +137,11 @@ bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name, MsB
     mir_module_free(&m);
     if (!ok) {
         ms_buf_free(&text);
-        *why = be_take(&why_buf);
+        *why = ms_backend_take(&why_buf);
         return false;
     }
     ms_buf_free(&why_buf);
-    *out = be_take(&text);
+    *out = ms_backend_take(&text);
     return true;
 }
 
@@ -151,11 +150,11 @@ bool ms_backend_tables(const char *meta, size_t meta_len, const char *asm_text, 
     MsBuf out_buf = {0}, why_buf = {0};
     if (!mir_asm_tables(meta, meta_len, asm_text, asm_len, prefix, true, &out_buf, &why_buf)) {
         ms_buf_free(&out_buf);
-        *why = be_take(&why_buf);
+        *why = ms_backend_take(&why_buf);
         return false;
     }
     ms_buf_free(&why_buf);
-    *out = be_take(&out_buf);
+    *out = ms_backend_take(&out_buf);
     return true;
 }
 
