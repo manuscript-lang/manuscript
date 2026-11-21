@@ -79,6 +79,7 @@ typedef struct LbMethodRow {
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
+    MsModId module; /* the module being lowered: a callee another module declares is not lowered here */
     MsCheck *mut; /* the same table, for `ms_def`, which adds rows on demand */
     const MsFacts *facts;
     MirModule *m;
@@ -192,6 +193,9 @@ void lb_store(Lb *lb, MirValue slot, MirValue value);
 static inline bool lb_is_scalar(MirTy ty) {
     return ty == MIR_INT || ty == MIR_FLOAT || ty == MIR_BOOL;
 }
+
+/* The runtime function that joins two strings, declared on first use. */
+uint32_t lb_string_concat(Lb *lb);
 
 MirTy lm_type(Lb *lb, MsTy ty);
 bool lb_is_map(const Lb *lb, MirTy ty);

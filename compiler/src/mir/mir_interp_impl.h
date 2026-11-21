@@ -76,6 +76,8 @@ MirVal ip_float(double value);
 MirVal ip_ptr(uint64_t address);
 MirBlob *ip_blob_new(uint32_t count); /* items void; null for none */
 MirVal ip_aggregate(uint8_t tag, uint32_t id, MirBlob *blob);
+/* Runs the runtime's map function `name` when it is one: true with `*result` set, or `*flow` raised. */
+bool ip_map_runtime(MirInterp *it, MsStr name, const MirVal *args, uint32_t count, MirVal *result, IpFlow *flow);
 MirVal ip_str(const char *bytes, size_t length);
 MsStr ip_str_view(MirVal value);
 MirVal ip_opt_some(MirVal payload); /* takes the payload */
