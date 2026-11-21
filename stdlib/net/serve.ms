@@ -206,8 +206,8 @@ type Accepting:
 	// Fired by close: idle connections end and busy ones finish their request.
 	drain: Cancel
 	live: List[Promise[Void]]
-	// Names this server's connections between requests, which wait in the runtime's idle
-	// pool without a task, and its requests in flight.
+	// Names this server's connections between requests, which wait in the runtime's
+	// idle pool without a task, and its requests in flight.
 	idle: Int
 	grace: Duration?
 
@@ -234,13 +234,15 @@ fn var Accepting.finish() Void:
 		if connection := self.live.pop():
 			void connection.wait()
 
-	// Requests the idle pool started finish within the grace period; the rest are cancelled.
+	// Requests the idle pool started finish within the grace period; the rest are
+	// cancelled.
 	var waited = 0
+
 	while msstd_idle_inflight(self.idle) > 0:
 		if span := self.grace:
 			if waited >= span.to_nanoseconds(): msstd_idle_cancel(self.idle)
 		void sleep(nanoseconds(1000000)).wait()
-		waited = waited + 1000000
+		waited += 1000000
 
 // Drops the connections that have ended, so a long-lived server holds only live ones.
 fn var Accepting.prune() Void:
@@ -393,11 +395,11 @@ fn next_head(conn: NativeConnection, rules: Rules, drain: Signal) NativeExchange
 
 	return got.get()
 
-// Serves one request of an HTTP/1.1 connection. When the connection can carry another it
-// waits in the runtime's idle pool, without a task: a task never moves, so a connection
-// parked in one could not be taken over by a thread that is free while this one runs a
-// long handler. The pool starts `serve_h1_again` as a promise when the peer sends the
-// next request, on whichever thread is free.
+// Serves one request of an HTTP/1.1 connection. When the connection can carry another
+// it waits in the runtime's idle pool, without a task: a task never moves, so a
+// connection parked in one could not be taken over by a thread that is free while this
+// one runs a long handler. The pool starts `serve_h1_again` as a promise when the peer
+// sends the next request, on whichever thread is free.
 fn serve_h1(
 	conn: NativeConnection,
 	serving: NativeHandler,
@@ -410,11 +412,13 @@ fn serve_h1(
 		return ok()
 
 	head := next_head(conn, rules, drain.clone())
+
 	if not head.is_some():
 		msstd_conn_close(conn)
 		return ok()
 
 	kept := msstd_handler_call(serving, head.get())
+
 	if kept.is_error() or not kept.get() or drain.cancelled():
 		msstd_conn_close(conn)
 		return ok()
@@ -425,9 +429,15 @@ fn serve_h1(
 	again_drain := drain.clone()
 	parked := msstd_idle_park(
 		conn,
-		fn: serve_h1_again(again_conn, again_serving, again_rules, again_drain, idle),
+		fn: serve_h1_again(
+			again_conn,
+			again_serving,
+			again_rules,
+			again_drain,
+			idle,
+		),
 		idle,
-		rules.timeout.clone(),
+		rules.timeout.clone()
 	)
 	if parked.is_error(): msstd_conn_close(conn)
 	return ok()
