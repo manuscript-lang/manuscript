@@ -48,6 +48,7 @@ bool ms_body_reads_where_var_expected(const MsBody *b, MsTy actual, MsTy expecte
 bool ms_body_has_invalid(const MsBody *b, MsTy ty);
 /* `callee(args)` through the function-typed binding `binding`. */
 MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding);
+MsTy ms_body_call_function(MsBody *b, const MsExpr *e, MsTy fn);
 /* A module function named as a value; an anonymous function. */
 MsTy ms_body_function_name(MsBody *b, const MsExpr *e);
 MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected);
