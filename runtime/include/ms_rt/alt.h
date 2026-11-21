@@ -16,8 +16,6 @@ uint8_t msrt_result_is_ok(const void *r);
 /* ms-sig: msrt_result_is_error(r: *const AltVal) -> u8 @inline @seq=alt.tag:$0>int,iconst:#1>int,icmp.eq:%0:%1>bool */
 uint8_t msrt_result_is_error(const void *r);
 
-/* ms-sig: msrt_optional_get_or(o: *const AltVal, fallback: *const AltVal) -> *const u8 @inline @fallback */
-const void *msrt_optional_get_or(const void *o, const void *fallback);
 /* ms-sig: msrt_result_get_or(r: *const AltVal, fallback: *const AltVal) -> *const u8 @inline @fallback */
 const void *msrt_result_get_or(const void *r, const void *fallback);
 

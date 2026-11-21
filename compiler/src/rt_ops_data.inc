@@ -222,7 +222,6 @@ static const MsRtFn rt_fns[] = {
     {"msrt_obj_clone", "", "", "", "", 0, 1, MS_RT_RET_OTHER, {MS_RT_OTHER}, false, false, false, false, false, false, false, ""},
     {"msrt_obj_drop", "", "", "", "", 0, 1, MS_RT_RET_VOID, {MS_RT_OTHER}, false, false, false, false, false, false, false, ""},
     {"msrt_ops_add", "", "", "", "", 0, 1, MS_RT_RET_VOID, {MS_RT_INT}, true, false, false, false, false, false, false, ""},
-    {"msrt_optional_get_or", "", "", "", "", 0, 2, MS_RT_RET_OTHER, {MS_RT_ALT, MS_RT_ALT}, false, false, false, false, false, false, true, "core"},
     {"msrt_optional_is_none", "", "", "", "opt.is_some:$0>bool,not:%0>bool", 0, 1, MS_RT_RET_BOOL, {MS_RT_ALT}, false, false, false, false, false, false, false, "core"},
     {"msrt_optional_is_some", "opt.is_some", "", "", "", 0, 1, MS_RT_RET_BOOL, {MS_RT_ALT}, false, false, false, false, false, false, false, "core"},
     {"msrt_pipe_add_writer", "", "", "", "", 0, 1, MS_RT_RET_VOID, {MS_RT_INT}, false, false, false, false, false, false, false, "pipe"},
