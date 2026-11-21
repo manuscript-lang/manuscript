@@ -45,7 +45,7 @@ fn uncomment(line: &str) -> &str {
 }
 
 /// Marked fences of `files`, read as Markdown (`documentation/`) or as the
-/// comment blocks of `.ms` sources (`stdlib/`). With `all_fences`, a
+/// comment blocks of `.ms` sources (`src/stdlib/`). With `all_fences`, a
 /// `manuscript` fence without a marker is reported with an empty spec.
 fn examples_in(files: &[PathBuf], all_fences: bool) -> Vec<Example> {
     let mut found = Vec::new();
@@ -446,7 +446,7 @@ fn marked_tutorial_examples_compile_and_pass() {
 /// a complete example is checked (or run); a snippet says `"mode":"fragment"`.
 #[test]
 fn stdlib_comment_examples_are_marked_and_pass() {
-    let all = examples_in(&repo_files("stdlib", "ms"), true);
+    let all = examples_in(&repo_files("src/stdlib", "ms"), true);
     assert!(all.len() >= 10, "found only {} examples", all.len());
     let unmarked: Vec<String> = all
         .iter()

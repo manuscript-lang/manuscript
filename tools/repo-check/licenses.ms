@@ -12,7 +12,7 @@ import (
 INVENTORY := "documentation/contributing/dependency-licenses.json"
 NOTICE_ROOTS := ["website/themes/hugo-book", "skills"]
 // The licenses of the C libraries folded into the runtime archives.
-// `runtime/third_party/c-libs.lock` records the versions of all but llhttp and mimalloc, which
+// `src/runtime/third_party/c-libs.lock` records the versions of all but llhttp and mimalloc, which
 // are compiled by CMake from their vendored sources and listed below. Programs carry
 // their members, so their notices belong in the inventory. Rows are `name license`.
 C_LIBRARIES := [
@@ -24,7 +24,7 @@ VENDORED_VERSIONS := ["llhttp 9.2.1", "mimalloc 3.7.0"]
 // `name\tversion\tlicense` rows of the C libraries, versions from the lock file; an error text
 // when one is missing.
 fn c_library_rows() Result[List[String], Error]:
-	lock := "runtime/third_party/c-libs.lock"
+	lock := "src/runtime/third_party/c-libs.lock"
 	text := read_text(lock).ok_or(Error(f"{lock}: cannot read"))?
 	var rows = List[String]()
 

@@ -1,8 +1,8 @@
 // Prints the powers of ten behind the shortest float digits, as C for the runtime or as
 // Rust until the Rust runtime is deleted:
-//   ms run tools/float-table.ms -- c > runtime/core/float_table.h
+//   ms run tools/float-table.ms -- c > src/runtime/core/float_table.h
 //   ms run tools/float-table.ms > crates/ms-rt/src/float_table.rs
-// `make repo-check` does not read it; `runtime/tests/core_fmt.c` and the runtime test
+// `make repo-check` does not read it; `src/runtime/tests/core_fmt.c` and the runtime test
 // `shortest_digits_match_the_standard_formatter` fail when any entry is wrong.
 import (
 	BigInt, big_int_of_int from "@std/math/math.ms",

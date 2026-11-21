@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Prints the C sources and headers of runtime/ and compiler/ that include, directly or through other files, one of the
+"""Prints the C sources and headers of src/runtime/ and src/compiler/ that include, directly or through other files, one of the
 files named on the command line (the files themselves are printed too), one per line. An include is matched by file
 name, so a header with a common name pulls in a few extra files; that only costs lint time, never a missed file.
 toolchain/c-lint.sh uses it to run clang-tidy on what a changed header can affect. Usage: c-dependents.py <file>..."""
 import os, re, sys
 
-ROOTS = ("runtime", "compiler")
+ROOTS = ("src/runtime", "src/compiler")
 INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]', re.M)
 
 

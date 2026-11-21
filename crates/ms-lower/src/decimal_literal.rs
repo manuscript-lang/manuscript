@@ -1,6 +1,6 @@
 //! Compile-time value of a `Decimal` literal: the coefficient and exponent the runtime's `Decimal`
 //! stores (`coefficient * 10^exponent`, at most 34 significant digits, no trailing zeros). The
-//! runtime arithmetic is C (`runtime/std/decimal.c`); this only reads a literal the checker accepted.
+//! runtime arithmetic is C (`src/runtime/std/decimal.c`); this only reads a literal the checker accepted.
 
 const DIGITS: usize = 34;
 const MIN_QUANTUM: i64 = -6176;

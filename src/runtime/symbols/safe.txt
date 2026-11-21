@@ -1,0 +1,1 @@
+# ms_rt/safe.h is header-only checked helpers for src/runtime/core and compiler; no exported runtime symbols.

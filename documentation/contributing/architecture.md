@@ -5,7 +5,7 @@ weight = 1
 
 # Repository architecture
 
-`ms` is a Rust workspace under `crates/`. It compiles Manuscript to native code through the C back end (`compiler/`, linked into `ms`) and the pinned LLVM tools, for every build type. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
+`ms` is a Rust workspace under `crates/`. It compiles Manuscript to native code through the C back end (`src/compiler/`, linked into `ms`) and the pinned LLVM tools, for every build type. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
 
 ## Follow one compilation
 
@@ -24,7 +24,7 @@ weight = 1
 4. `ms-syntax` parses strictly, or with recovery for editor analysis. Standard declarations use the same parser.
 5. `ms-check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup, effects, and ownership, and keeps what lowering, docs, and editors need.
 6. Check, lint, inspect, diagram, and review stop after checking. Formatting uses only the syntax crate.
-7. `ms-lower` turns checked HIR into MIR; `ms-mir` verifies it and libms (C) optimizes it. See [lowering](compiler/lowering/_index.md).
+7. `ms-lower` turns checked HIR into MIR; `ms-mir` verifies it and libms (C) optimizes it. See [lowering](src/compiler/lowering/_index.md).
 8. `ms-clif` emits object code and `ms-build` links it with the embedded native runtime. Supported platforms use the pinned, cached `lld`, with these C-library inputs: stubs of glibc 2.28 on Linux (musl with `--static`), generated SDK stubs on macOS, and the mingw-w64 CRT on Windows.
 
 ## Know what each crate owns
@@ -41,7 +41,7 @@ weight = 1
 | `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, agent skill, docgen; language server |
 | `ms-cli` | The `ms` binary (the conformance runner is `tools/conform-run.ms`) |
 
-`stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority and the Rust implementation embeds it unchanged.
+`src/stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority and the Rust implementation embeds it unchanged.
 
 ## Keep shared behavior in one implementation
 

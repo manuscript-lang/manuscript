@@ -1,5 +1,5 @@
 //! Prints the lexer's tokens or the parser's tree for each file in a canonical text form, so the C
-//! front end in `compiler/` can be compared with it byte for byte (`make c-compiler-test`).
+//! front end in `src/compiler/` can be compared with it byte for byte (`make c-compiler-test`).
 //! Temporary tooling for the C rewrite: delete it with the Rust front end.
 
 use ms_syntax::diag::Diagnostic;

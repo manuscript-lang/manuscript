@@ -738,11 +738,11 @@ fn checker_fixes_become_quick_fixes() {
     assert_eq!(apply(source, action), source.replace("Strin ", "String "));
 }
 
-/// A checkout's `stdlib/` sources import the internal modules; opened from disk they report nothing.
+/// A checkout's `src/stdlib/` sources import the internal modules; opened from disk they report nothing.
 #[test]
 fn checkout_stdlib_sources_report_no_diagnostics() {
     let syms = ms_syntax::Names::global();
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib");
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src/stdlib");
     for file in ["io/io.ms", "net/router.ms"] {
         let path = std::fs::canonicalize(root.join(file)).expect("stdlib file");
         let source = std::fs::read_to_string(&path).expect("read");

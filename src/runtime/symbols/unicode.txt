@@ -1,0 +1,12 @@
+# Defined in src/runtime/std/unicode.c.
+msstd_unicode_display_width
+msstd_unicode_in_category
+msstd_unicode_is_alphabetic
+msstd_unicode_is_alphanumeric
+msstd_unicode_is_ascii
+msstd_unicode_is_control
+msstd_unicode_is_lowercase
+msstd_unicode_is_numeric
+msstd_unicode_is_uppercase
+msstd_unicode_is_whitespace
+msstd_utf8_is_valid

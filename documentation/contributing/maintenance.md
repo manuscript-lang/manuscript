@@ -44,7 +44,7 @@ The public contracts are syntax, standard signatures, CLI flags and statuses, di
 
 A version update creates no tag. The release workflow also attaches the release's book as `manuscript-docs-<version>.tar.gz`; a dropdown entry only links to it.
 
-The workflow also attaches the agent skill as `manuscript-skill.tar.gz` and its checksum, packed by `toolchain/package-skill.sh` from `tools/ms/data/agent-skill` and stamped with `.msversion`, so the file name is the same on every release. `website/static/install-skill.sh` and `install-skill.ps1` download it; the release rehearsal installs it on all six targets.
+The workflow also attaches the agent skill as `manuscript-skill.tar.gz` and its checksum, packed by `toolchain/package-skill.sh` from `src/ms/data/agent-skill` and stamped with `.msversion`, so the file name is the same on every release. `website/static/install-skill.sh` and `install-skill.ps1` download it; the release rehearsal installs it on all six targets.
 
 ## Keep the feedback loop healthy
 

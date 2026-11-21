@@ -35,7 +35,7 @@ Apply when: changing the HTTP reactor loop, connection ownership, or the schedul
 Evidence: [steal.rs](../../crates/ms-std-net/src/http/server/steal.rs), [watch.rs](../../crates/ms-rt/src/watch.rs), [proposal](../../proposals/http-connection-stealing.md), [results](../../bench/perf/http-tail/README.md).
 Verify: fixture `http-long-handler-does-not-hold-others`; `bench/perf/http-tail` slow mix p99 and fixed-load CPU against the dated baseline.
 
-C idle pool (`runtime/core/idle.c`, 2026-11-20), failures that cost days, in order of surprise:
+C idle pool (`src/runtime/core/idle.c`, 2026-11-20), failures that cost days, in order of surprise:
 
 - Starting every ready row of one poll makes each a task of the held thread; only one request starts per scheduler turn (`ms_idle_turn` in the idle hook), the rest stay idle rows a resting thread can take.
 - A promise started from the scheduler's own context (idle hook, poll callback) is linked to whichever task last switched away, and a task that ends cancels what it started: pool requests use `ms_promise_start_detached`.
@@ -44,4 +44,4 @@ C idle pool (`runtime/core/idle.c`, 2026-11-20), failures that cost days, in ord
 - Before closing a descriptor the thread's reactor watched, forget it (`msrt_task_forget_fd`).
 - `| tail -1` on a build hid a compile error and made every later fixture result stale; check the exit status.
 - Code run from `idle_mail` (the mail drain of a parked task) must not yield: `tidy_run` called `ms_promise_done`, which yields, and the nested yield marked the parked task RUNNING while it still waited, so its wake was dropped (3 to 7 hangs in 100, fixed in #5331). Find such a hang by dumping every task's wait token and the fd waiters per isolate from gdb: a task waiting on a promise with no registration anywhere.
-- The pool's unit test (`runtime/tests/entry_idle.c`) runs on the entry's real reactor and scheduler, not a poll(2) fake, so it builds on Windows and covers the real take path.
+- The pool's unit test (`src/runtime/tests/entry_idle.c`) runs on the entry's real reactor and scheduler, not a poll(2) fake, so it builds on Windows and covers the real take path.

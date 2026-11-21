@@ -1,0 +1,11 @@
+# Defined in src/runtime/std/encoding.c.
+msstd_encoding_ascii85_decode
+msstd_encoding_ascii85_encode
+msstd_encoding_base32_decode
+msstd_encoding_base32_encode
+msstd_encoding_base64_decode
+msstd_encoding_base64_decode_unpadded
+msstd_encoding_base64_encode
+msstd_encoding_base64_encode_unpadded
+msstd_encoding_hex_decode
+msstd_encoding_hex_encode

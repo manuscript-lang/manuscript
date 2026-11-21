@@ -1,4 +1,4 @@
-# The C half of the runtime archive: every source of runtime/{sys,core,io,net,std} for this target, compiled to
+# The C half of the runtime archive: every source of src/runtime/{sys,core,io,net,std} for this target, compiled to
 # objects, plus every member of the static libraries those sources include. The target `ms_runtime` leaves
 #   c-objects.txt   one path per line: our objects and the library members, which `ar` adds to the runtime archive
 #   c-features.txt  which optional parts the archive has (reactor), which the Rust build then leaves out
@@ -31,7 +31,7 @@ endfunction()
 
 set(_sources "")
 foreach(layer ${MS_RUNTIME_LAYERS})
-  file(GLOB_RECURSE _layer CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/runtime/${layer}/*.c")
+  file(GLOB_RECURSE _layer CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/runtime/${layer}/*.c")
   list(APPEND _sources ${_layer})
 endforeach()
 list(SORT _sources)
@@ -39,7 +39,7 @@ list(SORT _sources)
 set(_selected "")
 set(_used_libs "")
 foreach(source ${_sources})
-  file(RELATIVE_PATH _rel "${CMAKE_SOURCE_DIR}/runtime" "${source}")
+  file(RELATIVE_PATH _rel "${CMAKE_SOURCE_DIR}/src/runtime" "${source}")
   string(REPLACE "/" ";" _parts "${_rel}")
   set(_skip OFF)
   foreach(part ${_parts})
@@ -102,7 +102,7 @@ if(NOT _selected)
 endif()
 
 add_library(ms_runtime_objects OBJECT ${_selected})
-target_include_directories(ms_runtime_objects PRIVATE "${CMAKE_SOURCE_DIR}/runtime/include")
+target_include_directories(ms_runtime_objects PRIVATE "${CMAKE_SOURCE_DIR}/src/runtime/include")
 target_compile_options(ms_runtime_objects PRIVATE -O2 -Wall -Wextra -Werror ${MS_C_FLAGS})
 target_compile_definitions(ms_runtime_objects PRIVATE ${MS_LIBS_DEFINES})
 if(MS_ALLOC_STATS)

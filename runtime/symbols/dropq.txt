@@ -1,5 +1,0 @@
-# Runtime symbols of ms_rt/dropq.h defined in C (runtime/core/dropq.c); one per line.
-msrt_drop_enter
-msrt_drop_defer
-msrt_drop_leave
-msrt_slot_copy_grown
