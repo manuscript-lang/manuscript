@@ -112,6 +112,7 @@
 #include "check/check_public.c"
 #include "check/check_extern.c"
 #include "check/check_interface.c"
+#include "check/check_param_order.c"
 #include "check/check_types.c"
 #include "check/check_decls.c"
 #include "check/check_list.c"
