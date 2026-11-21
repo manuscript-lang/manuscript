@@ -62,6 +62,9 @@ static bool find_bytes(const MsList *b, const MsList *v, size_t *out) {
     return true;
 }
 
+int64_t msrt_bytes_length(const MsList *b) { return (int64_t)b->len; }
+uint8_t msrt_bytes_is_empty(const MsList *b) { return b->len == 0; }
+
 uint8_t msrt_bytes_contains(const MsList *b, const MsList *v) {
     size_t at = 0;
     return find_bytes(b, v, &at);
