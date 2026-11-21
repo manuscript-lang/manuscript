@@ -35,6 +35,8 @@ typedef struct MsBody {
 
 /* A parameter or local of this type can be called and passed around (check_closure.c). */
 bool ms_body_is_function_value(const MsBody *b, MsTy ty);
+/* Whether `ty` is `<invalid>` or built from it: an earlier diagnostic is why. */
+bool ms_body_has_invalid(const MsBody *b, MsTy ty);
 /* `callee(args)` through the function-typed binding `binding`. */
 MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding);
 /* A module function named as a value; an anonymous function. */
@@ -82,6 +84,7 @@ void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty);
 /* `written` is the explicit type arguments of `f[Int](x)`, or NULL. */
 bool ms_body_mentions_unbound(const MsBody *b, const MsInfer *in, MsTy ty); /* `ty` mentions a variable `in` has not bound */
 void ms_body_record_function_arguments(MsBody *b, const MsExpr *call, MsTy sig, const uint32_t *slot); /* a function argument has its parameter's type */
+void ms_body_close_from(MsBody *b, uint32_t first); /* the bindings declared since `first` go out of scope */
 void ms_body_check_home(MsBody *b, MsSymId sym); /* type the field defaults of the module that declares `sym` */
 bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in); /* one argument of an open signature: checked against its parameter, or binding its variables */
 MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);

@@ -226,6 +226,7 @@ void msrt_list_free_raw(MsList *v) {
 
 void msrt_list_push(MsList *v, const MsTypeDesc *d, const uint8_t *e) { ms_list_push(v, d, e); }
 int64_t msrt_list_length(const MsList *v) { return (int64_t)v->len; }
+uint8_t msrt_list_is_empty(const MsList *v) { return v->len == 0; }
 void msrt_list_append(MsList *v, const MsTypeDesc *d, const uint8_t *e) { ms_list_push(v, d, e); }
 
 void msrt_list_reserve(MsList *v, const MsTypeDesc *d, int64_t extra) {

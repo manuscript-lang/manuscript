@@ -51,7 +51,8 @@ uint8_t ms_tool_project(const ms_str *manifest, ms_list *out, ms_str *message_ou
 
 /* The files `ms fmt` formats for `target` (ms_project_format_paths): the file itself, or the modules of a directory or
  * of the project an ms.toml names, in order. Status 0 is success; 1 is an error with the Rust driver's text in
- * `message_out`; 2 means the C reader does not cover the target (a workspace root, a project with dependencies). */
+ * `message_out`; 2 means the C reader does not cover the target (a workspace root). Formatting reads only the project's own
+ * modules, so its dependencies and ms.lock are not consulted. */
 uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out);
 
 /* Resolves and fetches the dependencies of the project whose ms.toml is `manifest` (ms_install in ms/packages.h) and

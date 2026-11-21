@@ -43,6 +43,7 @@ fn main() Int:
 	marks := {true: 1}
 	if has(counts, 1) and has_name(rates, "a") and has_flag(marks, false):
 		return size(counts)
+
 	a := build() + pick(2) + named("two")
 	b := flags(true) + prices("a")
 	if tagged(1) and b > 1.0: return a
