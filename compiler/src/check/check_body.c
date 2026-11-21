@@ -1301,9 +1301,10 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     return ty;
 }
 
+/* A `var (` group only changes the layout: each entry is an ordinary binding. */
 static void body_bind_statement(MsBody *b, const MsStmt *s) {
     const MsPattern *pattern = s->u.bind.pattern;
-    if (pattern->kind != MS_P_NAME || s->u.bind.has_group) {
+    if (pattern->kind != MS_P_NAME) {
         (void)ms_body_unsupported(b);
         return;
     }
