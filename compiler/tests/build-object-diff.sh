@@ -1,14 +1,19 @@
 #!/bin/sh
-# Builds each FILE through the C object step (`ms emit` MIR text -> ms_build_object -> cc) and compares the
-# program's output and exit status with the Rust `ms run`. Linux only (cc links the object with the runtime archive).
-#   sh compiler/tests/build-object-diff.sh RUST_MS BUILD_OBJECT TOOLS RUNTIME_ARCHIVE WORKDIR FILE...
+# Builds each FILE through the C object and link steps (`ms emit` MIR text -> ms_build_object -> ms_build_link) and compares the
+# program's output and exit status with the Rust `ms run`. Linux only (the C link step joins the object with the runtime archive).
+#   sh compiler/tests/build-object-diff.sh RUST_MS BUILD_OBJECT BUILD_LINK TOOLS LLD LINKER_FILES RUNTIME_ARCHIVE WORKDIR FILE...
+# TOOLS is the directory with opt and llc, LLD the lld executable, LINKER_FILES the directory with the crt files,
+# libc.a, libunwind.a and glibc.symbols (the pinned release `ms` caches under ~/.cache/ms).
 set -eu
 rust=$(realpath "$1")
 object=$(realpath "$2")
-tools=$(realpath "$3")
-runtime=$(realpath "$4")
-work=$5
-shift 5
+link=$(realpath "$3")
+tools=$(realpath "$4")
+lld=$(realpath "$5")
+files=$(realpath "$6")
+runtime=$(realpath "$7")
+work=$8
+shift 8
 mkdir -p "$work"
 compared=0
 skipped=0
@@ -24,7 +29,7 @@ for file in "$@"; do
 		failed=1
 		continue
 	fi
-	cc -nostartfiles "$work/t.o" "$runtime" -lm -lpthread -ldl -Wl,--defsym=__dso_handle=0 -o "$work/t.out" 2>"$work/link.err" || {
+	"$link" "$work/t.o" "$work/t.out" "$lld" "$tools/llc" "$files" --input "$runtime" 2>"$work/link.err" || {
 		echo "link fails: $file: $(head -c 200 "$work/link.err")"
 		failed=1
 		continue
