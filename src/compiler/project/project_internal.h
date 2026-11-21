@@ -9,6 +9,9 @@
 /* The text of `builder` copied into `arena`; the builder is freed. */
 MsSpan ms_project_text(MsArena *arena, MsStrBuild *builder);
 
+/* `text` in double quotes with the escapes of Rust's `{:?}`. */
+MsSpan ms_project_quote(MsArena *arena, MsSpan text);
+
 void ms_project_error_message(MsProjectError *error, MsSpan message);
 void ms_project_error_path(MsProjectError *error, const char *op, MsSpan path, int os_error);
 
