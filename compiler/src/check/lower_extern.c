@@ -44,6 +44,9 @@ LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee) {
     if (ls_reports_status(lb, fn, result_ty)) {
         return ls_call(lb, fn, args, nargs, result_ty);
     }
+    if (ls_reports_found(lb, fn, result_ty)) {
+        return ls_found_call(lb, fn, args, nargs, result_ty);
+    }
     const LbVal call = lb_native_call(lb, fn, args, nargs, result_ty);
     if (lb->ok && result_ty != MIR_VOID && mir_b_ty(&lb->b, call.v) != result_ty) {
         return LB_UNSUPPORTED(lb); // the marshalled call yields something else (a handle written through `out`)
