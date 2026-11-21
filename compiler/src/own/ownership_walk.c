@@ -14,6 +14,7 @@
 #include "ms/check.h"
 #include "ms/methods.h"
 #include "ms/ownership.h"
+#include "ms/parse.h"
 
 /* Who may change a binding (`Perm` in walk.rs). */
 typedef enum Perm { PERM_MUTABLE, PERM_IMMUTABLE, PERM_BORROWED } Perm;
@@ -814,8 +815,8 @@ static void own_record_owned_borrow(OwnWalk *w, const MsExpr *e, const OwnSummar
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const MsExpr *callee_expr = e->u.call.callee;
-    if (w->facts->call_reordered[e->id]) {
-        w->supported = false; /* the arguments are paired with parameters by index below */
+    if (w->facts->call_reordered[e->id] || ms_is_index_store(w->check->names, e)) {
+        w->supported = false; /* the arguments are paired with parameters by index below; a store has its own order */
         return;
     }
     if (callee_expr->kind == MS_E_NAME && w->facts->res_kind[callee_expr->id] == MS_RES_BINDING) {

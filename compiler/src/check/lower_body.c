@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/parse.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
@@ -581,8 +582,8 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
 }
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
-    if (lb->facts->call_reordered[e->id]) {
-        return lb_unsupported(lb); // arguments are paired with parameters by index below
+    if (lb->facts->call_reordered[e->id] || ms_is_index_store(lb->c->names, e)) {
+        return lb_unsupported(lb); // arguments are paired with parameters by index below; a store has its own order
     }
     const uint32_t callee = lb->facts->call_callee[e->id];
     const uint32_t method = lb->facts->call_method[e->id];
