@@ -13,6 +13,7 @@ U128 __udivti3(U128 n, U128 d); // NOLINT(bugprone-reserved-identifier): the nam
 U128 __umodti3(U128 n, U128 d); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 I128 __modti3(I128 n, I128 d); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 I128 __divti3(I128 n, I128 d); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
+I128 __muloti4(I128 a, I128 b, int *overflow); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 I128 __ashlti3(I128 value, int count); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 I128 __ashrti3(I128 value, int count); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 I128 __lshrti3(I128 value, int count); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
@@ -126,4 +127,21 @@ __attribute__((weak)) I128 __ashrti3(I128 value, int count) { // NOLINT(bugprone
         out_low = (low >> count) | ((uint64_t)high << (64 - count));
     }
     return (I128)(((U128)(uint64_t)out_high << 64) | out_low);
+}
+
+/* The signed product, with *overflow set when it does not fit: clang calls this for __builtin_mul_overflow on 128-bit
+ * values. The wrapped product is checked by dividing back. */
+__attribute__((weak)) I128 __muloti4(I128 a, I128 b, int *overflow) { // NOLINT(bugprone-reserved-identifier): the name the compiler calls
+    const I128 least = (I128)((U128)1 << 127);
+    const I128 product = (I128)((U128)a * (U128)b);
+    if (a == 0 || b == 0) {
+        *overflow = 0;
+    } else if (a == -1) {
+        *overflow = b == least;
+    } else if (b == -1) {
+        *overflow = a == least;
+    } else {
+        *overflow = __divti3(product, a) != b;
+    }
+    return product;
 }
