@@ -508,6 +508,9 @@ static LbVal ln_call_reporting(Lb *lb, const MsRtFn *fn, const MirValue *args, u
 static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
     const MsExpr *callee = e->u.call.callee;
     const uint32_t nargs = e->u.call.args.len;
+    if (fn->fallback) {
+        return la_fallback(lb, e);
+    }
     if (fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
         return LB_UNSUPPORTED(lb);
     }
