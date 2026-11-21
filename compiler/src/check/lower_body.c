@@ -627,7 +627,10 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
 
 /* `e`, wrapped in `some` where the checker found a payload used for an Optional. */
 LbVal lb_expr(Lb *lb, const MsExpr *e) {
-    const LbVal value = lb_expr_plain(lb, e);
+    LbVal value = lb_expr_plain(lb, e);
+    if (lb->ok && lb->facts->coerce_iface[e->id] != MS_TY_NONE) {
+        value = li_box(lb, e, value);
+    }
     if (!lb->ok || !lb->facts->some_wrap[e->id]) {
         return value;
     }
