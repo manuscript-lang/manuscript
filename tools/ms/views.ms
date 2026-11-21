@@ -60,6 +60,9 @@ export type Fact:
 	// False when the C checker could not see everything the entity calls: effects,
 	// reach, permits and calls are then empty, not zero.
 	effects_known: Bool = true
+	// False when the C checker did not keep the function in its ownership walk: scopes,
+	// result_ownership and the slot modes are then empty, not zero.
+	ownership_known: Bool = true
 
 // One line of a view: a label and what hangs under it.
 export type Node:

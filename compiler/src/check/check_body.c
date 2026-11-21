@@ -47,13 +47,13 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty) {
 static bool body_is_admitted(const MsBody *b, MsTy ty);
 static bool body_is_bindable(const MsBody *b, MsTy ty);
 
-/* A `type`, `enum` or interface the program declares, whose type arguments (if it has any) are
+/* A `type`, `enum`, interface or native type (`Bytes`, `Promise[T]`) a module declares, whose type arguments (if it has any) are
  * themselves admitted. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, ty);
     const uint32_t def = tys->def[ty];
-    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT) || def == 0) {
+    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT && kind != MS_K_NATIVE) || def == 0) {
         return false;
     }
     const MsSymId sym = def - 1;
