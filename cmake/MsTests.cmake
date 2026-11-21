@@ -263,6 +263,14 @@ ms_test(conn_io_test SOURCES "${_tests}/conn_io_test.c" "${_rt}/net/conn_io.c" "
         "${_rt}/net/tls.c" ${_platform_net} "${_rt}/sys/${_os}/clock.c" OBJECTS ms_test_task_sleep ms_test_llhttp
         INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK}
         ${CMAKE_DL_LIBS} ${_pthread})
+set(_security "")
+if(APPLE)
+  set(_security "-framework Security") # the downloader reads the keychain roots
+endif()
+# The toolchain downloader of the C `ms` (compiler/src/build/fetch.c): libcurl, OpenSSL's digest and zlib, no scheduler.
+ms_test(fetch_test SOURCES "${_tests}/fetch_test.c" "${CMAKE_SOURCE_DIR}/compiler/src/build/fetch.c" "${CMAKE_SOURCE_DIR}/compiler/src/build/fetch_roots.c"
+        INCLUDES "${CMAKE_SOURCE_DIR}/compiler/include" ${MS_LIB_curl_INCLUDES} ${MS_LIB_ssl_INCLUDES} ${MS_LIB_z_INCLUDES}
+        LIBS ${MS_LIB_curl_LINK} ${_curl_extra} ${_security} ${MS_LIB_nghttp2_LINK} ${MS_LIB_z_LINK} ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS} ${_pthread})
 ms_test(addr_text_test SOURCES "${_tests}/addr_text_test.c" "${_rt}/net/addr_text.c")
 ms_test(dial_test SOURCES "${_tests}/dial_test.c" "${_rt}/net/dial.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c"
         "${_rt}/net/http1.c" "${_rt}/net/tls.c" ${_platform_net} ${_io_sources} ${_os_sources}

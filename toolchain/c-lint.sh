@@ -22,12 +22,12 @@ case "$(uname -s)" in Darwin) other='/(sys|io)/(linux|glibc|windows)/' ;; *) oth
 # std_embed.c includes a file the build generates, which a lone compile does not see.
 files=$(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2>/dev/null | grep -Ev "$other" | grep -v "^compiler/src/std_embed.c$" | sort)
 # compiler/src is one translation unit, libms.c, that includes each source once: a file included twice redeclares its
-# types, and one left out is not built. driver.c, tool.c, tool_check.c, tool_build.c, tool_search.c, tool_facts.c and std_embed.c are the entry points, outside it.
+# types, and one left out is not built. build/fetch.c and build/fetch_roots.c are standalone (they need libcurl, which libms does not link; fetch_test builds them). driver.c, tool.c, tool_check.c, tool_build.c, tool_search.c, tool_facts.c and std_embed.c are the entry points, outside it.
 included=$(sed -n 's/^#include "\(.*\.c\)"$/\1/p' compiler/src/libms.c)
 twice=$(echo "$included" | sort | uniq -d)
 [ -z "$twice" ] || { echo "c-lint: libms.c includes twice: $twice" >&2; exit 1; }
 for f in $(cd compiler/src && find . -name '*.c' | sed 's|^\./||' | sort); do
-    case "$f" in driver.c|libms.c|std_embed.c|tool.c|tool_check.c|tool_build.c|tool_search.c|tool_facts.c) continue ;; esac
+    case "$f" in driver.c|libms.c|build/fetch.c|build/fetch_roots.c|std_embed.c|tool.c|tool_check.c|tool_build.c|tool_search.c|tool_facts.c) continue ;; esac
     echo "$included" | grep -qx "$f" || { echo "c-lint: compiler/src/$f is not included by libms.c" >&2; exit 1; }
 done
 # No static function body is copied into a second file (the list of known copies only shrinks).
