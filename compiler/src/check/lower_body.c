@@ -559,11 +559,39 @@ static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
 
 /* A call of the module function `func` of signature `sig`. `receiver` is the expression a method
  * is called on (its first argument, by `var` address when the method changes it), else NULL. */
-LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating) {
+/* The default of a parameter a call leaves out, lowered where the callee declares it (its names
+ * resolve there) inside a scope named for the callee, as a frame called from this line. Only
+ * literals and `none` are lowered; any other default refuses the function. */
+static MirValue lb_default_argument(Lb *lb, const MsExpr *call, MsSymId callee, const MsExpr *def) {
+    const bool plain = def->kind == MS_E_NUMBER || def->kind == MS_E_BOOL || def->kind == MS_E_VOID ||
+                       (def->kind == MS_E_TEXT && def->u.text.len == 1 && def->u.text.ptr[0].expr == NULL);
+    const uint32_t home = lb_view_of(lb, lb->c->syms.module[callee]);
+    if (!plain || home == MS_NONE) {
+        (void)lb_unsupported(lb);
+        return MIR_NONE;
+    }
+    const MsStr name = ms_name(lb->c->names, lb->c->syms.name[callee]);
+    const MirScope scope = {.name = mir_name(lb->m, name.ptr, name.len), .file = lb->views[home].file, .parent = lb->b.loc.scope,
+                            .call_line = call->pos.line};
+    MIR_PUSH(lb->m, lb->b.f.scopes, lb->b.f.nscopes, lb->b.f.cscopes, MirScope, scope);
+    const MirLoc outer = lb->b.loc;
+    const uint32_t caller = lb_view_enter(lb, home);
+    lb->b.loc = (MirLoc){.file = lb->views[home].file, .line = def->pos.line, .col = def->pos.column, .scope = lb->b.f.nscopes};
+    const LbVal value = lb_expr(lb, def);
+    (void)lb_view_enter(lb, caller);
+    lb->b.loc = outer;
+    return value.v;
+}
+
+static LbVal lb_call_declared(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating,
+                              const MsSymId *callee) {
     const uint32_t offset = receiver != NULL ? 1u : 0u;
     const uint32_t given = e->u.call.args.len;
-    const uint32_t count = given + offset;
-    if (func == MIR_NONE || given != lb->c->tys.nparams[sig] || count != lb->m->funcs[func].nparams) {
+    const uint32_t nparams = lb->c->tys.nparams[sig];
+    const MsFunc *declared = callee == NULL ? NULL : &lb->c->syms.decl[*callee]->u.fn;
+    // A call may leave out parameters that have a default, which it evaluates itself.
+    const uint32_t count = (declared != NULL && declared->params.len == nparams && given <= nparams ? nparams : given) + offset;
+    if (func == MIR_NONE || (given != nparams && count != nparams + offset) || count != lb->m->funcs[func].nparams) {
         return lb_unsupported(lb);
     }
     const MsTyParam *params = ms_ty_params(&lb->c->tys, sig);
@@ -575,11 +603,16 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
     const MsExpr **exprs = MS_NEW_N(&lb->b.scratch, const MsExpr *, (size_t)count + 1);
     bool *by_var = MS_NEW_N(&lb->b.scratch, bool, (size_t)count + 1);
     for (uint32_t i = 0; i < count; i++) {
-        exprs[i] = i < offset ? receiver : e->u.call.args.ptr[i - offset].value;
+        exprs[i] = i < offset ? receiver : i - offset < given ? e->u.call.args.ptr[i - offset].value : NULL;
         by_var[i] = i < offset ? mutating : (params[i - offset].flags & MS_PARAM_VAR) != 0;
     }
     // Values first, then the slots of the `var` arguments, in argument order each.
     for (uint32_t i = 0; i < count && lb->ok; i++) {
+        if (exprs[i] == NULL) {
+            slots[i] = MIR_NONE;
+            args[i] = lb_default_argument(lb, e, *callee, declared->params.ptr[i - offset]->def);
+            continue;
+        }
         slots[i] = MIR_NONE;
         const bool moves = i >= offset && (params[i - offset].flags & MS_PARAM_MOVE) != 0;
         if (moves || (i < lb->m->funcs[func].nparams && lb->m->funcs[func].params[i].mode == MM_MOVE)) {
@@ -593,7 +626,7 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
         }
     }
     for (uint32_t i = 0; i < count && lb->ok; i++) {
-        if (by_var[i]) {
+        if (by_var[i] && exprs[i] != NULL) {
             args[i] = lb_var_argument(lb, exprs[i], &bindings[i], &slots[i]);
         }
     }
@@ -638,6 +671,10 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
     return (LbVal){result, owns_result || (lb_owns(lb, result_ty) && !borrowed)}; // else a String result is the caller's
 }
 
+LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating) {
+    return lb_call_declared(lb, e, func, sig, receiver, mutating, NULL);
+}
+
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const uint32_t callee = lb->facts->call_callee[e->id];
     const bool builds_record = callee != MS_NONE && lb->c->syms.kind[callee] == MS_SYM_TYPE;
@@ -667,7 +704,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (lx_is_extern(lb, callee)) {
         return lx_call(lb, e, callee);
     }
-    return lb_call_func(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false);
+    return lb_call_declared(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false, &callee);
 }
 
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
