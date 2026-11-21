@@ -64,3 +64,5 @@ void msstd_idle_drain(int64_t group) { ms_idle_drain((uintptr_t)group); }
 int64_t msstd_idle_inflight(int64_t group) { return (int64_t)ms_idle_inflight((uintptr_t)group); }
 
 void msstd_idle_cancel(int64_t group) { ms_idle_cancel((uintptr_t)group); }
+
+void msstd_idle_free(int64_t group) { ms_idle_group_free((uintptr_t)group); }

@@ -205,6 +205,9 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
                 run_module(&mir, path);
             } else {
                 printf("=== %s\n", path);
+                for (uint32_t i = 0; i < mir.nfiles; i++) { // locations name a file by number: Rust and C number them differently
+                    printf("file %u \"%.*s\"\n", i, (int)mir.files[i].len, mir.files[i].ptr);
+                }
             }
             for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
                 MsBuf out = {0};

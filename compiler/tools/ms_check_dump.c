@@ -203,7 +203,15 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
     }
 }
 
+static void print_decline(const char *file, int line) {
+    const char *base = strrchr(file, '/');
+    fprintf(stderr, "WHY %s:%d\n", base == NULL ? file : base + 1, line);
+}
+
 int main(int argc, char **argv) {
+    if (getenv("MS_WHY") != NULL) {
+        ms_body_decline_hook = print_decline;
+    }
     const bool ownership = argc >= 3 && strcmp(argv[2], "--ownership") == 0;
     const bool effects = argc >= 3 && strcmp(argv[2], "--effects") == 0;
     const int json_mode = json_mode_of(argc >= 3 ? argv[2] : "");

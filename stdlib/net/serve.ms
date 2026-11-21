@@ -45,6 +45,7 @@ import (
 	msstd_handler_take,
 	msstd_idle_cancel,
 	msstd_idle_drain,
+	msstd_idle_free,
 	msstd_idle_group,
 	msstd_idle_inflight,
 	msstd_idle_park,
@@ -214,6 +215,7 @@ type Accepting:
 fn move Accepting.close() Void!:
 	self.finish()
 	void self.drain.close()
+	msstd_idle_free(self.idle)
 
 // Stops accepting, asks the connections to finish, and waits for them.
 fn var Accepting.finish() Void:
