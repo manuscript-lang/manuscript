@@ -529,7 +529,7 @@ fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
 
 /// The file holding a linked program's DWARF: the dSYM image on macOS, the program elsewhere.
 fn debug_image(program: &std::path::Path) -> std::path::PathBuf {
-    let Some(bundle) = ms_clif::link::debug_companion_path(program).filter(|p| p.exists()) else {
+    let Some(bundle) = ms_build::link::debug_companion_path(program).filter(|p| p.exists()) else {
         return program.to_owned();
     };
     let mut images = std::fs::read_dir(bundle.join("Contents/Resources/DWARF"))

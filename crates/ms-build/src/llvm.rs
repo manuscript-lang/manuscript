@@ -7,7 +7,7 @@ mod tables;
 
 pub use obj::available;
 
-use ms_clif::{BuildOptions, Error};
+use crate::{BuildOptions, Error};
 use ms_mir::ir::Module;
 
 /// The LLVM target triple of this host. Windows executables link over the mingw-w64 CRT, so the

@@ -81,7 +81,7 @@ b0:
             "unchanged {profile:?} inputs must produce identical executable bytes"
         );
         assert_eq!(Command::new(&output).status().unwrap().code(), Some(42));
-        let companion = ms_clif::link::debug_companion_path(&output);
+        let companion = ms_build::link::debug_companion_path(&output);
         let debug = if let Some(bundle) = &companion {
             let files: Vec<_> = std::fs::read_dir(bundle.join("Contents/Resources/DWARF"))
                 .unwrap()

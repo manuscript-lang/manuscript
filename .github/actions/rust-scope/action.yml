@@ -51,7 +51,7 @@ runs:
         # toolchain/ (the glibc link stubs, llvm-mingw) is not LLVM-specific.
         # Shared code (front end, runtime, build driver, CI files) is covered by main within 30 minutes.
         llvm=false
-        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/ms-mir-llvm/|crates/ms-mir/src/|crates/ms-lower/|crates/ms-build/src/llvm|crates/ms-clif/tests/llvm_|crates/ms-cli/tests/llvm|toolchain/(lld\.lock|check-glibc-floor\.sh))'; then
+        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(crates/ms-mir-llvm/|crates/ms-mir/src/|crates/ms-lower/|crates/ms-build/src/(llvm|link)|crates/ms-clif/tests/llvm_|crates/ms-cli/tests/llvm|toolchain/(lld\.lock|check-glibc-floor\.sh))'; then
           llvm=true
         fi
         # The tutorial and stdlib examples are tested only when the files that hold them change; main runs them
