@@ -186,6 +186,21 @@ MirValue lb_copy(Lb *lb, MirValue v) {
     return mir_b_emit(&lb->b, MOP_Clone, &v, 1, one, mir_b_ty(&lb->b, v));
 }
 
+/* Whether `e` names a local or a field under one (`g`, `g.cells`): a place, which evaluating again only reads. */
+static bool lb_is_place(const Lb *lb, const MsExpr *e) {
+    while (e->kind == MS_E_MEMBER) {
+        e = e->u.member.left;
+    }
+    return e->kind == MS_E_NAME && lb->facts->res_kind[e->id] == MS_RES_BINDING;
+}
+
+LbVal lb_refresh(Lb *lb, const MsExpr *e, LbVal value) {
+    if (!lb->ok || value.owned || !lb_owns(lb, mir_b_ty(&lb->b, value.v)) || !lb_is_place(lb, e)) {
+        return value;
+    }
+    return lb_expr(lb, e);
+}
+
 /* A module constant has no statements to give its instructions a position: each expression sets its
  * own as it starts, and the position stays until the next one starts (an operator sets it again once
  * its operands are evaluated), as in the Rust lowering. */
@@ -216,6 +231,9 @@ int64_t lb_number_bits(Lb *lb, const MsExpr *e, MirTy ty, bool negate) {
 
 static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    if (ms_number_is_decimal(ms_number_canonical(&lb->m->arena, ms_name(lb->c->names, e->u.sym)))) {
+        return LB_UNSUPPORTED(lb); // a Decimal is a runtime value, not a number of the MIR
+    }
     const int64_t bits = lb_number_bits(lb, e, ty, negate);
     if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
         return (LbVal){mir_b_emit(&lb->b, MOP_FConst, NULL, 0, (MirImm){.tag = MI_FLOAT, .i = bits}, ty), false};
@@ -475,6 +493,11 @@ static bool lb_is_number_type(const Lb *lb, MirTy ty, bool decimal) {
     return text.len == strlen(want) && memcmp(text.ptr, want, text.len) == 0;
 }
 
+/* Whether `ty` is a sized integer (`Int8` to `UInt32`, not the unsigned 64-bit `UInt64` with its own instructions): its sum, difference, product and order are the checked instructions. */
+static bool lb_is_sized_int(MirTy ty) {
+    return ty == MIR_INT8 || ty == MIR_INT16 || ty == MIR_INT32 || ty == MIR_UINT8 || ty == MIR_UINT16 || ty == MIR_UINT32;
+}
+
 /* `left op right` on lowered operands (not `and` and `or`, which short-circuit). */
 static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     const MirTy ty = mir_b_ty(&lb->b, left.v);
@@ -484,8 +507,10 @@ static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     if (lb_is_number_type(lb, ty, false) || lb_is_number_type(lb, ty, true)) {
         return lb_number_apply(lb, op, left, right, lb_is_number_type(lb, ty, true));
     }
-    if (lb_owns(lb, ty) || (ty != MIR_INT && ty != MIR_FLOAT && ty != MIR_BOOL)) {
-        return LB_UNSUPPORTED(lb); // the operations of the sized numbers and the other native types are not lowered yet
+    const bool sized = lb_is_sized_int(ty);
+    const bool divides = op == MS_B_DIV || op == MS_B_REM;
+    if (lb_owns(lb, ty) || (ty != MIR_INT && ty != MIR_FLOAT && ty != MIR_BOOL && !sized) || (sized && divides)) {
+        return LB_UNSUPPORTED(lb); // sized division and the other native types' operations are not lowered yet
     }
     const MirOp arithmetic = lb_arithmetic_op(op, ty);
     if (arithmetic == MOP_COUNT) {
@@ -502,13 +527,13 @@ static MsStr lb_literal_text(const MsExpr *e) {
 }
 
 /* `a == b` and `a != b` on Strings: a comparison with a literal is `str.eq_lit` (the right literal wins),
- * any other is the runtime's `string_eq`. Both operands are borrowed. */
+ * any other is the runtime's `string_eq`. An operand that is a temporary is dropped after it. */
 static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
     const LbVal left = lb_expr(lb, e->u.bin.left);
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
     lb_at_expression(lb, e); // the operator, after its operands
-    if (!lb->ok || left.owned || right.owned) {
-        return LB_UNSUPPORTED(lb); // an owned temporary needs its drop placed
+    if (!lb->ok) {
+        return LB_FAIL;
     }
     MirValue same = MIR_NONE;
     const bool literal_right = lb_literal_text(e->u.bin.right).ptr != NULL;
@@ -525,6 +550,12 @@ static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
             return LB_UNSUPPORTED(lb);
         }
         same = call.v;
+    }
+    if (right.owned) { // an operand that is a temporary is dropped after the comparison, the right one first
+        lb_drop(lb, right.v);
+    }
+    if (left.owned) {
+        lb_drop(lb, left.v);
     }
     if (e->op == MS_B_NE) {
         same = mir_b_emit(&lb->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL);
@@ -907,6 +938,9 @@ LbVal lb_expr(Lb *lb, const MsExpr *e) {
     const bool owns = lb_owns(lb, payload);
     if (value.owned && !owns) {
         return LB_UNSUPPORTED(lb);
+    }
+    if (owns && !value.owned && lb->b.f.ret_borrowed) {
+        return LB_UNSUPPORTED(lb); // the result is a reference into the arguments: a copy would leak, a view has no MIR yet
     }
     if (owns && !value.owned) {
         value = (LbVal){lb_copy(lb, value.v), true}; // an owning Optional holds its own copy of a borrowed payload
@@ -1316,16 +1350,17 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
         lscope_own(&lb->scopes, value.v, 0); // the closure is dropped where its scope ends
     }
     const MirTy bound_ty = lb_mir_ty(lb, ty);
-    if (bound_ty != MIR_STR && !lb_is_fn(lb, bound_ty) && lb_owns(lb, bound_ty)) {
-        if (!value.owned || (s->u.bind.is_mutable && !lb_is_list(lb, bound_ty))) {
-            (void)LB_UNSUPPORTED(lb); // a record local is made from a call or a construction, and is not a `var` yet
+    const bool borrows = (lb->facts->bindings.flags[binding] & MS_BIND_BORROWS) != 0; // `y := x`, `y := f(x)` over a borrow
+    const bool lent = borrows && !value.owned && !s->u.bind.is_mutable; // a name for a borrowed value: nothing to own or drop
+    if (bound_ty != MIR_STR && !lb_is_fn(lb, bound_ty) && lb_owns(lb, bound_ty) && !lent) {
+        if (!value.owned) {
+            (void)LB_UNSUPPORTED(lb); // a record local is made from a call or a construction
             return;
         }
         if (!s->u.bind.is_mutable) {
             lscope_own(&lb->scopes, value.v, 0); // a `var` is owned at each exit with the value it holds there
         }
     }
-    const bool borrows = (lb->facts->bindings.flags[binding] & MS_BIND_BORROWS) != 0; // `y := x`, `y := f(x)` over a borrow
     if (ty == lb->string_ty && !borrows) {
         if (!value.owned && s->u.bind.value->kind == MS_E_CALL) {
             (void)LB_UNSUPPORTED(lb); // a call's borrowed result the walk did not mark as a borrowing local
@@ -1419,9 +1454,6 @@ static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
         return la_none_owned(lb, e); // `none` where the holder owns what it holds
     }
     if (lb_names_var(lb, e)) {
-        if (mir_b_ty(&lb->b, v) != MIR_STR) {
-            (void)LB_UNSUPPORTED(lb); // a `var` list that leaves is wrapped in an Optional the pass does not make yet
-        }
         return (LbVal){v, true}; // a `var` leaves with its current value: lb_own_vars skips it
     }
     if (lb_names_owned(lb, e)) {
@@ -1654,6 +1686,10 @@ static void lb_assign(Lb *lb, const MsStmt *s) {
 /* `for name in a..b`: a counter from `a` while below `b` (both evaluated once, before the loop),
  * stepped by one after the body or a `continue`. The loop variable is the counter's current value. */
 static void lb_for(Lb *lb, const MsStmt *s) {
+    if (lb->facts->each_collection[s->id]) {
+        (void)LB_UNSUPPORTED(lb);
+        return;
+    }
     if (lb->facts->each_list[s->id]) {
         lst_for(lb, s);
         return;

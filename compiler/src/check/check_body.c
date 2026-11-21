@@ -229,7 +229,7 @@ bool ms_body_same_type(const MsBody *b, MsTy x, MsTy y) {
  * Promise and Error types, which have hints of their own. */
 static bool body_is_comparable(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
-    if (body_is_value_type(b, ty) || body_is_sized_number(b, ty)) {
+    if (body_is_value_type(b, ty) || body_is_sized_number(b, ty) || ms_ty_kind(tys, ty) == MS_K_VARIABLE) {
         return true;
     }
     const MsKind kind = ms_ty_kind(tys, ty);
@@ -329,13 +329,73 @@ static bool body_int_limits(const MsBody *b, MsTy ty, uint64_t *negative, uint64
     return false;
 }
 
+/* Whether the Decimal literal `text` (`-1.5e3d`) is on the exact 34-digit grid: a coefficient of at most
+ * 34 significant digits whose quantum and magnitude stay in the exponent range. Zero is always exact. */
+static bool body_decimal_is_exact(MsStr text) {
+    const char *at = text.ptr;
+    const char *end = text.ptr + text.len;
+    if (end > at && end[-1] == 'd') {
+        end--;
+    }
+    if (at < end && (*at == '-' || *at == '+')) {
+        at++;
+    }
+    char coefficient[512];
+    size_t used = 0, fraction = 0;
+    bool dot = false;
+    for (; at < end && *at != 'e' && *at != 'E'; at++) {
+        if (*at == '.') {
+            dot = !dot && used != 0 && at + 1 < end && at[1] != 'e' && at[1] != 'E';
+            if (!dot) {
+                return false;
+            }
+        } else if (*at < '0' || *at > '9' || used + 1 >= sizeof coefficient) {
+            return false;
+        } else {
+            coefficient[used++] = *at;
+            fraction += dot ? 1 : 0;
+        }
+    }
+    long exponent = 0;
+    if (at < end) { // the exponent: an optional sign and digits only
+        at++;
+        const bool negative = at < end && *at == '-';
+        at += at < end && (*at == '-' || *at == '+') ? 1 : 0;
+        if (at == end) {
+            return false;
+        }
+        for (; at < end; at++) {
+            if (*at < '0' || *at > '9' || exponent > 100000) {
+                return false;
+            }
+            exponent = exponent * 10 + (*at - '0');
+        }
+        exponent = negative ? -exponent : exponent;
+    }
+    size_t first = 0;
+    while (first < used && coefficient[first] == '0') {
+        first++;
+    }
+    if (first == used) {
+        return used != 0;
+    }
+    size_t last = used;
+    while (coefficient[last - 1] == '0') {
+        last--;
+    }
+    const long digits = (long)(last - first);
+    const long quantum = exponent - (long)fraction + (long)(used - last);
+    return digits <= 34 && quantum >= -6176 && quantum + digits - 1 <= 6144;
+}
+
 /* The type of a number literal: a sized integer or `Float32` the context expects when the value
  * fits it, else `Int` or `Float`. A literal outside its type is a diagnostic, left to Rust. */
 static MsTy body_number(MsBody *b, const MsExpr *e, MsTy expected, bool negated) {
     MsCheck *c = b->c;
     const MsStr text = ms_number_canonical(&c->arena, ms_name(c->names, e->u.sym));
     if (ms_number_is_decimal(text)) {
-        return ms_body_unsupported(b);
+        const MsSymId decimal = ms_body_visible_builtin(b, MS_BI_DECIMAL); // the literal needs the canonical import
+        return decimal != MS_NONE && body_decimal_is_exact(text) ? c->syms.ty[decimal] : ms_body_unsupported(b);
     }
     char *digits = ms_arena_strndup(&c->arena, text.ptr, text.len);
     char *end = NULL;
@@ -1927,15 +1987,31 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
 
 /* `for name in xs` over a list of Int, Float, Bool, String or lists: the element type. An element that
  * owns something is borrowed from the list. */
-static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) {
+/* The `MapEntry[K, V]` a loop over `map` yields, or MS_TY_NONE. */
+static MsTy body_map_entry(MsBody *b, MsTy map) {
+    const MsSymId entry = ms_map_get(&b->c->std_types, ms_intern_cstr(b->c->names, "MapEntry"));
+    if (entry == MS_NONE || b->c->syms.ty[entry] == MS_TY_NONE) {
+        return MS_TY_NONE;
+    }
+    return ms_ty_apply(b->c, b->c->syms.ty[entry], ms_ty_args(&b->c->tys, map), 2);
+}
+
+static bool body_for_list_element(MsBody *b, const MsStmt *s, MsTy *element) {
+    const MsExpr *iter = s->u.each.iter;
     b->borrow_ok = iter; // `for c in s.chars()` reads the borrowing result in place
     const MsTy ty = ms_body_expr(b, iter, MS_TY_NONE);
+    if (ms_body_is_map(b, ty) || ms_body_is_set(b, ty)) {
+        // A set yields its elements, a map its entries; ownership and lowering leave the loop to Rust.
+        *element = ms_body_is_set(b, ty) ? ms_ty_args(&b->c->tys, ty)[0] : body_map_entry(b, ty);
+        b->facts->each_collection[s->id] = true;
+        return *element != MS_TY_NONE && body_is_bindable(b, *element);
+    }
     if (!ms_body_is_list(b, ty)) {
         return false;
     }
     *element = ms_ty_args(&b->c->tys, ty)[0];
     return body_is_value_type(b, *element) || body_is_sized_number(b, *element) || ms_body_is_list(b, *element) ||
-           body_is_own_nominal(b, *element);
+           body_is_own_nominal(b, *element) || ms_ty_kind(&b->c->tys, *element) == MS_K_VARIABLE;
 }
 
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
@@ -1953,7 +2029,7 @@ static bool body_for_statement(MsBody *b, const MsStmt *s) {
         }
         // The call itself stays untyped: the standard library's signatures are not resolved here yet.
         b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
-    } else if (body_for_list_element(b, iter, &element)) {
+    } else if (body_for_list_element(b, s, &element)) {
         b->facts->each_list[s->id] = true;
     } else {
         (void)ms_body_unsupported(b);
@@ -2449,6 +2525,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
     facts->each_list = MS_NEW_N(arena, bool, nodes);
     memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
+    facts->each_collection = MS_NEW_N(arena, bool, nodes);
+    memset(facts->each_collection, 0, nodes * sizeof *facts->each_collection);
     facts->call_borrows = MS_NEW_N(arena, bool, nodes);
     memset(facts->call_borrows, 0, nodes * sizeof *facts->call_borrows);
     facts->field_store_root = MS_NEW_N(arena, uint32_t, nodes);

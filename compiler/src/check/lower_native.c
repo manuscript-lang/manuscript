@@ -279,6 +279,12 @@ static bool ln_value_param(Lb *lb, LnCall *call, MsRtParam kind, const MirValue 
     if (kind == MS_RT_RECORD && (given == MIR_NONE || mir_ty_data(lb->m, given)->kind != MK_TYPE)) {
         return false;
     }
+    if (kind == MS_RT_ALT) {
+        const MirTyKind held = given == MIR_NONE ? MK_INT : mir_ty_data(lb->m, given)->kind;
+        if (held != MK_OPT && held != MK_ALT) {
+            return false;
+        }
+    }
     if (bytes) {
         call->element = MIR_UINT8;
     } else if (list) {
@@ -338,7 +344,7 @@ static uint32_t ln_without_descriptors(LnCall *call) {
 static bool ln_emit_view(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, MirValue *out) {
     const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = result_ty}, MIR_PTR);
     ln_push(call, MS_RT_OUT_STR, slot, MIR_PTR);
-    const uint32_t ext = lb_runtime_extern(lb, fn->symbol, call->types, call->count, MIR_VOID, MR_NONE, false);
+    const uint32_t ext = lb_runtime_extern(lb, fn->symbol, call->types, call->count, MIR_VOID, MR_BORROWS_ARGUMENT, false);
     (void)mir_b_call_rt(&lb->b, ext, call->operands, call->count);
     *out = lb_load(lb, slot, result_ty);
     return true;
@@ -453,9 +459,10 @@ static LbVal ln_conversion_method(Lb *lb, const MsExpr *e) {
 /* A method no runtime function implements: `abs` or `sign` of an Int, `to_string`, or a conversion to another number. */
 static LbVal ln_method_without_function(Lb *lb, const MsExpr *e, MsTy receiver_ty) {
     const MsExpr *callee = e->u.call.callee;
-    LbVal int_result;
-    if (lb_int_method(lb, e, receiver_ty, &int_result)) {
-        return int_result;
+    LbVal inline_result;
+    if (lb_int_method(lb, e, receiver_ty, &inline_result) || lb_optional_method(lb, e, receiver_ty, &inline_result) ||
+        lb_clone_method(lb, e, &inline_result)) {
+        return inline_result;
     }
     if (e->u.call.args.len != 0) {
         return LB_UNSUPPORTED(lb);
@@ -478,7 +485,7 @@ static uint32_t ln_argument_kinds(const MsRtFn *fn, MsRtParam *kinds) {
             kinds[count++] = kind;
             i++; // its payload parameter takes no argument of its own
         } else if (kind != MS_RT_DESC && kind != MS_RT_KEY_DESC && kind != MS_RT_VAL_DESC && kind != MS_RT_OUT_STR &&
-                   kind != MS_RT_OUT_LIST) {
+                   kind != MS_RT_OUT_LIST && kind != MS_RT_OUT_SCALAR) {
             kinds[count++] = kind;
         }
     }
@@ -497,15 +504,10 @@ static LbVal ln_call_reporting(Lb *lb, const MsRtFn *fn, const MirValue *args, u
     return lb_native_call(lb, fn, args, nargs, result_ty);
 }
 
-/* A method call the runtime implements: evaluates the receiver and arguments, then calls. */
-LbVal lb_native_method(Lb *lb, const MsExpr *e) {
+/* A method call the runtime function `fn` implements: evaluates the receiver and arguments, then calls. */
+static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
     const MsExpr *callee = e->u.call.callee;
-    const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
-    const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
     const uint32_t nargs = e->u.call.args.len;
-    if (fn == NULL) {
-        return ln_method_without_function(lb, e, receiver_ty);
-    }
     if (fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
         return LB_UNSUPPORTED(lb);
     }
@@ -548,6 +550,10 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
             lb_hold_temp(lb, value.v); // a borrowed argument lives to the end of the statement
         }
     }
+    if (!by_reference && nargs > 0) { // an argument may have replaced what the receiver's place holds
+        first = lb_refresh(lb, receiver, first);
+        args[0] = first.v;
+    }
     const MirTy result_ty = by_reference ? first_ty : lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (!lb->ok) {
         return LB_FAIL;
@@ -563,7 +569,23 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
         return (LbVal){mir_b_unit(&lb->b), false};
     }
     if (first.owned) {
-        lb_hold_temp(lb, first.v); // a temporary receiver lives to the end of the statement
+        if (fn->params[0] == MS_RT_ALT) {
+            lb_drop(lb, first.v); // an Optional or Result is tested in place, then released at once, as Rust does
+        } else {
+            lb_hold_temp(lb, first.v); // a temporary receiver lives to the end of the statement
+        }
     }
     return call;
+}
+
+/* A method call of a native type: instructions where the method is some, else its runtime function. */
+LbVal lb_native_method(Lb *lb, const MsExpr *e) {
+    const MsSym name = e->u.call.callee->u.member.name;
+    const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
+    LbVal item;
+    if (lst_read_method(lb, e, receiver_ty, &item)) {
+        return item;
+    }
+    const MsRtFn *fn = lb_native_function(lb, receiver_ty, name);
+    return fn == NULL ? ln_method_without_function(lb, e, receiver_ty) : ln_method_call(lb, e, fn);
 }
