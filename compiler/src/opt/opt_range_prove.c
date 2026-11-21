@@ -1,5 +1,5 @@
 /* range: proofs over the analysis results, and the edits they justify. Port of
- * crates/ms-mir/src/opt/range/prove.rs.
+ * the former Rust crates/ms-mir/src/opt/range/prove.rs.
  *
  * `idx < list.len l` is proved by a goal-directed search (`prove_le`) over the recorded relations
  * and the definitions of the values involved: constant and ranged offsets (`a[i + 1]` under

@@ -51,30 +51,6 @@ fn main() {
                 analysis(m, f, out);
             }
         }),
-        "verified" => {
-            // The files that parse and verify: the optimisation passes need a verified module.
-            for path in &args[1..] {
-                let ok = std::fs::read_to_string(path)
-                    .ok()
-                    .and_then(|t| parse_module(&t).ok())
-                    .is_some_and(|m| match ms_mir::verify::verify_module(&m) {
-                        Ok(()) => true,
-                        Err(e) => {
-                            eprintln!("unverified {path}: {}", e[0]);
-                            false
-                        }
-                    });
-                if ok {
-                    let _ = writeln!(out, "{path}");
-                }
-            }
-        }
-        "opt" => each_module(&args[2..], &mut out, |m, out| {
-            let mut m = m.clone();
-            let changed = run_pass(&args[1], &mut m);
-            let _ = writeln!(out, "changed {changed}");
-            out.push_str(&print_module(&m));
-        }),
         "boxing" => {
             for path in &args[1..] {
                 let _ = writeln!(out, "=== {path}");
@@ -341,37 +317,5 @@ fn analysis(m: &Module, f: &ms_mir::ir::Func, out: &mut String) {
                 "{bi}.{ii} res={res} views={views} owned={owned:x} args={modes}"
             );
         }
-    }
-}
-
-/// Runs one optimisation pass by name and returns whether it changed the module.
-fn run_pass(name: &str, m: &mut Module) -> bool {
-    use ms_mir::opt;
-    match name {
-        "bytetake" => opt::bytetake::run(m),
-        "strfuse" => opt::strfuse::run(m),
-        "loopslot" => opt::loopslot::run(m),
-        "optparam" => opt::optparam::run(m),
-        "ifconv" => opt::ifconv::run(m),
-        "reserve" => opt::reserve::run(m),
-        "appendfast" => opt::appendfast::run(m),
-        "sortgen" => opt::sortgen::run(m),
-        "copyelim" => opt::copyelim::run(m),
-        "copytakes" => opt::copyelim::run_takes(m),
-        "lastuse" => opt::lastuse::run(m),
-        "range" => opt::range::run(m),
-        "simplify" => opt::simplify::run(m),
-        "phis" => opt::simplify::run_phis(m),
-        "inline" => opt::inline::run(m),
-        "inlinesmall" => opt::inline::run_small(m),
-        "pipeline0" => {
-            opt::optimize(m, opt::Level::None, false);
-            true
-        }
-        "pipeline" => {
-            opt::optimize(m, opt::Level::Speed, false);
-            true
-        }
-        _ => panic!("unknown pass {name}"),
     }
 }

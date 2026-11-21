@@ -18,6 +18,7 @@ import (
 	Invocation, invocation, validate from "./args.ms",
 	rust_cli from "./bridge.ms",
 	spec, takes_value from "./cli.ms",
+	run_check from "./check_run.ms",
 	run_explain from "./explain.ms",
 	Printed, run_fmt from "./fmt.ms",
 	run_init from "./init.ms",
@@ -240,6 +241,9 @@ fn run_source_command(args: List[String], matches: Matches) Int:
 		return 2
 
 	if inv.command == "profile": return run_profile(inv)
+
+	if inv.command == "check":
+		if status := run_check(inv): return status
 
 	if inv.command == "test" or inv.command == "bench":
 		if status := run_tests(args, inv): return status

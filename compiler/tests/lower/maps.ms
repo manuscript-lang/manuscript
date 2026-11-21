@@ -11,3 +11,7 @@ fn flags() Int:
 
 fn main() Int:
 	return build() + flags()
+
+fn named() Int:
+	m := {"one": 1, "two": 2}
+	return m["two"]

@@ -2,7 +2,7 @@
 
 # C MIR passes: shallow clones share arrays, the build is one unit, allocations are not zeroed
 
-Verified (port of `crates/ms-mir/src/opt` to `compiler/src/opt_*.c`, 2026-11): every pass and both pipelines are byte-identical to Rust on the corpus under ASan/UBSan.
+Verified (port of `crates/ms-mir/src/opt` to `compiler/src/opt/opt_*.c`, 2026-11): every pass and both pipelines were byte-identical to Rust on the corpus under ASan/UBSan. The Rust optimizer is deleted; `sh compiler/tests/mir-pass-frozen.sh` checks each pass (`opt-<pass>` goldens) and both pipelines on the repository's verified `.mir` files, and `MS_MIR_REFRESH=1` rewrites a golden after a deliberate change. The goldens cover 197 modules, not the conformance corpus, so run `make conform` for a pass change. `MS_EMIT_OPT=1 ms emit` prints the C optimizer's output.
 
 - `mir_func_clone` shares operand arrays, target args and switch cases; a pass that edits a clone's instructions in place must use `mir_func_deep_clone` (`opt_inline.c`), which copies cases before targets. Anything new on `MirFunc` (scopes, names, noalias) must be added to both clones and to the substitution and inlining remaps, or it silently goes stale.
 - `libms.c` includes every `.c`, so file-scope statics need a file prefix (`il_`, `ic_`, `op_`, `sm_`...).
