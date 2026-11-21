@@ -529,6 +529,9 @@ static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns, bool spread
         fail("promise: already started");
     }
     const int64_t now = ms_sched_now();
+    if (ms_workers_stress() && age_ns < MS_WORKER_BEAT_NS) {
+        age_ns = MS_WORKER_BEAT_NS; /* stress mode queues every start aged, so any idle isolate may take it */
+    }
     if (!ms_queue_push(ms_sched()->isolate, (uint64_t)id, closure, now - age_ns)) {
         return false;
     }
@@ -625,6 +628,9 @@ static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
         /* Work on this stack notices a limit only at its own waits, so a bounded wait leaves queued work to run as a
          * task of its own, which a limit can cancel (a consumer that never waits would otherwise outlive it). */
         return false;
+    }
+    if (was_queued && ms_workers_stress()) {
+        return false; /* stress mode: the waiter parks and another isolate takes the work */
     }
     if (was_queued && !claim_queued(row)) {
         return false;
@@ -748,7 +754,7 @@ static bool idle_work(int64_t *wait_ns) {
         if (!own && !ms_isolate_live(other)) {
             continue;
         }
-        const int64_t beat = own ? MS_WORKER_OWN_BEAT_NS : MS_WORKER_BEAT_NS;
+        const int64_t beat = own ? ms_workers_own_beat() : MS_WORKER_BEAT_NS;
         uint64_t id = 0;
         void *work = NULL;
         if (ms_queue_steal(other, now - beat, &id, &work)) {
@@ -778,7 +784,7 @@ static bool work_pending(void) {
     for (uint32_t other = 0; other < MS_MAX_ISOLATES; other++) {
         const bool own = other == self;
         if ((own || ms_isolate_live(other)) &&
-            ms_queue_oldest(other) <= now - (own ? MS_WORKER_OWN_BEAT_NS : MS_WORKER_BEAT_NS)) {
+            ms_queue_oldest(other) <= now - (own ? ms_workers_own_beat() : MS_WORKER_BEAT_NS)) {
             return true;
         }
     }

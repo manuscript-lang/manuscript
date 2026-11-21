@@ -126,6 +126,10 @@ scaling-check: build
 leak-check: build
 	$(MS) run tools/leak-check.ms
 
+# Runs the e2e stdlib tests with MS_SCHED_STRESS=1 (a promise never starts on its creator; the first idle thread takes it) and fails on a file that passes without it. Every runtime has the mode. STRESS_CHANGED=<ref> runs only fixtures changed since <ref>. Nightly on main; not in PR CI.
+stress-sched: build
+	$(MS) run tools/stress-sched.ms
+
 # Cancels each e2e stdlib test at every park in turn and fails when cancellation leaves more blocks live than the uncancelled run.
 cancel-sweep: build
 	$(MS) run tools/cancel-sweep.ms
