@@ -161,6 +161,11 @@ if ! grep -q 'body_try_optional.ms 4:1$' "$out/bodies.keys"; then
     echo "FAIL bodies: ? on an Optional is no longer checked in C (compiler/tests/scope/body_try_optional.ms)"
     status=1
 fi
+# A borrowing call on a text literal, used in place, is checked in C (ownership is left to Rust).
+if ! grep -q 'body_literal_borrow.ms 1:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a borrowing call on a literal is no longer checked in C (compiler/tests/scope/body_literal_borrow.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else
