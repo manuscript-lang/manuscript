@@ -291,7 +291,8 @@ static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *
 }
 
 static bool body_is_primitive(const MsBody *b, MsTy ty) {
-    return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
+    // Every primitive with operations: `Void` and `Never` have none, the invalid type is an earlier error.
+    return ty != MS_TY_NONE && ty != b->void_ty && ty != b->never_ty && ms_ty_kind(&b->c->tys, ty) == MS_K_PRIMITIVE;
 }
 
 /* The arguments of a method call against its signature, paired with parameters by position or
