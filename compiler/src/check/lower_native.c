@@ -345,7 +345,7 @@ static bool ln_emit(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, boo
         *out = mir_b_emit(&lb->b, (MirOp)op, call->operands, kept, imm, result_ty);
         return true;
     }
-    MirTy ret = call->has_out ? result_ty : ln_ret_ty(fn->ret);
+    MirTy ret = call->has_out || fn->ret == MS_RT_RET_HANDLE ? result_ty : ln_ret_ty(fn->ret);
     if (status) {
         ret = MIR_INT;
     }
