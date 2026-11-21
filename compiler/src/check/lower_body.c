@@ -178,7 +178,7 @@ static void lb_own_temps(Lb *lb, uint32_t mark) {
 }
 
 /* Copies a borrowed String into a value the caller owns. */
-static MirValue lb_copy(Lb *lb, MirValue v) {
+MirValue lb_copy(Lb *lb, MirValue v) {
     const MirImm one = {.tag = MI_INT, .i = 1};
     return mir_b_emit(&lb->b, MOP_Clone, &v, 1, one, mir_b_ty(&lb->b, v));
 }

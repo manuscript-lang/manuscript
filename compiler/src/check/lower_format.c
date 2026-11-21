@@ -329,7 +329,7 @@ static uint32_t lf_helper(Lb *lb, MirTy ty) {
  * runtime text form, or the structural text of a record or enum; another type marks the function unsupported. */
 LbVal lt_to_string(Lb *lb, LbVal value, MsTy checked) {
     if (mir_b_ty(&lb->b, value.v) == MIR_STR) {
-        return value.owned ? value : (LbVal){lf_copy(lb, value.v), true};
+        return value.owned ? value : (LbVal){lb_copy(lb, value.v), true};
     }
     const LbVal text = lt_scalar_text(lb, checked, value.v);
     if (!lb->ok) {
