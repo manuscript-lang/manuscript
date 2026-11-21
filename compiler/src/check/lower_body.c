@@ -878,9 +878,10 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
             lscope_own(&lb->scopes, value.v, 0); // a `var` is owned at each exit with the value it holds there
         }
     }
-    if (ty == lb->string_ty) {
+    const bool borrows = (lb->facts->bindings.flags[binding] & MS_BIND_BORROWS) != 0; // `y := x`, `y := f(x)` over a borrow
+    if (ty == lb->string_ty && !borrows) {
         if (!value.owned && s->u.bind.value->kind == MS_E_CALL) {
-            lb->ok = false; // the local borrows a call's result (`y := echo(x)`): the ownership walk does not say so yet
+            lb->ok = false; // a call's borrowed result the walk did not mark as a borrowing local
             return;
         }
         if (!value.owned) {
@@ -900,7 +901,7 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
         }
     } else {
         lb->value_of[binding] = value.v;
-        if (pattern->kind == MS_P_NAME) {
+        if (pattern->kind == MS_P_NAME && !borrows) { // a borrowing local is another name for a value that has one
             lb_name_value(lb, value.v, pattern->u.name, false);
         }
     }

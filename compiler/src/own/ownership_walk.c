@@ -905,6 +905,7 @@ static bool own_bind_borrowed_call(OwnWalk *w, const MsStmt *s, uint32_t binding
     }
     own_expr(w, value, DEMAND_READ);
     own_declare_borrow(w, binding, origins[0], s->u.bind.pattern->pos, "binding of a part of it");
+    w->facts->bindings.flags[binding] |= MS_BIND_BORROWS;
     return true;
 }
 
@@ -946,6 +947,7 @@ static void own_bind(OwnWalk *w, const MsStmt *s) {
     }
     own_expr(w, s->u.bind.value, DEMAND_READ);
     own_declare_borrow(w, binding, own_resolve(w, source), s->u.bind.pattern->pos, "binding of a borrowed value");
+    w->facts->bindings.flags[binding] |= MS_BIND_BORROWS;
 }
 
 /* Whether returning the name hands back a reference into a parameter: a parameter itself, or a
