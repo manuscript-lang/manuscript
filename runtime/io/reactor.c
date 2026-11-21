@@ -189,7 +189,17 @@ static bool on_refused_ready(void *context, int fd) {
     return true;
 }
 
+#include <stdio.h>
+#include <stdlib.h>
+static int probe_on(void) {
+    static int on = -1;
+    if (on < 0) on = getenv("MS_IO_TRACE") != NULL;
+    return on;
+}
+#define PROBE(...) do { if (probe_on()) { fprintf(stderr, "[io] " __VA_ARGS__); fputc(10, stderr); fflush(stderr); } } while (0)
+
 static void on_poll(uv_poll_t *handle, int status, int events) {
+    PROBE("on_poll status=%d events=%d", status, events);
     MsIoRow *row = uv_handle_get_data((uv_handle_t *)handle);
     MsIoReactor *reactor = reactor_of((const uv_handle_t *)handle);
     if (ms_io_ring_length(reactor->ring) + EVENTS_PER_CALLBACK > EVENT_CAPACITY) {
@@ -338,6 +348,7 @@ static MsIoWatch row_open(MsIoReactor *reactor, int fd, MsIoRow **row_out) {
     const bool known = ms_sys_fd_get_nonblocking(fd, &was_nonblocking);
 #ifdef _WIN32
     const int error = uv_poll_init_socket(&reactor->loop, &row->handle, (uv_os_sock_t)fd); /* a Windows descriptor is a SOCKET */
+    PROBE("poll_init fd=%d err=%d", fd, error);
 #else
     const int error = uv_poll_init(&reactor->loop, &row->handle, fd);
 #endif
@@ -424,7 +435,9 @@ MsIoWatch ms_io_watch(int fd, uint32_t events) {
         reactor->rows[fd] = row;
     }
     row->keep = (events & MS_IO_BIT_KEEP) != 0;
-    if (uv_poll_start(&row->handle, interest_of(events), on_poll) != 0) {
+    const int start_error = uv_poll_start(&row->handle, interest_of(events), on_poll);
+    PROBE("watch fd=%d events=%u start=%d", fd, (unsigned)events, start_error);
+    if (start_error != 0) {
         row_discard(reactor, row);
         return MS_IO_WATCH_FAILED;
     }
@@ -514,6 +527,7 @@ bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *cou
         return false;
     }
     reactor->woken = false;
+    PROBE("wait timeout=%lld ring=%zu", (long long)timeout_ns, (size_t)ms_io_ring_length(reactor->ring));
 #ifdef _WIN32
     ms_io_windows_flush(reactor);
 #endif

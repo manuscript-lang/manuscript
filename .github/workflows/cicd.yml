@@ -123,13 +123,13 @@ jobs:
         # Main and manual runs split every leg into `tests` (a) and `conformance` (b) on two runners for wall
         # time. Pull requests run each Linux leg as one job (`ab`): the two halves repeat the setup and the
         # build, so one runner does the same work in less total time and uses half the runners.
-        part: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group') && '["ab"]' || '["a", "b"]') }}
+        part: ${{ fromJSON(inputs.os == 'windows' && '["b"]' || (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '["ab"]' || '["a", "b"]') }}
         leg: >-
           ${{ fromJSON(
           (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "second_pass": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "lint": true, "docs": true, "gates_part": "a"}]' ||
           inputs.os == 'linux' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "second_pass": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}]' ||
           inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "second_pass": "a"}]' ||
-          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "second_pass": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
+          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "second_pass": "b"}]' ||
           '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "second_pass": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}, {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "second_pass": "a"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025", "second_pass": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]'
           ) }}
     env:
