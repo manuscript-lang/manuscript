@@ -211,6 +211,28 @@ fn Command.usage_hint(argv: List[String]) String:
 	path := hint_path(self, argv, 0, [self.name.clone()], [])
 	return f"Run '{path.join(" ")} --help' for usage."
 
+// Runs the handler of the command `matches.path` names, as `parse` resolved it, and
+// returns its exit status. The path starts at this node's name; an unknown path is
+// an `EINVAL` error.
+fn Command.run(matches: Matches) Int!:
+	if matches.path.length() > 0 and matches.path[0] == self.name:
+		if node := node_at(self, matches.path, 1): return node.exec(matches)
+	return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
+
+// Returns the help text for the command reached by following `path` from this node,
+// or none for an unknown path.
+fn Command.help(path: List[String] = []) String?:
+	rendered := help_at(self, path, 0, [self.name.clone()], [])
+	if rendered.is_error(): return none
+
+	return rendered.get()
+
+// Returns the child named `word`, or none; the result reads the child in place.
+fn Command.child(word: String) Command?:
+	for candidate in self.children:
+		if candidate.name == word: return candidate
+	return none
+
 // The path of the deepest subcommand the words of `argv` from `start` on select at
 // `node`.
 fn hint_path(
@@ -248,28 +270,6 @@ fn hint_path(
 		break
 
 	return path.clone()
-
-// Runs the handler of the command `matches.path` names, as `parse` resolved it, and
-// returns its exit status. The path starts at this node's name; an unknown path is
-// an `EINVAL` error.
-fn Command.run(matches: Matches) Int!:
-	if matches.path.length() > 0 and matches.path[0] == self.name:
-		if node := node_at(self, matches.path, 1): return node.exec(matches)
-	return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
-
-// Returns the help text for the command reached by following `path` from this node,
-// or none for an unknown path.
-fn Command.help(path: List[String] = []) String?:
-	rendered := help_at(self, path, 0, [self.name.clone()], [])
-	if rendered.is_error(): return none
-
-	return rendered.get()
-
-// Returns the child named `word`, or none; the result reads the child in place.
-fn Command.child(word: String) Command?:
-	for candidate in self.children:
-		if candidate.name == word: return candidate
-	return none
 
 // The outcome of parsing: help text to show, or a node ready to run.
 export enum Parsed:

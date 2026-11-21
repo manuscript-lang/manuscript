@@ -262,11 +262,11 @@ static bool lq_has_custom(const Lb *lb) {
 LbVal lq_equal(Lb *lb, LbVal x, LbVal y, bool negate) {
     const MirTy ty = mir_b_ty(&lb->b, x.v);
     if (x.owned || y.owned || mir_b_ty(&lb->b, y.v) != ty || lq_has_custom(lb)) {
-        return lb_unsupported(lb); // an owned temporary needs its drop placed
+        return LB_UNSUPPORTED(lb); // an owned temporary needs its drop placed
     }
     const uint32_t func = lq_function(lb, ty);
     if (func == MIR_NONE) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirValue args[2] = {x.v, y.v};
     MirValue same = mir_b_call(&lb->b, func, args, 2);
