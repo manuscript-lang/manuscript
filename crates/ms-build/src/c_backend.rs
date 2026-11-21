@@ -218,17 +218,41 @@ fn asm_module(asm: &[u8]) -> Vec<u8> {
     module
 }
 
+/// Prints how long a build stage took to stderr when `MS_TIMINGS` is set, so a slow platform shows
+/// which stage grows (the scaling gate reports only the total).
+fn timed<T>(what: &str, stage: impl FnOnce() -> T) -> T {
+    let start = std::time::Instant::now();
+    let result = stage();
+    if std::env::var_os("MS_TIMINGS").is_some() {
+        eprintln!("timing {what}: {:.3}s", start.elapsed().as_secs_f64());
+    }
+    result
+}
+
 fn run(command: &mut Command, what: &str) -> Result<(), String> {
-    let output = command
-        .output()
-        .map_err(|e| format!("cannot run {what}: {e}"))?;
+    run_stderr(command, what).map(|_| ())
+}
+
+/// Like `run`, and gives back what the tool wrote to standard error.
+fn run_stderr(command: &mut Command, what: &str) -> Result<String, String> {
+    let output = timed(what, || command.output()).map_err(|e| format!("cannot run {what}: {e}"))?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
     if output.status.success() {
-        Ok(())
+        Ok(stderr.into_owned())
     } else {
-        Err(format!(
-            "{what} failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim_end()
-        ))
+        Err(format!("{what} failed: {}", stderr.trim_end()))
+    }
+}
+
+/// The slowest passes of an `llc -time-passes` report, as `timing llc pass` lines.
+fn print_llc_passes(report: &str) {
+    let passes = report
+        .lines()
+        .skip_while(|l| !l.contains("Pass execution timing report"))
+        .filter(|l| l.contains("%)"))
+        .take(6);
+    for line in passes {
+        eprintln!("timing llc pass: {}", line.trim());
     }
 }
 
@@ -261,13 +285,15 @@ fn compile_in(
     checks: bool,
     build: &BuildOptions,
 ) -> Result<Vec<u8>, String> {
-    let (ir_text, meta) = ir_of(
-        &ms_mir::print::print_module_unique(module),
-        &ms_mir::print::display_names(module),
-        speed,
-        checks,
-        build,
-    )?;
+    let (ir_text, meta) = timed("front end (print, optimize, emit IR)", || {
+        ir_of(
+            &ms_mir::print::print_module_unique(module),
+            &ms_mir::print::display_names(module),
+            speed,
+            checks,
+            build,
+        )
+    })?;
     let tools: PathBuf = llvm_tools(build).map_err(|e| e.to_string())?.ok_or(
         "no LLVM tools are available for this platform; set MS_LLVM_TOOLS to a directory with opt and llc",
     )?;
@@ -309,19 +335,34 @@ fn compile_in(
         "-relocation-model=pic",
         &triple,
     ]);
+    if size_tiered {
+        // AArch64 selects instructions with GlobalISel at -O0, whose Localizer pass took 56 of 61 s
+        // on a 6400-statement function (#5540); the selection-DAG path is linear in it.
+        llc.arg("-global-isel=0");
+    }
     if cfg!(target_arch = "x86_64") {
         // Loops start on a 32-byte boundary and the CPU is the portable baseline, as the Rust LLVM
         // path set them (#1871): a small loop must not straddle a cache line by link order, and the
         // unnamed "generic" CPU lacks the cheap 32-bit divide guard.
         llc.args(["-align-loops=32", "-mcpu=x86-64"]);
     }
+    let timings = std::env::var_os("MS_TIMINGS").is_some();
+    if timings {
+        llc.arg("-time-passes");
+    }
     llc.arg(&input).arg("-o").arg(&plain);
-    run(&mut llc, "llc (LLVM code generator)")?;
+    let report = run_stderr(&mut llc, "llc (LLVM code generator)")?;
+    if timings {
+        print_llc_passes(&report);
+    }
     // The fault tables: libms labels the assembly and appends them (no debug info is read). The
     // `.loc` lines are dropped, so the object carries no line tables.
     let asm = std::fs::read(&plain).map_err(|e| format!("cannot read {}: {e}", plain.display()))?;
     let wrapped = dir.join("program.asm.ll");
-    write(&wrapped, &asm_module(&with_tables(&meta, &asm)?))?;
+    write(
+        &wrapped,
+        &asm_module(&timed("fault tables", || with_tables(&meta, &asm))?),
+    )?;
     let object = dir.join("program.o");
     run(
         tool("llc")

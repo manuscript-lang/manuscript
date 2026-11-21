@@ -1,0 +1,39 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "phase": "type",
+      "message": "an extern fn cannot be generic; declare the concrete types the native symbol takes",
+      "position": {
+        "file": "generic_fn.ms",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      }
+    },
+    {
+      "code": "MS3000",
+      "subcode": "MS3000.18",
+      "phase": "type",
+      "message": "extern parameter value has type T, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them",
+      "position": {
+        "file": "generic_fn.ms",
+        "line": 1,
+        "column": 23,
+        "offset": 22
+      }
+    },
+    {
+      "code": "MS3000",
+      "phase": "type",
+      "message": "extern result has type T, which cannot cross the native boundary; an extern returns sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them, Void, or a Result of one",
+      "position": {
+        "file": "generic_fn.ms",
+        "line": 1,
+        "column": 33,
+        "offset": 32
+      }
+    }
+  ]
+}

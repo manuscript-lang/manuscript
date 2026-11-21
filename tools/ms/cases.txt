@@ -94,3 +94,5 @@ fmt --check nothere.ms
 fmt --check --json nothere.ms tools/ms/explain.ms
 fmt --check nodir/ms.toml
 fmt --check ""
+test nodir/ms.toml
+bench nodir/ms.toml

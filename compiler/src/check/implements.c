@@ -121,14 +121,16 @@ static MsFit fit_equal(FitWalk *w, MsTy ty) {
     if (builtin == MS_BI_REGEX) {
         return MS_FIT_NO;
     }
-    if (builtin == MS_BI_LIST || builtin == MS_BI_MAP || builtin == MS_BI_SET) {
+    if (builtin == MS_BI_LIST || builtin == MS_BI_MAP || builtin == MS_BI_SET || builtin == MS_BI_OPTIONAL) {
         MsFit answer = MS_FIT_YES;
         for (uint32_t i = 0; i < t->nargs[ty]; i++) {
             answer = fit_all(answer, fit_equal(w, ms_ty_args(t, ty)[i]));
         }
         return answer;
     }
-    if (builtin != MS_B_NONE || t->def[ty] == 0 || w->depth == FIT_DEPTH) {
+    // A builtin declared in source (`Result`, `Error`, `Url`) is decided by its parts; a native one is left to the Rust checker.
+    const bool declared = ms_ty_kind(t, ty) != MS_K_NATIVE;
+    if ((builtin != MS_B_NONE && !declared) || t->def[ty] == 0 || w->depth == FIT_DEPTH) {
         return ms_ty_kind(t, ty) == MS_K_NATIVE && builtin == MS_B_NONE ? MS_FIT_NO : MS_FIT_UNKNOWN;
     }
     for (uint32_t i = 0; i < w->depth; i++) {
@@ -162,7 +164,8 @@ static bool fit_vouched(const FitWalk *w, MsTy ty, MsProperty property) {
     const MsTyTable *t = &w->c->tys;
     for (uint32_t i = 0; i < m->count; i++) {
         if (m->decl[i] == NULL && m->contract[i] != MS_TY_NONE && t->id[m->receiver[i]] == t->id[ty] &&
-            ms_ty_is(t, m->contract[i], ms_property_builtin(property))) {
+            (ms_ty_is(t, m->contract[i], ms_property_builtin(property)) ||
+             (property == MS_PROP_CLONABLE && ms_ty_is(t, m->contract[i], MS_BI_DATA)))) { // Data implies Clonable
             return true;
         }
     }
@@ -186,9 +189,11 @@ static bool fit_has_deciding_row(const FitWalk *w, MsTy ty, MsProperty property)
     return false;
 }
 
+static bool fit_method(const MsMethods *m, MsTy receiver, MsSym name, uint32_t *row);
+
 /* Clonable (a value with one owner but no resource, function or handle in it) and Data (plain
  * values only) as the parts of the value decide them. Only a confident YES or NO is given: whatever
- * the Rust checker decides by a declaration it makes (an opaque type, an impl, a native's own `clone`)
+ * the Rust checker decides by a declaration it makes (an opaque type, an impl)
  * is UNKNOWN. */
 static MsFit fit_data(FitWalk *w, MsTy ty, MsProperty property) {
     const MsTyTable *t = &w->c->tys;
@@ -199,6 +204,19 @@ static MsFit fit_data(FitWalk *w, MsTy ty, MsProperty property) {
         return MS_FIT_YES;
     case MS_K_FUNCTION:
         return MS_FIT_NO;
+    case MS_K_CONTRACT:
+        // The payload of an interface value is cloned as its own type is; a resource has one owner.
+        return property == MS_PROP_CLONABLE && !ms_ty_is(t, ty, MS_BI_CLOSEABLE) ? MS_FIT_YES : MS_FIT_UNKNOWN;
+    case MS_K_VARIABLE: {
+        // A type variable has the property its bounds name.
+        const MsVarInfo *info = ms_var_info(w->c, ty);
+        for (uint32_t i = 0; info != NULL && i < info->nbounds; i++) {
+            if (ms_ty_is(t, info->bounds[i], ms_property_builtin(property))) {
+                return MS_FIT_YES;
+            }
+        }
+        return MS_FIT_UNKNOWN;
+    }
     case MS_K_NATIVE:
     case MS_K_TYPE:
     case MS_K_ALTERNATIVE:
@@ -210,12 +228,24 @@ static MsFit fit_data(FitWalk *w, MsTy ty, MsProperty property) {
         return MS_FIT_YES;
     }
     const MsBuiltin builtin = t->builtin[ty];
-    if (builtin == MS_BI_LIST || (property == MS_PROP_CLONABLE && (builtin == MS_BI_MAP || builtin == MS_BI_SET || builtin == MS_BI_OPTIONAL))) {
+    if (builtin == MS_BI_LIST || (property == MS_PROP_CLONABLE && (builtin == MS_BI_MAP || builtin == MS_BI_SET || builtin == MS_BI_OPTIONAL || builtin == MS_BI_RESULT))) {
         MsFit answer = MS_FIT_YES;
         for (uint32_t i = 0; i < t->nargs[ty]; i++) {
             answer = fit_all(answer, fit_structural(w, ms_ty_args(t, ty)[i], property));
         }
         return answer;
+    }
+    if (ms_ty_kind(t, ty) == MS_K_NATIVE && property == MS_PROP_CLONABLE) {
+        // A native is cloned through the infallible `clone` it declares, when its arguments are clonable too.
+        uint32_t row;
+        const MsMethods *m = &w->table->methods;
+        if (fit_method(m, ty, ms_intern_cstr(w->c->names, "clone"), &row) && t->result[m->ty[row]] == ty) {
+            MsFit answer = MS_FIT_YES;
+            for (uint32_t i = 0; i < t->nargs[ty]; i++) {
+                answer = fit_all(answer, fit_structural(w, ms_ty_args(t, ty)[i], property));
+            }
+            return answer;
+        }
     }
     if (ms_ty_kind(t, ty) == MS_K_NATIVE || t->def[ty] == 0 || w->depth == FIT_DEPTH) {
         return MS_FIT_UNKNOWN; // a native owns storage the runtime decides about
@@ -227,7 +257,10 @@ static MsFit fit_data(FitWalk *w, MsTy ty, MsProperty property) {
     }
     const MsSymId sym = t->def[ty] - 1;
     const MsDecl *decl = sym < w->c->syms.count ? w->c->syms.decl[sym] : NULL;
-    if (decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.opaque || fit_has_deciding_row(w, ty, property)) {
+    const bool declared = decl != NULL && (decl->kind == MS_D_TYPE || decl->kind == MS_D_ENUM);
+    const bool opaque = declared && (decl->kind == MS_D_TYPE ? decl->u.type.opaque : decl->u.enumeration.opaque);
+    // Opaque hides a type's fields from other modules, which only keeps it out of Data; a clone copies them.
+    if (!declared || (opaque && property != MS_PROP_CLONABLE) || fit_has_deciding_row(w, ty, property)) {
         return MS_FIT_UNKNOWN;
     }
     const MsDef def = *ms_def(w->c, sym); // by value: a later ms_def may move the rows
@@ -295,14 +328,25 @@ static bool fit_method(const MsMethods *m, MsTy receiver, MsSym name, uint32_t *
  * UNKNOWN, since the C tables do not compare labels and `var`-ness the way the Rust checker does. */
 static MsFit fit_shape(MsCheck *c, const MsMethodTable *table, MsTy receiver, MsTy contract) {
     const MsTyTable *t = &c->tys;
-    if (t->def[contract] == 0 || t->nargs[contract] != 0) {
+    // The interface's own variables take the arguments of this instance (`Source[String]`), and `Self` the receiver.
+    enum { MAX_VARS = 8 };
+    uint32_t nvars = 0;
+    const MsTy *own = t->def[contract] == 0 ? NULL : ms_sym_vars(c, t->def[contract] - 1, &nvars);
+    const uint32_t nargs = t->nargs[contract];
+    if (t->def[contract] == 0 || (nargs != 0 && (own == NULL || nvars < nargs)) || nargs >= MAX_VARS) {
         return MS_FIT_UNKNOWN;
     }
     const MsOperations *ops = ms_interface_operations(table, t->def[contract] - 1);
     if (ops == NULL) {
         return MS_FIT_UNKNOWN;
     }
-    const MsTy self = ms_self_variable(c, contract);
+    MsTy vars[MAX_VARS], args[MAX_VARS];
+    for (uint32_t i = 0; i < nargs; i++) {
+        vars[i] = own[i];
+        args[i] = ms_ty_args(t, contract)[i];
+    }
+    vars[nargs] = ms_self_variable(c, contract);
+    args[nargs] = receiver;
     MsFit answer = MS_FIT_YES;
     for (uint32_t i = 0; i < ops->count; i++) {
         uint32_t row;
@@ -313,7 +357,7 @@ static MsFit fit_shape(MsCheck *c, const MsMethodTable *table, MsTy receiver, Ms
             return MS_FIT_NO;
         }
         MsArena scratch = {0};
-        const MsTySubst subst = {.vars = &self, .args = &receiver, .count = 1};
+        const MsTySubst subst = {.vars = vars, .args = args, .count = nargs + 1};
         const MsTy wanted = ms_ty_subst(&c->tys, &scratch, ops->items[i].ty, &subst);
         ms_arena_free(&scratch);
         answer = wanted == table->methods.ty[row] ? answer : MS_FIT_UNKNOWN;
@@ -324,6 +368,11 @@ static MsFit fit_shape(MsCheck *c, const MsMethodTable *table, MsTy receiver, Ms
 MsFit ms_implements_equal(MsCheck *c, const MsMethodTable *table, MsTy ty) {
     FitWalk walk = {.c = c, .table = table};
     return fit_structural(&walk, ty, MS_PROP_EQUAL);
+}
+
+MsFit ms_implements_property(MsCheck *c, const MsMethodTable *table, MsTy ty, MsProperty property) {
+    FitWalk walk = {.c = c, .table = table};
+    return ms_ty_kind(&c->tys, ty) == MS_K_PRIMITIVE ? fit_primitive_property(&c->tys, ty, property) : fit_structural(&walk, ty, property);
 }
 
 MsFit ms_implements(MsCheck *c, const MsMethodTable *table, MsTy receiver, MsTy contract) {

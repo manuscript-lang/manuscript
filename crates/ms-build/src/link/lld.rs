@@ -365,6 +365,8 @@ fn macos_arguments(
         "Security",
         "-framework",
         "CoreFoundation",
+        "-framework",
+        "SystemConfiguration",
     ]);
     Ok(sdk)
 }

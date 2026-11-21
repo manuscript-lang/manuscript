@@ -302,15 +302,12 @@ static bool ln_param(Lb *lb, LnCall *call, const MsRtFn *fn, uint32_t *at, const
         return false;
     }
     if (kind == MS_RT_ERR || kind == MS_RT_OUT_HANDLE || kind == MS_RT_OUT_SCALAR ||
-        (status != NULL && (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST))) {
+        (status != NULL && (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST || kind == MS_RT_OUT_RECORD))) {
         return ln_slot_param(lb, call, kind, status, slots);
     }
     if (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST || (kind == MS_RT_OUT_RECORD && status == NULL)) {
         call->has_out = true;
         return true;
-    }
-    if (kind == MS_RT_OUT_RECORD) {
-        return false; // a record beside a status needs the status split to build it
     }
     if (kind == MS_RT_DESC || kind == MS_RT_KEY_DESC || kind == MS_RT_VAL_DESC) {
         call->is_desc[call->count] = true;
@@ -336,8 +333,19 @@ static uint32_t ln_without_descriptors(LnCall *call) {
     return kept;
 }
 
+/* A call of a function that returns a view of its receiver: it writes the view through a slot, and the load yields a
+ * value the MIR does not own, so nothing releases it. */
+static bool ln_emit_view(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, MirValue *out) {
+    const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = result_ty}, MIR_PTR);
+    ln_push(call, MS_RT_OUT_STR, slot, MIR_PTR);
+    const uint32_t ext = lb_runtime_extern(lb, fn->symbol, call->types, call->count, MIR_VOID, MR_NONE, false);
+    (void)mir_b_call_rt(&lb->b, ext, call->operands, call->count);
+    *out = lb_load(lb, slot, result_ty);
+    return true;
+}
+
 /* Emits the call, instruction or sequence the operands of `call` make for `fn`. */
-static bool ln_emit(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, bool status, MirValue *out) {
+static bool ln_emit(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, const LbNativeStatus *status, MirValue *out) {
     const bool is_op = fn->op[0] != '\0';
     const int op = is_op ? mir_op_from_name(fn->op, strlen(fn->op)) : -1;
     if (is_op && op < 0) {
@@ -364,9 +372,12 @@ static bool ln_emit(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, boo
         *out = mir_b_emit(&lb->b, (MirOp)op, call->operands, kept, imm, result_ty);
         return true;
     }
+    if (fn->borrows && call->has_out && status == NULL) {
+        return ln_emit_view(lb, fn, call, result_ty, out);
+    }
     MirTy ret = call->has_out || fn->ret == MS_RT_RET_HANDLE ? result_ty : ln_ret_ty(fn->ret);
-    if (status) {
-        ret = MIR_INT;
+    if (status != NULL) {
+        ret = status->found ? MIR_BOOL : MIR_INT;
     }
     const uint32_t ext = lb_runtime_extern(lb, entry->symbol, call->types, call->count, ret, role, entry->pure);
     *out = mir_b_call_rt(&lb->b, ext, call->operands, call->count);
@@ -389,19 +400,19 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
         }
     }
     const bool missing_result = call.has_out && (result_ty == MIR_NONE || result_ty == MIR_VOID);
-    if (call.next != nargs || missing_result || fn->twinned) { // a twinned result may be a view into an argument; choosing the twin is not lowered here yet
+    if (call.next != nargs || missing_result || (fn->twinned && !lb->twin_ok)) { // a twinned result may be a view into an argument; choosing the twin is not lowered here yet
         return false;
     }
-    return ln_emit(lb, fn, &call, result_ty, status != NULL, out);
+    return ln_emit(lb, fn, &call, result_ty, status, out);
 }
 
-/* A call of `fn` for the evaluated arguments; the result is owned when its type is. */
+/* A call of `fn` for the evaluated arguments; the result is owned when its type is, unless `fn` returns a view of its receiver. */
 LbVal lb_native_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty) {
     MirValue result = MIR_NONE;
     if (!ln_marshal(lb, fn, args, nargs, result_ty, NULL, NULL, &result)) {
         return LB_UNSUPPORTED(lb);
     }
-    return (LbVal){result, lb_owns(lb, result_ty)};
+    return (LbVal){result, lb_owns(lb, result_ty) && !fn->borrows};
 }
 
 /* A call of a function that reports failure by a status (`-> u8`, 0 for success): the status, an int, is the
@@ -439,21 +450,37 @@ static LbVal ln_conversion_method(Lb *lb, const MsExpr *e) {
     return converted;
 }
 
+/* A method no runtime function implements: `abs` or `sign` of an Int, `to_string`, or a conversion to another number. */
+static LbVal ln_method_without_function(Lb *lb, const MsExpr *e, MsTy receiver_ty) {
+    const MsExpr *callee = e->u.call.callee;
+    LbVal int_result;
+    if (lb_int_method(lb, e, receiver_ty, &int_result)) {
+        return int_result;
+    }
+    if (e->u.call.args.len != 0) {
+        return LB_UNSUPPORTED(lb);
+    }
+    if (ms_name_is(lb->c->names, callee->u.member.name, "to_string")) {
+        const LbVal value = lb_expr(lb, callee->u.member.left); // a String is its own text, a scalar prints through its runtime form
+        return lb->ok ? lt_to_string(lb, value, receiver_ty) : LB_FAIL;
+    }
+    return ln_conversion_method(lb, e);
+}
+
 /* A method call the runtime implements: evaluates the receiver and arguments, then calls. */
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
     const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
     const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
     const uint32_t nargs = e->u.call.args.len;
-    if (fn == NULL && nargs == 0 && ms_name_is(lb->c->names, callee->u.member.name, "to_string")) {
-        const LbVal value = lb_expr(lb, callee->u.member.left); // a String is its own text, a scalar prints through its runtime form
-        return lb->ok ? lt_to_string(lb, value, receiver_ty) : LB_FAIL;
+    if (fn == NULL) {
+        return ln_method_without_function(lb, e, receiver_ty);
     }
-    if (fn == NULL && nargs == 0) {
-        return ln_conversion_method(lb, e);
-    }
-    if (fn == NULL || fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
+    if (fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
         return LB_UNSUPPORTED(lb);
+    }
+    if (lb->facts->call_borrows[e->id] && !fn->borrows && lb->iterable != e) {
+        return LB_UNSUPPORTED(lb); // a borrowed list used outside a `for` is lent by a twin that is not lowered yet
     }
     const MsExpr *receiver = callee->u.member.left;
     const bool by_reference = fn->params[0] == MS_RT_LIST_VAR;
@@ -506,7 +533,9 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     if (!lb->ok) {
         return LB_FAIL;
     }
+    lb->twin_ok = lb->iterable == e;
     const LbVal call = lb_native_call(lb, fn, args, nargs + 1, result_ty);
+    lb->twin_ok = false;
     if (!lb->ok) {
         return LB_FAIL;
     }

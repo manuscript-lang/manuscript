@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1001",
+      "phase": "parse",
+      "message": "literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}",
+      "position": {
+        "file": "098.ms",
+        "line": 17,
+        "column": 71,
+        "offset": 640
+      }
+    }
+  ]
+}

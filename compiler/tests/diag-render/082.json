@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "unexpected source character '~'; this character is not part of Manuscript's syntax outside text",
+      "position": {
+        "file": "082.ms",
+        "line": 4,
+        "column": 26,
+        "offset": 183
+      },
+      "end": {
+        "file": "082.ms",
+        "line": 4,
+        "column": 27,
+        "offset": 184
+      }
+    }
+  ]
+}

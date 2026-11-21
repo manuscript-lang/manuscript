@@ -154,6 +154,18 @@ static MirValue la_field(Lb *lb, MirValue subject, uint32_t alt, uint32_t index,
     return taken;
 }
 
+/* The Ok value of an owned Result, moved out; the rest of it is released. (`la_field` also reads it first, as the
+ * Rust lowering does for `?` and `.get()`; an `if name := result` binding does not.) */
+MirValue la_take_ok(Lb *lb, MirValue subject) {
+    const MirTyData *data = mir_ty_data(lb->m, mir_b_ty(&lb->b, subject));
+    const MirTy held = lb->m->alts[data->id].cases[LA_OK].fields[0].ty;
+    const MirImm field = {.tag = MI_ALTFIELD, .a = data->id, .b = LA_OK, .c = 0};
+    const MirValue taken = mir_b_emit(&lb->b, MOP_AltTake, &subject, 1, field, held);
+    const MirImm mask = {.tag = MI_ALTMASK, .a = data->id, .b = LA_OK, .c = 1};
+    (void)mir_b_emit(&lb->b, MOP_AltRelease, &subject, 1, mask, MIR_NONE);
+    return taken;
+}
+
 /* The value `subject` holds, once `la_test` found it present. A `borrowed` subject (a name, a parameter) keeps
  * its payload, which is read in place; an owned Optional is not unwrapped here when its payload is owned. */
 MirValue la_payload(Lb *lb, MirValue subject, bool borrowed) {
@@ -162,7 +174,7 @@ MirValue la_payload(Lb *lb, MirValue subject, bool borrowed) {
     const MirTy held = data->kind == MK_OPT ? data->elem : lb->m->alts[data->id].cases[LA_OK].fields[0].ty;
     if (data->kind == MK_OPT) {
         if (lb_owns(lb, held) && !borrowed) {
-            lb->ok = false; // taking an owned payload out of an owned Optional is not lowered yet
+            (void)LB_UNSUPPORTED(lb); // taking an owned payload out of an owned Optional is not lowered yet
             return subject;
         }
         return mir_b_emit(&lb->b, MOP_OptGet, &subject, 1, (MirImm){0}, data->elem);

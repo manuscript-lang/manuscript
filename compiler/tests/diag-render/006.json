@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1001",
+      "phase": "parse",
+      "message": "unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break",
+      "position": {
+        "file": "006.ms",
+        "line": 2,
+        "column": 16,
+        "offset": 73
+      }
+    }
+  ]
+}

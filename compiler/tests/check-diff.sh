@@ -131,6 +131,41 @@ if ! grep -q 'body_closure_methods.ms 1:1$' "$out/bodies.keys" || ! grep -q 'bod
     echo "FAIL bodies: a closure method, a MapEntry list or a Set is no longer checked in C (compiler/tests/scope/body_closure_methods.ms)"
     status=1
 fi
+# A sized integer given where another type is expected, and the reverse, are reported in C.
+if ! grep -q 'body_sized_mismatch.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_sized_mismatch.ms 4:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a sized integer used as another type is no longer checked in C (compiler/tests/scope/body_sized_mismatch.ms)"
+    status=1
+fi
+# A number literal given for an Optional of a sized number takes that type and is wrapped.
+if ! grep -q 'body_optional_sized.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_optional_sized.ms 10:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a literal given for an Optional sized number is no longer checked in C (compiler/tests/scope/body_optional_sized.ms)"
+    status=1
+fi
+# `Void` as a type argument (`Result[Void, Error]`) is an annotation C accepts.
+if ! grep -q 'body_void_argument.ms 1:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a Void type argument is no longer checked in C (compiler/tests/scope/body_void_argument.ms)"
+    status=1
+fi
+# A value given for an instance of a generic interface (`Src[Int]`) that it fits by its methods is claimed.
+if ! grep -q 'body_generic_interface_shape.ms 17:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a value for a generic interface instance is no longer checked in C (compiler/tests/scope/body_generic_interface_shape.ms)"
+    status=1
+fi
+# The smallest Int (`-9223372036854775808`) is a literal of its own.
+if ! grep -q 'body_int_minimum.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_int_minimum.ms 4:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: the smallest Int literal is no longer checked in C (compiler/tests/scope/body_int_minimum.ms)"
+    status=1
+fi
+# `?` on an Optional in a function that returns one is checked in C.
+if ! grep -q 'body_try_optional.ms 4:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: ? on an Optional is no longer checked in C (compiler/tests/scope/body_try_optional.ms)"
+    status=1
+fi
+# A borrowing call on a text literal, used in place, is checked in C (ownership is left to Rust).
+if ! grep -q 'body_literal_borrow.ms 1:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a borrowing call on a literal is no longer checked in C (compiler/tests/scope/body_literal_borrow.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else

@@ -187,18 +187,21 @@ LbVal ls_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, Mi
     const MirTy error = alt->cases[LS_ERROR].fields[0].ty;
     bool has_out = false;
     bool out_handle = false;
+    bool out_record = false;
     for (uint32_t i = 0; i < fn->nparams; i++) {
         out_handle = out_handle || fn->params[i] == MS_RT_OUT_HANDLE;
+        out_record = out_record || fn->params[i] == MS_RT_OUT_RECORD;
         has_out = has_out || fn->params[i] == MS_RT_OUT_STR || fn->params[i] == MS_RT_OUT_LIST ||
-                  fn->params[i] == MS_RT_OUT_HANDLE || fn->params[i] == MS_RT_OUT_SCALAR;
+                  fn->params[i] == MS_RT_OUT_HANDLE || fn->params[i] == MS_RT_OUT_SCALAR || fn->params[i] == MS_RT_OUT_RECORD;
     }
     const bool plain = payload == MIR_STR || payload == MIR_BYTES || payload == MIR_INT || payload == MIR_FLOAT || payload == MIR_BOOL ||
-                       mir_ty_data(lb->m, payload)->kind == MK_LIST ||
-                       (out_handle && mir_ty_data(lb->m, payload)->kind == MK_OBJ);
+                       payload == MIR_UINT64 || mir_ty_data(lb->m, payload)->kind == MK_LIST ||
+                       (out_handle && mir_ty_data(lb->m, payload)->kind == MK_OBJ) ||
+                       (out_record && mir_ty_data(lb->m, payload)->kind == MK_TYPE);
     if ((payload == MIR_VOID) == has_out || (has_out && !plain)) {
         return LB_UNSUPPORTED(lb);
     }
-    const LbNativeStatus status = {has_out ? payload : MIR_NONE};
+    const LbNativeStatus status = {.out_ty = has_out ? payload : MIR_NONE};
     LbNativeSlots slots;
     const MirValue raw = lb_native_status_call(lb, fn, args, nargs, &status, &slots);
     if (!lb->ok) {
@@ -237,4 +240,45 @@ LbVal ls_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, Mi
     mir_b_seal_block(b, join);
     mir_b_switch_to(b, join);
     return (LbVal){result, owns};
+}
+
+bool ls_reports_found(Lb *lb, const MsRtFn *fn, MirTy result_ty) {
+    if (fn->ret != MS_RT_RET_BOOL || result_ty == MIR_VOID || mir_ty_data(lb->m, result_ty)->kind != MK_OPT) {
+        return false;
+    }
+    const MirTy elem = mir_ty_data(lb->m, result_ty)->elem;
+    bool has_out = false;
+    for (uint32_t i = 0; i < fn->nparams; i++) {
+        has_out = has_out || fn->params[i] == MS_RT_OUT_SCALAR;
+    }
+    return has_out && (elem == MIR_INT || elem == MIR_FLOAT || elem == MIR_BOOL);
+}
+
+/* `some(value)` when the native reports it found one, else `none`. */
+LbVal ls_found_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty) {
+    const MirTy elem = mir_ty_data(lb->m, result_ty)->elem;
+    const LbNativeStatus status = {.out_ty = elem, .found = true};
+    LbNativeSlots slots;
+    const MirValue found = lb_native_status_call(lb, fn, args, nargs, &status, &slots);
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
+    MirBuilder *b = &lb->b;
+    const MirBlock yes = mir_b_new_block(b);
+    const MirBlock no = mir_b_new_block(b);
+    mir_b_br_if(b, found, yes, NULL, 0, no, NULL, 0);
+    mir_b_seal_block(b, yes);
+    mir_b_seal_block(b, no);
+    const MirBlock join = mir_b_new_block(b);
+    const MirValue result = mir_b_add_block_param(b, join, result_ty, MM_BORROW);
+    mir_b_switch_to(b, yes);
+    const MirValue value = lo_take_out(lb, slots.out, elem);
+    const MirValue some = mir_b_emit(b, MOP_OptSome, &value, 1, (MirImm){0}, result_ty);
+    mir_b_br(b, join, &some, 1);
+    mir_b_switch_to(b, no);
+    const MirValue none = mir_b_emit(b, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, result_ty);
+    mir_b_br(b, join, &none, 1);
+    mir_b_seal_block(b, join);
+    mir_b_switch_to(b, join);
+    return (LbVal){result, lb_owns(lb, result_ty)};
 }

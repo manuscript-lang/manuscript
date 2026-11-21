@@ -28,7 +28,7 @@ import (
 	run_bench, run_test from "./test/run.ms",
 	run_verify from "./verify.ms",
 	run_watch from "./watch.ms",
-	root_members from "./workspace.ms",
+	message_of, root_workspace from "./workspace.ms",
 )
 
 fn out(text: String) Void:
@@ -74,39 +74,33 @@ fn is_source_command(command: String) Bool:
 		"profile"
 	].contains(command)
 
-// Runs `ms test` or `ms bench` in the front; none when the Rust command line must:
-// several targets that are not all manifests, or a workspace root whose members need
-// the Rust command line to explain them.
-fn run_tests(root: Command, matches: Matches, inv: Invocation) Int?:
+// Runs `ms test` or `ms bench`: one file, one project, or several manifests and
+// workspace roots, whose members each run as this command line again.
+fn run_tests(root: Command, matches: Matches, inv: Invocation) Int:
 	bench := inv.command == "bench"
 	manifests := inv.targets.filter(fn target: target.ends_with("ms.toml"))
+	if inv.targets.length() > 1 and manifests.length() == inv.targets.length(): return run_members(
+		inv,
+		manifests,
+		member_lines(root, matches, manifests),
+	)
+	if not inv.filename.ends_with("ms.toml"): return run_one(inv)
 
-	if inv.targets.length() > 1:
-		if bench: return none
-		if manifests.length() == inv.targets.length(): return run_members(
-			inv,
-			manifests,
-			member_lines(root, matches, manifests),
-		)
+	space := root_workspace(inv.filename)
 
-	if not inv.filename.ends_with("ms.toml"):
-		return if bench: run_bench(inv) else: run_test(inv)
+	if space.is_error():
+		err(f"ms {inv.command}: {message_of(space.err())}\n")
+		return 1
 
-	text := read_file(inv.filename).wait()
-	if text.is_error(): return none
+	if space.get().is_none(): return run_one(inv)
 
-	members := root_members(inv.filename)
-
-	if members.is_none():
-		if text.get().decode_utf8().get_or("").contains("[workspace]"): return none
-		return if bench: run_bench(inv) else: run_test(inv)
-
+	members := space.get().get().members.clone()
 	var found = List[String]()
-	for member in members.get(): found.append(member.manifest.clone())
+	for member in members: found.append(member.manifest.clone())
 
 	if bench:
 		var names = List[String]()
-		for member in members.get(): names.append(member.name.clone())
+		for member in members: names.append(member.name.clone())
 		err(
 			f"ms bench: {inv.filename} is a workspace root; name one member's ms.toml instead, such as {found[0]} (members: {names.join(", ")})\n"
 		)
@@ -122,6 +116,9 @@ fn run_tests(root: Command, matches: Matches, inv: Invocation) Int?:
 	single.filename = found[0].clone()
 	single.targets = [found[0].clone()]
 	return run_test(single)
+
+fn run_one(inv: Invocation) Int:
+	return if inv.command == "bench": run_bench(inv) else: run_test(inv)
 
 // The command line of each manifest's own run.
 fn member_lines(
@@ -158,7 +155,8 @@ fn run_source_command(root: Command, matches: Matches) Int:
 	if inv.command == "run":
 		if status := run_program(inv): return status
 	if inv.command == "test" or inv.command == "bench":
-		if status := run_tests(root, matches, inv): return status
+		return run_tests(root, matches, inv)
+
 	return delegate(rust_arguments(root, matches))
 
 export fn run(given: List[String]) Int:

@@ -41,6 +41,7 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [Checks and list growth are MIR; the backends only lower](checks-and-list-growth-are-mir-the-backends-only-lower.md)
 - [The C front end is diffed against the Rust one, not rewritten from the docs](the-c-front-end-is-diffed-against-rust-not-reimplemented-from-the-docs.md): `make c-compiler-test` compares tokens (later trees) and diagnostics byte for byte on the corpus and on mutants.
 - [The C body checker admits maps by key and value type](the-c-body-checker-admits-maps-by-key-and-value-type.md): annotations and literals; ownership and lowering follow.
+- [Checker scratch never goes in the checker arena](checker-scratch-never-goes-in-the-checker-arena.md): per-call scratch there is kept forever; how to find such a leak under mimalloc.
 - [The C lowering of a whole program sets its entry](the-c-lowering-of-a-whole-program-sets-its-entry.md): `main` or its `main.1` wrapper; `Void!` ends with `ok(void)`; the census compares files by name.
 - [The C lowering makes one copy per type-argument list](the-c-lowering-makes-one-copy-per-type-argument-list.md): the checker records the type arguments; copies are named by creation order and compared by signature.
 - [The C lowering holds statement temporaries and reads `xs[i]` as an index](the-c-lowering-holds-statement-temporaries-and-reads-name-indexes.md): `ms_expr_index`, `lb_hold_temp` and `lst_for` follow the Rust lowering.
@@ -48,6 +49,8 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [The C back end runs inside `ms`, and `llc` is its assembler](the-c-back-end-runs-in-process-and-llc-is-the-assembler.md): libms is linked, not spawned; assembly goes through `module asm` because the pinned tools have no assembler.
 - [The C ownership classifier learns closeable types from method rows](c-checker-learns-closeable-types-from-method-rows.md): why the checker refused every type that closes, what the walk and lowering still decline.
 - [An extern type is source-constructible when its declaration says so](an-extern-type-is-source-constructible-by-marker-comment.md): `// ms: constructible` replaces a name list for `StringBuilder()`.
+- [A native whose result points into its receiver says so with `// ms: borrows`](a-native-whose-result-points-into-its-receiver-says-so-by-marker.md): replaces the name list; used in place only, lowering declines.
+- [An extern type declares its plain-data layout with `// ms: fields`](an-extern-type-declares-its-data-layout-by-marker.md): how C lowers `Decimal` as a three-word record; why not a record declaration.
 - [Native types are declared `extern type`, never recognised by name](native-types-are-declared-extern-not-recognised-by-name.md): `List` is `extern type List[T]:` with its constructor field; scope binds a native module's type to the loader's symbol, not a twin.
 - [C `ms check` answers only what the corpus diff proves](c-ms-check-answers-only-what-the-corpus-diff-proves.md): guards for unported checks, the two traps the diff found, how to remove a guard.
 - [The C loader attaches packages; package rules need a complete effect scan](the-c-loader-attaches-packages-but-the-checker-does-not-enforce-them-yet.md): what `ms_project_load_packages` and `ms_graph_check_packages` cover, and when the build must fall back.

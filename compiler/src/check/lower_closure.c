@@ -94,11 +94,70 @@ static uint32_t lb_thunk(Lb *lb, uint32_t func) {
     return mir_add_func(lb->m, &f);
 }
 
+/* The register value of a constant scalar item of a list (a number, a negated number or a Bool) at
+ * the element type; false for anything else. */
+static bool lb_const_scalar(Lb *lb, const MsExpr *item, MirTy elem, int64_t *out) {
+    if (item->kind == MS_E_BOOL) {
+        *out = item->u.flag ? 1 : 0;
+        return elem == MIR_BOOL;
+    }
+    const bool negated = item->kind == MS_E_UNARY && (MsUnaryOp)item->op == MS_U_NEG;
+    const MsExpr *number = negated ? item->u.bin.left : item;
+    if (number->kind != MS_E_NUMBER || elem == MIR_BOOL) {
+        return false;
+    }
+    *out = lb_number_bits(lb, number, elem, negated);
+    return true;
+}
+
+/* A constant that is a list literal of scalar constants, read from static data: each use of a
+ * constant evaluates its value afresh, which for such a list is an allocation and a copy that a read
+ * never needed. The view is not owned. MIR_NONE when the constant is anything else. */
+static MirValue lb_constant_view(Lb *lb, const MsDecl *decl, MirTy ty) {
+    const MsExpr *value = decl->u.konst.value;
+    if (value->kind != MS_E_LIST || value->u.list.len == 0 || !lb_is_list(lb, ty)) {
+        return MIR_NONE;
+    }
+    const MirTy elem = mir_ty_data(lb->m, ty)->elem;
+    const bool scalar = elem == MIR_BOOL || elem == MIR_INT || elem == MIR_FLOAT || (elem >= MIR_INT8 && elem <= MIR_UINT64);
+    if (!scalar) {
+        return MIR_NONE;
+    }
+    const uint32_t count = value->u.list.len;
+    int64_t *items = MS_NEW_N(&lb->m->arena, int64_t, count);
+    for (uint32_t i = 0; i < count; i++) {
+        if (!lb_const_scalar(lb, value->u.list.ptr[i], elem, &items[i])) {
+            return MIR_NONE;
+        }
+    }
+    const MirConsts table = {items, count};
+    MIR_PUSH(lb->m, lb->m->list_consts, lb->m->nlist_consts, lb->m->clist_consts, MirConsts, table);
+    const MirImm at = {.tag = MI_INT, .i = (int64_t)lb->m->nlist_consts - 1};
+    return mir_b_emit(&lb->b, MOP_ListConstView, NULL, 0, at, ty);
+}
+
+/* A use of a module constant: the value its function returns, owned when the type owns memory, or a
+ * view of static data for a list of scalar constants. */
+static LbVal lb_constant_use(Lb *lb, const MsDecl *decl, uint32_t func, MirTy ty) {
+    if (ty == MIR_NONE) {
+        return LB_UNSUPPORTED(lb);
+    }
+    const MirValue view = lb_constant_view(lb, decl, ty);
+    if (view != MIR_NONE) {
+        return (LbVal){view, false};
+    }
+    return (LbVal){mir_b_call(&lb->b, func, NULL, 0), lb_owns(lb, ty)};
+}
+
 /* A module function named as a value. */
 LbVal lb_function_value(Lb *lb, const MsExpr *e) {
     const uint32_t sym = lb->facts->res_ref[e->id];
     const uint32_t func = sym < lb->c->syms.count ? lb->func_of[sym] : MIR_NONE;
     const MirTy fty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    const MsDecl *decl = func == MIR_NONE ? NULL : lb->c->syms.decl[sym];
+    if (decl != NULL && decl->kind == MS_D_CONST) {
+        return lb_constant_use(lb, decl, func, fty);
+    }
     if (func == MIR_NONE || !lb_is_fn(lb, fty)) {
         return LB_UNSUPPORTED(lb);
     }

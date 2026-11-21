@@ -29,6 +29,7 @@ typedef struct MsBody {
     MsBuf written;          /* expression ids whose type this function wrote, to undo them */
     MsBuf diags;            /* MsCheckDiag of the function being checked, reported once it is claimed */
     const char *context;    /* what the next `ms_body_expr` value is for ("the return value"), or NULL */
+    const MsExpr *never_ok; /* the one expression a `Never` call may be: a `return` value or a call statement */
     bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
     MsTy result_hint;       /* with `infer_result`: the result the context expects, whose variables the body decides */
     bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
@@ -36,6 +37,7 @@ typedef struct MsBody {
     const MsTy *tvars;
     bool supported;         /* false once a construct outside the handled set is met */
     MsSite gave_up;         /* the first `ms_body_unsupported` call of this function */
+    const MsExpr *borrow_ok; /* the one call whose borrowing result the context uses in place (a loop's iterable, a receiver) */
 } MsBody;
 
 /* A parameter or local of this type can be called and passed around (check_closure.c). */
@@ -48,12 +50,14 @@ bool ms_body_reads_where_var_expected(const MsBody *b, MsTy actual, MsTy expecte
 bool ms_body_has_invalid(const MsBody *b, MsTy ty);
 /* `callee(args)` through the function-typed binding `binding`. */
 MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding);
+MsTy ms_body_call_function(MsBody *b, const MsExpr *e, MsTy fn);
 /* A module function named as a value; an anonymous function. */
 MsTy ms_body_function_name(MsBody *b, const MsExpr *e);
 MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_lambda_inferred(MsBody *b, const MsExpr *e, MsTy settled); /* `settled` fixes the parameter types; the body decides the result */
 /* The primitive type a written annotation names, or MS_TY_NONE after giving up. */
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
+MsTy ms_body_type_argument(MsBody *b, const MsTypeRef *t);
 /* Lists (check_list.c): whether `ty` is a `List` of admitted elements, a `List[...]` annotation,
  * a list literal and an index expression. */
 /* The standard type that declares builtin `kind`, when the module sees it under its own name (no
@@ -139,10 +143,13 @@ MsTy ms_body_block_value(MsBody *b, const MsStmts *body, const MsExpr *value, Ms
 uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, MsPos pos, uint8_t flags, MsBindRole role);
 /* The visible binding of `name`, or MS_NONE. */
 uint32_t ms_body_find_binding(const MsBody *b, MsSym name);
+bool ms_body_names_constant(const MsBody *b, MsSym name); /* a typed module constant no local hides */
 /* A `match` over an enum or `Optional` scrutinee of type `ty` (check_alt.c). */
 /* Whether `ty` is an `Optional`, and its payload type (check_alt.c). */
 bool ms_body_optional_payload(const MsBody *b, MsTy ty, MsTy *payload);
 MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy ty);
+/* A `match` over an interface value: arms that name implementing types, then `_` (check_alt.c). */
+MsTy ms_body_match_contract(MsBody *b, const MsExpr *e, MsTy expected, MsTy ty);
 /* A `match` expression (check_match.c). */
 MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected);
 

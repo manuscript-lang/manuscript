@@ -109,7 +109,7 @@ Release tags package through [`rust-dist.yml`](https://github.com/manuscript-lan
 
 ## Generate the standard library reference
 
-`ms-docgen` (`crates/ms-tooling/src/guide`) reads the checker's registry from `stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
+`make docs` (`tools/ms/docgen.ms` over the C checker's API model) reads the checker's registry from `stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
 
 Generated references live in `.artifacts/docs/documentation/standard-library/reference/` and are mounted by Hugo. `website/static/stdlib.md` and `stdlib.json` (versioned, sorted schema) are generated and ignored by Git; `website/static/llms.txt` points to the plain-text API. Change source or generators, then run `make docs` and the book checks; never hand-edit generated output.
 

@@ -1,0 +1,5 @@
+095.ms:23:46: parse: expected end of statement, found name 'expect_equal'; put one statement per line, and join operands with an operator or a comma inside brackets
+    |
+ 23 |     expect_equal(operation.apply(4), "4")    expect_equal(operation.apply(4), "4")
+    |                                              ^^^^^^^^^^^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

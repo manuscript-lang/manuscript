@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "phase": "type",
+      "message": "extern type Box cannot be generic; declare one extern type per native handle",
+      "position": {
+        "file": "generic_type.ms",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "unexpected source character '\\''; text uses double quotes, e.g. \"text\"",
+      "position": {
+        "file": "003.ms",
+        "line": 6,
+        "column": 16,
+        "offset": 235
+      },
+      "end": {
+        "file": "003.ms",
+        "line": 6,
+        "column": 17,
+        "offset": 236
+      }
+    }
+  ]
+}
