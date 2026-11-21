@@ -1,6 +1,7 @@
 # curl 8.23.0 (libcurl only), static. HTTP and HTTP/2 (nghttp2) with zlib and a threaded resolver; TLS through
-# OpenSSL on Unix (Windows has no TLS backend yet). The configuration header comes from curl's own template,
-# filled in with the results of the checks below. Windows uses curl's config-win32.h and needs no generated header.
+# the vendored OpenSSL on every platform (Windows trusts its system certificate store). The configuration header
+# comes from curl's own template, filled in with the results of the checks below. Windows uses curl's
+# config-win32.h and needs no generated header.
 set(CURL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/curl)
 set(CURL_GEN ${CMAKE_CURRENT_BINARY_DIR}/curl_gen)
 
@@ -18,8 +19,9 @@ target_compile_definitions(curl PUBLIC CURL_STATICLIB PRIVATE BUILDING_LIBCURL U
 target_link_libraries(curl PUBLIC zlib nghttp2)
 
 if(WIN32)
-  target_compile_definitions(curl PRIVATE WIN32_LEAN_AND_MEAN USE_THREADS_WIN32)
-  target_link_libraries(curl PUBLIC ws2_32 advapi32 crypt32 bcrypt iphlpapi)
+  target_compile_definitions(curl PRIVATE WIN32_LEAN_AND_MEAN USE_THREADS_WIN32 USE_OPENSSL HAVE_SSL_SET0_WBIO)
+  target_link_libraries(curl PUBLIC ws2_32 advapi32 crypt32 bcrypt iphlpapi openssl_ssl)
+  add_dependencies(curl openssl_build)
 else()
   include(CheckIncludeFile)
   include(CheckSymbolExists)
