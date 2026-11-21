@@ -92,7 +92,7 @@ ms_target_defaults(ms_std_process)
 target_link_libraries(ms_std_process PUBLIC ms_base ms_values ms_sys ms_io ms_core ms_entry ms_std_fs uv)
 
 # @std/net sockets on libuv: one loop thread, connections, listeners, datagrams, the Network handle.
-add_library(ms_std_sockets STATIC net_loop.c net_core.c net_conn.c net_listen.c net_dgram.c net_filter.c net_network.c net_tls.c net_tls_conn.c)
+add_library(ms_std_sockets STATIC net_loop.c net_core.c net_conn.c net_listen.c net_dgram.c net_filter.c net_dns.c net_dns_client.c net_network.c net_tls.c net_tls_conn.c)
 ms_target_defaults(ms_std_sockets)
 target_link_libraries(ms_std_sockets PUBLIC ms_base ms_values ms_sys ms_io ms_core uv ms_std_process ms_std_net openssl_ssl)
 
