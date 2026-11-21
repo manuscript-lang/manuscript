@@ -1010,6 +1010,14 @@ pub enum ExternRole {
     /// `msrt_unwinding()`: whether the running task unwinds a delivered cancel, the byte of its
     /// header block that code generation loads in place.
     Unwinding,
+    /// A lookup in a `Map[Int, word]`: the `map_probe` pass runs it as a probe loop in the caller.
+    /// What it answers follows from its signature: a pointer is the value's address, a bool with
+    /// four parameters is "contains", with five it also copies the value out.
+    MapProbeInt,
+    /// The same for a `Map[String, word]`.
+    MapProbeStr,
+    /// The same for a `Set[Int]`.
+    SetProbeInt,
 }
 
 impl ExternRole {
@@ -1039,6 +1047,9 @@ impl ExternRole {
         (ExternRole::ShieldEnter, "shield_enter"),
         (ExternRole::ShieldExit, "shield_exit"),
         (ExternRole::Unwinding, "unwinding"),
+        (ExternRole::MapProbeInt, "map_probe_int"),
+        (ExternRole::MapProbeStr, "map_probe_str"),
+        (ExternRole::SetProbeInt, "set_probe_int"),
     ];
 
     /// The textual attribute of this role.

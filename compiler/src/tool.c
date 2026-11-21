@@ -961,7 +961,7 @@ static void analysis_drop(void *payload) {
 static void put_row(Analysis *a, int64_t v) {
     if (a->nrows == a->rows_cap) {
         a->rows_cap = a->rows_cap == 0 ? 256 : a->rows_cap * 2;
-        a->rows = realloc(a->rows, a->rows_cap * sizeof *a->rows);
+        a->rows = ms_array_resize(a->rows, (uint32_t)a->rows_cap, sizeof *a->rows);
     }
     a->rows[a->nrows++] = v;
 }
@@ -977,8 +977,8 @@ static void put_effect_row(Analysis *a, int64_t v) {
 static int64_t put_name(Analysis *a, const char *data, size_t len) {
     if (a->nnames == a->names_cap) {
         a->names_cap = a->names_cap == 0 ? 64 : a->names_cap * 2;
-        a->names = realloc(a->names, a->names_cap * sizeof *a->names);
-        a->name_lens = realloc(a->name_lens, a->names_cap * sizeof *a->name_lens);
+        a->names = ms_array_resize(a->names, (uint32_t)a->names_cap, sizeof *a->names);
+        a->name_lens = ms_array_resize(a->name_lens, (uint32_t)a->names_cap, sizeof *a->name_lens);
     }
     char *copy = malloc(len + 1);
     memcpy(copy, data, len);

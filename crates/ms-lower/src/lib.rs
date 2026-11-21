@@ -36,7 +36,6 @@ mod native;
 mod nativetype;
 mod rtcall;
 mod rtinline;
-pub use rtinline::KEEP_PROBE_CALLS;
 mod rtstr;
 mod runner;
 mod scalar;

@@ -50,15 +50,9 @@ static inline int fmt_compare(Str a, Str b) {
 
 static inline bool fmt_is(Str s, const char *text) { return fmt_eq(s, fmt_lit(text)); }
 
-static inline bool fmt_starts(Str s, const char *prefix) {
-    const size_t n = strlen(prefix);
-    return s.len >= n && memcmp(s.ptr, prefix, n) == 0;
-}
+static inline bool fmt_starts(Str s, const char *prefix) { return ms_str_starts(s, prefix); }
 
-static inline bool fmt_ends(Str s, const char *suffix) {
-    const size_t n = strlen(suffix);
-    return s.len >= n && memcmp(s.ptr + s.len - n, suffix, n) == 0;
-}
+static inline bool fmt_ends(Str s, const char *suffix) { return ms_str_ends(s, suffix); }
 
 /* The offset of the first `needle` in `hay` (an empty needle matches at 0), or FMT_NONE. */
 static inline size_t fmt_find(Str hay, Str needle) {

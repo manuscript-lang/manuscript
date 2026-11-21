@@ -268,6 +268,7 @@ static const Pass passes[] = {
     {"ifconv", mir_opt_ifconv},
     {"reserve", mir_opt_reserve},
     {"appendfast", mir_opt_appendfast},
+    {"probe", mir_opt_probe},
     {"sortgen", mir_opt_sortgen},
     {"copyelim", mir_opt_copyelim},
     {"copytakes", mir_opt_copyelim_takes},
