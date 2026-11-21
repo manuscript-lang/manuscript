@@ -58,12 +58,6 @@ static MirValue lf_copy(Lb *lb, MirValue v) {
 
 static uint32_t lf_helper(Lb *lb, MirTy ty);
 
-/* A type written by its own generated `format`: a record, an enum, an Optional or a list. */
-static bool lf_has_format(const Lb *lb, MirTy ty) {
-    const uint8_t kind = mir_ty_data(lb->m, ty)->kind;
-    return kind == MK_TYPE || kind == MK_ALT || kind == MK_OPT || kind == MK_LIST;
-}
-
 /* The checker type of a scalar MIR type, whose runtime declares its text form. */
 static MsTy lf_scalar_ty(const Lb *lb, MirTy ty) {
     if (ty == MIR_INT) {
@@ -103,7 +97,7 @@ static MirValue lf_element(Lb *lb, MirTy ty, MirValue v, MirValue depth) {
         mir_b_br(b, join, &marks, 1);
         mir_b_switch_to(b, plain);
         text = lf_copy(lb, v);
-    } else if (lf_has_format(lb, ty)) {
+    } else if (lb_is_aggregate(lb, ty)) {
         const MirValue args[2] = {v, child};
         text = mir_b_call(b, lf_helper(lb, ty), args, 2);
     } else if (ty == MIR_INT || ty == MIR_FLOAT || ty == MIR_BOOL) {
@@ -333,7 +327,7 @@ static uint32_t lf_helper(Lb *lb, MirTy ty) {
 
 LbVal lf_text(Lb *lb, LbVal value) {
     const MirTy ty = mir_b_ty(&lb->b, value.v);
-    if (!lf_has_format(lb, ty)) {
+    if (!lb_is_aggregate(lb, ty)) {
         return lb_unsupported(lb); // maps and functions have their own text, not lowered yet
     }
     const uint32_t func = lf_helper(lb, ty);
