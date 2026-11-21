@@ -1266,7 +1266,8 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
-    const bool primitive = body_is_value_type(b, ty) && b->c->syms.decl[sym] == NULL;
+    const bool primitive = sym != MS_NONE && b->c->syms.decl[sym] == NULL && ty != MS_TY_NONE && body_is_admitted(b, ty) &&
+                           ms_ty_kind(&b->c->tys, ty) == MS_K_PRIMITIVE;
     const bool declared = ty != MS_TY_NONE && body_is_own_nominal(b, ty) && body_is_admitted(b, ty);
     if (!primitive && !declared) {
         return ms_body_unsupported(b);
