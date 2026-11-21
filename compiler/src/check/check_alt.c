@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "check/check_body.h"
+#include "ms/implements.h"
 
 /* The cases of an enum this module may match, read the same way for `Optional` (whose two cases
  * `some(value)` and `none` the bundled `core.ms` declares but the tables do not carry) and for an
@@ -118,31 +119,99 @@ static uint32_t alt_arm_case(const MsBody *b, const MsArm *arm, MsTy ty, const A
     return MS_NONE;
 }
 
-/* Whether a payload name may name a case or a type rather than bind a value (`Pair(x, NotFound)`):
- * the Rust checker records those as conflicts and reports no unread binding for them. Names written
- * in capitals are left to it. */
-static bool alt_name_may_be_case(const MsBody *b, MsSym name) {
-    const MsStr text = ms_name(b->c->names, name);
-    return text.len != 0 && text.ptr[0] >= 'A' && text.ptr[0] <= 'Z';
+/* Whether `ty` (an enum) has a case called `name`. */
+static bool alt_has_case(const MsBody *b, MsTy ty, MsSym name) {
+    if (ty == MS_TY_NONE || ms_ty_kind(&b->c->tys, ty) != MS_K_ALTERNATIVE || b->c->tys.def[ty] == 0) {
+        return false;
+    }
+    const MsDef *def = ms_def(b->c, b->c->tys.def[ty] - 1);
+    for (uint32_t i = 0; def != NULL && i < def->ncases; i++) {
+        if (def->cases[i].name == name) {
+            return true;
+        }
+    }
+    return false;
 }
 
-/* Binds the payload names of `arm` to the case's field types at the scrutinee's type arguments. */
+/* Whether `name` is a type parameter of the function being checked. */
+static bool alt_is_type_parameter(const MsBody *b, MsSym name) {
+    for (uint32_t i = 0; b->tparams != NULL && i < b->tparams->len; i++) {
+        if (b->tparams->ptr[i]->name == name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The enum, among the types this module sees, that has a case called `name`: MS_CONFLICT_CASE with it when exactly
+ * one does, MS_CONFLICT_CASE_ANY when several do (the map's order must not pick one), else none. A type whose own
+ * name is shadowed by a local does not count. */
+static MsConflict alt_visible_owner(const MsBody *b, MsSym name, MsTy *owner) {
+    const MsNameMap *names = &b->c->mods[b->module].names;
+    MsTy found = MS_TY_NONE;
+    for (uint32_t i = 0; i < names->cap; i++) {
+        if (names->vals[i] == 0) {
+            continue;
+        }
+        const MsSymId sym = names->vals[i] - 1;
+        const MsTy ty = b->c->syms.ty[sym];
+        if (b->c->syms.kind[sym] != MS_SYM_TYPE || ty == MS_TY_NONE || ms_ty_kind(&b->c->tys, ty) != MS_K_ALTERNATIVE ||
+            ms_body_find_binding(b, names->keys[i]) != MS_NONE || alt_is_type_parameter(b, names->keys[i]) ||
+            !alt_has_case(b, ty, name)) {
+            continue;
+        }
+        if (found != MS_TY_NONE && found != ty) {
+            return MS_CONFLICT_CASE_ANY;
+        }
+        found = ty;
+    }
+    *owner = found;
+    return found == MS_TY_NONE ? MS_CONFLICT_NONE : MS_CONFLICT_CASE;
+}
+
+/* What payload name `name` coincides with (the Rust checker's `match_binding_names`): a type of the module, a case of
+ * the payload's own enum, or a case of a visible enum. A name a local or a type parameter already holds is an
+ * ordinary shadow, not a conflict. */
+static MsConflict alt_payload_conflict(const MsBody *b, MsSym name, MsTy payload, MsTy *owner) {
+    *owner = MS_TY_NONE;
+    if (ms_name_is(b->c->names, name, "_") || ms_body_find_binding(b, name) != MS_NONE || alt_is_type_parameter(b, name)) {
+        return MS_CONFLICT_NONE;
+    }
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, name);
+    if (sym != MS_NONE) {
+        return b->c->syms.kind[sym] == MS_SYM_TYPE ? MS_CONFLICT_TYPE : MS_CONFLICT_NONE;
+    }
+    if (alt_has_case(b, payload, name)) {
+        *owner = payload;
+        return MS_CONFLICT_CASE;
+    }
+    return alt_visible_owner(b, name, owner);
+}
+
+/* Binds the payload names of `arm` to the case's field types at the scrutinee's type arguments. A name written in
+ * capitals that coincides with a type or a case still binds, and is recorded as a conflict (lint MSL106). */
 static bool alt_bind_payload(MsBody *b, const MsArm *arm, MsTy ty, const AltInfo *info, uint32_t index) {
     if (arm->bindings.len != alt_case_fields(info, index)) {
         return false;
+    }
+    // Every name is resolved before any sibling is bound.
+    MsConflict *kinds = MS_NEW_N(&b->c->arena, MsConflict, arm->bindings.len + 1);
+    MsTy *owners = MS_NEW_N(&b->c->arena, MsTy, arm->bindings.len + 1);
+    for (uint32_t slot = 0; slot < arm->bindings.len; slot++) {
+        kinds[slot] = alt_payload_conflict(b, arm->bindings.ptr[slot].name, alt_field_ty(b, info, ty, index, slot), &owners[slot]);
     }
     for (uint32_t slot = 0; slot < arm->bindings.len; slot++) {
         const MsSym name = arm->bindings.ptr[slot].name;
         if (ms_name_is(b->c->names, name, "_")) {
             continue;
         }
-        if (alt_name_may_be_case(b, name)) {
-            return false;
-        }
         const MsTy field = alt_field_ty(b, info, ty, index, slot);
-        if (ms_body_bind(b, name, field, arm->id, arm->bindings.ptr[slot].pos, 0, MS_ROLE_ARM) == MS_NONE) {
+        const uint32_t binding = ms_body_bind(b, name, field, arm->id, arm->bindings.ptr[slot].pos, 0, MS_ROLE_ARM);
+        if (binding == MS_NONE) {
             return false;
         }
+        b->facts->bindings.conflict[binding] = (uint8_t)kinds[slot];
+        b->facts->bindings.conflict_ty[binding] = owners[slot];
     }
     return true;
 }
@@ -204,13 +273,95 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
         }
         const MsTy value = ms_body_block_value(b, &arm->body, arm->value, result);
         ms_body_close_from(b, first);
-        if (value == MS_TY_NONE || value == b->void_ty) {
+        if (value == MS_TY_NONE || (value == b->void_ty && result != MS_TY_NONE && result != b->void_ty)) {
             return ms_body_unsupported(b);
         }
         result = value;
     }
     if (!wildcard && covered != info.ncases) {
         return ms_body_unsupported(b);
+    }
+    b->match_falls = valued || any_falls;
+    return b->match_falls ? result : b->never_ty;
+}
+
+/* The type a contract arm names: a type or enum of this module without type parameters. */
+static MsTy alt_contract_target(const MsBody *b, const MsArm *arm) {
+    if (arm->bare || arm->path->kind != MS_E_NAME || arm->bindings.len != 1) {
+        return MS_TY_NONE;
+    }
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, arm->path->u.sym);
+    if (sym == MS_NONE || b->c->syms.kind[sym] != MS_SYM_TYPE || b->c->syms.module[sym] != b->module) {
+        return MS_TY_NONE;
+    }
+    const MsTy ty = b->c->syms.ty[sym];
+    const MsKind kind = ty == MS_TY_NONE ? MS_K_FUNCTION : ms_ty_kind(&b->c->tys, ty);
+    return (kind == MS_K_TYPE || kind == MS_K_ALTERNATIVE) && b->c->tys.nargs[ty] == 0 && ms_def(b->c, sym)->nvars == 0 ? ty : MS_TY_NONE;
+}
+
+/* A `match` over an interface value: one `Type(name):` arm for each implementing type the module declares, then
+ * a final `_`. The name binds the value as that type. A diagnostic case (a type that does not implement the
+ * interface, a repeated type, no final `_`) stays with the Rust checker. */
+MsTy ms_body_match_contract(MsBody *b, const MsExpr *e, MsTy expected, MsTy ty) {
+    const uint32_t count = e->u.match.arms.len;
+    if (b->methods == NULL || count < 2 || e->u.match.arms.ptr[0]->from_if) {
+        return ms_body_unsupported(b);
+    }
+    const bool valued = e->u.match.arms.ptr[0]->value != NULL;
+    if (!valued && expected != MS_TY_NONE && expected != b->void_ty) {
+        return ms_body_unsupported(b);
+    }
+    MsTy *seen = MS_NEW_N(&b->c->arena, MsTy, count);
+    MsTy result = expected;
+    bool any_falls = false;
+    for (uint32_t i = 0; i < count && b->supported; i++) {
+        const MsArm *arm = e->u.match.arms.ptr[i];
+        const bool wildcard = arm->path->kind == MS_E_NAME && !arm->bare && ms_name_is(b->c->names, arm->path->u.sym, "_");
+        if ((arm->value != NULL) != valued || wildcard != (i == count - 1) || (wildcard && arm->bindings.len != 0)) {
+            return ms_body_unsupported(b);
+        }
+        const uint32_t first = b->facts->bindings.count;
+        if (!wildcard) {
+            const MsTy target = alt_contract_target(b, arm);
+            for (uint32_t k = 0; k < i; k++) {
+                if (target == seen[k]) {
+                    return ms_body_unsupported(b);
+                }
+            }
+            if (target == MS_TY_NONE || ms_implements(b->c, b->methods, target, ty) != MS_FIT_YES) {
+                return ms_body_unsupported(b);
+            }
+            seen[i] = target;
+            b->facts->arm_contract[arm->id] = target;
+            (void)ms_body_record(b, arm->path->id, target); // the name of the type is typed as that type
+            const MsSym name = arm->bindings.ptr[0].name;
+            MsTy owner = MS_TY_NONE;
+            const MsConflict conflict = alt_payload_conflict(b, name, target, &owner);
+            if (!ms_name_is(b->c->names, name, "_")) {
+                const uint32_t binding = ms_body_bind(b, name, target, arm->id, arm->bindings.ptr[0].pos, 0, MS_ROLE_ARM);
+                if (binding == MS_NONE) {
+                    return ms_body_unsupported(b);
+                }
+                b->facts->bindings.conflict[binding] = (uint8_t)conflict;
+                b->facts->bindings.conflict_ty[binding] = owner;
+            }
+        }
+        if (!valued) {
+            const bool falls = ms_body_block(b, &arm->body);
+            ms_body_close_from(b, first);
+            if (!b->supported) {
+                return ms_body_unsupported(b);
+            }
+            any_falls = any_falls || falls;
+            result = b->void_ty;
+            continue;
+        }
+        const MsTy value = ms_body_block_value(b, &arm->body, arm->value, result);
+        ms_body_close_from(b, first);
+        if (value == MS_TY_NONE || value == b->void_ty) {
+            return ms_body_unsupported(b);
+        }
+        result = value;
     }
     b->match_falls = valued || any_falls;
     return b->match_falls ? result : b->never_ty;

@@ -136,6 +136,9 @@ MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
         }
         return ms_body_match_alternative(b, e, expected, ty);
     }
+    if (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_CONTRACT) {
+        return ms_body_match_contract(b, e, expected, ty);
+    }
     if (ty != b->int_ty && ty != b->string_ty && ty != b->bool_ty) {
         return ms_body_unsupported(b);
     }
