@@ -8,12 +8,9 @@
 //! walk stacks for fault traces and sampling profiles.
 
 pub use ms_mir::layout;
-pub mod link;
 
 mod cg;
 mod dwarf;
-mod options;
-pub use options::{BuildOptions, CopyProbe};
 mod lower;
 mod slotshare;
 mod spill;
@@ -32,8 +29,10 @@ pub struct Options {
     pub opt_level: &'static str,
     /// Dump Cranelift IR of every function to stderr.
     pub dump_clif: bool,
-    /// Environment-independent build settings.
-    pub build: BuildOptions,
+    /// Run Cranelift's IR verifier on every function; it costs about a third of Cranelift's compile time.
+    pub clif_verify: bool,
+    /// Fill each stack slot that holds a statement-scoped temporary with a pattern where its use ends.
+    pub poison_slots: bool,
 }
 
 impl Default for Options {
@@ -43,7 +42,8 @@ impl Default for Options {
             poll: true,
             opt_level: "speed",
             dump_clif: false,
-            build: BuildOptions::default(),
+            clif_verify: cfg!(debug_assertions),
+            poison_slots: false,
         }
     }
 }

@@ -6,6 +6,7 @@ import (
 	Syntax, children, node_kind, parse from "../syntax.ms",
 	Facts, kind_of, read_facts from "./facts.ms",
 	Finding, finding from "./finding.ms",
+	lint_typed_calls from "./typed_calls.ms",
 )
 
 // `Optional.get()` without a default faults when the value is absent (MSL110).
@@ -44,6 +45,14 @@ export fn lint_typed(file: String, text: String, facts: Facts) List[Finding]:
 	if parsed.is_error(): return out
 
 	optional_get(parsed.get(), facts, file, out)
+	out.extend(
+		lint_typed_calls(
+			parsed.get().clone(),
+			facts.clone(),
+			text.to_bytes(),
+			file,
+		)
+	)
 	return out
 
 test "a get on an Optional the checker typed is reported":

@@ -89,3 +89,6 @@ add https://h/x.git --tag a --sha b
 add https://h/x.git --bogus
 remove
 remove @a @b
+fmt --check tools/ms/test
+fmt --check --json tools/ms/test
+fmt --check tools/ms/lint tools/ms/explain.ms

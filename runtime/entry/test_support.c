@@ -184,6 +184,20 @@ void ms_test_keep_fault(uint64_t capture, const MsFaultText *text) {
     ms_spin_unlock(&kept.lock);
 }
 
+void ms_test_drop_fault(uint64_t capture) {
+    uint8_t *bytes = NULL;
+    ms_spin_lock(&kept.lock);
+    for (size_t at = 0; at < kept.length; at++) {
+        if (kept.items[at].capture == capture) {
+            bytes = kept.items[at].bytes;
+            kept.items[at] = kept.items[--kept.length];
+            break;
+        }
+    }
+    ms_spin_unlock(&kept.lock);
+    msrt_free(bytes);
+}
+
 /* The encoded fault record of the last task under capture `id` that faulted, or an empty string; taking clears it. */
 void msrt_test_capture_fault(int64_t id, MsStr *out) {
     uint8_t *bytes = NULL;

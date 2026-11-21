@@ -6,6 +6,7 @@ import (
 
 	Syntax, children, node_kind, parse from "../syntax.ms",
 	Finding, finding, with_fix from "./finding.ms",
+	balanced, first_offset, last_offset from "./spans.ms",
 )
 
 DROP_RETURN := "Drop the final return: the end of the function already returns it"
@@ -141,32 +142,6 @@ fn trailing_return(
 		tree.column[last],
 	)
 	out.append(with_fix(found, from, to, ""))
-
-// Whether the brackets of `text` pair up.
-fn balanced(text: Bytes) Bool:
-	var open = 0
-
-	for at in 0..text.length():
-		byte := text[at]
-
-		if byte == 40 or byte == 91 or byte == 123: open += 1
-		else if byte == 41 or byte == 93 or byte == 125: open -= 1
-
-		if open < 0: return false
-
-	return open == 0
-
-// Where the expression at `at` begins: its own position is an operator or a name for
-// the kinds that lead with an operand, so take the leftmost of its subtree. Records
-// with no position (an absent child, a text part) carry offset 0 and are skipped.
-fn first_offset(tree: Syntax, at: Int) Int:
-	var first = tree.offset[at]
-
-	for child in children(tree, at):
-		from := first_offset(tree, child)
-		if from > 0 and from < first: first = from
-
-	return first
 
 // `name := value` straight before `return name` in the statements `first` and `second` is
 // `return value` (MSL126).
@@ -305,16 +280,6 @@ fn guarded_append(tree: Syntax, k: Kinds, only: Int, name: String) Bool:
 
 	body := children(tree, parts[2])
 	return body.length() == 1 and appends_to(tree, k, body[0], name)
-
-// The furthest end offset of any expression in the subtree at `at`.
-fn last_offset(tree: Syntax, at: Int) Int:
-	var last = tree.end_offset[at]
-
-	for child in children(tree, at):
-		to := last_offset(tree, child)
-		if to > last: last = to
-
-	return last
 
 // How many times the name `name` is read in the subtree at `at`.
 fn count_reads(tree: Syntax, k: Kinds, at: Int, name: String) Int:

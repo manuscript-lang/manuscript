@@ -119,6 +119,9 @@ static void own_declare(OwnWalk *w, uint32_t binding, Perm perm, bool parameter)
     w->declared[w->ndeclared++] = binding;
     w->perm[binding] = (uint8_t)perm;
     w->class_of[binding] = (uint8_t)ms_classify(w->classifier, w->facts->bindings.ty[binding]);
+    if (w->class_of[binding] == MS_CLASS_RESOURCE) {
+        w->facts->bindings.flags[binding] |= MS_BIND_RESOURCE;
+    }
     w->origin[binding] = MS_NONE;
     w->is_param[binding] = parameter;
     w->param_mode[binding] = 0;
@@ -371,7 +374,13 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         own_expr(w, e->u.bin.left, DEMAND_READ);
         own_expr(w, e->u.bin.right, DEMAND_READ);
         return;
-    case MS_E_MEMBER: own_expr(w, e->u.member.left, DEMAND_READ); return; /* a copied field reads its holder */
+    case MS_E_MEMBER:
+        /* A field reads its holder; moving one out of it is a partial move, not modelled yet. */
+        if (demand == DEMAND_MOVE && ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
+            w->supported = false;
+        }
+        own_expr(w, e->u.member.left, DEMAND_READ);
+        return;
     case MS_E_INDEX: /* only a scalar element is read: the checker admits no other */
     case MS_E_APPLY: { /* `xs[i]` read as a type application: the checker admits it only as an index */
         const MsExpr *list = NULL;
@@ -699,6 +708,23 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+/* An operation of an interface value, dispatched at run time: the receiver and the arguments are
+ * read. The operation may change the receiver, which the walk cannot see, so a receiver that is a
+ * `var` binding is left to the Rust checker; the result is a plain value like a method's. */
+static void own_interface_call(OwnWalk *w, const MsExpr *e) {
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    const uint32_t binding = own_argument_local(w, receiver);
+    const bool changeable = binding == MS_NONE || (w->facts->bindings.flags[binding] & MS_BIND_MUTABLE) != 0;
+    if (changeable || ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
+        w->supported = false;
+        return;
+    }
+    own_expr(w, receiver, DEMAND_READ);
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
+    }
+}
+
 /* `Type(a, b)`: a record this module or another declares, built from its arguments. */
 static bool own_is_constructor(const OwnWalk *w, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
@@ -750,6 +776,10 @@ static void own_record_owned_borrow(OwnWalk *w, const MsExpr *e, const OwnSummar
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const MsExpr *callee_expr = e->u.call.callee;
+    if (w->facts->call_reordered[e->id]) {
+        w->supported = false; /* the arguments are paired with parameters by index below */
+        return;
+    }
     if (callee_expr->kind == MS_E_NAME && w->facts->res_kind[callee_expr->id] == MS_RES_BINDING) {
         own_expr(w, callee_expr, DEMAND_READ); /* a call through a function-typed local reads it */
         for (uint32_t i = 0; i < e->u.call.args.len; i++) {
@@ -757,9 +787,12 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
         }
         return;
     }
-    if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_interface[e->id] != MS_TY_NONE &&
-        ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) != MS_K_CONTRACT) {
-        own_intrinsic_call(w, e);
+    if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_interface[e->id] != MS_TY_NONE) {
+        if (ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
+            own_interface_call(w, e);
+        } else {
+            own_intrinsic_call(w, e);
+        }
         return;
     }
     if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_method[e->id] != MS_NONE && w->facts->methods != NULL) {
