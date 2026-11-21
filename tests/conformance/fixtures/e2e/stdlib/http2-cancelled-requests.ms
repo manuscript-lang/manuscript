@@ -58,8 +58,9 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
 
-	// A cancelled stream's queue and headers leaked about 600 bytes each.
+	// A cancelled stream's queue and headers leaked about 600 bytes each, and its fired
+	// cancel switch 65 more.
 	grown := (memory_usage() | expect_ok?).heap_used - before
-	if grown > 1000 * 64: return error(
+	if grown > 1000 * 16: return error(
 		Error(f"heap grew {grown} bytes over 1000 cancelled requests")
 	)
