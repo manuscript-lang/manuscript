@@ -205,6 +205,9 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
                 run_module(&mir, path);
             } else {
                 printf("=== %s\n", path);
+                for (uint32_t i = 0; i < mir.nfiles; i++) { // locations name a file by number: Rust and C number them differently
+                    printf("file %u \"%.*s\"\n", i, (int)mir.files[i].len, mir.files[i].ptr);
+                }
             }
             for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
                 MsBuf out = {0};
@@ -265,7 +268,16 @@ static int run_oracle_dump(const char *path) {
     return 0;
 }
 
+/* `MS_WHY=1`: each place the body checker gave a function up, as `WHY file:line` on stderr, in the order met. */
+static void print_decline(const char *file, int line) {
+    const char *base = strrchr(file, '/');
+    fprintf(stderr, "WHY %s:%d\n", base == NULL ? file : base + 1, line);
+}
+
 int main(int argc, char **argv) {
+    if (getenv("MS_WHY") != NULL) {
+        ms_body_decline_hook = print_decline;
+    }
     if (argc == 3 && strcmp(argv[1], "--run-mir") == 0) {
         return run_oracle_dump(argv[2]);
     }

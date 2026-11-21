@@ -12,6 +12,15 @@ int64_t msrt_float_compare(double a, double b) {
     return (int64_t)(a > b) - (int64_t)(a < b);
 }
 
+/* Float.is_nan and Float.is_finite: the MIR the lowering emits for them is the `@seq=` tag in ms_rt/num.h. */
+uint8_t msrt_float_is_nan(double x) {
+    return x != x;
+}
+
+uint8_t msrt_float_is_finite(double x) {
+    return x - x == 0.0;
+}
+
 /* Int.compare. */
 int64_t msrt_int_compare(int64_t a, int64_t b) {
     return (int64_t)(a > b) - (int64_t)(a < b);
