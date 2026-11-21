@@ -1,0 +1,7 @@
+[project]
+name = "demo"
+source = "./src"
+entry = "./src/main.ms"
+
+[dependencies]
+"@util" = { git = "x" }
