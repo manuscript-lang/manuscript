@@ -877,9 +877,6 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (syms->nvars[sym] != 0) {
         return ms_body_generic_call(b, e, sym, NULL, expected);
     }
-    if (syms->ty[sym] == MS_TY_NONE) {
-        ms_module_resolve_types(b->c, syms->module[sym]); // a native function's signature is resolved on first call
-    }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION) {
@@ -894,7 +891,8 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (ms_body_has_invalid(b, result)) {
         return b->invalid_ty;
     }
-    return body_is_bindable(b, result) || result == b->void_ty || result == b->never_ty || ms_body_is_handle(b, result) ? result
+    return body_is_bindable(b, result) || result == b->void_ty || (result == b->never_ty && b->never_ok == e) ||
+            ms_body_is_handle(b, result) ? result
                                                                                           : ms_body_unsupported(b);
 }
 
@@ -1498,6 +1496,7 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
 /* Whether control leaves the statement: it does unless it is a `match` whose every arm returns or breaks. */
 static bool body_call_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *value = s->u.expr;
+    b->never_ok = value;
     const MsTy ty = ms_body_expr(b, value, MS_TY_NONE);
     const bool propagated = value->kind == MS_E_UNARY && value->op == MS_U_TRY;
     if (ty == MS_TY_NONE || (propagated && ty != b->void_ty && ty != b->invalid_ty)) {
@@ -1562,6 +1561,7 @@ static void body_return_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     b->context = "the return value";
+    b->never_ok = value;
     (void)ms_body_expr(b, value, b->result);
 }
 
