@@ -28,31 +28,56 @@ static uint32_t li_slot(const MsOperations *ops, uint32_t index) {
     return ops->items[index].nvars == 0 ? slot : MS_NONE;
 }
 
-/* One operation's signature (receiver left out); false when this pass does not lower it. */
-static bool li_signature(Lb *lb, const MsOperation *op, MirMethodSig *out) {
+/* A type of an operation of the interface `contract` at the arguments the interface is used with (`Sink[String]`
+ * turns a parameter `T` into `String`). */
+static MsTy li_at(Lb *lb, MsTy contract, MsTy declared) {
+    uint32_t nvars = 0;
+    const MsTy *vars = ms_sym_vars(lb->c, lb->c->tys.def[contract] - 1, &nvars);
+    if (nvars == 0) {
+        return declared;
+    }
+    MsArena scratch = {0};
+    const MsTySubst subst = {.vars = vars, .args = ms_ty_args(&lb->c->tys, contract), .count = nvars};
+    const MsTy result = ms_ty_subst(&lb->mut->tys, &scratch, declared, &subst);
+    ms_arena_free(&scratch);
+    return result;
+}
+
+/* One operation's signature (receiver left out; a `move` parameter is owned by the callee); false when this pass does
+ * not lower it. */
+static bool li_signature(Lb *lb, MsTy contract, const MsOperation *op, MirMethodSig *out) {
     const MsTyTable *tys = &lb->c->tys;
-    if (ms_ty_kind(tys, op->ty) != MS_K_FUNCTION || op->decl->consuming) {
+    if (ms_ty_kind(tys, op->ty) != MS_K_FUNCTION) {
         return false;
     }
     const uint32_t count = tys->nparams[op->ty];
     MirTy *params = MS_NEW_N(&lb->m->arena, MirTy, (size_t)count + 1);
+    uint64_t owned = 0;
     for (uint32_t i = 0; i < count; i++) {
         const MsTyParam *param = &ms_ty_params(tys, op->ty)[i];
-        params[i] = param->flags == 0 || param->flags == MS_PARAM_POSITIONAL ? lb_mir_ty(lb, param->ty) : MIR_NONE;
-        if (params[i] == MIR_NONE) {
+        const bool moves = (param->flags & MS_PARAM_MOVE) != 0;
+        const bool plain = (param->flags & ~(uint32_t)(MS_PARAM_MOVE | MS_PARAM_POSITIONAL)) == 0;
+        params[i] = plain ? lb_mir_ty(lb, li_at(lb, contract, param->ty)) : MIR_NONE;
+        if (params[i] == MIR_NONE || i >= 64) {
             return false;
         }
+        owned |= moves ? 1ull << i : 0;
     }
-    const MsTy result = tys->result[op->ty];
+    const MsTy result = li_at(lb, contract, tys->result[op->ty]);
     const MirTy ret = result == lb->void_ty ? MIR_VOID : lb_mir_ty(lb, result);
     const MsStr name = ms_name(lb->c->names, op->decl->func.name);
-    *out = (MirMethodSig){.name = mir_name(lb->m, name.ptr, name.len), .params = params, .nparams = count, .ret = ret};
+    *out = (MirMethodSig){.name = mir_name(lb->m, name.ptr, name.len), .params = params, .nparams = count, .owned = owned, .ret = ret};
     return ret != MIR_NONE;
 }
 
 MirTy li_type(Lb *lb, MsTy ty) {
     const MsTyTable *tys = &lb->c->tys;
-    if (ms_ty_kind(tys, ty) != MS_K_CONTRACT || tys->nargs[ty] != 0 || tys->def[ty] == 0 || tys->builtin[ty] != 0) {
+    if (ms_ty_kind(tys, ty) != MS_K_CONTRACT || tys->def[ty] == 0 || tys->builtin[ty] != 0) {
+        return MIR_NONE;
+    }
+    uint32_t nvars = 0;
+    (void)ms_sym_vars(lb->c, tys->def[ty] - 1, &nvars);
+    if (tys->nargs[ty] != nvars) {
         return MIR_NONE;
     }
     if (lb->type_of[ty] == LB_TYPE_PENDING) {
@@ -72,7 +97,7 @@ MirTy li_type(Lb *lb, MsTy ty) {
         if (ops->items[i].nvars != 0) {
             continue;
         }
-        if (!li_signature(lb, &ops->items[i], &methods[kept++])) {
+        if (!li_signature(lb, ty, &ops->items[i], &methods[kept++])) {
             lb->type_of[ty] = MIR_NONE;
             return MIR_NONE;
         }
@@ -85,6 +110,22 @@ MirTy li_type(Lb *lb, MsTy ty) {
     lb->m->ifaces[id].nmethods = kept;
     lb->type_of[ty] = mir_ty_iface(lb->m, id);
     return lb->type_of[ty];
+}
+
+bool li_closer(Lb *lb, MsTy contract, uint32_t *slot, MirTy *result) {
+    const MirTy iface = li_type(lb, contract);
+    const MsOperations *ops = iface == MIR_NONE ? NULL : li_operations(lb, contract);
+    for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
+        const MsOperation *op = &ops->items[i];
+        const bool closes = ms_name_is(lb->c->names, op->decl->func.name, "close") && op->decl->consuming && op->nvars == 0 &&
+                            lb->c->tys.nparams[op->ty] == 0;
+        if (closes && li_slot(ops, i) != MS_NONE) {
+            *slot = li_slot(ops, i);
+            *result = lb->m->ifaces[mir_ty_data(lb->m, iface)->id].methods[*slot].ret;
+            return true;
+        }
+    }
+    return false;
 }
 
 /* `receiver.operation(args)` where the receiver is an interface value: the operation's slot in the
@@ -123,13 +164,15 @@ LbVal li_call(Lb *lb, const MsExpr *e) {
     return (LbVal){mir_b_emit(&lb->b, MOP_CallMethod, args, count + 1, imm, sig->ret), false};
 }
 
-/* The method row of `receiver` that satisfies operation `op`: a method of that name with the
- * operation's exact signature that neither changes nor consumes its receiver, MS_NONE when none. */
-static uint32_t li_row(const Lb *lb, MsTy receiver, const MsOperation *op) {
+/* The method row of `receiver` that satisfies operation `op` of `contract`: a method of that name with the operation's
+ * signature (at the interface's arguments) that takes its receiver as the operation does, MS_NONE when none. */
+static uint32_t li_row(Lb *lb, MsTy receiver, MsTy contract, const MsOperation *op) {
     const MsMethods *methods = lb->facts->methods;
+    const uint8_t access = (op->decl->mutating ? MS_METHOD_MUTATING : 0) | (op->decl->consuming ? MS_METHOD_CONSUMING : 0);
+    const MsTy signature = li_at(lb, contract, op->ty);
     for (uint32_t i = 0; i < methods->count; i++) {
         if (methods->receiver[i] == receiver && methods->decl[i] != NULL && methods->decl[i]->name == op->decl->func.name &&
-            methods->nvars[i] == 0 && methods->access[i] == 0 && methods->ty[i] == op->ty) {
+            methods->nvars[i] == 0 && methods->access[i] == access && methods->ty[i] == signature) {
             return i;
         }
     }
@@ -142,7 +185,7 @@ static uint32_t li_thunk(Lb *lb, const MsOperation *op, const MirMethodSig *sig,
     MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, (size_t)sig->nparams + 2);
     params[0] = (MirParam){MIR_PTR, MM_BORROW};
     for (uint32_t i = 0; i < sig->nparams; i++) {
-        params[i + 1] = (MirParam){sig->params[i], MM_BORROW};
+        params[i + 1] = (MirParam){sig->params[i], mir_owns(sig->owned, i) ? MM_MOVE : MM_BORROW};
     }
     const MsStr op_name = ms_name(lb->c->names, op->decl->func.name);
     char *text = MS_NEW_N(&lb->m->arena, char, op_name.len + 4);
@@ -153,7 +196,11 @@ static uint32_t li_thunk(Lb *lb, const MsOperation *op, const MirMethodSig *sig,
     MirValue *values = MS_NEW_N(&thunk.scratch, MirValue, (size_t)sig->nparams + 2);
     mir_b_params(&thunk, values, sig->nparams + 1);
     MirValue *args = MS_NEW_N(&thunk.scratch, MirValue, (size_t)sig->nparams + 2);
-    args[0] = mir_b_emit(&thunk, MOP_Load, &values[0], 1, (MirImm){.tag = MI_TY, .a = data_ty}, data_ty);
+    // A method that changes its receiver works on the box's own storage; one that takes it moves it out, and the caller frees the box.
+    const bool mutating = (lb->facts->methods->access[method] & MS_METHOD_MUTATING) != 0;
+    const bool consuming = (lb->facts->methods->access[method] & MS_METHOD_CONSUMING) != 0;
+    args[0] = mutating ? values[0]
+                       : mir_b_emit(&thunk, consuming ? MOP_Take : MOP_Load, &values[0], 1, (MirImm){.tag = MI_TY, .a = data_ty}, data_ty);
     for (uint32_t i = 0; i < sig->nparams; i++) {
         args[i + 1] = values[i + 1];
     }
@@ -182,7 +229,7 @@ static uint32_t li_vtable(Lb *lb, MsTy concrete, MsTy contract, MirTy data_ty, M
         if (ops->items[i].nvars != 0) {
             continue;
         }
-        const uint32_t row = li_row(lb, concrete, &ops->items[i]);
+        const uint32_t row = li_row(lb, concrete, contract, &ops->items[i]);
         if (row == MS_NONE || !lm_has(lb, row) || lb->method_func[row] == MIR_NONE) {
             return MS_NONE;
         }

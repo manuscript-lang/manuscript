@@ -609,6 +609,10 @@ static MirValue lb_var_argument(Lb *lb, const MsExpr *arg, uint32_t *binding_out
         (void)lb_load(lb, lb->value_of[binding], lb_mir_ty(lb, lb->facts->bindings.ty[binding]));
         return lb->value_of[binding];
     }
+    MirValue home;
+    if (lc_slot_of(lb, binding, &home)) { // a resource local lives in the slot its scope closes: the callee changes it there
+        return home;
+    }
     if (lb->var_of[binding] == MIR_NONE) {
         (void)LB_UNSUPPORTED(lb);
         return MIR_NONE;

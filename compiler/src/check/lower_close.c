@@ -14,6 +14,7 @@
  * (a `Closeable` implementation, or an own `close() Void!`) that does not change `self`, used only
  * as a borrow. Every other use (a move, a close by hand, a capture), type holding resources, or
  * drop of a resource leaves the function to the Rust lowering. */
+#include <stdio.h>
 #include <string.h>
 
 #include "ms/lower_internal.h"
@@ -50,6 +51,11 @@ static uint32_t lc_row(Lb *lb, MsTy ty) {
 }
 
 bool lc_has_closer(Lb *lb, MsTy ty) {
+    uint32_t slot;
+    MirTy result;
+    if (ms_ty_kind(&lb->c->tys, ty) == MS_K_CONTRACT) {
+        return li_closer(lb, ty, &slot, &result);
+    }
     const uint32_t row = lc_row(lb, ty);
     return row != MS_NONE && (lb->facts->methods->access[row] & MS_METHOD_MUTATING) == 0;
 }
@@ -60,6 +66,14 @@ void lc_register(Lb *lb, MsTy ty, MirTy mir) {
             return;
         }
     }
+    if (ms_ty_kind(&lb->c->tys, ty) == MS_K_CONTRACT) {
+        MirTy result;
+        LbCloser through = {.ty = mir, .row = MS_NONE, .func = MIR_NONE, .owned = true, .thunk = MIR_NONE, .result = MIR_NONE, .contract = ty};
+        if (li_closer(lb, ty, &through.slot, &result)) {
+            MIR_PUSH(lb->m, lb->closers, lb->nclosers, lb->cclosers, LbCloser, through);
+        }
+        return;
+    }
     const uint32_t row = lc_row(lb, ty);
     if (row == MS_NONE) {
         return;
@@ -67,6 +81,7 @@ void lc_register(Lb *lb, MsTy ty, MirTy mir) {
     const LbCloser closer = {.ty = mir,
                              .row = row,
                              .func = MIR_NONE,
+                             .contract = MS_TY_NONE,
                              .owned = (lb->facts->methods->access[row] & MS_METHOD_CONSUMING) != 0,
                              .thunk = MIR_NONE,
                              .result = MIR_NONE};
@@ -98,8 +113,21 @@ bool lc_is_resource(Lb *lb, MirTy mir) {
 
 /* ---- helper functions ---- */
 
-static MirTy lc_result_ty(const Lb *lb, uint32_t func) {
-    const MirTy ret = lb->m->funcs[func].ret;
+/* What the close of `closer` returns. */
+static MirTy lc_ret(const Lb *lb, const LbCloser *closer) {
+    if (closer->contract != MS_TY_NONE) {
+        return lb->m->ifaces[mir_ty_data(lb->m, closer->ty)->id].methods[closer->slot].ret;
+    }
+    return lb->m->funcs[lc_func(lb, closer)].ret;
+}
+
+/* Whether the close of `closer` can be called: its function is lowered, or it goes through a vtable. */
+static bool lc_callable(const Lb *lb, const LbCloser *closer) {
+    return closer->contract != MS_TY_NONE || lc_func(lb, closer) != MIR_NONE;
+}
+
+static MirTy lc_result_ty(const Lb *lb, const LbCloser *closer) {
+    const MirTy ret = lc_ret(lb, closer);
     if (ret == MIR_VOID || ret == MIR_NONE || mir_ty_data(lb->m, ret)->kind != MK_ALT ||
         lb->m->alts[mir_ty_data(lb->m, ret)->id].std != MSTD_RESULT) {
         return MIR_NONE;
@@ -139,13 +167,23 @@ static void lc_fault(Lb *lb, MirBuilder *b, MirValue r) {
 static MirValue lc_close_at(Lb *lb, MirBuilder *b, const LbCloser *closer, MirValue ptr) {
     const MirImm ty = {.tag = MI_TY, .a = closer->ty};
     const MirValue value = mir_b_emit(b, closer->owned ? MOP_Take : MOP_Load, &ptr, 1, ty, closer->ty);
-    return mir_b_call(b, lc_func(lb, closer), &value, 1);
+    if (closer->contract == MS_TY_NONE) {
+        return mir_b_call(b, lc_func(lb, closer), &value, 1);
+    }
+    // An interface value closes through its vtable, then its box is freed without dropping the payload the close took.
+    const uint32_t iface = mir_ty_data(lb->m, closer->ty)->id;
+    const MirImm method = {.tag = MI_METHOD, .a = iface, .b = closer->slot};
+    const MirValue result = mir_b_emit(b, MOP_CallMethod, &value, 1, method, lc_ret(lb, closer));
+    const MirValue data = mir_b_emit(b, MOP_IfaceData, &value, 1, (MirImm){0}, MIR_PTR);
+    (void)mir_b_emit(b, MOP_Free, &data, 1, (MirImm){0}, MIR_NONE);
+    (void)mir_b_emit(b, MOP_Forget, &value, 1, (MirImm){0}, MIR_NONE);
+    return result;
 }
 
 /* The function that closes the value in a slot, dropping a result; `with_result` makes the one that
  * returns the result of a close that can fail. */
 static uint32_t lc_thunk(Lb *lb, const LbCloser *closer, bool with_result) {
-    const MirTy rty = lc_result_ty(lb, lc_func(lb, closer));
+    const MirTy rty = lc_result_ty(lb, closer);
     const MirParam params[1] = {{MIR_PTR, MM_BORROW}};
     MirBuilder b;
     mir_b_init(&b, lb->m, lb_unique_name(lb, (MsStr){"close", 5}), params, 1, with_result ? rty : MIR_VOID);
@@ -252,12 +290,11 @@ static bool lc_exits_clean(const Lb *lb) {
 static bool lc_slot_own(Lb *lb, uint32_t binding, MirValue value) {
     const MirTy ty = mir_b_ty(&lb->b, value);
     LbCloser *closer = lc_find(lb, ty);
-    if (closer == NULL || lc_func(lb, closer) == MIR_NONE || !lc_exits_clean(lb)) {
+    if (closer == NULL || !lc_callable(lb, closer) || !lc_exits_clean(lb)) {
         return false;
     }
-    const uint32_t func = lc_func(lb, closer);
-    const MirTy rty = lc_result_ty(lb, func);
-    if (lb->m->funcs[func].ret != MIR_VOID && rty == MIR_NONE) {
+    const MirTy rty = lc_result_ty(lb, closer);
+    if (lc_ret(lb, closer) != MIR_VOID && rty == MIR_NONE) {
         return false;
     }
     if (closer->thunk == MIR_NONE) {
@@ -292,8 +329,7 @@ static bool lc_owned_local(const Lb *lb, uint32_t binding) {
 }
 
 bool lc_bind(Lb *lb, const MsStmt *s, uint32_t binding, LbVal value) {
-    const bool plain = !s->u.bind.is_mutable && s->u.bind.pattern->kind == MS_P_NAME && value.owned &&
-                       lc_owned_local(lb, binding);
+    const bool plain = s->u.bind.pattern->kind == MS_P_NAME && value.owned && lc_owned_local(lb, binding);
     return plain && lc_slot_own(lb, binding, value.v);
 }
 
@@ -312,7 +348,7 @@ bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved) {
         }
         if (moved) {
             const LbCloser *closer = lc_find(lb, local->ty);
-            const MirTy rty = closer == NULL ? MIR_NONE : lc_result_ty(lb, lc_func(lb, closer));
+            const MirTy rty = closer == NULL ? MIR_NONE : lc_result_ty(lb, closer);
             if (rty != MIR_NONE && lb->m->alts[mir_ty_data(lb->m, rty)->id].cases[LC_OK].fields[0].ty != MIR_VOID) {
                 return false;
             }
@@ -322,6 +358,16 @@ bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved) {
             lscope_disown(&lb->scopes, local->slot);
         }
         return true;
+    }
+    return false;
+}
+
+bool lc_slot_of(const Lb *lb, uint32_t binding, MirValue *slot) {
+    for (uint32_t i = 0; i < lb->nslots; i++) {
+        if (lb->slots[i].view == lb->view && lb->slots[i].binding == binding) {
+            *slot = lb->slots[i].slot;
+            return true;
+        }
     }
     return false;
 }

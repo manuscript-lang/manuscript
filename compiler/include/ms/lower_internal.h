@@ -116,6 +116,8 @@ typedef struct LbCloser {
     uint32_t func; /* the close of a generic type's copy, else MIR_NONE: the row's function */
     bool owned; /* a `move` close: it takes the value */
     uint32_t thunk, result;
+    MsTy contract; /* an interface value that closes through its vtable (row MS_NONE), else MS_TY_NONE */
+    uint32_t slot; /* its `close` operation's slot in the interface */
 } LbCloser;
 
 /* The function that returns a failed close as a function's own result, by what it is made for. */
@@ -243,6 +245,9 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
 /* Interface values (lower_iface.c, included after lower_body.c). */
 MirTy li_type(Lb *lb, MsTy ty);
 LbVal li_call(Lb *lb, const MsExpr *e);
+/* The slot of the consuming `close() Void!` operation an interface declares (so a value of it closes through its
+ * vtable), with the result type of the operation; false when it declares none. */
+bool li_closer(Lb *lb, MsTy contract, uint32_t *slot, MirTy *result);
 LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed as an interface */
 
 /* lower_method.c: methods of impls. */
@@ -267,6 +272,7 @@ bool lc_own_param(Lb *lb, uint32_t binding);        /* a `move` resource paramet
 bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved);  /* a read of a slot local */
 bool lc_is_resource(Lb *lb, MirTy mir);               /* a registered resource type, owned even when it holds nothing to drop */
 bool lc_is_slot_local(const Lb *lb, uint32_t binding);
+bool lc_slot_of(const Lb *lb, uint32_t binding, MirValue *slot); /* the slot a resource local lives in */
 bool lc_is_closer_row(Lb *lb, uint32_t row);
 void lc_check(Lb *lb);                             /* fails the function when it drops a resource */
 
