@@ -32,7 +32,8 @@ typedef struct Run {
 static void on_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer) {
     (void)handle;
     char *memory = malloc(suggested);
-    *buffer = uv_buf_init(memory, memory == NULL ? 0 : (unsigned int)suggested);
+    buffer->base = memory;
+    buffer->len = memory == NULL ? 0 : (unsigned int)suggested;
 }
 
 static void on_close(uv_handle_t *handle) { (void)handle; }
@@ -160,9 +161,11 @@ MsSysError ms_sys_process_run(char **argv, char *const *env, const char *cwd, bo
     (void)uv_pipe_init(&loop, &err.pipe, 0);
     uv_stdio_container_t stdio[3];
     stdio[0].flags = UV_IGNORE;
-    stdio[1].flags = (uv_stdio_flags)(UV_CREATE_PIPE | UV_WRITABLE_PIPE);
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): libuv's stdio flags are a bit set.
+    stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
     stdio[1].data.stream = (uv_stream_t *)&out.pipe;
-    stdio[2].flags = (uv_stdio_flags)(UV_CREATE_PIPE | UV_WRITABLE_PIPE);
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): libuv's stdio flags are a bit set.
+    stdio[2].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
     stdio[2].data.stream = (uv_stream_t *)&err.pipe;
     uv_process_options_t options = {.exit_cb = on_process_exit, .file = argv[0], .args = argv, .env = environment, .cwd = cwd,
                                     .stdio_count = 3, .stdio = stdio};
