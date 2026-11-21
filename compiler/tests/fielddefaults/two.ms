@@ -1,3 +1,3 @@
 type M:
-    n: Int = true
-    m: Int = "a"
+	n: Int = true
+	m: Int = "a"
