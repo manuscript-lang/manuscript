@@ -76,8 +76,11 @@ static void unoptimised(MirModule *m) {
 
 /* One round of the passes that read the module but rewrite only their own function. */
 static bool function_round(MirModule *m, MirFunc *f) {
-  bool changed = opt_simplify_func(m, f);
+  bool changed = opt_optparam_func(m, f);
+  changed |= opt_simplify_func(m, f);
   changed |= opt_copyelim_func(m, f);
+  changed |= opt_range_func(m, f);
+  changed |= opt_ifconv_func(m, f);
   return changed;
 }
 
@@ -114,11 +117,35 @@ typedef struct Step {
   bool (*run)(MirModule *m);
 } Step;
 
+/* The in-place append becomes an inlinable fast path, so the inliner runs again for it. */
+static bool strfuse_step(MirModule *m) {
+  bool changed = opt_strfuse(m);
+  if (opt_appendfast(m)) {
+    changed |= opt_inline(m);
+  }
+  return changed;
+}
+
+/* The runtime fast paths are inlinable, so the inliner runs again for them. */
+static bool fastpaths_step(MirModule *m) {
+  bool changed = opt_viewfast(m);
+  changed |= opt_bytesfast(m);
+  changed |= opt_strfast(m);
+  return changed && opt_inline(m);
+}
+
 static const Step early_steps[] = {
-    {"simplify", opt_simplify}, {"copyelim", opt_copyelim}, {"inline", opt_inline}, {"strfuse", opt_strfuse},
+    {"simplify", opt_simplify},
+    {"copyelim", opt_copyelim},
+    {"probe", opt_probe},
+    {"inline", opt_inline},
+    {"strfuse", strfuse_step},
+    {"fastpaths", fastpaths_step},
+    {"loopslot", opt_loopslot},
 };
 
 static const Step late_steps[] = {
+    {"reserve", opt_reserve},
     {"lastuse", opt_lastuse},
     {"bytetake", opt_bytetake},
     {"copyelim takes", opt_copyelim_takes},
