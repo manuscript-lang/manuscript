@@ -27,7 +27,6 @@
 #include "ms/facts.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
-#include "ms/ty_algebra.h"
 
 
 
@@ -892,7 +891,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (ms_body_has_invalid(b, result)) {
         return b->invalid_ty;
     }
-    return body_is_bindable(b, result) || result == b->void_ty || ms_body_is_handle(b, result) ? result
+    return body_is_bindable(b, result) || result == b->void_ty || result == b->never_ty || ms_body_is_handle(b, result) ? result
                                                                                           : ms_body_unsupported(b);
 }
 
@@ -1227,6 +1226,9 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     if (expected == b->invalid_ty) {
         return ms_body_record(b, e->id, ty); // what was asked for is already reported
     }
+    if (ty == b->never_ty) {
+        return ms_body_record(b, e->id, ty); // a Never value (`panic(...)`) stands where any type is expected
+    }
     if (expected != MS_TY_NONE && body_coerces_to_interface(b, ty, expected)) {
         b->facts->coerce_iface[e->id] = ty; // the lowering boxes it behind its vtable; the expression has the interface type
         return ms_body_record(b, e->id, expected);
@@ -1481,7 +1483,7 @@ static bool body_call_statement(MsBody *b, const MsStmt *s) {
         (void)ms_body_unsupported(b);
         return false;
     }
-    if (value->kind == MS_E_MATCH && !b->match_falls) {
+    if ((value->kind == MS_E_MATCH && !b->match_falls) || ty == b->never_ty) {
         return false;
     }
     if (propagated || !ms_ty_is(&b->c->tys, ty, MS_BI_RESULT)) {
