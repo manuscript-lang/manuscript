@@ -344,9 +344,6 @@ fn rt_ops_text(symbols: String) String:
 					break
 
 	for line in lines:
-		if line.contains(" @takes_self"): twinned.add(before(line, "("))
-
-	for line in lines:
 		if line.starts_with("#"): continue
 
 		opened := line.split_once("(")
