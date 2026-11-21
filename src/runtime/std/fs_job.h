@@ -87,6 +87,8 @@ bool ms_fs_same_file(const uv_stat_t *a, const uv_stat_t *b);
 int ms_fs_stat_path(const char *path, bool follow, uv_stat_t *out);
 int ms_fs_fstat(uv_file fd, uv_stat_t *out);
 int ms_fs_remove_one(const char *path);
+/* A directory with permissions 0700. */
+int ms_fs_make_directory(const char *path);
 int ms_fs_realpath(const char *path, MsStrBuild *out);
 
 /* Removes the tree at `path` without following links; a missing path is already removed. */

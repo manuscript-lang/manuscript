@@ -31,4 +31,7 @@ int ms_sys_fs_unlock(int fd);
  * reads must run on the blocking pool (a regular file, anything on Windows). */
 bool ms_sys_fs_waitable(int fd);
 
+/* Makes `output` share the data blocks of `input` (copy on write): UV_ENOTSUP where the filesystem or host cannot. */
+int ms_sys_fs_clone_file(int output, int input);
+
 #endif

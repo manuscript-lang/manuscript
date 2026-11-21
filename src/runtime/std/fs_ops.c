@@ -13,7 +13,7 @@ enum { MAX_DEPTH = 4096 };
 
 /* ---- libuv calls, run to their end ---- */
 
-static int make_directory(const char *path) {
+int ms_fs_make_directory(const char *path) {
   uv_fs_t request;
   const int code = uv_fs_mkdir(NULL, &request, path, 0700, NULL);
   uv_fs_req_cleanup(&request);
@@ -89,7 +89,7 @@ static bool is_directory_at(const char *path) {
 /* Creates `path` and its missing ancestors; an existing directory is not an error. */
 static int make_directories(MsSpan path, size_t depth) {
   MsOsText text = ms_os_text_new(path);
-  int code = make_directory(text.ptr);
+  int code = ms_fs_make_directory(text.ptr);
   if (code == UV_ENOENT && depth < MAX_DEPTH) {
     MsStrBuild parent = ms_strbuild_new();
     ms_fs_path_dir(path, &parent);
@@ -97,7 +97,7 @@ static int make_directories(MsSpan path, size_t depth) {
     if (up.len > 0 && !ms_span_equal(up, path)) {
       code = make_directories(up, depth + 1);
       if (code == 0) {
-        code = make_directory(text.ptr);
+        code = ms_fs_make_directory(text.ptr);
       }
     }
     ms_strbuild_free(&parent);
@@ -115,7 +115,7 @@ static void create_directory_job(void *data) {
   if (!ms_fs_open_path(job, job->path, &path)) {
     return;
   }
-  const int code = job->flag != 0 ? make_directories(job->path, 0) : make_directory(path.ptr);
+  const int code = job->flag != 0 ? make_directories(job->path, 0) : ms_fs_make_directory(path.ptr);
   ms_os_text_free(&path);
   if (code != 0) {
     ms_fs_job_fail(job, code, "mkdir", job->path);
@@ -589,7 +589,7 @@ bool ms_fs_make_temporary_directory(MsFail *fail, MsSpan pattern, MsStrBuild *ou
     ms_strbuild_append_u64(&name, random_digits());
     ms_strbuild_append(&name, suffix);
     MsOsText text = ms_os_text_new(ms_strbuild_span(&name));
-    code = make_directory(text.ptr);
+    code = ms_fs_make_directory(text.ptr);
     ms_os_text_free(&text);
     if (code == 0) {
       ms_strbuild_append(out, ms_strbuild_span(&name));
