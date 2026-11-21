@@ -4,9 +4,11 @@
 
 #include "ms/check.h"
 #include "ms/diag.h"
+#include "ms/effects.h"
 #include "ms/facts.h"
 #include "ms/format.h"
 #include "ms/lex.h"
+#include "ms/ownership.h"
 #include "ms/packages.h"
 #include "ms/parse.h"
 #include "ms/program.h"
@@ -244,7 +246,7 @@ static uint8_t install_run(MsArena *arena, MsInstallOptions options, ms_list *ou
     if (!ms_install(arena, &options, &report, &error)) {
         const char *text = ms_project_error_text(arena, &error);
         ms_string_new((const uint8_t *)text, strlen(text), message_out);
-        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+        status = 1;
     }
     for (uint32_t i = 0; status == 0 && i < report.count; i++) {
         const MsInstalledCopy *c = &report.copies[i];
@@ -296,6 +298,20 @@ uint8_t ms_tool_workspace(const ms_str *manifest, uint8_t root_only, ms_list *ou
     }
     ms_arena_free(&arena);
     return status;
+}
+
+uint8_t ms_tool_requirement(const ms_str *text, ms_list *out, ms_str *message_out) {
+    (void)out;
+    MsArena arena = {0};
+    const char *source = ms_arena_strndup(&arena, (const char *)ms_str_data(text), ms_str_len(text));
+    MsRequirement requirement;
+    const char *error = "";
+    const bool ok = ms_requirement_parse(&arena, source, &requirement, &error);
+    if (!ok) {
+        ms_string_new((const uint8_t *)error, strlen(error), message_out);
+    }
+    ms_arena_free(&arena);
+    return ok ? 0 : 1;
 }
 
 uint8_t ms_tool_install_workspace(const ms_str *lock_root, const ms_list *members, const ms_list *update, uint8_t locked, uint8_t frozen,
@@ -923,6 +939,8 @@ typedef struct Analysis {
     char *message;
     int64_t *rows;
     size_t nrows, rows_cap;
+    int64_t *effects; /* the effect rows, taken before the ownership pass, which leaves unfollowed functions unchecked */
+    size_t neffects, effects_cap;
     char **names;
     size_t *name_lens;
     size_t nnames, names_cap;
@@ -932,6 +950,7 @@ static void analysis_drop(void *payload) {
     Analysis *a = payload;
     free(a->message);
     free(a->rows);
+    free(a->effects);
     for (size_t i = 0; i < a->nnames; i++) {
         free(a->names[i]);
     }
@@ -942,16 +961,24 @@ static void analysis_drop(void *payload) {
 static void put_row(Analysis *a, int64_t v) {
     if (a->nrows == a->rows_cap) {
         a->rows_cap = a->rows_cap == 0 ? 256 : a->rows_cap * 2;
-        a->rows = realloc(a->rows, a->rows_cap * sizeof *a->rows);
+        a->rows = ms_array_resize(a->rows, (uint32_t)a->rows_cap, sizeof *a->rows);
     }
     a->rows[a->nrows++] = v;
+}
+
+static void put_effect_row(Analysis *a, int64_t v) {
+    if (a->neffects == a->effects_cap) {
+        a->effects_cap = a->effects_cap == 0 ? 32 : a->effects_cap * 2;
+        a->effects = realloc(a->effects, a->effects_cap * sizeof *a->effects);
+    }
+    a->effects[a->neffects++] = v;
 }
 
 static int64_t put_name(Analysis *a, const char *data, size_t len) {
     if (a->nnames == a->names_cap) {
         a->names_cap = a->names_cap == 0 ? 64 : a->names_cap * 2;
-        a->names = realloc(a->names, a->names_cap * sizeof *a->names);
-        a->name_lens = realloc(a->name_lens, a->names_cap * sizeof *a->name_lens);
+        a->names = ms_array_resize(a->names, (uint32_t)a->names_cap, sizeof *a->names);
+        a->name_lens = ms_array_resize(a->name_lens, (uint32_t)a->names_cap, sizeof *a->name_lens);
     }
     char *copy = malloc(len + 1);
     memcpy(copy, data, len);
@@ -983,6 +1010,80 @@ static void fail(Analysis *a, uint8_t status, const char *text, size_t len) {
     a->message = malloc(len + 1);
     memcpy(a->message, text, len);
     a->message[len] = 0;
+}
+
+/* The first method of `ty` that takes nothing, returns a `Result` and is named `flush` or `commit`: what
+ * a scope that closes a resource does not run. The name's index, -1 for none. */
+static int64_t analyze_finisher(Analysis *a, const MsCheck *check, const MsFacts *facts, MsTy ty) {
+    const MsMethods *methods = facts->methods;
+    for (uint32_t i = 0; methods != NULL && i < methods->count; i++) {
+        if (methods->receiver[i] != ty || methods->decl[i] == NULL || methods->ty[i] == MS_TY_NONE) {
+            continue;
+        }
+        const MsTy signature = methods->ty[i];
+        const MsStr name = ms_name(check->names, methods->decl[i]->name);
+        const bool finishes = (name.len == 5 && memcmp(name.ptr, "flush", 5) == 0) ||
+                              (name.len == 6 && memcmp(name.ptr, "commit", 6) == 0);
+        if (finishes && check->tys.nparams[signature] == 0 && ms_ty_is(&check->tys, check->tys.result[signature], MS_BI_RESULT)) {
+            return put_name(a, name.ptr, name.len);
+        }
+    }
+    return -1;
+}
+
+/* The ownership rows, after the symbols: the count and ids of the name nodes that move a value out, then the count
+ * of resource bindings and for each its index, 1 when the ownership pass followed its function, and the name of its
+ * finisher (-1 for none). */
+static void analyze_ownership(Analysis *a, const MsCheck *check, const MsFacts *facts) {
+    int64_t moves = 0, resources = 0;
+    for (uint32_t n = 0; n <= facts->node_count; n++) {
+        moves += facts->moved_out[n];
+    }
+    for (uint32_t k = 0; k < facts->bindings.count; k++) {
+        resources += (facts->bindings.flags[k] & MS_BIND_RESOURCE) != 0;
+    }
+    put_row(a, moves);
+    for (uint32_t n = 0; n <= facts->node_count; n++) {
+        if (facts->moved_out[n]) {
+            put_row(a, n);
+        }
+    }
+    put_row(a, resources);
+    for (uint32_t k = 0; k < facts->bindings.count; k++) {
+        if ((facts->bindings.flags[k] & MS_BIND_RESOURCE) == 0) {
+            continue;
+        }
+        const uint32_t callable = facts->bindings.callable[k];
+        put_row(a, k);
+        put_row(a, callable <= facts->node_count && facts->body_checked[callable] ? 1 : 0);
+        put_row(a, analyze_finisher(a, check, facts, facts->bindings.ty[k]));
+    }
+}
+
+/* Takes the effect rows of module `id`: 1 when the scan saw every callable it reached (a missing violation proves
+ * nothing otherwise), the count of violations of the module's own callables, and for each its offset, line, column and
+ * the message `ms lint` prints as MSL116. Run before the ownership pass, which leaves a function it cannot follow
+ * unchecked, and so invisible to the scan. */
+static void collect_effects(Analysis *a, const MsCheck *check, MsModId id) {
+    MsArena arena = {0};
+    const MsEffectModule module = {.id = id, .text = check->mods[id].text};
+    MsPackageViolation *violations = NULL;
+    uint32_t count = 0;
+    bool complete = false;
+    if (!ms_effect_project_violations(&arena, check, &module, 1, &violations, &count, &complete)) {
+        count = 0;
+        complete = false;
+    }
+    a->neffects = 0;
+    put_effect_row(a, complete ? 1 : 0);
+    put_effect_row(a, count);
+    for (uint32_t k = 0; k < count; k++) {
+        put_effect_row(a, violations[k].pos.offset);
+        put_effect_row(a, violations[k].pos.line);
+        put_effect_row(a, violations[k].pos.column);
+        put_effect_row(a, put_name(a, violations[k].message, strlen(violations[k].message)));
+    }
+    ms_arena_free(&arena);
 }
 
 static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id) {
@@ -1055,6 +1156,10 @@ static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id) {
         put_row(a, put_type(a, check, check->syms.ty[s]));
     }
     free(seen);
+    analyze_ownership(a, check, facts);
+    for (size_t i = 0; i < a->neffects; i++) {
+        put_row(a, a->effects[i]);
+    }
 }
 
 /* Loads the project `path` belongs to, with `overlay` (path, text pairs) in place of disk, and checks every module of
@@ -1071,6 +1176,10 @@ static void analyze_project(Analysis *a, MsCheck *check, MsNames *table, const c
         ms_graph_add_modules(check, table, &graph_arena, &graph, ids);
         ms_program_begin(check);
         (void)ms_graph_check(check, &graph, ids, NULL);
+        collect_effects(a, check, ids[graph.count - 1]);
+        for (uint32_t i = 0; i < graph.count; i++) {
+            ms_module_check_ownership(check, ids[i]);
+        }
         analyze_facts(a, check, ids[graph.count - 1]);
     }
     ms_arena_free(&graph_arena);
@@ -1142,6 +1251,8 @@ ms_object *ms_tool_analyze(const ms_str *path, const ms_str *text, const ms_list
             const MsModId id = ms_module_add(&check, ms_intern_cstr(&table, "main.ms"), &module);
             ms_program_begin(&check);
             (void)ms_program_check_module(&check, id, (MsStr){src, (uint32_t)len});
+            collect_effects(a, &check, id);
+            ms_module_check_ownership(&check, id);
             analyze_facts(a, &check, id);
         }
         ms_check_free(&check);

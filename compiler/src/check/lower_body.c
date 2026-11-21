@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/parse.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
@@ -364,10 +365,50 @@ static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     return (LbVal){mir_b_binop(&lb->b, arithmetic, left.v, right.v), false};
 }
 
+/* The text of a string literal `str.eq_lit` can compare with (1 to 8 bytes, no NUL), else a null pointer. */
+static MsStr lb_literal_text(const MsExpr *e) {
+    const bool plain = e->kind == MS_E_TEXT && e->u.text.len == 1 && e->u.text.ptr[0].expr == NULL;
+    const MsStr lit = plain ? e->u.text.ptr[0].lit : (MsStr){0};
+    return lit.len >= 1 && lit.len <= 8 && memchr(lit.ptr, '\0', lit.len) == NULL ? lit : (MsStr){0};
+}
+
+/* `a == b` and `a != b` on Strings: a comparison with a literal is `str.eq_lit` (the right literal wins),
+ * any other is the runtime's `string_eq`. Both operands are borrowed. */
+static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
+    const LbVal left = lb_expr(lb, e->u.bin.left);
+    const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
+    if (!lb->ok || left.owned || right.owned) {
+        return lb_unsupported(lb); // an owned temporary needs its drop placed
+    }
+    MirValue same = MIR_NONE;
+    const bool literal_right = lb_literal_text(e->u.bin.right).ptr != NULL;
+    const MsStr lit = lb_literal_text(literal_right ? e->u.bin.right : e->u.bin.left);
+    if (lit.ptr != NULL) {
+        const MirImm imm = {.tag = MI_STR, .a = mir_add_string(lb->m, lit.ptr, lit.len)};
+        const MirValue other = literal_right ? left.v : right.v;
+        same = mir_b_emit(&lb->b, MOP_StrEqLit, &other, 1, imm, MIR_BOOL);
+    } else {
+        const struct MsRtFn *fn = lb_native_function(lb, lb->string_ty, ms_intern_cstr(lb->c->names, "eq"));
+        const MirValue args[2] = {left.v, right.v};
+        const LbVal call = fn == NULL ? LB_FAIL : lb_native_call(lb, fn, args, 2, MIR_BOOL);
+        if (fn == NULL || !lb->ok) {
+            return lb_unsupported(lb);
+        }
+        same = call.v;
+    }
+    if (e->op == MS_B_NE) {
+        same = mir_b_emit(&lb->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL);
+    }
+    return (LbVal){same, false};
+}
+
 static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     if (op == MS_B_AND || op == MS_B_OR) {
         return lb_short_circuit(lb, e);
+    }
+    if ((op == MS_B_EQ || op == MS_B_NE) && lb->facts->expr_ty[e->u.bin.left->id] == lb->string_ty) {
+        return lb_string_equal(lb, e);
     }
     if (op == MS_B_ADD && lb->facts->expr_ty[e->id] == lb->string_ty) {
         return lt_text(lb, e); // a chain of string sums is one join
@@ -462,6 +503,9 @@ static bool lb_names_owned(const Lb *lb, const MsExpr *e) {
 /* A `move` argument: an owned temporary is handed over as it is, an owned name moves out of its
  * scope, and anything else is copied. */
 MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
+    if (e->kind == MS_E_NAME && lb->facts->res_kind[e->id] == MS_RES_NONE) {
+        return la_none_owned(lb, e).v; // `none` where the holder owns what it holds
+    }
     const LbVal value = lb_expr(lb, e);
     if (!lb->ok || value.owned) {
         return value.v;
@@ -483,9 +527,6 @@ static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
     }
     if (lb->c->syms.nvars[callee] == 0) {
         return lb->func_of[callee];
-    }
-    if (lb->c->syms.module[callee] != lb->module) {
-        return MIR_NONE; // its declaration ids and facts belong to another module
     }
     const MsFacts *facts = lb->facts;
     const uint32_t nargs = facts->call_type_args_len[e->id];
@@ -581,10 +622,11 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
 }
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
-    if (lb->facts->call_reordered[e->id]) {
-        return lb_unsupported(lb); // arguments are paired with parameters by index below
-    }
     const uint32_t callee = lb->facts->call_callee[e->id];
+    const bool builds_record = callee != MS_NONE && lb->c->syms.kind[callee] == MS_SYM_TYPE;
+    if ((lb->facts->call_reordered[e->id] && !builds_record) || ms_is_index_store(lb->c->names, e)) {
+        return lb_unsupported(lb); // arguments are paired with parameters by index below; a store has its own order
+    }
     const uint32_t method = lb->facts->call_method[e->id];
     if (method != MS_NONE) {
         return lm_has(lb, method) ? lm_call(lb, e, method) : lb_native_method(lb, e);
@@ -602,7 +644,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (callee == MS_NONE) {
         return lb_call_value(lb, e);
     }
-    if (lb->c->syms.kind[callee] == MS_SYM_TYPE) {
+    if (builds_record) {
         return lr_construct(lb, e);
     }
     return lb_call_func(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false);
@@ -619,7 +661,7 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     case MS_E_BINARY: return lb_binary(lb, e);
     case MS_E_MATCH: return lb_match(lb, e);
     case MS_E_CALL: return lb_call(lb, e);
-    case MS_E_MEMBER: return lr_field(lb, e);
+    case MS_E_MEMBER: return lb->facts->res_kind[e->id] == MS_RES_CASE ? la_nullary(lb, e) : lr_field(lb, e);
     case MS_E_INDEX:
     case MS_E_APPLY: return lst_index(lb, e);
     case MS_E_LIST: return lst_literal(lb, e);
@@ -841,6 +883,10 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
         }
     }
     if (ty == lb->string_ty) {
+        if (!value.owned && s->u.bind.value->kind == MS_E_CALL) {
+            lb->ok = false; // the local borrows a call's result (`y := echo(x)`): the ownership walk does not say so yet
+            return;
+        }
         if (!value.owned) {
             value = (LbVal){lb_copy(lb, value.v), true}; // a borrowed String is copied into the local
         }

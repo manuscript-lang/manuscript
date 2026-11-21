@@ -1,8 +1,8 @@
 type Secret:
-    a: Int
+	a: Int
 
 export interface Source:
-    fn read() Secret
+	fn read() Secret
 
 fn main() Void:
-    return
+	return

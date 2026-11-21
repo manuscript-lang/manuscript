@@ -1,10 +1,14 @@
 // `ms check FILE.ms [--json]` over libms (`ms_tool_check`, compiler/include/ms/tool.h). The C checker answers when it
-// covers every function and declaration of the file and its project modules; for anything else (several targets, a
-// directory, `--fix`, `--watch`, a diagnostic it cannot place exactly) `run_check` returns none and the caller runs
-// the Rust command. `compiler/tests/check-cmd-diff.sh` holds the C answer to the Rust output on the corpus.
-import stderr, stdout from "@std/io/io.ms"
+// covers every function and declaration of the file and its project modules; for
+// anything else (several targets, a directory, `--fix`, `--watch`, a diagnostic it
+// cannot place exactly) `run_check` returns none and the caller runs the Rust command.
+// `compiler/tests/check-cmd-diff.sh` holds the C answer to the Rust output on the
+// corpus.
+import (
+	stderr, stdout from "@std/io/io.ms",
 
-import Invocation from "./args.ms"
+	Invocation from "./args.ms",
+)
 
 // Status 1 is an error in the call; status 2 is a request the C checker does not cover.
 export enum CheckError:
