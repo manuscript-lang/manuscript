@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 # The one build of every C part of Manuscript: the runtime archive, and the C tests that run against it.
 # Generated with Ninja, cached with ccache when it is installed:
 #   cmake -S . -B target/cmake/host -G Ninja && cmake --build target/cmake/host && ctest --test-dir target/cmake/host
-# `make c-configure c-build c-test` wraps those. `cargo xtask runtime` and the `ms-rt` build script call the same
-# project (runtime/build_c.rs) with MS_TRIPLE naming the target. Cache variables:
+# `make c-configure c-build c-test` wraps those. `cmake -P cmake/BuildRuntime.cmake` calls the same
+# project (cmake/BuildRuntime.cmake) with MS_TRIPLE naming the target. Cache variables:
 #   MS_TRIPLE      target triple of a runtime archive ("" = this host); picks the platform folders and flags.
 #   MS_C_LIBS      system (pkg-config) or prefix (MS_LIBS_PREFIX holds include/ and lib/lib*.a: pinned builds, MSYS2).
 #   MS_SANITIZE    ON: AddressSanitizer and UBSan (the tests).

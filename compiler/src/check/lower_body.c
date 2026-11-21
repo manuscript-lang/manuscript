@@ -88,7 +88,7 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
 }
 
 MirLoc lb_loc(const Lb *lb, MsPos pos) {
-    return (MirLoc){.file = 0, .line = pos.line, .col = pos.column, .scope = lb->b.loc.scope};
+    return (MirLoc){.file = lb->views[lb->view].file, .line = pos.line, .col = pos.column, .scope = lb->b.loc.scope};
 }
 
 void lb_emit_plain(Lb *lb, MirOp op) {
@@ -402,6 +402,12 @@ static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
     return (LbVal){same, false};
 }
 
+/* Whether `ty` is a record, enum, optional or list: `==` on it calls a generated function. */
+static bool lb_is_aggregate(const Lb *lb, MirTy ty) {
+    const uint8_t kind = mir_ty_data(lb->m, ty)->kind;
+    return kind == MK_TYPE || kind == MK_ALT || kind == MK_OPT || kind == MK_LIST;
+}
+
 static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     if (op == MS_B_AND || op == MS_B_OR) {
@@ -417,6 +423,9 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
     if (!lb->ok) {
         return LB_FAIL;
+    }
+    if ((op == MS_B_EQ || op == MS_B_NE) && lb_is_aggregate(lb, mir_b_ty(&lb->b, left.v))) {
+        return lq_equal(lb, left, right, op == MS_B_NE);
     }
     return lb_apply(lb, op, left, right);
 }
@@ -882,9 +891,10 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
             lscope_own(&lb->scopes, value.v, 0); // a `var` is owned at each exit with the value it holds there
         }
     }
-    if (ty == lb->string_ty) {
+    const bool borrows = (lb->facts->bindings.flags[binding] & MS_BIND_BORROWS) != 0; // `y := x`, `y := f(x)` over a borrow
+    if (ty == lb->string_ty && !borrows) {
         if (!value.owned && s->u.bind.value->kind == MS_E_CALL) {
-            lb->ok = false; // the local borrows a call's result (`y := echo(x)`): the ownership walk does not say so yet
+            lb->ok = false; // a call's borrowed result the walk did not mark as a borrowing local
             return;
         }
         if (!value.owned) {
@@ -904,7 +914,7 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
         }
     } else {
         lb->value_of[binding] = value.v;
-        if (pattern->kind == MS_P_NAME) {
+        if (pattern->kind == MS_P_NAME && !borrows) { // a borrowing local is another name for a value that has one
             lb_name_value(lb, value.v, pattern->u.name, false);
         }
     }
