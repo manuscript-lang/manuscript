@@ -56,7 +56,7 @@ fn parsed_stdlib(files: List[String]) Map[String, Sexp]:
 	var out = Map[String, Sexp]()
 
 	for path in files:
-		if not path.starts_with("stdlib/") or not path.ends_with(".ms"): continue
+		if not path.starts_with("src/stdlib/") or not path.ends_with(".ms"): continue
 
 		if source := read_text(path):
 			if tree := parse_tree(path, source): out.add(path.clone(), tree)
@@ -65,13 +65,13 @@ fn parsed_stdlib(files: List[String]) Map[String, Sexp]:
 
 // ---- every standard-library declaration file must parse ----
 
-// The `.ms` files directly under `stdlib/`, sorted.
+// The `.ms` files directly under `src/stdlib/`, sorted.
 fn stdlib_files() List[String]:
 	var paths = List[String]()
-	if entries := list("stdlib"):
+	if entries := list("src/stdlib"):
 		for entry in entries:
 			if not entry.directory and entry.name.ends_with(".ms"): paths.append(
-				f"stdlib/{entry.name}"
+				f"src/stdlib/{entry.name}"
 			)
 	paths.sort()
 	return paths
@@ -234,8 +234,8 @@ export fn nested(files: List[String]) List[String]:
 // ---- stream-shaped names ----
 
 STREAM_MODULES := [
-	"stdlib/io/io.ms", "stdlib/io/streams.ms", "stdlib/io/steps.ms",
-	"stdlib/io/forward.ms"
+	"src/stdlib/io/io.ms", "src/stdlib/io/streams.ms", "src/stdlib/io/steps.ms",
+	"src/stdlib/io/forward.ms"
 ]
 BANNED_STREAM_NAMES := ["next", "receive", "feed", "write_bytes"]
 STREAM_ALLOWED := "tools/repo-check/stream-names-allowed.txt"
@@ -361,7 +361,7 @@ export fn optional_defaults(files: List[String]) List[String]:
 	trees := parsed_stdlib(files)
 
 	for path in trees.keys():
-		if path.starts_with("stdlib/internal/"): continue
+		if path.starts_with("src/stdlib/internal/"): continue
 
 		tree := trees.get_or(path, Sexp())
 		exported := exported_types(tree, false)

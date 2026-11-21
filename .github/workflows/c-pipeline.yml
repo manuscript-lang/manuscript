@@ -1,7 +1,7 @@
 name: C pipeline platforms
 
 # `MS_BACKEND=c ms build` (the C back end linked into `ms`, then the pinned LLVM tools) on the platforms the pull request jobs do not
-# run: the corpus of `compiler/tests/build-diff.sh` built by both back ends and compared. Manual runs only; the
+# run: the corpus of `src/compiler/tests/build-diff.sh` built by both back ends and compared. Manual runs only; the
 # Linux legs run the same script through `make c-compiler-test`.
 
 on:
@@ -56,9 +56,9 @@ jobs:
           cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
           cmake --build target/cmake/tools --target ms_build_object ms_build_link
           cmake -DMS_MODE=linker -P cmake/BuildRuntime.cmake
-          MS_LINKER_FILES="$PWD/target/ms-linker" sh compiler/tests/c-link-hello.sh
+          MS_LINKER_FILES="$PWD/target/ms-linker" sh src/compiler/tests/c-link-hello.sh
       - name: Compare the corpus
-        run: sh compiler/tests/build-diff.sh '${{ inputs.limit }}' | tee build-diff.log
+        run: sh src/compiler/tests/build-diff.sh '${{ inputs.limit }}' | tee build-diff.log
       - name: Keep the logs of the programs that differ or fail
         if: always()
         run: |

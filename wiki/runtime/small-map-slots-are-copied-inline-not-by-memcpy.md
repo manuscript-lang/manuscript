@@ -6,5 +6,5 @@ Verified: the map insert copied a 72-byte `JsonValue` slot through a `memcpy` ca
 
 
 Apply when: a map or list of records shows `memcpy` in a profile.
-Evidence: [map slots](../../runtime/core/map_table.h).
+Evidence: [map slots](../../src/runtime/core/map_table.h).
 Verify: callgrind on `bench/perf/json` (`ms build bench/perf/json/ms.toml -o /tmp/jb`, then `valgrind --tool=callgrind /tmp/jb quick twitter:parse`).

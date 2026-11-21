@@ -9,7 +9,7 @@ name: Nightly safety
 #   view-matrix   generated view programs (trim, slice, split) with temporaries after them, poisoned, in Debug and Release
 #   stress-sched  runs the stdlib sweep under the scheduler stress mode
 #   bench-gate    `ms bench` on bench/perf/guards; fails when an allocation or copy count rose more than 3% over baseline.json
-#   c-safety      the C style gate on every file (Linux), the C runtime unit tests and fuzz harnesses (runtime/fuzz) under AddressSanitizer and UBSan on Linux and macOS, then libFuzzer on Linux
+#   c-safety      the C style gate on every file (Linux), the C runtime unit tests and fuzz harnesses (src/runtime/fuzz) under AddressSanitizer and UBSan on Linux and macOS, then libFuzzer on Linux
 #   c-compiler-test  the C front end against the Rust one on the corpus and 50,000 mutated files
 #   perf-counts   instructions of the suite and guard programs under callgrind against bench/perf/counts.txt; opens an issue when one is over 3% higher
 
@@ -80,7 +80,7 @@ jobs:
         os: [ubuntu-24.04, macos-15]
     steps:
       - uses: actions/checkout@v7
-      - run: sh runtime/third_party/libs.sh install
+      - run: sh src/runtime/third_party/libs.sh install
       - run: make c-test
       # Every C file through the style gate (pull requests run clang-tidy on changed files only).
       - if: runner.os == 'Linux'

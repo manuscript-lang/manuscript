@@ -87,7 +87,7 @@ mod tests {
     fn every_entry_names_a_declared_extern() {
         let mut stdlib = String::new();
         collect(
-            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib"),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src/stdlib"),
             &mut stdlib,
         );
         for h in HAND_LOWERED {

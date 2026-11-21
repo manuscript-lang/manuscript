@@ -1,6 +1,6 @@
 //! The bundled standard declarations.
 //!
-//! `stdlib/*.ms` is embedded unchanged. Native
+//! `src/stdlib/*.ms` is embedded unchanged. Native
 //! modules (declarations without bodies) are declared once per thread; source
 //! modules (declarations with bodies) are checked lazily with the ordinary
 //! checker and shared by every program.
@@ -209,7 +209,7 @@ pub(crate) fn source_type_symbol(syms: ms_syntax::Names, module: &ModRef, d: &De
 }
 
 /// Whether a module file is standard-library source: a bundled `@std/` module, or a checkout's
-/// `stdlib/` file opened from disk (an editor on the repository).
+/// `src/stdlib/` file opened from disk (an editor on the repository).
 pub fn is_bundled_source(file: &str) -> bool {
     file.starts_with("@std/")
         || std::path::Path::new(file).ancestors().any(|dir| {

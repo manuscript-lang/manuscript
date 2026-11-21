@@ -13,7 +13,7 @@ Build the compiler, run its tests, and package native releases. `ms` is implemen
 
 Building `ms` needs a C compiler (`ring` compiles C sources), the platform prerequisites below, and the pinned dependencies, downloaded during setup or supplied through the Cargo cache.
 
-On a new machine run `make setup` once (it runs `sh runtime/third_party/libs.sh install`: CMake, Ninja, clang, musl-gcc, perl and the system libraries; apt, Homebrew, apk, dnf and MSYS2 are supported). `make runtime` first checks that those tools exist and names what is missing. The pinned C libraries are built once per target into `target/c-libs`; a build left by an older checkout (another source folder or compiler) is discarded and rebuilt, so a stale cache needs no manual cleanup. `make rebuild` removes everything built.
+On a new machine run `make setup` once (it runs `sh src/runtime/third_party/libs.sh install`: CMake, Ninja, clang, musl-gcc, perl and the system libraries; apt, Homebrew, apk, dnf and MSYS2 are supported). `make runtime` first checks that those tools exist and names what is missing. The pinned C libraries are built once per target into `target/c-libs`; a build left by an older checkout (another source folder or compiler) is discarded and rebuilt, so a stale cache needs no manual cleanup. `make rebuild` removes everything built.
 
 The native runtime (`ms-native`) is an explicit step: `make runtime` (`cmake -P cmake/BuildRuntime.cmake`) builds it into `target/ms-native/libms_native.a`. The build script of `ms-cli` only embeds that archive (or the one `MS_NATIVE_LIB` names) and fails, naming this command, when the archive is missing. Rerun the command after changing `ms-rt`, `ms-rt-abi`, `ms-rt-hot`, or any `ms-std-*` crate.
 
@@ -82,7 +82,7 @@ The following details describe the compiler's generated artifacts and platform i
 
 ### Optimization
 
-Every build emits LLVM IR text from MIR in C (`compiler/src/emit/emit_llvm.c`, linked into `ms` as libms) and `ms-build` runs the pinned `opt` and `llc` to optimize it (`default<O3>` and `-O3`; `Os` and `-O2` for MinSizeRel). The pinned `lld` links the objects, with no `clang` or `cc`. Debug builds skip `opt` and run `llc -O0`. Fault traces and profiles keep their source frames through the runtime tables that `ms_asm_tables` builds from the assembly `.loc` lines. The code targets the baseline CPU of each architecture; LLVM does the vectorizing and the build emits no per-CPU copies or dispatchers. `MS_VECTORIZE=off` disables the loop and SLP vectorizers.
+Every build emits LLVM IR text from MIR in C (`src/compiler/src/emit/emit_llvm.c`, linked into `ms` as libms) and `ms-build` runs the pinned `opt` and `llc` to optimize it (`default<O3>` and `-O3`; `Os` and `-O2` for MinSizeRel). The pinned `lld` links the objects, with no `clang` or `cc`. Debug builds skip `opt` and run `llc -O0`. Fault traces and profiles keep their source frames through the runtime tables that `ms_asm_tables` builds from the assembly `.loc` lines. The code targets the baseline CPU of each architecture; LLVM does the vectorizing and the build emits no per-CPU copies or dispatchers. `MS_VECTORIZE=off` disables the loop and SLP vectorizers.
 
 `MS_LLVM_TOOLS` names a directory holding `opt`, `llc` and `llvm-link`. See [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup) for downloads, caches and fallback behavior. On Windows the IR targets the mingw-w64 triple.
 

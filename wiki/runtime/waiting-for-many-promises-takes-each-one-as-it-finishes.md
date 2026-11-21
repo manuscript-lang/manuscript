@@ -9,5 +9,5 @@ The same change fixed a hidden cost: `remove_pending` scanned the whole queue of
 `wait_any(promises)` (2026-11-20, #5017) is the public non-cancelling form of `msrt_promise_wait_any`: it returns the position of the first finisher and leaves the rest running, which `wait_first` cannot do because it cancels them. A supervisor that must outlive a stop request on one of its children (the `ms test` front) loops on it, removing each handled promise.
 
 Apply when: changing `wait_all`, `wait_first`, `msrt_promise_wait_any`, or the unstarted-promise queue in `sched.rs`.
-Evidence: [`promise.ms`](../../stdlib/concurrency/promise.ms), [`promise.rs`](../../crates/ms-rt/src/promise.rs), [`promise-semantics.ms`](../../tests/conformance/fixtures/e2e/stdlib/promise-semantics.ms).
+Evidence: [`promise.ms`](../../src/stdlib/concurrency/promise.ms), [`promise.rs`](../../crates/ms-rt/src/promise.rs), [`promise-semantics.ms`](../../tests/conformance/fixtures/e2e/stdlib/promise-semantics.ms).
 Verify: ten thousand promises sleeping 1 s, `wait_all` on `MS_THREADS=4` finishes in about 1.06 s; compare 100k small promises at 1 and 4 threads with `strace -c -f` and expect single-digit futex calls.

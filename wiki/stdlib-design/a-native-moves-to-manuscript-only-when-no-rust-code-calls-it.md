@@ -8,8 +8,8 @@ Measured 2026-11-15 (callgrind, same machine, Manuscript against the Rust it wou
 
 Blockers found for other candidates: `crc32`/`adler32`/base64 are called by `ms-std-archive`, `ms-std-net` and TLS; glob by `ms-std-fs` walk; `msstd_url_parse` and `msstd_url_format` are called by name from `ms-lower/json.rs` (typed JSON of `Url`); Duration `+`/`-` and `5.seconds()` are lowered from `expr.rs`. Remove the Rust caller or lowering special case in the same change.
 
-Apply when: choosing the next Rust native to port, or removing an `extern fn` from `stdlib/internal/*.ms`.
-Evidence: [math.ms](../../stdlib/math/math.ms), [collections.ms](../../stdlib/collections/collections.ms), `grep -rn <symbol> crates` before porting.
+Apply when: choosing the next Rust native to port, or removing an `extern fn` from `src/stdlib/internal/*.ms`.
+Evidence: [math.ms](../../src/stdlib/math/math.ms), [collections.ms](../../src/stdlib/collections/collections.ms), `grep -rn <symbol> crates` before porting.
 Verify: `ms test tests/conformance/fixtures/e2e/stdlib/numeric-helpers.ms` and `collections.ms` pass.
 
 Update 2026-11-15 ([issue 4033](https://github.com/manuscript-lang/manuscript/issues/4033)): the `flatten` gap was `List.extend` copying element by element, not the loop. `extend` is now a bulk-copy native (`msrt_list_extend`), and `flatten` is a `.ms` reserve-then-extend loop that beats the old native on five 200-int lists (5.10M against 5.13M instructions over 3000 calls), string lists (68.1M against 71.6M) and empty lists (13.2M against 20.8M). `range_by` stays native: a plain append loop compiles to about 8 instructions per element against about 3 for the Rust fill, a loop-shape cost (capacity check, bound check, jump) that needs loop optimisation, not a stdlib change. Receiver-typed arguments of `Clonable`-bound mutators (`extend`, `merge`) are borrowed, since those methods copy from them; `splice` still takes its replacement.

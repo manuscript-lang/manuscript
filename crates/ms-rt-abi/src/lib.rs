@@ -685,7 +685,7 @@ pub const VALUE_SIZE: usize = 24;
 pub const MAX_CALL_DEPTH: i64 = 200_000;
 /// Fault frames shown before "... outer frames omitted".
 pub const MAX_FAULT_FRAMES: usize = 32;
-// Exit statuses and fault kinds, generated from `runtime/include/ms_rt/fault.h` (build.rs).
+// Exit statuses and fault kinds, generated from `src/runtime/include/ms_rt/fault.h` (build.rs).
 // A fault ends the process the way a C program ends: as `abort` does (status 134, the shell's
 // 128 + SIGABRT), or, for a stack overflow or an allocation the system refused, as a
 // segmentation fault does (139). The same numbers on every platform: Windows' own abort status

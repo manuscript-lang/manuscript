@@ -1,6 +1,6 @@
 # Idle connection memory of the C network path
 
-`server.c` serves HTTP keep-alive ("hello") and echoes WebSocket frames using only C runtime pieces: `runtime/sys` sockets, one libuv poll handle per connection, the `runtime/io` completion ring and shared scratch read buffer, 64-byte connection rows, and the llhttp and WebSocket parsers of `runtime/net`. `client.py` opens N idle connections and reads the server's `VmRSS` and `VmPTE` before and after. `run.sh` builds and runs it (Linux; `ulimit -n 20000`).
+`server.c` serves HTTP keep-alive ("hello") and echoes WebSocket frames using only C runtime pieces: `src/runtime/sys` sockets, one libuv poll handle per connection, the `src/runtime/io` completion ring and shared scratch read buffer, 64-byte connection rows, and the llhttp and WebSocket parsers of `src/runtime/net`. `client.py` opens N idle connections and reads the server's `VmRSS` and `VmPTE` before and after. `run.sh` builds and runs it (Linux; `ulimit -n 20000`).
 
 A connection costs one 64-byte row plus one 160-byte `uv_poll_t`, nothing else while idle: no read buffer, no stash, no task stack. Kernel socket memory (about a few KB per TCP socket in slab) is not in the server's RSS.
 

@@ -1,5 +1,5 @@
 //! `@std/data/json.ms` `parse` and `stringify` for any type: one decoder and one encoder per type,
-//! built in MIR over the runtime's document arena (`msstd_json_*`, see `runtime/std/json_*.c`).
+//! built in MIR over the runtime's document arena (`msstd_json_*`, see `src/runtime/std/json_*.c`).
 //!
 //! A decoder takes the document handle, a node id and the strict flag (unknown object members
 //! fail) and returns an `Optional`: `none` is `InvalidData`. An encoder takes the builder handle

@@ -1,6 +1,6 @@
 # Current-main confirmation: 2026-11-12
 
-Baseline compiler/runtime/stdlib: main `15e35bc8a853b917f7c3c054fd1b95c3337ed633`; proposed uses the same compiler/runtime with this PR's encoder changes. Both executables use the identical revised fixture. All compiler checks remain enabled; there is no compiler, ownership, ABI or API change in this follow-up.
+Baseline src/compiler/runtime/stdlib: main `15e35bc8a853b917f7c3c054fd1b95c3337ed633`; proposed uses the same compiler/runtime with this PR's encoder changes. Both executables use the identical revised fixture. All compiler checks remain enabled; there is no compiler, ownership, ABI or API change in this follow-up.
 
 The original fixture's branch-local setup was rejected by current main's compiler. The revised fixture uses ordinary typed setup helpers selected through documented literal matching. The five timed loops, output/error checks, warmup counts and CSV results are unchanged. Input reads, conversions and dispatch remain outside timing. Supported invocations preserve output and error behavior; unsupported operations now return 2 before file reads and malformed setup may fail in a different order. Those are outside the measured fixture contract. The earlier results remain historical because setup lifetimes may differ.
 

@@ -22,7 +22,7 @@ Verified: source Map keys use exact equality, while HTTP field names fold ASCII 
 
 
 Apply when: changing HTTP adapters, repeated fields, or header representation bridges.
-Evidence: [called source checks](../../tests/conformance/fixtures/e2e/stdlib/http-headers.ms), [header contracts](../../stdlib/net/http.ms).
+Evidence: [called source checks](../../tests/conformance/fixtures/e2e/stdlib/http-headers.ms), [header contracts](../../src/stdlib/net/http.ms).
 Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered raw-byte acceptance, streaming/client UTF-8 rejection, transport framing validation and domain errors distinct.
 
 Repeated `Content-Encoding` fields are one ordered coding list. The client only

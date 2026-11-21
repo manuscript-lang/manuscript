@@ -15,10 +15,10 @@ export fn has_carriage_return(path: String) Bool:
 export fn skipped(path: String) Bool:
 	return (
 		path.starts_with("vendor/")
-		or path.starts_with("runtime/third_party/")
+		or path.starts_with("src/runtime/third_party/")
 		or path.starts_with("website/themes/")
 		or path.starts_with("tests/conformance/fixtures/")
-		or path.starts_with("compiler/tests/prelude/")
+		or path.starts_with("src/compiler/tests/prelude/")
 	)
 
 export fn is_word_byte(byte: UInt8) Bool:

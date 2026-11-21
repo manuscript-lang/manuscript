@@ -1,0 +1,11 @@
+# Runtime symbols of ms_rt/desc.h defined in C (src/runtime/core/desc.c); one per line. The builtin descriptors
+# (msrt_desc_*) switch with msrt_slot_drop, since data cannot be listed.
+msrt_slot_drop
+msrt_slot_copy
+msrt_slot_eq
+msrt_slot_hash
+msrt_hash_combine
+msrt_hash_bytes
+msrt_hash_int
+msrt_eq_enter
+msrt_eq_leave

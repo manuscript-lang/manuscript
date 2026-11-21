@@ -1,5 +1,5 @@
 //! The pure fix builders of `ms-check`'s `suggestions.rs`, copied with the checker removed, for the
-//! C port in `compiler/src/syntax/fixes.c` to be diffed against (`compiler/tests/fixes-diff.sh`). Each
+//! C port in `src/compiler/src/syntax/fixes.c` to be diffed against (`src/compiler/tests/fixes-diff.sh`). Each
 //! stdin line is one tab-separated case and each output line its fix (`gen COUNT SEED` writes
 //! random cases). Temporary tooling for the C rewrite: delete it with the Rust checker.
 //!   F message offset line column len     fix_for

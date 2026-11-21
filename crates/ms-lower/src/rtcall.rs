@@ -36,7 +36,7 @@ type RtEntry = (
 );
 
 /// The ABI facts a runtime function declares with a `// ms:` comment in its source
-/// (`ms run tools/ms/symbols.ms` types them in `rt_symbols.txt`).
+/// (`ms run src/ms/symbols.ms` types them in `rt_symbols.txt`).
 #[derive(Clone, Copy, Default)]
 pub(crate) struct RtFlags {
     /// Never reaches a cancellation point.
@@ -1576,7 +1576,7 @@ include!(concat!(env!("OUT_DIR"), "/status_rows.rs"));
 
 /// The error code and message words of each runtime status of `sym`'s module, as
 /// `(status, kind, words)`. The rows are declared in the standard library next to `Error.kind`
-/// (`stdlib/core.ms`); a module's own wording for a status is declared in the file that holds
+/// (`src/stdlib/core.ms`); a module's own wording for a status is declared in the file that holds
 /// `sym` (see `build.rs`). Words `-` mean the native's own text is the message.
 pub(crate) fn status_table(sym: &str) -> StatusRows {
     STATUS_ROWS

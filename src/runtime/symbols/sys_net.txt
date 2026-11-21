@@ -1,0 +1,1 @@
+# ms_rt/sys_net.h declares the socket layer for src/runtime/io and src/runtime/net only; no exported runtime symbols.

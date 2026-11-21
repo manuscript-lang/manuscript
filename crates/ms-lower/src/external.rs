@@ -419,7 +419,7 @@ impl FnLower<'_> {
 
     /// The `ms_fn` for a borrowed function argument: a runtime object holding a closure that
     /// calls `f` with arguments the runtime has converted from `ms_value`s, and the signature
-    /// `ms_call` checks them against (see `ms_call_v1` in runtime/core/cabi.c).
+    /// `ms_call` checks them against (see `ms_call_v1` in src/runtime/core/cabi.c).
     fn function_argument(&mut self, f: Value, fty: MTy) -> Result<Value, Error> {
         let TyKind::Fn(ps, ret, _) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("an ms_fn needs a function"));

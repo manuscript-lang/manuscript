@@ -4,16 +4,16 @@
 # (ulimit -n 20000). Usage (repository root): sh bench/net-idle/run.sh
 set -eu
 cd "$(dirname "$0")/../.."
-libs=runtime/third_party/libs.sh
+libs=src/runtime/third_party/libs.sh
 out=target/net-idle
 mkdir -p "$out"
 # shellcheck disable=SC2046
 cc -std=gnu11 -O2 -Wall -Wextra -Iruntime/include -Iruntime/third_party/llhttp/include $(sh $libs cflags) \
-    bench/net-idle/server.c runtime/sys/linux/net.c runtime/io/ring.c runtime/net/conn.c runtime/net/http1.c \
-    runtime/net/ws.c runtime/net/tls.c $(sh $libs libs uv ssl crypto llhttp) -o "$out/server"
+    bench/net-idle/server.c src/runtime/sys/linux/net.c src/runtime/io/ring.c src/runtime/net/conn.c src/runtime/net/http1.c \
+    src/runtime/net/ws.c src/runtime/net/tls.c $(sh $libs libs uv ssl crypto llhttp) -o "$out/server"
 ulimit -n 20000 2>/dev/null || true
 # shellcheck disable=SC2046
-cc -std=gnu11 -O1 -Wall $(pkg-config --cflags openssl) bench/net-idle/tls_memory.c runtime/net/tls.c \
+cc -std=gnu11 -O1 -Wall $(pkg-config --cflags openssl) bench/net-idle/tls_memory.c src/runtime/net/tls.c \
     $(pkg-config --libs openssl) -o "$out/tls_memory"
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 1 -subj /CN=localhost \
     -keyout "$out/key.pem" -out "$out/cert.pem" 2>/dev/null

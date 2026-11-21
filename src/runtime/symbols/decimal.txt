@@ -1,0 +1,15 @@
+# Runtime symbols of ms_rt/decimal.h defined in C (src/runtime/std/decimal.c); one per line.
+msstd_decimal_add
+msstd_decimal_compare
+msstd_decimal_divide
+msstd_decimal_from_int
+msstd_decimal_from_uint
+msstd_decimal_multiply
+msstd_decimal_negate
+msstd_decimal_parse
+msstd_decimal_round
+msstd_decimal_subtract
+msstd_decimal_to_fixed
+msstd_decimal_to_float
+msstd_decimal_to_string
+msstd_decimal_truncate_to_int

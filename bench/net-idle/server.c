@@ -1,11 +1,11 @@
-/* An idle-connection server built only from the C runtime pieces: sockets (runtime/sys), one libuv poll handle
- * per connection (runtime/io style), the completion ring, the shared scratch read buffer, connection rows and
- * the HTTP/1 and WebSocket parsers (runtime/net). It answers a keep-alive HTTP request with "hello" and echoes
+/* An idle-connection server built only from the C runtime pieces: sockets (src/runtime/sys), one libuv poll handle
+ * per connection (src/runtime/io style), the completion ring, the shared scratch read buffer, connection rows and
+ * the HTTP/1 and WebSocket parsers (src/runtime/net). It answers a keep-alive HTTP request with "hello" and echoes
  * WebSocket text and binary frames, so a client can open thousands of idle connections and measure what each
  * one costs. A measurement probe, not the runtime: one thread, plain TCP, frames must arrive whole.
  *
  * Usage: server <port> <max connections> [cert.pem key.pem]; with a certificate every connection is TLS (OpenSSL on
- * memory buffers, runtime/net/tls.c) and the same two protocols run inside it. Prints "ready <pid>" once listening. */
+ * memory buffers, src/runtime/net/tls.c) and the same two protocols run inside it. Prints "ready <pid>" once listening. */
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,11 +13,11 @@
 #include <strings.h>
 #include <unistd.h>
 #include <uv.h>
-#include "../../runtime/include/ms_rt/sys_net.h"
-#include "../../runtime/io/ring.h"
-#include "../../runtime/net/conn.h"
-#include "../../runtime/net/tls.h"
-#include "../../runtime/net/ws.h"
+#include "../../src/runtime/include/ms_rt/sys_net.h"
+#include "../../src/runtime/io/ring.h"
+#include "../../src/runtime/net/conn.h"
+#include "../../src/runtime/net/tls.h"
+#include "../../src/runtime/net/ws.h"
 
 enum { HEAD_LIMIT = 8192, FIELD_CAPACITY = 32, SCRATCH_BYTES = 65536, TLS_HANDSHAKING = 1, TLS_READY = 2 };
 #define LISTENER_ID UINT64_MAX

@@ -67,7 +67,7 @@ ASCII 4944/4940, Unicode 5712/5708, sparse 4944/4940, dense 8272/8268,
 mixed 5584/5580. RSS is flat and does not overturn the timing rejection; it is
 not an allocation-count claim.
 
-Use two clean worktrees at main 09e0. Restore only `stdlib/toml.ms` to 3cf in one;
+Use two clean worktrees at main 09e0. Restore only `src/stdlib/toml.ms` to 3cf in one;
 keep the merged helper in the other. In each run `cargo xtask runtime`,
 `cargo build --release --locked -p ms-cli`, then the unchanged source producer
 build from the original report. Use Rust 1.99.1, LLVM 23.1.1 and the same pinned

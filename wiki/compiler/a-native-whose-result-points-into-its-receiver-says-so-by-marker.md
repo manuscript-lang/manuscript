@@ -1,6 +1,6 @@
 # A native whose result points into its receiver says so with `// ms: borrows`
 
-`String.chars`, `lines`, `split`, `view` and `view_bytes` in `stdlib/core/intrinsics.ms` carry
+`String.chars`, `lines`, `split`, `view` and `view_bytes` in `src/stdlib/core/intrinsics.ms` carry
 `// ms: borrows` (`ms_doc_has_marker`); the checker reads it into `Target.borrows` and records
 `call_borrows[call]`, instead of matching method names as the Rust `native_borrow` does.
 

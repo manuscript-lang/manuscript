@@ -115,7 +115,7 @@ Other cases that read 2x or worse against that baseline on 2026-11-07 and reprod
 
 ## 2026-11-07, a function returning `Map.get` borrows the entry
 
-`JsonValue.get` returned `values.get(key)` through `msrt_map_get`, which deep-copies the value: the checker treated `m.get(k)` returned from a function as a new value, though the stdlib documents the result as a borrow. A returned `m.get(k)` is now a borrow of the receiver (the lowering reads the entry with `msrt_map_get_ptr` and returns `opt.view`), as `xs.get(i)` already was. `json.navigate` 105 to 57 ns (`bench/perf/stdlib`, 5 samples). Callers that hold the result while changing the map now need `.clone()` (two sites in `stdlib/data/toml.ms`); fixture `map-get-result-borrows-map`.
+`JsonValue.get` returned `values.get(key)` through `msrt_map_get`, which deep-copies the value: the checker treated `m.get(k)` returned from a function as a new value, though the stdlib documents the result as a borrow. A returned `m.get(k)` is now a borrow of the receiver (the lowering reads the entry with `msrt_map_get_ptr` and returns `opt.view`), as `xs.get(i)` already was. `json.navigate` 105 to 57 ns (`bench/perf/stdlib`, 5 samples). Callers that hold the result while changing the map now need `.clone()` (two sites in `src/stdlib/data/toml.ms`); fixture `map-get-result-borrows-map`.
 
 ## 2026-11-07, round 9: compile time, peak memory, scaling probe (no change needed)
 

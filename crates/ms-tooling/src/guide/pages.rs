@@ -21,7 +21,7 @@ pub struct Mistake {
     pub diagnostic: Option<String>,
 }
 
-/// The common-mistakes entries from `tools/ms/data/mistakes.txt`.
+/// The common-mistakes entries from `src/ms/data/mistakes.txt`.
 pub fn mistake_entries() -> Vec<Mistake> {
     let field = |block: &str, key: &str| {
         let prefix = format!("{key}: ");
@@ -29,7 +29,7 @@ pub fn mistake_entries() -> Vec<Mistake> {
         line.map(str::to_string)
     };
     let mut entries = Vec::new();
-    let text = include_str!("../../../../tools/ms/data/mistakes.txt");
+    let text = include_str!("../../../../src/ms/data/mistakes.txt");
     for block in text.split("\n\n") {
         let block: String = block
             .lines()
