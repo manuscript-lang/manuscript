@@ -28,6 +28,14 @@ static bool scan_is_node(const MsCheck *c, MsSymId sym) {
     return kind == MS_D_FN || kind == MS_D_TYPE || kind == MS_D_CONST;
 }
 
+MsDispatch ms_effect_dispatch(const MsCheck *c, const MsFacts *facts, uint32_t call) {
+    const MsKind kind = ms_ty_kind(&c->tys, facts->call_receiver[call]);
+    if (kind == MS_K_PRIMITIVE) {
+        return MS_DISPATCH_NOTHING;
+    }
+    return kind == MS_K_CONTRACT || kind == MS_K_VARIABLE ? MS_DISPATCH_UNKNOWN : MS_DISPATCH_PARTIAL;
+}
+
 /* Records a reference to `callee`; the first one keeps its position. */
 static void scan_edge(ScanState *s, MsSymId callee, MsPos pos) {
     for (uint32_t i = 0; i < s->nedges; i++) {
@@ -56,8 +64,14 @@ static void scan_call(ScanState *s, const MsExpr *e) {
         scan_edge(s, ms_effect_method_node(s->check, row), e->pos);
         return;
     }
-    if (row != MS_NONE || s->facts->call_interface[e->id] != MS_TY_NONE) {
+    if (row != MS_NONE) {
         s->partial = true;
+        return;
+    }
+    if (s->facts->call_interface[e->id] != MS_TY_NONE) {
+        const MsDispatch dispatch = ms_effect_dispatch(s->check, s->facts, e->id);
+        s->partial = s->partial || dispatch == MS_DISPATCH_PARTIAL;
+        s->unknown = s->unknown || dispatch == MS_DISPATCH_UNKNOWN;
         return;
     }
     if (callee == MS_NONE) {
