@@ -1,5 +1,5 @@
 /* The runtime functions the C lowering can call from their `ms-sig` declaration. The table is
- * generated from the headers' signatures (`cargo xtask symbols`), so no function is named in the
+ * generated from the headers' signatures (`ms run tools/ms/symbols.ms`), so no function is named in the
  * compiler: each parameter's role comes from its declared type, and a function whose signature is
  * tagged `@op=<mnemonic>` is exactly that MIR instruction on its arguments. */
 #ifndef MS_RT_OPS_H

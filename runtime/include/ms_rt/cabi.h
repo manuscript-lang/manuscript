@@ -1,7 +1,7 @@
 /* ms_rt/cabi.h: the C ABI of user `extern fn` shims (runtime/std/cabi.c). The public header is
  * crates/ms-rt-abi/include/ms_abi.h, which maps each plain name to the versioned symbol below
  * (`ms_string_new` is `ms_string_new_v1`), so a shim built against another version fails to link. The `_v1`
- * symbols are listed in runtime/symbols/cabi.txt; xtask does not compare them with a recorded signature. */
+ * symbols are listed in runtime/symbols/cabi.txt; tools/ms/symbols.ms does not compare them with a recorded signature. */
 #ifndef MS_RT_CABI_H
 #define MS_RT_CABI_H
 
