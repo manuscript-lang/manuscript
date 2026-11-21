@@ -92,6 +92,9 @@ void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsChec
  * resolution diagnostic). Impl and test declarations declare nothing. */
 void ms_check_declare(MsCheckProgram *program, uint32_t module);
 
+/* Reports each written type name in a module's declaration signatures that no scope gives a meaning. */
+void ms_check_resolve_types(MsCheckProgram *program, uint32_t module);
+
 
 /* The entry point of the checker: checks every module of `graph` in order and leaves the diagnostics in
  * `program` (resolution and type phases, in the order the oracle reports them). `graph` and `names` must
