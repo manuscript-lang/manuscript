@@ -620,7 +620,7 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsSym name = e->u.call.callee->u.member.name;
     const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
     LbVal item;
-    if (lst_read_method(lb, e, receiver_ty, &item)) {
+    if (lst_read_method(lb, e, receiver_ty, &item) || lb_each_method(lb, e, receiver_ty, &item)) {
         return item;
     }
     const MsRtFn *fn = lb_native_function(lb, receiver_ty, name);
