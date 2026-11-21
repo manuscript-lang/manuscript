@@ -1,4 +1,4 @@
-/* Unit test of the sampling profiler's clock (runtime/sys/posix/sampler.c). Run by `make c-test`. */
+/* Unit test of the sampling profiler's clock (runtime/sys/posix/sampler.c, runtime/sys/windows/sampler.c). Run by `make c-test`. */
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,12 +13,19 @@
         }                                                         \
     } while (0)
 
+/* On Unix the sample runs in a handler on the target thread; on Windows a sampler thread reads it while suspended. */
+#ifdef _WIN32
+#define SAMPLE_ON_TARGET false
+#else
+#define SAMPLE_ON_TARGET true
+#endif
+
 static _Atomic int samples;
 static _Atomic int bad;
 static int token;
 
 static void count(uintptr_t pc, uintptr_t fp, bool on_target, void *context) {
-    if (pc == 0 || !on_target || context != &token) {
+    if (pc == 0 || on_target != SAMPLE_ON_TARGET || context != &token) {
         atomic_store(&bad, 1);
     }
     (void)fp;
