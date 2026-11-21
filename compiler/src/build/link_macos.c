@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "build/link_internal.h"
 #include "ms/base.h"
@@ -14,6 +13,8 @@
 #include "ms/hints.h"
 
 #if defined(__APPLE__)
+
+#include <unistd.h>
 
 #if defined(__aarch64__)
 #define BM_ARCH "arm64"
