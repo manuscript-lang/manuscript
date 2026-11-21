@@ -47,23 +47,33 @@ const MsRtFn *ms_rt_fn_find(const char *symbol, size_t length) {
     return NULL;
 }
 
-const MsRtFn *ms_rt_method_fn(const MsCheck *c, MsTy receiver, MsSym method) {
-    const MsStr type = ms_name(c->names, c->tys.name[receiver]);
-    const MsStr name = ms_name(c->names, method);
+/* The runtime function `msrt_<type>_<method>` (the type in lower case), or NULL. */
+static const MsRtFn *rt_method_symbol(const char *type, size_t type_len, const char *method, size_t method_len) {
     char symbol[96];
-    if (type.len + name.len + 8 > sizeof symbol) {
+    if (type_len + method_len + 8 > sizeof symbol) {
         return NULL;
     }
     size_t length = 0;
     for (const char *part = "msrt_"; *part != '\0'; part++) {
         symbol[length++] = *part;
     }
-    for (size_t i = 0; i < type.len; i++) {
-        symbol[length++] = (char)tolower((unsigned char)type.ptr[i]);
+    for (size_t i = 0; i < type_len; i++) {
+        symbol[length++] = (char)tolower((unsigned char)type[i]);
     }
     symbol[length++] = '_';
-    for (size_t i = 0; i < name.len; i++) {
-        symbol[length++] = name.ptr[i];
+    for (size_t i = 0; i < method_len; i++) {
+        symbol[length++] = method[i];
     }
     return ms_rt_fn_find(symbol, length);
+}
+
+const MsRtFn *ms_rt_method_fn(const MsCheck *c, MsTy receiver, MsSym method) {
+    const MsStr type = ms_name(c->names, c->tys.name[receiver]);
+    const MsStr name = ms_name(c->names, method);
+    const MsRtFn *own = rt_method_symbol(type.ptr, type.len, name.ptr, name.len);
+    if (own != NULL || type.len != 5 || memcmp(type.ptr, "Bytes", 5) != 0) {
+        return own;
+    }
+    const MsRtFn *list = rt_method_symbol("List", 4, name.ptr, name.len);
+    return list != NULL && (list->op[0] != '\0' || list->seq[0] != '\0') ? list : NULL; // `Bytes` is a list of bytes: the list functions serve it
 }
