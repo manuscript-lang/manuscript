@@ -17,4 +17,5 @@ fn main() Int:
 	names.add("x")
 	if s.contains(3): return 1
 	if names.is_empty(): return 2
+
 	return s.length() + names.length()
