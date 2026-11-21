@@ -11,6 +11,7 @@
 
 #include "base/strbuild.h"
 #include "compiler/mir/mir.h"
+#include "compiler/mir/mir_data.h"
 #include "compiler/mir/mir_layout.h"
 
 #define EMIT_DIRECT_BYTES 16
@@ -23,6 +24,7 @@ typedef struct EmitCx {
   const MirFunc *func;     /* the function being written; NULL for module-level text */
   MsStrBuild *out;         /* borrowed */
   MirLayouts *layouts;     /* borrowed */
+  const MirData *data;     /* borrowed: the static data; NULL when the module has none */
   uint32_t next;           /* counter for generated register names */
   const char *why;         /* the reason an instruction cannot be written; static text */
   const bool *framed;      /* per value: a closure object kept in the frame; NULL when none */
@@ -100,6 +102,10 @@ bool emit_checked_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool
 bool emit_rt_direct(EmitCx *cx, MirTy type);
 /* Whether extern `def` is a function of a C library (not the runtime's own, which takes a Float32 as a double). */
 bool emit_extern_is_c(const EmitCx *cx, const MirExtern *def);
+/* `typedesc`, `str`, `global.get`, `global.set`: the operations that name static data. */
+bool emit_data_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
+/* One definition per data symbol, preceded by a declaration of each runtime symbol it names. */
+void emit_define_data(EmitCx *cx);
 bool emit_call_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_record_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_option_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
