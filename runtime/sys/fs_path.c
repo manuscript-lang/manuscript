@@ -12,8 +12,63 @@
 #include <stdlib.h>
 #include <string.h>
 #include <uv.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include "ms_rt/sys_fs.h"
+
+/* libuv hands a path to the kernel as it is, and Windows reads a path past about 260 characters, or one with `/`
+ * past that length, only in its verbatim form (\\?\C:\x, \\?\UNC\host\share\x). A long path is rewritten that way,
+ * as the layer always did; `*owned` holds the copy to free (NULL when the path is used as it is). */
+static const char *long_path(const char *path, char **owned) {
+    *owned = NULL;
+#ifdef _WIN32
+    enum { LIMIT = 240 };
+    if (strlen(path) < LIMIT || strncmp(path, "\\\\?\\", 4) == 0) {
+        return path;
+    }
+    const int units = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
+    if (units <= 0) {
+        return path;
+    }
+    WCHAR *wide = malloc((size_t)units * sizeof *wide);
+    if (wide == NULL) {
+        return path;
+    }
+    (void)MultiByteToWideChar(CP_UTF8, 0, path, -1, wide, units);
+    const DWORD needed = GetFullPathNameW(wide, 0, NULL, NULL);
+    WCHAR *full = needed == 0 ? NULL : malloc(((size_t)needed + 8) * sizeof *full);
+    const DWORD written = full == NULL ? 0 : GetFullPathNameW(wide, needed, full, NULL);
+    free(wide);
+    if (written == 0 || written >= needed) {
+        free(full);
+        return path;
+    }
+    const bool unc = wcsncmp(full, L"\\\\", 2) == 0;
+    const WCHAR *prefix = unc ? L"\\\\?\\UNC\\" : L"\\\\?\\";
+    const WCHAR *rest = unc ? full + 2 : full;
+    const size_t total = wcslen(prefix) + wcslen(rest) + 1;
+    WCHAR *verbatim = malloc(total * sizeof *verbatim);
+    if (verbatim == NULL) {
+        free(full);
+        return path;
+    }
+    wcscpy(verbatim, prefix);
+    wcscat(verbatim, rest);
+    free(full);
+    const int bytes = WideCharToMultiByte(CP_UTF8, 0, verbatim, -1, NULL, 0, NULL, NULL);
+    char *text = bytes <= 0 ? NULL : malloc((size_t)bytes);
+    if (text != NULL) {
+        (void)WideCharToMultiByte(CP_UTF8, 0, verbatim, -1, text, bytes, NULL, NULL);
+        *owned = text;
+    }
+    free(verbatim);
+    return text != NULL ? text : path;
+#else
+    return path;
+#endif
+}
 
 /* The host code of a failed request. */
 static MsSysError host_code(const uv_fs_t *req) {
@@ -49,21 +104,21 @@ static MsSysError finish(uv_fs_t *req) {
     (void)(call);           \
     return finish(&req)
 
-MsSysError ms_sys_fs_mkdir(const char *path, uint32_t mode) { WITH_REQUEST(uv_fs_mkdir(NULL, &req, path, (int)mode, NULL)); }
+static MsSysError do_mkdir(const char *path, uint32_t mode) { WITH_REQUEST(uv_fs_mkdir(NULL, &req, path, (int)mode, NULL)); }
 
-MsSysError ms_sys_fs_unlink(const char *path) { WITH_REQUEST(uv_fs_unlink(NULL, &req, path, NULL)); }
+static MsSysError do_unlink(const char *path) { WITH_REQUEST(uv_fs_unlink(NULL, &req, path, NULL)); }
 
-MsSysError ms_sys_fs_rmdir(const char *path) { WITH_REQUEST(uv_fs_rmdir(NULL, &req, path, NULL)); }
+static MsSysError do_rmdir(const char *path) { WITH_REQUEST(uv_fs_rmdir(NULL, &req, path, NULL)); }
 
-MsSysError ms_sys_fs_rename(const char *from, const char *to) { WITH_REQUEST(uv_fs_rename(NULL, &req, from, to, NULL)); }
+static MsSysError do_rename(const char *from, const char *to) { WITH_REQUEST(uv_fs_rename(NULL, &req, from, to, NULL)); }
 
-MsSysError ms_sys_fs_link(const char *from, const char *to) { WITH_REQUEST(uv_fs_link(NULL, &req, from, to, NULL)); }
+static MsSysError do_link(const char *from, const char *to) { WITH_REQUEST(uv_fs_link(NULL, &req, from, to, NULL)); }
 
-MsSysError ms_sys_fs_chmod(const char *path, uint32_t mode) { WITH_REQUEST(uv_fs_chmod(NULL, &req, path, (int)mode, NULL)); }
+static MsSysError do_chmod(const char *path, uint32_t mode) { WITH_REQUEST(uv_fs_chmod(NULL, &req, path, (int)mode, NULL)); }
 
-MsSysError ms_sys_fs_access(const char *path, int32_t mode) { WITH_REQUEST(uv_fs_access(NULL, &req, path, mode, NULL)); }
+static MsSysError do_access(const char *path, int32_t mode) { WITH_REQUEST(uv_fs_access(NULL, &req, path, mode, NULL)); }
 
-MsSysError ms_sys_fs_symlink(const char *target, const char *path) {
+static MsSysError do_symlink(const char *target, const char *path) {
     int flags = 0;
 #ifdef _WIN32
     /* Windows makes a directory link and a file link differently: ask what the target is, relative to the link. */
@@ -110,19 +165,19 @@ static MsSysError take_text(uv_fs_t *req, char **text, size_t *length) {
     return 0;
 }
 
-MsSysError ms_sys_fs_readlink(const char *path, char **target, size_t *length) {
+static MsSysError do_readlink(const char *path, char **target, size_t *length) {
     uv_fs_t req;
     (void)uv_fs_readlink(NULL, &req, path, NULL);
     return take_text(&req, target, length);
 }
 
-MsSysError ms_sys_fs_canonicalize(const char *path, char **resolved, size_t *length) {
+static MsSysError do_canonicalize(const char *path, char **resolved, size_t *length) {
     uv_fs_t req;
     (void)uv_fs_realpath(NULL, &req, path, NULL);
     return take_text(&req, resolved, length);
 }
 
-MsSysError ms_sys_fs_chown(const char *path, int64_t uid, int64_t gid, bool follow) {
+static MsSysError do_chown(const char *path, int64_t uid, int64_t gid, bool follow) {
 #ifdef _WIN32
     (void)path;
     (void)uid;
@@ -137,7 +192,7 @@ MsSysError ms_sys_fs_chown(const char *path, int64_t uid, int64_t gid, bool foll
 #endif
 }
 
-MsSysError ms_sys_fs_truncate(const char *path, int64_t size) {
+static MsSysError do_truncate(const char *path, int64_t size) {
     uv_fs_t open;
     const int fd = (int)uv_fs_open(NULL, &open, path, UV_FS_O_WRONLY, 0, NULL);
     if (fd < 0) {
@@ -155,7 +210,7 @@ MsSysError ms_sys_fs_truncate(const char *path, int64_t size) {
 
 static MsSysTime time_of(uv_timespec_t stamp) { return (MsSysTime){.seconds = stamp.tv_sec, .nanos = stamp.tv_nsec}; }
 
-MsSysError ms_sys_fs_stat(const char *path, bool follow, MsSysStat *out) {
+static MsSysError do_stat(const char *path, bool follow, MsSysStat *out) {
     uv_fs_t req;
     (void)(follow ? uv_fs_stat(NULL, &req, path, NULL) : uv_fs_lstat(NULL, &req, path, NULL));
     if (req.result < 0) {
@@ -181,7 +236,7 @@ MsSysError ms_sys_fs_stat(const char *path, bool follow, MsSysStat *out) {
     return 0;
 }
 
-MsSysError ms_sys_fs_stat_filesystem(const char *path, MsSysFsStat *out) {
+static MsSysError do_stat_filesystem(const char *path, MsSysFsStat *out) {
     uv_fs_t req;
     (void)uv_fs_statfs(NULL, &req, path, NULL);
     if (req.result < 0) {
@@ -205,7 +260,7 @@ struct MsSysDir {
     uv_fs_t request; /* the whole listing, read by uv_fs_scandir_next */
 };
 
-MsSysError ms_sys_fs_dir_open(const char *path, MsSysDir **dir) {
+static MsSysError do_dir_open(const char *path, MsSysDir **dir) {
     MsSysDir *created = malloc(sizeof *created);
     if (created == NULL) {
         return ms_sys_fs_error_of(MS_SYS_ERR_IO);
@@ -249,4 +304,132 @@ MsSysError ms_sys_fs_dir_read(MsSysDir *dir, MsSysDirEntry *entry, bool *found) 
 void ms_sys_fs_dir_close(MsSysDir *dir) {
     uv_fs_req_cleanup(&dir->request);
     free(dir);
+}
+
+/* ---- the exported operations: the same, on a path that is long enough for the host ---- */
+
+MsSysError ms_sys_fs_mkdir(const char *path, uint32_t mode) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_mkdir(host_path, mode);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_unlink(const char *path) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_unlink(host_path);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_rmdir(const char *path) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_rmdir(host_path);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_rename(const char *from, const char *to) {
+    char *own_from;
+    const char *host_from = long_path(from, &own_from);
+    char *own_to;
+    const char *host_to = long_path(to, &own_to);
+    const MsSysError error = do_rename(host_from, host_to);
+    free(own_from);
+    free(own_to);
+    return error;
+}
+
+MsSysError ms_sys_fs_link(const char *from, const char *to) {
+    char *own_from;
+    const char *host_from = long_path(from, &own_from);
+    char *own_to;
+    const char *host_to = long_path(to, &own_to);
+    const MsSysError error = do_link(host_from, host_to);
+    free(own_from);
+    free(own_to);
+    return error;
+}
+
+MsSysError ms_sys_fs_chmod(const char *path, uint32_t mode) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_chmod(host_path, mode);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_access(const char *path, int32_t mode) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_access(host_path, mode);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_symlink(const char *target, const char *path) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_symlink(target, host_path);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_readlink(const char *path, char **target, size_t *length) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_readlink(host_path, target, length);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_canonicalize(const char *path, char **resolved, size_t *length) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_canonicalize(host_path, resolved, length);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_chown(const char *path, int64_t uid, int64_t gid, bool follow) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_chown(host_path, uid, gid, follow);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_truncate(const char *path, int64_t size) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_truncate(host_path, size);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_stat(const char *path, bool follow, MsSysStat *out) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_stat(host_path, follow, out);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_stat_filesystem(const char *path, MsSysFsStat *out) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_stat_filesystem(host_path, out);
+    free(own_path);
+    return error;
+}
+
+MsSysError ms_sys_fs_dir_open(const char *path, MsSysDir **dir) {
+    char *own_path;
+    const char *host_path = long_path(path, &own_path);
+    const MsSysError error = do_dir_open(host_path, dir);
+    free(own_path);
+    return error;
 }
