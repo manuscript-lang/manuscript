@@ -1447,6 +1447,11 @@ static bool own_arms_are_names(const OwnWalk *w, const MsExpr *e) {
 }
 
 static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning) {
+    // The arms of a match over an interface value bind the whole value as a concrete type: not followed.
+    if (ms_ty_kind(&w->check->tys, w->facts->expr_ty[e->u.match.scrutinee->id]) == MS_K_CONTRACT) {
+        OWN_DECLINE(w);
+        return;
+    }
     const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
     const bool borrowed = !returning && demand != DEMAND_MOVE && !copied && own_arms_are_names(w, e);
     w->facts->borrowed_match[e->id] = borrowed;

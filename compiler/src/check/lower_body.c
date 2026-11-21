@@ -1137,6 +1137,10 @@ static LbVal lb_arm(Lb *lb, const MsArm *arm, const LbSubject *subject, bool voi
 /* `match` over literal arms with one value each. A Bool match is also how `if c: a else: b` is
  * written. Every arm's value joins in one block parameter. */
 static LbVal lb_match(Lb *lb, const MsExpr *e) {
+    // A match over an interface value tests the concrete type behind it, which lowering does not do yet.
+    if (ms_ty_kind(&lb->c->tys, lb->facts->expr_ty[e->u.match.scrutinee->id]) == MS_K_CONTRACT) {
+        return LB_UNSUPPORTED(lb);
+    }
     const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     LbVal scrutinee = lb_expr(lb, e->u.match.scrutinee);
     const MirTy scrutinee_ty = lb->ok ? mir_b_ty(&lb->b, scrutinee.v) : MIR_NONE;
