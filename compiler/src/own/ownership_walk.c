@@ -1929,10 +1929,10 @@ static void own_summary_rounds(OwnWalk *w, const MsModuleRow *row, const uint32_
  * since the checker admits only scalar results for a method call. */
 static void own_methods(OwnWalk *w, const uint32_t *by_node) {
     const MsFacts *facts = w->facts;
-    if (facts->methods == NULL) {
+    const MsMethod **rows = w->methods;
+    if (facts->methods == NULL || rows == NULL) {
         return;
     }
-    const MsMethod **rows = w->methods;
     w->quiet = false;
     for (uint32_t i = 0; i < facts->methods->count; i++) {
         const MsMethod *method = rows[i];
