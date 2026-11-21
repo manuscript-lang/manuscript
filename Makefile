@@ -27,7 +27,7 @@ verify: check repo-check workflow-check bench-check lsp-test unit docs-check lic
 
 verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
-# Builds the native runtime (ms-native) into target/ms-native; every build of ms-cli embeds it.
+# Builds the native C runtime into target/ms-native; every build of ms-cli embeds it.
 runtime:
 	cargo xtask runtime
 
@@ -125,12 +125,6 @@ scaling-check: build
 
 leak-check: build
 	$(MS) run tools/leak-check.ms
-
-# Runs the e2e stdlib tests with MS_SCHED_STRESS=1 (a promise never starts on its creator; the first idle thread takes it) and fails on a file that passes without it. Only a runtime built with the sched-stress feature has the mode, so this builds a separate `ms` (target/stress) that embeds it and runs everything with that one. STRESS_CHANGED=<ref> runs only fixtures changed since <ref>. Nightly on main; not in PR CI.
-stress-sched:
-	cargo xtask runtime --sched-stress
-	MS_NATIVE_LIB=$(CURDIR)/target/ms-native/libms_native_stress.a cargo build --release --locked -p ms-cli --target-dir target/stress
-	MS=target/stress/release/ms target/stress/release/ms run tools/stress-sched.ms
 
 # Cancels each e2e stdlib test at every park in turn and fails when cancellation leaves more blocks live than the uncancelled run.
 cancel-sweep: build
@@ -286,6 +280,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/diff.ms
 	"$(RELEASE_MS)" test tools/ms/mark.ms
 	"$(RELEASE_MS)" test tools/ms/html.ms
+	"$(RELEASE_MS)" test tools/ms/review_cmd.ms
+	"$(RELEASE_MS)" test tools/ms/diagram_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
 	"$(RELEASE_MS)" test tools/ms/cli.ms
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
@@ -301,6 +297,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed_calls.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/recursion.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/analysis.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/skill_calls.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/fixes.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/interpolation.ms --link target/c-tool/libmstool.a
@@ -328,6 +326,10 @@ c-tools-test: build target/c-tool/libmstool.a
 	sh tools/ms/review-diff.sh target/release/ms-tooling-dev target/c-tool/review target/c-tool/report target/c-tool/review-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/html.ms -o target/c-tool/html
 	sh tools/ms/html-diff.sh target/release/ms-tooling-dev target/c-tool/html target/c-tool/html-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/review_cmd.ms -o target/c-tool/review_cmd
+	sh tools/ms/review-cmd-diff.sh "$(RELEASE_MS)" target/c-tool/review_cmd target/release/ms-tooling-dev target/c-tool/review-cmd-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/diagram_cmd.ms -o target/c-tool/diagram_cmd
+	sh tools/ms/diagram-cmd-diff.sh "$(RELEASE_MS)" target/c-tool/diagram_cmd target/release/ms-tooling-dev target/c-tool/diagram-cmd-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/inspect.ms -o target/c-tool/inspect
 	sh tools/ms/inspect-diff.sh "$(RELEASE_MS)" target/c-tool/inspect target/c-tool/inspect-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/facts_diff.ms -o target/c-tool/facts_diff

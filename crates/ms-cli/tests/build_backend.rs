@@ -10,12 +10,12 @@ fn tools() -> Option<&'static Path> {
     static TOOLS: OnceLock<Option<PathBuf>> = OnceLock::new();
     TOOLS
         .get_or_init(|| {
-            ms_clif::link::llvm_tools(&ms_cli::engine::build_options_from_env()).unwrap()
+            ms_build::link::llvm_tools(&ms_cli::engine::build_options_from_env()).unwrap()
         })
         .as_deref()
 }
 
-fn command(root: &Path, profile: &str, cranelift: bool) -> Command {
+fn command(root: &Path, profile: &str) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_ms"));
     command
         .env_remove("MS_RT_LIB")
@@ -25,11 +25,7 @@ fn command(root: &Path, profile: &str, cranelift: bool) -> Command {
         .arg(root.join("main.ms"))
         .args(["--build-type", profile, "-o"])
         .arg(root.join(format!("program{}", std::env::consts::EXE_SUFFIX)));
-    if cranelift || tools().is_none() {
-        command.env("MS_BACKEND", "cranelift");
-    } else {
-        command.env("MS_LLVM_TOOLS", root.join("tools"));
-    }
+    command.env("MS_LLVM_TOOLS", root.join("tools"));
     command
 }
 
@@ -39,15 +35,12 @@ fn success(result: Output) -> String {
     stderr
 }
 
-fn check(root: &Path, profile: &str, llvm: bool) -> Vec<u8> {
+fn check(root: &Path, profile: &str) -> Vec<u8> {
     let output = root.join(format!("program{}", std::env::consts::EXE_SUFFIX));
     assert_eq!(Command::new(&output).status().unwrap().code(), Some(5));
     let metadata = PathBuf::from(format!("{}.ms-build.json", output.display()));
     let document = ms_json::parse(std::fs::read(metadata).unwrap()).unwrap();
-    assert_eq!(
-        document.get("backend").unwrap().as_str().unwrap(),
-        if llvm { "llvm" } else { "cranelift" }
-    );
+    assert_eq!(document.get("backend").unwrap().as_str(), Some("llvm"));
     assert_eq!(document.get("build_type").unwrap().as_str(), Some(profile));
     assert_eq!(document.get("format").unwrap().as_i64(), Some(1));
     std::fs::read(output).unwrap()
@@ -55,23 +48,18 @@ fn check(root: &Path, profile: &str, llvm: bool) -> Vec<u8> {
 
 #[test]
 fn sidecar_backend_matches_native_codegen_on_cold_and_repeated_builds() {
-    for (name, profile, cranelift) in [
-        ("debug", "Debug", false),
-        ("release-cranelift", "Release", true),
-        ("release", "Release", false),
-        ("size", "MinSizeRel", false),
+    for (name, profile) in [
+        ("debug", "Debug"),
+        ("release", "Release"),
+        ("size", "MinSizeRel"),
     ] {
         let root = common::scratch(&format!("backend-{name}"));
         std::fs::write(root.join("main.ms"), include_str!("build_backend/main.ms")).unwrap();
         if let Some(tools) = tools() {
             common::symlink_dir(tools, &root.join("tools")).unwrap();
         }
-        let llvm = profile != "Debug" && !cranelift && tools().is_some();
-        assert!(
-            success(command(&root, profile, cranelift).output().unwrap())
-                .contains("ms-timings: codegen")
-        );
-        let cold = check(&root, profile, llvm);
+        assert!(success(command(&root, profile).output().unwrap()).contains("ms-timings: codegen"));
+        let cold = check(&root, profile);
         let output = root.join(format!("program{}", std::env::consts::EXE_SUFFIX));
         std::fs::remove_file(&output).unwrap();
         std::fs::write(
@@ -79,11 +67,8 @@ fn sidecar_backend_matches_native_codegen_on_cold_and_repeated_builds() {
             b"stale metadata",
         )
         .unwrap();
-        assert!(
-            success(command(&root, profile, cranelift).output().unwrap())
-                .contains("ms-timings: codegen")
-        );
-        assert_eq!(check(&root, profile, llvm), cold);
+        assert!(success(command(&root, profile).output().unwrap()).contains("ms-timings: codegen"));
+        assert_eq!(check(&root, profile), cold);
         // Compilation failure must preserve the last successful executable and sidecar.
         let metadata = PathBuf::from(format!("{}.ms-build.json", output.display()));
         let prior_metadata = std::fs::read(&metadata).unwrap();
@@ -92,13 +77,7 @@ fn sidecar_backend_matches_native_codegen_on_cold_and_repeated_builds() {
             include_str!("build_backend/invalid.ms"),
         )
         .unwrap();
-        assert!(
-            !command(&root, profile, cranelift)
-                .output()
-                .unwrap()
-                .status
-                .success()
-        );
+        assert!(!command(&root, profile).output().unwrap().status.success());
         assert_eq!(std::fs::read(metadata).unwrap(), prior_metadata);
         assert_eq!(std::fs::read(output).unwrap(), cold);
         std::fs::remove_dir_all(root).unwrap();
