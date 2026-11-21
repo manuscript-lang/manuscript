@@ -1332,7 +1332,7 @@ static void lb_if(Lb *lb, const MsStmt *s) {
     }
     const MirValue subject = cond.v; // an `if name := value` unwraps it in the then-branch
     if (s->u.branch.binding != NULL && mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->kind != MK_OPT) {
-        (void)lb_unsupported(lb); // a Result's Ok payload: the release of the rest is not lowered yet
+        (void)LB_UNSUPPORTED(lb); // a Result's Ok payload: the release of the rest is not lowered yet
         return;
     }
     if (s->u.branch.binding != NULL) {
