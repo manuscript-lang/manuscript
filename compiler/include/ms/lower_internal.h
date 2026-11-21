@@ -299,6 +299,8 @@ bool lb_is_list(const Lb *lb, MirTy ty);
 LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_empty(Lb *lb, MirTy ty);
 LbVal lst_index(Lb *lb, const MsExpr *e);
+/* `list.get(index)` and `list.get_or(index, fallback)` of a list or Bytes: true when `e` is one (`out` is its value). */
+bool lst_read_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
@@ -369,6 +371,11 @@ bool lb_is_conversion_name(const Lb *lb, MsSym name);
 bool lb_numeric_conversion(Lb *lb, MirValue x, MsTy checked_result, LbVal *out);
 /* `abs` or `sign` of an `Int`: true when `e` is one (`out` is its value), false before anything is lowered. */
 bool lb_int_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
+/* lower_optional.c: methods that are instructions. Each returns whether the call is one of its methods and sets `out`. */
+bool lb_optional_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out); /* `is_some`, `is_none`, `get_or` */
+bool lb_clone_method(Lb *lb, const MsExpr *e, LbVal *out);                      /* `clone` of a value no runtime function copies */
+/* Bytes is a list of bytes: the list operation `method` when it is instructions over the list alone, or NULL. */
+const struct MsRtFn *lb_bytes_instruction(Lb *lb, MsTy receiver_ty, MsSym method);
 
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);

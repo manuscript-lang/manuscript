@@ -70,6 +70,89 @@ LbVal lst_index(Lb *lb, const MsExpr *e) {
     return (LbVal){item, false};
 }
 
+/* The element type of a list or of Bytes (a list of bytes), or MIR_NONE. */
+static MirTy lst_element_ty(const Lb *lb, MirTy ty) {
+    if (ty == MIR_BYTES) {
+        return MIR_UINT8;
+    }
+    return lb_is_list(lb, ty) ? mir_ty_data(lb->m, ty)->elem : MIR_NONE;
+}
+
+/* `list.get_or(index, fallback)`: the element when `index` (counted from the end when negative) is in range, else
+ * the fallback. The result is the caller's own value, so an owning element is copied out of the list. */
+static LbVal lst_get_or(Lb *lb, MirValue list, MirValue index, LbVal fallback, MirTy element) {
+    MirBuilder *b = &lb->b;
+    const bool owns = lb_owns(lb, element);
+    const MirValue length = mir_b_emit(b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
+    const MirValue zero = mir_b_iconst(b, 0);
+    const MirValue is_negative = mir_b_icmp(b, MCC_LT, index, zero);
+    const MirValue from_end = mir_b_binop(b, MOP_IAdd, index, length);
+    const MirValue at = mir_b_select(b, is_negative, from_end, index);
+    const MirValue above = mir_b_icmp(b, MCC_GE, at, zero);
+    const MirValue below = mir_b_icmp(b, MCC_LT, at, length);
+    const MirValue in_range = mir_b_binop(b, MOP_And, above, below);
+    const MirBlock hit = mir_b_new_block(b);
+    const MirBlock miss = mir_b_new_block(b);
+    mir_b_br_if(b, in_range, hit, NULL, 0, miss, NULL, 0);
+    mir_b_seal_block(b, hit);
+    mir_b_seal_block(b, miss);
+    const MirBlock join = mir_b_new_block(b);
+    const MirValue result = mir_b_add_block_param(b, join, element, owns ? MM_MOVE : MM_BORROW);
+
+    mir_b_switch_to(b, hit);
+    const MirValue operands[2] = {list, at};
+    MirValue item = mir_b_emit(b, MOP_ListGet, operands, 2, (MirImm){0}, element);
+    if (owns) {
+        item = lb_copy(lb, item);
+    }
+    if (fallback.owned) {
+        lb_drop(lb, fallback.v); // the fallback was evaluated and is not used on this path
+    }
+    mir_b_br(b, join, &item, 1);
+
+    mir_b_switch_to(b, miss);
+    const MirValue other = owns && !fallback.owned ? lb_copy(lb, fallback.v) : fallback.v;
+    mir_b_br(b, join, &other, 1);
+
+    mir_b_seal_block(b, join);
+    mir_b_switch_to(b, join);
+    return (LbVal){result, owns};
+}
+
+bool lst_read_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out) {
+    const MirTy element = lst_element_ty(lb, lb_mir_ty(lb, receiver_ty));
+    const MsExpr *callee = e->u.call.callee;
+    const MsArg *args = e->u.call.args.ptr;
+    const uint32_t nargs = e->u.call.args.len;
+    const bool has_fallback = nargs == 2 && ms_name_is(lb->c->names, callee->u.member.name, "get_or");
+    const bool is_get = nargs == 1 && (ms_name_is(lb->c->names, callee->u.member.name, "get") ||
+                                           ms_name_is(lb->c->names, callee->u.member.name, "get_or"));
+    if (element == MIR_NONE || !(is_get || has_fallback)) {
+        return false;
+    }
+    *out = LB_FAIL;
+    if (args[0].has_name || (has_fallback && !lb->facts->some_wrap[args[1].value->id])) {
+        *out = LB_UNSUPPORTED(lb); // arguments out of order, or a fallback that is itself an Optional
+        return true;
+    }
+    const LbVal list = lb_expr(lb, callee->u.member.left);
+    const LbVal index = lb->ok ? lb_expr(lb, args[0].value) : LB_FAIL;
+    const LbVal fallback = lb->ok && has_fallback ? lb_expr_plain(lb, args[1].value) : LB_FAIL;
+    if (!lb->ok) {
+        return true;
+    }
+    if (list.owned) {
+        lb_hold_temp(lb, list.v); // the element is read in place: a temporary list lives to the end of the statement
+    }
+    if (has_fallback) {
+        *out = lst_get_or(lb, list.v, index.v, fallback, element);
+    } else {
+        const MirValue operands[2] = {list.v, index.v};
+        *out = (LbVal){mir_b_emit(&lb->b, MOP_ListGet, operands, 2, (MirImm){0}, element), false};
+    }
+    return true;
+}
+
 /* `for x in list`: a counter from 0 below the list's length, which is read once before the loop, and
  * the element read in place at each step. The loop holds the list in a variable; a list the loop
  * made (a literal, a call result) is owned by a scope around the whole loop. */

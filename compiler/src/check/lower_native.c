@@ -453,9 +453,10 @@ static LbVal ln_conversion_method(Lb *lb, const MsExpr *e) {
 /* A method no runtime function implements: `abs` or `sign` of an Int, `to_string`, or a conversion to another number. */
 static LbVal ln_method_without_function(Lb *lb, const MsExpr *e, MsTy receiver_ty) {
     const MsExpr *callee = e->u.call.callee;
-    LbVal int_result;
-    if (lb_int_method(lb, e, receiver_ty, &int_result)) {
-        return int_result;
+    LbVal inline_result;
+    if (lb_int_method(lb, e, receiver_ty, &inline_result) || lb_optional_method(lb, e, receiver_ty, &inline_result) ||
+        lb_clone_method(lb, e, &inline_result)) {
+        return inline_result;
     }
     if (e->u.call.args.len != 0) {
         return LB_UNSUPPORTED(lb);
@@ -478,7 +479,7 @@ static uint32_t ln_argument_kinds(const MsRtFn *fn, MsRtParam *kinds) {
             kinds[count++] = kind;
             i++; // its payload parameter takes no argument of its own
         } else if (kind != MS_RT_DESC && kind != MS_RT_KEY_DESC && kind != MS_RT_VAL_DESC && kind != MS_RT_OUT_STR &&
-                   kind != MS_RT_OUT_LIST) {
+                   kind != MS_RT_OUT_LIST && kind != MS_RT_OUT_SCALAR) {
             kinds[count++] = kind;
         }
     }
@@ -489,8 +490,15 @@ static uint32_t ln_argument_kinds(const MsRtFn *fn, MsRtParam *kinds) {
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
     const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
+    LbVal item;
+    if (lst_read_method(lb, e, receiver_ty, &item)) {
+        return item;
+    }
     const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
     const uint32_t nargs = e->u.call.args.len;
+    if (fn == NULL) {
+        fn = lb_bytes_instruction(lb, receiver_ty, callee->u.member.name);
+    }
     if (fn == NULL) {
         return ln_method_without_function(lb, e, receiver_ty);
     }
