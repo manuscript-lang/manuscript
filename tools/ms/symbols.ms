@@ -308,7 +308,10 @@ fn param_kind(at: Int, p: String) String:
 	): return "MS_RT_OUT_RECORD"
 	if ty.starts_with("*const ") and is_value_record(ty.replace("*const ", "")): return "MS_RT_RECORD"
 	if ty.starts_with("*mut *mut ObjCell<") and pname == "out": return "MS_RT_OUT_HANDLE"
-	if ty.starts_with("*const ObjCell<") and pname.starts_with("handle "): return "MS_RT_HANDLE"
+	if (
+		(ty.starts_with("*const ObjCell<") or ty.starts_with("*mut ObjCell<"))
+		and pname.starts_with("handle ")
+	): return "MS_RT_HANDLE"
 	if ty == "*const u8" and pname == "key": return "MS_RT_KEY_REF"
 	if ty == "*const u8": return "MS_RT_ELEMENT"
 	if ty == "i64": return "MS_RT_INT"
