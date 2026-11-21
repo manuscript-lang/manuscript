@@ -11,9 +11,17 @@ MsSpan ms_project_text(MsArena *arena, MsStrBuild *builder);
 void ms_project_error_message(MsProjectError *error, MsSpan message);
 void ms_project_error_path(MsProjectError *error, const char *op, MsSpan path, int os_error);
 
-/* The path a local import `path` written in `importer` names, before symbolic links are resolved. */
-MS_NODISCARD bool ms_project_import_target(MsArena *arena, MsSpan importer, MsSpan path, MsSpan *target,
-                                           MsProjectError *error);
+struct MsManifest;
+
+/* The path an import `path` written in `importer` names, before symbolic links are resolved. `manifest` holds
+ * the aliases and embeds, or is NULL for a standalone file. */
+MS_NODISCARD bool ms_project_import_target(MsArena *arena, const struct MsManifest *manifest, MsSpan importer,
+                                           MsSpan path, MsSpan *target, MsProjectError *error);
+
+/* ms_project_resolve_import with the aliases of `manifest` (NULL for none). */
+MS_NODISCARD bool ms_project_resolve_in(MsArena *arena, const struct MsManifest *manifest, MsSpan root,
+                                        const MsOverlay *overlay, MsSpan importer, MsSpan path,
+                                        MsSpan *canonical, MsProjectError *error);
 
 /* Canonicalises `path` (absolute, or below `root`) and confines it to `root`, which is canonical. An overlay
  * may supply a file that is not on disk. */
