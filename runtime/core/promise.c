@@ -12,6 +12,7 @@
 #include "array.h"
 #include "cancel.h"
 #include "fault.h"
+#include "fault_kept.h"
 #include "group.h"
 #include "idle.h"
 #include "isolate.h"
