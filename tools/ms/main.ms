@@ -16,8 +16,8 @@ import (
 
 	Invocation, invocation, validate from "./args.ms",
 	rust_cli from "./bridge.ms",
-	run_check from "./check_run.ms",
 	run_build, run_program from "./build_run.ms",
+	run_check from "./check_run.ms",
 	command_line, rust_arguments, spec from "./cli.ms",
 	run_explain from "./explain.ms",
 	Printed, run_fmt from "./fmt.ms",

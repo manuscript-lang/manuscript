@@ -18,4 +18,9 @@ fn names() String:
 	return words[1]
 
 fn main() Int:
-	return records() + names().length() + empty_in_return().length() + empty_unannotated()
+	return (
+		records()
+		+ names().length()
+		+ empty_in_return().length()
+		+ empty_unannotated()
+	)
