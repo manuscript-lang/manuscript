@@ -1427,8 +1427,7 @@ static void body_assign_field(MsBody *b, const MsStmt *s) {
         root = root->u.member.left;
     }
     const uint32_t binding = root->kind == MS_E_NAME ? ms_body_find_binding(b, root->u.sym) : MS_NONE;
-    if (target->kind != MS_E_MEMBER || binding == MS_NONE || binding < b->lambda_floor ||
-        (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+    if (target->kind != MS_E_MEMBER || binding == MS_NONE || binding < b->lambda_floor) {
         (void)ms_body_unsupported(b);
         return;
     }
