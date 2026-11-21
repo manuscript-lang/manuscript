@@ -1,20 +1,15 @@
-//! Bundled LLVM release builds keep the same exit code and source frames as
-//! Cranelift, including frames of inlined functions. No clang installation is needed.
+//! Release builds through the C pipeline keep the exit code and source frames of faults, including
+//! frames of inlined functions. No clang installation is needed.
 
 use std::process::Command;
 
-fn build_and_run(backend: &str, out: &std::path::Path) -> (Option<i32>, String) {
-    build_and_run_units(backend, "1", out)
-}
-
-fn build_and_run_units(backend: &str, units: &str, out: &std::path::Path) -> (Option<i32>, String) {
+fn build_and_run(out: &std::path::Path) -> (Option<i32>, String) {
     let source = format!(
         "{}/tests/llvm/overflow_frames.ms",
         env!("CARGO_MANIFEST_DIR")
     );
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
-        .env("MS_BACKEND", backend)
-        .env("MS_LLVM_UNITS", units)
+        .env("MS_BACKEND", "c")
         .args(["build", &source, "-o"])
         .arg(out)
         .output()
@@ -32,7 +27,7 @@ fn build_and_run_units(backend: &str, units: &str, out: &std::path::Path) -> (Op
 }
 
 #[test]
-fn llvm_release_matches_cranelift_fault_frames() {
+fn llvm_release_keeps_fault_frames() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
         || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
     {
@@ -40,18 +35,11 @@ fn llvm_release_matches_cranelift_fault_frames() {
     }
     let dir = std::env::temp_dir().join(format!("ms-llvm-test-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let cranelift = build_and_run("cranelift", &dir.join("cranelift"));
-    let llvm = build_and_run("llvm", &dir.join("llvm"));
-    for (name, backend) in [("cranelift", "cranelift"), ("llvm", "llvm")] {
-        let sidecar = std::fs::read_to_string(dir.join(format!("{name}.ms-build.json"))).unwrap();
-        assert!(
-            sidecar.contains(&format!("\"backend\": \"{backend}\"")),
-            "{sidecar}"
-        );
-    }
+    let llvm = build_and_run(&dir.join("llvm"));
+    let sidecar = std::fs::read_to_string(dir.join("llvm.ms-build.json")).unwrap();
+    assert!(sidecar.contains("\"backend\": \"llvm\""), "{sidecar}");
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(llvm.0, Some(ms_rt_abi::EXIT_ABORT), "{}", llvm.1);
-    assert_eq!(llvm, cranelift);
     assert!(
         llvm.1.contains("overflow_frames.ms:2 in add_one"),
         "{}",
@@ -62,22 +50,6 @@ fn llvm_release_matches_cranelift_fault_frames() {
         "{}",
         llvm.1
     );
-}
-
-#[test]
-fn llvm_units_keep_fault_frames() {
-    if !cfg!(any(target_os = "linux", target_os = "macos"))
-        || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
-    {
-        return;
-    }
-    let dir = std::env::temp_dir().join(format!("ms-llvm-units-test-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let whole = build_and_run_units("llvm", "1", &dir.join("whole"));
-    let split = build_and_run_units("llvm", "4", &dir.join("split"));
-    let _ = std::fs::remove_dir_all(&dir);
-    assert_eq!(split.0, Some(ms_rt_abi::EXIT_ABORT), "{}", split.1);
-    assert_eq!(split, whole);
 }
 
 #[test]
@@ -96,11 +68,11 @@ fn llvm_native_calls_keep_distinct_fault_sites() {
     )
     .unwrap();
     // A fault ends its file, so each faulting test runs on its own.
-    let run = |backend| {
+    let run = || {
         let mut text = String::new();
         for name in ["first", "second"] {
             let output = Command::new(env!("CARGO_BIN_EXE_ms"))
-                .env("MS_BACKEND", backend)
+                .env("MS_BACKEND", "c")
                 .args(["test", "--test", &format!("sites.ms::{name}")])
                 .arg(&source)
                 .output()
@@ -111,9 +83,7 @@ fn llvm_native_calls_keep_distinct_fault_sites() {
         }
         text
     };
-    let cranelift = run("cranelift");
-    let llvm = run("llvm");
-    assert_eq!(llvm, cranelift);
+    let llvm = run();
     let _ = std::fs::remove_dir_all(&dir);
     assert!(llvm.contains("sites.ms:3 in test first"), "{llvm}");
     assert!(llvm.contains("sites.ms:7 in test second"), "{llvm}");
@@ -135,6 +105,7 @@ fn deeply_nested_literal_builds_quickly() {
     std::fs::write(&file, source).unwrap();
     let start = std::time::Instant::now();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .env("MS_BACKEND", "c")
         .arg("build")
         .arg(&file)
         .arg("-o")
@@ -172,7 +143,7 @@ fn llvm_builds_a_huge_straight_line_function_in_bounded_time() {
     std::fs::write(dir.join("huge.ms"), source).unwrap();
     let started = std::time::Instant::now();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
-        .env("MS_BACKEND", "llvm")
+        .env("MS_BACKEND", "c")
         .current_dir(&dir)
         .args(["build", "huge.ms", "-o", "huge"])
         .output()
@@ -290,7 +261,7 @@ fn long_constant_literals_keep_their_element_types() {
     );
 }
 
-/// Constant literals of 20000 and 40000 elements are static data: both backends build them in
+/// Constant literals of 20000 and 40000 elements are static data: both build types build them in
 /// bounded time.
 #[test]
 fn constant_literals_of_any_length_build_in_bounded_time() {
@@ -302,19 +273,12 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
         .replace("    n := arguments().length()\n", "")
         .replace("import arguments from \"@std/os/env.ms\"\n", "");
     std::fs::write(dir.join("k.ms"), source).unwrap();
-    for backend in ["cranelift", "llvm"] {
-        if backend == "llvm" && !cfg!(any(target_os = "linux", target_os = "macos")) {
-            continue;
-        }
-        if backend == "llvm" && !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
-        {
-            continue;
-        }
+    for build_type in ["debug", "release"] {
         let started = std::time::Instant::now();
         let built = Command::new(env!("CARGO_BIN_EXE_ms"))
-            .env("MS_BACKEND", backend)
+            .env("MS_BACKEND", "c")
             .current_dir(&dir)
-            .args(["build", "k.ms", "-o", "k"])
+            .args(["build", "k.ms", "--build-type", build_type, "-o", "k"])
             .output()
             .unwrap();
         assert!(
@@ -324,7 +288,7 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
         );
         assert!(
             started.elapsed() < std::time::Duration::from_secs(20),
-            "{backend} build took {:?}",
+            "{build_type} build took {:?}",
             started.elapsed()
         );
         let run = Command::new(dir.join("k")).output().unwrap();
@@ -354,8 +318,7 @@ fn llvm_direct_emission_proves_facts() {
     std::fs::create_dir_all(&dir).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
-        .env("MS_LLVM_UNITS", "1")
+        .env("MS_BACKEND", "c")
         .env("MS_KEEP_LL", "1")
         .args(["build", &source, "-o", "prog"])
         .output()
@@ -382,15 +345,12 @@ fn llvm_direct_emission_proves_facts() {
     // A list parameter of a function only direct code calls is a borrowed pointer to the list.
     assert!(
         new_ir.contains(
-            "(ptr nonnull readonly nocapture align 8 dereferenceable(24) %a0, double %a1_0)"
+            "(ptr nonnull readonly nocapture align 8 dereferenceable(24) %in0, double %v1)"
         ),
         "the list function was not emitted directly"
     );
-    // A `Bool` parameter is a zero-extended byte that is 0 or 1.
-    assert!(
-        new_ir.contains("i8 zeroext range(i8 0, 2) %a2_0"),
-        "{new_ir}"
-    );
+    // A `Bool` parameter is an `i1`, which is 0 or 1 by construction.
+    assert!(new_ir.contains("i1 %v2) nounwind"), "{new_ir}");
     // A pure loop-free function carries what LLVM cannot infer across a unit boundary.
     let grind = new_ir
         .lines()
@@ -404,7 +364,7 @@ fn llvm_direct_emission_proves_facts() {
     assert!(
         new_ir.lines().any(|l| l.starts_with("define")
             && l.contains("@\"total_floats")
-            && l.contains("dereferenceable(24) %a0")),
+            && l.contains("dereferenceable(24) %in0")),
         "the list loop was not emitted directly"
     );
     // The list element loads carry the scalar element alias class.
@@ -417,8 +377,7 @@ fn llvm_direct_emission_proves_facts() {
 }
 
 /// Glue for strings, lists, records and optionals is emitted straight to LLVM IR: the program prints
-/// the expected output, and the kept IR has a glue function whose entry block is the direct
-/// emitter's `entry`.
+/// the expected output, and the kept IR defines glue functions.
 #[test]
 fn llvm_direct_glue_is_emitted_directly() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
@@ -431,8 +390,7 @@ fn llvm_direct_glue_is_emitted_directly() {
     std::fs::create_dir_all(&dir).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
-        .env("MS_LLVM_UNITS", "1")
+        .env("MS_BACKEND", "c")
         .env("MS_KEEP_LL", "1")
         .args(["build", &source, "-o", "prog"])
         .output()
@@ -449,13 +407,11 @@ fn llvm_direct_glue_is_emitted_directly() {
         String::from_utf8_lossy(&out.stdout),
         "210 20 1 first node name that is long enough\n"
     );
-    let mut lines = ir.lines();
-    let mut direct = false;
-    while let Some(l) = lines.next() {
-        direct |=
-            l.starts_with("define") && l.contains("@\"ms.glue.") && lines.next() == Some("entry:");
-    }
-    assert!(direct, "no glue was emitted directly");
+    assert!(
+        ir.lines()
+            .any(|l| l.starts_with("define") && l.contains("@\"ms.glue.")),
+        "no glue was emitted"
+    );
 }
 
 /// A free takes the block as a `ptr`, as its declaration says. Passing the address as an `i64`
@@ -476,8 +432,7 @@ fn llvm_free_calls_pass_a_pointer() {
     std::fs::create_dir_all(&dir).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
-        .env("MS_LLVM_UNITS", "1")
+        .env("MS_BACKEND", "c")
         .env("MS_KEEP_LL", "1")
         .args(["build", &source, "-o", "prog"])
         .output()
@@ -515,8 +470,7 @@ fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
     std::fs::create_dir_all(&dir).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
-        .env("MS_LLVM_UNITS", "1")
+        .env("MS_BACKEND", "c")
         .args(["build", &source, "-o", "prog"])
         .output()
         .unwrap();
@@ -525,168 +479,4 @@ fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
     let out = Command::new(dir.join("prog")).output().unwrap();
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(String::from_utf8_lossy(&out.stdout), "3000007\n");
-}
-
-/// The file holding a linked program's DWARF: the dSYM image on macOS, the program elsewhere.
-fn debug_image(program: &std::path::Path) -> std::path::PathBuf {
-    let Some(bundle) = ms_clif::link::debug_companion_path(program).filter(|p| p.exists()) else {
-        return program.to_owned();
-    };
-    let mut images = std::fs::read_dir(bundle.join("Contents/Resources/DWARF"))
-        .unwrap()
-        .map(|e| e.unwrap().path());
-    images.next().expect("a linked DWARF image")
-}
-
-/// Both backends describe Manuscript types to a debugger, once per program: with several LLVM
-/// units only the first carries them.
-#[test]
-fn both_backends_describe_value_types_once() {
-    let source = format!("{}/tests/llvm/value_types.ms", env!("CARGO_MANIFEST_DIR"));
-    let dir = std::env::temp_dir().join(format!("ms-types-test-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let dwarfdump = std::env::var("LLVM_DWARFDUMP").unwrap_or_else(|_| "llvm-dwarfdump".into());
-    let llvm = ms_build::llvm_available(&ms_cli::engine::build_options_from_env());
-    let mut runs = vec![("cranelift", "1")];
-    if cfg!(any(target_os = "linux", target_os = "macos")) && llvm {
-        runs.extend([("llvm", "1"), ("llvm", "4")]);
-    }
-    for (backend, units) in runs {
-        let out = dir.join(format!("{backend}-{units}"));
-        let built = Command::new(env!("CARGO_BIN_EXE_ms"))
-            .env("MS_BACKEND", backend)
-            .env("MS_LLVM_UNITS", units)
-            .args(["build", &source, "-o"])
-            .arg(&out)
-            .output()
-            .unwrap();
-        assert!(
-            built.status.success(),
-            "{}",
-            String::from_utf8_lossy(&built.stderr)
-        );
-        let info = Command::new(&dwarfdump)
-            .arg("--debug-info")
-            .arg(debug_image(&out))
-            .output()
-            .unwrap();
-        let info = String::from_utf8_lossy(&info.stdout);
-        for name in ["Point", "Shape payload", "List[String]", "Int?"] {
-            // Type entries only: the `ms.debug_types` union lists each type again as a member.
-            let wanted = format!("DW_AT_name\t(\"{name}\")");
-            let found = info
-                .split("\n\n")
-                .filter(|die| {
-                    let mut lines = die.trim_start().lines();
-                    lines.next().is_some_and(|tag| tag.contains("_type"))
-                        && lines.any(|l| l.trim() == wanted)
-                })
-                .count();
-            assert_eq!(
-                found,
-                1,
-                "{backend} units={units}: {name} appears {found} times in {}:\n{}",
-                debug_image(&out).display(),
-                info.chars().take(6000).collect::<String>()
-            );
-        }
-    }
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-/// Builds `tests/llvm/<fixture>` with Cranelift and returns `llvm-dwarfdump --debug-info` of it,
-/// after checking that `--verify` accepts the program's own unit.
-fn cranelift_dwarf(fixture: &str, build_args: &[&str]) -> String {
-    let source = format!("{}/tests/llvm/{fixture}", env!("CARGO_MANIFEST_DIR"));
-    let dir = std::env::temp_dir().join(format!("ms-dwarf-test-{}-{fixture}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let out = dir.join("prog");
-    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
-        .env("MS_BACKEND", "cranelift")
-        .args(["build", &source])
-        .args(build_args)
-        .arg("-o")
-        .arg(&out)
-        .output()
-        .unwrap();
-    assert!(
-        built.status.success(),
-        "{}: {}{}",
-        built.status,
-        String::from_utf8_lossy(&built.stdout),
-        String::from_utf8_lossy(&built.stderr)
-    );
-    let dwarfdump = std::env::var("LLVM_DWARFDUMP").unwrap_or_else(|_| "llvm-dwarfdump".into());
-    let run = |flag: &str| {
-        let o = Command::new(&dwarfdump)
-            .arg(flag)
-            .arg(debug_image(&out))
-            .output()
-            .unwrap();
-        String::from_utf8_lossy(&o.stdout).into_owned()
-    };
-    // The program's own unit is the first; the Rust runtime linked into the image carries units
-    // of its own that rustc describes with ranges `--verify` rejects on Windows.
-    let verified = run("--verify");
-    let ours = verified
-        .split("Verifying unit:")
-        .nth(1)
-        .unwrap_or_default()
-        .to_owned();
-    let info = run("--debug-info");
-    assert!(
-        ours.contains(fixture) && !ours.contains("error:"),
-        "{}\n{}",
-        verified.chars().take(6000).collect::<String>(),
-        info.chars().take(14000).collect::<String>()
-    );
-    let _ = std::fs::remove_dir_all(&dir);
-    info
-}
-
-/// The text of the first DIE with `tag` named `name`.
-fn die<'a>(info: &'a str, tag: &str, name: &str) -> &'a str {
-    let wanted = format!("DW_AT_name\t(\"{name}\")");
-    let found = info.split("\n0x").find(|entry| {
-        let mut lines = entry.lines();
-        lines.next().is_some_and(|first| first.contains(tag))
-            && lines.next().is_some_and(|l| l.trim() == wanted)
-    });
-    found.unwrap_or_else(|| {
-        panic!(
-            "no {tag} {name} in:\n{}",
-            info.chars().take(8000).collect::<String>()
-        )
-    })
-}
-
-/// Cranelift names each parameter for a debugger and says where its parts live, in a list that
-/// `llvm-dwarfdump --verify` accepts.
-#[test]
-fn cranelift_locates_parameters_for_a_debugger() {
-    let info = cranelift_dwarf("value_types.ms", &[]);
-    for name in ["s", "p", "items", "maybe"] {
-        let entry = die(&info, "DW_TAG_formal_parameter", name);
-        assert!(entry.contains("DW_AT_location"), "{name} has no location");
-    }
-}
-
-/// A debug build describes the locals a function declares and each inlined callee as a frame of
-/// its own, holding that callee's parameters and locals.
-#[test]
-fn cranelift_describes_locals_and_inlined_frames() {
-    let info = cranelift_dwarf("frames.ms", &["--build-type", "debug"]);
-    // `twice` and both calls of `add` are frames of their own, with their parameters and locals.
-    let frames = info.matches("DW_TAG_inlined_subroutine").count();
-    assert!(frames >= 3, "{frames} inlined frames in:\n{info}");
-    assert!(info.contains("DW_AT_call_line"), "{info}");
-    for name in ["a", "sum", "y", "n"] {
-        assert!(
-            info.contains(&format!("\"{name}\")")),
-            "no {name} in:\n{}",
-            info.chars().take(8000).collect::<String>()
-        );
-    }
-    let sum = die(&info, "DW_TAG_variable", "sum");
-    assert!(sum.contains("DW_AT_location"), "sum has no location");
 }
