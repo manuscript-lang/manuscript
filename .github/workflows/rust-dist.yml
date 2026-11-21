@@ -93,14 +93,15 @@ jobs:
           "$ms" --version
           cd "extracted distribution/$name/examples/hello"
           bin="../../$(basename "$ms")"
-          # Each command has a time limit, so a hang fails the step with its own line in the log instead of holding the runner for the job's hour.
+          # Each command has a time limit where the system has `timeout` (macOS does not), so a hang fails the step with its own line in the log instead of holding the runner for the job's hour.
+          limit() { if command -v timeout > /dev/null; then timeout 300 "$@"; else "$@"; fi; }
           exe="$RUNNER_TEMP/hello"
           if [ '${{ matrix.os }}' = windows ]; then exe="$exe.exe"; fi
           # A release build links with the pinned lld, so it proves the embedded runtime is usable.
-          timeout 300 "$bin" build ms.toml -o "$exe"
+          limit "$bin" build ms.toml -o "$exe"
           test "$("$exe" first second | tr -d '\r')" = "Arguments: 2"
-          test "$(timeout 300 "$bin" run ms.toml -- first second | tr -d '\r')" = "Arguments: 2"
-          timeout 300 "$bin" test test.ms
+          test "$(limit "$bin" run ms.toml -- first second | tr -d '\r')" = "Arguments: 2"
+          limit "$bin" test test.ms
       - uses: actions/upload-artifact@v7
         with:
           name: manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}
