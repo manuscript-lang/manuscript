@@ -5,6 +5,11 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -198,3 +203,82 @@ int ms_sys_process_set_title(const char *text, size_t length) {
   return UV_ENOTSUP;
 }
 #endif
+
+/* ---- a child process and what it leads ---- */
+
+struct MsSysGroup {
+  pid_t pid;
+};
+
+MsSysGroup *ms_sys_group_new(int64_t pid, void *process_handle) {
+  (void)process_handle;
+  MsSysGroup *group = ms_alloc(sizeof *group);
+  group->pid = (pid_t)pid;
+  return group;
+}
+
+void ms_sys_group_signal(MsSysGroup *group, bool force) {
+  if (force || kill(-group->pid, SIGTERM) != 0) {
+    (void)kill(-group->pid, SIGKILL);
+  }
+}
+
+void ms_sys_group_kill(MsSysGroup *group) { (void)kill(-group->pid, SIGKILL); }
+
+int64_t ms_sys_group_exit_code(const MsSysGroup *group, int64_t status, int signal) {
+  (void)group;
+  return signal != 0 ? -1 : status;
+}
+
+#ifdef __linux__
+/* VmHWM of /proc/<pid>/status in bytes, 0 when unreadable. */
+static int64_t high_water_mark(pid_t pid) {
+  char path[64];
+  (void)snprintf(path, sizeof path, "/proc/%lld/status", (long long)pid);
+  FILE *file = fopen(path, "re");
+  if (file == NULL) {
+    return 0;
+  }
+  char line[256];
+  int64_t kilobytes = 0;
+  while (fgets(line, sizeof line, file) != NULL) {
+    if (ms_span_starts_with(ms_span_of_text(line), ms_span_of_text("VmHWM:"))) {
+      kilobytes = strtoll(line + 6, NULL, 10);
+      break;
+    }
+  }
+  (void)fclose(file);
+  return kilobytes * 1024;
+}
+#endif
+
+/* The most any child this process has reaped used, in bytes: an upper bound for one that exited before it was sampled. */
+static int64_t reaped_peak(void) {
+  struct rusage usage;
+  if (getrusage(RUSAGE_CHILDREN, &usage) != 0) {
+    return 0;
+  }
+#ifdef __APPLE__
+  return (int64_t)usage.ru_maxrss; /* bytes */
+#else
+  return (int64_t)usage.ru_maxrss * 1024; /* kilobytes */
+#endif
+}
+
+int64_t ms_sys_group_peak_resident(const MsSysGroup *group, bool exited) {
+#ifdef __linux__
+  if (!exited) {
+    return high_water_mark(group->pid);
+  }
+#else
+  (void)group;
+#endif
+  return exited ? reaped_peak() : 0;
+}
+
+void ms_sys_group_free(MsSysGroup *group) { ms_free(group); }
+
+int ms_sys_process_exec(const char *file, char *const *argv, char *const *env) {
+  (void)execve(file, argv, env);
+  return last_error();
+}
