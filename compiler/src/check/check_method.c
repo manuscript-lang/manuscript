@@ -75,11 +75,13 @@ static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver, MsInfer *i
     }
     MsTy *receiver_bound = MS_NEW_N(&b->c->arena, MsTy, m->nvars[i]);
     memcpy(receiver_bound, in->bound, m->nvars[i] * sizeof *receiver_bound);
-    uint32_t first = 0;
-    if (ms_infer_defaults(in, &first) != 0) {
-        memcpy(in->bound, receiver_bound, m->nvars[i] * sizeof *receiver_bound); // the arguments may bind the rest
-        *open = true;
-        return ms_infer_apply(in, m->ty[i]);
+    // A variable the receiver leaves unbound is the method's own: the arguments may bind it (`ok_or(cause)`
+    // binds `E` to the cause's type), and only what they leave unbound takes its default.
+    for (uint32_t v = 0; v < m->nvars[i]; v++) {
+        if (receiver_bound[v] == MS_TY_NONE) {
+            *open = true;
+            return ms_infer_apply(in, m->ty[i]);
+        }
     }
     return row_bounds_met(b, in) ? ms_infer_apply(in, m->ty[i]) : MS_TY_NONE;
 }
@@ -331,7 +333,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
         }
         MsTy payload = MS_TY_NONE;
         const bool optional = ms_body_optional_payload(b, param->ty, &payload);
-        if ((!ms_body_is_admitted(b, param->ty) && !optional) || ms_body_expr(b, value, param->ty) == MS_TY_NONE) {
+        if ((!ms_body_is_admitted(b, param->ty) && !ms_body_is_callback_type(b, param->ty) && !optional) || ms_body_expr(b, value, param->ty) == MS_TY_NONE) {
             return false;
         }
     }

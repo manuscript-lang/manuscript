@@ -50,7 +50,7 @@ bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *para
     const MsTyTable *tys = &b->c->tys;
     const MsTy want = ms_infer_apply(in, param->ty);
     if (!ms_body_mentions_unbound(b, in, want)) {
-        return ms_body_is_admitted(b, want) && ms_body_expr(b, value, want) != MS_TY_NONE;
+        return (ms_body_is_admitted(b, want) || ms_body_is_callback_type(b, want)) && ms_body_expr(b, value, want) != MS_TY_NONE;
     }
     MsTy actual = MS_TY_NONE;
     if (value->kind == MS_E_LAMBDA) {
@@ -65,7 +65,20 @@ bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *para
     } else {
         actual = ms_body_expr(b, value, MS_TY_NONE);
     }
-    return actual != MS_TY_NONE && ms_body_is_admitted(b, actual) && ms_infer_match(in, param->ty, actual) == MS_MATCH_OK;
+    if (actual == MS_TY_NONE || !ms_body_is_admitted(b, actual)) {
+        return false;
+    }
+    if (ms_infer_match(in, param->ty, actual) == MS_MATCH_OK) {
+        return true;
+    }
+    // A plain value where an Optional of a variable is expected (`ok_or(cause)` with `cause: E?`): the
+    // value is the payload, and the call wraps it in `some`.
+    if (!ms_ty_is(tys, param->ty, MS_BI_OPTIONAL) || tys->nargs[param->ty] != 1 || ms_ty_is(tys, actual, MS_BI_OPTIONAL) ||
+        ms_infer_match(in, ms_ty_args(tys, param->ty)[0], actual) != MS_MATCH_OK) {
+        return false;
+    }
+    b->facts->some_wrap[value->id] = true; // the expression keeps its own type, as the Rust checker records it
+    return true;
 }
 
 /* A function passed for a parameter has the parameter's type (`fn(move T) U`), as the Rust checker
