@@ -43,26 +43,47 @@ bool ms_body_mentions_unbound(const MsBody *b, const MsInfer *in, MsTy ty) {
     return false;
 }
 
-/* Matches each argument against its parameter, binding the variables. */
-static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, MsInfer *in) {
+/* Matches each argument against its parameter, binding the variables. Arguments pair with parameters
+ * as in the Rust checker (labels, and a parameter with a default may be left out); the call records
+ * whether any argument left its position. A missing argument without a default, a label no parameter
+ * has and every `var` or `move` parameter are diagnostics or forms left to the Rust checker. */
+static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc *fn, MsInfer *in) {
     const MsTyTable *tys = &b->c->tys;
-    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != e->u.call.args.len || e->u.call.args.len > 16) {
+    const uint32_t nparams = tys->nparams[sig];
+    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || nparams != fn->params.len || nparams > 16 || e->u.call.args.len > nparams) {
         return false;
     }
     const MsTyParam *params = ms_ty_params(tys, sig);
-    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
-        const MsArg *arg = &e->u.call.args.ptr[i];
-        // Explicit type arguments already fix some variables: the argument is checked against that.
-        const MsTy want = ms_infer_apply(in, params[i].ty);
-        const bool fixed = !ms_ty_has_variable(tys, &b->c->arena, want);
-        if (arg->has_name || params[i].flags != 0 || (fixed && !ms_body_is_admitted(b, want))) {
-            return false;
-        }
-        const MsTy actual = ms_body_expr(b, arg->value, fixed ? want : MS_TY_NONE);
-        if (actual == MS_TY_NONE || !ms_body_is_admitted(b, actual) || ms_infer_match(in, params[i].ty, actual) != MS_MATCH_OK) {
+    MsSym names[16] = {0};
+    bool positional[16] = {false}, covered[16] = {false};
+    uint32_t slot[16] = {0};
+    for (uint32_t p = 0; p < nparams; p++) {
+        names[p] = params[p].name;
+        positional[p] = (params[p].flags & MS_PARAM_POSITIONAL) != 0;
+    }
+    if (!ms_body_bind_arguments(e, names, positional, nparams, slot, covered)) {
+        return false;
+    }
+    for (uint32_t p = 0; p < nparams; p++) {
+        if (!covered[p] && fn->params.ptr[p]->def == NULL) {
             return false;
         }
     }
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        const MsArg *arg = &e->u.call.args.ptr[i];
+        const MsTyParam *param = &params[slot[i]];
+        // Explicit type arguments already fix some variables: the argument is checked against that.
+        const MsTy want = ms_infer_apply(in, param->ty);
+        const bool fixed = !ms_ty_has_variable(tys, &b->c->arena, want);
+        if ((param->flags & ~MS_PARAM_POSITIONAL) != 0 || (fixed && !ms_body_is_admitted(b, want))) {
+            return false;
+        }
+        const MsTy actual = ms_body_expr(b, arg->value, fixed ? want : MS_TY_NONE);
+        if (actual == MS_TY_NONE || !ms_body_is_admitted(b, actual) || ms_infer_match(in, param->ty, actual) != MS_MATCH_OK) {
+            return false;
+        }
+    }
+    b->facts->call_reordered[e->id] = ms_body_reordered(e, slot);
     return true;
 }
 
@@ -131,7 +152,7 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
         }
     }
     uint32_t first = 0;
-    if (!generic_arguments(b, e, sig, &in) || ms_infer_defaults(&in, &first) != 0 || !generic_bounds(b, &in)) {
+    if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in) || ms_infer_defaults(&in, &first) != 0 || !generic_bounds(b, &in)) {
         return ms_body_unsupported(b);
     }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
@@ -176,7 +197,7 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
     }
     MsSym *names = MS_NEW_N(&b->c->arena, MsSym, def->nfields + 1);
     bool *covered = MS_NEW_N(&b->c->arena, bool, def->nfields + 1);
-    uint32_t slot[16];
+    uint32_t slot[16] = {0};
     for (uint32_t i = 0; i < def->nfields; i++) {
         names[i] = def->fields[i].name;
     }
