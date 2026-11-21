@@ -1,0 +1,14 @@
+fn copy (@std/os/fs.ms)
+import copy from "@std/os/fs.ms"
+Copies a file or, with `options.recursive`, a directory tree.
+By default an existing destination returns EEXIST; set `replace` to overwrite it. `options.filter` is called with each
+source and destination path and skips the entry when it returns False.
+Entry and byte limits apply cumulatively across the whole copy.
+
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
+```manuscript
+import CopyOptions, copy from "@std/os/fs.ms"
+
+copy("a.txt", "b.txt", CopyOptions(replace: true))?
+```
+fn copy(source: String, destination: String, options: CopyOptions = CopyOptions()) Result[Void, Error]:
