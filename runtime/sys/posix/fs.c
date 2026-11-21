@@ -596,50 +596,6 @@ MsSysError ms_sys_fs_set_times(const char *path, MsSysTime accessed, MsSysTime m
 
 /* ---- the process's view ---- */
 
-MsSysError ms_sys_fs_current_directory(char **path, size_t *length) {
-    size_t capacity = 256;
-    for (;;) {
-        char *buffer = malloc(capacity);
-        if (buffer == NULL) {
-            return ENOMEM;
-        }
-        if (getcwd(buffer, capacity) != NULL) {
-            *path = buffer;
-            *length = strlen(buffer);
-            return 0;
-        }
-        const MsSysError error = last_error();
-        free(buffer);
-        if (error != ERANGE || !ms_size_mul(capacity, 2, &capacity)) {
-            return error;
-        }
-    }
-}
-
-MsSysError ms_sys_fs_temp_directory(char **path, size_t *length) {
-    // NOLINTNEXTLINE(concurrency-mt-unsafe): the runtime never changes the environment after start-up.
-    const char *configured = getenv("TMPDIR");
-    const char *chosen = configured != NULL ? configured : "/tmp";
-    const size_t size = strlen(chosen);
-    char *copy = malloc(size + 1);
-    if (copy == NULL) {
-        return ENOMEM;
-    }
-    memcpy(copy, chosen, size + 1);
-    *path = copy;
-    *length = size;
-    return 0;
-}
-
-uint32_t ms_sys_fs_random(void) {
-    int local = 0;
-    uint64_t state = (uint64_t)ms_sys_monotonic_ns() ^ ((uint64_t)getpid() << 32) ^ (uint64_t)(uintptr_t)&local;
-    state += UINT64_C(0x9E3779B97F4A7C15);
-    state = (state ^ (state >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
-    state = (state ^ (state >> 27)) * UINT64_C(0x94D049BB133111EB);
-    return (uint32_t)((state ^ (state >> 31)) >> 16);
-}
-
 MsSysFdKind ms_sys_fs_fd_kind(MsSysFd fd) {
     struct stat info;
     if (fstat((int)fd, &info) != 0) {

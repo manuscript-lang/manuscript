@@ -144,28 +144,6 @@ static MsSysError wide_from_utf8(const char *text, size_t size, WCHAR **out, siz
     return 0;
 }
 
-/* UTF-16 to UTF-8 (a lone surrogate becomes U+FFFD), malloc'd. */
-static MsSysError utf8_from_wide(const WCHAR *text, size_t units, char **out, size_t *length) {
-    if (units > (size_t)INT_MAX) {
-        return MS_ERROR_INVALID_PARAMETER;
-    }
-    const int needed = WideCharToMultiByte(CP_UTF8, 0, text, (int)units, NULL, 0, NULL, NULL);
-    if (needed <= 0 && units != 0) {
-        return last_error();
-    }
-    char *bytes = malloc((size_t)needed + 1);
-    if (bytes == NULL) {
-        return ERROR_NOT_ENOUGH_MEMORY;
-    }
-    if (needed > 0) {
-        (void)WideCharToMultiByte(CP_UTF8, 0, text, (int)units, bytes, needed, NULL, NULL);
-    }
-    bytes[needed] = '\0';
-    *out = bytes;
-    *length = (size_t)needed;
-    return 0;
-}
-
 /* Rewrites a path past the classic limit as its verbatim form (\\?\C:\x, \\?\UNC\h\s\x), which the kernel reads
  * without length limits or `/` handling. Shorter paths and paths that are already verbatim stay as they are. */
 static MsSysError verbatim_if_long(WCHAR **path, size_t *length) {
@@ -726,39 +704,6 @@ MsSysError ms_sys_fs_set_times(const char *path, MsSysTime accessed, MsSysTime m
 }
 
 /* ---- the process's view ---- */
-
-MsSysError ms_sys_fs_current_directory(char **path, size_t *length) {
-    const DWORD needed = GetCurrentDirectoryW(0, NULL);
-    if (needed == 0) {
-        return last_error();
-    }
-    WCHAR *wide = malloc(((size_t)needed + 1) * sizeof *wide);
-    if (wide == NULL) {
-        return ERROR_NOT_ENOUGH_MEMORY;
-    }
-    const DWORD written = GetCurrentDirectoryW(needed + 1, wide);
-    const MsSysError error = written == 0 || written > needed ? last_error() : utf8_from_wide(wide, written, path, length);
-    free(wide);
-    return error;
-}
-
-MsSysError ms_sys_fs_temp_directory(char **path, size_t *length) {
-    WCHAR wide[MAX_PATH + 2];
-    const DWORD written = GetTempPathW((DWORD)MS_COUNT_OF(wide), wide);
-    if (written == 0 || written >= MS_COUNT_OF(wide)) {
-        return written == 0 ? last_error() : MS_ERROR_INVALID_PARAMETER;
-    }
-    return utf8_from_wide(wide, written, path, length);
-}
-
-uint32_t ms_sys_fs_random(void) {
-    int local = 0;
-    uint64_t state = (uint64_t)ms_sys_monotonic_ns() ^ ((uint64_t)GetCurrentProcessId() << 32) ^ (uint64_t)(uintptr_t)&local;
-    state += UINT64_C(0x9E3779B97F4A7C15);
-    state = (state ^ (state >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
-    state = (state ^ (state >> 27)) * UINT64_C(0x94D049BB133111EB);
-    return (uint32_t)((state ^ (state >> 31)) >> 16);
-}
 
 MsSysFdKind ms_sys_fs_fd_kind(MsSysFd fd) {
     if (is_invalid(fd)) {
