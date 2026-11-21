@@ -68,5 +68,14 @@ if(NOT MS_WINDOWS AND NOT MS_MUSL)
   # all older than the glibc floor.
   list(APPEND MS_C_FLAGS -D_FORTIFY_SOURCE=2)
 endif()
+if(_triple MATCHES "linux" AND (_triple MATCHES "^aarch64" OR (MS_TRIPLE STREQUAL "" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")))
+  # Newer compilers turn atomics into calls to libgcc's `__aarch64_ld*` helpers, which a program linked with lld
+  # and no libgcc does not have; the runtime carries its atomics inline.
+  include(CheckCCompilerFlag)
+  check_c_compiler_flag(-mno-outline-atomics MS_HAS_NO_OUTLINE_ATOMICS)
+  if(MS_HAS_NO_OUTLINE_ATOMICS)
+    list(APPEND MS_C_FLAGS -mno-outline-atomics)
+  endif()
+endif()
 # A compiler for a target other than this host's is told which: pass -DCMAKE_C_COMPILER_TARGET=<triple> on the first
 # configure (`musl-gcc` already targets musl and llvm-mingw's clang wrapper mingw-w64, so they need none).
