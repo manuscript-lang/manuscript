@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "ms/check.h"
+#include "ms/doc.h"
 #include "ms/methods.h"
 #include "ms/ownership.h"
 #include "ms/rt_ops.h"
@@ -831,6 +832,18 @@ static const MsMethod *own_walked_method(const OwnWalk *w, uint32_t row, const M
     return method;
 }
 
+/* Whether the method `row` is a native (`: ...`, no body to walk) whose result is a value of its own.
+ * A native takes over only the parameters its signature marks `move`, and its result points into the
+ * receiver only where the declaration says so (`// ms: borrows`: `xs.get(i)`, `m.keys()`). */
+static bool own_is_owning_native(const OwnWalk *w, uint32_t row) {
+    const MsMethods *methods = w->facts->methods;
+    const MsMethod *method = methods->native[row] == MS_NATIVE_SOURCE ? own_method_of_row(w, row) : NULL;
+    if (method == NULL || method->func.external || method->func.body.len != 0) {
+        return false;
+    }
+    return !ms_doc_has_marker(w->check->mods[methods->module[row]].text, method->pos.offset, "borrows");
+}
+
 /* Whether method `row` has no body to walk: a runtime operation or an intrinsic declared with `...`. */
 static bool own_method_unwalked(const OwnWalk *w, uint32_t row) {
     const MsMethods *methods = w->facts->methods;
@@ -906,6 +919,8 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     uint32_t consumed = 0;
     if (!plain && own_method_unwalked(w, row) && ms_classify(w->classifier, result) == MS_CLASS_COPY) {
         consumed = 0; // nothing to walk: what such a method takes is what its signature says (`move`, `var`), and a plain result borrows nothing
+    } else if (!plain && own_is_owning_native(w, row)) {
+        // Nothing to learn from a walk either: the result is the native's own value (no `// ms: borrows`).
     } else if (!plain) {
         const MsFacts *home = NULL;
         const MsMethod *walked = w->facts->methods->native[row] == MS_NATIVE_SOURCE ? own_walked_method(w, row, &home) : NULL;
@@ -1172,6 +1187,9 @@ typedef struct Scrutinee {
 static Scrutinee own_borrowed_call(OwnWalk *w, const MsExpr *e) {
     const MsExpr *receiver = e->u.call.callee->u.member.left;
     own_expr(w, e, DEMAND_READ);
+    if (receiver->kind != MS_E_NAME) { // a temporary: it lives to the end of the statement and nothing else can change it
+        return (Scrutinee){true, MS_NONE, false};
+    }
     return (Scrutinee){false, own_resolve(w, w->facts->res_ref[receiver->id]), false};
 }
 
@@ -1180,6 +1198,10 @@ static bool own_bind_borrowed_call(OwnWalk *w, const MsStmt *s, uint32_t binding
     const MsExpr *value = s->u.bind.value;
     if (value->kind == MS_E_CALL && w->facts->call_borrows[value->id]) {
         const Scrutinee source = own_borrowed_call(w, value);
+        if (source.owned) {
+            OWN_DECLINE(w); // a binding of a part of a temporary: Rust's report for it is not followed
+            return true;
+        }
         own_declare_borrow(w, binding, source.origin, s->u.bind.pattern->pos, "binding of a part of it");
         w->facts->bindings.flags[binding] |= MS_BIND_BORROWS;
         return true;

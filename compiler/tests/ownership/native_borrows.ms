@@ -60,3 +60,19 @@ fn compare_view(text: String) Bool:
 
 fn interpolate(text: String) String:
 	return f"{text.view(0, 4)}-{text.length()}"
+
+fn literal_parts() Int:
+	var n = 0
+	for p in "a,b".split(","):
+		n += p.length()
+	return n
+
+fn chained(text: String) Int:
+	var n = 0
+	for c in text.clone().chars():
+		n += c.length()
+	return n
+
+fn bound_temp(text: String) Int:
+	parts := text.clone().split(",")
+	return parts.length()
