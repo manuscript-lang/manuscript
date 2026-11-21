@@ -1,5 +1,5 @@
 /* libms MIR optimiser: independent passes over a verified module. Each takes the module, keeps it
- * verifying and returns whether it changed anything, as the Rust passes in crates/ms-mir/src/opt
+ * verifying and returns whether it changed anything, as the former Rust passes in crates/ms-mir/src/opt (deleted; see git history)
  * do. The contract (what a pass may move, drop or weaken) is in that crate's `opt/mod.rs` doc and
  * carries over unchanged. */
 #ifndef MS_MIR_OPT_H

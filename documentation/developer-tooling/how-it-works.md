@@ -76,7 +76,7 @@ Native builds use `lld` to link the executable. Optimized builds also use LLVM t
 | Linker | `MS_LLD`: path to a compatible `lld` executable | `<cache>/ms/lld/` |
 | LLVM optimization | `MS_LLVM_TOOLS`: directory containing `opt`, `llc` and `llvm-link` | `<cache>/ms/llvm/` |
 
-To avoid these tool downloads, provision the local tools or populate the matching caches beforehand. `MS_BACKEND=cranelift` skips LLVM optimization; a working linker is still required. If the LLVM download fails, the build falls back to Cranelift. If the linker is missing and cannot be downloaded, linking fails with guidance to set `MS_LLD`.
+To avoid these tool downloads, provision the local tools or populate the matching caches beforehand. Every build needs the LLVM tools and a linker. If the linker is missing and cannot be downloaded, linking fails with guidance to set `MS_LLD`.
 
 See [cache locations](builds/incremental-compilation.md) and [platform linking details](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#differences-users-can-see). Compiling `ms` itself has separate [source-build prerequisites](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run).
 

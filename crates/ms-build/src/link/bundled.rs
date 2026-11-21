@@ -33,6 +33,7 @@ bundled!(
     "libdbghelp.a",
     "libntdll.a",
     "libsecur32.a",
+    "libsynchronization.a",
     "libuserenv.a",
     "libiphlpapi.a",
     "libpsapi.a",

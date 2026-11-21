@@ -88,6 +88,7 @@ typedef struct MsFacts {
     uint32_t *call_callee;     /* symbol id of the called function, else MS_NONE */
     bool *const_use;           /* by name node: a module constant read, which evaluates its initializer */
     uint32_t *call_method;     /* method id when the call is a method call, else MS_NONE */
+    uint32_t *text_method;     /* by interpolated expression: the row of its type's own `to_string() String`, else MS_NONE */
     MsTy *call_receiver;       /* the receiver's type for a method call */
     uint8_t *call_owned_borrow; /* a call returning a borrow over a temporary argument: MS_OWNED_CLONE or MS_OWNED_WHOLE */
     uint32_t *call_owned_param; /* MS_OWNED_WHOLE: the parameter whose argument comes back whole */
@@ -99,6 +100,7 @@ typedef struct MsFacts {
     uint32_t *assign_binding; /* by assignment statement node id: the binding it writes, else MS_NONE */
     uint32_t *field_store_root; /* by assignment statement node id: the `var` a field store changes, else MS_NONE */
     bool *each_list;  /* by `for` statement node id: it iterates a list, not a range */
+    MsTy *coerce_iface; /* by expression node id: the concrete type of a value passed as an interface (the expression's own type), else MS_TY_NONE */
     bool *call_reordered; /* by call node id: an argument is not at its parameter's position (labels out of order or skipping a default); passes that pair arguments with parameters by index leave the call to Rust */
     bool *some_wrap;  /* by expression node id: a value of the payload type used where an Optional is expected, so it is wrapped in `some` */
     bool *body_checked;   /* by declaration node id: the function's body was checked */

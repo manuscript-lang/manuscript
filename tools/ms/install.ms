@@ -6,6 +6,7 @@
 // Anything the Rust command words differently (an unusual manifest, a requirement that
 // does not parse) goes to the Rust command, before a file is touched.
 import (
+	Matches from "@std/cli/command.ms",
 	working_directory from "@std/os/env.ms",
 	exists, read_file, write_file from "@std/os/fs.ms",
 	dirname, join from "@std/os/path.ms",
@@ -121,31 +122,9 @@ fn install_manifest(manifest: String, update: List[String]) Installed:
 	return Installed(rows: got.get().clone())
 
 // Runs `ms install`; none when the Rust command must.
-export fn run_install(args: List[String]) Printed?:
-	var update = List[String]()
-	var manifest = ""
-	var at = 0
-
-	while at < args.length():
-		arg := args[at].clone()
-
-		if arg == "--update":
-			if at + 1 >= args.length(): return Printed(
-				stderr: "ms install: --update needs a package name such as @pg\n",
-				status: 1,
-			)
-
-			update.append(args[at + 1].clone())
-			at += 1
-		else if arg.starts_with("-"):
-			return Printed(
-				stderr: f"ms install: unknown option {arg}; see ms install --help\n",
-				status: 1,
-			)
-		else:
-			manifest = arg
-
-		at += 1
+export fn run_install(m: Matches) Printed?:
+	update := m.list("update")
+	var manifest = m.string_or_none("manifest").get_or("")
 
 	if manifest.is_empty():
 		found := find_project()
@@ -232,48 +211,22 @@ fn quoted_list(effects: List[String]) String:
 	return out.join(", ")
 
 // Runs `ms add`; none when the Rust command must.
-export fn run_add(args: List[String]) Printed?:
-	var url = ""
+export fn run_add(m: Matches) Printed?:
+	url := m.string("url")
+	var name = m.string_or_none("as").get_or("")
+	allow := m.bool("allow")
 	var kind = ""
 	var reference = ""
-	var name = ""
-	var allow = false
-	var at = 0
 
-	while at < args.length():
-		arg := args[at].clone()
-		var needs = ""
-		if arg == "--version": needs = "a requirement such as 1.2"
-		if arg == "--tag": needs = "a tag"
-		if arg == "--sha": needs = "a full commit"
-		if arg == "--as": needs = "a package name such as @pg"
-		if not needs.is_empty() and at + 1 >= args.length(): return failure(
-			"add",
-			f"{arg} needs {needs}",
-		)
-
-		if arg == "--version" or arg == "--tag" or arg == "--sha":
+	for choice in ["version", "tag", "sha"]:
+		if value := m.string_or_none(choice):
 			if not kind.is_empty(): return failure(
 				"add",
 				"name exactly one of --version, --tag and --sha",
 			)
 
-			kind = arg.slice(2, arg.length())
-			reference = args[at + 1].clone()
-			at += 1
-		else if arg == "--as":
-			name = args[at + 1].clone()
-			at += 1
-		else if arg == "--allow":
-			allow = true
-		else if arg.starts_with("-"):
-			return failure("add", f"unknown option {arg}; see ms add --help")
-		else if url.is_empty():
-			url = arg
-		else:
-			return failure("add", "one repository URL at a time")
-
-		at += 1
+			kind = choice.clone()
+			reference = value.clone()
 
 	if url.is_empty(): return failure(
 		"add",
@@ -365,10 +318,8 @@ export fn run_add(args: List[String]) Printed?:
 	return Printed(stdout: out)
 
 // Runs `ms remove`; none when the Rust command must.
-export fn run_remove(args: List[String]) Printed?:
-	if args.length() != 1: return failure("remove", "name one package: ms remove @name")
-
-	name := args[0].clone()
+export fn run_remove(m: Matches) Printed?:
+	name := m.string("name")
 	manifest := find_project()
 	if manifest.is_none(): return failure(
 		"remove",

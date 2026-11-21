@@ -25,7 +25,7 @@ import (
 	Measured, baseline_regressions, describe_stats, run_one from "./bench.ms",
 	Fault, decode, fault_json, from_text, is_fault_status from "./fault.ms",
 	debug_duration from "./format.ms",
-	TestOptions, parse_test_options from "./options.ms",
+	TestOptions from "./options.ms",
 	file_numbers, select, shuffled from "./plan.ms",
 	Outcome, Together, run_together from "./supervise.ms",
 )
@@ -348,7 +348,7 @@ fn build_tests(
 	var env = Map[String, String]()
 	if inv.command == "test" and inv.targets.length() > 1:
 		env.add("MS_BUILD_EXTRA", inv.targets.drop(1).join("\n"))
-	if inv.command == "bench" and inv.arguments.contains("--ops"):
+	if inv.command == "bench" and inv.tests.ops:
 		env.add("MS_BUILD_COUNT_OPS", "1")
 	env.add("MS_BUILD_TARGET", if inv.command == "bench": "benches" else: "tests")
 
@@ -395,13 +395,7 @@ export fn run_bench(inv: Invocation) Int:
 	return run_command(inv, true)
 
 fn run_command(inv: Invocation, bench: Bool) Int:
-	parsed := parse_test_options(inv.arguments)
-
-	if parsed.is_error():
-		complain(parsed.err())
-		return 2
-
-	var options = parsed.get()
+	var options = inv.tests.clone()
 	structured := inv.structured
 	var document = Document(bench: bench)
 

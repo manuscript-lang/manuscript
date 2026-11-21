@@ -313,6 +313,7 @@ fn windows_arguments(
         "libntdll.a",
         "libsecur32.a",
         "libshell32.a",
+        "libsynchronization.a",
         "libuser32.a",
         "libuserenv.a",
         "libiphlpapi.a",

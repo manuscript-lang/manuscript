@@ -45,6 +45,13 @@ unsafe extern "C" {
         meta: *mut Text,
         why: *mut Text,
     ) -> bool;
+    fn ms_backend_optimized(
+        mir: *const c_char,
+        mir_len: usize,
+        name: *const c_char,
+        out: *mut Text,
+        why: *mut Text,
+    ) -> bool;
     fn ms_backend_tables(
         meta: *const c_char,
         meta_len: usize,
@@ -118,6 +125,28 @@ fn ir_of(
     };
     if ok {
         Ok((ir.take(), meta.take()))
+    } else {
+        Err(reason(why))
+    }
+}
+
+/// The MIR of `module` after the optimizer at its speed level, as text (`MS_EMIT_OPT=1 ms emit`).
+pub fn optimized_mir(module: &Module) -> Result<String, String> {
+    let mir = ms_mir::print::print_module_unique(module);
+    let (mut out, mut why) = (Text::empty(), Text::empty());
+    // SAFETY: the text is passed with its length, the name is NUL-terminated, and the outputs are
+    // empty texts libms fills.
+    let ok = unsafe {
+        ms_backend_optimized(
+            mir.as_ptr().cast(),
+            mir.len(),
+            c"program.mir".as_ptr(),
+            &raw mut out,
+            &raw mut why,
+        )
+    };
+    if ok {
+        Ok(String::from_utf8_lossy(&out.take()).into_owned())
     } else {
         Err(reason(why))
     }
