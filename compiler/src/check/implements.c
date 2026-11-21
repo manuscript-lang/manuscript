@@ -128,7 +128,9 @@ static MsFit fit_equal(FitWalk *w, MsTy ty) {
         }
         return answer;
     }
-    if (builtin != MS_B_NONE || t->def[ty] == 0 || w->depth == FIT_DEPTH) {
+    // A builtin declared in source (`Result`, `Error`, `Url`) is decided by its parts; a native one is left to the Rust checker.
+    const bool declared = ms_ty_kind(t, ty) != MS_K_NATIVE;
+    if ((builtin != MS_B_NONE && !declared) || t->def[ty] == 0 || w->depth == FIT_DEPTH) {
         return ms_ty_kind(t, ty) == MS_K_NATIVE && builtin == MS_B_NONE ? MS_FIT_NO : MS_FIT_UNKNOWN;
     }
     for (uint32_t i = 0; i < w->depth; i++) {
