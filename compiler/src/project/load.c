@@ -466,6 +466,30 @@ bool ms_project_load_packages(MsArena *a, MsNames *names, const char *filename, 
     return load_graph(a, names, filename, out, err);
 }
 
+/* A manifest that cannot be read is the graph's one diagnostic, named by the entry's path from the project root. */
+static void load_manifest_failed(MsArena *a, const char *filename, const char *absolute, const char *root, const MsProject *project, MsProjectError *failure, MsGraph *out) {
+    const char *shown = filename;
+    const char *rel;
+    const char *base = project->root != NULL ? project->root : root;
+    if (ms_path_rel(a, base, absolute, &rel, failure) && !ms_path_escapes(rel)) {
+        shown = rel;
+    }
+    out->source_root = base;
+    out->diagnostics = MS_NEW(a, MsGraphDiag);
+    out->diagnostics[0] = load_from_error(a, shown, failure);
+    out->ndiagnostics = 1;
+}
+
+/* Lists the packages of `project` in the graph. */
+static void load_packages(MsArena *a, const MsProject *project, MsGraph *out) {
+    out->package_count = project->package_count;
+    out->packages = MS_NEW_N(a, MsGraphPackage, project->package_count + 1);
+    for (uint32_t i = 0; i < project->package_count; i++) {
+        const MsPackage *package = &project->packages[i];
+        out->packages[i] = (MsGraphPackage){.prefix = ms_arena_fmt(a, "%s/", package->key).ptr, .spec = package->spec, .effects = package->project.effects, .effect_count = package->project.effect_count};
+    }
+}
+
 static bool load_graph(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err) {
     *out = (MsGraph){0};
     MsProjectError failure;
@@ -488,28 +512,14 @@ static bool load_graph(MsArena *a, MsNames *names, const char *filename, MsGraph
                 *err = failure;
                 return false;
             }
-            const char *shown = filename;
-            const char *rel;
-            const char *base = project.root != NULL ? project.root : root;
-            if (ms_path_rel(a, base, absolute, &rel, &failure) && !ms_path_escapes(rel)) {
-                shown = rel;
-            }
-            out->source_root = base;
-            out->diagnostics = MS_NEW(a, MsGraphDiag);
-            out->diagnostics[0] = load_from_error(a, shown, &failure);
-            out->ndiagnostics = 1;
+            load_manifest_failed(a, filename, absolute, root, &project, &failure, out);
             return true;
         }
         if (project.is_workspace || project.path_dependency_count > 0) {
             ms_project_error_unsupported(err, "[workspace] and path dependencies in the module graph");
             return false;
         }
-        out->package_count = project.package_count;
-        out->packages = MS_NEW_N(a, MsGraphPackage, project.package_count + 1);
-        for (uint32_t i = 0; i < project.package_count; i++) {
-            const MsPackage *package = &project.packages[i];
-            out->packages[i] = (MsGraphPackage){.prefix = ms_arena_fmt(a, "%s/", package->key).ptr, .spec = package->spec, .effects = package->project.effects, .effect_count = package->project.effect_count};
-        }
+        load_packages(a, &project, out);
         config = &project;
         root = project.root;
         if (is_manifest) {

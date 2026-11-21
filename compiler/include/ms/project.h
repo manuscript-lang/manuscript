@@ -102,27 +102,27 @@ typedef struct MsProject {
     const char *entry;         /* canonical entry file, "" for a library */
     const char *configuration; /* the manifest text as read */
     MsAlias *aliases;          /* sorted by name */
-    uint32_t alias_count;
     MsAlias *embed;            /* [embed]: name and canonical directory */
-    uint32_t embed_count;
     MsDependency *dependencies; /* [dependencies] with a url */
-    uint32_t dependency_count;
     MsAlias *path_dependencies; /* [dependencies] written { path = "../member" }: canonical directory */
-    uint32_t path_dependency_count;
     MsEffectRule *allowed_effects; /* [effects] */
-    uint32_t allowed_effect_count;
     const char *const *effects; /* [project] effects */
-    uint32_t effect_count;
-    bool is_workspace;          /* a [workspace] table is present */
-    const char *const *members; /* its members, as written */
-    uint32_t member_count;
-    bool has_version;           /* [project] version */
-    MsVersion version;
-    MsPos location;            /* the [project] header */
+    const char *const *members; /* [workspace] members, as written */
     MsAlias *deps;             /* attached: each dependency name and the canonical source directory of its package */
-    uint32_t dep_count;
     struct MsPackage *packages; /* attached: every fetched package this project reaches, sorted by key; empty in a package */
+    MsVersion version;         /* [project] version, when has_version */
+    uint32_t alias_count;
+    uint32_t embed_count;
+    uint32_t dependency_count;
+    uint32_t path_dependency_count;
+    uint32_t allowed_effect_count;
+    uint32_t effect_count;
+    uint32_t member_count;
+    uint32_t dep_count;
     uint32_t package_count;
+    MsPos location;            /* the [project] header */
+    bool is_workspace;         /* a [workspace] table is present */
+    bool has_version;          /* [project] version */
 } MsProject;
 
 /* A fetched package a project can import from (project/attach.c). */
