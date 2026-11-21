@@ -28,7 +28,8 @@ for file in "$@"; do
 		export) sed -i 's/^fn /export fn /' "$work/repo/a.ms" ;;
 		append) printf 'export fn appended_by_review() Int:\n    return 3\n' >>"$work/repo/a.ms" ;;
 		esac
-		(cd "$work/repo" && "$MS_FACTS" facts a.ms >/dev/null 2>&1) || continue
+		(cd "$work/repo" && "$MS_FACTS" facts a.ms >"$work/facts.json" 2>/dev/null) || continue
+		head -c1 "$work/facts.json" | grep -q "{" || continue
 		git -C "$work/repo" diff --no-renames >"$work/p.patch"
 		[ -s "$work/p.patch" ] || continue
 		ran=$((ran + 1))
