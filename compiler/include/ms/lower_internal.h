@@ -281,6 +281,7 @@ MirTy le_type(Lb *lb, MsTy ty);
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);
+MsTy le_field_ty(Lb *lb, const MsDef *def, MsTy ty, MsTy declared);
 LbVal lm_empty(Lb *lb, MirTy ty);
 LbVal lr_field(Lb *lb, const MsExpr *e);
 

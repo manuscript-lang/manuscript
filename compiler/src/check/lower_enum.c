@@ -7,7 +7,7 @@
 
 /* A case field's declared type at the type arguments of the enum type `ty` (`Pair[Int]` turns a field
  * `T` into `Int`). */
-static MsTy le_field_ty(Lb *lb, const MsDef *def, MsTy ty, MsTy declared) {
+MsTy le_field_ty(Lb *lb, const MsDef *def, MsTy ty, MsTy declared) {
     if (def->nvars == 0) {
         return declared;
     }
