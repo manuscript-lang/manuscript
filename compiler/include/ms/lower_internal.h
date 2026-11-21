@@ -294,7 +294,7 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 
 void lb_write_back(Lb *lb);
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
-bool lb_is_pointer_param(const Lb *lb, uint32_t binding);   /* a `var` record parameter: read and written through its pointer */
+bool lb_is_pointer_param(Lb *lb, uint32_t binding);   /* a `var` record parameter: read and written through its pointer */
 bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
 
 /* Lists of scalars (lower_list.c, included after lower_body.c). */

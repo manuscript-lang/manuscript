@@ -1429,10 +1429,10 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except) {
 /* Whether `binding` is a `var` parameter holding a record. Rust reads such a parameter from its pointer at each use and
  * stores a changed field back at once, where a scalar or a String is carried in a variable and stored when the
  * function returns. */
-bool lb_is_pointer_param(const Lb *lb, uint32_t binding) {
+bool lb_is_pointer_param(Lb *lb, uint32_t binding) {
     for (uint32_t i = 0; i < lb_slots(&lb->cur); i++) {
         if (lb_slot_mutable(&lb->cur, i) && lb->binding_at[lb_slot_node(&lb->cur, i)] == binding) {
-            const MirTy ty = lb_mir_ty((Lb *)lb, lb->facts->bindings.ty[binding]);
+            const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
             return ty != MIR_NONE && mir_ty_data(lb->m, ty)->kind == MK_TYPE;
         }
     }
