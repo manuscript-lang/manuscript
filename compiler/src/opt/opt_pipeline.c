@@ -131,6 +131,7 @@ static bool op_strfuse(MirModule *m) {
 static bool op_fastpaths(MirModule *m) {
     bool changed = mir_opt_viewfast(m);
     changed |= mir_opt_bytesfast(m);
+    changed |= mir_opt_strfast(m);
     return changed && mir_opt_inline(m);
 }
 
