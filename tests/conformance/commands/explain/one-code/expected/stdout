@@ -1,0 +1,2 @@
+MSL110: Optional.get() without a default (warning)
+  repair: use `if value := ...:`, or write `get_or(default)`

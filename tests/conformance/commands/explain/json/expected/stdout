@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "codes": [
+    {
+      "code": "MSL110",
+      "family": "Optional.get() without a default",
+      "severity": "warning",
+      "repair": "use `if value := ...:`, or write `get_or(default)`"
+    }
+  ]
+}
