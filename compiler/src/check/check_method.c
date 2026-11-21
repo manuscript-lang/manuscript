@@ -221,12 +221,12 @@ static bool primitive_in(MsStr name, const char *const *members) {
     return false;
 }
 
-/* The operations a type has when it has the property that grants them: `clone` (Clonable), `equals` (Equal) and `hash` (Hashable). */
+/* The operations a type has when it has the property that grants them: `clone` (Clonable), and `equals` (Equal). */
 static bool derived_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
     const struct {
         MsProperty property;
         const char *interface;
-    } derived[] = {{MS_PROP_CLONABLE, "CloneOperations"}, {MS_PROP_EQUAL, "EqualOperations"}, {MS_PROP_HASHABLE, "HashOperations"}};
+    } derived[] = {{MS_PROP_CLONABLE, "CloneOperations"}, {MS_PROP_EQUAL, "EqualOperations"}};
     for (size_t i = 0; i < sizeof derived / sizeof *derived; i++) {
         if (intrinsic_in(b, derived[i].interface, receiver, name, out) &&
             ms_implements_property(b->c, b->methods, receiver, derived[i].property) == MS_FIT_YES) {
