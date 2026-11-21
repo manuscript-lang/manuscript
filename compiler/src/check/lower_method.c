@@ -128,7 +128,7 @@ LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row) {
     const MsExpr *receiver = e->u.call.callee->u.member.left;
     if (lc_is_closer_row(lb, row) && receiver->kind == MS_E_NAME && lb->facts->res_kind[receiver->id] == MS_RES_BINDING &&
         lc_is_slot_local(lb, lb->facts->res_ref[receiver->id])) {
-        return lb_unsupported(lb); // a close by hand: the pass would close the value again
+        return LB_UNSUPPORTED(lb); // a close by hand: the pass would close the value again
     }
     return lb_call_func(lb, e, lb->method_func[row], methods->ty[row], receiver, mutating);
 }

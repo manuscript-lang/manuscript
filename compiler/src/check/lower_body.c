@@ -247,7 +247,7 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
     MirValue held;
     if (lc_is_slot_local(lb, binding)) { // a resource lives in its slot and is read from it
         if (facts->moved_out[e->id] || !lc_use(lb, binding, &held)) {
-            return lb_unsupported(lb); // a move of it is not lowered yet
+            return LB_UNSUPPORTED(lb); // a move of it is not lowered yet
         }
         return (LbVal){held, false};
     }
