@@ -12,3 +12,27 @@ add_executable(core_unit core_unit.c)
 ms_target_defaults(core_unit)
 target_link_libraries(core_unit PRIVATE ms_core)
 add_test(NAME core_unit COMMAND core_unit)
+
+# Value natives of the runtime core: strings, bytes, lists, maps, numbers and text formatting.
+add_library(ms_values STATIC
+  ascii_chars.c
+  bits.c
+  index_fault.c
+  num.c
+  num_text.c
+  string_case.c
+  string_cut.c
+  string_lists.c
+  string_join.c
+  string_make.c
+  string_normalize.c
+  string_quote.c
+  string_query.c
+  string_split.c
+  unicode_case_tables.c
+  unicode_norm_index.c
+  unicode_norm_leaf.c
+  unicode_norm_pool.c
+  unicode_norm_records.c)
+ms_target_defaults(ms_values)
+target_link_libraries(ms_values PUBLIC ms_base)
