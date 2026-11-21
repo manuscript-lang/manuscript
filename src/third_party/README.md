@@ -1,6 +1,6 @@
 # src/third_party
 
-Vendored C libraries, pinned in `c-libs.lock` (version, tag, commit, SHA-256 of the vendored tree).
+Vendored C libraries, pinned in `c-libs.lock` (version, tarball URL and checksum or tag and commit, SHA-256 of the vendored tree).
 
 | Library | Version | Use |
 | --- | --- | --- |
@@ -14,5 +14,5 @@ Vendored C libraries, pinned in `c-libs.lock` (version, tag, commit, SHA-256 of 
 | OpenSSL | 3.5.4 | TLS and crypto for the net layer. The whole source minus `test` and `demos`; the build uses its own Configure (perl). CMake targets `openssl_ssl` and `openssl_crypto` (`cmake/openssl.cmake`, built out of tree). |
 
 Check offline: `cmake -DSOURCE_DIR=. -P cmake/FetchCLibs.cmake` (also the `third_party_lock` ctest).
-Update a pin: edit the tag and commit in the lock, run with `-DMODE=fetch`, then put the printed digest in the lock.
+Update a pin: edit the version, tarball URL and tarball sha256 in the lock (or the tag and commit for a tag clone), run with `-DMODE=fetch`, then put the printed digest in the lock. Libraries come from the upstream release tarball when there is one; mimalloc and llhttp, which publish none, come from a tag clone.
 `ms_lint` skips this directory; do not edit vendored files by hand.
