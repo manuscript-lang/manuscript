@@ -6,7 +6,8 @@
 #   CASES_DIR handcrafted cases (compiler/tests/<dir>/*.ms), compared along with every single-module .ms file
 #             under tests/ and examples/
 # On every file where Rust reports only that family or nothing, the C document (ms_resolve_dump: the full
-# program check of the file) must equal Rust's. Run from the repository root; the Rust `ms` is
+# program check of the file) must equal Rust's. With MS_DIFF_CLEAN_ONLY=1 only the handcrafted cases are compared
+# when Rust reports something: the corpus files are compared where Rust reports nothing (C must add nothing). Run from the repository root; the Rust `ms` is
 # target/release/ms (or $MS_RUST).
 set -eu
 name=$1
@@ -33,6 +34,7 @@ for src in "$out"/c/*.src; do
     messages=$(printf '%s\n' "$first" | grep -c '"message":' || true)
     family=$(printf '%s\n' "$first" | grep -cE "\"message\": \"($pattern)" || true)
     if [ "$messages" -ne "$family" ]; then continue; fi
+    case $file in "$cases"/*) ;; *) [ "${MS_DIFF_CLEAN_ONLY:-}" = 1 ] && [ "$messages" -ne 0 ] && continue ;; esac
     if [ "$messages" -eq 0 ]; then
         [ "$(grep -c '"message":' "$base.json")" -eq 0 ] || { echo "FAIL $file: C reports what Rust does not"; status=1; }
     else
