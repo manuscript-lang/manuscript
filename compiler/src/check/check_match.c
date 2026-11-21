@@ -74,7 +74,7 @@ static bool match_is_wildcard(const MsBody *b, const MsExpr *path) {
 /* Checks one arm's pattern against the scrutinee type; false when it is not one handled without a
  * diagnostic. */
 static bool match_literal_arm(MsBody *b, const MsArm *arm, bool last, MsTy scrutinee, MatchSeen *seen) {
-    if (arm->bindings.len != 0 || arm->body.len != 0) {
+    if (arm->bindings.len != 0) {
         return false;
     }
     if (match_is_wildcard(b, arm->path)) {
@@ -100,29 +100,37 @@ static bool match_literal_arm(MsBody *b, const MsArm *arm, bool last, MsTy scrut
 }
 
 /* The result type: the expected one, else the first arm's value. Arms are all values or all
- * statements; a mix, or a value that is not a primitive, is left to Rust. */
+ * statements; a mix, or a value that is not a primitive, is left to Rust. A statement match falls
+ * through when some arm does (`b->match_falls`); the statement after one whose arms all return or
+ * break is unreachable. */
 static MsTy match_arm_values(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsArm *const *arms = (const MsArm *const *)e->u.match.arms.ptr;
     const uint32_t count = e->u.match.arms.len;
-    const bool valued = arms[0]->value != NULL;
     MsTy result = expected;
+    bool statements = false; // the arms are statements, ending in a `Void` expression or none
+    bool any_falls = false;
     for (uint32_t i = 0; i < count && b->supported; i++) {
-        if ((arms[i]->value != NULL) != valued) {
+        const MsArm *arm = arms[i];
+        const uint32_t first = b->facts->bindings.count;
+        const bool falls = ms_body_block(b, &arm->body);
+        const MsTy ty = arm->value == NULL ? MS_TY_NONE : ms_body_expr(b, arm->value, i == 0 || !statements ? result : MS_TY_NONE);
+        const bool statement = arm->value == NULL || ty == b->void_ty || ty == b->never_ty;
+        if (!b->supported || (arm->value != NULL && ty == MS_TY_NONE) || (i > 0 && statement != statements) ||
+            (!statement && arm->body.len != 0)) { // statements before a value are not lowered
             return ms_body_unsupported(b);
         }
-        if (!valued) {
-            continue;
+        statements = statement;
+        any_falls = any_falls || (falls && ty != b->never_ty);
+        result = statement ? result : ty;
+        for (uint32_t binding = first; binding < b->facts->bindings.count; binding++) {
+            b->closed[binding] = true;
         }
-        const MsTy ty = ms_body_expr(b, arms[i]->value, result);
-        if (ty == MS_TY_NONE || ty == b->void_ty) {
-            return ms_body_unsupported(b);
-        }
-        result = ty;
     }
-    if (valued) {
-        return result;
+    if (!b->supported || (statements && !(expected == MS_TY_NONE || expected == b->void_ty))) {
+        return ms_body_unsupported(b);
     }
-    return expected == MS_TY_NONE || expected == b->void_ty ? b->void_ty : ms_body_unsupported(b);
+    b->match_falls = !statements || any_falls;
+    return !statements ? result : any_falls ? b->void_ty : b->never_ty;
 }
 
 MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
@@ -154,7 +162,5 @@ MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
     if (!ok || !covered) {
         return ms_body_unsupported(b);
     }
-    const MsTy result = match_arm_values(b, e, expected);
-    b->match_falls = true;
-    return result;
+    return match_arm_values(b, e, expected);
 }

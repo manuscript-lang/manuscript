@@ -675,7 +675,7 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     case MS_E_APPLY: return lst_index(lb, e);
     case MS_E_LIST: return lst_literal(lb, e);
     case MS_E_MAP: return lm_literal(lb, e);
-    case MS_E_VOID:
+    case MS_E_VOID: return (LbVal){mir_b_unit(&lb->b), false};
     case MS_E_PROBE: break;
     }
     return lb_unsupported(lb);
@@ -810,10 +810,14 @@ static bool lb_arm_binds_owned(Lb *lb, const MsArm *arm, MirTy subject_ty) {
     return false;
 }
 
-/* `match` over literal arms with one value each. A Bool match is also how `if c: a else: b` is
- * written. Every arm's value joins in one block parameter. */
+static uint32_t lb_scoped_tail(Lb *lb, const MsStmts *body, const MsExpr *tail);
+
+/* `match` over literal arms or the cases of an enum. Every arm's value joins in one block parameter;
+ * a statement match (arms with bodies, no value) joins without one, each arm in its own scope. */
 static LbVal lb_match(Lb *lb, const MsExpr *e) {
-    const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    const MsTy result_type = lb->facts->expr_ty[e->id];
+    const bool statements = result_type == lb->void_ty || result_type == lb->never_ty; // arms are statements
+    const MirTy result_ty = statements || result_type == lb->void_ty ? MIR_VOID : lb_mir_ty(lb, result_type);
     const LbVal scrutinee = lb_expr(lb, e->u.match.scrutinee);
     const MirTy scrutinee_ty = lb->ok ? mir_b_ty(&lb->b, scrutinee.v) : MIR_NONE;
     const MirTyKind scrutinee_kind = lb->ok ? mir_ty_data(lb->m, scrutinee_ty)->kind : MK_INT;
@@ -829,32 +833,41 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
         }
     }
     const LbArms arms = lb_open_arms(lb, e);
-    const MirValue result = mir_b_add_block_param(&lb->b, arms.join, result_ty, MM_BORROW);
+    const MirValue result = statements ? MIR_NONE : mir_b_add_block_param(&lb->b, arms.join, result_ty, MM_BORROW);
     lb_dispatch(lb, e, scrutinee.v, &arms);
     if (arms.wildcard < 0) {
         mir_b_seal_block(&lb->b, arms.fallback);
         mir_b_switch_to(&lb->b, arms.fallback);
         mir_b_unreachable(&lb->b);
     }
+    bool live = false;
     for (uint32_t i = 0; i < e->u.match.arms.len && lb->ok; i++) {
+        const MsArm *arm = e->u.match.arms.ptr[i];
         mir_b_seal_block(&lb->b, arms.blocks[i]);
-        mir_b_switch_to(&lb->b, arms.blocks[i]);
+        lb_enter(lb, arms.blocks[i]);
         if (scrutinee_kind == MK_ALT) {
-            lb_bind_arm(lb, e->u.match.arms.ptr[i], scrutinee.v);
+            lb_bind_arm(lb, arm, scrutinee.v);
+        }
+        if (statements) {
+            (void)lb_scoped_tail(lb, &arm->body, arm->value);
+        } else if (arm->body.len != 0) {
+            return lb_unsupported(lb); // statements before the arm's value share its scope
         }
         lb->branching++;
-        const LbVal value = lb_expr(lb, e->u.match.arms.ptr[i]->value);
+        const LbVal value = statements ? (LbVal){MIR_NONE, false} : lb_expr(lb, arm->value);
         lb->branching--;
         if (lb->ok && drops_scrutinee) {
             lb_drop(lb, scrutinee.v);
         }
-        if (lb->ok) {
-            mir_b_br(&lb->b, arms.join, &value.v, 1);
+        if (lb->ok && !lb->dead) {
+            mir_b_br(&lb->b, arms.join, statements ? NULL : &value.v, statements ? 0 : 1);
+            live = true;
         }
     }
     mir_b_seal_block(&lb->b, arms.join);
     mir_b_switch_to(&lb->b, arms.join);
-    return (LbVal){result, false};
+    lb->dead = statements && !live;
+    return (LbVal){statements ? mir_b_unit(&lb->b) : result, false};
 }
 
 /* ---- statements ---- */
@@ -997,11 +1010,12 @@ static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
 }
 
 static void lb_return(Lb *lb, const MsStmt *s) {
-    if (s->u.expr == NULL) {
+    const MirValue ok_unit = s->u.expr == NULL ? la_ok_unit(lb) : MIR_NONE;
+    if (s->u.expr == NULL && ok_unit == MIR_NONE) {
         lb_return_void(lb);
         return;
     }
-    LbVal value = lb_expr(lb, s->u.expr);
+    LbVal value = s->u.expr == NULL ? (LbVal){ok_unit, lb_owns(lb, lb->b.f.ret)} : lb_expr(lb, s->u.expr);
     if (!lb->ok) {
         return;
     }
@@ -1009,7 +1023,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
     if (lb_owns(lb, value_ty) && !value.owned && !lb->b.f.ret_borrowed) {
         value = lb_hand_out(lb, s->u.expr, value.v);
     }
-    const bool leaves_var = !lb->b.f.ret_borrowed && lb_names_var(lb, s->u.expr);
+    const bool leaves_var = !lb->b.f.ret_borrowed && s->u.expr != NULL && lb_names_var(lb, s->u.expr);
     lb_own_temps(lb, lb->stmt_mark);
     lb_own_vars(lb, 0, leaves_var ? value.v : MIR_NONE);
     lscope_exit_to(&lb->scopes, 0);
@@ -1020,11 +1034,16 @@ static void lb_return(Lb *lb, const MsStmt *s) {
 }
 
 
-/* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
- * the scope's depth. */
-uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
+/* Lowers `body`, then `tail` (a Void expression ending an arm) in its own ownership scope, whose end is
+ * where control falls out of it. Returns the scope's depth. */
+static uint32_t lb_scoped_tail(Lb *lb, const MsStmts *body, const MsExpr *tail) {
     const uint32_t depth = lscope_push(&lb->scopes);
     lb_statements(lb, body);
+    if (tail != NULL && !lb->dead) {
+        lb->branching++;
+        (void)lb_expr(lb, tail);
+        lb->branching--;
+    }
     if (!lb->dead) {
         lb_own_vars(lb, depth, MIR_NONE);
     }
@@ -1033,6 +1052,12 @@ uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
     }
     lscope_pop(&lb->scopes, !lb->dead);
     return depth;
+}
+
+/* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
+ * the scope's depth. */
+uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
+    return lb_scoped_tail(lb, body, NULL);
 }
 
 /* Starts emitting into `block`, which some live edge reaches. */

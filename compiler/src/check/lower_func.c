@@ -401,7 +401,8 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
              .float_ty = ms_check_primitive(c, "Float"),
              .bool_ty = ms_check_primitive(c, "Bool"),
              .string_ty = ms_check_primitive(c, "String"),
-             .void_ty = ms_check_primitive(c, "Void")};
+             .void_ty = ms_check_primitive(c, "Void"),
+             .never_ty = ms_check_primitive(c, "Never")};
     lb.views = calloc((size_t)nmodules + 1, sizeof *lb.views);
     bool ready = lb.views != NULL;
     for (uint32_t i = 0; ready && i < nmodules; i++) {
