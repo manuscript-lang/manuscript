@@ -47,7 +47,8 @@ static void check_workflow(Lint *lint, const char *path) {
 }
 
 void lint_check_repo_file(Lint *lint, const char *path) {
-  if (is_script(path) && !in_baseline(lint, path)) {
+  /* Vendored libraries keep the scripts they ship; they are not ours (src/third_party/README.md). */
+  if (is_script(path) && !lint_text_starts_with(path, "src/third_party/") && !in_baseline(lint, path)) {
     lint_report(lint, path, 0, "new-script", "no new Python, shell or batch scripts; use CMake or Manuscript");
   }
   if (lint_text_starts_with(path, ".github/workflows/c-") && lint_text_ends_with(path, ".yml")) {
