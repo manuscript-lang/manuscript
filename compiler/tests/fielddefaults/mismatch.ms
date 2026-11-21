@@ -1,3 +1,3 @@
 type Box:
-	n: Int = "text"
-	s: String = "ok"
+    n: Int = "text"
+    s: String = "ok"

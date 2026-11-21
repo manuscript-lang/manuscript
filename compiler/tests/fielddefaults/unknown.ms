@@ -1,2 +1,2 @@
 type A:
-	v: Int = missing
+    v: Int = missing
