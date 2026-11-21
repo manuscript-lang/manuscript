@@ -43,8 +43,9 @@ typedef struct MsBindings {
     uint8_t *role;        /* MsBindRole */
     uint32_t count;
 } MsBindings;
+/* MS_BIND_RESOURCE: set by the ownership walk when the binding's type must be closed, so leaving its scope calls `close`. */
 /* MS_BIND_FED: a read of the binding only computes its own next value (`total = total + 1`). */
-enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2, MS_BIND_FED = 4 };
+enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2, MS_BIND_FED = 4, MS_BIND_RESOURCE = 8 };
 typedef enum MsBindRole {
     MS_ROLE_PARAM, MS_ROLE_SELF, MS_ROLE_LET, MS_ROLE_VAR, MS_ROLE_PATTERN, MS_ROLE_LOOP,
     MS_ROLE_ARM, MS_ROLE_LAMBDA_PARAM

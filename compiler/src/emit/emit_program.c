@@ -65,7 +65,7 @@ static bool be_emit(MirModule *m, MsBytes shown, const MsBackendOptions *options
         return false;
     }
     MirGlue glue = {0};
-    const MirPipelineOptions pipeline = {.checks = options->checks, .verify = options->verify};
+    const MirPipelineOptions pipeline = {.checks = options->checks, .verify = options->verify, .count_ops = options->count_ops};
     if (!mir_pipeline_finish(m, &pipeline, &glue, why)) {
         return false;
     }
