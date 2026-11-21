@@ -2,7 +2,7 @@
 
 `reactor.c` is the descriptor poller the scheduler waits on, one libuv loop per scheduler thread. Design: `reactor-fit.md` in the project files (callbacks only push completion events on a ring; no scheduler code runs inside libuv).
 
-- On glibc Linux `cargo xtask runtime` compiles this folder, folds libuv's members (from the CMake build) into the archive and compiles the mio poller out of `ms-rt` (cfg `ms_c = "ms_io_open"`). The Windows archive does the same; musl keeps mio until their library builds are proven.
+- On glibc Linux `cmake -P cmake/BuildRuntime.cmake` compiles this folder, folds libuv's members (from the CMake build) into the archive and compiles the mio poller out of `ms-rt` (cfg `ms_c = "ms_io_open"`). The Windows archive does the same; musl keeps mio until their library builds are proven.
 - Lessons: libuv adds descriptors to epoll only inside `uv_run`, so a sleep that bypasses it (the sub-millisecond `ppoll`) must run one non-blocking pass first. A wake-up consumed by that pass must end the wait, or the scheduler sleeps with mail pending.
 - `uv_poll_init` makes the descriptor non-blocking; the reactor restores the owner's flags (through `ms_sys_fd_*` in `runtime/sys/posix/fd.c`).
 - libuv must link against the glibc 2.28 floor: compile it with a header that sets `__GLIBC_USE_C2X_STRTOL` to 0 (see the lock script), or `sscanf` links as `__isoc23_sscanf`.

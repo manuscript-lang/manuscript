@@ -1,8 +1,8 @@
 /* Records in the lowering (crates/ms-lower: `lower_ty` for `Kind::Type`, `call.rs` construction,
- * `expr.rs` member access): a `type` without type parameters whose fields are scalars or Strings is a MIR
- * `type`; `Name(field: value, ...)` is `type.new` and `value.field` is `type.get`. A record with a
- * field that owns something (a String, a list, another owner) is left to the Rust lowering until
- * the ownership side lands. */
+ * `expr.rs` member access): a `type` without type parameters whose fields all have MIR types is a
+ * MIR `type`; `Name(field: value, ...)` is `type.new` (a field left out takes its default) and
+ * `value.field` is `type.get`. */
+#include "check_body.h"
 #include "ms/lower_internal.h"
 
 /* The MIR type of record `ty`, declared on first use; MIR_NONE when it is not one this pass lowers. */
@@ -44,7 +44,21 @@ MirTy lr_type(Lb *lb, MsTy ty) {
     return lb->type_of[ty];
 }
 
-/* `Name(field: value, ...)`: the checker admitted it with every field given in order. */
+/* A field left out of a construction: its default, lowered under the facts of the module that
+ * declares the record (the default's nodes belong to that module). */
+static MirValue lr_default(Lb *lb, const MsDecl *decl, MsSymId sym, uint32_t index, MirTy field_ty) {
+    const MsExpr *def = decl->u.type.fields.ptr[index]->def;
+    const MsFacts *own = lb->facts;
+    lb->facts = lb->c->mods[lb->c->syms.module[sym]].facts;
+    if (lb->c->syms.module[sym] == lb->module) { // a default of another file has no position here
+        lb->b.loc = lb_loc(lb, def->pos); // the rest of the statement stays at the default's position, as the Rust lowering leaves it
+    }
+    const MirValue value = lb_owns(lb, field_ty) ? lb_move_argument(lb, def) : lb_expr(lb, def).v;
+    lb->facts = own;
+    return value;
+}
+
+/* `Name(field: value, ...)`: the arguments in source order, then the default of each field left out. */
 LbVal lr_construct(Lb *lb, const MsExpr *call) {
     // A construction passed as an interface has the interface type; what it builds is the concrete one.
     MsTy built = lb->facts->coerce_iface[call->id];
@@ -52,21 +66,42 @@ LbVal lr_construct(Lb *lb, const MsExpr *call) {
         built = lb->facts->expr_ty[call->id];
     }
     const MirTy ty = lb_mir_ty(lb, built); // through the class check: a resource is not lowered
-    const uint32_t count = call->u.call.args.len;
-    if (ty == MIR_NONE || count != lb->m->type_defs[mir_ty_data(lb->m, ty)->id].nfields) {
-        return lb_unsupported(lb); // a field left to its default is not lowered yet
+    const MsSymId sym = lb->facts->call_callee[call->id];
+    if (lb_is_map(lb, ty) && call->u.call.args.len == 0) {
+        return lm_empty(lb, ty); // `Map[K, V]()`
     }
-    MirValue *values = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
+    if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_TYPE || sym == MS_NONE) {
+        return lb_unsupported(lb);
+    }
+    const MsDef *def = &lb->c->defs[sym];
+    const MsDecl *decl = lb->c->syms.decl[sym];
+    const uint32_t nfields = lb->m->type_defs[mir_ty_data(lb->m, ty)->id].nfields;
+    const uint32_t count = call->u.call.args.len;
+    MsSym *names = MS_NEW_N(&lb->b.scratch, MsSym, (size_t)nfields + 1);
+    bool *covered = MS_NEW_N(&lb->b.scratch, bool, (size_t)nfields + 1);
+    uint32_t *slot = MS_NEW_N(&lb->b.scratch, uint32_t, (size_t)count + 1);
+    for (uint32_t i = 0; i < nfields; i++) {
+        names[i] = def->fields[i].name;
+    }
+    if (decl == NULL || def->nfields != nfields || !ms_body_bind_arguments(call, names, NULL, nfields, slot, covered)) {
+        return lb_unsupported(lb);
+    }
+    MirValue *values = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)nfields + 1);
     for (uint32_t i = 0; i < count && lb->ok; i++) {
         const MsExpr *arg = call->u.call.args.ptr[i].value;
-        const MirTy field_ty = lb->m->type_defs[mir_ty_data(lb->m, ty)->id].fields[i].ty;
-        values[i] = lb_owns(lb, field_ty) ? lb_move_argument(lb, arg) : lb_expr(lb, arg).v;
+        const MirTy field_ty = lb->m->type_defs[mir_ty_data(lb->m, ty)->id].fields[slot[i]].ty;
+        values[slot[i]] = lb_owns(lb, field_ty) ? lb_move_argument(lb, arg) : lb_expr(lb, arg).v;
+    }
+    for (uint32_t i = 0; i < nfields && lb->ok; i++) {
+        if (!covered[i]) {
+            values[i] = lr_default(lb, decl, sym, i, lb->m->type_defs[mir_ty_data(lb->m, ty)->id].fields[i].ty);
+        }
     }
     if (!lb->ok) {
         return LB_FAIL;
     }
     const MirImm imm = {.tag = MI_TYPE, .a = mir_ty_data(lb->m, ty)->id};
-    return (LbVal){mir_b_emit(&lb->b, MOP_TypeNew, values, count, imm, ty), lb_owns(lb, ty)};
+    return (LbVal){mir_b_emit(&lb->b, MOP_TypeNew, values, nfields, imm, ty), lb_owns(lb, ty)};
 }
 
 /* `record.field` where the checker resolved a field. */

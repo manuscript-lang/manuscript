@@ -80,6 +80,9 @@ LbVal la_case(Lb *lb, const MsExpr *call) {
         return lb_unsupported(lb);
     }
     const MirCaseDef *def = &lb->m->alts[mir_ty_data(lb->m, ty)->id].cases[lb->facts->res_ref[callee->id]];
+    if (def->nfields != count) {
+        return lb_unsupported(lb); // `ok()`: the Void payload is left out
+    }
     MirValue *payload = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
     for (uint32_t i = 0; i < count && lb->ok; i++) {
         const MsExpr *arg = call->u.call.args.ptr[i].value;

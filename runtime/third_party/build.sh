@@ -23,7 +23,7 @@ out=$root/$triple-$mode-$key
 # The folder is printed in the form native tools take: on Windows MSYS paths (/d/a/...) become D:/a/... for CMake.
 emit() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$out"; else echo "$out"; fi; }
 if [ -f "$out/.complete" ]; then emit; exit 0; fi
-# Parallel runs (the glibc, musl and profiling runtime builds of `cargo xtask runtime`) share one output folder, so one
+# Parallel runs (the glibc, musl and profiling runtime builds of `cmake -P cmake/BuildRuntime.cmake`) share one output folder, so one
 # builds while the others wait for `.complete`. mkdir is atomic; a lock left by a killed run is reported, not stolen.
 mkdir -p "$root"
 lock=$out.lock

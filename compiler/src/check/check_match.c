@@ -128,6 +128,12 @@ static MsTy match_arm_values(MsBody *b, const MsExpr *e, MsTy expected) {
 MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *scrutinee = e->u.match.scrutinee;
     const MsTy ty = ms_body_expr(b, scrutinee, MS_TY_NONE);
+    if (ty == b->invalid_ty) {
+        // The scrutinee is already reported: the arms are not checked, and the match neither falls
+        // through nor has a value beyond the one the context expects.
+        b->match_falls = false;
+        return expected != MS_TY_NONE ? expected : b->never_ty;
+    }
     if (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_ALTERNATIVE) {
         return ms_body_match_alternative(b, e, expected, ty);
     }
