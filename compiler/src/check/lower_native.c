@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "ms/lower_internal.h"
+#include "ms/mir_pass.h"
 #include "ms/rt_ops.h"
 
 /* `msrt_<type>_<method>`, the type in lower case. */

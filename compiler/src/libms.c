@@ -160,6 +160,9 @@
 #include "emit/emit_entry.c"
 #include "emit/emit_llvm.c"
 #include "emit/emit_program.c"
+#if !defined(_WIN32)
+#include "build/object.c"
+#endif
 /* The project loader uses POSIX file calls, which the Windows tools do not need; the back end library the Rust
  * `ms` links leaves it out on every platform (cmake/MsCompiler.cmake, target ms_backend). */
 #if !defined(_WIN32) && !defined(MS_LIBMS_NO_PROJECT)
