@@ -4,6 +4,7 @@
  * `error: MESSAGE` on standard error and exits 1 on a failure, else exits with the `Int?` payload
  * when there is one. The wrapper has no source positions: no line of the program is its own. */
 #include "ms/lower_internal.h"
+#include "ms/mir_analysis.h"
 
 /* `text` written to standard error. */
 static void le_write_literal(Lb *lb, uint32_t write, const char *text) {
