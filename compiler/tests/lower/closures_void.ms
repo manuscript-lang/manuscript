@@ -9,7 +9,7 @@ fn side(x: Int) Int:
 	return x
 
 export fn main() Int:
-	return side(3)
+	return side(3) + use_borrows().length()
 
 fn apply_text(f: fn(String) String, s: String) String:
 	return f(s)
@@ -24,3 +24,11 @@ fn lam_text(s: String) String:
 	g := fn(t: String) String:
 		return t
 	return g(s)
+
+fn borrows(s: String, t: String) String:
+	g := fn(x: Int) String:
+		return s + t
+	return g(1)
+
+fn use_borrows() String:
+	return borrows("a", "b")

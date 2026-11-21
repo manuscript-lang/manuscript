@@ -182,11 +182,11 @@ static LbVal lb_text(Lb *lb, const MsExpr *e) {
 /* A `var` parameter arrives as a pointer to the caller's variable. The body works on a copy held
  * in an SSA variable: it is loaded on entry and stored back before every return (`noalias` says
  * nothing else touches the memory meanwhile). */
-static MirValue lb_load(Lb *lb, MirValue slot, MirTy ty) {
+MirValue lb_load(Lb *lb, MirValue slot, MirTy ty) {
     return mir_b_emit(&lb->b, MOP_Load, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
 }
 
-static void lb_store(Lb *lb, MirValue slot, MirValue value) {
+void lb_store(Lb *lb, MirValue slot, MirValue value) {
     const MirValue args[2] = {slot, value};
     (void)mir_b_emit(&lb->b, MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
 }
