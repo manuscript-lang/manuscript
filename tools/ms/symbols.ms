@@ -301,6 +301,7 @@ fn result_kind(text: String) String:
 	if text == "-> i64": return "MS_RT_RET_INT"
 	if text == "-> f64": return "MS_RT_RET_FLOAT"
 	if text == "-> u8": return "MS_RT_RET_BOOL"
+	if text.starts_with("-> *mut ObjCell<"): return "MS_RT_RET_HANDLE"
 	if text.is_empty(): return "MS_RT_RET_VOID"
 
 	return "MS_RT_RET_OTHER"
@@ -372,7 +373,7 @@ fn rt_ops_text(symbols: String) String:
 		fresh := rest.contains(" @fresh")
 		has_imm := imm.is_some()
 		imm_value := imm.get_or(0)
-		domain := before(flag_value(rest, "domain=").get_or(""), " ")
+		domain := flag_value(rest, "domain=").get_or("")
 		out = out.concat(
 			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {has_imm}, \"{domain}\"\},\n"
 		)

@@ -261,6 +261,10 @@ static bool ln_value_param(Lb *lb, LnCall *call, MsRtParam kind, const MirValue 
     if ((list && !lb_is_list(lb, given)) || (kind == MS_RT_MAP && !lb_is_map(lb, given))) {
         return false;
     }
+    const bool scalar = kind == MS_RT_INT || kind == MS_RT_FLOAT || kind == MS_RT_BOOL || kind == MS_RT_STR;
+    if (scalar && given != ln_param_ty(kind, given)) {
+        return false; // an optional or a sized integer for a plain word: the call converts it, and this does not
+    }
     if (list) {
         call->element = mir_ty_data(lb->m, given)->elem;
     }
@@ -341,7 +345,7 @@ static bool ln_emit(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, boo
         *out = mir_b_emit(&lb->b, (MirOp)op, call->operands, kept, imm, result_ty);
         return true;
     }
-    MirTy ret = call->has_out ? result_ty : ln_ret_ty(fn->ret);
+    MirTy ret = call->has_out || fn->ret == MS_RT_RET_HANDLE ? result_ty : ln_ret_ty(fn->ret);
     if (status) {
         ret = MIR_INT;
     }

@@ -362,6 +362,9 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
             w->captured[w->ncaptured++] = own_resolve(w, binding);
         }
     }
+    if (binding < w->floor && w->lambda_escaping && w->perm[binding] == PERM_MUTABLE) {
+        OWN_DECLINE(w); /* an escaping closure copies a `var`: a later use of it is an error left to Rust */
+    }
     if (demand == DEMAND_MOVE && w->closure_holds[binding]) {
         OWN_DECLINE(w); /* the closure would outlive the locals it borrows */
     }
@@ -1674,10 +1677,14 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         if (d->kind == MS_D_FN && facts->body_checked[d->id]) {
             facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, &d->u.fn, NULL, by_node);
             if (!facts->body_checked[d->id]) {
-                const MsSite summary = w.summaries[d->id].declined;
-                facts->refusal[d->id] = w.summaries[d->id].usable ? w.declined
-                                        : summary.file != NULL    ? summary
-                                                                  : (MsSite){"ownership_live.c", 0};
+                MsSite refusal = w.declined;
+                if (!w.summaries[d->id].usable) {
+                    refusal = w.summaries[d->id].declined;
+                    if (refusal.file == NULL) {
+                        refusal = (MsSite){"ownership_live.c", 0};
+                    }
+                }
+                facts->refusal[d->id] = refusal;
             }
             facts->ret_borrowed[d->id] = facts->body_checked[d->id] && w.summaries[d->id].returns_borrow;
             facts->param_consumed[d->id] = facts->body_checked[d->id] ? w.summaries[d->id].consumed : 0;

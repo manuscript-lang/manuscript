@@ -52,6 +52,14 @@ uint8_t ms_tool_build(const ms_str *target, const ms_str *output, const ms_str *
             result = 2;
             text = reason;
             length = strlen(reason);
+            if (err.len != 0) { /* the lowering's first refusal rides with the reason */
+                MsBuf detail = {0};
+                ms_buf_printf(&detail, "%s: %.*s", reason, (int)err.len, (const char *)err.data);
+                ms_buf_free(&err);
+                err = detail;
+                text = (const char *)err.data;
+                length = err.len;
+            }
         } else if (status == 0) {
             result = 0;
         } else {
