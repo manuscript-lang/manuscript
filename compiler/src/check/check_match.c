@@ -131,6 +131,9 @@ MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
         return expected != MS_TY_NONE ? expected : b->never_ty;
     }
     if (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_ALTERNATIVE) {
+        if (ms_body_is_foreign_opaque(b, ty)) {
+            return ms_body_unsupported(b);
+        }
         return ms_body_match_alternative(b, e, expected, ty);
     }
     if (ty != b->int_ty && ty != b->string_ty && ty != b->bool_ty) {

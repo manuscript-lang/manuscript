@@ -86,12 +86,13 @@ sigdiffs=$(awk -F'|' -v c="$out/program.c.once" -v r="$out/program.rust.once" '
 cut -d'|' -f1 "$out/program.rust.keyed" | uniq -d > "$out/program.ambiguous"
 awk -F'|' -v amb="$out/program.ambiguous" -v cfile="$out/program.c.keyed" '
     BEGIN { while ((getline line < amb) > 0) dup[line] = 1
-            while ((getline line < cfile) > 0) { split(line, p, "|"); cbody[p[1]] = substr(line, length(p[1]) + 2) } }
+            while ((getline line < cfile) > 0) { split(line, p, "|"); ckey[p[1]] = 1; cbody[p[1], substr(line, length(p[1]) + 2)] = 1 } }
     { key = $1; body = substr($0, length(key) + 2); total++
       if (key in dup) { ambiguous++; next }
-      if (!(key in cbody)) { skipped++; print "skipped   " key > "/dev/stderr"; next }
-      if (cbody[key] == "divergent") { divergent++; next }
-      if (cbody[key] == body) { equal++; next }
+      if (!(key in ckey)) { skipped++; print "skipped   " key > "/dev/stderr"; next }
+      if ((key, "divergent") in cbody) { divergent++; next }
+      # Several C functions can share a key (one status_error per module domain): equal when any is the Rust text.
+      if ((key, body) in cbody) { equal++; next }
       differs++; print "differs   " key > "/dev/stderr" }
     END { printf "%d %d %d %d %d %d\n", total, equal, divergent, skipped, ambiguous, differs }' \
     "$out/program.rust.keyed" 2> "$out/program.report" > "$out/program.census"
