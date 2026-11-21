@@ -64,6 +64,9 @@ int ms_sys_net_peer_addr(MsSock s, MsAddr *out);
 /* Half-closes the write side (how = 1) or both (how = 2). */
 int ms_sys_net_shutdown(MsSock s, int how);
 void ms_sys_net_close(MsSock s);
+/* Another descriptor for the same socket (dup, close-on-exec; WSADuplicateSocket on Windows): both end the connection's
+ * use only when each is closed, so one thread can register a socket with its reactor while another still holds it. */
+int ms_sys_net_duplicate(MsSock s, MsSock *out);
 /* The operating system's code for the last MS_SYS_ERROR on this thread (errno, or WSAGetLastError). */
 int ms_sys_net_error(void);
 /* Reads an IPv4 or IPv6 socket address, as the resolver returns it, into `out`. -1 for another family or a short one. */

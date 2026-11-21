@@ -24,6 +24,8 @@ typedef enum MsMailKind {
     MS_MAIL_PROMISE,   /* the promise table's events (words below are its own) */
     MS_MAIL_CALL,      /* run `fn(argument)` as a short task on the target */
     MS_MAIL_STOP,      /* a = signal: a stop request for the target's scheduler */
+    MS_MAIL_IDLE,      /* idle connections (runtime/net/idle.c): a = operation, p = its row */
+    MS_MAIL_KIND_COUNT,
 } MsMailKind;
 
 /* One message. Allocated by the sender with msrt_alloc and freed by the receiver (or by the sender when the post
@@ -41,6 +43,16 @@ typedef struct MsMail {
 
 /* How a poller blocked in its wait is woken from another thread (uv_async_send for the libuv reactor). */
 typedef void (*MsWakeFn)(void *argument);
+
+/* How a module outside the scheduler handles the mail of its own kind: `handle` takes the mail and frees it (on the
+ * owner's thread, between task switches); `discard` frees what an undelivered mail owns (the node is freed by the
+ * caller). Set once, before any such mail is sent. */
+typedef struct MsMailKindOps {
+    void (*handle)(MsMail *mail);
+    void (*discard)(MsMail *mail);
+} MsMailKindOps;
+void ms_isolate_set_mail_kind(uint32_t kind, const MsMailKindOps *ops);
+const MsMailKindOps *ms_isolate_mail_kind(uint32_t kind);
 
 /* Registers the calling thread; returns its index, or MS_NO_ISOLATE when all are taken. */
 uint32_t ms_isolate_register(MsWakeFn wake, void *argument);

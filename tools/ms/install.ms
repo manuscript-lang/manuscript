@@ -3,7 +3,7 @@
 // `libmstool.a`.
 // `add` and `remove` edit the `[dependencies]` and `[effects]` tables of `ms.toml` with
 // manifest_edit.ms, keeping every comment and the layout of the rest of the file.
-// Anything the Rust command words differently (a workspace root, a requirement that
+// Anything the Rust command words differently (an unusual manifest, a requirement that
 // does not parse) goes to the Rust command, before a file is touched.
 import (
 	working_directory from "@std/os/env.ms",
@@ -18,16 +18,27 @@ import (
 	default_name,
 	remove_dependency,
 	valid_alias from "./manifest_edit.ms",
+	find,
+	root_workspace from "./workspace.ms",
 )
 
 // Status 1 of `ms_tool_install` is an error with the Rust text; status 2 is a project
-// the C reader does not cover (a workspace).
+// the C reader does not cover.
 export enum InstallError:
 	Failed(message: String)
 	Unsupported(message: String)
 
 extern fn ms_tool_install(
 	manifest: String,
+	update: List[String],
+	locked: Bool,
+	frozen: Bool,
+) List[String]!InstallError
+
+// A workspace's members (`name\tmanifest` rows) resolve into one `ms.lock` at `lock_root`.
+extern fn ms_tool_install_workspace(
+	lock_root: String,
+	members: List[String],
 	update: List[String],
 	locked: Bool,
 	frozen: Bool,
@@ -56,6 +67,12 @@ fn find_project() String?:
 
 	return none
 
+// Whether `manifest` is a workspace root with no `[project]`, which has no dependencies of
+// its own to edit.
+fn is_root(manifest: String) Bool:
+	found := root_workspace(manifest)
+	return found.is_ok() and found.get().is_some()
+
 fn fetched_rows(rows: List[String]) String:
 	var out = ""
 
@@ -77,7 +94,17 @@ type Installed:
 	rust: Bool = false
 
 fn install_manifest(manifest: String, update: List[String]) Installed:
-	got := ms_tool_install(manifest, update, false, false)
+	// A project of a workspace installs every member into the root's one lock.
+	space := find(manifest.clone())
+	if space.is_error(): return Installed(rust: true)
+
+	var got = ms_tool_install(manifest, update, false, false)
+
+	if workspace := space.get():
+		var rows = List[String]()
+		for member in workspace.members: rows.append(f"{member.name}\t{member.manifest}")
+
+		got = ms_tool_install_workspace(workspace.root.clone(), rows, update, false, false)
 
 	if got.is_error():
 		match got.err():
@@ -271,8 +298,13 @@ export fn run_add(args: List[String]) Printed?:
 		"no ms.toml here or above; run `ms init` first",
 	)
 
+	if is_root(manifest.get()): return failure(
+		"add",
+		f"{manifest.get()} is a workspace root; run ms add inside a member directory",
+	)
+
 	original := read_text(manifest.get())
-	if original.is_none() or original.get().contains("[workspace"): return none
+	if original.is_none(): return none
 
 	edited := add_dependency(original.get(), name, url, pin_of(kind, reference))
 	if edited.is_error(): return failure("add", edited.err().message)
@@ -337,8 +369,13 @@ export fn run_remove(args: List[String]) Printed?:
 		"no ms.toml here or above; run `ms init` first",
 	)
 
+	if is_root(manifest.get()): return failure(
+		"remove",
+		f"{manifest.get()} is a workspace root; run ms remove inside a member directory",
+	)
+
 	original := read_text(manifest.get())
-	if original.is_none() or original.get().contains("[workspace"): return none
+	if original.is_none(): return none
 
 	edited := remove_dependency(original.get(), name)
 	if edited.is_error(): return failure("remove", edited.err().message)

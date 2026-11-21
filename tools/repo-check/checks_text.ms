@@ -166,7 +166,7 @@ UNSAFE_ALLOWED := [
 	"crates/ms-cli/src/process.rs", "crates/ms-syntax/src/symbol.rs",
 	"crates/ms-lsp/src/server.rs", "crates/ms-cli/tests/shutdown_windows.rs",
 	"crates/ms-cli/tests/terminal.rs", "bench/perf/binding-flags/main.rs",
-	"bench/perf/binding-flags/storage.rs"
+	"bench/perf/binding-flags/storage.rs", "crates/ms-build/src/c_backend.rs"
 ]
 
 fn unsafe_allowed(path: String) Bool:

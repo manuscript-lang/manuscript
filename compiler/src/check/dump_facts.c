@@ -19,6 +19,8 @@ typedef struct FactsRow {
     uint32_t line;
     MsBuf body; /* the JSON fields after `line`: slots, result, receiver, tries */
     MsBuf effects; /* the JSON fields effects, reach, permits and calls */
+    MsBuf meta;    /* the JSON fields ty, error and exported */
+    uint32_t first, last; /* the lines the entity owns: its own line to the line before the next entity */
 } FactsRow;
 
 static void facts_put_str(MsBuf *out, const MsNames *names, MsSym s) {
@@ -404,6 +406,111 @@ static void facts_put_strings(MsBuf *out, const char *field, const MsStr *list, 
     ms_buf_putc(out, ']');
 }
 
+/* How a character changes the nesting of brackets in a type text. */
+static int facts_nest(char ch) {
+    if (ch == '[' || ch == '(') {
+        return 1;
+    }
+    if (ch == ']' || ch == ')') {
+        return -1;
+    }
+    return 0;
+}
+
+/* The E of a function type `fn(...) Result[T, E]`, as crates/ms-tooling/src/facts.rs `error_type` reads it. */
+static MsStr facts_error_type(MsStr ty) {
+    const MsStr none = {ty.ptr + ty.len, 0};
+    if (ty.len < 3 || memcmp(ty.ptr, "fn(", 3) != 0) {
+        return none;
+    }
+    uint32_t at = 3;
+    for (int depth = 1; at < ty.len && depth > 0; at++) {
+        depth += facts_nest(ty.ptr[at]);
+    }
+    while (at < ty.len && ty.ptr[at] == ' ') {
+        at++;
+    }
+    if (ty.len - at < 8 || memcmp(ty.ptr + at, "Result[", 7) != 0 || ty.ptr[ty.len - 1] != ']') {
+        return none;
+    }
+    int depth = 0;
+    for (uint32_t i = at + 7; i + 1 < ty.len; i++) {
+        depth += facts_nest(ty.ptr[i]);
+        if (ty.ptr[i] != ',' || depth != 0) {
+            continue;
+        }
+        uint32_t from = i + 1;
+        while (from < ty.len && ty.ptr[from] == ' ') {
+            from++;
+        }
+        return (MsStr){ty.ptr + from, ty.len - 1 - from};
+    }
+    return none;
+}
+
+/* The `ty`, `error`, `exported` and `label` fields (`label` is "Receiver.method" for a method). Only a function has a type here: the other kinds print "". */
+static void facts_put_meta(MsBuf *out, const MsCheck *c, MsModId m, const MsDecl *d, const MsBuf *label) {
+    MsBuf ty = {0};
+    const MsSymId sym = d != NULL && d->kind == MS_D_FN ? ms_decl_own_symbol(c, m, d) : MS_NONE;
+    if (sym != MS_NONE && c->syms.ty[sym] != MS_TY_NONE) {
+        ms_ty_show(&ty, c->names, &c->tys, c->syms.ty[sym]);
+    }
+    const MsStr error = facts_error_type((MsStr){ty.data == NULL ? "" : (const char *)ty.data, (uint32_t)ty.len});
+    MsBuf text = {0};
+    ms_buf_put(&text, error.ptr, error.len);
+    ms_buf_puts(out, ", \"ty\": ");
+    facts_put_json_buf(out, &ty);
+    ms_buf_puts(out, ", \"error\": ");
+    facts_put_json_buf(out, &text);
+    ms_buf_printf(out, ", \"exported\": %s", d != NULL && d->is_exported ? "true" : "false");
+    ms_buf_puts(out, ", \"label\": ");
+    if (label == NULL) {
+        ms_buf_puts(out, "\"\"");
+    } else {
+        facts_put_json_buf(out, label);
+    }
+    ms_buf_free(&text);
+    ms_buf_free(&ty);
+}
+
+static int facts_str_compare(const void *a, const void *b) {
+    const MsStr x = *(const MsStr *)a, y = *(const MsStr *)b;
+    const uint32_t common = x.len < y.len ? x.len : y.len;
+    const int order = common == 0 ? 0 : memcmp(x.ptr, y.ptr, common);
+    if (order != 0) {
+        return order;
+    }
+    return (x.len > y.len) - (x.len < y.len);
+}
+
+/* `[{"file", "paths"}]`: the module's import paths, sorted and unique. */
+static void facts_put_imports(MsBuf *out, const MsModule *module, const char *file, size_t file_len) {
+    MsBuf paths = {0};
+    for (uint32_t i = 0; i < module->nimports; i++) {
+        MsStr *slot = ms_buf_push(&paths, sizeof *slot);
+        *slot = module->imports[i].path;
+    }
+    MsStr *items = ms_buf_items(&paths);
+    const size_t count = paths.len / sizeof *items;
+    if (count > 1) {
+        qsort(items, count, sizeof *items, facts_str_compare);
+    }
+    ms_buf_puts(out, "[{\"file\": ");
+    facts_put_json(out, file, file_len);
+    ms_buf_puts(out, ", \"paths\": [");
+    const char *sep = "";
+    for (size_t i = 0; i < count; i++) {
+        if (i > 0 && facts_str_compare(&items[i - 1], &items[i]) == 0) {
+            continue;
+        }
+        ms_buf_puts(out, sep);
+        facts_put_json(out, items[i].ptr, items[i].len);
+        sep = ", ";
+    }
+    ms_buf_puts(out, "]}]");
+    ms_buf_free(&paths);
+}
+
 static bool facts_has_default(MsParams params) {
     for (uint32_t i = 0; i < params.len; i++) {
         if (params.ptr[i]->def != NULL) {
@@ -446,6 +553,10 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
     facts_put_str(&file, names, row->path);
     ms_buf_putc(&file, '\0');
     MsBuf rows = {0};
+    uint32_t total_lines = 1; /* the lines of the source, as the Rust side counts them: newlines plus one */
+    for (uint32_t i = 0; i < text.len; i++) {
+        total_lines += text.ptr[i] == '\n' ? 1 : 0;
+    }
     MsArena scratch = {0};
     uint32_t neffects = 0;
     const MsEntityEffects *effect_rows = ms_effect_facts(&scratch, c, m, text, &neffects);
@@ -459,6 +570,10 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
         facts_fill_decl(fact, names, d);
         facts_seal_key(fact);
         facts_put_effects(&fact->effects, d, effect_rows, neffects);
+        facts_put_meta(&fact->meta, c, m, d, NULL);
+        fact->first = d->pos.line;
+        const uint32_t decl_last = i + 1 < module->ndecls ? module->decls[i + 1]->pos.line - 1 : total_lines;
+        fact->last = decl_last;
         if (d->kind != MS_D_IMPL) {
             continue;
         }
@@ -468,6 +583,14 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
             facts_fill_method(method, names, d, meth);
             facts_seal_key(method);
             facts_put_effects(&method->effects, NULL, effect_rows, neffects);
+            MsBuf label = {0};
+            facts_put_str(&label, names, d->u.impl.receiver->kind == MS_TYPE_NAMED ? d->u.impl.receiver->name : 0);
+            ms_buf_putc(&label, '.');
+            facts_put_str(&label, names, meth->func.name);
+            facts_put_meta(&method->meta, c, m, NULL, &label);
+            ms_buf_free(&label);
+            method->first = meth->pos.line;
+            method->last = k + 1 < d->u.impl.methods.len ? d->u.impl.methods.ptr[k + 1]->pos.line - 1 : decl_last;
         }
     }
     FactsRow *items = ms_buf_items(&rows);
@@ -487,24 +610,30 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
         facts_put_json(out, file.data, file.len - 1);
         ms_buf_printf(out, ", \"kind\": \"%s\", \"name\": ", items[i].kind);
         facts_put_json_buf(out, &items[i].name);
-        ms_buf_printf(out, ", \"line\": %u, \"error\": \"\", \"scopes\": 0, \"external\": [], ", items[i].line);
+        ms_buf_printf(out, ", \"line\": %u, \"scopes\": 0, \"external\": [], \"first\": %u, \"last\": %u, ", items[i].line,
+                      items[i].first, items[i].last);
         ms_buf_put(out, items[i].effects.data, items[i].effects.len);
+        ms_buf_put(out, items[i].meta.data, items[i].meta.len);
         ms_buf_put(out, items[i].body.data, items[i].body.len);
         ms_buf_putc(out, '}');
     }
-    ms_buf_puts(out, "\n  ],\n  \"imports\": [], \"flows\": []\n}\n");
+    ms_buf_puts(out, "\n  ],\n  \"imports\": ");
+    facts_put_imports(out, module, file.data, file.len - 1);
+    ms_buf_puts(out, ", \"flows\": []\n}\n");
     for (size_t i = 0; i < count; i++) {
         ms_buf_free(&items[i].name);
         ms_buf_free(&items[i].key);
         ms_buf_free(&items[i].body);
         ms_buf_free(&items[i].effects);
+        ms_buf_free(&items[i].meta);
     }
     ms_arena_free(&scratch);
     ms_buf_free(&rows);
     ms_buf_free(&file);
 }
 
-/* The builtin kinds the typed lint rules ask about; any other type is "Other". */
+/* The builtin kinds the typed lint rules ask about; any other type is "Other". A node with type arguments also
+ * names the kind of the first ("arg"). */
 static const char *nodes_kind(const MsTyTable *tys, MsTy ty) {
     switch (ms_ty_builtin(tys, ty)) {
     case MS_BI_OPTIONAL: return "Optional";
@@ -531,7 +660,13 @@ void ms_dump_module_nodes(MsBuf *out, const MsCheck *c, MsModId m) {
         if (facts->expr_ty[id] == MS_TY_NONE) {
             continue;
         }
-        ms_buf_printf(out, "%s{\"id\": %u, \"kind\": \"%s\"}", sep, id, nodes_kind(&c->tys, facts->expr_ty[id]));
+        const MsTy ty = facts->expr_ty[id];
+        ms_buf_printf(out, "%s{\"id\": %u, \"kind\": \"%s\"", sep, id, nodes_kind(&c->tys, ty));
+        if (c->tys.nargs[ty] > 0) {
+            /* The first type argument: the payload of a Result or Optional, the element of a List. */
+            ms_buf_printf(out, ", \"arg\": \"%s\"", nodes_kind(&c->tys, ms_ty_args(&c->tys, ty)[0]));
+        }
+        ms_buf_putc(out, '}');
         sep = ", ";
     }
     ms_buf_puts(out, "]}\n");

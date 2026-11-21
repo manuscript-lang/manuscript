@@ -41,7 +41,7 @@ fn main() {
     stage("verify", || ms_mir::verify::verify_module(&module).unwrap());
     stage("llvm_available", || {
         assert!(
-            ms_build::llvm_available(&ms_clif::BuildOptions::default()),
+            ms_build::llvm_available(&ms_build::BuildOptions::default()),
             "LLVM is required; fallback is not a measurement"
         )
     });
@@ -54,7 +54,7 @@ fn main() {
     });
     ms_mir::expand::run(&mut module, true);
     ms_mir::glue::run_and_expand(&mut module);
-    let build = ms_clif::BuildOptions {
+    let build = ms_build::BuildOptions {
         llvm_units: Some(1),
         ..Default::default()
     };
@@ -71,12 +71,12 @@ fn main() {
         std::fs::write(&llvm_object, rest).unwrap();
     });
     stage("link", || {
-        ms_clif::link::link_with(
+        ms_build::link::link_with(
             &object,
             &[&llvm_object, Path::new(&args[3])],
             output,
             false,
-            &ms_clif::BuildOptions::default(),
+            &ms_build::BuildOptions::default(),
         )
         .unwrap()
     });
