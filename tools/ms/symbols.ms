@@ -389,11 +389,12 @@ fn rt_ops_text(symbols: String) String:
 		leaf := rest.contains(" @leaf")
 		pure := rest.contains(" @pure")
 		fresh := rest.contains(" @fresh")
+		borrows := rest.contains(" @borrows")
 		has_imm := imm.is_some()
 		imm_value := imm.get_or(0)
 		domain := flag_value(rest, "domain=").get_or("")
 		out = out.concat(
-			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {has_imm}, \"{domain}\"\},\n"
+			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {borrows}, {has_imm}, \"{domain}\"\},\n"
 		)
 
 	return out.concat("};\n")

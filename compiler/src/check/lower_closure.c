@@ -99,6 +99,10 @@ LbVal lb_function_value(Lb *lb, const MsExpr *e) {
     const uint32_t sym = lb->facts->res_ref[e->id];
     const uint32_t func = sym < lb->c->syms.count ? lb->func_of[sym] : MIR_NONE;
     const MirTy fty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    const MsDecl *decl = func == MIR_NONE ? NULL : lb->c->syms.decl[sym];
+    if (decl != NULL && decl->kind == MS_D_CONST) { // a constant is the value its function returns
+        return fty == MIR_NONE || lb_owns(lb, fty) ? LB_UNSUPPORTED(lb) : (LbVal){mir_b_call(&lb->b, func, NULL, 0), false};
+    }
     if (func == MIR_NONE || !lb_is_fn(lb, fty)) {
         return LB_UNSUPPORTED(lb);
     }

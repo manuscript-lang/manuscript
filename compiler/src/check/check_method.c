@@ -20,6 +20,7 @@ typedef struct Target {
     const MsFunc *func;   /* its declaration: parameter defaults; NULL when none is at hand */
     uint32_t method;      /* the method row, or MS_NONE for an interface operation */
     bool mutating, consuming;
+    MsTy self;            /* the receiver type an operation's `Self` stands for, or MS_TY_NONE */
     bool borrows;         /* the result points into the receiver (`// ms: borrows` above the declaration) */
     bool open;            /* variables of the method itself are still unbound: the arguments bind them */
     MsInfer in;           /* the bindings of an open row */
@@ -255,18 +256,28 @@ static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *
     return ms_implements_property(b->c, b->methods, receiver, MS_PROP_CLONABLE) == MS_FIT_YES && intrinsic_in(b, "CloneOperations", receiver, name, out);
 }
 
-/* The function-typed field `name` of a record `receiver` with no type arguments: `value.operation(x)` calls
- * the function the field holds. */
+/* The function-typed field `name` of a record `receiver`, with the receiver's type arguments in place of the
+ * record's variables: `value.operation(x)` calls the function the field holds. */
 static MsTy function_field(const MsBody *b, MsTy receiver, MsSym name) {
-    const MsTyTable *tys = &b->c->tys;
-    if (ms_ty_kind(tys, receiver) != MS_K_TYPE || tys->def[receiver] == 0 || tys->nargs[receiver] != 0) {
+    MsCheck *c = b->c;
+    const MsTyTable *tys = &c->tys;
+    if (ms_ty_kind(tys, receiver) != MS_K_TYPE || tys->def[receiver] == 0) {
         return MS_TY_NONE;
     }
-    const MsDef *def = ms_def(b->c, tys->def[receiver] - 1);
+    const MsDef *def = ms_def(c, tys->def[receiver] - 1);
+    if (def->nvars != tys->nargs[receiver]) {
+        return MS_TY_NONE;
+    }
     for (uint32_t i = 0; i < def->nfields; i++) {
-        if (def->fields[i].name == name) {
-            return ms_body_is_function_value(b, def->fields[i].ty) ? def->fields[i].ty : MS_TY_NONE;
+        if (def->fields[i].name != name) {
+            continue;
         }
+        MsTy field = def->fields[i].ty;
+        if (def->nvars != 0) {
+            const MsTySubst subst = {.vars = def->vars, .args = ms_ty_args(tys, receiver), .count = def->nvars};
+            field = ms_ty_subst(&c->tys, &c->arena, field, &subst);
+        }
+        return ms_body_is_function_value(b, field) ? field : MS_TY_NONE;
     }
     return MS_TY_NONE;
 }
@@ -274,6 +285,12 @@ static MsTy function_field(const MsBody *b, MsTy receiver, MsSym name) {
 static bool body_is_primitive(const MsBody *b, MsTy ty) {
     // Every primitive with operations: `Void` and `Never` have none, the invalid type is an earlier error.
     return ty != MS_TY_NONE && ty != b->void_ty && ty != b->never_ty && ms_ty_kind(&b->c->tys, ty) == MS_K_PRIMITIVE;
+}
+
+/* A parameter or result type of `target`: `Self` of an interface operation is the receiver's type
+ * (`Self` is limited to whole parameter and result types). */
+static MsTy target_type(const MsBody *b, const Target *target, MsTy ty) {
+    return target->self != MS_TY_NONE && ms_ty_is(&b->c->tys, ty, MS_BI_SELF) ? target->self : ty;
 }
 
 /* The arguments of a method call against its signature, paired with parameters by position or
@@ -310,7 +327,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
     }
     for (uint32_t i = 0; i < given; i++) {
         const MsTyParam *param = &params[slot[i]];
-        if ((param->flags & ~(MS_PARAM_MOVE | MS_PARAM_POSITIONAL)) != 0) {
+        if ((param->flags & ~(MS_PARAM_VAR | MS_PARAM_MOVE | MS_PARAM_POSITIONAL)) != 0) {
             return false;
         }
         const MsExpr *value = e->u.call.args.ptr[i].value;
@@ -321,8 +338,9 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
             continue;
         }
         MsTy payload = MS_TY_NONE;
-        const bool optional = ms_body_optional_payload(b, param->ty, &payload);
-        if ((!ms_body_is_admitted(b, param->ty) && !ms_body_is_callback_type(b, param->ty) && !optional) || ms_body_expr(b, value, param->ty) == MS_TY_NONE) {
+        const MsTy want = target_type(b, target, param->ty);
+        const bool optional = ms_body_optional_payload(b, want, &payload);
+        if ((!ms_body_is_admitted(b, want) && !ms_body_is_callback_type(b, want) && !optional) || ms_body_expr(b, value, want) == MS_TY_NONE) {
             return false;
         }
     }
@@ -335,7 +353,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
         target->sig = ms_infer_apply(&target->in, sig);
         ms_body_record_function_arguments(b, e, target->sig, slot);
     }
-    const MsTy result = tys->result[target->sig];
+    const MsTy result = target_type(b, target, tys->result[target->sig]);
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty ||
            result == b->void_ty || ms_body_is_bindable(b, result);
 }
@@ -351,7 +369,7 @@ static bool body_borrow_in_place(const MsBody *b, const MsExpr *e) {
 
 static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     const MsExpr *callee = e->u.call.callee;
-    Target target;
+    Target target = {0};
     if (!intrinsic_operation(b, receiver_ty, callee->u.member.name, &target) || target.consuming || target.mutating ||
         (target.borrows && !body_borrow_in_place(b, e)) ||
         !arguments_fit(b, e, &target)) {
@@ -405,7 +423,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     if (receiver_ty == b->invalid_ty) {
         return invalid_receiver_call(b, e, binding);
     }
-    Target target;
+    Target target = {0};
     MsSym name = callee->u.member.name;
     if (ms_is_index_store(b->c->names, e)) {
         // `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`.
@@ -421,6 +439,9 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     } else {
         resolved = method_row(b, receiver_ty, name, e->u.call.args.len, &target) ||
                    value_operation(b, receiver_ty, name, &target);
+    }
+    if (resolved && target.method == MS_NONE) {
+        target.self = receiver_ty; // an interface operation's `Self` is the receiver's type
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved) {
@@ -442,11 +463,11 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
         b->facts->call_method[e->id] = target.method;
     }
     b->facts->call_receiver[e->id] = receiver_ty;
-    return b->c->tys.result[target.sig];
+    return target_type(b, &target, b->c->tys.result[target.sig]);
 }
 
 void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty) {
-    Target target;
+    Target target = {0};
     if (b->methods == NULL || ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE ||
         !method_row(b, ty, ms_intern_cstr(b->c->names, "to_string"), 0, &target)) {
         return;
