@@ -40,7 +40,7 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text);
 bool ms_facts_is_std(const MsCheck *c, MsModId module);              /* a bundled standard-library module */
 void ms_facts_put_json(MsBuf *out, const char *text, size_t len); /* a JSON string, html-safe like the Rust writer */
 const char *ms_facts_kind_of(const MsDecl *d);                    /* the entity kind: `fn`, `constant`, `impl`, ... */
-void ms_facts_put_impl_name(MsBuf *out, const MsNames *names, const MsDecl *impl); /* `Contract for Type`, or `Type` */
+void ms_facts_put_impl_name(MsBuf *out, const MsNames *names, const MsDecl *d); /* `Contract for Type`, or `Type` */
 
 /* The call sites and flow of the callables of one module (dump_sites.c): what `inspect` records as call targets
  * and what `flow.rs` turns into steps. Each call fills `external` with the JSON array of the targets that are not

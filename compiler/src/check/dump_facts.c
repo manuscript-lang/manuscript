@@ -169,12 +169,12 @@ static void facts_collect_refs(const MsCheck *c, MsTy root, FactsRefList *list) 
             ms_buf_free(&key);
             ms_buf_free(&quoted);
         }
-        if (ms_ty_kind(&c->tys, ty) == MS_K_FUNCTION && top < 127) {
-            pending[top++] = c->tys.result[ty];
-        }
-        const MsTyParam *params = ms_ty_kind(&c->tys, ty) == MS_K_FUNCTION ? ms_ty_params(&c->tys, ty) : NULL;
-        for (uint32_t i = ms_ty_kind(&c->tys, ty) == MS_K_FUNCTION ? c->tys.nparams[ty] : 0; i > 0 && top < 128; i--) {
-            pending[top++] = params[i - 1].ty;
+        if (ms_ty_kind(&c->tys, ty) == MS_K_FUNCTION) {
+            const MsTyParam *params = ms_ty_params(&c->tys, ty);
+            pending[top < 128 ? top++ : 127] = c->tys.result[ty];
+            for (uint32_t i = c->tys.nparams[ty]; i > 0 && top < 128; i--) {
+                pending[top++] = params[i - 1].ty;
+            }
         }
         const MsTy *args = ms_ty_args(&c->tys, ty);
         for (uint32_t i = c->tys.nargs[ty]; i > 0 && top < 128; i--) {

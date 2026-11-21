@@ -8,7 +8,6 @@
 #include <string.h>
 
 #include "ms/dump.h"
-#include "ms/hints.h"
 #include "ms/facts.h"
 #include "ms/hints.h"
 #include "ms/methods.h"
