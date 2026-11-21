@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ms/doc.h"
 #include "ms/implements.h"
 #include "ms/infer.h"
 #include "ms/parse.h"
@@ -19,6 +20,7 @@ typedef struct Target {
     const MsFunc *func;   /* its declaration: parameter defaults; NULL when none is at hand */
     uint32_t method;      /* the method row, or MS_NONE for an interface operation */
     bool mutating, consuming;
+    bool borrows;         /* the result points into the receiver (`// ms: borrows` above the declaration) */
     bool open;            /* variables of the method itself are still unbound: the arguments bind them */
     MsInfer in;           /* the bindings of an open row */
 } Target;
@@ -197,7 +199,12 @@ static bool intrinsic_in(const MsBody *b, const char *iface_name, MsTy receiver,
             }
             sig = ms_infer_apply(&in, sig);
         }
-        *out = (Target){.sig = sig, .func = &op->decl->func, .method = MS_NONE, .mutating = op->decl->mutating, .consuming = op->decl->consuming};
+        *out = (Target){.sig = sig,
+                        .func = &op->decl->func,
+                        .method = MS_NONE,
+                        .mutating = op->decl->mutating,
+                        .consuming = op->decl->consuming,
+                        .borrows = ms_doc_has_marker(c->mods[module].text, op->decl->pos.offset, "borrows")};
         return true;
     }
     return false;
@@ -230,63 +237,6 @@ static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Targ
     return intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
 }
 
-/* The natives whose result points into their receiver (`view`, `split`, `chars`, ...): the
- * ownership walk does not follow those borrows yet, so a call of one leaves the function to the Rust
- * checker. Mirrors `native_borrow` of the Rust checker, the one place a method name decides ownership. */
-static bool native_result_borrows(const MsBody *b, MsTy receiver, MsSym name, uint32_t nargs) {
-    static const struct {
-        const char *name;
-        uint32_t min_args, max_args;
-    } derived[] = {{"view", 2, 2}, {"view_bytes", 0, 0}, {"split", 1, 2}, {"lines", 0, 0}, {"chars", 0, 0}};
-    const MsStr text = ms_name(b->c->names, name);
-    for (size_t i = 0; i < sizeof derived / sizeof *derived; i++) {
-        if (strlen(derived[i].name) == text.len && memcmp(derived[i].name, text.ptr, text.len) == 0 &&
-            nargs >= derived[i].min_args && nargs <= derived[i].max_args) {
-            return receiver == b->string_ty;
-        }
-    }
-    return false;
-}
-
-/* Whether `ty` is plainly clonable: a primitive, or a list, map, set, optional or record of such,
- * holding no resource (a type with a `close`) or function. The Rust checker's finer cases (alternatives,
- * cycles, interface-valued fields) are left to it. */
-static bool value_clonable(const MsBody *b, MsTy ty, uint32_t depth) {
-    const MsTyTable *tys = &b->c->tys;
-    if (depth > 4) {
-        return false;
-    }
-    switch (ms_ty_kind(tys, ty)) {
-    case MS_K_PRIMITIVE:
-        return true;
-    case MS_K_NATIVE: {
-        bool plain = ms_ty_is(tys, ty, MS_BI_LIST) || ms_ty_is(tys, ty, MS_BI_MAP) || ms_ty_is(tys, ty, MS_BI_SET);
-        for (uint32_t i = 0; plain && i < tys->nargs[ty]; i++) {
-            plain = value_clonable(b, ms_ty_args(tys, ty)[i], depth + 1);
-        }
-        return plain;
-    }
-    case MS_K_ALTERNATIVE: {
-        bool plain = ms_ty_is(tys, ty, MS_BI_OPTIONAL) || ms_ty_is(tys, ty, MS_BI_RESULT);
-        for (uint32_t i = 0; plain && i < tys->nargs[ty]; i++) {
-            plain = value_clonable(b, ms_ty_args(tys, ty)[i], depth + 1);
-        }
-        return plain;
-    }
-    case MS_K_TYPE: {
-        Target closing;
-        const MsDef *def = tys->def[ty] == 0 ? NULL : ms_def(b->c, tys->def[ty] - 1);
-        bool plain = def != NULL && !method_row(b, ty, ms_intern_cstr(b->c->names, "close"), 0, &closing);
-        for (uint32_t i = 0; plain && i < def->nfields; i++) {
-            plain = value_clonable(b, def->fields[i].ty, depth + 1);
-        }
-        return plain;
-    }
-    default:
-        return false;
-    }
-}
-
 /* `to_string` and `clone`, which exist without an impl: every non-generic value shows as text, and
  * data values (types, alternatives, lists, maps, sets, bytes) clone deeply (`native_method` of the
  * Rust checker). */
@@ -302,7 +252,23 @@ static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *
     if (intrinsic_in(b, "ValueOperations", receiver, name, out)) {
         return true;
     }
-    return value_clonable(b, receiver, 0) && intrinsic_in(b, "CloneOperations", receiver, name, out);
+    return ms_implements_property(b->c, b->methods, receiver, MS_PROP_CLONABLE) == MS_FIT_YES && intrinsic_in(b, "CloneOperations", receiver, name, out);
+}
+
+/* The function-typed field `name` of a record `receiver` with no type arguments: `value.operation(x)` calls
+ * the function the field holds. */
+static MsTy function_field(const MsBody *b, MsTy receiver, MsSym name) {
+    const MsTyTable *tys = &b->c->tys;
+    if (ms_ty_kind(tys, receiver) != MS_K_TYPE || tys->def[receiver] == 0 || tys->nargs[receiver] != 0) {
+        return MS_TY_NONE;
+    }
+    const MsDef *def = ms_def(b->c, tys->def[receiver] - 1);
+    for (uint32_t i = 0; i < def->nfields; i++) {
+        if (def->fields[i].name == name) {
+            return ms_body_is_function_value(b, def->fields[i].ty) ? def->fields[i].ty : MS_TY_NONE;
+        }
+    }
+    return MS_TY_NONE;
 }
 
 static bool body_is_primitive(const MsBody *b, MsTy ty) {
@@ -377,16 +343,23 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
 /* `receiver.name(args)` on a primitive receiver of any shape (a local, a literal, another call):
  * an intrinsic operation that borrows its receiver, recorded as a call through the interface
  * `call_interface` names. */
+/* A borrowing call whose result the context uses in place, on a receiver that is a local: the ownership walk
+ * pins that local while the result is in use. A result that is kept or passed on is left to the Rust checker. */
+static bool body_borrow_in_place(const MsBody *b, const MsExpr *e) {
+    return b->borrow_ok == e && e->u.call.callee->u.member.left->kind == MS_E_NAME;
+}
+
 static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     const MsExpr *callee = e->u.call.callee;
     Target target;
     if (!intrinsic_operation(b, receiver_ty, callee->u.member.name, &target) || target.consuming || target.mutating ||
-        native_result_borrows(b, receiver_ty, callee->u.member.name, e->u.call.args.len) ||
+        (target.borrows && !body_borrow_in_place(b, e)) ||
         !arguments_fit(b, e, &target)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_interface[e->id] = receiver_ty;
     b->facts->call_receiver[e->id] = receiver_ty;
+    b->facts->call_borrows[e->id] = target.borrows;
     return b->c->tys.result[target.sig];
 }
 
@@ -451,7 +424,8 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved) {
-        return ms_body_unsupported(b);
+        const MsTy field = function_field(b, receiver_ty, name);
+        return field == MS_TY_NONE ? ms_body_unsupported(b) : ms_body_call_function(b, e, field);
     }
     if ((target.consuming && target.method == MS_NONE) || (target.mutating && immutable)) {
         return ms_body_unsupported(b);
@@ -497,7 +471,13 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
     const MsTy local_ty = binding == MS_NONE ? MS_TY_NONE : b->facts->bindings.ty[binding];
     Target row;
     if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, e->u.call.args.len, &row))) {
+        if (receiver->kind == MS_E_CALL) {
+            b->borrow_ok = receiver; // `s.view(a, b).clone()`: a borrowing receiver is used in place
+        }
         const MsTy receiver_ty = ms_body_expr(b, receiver, MS_TY_NONE);
+        if (b->facts->call_borrows[receiver->id] && !body_is_primitive(b, receiver_ty)) {
+            return ms_body_unsupported(b); // a borrowed list or map is not followed through a method
+        }
         if (body_is_primitive(b, receiver_ty)) {
             return body_intrinsic_call(b, e, receiver_ty);
         }

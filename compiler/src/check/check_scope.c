@@ -444,6 +444,26 @@ static void scope_declare_symbols(MsCheck *c, MsModId module) {
     }
 }
 
+/* The source half of a standard module names what the native half declares (`SplitParts` of `@std/string.ms`):
+ * the two are one file to the checker. */
+static void scope_import_twin_symbols(MsCheck *c, MsModId module) {
+    const MsStr file = scope_file_of(c, module);
+    if (file.len == ms_name(c->names, c->mods[module].path).len) {
+        return; // not a source half
+    }
+    const MsModId native = ms_module_find(c, scope_intern_text(c, file));
+    if (native == MS_NONE || c->mods[native].source) {
+        return;
+    }
+    ms_module_declare(c, native);
+    const MsNameMap *declared = &c->mods[native].scope;
+    for (uint32_t i = 0; i < declared->cap; i++) {
+        if (declared->vals[i] != 0) {
+            (void)ms_map_add(&c->mods[module].names, declared->keys[i], declared->vals[i] - 1);
+        }
+    }
+}
+
 void ms_module_declare(MsCheck *c, MsModId module) {
     if (c->mods[module].declared) {
         return;
@@ -454,6 +474,7 @@ void ms_module_declare(MsCheck *c, MsModId module) {
         // Standard modules import each other in cycles: declare a module's own names first, so a
         // module reached through a cycle already has its symbols when the import asks for them.
         scope_declare_symbols(c, module);
+        scope_import_twin_symbols(c, module);
         scope_import_symbols(c, module);
         return;
     }
