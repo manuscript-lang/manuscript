@@ -7,7 +7,6 @@
 
 #include "ms/lower_internal.h"
 
-enum { LA_OK = 0, LA_ERROR = 1 }; /* the order of the cases of `Result` in core.ms */
 
 /* The cases of `Result[T, E]`, as `enum Result` declares them in core.ms (the checker's tables do not
  * carry the cases of a core enum): `ok(value: T)` and `error(cause: E)`. */
@@ -96,19 +95,28 @@ LbVal la_case(Lb *lb, const MsExpr *call) {
     return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, payload, count, imm, ty), lb_owns(lb, ty)};
 }
 
+/* Whether the function being lowered returns `Void!`, a Result whose success holds nothing. */
+bool la_returns_void_result(const Lb *lb) {
+    const MirTy ty = lb->b.f.ret;
+    const MirTyData *data = ty == MIR_NONE ? NULL : mir_ty_data(lb->m, ty);
+    return data != NULL && data->kind == MK_ALT && lb->m->alts[data->id].std == MSTD_RESULT &&
+           lb->m->alts[data->id].cases[LA_OK].fields[0].ty == MIR_VOID;
+}
+
+/* `ok(unit)` of the function's `Void!` result. */
+MirValue la_ok_of(Lb *lb, MirValue unit) {
+    const MirImm imm = {.tag = MI_CASE, .a = mir_ty_data(lb->m, lb->b.f.ret)->id, .b = LA_OK};
+    return mir_b_emit(&lb->b, MOP_AltNew, &unit, 1, imm, lb->b.f.ret);
+}
+
 /* The `ok(void)` a bare `return` stands for in a function that returns `Void!`: the value of the
  * `return`, then the unit that fills the case. MIR_NONE when the function returns something else. */
 MirValue la_ok_unit(Lb *lb) {
-    const MirTy ty = lb->b.f.ret;
-    const MirTyData *data = ty == MIR_NONE ? NULL : mir_ty_data(lb->m, ty);
-    if (data == NULL || data->kind != MK_ALT || lb->m->alts[data->id].std != MSTD_RESULT ||
-        lb->m->alts[data->id].cases[LA_OK].fields[0].ty != MIR_VOID) {
+    if (!la_returns_void_result(lb)) {
         return MIR_NONE;
     }
     (void)mir_b_unit(&lb->b);
-    const MirValue unit = mir_b_unit(&lb->b);
-    const MirImm imm = {.tag = MI_CASE, .a = data->id, .b = LA_OK};
-    return mir_b_emit(&lb->b, MOP_AltNew, &unit, 1, imm, ty);
+    return la_ok_of(lb, mir_b_unit(&lb->b));
 }
 
 /* A case without payload, named: `Empty`. */

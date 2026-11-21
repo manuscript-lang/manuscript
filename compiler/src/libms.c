@@ -90,6 +90,7 @@
 #include "syntax/constfold.c"
 #include "check/lower_scope.c"
 #include "check/lower_body.c"
+#include "check/lower_entry.c"
 #include "check/lower_func.c"
 #include "check/lower_record.c"
 #include "rt_ops.c"
@@ -189,4 +190,5 @@
 
 #include "project/graph_check.c"
 #include "check_cmd.c"
+#include "build_cmd.c"
 #endif
