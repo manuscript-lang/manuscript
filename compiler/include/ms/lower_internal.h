@@ -221,7 +221,7 @@ struct MsRtFn;
 uint32_t lb_runtime_extern(Lb *lb, const char *name, const MirTy *params, uint32_t nparams, MirTy ret, uint8_t role,
                            bool reads);
 /* The entry of `generic` that fits a map of `key` and `value` (its declared specialisation, else itself). */
-const struct MsRtFn *lm_specialize(Lb *lb, const struct MsRtFn *generic, MirTy key, MirTy value);
+const struct MsRtFn *lm_specialize(Lb *lb, const struct MsRtFn *generic, MirTy key, MirTy value, uint8_t *role);
 
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);

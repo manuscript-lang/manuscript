@@ -1,8 +1,8 @@
 export type Open:
-    a: Int
+	a: Int
 
 export fn show(s: Open) Void:
-    return
+	return
 
 fn main() Void:
-    return
+	return

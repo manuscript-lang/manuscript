@@ -42,9 +42,18 @@ typedef struct MsRtFn {
     bool pure;    /* only reads memory and cannot fault (`@pure`) */
     const char *word_twin; /* its specialisation for a one-word key over a one-word value, or "" */
     const char *text_twin; /* its specialisation for a String key over a one-word value, or "" */
+    bool fresh;   /* `@fresh`: the result is a new value, never a reference into an argument */
+    bool has_imm; /* `@imm=<n>`: the `@op=` instruction carries the integer `imm` */
+    int64_t imm;
 } MsRtFn;
 
 /* The function named `symbol`, or NULL. */
 const MsRtFn *ms_rt_fn_find(const char *symbol, size_t length);
+
+struct MsCheck;
+
+/* The runtime function that implements `method` of the receiver type `receiver` (`msrt_<type>_<method>`,
+ * the type in lower case), or NULL. */
+const MsRtFn *ms_rt_method_fn(const struct MsCheck *c, uint32_t receiver, uint32_t method);
 
 #endif

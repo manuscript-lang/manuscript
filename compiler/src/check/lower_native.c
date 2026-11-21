@@ -12,22 +12,7 @@
 
 /* `msrt_<type>_<method>`, the type in lower case. */
 const MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method) {
-    const MsStr type = ms_name(lb->c->names, lb->c->tys.name[receiver]);
-    const MsStr name = ms_name(lb->c->names, method);
-    const size_t size = type.len + name.len + 8;
-    char *symbol = MS_NEW_N(&lb->b.scratch, char, size);
-    size_t length = 0;
-    for (const char *part = "msrt_"; *part != '\0'; part++) {
-        symbol[length++] = *part;
-    }
-    for (size_t i = 0; i < type.len; i++) {
-        symbol[length++] = (char)tolower((unsigned char)type.ptr[i]);
-    }
-    symbol[length++] = '_';
-    for (size_t i = 0; i < name.len; i++) {
-        symbol[length++] = name.ptr[i];
-    }
-    return ms_rt_fn_find(symbol, length);
+    return ms_rt_method_fn(lb->c, receiver, method);
 }
 
 /* The MIR type a value of parameter kind `kind` has, given the value passed (for a list). */
@@ -148,10 +133,11 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
     }
     MirTy of[3] = {element, MIR_NONE, MIR_NONE}; // the type a descriptor describes: element, key, value
     const MsRtFn *entry = fn;
+    uint8_t role = MR_NONE;
     if (map_ty != MIR_NONE) { // a function with a specialisation for the map's layout is called as that
         of[1] = mir_ty_data(lb->m, map_ty)->args[0];
         of[2] = mir_ty_data(lb->m, map_ty)->args[1];
-        entry = lm_specialize(lb, fn, of[1], of[2]);
+        entry = lm_specialize(lb, fn, of[1], of[2], &role);
     }
     if (!ln_make_addresses(lb, fn, operands, count, is_desc, is_key_ref, of)) {
         return false;
@@ -163,11 +149,12 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
                 operands[kept++] = operands[i];
             }
         }
-        *out = mir_b_emit(&lb->b, (MirOp)op, operands, kept, (MirImm){0}, result_ty);
+        const MirImm imm = fn->has_imm ? (MirImm){.tag = MI_INT, .i = fn->imm} : (MirImm){0};
+        *out = mir_b_emit(&lb->b, (MirOp)op, operands, kept, imm, result_ty);
         return true;
     }
     const MirTy ret = has_out ? result_ty : ln_ret_ty(fn->ret);
-    const uint32_t ext = lb_runtime_extern(lb, entry->symbol, types, count, ret, MR_NONE, entry->pure);
+    const uint32_t ext = lb_runtime_extern(lb, entry->symbol, types, count, ret, role, entry->pure);
     *out = mir_b_call_rt(&lb->b, ext, operands, count);
     return true;
 }

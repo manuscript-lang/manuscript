@@ -1,8 +1,8 @@
 type Secret:
-    a: Int
+	a: Int
 
 export fn lookup() Map[String, Secret]:
-    return {}
+	return {}
 
 fn main() Void:
-    return
+	return

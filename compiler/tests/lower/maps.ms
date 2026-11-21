@@ -45,6 +45,6 @@ fn main() Int:
 		return size(counts)
 	a := build() + pick(2) + named("two")
 	b := flags(true) + prices("a")
-	if tagged(1) and b > 1.0:
-		return a
+	if tagged(1) and b > 1.0: return a
+
 	return 0

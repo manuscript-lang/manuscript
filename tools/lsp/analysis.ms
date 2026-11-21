@@ -1,4 +1,7 @@
-import expect_equal from "@std/test/test.ms"
+import (
+	working_directory from "@std/os/env.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 // What the C checker knows about one document, read through `ms_tool_analyze` (libms,
 // compiler/include/ms/tool.h). A program that imports this module links `libmstool.a`.
@@ -197,12 +200,15 @@ test "a syntax error and a project import are reported, not analysed":
 	expect_equal(project.is_error(), true)?
 
 test "a project import is analysed from an unsaved buffer":
+	// Tests run in the test file's directory, which exists; the two buffers are not on
+	// disk.
+	dir := working_directory()?
 	helper := "export fn twice(n: Int) Int:\n\treturn n + n\n"
-	entry := "import (\n\ttwice from \"./helper.ms\",\n)\n\nfn main() Int:\n\treturn twice(2)\n"
+	entry := "import (\n\ttwice from \"./unsaved_helper.ms\",\n)\n\nfn main() Int:\n\treturn twice(2)\n"
 	parsed := analyze_in(
-		"/tmp/ms-lsp-analysis/main.ms",
+		f"{dir}/unsaved_main.ms",
 		entry,
-		["/tmp/ms-lsp-analysis/helper.ms", helper],
+		[f"{dir}/unsaved_helper.ms", helper],
 	)
 	expect_equal(parsed.is_error(), false)?
 

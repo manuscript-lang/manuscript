@@ -66,6 +66,17 @@ uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out
 uint8_t ms_tool_requirement(const ms_str *text, ms_list *out, ms_str *message_out);
 uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out);
 
+/* The standard library's API model as one JSON document: every public module's declarations with their types, fields,
+ * cases, operations, members and comments, in the form the Rust `ms-tooling` `api_model` example prints (see
+ * ms/api_model.h). `ms search_symbol` and the generated reference read it; it checks the embedded library on each call. */
+void ms_tool_api_model(ms_str *out);
+
+/* The fact model of one document as JSON, the document `ms-tooling-dev facts` prints and `tools/ms/views.ms` reads
+ * (see compiler/src/check/dump_facts.c for the columns the C checker fills). Status 0 fills `out`; 1 is an error
+ * (invalid UTF-8, a syntax error) with its text in `message_out`; 2 means the document imports a project module, which
+ * this entry does not load. */
+uint8_t ms_tool_facts(const ms_str *text, ms_str *out, ms_str *message_out);
+
 /* `ms check FILE.ms [--json]` (compiler/include/ms/check_run.h). Status 0 fills `out` with the standard output, the
  * standard error and the exit status (as decimal text) the Rust command would produce; status 2 means the C passes
  * cannot give that answer (message in `message_out`) and the caller runs the Rust command; 1 is an error. */
@@ -157,6 +168,11 @@ void ms_tool_keywords(ms_list *out);
  *   symbol, MS_TOOL_ANALYZE_SYMBOL_WIDTH: id, name, kind (0 type, 1 fn, 2 alias), module path, 1 when declared in this
  *                                         text, 1 when exported, declaration node id (-1 for a primitive), offset, line,
  *                                         column, type
+ * then the ownership rows (MSL114): the count of name nodes that move a value out and their ids, then the count of
+ * resource bindings (flag 8) and for each its binding index, 1 when the ownership pass followed its function and the
+ * name of its `flush` or `commit` method taking nothing and returning a Result (-1 for none); then the effect rows (MSL116):
+ * 1 when the scan saw every callable it reached, the count of undeclared-effect violations and for each its offset, line,
+ * column and message.
  * Every name, module path and type text is an index into the names (-1 for none); types print as source reads them.
  */
 #define MS_TOOL_ANALYZE_NODE_WIDTH 6
