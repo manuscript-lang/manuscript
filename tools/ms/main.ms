@@ -145,7 +145,7 @@ fn run_source_command(root: Command, matches: Matches) Int:
 		return 2
 
 	if inv.command == "profile": return run_profile(inv)
-	if inv.watch and ["check", "lint", "build", "test", "run"].contains(inv.command): return run_watch(
+	if inv.watch and ["check", "lint", "test", "run"].contains(inv.command): return run_watch(
 		inv,
 		command_line(),
 	)

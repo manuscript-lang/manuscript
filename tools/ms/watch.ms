@@ -1,4 +1,4 @@
-// `--watch` of `ms check`, `lint`, `build`, `test` and `run`: run the command once, then again
+// `--watch` of `ms check`, `lint`, `test` and `run`: run the command once, then again
 // after each saved change to the input, its manifest or a module it imports. A failed
 // run only reports; the previous program of `run` keeps going until a replacement
 // builds.
@@ -10,10 +10,12 @@
 // `ms.toml`, and the files of its project. A path that does not exist yet is watched too, so
 // creating it reruns the command.
 import (
+	TomlValue, parse from "@std/data/toml.ms",
 	stderr from "@std/io/io.ms",
 	environment from "@std/os/env.ms",
 	canonicalize,
 	exists,
+	list,
 	read_file,
 	remove,
 	stat,
@@ -60,9 +62,15 @@ export fn signature(path: String) String:
 	modified := found.modified.to_string()
 	return f"{found.size}:{modified}:{found.mode}:{found.inode}:{found.device}"
 
-// The module paths `text` imports from its own directory: each `from "./x.ms"` or
-// `from "../x.ms"`. A package or standard-library import is not local and is left out.
-export fn local_imports(text: String, directory: String) List[String]:
+// The module paths `text` imports from its own directory or through an alias of
+// `aliases` (`@name` to an absolute path): each `from "./x.ms"`, `from "../x.ms"` and
+// `from "@name/x.ms"`. A package or standard-library import is not local and is left
+// out.
+export fn local_imports(
+	text: String,
+	directory: String,
+	aliases: Map[String, String],
+) List[String]:
 	tokens := lex(text)
 	if tokens.is_error(): return []
 
@@ -77,10 +85,23 @@ export fn local_imports(text: String, directory: String) List[String]:
 		if second.kind != string_kind or text.slice(first.lo, first.hi) != "from": continue
 
 		spelled := text.slice(second.lo + 1, second.hi - 1)
+
 		if spelled.starts_with("./") or spelled.starts_with("../"):
 			found.append(normalize(join([directory.clone(), spelled])))
+		else if target := aliased(spelled, aliases):
+			found.append(target)
 
 	return found
+
+// The path `spelled` (`@name` or `@name/rest`) names through `aliases`, or none.
+fn aliased(spelled: String, aliases: Map[String, String]) String?:
+	if not spelled.starts_with("@"): return none
+
+	slash := spelled.index_of("/").get_or(spelled.length())
+	root := aliases.get(spelled.slice(0, slash))?
+	if slash == spelled.length(): return root.clone()
+
+	return normalize(join([root.clone(), spelled.slice(slash + 1, spelled.length())]))
 
 // The nearest `ms.toml` above `start`, or none.
 fn nearest_manifest(start: String) String?:
@@ -102,24 +123,116 @@ fn nearest_manifest(start: String) String?:
 fn complete(input: String) String:
 	return canonicalize(input).get_or(input.clone())
 
+// What the manifest at `manifest` adds to the module graph: the alias targets, and the
+// paths that change the build without being imported: embedded directories and member
+// projects.
+type Manifest:
+	aliases: Map[String, String]
+	embedded: List[String]
+	members: List[String]
+
+// The table `key` of a parsed manifest, empty when it has none.
+fn table_at(document: TomlValue, key: String) Map[String, TomlValue]:
+	var none_found = Map[String, TomlValue]()
+
+	match document:
+		TableValue(values):
+			found := values.get(key)
+			if found.is_none(): return none_found
+			match found.get():
+				TableValue(inner): return inner.clone()
+				_: return none_found
+		_: return none_found
+
+// The text of a manifest value, or the empty text.
+fn text_of(value: TomlValue) String:
+	match value:
+		StringValue(text): return text.clone()
+		_: return ""
+
+// The text under `key` of the table `value`, or the empty text.
+fn field(value: TomlValue, key: String) String:
+	match value:
+		TableValue(values):
+			found := values.get(key)
+			return if found.is_some(): text_of(found.get()) else: ""
+		_: return ""
+
+// Reads `manifest`; a missing or invalid one describes nothing.
+fn read_manifest(manifest: String) Manifest:
+	var read = Manifest(aliases: Map[String, String](), embedded: [], members: [])
+	bytes := read_file(manifest).wait()
+	if bytes.is_error(): return read
+
+	document := parse(bytes.get().decode_utf8().get_or(""))
+	if document.is_error(): return read
+
+	root := dirname(manifest)
+
+	for entry in table_at(document.get(), "aliases"):
+		{key, value} := entry
+		read.aliases.add(key.clone(), normalize(join([root.clone(), text_of(value)])))
+
+	for entry in table_at(document.get(), "embed"):
+		read.embedded.append(normalize(join([root.clone(), text_of(entry.value)])))
+
+	for entry in table_at(document.get(), "dependencies"):
+		member := field(entry.value, "path")
+		if not member.is_empty(): read.members.append(
+			normalize(join([root.clone(), member, "ms.toml"]))
+		)
+
+	return read
+
+// The directory `path` and everything below it.
+fn tree(path: String) List[String]:
+	var found = [path.clone()]
+	var pending = [path.clone()]
+	var at = 0
+
+	while at < pending.length():
+		current := pending[at].clone()
+		at += 1
+
+		entries := list(current)
+		if entries.is_error(): continue
+
+		for entry in entries.get():
+			child := join([current.clone(), entry.name.clone()])
+			found.append(child.clone())
+			if entry.directory: pending.append(child.clone())
+
+	return found
+
 // Every file whose change reruns `input`: the module graph read from the sources, the
-// manifest, the files of its project and the directories that hold them.
+// manifest and lock file, the files of its project and of its member projects, embedded
+// directories, and the directories that hold them.
 export fn watched_files(input: String) List[String]:
 	start := complete(input)
 	var seen = Map[String, Bool]()
 	var order = List[String]()
 	var queue = [start.clone()]
+	var aliases = Map[String, String]()
 	var at = 0
+	var manifest: String? = none
 
-	if input.ends_with("ms.toml"):
-		queue = discovered(start)
-		seen.add(start.clone(), true)
-		order.append(start.clone())
-	else if manifest := nearest_manifest(start):
-		seen.add(manifest.clone(), true)
-		order.append(manifest.clone())
-		for file in discovered(manifest):
-			queue.append(file.clone())
+	if input.ends_with("ms.toml"): manifest = start.clone()
+	else: manifest = nearest_manifest(start)
+
+	if found := manifest:
+		if input.ends_with("ms.toml"): queue = []
+		order.append(found.clone())
+		order.append(join([dirname(found), "ms.lock"]))
+		seen.add(found.clone(), true)
+
+		read := read_manifest(found)
+		aliases = read.aliases.clone()
+		for file in discovered(found): queue.append(file.clone())
+		for path in read.embedded: order.extend(tree(path))
+
+		for member in read.members:
+			order.append(member.clone())
+			for file in discovered(member): queue.append(file.clone())
 
 	while at < queue.length():
 		path := queue[at].clone()
@@ -138,7 +251,11 @@ export fn watched_files(input: String) List[String]:
 		bytes := read_file(path).wait()
 		if bytes.is_error(): continue
 
-		for next in local_imports(bytes.get().decode_utf8().get_or(""), dirname(path)):
+		for next in local_imports(
+			bytes.get().decode_utf8().get_or(""),
+			dirname(path),
+			aliases,
+		):
 			queue.append(next.clone())
 
 	return order
@@ -228,7 +345,7 @@ fn run_to_end(program: String, words: List[String]) Int:
 
 	return child.get().wait().get_or(70)
 
-// `check`, `lint`, `build` and `test`: the command again after each change.
+// `check`, `lint` and `test`: the command again after each change.
 fn watch_once(inv: Invocation, given: List[String]) Int:
 	program := process_info().get().executable
 	words := once_arguments(given)
