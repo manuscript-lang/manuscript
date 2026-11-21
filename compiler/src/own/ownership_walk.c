@@ -889,7 +889,7 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     const OwnSummary *callee = own_callee(w, e);
     if (callee == NULL || e->u.call.callee->kind != MS_E_NAME ||
-        e->u.call.args.len != w->check->syms.decl[w->facts->call_callee[e->id]]->u.fn.params.len) {
+        e->u.call.args.len > w->check->syms.decl[w->facts->call_callee[e->id]]->u.fn.params.len) {
         w->supported = false;
         return;
     }
