@@ -190,7 +190,13 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
     }
     uint32_t first = 0;
     uint32_t slot[16];
-    if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in, slot) || ms_infer_defaults(&in, &first) != 0 || !generic_bounds(b, &in)) {
+    if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in, slot)) {
+        return ms_body_unsupported(b);
+    }
+    if (ms_infer_defaults(&in, &first) != 0) {
+        return ms_body_unsupported(b); // a variable no argument binds and no default fills
+    }
+    if (!generic_bounds(b, &in)) {
         return ms_body_unsupported(b);
     }
     for (uint32_t i = 0; i < in.nvars; i++) {
