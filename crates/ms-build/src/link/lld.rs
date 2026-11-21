@@ -208,6 +208,13 @@ pub fn is_static(build: &BuildOptions) -> bool {
 fn extract() -> Result<PathBuf, Error> {
     let dir = cache_root().join("ms").join("linker").join(LINKER_ID);
     extract_at(&dir, FILES)?;
+    // The link stages generated files (the macOS SDK stubs) in it, and macOS bundles none.
+    std::fs::create_dir_all(&dir).map_err(|e| {
+        Error(format!(
+            "cannot create the linker directory {}: {e}",
+            dir.display()
+        ))
+    })?;
     Ok(dir)
 }
 
