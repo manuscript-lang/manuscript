@@ -27,8 +27,13 @@ static uint32_t lc_row(Lb *lb, MsTy ty) {
     const MsTyTable *tys = &lb->c->tys;
     for (uint32_t i = 0; i < methods->count; i++) {
         const MsFunc *decl = methods->decl[i];
-        if (methods->receiver[i] != ty || decl == NULL || methods->nvars[i] != 0 || !lm_has(lb, i) ||
-            !ms_name_is(lb->c->names, decl->name, "close")) {
+        MsTy args[LB_MAX_TARGS];
+        if (decl == NULL || !ms_name_is(lb->c->names, decl->name, "close") || !lm_has(lb, i)) {
+            continue;
+        }
+        // The close of this type, or of a generic type this one is an instance of (`WriteStream[String]`).
+        const bool direct = methods->receiver[i] == ty && methods->nvars[i] == 0;
+        if (!direct && !(methods->nvars[i] != 0 && lm_match(lb, i, ty, args))) {
             continue;
         }
         if (methods->contract[i] != MS_TY_NONE && ms_ty_is(tys, methods->contract[i], MS_BI_CLOSEABLE)) {
@@ -61,10 +66,21 @@ void lc_register(Lb *lb, MsTy ty, MirTy mir) {
     }
     const LbCloser closer = {.ty = mir,
                              .row = row,
+                             .func = MIR_NONE,
                              .owned = (lb->facts->methods->access[row] & MS_METHOD_CONSUMING) != 0,
                              .thunk = MIR_NONE,
                              .result = MIR_NONE};
     MIR_PUSH(lb->m, lb->closers, lb->nclosers, lb->cclosers, LbCloser, closer);
+    if (lb->facts->methods->nvars[row] != 0) { // registered first: the copy's own signature names this type again
+        const uint32_t at = lb->nclosers - 1;
+        const uint32_t func = lm_instance(lb, row, ty);
+        lb->closers[at].func = func;
+    }
+}
+
+/* The function that closes a `closer`'s type: its own method, or the copy for a generic type's instance. */
+static uint32_t lc_func(const Lb *lb, const LbCloser *closer) {
+    return closer->func != MIR_NONE ? closer->func : lb->method_func[closer->row];
 }
 
 static LbCloser *lc_find(Lb *lb, MirTy mir) {
@@ -123,13 +139,13 @@ static void lc_fault(Lb *lb, MirBuilder *b, MirValue r) {
 static MirValue lc_close_at(Lb *lb, MirBuilder *b, const LbCloser *closer, MirValue ptr) {
     const MirImm ty = {.tag = MI_TY, .a = closer->ty};
     const MirValue value = mir_b_emit(b, closer->owned ? MOP_Take : MOP_Load, &ptr, 1, ty, closer->ty);
-    return mir_b_call(b, lb->method_func[closer->row], &value, 1);
+    return mir_b_call(b, lc_func(lb, closer), &value, 1);
 }
 
 /* The function that closes the value in a slot, dropping a result; `with_result` makes the one that
  * returns the result of a close that can fail. */
 static uint32_t lc_thunk(Lb *lb, const LbCloser *closer, bool with_result) {
-    const MirTy rty = lc_result_ty(lb, lb->method_func[closer->row]);
+    const MirTy rty = lc_result_ty(lb, lc_func(lb, closer));
     const MirParam params[1] = {{MIR_PTR, MM_BORROW}};
     MirBuilder b;
     mir_b_init(&b, lb->m, lb_unique_name(lb, (MsStr){"close", 5}), params, 1, with_result ? rty : MIR_VOID);
@@ -236,10 +252,10 @@ static bool lc_exits_clean(const Lb *lb) {
 static bool lc_slot_own(Lb *lb, uint32_t binding, MirValue value) {
     const MirTy ty = mir_b_ty(&lb->b, value);
     LbCloser *closer = lc_find(lb, ty);
-    if (closer == NULL || lb->method_func[closer->row] == MIR_NONE || !lc_exits_clean(lb)) {
+    if (closer == NULL || lc_func(lb, closer) == MIR_NONE || !lc_exits_clean(lb)) {
         return false;
     }
-    const uint32_t func = lb->method_func[closer->row];
+    const uint32_t func = lc_func(lb, closer);
     const MirTy rty = lc_result_ty(lb, func);
     if (lb->m->funcs[func].ret != MIR_VOID && rty == MIR_NONE) {
         return false;
@@ -296,7 +312,7 @@ bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved) {
         }
         if (moved) {
             const LbCloser *closer = lc_find(lb, local->ty);
-            const MirTy rty = closer == NULL ? MIR_NONE : lc_result_ty(lb, lb->method_func[closer->row]);
+            const MirTy rty = closer == NULL ? MIR_NONE : lc_result_ty(lb, lc_func(lb, closer));
             if (rty != MIR_NONE && lb->m->alts[mir_ty_data(lb->m, rty)->id].cases[LC_OK].fields[0].ty != MIR_VOID) {
                 return false;
             }

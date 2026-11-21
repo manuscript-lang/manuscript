@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "ms/lower_internal.h"
+#include "ms/infer.h"
 #include "ms/methods.h"
 
 static MsSym lm_name(Lb *lb, MsTy receiver, MsSym method) {
@@ -17,7 +18,7 @@ static MsSym lm_name(Lb *lb, MsTy receiver, MsSym method) {
     return mir_name(lb->m, text, (size_t)len);
 }
 
-static LbCallable lm_callable(Lb *lb, uint32_t row) {
+LbCallable lm_callable(Lb *lb, uint32_t row) {
     const MsMethods *methods = lb->facts->methods;
     const LbMethodRow *r = &lb->rows[row];
     return (LbCallable){.fn = &r->method->func,
@@ -133,5 +134,37 @@ LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row) {
         lc_is_slot_local(lb, lb->facts->res_ref[receiver->id])) {
         return LB_UNSUPPORTED(lb); // a close by hand: the pass would close the value again
     }
-    return lb_call_func(lb, e, lb->method_func[row], methods->ty[row], receiver, mutating);
+    uint32_t func = lb->method_func[row];
+    if (methods->nvars[row] != 0) { // a method of a generic type: its copy for the receiver's arguments
+        func = lm_instance(lb, row, lb_ty(lb, lb->facts->call_receiver[e->id]));
+    }
+    return lb_call_func(lb, e, func, methods->ty[row], receiver, mutating);
+}
+
+/* The type arguments of row's impl variables when the method is called on `receiver`: the variables the receiver's
+ * type binds; false when it does not fit or leaves one unbound. */
+bool lm_match(Lb *lb, uint32_t row, MsTy receiver, MsTy *args) {
+    const MsMethods *methods = lb->facts->methods;
+    const uint32_t nvars = methods->nvars[row];
+    if (nvars == 0 || nvars > LB_MAX_TARGS) {
+        return false;
+    }
+    MsArena scratch = {0};
+    MsInfer in;
+    ms_infer_init(&in, lb->mut, &scratch, methods->vars + methods->vars_at[row], nvars);
+    bool fits = ms_infer_match(&in, methods->receiver[row], receiver) == MS_MATCH_OK;
+    for (uint32_t i = 0; i < nvars && fits; i++) {
+        args[i] = in.bound[i];
+        fits = in.bound[i] != MS_TY_NONE;
+    }
+    ms_arena_free(&scratch);
+    return fits;
+}
+
+uint32_t lm_instance(Lb *lb, uint32_t row, MsTy receiver) {
+    MsTy args[LB_MAX_TARGS];
+    if (row >= lb->facts->methods->count || !lm_match(lb, row, receiver, args)) {
+        return MIR_NONE;
+    }
+    return lb_method_instance(lb, row, args, lb->facts->methods->nvars[row]);
 }

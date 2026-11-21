@@ -42,6 +42,7 @@ typedef struct LbVal {
 #define LB_MAX_TARGS 8
 typedef struct LbInst {
     MsSymId sym;
+    uint32_t row; /* the method row for a copy of a method of a generic type, else MS_NONE */
     uint32_t nargs;
     MsTy args[LB_MAX_TARGS];
     uint32_t func; /* its module function; MIR_NONE once it failed */
@@ -112,6 +113,7 @@ typedef struct LbStatusFn {
 typedef struct LbCloser {
     MirTy ty;
     uint32_t row;
+    uint32_t func; /* the close of a generic type's copy, else MIR_NONE: the row's function */
     bool owned; /* a `move` close: it takes the value */
     uint32_t thunk, result;
 } LbCloser;
@@ -230,6 +232,7 @@ void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param);
 void lb_depth(Lb *lb, MirOp op);
 /* The module function a call reaches (lower_func.c): the callee's own, or its copy for a generic one. */
 uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
+uint32_t lb_method_instance(Lb *lb, uint32_t row, const MsTy *args, uint32_t nargs); /* a method of a generic type, for its arguments */
 bool lb_lines_have_diagnostic(const MsModuleRow *row, uint32_t first, uint32_t end);
 uint32_t lb_add_stub(Lb *lb, const LbCallable *c); /* a function with the signature and no body; MIR_NONE when not handled */
 bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over its stub; false when not handled */
@@ -245,6 +248,9 @@ LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed a
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
+uint32_t lm_instance(Lb *lb, uint32_t row, MsTy receiver); /* the copy of a generic type's method for `receiver`, or MIR_NONE */
+LbCallable lm_callable(Lb *lb, uint32_t row);
+bool lm_match(Lb *lb, uint32_t row, MsTy receiver, MsTy *args); /* the type arguments of row's impl for `receiver` */
 void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos, MsSite site); /* reports a function whose body the checker did not record */
 enum { LA_OK = 0, LA_ERROR = 1 }; /* the order of the cases of `Result` in core.ms */
 void lb_set_entry(Lb *lb, uint32_t user); /* makes `user`, the lowered `main`, the program's entry, behind a wrapper unless it returns Int (lower_entry.c) */
