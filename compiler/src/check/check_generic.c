@@ -11,6 +11,7 @@
 #include "ms/implements.h"
 #include "ms/infer.h"
 #include "ms/ty_algebra.h"
+#include "ms/walk.h"
 
 /* Whether `ty` mentions the type variable `var` (variables are the same by their id, as in infer.c). */
 static bool ty_mentions(const MsTyTable *tys, MsTy ty, MsTy var) {
@@ -125,7 +126,7 @@ static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc
     }
     for (uint32_t i = 0; i < given; i++) {
         const MsTyParam *param = &params[slot[i]];
-        if ((param->flags & ~MS_PARAM_POSITIONAL) != 0 ||
+        if ((param->flags & ~(MS_PARAM_POSITIONAL | MS_PARAM_VAR | MS_PARAM_MOVE)) != 0 ||
             !ms_body_open_argument(b, e->u.call.args.ptr[i].value, param, in)) {
             return false;
         }
@@ -134,13 +135,55 @@ static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc
     return true;
 }
 
+typedef struct CallBack {
+    const MsCheck *c;
+    MsModId home;
+    bool found;
+} CallBack;
+
+/* A call that is not to a native function (an extern or builtin): it may reach any function. */
+static void generic_scan_call(void *ctx, const MsExpr *e) {
+    CallBack *scan = ctx;
+    if (e->kind != MS_E_CALL) {
+        return;
+    }
+    const MsExpr *callee = e->u.call.callee;
+    const MsSymId sym = callee->kind == MS_E_NAME ? ms_map_get(&scan->c->mods[scan->home].names, callee->u.sym) : MS_NONE;
+    scan->found = scan->found || sym == MS_NONE || scan->c->syms.native[sym] == MS_NATIVE_SOURCE;
+}
+
+/* Whether a call into `callee` can come back to the module being checked: its body calls something
+ * other than natives and it is in the module, or in a module that imports it (transitively). A growing
+ * application needs such a cycle of calls. */
+static bool generic_calls_back(MsBody *b, MsSymId callee) {
+    const MsModId home = b->c->syms.module[callee];
+    if (home == b->module) {
+        if (b->c->syms.decl[callee]->kind != MS_D_FN) {
+            return true; // a type's defaults are not scanned
+        }
+        CallBack scan = {.c = b->c, .home = home};
+        const MsVisitor visitor = {.ctx = &scan, .expr = generic_scan_call};
+        const MsFunc *func = &b->c->syms.decl[callee]->u.fn;
+        ms_walk_callable(&visitor, func->params, func->body);
+        return scan.found;
+    }
+    MsArena *arena = &b->c->arena;
+    MsModId *reached = MS_NEW_N(arena, MsModId, (size_t)b->c->nmods + 1);
+    bool *seen = MS_NEW_N(arena, bool, (size_t)b->c->nmods + 1);
+    memset(seen, 0, ((size_t)b->c->nmods + 1) * sizeof *seen);
+    uint32_t n = 0;
+    ms_module_reach(b->c, home, seen, reached, &n);
+    return seen[b->module];
+}
+
 /* A variable bound to a type built from variables (`T` as `List[T]`) can grow without end through a
- * cycle of applications, which the Rust checker reports (recursion.rs); the graph is not built here yet.
- * A variable passed on as itself cannot grow. */
-static bool generic_grows(MsBody *b, const MsInfer *in) {
+ * cycle of applications, which the Rust checker reports (recursion.rs); the graph is not built here, so a
+ * callee that cannot call back (generic_calls_back) is the only one let through. A variable passed on as
+ * itself cannot grow. */
+static bool generic_grows(MsBody *b, const MsInfer *in, MsSymId callee) {
     for (uint32_t i = 0; i < in->nvars; i++) {
-        if (ms_ty_kind(&b->c->tys, in->bound[i]) != MS_K_VARIABLE &&
-            ms_ty_has_variable(&b->c->tys, in->bound[i])) {
+        if (ms_ty_kind(&b->c->tys, in->bound[i]) != MS_K_VARIABLE && ms_ty_has_variable(&b->c->tys, in->bound[i]) &&
+            generic_calls_back(b, callee)) {
             return true;
         }
     }
@@ -265,7 +308,7 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
     if (!generic_bounds(b, &in)) {
         return ms_body_unsupported(b);
     }
-    if (generic_grows(b, &in)) {
+    if (generic_grows(b, &in, sym)) {
         return ms_body_unsupported(b);
     }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
@@ -361,7 +404,7 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
     const MsTy result = ms_ty_apply(b->c, syms->ty[sym], in.bound, def->nvars);
     // A type applied to the caller's own variables may be a cycle of applications that never ends: its
     // defaults call back into the caller, or an argument grows. The Rust checker reports both (recursion.rs).
-    if (result == MS_TY_NONE || !ms_body_is_bindable(b, result) || generic_grows(b, &in) ||
+    if (result == MS_TY_NONE || !ms_body_is_bindable(b, result) || generic_grows(b, &in, sym) ||
         (generic_has_defaults(decl) && ms_ty_has_variable(&b->c->tys, result))) {
         return ms_body_unsupported(b);
     }
