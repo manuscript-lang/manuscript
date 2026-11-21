@@ -752,10 +752,50 @@ static LbArms lb_open_arms(Lb *lb, const MsExpr *e) {
     return arms;
 }
 
+/* Branches on a String scrutinee by testing the literal arms in order: a short literal with `str.eq_lit`,
+ * any other with the runtime's `string_eq`. */
+static void lb_dispatch_text(Lb *lb, const MsExpr *e, MirValue scrutinee, const LbArms *arms) {
+    const MsArm *const *list = (const MsArm *const *)e->u.match.arms.ptr;
+    const uint32_t count = e->u.match.arms.len;
+    for (uint32_t i = 0; i < count && lb->ok; i++) {
+        if ((int64_t)i == arms->wildcard) {
+            continue;
+        }
+        const MsExpr *path = list[i]->path;
+        MirValue same = MIR_NONE;
+        const MsStr lit = lb_literal_text(path);
+        if (lit.ptr != NULL) {
+            const MirImm imm = {.tag = MI_STR, .a = mir_add_string(lb->m, lit.ptr, lit.len)};
+            same = mir_b_emit(&lb->b, MOP_StrEqLit, &scrutinee, 1, imm, MIR_BOOL);
+        } else {
+            const LbVal other = path->kind == MS_E_TEXT ? lb_expr(lb, path) : LB_FAIL;
+            const struct MsRtFn *fn = lb_native_function(lb, lb->string_ty, ms_intern_cstr(lb->c->names, "eq"));
+            const MirValue args[2] = {scrutinee, other.v};
+            const LbVal call = fn == NULL || !lb->ok ? LB_FAIL : lb_native_call(lb, fn, args, 2, MIR_BOOL);
+            if (fn == NULL || !lb->ok) {
+                (void)lb_unsupported(lb);
+                return;
+            }
+            same = call.v;
+        }
+        const MirBlock next = mir_b_new_block(&lb->b);
+        mir_b_br_if(&lb->b, same, arms->blocks[i], NULL, 0, next, NULL, 0);
+        mir_b_seal_block(&lb->b, next);
+        mir_b_switch_to(&lb->b, next);
+    }
+    if (lb->ok) {
+        mir_b_br(&lb->b, arms->fallback, NULL, 0);
+    }
+}
+
 /* Branches on the scrutinee once: a `switch` over the literal arms of an Int, a `br_if` over a Bool. */
 static void lb_dispatch(Lb *lb, const MsExpr *e, MirValue scrutinee, const LbArms *arms) {
     const MsArm *const *list = (const MsArm *const *)e->u.match.arms.ptr;
     const uint32_t count = e->u.match.arms.len;
+    if (mir_b_ty(&lb->b, scrutinee) == MIR_STR) {
+        lb_dispatch_text(lb, e, scrutinee, arms);
+        return;
+    }
     if (mir_ty_data(lb->m, mir_b_ty(&lb->b, scrutinee))->kind == MK_OPT) {
         // The checker numbers an Optional's cases `some` 0 and `none` 1.
         MirBlock when_some = arms->fallback, when_none = arms->fallback;
@@ -822,35 +862,97 @@ static void lb_bind_arm(Lb *lb, const MsArm *arm, MirValue subject) {
     }
 }
 
-/* The payload name of a `some(name)` arm: the value the Optional holds, read in place. */
-static void lb_bind_some(Lb *lb, const MsArm *arm, MirValue subject) {
+/* What a match is over: the value, its kind, and whether it is an owned temporary that the arms take
+ * apart or drop. */
+typedef struct LbSubject {
+    MirValue v;
+    MirTyKind kind;
+    bool temp;
+} LbSubject;
+
+/* The binding the arm's `slot`-th payload name introduces, or MS_NONE for `_`. */
+static uint32_t lb_arm_binding(const Lb *lb, const MsArm *arm, uint32_t slot) {
     const MsBindings *bindings = &lb->facts->bindings;
-    for (uint32_t binding = 0; arm->bindings.len == 1 && binding < bindings->count; binding++) {
-        if (bindings->decl_node[binding] != arm->id || bindings->name[binding] != arm->bindings.ptr[0].name) {
-            continue;
+    for (uint32_t binding = 0; slot < arm->bindings.len && binding < bindings->count; binding++) {
+        if (bindings->decl_node[binding] == arm->id && bindings->name[binding] == arm->bindings.ptr[slot].name) {
+            return binding;
         }
-        const MirTy held = mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->elem;
-        if (lb_owns(lb, held)) {
-            (void)lb_unsupported(lb); // taking an owned payload out of an Optional is not lowered yet
-            return;
-        }
-        lb->value_of[binding] = mir_b_emit(&lb->b, MOP_OptGet, &subject, 1, (MirImm){0}, held);
-        lb_name_value(lb, lb->value_of[binding], arm->bindings.ptr[0].name, false);
     }
+    return MS_NONE;
 }
 
-/* Whether an arm binds a payload that needs a drop: taking it out of an owned scrutinee is not lowered. */
-static bool lb_arm_binds_owned(Lb *lb, const MsArm *arm, MirTy subject_ty) {
-    const MirTyData *data = mir_ty_data(lb->m, subject_ty);
-    const uint32_t index = lb->facts->arm_case[arm->id];
-    for (uint32_t slot = 0; index != MS_NONE && slot < arm->bindings.len; slot++) {
-        const MsStr name = ms_name(lb->c->names, arm->bindings.ptr[slot].name);
-        const bool ignored = name.len == 1 && name.ptr[0] == '_';
-        if (!ignored && lb_owns(lb, lb->m->alts[data->id].cases[index].fields[slot].ty)) {
+/* The payload name of a `x:` arm over an Optional: the value it holds, read in place. */
+static void lb_bind_some(Lb *lb, const MsArm *arm, MirValue subject) {
+    const uint32_t binding = lb_arm_binding(lb, arm, 0);
+    if (binding == MS_NONE) {
+        return;
+    }
+    const MirTy held = mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->elem;
+    lb->value_of[binding] = mir_b_emit(&lb->b, MOP_OptGet, &subject, 1, (MirImm){0}, held);
+    lb_name_value(lb, lb->value_of[binding], arm->bindings.ptr[0].name, false);
+}
+
+/* Whether the arm names a payload (not `_`). */
+static bool lb_arm_names_payload(const Lb *lb, const MsArm *arm) {
+    for (uint32_t slot = 0; slot < arm->bindings.len; slot++) {
+        if (lb_arm_binding(lb, arm, slot) != MS_NONE) {
             return true;
         }
     }
     return false;
+}
+
+/* Binds the owned payload `v` to `binding` in the arm's scope, or releases it when the arm names none. */
+static void lb_own_payload(Lb *lb, uint32_t binding, MsSym name, MirValue v) {
+    lb->value_of[binding] = v;
+    lb_name_value(lb, v, name, false);
+    if (lb_owns(lb, mir_b_ty(&lb->b, v))) {
+        lscope_own(&lb->scopes, v, 0);
+    }
+}
+
+/* An arm that names a payload of an owned scrutinee takes the parts out of it (`alt.take` each field,
+ * then `alt.release` what is left of the box; an Optional is unboxed), as the Rust lowering does. A
+ * part the arm does not name is released here, last field first. */
+static void lb_take_payloads(Lb *lb, const MsArm *arm, MirValue subject) {
+    const MirTyData *data = mir_ty_data(lb->m, mir_b_ty(&lb->b, subject));
+    if (data->kind == MK_OPT) {
+        const MirValue part = mir_b_emit(&lb->b, MOP_OptUnbox, &subject, 1, (MirImm){0}, data->elem);
+        const uint32_t binding = lb_arm_binding(lb, arm, 0);
+        if (binding != MS_NONE) {
+            lb_own_payload(lb, binding, arm->bindings.ptr[0].name, part);
+        } else if (lb_owns(lb, data->elem)) {
+            lb_drop(lb, part);
+        }
+        return;
+    }
+    const uint32_t index = lb->facts->arm_case[arm->id];
+    const MirCaseDef *def = &lb->m->alts[data->id].cases[index];
+    if (def->nfields > 32 || arm->bindings.len > def->nfields) {
+        (void)lb_unsupported(lb);
+        return;
+    }
+    MirValue parts[32];
+    for (uint32_t i = 0; i < def->nfields; i++) {
+        const MirImm field = {.tag = MI_ALTFIELD, .a = data->id, .b = index, .c = i};
+        parts[i] = mir_b_emit(&lb->b, MOP_AltTake, &subject, 1, field, def->fields[i].ty);
+    }
+    const uint32_t all = def->nfields == 32 ? UINT32_MAX : (1u << def->nfields) - 1;
+    const MirImm mask = {.tag = MI_ALTMASK, .a = data->id, .b = index, .c = all};
+    (void)mir_b_emit(&lb->b, MOP_AltRelease, &subject, 1, mask, MIR_NONE);
+    bool named[32] = {false};
+    for (uint32_t slot = 0; slot < arm->bindings.len; slot++) {
+        const uint32_t binding = lb_arm_binding(lb, arm, slot);
+        if (binding != MS_NONE) {
+            lb_own_payload(lb, binding, arm->bindings.ptr[slot].name, parts[slot]);
+            named[slot] = true;
+        }
+    }
+    for (uint32_t i = def->nfields; i-- > 0;) {
+        if (!named[i] && lb_owns(lb, def->fields[i].ty)) {
+            lb_drop(lb, parts[i]);
+        }
+    }
 }
 
 /* The value an arm of a match with an owned result hands to the join: what the arm owns as it is, a
@@ -867,10 +969,20 @@ static LbVal lb_arm_owned(Lb *lb, const MsExpr *value_expr, LbVal value) {
     return (LbVal){lb_copy(lb, value.v), true};
 }
 
-/* One arm: its statements and final value in a scope of their own, which ends before the join. A
+/* One arm: its payload names, statements and final value in a scope of their own, which ends before the join. A
  * Void match discards the value; an owned result takes it over (`lb_arm_owned`). */
-static LbVal lb_arm(Lb *lb, const MsArm *arm, bool void_result, bool owned_result) {
+static LbVal lb_arm(Lb *lb, const MsArm *arm, const LbSubject *subject, bool void_result, bool owned_result,
+                    bool *took) {
     const uint32_t depth = lscope_push(&lb->scopes);
+    const bool has_case = lb->facts->arm_case[arm->id] != MS_NONE;
+    *took = subject->temp && has_case && lb_arm_names_payload(lb, arm);
+    if (*took) {
+        lb_take_payloads(lb, arm, subject->v);
+    } else if (subject->kind == MK_ALT) {
+        lb_bind_arm(lb, arm, subject->v);
+    } else if (subject->kind == MK_OPT && lb->facts->arm_case[arm->id] == 0) {
+        lb_bind_some(lb, arm, subject->v);
+    }
     lb_statements(lb, &arm->body);
     LbVal value = {MIR_NONE, false};
     if (lb->ok && !lb->dead && arm->value != NULL) {
@@ -906,15 +1018,16 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
     const bool owned_result = lb->ok && lb_owns(lb, result_ty);
     const bool void_result = lb->ok && lb_ty(lb, lb->facts->expr_ty[e->id]) == lb->void_ty;
     if (!lb->ok || (result_ty == MIR_NONE && !void_result) || (owned_result && lb->b.f.ret_borrowed) ||
-        scrutinee_ty == MIR_STR || aggregate || lb_is_fn(lb, result_ty)) {
-        return lb_unsupported(lb); // a String scrutinee is owned: ownership comes later
+        aggregate || lb_is_fn(lb, result_ty)) {
+        return lb_unsupported(lb);
     }
-    const bool drops_scrutinee = scrutinee.owned && lb_owns(lb, scrutinee_ty); // a temporary: each arm releases it
-    for (uint32_t i = 0; drops_scrutinee && i < e->u.match.arms.len; i++) {
-        if (scrutinee_kind != MK_ALT || lb_arm_binds_owned(lb, e->u.match.arms.ptr[i], scrutinee_ty)) {
-            return lb_unsupported(lb);
-        }
+    // An owned temporary scrutinee is the match's own: an arm that names a payload takes it apart, and
+    // every other arm releases it where the arm ends.
+    const bool drops_scrutinee = scrutinee.owned && lb_owns(lb, scrutinee_ty);
+    if (drops_scrutinee && scrutinee_kind != MK_ALT && scrutinee_kind != MK_OPT && scrutinee_ty != MIR_STR) {
+        return lb_unsupported(lb);
     }
+    const LbSubject subject = {scrutinee.v, scrutinee_kind, drops_scrutinee};
     const LbArms arms = lb_open_arms(lb, e);
     const MirValue result = void_result ? MIR_NONE
                                         : mir_b_add_block_param(&lb->b, arms.join, result_ty, owned_result ? MM_MOVE : MM_BORROW);
@@ -929,13 +1042,9 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
         const MsArm *arm = e->u.match.arms.ptr[i];
         mir_b_seal_block(&lb->b, arms.blocks[i]);
         lb_enter(lb, arms.blocks[i]);
-        if (scrutinee_kind == MK_ALT) {
-            lb_bind_arm(lb, arm, scrutinee.v);
-        } else if (scrutinee_kind == MK_OPT && lb->facts->arm_case[arm->id] == 0) {
-            lb_bind_some(lb, arm, scrutinee.v);
-        }
-        const LbVal value = lb_arm(lb, arm, void_result, owned_result);
-        if (lb->ok && !lb->dead && drops_scrutinee) {
+        bool took = false;
+        const LbVal value = lb_arm(lb, arm, &subject, void_result, owned_result, &took);
+        if (lb->ok && !lb->dead && drops_scrutinee && !took) {
             lb_drop(lb, scrutinee.v);
         }
         if (lb->ok && !lb->dead) {
