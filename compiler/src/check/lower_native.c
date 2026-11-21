@@ -42,6 +42,9 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
     const MsTy receiver_ty = lb->facts->call_receiver[e->id];
     const MsRtOp *fn = ln_function(lb, receiver_ty, callee->u.member.name);
+    if (fn != NULL && fn->op[0] == '\0') {
+        return lm_runtime_method(lb, e, fn); // a runtime call, not one instruction
+    }
     const int op = fn == NULL ? -1 : mir_op_from_name(fn->op, strlen(fn->op));
     if (op < 0 || !lb_is_list(lb, lb_mir_ty(lb, receiver_ty))) {
         return lb_unsupported(lb);
