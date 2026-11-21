@@ -186,6 +186,8 @@ LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_index(Lb *lb, const MsExpr *e);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
+const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
+LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 /* Stores `value` in the stack slot `slot`. */
 void lb_store(Lb *lb, MirValue slot, MirValue value);
 
