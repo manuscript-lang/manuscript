@@ -579,6 +579,9 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
 }
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
+    if (lb->facts->call_reordered[e->id]) {
+        return lb_unsupported(lb); // arguments are paired with parameters by index below
+    }
     const uint32_t callee = lb->facts->call_callee[e->id];
     const uint32_t method = lb->facts->call_method[e->id];
     if (method != MS_NONE) {
