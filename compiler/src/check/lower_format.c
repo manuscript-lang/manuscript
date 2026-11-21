@@ -295,7 +295,7 @@ static void lf_list(Lb *lb, MirTy ty, MirValue value, MirValue depth) {
 static uint32_t lf_build(Lb *lb, MirTy ty) {
     MirBuilder outer = lb->b;
     const MirParam params[2] = {{ty, MM_BORROW}, {MIR_INT, MM_BORROW}};
-    mir_b_init(&lb->b, lb->m, mir_name(lb->m, "format", 6), params, 2, MIR_STR);
+    mir_b_init(&lb->b, lb->m, lb_unique_name(lb, (MsStr){"format", 6}), params, 2, MIR_STR); // one per type: `format`, `format.1`
     lb_emit_plain(lb, MOP_DepthEnter);
     MirValue args[2];
     mir_b_params(&lb->b, args, 2);
@@ -320,10 +320,11 @@ static uint32_t lf_build(Lb *lb, MirTy ty) {
 
 /* The `format` function of `ty`, built on first use. */
 static uint32_t lf_helper(Lb *lb, MirTy ty) {
-    const MsSym name = mir_name(lb->m, "format", 6);
     for (uint32_t i = 0; i < lb->m->nfuncs; i++) {
         const MirFunc *f = &lb->m->funcs[i];
-        if (f->name == name && f->nparams == 2 && f->params[0].ty == ty) {
+        const MsStr name = ms_name(&lb->m->names, f->name);
+        const bool is_format = name.len >= 6 && memcmp(name.ptr, "format", 6) == 0 && (name.len == 6 || name.ptr[6] == '.');
+        if (is_format && f->nparams == 2 && f->params[0].ty == ty) {
             return i;
         }
     }

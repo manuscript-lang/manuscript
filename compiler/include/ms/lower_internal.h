@@ -387,6 +387,8 @@ bool lb_numeric_conversion(Lb *lb, MirValue x, MsTy checked_result, LbVal *out);
 bool lb_int_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 /* lower_optional.c: methods that are instructions. Each returns whether the call is one of its methods and sets `out`. */
 bool lb_optional_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out); /* `get_or` of an Optional */
+/* lower_each.c: `map` and `filter` of a list, a loop that calls the function value on each element. */
+bool lb_each_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 bool lb_clone_method(Lb *lb, const MsExpr *e, LbVal *out);                      /* `clone` of a value no runtime function copies */
 
 /* User enums (lower_enum.c, included after lower_body.c). */

@@ -904,3 +904,6 @@ static const MsRtFn rt_fns[] = {
     {"msstd_xchg_wait_gone", "", "", "", "", 0, 2, MS_RT_RET_BOOL, {MS_RT_HANDLE, MS_RT_ERR}, false, false, false, false, false, false, false, "HTTP", ""},
     {"msstd_xchg_write", "", "", "", "", 0, 5, MS_RT_RET_BOOL, {MS_RT_HANDLE, MS_RT_LIST, MS_RT_HAS, MS_RT_INT, MS_RT_ERR}, false, false, false, false, false, false, false, "HTTP", ""},
 };
+static const MsRtMethod rt_methods[] = {
+    {"List.drop", "msrt_list_drop_n"},
+};
