@@ -119,6 +119,9 @@ static void own_declare(OwnWalk *w, uint32_t binding, Perm perm, bool parameter)
     w->declared[w->ndeclared++] = binding;
     w->perm[binding] = (uint8_t)perm;
     w->class_of[binding] = (uint8_t)ms_classify(w->classifier, w->facts->bindings.ty[binding]);
+    if (w->class_of[binding] == MS_CLASS_RESOURCE) {
+        w->facts->bindings.flags[binding] |= MS_BIND_RESOURCE;
+    }
     w->origin[binding] = MS_NONE;
     w->is_param[binding] = parameter;
     w->param_mode[binding] = 0;
@@ -1066,7 +1069,7 @@ static MsPlace own_target_place(OwnWalk *w, const MsExpr *target, uint32_t root,
     const MsPlace place = {root, steps, depth};
     MsBuf shown = {0};
     ms_place_show(&shown, w->check->names, place, w->facts->bindings.name[root]);
-    *text = (MsStr){.ptr = ms_arena_strndup(&w->check->arena, shown.data, shown.len), .len = shown.len};
+    *text = (MsStr){.ptr = ms_arena_strndup(&w->check->arena, shown.data, shown.len), .len = (uint32_t)shown.len};
     ms_buf_free(&shown);
     return place;
 }
