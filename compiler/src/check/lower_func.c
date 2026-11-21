@@ -180,7 +180,9 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
         if (lb_param_moves(lb, c, i)) { // the function owns what it was handed
             const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
             if (lc_is_resource(lb, mir_b_ty(&lb->b, lb->value_of[binding]))) {
-                lb->ok = lc_own_param(lb, binding) && lb->ok; // closed at its scope's end
+                if (!lc_own_param(lb, binding)) { // closed at its scope's end
+                    (void)LB_UNSUPPORTED(lb);
+                }
             } else {
                 lscope_own(&lb->scopes, lb->value_of[binding], 0);
             }
@@ -197,15 +199,15 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
     if (lb->ok && !lb->dead && (lb->b.f.ret == MIR_VOID || la_returns_void_result(lb))) {
         lb_return_void(lb); // the end of a function that returns nothing, or `ok` of nothing
     }
+    if (lb->ok && lb->dead) {
+        lc_check(lb);
+    }
     if (!lb->ok) {
         lb_why(lb, c, NULL);
     } else if (!lb->dead) {
         lb_why(lb, c, "falls off the end");
     }
     lb->ok = lb->ok && lb->dead;
-    if (lb->ok) {
-        lc_check(lb);
-    }
     MirFunc f = {0};
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
@@ -373,7 +375,7 @@ uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
         return MIR_NONE;
     }
     if (!lb_push_inst(&lb->insts, &lb->ninsts, &lb->cinsts, &inst)) {
-        lb->ok = false;
+        (void)LB_UNSUPPORTED(lb);
         return MIR_NONE;
     }
     return inst.func;
