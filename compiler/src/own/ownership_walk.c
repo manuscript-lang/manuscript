@@ -831,6 +831,13 @@ static const MsMethod *own_walked_method(const OwnWalk *w, uint32_t row, const M
     return method;
 }
 
+/* Whether method `row` has no body to walk: a runtime operation or an intrinsic declared with `...`. */
+static bool own_method_unwalked(const OwnWalk *w, uint32_t row) {
+    const MsMethods *methods = w->facts->methods;
+    const MsFunc *declared = methods->decl[row];
+    return methods->native[row] != MS_NATIVE_SOURCE || (declared != NULL && (declared->external || declared->body.len == 0));
+}
+
 /* The arguments of a method call, by what the method does with each parameter: a `var` one changes a
  * variable, a `move` one (or a plain one the method's own walk found it consumes) is handed over, the
  * rest are read. `consumed` has the receiver at bit 0. */
@@ -897,7 +904,9 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     // What the method moves of its parameters, and whether its result is a reference into them, is known
     // once its module's walk has run; a call over plain values needs neither.
     uint32_t consumed = 0;
-    if (!plain) {
+    if (!plain && own_method_unwalked(w, row) && ms_classify(w->classifier, result) == MS_CLASS_COPY) {
+        consumed = 0; // nothing to walk: what such a method takes is what its signature says (`move`, `var`), and a plain result borrows nothing
+    } else if (!plain) {
         const MsFacts *home = NULL;
         const MsMethod *walked = w->facts->methods->native[row] == MS_NATIVE_SOURCE ? own_walked_method(w, row, &home) : NULL;
         if (walked == NULL || home->ret_borrowed[walked->id]) {
