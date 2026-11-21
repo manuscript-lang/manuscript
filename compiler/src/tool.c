@@ -853,21 +853,24 @@ static void enc_module(Tree *t) {
     patch(e, at, k);
 }
 
-ms_object *ms_tool_parse(const ms_str *text) {
-    ms_object *obj = ms_object_new(sizeof(Tree), tree_drop);
-    Tree *t = ms_payload(obj);
-    size_t len = ms_str_len(text);
+/* Parses `src` into `t` (whose fields start zeroed): the nodes are encoded when it parses. */
+static void tree_load(Tree *t, const char *src, size_t len) {
     t->text = malloc(len + 1);
-    memcpy(t->text, ms_str_data(text), len);
+    memcpy(t->text, src, len);
     t->text[len] = 0;
     ms_names_init(&t->names);
     if (!ms_utf8_valid(t->text, len)) {
         t->diag.message = (MsStr){"invalid UTF-8", 13};
-        return obj;
+        return;
     }
-    if (!ms_parse(&t->arena, &t->names, t->text, len, &t->module, &t->diag)) return obj;
+    if (!ms_parse(&t->arena, &t->names, t->text, len, &t->module, &t->diag)) return;
     t->ok = true;
     enc_module(t);
+}
+
+ms_object *ms_tool_parse(const ms_str *text) {
+    ms_object *obj = ms_object_new(sizeof(Tree), tree_drop);
+    tree_load(ms_payload(obj), (const char *)ms_str_data(text), ms_str_len(text));
     return obj;
 }
 
@@ -1086,11 +1089,30 @@ static void collect_effects(Analysis *a, const MsCheck *check, MsModId id) {
     ms_arena_free(&arena);
 }
 
-static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id) {
+/* Start and end offsets of each syntax node by id, from the encoded tree of the same text. */
+static void node_spans(const Tree *t, uint32_t count, int64_t *start, int64_t *end) {
+    const size_t records = t->nodes.len / sizeof(int64_t) / MS_TOOL_NODE_WIDTH;
+    for (size_t i = 0; i < records; i++) {
+        const int64_t id = field_load(&t->nodes, i * MS_TOOL_NODE_WIDTH + 1);
+        if (id >= 0 && (uint64_t)id <= count) {
+            start[id] = field_load(&t->nodes, i * MS_TOOL_NODE_WIDTH + 2);
+            end[id] = field_load(&t->nodes, i * MS_TOOL_NODE_WIDTH + 5);
+        }
+    }
+}
+
+static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id, const char *src, size_t len) {
     const MsFacts *facts = check->mods[id].facts;
     const MsNames *table = check->names;
     if (facts == NULL) {
         return;
+    }
+    Tree tree = {0};
+    tree_load(&tree, src, len);
+    int64_t *start = calloc(facts->node_count + 1, sizeof *start);
+    int64_t *end = calloc(facts->node_count + 1, sizeof *end);
+    if (tree.ok && start != NULL && end != NULL) {
+        node_spans(&tree, facts->node_count, start, end);
     }
     /* Header: node rows, binding rows, symbol rows. */
     int64_t nodes = 0, symbols = 0;
@@ -1160,6 +1182,16 @@ static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id) {
     for (size_t i = 0; i < a->neffects; i++) {
         put_row(a, a->effects[i]);
     }
+    /* The span of each node row, in order: start and end offsets in the text. */
+    for (uint32_t n = 0; n <= facts->node_count; n++) {
+        if (analyzed(facts, n)) {
+            put_row(a, start[n]);
+            put_row(a, end[n]);
+        }
+    }
+    free(start);
+    free(end);
+    tree_drop(&tree);
 }
 
 /* Loads the project `path` belongs to, with `overlay` (path, text pairs) in place of disk, and checks every module of
@@ -1180,7 +1212,7 @@ static void analyze_project(Analysis *a, MsCheck *check, MsNames *table, const c
         for (uint32_t i = 0; i < graph.count; i++) {
             ms_module_check_ownership(check, ids[i]);
         }
-        analyze_facts(a, check, ids[graph.count - 1]);
+        analyze_facts(a, check, ids[graph.count - 1], (const char *)graph.modules[graph.count - 1].source, graph.modules[graph.count - 1].length);
     }
     ms_arena_free(&graph_arena);
 }
@@ -1253,7 +1285,7 @@ ms_object *ms_tool_analyze(const ms_str *path, const ms_str *text, const ms_list
             (void)ms_program_check_module(&check, id, (MsStr){src, (uint32_t)len});
             collect_effects(a, &check, id);
             ms_module_check_ownership(&check, id);
-            analyze_facts(a, &check, id);
+            analyze_facts(a, &check, id, src, len);
         }
         ms_check_free(&check);
     }
