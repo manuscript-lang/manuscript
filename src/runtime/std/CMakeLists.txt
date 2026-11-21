@@ -43,3 +43,8 @@ add_library(ms_std_random STATIC random.c)
 ms_target_defaults(ms_std_random)
 add_dependencies(ms_std_random openssl_build)
 target_link_libraries(ms_std_random PUBLIC ms_base openssl_crypto)
+
+# @std/io/archive compression: gzip, zlib and raw deflate on zlib, whole-buffer and streaming.
+add_library(ms_std_compress STATIC compress.c)
+ms_target_defaults(ms_std_compress)
+target_link_libraries(ms_std_compress PUBLIC ms_base ms_values zlib)
