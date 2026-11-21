@@ -372,6 +372,10 @@ static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
 
 static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     own_check_wrap(w, e);
+    if (w->facts->coerce_iface[e->id] != MS_TY_NONE && e->kind != MS_E_CALL) {
+        w->supported = false; /* a named value boxed into an interface: moved or copied, not followed yet */
+        return;
+    }
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER:
     case MS_E_BOOL:
