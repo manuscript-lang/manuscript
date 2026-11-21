@@ -13,7 +13,7 @@ foreach(line IN LISTS CURL_INC_LINES)
 endforeach()
 
 add_library(curl STATIC ${CURL_SOURCES})
-target_include_directories(curl PUBLIC ${CURL_DIR}/include PRIVATE ${CURL_DIR}/lib ${CURL_GEN})
+target_include_directories(curl SYSTEM PUBLIC ${CURL_DIR}/include PRIVATE ${CURL_DIR}/lib ${CURL_GEN})
 target_compile_definitions(curl PUBLIC CURL_STATICLIB PRIVATE BUILDING_LIBCURL USE_NGHTTP2 HAVE_LIBZ)
 target_link_libraries(curl PUBLIC zlib nghttp2)
 

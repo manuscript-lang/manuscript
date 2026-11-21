@@ -11,15 +11,17 @@ add_library(ms_std_text STATIC
 ms_target_defaults(ms_std_text)
 target_link_libraries(ms_std_text PUBLIC ms_base ms_values pcre2)
 
-# @std/data/json: the scanner, the document handle, the tree builder and the writer.
+# @std/data: json (scanner, document handle, tree builder, writer), checksum (zlib) and encoding.
 add_library(ms_std_data STATIC
   json_doc.c
   json_scalar.c
   json_scan.c
   json_tree.c
-  json_write.c)
+  json_write.c
+  checksum.c
+  encoding.c)
 ms_target_defaults(ms_std_data)
-target_link_libraries(ms_std_data PUBLIC ms_base ms_values)
+target_link_libraries(ms_std_data PUBLIC ms_base ms_values zlib)
 
 # @std/time: durations, instants, clocks, RFC 3339 text, calendar fields and the host zone setting.
 add_library(ms_std_time STATIC
@@ -30,3 +32,14 @@ add_library(ms_std_time STATIC
   time_text.c)
 ms_target_defaults(ms_std_time)
 target_link_libraries(ms_std_time PUBLIC ms_base)
+
+# @std/math: libm functions and the wide-word helpers.
+add_library(ms_std_math STATIC stdmath.c)
+ms_target_defaults(ms_std_math)
+target_link_libraries(ms_std_math PUBLIC ms_base m)
+
+# @std/random: operating system entropy through libcrypto, and the version-7 UUID stamp sequence.
+add_library(ms_std_random STATIC random.c)
+ms_target_defaults(ms_std_random)
+add_dependencies(ms_std_random openssl_build)
+target_link_libraries(ms_std_random PUBLIC ms_base openssl_crypto)
