@@ -237,6 +237,16 @@ static _Thread_local struct {
     bool started; /* a request started since the scheduler last looked for work */
 } waiting;
 
+/* A group is a handle that Manuscript holds as a number (`ms_idle_group_new`): the one place it becomes a pointer again. */
+static IdleGroup *group_of(uintptr_t word) {
+    return (IdleGroup *)word; // NOLINT(performance-no-int-to-ptr): the handle travels as a word through Manuscript
+}
+
+/* A registration's state word, as `ms_promise_io_on_ready` hands it back to the callback. */
+static Reg *reg_of(uintptr_t word) {
+    return (Reg *)word; // NOLINT(performance-no-int-to-ptr): the promise table stores the state as a word
+}
+
 static bool on_event(MsPromise id, uintptr_t state, uint32_t bits);
 
 /* Watches the row on this thread with a fresh registration. False when the descriptor cannot be watched. */
@@ -337,7 +347,7 @@ bool ms_idle_turn(void) {
 
 /* The registration's callback, once: READ or HUP when the descriptor is readable, TIMEOUT, or CANCELLED. */
 static bool on_event(MsPromise id, uintptr_t state, uint32_t bits) {
-    Reg *const reg = (Reg *)state;
+    Reg *const reg = reg_of(state);
     IdleRow *const row = reg->row;
     lock();
     if (row->watching == id) {
@@ -381,7 +391,7 @@ bool ms_idle_park(const MsIdleOps *ops, void *subject, int fd, MsObj *next, uint
     row->owner = ms_isolate_self();
     row->fd = fd;
     row->deadline_ns = timeout_ns < 0 ? MS_NO_DEADLINE : ms_sched_now() + timeout_ns;
-    row->group = (IdleGroup *)group;
+    row->group = group_of(group);
     row->ops = ops;
     row->subject = subject;
     row->next_request = next;
@@ -484,7 +494,7 @@ static void idle_mail(MsMail *mail) {
         take(row);
     } else if (operation == OP_CANCEL) {
         for (size_t i = 0; i < tidy.promise_count; i++) {
-            if (tidy.promises[i].group == (IdleGroup *)mail->b) {
+            if (tidy.promises[i].group == group_of(mail->b)) {
                 ms_promise_cancel(tidy.promises[i].id);
             }
         }
@@ -510,7 +520,7 @@ static size_t collect(IdleRow **out, size_t limit, uint32_t owner, bool by_group
     size_t count = 0;
     lock();
     for (IdleRow *row = list_head; row != NULL && count < limit; row = row->next) {
-        const bool wanted = by_group ? row->group == (IdleGroup *)group : row->owner == owner;
+        const bool wanted = by_group ? row->group == group_of(group) : row->owner == owner;
         if (!wanted || atomic_load(&row->state) != IDLE || (!mark_closing && atomic_load(&row->closing))) {
             continue;
         }
@@ -568,7 +578,7 @@ void ms_idle_drain(uintptr_t group) {
     }
 }
 
-size_t ms_idle_inflight(uintptr_t group) { return atomic_load(&((IdleGroup *)group)->inflight); }
+size_t ms_idle_inflight(uintptr_t group) { return atomic_load(&(group_of(group))->inflight); }
 
 void ms_idle_cancel(uintptr_t group) {
     uint64_t live = 0;

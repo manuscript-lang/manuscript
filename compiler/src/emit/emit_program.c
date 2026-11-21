@@ -132,8 +132,11 @@ bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name, MsB
     bool ok = mir_parse(&m, mir, mir_len, &line, &message);
     if (!ok) {
         ms_buf_printf(&why_buf, "%s:%u: %.*s", name, line, (int)message.len, message.ptr);
-    } else if ((ok = mir_optimize(&m, MIR_OPT_SPEED, true, &why_buf))) {
-        mir_print_module(&m, &text);
+    } else {
+        ok = mir_optimize(&m, MIR_OPT_SPEED, true, &why_buf);
+        if (ok) {
+            mir_print_module(&m, &text);
+        }
     }
     mir_module_free(&m);
     if (!ok) {

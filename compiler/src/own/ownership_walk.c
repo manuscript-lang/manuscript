@@ -187,6 +187,22 @@ static void own_queue_release(OwnWalk *w, uint32_t holder) {
 
 /* ---- diagnostics ---- */
 
+/* How to end a borrow that blocks a change: clone the iterable, the captured value or the initializer. */
+static MsStr own_borrow_remedy(const OwnWalk *w, const Borrow *b, bool closure, MsStr holder) {
+    if (b->holder >= OWN_HIDDEN_HOLDER) {
+        return ms_arena_fmt(&w->check->arena, "iterate over a clone instead by appending `.clone()` to the loop's "
+                                              "iterable expression");
+    }
+    if (closure) {
+        return ms_arena_fmt(&w->check->arena,
+                            "or build `%.*s` from a clone: bind `.clone()` of the captured value first and capture "
+                            "that binding",
+                            (int)holder.len, holder.ptr);
+    }
+    return ms_arena_fmt(&w->check->arena, "or give `%.*s` its own value by ending its initializer with `.clone()`",
+                        (int)holder.len, holder.ptr);
+}
+
 /* A change (`what`: "move", "reassign" or "change") of `target` while some live borrow reads a part
  * of it that overlaps. `shown` is how the diagnostic names the place; a borrow held by `binding`
  * itself (the place's own root) does not count. */
@@ -200,17 +216,7 @@ static void own_check_change_place(OwnWalk *w, MsPos pos, uint32_t binding, MsPl
         }
         const MsStr holder = own_name(w, b->holder);
         const bool closure = strcmp(b->why, "closure capture") == 0;
-        const MsStr remedy =
-            b->holder >= OWN_HIDDEN_HOLDER
-                ? ms_arena_fmt(&w->check->arena, "iterate over a clone instead by appending `.clone()` to the loop's "
-                                                 "iterable expression")
-            : closure
-                ? ms_arena_fmt(&w->check->arena,
-                               "or build `%.*s` from a clone: bind `.clone()` of the captured value first and capture "
-                               "that binding",
-                               (int)holder.len, holder.ptr)
-                : ms_arena_fmt(&w->check->arena, "or give `%.*s` its own value by ending its initializer with `.clone()`",
-                               (int)holder.len, holder.ptr);
+        const MsStr remedy = own_borrow_remedy(w, b, closure, holder);
         own_error(w, pos,
                   ms_arena_fmt(&w->check->arena,
                                "cannot %s `%.*s` while `%.*s` borrows it (%s, at %u:%u); finish using `%.*s` before "
@@ -370,7 +376,6 @@ static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
     }
 }
 
-static void own_construct(OwnWalk *w, const MsExpr *e);
 
 static void own_construct(OwnWalk *w, const MsExpr *e);
 

@@ -50,13 +50,6 @@ void ms_sched_stop_hold(void);
 void ms_sched_stop_release(void);
 /* Delivers the pending cancel by return; see the rules above. */
 void ms_sched_cancel_return(void);
-/* The OS code of the first failed write to standard output (0 when none), and a flush of the runtime's buffered
- * standard output. */
-int32_t ms_sched_stdout_error(void);
-void ms_sched_flush_stdout(void);
-/* Registers a function to run once when the process exits (crates/ms-rt/src/process.rs while the process module is
- * Rust). */
-void msrt_process_on_exit(void (*hook)(void));
 /* Whether a bounded read of the running task has used its time (a wait loop must then fail with a timeout). */
 bool ms_sched_read_limit_passed(void);
 /* Marks the running task's stack as lent to another thread (true) or returned (false): while lent, the task keeps

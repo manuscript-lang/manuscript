@@ -1,6 +1,8 @@
 /* The per-function driver of the lowering: the signature of a function or method, its stub in the
  * module, starting and finishing a body, and the pass over a module (`ms_lower_module`) that repeats
  * without the functions that failed. Expressions and statements are lower_body.c's. */
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "ms/lower_internal.h"
@@ -207,7 +209,7 @@ static bool lb_push_inst(LbInst **list, uint32_t *n, uint32_t *cap, const LbInst
  * on first use; MIR_NONE when its signature is not handled or it failed before. Copies are named
  * `name`, `name.1`, `name.2`, ... in the order they are created. Their bodies are lowered by
  * `lb_drain_instances` once the module's own functions are. */
-static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
+uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
     if (lb_find_inst(lb->dead_insts, lb->ndead_insts, sym, args, nargs) != NULL) {
         return MIR_NONE;
     }

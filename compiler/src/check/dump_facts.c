@@ -615,6 +615,54 @@ static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects
     ms_buf_puts(out, ", \"effects_known\": true");
 }
 
+/* The rows of the methods of the impl block `d`; `decl_last` is the last line of the block. */
+static void facts_add_methods(MsBuf *rows, const FactsOwn *own, const MsEntityEffects *effect_rows, uint32_t neffects,
+                              const char *file, const MsDecl *d, uint32_t decl_last) {
+    MsCheck *const c = own->check;
+    const MsModId m = own->module;
+    const MsNames *names = c->names;
+    for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
+        const MsMethod *meth = d->u.impl.methods.ptr[k];
+        FactsRow *method = facts_add_row(rows, names, file, "method", meth->pos.line);
+        facts_fill_method(method, names, d, meth);
+        facts_seal_key(method);
+        facts_put_effects(&method->effects, NULL, effect_rows, neffects, file);
+        MsBuf label = {0};
+        facts_put_str(&label, names, d->u.impl.receiver->kind == MS_TYPE_NAMED ? d->u.impl.receiver->name : 0);
+        ms_buf_putc(&label, '.');
+        facts_put_str(&label, names, meth->func.name);
+        facts_put_meta(&method->meta, c, m, NULL, &label);
+        ms_buf_free(&label);
+        method->first = meth->pos.line;
+        method->last = k + 1 < d->u.impl.methods.len ? d->u.impl.methods.ptr[k + 1]->pos.line - 1 : decl_last;
+    }
+}
+
+/* The entity rows as JSON, in key order; of impl blocks that share a key only the last prints. */
+static void facts_print_entities(MsBuf *out, const FactsRow *items, size_t count, const MsBuf *file) {
+    ms_buf_puts(out, "{\n  \"entities\": [");
+    bool first = true;
+    for (size_t i = 0; i < count; i++) {
+        if (i + 1 < count && items[i].key.len == items[i + 1].key.len && memcmp(items[i].key.data, items[i + 1].key.data, items[i].key.len) == 0) {
+            continue; /* impl blocks of one type share a key: the last block prints, as the Rust map keeps it */
+        }
+        ms_buf_puts(out, first ? "\n    " : ",\n    ");
+        first = false;
+        ms_buf_puts(out, "{\"key\": ");
+        facts_put_json_buf(out, &items[i].key);
+        ms_buf_puts(out, ", \"file\": ");
+        facts_put_json(out, file->data, file->len - 1);
+        ms_buf_printf(out, ", \"kind\": \"%s\", \"name\": ", items[i].kind);
+        facts_put_json_buf(out, &items[i].name);
+        ms_buf_printf(out, ", \"line\": %u, \"scopes\": %u, \"ownership_known\": %s, \"external\": [], \"first\": %u, \"last\": %u, ",
+                      items[i].line, items[i].scopes, items[i].own_known ? "true" : "false", items[i].first, items[i].last);
+        ms_buf_put(out, items[i].effects.data, items[i].effects.len);
+        ms_buf_put(out, items[i].meta.data, items[i].meta.len);
+        ms_buf_put(out, items[i].body.data, items[i].body.len);
+        ms_buf_putc(out, '}');
+    }
+}
+
 void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
     const MsModuleRow *row = &c->mods[m];
     const MsModule *module = row->syntax;
@@ -649,46 +697,12 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
         if (d->kind != MS_D_IMPL) {
             continue;
         }
-        for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
-            const MsMethod *meth = d->u.impl.methods.ptr[k];
-            FactsRow *method = facts_add_row(&rows, names, file.data, "method", meth->pos.line);
-            facts_fill_method(method, names, d, meth);
-            facts_seal_key(method);
-            facts_put_effects(&method->effects, NULL, effect_rows, neffects, file.data);
-            MsBuf label = {0};
-            facts_put_str(&label, names, d->u.impl.receiver->kind == MS_TYPE_NAMED ? d->u.impl.receiver->name : 0);
-            ms_buf_putc(&label, '.');
-            facts_put_str(&label, names, meth->func.name);
-            facts_put_meta(&method->meta, c, m, NULL, &label);
-            ms_buf_free(&label);
-            method->first = meth->pos.line;
-            method->last = k + 1 < d->u.impl.methods.len ? d->u.impl.methods.ptr[k + 1]->pos.line - 1 : decl_last;
-        }
+        facts_add_methods(&rows, &own, effect_rows, neffects, file.data, d, decl_last);
     }
     FactsRow *items = ms_buf_items(&rows);
     const size_t count = rows.len / sizeof *items;
     qsort(items, count, sizeof *items, facts_compare_rows);
-    ms_buf_puts(out, "{\n  \"entities\": [");
-    bool first = true;
-    for (size_t i = 0; i < count; i++) {
-        if (i + 1 < count && items[i].key.len == items[i + 1].key.len && memcmp(items[i].key.data, items[i + 1].key.data, items[i].key.len) == 0) {
-            continue; /* impl blocks of one type share a key: the last block prints, as the Rust map keeps it */
-        }
-        ms_buf_puts(out, first ? "\n    " : ",\n    ");
-        first = false;
-        ms_buf_puts(out, "{\"key\": ");
-        facts_put_json_buf(out, &items[i].key);
-        ms_buf_puts(out, ", \"file\": ");
-        facts_put_json(out, file.data, file.len - 1);
-        ms_buf_printf(out, ", \"kind\": \"%s\", \"name\": ", items[i].kind);
-        facts_put_json_buf(out, &items[i].name);
-        ms_buf_printf(out, ", \"line\": %u, \"scopes\": %u, \"ownership_known\": %s, \"external\": [], \"first\": %u, \"last\": %u, ",
-                      items[i].line, items[i].scopes, items[i].own_known ? "true" : "false", items[i].first, items[i].last);
-        ms_buf_put(out, items[i].effects.data, items[i].effects.len);
-        ms_buf_put(out, items[i].meta.data, items[i].meta.len);
-        ms_buf_put(out, items[i].body.data, items[i].body.len);
-        ms_buf_putc(out, '}');
-    }
+    facts_print_entities(out, items, count, &file);
     ms_buf_puts(out, "\n  ],\n  \"imports\": ");
     facts_put_imports(out, module, file.data, file.len - 1);
     ms_buf_puts(out, ", \"flows\": []\n}\n");

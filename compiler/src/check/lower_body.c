@@ -95,7 +95,7 @@ void lb_emit_plain(Lb *lb, MirOp op) {
 }
 
 /* `depth.enter` and `depth.leave` bracket a function; a closure body has neither. */
-static void lb_depth(Lb *lb, MirOp op) {
+void lb_depth(Lb *lb, MirOp op) {
     if (!lb->closure) {
         lb_emit_plain(lb, op);
     }
@@ -215,7 +215,6 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
 /* ---- operators ---- */
 
 static LbVal lb_match(Lb *lb, const MsExpr *e);
-static void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param);
 
 static LbVal lb_unary(Lb *lb, const MsExpr *e) {
     const MsExpr *operand = e->u.bin.left;
@@ -406,33 +405,33 @@ static MirValue lb_var_argument(Lb *lb, const MsExpr *arg, uint32_t *binding_out
 
 /* Whether parameter `index` of the function declared by `d` is handed over: declared `move`, or
  * moved by the body (the ownership pass's `param_consumed`). */
-static bool lb_has_self(const LbCallable *c) {
+bool lb_has_self(const LbCallable *c) {
     return c->self_ty != MS_TY_NONE;
 }
 
 /* The parameters of a callable in call order: the receiver (a method's) first. */
-static uint32_t lb_slots(const LbCallable *c) {
+uint32_t lb_slots(const LbCallable *c) {
     return c->fn->params.len + (lb_has_self(c) ? 1u : 0u);
 }
 
 /* The source parameter behind a slot: NULL for a method's receiver. */
-static const MsParam *lb_slot_param(const LbCallable *c, uint32_t slot) {
+const MsParam *lb_slot_param(const LbCallable *c, uint32_t slot) {
     const uint32_t first = lb_has_self(c) ? 1u : 0u;
     return slot < first ? NULL : c->fn->params.ptr[slot - first];
 }
 
-static bool lb_slot_mutable(const LbCallable *c, uint32_t slot) {
+bool lb_slot_mutable(const LbCallable *c, uint32_t slot) {
     const MsParam *param = lb_slot_param(c, slot);
     return param == NULL ? c->mutating : param->is_mutable;
 }
 
 /* The node whose binding a parameter slot introduces: a method's node for its `self`. */
-static uint32_t lb_slot_node(const LbCallable *c, uint32_t slot) {
+uint32_t lb_slot_node(const LbCallable *c, uint32_t slot) {
     const MsParam *param = lb_slot_param(c, slot);
     return param == NULL ? c->node : param->id;
 }
 
-static bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot) {
+bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot) {
     const MsParam *param = lb_slot_param(c, slot);
     const bool declared = param != NULL && param->moving;
     return declared || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
@@ -472,8 +471,6 @@ MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
     }
     return lb_copy(lb, value.v);
 }
-
-static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
 
 /* The module function a call reaches: the callee's own, or for a generic callee its copy for the
  * type arguments the checker inferred at this call, seen through the instance being lowered. */
@@ -786,7 +783,7 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
 /* ---- statements ---- */
 
 /* Names `value` for a debugger, as the Rust lowering does: parameters and single-definition locals. */
-static void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param) {
+void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param) {
     const MsStr text = ms_name(lb->c->names, name);
     const MirNamedValue named = {value, mir_name(lb->m, text.ptr, text.len), param, 0};
     MIR_PUSH(lb->m, lb->b.f.names, lb->b.f.nnames, lb->b.f.cnames, MirNamedValue, named);

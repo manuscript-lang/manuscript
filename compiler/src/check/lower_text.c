@@ -109,7 +109,7 @@ static LtPiece lt_piece(Lb *lb, LbVal value, uint32_t own_form) {
     MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, 1);
     params[0] = (MirParam){ty, MM_BORROW};
     const MirExtern ext = {.name = mir_name(lb->m, form->symbol, strlen(form->symbol)),
-                           .params = params, .nparams = 1, .ret = MIR_STR, .fresh = true, .leaf = true, .role = form->role};
+                           .params = params, .nparams = 1, .ret = MIR_STR, .fresh = true, .leaf = true, .role = (uint8_t)form->role};
     const MirValue text = mir_b_call_rt(&lb->b, lt_runtime_extern(lb, &ext), &value.v, 1);
     if (value.owned) {
         lb_drop(lb, value.v);

@@ -939,10 +939,19 @@ static void analysis_drop(void *payload) {
     free(a->name_lens);
 }
 
+/* `*items` resized to `count` elements of `size` bytes; out of memory is fatal, as everywhere in the compiler. */
+static void analysis_grow(void **items, size_t count, size_t size) {
+    void *grown = realloc(*items, count * size);
+    if (grown == NULL) {
+        ms_oom();
+    }
+    *items = grown;
+}
+
 static void put_row(Analysis *a, int64_t v) {
     if (a->nrows == a->rows_cap) {
         a->rows_cap = a->rows_cap == 0 ? 256 : a->rows_cap * 2;
-        a->rows = realloc(a->rows, a->rows_cap * sizeof *a->rows);
+        analysis_grow((void **)&a->rows, a->rows_cap, sizeof *a->rows);
     }
     a->rows[a->nrows++] = v;
 }
@@ -950,8 +959,8 @@ static void put_row(Analysis *a, int64_t v) {
 static int64_t put_name(Analysis *a, const char *data, size_t len) {
     if (a->nnames == a->names_cap) {
         a->names_cap = a->names_cap == 0 ? 64 : a->names_cap * 2;
-        a->names = realloc(a->names, a->names_cap * sizeof *a->names);
-        a->name_lens = realloc(a->name_lens, a->names_cap * sizeof *a->name_lens);
+        analysis_grow((void **)&a->names, a->names_cap, sizeof *a->names);
+        analysis_grow((void **)&a->name_lens, a->names_cap, sizeof *a->name_lens);
     }
     char *copy = malloc(len + 1);
     memcpy(copy, data, len);

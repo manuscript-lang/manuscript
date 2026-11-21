@@ -23,7 +23,7 @@ vscode-install: vscode-package
 		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
-verify: check repo-check workflow-check bench-check lsp-test unit docs-check licenses-check
+verify: check repo-check c-lint workflow-check bench-check lsp-test unit docs-check licenses-check
 
 verify-full: verify conform removed-check ms-cli-check book-check dist-check
 

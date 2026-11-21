@@ -136,6 +136,17 @@ bool lb_owns(Lb *lb, MirTy ty);
 MirValue lb_move_argument(Lb *lb, const MsExpr *e);
 MirValue lb_load(Lb *lb, MirValue slot, MirTy ty);     /* reads a value from memory */
 void lb_store(Lb *lb, MirValue slot, MirValue value);  /* writes a value to memory */
+/* The parameters of a callable (lower_body.c) as lower_func.c reads them. */
+bool lb_has_self(const LbCallable *c);
+uint32_t lb_slots(const LbCallable *c);
+const MsParam *lb_slot_param(const LbCallable *c, uint32_t slot);
+bool lb_slot_mutable(const LbCallable *c, uint32_t slot);
+uint32_t lb_slot_node(const LbCallable *c, uint32_t slot);
+bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot);
+void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param);
+void lb_depth(Lb *lb, MirOp op);
+/* The module function a call reaches (lower_func.c): the callee's own, or its copy for a generic one. */
+uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
 bool lb_lines_have_diagnostic(const MsModuleRow *row, uint32_t first, uint32_t end);
 uint32_t lb_add_stub(Lb *lb, const LbCallable *c); /* a function with the signature and no body; MIR_NONE when not handled */
 bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over its stub; false when not handled */
@@ -186,9 +197,6 @@ void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
-/* Stores `value` in the stack slot `slot`. */
-void lb_store(Lb *lb, MirValue slot, MirValue value);
-
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */
 static inline bool lb_is_scalar(MirTy ty) {
     return ty == MIR_INT || ty == MIR_FLOAT || ty == MIR_BOOL;

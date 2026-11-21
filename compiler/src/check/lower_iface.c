@@ -5,6 +5,7 @@
  * takes or gives `Self`, moves or changes an argument, or has a type this pass does not lower leaves
  * the interface to the Rust lowering. Values enter an interface (`iface.new` and the vtables) where a
  * concrete value is passed as one, which the checker does not record yet. */
+#include <stdio.h>
 #include <string.h>
 
 #include "ms/lower_internal.h"

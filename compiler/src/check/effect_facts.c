@@ -33,8 +33,8 @@ typedef struct Fx {
 
 /* Records which modules are project code, and sizes the per-module tables. */
 static void fx_set_modules(Fx *fx, const MsEffectModule *modules, uint32_t count) {
-    const MsEffectModule **by_module = MS_NEW_N(fx->arena, const MsEffectModule *, (size_t)fx->c->nmods + 1);
-    memset(by_module, 0, ((size_t)fx->c->nmods + 1) * sizeof *by_module);
+    const MsEffectModule **by_module = NULL;
+    by_module = ms_alloc_zeroed(fx->arena, (size_t)fx->c->nmods + 1, sizeof(void *));
     for (uint32_t i = 0; i < count; i++) {
         by_module[modules[i].id] = &modules[i];
     }
@@ -334,7 +334,10 @@ MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId modul
 /* The module of node `i`. */
 static MsModId fx_module_of(const Fx *fx, uint32_t i) {
     const MsSymId sym = fx->nodes[i].sym;
-    return sym >= fx->c->syms.count ? fx->methods->module[sym - fx->c->syms.count] : fx->c->syms.module[sym];
+    if (sym < fx->c->syms.count) {
+        return fx->c->syms.module[sym];
+    }
+    return fx->methods != NULL ? fx->methods->module[sym - fx->c->syms.count] : MS_NONE;
 }
 
 /* Adds a node for every checked function, constant and method of the listed modules. */
@@ -392,6 +395,9 @@ bool ms_effect_package_violations(MsArena *arena, const MsCheck *c, const MsEffe
     MsPackageViolation *rows = MS_NEW_N(arena, MsPackageViolation, (size_t)reach.nviolations + 1);
     for (uint32_t k = 0; k < reach.nviolations; k++) {
         const MsViolation *v = &reach.violations[k];
+        if (v->path[0] >= fx.n) {
+            continue; /* a path starts at one of the nodes */
+        }
         const MsEffectModule *own = fx.module[fx_module_of(&fx, v->path[0])];
         if (own != NULL && own->package != NULL) {
             const MsStr file = v->file;
