@@ -70,13 +70,21 @@ MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected) {
     return ty;
 }
 
-/* Whether `left` is a local, or a field path from one (`self.items`): a value, never a function or type the
- * bracket could apply type arguments to. */
+/* Whether `left` is a value, never a function or type the bracket could apply type arguments to: a local or
+ * a field path from one (`self.items`), an element (`xs[i][j]`), or a call's result. */
 static bool list_receiver_is_local(const MsBody *b, const MsExpr *left) {
-    while (left->kind == MS_E_MEMBER) {
-        left = left->u.member.left;
+    for (;;) {
+        MsExpr *inner = NULL;
+        MsExpr *index = NULL;
+        if (left->kind == MS_E_MEMBER) {
+            left = left->u.member.left;
+        } else if ((left->kind == MS_E_INDEX || left->kind == MS_E_APPLY) && ms_expr_index(left, &inner, &index)) {
+            left = inner;
+        } else {
+            break;
+        }
     }
-    return left->kind == MS_E_NAME && ms_body_find_binding(b, left->u.sym) != MS_NONE;
+    return left->kind == MS_E_CALL || (left->kind == MS_E_NAME && ms_body_find_binding(b, left->u.sym) != MS_NONE);
 }
 
 /* `xs[i]`, written as an index or as a bracket that reads as a type application: the receiver must be
@@ -91,8 +99,12 @@ MsTy ms_body_index(MsBody *b, const MsExpr *e) {
     if (list != MS_TY_NONE && left->kind != MS_E_MAP && ms_body_is_map(b, list)) {
         return ms_body_map_index(b, list, index);
     }
-    if (list == MS_TY_NONE || left->kind == MS_E_LIST || !ms_body_is_list(b, list)) {
+    if (list == MS_TY_NONE || !ms_body_is_list(b, list)) {
         return ms_body_unsupported(b);
+    }
+    const MsStr fault = ms_constant_index_fault(&b->c->arena, b->literals, left, index, INT64_MIN, INT64_MAX);
+    if (fault.len != 0) {
+        ms_body_report(b, e->pos, fault);
     }
     const MsTy element = ms_ty_args(&b->c->tys, list)[0];
     return ms_body_expr(b, index, b->int_ty) == MS_TY_NONE ? MS_TY_NONE : element;

@@ -21,6 +21,17 @@ static LbCallable lb_function_callable(Lb *lb, const MsDecl *d, MsSymId sym) {
                         .self_ty = MS_TY_NONE};
 }
 
+/* A module constant `NAME := value`: lowered as a function of no parameters that returns the value, which its uses call. */
+static LbCallable lb_constant_callable(Lb *lb, const MsDecl *d, MsSymId sym) {
+    const MsStr name = ms_name(lb->c->names, d->u.konst.name);
+    return (LbCallable){.value = d->u.konst.value,
+                        .node = d->id,
+                        .pos = d->pos,
+                        .name = mir_name(lb->m, name.ptr, name.len),
+                        .sig = lb->c->syms.ty[sym],
+                        .self_ty = MS_TY_NONE};
+}
+
 /* The function's MIR signature into `params` (one per source parameter) and `ret`; false when a
  * parameter or the result is not a type this pass handles. */
 static bool lb_signature(Lb *lb, const LbCallable *c, MirParam *params, MirTy *ret) {
@@ -169,15 +180,27 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
         if (lb_param_moves(lb, c, i)) { // the function owns what it was handed
             const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
             if (lc_is_resource(lb, mir_b_ty(&lb->b, lb->value_of[binding]))) {
-                lb->ok = lc_own_param(lb, binding) && lb->ok; // closed at its scope's end
+                if (!lc_own_param(lb, binding)) { // closed at its scope's end
+                    (void)LB_UNSUPPORTED(lb);
+                }
             } else {
                 lscope_own(&lb->scopes, lb->value_of[binding], 0);
             }
         }
     }
-    lb_statements(lb, &c->fn->body);
+    if (c->value != NULL) {
+        MsStmt ret = {.pos = c->value->pos, .kind = MS_S_RETURN};
+        ret.u.expr = c->value;
+        MsStmt *list[1] = {&ret};
+        lb_statements(lb, &(MsStmts){.ptr = list, .len = 1});
+    } else {
+        lb_statements(lb, &c->fn->body);
+    }
     if (lb->ok && !lb->dead && (lb->b.f.ret == MIR_VOID || la_returns_void_result(lb))) {
         lb_return_void(lb); // the end of a function that returns nothing, or `ok` of nothing
+    }
+    if (lb->ok && lb->dead) {
+        lc_check(lb);
     }
     if (!lb->ok) {
         lb_why(lb, c, NULL);
@@ -185,14 +208,11 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
         lb_why(lb, c, "falls off the end");
     }
     lb->ok = lb->ok && lb->dead;
-    if (lb->ok) {
-        lc_check(lb);
-    }
     MirFunc f = {0};
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
-        const MsStr name = ms_name(lb->c->names, c->fn->name);
-        const bool is_main = !lb_has_self(c) && name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
+        const MsStr name = ms_name(lb->c->names, c->fn == NULL ? c->const_name : c->fn->name);
+        const bool is_main = c->fn != NULL && !lb_has_self(c) && name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
         if (is_main && lb->b.f.ret == MIR_INT) { // any other `main` gets a wrapper, which is the export
             lb->b.f.linkage = ML_EXPORT;
         }
@@ -355,7 +375,7 @@ uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
         return MIR_NONE;
     }
     if (!lb_push_inst(&lb->insts, &lb->ninsts, &lb->cinsts, &inst)) {
-        lb->ok = false;
+        (void)LB_UNSUPPORTED(lb);
         return MIR_NONE;
     }
     return inst.func;
@@ -417,7 +437,7 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
         syms[v] = MS_NEW_N(&lb->m->arena, MsSymId, (size_t)ndecls + 1);
         for (uint32_t i = 0; i < ndecls; i++) {
             const MsDecl *d = row->syntax->decls[i];
-            const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !lb->views[v].failed[i] &&
+            const bool checked = (d->kind == MS_D_FN || d->kind == MS_D_CONST) && lb->facts->body_checked[d->id] && !lb->views[v].failed[i] &&
                                  !lb_has_diagnostic(row, i);
             syms[v][i] = checked ? ms_decl_own_symbol(lb->c, lb->module, d) : MS_NONE;
             if (d->kind == MS_D_FN && !d->u.fn.external && !lb->facts->body_checked[d->id]) {
@@ -427,7 +447,8 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
                 syms[v][i] = MS_NONE; // a generic function is checked here but not lowered: it needs one copy per type argument
             }
             if (syms[v][i] != MS_NONE) {
-                const LbCallable callable = lb_function_callable(lb, d, syms[v][i]);
+                const LbCallable callable = d->kind == MS_D_CONST ? lb_constant_callable(lb, d, syms[v][i])
+                                                                   : lb_function_callable(lb, d, syms[v][i]);
                 lb->func_of[syms[v][i]] = lb_add_stub(lb, &callable);
             }
         }
@@ -445,7 +466,9 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
                 continue;
             }
             const bool unlowerable = lb->func_of[sym] == MIR_NONE;
-            const LbCallable callable = lb_function_callable(lb, row->syntax->decls[i], sym);
+            const MsDecl *decl = row->syntax->decls[i];
+            const LbCallable callable = decl->kind == MS_D_CONST ? lb_constant_callable(lb, decl, sym)
+                                                                 : lb_function_callable(lb, decl, sym);
             const bool done = !unlowerable && lb_function(lb, &callable, lb->func_of[sym]);
             lb->views[v].failed[i] = !done;
             changed = changed || !done;

@@ -187,14 +187,17 @@ LbVal ls_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, Mi
     const MirTy error = alt->cases[LS_ERROR].fields[0].ty;
     bool has_out = false;
     bool out_handle = false;
+    bool out_record = false;
     for (uint32_t i = 0; i < fn->nparams; i++) {
         out_handle = out_handle || fn->params[i] == MS_RT_OUT_HANDLE;
+        out_record = out_record || fn->params[i] == MS_RT_OUT_RECORD;
         has_out = has_out || fn->params[i] == MS_RT_OUT_STR || fn->params[i] == MS_RT_OUT_LIST ||
-                  fn->params[i] == MS_RT_OUT_HANDLE || fn->params[i] == MS_RT_OUT_SCALAR;
+                  fn->params[i] == MS_RT_OUT_HANDLE || fn->params[i] == MS_RT_OUT_SCALAR || fn->params[i] == MS_RT_OUT_RECORD;
     }
     const bool plain = payload == MIR_STR || payload == MIR_BYTES || payload == MIR_INT || payload == MIR_FLOAT || payload == MIR_BOOL ||
-                       mir_ty_data(lb->m, payload)->kind == MK_LIST ||
-                       (out_handle && mir_ty_data(lb->m, payload)->kind == MK_OBJ);
+                       payload == MIR_UINT64 || mir_ty_data(lb->m, payload)->kind == MK_LIST ||
+                       (out_handle && mir_ty_data(lb->m, payload)->kind == MK_OBJ) ||
+                       (out_record && mir_ty_data(lb->m, payload)->kind == MK_TYPE);
     if ((payload == MIR_VOID) == has_out || (has_out && !plain)) {
         return LB_UNSUPPORTED(lb);
     }
