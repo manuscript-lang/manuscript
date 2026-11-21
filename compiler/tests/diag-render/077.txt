@@ -1,0 +1,5 @@
+077.ms:21:10: parse: expected a name, found '|'
+    |
+ 21 | fn main()|Int:
+    |          ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

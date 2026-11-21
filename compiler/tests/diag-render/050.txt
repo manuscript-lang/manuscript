@@ -1,0 +1,5 @@
+050.ms:5:5: parse: only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function
+   |
+ 5 |     va<r sum = 9223372036854775807
+   |     ^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

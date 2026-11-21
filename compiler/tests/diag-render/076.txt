@@ -1,0 +1,5 @@
+076.ms:1:5: parse: lone carriage returns are not allowed in comments; use line endings of LF or CRLF
+   |
+ 1 | // c␍onform: tags=control-flow,formatter,generics,interfaces,parser,records,tier-core
+   |     ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

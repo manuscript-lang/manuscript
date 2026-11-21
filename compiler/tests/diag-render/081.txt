@@ -1,0 +1,5 @@
+081.ms:89:14: parse: a block comment must start its own line; write a trailing comment with '//'
+    |
+ 89 |             v/*isits,
+    |              ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
