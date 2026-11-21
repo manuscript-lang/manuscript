@@ -134,6 +134,19 @@ static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc
     return true;
 }
 
+/* A variable bound to a type built from variables (`T` as `List[T]`) can grow without end through a
+ * cycle of applications, which the Rust checker reports (recursion.rs); the graph is not built here yet.
+ * A variable passed on as itself cannot grow. */
+static bool generic_grows(MsBody *b, const MsInfer *in) {
+    for (uint32_t i = 0; i < in->nvars; i++) {
+        if (ms_ty_kind(&b->c->tys, in->bound[i]) != MS_K_VARIABLE &&
+            ms_ty_has_variable(&b->c->tys, &b->c->arena, in->bound[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* Every variable is bound to an admitted type and each of its bounds, with the bindings applied, is met. */
 static bool generic_bounds(MsBody *b, MsInfer *in) {
     if (b->methods == NULL) {
@@ -242,13 +255,8 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
     if (!generic_bounds(b, &in)) {
         return ms_body_unsupported(b);
     }
-    for (uint32_t i = 0; i < in.nvars; i++) {
-        // A variable bound to a type built from variables (`T` as `List[T]`) can grow without end through a
-        // cycle of calls, which the Rust checker reports (recursion.rs); the graph is not built here yet.
-        if (ms_ty_kind(&b->c->tys, in.bound[i]) != MS_K_VARIABLE &&
-            ms_ty_has_variable(&b->c->tys, &b->c->arena, in.bound[i])) {
-            return ms_body_unsupported(b);
-        }
+    if (generic_grows(b, &in)) {
+        return ms_body_unsupported(b);
     }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
     if (ms_body_has_invalid(b, result)) {
@@ -341,8 +349,8 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
         return ms_body_unsupported(b);
     }
     const MsTy result = ms_ty_apply(b->c, syms->ty[sym], in.bound, def->nvars);
-    // A type applied to the caller's own variables may be a cycle of applications that never ends,
-    // which the Rust checker reports (recursion.rs); the graph is not built here yet.
+    // A type applied to the caller's own variables may be a cycle of applications that never ends (its
+    // defaults call back into the caller), which the Rust checker reports (recursion.rs).
     if (result == MS_TY_NONE || !ms_body_is_bindable(b, result) || ms_ty_has_variable(&b->c->tys, &b->c->arena, result)) {
         return ms_body_unsupported(b);
     }
