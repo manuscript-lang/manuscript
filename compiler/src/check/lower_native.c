@@ -338,9 +338,22 @@ static uint32_t ln_var_receiver(Lb *lb, const MsExpr *receiver) {
 /* A method call the runtime implements: evaluates the receiver and arguments, then calls. */
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
-    const MsTy receiver_ty = lb->facts->call_receiver[e->id];
+    const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a type variable is what the instance binds it to
     const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
     const uint32_t nargs = e->u.call.args.len;
+    if (fn == NULL && nargs == 0 && receiver_ty == lb->string_ty && lb_ty(lb, lb->facts->expr_ty[e->id]) == lb->string_ty) {
+        // Text shown as text (`to_string` of a String, which has no runtime function) is a copy of it.
+        const LbVal text = lb_expr(lb, callee->u.member.left);
+        if (!lb->ok) {
+            return LB_FAIL;
+        }
+        const MirImm one = {.tag = MI_INT, .i = 1};
+        const MirValue copy = mir_b_emit(&lb->b, MOP_Clone, &text.v, 1, one, MIR_STR);
+        if (text.owned) {
+            lb_hold_temp(lb, text.v);
+        }
+        return (LbVal){copy, true};
+    }
     if (fn == NULL || fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
         return lb_unsupported(lb);
     }

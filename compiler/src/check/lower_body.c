@@ -34,7 +34,7 @@ LbVal lb_unsupported_at(Lb *lb, const char *site, int line) {
 /* `ty` as the function being lowered sees it: the variables of the instance are the types they
  * stand for, through arguments, parameters and results (`List[T]` becomes `List[Int]`). A variable
  * is matched by id, as the checker's substitution does. */
-static MsTy lb_ty(Lb *lb, MsTy ty) {
+MsTy lb_ty(Lb *lb, MsTy ty) {
     if (lb->nsub == 0 || ty == MS_TY_NONE) {
         return ty;
     }
