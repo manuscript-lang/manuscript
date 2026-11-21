@@ -141,6 +141,7 @@ msrt_io_write_stderr(s: *const StrVal) @domain=I/O
 msrt_io_write_stdout(s: *const StrVal) @domain=I/O
 msrt_io_write_stdout_line(s: *const StrVal, end: *const StrVal) @domain=I/O
 msrt_isolate_hdr() -> *mut Hdr
+msrt_list_append(v: *mut VecVal, d: ElemDesc, e: *const u8) @domain=collection @leaf @op=list.push
 msrt_list_at(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8) -> *const u8 @domain=collection @leaf
 msrt_list_concat(a: *const VecVal, b: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf
 msrt_list_contains(v: *const VecVal, d: ElemDesc, probe: *const u8) -> u8 @domain=collection @leaf
@@ -159,6 +160,7 @@ msrt_list_insert(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=
 msrt_list_insert_copy(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @leaf
 msrt_list_keys(v: *const VecVal, out: *mut VecVal) @domain=collection @leaf
 msrt_list_last_index_of(v: *const VecVal, d: ElemDesc, probe: *const u8, out: *mut i64) -> u8 @domain=collection @leaf
+msrt_list_length(v: *const VecVal) -> i64 @domain=collection @leaf @op=list.len
 msrt_list_new(out: *mut VecVal) @domain=collection @leaf
 msrt_list_pieces(v: *const VecVal, d: ElemDesc, od: *const TypeDesc, size: i64, step: i64, short_last: u8, out: *mut VecVal) @domain=collection @leaf
 msrt_list_pop(v: *mut VecVal, d: ElemDesc, out: *mut u8) -> u8 @domain=collection @leaf

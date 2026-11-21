@@ -96,10 +96,6 @@ static bool workspace_member(MsArena *a, const char *root, const char *dir, cons
     MsProjectError cause = {0};
     const char *shown = workspace_rel_or(a, root, dir);
     if (!ms_project_read(a, MS_PATH_JOIN(a, dir, "ms.toml"), &project, &cause)) {
-        if (ms_project_error_is_unsupported(&cause)) {
-            *err = cause;
-            return false;
-        }
         return workspace_fail(err, ms_arena_fmt(a, "workspace member %s: %s", shown, ms_project_error_text(a, &cause)).ptr);
     }
     if (strcmp(dir, root) != 0 && ms_project_is_file(MS_PATH_JOIN(a, dir, "ms.lock"))) {
@@ -148,23 +144,11 @@ bool ms_workspace_read(MsArena *a, const MsProject *root_project, MsWorkspace *o
     return ok;
 }
 
-/* Whether the manifest read from `manifest` is a workspace root, or fails as unsupported when that cannot be told. */
-static bool workspace_is_root(MsArena *a, const char *manifest, MsProject *project, bool *is_root, MsProjectError *err) {
+/* Whether the manifest read from `manifest` is a workspace root; a manifest that cannot be read is not one. */
+static bool workspace_is_root(MsArena *a, const char *manifest, MsProject *project) {
     MsProjectError cause = {0};
-    *is_root = false;
-    if (!ms_project_read(a, manifest, project, &cause)) {
-        if (ms_project_error_is_unsupported(&cause)) {
-            *err = cause;
-            return false;
-        }
-        return true; /* a broken or unrelated manifest is not a workspace; the command reports it itself */
-    }
-    if (project->is_workspace && project->member_count == 0) {
-        ms_project_error_unsupported(err, "a [workspace] without members");
-        return false;
-    }
-    *is_root = project->is_workspace;
-    return true;
+    /* a broken or unrelated manifest is not a workspace; the command reports it itself */
+    return ms_project_read(a, manifest, project, &cause) && project->is_workspace;
 }
 
 bool ms_workspace_find(MsArena *a, const char *manifest, MsWorkspace *out, bool *found, MsProjectError *err) {
@@ -178,18 +162,12 @@ bool ms_workspace_find(MsArena *a, const char *manifest, MsWorkspace *out, bool 
     for (;;) {
         const char *candidate = MS_PATH_JOIN(a, dir, "ms.toml");
         MsProject root;
-        bool is_root;
-        if (ms_project_is_file(candidate)) {
-            if (!workspace_is_root(a, candidate, &root, &is_root, err)) {
+        if (ms_project_is_file(candidate) && workspace_is_root(a, candidate, &root)) {
+            if (!ms_workspace_read(a, &root, out, err)) {
                 return false;
             }
-            if (is_root) {
-                if (!ms_workspace_read(a, &root, out, err)) {
-                    return false;
-                }
-                *found = strcmp(dir, here) == 0 || ms_workspace_member_at(out, here) != NULL;
-                return true;
-            }
+            *found = strcmp(dir, here) == 0 || ms_workspace_member_at(out, here) != NULL;
+            return true;
         }
         const char *parent = ms_path_dir(a, dir);
         if (strcmp(parent, dir) == 0) {
@@ -205,11 +183,7 @@ bool ms_workspace_root_members(MsArena *a, const char *manifest, MsWorkspace *ou
         return true;
     }
     MsProject root;
-    bool is_root;
-    if (!workspace_is_root(a, manifest, &root, &is_root, err)) {
-        return false;
-    }
-    if (!is_root || root.name[0] != 0) {
+    if (!workspace_is_root(a, manifest, &root) || root.name[0] != 0) {
         return true;
     }
     *found = ms_workspace_read(a, &root, out, err);

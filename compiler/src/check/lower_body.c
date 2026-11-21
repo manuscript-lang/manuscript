@@ -489,6 +489,9 @@ static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
     if (lb->c->syms.nvars[callee] == 0) {
         return lb->func_of[callee];
     }
+    if (lb->c->syms.module[callee] != lb->module) {
+        return MIR_NONE; // its declaration ids and facts belong to another module
+    }
     const MsFacts *facts = lb->facts;
     const uint32_t nargs = facts->call_type_args_len[e->id];
     if (nargs == 0 || nargs != lb->c->syms.nvars[callee] || nargs > LB_MAX_TARGS) {
@@ -589,7 +592,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const uint32_t callee = lb->facts->call_callee[e->id];
     const uint32_t method = lb->facts->call_method[e->id];
     if (method != MS_NONE) {
-        return lm_has(lb, method) ? lm_call(lb, e, method) : lst_method(lb, e);
+        return lm_has(lb, method) ? lm_call(lb, e, method) : lb_native_method(lb, e);
     }
     if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
         return la_case(lb, e);
@@ -631,7 +634,10 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
 
 /* `e`, wrapped in `some` where the checker found a payload used for an Optional. */
 LbVal lb_expr(Lb *lb, const MsExpr *e) {
-    const LbVal value = lb_expr_plain(lb, e);
+    LbVal value = lb_expr_plain(lb, e);
+    if (lb->ok && lb->facts->coerce_iface[e->id] != MS_TY_NONE) {
+        value = li_box(lb, e, value);
+    }
     if (!lb->ok || !lb->facts->some_wrap[e->id]) {
         return value;
     }

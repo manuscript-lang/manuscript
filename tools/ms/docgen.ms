@@ -9,9 +9,11 @@
 // writes `OUTDIR/documentation/standard-library/reference/...` and
 // `OUTDIR/website/static/stdlib.*`.
 import (
+	Arg, Command, Matches from "@std/cli/command.ms",
 	parse from "@std/data/json.ms",
-	arguments from "@std/os/env.ms",
 	create_directory, read_file, write_file from "@std/os/fs.ms",
+
+	run_tool from "./cli.ms",
 )
 
 export type Member:
@@ -341,16 +343,28 @@ export fn site_files(modules: List[Module]) Map[String, String]:
 // ms: allow_effect std.env.read
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.fs.write
-fn main() Void!:
-	args := arguments()
-	text := read_file(args[0]).wait()?.decode_utf8().get_or("")
+fn show(m: Matches) Void!:
+	text := read_file(m.string("model")).wait()?.decode_utf8().get_or("")
 	model := parse[Model](text)?
 	files := site_files(model.modules)
 
 	for path in files.keys():
-		target := f"{args[1]}/{path}"
+		target := f"{m.string("outdir")}/{path}"
 		if slash := target.last_index_of("/"): create_directory(
 			target.slice(0, slash),
 			recursive: true,
 		)?
 		write_file(target, files.get_or(path, "").to_bytes()).wait()?
+
+fn docgen_tool() Command:
+	return Command(
+		name: "docgen.ms",
+		about: "Write the standard-library reference pages from the model",
+		args: [
+			Arg("model", help: "The model JSON"),
+			Arg("outdir", help: "Where the files go"),
+		],
+	)
+
+fn main() Int:
+	return run_tool(docgen_tool(), show)

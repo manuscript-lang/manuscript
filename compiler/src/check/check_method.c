@@ -223,51 +223,20 @@ static bool body_is_primitive(const MsBody *b, MsTy ty) {
     return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
 }
 
-/* Whether `ty` mentions the type variable `var` (variables are the same by their id, as in infer.c). */
-static bool ty_mentions(const MsTyTable *tys, MsTy ty, MsTy var) {
-    if (ty == var || (ms_ty_kind(tys, ty) == MS_K_VARIABLE && tys->id[ty] == tys->id[var])) {
-        return true;
-    }
-    for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
-        if (ty_mentions(tys, ms_ty_args(tys, ty)[i], var)) {
-            return true;
-        }
-    }
-    if (ms_ty_kind(tys, ty) != MS_K_FUNCTION) {
-        return false;
-    }
-    for (uint32_t i = 0; i < tys->nparams[ty]; i++) {
-        if (ty_mentions(tys, ms_ty_params(tys, ty)[i].ty, var)) {
-            return true;
-        }
-    }
-    return ty_mentions(tys, tys->result[ty], var);
-}
-
-/* Whether `ty` mentions a variable of the open row that no argument has bound yet. */
-static bool mentions_unbound(const MsBody *b, const MsInfer *in, MsTy ty) {
-    for (uint32_t k = 0; k < in->nvars; k++) {
-        if (in->bound[k] == MS_TY_NONE && ty_mentions(&b->c->tys, ty, in->vars[k])) {
-            return true;
-        }
-    }
-    return false;
-}
-
 /* One argument of an open row: against its parameter when that is settled, else its type binds the
  * parameter's variables. A function literal whose parameters are settled gets them and takes its
  * result from its body, which binds the variables of the parameter's result. */
 static bool open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in) {
     const MsTyTable *tys = &b->c->tys;
     const MsTy want = ms_infer_apply(in, param->ty);
-    if (!mentions_unbound(b, in, want)) {
+    if (!ms_body_mentions_unbound(b, in, want)) {
         return ms_body_is_admitted(b, want) && ms_body_expr(b, value, want) != MS_TY_NONE;
     }
     MsTy actual = MS_TY_NONE;
     if (value->kind == MS_E_LAMBDA) {
         bool settled = ms_ty_kind(tys, want) == MS_K_FUNCTION;
         for (uint32_t i = 0; settled && i < tys->nparams[want]; i++) {
-            settled = !mentions_unbound(b, in, ms_ty_params(tys, want)[i].ty);
+            settled = !ms_body_mentions_unbound(b, in, ms_ty_params(tys, want)[i].ty);
         }
         actual = settled ? ms_body_lambda_inferred(b, value, want) : MS_TY_NONE;
         if (actual != MS_TY_NONE) {
