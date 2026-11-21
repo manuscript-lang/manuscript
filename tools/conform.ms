@@ -13,7 +13,7 @@ import (
 )
 
 fn main() Int:
-	var code = run_program("cargo", ["xtask", "runtime"])
+	var code = run_program("cmake", ["-P", "cmake/BuildRuntime.cmake"])
 	if code != 0: return code
 
 	// CONFORM_LEAKS=1 links programs against the runtime that counts live heap blocks,
