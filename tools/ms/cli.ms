@@ -205,7 +205,7 @@ fn run_command() Command:
 			),
 		].concat(
 			build_flags(
-				"Debug, Release, or MinSizeRel (case-insensitive; default Debug, Cranelift, fast to build; Release uses LLVM)"
+				"Debug, Release, or MinSizeRel (case-insensitive; default Debug, fast to build; Release optimizes)"
 			)
 		),
 		examples: ["ms run ms.toml -- first second", "ms run main.ms --watch"],
@@ -265,7 +265,7 @@ fn test_command() Command:
 		)
 		.concat(
 			build_flags(
-				"Debug, Release, or MinSizeRel (case-insensitive; default Debug, Cranelift, fast to build; Release uses LLVM)"
+				"Debug, Release, or MinSizeRel (case-insensitive; default Debug, fast to build; Release optimizes)"
 			)
 		),
 		examples: [

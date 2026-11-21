@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "../entry/entry.h"
+#include "fault_kept.h"
 #include "ms_sched.h"
 #include "spin.h"
 #include "task.h"

@@ -51,6 +51,7 @@ MsTy ms_body_list_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected);
 /* Maps (check_map.c): whether `ty` is a `Map` of an admitted key and value, a `Map[K, V]` annotation, a literal. */
 bool ms_body_is_map(const MsBody *b, MsTy ty);
+MsTy ms_body_map_index(MsBody *b, MsTy map, const MsExpr *key);
 MsTy ms_body_map_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_map(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_index(MsBody *b, const MsExpr *e);
@@ -69,6 +70,8 @@ MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
 bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name);
 MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_case_name(MsBody *b, const MsExpr *e, MsTy expected);
+/* Records the row of the own `to_string() String` of `part`'s type, which is its text form (check_method.c). */
+void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty);
 /* A call of a generic function of the module (check_generic.c). */
 /* `written` is the explicit type arguments of `f[Int](x)`, or NULL. */
 MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);

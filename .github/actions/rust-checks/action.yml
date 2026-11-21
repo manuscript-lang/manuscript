@@ -3,19 +3,21 @@ description: The Rust checks for one platform (pull requests on Linux, pushes to
 
 # One job runs one part (`a` or `b`), so the two parts run on separate runners; `ab` runs both in one job.
 #   part a  unit: build the workspace once, nextest, doc tests, and on Linux amd64 format and clippy
-#           the Cranelift corpus and fixtures on platforms that run them.
+#           the second corpus pass (below) on platforms that run it.
 #   part b  conformance: the LLVM corpus and fixtures, plus the gates (below).
 #   gates   bundled-LLVM release build, source conformance, cancellation and ownership checks, the
 #           packaged ms on a hello project, glibc 2.28 on Linux. They run in part b, except on legs
-#           that run the Cranelift corpus in part b, where they run in part a. Measured on main, part
-#           a (build, nextest, doc tests) outlasts part b by several minutes on every leg without Cranelift.
+#           that run the second corpus pass in part b, where they run in part a. Measured on main, part
+#           a (build, nextest, doc tests) outlasts part b by several minutes on every leg without that pass.
+#   second pass  the run and test phases of the corpus again at Release, then at Debug (unoptimized MIR).
+#           It was the Cranelift pass until every build moved to the C back end.
 
 inputs:
   docs:
     description: "'false' on a pull request that changes no documentation, standard library or example test: the tutorial and stdlib example tests are skipped. Main and manual runs pass 'true'."
     default: 'true'
   llvm:
-    description: "'false' on a pull request that touches no LLVM-related code: the corpus runs once with Cranelift (every phase) and the release gates are skipped. Main and manual runs pass 'true'."
+    description: "'false' on a pull request that touches no LLVM-related code: the corpus runs once (every phase) and the release gates are skipped. Main and manual runs pass 'true'."
     default: 'true'
   os:
     description: linux, darwin or windows.
@@ -29,11 +31,11 @@ inputs:
   lint:
     description: "'true' also runs format and clippy."
     default: 'false'
-  cranelift:
-    description: "'a' or 'b' also runs the corpus and fixtures with MS_BACKEND=cranelift in that part; the gates then run in the other part."
+  second-pass:
+    description: "'a' or 'b' also runs the second corpus pass in that part; the gates then run in the other part."
     default: ''
   gates-part:
-    description: "'a' or 'b': the part that runs the gates, when the default (the part that does not run the Cranelift corpus, else b) would leave one part much longer."
+    description: "'a' or 'b': the part that runs the gates, when the default (the part that does not run the second corpus pass, else b) would leave one part much longer."
     default: ''
   gates:
     description: "'false' skips the gates, when another job of the same run covers them."
@@ -55,16 +57,16 @@ runs:
       shell: bash
       run: |
         part='${{ inputs.part }}'
-        cranelift='${{ inputs.cranelift }}'
+        second='${{ inputs.second-pass }}'
         gates_part=b
-        if [ "$cranelift" = b ]; then gates_part=a; fi
+        if [ "$second" = b ]; then gates_part=a; fi
         if [ -n '${{ inputs.gates-part }}' ]; then gates_part='${{ inputs.gates-part }}'; fi
         if [ '${{ inputs.gates }}' = false ] || [ '${{ inputs.llvm }}' = false ]; then gates_part=none; fi
         {
           echo "UNIT=$([[ $part == *a* ]] && echo true || echo false)"
           echo "CONFORM=$([[ $part == *b* ]] && echo true || echo false)"
           echo "GATES=$([[ $part == *$gates_part* ]] && echo true || echo false)"
-          echo "CRANELIFT=$([[ -n $cranelift && $part == *$cranelift* && '${{ inputs.llvm }}' != false ]] && echo true || echo false)"
+          echo "SECOND_PASS=$([[ -n $second && $part == *$second* && '${{ inputs.llvm }}' != false ]] && echo true || echo false)"
           echo "LLVM=${{ inputs.llvm }}"
           echo "DOCS=${{ inputs.docs }}"
           echo "LLVM_TESTS=false"
@@ -74,12 +76,12 @@ runs:
         case '${{ inputs.llvm-job }}' in
           corpus)
             echo "UNIT=false" >> "$GITHUB_ENV"; echo "CONFORM=true" >> "$GITHUB_ENV"
-            echo "GATES=false" >> "$GITHUB_ENV"; echo "CRANELIFT=false" >> "$GITHUB_ENV"
+            echo "GATES=false" >> "$GITHUB_ENV"; echo "SECOND_PASS=false" >> "$GITHUB_ENV"
             echo "LLVM=true" >> "$GITHUB_ENV"; echo "DOCS=false" >> "$GITHUB_ENV"
             echo "CONFORM_SHARD=${{ inputs.shard || '0/1' }}" >> "$GITHUB_ENV" ;;
           gates)
             echo "UNIT=false" >> "$GITHUB_ENV"; echo "CONFORM=false" >> "$GITHUB_ENV"
-            echo "GATES=true" >> "$GITHUB_ENV"; echo "CRANELIFT=false" >> "$GITHUB_ENV"
+            echo "GATES=true" >> "$GITHUB_ENV"; echo "SECOND_PASS=false" >> "$GITHUB_ENV"
             echo "LLVM=true" >> "$GITHUB_ENV"; echo "DOCS=false" >> "$GITHUB_ENV"
             echo "LLVM_TESTS=true" >> "$GITHUB_ENV" ;;
         esac
@@ -154,7 +156,7 @@ runs:
         git rev-parse HEAD > "$reports/commit.txt"
         rustc -vV > "$reports/host.txt"
         # `-p ms-cli` unifies features differently from the workspace build and recompiles the
-        # cranelift crates, ms-clif, ms-build and ms-cli (about 40 s). Parts that ran the workspace
+        # ms-build and ms-cli. Parts that ran the workspace
         # build above reuse it: the same command is a no-op and relinks target/debug/ms.
         if [ "$UNIT" = true ] || [ "$LLVM_TESTS" = true ]; then
           cargo build --workspace --all-targets --locked 2>&1 | tee "$reports/build.log"
@@ -218,8 +220,8 @@ runs:
       if: env.GATES == 'true'
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/scaling-check.ms
-    # A pull request's Cranelift legs already ran lint, check and parse on this commit (Chinmay, 2026-11-18),
-    # so its LLVM job replays only what reaches a code generator. Main has no such leg and runs every phase.
+    # A pull request's Linux legs already ran lint, check and parse on this commit (Chinmay, 2026-11-18),
+    # so its LLVM job replays only what reaches the code generator. Main has no such leg and runs every phase.
     - name: Conformance corpus (LLVM) and leaks
       if: env.CONFORM == 'true' && env.LLVM == 'true'
       env:
@@ -227,44 +229,30 @@ runs:
         CONFORM_BACKEND_ONLY: ${{ env.PR == 'true' && '1' || '' }}
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/conform.ms
-    # A pull request that touches no LLVM-related code runs the whole corpus once, built by Cranelift.
-    - name: Conformance corpus (Cranelift, every phase)
+    # A pull request that touches no LLVM-related code runs the whole corpus once.
+    - name: Conformance corpus (every phase)
       if: env.CONFORM == 'true' && env.LLVM != 'true'
-      env:
-        MS_BACKEND: cranelift
-        CONFORM_ALL_PHASES: '1'
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/conform.ms
-    - name: Conformance corpus (Cranelift)
-      if: env.CRANELIFT == 'true'
+    # The pass that Cranelift used to build. It now repeats the run and test phases of the pass above.
+    - name: Conformance corpus (second pass, run and test)
+      if: env.SECOND_PASS == 'true'
       env:
-        MS_BACKEND: cranelift
+        CONFORM_BACKEND_ONLY: '1'
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/conform.ms
     # `ms run` and `ms test` build at Debug by default, which skips MIR optimization and so runs other MIR
     # passes than the Release builds above (#4357). Main and scheduled runs replay the run and test phases
     # that way on every platform; a pull request replays one quarter of them on the Linux legs.
     - name: Conformance corpus (Debug build, unoptimized MIR)
-      if: env.CONFORM == 'true' && (env.CRANELIFT == 'true' || env.PR == 'true' && env.LLVM != 'true')
+      if: env.CONFORM == 'true' && (env.SECOND_PASS == 'true' || env.PR == 'true' && env.LLVM != 'true')
       env:
-        MS_BACKEND: cranelift
+        CONFORM_BACKEND_ONLY: '1'
         CONFORM_BUILD_TYPE: Debug
         CONFORM_SHARD: ${{ env.PR == 'true' && '0/4' || '0/1' }}
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/conform.ms
-    # The dev profile turns Cranelift's own debug assertions off for speed (Cargo.toml). Main, scheduled and manual
-    # runs build `ms` once more with them on and replay the Cranelift run and test phases, so an assertion
-    # that fires on the IR we generate is still caught.
-    - name: Conformance corpus (Cranelift with its debug assertions on)
-      if: env.CRANELIFT == 'true' && env.LLVM == 'true' && env.PR != 'true' && runner.os == 'Linux'
-      env:
-        MS_BACKEND: cranelift
-      shell: bash
-      run: |
-        cargo build --profile checked --locked -p ms-cli
-        target/debug/ms run tools/conform-run.ms -- run --ms target/checked/ms --phase run,test --exclude-tag aliasing \
-          --expect-fail tests/conformance/expect-fail.txt --strict --quiet
-    - name: LLVM backend size, build time and kernel times against Cranelift
+    - name: LLVM backend size, build time and kernel times
       if: env.GATES == 'true'
       shell: bash
       run: RUNS=3 target/debug/ms run tools/llvm-direct-check.ms -- report | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
@@ -274,10 +262,10 @@ runs:
       run: |
         MS=target/debug/ms target/debug/ms run tools/count-check.ms
         MS=target/debug/ms target/debug/ms run tools/count-check-selftest.ms
-    # Runs with the Cranelift corpus: on pull requests that is linux-amd64, which has room in the
+    # Runs with the second corpus pass: on pull requests that is linux-amd64, which has room in the
     # 10 minute budget (linux-arm64 does not), and on main it covers every platform that runs it.
     - name: Removed spellings name their replacement
-      if: env.CRANELIFT == 'true'
+      if: env.SECOND_PASS == 'true'
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/removed-check.ms
     - name: Every accepted resource operation closes each resource once
@@ -359,7 +347,6 @@ runs:
         path: |
           .artifacts/conform.md
           target/cargo-timings/cargo-timing-*.html
-          ${{ runner.temp }}/ms-clif-tests-*
           ${{ runner.temp }}/ms-native-conformance/
           ${{ runner.temp }}/ms-dwarf-*
           ${{ runner.temp }}/ms-build-debug-*

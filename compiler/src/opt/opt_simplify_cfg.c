@@ -1,7 +1,7 @@
 /* The control-flow half of `simplify`: block merging and jump threading, dominator-scoped value
  * numbering, and the two rewrites of repeated map probes. Port of `branches`,
  * `thread_flag_branches`, `cse`, `map_probes` and `fuse_contains` of
- * crates/ms-mir/src/opt/simplify.rs; the order of every rewrite and of every value it makes is the
+ * the former Rust crates/ms-mir/src/opt/simplify.rs; the order of every rewrite and of every value it makes is the
  * Rust pass's. */
 #include <stdlib.h>
 #include <string.h>

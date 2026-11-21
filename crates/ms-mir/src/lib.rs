@@ -21,7 +21,6 @@ pub mod glue;
 pub mod interp;
 pub mod ir;
 pub mod layout;
-pub mod opt;
 pub mod parse;
 pub mod persist;
 pub mod print;

@@ -18,8 +18,6 @@ crates/ms-cli/tests/watch.rs 3 test: lets the watcher run
 crates/ms-build/src/link/fetch.rs 1 the pause before retrying a failed tools download (a backoff, not a poll)
 crates/ms-build/src/link/lld/glibc_stubs/tests.rs 2 test: channel deadline of a hung link, not a wait for time
 crates/ms-build/src/link/lld/tests.rs 2 test: channel deadline of a hung link, not a wait for time
-crates/ms-clif/tests/native.rs 1 test: lets time pass
 crates/ms-lsp/tests/supervise.rs 1 test: lets time pass
 crates/ms-mir/tests/unwind.rs 1 test: lets time pass
 crates/ms-tooling/tests/lint_tasks.rs 1 test: lets time pass
-crates/ms-rt/src/task.rs 1 the task sleep binding

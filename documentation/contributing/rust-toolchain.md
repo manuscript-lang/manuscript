@@ -64,7 +64,6 @@ Under Miri the allocator takes its reservation from the heap in place of `mmap` 
 | `ms-syntax` | Lexer, parser, syntax tree, formatter |
 | `ms-check` | Resolution, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics |
 | `ms-mir` | MIR representation, ownership elaboration, optimizer, verifier, text format, interpreter |
-| `ms-clif` | MIR to Cranelift object code, line tables, perf map, and native linking with cached lld/LLVM tools and embedded startup files |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime (with the `ffi` and `glue` helpers the native crates build on), C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module, depending on `ms-rt` as an ordinary Rust crate |
 | `ms-lower` | Checked HIR to MIR, including native standard calls |
@@ -81,9 +80,9 @@ The following details describe the compiler's generated artifacts and platform i
 
 ### Optimization
 
-Release builds emit LLVM IR text from MIR in C (`compiler/src/emit/emit_llvm.c`, linked into `ms` as libms) and `ms-build` runs the pinned `opt` and `llc` to optimize it (`default<O3>` and `-O3`; `Os` and `-O2` for MinSizeRel). The pinned `lld` links the objects, with no `clang` or `cc`. Debug builds stay on Cranelift. Fault traces and profiles keep their source frames through the runtime tables that `ms_asm_tables` builds from the assembly `.loc` lines. The code targets the baseline CPU of each architecture; LLVM does the vectorizing and the build emits no per-CPU copies or dispatchers. `MS_VECTORIZE=off` disables the loop and SLP vectorizers.
+Every build emits LLVM IR text from MIR in C (`compiler/src/emit/emit_llvm.c`, linked into `ms` as libms) and `ms-build` runs the pinned `opt` and `llc` to optimize it (`default<O3>` and `-O3`; `Os` and `-O2` for MinSizeRel). The pinned `lld` links the objects, with no `clang` or `cc`. Debug builds skip `opt` and run `llc -O0`. Fault traces and profiles keep their source frames through the runtime tables that `ms_asm_tables` builds from the assembly `.loc` lines. The code targets the baseline CPU of each architecture; LLVM does the vectorizing and the build emits no per-CPU copies or dispatchers. `MS_VECTORIZE=off` disables the loop and SLP vectorizers.
 
-`MS_BACKEND=cranelift` opts out; `MS_LLVM_TOOLS` names a directory holding `opt`, `llc` and `llvm-link`. See [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup) for downloads, caches and fallback behavior. On Windows the IR targets the mingw-w64 triple.
+`MS_LLVM_TOOLS` names a directory holding `opt`, `llc` and `llvm-link`. See [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup) for downloads, caches and fallback behavior. On Windows the IR targets the mingw-w64 triple.
 
 ### Platform linking
 
