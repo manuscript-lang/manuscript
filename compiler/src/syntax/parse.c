@@ -2180,7 +2180,7 @@ static MsExpr *clone_chain(Parser *p, const MsExpr *e) {
 /* `xs[i] = value` as the call of the member `[]=`. With `reread`, the value reads the same
  * element, so a name or field key is cloned for the store. */
 static MsExpr *index_set(Parser *p, MsExpr *target, MsExpr *value, bool reread) {
-    MsExpr *left, *index;
+    MsExpr *left = NULL, *index = NULL;
     index_parts(target, &left, &index);
     MsPos pos = target->pos;
     if (reread && (index->kind == MS_E_NAME || index->kind == MS_E_MEMBER)) {

@@ -74,8 +74,30 @@ static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver) {
     return ms_infer_apply(&in, m->ty[i]);
 }
 
-/* The row of the impls that gives `receiver` a method `name`; false when none or ambiguous. */
-static bool method_row(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
+/* Whether a call of `given` arguments fits the signature `sig` of `func`: every parameter without a
+ * default is supplied. Methods of one name may differ in their parameters (`sorted()` and
+ * `sorted(compare)`); the call's argument count picks among them, as the Rust checker's does. */
+static bool row_arity_fits(const MsBody *b, MsTy sig, const MsFunc *func, uint32_t given) {
+    const MsTyTable *tys = &b->c->tys;
+    if (given == UINT32_MAX) {
+        return true;
+    }
+    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || given > tys->nparams[sig]) {
+        return false;
+    }
+    uint32_t required = tys->nparams[sig];
+    if (func != NULL && func->params.len == required) {
+        required = 0;
+        for (uint32_t i = 0; i < func->params.len; i++) {
+            required += func->params.ptr[i]->def == NULL ? 1u : 0u;
+        }
+    }
+    return given >= required;
+}
+
+/* The row of the impls that gives `receiver` a method `name`, among those a call of `given`
+ * arguments fits (UINT32_MAX: any); false when none or ambiguous. */
+static bool method_row(const MsBody *b, MsTy receiver, MsSym name, uint32_t given, Target *out) {
     const MsMethods *m = &b->methods->methods;
     bool found = false;
     for (uint32_t i = 0; i < m->count; i++) {
@@ -83,7 +105,7 @@ static bool method_row(const MsBody *b, MsTy receiver, MsSym name, Target *out) 
             continue;
         }
         const MsTy sig = row_signature(b, i, receiver);
-        if (sig == MS_TY_NONE) {
+        if (sig == MS_TY_NONE || !row_arity_fits(b, sig, m->decl[i], given)) {
             continue;
         }
         if (found) {
@@ -300,7 +322,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     } else if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT) {
         resolved = operation_of(b, receiver_ty, callee->u.member.name, &target);
     } else {
-        resolved = method_row(b, receiver_ty, callee->u.member.name, &target);
+        resolved = method_row(b, receiver_ty, callee->u.member.name, e->u.call.args.len, &target);
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved || target.consuming || (target.mutating && immutable) ||
@@ -342,7 +364,7 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
     }
     const MsTy local_ty = binding == MS_NONE ? MS_TY_NONE : b->facts->bindings.ty[binding];
     Target row;
-    if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, &row))) {
+    if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, e->u.call.args.len, &row))) {
         const MsTy receiver_ty = ms_body_expr(b, receiver, MS_TY_NONE);
         if (body_is_primitive(b, receiver_ty)) {
             return body_intrinsic_call(b, e, receiver_ty);

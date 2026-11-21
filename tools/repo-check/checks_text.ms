@@ -374,9 +374,7 @@ export fn thread_affinity(files: List[String]) List[String]:
 // `crate: dependency dependency`. Widening a row needs a reason beside it, in the same change.
 LAYERS := [
 	"ms-syntax:", "ms-json:", "ms-mir: ms-rt-abi", "ms-check: ms-syntax",
-	"ms-lower: ms-check ms-mir ms-rt-abi", "ms-mir-llvm: ms-mir ms-rt-abi",
-	"ms-clif: ms-mir ms-rt-abi",
-	"ms-build: ms-check ms-clif ms-lower ms-mir ms-mir-llvm",
+	"ms-lower: ms-check ms-mir ms-rt-abi", "ms-build: ms-check ms-lower ms-mir",
 	"ms-driver: ms-check ms-syntax", "ms-tooling: ms-check ms-driver ms-json ms-syntax",
 	"ms-lsp: ms-check ms-driver ms-json ms-syntax ms-tooling",
 	"ms-cli: ms-build ms-check ms-driver ms-json ms-lsp ms-mir ms-rt-abi ms-syntax ms-tooling"

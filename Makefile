@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -74,11 +74,11 @@ rebuild:
 	rm -f "$(RELEASE_MS)"
 	$(MAKE) build
 
-# The frozen conformance corpus against the Rust `ms`, every phase, with programs built by Cranelift (about 3x
-# faster than LLVM; see documentation/contributing/development.md). Excludes fixtures whose answer depends on
+# The frozen conformance corpus against the Rust `ms`, every phase, on the release `ms` that `make build` produced.
+# Excludes fixtures whose answer depends on
 # aliasing; known differences are listed in tests/conformance/expect-fail.txt. CONFORM_SHARD=i/n splits the run.
 conform: build
-	CONFORM_FAST=1 MS_BACKEND=cranelift $(MS) run tools/conform.ms
+	CONFORM_FAST=1 $(MS) run tools/conform.ms
 
 # The same corpus with programs built by LLVM (Release), as CI runs on main and on pull requests that touch
 # LLVM-related code. Run it after changing LLVM code. It runs on `target/debug/ms`, so that is rebuilt first.
@@ -86,21 +86,15 @@ conform-llvm: build
 	cargo build --locked -p ms-cli
 	$(MS) run tools/conform.ms
 
-# Release build time, IR size, direct-emission share and kernel times of the LLVM backend against Cranelift.
+# Release build time, IR size, direct-emission share and kernel times of the LLVM backend.
 llvm-report: build
 	MS=$(MS) $(MS) run tools/llvm-direct-check.ms -- report
 
-# Backend drift: the run and test phases of the corpus under LLVM (Release default) and under Cranelift
-# (MS_BACKEND=cranelift), compared directly; any differing stdout, stderr or exit status fails.
-drift-check: build
-	$(MS) run tools/conform-run.ms -- diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
-
-# The corpus under both backends with every dead statement stack slot filled with a pattern (MS_POISON_SLOTS=1), so a
+# The corpus with every dead statement stack slot filled with a pattern (MS_POISON_SLOTS=1), so a
 # pointer that outlives its slot fails in every build, not only where the backend happens to reuse the slot.
 poison-check: build
 	cargo build --locked -p ms-cli
 	MS_POISON_SLOTS=1 $(MS) run tools/conform.ms
-	CONFORM_FAST=1 MS_BACKEND=cranelift MS_POISON_SLOTS=1 $(MS) run tools/conform.ms
 
 # Generates a program per view operation, way of holding the text and set of later temporaries, runs each in Debug and Release with dead slots poisoned, and fails when a view prints anything but its expected text. Nightly on main.
 view-matrix: build
@@ -125,6 +119,10 @@ scaling-check: build
 
 leak-check: build
 	$(MS) run tools/leak-check.ms
+
+# Runs the e2e stdlib tests with MS_SCHED_STRESS=1 (a promise never starts on its creator; the first idle thread takes it) and fails on a file that passes without it. Every runtime has the mode. STRESS_CHANGED=<ref> runs only fixtures changed since <ref>. Nightly on main; not in PR CI.
+stress-sched: build
+	$(MS) run tools/stress-sched.ms
 
 # Cancels each e2e stdlib test at every park in turn and fails when cancellation leaves more blocks live than the uncancelled run.
 cancel-sweep: build
@@ -251,6 +249,9 @@ c-compiler-test:
 	sh compiler/tests/check-diff.sh
 	sh compiler/tests/diag-render-diff.sh
 	sh compiler/tests/entry-diff.sh
+	sh compiler/tests/prelude-import-diff.sh
+	sh compiler/tests/public-signature-diff.sh
+	sh compiler/tests/extern-diff.sh
 	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
