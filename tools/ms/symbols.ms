@@ -370,7 +370,7 @@ fn rt_ops_text(symbols: String) String:
 		has_imm := imm.is_some()
 		imm_value := imm.get_or(0)
 		out = out.concat(
-			f"    \{\"{name}\", \"{op}\", \{{kinds.join(", ")}\}, {kinds.length()}, {ret}, {leaf}, {twinned.contains(name)}, {pure}, \"{word_key}\", \"{text_key}\", {fresh}, {has_imm}, {imm_value}, \"{seq}\"\},\n"
+			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {has_imm}\},\n"
 		)
 
 	return out.concat("};\n")

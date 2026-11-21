@@ -1,6 +1,8 @@
 /* The per-function driver of the lowering: the signature of a function or method, its stub in the
  * module, starting and finishing a body, and the pass over a module (`ms_lower_module`) that repeats
  * without the functions that failed. Expressions and statements are lower_body.c's. */
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "ms/lower_internal.h"

@@ -23,6 +23,7 @@
 #include "fs_support.h"
 #include "ms_rt/chars.h"
 #include "ms_rt/safe.h"
+#include "ms_rt/io.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/terminal.h"
 #include "ms_sched.h"
