@@ -1,0 +1,91 @@
+Standard modules (prelude needs no import).
+`ms search_symbol <module>` lists one, `ms search_symbol <module>.<Name>` shows a declaration, `ms search_symbol <words>` searches.
+
+prelude      Bool, Clonable, Comparable +26
+bytes        Bytes, BytesBuilder +3
+command      Arg, Command, Flag +4
+screen       Screen, new_screen
+style        Color, Style, paint +6
+table        Align, Table
+terminal     EraseRegion +11
+bitset       BitSet
+collections  List, ListEntry, Map +11
+deque        Deque
+itertools    Run, accumulate +7
+queue        HeapEntry, PriorityQueue +1
+sorted       SortedEntry, SortedMap +1
+promise      Cancel, Placement, Promise +11
+resilience   CircuitBreaker +7
+core         Clonable, Closeable +14
+blake2       blake2b, blake2s
+chacha20poly1305 chacha20 +3
+crypto       Curve, HashAlgorithm +30
+hash         Crc64, Crc64Polynomial +8
+checksum     Adler32, Crc32, adler32 +3
+config       parse_dotenv, parse_ini
+csv          CsvOptions, csv_rows +4
+diff         CloseMatchesOptions +5
+encoding     Base32Options +14
+encoding_stream base64_decoded +3
+histogram    Histogram, histogram
+html         HtmlAttribute, HtmlNode +4
+json         JsonEncode, JsonOptions +6
+jwt          JwtAlgorithm, JwtCheck +2
+pem          PemBlock, encode_all +2
+quote        quote_text
+semver       Version, parse
+toml         TomlOptions, TomlValue +2
+utf8         Utf8Error, Utf8Scalar +3
+uuid         namespace_dns +7
+xml          XmlAttribute, XmlNode +4
+yaml         YamlOptions, YamlValue +3
+bmp          decode_bmp, encode_bmp
+codec        Raster, bad, byte, max_of +5
+image        Chroma, ColorMode, Image +11
+jpeg         decode_jpeg
+jpeg_encode  jpeg_encode
+jpeg_tables  jpeg_clamp +3
+png          decode_png, encode_png
+ppm          decode_ppm, encode_ppm
+archive      ArchiveEntry +13
+forward      forward
+io           DescriptorSink +16
+steps        filter, lines, map, take
+streams      collect, copy, fold +3
+log          LogLevel, Logger +7
+big          BigFloat, BigRat +12
+complex      Complex, PolarParts +3
+decimal      Decimal, RoundingMode +1
+math         BigInt, BinaryFloatParts +98
+statistics   BinCounts, Regression +12
+fetch        FetchBody, FetchOptions +6
+http         ClientResponse, HttpClient +25
+ip           Cidr, DnsKind, DnsRecord +5
+mail         Address, Message +4
+mime         HeaderField, Headers +12
+net          Connection, ConnectionInfo +27
+router       Route, RouteParams, Router +4
+sse          SseEvent, SseLimits +1
+tls          CertificateInfo, TlsInfo +3
+url          QueryEntry, Url +7
+websocket    NativeWebSocket +7
+env          arguments +7
+fs           CloneMode, CopyOptions +48
+path         Glob, PathOperations +21
+process      CommandOutput, Commands +27
+system       CpuInfo, Endianness +26
+tree         EmbeddedTree, FileTree +8
+random       SeededRandom, choice +9
+regex        Regex, RegexSpan, compile
+string       NormalizationForm +2
+string_builder StringBuilder
+bench        keep, measure +1
+boundary     finite_float_boundaries +2
+golden       expect_golden +1
+iotest       check_reader, fail_after +2
+property     Drawn, Gen +17
+test         TestHooks, caller_site +15
+text         parse_bool, quote +3
+template     RenderOptions, Template +7
+time         Date, Deadline, Duration +18
+unicode      is_alphabetic +11
