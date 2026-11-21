@@ -3,9 +3,20 @@
 
 #include "base/file.h"
 #include "base/path.h"
+#include "compiler/project/manifest.h"
 #include "compiler/project/project_internal.h"
 
 enum { OS_ENOENT = 2, OS_EACCES = 13, OS_ENOTDIR = 20 };
+
+static bool span_less(MsSpan a, MsSpan b) {
+  const size_t common = a.len < b.len ? a.len : b.len;
+  for (size_t i = 0; i < common; i++) {
+    if (a.ptr[i] != b.ptr[i]) {
+      return a.ptr[i] < b.ptr[i];
+    }
+  }
+  return a.len < b.len;
+}
 
 static bool message(MsArena *arena, MsProjectError *error, MsStrBuild *text) {
   ms_project_error_message(error, ms_project_text(arena, text));
@@ -54,18 +65,94 @@ static bool relative_target(MsArena *arena, MsSpan importer, MsSpan path, MsSpan
   return true;
 }
 
-static bool alias_error(MsArena *arena, MsSpan path, MsProjectError *error) {
-  MsSpan alias = path;
-  size_t slash = 0;
-  if (ms_span_find(path, ms_span_of_text("/"), &slash)) {
-    alias = ms_span_of(path.ptr, slash);
-  }
+static bool unknown_alias(MsArena *arena, const MsManifest *manifest, MsSpan alias, MsProjectError *error) {
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "unknown import alias ");
   ms_strbuild_append(&text, alias);
-  ms_strbuild_append_text(&text, "; this project declares none, so add one under [aliases] in ms.toml, e.g. "
-                                 "@lib = \"src/lib\" (use @std/... for the standard library)");
+  if (manifest == NULL || manifest->aliases.len == 0) {
+    ms_strbuild_append_text(&text, "; this project declares none, so add one under [aliases] in ms.toml, e.g. "
+                                   "@lib = \"src/lib\" (use @std/... for the standard library)");
+    return message(arena, error, &text);
+  }
+  ms_strbuild_append_text(&text, "; declared aliases: ");
+  MsSpan done = {0};
+  for (size_t round = 0; round < manifest->aliases.len; round++) {
+    MsSpan next = {0};
+    for (size_t i = 0; i < manifest->aliases.len; i++) {
+      const MsSpan name = manifest->aliases.ptr[i].name;
+      const bool after = done.ptr == NULL || span_less(done, name);
+      if (after && (next.ptr == NULL || span_less(name, next))) {
+        next = name;
+      }
+    }
+    ms_strbuild_append_text(&text, round == 0 ? "" : ", ");
+    ms_strbuild_append(&text, next);
+    done = next;
+  }
   return message(arena, error, &text);
+}
+
+/* `target` for alias `alias` naming `base`: a directory takes `/<file>.ms`, a file takes nothing. */
+static bool alias_target(MsArena *arena, MsSpan alias, MsSpan base, MsSpan remainder, MsSpan *target,
+                         MsProjectError *error) {
+  MsStrBuild text = ms_strbuild_new();
+  if (ms_dir_exists(base)) {
+    if (remainder.len == 0 || !ms_span_is_text(ms_path_ext(remainder), ".ms")) {
+      ms_strbuild_append_text(&text, "directory alias requires a .ms path; write \"");
+      ms_strbuild_append(&text, alias);
+      ms_strbuild_append_text(&text, "/<file>.ms\"");
+      return message(arena, error, &text);
+    }
+    ms_path_append_joined(&text, base, remainder);
+    MsStrBuild cleaned = ms_strbuild_new();
+    ms_path_clean(&cleaned, ms_strbuild_span(&text));
+    ms_strbuild_free(&text);
+    *target = ms_project_text(arena, &cleaned);
+    return true;
+  }
+  if (!ms_file_is_regular(base)) {
+    ms_strbuild_free(&text);
+    ms_project_error_path(error, "stat", base, OS_ENOENT);
+    return false;
+  }
+  if (remainder.len != 0 || !ms_span_is_text(ms_path_ext(base), ".ms")) {
+    ms_strbuild_append_text(&text, "file alias does not accept a suffix; alias ");
+    ms_strbuild_append(&text, alias);
+    ms_strbuild_append_text(&text, " names one file, so import it as \"");
+    ms_strbuild_append(&text, alias);
+    ms_strbuild_append_text(&text, "\" alone");
+    return message(arena, error, &text);
+  }
+  ms_strbuild_free(&text);
+  *target = base;
+  return true;
+}
+
+static bool alias_import(MsArena *arena, const MsManifest *manifest, MsSpan path, MsSpan *target,
+                         MsProjectError *error) {
+  MsSpan alias = path;
+  MsSpan remainder = {0};
+  size_t slash = 0;
+  if (ms_span_find(path, ms_span_of_text("/"), &slash)) {
+    alias = ms_span_of(path.ptr, slash);
+    remainder = ms_span_of(path.ptr + slash + 1, path.len - slash - 1);
+  }
+  MsSpan base = {0};
+  if (manifest != NULL && ms_manifest_find(&manifest->embeds, alias, &base)) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "embed ");
+    ms_strbuild_append(&text, alias);
+    ms_strbuild_append_text(&text, remainder.len != 0 ? " names a generated module, so import it as \"" : " is not implemented yet");
+    if (remainder.len != 0) {
+      ms_strbuild_append(&text, alias);
+      ms_strbuild_append_text(&text, "\" alone");
+    }
+    return message(arena, error, &text);
+  }
+  if (manifest == NULL || !ms_manifest_find(&manifest->aliases, alias, &base)) {
+    return unknown_alias(arena, manifest, alias, error);
+  }
+  return alias_target(arena, alias, base, remainder, target, error);
 }
 
 static bool bare_error(MsArena *arena, MsSpan path, MsProjectError *error) {
@@ -78,8 +165,8 @@ static bool bare_error(MsArena *arena, MsSpan path, MsProjectError *error) {
   return message(arena, error, &text);
 }
 
-bool ms_project_import_target(MsArena *arena, MsSpan importer, MsSpan path, MsSpan *target,
-                              MsProjectError *error) {
+bool ms_project_import_target(MsArena *arena, const MsManifest *manifest, MsSpan importer, MsSpan path,
+                              MsSpan *target, MsProjectError *error) {
   size_t at = 0;
   if (ms_span_find(path, ms_span_of_text("\\"), &at)) {
     return fail_text(arena, error,
@@ -89,7 +176,7 @@ bool ms_project_import_target(MsArena *arena, MsSpan importer, MsSpan path, MsSp
     return relative_target(arena, importer, path, target, error);
   }
   if (ms_span_starts_with(path, ms_span_of_text("@"))) {
-    return alias_error(arena, path, error);
+    return alias_import(arena, manifest, path, target, error);
   }
   if (ms_span_starts_with(path, ms_span_of_text("/"))) {
     return fail_text(arena, error,
@@ -232,11 +319,16 @@ MsSpan ms_project_explain(MsArena *arena, const MsProjectError *error, MsSpan im
   return ms_project_text(arena, &text);
 }
 
-bool ms_project_resolve_import(MsArena *arena, MsSpan root, const MsOverlay *overlay, MsSpan importer,
-                               MsSpan path, MsSpan *canonical, MsProjectError *error) {
+bool ms_project_resolve_in(MsArena *arena, const MsManifest *manifest, MsSpan root, const MsOverlay *overlay,
+                           MsSpan importer, MsSpan path, MsSpan *canonical, MsProjectError *error) {
   MsSpan target = {0};
-  if (!ms_project_import_target(arena, importer, path, &target, error)) {
+  if (!ms_project_import_target(arena, manifest, importer, path, &target, error)) {
     return false;
   }
   return ms_project_source_path(arena, root, target, overlay, canonical, error);
+}
+
+bool ms_project_resolve_import(MsArena *arena, MsSpan root, const MsOverlay *overlay, MsSpan importer,
+                               MsSpan path, MsSpan *canonical, MsProjectError *error) {
+  return ms_project_resolve_in(arena, NULL, root, overlay, importer, path, canonical, error);
 }
