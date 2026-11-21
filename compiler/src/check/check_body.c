@@ -157,6 +157,12 @@ bool ms_body_is_bindable(const MsBody *b, MsTy ty) {
     return body_is_bindable(b, ty);
 }
 
+/* What a `:=` or an `if name = value` can bind: also a Void value (`bad := say(1)`), which the Rust checker binds
+ * with that type and no diagnostic of its own. A Never value stays with the Rust checker: the statement ends the path. */
+static bool body_is_local(const MsBody *b, MsTy ty) {
+    return body_is_bindable(b, ty) || ty == b->void_ty;
+}
+
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
     return ty == b->int_ty || ty == b->float_ty;
 }
@@ -1309,7 +1315,7 @@ static void body_bind_statement(MsBody *b, const MsStmt *s) {
         b->context = ms_arena_fmt(&b->c->arena, "the initializer of '%.*s'", (int)name.len, name.ptr).ptr;
     }
     const MsTy value = ms_body_expr(b, s->u.bind.value, expected);
-    if (value == MS_TY_NONE || !body_is_bindable(b, value)) {
+    if (value == MS_TY_NONE || !body_is_local(b, value)) {
         (void)ms_body_unsupported(b);
         return;
     }
@@ -1501,8 +1507,10 @@ static bool body_if_let_statement(MsBody *b, const MsStmt *s) {
     const bool result = ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_RESULT) && tys->nargs[ty] == 2;
     if (result) {
         payload = ms_ty_args(tys, ty)[0]; // the Ok payload; the error is not captured
+    } else if (ty == b->invalid_ty) {
+        payload = b->invalid_ty; // the scrutinee is reported already; the branches are still checked
     }
-    if ((!result && !ms_body_optional_payload(b, ty, &payload)) || !body_is_bindable(b, payload)) {
+    if ((!result && payload == MS_TY_NONE && !ms_body_optional_payload(b, ty, &payload)) || !body_is_local(b, payload)) {
         (void)ms_body_unsupported(b);
         return false;
     }
