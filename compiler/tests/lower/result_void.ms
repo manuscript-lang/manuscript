@@ -9,6 +9,8 @@ fn quiet(n: Int) Void!:
 fn main() Int:
 	r := check(1)
 	if r.is_error(): return 1
+
 	q := quiet(2)
 	if q.is_error(): return 2
+
 	return 0

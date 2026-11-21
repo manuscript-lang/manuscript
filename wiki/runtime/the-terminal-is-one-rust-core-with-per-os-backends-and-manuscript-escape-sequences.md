@@ -8,6 +8,8 @@ Verified: `cli/terminal.ms` is in the `io` import cycle, so it cannot import `@s
 
 The Windows console path is libuv's (it reads key records as virtual-terminal bytes and signals SIGWINCH on resize), not hand-written. Raw mode switches on bracketed paste, modifyOtherKeys and the kitty keyboard flag so Shift-Enter and pastes decode; the restore string undoes them and shows the cursor.
 
+A read whose caller gave up (a timed-out `next`) leaves its pool job running until the wake-up reaches it, and under CPU load that job can read the next key into a wait nobody collects. Read jobs therefore hold `read_lock` for their whole run, and an abandoned job gets no buffer (`UV_ENOBUFS`), so the bytes stay in the descriptor for the next wait. The pty test lost a key about 1 run in 12 under 24 parallel copies before this; it passes 72 of 72 now.
+
 Apply when: adding a terminal feature (mouse, focus, another key protocol) or a platform.
 Evidence: [terminal.ms](../../stdlib/cli/terminal.ms), [terminal.c](../../runtime/std/terminal.c), [decoder test](../../tests/conformance/fixtures/e2e/stdlib/terminal_decoder.ms), [pty test](../../crates/ms-cli/tests/terminal.rs).
 Verify: `make c-test` (`std_terminal`), `cargo test -p ms-cli --test terminal` (pty), the decoder e2e test, and Windows and macOS CI dispatched on the branch.
