@@ -1,9 +1,10 @@
-/* runtime/std/http_exchange.c: one request on the wire through a curl easy handle, and the response head and
- * body that come back. The head is read by driving curl until it is complete; the body is pulled: curl is
- * paused while enough is staged and resumed by the next read. */
-#include "base/alloc.h"
+/* runtime/std/http_exchange.c: one request through a curl easy handle on the engine thread (http_engine.c),
+ * and the response head and body that come back. The engine fills the head and stages the body under the
+ * response's lock and wakes the caller; the caller pulls: curl is paused while enough is staged and resumed
+ * by the next read. */
 #include <errno.h>
 
+#include "base/alloc.h"
 #include "base/chars.h"
 #include "base/ostext.h"
 #include "runtime/std/http_client_internal.h"
@@ -100,11 +101,7 @@ static void on_head_end(MsHttpResponse *response) {
   }
 }
 
-static size_t on_header(char *buffer, size_t size, size_t count, void *user) {
-  MsHttpResponse *response = user;
-  const size_t whole = size * count;
-  const MsSpan line = trim_blanks(ms_span_of((const uint8_t *)buffer, whole));
-  response->head_bytes += whole;
+static size_t header_line(MsHttpResponse *response, MsSpan line, size_t whole) {
   if (line.len >= 5 && __builtin_memcmp(line.ptr, "HTTP/", 5) == 0) {
     on_status_line(response, line);
     return whole;
@@ -133,6 +130,29 @@ static size_t on_header(char *buffer, size_t size, size_t count, void *user) {
       .value = ms_bytes_from_span(trim_blanks(ms_span_of(line.ptr + colon + 1, line.len - colon - 1)))};
   ms_list_push(&response->fields, sizeof field, &field);
   return whole;
+}
+
+/* Wakes the caller waiting on this response. The lock is held. */
+static void wake(MsHttpResponse *response) {
+  if (response->waiter != 0) {
+    ms_http_wait_ops()->wake(response->waiter);
+  }
+}
+
+size_t ms_http_on_header(char *buffer, size_t size, size_t count, void *user) {
+  MsHttpResponse *response = user;
+  const size_t whole = size * count;
+  ms_http_mutex_lock(response->lock);
+  size_t taken = whole;
+  if (!response->head_done) {
+    response->head_bytes += whole;
+    taken = header_line(response, trim_blanks(ms_span_of((const uint8_t *)buffer, whole)), whole);
+    if (response->head_done) {
+      wake(response);
+    }
+  } /* a trailer after the head is dropped */
+  ms_http_mutex_unlock(response->lock);
+  return taken;
 }
 
 uint8_t ms_http_head_finish(MsHttpResponse *response) {
@@ -195,61 +215,26 @@ static bool stage_gunzip(MsHttpResponse *response, MsSpan in) {
   }
 }
 
-static size_t on_body(char *buffer, size_t size, size_t count, void *user) {
+size_t ms_http_on_body(char *buffer, size_t size, size_t count, void *user) {
   MsHttpResponse *response = user;
   const size_t whole = size * count;
-  if (response->staged.len - response->staged_pos >= MS_HTTP_STAGE_HIGH) {
-    response->paused = true;
-    return CURL_WRITEFUNC_PAUSE;
-  }
   const MsSpan bytes = ms_span_of((const uint8_t *)buffer, whole);
-  const bool kept = response->gunzip != NULL ? stage_gunzip(response, bytes) : stage(response, bytes);
-  return kept ? whole : 0;
-}
-
-/* ---- driving curl ---- */
-
-static void reap(MsHttpResponse *response) {
-  int queued = 0;
-  CURLMsg *message = NULL;
-  while ((message = curl_multi_info_read(response->conn->multi, &queued)) != NULL) {
-    if (message->msg == CURLMSG_DONE && message->easy_handle == response->conn->easy) {
-      response->result = message->data.result;
-      response->done = true;
-    }
+  ms_http_mutex_lock(response->lock);
+  size_t taken = whole;
+  if (response->discarding) {
+    response->discarded += whole;
+    taken = response->discarded > MS_HTTP_SLURP ? 0 : whole; /* a long body is not worth reading */
+  } else if (response->staged.len - response->staged_pos >= MS_HTTP_STAGE_HIGH) {
+    response->paused = true;
+    taken = CURL_WRITEFUNC_PAUSE;
+  } else {
+    const bool kept = response->gunzip != NULL ? stage_gunzip(response, bytes) : stage(response, bytes);
+    taken = kept ? whole : 0;
+    wake(response);
   }
+  ms_http_mutex_unlock(response->lock);
+  return taken;
 }
-
-/* Runs curl until `stop` holds or the transfer ends. */
-static void drive(MsHttpResponse *response, bool (*stop)(const MsHttpResponse *)) {
-  CURLM *multi = response->conn->multi;
-  while (!stop(response) && !response->done) {
-    int running = 0;
-    const CURLMcode code = curl_multi_perform(multi, &running);
-    reap(response);
-    if (code != CURLM_OK) {
-      response->result = CURLE_RECV_ERROR;
-      response->done = true;
-    } else if (atomic_load(&response->client->closed)) {
-      response->result = CURLE_ABORTED_BY_CALLBACK;
-      response->abort_status = MS_STATUS_CLOSED;
-      response->done = true;
-    } else if (!stop(response) && !response->done) {
-      int ignored = 0;
-      (void)curl_multi_poll(multi, NULL, 0, 1000, &ignored);
-    }
-  }
-}
-
-static bool head_ready(const MsHttpResponse *response) {
-  return response->head_done;
-}
-
-static bool body_ready(const MsHttpResponse *response) {
-  return response->staged.len > response->staged_pos;
-}
-
-/* ---- failures ---- */
 
 /* The OS error text, lower-case first letter, as the language words transport failures. */
 static MsString os_text(long error_number) {
@@ -291,8 +276,7 @@ static MsString unresolved_text(const MsHttpResponse *response) {
 
 /* The text of a transport failure, in the words the language uses for it. */
 static MsString failure_text(MsHttpResponse *response) {
-  long error_number = 0;
-  (void)curl_easy_getinfo(response->conn->easy, CURLINFO_OS_ERRNO, &error_number);
+  const long error_number = response->os_errno;
   switch (response->result) {
   case CURLE_COULDNT_RESOLVE_HOST:
     return unresolved_text(response);
@@ -408,8 +392,7 @@ static void set_tls(const MsHttpClient *client, CURL *easy) {
 }
 
 static void configure(MsHttpResponse *response, const HttpHop *hop) {
-  CURL *easy = response->conn->easy;
-  curl_easy_reset(easy);
+  CURL *easy = response->easy;
   char *url = ms_alloc_zeroed(hop->url.len + 1);
   __builtin_memcpy(url, hop->url.ptr, hop->url.len);
   curl_easy_setopt(easy, CURLOPT_URL, url);
@@ -418,12 +401,17 @@ static void configure(MsHttpResponse *response, const HttpHop *hop) {
   curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https");
   curl_easy_setopt(easy, CURLOPT_HTTP_CONTENT_DECODING, 0L);
   curl_easy_setopt(easy, CURLOPT_TCP_KEEPALIVE, 1L);
-  curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, on_header);
+  curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, ms_http_on_header);
   curl_easy_setopt(easy, CURLOPT_HEADERDATA, response);
-  curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, on_body);
+  curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, ms_http_on_body);
   curl_easy_setopt(easy, CURLOPT_WRITEDATA, response);
   curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, response->error);
   curl_easy_setopt(easy, CURLOPT_SHARE, response->client->share);
+  curl_easy_setopt(easy, CURLOPT_PRIVATE, response);
+  if (response->client->options.expire_idle) {
+    curl_easy_setopt(easy, CURLOPT_MAXAGE_CONN,
+                     (long)((response->client->options.idle_timeout_ns + 999999999) / 1000000000));
+  }
   if (response->client->options.cookies) {
     curl_easy_setopt(easy, CURLOPT_COOKIEFILE, "");
   }
@@ -454,9 +442,14 @@ static void configure(MsHttpResponse *response, const HttpHop *hop) {
   ms_free(method);
 }
 
+/* ---- creating, starting and finishing ---- */
+
 MsHttpResponse *ms_http_response_new(MsHttpClient *client, const MsHttpRequest *request) {
   MsHttpResponse *response = ms_alloc_zeroed(sizeof *response);
+  atomic_init(&response->refs, 1);
   response->client = ms_http_client_retain(client);
+  response->easy = curl_easy_init();
+  response->lock = ms_http_mutex_new();
   response->max_head_bytes = client->options.max_header_bytes != 0 ? (size_t)client->options.max_header_bytes
                                                                    : (size_t)MS_HTTP_DEFAULT_MAX_HEADER_BYTES;
   response->limit = request->limit_response;
@@ -467,29 +460,31 @@ MsHttpResponse *ms_http_response_new(MsHttpClient *client, const MsHttpRequest *
   }
   response->protocol = ms_string_empty();
   response->url = ms_string_empty();
-  response->conn = ms_http_conn_take(client);
   return response;
 }
 
-uint8_t ms_http_hop_run(MsHttpResponse *response, const HttpHop *hop, MsString *err) {
-  configure(response, hop);
-  ms_string_release(&response->url);
-  response->url = ms_string_from_span(hop->url);
-  curl_multi_add_handle(response->conn->multi, response->conn->easy);
-  ms_http_active_add(response->client, response);
-  drive(response, head_ready);
-  if (response->head_done) {
-    return MS_STATUS_OK;
+void ms_http_response_unref(MsHttpResponse *response) {
+  if (atomic_fetch_sub(&response->refs, 1) != 1) {
+    return;
   }
-  response->done = true;
-  const uint8_t status = outcome(response, err);
-  return status == MS_STATUS_OK ? MS_STATUS_FAILED : status;
+  curl_easy_cleanup(response->easy);
+  curl_slist_free_all(response->request_fields);
+  ms_bytes_free(&response->request_body);
+  fields_free(&response->fields);
+  if (response->headers != NULL) {
+    ms_headers_free(response->headers);
+  }
+  ms_bytes_free(&response->staged);
+  ms_gunzip_free(response->gunzip);
+  ms_string_release(&response->protocol);
+  ms_string_release(&response->url);
+  ms_http_mutex_free(response->lock);
+  ms_http_client_release(response->client);
+  ms_free(response);
 }
 
-/* ---- reading the body, ending ---- */
-
 /* Finishes the gzip stream at the end of the body; false (with the failure noted) when it was cut or corrupt.
- */
+ * The lock is held. */
 static bool end_gunzip(MsHttpResponse *response) {
   uint8_t out[4096];
   for (;;) {
@@ -510,17 +505,62 @@ static bool end_gunzip(MsHttpResponse *response) {
   }
 }
 
+void ms_http_response_finished(MsHttpResponse *response, CURLcode result) {
+  long error_number = 0;
+  (void)curl_easy_getinfo(response->easy, CURLINFO_OS_ERRNO, &error_number);
+  ms_http_mutex_lock(response->lock);
+  response->os_errno = error_number;
+  response->result = result;
+  if (result == CURLE_OK && response->gunzip != NULL && !response->overflow) {
+    (void)end_gunzip(response);
+  }
+  response->done = true;
+  wake(response);
+  ms_http_mutex_unlock(response->lock);
+}
+
+/* Waits for a change of the response; the lock is held on entry and on return. */
+static MsHttpWake wait_change(MsHttpResponse *response) {
+  const MsHttpWaitOps *ops = ms_http_wait_ops();
+  const uint64_t waiter = ops->begin();
+  response->waiter = waiter;
+  ms_http_mutex_unlock(response->lock);
+  const MsHttpWake woke = ops->wait(waiter, -1);
+  ms_http_mutex_lock(response->lock);
+  response->waiter = 0;
+  ops->end(waiter);
+  return woke;
+}
+
+/* The caller was cancelled while waiting: ends the transfer. */
+static uint8_t cancelled(MsHttpResponse *response) {
+  ms_http_mutex_unlock(response->lock);
+  ms_http_engine_cancel(response);
+  return MS_STATUS_CLOSED;
+}
+
+uint8_t ms_http_hop_run(MsHttpResponse *response, const HttpHop *hop, MsString *err) {
+  configure(response, hop);
+  ms_string_release(&response->url);
+  response->url = ms_string_from_span(hop->url);
+  ms_http_engine_start(response);
+  ms_http_mutex_lock(response->lock);
+  while (!response->head_done && !response->done) {
+    if (wait_change(response) == MS_HTTP_WAIT_CANCELLED) {
+      return cancelled(response);
+    }
+  }
+  const bool ready = response->head_done;
+  const uint8_t status = ready ? MS_STATUS_OK : outcome(response, err);
+  ms_http_mutex_unlock(response->lock);
+  return status == MS_STATUS_OK && !ready ? MS_STATUS_FAILED : status;
+}
+
+/* ---- reading the body ---- */
+
 static uint8_t read_end(MsHttpResponse *response, MsString *err) {
   if (response->overflow) {
     return MS_STATUS_LIMIT_EXCEEDED;
-  }
-  const bool clean =
-      response->abort_text == NULL && !atomic_load(&response->client->closed) && response->result == CURLE_OK;
-  if (clean && response->gunzip != NULL && !response->drained && !end_gunzip(response)) {
-    return outcome(response, err);
-  }
-  if (response->staged.len > response->staged_pos) {
-    return MS_STATUS_OK; /* the end of the gzip stream produced more */
   }
   const uint8_t status = outcome(response, err);
   response->drained = status == MS_STATUS_OK;
@@ -531,6 +571,7 @@ uint8_t ms_http_response_read(MsHttpResponse *response, size_t max, MsBytes *out
   if (max == 0) {
     return MS_STATUS_INVALID_INPUT;
   }
+  ms_http_mutex_lock(response->lock);
   for (;;) {
     const size_t available = response->staged.len - response->staged_pos;
     if (available > 0) {
@@ -541,67 +582,51 @@ uint8_t ms_http_response_read(MsHttpResponse *response, size_t max, MsBytes *out
         response->staged.len = 0;
         response->staged_pos = 0;
       }
+      const bool resume =
+          response->paused && response->staged.len - response->staged_pos < MS_HTTP_STAGE_HIGH / 2;
+      response->paused = response->paused && !resume;
+      ms_http_mutex_unlock(response->lock);
+      if (resume) {
+        ms_http_engine_resume(response);
+      }
       return MS_STATUS_OK;
     }
-    if (response->done || response->conn == NULL) {
-      return read_end(response, err);
+    if (response->done) {
+      const uint8_t status = read_end(response, err);
+      ms_http_mutex_unlock(response->lock);
+      return status;
     }
-    if (response->paused) {
-      response->paused = false;
-      (void)curl_easy_pause(response->conn->easy, CURLPAUSE_CONT);
-      continue;
+    if (wait_change(response) == MS_HTTP_WAIT_CANCELLED) {
+      return cancelled(response);
     }
-    drive(response, body_ready);
   }
-}
-
-static void finish(MsHttpResponse *response) {
-  HttpConn *conn = response->conn;
-  if (conn == NULL) {
-    return;
-  }
-  ms_http_active_remove(response->client, response);
-  curl_multi_remove_handle(conn->multi, conn->easy);
-  const bool reusable = response->done && response->result == CURLE_OK && !response->overflow &&
-                        response->abort_text == NULL && response->head_done;
-  response->conn = NULL;
-  ms_http_conn_give(response->client, conn, reusable);
 }
 
 void ms_http_response_discard(MsHttpResponse *response) {
-  size_t taken = 0;
-  while (response->conn != NULL && !response->done && taken < MS_HTTP_SLURP) {
-    MsBytes sink = {0};
-    MsString err = ms_string_empty();
-    const uint8_t status = ms_http_response_read(response, MS_HTTP_SLURP, &sink, &err);
-    taken += sink.len;
-    const bool end = status != MS_STATUS_OK || sink.len == 0;
-    ms_bytes_free(&sink);
-    ms_string_release(&err);
-    if (end) {
-      break;
-    }
+  ms_http_mutex_lock(response->lock);
+  response->discarding = true;
+  const bool resume = response->paused;
+  response->paused = false;
+  response->staged.len = 0;
+  response->staged_pos = 0;
+  ms_http_mutex_unlock(response->lock);
+  if (resume) {
+    ms_http_engine_resume(response);
   }
-  ms_http_response_close(response);
+  ms_http_response_unref(response); /* the engine finishes the transfer and frees the record */
 }
 
 void ms_http_response_close(MsHttpResponse *response) {
   if (response == NULL) {
     return;
   }
-  finish(response);
-  curl_slist_free_all(response->request_fields);
-  ms_bytes_free(&response->request_body);
-  fields_free(&response->fields);
-  if (response->headers != NULL) {
-    ms_headers_free(response->headers);
+  ms_http_mutex_lock(response->lock);
+  const bool running = !response->done;
+  ms_http_mutex_unlock(response->lock);
+  if (running) {
+    ms_http_engine_cancel(response);
   }
-  ms_bytes_free(&response->staged);
-  ms_gunzip_free(response->gunzip);
-  ms_string_release(&response->protocol);
-  ms_string_release(&response->url);
-  ms_http_client_release(response->client);
-  ms_free(response);
+  ms_http_response_unref(response);
 }
 
 uint16_t ms_http_response_status(const MsHttpResponse *response) {
