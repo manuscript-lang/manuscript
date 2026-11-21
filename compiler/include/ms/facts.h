@@ -114,7 +114,8 @@ typedef struct MsFacts {
     uint32_t *lambda_first;   /* by lambda node id: the first binding of its parameters and body; the ones below are captured */
     uint32_t *assign_binding; /* by assignment statement node id: the binding it writes, else MS_NONE */
     uint32_t *field_store_root; /* by assignment statement node id: the `var` a field store changes, else MS_NONE */
-    bool *each_list;  /* by `for` statement node id: it iterates a list, not a range */
+    bool *each_list;  /* by `for` statement node id: it iterates a list, a set or a map, not a range */
+    bool *each_collection; /* by `for` statement node id: the iterated value is a set or a map (a subset of `each_list`), which ownership and lowering leave to Rust */
     bool *call_borrows; /* by call node id: a native whose result points into its receiver (`s.chars()`) */
     MsTy *coerce_iface; /* by expression node id: the concrete type of a value passed as an interface (the expression's own type), else MS_TY_NONE */
     bool *call_reordered; /* by call node id: an argument is not at its parameter's position (labels out of order or skipping a default); passes that pair arguments with parameters by index leave the call to Rust */

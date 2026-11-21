@@ -1677,6 +1677,11 @@ static void own_for_list(OwnWalk *w, const MsStmt *s) {
 }
 
 static void own_for(OwnWalk *w, const MsStmt *s) {
+    if (w->facts->each_collection[s->id]) {
+        OWN_DECLINE(w); /* a set or a map is iterated by its own protocol; ownership of the loop is left to Rust */
+        own_expr(w, s->u.each.iter, DEMAND_READ);
+        return;
+    }
     if (w->facts->each_list[s->id]) {
         own_for_list(w, s);
         return;
