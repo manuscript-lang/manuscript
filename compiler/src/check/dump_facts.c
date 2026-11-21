@@ -15,6 +15,7 @@
 
 typedef struct FactsRow {
     const char *kind;
+    MsBuf file; /* the module's name, NUL-terminated */
     MsBuf name;
     MsBuf key;
     uint32_t line;
@@ -173,6 +174,8 @@ static FactsRow *facts_add_row(MsBuf *rows, const MsNames *names, const char *fi
     memset(row, 0, sizeof *row);
     row->kind = kind;
     row->line = line;
+    ms_buf_puts(&row->file, file);
+    ms_buf_putc(&row->file, '\0');
     ms_buf_printf(&row->key, "%s#%s#", file, kind);
     return row;
 }
@@ -547,7 +550,7 @@ static int facts_str_compare(const void *a, const void *b) {
     return (x.len > y.len) - (x.len < y.len);
 }
 
-/* `[{"file", "paths"}]`: the module's import paths, sorted and unique. */
+/* `{"file", "paths"}`: the module's import paths, sorted and unique. */
 static void facts_put_imports(MsBuf *out, const MsModule *module, const char *file, size_t file_len) {
     MsBuf paths = {0};
     for (uint32_t i = 0; i < module->nimports; i++) {
@@ -559,7 +562,7 @@ static void facts_put_imports(MsBuf *out, const MsModule *module, const char *fi
     if (count > 1) {
         qsort(items, count, sizeof *items, facts_str_compare);
     }
-    ms_buf_puts(out, "[{\"file\": ");
+    ms_buf_puts(out, "{\"file\": ");
     facts_put_json(out, file, file_len);
     ms_buf_puts(out, ", \"paths\": [");
     const char *sep = "";
@@ -571,7 +574,7 @@ static void facts_put_imports(MsBuf *out, const MsModule *module, const char *fi
         facts_put_json(out, items[i].ptr, items[i].len);
         sep = ", ";
     }
-    ms_buf_puts(out, "]}]");
+    ms_buf_puts(out, "]}");
     ms_buf_free(&paths);
 }
 
@@ -588,7 +591,7 @@ static bool facts_has_default(MsParams params) {
  * one it does not cover (methods, tests, impls), prints empty lists and `"effects_known": false`.
  * `calls` lists the project functions the body calls, as entity keys: a function with a method or
  * interface call or an implicit `close` is partial, so its calls are never printed short. */
-static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects *rows, uint32_t nrows, const char *file) {
+static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects *rows, uint32_t nrows) {
     const MsEntityEffects *found = NULL;
     for (uint32_t r = 0; r < nrows; r++) {
         found = rows[r].decl == d ? &rows[r] : found;
@@ -607,22 +610,24 @@ static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects
     ms_buf_puts(out, ", ");
     facts_put_strings(out, "permits", found->permits, found->npermits, NULL);
     ms_buf_puts(out, ", ");
-    MsBuf prefix = {0};
-    ms_buf_printf(&prefix, "%s#fn#", file);
-    ms_buf_putc(&prefix, '\0');
-    facts_put_strings(out, "calls", found->calls, found->ncalls, prefix.data);
-    ms_buf_free(&prefix);
+    facts_put_strings(out, "calls", found->calls, found->ncalls, NULL);
     ms_buf_puts(out, ", \"effects_known\": true");
 }
 
-void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
+/* One import entry of the document: the file and its JSON object. */
+typedef struct FactsImport {
+    MsBuf file;
+    MsBuf json;
+} FactsImport;
+
+/* Adds the rows and the import entry of module `m`, whose source is `text`. */
+static void facts_add_module(MsBuf *rows, MsBuf *imports, MsCheck *c, MsModId m, MsStr text) {
     const MsModuleRow *row = &c->mods[m];
     const MsModule *module = row->syntax;
     const MsNames *names = c->names;
     MsBuf file = {0};
     facts_put_str(&file, names, row->path);
     ms_buf_putc(&file, '\0');
-    MsBuf rows = {0};
     uint32_t total_lines = 1; /* the lines of the source, as the Rust side counts them: newlines plus one */
     for (uint32_t i = 0; i < text.len; i++) {
         total_lines += text.ptr[i] == '\n' ? 1 : 0;
@@ -637,11 +642,11 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
         if (d->synthetic && d->kind == MS_D_INTERFACE) {
             continue;
         }
-        FactsRow *fact = facts_add_row(&rows, names, file.data, facts_kind_of(d),
+        FactsRow *fact = facts_add_row(rows, names, file.data, facts_kind_of(d),
                                        d->kind == MS_D_IMPL ? facts_impl_line(module, names, i) : d->pos.line);
         facts_fill_decl(fact, names, &own, d);
         facts_seal_key(fact);
-        facts_put_effects(&fact->effects, d, effect_rows, neffects, file.data);
+        facts_put_effects(&fact->effects, d, effect_rows, neffects);
         facts_put_meta(&fact->meta, c, m, d, NULL);
         fact->first = d->pos.line;
         const uint32_t decl_last = i + 1 < module->ndecls ? module->decls[i + 1]->pos.line - 1 : total_lines;
@@ -651,10 +656,10 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
         }
         for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
             const MsMethod *meth = d->u.impl.methods.ptr[k];
-            FactsRow *method = facts_add_row(&rows, names, file.data, "method", meth->pos.line);
+            FactsRow *method = facts_add_row(rows, names, file.data, "method", meth->pos.line);
             facts_fill_method(method, names, d, meth);
             facts_seal_key(method);
-            facts_put_effects(&method->effects, NULL, effect_rows, neffects, file.data);
+            facts_put_effects(&method->effects, NULL, effect_rows, neffects);
             MsBuf label = {0};
             facts_put_str(&label, names, d->u.impl.receiver->kind == MS_TYPE_NAMED ? d->u.impl.receiver->name : 0);
             ms_buf_putc(&label, '.');
@@ -665,8 +670,24 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
             method->last = k + 1 < d->u.impl.methods.len ? d->u.impl.methods.ptr[k + 1]->pos.line - 1 : decl_last;
         }
     }
-    FactsRow *items = ms_buf_items(&rows);
-    const size_t count = rows.len / sizeof *items;
+    FactsImport *entry = ms_buf_push(imports, sizeof *entry);
+    memset(entry, 0, sizeof *entry);
+    ms_buf_puts(&entry->file, file.data);
+    facts_put_imports(&entry->json, module, file.data, file.len - 1);
+    ms_arena_free(&scratch);
+    ms_classifier_free(own.classifier);
+    ms_buf_free(&file);
+}
+
+static int facts_compare_imports(const void *a, const void *b) {
+    const FactsImport *x = a, *y = b;
+    return strcmp(x->file.data, y->file.data);
+}
+
+/* Writes the document of the collected rows and imports, and frees both. */
+static void facts_write(MsBuf *out, MsBuf *rows, MsBuf *imports) {
+    FactsRow *items = ms_buf_items(rows);
+    const size_t count = rows->len / sizeof *items;
     qsort(items, count, sizeof *items, facts_compare_rows);
     ms_buf_puts(out, "{\n  \"entities\": [");
     bool first = true;
@@ -679,7 +700,7 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
         ms_buf_puts(out, "{\"key\": ");
         facts_put_json_buf(out, &items[i].key);
         ms_buf_puts(out, ", \"file\": ");
-        facts_put_json(out, file.data, file.len - 1);
+        facts_put_json(out, items[i].file.data, items[i].file.len - 1);
         ms_buf_printf(out, ", \"kind\": \"%s\", \"name\": ", items[i].kind);
         facts_put_json_buf(out, &items[i].name);
         ms_buf_printf(out, ", \"line\": %u, \"scopes\": %u, \"ownership_known\": %s, \"external\": [], \"first\": %u, \"last\": %u, ",
@@ -689,22 +710,42 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
         ms_buf_put(out, items[i].body.data, items[i].body.len);
         ms_buf_putc(out, '}');
     }
-    ms_buf_puts(out, "\n  ],\n  \"imports\": ");
-    facts_put_imports(out, module, file.data, file.len - 1);
-    ms_buf_puts(out, ", \"flows\": []\n}\n");
+    FactsImport *entries = ms_buf_items(imports);
+    const size_t nentries = imports->len / sizeof *entries;
+    qsort(entries, nentries, sizeof *entries, facts_compare_imports);
+    ms_buf_puts(out, "\n  ],\n  \"imports\": [");
+    for (size_t i = 0; i < nentries; i++) {
+        ms_buf_puts(out, i == 0 ? "" : ", ");
+        ms_buf_put(out, entries[i].json.data, entries[i].json.len);
+        ms_buf_free(&entries[i].file);
+        ms_buf_free(&entries[i].json);
+    }
+    ms_buf_puts(out, "], \"flows\": []\n}\n");
     for (size_t i = 0; i < count; i++) {
+        ms_buf_free(&items[i].file);
         ms_buf_free(&items[i].name);
         ms_buf_free(&items[i].key);
         ms_buf_free(&items[i].body);
         ms_buf_free(&items[i].effects);
         ms_buf_free(&items[i].meta);
     }
-    ms_arena_free(&scratch);
-    ms_classifier_free(own.classifier);
-    ms_buf_free(&rows);
-    ms_buf_free(&file);
+    ms_buf_free(rows);
+    ms_buf_free(imports);
 }
 
+void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
+    MsBuf rows = {0}, imports = {0};
+    facts_add_module(&rows, &imports, c, m, text);
+    facts_write(out, &rows, &imports);
+}
+
+void ms_dump_project_facts(MsBuf *out, MsCheck *c, const MsModId *mods, const MsStr *texts, uint32_t count) {
+    MsBuf rows = {0}, imports = {0};
+    for (uint32_t i = 0; i < count; i++) {
+        facts_add_module(&rows, &imports, c, mods[i], texts[i]);
+    }
+    facts_write(out, &rows, &imports);
+}
 /* The builtin kinds the typed lint rules ask about; any other type is "Other". A node with type arguments also
  * names the kind of the first ("arg"). */
 static const char *nodes_kind(const MsTyTable *tys, MsTy ty) {

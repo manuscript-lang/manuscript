@@ -202,7 +202,15 @@ static bool body_is_comparable(const MsBody *b, MsTy ty) {
 }
 
 /* Gives up on the function; the caller returns `<invalid>` (MS_TY_NONE) up the tree. */
-MsTy ms_body_unsupported(MsBody *b) {
+void (*ms_body_decline_hook)(const char *file, int line);
+
+MsTy ms_body_unsupported_at(MsBody *b, const char *file, int line) {
+    if (b->supported) {
+        b->gave_up = (MsSite){file, (uint32_t)line};
+        if (ms_body_decline_hook != NULL) {
+            ms_body_decline_hook(file, line);
+        }
+    }
     b->supported = false;
     return MS_TY_NONE;
 }
@@ -612,7 +620,8 @@ bool ms_body_reordered(const MsExpr *call, const uint32_t *slot) {
 static bool body_has_default(const MsBody *b, MsSymId sym, const MsDecl *decl, uint32_t index) {
     const MsFacts *home = b->c->mods[b->c->syms.module[sym]].facts;
     const MsExpr *def = decl->u.type.fields.ptr[index]->def;
-    return home->expr_ty != NULL && home->expr_ty[def->id] != MS_TY_NONE;
+    // A module whose bodies this run does not check (the standard library) checked its defaults when it was built.
+    return home->expr_ty == NULL || home->expr_ty[def->id] != MS_TY_NONE;
 }
 
 /* A type another module declares has its field defaults typed once that module's bodies are
@@ -1621,11 +1630,19 @@ static void body_undo(MsBody *b, uint32_t first_binding, size_t written_start, s
     b->facts->bindings.count = first_binding;
 }
 
-/* A parameter has no default, or the `none` of an `Optional` (which `T?` implies). */
-/* A parameter without a default, or an Optional one defaulting to `none`. */
+/* A parameter has no default, the `none` of an `Optional` (which `T?` implies), or a literal of
+ * its own type (checked with the body, where its node gets a type). */
 static bool body_default_fits(const MsBody *b, const MsParam *p, MsTy ty) {
-    return p->def == NULL ||
-           (p->def->kind == MS_E_NAME && ms_name_is(b->c->names, p->def->u.sym, "none") && body_is_optional(b, ty));
+    if (p->def == NULL) {
+        return true;
+    }
+    switch ((MsExprKind)p->def->kind) {
+    case MS_E_NAME: return ms_name_is(b->c->names, p->def->u.sym, "none") && body_is_optional(b, ty);
+    case MS_E_NUMBER: return ty == b->int_ty || ty == b->float_ty;
+    case MS_E_BOOL: return ty == b->bool_ty;
+    case MS_E_TEXT: return ty == b->string_ty && p->def->u.text.len == 1 && p->def->u.text.ptr[0].expr == NULL;
+    default: return false;
+    }
 }
 
 static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig) {
@@ -1727,7 +1744,11 @@ typedef struct BodySelf {
  * bindings' `callable` name. */
 static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool exported, const MsFunc *fn, MsTy sig,
                                 const BodySelf *self) {
-    if (fn->external || !body_signature_supported(b, fn, sig)) {
+    if (fn->external) {
+        return;
+    }
+    if (!body_signature_supported(b, fn, sig)) {
+        b->facts->refusal[node] = (MsSite){__FILE__, (uint32_t)__LINE__};
         return;
     }
     const uint32_t first_binding = b->facts->bindings.count;
@@ -1750,6 +1771,12 @@ static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool export
         const uint8_t flags = (params[i].flags & MS_PARAM_VAR) != 0 ? MS_BIND_MUTABLE : 0;
         (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, fn->params.ptr[i]->pos, flags, MS_ROLE_PARAM);
     }
+    for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
+        const MsExpr *def = fn->params.ptr[i]->def;
+        if (def != NULL && def->kind != MS_E_NAME && ms_body_expr(b, def, params[i].ty) != params[i].ty) {
+            (void)ms_body_unsupported(b);
+        }
+    }
     if (b->supported) {
         body_statements(b, &fn->body, pos);
     }
@@ -1757,6 +1784,7 @@ static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool export
         b->facts->body_checked[node] = true;
         body_commit_diags(b, diags_start);
     } else {
+        b->facts->refusal[node] = b->gave_up;
         body_undo(b, first_binding, written_start, diags_start);
     }
 }
@@ -1818,6 +1846,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->refusal = MS_NEW_N(arena, MsSite, nodes);
+    memset(facts->refusal, 0, nodes * sizeof *facts->refusal);
     facts->param_consumed = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->param_consumed, 0, nodes * sizeof *facts->param_consumed);
     facts->ret_borrowed = MS_NEW_N(arena, bool, nodes);

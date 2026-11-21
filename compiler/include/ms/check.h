@@ -149,4 +149,12 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, struct MsMethodTabl
  * that begin with `_`. Call after ms_module_check_bodies (and the ownership pass). */
 void ms_module_check_unused(MsCheck *c, MsModId module);
 
+/* Appends `module` and then the project modules it imports (transitively), each once, in import order.
+ * `seen` and `modules` have room for every module; `*n` counts `modules`. */
+void ms_module_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modules, uint32_t *n);
+
+/* Called with the source line of each construct the body checker gives up on (first one per function);
+ * a tool sets it to rank what keeps functions with the Rust checker. */
+extern void (*ms_body_decline_hook)(const char *file, int line);
+
 #endif
