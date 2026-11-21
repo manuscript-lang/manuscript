@@ -36,6 +36,10 @@ typedef struct MsBody {
 
 /* A parameter or local of this type can be called and passed around (check_closure.c). */
 bool ms_body_is_function_value(const MsBody *b, MsTy ty);
+/* A function type that may be expected of an argument: its parameters may be `var` or `move`. */
+bool ms_body_is_callback_type(const MsBody *b, MsTy ty);
+/* Whether `actual` is `expected` except that it reads parameters `expected` may change or take. */
+bool ms_body_reads_where_var_expected(const MsBody *b, MsTy actual, MsTy expected);
 /* Whether `ty` is `<invalid>` or built from it: an earlier diagnostic is why. */
 bool ms_body_has_invalid(const MsBody *b, MsTy ty);
 /* `callee(args)` through the function-typed binding `binding`. */
