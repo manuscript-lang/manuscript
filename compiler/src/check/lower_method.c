@@ -26,7 +26,8 @@ static LbCallable lm_callable(Lb *lb, uint32_t row) {
                         .name = lm_name(lb, methods->receiver[row], r->method->func.name),
                         .sig = methods->ty[row],
                         .self_ty = methods->receiver[row],
-                        .mutating = (methods->access[row] & MS_METHOD_MUTATING) != 0};
+                        .mutating = (methods->access[row] & MS_METHOD_MUTATING) != 0,
+                        .consuming = (methods->access[row] & MS_METHOD_CONSUMING) != 0};
 }
 
 /* The rows of the impl methods module `view` wrote, each with the lines it owns: from its own to
@@ -124,5 +125,10 @@ LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row) {
         return LB_UNSUPPORTED(lb);
     }
     const bool mutating = (methods->access[row] & MS_METHOD_MUTATING) != 0;
-    return lb_call_func(lb, e, lb->method_func[row], methods->ty[row], e->u.call.callee->u.member.left, mutating);
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    if (lc_is_closer_row(lb, row) && receiver->kind == MS_E_NAME && lb->facts->res_kind[receiver->id] == MS_RES_BINDING &&
+        lc_is_slot_local(lb, lb->facts->res_ref[receiver->id])) {
+        return LB_UNSUPPORTED(lb); // a close by hand: the pass would close the value again
+    }
+    return lb_call_func(lb, e, lb->method_func[row], methods->ty[row], receiver, mutating);
 }

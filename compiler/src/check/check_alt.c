@@ -39,6 +39,19 @@ static bool alt_info(const MsBody *b, MsTy ty, AltInfo *out) {
     return out->ncases != 0 && out->def.nvars == c->tys.nargs[ty];
 }
 
+bool ms_body_is_foreign_opaque(const MsBody *b, MsTy ty) {
+    const MsCheck *c = b->c;
+    const uint32_t def = ty == MS_TY_NONE ? 0 : c->tys.def[ty];
+    if (def == 0) {
+        return false;
+    }
+    const MsDecl *decl = c->syms.decl[def - 1];
+    if (decl == NULL || c->syms.module[def - 1] == b->module) {
+        return false;
+    }
+    return (decl->kind == MS_D_ENUM && decl->u.enumeration.opaque) || (decl->kind == MS_D_TYPE && decl->u.type.opaque);
+}
+
 bool ms_body_optional_payload(const MsBody *b, MsTy ty, MsTy *payload) {
     AltInfo info = {0};
     if (ty == MS_TY_NONE || !alt_info(b, ty, &info) || !info.optional) {
@@ -203,6 +216,28 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
     return b->match_falls ? result : b->never_ty;
 }
 
+/* Whether more than one enum this module names declares a case `name`: a bare `name` is then
+ * ambiguous (the Rust checker reports it), so it is left to that checker. */
+static bool alt_case_ambiguous(const MsBody *b, MsSym name) {
+    MsCheck *c = b->c;
+    const MsNameMap *names = &c->mods[b->module].names;
+    uint32_t found = 0;
+    for (uint32_t slot = 0; slot < names->cap; slot++) {
+        if (names->vals[slot] == 0) {
+            continue;
+        }
+        const MsSymId sym = names->vals[slot] - 1;
+        if (c->syms.kind[sym] != MS_SYM_TYPE || c->syms.ty[sym] == MS_TY_NONE || ms_ty_kind(&c->tys, c->syms.ty[sym]) != MS_K_ALTERNATIVE) {
+            continue;
+        }
+        const MsDef *def = ms_def(c, sym);
+        for (uint32_t i = 0; i < def->ncases; i++) {
+            found += def->cases[i].name == name;
+        }
+    }
+    return found > 1;
+}
+
 /* The case of the enum `ty` that the bare name `name` spells, or MS_NONE. */
 static uint32_t alt_named_case(const MsBody *b, MsTy ty, MsSym name, AltInfo *info) {
     if (ty == MS_TY_NONE || !alt_info(b, ty, info) || info->optional) {
@@ -210,7 +245,7 @@ static uint32_t alt_named_case(const MsBody *b, MsTy ty, MsSym name, AltInfo *in
     }
     for (uint32_t i = 0; i < info->ncases; i++) {
         if (alt_case_name(b, info, i) == name) {
-            return i;
+            return alt_case_ambiguous(b, name) ? MS_NONE : i;
         }
     }
     return MS_NONE;
@@ -219,6 +254,15 @@ static uint32_t alt_named_case(const MsBody *b, MsTy ty, MsSym name, AltInfo *in
 bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name) {
     AltInfo info = {0};
     return alt_named_case(b, expected, name, &info) != MS_NONE;
+}
+
+/* The label of payload field `slot` of case `index` as the enum declares it, or 0 when the tables do not
+ * carry it (an Optional's payload has no label). */
+static MsSym alt_field_label(const AltInfo *info, uint32_t index, uint32_t slot) {
+    if (info->optional) {
+        return 0;
+    }
+    return info->def.cases[index].fields[slot].name;
 }
 
 /* `Case(args)` of the enum `ty`, the callee being the case's name (`name`): every argument is
@@ -233,8 +277,10 @@ static MsTy alt_call(MsBody *b, const MsExpr *e, MsTy ty, MsSym name) {
     }
     for (uint32_t slot = 0; slot < e->u.call.args.len; slot++) {
         const MsTy field = alt_field_ty(b, &info, ty, index, slot);
-        if (e->u.call.args.ptr[slot].has_name || !ms_body_is_admitted(b, field) ||
-            ms_body_expr(b, e->u.call.args.ptr[slot].value, field) == MS_TY_NONE) {
+        const MsArg *arg = &e->u.call.args.ptr[slot];
+        // A label must be the field's own name, in order: any other is the Rust checker's to report.
+        if ((arg->has_name && arg->name != alt_field_label(&info, index, slot)) || !ms_body_is_admitted(b, field) ||
+            ms_body_expr(b, arg->value, field) == MS_TY_NONE) {
             return ms_body_unsupported(b);
         }
     }
@@ -257,7 +303,8 @@ static MsTy alt_qualifier(MsBody *b, const MsExpr *member) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, left->u.sym);
     const MsSyms *syms = &b->c->syms;
-    if (sym == MS_NONE || syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_ENUM || syms->nvars[sym] != 0) {
+    if (sym == MS_NONE || syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_ENUM || syms->nvars[sym] != 0 ||
+        ms_body_is_foreign_opaque(b, syms->ty[sym])) {
         return MS_TY_NONE;
     }
     return syms->ty[sym];
@@ -294,4 +341,14 @@ MsTy ms_body_case_name(MsBody *b, const MsExpr *e, MsTy expected) {
     b->facts->res_kind[e->id] = MS_RES_CASE;
     b->facts->res_ref[e->id] = index;
     return expected;
+}
+
+bool ms_body_result_label(const MsBody *b, MsTy result, bool success, MsSym label) {
+    const MsTyTable *tys = &b->c->tys;
+    if (!ms_ty_is(tys, result, MS_BI_RESULT) || tys->def[result] == 0) {
+        return false;
+    }
+    const MsDef def = *ms_def(b->c, tys->def[result] - 1); // by value: a later ms_def may move the rows
+    const uint32_t index = success ? 0 : 1;
+    return def.ncases == 2 && def.cases[index].nfields == 1 && def.cases[index].fields[0].name == label;
 }

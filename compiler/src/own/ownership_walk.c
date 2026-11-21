@@ -362,6 +362,9 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
             w->captured[w->ncaptured++] = own_resolve(w, binding);
         }
     }
+    if (binding < w->floor && w->lambda_escaping && w->perm[binding] == PERM_MUTABLE) {
+        OWN_DECLINE(w); /* an escaping closure copies a `var`: a later use of it is an error left to Rust */
+    }
     if (demand == DEMAND_MOVE && w->closure_holds[binding]) {
         OWN_DECLINE(w); /* the closure would outlive the locals it borrows */
     }
@@ -1653,10 +1656,18 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
     ms_classifier_mark_methods(w.classifier, facts->methods);
     own_allocate(&w, &scratch);
     const uint32_t *by_node = own_bindings_by_node(facts, &scratch);
+    // A `test` block walks as a function of no parameters.
+    MsFunc **tests = MS_NEW_N(&scratch, MsFunc *, row->syntax->ndecls + 1);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        const bool claimed = d->kind == MS_D_FN && facts->body_checked[d->id];
-        w.summaries[d->id].usable = claimed && ms_liveness_function(&live, facts, &d->u.fn);
+        const MsFunc *function = &d->u.fn;
+        if (d->kind == MS_D_TEST) {
+            tests[i] = MS_NEW(&scratch, MsFunc);
+            *tests[i] = (MsFunc){.body = d->u.test.body};
+            function = tests[i];
+        }
+        const bool claimed = (d->kind == MS_D_FN || d->kind == MS_D_TEST) && facts->body_checked[d->id];
+        w.summaries[d->id].usable = claimed && ms_liveness_function(&live, facts, function);
     }
     // Also for a module without calls: the summaries are where `ret_borrowed` and `param_consumed`
     // come from, and a caller in another module reads them.
@@ -1673,6 +1684,12 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
             }
             facts->ret_borrowed[d->id] = facts->body_checked[d->id] && w.summaries[d->id].returns_borrow;
             facts->param_consumed[d->id] = facts->body_checked[d->id] ? w.summaries[d->id].consumed : 0;
+        }
+    }
+    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        if (d->kind == MS_D_TEST && facts->body_checked[d->id]) {
+            facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, tests[i], NULL, by_node);
         }
     }
     own_methods(&w, &live, by_node);

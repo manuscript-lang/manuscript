@@ -693,15 +693,6 @@ static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const 
     return true;
 }
 
-/* The attribute that tells LLVM how a narrow C result is extended, and the instruction that widens it. */
-static const char *ll_ret_attribute(LlWiden widen) {
-    switch (widen) {
-    case LL_SEXT: return "signext ";
-    case LL_FPEXT: return "";
-    default: return "zeroext ";
-    }
-}
-
 static const char *ll_widen_op(LlWiden widen) {
     switch (widen) {
     case LL_SEXT: return "sext";
@@ -737,8 +728,10 @@ static bool ll_call_rt(LCx *c, const MirInst *inst, uint32_t block, uint32_t ind
         const bool runtime_float = rk != NULL && rk->widen == LL_FPEXT && !ll_extern_is_c(c, def); /* a double */
         const bool narrow = rk != NULL && strcmp(rk->reg, rk->mem) != 0 && !runtime_float;
         if (narrow) {
-            /* The C function returns the narrow type; the attribute makes LLVM trust or provide the high bits. */
-            ms_buf_printf(c->out, "  %%v%ur = call %s%s ", inst->res, ll_ret_attribute(rk->widen), rk->mem);
+            /* The C function returns the narrow type. The bits above it are the callee's to leave as they are (the
+             * AAPCS64 does not make a callee extend its result), so the call carries no extension attribute: the
+             * `sext` or `zext` after it reads the low bits only. */
+            ms_buf_printf(c->out, "  %%v%ur = call %s ", inst->res, rk->mem);
         } else if (rk != NULL) {
             ms_buf_printf(c->out, "  %%v%u = call %s ", inst->res, rk->reg);
         } else {
@@ -1814,8 +1807,9 @@ static bool ll_block(LCx *c, uint32_t b, const uint32_t *last) {
     return true;
 }
 
-/* `define <result> @name(<hidden result pointer>, <leaves of each parameter>) {`. */
-static void ll_header(LCx *c, uint32_t index) {
+/* `define <result> @name(<hidden result pointer>, <leaves of each parameter>) {`. Returns where the
+ * attributes after `nounwind` begin, which `ll_size_tier` may add to. */
+static size_t ll_header(LCx *c, uint32_t index) {
     const MirFunc *f = c->f;
     MsBuf *o = c->out;
     const bool exported = c->export_all || f->linkage == ML_EXPORT || c->m->entry == index;
@@ -1846,6 +1840,7 @@ static void ll_header(LCx *c, uint32_t index) {
         }
     }
     ms_buf_puts(o, c->noinline ? ") nounwind noinline" : ") nounwind");
+    const size_t attributes_at = o->len;
     if (c->pure) {
         ms_buf_puts(o, " willreturn nofree nosync memory(none)");
     }
@@ -1853,6 +1848,53 @@ static void ll_header(LCx *c, uint32_t index) {
         ms_buf_printf(o, " !dbg !%u", ll_debug_subprogram(c->dbg, ms_name(&c->m->names, f->name), f->loc.line));
     }
     ms_buf_puts(o, " {\n");
+    return attributes_at;
+}
+
+/* Body lines above which a function is compiled without LLVM's optimizer (`optnone`): SROA, the SLP
+ * vectorizer and the code generator grow faster than linearly with one function's size, so a generated
+ * function of thousands of statements took minutes. Hand-written functions are far below this; a
+ * function above it is run-once straight-line code in practice. */
+#define LL_HUGE_FUNCTION_LINES 60000u
+/* Body lines above which a function is optimized for size (`optsize`): the default pipeline's loop
+ * unrolling, induction-variable simplification and GVN are superlinear in one function's size, and
+ * under `optsize` the unroller and inliner stop growing the body. */
+#define LL_LARGE_FUNCTION_LINES 25000u
+/* Body lines above which a function with no loop is compiled without the optimizer. Folding the
+ * branches of a long run of statements leaves one block of thousands of instructions, and
+ * instruction selection and the SLP vectorizer on one block are superlinear: 800 `map.add`
+ * statements (57k lines) took 5.8 s in `opt` and 0.7 s in `llc`, against 0.2 s and 0.3 s as `optnone`.
+ * Code with no loop runs once per call; the largest function of the benchmark suites is 9.3k lines
+ * and has loops. A workaround for LLVM's superlinear passes (#3928), to be removed when they are not. */
+#define LL_LOOPFREE_HUGE_FUNCTION_LINES 8000u
+
+/* Whether a branch goes to a block that starts at or before it: a loop. Blocks are written in order. */
+static bool ll_has_back_edge(const MirFunc *f) {
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        const uint32_t count = mir_term_ntargets(&f->blocks[b].term);
+        for (uint32_t k = 0; k < count; k++) {
+            if (mir_term_target_const(&f->blocks[b].term, k)->block <= b) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* The attributes a function of `lines` body lines gets so that LLVM's superlinear passes stay bounded. */
+static const char *ll_size_tier(const LCx *c, uint32_t lines) {
+    if (lines > LL_HUGE_FUNCTION_LINES || (lines > LL_LOOPFREE_HUGE_FUNCTION_LINES && !ll_has_back_edge(c->f))) {
+        return c->noinline ? " optnone" : " optnone noinline"; /* `optnone` needs `noinline` */
+    }
+    return lines > LL_LARGE_FUNCTION_LINES ? " optsize" : "";
+}
+
+/* Writes `text` into `o` at byte `at`, moving what follows. */
+static void ll_insert(MsBuf *o, size_t at, const char *text) {
+    const size_t n = strlen(text);
+    (void)ms_buf_push(o, n);
+    memmove(o->data + at + n, o->data + at, o->len - n - at);
+    memcpy(o->data + at, text, n);
 }
 
 /* Pieces each block splits into: its checked operations each end one, and the last piece is what
@@ -1887,10 +1929,18 @@ static bool ll_function(LCx *c, uint32_t index) {
     c->borrowed = mir_framed_iface_borrows(&scratch, c->m, f);
     c->temps = c->scopes || c->poison ? ll_temps(c, &scratch) : NULL;
     ll_last_pieces(c->m, f, last);
-    ll_header(c, index);
+    const size_t attributes_at = ll_header(c, index);
+    const size_t body_at = c->out->len;
     bool ok = true;
     for (uint32_t b = 0; ok && b < f->nblocks; b++) {
         ok = ll_block(c, b, last);
+    }
+    if (ok) {
+        uint32_t lines = 0;
+        for (size_t i = body_at; i < c->out->len; i++) {
+            lines += c->out->data[i] == '\n';
+        }
+        ll_insert(c->out, attributes_at, ll_size_tier(c, lines));
     }
     free(last);
     free(c->framed);

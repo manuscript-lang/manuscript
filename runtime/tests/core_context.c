@@ -11,6 +11,16 @@ enum { STACK_BYTES = 64 * 1024, ROUNDS = 1000 };
 static uintptr_t main_sp;
 static uintptr_t child_sp;
 static unsigned counter;
+/* The stack words a switch installs for the stack it enters (Windows; ignored elsewhere): each stack's own bounds. */
+static uintptr_t main_teb[MS_CTX_TEB_WORDS];
+static uintptr_t child_teb[MS_CTX_TEB_WORDS];
+
+/* The words of a stack of STACK_BYTES at `stack`: base, limit and deallocation stack. */
+static void bounds_of(uint8_t *stack, uintptr_t out[MS_CTX_TEB_WORDS]) {
+    out[0] = (uintptr_t)stack + STACK_BYTES;
+    out[1] = (uintptr_t)stack;
+    out[2] = (uintptr_t)stack;
+}
 
 static void expect(bool condition, const char *what) {
     if (!condition) {
@@ -21,10 +31,9 @@ static void expect(bool condition, const char *what) {
 
 /* Runs on the child stack: counts each time it is resumed and switches back, forever. */
 static void child_entry(void) {
-    uintptr_t teb[MS_CTX_TEB_WORDS] = {0};
     for (;;) {
         counter++;
-        ms_ctx_switch(&child_sp, main_sp, teb);
+        ms_ctx_switch(&child_sp, main_sp, main_teb);
     }
 }
 
@@ -41,9 +50,10 @@ static void test_switch(void) {
     expect(stack != NULL, "stack allocated");
     memset(stack, 0, STACK_BYTES);
     child_sp = ms_ctx_initial_sp(stack + STACK_BYTES, child_entry);
-    uintptr_t teb[MS_CTX_TEB_WORDS] = {0};
+    ms_ctx_teb_stack(main_teb);
+    bounds_of(stack, child_teb);
     for (unsigned round = 1; round <= ROUNDS; round++) {
-        ms_ctx_switch(&main_sp, child_sp, teb);
+        ms_ctx_switch(&main_sp, child_sp, child_teb);
         expect(counter == round, "the child ran once per switch");
     }
     aligned_free(stack);
@@ -62,7 +72,9 @@ static void test_call_on_stack(void) {
     expect(stack != NULL, "stack allocated");
     int value = 0;
     uintptr_t save = 0;
-    uintptr_t teb[2 * MS_CTX_TEB_WORDS] = {0};
+    uintptr_t teb[2 * MS_CTX_TEB_WORDS];
+    bounds_of(stack, teb);
+    ms_ctx_teb_stack(&teb[MS_CTX_TEB_WORDS]);
     ms_ctx_call_on_stack((uintptr_t)stack + STACK_BYTES, record_stack_pointer, &value, &save, teb);
     expect(value == 42, "the function ran");
     expect(sp_inside >= (uintptr_t)stack && sp_inside < (uintptr_t)stack + STACK_BYTES, "it ran on the new stack");
@@ -71,7 +83,11 @@ static void test_call_on_stack(void) {
 
 static uintptr_t jump_slot;
 
-static void jump_out(void) { ms_guard_jump(&jump_slot, 7, NULL); }
+static void jump_out(void) {
+    uintptr_t teb[MS_CTX_TEB_WORDS];
+    ms_ctx_teb_stack(teb);
+    ms_guard_jump(&jump_slot, 7, teb);
+}
 /* Through a pointer, so the compiler does not see that the deepest call never returns. */
 static void (*volatile leave)(void) = jump_out;
 

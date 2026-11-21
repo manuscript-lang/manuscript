@@ -96,7 +96,9 @@
 #include "rt_ops.c"
 #include "check/lower_list.c"
 #include "check/lower_extern.c"
+#include "check/lower_status.c"
 #include "check/lower_out.c"
+#include "check/lower_numeric.c"
 #include "check/lower_native.c"
 #include "check/lower_map.c"
 #include "check/lower_enum.c"
@@ -104,6 +106,7 @@
 #include "check/lower_format.c"
 #include "check/lower_alt.c"
 #include "check/lower_closure.c"
+#include "check/lower_close.c"
 #include "check/lower_eq.c"
 #include "check/lower_iface.c"
 #include "check/lower_method.c"
@@ -168,7 +171,10 @@
 #if !defined(_WIN32)
 #include "build/tool.c"
 #include "build/object.c"
+#include "build/macho.c"
 #include "build/link.c"
+#include "build/link_linux.c"
+#include "build/link_macos.c"
 #endif
 /* The project loader uses POSIX file calls, which the Windows tools do not need; the back end library the Rust
  * `ms` links leaves it out on every platform (cmake/MsCompiler.cmake, target ms_backend). */

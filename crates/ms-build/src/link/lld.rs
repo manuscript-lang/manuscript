@@ -319,6 +319,8 @@ fn windows_arguments(
         "libpsapi.a",
         "libole32.a",
         "libws2_32.a",
+        "libsynchronization.a",
+        "libclang_rt.builtins.a",
         "libkernel32.a",
     ] {
         command.arg(dir.join(lib));
