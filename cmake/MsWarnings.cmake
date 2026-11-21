@@ -13,5 +13,5 @@ endfunction()
 
 # The Windows C runtime marks fopen and friends deprecated; the C code uses the portable names.
 if(WIN32)
-  add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS WIN32_LEAN_AND_MEAN)
 endif()

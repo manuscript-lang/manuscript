@@ -37,7 +37,7 @@ int ms_sys_fs_set_times_fd(int fd, int64_t accessed_seconds, int64_t accessed_na
 
 int ms_sys_fs_seek(int fd, int64_t offset, int origin, int64_t *position) {
   static const int whence[] = {SEEK_SET, SEEK_CUR, SEEK_END};
-  const __int64 moved = _lseeki64(fd, offset, whence[origin]);
+  const int64_t moved = _lseeki64(fd, offset, whence[origin]);
   if (moved < 0) {
     return uv_translate_sys_error(errno);
   }
