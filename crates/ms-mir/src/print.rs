@@ -207,6 +207,31 @@ fn find_renamed_decls<'a>(names: impl Iterator<Item = &'a str>) -> HashMap<usize
     renamed
 }
 
+/// The renamed declarations of each kind (types, alternatives, interfaces). The three share one
+/// namespace in the text: a record and an alternative may carry the same name in the module (two
+/// declarations in different packages), but a reference names one declaration.
+fn find_renamed_decls_by_kind(m: &Module) -> [HashMap<usize, String>; 3] {
+    let counts = [m.type_defs.len(), m.alts.len(), m.ifaces.len()];
+    let names = m
+        .type_defs
+        .iter()
+        .map(|t| t.name.as_str())
+        .chain(m.alts.iter().map(|t| t.name.as_str()))
+        .chain(m.ifaces.iter().map(|t| t.name.as_str()));
+    let all = find_renamed_decls(names);
+    let mut by_kind = [HashMap::new(), HashMap::new(), HashMap::new()];
+    let mut start = 0;
+    for (kind, count) in counts.iter().enumerate() {
+        for (i, label) in &all {
+            if (start..start + count).contains(i) {
+                by_kind[kind].insert(i - start, label.clone());
+            }
+        }
+        start += count;
+    }
+    by_kind
+}
+
 fn decl_label(kind: usize, index: usize, name: &str) -> String {
     RENAMED_DECLS.with(|r| match r.borrow()[kind].get(&index) {
         Some(label) => label.clone(),
@@ -271,13 +296,7 @@ pub fn print_module_raw(m: &Module) -> String {
 fn print_module_with(m: &Module, unique_decls: bool) -> String {
     RENAMED.with(|r| *r.borrow_mut() = find_renamed(m));
     if unique_decls {
-        RENAMED_DECLS.with(|r| {
-            *r.borrow_mut() = [
-                find_renamed_decls(m.type_defs.iter().map(|t| t.name.as_str())),
-                find_renamed_decls(m.alts.iter().map(|t| t.name.as_str())),
-                find_renamed_decls(m.ifaces.iter().map(|t| t.name.as_str())),
-            ];
-        });
+        RENAMED_DECLS.with(|r| *r.borrow_mut() = find_renamed_decls_by_kind(m));
     }
     let text = print_module_text(m);
     RENAMED.with(|r| r.borrow_mut().clear());
