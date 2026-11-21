@@ -2,8 +2,8 @@
 # Checks every C source of the runtime and the compiler against documentation/contributing/c-style.md:
 # the warnings in toolchain/c-warnings.txt as errors, then clang-tidy with .clang-tidy.
 # Usage (from the repository root, `make c-lint`): c-lint.sh [base]
-#   With a git ref as base, clang-tidy runs only on C files that differ from it (all of them when a header
-#   differs); the warnings always run on every file. Without it, both run on everything.
+#   With a git ref as base, clang-tidy runs only on the C files that differ from it and the ones that include a header
+#   that differs (toolchain/c-dependents.py); the warnings always run on every file. Without a base, both run on everything.
 # toolchain/c-duplicates.py also fails a static function body copied into a second file.
 # toolchain/c-lint-pending.txt lists files written before the guide that do not pass yet. A listed file may
 # fail; a listed file that passes must be removed from the list, so the list only shrinks.
@@ -45,8 +45,14 @@ if [ -n "$base" ]; then
         echo "c-lint: $pending gained a line; the list only shrinks" >&2; exit 1
     fi
 fi
-if [ -n "$base" ] && ! git diff --name-only "$base" -- runtime compiler .clang-tidy toolchain | grep -q -v '\.c$'; then
-    changed=$(git diff --name-only --diff-filter=d "$base" -- runtime compiler | grep '\.c$' || true)
+if [ -n "$base" ]; then
+    # clang-tidy runs on the C files this change touches, plus the files that include a header it touches. A change to
+    # the lint rules or the warning list checks everything; the nightly run checks everything regardless.
+    others=$(git diff --name-only "$base" -- .clang-tidy toolchain/c-warnings.txt 'runtime/**CMakeLists.txt' 'compiler/**CMakeLists.txt' | grep -v '\.c$' || true)
+    if [ -z "$others" ]; then
+        touched=$(git diff --name-only --diff-filter=d "$base" -- runtime compiler || true)
+        changed=$(python3 toolchain/c-dependents.py $touched | grep '\.c$' || true)
+    fi
 fi
 check() { # file: writes "$out/<n>.log" when the file fails
     file=$1

@@ -348,12 +348,23 @@ fn rt_ops_text(symbols: String) String:
 	// there.
 	var twinned = Set[String]()
 
+	// The `@view_of=` twin of each function that has one: the call whose result borrows
+	// its receiver.
+	var views = Map[String, String]()
+
+	// A function declared the implementation of a method whose own name another
+	// function has (`@method=List.drop`: `msrt_list_drop` releases a list).
+	var methods = ""
+
 	for line in lines:
 		for flag in line.split(" @").drop(1):
 			for key in TWIN_KEYS:
 				if value := flag.cut_prefix(key):
 					twinned.add(value.trim())
 					break
+
+			if base := flag.cut_prefix("view_of="):
+				views.add(base.trim(), line.split("(").get(0).trim())
 
 	for line in lines:
 		if line.starts_with("#"): continue
@@ -397,12 +408,20 @@ fn rt_ops_text(symbols: String) String:
 		has_imm := imm.is_some()
 		imm_value := imm.get_or(0)
 		domain := flag_value(rest, "domain=").get_or("")
+		if value := flag_value(rest, "method="):
+			methods = methods.concat(f"    \{\"{before(value, " ")}\", \"{name}\"\},\n")
+
 		fallback := rest.contains(" @fallback")
 		out = out.concat(
-			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {borrows}, {has_imm}, {fallback}, \"{domain}\"\},\n"
+			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {borrows}, {has_imm}, {fallback}, \"{domain}\", \"{views.get_or(name, "")}\"\},\n"
 		)
 
-	return out.concat("};\n")
+	return (
+		out
+		.concat("};\nstatic const MsRtMethod rt_methods[] = {\n")
+		.concat(methods)
+		.concat("};\n")
+	)
 
 // ---- The status rows ----
 

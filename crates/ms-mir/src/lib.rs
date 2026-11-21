@@ -3,7 +3,5 @@
 
 pub mod builder;
 pub mod ir;
-pub mod layout;
-pub mod parse;
 pub mod print;
 pub mod types;

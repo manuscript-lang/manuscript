@@ -88,8 +88,8 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
             return lb_sized_numbers[i].mir;
         }
     }
-    if (ms_ty_is(&lb->c->tys, ty, MS_BI_BYTES)) {
-        return MIR_BYTES;
+    if (ms_ty_is(&lb->c->tys, ty, MS_BI_BYTES) || lbd_is_builder(lb, ty)) {
+        return MIR_BYTES; // a builder is the buffer it appends to
     }
     if (ms_ty_kind(&lb->c->tys, ty) == MS_K_FUNCTION) {
         return lb_fn_ty(lb, ty);
@@ -186,8 +186,7 @@ MirValue lb_copy(Lb *lb, MirValue v) {
     return mir_b_emit(&lb->b, MOP_Clone, &v, 1, one, mir_b_ty(&lb->b, v));
 }
 
-/* Whether `e` names a local or a field under one (`g`, `g.cells`): a place, which evaluating again only reads. */
-static bool lb_is_place(const Lb *lb, const MsExpr *e) {
+bool lb_is_place(const Lb *lb, const MsExpr *e) {
     while (e->kind == MS_E_MEMBER) {
         e = e->u.member.left;
     }
@@ -1439,6 +1438,17 @@ bool lb_is_pointer_param(Lb *lb, uint32_t binding) {
         }
     }
     return false;
+}
+
+void lb_param_into_var(Lb *lb, uint32_t binding) {
+    const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
+    const bool owned = lb_owns(lb, ty);
+    lb->var_of[binding] = mir_b_declare_var(&lb->b, ty, owned ? MM_MOVE : MM_BORROW);
+    mir_b_def_var(&lb->b, lb->var_of[binding], lb->value_of[binding]);
+    if (owned) {
+        const LbVarOwner owner = {binding, lb->scopes.depth - 1};
+        MIR_PUSH(lb->m, lb->vars, lb->nvars, lb->cvars, LbVarOwner, owner);
+    }
 }
 
 bool lb_var_owned(const Lb *lb, uint32_t binding) {

@@ -70,6 +70,14 @@ static const MsRtFn *rt_method_symbol(const char *type, size_t type_len, const c
 const MsRtFn *ms_rt_method_fn(const MsCheck *c, MsTy receiver, MsSym method) {
     const MsStr type = ms_name(c->names, c->tys.name[receiver]);
     const MsStr name = ms_name(c->names, method);
+    for (size_t i = 0; i < sizeof rt_methods / sizeof rt_methods[0]; i++) { // a declared implementation comes first
+        const char *declared = rt_methods[i].method;
+        const size_t declared_length = strlen(declared);
+        if (declared_length == type.len + 1 + name.len && memcmp(declared, type.ptr, type.len) == 0 &&
+            declared[type.len] == '.' && memcmp(declared + type.len + 1, name.ptr, name.len) == 0) {
+            return ms_rt_fn_find(rt_methods[i].symbol, strlen(rt_methods[i].symbol));
+        }
+    }
     const MsRtFn *own = rt_method_symbol(type.ptr, type.len, name.ptr, name.len);
     if (own != NULL || type.len != 5 || memcmp(type.ptr, "Bytes", 5) != 0) {
         return own;

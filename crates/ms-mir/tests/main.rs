@@ -2,4 +2,3 @@
 //! crate links once instead of once per file.
 
 mod intern;
-mod text;
