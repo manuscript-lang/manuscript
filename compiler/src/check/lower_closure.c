@@ -194,7 +194,7 @@ static bool lb_lambda_params_plain(const MsExpr *e) {
 
 /* Adds the closure function with an empty body and queues it. Returns its index, or MIR_NONE. */
 static uint32_t lb_add_closure(Lb *lb, const MsExpr *e, const MirTyData *fn, const LbCaptures *found,
-                               MirTy *cap_tys) {
+                               MirTy *cap_tys, bool *by_ref) {
     const MsStr outer = ms_name(&lb->m->names, lb->b.f.name);
     const MsStr name = ms_arena_fmt(&lb->m->arena, "%.*s.closure", (int)outer.len, outer.ptr);
     MirFunc stub = {0};
@@ -205,7 +205,11 @@ static uint32_t lb_add_closure(Lb *lb, const MsExpr *e, const MirTyData *fn, con
     stub.ncaptures = found->count;
     stub.keeps_scoped = lb->b.f.keeps_scoped; // a closure made inside what keeps scoped closures keeps them
     const uint32_t func = mir_add_func(lb->m, &stub);
-    LbJob job = {.lambda = e, .func = func, .ncaps = found->count};
+    LbJob job = {.lambda = e, .func = func, .ncaps = found->count, .by_ref = by_ref};
+    lb->m->funcs[func].scoped = false;
+    for (uint32_t i = 0; i < found->count; i++) {
+        lb->m->funcs[func].scoped = lb->m->funcs[func].scoped || by_ref[i]; // the environment points into this frame
+    }
     job.caps = MS_NEW_N(&lb->m->arena, uint32_t, (size_t)found->count + 1);
     memcpy(job.caps, found->caps, (size_t)found->count * sizeof *job.caps);
     MIR_PUSH(lb->m, lb->jobs, lb->njobs, lb->cjobs, LbJob, job);
@@ -230,18 +234,27 @@ LbVal lb_lambda(Lb *lb, const MsExpr *e) {
         }
     }
     MirTy *cap_tys = MS_NEW_N(&lb->m->arena, MirTy, (size_t)found.count + 1);
+    bool *by_ref = MS_NEW_N(&lb->m->arena, bool, (size_t)found.count + 1);
     MirValue *values = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)found.count + 1);
     for (uint32_t i = 0; i < found.count && !found.overflow; i++) {
         const uint32_t binding = found.caps[i];
-        cap_tys[i] = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
+        const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
         values[i] = lb->value_of[binding];
-        // a `var` is shared with its maker and a String owned: neither is a copy of a scalar
-        found.overflow = !lb_is_scalar(cap_tys[i]) || lb->var_of[binding] != MIR_NONE || values[i] == MIR_NONE;
+        // a `var` is shared with its maker; a value that is dropped stays where it lives
+        by_ref[i] = ty != MIR_NONE && lb_owns(lb, ty);
+        cap_tys[i] = by_ref[i] ? MIR_PTR : ty;
+        found.overflow = !(by_ref[i] || lb_is_scalar(ty)) || lb->var_of[binding] != MIR_NONE || values[i] == MIR_NONE;
+        if (by_ref[i] && !found.overflow) {
+            const MirImm slot_ty = {.tag = MI_TY, .a = ty};
+            const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, slot_ty, MIR_PTR);
+            lb_store(lb, slot, values[i]);
+            values[i] = slot;
+        }
     }
     if (found.overflow || fn->nargs != e->u.lambda.params.len) {
         return lb_unsupported(lb);
     }
-    const uint32_t func = lb_add_closure(lb, e, fn, &found, cap_tys);
+    const uint32_t func = lb_add_closure(lb, e, fn, &found, cap_tys, by_ref);
     const MirImm target = {.tag = MI_FUNC, .a = func};
     return (LbVal){mir_b_emit(&lb->b, MOP_ClosureNew, values, found.count, target, fty), true};
 }
@@ -256,11 +269,17 @@ static bool lb_lambda_body(Lb *lb, const LbJob job) {
     lb->b.f.captures = stub.captures;
     lb->b.f.ncaptures = stub.ncaptures;
     lb->b.f.keeps_scoped = stub.keeps_scoped;
+    lb->b.f.scoped = stub.scoped;
     MirValue *values = MS_NEW_N(&lb->m->arena, MirValue, (size_t)stub.nparams + 1);
     mir_b_params(&lb->b, values, stub.nparams);
+    MirValue *caps = MS_NEW_N(&lb->m->arena, MirValue, (size_t)job.ncaps + 1);
     for (uint32_t i = 0; i < job.ncaps; i++) {
         const MirImm index = {.tag = MI_IDX, .a = i};
-        lb->value_of[job.caps[i]] = mir_b_emit(&lb->b, MOP_ClosureCap, &values[0], 1, index, stub.captures[i]);
+        caps[i] = mir_b_emit(&lb->b, MOP_ClosureCap, &values[0], 1, index, stub.captures[i]);
+    }
+    for (uint32_t i = 0; i < job.ncaps; i++) { // a pointer capture is read where the body starts
+        const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[job.caps[i]]);
+        lb->value_of[job.caps[i]] = job.by_ref[i] ? lb_load(lb, caps[i], ty) : caps[i];
     }
     for (uint32_t i = 0; i < e->u.lambda.params.len; i++) {
         lb->value_of[lb->binding_at[e->u.lambda.params.ptr[i]->id]] = values[i + 1];

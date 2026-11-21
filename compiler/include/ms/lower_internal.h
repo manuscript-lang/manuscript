@@ -54,6 +54,7 @@ typedef struct LbJob {
     uint32_t func;
     uint32_t *caps;
     uint32_t ncaps;
+    bool *by_ref; /* by capture: the environment holds a pointer to the local, which the closure reads in place */
 } LbJob;
 
 /* A function or method being lowered: its syntax, the node its facts hang on, its signature, and
@@ -132,11 +133,17 @@ void lb_reset_state(Lb *lb);
 /* Helpers of lower_body.c that lower_record.c and lower_method.c call. */
 bool lb_owns(Lb *lb, MirTy ty);
 MirValue lb_move_argument(Lb *lb, const MsExpr *e);
+MirValue lb_load(Lb *lb, MirValue slot, MirTy ty);     /* reads a value from memory */
+void lb_store(Lb *lb, MirValue slot, MirValue value);  /* writes a value to memory */
 bool lb_lines_have_diagnostic(const MsModuleRow *row, uint32_t first, uint32_t end);
 uint32_t lb_add_stub(Lb *lb, const LbCallable *c); /* a function with the signature and no body; MIR_NONE when not handled */
 bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over its stub; false when not handled */
 /* A call of module function `func` of signature `sig`; `receiver` is the method receiver, else NULL. */
 LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating);
+
+/* Interface values (lower_iface.c, included after lower_body.c). */
+MirTy li_type(Lb *lb, MsTy ty);
+LbVal li_call(Lb *lb, const MsExpr *e);
 
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */

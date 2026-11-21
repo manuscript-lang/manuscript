@@ -10,7 +10,10 @@
 #ifndef MS_EFFECTS_H
 #define MS_EFFECTS_H
 
+#include "ms/ast.h"
 #include "ms/base.h"
+#include "ms/check.h"
+#include "ms/facts.h"
 #include "ms/tables.h"
 #include "ms_rt/safe.h"
 
@@ -125,6 +128,24 @@ typedef struct MsScanNode {
 /* Scans the declaration `d` (a function or constant) of `module`, whose body the checker checked.
  * The edges live in `arena`. */
 MsScanNode ms_effect_scan_decl(MsArena *arena, const MsCheck *c, MsModId module, const MsDecl *d);
+
+/* A source method of a plain impl is a node too: its key is the symbol count plus its row in the
+ * method table, so it shares the edge type with functions. A method of a generic impl, a native
+ * one and a property stay `partial` where they are called. */
+static inline bool ms_effect_method_is_node(const MsMethods *m, uint32_t row) {
+    return row < m->count && m->native[row] == MS_NATIVE_SOURCE && m->decl[row] != NULL && m->nvars[row] == 0;
+}
+static inline MsSymId ms_effect_method_node(const MsCheck *c, uint32_t row) { return c->syms.count + row; }
+
+/* What a call through an interface or an intrinsic costs the scan, which Rust reads off the receiver:
+ * a primitive receiver reaches nothing, an interface or bound type variable runs a method the scan
+ * cannot name (`unknown`, no edge: the callee is charged where a value is converted to the
+ * interface, which the C checker does not accept yet), any other receiver stays `partial`. */
+typedef enum MsDispatch { MS_DISPATCH_PARTIAL, MS_DISPATCH_NOTHING, MS_DISPATCH_UNKNOWN } MsDispatch;
+MsDispatch ms_effect_dispatch(const MsCheck *c, const MsFacts *facts, uint32_t call);
+
+/* Scans the body of `method`, which `module` wrote and the checker checked. */
+MsScanNode ms_effect_scan_method(MsArena *arena, const MsCheck *c, MsModId module, const MsMethod *method);
 
 /* ---- per-entity facts (effect_facts.c) ---- */
 

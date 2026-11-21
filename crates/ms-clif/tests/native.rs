@@ -1,7 +1,8 @@
 //! Differential tests: MIR text is run by the reference interpreter and, compiled
 //! natively with the test runtime, must produce the same output and exit status.
 
-use ms_clif::{Options, link::link_all};
+use ms_build::link::link_all;
+use ms_clif::Options;
 use ms_mir::interp::Interp;
 use ms_mir::parse::parse_module;
 use ms_mir::verify::verify_module;
@@ -348,39 +349,22 @@ impl Drop for RuntimeArchive {
 }
 
 fn build_runtime(root: &std::path::Path) -> PathBuf {
-    let target = root.join("target").join("ms-native-for-clif");
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
-    let mut command = Command::new(cargo);
-    command.current_dir(root).args([
-        "build",
-        "--release",
-        "-p",
-        "ms-native",
-        "--features",
-        "entry",
-    ]);
-    #[cfg(windows)]
-    let gnullvm = format!("{}-pc-windows-gnullvm", std::env::consts::ARCH);
-    #[cfg(windows)]
-    {
-        // The bundled Windows linker links mingw-w64, so the runtime is a gnullvm build.
-        command.args(["--target", &gnullvm]);
-        command.env(
-            format!("CC_{}", gnullvm.replace('-', "_")),
-            support::mingw_clang(),
-        );
-    }
-    let st = command
-        .arg("--target-dir")
-        .arg(&target)
+    let st = Command::new(cargo)
+        .current_dir(root)
+        .args([
+            "run",
+            "--release",
+            "--locked",
+            "-p",
+            "xtask",
+            "--",
+            "runtime",
+        ])
         .status()
-        .expect("cargo build ms-native");
-    assert!(st.success(), "building ms-native failed");
-    #[cfg(windows)]
-    let release = target.join(&gnullvm).join("release");
-    #[cfg(not(windows))]
-    let release = target.join("release");
-    release.join("libms_native.a")
+        .expect("cargo xtask runtime");
+    assert!(st.success(), "building the runtime failed");
+    root.join("target/ms-native/libms_native.a")
 }
 
 /// Compiles `src` and links it with the real runtime plus the print shim.
@@ -404,7 +388,7 @@ fn run_real(src: &str, opt: bool, tag: &str) -> Outcome {
         .expect("cc");
     assert!(st.success());
     let exe = d.join(tag);
-    ms_clif::link::link_all(&objp, &[&shim, real_runtime().path()], &exe)
+    ms_build::link::link_all(&objp, &[&shim, real_runtime().path()], &exe)
         .unwrap_or_else(|e| panic!("{e}"));
     let out = Command::new(&exe).output().expect("run");
     Outcome {
@@ -475,7 +459,7 @@ b0:
             .success()
     );
     let exe = d.join("real_trace");
-    ms_clif::link::link_all(&objp, &[&shim, real_runtime().path()], &exe).unwrap();
+    ms_build::link::link_all(&objp, &[&shim, real_runtime().path()], &exe).unwrap();
     let out = Command::new(&exe).output().unwrap();
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(err.contains("index"), "{err}");
@@ -526,7 +510,7 @@ b0:
             .success()
     );
     let exe = d.join("inl_trace");
-    ms_clif::link::link_all(&objp, &[&shim, real_runtime().path()], &exe).unwrap();
+    ms_build::link::link_all(&objp, &[&shim, real_runtime().path()], &exe).unwrap();
     let out = Command::new(&exe).output().unwrap();
     let err = String::from_utf8_lossy(&out.stderr);
     let at: Vec<&str> = err.lines().filter(|l| l.contains("  at ")).collect();
@@ -993,7 +977,7 @@ b0:
                 .success()
         );
         let exe = d.join(format!("real-callback-{opt_level}"));
-        ms_clif::link::link_all(&obj, &[&shim, real_runtime().path()], &exe).unwrap();
+        ms_build::link::link_all(&obj, &[&shim, real_runtime().path()], &exe).unwrap();
         let out = Command::new(exe).output().unwrap();
         assert_eq!(out.status.code(), Some(ms_rt_abi::EXIT_ABORT));
         let err = String::from_utf8_lossy(&out.stderr);

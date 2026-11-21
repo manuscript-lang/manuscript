@@ -138,8 +138,8 @@ fn allocations_name_the_allocating_function() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// With the allocation-profiling runtime (release builds, the scheduled run) a real program's
-/// allocations are attributed to the Manuscript function that makes them (`words` is inlined into `main`); without it `--allocs` says why.
+/// A real program's allocations are attributed to the Manuscript function that makes them (`words`
+/// is inlined into `main`).
 #[test]
 fn allocs_with_the_real_runtime() {
     let dir = std::env::temp_dir().join(format!("ms-profile-real-{}", std::process::id()));
@@ -176,21 +176,14 @@ fn allocs_with_the_real_runtime() {
         .output()
         .unwrap();
     let stderr = String::from_utf8_lossy(&output.stderr);
-    if cfg!(ms_allocs_runtime) {
-        let report = std::fs::read_to_string(out.join("allocs.txt")).unwrap_or_default();
-        assert!(
-            output.status.success()
-                && report
-                    .lines()
-                    .any(|l| l.ends_with("main") && l.contains("100.00%")),
-            "{stderr}\n{report}\n{}",
-            std::fs::read_to_string(out.join("allocs.folded")).unwrap_or_default()
-        );
-    } else {
-        assert!(
-            stderr.contains("without the allocation-profiling runtime"),
-            "{stderr}"
-        );
-    }
+    let report = std::fs::read_to_string(out.join("allocs.txt")).unwrap_or_default();
+    assert!(
+        output.status.success()
+            && report
+                .lines()
+                .any(|l| l.ends_with("main") && l.contains("100.00%")),
+        "{stderr}\n{report}\n{}",
+        std::fs::read_to_string(out.join("allocs.folded")).unwrap_or_default()
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }

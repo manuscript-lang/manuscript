@@ -104,11 +104,8 @@ impl<L: Lower> Engine<L> {
         if let Some(runtime) = ms_build::runtime_override(&build)? {
             return Ok(runtime);
         }
-        if self.profile_allocs.get() {
-            if build.static_musl {
-                return Err("--allocs does not support --static; profile the glibc build".into());
-            }
-            return runtime::embedded_allocs();
+        if self.profile_allocs.get() && build.static_musl {
+            return Err("--allocs does not support --static; profile the glibc build".into());
         }
         runtime::embedded(build.static_musl)
     }
@@ -607,13 +604,7 @@ mod staging_file_tests {
         std::fs::create_dir(&occupied).unwrap();
         std::fs::write(occupied.join("sentinel"), b"preserve this directory").unwrap();
         let next = AtomicUsize::new(0);
-        write_metadata_with(
-            &output,
-            BuildType::Debug,
-            ms_build::Backend::Cranelift,
-            &next,
-        )
-        .unwrap();
+        write_metadata_with(&output, BuildType::Debug, ms_build::Backend::Llvm, &next).unwrap();
         assert_eq!(next.load(Ordering::Relaxed), 2);
         assert_eq!(
             std::fs::read(occupied.join("sentinel")).unwrap(),

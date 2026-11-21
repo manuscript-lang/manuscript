@@ -11,9 +11,13 @@ fn long(a: String, n: Int) String:
 fn mixed(a: String, b: String) String:
 	return a + f"<{b}>" + "!"
 
+fn shown(x: Float, ok: Bool, n: Int) String:
+	return f"{x} {ok} {n}"
+
 fn main() Int:
 	text := describe("x", 3)
 	more := sum3(text, "y", "z")
 	other := long(more, 2)
 	last := mixed(other, text)
+	show := shown(1.5, true, 2)
 	return 0
