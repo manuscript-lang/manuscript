@@ -88,6 +88,12 @@ typedef struct LbMethodRow {
     uint32_t first_line, end_line;
 } LbMethodRow;
 
+/* The function comparing two values of `ty`, or MIR_NONE when `ty` cannot be compared (lower_eq.c). */
+typedef struct LbEq {
+    MirTy ty;
+    uint32_t func;
+} LbEq;
+
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
@@ -120,6 +126,8 @@ typedef struct Lb {
     bool has_override;
     LbInst *insts;        /* this pass's instances, in creation order (malloc) */
     uint32_t ninsts, cinsts;
+    LbEq *eqs;            /* this pass's equality functions (module arena) */
+    uint32_t neqs, ceqs;
     LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
     uint32_t ndead_insts, cdead_insts;
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
@@ -218,8 +226,16 @@ bool lb_is_map(const Lb *lb, MirTy ty);
 LbVal lm_literal(Lb *lb, const MsExpr *e);
 LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at);
 
+/* Equality of records, enums, optionals and lists (lower_eq.c, included after lower_closure.c). */
+LbVal lq_equal(Lb *lb, LbVal x, LbVal y, bool negate);
+
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);
+LbVal lt_scalar_text(Lb *lb, MsTy checked, MirValue v);
+uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want);
+
+/* Structural text of a record or enum (lower_format.c, included after lower_text.c). */
+LbVal lf_text(Lb *lb, LbVal value);
 
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);
