@@ -22,6 +22,7 @@ bool opt_range_func(MirModule *m, MirFunc *f);
 bool opt_simplify(MirModule *m);  /* folding, identities, block cleanup, value numbering, dead code */
 bool opt_simplify_func(MirModule *m, MirFunc *f);
 bool opt_simplify_phis(MirModule *m); /* only trivial block-parameter elimination */
+uint32_t opt_sortgen_drift(MirModule *m, uint32_t g, MirTy elem); /* the generated comparison-sort function for comparator `g` */
 bool opt_sortgen(MirModule *m);   /* sorts by a known comparator run as generated code */
 bool opt_viewfast(MirModule *m);  /* `String.view`, `String.slice` and `Bytes.view` run inline for a range inside the text */
 bool opt_strfast(MirModule *m);   /* the common cases of the string runtime functions run inline */
