@@ -4,6 +4,9 @@
 
 #include <string.h>
 #include <uv.h>
+#ifdef _WIN32
+#include <iphlpapi.h>
+#endif
 
 #include "base/alloc.h"
 #include "base/bytes.h"
@@ -226,16 +229,42 @@ static void free_names(MsList *names) {
   ms_list_free(names);
 }
 
+#ifdef _WIN32
+/* Windows has no resolv.conf: the servers and the primary domain come from the network parameters. */
+static void read_host_config(MsDnsConfig *config) {
+  ULONG size = 0;
+  *config = (MsDnsConfig){.ndots = 1};
+  if (GetNetworkParams(NULL, &size) != ERROR_BUFFER_OVERFLOW || size == 0) {
+    return;
+  }
+  FIXED_INFO *info = ms_alloc(size);
+  if (GetNetworkParams(info, &size) == NO_ERROR) {
+    MsStrBuild text = ms_strbuild_new();
+    for (const IP_ADDR_STRING *server = &info->DnsServerList; server != NULL; server = server->Next) {
+      ms_strbuild_append_text(&text, "nameserver ");
+      ms_strbuild_append_text(&text, server->IpAddress.String);
+      ms_strbuild_append_byte(&text, '\n');
+    }
+    if (info->DomainName[0] != 0) {
+      ms_strbuild_append_text(&text, "search ");
+      ms_strbuild_append_text(&text, info->DomainName);
+      ms_strbuild_append_byte(&text, '\n');
+    }
+    ms_dns_config_parse(ms_strbuild_span(&text), config);
+    ms_strbuild_free(&text);
+  }
+  ms_free(info);
+}
+#else
 static void read_host_config(MsDnsConfig *config) {
   MsBytes text = {0};
   *config = (MsDnsConfig){.ndots = 1};
-#ifndef _WIN32
   if (ms_file_read(ms_span_of_text("/etc/resolv.conf"), &text)) {
     ms_dns_config_parse(ms_bytes_span(&text), config);
   }
-#endif
   ms_bytes_free(&text);
 }
+#endif
 
 uint8_t ms_dns_resolve(MsSpan server, MsSpan name, int64_t kind, int64_t timeout_ns, MsList *out, MsString *err) {
   const uint16_t type = ms_dns_type_of_kind(kind);
@@ -255,7 +284,7 @@ uint8_t ms_dns_resolve(MsSpan server, MsSpan name, int64_t kind, int64_t timeout
   }
   if (config.servers.len == 0) {
     ms_dns_config_free(&config);
-    return MS_STATUS_UNSUPPORTED; /* no host nameserver known (Windows has none to read) */
+    return MS_STATUS_UNSUPPORTED; /* the host lists no nameserver */
   }
   MsDnsConfig own = {.ndots = server.len > 0 ? 0 : config.ndots}; /* a chosen server gets the name as written */
   if (kind == MS_DNS_KIND_PTR && ms_dns_reverse_name(name, &reverse)) {
