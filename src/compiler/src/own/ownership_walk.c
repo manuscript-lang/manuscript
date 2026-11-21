@@ -443,6 +443,7 @@ static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
 
 
 static void own_construct(OwnWalk *w, const MsExpr *e);
+static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand);
 
 /* The local a field chain `a.b.c` is rooted in, or NULL when a link is not a field of a name. */
 static const MsExpr *own_field_root(const OwnWalk *w, const MsExpr *e) {
@@ -493,6 +494,15 @@ static void own_partial_move(OwnWalk *w, const MsExpr *e) {
 }
 
 
+/* A field reads its holder; one that is not a plain value leaves it only as a partial move. */
+static void own_field(OwnWalk *w, const MsExpr *e, Demand demand) {
+    if (demand == DEMAND_MOVE && ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
+        own_partial_move(w, e);
+        return;
+    }
+    own_expr(w, e->u.member.left, DEMAND_READ);
+}
+
 static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     own_check_wrap(w, e);
     if (w->facts->coerce_iface[e->id] != MS_TY_NONE && e->kind != MS_E_CALL) {
@@ -521,14 +531,7 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         own_expr(w, e->u.bin.left, DEMAND_READ);
         own_expr(w, e->u.bin.right, DEMAND_READ);
         return;
-    case MS_E_MEMBER:
-        /* A field reads its holder; one that is not a plain value leaves it only as a partial move. */
-        if (demand == DEMAND_MOVE && ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
-            own_partial_move(w, e);
-            return;
-        }
-        own_expr(w, e->u.member.left, DEMAND_READ);
-        return;
+    case MS_E_MEMBER: own_field(w, e, demand); return;
     case MS_E_INDEX:
     case MS_E_APPLY: { /* `xs[i]` read as a type application: the checker admits it only as an index */
         MsExpr *list = NULL;
