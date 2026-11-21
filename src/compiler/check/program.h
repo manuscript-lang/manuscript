@@ -16,6 +16,7 @@
 #include "base/string.h"
 #include "compiler/check/facts.h"
 #include "compiler/check/types.h"
+#include "compiler/project/project.h"
 #include "compiler/syntax/ast.h"
 
 typedef uint32_t MsSymbolId; /* 0 is "no symbol" */
@@ -90,5 +91,12 @@ void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsChec
 /* Declares a module's own types, functions, constants and aliases in its scope (a duplicate name is a
  * resolution diagnostic). Impl and test declarations declare nothing. */
 void ms_check_declare(MsCheckProgram *program, uint32_t module);
+
+
+/* The entry point of the checker: checks every module of `graph` in order and leaves the diagnostics in
+ * `program` (resolution and type phases, in the order the oracle reports them). `graph` and `names` must
+ * outlive `program`. Passes are added as they land; a program is accepted only when `program->diagnostics`
+ * is empty. */
+void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph);
 
 #endif
