@@ -1025,6 +1025,15 @@ pub enum ExternRole {
     BytesReadWord,
     /// `Bytes.index_of_byte`: the `bytesfast` pass searches the next sixteen bytes in the caller.
     BytesIndexOfByte,
+    /// String fast paths the `strfast` pass runs in the caller: `parse_int`, a one-byte `contains`,
+    /// the affix tests, `compare` and the scalar reads. What each answers follows from its role.
+    StringParseInt,
+    StringContains,
+    StringStartsWith,
+    StringEndsWith,
+    StringCompare,
+    StringScalarStep,
+    StringScalarAt,
 }
 
 impl ExternRole {
@@ -1061,6 +1070,13 @@ impl ExternRole {
         (ExternRole::StringSlice, "string_slice"),
         (ExternRole::BytesReadWord, "bytes_read_word"),
         (ExternRole::BytesIndexOfByte, "bytes_index_of_byte"),
+        (ExternRole::StringParseInt, "string_parse_int"),
+        (ExternRole::StringContains, "string_contains"),
+        (ExternRole::StringStartsWith, "string_starts_with"),
+        (ExternRole::StringEndsWith, "string_ends_with"),
+        (ExternRole::StringCompare, "string_compare"),
+        (ExternRole::StringScalarStep, "string_scalar_step"),
+        (ExternRole::StringScalarAt, "string_scalar_at"),
     ];
 
     /// The textual attribute of this role.
