@@ -32,6 +32,7 @@ typedef struct Entry {
     EntryKind kind;
     const char *name; /* table name, or key */
     const char *value; /* a string; NULL for any other kind of value */
+    const char *raw;   /* the text of a value that is not a string, for the error that asks for a string */
     ValueKind value_kind;
     const Field *fields; /* an array's elements or an inline table's fields */
     uint32_t nfields;
@@ -39,12 +40,19 @@ typedef struct Entry {
     MsPos key_pos, value_pos; /* the header for a table */
 } Entry;
 
+/* Where and why the syntax of the document first failed; the helpers note it and the document reader reports it. */
+typedef struct Bad {
+    size_t at;
+    const char *reason;
+} Bad;
+
 typedef struct Reader {
     MsArena *arena;
     const char *text;
     size_t length;
     const char *file;
     MsProjectError *err;
+    Bad *bad;
 } Reader;
 
 static MsPos manifest_locate(const char *text, size_t length, size_t offset) {
@@ -77,9 +85,22 @@ static bool manifest_fail_wrapped(const Reader *r, MsPos pos, const MsProjectErr
     return false;
 }
 
-static bool manifest_unsupported(const Reader *r, const char *what) {
-    ms_project_error_unsupported(r->err, what);
+/* Notes the first reason the syntax failed, at `at`. */
+static bool manifest_bad(const Reader *r, size_t at, const char *reason) {
+    if (r->bad->reason == NULL) {
+        r->bad->at = at;
+        r->bad->reason = reason;
+    }
     return false;
+}
+
+/* The syntax error of the document: the reason a helper noted, else `reason` at `at`. */
+static bool manifest_invalid(const Reader *r, size_t at, const char *reason) {
+    if (r->bad->reason != NULL) {
+        at = r->bad->at;
+        reason = r->bad->reason;
+    }
+    return manifest_fail_at(r, manifest_locate(r->text, r->length, at), ms_arena_fmt(r->arena, "invalid ms.toml: %s", reason).ptr);
 }
 
 /* ---- reading the document ---- */
@@ -96,13 +117,13 @@ static bool manifest_read_string(const Reader *r, size_t *at, const char **out, 
     const char quote = r->text[*at];
     size_t i = *at + 1;
     if (i + 1 < r->length && r->text[i] == quote && r->text[i + 1] == quote) {
-        return false; /* a multi-line string */
+        return manifest_bad(r, *at, "multi-line strings are not supported in ms.toml");
     }
     MsBuf value = {0};
     for (;;) {
         if (i >= r->length || r->text[i] == '\n' || r->text[i] == '\r') {
             ms_buf_free(&value);
-            return false;
+            return manifest_bad(r, *at, "unterminated string");
         }
         const char c = r->text[i++];
         if (c == quote) {
@@ -111,7 +132,7 @@ static bool manifest_read_string(const Reader *r, size_t *at, const char **out, 
         if (quote == '"' && c == '\\') {
             if (i >= r->length) {
                 ms_buf_free(&value);
-                return false;
+                return manifest_bad(r, *at, "unterminated string");
             }
             const char e = r->text[i++];
             const char *plain = strchr("btnfr\"\\", e);
@@ -124,25 +145,25 @@ static bool manifest_read_string(const Reader *r, size_t *at, const char **out, 
                     const int h = i + d < r->length ? manifest_hex_digit(r->text[i + d]) : -1;
                     if (h < 0) {
                         ms_buf_free(&value);
-                        return false;
+                        return manifest_bad(r, i - 2, "invalid Unicode escape");
                     }
                     scalar = scalar << 4 | (uint32_t)h;
                 }
                 if (scalar > 0x10ffff || (scalar >= 0xd800 && scalar < 0xe000)) {
                     ms_buf_free(&value);
-                    return false;
+                    return manifest_bad(r, i - 2, "invalid Unicode scalar");
                 }
                 i += digits;
                 ms_utf8_put(&value, scalar);
             } else {
                 ms_buf_free(&value);
-                return false;
+                return manifest_bad(r, i - 2, "invalid string escape");
             }
             continue;
         }
         if (((unsigned char)c < 0x20 && c != '\t') || c == 0x7f) {
-            ms_buf_free(&value); /* a control character: TOML rejects it, so the Rust reader words the error */
-            return false;
+            ms_buf_free(&value);
+            return manifest_bad(r, i - 1, "control character in string");
         }
         ms_buf_putc(&value, c);
     }
@@ -183,7 +204,7 @@ static bool manifest_end_of_line(const Reader *r, size_t *at) {
     return true;
 }
 
-/* A number or boolean on one line, skipped. Arrays, tables, dates and bare words are left to the Rust reader. */
+/* A number or boolean on one line, skipped. A date, a bare word or anything else is not a value ms.toml uses. */
 static bool is_scalar_char(char c) { return ms_text_is_bare_key_char(c) || c == '.' || c == '+'; }
 
 static bool manifest_skip_scalar(const Reader *r, size_t *at) {
@@ -201,17 +222,13 @@ static bool manifest_skip_scalar(const Reader *r, size_t *at) {
     return true;
 }
 
-static bool manifest_read_scalar(const Reader *r, size_t *at) {
-    return manifest_skip_scalar(r, at) && manifest_end_of_line(r, at);
-}
-
 /* A string or scalar inside an array or an inline table. */
 static bool manifest_read_item(const Reader *r, size_t *at, Field *f) {
     f->pos = manifest_locate(r->text, r->length, *at);
     if (*at < r->length && (r->text[*at] == '"' || r->text[*at] == '\'')) {
         return manifest_read_string(r, at, &f->value, &f->control);
     }
-    return manifest_skip_scalar(r, at);
+    return manifest_skip_scalar(r, at) || manifest_bad(r, *at, "invalid value");
 }
 
 /* Blanks, comments and line ends between the elements of an array. */
@@ -244,13 +261,15 @@ static bool manifest_read_inline_table(const Reader *r, size_t *at, Entry *e) {
         ok = manifest_read_key(r, at, &f.key);
         manifest_skip_blanks(r, at);
         ok = ok && *at < r->length && r->text[*at] == '=';
-        if (ok) {
+        if (!ok) {
+            manifest_bad(r, *at, "expected equals");
+        } else {
             (*at)++;
             manifest_skip_blanks(r, at);
             ok = manifest_read_item(r, at, &f);
         }
         for (size_t i = 0; ok && i < MS_VEC_LEN(fields, Field); i++) {
-            ok = strcmp(MS_VEC_AT(fields, Field, i).key, f.key) != 0;
+            ok = strcmp(MS_VEC_AT(fields, Field, i).key, f.key) != 0 || manifest_bad(r, *at, "duplicate key");
         }
         if (ok) {
             MS_VEC_PUSH(fields, Field, f);
@@ -258,9 +277,10 @@ static bool manifest_read_inline_table(const Reader *r, size_t *at, Entry *e) {
             if (*at < r->length && r->text[*at] == ',') {
                 (*at)++;
                 manifest_skip_blanks(r, at);
-                ok = !(*at < r->length && r->text[*at] == '}'); /* no trailing comma in an inline table */
+                /* no trailing comma in an inline table */
+                ok = !(*at < r->length && r->text[*at] == '}') || manifest_bad(r, *at, "trailing comma in inline table");
             } else {
-                ok = *at < r->length && r->text[*at] == '}';
+                ok = (*at < r->length && r->text[*at] == '}') || manifest_bad(r, *at, "expected inline table comma");
             }
         }
     }
@@ -296,7 +316,7 @@ static bool manifest_read_array(const Reader *r, size_t *at, Entry *e) {
         if (*at < r->length && r->text[*at] == ',') {
             (*at)++;
         } else if (!(*at < r->length && r->text[*at] == ']')) {
-            ok = false;
+            ok = manifest_bad(r, *at, "expected array comma");
             break;
         }
     }
@@ -322,7 +342,7 @@ static bool manifest_read_key(const Reader *r, size_t *at, const char **out) {
         (*at)++;
     }
     if (*at == start) {
-        return false;
+        return manifest_bad(r, start, "expected key");
     }
     *out = ms_arena_strndup(r->arena, r->text + start, *at - start);
     return true;
@@ -345,6 +365,63 @@ static bool manifest_seen_before(const MsBuf *entries, const Entry *entry) {
     return false;
 }
 
+/* The key of a table header or assignment at `at`: a dotted key and a table array are valid TOML that ms.toml does not use. */
+static bool manifest_read_name(const Reader *r, size_t *at, const char **name, const char *dotted) {
+    if (*at < r->length && r->text[*at] == '[') {
+        return manifest_bad(r, *at, "table arrays are not supported in ms.toml");
+    }
+    if (!manifest_read_key(r, at, name)) {
+        return false;
+    }
+    manifest_skip_blanks(r, at);
+    if (*at < r->length && r->text[*at] == '.') {
+        return manifest_bad(r, *at, dotted);
+    }
+    return true;
+}
+
+/* A `[table]` header after its opening bracket. */
+static bool manifest_read_header(const Reader *r, size_t *at, Entry *entry) {
+    manifest_skip_blanks(r, at);
+    if (!manifest_read_name(r, at, &entry->name, "nested tables are not supported in ms.toml")) {
+        return manifest_invalid(r, *at, "expected key");
+    }
+    if (*at >= r->length || r->text[*at] != ']') {
+        return manifest_invalid(r, *at, "expected closing table bracket");
+    }
+    (*at)++;
+    return manifest_end_of_line(r, at) || manifest_invalid(r, *at, "unexpected trailing text");
+}
+
+/* The value of an assignment after its `=`. */
+static bool manifest_read_value(const Reader *r, size_t *at, Entry *entry) {
+    const size_t start = *at;
+    entry->value_pos = manifest_locate(r->text, r->length, start);
+    const char c = start < r->length ? r->text[start] : '\0';
+    if (c == '"' || c == '\'') {
+        entry->value_kind = VALUE_STRING;
+        if (!manifest_read_string(r, at, &entry->value, &entry->control)) {
+            return manifest_invalid(r, *at, "invalid value");
+        }
+    } else if (c == '{') {
+        if (!manifest_read_inline_table(r, at, entry)) {
+            return manifest_invalid(r, *at, "invalid inline table");
+        }
+    } else if (c == '[') {
+        if (!manifest_read_array(r, at, entry)) {
+            return manifest_invalid(r, *at, "invalid array");
+        }
+    } else if (manifest_skip_scalar(r, at)) {
+        entry->value_kind = VALUE_SCALAR; /* value stays NULL: a number or boolean, which only an unknown key may hold */
+    } else {
+        return manifest_invalid(r, *at, "invalid value");
+    }
+    if (entry->value == NULL) {
+        entry->raw = ms_arena_strndup(r->arena, r->text + start, *at - start);
+    }
+    return manifest_end_of_line(r, at) || manifest_invalid(r, *at, "unexpected trailing text");
+}
+
 /* The tables and assignments of the text, in order. */
 static bool manifest_read_document(const Reader *r, size_t at, MsBuf *entries) {
     while (at < r->length) {
@@ -355,61 +432,35 @@ static bool manifest_read_document(const Reader *r, size_t at, MsBuf *entries) {
         const char c = r->text[at];
         if (c == '\n' || c == '\r' || c == '#') {
             if (!manifest_end_of_line(r, &at)) {
-                return manifest_unsupported(r, "invalid ms.toml");
+                return manifest_invalid(r, at, "unexpected trailing text");
             }
             continue;
         }
         Entry entry = {0};
+        entry.key_pos = manifest_locate(r->text, r->length, at);
         if (c == '[') {
             entry.kind = ENTRY_TABLE;
-            entry.key_pos = manifest_locate(r->text, r->length, at);
             at++;
-            manifest_skip_blanks(r, &at);
-            if (!manifest_read_key(r, &at, &entry.name)) {
-                return manifest_unsupported(r, "invalid ms.toml");
-            }
-            manifest_skip_blanks(r, &at);
-            if (at >= r->length || r->text[at] != ']') {
-                return manifest_unsupported(r, "invalid ms.toml");
-            }
-            at++;
-            if (!manifest_end_of_line(r, &at)) {
-                return manifest_unsupported(r, "invalid ms.toml");
+            if (!manifest_read_header(r, &at, &entry)) {
+                return false;
             }
         } else {
             entry.kind = ENTRY_PAIR;
-            entry.key_pos = manifest_locate(r->text, r->length, at);
-            if (!manifest_read_key(r, &at, &entry.name)) {
-                return manifest_unsupported(r, "invalid ms.toml");
+            if (!manifest_read_name(r, &at, &entry.name, "dotted keys are not supported in ms.toml")) {
+                return manifest_invalid(r, at, "expected key");
             }
             manifest_skip_blanks(r, &at);
             if (at >= r->length || r->text[at] != '=') {
-                return manifest_unsupported(r, "invalid ms.toml");
+                return manifest_invalid(r, at, "expected equals");
             }
             at++;
             manifest_skip_blanks(r, &at);
-            entry.value_pos = manifest_locate(r->text, r->length, at);
-            if (at < r->length && (r->text[at] == '"' || r->text[at] == '\'')) {
-                entry.value_kind = VALUE_STRING;
-                if (!manifest_read_string(r, &at, &entry.value, &entry.control) || !manifest_end_of_line(r, &at)) {
-                    return manifest_unsupported(r, "invalid ms.toml");
-                }
-            } else if (at < r->length && r->text[at] == '{') {
-                if (!manifest_read_inline_table(r, &at, &entry) || !manifest_end_of_line(r, &at)) {
-                    return manifest_unsupported(r, "invalid ms.toml");
-                }
-            } else if (at < r->length && r->text[at] == '[') {
-                if (!manifest_read_array(r, &at, &entry) || !manifest_end_of_line(r, &at)) {
-                    return manifest_unsupported(r, "invalid ms.toml");
-                }
-            } else if (!manifest_read_scalar(r, &at)) {
-                return manifest_unsupported(r, "invalid ms.toml");
-            } else {
-                entry.value_kind = VALUE_SCALAR; /* value stays NULL: a number or boolean, which only an unknown key may hold */
+            if (!manifest_read_value(r, &at, &entry)) {
+                return false;
             }
         }
         if (manifest_seen_before(entries, &entry)) {
-            return manifest_unsupported(r, "duplicate key");
+            return manifest_fail_at(r, entry.key_pos, "invalid ms.toml: duplicate key");
         }
         MS_VEC_PUSH(*entries, Entry, entry);
     }
@@ -417,6 +468,19 @@ static bool manifest_read_document(const Reader *r, size_t at, MsBuf *entries) {
 }
 
 /* ---- validation ---- */
+
+/* `key = 1` where the key wants a string: the error shows the string that was meant, as `write key = "1"`. */
+static bool manifest_not_string(const Reader *r, const Entry *e) {
+    size_t from = 0;
+    size_t to = e->raw == NULL ? 0 : strlen(e->raw);
+    while (to > from && (e->raw[to - 1] == ' ' || e->raw[to - 1] == '\t' || e->raw[to - 1] == '"')) {
+        to--;
+    }
+    while (from < to && (e->raw[from] == ' ' || e->raw[from] == '\t' || e->raw[from] == '"')) {
+        from++;
+    }
+    return manifest_fail_at(r, e->value_pos, ms_arena_fmt(r->arena, "%s must be a string; write %s = \"%.*s\"", e->name, e->name, (int)(to - from), e->raw == NULL ? "" : e->raw + from).ptr);
+}
 
 static bool manifest_valid_alias(const char *key) {
     if (key[0] != '@' || key[1] == 0) {
@@ -692,7 +756,7 @@ static bool manifest_add_project_key(Builder *b, const Entry *e) {
         return manifest_fail_at(r, e->key_pos, ms_arena_fmt(a, "unknown project key %s; [project] accepts name, source, entry, version, and effects", e->name).ptr);
     }
     if (e->value == NULL) {
-        return manifest_unsupported(r, "a value that is not a string");
+        return manifest_not_string(r, e);
     }
     if (e->control) {
         return manifest_control(r, e);
@@ -746,7 +810,7 @@ static bool manifest_add_pair(Builder *b, Section section, const Entry *e) {
     case SECTION_EMBED: break;
     }
     if (e->value == NULL) {
-        return manifest_unsupported(b->reader, "a value that is not a string");
+        return manifest_not_string(b->reader, e);
     }
     return section == SECTION_EMBED ? manifest_add_embed(b, e) : manifest_add_alias(b, e);
 }
@@ -958,6 +1022,29 @@ const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, M
     return text;
 }
 
+/* The text with each byte that is not valid UTF-8 replaced by U+FFFD, so a stray byte in a comment reads as it does everywhere else. */
+static const char *manifest_lossy(MsArena *a, const char *text, size_t *length) {
+    if (ms_utf8_valid(text, *length)) {
+        return text;
+    }
+    MsBuf out = {0};
+    for (size_t i = 0; i < *length;) {
+        const unsigned char lead = (unsigned char)text[i];
+        const size_t size = lead < 0x80 ? 1 : lead >= 0xf0 ? 4 : lead >= 0xe0 ? 3 : 2;
+        if (i + size <= *length && ms_utf8_valid(text + i, size)) {
+            ms_buf_put(&out, text + i, size);
+            i += size;
+        } else {
+            ms_buf_puts(&out, "\xef\xbf\xbd");
+            i++;
+        }
+    }
+    const char *copy = ms_arena_strndup(a, out.data, out.len);
+    *length = out.len;
+    ms_buf_free(&out);
+    return copy;
+}
+
 bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProjectError *err) {
     const char *absolute;
     if (!ms_path_abs(a, manifest, &absolute, err)) {
@@ -974,7 +1061,9 @@ bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProject
     if (out->configuration == NULL) {
         return false;
     }
-    const Reader r = {.arena = a, .text = out->configuration, .length = length, .file = out->file, .err = err};
+    out->configuration = manifest_lossy(a, out->configuration, &length);
+    Bad bad = {0};
+    const Reader r = {.arena = a, .text = out->configuration, .length = length, .file = out->file, .err = err, .bad = &bad};
 
     size_t line_start = 0;
     uint32_t line = 1;
@@ -986,9 +1075,6 @@ bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProject
             line_start = i + 1;
             line++;
         }
-    }
-    if (!ms_utf8_valid(out->configuration, length)) {
-        return manifest_unsupported(&r, "a manifest that is not UTF-8");
     }
     const size_t bom = length >= 3 && memcmp(out->configuration, "\xef\xbb\xbf", 3) == 0 ? 3 : 0;
     MsBuf entries = {0};
