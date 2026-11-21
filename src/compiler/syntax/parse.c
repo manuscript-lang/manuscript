@@ -162,9 +162,14 @@ static void *copy_out(MsArena *arena, const void *items, size_t count, size_t si
 }
 
 bool ms_parse(MsArena *arena, MsNames *names, MsSpan source, MsModule *out, MsDiag *diag) {
+  return ms_parse_chunk(arena, names, source, (MsChunk){0}, out, diag);
+}
+
+bool ms_parse_chunk(MsArena *arena, MsNames *names, MsSpan source, MsChunk chunk, MsModule *out,
+                    MsDiag *diag) {
   *out = (MsModule){0};
   MsLexed lexed;
-  if (!ms_lex(arena, source, &lexed, diag)) {
+  if (!ms_lex_at(arena, source, chunk.base_offset, chunk.base_line, &lexed, diag)) {
     return false;
   }
   ScratchList scratch = {0};
@@ -180,6 +185,7 @@ bool ms_parse(MsArena *arena, MsNames *names, MsSpan source, MsModule *out, MsDi
               .type_brackets = parse_compute_type_brackets(arena, lexed.tokens, lexed.ntokens),
               .scratch = &scratch,
               .bytes = &bytes,
+              .next_id = chunk.first_id,
               .diag = diag};
   bool ok = parse_module(&p, &imports, &decls);
   if (ok) {

@@ -20,4 +20,19 @@ bool ms_plain_index_target(const MsExpr *left, const MsExpr *index);
  * texts come from `arena`; names are interned in `names`. */
 bool ms_parse(MsArena *arena, MsNames *names, MsSpan source, MsModule *module, MsDiag *diag);
 
+/* Where a slice of a larger file sits: its first byte is at original offset `base_offset` on line
+ * `base_line + 1`, and its nodes are numbered from `first_id`. */
+typedef struct MsChunk {
+  uint32_t base_offset, base_line, first_id;
+} MsChunk;
+
+/* Parses a slice of a larger file strictly, reporting positions in the larger file. Editor recovery only. */
+bool ms_parse_chunk(MsArena *arena, MsNames *names, MsSpan source, MsChunk chunk, MsModule *module,
+                    MsDiag *diag);
+
+/* Parses `source` retaining every declaration that parses on its own (or after blanking invalid statements). True when the
+ * whole file parses; otherwise `module` holds what was kept and `diags` the problems of the rest, from `arena`. */
+bool ms_parse_partial(MsArena *arena, MsNames *names, MsSpan source, MsModule *module, MsDiag **diags,
+                      size_t *ndiags);
+
 #endif

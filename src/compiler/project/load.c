@@ -127,6 +127,26 @@ static Failure parse_failure(MsSpan file, const MsDiag *diag) {
   return failure;
 }
 
+/* Reports every independent syntax error in the file, not only the first, so one run shows all that need fixing.
+ * One unclosed delimiter is one mistake: the strict parse reports it at the end of the file and recovery at the
+ * next declaration, naming the same opener. */
+static void add_secondary(Loader *loader, MsSpan file, MsSpan text, const MsDiag *first) {
+  MsModule kept;
+  MsDiag *issues = NULL;
+  size_t count = 0;
+  (void)ms_parse_partial(loader->arena, loader->names, text, &kept, &issues, &count);
+  for (size_t i = 0; i < count; i++) {
+    const MsDiag *issue = &issues[i];
+    const bool same_place = issue->pos.offset == first->pos.offset && issue->pos.line == first->pos.line &&
+                            issue->pos.column == first->pos.column;
+    const bool same_opener = issue->opener_line != 0 && issue->opener_line == first->opener_line;
+    if (!same_place && issue->pos.line > 0 && !same_opener) {
+      graph_diag_list_push(&loader->diagnostics,
+                           (MsGraphDiag){.file = file, .phase = MS_GRAPH_PARSE, .diag = *issue});
+    }
+  }
+}
+
 static bool parse_source(Loader *loader, MsSpan file, MsSpan text, MsModule *module, Failure *failure) {
   MsDiag diag = {.pos = start_position()};
   if (!ms_utf8_is_valid(text.ptr, text.len)) {
@@ -135,6 +155,7 @@ static bool parse_source(Loader *loader, MsSpan file, MsSpan text, MsModule *mod
     return false;
   }
   if (!ms_parse(loader->arena, loader->names, text, module, &diag)) {
+    add_secondary(loader, file, text, &diag);
     *failure = parse_failure(file, &diag);
     return false;
   }
@@ -232,6 +253,18 @@ static void finish(Loader *loader, MsGraph *out) {
   for (size_t i = 0; i < loader->modules.len; i++) {
     out->modules[i] = loader->modules.ptr[i];
   }
+}
+
+/* A strict load that failed: the diagnostics found on the way, then the failure. */
+static void fail_load(Loader *loader, MsGraph *out, MsGraphDiag diag) {
+  const size_t found = loader->diagnostics.len;
+  out->count = 0;
+  out->diagnostic_count = found + 1;
+  out->diagnostics = ms_arena_alloc_array(loader->arena, sizeof(MsGraphDiag), _Alignof(MsGraphDiag), found + 1);
+  for (size_t i = 0; i < found; i++) {
+    out->diagnostics[i] = loader->diagnostics.ptr[i];
+  }
+  out->diagnostics[found] = diag;
 }
 
 static void fail_graph(MsArena *arena, MsGraph *out, MsGraphDiag diag) {
@@ -364,7 +397,7 @@ static void load_graph(Loader *loader, MsSpan filename, MsSpan target, bool is_m
       return;
     }
     if (!visit(loader, entry, &index, &failure)) {
-      fail_graph(loader->arena, out, failure_diag(&failure, filename, start_position()));
+      fail_load(loader, out, failure_diag(&failure, filename, start_position()));
       return;
     }
   }

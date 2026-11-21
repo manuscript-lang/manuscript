@@ -44,6 +44,7 @@ typedef struct Scanner {
   RangeList strings, interps, blocks; /* discovered boundaries */
   const MsBounds *cached;
   size_t boundary_origin;
+  uint32_t base_offset, base_line; /* where a slice of a larger file starts */
   bool virtual_paren;
   MsDiag *diag;
 } Scanner;
@@ -94,6 +95,9 @@ int lex_peek(const Scanner *s, size_t i);
 MsPos lex_pos(const Scanner *s);
 MsSpan lex_quote_rune(Scanner *s, uint32_t scalar);
 bool lex_read_leading_space(Scanner *s, size_t *leading);
+MsSpan lex_normalize(MsArena *arena, MsSpan source, const uint32_t **offsets);
+void lex_scanner_init(Scanner *s, MsArena *arena, MsSpan text, const uint32_t *line_offsets, MsDiag *diag);
+void lex_scanner_free(Scanner *s);
 MS_NODISCARD bool lex_scan_multiline(Scanner *s, bool raw, bool interpolating);
 MS_NODISCARD bool lex_scan_number(Scanner *s, MsPos p);
 MS_NODISCARD bool lex_scan_raw_line(Scanner *s);
