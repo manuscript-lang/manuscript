@@ -338,6 +338,7 @@ static void runtime_thread(void *argument) {
     ms_sched_teardown();
     ms_io_close(true);
     ms_sched_release_stdout();
+    ms_frames_release(); /* unsorted fault tables were installed as an address-ordered copy, the runtime's own blocks */
 #ifdef MS_ALLOC_STATS
     ms_heap_requested_restore(program_requested);
     report_leaks();
