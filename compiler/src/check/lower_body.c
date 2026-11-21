@@ -771,6 +771,9 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (dispatch != MS_TY_NONE && ms_ty_kind(&lb->c->tys, lb->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
         return li_call(lb, e);
     }
+    if (callee == MS_NONE && dispatch != MS_TY_NONE && lb->facts->call_borrows[e->id]) {
+        return LB_UNSUPPORTED(lb); // the borrowing twin of the runtime function and the scan of `for c in s.chars()` are not lowered yet
+    }
     if (callee == MS_NONE && dispatch != MS_TY_NONE) {
         return lb_native_method(lb, e); // an operation of a primitive: its runtime function
     }
@@ -819,8 +822,11 @@ LbVal lb_expr(Lb *lb, const MsExpr *e) {
     }
     const MirTy payload = mir_b_ty(&lb->b, value.v);
     const bool owns = lb_owns(lb, payload);
-    if (value.owned != owns) {
-        return LB_UNSUPPORTED(lb); // a borrowed payload stays a view, an owned one is wrapped (the ownership pass decides which)
+    if (value.owned && !owns) {
+        return LB_UNSUPPORTED(lb);
+    }
+    if (owns && !value.owned) {
+        value = (LbVal){lb_copy(lb, value.v), true}; // an owning Optional holds its own copy of a borrowed payload
     }
     const MirTy ty = mir_ty_opt(lb->m, payload);
     return (LbVal){mir_b_emit(&lb->b, MOP_OptSome, &value.v, 1, (MirImm){0}, ty), owns};

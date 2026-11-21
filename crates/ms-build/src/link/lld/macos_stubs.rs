@@ -1,7 +1,7 @@
 //! Link-time stand-ins for the macOS system libraries. Apple's SDK is not redistributable and is
 //! absent without Xcode tools, so the stubs (`.tbd` text files, which `lld` reads like the real
 //! ones) are generated: they export exactly the symbols the program and runtime import but do not
-//! define. At run time dyld binds those names in the real libSystem, Security and CoreFoundation.
+//! define. At run time dyld binds those names in the real libSystem, Security, CoreFoundation and SystemConfiguration.
 
 use crate::Error;
 use object::read::archive::ArchiveFile;
@@ -9,7 +9,7 @@ use object::{Object as _, ObjectSymbol as _};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-/// Writes `usr/lib/libSystem.tbd` and the two framework stubs under `sdk`.
+/// Writes `usr/lib/libSystem.tbd` and the three framework stubs under `sdk`.
 pub fn write(sdk: &Path, arch: &str, object: &Path, inputs: &[&Path]) -> Result<(), Error> {
     let mut defined = BTreeSet::new();
     // lld's own lazy-binding stubs import this, spelled without the usual leading underscore.
@@ -31,10 +31,12 @@ pub fn write(sdk: &Path, arch: &str, object: &Path, inputs: &[&Path]) -> Result<
     let mut system = Vec::new();
     let mut security = Vec::new();
     let mut core_foundation = Vec::new();
+    let mut system_configuration = Vec::new();
     for name in undefined.difference(&defined) {
         match name.as_str() {
             n if n.starts_with("_Sec") || n.starts_with("_kSec") => security.push(n),
             n if n.starts_with("_CF") || n.starts_with("_kCF") => core_foundation.push(n),
+            n if n.starts_with("_SC") || n.starts_with("_kSC") => system_configuration.push(n),
             n => system.push(n),
         }
     }
@@ -43,6 +45,7 @@ pub fn write(sdk: &Path, arch: &str, object: &Path, inputs: &[&Path]) -> Result<
     std::fs::create_dir_all(sdk.join("usr/lib")).map_err(io)?;
     std::fs::create_dir_all(framework("Security")).map_err(io)?;
     std::fs::create_dir_all(framework("CoreFoundation")).map_err(io)?;
+    std::fs::create_dir_all(framework("SystemConfiguration")).map_err(io)?;
     std::fs::write(
         sdk.join("usr/lib/libSystem.tbd"),
         tbd(&target, "/usr/lib/libSystem.B.dylib", &system),
@@ -51,6 +54,7 @@ pub fn write(sdk: &Path, arch: &str, object: &Path, inputs: &[&Path]) -> Result<
     for (name, symbols) in [
         ("Security", &security),
         ("CoreFoundation", &core_foundation),
+        ("SystemConfiguration", &system_configuration),
     ] {
         let install = format!("/System/Library/Frameworks/{name}.framework/Versions/A/{name}");
         std::fs::write(

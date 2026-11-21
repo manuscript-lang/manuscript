@@ -302,15 +302,12 @@ static bool ln_param(Lb *lb, LnCall *call, const MsRtFn *fn, uint32_t *at, const
         return false;
     }
     if (kind == MS_RT_ERR || kind == MS_RT_OUT_HANDLE || kind == MS_RT_OUT_SCALAR ||
-        (status != NULL && (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST))) {
+        (status != NULL && (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST || kind == MS_RT_OUT_RECORD))) {
         return ln_slot_param(lb, call, kind, status, slots);
     }
     if (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST || (kind == MS_RT_OUT_RECORD && status == NULL)) {
         call->has_out = true;
         return true;
-    }
-    if (kind == MS_RT_OUT_RECORD) {
-        return false; // a record beside a status needs the status split to build it
     }
     if (kind == MS_RT_DESC || kind == MS_RT_KEY_DESC || kind == MS_RT_VAL_DESC) {
         call->is_desc[call->count] = true;

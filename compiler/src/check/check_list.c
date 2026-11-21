@@ -91,8 +91,12 @@ MsTy ms_body_index(MsBody *b, const MsExpr *e) {
     if (list != MS_TY_NONE && left->kind != MS_E_MAP && ms_body_is_map(b, list)) {
         return ms_body_map_index(b, list, index);
     }
-    if (list == MS_TY_NONE || left->kind == MS_E_LIST || !ms_body_is_list(b, list)) {
+    if (list == MS_TY_NONE || !ms_body_is_list(b, list)) {
         return ms_body_unsupported(b);
+    }
+    const MsStr fault = ms_constant_index_fault(&b->c->arena, b->literals, left, index, INT64_MIN, INT64_MAX);
+    if (fault.len != 0) {
+        ms_body_report(b, e->pos, fault);
     }
     const MsTy element = ms_ty_args(&b->c->tys, list)[0];
     return ms_body_expr(b, index, b->int_ty) == MS_TY_NONE ? MS_TY_NONE : element;
