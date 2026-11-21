@@ -8,7 +8,7 @@
  * When every use of the parameter is such a `put` into a slot of its own block, the value can live
  * in one slot made at function entry: the entry edges put into it, the calls use it directly, and
  * the parameter, the per-pass `put` and the `take` go away. Port of
- * crates/ms-mir/src/opt/loopslot.rs. */
+ * the former Rust crates/ms-mir/src/opt/loopslot.rs. */
 #include <string.h>
 
 #include "ms/mir_analysis.h"

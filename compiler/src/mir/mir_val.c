@@ -44,7 +44,7 @@ MirVal ip_ptr(uint64_t address) {
 static bool ip_is_aggregate(MirVal value) {
     switch ((MirValTag)value.tag) {
     case MV_STR: case MV_TYPE: case MV_ALT: case MV_LIST: case MV_OPT: case MV_CLOSURE:
-    case MV_IFACE:
+    case MV_IFACE: case MV_MAP:
         return true;
     case MV_VOID: case MV_BOOL: case MV_INT: case MV_FLOAT: case MV_PTR:
         return false;
@@ -366,7 +366,7 @@ void ip_show(MsBuf *out, MirVal value) {
         break;
     }
     case MV_PTR: case MV_TYPE: case MV_ALT: case MV_LIST: case MV_OPT: case MV_CLOSURE:
-    case MV_IFACE:
+    case MV_IFACE: case MV_MAP:
         ms_buf_puts(out, "<value>");
         break;
     }

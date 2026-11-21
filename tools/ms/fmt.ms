@@ -6,6 +6,7 @@
 // UTF-8, and every error go to the Rust command, so those keep the Rust wording.
 import (
 	Bytes from "@std/bytes.ms",
+	Matches from "@std/cli/command.ms",
 	JsonValue from "@std/data/json.ms",
 	working_directory from "@std/os/env.ms",
 	canonicalize,
@@ -92,29 +93,15 @@ export type Request:
 	// Whether the Rust command must answer.
 	rust: Bool = false
 
-// The options and targets of `args`, after the command name.
-export fn parse_request(args: List[String]) Request:
-	var request = Request()
-	var positional = false
+// The options and targets the command tree parsed for `ms fmt`.
+export fn parse_request(m: Matches) Request:
+	var request = Request(
+		check: m.bool("check"),
+		json: m.bool("json"),
+		targets: m.list("targets"),
+	)
 
-	for arg in args:
-		if not positional and arg == "--":
-			positional = true
-		else if not positional and arg == "--check":
-			request.check = true
-		else if not positional and arg == "--json":
-			request.json = true
-		else if not positional and arg == "--drop-labels":
-			request.rust = true
-		else if not positional and arg.starts_with("-"):
-			request.usage = f"unknown option {arg} for ms fmt; run 'ms help fmt' for its options"
-			return request
-		else:
-			request.targets.append(arg.clone())
-
-	if request.targets.is_empty():
-		request.usage = "ms fmt: missing a target; pass .ms files, directories, or ms.toml"
-	else if request.targets.contains(""):
+	if m.bool("drop-labels") or request.targets.contains(""):
 		request.rust = true
 	else if request.json and not request.check:
 		request.usage = "--json requires ms fmt --check; remove --json to format files in place"
@@ -270,8 +257,8 @@ export type Printed:
 	status: Int = 0
 
 // Runs `ms fmt`; none when the Rust command must, before any file is touched.
-export fn run_fmt(args: List[String]) Printed?:
-	request := parse_request(args)
+export fn run_fmt(m: Matches) Printed?:
+	request := parse_request(m)
 	if not request.usage.is_empty(): return Printed(
 		stderr: request.usage + "\n",
 		status: 2,

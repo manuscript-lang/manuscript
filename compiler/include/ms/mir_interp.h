@@ -34,12 +34,13 @@
 
 typedef enum MirValTag {
     MV_VOID, MV_BOOL, MV_INT, MV_FLOAT, MV_STR, MV_PTR, MV_TYPE, MV_ALT, MV_LIST, MV_OPT,
-    MV_CLOSURE, MV_IFACE
+    MV_CLOSURE, MV_IFACE, MV_MAP
 } MirValTag;
 
 typedef struct MirBlob MirBlob;
 
-/* An interpreter value. `blob` is owned (counted) for the aggregate tags; `id` is the case of an
+/* An interpreter value. `blob` is owned (counted) for the aggregate tags (a map's blob holds its keys
+ * and values alternately, in insertion order); `id` is the case of an
  * alternative, the function of a closure, the vtable of an interface value. */
 typedef struct MirVal {
     uint8_t tag;

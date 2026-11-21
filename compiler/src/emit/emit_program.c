@@ -123,6 +123,29 @@ bool ms_backend_ir(const char *mir, size_t mir_len, const char *name, const char
     return true;
 }
 
+bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name, MsBackendText *out, MsBackendText *why) {
+    MirModule m;
+    mir_module_init(&m);
+    MsBuf text = {0}, why_buf = {0};
+    uint32_t line = 0;
+    MsStr message = {0};
+    bool ok = mir_parse(&m, mir, mir_len, &line, &message);
+    if (!ok) {
+        ms_buf_printf(&why_buf, "%s:%u: %.*s", name, line, (int)message.len, message.ptr);
+    } else if ((ok = mir_optimize(&m, MIR_OPT_SPEED, true, &why_buf))) {
+        mir_print_module(&m, &text);
+    }
+    mir_module_free(&m);
+    if (!ok) {
+        ms_buf_free(&text);
+        *why = be_take(&why_buf);
+        return false;
+    }
+    ms_buf_free(&why_buf);
+    *out = be_take(&text);
+    return true;
+}
+
 bool ms_backend_tables(const char *meta, size_t meta_len, const char *asm_text, size_t asm_len,
                        const char *prefix, MsBackendText *out, MsBackendText *why) {
     MsBuf out_buf = {0}, why_buf = {0};

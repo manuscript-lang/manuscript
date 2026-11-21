@@ -16,6 +16,7 @@
 #include "mir/mir_layout.c"
 #include "mir/mir_shape.c"
 #include "mir/mir_val.c"
+#include "mir/mir_interp_map.c"
 #include "mir/mir_interp_ops.c"
 #include "mir/mir_interp.c"
 #include "mir/mir_parse.c"
@@ -85,7 +86,9 @@
 #include "check/lower_body.c"
 #include "check/lower_func.c"
 #include "check/lower_record.c"
+#include "rt_ops.c"
 #include "check/lower_list.c"
+#include "check/lower_native.c"
 #include "check/lower_map.c"
 #include "check/lower_enum.c"
 #include "check/lower_text.c"
@@ -108,6 +111,7 @@
 #include "check/check_entry.c"
 #include "check/check_public.c"
 #include "check/check_extern.c"
+#include "check/check_interface.c"
 #include "check/check_types.c"
 #include "check/check_decls.c"
 #include "check/check_list.c"
@@ -165,4 +169,5 @@
 #include "project/attach.c"
 
 #include "project/graph_check.c"
+#include "check_cmd.c"
 #endif

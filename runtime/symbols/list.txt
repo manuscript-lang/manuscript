@@ -7,6 +7,8 @@ msrt_list_copy
 msrt_list_shadow
 msrt_list_free_raw
 msrt_list_push
+msrt_list_length
+msrt_list_append
 msrt_list_reserve
 msrt_list_at
 msrt_list_get

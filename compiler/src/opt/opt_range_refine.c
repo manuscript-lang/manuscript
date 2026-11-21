@@ -1,5 +1,5 @@
 /* range: environments and the facts a branch gives. Port of `Env`, `build_env`, `prune`,
- * `apply_edge` and the `refine_*` functions in crates/ms-mir/src/opt/range.rs.
+ * `apply_edge` and the `refine_*` functions in the former Rust crates/ms-mir/src/opt/range.rs.
  *
  * A conditional edge into a block with a single incoming edge refines the compared values
  * (`br_if (icmp.lt a, b)` gives `a < hi(b)` in the taken block). Refinements are inherited down

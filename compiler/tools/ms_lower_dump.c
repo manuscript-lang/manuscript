@@ -26,42 +26,29 @@
 #include "std_files.h"
 
 /* A construct C lowers differently from Rust by design: Rust threads parameters through a loop
- * header and tests a `match` arm by arm, C branches once (`switch`, or `br_if` on a Bool); Rust
- * inlines the hash probe of `m[k]` where C calls `msrt_map_get_ptr`. */
-typedef struct Divergence {
-    const MsCheck *check;
-    const MsFacts *facts;
-    bool found;
-} Divergence;
-
-static void note_divergent_stmt(void *ctx, const MsStmt *s) {
+ * header and tests a `match` arm by arm, C branches once (`switch`, or `br_if` on a Bool). */
+static void note_divergent_stmt(void *flag, const MsStmt *s) {
     if (s->kind == MS_S_WHILE || s->kind == MS_S_FOR) {
-        ((Divergence *)ctx)->found = true;
+        *(bool *)flag = true;
     }
 }
 
-static void note_divergent_expr(void *ctx, const MsExpr *e) {
-    Divergence *d = ctx;
-    const MsExpr *left = NULL;
-    const MsExpr *at = NULL;
-    const bool indexed = (e->kind == MS_E_INDEX || e->kind == MS_E_APPLY) && ms_expr_index(e, &left, &at);
-    const MsTy receiver = indexed ? d->facts->expr_ty[left->id] : MS_TY_NONE;
-    if (e->kind == MS_E_MATCH || (receiver != MS_TY_NONE && ms_ty_is(&d->check->tys, receiver, MS_BI_MAP))) {
-        d->found = true;
+static void note_divergent_expr(void *flag, const MsExpr *e) {
+    if (e->kind == MS_E_MATCH) {
+        *(bool *)flag = true;
     }
 }
 
 /* Whether the function called `name` in `module` holds one. */
-static bool function_diverges(const MsCheck *check, MsModId id, const MsModule *module, MsStr name) {
-    const MsNames *names = check->names;
+static bool function_diverges(const MsNames *names, const MsModule *module, MsStr name) {
     for (uint32_t i = 0; i < module->ndecls; i++) {
         const MsDecl *d = module->decls[i];
         const MsStr own = d->kind == MS_D_FN ? ms_name(names, d->u.fn.name) : (MsStr){0};
         if (own.len == name.len && own.len != 0 && memcmp(own.ptr, name.ptr, name.len) == 0) {
-            Divergence divergence = {.check = check, .facts = check->mods[id].facts};
-            const MsVisitor visitor = {.ctx = &divergence, .stmt = note_divergent_stmt, .expr = note_divergent_expr};
+            bool flag = false;
+            const MsVisitor visitor = {.ctx = &flag, .stmt = note_divergent_stmt, .expr = note_divergent_expr};
             ms_walk_decl(&visitor, d);
-            return divergence.found;
+            return flag;
         }
     }
     return false;
@@ -125,7 +112,7 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
             MsBuf out = {0};
             mir_print_func(&mir, &mir.funcs[i], &out);
-            if (function_diverges(check, id, module, ms_name(&mir.names, mir.funcs[i].name))) {
+            if (function_diverges(names, module, ms_name(&mir.names, mir.funcs[i].name))) {
                 printf("; divergent\n");
             }
             printf("%.*s\n", (int)out.len, (const char *)out.data);
