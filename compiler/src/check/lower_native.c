@@ -24,6 +24,7 @@ static MirTy ln_param_ty(MsRtParam kind, MirTy given) {
     case MS_RT_INT: return MIR_INT;
     case MS_RT_FLOAT: return MIR_FLOAT;
     case MS_RT_BOOL: return MIR_BOOL;
+    case MS_RT_UINT64: return MIR_UINT64;
     case MS_RT_STR: return MIR_STR;
     case MS_RT_DESC:
     case MS_RT_KEY_DESC:
@@ -258,14 +259,18 @@ static bool ln_value_param(Lb *lb, LnCall *call, MsRtParam kind, const MirValue 
     call->next++;
     const MirTy given = mir_b_ty(&lb->b, value);
     const bool list = kind == MS_RT_LIST || kind == MS_RT_LIST_VAR;
-    if ((list && !lb_is_list(lb, given)) || (kind == MS_RT_MAP && !lb_is_map(lb, given))) {
+    const bool bytes = kind == MS_RT_LIST && given == MIR_BYTES; // a `Bytes` is a list of bytes to a borrowing native
+    if ((list && !bytes && !lb_is_list(lb, given)) || (kind == MS_RT_MAP && !lb_is_map(lb, given))) {
         return false;
     }
-    const bool scalar = kind == MS_RT_INT || kind == MS_RT_FLOAT || kind == MS_RT_BOOL || kind == MS_RT_STR;
+    const bool scalar = kind == MS_RT_INT || kind == MS_RT_FLOAT || kind == MS_RT_BOOL || kind == MS_RT_STR ||
+                        kind == MS_RT_UINT64;
     if (scalar && given != ln_param_ty(kind, given)) {
         return false; // an optional or a sized integer for a plain word: the call converts it, and this does not
     }
-    if (list) {
+    if (bytes) {
+        call->element = MIR_UINT8;
+    } else if (list) {
         call->element = mir_ty_data(lb->m, given)->elem;
     }
     if (kind == MS_RT_MAP) {
@@ -289,9 +294,12 @@ static bool ln_param(Lb *lb, LnCall *call, const MsRtFn *fn, uint32_t *at, const
         (status != NULL && (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST))) {
         return ln_slot_param(lb, call, kind, status, slots);
     }
-    if (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST) {
+    if (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST || (kind == MS_RT_OUT_RECORD && status == NULL)) {
         call->has_out = true;
         return true;
+    }
+    if (kind == MS_RT_OUT_RECORD) {
+        return false; // a record beside a status needs the status split to build it
     }
     if (kind == MS_RT_DESC || kind == MS_RT_KEY_DESC || kind == MS_RT_VAL_DESC) {
         call->is_desc[call->count] = true;
