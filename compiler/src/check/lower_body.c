@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/parse.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
@@ -524,9 +525,6 @@ static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
     if (lb->c->syms.nvars[callee] == 0) {
         return lb->func_of[callee];
     }
-    if (lb->c->syms.module[callee] != lb->module) {
-        return MIR_NONE; // its declaration ids and facts belong to another module
-    }
     const MsFacts *facts = lb->facts;
     const uint32_t nargs = facts->call_type_args_len[e->id];
     if (nargs == 0 || nargs != lb->c->syms.nvars[callee] || nargs > LB_MAX_TARGS) {
@@ -621,8 +619,8 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
 }
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
-    if (lb->facts->call_reordered[e->id]) {
-        return lb_unsupported(lb); // arguments are paired with parameters by index below
+    if (lb->facts->call_reordered[e->id] || ms_is_index_store(lb->c->names, e)) {
+        return lb_unsupported(lb); // arguments are paired with parameters by index below; a store has its own order
     }
     const uint32_t callee = lb->facts->call_callee[e->id];
     const uint32_t method = lb->facts->call_method[e->id];

@@ -244,7 +244,7 @@ static uint8_t install_run(MsArena *arena, MsInstallOptions options, ms_list *ou
     if (!ms_install(arena, &options, &report, &error)) {
         const char *text = ms_project_error_text(arena, &error);
         ms_string_new((const uint8_t *)text, strlen(text), message_out);
-        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+        status = 1;
     }
     for (uint32_t i = 0; status == 0 && i < report.count; i++) {
         const MsInstalledCopy *c = &report.copies[i];
@@ -296,6 +296,20 @@ uint8_t ms_tool_workspace(const ms_str *manifest, uint8_t root_only, ms_list *ou
     }
     ms_arena_free(&arena);
     return status;
+}
+
+uint8_t ms_tool_requirement(const ms_str *text, ms_list *out, ms_str *message_out) {
+    (void)out;
+    MsArena arena = {0};
+    const char *source = ms_arena_strndup(&arena, (const char *)ms_str_data(text), ms_str_len(text));
+    MsRequirement requirement;
+    const char *error = "";
+    const bool ok = ms_requirement_parse(&arena, source, &requirement, &error);
+    if (!ok) {
+        ms_string_new((const uint8_t *)error, strlen(error), message_out);
+    }
+    ms_arena_free(&arena);
+    return ok ? 0 : 1;
 }
 
 uint8_t ms_tool_install_workspace(const ms_str *lock_root, const ms_list *members, const ms_list *update, uint8_t locked, uint8_t frozen,
