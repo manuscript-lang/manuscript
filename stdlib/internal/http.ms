@@ -203,3 +203,5 @@ export extern fn msstd_idle_drain(group: Int) Void
 export extern fn msstd_idle_inflight(group: Int) Int
 
 export extern fn msstd_idle_cancel(group: Int) Void
+
+export extern fn msstd_idle_free(group: Int) Void

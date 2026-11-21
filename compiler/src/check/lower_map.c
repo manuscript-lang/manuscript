@@ -9,6 +9,7 @@
 #include "ms/lower_internal.h"
 #include "ms/mir_layout.h"
 #include "ms/mir_pass.h"
+#include "ms/rt_ops.h"
 
 MirTy lm_type(Lb *lb, MsTy ty) {
     const MsTyTable *tys = &lb->c->tys;
@@ -32,7 +33,7 @@ bool lb_is_map(const Lb *lb, MirTy ty) {
 
 /* The runtime function `name` over these borrowed parameters, declared on first use: the same name
  * over other types is another declaration (`msrt_map_new` returns each map type). */
-static uint32_t lm_extern(Lb *lb, const char *name, const MirTy *params, uint32_t nparams, MirTy ret, uint8_t role,
+uint32_t lb_runtime_extern(Lb *lb, const char *name, const MirTy *params, uint32_t nparams, MirTy ret, uint8_t role,
                           bool reads) {
     const MsSym sym = mir_name(lb->m, name, strlen(name));
     MirParam *wanted = MS_NEW_N(&lb->m->arena, MirParam, nparams + 1);
@@ -63,11 +64,11 @@ static MirValue lm_desc(Lb *lb, MirTy ty) {
     return mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = ty}, MIR_PTR);
 }
 
-/* Fills `slot` with a key or value the map takes: an owned one is put (the slot now owns it), a plain
+/* Fills `dest` with a key or value the map takes: an owned one is put (the slot now owns it), a plain
  * one is stored. */
-static void lm_fill(Lb *lb, MirValue slot, MirValue value) {
-    const MirValue args[2] = {slot, value};
-    (void)mir_b_emit(&lb->b, lb_owns(lb, mir_b_ty(&lb->b, value)) ? MOP_Put : MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
+static void lm_fill(Lb *lb, MirValue dest, MirValue item) {
+    const MirValue args[2] = {dest, item};
+    (void)mir_b_emit(&lb->b, lb_owns(lb, mir_b_ty(&lb->b, item)) ? MOP_Put : MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
 }
 
 /* A key or value the map takes: an owned type moves in, anything else is read. */
@@ -80,7 +81,7 @@ LbVal lm_empty(Lb *lb, MirTy ty) {
     if (!lb_is_map(lb, ty)) {
         return lb_unsupported(lb);
     }
-    const uint32_t make = lm_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
+    const uint32_t make = lb_runtime_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
     return (LbVal){mir_b_call_rt(&lb->b, make, NULL, 0), true};
 }
 
@@ -93,15 +94,35 @@ LbVal lm_literal(Lb *lb, const MsExpr *e) {
     const MirTyData *data = mir_ty_data(lb->m, ty);
     const MirTy key_ty = data->args[0];
     const MirTy value_ty = data->args[1];
-    const uint32_t make = lm_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
+    const uint32_t make = lb_runtime_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
     const MirValue empty = mir_b_call_rt(&lb->b, make, NULL, 0);
-    const MirValue key_desc = lm_desc(lb, key_ty);
-    const MirValue value_desc = lm_desc(lb, value_ty);
+    const MirTy ptr5[5] = {MIR_PTR, MIR_PTR, MIR_PTR, MIR_PTR, MIR_PTR};
+    const uint32_t add = lb_runtime_extern(lb, "msrt_map_add", ptr5, 5, MIR_VOID, MR_NONE, false);
+    const bool single = e->u.map.len == 1; // one entry is read before the map is put in its slot, and gets slots of its own
+    MirValue first_key = MIR_NONE;
+    MirValue first_value = MIR_NONE;
+    if (single) {
+        first_key = lm_entry(lb, e->u.map.ptr[0].key, key_ty);
+        first_value = lm_entry(lb, e->u.map.ptr[0].value, value_ty);
+        if (!lb->ok) {
+            return LB_FAIL;
+        }
+    }
+    const MirValue key_desc = single ? MIR_NONE : lm_desc(lb, key_ty);
+    const MirValue value_desc = single ? MIR_NONE : lm_desc(lb, value_ty);
     const MirValue map_slot = lm_slot(lb, ty);
     const MirValue put[2] = {map_slot, empty};
     (void)mir_b_emit(&lb->b, MOP_Put, put, 2, (MirImm){0}, MIR_NONE);
-    const MirTy ptr5[5] = {MIR_PTR, MIR_PTR, MIR_PTR, MIR_PTR, MIR_PTR};
-    const uint32_t add = lm_extern(lb, "msrt_map_add", ptr5, 5, MIR_VOID, MR_NONE, false);
+    if (single) {
+        const MirValue descs[2] = {lm_desc(lb, key_ty), lm_desc(lb, value_ty)};
+        const MirValue key_slot = lm_slot(lb, key_ty);
+        lm_fill(lb, key_slot, first_key);
+        const MirValue value_slot = lm_slot(lb, value_ty);
+        lm_fill(lb, value_slot, first_value);
+        const MirValue args[5] = {map_slot, descs[0], descs[1], key_slot, value_slot};
+        (void)mir_b_call_rt(&lb->b, add, args, 5);
+        return (LbVal){mir_b_emit(&lb->b, MOP_Take, &map_slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty), true};
+    }
     MirValue key_slot = MIR_NONE;
     MirValue value_slot = MIR_NONE;
     for (uint32_t i = 0; i < e->u.map.len && lb->ok; i++) {
@@ -144,16 +165,16 @@ static MirValue lm_missing_message(Lb *lb, MirValue key) {
         return mir_b_emit(&lb->b, MOP_StrLit, NULL, 0, lm_str(lb, head, sizeof head - 1), MIR_STR);
     }
     const MirValue label = mir_b_emit(&lb->b, MOP_StrLit, NULL, 0, lm_str(lb, "map key not found: ", 19), MIR_STR);
-    const MirValue digits = mir_b_call_rt(&lb->b, lm_extern(lb, "msrt_int_to_string", int_param, 1, MIR_STR, MR_INT_TO_STRING, false), &key, 1);
+    const MirValue digits = mir_b_call_rt(&lb->b, lb_runtime_extern(lb, "msrt_int_to_string", int_param, 1, MIR_STR, MR_INT_TO_STRING, false), &key, 1);
     const MirValue pair[2] = {label, digits};
     return mir_b_call_rt(&lb->b, lb_string_concat(lb), pair, 2);
 }
 
-/* The runtime entry point that looks a key up. A key of one integer word or a String, over a value of one
- * word, has a fixed slot layout the runtime probes without descriptor dispatch (`_w8`, `_sw8`); any other
- * map takes the general entry point. The shape is read from the layout leaves, not from a list of types. */
-static const char *lm_lookup_symbol(Lb *lb, MirTy key, MirTy value, uint8_t *role) {
-    *role = MR_NONE;
+typedef enum LmShape { LM_GENERAL, LM_WORD, LM_TEXT } LmShape;
+
+/* The key and value layout of a map, read from the layout leaves: a key of one integer word or a String,
+ * over a value of one word, has a fixed slot layout the runtime probes without descriptor dispatch. */
+static LmShape lm_shape(Lb *lb, MirTy key, MirTy value) {
     MirLayouts layouts;
     mir_layouts_init(&layouts, lb->m);
     const MirLeafSpan key_leaves = mir_leaves(&layouts, key);
@@ -164,17 +185,31 @@ static const char *lm_lookup_symbol(Lb *lb, MirTy key, MirTy value, uint8_t *rol
     const bool text_key = mir_ty_data(lb->m, key)->kind == MK_STR;
     mir_layouts_free(&layouts);
     if (!word_value) {
-        return "msrt_map_get_ptr";
+        return LM_GENERAL;
     }
     if (word_key) {
-        *role = MR_MAP_PROBE_INT;
-        return "msrt_map_get_ptr_w8";
+        return LM_WORD;
     }
-    if (text_key) {
-        *role = MR_MAP_PROBE_STR;
-        return "msrt_map_get_ptr_sw8";
+    return text_key ? LM_TEXT : LM_GENERAL;
+}
+
+/* The entry of `generic` that fits a map of `key` and `value`: the specialisation the runtime declares
+ * for the layout (`@word_key_of`, `@text_key_of`), else `generic` itself. `role` is the probe role of
+ * the layout, which the optimiser reads to inline the lookup, or MR_NONE. */
+const MsRtFn *lm_specialize(Lb *lb, const MsRtFn *generic, MirTy key, MirTy value, uint8_t *role) {
+    const LmShape shape = lm_shape(lb, key, value);
+    const char *twin = "";
+    uint8_t probe = MR_NONE;
+    if (shape == LM_WORD) {
+        twin = generic->word_twin;
+        probe = MR_MAP_PROBE_INT;
+    } else if (shape == LM_TEXT) {
+        twin = generic->text_twin;
+        probe = MR_MAP_PROBE_STR;
     }
-    return "msrt_map_get_ptr";
+    const MsRtFn *found = twin[0] != '\0' ? ms_rt_fn_find(twin, strlen(twin)) : NULL;
+    *role = found != NULL ? probe : MR_NONE;
+    return found != NULL ? found : generic;
 }
 
 /* `map[key]` with the lowered receiver `map`: the map is borrowed for the lookup and dropped after
@@ -190,10 +225,10 @@ LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at) {
     const MirValue value_desc = lm_desc(lb, data->args[1]);
     const MirValue key_slot = lm_slot(lb, data->args[0]);
     lb_store(lb, key_slot, key.v);
-    uint8_t role;
-    const char *symbol = lm_lookup_symbol(lb, data->args[0], data->args[1], &role);
+    uint8_t role = MR_NONE;
+    const MsRtFn *entry = lm_specialize(lb, ms_rt_fn_find("msrt_map_get_ptr", strlen("msrt_map_get_ptr")), data->args[0], data->args[1], &role);
     const MirTy params[4] = {ty, MIR_PTR, MIR_PTR, MIR_PTR};
-    const uint32_t lookup_fn = lm_extern(lb, symbol, params, 4, MIR_PTR, role, strcmp(symbol, "msrt_map_get_ptr") != 0);
+    const uint32_t lookup_fn = lb_runtime_extern(lb, entry->symbol, params, 4, MIR_PTR, role, entry->pure);
     const MirValue lookup[4] = {map.v, key_desc, value_desc, key_slot};
     const MirValue found = mir_b_call_rt(&lb->b, lookup_fn, lookup, 4);
     const MirValue absent = mir_b_emit(&lb->b, MOP_PtrIsNull, &found, 1, (MirImm){0}, MIR_BOOL);

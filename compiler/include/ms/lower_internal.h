@@ -78,6 +78,7 @@ typedef struct LbView {
     MirValue *value_of;   /* by binding id (output arena, per pass) */
     MirVar *var_of;       /* by binding id (output arena, per pass) */
     bool *failed;         /* by declaration: it did not lower in an earlier pass (malloc) */
+    uint32_t file;        /* the module's source file in the output's file table (per pass) */
 } LbView;
 
 /* An impl method a lowered module wrote: its row, where it starts, and the source lines it owns. */
@@ -106,7 +107,7 @@ typedef struct Lb {
     MirModule *m;
     MirBuilder b;
     LScopes scopes; /* ownership scopes: the function body is depth 0 */
-    MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
+    MsTy int_ty, float_ty, bool_ty, string_ty, void_ty, never_ty;
     /* By binding id: the value a `let` or parameter names, or the variable a `var` is. */
     MirValue *value_of;
     MirVar *var_of;
@@ -139,6 +140,11 @@ typedef struct Lb {
     uint32_t ntemps, ctemps;
     uint32_t stmt_mark;   /* `ntemps` where the statement being lowered began */
     uint32_t branching;   /* conditional contexts around the expression being lowered (an arm, a short-circuit's right side) */
+    MsBuf *why;           /* NULL, or where each function that does not lower is listed (`ms_lower_program_why`) */
+    const char *fail_site; /* the lowering source line that refused the function being lowered, when known */
+    int fail_line;
+    const MsStmt *fail_stmt; /* the statement being lowered then, or NULL */
+    bool first_pass;      /* the report lists the functions the checker did not record once, in the first pass */
     bool dead;            /* control cannot reach the current position */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
@@ -163,6 +169,7 @@ bool lb_lines_have_diagnostic(const MsModuleRow *row, uint32_t first, uint32_t e
 uint32_t lb_add_stub(Lb *lb, const LbCallable *c); /* a function with the signature and no body; MIR_NONE when not handled */
 bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over its stub; false when not handled */
 /* A call of module function `func` of signature `sig`; `receiver` is the method receiver, else NULL. */
+uint32_t lb_view_of(const Lb *lb, MsModId module); /* the view of `module`, or MS_NONE when it is not being lowered */
 LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating);
 
 /* Interface values (lower_iface.c, included after lower_body.c). */
@@ -173,6 +180,7 @@ LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed a
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
+void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos, MsSite site); /* reports a function whose body the checker did not record */
 uint32_t lb_view_enter(Lb *lb, uint32_t view); /* reads module `view` from here on; returns the view it left */
 uint32_t lm_prepare(Lb *lb);                                 /* the method rows of every view; their count */
 void lm_stubs(Lb *lb, uint32_t nrows, const bool *failed);   /* a stub for each method to lower */
@@ -191,12 +199,16 @@ bool lb_closures(Lb *lb, bool ok);
 
 /* Helpers of lower_body.c the files after it use. `lb_unsupported` marks the function as not
  * handled and returns `LB_FAIL`. */
-LbVal lb_unsupported(Lb *lb);
+LbVal lb_unsupported_at(Lb *lb, const char *site, int line);
+#define lb_unsupported(lb) lb_unsupported_at((lb), __FILE__, __LINE__)
 LbVal lb_expr(Lb *lb, const MsExpr *e);
 MirTy lb_mir_ty(Lb *lb, MsTy ty);
 void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
 void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
+
+/* The module function for generic `sym` at type arguments `args`: its existing copy, or a new one. */
+uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
 void lb_write_back(Lb *lb);
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
 bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
@@ -209,9 +221,29 @@ LbVal lst_index(Lb *lb, const MsExpr *e);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
+/* lower_extern.c: a call of a bodiless `extern fn`, by its own symbol in the ms-sig table. */
+MirTy lx_type(Lb *lb, MsTy ty);
+bool lx_is_extern(const Lb *lb, MsSymId callee);
+
+/* lower_native.c: a native call that reports failure by a status. `out_ty` is the type of the value the call writes
+ * through its `out` parameter (MIR_NONE when it writes none); `slots` returns the frame room for it and for the
+ * failure text (MIR_NONE for an absent one). */
+typedef struct LbNativeStatus {
+    MirTy out_ty;
+} LbNativeStatus;
+typedef struct LbNativeSlots {
+    MirValue out;
+    MirValue err;
+} LbNativeSlots;
+MirValue lb_native_status_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs,
+                               const LbNativeStatus *status, LbNativeSlots *slots);
+
+/* lower_out.c: the room a call's `out` pointer writes to, and the value taken from it after a successful call. */
+MirValue lo_out_slot(Lb *lb, MirTy ty);
+MirValue lo_take_out(Lb *lb, MirValue slot, MirTy ty);
+LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 /* Stores `value` in the stack slot `slot`. */
-void lb_store(Lb *lb, MirValue slot, MirValue value);
 
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */
 static inline bool lb_is_scalar(MirTy ty) {
@@ -225,12 +257,23 @@ MirTy lm_type(Lb *lb, MsTy ty);
 bool lb_is_map(const Lb *lb, MirTy ty);
 LbVal lm_literal(Lb *lb, const MsExpr *e);
 LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at);
+struct MsRtFn;
+/* The runtime function `name` over these borrowed parameters, declared once per signature. */
+uint32_t lb_runtime_extern(Lb *lb, const char *name, const MirTy *params, uint32_t nparams, MirTy ret, uint8_t role,
+                           bool reads);
+/* The entry of `generic` that fits a map of `key` and `value` (its declared specialisation, else itself). */
+const struct MsRtFn *lm_specialize(Lb *lb, const struct MsRtFn *generic, MirTy key, MirTy value, uint8_t *role);
 
 /* Equality of records, enums, optionals and lists (lower_eq.c, included after lower_closure.c). */
 LbVal lq_equal(Lb *lb, LbVal x, LbVal y, bool negate);
 
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);
+LbVal lt_scalar_text(Lb *lb, MsTy checked, MirValue v);
+uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want);
+
+/* Structural text of a record or enum (lower_format.c, included after lower_text.c). */
+LbVal lf_text(Lb *lb, LbVal value);
 
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);
@@ -245,10 +288,11 @@ LbVal lr_field(Lb *lb, const MsExpr *e);
 MirTy la_type(Lb *lb, MsTy ty);
 LbVal la_none(Lb *lb, const MsExpr *e);
 LbVal la_nullary(Lb *lb, const MsExpr *e);
+MirValue la_ok_unit(Lb *lb);
 LbVal la_none_owned(Lb *lb, const MsExpr *e);
 LbVal la_case(Lb *lb, const MsExpr *call);
 MirValue la_test(Lb *lb, MirValue subject);
-MirValue la_payload(Lb *lb, MirValue subject);
+MirValue la_payload(Lb *lb, MirValue subject, bool borrowed);
 LbVal la_try(Lb *lb, const MsExpr *e);
 
 #endif

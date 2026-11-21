@@ -133,13 +133,13 @@ static bool body_is_numeric(const MsBody *b, MsTy ty) {
 
 /* Whether the type is `<invalid>` or built from it, as `Result[Int, <invalid>]`: an earlier
  * diagnostic is why, so nothing built on it reports. */
-static bool body_has_invalid(const MsBody *b, MsTy ty) {
+bool ms_body_has_invalid(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     if (ty == b->invalid_ty) {
         return true;
     }
     for (uint32_t i = 0; ty != MS_TY_NONE && i < tys->nargs[ty]; i++) {
-        if (body_has_invalid(b, ms_ty_args(tys, ty)[i])) {
+        if (ms_body_has_invalid(b, ms_ty_args(tys, ty)[i])) {
             return true;
         }
     }
@@ -202,7 +202,15 @@ static bool body_is_comparable(const MsBody *b, MsTy ty) {
 }
 
 /* Gives up on the function; the caller returns `<invalid>` (MS_TY_NONE) up the tree. */
-MsTy ms_body_unsupported(MsBody *b) {
+void (*ms_body_decline_hook)(const char *file, int line);
+
+MsTy ms_body_unsupported_at(MsBody *b, const char *file, int line) {
+    if (b->supported) {
+        b->gave_up = (MsSite){file, (uint32_t)line};
+        if (ms_body_decline_hook != NULL) {
+            ms_body_decline_hook(file, line);
+        }
+    }
     b->supported = false;
     return MS_TY_NONE;
 }
@@ -612,10 +620,23 @@ bool ms_body_reordered(const MsExpr *call, const uint32_t *slot) {
 static bool body_has_default(const MsBody *b, MsSymId sym, const MsDecl *decl, uint32_t index) {
     const MsFacts *home = b->c->mods[b->c->syms.module[sym]].facts;
     const MsExpr *def = decl->u.type.fields.ptr[index]->def;
-    return home->expr_ty != NULL && home->expr_ty[def->id] != MS_TY_NONE;
+    // A module whose bodies this run does not check (the standard library) checked its defaults when it was built.
+    return home->expr_ty == NULL || home->expr_ty[def->id] != MS_TY_NONE;
+}
+
+/* A type another module declares has its field defaults typed once that module's bodies are
+ * checked (body_check_defaults); a construction leaving a field out needs them. Done before the
+ * caller holds pointers into the tables, which checking may move. */
+void ms_body_check_home(MsBody *b, MsSymId sym) {
+    const MsModId home = b->c->syms.module[sym];
+    if (home != MS_NONE && home != b->module && b->methods != NULL && b->c->mods[home].facts != NULL &&
+        b->c->mods[home].facts->body_checked == NULL) {
+        ms_module_check_bodies_with(b->c, home, b->methods);
+    }
 }
 
 static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
+    ms_body_check_home(b, sym);
     const MsSyms *syms = &b->c->syms;
     const MsTy record = syms->ty[sym];
     const MsDef *def = ms_def(b->c, sym);
@@ -705,7 +726,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
         }
     }
     for (uint32_t i = nargs; i < nparams; i++) {
-        if (body_has_invalid(b, params[i].ty)) {
+        if (ms_body_has_invalid(b, params[i].ty)) {
             return false;
         }
         if (function->params.ptr[i]->def != NULL) {
@@ -763,8 +784,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return syms->nvars[sym] != 0 ? ms_body_generic_construct(b, e, sym, NULL) : body_construct(b, e, sym);
     }
     if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
-        syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||
-        syms->decl[sym]->u.fn.external) {
+        syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN) {
         return ms_body_unsupported(b);
     }
     if (syms->nvars[sym] != 0) {
@@ -781,7 +801,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
-    if (body_has_invalid(b, result)) {
+    if (ms_body_has_invalid(b, result)) {
         return b->invalid_ty;
     }
     return body_is_bindable(b, result) || result == b->void_ty || ms_body_is_handle(b, result) ? result
@@ -1046,8 +1066,10 @@ static void body_report_mismatch(MsBody *b, const MsExpr *e, MsTy actual, MsTy e
     const MsStr want = body_show(b, expected);
     const MsStr found = body_show(b, actual);
     const char *hint = body_conversion_hint(b, actual, expected);
-    const MsStr message = ms_arena_fmt(&b->c->arena, "expected %.*s, found %.*s (in %s)%s%s", (int)want.len, want.ptr,
-                                       (int)found.len, found.ptr, context, *hint != '\0' ? "; " : "", hint);
+    // An empty context is a value with no statement around it, such as a field default.
+    const MsStr where = *context == '\0' ? (MsStr){"", 0} : ms_arena_fmt(&b->c->arena, " (in %s)", context);
+    const MsStr message = ms_arena_fmt(&b->c->arena, "expected %.*s, found %.*s%.*s%s%s", (int)want.len, want.ptr,
+                                       (int)found.len, found.ptr, (int)where.len, where.ptr, *hint != '\0' ? "; " : "", hint);
     body_report(b, e->pos, message);
 }
 
@@ -1125,6 +1147,11 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
         if (context == NULL || !body_is_comparable(b, ty) || !body_is_comparable(b, expected)) {
+            return ms_body_unsupported(b);
+        }
+        // Rust attaches a source rewrite to these conversions in a bare context; the Rust checker keeps them.
+        if (*context == '\0' && ((ty == b->int_ty && expected == b->float_ty) ||
+                                 (expected == b->string_ty && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty)))) {
             return ms_body_unsupported(b);
         }
         body_report_mismatch(b, e, ty, expected, context);
@@ -1603,11 +1630,19 @@ static void body_undo(MsBody *b, uint32_t first_binding, size_t written_start, s
     b->facts->bindings.count = first_binding;
 }
 
-/* A parameter has no default, or the `none` of an `Optional` (which `T?` implies). */
-/* A parameter without a default, or an Optional one defaulting to `none`. */
+/* A parameter has no default, the `none` of an `Optional` (which `T?` implies), or a literal of
+ * its own type (checked with the body, where its node gets a type). */
 static bool body_default_fits(const MsBody *b, const MsParam *p, MsTy ty) {
-    return p->def == NULL ||
-           (p->def->kind == MS_E_NAME && ms_name_is(b->c->names, p->def->u.sym, "none") && body_is_optional(b, ty));
+    if (p->def == NULL) {
+        return true;
+    }
+    switch ((MsExprKind)p->def->kind) {
+    case MS_E_NAME: return ms_name_is(b->c->names, p->def->u.sym, "none") && body_is_optional(b, ty);
+    case MS_E_NUMBER: return ty == b->int_ty || ty == b->float_ty;
+    case MS_E_BOOL: return ty == b->bool_ty;
+    case MS_E_TEXT: return ty == b->string_ty && p->def->u.text.len == 1 && p->def->u.text.ptr[0].expr == NULL;
+    default: return false;
+    }
 }
 
 static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig) {
@@ -1709,7 +1744,11 @@ typedef struct BodySelf {
  * bindings' `callable` name. */
 static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool exported, const MsFunc *fn, MsTy sig,
                                 const BodySelf *self) {
-    if (fn->external || !body_signature_supported(b, fn, sig)) {
+    if (fn->external) {
+        return;
+    }
+    if (!body_signature_supported(b, fn, sig)) {
+        b->facts->refusal[node] = (MsSite){__FILE__, (uint32_t)__LINE__};
         return;
     }
     const uint32_t first_binding = b->facts->bindings.count;
@@ -1732,6 +1771,12 @@ static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool export
         const uint8_t flags = (params[i].flags & MS_PARAM_VAR) != 0 ? MS_BIND_MUTABLE : 0;
         (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, fn->params.ptr[i]->pos, flags, MS_ROLE_PARAM);
     }
+    for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
+        const MsExpr *def = fn->params.ptr[i]->def;
+        if (def != NULL && def->kind != MS_E_NAME && ms_body_expr(b, def, params[i].ty) != params[i].ty) {
+            (void)ms_body_unsupported(b);
+        }
+    }
     if (b->supported) {
         body_statements(b, &fn->body, pos);
     }
@@ -1739,6 +1784,7 @@ static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool export
         b->facts->body_checked[node] = true;
         body_commit_diags(b, diags_start);
     } else {
+        b->facts->refusal[node] = b->gave_up;
         body_undo(b, first_binding, written_start, diags_start);
     }
 }
@@ -1800,6 +1846,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->refusal = MS_NEW_N(arena, MsSite, nodes);
+    memset(facts->refusal, 0, nodes * sizeof *facts->refusal);
     facts->param_consumed = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->param_consumed, 0, nodes * sizeof *facts->param_consumed);
     facts->ret_borrowed = MS_NEW_N(arena, bool, nodes);
@@ -1947,22 +1995,32 @@ static void body_check_defaults(MsBody *b) {
         if (sym == MS_NONE || b->c->syms.nvars[sym] != 0 || d->u.type.external || ms_def(b->c, sym)->nfields != d->u.type.fields.len) {
             continue;
         }
+        // A default reads the fields declared before it; its mistakes are the type's, reported once.
+        const uint32_t first_binding = b->facts->bindings.count;
+        b->first_binding = first_binding;
+        b->function = 0;
+        b->result = MS_TY_NONE;
         for (uint32_t f = 0; f < d->u.type.fields.len; f++) {
-            const MsExpr *def = d->u.type.fields.ptr[f]->def;
+            const MsParam *param = d->u.type.fields.ptr[f];
             const MsTy field = ms_def(b->c, sym)->fields[f].ty;
-            if (def == NULL || !body_is_bindable(b, field)) {
-                continue;
+            if (param->def != NULL && body_is_bindable(b, field)) {
+                const uint32_t bindings_start = b->facts->bindings.count;
+                const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
+                const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
+                b->supported = true;
+                b->context = "";
+                if (ms_body_expr(b, param->def, field) == MS_TY_NONE || !b->supported) {
+                    body_undo(b, bindings_start, written_start, diags_start);
+                } else {
+                    body_commit_diags(b, diags_start);
+                }
             }
-            const uint32_t first_binding = b->facts->bindings.count;
-            const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
-            const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
-            b->first_binding = first_binding;
-            b->function = 0;
             b->supported = true;
-            b->result = MS_TY_NONE;
-            if (ms_body_expr(b, def, field) == MS_TY_NONE || !b->supported || MS_VEC_LEN(b->diags, MsCheckDiag) != diags_start) {
-                body_undo(b, first_binding, written_start, diags_start);
+            if (!body_is_bindable(b, field)) {
+                break; // a later default might read it
             }
+            (void)ms_body_bind(b, ms_def(b->c, sym)->fields[f].name, field, param->id, param->pos,
+                               param->is_mutable ? MS_BIND_MUTABLE : 0, MS_ROLE_PARAM);
         }
     }
 }

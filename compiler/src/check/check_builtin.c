@@ -23,14 +23,17 @@ MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return b->invalid_ty;
     }
     const MsTyTable *tys = &b->c->tys;
-    if (expected == MS_TY_NONE || !ms_ty_is(tys, expected, MS_BI_RESULT) || tys->nargs[expected] != 2 ||
-        e->u.call.args.len != 1 || e->u.call.args.ptr[0].has_name) {
+    const uint32_t nargs = e->u.call.args.len;
+    if (expected == MS_TY_NONE || !ms_ty_is(tys, expected, MS_BI_RESULT) || tys->nargs[expected] != 2 || nargs > 1 ||
+        (nargs == 1 && e->u.call.args.ptr[0].has_name)) {
         return ms_body_unsupported(b);
     }
     const bool success = ms_name_is(b->c->names, callee->u.sym, "ok");
     const MsTy payload = ms_ty_args(tys, expected)[success ? 0 : 1];
-    if (!ms_body_is_admitted(b, payload) ||
-        ms_body_expr(b, e->u.call.args.ptr[0].value, payload) == MS_TY_NONE) {
+    // `ok()` stands for `ok(void)`: a Void payload may be left out.
+    const bool omitted = nargs == 0 && payload == b->void_ty;
+    if (nargs == 0 ? !omitted
+                   : ((payload != b->void_ty && !ms_body_is_admitted(b, payload)) || ms_body_expr(b, e->u.call.args.ptr[0].value, payload) == MS_TY_NONE)) {
         return ms_body_unsupported(b);
     }
     b->facts->res_kind[callee->id] = MS_RES_CASE;

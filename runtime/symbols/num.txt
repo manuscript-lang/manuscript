@@ -1,6 +1,8 @@
 # Runtime symbols of ms_rt/num.h defined in C (runtime/core/num.c and num_text.c); one per line. Each is compiled out of the Rust
 # runtime when the archive is built by `cmake -P cmake/BuildRuntime.cmake`; plain `cargo test` keeps the Rust definitions.
 msrt_float_compare
+msrt_float_is_finite
+msrt_float_is_nan
 msrt_int_compare
 msrt_uint_compare
 msrt_uint_to_float
