@@ -194,6 +194,10 @@ typedef struct MirRecordBlock {
 
 MirRecordBlock mir_record_block(MirLayouts *layouts, uint32_t type_id);
 
+/* Whether the runtime takes a value of `ty` as its scalar leaves: scalars, pointers, handles and the small
+ * optionals of them. Anything else crosses as the address of a copy. */
+bool mir_rt_direct(const MirModule *module, MirLayouts *layouts, MirTy ty);
+
 /* Whether `ty` is a map or set. */
 bool mir_ty_is_map_or_set(const MirModule *module, MirTy ty);
 
