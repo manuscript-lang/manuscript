@@ -132,6 +132,9 @@ int64_t msstd_idle_inflight(int64_t group);
 /* Asks the requests in flight of `group` to end as a cancelled promise does (the grace period of a close ran out). */
 /* ms-sig: msstd_idle_cancel(group: i64) @domain=HTTP */
 void msstd_idle_cancel(int64_t group);
+/* Frees `group` after the last request of a closed server finished. */
+/* ms-sig: msstd_idle_free(group: i64) @domain=HTTP */
+void msstd_idle_free(int64_t group);
 
 /* HTTP/2 connections (runtime/net/exchange_h2_natives.c over exchange_h2.c). After a handshake that chose h2 (see
  * msstd_conn_alpn), `open` starts HTTP/2 on the connection (limits of 0 are the defaults, `idle` bounds a wait with

@@ -15,6 +15,10 @@ int64_t msrt_uint_compare(int64_t a, int64_t b);
 double msrt_uint_to_float(int64_t v);
 /* ms-sig: msrt_uint_to_float32(v: i64) -> f64 @domain=number */
 double msrt_uint_to_float32(int64_t v);
+/* ms-sig: msrt_float_is_nan(x: f64) -> u8 @domain=number @leaf @seq=fcmp.ne:$0:$0>bool */
+uint8_t msrt_float_is_nan(double x);
+/* ms-sig: msrt_float_is_finite(x: f64) -> u8 @domain=number @leaf @seq=fsub:$0:$0>float,fconst:#0.0>float,fcmp.eq:%0:%1>bool */
+uint8_t msrt_float_is_finite(double x);
 /* ms-sig: msrt_float_from_bits(bits: i64) -> f64 @domain=number @leaf */
 double msrt_float_from_bits(int64_t bits);
 /* ms-sig: msrt_float_to_bits(value: f64) -> i64 @domain=number @leaf */

@@ -3,7 +3,6 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
-use std::time::{Duration, Instant, SystemTime};
 
 use ms_driver::project::{Overlay, ProjectError, pathops};
 use ms_driver::{
@@ -27,7 +26,6 @@ use crate::backend::{
     OutputRequest, ReviewRequest,
 };
 use crate::diagnostic::{CommandDiagnostic, Position, diagnostics_document};
-use crate::process::Stops;
 use crate::util::{emit_json, file_error, plural, write_output};
 
 /// Load and check `filename` the way the source tools do: no lowering, and
@@ -122,56 +120,15 @@ pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) 
     if request.each {
         return Ok(analysis_each(syms, request, io));
     }
-    if !request.watch {
-        return Ok(analysis_once(
-            syms,
-            request,
-            FIX_PASSES,
-            &mut BTreeMap::new(),
-            &ms_check::Session::new(),
-            io,
-        )
-        .0);
-    }
-    let stops = Stops::catch();
-    let mut watched = BTreeMap::new();
-    let mut due = Some(Instant::now());
-    loop {
-        if due.is_some_and(|at| Instant::now() >= at) {
-            due = None;
-            let started = SystemTime::now();
-            let (_, files) = analysis_once(
-                syms,
-                request,
-                FIX_PASSES,
-                &mut BTreeMap::new(),
-                &ms_check::Session::new(),
-                io,
-            );
-            // A file that dropped out of the graph (a broken import loads no modules) stays
-            // watched, so repairing it reruns the check.
-            watched = observed(
-                std::mem::take(&mut watched),
-                files
-                    .into_iter()
-                    .chain(request.targets.iter().filter_map(|t| absolute(t))),
-                started,
-            );
-            let _ = writeln!(io.stderr, "ms: waiting for changes");
-            let _ = io.stdout.flush();
-        }
-        std::thread::sleep(WATCH_INTERVAL);
-        if stops.take().is_some() {
-            return Ok(130);
-        }
-        for (path, previous) in &mut watched {
-            let current = file_state(path);
-            if current != *previous {
-                *previous = current;
-                due = Some(Instant::now() + WATCH_SETTLE);
-            }
-        }
-    }
+    Ok(analysis_once(
+        syms,
+        request,
+        FIX_PASSES,
+        &mut BTreeMap::new(),
+        &ms_check::Session::new(),
+        io,
+    )
+    .0)
 }
 
 /// `--each`: every target is checked as its own run, so its document, text, and status match a
@@ -316,7 +273,6 @@ fn analysis_pass(
         if request.fix {
             fixes.extend(source_fixes(&checked));
         }
-        files.extend(watched_files(syms, &input.path, &checked));
         for issue in &checked.diagnostics {
             diagnostics.push(placed(
                 &selection,
@@ -623,98 +579,6 @@ fn checked_line(syms: ms_syntax::Names, input: &AnalysisInput, checked: &Checked
         input.display,
         plural(count, "module", "modules")
     )
-}
-
-/// How often watched files are polled, and how long a change settles before
-/// the rerun (editors often save in several steps).
-pub(super) const WATCH_INTERVAL: Duration = Duration::from_millis(10);
-pub(super) const WATCH_SETTLE: Duration = Duration::from_millis(10);
-
-/// The input, its manifest, and local source paths attempted by the loader.
-pub(super) fn watched_files(syms: ms_syntax::Names, input: &str, checked: &Checked) -> Vec<String> {
-    let mut files = Vec::new();
-    files.extend(absolute(input));
-    if !checked.project_root.is_empty() {
-        let manifest = pathops::join(&[&checked.project_root, "ms.toml"]);
-        // A new source or test file appears in a directory discovery walks, not in the graph.
-        if let Ok(project) = ms_driver::project::read_project(&manifest) {
-            files.extend(ms_driver::project::discovered_directories(&project));
-        }
-        files.push(manifest);
-    }
-    files.extend(checked.inputs.iter().cloned());
-    let Some(program) = &checked.program else {
-        return files;
-    };
-    for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
-        let file = syms.str(module.file);
-        if pathops::is_abs(file) || checked.source_root.is_empty() {
-            files.extend(absolute(file));
-        } else {
-            files.extend(absolute(&pathops::join(&[&checked.source_root, file])));
-        }
-    }
-    files
-}
-
-pub(super) fn absolute(path: &str) -> Option<String> {
-    let path = std::path::absolute(path).ok()?;
-    Some(path.to_string_lossy().into_owned())
-}
-
-#[derive(Clone, PartialEq)]
-pub(super) struct FileState {
-    size: u64,
-    modified: Option<SystemTime>,
-    /// Where a symbolic link points: retargeting it changes what an import resolves to.
-    link: Option<std::path::PathBuf>,
-    /// Mode bits (or the read-only flag): repairing a permission rereads a failed source.
-    permissions: std::fs::Permissions,
-    /// Set for a file changed after the analysis began, which the analysis may not have read.
-    unobserved: bool,
-}
-
-/// `None` for a file that does not exist.
-pub(super) fn file_state(path: &str) -> Option<FileState> {
-    let meta = std::fs::metadata(path).ok()?;
-    Some(FileState {
-        size: meta.len(),
-        modified: meta.modified().ok(),
-        link: std::fs::read_link(path).ok(),
-        permissions: meta.permissions(),
-        unobserved: false,
-    })
-}
-
-/// The watched states after an analysis that began at `started`. A file watched before keeps
-/// its earlier state, so an edit made while the analysis ran still differs at the next poll.
-/// A file the analysis found is stamped against `started`. A file that dropped out of the graph
-/// (a broken import loads no modules) stays watched, so repairing it reruns.
-pub(super) fn observed(
-    mut before: BTreeMap<String, Option<FileState>>,
-    paths: impl Iterator<Item = String>,
-    started: SystemTime,
-) -> BTreeMap<String, Option<FileState>> {
-    let mut now = BTreeMap::new();
-    for path in paths {
-        let state = match before.remove(&path) {
-            Some(known) => known,
-            None => state_after(&path, started),
-        };
-        now.insert(path, state);
-    }
-    for (path, state) in before {
-        now.entry(path).or_insert(state);
-    }
-    now
-}
-
-/// The state of `path` as the analysis that began at `started` saw it. A file modified since
-/// may have been read before its edit, so its state never matches: the next poll reruns.
-pub(super) fn state_after(path: &str, started: SystemTime) -> Option<FileState> {
-    let mut state = file_state(path)?;
-    state.unobserved = state.modified.is_some_and(|modified| modified > started);
-    Some(state)
 }
 
 /// A compiler diagnostic with its positions in the display form of a collection.
@@ -1248,61 +1112,5 @@ mod fix_tests {
         assert_eq!(std::fs::read_to_string(&cycle).unwrap(), "xa");
         assert!(errors[&cycle].message.contains("undo each other"));
         std::fs::remove_dir_all(dir).unwrap();
-    }
-}
-
-#[cfg(test)]
-mod watch_state_tests {
-    use super::{file_state, observed, state_after};
-    use std::time::{Duration, SystemTime};
-
-    fn scratch(name: &str) -> std::path::PathBuf {
-        let dir =
-            std::env::temp_dir().join(format!("ms-watch-state-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
-
-    #[test]
-    fn a_permission_change_alone_changes_the_state() {
-        let dir = scratch("permissions");
-        let path = dir.join("main.ms");
-        std::fs::write(&path, "export fn main() Int: 0\n").unwrap();
-        let name = path.to_str().unwrap();
-        let before = file_state(name);
-        let mut permissions = std::fs::metadata(&path).unwrap().permissions();
-        permissions.set_readonly(true);
-        std::fs::set_permissions(&path, permissions).unwrap();
-        assert!(file_state(name) != before);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn a_file_modified_during_analysis_never_matches_its_state() {
-        let dir = scratch("during");
-        let path = dir.join("early.ms");
-        let name = path.to_str().unwrap();
-        let started = SystemTime::now();
-        std::thread::sleep(Duration::from_millis(50));
-        std::fs::write(&path, "export fn value() Int: 3\n").unwrap();
-        assert!(state_after(name, started) != file_state(name));
-        let settled = SystemTime::now() + Duration::from_secs(60);
-        assert!(state_after(name, settled) == file_state(name));
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn a_watched_file_keeps_the_state_from_before_the_analysis() {
-        let dir = scratch("before");
-        let path = dir.join("early.ms");
-        let name = path.to_str().unwrap().to_string();
-        std::fs::write(&path, "export fn value() Int: 3\n").unwrap();
-        let before = std::collections::BTreeMap::from([(name.clone(), file_state(&name))]);
-        let started = SystemTime::now();
-        std::fs::write(&path, "export fn value() Int: \"bad\"\n").unwrap();
-        let after = observed(before, std::iter::once(name.clone()), started);
-        assert!(after[&name] != file_state(&name));
-        let _ = std::fs::remove_dir_all(&dir);
     }
 }
