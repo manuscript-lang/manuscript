@@ -44,6 +44,9 @@ fn field_diff(field: String, want: Fact, got: Fact) String:
 	// The C writer types only functions; the other kinds print an empty type and error.
 	if field == "ty" and want.kind == "fn" and want.ty != got.ty: return f"ty {want.ty} != {got.ty}"
 	if field == "error" and want.kind == "fn" and want.error != got.error: return f"error {want.error} != {got.error}"
+	if field == "label" and want.label != got.label: return f"label {want.label} != {got.label}"
+	if field == "first" and want.first != got.first: return f"first {want.first} != {got.first}"
+	if field == "last" and want.last != got.last: return f"last {want.last} != {got.last}"
 	if field == "exported" and want.exported != got.exported: return f"exported {want.exported} != {got.exported}"
 	if not got.effects_known: return ""
 
