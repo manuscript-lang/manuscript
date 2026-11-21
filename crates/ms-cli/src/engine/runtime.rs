@@ -1,6 +1,5 @@
-//! The native static library embedded in `ms`: `libms_native.a` (the runtime plus every standard
-//! library native), built by `build.rs`. The linker needs a file, so the first build extracts it
-//! to a per-version cache entry that later builds reuse.
+//! The native static library embedded in `ms`: `libms_native.a` (the C runtime), built by `build.rs`. The linker needs a file,
+//! so the first build extracts it to a per-version cache entry that later builds reuse.
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -15,12 +14,6 @@ const ARCHIVE_LEN: u64 = length(env!("MS_NATIVE_LEN"));
 static MUSL_ARCHIVE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/libms_native_musl.a.gz"));
 #[cfg(target_os = "linux")]
 const MUSL_ARCHIVE_LEN: u64 = length(env!("MS_NATIVE_MUSL_LEN"));
-
-/// The runtime with allocation sampling for `ms profile --allocs`; empty unless the build of `ms`
-/// found `libms_native_allocs.a` (`cargo xtask runtime --alloc-profile`).
-static ALLOCS_ARCHIVE: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/libms_native_allocs.a.gz"));
-const ALLOCS_ARCHIVE_LEN: u64 = length(env!("MS_NATIVE_ALLOCS_LEN"));
 
 const fn length(text: &str) -> u64 {
     match u64::from_str_radix(text, 10) {
@@ -44,19 +37,6 @@ pub fn embedded(musl: bool) -> Result<PathBuf, String> {
     #[cfg(not(target_os = "linux"))]
     let _ = musl;
     extract(ARCHIVE, ARCHIVE_LEN, env!("MS_NATIVE_ID"), "libms_native.a")
-}
-
-/// Path of the extracted allocation-sampling runtime, or why this `ms` has none.
-pub fn embedded_allocs() -> Result<PathBuf, String> {
-    if ALLOCS_ARCHIVE_LEN == 0 {
-        return Err("this ms was built without the allocation-profiling runtime; use a release build of ms, or build it with `cargo xtask runtime --alloc-profile`".into());
-    }
-    extract(
-        ALLOCS_ARCHIVE,
-        ALLOCS_ARCHIVE_LEN,
-        env!("MS_NATIVE_ALLOCS_ID"),
-        "libms_native_allocs.a",
-    )
 }
 
 fn extract(archive: &[u8], len: u64, id: &str, name: &str) -> Result<PathBuf, String> {

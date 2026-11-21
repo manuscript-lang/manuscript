@@ -1,7 +1,7 @@
 //! Runtime fault and profile tables for LLVM-built functions.
 //!
 //! The runtime resolves a program counter to `function, line, inlined scopes` through the
-//! `ms.tables` blob (`crates/ms-rt/ABI.md`). Cranelift reports code offsets while compiling;
+//! `ms.tables` blob (`crates/ms-rt-abi/ABI.md`). Cranelift reports code offsets while compiling;
 //! with LLVM the code layout is only known after optimization, so the tables are rebuilt from
 //! the DWARF line program and inlined-subroutine DIEs that LLVM emits for the debug metadata
 //! in `ms_mir_llvm`. LLVM's own inlining appears as inlined scopes, exactly like the

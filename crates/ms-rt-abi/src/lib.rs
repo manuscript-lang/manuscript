@@ -2,7 +2,7 @@
 //!
 //! Everything here is `repr(C)`, `no_std` and dependency free. The code generator
 //! reads these constants instead of hard-coding offsets; `ms-rt` implements the
-//! behavior. The prose contract lives in `crates/ms-rt/ABI.md`; this file is the
+//! behavior. The prose contract lives in `crates/ms-rt-abi/ABI.md`; this file is the
 //! machine-checked half (see the layout tests at the bottom).
 //!
 //! Pointers named `*mut Obj` always point at an object *header*.
