@@ -150,3 +150,7 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, struct MsMethodTabl
 void ms_module_check_unused(MsCheck *c, MsModId module);
 
 #endif
+
+/* Called with the source line of each construct the body checker gives up on (first one per function);
+ * a tool sets it to rank what keeps functions with the Rust checker. */
+extern void (*ms_body_decline_hook)(const char *file, int line);

@@ -202,7 +202,12 @@ static bool body_is_comparable(const MsBody *b, MsTy ty) {
 }
 
 /* Gives up on the function; the caller returns `<invalid>` (MS_TY_NONE) up the tree. */
-MsTy ms_body_unsupported(MsBody *b) {
+void (*ms_body_decline_hook)(const char *file, int line);
+
+MsTy ms_body_unsupported_at(MsBody *b, const char *file, int line) {
+    if (b->supported && ms_body_decline_hook != NULL) {
+        ms_body_decline_hook(file, line);
+    }
     b->supported = false;
     return MS_TY_NONE;
 }
@@ -612,7 +617,8 @@ bool ms_body_reordered(const MsExpr *call, const uint32_t *slot) {
 static bool body_has_default(const MsBody *b, MsSymId sym, const MsDecl *decl, uint32_t index) {
     const MsFacts *home = b->c->mods[b->c->syms.module[sym]].facts;
     const MsExpr *def = decl->u.type.fields.ptr[index]->def;
-    return home->expr_ty != NULL && home->expr_ty[def->id] != MS_TY_NONE;
+    // A module whose bodies this run does not check (the standard library) checked its defaults when it was built.
+    return home->expr_ty == NULL || home->expr_ty[def->id] != MS_TY_NONE;
 }
 
 static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
