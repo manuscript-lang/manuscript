@@ -26,6 +26,9 @@ void ms_strbuild_append_u64_radix(MsStrBuild *builder, uint64_t value,
                                   unsigned radix); /* radix 2..16, lower case */
 void ms_strbuild_append_utf8(MsStrBuild *builder, uint32_t scalar);
 
+/* Appends `format` with its arguments. Verbs: %u (unsigned), %d (int), %zu (size_t), %llu, %lld, %s (a C
+ * string), %.*s (an int length then a pointer), %%. Nothing else is read; the compiler checks the types. */
+void ms_strbuild_printf(MsStrBuild *builder, const char *format, ...) MS_PRINTF(2, 3);
 static inline size_t ms_strbuild_length(const MsStrBuild *builder) {
   return builder->bytes.len;
 }

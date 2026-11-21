@@ -1,0 +1,6 @@
+check
+main.ms
+other.ms
+--json
+--with-text
+--each
