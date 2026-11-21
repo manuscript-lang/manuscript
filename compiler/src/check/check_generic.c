@@ -154,7 +154,7 @@ static bool generic_bounds(MsBody *b, MsInfer *in) {
     }
     for (uint32_t i = 0; i < in->nvars; i++) {
         // A type built from the caller's variables is declined by the growth guard in the caller.
-        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i])) {
+        if (in->bound[i] == MS_TY_NONE || (in->bound[i] != b->void_ty && !ms_body_is_admitted(b, in->bound[i]))) { // `Promise[Void]`, `ok[Void]`: Void stands for no value
             return false;
         }
         const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
