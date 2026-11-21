@@ -34,6 +34,7 @@ typedef struct MsRtFn {
     uint32_t nparams;
     MsRtRet ret;
     bool leaf;
+    bool twinned; /* a borrowing twin exists (`@view_of=` and siblings): the result may be lent */
 } MsRtFn;
 
 /* The function named `symbol`, or NULL. */

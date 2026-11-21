@@ -94,6 +94,9 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
     if (next != nargs || (has_out && (result_ty == MIR_NONE || result_ty == MIR_VOID))) {
         return false;
     }
+    if (fn->twinned) {
+        return false; // the result may be a view into an argument; choosing the twin is not lowered here yet
+    }
     const bool is_op = fn->op[0] != '\0';
     const int op = is_op ? mir_op_from_name(fn->op, strlen(fn->op)) : -1;
     if (is_op && op < 0) {
