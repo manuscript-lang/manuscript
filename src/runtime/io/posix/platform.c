@@ -1,6 +1,8 @@
 /* The reactor's platform hooks on Unix: libuv polls every descriptor and nothing else needs watching. */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
+#include <signal.h>
+
 #include "runtime/io/reactor_internal.h"
 #include "runtime/sys/sys.h"
 
@@ -37,3 +39,11 @@ bool ms_io_object_watch(uintptr_t handle) {
 }
 
 void ms_io_object_drop(uintptr_t handle) { (void)handle; }
+
+size_t ms_io_platform_stop_signals(const int **signals) {
+  static const int watched[] = {SIGINT, SIGTERM};
+  *signals = watched;
+  return sizeof watched / sizeof watched[0];
+}
+
+bool ms_io_platform_is_interrupt(int signal_number) { return signal_number == SIGINT; }
