@@ -34,7 +34,7 @@ LbVal lb_unsupported_at(Lb *lb, const char *site, int line) {
 /* `ty` as the function being lowered sees it: the variables of the instance are the types they
  * stand for, through arguments, parameters and results (`List[T]` becomes `List[Int]`). A variable
  * is matched by id, as the checker's substitution does. */
-static MsTy lb_ty(Lb *lb, MsTy ty) {
+MsTy lb_ty(Lb *lb, MsTy ty) {
     if (lb->nsub == 0 || ty == MS_TY_NONE) {
         return ty;
     }
@@ -237,6 +237,9 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
     if (facts->res_kind[e->id] != MS_RES_BINDING) {
         return facts->res_kind[e->id] == MS_RES_NONE ? la_none(lb, e) : lb_unsupported(lb);
     }
+    if (facts != lb->views[lb->view].facts) {
+        return lb_unsupported(lb); // a field default read under its declaring module's facts: no local of this function is in scope there
+    }
     const uint32_t binding = facts->res_ref[e->id];
     if (lb->var_of[binding] != MIR_NONE) {
         return (LbVal){mir_b_use_var(&lb->b, lb->var_of[binding]), false};
@@ -247,6 +250,9 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
             return lb_unsupported(lb); // a move of it is not lowered yet
         }
         return (LbVal){held, false};
+    }
+    if (lb->value_of[binding] == MIR_NONE) {
+        return lb_unsupported(lb); // a name no statement of this function bound: a field default naming a sibling field
     }
     return (LbVal){lb->value_of[binding], false};
 }
@@ -519,7 +525,7 @@ bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot) {
     return declared || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
 }
 
-/* Whether `e` names a `let` local or a `move` parameter: a String the function owns, so using it
+/* Whether `e` names a `let` local, a payload an arm took out of its scrutinee or a `move` parameter: a value the function owns, so using it
  * as a result or a `move` argument hands it over. */
 static bool lb_names_owned(const Lb *lb, const MsExpr *e) {
     const MsFacts *facts = lb->facts;
@@ -529,6 +535,11 @@ static bool lb_names_owned(const Lb *lb, const MsExpr *e) {
     const uint32_t binding = facts->res_ref[e->id];
     if (facts->bindings.role[binding] == MS_ROLE_LET) {
         return true;
+    }
+    for (uint32_t i = 0; i < lb->nparts; i++) {
+        if (lb->parts[i] == binding) {
+            return true; // a payload the arm took out of its scrutinee
+        }
     }
     for (uint32_t i = 0; i < lb_slots(&lb->cur); i++) {
         if (lb->binding_at[lb_slot_node(&lb->cur, i)] == binding) {
@@ -966,6 +977,7 @@ static void lb_own_payload(Lb *lb, uint32_t binding, MsSym name, MirValue v) {
     lb_name_value(lb, v, name, false);
     if (lb_owns(lb, mir_b_ty(&lb->b, v))) {
         lscope_own(&lb->scopes, v, 0);
+        MIR_PUSH(lb->m, lb->parts, lb->nparts, lb->cparts, uint32_t, binding);
     }
 }
 
@@ -1014,17 +1026,27 @@ static void lb_take_payloads(Lb *lb, const MsArm *arm, MirValue subject) {
 }
 
 /* The value an arm of a match with an owned result hands to the join: what the arm owns as it is, a
- * text literal as a copy. A reference to a place or a borrowing call is left to the Rust lowering:
- * whether it moves or is copied, and whether the match is borrowed after all, is the ownership
- * pass's to say. */
+ * text literal as a copy, a name as the value it moves out (its last use) or as a copy of the String it
+ * only reads. Anything else is left to the Rust lowering. */
 static LbVal lb_arm_owned(Lb *lb, const MsExpr *value_expr, LbVal value) {
     if (value.owned) {
         return value;
     }
-    if (value_expr->kind != MS_E_TEXT || mir_b_ty(&lb->b, value.v) != MIR_STR) {
+    const bool is_string = mir_b_ty(&lb->b, value.v) == MIR_STR;
+    if (value_expr->kind == MS_E_TEXT && is_string) {
+        return (LbVal){lb_copy(lb, value.v), true};
+    }
+    if (value_expr->kind != MS_E_NAME) {
         return lb_unsupported(lb);
     }
-    return (LbVal){lb_copy(lb, value.v), true};
+    if (lb->facts->moved_out[value_expr->id]) {
+        if (!lb_names_owned(lb, value_expr)) {
+            return lb_unsupported(lb);
+        }
+        lscope_disown(&lb->scopes, value.v);
+        return (LbVal){value.v, true};
+    }
+    return is_string ? (LbVal){lb_copy(lb, value.v), true} : lb_unsupported(lb);
 }
 
 /* One arm: its payload names, statements and final value in a scope of their own, which ends before the join. A
@@ -1063,17 +1085,24 @@ static LbVal lb_arm(Lb *lb, const MsArm *arm, const LbSubject *subject, bool voi
     return value;
 }
 
+
 /* `match` over literal arms with one value each. A Bool match is also how `if c: a else: b` is
  * written. Every arm's value joins in one block parameter. */
 static LbVal lb_match(Lb *lb, const MsExpr *e) {
     const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
-    const LbVal scrutinee = lb_expr(lb, e->u.match.scrutinee);
+    LbVal scrutinee = lb_expr(lb, e->u.match.scrutinee);
     const MirTy scrutinee_ty = lb->ok ? mir_b_ty(&lb->b, scrutinee.v) : MIR_NONE;
+    if (lb->ok && !scrutinee.owned && lb->facts->moved_out[e->u.match.scrutinee->id] &&
+        lb_names_owned(lb, e->u.match.scrutinee) && lb_owns(lb, scrutinee_ty)) {
+        // The match is the owned local's last use: it takes the value over, so the scope stops owning it.
+        lscope_disown(&lb->scopes, scrutinee.v);
+        scrutinee.owned = true;
+    }
     const MirTyKind scrutinee_kind = lb->ok ? mir_ty_data(lb->m, scrutinee_ty)->kind : MK_INT;
     const bool aggregate = lb->ok && scrutinee_kind >= MK_TYPE && scrutinee_kind != MK_ALT && scrutinee_kind != MK_OPT;
-    // An owned result is joined as a moved value: each arm hands over a value it owns, which is not
-    // a reference a borrowed match would join (the ownership pass's `BorrowedMatch`; see `lb_arm_owned`).
-    const bool owned_result = lb->ok && lb_owns(lb, result_ty);
+    // An owned result is joined as a moved value: each arm hands over a value it owns. A match whose arms
+    // are all references (the ownership pass's `borrowed_match`) joins them without copying.
+    const bool owned_result = lb->ok && lb_owns(lb, result_ty) && !lb->facts->borrowed_match[e->id];
     const bool void_result = lb->ok && lb_ty(lb, lb->facts->expr_ty[e->id]) == lb->void_ty;
     if (!lb->ok || (result_ty == MIR_NONE && !void_result) || (owned_result && lb->b.f.ret_borrowed) ||
         aggregate || lb_is_fn(lb, result_ty)) {

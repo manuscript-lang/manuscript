@@ -5,9 +5,9 @@
 // The entity keys, kinds and lines must be equal. Then each field in FIELDS is
 // compared; a field joins FIELDS when the C checker's column for it exists. effects,
 // reach, permits and calls are compared only for entities the C checker marks
-// effects_known. external and the flow are compared only for entities the C checker marks
-// sites_known; refs are compared for every function, method, type and enum. Not compared yet,
-// and printed empty by the C writer: `move` receivers (checker facts).
+// effects_known. external and the flow are compared only for entities the C checker
+// marks sites_known; refs are compared for every function, method, type and enum. Not
+// compared yet, and printed empty by the C writer: `move` receivers (checker facts).
 // Imports are compared per file. The process fails when anything differs, and the
 // output counts the entities and fields compared so a silent skip shows.
 import (
@@ -21,16 +21,8 @@ import (
 )
 
 FIELDS := [
-	"name",
-	"slots",
-	"refs",
-	"result",
-	"receiver",
-	"tries",
-	"effects",
-	"reach",
-	"permits",
-	"external",
+	"name", "slots", "refs", "result", "receiver", "tries", "effects", "reach",
+	"permits", "external"
 ]
 
 fn slot_text(s: Slot) String: f"{s.name}:{s.ty}:{s.exclusive}"
@@ -44,9 +36,13 @@ fn refs_text(f: Fact) String:
 
 fn steps_text(nodes: List[Node], depth: Int) String:
 	var out = ""
+
 	for n in nodes:
-		out = out.concat(f"{"  ".repeat(depth)}{n.kind} {n.label} -> {n.reference} @{n.file}:{n.line}\n")
+		out = out.concat(
+			f"{"  ".repeat(depth)}{n.kind} {n.label} -> {n.reference} @{n.file}:{n.line}\n"
+		)
 		out = out.concat(steps_text(n.children, depth + 1))
+
 	return out
 
 fn modes_text(slots: List[Slot]) String: slots.map(mode_text).join(", ")
@@ -114,8 +110,10 @@ fn show(m: Matches) Void!:
 	var compared = 0
 	var want_flows = Map[String, String]()
 	for f in want.flows: want_flows.add(f.key.clone(), steps_text(f.steps, 0))
+
 	var got_flows = Map[String, String]()
 	for f in got.flows: got_flows.add(f.key.clone(), steps_text(f.steps, 0))
+
 	var got_index = Map[String, Int]()
 	for i in 0..got.entities.length(): got_index.add(got.entities[i].key.clone(), i)
 
@@ -136,7 +134,10 @@ fn show(m: Matches) Void!:
 			)
 			differ += 1
 
-		if g.sites_known and want_flows.get_or(w.key, "") != got_flows.get_or(w.key, ""):
+		if (
+			g.sites_known
+			and want_flows.get_or(w.key, "") != got_flows.get_or(w.key, "")
+		):
 			out = out.concat(f"{w.key}: flow differs\n")
 			differ += 1
 

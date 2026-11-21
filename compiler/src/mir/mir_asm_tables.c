@@ -8,7 +8,7 @@
 typedef struct AtFunc {
     MsStr sym, name;
     uint32_t file, line;
-    uint32_t index; /* in the meta; the end label `.Lmse<index>` */
+    uint32_t index; /* in the meta; the end label `<local>mse<index>` */
     uint32_t first_scope, nscopes; /* its inlined scopes: global numbers first_scope + 1 ... */
     bool seen;
 } AtFunc;
@@ -22,6 +22,13 @@ typedef struct AtPatch { size_t at; AtKind kind; size_t value; } AtPatch;
 static int at_patch_cmp(const void *a, const void *b) {
     const size_t x = ((const AtPatch *)a)->at, y = ((const AtPatch *)b)->at;
     return x < y ? -1 : x > y;
+}
+
+/* The prefix of an assembler-local label: a label that never reaches the object's symbol table. Mach-O (the
+ * platform whose global symbols carry a `_`) treats only `L` as private, so `.L...` there is an ordinary symbol that
+ * splits the function into atoms and fails the CFI advance computation in a large one; ELF and COFF use `.L`. */
+static const char *at_local(const char *prefix) {
+    return prefix[0] == '_' ? "L" : ".L";
 }
 
 /* A function symbol and its number, sorted by symbol for the lookup of labels. */
@@ -182,9 +189,9 @@ static void at_put_blob(MsBuf *out, const uint8_t *blob, size_t size, AtPatch *p
             const AtFunc *f = pt->kind == AT_FUNC_ADDR || pt->kind == AT_FUNC_SIZE ? &funcs[pt->value] : NULL;
             switch (pt->kind) {
             case AT_FUNC_ADDR: ms_buf_printf(out, "\t.quad %s%.*s\n", prefix, (int)f->sym.len, f->sym.ptr); at += 8; break;
-            case AT_LOC_ADDR: ms_buf_printf(out, "\t.quad .Lmsl%zu\n", pt->value); at += 8; break;
+            case AT_LOC_ADDR: ms_buf_printf(out, "\t.quad %smsl%zu\n", at_local(prefix), pt->value); at += 8; break;
             case AT_FUNC_SIZE:
-                ms_buf_printf(out, "\t.long .Lmse%u-%s%.*s\n", f->index, prefix, (int)f->sym.len, f->sym.ptr);
+                ms_buf_printf(out, "\t.long %smse%u-%s%.*s\n", at_local(prefix), f->index, prefix, (int)f->sym.len, f->sym.ptr);
                 at += 4;
                 break;
             case AT_BLOB_ADDR: ms_buf_printf(out, "\t.quad %sms_tables+%zu\n", prefix, pt->value); at += 8; break;
@@ -369,7 +376,7 @@ static void at_scan(AtMeta *a, const AtKey *sorted, const char *asm_text, size_t
         if (eol == NULL) eol = end;
         const size_t n = (size_t)(eol - p);
         if (cur >= 0 && at_ends_function(p, n)) {
-            ms_buf_printf(out, ".Lmse%d:\n", cur);
+            ms_buf_printf(out, "%smse%d:\n", at_local(prefix), cur);
             cur = -1;
         }
         const bool is_loc = cur >= 0 && at_loc_args(p, n, &l);
@@ -386,13 +393,13 @@ static void at_scan(AtMeta *a, const AtKey *sorted, const char *asm_text, size_t
             }
         } else if (is_loc && l.line != 0) { /* line 0 is code LLVM made up: the range before it goes on */
             l.func = (uint32_t)cur;
-            ms_buf_printf(out, ".Lmsl%zu:\n", locs->len / sizeof l);
+            ms_buf_printf(out, "%smsl%zu:\n", at_local(prefix), locs->len / sizeof l);
             ms_buf_put(locs, &l, sizeof l);
         }
         p = eol + 1;
     }
     if (cur >= 0) {
-        ms_buf_printf(out, ".Lmse%d:\n", cur);
+        ms_buf_printf(out, "%smse%d:\n", at_local(prefix), cur);
     }
 }
 

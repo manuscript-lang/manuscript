@@ -134,7 +134,9 @@ static MsTy closure_result(MsBody *b, const MsTypeRef *written, MsTy expected) {
     return closure_declared(b, written, expected);
 }
 
-static MsTy closure_signature(MsBody *b, const MsExpr *e, MsTy expected, MsTy *result) {
+/* `open_result`: the expected result still holds variables a written result decides, so it is not
+ * the context the written one is checked against. */
+static MsTy closure_signature(MsBody *b, const MsExpr *e, MsTy expected, bool open_result, MsTy *result) {
     const MsTyTable *tys = &b->c->tys;
     const bool context = expected != MS_TY_NONE && ms_ty_kind(tys, expected) == MS_K_FUNCTION &&
                          tys->nparams[expected] == e->u.lambda.params.len;
@@ -150,7 +152,7 @@ static MsTy closure_signature(MsBody *b, const MsExpr *e, MsTy expected, MsTy *r
         }
         params[i] = (MsTyParam){.name = closure_slot_name(b, i), .ty = closure_declared(b, p->ty, from_context), .flags = MS_PARAM_POSITIONAL};
     }
-    *result = closure_result(b, e->u.lambda.result, context ? tys->result[expected] : MS_TY_NONE);
+    *result = closure_result(b, e->u.lambda.result, context && !open_result ? tys->result[expected] : MS_TY_NONE);
     if (!b->supported) {
         return MS_TY_NONE;
     }
@@ -176,10 +178,10 @@ static MsTy closure_with_result(MsBody *b, MsTy fn, MsTy result) {
  * `return` of the body decides the result. */
 static MsTy closure_check(MsBody *b, const MsExpr *e, MsTy expected, bool infer) {
     MsTy result = MS_TY_NONE;
-    if (infer && e->u.lambda.result != NULL) {
-        return ms_body_unsupported(b);
-    }
-    const MsTy fn = closure_signature(b, e, expected, &result);
+    // A written result is the result: the body is checked against it, and the call binds its variable to it.
+    const bool open_result = infer && e->u.lambda.result != NULL;
+    infer = infer && !open_result;
+    const MsTy fn = closure_signature(b, e, expected, open_result, &result);
     if (!b->supported || !closure_plain(b, fn)) {
         return ms_body_unsupported(b);
     }

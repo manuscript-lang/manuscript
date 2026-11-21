@@ -107,6 +107,8 @@ void lb_reset_state(Lb *lb) {
     lscope_init(&lb->scopes, &lb->b);
     lb->vars = NULL; // the arena they live in is freed between passes
     lb->nvars = lb->cvars = 0;
+    lb->parts = NULL;
+    lb->nparts = lb->cparts = 0;
     lb->temps = NULL;
     lb->ntemps = lb->ctemps = lb->stmt_mark = lb->branching = 0;
     lb->slots = NULL;

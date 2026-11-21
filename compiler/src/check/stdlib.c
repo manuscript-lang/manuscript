@@ -232,6 +232,14 @@ static MsKind nominal_kind(const MsDecl *d) {
     return MS_K_TYPE;
 }
 
+/* Makes `sym` the standard type called `name`, and the declaration of `builtin` when it is one. */
+static void register_std_type(MsCheck *c, MsSym name, MsSymId sym, MsBuiltin builtin) {
+    (void)ms_map_add(&c->std_types, name, sym);
+    if (builtin != MS_B_NONE) {
+        c->builtin_sym_plus_one[builtin] = sym + 1;
+    }
+}
+
 static MsTy nominal_type(Loader *l, MsSymId s, MsKind kind, MsBuiltin builtin) {
     MsCheck *c = l->c;
     MsTyDesc d = {0};
@@ -272,7 +280,7 @@ static bool register_extern_type(Loader *l, MsModId m, const MsDecl *d) {
         b = ms_builtin_source(file, ms_name(c->names, name));
     }
     c->syms.ty[s] = nominal_type(l, s, MS_K_NATIVE, b);
-    ms_map_add(&c->std_types, name, s);
+    register_std_type(c, name, s, b);
     return true;
 }
 
@@ -404,8 +412,9 @@ static bool register_native_decl(Loader *l, MsModId m, MsStr stem, const MsDecl 
     if (ms_map_get(&c->std_types, name) != MS_NONE) {
         return sl_fail(l, "duplicate standard type %.*s", (int)name_text.len, name_text.ptr);
     }
-    c->syms.ty[sym] = nominal_type(l, sym, kind, ms_builtin_from_id(ms_name(c->names, id)));
-    (void)ms_map_add(&c->std_types, name, sym);
+    const MsBuiltin builtin = ms_builtin_from_id(ms_name(c->names, id));
+    c->syms.ty[sym] = nominal_type(l, sym, kind, builtin);
+    register_std_type(c, name, sym, builtin);
     return true;
 }
 
