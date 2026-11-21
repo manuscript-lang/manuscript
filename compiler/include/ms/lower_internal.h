@@ -211,7 +211,6 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 /* Stores `value` in the stack slot `slot`. */
-void lb_store(Lb *lb, MirValue slot, MirValue value);
 
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */
 static inline bool lb_is_scalar(MirTy ty) {
@@ -225,6 +224,12 @@ MirTy lm_type(Lb *lb, MsTy ty);
 bool lb_is_map(const Lb *lb, MirTy ty);
 LbVal lm_literal(Lb *lb, const MsExpr *e);
 LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at);
+struct MsRtFn;
+/* The runtime function `name` over these borrowed parameters, declared once per signature. */
+uint32_t lb_runtime_extern(Lb *lb, const char *name, const MirTy *params, uint32_t nparams, MirTy ret, uint8_t role,
+                           bool reads);
+/* The entry of `generic` that fits a map of `key` and `value` (its declared specialisation, else itself). */
+const struct MsRtFn *lm_specialize(Lb *lb, const struct MsRtFn *generic, MirTy key, MirTy value, uint8_t *role);
 
 /* Equality of records, enums, optionals and lists (lower_eq.c, included after lower_closure.c). */
 LbVal lq_equal(Lb *lb, LbVal x, LbVal y, bool negate);

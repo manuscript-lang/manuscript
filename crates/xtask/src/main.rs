@@ -175,6 +175,10 @@ fn rt_ops_table(symbols: &str) -> String {
                     "*const StrVal" => "MS_RT_STR",
                     "*mut StrVal" if pname == "out" => "MS_RT_OUT_STR",
                     "ElemDesc" => "MS_RT_DESC",
+                    "*const MapVal" => "MS_RT_MAP",
+                    "KeyDesc" => "MS_RT_KEY_DESC",
+                    "ValDesc" => "MS_RT_VAL_DESC",
+                    "*const u8" if pname == "key" => "MS_RT_KEY_REF",
                     "*const u8" => "MS_RT_ELEMENT",
                     "i64" => "MS_RT_INT",
                     "f64" => "MS_RT_FLOAT",
@@ -187,6 +191,7 @@ fn rt_ops_table(symbols: &str) -> String {
             continue;
         }
         let leaf = rest.contains(" @leaf");
+        let pure = rest.contains(" @pure");
         let fresh = rest.contains(" @fresh");
         // `@imm=<n>`: the integer the instruction named by `@op=` carries as its immediate.
         let imm = rest
@@ -194,11 +199,21 @@ fn rt_ops_table(symbols: &str) -> String {
             .nth(1)
             .and_then(|r| r.split(' ').next())
             .and_then(|n| n.parse::<i64>().ok());
+        // The specialisations of a function for a one-word key and a text key (`@word_key_of=<sym>`).
+        let twin = |key: &str| {
+            symbols
+                .lines()
+                .find(|l| l.split(" @").any(|f| f.strip_prefix(key).map(str::trim) == Some(name)))
+                .and_then(|l| l.split('(').next())
+                .unwrap_or("")
+        };
         out.push_str(&format!(
-            "    {{\"{name}\", \"{op}\", {{{}}}, {}, {ret}, {leaf}, {}, {fresh}, {}, {}}},\n",
+            "    {{\"{name}\", \"{op}\", {{{}}}, {}, {ret}, {leaf}, {}, {pure}, \"{}\", \"{}\", {fresh}, {}, {}}},\n",
             kinds.join(", "),
             kinds.len(),
             twinned.contains(name),
+            twin("word_key_of="),
+            twin("text_key_of="),
             imm.is_some(),
             imm.unwrap_or(0)
         ));
