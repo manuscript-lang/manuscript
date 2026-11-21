@@ -1,11 +1,11 @@
 fn small() UInt8?:
-    return 5
+	return 5
 
 fn wide(x: Int8?) Int8?:
-    return x
+	return x
 
 fn neg() Int8?:
-    return -3
+	return -3
 
 fn lit() Float32?:
-    return 1.5
+	return 1.5
