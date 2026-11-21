@@ -81,14 +81,6 @@ static bool verify_module(const MirModule *mir, const char *path) {
     return ok;
 }
 
-/* Checks the bodies of module `id` against a fresh program: a record is admitted only once its
- * methods are known (one with a `close` needs a cleanup). A module with an inherent error is left
- * unchecked. */
-static void check_bodies(MsCheck *check, MsModId id, const char *text, size_t length) {
-    ms_program_begin(check);
-    (void)ms_program_check_module(check, id, (MsStr){text, (uint32_t)length});
-}
-
 static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const char *path, bool run) {
     size_t length = 0;
     char *text = read_whole_file(path, &length);
@@ -103,7 +95,8 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
             printf("=== %s\n", path);
         }
         const MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
-        check_bodies(check, id, text, length);
+        ms_program_begin(check);
+        (void)ms_program_check_module(check, id, (MsStr){text, (uint32_t)length});
         if (check->mods[id].facts != NULL) { // an inherent error leaves the module unchecked
             // The ownership walk fills `ret_borrowed` and narrows `body_checked` to the functions it handles.
             ms_module_check_ownership(check, id);
@@ -120,6 +113,9 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         }
         ms_buf_free(&elaborate_error);
         if (run) {
+            if (mir_expand_owned_needed(&mir)) {
+                (void)mir_expand_owned(&mir); // the interpreter has no owned shorthands (`alt.take`)
+            }
             run_module(&mir, path);
         }
         for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {

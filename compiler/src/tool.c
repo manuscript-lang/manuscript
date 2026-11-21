@@ -244,7 +244,7 @@ static uint8_t install_run(MsArena *arena, MsInstallOptions options, ms_list *ou
     if (!ms_install(arena, &options, &report, &error)) {
         const char *text = ms_project_error_text(arena, &error);
         ms_string_new((const uint8_t *)text, strlen(text), message_out);
-        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+        status = 1;
     }
     for (uint32_t i = 0; status == 0 && i < report.count; i++) {
         const MsInstalledCopy *c = &report.copies[i];
@@ -296,6 +296,20 @@ uint8_t ms_tool_workspace(const ms_str *manifest, uint8_t root_only, ms_list *ou
     }
     ms_arena_free(&arena);
     return status;
+}
+
+uint8_t ms_tool_requirement(const ms_str *text, ms_list *out, ms_str *message_out) {
+    (void)out;
+    MsArena arena = {0};
+    const char *source = ms_arena_strndup(&arena, (const char *)ms_str_data(text), ms_str_len(text));
+    MsRequirement requirement;
+    const char *error = "";
+    const bool ok = ms_requirement_parse(&arena, source, &requirement, &error);
+    if (!ok) {
+        ms_string_new((const uint8_t *)error, strlen(error), message_out);
+    }
+    ms_arena_free(&arena);
+    return ok ? 0 : 1;
 }
 
 uint8_t ms_tool_install_workspace(const ms_str *lock_root, const ms_list *members, const ms_list *update, uint8_t locked, uint8_t frozen,
@@ -978,15 +992,6 @@ static bool analyzed(const MsFacts *facts, uint32_t n) {
     return facts->res_kind[n] != MS_RES_NONE || facts->call_callee[n] != MS_NONE || facts->expr_ty[n] != MS_TY_NONE || facts->type_ref_ty[n] != MS_TY_NONE;
 }
 
-static bool imports_only_std(const MsModule *module) {
-    for (uint32_t i = 0; i < module->nimports; i++) {
-        if (module->imports[i].path.len < 5 || memcmp(module->imports[i].path.ptr, "@std/", 5) != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static void fail(Analysis *a, uint8_t status, const char *text, size_t len) {
     a->status = status;
     a->message = malloc(len + 1);
@@ -1107,7 +1112,7 @@ ms_object *ms_tool_analyze(const ms_str *path, const ms_str *text, const ms_list
     const bool named = entry_len != 0 && strlen(entry) == entry_len;
     if (!ms_parse(&syntax, &table, src, len, &module, &diag)) {
         fail(a, 1, diag.message.ptr, diag.message.len);
-    } else if (!named && !imports_only_std(&module)) {
+    } else if (!named && !ms_module_only_std_imports(&module)) {
         fail(a, 2, "imports a project module", 24);
     } else {
         MsCheck check;

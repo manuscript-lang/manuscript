@@ -9,6 +9,7 @@
 #define MS_CHECK_H
 
 #include "ms/tables.h"
+#include "ms/text.h"
 
 /* The row of the module with this path, or MS_NONE. */
 MsModId ms_module_find(const MsCheck *c, MsSym path);
@@ -38,6 +39,49 @@ typedef struct MsTypeScope {
     const MsTy *types;
     uint32_t len;
 } MsTypeScope;
+
+/* Whether `name` is a type variable of `scope` or of an enclosing one. */
+static inline bool ms_type_scope_has(const MsTypeScope *scope, MsSym name) {
+    for (; scope != NULL; scope = scope->parent) {
+        for (uint32_t i = 0; i < scope->len; i++) {
+            if (scope->names[i] == name) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* Whether the interned name `name` spells `text`. */
+static inline bool ms_name_is(const MsNames *names, MsSym name, const char *text) {
+    return ms_text_is(ms_name(names, name), text);
+}
+
+/* The type of the primitive called `name`, or MS_TY_NONE. */
+static inline MsTy ms_check_primitive(const MsCheck *c, const char *name) {
+    const MsSymId sym = ms_map_get(&c->primitives, ms_intern_cstr(c->names, name));
+    return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
+}
+
+/* The `<invalid>` type a diagnostic leaves behind. */
+static inline MsTy ms_check_invalid_ty(MsCheck *c) {
+    const MsSym name = ms_intern_cstr(c->names, "<invalid>");
+    const MsTyDesc desc = {.name = name, .id = name, .kind = MS_K_INVALID};
+    return ms_ty_intern(&c->tys, &desc);
+}
+
+/* Whether `d` makes a nominal type: a type, an enum or an interface. */
+static inline bool ms_decl_is_nominal(const MsDecl *d) {
+    return d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE;
+}
+
+/* The kind of symbol a declaration registers. */
+static inline MsSymKind ms_decl_symbol_kind(const MsDecl *d) {
+    if (ms_decl_is_nominal(d)) {
+        return MS_SYM_TYPE;
+    }
+    return d->kind == MS_D_ALIAS ? MS_SYM_ALIAS : MS_SYM_FN;
+}
 
 /* Resolves the written types of one module: a context that the resolution functions share. */
 typedef struct MsResolver {

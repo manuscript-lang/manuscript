@@ -130,8 +130,7 @@ typedef struct MsScanNode {
 MsScanNode ms_effect_scan_decl(MsArena *arena, const MsCheck *c, MsModId module, const MsDecl *d);
 
 /* A source method is a node too: its key is the symbol count plus its row in the method table, so it
- * shares the edge type with functions. A method whose receiver or own type variables carry bounds
- * stays `partial` where it is called: Rust charges the operations of the type arguments there. */
+ * shares the edge type with functions. */
 bool ms_effect_method_is_node(const MsCheck *c, const MsMethods *m, uint32_t row);
 static inline MsSymId ms_effect_method_node(const MsCheck *c, uint32_t row) { return c->syms.count + row; }
 
