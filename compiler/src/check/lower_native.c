@@ -281,7 +281,7 @@ static bool ln_param(Lb *lb, LnCall *call, const MsRtFn *fn, uint32_t *at, const
     if (kind == MS_RT_OTHER || (needs_op && fn->op[0] == '\0')) {
         return false;
     }
-    if (kind == MS_RT_ERR || kind == MS_RT_OUT_HANDLE ||
+    if (kind == MS_RT_ERR || kind == MS_RT_OUT_HANDLE || kind == MS_RT_OUT_SCALAR ||
         (status != NULL && (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST))) {
         return ln_slot_param(lb, call, kind, status, slots);
     }

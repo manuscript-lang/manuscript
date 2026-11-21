@@ -19,12 +19,14 @@
 #include <string.h>
 
 #include "check/check_body.h"
+#include "ms/doc.h"
 #include "ms/implements.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
+#include "ms/ty_algebra.h"
 
 
 
@@ -154,6 +156,12 @@ static bool body_is_bindable(const MsBody *b, MsTy ty) {
 
 bool ms_body_is_bindable(const MsBody *b, MsTy ty) {
     return body_is_bindable(b, ty);
+}
+
+/* What a `:=` or an `if name = value` can bind: also a Void value (`bad := say(1)`), which the Rust checker binds
+ * with that type and no diagnostic of its own. A Never value stays with the Rust checker: the statement ends the path. */
+static bool body_is_local(const MsBody *b, MsTy ty) {
+    return body_is_bindable(b, ty) || ty == b->void_ty;
 }
 
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
@@ -700,6 +708,16 @@ void ms_body_check_home(MsBody *b, MsSymId sym) {
     }
 }
 
+/* An `extern type` the standard library declares buildable from source with no arguments
+ * (`// ms: constructible` above it): `StringBuilder()`. The others have a literal or a function. */
+static bool body_constructible_extern(const MsBody *b, MsSymId sym, const MsDecl *decl, MsTy record) {
+    const MsSyms *syms = &b->c->syms;
+    return decl != NULL && decl->kind == MS_D_TYPE && decl->u.type.external && syms->nvars[sym] == 0 &&
+           ms_ty_kind(&b->c->tys, record) == MS_K_NATIVE && body_is_admitted(b, record) &&
+           syms->module[sym] != MS_NONE &&
+           ms_doc_has_marker(b->c->mods[syms->module[sym]].text, decl->pos.offset, "constructible");
+}
+
 static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     ms_body_check_home(b, sym);
     const MsSyms *syms = &b->c->syms;
@@ -707,6 +725,10 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     const MsDef *def = ms_def(b->c, sym);
     const MsDecl *decl = syms->decl[sym];
     const uint32_t nargs = e->u.call.args.len;
+    if (nargs == 0 && body_constructible_extern(b, sym, decl, record)) {
+        b->facts->call_callee[e->id] = sym;
+        return record;
+    }
     if (syms->nvars[sym] != 0 || decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.external ||
         (syms->module[sym] != b->module && decl->u.type.opaque) || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
         !body_is_admitted(b, record) || nargs > def->nfields || def->nfields != decl->u.type.fields.len) {
@@ -1294,7 +1316,7 @@ static void body_bind_statement(MsBody *b, const MsStmt *s) {
         b->context = ms_arena_fmt(&b->c->arena, "the initializer of '%.*s'", (int)name.len, name.ptr).ptr;
     }
     const MsTy value = ms_body_expr(b, s->u.bind.value, expected);
-    if (value == MS_TY_NONE || !body_is_bindable(b, value)) {
+    if (value == MS_TY_NONE || !body_is_local(b, value)) {
         (void)ms_body_unsupported(b);
         return;
     }
@@ -1486,8 +1508,10 @@ static bool body_if_let_statement(MsBody *b, const MsStmt *s) {
     const bool result = ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_RESULT) && tys->nargs[ty] == 2;
     if (result) {
         payload = ms_ty_args(tys, ty)[0]; // the Ok payload; the error is not captured
+    } else if (ty == b->invalid_ty) {
+        payload = b->invalid_ty; // the scrutinee is reported already; the branches are still checked
     }
-    if ((!result && !ms_body_optional_payload(b, ty, &payload)) || !body_is_bindable(b, payload)) {
+    if ((!result && payload == MS_TY_NONE && !ms_body_optional_payload(b, ty, &payload)) || !body_is_local(b, payload)) {
         (void)ms_body_unsupported(b);
         return false;
     }
@@ -1559,7 +1583,8 @@ static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) 
         return false;
     }
     *element = ms_ty_args(&b->c->tys, ty)[0];
-    return body_is_value_type(b, *element) || ms_body_is_list(b, *element);
+    return body_is_value_type(b, *element) || body_is_sized_number(b, *element) || ms_body_is_list(b, *element) ||
+           body_is_own_nominal(b, *element);
 }
 
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
