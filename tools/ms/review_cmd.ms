@@ -141,7 +141,7 @@ fn facts_program() String:
 	env := environment().get_or(Map[String, String]())
 	return env.get_or("MS_FACTS", "ms-tooling-dev")
 
-fn facts_in(directory: String, file: String) Facts!:
+export fn facts_in(directory: String, file: String) Facts!:
 	finished := run(
 		facts_program(),
 		["facts", file.clone()],
@@ -217,27 +217,19 @@ fn base_tree(root: String, base: Map[String, String], target: String) Void!:
 fn create_parent(path: String) Void!:
 	return create_directory(dirname(path), recursive: true)
 
-/*
-Runs `ms review`: the project map without a diff, otherwise the change report or the
-explanation of one finding. The text goes to the caller; an error is a problem to report
-with status 2.
-*/
+// A reviewed change: the facts before it (empty when the base does not check), and the
+// diff mapped onto the project.
+export type Change:
+	base: Facts
+	plan: Plan
+
+// Maps the diff at `diff_path` onto the project in `root` and checks the rebuilt base.
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.fs.write
 // ms: allow_effect std.env.read
 // ms: allow_effect std.console.read
-export fn review(request: ReviewRequest) String!:
-	json := request.format == "json"
-	options := ReviewOptions(all: request.all or json, effect: request.effect.clone())
-	absolute := canonicalize(request.file)?
-	root := dirname(absolute)
-	name := basename(absolute)
-	head := facts_in(root.clone(), name.clone())?
-	if request.diff.is_empty(): return ok(
-		render(project_report(head, options), request.format)
-	)
-
-	parsed := parse_diff(read_diff(request.diff)?)?
+export fn load_change(root: String, name: String, diff_path: String) Change!:
+	parsed := parse_diff(read_diff(diff_path)?)?
 	prefix := prefix_of(root, parsed)
 	var heads = Map[String, String]()
 	var present = Set[String]()
@@ -265,6 +257,31 @@ export fn review(request: ReviewRequest) String!:
 	if base.is_ok(): plan.input.base_checked = true
 
 	baseline := base.get_or(Facts(entities: [], imports: [], flows: []))
+	return ok(Change(base: baseline, plan: plan))
+
+/*
+Runs `ms review`: the project map without a diff, otherwise the change report or the
+explanation of one finding. The text goes to the caller; an error is a problem to report
+with status 2.
+*/
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.console.read
+export fn review(request: ReviewRequest) String!:
+	json := request.format == "json"
+	options := ReviewOptions(all: request.all or json, effect: request.effect.clone())
+	absolute := canonicalize(request.file)?
+	root := dirname(absolute)
+	name := basename(absolute)
+	head := facts_in(root.clone(), name.clone())?
+	if request.diff.is_empty(): return ok(
+		render(project_report(head, options), request.format)
+	)
+
+	change := load_change(root, name, request.diff.clone())?
+	baseline := change.base
+	plan := change.plan
 
 	if not request.explain.is_empty():
 		findings := compare_facts(baseline, head, plan.input)
