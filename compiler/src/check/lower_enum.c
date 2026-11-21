@@ -15,14 +15,14 @@ MirTy le_type(Lb *lb, MsTy ty) {
         return MIR_NONE;
     }
     if (lb->type_of[ty] == LB_TYPE_PENDING) {
-        return MIR_NONE; // an enum reaching itself through a list is not lowered
+        return MIR_NONE; // an enum that holds itself (`next: List?`) is not lowered
     }
     if (lb->type_of[ty] != MIR_NONE) {
         return lb->type_of[ty];
     }
-    lb->type_of[ty] = LB_TYPE_PENDING;
     const MsDef *def = &lb->c->defs[sym];
     MirCaseDef *cases = MS_NEW_N(&lb->m->arena, MirCaseDef, def->ncases);
+    lb->type_of[ty] = LB_TYPE_PENDING;
     for (uint32_t i = 0; i < def->ncases; i++) {
         const MsCaseRow *row = &def->cases[i];
         MirField *fields = MS_NEW_N(&lb->m->arena, MirField, (size_t)row->nfields + 1);
