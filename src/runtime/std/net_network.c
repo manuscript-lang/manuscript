@@ -9,6 +9,7 @@
 #include "base/alloc.h"
 #include "runtime/std/net_conn.h"
 #include "runtime/std/net_core.h"
+#include "runtime/std/net_dns.h"
 #include "runtime/std/net_filter.h"
 #include "runtime/std/net_ip.h"
 
@@ -25,6 +26,7 @@ typedef struct Network {
   bool closed;
   MsNetFilter *filter; /* NULL: unrestricted */
   bool allow_listen;
+  MsString resolver; /* "ip:port" of the DNS server, or empty for the host's */
   Member *members;
   size_t count;
   size_t capacity;
@@ -45,6 +47,7 @@ static void network_free(Network *network) {
   }
   ms_free(network->members);
   ms_net_filter_release(network->filter);
+  ms_string_release(&network->resolver);
   uv_mutex_destroy(&network->lock);
   ms_free(network);
 }
@@ -66,16 +69,17 @@ static MsObj *handle_new(Network *network) {
   return &handle->header;
 }
 
-static Network *network_new(MsNetFilter *filter, bool allow_listen) {
+static Network *network_new(MsNetFilter *filter, bool allow_listen, MsString resolver) {
   Network *network = ms_alloc_zeroed(sizeof *network);
   atomic_init(&network->handles, 0);
   (void)uv_mutex_init(&network->lock);
   network->filter = filter;
   network->allow_listen = allow_listen;
+  network->resolver = resolver;
   return network;
 }
 
-MsObj *msstd_net_network(void) { return handle_new(network_new(NULL, true)); }
+MsObj *msstd_net_network(void) { return handle_new(network_new(NULL, true, ms_string_empty())); }
 
 /* Drops the members whose socket has closed, so a long-lived network does not collect them. */
 static void sweep(Network *network) {
@@ -350,14 +354,75 @@ uint8_t msstd_net_network_lookup(const MsObj *net, const MsString *name, uint8_t
   return lookup_run(net, name, AF_UNSPEC, has_max, max, has_timeout, timeout, out, err);
 }
 
+/* Whether the address text of a record may be used under the network's filter. */
+static bool record_allowed(const MsNetFilter *filter, int64_t kind, MsSpan text) {
+  struct sockaddr_storage address;
+  char zeroed[INET6_ADDRSTRLEN + 1];
+  if (kind != MS_DNS_KIND_A && kind != MS_DNS_KIND_AAAA) {
+    return true;
+  }
+  if (text.len >= sizeof zeroed) {
+    return false;
+  }
+  memcpy(zeroed, text.ptr, text.len);
+  zeroed[text.len] = 0;
+  const int code = kind == MS_DNS_KIND_A ? uv_ip4_addr(zeroed, 0, (struct sockaddr_in *)(void *)&address)
+                                         : uv_ip6_addr(zeroed, 0, (struct sockaddr_in6 *)(void *)&address);
+  return code == 0 && ms_net_filter_address_allowed(filter, (const struct sockaddr *)(const void *)&address);
+}
+
+/* Keeps at most `limit` of `records` that the filter allows. */
+static void keep_allowed(const MsNetFilter *filter, MsList *records, size_t limit) {
+  MsDnsRecord *items = (MsDnsRecord *)(void *)records->ptr;
+  size_t kept = 0;
+  for (size_t i = 0; i < records->len; i++) {
+    if (kept < limit && record_allowed(filter, items[i].kind, ms_string_span(&items[i].value))) {
+      items[kept++] = items[i];
+    } else {
+      ms_string_release(&items[i].value);
+    }
+  }
+  records->len = kept;
+}
+
 uint8_t msstd_net_network_resolve(const MsObj *net, const MsString *name, int64_t kind, uint8_t has_max, int64_t max,
                                   uint8_t has_timeout, int64_t timeout, MsList *out, MsString *err) {
-  enum { KIND_A = 0, KIND_AAAA = 1 };
+  Network *network = network_of(net);
+  const MsSpan text = ms_string_span(name);
   *err = ms_string_empty();
-  if (kind != KIND_A && kind != KIND_AAAA) {
-    return MS_STATUS_UNSUPPORTED;
+  if (!is_open(network)) {
+    return MS_STATUS_CLOSED;
   }
-  return lookup_run(net, name, kind == KIND_A ? AF_INET : AF_INET6, has_max, max, has_timeout, timeout, out, err);
+  if (ms_dns_type_of_kind(kind) == 0 || text.len == 0 || memchr(text.ptr, 0, text.len) != NULL ||
+      (has_max != 0 && max < 0)) {
+    return MS_STATUS_INVALID_INPUT;
+  }
+  if (kind != MS_DNS_KIND_PTR && !ms_net_filter_host_allowed(network->filter, text)) {
+    return MS_STATUS_PERMISSION_DENIED;
+  }
+  const size_t limit = has_max != 0 ? (size_t)max : SIZE_MAX;
+  const bool addresses = kind == MS_DNS_KIND_A || kind == MS_DNS_KIND_AAAA;
+  MsList found = {0};
+  uint8_t status = MS_STATUS_OK;
+  if (addresses && ms_string_span(&network->resolver).len == 0) { /* the system resolver answers addresses */
+    status = lookup_run(net, name, kind == MS_DNS_KIND_A ? AF_INET : AF_INET6, has_max, max, has_timeout, timeout, &found, err);
+    MsString *strings = (MsString *)(void *)found.ptr;
+    MsList records = {0};
+    for (size_t i = 0; status == MS_STATUS_OK && i < found.len; i++) {
+      const MsDnsRecord record = {.kind = kind, .value = strings[i]};
+      ms_list_push(&records, sizeof record, &record);
+    }
+    ms_list_free(&found);
+    *out = records;
+    return status;
+  }
+  status = ms_dns_resolve(ms_string_span(&network->resolver), text, kind, ms_net_timeout(has_timeout, timeout), &found, err);
+  if (status != MS_STATUS_OK) {
+    return status;
+  }
+  keep_allowed(network->filter, &found, limit);
+  *out = found;
+  return MS_STATUS_OK;
 }
 
 /* ---- restrict ---- */
@@ -373,7 +438,7 @@ uint8_t msstd_net_network_restrict(const MsObj *net, const MsList *hosts, const 
   if (filter == NULL) {
     return MS_STATUS_INVALID_INPUT;
   }
-  MsObj *child = handle_new(network_new(filter, network->allow_listen && allow_listen != 0));
+  MsObj *child = handle_new(network_new(filter, network->allow_listen && allow_listen != 0, ms_string_clone(&network->resolver)));
   if (!track(network, handle_new(network_of(child)), true)) {
     close_network(network_of(child));
   }
@@ -382,9 +447,28 @@ uint8_t msstd_net_network_restrict(const MsObj *net, const MsList *hosts, const 
 }
 
 uint8_t msstd_net_network_with_resolver(const MsObj *net, const MsString *address, MsObj **out, MsString *err) {
-  (void)net;
-  (void)address;
-  (void)out;
+  Network *network = network_of(net);
+  struct sockaddr_storage parsed;
   *err = ms_string_empty();
-  return MS_STATUS_UNSUPPORTED;
+  if (!is_open(network)) {
+    return MS_STATUS_CLOSED;
+  }
+  MsSpan host, port;
+  uint16_t number;
+  MsIp ip;
+  const MsSpan text = ms_string_span(address);
+  if (!ms_split_host_port(text, &host, &port) || !ms_ip_parse(host, &ip) || !ms_parse_port(port, &number) ||
+      !ms_net_parse_literal(text, &parsed)) {
+    return MS_STATUS_INVALID_INPUT;
+  }
+  if (!ms_net_filter_host_allowed(network->filter, host) ||
+      !ms_net_filter_address_allowed(network->filter, (const struct sockaddr *)(const void *)&parsed)) {
+    return MS_STATUS_PERMISSION_DENIED;
+  }
+  MsObj *child = handle_new(network_new(ms_net_filter_retain(network->filter), network->allow_listen, ms_string_clone(address)));
+  if (!track(network, handle_new(network_of(child)), true)) {
+    close_network(network_of(child));
+  }
+  *out = child;
+  return MS_STATUS_OK;
 }

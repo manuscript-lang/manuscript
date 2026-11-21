@@ -27,14 +27,14 @@ uint8_t msstd_net_network_bind_datagram(const MsObj *net, const MsString *addres
 /* ms-sig: msstd_net_network_lookup(handle net: *const ObjCell<NetH>, name: *const StrVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_net_network_lookup(const MsObj *net, const MsString *name, uint8_t has_max, int64_t max,
                                  uint8_t has_timeout, int64_t timeout, MsList *out, MsString *err);
-/* Only the address kinds (A and AAAA) are answered; the record kinds need a DNS client of their own. */
+/* Returns DnsRecord values (net_dns.h). Addresses come from the system resolver unless the network has one of its own;
+ * the other kinds ask the DNS servers of resolv.conf, or the network's, and are unsupported where the host lists none. */
 /* ms-sig: msstd_net_network_resolve(handle net: *const ObjCell<NetH>, name: *const StrVal, kind: i64, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_net_network_resolve(const MsObj *net, const MsString *name, int64_t kind, uint8_t has_max, int64_t max,
                                   uint8_t has_timeout, int64_t timeout, MsList *out, MsString *err);
 /* ms-sig: msstd_net_network_restrict(handle net: *const ObjCell<NetH>, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out: *mut *mut ObjCell<NetH>, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_net_network_restrict(const MsObj *net, const MsList *hosts, const MsList *cidrs, uint8_t allow_listen,
                                    MsObj **out, MsString *err);
-/* A resolver of its own needs the DNS client: unsupported until then. */
 /* ms-sig: msstd_net_network_with_resolver(handle net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<NetH>, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_net_network_with_resolver(const MsObj *net, const MsString *address, MsObj **out, MsString *err);
 
