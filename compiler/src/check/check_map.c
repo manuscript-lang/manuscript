@@ -26,6 +26,12 @@ bool ms_body_is_map(const MsBody *b, MsTy ty) {
     return map_is_key(b, args[0]) && ms_body_is_admitted(b, args[1]);
 }
 
+/* `Set[T]` of a hashable primitive: a set held and passed like a map. */
+bool ms_body_is_set(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    return ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_SET) && tys->nargs[ty] == 1 && map_is_key(b, ms_ty_args(tys, ty)[0]);
+}
+
 static MsTy map_of(MsBody *b, MsTy key, MsTy value) {
     const MsSymId sym = map_symbol(b);
     const MsTy args[2] = {key, value};
