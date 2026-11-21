@@ -167,7 +167,7 @@ typedef struct MvFlow {
 } MvFlow;
 
 static MvFlow mv_flow(Mv *v, const MvDef *defs, const MirBlock *idom) {
-  const uint32_t n = v->cx.f->blocks.len;
+  const uint32_t n = (uint32_t)v->cx.f->blocks.len;
   uint32_t *tin = MS_ARENA_NEW_ARRAY(&v->scratch, uint32_t, n);
   uint32_t *tout = MS_ARENA_NEW_ARRAY(&v->scratch, uint32_t, n);
   uint32_t *child = MS_ARENA_NEW_ARRAY(&v->scratch, uint32_t, n); /* first child, then the next sibling chain */
@@ -388,7 +388,7 @@ static void mv_function(MirVerifyErrors *errs, const MirModule *m, const MirFunc
       .cx = {m, f, drops, &errs->arena, layouts},
       .scratch = {0},
       .require_locs = require_locs,
-      .first = errs->errors.len};
+      .first = (uint32_t)errs->errors.len};
   mv_run(&v);
   if (mv_clean(&v)) {
     mv_scoped_closures(&v);

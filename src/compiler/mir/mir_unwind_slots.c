@@ -20,7 +20,7 @@ bool uw_slot_close_value(const MirModule *m, uint32_t close, MirTy *ty) {
 
 static UwTable uw_table_new(MsArena *a, const MirModule *m) {
   UwTable t = {.v = MS_ARENA_NEW_ARRAY(a, bool *, m->funcs.len ? m->funcs.len : 1),
-        .len = MS_ARENA_NEW_ARRAY(a, uint32_t, m->funcs.len ? m->funcs.len : 1), .n = m->funcs.len};
+        .len = MS_ARENA_NEW_ARRAY(a, uint32_t, m->funcs.len ? m->funcs.len : 1), .n = (uint32_t)m->funcs.len};
   for (uint32_t f = 0; f < m->funcs.len; f++) {
     t.len[f] = m->funcs.ptr[f].nparams;
     t.v[f] = MS_ARENA_NEW_ARRAY(a, bool, t.len[f] ? t.len[f] : 1);
@@ -31,7 +31,7 @@ static UwTable uw_table_new(MsArena *a, const MirModule *m) {
 
 uint32_t *uw_closure_targets(MsArena *a, const MirModule *m, uint32_t *n) {
   uint32_t *out = MS_ARENA_NEW_ARRAY(a, uint32_t, m->funcs.len ? m->funcs.len : 1);
-  MirBits seen = mir_bits_new(a, m->funcs.len);
+  MirBits seen = mir_bits_new(a, (uint32_t)m->funcs.len);
   *n = 0;
   for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
     const MirFunc *f = &m->funcs.ptr[fi];

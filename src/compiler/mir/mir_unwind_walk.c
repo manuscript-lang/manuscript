@@ -432,7 +432,7 @@ static void uw_an_edges(UwBlk *s) {
     const OwnerSet target = uw_coverable(s, &s->live);
     w->at_fault[s->bi] = (MirValue *)owner_to_vec(a, &target, &w->nat_fault[s->bi]);
     if (w->plain[s->bi]) {
-      uw_event_push(s, s->blk->insts.len, &target);
+      uw_event_push(s, (uint32_t)s->blk->insts.len, &target);
     }
   }
   for (uint32_t k = 0; k < mir_term_ntargets(&s->blk->term); k++) {
@@ -475,7 +475,7 @@ UwWalk uw_analyze(const UwFacts *fa) {
   UwCx *cx = fa->cx;
   const MirFunc *f = fa->f;
   MsArena *a = &cx->fn;
-  const uint32_t n = f->blocks.len;
+  const uint32_t n = (uint32_t)f->blocks.len;
   UwWalk w = {.entry = MS_ARENA_NEW_ARRAY(a, OwnerSet, n), .has = MS_ARENA_NEW_ARRAY(a, bool, n),
         .plans = MS_ARENA_NEW_ARRAY(a, UwWindow *, n), .nplans = MS_ARENA_NEW_ARRAY(a, uint32_t, n),
         .cplans = MS_ARENA_NEW_ARRAY(a, uint32_t, n), .at_fault = MS_ARENA_NEW_ARRAY(a, MirValue *, n),

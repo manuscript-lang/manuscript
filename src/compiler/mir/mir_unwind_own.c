@@ -180,7 +180,7 @@ static UwHash uw_param_cells(UwDefs *d) {
  * nothing can be live across a call. */
 bool uw_owned_values(UwCx *cx, MirFunc *f, uint32_t fi, bool **def, uint32_t *n) {
   UwOwn own = {.def = NULL, .n = 0};
-  uw_own_resize(cx, &own.def, &own.n, f->values.len);
+  uw_own_resize(cx, &own.def, &own.n, (uint32_t)f->values.len);
   UwDefs d = {.cx = cx, .f = f, .own = &own};
   uw_slot_params(&d, fi);
   const UwHash covered_takes = uw_covered_slot_takes(&cx->fn, cx->m, f, true);
