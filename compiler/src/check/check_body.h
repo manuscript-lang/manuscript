@@ -75,6 +75,7 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
 /* A call `receiver.name(args)' (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
+void ms_body_report(MsBody *b, MsPos pos, MsStr message); /* a type diagnostic, held until the function is claimed */
 MsTy ms_body_unsupported(MsBody *b);
 /* Records the type of expression node `node` and returns it. */
 MsTy ms_body_record(MsBody *b, uint32_t node, MsTy ty);
