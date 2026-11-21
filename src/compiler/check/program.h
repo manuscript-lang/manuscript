@@ -40,6 +40,8 @@ typedef struct MsSymbol {
   bool exported;
   MsTy ty;       /* MS_TY_NONE until its signature resolves */
   uint32_t def;  /* MsDefs index of a nominal type, else 0 */
+  uint32_t var_at;    /* the declared type variables: a range of the program's symbol_vars */
+  uint32_t var_count;
   const MsDecl *decl;
 } MsSymbol;
 
@@ -78,6 +80,7 @@ typedef struct MsCheckProgram {
   MsTyTable types;
   MsDefs defs;
   MsSymbolList symbols; /* index 0 is unused */
+  MsTyList symbol_vars; /* the type variables of every symbol, by range */
   MsModuleList modules;
   MsCheckDiagList diagnostics;
   uint32_t serial; /* counter behind unique symbol ids */
@@ -101,14 +104,26 @@ void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString
  * resolution diagnostic). Impl and test declarations declare nothing. */
 void ms_check_declare(MsCheckProgram *program, uint32_t module);
 
+/* The type parameters a declaration writes (none for a constant, an impl or a test). */
+MsTypeParams ms_check_decl_type_params(const MsDecl *decl);
+
+/* A fresh name for a symbol or variable, unique across the program (`<prefix><serial>`). */
+MsName ms_check_unique_id(MsCheckProgram *program, const char *prefix);
+
+/* Gives each type-like and generic declaration of `module` its type variables, and a nominal type that
+ * carries them as arguments. */
+void ms_check_type_variables(MsCheckProgram *program, uint32_t module);
+
+/* Resolves the bounds and defaults of the module's type variables, then the signatures of its types and
+ * functions into checked types. Unknown type names are reported for the program's own modules. */
+void ms_check_signatures(MsCheckProgram *program, uint32_t module);
+
 /* Loads every bundled standard module the program's modules import, transitively, as further modules. */
 void ms_check_load_std(MsCheckProgram *program);
 
 /* Binds each import of `module` to the exported symbol it names (declare must have run on every module). */
 void ms_check_bind_imports(MsCheckProgram *program, uint32_t module);
 
-/* Reports each written type name in a module's declaration signatures that no scope gives a meaning. */
-void ms_check_resolve_types(MsCheckProgram *program, uint32_t module);
 
 
 /* The entry point of the checker: checks every module of `graph` in order and leaves the diagnostics in
