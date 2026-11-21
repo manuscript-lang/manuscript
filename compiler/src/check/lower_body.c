@@ -1277,7 +1277,9 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
     // An owned result is joined as a moved value: each arm hands over a value it owns. A match whose arms
     // are all references (the ownership pass's `borrowed_match`) joins them without copying.
     const bool owned_result = lb->ok && lb_owns(lb, result_ty) && !lb->facts->borrowed_match[e->id];
-    const bool void_result = lb->ok && lb_ty(lb, lb->facts->expr_ty[e->id]) == lb->void_ty;
+    // A match used as a statement joins no value: its type is Void, or Never when every arm leaves the function.
+    const MsTy match_ty = lb_ty(lb, lb->facts->expr_ty[e->id]);
+    const bool void_result = lb->ok && (match_ty == lb->void_ty || match_ty == lb->never_ty);
     if (!lb->ok || (result_ty == MIR_NONE && !void_result) || (owned_result && lb->b.f.ret_borrowed) ||
         aggregate || lb_is_fn(lb, result_ty)) {
         return LB_UNSUPPORTED(lb);
