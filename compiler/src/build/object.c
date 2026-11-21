@@ -159,12 +159,31 @@ static bool bo_optimize(const BoFiles *f, const MsObjectOptions *o, const char *
     return bo_run("opt (LLVM optimizer)", argv, f->log.data, why);
 }
 
-/* `llc` to assembly text, as the Rust build does. */
-static bool bo_to_assembly(const BoFiles *f, const MsObjectOptions *o, const char *input, MsBackendText *why) {
-    const char *argv[14];
+/* Whether the IR holds a function the emitter marked `optnone`, which is how a size tier shows. */
+static bool bo_has_optnone(const MsBackendText *ir) {
+    static const char needle[] = " optnone";
+    const size_t width = sizeof needle - 1;
+    for (size_t i = 0; ir->ptr != NULL && i + width <= ir->len; i++) {
+        if (memcmp(ir->ptr + i, needle, width) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* `llc` to assembly text. */
+static bool bo_to_assembly(const BoFiles *f, const MsObjectOptions *o, const char *input, bool size_tiered,
+                           MsBackendText *why) {
+    const char *argv[15];
     size_t n = 0;
     argv[n++] = f->llc.data;
-    argv[n++] = (o->backend.speed ? "-O3" : "-O0");
+    /* A module with an `optnone` function (a size tier, #3928) goes through the fast code generator: llc's -O3
+     * two-address and register-allocation passes are superlinear in one function's size even when it is optnone.
+     * AArch64's -O0 GlobalISel Localizer pass is too (#5540), so the selection-DAG path is used. */
+    argv[n++] = (o->backend.speed && !size_tiered ? "-O3" : "-O0");
+    if (size_tiered) {
+        argv[n++] = "-global-isel=0";
+    }
     argv[n++] = "-filetype=asm";
     argv[n++] = "-relocation-model=pic";
     argv[n++] = f->triple.data;
@@ -241,7 +260,7 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
     }
     const char *input = f.ll.data;
     ok = ok && (!o->backend.speed || bo_optimize(&f, o, &input, why));
-    ok = ok && bo_to_assembly(&f, o, input, why) && bo_add_tables(&f, meta, why) && bo_assemble(&f, object, why);
+    ok = ok && bo_to_assembly(&f, o, input, bo_has_optnone(ir), why) && bo_add_tables(&f, meta, why) && bo_assemble(&f, object, why);
     bo_files_free(&f);
     return ok;
 }

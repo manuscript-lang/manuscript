@@ -121,6 +121,7 @@ pub fn compile(
     let tools: PathBuf = llvm_tools(build).map_err(|e| e.to_string())?.ok_or(
         "no LLVM tools are available for this platform; set MS_LLVM_TOOLS to a directory with opt and llc",
     )?;
+<<<<<<< HEAD
     let tools = CString::new(tools.to_string_lossy().as_bytes())
         .map_err(|_| "the LLVM tools path holds a NUL".to_string())?;
     let keep_ll = c"ms-keep.ll";
@@ -162,5 +163,106 @@ pub fn compile(
         Ok(object.take())
     } else {
         Err(reason(why))
+=======
+    let tool =
+        |name: &str| Command::new(tools.join(format!("{name}{}", std::env::consts::EXE_SUFFIX)));
+    let triple = format!("-mtriple={}", host_triple()?);
+    let ir = dir.join("program.ll");
+    write(&ir, &ir_text)?;
+    if build.keep_ll {
+        let _ = std::fs::copy(&ir, "ms-keep.ll");
+    }
+    // What `clang -O3` does for IR input: the default pipeline, then code generation.
+    let mut input = ir;
+    if speed {
+        let optimized = dir.join("program.bc");
+        let mut opt = tool("opt");
+        if !build.vectorize {
+            opt.args(["-vectorize-loops=false", "-vectorize-slp=false"]);
+        }
+        if build.llvm_verify {
+            opt.arg("-verify-each");
+        }
+        opt.args([&triple, "-passes=default<O3>"])
+            .arg(&input)
+            .arg("-o")
+            .arg(&optimized);
+        run(&mut opt, "opt (LLVM optimizer)")?;
+        input = optimized;
+    }
+    let plain = dir.join("program.plain.s");
+    let mut llc = tool("llc");
+    // A module with a function the emitter marked `optnone` (a size tier, #3928) goes through the
+    // fast code generator: llc's -O3 two-address and register-allocation passes are superlinear in
+    // one function's size even when the function is optnone, and `opt` already ran the IR passes.
+    let size_tiered = ir_text.windows(8).any(|w| w == b" optnone");
+    llc.args([
+        if speed && !size_tiered { "-O3" } else { "-O0" },
+        "-filetype=asm",
+        "-relocation-model=pic",
+        &triple,
+    ]);
+    if size_tiered {
+        // AArch64 selects instructions with GlobalISel at -O0, whose Localizer pass took 56 of 61 s
+        // on a 6400-statement function (#5540); the selection-DAG path is linear in it.
+        llc.arg("-global-isel=0");
+    }
+    if cfg!(target_arch = "x86_64") {
+        // Loops start on a 32-byte boundary and the CPU is the portable baseline, as the Rust LLVM
+        // path set them (#1871): a small loop must not straddle a cache line by link order, and the
+        // unnamed "generic" CPU lacks the cheap 32-bit divide guard.
+        llc.args(["-align-loops=32", "-mcpu=x86-64"]);
+    }
+    let timings = std::env::var_os("MS_TIMINGS").is_some();
+    if timings {
+        llc.arg("-time-passes");
+    }
+    llc.arg(&input).arg("-o").arg(&plain);
+    let report = run_stderr(&mut llc, "llc (LLVM code generator)")?;
+    if timings {
+        print_llc_passes(&report);
+    }
+    // The fault tables: libms labels the assembly and appends them (no debug info is read). The
+    // `.loc` lines are dropped, so the object carries no line tables.
+    let asm = std::fs::read(&plain).map_err(|e| format!("cannot read {}: {e}", plain.display()))?;
+    let wrapped = dir.join("program.asm.ll");
+    write(
+        &wrapped,
+        &asm_module(&timed("fault tables", || with_tables(&meta, &asm))?),
+    )?;
+    let object = dir.join("program.o");
+    run(
+        tool("llc")
+            .args(["-filetype=obj", "-relocation-model=pic", &triple])
+            .arg(&wrapped)
+            .arg("-o")
+            .arg(&object),
+        "llc (assembler)",
+    )?;
+    std::fs::read(&object).map_err(|e| format!("cannot read {}: {e}", object.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::asm_module;
+
+    #[test]
+    fn the_coff_feature_symbol_is_left_to_the_wrapping_module() {
+        let asm =
+            b"\t.def\t@feat.00;\n\t.scl\t3;\n\t.endef\n\t.globl\t@feat.00\n@feat.00 = 0\nmain:";
+        assert_eq!(
+            String::from_utf8(asm_module(asm)).unwrap(),
+            "module asm \"main:\"\n"
+        );
+    }
+
+    #[test]
+    fn assembly_is_quoted_line_by_line() {
+        let module = asm_module(b"\t.ascii \"a\\n\"\nmain:");
+        assert_eq!(
+            String::from_utf8(module).unwrap(),
+            "module asm \"\\09.ascii \\22a\\5Cn\\22\"\nmodule asm \"main:\"\n"
+        );
+>>>>>>> origin/main
     }
 }
