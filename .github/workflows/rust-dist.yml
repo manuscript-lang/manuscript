@@ -104,6 +104,13 @@ jobs:
           # The Rust CLI's own test run tells a hang in the front's supervisor from one in the program.
           rust="../../ms-rust"; if [ '${{ matrix.os }}' = windows ]; then rust="$rust.exe"; fi
           limit "$rust" test test.ms
+          # Temporary: which supervisor primitive hangs in the front on Windows (piped stdout, signals, watch, wait_any).
+          if [ '${{ matrix.os }}' = windows ]; then
+            for n in 1 2 4; do
+              sed "s#EXE#$(cygpath -m "$exe")#" "$GITHUB_WORKSPACE/.github/probes/p$n.ms" > "p$n.ms"
+              timeout 60 "$bin" run "p$n.ms" || echo "probe $n failed or hung: $?"
+            done
+          fi
           limit "$bin" test test.ms
       - uses: actions/upload-artifact@v7
         with:
