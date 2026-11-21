@@ -282,6 +282,7 @@ fn param_kind(at: Int, p: String) String:
 	if ty == "*const MapVal": return "MS_RT_MAP"
 	if ty == "KeyDesc": return "MS_RT_KEY_DESC"
 	if ty == "ValDesc": return "MS_RT_VAL_DESC"
+	if ty == "HasRaw": return "MS_RT_HAS"
 	if ty == "*const u8" and pname == "key": return "MS_RT_KEY_REF"
 	if ty == "*const u8": return "MS_RT_ELEMENT"
 	if ty == "i64": return "MS_RT_INT"

@@ -49,6 +49,26 @@ static uint32_t ln_described(MsRtParam kind) {
     return kind == MS_RT_VAL_DESC ? 2 : 0;
 }
 
+/* An optional scalar argument as the runtime takes it, `has, value` (`HasRaw` and the parameter after it): an optional
+ * yields its presence and payload, a plain value is present. False when `value` is not a `want`. */
+static bool ln_flatten_optional(Lb *lb, MirValue value, MirTy want, MirValue *has, MirValue *payload) {
+    const MirTy given = mir_b_ty(&lb->b, value);
+    if (given != MIR_NONE && mir_ty_data(lb->m, given)->kind == MK_OPT) {
+        if (mir_ty_data(lb->m, given)->elem != want) {
+            return false;
+        }
+        *has = mir_b_emit(&lb->b, MOP_OptIsSome, &value, 1, (MirImm){0}, MIR_BOOL);
+        *payload = mir_b_emit(&lb->b, MOP_OptGet, &value, 1, (MirImm){0}, want);
+        return true;
+    }
+    if (given != want) {
+        return false;
+    }
+    *payload = value;
+    *has = mir_b_bconst(&lb->b, true);
+    return true;
+}
+
 /* Descriptors and key slots, made once the arguments are evaluated, in parameter order. `of` is the type a
  * descriptor describes by role (element, key, value). */
 static bool ln_make_addresses(Lb *lb, const MsRtFn *fn, MirValue *operands, uint32_t count, const bool *is_desc,
@@ -186,6 +206,17 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
             types[count] = MIR_PTR;
             is_desc[count] = true;
             operands[count++] = MIR_NONE; // the descriptor is made once the arguments are evaluated
+        } else if (kind == MS_RT_HAS) {
+            const MsRtParam payload = i + 1 < fn->nparams ? fn->params[i + 1] : MS_RT_OTHER;
+            if (next == nargs || (payload != MS_RT_INT && payload != MS_RT_FLOAT && payload != MS_RT_BOOL) ||
+                !ln_flatten_optional(lb, args[next++], ln_param_ty(payload, MIR_NONE), &operands[count],
+                                     &operands[count + 1])) {
+                return false;
+            }
+            types[count] = MIR_BOOL;
+            types[count + 1] = ln_param_ty(payload, MIR_NONE);
+            count += 2;
+            i++; // the payload parameter belongs to this argument
         } else {
             if (next == nargs) {
                 return false;
@@ -307,7 +338,10 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     uint32_t value_params = 0;
     for (uint32_t i = 1; i < fn->nparams; i++) {
         const MsRtParam kind = fn->params[i];
-        if (kind != MS_RT_DESC && kind != MS_RT_KEY_DESC && kind != MS_RT_VAL_DESC && kind != MS_RT_OUT_STR &&
+        if (kind == MS_RT_HAS) {
+            kinds[value_params++] = kind;
+            i++; // its payload parameter takes no argument of its own
+        } else if (kind != MS_RT_DESC && kind != MS_RT_KEY_DESC && kind != MS_RT_VAL_DESC && kind != MS_RT_OUT_STR &&
             kind != MS_RT_OUT_LIST) {
             kinds[value_params++] = fn->params[i];
         }

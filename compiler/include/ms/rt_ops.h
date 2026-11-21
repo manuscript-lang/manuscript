@@ -27,6 +27,7 @@ typedef enum MsRtParam {
     MS_RT_KEY_DESC, /* the descriptor of a map's key type */
     MS_RT_VAL_DESC, /* the descriptor of a map's value type */
     MS_RT_KEY_REF,  /* a key passed by address: stored in a slot the call borrows */
+    MS_RT_HAS,      /* `HasRaw`: an optional scalar crosses as `has, value`; the next parameter is the value and takes no argument */
     MS_RT_OTHER     /* anything the lowering does not marshal: a handle, a slot, an error slot */
 } MsRtParam;
 
