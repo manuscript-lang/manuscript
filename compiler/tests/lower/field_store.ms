@@ -31,3 +31,17 @@ fn var W.retag(by: Int) Int:
 fn retag_local(n: Int) Int:
 	var w = W(P("a", n), 1)
 	return w.retag(2) + w.tag
+
+type D:
+	id: Int
+	closed: Bool
+	name: String
+
+fn move D.close() Int:
+	self.closed = true
+	self.name = "x"
+	return self.id
+
+fn use_close(n: Int) Int:
+	d := D(n, false, "a")
+	return d.close()
