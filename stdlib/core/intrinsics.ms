@@ -58,6 +58,7 @@ interface StringOperations:
 	fn is_empty() Bool
 	// Returns a list with one String for each Unicode scalar, in order. The result
 	// borrows the receiver: use it in place, or `.clone()` it to keep it.
+	// ms: borrows
 	fn chars() List[String]
 	// Reverses the order of Unicode scalars, so a combining sequence or grapheme
 	// cluster can come out reordered.
@@ -68,6 +69,7 @@ interface StringOperations:
 	// Text that ends in a newline yields no extra empty item, and empty text returns
 	// an empty list. The result borrows the receiver: use it in place, or `.clone()`
 	// it to keep it.
+	// ms: borrows
 	fn lines() List[String]
 	// Normalizes to the form named by `form`, which must be exactly `"NFC"`, `"NFD"`,
 	// `"NFKC"` or `"NFKD"`. `max_bytes` optionally bounds the UTF-8 output. An invalid
@@ -101,6 +103,7 @@ interface StringOperations:
 	// Splits at every exact separator, keeping empty pieces. Empty text with a nonempty
 	// separator yields `[""]`; an empty separator splits into scalars. The pieces
 	// borrow the receiver: use them in place, or `.clone()` the result to keep it.
+	// ms: borrows
 	fn split(separator: String) List[String]
 	// Tests whether the receiver begins with this exact prefix.
 	fn starts_with(prefix: String) Bool
@@ -142,10 +145,12 @@ interface StringOperations:
 	// a scalar, raise a fault. Like `Bytes.view`, the result borrows the receiver,
 	// which cannot change while the view is used; `.clone()` keeps the text. Use
 	// `slice` for a copy.
+	// ms: borrows
 	fn view(start: Int, end: Int) String
 	// Borrows the UTF-8 bytes of the text without copying. Like `view`, the result
 	// borrows the receiver, which cannot change while the bytes are used; `.clone()`
 	// keeps them. Use `to_bytes` for a copy.
+	// ms: borrows
 	fn view_bytes() Bytes
 	// Encodes the string as UTF-8 bytes.
 	fn to_bytes() Bytes
