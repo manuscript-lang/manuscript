@@ -1,5 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
-/* ms_lower_dump STDLIB_DIR [--run] FILE...: checks each single-file program with the C checker, lowers
+/* ms_lower_dump STDLIB_DIR --program [--run] FILE...: the same for a whole project, the entry file plus every
+ * project module it imports, lowered into one module (compiler/tests/lower-program-diff.sh).
+ * ms_lower_dump STDLIB_DIR [--run] FILE...: checks each single-file program with the C checker, lowers
  * the functions the C lowering handles, and prints each as the Rust lowering's text, so the two
  * can be compared function by function (compiler/tests/lower-diff.sh). Files that fail to parse
  * or import project modules print nothing. Output: `=== path`, then one `fn` block per function.
@@ -19,6 +21,7 @@
 #include "ms/mir_pass.h"
 #include "ms/mir_verify.h"
 #include "ms/parse.h"
+#include "ms/project.h"
 #include "ms/walk.h"
 #include "ms/stdlib.h"
 #include "mir_run.h"
@@ -49,6 +52,16 @@ static bool function_diverges(const MsNames *names, const MsModule *module, MsSt
             const MsVisitor visitor = {.ctx = &flag, .stmt = note_divergent_stmt, .expr = note_divergent_expr};
             ms_walk_decl(&visitor, d);
             return flag;
+        }
+    }
+    return false;
+}
+
+/* Whether any module of `modules` holds a loop or a `match` in the function called `name`. */
+static bool program_function_diverges(const MsNames *names, const MsModule *const *modules, uint32_t count, MsStr name) {
+    for (uint32_t i = 0; i < count; i++) {
+        if (function_diverges(names, modules[i], name)) {
+            return true;
         }
     }
     return false;
@@ -120,6 +133,78 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
     return verified;
 }
 
+/* The whole-program lowering: every module of the checked program into one MirModule (declared in ms/lower.h).
+ * Until the driver lands, the entry module alone, so callees in other modules are missing and the comparison
+ * (compiler/tests/lower-program-diff.sh) counts them as skipped. */
+#ifndef MS_HAVE_LOWER_PROGRAM
+static uint32_t lower_program(MsCheck *c, const MsModId *ids, uint32_t count, MirModule *out) {
+    return ms_lower_module(c, ids[count - 1], out);
+}
+#else
+static uint32_t lower_program(MsCheck *c, const MsModId *ids, uint32_t count, MirModule *out) {
+    (void)ids;
+    (void)count;
+    return ms_lower_program(c, out);
+}
+#endif
+
+/* Loads the project `path` (entry file plus the modules it imports), checks every module, lowers the program and
+ * prints each function. A program with diagnostics prints nothing. */
+static bool lower_program_file(const StdFiles *files, MsNames *names, const char *path, bool run) {
+    MsArena arena = {0};
+    MsGraph graph;
+    MsProjectError error = {0};
+    bool verified = true;
+    if (ms_project_load(&arena, names, path, &graph, &error) && graph.ndiagnostics == 0 && graph.count != 0) {
+        MsCheck check;
+        ms_check_init(&check, names);
+        MsArena std_syntax = {0};
+        MsStr err = {0};
+        if (!ms_std_load(&check, &std_syntax, files->items, files->count, &err)) {
+            fprintf(stderr, "standard declarations: %.*s\n", (int)err.len, err.ptr);
+            return false;
+        }
+        MsModId *ids = MS_NEW_N(&arena, MsModId, graph.count);
+        ms_graph_add_modules(&check, names, &arena, &graph, ids);
+        if (ms_graph_check(&check, &graph, ids, NULL) == 0) {
+            const MsModule **modules = MS_NEW_N(&arena, const MsModule *, graph.count);
+            for (uint32_t i = 0; i < graph.count; i++) {
+                ms_module_check_ownership(&check, ids[i]);
+                modules[i] = &graph.modules[i].syntax;
+            }
+            MirModule mir;
+            mir_module_init(&mir);
+            (void)lower_program(&check, ids, graph.count, &mir);
+            verified = verify_module(&mir, path);
+            MsBuf elaborate_error = {0};
+            if (!mir_elaborate(&mir, &elaborate_error)) {
+                fprintf(stderr, "%s: elaborate: %.*s\n", path, (int)elaborate_error.len, (const char *)elaborate_error.data);
+                verified = false;
+            }
+            ms_buf_free(&elaborate_error);
+            if (run) {
+                run_module(&mir, path);
+            } else {
+                printf("=== %s\n", path);
+            }
+            for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
+                MsBuf out = {0};
+                mir_print_func(&mir, &mir.funcs[i], &out);
+                if (program_function_diverges(names, modules, graph.count, ms_name(&mir.names, mir.funcs[i].name))) {
+                    printf("; divergent\n");
+                }
+                printf("%.*s\n", (int)out.len, (const char *)out.data);
+                ms_buf_free(&out);
+            }
+            mir_module_free(&mir);
+        }
+        ms_check_free(&check);
+        ms_arena_free(&std_syntax);
+    }
+    ms_arena_free(&arena);
+    return verified;
+}
+
 /* Runs the module in each `=== path` section of an oracle dump; sections that are not a module
  * (`error ...`) are skipped. */
 static int run_oracle_dump(const char *path) {
@@ -165,13 +250,23 @@ int main(int argc, char **argv) {
         fputs("usage: ms_lower_dump STDLIB_DIR [--run] FILE...\n", stderr);
         return 2;
     }
-    const bool run = argc > 2 && strcmp(argv[2], "--run") == 0;
+    const bool program = argc > 2 && strcmp(argv[2], "--program") == 0;
+    const bool run = argc > 2 && (strcmp(argv[2], "--run") == 0 || (program && argc > 3 && strcmp(argv[3], "--run") == 0));
     StdFiles files = {0};
     if (!read_std_files(&files, argv[1])) {
         return 1;
     }
     MsNames names;
     ms_names_init(&names);
+    if (program) {
+        bool all_verified = true;
+        for (int i = run ? 4 : 3; i < argc; i++) {
+            all_verified = lower_program_file(&files, &names, argv[i], run) && all_verified;
+        }
+        ms_names_free(&names);
+        free_std_files(&files);
+        return all_verified ? 0 : 1;
+    }
     MsArena syntax = {0};
     MsCheck check;
     ms_check_init(&check, &names);
