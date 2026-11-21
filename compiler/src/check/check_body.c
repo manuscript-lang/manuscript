@@ -1612,7 +1612,7 @@ static void body_check_methods(MsBody *b) {
         return;
     }
     const MsMethods *m = &b->methods->methods;
-    const MsMethod **rows = ms_method_rows(b->c, b->module, m);
+    const MsMethod **rows = ms_method_rows(b->c, b->module, m, NULL);
     for (uint32_t i = 0; i < m->count; i++) {
         const MsMethod *method = rows[i];
         if (method == NULL || m->nvars[i] != 0 || (m->access[i] & MS_METHOD_CONSUMING) != 0 ||
