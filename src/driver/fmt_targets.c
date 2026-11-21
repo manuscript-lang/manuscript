@@ -126,17 +126,33 @@ static void add_files(MsArena *arena, const MsSpanList *paths, FmtFileList *file
   }
 }
 
+static void add_target(MsArena *arena, MsSpan target, FmtFileList *files, FmtProblemList *problems) {
+  MsSpanList paths = {0};
+  MsProjectError error = {0};
+  if (ms_project_format_files(arena, target, &paths, &error)) {
+    add_files(arena, &paths, files, problems);
+  } else {
+    add_problem(arena, problems, target, &error);
+  }
+  ms_span_list_free(&paths);
+}
+
 void fmt_resolve_targets(MsArena *arena, const MsSpan *targets, size_t count, FmtFileList *files,
                          FmtProblemList *problems) {
   for (size_t i = 0; i < count; i++) {
-    MsSpanList paths = {0};
+    /* A workspace root without [project] stands for its members, as in the other commands. */
+    MsSpanList members = {0};
     MsProjectError error = {0};
-    if (ms_project_format_files(arena, targets[i], &paths, &error)) {
-      add_files(arena, &paths, files, problems);
-    } else {
+    bool root = false;
+    if (!ms_project_workspace_members(arena, targets[i], &members, &root, &error)) {
       add_problem(arena, problems, targets[i], &error);
+    } else if (!root) {
+      add_target(arena, targets[i], files, problems);
     }
-    ms_span_list_free(&paths);
+    for (size_t m = 0; root && m < members.len; m++) {
+      add_target(arena, members.ptr[m], files, problems);
+    }
+    ms_span_list_free(&members);
   }
   ms_sort((uint8_t *)files->ptr, files->len, sizeof(FmtFile), file_order, NULL);
 }

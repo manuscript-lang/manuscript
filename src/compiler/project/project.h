@@ -137,4 +137,9 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
 MS_NODISCARD bool ms_project_format_files(MsArena *arena, MsSpan target, MsSpanList *paths,
                                           MsProjectError *error);
 
+/* The manifests of the members of `target` when it is a workspace root without a [project] of its own, so a command
+ * aimed at it means "every member"; `*found` is false for any other target. */
+MS_NODISCARD bool ms_project_workspace_members(MsArena *arena, MsSpan target, MsSpanList *manifests, bool *found,
+                                               MsProjectError *error);
+
 #endif

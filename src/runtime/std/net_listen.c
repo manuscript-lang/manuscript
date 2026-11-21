@@ -8,6 +8,7 @@
 #include "runtime/std/net_conn.h"
 #include "runtime/std/net_core.h"
 #include "runtime/std/net_ip.h"
+#include "runtime/std/net_tls_conn.h"
 
 enum { BACKLOG = 511 };
 
@@ -254,6 +255,7 @@ void ms_net_listen_close_ops(MsNetCore *core) {
 static uint8_t accept_run(const MsObj *handle, int64_t timeout_ns, bool raw, MsObj **handle_out, int64_t *raw_out,
                           MsString *err) {
   MsNetCore *listener = ms_net_handle_core(handle);
+  const uint64_t started = uv_hrtime();
   AcceptOp *accept = ms_net_op_new(sizeof *accept, accept_start, accept_abandon, accept_release);
   atomic_fetch_add(&listener->references, 1);
   accept->listener = listener;
@@ -263,12 +265,26 @@ static uint8_t accept_run(const MsObj *handle, int64_t timeout_ns, bool raw, MsO
     return status;
   }
   if (status == MS_STATUS_OK) {
-    if (raw) {
-      *raw_out = (int64_t)(uintptr_t)accept->result; /* the pending id keeps the creation reference */
-    } else {
-      *handle_out = ms_net_handle_new(accept->result);
-    }
+    MsNetCore *accepted = accept->result;
     accept->result = NULL;
+    ms_net_op_free(&accept->op);
+    if (raw) {
+      *raw_out = (int64_t)(uintptr_t)accepted; /* the pending id keeps the creation reference */
+      return status;
+    }
+    *handle_out = ms_net_handle_new(accepted);
+    if (listener->tls_ctx == NULL) {
+      return status;
+    }
+    /* A TLS listener hands out connections whose handshake is done. */
+    accepted->tls_ctx = ms_net_tls_ctx_retain(listener->tls_ctx);
+    const int64_t left = timeout_ns < 0 ? -1 : timeout_ns - (int64_t)(uv_hrtime() - started);
+    const uint8_t served = ms_net_tls_serve(accepted, timeout_ns < 0 ? -1 : (left > 0 ? left : 0), err);
+    if (served != MS_STATUS_OK) {
+      (*handle_out)->drop(*handle_out);
+      *handle_out = NULL;
+    }
+    return served;
   }
   ms_net_op_free(&accept->op);
   return status;
