@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/api_model.h"
 #include "ms/check.h"
 #include "ms/diag.h"
 #include "ms/facts.h"
@@ -920,15 +921,6 @@ static bool analyzed(const MsFacts *facts, uint32_t n) {
     return facts->res_kind[n] != MS_RES_NONE || facts->call_callee[n] != MS_NONE || facts->expr_ty[n] != MS_TY_NONE || facts->type_ref_ty[n] != MS_TY_NONE;
 }
 
-static bool imports_only_std(const MsModule *module) {
-    for (uint32_t i = 0; i < module->nimports; i++) {
-        if (module->imports[i].path.len < 5 || memcmp(module->imports[i].path.ptr, "@std/", 5) != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static void fail(Analysis *a, uint8_t status, const char *text, size_t len) {
     a->status = status;
     a->message = malloc(len + 1);
@@ -1008,6 +1000,26 @@ static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id) {
     free(seen);
 }
 
+void ms_tool_api_model(ms_str *out) {
+    MsNames names;
+    ms_names_init(&names);
+    MsArena syntax = {0};
+    MsCheck check;
+    ms_check_init(&check, &names);
+    uint32_t nfiles = 0;
+    const MsStdFile *files = ms_std_embedded(&nfiles);
+    MsStr err = {0};
+    if (ms_std_load(&check, &syntax, files, nfiles, &err)) {
+        MsBuf json = {0};
+        ms_api_model_json(&json, &check, files, nfiles);
+        ms_string_new((const uint8_t *)json.data, json.len, out);
+        ms_buf_free(&json);
+    }
+    ms_check_free(&check);
+    ms_arena_free(&syntax);
+    ms_names_free(&names);
+}
+
 ms_object *ms_tool_analyze(const ms_str *text) {
     ms_object *obj = ms_object_new(sizeof(Analysis), analysis_drop);
     Analysis *a = ms_payload(obj);
@@ -1024,7 +1036,7 @@ ms_object *ms_tool_analyze(const ms_str *text) {
     MsDiag diag;
     if (!ms_parse(&syntax, &table, src, len, &module, &diag)) {
         fail(a, 1, diag.message.ptr, diag.message.len);
-    } else if (!imports_only_std(&module)) {
+    } else if (!ms_module_only_std_imports(&module)) {
         fail(a, 2, "imports a project module", 24);
     } else {
         MsCheck check;

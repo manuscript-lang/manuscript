@@ -276,10 +276,11 @@ FORCE:
 C_TOOL = target/cmake/tools/compiler
 target/c-tool/libmstool.a: FORCE
 	cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
-	cmake --build target/cmake/tools --target ms_tool ms_syntax_dump ms_check_dump
+	cmake --build target/cmake/tools --target ms_tool ms_syntax_dump ms_check_dump ms_api_model
 	mkdir -p target/c-tool
 	cp $(C_TOOL)/libmstool.a $@
 	cp $(C_TOOL)/ms_syntax_dump target/c-tool/ms_syntax_dump
+	cp $(C_TOOL)/ms_api_model target/c-tool/ms_api_model
 
 # The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; `search_symbol` against the Rust one; the `ms diagram` views and call graph against the Rust ones; and the C checker's fact dump against the Rust facts.
 c-tools-test: build target/c-tool/libmstool.a
@@ -308,6 +309,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" run tools/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt
 	cmp target/c-tool/ast.c.txt target/c-tool/ast.ms.txt
 	cargo run -q --release --locked -p ms-tooling --example api_model > target/c-tool/model.json
+	target/c-tool/ms_api_model stdlib > target/c-tool/model.c.json && cmp target/c-tool/model.json target/c-tool/model.c.json
 	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -coverage target/c-tool/coverage.rust.json -artifacts target/c-tool/docs.rust -static target/c-tool/static.rust
 	rm -rf target/c-tool/docs.ms
 	"$(RELEASE_MS)" run tools/ms/docgen.ms -- target/c-tool/model.json target/c-tool/docs.ms
@@ -317,8 +319,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" run tools/ms/doc_inventory.ms -- target/c-tool/model.json tools/ms/data/description_backlog.json target/c-tool/coverage.ms.json
 	cmp target/c-tool/coverage.rust.json target/c-tool/coverage.ms.json
 	"$(RELEASE_MS)" test tools/ms/doc_inventory.ms
-	"$(RELEASE_MS)" build tools/ms/search.ms -o target/c-tool/search
-	sh tools/ms/search-diff.sh "$(RELEASE_MS)" target/c-tool/model.json target/c-tool/search
+	"$(RELEASE_MS)" build tools/ms/search.ms --link target/c-tool/libmstool.a -o target/c-tool/search
+	sh tools/ms/search-diff.sh "$(RELEASE_MS)" target/c-tool/search
 	cargo build -q --release --locked -p ms-tooling --bin ms-tooling-dev
 	"$(RELEASE_MS)" build tools/ms/views.ms -o target/c-tool/views
 	sh tools/ms/views-diff.sh target/release/ms-tooling-dev target/c-tool/views target/c-tool/views-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms

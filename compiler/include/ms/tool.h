@@ -63,6 +63,11 @@ uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out
  * reader does not cover the project (a workspace, a manifest form it lacks). */
 uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out);
 
+/* The standard library's API model as one JSON document: every public module's declarations with their types, fields,
+ * cases, operations, members and comments, in the form the Rust `ms-tooling` `api_model` example prints (see
+ * ms/api_model.h). `ms search_symbol` and the generated reference read it; it checks the embedded library on each call. */
+void ms_tool_api_model(ms_str *out);
+
 /* ---- syntax trees ---- */
 
 /* A parsed module, kept in C. `extern type Tree` on the Manuscript side. A parse that fails still

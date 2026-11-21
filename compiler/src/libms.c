@@ -4,6 +4,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "syntax/base.c"
 #include "syntax/token.c"
+#include "syntax/doc.c"
 #include "syntax/lex.c"
 #include "syntax/dump_base.c"
 #include "syntax/diag.c"
@@ -128,6 +129,7 @@
 #include "check/implements.c"
 #include "check/program.c"
 #include "check/dump_methods.c"
+#include "check/api_model.c"
 #include "check/dump_facts.c"
 #include "own/ownership_places.c"
 #include "own/ownership_bits.c"
