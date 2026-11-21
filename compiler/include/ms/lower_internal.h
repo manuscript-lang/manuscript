@@ -359,6 +359,7 @@ uint32_t lb_string_concat(Lb *lb);
 
 MirTy lm_type(Lb *lb, MsTy ty);
 bool lb_is_map(const Lb *lb, MirTy ty);
+bool lb_is_set(const Lb *lb, MirTy ty);
 LbVal lm_literal(Lb *lb, const MsExpr *e);
 LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at);
 struct MsRtFn;

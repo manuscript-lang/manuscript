@@ -74,8 +74,8 @@ LbVal lr_construct(Lb *lb, const MsExpr *call) {
     }
     const MirTy ty = lb_mir_ty(lb, built); // through the class check: a resource is not lowered
     const MsSymId sym = lb->facts->call_callee[call->id];
-    if (lb_is_map(lb, ty) && call->u.call.args.len == 0) {
-        return lm_empty(lb, ty); // `Map[K, V]()`
+    if ((lb_is_map(lb, ty) || lb_is_set(lb, ty)) && call->u.call.args.len == 0) {
+        return lm_empty(lb, ty); // `Map[K, V]()`, `Set[T]()`
     }
     if (lb_is_list(lb, ty) && call->u.call.args.len == 0) {
         return lst_empty(lb, ty); // `List[T]()`
