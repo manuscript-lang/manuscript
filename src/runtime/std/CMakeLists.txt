@@ -59,3 +59,15 @@ target_link_libraries(ms_std_crypto PUBLIC ms_base ms_values openssl_crypto)
 add_library(ms_std_path STATIC path_brace.c path_glob.c path_syntax.c)
 ms_target_defaults(ms_std_path)
 target_link_libraries(ms_std_path PUBLIC ms_base)
+
+# @std/math BigInt and Decimal: arbitrary-precision integers on libcrypto's BIGNUM, with an NTT multiply for wide products.
+add_library(ms_std_bignum STATIC
+  bignum.c
+  bignum_ntt.c
+  bignum_text.c
+  bigint.c
+  decimal.c
+  decimal_text.c)
+ms_target_defaults(ms_std_bignum)
+add_dependencies(ms_std_bignum openssl_build)
+target_link_libraries(ms_std_bignum PUBLIC ms_base ms_values openssl_crypto m)
