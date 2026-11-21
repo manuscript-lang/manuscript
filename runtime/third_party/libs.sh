@@ -16,14 +16,14 @@ install)
     elif command -v brew >/dev/null 2>&1; then
         brew install cmake ninja ccache pkgconf libuv libnghttp2 openssl@3 pcre2 zlib curl
     elif command -v apk >/dev/null 2>&1; then
-        apk add cmake samurai ccache pkgconf libuv-dev libuv-static nghttp2-dev nghttp2-static openssl-dev openssl-libs-static pcre2-dev pcre2-static zlib-dev zlib-static curl-dev curl-static
+        apk add cmake samurai ccache pkgconf libuv-dev nghttp2-dev nghttp2-static openssl-dev openssl-libs-static pcre2-dev zlib-dev zlib-static curl-dev curl-static
     elif command -v dnf >/dev/null 2>&1; then
-        # The release container (manylinux_2_28, AlmaLinux 8): EPEL has ccache and ninja, PowerTools the
-        # static libraries.
+        # The release container (manylinux_2_28, AlmaLinux 8): EPEL has ccache and ninja, PowerTools
+        # the development files.
         sudo=; [ "$(id -u)" = 0 ] || sudo=sudo
         $sudo dnf install -y epel-release dnf-plugins-core
         $sudo dnf config-manager --set-enabled powertools
-        $sudo dnf install -y pkgconf-pkg-config cmake ninja-build ccache libuv-devel libuv-static libnghttp2-devel openssl-devel openssl-static pcre2-devel pcre2-static zlib-devel zlib-static libcurl-devel
+        $sudo dnf install -y pkgconf-pkg-config cmake ninja-build ccache libuv-devel libnghttp2-devel openssl-devel pcre2-devel zlib-devel libcurl-devel
     elif [ -x "${MS_MSYS2:-C:/msys64}/usr/bin/pacman.exe" ]; then
         case "${PROCESSOR_ARCHITECTURE:-}" in ARM64) env=clangarm64 ;; *) env=clang64 ;; esac
         pre=mingw-w64-clang-$(if [ "$env" = clangarm64 ]; then echo aarch64; else echo x86_64; fi)
