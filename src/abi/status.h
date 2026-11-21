@@ -10,9 +10,18 @@ typedef enum MsStatus {
   MS_STATUS_LIMIT_EXCEEDED = 3,
   MS_STATUS_INVALID_DATA = 4,
   MS_STATUS_NOT_FOUND = 5,              /* a name, path or process that does not exist */
+  MS_STATUS_ALREADY_EXISTS = 6,         /* a path or name that is already taken */
+  MS_STATUS_NOT_EMPTY = 7,              /* a directory that still has entries */
   MS_STATUS_PERMISSION_DENIED = 8,      /* the host refused the operation */
   MS_STATUS_UNSUPPORTED = 9,            /* a format, algorithm or key size the native does not know */
+  MS_STATUS_CLOSED = 10,                /* a handle that was closed */
   MS_STATUS_FAILED = 11,
+  MS_STATUS_UNAVAILABLE = 12,           /* a resource that is not there now */
+  MS_STATUS_TIMED_OUT = 13,             /* a wait that ran out of time */
+  MS_STATUS_OUTPUT_LIMIT = 14,          /* output past the caller's limit */
+  MS_STATUS_NOT_TERMINAL = 15,          /* a descriptor that is not a terminal */
+  MS_STATUS_NONE = 16,                  /* nothing to report: a watched root that is gone */
+  MS_STATUS_BUSY = 17,                  /* a resource in use */
   MS_STATUS_AUTHENTICATION_FAILED = 18 /* a tag or signature that does not verify */
 } MsStatus;
 

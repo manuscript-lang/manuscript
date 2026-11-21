@@ -82,3 +82,8 @@ target_link_libraries(ms_std_bignum PUBLIC ms_base ms_values openssl_crypto m)
 add_library(ms_std_system STATIC system.c process_env.c)
 ms_target_defaults(ms_std_system)
 target_link_libraries(ms_std_system PUBLIC ms_base ms_values uv)
+
+# @std/process natives that need the scheduler or the OS beyond libuv: ids, groups, umask, title, usage, signal watchers.
+add_library(ms_std_process STATIC fail.c process.c signals.c)
+ms_target_defaults(ms_std_process)
+target_link_libraries(ms_std_process PUBLIC ms_base ms_values ms_sys ms_io ms_core ms_entry uv)
