@@ -25,6 +25,10 @@ FIELDS := [
 
 fn slot_text(s: Slot) String: f"{s.name}:{s.ty}:{s.exclusive}"
 
+fn mode_text(s: Slot) String: f"{s.name}:{s.mode}"
+
+fn modes_text(slots: List[Slot]) String: slots.map(mode_text).join(", ")
+
 fn slots_text(slots: List[Slot]) String: slots.map(slot_text).join(", ")
 
 fn result_text(f: Fact) String:
@@ -44,6 +48,20 @@ fn field_diff(field: String, want: Fact, got: Fact) String:
 	// The C writer types only functions; the other kinds print an empty type and error.
 	if field == "ty" and want.kind == "fn" and want.ty != got.ty: return f"ty {want.ty} != {got.ty}"
 	if field == "error" and want.kind == "fn" and want.error != got.error: return f"error {want.error} != {got.error}"
+
+	// The ownership columns are the checker's only for a function its ownership walk
+	// kept.
+	if (
+		field == "modes"
+		and got.ownership_known
+		and modes_text(want.slots) != modes_text(got.slots)
+	): return f"modes [{modes_text(want.slots)}] != [{modes_text(got.slots)}]"
+	if field == "scopes" and got.ownership_known and want.scopes != got.scopes: return f"scopes {want.scopes} != {got.scopes}"
+	if (
+		field == "result_ownership"
+		and got.ownership_known
+		and want.result_ownership != got.result_ownership
+	): return f"result_ownership {want.result_ownership} != {got.result_ownership}"
 	if field == "label" and want.label != got.label: return f"label {want.label} != {got.label}"
 	if field == "first" and want.first != got.first: return f"first {want.first} != {got.first}"
 	if field == "last" and want.last != got.last: return f"last {want.last} != {got.last}"

@@ -75,16 +75,6 @@ static void expect_error(const char *name, const char *manifest, const char *wan
     }
 }
 
-static void expect_unsupported(const char *name, const char *manifest) {
-    MsProject p;
-    MsProjectError err = {0};
-    const char *text;
-    if (read_manifest(manifest, &p, &err, &text) || !ms_project_error_is_unsupported(&err)) {
-        fprintf(stderr, "%s: want unsupported, got \"%s\"\n", name, text);
-        failures++;
-    }
-}
-
 static void test_read(void) {
     MsProject p;
     MsProjectError err = {0};
@@ -147,16 +137,33 @@ static void test_errors(void) {
     }
 }
 
-static void test_unsupported(void) {
-    expect_unsupported("duplicate table", MANIFEST "[project]\n");
-    expect_unsupported("duplicate key", MANIFEST "name = \"other\"\n");
-    expect_unsupported("missing value", "[project]\nname\n");
-    expect_unsupported("bare word", "[project]\nname = sample\n");
-    expect_unsupported("dependency table", MANIFEST "[dependencies.pg]\nurl = \"x\"\n");
-    expect_unsupported("nested inline table", MANIFEST "[dependencies]\n\"@pg\" = { a = { b = \"c\" } }\n");
-    expect_unsupported("trailing comma in inline table", MANIFEST "[dependencies]\n\"@pg\" = { path = \"src\", }\n");
-    expect_unsupported("array", MANIFEST "[aliases]\n\"@a\" = [\"x\"]\n");
-    expect_unsupported("name as number", "[project]\nname = 3\nsource = \"src\"\n");
+/* Syntax the reader refuses, and valid TOML that ms.toml does not use, both with a position. */
+static void test_invalid(void) {
+    expect_error("duplicate table", MANIFEST "[project]\n", "ms.toml:5:1: invalid ms.toml: duplicate key");
+    expect_error("duplicate key", MANIFEST "name = \"other\"\n", "ms.toml:5:1: invalid ms.toml: duplicate key");
+    expect_error("missing value", "[project]\nname\n", "ms.toml:2:5: invalid ms.toml: expected equals");
+    expect_error("bare word", "[project]\nname = sample\n", "ms.toml:2:8: invalid ms.toml: invalid value");
+    expect_error("dependency table", MANIFEST "[dependencies.pg]\nurl = \"x\"\n", "invalid ms.toml: nested tables are not supported in ms.toml");
+    expect_error("dotted key", MANIFEST "a.b = \"x\"\n", "invalid ms.toml: dotted keys are not supported in ms.toml");
+    expect_error("table array", MANIFEST "[[project]]\n", "invalid ms.toml: table arrays are not supported in ms.toml");
+    expect_error("multi-line string", "[project]\nname = \"\"\"x\"\"\"\n", "invalid ms.toml: multi-line strings are not supported in ms.toml");
+    expect_error("unterminated string", "[project]\nname = \"x\n", "ms.toml:2:8: invalid ms.toml: unterminated string");
+    expect_error("bad escape", "[project]\nname = \"\\q\"\n", "invalid ms.toml: invalid string escape");
+    expect_error("unclosed header", "[project\n", "ms.toml:1:9: invalid ms.toml: expected closing table bracket");
+    expect_error("trailing text", "[project] x\n", "invalid ms.toml: unexpected trailing text");
+    expect_error("nested inline table", MANIFEST "[dependencies]\n\"@pg\" = { a = { b = \"c\" } }\n", "invalid ms.toml: invalid value");
+    expect_error("trailing comma in inline table", MANIFEST "[dependencies]\n\"@pg\" = { path = \"src\", }\n", "invalid ms.toml: trailing comma in inline table");
+    expect_error("array without comma", MANIFEST "effects = [\"a\" \"b\"]\n", "invalid ms.toml: expected array comma");
+    expect_error("array alias", MANIFEST "[aliases]\n\"@a\" = [\"x\"]\n", "@a must be a string; write @a = \"[\"x\"]\"");
+    expect_error("name as number", "[project]\nname = 3\nsource = \"src\"\n", "ms.toml:2:8: name must be a string; write name = \"3\"");
+}
+
+/* Bytes that are not UTF-8 read as U+FFFD, so one in a comment is harmless. */
+static void test_lossy(void) {
+    MsProject p;
+    MsProjectError err = {0};
+    const char *text;
+    CHECK(read_manifest("# \xff\xfe\n" MANIFEST, &p, &err, &text));
 }
 
 #define URL "https://github.com/acme/pg.git"
@@ -264,7 +271,8 @@ int main(void) {
     new_project();
     test_read();
     test_errors();
-    test_unsupported();
+    test_invalid();
+    test_lossy();
     test_packages();
     test_imports();
     test_quote();

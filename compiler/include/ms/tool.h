@@ -63,6 +63,18 @@ uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out
  * reader does not cover the project (a workspace, a manifest form it lacks). */
 uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out);
 
+/* `ms check FILE.ms [--json]` (compiler/include/ms/check_run.h). Status 0 fills `out` with the standard output, the
+ * standard error and the exit status (as decimal text) the Rust command would produce; status 2 means the C passes
+ * cannot give that answer (message in `message_out`) and the caller runs the Rust command; 1 is an error. */
+uint8_t ms_tool_check(const ms_str *target, uint8_t json, ms_list *out, ms_str *message_out);
+
+/* The workspace of the project whose manifest is `manifest` (project/workspace.c), as rows: `root\t<directory>`, then
+ * `member\t<name>\t<directory>` in member order; no rows when there is none. With `root_only` set, only a workspace
+ * root without a `[project]` of its own counts (the manifest itself, so a command aimed at it means every member);
+ * otherwise it is the workspace that lists the project. Status 0 is success; 1 is an error with the Rust text in
+ * `message_out`; 2 means the C reader does not cover a manifest. */
+uint8_t ms_tool_workspace(const ms_str *manifest, uint8_t root_only, ms_list *out, ms_str *message_out);
+
 /* The same for a workspace: every member's dependencies resolve into one ms.lock at `lock_root`. `members` are
  * `name\tmanifest` rows, in member order (tools/ms/workspace.ms reads them). */
 uint8_t ms_tool_install_workspace(const ms_str *lock_root, const ms_list *members, const ms_list *update, uint8_t locked, uint8_t frozen,

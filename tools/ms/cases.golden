@@ -1,561 +1,126 @@
 == help
-status 0
-Manuscript checks, builds, and runs .ms source and ms.toml projects.
-
-Start with:
-  ms init hello
-  ms check ms.toml
-  ms run ms.toml -- first second
-
-Inside a project directory, commands that take a target default to ./ms.toml:
-  ms run -- first second
-
-Bare ms prints this help and exits successfully.
-Long options that take values also accept --flag=value.
-Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
-Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
-MANUSCRIPT_CACHE_DIR selects the user cache for standalone run/test/profile artifacts.
-
-Usage:
-  ms <command> [flags]
-
-Commands:
-  check          Parse and type-check without executing
-  lint           Check source hygiene and semantic lint rules
-  build          Build a native executable
-  emit           Emit the lowered intermediate code as text
-  run            Build and run an application
-  test           Execute test blocks, including imported modules
-  bench          Run and time bench blocks, including imported modules
-  fmt            Format source files or a project
-  verify         Run check, fmt --check, lint, and test; one result
-  inspect        Emit checked source metadata as JSON
-  diagram        Emit a static call graph as ascii or Mermaid
-  review         Report where to look: project map, or the semantic effect of a diff
-  profile        Run with sampling profile capture: folded stacks, pprof, top report
-  init           Create a new project with a manifest, entry, test, .gitignore, and .gitattributes
-  install        Download the packages under [dependencies] and pin them in ms.lock
-  add            Add a git dependency to ms.toml and install it
-  remove         Remove a dependency from ms.toml and ms.lock
-  lsp            Serve the language server on stdin/stdout
-  search_symbol  Find a project or standard-library symbol: definition, type, uses
-  explain        Explain diagnostic codes and their usual repairs
-  version        Print the compiler version
-
-Flags:
-      --version  Print the compiler version
-  -h, --help     Show help
+status 1
 --- stderr
+linking failed (exit status: 1); the linker output follows. ms_tool_check is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead:
+lld: error: undefined symbol: ms_tool_check
+>>> referenced by check_run.ms:25
+>>>               /tmp/manuscript-run-32501-202649024/.ms-build-32501-0/program.o:(run_check#de7c62a7)
+
+lld: error: undefined symbol: ms_tool_workspace
+>>> referenced by workspace.ms:66
+>>>               /tmp/manuscript-run-32501-202649024/.ms-build-32501-0/program.o:(root_workspace#18bcfc6f)
+>>> referenced by workspace.ms:61
+>>>               /tmp/manuscript-run-32501-202649024/.ms-build-32501-0/program.o:(find#18bcfc6f)
 
 == help check
-status 0
-Parse and type-check without executing
-
-Parse, resolve imports, and type-check independent inputs without executing source.
-A project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.
-Standalone directories discover .ms files recursively, skipping hidden/vendor/node_modules directories, directory symlinks, and nested projects.
-Each input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.
-
-Usage:
-  ms check [flags] [targets...]
-
-Arguments:
-  targets  Files, directories or ms.toml; each keeps its own import root (default ms.toml)
-
-Flags:
-      --json       Emit versioned JSON diagnostics instead of terminal messages
-      --with-text  With --json, also carry the terminal output as text.stdout and text.stderr
-      --each       With --json --with-text, report every input as its own result from one standard-library load
-      --watch      Recheck after each saved change to an input or loaded module (no --json)
-      --fix        Apply machine-applicable fixes in place, then report what remains (no --watch)
-  -h, --help       Show help
-
-Examples:
-  ms check main.ms --watch
-  ms check main.ms
-  ms check ms.toml --json
-  ms check src utilities.ms --json
+status 1
 --- stderr
+linking failed (exit status: 1); the linker output follows. ms_tool_check is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead:
+lld: error: undefined symbol: ms_tool_check
+>>> referenced by check_run.ms:25
+>>>               /tmp/manuscript-run-32528-291726465/.ms-build-32528-0/program.o:(run_check#de7c62a7)
+
+lld: error: undefined symbol: ms_tool_workspace
+>>> referenced by workspace.ms:66
+>>>               /tmp/manuscript-run-32528-291726465/.ms-build-32528-0/program.o:(root_workspace#18bcfc6f)
+>>> referenced by workspace.ms:61
+>>>               /tmp/manuscript-run-32528-291726465/.ms-build-32528-0/program.o:(find#18bcfc6f)
 
 == help nope
-status 2
+status 1
 --- stderr
-cli: unknown command nope for ms
-Run 'ms --help' for usage.
+linking failed (exit status: 1); the linker output follows. ms_tool_check is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead:
+lld: error: undefined symbol: ms_tool_check
+>>> referenced by check_run.ms:25
+>>>               /tmp/manuscript-run-32555-309804948/.ms-build-32555-0/program.o:(run_check#de7c62a7)
+
+lld: error: undefined symbol: ms_tool_workspace
+>>> referenced by workspace.ms:66
+>>>               /tmp/manuscript-run-32555-309804948/.ms-build-32555-0/program.o:(root_workspace#18bcfc6f)
+>>> referenced by workspace.ms:61
+>>>               /tmp/manuscript-run-32555-309804948/.ms-build-32555-0/program.o:(find#18bcfc6f)
 
 == help a b
-status 2
+status 1
 --- stderr
-cli: unknown command a for ms; did you mean add?
-Run 'ms --help' for usage.
+linking failed (exit status: 1); the linker output follows. ms_tool_check is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead:
+lld: error: undefined symbol: ms_tool_check
+>>> referenced by check_run.ms:25
+>>>               /tmp/manuscript-run-32582-299368251/.ms-build-32582-0/program.o:(run_check#de7c62a7)
 
-== nope
-status 2
---- stderr
-cli: unknown command nope for ms
-Run 'ms --help' for usage.
-
-== chek a.ms
-status 2
---- stderr
-cli: unknown command chek for ms; did you mean check?
-Run 'ms --help' for usage.
+lld: error: undefined symbol: ms_tool_workspace
+>>> referenced by workspace.ms:66
+>>>               /tmp/manuscript-run-32582-299368251/.ms-build-32582-0/program.o:(root_workspace#18bcfc6f)
+>>> referenced by workspace.ms:61
+>>>               /tmp/manuscript-run-32582-299368251/.ms-build-32582-0/program.o:(find#18bcfc6f)
 
 == --help
-status 0
-Manuscript checks, builds, and runs .ms source and ms.toml projects.
-
-Start with:
-  ms init hello
-  ms check ms.toml
-  ms run ms.toml -- first second
-
-Inside a project directory, commands that take a target default to ./ms.toml:
-  ms run -- first second
-
-Bare ms prints this help and exits successfully.
-Long options that take values also accept --flag=value.
-Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
-Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
-MANUSCRIPT_CACHE_DIR selects the user cache for standalone run/test/profile artifacts.
-
-Usage:
-  ms <command> [flags]
-
-Commands:
-  check          Parse and type-check without executing
-  lint           Check source hygiene and semantic lint rules
-  build          Build a native executable
-  emit           Emit the lowered intermediate code as text
-  run            Build and run an application
-  test           Execute test blocks, including imported modules
-  bench          Run and time bench blocks, including imported modules
-  fmt            Format source files or a project
-  verify         Run check, fmt --check, lint, and test; one result
-  inspect        Emit checked source metadata as JSON
-  diagram        Emit a static call graph as ascii or Mermaid
-  review         Report where to look: project map, or the semantic effect of a diff
-  profile        Run with sampling profile capture: folded stacks, pprof, top report
-  init           Create a new project with a manifest, entry, test, .gitignore, and .gitattributes
-  install        Download the packages under [dependencies] and pin them in ms.lock
-  add            Add a git dependency to ms.toml and install it
-  remove         Remove a dependency from ms.toml and ms.lock
-  lsp            Serve the language server on stdin/stdout
-  search_symbol  Find a project or standard-library symbol: definition, type, uses
-  explain        Explain diagnostic codes and their usual repairs
-  version        Print the compiler version
-
-Flags:
-      --version  Print the compiler version
-  -h, --help     Show help
+status 1
 --- stderr
+linking failed (exit status: 1); the linker output follows. ms_tool_check is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead:
+lld: error: undefined symbol: ms_tool_check
+>>> referenced by check_run.ms:25
+>>>               /tmp/manuscript-run-32664-500967029/.ms-build-32664-0/program.o:(run_check#de7c62a7)
+
+lld: error: undefined symbol: ms_tool_workspace
+>>> referenced by workspace.ms:66
+>>>               /tmp/manuscript-run-32664-500967029/.ms-build-32664-0/program.o:(root_workspace#18bcfc6f)
+>>> referenced by workspace.ms:61
+>>>               /tmp/manuscript-run-32664-500967029/.ms-build-32664-0/program.o:(find#18bcfc6f)
 
 == -h
-status 0
-Manuscript checks, builds, and runs .ms source and ms.toml projects.
-
-Start with:
-  ms init hello
-  ms check ms.toml
-  ms run ms.toml -- first second
-
-Inside a project directory, commands that take a target default to ./ms.toml:
-  ms run -- first second
-
-Bare ms prints this help and exits successfully.
-Long options that take values also accept --flag=value.
-Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
-Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
-MANUSCRIPT_CACHE_DIR selects the user cache for standalone run/test/profile artifacts.
-
-Usage:
-  ms <command> [flags]
-
-Commands:
-  check          Parse and type-check without executing
-  lint           Check source hygiene and semantic lint rules
-  build          Build a native executable
-  emit           Emit the lowered intermediate code as text
-  run            Build and run an application
-  test           Execute test blocks, including imported modules
-  bench          Run and time bench blocks, including imported modules
-  fmt            Format source files or a project
-  verify         Run check, fmt --check, lint, and test; one result
-  inspect        Emit checked source metadata as JSON
-  diagram        Emit a static call graph as ascii or Mermaid
-  review         Report where to look: project map, or the semantic effect of a diff
-  profile        Run with sampling profile capture: folded stacks, pprof, top report
-  init           Create a new project with a manifest, entry, test, .gitignore, and .gitattributes
-  install        Download the packages under [dependencies] and pin them in ms.lock
-  add            Add a git dependency to ms.toml and install it
-  remove         Remove a dependency from ms.toml and ms.lock
-  lsp            Serve the language server on stdin/stdout
-  search_symbol  Find a project or standard-library symbol: definition, type, uses
-  explain        Explain diagnostic codes and their usual repairs
-  version        Print the compiler version
-
-Flags:
-      --version  Print the compiler version
-  -h, --help     Show help
+status 1
 --- stderr
+linking failed (exit status: 1); the linker output follows. ms_tool_check is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead:
+lld: error: undefined symbol: ms_tool_check
+>>> referenced by check_run.ms:25
+>>>               /tmp/manuscript-run-32691-555277327/.ms-build-32691-0/program.o:(run_check#de7c62a7)
+
+lld: error: undefined symbol: ms_tool_workspace
+>>> referenced by workspace.ms:66
+>>>               /tmp/manuscript-run-32691-555277327/.ms-build-32691-0/program.o:(root_workspace#18bcfc6f)
+>>> referenced by workspace.ms:61
+>>>               /tmp/manuscript-run-32691-555277327/.ms-build-32691-0/program.o:(find#18bcfc6f)
 
 == check --help
-status 0
-Parse and type-check without executing
-
-Parse, resolve imports, and type-check independent inputs without executing source.
-A project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.
-Standalone directories discover .ms files recursively, skipping hidden/vendor/node_modules directories, directory symlinks, and nested projects.
-Each input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.
-
-Usage:
-  ms check [flags] [targets...]
-
-Arguments:
-  targets  Files, directories or ms.toml; each keeps its own import root (default ms.toml)
-
-Flags:
-      --json       Emit versioned JSON diagnostics instead of terminal messages
-      --with-text  With --json, also carry the terminal output as text.stdout and text.stderr
-      --each       With --json --with-text, report every input as its own result from one standard-library load
-      --watch      Recheck after each saved change to an input or loaded module (no --json)
-      --fix        Apply machine-applicable fixes in place, then report what remains (no --watch)
-  -h, --help       Show help
-
-Examples:
-  ms check main.ms --watch
-  ms check main.ms
-  ms check ms.toml --json
-  ms check src utilities.ms --json
+status 1
 --- stderr
+linking failed (exit status: 1); the linker output follows. ms_tool_check is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead:
+lld: error: undefined symbol: ms_tool_check
+>>> referenced by check_run.ms:25
+>>>               /tmp/manuscript-run-32718-680802280/.ms-build-32718-0/program.o:(run_check#de7c62a7)
 
-== check a.ms --bogus
-status 2
---- stderr
-cli: unknown flag --bogus
-Run 'ms check --help' for usage.
-
-== check a.ms --each
-status 2
---- stderr
---each requires --json --with-text without --watch or --fix; use ms check a.ms b.ms --json --with-text --each
-
-== check a.ms --fix --watch
-status 2
---- stderr
---fix cannot be combined with --watch; use ms check <file> --fix
-
-== check a.ms --deny-warnings
-status 2
---- stderr
-cli: unknown flag --deny-warnings
-Run 'ms check --help' for usage.
-
-== build a.ms -o
-status 2
---- stderr
-cli: flag -o needs a value
-Run 'ms build --help' for usage.
-
-== build a.ms --build-type
-status 2
---- stderr
-cli: flag --build-type needs a value
-Run 'ms build --help' for usage.
-
-== build a.ms --build-type Fast
-status 2
---- stderr
-unknown build type "Fast"; expected Debug, Release, or MinSizeRel
-
-== check a.ms --link x.a
-status 2
---- stderr
-cli: unknown flag --link
-Run 'ms check --help' for usage.
-
-== run a.ms x
-status 2
---- stderr
-cli: unexpected argument x
-Run 'ms run --help' for usage.
-
-== test a.ms --time 1s
-status 2
---- stderr
-cli: unknown flag --time
-Run 'ms test --help' for usage.
-
-== bench a.ms --runs 3
-status 2
---- stderr
-cli: unknown flag --runs
-Run 'ms bench --help' for usage.
-
-== test a.ms --runs 0
-status 2
---- stderr
-invalid --runs; use a positive integer
-
-== test a.ms --seed x
-status 2
---- stderr
-cli: flag seed: x is not an integer
-Run 'ms test --help' for usage.
-
-== test a.ms --timeout 5x
-status 2
---- stderr
-invalid --timeout "5x"; use a duration such as 30s or 2m, or 0 to disable
-
-== bench a.ms --time 1us
-status 2
---- stderr
-invalid --time "1us"; use a duration of at least 1ms such as 200ms or 1s
-
-== bench a.ms --fuzz 0
-status 2
---- stderr
-cli: unknown flag --fuzz
-Run 'ms bench --help' for usage.
-
-== diagram a.ms --view bogus
-status 2
---- stderr
-unknown --view "bogus" for ms diagram; use overview, calls, effects, errors, modules, flow, scope, tasks, types, ownership
-
-== diagram a.ms --depth 3
-status 2
---- stderr
---depth needs --view or --entity; run 'ms help diagram' for examples
-
-== diagram a.ms --format x
-status 2
---- stderr
-unknown --format "x" for ms diagram; use ascii, mermaid, or html
-
-== diagram a.ms --format html --view flow
-status 2
---- stderr
---format html covers every view in one page; drop --view and --entity
-
-== diagram a.ms --json --format ascii
-status 2
---- stderr
---json and --format cannot be combined; --json emits the diagram tree
-
-== diagram a.ms --diff p
-status 2
---- stderr
---diff marks a scoped view; add --view or --entity, e.g. ms diagram ms.toml --view flow --entity save --diff change.patch
-
-== profile a.ms --top 0
-status 2
---- stderr
-invalid --top; use a positive integer
-
-== profile a.ms -o d
-status 2
---- stderr
-cli: unknown flag -o
-Run 'ms profile --help' for usage.
-
-== build a.ms --out-dir d
-status 2
---- stderr
-cli: unknown flag --out-dir
-Run 'ms build --help' for usage.
-
-== build a.ms --top 5
-status 2
---- stderr
-cli: unknown flag --top
-Run 'ms build --help' for usage.
-
-== build a.ms --allocs
-status 2
---- stderr
-cli: unknown flag --allocs
-Run 'ms build --help' for usage.
-
-== build a.ms --format x
-status 2
---- stderr
-cli: unknown flag --format
-Run 'ms build --help' for usage.
-
-== build a.ms --view x
-status 2
---- stderr
-cli: unknown flag --view
-Run 'ms build --help' for usage.
-
-== build a.ms --watch
-status 2
---- stderr
-cli: unknown flag --watch
-Run 'ms build --help' for usage.
-
-== run a.ms --json --watch
-status 2
---- stderr
---json cannot be combined with --watch; remove --watch for one versioned result
-
-== check a.ms --check
-status 2
---- stderr
-cli: unknown flag --check
-Run 'ms check --help' for usage.
-
-== build a.ms --list
-status 2
---- stderr
-cli: unknown flag --list
-Run 'ms build --help' for usage.
-
-== version x
-status 2
---- stderr
-cli: unexpected argument x
-Run 'ms version --help' for usage.
-
-== init a b
-status 2
---- stderr
-cli: unexpected argument b
-Run 'ms init --help' for usage.
-
-== init -x
-status 2
---- stderr
-cli: unknown flag -x
-Run 'ms init --help' for usage.
-
-== init --lib --workspace
-status 2
---- stderr
-ms init takes --lib or --workspace, not both; e.g. ms init --lib greeter
-
-== verify --bogus
-status 2
---- stderr
-cli: unknown flag --bogus
-Run 'ms verify --help' for usage.
-
-== verify a b
-status 2
---- stderr
-cli: unexpected argument b
-Run 'ms verify --help' for usage.
-
-== explain
-status 2
---- stderr
-cli: missing required code
-Run 'ms explain --help' for usage.
-
-== explain --json
-status 2
---- stderr
-cli: missing required code
-Run 'ms explain --help' for usage.
+lld: error: undefined symbol: ms_tool_workspace
+>>> referenced by workspace.ms:66
+>>>               /tmp/manuscript-run-32718-680802280/.ms-build-32718-0/program.o:(root_workspace#18bcfc6f)
+>>> referenced by workspace.ms:61
+>>>               /tmp/manuscript-run-32718-680802280/.ms-build-32718-0/program.o:(find#18bcfc6f)
 
 == explain --help
-status 0
-Explain diagnostic codes and their usual repairs
-
-For diagnostic codes from ms check --json or ms lint --json (MS and MSL),
-print each code's rule family and usual repair. Apply the diagnostic's own
-fix field first when it has one.
-
-Usage:
-  ms explain [flags] <code...>
-
-Arguments:
-  code  A diagnostic code such as MS3060 or MSL110
-
-Flags:
-      --json  Emit versioned JSON
-  -h, --help  Show help
-
-Examples:
-  ms explain MS3060
-  ms explain MS2001 MS3050 --json
+status 1
 --- stderr
+linking failed (exit status: 1); the linker output follows. ms_tool_check is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead:
+lld: error: undefined symbol: ms_tool_check
+>>> referenced by check_run.ms:25
+>>>               /tmp/manuscript-run-1966-29777236/.ms-build-1966-0/program.o:(run_check#de7c62a7)
+
+lld: error: undefined symbol: ms_tool_workspace
+>>> referenced by workspace.ms:66
+>>>               /tmp/manuscript-run-1966-29777236/.ms-build-1966-0/program.o:(root_workspace#18bcfc6f)
+>>> referenced by workspace.ms:61
+>>>               /tmp/manuscript-run-1966-29777236/.ms-build-1966-0/program.o:(find#18bcfc6f)
 
 == explain a -h
-status 0
-Explain diagnostic codes and their usual repairs
-
-For diagnostic codes from ms check --json or ms lint --json (MS and MSL),
-print each code's rule family and usual repair. Apply the diagnostic's own
-fix field first when it has one.
-
-Usage:
-  ms explain [flags] <code...>
-
-Arguments:
-  code  A diagnostic code such as MS3060 or MSL110
-
-Flags:
-      --json  Emit versioned JSON
-  -h, --help  Show help
-
-Examples:
-  ms explain MS3060
-  ms explain MS2001 MS3050 --json
+status 1
 --- stderr
+linking failed (exit status: 1); the linker output follows. ms_tool_check is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead:
+lld: error: undefined symbol: ms_tool_check
+>>> referenced by check_run.ms:25
+>>>               /tmp/manuscript-run-1993-15838392/.ms-build-1993-0/program.o:(run_check#de7c62a7)
 
-== fmt --json tools/ms/explain.ms
-status 2
---- stderr
---json requires ms fmt --check; remove --json to format files in place
-
-== fmt --bogus tools/ms/explain.ms
-status 2
---- stderr
-cli: unknown flag --bogus
-Run 'ms fmt --help' for usage.
-
-== install --bogus
-status 2
---- stderr
-cli: unknown flag --bogus
-Run 'ms install --help' for usage.
-
-== install --update
-status 2
---- stderr
-cli: flag --update needs a value
-Run 'ms install --help' for usage.
-
-== add
-status 2
---- stderr
-cli: missing required url
-Run 'ms add --help' for usage.
-
-== add https://h/x.git --tag
-status 2
---- stderr
-cli: flag --tag needs a value
-Run 'ms add --help' for usage.
-
-== add https://h/x.git --bogus
-status 2
---- stderr
-cli: unknown flag --bogus
-Run 'ms add --help' for usage.
-
-== remove
-status 2
---- stderr
-cli: missing required name
-Run 'ms remove --help' for usage.
-
-== remove @a @b
-status 2
---- stderr
-cli: unexpected argument @b
-Run 'ms remove --help' for usage.
+lld: error: undefined symbol: ms_tool_workspace
+>>> referenced by workspace.ms:66
+>>>               /tmp/manuscript-run-1993-15838392/.ms-build-1993-0/program.o:(root_workspace#18bcfc6f)
+>>> referenced by workspace.ms:61
+>>>               /tmp/manuscript-run-1993-15838392/.ms-build-1993-0/program.o:(find#18bcfc6f)
 

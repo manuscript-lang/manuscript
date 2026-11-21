@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "check/check_body.h"
+#include "ms/implements.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
@@ -289,9 +290,14 @@ static MsTy body_number(MsBody *b, const MsExpr *e) {
 static MsTy body_text(MsBody *b, const MsExpr *e) {
     for (uint32_t i = 0; i < e->u.text.len; i++) {
         const MsExpr *part = e->u.text.ptr[i].expr;
-        if (part != NULL && ms_body_expr(b, part, MS_TY_NONE) == MS_TY_NONE) {
+        if (part == NULL) {
+            continue;
+        }
+        const MsTy ty = ms_body_expr(b, part, MS_TY_NONE);
+        if (ty == MS_TY_NONE) {
             return MS_TY_NONE;
         }
+        ms_body_text_method(b, part, ty);
     }
     return b->string_ty;
 }
@@ -572,6 +578,46 @@ static MsTy body_name(MsBody *b, const MsExpr *e, MsTy expected) {
 /* `Type(field: value, ...)` for a record this module declares without type parameters: every
  * field given once, in declaration order, named or positional, each of an admitted type. The
  * call's callee is the type, which is how the effect scan sees a constructor. */
+/* Pairs the arguments of `call` with parameters as the Rust checker does: an argument labelled with
+ * a parameter's name goes to it; an unlabelled one fills the first parameter no earlier argument
+ * took. `slot[i]` is the parameter of argument i and `covered[p]` says parameter p got an argument.
+ * False for a label no parameter has (or one that is positional-only), a parameter given twice, and
+ * an unlabelled argument with no parameter left: those are diagnostics the Rust checker reports. */
+bool ms_body_bind_arguments(const MsExpr *call, const MsSym *names, const bool *positional,
+                            uint32_t nparams, uint32_t *slot, bool *covered) {
+    memset(covered, 0, nparams * sizeof *covered);
+    uint32_t next = 0;
+    for (uint32_t i = 0; i < call->u.call.args.len; i++) {
+        const MsArg *arg = &call->u.call.args.ptr[i];
+        uint32_t found = nparams;
+        if (arg->has_name) {
+            for (uint32_t p = 0; p < nparams && found == nparams; p++) {
+                found = names[p] == arg->name && (positional == NULL || !positional[p]) ? p : found;
+            }
+        } else {
+            while (next < nparams && covered[next]) {
+                next++;
+            }
+            found = next;
+        }
+        if (found >= nparams || covered[found]) {
+            return false;
+        }
+        covered[found] = true;
+        slot[i] = found;
+    }
+    return true;
+}
+
+bool ms_body_reordered(const MsExpr *call, const uint32_t *slot) {
+    for (uint32_t i = 0; i < call->u.call.args.len; i++) {
+        if (slot[i] != i) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     const MsSyms *syms = &b->c->syms;
     const MsTy record = syms->ty[sym];
@@ -583,21 +629,29 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
         !body_is_admitted(b, record) || nargs > def->nfields || def->nfields != decl->u.type.fields.len) {
         return ms_body_unsupported(b);
     }
+    MsSym *names = MS_NEW_N(&b->c->arena, MsSym, def->nfields + 1);
+    bool *covered = MS_NEW_N(&b->c->arena, bool, def->nfields + 1);
+    uint32_t *slot = MS_NEW_N(&b->c->arena, uint32_t, nargs + 1);
     for (uint32_t i = 0; i < def->nfields; i++) {
-        if (i >= nargs) {
-            // A field left out takes its default.
-            if (decl->u.type.fields.ptr[i]->def == NULL) {
-                return ms_body_unsupported(b);
-            }
-            continue;
-        }
-        const MsArg *arg = &e->u.call.args.ptr[i];
-        const MsTy field = def->fields[i].ty;
-        if ((arg->has_name && arg->name != def->fields[i].name) || def->fields[i].flags != 0 ||
-            !body_is_bindable(b, field) || ms_body_expr(b, arg->value, field) == MS_TY_NONE) {
+        names[i] = def->fields[i].name;
+    }
+    if (!ms_body_bind_arguments(e, names, NULL, def->nfields, slot, covered)) {
+        return ms_body_unsupported(b);
+    }
+    for (uint32_t i = 0; i < def->nfields; i++) {
+        // A field left out takes its default.
+        if (!covered[i] && decl->u.type.fields.ptr[i]->def == NULL) {
             return ms_body_unsupported(b);
         }
     }
+    for (uint32_t i = 0; i < nargs; i++) {
+        const MsTy field = def->fields[slot[i]].ty;
+        if (def->fields[slot[i]].flags != 0 || !body_is_bindable(b, field) ||
+            ms_body_expr(b, e->u.call.args.ptr[i].value, field) == MS_TY_NONE) {
+            return ms_body_unsupported(b);
+        }
+    }
+    b->facts->call_reordered[e->id] = ms_body_reordered(e, slot);
     b->facts->call_callee[e->id] = sym;
     return record;
 }
@@ -972,6 +1026,13 @@ static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     return expected;
 }
 
+/* A value of a type this module's methods fit to an interface, passed where the interface is expected. */
+static bool body_coerces_to_interface(const MsBody *b, MsTy ty, MsTy expected) {
+    const MsTyTable *tys = &b->c->tys;
+    return b->methods != NULL && ms_ty_kind(tys, expected) == MS_K_CONTRACT && ty != expected &&
+           ms_ty_kind(tys, ty) == MS_K_TYPE && ms_implements(b->c, b->methods, ty, expected) == MS_FIT_YES;
+}
+
 MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     MsTy ty = MS_TY_NONE;
     const char *context = b->context;
@@ -1007,6 +1068,10 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     if (expected == b->invalid_ty) {
         return ms_body_record(b, e->id, ty); // what was asked for is already reported
+    }
+    if (expected != MS_TY_NONE && body_coerces_to_interface(b, ty, expected)) {
+        b->facts->coerce_iface[e->id] = ty; // the lowering boxes it behind its vtable; the expression has the interface type
+        return ms_body_record(b, e->id, expected);
     }
     if (expected != MS_TY_NONE && !ms_body_same_type(b, ty, expected)) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
@@ -1227,8 +1292,23 @@ static bool body_returns_nothing(const MsBody *b) {
            (ms_body_is_result(b, b->result) && ms_ty_args(tys, b->result)[0] == b->void_ty);
 }
 
+/* A `return` in a function literal whose result is not known yet: its value (or the lack of one) fixes it. */
+static void body_return_deciding(MsBody *b, const MsExpr *value) {
+    b->context = "the return value";
+    const MsTy ty = value == NULL ? b->void_ty : ms_body_expr(b, value, MS_TY_NONE);
+    if (ty == MS_TY_NONE || !(ty == b->void_ty || body_is_bindable(b, ty))) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    b->result = ty;
+}
+
 static void body_return_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *value = s->u.expr;
+    if (b->infer_result && b->result == MS_TY_NONE) {
+        body_return_deciding(b, value);
+        return;
+    }
     if (value == NULL) {
         if (!b->supported || body_returns_nothing(b)) {
             return;
@@ -1322,15 +1402,15 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
     return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
 }
 
-/* `for name in xs` over a list of Int, Float, Bool or String: the element type. A String element is
- * borrowed from the list; lists of lists are left to the Rust checker. */
+/* `for name in xs` over a list of Int, Float, Bool, String or lists: the element type. An element that
+ * owns something is borrowed from the list. */
 static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) {
     const MsTy ty = ms_body_expr(b, iter, MS_TY_NONE);
     if (!ms_body_is_list(b, ty)) {
         return false;
     }
     *element = ms_ty_args(&b->c->tys, ty)[0];
-    return body_is_value_type(b, *element);
+    return body_is_value_type(b, *element) || ms_body_is_list(b, *element);
 }
 
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
@@ -1688,6 +1768,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->call_receiver = MS_NEW_N(arena, MsTy, nodes);
     facts->call_interface = MS_NEW_N(arena, MsTy, nodes);
     memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
+    facts->text_method = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->text_method, 0xff, nodes * sizeof *facts->text_method);
     memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
     facts->call_type_args_at = MS_NEW_N(arena, uint32_t, nodes);
@@ -1700,6 +1782,10 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
     facts->field_store_root = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->field_store_root, 0xff, nodes * sizeof *facts->field_store_root);
+    facts->coerce_iface = MS_NEW_N(arena, MsTy, nodes);
+    memset(facts->coerce_iface, 0, nodes * sizeof *facts->coerce_iface);
+    facts->call_reordered = MS_NEW_N(arena, bool, nodes);
+    memset(facts->call_reordered, 0, nodes * sizeof *facts->call_reordered);
     facts->some_wrap = MS_NEW_N(arena, bool, nodes);
     memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);

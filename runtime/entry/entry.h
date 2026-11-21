@@ -27,10 +27,6 @@ void ms_profile_attach_runtime_thread(void);
 /* Ends profiling and writes what the environment asked for. */
 void ms_profile_finish(void);
 
-/* The promise table calls this when a task that ran under a test output capture ended with a fault; the test runner
- * takes the record with msrt_test_capture_fault. */
-void ms_test_keep_fault(uint64_t capture, const MsFaultText *text);
-
 /* Gives the calling thread a reactor and scheduler without starting a program (Rust unit tests that run tasks). */
 bool ms_start_attach_thread(void);
 

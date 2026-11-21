@@ -477,7 +477,9 @@ static MsTy ty_resolve_fn(MsResolver *r, const MsTypeRef *t) {
     const MsTy signature = ms_resolve_signature(r, &t->params, t->result);
     MsTyDesc desc = ty_desc_of(&c->tys, signature);
     MsTyParam *positional = MS_NEW_N(&c->arena, MsTyParam, desc.nparams);
-    memcpy(positional, desc.params, (size_t)desc.nparams * sizeof *positional);
+    if (desc.nparams != 0) {
+        memcpy(positional, desc.params, (size_t)desc.nparams * sizeof *positional);
+    }
     for (uint32_t i = 0; i < desc.nparams; i++) {
         positional[i].flags |= MS_PARAM_POSITIONAL;
     }

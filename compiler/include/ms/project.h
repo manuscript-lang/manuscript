@@ -134,12 +134,15 @@ typedef struct MsPackage {
     const char *const *files; /* the locked files by `/` path, sorted */
     const char *const *hashes; /* the expected SHA-256 of each */
     uint32_t file_count;
+    bool member; /* a workspace member: its files are the project's own, so they are not hashed and may declare natives */
 } MsPackage;
 
 /* One `[dependencies]` entry as `alias\turl\tkind\treference` (kind tag, sha or version; the reference is the tag, the
  * commit or the requirement as written), the row ms_tool_dependencies returns. */
 const char *ms_project_dependency_row(MsArena *a, const MsDependency *d);
 
+/* Whether `path` names a regular file (links followed). */
+bool ms_project_is_file(const char *path);
 /* The whole file at `path`, NUL-terminated after its `*length` bytes (which may include NULs); NULL with *err set. */
 const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err);
 /* The nearest ms.toml in `filename`'s directory or above, NULL when there is none. */
@@ -153,6 +156,33 @@ const char *ms_embed_module_path(MsArena *a, const char *root, const char *name)
 /* The source of that module for the directory `root` (which holds the files): every file as Base64 text. A symbolic
  * link, names that differ only by letter case, a file over 16 MiB or more than 64 MiB in all is an error. */
 MS_NODISCARD bool ms_embed_generate(MsArena *a, const char *name, const char *root, const char **source, MsProjectError *err);
+
+/* ---- workspaces (project/workspace.c) ---- */
+
+/* One project of a workspace. */
+typedef struct MsMember {
+    const char *name; /* `[project] name`, unique in the workspace */
+    const char *root; /* the canonical directory holding the member's ms.toml */
+} MsMember;
+
+/* A workspace root and the members it lists, the root's own project first when it has one. */
+typedef struct MsWorkspace {
+    const char *root; /* the canonical directory holding the root ms.toml and ms.lock */
+    MsMember *members;
+    uint32_t count;
+} MsWorkspace;
+
+/* The member whose directory is `dir`, or NULL. */
+const MsMember *ms_workspace_member_at(const MsWorkspace *w, const char *dir);
+/* Expands and checks the members of a parsed workspace root. */
+MS_NODISCARD bool ms_workspace_read(MsArena *a, const MsProject *root_project, MsWorkspace *out, MsProjectError *err);
+/* The workspace that contains the project whose manifest is `manifest`: the manifest itself when it has `[workspace]`,
+ * else the nearest ancestor manifest that lists this directory. `*found` is false for a project outside any
+ * workspace. */
+MS_NODISCARD bool ms_workspace_find(MsArena *a, const char *manifest, MsWorkspace *out, bool *found, MsProjectError *err);
+/* The members of `manifest` when it is a workspace root with no `[project]` of its own, so a command aimed at it means
+ * "every member"; `*found` is false for any other manifest or file. */
+MS_NODISCARD bool ms_workspace_root_members(MsArena *a, const char *manifest, MsWorkspace *out, bool *found, MsProjectError *err);
 
 /* ---- packages (project/attach.c) ---- */
 
@@ -199,7 +229,7 @@ const char *ms_debug_quote(MsArena *a, const char *text);
 
 /* ---- the module graph (project/load.c) ---- */
 
-typedef enum MsGraphPhase { MS_GRAPH_PARSE, MS_GRAPH_RESOLUTION } MsGraphPhase;
+typedef enum MsGraphPhase { MS_GRAPH_PARSE, MS_GRAPH_RESOLUTION, MS_GRAPH_TYPE } MsGraphPhase;
 
 /* A problem found while loading, named by the file it is in (the module's logical path, or the manifest). */
 typedef struct MsGraphDiag {
@@ -225,6 +255,7 @@ typedef struct MsGraphPackage {
     const char *spec;
     const char *const *effects;
     uint32_t effect_count;
+    bool member; /* a workspace member: it may declare natives */
 } MsGraphPackage;
 
 typedef struct MsGraph {
@@ -260,5 +291,12 @@ void ms_graph_add_modules(MsCheck *c, MsNames *names, MsArena *a, const MsGraph 
 /* Checks the bodies of every module of the graph with the program's method table (ms_program_check_module). Modules
  * with an inherent error are left unchecked and their ids appear in `unchecked` when it is not NULL; returns how many. */
 uint32_t ms_graph_check(MsCheck *c, const MsGraph *graph, const MsModId *ids, bool *unchecked);
+/* The errors a build owes its fetched packages after ms_graph_check: a native declaration in a package that is not a
+ * workspace member, and a package callable that reaches an effect its `[project] effects` does not declare. They
+ * are type diagnostics named by module: the natives first, then the effects in node order. `*complete` is false when the effect scan cannot see through
+ * every package callable, so a project without errors may still have some: the caller then leaves the build to the
+ * Rust driver. Needs `graph` loaded by ms_project_load_packages and checked. */
+MS_NODISCARD bool ms_graph_check_packages(MsCheck *c, MsArena *a, const MsGraph *graph, const MsModId *ids, MsGraphDiag **out,
+                                          uint32_t *count, bool *complete);
 
 #endif

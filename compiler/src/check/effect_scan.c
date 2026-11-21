@@ -2,11 +2,13 @@
  * `Scan` visitor of crates/ms-check/src/effects.rs for the constructs the C body checker handles so
  * far (named calls, constants, writes through a member); the rest follow the call columns
  * (methods, interface conversions) as the checker fills them. */
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "ms/effects.h"
 #include "ms/facts.h"
+#include "ms/methods.h"
 #include "ms/walk.h"
 
 typedef struct ScanState {
@@ -26,6 +28,14 @@ static bool scan_is_node(const MsCheck *c, MsSymId sym) {
     }
     const uint8_t kind = syms->decl[sym]->kind;
     return kind == MS_D_FN || kind == MS_D_TYPE || kind == MS_D_CONST;
+}
+
+MsDispatch ms_effect_dispatch(const MsCheck *c, const MsFacts *facts, uint32_t call) {
+    const MsKind kind = ms_ty_kind(&c->tys, facts->call_receiver[call]);
+    if (kind == MS_K_PRIMITIVE) {
+        return MS_DISPATCH_NOTHING;
+    }
+    return kind == MS_K_CONTRACT || kind == MS_K_VARIABLE ? MS_DISPATCH_UNKNOWN : MS_DISPATCH_PARTIAL;
 }
 
 /* Records a reference to `callee`; the first one keeps its position. */
@@ -51,8 +61,19 @@ static void scan_edge(ScanState *s, MsSymId callee, MsPos pos) {
 static void scan_call(ScanState *s, const MsExpr *e) {
     const MsSyms *syms = &s->check->syms;
     const MsSymId callee = s->facts->call_callee[e->id];
-    if (s->facts->call_method[e->id] != MS_NONE || s->facts->call_interface[e->id] != MS_TY_NONE) {
+    const uint32_t row = s->facts->call_method[e->id];
+    if (row != MS_NONE && ms_effect_method_is_node(s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
+        scan_edge(s, ms_effect_method_node(s->check, row), e->pos);
+        return;
+    }
+    if (row != MS_NONE) {
         s->partial = true;
+        return;
+    }
+    if (s->facts->call_interface[e->id] != MS_TY_NONE) {
+        const MsDispatch dispatch = ms_effect_dispatch(s->check, s->facts, e->id);
+        s->partial = s->partial || dispatch == MS_DISPATCH_PARTIAL;
+        s->unknown = s->unknown || dispatch == MS_DISPATCH_UNKNOWN;
         return;
     }
     if (callee == MS_NONE) {
@@ -87,8 +108,42 @@ static void scan_stmt(void *ctx, const MsStmt *stmt) {
     }
 }
 
+/* Turning a value into an interface hands out its methods, so the conversion is charged for them: the
+ * impls of the interface for the source type, and the type's own methods the interface's operations name. */
+static void scan_conversion(ScanState *s, const MsExpr *e, MsTy source) {
+    const MsMethods *methods = s->facts->methods;
+    const MsTy target = s->facts->expr_ty[e->id];
+    const MsTyTable *tys = &s->check->tys;
+    const MsOperations *ops = tys->def[target] == 0
+                                  ? NULL
+                                  : ms_interface_operations((const MsMethodTable *)methods, tys->def[target] - 1);
+    for (uint32_t row = 0; row < methods->count; row++) {
+        if (methods->receiver[row] != source || methods->native[row] != MS_NATIVE_SOURCE || methods->decl[row] == NULL) {
+            continue;
+        }
+        bool charged = methods->contract[row] == target;
+        if (methods->inherent[row] && ops != NULL) {
+            const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
+            for (uint32_t k = 0; k < ops->count; k++) {
+                charged = charged || ops->items[k].name == method->func.name;
+            }
+        }
+        if (!charged) {
+            continue;
+        }
+        if (ms_effect_method_is_node(methods, row)) {
+            scan_edge(s, ms_effect_method_node(s->check, row), e->pos);
+        } else {
+            s->partial = true; // a method of a generic impl has no node yet
+        }
+    }
+}
+
 static void scan_expr(void *ctx, const MsExpr *e) {
     ScanState *s = ctx;
+    if (s->facts->coerce_iface[e->id] != MS_TY_NONE) {
+        scan_conversion(s, e, s->facts->coerce_iface[e->id]);
+    }
     if (s->facts->const_use[e->id]) {
         scan_call(s, e);
         return;
@@ -104,15 +159,26 @@ static void scan_expr(void *ctx, const MsExpr *e) {
     }
 }
 
+static MsScanNode scan_finish(ScanState *s, uint32_t callable) {
+    // A binding that must be closed calls its `close` when its scope ends, an edge no expression names.
+    const MsBindings *bindings = &s->facts->bindings;
+    for (uint32_t i = 0; i < bindings->count && !s->partial; i++) {
+        s->partial = bindings->callable[i] == callable && (bindings->flags[i] & MS_BIND_RESOURCE) != 0;
+    }
+    return (MsScanNode){.edges = s->edges, .nedges = s->nedges, .unknown = s->unknown, .write = s->write,
+                       .partial = s->partial};
+}
+
 MsScanNode ms_effect_scan_decl(MsArena *arena, const MsCheck *c, MsModId module, const MsDecl *d) {
     ScanState s = {.arena = arena, .check = c, .facts = c->mods[module].facts};
     const MsVisitor visitor = {.ctx = &s, .stmt = scan_stmt, .expr = scan_expr};
     ms_walk_decl(&visitor, d);
-    // A binding that must be closed calls its `close` when its scope ends, an edge no expression names.
-    const MsBindings *bindings = &s.facts->bindings;
-    for (uint32_t i = 0; i < bindings->count && !s.partial; i++) {
-        s.partial = bindings->callable[i] == d->id && (bindings->flags[i] & MS_BIND_RESOURCE) != 0;
-    }
-    return (MsScanNode){.edges = s.edges, .nedges = s.nedges, .unknown = s.unknown, .write = s.write,
-                       .partial = s.partial};
+    return scan_finish(&s, d->id);
+}
+
+MsScanNode ms_effect_scan_method(MsArena *arena, const MsCheck *c, MsModId module, const MsMethod *method) {
+    ScanState s = {.arena = arena, .check = c, .facts = c->mods[module].facts};
+    const MsVisitor visitor = {.ctx = &s, .stmt = scan_stmt, .expr = scan_expr};
+    ms_walk_callable(&visitor, method->func.params, method->func.body);
+    return scan_finish(&s, method->id);
 }

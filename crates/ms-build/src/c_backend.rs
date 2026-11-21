@@ -1,10 +1,9 @@
-//! The C back end (`MS_BACKEND=c`): the lowered module goes to libms as MIR text
+//! The C back end: the lowered module goes to libms as MIR text
 //! (`compiler/include/ms/emit_program.h`, linked into this crate by `build.rs`), which runs the
 //! optimizer and finishing passes and returns LLVM IR. The pinned LLVM tools (`opt`, `llc`) turn
 //! that into assembly, libms appends the fault tables to it, and `llc` assembles the result, so
-//! no C toolchain and no helper program is needed. Opt-in until it is the default; a program the
-//! emitter cannot write fails with the reason instead of falling back, so the corpus diff
-//! (`compiler/tests/build-diff.sh`) counts the gaps.
+//! no C toolchain and no helper program is needed. A program the emitter cannot write fails with the
+//! reason; the corpus diff (`compiler/tests/build-diff.sh`) counts the gaps.
 
 // The calls into libms are the only unsafe code of this crate.
 #![allow(unsafe_code)]
@@ -16,11 +15,6 @@ use std::process::Command;
 use crate::BuildOptions;
 use crate::link::llvm_tools;
 use ms_mir::ir::Module;
-
-/// Whether `MS_BACKEND=c` asks for the C back end.
-pub fn enabled() -> bool {
-    std::env::var("MS_BACKEND").is_ok_and(|v| v == "c")
-}
 
 /// `MsBackendText`: bytes libms allocated, freed with `ms_backend_free`.
 #[repr(C)]
@@ -49,6 +43,13 @@ unsafe extern "C" {
         options: *const Options,
         ir: *mut Text,
         meta: *mut Text,
+        why: *mut Text,
+    ) -> bool;
+    fn ms_backend_optimized(
+        mir: *const c_char,
+        mir_len: usize,
+        name: *const c_char,
+        out: *mut Text,
         why: *mut Text,
     ) -> bool;
     fn ms_backend_tables(
@@ -124,6 +125,28 @@ fn ir_of(
     };
     if ok {
         Ok((ir.take(), meta.take()))
+    } else {
+        Err(reason(why))
+    }
+}
+
+/// The MIR of `module` after the optimizer at its speed level, as text (`MS_EMIT_OPT=1 ms emit`).
+pub fn optimized_mir(module: &Module) -> Result<String, String> {
+    let mir = ms_mir::print::print_module_unique(module);
+    let (mut out, mut why) = (Text::empty(), Text::empty());
+    // SAFETY: the text is passed with its length, the name is NUL-terminated, and the outputs are
+    // empty texts libms fills.
+    let ok = unsafe {
+        ms_backend_optimized(
+            mir.as_ptr().cast(),
+            mir.len(),
+            c"program.mir".as_ptr(),
+            &raw mut out,
+            &raw mut why,
+        )
+    };
+    if ok {
+        Ok(String::from_utf8_lossy(&out.take()).into_owned())
     } else {
         Err(reason(why))
     }

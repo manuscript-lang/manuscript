@@ -4,7 +4,7 @@
  * owned and nothing reads it between the call and its drop, and `f` declares a `<f>_take` twin
  * (`// ms: takes_self`), the call becomes the twin, which moves `b` in and builds the result in
  * the same allocation, so the drop disappears. A take of a dying value is a move, so nothing
- * observable changes. Port of crates/ms-mir/src/opt/bytetake.rs. */
+ * observable changes. Port of the former Rust crates/ms-mir/src/opt/bytetake.rs. */
 #include <string.h>
 
 #include "ms/mir_analysis.h"

@@ -8,7 +8,8 @@ use ms_syntax::Names;
 use std::fmt::Write;
 
 /// The diagnostic families the C checker implements so far; the scope mode prints only these.
-const SCOPE_FAMILIES: [&str; 5] = [
+const SCOPE_FAMILIES: [&str; 6] = [
+    "redundant prelude import ",
     "reuses a prelude",
     "collides with another",
     "duplicate or intrinsic name ",

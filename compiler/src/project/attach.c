@@ -12,6 +12,7 @@
 typedef struct Attach {
     MsArena *arena;
     const MsLock *lock;
+    const MsWorkspace *workspace; /* NULL for a project outside any workspace */
     const char *cache;
     MsBuf loaded; /* MsPackage *, in the order loaded */
     MsBuf chain;  /* const char *: the copy ids on the path from the project, to catch cycles */
@@ -69,7 +70,7 @@ static const MsEffectRule *attach_rule(const MsProject *scope, const char *alias
 
 /* What a project allows a dependency, and what a package may hand on. */
 static bool attach_check_effects(MsArena *a, const MsProject *scope, const char *alias, const char *id, const char *asker, const MsProject *package, MsProjectError *err) {
-    const char *label = ms_arena_fmt(a, "package %s", id).ptr;
+    const char *label = strncmp(id, "workspace/", 10) == 0 ? ms_arena_fmt(a, "workspace member %s", id + 10).ptr : ms_arena_fmt(a, "package %s", id).ptr;
     const MsEffectRule *rule = attach_rule(scope, alias);
     const char *missing = attach_uncovered(rule != NULL ? rule->patterns : NULL, rule != NULL ? rule->count : 0, package->effects, package->effect_count);
     if (missing != NULL && asker[0] == 0) {
@@ -163,7 +164,7 @@ static bool attach_read_index(Attach *t, const char *hash, const char *id, MsPac
 bool ms_package_verify_file(MsArena *a, const MsPackage *package, const char *canonical, const void *bytes, size_t length, MsProjectError *err) {
     const char *relative;
     MsProjectError ignored;
-    if (!ms_path_rel(a, package->root, canonical, &relative, &ignored)) {
+    if (package->member || !ms_path_rel(a, package->root, canonical, &relative, &ignored)) {
         return true;
     }
     char digest[65];
@@ -203,6 +204,7 @@ static MsPackage *attach_load_copy(Attach *t, const char *id, const MsLockEntry 
         return NULL;
     }
     MsPackage *package = MS_NEW(a, MsPackage);
+    *package = (MsPackage){0}; /* MS_NEW does not zero */
     package->key = ms_arena_fmt(a, "@%s", id).ptr;
     package->spec = entry->spec;
     if (!attach_read_index(t, entry->sha256, id, package, err) || !ms_path_eval_symlinks(a, directory, &package->root, err)) {
@@ -244,6 +246,15 @@ static MsPackage *attach_load_copy(Attach *t, const char *id, const MsLockEntry 
     return wired ? package : NULL;
 }
 
+static bool attach_chain_has(const Attach *t, const char *id) {
+    for (size_t k = 0; k < MS_VEC_LEN(t->chain, const char *); k++) {
+        if (strcmp(MS_VEC_AT(t->chain, const char *, k), id) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static const MsPackage *attach_find_loaded(const Attach *t, const char *id) {
     for (size_t i = 0; i < MS_VEC_LEN(t->loaded, MsPackage *); i++) {
         const MsPackage *p = MS_VEC_AT(t->loaded, MsPackage *, i);
@@ -254,13 +265,54 @@ static const MsPackage *attach_find_loaded(const Attach *t, const char *id) {
     return NULL;
 }
 
+/* Loads the workspace member at `dir` once and returns its id, or NULL. */
+static const char *attach_member(Attach *t, const char *alias, const char *dir, MsProjectError *err) {
+    MsArena *a = t->arena;
+    if (t->workspace == NULL) {
+        attach_fail(err, ms_arena_fmt(a, "%s is a path dependency, but no ancestor ms.toml has [workspace] members listing this project; add a workspace root or use a url dependency", alias).ptr);
+        return NULL;
+    }
+    const MsMember *member = ms_workspace_member_at(t->workspace, dir);
+    if (member == NULL) {
+        attach_fail(err, ms_arena_fmt(a, "%s points at %s, which is not a workspace member; list it under [workspace] members in %s/ms.toml", alias, dir, t->workspace->root).ptr);
+        return NULL;
+    }
+    const char *id = ms_arena_fmt(a, "workspace/%s", member->name).ptr;
+    if (attach_chain_has(t, id)) {
+        attach_fail(err, ms_arena_fmt(a, "workspace member %s depends on itself through %s; members cannot form a cycle", member->name, alias).ptr);
+        return NULL;
+    }
+    if (attach_find_loaded(t, id) != NULL) {
+        return id;
+    }
+    MsPackage *package = MS_NEW(a, MsPackage);
+    *package = (MsPackage){0}; /* MS_NEW does not zero */
+    MsProjectError cause = {0};
+    if (!ms_project_read(a, MS_PATH_JOIN(a, member->root, "ms.toml"), &package->project, &cause)) {
+        attach_manifest_failed(a, id, &cause, err);
+        return NULL;
+    }
+    MS_VEC_PUSH(t->chain, const char *, id);
+    const bool wired = attach_wire(t, &package->project, id, err);
+    MS_VEC_POP(t->chain, const char *);
+    if (!wired) {
+        return NULL;
+    }
+    package->key = ms_arena_fmt(a, "@%s", id).ptr;
+    package->spec = ms_arena_fmt(a, "workspace member %s", member->name).ptr;
+    package->root = member->root;
+    package->member = true;
+    MS_VEC_PUSH(t->loaded, MsPackage *, package);
+    return id;
+}
+
 static bool attach_wire(Attach *t, MsProject *scope, const char *asker, MsProjectError *err) {
     MsArena *a = t->arena;
     const size_t depth = MS_VEC_LEN(t->chain, const char *);
     if (depth >= ATTACH_MAX_DEPTH) {
         return attach_fail(err, ms_arena_fmt(a, "packages nest more than %d deep at %s", ATTACH_MAX_DEPTH, asker).ptr);
     }
-    scope->deps = MS_NEW_N(a, MsAlias, scope->dependency_count + 1);
+    scope->deps = MS_NEW_N(a, MsAlias, scope->dependency_count + scope->path_dependency_count + 1);
     for (uint32_t i = 0; i < scope->dependency_count; i++) {
         const MsDependency *dep = &scope->dependencies[i];
         const MsLockEntry *entry = attach_locked(t, dep, err);
@@ -287,52 +339,43 @@ static bool attach_wire(Attach *t, MsProject *scope, const char *asker, MsProjec
         }
         scope->deps[scope->dep_count++] = (MsAlias){.name = dep->alias, .target = package->project.source};
     }
-    return true;
-}
-
-/* A project below a workspace root shares its lock, which this does not read. */
-static bool attach_in_workspace(MsArena *a, const MsProject *p) {
-    const char *dir = ms_path_dir(a, p->root);
-    for (;;) {
-        MsProject ancestor;
-        MsProjectError ignored = {0};
-        struct stat info;
-        const char *manifest = MS_PATH_JOIN(a, dir, "ms.toml");
-        if (stat(manifest, &info) == 0 && ms_project_read(a, manifest, &ancestor, &ignored) && ancestor.is_workspace) {
-            return true;
-        }
-        const char *parent = ms_path_dir(a, dir);
-        if (strcmp(parent, dir) == 0) {
+    for (uint32_t i = 0; i < scope->path_dependency_count; i++) {
+        const MsAlias *dep = &scope->path_dependencies[i];
+        const char *id = attach_member(t, dep->name, dep->target, err);
+        if (id == NULL) {
             return false;
         }
-        dir = parent;
+        const MsPackage *package = attach_find_loaded(t, id);
+        if (!attach_check_effects(a, scope, dep->name, id, asker, &package->project, err)) {
+            return false;
+        }
+        scope->deps[scope->dep_count++] = (MsAlias){.name = dep->name, .target = package->project.source};
     }
+    return true;
 }
 
 bool ms_project_attach(MsArena *a, MsProject *p, MsProjectError *err) {
     if (p->dependency_count == 0 && p->path_dependency_count == 0) {
         return true;
     }
-    if (p->path_dependency_count > 0) {
-        ms_project_error_unsupported(err, "path dependencies");
-        return false;
-    }
-    if (attach_in_workspace(a, p)) {
-        ms_project_error_unsupported(err, "dependencies of a project below a workspace root");
+    MsWorkspace workspace = {0};
+    bool in_workspace;
+    if (!ms_workspace_find(a, MS_PATH_JOIN(a, p->root, "ms.toml"), &workspace, &in_workspace, err)) {
         return false;
     }
     /* Package files are named `@name/...`; a project path with that spelling would be mistaken for package code. */
-    for (uint32_t i = 0; i < p->dependency_count; i++) {
+    for (uint32_t i = 0; i < p->dependency_count + p->path_dependency_count; i++) {
+        const char *alias = i < p->dependency_count ? p->dependencies[i].alias : p->path_dependencies[i - p->dependency_count].name;
         struct stat info;
-        if (stat(MS_PATH_JOIN(a, p->root, p->dependencies[i].alias), &info) == 0) {
-            return attach_fail(err, ms_arena_fmt(a, "the project has a file or directory named %s, which is also a dependency name; rename it, names starting with @ are reserved for packages", p->dependencies[i].alias).ptr);
+        if (stat(MS_PATH_JOIN(a, p->root, alias), &info) == 0) {
+            return attach_fail(err, ms_arena_fmt(a, "the project has a file or directory named %s, which is also a dependency name; rename it, names starting with @ are reserved for packages", alias).ptr);
         }
     }
     MsLock lock;
-    if (!ms_lock_read(a, p->root, &lock, err)) {
+    if (!ms_lock_read(a, in_workspace ? workspace.root : p->root, &lock, err)) { /* a workspace shares the lock at its root */
         return false;
     }
-    Attach t = {.arena = a, .lock = &lock, .cache = ms_package_cache_dir(a)};
+    Attach t = {.arena = a, .lock = &lock, .workspace = in_workspace ? &workspace : NULL, .cache = ms_package_cache_dir(a)};
     const bool wired = attach_wire(&t, p, "", err);
     if (wired) {
         const uint32_t count = (uint32_t)MS_VEC_LEN(t.loaded, MsPackage *);

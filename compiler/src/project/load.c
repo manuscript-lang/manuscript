@@ -445,10 +445,9 @@ static void load_free(GraphLoader *l) {
 
 static bool load_graph(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err);
 
-/* The packages of a project that is not a workspace member and has no path dependency, which the loader hands on to
- * the caller. */
+/* The packages of a project, which the loader hands on to the caller. */
 static bool load_attach(MsArena *a, MsProject *project, MsProjectError *err) {
-    return project->is_workspace || project->path_dependency_count > 0 || ms_project_attach(a, project, err);
+    return ms_project_attach(a, project, err);
 }
 
 bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err) {
@@ -486,7 +485,7 @@ static void load_packages(MsArena *a, const MsProject *project, MsGraph *out) {
     out->packages = MS_NEW_N(a, MsGraphPackage, project->package_count + 1);
     for (uint32_t i = 0; i < project->package_count; i++) {
         const MsPackage *package = &project->packages[i];
-        out->packages[i] = (MsGraphPackage){.prefix = ms_arena_fmt(a, "%s/", package->key).ptr, .spec = package->spec, .effects = package->project.effects, .effect_count = package->project.effect_count};
+        out->packages[i] = (MsGraphPackage){.prefix = ms_arena_fmt(a, "%s/", package->key).ptr, .spec = package->spec, .effects = package->project.effects, .effect_count = package->project.effect_count, .member = package->member};
     }
 }
 
@@ -514,10 +513,6 @@ static bool load_graph(MsArena *a, MsNames *names, const char *filename, MsGraph
             }
             load_manifest_failed(a, filename, absolute, root, &project, &failure, out);
             return true;
-        }
-        if (project.is_workspace || project.path_dependency_count > 0) {
-            ms_project_error_unsupported(err, "[workspace] and path dependencies in the module graph");
-            return false;
         }
         load_packages(a, &project, out);
         config = &project;
