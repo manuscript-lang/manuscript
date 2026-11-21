@@ -50,7 +50,7 @@ static void macho_object(const char *data, size_t len, MsMachoSymbols *out) {
             const uint32_t nsects = macho_u32(data + at + 64);
             for (uint32_t s = 0; s < nsects && MACHO_SEGMENT_SIZE + (size_t)(s + 1) * MACHO_SECTION_SIZE <= size; s++) {
                 const char *section = data + at + MACHO_SEGMENT_SIZE + (size_t)s * MACHO_SECTION_SIZE;
-                out->debug = out->debug || strncmp(section, "__debug_info", 16) == 0;
+                out->debug = out->debug || memcmp(section, "__debug_info", sizeof "__debug_info") == 0;
             }
         } else if (cmd == MACHO_LC_SYMTAB && size >= 24) {
             const uint32_t symoff = macho_u32(data + at + 8), nsyms = macho_u32(data + at + 12);

@@ -17,9 +17,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "ms/build_tool.h"
 #include "ms/packages.h"
 
-extern char **environ;
 
 #define COMMIT_DIGITS 40
 #define PIPE_READ 0

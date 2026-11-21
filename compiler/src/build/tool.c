@@ -5,7 +5,7 @@
 #include "ms/build_tool.h"
 
 bool ms_build_read(const char *path, MsBuf *out) {
-    FILE *file = fopen(path, "rb");
+    FILE *file = fopen(path, "rb") /* NOLINT(android-cloexec-fopen): "e" is glibc-only */;
     if (file == NULL) {
         return false;
     }
@@ -20,7 +20,7 @@ bool ms_build_read(const char *path, MsBuf *out) {
 }
 
 bool ms_build_write(const char *path, const void *bytes, size_t len) {
-    FILE *file = fopen(path, "wb");
+    FILE *file = fopen(path, "wb") /* NOLINT(android-cloexec-fopen): "e" is glibc-only */;
     if (file == NULL) {
         return false;
     }

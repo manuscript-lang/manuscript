@@ -1,4 +1,10 @@
 /* Child processes and directories of the build steps on POSIX hosts (ms/build_tool.h). */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
 #include "ms/build_tool.h"
 
 #if !defined(_WIN32)
@@ -13,8 +19,6 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
-extern char **environ;
 
 void ms_build_errno_text(int err_no, MsBuf *out) {
     char message[128] = "unknown error";
@@ -42,7 +46,11 @@ bool ms_build_run_in(const char *what, const char *const *argv, const char *cwd,
     posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, log, O_WRONLY | O_CREAT | O_TRUNC, 0600);
     posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDERR_FILENO);
     pid_t pid = 0;
+    /* posix_spawnp takes char *const argv[] but never writes through it. */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-qual"
     const int spawned = posix_spawnp(&pid, argv[0], &actions, NULL, (char *const *)argv, environ) /* NOLINT(cppcoreguidelines-pro-type-const-cast) */;
+#pragma clang diagnostic pop
     posix_spawn_file_actions_destroy(&actions);
     if (spawned != 0) {
         ms_buf_printf(output, "cannot run %s: ", what);
@@ -98,7 +106,8 @@ void ms_build_unlink(const char *path) {
 void ms_build_remove_tree(const char *path) {
     DIR *dir = opendir(path);
     if (dir != NULL) {
-        for (const struct dirent *entry = readdir(dir); entry != NULL; entry = readdir(dir)) {
+        /* NOLINTNEXTLINE(concurrency-mt-unsafe): one DIR per call; readdir on its own stream is safe */
+        for (const struct dirent *entry = readdir(dir); entry != NULL; entry = readdir(dir)) { // NOLINT(concurrency-mt-unsafe)
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
                 continue;
             }

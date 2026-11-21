@@ -1,6 +1,12 @@
 /* MIR text to an object file (ms/build_object.h): the C back end writes IR, `opt` and `llc` compile it, and the
  * fault tables join the assembly before the last `llc` assembles it. Every step runs in a private directory that
  * is removed on the way out. */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
 #include "ms/build_object.h"
 
 #include <errno.h>
@@ -93,6 +99,130 @@ static void bo_asm_module(const char *text, size_t len, MsBuf *out) {
     }
 }
 
+/* The files and tool paths of one build, all inside the private directory. */
+typedef struct BoFiles {
+    MsBuf triple, opt, llc, ll, bc, plain, wrapped, obj, log;
+} BoFiles;
+
+static void bo_files_init(BoFiles *f, const char *dir, const char *tools, const char *triple_name) {
+    ms_buf_printf(&f->triple, "-mtriple=%s", triple_name);
+    ms_buf_putc(&f->triple, 0);
+    ms_buf_printf(&f->opt, "%s/opt", tools);
+    ms_buf_putc(&f->opt, 0);
+    ms_buf_printf(&f->llc, "%s/llc", tools);
+    ms_buf_putc(&f->llc, 0);
+    bo_path(&f->ll, dir, "program.ll");
+    bo_path(&f->bc, dir, "program.bc");
+    bo_path(&f->plain, dir, "program.plain.s");
+    bo_path(&f->wrapped, dir, "program.asm.ll");
+    bo_path(&f->obj, dir, "program.o");
+    bo_path(&f->log, dir, "tool.log");
+}
+
+static void bo_files_free(BoFiles *f) {
+    const char *const made[] = {f->ll.data, f->bc.data, f->plain.data, f->wrapped.data, f->obj.data, f->log.data};
+    for (size_t i = 0; i < sizeof made / sizeof made[0]; i++) {
+        ms_build_unlink(made[i]);
+    }
+    MsBuf *const all[] = {&f->triple, &f->opt, &f->llc, &f->ll, &f->bc, &f->plain, &f->wrapped, &f->obj, &f->log};
+    for (size_t i = 0; i < sizeof all / sizeof all[0]; i++) {
+        ms_buf_free(all[i]);
+    }
+}
+
+static bool bo_fail(MsBackendText *why, const char *what, const char *path) {
+    MsBuf message = {0};
+    ms_buf_printf(&message, "cannot %s %s", what, path);
+    *why = ms_backend_take(&message);
+    return false;
+}
+
+/* `opt` (release builds): the O3 pipeline over the IR file; `*input` becomes the bitcode it writes. */
+static bool bo_optimize(const BoFiles *f, const MsObjectOptions *o, const char **input, MsBackendText *why) {
+    const char *argv[10];
+    size_t n = 0;
+    argv[n++] = f->opt.data;
+    if (!o->vectorize) {
+        argv[n++] = "-vectorize-loops=false";
+        argv[n++] = "-vectorize-slp=false";
+    }
+    if (o->llvm_verify) {
+        argv[n++] = "-verify-each";
+    }
+    argv[n++] = f->triple.data;
+    argv[n++] = "-passes=default<O3>";
+    argv[n++] = *input;
+    argv[n++] = "-o";
+    argv[n++] = f->bc.data;
+    argv[n] = NULL;
+    *input = f->bc.data;
+    return bo_run("opt (LLVM optimizer)", argv, f->log.data, why);
+}
+
+/* `llc` to assembly text, as the Rust build does. */
+static bool bo_to_assembly(const BoFiles *f, const MsObjectOptions *o, const char *input, MsBackendText *why) {
+    const char *argv[14];
+    size_t n = 0;
+    argv[n++] = f->llc.data;
+    argv[n++] = (o->backend.speed ? "-O3" : "-O0");
+    argv[n++] = "-filetype=asm";
+    argv[n++] = "-relocation-model=pic";
+    argv[n++] = f->triple.data;
+#if defined(__x86_64__)
+    argv[n++] = "-align-loops=32";
+    argv[n++] = "-mcpu=x86-64";
+#endif
+    argv[n++] = input;
+    argv[n++] = "-o";
+    argv[n++] = f->plain.data;
+    argv[n] = NULL;
+    return bo_run("llc (LLVM code generator)", argv, f->log.data, why);
+}
+
+/* Adds the fault tables to the assembly and writes it back as a module-asm IR file. */
+static bool bo_add_tables(const BoFiles *f, const MsBackendText *meta, MsBackendText *why) {
+    MsBuf assembly = {0}, wrapped_text = {0};
+    MsBackendText with_tables = {0};
+    if (!ms_build_read(f->plain.data, &assembly)) {
+        return bo_fail(why, "read", f->plain.data);
+    }
+    const char *prefix =
+#ifdef __APPLE__
+        "_";
+#else
+        "";
+#endif
+    bool ok = ms_backend_tables(meta->ptr, meta->len, assembly.data, assembly.len, prefix, &with_tables, why);
+    if (ok) {
+        bo_asm_module(with_tables.ptr == NULL ? "" : with_tables.ptr, with_tables.len, &wrapped_text);
+        if (!ms_build_write(f->wrapped.data, wrapped_text.data, wrapped_text.len)) {
+            ok = bo_fail(why, "write", f->wrapped.data);
+        }
+    }
+    ms_backend_free(&with_tables);
+    ms_buf_free(&assembly);
+    ms_buf_free(&wrapped_text);
+    return ok;
+}
+
+/* `llc` assembles the wrapped module to an object; `object` takes its bytes. */
+static bool bo_assemble(const BoFiles *f, MsBackendText *object, MsBackendText *why) {
+    const char *argv[10] = {f->llc.data, "-filetype=obj", "-relocation-model=pic", f->triple.data, f->wrapped.data,
+                            "-o",        f->obj.data,     NULL};
+    if (!bo_run("llc (assembler)", argv, f->log.data, why)) {
+        return false;
+    }
+    MsBuf bytes = {0};
+    const bool ok = ms_build_read(f->obj.data, &bytes);
+    if (ok) {
+        *object = ms_backend_take(&bytes);
+    } else {
+        (void)bo_fail(why, "read", f->obj.data);
+    }
+    ms_buf_free(&bytes);
+    return ok;
+}
+
 /* The steps after the IR: optimize, assemble to text, add the fault tables, assemble to an object. */
 static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBackendText *ir, const MsBackendText *meta,
                        MsBackendText *object, MsBackendText *why) {
@@ -103,126 +233,16 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
         *why = ms_backend_take(&message);
         return false;
     }
-    MsBuf triple = {0}, opt = {0}, llc = {0}, ll = {0}, bc = {0}, plain = {0}, wrapped = {0}, obj = {0}, log = {0};
-    ms_buf_printf(&triple, "-mtriple=%s", triple_name);
-    ms_buf_putc(&triple, 0);
-    ms_buf_printf(&opt, "%s/opt", o->tools);
-    ms_buf_putc(&opt, 0);
-    ms_buf_printf(&llc, "%s/llc", o->tools);
-    ms_buf_putc(&llc, 0);
-    bo_path(&ll, dir, "program.ll");
-    bo_path(&bc, dir, "program.bc");
-    bo_path(&plain, dir, "program.plain.s");
-    bo_path(&wrapped, dir, "program.asm.ll");
-    bo_path(&obj, dir, "program.o");
-    bo_path(&log, dir, "tool.log");
-    bool ok = ms_build_write(ll.data, ir->ptr, ir->len);
-    if (!ok) {
-        MsBuf message = {0};
-        ms_buf_printf(&message, "cannot write %s", ll.data);
-        *why = ms_backend_take(&message);
-    }
+    BoFiles f = {0};
+    bo_files_init(&f, dir, o->tools, triple_name);
+    bool ok = ms_build_write(f.ll.data, ir->ptr, ir->len) || bo_fail(why, "write", f.ll.data);
     if (ok && o->keep_ll != NULL) {
         (void)ms_build_write(o->keep_ll, ir->ptr, ir->len);
     }
-    const char *input = ll.data;
-    if (ok && o->backend.speed) {
-        const char *argv[10];
-        size_t n = 0;
-        argv[n++] = opt.data;
-        if (!o->vectorize) {
-            argv[n++] = "-vectorize-loops=false";
-            argv[n++] = "-vectorize-slp=false";
-        }
-        if (o->llvm_verify) {
-            argv[n++] = "-verify-each";
-        }
-        argv[n++] = triple.data;
-        argv[n++] = "-passes=default<O3>";
-        argv[n++] = input;
-        argv[n++] = "-o";
-        argv[n++] = bc.data;
-        argv[n] = NULL;
-        ok = bo_run("opt (LLVM optimizer)", argv, log.data, why);
-        input = bc.data;
-    }
-    if (ok) {
-        const char *argv[14];
-        size_t n = 0;
-        argv[n++] = llc.data;
-        argv[n++] = (o->backend.speed ? "-O3" : "-O0");
-        argv[n++] = "-filetype=asm";
-        argv[n++] = "-relocation-model=pic";
-        argv[n++] = triple.data;
-#if defined(__x86_64__)
-        argv[n++] = "-align-loops=32";
-        argv[n++] = "-mcpu=x86-64";
-#endif
-        argv[n++] = input;
-        argv[n++] = "-o";
-        argv[n++] = plain.data;
-        argv[n] = NULL;
-        ok = bo_run("llc (LLVM code generator)", argv, log.data, why);
-    }
-    MsBuf assembly = {0}, wrapped_text = {0};
-    MsBackendText with_tables = {0};
-    if (ok && !ms_build_read(plain.data, &assembly)) {
-        MsBuf message = {0};
-        ms_buf_printf(&message, "cannot read %s", plain.data);
-        *why = ms_backend_take(&message);
-        ok = false;
-    }
-    if (ok) {
-        const char *prefix =
-#ifdef __APPLE__
-            "_";
-#else
-            "";
-#endif
-        ok = ms_backend_tables(meta->ptr, meta->len, assembly.data, assembly.len, prefix, &with_tables, why);
-    }
-    if (ok) {
-        bo_asm_module(with_tables.ptr == NULL ? "" : with_tables.ptr, with_tables.len, &wrapped_text);
-        ok = ms_build_write(wrapped.data, wrapped_text.data, wrapped_text.len);
-        if (!ok) {
-            MsBuf message = {0};
-            ms_buf_printf(&message, "cannot write %s", wrapped.data);
-            *why = ms_backend_take(&message);
-        }
-    }
-    if (ok) {
-        const char *argv[10] = {llc.data, "-filetype=obj", "-relocation-model=pic", triple.data, wrapped.data,
-                          "-o", obj.data, NULL};
-        ok = bo_run("llc (assembler)", argv, log.data, why);
-    }
-    if (ok) {
-        MsBuf bytes = {0};
-        ok = ms_build_read(obj.data, &bytes);
-        if (ok) {
-            *object = ms_backend_take(&bytes);
-        } else {
-            MsBuf message = {0};
-            ms_buf_printf(&message, "cannot read %s", obj.data);
-            *why = ms_backend_take(&message);
-        }
-        ms_buf_free(&bytes);
-    }
-    const char *const made[] = {ll.data, bc.data, plain.data, wrapped.data, obj.data, log.data};
-    for (size_t i = 0; i < sizeof made / sizeof made[0]; i++) {
-        ms_build_unlink(made[i]);
-    }
-    ms_backend_free(&with_tables);
-    ms_buf_free(&assembly);
-    ms_buf_free(&wrapped_text);
-    ms_buf_free(&triple);
-    ms_buf_free(&opt);
-    ms_buf_free(&llc);
-    ms_buf_free(&ll);
-    ms_buf_free(&bc);
-    ms_buf_free(&plain);
-    ms_buf_free(&wrapped);
-    ms_buf_free(&obj);
-    ms_buf_free(&log);
+    const char *input = f.ll.data;
+    ok = ok && (!o->backend.speed || bo_optimize(&f, o, &input, why));
+    ok = ok && bo_to_assembly(&f, o, input, why) && bo_add_tables(&f, meta, why) && bo_assemble(&f, object, why);
+    bo_files_free(&f);
     return ok;
 }
 

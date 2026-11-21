@@ -28,4 +28,9 @@ void ms_build_errno_text(int err_no, MsBuf *out);
 void ms_build_unlink(const char *path);
 void ms_build_remove_tree(const char *path);
 
+#if !defined(_WIN32)
+/* The process environment, which the POSIX headers declare only under _GNU_SOURCE. One declaration for every source of libms. */
+extern char **environ;
+#endif
+
 #endif
