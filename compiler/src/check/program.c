@@ -6,6 +6,7 @@
 #include "ms/desugar.h"
 #include "ms/extern_sig.h"
 #include "ms/interface_sig.h"
+#include "ms/param_order.h"
 #include "ms/methods.h"
 #include "ms/program.h"
 #include "ms/public_sig.h"
@@ -131,6 +132,7 @@ bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
     ms_module_check_public(c, module, c->methods);
     ms_module_check_externs(c, module);
     ms_module_check_interfaces(c, module);
+    ms_module_check_param_order(c, module);
     ms_module_check_bodies_with(c, module, c->methods);
     return true;
 }

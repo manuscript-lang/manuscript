@@ -30,6 +30,19 @@ static bool scan_is_node(const MsCheck *c, MsSymId sym) {
     return kind == MS_D_FN || kind == MS_D_TYPE || kind == MS_D_CONST;
 }
 
+bool ms_effect_method_is_node(const MsCheck *c, const MsMethods *m, uint32_t row) {
+    if (row >= m->count || m->native[row] != MS_NATIVE_SOURCE || m->decl[row] == NULL) {
+        return false;
+    }
+    for (uint32_t k = 0; k < m->nvars[row]; k++) {
+        const MsTy var = m->vars[m->vars_at[row] + k];
+        if (var < c->var_info_cap && c->var_info[var].nbounds != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 MsDispatch ms_effect_dispatch(const MsCheck *c, const MsFacts *facts, uint32_t call) {
     const MsKind kind = ms_ty_kind(&c->tys, facts->call_receiver[call]);
     if (kind == MS_K_PRIMITIVE) {
@@ -62,7 +75,7 @@ static void scan_call(ScanState *s, const MsExpr *e) {
     const MsSyms *syms = &s->check->syms;
     const MsSymId callee = s->facts->call_callee[e->id];
     const uint32_t row = s->facts->call_method[e->id];
-    if (row != MS_NONE && ms_effect_method_is_node(s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
+    if (row != MS_NONE && ms_effect_method_is_node(s->check, s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
         scan_edge(s, ms_effect_method_node(s->check, row), e->pos);
         return;
     }
@@ -78,10 +91,6 @@ static void scan_call(ScanState *s, const MsExpr *e) {
     }
     if (callee == MS_NONE) {
         s->unknown = true;
-        return;
-    }
-    if (s->facts->call_type_args_len != NULL && s->facts->call_type_args_len[e->id] != 0) {
-        s->partial = true; // the operations of the type arguments are charged too, which the scan does not port yet
         return;
     }
     if (syms->decl[callee] != NULL && syms->decl[callee]->kind == MS_D_TYPE) {
@@ -118,10 +127,12 @@ static void scan_conversion(ScanState *s, const MsExpr *e, MsTy source) {
                                   ? NULL
                                   : ms_interface_operations((const MsMethodTable *)methods, tys->def[target] - 1);
     for (uint32_t row = 0; row < methods->count; row++) {
-        if (methods->receiver[row] != source || methods->native[row] != MS_NATIVE_SOURCE || methods->decl[row] == NULL) {
+        if (tys->def[methods->receiver[row]] != tys->def[source] || tys->def[source] == 0 ||
+            methods->native[row] != MS_NATIVE_SOURCE || methods->decl[row] == NULL) {
             continue;
         }
-        bool charged = methods->contract[row] == target;
+        bool charged = methods->contract[row] != MS_TY_NONE && tys->def[target] != 0 &&
+                       tys->def[methods->contract[row]] == tys->def[target];
         if (methods->inherent[row] && ops != NULL) {
             const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
             for (uint32_t k = 0; k < ops->count; k++) {
@@ -131,10 +142,33 @@ static void scan_conversion(ScanState *s, const MsExpr *e, MsTy source) {
         if (!charged) {
             continue;
         }
-        if (ms_effect_method_is_node(methods, row)) {
+        if (ms_effect_method_is_node(s->check, methods, row)) {
             scan_edge(s, ms_effect_method_node(s->check, row), e->pos);
         } else {
             s->partial = true; // a method of a generic impl has no node yet
+        }
+    }
+}
+
+/* A generic call instantiated at a concrete type hands out that type's interface methods: each
+ * method an impl or the type itself supplies for an interface is charged where the call names the type. */
+static void scan_type_argument(ScanState *s, const MsExpr *e, MsTy ty) {
+    const MsTyTable *tys = &s->check->tys;
+    const MsKind kind = ms_ty_kind(tys, ty);
+    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE) || tys->def[ty] == 0) {
+        return;
+    }
+    const MsMethods *methods = s->facts->methods;
+    for (uint32_t row = 0; row < methods->count; row++) {
+        const MsTy receiver = methods->receiver[row];
+        if (tys->def[receiver] != tys->def[ty] || (methods->contract[row] == MS_TY_NONE && !methods->inherent[row]) ||
+            methods->native[row] != MS_NATIVE_SOURCE || methods->decl[row] == NULL) {
+            continue;
+        }
+        if (ms_effect_method_is_node(s->check, methods, row)) {
+            scan_edge(s, ms_effect_method_node(s->check, row), e->pos);
+        } else {
+            s->partial = true;
         }
     }
 }
@@ -143,6 +177,10 @@ static void scan_expr(void *ctx, const MsExpr *e) {
     ScanState *s = ctx;
     if (s->facts->coerce_iface[e->id] != MS_TY_NONE) {
         scan_conversion(s, e, s->facts->coerce_iface[e->id]);
+    }
+    const MsFacts *facts = s->facts;
+    for (uint32_t k = 0; facts->call_type_args_len != NULL && k < facts->call_type_args_len[e->id]; k++) {
+        scan_type_argument(s, e, facts->type_args[facts->call_type_args_at[e->id] + k]);
     }
     if (s->facts->const_use[e->id]) {
         scan_call(s, e);

@@ -397,7 +397,10 @@ static bool manifest_read_header(const Reader *r, size_t *at, Entry *entry) {
 static bool manifest_read_value(const Reader *r, size_t *at, Entry *entry) {
     const size_t start = *at;
     entry->value_pos = manifest_locate(r->text, r->length, start);
-    const char c = start < r->length ? r->text[start] : '\0';
+    char c = '\0';
+    if (start < r->length) {
+        c = r->text[start];
+    }
     if (c == '"' || c == '\'') {
         entry->value_kind = VALUE_STRING;
         if (!manifest_read_string(r, at, &entry->value, &entry->control)) {
@@ -1022,6 +1025,17 @@ const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, M
     return text;
 }
 
+/* How many bytes the UTF-8 sequence that starts with `lead` has. */
+static size_t manifest_utf8_size(unsigned char lead) {
+    if (lead < 0x80) {
+        return 1;
+    }
+    if (lead >= 0xf0) {
+        return 4;
+    }
+    return lead >= 0xe0 ? 3 : 2;
+}
+
 /* The text with each byte that is not valid UTF-8 replaced by U+FFFD, so a stray byte in a comment reads as it does everywhere else. */
 static const char *manifest_lossy(MsArena *a, const char *text, size_t *length) {
     if (ms_utf8_valid(text, *length)) {
@@ -1030,7 +1044,7 @@ static const char *manifest_lossy(MsArena *a, const char *text, size_t *length) 
     MsBuf out = {0};
     for (size_t i = 0; i < *length;) {
         const unsigned char lead = (unsigned char)text[i];
-        const size_t size = lead < 0x80 ? 1 : lead >= 0xf0 ? 4 : lead >= 0xe0 ? 3 : 2;
+        const size_t size = manifest_utf8_size(lead);
         if (i + size <= *length && ms_utf8_valid(text + i, size)) {
             ms_buf_put(&out, text + i, size);
             i += size;

@@ -7,7 +7,7 @@ import expect_equal from "@std/test/test.ms"
 // module is not covered yet (`Uncovered`).
 extern type Analysis
 
-extern fn ms_tool_analyze(text: String) Analysis
+extern fn ms_tool_analyze(path: String, text: String, overlay: List[String]) Analysis
 
 extern fn ms_tool_analysis_status(analysis: Analysis) Int
 
@@ -76,7 +76,16 @@ fn text_of(names: List[String], at: Int) String:
 
 // Checks `text` as a module of its own.
 export fn analyze(text: String) Facts!AnalyzeError:
-	analysis := ms_tool_analyze(text)
+	return analyze_in("", text, [])
+
+// Checks `text` as the module at `path`; `overlay` holds the other open buffers as
+// path, text, path, text, ...
+export fn analyze_in(
+	path: String,
+	text: String,
+	overlay: List[String],
+) Facts!AnalyzeError:
+	analysis := ms_tool_analyze(path, text, overlay)
 	status := ms_tool_analysis_status(analysis)
 	if status == 1:
 		return error(AnalyzeError.Syntax(ms_tool_analysis_message(analysis)))
@@ -186,3 +195,20 @@ test "a syntax error and a project import are reported, not analysed":
 		"import (\n\tother from \"./other.ms\",\n)\n\nfn main() Int:\n\treturn 0\n"
 	)
 	expect_equal(project.is_error(), true)?
+
+test "a project import is analysed from an unsaved buffer":
+	helper := "export fn twice(n: Int) Int:\n\treturn n + n\n"
+	entry := "import (\n\ttwice from \"./helper.ms\",\n)\n\nfn main() Int:\n\treturn twice(2)\n"
+	parsed := analyze_in(
+		"/tmp/ms-lsp-analysis/main.ms",
+		entry,
+		["/tmp/ms-lsp-analysis/helper.ms", helper],
+	)
+	expect_equal(parsed.is_error(), false)?
+
+	facts := parsed.get()
+	var found = false
+	for s in facts.symbols:
+		if s.name == "twice" and not s.local:
+			found = true
+	expect_equal(found, true)?
