@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "check/check_body.h"
+#include "ms/implements.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
@@ -707,12 +708,15 @@ static MsTy body_explicit_call(MsBody *b, const MsExpr *e) {
     const MsExpr *apply = e->u.call.callee;
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, apply->u.apply.left->u.sym);
     const MsSyms *syms = &b->c->syms;
-    const bool generic = sym != MS_NONE && syms->kind[sym] == MS_SYM_FN && syms->nvars[sym] != 0 &&
-                         syms->decl[sym] != NULL && syms->decl[sym]->kind == MS_D_FN;
-    if (!generic || ms_body_find_binding(b, apply->u.apply.left->u.sym) != MS_NONE) {
+    if (ms_body_find_binding(b, apply->u.apply.left->u.sym) != MS_NONE || sym == MS_NONE) {
         return ms_body_unsupported(b);
     }
-    return ms_body_generic_call(b, e, sym, &apply->u.apply.types);
+    if (syms->kind[sym] == MS_SYM_TYPE) {
+        return ms_body_generic_construct(b, e, sym, &apply->u.apply.types);
+    }
+    const bool generic = syms->kind[sym] == MS_SYM_FN && syms->nvars[sym] != 0 && syms->decl[sym] != NULL &&
+                         syms->decl[sym]->kind == MS_D_FN;
+    return generic ? ms_body_generic_call(b, e, sym, &apply->u.apply.types) : ms_body_unsupported(b);
 }
 
 static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
@@ -743,7 +747,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return ms_body_case_call(b, e, expected);
     }
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
-        return body_construct(b, e, sym);
+        return syms->nvars[sym] != 0 ? ms_body_generic_construct(b, e, sym, NULL) : body_construct(b, e, sym);
     }
     if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
         syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||
@@ -1014,6 +1018,13 @@ static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     return expected;
 }
 
+/* A value of a type this module's methods fit to an interface, passed where the interface is expected. */
+static bool body_coerces_to_interface(const MsBody *b, MsTy ty, MsTy expected) {
+    const MsTyTable *tys = &b->c->tys;
+    return b->methods != NULL && ms_ty_kind(tys, expected) == MS_K_CONTRACT && ty != expected &&
+           ms_ty_kind(tys, ty) == MS_K_TYPE && ms_implements(b->c, b->methods, ty, expected) == MS_FIT_YES;
+}
+
 MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     MsTy ty = MS_TY_NONE;
     const char *context = b->context;
@@ -1049,6 +1060,10 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     if (expected == b->invalid_ty) {
         return ms_body_record(b, e->id, ty); // what was asked for is already reported
+    }
+    if (expected != MS_TY_NONE && body_coerces_to_interface(b, ty, expected)) {
+        b->facts->coerce_iface[e->id] = ty; // the lowering boxes it behind its vtable; the expression has the interface type
+        return ms_body_record(b, e->id, expected);
     }
     if (expected != MS_TY_NONE && !ms_body_same_type(b, ty, expected)) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
@@ -1269,8 +1284,23 @@ static bool body_returns_nothing(const MsBody *b) {
            (ms_body_is_result(b, b->result) && ms_ty_args(tys, b->result)[0] == b->void_ty);
 }
 
+/* A `return` in a function literal whose result is not known yet: its value (or the lack of one) fixes it. */
+static void body_return_deciding(MsBody *b, const MsExpr *value) {
+    b->context = "the return value";
+    const MsTy ty = value == NULL ? b->void_ty : ms_body_expr(b, value, MS_TY_NONE);
+    if (ty == MS_TY_NONE || !(ty == b->void_ty || body_is_bindable(b, ty))) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    b->result = ty;
+}
+
 static void body_return_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *value = s->u.expr;
+    if (b->infer_result && b->result == MS_TY_NONE) {
+        body_return_deciding(b, value);
+        return;
+    }
     if (value == NULL) {
         if (!b->supported || body_returns_nothing(b)) {
             return;
@@ -1744,6 +1774,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
     facts->field_store_root = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->field_store_root, 0xff, nodes * sizeof *facts->field_store_root);
+    facts->coerce_iface = MS_NEW_N(arena, MsTy, nodes);
+    memset(facts->coerce_iface, 0, nodes * sizeof *facts->coerce_iface);
     facts->call_reordered = MS_NEW_N(arena, bool, nodes);
     memset(facts->call_reordered, 0, nodes * sizeof *facts->call_reordered);
     facts->some_wrap = MS_NEW_N(arena, bool, nodes);

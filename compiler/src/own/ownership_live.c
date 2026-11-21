@@ -130,8 +130,7 @@ static void live_call(LiveWalk *w, const MsExpr *e) {
     const bool through_local = callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_BINDING;
     const bool operation = callee->kind == MS_E_MEMBER &&
                            (w->facts->call_interface[e->id] != MS_TY_NONE || w->facts->call_method[e->id] != MS_NONE);
-    const bool builds_case = callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_CASE;
-    if (w->facts->call_callee[e->id] == MS_NONE && !through_local && !operation && !builds_case) {
+    if (w->facts->call_callee[e->id] == MS_NONE && !through_local && !operation) {
         w->supported = false; /* anything else the walk does not follow */
         return;
     }
@@ -205,7 +204,9 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_LAMBDA: live_lambda(w, e); return;
     case MS_E_CALL:
         if (ms_call_builds_case(w->facts, e)) {
-            live_expr(w, e->u.call.args.ptr[0].value);
+            for (uint32_t i = e->u.call.args.len; i > 0; i--) {
+                live_expr(w, e->u.call.args.ptr[i - 1].value);
+            }
             return;
         }
         live_call(w, e);

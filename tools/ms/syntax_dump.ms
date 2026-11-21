@@ -5,18 +5,18 @@
 // An argument `@list.txt` stands for the file names in that text file, one per line.
 //   ms run tools/ms/syntax_dump.ms --link libmstool.a -- file.ms...
 import (
-	arguments from "@std/os/env.ms",
+	Arg, Command, Matches from "@std/cli/command.ms",
 	read_file from "@std/os/fs.ms",
 
+	run_program from "./cli.ms",
 	dump_text from "./dump.ms",
 )
 
-// ms: allow_effect std.env.read
 // ms: allow_effect std.fs.read
-fn paths() List[String]:
+fn paths(given: List[String]) List[String]:
 	var out = List[String]()
 
-	for argument in arguments():
+	for argument in given:
 		if list := argument.cut_prefix("@"):
 			text := read_file(list).wait().get().decode_utf8().get_or("")
 			for line in text.lines():
@@ -25,10 +25,23 @@ fn paths() List[String]:
 
 	return out
 
-fn main() Int:
+fn syntax_dump_tool() Command:
+	return Command(
+		name: "syntax_dump.ms",
+		about: "Print the syntax tree of each file",
+		args: [
+			Arg(
+				"files",
+				rest: true,
+				help: "Files; @LIST names a file that lists them",
+			)
+		],
+	)
+
+fn dump_files(m: Matches) Int!:
 	var status = 0
 
-	for path in paths():
+	for path in paths(m.list("files")):
 		print(f"=== {path}")
 
 		match read_file(path).wait():
@@ -41,4 +54,7 @@ fn main() Int:
 				print(f"{path}: cannot read")
 				status = 1
 
-	return status
+	return ok(status)
+
+fn main() Int:
+	return run_program(syntax_dump_tool(), dump_files)

@@ -49,6 +49,7 @@ static void run_print_value(const MirVal *v) {
     case MV_ALT:
     case MV_LIST:
     case MV_OPT:
+    case MV_MAP:
     case MV_CLOSURE:
     case MV_IFACE: fputs("?", stdout); break;
     }

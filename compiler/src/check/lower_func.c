@@ -350,6 +350,7 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
         return 0;
     }
     Lb lb = {.c = c,
+             .module = module,
              .mut = c,
              .facts = facts,
              .m = out,

@@ -2,6 +2,7 @@
 // `data/codes.tsv`, written from the compiler's and the linter's code tables by
 // `MS_BLESS=1 cargo test -p ms-cli explain_table`: code, family, severity, repair.
 import (
+	Matches from "@std/cli/command.ms",
 	JsonValue from "@std/data/json.ms",
 	expect_equal from "@std/test/test.ms",
 
@@ -84,23 +85,10 @@ export fn explain(table: String, codes: List[String], json: Bool) Explained:
 
 	return out
 
-// Reads `ms explain` arguments after the command name: the codes and whether `--json`.
-export fn run_explain(args: List[String]) Explained:
-	var codes = List[String]()
-	var json = false
-
-	for arg in args:
-		if arg == "--json":
-			json = true
-		else:
-			codes.append(arg.clone())
-
-	if codes.is_empty():
-		return Explained(
-			stderr: "ms explain needs at least one diagnostic code\n",
-			status: 2,
-		)
-
+// Runs `ms explain` on the codes and `--json` the command tree parsed.
+export fn run_explain(m: Matches) Explained:
+	codes := m.list("code")
+	json := m.bool("json")
 	table := files().read("codes.tsv", none).get_or(
 		"".to_bytes()
 	).decode_utf8().get_or("")

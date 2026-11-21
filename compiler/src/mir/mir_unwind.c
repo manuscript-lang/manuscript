@@ -1,5 +1,5 @@
 /* unwind: lets a cancelled or faulted task release the values its frames own. Port of
- * crates/ms-mir/src/unwind.rs (see the comment at the top of that file for the design).
+ * crates/ms-mir/src/unwind.rs (deleted; the design comment at the top of that file is in git history).
  *
  * Cancellation and a guarded fault leave a task by a jump, so no `drop` after the park or fault
  * point runs. Around every instruction that can reach a cancellation point or fault the pass

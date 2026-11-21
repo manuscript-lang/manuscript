@@ -100,6 +100,7 @@ typedef struct MsFacts {
     uint32_t *assign_binding; /* by assignment statement node id: the binding it writes, else MS_NONE */
     uint32_t *field_store_root; /* by assignment statement node id: the `var` a field store changes, else MS_NONE */
     bool *each_list;  /* by `for` statement node id: it iterates a list, not a range */
+    MsTy *coerce_iface; /* by expression node id: the concrete type of a value passed as an interface (the expression's own type), else MS_TY_NONE */
     bool *call_reordered; /* by call node id: an argument is not at its parameter's position (labels out of order or skipping a default); passes that pair arguments with parameters by index leave the call to Rust */
     bool *some_wrap;  /* by expression node id: a value of the payload type used where an Optional is expected, so it is wrapped in `some` */
     bool *body_checked;   /* by declaration node id: the function's body was checked */

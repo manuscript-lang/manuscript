@@ -10,26 +10,12 @@ import (
 	flag, list_of, number, object, render_document, text, with from "../json_out.ms",
 )
 
-// The arguments of one manifest's run: the command and every argument that is not one
-// of the original targets, with the manifest first.
-fn member_arguments(args: List[String], inv: Invocation, manifest: String) List[String]:
-	var rest = List[String]()
-	var targets = inv.targets.clone()
-
-	for given in args.drop(1):
-		at := targets.index_of(given)
-
-		if at.is_some():
-			targets.remove(at.get())
-			continue
-
-		rest.append(given.clone())
-
-	var out = [args[0].clone(), manifest.clone()]
-	out.extend(rest)
-	return out
-
-export fn run_members(args: List[String], inv: Invocation, manifests: List[String]) Int:
+// Runs each of `manifests` as its own command line, `lines[i]` for `manifests[i]`.
+export fn run_members(
+	inv: Invocation,
+	manifests: List[String],
+	lines: List[List[String]],
+) Int:
 	info := process_info()
 
 	if info.is_error():
@@ -40,8 +26,9 @@ export fn run_members(args: List[String], inv: Invocation, manifests: List[Strin
 	var status = 0
 	var results = List[JsonValue]()
 
-	for manifest in manifests:
-		given := member_arguments(args, inv, manifest)
+	for at in 0..manifests.length():
+		manifest := manifests[at].clone()
+		given := lines[at].clone()
 
 		if not inv.structured:
 			stderr().write(f"ms: testing {manifest}\n").get()
