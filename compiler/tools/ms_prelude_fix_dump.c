@@ -4,25 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dump_io.h"
 #include "ms/parse.h"
 #include "ms/prelude_fix.h"
-
-/* The source text with "\n" and "\r" escapes turned back into characters. */
-static MsStr unescape(MsArena *arena, const char *s) {
-    char *out = ms_arena_strndup(arena, s, strlen(s));
-    size_t n = 0;
-    for (size_t i = 0; s[i] != 0; i++) {
-        bool escape = s[i] == '\\' && (s[i + 1] == 'n' || s[i + 1] == 'r');
-        if (escape) {
-            out[n++] = s[i + 1] == 'n' ? '\n' : '\r';
-            i++;
-        } else {
-            out[n++] = s[i];
-        }
-    }
-    out[n] = 0;
-    return (MsStr){out, (uint32_t)n};
-}
 
 static void put_fix(bool found, MsFix fix) {
     if (!found) {
@@ -45,7 +29,7 @@ static void put_fix(bool found, MsFix fix) {
 }
 
 static void answer(MsArena *arena, const char *line) {
-    MsStr source = unescape(arena, line);
+    MsStr source = dump_unescape(arena, line, true);
     MsNames names;
     ms_names_init(&names);
     MsModule mod;

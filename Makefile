@@ -255,6 +255,7 @@ c-compiler-test:
 	sh compiler/tests/interface-diff.sh
 	sh compiler/tests/param-order-diff.sh
 	sh compiler/tests/lower-diff.sh
+	sh compiler/tests/lower-program-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
 	sh compiler/tests/fixes-diff.sh

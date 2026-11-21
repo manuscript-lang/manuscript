@@ -2,6 +2,7 @@
  * import_hint, type_import_hint and export_message of crates/ms-check/src/hints.rs. */
 #include <string.h>
 
+#include "ms/check.h"
 #include "ms/text.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
@@ -73,23 +74,6 @@ static size_t standard_module_names(MsArena *arena, const MsCheck *c, MsStr **ou
     return ms_unique_sorted(arena, paths, n, out);
 }
 
-static MsSymKind kind_of_declaration(const MsDecl *d) {
-    switch ((MsDeclKind)d->kind) {
-    case MS_D_TYPE:
-    case MS_D_ENUM:
-    case MS_D_INTERFACE:
-        return MS_SYM_TYPE;
-    case MS_D_ALIAS:
-        return MS_SYM_ALIAS;
-    case MS_D_FN:
-    case MS_D_CONST:
-    case MS_D_IMPL:
-    case MS_D_TEST:
-        return MS_SYM_FN;
-    }
-    return MS_SYM_FN;
-}
-
 static MsSym declared_name(const MsDecl *d) {
     switch ((MsDeclKind)d->kind) {
     case MS_D_FN:
@@ -127,7 +111,7 @@ static void add_source_exports(const MsCheck *c, MsBuf *list, MsModId m) {
         const MsDecl *d = syntax->decls[i];
         MsSym name = declared_name(d);
         if (d->is_exported && name != 0) {
-            add_export(list, ms_name(c->names, name), kind_of_declaration(d));
+            add_export(list, ms_name(c->names, name), ms_decl_symbol_kind(d));
         }
     }
 }
