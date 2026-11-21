@@ -157,10 +157,7 @@ fn rt_ops_table(symbols: &str) -> String {
     );
     for line in symbols.lines().filter(|l| !l.starts_with('#')) {
         let name = line.split('(').next().unwrap_or_default();
-        let Some((params, rest)) = line
-            .split_once('(')
-            .and_then(|(_, r)| r.split_once(')'))
-        else {
+        let Some((params, rest)) = line.split_once('(').and_then(|(_, r)| r.split_once(')')) else {
             continue;
         };
         let op = rest
@@ -180,7 +177,9 @@ fn rt_ops_table(symbols: &str) -> String {
             .filter(|p| !p.trim().is_empty())
             .enumerate()
             .map(|(at, p)| {
-                let (pname, ty) = p.split_once(':').map_or(("", ""), |(n, t)| (n.trim(), t.trim()));
+                let (pname, ty) = p
+                    .split_once(':')
+                    .map_or(("", ""), |(n, t)| (n.trim(), t.trim()));
                 match ty {
                     "*const VecVal" => "MS_RT_LIST",
                     "*mut VecVal" if pname == "out" => "MS_RT_OUT_LIST",
