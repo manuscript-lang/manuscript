@@ -475,6 +475,12 @@ static bool lb_is_number_type(const Lb *lb, MirTy ty, bool decimal) {
     return text.len == strlen(want) && memcmp(text.ptr, want, text.len) == 0;
 }
 
+/* Whether `ty` is a sized integer (`Int8` to `UInt64`): its sum, difference, product and order are the checked instructions. */
+static bool lb_is_sized_int(MirTy ty) {
+    return ty == MIR_INT8 || ty == MIR_INT16 || ty == MIR_INT32 || ty == MIR_UINT8 || ty == MIR_UINT16 || ty == MIR_UINT32 ||
+        ty == MIR_UINT64;
+}
+
 /* `left op right` on lowered operands (not `and` and `or`, which short-circuit). */
 static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     const MirTy ty = mir_b_ty(&lb->b, left.v);
@@ -484,8 +490,10 @@ static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     if (lb_is_number_type(lb, ty, false) || lb_is_number_type(lb, ty, true)) {
         return lb_number_apply(lb, op, left, right, lb_is_number_type(lb, ty, true));
     }
-    if (lb_owns(lb, ty) || (ty != MIR_INT && ty != MIR_FLOAT && ty != MIR_BOOL)) {
-        return LB_UNSUPPORTED(lb); // the operations of the sized numbers and the other native types are not lowered yet
+    const bool sized = lb_is_sized_int(ty);
+    const bool divides = op == MS_B_DIV || op == MS_B_REM;
+    if (lb_owns(lb, ty) || (ty != MIR_INT && ty != MIR_FLOAT && ty != MIR_BOOL && !sized) || (sized && divides)) {
+        return LB_UNSUPPORTED(lb); // sized division and the other native types' operations are not lowered yet
     }
     const MirOp arithmetic = lb_arithmetic_op(op, ty);
     if (arithmetic == MOP_COUNT) {
@@ -502,13 +510,13 @@ static MsStr lb_literal_text(const MsExpr *e) {
 }
 
 /* `a == b` and `a != b` on Strings: a comparison with a literal is `str.eq_lit` (the right literal wins),
- * any other is the runtime's `string_eq`. Both operands are borrowed. */
+ * any other is the runtime's `string_eq`. An operand that is a temporary is dropped after it. */
 static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
     const LbVal left = lb_expr(lb, e->u.bin.left);
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
     lb_at_expression(lb, e); // the operator, after its operands
-    if (!lb->ok || left.owned || right.owned) {
-        return LB_UNSUPPORTED(lb); // an owned temporary needs its drop placed
+    if (!lb->ok) {
+        return LB_FAIL;
     }
     MirValue same = MIR_NONE;
     const bool literal_right = lb_literal_text(e->u.bin.right).ptr != NULL;
@@ -525,6 +533,12 @@ static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
             return LB_UNSUPPORTED(lb);
         }
         same = call.v;
+    }
+    if (right.owned) { // an operand that is a temporary is dropped after the comparison, the right one first
+        lb_drop(lb, right.v);
+    }
+    if (left.owned) {
+        lb_drop(lb, left.v);
     }
     if (e->op == MS_B_NE) {
         same = mir_b_emit(&lb->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL);
@@ -1316,7 +1330,9 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
         lscope_own(&lb->scopes, value.v, 0); // the closure is dropped where its scope ends
     }
     const MirTy bound_ty = lb_mir_ty(lb, ty);
-    if (bound_ty != MIR_STR && !lb_is_fn(lb, bound_ty) && lb_owns(lb, bound_ty)) {
+    const bool borrows = (lb->facts->bindings.flags[binding] & MS_BIND_BORROWS) != 0; // `y := x`, `y := f(x)` over a borrow
+    const bool lent = borrows && !value.owned && !s->u.bind.is_mutable; // a name for a borrowed value: nothing to own or drop
+    if (bound_ty != MIR_STR && !lb_is_fn(lb, bound_ty) && lb_owns(lb, bound_ty) && !lent) {
         if (!value.owned) {
             (void)LB_UNSUPPORTED(lb); // a record local is made from a call or a construction
             return;
@@ -1325,7 +1341,6 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
             lscope_own(&lb->scopes, value.v, 0); // a `var` is owned at each exit with the value it holds there
         }
     }
-    const bool borrows = (lb->facts->bindings.flags[binding] & MS_BIND_BORROWS) != 0; // `y := x`, `y := f(x)` over a borrow
     if (ty == lb->string_ty && !borrows) {
         if (!value.owned && s->u.bind.value->kind == MS_E_CALL) {
             (void)LB_UNSUPPORTED(lb); // a call's borrowed result the walk did not mark as a borrowing local
