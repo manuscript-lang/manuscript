@@ -28,6 +28,7 @@ typedef struct MsBody {
     MsBuf diags;            /* MsCheckDiag of the function being checked, reported once it is claimed */
     const char *context;    /* what the next `ms_body_expr` value is for ("the return value"), or NULL */
     bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
+    bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
     bool supported;         /* false once a construct outside the handled set is met */
 } MsBody;
 
@@ -38,6 +39,7 @@ MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding);
 /* A module function named as a value; an anonymous function. */
 MsTy ms_body_function_name(MsBody *b, const MsExpr *e);
 MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected);
+MsTy ms_body_lambda_inferred(MsBody *b, const MsExpr *e, MsTy settled); /* `settled` fixes the parameter types; the body decides the result */
 /* The primitive type a written annotation names, or MS_TY_NONE after giving up. */
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
 /* Lists (check_list.c): whether `ty` is a `List` of admitted elements, a `List[...]` annotation,

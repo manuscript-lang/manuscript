@@ -1,5 +1,5 @@
 /* The optimisation pipeline: which passes run, in what order, for each optimisation level. Port of
- * `optimize` in crates/ms-mir/src/opt/mod.rs. Each function's rounds read the module as it was
+ * `optimize` in the former Rust crates/ms-mir/src/opt/mod.rs. Each function's rounds read the module as it was
  * before the round and only the results are stored afterwards, so a function never sees another's
  * half-optimised body, which keeps the output independent of the order functions are visited. */
 #include <string.h>

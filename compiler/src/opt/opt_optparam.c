@@ -8,7 +8,7 @@
  * The merge of two constructors then looks like any other scalar merge, so `if o != none` style
  * code becomes flag tests the other passes already fold and if-convert. Only parameters whose
  * every incoming value is a constructor, and whose every use is `opt.is_some` or `opt.get`, are
- * split. Port of crates/ms-mir/src/opt/optparam.rs. */
+ * split. Port of the former Rust crates/ms-mir/src/opt/optparam.rs. */
 #include <string.h>
 
 #include "ms/mir_analysis.h"

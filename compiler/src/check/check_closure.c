@@ -142,19 +142,36 @@ static MsTy closure_signature(MsBody *b, const MsExpr *e, MsTy expected, MsTy *r
     return ms_ty_intern(&b->c->tys, &desc);
 }
 
+/* `fn` with the result `result`: the type of a function literal once its body has decided it. */
+static MsTy closure_with_result(MsBody *b, MsTy fn, MsTy result) {
+    const MsTyTable *tys = &b->c->tys;
+    const MsSym name = ms_intern_cstr(b->c->names, "fn");
+    const uint32_t count = tys->nparams[fn];
+    MsTyParam *params = MS_NEW_N(&b->c->arena, MsTyParam, count + 1);
+    memcpy(params, ms_ty_params(tys, fn), count * sizeof *params); // interning may move the table's own copy
+    const MsTyDesc desc = {.name = name, .id = name, .kind = MS_K_FUNCTION, .params = params, .nparams = count, .result = result};
+    return ms_ty_intern(&b->c->tys, &desc);
+}
+
 /* An anonymous function: its parameters are bound for its body, which is its own boundary for
- * `return`, `break` and `continue`. */
-MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected) {
+ * `return`, `break` and `continue`. With `infer`, `expected` fixes only the parameters and the first
+ * `return` of the body decides the result. */
+static MsTy closure_check(MsBody *b, const MsExpr *e, MsTy expected, bool infer) {
     MsTy result = MS_TY_NONE;
+    if (infer && e->u.lambda.result != NULL) {
+        return ms_body_unsupported(b);
+    }
     const MsTy fn = closure_signature(b, e, expected, &result);
     if (!b->supported || !ms_body_is_function_value(b, fn)) {
         return ms_body_unsupported(b);
     }
     const MsTy outer_result = b->result;
+    const bool outer_infer = b->infer_result;
     const uint32_t outer_depth = b->loop_depth, outer_floor = b->lambda_floor;
     const uint32_t outer_breaks = b->breaks;
     const uint32_t first = b->facts->bindings.count;
-    b->result = result;
+    b->result = infer ? MS_TY_NONE : result;
+    b->infer_result = infer;
     b->loop_depth = 0;
     b->breaks = 0;
     b->lambda_floor = first;
@@ -164,13 +181,29 @@ MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected) {
         (void)ms_body_bind(b, e->u.lambda.params.ptr[i]->name, params[i].ty, e->u.lambda.params.ptr[i]->id, e->u.lambda.params.ptr[i]->pos, 0, MS_ROLE_LAMBDA_PARAM);
     }
     const bool falls = b->supported && ms_body_block(b, &e->u.lambda.body);
+    if (infer && b->result == MS_TY_NONE) {
+        b->result = b->void_ty; // no value was returned
+    }
+    result = infer ? b->result : result;
     const bool complete = !falls || result == b->void_ty;
     for (uint32_t i = first; i < b->facts->bindings.count; i++) {
         b->closed[i] = true;
     }
     b->result = outer_result;
+    b->infer_result = outer_infer;
     b->loop_depth = outer_depth;
     b->breaks = outer_breaks;
     b->lambda_floor = outer_floor;
-    return b->supported && complete ? fn : ms_body_unsupported(b);
+    if (!b->supported || !complete) {
+        return ms_body_unsupported(b);
+    }
+    return infer ? closure_with_result(b, fn, result) : fn;
+}
+
+MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected) {
+    return closure_check(b, e, expected, false);
+}
+
+MsTy ms_body_lambda_inferred(MsBody *b, const MsExpr *e, MsTy settled) {
+    return closure_check(b, e, settled, true);
 }

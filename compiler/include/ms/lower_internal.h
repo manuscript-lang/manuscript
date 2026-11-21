@@ -184,6 +184,7 @@ bool lb_is_list(const Lb *lb, MirTy ty);
 LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_index(Lb *lb, const MsExpr *e);
 void lst_for(Lb *lb, const MsStmt *s);
+LbVal lb_native_method(Lb *lb, const MsExpr *e);
 /* Stores `value` in the stack slot `slot`. */
 void lb_store(Lb *lb, MirValue slot, MirValue value);
 
@@ -196,7 +197,6 @@ MirTy lm_type(Lb *lb, MsTy ty);
 bool lb_is_map(const Lb *lb, MirTy ty);
 LbVal lm_literal(Lb *lb, const MsExpr *e);
 LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at);
-LbVal lst_method(Lb *lb, const MsExpr *e);
 
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);

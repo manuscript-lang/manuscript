@@ -13,7 +13,7 @@ weight = 1
 .ms -> ms-syntax  (lex, parse, syntax tree, format)
     -> ms-check   (resolve, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics)
     -> ms-lower   (checked HIR to MIR, including native standard calls)
-    -> ms-mir     (optimizer, verifier)
+    -> ms-mir     (MIR types, verifier, interpreter; the optimizer is libms in C)
     -> ms-build   (MIR to LLVM IR in C, `opt` and `llc`, then the link)
     -> link with ms-native (ms-rt and the ms-std-* crates) -> executable
 ```
@@ -24,7 +24,7 @@ weight = 1
 4. `ms-syntax` parses strictly, or with recovery for editor analysis. Standard declarations use the same parser.
 5. `ms-check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup, effects, and ownership, and keeps what lowering, docs, and editors need.
 6. Check, lint, inspect, diagram, and review stop after checking. Formatting uses only the syntax crate.
-7. `ms-lower` turns checked HIR into MIR; `ms-mir` optimizes and verifies it. See [lowering](compiler/lowering/_index.md).
+7. `ms-lower` turns checked HIR into MIR; `ms-mir` verifies it and libms (C) optimizes it. See [lowering](compiler/lowering/_index.md).
 8. `ms-clif` emits object code and `ms-build` links it with the embedded native runtime. Supported platforms use the pinned, cached `lld`, with these C-library inputs: stubs of glibc 2.28 on Linux (musl with `--static`), generated SDK stubs on macOS, and the mingw-w64 CRT on Windows.
 
 ## Know what each crate owns

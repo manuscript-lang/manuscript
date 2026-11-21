@@ -10,7 +10,7 @@
  * The generated sort is stable, like the runtime's, which is its whole contract: equal elements
  * keep their order. It calls a comparator with effects in a different order than the runtime sort
  * does. Slots move as bits and the scratch list owns nothing, so a comparator that exits early
- * never leaves an owner duplicated. Port of crates/ms-mir/src/opt/sortgen.rs. */
+ * never leaves an owner duplicated. Port of the former Rust crates/ms-mir/src/opt/sortgen.rs. */
 #include <string.h>
 
 #include "ms/mir_analysis.h"
