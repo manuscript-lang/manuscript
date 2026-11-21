@@ -13,6 +13,10 @@
 
 MirTy lm_type(Lb *lb, MsTy ty) {
     const MsTyTable *tys = &lb->c->tys;
+    if (ms_ty_is(tys, ty, MS_BI_SET) && tys->nargs[ty] == 1) {
+        const MirTy element = lb_mir_ty(lb, ms_ty_args(tys, ty)[0]);
+        return element == MIR_NONE ? MIR_NONE : mir_ty_obj(lb->m, mir_name(lb->m, "Set", 3), &element, 1);
+    }
     if (!ms_ty_is(tys, ty, MS_BI_MAP) || tys->nargs[ty] != 2) {
         return MIR_NONE;
     }
@@ -29,6 +33,14 @@ bool lb_is_map(const Lb *lb, MirTy ty) {
     }
     const MirTyData *data = mir_ty_data(lb->m, ty);
     return data->kind == MK_OBJ && data->nargs == 2 && mir_name_is(lb->m, data->name, "Map");
+}
+
+bool lb_is_set(const Lb *lb, MirTy ty) {
+    if (ty == MIR_NONE) {
+        return false;
+    }
+    const MirTyData *data = mir_ty_data(lb->m, ty);
+    return data->kind == MK_OBJ && data->nargs == 1 && mir_name_is(lb->m, data->name, "Set");
 }
 
 /* The runtime function `name` over these borrowed parameters, declared on first use: the same name
@@ -78,7 +90,7 @@ static MirValue lm_entry(Lb *lb, const MsExpr *e, MirTy ty) {
 
 /* `Map[K, V]()`: an empty map. */
 LbVal lm_empty(Lb *lb, MirTy ty) {
-    if (!lb_is_map(lb, ty)) {
+    if (!lb_is_map(lb, ty) && !lb_is_set(lb, ty)) {
         return LB_UNSUPPORTED(lb);
     }
     const uint32_t make = lb_runtime_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
