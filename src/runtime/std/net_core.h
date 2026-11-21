@@ -13,6 +13,7 @@
 #include "base/desc.h"
 #include "base/string.h"
 #include "runtime/std/net_loop.h"
+#include "runtime/std/net_tls.h"
 
 typedef enum MsNetKind { MS_NET_CONNECTION, MS_NET_LISTENER, MS_NET_DATAGRAM } MsNetKind;
 
@@ -40,6 +41,8 @@ typedef struct MsNetCore {
   void *reading;            /* loop thread: the read or receive in progress */
   void *accepting;          /* loop thread: accept operations waiting, oldest first */
   void *ready;              /* loop thread: accepted connections nobody took yet, oldest first */
+  MsNetTls *tls;            /* loop thread: the session of a TLS connection, NULL for plain */
+  MsNetTlsCtx *tls_ctx;     /* a TLS listener's context, shared by the connections it accepts */
 } MsNetCore;
 
 /* The object a Manuscript program holds: a reference on a core. */
@@ -77,6 +80,11 @@ void ms_net_dgram_close_ops(MsNetCore *core);
 /* Ends a native: the status for how a wait ended and the libuv `status` of the operation, with `err` filled for a
  * failure ("<operation>: <reason>"). A stop request cancels the task and does not return. */
 uint8_t ms_net_finish(MsNetWait wait, int status, const char *operation, MsString *err);
+/* Loop thread, TLS: collects the ciphertext the session has queued into a new buffer (`*length` 0 for none). */
+void ms_net_cipher_collect(MsNetCore *core, uint8_t **data, size_t *length);
+/* Loop thread, TLS: writes the queued ciphertext. 1 when a write was started (`done` runs with its status), 0 when
+ * there was nothing, a negative status when it could not start. `done` may be NULL. */
+int ms_net_cipher_flush(MsNetCore *core, void (*done)(void *argument, int status), void *argument);
 /* Loop thread: closes a core that was never handed to a handle. */
 void ms_net_core_discard(MsNetCore *core);
 

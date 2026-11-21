@@ -26,6 +26,8 @@ static void core_free(MsNetCore *core) {
   ms_string_release(&core->local);
   ms_string_release(&core->peer);
   ms_free(core->path);
+  ms_net_tls_free(core->tls);
+  ms_net_tls_ctx_release(core->tls_ctx);
   ms_free(core->stash);
   ms_free(core);
 }
