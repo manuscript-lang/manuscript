@@ -348,8 +348,8 @@ fn rt_ops_text(symbols: String) String:
 	// there.
 	var twinned = Set[String]()
 
-	// The `@view_of=` twin of each function that has one: the call whose result borrows its
-	// receiver.
+	// The `@view_of=` twin of each function that has one: the call whose result borrows
+	// its receiver.
 	var views = Map[String, String]()
 
 	for line in lines:
@@ -358,6 +358,7 @@ fn rt_ops_text(symbols: String) String:
 				if value := flag.cut_prefix(key):
 					twinned.add(value.trim())
 					break
+
 			if base := flag.cut_prefix("view_of="):
 				views.add(base.trim(), line.split("(").get(0).trim())
 
