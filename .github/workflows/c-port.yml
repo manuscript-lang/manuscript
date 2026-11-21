@@ -51,3 +51,4 @@ jobs:
       - run: cmake --preset debug
       - run: cmake --build --preset debug
       - run: ctest --preset debug
+      - run: cmake --build --preset debug --target lint
