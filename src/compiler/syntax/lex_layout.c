@@ -287,7 +287,7 @@ static bool fail_indent_width(Scanner *s, size_t leading) {
       lex_open_delimiters(s) == 0
           ? ""
           : "; a line inside brackets is indented by fours too, so do not align it with the opening bracket";
-  return lex_fail_format(s, "indentation must be a multiple of four spaces, found %zu; use %zu or %zu%s",
+  return lex_fail_format(s, "indentation must be a multiple of four spaces, found %z; use %z or %z%s",
                          leading, leading / 4 * 4, leading / 4 * 4 + 4, inside);
 }
 
@@ -299,8 +299,8 @@ static bool resolve_pending_suite(Scanner *s, LineLayout *layout, size_t leading
     *started = true;
   } else if (leading > layout->header_start && leading <= layout->header_indent) {
     return lex_fail_format(s,
-                           "a suite begins four spaces after the line that ends with ':' (at %zu spaces); "
-                           "indent this line to %zu, or move that closing line back to %zu spaces",
+                           "a suite begins four spaces after the line that ends with ':' (at %z spaces); "
+                           "indent this line to %z, or move that closing line back to %z spaces",
                            layout->header_indent, layout->header_indent + 4, layout->header_start);
   } else if (leading <= layout->header_indent) {
     /* An empty declaration suite has the same layout boundaries as a populated one. */
@@ -308,8 +308,8 @@ static bool resolve_pending_suite(Scanner *s, LineLayout *layout, size_t leading
     lex_emit_layout(s, MS_T_Dedent);
   } else {
     return lex_fail_format(s,
-                           "a suite must begin exactly four spaces after its header; the header is at %zu "
-                           "spaces, so indent this line to %zu",
+                           "a suite must begin exactly four spaces after its header; the header is at %z "
+                           "spaces, so indent this line to %z",
                            layout->header_indent, layout->header_indent + 4);
   }
   layout->pending = false;
@@ -322,7 +322,7 @@ static bool fail_unexpected_indent(Scanner *s, size_t leading, size_t expected) 
   }
   const char *hint = continuation_hint(s);
   return lex_fail_format(s,
-                         "unexpected indentation, %zu spaces where %zu are expected; the previous line must "
+                         "unexpected indentation, %z spaces where %z are expected; the previous line must "
                          "end with ':' to open a block (fn, if, else, for, while, match, type, impl "
                          "headers), otherwise align this line with it%s",
                          leading, expected, hint);
@@ -348,7 +348,7 @@ static bool align_to_level(Scanner *s, size_t leading) {
     return fail_unexpected_indent(s, leading, top.indent);
   }
   return lex_fail_format(s,
-                         "inconsistent dedent to %zu spaces; enclosing blocks are indented at %zu or %zu "
+                         "inconsistent dedent to %z spaces; enclosing blocks are indented at %z or %z "
                          "spaces, so align with one of them",
                          leading, top.indent, top.indent >= 4 ? top.indent - 4 : 0);
 }
@@ -362,7 +362,7 @@ bool lex_apply_layout(Scanner *s, LineLayout *layout, size_t leading) {
     if (leading != layout->statement_indent + 4) {
       return lex_fail_format(s,
                              "a line starting with '.' or '|' continues the previous statement and must be "
-                             "indented four spaces past it, to %zu spaces, found %zu",
+                             "indented four spaces past it, to %z spaces, found %z",
                              layout->statement_indent + 4, leading);
     }
     layout->continuing = false;
