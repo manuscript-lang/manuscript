@@ -464,7 +464,7 @@ typedef struct IlRun {
     MirFunc unroll; /* the body copied into its own recursive calls */
     uint32_t budget, grown;
     uint8_t *consts; /* values defined by a constant instruction */
-    uint32_t nconsts;
+    uint32_t nconsts, cconsts;
     bool *in_loop; /* per block of `fi`, for the block being scanned; NULL until needed */
     IlSite *picks;
     uint32_t npicks, cpicks;
@@ -477,11 +477,19 @@ static bool il_is_const_op(uint8_t op) {
 static void il_note_consts(IlRun *r, uint32_t first_block) {
     const MirFunc *f = &r->m->funcs[r->fi];
     if (f->nvalues > r->nconsts || r->consts == NULL) {
-        uint8_t *grown = ms_alloc_zeroed(r->arena, f->nvalues, 1);
-        if (r->consts != NULL) {
-            memcpy(grown, r->consts, r->nconsts);
+        /* Grows by doubling: one call site per inlined call would otherwise copy the whole table. */
+        if (f->nvalues > r->cconsts) {
+            uint32_t cap = r->cconsts == 0 ? 64 : r->cconsts;
+            while (cap < f->nvalues) {
+                cap *= 2;
+            }
+            uint8_t *grown = ms_alloc_zeroed(r->arena, cap, 1);
+            if (r->consts != NULL) {
+                memcpy(grown, r->consts, r->nconsts);
+            }
+            r->consts = grown;
+            r->cconsts = cap;
         }
-        r->consts = grown;
         r->nconsts = f->nvalues;
     }
     for (uint32_t b = first_block; b < f->nblocks; b++) {
