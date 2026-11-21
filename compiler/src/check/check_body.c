@@ -1854,6 +1854,46 @@ static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool export
     }
 }
 
+/* `Result[Void, Error]`, the outcome of a test block, or MS_TY_NONE when the library lacks either. */
+static MsTy body_test_outcome(MsBody *b) {
+    const MsSymId result = ms_map_get(&b->c->std_types, ms_intern_cstr(b->c->names, "Result"));
+    const MsSymId error = ms_map_get(&b->c->std_types, ms_intern_cstr(b->c->names, "Error"));
+    if (result == MS_NONE || error == MS_NONE || b->c->syms.ty[result] == MS_TY_NONE || b->c->syms.ty[error] == MS_TY_NONE) {
+        return MS_TY_NONE;
+    }
+    const MsTy args[2] = {b->void_ty, b->c->syms.ty[error]};
+    return ms_ty_apply(b->c, b->c->syms.ty[result], args, 2);
+}
+
+/* A `test` block is a function of no parameters returning `Result[Void, Error]`. A module with a fixture
+ * factory binds `fixture` in its tests, which this pass does not model. */
+static void body_check_test(MsBody *b, const MsDecl *d) {
+    const MsModule *syntax = b->c->mods[b->module].syntax;
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        if (syntax->decls[i]->kind == MS_D_FN && ms_name_is(b->c->names, syntax->decls[i]->u.fn.name, "make_fixture")) {
+            return;
+        }
+    }
+    const MsTy outcome = body_test_outcome(b);
+    if (outcome == MS_TY_NONE) {
+        return;
+    }
+    const uint32_t first_binding = b->facts->bindings.count;
+    const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
+    const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
+    b->first_binding = first_binding;
+    b->function = d->id;
+    b->supported = true;
+    b->result = outcome;
+    body_statements(b, &d->u.test.body, d->pos);
+    if (b->supported) {
+        b->facts->body_checked[d->id] = true;
+        body_commit_diags(b, diags_start);
+    } else {
+        body_undo(b, first_binding, written_start, diags_start);
+    }
+}
+
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     if (!body_is_test_fixture(b, &d->u.fn)) {
         body_check_callable(b, d->id, d->pos, d->is_exported, &d->u.fn, b->c->syms.ty[sym], NULL);
@@ -2139,6 +2179,11 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
             } else {
                 body_check_constant(&b, d, sym);
             }
+        }
+    }
+    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+        if (row->syntax->decls[i]->kind == MS_D_TEST) {
+            body_check_test(&b, row->syntax->decls[i]);
         }
     }
     body_check_methods(&b);
