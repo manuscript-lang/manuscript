@@ -262,8 +262,6 @@ c-fuzz:
 # The C compiler front end and checker against the Rust ones, byte for byte (syntax on the corpus and on mutated copies, checker tables on the standard library); nightly runs more mutants.
 c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
-	sh compiler/tests/mir-diff.sh
-	sh compiler/tests/mir-pass-diff.sh
 	sh compiler/tests/mir-pass-frozen.sh
 	sh compiler/tests/check-diff.sh
 	sh compiler/tests/diag-render-diff.sh

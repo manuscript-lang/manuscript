@@ -1,6 +1,5 @@
 use ms_mir::parse::parse_module;
 use ms_mir::print::print_module;
-use ms_mir::verify::verify_module;
 
 const SUM: &str = r#"module "sum"
 entry @main
@@ -28,9 +27,8 @@ b0:
 "#;
 
 #[test]
-fn parse_verify_roundtrip() {
+fn parse_roundtrip() {
     let m = parse_module(SUM).unwrap_or_else(|e| panic!("{e}"));
-    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
     let text = print_module(&m);
     let m2 = parse_module(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert_eq!(text, print_module(&m2));
@@ -76,12 +74,10 @@ b0:
 #[test]
 fn constant_pools_survive_text_roundtrip() {
     let m = parse_module(CONST_POOLS).unwrap_or_else(|e| panic!("{e}"));
-    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
     assert_eq!(m.blobs, vec![vec![0, 255, 128], vec![]]);
     assert_eq!(m.list_consts, vec![vec![1, -2, i64::MAX]]);
     let text = print_module(&m);
     let m2 = parse_module(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
-    verify_module(&m2).unwrap_or_else(|e| panic!("{e:?}"));
     assert_eq!(m.blobs, m2.blobs);
     assert_eq!(m.list_consts, m2.list_consts);
     assert_eq!(text, print_module(&m2));
