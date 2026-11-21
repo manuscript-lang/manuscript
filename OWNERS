@@ -1,0 +1,22 @@
+# One owner per layer (plan section 2, rule 6). Nobody edits another layer; message the owner.
+# Format: <path prefix> <layer> <owner role>
+src/base/        L1 Runtime
+src/abi/         L1 Runtime
+src/runtime/     L1 Runtime
+src/compiler/syntax/   L2 Front
+src/compiler/project/  L3 Checker
+src/compiler/check/    L3 Checker
+src/compiler/own/      L3 Checker
+src/compiler/lower/    L4 Back
+src/compiler/mir/      L4 Back
+src/compiler/opt/      L4 Back
+src/compiler/emit/     L4 Back
+src/compiler/link/     L4 Back
+src/driver/      L5 Tools
+src/ms/          L5 Tools
+src/lint/        L0 Gate
+src/third_party/ L1 Runtime
+CMakeLists.txt   L0 Gate
+CMakePresets.json L0 Gate
+cmake/           L0 Gate
+OWNERS           L0 Gate
