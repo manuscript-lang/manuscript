@@ -215,6 +215,11 @@ jobs:
           os: linux
           arch: arm64
           llvm-consumers: 'false'
+      # The runtime archives and the pinned C libraries come from the cache main's warm-caches run saved, as in the legs.
+      - uses: ./.github/actions/native-runtime
+        with:
+          os: linux
+          arch: arm64
       - uses: ./.github/actions/language-checks
       - uses: ./.github/actions/book-checks
 
