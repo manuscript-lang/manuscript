@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "check/check_body.h"
+#include "ms/implements.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
@@ -972,6 +973,13 @@ static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     return expected;
 }
 
+/* A value of a type this module's methods fit to an interface, passed where the interface is expected. */
+static bool body_coerces_to_interface(const MsBody *b, MsTy ty, MsTy expected) {
+    const MsTyTable *tys = &b->c->tys;
+    return b->methods != NULL && ms_ty_kind(tys, expected) == MS_K_CONTRACT && ty != expected &&
+           ms_ty_kind(tys, ty) == MS_K_TYPE && ms_implements(b->c, b->methods, ty, expected) == MS_FIT_YES;
+}
+
 MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     MsTy ty = MS_TY_NONE;
     const char *context = b->context;
@@ -1007,6 +1015,10 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     if (expected == b->invalid_ty) {
         return ms_body_record(b, e->id, ty); // what was asked for is already reported
+    }
+    if (expected != MS_TY_NONE && body_coerces_to_interface(b, ty, expected)) {
+        b->facts->coerce_iface[e->id] = ty; // the lowering boxes it behind its vtable; the expression has the interface type
+        return ms_body_record(b, e->id, expected);
     }
     if (expected != MS_TY_NONE && !ms_body_same_type(b, ty, expected)) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
@@ -1700,6 +1712,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
     facts->field_store_root = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->field_store_root, 0xff, nodes * sizeof *facts->field_store_root);
+    facts->coerce_iface = MS_NEW_N(arena, MsTy, nodes);
+    memset(facts->coerce_iface, 0, nodes * sizeof *facts->coerce_iface);
     facts->some_wrap = MS_NEW_N(arena, bool, nodes);
     memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);

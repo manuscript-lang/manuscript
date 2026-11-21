@@ -89,6 +89,9 @@ static void scan_stmt(void *ctx, const MsStmt *stmt) {
 
 static void scan_expr(void *ctx, const MsExpr *e) {
     ScanState *s = ctx;
+    if (s->facts->coerce_iface[e->id] != MS_TY_NONE) {
+        s->partial = true; // the interface's operations are charged where a value becomes one, which the scan does not port yet
+    }
     if (s->facts->const_use[e->id]) {
         scan_call(s, e);
         return;
