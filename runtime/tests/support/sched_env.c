@@ -1,5 +1,5 @@
 #ifdef _WIN32
-#include <uv.h>
+#include <windows.h>
 #else
 #include <poll.h>
 #endif
@@ -29,7 +29,7 @@ static long fake_wait(int64_t timeout_ns, MsPollReady *out, size_t capacity) {
     (void)out;
     (void)capacity;
     if (timeout_ns != 0) {
-        uv_sleep(1);
+        Sleep(1);
     }
     return 0;
 }
