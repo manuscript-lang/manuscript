@@ -4,11 +4,12 @@ add_library(uv STATIC
   ${UV_SRC}/fs-poll.c ${UV_SRC}/idna.c ${UV_SRC}/inet.c ${UV_SRC}/random.c ${UV_SRC}/strscpy.c
   ${UV_SRC}/strtok.c ${UV_SRC}/thread-common.c ${UV_SRC}/threadpool.c ${UV_SRC}/timer.c
   ${UV_SRC}/uv-common.c ${UV_SRC}/uv-data-getter-setters.c ${UV_SRC}/version.c)
-target_include_directories(uv SYSTEM PUBLIC libuv/include)
-# A libuv installed on the system (macOS Intel runners have one in /usr/local/include, reached through CPATH) would
-# shadow ours: -isystem sorts after CPATH, so macOS takes the vendored headers with a plain -I, for us and our users.
+# A libuv installed on the system (macOS Intel runners have one in /usr/local/include) would shadow ours. Clang drops a -I
+# directory that is also -isystem, so on macOS ours is a plain -I, searched ahead of the system directories.
 if(APPLE)
-  target_compile_options(uv PUBLIC -I${CMAKE_CURRENT_SOURCE_DIR}/libuv/include)
+  target_include_directories(uv PUBLIC libuv/include)
+else()
+  target_include_directories(uv SYSTEM PUBLIC libuv/include)
 endif()
 target_include_directories(uv PRIVATE libuv/src)
 target_compile_definitions(uv PUBLIC USING_UV_SHARED=0)
