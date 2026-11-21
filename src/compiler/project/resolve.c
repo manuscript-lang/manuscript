@@ -139,14 +139,16 @@ static bool alias_import(MsArena *arena, const MsManifest *manifest, MsSpan path
   }
   MsSpan base = {0};
   if (manifest != NULL && ms_manifest_find(&manifest->embeds, alias, &base)) {
+    if (remainder.len == 0) {
+      *target = ms_project_embed_module_path(arena, manifest->root, alias);
+      return true;
+    }
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "embed ");
     ms_strbuild_append(&text, alias);
-    ms_strbuild_append_text(&text, remainder.len != 0 ? " names a generated module, so import it as \"" : " is not implemented yet");
-    if (remainder.len != 0) {
-      ms_strbuild_append(&text, alias);
-      ms_strbuild_append_text(&text, "\" alone");
-    }
+    ms_strbuild_append_text(&text, " names a generated module, so import it as \"");
+    ms_strbuild_append(&text, alias);
+    ms_strbuild_append_text(&text, "\" alone");
     return message(arena, error, &text);
   }
   if (manifest == NULL || !ms_manifest_find(&manifest->aliases, alias, &base)) {
@@ -324,6 +326,12 @@ bool ms_project_resolve_in(MsArena *arena, const MsManifest *manifest, MsSpan ro
   MsSpan target = {0};
   if (!ms_project_import_target(arena, manifest, importer, path, &target, error)) {
     return false;
+  }
+  MsSpan name = {0};
+  MsSpan directory = {0};
+  if (ms_project_embed_of(arena, manifest, target, &name, &directory)) {
+    *canonical = target; /* generated on load: no file exists to canonicalise */
+    return true;
   }
   return ms_project_source_path(arena, root, target, overlay, canonical, error);
 }

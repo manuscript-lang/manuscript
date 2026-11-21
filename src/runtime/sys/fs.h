@@ -43,4 +43,7 @@ bool ms_sys_fs_watch_names_self(void);
  * stream late); empty where watches are live at once. */
 const char *ms_sys_fs_watch_ready_prefix(void);
 
+/* Points standard stream `which` (0 input, 1 output, 2 error) at the null device. 0, or a libuv status. */
+int ms_sys_fs_redirect_null(int which);
+
 #endif

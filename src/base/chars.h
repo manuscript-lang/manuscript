@@ -46,6 +46,9 @@ static inline uint8_t ms_ascii_to_upper(uint8_t b) {
   return ms_ascii_is_lower(b) ? (uint8_t)(b - ('a' - 'A')) : b;
 }
 
+/* Whether `span` equals the C text when ASCII case is ignored. */
+static inline bool ms_ascii_is_text_fold(MsSpan span, const char *text);
+
 /* Whether the two spans are equal when ASCII case is ignored. */
 static inline bool ms_ascii_equal_fold(MsSpan a, MsSpan b) {
   if (a.len != b.len) {
@@ -57,6 +60,10 @@ static inline bool ms_ascii_equal_fold(MsSpan a, MsSpan b) {
     }
   }
   return true;
+}
+
+static inline bool ms_ascii_is_text_fold(MsSpan span, const char *text) {
+  return ms_ascii_equal_fold(span, ms_span_of_text(text));
 }
 
 /* The value 0..15 of a hex digit (either case). False, leaving `value` untouched, for any other byte. */

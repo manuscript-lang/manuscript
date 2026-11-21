@@ -1,4 +1,5 @@
 /* compiler/check/check.c: the checker's entry point; runs the passes over a module graph in order. */
+#include "compiler/check/constants.h"
 #include "compiler/check/program.h"
 
 void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
@@ -6,12 +7,19 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
   for (size_t index = 0; index < graph->count; index++) {
     const MsGraphModule *module = &graph->modules[index];
     const MsName file = ms_names_intern(names, module->name);
-    (void)ms_check_add_module(program, file, &module->syntax);
+    const uint32_t added = ms_check_add_module(program, file, &module->syntax);
+    program->modules.ptr[added].targets = module->targets;
   }
+  program->user_modules = (uint32_t)program->modules.len;
+  ms_check_load_std(program);
   for (uint32_t index = 0; index < program->modules.len; index++) {
     ms_check_declare(program, index);
   }
   for (uint32_t index = 0; index < program->modules.len; index++) {
+    ms_check_bind_imports(program, index);
+  }
+  for (uint32_t index = 0; index < program->user_modules; index++) {
     ms_check_resolve_types(program, index);
+    ms_check_constants(program, index);
   }
 }

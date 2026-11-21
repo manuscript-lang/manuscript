@@ -44,7 +44,7 @@ static void fail_try(Parser *p, MsToken t) {
     }
   }
   if (chain && last.end.line > 0 && start.lo < last.hi) {
-    MsSpan replacement = parse_fmt(p, "%S?", (int)(last.hi - start.lo), p->source.ptr + start.lo);
+    MsSpan replacement = parse_fmt(p, "%S?", ms_span_of(p->source.ptr + start.lo, last.hi - start.lo));
     d->has_end = true;
     d->end = last.end;
     d->has_fix = true;

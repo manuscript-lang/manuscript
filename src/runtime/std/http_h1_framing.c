@@ -1,20 +1,6 @@
 /* runtime/std/http_h1_framing.c: what a request head's fields say about its body and its connection. */
+#include "base/chars.h"
 #include "runtime/std/http_h1.h"
-
-static bool ci_equal(MsSpan a, const char *text) {
-  const MsSpan b = ms_span_of_text(text);
-  if (a.len != b.len) {
-    return false;
-  }
-  for (size_t i = 0; i < a.len; i++) {
-    const uint8_t c = a.ptr[i];
-    const uint8_t d = b.ptr[i];
-    if ((uint8_t)(c >= 'A' && c <= 'Z' ? c + 32 : c) != (uint8_t)(d >= 'A' && d <= 'Z' ? d + 32 : d)) {
-      return false;
-    }
-  }
-  return true;
-}
 
 static MsSpan trim_ascii(MsSpan s) {
   while (s.len > 0 && (s.ptr[0] == ' ' || s.ptr[0] == '\t')) {
@@ -50,7 +36,7 @@ typedef struct TokenQuery {
 
 static bool match_token(void *state, MsSpan token) {
   TokenQuery *query = state;
-  query->found = query->found || ci_equal(token, query->token);
+  query->found = query->found || ms_ascii_is_text_fold(token, query->token);
   return !query->found;
 }
 
@@ -63,7 +49,7 @@ static bool value_has_token(MsSpan value, const char *token) {
 /* The group of `name`, or false. */
 static bool find_group(const MsHeaders *fields, const char *name, size_t *group) {
   for (size_t g = 0; g < ms_headers_group_count(fields); g++) {
-    if (ci_equal(ms_headers_group_name(fields, g), name)) {
+    if (ms_ascii_is_text_fold(ms_headers_group_name(fields, g), name)) {
       *group = g;
       return true;
     }
@@ -98,27 +84,27 @@ typedef struct ConnectionFlags {
 
 static bool note_connection(void *state, MsSpan token) {
   ConnectionFlags *flags = state;
-  flags->close = flags->close || ci_equal(token, "close");
-  flags->keep_alive = flags->keep_alive || ci_equal(token, "keep-alive");
+  flags->close = flags->close || ms_ascii_is_text_fold(token, "close");
+  flags->keep_alive = flags->keep_alive || ms_ascii_is_text_fold(token, "keep-alive");
   return true;
 }
 
 static void scan_group(const MsHeaders *fields, size_t group, MsH1Scan *scan) {
   const MsSpan name = ms_headers_group_name(fields, group);
   const size_t size = ms_headers_group_size(fields, group);
-  if (ci_equal(name, "Host")) {
+  if (ms_ascii_is_text_fold(name, "Host")) {
     scan->hosts += size;
     scan->host = ms_headers_group_value(fields, group, size - 1);
-  } else if (ci_equal(name, "Content-Length")) {
+  } else if (ms_ascii_is_text_fold(name, "Content-Length")) {
     scan->content_length = true;
-  } else if (ci_equal(name, "Transfer-Encoding")) {
+  } else if (ms_ascii_is_text_fold(name, "Transfer-Encoding")) {
     scan->transfer_encoding = true;
   }
   for (size_t v = 0; v < size; v++) {
     const MsSpan value = ms_headers_group_value(fields, group, v);
-    if (ci_equal(name, "Expect")) {
+    if (ms_ascii_is_text_fold(name, "Expect")) {
       scan->expect_continue = scan->expect_continue || value_has_token(value, "100-continue");
-    } else if (ci_equal(name, "Connection")) {
+    } else if (ms_ascii_is_text_fold(name, "Connection")) {
       ConnectionFlags flags = {scan->connection_close, scan->connection_keep_alive};
       (void)for_each_token(value, note_connection, &flags);
       scan->connection_close = flags.close;
@@ -192,7 +178,7 @@ static bool note_encoding(void *state, MsSpan token) {
   EncodingList *list = state;
   if (token.len > 0) {
     list->count++;
-    list->chunked_only = list->count == 1 && ci_equal(token, "chunked");
+    list->chunked_only = list->count == 1 && ms_ascii_is_text_fold(token, "chunked");
   }
   return true;
 }

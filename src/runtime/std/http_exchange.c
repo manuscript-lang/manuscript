@@ -1,0 +1,621 @@
+/* runtime/std/http_exchange.c: one request on the wire through a curl easy handle, and the response head and
+ * body that come back. The head is read by driving curl until it is complete; the body is pulled: curl is
+ * paused while enough is staged and resumed by the next read. */
+#include "base/alloc.h"
+#include <errno.h>
+
+#include "base/chars.h"
+#include "base/ostext.h"
+#include "runtime/std/http_client_internal.h"
+#include "runtime/std/time_internal.h"
+
+/* ---- the head ---- */
+
+static MsSpan trim_blanks(MsSpan s) {
+  while (s.len > 0 && (s.ptr[0] == ' ' || s.ptr[0] == '\t')) {
+    s = ms_span_of(s.ptr + 1, s.len - 1);
+  }
+  while (s.len > 0 && (s.ptr[s.len - 1] == ' ' || s.ptr[s.len - 1] == '\t' || s.ptr[s.len - 1] == '\r' ||
+                       s.ptr[s.len - 1] == '\n')) {
+    s.len--;
+  }
+  return s;
+}
+
+static void fields_free(MsList *fields) {
+  HeadField *items = (HeadField *)(void *)fields->ptr;
+  for (size_t i = 0; i < fields->len; i++) {
+    ms_string_release(&items[i].name);
+    ms_bytes_free(&items[i].value);
+  }
+  ms_list_free(fields);
+}
+
+bool ms_http_head_find(const MsHttpResponse *response, const char *name, MsSpan *value) {
+  const HeadField *items = (const HeadField *)(const void *)response->fields.ptr;
+  for (size_t i = 0; i < response->fields.len; i++) {
+    if (ms_ascii_is_text_fold(ms_string_span(&items[i].name), name)) {
+      *value = ms_bytes_span(&items[i].value);
+      return true;
+    }
+  }
+  return false;
+}
+
+static size_t count_named(const MsHttpResponse *response, const char *name) {
+  size_t count = 0;
+  const HeadField *items = (const HeadField *)(const void *)response->fields.ptr;
+  for (size_t i = 0; i < response->fields.len; i++) {
+    count += ms_ascii_is_text_fold(ms_string_span(&items[i].name), name) ? 1u : 0u;
+  }
+  return count;
+}
+
+static void abort_with(MsHttpResponse *response, uint8_t status, const char *text) {
+  if (response->abort_text == NULL) {
+    response->abort_text = text;
+    response->abort_status = status;
+  }
+}
+
+/* `HTTP/1.1 200 OK`, `HTTP/2 200`: the protocol text and the status. */
+static void on_status_line(MsHttpResponse *response, MsSpan line) {
+  fields_free(&response->fields);
+  response->head_bytes = 0;
+  response->head_done = false;
+  size_t space = 0;
+  while (space < line.len && line.ptr[space] != ' ') {
+    space++;
+  }
+  const MsSpan version = ms_span_of(line.ptr, space);
+  ms_string_release(&response->protocol);
+  response->protocol =
+      ms_string_from_span(ms_span_is_text(version, "HTTP/2") ? ms_span_of_text("HTTP/2.0") : version);
+  uint16_t status = 0;
+  for (size_t i = space + 1; i < line.len && line.ptr[i] >= '0' && line.ptr[i] <= '9' && i < space + 4; i++) {
+    status = (uint16_t)(status * 10 + (line.ptr[i] - '0'));
+  }
+  response->status = status;
+}
+
+/* Whether the body is one gzip coding the request asked for, from the fields just read. */
+static bool decodes_gzip(const MsHttpResponse *response) {
+  MsSpan coding;
+  if (!response->add_gzip || response->request_head ||
+      !ms_http_head_find(response, "Content-Encoding", &coding)) {
+    return false;
+  }
+  return count_named(response, "Content-Encoding") == 1 &&
+         (ms_ascii_is_text_fold(coding, "gzip") || ms_ascii_is_text_fold(coding, "x-gzip"));
+}
+
+static void on_head_end(MsHttpResponse *response) {
+  if (response->status < 200) {
+    fields_free(&response->fields);
+    return;
+  }
+  response->head_done = true;
+  if (decodes_gzip(response)) {
+    response->gunzip = ms_gunzip_new();
+  }
+}
+
+static size_t on_header(char *buffer, size_t size, size_t count, void *user) {
+  MsHttpResponse *response = user;
+  const size_t whole = size * count;
+  const MsSpan line = trim_blanks(ms_span_of((const uint8_t *)buffer, whole));
+  response->head_bytes += whole;
+  if (line.len >= 5 && __builtin_memcmp(line.ptr, "HTTP/", 5) == 0) {
+    on_status_line(response, line);
+    return whole;
+  }
+  if (response->max_head_bytes != 0 && response->head_bytes > response->max_head_bytes) {
+    abort_with(response, MS_STATUS_FAILED, "http: server response headers exceeded the limit; aborted");
+    return 0;
+  }
+  if (line.len == 0) {
+    on_head_end(response);
+    return whole;
+  }
+  size_t colon = 0;
+  while (colon < line.len && line.ptr[colon] != ':') {
+    colon++;
+  }
+  if (colon == line.len || colon == 0) {
+    return whole; /* a folded or malformed line: dropped */
+  }
+  if (response->fields.len >= MS_HTTP_MAX_FIELDS) {
+    abort_with(response, MS_STATUS_FAILED, "http: server response has more than 256 header fields; aborted");
+    return 0;
+  }
+  const HeadField field = {
+      .name = ms_string_from_span(ms_span_of(line.ptr, colon)),
+      .value = ms_bytes_from_span(trim_blanks(ms_span_of(line.ptr + colon + 1, line.len - colon - 1)))};
+  ms_list_push(&response->fields, sizeof field, &field);
+  return whole;
+}
+
+uint8_t ms_http_head_finish(MsHttpResponse *response) {
+  const bool decoded = response->gunzip != NULL;
+  const HeadField *items = (const HeadField *)(const void *)response->fields.ptr;
+  MsList spans = {0};
+  for (size_t i = 0; i < response->fields.len; i++) {
+    const MsSpan name = ms_string_span(&items[i].name);
+    if (decoded &&
+        (ms_ascii_is_text_fold(name, "Content-Encoding") || ms_ascii_is_text_fold(name, "Content-Length"))) {
+      continue;
+    }
+    const MsHeaderField field = {.name = name, .value = ms_bytes_span(&items[i].value)};
+    ms_list_push(&spans, sizeof field, &field);
+  }
+  response->headers = ms_headers_from_received((const MsHeaderField *)(const void *)spans.ptr, spans.len);
+  ms_list_free(&spans);
+  if (!ms_headers_is_text(response->headers)) {
+    return MS_STATUS_INVALID_DATA;
+  }
+  return MS_STATUS_OK;
+}
+
+/* ---- the body ---- */
+
+/* Adds body bytes to the staging buffer within the request's bound; false once the bound is crossed. */
+static bool stage(MsHttpResponse *response, MsSpan bytes) {
+  size_t take = bytes.len;
+  if (response->limit && take > response->max - response->total) {
+    take = (size_t)(response->max - response->total);
+    response->overflow = true;
+  }
+  if (take > 0) {
+    __builtin_memcpy(ms_list_extend(&response->staged, 1, take), bytes.ptr, take);
+    response->total += take;
+  }
+  return !response->overflow;
+}
+
+/* Inflates `in` into the staging buffer. */
+static bool stage_gunzip(MsHttpResponse *response, MsSpan in) {
+  uint8_t out[16384];
+  size_t used = 0;
+  for (;;) {
+    size_t consumed = 0;
+    size_t produced = 0;
+    const uint8_t status = ms_gunzip_step(response->gunzip, in.ptr + used, in.len - used, true, out,
+                                          sizeof out, &consumed, &produced);
+    used += consumed;
+    if (status == MS_GUNZIP_INVALID) {
+      abort_with(response, MS_STATUS_INVALID_DATA, "gzip: invalid compressed data");
+      return false;
+    }
+    if (produced > 0 && !stage(response, ms_span_of(out, produced))) {
+      return false;
+    }
+    if (status == MS_GUNZIP_DONE || (used == in.len && produced < sizeof out)) {
+      return true;
+    }
+  }
+}
+
+static size_t on_body(char *buffer, size_t size, size_t count, void *user) {
+  MsHttpResponse *response = user;
+  const size_t whole = size * count;
+  if (response->staged.len - response->staged_pos >= MS_HTTP_STAGE_HIGH) {
+    response->paused = true;
+    return CURL_WRITEFUNC_PAUSE;
+  }
+  const MsSpan bytes = ms_span_of((const uint8_t *)buffer, whole);
+  const bool kept = response->gunzip != NULL ? stage_gunzip(response, bytes) : stage(response, bytes);
+  return kept ? whole : 0;
+}
+
+/* ---- driving curl ---- */
+
+static void reap(MsHttpResponse *response) {
+  int queued = 0;
+  CURLMsg *message = NULL;
+  while ((message = curl_multi_info_read(response->conn->multi, &queued)) != NULL) {
+    if (message->msg == CURLMSG_DONE && message->easy_handle == response->conn->easy) {
+      response->result = message->data.result;
+      response->done = true;
+    }
+  }
+}
+
+/* Runs curl until `stop` holds or the transfer ends. */
+static void drive(MsHttpResponse *response, bool (*stop)(const MsHttpResponse *)) {
+  CURLM *multi = response->conn->multi;
+  while (!stop(response) && !response->done) {
+    int running = 0;
+    const CURLMcode code = curl_multi_perform(multi, &running);
+    reap(response);
+    if (code != CURLM_OK) {
+      response->result = CURLE_RECV_ERROR;
+      response->done = true;
+    } else if (atomic_load(&response->client->closed)) {
+      response->result = CURLE_ABORTED_BY_CALLBACK;
+      response->abort_status = MS_STATUS_CLOSED;
+      response->done = true;
+    } else if (!stop(response) && !response->done) {
+      int ignored = 0;
+      (void)curl_multi_poll(multi, NULL, 0, 1000, &ignored);
+    }
+  }
+}
+
+static bool head_ready(const MsHttpResponse *response) {
+  return response->head_done;
+}
+
+static bool body_ready(const MsHttpResponse *response) {
+  return response->staged.len > response->staged_pos;
+}
+
+/* ---- failures ---- */
+
+/* The OS error text, lower-case first letter, as the language words transport failures. */
+static MsString os_text(long error_number) {
+  MsStrBuild text = ms_strbuild_new();
+  ms_os_error_text((int)error_number, &text);
+  MsString out = ms_strbuild_finish(&text);
+  ms_strbuild_free(&text);
+  MsSpan span = ms_string_span(&out);
+  MsStrBuild lower = ms_strbuild_new();
+  ms_strbuild_append_byte(&lower, span.len > 0 ? ms_ascii_to_lower(span.ptr[0]) : 0);
+  if (span.len > 1) {
+    ms_strbuild_append(&lower, ms_span_of(span.ptr + 1, span.len - 1));
+  }
+  ms_string_release(&out);
+  out = ms_strbuild_finish(&lower);
+  ms_strbuild_free(&lower);
+  return out;
+}
+
+static MsString static_text(const char *text) {
+  return ms_string_from_span(ms_span_of_text(text));
+}
+
+static MsString unresolved_text(const MsHttpResponse *response) {
+  MsHttpUrl *url = ms_http_url_parse(ms_string_span(&response->url));
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "cannot resolve host \"");
+  if (url != NULL) {
+    MsString host = ms_http_url_host(url);
+    ms_strbuild_append_string(&text, &host);
+    ms_string_release(&host);
+    ms_http_url_free(url);
+  }
+  ms_strbuild_append_text(&text, "\"");
+  MsString out = ms_strbuild_finish(&text);
+  ms_strbuild_free(&text);
+  return out;
+}
+
+/* The text of a transport failure, in the words the language uses for it. */
+static MsString failure_text(MsHttpResponse *response) {
+  long error_number = 0;
+  (void)curl_easy_getinfo(response->conn->easy, CURLINFO_OS_ERRNO, &error_number);
+  switch (response->result) {
+  case CURLE_COULDNT_RESOLVE_HOST:
+    return unresolved_text(response);
+  case CURLE_COULDNT_CONNECT:
+    return error_number == ECONNREFUSED || error_number == 0 ? static_text("connection refused")
+                                                             : os_text(error_number);
+  case CURLE_GOT_NOTHING:
+  case CURLE_PARTIAL_FILE:
+    return static_text("connection closed before the exchange completed");
+  case CURLE_SEND_ERROR:
+  case CURLE_RECV_ERROR:
+    return error_number == ECONNRESET
+               ? static_text("connection reset by peer")
+               : static_text(response->error[0] != '\0' ? response->error
+                                                        : curl_easy_strerror(response->result));
+  default:
+    return static_text(response->error[0] != '\0' ? response->error : curl_easy_strerror(response->result));
+  }
+}
+
+/* The status and text of how the exchange ended; OK when it ended well. */
+static uint8_t outcome(MsHttpResponse *response, MsString *err) {
+  if (response->abort_text != NULL) {
+    *err = static_text(response->abort_text);
+    return response->abort_status;
+  }
+  if (atomic_load(&response->client->closed)) {
+    return MS_STATUS_CLOSED;
+  }
+  if (response->result == CURLE_OK) {
+    return MS_STATUS_OK;
+  }
+  if (response->result == CURLE_OPERATION_TIMEDOUT) {
+    return MS_STATUS_TIMED_OUT;
+  }
+  *err = failure_text(response);
+  return MS_STATUS_FAILED;
+}
+
+/* ---- one hop ---- */
+
+static void add_field(MsHttpResponse *response, MsSpan name, MsSpan value) {
+  MsStrBuild line = ms_strbuild_new();
+  ms_strbuild_append(&line, name);
+  ms_strbuild_append_text(&line, value.len == 0 ? ";" : ": ");
+  ms_strbuild_append(&line, trim_blanks(value));
+  MsString text = ms_strbuild_finish(&line);
+  ms_strbuild_free(&line);
+  char *copy = ms_alloc_zeroed(ms_string_length(&text) + 1);
+  __builtin_memcpy(copy, ms_string_span(&text).ptr, ms_string_length(&text));
+  response->request_fields = curl_slist_append(response->request_fields, copy);
+  ms_free(copy);
+  ms_string_release(&text);
+}
+
+typedef struct Seen {
+  bool agent;
+  bool type;
+  bool encoding;
+} Seen;
+
+static void add_fields(MsHttpResponse *response, const HttpHop *hop, Seen *seen) {
+  for (size_t g = 0; hop->headers != NULL && g < ms_headers_group_count(hop->headers); g++) {
+    const MsSpan name = ms_headers_group_name(hop->headers, g);
+    seen->agent = seen->agent || ms_ascii_is_text_fold(name, "User-Agent");
+    seen->type = seen->type || ms_ascii_is_text_fold(name, "Content-Type");
+    seen->encoding = seen->encoding || ms_ascii_is_text_fold(name, "Accept-Encoding");
+    for (size_t v = 0; v < ms_headers_group_size(hop->headers, g); v++) {
+      add_field(response, name, ms_headers_group_value(hop->headers, g, v));
+    }
+  }
+}
+
+static bool wants_body(const HttpHop *hop) {
+  return hop->send_body && (hop->body.len > 0 || ms_span_is_text(hop->method, "POST") ||
+                            ms_span_is_text(hop->method, "PUT") || ms_span_is_text(hop->method, "PATCH"));
+}
+
+static void set_method(MsHttpResponse *response, CURL *easy, const HttpHop *hop, char **method) {
+  *method = ms_alloc_zeroed(hop->method.len + 1);
+  __builtin_memcpy(*method, hop->method.ptr, hop->method.len);
+  response->request_head = ms_span_is_text(hop->method, "HEAD");
+  if (response->request_head) {
+    curl_easy_setopt(easy, CURLOPT_NOBODY, 1L);
+  } else if (wants_body(hop)) {
+    response->request_body = ms_bytes_from_span(hop->body);
+    curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)response->request_body.len);
+    curl_easy_setopt(easy, CURLOPT_POSTFIELDS, response->request_body.ptr);
+    curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, *method);
+  } else if (ms_span_is_text(hop->method, "GET")) {
+    curl_easy_setopt(easy, CURLOPT_HTTPGET, 1L);
+  } else {
+    curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, *method);
+  }
+}
+
+static void set_tls(const MsHttpClient *client, CURL *easy) {
+  const MsHttpClientOptions *o = &client->options;
+  if (o->roots_pem.len > 0) {
+    const struct curl_blob roots = {(void *)(uintptr_t)o->roots_pem.ptr, o->roots_pem.len, CURL_BLOB_COPY};
+    curl_easy_setopt(easy, CURLOPT_CAINFO_BLOB, &roots);
+  }
+  if (o->certificate_pem.len > 0) {
+    const struct curl_blob cert = {(void *)(uintptr_t)o->certificate_pem.ptr, o->certificate_pem.len,
+                                   CURL_BLOB_COPY};
+    const struct curl_blob key = {(void *)(uintptr_t)o->private_key_pem.ptr, o->private_key_pem.len,
+                                  CURL_BLOB_COPY};
+    curl_easy_setopt(easy, CURLOPT_SSLCERT_BLOB, &cert);
+    curl_easy_setopt(easy, CURLOPT_SSLCERTTYPE, "PEM");
+    curl_easy_setopt(easy, CURLOPT_SSLKEY_BLOB, &key);
+    curl_easy_setopt(easy, CURLOPT_SSLKEYTYPE, "PEM");
+  }
+}
+
+static void configure(MsHttpResponse *response, const HttpHop *hop) {
+  CURL *easy = response->conn->easy;
+  curl_easy_reset(easy);
+  char *url = ms_alloc_zeroed(hop->url.len + 1);
+  __builtin_memcpy(url, hop->url.ptr, hop->url.len);
+  curl_easy_setopt(easy, CURLOPT_URL, url);
+  curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
+  curl_easy_setopt(easy, CURLOPT_PROXY, "");
+  curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https");
+  curl_easy_setopt(easy, CURLOPT_HTTP_CONTENT_DECODING, 0L);
+  curl_easy_setopt(easy, CURLOPT_TCP_KEEPALIVE, 1L);
+  curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, on_header);
+  curl_easy_setopt(easy, CURLOPT_HEADERDATA, response);
+  curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, on_body);
+  curl_easy_setopt(easy, CURLOPT_WRITEDATA, response);
+  curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, response->error);
+  curl_easy_setopt(easy, CURLOPT_SHARE, response->client->share);
+  if (response->client->options.cookies) {
+    curl_easy_setopt(easy, CURLOPT_COOKIEFILE, "");
+  }
+  if (response->has_deadline) {
+    const int64_t left = (response->deadline_ns - ms_clock_monotonic_since_start()) / 1000000;
+    curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS, (long)(left < 1 ? 1 : left));
+  }
+  set_tls(response->client, easy);
+  char *method = NULL;
+  set_method(response, easy, hop, &method);
+  Seen seen = {0};
+  add_fields(response, hop, &seen);
+  response->add_gzip = response->client->options.decompress && !seen.encoding;
+  if (response->add_gzip) {
+    response->request_fields = curl_slist_append(response->request_fields, "Accept-Encoding: gzip");
+  }
+  if (!seen.agent) {
+    curl_easy_setopt(easy, CURLOPT_USERAGENT, "ms-http");
+  }
+  response->request_fields = curl_slist_append(response->request_fields, "Accept:");
+  response->request_fields = curl_slist_append(response->request_fields, "Expect:");
+  if (wants_body(hop) && !seen.type) {
+    response->request_fields = curl_slist_append(response->request_fields, "Content-Type:");
+  }
+  curl_easy_setopt(easy, CURLOPT_HTTPHEADER, response->request_fields);
+  /* curl copies the strings it was given (URL and method) when the handle is configured. */
+  ms_free(url);
+  ms_free(method);
+}
+
+MsHttpResponse *ms_http_response_new(MsHttpClient *client, const MsHttpRequest *request) {
+  MsHttpResponse *response = ms_alloc_zeroed(sizeof *response);
+  response->client = ms_http_client_retain(client);
+  response->max_head_bytes = client->options.max_header_bytes != 0 ? (size_t)client->options.max_header_bytes
+                                                                   : (size_t)MS_HTTP_DEFAULT_MAX_HEADER_BYTES;
+  response->limit = request->limit_response;
+  response->max = request->limit_response ? (uint64_t)request->max_response : 0;
+  response->has_deadline = request->has_timeout;
+  if (request->has_timeout) {
+    response->deadline_ns = ms_clock_monotonic_since_start() + request->timeout_ns;
+  }
+  response->protocol = ms_string_empty();
+  response->url = ms_string_empty();
+  response->conn = ms_http_conn_take(client);
+  return response;
+}
+
+uint8_t ms_http_hop_run(MsHttpResponse *response, const HttpHop *hop, MsString *err) {
+  configure(response, hop);
+  ms_string_release(&response->url);
+  response->url = ms_string_from_span(hop->url);
+  curl_multi_add_handle(response->conn->multi, response->conn->easy);
+  ms_http_active_add(response->client, response);
+  drive(response, head_ready);
+  if (response->head_done) {
+    return MS_STATUS_OK;
+  }
+  response->done = true;
+  const uint8_t status = outcome(response, err);
+  return status == MS_STATUS_OK ? MS_STATUS_FAILED : status;
+}
+
+/* ---- reading the body, ending ---- */
+
+/* Finishes the gzip stream at the end of the body; false (with the failure noted) when it was cut or corrupt.
+ */
+static bool end_gunzip(MsHttpResponse *response) {
+  uint8_t out[4096];
+  for (;;) {
+    size_t consumed = 0;
+    size_t produced = 0;
+    const uint8_t status =
+        ms_gunzip_step(response->gunzip, NULL, 0, false, out, sizeof out, &consumed, &produced);
+    if (produced > 0 && !stage(response, ms_span_of(out, produced))) {
+      return true;
+    }
+    if (status == MS_GUNZIP_DONE) {
+      return true;
+    }
+    if (status != MS_GUNZIP_OK) {
+      abort_with(response, MS_STATUS_INVALID_DATA, "gzip: unexpected end of compressed data");
+      return false;
+    }
+  }
+}
+
+static uint8_t read_end(MsHttpResponse *response, MsString *err) {
+  if (response->overflow) {
+    return MS_STATUS_LIMIT_EXCEEDED;
+  }
+  const bool clean =
+      response->abort_text == NULL && !atomic_load(&response->client->closed) && response->result == CURLE_OK;
+  if (clean && response->gunzip != NULL && !response->drained && !end_gunzip(response)) {
+    return outcome(response, err);
+  }
+  if (response->staged.len > response->staged_pos) {
+    return MS_STATUS_OK; /* the end of the gzip stream produced more */
+  }
+  const uint8_t status = outcome(response, err);
+  response->drained = status == MS_STATUS_OK;
+  return status;
+}
+
+uint8_t ms_http_response_read(MsHttpResponse *response, size_t max, MsBytes *out, MsString *err) {
+  if (max == 0) {
+    return MS_STATUS_INVALID_INPUT;
+  }
+  for (;;) {
+    const size_t available = response->staged.len - response->staged_pos;
+    if (available > 0) {
+      const size_t take = available < max ? available : max;
+      __builtin_memcpy(ms_list_extend(out, 1, take), response->staged.ptr + response->staged_pos, take);
+      response->staged_pos += take;
+      if (response->staged_pos == response->staged.len) {
+        response->staged.len = 0;
+        response->staged_pos = 0;
+      }
+      return MS_STATUS_OK;
+    }
+    if (response->done || response->conn == NULL) {
+      return read_end(response, err);
+    }
+    if (response->paused) {
+      response->paused = false;
+      (void)curl_easy_pause(response->conn->easy, CURLPAUSE_CONT);
+      continue;
+    }
+    drive(response, body_ready);
+  }
+}
+
+static void finish(MsHttpResponse *response) {
+  HttpConn *conn = response->conn;
+  if (conn == NULL) {
+    return;
+  }
+  ms_http_active_remove(response->client, response);
+  curl_multi_remove_handle(conn->multi, conn->easy);
+  const bool reusable = response->done && response->result == CURLE_OK && !response->overflow &&
+                        response->abort_text == NULL && response->head_done;
+  response->conn = NULL;
+  ms_http_conn_give(response->client, conn, reusable);
+}
+
+void ms_http_response_discard(MsHttpResponse *response) {
+  size_t taken = 0;
+  while (response->conn != NULL && !response->done && taken < MS_HTTP_SLURP) {
+    MsBytes sink = {0};
+    MsString err = ms_string_empty();
+    const uint8_t status = ms_http_response_read(response, MS_HTTP_SLURP, &sink, &err);
+    taken += sink.len;
+    const bool end = status != MS_STATUS_OK || sink.len == 0;
+    ms_bytes_free(&sink);
+    ms_string_release(&err);
+    if (end) {
+      break;
+    }
+  }
+  ms_http_response_close(response);
+}
+
+void ms_http_response_close(MsHttpResponse *response) {
+  if (response == NULL) {
+    return;
+  }
+  finish(response);
+  curl_slist_free_all(response->request_fields);
+  ms_bytes_free(&response->request_body);
+  fields_free(&response->fields);
+  if (response->headers != NULL) {
+    ms_headers_free(response->headers);
+  }
+  ms_bytes_free(&response->staged);
+  ms_gunzip_free(response->gunzip);
+  ms_string_release(&response->protocol);
+  ms_string_release(&response->url);
+  ms_http_client_release(response->client);
+  ms_free(response);
+}
+
+uint16_t ms_http_response_status(const MsHttpResponse *response) {
+  return response->status;
+}
+
+const MsString *ms_http_response_protocol(const MsHttpResponse *response) {
+  return &response->protocol;
+}
+
+const MsHeaders *ms_http_response_headers(const MsHttpResponse *response) {
+  return response->headers;
+}
+
+const MsString *ms_http_response_url(const MsHttpResponse *response) {
+  return &response->url;
+}

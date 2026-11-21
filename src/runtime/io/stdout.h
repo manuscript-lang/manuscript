@@ -8,8 +8,8 @@
 #include "base/list.h"
 #include "base/string.h"
 
-/* Appends `data` then `end` to the running task's capture, or to standard output, under one lock. */
-void ms_stdout_write(MsSpan data, MsSpan end);
+/* Appends `data` to the running task's capture, or to standard output. */
+void ms_stdout_write(MsSpan data);
 /* Writes what is buffered. The scheduler calls it before it blocks, and the process before it ends. */
 void ms_stdout_flush(void);
 /* Writes what is buffered and frees the buffer (the end of the run); a later write buffers anew. */
@@ -19,8 +19,6 @@ int32_t ms_stdout_error(void);
 
 /* ms-sig: msrt_io_write_stdout(s: *const StrVal) */
 void msrt_io_write_stdout(const MsString *text);
-/* ms-sig: msrt_io_write_stdout_line(s: *const StrVal, end: *const StrVal) */
-void msrt_io_write_stdout_line(const MsString *text, const MsString *end);
 /* ms-sig: msrt_io_write_stderr(s: *const StrVal) */
 void msrt_io_write_stderr(const MsString *text);
 /* ms-sig: msrt_io_write_bytes_stdout(v: *const VecVal) */

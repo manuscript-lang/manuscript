@@ -1,5 +1,6 @@
 /* The file-system calls libuv cannot make exactly (sys/fs.h). */
 #include <errno.h>
+#include <fcntl.h>
 #include <io.h>
 #include <stdio.h>
 #include <uv.h>
@@ -99,4 +100,15 @@ bool ms_sys_fs_watch_names_self(void) {
 
 const char *ms_sys_fs_watch_ready_prefix(void) {
   return "";
+}
+
+int ms_sys_fs_redirect_null(int which) {
+  const int null = _open("NUL", _O_RDWR);
+  if (null < 0) {
+    return uv_translate_sys_error(GetLastError());
+  }
+  const int moved = _dup2(null, which);
+  const int code = moved < 0 ? uv_translate_sys_error(GetLastError()) : 0;
+  (void)_close(null);
+  return code;
 }

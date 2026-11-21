@@ -1,7 +1,162 @@
-/* Owns the host-independent part of running a child program (see process.h). */
+/* Running a child program (see process.h), on libuv's process and file calls so every host takes the same code. */
+#define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
+
 #include "base/process.h"
 
+#include <uv.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
+#include "base/alloc.h"
+#include "base/env.h"
+#include "base/fatal.h"
 #include "base/file.h"
+#include "base/ostext.h"
+
+enum { LOG_MODE = 0600 };
+
+typedef struct Exit {
+  int64_t status;
+  int signal;
+} Exit;
+
+static void on_exit(uv_process_t *process, int64_t status, int signal) {
+  Exit *done = process->data;
+  done->status = status;
+  done->signal = signal;
+  uv_close((uv_handle_t *)process, NULL);
+}
+
+/* The argument vector libuv takes: NUL-terminated copies and a NULL-ended pointer array. */
+typedef struct Arguments {
+  MsOsText *texts; /* owned */
+  char **pointers; /* owned: NULL-terminated, into `texts` */
+  size_t count;
+} Arguments;
+
+static Arguments arguments_new(const MsProcessSpec *spec) {
+  size_t slots = 0;
+  size_t text_bytes = 0;
+  if (!ms_size_add(spec->argc, 1, &slots) || !ms_size_mul(spec->argc, sizeof(MsOsText), &text_bytes) ||
+      !ms_size_mul(slots, sizeof(char *), &slots)) {
+    ms_fatal(MS_FATAL_OVERFLOW, "argument count");
+  }
+  Arguments arguments = {.texts = ms_alloc(text_bytes), .pointers = ms_alloc(slots), .count = spec->argc};
+  for (size_t index = 0; index < spec->argc; index++) {
+    arguments.texts[index] = ms_os_text_new(spec->argv[index]);
+    arguments.pointers[index] = arguments.texts[index].ptr;
+  }
+  arguments.pointers[spec->argc] = NULL;
+  return arguments;
+}
+
+static void arguments_free(Arguments *arguments) {
+  for (size_t index = 0; index < arguments->count; index++) {
+    ms_os_text_free(&arguments->texts[index]);
+  }
+  ms_free(arguments->texts);
+  ms_free(arguments->pointers);
+}
+
+static void fail_with(int code, MsStrBuild *error) { ms_strbuild_append_text(error, uv_strerror(code)); }
+
+/* Starts the program with the log as its output and waits for it; false with `error` set when it cannot run. */
+static bool spawn_and_wait(const MsProcessSpec *spec, int log_fd, int *exit_status, MsStrBuild *error) {
+  uv_loop_t loop;
+  int code = uv_loop_init(&loop);
+  if (code < 0) {
+    fail_with(code, error);
+    return false;
+  }
+  Arguments arguments = arguments_new(spec);
+  MsOsText directory = ms_os_text_new(spec->directory);
+  uv_stdio_container_t stdio[3] = {{.flags = UV_IGNORE},
+                                   {.flags = UV_INHERIT_FD, .data.fd = log_fd},
+                                   {.flags = UV_INHERIT_FD, .data.fd = log_fd}};
+  Exit done = {.status = -1, .signal = 0};
+  uv_process_t process = {.data = &done};
+  const uv_process_options_t options = {.exit_cb = on_exit,
+                                        .file = arguments.pointers[0],
+                                        .args = arguments.pointers,
+                                        .cwd = spec->directory.len == 0 ? NULL : directory.ptr,
+                                        .flags = UV_PROCESS_WINDOWS_HIDE,
+                                        .stdio_count = 3,
+                                        .stdio = stdio};
+  code = uv_spawn(&loop, &process, &options);
+  if (code < 0) {
+    fail_with(code, error);
+  } else {
+    (void)uv_run(&loop, UV_RUN_DEFAULT);
+    *exit_status = done.signal != 0 ? -1 : (int)done.status;
+  }
+  ms_os_text_free(&directory);
+  arguments_free(&arguments);
+  (void)uv_loop_close(&loop);
+  return code >= 0;
+}
+
+bool ms_process_run(const MsProcessSpec *spec, int *exit_status, MsStrBuild *error) {
+  MsOsText log = ms_os_text_new(spec->log_path);
+  uv_fs_t open_request;
+  const int log_fd = uv_fs_open(NULL, &open_request, log.ptr, UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_TRUNC,
+                                LOG_MODE, NULL);
+  uv_fs_req_cleanup(&open_request);
+  ms_os_text_free(&log);
+  if (log_fd < 0) {
+    fail_with(log_fd, error);
+    return false;
+  }
+  const bool ok = spawn_and_wait(spec, log_fd, exit_status, error);
+  uv_fs_t close_request;
+  (void)uv_fs_close(NULL, &close_request, log_fd, NULL);
+  uv_fs_req_cleanup(&close_request);
+  return ok;
+}
+
+/* Whether `directory`/`name` is an executable file; libuv has no PATH lookup, so the caller walks the directories. */
+static bool executable_in(MsSpan directory, MsSpan name) {
+  MsStrBuild candidate = ms_strbuild_new();
+  ms_strbuild_append(&candidate, directory.len == 0 ? ms_span_of_text(".") : directory);
+  ms_strbuild_append_byte(&candidate, '/');
+  ms_strbuild_append(&candidate, name);
+#ifdef _WIN32
+  ms_strbuild_append_text(&candidate, ".exe");
+#endif
+  MsOsText text = ms_os_text_new(ms_strbuild_span(&candidate));
+  uv_fs_t request;
+  const bool found = uv_fs_access(NULL, &request, text.ptr, X_OK, NULL) == 0;
+  uv_fs_req_cleanup(&request);
+  ms_os_text_free(&text);
+  ms_strbuild_free(&candidate);
+  return found;
+}
+
+bool ms_process_find(MsSpan name) {
+#ifdef _WIN32
+  const uint8_t separator = ';';
+#else
+  const uint8_t separator = ':';
+#endif
+  MsString path = ms_string_empty();
+  bool found = false;
+  if (name.len != 0 && ms_env_get("PATH", &path)) {
+    MsSpan rest = ms_string_span(&path);
+    while (!found) {
+      size_t end = 0;
+      while (end < rest.len && rest.ptr[end] != separator) {
+        end++;
+      }
+      found = executable_in(ms_span_of(rest.ptr, end), name);
+      if (end >= rest.len) {
+        break;
+      }
+      rest = ms_span_of(rest.ptr + end + 1, rest.len - end - 1);
+    }
+  }
+  ms_string_release(&path);
+  return found;
+}
 
 static void append_trimmed_log(MsSpan log_path, MsStrBuild *out) {
   MsBytes text = {0};
