@@ -31,6 +31,12 @@
 _Static_assert(MS_STACK_SLOTS_PER_REGION * MS_STACK_SLOT + MS_STACK_PAGE <= MS_STACK_REGION,
                "the slots and the cell page fit one region");
 
+/* ---- isolates ----
+ *
+ * Isolate indices fit the promise id's six bits and the token id's twelve. */
+#define MS_MAX_ISOLATES 63u
+#define MS_NO_ISOLATE UINT32_MAX
+
 /* ---- strings ----
  *
  * A string is two words. The top two bits of the second word are the tag; the rest depends on it (see
