@@ -40,8 +40,20 @@ typedef struct OptIdList {
 
 void opt_id_push(MsArena *a, OptIdList *l, uint32_t x);
 
+/* `arr` (with `n` elements and room for `*cap`) grown to at least one more element, in the arena. */
+void *opt_grow(MsArena *a, void *arr, uint32_t n, uint32_t *cap, size_t elem);
+#define OPT_PUSH(a, arr, n, cap, T, x)                                                                       \
+  do {                                                                                                       \
+    if ((n) == (cap)) {                                                                                      \
+      (arr) = (T *)opt_grow((a), (arr), (n), &(cap), sizeof(T));                                            \
+    }                                                                                                        \
+    (arr)[(n)++] = (x);                                                                                      \
+  } while (0)
+
 /* Makes `src[0..n]` the instructions of `b`. */
 void opt_block_set_insts(MirBlockData *b, const MirInst *src, uint32_t n);
+/* Makes `src[0..n]` the parameters of `b`. */
+void opt_block_set_params(MirBlockData *b, const MirBlockParam *src, uint32_t n);
 /* Appends `src[0..n]` to the instructions of `b`. */
 void opt_block_append(MirBlockData *b, const MirInst *src, uint32_t n);
 

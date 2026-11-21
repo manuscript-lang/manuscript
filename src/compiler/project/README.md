@@ -12,7 +12,11 @@ Landed: `ms_project_load` for a `.ms` file, an `ms.toml` or the nearest `ms.toml
 Also landed: `[embed]` directories as generated modules (`embed.c`), and module discovery for libraries and
 `ms check` (`discover.c`). Unsaved editor files are not added to discovery.
 
-Not yet: `tests` discovery of editor files, `[dependencies]`, `[effects]`, `[workspace]`, `version`, packages, full
-TOML (arrays, inline tables, dotted keys, multi-line strings) with toml_edit's error wording, editor recovery with
-several parse diagnostics per file (a syntax error stops the load at the first), and the case check on macOS and
-Windows.
+Also landed: several parse diagnostics per file (`ms_parse_partial` in the syntax library), the manifest tables
+`[dependencies]` (git and path entries), `[effects]` and `[workspace]`, `[project]` `version` and `effects`
+(`manifest_packages.c`), semantic versions and requirements (`semver.c`), dependency specs (`package.c`), TOML arrays
+and one-line inline tables, and workspace members with `fmt` on workspace roots (`workspace.c`).
+
+Not yet: `tests` discovery of editor files, the lock file, the package cache and git fetch, packages in import
+resolution, dotted keys, `[dependencies.name]` tables and multi-line strings in TOML (and toml_edit's error wording),
+`check` over several targets (a workspace root), and the case check on macOS and Windows.

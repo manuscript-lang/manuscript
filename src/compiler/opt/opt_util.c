@@ -87,6 +87,16 @@ void opt_block_set_insts(MirBlockData *b, const MirInst *src, uint32_t n) {
   mir_block_set_insts(b, &list);
 }
 
+void opt_block_set_params(MirBlockData *b, const MirBlockParam *src, uint32_t n) {
+  MirBlockParamList list = {0};
+  mir_block_param_list_reserve(&list, n);
+  for (uint32_t i = 0; i < n; i++) {
+    mir_block_param_list_push(&list, src[i]);
+  }
+  mir_block_param_list_free(&b->params);
+  b->params = list;
+}
+
 void opt_block_append(MirBlockData *b, const MirInst *src, uint32_t n) {
   for (uint32_t i = 0; i < n; i++) {
     mir_inst_list_push(&b->insts, src[i]);
@@ -181,4 +191,14 @@ void opt_id_push(MsArena *a, OptIdList *l, uint32_t x) {
     l->cap = cap;
   }
   l->v[l->n++] = x;
+}
+
+void *opt_grow(MsArena *a, void *arr, uint32_t n, uint32_t *cap, size_t elem) {
+  const uint32_t ncap = *cap != 0 ? *cap * 2 : 8;
+  void *p = ms_arena_alloc_array(a, elem, 16, ncap);
+  if (n != 0) {
+    __builtin_memcpy(p, arr, (size_t)n * elem);
+  }
+  *cap = ncap;
+  return p;
 }
