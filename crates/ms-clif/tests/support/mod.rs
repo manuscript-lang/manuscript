@@ -52,7 +52,7 @@ pub fn cc() -> Command {
     dead_code,
     reason = "test crates sharing this module use different helpers"
 )]
-pub fn link_fixture(object: &Path, runtime: &Path, out: &Path) -> Result<(), ms_clif::Error> {
+pub fn link_fixture(object: &Path, runtime: &Path, out: &Path) -> Result<(), ms_build::Error> {
     link_objects(object, &[runtime], out)
 }
 
@@ -61,17 +61,17 @@ pub fn link_fixture(object: &Path, runtime: &Path, out: &Path) -> Result<(), ms_
     dead_code,
     reason = "test crates sharing this module use different helpers"
 )]
-pub fn link_objects(object: &Path, others: &[&Path], out: &Path) -> Result<(), ms_clif::Error> {
+pub fn link_objects(object: &Path, others: &[&Path], out: &Path) -> Result<(), ms_build::Error> {
     static BUILTINS: OnceLock<Option<PathBuf>> = OnceLock::new();
     let builtins = BUILTINS.get_or_init(builtins);
     let mut inputs = others.to_vec();
     inputs.extend(builtins.as_deref());
     // The C fixture runtimes define no process entry, so they link static musl, whose startup file does.
-    let build = ms_clif::BuildOptions {
+    let build = ms_build::BuildOptions {
         static_musl: cfg!(target_os = "linux"),
-        ..ms_clif::BuildOptions::default()
+        ..ms_build::BuildOptions::default()
     };
-    ms_clif::link::link_with(object, &inputs, out, false, &build)
+    ms_build::link::link_with(object, &inputs, out, false, &build)
 }
 
 fn builtins() -> Option<PathBuf> {

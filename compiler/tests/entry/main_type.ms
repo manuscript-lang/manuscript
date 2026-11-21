@@ -1,2 +1,2 @@
 type main:
-    a: Int
+	a: Int

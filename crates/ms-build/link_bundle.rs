@@ -36,7 +36,7 @@ const MINGW_FILES: [&str; 21] = [
     "libshell32.a",
 ];
 
-fn main() {
+pub fn bundle() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=RUSTC");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));

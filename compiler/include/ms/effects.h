@@ -126,4 +126,28 @@ typedef struct MsScanNode {
  * The edges live in `arena`. */
 MsScanNode ms_effect_scan_decl(MsArena *arena, const MsCheck *c, MsModId module, const MsDecl *d);
 
+/* ---- per-entity facts (effect_facts.c) ---- */
+
+/* What the review facts say about one project function or constant, for the facts JSON. All strings
+ * live in the arena the facts were made in. `partial` is set when the scan cannot yet see every
+ * edge below it (a method or interface call, a body of a library callable the checker has not
+ * checked): the arrays are then incomplete and must not be read as "empty". */
+typedef struct MsEntityEffects {
+    const MsDecl *decl;
+    bool partial;
+    const MsStr *effects; /* declared effects the callable reaches, sorted */
+    uint32_t neffects;
+    const MsStr *permits; /* `allow_effect` patterns in force, as written */
+    uint32_t npermits;
+    const MsStr *calls; /* project callables the body calls: declaration names, sorted and unique */
+    uint32_t ncalls;
+    const MsStr *external; /* callees outside the project: their symbol ids, sorted and unique */
+    uint32_t nexternal;
+} MsEntityEffects;
+
+/* Facts for every body-checked function and constant of project `module`, whose source is `text`
+ * (the other modules' text is the checker's own). Run the ownership walk first: it marks bindings that close at scope end (MS_BIND_RESOURCE), whose implicit `close` call makes a function `partial`. The result has one row per such declaration in
+ * declaration order; `*count` is the number of rows. */
+MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId module, MsStr text, uint32_t *count);
+
 #endif

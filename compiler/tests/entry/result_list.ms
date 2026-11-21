@@ -1,2 +1,2 @@
 fn main() List[Int]:
-    return [1]
+	return [1]

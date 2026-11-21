@@ -1,7 +1,8 @@
 //! Differential tests: MIR text is run by the reference interpreter and, compiled
 //! natively with the test runtime, must produce the same output and exit status.
 
-use ms_clif::{Options, link::link_all};
+use ms_build::link::link_all;
+use ms_clif::Options;
 use ms_mir::interp::Interp;
 use ms_mir::parse::parse_module;
 use ms_mir::verify::verify_module;
@@ -387,7 +388,7 @@ fn run_real(src: &str, opt: bool, tag: &str) -> Outcome {
         .expect("cc");
     assert!(st.success());
     let exe = d.join(tag);
-    ms_clif::link::link_all(&objp, &[&shim, real_runtime().path()], &exe)
+    ms_build::link::link_all(&objp, &[&shim, real_runtime().path()], &exe)
         .unwrap_or_else(|e| panic!("{e}"));
     let out = Command::new(&exe).output().expect("run");
     Outcome {
@@ -458,7 +459,7 @@ b0:
             .success()
     );
     let exe = d.join("real_trace");
-    ms_clif::link::link_all(&objp, &[&shim, real_runtime().path()], &exe).unwrap();
+    ms_build::link::link_all(&objp, &[&shim, real_runtime().path()], &exe).unwrap();
     let out = Command::new(&exe).output().unwrap();
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(err.contains("index"), "{err}");
@@ -509,7 +510,7 @@ b0:
             .success()
     );
     let exe = d.join("inl_trace");
-    ms_clif::link::link_all(&objp, &[&shim, real_runtime().path()], &exe).unwrap();
+    ms_build::link::link_all(&objp, &[&shim, real_runtime().path()], &exe).unwrap();
     let out = Command::new(&exe).output().unwrap();
     let err = String::from_utf8_lossy(&out.stderr);
     let at: Vec<&str> = err.lines().filter(|l| l.contains("  at ")).collect();
@@ -976,7 +977,7 @@ b0:
                 .success()
         );
         let exe = d.join(format!("real-callback-{opt_level}"));
-        ms_clif::link::link_all(&obj, &[&shim, real_runtime().path()], &exe).unwrap();
+        ms_build::link::link_all(&obj, &[&shim, real_runtime().path()], &exe).unwrap();
         let out = Command::new(exe).output().unwrap();
         assert_eq!(out.status.code(), Some(ms_rt_abi::EXIT_ABORT));
         let err = String::from_utf8_lossy(&out.stderr);

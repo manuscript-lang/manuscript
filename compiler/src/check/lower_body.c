@@ -110,7 +110,7 @@ void lb_drop(Lb *lb, MirValue v) {
 
 /* Whether a value of `ty` owns something its holder must release: a String, a function value or a
  * record holding a String. */
-static bool lb_owns(Lb *lb, MirTy ty) {
+bool lb_owns(Lb *lb, MirTy ty) {
     return ty != MIR_NONE && (ty == MIR_STR || lb_is_fn(lb, ty) || mir_needs_drop(lb->m, ty));
 }
 
@@ -403,8 +403,36 @@ static MirValue lb_var_argument(Lb *lb, const MsExpr *arg, uint32_t *binding_out
 
 /* Whether parameter `index` of the function declared by `d` is handed over: declared `move`, or
  * moved by the body (the ownership pass's `param_consumed`). */
-static bool lb_param_moves(const Lb *lb, const MsDecl *d, uint32_t index) {
-    return d->u.fn.params.ptr[index]->moving || ((lb->facts->param_consumed[d->id] >> index) & 1u) != 0;
+static bool lb_has_self(const LbCallable *c) {
+    return c->self_ty != MS_TY_NONE;
+}
+
+/* The parameters of a callable in call order: the receiver (a method's) first. */
+static uint32_t lb_slots(const LbCallable *c) {
+    return c->fn->params.len + (lb_has_self(c) ? 1u : 0u);
+}
+
+/* The source parameter behind a slot: NULL for a method's receiver. */
+static const MsParam *lb_slot_param(const LbCallable *c, uint32_t slot) {
+    const uint32_t first = lb_has_self(c) ? 1u : 0u;
+    return slot < first ? NULL : c->fn->params.ptr[slot - first];
+}
+
+static bool lb_slot_mutable(const LbCallable *c, uint32_t slot) {
+    const MsParam *param = lb_slot_param(c, slot);
+    return param == NULL ? c->mutating : param->is_mutable;
+}
+
+/* The node whose binding a parameter slot introduces: a method's node for its `self`. */
+static uint32_t lb_slot_node(const LbCallable *c, uint32_t slot) {
+    const MsParam *param = lb_slot_param(c, slot);
+    return param == NULL ? c->node : param->id;
+}
+
+static bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot) {
+    const MsParam *param = lb_slot_param(c, slot);
+    const bool declared = param != NULL && param->moving;
+    return declared || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
 }
 
 /* Whether `e` names a `let` local or a `move` parameter: a String the function owns, so using it
@@ -418,10 +446,9 @@ static bool lb_names_owned(const Lb *lb, const MsExpr *e) {
     if (facts->bindings.role[binding] == MS_ROLE_LET) {
         return true;
     }
-    const MsFunc *fn = &lb->decl->u.fn;
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        if (lb->binding_at[fn->params.ptr[i]->id] == binding) {
-            return lb_param_moves(lb, lb->decl, i);
+    for (uint32_t i = 0; i < lb_slots(&lb->cur); i++) {
+        if (lb->binding_at[lb_slot_node(&lb->cur, i)] == binding) {
+            return lb_param_moves(lb, &lb->cur, i);
         }
     }
     return false;
@@ -431,7 +458,7 @@ static bool lb_names_owned(const Lb *lb, const MsExpr *e) {
  * fails the caller with it. */
 /* A `move` argument: an owned temporary is handed over as it is, an owned name moves out of its
  * scope, and anything else is copied. */
-static MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
+MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
     const LbVal value = lb_expr(lb, e);
     if (!lb->ok || value.owned) {
         return value.v;
@@ -466,35 +493,35 @@ static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
     return lb_instance(lb, callee, args, nargs);
 }
 
-static LbVal lb_call(Lb *lb, const MsExpr *e) {
-    const uint32_t callee = lb->facts->call_callee[e->id];
-    if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
-        return la_case(lb, e);
-    }
-    if (callee == MS_NONE) {
-        return lb_call_value(lb, e);
-    }
-    if (lb->c->syms.kind[callee] == MS_SYM_TYPE) {
-        return lr_construct(lb, e);
-    }
-    const uint32_t func = lb_callee_func(lb, e, callee);
-    const uint32_t count = e->u.call.args.len;
-    if (func == MIR_NONE || count != lb->c->tys.nparams[lb->c->syms.ty[callee]]) {
+/* A call of the module function `func` of signature `sig`. `receiver` is the expression a method
+ * is called on (its first argument, by `var` address when the method changes it), else NULL. */
+LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating) {
+    const uint32_t offset = receiver != NULL ? 1u : 0u;
+    const uint32_t given = e->u.call.args.len;
+    const uint32_t count = given + offset;
+    if (func == MIR_NONE || given != lb->c->tys.nparams[sig] || count != lb->m->funcs[func].nparams) {
         return lb_unsupported(lb);
     }
-    const MsTyParam *params = ms_ty_params(&lb->c->tys, lb->c->syms.ty[callee]);
+    const MsTyParam *params = ms_ty_params(&lb->c->tys, sig);
     MirValue *args = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
     MirValue *temps = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1); // owned arguments
     uint32_t ntemps = 0;
     MirValue *slots = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
     uint32_t *bindings = MS_NEW_N(&lb->b.scratch, uint32_t, (size_t)count + 1);
+    const MsExpr **exprs = MS_NEW_N(&lb->b.scratch, const MsExpr *, (size_t)count + 1);
+    bool *by_var = MS_NEW_N(&lb->b.scratch, bool, (size_t)count + 1);
+    for (uint32_t i = 0; i < count; i++) {
+        exprs[i] = i < offset ? receiver : e->u.call.args.ptr[i - offset].value;
+        by_var[i] = i < offset ? mutating : (params[i - offset].flags & MS_PARAM_VAR) != 0;
+    }
     // Values first, then the slots of the `var` arguments, in argument order each.
     for (uint32_t i = 0; i < count && lb->ok; i++) {
         slots[i] = MIR_NONE;
-        if ((params[i].flags & MS_PARAM_MOVE) != 0 || (i < lb->m->funcs[func].nparams && lb->m->funcs[func].params[i].mode == MM_MOVE)) {
-            args[i] = lb_move_argument(lb, e->u.call.args.ptr[i].value);
-        } else if ((params[i].flags & MS_PARAM_VAR) == 0) {
-            const LbVal value = lb_expr(lb, e->u.call.args.ptr[i].value);
+        const bool moves = i >= offset && (params[i - offset].flags & MS_PARAM_MOVE) != 0;
+        if (moves || (i < lb->m->funcs[func].nparams && lb->m->funcs[func].params[i].mode == MM_MOVE)) {
+            args[i] = lb_move_argument(lb, exprs[i]);
+        } else if (!by_var[i]) {
+            const LbVal value = lb_expr(lb, exprs[i]);
             args[i] = value.v;
             if (value.owned) {
                 temps[ntemps++] = value.v; // dropped where the statement ends
@@ -502,8 +529,8 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
         }
     }
     for (uint32_t i = 0; i < count && lb->ok; i++) {
-        if ((params[i].flags & MS_PARAM_VAR) != 0) {
-            args[i] = lb_var_argument(lb, e->u.call.args.ptr[i].value, &bindings[i], &slots[i]);
+        if (by_var[i]) {
+            args[i] = lb_var_argument(lb, exprs[i], &bindings[i], &slots[i]);
         }
     }
     if (!lb->ok) {
@@ -514,9 +541,13 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     bool owns_result = false;
     if (how != MS_OWNED_NONE) {
         // A borrowing callee over a temporary: the caller owns the result, which is the temporary itself
-        // when it came back whole and a copy taken before the temporary is dropped otherwise.
+        // when it came back whole and a copy taken before the temporary is dropped otherwise. The
+        // ownership walk numbers the arguments after the receiver, which this does not follow yet.
         const uint32_t whole = lb->facts->call_owned_param[e->id];
-        const bool is_whole = how == MS_OWNED_WHOLE && whole < count;
+        const bool is_whole = how == MS_OWNED_WHOLE && whole < given;
+        if (receiver != NULL) {
+            return lb_unsupported(lb);
+        }
         if (is_whole) {
             result = args[whole];
             for (uint32_t i = 0; i < ntemps; i++) {
@@ -543,7 +574,25 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return (LbVal){result, owns_result || (lb_owns(lb, result_ty) && !borrowed)}; // else a String result is the caller's
 }
 
-static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
+static LbVal lb_call(Lb *lb, const MsExpr *e) {
+    const uint32_t callee = lb->facts->call_callee[e->id];
+    const uint32_t method = lb->facts->call_method[e->id];
+    if (method != MS_NONE) {
+        return lm_has(lb, method) ? lm_call(lb, e, method) : lst_method(lb, e);
+    }
+    if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
+        return la_case(lb, e);
+    }
+    if (callee == MS_NONE) {
+        return lb_call_value(lb, e);
+    }
+    if (lb->c->syms.kind[callee] == MS_SYM_TYPE) {
+        return lr_construct(lb, e);
+    }
+    return lb_call_func(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false);
+}
+
+LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
@@ -741,11 +790,13 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
     }
     const MirTy bound_ty = lb_mir_ty(lb, ty);
     if (bound_ty != MIR_STR && !lb_is_fn(lb, bound_ty) && lb_owns(lb, bound_ty)) {
-        if (!value.owned || s->u.bind.is_mutable) {
+        if (!value.owned || (s->u.bind.is_mutable && !lb_is_list(lb, bound_ty))) {
             lb->ok = false; // a record local is made from a call or a construction, and is not a `var` yet
             return;
         }
-        lscope_own(&lb->scopes, value.v, 0);
+        if (!s->u.bind.is_mutable) {
+            lscope_own(&lb->scopes, value.v, 0); // a `var` is owned at each exit with the value it holds there
+        }
     }
     if (ty == lb->string_ty) {
         if (!value.owned) {
@@ -776,10 +827,9 @@ void lb_write_back(Lb *lb) {
     if (lb->closure) {
         return; // a closure has no `var` parameters of its own
     }
-    const MsFunc *fn = &lb->decl->u.fn;
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        if (fn->params.ptr[i]->is_mutable) {
-            const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
+    for (uint32_t i = 0; i < lb_slots(&lb->cur); i++) {
+        if (lb_slot_mutable(&lb->cur, i)) {
+            const uint32_t binding = lb->binding_at[lb_slot_node(&lb->cur, i)];
             lb_store(lb, lb->value_of[binding], mir_b_use_var(&lb->b, lb->var_of[binding]));
         }
     }
@@ -800,7 +850,7 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except) {
     }
 }
 
-static bool lb_var_owned(const Lb *lb, uint32_t binding) {
+bool lb_var_owned(const Lb *lb, uint32_t binding) {
     for (uint32_t i = 0; i < lb->nvars; i++) {
         if (lb->vars[i].binding == binding) {
             return true;
@@ -841,8 +891,11 @@ static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
         lscope_disown(&lb->scopes, v);
         return (LbVal){v, true};
     }
-    lb->ok = false; // an owned result that is no local: a copy the pass does not make yet
-    return (LbVal){v, true};
+    if (e->kind == MS_E_NAME) {
+        lb->ok = false; // a borrowed parameter handed out as an owned result: left to Rust
+        return (LbVal){v, true};
+    }
+    return (LbVal){lb_copy(lb, v), true}; // a borrowed value that is no local: the caller gets a copy
 }
 
 static void lb_return(Lb *lb, const MsStmt *s) {
@@ -871,7 +924,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
 
 /* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
  * the scope's depth. */
-static uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
+uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
     const uint32_t depth = lscope_push(&lb->scopes);
     lb_statements(lb, body);
     if (!lb->dead) {
@@ -969,7 +1022,7 @@ static void lb_while(Lb *lb, const MsStmt *s) {
 }
 
 /* The block `continue` and the end of the body go to; a `for` makes it on first use. */
-static MirBlock lb_step_block(Lb *lb, LbLoop *loop) {
+MirBlock lb_step_block(Lb *lb, LbLoop *loop) {
     if (!loop->stepped) {
         loop->next = mir_b_new_block(&lb->b);
         loop->stepped = true;
@@ -1121,37 +1174,49 @@ void lb_statements(Lb *lb, const MsStmts *body) {
 
 /* ---- functions ---- */
 
+static LbCallable lb_function_callable(Lb *lb, const MsDecl *d, MsSymId sym) {
+    const MsStr name = ms_name(lb->c->names, d->u.fn.name);
+    return (LbCallable){.fn = &d->u.fn,
+                        .node = d->id,
+                        .pos = d->pos,
+                        .name = mir_name(lb->m, name.ptr, name.len),
+                        .sig = lb->c->syms.ty[sym],
+                        .self_ty = MS_TY_NONE};
+}
+
 /* The function's MIR signature into `params` (one per source parameter) and `ret`; false when a
  * parameter or the result is not a type this pass handles. */
-static bool lb_signature(Lb *lb, const MsFunc *fn, MsSymId sym, MirParam *params, MirTy *ret) {
-    const MsTy sig = lb->c->syms.ty[sym];
-    const MsTyParam *sig_params = ms_ty_params(&lb->c->tys, sig);
-    const MsTy result = lb->c->tys.result[sig];
+static bool lb_signature(Lb *lb, const LbCallable *c, MirParam *params, MirTy *ret) {
+    const MsTyParam *sig_params = ms_ty_params(&lb->c->tys, c->sig);
+    const MsTy result = lb->c->tys.result[c->sig];
     *ret = result == lb->void_ty ? MIR_VOID : lb_mir_ty(lb, result);
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        const MirTy ty = lb_mir_ty(lb, sig_params[i].ty);
-        const bool moving = lb_param_moves(lb, lb->c->syms.decl[sym], i);
-        if (ty == MIR_NONE || (moving && !lb_owns(lb, ty)) || (fn->params.ptr[i]->is_mutable && lb_is_fn(lb, ty))) { // only a String is handed over so far
+    for (uint32_t i = 0; i < lb_slots(c); i++) {
+        const uint32_t first = lb_has_self(c) ? 1u : 0u;
+        const MsTy source = i < first ? c->self_ty : sig_params[i - first].ty;
+        const MirTy ty = lb_mir_ty(lb, source);
+        const bool moving = lb_param_moves(lb, c, i);
+        const bool mutable_slot = lb_slot_mutable(c, i);
+        if (ty == MIR_NONE || (moving && !lb_owns(lb, ty)) || (mutable_slot && lb_is_fn(lb, ty))) { // only a String is handed over so far
             return false;
         }
-        params[i] = (MirParam){fn->params.ptr[i]->is_mutable ? MIR_PTR : ty, moving ? MM_MOVE : MM_BORROW};
+        params[i] = (MirParam){mutable_slot ? MIR_PTR : ty, moving ? MM_MOVE : MM_BORROW};
     }
     return *ret != MIR_NONE;
 }
 
 /* The indexes of the `var` parameters, which no other memory overlaps (the text form's `noalias`). */
-static void lb_mark_noalias(Lb *lb, const MsFunc *fn) {
+static void lb_mark_noalias(Lb *lb, const LbCallable *c) {
     uint32_t count = 0;
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        count += fn->params.ptr[i]->is_mutable ? 1 : 0;
+    for (uint32_t i = 0; i < lb_slots(c); i++) {
+        count += lb_slot_mutable(c, i) ? 1 : 0;
     }
     if (count == 0) {
         return;
     }
     uint32_t *indexes = MS_NEW_N(&lb->m->arena, uint32_t, count);
     uint32_t next = 0;
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        if (fn->params.ptr[i]->is_mutable) {
+    for (uint32_t i = 0; i < lb_slots(c); i++) {
+        if (lb_slot_mutable(c, i)) {
             indexes[next++] = i;
         }
     }
@@ -1159,33 +1224,36 @@ static void lb_mark_noalias(Lb *lb, const MsFunc *fn) {
     lb->b.f.nnoalias = count;
 }
 
+static MsSym lb_slot_name(const Lb *lb, const LbCallable *c, uint32_t slot) {
+    const MsParam *param = lb_slot_param(c, slot);
+    return param == NULL ? ms_intern_cstr(lb->c->names, "self") : param->name;
+}
+
 /* Starts the function and binds its parameters; false when its signature is not handled. */
-static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
-    const MsFunc *fn = &d->u.fn;
-    MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, fn->params.len + 1);
+static bool lb_begin(Lb *lb, const LbCallable *c) {
+    const uint32_t slots = lb_slots(c);
+    MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, slots + 1);
     MirTy ret = MIR_NONE;
-    if (!lb_signature(lb, fn, sym, params, &ret)) {
+    if (!lb_signature(lb, c, params, &ret)) {
         return false;
     }
-    const MsStr name = ms_name(lb->c->names, fn->name);
-    mir_b_init(&lb->b, lb->m, lb->has_override ? lb->name_override : mir_name(lb->m, name.ptr, name.len), params,
-               fn->params.len, ret);
-    lb->b.f.loc = lb_loc(lb, d->pos);
-    lb->b.f.ret_borrowed = lb->facts->ret_borrowed[d->id]; // every result is a reference into the arguments
-    lb_mark_noalias(lb, fn);
-    MirValue *values = MS_NEW_N(&lb->m->arena, MirValue, fn->params.len + 1);
-    mir_b_params(&lb->b, values, fn->params.len);
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
+    mir_b_init(&lb->b, lb->m, lb->has_override ? lb->name_override : c->name, params, slots, ret);
+    lb->b.f.loc = lb_loc(lb, c->pos);
+    lb->b.f.ret_borrowed = lb->facts->ret_borrowed[c->node]; // every result is a reference into the arguments
+    lb_mark_noalias(lb, c);
+    MirValue *values = MS_NEW_N(&lb->m->arena, MirValue, slots + 1);
+    mir_b_params(&lb->b, values, slots);
+    for (uint32_t i = 0; i < slots; i++) {
+        const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
         lb->value_of[binding] = values[i];
-        if (!fn->params.ptr[i]->is_mutable) { // Rust names no `var` parameter: its value is a pointer
-            lb_name_value(lb, values[i], fn->params.ptr[i]->name, true);
+        if (!lb_slot_mutable(c, i)) { // Rust names no `var` parameter: its value is a pointer
+            lb_name_value(lb, values[i], lb_slot_name(lb, c, i), true);
         }
     }
     lb_depth(lb, MOP_DepthEnter);
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        if (fn->params.ptr[i]->is_mutable) {
-            const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
+    for (uint32_t i = 0; i < slots; i++) {
+        if (lb_slot_mutable(c, i)) {
+            const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
             const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
             lb->var_of[binding] = mir_b_declare_var(&lb->b, ty, MM_BORROW);
             mir_b_def_var(&lb->b, lb->var_of[binding], lb_load(lb, values[i], ty));
@@ -1208,22 +1276,22 @@ void lb_reset_state(Lb *lb) {
 }
 
 /* Lowers one checked function over its stub `slot` in the module; false when it is not handled. */
-static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
-    lb->decl = d;
+bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
+    lb->cur = *c;
     lb->closure = false;
     lb->jobs = NULL; // the arena they live in is freed between passes
     lb->njobs = lb->cjobs = 0;
-    lb->ok = lb_begin(lb, d, sym);
+    lb->ok = lb_begin(lb, c);
     if (!lb->ok) {
         return false;
     }
     lb_reset_state(lb);
-    for (uint32_t i = 0; i < d->u.fn.params.len; i++) {
-        if (lb_param_moves(lb, d, i)) { // the function owns what it was handed
-            lscope_own(&lb->scopes, lb->value_of[lb->binding_at[d->u.fn.params.ptr[i]->id]], 0);
+    for (uint32_t i = 0; i < lb_slots(c); i++) {
+        if (lb_param_moves(lb, c, i)) { // the function owns what it was handed
+            lscope_own(&lb->scopes, lb->value_of[lb->binding_at[lb_slot_node(c, i)]], 0);
         }
     }
-    lb_statements(lb, &d->u.fn.body);
+    lb_statements(lb, &c->fn->body);
     if (lb->ok && !lb->dead && lb->b.f.ret == MIR_VOID) {
         lb_return_void(lb); // the end of a function that returns nothing
     }
@@ -1231,8 +1299,8 @@ static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
     MirFunc f = {0};
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
-        const MsStr name = ms_name(lb->c->names, d->u.fn.name);
-        const bool is_main = name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
+        const MsStr name = ms_name(lb->c->names, c->fn->name);
+        const bool is_main = !lb_has_self(c) && name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
         if (is_main && lb->b.f.ret == MIR_INT) { // any other `main` gets a wrapper, which is the export
             lb->b.f.linkage = ML_EXPORT;
         }
@@ -1263,18 +1331,15 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
 
 /* Adds a function with the declared signature and an empty body, so calls can name it before its
  * body is lowered (recursion and any order of declarations). */
-static uint32_t lb_add_stub(Lb *lb, const MsDecl *d, MsSymId sym) {
-    const MsFunc *fn = &d->u.fn;
-    MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, fn->params.len + 1);
+uint32_t lb_add_stub(Lb *lb, const LbCallable *c) {
+    MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, lb_slots(c) + 1);
     MirTy ret = MIR_NONE;
-    if (!lb_signature(lb, fn, sym, params, &ret)) {
+    if (!lb_signature(lb, c, params, &ret)) {
         return MIR_NONE;
     }
-    const MsStr name = ms_name(lb->c->names, fn->name);
     MirFunc stub = {0};
-    mir_func_init(lb->m, &stub, lb->has_override ? lb->name_override : mir_name(lb->m, name.ptr, name.len), params,
-                  fn->params.len, ret);
-    stub.ret_borrowed = lb->facts->ret_borrowed[d->id]; // callers read it before the body is lowered
+    mir_func_init(lb->m, &stub, lb->has_override ? lb->name_override : c->name, params, lb_slots(c), ret);
+    stub.ret_borrowed = lb->facts->ret_borrowed[c->node]; // callers read it before the body is lowered
     return mir_add_func(lb->m, &stub);
 }
 
@@ -1340,7 +1405,8 @@ static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t narg
     lb->nsub = nargs;
     lb->has_override = true;
     lb->name_override = mir_name(lb->m, text, (size_t)len);
-    inst.func = lb_add_stub(lb, d, sym);
+    const LbCallable callable = lb_function_callable(lb, d, sym);
+    inst.func = lb_add_stub(lb, &callable);
     lb->sub_vars = saved_vars;
     lb->sub_args = saved_args;
     lb->nsub = saved_n;
@@ -1368,7 +1434,8 @@ static bool lb_drain_instances(Lb *lb, uint32_t *lowered) {
         lb->nsub = inst.nargs;
         lb->has_override = true;
         lb->name_override = lb->m->funcs[inst.func].name;
-        const bool done = lb_function(lb, lb->c->syms.decl[inst.sym], inst.sym, inst.func);
+        const LbCallable callable = lb_function_callable(lb, lb->c->syms.decl[inst.sym], inst.sym);
+        const bool done = lb_function(lb, &callable, inst.func);
         *lowered += done ? 1 : 0;
         if (!done) {
             died = lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst) || died;
@@ -1379,12 +1446,9 @@ static bool lb_drain_instances(Lb *lb, uint32_t *lowered) {
     return died;
 }
 
-/* Whether the checker reported anything inside declaration `index`: on lines from its own to the
- * next declaration's. A program with a diagnostic does not build, so such a function is not
- * lowered (its body may be ill-typed). */
-static bool lb_has_diagnostic(const MsModuleRow *row, uint32_t index) {
-    const uint32_t first = row->syntax->decls[index]->pos.line;
-    const uint32_t end = index + 1 < row->syntax->ndecls ? row->syntax->decls[index + 1]->pos.line : UINT32_MAX;
+/* Whether the checker reported anything on the lines [first, end). A program with a diagnostic
+ * does not build, so a function holding one is not lowered (its body may be ill-typed). */
+bool lb_lines_have_diagnostic(const MsModuleRow *row, uint32_t first, uint32_t end) {
     for (uint32_t k = 0; k < row->ndiags; k++) {
         const uint32_t line = row->diags[k].diag.pos.line;
         if (line >= first && line < end) {
@@ -1394,9 +1458,16 @@ static bool lb_has_diagnostic(const MsModuleRow *row, uint32_t index) {
     return false;
 }
 
+/* Whether the checker reported anything inside declaration `index`: on lines from its own to the
+ * next declaration's. */
+static bool lb_has_diagnostic(const MsModuleRow *row, uint32_t index) {
+    const uint32_t end = index + 1 < row->syntax->ndecls ? row->syntax->decls[index + 1]->pos.line : UINT32_MAX;
+    return lb_lines_have_diagnostic(row, row->syntax->decls[index]->pos.line, end);
+}
+
 /* One pass over the module's checked functions: stub each one not in `failed`, then lower them.
  * A function that does not lower is marked in `failed`; true when any new one was. */
-static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
+static bool lb_pass(Lb *lb, MsModId module, uint32_t nrows, bool *failed, uint32_t *lowered) {
     const MsModuleRow *row = &lb->c->mods[module];
     const uint32_t ndecls = row->syntax->ndecls;
     memset(lb->func_of, 0xff, (size_t)lb->c->syms.count * sizeof *lb->func_of);
@@ -1410,9 +1481,12 @@ static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
             syms[i] = MS_NONE; // a generic function is checked here but not lowered: it needs one copy per type argument
         }
         if (syms[i] != MS_NONE) {
-            lb->func_of[syms[i]] = lb_add_stub(lb, d, syms[i]);
+            const LbCallable callable = lb_function_callable(lb, d, syms[i]);
+            lb->func_of[syms[i]] = lb_add_stub(lb, &callable);
         }
     }
+    bool *method_failed = failed + ndecls; // the methods follow the declarations
+    lm_stubs(lb, module, nrows, method_failed);
     bool changed = false;
     *lowered = 0;
     lb->ninsts = 0;
@@ -1421,11 +1495,13 @@ static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
             continue;
         }
         const bool unlowerable = lb->func_of[syms[i]] == MIR_NONE;
-        const bool done = !unlowerable && lb_function(lb, row->syntax->decls[i], syms[i], lb->func_of[syms[i]]);
+        const LbCallable callable = lb_function_callable(lb, row->syntax->decls[i], syms[i]);
+        const bool done = !unlowerable && lb_function(lb, &callable, lb->func_of[syms[i]]);
         failed[i] = !done;
         changed = changed || !done;
         *lowered += done ? 1 : 0;
     }
+    changed = lm_lower(lb, nrows, method_failed, lowered) || changed;
     return lb_drain_instances(lb, lowered) || changed;
 }
 
@@ -1449,7 +1525,8 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
              .void_ty = lb_primitive(c, "Void")};
     lb.classifier = ms_classifier_new(c);
     ms_classifier_mark_methods(lb.classifier, facts->methods);
-    bool *failed = calloc((size_t)row->syntax->ndecls + 1, sizeof *failed);
+    const uint32_t nrows = lm_prepare(&lb, module);
+    bool *failed = calloc((size_t)row->syntax->ndecls + nrows + 1, sizeof *failed);
     lb.func_of = calloc((size_t)c->syms.count + 1, sizeof *lb.func_of);
     lb.thunk_of = calloc((size_t)c->syms.count + 1, sizeof *lb.thunk_of);
     uint32_t lowered = 0;
@@ -1457,12 +1534,14 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
         mir_module_free(out);
         mir_module_init(out);
         lb_index_bindings(&lb, &out->arena);
-        if (!lb_pass(&lb, module, failed, &lowered)) {
+        if (!lb_pass(&lb, module, nrows, failed, &lowered)) {
             break;
         }
     }
     ms_classifier_free(lb.classifier);
     free(lb.func_of);
+    free(lb.rows);
+    free(lb.method_func);
     free(lb.insts);
     free(lb.dead_insts);
     free(lb.thunk_of);

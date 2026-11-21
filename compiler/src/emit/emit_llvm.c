@@ -39,6 +39,9 @@ typedef struct LCx {
     uint32_t scope_base; /* module-wide index of the first scope of `f` */
     uint32_t body_scope; /* the scope number of `f`'s own body: past the module's scopes, one per function */
     bool noinline;       /* `f` is glue at the top of a deep chain of glue calls */
+    bool pure;           /* `f` reads and writes no memory, cannot fault and always returns */
+    const char *tbaa;    /* `, !tbaa !N` for the list element access being written, or NULL */
+    uint32_t body_line;  /* the line of `f`'s first instruction that has one; 0 until looked up, UINT32_MAX for none */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -235,11 +238,11 @@ static void ll_load_leaf(LCx *c, MirLeaf leaf, MirValue dst, uint32_t index, uin
     if (kind->widen == LL_SAME) {
         ms_buf_puts(o, "  ");
         ll_name(o, dst, index);
-        ms_buf_printf(o, " = load %s, ptr %%a%u\n", kind->mem, address);
+        ms_buf_printf(o, " = load %s, ptr %%a%u%s\n", kind->mem, address, c->tbaa ? c->tbaa : "");
         return;
     }
     const uint32_t n = c->next++;
-    ms_buf_printf(o, "  %%l%u = load %s, ptr %%a%u\n  ", n, kind->mem, address);
+    ms_buf_printf(o, "  %%l%u = load %s, ptr %%a%u%s\n  ", n, kind->mem, address, c->tbaa ? c->tbaa : "");
     ll_name(o, dst, index);
     switch (kind->widen) {
     case LL_SEXT: ms_buf_printf(o, " = sext %s %%l%u to i64\n", kind->mem, n); break;
@@ -256,7 +259,7 @@ static void ll_store_leaf(LCx *c, MirLeaf leaf, MirValue src, uint32_t index, ui
     if (kind->widen == LL_SAME) {
         ms_buf_printf(o, "  store %s ", kind->mem);
         ll_name(o, src, index);
-        ms_buf_printf(o, ", ptr %%a%u\n", address);
+        ms_buf_printf(o, ", ptr %%a%u%s\n", address, c->tbaa ? c->tbaa : "");
         return;
     }
     const uint32_t n = c->next++;
@@ -267,7 +270,8 @@ static void ll_store_leaf(LCx *c, MirLeaf leaf, MirValue src, uint32_t index, ui
     default: ms_buf_printf(o, "trunc i64 "); break;
     }
     ll_name(o, src, index);
-    ms_buf_printf(o, " to %s\n  store %s %%t%u, ptr %%a%u\n", kind->mem, kind->mem, n, address);
+    ms_buf_printf(o, " to %s\n  store %s %%t%u, ptr %%a%u%s\n", kind->mem, kind->mem, n, address,
+                  c->tbaa ? c->tbaa : "");
 }
 
 /* Reads (`load`) or writes the leaves of `value` at the address in `base`. */
@@ -295,6 +299,22 @@ static void ll_pointer(LCx *c, MirValue value, char *name, size_t cap) {
     const uint32_t n = c->next++;
     ms_buf_printf(c->out, "  %%p%u = inttoptr i64 %%v%u to ptr\n", n, value);
     (void)snprintf(name, cap, "%%p%u", n);
+}
+
+/* The alias class of the elements of a list of scalars. A buffer holds one element type, so a scalar element never
+ * lies where a list or string header does; only element accesses carry it, since a header field is also read through
+ * borrowed pointers that carry no tag. The nodes are written once at the end of the module (`ll_tbaa_nodes`). */
+#define LL_TBAA_ROOT 900000
+#define LL_TBAA_SCALAR 900001
+#define LL_TBAA_SCALAR_TAG 900002
+static const char *ll_elem_tbaa(const LCx *c, MirTy elem) {
+    switch (mir_ty_data(c->m, elem)->kind) {
+    case MK_BOOL: case MK_INT: case MK_FLOAT: case MK_INT8: case MK_INT16: case MK_INT32: case MK_FLOAT32:
+    case MK_UINT8: case MK_UINT16: case MK_UINT32: case MK_UINT64:
+        return ", !tbaa !900002";
+    default:
+        return NULL;
+    }
 }
 
 /* ---- static data ---- */
@@ -1220,7 +1240,9 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
 /* Writes the element address as a pointer and names it in `out`. */
 static void ll_elem_base(LCx *c, MirValue list, const char *index, uint32_t size, char *out, size_t cap) {
     const uint32_t n = c->next++;
-    ms_buf_printf(c->out, "  %%t%u = mul i64 %s, %u\n  %%a%u = add i64 %%v%u, %%t%u\n  %%p%u = inttoptr i64 %%a%u to ptr\n",
+    ms_buf_printf(c->out,
+                  "  %%t%u = mul i64 %s, %u\n  %%lb%u = inttoptr i64 %%v%u to ptr\n"
+                  "  %%p%u = getelementptr i8, ptr %%lb%u, i64 %%t%u\n",
                   n, index, size, n, list, n, n, n);
     (void)snprintf(out, cap, "%%p%u", n);
 }
@@ -1279,6 +1301,14 @@ static bool ll_list_lit(LCx *c, const MirInst *inst, uint32_t size) {
     return true;
 }
 
+/* Writes `element` at `base`, an element address of `list`, tagged with the alias class of its elements. */
+static bool ll_store_element(LCx *c, MirValue list, MirValue element, const char *base) {
+    c->tbaa = ll_elem_tbaa(c, ll_list_elem(c, c->f->values[list]));
+    const bool ok = ll_leaves_at(c, element, base, false);
+    c->tbaa = NULL;
+    return ok;
+}
+
 /* The unchecked list operations: the index is in range or the length is known. Dropping an old
  * element is the job of `lower_ops`, which runs first. */
 static bool ll_list_write_op(LCx *c, const MirInst *inst, uint32_t block, uint32_t *part, bool *handled) {
@@ -1299,14 +1329,14 @@ static bool ll_list_write_op(LCx *c, const MirInst *inst, uint32_t block, uint32
         ll_elem_base(c, inst->args[0], index, size, base, sizeof base);
         ll_copy_list(c, inst, inst->args[0]);
         ll_copy_leaf(c, inst->res, MIR_LIST_LEN_LEAF, inst->args[0], MIR_LIST_LEN_LEAF);
-        return ll_leaves_at(c, inst->args[2], base, false);
+        return ll_store_element(c, inst->args[0], inst->args[2], base);
     case MOP_ListPushU:
         (void)snprintf(index, sizeof index, "%%v%u.%u", inst->args[0], MIR_LIST_LEN_LEAF);
         ll_elem_base(c, inst->args[0], index, size, base, sizeof base);
         ll_copy_list(c, inst, inst->args[0]);
         ms_buf_printf(o, "  %%v%u.%u = add i64 %%v%u.%u, 1\n", inst->res, MIR_LIST_LEN_LEAF,
                       inst->args[0], MIR_LIST_LEN_LEAF);
-        return ll_leaves_at(c, inst->args[1], base, false);
+        return ll_store_element(c, inst->args[0], inst->args[1], base);
     case MOP_ListDropLast:
         ll_copy_list(c, inst, inst->args[0]);
         ms_buf_printf(o, "  %%v%u.%u = sub i64 %%v%u.%u, 1\n", inst->res, MIR_LIST_LEN_LEAF,
@@ -1634,13 +1664,34 @@ static bool ll_entry(LCx *c) {
     return true;
 }
 
-/* Puts the source place `loc` (the function's own line when it has none) on the text written since `from`. */
+/* The line of the first instruction of `f` that has one of its own (not an inlined callee's), or the function's own
+ * line when none does. */
+static uint32_t ll_body_line(LCx *c) {
+    if (c->body_line == 0) {
+        c->body_line = UINT32_MAX;
+        for (uint32_t b = 0; c->body_line == UINT32_MAX && b < c->f->nblocks; b++) {
+            const MirBlockData *block = &c->f->blocks[b];
+            for (uint32_t k = 0; k < block->ninsts; k++) {
+                const MirLoc at = block->insts[k].loc;
+                if (!mir_loc_none(at) && at.line != 0 && at.scope == 0) {
+                    c->body_line = at.line;
+                    break;
+                }
+            }
+        }
+    }
+    return c->body_line == UINT32_MAX ? c->f->loc.line : c->body_line;
+}
+
+/* Puts the source place `loc` on the text written since `from`. An instruction with none (the stack check that
+ * `depth` puts first, which faults on an overflow) sits on the first line of the body, so a trace names the
+ * line the recursion is on and not the function's declaration. */
 static void ll_place(LCx *c, size_t from, MirLoc loc) {
     if (c->dbg == NULL) {
         return;
     }
     const bool known = !mir_loc_none(loc) && loc.line != 0;
-    const uint32_t line = known ? loc.line : c->f->loc.line;
+    const uint32_t line = known ? loc.line : ll_body_line(c);
     /* Scope 0 is the function itself; LLVM may inline it into another, so it gets a number of its own. */
     const uint32_t scope = known && loc.scope != 0 ? c->scope_base + loc.scope : c->body_scope;
     ll_debug_tag(c->out, from, ll_debug_location(c->dbg, line, scope));
@@ -1696,7 +1747,10 @@ static void ll_header(LCx *c, uint32_t index) {
         const MirValue param = f->blocks[0].params[k].value;
         const MirLeafSpan leaves = ll_leaves(c, f->params[k].ty);
         if (ll_indirect(c, f->params[k].ty)) {
-            ms_buf_printf(o, "%sptr %%in%u", first ? "" : ", ", param);
+            /* The entry block loads the leaves and nothing else touches the address: a caller's copy that is only
+             * read, not kept, and one the callee owns for its whole life. */
+            ms_buf_printf(o, "%sptr nonnull readonly nocapture align 8 dereferenceable(%u) %%in%u", first ? "" : ", ",
+                          ll_slot_bytes(c->layouts, f->params[k].ty), param);
             first = false;
             continue;
         }
@@ -1707,6 +1761,9 @@ static void ll_header(LCx *c, uint32_t index) {
         }
     }
     ms_buf_puts(o, c->noinline ? ") nounwind noinline" : ") nounwind");
+    if (c->pure) {
+        ms_buf_puts(o, " willreturn nofree nosync memory(none)");
+    }
     if (c->dbg != NULL) {
         ms_buf_printf(o, " !dbg !%u", ll_debug_subprogram(c->dbg, ms_name(&c->m->names, f->name), f->loc.line));
     }
@@ -1958,6 +2015,59 @@ static void ll_define_data(const LCx *c) {
     }
 }
 
+/* Whether function `i` is a scalar function whose result depends on its arguments alone: no memory, no fault, no
+ * loop, and only such callees, so it always returns. LLVM cannot see that across a unit boundary, and a call of it
+ * may then be merged or dropped. `state[i]` is 0 unvisited, 1 on the path (recursion: not pure), 2 pure, 3 not. */
+static bool ll_acyclic_from(const MirFunc *f, uint8_t *color, MirBlock b) {
+    if (color[b] != 0) {
+        return color[b] == 2;
+    }
+    color[b] = 1;
+    const MirTerm *t = &f->blocks[b].term;
+    const bool branch = t->kind == MT_BR || t->kind == MT_CONDBR;
+    if (branch && !ll_acyclic_from(f, color, t->a.block)) {
+        return false;
+    }
+    if (t->kind == MT_CONDBR && !ll_acyclic_from(f, color, t->b.block)) {
+        return false;
+    }
+    color[b] = 2;
+    return true;
+}
+
+static bool ll_pure_function(LCx *c, uint8_t *state, uint32_t i) {
+    if (state[i] != 0) {
+        return state[i] == 2;
+    }
+    state[i] = 1;
+    const MirFunc *f = &c->m->funcs[i];
+    LCx at = *c;
+    at.f = f;
+    bool pure = ll_leaves(&at, f->ret).len <= 1;
+    for (uint32_t k = 0; pure && k < f->nparams; k++) {
+        pure = !ll_indirect(&at, f->params[k].ty);
+    }
+    for (uint32_t b = 0; pure && b < f->nblocks; b++) {
+        const MirBlockData *block = &f->blocks[b];
+        pure = block->term.kind == MT_BR || block->term.kind == MT_CONDBR || block->term.kind == MT_RET;
+        for (uint32_t k = 0; pure && k < block->ninsts; k++) {
+            const MirInst *inst = &block->insts[k];
+            if (inst->op == MOP_Call) {
+                pure = ll_pure_function(c, state, inst->imm.a);
+            } else {
+                pure = mir_op_info[inst->op].effects == 0 && !mir_op_is_call((MirOp)inst->op);
+            }
+        }
+    }
+    if (pure) {
+        uint8_t *color = calloc(f->nblocks ? f->nblocks : 1, sizeof *color); /* owned, freed below */
+        pure = color != NULL && ll_acyclic_from(f, color, 0);
+        free(color);
+    }
+    state[i] = pure ? 2 : 3;
+    return pure;
+}
+
 /* Glue calls glue per element-type level, so a deeply nested literal makes a chain. Inlining a chain nests one loop
  * per level and makes the optimizer quadratic in the depth, so glue with three or more levels of glue below it stays
  * out of line; shallow glue still inlines. `depth[i]` is 0 for unvisited, else 1 + the longest chain below `i`;
@@ -1983,11 +2093,57 @@ static uint32_t ll_glue_depth(const MirModule *m, const bool *is_glue, uint32_t 
     return below;
 }
 
+/* The name tools show for the program's code: the file of its first function that has one, without the folders;
+ * "ms" when none has. */
+static MsStr ll_source_name(const MirModule *m) {
+    MsStr name = {"ms", 2};
+    uint32_t file = MIR_NONE;
+    for (uint32_t i = 0; i < m->nfuncs && file >= m->nfiles; i++) {
+        file = m->funcs[i].loc.file;
+    }
+    if (file >= m->nfiles) {
+        return name;
+    }
+    name = m->files[file];
+    for (uint32_t k = name.len; k > 0; k--) {
+        if (name.ptr[k - 1] == '/' || name.ptr[k - 1] == '\\') {
+            return (MsStr){name.ptr + k, name.len - k};
+        }
+    }
+    return name;
+}
+
+/* The LLVM target triple of the machine the emitter runs on, which is the one the program is built for. Without it
+ * a tool that reads the IR alone (`opt`, LLVM's own analyses) assumes a generic layout and sizes loops differently
+ * from the compiler. Windows executables link over the mingw-w64 CRT. */
+static const char *ll_host_triple(void) {
+#if defined(__x86_64__) || defined(_M_X64)
+#define LL_ARCH "x86_64"
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#define LL_ARCH "aarch64"
+#else
+    return NULL;
+#endif
+#if defined(__linux__)
+    return LL_ARCH "-unknown-linux-gnu";
+#elif defined(__APPLE__)
+    return LL_ARCH "-apple-darwin";
+#elif defined(_WIN32)
+    return LL_ARCH "-w64-windows-gnu";
+#else
+    return NULL;
+#endif
+}
+
 static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all, bool places,
                     MsBuf *out, MsBuf *why) {
     MirLayouts layouts;
     mir_layouts_init(&layouts, m);
     bool ok = true;
+    const char *triple = ll_host_triple();
+    if (triple != NULL) {
+        ms_buf_printf(out, "target triple = \"%s\"\n", triple);
+    }
     LlDebug debug = {0};
     ll_debug_init(&debug);
     LlDebug *dbg = places ? &debug : NULL;
@@ -1997,9 +2153,11 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     }
     bool *is_glue = calloc(m->nfuncs ? m->nfuncs : 1, sizeof *is_glue);      /* owned, freed below */
     uint32_t *depth = calloc(m->nfuncs ? m->nfuncs : 1, sizeof *depth);      /* owned, freed below */
-    if (is_glue == NULL || depth == NULL) {
+    uint8_t *purity = calloc(m->nfuncs ? m->nfuncs : 1, sizeof *purity);     /* owned, freed below */
+    if (is_glue == NULL || depth == NULL || purity == NULL) {
         free(is_glue);
         free(depth);
+        free(purity);
         mir_layouts_free(&layouts);
         ms_buf_puts(why, "out of memory\n");
         return false;
@@ -2007,9 +2165,11 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     for (uint32_t g = 0; glue != NULL && g < glue->n; g++) {
         is_glue[glue->v[g].func] = true;
     }
+    LCx module = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, 0, 0, false, false, NULL, 0};
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base,
-                 total_scopes + i + 1, is_glue[i] && ll_glue_depth(m, is_glue, depth, i) >= 3};
+                 total_scopes + i + 1, is_glue[i] && ll_glue_depth(m, is_glue, depth, i) >= 3,
+                 ll_pure_function(&module, purity, i), NULL, 0};
         scope_base += m->funcs[i].nscopes;
         if (ll_function(&c, i)) {
             continue;
@@ -2020,7 +2180,8 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     }
     free(is_glue);
     free(depth);
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0, false};
+    free(purity);
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0, false, false, NULL, 0};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);
@@ -2029,8 +2190,11 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     mir_layouts_free(&layouts);
     ll_declare_faults(&externs);
     ms_buf_puts(out, ll_declarations);
+    ms_buf_printf(out,
+                  "!%d = !{!\"ms.tbaa\"}\n!%d = !{!\"ms.scalar-elem\", !%d, i64 0}\n!%d = !{!%d, !%d, i64 0}\n",
+                  LL_TBAA_ROOT, LL_TBAA_SCALAR, LL_TBAA_ROOT, LL_TBAA_SCALAR_TAG, LL_TBAA_SCALAR, LL_TBAA_SCALAR);
     if (places) {
-        ll_debug_finish(&debug, out);
+        ll_debug_finish(&debug, ll_source_name(m), out);
     }
     ms_buf_free(&debug.nodes);
     return ok;

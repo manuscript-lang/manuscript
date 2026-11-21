@@ -7,8 +7,8 @@
 //! in `ms_mir_llvm`. LLVM's own inlining appears as inlined scopes, exactly like the
 //! scopes the MIR inliner types, so fault traces keep every source frame.
 
+use crate::Error;
 use gimli::{EndianSlice, RunTimeEndian};
-use ms_clif::Error;
 use ms_mir::ir::Scope;
 use ms_mir_llvm::{FuncInfo, TEXT_ANCHOR, TableFn};
 use object::{
@@ -511,12 +511,12 @@ pub fn read(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ms_clif::link::llvm_tools;
+    use crate::link::llvm_tools;
     use std::collections::BTreeSet;
     use std::process::Command;
 
     fn lines_for(triple: &str) -> Option<(BTreeSet<u32>, usize)> {
-        let tools = llvm_tools(&ms_clif::BuildOptions::default()).ok()??;
+        let tools = llvm_tools(&crate::BuildOptions::default()).ok()??;
         let dir = std::env::temp_dir().join(format!("ms-tables-{}-{triple}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let object = dir.join("m.o");
@@ -668,8 +668,8 @@ mod sweep_tests {
             },
         )
         .unwrap();
-        let build = ms_clif::BuildOptions::default();
-        if ms_clif::link::llvm_tools(&build).ok().flatten().is_none() {
+        let build = crate::BuildOptions::default();
+        if crate::link::llvm_tools(&build).ok().flatten().is_none() {
             return;
         }
         let object = crate::llvm::obj::compile_all(&program.units, "3", &build)

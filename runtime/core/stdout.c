@@ -92,7 +92,7 @@ static void flush_locked(void) {
     }
 }
 
-int32_t ms_sched_stdout_error(void) { return (int32_t)atomic_load_explicit(&first_error, memory_order_relaxed); }
+int32_t ms_sched_stdout_error(void) { return atomic_load_explicit(&first_error, memory_order_relaxed); }
 
 void ms_sched_flush_stdout(void) {
     ms_spin_lock(&out.lock);
