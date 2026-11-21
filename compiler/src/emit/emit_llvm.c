@@ -1753,7 +1753,8 @@ static const LlTemps *ll_temps(LCx *c, MsArena *arena) {
 static void ll_temps_begin(const LCx *c, uint32_t b) {
     for (uint32_t k = c->temps ? c->temps->first[b] : 0; c->temps && k < c->temps->first[b + 1]; k++) {
         if (c->scopes) {
-            ms_buf_printf(c->out, "  call void @llvm.lifetime.start.p0(ptr %%s%u)\n", c->temps->v[k].slot);
+            ms_buf_printf(c->out, "  call void @llvm.lifetime.start.p0(i64 %u, ptr %%s%u)\n", c->temps->v[k].bytes,
+                          c->temps->v[k].slot);
         }
     }
 }
@@ -1768,7 +1769,7 @@ static void ll_temps_end(const LCx *c, uint32_t b) {
                           (int)(int8_t)LL_POISON, temp->bytes);
         }
         if (c->scopes) {
-            ms_buf_printf(c->out, "  call void @llvm.lifetime.end.p0(ptr %%s%u)\n", temp->slot);
+            ms_buf_printf(c->out, "  call void @llvm.lifetime.end.p0(i64 %u, ptr %%s%u)\n", temp->bytes, temp->slot);
         }
     }
 }
@@ -2053,8 +2054,9 @@ static const char ll_declarations[] =
     "declare ptr @llvm.frameaddress.p0(i32)\n"
     "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)\n"
     "declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)\n"
-    "declare void @llvm.lifetime.start.p0(ptr)\n"
-    "declare void @llvm.lifetime.end.p0(ptr)\n"
+    /* The sized form: LLVM 18 to 21 need it and the pinned LLVM upgrades it to the unsized one. */
+    "declare void @llvm.lifetime.start.p0(i64 immarg, ptr nocapture)\n"
+    "declare void @llvm.lifetime.end.p0(i64 immarg, ptr nocapture)\n"
     "@msrt_ascii_chars = external global [0 x i8]\n"
     "declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)\n"
