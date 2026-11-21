@@ -112,12 +112,14 @@ static void tidy_fd(const MsIdleOps *ops, int fd) {
     tidy.fds[tidy.fd_count++] = fd;
 }
 
-/* Drops finished promises and closes descriptors set aside. Called where the scheduler is not inside a delivery:
- * a park, and the handling of mail. */
-static void tidy_run(void) {
+/* Drops finished promises and closes descriptors set aside. `in_task` is true from a task, which may wait for a
+ * promise's turn; from mail handling or the idle path the running task is parked and must not yield, so only what
+ * already finished goes. */
+static void tidy_run(bool in_task) {
     size_t kept = 0;
     for (size_t i = 0; i < tidy.promise_count; i++) {
-        if (ms_promise_done(tidy.promises[i].id)) {
+        const MsPromise id = tidy.promises[i].id;
+        if (in_task ? ms_promise_done(id) : ms_promise_finished(id)) {
             ms_promise_drop(tidy.promises[i].id);
         } else {
             tidy.promises[kept++] = tidy.promises[i];
@@ -383,7 +385,7 @@ uintptr_t ms_idle_group_new(void) { return (uintptr_t)msrt_alloc_zeroed(sizeof(I
 
 bool ms_idle_park(const MsIdleOps *ops, void *subject, int fd, MsObj *next, uintptr_t group, int64_t timeout_ns) {
     install();
-    tidy_run();
+    tidy_run(true);
     IdleRow *const row = msrt_alloc_zeroed(sizeof *row);
     atomic_init(&row->refs, 1);
     atomic_init(&row->state, IDLE);
@@ -506,7 +508,7 @@ static void idle_mail(MsMail *mail) {
         row_unref(row);
     }
     msrt_free(mail);
-    tidy_run();
+    tidy_run(false);
 }
 
 static void idle_discard(MsMail *mail) {
@@ -609,7 +611,7 @@ void ms_idle_teardown(void) {
     while (waiting.count > 0) {
         row_unref(waiting.items[--waiting.count].row);
     }
-    tidy_run();
+    tidy_run(false);
 }
 
 uint32_t ms_idle_count(uint32_t isolate) { return isolate < MS_MAX_ISOLATES ? atomic_load(&counts[isolate]) : 0; }

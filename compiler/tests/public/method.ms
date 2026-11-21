@@ -1,11 +1,11 @@
 type Secret:
-    a: Int
+	a: Int
 
 export type Holder:
-    n: Int
+	n: Int
 
 fn Holder.get() Secret:
-    return Secret(a: 1)
+	return Secret(a: 1)
 
 fn main() Void:
-    return
+	return

@@ -1,4 +1,4 @@
-import ( Result, Stringable, Optional ) from "@std/core.ms"
+import Optional, Result, Stringable from "@std/core.ms"
 
 fn main() Void:
-    return
+	return

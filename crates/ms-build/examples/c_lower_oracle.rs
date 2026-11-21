@@ -6,7 +6,6 @@ use ms_driver::{CheckRequest, check_graph, load_file};
 use ms_lower::{Options, lower_program};
 
 fn main() {
-    ms_lower::KEEP_PROBE_CALLS.store(true, std::sync::atomic::Ordering::Relaxed);
     let syms = ms_syntax::Names::global();
     for path in std::env::args().skip(1) {
         println!("=== {path}");

@@ -218,11 +218,20 @@ fn rt_ops_table(symbols: &str) -> String {
             continue;
         }
         let leaf = rest.contains(" @leaf");
+        let fresh = rest.contains(" @fresh");
+        // `@imm=<n>`: the integer the instruction named by `@op=` carries as its immediate.
+        let imm = rest
+            .split(" @imm=")
+            .nth(1)
+            .and_then(|r| r.split(' ').next())
+            .and_then(|n| n.parse::<i64>().ok());
         out.push_str(&format!(
-            "    {{\"{name}\", \"{op}\", {{{}}}, {}, {ret}, {leaf}, {}}},\n",
+            "    {{\"{name}\", \"{op}\", {{{}}}, {}, {ret}, {leaf}, {}, {fresh}, {}, {}}},\n",
             kinds.join(", "),
             kinds.len(),
-            twinned.contains(name)
+            twinned.contains(name),
+            imm.is_some(),
+            imm.unwrap_or(0)
         ));
     }
     out.push_str("};\n");

@@ -35,9 +35,18 @@ typedef struct MsRtFn {
     MsRtRet ret;
     bool leaf;
     bool twinned; /* a borrowing twin exists (`@view_of=` and siblings): the result may be lent */
+    bool fresh;   /* `@fresh`: the result is a new value, never a reference into an argument */
+    bool has_imm; /* `@imm=<n>`: the `@op=` instruction carries the integer `imm` */
+    int64_t imm;
 } MsRtFn;
 
 /* The function named `symbol`, or NULL. */
 const MsRtFn *ms_rt_fn_find(const char *symbol, size_t length);
+
+struct MsCheck;
+
+/* The runtime function that implements `method` of the receiver type `receiver` (`msrt_<type>_<method>`,
+ * the type in lower case), or NULL. */
+const MsRtFn *ms_rt_method_fn(const struct MsCheck *c, uint32_t receiver, uint32_t method);
 
 #endif

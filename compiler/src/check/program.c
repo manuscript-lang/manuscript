@@ -37,7 +37,7 @@ static void program_desugar(MsCheck *c, MsModId m) {
     ms_module_desugar(c, m, c->mods[m].text, foreign, nforeign, &errors, &nerrors);
 }
 
-static void program_desugar_bundled(MsCheck *c) {
+void ms_program_desugar_bundled(MsCheck *c) {
     for (MsModId m = 0; !c->std_desugared && m < c->nmods; m++) {
         program_desugar(c, m);
     }
@@ -100,7 +100,7 @@ static void program_add_bundled(MsCheck *c, MsStr path) {
 }
 
 bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
-    program_desugar_bundled(c);
+    ms_program_desugar_bundled(c);
     if (c->methods == NULL) {
         ms_program_begin(c);
     }

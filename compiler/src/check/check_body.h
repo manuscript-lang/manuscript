@@ -72,12 +72,17 @@ MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
 /* An enum case called like a function where the context expects its enum (check_alt.c). */
 bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name);
 MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected);
+bool ms_body_is_qualified_case(MsBody *b, const MsExpr *member); /* `Enum.Case` with `Enum` a non-generic enum of this module */
+MsTy ms_body_qualified_case(MsBody *b, const MsExpr *e);           /* a qualified case without payload */
+MsTy ms_body_qualified_case_call(MsBody *b, const MsExpr *e);      /* a qualified case with its payload */
 MsTy ms_body_case_name(MsBody *b, const MsExpr *e, MsTy expected);
 /* Records the row of the own `to_string() String` of `part`'s type, which is its text form (check_method.c). */
 void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty);
 /* A call of a generic function of the module (check_generic.c). */
 /* `written` is the explicit type arguments of `f[Int](x)`, or NULL. */
 bool ms_body_mentions_unbound(const MsBody *b, const MsInfer *in, MsTy ty); /* `ty` mentions a variable `in` has not bound */
+void ms_body_record_function_arguments(MsBody *b, const MsExpr *call, MsTy sig, const uint32_t *slot); /* a function argument has its parameter's type */
+bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in); /* one argument of an open signature: checked against its parameter, or binding its variables */
 MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
 MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
 /* A call `receiver.name(args)' (check_method.c). */
