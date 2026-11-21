@@ -55,7 +55,7 @@ int64_t msrt_string_hash(const MsStr *s);
 uint8_t msrt_string_eq(const MsStr *a, const MsStr *b);
 /* ms-sig: msrt_string_is_empty(s: *const StrVal) -> u8 @domain=string @leaf @pure */
 uint8_t msrt_string_is_empty(const MsStr *s);
-/* ms-sig: msrt_string_length(s: *const StrVal) -> i64 @domain=string @leaf @pure */
+/* ms-sig: msrt_string_length(s: *const StrVal) -> i64 @domain=string @leaf @pure @op=str.bytes */
 int64_t msrt_string_length(const MsStr *s);
 /* ms-sig: msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 @domain=string @leaf @pure */
 uint8_t msrt_string_contains(const MsStr *a, const MsStr *v);
@@ -152,11 +152,11 @@ void msrt_string_concat4(const MsStr *a, const MsStr *b, const MsStr *c, const M
 void msrt_string_concat5(const MsStr *a, const MsStr *b, const MsStr *c, const MsStr *d, const MsStr *e, MsStr *out);
 /* ms-sig: msrt_string_concat6(a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, e: *const StrVal, f: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf */
 void msrt_string_concat6(const MsStr *a, const MsStr *b, const MsStr *c, const MsStr *d, const MsStr *e, const MsStr *f, MsStr *out);
-/* ms-sig: msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string @leaf */
+/* ms-sig: msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string @leaf @view_of=msrt_string_trim */
 void msrt_string_trim_view(const MsStr *s, MsStr *out);
-/* ms-sig: msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string @leaf */
+/* ms-sig: msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string @leaf @view_of=msrt_string_trim_start */
 void msrt_string_trim_start_view(const MsStr *s, MsStr *out);
-/* ms-sig: msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string @leaf */
+/* ms-sig: msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string @leaf @view_of=msrt_string_trim_end */
 void msrt_string_trim_end_view(const MsStr *s, MsStr *out);
 /* ms-sig: msrt_string_trim(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
 void msrt_string_trim(const MsStr *s, MsStr *out);

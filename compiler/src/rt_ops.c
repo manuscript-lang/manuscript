@@ -1,4 +1,4 @@
-/* The generated table of runtime functions that are one MIR instruction (rt_ops_data.inc, written
+/* The generated table of runtime functions (rt_ops_data.inc, written
  * by `cargo xtask symbols` from the `ms-sig` tags), searched by symbol. libms.c includes this file. */
 #include <string.h>
 
@@ -6,12 +6,12 @@
 
 #include "rt_ops_data.inc"
 
-const MsRtOp *ms_rt_op_find(const char *symbol, size_t length) {
+const MsRtFn *ms_rt_fn_find(const char *symbol, size_t length) {
     size_t low = 0;
-    size_t high = sizeof rt_ops / sizeof rt_ops[0];
+    size_t high = sizeof rt_fns / sizeof rt_fns[0];
     while (low < high) {
         const size_t middle = low + (high - low) / 2;
-        const MsRtOp *row = &rt_ops[middle];
+        const MsRtFn *row = &rt_fns[middle];
         const size_t common = strlen(row->symbol) < length ? strlen(row->symbol) : length;
         int order = strncmp(row->symbol, symbol, common);
         if (order == 0) {

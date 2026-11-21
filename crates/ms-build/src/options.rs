@@ -22,6 +22,12 @@ pub enum CopyProbe {
 pub struct BuildOptions {
     /// LLVM vectorizes loops (loop and SLP vectorizers).
     pub vectorize: bool,
+    /// Fill each stack slot that lives in one block with a pattern where that block ends
+    /// (`MS_POISON_SLOTS=1`), so a pointer that outlives the slot reads garbage in every build
+    /// instead of depending on what LLVM reuses the slot for.
+    pub poison_slots: bool,
+    /// Run LLVM's verifier after every optimizer pass (`MS_LLVM_VERIFY=1`, `opt -verify-each`).
+    pub llvm_verify: bool,
     /// Copy the LLVM IR of a release build to `ms-keep.ll`.
     pub keep_ll: bool,
     /// A directory holding `opt`, `llc` and `llvm-link`, instead of the pinned release.
@@ -52,6 +58,8 @@ impl Default for BuildOptions {
             timings: false,
             copy_probe: CopyProbe::Off,
             count_ops: false,
+            poison_slots: false,
+            llvm_verify: false,
         }
     }
 }

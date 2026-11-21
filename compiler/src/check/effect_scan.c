@@ -31,8 +31,16 @@ static bool scan_is_node(const MsCheck *c, MsSymId sym) {
 }
 
 bool ms_effect_method_is_node(const MsCheck *c, const MsMethods *m, uint32_t row) {
-    (void)c;
-    return row < m->count && m->native[row] == MS_NATIVE_SOURCE && m->decl[row] != NULL && m->nvars[row] == 0;
+    if (row >= m->count || m->native[row] != MS_NATIVE_SOURCE || m->decl[row] == NULL) {
+        return false;
+    }
+    for (uint32_t k = 0; k < m->nvars[row]; k++) {
+        const MsTy var = m->vars[m->vars_at[row] + k];
+        if (var < c->var_info_cap && c->var_info[var].nbounds != 0) {
+            return false;
+        }
+    }
+    return true;
 }
 
 MsDispatch ms_effect_dispatch(const MsCheck *c, const MsFacts *facts, uint32_t call) {
