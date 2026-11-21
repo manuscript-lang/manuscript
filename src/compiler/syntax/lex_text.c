@@ -50,8 +50,8 @@ size_t ms_bounds_interp_end(const MsBounds *b, size_t start) {
 
 MsPos ms_bounds_restore_offset(const MsBounds *b, MsPos from, MsPos to) {
   if (b->line_offsets != NULL) {
-    uint32_t before = from.line - 1;
-    uint32_t after = to.line - 1;
+    uint32_t before = from.line - b->base_line - 1;
+    uint32_t after = to.line - b->base_line - 1;
     to.offset += b->line_offsets[after] - b->line_offsets[before];
   }
   return to;

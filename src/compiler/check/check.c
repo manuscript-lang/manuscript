@@ -1,5 +1,6 @@
 /* compiler/check/check.c: the checker's entry point; runs the passes over a module graph in order. */
 #include "compiler/check/constants.h"
+#include "compiler/check/mutate.h"
 #include "compiler/check/program.h"
 
 void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
@@ -21,5 +22,6 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
   for (uint32_t index = 0; index < program->user_modules; index++) {
     ms_check_resolve_types(program, index);
     ms_check_constants(program, index);
+    ms_check_mutation(program, index, graph->modules[index].source);
   }
 }

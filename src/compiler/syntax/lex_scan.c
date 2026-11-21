@@ -24,9 +24,9 @@ bool lex_is_word_byte(uint8_t byte) {
 /* ---- errors ---- */
 
 MsPos lex_pos(const Scanner *s) {
-  uint32_t offset = (uint32_t)s->offset;
+  uint32_t offset = (uint32_t)s->offset + s->base_offset;
   if (s->line_offsets != NULL) {
-    offset += s->line_offsets[s->line - 1];
+    offset += s->line_offsets[s->line - s->base_line - 1];
   }
   return (MsPos){.offset = offset, .line = s->line, .column = s->column};
 }
