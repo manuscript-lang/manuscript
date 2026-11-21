@@ -17,7 +17,7 @@
 #include "base/alloc.h"
 #include "base/list.h"
 #include "base/utf8.h"
-#include "runtime/std/status.h"
+#include "abi/status.h"
 #include "runtime/std/system.h"
 
 _Static_assert(sizeof(MsSystemInfo) == 40, "SystemInfoOut layout");
