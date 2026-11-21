@@ -29,8 +29,8 @@ bool ms_body_is_function_value(const MsBody *b, MsTy ty) {
     return closure_value(b, tys->result[ty]) || tys->result[ty] == b->void_ty;
 }
 
-/* A function value whose parameters and result are plain values: the only ones a lambda is checked
- * for. A parameter of another type is owned or borrowed by the function type's mode, which the
+/* A function value whose parameters are plain values and whose result is any bindable type: the only ones a
+ * lambda is checked for. A parameter of another type is owned or borrowed by the function type's mode, which the
  * ownership walk does not model for a lambda's own parameters yet. */
 static bool closure_plain(const MsBody *b, MsTy fn) {
     const MsTyTable *tys = &b->c->tys;
@@ -43,7 +43,7 @@ static bool closure_plain(const MsBody *b, MsTy fn) {
             return false;
         }
     }
-    return ms_body_is_plain_value(b, tys->result[fn]) || tys->result[fn] == b->void_ty;
+    return ms_body_is_bindable(b, tys->result[fn]) || tys->result[fn] == b->void_ty;
 }
 
 /* The name a function type's parameter `index` carries: `_0`, `_1`, as the parser spells them. */
