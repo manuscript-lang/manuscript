@@ -433,3 +433,57 @@ MsSysError ms_sys_fs_dir_open(const char *path, MsSysDir **dir) {
     free(own_path);
     return error;
 }
+
+/* ---- the process's view ---- */
+
+/* The host code for a libuv error that is not a request's. */
+static MsSysError host_error(int code) {
+#ifdef _WIN32
+    switch (code) {
+    case UV_ENOENT: return ms_sys_fs_error_of(MS_SYS_ERR_NOT_FOUND);
+    case UV_EACCES:
+    case UV_EPERM: return ms_sys_fs_error_of(MS_SYS_ERR_PERMISSION);
+    case UV_EINVAL: return ms_sys_fs_error_of(MS_SYS_ERR_INVALID);
+    default: return ms_sys_fs_error_of(MS_SYS_ERR_IO);
+    }
+#else
+    return (MsSysError)-code;
+#endif
+}
+
+typedef int (*TextCall)(char *buffer, size_t *size);
+
+/* Calls a libuv text query (uv_cwd, uv_os_tmpdir) with a buffer that grows until the text fits. */
+static MsSysError query_text(TextCall call, char **text, size_t *length) {
+    size_t capacity = 256;
+    for (;;) {
+        char *buffer = malloc(capacity);
+        if (buffer == NULL) {
+            return ms_sys_fs_error_of(MS_SYS_ERR_IO);
+        }
+        size_t size = capacity;
+        const int result = call(buffer, &size);
+        if (result == 0) {
+            *text = buffer;
+            *length = size;
+            return 0;
+        }
+        free(buffer);
+        if (result != UV_ENOBUFS) {
+            return host_error(result);
+        }
+        capacity = size > capacity ? size : capacity * 2; /* size is the length needed, the terminator included */
+    }
+}
+
+MsSysError ms_sys_fs_current_directory(char **path, size_t *length) { return query_text(uv_cwd, path, length); }
+
+MsSysError ms_sys_fs_temp_directory(char **path, size_t *length) { return query_text(uv_os_tmpdir, path, length); }
+
+uint32_t ms_sys_fs_random(void) {
+    uint32_t value = 0;
+    if (uv_random(NULL, &(uv_random_t){0}, &value, sizeof value, 0, NULL) != 0) {
+        value = (uint32_t)uv_hrtime(); /* the entropy source failed: the clock still differs from call to call */
+    }
+    return value;
+}

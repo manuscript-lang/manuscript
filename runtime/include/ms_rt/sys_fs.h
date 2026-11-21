@@ -248,9 +248,9 @@ void ms_sys_fs_dir_close(MsSysDir *dir);
 
 /* The working directory, malloc'd. */
 MS_NODISCARD MsSysError ms_sys_fs_current_directory(char **path, size_t *length);
-/* The directory for temporary files, malloc'd ($TMPDIR or /tmp; the user's temporary directory on Windows). */
+/* The directory for temporary files, malloc'd, without a trailing separator (uv_os_tmpdir: $TMPDIR, $TMP, $TEMP, $TEMPDIR, else /tmp; the user's temporary directory on Windows). */
 MS_NODISCARD MsSysError ms_sys_fs_temp_directory(char **path, size_t *length);
-/* A number that differs from call to call, for naming temporary files. Not for security. */
+/* A random number (libuv's entropy source; the clock if that fails), for naming temporary files and query ids. */
 uint32_t ms_sys_fs_random(void);
 
 #endif
