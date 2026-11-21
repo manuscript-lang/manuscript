@@ -9,6 +9,7 @@
  * Events use the keys the scheduler already waits on: an object's waiters wait on its handle.
  * Compiled by the Windows legs only; the PR checks are Linux.
  */
+#include <signal.h>
 #include <windows.h>
 
 #include "base/alloc.h"
@@ -249,3 +250,12 @@ void ms_io_platform_close(MsIoReactor *reactor) {
     state_release(state);
   }
 }
+
+/* Ctrl-C, Ctrl-Break, and console close, logoff and shutdown (which reach the program as SIGHUP). */
+size_t ms_io_platform_stop_signals(const int **signals) {
+  static const int watched[] = {SIGINT, SIGBREAK, SIGHUP, SIGTERM};
+  *signals = watched;
+  return sizeof watched / sizeof watched[0];
+}
+
+bool ms_io_platform_is_interrupt(int signal_number) { return signal_number == SIGINT || signal_number == SIGBREAK; }

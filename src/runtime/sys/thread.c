@@ -74,3 +74,8 @@ void ms_sys_signal_send(MsSysSignal *signal) {
   uv_mutex_unlock(&signal->lock);
   uv_cond_signal(&signal->cond);
 }
+
+uint32_t ms_sys_available_cores(void) {
+  const unsigned cores = uv_available_parallelism();
+  return cores == 0 ? 1 : (uint32_t)cores;
+}

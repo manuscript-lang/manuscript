@@ -33,6 +33,10 @@ MS_NONNULL bool ms_io_platform_owns(const MsIoReactor *reactor, uintptr_t fd);
 MS_NONNULL void ms_io_platform_flush(MsIoReactor *reactor);
 /* Initialises a poll handle for the descriptor (a SOCKET on Windows). */
 MS_NONNULL int ms_io_platform_poll_init(uv_loop_t *loop, uv_poll_t *handle, int fd);
+/* The signals the stop thread watches, and whether `signal_number` means an interrupt (Ctrl-C, Ctrl-Break) rather
+ * than a terminate request. */
+MS_NONNULL size_t ms_io_platform_stop_signals(const int **signals);
+bool ms_io_platform_is_interrupt(int signal_number);
 /* Waits up to timeout_ns (positive) with the finest clock the system has, running the loop once; false when it has
  * none and the caller must use a millisecond timer. */
 MS_NONNULL bool ms_io_platform_wait(MsIoReactor *reactor, int64_t timeout_ns);
