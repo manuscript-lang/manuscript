@@ -1507,7 +1507,10 @@ static bool body_returns_nothing(const MsBody *b) {
 /* A `return` in a function literal whose result is not known yet: its value (or the lack of one) fixes it. */
 static void body_return_deciding(MsBody *b, const MsExpr *value) {
     b->context = "the return value";
-    const MsTy ty = value == NULL ? b->void_ty : ms_body_expr(b, value, MS_TY_NONE);
+    MsTy ty = value == NULL ? b->void_ty : ms_body_builtin_open(b, value, b->result_hint);
+    if (ty == MS_TY_NONE && b->supported && value != NULL) {
+        ty = ms_body_expr(b, value, MS_TY_NONE);
+    }
     if (ty == MS_TY_NONE || !(ty == b->void_ty || body_is_bindable(b, ty))) {
         (void)ms_body_unsupported(b);
         return;
