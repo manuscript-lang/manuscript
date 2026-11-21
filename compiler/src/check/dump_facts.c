@@ -504,7 +504,8 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
     ms_buf_free(&file);
 }
 
-/* The builtin kinds the typed lint rules ask about; any other type is "Other". */
+/* The builtin kinds the typed lint rules ask about; any other type is "Other". A node with type arguments also
+ * names the kind of the first ("arg"). */
 static const char *nodes_kind(const MsTyTable *tys, MsTy ty) {
     switch (ms_ty_builtin(tys, ty)) {
     case MS_BI_OPTIONAL: return "Optional";
@@ -531,7 +532,13 @@ void ms_dump_module_nodes(MsBuf *out, const MsCheck *c, MsModId m) {
         if (facts->expr_ty[id] == MS_TY_NONE) {
             continue;
         }
-        ms_buf_printf(out, "%s{\"id\": %u, \"kind\": \"%s\"}", sep, id, nodes_kind(&c->tys, facts->expr_ty[id]));
+        const MsTy ty = facts->expr_ty[id];
+        ms_buf_printf(out, "%s{\"id\": %u, \"kind\": \"%s\"", sep, id, nodes_kind(&c->tys, ty));
+        if (c->tys.nargs[ty] > 0) {
+            /* The first type argument: the payload of a Result or Optional, the element of a List. */
+            ms_buf_printf(out, ", \"arg\": \"%s\"", nodes_kind(&c->tys, ms_ty_args(&c->tys, ty)[0]));
+        }
+        ms_buf_putc(out, '}');
         sep = ", ";
     }
     ms_buf_puts(out, "]}\n");
