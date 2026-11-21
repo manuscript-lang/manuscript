@@ -36,6 +36,8 @@ _Static_assert(MS_STACK_SLOTS_PER_REGION * MS_STACK_SLOT + MS_STACK_PAGE <= MS_S
  * Isolate indices fit the promise id's six bits and the token id's twelve. */
 #define MS_MAX_ISOLATES 63u
 #define MS_NO_ISOLATE UINT32_MAX
+/* A token id carries its isolate in the top twelve bits. */
+#define MS_TOKEN_ISOLATE_SHIFT 52
 
 /* ---- strings ----
  *

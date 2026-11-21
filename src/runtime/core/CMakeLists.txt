@@ -1,4 +1,4 @@
-add_library(ms_core STATIC alloc.c context.c stack.c timers.c queue.c frames.c record.c)
+add_library(ms_core STATIC alloc.c context.c stack.c timers.c queue.c frames.c record.c isolate.c watch.c)
 ms_target_defaults(ms_core)
 target_link_libraries(ms_core PUBLIC ms_sys ms_base mimalloc)
 
