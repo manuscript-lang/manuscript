@@ -8,7 +8,7 @@
  * lowers `select` to a conditional move. Arms hold at most MAX_ARM total scalar instructions and
  * no checked arithmetic: predicating an overflow check costs about as much as the branch it saves.
  * Functions whose scalar early returns all fit (`if a < b { return -1 } ...`) are first merged
- * into one join so comparators convert too. Port of crates/ms-mir/src/opt/ifconv.rs. */
+ * into one join so comparators convert too. Port of the former Rust crates/ms-mir/src/opt/ifconv.rs. */
 #include <string.h>
 
 #include "ms/mir_analysis.h"

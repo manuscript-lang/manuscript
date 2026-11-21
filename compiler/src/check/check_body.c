@@ -278,9 +278,14 @@ static MsTy body_number(MsBody *b, const MsExpr *e) {
 static MsTy body_text(MsBody *b, const MsExpr *e) {
     for (uint32_t i = 0; i < e->u.text.len; i++) {
         const MsExpr *part = e->u.text.ptr[i].expr;
-        if (part != NULL && ms_body_expr(b, part, MS_TY_NONE) == MS_TY_NONE) {
+        if (part == NULL) {
+            continue;
+        }
+        const MsTy ty = ms_body_expr(b, part, MS_TY_NONE);
+        if (ty == MS_TY_NONE) {
             return MS_TY_NONE;
         }
+        ms_body_text_method(b, part, ty);
     }
     return b->string_ty;
 }
@@ -1725,6 +1730,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->call_receiver = MS_NEW_N(arena, MsTy, nodes);
     facts->call_interface = MS_NEW_N(arena, MsTy, nodes);
     memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
+    facts->text_method = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->text_method, 0xff, nodes * sizeof *facts->text_method);
     memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
     facts->call_type_args_at = MS_NEW_N(arena, uint32_t, nodes);

@@ -418,8 +418,13 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
             own_expr(w, e->u.list.ptr[i], DEMAND_MOVE);
         }
         return;
-    case MS_E_PROBE:
-    case MS_E_MAP: w->supported = false; return; /* collections are not modeled */
+    case MS_E_MAP: /* each key and value moves into the map */
+        for (uint32_t i = 0; i < e->u.map.len; i++) {
+            own_expr(w, e->u.map.ptr[i].key, DEMAND_MOVE);
+            own_expr(w, e->u.map.ptr[i].value, DEMAND_MOVE);
+        }
+        return;
+    case MS_E_PROBE: w->supported = false; return; /* not modeled */
     case MS_E_LAMBDA: {
         const uint32_t start = w->ncaptured;
         own_lambda(w, e, demand == DEMAND_MOVE);

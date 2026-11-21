@@ -48,7 +48,7 @@ fn emit_debug_companion(_object: &Path, _inputs: &[&Path], _out: &Path) -> Resul
 
 #[cfg(target_os = "macos")]
 fn emit_debug_companion(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error> {
-    use cranelift_object::object::Object as _;
+    use object::Object as _;
     // Any object among the inputs may carry the DWARF (LLVM's does when it compiled the functions).
     let mut has_dwarf = false;
     for path in std::iter::once(object).chain(
@@ -58,7 +58,7 @@ fn emit_debug_companion(object: &Path, inputs: &[&Path], out: &Path) -> Result<(
             .filter(|p| p.extension().is_some_and(|e| e == "o")),
     ) {
         let bytes = std::fs::read(path).map_err(|e| Error(format!("read debug object: {e}")))?;
-        let file = cranelift_object::object::File::parse(bytes.as_slice())
+        let file = object::File::parse(bytes.as_slice())
             .map_err(|e| Error(format!("read debug object: {e}")))?;
         has_dwarf |= file.section_by_name("__debug_info").is_some();
     }

@@ -246,14 +246,4 @@ void ms_task_switch_away(MsSched *sched);
 void ms_task_enqueue(MsSched *sched, MsTask *task);
 size_t ms_task_ready_count(const MsSched *sched);
 
-/* Native state that one thread alone may touch (the Rust session of a network stream, the terminal) keeps the
- * promises started there on that thread (sched_abi.c; goes away with ms-std-net). */
-bool ms_sched_pinned_here(void);
-/* The calling thread's isolate index, whether it is a worker, and the pin counts of the streams that keep a thread's
- * promises on it (pin_adjust counts one more or fewer on `thread`; pin_main pins the main thread for good). */
-uint32_t ms_sched_thread(void);
-bool ms_sched_is_worker(void);
-void ms_sched_pin_adjust(uint32_t thread, int32_t delta);
-void ms_sched_pin_main(void);
-
 #endif

@@ -229,7 +229,7 @@ const char *ms_debug_quote(MsArena *a, const char *text);
 
 /* ---- the module graph (project/load.c) ---- */
 
-typedef enum MsGraphPhase { MS_GRAPH_PARSE, MS_GRAPH_RESOLUTION } MsGraphPhase;
+typedef enum MsGraphPhase { MS_GRAPH_PARSE, MS_GRAPH_RESOLUTION, MS_GRAPH_TYPE } MsGraphPhase;
 
 /* A problem found while loading, named by the file it is in (the module's logical path, or the manifest). */
 typedef struct MsGraphDiag {
@@ -291,5 +291,12 @@ void ms_graph_add_modules(MsCheck *c, MsNames *names, MsArena *a, const MsGraph 
 /* Checks the bodies of every module of the graph with the program's method table (ms_program_check_module). Modules
  * with an inherent error are left unchecked and their ids appear in `unchecked` when it is not NULL; returns how many. */
 uint32_t ms_graph_check(MsCheck *c, const MsGraph *graph, const MsModId *ids, bool *unchecked);
+/* The errors a build owes its fetched packages after ms_graph_check: a native declaration in a package that is not a
+ * workspace member, and a package callable that reaches an effect its `[project] effects` does not declare. They
+ * are type diagnostics named by module: the natives first, then the effects in node order. `*complete` is false when the effect scan cannot see through
+ * every package callable, so a project without errors may still have some: the caller then leaves the build to the
+ * Rust driver. Needs `graph` loaded by ms_project_load_packages and checked. */
+MS_NODISCARD bool ms_graph_check_packages(MsCheck *c, MsArena *a, const MsGraph *graph, const MsModId *ids, MsGraphDiag **out,
+                                          uint32_t *count, bool *complete);
 
 #endif

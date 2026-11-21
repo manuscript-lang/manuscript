@@ -3,6 +3,7 @@
  *
  *   ms_backend_ir       MIR text of a lowered, elaborated module -> LLVM IR text and the tables meta
  *   ms_backend_tables   the assembly LLVM wrote for that IR -> the assembly with the fault tables
+ *   ms_backend_optimized  MIR text -> the optimized MIR text (for `ms emit` with MS_EMIT_OPT=1)
  *
  * Both return true on success. Every text is bytes with a length, not NUL-terminated. A text the call
  * returns is owned by the caller, who frees it with `ms_backend_free`; on failure only `why` is set. */
@@ -35,6 +36,11 @@ MS_NODISCARD MS_NONNULL bool ms_backend_ir(const char *mir, size_t mir_len, cons
                                            const char *shown, size_t shown_len,
                                            const MsBackendOptions *options, MsBackendText *ir,
                                            MsBackendText *meta, MsBackendText *why);
+
+/* The module `mir` describes after the optimizer at its speed level (before the finishing passes and the
+ * emitter), as MIR text: what `MS_EMIT_OPT=1 ms emit` prints. */
+MS_NODISCARD MS_NONNULL bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name,
+                                                  MsBackendText *out, MsBackendText *why);
 
 /* Adds the fault tables to `asm_text`, the assembly of the IR that came with `meta`. `prefix` is what
  * the target puts before a symbol ("_" on Apple, else ""); the `.loc` lines are left out of the result. */

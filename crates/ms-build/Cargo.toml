@@ -12,7 +12,6 @@ workspace = true
 [dependencies]
 ms-check = { path = "../ms-check" }
 ms-mir = { path = "../ms-mir" }
-ms-clif = { path = "../ms-clif" }
 object = { version = "0.40", default-features = false, features = ["std", "read_core", "elf", "macho", "coff"] }
 ms-lower = { path = "../ms-lower" }
 

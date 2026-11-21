@@ -204,6 +204,7 @@ static MsPackage *attach_load_copy(Attach *t, const char *id, const MsLockEntry 
         return NULL;
     }
     MsPackage *package = MS_NEW(a, MsPackage);
+    *package = (MsPackage){0}; /* MS_NEW does not zero */
     package->key = ms_arena_fmt(a, "@%s", id).ptr;
     package->spec = entry->spec;
     if (!attach_read_index(t, entry->sha256, id, package, err) || !ms_path_eval_symlinks(a, directory, &package->root, err)) {
@@ -285,6 +286,7 @@ static const char *attach_member(Attach *t, const char *alias, const char *dir, 
         return id;
     }
     MsPackage *package = MS_NEW(a, MsPackage);
+    *package = (MsPackage){0}; /* MS_NEW does not zero */
     MsProjectError cause = {0};
     if (!ms_project_read(a, MS_PATH_JOIN(a, member->root, "ms.toml"), &package->project, &cause)) {
         attach_manifest_failed(a, id, &cause, err);
