@@ -36,6 +36,7 @@ typedef struct MsBody {
     const MsTy *tvars;
     bool supported;         /* false once a construct outside the handled set is met */
     MsSite gave_up;         /* the first `ms_body_unsupported` call of this function */
+    const MsExpr *borrow_ok; /* the one call whose borrowing result the context uses in place (a loop's iterable, a receiver) */
 } MsBody;
 
 /* A parameter or local of this type can be called and passed around (check_closure.c). */

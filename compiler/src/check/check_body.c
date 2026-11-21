@@ -1636,6 +1636,7 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
 /* `for name in xs` over a list of Int, Float, Bool, String or lists: the element type. An element that
  * owns something is borrowed from the list. */
 static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) {
+    b->borrow_ok = iter; // `for c in s.chars()` reads the borrowing result in place
     const MsTy ty = ms_body_expr(b, iter, MS_TY_NONE);
     if (!ms_body_is_list(b, ty)) {
         return false;
@@ -2140,6 +2141,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
     facts->each_list = MS_NEW_N(arena, bool, nodes);
     memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
+    facts->call_borrows = MS_NEW_N(arena, bool, nodes);
+    memset(facts->call_borrows, 0, nodes * sizeof *facts->call_borrows);
     facts->field_store_root = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->field_store_root, 0xff, nodes * sizeof *facts->field_store_root);
     facts->coerce_iface = MS_NEW_N(arena, MsTy, nodes);

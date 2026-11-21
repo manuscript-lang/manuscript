@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ms/doc.h"
 #include "ms/implements.h"
 #include "ms/infer.h"
 #include "ms/parse.h"
@@ -19,6 +20,7 @@ typedef struct Target {
     const MsFunc *func;   /* its declaration: parameter defaults; NULL when none is at hand */
     uint32_t method;      /* the method row, or MS_NONE for an interface operation */
     bool mutating, consuming;
+    bool borrows;         /* the result points into the receiver (`// ms: borrows` above the declaration) */
     bool open;            /* variables of the method itself are still unbound: the arguments bind them */
     MsInfer in;           /* the bindings of an open row */
 } Target;
@@ -197,7 +199,12 @@ static bool intrinsic_in(const MsBody *b, const char *iface_name, MsTy receiver,
             }
             sig = ms_infer_apply(&in, sig);
         }
-        *out = (Target){.sig = sig, .func = &op->decl->func, .method = MS_NONE, .mutating = op->decl->mutating, .consuming = op->decl->consuming};
+        *out = (Target){.sig = sig,
+                        .func = &op->decl->func,
+                        .method = MS_NONE,
+                        .mutating = op->decl->mutating,
+                        .consuming = op->decl->consuming,
+                        .borrows = ms_doc_has_marker(c->mods[module].text, op->decl->pos.offset, "borrows")};
         return true;
     }
     return false;
@@ -228,24 +235,6 @@ static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Targ
         }
     }
     return intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
-}
-
-/* The natives whose result points into their receiver (`view`, `split`, `chars`, ...): the
- * ownership walk does not follow those borrows yet, so a call of one leaves the function to the Rust
- * checker. Mirrors `native_borrow` of the Rust checker, the one place a method name decides ownership. */
-static bool native_result_borrows(const MsBody *b, MsTy receiver, MsSym name, uint32_t nargs) {
-    static const struct {
-        const char *name;
-        uint32_t min_args, max_args;
-    } derived[] = {{"view", 2, 2}, {"view_bytes", 0, 0}, {"split", 1, 2}, {"lines", 0, 0}, {"chars", 0, 0}};
-    const MsStr text = ms_name(b->c->names, name);
-    for (size_t i = 0; i < sizeof derived / sizeof *derived; i++) {
-        if (strlen(derived[i].name) == text.len && memcmp(derived[i].name, text.ptr, text.len) == 0 &&
-            nargs >= derived[i].min_args && nargs <= derived[i].max_args) {
-            return receiver == b->string_ty;
-        }
-    }
-    return false;
 }
 
 /* Whether `ty` is plainly clonable: a primitive, or a list, map, set, optional or record of such,
@@ -377,16 +366,23 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
 /* `receiver.name(args)` on a primitive receiver of any shape (a local, a literal, another call):
  * an intrinsic operation that borrows its receiver, recorded as a call through the interface
  * `call_interface` names. */
+/* A borrowing call whose result the context uses in place, on a receiver that is a local: the ownership walk
+ * pins that local while the result is in use. A result that is kept or passed on is left to the Rust checker. */
+static bool body_borrow_in_place(const MsBody *b, const MsExpr *e) {
+    return b->borrow_ok == e && e->u.call.callee->u.member.left->kind == MS_E_NAME;
+}
+
 static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     const MsExpr *callee = e->u.call.callee;
     Target target;
     if (!intrinsic_operation(b, receiver_ty, callee->u.member.name, &target) || target.consuming || target.mutating ||
-        native_result_borrows(b, receiver_ty, callee->u.member.name, e->u.call.args.len) ||
+        (target.borrows && !body_borrow_in_place(b, e)) ||
         !arguments_fit(b, e, &target)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_interface[e->id] = receiver_ty;
     b->facts->call_receiver[e->id] = receiver_ty;
+    b->facts->call_borrows[e->id] = target.borrows;
     return b->c->tys.result[target.sig];
 }
 
@@ -497,7 +493,13 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
     const MsTy local_ty = binding == MS_NONE ? MS_TY_NONE : b->facts->bindings.ty[binding];
     Target row;
     if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, e->u.call.args.len, &row))) {
+        if (receiver->kind == MS_E_CALL) {
+            b->borrow_ok = receiver; // `s.view(a, b).clone()`: a borrowing receiver is used in place
+        }
         const MsTy receiver_ty = ms_body_expr(b, receiver, MS_TY_NONE);
+        if (b->facts->call_borrows[receiver->id] && !body_is_primitive(b, receiver_ty)) {
+            return ms_body_unsupported(b); // a borrowed list or map is not followed through a method
+        }
         if (body_is_primitive(b, receiver_ty)) {
             return body_intrinsic_call(b, e, receiver_ty);
         }
