@@ -191,6 +191,11 @@ if ! grep -q 'body_for_variable_list.ms 1:1$' "$out/bodies.keys"; then
     echo "FAIL bodies: a loop over a list of a type variable is no longer checked in C (compiler/tests/scope/body_for_variable_list.ms)"
     status=1
 fi
+# A loop over a map or a set is checked in C (ownership and lowering leave it to Rust).
+if ! grep -q 'body_for_collection.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_for_collection.ms 7:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a loop over a map or a set is no longer checked in C (compiler/tests/scope/body_for_collection.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else

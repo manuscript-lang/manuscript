@@ -1660,6 +1660,10 @@ static void lb_assign(Lb *lb, const MsStmt *s) {
 /* `for name in a..b`: a counter from `a` while below `b` (both evaluated once, before the loop),
  * stepped by one after the body or a `continue`. The loop variable is the counter's current value. */
 static void lb_for(Lb *lb, const MsStmt *s) {
+    if (lb->facts->each_collection[s->id]) {
+        (void)LB_UNSUPPORTED(lb);
+        return;
+    }
     if (lb->facts->each_list[s->id]) {
         lst_for(lb, s);
         return;
