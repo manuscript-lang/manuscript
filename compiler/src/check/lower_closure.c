@@ -292,6 +292,9 @@ static bool lb_lambda_body(Lb *lb, const LbJob job) {
         lb_return_void(lb);
     }
     lb->ok = lb->ok && lb->dead;
+    if (lb->ok) {
+        lc_check(lb);
+    }
     MirFunc f = {0};
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f);

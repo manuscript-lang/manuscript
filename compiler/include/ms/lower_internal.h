@@ -95,6 +95,29 @@ typedef struct LbEq {
     uint32_t func;
 } LbEq;
 
+/* A resource type with its own `close` (lower_close.c): its MIR type, the method row, and the helper
+ * functions the elaborate pass runs, made on first use. */
+typedef struct LbCloser {
+    MirTy ty;
+    uint32_t row;
+    bool owned; /* a `move` close: it takes the value */
+    uint32_t thunk, result;
+} LbCloser;
+
+/* The function that returns a failed close as a function's own result, by what it is made for. */
+typedef struct LbCloseExit {
+    MirTy rty, ret;
+    bool pending, borrowed;
+    uint32_t func;
+} LbCloseExit;
+
+/* A local that lives in a stack slot the elaborate pass closes. */
+typedef struct LbSlotLocal {
+    uint32_t view, binding;
+    MirValue slot;
+    MirTy ty;
+} LbSlotLocal;
+
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
@@ -131,6 +154,12 @@ typedef struct Lb {
     uint32_t neqs, ceqs;
     LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
     uint32_t ndead_insts, cdead_insts;
+    LbCloser *closers;    /* this pass's resource types (module arena) */
+    uint32_t nclosers, cclosers;
+    LbCloseExit *exits;
+    uint32_t nexits, cexits;
+    LbSlotLocal *slots;   /* the resource locals of the function being lowered */
+    uint32_t nslots, cslots;
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
     MirTy *type_of;       /* by checker type: the record it lowered to, MIR_NONE, or LB_TYPE_PENDING while its fields lower */
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
@@ -202,6 +231,19 @@ uint32_t lb_view_enter(Lb *lb, uint32_t view); /* reads module `view` from here 
 uint32_t lm_prepare(Lb *lb);                                 /* the method rows of every view; their count */
 void lm_stubs(Lb *lb, uint32_t nrows, const bool *failed);   /* a stub for each method to lower */
 bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered);   /* true when one did not lower */
+
+/* lower_close.c: resource locals closed by the elaborate pass. */
+bool lc_has_closer(Lb *lb, MsTy ty);               /* a direct `close` of the type itself that does not change `self` */
+void lc_register(Lb *lb, MsTy ty, MirTy mir);      /* the MIR type of a resource with one */
+bool lc_bind(Lb *lb, const MsStmt *s, uint32_t binding, LbVal value); /* the local `binding` made from `value`; false when not handled */
+bool lc_use(Lb *lb, uint32_t binding, MirValue *out);  /* a read of a slot local */
+bool lc_is_resource(Lb *lb, MirTy mir);               /* a registered resource type, owned even when it holds nothing to drop */
+bool lc_is_slot_local(const Lb *lb, uint32_t binding);
+bool lc_is_closer_row(Lb *lb, uint32_t row);
+void lc_check(Lb *lb);                             /* fails the function when it drops a resource */
+uint32_t lb_slots(const LbCallable *c);
+bool lb_slot_mutable(const LbCallable *c, uint32_t slot);
+MsSym lb_unique_name(Lb *lb, MsStr base);
 
 /* lower_closure.c: function values and lambdas. */
 MirTy lb_fn_ty(Lb *lb, MsTy ty);
