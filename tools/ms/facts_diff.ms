@@ -39,8 +39,7 @@ fn steps_text(nodes: List[Node], depth: Int) String:
 
 	for n in nodes:
 		out = out.concat(
-			f"{"  ".repeat(depth)}{n.kind} {n.label} -> {n.reference} @{n.file}:{n.line}\
-"
+			f"{"  ".repeat(depth)}{n.kind} {n.label} -> {n.reference} @{n.file}:{n.line}\n"
 		)
 		out = out.concat(steps_text(n.children, depth + 1))
 
@@ -122,8 +121,7 @@ fn show(m: Matches) Void!:
 		i := got_index.get_or(w.key, -1)
 
 		if i < 0:
-			out = out.concat(f"missing in C: {w.key}\
-")
+			out = out.concat(f"missing in C: {w.key}\n")
 			differ += 1
 			continue
 
@@ -132,8 +130,7 @@ fn show(m: Matches) Void!:
 
 		if g.kind != w.kind or g.line != w.line:
 			out = out.concat(
-				f"{w.key}: kind or line {w.kind}:{w.line} != {g.kind}:{g.line}\
-"
+				f"{w.key}: kind or line {w.kind}:{w.line} != {g.kind}:{g.line}\n"
 			)
 			differ += 1
 
@@ -141,16 +138,14 @@ fn show(m: Matches) Void!:
 			g.sites_known
 			and want_flows.get_or(w.key, "") != got_flows.get_or(w.key, "")
 		):
-			out = out.concat(f"{w.key}: flow differs\
-")
+			out = out.concat(f"{w.key}: flow differs\n")
 			differ += 1
 
 		for field in FIELDS:
 			text := field_diff(field, w, g)
 
 			if not text.is_empty():
-				out = out.concat(f"{w.key}: {text}\
-")
+				out = out.concat(f"{w.key}: {text}\n")
 				differ += 1
 
 	for w in want.imports:
@@ -165,14 +160,12 @@ fn show(m: Matches) Void!:
 
 				if want_paths != got_paths:
 					out = out.concat(
-						f"imports of {w.file}: {want_paths} != {got_paths}\
-"
+						f"imports of {w.file}: {want_paths} != {got_paths}\n"
 					)
 					differ += 1
 
 		if not found:
-			out = out.concat(f"imports of {w.file} missing in C\
-")
+			out = out.concat(f"imports of {w.file} missing in C\n")
 			differ += 1
 
 	var want_keys = Set[String]()
@@ -180,13 +173,11 @@ fn show(m: Matches) Void!:
 
 	for g in got.entities:
 		if not want_keys.contains(g.key):
-			out = out.concat(f"extra in C: {g.key}\
-")
+			out = out.concat(f"extra in C: {g.key}\n")
 			differ += 1
 
 	out = out.concat(
-		f"{compared} entities compared, {FIELDS.length()} fields each, {differ} differences\
-"
+		f"{compared} entities compared, {FIELDS.length()} fields each, {differ} differences\n"
 	)
 
 	var stream = stdout()

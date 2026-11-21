@@ -24,7 +24,7 @@ import (
 )
 
 // The first syntax error: `code` is the byte offset, `message` is
-// "<code>\	<line>\	<column>\	<text>".
+// "<code>\t<line>\t<column>\t<text>".
 export enum FormatError:
 	Failed(code: Int, message: String)
 
@@ -113,8 +113,7 @@ fn offset_of(path: String, line: Int, column: Int) Int:
 	var at = 0
 	var current = 1
 
-	for part in text.split("\
-"):
+	for part in text.split("\n"):
 		if current == line: return at + column - 1
 
 		at += part.length() + 1
@@ -219,7 +218,7 @@ export fn display_of(cwd: String, absolute: String) String:
 	return shortest
 
 fn describe(display: String, details: String, offset: Int) Issue:
-	parts := details.split("\	")
+	parts := details.split("\t")
 	if parts.length() < 4: return Issue(
 		"MS1000",
 		"parse",
@@ -229,7 +228,7 @@ fn describe(display: String, details: String, offset: Int) Issue:
 		offset,
 	)
 
-	message := parts.drop(3).join("\	")
+	message := parts.drop(3).join("\t")
 	return Issue(
 		parts[0].clone(),
 		"parse",
@@ -266,8 +265,7 @@ fn check_one(
 					path.clone(),
 					"error",
 					issue.clone(),
-					f"{display}:{issue.line}:{issue.column}: {issue.phase}: {issue.message}\
-fmt only formats source that parses; fix the syntax error above, then re-run ms fmt {display}",
+					f"{display}:{issue.line}:{issue.column}: {issue.phase}: {issue.message}\nfmt only formats source that parses; fix the syntax error above, then re-run ms fmt {display}",
 				)
 
 	if source == formatted.get(): return Outcome(display.clone(), path.clone(), "clean")
@@ -362,8 +360,7 @@ export type Printed:
 export fn run_fmt(m: Matches) Printed?:
 	request := parse_request(m)
 	if not request.usage.is_empty(): return Printed(
-		stderr: request.usage + "\
-",
+		stderr: request.usage + "\n",
 		status: 2,
 	)
 	if request.rust: return none
@@ -425,8 +422,7 @@ export fn run_fmt(m: Matches) Printed?:
 						1,
 						0,
 					),
-					f"{display}:1:1: parse: {message}\
-fmt only formats source that parses; fix the syntax error above, then re-run ms fmt {display}",
+					f"{display}:1:1: parse: {message}\nfmt only formats source that parses; fix the syntax error above, then re-run ms fmt {display}",
 				)
 			)
 			continue
@@ -469,11 +465,9 @@ fmt only formats source that parses; fix the syntax error above, then re-run ms 
 			or outcome.state.is_empty()
 		):
 			result.status = 1
-			if not request.json: result.stderr += outcome.message + "\
-"
+			if not request.json: result.stderr += outcome.message + "\n"
 
 	if outcomes.is_empty() and not request.json:
-		result.stderr += f"ms fmt: no .ms files found in {request.targets.join(", ")}\
-"
+		result.stderr += f"ms fmt: no .ms files found in {request.targets.join(", ")}\n"
 	if request.json: result.stdout = document(outcomes)
 	return result

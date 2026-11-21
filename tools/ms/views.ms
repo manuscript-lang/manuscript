@@ -810,40 +810,31 @@ fn overview_ascii(modules: List[ModuleSummary]) String:
 	var out = ""
 
 	for m in modules.take(NODE_CAP):
-		out = out.concat(f"{module_head(m)}\
-")
+		out = out.concat(f"{module_head(m)}\n")
 		for edge in m.calls: out = out.concat(
-			f"  -> {edge.file}  ({call_count(edge.count)})\
-"
+			f"  -> {edge.file}  ({call_count(edge.count)})\n"
 		)
 
-	if modules.is_empty(): out = out.concat("none\
-")
+	if modules.is_empty(): out = out.concat("none\n")
 	return out
 
 fn overview_mermaid(modules: List[ModuleSummary]) String:
-	var out = "flowchart LR\
-"
+	var out = "flowchart LR\n"
 
 	for m in modules.take(NODE_CAP):
 		class := if m.entry: "entry" else if m.effects.is_empty(): "pure" else: "effect"
 		out = out.concat(
-			f"    m_{sanitize(m.file, false)}[\"{m.file}<br/>{module_summary(m)}<br/>{effect_list(m.effects)}\"]:::{class}\
-"
+			f"    m_{sanitize(m.file, false)}[\"{m.file}<br/>{module_summary(m)}<br/>{effect_list(m.effects)}\"]:::{class}\n"
 		)
 
 	for m in modules.take(NODE_CAP):
 		for edge in m.calls:
 			out = out.concat(
-				f"    m_{sanitize(m.file, false)} -->|{call_count(edge.count)}| m_{sanitize(edge.file, false)}\
-"
+				f"    m_{sanitize(m.file, false)} -->|{call_count(edge.count)}| m_{sanitize(edge.file, false)}\n"
 			)
-	out = out.concat("    classDef entry fill:#d6e9ff,stroke:#37b,stroke-width:3px\
-")
-	out = out.concat("    classDef pure fill:#dff5e1,stroke:#2a2\
-")
-	out = out.concat("    classDef effect fill:#fff3cd,stroke:#b8860b\
-")
+	out = out.concat("    classDef entry fill:#d6e9ff,stroke:#37b,stroke-width:3px\n")
+	out = out.concat("    classDef pure fill:#dff5e1,stroke:#2a2\n")
+	out = out.concat("    classDef effect fill:#fff3cd,stroke:#b8860b\n")
 	return out
 
 // ---- Building a view ----
@@ -949,39 +940,31 @@ fn Model.class_diagram(entity: String, depth: Int) String?:
 			reserved.add(id.clone())
 			ids.add(f.key.clone(), id)
 
-	var out = "classDiagram\
-"
+	var out = "classDiagram\n"
 
 	for f in chosen:
 		id := ids.get_or(f.key, "")
 		name := class_id(f)
 
-		if id == name: out = out.concat(f"    class {id} \{\
-")
-		else: out = out.concat(f"    class {id}[\"{name}\"] \{\
-")
+		if id == name: out = out.concat(f"    class {id} \{\n")
+		else: out = out.concat(f"    class {id}[\"{name}\"] \{\n")
 
-		if f.kind != "type": out = out.concat(f"        <<{f.kind}>>\
-")
+		if f.kind != "type": out = out.concat(f"        <<{f.kind}>>\n")
 
 		for s in f.slots:
 			if f.kind == "type": out = out.concat(
-				f"        +{mermaid_text(s.ty)} {s.name}\
-"
+				f"        +{mermaid_text(s.ty)} {s.name}\n"
 			)
-			else: out = out.concat(f"        {s.name}{mermaid_text(s.ty)}\
-")
+			else: out = out.concat(f"        {s.name}{mermaid_text(s.ty)}\n")
 
-		out = out.concat("    }\
-")
+		out = out.concat("    }\n")
 
 	for f in chosen:
 		for s in f.slots:
 			for key in s.refs:
 				if target := ids.get(key):
 					out = out.concat(
-						f"    {ids.get_or(f.key, "")} *-- {target} : {s.name}\
-"
+						f"    {ids.get_or(f.key, "")} *-- {target} : {s.name}\n"
 					)
 	return out
 
@@ -996,8 +979,7 @@ fn flow_type_node(var out: String, var declared: List[String], ty: String) Strin
 	id := f"t_{sanitize(ty, false)}"
 
 	if not declared.contains(id):
-		out = out.concat(f"    {id}([\"{ty.replace("\"", "'")}\"])\
-")
+		out = out.concat(f"    {id}([\"{ty.replace("\"", "'")}\"])\n")
 		declared.append(id.clone())
 
 	return id
@@ -1013,8 +995,7 @@ fn style_for(mode: String) String:
 // spellings.
 fn Model.ownership_flow(entity: String, depth: Int) String:
 	roots := self.ownership_roots(entity)
-	var out = "flowchart LR\
-"
+	var out = "flowchart LR\n"
 	var styles = List[String]()
 	var declared = List[String]()
 	var frontier = roots.take(NODE_CAP)
@@ -1031,14 +1012,12 @@ fn Model.ownership_flow(entity: String, depth: Int) String:
 			fid := f"f{done.length()}"
 			closes := if f.scopes > 0: f"<br/>closes {f.scopes}" else: ""
 			out = out.concat(
-				f"    {fid}[\"{f.name.replace("\"", "'")}(){closes}\"]:::fn\
-"
+				f"    {fid}[\"{f.name.replace("\"", "'")}(){closes}\"]:::fn\n"
 			)
 
 			if not f.receiver.is_empty():
 				tid := flow_type_node(out, declared, "self")
-				out = out.concat(f"    {tid} -->|\"self {f.receiver}\"| {fid}\
-")
+				out = out.concat(f"    {tid} -->|\"self {f.receiver}\"| {fid}\n")
 
 				if f.receiver == "var": styles.append("stroke:#d33,stroke-width:3px")
 				else if f.receiver == "move": styles.append(
@@ -1050,15 +1029,13 @@ fn Model.ownership_flow(entity: String, depth: Int) String:
 				mode := slot_mode(s)
 				tid := flow_type_node(out, declared, s.ty)
 				out = out.concat(
-					f"    {tid} -->|\"{f"{s.name} {mode}".trim_end()}\"| {fid}\
-"
+					f"    {tid} -->|\"{f"{s.name} {mode}".trim_end()}\"| {fid}\n"
 				)
 				styles.append(style_for(mode))
 
 			if r := f.result:
 				tid := flow_type_node(out, declared, r.ty)
-				out = out.concat(f"    {fid} -->|\"{f.result_ownership}\"| {tid}\
-")
+				out = out.concat(f"    {fid} -->|\"{f.result_ownership}\"| {tid}\n")
 
 				if f.result_borrow: styles.append("stroke:#37b")
 				else: styles.append("stroke:#2a2,stroke-width:3px")
@@ -1069,10 +1046,8 @@ fn Model.ownership_flow(entity: String, depth: Int) String:
 
 		frontier = next
 
-	out = out.concat("    classDef fn fill:#fff3cd,stroke:#b8860b\
-")
-	for i in 0..styles.length(): out = out.concat(f"    linkStyle {i} {styles[i]}\
-")
+	out = out.concat("    classDef fn fill:#fff3cd,stroke:#b8860b\n")
+	for i in 0..styles.length(): out = out.concat(f"    linkStyle {i} {styles[i]}\n")
 	return out
 
 fn ascii_classes(model: Model, all: List[Fact]) String:
@@ -1091,30 +1066,24 @@ fn ascii_classes(model: Model, all: List[Fact]) String:
 		var width = title.length()
 		for m in members: width = width.max(m.length())
 
-		rule := f"+-{"-".repeat(width)}-+\
-"
+		rule := f"+-{"-".repeat(width)}-+\n"
 		out = out.concat(rule)
-		out = out.concat(f"| {title.pad_end(width, " ")} |\
-")
+		out = out.concat(f"| {title.pad_end(width, " ")} |\n")
 
 		if not members.is_empty():
 			out = out.concat(rule)
-			for m in members: out = out.concat(f"| {m.pad_end(width, " ")} |\
-")
+			for m in members: out = out.concat(f"| {m.pad_end(width, " ")} |\n")
 
 		out = out.concat(rule)
 		for s in f.slots:
 			for key in s.refs:
 				if t := model.fact(key):
 					if chosen.any(fn c: c.key == t.key): out = out.concat(
-						f"  <>-- {s.name} --> {t.name}\
-"
+						f"  <>-- {s.name} --> {t.name}\n"
 					)
-		out = out.concat("\
-")
+		out = out.concat("\n")
 
-	if chosen.is_empty(): out = out.concat("none\
-")
+	if chosen.is_empty(): out = out.concat("none\n")
 	return out
 
 type SignatureWriter:
@@ -1147,8 +1116,7 @@ fn var SignatureWriter.write(
 		self
 		.out
 		.concat(
-			f"{"  ".repeat(level)}{f.name}({params.join(", ")}) {result}{closes}\
-"
+			f"{"  ".repeat(level)}{f.name}({params.join(", ")}) {result}{closes}\n"
 		)
 	)
 	self.lines += 1
@@ -1174,15 +1142,13 @@ fn Model.ascii_ownership(entity: String, depth: Int) String:
 			writer.out = (
 				writer
 				.out
-				.concat(f"+more (output capped at {NODE_CAP} lines)\
-")
+				.concat(f"+more (output capped at {NODE_CAP} lines)\n")
 			)
 			break
 
 		writer.write(self, f, 0, path)
 
-	if writer.lines == 0: writer.out = writer.out.concat("none\
-")
+	if writer.lines == 0: writer.out = writer.out.concat("none\n")
 	return writer.out
 
 // Mermaid output with its own diagram type: a class diagram for `types`, a color-coded
@@ -1219,14 +1185,12 @@ fn write_children(var out: String, children: List[Node], prefix: String) Void:
 		last := i + 1 == children.length()
 		connector := if last: "`- " else: "|- "
 		next := if last: "   " else: "|  "
-		out = out.concat(f"{prefix}{connector}{children[i].label}\
-")
+		out = out.concat(f"{prefix}{connector}{children[i].label}\n")
 		write_children(out, children[i].children, f"{prefix}{next}")
 
 // The tree with fixed connectors.
 export fn tree_ascii(root: Node) String:
-	var out = f"{root.label}\
-"
+	var out = f"{root.label}\n"
 	write_children(out, root.children, "")
 	return out
 
@@ -1239,20 +1203,17 @@ fn mermaid_label(label: String) String:
 fn mermaid_into(var out: String, node: Node, var count: Int) String:
 	id := f"n{count}"
 	count += 1
-	out = out.concat(f"    {id}[\"{mermaid_label(node.label)}\"]\
-")
+	out = out.concat(f"    {id}[\"{mermaid_label(node.label)}\"]\n")
 
 	for child in node.children:
 		child_id := mermaid_into(out, child, count)
-		out = out.concat(f"    {id} --> {child_id}\
-")
+		out = out.concat(f"    {id} --> {child_id}\n")
 
 	return id
 
 // The same tree as a flowchart; node names are pre-order numbers.
 export fn tree_mermaid(root: Node) String:
-	var out = "flowchart TD\
-"
+	var out = "flowchart TD\n"
 	var count = 0
 	void mermaid_into(out, root, count)
 	return out
@@ -1261,48 +1222,31 @@ fn pad_json(depth: Int) String: "  ".repeat(depth)
 
 fn node_json(node: Node, depth: Int) String:
 	inner := pad_json(depth + 1)
-	var out = "{\
-"
-	out = out.concat(f"{inner}\"label\": {json_string(node.label)},\
-")
-	out = out.concat(f"{inner}\"kind\": {json_string(node.kind)},\
-")
-	out = out.concat(f"{inner}\"reference\": {json_string(node.reference)},\
-")
-	out = out.concat(f"{inner}\"file\": {json_string(node.file)},\
-")
-	out = out.concat(f"{inner}\"line\": {node.line},\
-")
-	out = out.concat(f"{inner}\"omitted\": {node.omitted},\
-")
+	var out = "{\n"
+	out = out.concat(f"{inner}\"label\": {json_string(node.label)},\n")
+	out = out.concat(f"{inner}\"kind\": {json_string(node.kind)},\n")
+	out = out.concat(f"{inner}\"reference\": {json_string(node.reference)},\n")
+	out = out.concat(f"{inner}\"file\": {json_string(node.file)},\n")
+	out = out.concat(f"{inner}\"line\": {node.line},\n")
+	out = out.concat(f"{inner}\"omitted\": {node.omitted},\n")
 
-	if node.children.is_empty(): out = out.concat(f"{inner}\"children\": []\
-")
+	if node.children.is_empty(): out = out.concat(f"{inner}\"children\": []\n")
 	else:
-		out = out.concat(f"{inner}\"children\": [\
-")
+		out = out.concat(f"{inner}\"children\": [\n")
 
 		for i in 0..node.children.length():
 			out = out.concat(
 				f"{pad_json(depth + 2)}{node_json(node.children[i], depth + 2)}"
 			)
 			if i + 1 < node.children.length(): out = out.concat(",")
-			out = out.concat("\
-")
+			out = out.concat("\n")
 
-		out = out.concat(f"{inner}]\
-")
+		out = out.concat(f"{inner}]\n")
 
 	return out.concat(f"{pad_json(depth)}\}")
 
 export fn tree_json(view: String, entity: String, tree: Node) String:
-	return f"\{\
-  \"format\": 1,\
-  \"view\": {json_string(view)},\
-  \"entity\": {json_string(entity)},\
-  \"tree\": {node_json(tree, 1)}\
-\}\
-"
+	return f"\{\n  \"format\": 1,\n  \"view\": {json_string(view)},\n  \"entity\": {json_string(entity)},\n  \"tree\": {node_json(tree, 1)}\n\}\n"
 
 // ---- Entry ----
 
