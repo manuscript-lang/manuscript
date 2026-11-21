@@ -41,6 +41,9 @@ int ms_tls_handshake(MsTls *t);
 /* Plaintext in or out. Return bytes (> 0), WANT_IO (0), ERROR or CLOSED (the peer sent close_notify). */
 long ms_tls_read(MsTls *t, void *buf, size_t n);
 long ms_tls_write(MsTls *t, const void *buf, size_t n);
+/* Whether input is already inside the session (plaintext decoded, or ciphertext fed and not yet read): a read
+   would return without the socket being readable. */
+int ms_tls_pending(const MsTls *t);
 /* The protocol the handshake chose, empty when none; valid until the connection is freed. */
 MsBytes ms_tls_alpn(const MsTls *t);
 /* What the handshake agreed: the protocol version (0x0303 for TLS 1.2, 0x0304 for 1.3) and the cipher suite's IANA
