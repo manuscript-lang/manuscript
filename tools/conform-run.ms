@@ -20,7 +20,7 @@ commands:
   run       run the corpus against --ms and compare with the recorded expectations
   record    regenerate expectations from the binary given by --ms
   diff      run two binaries (--a, --b) on the corpus and compare them directly;
-            --env-a/--env-b KEY=VALUE set the environment of one side (e.g. --env-b MS_BACKEND=cranelift)
+            --env-a/--env-b KEY=VALUE set the environment of one side (e.g. --env-b MS_VECTORIZE=off)
   list      list fixtures (id, phase, tags)
   stats     count fixtures per phase and tag
   lint      validate fixture metadata and expectation files

@@ -20,21 +20,8 @@ pub enum CopyProbe {
 /// Build settings shared by code generation, linking and the build cache.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BuildOptions {
-    /// How many objects LLVM compiles a release program into, in parallel; `None` picks one per
-    /// core for programs big enough to repay it, and 1 keeps the whole program in one module.
-    pub llvm_units: Option<usize>,
     /// LLVM vectorizes loops (loop and SLP vectorizers).
     pub vectorize: bool,
-    /// Tell LLVM the heap functions are an allocator (`MS_HEAP_FACTS=off` turns it off): it then
-    /// deletes blocks nothing reads and pairs frees with allocations. The ownership-count gate
-    /// turns it off so every block the compiler asks for is counted.
-    pub heap_facts: bool,
-    /// Fill each stack slot that holds a statement-scoped temporary with a pattern where its
-    /// use ends (`MS_POISON_SLOTS=1`), so a pointer that outlives the slot reads garbage in
-    /// every build instead of depending on what the code generator reuses the slot for.
-    pub poison_slots: bool,
-    /// Run LLVM's verifier after every optimizer pass (`opt -verify-each`).
-    pub llvm_verify: bool,
     /// Copy the LLVM IR of a release build to `ms-keep.ll`.
     pub keep_ll: bool,
     /// A directory holding `opt`, `llc` and `llvm-link`, instead of the pinned release.
@@ -56,11 +43,7 @@ pub struct BuildOptions {
 impl Default for BuildOptions {
     fn default() -> Self {
         BuildOptions {
-            llvm_units: None,
             vectorize: true,
-            heap_facts: true,
-            poison_slots: false,
-            llvm_verify: false,
             keep_ll: false,
             llvm_tools: None,
             lld: None,
