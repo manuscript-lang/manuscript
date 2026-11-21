@@ -251,7 +251,7 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
             MsBuf refused = {0};
             (void)ms_lower_program_why(&check, ids[graph.count - 1], &mir, why ? &refused : NULL);
             if (why) { // `--why`: the functions the lowering refused, and nothing else
-                printf("=== %s\n%.*s", path, (int)refused.len, refused.data != NULL ? (const char *)refused.data : "");
+                printf("=== %s %s\n%.*s", path, mir.entry != MIR_NONE ? "lowered" : "handed-over", (int)refused.len, refused.data != NULL ? (const char *)refused.data : "");
                 ms_buf_free(&refused);
                 mir_module_free(&mir);
                 ms_check_free(&check);

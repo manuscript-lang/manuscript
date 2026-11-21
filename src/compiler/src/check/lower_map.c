@@ -266,3 +266,167 @@ LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at) {
     }
     return (LbVal){value, false};
 }
+
+/* A key or value argument of a mutator, evaluated: filled into its slot by `lm_fill_arg`. */
+static LbVal lm_arg(Lb *lb, const MsExpr *e) {
+    return lb_expr(lb, e);
+}
+
+/* Puts the argument `item` into a fresh slot of `ty`: an owned type is moved in (a borrowed one is copied first), a
+ * plain one is stored. */
+static MirValue lm_take_arg(Lb *lb, LbVal item, MirTy ty) {
+    const MirValue slot = lm_slot(lb, ty);
+    if (lb_owns(lb, ty)) {
+        lm_fill(lb, slot, item.owned ? item.v : lb_copy(lb, item.v));
+    } else {
+        lm_fill(lb, slot, item.v);
+    }
+    return slot;
+}
+
+/* A key only read by the runtime (`remove`): stored in a slot, and a temporary is dropped with the statement. */
+static MirValue lm_read_arg(Lb *lb, LbVal item, MirTy ty) {
+    const MirValue slot = lm_slot(lb, ty);
+    const MirValue args[2] = {slot, item.v};
+    (void)mir_b_emit(&lb->b, MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
+    if (item.owned) {
+        lb_hold_temp(lb, item.v);
+    }
+    return slot;
+}
+
+/* A mutator of the `var` map or set `binding`: the container goes through a slot and comes back to the local. */
+static LbVal lm_mutate(Lb *lb, const MsExpr *e, uint32_t binding, bool set, bool add, bool remove) {
+    const MirTy ty = mir_b_ty(&lb->b, mir_b_use_var(&lb->b, lb->var_of[binding]));
+    const MirTyData *data = mir_ty_data(lb->m, ty);
+    const MirTy key_ty = data->args[0];
+    const MirTy value_ty = set ? MIR_INT : data->args[1]; // a set has no values: the runtime is passed a plain word
+    LbVal key = LB_FAIL;
+    LbVal value = LB_FAIL;
+    if (add || remove) {
+        key = lm_arg(lb, e->u.call.args.ptr[0].value);
+    }
+    if (add && !set) {
+        value = lm_arg(lb, e->u.call.args.ptr[1].value);
+    }
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
+    const MirValue slot = lm_slot(lb, ty);
+    const MirValue put[2] = {slot, mir_b_use_var(&lb->b, lb->var_of[binding])};
+    (void)mir_b_emit(&lb->b, MOP_Put, put, 2, (MirImm){0}, MIR_NONE);
+    const MirValue key_desc = lm_desc(lb, key_ty);
+    const MirValue value_desc = set ? MIR_NONE : lm_desc(lb, value_ty);
+    const MirValue placeholder = set && !add ? mir_b_iconst(&lb->b, 0) : MIR_NONE;
+    const LmShape shape = lm_shape(lb, key_ty, set ? MIR_INT : value_ty);
+    MirValue args[5] = {slot, key_desc, set ? placeholder : value_desc, MIR_NONE, MIR_NONE};
+    uint32_t count = 3;
+    const char *name = "msrt_map_clear";
+    if (add && set) {
+        name = key_ty == MIR_INT ? "msrt_set_add_copy_w" : "msrt_set_add_copy"; // only `Set[Int]` has the fixed slot layout
+        args[2] = lm_read_arg(lb, key, key_ty); // the runtime copies the value in (`add_copy`)
+    } else if (add) {
+        name = shape == LM_WORD && key_ty == MIR_INT ? "msrt_map_add_w8" : shape == LM_TEXT ? "msrt_map_add_sw8" : "msrt_map_add";
+        args[3] = lm_take_arg(lb, key, key_ty);
+        args[4] = lm_take_arg(lb, value, value_ty);
+        count = 5;
+    } else if (remove) {
+        name = "msrt_map_remove";
+        args[3] = lm_read_arg(lb, key, key_ty);
+        count = 4;
+    }
+    MirTy types[5];
+    for (uint32_t i = 0; i < count; i++) {
+        types[i] = mir_b_ty(&lb->b, args[i]);
+    }
+    (void)mir_b_call_rt(&lb->b, lb_runtime_extern(lb, name, types, count, MIR_VOID, MR_NONE, false), args, count);
+    const MirValue back = mir_b_emit(&lb->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+    mir_b_def_var(&lb->b, lb->var_of[binding], back);
+    return (LbVal){mir_b_unit(&lb->b), false};
+}
+
+/* `add`, `remove` and `clear` on a `var` Map or Set local; false leaves the call to the others. */
+bool lm_mutator(Lb *lb, const MsExpr *e, LbVal *out) {
+    const MsExpr *callee = e->u.call.callee;
+    const MsTy receiver_ty = lb->facts->call_receiver[e->id];
+    if (receiver_ty == MS_TY_NONE) {
+        return false;
+    }
+    const MirTy ty = lb_mir_ty(lb, receiver_ty);
+    const bool set = lb_is_set(lb, ty);
+    if (!set && !lb_is_map(lb, ty)) {
+        return false;
+    }
+    const MsNames *names = lb->c->names;
+    const MsSym name = callee->u.member.name;
+    const uint32_t nargs = e->u.call.args.len;
+    const bool add = ms_name_is(names, name, "add") && nargs == (set ? 1u : 2u);
+    const bool remove = ms_name_is(names, name, "remove") && nargs == 1;
+    const bool clear = ms_name_is(names, name, "clear") && nargs == 0;
+    if (!add && !remove && !clear) {
+        return false;
+    }
+    const uint32_t binding = lb_var_receiver(lb, callee->u.member.left);
+    *out = binding == MS_NONE ? LB_UNSUPPORTED(lb) : lm_mutate(lb, e, binding, set, add, remove);
+    return true;
+}
+
+/* `length`, `is_empty` and `contains` of a Set: the runtime counts the slots, or probes for the key. */
+static LbVal lm_set_query(Lb *lb, const MsExpr *e, bool contains, bool empty) {
+    const MsExpr *callee = e->u.call.callee;
+    const LbVal set = lb_expr(lb, callee->u.member.left);
+    LbVal key = LB_FAIL;
+    if (lb->ok && contains) {
+        key = lb_expr(lb, e->u.call.args.ptr[0].value);
+    }
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
+    const MirTy ty = mir_b_ty(&lb->b, set.v);
+    MirValue result = MIR_NONE;
+    if (contains) {
+        const MirTy key_ty = mir_ty_data(lb->m, ty)->args[0];
+        const MirValue key_desc = lm_desc(lb, key_ty);
+        const MirValue placeholder = mir_b_iconst(&lb->b, 0);
+        const MirValue slot = lm_slot(lb, key_ty);
+        const MirValue stored[2] = {slot, key.v};
+        (void)mir_b_emit(&lb->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+        const MirValue args[4] = {set.v, key_desc, placeholder, slot};
+        const MirTy types[4] = {ty, MIR_PTR, MIR_INT, MIR_PTR};
+        const char *name = key_ty == MIR_INT ? "msrt_set_contains_w" : "msrt_map_contains";
+        result = mir_b_call_rt(&lb->b, lb_runtime_extern(lb, name, types, 4, MIR_BOOL, MR_NONE, true), args, 4);
+    } else {
+        const uint32_t length = lb_runtime_extern(lb, "msrt_map_length", &ty, 1, MIR_INT, MR_NONE, true);
+        result = mir_b_call_rt(&lb->b, length, &set.v, 1);
+        if (empty) {
+            result = mir_b_icmp(&lb->b, MCC_EQ, result, mir_b_iconst(&lb->b, 0));
+        }
+    }
+    if (key.owned) {
+        lb_hold_temp(lb, key.v);
+    }
+    if (set.owned) {
+        lb_hold_temp(lb, set.v);
+    }
+    return (LbVal){result, false};
+}
+
+/* The queries of a Set no runtime function of its own implements; false leaves the call to the others. */
+bool lm_set_method(Lb *lb, const MsExpr *e, LbVal *out) {
+    const MsExpr *callee = e->u.call.callee;
+    const MsTy receiver_ty = lb->facts->call_receiver[e->id];
+    if (receiver_ty == MS_TY_NONE || !lb_is_set(lb, lb_mir_ty(lb, receiver_ty))) {
+        return false;
+    }
+    const MsNames *names = lb->c->names;
+    const MsSym name = callee->u.member.name;
+    const uint32_t nargs = e->u.call.args.len;
+    const bool contains = ms_name_is(names, name, "contains") && nargs == 1;
+    const bool length = ms_name_is(names, name, "length") && nargs == 0;
+    const bool empty = ms_name_is(names, name, "is_empty") && nargs == 0;
+    if (!contains && !length && !empty) {
+        return false;
+    }
+    *out = lm_set_query(lb, e, contains, empty);
+    return true;
+}

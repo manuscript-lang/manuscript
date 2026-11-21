@@ -614,7 +614,7 @@ static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
 /* A method call of a native type: instructions where the method is some, else its runtime function. */
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     LbVal builder;
-    if (lbd_method(lb, e, &builder)) {
+    if (lbd_method(lb, e, &builder) || lm_mutator(lb, e, &builder) || lm_set_method(lb, e, &builder)) {
         return builder;
     }
     const MsSym name = e->u.call.callee->u.member.name;
