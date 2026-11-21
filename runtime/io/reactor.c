@@ -196,7 +196,7 @@ static int probe_on(void) {
     if (on < 0) on = getenv("MS_IO_TRACE") != NULL;
     return on;
 }
-#define PROBE(...) do { if (probe_on()) { fprintf(stderr, "[io] " __VA_ARGS__); fputc(10, stderr); fflush(stderr); } } while (0)
+#define PROBE(...) do { if (probe_on()) { fprintf(stderr, "[io %.3f] ", (double)uv_hrtime() / 1e6); fprintf(stderr, __VA_ARGS__); fputc(10, stderr); fflush(stderr); } } while (0)
 
 static void on_poll(uv_poll_t *handle, int status, int events) {
     PROBE("on_poll status=%d events=%d", status, events);
