@@ -122,7 +122,7 @@ bool lm_has(const Lb *lb, uint32_t row) {
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row) {
     const MsMethods *methods = lb->facts->methods;
     if (row >= methods->count || lb->method_func == NULL) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const bool mutating = (methods->access[row] & MS_METHOD_MUTATING) != 0;
     const MsExpr *receiver = e->u.call.callee->u.member.left;
