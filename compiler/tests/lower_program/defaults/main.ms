@@ -9,7 +9,8 @@ fn main() Int:
 	text := tagged("hi")
 	ignore(text)
 	ignore(a, true)
+
 	c := local(1.0)
-	if c > 1.0:
-		return a + b + text.length()
+	if c > 1.0: return a + b + text.length()
+
 	return 0
