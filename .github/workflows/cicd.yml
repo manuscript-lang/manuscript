@@ -102,7 +102,7 @@ jobs:
   # one platform; a scheduled run covers all six. The matrix is picked in an expression because a job `if`
   # cannot read it, and a separate job to pick it would cost one more job per run.
   # `lint`: also format and clippy. `second_pass`: the part (`a` or `b`) that also runs the second
-  # corpus pass (run and test again at Release, then at Debug); the gates run in the other part.
+  # corpus pass (run and test again at Debug); the gates run in the other part.
   # `gates: false` skips the gates. On pull requests linux-amd64 runs the second pass in `conformance` and
   # leaves the gates to linux-arm64, so each job stays under ten minutes. On pull requests linux-arm64 runs
   # format and clippy: it finishes about 4 minutes before linux-amd64, which carries the corpus.
