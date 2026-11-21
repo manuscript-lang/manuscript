@@ -89,11 +89,6 @@ static MsSysError open_path(MsBytes path, int32_t flags, uint32_t mode, MsSysFd 
     return error;
 }
 
-static void close_quietly(MsSysFd fd) {
-    const MsSysError ignored = ms_sys_fs_close(fd);
-    (void)ignored;
-}
-
 static bool stat_at(Copier *copier, MsBytes path, bool follow, const char *operation, MsSysStat *out) {
     const MsSysError error = ms_fs_stat_bytes(path, follow, out);
     return error == 0 || fail_at(copier, error, operation, path);
@@ -334,7 +329,7 @@ static bool clone_into(MsFsFail *fail, MsSysFd input, MsBytes destination, const
         return false;
     }
     error = ms_sys_fs_clone_file(output, input);
-    close_quietly(output);
+    ms_sys_fs_close_quietly(output);
     if (error == 0) {
         return true;
     }
@@ -408,7 +403,7 @@ static bool copy_file(Copier *copier, MsBytes source, MsBytes destination, const
         return fail_at(copier, error, "open", source);
     }
     const bool ok = copy_file_from(copier, input, source, destination, info, exists);
-    close_quietly(input);
+    ms_sys_fs_close_quietly(input);
     return ok;
 }
 

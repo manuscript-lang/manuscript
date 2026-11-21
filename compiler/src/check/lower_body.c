@@ -25,11 +25,6 @@ LbVal lb_unsupported(Lb *lb) {
     return LB_FAIL;
 }
 
-static MsTy lb_primitive(const MsCheck *c, const char *name) {
-    const MsSymId sym = ms_map_get(&c->primitives, ms_intern_cstr(c->names, name));
-    return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
-}
-
 /* `ty` as the function being lowered sees it: the variables of the instance are the types they
  * stand for, through arguments, parameters and results (`List[T]` becomes `List[Int]`). A variable
  * is matched by id, as the checker's substitution does. */
@@ -747,6 +742,20 @@ static void lb_bind_arm(Lb *lb, const MsArm *arm, MirValue subject) {
     }
 }
 
+/* Whether an arm binds a payload that needs a drop: taking it out of an owned scrutinee is not lowered. */
+static bool lb_arm_binds_owned(Lb *lb, const MsArm *arm, MirTy subject_ty) {
+    const MirTyData *data = mir_ty_data(lb->m, subject_ty);
+    const uint32_t index = lb->facts->arm_case[arm->id];
+    for (uint32_t slot = 0; index != MS_NONE && slot < arm->bindings.len; slot++) {
+        const MsStr name = ms_name(lb->c->names, arm->bindings.ptr[slot].name);
+        const bool ignored = name.len == 1 && name.ptr[0] == '_';
+        if (!ignored && lb_owns(lb, lb->m->alts[data->id].cases[index].fields[slot].ty)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* `match` over literal arms with one value each. A Bool match is also how `if c: a else: b` is
  * written. Every arm's value joins in one block parameter. */
 static LbVal lb_match(Lb *lb, const MsExpr *e) {
@@ -758,6 +767,12 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
     if (!lb->ok || result_ty == MIR_NONE || lb_owns(lb, result_ty) || scrutinee_ty == MIR_STR || aggregate ||
         lb_is_fn(lb, result_ty)) {
         return lb_unsupported(lb); // a String result or scrutinee is owned: ownership comes later
+    }
+    const bool drops_scrutinee = scrutinee.owned && lb_owns(lb, scrutinee_ty); // a temporary: each arm releases it
+    for (uint32_t i = 0; drops_scrutinee && i < e->u.match.arms.len; i++) {
+        if (scrutinee_kind != MK_ALT || lb_arm_binds_owned(lb, e->u.match.arms.ptr[i], scrutinee_ty)) {
+            return lb_unsupported(lb);
+        }
     }
     const LbArms arms = lb_open_arms(lb, e);
     const MirValue result = mir_b_add_block_param(&lb->b, arms.join, result_ty, MM_BORROW);
@@ -776,6 +791,9 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
         lb->branching++;
         const LbVal value = lb_expr(lb, e->u.match.arms.ptr[i]->value);
         lb->branching--;
+        if (lb->ok && drops_scrutinee) {
+            lb_drop(lb, scrutinee.v);
+        }
         if (lb->ok) {
             mir_b_br(&lb->b, arms.join, &value.v, 1);
         }

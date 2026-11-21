@@ -192,8 +192,6 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 void lb_write_back(Lb *lb);
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
 bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
-bool lb_owns(Lb *lb, MirTy ty);                        /* whether a value of the type is dropped by its holder */
-MirValue lb_move_argument(Lb *lb, const MsExpr *e);    /* an argument for a `move` parameter */
 
 /* Lists of scalars (lower_list.c, included after lower_body.c). */
 MirTy lst_type(Lb *lb, MsTy ty);
