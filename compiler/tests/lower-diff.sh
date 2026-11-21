@@ -14,11 +14,33 @@ cargo build --release --locked -p ms-build --example c_lower_oracle
 sh compiler/tests/cbuild.sh ms_lower_dump
 dump=${MS_C_BUILD:-target/cmake/test}/compiler/ms_lower_dump
 
-files=$(find compiler/tests/lower tests/conformance/fixtures -name '*.ms' | sort)
-MS_LOWER_RUN_OUT="$out/run.c" "$dump" stdlib $files > "$out/lower.c" # the run output of every lowered function comes from the same lowering
+# Each tool takes the files of one chunk, so the chunks run side by side and their outputs join in file order.
+jobs=$(nproc 2>/dev/null || echo 2)
+# `chunked NAME LIST`: splits the files of LIST into one chunk per job and starts `NAME CHUNK INDEX` on each; the
+# status of every chunk is checked and the outputs `$out/NAME.INDEX.text` are left for the caller to join.
+chunked() {
+    rm -f "$out/chunk."* "$out/$1."*
+    split -n "l/$jobs" -d "$2" "$out/chunk."
+    pids=""
+    for chunk in "$out"/chunk.*; do
+        "$1" "$chunk" "${chunk##*.}" &
+        pids="$pids $!"
+    done
+    for pid in $pids; do
+        wait "$pid"
+    done
+}
+c_lower() { MS_LOWER_RUN_OUT="$out/c_lower.$2.run" "$dump" stdlib $(cat "$1") > "$out/c_lower.$2.text"; } # the run output comes from the same lowering
+rust_lower() { target/release/examples/c_lower_oracle $(cat "$1") > "$out/rust_lower.$2.text" 2>/dev/null; }
+
+find compiler/tests/lower tests/conformance/fixtures -name '*.ms' | sort > "$out/files.list"
+chunked c_lower "$out/files.list"
+cat "$out"/c_lower.*.text > "$out/lower.c"
+cat "$out"/c_lower.*.run > "$out/run.c"
 # Rust lowering is slow per file, so it runs only where C lowered something.
-lowered_files=$(awk '/^=== / { file = $2 } /^fn @/ { print file }' "$out/lower.c" | sort -u)
-target/release/examples/c_lower_oracle $lowered_files > "$out/lower.rust" 2>/dev/null
+awk '/^=== / { file = $2 } /^fn @/ { print file }' "$out/lower.c" | sort -u > "$out/lowered.list"
+chunked rust_lower "$out/lowered.list"
+cat "$out"/rust_lower.*.text > "$out/lower.rust"
 
 # Two constructs C lowers its own way: a `while` (Rust threads a parameter through the loop header
 # as a block parameter, C keeps the one value it is) and a `match` (Rust tests the arms one by one,
