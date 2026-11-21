@@ -1,7 +1,8 @@
 /* The runtime functions the C lowering can call from their `ms-sig` declaration. The table is
  * generated from the headers' signatures (`ms run tools/ms/symbols.ms`), so no function is named in the
  * compiler: each parameter's role comes from its declared type, and a function whose signature is
- * tagged `@op=<mnemonic>` is exactly that MIR instruction on its arguments. */
+ * tagged `@op=<mnemonic>` is exactly that MIR instruction on its arguments, and one tagged `@seq=` is the short
+ * instruction sequence the tag lists. */
 #ifndef MS_RT_OPS_H
 #define MS_RT_OPS_H
 
@@ -36,6 +37,7 @@ typedef struct MsRtFn {
     const char *op;        /* the MIR mnemonic, or "" */
     const char *word_twin; /* its specialisation for a one-word key over a one-word value, or "" */
     const char *text_twin; /* its specialisation for a String key over a one-word value, or "" */
+    const char *seq;       /* `@seq=`: a short MIR instruction sequence over the arguments, or "" (see lower_native.c) */
     int64_t imm;
     uint32_t nparams;
     MsRtRet ret;

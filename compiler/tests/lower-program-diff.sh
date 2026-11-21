@@ -28,16 +28,30 @@ fi
 "$dump" stdlib --program $files > "$out/program.c"
 target/release/examples/c_lower_oracle $files > "$out/program.rust" 2>/dev/null
 
-# One line per function: `program name sig line:col|block`, `.N` copy suffixes stripped.
+# One line per function: `program name sig line:col|block`, `.N` copy suffixes stripped. A location names its file by
+# number and Rust and C number them differently (first reference in Rust's body order, import order in C), so each
+# `!N:` becomes the file's name from the module's `file N "name"` table. A same-named function in two files is told
+# apart by the location it was declared at.
 keyed() {
     sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g' "$1" | awk '
-        /^=== / { file = $2; next }
+        function named(line,    out, rest, n, name) {
+            out = ""; rest = line
+            while (match(rest, / ![0-9]+:/)) {
+                n = substr(rest, RSTART + 2, RLENGTH - 3)
+                name = (n in files) ? files[n] : n
+                out = out substr(rest, 1, RSTART) "!" name ":"
+                rest = substr(rest, RSTART + RLENGTH)
+            }
+            return out rest
+        }
+        /^=== / { file = $2; delete files; next }
+        /^file [0-9]+ "/ { n = $2; name = $3; gsub(/"/, "", name); files[n] = name; next }
         /^; divergent$/ { looped = 1; next }
-        /^fn @/ { name = $2; sub(/\(.*/, "", name); sig = $0; sub(/^fn @[^(]*/, "", sig)
-                  loc = sig; sub(/^.* ![0-9]+:/, "", loc); sub(/ .*$/, "", loc)
+        /^fn @/ { $0 = named($0); name = $2; sub(/\(.*/, "", name); sig = $0; sub(/^fn @[^(]*/, "", sig)
+                  loc = sig; sub(/^.* !/, "", loc); sub(/ .*$/, "", loc)
                   sub(/ (ret_borrowed|ret_view|export|!).*$/, "", sig)
-                  key = file " " name " " sig " " loc; body = ""; infn = 1 }
-        infn { body = body $0 "\\n" }
+                  key = file " " name " " sig " " loc; body = ""; infn = 1; print_head = 1 }
+        infn { line = $0; if (!print_head) line = named(line); print_head = 0; body = body line "\\n" }
         infn && /^}/ { print key "|" (looped ? "divergent" : body); infn = 0; looped = 0 }' | sort
 }
 keyed "$out/program.c" > "$out/program.c.keyed"

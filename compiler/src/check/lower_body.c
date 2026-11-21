@@ -21,7 +21,12 @@
 #include "ms/mir_builder.h"
 #include "ms/ty_algebra.h"
 
-LbVal lb_unsupported(Lb *lb) {
+LbVal lb_unsupported_at(Lb *lb, const char *site, int line) {
+    if (lb->ok) { // the first refusal is the reason; the rest follow from it
+        lb->fail_site = site;
+        lb->fail_line = line;
+        lb->fail_stmt = lb->stmt;
+    }
     lb->ok = false;
     return LB_FAIL;
 }
@@ -84,7 +89,11 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
         return list;
     }
     const MirTy map = lm_type(lb, ty);
-    return map != MIR_NONE ? map : lb_mir_alt(lb, ty);
+    if (map != MIR_NONE) {
+        return map;
+    }
+    const MirTy native = lx_type(lb, ty);
+    return native != MIR_NONE ? native : lb_mir_alt(lb, ty);
 }
 
 MirLoc lb_loc(const Lb *lb, MsPos pos) {
@@ -652,6 +661,9 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     }
     if (builds_record) {
         return lr_construct(lb, e);
+    }
+    if (lx_is_extern(lb, callee)) {
+        return lx_call(lb, e, callee);
     }
     return lb_call_func(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false);
 }

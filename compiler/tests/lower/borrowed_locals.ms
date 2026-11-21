@@ -13,4 +13,5 @@ fn main() Int:
 	x := pick("ab", "cd", true)
 	y := echo(x)
 	if y == "ab": return alias(x)
+
 	return 1

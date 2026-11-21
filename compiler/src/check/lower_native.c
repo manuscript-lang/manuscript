@@ -6,6 +6,8 @@
  * the arguments; any other is a runtime call. No type or method is named here. A method whose
  * signature the table cannot marshal (a handle, a slot, an error slot) is left to the Rust lowering. */
 #include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "ms/lower_internal.h"
 #include "ms/mir_pass.h"
@@ -72,6 +74,91 @@ static bool ln_make_addresses(Lb *lb, const MsRtFn *fn, MirValue *operands, uint
             operands[i] = slot;
         }
     }
+    return true;
+}
+
+/* The type a step of a `@seq=` tag names: `int`, `float` or `bool`. */
+static MirTy ln_seq_ty(const char *name, size_t length) {
+    if (length == 3 && memcmp(name, "int", 3) == 0) {
+        return MIR_INT;
+    }
+    if (length == 5 && memcmp(name, "float", 5) == 0) {
+        return MIR_FLOAT;
+    }
+    return length == 4 && memcmp(name, "bool", 4) == 0 ? MIR_BOOL : MIR_NONE;
+}
+
+/* A `@seq=` tag: comma-separated steps `mnemonic:operand:..>type`, each operand `$N` (argument N), `%N` (step N's
+ * result) or `#value` (the immediate of an `iconst` or `fconst`). The last step is the result and takes `result_ty`. It
+ * is the instruction sequence Rust's lowering emits for the same method, so the two compare equal. */
+static bool ln_sequence(Lb *lb, const char *seq, const MirValue *args, uint32_t nargs, MirTy result_ty, MirValue *out) {
+    MirValue steps[MS_RT_MAX_PARAMS * 2];
+    uint32_t nsteps = 0;
+    const char *p = seq;
+    while (*p != '\0') {
+        const char *end = strchr(p, ',');
+        const char *stop = end != NULL ? end : p + strlen(p);
+        const char *arrow = memchr(p, '>', (size_t)(stop - p));
+        if (arrow == NULL || nsteps == sizeof steps / sizeof *steps) {
+            return false;
+        }
+        const char *colon = memchr(p, ':', (size_t)(arrow - p));
+        const char *name_end = colon != NULL ? colon : arrow;
+        int op = mir_op_from_name(p, (size_t)(name_end - p));
+        MirImm imm = {0};
+        if (op < 0) { // `icmp.eq`: the comparison and its condition
+            const char *dot = memchr(p, '.', (size_t)(name_end - p));
+            const int head = dot != NULL ? mir_op_from_name(p, (size_t)(dot - p)) : -1;
+            for (int cc = 0; head >= 0 && cc < 6; cc++) {
+                if (strlen(mir_cc_name[cc]) == (size_t)(name_end - dot - 1) &&
+                    memcmp(mir_cc_name[cc], dot + 1, (size_t)(name_end - dot - 1)) == 0) {
+                    op = head;
+                    imm = (MirImm){.tag = MI_CC, .a = (uint32_t)cc};
+                }
+            }
+        }
+        MirTy ty = ln_seq_ty(arrow + 1, (size_t)(stop - arrow - 1));
+        if (op < 0 || ty == MIR_NONE) {
+            return false;
+        }
+        MirValue operands[3];
+        uint32_t noperands = 0;
+        for (const char *q = colon; q != NULL && q < arrow;) {
+            const char *item = q + 1;
+            const char *item_end = memchr(item, ':', (size_t)(arrow - item));
+            item_end = item_end != NULL ? item_end : arrow;
+            char *tail = NULL;
+            const long n = item[0] == '#' ? 0 : strtol(item + 1, &tail, 10);
+            if (item[0] == '#') {
+                if (op == MOP_FConst) {
+                    const double value = strtod(item + 1, NULL);
+                    imm.tag = MI_FLOAT;
+                    memcpy(&imm.i, &value, sizeof value);
+                } else {
+                    imm.tag = MI_INT;
+                    imm.i = strtoll(item + 1, NULL, 10);
+                }
+            } else if (noperands == 3 || tail != item_end) {
+                return false;
+            } else if (item[0] == '$' && (uint32_t)n < nargs) {
+                operands[noperands++] = args[n];
+            } else if (item[0] == '%' && (uint32_t)n < nsteps) {
+                operands[noperands++] = steps[n];
+            } else {
+                return false;
+            }
+            q = item_end < arrow ? item_end : NULL;
+        }
+        if (end == NULL) {
+            ty = result_ty;
+        }
+        steps[nsteps++] = mir_b_emit(&lb->b, (MirOp)op, operands, noperands, imm, ty);
+        p = end != NULL ? end + 1 : stop;
+    }
+    if (nsteps == 0) {
+        return false;
+    }
+    *out = steps[nsteps - 1];
     return true;
 }
 
@@ -142,6 +229,15 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
     }
     if (!ln_make_addresses(lb, fn, operands, count, is_desc, is_key_ref, of)) {
         return false;
+    }
+    if (fn->seq[0] != '\0') { // a short sequence of instructions over the arguments, not the descriptors
+        uint32_t kept = 0;
+        for (uint32_t i = 0; i < count; i++) {
+            if (!is_desc[i]) {
+                operands[kept++] = operands[i];
+            }
+        }
+        return ln_sequence(lb, fn->seq, operands, kept, result_ty, out);
     }
     if (is_op) { // an instruction takes the arguments, not the descriptor
         uint32_t kept = 0;

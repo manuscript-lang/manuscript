@@ -36,6 +36,10 @@ void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m, MsStr text)
  * bodies must have been checked for the effect columns. */
 void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text);
 
+/* The fact model of a whole project: the entities and imports of each module `mods[i]` (source `texts[i]`),
+ * in one document, so keys and files carry the modules' own names. */
+void ms_dump_project_facts(MsBuf *out, MsCheck *c, const MsModId *mods, const MsStr *texts, uint32_t count);
+
 /* `{"nodes": [{"id", "kind"}]}`: the type kind of each expression the checker typed, by node id. */
 void ms_dump_module_nodes(MsBuf *out, const MsCheck *c, MsModId m);
 
