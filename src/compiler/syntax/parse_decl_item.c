@@ -152,7 +152,7 @@ bool parse_constant_fix(Parser *p, MsToken word, MsToken *first, MsToken *last, 
                               p->source.ptr[hi - 1] == '\n' || p->source.ptr[hi - 1] == '\r')) {
         hi--;
       }
-      *replacement = parse_fmt(p, "%S :=", (int)(hi - name.lo), p->source.ptr + name.lo);
+      *replacement = parse_fmt(p, "%S :=", ms_span_of(p->source.ptr + name.lo, hi - name.lo));
       *first = word;
       *last = t;
       return true;
