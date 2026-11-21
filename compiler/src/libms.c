@@ -104,6 +104,7 @@
 #include "check/lower_numeric.c"
 #include "check/lower_optional.c"
 #include "check/lower_each.c"
+#include "check/lower_builder.c"
 #include "check/lower_native.c"
 #include "check/lower_map.c"
 #include "check/lower_enum.c"

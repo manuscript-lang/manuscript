@@ -435,7 +435,7 @@ MirValue lb_native_status_call(Lb *lb, const struct MsRtFn *fn, const MirValue *
 
 /* The receiver of a by-reference list parameter: a `var` list local the function owns, whose
  * variable then holds what the instruction yields. */
-static uint32_t ln_var_receiver(Lb *lb, const MsExpr *receiver) {
+uint32_t lb_var_receiver(Lb *lb, const MsExpr *receiver) {
     if (receiver->kind != MS_E_NAME || lb->facts->res_kind[receiver->id] != MS_RES_BINDING) {
         return MS_NONE;
     }
@@ -554,7 +554,7 @@ static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
     uint32_t binding = MS_NONE;
     LbVal first;
     if (by_reference) {
-        binding = ln_var_receiver(lb, receiver);
+        binding = lb_var_receiver(lb, receiver);
         if (binding == MS_NONE) {
             return LB_UNSUPPORTED(lb);
         }
@@ -613,6 +613,10 @@ static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
 
 /* A method call of a native type: instructions where the method is some, else its runtime function. */
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
+    LbVal builder;
+    if (lbd_method(lb, e, &builder)) {
+        return builder;
+    }
     const MsSym name = e->u.call.callee->u.member.name;
     const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
     LbVal item;
