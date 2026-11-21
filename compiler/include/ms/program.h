@@ -21,4 +21,10 @@ void ms_program_desugar_bundled(MsCheck *c);
  * which the Rust checker reports and stops at: nothing is checked. */
 bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text);
 
+/* Checks the bodies, and runs the ownership walk, of every bundled module with source that the
+ * program's imports reach, so a whole-program lowering (`ms_lower_program`) has their facts. Call it
+ * after every project module is checked, when the method table is complete. Returns how many
+ * modules it checked. */
+uint32_t ms_program_check_bundled(MsCheck *c);
+
 #endif

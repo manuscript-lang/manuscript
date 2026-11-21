@@ -1012,12 +1012,18 @@ static void fail(Analysis *a, uint8_t status, const char *text, size_t len) {
     a->message[len] = 0;
 }
 
+/* Whether the receiver of a method row is the type `ty`, or the same nominal type with other arguments (the row
+ * of `WriteStream[T].flush` serves a `WriteStream[String]`). */
+static bool analyze_same_receiver(const MsTyTable *tys, MsTy receiver, MsTy ty) {
+    return receiver == ty || (tys->def[ty] != 0 && tys->def[receiver] == tys->def[ty] && tys->kind[receiver] == tys->kind[ty]);
+}
+
 /* The first method of `ty` that takes nothing, returns a `Result` and is named `flush` or `commit`: what
  * a scope that closes a resource does not run. The name's index, -1 for none. */
 static int64_t analyze_finisher(Analysis *a, const MsCheck *check, const MsFacts *facts, MsTy ty) {
     const MsMethods *methods = facts->methods;
     for (uint32_t i = 0; methods != NULL && i < methods->count; i++) {
-        if (methods->receiver[i] != ty || methods->decl[i] == NULL || methods->ty[i] == MS_TY_NONE) {
+        if (!analyze_same_receiver(&check->tys, methods->receiver[i], ty) || methods->decl[i] == NULL || methods->ty[i] == MS_TY_NONE) {
             continue;
         }
         const MsTy signature = methods->ty[i];

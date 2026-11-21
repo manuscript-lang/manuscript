@@ -185,10 +185,6 @@ bool ms_project_format_paths(MsArena *a, const char *target, const char ***paths
             ms_project_error_unsupported(err, "a workspace root");
             return false;
         }
-        if (project.dependency_count + project.path_dependency_count > 0) {
-            ms_project_error_unsupported(err, "dependencies in a manifest to format");
-            return false;
-        }
     }
     const char **found;
     uint32_t n;

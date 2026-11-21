@@ -21,7 +21,12 @@
 #include "ms/mir_builder.h"
 #include "ms/ty_algebra.h"
 
-LbVal lb_unsupported(Lb *lb) {
+LbVal lb_unsupported_at(Lb *lb, const char *site, int line) {
+    if (lb->ok) { // the first refusal is the reason; the rest follow from it
+        lb->fail_site = site;
+        lb->fail_line = line;
+        lb->fail_stmt = lb->stmt;
+    }
     lb->ok = false;
     return LB_FAIL;
 }
@@ -84,7 +89,11 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
         return list;
     }
     const MirTy map = lm_type(lb, ty);
-    return map != MIR_NONE ? map : lb_mir_alt(lb, ty);
+    if (map != MIR_NONE) {
+        return map;
+    }
+    const MirTy native = lx_type(lb, ty);
+    return native != MIR_NONE ? native : lb_mir_alt(lb, ty);
 }
 
 MirLoc lb_loc(const Lb *lb, MsPos pos) {
@@ -526,7 +535,6 @@ MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
     return lb_copy(lb, value.v);
 }
 
-static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
 
 /* The module function a call reaches: the callee's own, or for a generic callee its copy for the
  * type arguments the checker inferred at this call, seen through the instance being lowered. */
@@ -656,6 +664,9 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (builds_record) {
         return lr_construct(lb, e);
     }
+    if (lx_is_extern(lb, callee)) {
+        return lx_call(lb, e, callee);
+    }
     return lb_call_func(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false);
 }
 
@@ -745,6 +756,21 @@ static LbArms lb_open_arms(Lb *lb, const MsExpr *e) {
 static void lb_dispatch(Lb *lb, const MsExpr *e, MirValue scrutinee, const LbArms *arms) {
     const MsArm *const *list = (const MsArm *const *)e->u.match.arms.ptr;
     const uint32_t count = e->u.match.arms.len;
+    if (mir_ty_data(lb->m, mir_b_ty(&lb->b, scrutinee))->kind == MK_OPT) {
+        // The checker numbers an Optional's cases `some` 0 and `none` 1.
+        MirBlock when_some = arms->fallback, when_none = arms->fallback;
+        for (uint32_t i = 0; i < count; i++) {
+            const uint32_t index = lb->facts->arm_case[list[i]->id];
+            if (index == 0 && when_some == arms->fallback) {
+                when_some = arms->blocks[i];
+            } else if (index == 1 && when_none == arms->fallback) {
+                when_none = arms->blocks[i];
+            }
+        }
+        const MirValue present = la_test(lb, scrutinee);
+        mir_b_br_if(&lb->b, present, when_some, NULL, 0, when_none, NULL, 0);
+        return;
+    }
     if (mir_ty_data(lb->m, mir_b_ty(&lb->b, scrutinee))->kind == MK_ALT) {
         const MirValue tag = mir_b_emit(&lb->b, MOP_AltTag, &scrutinee, 1, (MirImm){0}, MIR_INT);
         MirCase *cases = MS_NEW_N(&lb->m->arena, MirCase, count);
@@ -796,6 +822,23 @@ static void lb_bind_arm(Lb *lb, const MsArm *arm, MirValue subject) {
     }
 }
 
+/* The payload name of a `some(name)` arm: the value the Optional holds, read in place. */
+static void lb_bind_some(Lb *lb, const MsArm *arm, MirValue subject) {
+    const MsBindings *bindings = &lb->facts->bindings;
+    for (uint32_t binding = 0; arm->bindings.len == 1 && binding < bindings->count; binding++) {
+        if (bindings->decl_node[binding] != arm->id || bindings->name[binding] != arm->bindings.ptr[0].name) {
+            continue;
+        }
+        const MirTy held = mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->elem;
+        if (lb_owns(lb, held)) {
+            (void)lb_unsupported(lb); // taking an owned payload out of an Optional is not lowered yet
+            return;
+        }
+        lb->value_of[binding] = mir_b_emit(&lb->b, MOP_OptGet, &subject, 1, (MirImm){0}, held);
+        lb_name_value(lb, lb->value_of[binding], arm->bindings.ptr[0].name, false);
+    }
+}
+
 /* Whether an arm binds a payload that needs a drop: taking it out of an owned scrutinee is not lowered. */
 static bool lb_arm_binds_owned(Lb *lb, const MsArm *arm, MirTy subject_ty) {
     const MirTyData *data = mir_ty_data(lb->m, subject_ty);
@@ -810,21 +853,61 @@ static bool lb_arm_binds_owned(Lb *lb, const MsArm *arm, MirTy subject_ty) {
     return false;
 }
 
-static uint32_t lb_scoped_tail(Lb *lb, const MsStmts *body, const MsExpr *tail);
+/* The value an arm of a match with an owned result hands to the join: what the arm owns as it is, a
+ * text literal as a copy. A reference to a place or a borrowing call is left to the Rust lowering:
+ * whether it moves or is copied, and whether the match is borrowed after all, is the ownership
+ * pass's to say. */
+static LbVal lb_arm_owned(Lb *lb, const MsExpr *value_expr, LbVal value) {
+    if (value.owned) {
+        return value;
+    }
+    if (value_expr->kind != MS_E_TEXT || mir_b_ty(&lb->b, value.v) != MIR_STR) {
+        return lb_unsupported(lb);
+    }
+    return (LbVal){lb_copy(lb, value.v), true};
+}
 
-/* `match` over literal arms or the cases of an enum. Every arm's value joins in one block parameter;
- * a statement match (arms with bodies, no value) joins without one, each arm in its own scope. */
+/* One arm: its statements and final value in a scope of their own, which ends before the join. A
+ * Void match discards the value; an owned result takes it over (`lb_arm_owned`). */
+static LbVal lb_arm(Lb *lb, const MsArm *arm, bool void_result, bool owned_result) {
+    const uint32_t depth = lscope_push(&lb->scopes);
+    lb_statements(lb, &arm->body);
+    LbVal value = {MIR_NONE, false};
+    if (lb->ok && !lb->dead && arm->value != NULL) {
+        lb->branching++;
+        value = lb_expr(lb, arm->value);
+        lb->branching--;
+        if (lb->ok && void_result && value.owned) {
+            lb_drop(lb, value.v);
+        } else if (lb->ok && owned_result) {
+            value = lb_arm_owned(lb, arm->value, value);
+        }
+    }
+    if (lb->ok && !lb->dead) {
+        lb_own_vars(lb, depth, MIR_NONE);
+    }
+    while (lb->nvars > 0 && lb->vars[lb->nvars - 1].depth >= depth) {
+        lb->nvars--;
+    }
+    lscope_pop(&lb->scopes, lb->ok && !lb->dead);
+    return value;
+}
+
+/* `match` over literal arms with one value each. A Bool match is also how `if c: a else: b` is
+ * written. Every arm's value joins in one block parameter. */
 static LbVal lb_match(Lb *lb, const MsExpr *e) {
-    const MsTy result_type = lb->facts->expr_ty[e->id];
-    const bool statements = result_type == lb->void_ty || result_type == lb->never_ty; // arms are statements
-    const MirTy result_ty = statements || result_type == lb->void_ty ? MIR_VOID : lb_mir_ty(lb, result_type);
+    const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     const LbVal scrutinee = lb_expr(lb, e->u.match.scrutinee);
     const MirTy scrutinee_ty = lb->ok ? mir_b_ty(&lb->b, scrutinee.v) : MIR_NONE;
     const MirTyKind scrutinee_kind = lb->ok ? mir_ty_data(lb->m, scrutinee_ty)->kind : MK_INT;
-    const bool aggregate = lb->ok && scrutinee_kind >= MK_TYPE && scrutinee_kind != MK_ALT; // a record: not matched
-    if (!lb->ok || result_ty == MIR_NONE || lb_owns(lb, result_ty) || scrutinee_ty == MIR_STR || aggregate ||
-        lb_is_fn(lb, result_ty)) {
-        return lb_unsupported(lb); // a String result or scrutinee is owned: ownership comes later
+    const bool aggregate = lb->ok && scrutinee_kind >= MK_TYPE && scrutinee_kind != MK_ALT && scrutinee_kind != MK_OPT;
+    // An owned result is joined as a moved value: each arm hands over a value it owns, which is not
+    // a reference a borrowed match would join (the ownership pass's `BorrowedMatch`; see `lb_arm_owned`).
+    const bool owned_result = lb->ok && lb_owns(lb, result_ty);
+    const bool void_result = lb->ok && lb_ty(lb, lb->facts->expr_ty[e->id]) == lb->void_ty;
+    if (!lb->ok || (result_ty == MIR_NONE && !void_result) || (owned_result && lb->b.f.ret_borrowed) ||
+        scrutinee_ty == MIR_STR || aggregate || lb_is_fn(lb, result_ty)) {
+        return lb_unsupported(lb); // a String scrutinee is owned: ownership comes later
     }
     const bool drops_scrutinee = scrutinee.owned && lb_owns(lb, scrutinee_ty); // a temporary: each arm releases it
     for (uint32_t i = 0; drops_scrutinee && i < e->u.match.arms.len; i++) {
@@ -833,7 +916,8 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
         }
     }
     const LbArms arms = lb_open_arms(lb, e);
-    const MirValue result = statements ? MIR_NONE : mir_b_add_block_param(&lb->b, arms.join, result_ty, MM_BORROW);
+    const MirValue result = void_result ? MIR_NONE
+                                        : mir_b_add_block_param(&lb->b, arms.join, result_ty, owned_result ? MM_MOVE : MM_BORROW);
     lb_dispatch(lb, e, scrutinee.v, &arms);
     if (arms.wildcard < 0) {
         mir_b_seal_block(&lb->b, arms.fallback);
@@ -847,27 +931,22 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
         lb_enter(lb, arms.blocks[i]);
         if (scrutinee_kind == MK_ALT) {
             lb_bind_arm(lb, arm, scrutinee.v);
+        } else if (scrutinee_kind == MK_OPT && lb->facts->arm_case[arm->id] == 0) {
+            lb_bind_some(lb, arm, scrutinee.v);
         }
-        if (statements) {
-            (void)lb_scoped_tail(lb, &arm->body, arm->value);
-        } else if (arm->body.len != 0) {
-            return lb_unsupported(lb); // statements before the arm's value share its scope
-        }
-        lb->branching++;
-        const LbVal value = statements ? (LbVal){MIR_NONE, false} : lb_expr(lb, arm->value);
-        lb->branching--;
-        if (lb->ok && drops_scrutinee) {
+        const LbVal value = lb_arm(lb, arm, void_result, owned_result);
+        if (lb->ok && !lb->dead && drops_scrutinee) {
             lb_drop(lb, scrutinee.v);
         }
         if (lb->ok && !lb->dead) {
-            mir_b_br(&lb->b, arms.join, statements ? NULL : &value.v, statements ? 0 : 1);
+            mir_b_br(&lb->b, arms.join, void_result ? NULL : &value.v, void_result ? 0 : 1);
             live = true;
         }
     }
     mir_b_seal_block(&lb->b, arms.join);
-    mir_b_switch_to(&lb->b, arms.join);
-    lb->dead = statements && !live;
-    return (LbVal){statements ? mir_b_unit(&lb->b) : result, false};
+    lb_enter(lb, arms.join);
+    lb->dead = !live;
+    return (LbVal){result, owned_result};
 }
 
 /* ---- statements ---- */
@@ -1034,16 +1113,11 @@ static void lb_return(Lb *lb, const MsStmt *s) {
 }
 
 
-/* Lowers `body`, then `tail` (a Void expression ending an arm) in its own ownership scope, whose end is
- * where control falls out of it. Returns the scope's depth. */
-static uint32_t lb_scoped_tail(Lb *lb, const MsStmts *body, const MsExpr *tail) {
+/* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
+ * the scope's depth. */
+uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
     const uint32_t depth = lscope_push(&lb->scopes);
     lb_statements(lb, body);
-    if (tail != NULL && !lb->dead) {
-        lb->branching++;
-        (void)lb_expr(lb, tail);
-        lb->branching--;
-    }
     if (!lb->dead) {
         lb_own_vars(lb, depth, MIR_NONE);
     }
@@ -1052,12 +1126,6 @@ static uint32_t lb_scoped_tail(Lb *lb, const MsStmts *body, const MsExpr *tail) 
     }
     lscope_pop(&lb->scopes, !lb->dead);
     return depth;
-}
-
-/* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
- * the scope's depth. */
-uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
-    return lb_scoped_tail(lb, body, NULL);
 }
 
 /* Starts emitting into `block`, which some live edge reaches. */

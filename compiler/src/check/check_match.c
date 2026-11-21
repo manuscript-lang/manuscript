@@ -99,38 +99,26 @@ static bool match_literal_arm(MsBody *b, const MsArm *arm, bool last, MsTy scrut
     return true;
 }
 
-/* The result type: the expected one, else the first arm's value. Arms are all values or all
- * statements; a mix, or a value that is not a primitive, is left to Rust. A statement match falls
- * through when some arm does (`b->match_falls`); the statement after one whose arms all return or
- * break is unreachable. */
-static MsTy match_arm_values(MsBody *b, const MsExpr *e, MsTy expected) {
-    const MsArm *const *arms = (const MsArm *const *)e->u.match.arms.ptr;
-    const uint32_t count = e->u.match.arms.len;
-    MsTy result = expected;
-    bool statements = false; // the arms are statements, ending in a `Void` expression or none
-    bool any_falls = false;
-    for (uint32_t i = 0; i < count && b->supported; i++) {
-        const MsArm *arm = arms[i];
-        const uint32_t first = b->facts->bindings.count;
-        const bool falls = ms_body_block(b, &arm->body);
-        const MsTy ty = arm->value == NULL ? MS_TY_NONE : ms_body_expr(b, arm->value, i == 0 || !statements ? result : MS_TY_NONE);
-        const bool statement = arm->value == NULL || ty == b->void_ty || ty == b->never_ty;
-        if (!b->supported || (arm->value != NULL && ty == MS_TY_NONE) || (i > 0 && statement != statements) ||
-            (!statement && arm->body.len != 0)) { // statements before a value are not lowered
-            return ms_body_unsupported(b);
-        }
-        statements = statement;
-        any_falls = any_falls || (falls && ty != b->never_ty);
-        result = statement ? result : ty;
-        for (uint32_t binding = first; binding < b->facts->bindings.count; binding++) {
-            b->closed[binding] = true;
-        }
+/* One arm's body: a statement arm runs its block (`falls` says it can reach the end), a value arm
+ * is checked against the result so far, which its value then fixes. The arm's bindings close
+ * with it. */
+static bool match_arm_body(MsBody *b, const MsArm *arm, bool valued, MsTy *result, bool *falls) {
+    const uint32_t first = b->facts->bindings.count;
+    if ((arm->value != NULL) != valued) {
+        return false;
     }
-    if (!b->supported || (statements && !(expected == MS_TY_NONE || expected == b->void_ty))) {
-        return ms_body_unsupported(b);
+    if (!valued) {
+        *falls = ms_body_block(b, &arm->body) || *falls;
+        ms_body_close_from(b, first);
+        return b->supported;
     }
-    b->match_falls = !statements || any_falls;
-    return !statements ? result : any_falls ? b->void_ty : b->never_ty;
+    const MsTy ty = ms_body_block_value(b, &arm->body, arm->value, *result);
+    ms_body_close_from(b, first);
+    if (ty == MS_TY_NONE || ty == b->void_ty) {
+        return false;
+    }
+    *result = ty;
+    return true;
 }
 
 MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
@@ -152,15 +140,23 @@ MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
     if (count == 0 || (e->u.match.arms.ptr[0]->from_if && ty != b->bool_ty)) {
         return ms_body_unsupported(b);
     }
+    const bool valued = e->u.match.arms.ptr[0]->value != NULL;
+    if (!valued && expected != MS_TY_NONE && expected != b->void_ty) {
+        return ms_body_unsupported(b);
+    }
     MatchSeen seen = {0};
-    bool ok = true;
-    for (uint32_t i = 0; i < count && ok; i++) {
-        ok = match_literal_arm(b, e->u.match.arms.ptr[i], i == count - 1, ty, &seen);
+    MsTy result = valued ? expected : b->void_ty;
+    bool ok = true, falls = false;
+    for (uint32_t i = 0; i < count && ok && b->supported; i++) {
+        const MsArm *arm = e->u.match.arms.ptr[i];
+        ok = match_literal_arm(b, arm, i == count - 1, ty, &seen) && match_arm_body(b, arm, valued, &result, &falls);
     }
     const bool covered = seen.wildcard || (ty == b->bool_ty && seen.has_true && seen.has_false);
     ms_buf_free(&seen.keys);
-    if (!ok || !covered) {
+    if (!ok || !covered || !b->supported) {
         return ms_body_unsupported(b);
     }
-    return match_arm_values(b, e, expected);
+    // A statement match falls through when some arm does; a value match always has a value.
+    b->match_falls = valued || falls;
+    return b->match_falls ? result : b->never_ty;
 }

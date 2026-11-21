@@ -570,6 +570,8 @@ void ms_idle_drain(uintptr_t group) {
     }
 }
 
+void ms_idle_group_free(uintptr_t group) { msrt_free((IdleGroup *)group); }
+
 size_t ms_idle_inflight(uintptr_t group) { return atomic_load(&((IdleGroup *)group)->inflight); }
 
 void ms_idle_cancel(uintptr_t group) {
@@ -602,6 +604,12 @@ void ms_idle_teardown(void) {
         row_unref(waiting.items[--waiting.count].row);
     }
     tidy_run(false);
+    msrt_free(waiting.items);
+    waiting.items = NULL;
+    waiting.capacity = 0;
+    msrt_free(tidy.promises);
+    msrt_free(tidy.fds);
+    tidy = (Tidy){0};
 }
 
 uint32_t ms_idle_count(uint32_t isolate) { return isolate < MS_MAX_ISOLATES ? atomic_load(&counts[isolate]) : 0; }

@@ -30,6 +30,8 @@ void msrt_list_push(MsList *v, const MsTypeDesc *d, const uint8_t *e);
 void msrt_list_reserve(MsList *v, const MsTypeDesc *d, int64_t extra);
 /* ms-sig: msrt_list_length(v: *const VecVal) -> i64 @domain=collection @leaf @op=list.len */
 int64_t msrt_list_length(const MsList *v);
+/* ms-sig: msrt_list_is_empty(v: *const VecVal) -> u8 @domain=collection @leaf @seq=list.len:$0>int,iconst:#0>int,icmp.eq:%0:%1>bool */
+uint8_t msrt_list_is_empty(const MsList *v);
 /* ms-sig: msrt_list_append(v: *mut VecVal, d: ElemDesc, e: *const u8) @domain=collection @leaf @op=list.push */
 void msrt_list_append(MsList *v, const MsTypeDesc *d, const uint8_t *e);
 /* ms-sig: msrt_list_at(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8) -> *const u8 @domain=collection @leaf */

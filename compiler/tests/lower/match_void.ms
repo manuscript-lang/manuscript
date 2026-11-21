@@ -1,13 +1,12 @@
-fn note(n: Int) Void:
-	return
+fn show(n: Int) Int:
+	return n
 
-fn pick(n: Int) Int:
-	var total = 0
+fn kind(n: Int) Int:
 	match n:
-		1: total = total + 10
-		2: note(n)
-		_: total = total + 1
-	return total
+		0: show(1)
+		_: show(2)
+
+	return 3
 
 fn main() Int:
-	return pick(1) + pick(2) + pick(3)
+	return kind(1)
