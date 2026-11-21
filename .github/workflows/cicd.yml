@@ -252,7 +252,7 @@ jobs:
           arch: ${{ matrix.arch }}
       - name: Build ms
         run: |
-          make build
+          RUSTC_WRAPPER= make build
       - name: Crash report
         run: |
           mkdir -p /tmp/p && cd /tmp/p
