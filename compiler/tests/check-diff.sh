@@ -176,6 +176,11 @@ if ! grep -q 'body_match_leaving_arm.ms 6:1$' "$out/bodies.keys" || ! grep -q 'b
     echo "FAIL bodies: a match with a leaving arm is no longer checked in C (compiler/tests/scope/body_match_leaving_arm.ms)"
     status=1
 fi
+# An instance of a generic type given for an interface it fits by its generic methods is claimed.
+if ! grep -q 'body_generic_receiver_interface.ms 17:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a generic type given for an interface is no longer checked in C (compiler/tests/scope/body_generic_receiver_interface.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else
