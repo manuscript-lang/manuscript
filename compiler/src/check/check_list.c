@@ -96,6 +96,9 @@ MsTy ms_body_index(MsBody *b, const MsExpr *e) {
     if (!ms_expr_index(e, &left, &index) || (e->kind == MS_E_APPLY && !list_receiver_is_local(b, left))) {
         return ms_body_unsupported(b);
     }
+    if (b->borrow_ok == e && left->kind == MS_E_CALL) {
+        b->borrow_ok = left; // `text.split(",")[0]` used in place: the element borrows the temporary list
+    }
     const MsTy list = ms_body_expr(b, left, MS_TY_NONE);
     if (list != MS_TY_NONE && left->kind != MS_E_MAP && ms_body_is_map(b, list)) {
         return ms_body_map_index(b, list, index);
