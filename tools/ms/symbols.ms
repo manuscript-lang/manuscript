@@ -287,7 +287,12 @@ fn param_kind(at: Int, p: String) String:
 	if ty == "ValDesc": return "MS_RT_VAL_DESC"
 	if ty == "HasRaw": return "MS_RT_HAS"
 	if ty == "ErrSlot": return "MS_RT_ERR"
-	if ty.starts_with("*mut ") and ty.ends_with("Out") and ty != "*mut InfoOut" and pname == "out": return "MS_RT_OUT_RECORD"
+	if (
+		ty.starts_with("*mut ")
+		and ty.ends_with("Out")
+		and ty != "*mut InfoOut"
+		and pname == "out"
+	): return "MS_RT_OUT_RECORD"
 	if ty.starts_with("*mut *mut ObjCell<") and pname == "out": return "MS_RT_OUT_HANDLE"
 	if ty.starts_with("*const ObjCell<") and pname.starts_with("handle "): return "MS_RT_HANDLE"
 	if ty == "*const u8" and pname == "key": return "MS_RT_KEY_REF"
