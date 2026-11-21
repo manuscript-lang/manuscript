@@ -38,11 +38,10 @@ MsTy lb_ty(Lb *lb, MsTy ty) {
     if (lb->nsub == 0 || ty == MS_TY_NONE) {
         return ty;
     }
-    MsArena scratch = {0};
-    if (ms_ty_kind(&lb->c->tys, ty) != MS_K_VARIABLE && !ms_ty_has_variable(&lb->c->tys, &scratch, ty)) {
-        ms_arena_free(&scratch);
+    if (!ms_ty_has_variable(&lb->c->tys, ty)) {
         return ty;
     }
+    MsArena scratch = {0};
     const MsTySubst subst = {lb->sub_vars, lb->sub_args, lb->nsub};
     const MsTy result = ms_ty_subst(&lb->mut->tys, &scratch, ty, &subst);
     ms_arena_free(&scratch);
