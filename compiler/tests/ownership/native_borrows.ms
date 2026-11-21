@@ -76,3 +76,6 @@ fn chained(text: String) Int:
 fn bound_temp(text: String) Int:
 	parts := text.clone().split(",")
 	return parts.length()
+
+fn first_field(text: String) String:
+	return text.split(",")[0].clone()
