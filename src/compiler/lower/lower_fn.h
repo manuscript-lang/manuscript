@@ -8,7 +8,13 @@
 /* How the consumer takes an expression's value: it reads it in place, or it takes ownership. */
 typedef enum LowerWant { LW_BORROW, LW_MOVE } LowerWant;
 
-enum { LOWER_MAX_SCOPES = 64 };
+enum { LOWER_MAX_SCOPES = 64, LOWER_MAX_LOOPS = 32 };
+
+/* Where `break` and `continue` go, and how many scopes were open outside the loop. */
+typedef struct LowerLoop {
+  MirBlock break_to, continue_to;
+  uint32_t depth;
+} LowerLoop;
 
 typedef struct LowerFn {
   Lower *cx;
@@ -26,6 +32,10 @@ typedef struct LowerFn {
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
   uint32_t nopen;
   bool failed;
+  bool terminated;
+  uint32_t nloops;
+  LowerLoop loops[LOWER_MAX_LOOPS]; /* the loops open now, outermost first */
+  uint32_t local_count; /* the current block ended in a return: the statements after it are unreachable */
 } LowerFn;
 
 #define fn_fail(fn, ...) ((fn)->failed = true, lower_fail((fn)->cx, __VA_ARGS__))
@@ -54,6 +64,10 @@ void fn_own_result(LowerFn *fn, MirValue result);
 bool fn_stmts(LowerFn *fn, MsStmts stmts);
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
+
+/* The value of a variable, and a new one for local `local` of the function. */
+MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty);
+bool fn_cond_branch(LowerFn *fn, const MsExpr *cond, MirBlock then, MirBlock otherwise);
 
 /* The MIR type of the checker's type `ty` in this function (its variables replaced). */
 static inline MirTy fn_type(LowerFn *fn, MsTy ty) {
