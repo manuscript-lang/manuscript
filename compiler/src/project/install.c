@@ -120,7 +120,6 @@ static void install_read_only(MsArena *a, const char *dir) {
 typedef struct Remote {
     MsArena *arena;
     const char *cache;
-    bool unsupported;       /* a manifest the C reader does not cover: the caller falls back */
     MsBuf records;          /* CopyRecord */
 } Remote;
 
@@ -384,7 +383,7 @@ static const char *install_strip(MsArena *a, const char *text, const char *needl
 
 /* A package is a library with a manifest, no entry, no embedded files and no top-level `@` directory (which would
  * look like a nested package in diagnostics). The checker enforces everything about its source. */
-static bool install_validate(Remote *r, MsArena *a, const char *key, const char *dir, const char **error) {
+static bool install_validate(MsArena *a, const char *key, const char *dir, const char **error) {
     const char *manifest = MS_PATH_JOIN(a, dir, "ms.toml");
     struct stat info;
     if (stat(manifest, &info) != 0 || !S_ISREG(info.st_mode)) {
@@ -396,7 +395,6 @@ static bool install_validate(Remote *r, MsArena *a, const char *key, const char 
     if (!ms_project_read(a, manifest, &package, &failure)) {
         /* The download sits in a temporary directory; name paths from the package root. */
         const char *message = install_strip(a, ms_project_error_text(a, &failure), ms_arena_fmt(a, "%s/", dir).ptr);
-        r->unsupported = ms_project_error_is_unsupported(&failure);
         *error = ms_arena_fmt(a, "package %s: %s", key, message).ptr;
         return false;
     }
@@ -499,7 +497,7 @@ static bool install_fetch_commit(MsArena *a, const char *key, const char *url, c
     return INSTALL_GIT(a, temporary, protocols, &ignored, error, "checkout", "--quiet", "--force", *commit, "--");
 }
 
-static bool install_download_into(Remote *r, MsArena *a, const char *key, const char *url, const char *reference,
+static bool install_download_into(MsArena *a, const char *key, const char *url, const char *reference,
                                   const MsLockEntry *locked, const char *temporary, const char *root, const char *protocols,
                                   Download *out, const char **error) {
     const char *commit;
@@ -520,7 +518,7 @@ static bool install_download_into(Remote *r, MsArena *a, const char *key, const 
                               key, locked->revision, locked->sha256, hash, key).ptr;
         return false;
     }
-    if (!install_validate(r, a, key, temporary, error) || !install_store(a, temporary, root, hash, index, &out->was_cached, error)) {
+    if (!install_validate(a, key, temporary, error) || !install_store(a, temporary, root, hash, index, &out->was_cached, error)) {
         return false;
     }
     out->entry = (MsLockEntry){.key = "", .spec = "", .revision = commit, .sha256 = hash};
@@ -541,7 +539,7 @@ static bool install_download(Remote *r, MsArena *a, const char *url, const char 
     const char *temporary = MS_PATH_JOIN(a, root, ms_arena_fmt(a, ".tmp-%ld", (long)getpid()).ptr);
     const char *ignored;
     bool ok = install_make_dirs(a, root, error) && install_remove_all(a, temporary, error) && install_make_dirs(a, temporary, error) &&
-              install_download_into(r, a, url, url, ms_arena_strndup(a, reference, strlen(reference)), locked, temporary, root,
+              install_download_into(a, url, url, ms_arena_strndup(a, reference, strlen(reference)), locked, temporary, root,
                                     install_protocols(nested), out, error);
     (void)install_remove_all(a, temporary, &ignored);
     if (ok) {
@@ -633,7 +631,6 @@ static bool remote_fetch(void *user, MsArena *a, const char *url, const char *re
     MsProjectError failure = {0};
     const char *manifest = MS_PATH_JOIN(a, r->cache, download.entry.sha256, "ms.toml");
     if (!ms_project_read(a, manifest, &package, &failure)) {
-        r->unsupported = ms_project_error_is_unsupported(&failure);
         *error = ms_arena_fmt(a, "package %s: %s", url, ms_project_error_text(a, &failure)).ptr;
         return false;
     }
@@ -647,14 +644,13 @@ static bool remote_fetch(void *user, MsArena *a, const char *url, const char *re
 /* ---- the install procedure ---- */
 
 /* Whether `directory` or an ancestor holds a workspace root. */
-static bool install_in_workspace(MsArena *a, const char *directory, bool *unsupported) {
+static bool install_in_workspace(MsArena *a, const char *directory) {
     for (const char *dir = directory;;) {
         const char *candidate = MS_PATH_JOIN(a, dir, "ms.toml");
         MsProject project;
         MsProjectError failure = {0};
         if (access(candidate, F_OK) == 0) {
-            if (ms_project_read(a, candidate, &project, &failure) ? project.is_workspace : ms_project_error_is_unsupported(&failure)) {
-                *unsupported = true;
+            if (ms_project_read(a, candidate, &project, &failure) && project.is_workspace) {
                 return true;
             }
         }
@@ -728,9 +724,8 @@ bool ms_install(MsArena *a, const MsInstallOptions *options, MsInstallReport *ou
         if (!ms_project_read(a, options->manifest, project, err)) {
             return false;
         }
-        bool unsupported = project->is_workspace;
-        if (unsupported || install_in_workspace(a, project->root, &unsupported)) {
-            ms_project_error_unsupported(err, "install in a workspace");
+        if (project->is_workspace || install_in_workspace(a, project->root)) {
+            ms_project_error_message(err, "this project is part of a workspace, which installs all of its members into one ms.lock; install them together");
             return false;
         }
         lock_root = project->root;
@@ -748,11 +743,7 @@ bool ms_install(MsArena *a, const MsInstallOptions *options, MsInstallReport *ou
     const bool resolved_ok = ms_resolve(a, roots, nroots, &old, options->update, options->update_count, &interface, &resolved, &failure);
     if (!resolved_ok) {
         ms_buf_free(&remote.records);
-        if (remote.unsupported) {
-            ms_project_error_unsupported(err, failure);
-        } else {
-            ms_project_error_message(err, failure);
-        }
+        ms_project_error_message(err, failure);
         return false;
     }
     if (!install_write_lock(a, lock_root, &resolved, options, err)) {

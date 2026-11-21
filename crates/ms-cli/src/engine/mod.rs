@@ -197,7 +197,7 @@ impl<L: Lower> Engine<L> {
                 Err(why) => return Err(BackendError(why)),
             }
         } else {
-            ms_mir::print::print_module(&module)
+            ms_mir::print::print_module_unique(&module)
         };
         Ok(crate::util::write_output(
             io,

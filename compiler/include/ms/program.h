@@ -11,6 +11,9 @@
  * a program that checks several files calls this before each. */
 void ms_program_begin(MsCheck *c);
 
+/* Desugars every bundled standard-library module once (inherent impls into methods). */
+void ms_program_desugar_bundled(MsCheck *c);
+
 /* Checks the bodies of module `module`, whose text is `text`: desugars its inherent methods, adds
  * the impls of the prelude's modules and of every module it imports (standard or project, through
  * `import_targets`) to the method table, resolves its own, then runs `ms_module_check_bodies_with`.

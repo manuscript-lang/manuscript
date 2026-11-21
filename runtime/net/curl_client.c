@@ -77,6 +77,7 @@ static struct {
     uv_mutex_t lock;
     CURLM *multi;
     MsSysThread *thread;
+    bool global; /* curl_global_init has run: libcurl's allocators are set, so every other call may follow */
     MsCurlTransfer *work;
     MsCurlClient *dead; /* released clients the driver frees: a share's connections belong to the driver's multi */
     bool stop;
@@ -326,13 +327,30 @@ static void driver_main(void *argument) {
     }
 }
 
+/* Initializes libcurl once. The caller holds the lock. libcurl sets its allocators here, so no other call (not
+ * even curl_share_init) is valid before it: on macOS the unset allocator is a null function pointer. */
+static bool global_ensure(void) {
+    if (!driver.global) {
+        driver.global = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
+    }
+    return driver.global;
+}
+
+static bool global_ready(void) {
+    uv_once(&driver_once, driver_init_lock);
+    uv_mutex_lock(&driver.lock);
+    const bool ready = global_ensure();
+    uv_mutex_unlock(&driver.lock);
+    return ready;
+}
+
 /* Starts the driver if it is not running. */
 static bool driver_ensure(void) {
     uv_once(&driver_once, driver_init_lock);
     uv_mutex_lock(&driver.lock);
     if (driver.thread == NULL) {
         driver.stop = false;
-        if (curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK) {
+        if (global_ensure()) {
             driver.multi = curl_multi_init();
         }
         driver.thread = driver.multi == NULL ? NULL : ms_sys_thread_spawn(DRIVER_STACK, driver_main, NULL);
@@ -361,6 +379,7 @@ void ms_curl_shutdown(void) {
         curl_multi_cleanup(driver.multi);
         curl_global_cleanup();
         uv_mutex_lock(&driver.lock);
+        driver.global = false;
         driver.thread = NULL;
         driver.multi = NULL;
         uv_mutex_unlock(&driver.lock);
@@ -380,6 +399,9 @@ static uint8_t *copy_bytes(MsBytes bytes) {
 static char *terminated(MsBytes text);
 
 MsCurlClient *ms_curl_client_new(const MsCurlClientOptions *options) {
+    if (!global_ready()) {
+        return NULL;
+    }
     MsCurlClient *client = calloc(1, sizeof *client);
     if (client == NULL) {
         return NULL;

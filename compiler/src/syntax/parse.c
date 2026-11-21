@@ -2096,21 +2096,6 @@ bool ms_plain_index_target(const MsExpr *left, const MsExpr *index) {
     return plain_chain(left) && plain_index(index);
 }
 
-/* The receiver and index of `left[index]`, however the bracket was parsed. */
-static bool index_parts(const MsExpr *e, MsExpr **left, MsExpr **index) {
-    if (e->kind == MS_E_INDEX) {
-        *left = e->u.bin.left;
-        *index = e->u.bin.right;
-        return true;
-    }
-    if (e->kind == MS_E_APPLY && e->u.apply.value != NULL && e->u.apply.types.len == 1) {
-        *left = e->u.apply.left;
-        *index = e->u.apply.value;
-        return true;
-    }
-    return false;
-}
-
 static MsTypeRef *copy_type(Parser *p, const MsTypeRef *t);
 
 static MsTypeRefs copy_types(Parser *p, MsTypeRefs types) {
@@ -2177,12 +2162,18 @@ static MsExpr *clone_chain(Parser *p, const MsExpr *e) {
     return c;
 }
 
-/* `xs[i] = value` as the call of the member `[]=`. With `reread`, the value reads the same
+bool ms_is_index_store(const MsNames *names, const MsExpr *call) {
+    const MsExpr *callee = call->u.call.callee;
+    if (callee->kind != MS_E_MEMBER) {
+        return false;
+    }
+    const MsStr name = ms_name(names, callee->u.member.name);
+    return name.len == strlen(MS_INDEX_SET) && memcmp(name.ptr, MS_INDEX_SET, name.len) == 0;
+}
+
+/* `xs[i] = value` (the receiver `left` and `index` of the target at `pos`) as the call of the member `[]=`. With `reread`, the value reads the same
  * element, so a name or field key is cloned for the store. */
-static MsExpr *index_set(Parser *p, MsExpr *target, MsExpr *value, bool reread) {
-    MsExpr *left = NULL, *index = NULL;
-    index_parts(target, &left, &index);
-    MsPos pos = target->pos;
+static MsExpr *index_set(Parser *p, MsPos pos, MsExpr *left, MsExpr *index, MsExpr *value, bool reread) {
     if (reread && (index->kind == MS_E_NAME || index->kind == MS_E_MEMBER)) {
         MsExpr *receiver = clone_chain(p, index);
         MsSym name = intern(p, "clone");
@@ -2246,16 +2237,16 @@ MS_NODISCARD static bool compound(Parser *p, MsToken start, MsExpr *e, MsStmt *s
     MsToken equal = ahead(p, 1);
     bool plain = plain_chain(e);
     MsExpr *copy = plain ? clone_chain(p, e) : NULL;
-    MsExpr *l, *ix;
+    MsExpr *l = NULL, *ix = NULL;
     MsBinaryOp bop;
-    if (copy != NULL && index_parts(e, &l, &ix)) {
+    if (copy != NULL && ms_expr_index(e, &l, &ix)) {
         p->at += 2;
         arith_op((MsTok)op.kind, &bop);
         MsExpr *right = NULL;
         if (!expression(p, 0, &right)) return false;
         MsExpr *value = mk_binary_at(p, op, bop, copy, right);
         st->kind = MS_S_CALL;
-        st->u.expr = index_set(p, e, value, true);
+        st->u.expr = index_set(p, e->pos, l, ix, value, true);
         return true;
     }
     if (!assign_target(p, start, e, st)) return false;
@@ -2369,12 +2360,12 @@ static void report_standalone_expression(Parser *p, MsToken t, const MsExpr *e) 
 
 /* `target = value`; an index target becomes the call that sets the element. */
 MS_NODISCARD static bool assignment_statement(Parser *p, MsToken t, MsExpr *e, MsStmt *st) {
-    MsExpr *left, *index;
+    MsExpr *left = NULL, *index = NULL;
     MsExpr *value = NULL;
-    if (index_parts(e, &left, &index)) {
+    if (ms_expr_index(e, &left, &index)) {
         if (!expression(p, 0, &value)) return false;
         st->kind = MS_S_CALL;
-        st->u.expr = index_set(p, e, value, false);
+        st->u.expr = index_set(p, e->pos, left, index, value, false);
         return true;
     }
     if (!assign_target(p, t, e, st)) return false;
@@ -3774,7 +3765,7 @@ MS_NODISCARD static bool postfix(Parser *p, MsExpr *e, MsExpr **out) {
             Args args = {0};
             if (!call_arguments(p, &args)) return false;
             e = mk_call(p, pos, e, args.ptr, args.len);
-        } else if (kind(p) == MS_T_Question && index_parts(e, &l, &ix) && ahead(p, 1).kind != MS_T_Dot) {
+        } else if (kind(p) == MS_T_Question && ms_expr_index(e, &l, &ix) && ahead(p, 1).kind != MS_T_Dot) {
             p->at++;
             MsPos pos = e->pos;
             MsExpr *pr = mk(p, pos, MS_E_PROBE);

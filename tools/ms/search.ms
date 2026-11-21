@@ -4,14 +4,14 @@
 // crates/ms-cli/src/engine/search.rs. Project declarations arrive with the C checker;
 // until then `project_total` is 0 and only library matches appear.
 //
-// Until the C checker can build the model, it is read from the JSON file the Rust
-// `ms-tooling` example `api_model` prints.
-//   ms run tools/ms/search.ms -- MODEL.json [--json] [--limit N] [name or words...]
+// The model is built by the C checker (`ms_tool_api_model`, compiler/src/check/api_model.c), which
+// checks the embedded standard library; compiler/tests/api-model-diff.sh holds it byte for byte to
+// the JSON the Rust `ms-tooling` example `api_model` prints.
+//   ms run tools/ms/search.ms --link target/c-tool/libmstool.a -- [--json] [--limit N] [name or words...]
 import (
-	Arg, Matches from "@std/cli/command.ms",
+	Matches from "@std/cli/command.ms",
 	parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
-	read_file from "@std/os/fs.ms",
 	is_alphabetic, is_lowercase, is_numeric, is_uppercase from "@std/unicode.ms",
 
 	run_tool, tree_tool from "./cli.ms",
@@ -20,6 +20,8 @@ import (
 
 type Model:
 	modules: List[Module]
+
+extern fn ms_tool_api_model() String
 
 // ---- Names and text helpers ----
 
@@ -829,14 +831,13 @@ fn run(modules: List[Module], request: Request) String:
 
 	return render_text(query, described, 0, 0)
 
-// ms: allow_effect std.fs.read
 // ms: allow_effect std.console.write
 fn show(m: Matches) Void!:
-	model := parse[Model](read_file(m.string("model")).wait()?.decode_utf8().get_or(""))?
+	model := parse[Model](ms_tool_api_model())?
 	request := parse_request(m)?
 	var out = stdout()
 	out.write(run(model.modules, request))?
 	return ok()
 
 fn main() Int:
-	return run_tool(tree_tool("search_symbol", [Arg("model")]), show)
+	return run_tool(tree_tool("search_symbol", []), show)

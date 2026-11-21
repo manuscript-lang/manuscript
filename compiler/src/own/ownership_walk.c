@@ -14,6 +14,8 @@
 #include "ms/check.h"
 #include "ms/methods.h"
 #include "ms/ownership.h"
+#include "ms/rt_ops.h"
+#include "ms/parse.h"
 
 /* Who may change a binding (`Perm` in walk.rs). */
 typedef enum Perm { PERM_MUTABLE, PERM_IMMUTABLE, PERM_BORROWED } Perm;
@@ -323,6 +325,7 @@ static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
         }
         w->consumed |= 1u << index;
     }
+    w->facts->moved_out[e->id] = true;
     own_record(w, e, binding);
 }
 
@@ -411,8 +414,8 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         return;
     case MS_E_INDEX: /* only a scalar element is read: the checker admits no other */
     case MS_E_APPLY: { /* `xs[i]` read as a type application: the checker admits it only as an index */
-        const MsExpr *list = NULL;
-        const MsExpr *index = NULL;
+        MsExpr *list = NULL;
+        MsExpr *index = NULL;
         if (!ms_expr_index(e, &list, &index)) {
             w->supported = false;
             return;
@@ -565,8 +568,8 @@ static bool own_mentions(const OwnWalk *w, const MsExpr *e, uint32_t binding) {
         return false;
     case MS_E_INDEX: return own_mentions(w, e->u.bin.left, binding) || own_mentions(w, e->u.bin.right, binding);
     case MS_E_APPLY: {
-        const MsExpr *list = NULL;
-        const MsExpr *index = NULL;
+        MsExpr *list = NULL;
+        MsExpr *index = NULL;
         return !ms_expr_index(e, &list, &index) || own_mentions(w, list, binding) || own_mentions(w, index, binding);
     }
     case MS_E_MEMBER:
@@ -682,8 +685,8 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
                 own_mutate(w, arg, binding);
                 continue;
             }
-            const MsExpr *part_of = NULL;
-            const MsExpr *part_at = NULL;
+            MsExpr *part_of = NULL;
+            MsExpr *part_at = NULL;
             if (ms_expr_index(arg, &part_of, &part_at) || arg->kind == MS_E_MEMBER) {
                 w->supported = false; /* a part of a variable is a place too: changing it is left to Rust */
                 return;
@@ -726,9 +729,17 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
         w->supported = false;
         return;
     }
-    const bool mutating = (w->facts->methods->access[w->facts->call_method[e->id]] & MS_METHOD_MUTATING) != 0;
+    const uint8_t access = w->facts->methods->access[w->facts->call_method[e->id]];
+    const bool mutating = (access & MS_METHOD_MUTATING) != 0;
     const uint32_t binding = own_argument_local(w, receiver);
-    if (mutating) {
+    if ((access & MS_METHOD_CONSUMING) != 0) {
+        // The method takes its receiver: a local is moved out, a temporary is dropped by the method.
+        if (mutating) {
+            w->supported = false;
+            return;
+        }
+        own_expr(w, receiver, DEMAND_MOVE);
+    } else if (mutating) {
         bool overlaps = binding == MS_NONE;
         for (uint32_t i = 0; i < e->u.call.args.len && !overlaps; i++) {
             overlaps = own_mentions(w, e->u.call.args.ptr[i].value, binding);
@@ -814,8 +825,8 @@ static void own_record_owned_borrow(OwnWalk *w, const MsExpr *e, const OwnSummar
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const MsExpr *callee_expr = e->u.call.callee;
-    if (w->facts->call_reordered[e->id] && !own_is_constructor(w, e)) { /* a construction reads its arguments in source order */
-        w->supported = false; /* the arguments are paired with parameters by index below */
+    if ((w->facts->call_reordered[e->id] && !own_is_constructor(w, e)) || ms_is_index_store(w->check->names, e)) { /* a construction reads its arguments in source order */
+        w->supported = false; /* the arguments are paired with parameters by index below; a store has its own order */
         return;
     }
     if (callee_expr->kind == MS_E_NAME && w->facts->res_kind[callee_expr->id] == MS_RES_BINDING) {
@@ -981,6 +992,18 @@ static bool own_is_value_call(const OwnWalk *w, const MsExpr *e) {
     return callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_BINDING;
 }
 
+/* An operation of a primitive whose runtime function is declared `@fresh`: its result is a new value,
+ * never a reference into the receiver or an argument (`s.clone()`). */
+static bool own_is_fresh_intrinsic(const OwnWalk *w, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    if (callee->kind != MS_E_MEMBER || w->facts->call_interface[e->id] == MS_TY_NONE ||
+        ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
+        return false;
+    }
+    const MsRtFn *fn = ms_rt_method_fn(w->check, w->facts->call_receiver[e->id], callee->u.member.name);
+    return fn != NULL && fn->fresh;
+}
+
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
@@ -992,7 +1015,7 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE);
         return;
     }
-    if (e->kind == MS_E_CALL && !own_is_constructor(w, e) && !own_is_value_call(w, e)) {
+    if (e->kind == MS_E_CALL && !own_is_constructor(w, e) && !own_is_value_call(w, e) && !own_is_fresh_intrinsic(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
         if (callee == NULL || (callee->returns_borrow && own_is_self_call(w, e))) {
             w->supported = false;

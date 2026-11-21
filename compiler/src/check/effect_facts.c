@@ -104,13 +104,15 @@ static uint32_t fx_edges(Fx *fx, uint32_t i, const MsScanNode *scan) {
 static void fx_fill_method(Fx *fx, uint32_t i, uint32_t row) {
     const MsCheck *c = fx->c;
     const MsMethods *methods = fx->methods;
-    const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
+    const MsMethod *method = ms_method_of_func(methods->decl[row]);
     const MsModId m = methods->module[row];
     MsReachNode *node = &fx->reach[i];
     const MsSourceLines *lines = fx_lines(fx, m);
     const MsDirectives above = ms_lines_above(fx->arena, *lines, method->pos.line);
     node->file = ms_name(c->names, c->mods[m].path);
-    node->label = ms_name(c->names, method->func.name);
+    const MsStr receiver = ms_name(c->names, c->tys.name[methods->receiver[row]]);
+    const MsStr method_name = ms_name(c->names, method->func.name);
+    node->label = ms_arena_fmt(fx->arena, "%.*s.%.*s", (int)receiver.len, receiver.ptr, (int)method_name.len, method_name.ptr);
     node->pos = method->pos;
     const MsEffectModule *own = fx->module[m];
     node->project = own != NULL;
@@ -204,7 +206,7 @@ static void sites_expr(void *ctx, const MsExpr *e) {
     const uint32_t row = s->facts->call_method[e->id];
     if (row != MS_NONE && ms_effect_method_is_node(s->c, s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
         const MsMethods *methods = s->facts->methods;
-        const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
+        const MsMethod *method = ms_method_of_func(methods->decl[row]);
         if (methods->module[row] == s->project) {
             sites_push(s, &s->calls, &s->ncalls, &s->ccalls, ms_name(s->c->names, method->func.name));
         } else {
@@ -356,39 +358,63 @@ static void fx_add_modules(Fx *fx, const MsEffectModule *modules, uint32_t count
     }
 }
 
-/* "package P reaches E through a -> b, which its ms.toml does not declare; ..." */
-static const char *fx_package_message(const Fx *fx, const char *package, const MsViolation *v) {
+/* The path of a violation as `a -> b -> c`. */
+static const char *fx_path_text(const Fx *fx, const MsViolation *v) {
     MsBuf path = {0};
     for (uint32_t k = 0; k < v->npath; k++) {
         const MsStr label = fx->reach[v->path[k]].label;
         ms_buf_printf(&path, "%s%.*s", k > 0 ? " -> " : "", (int)label.len, label.ptr);
     }
-    const char *text = ms_arena_fmt(fx->arena, "package %s reaches %.*s through %.*s, which its ms.toml does not declare; add it to effects under [project], or stop calling it", package, (int)v->effect.len, v->effect.ptr, (int)path.len, path.data == NULL ? "" : path.data).ptr;
+    const char *text = ms_arena_fmt(fx->arena, "%.*s", (int)path.len, path.data == NULL ? "" : path.data).ptr;
     ms_buf_free(&path);
     return text;
+}
+
+/* "package P reaches E through a -> b, which its ms.toml does not declare; ..." */
+static const char *fx_package_message(const Fx *fx, const char *package, const MsViolation *v) {
+    return ms_arena_fmt(fx->arena, "package %s reaches %.*s through %s, which its ms.toml does not declare; add it to effects under [project], or stop calling it", package, (int)v->effect.len, v->effect.ptr, fx_path_text(fx, v)).ptr;
+}
+
+/* The lint text of a project callable that reaches an effect no `allow_effect` line permits (`MSL116`). */
+static const char *fx_project_message(const Fx *fx, const MsViolation *v) {
+    const MsStr root = fx->reach[v->path[0]].label;
+    if (v->npath > 1) {
+        return ms_arena_fmt(fx->arena, "`%.*s` reaches %.*s: %s; permit it with `// ms: allow_effect %.*s`, move the call to the caller, or take a capability parameter", (int)root.len, root.ptr, (int)v->effect.len, v->effect.ptr, fx_path_text(fx, v), (int)v->effect.len, v->effect.ptr).ptr;
+    }
+    return ms_arena_fmt(fx->arena, "`%.*s` reaches %.*s; permit it with `// ms: allow_effect %.*s`, move the call to the caller, or take a capability parameter", (int)root.len, root.ptr, (int)v->effect.len, v->effect.ptr, (int)v->effect.len, v->effect.ptr).ptr;
+}
+
+/* Builds and resolves the reference graph of `modules`. False when the graph is malformed. */
+static bool fx_resolve(Fx *fx, const MsEffectModule *modules, uint32_t count, MsReach *reach) {
+    fx_set_modules(fx, modules, count);
+    fx_add_modules(fx, modules, count);
+    for (uint32_t i = 0; i < fx->n; i++) {
+        fx_fill(fx, i);
+    }
+    return ms_reach_resolve(fx->arena, fx->reach, fx->n, reach);
+}
+
+/* Whether some callable of the modules `want` selects reaches code the scan cannot see through. */
+static bool fx_incomplete(const Fx *fx, bool want_cap) {
+    bool *seen = MS_NEW_N(fx->arena, bool, (size_t)fx->n + 1);
+    for (uint32_t i = 0; i < fx->n; i++) {
+        memset(seen, 0, (size_t)fx->n * sizeof *seen);
+        if (fx->reach[i].project && fx->reach[i].cap.present == want_cap && fx_reaches_partial(fx, i, seen)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool ms_effect_package_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules, uint32_t count, MsPackageViolation **out, uint32_t *nout, bool *complete) {
     Fx fx = {.arena = arena, .c = c};
     *out = NULL;
     *nout = 0;
-    *complete = true;
-    fx_set_modules(&fx, modules, count);
-    fx_add_modules(&fx, modules, count);
-    for (uint32_t i = 0; i < fx.n; i++) {
-        fx_fill(&fx, i);
-    }
     MsReach reach = {0};
-    if (!ms_reach_resolve(arena, fx.reach, fx.n, &reach)) {
+    if (!fx_resolve(&fx, modules, count, &reach)) {
         return false;
     }
-    bool *seen = MS_NEW_N(arena, bool, (size_t)fx.n + 1);
-    for (uint32_t i = 0; i < fx.n; i++) {
-        memset(seen, 0, (size_t)fx.n * sizeof *seen);
-        if (fx.reach[i].project && fx.reach[i].cap.present && fx_reaches_partial(&fx, i, seen)) {
-            *complete = false;
-        }
-    }
+    *complete = !fx_incomplete(&fx, true);
     MsPackageViolation *rows = MS_NEW_N(arena, MsPackageViolation, (size_t)reach.nviolations + 1);
     for (uint32_t k = 0; k < reach.nviolations; k++) {
         const MsViolation *v = &reach.violations[k];
@@ -396,6 +422,29 @@ bool ms_effect_package_violations(MsArena *arena, const MsCheck *c, const MsEffe
         if (own != NULL && own->package != NULL) {
             const MsStr file = v->file;
             rows[*nout] = (MsPackageViolation){.file = ms_arena_strndup(arena, file.ptr, file.len), .pos = v->pos, .message = fx_package_message(&fx, own->package, v)};
+            (*nout)++;
+        }
+    }
+    *out = rows;
+    return true;
+}
+
+bool ms_effect_project_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules, uint32_t count, MsPackageViolation **out, uint32_t *nout, bool *complete) {
+    Fx fx = {.arena = arena, .c = c};
+    *out = NULL;
+    *nout = 0;
+    MsReach reach = {0};
+    if (!fx_resolve(&fx, modules, count, &reach)) {
+        return false;
+    }
+    *complete = !fx_incomplete(&fx, false);
+    MsPackageViolation *rows = MS_NEW_N(arena, MsPackageViolation, (size_t)reach.nviolations + 1);
+    for (uint32_t k = 0; k < reach.nviolations; k++) {
+        const MsViolation *v = &reach.violations[k];
+        const MsEffectModule *own = fx.module[fx_module_of(&fx, v->path[0])];
+        if (own != NULL && own->package == NULL) {
+            const MsStr file = v->file;
+            rows[*nout] = (MsPackageViolation){.file = ms_arena_strndup(arena, file.ptr, file.len), .pos = v->pos, .message = fx_project_message(&fx, v)};
             (*nout)++;
         }
     }

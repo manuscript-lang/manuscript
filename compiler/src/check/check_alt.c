@@ -71,11 +71,6 @@ static MsTy alt_field_ty(MsBody *b, const AltInfo *info, MsTy ty, uint32_t index
     return ms_ty_subst(&b->c->tys, &b->c->arena, info->def.cases[index].fields[slot].ty, &subst);
 }
 
-static bool alt_is(const MsBody *b, MsSym name, const char *text) {
-    const MsStr s = ms_name(b->c->names, name);
-    return s.len == strlen(text) && memcmp(s.ptr, text, s.len) == 0;
-}
-
 /* The case an arm names, or MS_NONE; `*wildcard` is set for a `_` arm. A qualifier must be the
  * enum's own name; any other form is a diagnostic or not handled. */
 static uint32_t alt_arm_case(const MsBody *b, const MsArm *arm, MsTy ty, const AltInfo *info, bool *wildcard) {
@@ -98,7 +93,7 @@ static uint32_t alt_arm_case(const MsBody *b, const MsArm *arm, MsTy ty, const A
     } else {
         return MS_NONE;
     }
-    if (alt_is(b, name, "_")) {
+    if (ms_name_is(b->c->names, name, "_")) {
         *wildcard = path->kind == MS_E_NAME && !arm->bare;
         return MS_NONE;
     }
@@ -125,7 +120,7 @@ static bool alt_bind_payload(MsBody *b, const MsArm *arm, MsTy ty, const AltInfo
     }
     for (uint32_t slot = 0; slot < arm->bindings.len; slot++) {
         const MsSym name = arm->bindings.ptr[slot].name;
-        if (alt_is(b, name, "_")) {
+        if (ms_name_is(b->c->names, name, "_")) {
             continue;
         }
         if (alt_name_may_be_case(b, name)) {
@@ -226,18 +221,18 @@ bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name) {
     return alt_named_case(b, expected, name, &info) != MS_NONE;
 }
 
-/* `Case(args)` where the context expects the enum that declares `Case`: every argument is
+/* `Case(args)` of the enum `ty`, the callee being the case's name (`name`): every argument is
  * positional and checked against the case's field of that position; the callee resolves to the
  * case, as `ok(v)` does for a Result. */
-MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected) {
+static MsTy alt_call(MsBody *b, const MsExpr *e, MsTy ty, MsSym name) {
     const MsExpr *callee = e->u.call.callee;
     AltInfo info = {0};
-    const uint32_t index = alt_named_case(b, expected, callee->u.sym, &info);
+    const uint32_t index = alt_named_case(b, ty, name, &info);
     if (index == MS_NONE || e->u.call.args.len != alt_case_fields(&info, index)) {
         return ms_body_unsupported(b);
     }
     for (uint32_t slot = 0; slot < e->u.call.args.len; slot++) {
-        const MsTy field = alt_field_ty(b, &info, expected, index, slot);
+        const MsTy field = alt_field_ty(b, &info, ty, index, slot);
         if (e->u.call.args.ptr[slot].has_name || !ms_body_is_admitted(b, field) ||
             ms_body_expr(b, e->u.call.args.ptr[slot].value, field) == MS_TY_NONE) {
             return ms_body_unsupported(b);
@@ -245,7 +240,48 @@ MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     b->facts->res_kind[callee->id] = MS_RES_CASE;
     b->facts->res_ref[callee->id] = index;
-    return expected;
+    return ty;
+}
+
+/* `Case(args)` where the context expects the enum that declares `Case`. */
+MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected) {
+    return alt_call(b, e, expected, e->u.call.callee->u.sym);
+}
+
+/* The enum a qualified case `Enum.Case` names: a non-generic enum declared here, `Enum` not
+ * shadowed by a local. MS_TY_NONE otherwise. */
+static MsTy alt_qualifier(MsBody *b, const MsExpr *member) {
+    const MsExpr *left = member->u.member.left;
+    if (left->kind != MS_E_NAME || ms_body_find_binding(b, left->u.sym) != MS_NONE) {
+        return MS_TY_NONE;
+    }
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, left->u.sym);
+    const MsSyms *syms = &b->c->syms;
+    if (sym == MS_NONE || syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_ENUM || syms->nvars[sym] != 0) {
+        return MS_TY_NONE;
+    }
+    return syms->ty[sym];
+}
+
+bool ms_body_is_qualified_case(MsBody *b, const MsExpr *member) { return alt_qualifier(b, member) != MS_TY_NONE; }
+
+MsTy ms_body_qualified_case_call(MsBody *b, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    return alt_call(b, e, alt_qualifier(b, callee), callee->u.member.name);
+}
+
+/* `Enum.Case` for a case without payload. */
+MsTy ms_body_qualified_case(MsBody *b, const MsExpr *e) {
+    const MsTy ty = alt_qualifier(b, e);
+    AltInfo info = {0};
+    const uint32_t index = alt_named_case(b, ty, e->u.member.name, &info);
+    if (index == MS_NONE || alt_case_fields(&info, index) != 0) {
+        return ms_body_unsupported(b);
+    }
+    (void)ms_body_record(b, e->u.member.left->id, ty); // the checker types the enum's name too
+    b->facts->res_kind[e->id] = MS_RES_CASE;
+    b->facts->res_ref[e->id] = index;
+    return ty;
 }
 
 /* A case without payload named where the context expects its enum: `Empty`. */

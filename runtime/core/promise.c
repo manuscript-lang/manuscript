@@ -1244,6 +1244,14 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
     }
 }
 
+bool ms_promise_finished(MsPromise id) {
+    if (is_foreign(id)) {
+        return false; /* asking its owner waits */
+    }
+    const ptrdiff_t row = row_of(id);
+    return row < 0 || table.hot[row].state != STATE_PENDING;
+}
+
 bool ms_promise_done(MsPromise id) {
     if (is_foreign(id)) {
         return ms_remote_done(id);
