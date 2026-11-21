@@ -21,4 +21,10 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out);
  * imports reach them, then the standard library's. */
 uint32_t ms_lower_program(MsCheck *c, MsModId entry, MirModule *out);
 
+/* The same, listing in `why` each function whose body the checker recorded and the lowering refused:
+ * one line `name<TAB>module:line:col<TAB>reason`, where the place is the statement it stopped at and
+ * the reason is the lowering source line that refused (`lower_body.c:123`), `signature`, or
+ * `unhandled`. A caller of a refused function is listed too, at its call. */
+uint32_t ms_lower_program_why(MsCheck *c, MsModId entry, MirModule *out, MsBuf *why);
+
 #endif
