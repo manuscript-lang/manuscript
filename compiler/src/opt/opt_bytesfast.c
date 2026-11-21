@@ -16,6 +16,7 @@
  * continues from where the window ended.
  *
  * The bytes are read through their memory form: data pointer, then length. */
+#include "ms/mir_opt.h"
 #include "opt/opt_build.h"
 
 enum { BF_LEN = 8, BF_WINDOW = 16, BF_ERANGE = 2 };

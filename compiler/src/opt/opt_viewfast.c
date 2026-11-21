@@ -10,6 +10,7 @@
  * The fast path is one generated function marked `inline(always)`, shared by every call site.
  * Port of the former Rust crates/ms-lower/src/rtinline.rs `view_fn` and `bytes_view_fn`; the bit layout is
  * runtime/include/ms_rt/string.h. */
+#include "ms/mir_opt.h"
 #include "opt/opt_build.h"
 
 enum {
@@ -186,16 +187,16 @@ static void vf_short_block(MirBuilder *b, const VfView *v, MirValue p, MirValue 
 }
 
 /* The entry: the receiver is spilled to a slot to read its words, and an inline or a flat text takes its guard. */
-static void vf_entry(MirBuilder *b, VfView *v, MirBlock *inline_block, MirBlock *flat_block) {
+static void vf_entry(MirBuilder *b, VfView *v, MirBlock inline_block, MirBlock flat_block) {
     v->slot = mir_b_emit(b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_PTR);
     const MirValue spill[2] = {v->slot, v->text};
     (void)mir_b_emit(b, MOP_Store, spill, 2, (MirImm){0}, MIR_NONE);
     v->w1 = ob_load(b, v->slot, VF_WORD, MIR_INT);
     const MirValue tag = ob_int(b, MOP_Ushr, v->w1, VF_TAG_SHIFT);
     const MirValue is_inline = mir_b_icmp(b, MCC_EQ, tag, mir_b_iconst(b, 1));
-    mir_b_br_if(b, is_inline, *inline_block, NULL, 0, *flat_block, NULL, 0);
-    mir_b_seal_block(b, *inline_block);
-    mir_b_seal_block(b, *flat_block);
+    mir_b_br_if(b, is_inline, inline_block, NULL, 0, flat_block, NULL, 0);
+    mir_b_seal_block(b, inline_block);
+    mir_b_seal_block(b, flat_block);
 }
 
 /* Builds `string_view(text, start, end, out)` (`slice` false) or `string_slice(text, start, end) -> String`, which
@@ -210,16 +211,19 @@ static uint32_t vf_build(MirModule *m, uint32_t slow_ext, bool slice) {
     VfView v = {0};
     MirValue ps[4];
     mir_b_params(&b, ps, slice ? 3 : 4);
-    v.text = ps[0], v.start = ps[1], v.end = ps[2], v.out = ps[3];
+    v.text = ps[0];
+    v.start = ps[1];
+    v.end = ps[2];
+    v.out = ps[3];
     v.slow = mir_b_new_block(&b);
     const MirBlock join = mir_b_new_block(&b);
     MirValue result = MIR_NONE;
     if (slice) {
         result = mir_b_add_block_param(&b, join, MIR_STR, MM_MOVE);
     }
-    MirBlock flat_block = mir_b_new_block(&b);
-    MirBlock inline_block = mir_b_new_block(&b);
-    vf_entry(&b, &v, &inline_block, &flat_block);
+    const MirBlock flat_block = mir_b_new_block(&b);
+    const MirBlock inline_block = mir_b_new_block(&b);
+    vf_entry(&b, &v, inline_block, flat_block);
     if (slice) {
         v.out = mir_b_emit(&b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_PTR);
     }
@@ -307,7 +311,7 @@ static uint32_t vf_build_bytes(MirModule *m, uint32_t slow_ext, MirTy bytes_ty) 
     (void)mir_b_emit(&b, MOP_Store, lo, 2, (MirImm){0}, MIR_NONE);
     const MirValue mid[2] = {ob_add(&b, out, VF_WORD), n};
     (void)mir_b_emit(&b, MOP_Store, mid, 2, (MirImm){0}, MIR_NONE);
-    const MirValue hi[2] = {ob_add(&b, out, 2 * VF_WORD), zero};
+    const MirValue hi[2] = {ob_add(&b, out, (int64_t)2 * VF_WORD), zero};
     (void)mir_b_emit(&b, MOP_Store, hi, 2, (MirImm){0}, MIR_NONE);
     mir_b_br(&b, join, NULL, 0);
     mir_b_switch_to(&b, slow);
