@@ -13,6 +13,7 @@
 #include "base/sort.h"
 #include "compiler/syntax/diag_json.h"
 #include "compiler/syntax/format.h"
+#include "driver/fmt_targets.h"
 
 enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70 };
 
@@ -28,6 +29,7 @@ typedef struct FmtOutcome {
   const char *state;
   MsStrBuild diagnostic; /* JSON object, empty when there is none */
   MsStrBuild console;    /* terminal text, empty when there is none */
+  bool listed;           /* a file of the report, not only a problem with a target */
 } FmtOutcome;
 
 static void print_span(FILE *stream, MsSpan text) {
@@ -45,25 +47,6 @@ static int64_t order_targets(uint8_t *env, const uint8_t *a, const uint8_t *b) {
     }
   }
   return x->len == y->len ? 0 : (x->len < y->len ? -1 : 1);
-}
-
-/* The path as shown in reports: without a leading "./". */
-static MsSpan display_of(MsSpan path) {
-  while (ms_span_starts_with(path, ms_span_of_text("./"))) {
-    path = ms_span_of(path.ptr + 2, path.len - 2);
-  }
-  return path;
-}
-
-/* Drops repeated targets from the sorted list. */
-static size_t unique_targets(MsSpan *targets, size_t count) {
-  size_t kept = 0;
-  for (size_t index = 0; index < count; index++) {
-    if (kept == 0 || !ms_span_equal(targets[kept - 1], targets[index])) {
-      targets[kept++] = targets[index];
-    }
-  }
-  return kept;
 }
 
 static bool is_option(const char *argument, const char *name) {
@@ -192,14 +175,18 @@ static void format_file(MsSpan path, const FmtOptions *options, FmtOutcome *outc
 /* The `--json` document: the files with their states and every diagnostic. */
 static void write_report(MsStrBuild *out, const FmtOutcome *outcomes, size_t count) {
   ms_strbuild_append_text(out, "{\n  \"format\": 1,\n  \"files\": [");
+  size_t listed = 0;
   for (size_t index = 0; index < count; index++) {
-    ms_strbuild_append_text(out, index == 0 ? "\n    {\n      \"path\": " : ",\n    {\n      \"path\": ");
+    if (!outcomes[index].listed) {
+      continue;
+    }
+    ms_strbuild_append_text(out, listed++ == 0 ? "\n    {\n      \"path\": " : ",\n    {\n      \"path\": ");
     ms_json_string(out, outcomes[index].display);
     ms_strbuild_append_text(out, ",\n      \"status\": ");
     ms_json_string(out, ms_span_of_text(outcomes[index].state));
     ms_strbuild_append_text(out, "\n    }");
   }
-  ms_strbuild_append_text(out, count > 0 ? "\n  ],\n  \"diagnostics\": [" : "],\n  \"diagnostics\": [");
+  ms_strbuild_append_text(out, listed > 0 ? "\n  ],\n  \"diagnostics\": [" : "],\n  \"diagnostics\": [");
   bool first = true;
   for (size_t index = 0; index < count; index++) {
     if (outcomes[index].diagnostic.bytes.len == 0) {
@@ -212,6 +199,48 @@ static void write_report(MsStrBuild *out, const FmtOutcome *outcomes, size_t cou
   ms_strbuild_append_text(out, first ? "]\n}\n" : "\n  ]\n}\n");
 }
 
+/* A problem with a target: it adds a diagnostic and no file. */
+static void report_problem(FmtOutcome *outcome, const FmtProblem *problem) {
+  outcome->display = problem->display;
+  outcome->state = "error";
+  if (!problem->manifest) {
+    plain_diagnostic(&outcome->diagnostic, "MSF002", problem->message, problem->display);
+    ms_strbuild_append(&outcome->console, problem->message);
+    return;
+  }
+  const MsDiag diag = {.pos = problem->position, .message = problem->message};
+  ms_json_diag(&outcome->diagnostic, problem->display, "resolution", &diag);
+  ms_strbuild_append(&outcome->console, problem->display);
+  ms_strbuild_printf(&outcome->console, ":%u:%u: ", problem->position.line, problem->position.column);
+  ms_strbuild_append(&outcome->console, problem->message);
+}
+
+static int print_console(const FmtOutcome *outcome, const FmtOptions *options) {
+  if (outcome->console.bytes.len == 0) {
+    return 0;
+  }
+  if (!options->json) {
+    print_span(stderr, ms_strbuild_span(&outcome->console));
+    (void)fputc('\n', stderr);
+  }
+  return STATUS_FAILED;
+}
+
+static int64_t outcome_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const FmtOutcome *x = (const void *)a;
+  const FmtOutcome *y = (const void *)b;
+  return order_targets(env, (const uint8_t *)&x->display, (const uint8_t *)&y->display);
+}
+
+static void free_outcomes(FmtOutcome *outcomes, size_t count) {
+  for (size_t index = 0; index < count; index++) {
+    ms_strbuild_free(&outcomes[index].diagnostic);
+    ms_strbuild_free(&outcomes[index].console);
+  }
+  free(outcomes);
+}
+
 int ms_fmt_command(int argc, char **argv) {
   FmtOptions options = {0};
   TargetList targets = {0};
@@ -220,38 +249,47 @@ int ms_fmt_command(int argc, char **argv) {
     target_list_free(&targets);
     return status;
   }
-  for (size_t index = 0; index < targets.len; index++) {
-    targets.ptr[index] = display_of(targets.ptr[index]);
-  }
   ms_sort((uint8_t *)targets.ptr, targets.len, sizeof targets.ptr[0], order_targets, NULL);
-  const size_t count = unique_targets(targets.ptr, targets.len);
-  FmtOutcome *outcomes = calloc(count, sizeof *outcomes);
+  MsArena arena = ms_arena_new();
+  FmtFileList files = {0};
+  FmtProblemList problems = {0};
+  fmt_resolve_targets(&arena, targets.ptr, targets.len, &files, &problems);
+  const size_t count = problems.len + files.len;
+  FmtOutcome *outcomes = calloc(count == 0 ? 1 : count, sizeof *outcomes);
   if (outcomes == NULL) {
     (void)fprintf(stderr, "ms fmt: out of memory\n");
     return STATUS_FAILED;
   }
-  for (size_t index = 0; index < count; index++) {
-    outcomes[index].display = targets.ptr[index];
-    format_file(targets.ptr[index], &options, &outcomes[index]);
-    if (outcomes[index].console.bytes.len != 0) {
-      status = STATUS_FAILED;
-      if (!options.json) {
-        print_span(stderr, ms_strbuild_span(&outcomes[index].console));
-        (void)fputc('\n', stderr);
-      }
-    }
+  for (size_t index = 0; index < problems.len; index++) {
+    report_problem(&outcomes[index], &problems.ptr[index]);
+    status |= print_console(&outcomes[index], &options);
   }
+  for (size_t index = 0; index < files.len; index++) {
+    FmtOutcome *outcome = &outcomes[problems.len + index];
+    outcome->display = files.ptr[index].display;
+    outcome->listed = true;
+    format_file(files.ptr[index].path, &options, outcome);
+    status |= print_console(outcome, &options);
+  }
+  if (files.len == 0 && status == 0 && !options.json) {
+    (void)fprintf(stderr, "ms fmt: no .ms files found in ");
+    for (size_t index = 0; index < targets.len; index++) {
+      (void)fprintf(stderr, "%s%.*s", index == 0 ? "" : ", ", (int)targets.ptr[index].len,
+                    (const char *)targets.ptr[index].ptr);
+    }
+    (void)fputc('\n', stderr);
+  }
+  ms_sort((uint8_t *)outcomes, count, sizeof *outcomes, outcome_order, NULL);
   if (options.json) {
     MsStrBuild report = ms_strbuild_new();
     write_report(&report, outcomes, count);
     print_span(stdout, ms_strbuild_span(&report));
     ms_strbuild_free(&report);
   }
-  for (size_t index = 0; index < count; index++) {
-    ms_strbuild_free(&outcomes[index].diagnostic);
-    ms_strbuild_free(&outcomes[index].console);
-  }
-  free(outcomes);
+  free_outcomes(outcomes, count);
+  fmt_file_list_free(&files);
+  fmt_problem_list_free(&problems);
+  ms_arena_free(&arena);
   target_list_free(&targets);
   return status;
 }
