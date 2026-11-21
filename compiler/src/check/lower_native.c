@@ -406,12 +406,12 @@ static uint32_t ln_var_receiver(Lb *lb, const MsExpr *receiver) {
 /* A method of a number that no runtime function implements: a conversion to another number. */
 static LbVal ln_conversion_method(Lb *lb, const MsExpr *e) {
     if (!lb_is_conversion_name(lb, e->u.call.callee->u.member.name)) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const LbVal receiver = lb_expr(lb, e->u.call.callee->u.member.left);
     LbVal converted;
     if (!lb->ok || !lb_numeric_conversion(lb, receiver.v, lb->facts->expr_ty[e->id], &converted)) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     return converted;
 }
