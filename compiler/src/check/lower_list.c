@@ -46,6 +46,9 @@ LbVal lst_index(Lb *lb, const MsExpr *e) {
         return lb_unsupported(lb);
     }
     const LbVal list = lb_expr(lb, left);
+    if (lb->ok && lb_is_map(lb, mir_b_ty(&lb->b, list.v))) {
+        return lm_index(lb, list, at);
+    }
     if (!lb->ok || !lb_is_list(lb, mir_b_ty(&lb->b, list.v))) {
         return lb_unsupported(lb);
     }

@@ -192,10 +192,6 @@ static bool lb_lambda_params_plain(const MsExpr *e) {
     return true;
 }
 
-static bool lb_is_scalar(MirTy ty) {
-    return ty == MIR_INT || ty == MIR_FLOAT || ty == MIR_BOOL;
-}
-
 /* Adds the closure function with an empty body and queues it. Returns its index, or MIR_NONE. */
 static uint32_t lb_add_closure(Lb *lb, const MsExpr *e, const MirTyData *fn, const LbCaptures *found,
                                MirTy *cap_tys) {
