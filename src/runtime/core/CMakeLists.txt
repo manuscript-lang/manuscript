@@ -25,8 +25,12 @@ add_library(ms_values STATIC
   list_edit.c
   list_fault.c
   list_range.c
+  map.c
+  map_build.c
   num.c
   num_text.c
+  set.c
+  slot.c
   sort.c
   sort_ints.c
   string_case.c

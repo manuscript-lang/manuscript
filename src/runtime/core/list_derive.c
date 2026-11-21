@@ -4,6 +4,7 @@
 #include "base/alloc.h"
 #include "base/index.h"
 #include "runtime/core/list_support.h"
+#include "runtime/core/scratch.h"
 
 #define FIRST_CAPACITY 4
 #define DISTINCT_HASH_THRESHOLD 16
@@ -178,10 +179,11 @@ static bool seen_before(MsMap *seen, const MsList *result, const MsTypeDesc *d, 
     if (ms_map_has(seen, d, NULL, element)) {
       return true;
     }
-    uint8_t *copy = ms_alloc(d->size);
-    ms_slot_copy(d, element, copy);
-    ms_map_insert(seen, d, NULL, copy, NULL);
-    ms_free(copy);
+    MsrtScratch copy;
+    msrt_scratch_open(&copy, d->size);
+    ms_slot_copy(d, element, copy.ptr);
+    ms_map_insert(seen, d, NULL, copy.ptr, NULL);
+    msrt_scratch_close(&copy);
     return false;
   }
   for (size_t j = 0; j < result->len; j++) {
