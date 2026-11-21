@@ -111,6 +111,8 @@ void lb_reset_state(Lb *lb) {
     lb->nparts = lb->cparts = 0;
     lb->temps = NULL;
     lb->ntemps = lb->ctemps = lb->stmt_mark = lb->branching = 0;
+    lb->slots = NULL;
+    lb->nslots = lb->cslots = 0;
     (void)lscope_push(&lb->scopes); // the body's own scope: depth 0
 }
 
@@ -165,7 +167,12 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
     lb_reset_state(lb);
     for (uint32_t i = 0; i < lb_slots(c); i++) {
         if (lb_param_moves(lb, c, i)) { // the function owns what it was handed
-            lscope_own(&lb->scopes, lb->value_of[lb->binding_at[lb_slot_node(c, i)]], 0);
+            const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
+            if (lc_is_resource(lb, mir_b_ty(&lb->b, lb->value_of[binding]))) {
+                lb->ok = lc_own_param(lb, binding) && lb->ok; // closed at its scope's end
+            } else {
+                lscope_own(&lb->scopes, lb->value_of[binding], 0);
+            }
         }
     }
     lb_statements(lb, &c->fn->body);
@@ -178,6 +185,9 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
         lb_why(lb, c, "falls off the end");
     }
     lb->ok = lb->ok && lb->dead;
+    if (lb->ok) {
+        lc_check(lb);
+    }
     MirFunc f = {0};
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
@@ -223,6 +233,10 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
     memset(lb->type_of, 0xff, (lb->c->tys.count + 1) * sizeof *lb->type_of);
     lb->eqs = NULL; // they live in the module's arena, which is rebuilt each pass
     lb->neqs = lb->ceqs = 0;
+    lb->closers = NULL; // the resource types and their helpers are rebuilt with the module
+    lb->nclosers = lb->cclosers = 0;
+    lb->exits = NULL;
+    lb->nexits = lb->cexits = 0;
     for (uint32_t k = 0; k < lb->nviews; k++) {
         LbView *v = &lb->views[k];
         const MsBindings *bindings = &v->facts->bindings;
