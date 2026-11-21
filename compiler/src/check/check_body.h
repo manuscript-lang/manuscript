@@ -35,6 +35,8 @@ typedef struct MsBody {
 
 /* A parameter or local of this type can be called and passed around (check_closure.c). */
 bool ms_body_is_function_value(const MsBody *b, MsTy ty);
+/* Whether `ty` is `<invalid>` or built from it: an earlier diagnostic is why. */
+bool ms_body_has_invalid(const MsBody *b, MsTy ty);
 /* `callee(args)` through the function-typed binding `binding`. */
 MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding);
 /* A module function named as a value; an anonymous function. */
