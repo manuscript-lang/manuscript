@@ -366,24 +366,6 @@ static void scope_import_symbols(MsCheck *c, MsModId module) {
 
 /* ---- declarations ---- */
 
-static MsSymKind scope_symbol_kind(const MsDecl *d) {
-    switch ((MsDeclKind)d->kind) {
-    case MS_D_TYPE:
-    case MS_D_ENUM:
-    case MS_D_INTERFACE: return MS_SYM_TYPE;
-    case MS_D_ALIAS: return MS_SYM_ALIAS;
-    case MS_D_FN:
-    case MS_D_CONST:
-    case MS_D_IMPL:
-    case MS_D_TEST: return MS_SYM_FN;
-    }
-    return MS_SYM_FN;
-}
-
-static bool scope_is_nominal_decl(const MsDecl *d) {
-    return d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE;
-}
-
 /* A symbol the loader registered for this very declaration (an `extern type` or an exported
  * type of a bundled source module), or MS_NONE. */
 static MsSymId scope_registered_symbol(const MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {
@@ -401,7 +383,7 @@ static MsSymId scope_declare_one(MsCheck *c, MsModId module, const MsDecl *d, Ms
     const MsStr identity = ms_arena_fmt(&c->arena, "%.*s#%.*s", (int)path.len, path.ptr, (int)text.len, text.ptr);
     const MsSymSpec spec = {.name = name,
                             .id = scope_intern_text(c, identity),
-                            .kind = scope_symbol_kind(d),
+                            .kind = ms_decl_symbol_kind(d),
                             .native = external_fn ? MS_NATIVE_EXTERN : MS_NATIVE_SOURCE,
                             .native_name = external_fn ? name : 0,
                             .is_exported = d->is_exported,
@@ -422,7 +404,7 @@ static void scope_declare_symbols(MsCheck *c, MsModId module) {
         }
         MsSymId sym = MS_NONE;
         const bool opaque = d->kind == MS_D_TYPE && d->u.type.external;
-        if (opaque || scope_is_nominal_decl(d)) {
+        if (opaque || ms_decl_is_nominal(d)) {
             sym = scope_registered_symbol(c, module, d, name);
         }
         if (sym == MS_NONE) {

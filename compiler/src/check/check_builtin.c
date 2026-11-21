@@ -8,18 +8,13 @@
 
 #include "check_body.h"
 
-static bool builtin_is(const MsBody *b, MsSym name, const char *text) {
-    const MsStr s = ms_name(b->c->names, name);
-    return s.len == strlen(text) && memcmp(s.ptr, text, s.len) == 0;
-}
-
 bool ms_body_is_builtin_case(const MsBody *b, MsSym name) {
-    return builtin_is(b, name, "ok") || builtin_is(b, name, "error") || builtin_is(b, name, "some");
+    return ms_name_is(b->c->names, name, "ok") || ms_name_is(b->c->names, name, "error") || ms_name_is(b->c->names, name, "some");
 }
 
 MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *callee = e->u.call.callee;
-    if (builtin_is(b, callee->u.sym, "some")) {
+    if (ms_name_is(b->c->names, callee->u.sym, "some")) {
         return ms_body_unsupported(b); /* the diagnostic is the Rust checker's for now */
     }
     const MsTyTable *tys = &b->c->tys;
@@ -27,7 +22,7 @@ MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected) {
         e->u.call.args.len != 1 || e->u.call.args.ptr[0].has_name) {
         return ms_body_unsupported(b);
     }
-    const bool success = builtin_is(b, callee->u.sym, "ok");
+    const bool success = ms_name_is(b->c->names, callee->u.sym, "ok");
     const MsTy payload = ms_ty_args(tys, expected)[success ? 0 : 1];
     if (!ms_body_is_admitted(b, payload) ||
         ms_body_expr(b, e->u.call.args.ptr[0].value, payload) == MS_TY_NONE) {

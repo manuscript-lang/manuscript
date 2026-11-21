@@ -29,7 +29,7 @@ static void buffer_append(ByteBuffer *buffer, const uint8_t *bytes, size_t count
         return; /* a report too large to hold is cut short */
     }
     buffer->items = items;
-    if (count > 0 && bytes != NULL) {
+    if (count > 0 && bytes != NULL && buffer->items != NULL) {
         __builtin_memcpy(buffer->items + buffer->length, bytes, count);
     }
     buffer->length = needed;

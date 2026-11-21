@@ -25,11 +25,6 @@ LbVal lb_unsupported(Lb *lb) {
     return LB_FAIL;
 }
 
-static MsTy lb_primitive(const MsCheck *c, const char *name) {
-    const MsSymId sym = ms_map_get(&c->primitives, ms_intern_cstr(c->names, name));
-    return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
-}
-
 /* `ty` as the function being lowered sees it: the variables of the instance are the types they
  * stand for, through arguments, parameters and results (`List[T]` becomes `List[Int]`). A variable
  * is matched by id, as the checker's substitution does. */
@@ -1450,11 +1445,11 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
              .mut = c,
              .facts = facts,
              .m = out,
-             .int_ty = lb_primitive(c, "Int"),
-             .float_ty = lb_primitive(c, "Float"),
-             .bool_ty = lb_primitive(c, "Bool"),
-             .string_ty = lb_primitive(c, "String"),
-             .void_ty = lb_primitive(c, "Void")};
+             .int_ty = ms_check_primitive(c, "Int"),
+             .float_ty = ms_check_primitive(c, "Float"),
+             .bool_ty = ms_check_primitive(c, "Bool"),
+             .string_ty = ms_check_primitive(c, "String"),
+             .void_ty = ms_check_primitive(c, "Void")};
     lb.classifier = ms_classifier_new(c);
     ms_classifier_mark_methods(lb.classifier, facts->methods);
     bool *failed = calloc((size_t)row->syntax->ndecls + 1, sizeof *failed);

@@ -40,8 +40,8 @@ LbVal lst_literal(Lb *lb, const MsExpr *e) {
 
 /* `list[index]`: the list is borrowed for the read, and dropped after it when it is a temporary. */
 LbVal lst_index(Lb *lb, const MsExpr *e) {
-    const MsExpr *left = NULL;
-    const MsExpr *at = NULL;
+    MsExpr *left = NULL;
+    MsExpr *at = NULL;
     if (!ms_expr_index(e, &left, &at)) {
         return lb_unsupported(lb);
     }

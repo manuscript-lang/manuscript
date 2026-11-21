@@ -46,13 +46,6 @@ static void add_file(const char *dir, const char *rel, const char *name) {
     files[nfiles++] = (MsStdFile){strdup(name), text, (size_t)n};
 }
 
-/* Checks the bodies of module `id` against a fresh program: the library's method table, with the
- * bundled modules' and the imports' impls (ms_program_check_module). */
-static void check_bodies_with_methods(MsCheck *check, MsModId id, const char *text, size_t length) {
-    ms_program_begin(check);
-    (void)ms_program_check_module(check, id, (MsStr){text, (uint32_t)length});
-}
-
 /* Loads `path` with the project modules it imports (ms_project_load) and adds them to the checker,
  * dependencies first, each importing through its graph targets. The entry is the last module, named
  * `main.ms`. False when the graph has diagnostics or the loader does not cover the request. */
@@ -130,7 +123,8 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             }
             MsBuf dump = {0};
             if (json_mode != 0) {
-                check_bodies_with_methods(check, id, check_text, (size_t)n);
+                ms_program_begin(check);
+                (void)ms_program_check_module(check, id, (MsStr){check_text, (uint32_t)n});
                 if (json_mode == 1) {
                     ms_dump_module_facts(&dump, check, id, (MsStr){check_text, (uint32_t)n});
                 } else {
@@ -143,7 +137,8 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             }
             printf("== %s\n", paths[i]);
             if (bodies) {
-                check_bodies_with_methods(check, id, check_text, (size_t)n);
+                ms_program_begin(check);
+                (void)ms_program_check_module(check, id, (MsStr){check_text, (uint32_t)n});
                 for (uint32_t k = 0; project && k < check->mods[id].ndiags; k++) {
                     const MsCheckDiag *d = &check->mods[id].diags[k];
                     if (d->phase == MS_PHASE_RESOLUTION) {

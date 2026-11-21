@@ -27,23 +27,6 @@ static size_t split_items(MsArena *arena, char *text, MsStr **items) {
     return n;
 }
 
-/* The source text with "\n" escapes turned back into newlines. */
-static MsStr unescape(MsArena *arena, const char *s) {
-    char *out = ms_arena_strndup(arena, s, strlen(s));
-    size_t n = 0;
-    for (size_t i = 0; s[i] != 0; i++) {
-        bool escape = s[i] == '\\' && s[i + 1] == 'n';
-        if (escape) {
-            i++;
-            out[n++] = '\n';
-        } else {
-            out[n++] = s[i];
-        }
-    }
-    out[n] = 0;
-    return (MsStr){out, (uint32_t)n};
-}
-
 static void put_escaped(MsStr s) {
     for (uint32_t i = 0; i < s.len; i++) {
         if (s.ptr[i] == '\n') {
@@ -57,7 +40,7 @@ static void put_escaped(MsStr s) {
 static void answer_rename(MsArena *arena, char **f) {
     MsPos from = {(uint32_t)number_of(f[2]), (uint32_t)number_of(f[3]), (uint32_t)number_of(f[4])};
     MsFix fix;
-    if (!ms_rename_module_path(arena, unescape(arena, f[1]), from, str_of(f[5]), str_of(f[6]), &fix)) {
+    if (!ms_rename_module_path(arena, dump_unescape(arena, f[1], false), from, str_of(f[5]), str_of(f[6]), &fix)) {
         fputs("-", stdout);
         return;
     }

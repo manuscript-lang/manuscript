@@ -355,12 +355,6 @@ MsSysError ms_sys_fs_close(MsSysFd fd) {
     return CloseHandle(handle_of(fd)) ? 0 : last_error();
 }
 
-/* Closing after the real result is known: a failure here cannot change it. */
-static void close_after(MsSysFd fd) {
-    const MsSysError ignored = ms_sys_fs_close(fd);
-    (void)ignored;
-}
-
 MsSysError ms_sys_fs_dup(MsSysFd fd, MsSysFd *out) {
     if (is_invalid(fd)) {
         return MS_ERROR_INVALID_HANDLE;
@@ -1076,7 +1070,7 @@ MsSysError ms_sys_fs_truncate(const char *path, int64_t size) {
         return error;
     }
     error = ms_sys_fs_truncate_fd(fd, size);
-    close_after(fd);
+    ms_sys_fs_close_quietly(fd);
     return error;
 }
 
@@ -1092,7 +1086,7 @@ MsSysError ms_sys_fs_access(const char *path, int32_t mode) {
     MsSysFd fd = MS_SYS_FD_INVALID;
     error = ms_sys_fs_open(path, (mode & 2) != 0 ? MS_SYS_O_READ_WRITE : MS_SYS_O_READ, 0, &fd);
     if (error == 0) {
-        close_after(fd);
+        ms_sys_fs_close_quietly(fd);
     }
     return error;
 }

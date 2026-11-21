@@ -176,7 +176,7 @@ struct MsExpr {
 /* The receiver and index of `left[index]`, however the bracket was parsed: an index, or an
  * application whose one bracket entry also reads as a value (`xs[i]` before name resolution says
  * `xs` is a value). False for any other expression. */
-static inline bool ms_expr_index(const MsExpr *e, const MsExpr **left, const MsExpr **index) {
+static inline bool ms_expr_index(const MsExpr *e, MsExpr **left, MsExpr **index) {
     if (e->kind == MS_E_INDEX) {
         *left = e->u.bin.left;
         *index = e->u.bin.right;
