@@ -28,17 +28,30 @@ fi
 MS_LOWER_WHY=1 "$dump" stdlib --program $files > "$out/program.c" 2> "$out/program.why" || { grep -v '^why ' "$out/program.why" >&2; exit 1; }
 target/release/examples/c_lower_oracle $files > "$out/program.rust" 2>/dev/null
 
-# One line per function: `program name sig line:col|block`, `.N` copy suffixes stripped. The file number of a source
-# location is dropped: Rust numbers files by first reference, C by module order, and the line and column say the rest.
+# One line per function: `program name sig line:col|block`, `.N` copy suffixes stripped. A location names its file by
+# number and Rust and C number them differently (first reference in Rust's body order, import order in C), so each
+# `!N:` becomes the file's name from the module's `file N "name"` table. A same-named function in two files is told
+# apart by the location it was declared at.
 keyed() {
-    sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g; s/ !([0-9]+):([0-9]+:[0-9]+)/ !\2/g' "$1" | awk '
-        /^=== / { file = $2; next }
+    sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g' "$1" | awk '
+        function named(line,    out, rest, n, name) {
+            out = ""; rest = line
+            while (match(rest, / ![0-9]+:/)) {
+                n = substr(rest, RSTART + 2, RLENGTH - 3)
+                name = (n in files) ? files[n] : n
+                out = out substr(rest, 1, RSTART) "!" name ":"
+                rest = substr(rest, RSTART + RLENGTH)
+            }
+            return out rest
+        }
+        /^=== / { file = $2; delete files; next }
+        /^file [0-9]+ "/ { n = $2; name = $3; gsub(/"/, "", name); files[n] = name; next }
         /^; divergent$/ { looped = 1; next }
-        /^fn @/ { name = $2; sub(/\(.*/, "", name); sig = $0; sub(/^fn @[^(]*/, "", sig)
+        /^fn @/ { $0 = named($0); name = $2; sub(/\(.*/, "", name); sig = $0; sub(/^fn @[^(]*/, "", sig)
                   loc = sig; sub(/^.* !/, "", loc); sub(/ .*$/, "", loc)
                   sub(/ (ret_borrowed|ret_view|export|!).*$/, "", sig)
-                  key = file " " name " " sig " " loc; body = ""; infn = 1 }
-        infn { body = body $0 "\\n" }
+                  key = file " " name " " sig " " loc; body = ""; infn = 1; print_head = 1 }
+        infn { line = $0; if (!print_head) line = named(line); print_head = 0; body = body line "\\n" }
         infn && /^}/ { print key "|" (looped ? "divergent" : body); infn = 0; looped = 0 }' | sort
 }
 keyed "$out/program.c" > "$out/program.c.keyed"
@@ -60,6 +73,10 @@ awk -F'|' -v amb="$out/program.ambiguous" -v cfile="$out/program.c.keyed" '
 read -r total equal divergent skipped ambiguous differs < "$out/program.census"
 extra=$(cut -d'|' -f1 "$out/program.c.keyed" | sort | comm -23 - "$(cut -d'|' -f1 "$out/program.rust.keyed" | sort -u | { f=$out/program.rust.keys; cat > "$f"; echo "$f"; })" | wc -l)
 echo "census: $total functions in Rust, $equal equal, $divergent divergent (verified only), $differs differ, $skipped skipped (C lowered nothing), $ambiguous ambiguous, $extra C-only"
+# What became of each program: lowered, or why nothing was (a load failure, a graph diagnostic, a C checker diagnostic
+# with its first message, a module left unchecked).
+echo "programs: $(grep -c '^=== ' "$out/program.c") ($(grep -c '^status lowered' "$out/program.c") lowered)"
+grep '^status ' "$out/program.c" | grep -v '^status lowered' | cut -c1-110 | sort | uniq -c | sort -rn | head -8
 # Why functions were left out: the call site that gave up (compiler/src/check/lower_body.c lb_unsupported), most common
 # first. A caller of a function that failed fails too, so the top entries over-count the root causes.
 echo "causes (lowering gave up at, count):"

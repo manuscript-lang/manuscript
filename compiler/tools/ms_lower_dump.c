@@ -142,12 +142,30 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
 
 /* Loads the project `path` (entry file plus the modules it imports), checks every module, lowers the program and
  * prints each function. A program with diagnostics prints nothing. */
+/* The first diagnostic the C checker reported on a module of the program, or NULL. */
+static const MsCheckDiag *first_diagnostic(const MsCheck *check, const MsModId *ids, uint32_t count) {
+    for (uint32_t i = 0; i < count; i++) {
+        if (check->mods[ids[i]].ndiags != 0) {
+            return &check->mods[ids[i]].diags[0];
+        }
+    }
+    return NULL;
+}
+
 static bool lower_program_file(const StdFiles *files, MsNames *names, const char *path, bool run) {
     MsArena arena = {0};
     MsGraph graph;
     MsProjectError error = {0};
     bool verified = true;
-    if (ms_project_load(&arena, names, path, &graph, &error) && graph.ndiagnostics == 0 && graph.count != 0) {
+    const bool loaded = ms_project_load(&arena, names, path, &graph, &error);
+    if (!loaded || graph.ndiagnostics != 0 || graph.count == 0) {
+        // Why nothing is lowered, for the census: `status <reason>` under the `===` line.
+        if (!run) {
+            const MsStr message = loaded && graph.ndiagnostics != 0 ? graph.diagnostics[0].diag.message : (MsStr){0};
+            printf("=== %s\nstatus %s%s%.*s\n", path, loaded ? "load diagnostic: " : "load failed", "", (int)message.len,
+                   message.ptr == NULL ? "" : message.ptr);
+        }
+    } else {
         MsCheck check;
         ms_check_init(&check, names);
         MsArena std_syntax = {0};
@@ -158,7 +176,16 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
         }
         MsModId *ids = MS_NEW_N(&arena, MsModId, graph.count);
         ms_graph_add_modules(&check, names, &arena, &graph, ids);
-        if (ms_graph_check(&check, &graph, ids, NULL) == 0) {
+        if (ms_graph_check(&check, &graph, ids, NULL) != 0) {
+            if (!run) {
+                printf("=== %s\nstatus check: a module has an inherent error\n", path);
+            }
+        } else if (first_diagnostic(&check, ids, graph.count) != NULL) {
+            if (!run) {
+                const MsStr message = first_diagnostic(&check, ids, graph.count)->diag.message;
+                printf("=== %s\nstatus checker diagnostic: %.*s\n", path, (int)message.len, message.ptr);
+            }
+        } else {
             for (uint32_t i = 0; i < graph.count; i++) {
                 ms_module_check_ownership(&check, ids[i]);
             }
@@ -176,6 +203,10 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
                 run_module(&mir, path);
             } else {
                 printf("=== %s\n", path);
+                printf("status lowered\n");
+                for (uint32_t i = 0; i < mir.nfiles; i++) { // locations name a file by number: Rust and C number them differently
+                    printf("file %u \"%.*s\"\n", i, (int)mir.files[i].len, mir.files[i].ptr);
+                }
             }
             for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
                 MsBuf out = {0};
