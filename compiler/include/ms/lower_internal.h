@@ -401,6 +401,9 @@ MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);
 MsTy le_field_ty(Lb *lb, const MsDef *def, MsTy ty, MsTy declared);
 LbVal lm_empty(Lb *lb, MirTy ty);
+/* `add`, `remove` and `clear` on a `var` Map or Set local (lower_map.c). */
+bool lm_mutator(Lb *lb, const MsExpr *e, LbVal *out);
+bool lm_set_method(Lb *lb, const MsExpr *e, LbVal *out);
 LbVal lr_field(Lb *lb, const MsExpr *e);
 void lr_assign_field(Lb *lb, const MsStmt *s);
 
