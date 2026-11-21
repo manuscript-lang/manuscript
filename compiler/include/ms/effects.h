@@ -137,6 +137,13 @@ static inline bool ms_effect_method_is_node(const MsMethods *m, uint32_t row) {
 }
 static inline MsSymId ms_effect_method_node(const MsCheck *c, uint32_t row) { return c->syms.count + row; }
 
+/* What a call through an interface or an intrinsic costs the scan, which Rust reads off the receiver:
+ * a primitive receiver reaches nothing, an interface or bound type variable runs a method the scan
+ * cannot name (`unknown`, no edge: the callee is charged where a value is converted to the
+ * interface, which the C checker does not accept yet), any other receiver stays `partial`. */
+typedef enum MsDispatch { MS_DISPATCH_PARTIAL, MS_DISPATCH_NOTHING, MS_DISPATCH_UNKNOWN } MsDispatch;
+MsDispatch ms_effect_dispatch(const MsCheck *c, const MsFacts *facts, uint32_t call);
+
 /* Scans the body of `method`, which `module` wrote and the checker checked. */
 MsScanNode ms_effect_scan_method(MsArena *arena, const MsCheck *c, MsModId module, const MsMethod *method);
 

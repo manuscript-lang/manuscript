@@ -6,14 +6,12 @@ default-members = [
     "crates/ms-check",
     "crates/ms-cli",
     "crates/ms-clif",
-    "crates/ms-mir-llvm",
     "crates/ms-build",
     "crates/ms-driver",
     "crates/ms-json",
     "crates/ms-lower",
     "crates/ms-lsp",
     "crates/ms-mir",
-    "crates/ms-mir-llvm",
     "crates/ms-rt-abi",
     "crates/ms-syntax",
     "crates/ms-tooling",
@@ -55,10 +53,6 @@ opt-level = 2
 [profile.dev.package.ms-mir]
 opt-level = 2
 [profile.dev.package.ms-json]
-opt-level = 2
-# The LLVM backend writes the IR text of every Release program the corpus and tests build: about 3 s of a
-# 9 s yaml `ms test` unoptimized.
-[profile.dev.package.ms-mir-llvm]
 opt-level = 2
 
 # Tests that loop over every split point, byte or random case of a checksum, hash, codec or big-number routine,
