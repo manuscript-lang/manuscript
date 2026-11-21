@@ -40,6 +40,15 @@ uint8_t ms_tool_format(const ms_str *text, ms_str *out, int64_t *code_out, ms_st
  * manifest (the caller falls back to `ms`'s Rust reader), with what is missing in `message_out`. */
 uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *message_out);
 
+/* The project an ms.toml describes (ms_project_read), as rows whose first field names the kind, in this order:
+ * `root`, `file`, `name`, `source` and `entry` (a library has an empty entry) with one field each; `version` when
+ * `[project] version` is set; `alias`, `embed` and `path` as `kind\tname\ttarget` (the target a canonical path),
+ * `dep` as `dep\talias\turl\tkind\treference` (the row ms_tool_dependencies returns), `allow` as
+ * `allow\tname\tpattern...` for `[effects]`, `effect` for each `[project] effects`, `workspace` when a `[workspace]`
+ * table exists and `member` for each of its members as written. Status 0 is success; 1 is an error with the Rust
+ * driver's text in `message_out`; 2 means the C reader does not cover the manifest. */
+uint8_t ms_tool_project(const ms_str *manifest, ms_list *out, ms_str *message_out);
+
 /* The files `ms fmt` formats for `target` (ms_project_format_paths): the file itself, or the modules of a directory or
  * of the project an ms.toml names, in order. Status 0 is success; 1 is an error with the Rust driver's text in
  * `message_out`; 2 means the C reader does not cover the target (a workspace root, a project with dependencies). */

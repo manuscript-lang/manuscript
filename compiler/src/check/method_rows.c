@@ -8,9 +8,11 @@
 
 const MsMethod **ms_method_rows(MsCheck *c, MsModId module, const MsMethods *m, const MsDecl **owners) {
     const MsMethod **rows = MS_NEW_N(&c->arena, const MsMethod *, (size_t)m->count + 1);
-    memset(rows, 0, ((size_t)m->count + 1) * sizeof *rows);
-    if (owners != NULL) {
-        memset(owners, 0, ((size_t)m->count + 1) * sizeof *owners);
+    for (uint32_t i = 0; i <= m->count; i++) {
+        rows[i] = NULL;
+        if (owners != NULL) {
+            owners[i] = NULL;
+        }
     }
     const MsModule *syntax = c->mods[module].syntax;
     uint32_t cursor = 0;

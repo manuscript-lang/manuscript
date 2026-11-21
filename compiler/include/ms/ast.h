@@ -374,4 +374,19 @@ typedef struct MsModule {
     uint32_t nrecovered;
 } MsModule;
 
+/* An `impl Type` block, with no contract. */
+static inline bool ms_decl_is_inherent_impl(const MsDecl *decl) {
+    return decl->kind == MS_D_IMPL && decl->u.impl.contract == NULL;
+}
+
+/* Whether every import of `module` is from the standard library (`@std/`). */
+static inline bool ms_module_only_std_imports(const MsModule *module) {
+    for (uint32_t i = 0; i < module->nimports; i++) {
+        if (module->imports[i].path.len < 5 || memcmp(module->imports[i].path.ptr, "@std/", 5) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 #endif

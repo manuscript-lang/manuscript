@@ -19,12 +19,6 @@
 /* Largest callee, in instructions, that an unoptimised build inlines. */
 #define IL_DEBUG_THRESHOLD 16u
 
-static void *il_zeroed(MsArena *arena, size_t count, size_t size) {
-    void *p = ms_alloc(arena, count * size + 1, 8);
-    memset(p, 0, count * size + 1);
-    return p;
-}
-
 /* ---- graphs ---- */
 
 uint32_t mir_inline_degree(const MirInlineGraph *g, uint32_t v) {
@@ -47,7 +41,7 @@ static bool il_call_target(const MirInst *inst, uint32_t *callee) {
 
 MirInlineGraph mir_inline_direct_graph(MsArena *arena, const MirModule *m) {
     MirInlineGraph g = {.n = m->nfuncs};
-    g.off = il_zeroed(arena, (size_t)g.n + 1, sizeof(uint32_t));
+    g.off = ms_alloc_zeroed(arena, (size_t)g.n + 1, sizeof(uint32_t));
     for (uint32_t pass = 0; pass < 2; pass++) {
         uint32_t total = 0;
         for (uint32_t fi = 0; fi < g.n; fi++) {
@@ -68,7 +62,7 @@ MirInlineGraph mir_inline_direct_graph(MsArena *arena, const MirModule *m) {
         }
         g.off[g.n] = total;
         if (pass == 0) {
-            g.to = il_zeroed(arena, total, sizeof(uint32_t));
+            g.to = ms_alloc_zeroed(arena, total, sizeof(uint32_t));
         }
     }
     return g;
@@ -138,15 +132,15 @@ static void il_tarjan_from(IlTarjan *t, uint32_t root) {
 static IlSccs il_sccs(MsArena *arena, const MirInlineGraph *g) {
     const uint32_t n = g->n;
     IlTarjan t = {.g = g};
-    t.index = il_zeroed(arena, n, sizeof(uint32_t));
+    t.index = ms_alloc_zeroed(arena, n, sizeof(uint32_t));
     memset(t.index, 0xff, sizeof(uint32_t) * n);
-    t.low = il_zeroed(arena, n, sizeof(uint32_t));
-    t.stack = il_zeroed(arena, n, sizeof(uint32_t));
-    t.wv = il_zeroed(arena, n, sizeof(uint32_t));
-    t.wk = il_zeroed(arena, n, sizeof(uint32_t));
-    t.on = il_zeroed(arena, n, sizeof(bool));
-    t.out.nodes = il_zeroed(arena, n, sizeof(uint32_t));
-    t.out.start = il_zeroed(arena, (size_t)n + 1, sizeof(uint32_t));
+    t.low = ms_alloc_zeroed(arena, n, sizeof(uint32_t));
+    t.stack = ms_alloc_zeroed(arena, n, sizeof(uint32_t));
+    t.wv = ms_alloc_zeroed(arena, n, sizeof(uint32_t));
+    t.wk = ms_alloc_zeroed(arena, n, sizeof(uint32_t));
+    t.on = ms_alloc_zeroed(arena, n, sizeof(bool));
+    t.out.nodes = ms_alloc_zeroed(arena, n, sizeof(uint32_t));
+    t.out.start = ms_alloc_zeroed(arena, (size_t)n + 1, sizeof(uint32_t));
     for (uint32_t root = 0; root < n; root++) {
         if (t.index[root] == MIR_NONE) {
             il_tarjan_from(&t, root);
@@ -157,7 +151,7 @@ static IlSccs il_sccs(MsArena *arena, const MirInlineGraph *g) {
 }
 
 bool *mir_inline_cyclic(MsArena *arena, const MirInlineGraph *g) {
-    bool *out = il_zeroed(arena, g->n, sizeof(bool));
+    bool *out = ms_alloc_zeroed(arena, g->n, sizeof(bool));
     const IlSccs s = il_sccs(arena, g);
     for (uint32_t c = 0; c < s.ncomps; c++) {
         const uint32_t first = s.nodes[s.start[c]];
@@ -174,14 +168,14 @@ bool *mir_inline_cyclic(MsArena *arena, const MirInlineGraph *g) {
 
 bool *mir_blocks_in_loops(MsArena *arena, const MirFunc *f) {
     MirInlineGraph g = {.n = f->nblocks};
-    g.off = il_zeroed(arena, (size_t)g.n + 1, sizeof(uint32_t));
+    g.off = ms_alloc_zeroed(arena, (size_t)g.n + 1, sizeof(uint32_t));
     uint32_t total = 0;
     for (uint32_t b = 0; b < g.n; b++) {
         g.off[b] = total;
         total += mir_term_ntargets(&f->blocks[b].term);
     }
     g.off[g.n] = total;
-    g.to = il_zeroed(arena, total, sizeof(uint32_t));
+    g.to = ms_alloc_zeroed(arena, total, sizeof(uint32_t));
     for (uint32_t b = 0; b < g.n; b++) {
         for (uint32_t k = 0; k < g.off[b + 1] - g.off[b]; k++) {
             g.to[g.off[b] + k] = mir_term_target_const(&f->blocks[b].term, k)->block;
@@ -194,10 +188,10 @@ bool *mir_blocks_in_loops(MsArena *arena, const MirFunc *f) {
  * targets of the depth-first back edges, found from `entry` first so a recursion is checked where
  * it is entered from outside. */
 static bool *il_cycle_breakers(MsArena *arena, const MirInlineGraph *g, uint32_t entry) {
-    uint8_t *state = il_zeroed(arena, g->n, 1); /* 0 unvisited, 1 on the stack, 2 done */
-    bool *out = il_zeroed(arena, g->n, sizeof(bool));
-    uint32_t *sv = il_zeroed(arena, g->n, sizeof(uint32_t));
-    uint32_t *sk = il_zeroed(arena, g->n, sizeof(uint32_t));
+    uint8_t *state = ms_alloc_zeroed(arena, g->n, 1); /* 0 unvisited, 1 on the stack, 2 done */
+    bool *out = ms_alloc_zeroed(arena, g->n, sizeof(bool));
+    uint32_t *sv = ms_alloc_zeroed(arena, g->n, sizeof(uint32_t));
+    uint32_t *sk = ms_alloc_zeroed(arena, g->n, sizeof(uint32_t));
     const uint32_t first = entry == MIR_NONE ? 0u : 1u;
     for (uint32_t r = 0; r < g->n + first; r++) {
         uint32_t root = r;
@@ -483,7 +477,7 @@ static bool il_is_const_op(uint8_t op) {
 static void il_note_consts(IlRun *r, uint32_t first_block) {
     const MirFunc *f = &r->m->funcs[r->fi];
     if (f->nvalues > r->nconsts || r->consts == NULL) {
-        uint8_t *grown = il_zeroed(r->arena, f->nvalues, 1);
+        uint8_t *grown = ms_alloc_zeroed(r->arena, f->nvalues, 1);
         if (r->consts != NULL) {
             memcpy(grown, r->consts, r->nconsts);
         }
@@ -676,7 +670,7 @@ static bool il_inline_calls(MirModule *m, bool small) {
     MsArena arena = {0};
     const MirInlineGraph g = mir_inline_direct_graph(&arena, m);
     const bool *cyc = mir_inline_cyclic(&arena, &g);
-    uint32_t *sites = il_zeroed(&arena, m->nfuncs, sizeof(uint32_t));
+    uint32_t *sites = ms_alloc_zeroed(&arena, m->nfuncs, sizeof(uint32_t));
     for (uint32_t i = 0; i < g.off[g.n]; i++) {
         sites[g.to[i]]++;
     }
@@ -728,8 +722,8 @@ static bool il_has_indirect_call(const MirFunc *f) {
 static bool il_strip_depth(MirModule *m, bool early) {
     MsArena arena = {0};
     MirInlineGraph g = mir_inline_direct_graph(&arena, m);
-    uint32_t *itargets = il_zeroed(&arena, m->nfuncs, sizeof(uint32_t));
-    bool *indirect = il_zeroed(&arena, m->nfuncs, sizeof(bool));
+    uint32_t *itargets = ms_alloc_zeroed(&arena, m->nfuncs, sizeof(uint32_t));
+    bool *indirect = ms_alloc_zeroed(&arena, m->nfuncs, sizeof(bool));
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         indirect[i] = il_has_indirect_call(&m->funcs[i]);
         if (m->funcs[i].kind != MFK_NORMAL) {
@@ -858,7 +852,7 @@ static void il_compact_funcs(MirModule *m, const bool *live, uint32_t *map) {
 /* Removes functions no root can reach and renumbers the rest. */
 static bool il_remove_dead(MirModule *m) {
     MsArena arena = {0};
-    bool *live = il_zeroed(&arena, m->nfuncs, sizeof(bool));
+    bool *live = ms_alloc_zeroed(&arena, m->nfuncs, sizeof(bool));
     const bool rooted = il_mark_live(&arena, m, live);
     bool all = true;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
@@ -868,7 +862,7 @@ static bool il_remove_dead(MirModule *m) {
         ms_arena_free(&arena);
         return false;
     }
-    uint32_t *map = il_zeroed(&arena, m->nfuncs, sizeof(uint32_t));
+    uint32_t *map = ms_alloc_zeroed(&arena, m->nfuncs, sizeof(uint32_t));
     il_compact_funcs(m, live, map);
     il_renumber(m, map);
     mir_funcs_reindex(m);

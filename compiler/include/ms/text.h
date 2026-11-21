@@ -74,6 +74,32 @@ static inline bool ms_text_ends_with(MsStr text, const char *suffix) {
     return text.len >= length && memcmp(text.ptr + text.len - length, suffix, length) == 0;
 }
 
+static inline bool ms_text_is(MsStr text, const char *literal) {
+    const size_t length = strlen(literal);
+    return text.len == length && memcmp(text.ptr, literal, length) == 0;
+}
+
+static inline bool ms_text_contains(MsStr text, const char *needle) {
+    const size_t length = strlen(needle);
+    for (size_t at = 0; at + length <= text.len; at++) {
+        if (memcmp(text.ptr + at, needle, length) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The value of a hexadecimal digit, or -1 for any other character. */
+static inline int ms_text_digit_value(char c) {
+    uint32_t value = 0;
+    return ms_hex_digit_value((uint8_t)c, &value) ? (int)value : -1;
+}
+
+/* A character of a bare TOML key: a letter, digit, underscore or dash. */
+static inline bool ms_text_is_bare_key_char(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
+}
+
 static inline MsStr ms_text_drop_front(MsStr text, size_t count) {
     return (MsStr){text.ptr + count, (uint32_t)(text.len - count)};
 }

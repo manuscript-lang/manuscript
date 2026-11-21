@@ -145,6 +145,36 @@ bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {
     return true;
 }
 
+#elif defined(__APPLE__)
+
+/* macOS has no ppoll, and a kqueue descriptor is selectable: pselect waits with nanosecond resolution where the
+ * reactor's timer rounds up to a millisecond. fd_set is a 1024-bit set of 32-bit words there. */
+enum { SELECT_WORDS = 32, SELECT_BITS = 32, NANOSECONDS_PER_SECOND = 1000000000 };
+
+typedef struct {
+    unsigned int words[SELECT_WORDS];
+} SelectSet;
+
+typedef struct {
+    long seconds;
+    long nanoseconds;
+} SelectTime;
+
+int pselect(int count, SelectSet *readable, SelectSet *writable, SelectSet *failed, const SelectTime *timeout,
+            const void *signal_mask);
+
+bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {
+    if (timeout_ns < 0 || fd < 0 || fd >= SELECT_WORDS * SELECT_BITS) {
+        return false;
+    }
+    SelectSet readable = {{0}};
+    readable.words[fd / SELECT_BITS] = 1u << (fd % SELECT_BITS);
+    const SelectTime timeout = {.seconds = (long)(timeout_ns / NANOSECONDS_PER_SECOND),
+                                .nanoseconds = (long)(timeout_ns % NANOSECONDS_PER_SECOND)};
+    (void)pselect(fd + 1, &readable, 0, 0, &timeout, 0);
+    return true;
+}
+
 #else
 
 bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {

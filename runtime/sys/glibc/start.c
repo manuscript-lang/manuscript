@@ -18,6 +18,7 @@ void ms_run_init_array(int argc, char **argv, char **envp); /* called from the `
 
 /* Runs the executable's `.init_array` (Rust `std` records the arguments there). glibc runs the loaded libraries'
  * own; `fini` stays null because the loader runs the executable's `.fini_array`. */
+void ms_run_init_array(int argc, char **argv, char **envp);
 void ms_run_init_array(int argc, char **argv, char **envp) {
     for (const MsInitFn *at = __init_array_start; at < __init_array_end; at++) {
         (*at)(argc, argv, envp);
@@ -78,6 +79,15 @@ int __fxstatat64(int version, int directory, const char *path, void *buffer, int
 // NOLINTEND(bugprone-reserved-identifier)
 
 /* Declared here because the C library's own headers give these other types and are not included. */
+int stat64(const char *path, void *buffer);
+int stat(const char *path, void *buffer);
+int lstat64(const char *path, void *buffer);
+int lstat(const char *path, void *buffer);
+int fstat64(int descriptor, void *buffer);
+int fstat(int descriptor, void *buffer);
+int fstatat64(int directory, const char *path, void *buffer, int flags);
+int fstatat(int directory, const char *path, void *buffer, int flags);
+
 int stat64(const char *path, void *buffer);
 int stat(const char *path, void *buffer);
 int lstat64(const char *path, void *buffer);

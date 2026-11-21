@@ -592,7 +592,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return lb_call_func(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false);
 }
 
-static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
+LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
@@ -850,7 +850,7 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except) {
     }
 }
 
-static bool lb_var_owned(const Lb *lb, uint32_t binding) {
+bool lb_var_owned(const Lb *lb, uint32_t binding) {
     for (uint32_t i = 0; i < lb->nvars; i++) {
         if (lb->vars[i].binding == binding) {
             return true;
@@ -924,7 +924,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
 
 /* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
  * the scope's depth. */
-static uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
+uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
     const uint32_t depth = lscope_push(&lb->scopes);
     lb_statements(lb, body);
     if (!lb->dead) {
@@ -1022,7 +1022,7 @@ static void lb_while(Lb *lb, const MsStmt *s) {
 }
 
 /* The block `continue` and the end of the body go to; a `for` makes it on first use. */
-static MirBlock lb_step_block(Lb *lb, LbLoop *loop) {
+MirBlock lb_step_block(Lb *lb, LbLoop *loop) {
     if (!loop->stepped) {
         loop->next = mir_b_new_block(&lb->b);
         loop->stepped = true;

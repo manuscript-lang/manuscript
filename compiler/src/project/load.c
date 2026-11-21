@@ -200,6 +200,19 @@ static const char *load_read(MsArena *a, const char *path, size_t *length, MsPro
 
 static bool load_visit(GraphLoader *l, MsSym canonical, int32_t *module, LoadFailure *fail);
 
+typedef enum LoadEmbedded { LOAD_NOT_EMBEDDED, LOAD_EMBEDDED, LOAD_EMBED_FAILED } LoadEmbedded;
+
+/* The source of the module generated for an `[embed]` name when `path` is its module path. */
+static LoadEmbedded load_embedded(GraphLoader *l, const char *path, const char **text, MsProjectError *err) {
+    for (uint32_t i = 0; l->project != NULL && i < l->project->embed_count; i++) {
+        const MsAlias *embed = &l->project->embed[i];
+        if (strcmp(ms_embed_module_path(l->arena, l->root, embed->name), path) == 0) {
+            return ms_embed_generate(l->arena, embed->name, embed->target, text, err) ? LOAD_EMBEDDED : LOAD_EMBED_FAILED;
+        }
+    }
+    return LOAD_NOT_EMBEDDED;
+}
+
 /* Parses `text`. A failure reports every independent syntax error of the file, not only the first, so one run shows
  * all that need fixing: the others are the failure's secondary diagnostics. */
 static bool load_parse(GraphLoader *l, const char *file, const char *text, size_t length, MsModule *module, LoadFailure *fail) {
@@ -285,7 +298,13 @@ static bool load_module(GraphLoader *l, MsSym canonical, const char *file, int32
     const char *path = ms_arena_strndup(l->arena, canonical_text.ptr, canonical_text.len); /* outlives l->paths */
     size_t length = 0;
     MsProjectError err;
-    const char *text = load_read(l->arena, path, &length, &err);
+    const char *text = NULL;
+    const LoadEmbedded embedded = load_embedded(l, path, &text, &err);
+    if (embedded == LOAD_NOT_EMBEDDED) {
+        text = load_read(l->arena, path, &length, &err);
+    } else if (embedded == LOAD_EMBEDDED) {
+        length = strlen(text);
+    }
     if (text == NULL) {
         *fail = load_failure_error(&err);
         return false;
@@ -452,8 +471,8 @@ bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *
             out->ndiagnostics = 1;
             return true;
         }
-        if (project.embed_count + project.dependency_count + project.path_dependency_count > 0 || project.is_workspace) {
-            ms_project_error_unsupported(err, "[embed], [dependencies] and [workspace] in the module graph");
+        if (project.dependency_count + project.path_dependency_count > 0 || project.is_workspace) {
+            ms_project_error_unsupported(err, "[dependencies] and [workspace] in the module graph");
             return false;
         }
         config = &project;
