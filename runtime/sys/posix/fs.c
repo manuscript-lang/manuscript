@@ -228,12 +228,6 @@ MsSysError ms_sys_fs_close(MsSysFd fd) {
     return status_of(close((int)fd));
 }
 
-/* Closing after the real result is known: a failure here cannot change it. */
-static void close_after(MsSysFd fd) {
-    const MsSysError ignored = ms_sys_fs_close(fd);
-    (void)ignored;
-}
-
 MsSysError ms_sys_fs_dup(MsSysFd fd, MsSysFd *out) {
     if (fd < 0) {
         return EBADF;
@@ -689,7 +683,7 @@ MsSysError ms_sys_fs_truncate(const char *path, int64_t size) {
         return error;
     }
     error = ms_sys_fs_truncate_fd(fd, size);
-    close_after(fd);
+    ms_sys_fs_close_quietly(fd);
     return error;
 }
 
@@ -721,7 +715,7 @@ MsSysError ms_sys_fs_set_times(const char *path, MsSysTime accessed, MsSysTime m
         return error;
     }
     error = ms_sys_fs_set_times_fd(fd, accessed, modified);
-    close_after(fd);
+    ms_sys_fs_close_quietly(fd);
     return error;
 }
 
@@ -860,6 +854,6 @@ MsSysError ms_sys_fs_redirect_null(int32_t which) {
     }
     const int moved = dup2(null, (int)which);
     const MsSysError error = moved < 0 ? last_error() : 0;
-    close_after(null);
+    ms_sys_fs_close_quietly(null);
     return error;
 }

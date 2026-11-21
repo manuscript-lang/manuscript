@@ -32,7 +32,7 @@ static bool scan_is_node(const MsCheck *c, MsSymId sym) {
 
 bool ms_effect_method_is_node(const MsCheck *c, const MsMethods *m, uint32_t row) {
     (void)c;
-    return row < m->count && m->native[row] == MS_NATIVE_SOURCE && m->decl[row] != NULL && m->nvars[row] == 0;
+    return row < m->count && m->native[row] == MS_NATIVE_SOURCE && m->decl[row] != NULL;
 }
 
 MsDispatch ms_effect_dispatch(const MsCheck *c, const MsFacts *facts, uint32_t call) {
@@ -61,6 +61,39 @@ static void scan_edge(ScanState *s, MsSymId callee, MsPos pos) {
     s->edges[s->nedges++] = (MsScanEdge){callee, pos};
 }
 
+/* Whether `ty` or a type nested in its arguments is one a program declares, whose own `equals`, `hash` or
+ * `compare` Rust charges where a bounded receiver argument takes it. */
+static bool scan_has_declared_type(const MsTyTable *tys, MsTy ty) {
+    const MsKind kind = ms_ty_kind(tys, ty);
+    if ((kind == MS_K_TYPE || kind == MS_K_ALTERNATIVE) && tys->def[ty] != 0) {
+        return true;
+    }
+    for (uint32_t k = 0; k < tys->nargs[ty]; k++) {
+        if (scan_has_declared_type(tys, ms_ty_args(tys, ty)[k])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* A method of an impl whose receiver arguments carry bounds runs the operations of the type arguments at
+ * the call. The checker accepts such a call only for a primitive argument (it cannot yet tell whether a
+ * declared type meets `Equal`, `Hashable` or `Comparable`), which has no source operations to charge;
+ * a declared type stays `partial` until the scan charges its methods. */
+static void scan_receiver_requirements(ScanState *s, const MsExpr *e, uint32_t row) {
+    const MsMethods *methods = s->facts->methods;
+    const MsTyTable *tys = &s->check->tys;
+    const MsTy pattern = methods->receiver[row];
+    const MsTy actual = s->facts->call_receiver[e->id];
+    for (uint32_t k = 0; k < tys->nargs[pattern] && k < tys->nargs[actual]; k++) {
+        const MsTy var = ms_ty_args(tys, pattern)[k];
+        if (var < s->check->var_info_cap && ms_ty_kind(tys, var) == MS_K_VARIABLE && s->check->var_info[var].nbounds != 0 &&
+            scan_has_declared_type(tys, ms_ty_args(tys, actual)[k])) {
+            s->partial = true;
+        }
+    }
+}
+
 /* A call, or a constant read (a call of no arguments): an edge to a source callee, a constructor
  * edge for a type, `unknown` for anything else but `core/panic`. */
 static void scan_call(ScanState *s, const MsExpr *e) {
@@ -68,6 +101,7 @@ static void scan_call(ScanState *s, const MsExpr *e) {
     const MsSymId callee = s->facts->call_callee[e->id];
     const uint32_t row = s->facts->call_method[e->id];
     if (row != MS_NONE && ms_effect_method_is_node(s->check, s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
+        scan_receiver_requirements(s, e, row);
         scan_edge(s, ms_effect_method_node(s->check, row), e->pos);
         return;
     }
@@ -126,7 +160,7 @@ static void scan_conversion(ScanState *s, const MsExpr *e, MsTy source) {
         bool charged = methods->contract[row] != MS_TY_NONE && tys->def[target] != 0 &&
                        tys->def[methods->contract[row]] == tys->def[target];
         if (methods->inherent[row] && ops != NULL) {
-            const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
+            const MsMethod *method = ms_method_of_func(methods->decl[row]);
             for (uint32_t k = 0; k < ops->count; k++) {
                 charged = charged || ops->items[k].name == method->func.name;
             }

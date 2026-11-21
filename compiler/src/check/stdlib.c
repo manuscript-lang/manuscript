@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/check.h"
 #include "ms/parse.h"
 #include "ms/stdlib.h"
 
@@ -217,10 +218,6 @@ static MsSym intern_fmt(Loader *l, const char *fmt, ...) {
 
 /* The bare type of a nominal symbol: variables are filled in by `declare_identities`. */
 /* The kind of type a nominal declaration makes. */
-static bool is_nominal(const MsDecl *d) {
-    return d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE;
-}
-
 static MsKind nominal_kind(const MsDecl *d) {
     switch ((MsDeclKind)d->kind) {
     case MS_D_ENUM: return MS_K_ALTERNATIVE;
@@ -359,7 +356,7 @@ static bool check_native_impl(Loader *l, MsStr file, const MsDecl *d) {
 
 /* The kind of the nominal type a native declaration makes; false for a function, constant or alias. */
 static bool native_nominal_kind(const MsDecl *d, MsKind *kind) {
-    if (!is_nominal(d)) {
+    if (!ms_decl_is_nominal(d)) {
         return false;
     }
     const bool external = d->kind == MS_D_TYPE && d->u.type.external;

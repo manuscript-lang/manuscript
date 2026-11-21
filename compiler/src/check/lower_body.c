@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/parse.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
@@ -23,11 +24,6 @@
 LbVal lb_unsupported(Lb *lb) {
     lb->ok = false;
     return LB_FAIL;
-}
-
-static MsTy lb_primitive(const MsCheck *c, const char *name) {
-    const MsSymId sym = ms_map_get(&c->primitives, ms_intern_cstr(c->names, name));
-    return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
 }
 
 /* `ty` as the function being lowered sees it: the variables of the instance are the types they
@@ -369,10 +365,50 @@ static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     return (LbVal){mir_b_binop(&lb->b, arithmetic, left.v, right.v), false};
 }
 
+/* The text of a string literal `str.eq_lit` can compare with (1 to 8 bytes, no NUL), else a null pointer. */
+static MsStr lb_literal_text(const MsExpr *e) {
+    const bool plain = e->kind == MS_E_TEXT && e->u.text.len == 1 && e->u.text.ptr[0].expr == NULL;
+    const MsStr lit = plain ? e->u.text.ptr[0].lit : (MsStr){0};
+    return lit.len >= 1 && lit.len <= 8 && memchr(lit.ptr, '\0', lit.len) == NULL ? lit : (MsStr){0};
+}
+
+/* `a == b` and `a != b` on Strings: a comparison with a literal is `str.eq_lit` (the right literal wins),
+ * any other is the runtime's `string_eq`. Both operands are borrowed. */
+static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
+    const LbVal left = lb_expr(lb, e->u.bin.left);
+    const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
+    if (!lb->ok || left.owned || right.owned) {
+        return lb_unsupported(lb); // an owned temporary needs its drop placed
+    }
+    MirValue same = MIR_NONE;
+    const bool literal_right = lb_literal_text(e->u.bin.right).ptr != NULL;
+    const MsStr lit = lb_literal_text(literal_right ? e->u.bin.right : e->u.bin.left);
+    if (lit.ptr != NULL) {
+        const MirImm imm = {.tag = MI_STR, .a = mir_add_string(lb->m, lit.ptr, lit.len)};
+        const MirValue other = literal_right ? left.v : right.v;
+        same = mir_b_emit(&lb->b, MOP_StrEqLit, &other, 1, imm, MIR_BOOL);
+    } else {
+        const struct MsRtFn *fn = lb_native_function(lb, lb->string_ty, ms_intern_cstr(lb->c->names, "eq"));
+        const MirValue args[2] = {left.v, right.v};
+        const LbVal call = fn == NULL ? LB_FAIL : lb_native_call(lb, fn, args, 2, MIR_BOOL);
+        if (fn == NULL || !lb->ok) {
+            return lb_unsupported(lb);
+        }
+        same = call.v;
+    }
+    if (e->op == MS_B_NE) {
+        same = mir_b_emit(&lb->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL);
+    }
+    return (LbVal){same, false};
+}
+
 static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     if (op == MS_B_AND || op == MS_B_OR) {
         return lb_short_circuit(lb, e);
+    }
+    if ((op == MS_B_EQ || op == MS_B_NE) && lb->facts->expr_ty[e->u.bin.left->id] == lb->string_ty) {
+        return lb_string_equal(lb, e);
     }
     if (op == MS_B_ADD && lb->facts->expr_ty[e->id] == lb->string_ty) {
         return lt_text(lb, e); // a chain of string sums is one join
@@ -489,9 +525,6 @@ static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
     if (lb->c->syms.nvars[callee] == 0) {
         return lb->func_of[callee];
     }
-    if (lb->c->syms.module[callee] != lb->module) {
-        return MIR_NONE; // its declaration ids and facts belong to another module
-    }
     const MsFacts *facts = lb->facts;
     const uint32_t nargs = facts->call_type_args_len[e->id];
     if (nargs == 0 || nargs != lb->c->syms.nvars[callee] || nargs > LB_MAX_TARGS) {
@@ -586,8 +619,8 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
 }
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
-    if (lb->facts->call_reordered[e->id]) {
-        return lb_unsupported(lb); // arguments are paired with parameters by index below
+    if (lb->facts->call_reordered[e->id] || ms_is_index_store(lb->c->names, e)) {
+        return lb_unsupported(lb); // arguments are paired with parameters by index below; a store has its own order
     }
     const uint32_t callee = lb->facts->call_callee[e->id];
     const uint32_t method = lb->facts->call_method[e->id];
@@ -600,6 +633,9 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const MsTy dispatch = lb->facts->call_interface[e->id];
     if (dispatch != MS_TY_NONE && ms_ty_kind(&lb->c->tys, lb->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
         return li_call(lb, e);
+    }
+    if (callee == MS_NONE && dispatch != MS_TY_NONE) {
+        return lb_native_method(lb, e); // an operation of a primitive: its runtime function
     }
     if (callee == MS_NONE) {
         return lb_call_value(lb, e);
@@ -747,6 +783,20 @@ static void lb_bind_arm(Lb *lb, const MsArm *arm, MirValue subject) {
     }
 }
 
+/* Whether an arm binds a payload that needs a drop: taking it out of an owned scrutinee is not lowered. */
+static bool lb_arm_binds_owned(Lb *lb, const MsArm *arm, MirTy subject_ty) {
+    const MirTyData *data = mir_ty_data(lb->m, subject_ty);
+    const uint32_t index = lb->facts->arm_case[arm->id];
+    for (uint32_t slot = 0; index != MS_NONE && slot < arm->bindings.len; slot++) {
+        const MsStr name = ms_name(lb->c->names, arm->bindings.ptr[slot].name);
+        const bool ignored = name.len == 1 && name.ptr[0] == '_';
+        if (!ignored && lb_owns(lb, lb->m->alts[data->id].cases[index].fields[slot].ty)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* `match` over literal arms with one value each. A Bool match is also how `if c: a else: b` is
  * written. Every arm's value joins in one block parameter. */
 static LbVal lb_match(Lb *lb, const MsExpr *e) {
@@ -758,6 +808,12 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
     if (!lb->ok || result_ty == MIR_NONE || lb_owns(lb, result_ty) || scrutinee_ty == MIR_STR || aggregate ||
         lb_is_fn(lb, result_ty)) {
         return lb_unsupported(lb); // a String result or scrutinee is owned: ownership comes later
+    }
+    const bool drops_scrutinee = scrutinee.owned && lb_owns(lb, scrutinee_ty); // a temporary: each arm releases it
+    for (uint32_t i = 0; drops_scrutinee && i < e->u.match.arms.len; i++) {
+        if (scrutinee_kind != MK_ALT || lb_arm_binds_owned(lb, e->u.match.arms.ptr[i], scrutinee_ty)) {
+            return lb_unsupported(lb);
+        }
     }
     const LbArms arms = lb_open_arms(lb, e);
     const MirValue result = mir_b_add_block_param(&lb->b, arms.join, result_ty, MM_BORROW);
@@ -776,6 +832,9 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
         lb->branching++;
         const LbVal value = lb_expr(lb, e->u.match.arms.ptr[i]->value);
         lb->branching--;
+        if (lb->ok && drops_scrutinee) {
+            lb_drop(lb, scrutinee.v);
+        }
         if (lb->ok) {
             mir_b_br(&lb->b, arms.join, &value.v, 1);
         }
@@ -820,6 +879,10 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
         }
     }
     if (ty == lb->string_ty) {
+        if (!value.owned && s->u.bind.value->kind == MS_E_CALL) {
+            lb->ok = false; // the local borrows a call's result (`y := echo(x)`): the ownership walk does not say so yet
+            return;
+        }
         if (!value.owned) {
             value = (LbVal){lb_copy(lb, value.v), true}; // a borrowed String is copied into the local
         }
