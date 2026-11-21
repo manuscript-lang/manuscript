@@ -23,5 +23,7 @@ pub fn from_env() -> BuildOptions {
             _ => CopyProbe::Off,
         },
         count_ops: var("MS_COUNT_OPS").is_some_and(|v| v != "0"),
+        poison_slots: var("MS_POISON_SLOTS").is_some_and(|v| v != "0"),
+        llvm_verify: var("MS_LLVM_VERIFY").is_some_and(|v| v != "0"),
     }
 }

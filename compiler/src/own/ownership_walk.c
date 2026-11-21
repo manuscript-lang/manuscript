@@ -370,8 +370,16 @@ static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+static void own_construct(OwnWalk *w, const MsExpr *e);
+
+static void own_construct(OwnWalk *w, const MsExpr *e);
+
 static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     own_check_wrap(w, e);
+    if (w->facts->coerce_iface[e->id] != MS_TY_NONE && e->kind != MS_E_CALL) {
+        w->supported = false; /* a named value boxed into an interface: moved or copied, not followed yet */
+        return;
+    }
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER:
     case MS_E_BOOL:
@@ -403,8 +411,8 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         return;
     case MS_E_INDEX: /* only a scalar element is read: the checker admits no other */
     case MS_E_APPLY: { /* `xs[i]` read as a type application: the checker admits it only as an index */
-        const MsExpr *list = NULL;
-        const MsExpr *index = NULL;
+        MsExpr *list = NULL;
+        MsExpr *index = NULL;
         if (!ms_expr_index(e, &list, &index)) {
             w->supported = false;
             return;
@@ -433,7 +441,7 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     case MS_E_CALL:
         if (ms_call_builds_case(w->facts, e)) {
-            own_expr(w, e->u.call.args.ptr[0].value, DEMAND_READ); /* a primitive payload is copied */
+            own_construct(w, e); /* each payload moves into the value, a plain one is copied */
             return;
         }
         own_call(w, e, demand);
@@ -557,8 +565,8 @@ static bool own_mentions(const OwnWalk *w, const MsExpr *e, uint32_t binding) {
         return false;
     case MS_E_INDEX: return own_mentions(w, e->u.bin.left, binding) || own_mentions(w, e->u.bin.right, binding);
     case MS_E_APPLY: {
-        const MsExpr *list = NULL;
-        const MsExpr *index = NULL;
+        MsExpr *list = NULL;
+        MsExpr *index = NULL;
         return !ms_expr_index(e, &list, &index) || own_mentions(w, list, binding) || own_mentions(w, index, binding);
     }
     case MS_E_MEMBER:
@@ -674,8 +682,8 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
                 own_mutate(w, arg, binding);
                 continue;
             }
-            const MsExpr *part_of = NULL;
-            const MsExpr *part_at = NULL;
+            MsExpr *part_of = NULL;
+            MsExpr *part_at = NULL;
             if (ms_expr_index(arg, &part_of, &part_at) || arg->kind == MS_E_MEMBER) {
                 w->supported = false; /* a part of a variable is a place too: changing it is left to Rust */
                 return;

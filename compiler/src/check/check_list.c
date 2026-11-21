@@ -73,8 +73,8 @@ MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected) {
 /* `xs[i]`, written as an index or as a bracket that reads as a type application: the receiver must be
  * a local, which makes the bracket an index. */
 MsTy ms_body_index(MsBody *b, const MsExpr *e) {
-    const MsExpr *left = NULL;
-    const MsExpr *index = NULL;
+    MsExpr *left = NULL;
+    MsExpr *index = NULL;
     if (!ms_expr_index(e, &left, &index) || (e->kind == MS_E_APPLY && (left->kind != MS_E_NAME || ms_body_find_binding(b, left->u.sym) == MS_NONE))) {
         return ms_body_unsupported(b);
     }

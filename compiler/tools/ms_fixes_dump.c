@@ -14,23 +14,6 @@ static MsPos pos_of(char **f) {
     return (MsPos){number32(f[0]), number32(f[1]), number32(f[2])};
 }
 
-/* The source text with "\n" escapes turned back into newlines. */
-static MsStr unescape(MsArena *arena, const char *s) {
-    char *out = ms_arena_strndup(arena, s, strlen(s));
-    size_t n = 0;
-    for (size_t i = 0; s[i] != 0; i++) {
-        bool escape = s[i] == '\\' && s[i + 1] == 'n';
-        if (escape) {
-            i++;
-            out[n++] = '\n';
-        } else {
-            out[n++] = s[i];
-        }
-    }
-    out[n] = 0;
-    return (MsStr){out, (uint32_t)n};
-}
-
 static void put_pos(MsPos p) {
     printf("%u:%u:%u", p.offset, p.line, p.column);
 }
@@ -95,14 +78,14 @@ MS_NODISCARD static bool answer(MsArena *arena, char **f, size_t nfields) {
     MsFix fix = {0};
     const char *op = f[0];
     if (strcmp(op, "F") == 0 && nfields == 6) {
-        put_fix(ms_fix_for(arena, unescape(arena, f[1]), pos_of(f + 2), number32(f[5]), &fix), fix);
+        put_fix(ms_fix_for(arena, dump_unescape(arena, f[1], false), pos_of(f + 2), number32(f[5]), &fix), fix);
     } else if (strcmp(op, "B") == 0 && nfields == 5) {
-        put_fix(ms_binding_to_var(arena, unescape(arena, f[1]), pos_of(f + 2), &fix), fix);
+        put_fix(ms_binding_to_var(arena, dump_unescape(arena, f[1], false), pos_of(f + 2), &fix), fix);
     } else if (strcmp(op, "D") == 0 && nfields == 6) {
-        put_fix(ms_drop_case_parens(unescape(arena, f[1]), pos_of(f + 2), str_of(f[5]), &fix), fix);
+        put_fix(ms_drop_case_parens(dump_unescape(arena, f[1], false), pos_of(f + 2), str_of(f[5]), &fix), fix);
     } else if (strcmp(op, "K") == 0 && nfields == 4) {
         MsPos at = {number32(f[2]), 1, 1};
-        fputs(ms_is_compound_operator(unescape(arena, f[1]), at, str_of(f[3])) ? "true" : "false", stdout);
+        fputs(ms_is_compound_operator(dump_unescape(arena, f[1], false), at, str_of(f[3])) ? "true" : "false", stdout);
     } else if (strcmp(op, "X") == 0 && nfields >= 3) {
         answer_expression(arena, f + 1, nfields - 1);
     } else {

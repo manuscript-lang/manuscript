@@ -8,7 +8,7 @@
 /* The MIR type of record `ty`, declared on first use; MIR_NONE when it is not one this pass lowers. */
 MirTy lr_type(Lb *lb, MsTy ty) {
     const MsTyTable *tys = &lb->c->tys;
-    if (ms_ty_kind(tys, ty) != MS_K_TYPE || tys->nargs[ty] != 0 || tys->def[ty] == 0 || tys->builtin[ty] != 0) {
+    if (ms_ty_kind(tys, ty) != MS_K_TYPE || tys->nargs[ty] != 0 || tys->def[ty] == 0) {
         return MIR_NONE;
     }
     const MsSymId sym = tys->def[ty] - 1;
@@ -26,7 +26,7 @@ MirTy lr_type(Lb *lb, MsTy ty) {
     lb->type_of[ty] = LB_TYPE_PENDING;
     for (uint32_t i = 0; i < def->nfields; i++) {
         const MirTy field = lb_mir_ty(lb, def->fields[i].ty);
-        if (field == MIR_NONE || (field != MIR_STR && mir_needs_drop(lb->m, field))) { // a String field only
+        if (field == MIR_NONE) {
             lb->type_of[ty] = MIR_NONE;
             return MIR_NONE;
         }
@@ -46,7 +46,12 @@ MirTy lr_type(Lb *lb, MsTy ty) {
 
 /* `Name(field: value, ...)`: the checker admitted it with every field given in order. */
 LbVal lr_construct(Lb *lb, const MsExpr *call) {
-    const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[call->id]); // through the class check: a resource is not lowered
+    // A construction passed as an interface has the interface type; what it builds is the concrete one.
+    MsTy built = lb->facts->coerce_iface[call->id];
+    if (built == MS_TY_NONE) {
+        built = lb->facts->expr_ty[call->id];
+    }
+    const MirTy ty = lb_mir_ty(lb, built); // through the class check: a resource is not lowered
     const uint32_t count = call->u.call.args.len;
     if (ty == MIR_NONE || count != lb->m->type_defs[mir_ty_data(lb->m, ty)->id].nfields) {
         return lb_unsupported(lb); // a field left to its default is not lowered yet
@@ -55,7 +60,7 @@ LbVal lr_construct(Lb *lb, const MsExpr *call) {
     for (uint32_t i = 0; i < count && lb->ok; i++) {
         const MsExpr *arg = call->u.call.args.ptr[i].value;
         const MirTy field_ty = lb->m->type_defs[mir_ty_data(lb->m, ty)->id].fields[i].ty;
-        values[i] = field_ty == MIR_STR ? lb_move_argument(lb, arg) : lb_expr(lb, arg).v;
+        values[i] = lb_owns(lb, field_ty) ? lb_move_argument(lb, arg) : lb_expr(lb, arg).v;
     }
     if (!lb->ok) {
         return LB_FAIL;

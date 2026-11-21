@@ -22,6 +22,7 @@ import (
 	internal_externs,
 	layering,
 	portability,
+	raw_arguments,
 	thread_affinity,
 	timed_waits,
 	unsafe_boundary from "./repo-check/checks_text.ms",
@@ -124,6 +125,7 @@ fn main() Int:
 	issues.extend(thread_affinity(files))
 	issues.extend(cancel_jumps(files))
 	issues.extend(timed_waits(files))
+	issues.extend(raw_arguments(files))
 	issues.extend(skill_pages())
 	issues.extend(skill_server_state())
 	issues.extend(skill_mistakes())
@@ -131,7 +133,7 @@ fn main() Int:
 
 	if issues.is_empty():
 		print(
-			"Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, thread affinity, cancel by return, timed waits, and the agent skill agree."
+			"Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, thread affinity, cancel by return, timed waits, tools/ms command-line reads, and the agent skill agree."
 		)
 		return 0
 

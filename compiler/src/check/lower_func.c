@@ -350,14 +350,15 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
         return 0;
     }
     Lb lb = {.c = c,
+             .module = module,
              .mut = c,
              .facts = facts,
              .m = out,
-             .int_ty = lb_primitive(c, "Int"),
-             .float_ty = lb_primitive(c, "Float"),
-             .bool_ty = lb_primitive(c, "Bool"),
-             .string_ty = lb_primitive(c, "String"),
-             .void_ty = lb_primitive(c, "Void")};
+             .int_ty = ms_check_primitive(c, "Int"),
+             .float_ty = ms_check_primitive(c, "Float"),
+             .bool_ty = ms_check_primitive(c, "Bool"),
+             .string_ty = ms_check_primitive(c, "String"),
+             .void_ty = ms_check_primitive(c, "Void")};
     lb.classifier = ms_classifier_new(c);
     ms_classifier_mark_methods(lb.classifier, facts->methods);
     const uint32_t nrows = lm_prepare(&lb, module);

@@ -82,8 +82,8 @@ static bool be_emit(MirModule *m, MsBytes shown, const MsBackendOptions *options
     MirData data;
     mir_data_build(m, &glue, &data);
     MsBuf cannot = {0};
-    const bool ok = options->tables ? mir_emit_llvm_places(m, &data, &glue, ir, &cannot)
-                                    : mir_emit_llvm(m, &data, &glue, ir, &cannot);
+    const MirLlvmOptions how = {.places = options->tables, .slot_scopes = true, .poison_slots = options->poison_slots};
+    const bool ok = mir_emit_llvm_program(m, &data, &glue, &how, ir, &cannot);
     if (!ok) {
         ms_buf_printf(why, "the C back end cannot write:\n%.*s", (int)cannot.len, cannot.data != NULL ? cannot.data : "");
         ms_buf_free(&cannot);

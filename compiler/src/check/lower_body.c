@@ -25,11 +25,6 @@ LbVal lb_unsupported(Lb *lb) {
     return LB_FAIL;
 }
 
-static MsTy lb_primitive(const MsCheck *c, const char *name) {
-    const MsSymId sym = ms_map_get(&c->primitives, ms_intern_cstr(c->names, name));
-    return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
-}
-
 /* `ty` as the function being lowered sees it: the variables of the instance are the types they
  * stand for, through arguments, parameters and results (`List[T]` becomes `List[Int]`). A variable
  * is matched by id, as the checker's substitution does. */
@@ -313,7 +308,7 @@ static MirCc lb_cc(MsBinaryOp op) {
 }
 
 /* The runtime function that joins two strings, declared on first use. */
-static uint32_t lb_string_concat(Lb *lb) {
+uint32_t lb_string_concat(Lb *lb) {
     const MsSym name = mir_name(lb->m, "msrt_string_concat", strlen("msrt_string_concat"));
     const uint32_t found = mir_extern_by_name(lb->m, name);
     if (found != MIR_NONE) {
@@ -489,6 +484,9 @@ static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
     if (lb->c->syms.nvars[callee] == 0) {
         return lb->func_of[callee];
     }
+    if (lb->c->syms.module[callee] != lb->module) {
+        return MIR_NONE; // its declaration ids and facts belong to another module
+    }
     const MsFacts *facts = lb->facts;
     const uint32_t nargs = facts->call_type_args_len[e->id];
     if (nargs == 0 || nargs != lb->c->syms.nvars[callee] || nargs > LB_MAX_TARGS) {
@@ -598,6 +596,9 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (dispatch != MS_TY_NONE && ms_ty_kind(&lb->c->tys, lb->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
         return li_call(lb, e);
     }
+    if (callee == MS_NONE && dispatch != MS_TY_NONE) {
+        return lb_native_method(lb, e); // an operation of a primitive: its runtime function
+    }
     if (callee == MS_NONE) {
         return lb_call_value(lb, e);
     }
@@ -631,7 +632,10 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
 
 /* `e`, wrapped in `some` where the checker found a payload used for an Optional. */
 LbVal lb_expr(Lb *lb, const MsExpr *e) {
-    const LbVal value = lb_expr_plain(lb, e);
+    LbVal value = lb_expr_plain(lb, e);
+    if (lb->ok && lb->facts->coerce_iface[e->id] != MS_TY_NONE) {
+        value = li_box(lb, e, value);
+    }
     if (!lb->ok || !lb->facts->some_wrap[e->id]) {
         return value;
     }
@@ -741,6 +745,20 @@ static void lb_bind_arm(Lb *lb, const MsArm *arm, MirValue subject) {
     }
 }
 
+/* Whether an arm binds a payload that needs a drop: taking it out of an owned scrutinee is not lowered. */
+static bool lb_arm_binds_owned(Lb *lb, const MsArm *arm, MirTy subject_ty) {
+    const MirTyData *data = mir_ty_data(lb->m, subject_ty);
+    const uint32_t index = lb->facts->arm_case[arm->id];
+    for (uint32_t slot = 0; index != MS_NONE && slot < arm->bindings.len; slot++) {
+        const MsStr name = ms_name(lb->c->names, arm->bindings.ptr[slot].name);
+        const bool ignored = name.len == 1 && name.ptr[0] == '_';
+        if (!ignored && lb_owns(lb, lb->m->alts[data->id].cases[index].fields[slot].ty)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* `match` over literal arms with one value each. A Bool match is also how `if c: a else: b` is
  * written. Every arm's value joins in one block parameter. */
 static LbVal lb_match(Lb *lb, const MsExpr *e) {
@@ -752,6 +770,12 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
     if (!lb->ok || result_ty == MIR_NONE || lb_owns(lb, result_ty) || scrutinee_ty == MIR_STR || aggregate ||
         lb_is_fn(lb, result_ty)) {
         return lb_unsupported(lb); // a String result or scrutinee is owned: ownership comes later
+    }
+    const bool drops_scrutinee = scrutinee.owned && lb_owns(lb, scrutinee_ty); // a temporary: each arm releases it
+    for (uint32_t i = 0; drops_scrutinee && i < e->u.match.arms.len; i++) {
+        if (scrutinee_kind != MK_ALT || lb_arm_binds_owned(lb, e->u.match.arms.ptr[i], scrutinee_ty)) {
+            return lb_unsupported(lb);
+        }
     }
     const LbArms arms = lb_open_arms(lb, e);
     const MirValue result = mir_b_add_block_param(&lb->b, arms.join, result_ty, MM_BORROW);
@@ -770,6 +794,9 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
         lb->branching++;
         const LbVal value = lb_expr(lb, e->u.match.arms.ptr[i]->value);
         lb->branching--;
+        if (lb->ok && drops_scrutinee) {
+            lb_drop(lb, scrutinee.v);
+        }
         if (lb->ok) {
             mir_b_br(&lb->b, arms.join, &value.v, 1);
         }

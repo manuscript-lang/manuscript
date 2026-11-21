@@ -4,11 +4,11 @@
 // call graph (which reads the `ms inspect` document) stay with the Rust command.
 import (
 	stderr, stdout from "@std/io/io.ms",
-	arguments from "@std/os/env.ms",
 	canonicalize from "@std/os/fs.ms",
 	basename, dirname from "@std/os/path.ms",
 	expect_equal from "@std/test/test.ms",
 
+	tool_matches, tree_tool, usage_status from "./cli.ms",
 	mark_changes from "./mark.ms",
 	compare_facts from "./review.ms",
 	Change, facts_in, load_change from "./review_cmd.ms",
@@ -67,44 +67,26 @@ test "a view defaults to the call graph":
 	expect_equal(view_name(DiagramRequest(file: "a.ms")), "calls")?
 	expect_equal(view_name(DiagramRequest(file: "a.ms", view: "effects")), "effects")?
 
-fn usage() Error:
-	return Error(
-		"usage: diagram_cmd.ms FILE [--view VIEW] [--entity NAME] [--depth N] [--format ascii|mermaid|json] [--diff PATCH|-]"
-	)
-
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.fs.write
 // ms: allow_effect std.env.read
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
 fn main() Int:
-	args := arguments()
-	var request = DiagramRequest(file: "")
-	var i = 0
+	parsed := tool_matches(tree_tool("diagram", []))
+	if parsed.is_error(): return usage_status(parsed.err())
 
-	while i < args.length():
-		option := args[i].clone()
-		value := args.get_or(i + 1, "")
-		i += 1
-
-		if option == "--view": request.view = value
-		else if option == "--entity": request.entity = value
-		else if option == "--depth": request.depth = value.parse_int().get_or(0)
-		else if option == "--format": request.format = value
-		else if option == "--diff": request.diff = value
-		else if option.starts_with("--") or not request.file.is_empty():
-			stderr().write(usage().message + "\n").get()
-			return 2
-		else:
-			request.file = option
-			continue
-
-		i += 1
-
-	if request.file.is_empty():
-		stderr().write(usage().message + "\n").get()
-		return 2
-
+	m := parsed.get()
+	request := DiagramRequest(
+		file: m.string("file"),
+		view: m.string_or_none("view").get_or(""),
+		entity: m.string_or_none("entity").get_or(""),
+		depth: m.int_or_none("depth").get_or(0),
+		format: if m.bool("json"): "json" else: m.string_or_none(
+			"format"
+		).get_or("ascii"),
+		diff: m.string_or_none("diff").get_or(""),
+	)
 	printed := diagram_view(request)
 
 	if printed.is_error():
