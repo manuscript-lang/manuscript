@@ -157,6 +157,11 @@ void ms_tool_keywords(ms_list *out);
  *   symbol, MS_TOOL_ANALYZE_SYMBOL_WIDTH: id, name, kind (0 type, 1 fn, 2 alias), module path, 1 when declared in this
  *                                         text, 1 when exported, declaration node id (-1 for a primitive), offset, line,
  *                                         column, type
+ * then the ownership rows (MSL114): the count of name nodes that move a value out and their ids, then the count of
+ * resource bindings (flag 8) and for each its binding index, 1 when the ownership pass followed its function and the
+ * name of its `flush` or `commit` method taking nothing and returning a Result (-1 for none); then the effect rows (MSL116):
+ * 1 when the scan saw every callable it reached, the count of undeclared-effect violations and for each its offset, line,
+ * column and message.
  * Every name, module path and type text is an index into the names (-1 for none); types print as source reads them.
  */
 #define MS_TOOL_ANALYZE_NODE_WIDTH 6
