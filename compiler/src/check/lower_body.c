@@ -503,6 +503,9 @@ static bool lb_names_owned(const Lb *lb, const MsExpr *e) {
 /* A `move` argument: an owned temporary is handed over as it is, an owned name moves out of its
  * scope, and anything else is copied. */
 MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
+    if (e->kind == MS_E_NAME && lb->facts->res_kind[e->id] == MS_RES_NONE) {
+        return la_none_owned(lb, e).v; // `none` where the holder owns what it holds
+    }
     const LbVal value = lb_expr(lb, e);
     if (!lb->ok || value.owned) {
         return value.v;
@@ -619,10 +622,11 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
 }
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
-    if (lb->facts->call_reordered[e->id] || ms_is_index_store(lb->c->names, e)) {
+    const uint32_t callee = lb->facts->call_callee[e->id];
+    const bool builds_record = callee != MS_NONE && lb->c->syms.kind[callee] == MS_SYM_TYPE;
+    if ((lb->facts->call_reordered[e->id] && !builds_record) || ms_is_index_store(lb->c->names, e)) {
         return lb_unsupported(lb); // arguments are paired with parameters by index below; a store has its own order
     }
-    const uint32_t callee = lb->facts->call_callee[e->id];
     const uint32_t method = lb->facts->call_method[e->id];
     if (method != MS_NONE) {
         return lm_has(lb, method) ? lm_call(lb, e, method) : lb_native_method(lb, e);
@@ -640,7 +644,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (callee == MS_NONE) {
         return lb_call_value(lb, e);
     }
-    if (lb->c->syms.kind[callee] == MS_SYM_TYPE) {
+    if (builds_record) {
         return lr_construct(lb, e);
     }
     return lb_call_func(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false);
