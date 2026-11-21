@@ -1,0 +1,9 @@
+# The C build compiles MIR text to an object in C
+
+`ms_build_object` (`compiler/src/build/object.c`, `ms/build_object.h`) is the LLVM half of `ms build`, ported from the Rust `c_backend::compile`: `ms_backend_ir`, pinned `opt` (release only), `llc` to assembly, `ms_backend_tables`, the assembly wrapped as `module asm` lines, `llc` to an object. It takes the LLVM tools directory as an argument; fetching the pinned release stays with the link code. POSIX only; Windows builds still go through the Rust `ms`.
+
+Prove it with `compiler/tests/build-object-diff.sh`: `ms emit` MIR text, C object, `cc -nostartfiles` against `libms_native.a` (with `--defsym=__dso_handle=0`), and compare output and status with `ms run` on `phase=run` fixtures. Do not compare `.ll` text with the Rust build's `ms-keep.ll`: `ms emit` prints different string-literal bytes from the in-process module, so literal padding differs although the programs behave the same.
+
+`ms_build_link` (`build/link.c`, `ms/build_link.h`) ports the Linux link of `link.rs` and `link/lld.rs`: the pinned `lld` over glibc 2.28 stand-ins (generated once into `<files>/glibc` from `glibc.symbols` as LLVM IR assembled by `llc`, then `lld -shared` with a version script, so no ELF writer is needed), or static musl with `--musl`. The tool directory, `lld` and the linker files directory are arguments. Still in Rust: fetching and caching the pinned `lld` and LLVM tools (HTTPS, SHA-256, tar; vendored curl, openssl and zlib can serve), embedding the crt/libc files, the macOS SDK stubs and dsymutil, and the Windows mingw link. The `--musl` path is untested here (no musl runtime archive in the test); the glibc path is proven by `build-object-diff.sh` (same GLIBC symbol versions as the Rust link).
+
+Next for `ms_tool_build`: load and check (`ms_project_load_packages`, `ms_graph_check`), `ms_lower_program` to MIR text, these two steps. A program the C lowering declines is handed to the Rust `ms`.

@@ -3,6 +3,7 @@
  * alternately in insertion order; a key or value passes through a memory cell (the slot the
  * lowering made) and a lookup returns a pointer to a new cell holding the value. The shaped lookups
  * differ from the general one only in speed, so they share one implementation. */
+#include <stdlib.h>
 #include <string.h>
 
 #include "mir/mir_interp_impl.h"

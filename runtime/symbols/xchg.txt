@@ -35,3 +35,4 @@ msstd_idle_group
 msstd_idle_park
 msstd_idle_cancel
 msstd_idle_inflight
+msstd_idle_free

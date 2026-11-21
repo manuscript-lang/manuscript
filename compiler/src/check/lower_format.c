@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "ms/lower_internal.h"
+#include "ms/mir_analysis.h"
 
 enum { LF_MAX_DEPTH = 64 };
 
@@ -69,8 +70,10 @@ static MsTy lf_scalar_ty(const Lb *lb, MirTy ty) {
  * the limit, else the scalar's `to_string`, the String itself, or the nested type's `format`. */
 static MirValue lf_element(Lb *lb, MirTy ty, MirValue v, MirValue depth) {
     MirBuilder *b = &lb->b;
-    const MirValue child = mir_b_binop(b, MOP_IAdd, depth, mir_b_iconst(b, 1));
-    const MirValue too_deep = mir_b_icmp(b, MCC_GE, child, mir_b_iconst(b, LF_MAX_DEPTH));
+    const MirValue one = mir_b_iconst(b, 1);
+    const MirValue child = mir_b_binop(b, MOP_IAdd, depth, one);
+    const MirValue limit = mir_b_iconst(b, LF_MAX_DEPTH);
+    const MirValue too_deep = mir_b_icmp(b, MCC_GE, child, limit);
     const MirBlock cut = mir_b_new_block(b), fmt = mir_b_new_block(b), join = mir_b_new_block(b);
     const MirValue out = mir_b_add_block_param(b, join, MIR_STR, MM_MOVE);
     mir_b_br_if(b, too_deep, cut, NULL, 0, fmt, NULL, 0);
@@ -82,7 +85,9 @@ static MirValue lf_element(Lb *lb, MirTy ty, MirValue v, MirValue depth) {
     mir_b_switch_to(b, fmt);
     MirValue text = MIR_NONE;
     if (ty == MIR_STR) { // an empty string shows as `""`, so `[""]` is not read as `[]`
-        const MirValue empty = mir_b_icmp(b, MCC_EQ, mir_b_emit(b, MOP_StrBytes, &v, 1, (MirImm){0}, MIR_INT), mir_b_iconst(b, 0));
+        const MirValue bytes = mir_b_emit(b, MOP_StrBytes, &v, 1, (MirImm){0}, MIR_INT);
+        const MirValue zero = mir_b_iconst(b, 0);
+        const MirValue empty = mir_b_icmp(b, MCC_EQ, bytes, zero);
         const MirBlock quoted = mir_b_new_block(b), plain = mir_b_new_block(b);
         mir_b_br_if(b, empty, quoted, NULL, 0, plain, NULL, 0);
         mir_b_seal_block(b, quoted);
@@ -92,7 +97,7 @@ static MirValue lf_element(Lb *lb, MirTy ty, MirValue v, MirValue depth) {
         mir_b_br(b, join, &marks, 1);
         mir_b_switch_to(b, plain);
         text = lf_copy(lb, v);
-    } else if (mir_ty_data(lb->m, ty)->kind == MK_TYPE || mir_ty_data(lb->m, ty)->kind == MK_ALT) {
+    } else if (lb_is_aggregate(lb, ty)) {
         const MirValue args[2] = {v, child};
         text = mir_b_call(b, lf_helper(lb, ty), args, 2);
     } else if (ty == MIR_INT || ty == MIR_FLOAT || ty == MIR_BOOL) {
@@ -214,6 +219,73 @@ static void lf_enum(Lb *lb, MirTy ty, MirValue value, MirValue depth) {
     }
 }
 
+/* `none`, or `some(payload)`. */
+static void lf_optional(Lb *lb, MirTy ty, MirValue value, MirValue depth) {
+    MirBuilder *b = &lb->b;
+    const MirBlock some = mir_b_new_block(b), none = mir_b_new_block(b);
+    mir_b_br_if(b, la_test(lb, value), some, NULL, 0, none, NULL, 0);
+    mir_b_seal_block(b, some);
+    mir_b_seal_block(b, none);
+    mir_b_switch_to(b, none);
+    mir_b_ret(b, lf_finish(lb, lf_start(lb, "none", 4)));
+    mir_b_switch_to(b, some);
+    const MirValue payload = mir_b_emit(b, MOP_OptGet, &value, 1, (MirImm){0}, mir_ty_data(lb->m, ty)->elem);
+    const MirValue buffer = lf_start(lb, "some", 4);
+    lf_push_text(lb, buffer, "(");
+    const MirValue piece = lf_element(lb, mir_ty_data(lb->m, ty)->elem, payload, depth);
+    if (!lb->ok) {
+        return;
+    }
+    lf_push(lb, buffer, piece);
+    lb_drop(lb, piece);
+    lf_push_text(lb, buffer, ")");
+    mir_b_ret(b, lf_finish(lb, buffer));
+}
+
+/* `[a, b, c]`: a loop over the elements with a separator before every one but the first. */
+static void lf_list(Lb *lb, MirTy ty, MirValue value, MirValue depth) {
+    MirBuilder *b = &lb->b;
+    const MirTy elem = mir_ty_data(lb->m, ty)->elem;
+    const MirValue buffer = lf_start(lb, "[", 1);
+    const MirVar index = mir_b_declare_var(b, MIR_INT, MM_BORROW);
+    const MirValue zero = mir_b_iconst(b, 0);
+    mir_b_def_var(b, index, zero);
+    const MirValue length = mir_b_emit(b, MOP_ListLen, &value, 1, (MirImm){0}, MIR_INT);
+    const MirBlock header = mir_b_new_block(b), body = mir_b_new_block(b), exit = mir_b_new_block(b);
+    mir_b_br(b, header, NULL, 0);
+    mir_b_switch_to(b, header);
+    const MirValue more = mir_b_icmp(b, MCC_LT, mir_b_use_var(b, index), length);
+    mir_b_br_if(b, more, body, NULL, 0, exit, NULL, 0);
+    mir_b_seal_block(b, body);
+    mir_b_switch_to(b, body);
+    const MirValue first = mir_b_icmp(b, MCC_EQ, mir_b_use_var(b, index), zero);
+    const MirBlock separate = mir_b_new_block(b), item = mir_b_new_block(b);
+    mir_b_br_if(b, first, item, NULL, 0, separate, NULL, 0);
+    mir_b_seal_block(b, separate);
+    mir_b_seal_block(b, item);
+    mir_b_switch_to(b, separate);
+    lf_push_text(lb, buffer, ", ");
+    mir_b_br(b, item, NULL, 0);
+    mir_b_switch_to(b, item);
+    const MirValue at[2] = {value, mir_b_use_var(b, index)};
+    const MirValue element = mir_b_emit(b, MOP_ListGet, at, 2, (MirImm){0}, elem);
+    const MirValue piece = lf_element(lb, elem, element, depth);
+    if (!lb->ok) {
+        return;
+    }
+    lf_push(lb, buffer, piece);
+    lb_drop(lb, piece);
+    const MirValue current = mir_b_use_var(b, index);
+    const MirValue one = mir_b_iconst(b, 1);
+    mir_b_def_var(b, index, mir_b_binop(b, MOP_IAdd, current, one));
+    mir_b_br(b, header, NULL, 0);
+    mir_b_seal_block(b, header);
+    mir_b_seal_block(b, exit);
+    mir_b_switch_to(b, exit);
+    lf_push_text(lb, buffer, "]");
+    mir_b_ret(b, lf_finish(lb, buffer));
+}
+
 /* Builds `format(value, depth)` for `ty` into the module; MIR_NONE when a field has no text form here. */
 static uint32_t lf_build(Lb *lb, MirTy ty) {
     MirBuilder outer = lb->b;
@@ -222,14 +294,22 @@ static uint32_t lf_build(Lb *lb, MirTy ty) {
     lb_emit_plain(lb, MOP_DepthEnter);
     MirValue args[2];
     mir_b_params(&lb->b, args, 2);
-    if (mir_ty_data(lb->m, ty)->kind == MK_TYPE) {
+    const uint8_t kind = mir_ty_data(lb->m, ty)->kind;
+    if (kind == MK_TYPE) {
         lf_record(lb, ty, args[0], args[1]);
-    } else {
+    } else if (kind == MK_ALT) {
         lf_enum(lb, ty, args[0], args[1]);
+    } else if (kind == MK_OPT) {
+        lf_optional(lb, ty, args[0], args[1]);
+    } else {
+        lf_list(lb, ty, args[0], args[1]);
     }
     MirFunc f = {0};
     const bool built = mir_b_into_func(&lb->b, &f);
     lb->b = outer;
+    if (built) {
+        mir_func_compact_blocks(&f); // blocks in reverse post-order, as every generated function is laid out
+    }
     return lb->ok && built ? mir_add_func(lb->m, &f) : MIR_NONE;
 }
 
@@ -247,9 +327,8 @@ static uint32_t lf_helper(Lb *lb, MirTy ty) {
 
 LbVal lf_text(Lb *lb, LbVal value) {
     const MirTy ty = mir_b_ty(&lb->b, value.v);
-    const uint8_t kind = mir_ty_data(lb->m, ty)->kind;
-    if (kind != MK_TYPE && kind != MK_ALT) {
-        return lb_unsupported(lb); // lists, maps and functions have their own text, not lowered yet
+    if (!lb_is_aggregate(lb, ty)) {
+        return lb_unsupported(lb); // maps and functions have their own text, not lowered yet
     }
     const uint32_t func = lf_helper(lb, ty);
     if (func == MIR_NONE || !lb->ok) {

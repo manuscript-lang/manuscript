@@ -90,6 +90,8 @@
 #include "check/lower_record.c"
 #include "rt_ops.c"
 #include "check/lower_list.c"
+#include "check/lower_extern.c"
+#include "check/lower_out.c"
 #include "check/lower_native.c"
 #include "check/lower_map.c"
 #include "check/lower_enum.c"
@@ -143,6 +145,7 @@
 #include "check/program.c"
 #include "check/dump_methods.c"
 #include "check/api_model.c"
+#include "check/dump_sites.c"
 #include "check/dump_facts.c"
 #include "own/ownership_places.c"
 #include "own/ownership_bits.c"
@@ -157,6 +160,11 @@
 #include "emit/emit_entry.c"
 #include "emit/emit_llvm.c"
 #include "emit/emit_program.c"
+#if !defined(_WIN32)
+#include "build/tool.c"
+#include "build/object.c"
+#include "build/link.c"
+#endif
 /* The project loader uses POSIX file calls, which the Windows tools do not need; the back end library the Rust
  * `ms` links leaves it out on every platform (cmake/MsCompiler.cmake, target ms_backend). */
 #if !defined(_WIN32) && !defined(MS_LIBMS_NO_PROJECT)

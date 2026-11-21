@@ -6,6 +6,7 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 
 - [The C parser returns false on failure and speculation restores a checkpoint](the-c-parser-returns-false-on-failure-and-speculation-restores-a-checkpoint.md): `longjmp` is banned; node ids are spent on abandoned attempts exactly as in Rust.
 - [Fallible native calls share one error builder](fallible-native-calls-share-one-error-builder.md): the status-to-`Error` chain was inlined at every call site (web server MIR 12,070 to 6,414 lines, binary 3.96 to 3.65 MB).
+- [C lowering of extern natives grows slice by slice](c-lowering-of-extern-natives-grows-slice-by-slice.md): extern calls and types lower; `ErrSlot`, `HasRaw` and `out` handles still decline in `ln_marshal`.
 - [Callback adapters do not change generic type identity](callback-adapters-do-not-change-generic-type-identity.md): reader conversion applies at a callable value boundary; implementation overlap and receiver matching preserve nested callback modes.
 
 - [Checker state must scale with the function, not the program](checker-state-must-scale-with-the-function-not-the-program.md): uid-indexed arrays, scans over all methods and `Info` clones were half of `ms check` on a large project.

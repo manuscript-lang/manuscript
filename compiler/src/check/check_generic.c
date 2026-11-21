@@ -127,7 +127,10 @@ static bool generic_bounds(MsBody *b, MsInfer *in) {
         return false;
     }
     for (uint32_t i = 0; i < in->nvars; i++) {
-        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i])) {
+        // A type argument that mentions the caller's own variables is a recursive application the
+        // Rust checker's recursion rules judge (recursion.rs); it stays there.
+        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i]) ||
+            ms_ty_has_variable(&b->c->tys, &b->c->arena, in->bound[i])) {
             return false;
         }
         const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
@@ -190,8 +193,19 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
     if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in, slot) || ms_infer_defaults(&in, &first) != 0 || !generic_bounds(b, &in)) {
         return ms_body_unsupported(b);
     }
+    for (uint32_t i = 0; i < in.nvars; i++) {
+        // A variable bound to a type built from variables (`T` as `List[T]`) can grow without end through a
+        // cycle of calls, which the Rust checker reports (recursion.rs); the graph is not built here yet.
+        if (ms_ty_kind(&b->c->tys, in.bound[i]) != MS_K_VARIABLE &&
+            ms_ty_has_variable(&b->c->tys, &b->c->arena, in.bound[i])) {
+            return ms_body_unsupported(b);
+        }
+    }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
-    if (!ms_body_is_admitted(b, result)) {
+    if (ms_body_has_invalid(b, result)) {
+        return b->invalid_ty;
+    }
+    if (!ms_body_is_bindable(b, result) && result != b->void_ty && !ms_body_is_handle(b, result)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;

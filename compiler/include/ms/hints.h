@@ -12,6 +12,8 @@
 /* Byte-wise string comparison, which is how Rust orders strings. */
 bool ms_str_equal(MsStr a, MsStr b);
 int ms_str_compare(MsStr a, MsStr b);
+/* The same as a `qsort` comparator over an array of MsStr. */
+int ms_str_compare_ptr(const void *a, const void *b);
 bool ms_str_starts_with(MsStr s, MsStr prefix);
 
 /* Levenshtein distance over scalar values. */

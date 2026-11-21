@@ -23,7 +23,7 @@ vscode-install: vscode-package
 		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
-verify: check repo-check workflow-check bench-check lsp-test unit docs-check licenses-check
+verify: check repo-check c-lint workflow-check bench-check lsp-test unit docs-check licenses-check
 
 verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
@@ -254,6 +254,7 @@ c-compiler-test:
 	sh compiler/tests/extern-diff.sh
 	sh compiler/tests/interface-diff.sh
 	sh compiler/tests/param-order-diff.sh
+	sh compiler/tests/field-defaults-diff.sh
 	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/lower-program-diff.sh
 	sh compiler/tests/hints-diff.sh
@@ -300,6 +301,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/imports.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/test/watch.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/report.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
@@ -322,6 +324,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	target/c-tool/ms_api_model stdlib > target/c-tool/model.c.json && cmp target/c-tool/model.json target/c-tool/model.c.json
 	"$(RELEASE_MS)" build tools/ms/facts_entry.ms --link target/c-tool/libmstool.a -o target/c-tool/facts_entry
 	mkdir -p target/c-tool/facts && cp tools/ms/facts_entry.ms target/c-tool/facts/main.ms && cd target/c-tool/facts && ../facts_entry main.ms > entry.json && ../../cmake/tools/compiler/ms_check_dump ../../../stdlib --facts main.ms > dump.json && cmp entry.json dump.json
+	rm -rf target/c-tool/proj && mkdir -p target/c-tool/proj/src && printf 'import helper from "./src/lib.ms"\n\nfn main() Int:\n\treturn helper(2)\n' > target/c-tool/proj/a.ms && printf 'export fn helper(n: Int) Int:\n\treturn n + 1\n' > target/c-tool/proj/src/lib.ms
+	target/c-tool/facts_entry --project target/c-tool/proj/a.ms > target/c-tool/proj/facts.json && grep -q '"key": "a.ms#fn#main"' target/c-tool/proj/facts.json && grep -q '"key": "src/lib.ms#fn#helper"' target/c-tool/proj/facts.json && grep -q '"paths": \["./src/lib.ms"\]' target/c-tool/proj/facts.json && grep -q '"calls": \["src/lib.ms#fn#helper"\], "effects_known": true' target/c-tool/proj/facts.json
 	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -coverage target/c-tool/coverage.rust.json -artifacts target/c-tool/docs.rust -static target/c-tool/static.rust
 	rm -rf target/c-tool/docs.ms
 	"$(RELEASE_MS)" run tools/ms/docgen.ms -- target/c-tool/model.json target/c-tool/docs.ms

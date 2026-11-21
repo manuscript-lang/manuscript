@@ -40,6 +40,13 @@ typedef struct MsTypeScope {
     uint32_t len;
 } MsTypeScope;
 
+/* The standard-library symbol that declares builtin `b`, or MS_NONE: how a pass finds `List` or `Map`
+ * without spelling its name. */
+static inline MsSymId ms_builtin_symbol(const MsCheck *c, MsBuiltin b) {
+    const MsSymId plus_one = c->builtin_sym_plus_one[b];
+    return plus_one == 0 ? MS_NONE : plus_one - 1;
+}
+
 /* Whether `name` is a type variable of `scope` or of an enclosing one. */
 static inline bool ms_type_scope_has(const MsTypeScope *scope, MsSym name) {
     for (; scope != NULL; scope = scope->parent) {
@@ -148,5 +155,13 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, struct MsMethodTabl
  * Like the Rust pass it reports only for a module with no other diagnostic, and it exempts names
  * that begin with `_`. Call after ms_module_check_bodies (and the ownership pass). */
 void ms_module_check_unused(MsCheck *c, MsModId module);
+
+/* Appends `module` and then the project modules it imports (transitively), each once, in import order.
+ * `seen` and `modules` have room for every module; `*n` counts `modules`. */
+void ms_module_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modules, uint32_t *n);
+
+/* Called with the source line of each construct the body checker gives up on (first one per function);
+ * a tool sets it to rank what keeps functions with the Rust checker. */
+extern void (*ms_body_decline_hook)(const char *file, int line);
 
 #endif

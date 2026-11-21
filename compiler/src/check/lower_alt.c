@@ -17,7 +17,7 @@ static MirTy la_result(Lb *lb, MsTy ty) {
     static const char *const field_names[2] = {"value", "cause"};
     MirCaseDef *cases = MS_NEW_N(&lb->m->arena, MirCaseDef, 2);
     for (uint32_t i = 0; i < 2; i++) {
-        const MirTy payload = lb_mir_ty(lb, args[i]);
+        const MirTy payload = args[i] == lb->void_ty ? MIR_VOID : lb_mir_ty(lb, args[i]);
         if (payload == MIR_NONE) {
             return MIR_NONE;
         }
@@ -75,24 +75,40 @@ LbVal la_none_owned(Lb *lb, const MsExpr *e) {
 LbVal la_case(Lb *lb, const MsExpr *call) {
     const MsExpr *callee = call->u.call.callee;
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[call->id]);
-    const uint32_t count = call->u.call.args.len;
+    uint32_t count = call->u.call.args.len;
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT) {
         return lb_unsupported(lb);
     }
     const MirCaseDef *def = &lb->m->alts[mir_ty_data(lb->m, ty)->id].cases[lb->facts->res_ref[callee->id]];
-    if (def->nfields != count) {
-        return lb_unsupported(lb); // `ok()`: the Void payload is left out
-    }
-    MirValue *payload = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
+    MirValue *payload = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)def->nfields + 1);
     for (uint32_t i = 0; i < count && lb->ok; i++) {
         const MsExpr *arg = call->u.call.args.ptr[i].value;
         payload[i] = lb_owns(lb, def->fields[i].ty) ? lb_move_argument(lb, arg) : lb_expr(lb, arg).v;
+    }
+    if (count == 0 && def->nfields == 1 && def->fields[0].ty == MIR_VOID) {
+        payload[0] = mir_b_unit(&lb->b); // `ok()` stands for `ok(void)`
+        count = 1;
     }
     if (!lb->ok) {
         return LB_FAIL;
     }
     const MirImm imm = {.tag = MI_CASE, .a = mir_ty_data(lb->m, ty)->id, .b = lb->facts->res_ref[callee->id]};
     return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, payload, count, imm, ty), lb_owns(lb, ty)};
+}
+
+/* The `ok(void)` a bare `return` stands for in a function that returns `Void!`: the value of the
+ * `return`, then the unit that fills the case. MIR_NONE when the function returns something else. */
+MirValue la_ok_unit(Lb *lb) {
+    const MirTy ty = lb->b.f.ret;
+    const MirTyData *data = ty == MIR_NONE ? NULL : mir_ty_data(lb->m, ty);
+    if (data == NULL || data->kind != MK_ALT || lb->m->alts[data->id].std != MSTD_RESULT ||
+        lb->m->alts[data->id].cases[LA_OK].fields[0].ty != MIR_VOID) {
+        return MIR_NONE;
+    }
+    (void)mir_b_unit(&lb->b);
+    const MirValue unit = mir_b_unit(&lb->b);
+    const MirImm imm = {.tag = MI_CASE, .a = data->id, .b = LA_OK};
+    return mir_b_emit(&lb->b, MOP_AltNew, &unit, 1, imm, ty);
 }
 
 /* A case without payload, named: `Empty`. */
@@ -130,14 +146,15 @@ static MirValue la_field(Lb *lb, MirValue subject, uint32_t alt, uint32_t index,
     return taken;
 }
 
-/* The value `subject` holds, once `la_test` found it present. */
-MirValue la_payload(Lb *lb, MirValue subject) {
+/* The value `subject` holds, once `la_test` found it present. A `borrowed` subject (a name, a parameter) keeps
+ * its payload, which is read in place; an owned Optional is not unwrapped here when its payload is owned. */
+MirValue la_payload(Lb *lb, MirValue subject, bool borrowed) {
     const MirTy ty = mir_b_ty(&lb->b, subject);
     const MirTyData *data = mir_ty_data(lb->m, ty);
     const MirTy held = data->kind == MK_OPT ? data->elem : lb->m->alts[data->id].cases[LA_OK].fields[0].ty;
     if (data->kind == MK_OPT) {
-        if (lb_owns(lb, held)) {
-            lb->ok = false; // taking an owned payload out of an Optional is not lowered yet
+        if (lb_owns(lb, held) && !borrowed) {
+            lb->ok = false; // taking an owned payload out of an owned Optional is not lowered yet
             return subject;
         }
         return mir_b_emit(&lb->b, MOP_OptGet, &subject, 1, (MirImm){0}, data->elem);
@@ -177,6 +194,6 @@ LbVal la_try(Lb *lb, const MsExpr *e) {
     lb_emit_plain(lb, MOP_DepthLeave);
     mir_b_ret(&lb->b, handed);
     lb_enter(lb, go_on);
-    const MirValue value = la_payload(lb, result.v);
+    const MirValue value = la_payload(lb, result.v, false);
     return (LbVal){value, lb_owns(lb, mir_b_ty(&lb->b, value))}; // an owned value moves out of the result
 }

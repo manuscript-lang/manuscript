@@ -31,10 +31,13 @@ typedef struct MsBody {
     bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
     bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
     bool supported;         /* false once a construct outside the handled set is met */
+    MsSite gave_up;         /* the first `ms_body_unsupported` call of this function */
 } MsBody;
 
 /* A parameter or local of this type can be called and passed around (check_closure.c). */
 bool ms_body_is_function_value(const MsBody *b, MsTy ty);
+/* Whether `ty` is `<invalid>` or built from it: an earlier diagnostic is why. */
+bool ms_body_has_invalid(const MsBody *b, MsTy ty);
 /* `callee(args)` through the function-typed binding `binding`. */
 MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding);
 /* A module function named as a value; an anonymous function. */
@@ -45,6 +48,13 @@ MsTy ms_body_lambda_inferred(MsBody *b, const MsExpr *e, MsTy settled); /* `sett
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
 /* Lists (check_list.c): whether `ty` is a `List` of admitted elements, a `List[...]` annotation,
  * a list literal and an index expression. */
+/* The standard type that declares builtin `kind`, when the module sees it under its own name (no
+ * declaration of the module shadows it); MS_NONE otherwise. */
+static inline MsSymId ms_body_visible_builtin(const MsBody *b, MsBuiltin kind) {
+    const MsSymId sym = ms_builtin_symbol(b->c, kind);
+    return sym != MS_NONE && ms_map_get(&b->c->mods[b->module].names, b->c->syms.name[sym]) == sym ? sym : MS_NONE;
+}
+
 bool ms_body_is_list(const MsBody *b, MsTy ty);
 MsBuiltin ms_body_standard_identity(const MsBody *b, MsTy ty);
 bool ms_body_same_type(const MsBody *b, MsTy x, MsTy y);
@@ -82,6 +92,7 @@ void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty);
 /* `written` is the explicit type arguments of `f[Int](x)`, or NULL. */
 bool ms_body_mentions_unbound(const MsBody *b, const MsInfer *in, MsTy ty); /* `ty` mentions a variable `in` has not bound */
 void ms_body_record_function_arguments(MsBody *b, const MsExpr *call, MsTy sig, const uint32_t *slot); /* a function argument has its parameter's type */
+void ms_body_close_from(MsBody *b, uint32_t first); /* the bindings declared since `first` go out of scope */
 void ms_body_check_home(MsBody *b, MsSymId sym); /* type the field defaults of the module that declares `sym` */
 bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in); /* one argument of an open signature: checked against its parameter, or binding its variables */
 MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
@@ -92,7 +103,11 @@ bool ms_body_reordered(const MsExpr *call, const uint32_t *slot); /* some argume
 bool ms_body_bind_arguments(const MsExpr *call, const MsSym *names, const bool *positional, uint32_t nparams, uint32_t *slot, bool *covered);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
 void ms_body_report(MsBody *b, MsPos pos, MsStr message); /* a type diagnostic, held until the function is claimed */
-MsTy ms_body_unsupported(MsBody *b);
+/* Each give-up is reported to `ms_body_decline_hook` (when set) with its source line, so a tool can rank
+ * the constructs that keep functions with the Rust checker: `MS_WHY=1 ms_check_dump ... | sort | uniq -c`. */
+MsTy ms_body_unsupported_at(MsBody *b, const char *file, int line);
+// NOLINTNEXTLINE(readability-identifier-naming): reads as the function it wraps; the line is the point.
+#define ms_body_unsupported(b) ms_body_unsupported_at((b), __FILE__, __LINE__)
 /* Records the type of expression node `node` and returns it. */
 MsTy ms_body_record(MsBody *b, uint32_t node, MsTy ty);
 /* The type of `e` where `expected` is what the context wants (MS_TY_NONE for no expectation); a

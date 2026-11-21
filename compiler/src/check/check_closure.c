@@ -10,8 +10,9 @@
 
 #include "check/check_body.h"
 
-static bool closure_primitive(const MsBody *b, MsTy ty) {
-    return ms_body_is_plain_value(b, ty);
+/* What a function value may take or give: any type a binding can hold. */
+static bool closure_value(const MsBody *b, MsTy ty) {
+    return ms_body_is_bindable(b, ty);
 }
 
 bool ms_body_is_function_value(const MsBody *b, MsTy ty) {
@@ -21,11 +22,28 @@ bool ms_body_is_function_value(const MsBody *b, MsTy ty) {
     }
     const MsTyParam *params = ms_ty_params(tys, ty);
     for (uint32_t i = 0; i < tys->nparams[ty]; i++) {
-        if ((params[i].flags & ~MS_PARAM_POSITIONAL) != 0 || !closure_primitive(b, params[i].ty)) {
+        if ((params[i].flags & ~(MS_PARAM_POSITIONAL | MS_PARAM_MOVE)) != 0 || !closure_value(b, params[i].ty)) {
             return false;
         }
     }
-    return closure_primitive(b, tys->result[ty]) || tys->result[ty] == b->void_ty;
+    return closure_value(b, tys->result[ty]) || tys->result[ty] == b->void_ty;
+}
+
+/* A function value whose parameters and result are plain values: the only ones a lambda is checked
+ * for. A parameter of another type is owned or borrowed by the function type's mode, which the
+ * ownership walk does not model for a lambda's own parameters yet. */
+static bool closure_plain(const MsBody *b, MsTy fn) {
+    const MsTyTable *tys = &b->c->tys;
+    if (!ms_body_is_function_value(b, fn)) {
+        return false;
+    }
+    const MsTyParam *params = ms_ty_params(tys, fn);
+    for (uint32_t i = 0; i < tys->nparams[fn]; i++) {
+        if ((params[i].flags & ~MS_PARAM_POSITIONAL) != 0 || !ms_body_is_plain_value(b, params[i].ty)) {
+            return false;
+        }
+    }
+    return ms_body_is_plain_value(b, tys->result[fn]) || tys->result[fn] == b->void_ty;
 }
 
 /* The name a function type's parameter `index` carries: `_0`, `_1`, as the parser spells them. */
@@ -71,7 +89,7 @@ MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding) {
             return ms_body_unsupported(b);
         }
     }
-    return tys->result[fn];
+    return ms_body_has_invalid(b, tys->result[fn]) ? b->invalid_ty : tys->result[fn];
 }
 
 /* A module function named as a value. */
@@ -162,7 +180,7 @@ static MsTy closure_check(MsBody *b, const MsExpr *e, MsTy expected, bool infer)
         return ms_body_unsupported(b);
     }
     const MsTy fn = closure_signature(b, e, expected, &result);
-    if (!b->supported || !ms_body_is_function_value(b, fn)) {
+    if (!b->supported || !closure_plain(b, fn)) {
         return ms_body_unsupported(b);
     }
     const MsTy outer_result = b->result;

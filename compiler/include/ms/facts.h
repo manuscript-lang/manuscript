@@ -76,6 +76,12 @@ typedef struct MsMethods {
 } MsMethods;
 
 /* The per-module columns. */
+/* A place in the checker's source, for reports of why a function was left to the Rust checker. */
+typedef struct MsSite {
+    const char *file;
+    uint32_t line;
+} MsSite;
+
 typedef struct MsFacts {
     uint32_t node_count;
     /* resolution */
@@ -106,7 +112,9 @@ typedef struct MsFacts {
     bool *call_reordered; /* by call node id: an argument is not at its parameter's position (labels out of order or skipping a default); passes that pair arguments with parameters by index leave the call to Rust */
     bool *some_wrap;  /* by expression node id: a value of the payload type used where an Optional is expected, so it is wrapped in `some` */
     bool *moved_out;      /* by name node id: the use moves a binding's value out (ownership pass; a resource closed at scope end is closed only on the paths that keep it) */
+    bool *borrowed_match; /* by match node id: every arm yields a reference and the value is only read, so the match is a reference too (ownership pass) */
     bool *body_checked;   /* by declaration node id: the function's body was checked */
+    MsSite *refusal;      /* by declaration node id: where the body checker gave up on the body, or NULL file when it did not */
     uint32_t *param_consumed; /* by declaration node id: bit i is set when the function moves its plain parameter i, so callers hand it over (ownership pass) */
     bool ownership_done; /* the ownership pass walked this module */
     bool *ret_borrowed;   /* by declaration node id: every result is a reference into the arguments (ownership pass) */
