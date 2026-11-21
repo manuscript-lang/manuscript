@@ -207,12 +207,12 @@ MsTy ms_ty_subst(MsTyTable *table, MsTy ty, const MsTy *vars, const MsTy *args, 
 /* ---- nominal definitions ---- */
 
 /* One case of an alternative: its name and payload slots. */
-typedef struct MsCase {
+typedef struct MsTyCase {
   MsName name;
   MsTyParamList fields; /* owned */
-} MsCase;
+} MsTyCase;
 
-MS_LIST_DEFINE(MsCaseList, ms_case_list, MsCase)
+MS_LIST_DEFINE(MsTyCaseList, ms_ty_case_list, MsTyCase)
 
 /* A declaration inside a loaded file: the file's index and a node id in its syntax tree. */
 typedef struct MsDeclRef {
@@ -235,7 +235,7 @@ typedef struct MsDef {
   uint32_t symbol;
   MsTyList variables;       /* owned: declared type variables */
   MsTyParamList fields;     /* owned */
-  MsCaseList cases;         /* owned */
+  MsTyCaseList cases;         /* owned */
   MsOperationList operations; /* owned */
 } MsDef;
 
