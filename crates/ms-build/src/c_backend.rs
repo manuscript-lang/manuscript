@@ -13,8 +13,8 @@ use std::ffi::{CString, c_char};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use ms_clif::BuildOptions;
-use ms_clif::link::llvm_tools;
+use crate::BuildOptions;
+use crate::link::llvm_tools;
 use ms_mir::ir::Module;
 
 /// Whether `MS_BACKEND=c` asks for the C back end.
