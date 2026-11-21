@@ -419,29 +419,37 @@ static LbVal lb_compare(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     return (LbVal){result, false};
 }
 
-/* The runtime function of `left op right` on big integers, or NULL for a comparison. */
-static const MsRtFn *lb_bigint_operator(MsBinaryOp op) {
+/* The runtime function of `left op right` on a big integer or decimal (`prefix` names which), or NULL when the runtime
+ * has none for `op` (a comparison, or `%` of a decimal). */
+static const MsRtFn *lb_number_operator(MsBinaryOp op, bool decimal) {
     const char *symbol = NULL;
     switch (op) {
-    case MS_B_ADD: symbol = "msstd_bigint_add"; break;
-    case MS_B_SUB: symbol = "msstd_bigint_subtract"; break;
-    case MS_B_MUL: symbol = "msstd_bigint_multiply"; break;
-    case MS_B_DIV: symbol = "msstd_bigint_quotient"; break;
-    case MS_B_REM: symbol = "msstd_bigint_modulo"; break;
-    default: return NULL;
+    case MS_B_ADD: symbol = decimal ? "msstd_decimal_add" : "msstd_bigint_add"; break;
+    case MS_B_SUB: symbol = decimal ? "msstd_decimal_subtract" : "msstd_bigint_subtract"; break;
+    case MS_B_MUL: symbol = decimal ? "msstd_decimal_multiply" : "msstd_bigint_multiply"; break;
+    case MS_B_DIV: symbol = decimal ? "msstd_decimal_divide" : "msstd_bigint_quotient"; break;
+    case MS_B_REM: symbol = decimal ? NULL : "msstd_bigint_modulo"; break;
+    default: break;
     }
-    return ms_rt_fn_find(symbol, strlen(symbol));
+    return symbol == NULL ? NULL : ms_rt_fn_find(symbol, strlen(symbol));
 }
 
-/* Arithmetic on big integers, which the runtime performs; the operands are borrowed and their owned temporaries are
- * released at the end of the statement. */
-static LbVal lb_bigint_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
-    const MsRtFn *fn = lb_bigint_operator(op);
+/* Arithmetic on big integers and decimals, which the runtime performs; the operands are borrowed and their owned
+ * temporaries are released at the end of the statement. */
+static LbVal lb_number_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right, bool decimal) {
+    const MsRtFn *fn = lb_number_operator(op, decimal);
     if (fn == NULL) {
         return LB_UNSUPPORTED(lb);
     }
     const MirValue args[2] = {left.v, right.v};
-    const LbVal result = lb_native_call(lb, fn, args, 2, mir_b_ty(&lb->b, left.v));
+    const MirTy ty = mir_b_ty(&lb->b, left.v);
+    LbVal result;
+    if (decimal) { // an operator hands the decimals over by value; a method call stores them in slots first
+        const MirTy types[2] = {ty, ty};
+        result = (LbVal){mir_b_call_rt(&lb->b, lb_runtime_extern(lb, fn->symbol, types, 2, ty, MR_NONE, fn->pure), args, 2), false};
+    } else {
+        result = lb_native_call(lb, fn, args, 2, ty);
+    }
     for (uint32_t i = 0; lb->ok && i < 2; i++) {
         if ((i == 0 ? left : right).owned) {
             lb_hold_temp(lb, args[i]);
@@ -450,14 +458,20 @@ static LbVal lb_bigint_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     return result;
 }
 
-/* Whether `ty` is the runtime's big integer. */
-static bool lb_is_bigint(const Lb *lb, MirTy ty) {
+/* Whether `ty` is the runtime's big integer (`decimal` false) or decimal (true). */
+static bool lb_is_number_type(const Lb *lb, MirTy ty, bool decimal) {
     const MirTyData *data = mir_ty_data(lb->m, ty);
-    if (data->kind != MK_OBJ) {
+    MsSym name = MS_NONE;
+    if (!decimal && data->kind == MK_OBJ) {
+        name = data->name;
+    } else if (decimal && data->kind == MK_TYPE) {
+        name = lb->m->type_defs[data->id].name;
+    } else {
         return false;
     }
-    const MsStr name = ms_name(&lb->m->names, data->name);
-    return name.len == 6 && memcmp(name.ptr, "BigInt", 6) == 0;
+    const MsStr text = ms_name(&lb->m->names, name);
+    const char *want = decimal ? "Decimal" : "BigInt";
+    return text.len == strlen(want) && memcmp(text.ptr, want, text.len) == 0;
 }
 
 /* `left op right` on lowered operands (not `and` and `or`, which short-circuit). */
@@ -466,8 +480,8 @@ static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     if (op == MS_B_ADD && ty == MIR_STR) {
         return lb_concat(lb, left, right);
     }
-    if (lb_is_bigint(lb, ty)) {
-        return lb_bigint_apply(lb, op, left, right);
+    if (lb_is_number_type(lb, ty, false) || lb_is_number_type(lb, ty, true)) {
+        return lb_number_apply(lb, op, left, right, lb_is_number_type(lb, ty, true));
     }
     if (lb_owns(lb, ty) || (ty != MIR_INT && ty != MIR_FLOAT && ty != MIR_BOOL)) {
         return LB_UNSUPPORTED(lb); // the operations of the sized numbers and the other native types are not lowered yet
