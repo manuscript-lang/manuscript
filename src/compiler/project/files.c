@@ -5,6 +5,7 @@
 #include "base/file.h"
 #include "base/path.h"
 #include "compiler/project/manifest.h"
+#include "compiler/project/workspace.h"
 
 static bool stat_failure(MsArena *arena, MsSpan target, MsProjectError *error) {
   MsString real = ms_string_empty();
@@ -94,4 +95,25 @@ bool ms_project_format_files(MsArena *arena, MsSpan target, MsSpanList *paths, M
   ok = ok && confine(arena, root, &found, paths, error);
   ms_span_list_free(&found);
   return ok;
+}
+
+bool ms_project_workspace_members(MsArena *arena, MsSpan target, MsSpanList *manifests, bool *found,
+                                  MsProjectError *error) {
+  *found = false;
+  MsSpan absolute = {0};
+  if (!ms_span_is_text(ms_path_file_name(target), "ms.toml") || !ms_file_is_regular(target)) {
+    return true;
+  }
+  if (!absolute_target(arena, target, &absolute, error)) {
+    return false;
+  }
+  MsWorkspace workspace = {0};
+  if (!ms_workspace_root_members(arena, absolute, &workspace, found, error)) {
+    return false;
+  }
+  for (size_t i = 0; *found && i < workspace.members.len; i++) {
+    ms_span_list_push(manifests, ms_workspace_manifest(arena, &workspace.members.ptr[i]));
+  }
+  ms_workspace_free(&workspace);
+  return true;
 }

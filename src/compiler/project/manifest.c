@@ -1,32 +1,26 @@
 /* compiler/project/manifest.c: ms.toml validation, port of crates/ms-driver/src/project/manifest.rs for the
  * tables [project], [aliases] and [embed]. The TOML syntax errors are this reader's own wording. */
 #include "compiler/project/manifest.h"
+#include "compiler/project/manifest_internal.h"
 
 #include <errno.h>
 
 #include "base/file.h"
 #include "base/path.h"
 
-typedef struct Reader {
-  MsArena *arena;
-  MsManifest *out;
-  const TomlDocument *document;
-  MsProjectError *error;
-  MsSpan assigned[3]; /* the project keys seen: name, source, entry */
-} Reader;
 
-static bool fail_at(Reader *r, MsPos at, MsSpan message) {
+bool manifest_fail_at(Reader *r, MsPos at, MsSpan message) {
   *r->error = (MsProjectError){
       .kind = MS_PERR_MANIFEST, .file = r->out->file, .position = at, .message = message};
   return false;
 }
 
-static bool fail_text(Reader *r, MsPos at, const char *message) {
-  return fail_at(r, at, ms_arena_copy(r->arena, ms_span_of_text(message)));
+bool manifest_fail_text(Reader *r, MsPos at, const char *message) {
+  return manifest_fail_at(r, at, ms_arena_copy(r->arena, ms_span_of_text(message)));
 }
 
 /* A formatted message in the arena. */
-static MsSpan formatted(Reader *r, const char *format, MsSpan a, MsSpan b) {
+MsSpan manifest_formatted(Reader *r, const char *format, MsSpan a, MsSpan b) {
   MsStrBuild text = ms_strbuild_new();
   for (const char *c = format; *c != 0; c++) {
     if (*c != '%') {
@@ -40,7 +34,7 @@ static MsSpan formatted(Reader *r, const char *format, MsSpan a, MsSpan b) {
   return ms_project_text(r->arena, &text);
 }
 
-static bool valid_alias(MsSpan key) {
+bool manifest_valid_alias(MsSpan key) {
   if (key.len < 2 || key.ptr[0] != '@') {
     return false;
   }
@@ -64,7 +58,7 @@ static bool has_control(MsSpan text) {
 }
 
 /* The string value of `entry`, or the error naming the shape the key wants. */
-static bool text_value(Reader *r, const TomlEntry *entry, MsSpan *value) {
+bool manifest_text_value(Reader *r, const TomlEntry *entry, MsSpan *value) {
   if (!entry->is_string) {
     MsSpan shown = entry->text;
     while (shown.len > 0 && shown.ptr[0] == '"') {
@@ -73,10 +67,10 @@ static bool text_value(Reader *r, const TomlEntry *entry, MsSpan *value) {
     while (shown.len > 0 && shown.ptr[shown.len - 1] == '"') {
       shown.len--;
     }
-    return fail_at(r, entry->value_at, formatted(r, "%a must be a string; write %a = \"%b\"", entry->key, shown));
+    return manifest_fail_at(r, entry->value_at, manifest_formatted(r, "%a must be a string; write %a = \"%b\"", entry->key, shown));
   }
   if (has_control(entry->text)) {
-    return fail_at(r, entry->value_at, formatted(r, "manifest value for %a contains a NUL or control character; remove it", entry->key, entry->key));
+    return manifest_fail_at(r, entry->value_at, manifest_formatted(r, "manifest value for %a contains a NUL or control character; remove it", entry->key, entry->key));
   }
   *value = entry->text;
   return true;
@@ -84,8 +78,8 @@ static bool text_value(Reader *r, const TomlEntry *entry, MsSpan *value) {
 
 static bool unsupported_table(Reader *r, const TomlTable *table) {
   const bool package = ms_span_is_text(table->name, "package");
-  return fail_at(r, table->at,
-                 formatted(r,
+  return manifest_fail_at(r, table->at,
+                 manifest_formatted(r,
                            "unsupported manifest table [%a]; ms.toml supports only [project], [workspace], "
                            "[aliases], [embed], [dependencies] and [effects]: %b",
                            table->name,
@@ -97,16 +91,19 @@ static bool project_entry(Reader *r, const TomlEntry *entry) {
   const MsSpan key = entry->key;
   if (!ms_span_is_text(key, "name") && !ms_span_is_text(key, "source") && !ms_span_is_text(key, "entry") &&
       !ms_span_is_text(key, "version") && !ms_span_is_text(key, "effects")) {
-    return fail_at(r, entry->key_at,
-                   formatted(r, "unknown project key %a; [project] accepts name, source, entry, version, and effects",
-                             key, key));
+    return manifest_fail_at(r, entry->key_at,
+                            manifest_formatted(r, "unknown project key %a; [project] accepts name, source, entry, "
+                                                  "version, and effects", key, key));
   }
-  if (ms_span_is_text(key, "version") || ms_span_is_text(key, "effects")) {
-    return fail_at(r, entry->key_at, formatted(r, "project key %a is not implemented yet", key, key));
+  if (ms_span_is_text(key, "effects")) {
+    return manifest_project_effects(r, entry);
   }
   MsSpan value = {0};
-  if (!text_value(r, entry, &value)) {
+  if (!manifest_text_value(r, entry, &value)) {
     return false;
+  }
+  if (ms_span_is_text(key, "version")) {
+    return manifest_project_version(r, entry, value);
   }
   if (ms_span_is_text(key, "name")) {
     r->out->name = value;
@@ -120,17 +117,17 @@ static bool project_entry(Reader *r, const TomlEntry *entry) {
 
 static bool name_entry(Reader *r, const TomlEntry *entry, bool embed) {
   const MsSpan key = entry->key;
-  if (!valid_alias(key) || ms_span_is_text(key, "@std")) {
+  if (!manifest_valid_alias(key) || ms_span_is_text(key, "@std")) {
     if (embed) {
-      return fail_at(r, entry->key_at,
-                     formatted(r, "invalid or reserved embed name %a; embed names look like @assets (start with @, "
+      return manifest_fail_at(r, entry->key_at,
+                     manifest_formatted(r, "invalid or reserved embed name %a; embed names look like @assets (start with @, "
                                   "letters/digits/underscore) and cannot be @std", key, key));
     }
     MsSpan hint = {0};
     MsStrBuild at_key = ms_strbuild_new();
     ms_strbuild_append_byte(&at_key, '@');
     ms_strbuild_append(&at_key, key);
-    if (!ms_span_is_text(key, "std") && valid_alias(ms_strbuild_span(&at_key))) {
+    if (!ms_span_is_text(key, "std") && manifest_valid_alias(ms_strbuild_span(&at_key))) {
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append_text(&text, " (did you mean @");
       ms_strbuild_append(&text, key);
@@ -138,19 +135,19 @@ static bool name_entry(Reader *r, const TomlEntry *entry, bool embed) {
       hint = ms_project_text(r->arena, &text);
     }
     ms_strbuild_free(&at_key);
-    return fail_at(r, entry->key_at,
-                   formatted(r, "invalid or reserved alias %a%b; aliases look like @lib (start with @, "
+    return manifest_fail_at(r, entry->key_at,
+                   manifest_formatted(r, "invalid or reserved alias %a%b; aliases look like @lib (start with @, "
                                 "letters/digits/underscore), cannot be @std, and must map to a path, not another alias",
                              key, hint));
   }
   MsSpan value = {0};
-  if (!text_value(r, entry, &value)) {
+  if (!manifest_text_value(r, entry, &value)) {
     return false;
   }
   if (value.len > 0 && value.ptr[0] == '@') {
-    return fail_at(r, entry->value_at,
-                   embed ? formatted(r, "invalid embed target %a; map it to a project-local directory, not an alias", value, value)
-                         : formatted(r, "invalid alias target %a; map it to a project-local path, not another alias", value, value));
+    return manifest_fail_at(r, entry->value_at,
+                   embed ? manifest_formatted(r, "invalid embed target %a; map it to a project-local directory, not an alias", value, value)
+                         : manifest_formatted(r, "invalid alias target %a; map it to a project-local path, not another alias", value, value));
   }
   manifest_name_list_push(embed ? &r->out->embeds : &r->out->aliases, (MsManifestName){.name = key, .target = value});
   return true;
@@ -163,8 +160,14 @@ static bool section_entries(Reader *r, int32_t index, const TomlTable *table) {
     if (entry->table != index) {
       continue;
     }
-    const bool ok = ms_span_is_text(name, "project") ? project_entry(r, entry)
-                                                     : name_entry(r, entry, ms_span_is_text(name, "embed"));
+    bool ok = false;
+    if (ms_span_is_text(name, "project")) {
+      ok = project_entry(r, entry);
+    } else if (ms_span_is_text(name, "aliases") || ms_span_is_text(name, "embed")) {
+      ok = name_entry(r, entry, ms_span_is_text(name, "embed"));
+    } else {
+      ok = manifest_package_entry(r, table, entry);
+    }
     if (!ok) {
       return false;
     }
@@ -176,23 +179,20 @@ static bool section_entries(Reader *r, int32_t index, const TomlTable *table) {
 static bool read_tables(Reader *r) {
   const TomlEntryList *entries = &r->document->entries;
   if (entries->len > 0 && entries->ptr[0].table < 0) {
-    return fail_at(r, (MsPos){.line = 1, .column = 1},
-                   formatted(r, "invalid manifest assignment; %a is not a table, so put it under a [project] table "
+    return manifest_fail_at(r, (MsPos){.line = 1, .column = 1},
+                   manifest_formatted(r, "invalid manifest assignment; %a is not a table, so put it under a [project] table "
                                 "header: ms.toml starts with [project] and name = \"app\" and source = \"src\" under it",
                              entries->ptr[0].key, entries->ptr[0].key));
   }
   for (size_t t = 0; t < r->document->tables.len; t++) {
     const TomlTable *table = &r->document->tables.ptr[t];
     const bool known = ms_span_is_text(table->name, "project") || ms_span_is_text(table->name, "aliases") ||
-                       ms_span_is_text(table->name, "embed");
-    const bool later = ms_span_is_text(table->name, "dependencies") || ms_span_is_text(table->name, "effects") ||
-                       ms_span_is_text(table->name, "workspace");
-    if (later) {
-      return fail_at(r, table->at, formatted(r, "table [%a] is not implemented yet", table->name, table->name));
-    }
+                       ms_span_is_text(table->name, "embed") || ms_span_is_text(table->name, "dependencies") ||
+                       ms_span_is_text(table->name, "effects") || ms_span_is_text(table->name, "workspace");
     if (!known) {
       return unsupported_table(r, table);
     }
+    r->out->is_workspace = r->out->is_workspace || ms_span_is_text(table->name, "workspace");
     if (ms_span_is_text(table->name, "project")) {
       r->out->location = table->at;
     }
@@ -203,7 +203,7 @@ static bool read_tables(Reader *r) {
   return true;
 }
 
-static const TomlEntry *find_entry(const Reader *r, const char *table, MsSpan key) {
+const TomlEntry *manifest_find_entry(const Reader *r, const char *table, MsSpan key) {
   for (size_t i = 0; i < r->document->entries.len; i++) {
     const TomlEntry *entry = &r->document->entries.ptr[i];
     if (entry->table >= 0 && ms_span_is_text(r->document->tables.ptr[entry->table].name, table) &&
@@ -253,14 +253,14 @@ static MsSpan manifest_path_message(Reader *r, const MsProjectError *cause) {
 
 static bool check_source(Reader *r) {
   MsManifest *m = r->out;
-  const TomlEntry *entry = find_entry(r, "project", ms_span_of_text("source"));
+  const TomlEntry *entry = manifest_find_entry(r, "project", ms_span_of_text("source"));
   MsProjectError cause = {0};
   if (!resolve(r, m->source, &m->source, &cause)) {
-    return fail_at(r, entry->value_at, manifest_path_message(r, &cause));
+    return manifest_fail_at(r, entry->value_at, manifest_path_message(r, &cause));
   }
   if (!ms_dir_exists(m->source)) {
-    return fail_at(r, entry->value_at,
-                   formatted(r, "project source must be an existing directory; %a does not exist or is not a directory, "
+    return manifest_fail_at(r, entry->value_at,
+                   manifest_formatted(r, "project source must be an existing directory; %a does not exist or is not a directory, "
                                 "so create it or fix source in [project]", quoted(r, m->source), m->source));
   }
   return true;
@@ -268,23 +268,23 @@ static bool check_source(Reader *r) {
 
 static bool check_entry(Reader *r) {
   MsManifest *m = r->out;
-  const TomlEntry *entry = find_entry(r, "project", ms_span_of_text("entry"));
+  const TomlEntry *entry = manifest_find_entry(r, "project", ms_span_of_text("entry"));
   if (entry == NULL) {
     return true;
   }
   if (m->entry.len == 0) {
-    return fail_text(r, entry->value_at, "project entry cannot be empty; omit entry for a library or set it to a .ms file such as \"src/main.ms\"");
+    return manifest_fail_text(r, entry->value_at, "project entry cannot be empty; omit entry for a library or set it to a .ms file such as \"src/main.ms\"");
   }
   MsProjectError cause = {0};
   if (!resolve(r, m->entry, &m->entry, &cause)) {
-    return fail_at(r, entry->value_at, manifest_path_message(r, &cause));
+    return manifest_fail_at(r, entry->value_at, manifest_path_message(r, &cause));
   }
   if (!ms_span_is_text(ms_path_ext(m->entry), ".ms")) {
-    return fail_text(r, entry->value_at, "entry requires .ms extension; set entry to a .ms file such as \"src/main.ms\"");
+    return manifest_fail_text(r, entry->value_at, "entry requires .ms extension; set entry to a .ms file such as \"src/main.ms\"");
   }
   if (!ms_file_is_regular(m->entry)) {
-    return fail_at(r, entry->value_at,
-                   formatted(r, "project entry must be an existing regular file; create %a or fix entry in [project]", m->entry, m->entry));
+    return manifest_fail_at(r, entry->value_at,
+                   manifest_formatted(r, "project entry must be an existing regular file; create %a or fix entry in [project]", m->entry, m->entry));
   }
   return true;
 }
@@ -292,11 +292,11 @@ static bool check_entry(Reader *r) {
 static bool check_aliases(Reader *r) {
   for (size_t i = 0; i < r->out->aliases.len; i++) {
     MsManifestName *alias = &r->out->aliases.ptr[i];
-    const TomlEntry *entry = find_entry(r, "aliases", alias->name);
+    const TomlEntry *entry = manifest_find_entry(r, "aliases", alias->name);
     MsProjectError cause = {0};
     if (!resolve(r, alias->target, &alias->target, &cause)) {
-      return fail_at(r, entry->value_at,
-                     formatted(r, "alias %a target cannot be resolved: %b; external Manuscript dependency projects are "
+      return manifest_fail_at(r, entry->value_at,
+                     manifest_formatted(r, "alias %a target cannot be resolved: %b; external Manuscript dependency projects are "
                                   "unsupported, so copy the sources inside this project root and point the alias at that copy",
                                alias->name, ms_project_error_text(r->arena, &cause)));
     }
@@ -307,40 +307,101 @@ static bool check_aliases(Reader *r) {
 static bool check_embeds(Reader *r) {
   for (size_t i = 0; i < r->out->embeds.len; i++) {
     MsManifestName *embed = &r->out->embeds.ptr[i];
-    const TomlEntry *entry = find_entry(r, "embed", embed->name);
+    const TomlEntry *entry = manifest_find_entry(r, "embed", embed->name);
     MsSpan unused = {0};
     if (ms_manifest_find(&r->out->aliases, embed->name, &unused)) {
-      return fail_at(r, entry->key_at,
-                     formatted(r, "%a is declared in both [aliases] and [embed]; rename one so an import names a single thing", embed->name, embed->name));
+      return manifest_fail_at(r, entry->key_at,
+                     manifest_formatted(r, "%a is declared in both [aliases] and [embed]; rename one so an import names a single thing", embed->name, embed->name));
     }
     MsProjectError cause = {0};
     const bool resolved = resolve(r, embed->target, &embed->target, &cause);
     if (!resolved) {
-      return fail_at(r, entry->value_at,
-                     formatted(r, "embed %a target cannot be resolved: %b; keep embedded directories inside the project root",
+      return manifest_fail_at(r, entry->value_at,
+                     manifest_formatted(r, "embed %a target cannot be resolved: %b; keep embedded directories inside the project root",
                                embed->name, ms_project_error_text(r->arena, &cause)));
     }
     if (!ms_dir_exists(embed->target)) {
-      return fail_at(r, entry->value_at,
-                     formatted(r, "embed %a must name an existing directory; %b is not one, so create it or fix the path in [embed]",
+      return manifest_fail_at(r, entry->value_at,
+                     manifest_formatted(r, "embed %a must name an existing directory; %b is not one, so create it or fix the path in [embed]",
                                embed->name, quoted(r, embed->target)));
     }
   }
   return true;
 }
 
+/* The first entry, by its `table.key` name, outside [workspace]; a root that lists members holds nothing else. */
+static const TomlEntry *first_foreign_entry(const Reader *r) {
+  const TomlEntry *first = NULL;
+  for (size_t i = 0; i < r->document->entries.len; i++) {
+    const TomlEntry *entry = &r->document->entries.ptr[i];
+    const MsSpan table = r->document->tables.ptr[entry->table].name;
+    if (ms_span_is_text(table, "workspace")) {
+      continue;
+    }
+    if (first == NULL) {
+      first = entry;
+      continue;
+    }
+    const MsSpan held = r->document->tables.ptr[first->table].name;
+    const size_t common = table.len < held.len ? table.len : held.len;
+    int order = common == 0 ? 0 : __builtin_memcmp(table.ptr, held.ptr, common);
+    if (order == 0 && table.len == held.len) {
+      const size_t keys = entry->key.len < first->key.len ? entry->key.len : first->key.len;
+      order = keys == 0 ? 0 : __builtin_memcmp(entry->key.ptr, first->key.ptr, keys);
+      order = order != 0 ? order : (entry->key.len < first->key.len ? -1 : entry->key.len > first->key.len);
+    } else if (order == 0) {
+      order = table.len < held.len ? -1 : 1;
+    }
+    first = order < 0 ? entry : first;
+  }
+  return first;
+}
+
+static bool has_project_entry(const Reader *r) {
+  for (size_t i = 0; i < r->document->entries.len; i++) {
+    if (ms_span_is_text(r->document->tables.ptr[r->document->entries.ptr[i].table].name, "project")) {
+      return true;
+    }
+  }
+  return false;
+}
+
+typedef enum RootCheck { ROOT_PROJECT, ROOT_ONLY_MEMBERS, ROOT_INVALID } RootCheck;
+
+/* A workspace root without [project] holds only [workspace] and needs no source of its own. */
+static RootCheck check_workspace_root(Reader *r) {
+  if (!r->out->is_workspace || has_project_entry(r)) {
+    return ROOT_PROJECT;
+  }
+  const TomlEntry *extra = first_foreign_entry(r);
+  if (extra != NULL) {
+    (void)manifest_fail_at(r, extra->key_at,
+                            manifest_formatted(r, "a workspace root without [project] holds only [workspace]; move [%a] "
+                                                  "into a member or add a [project] table",
+                                               r->document->tables.ptr[extra->table].name,
+                                               r->document->tables.ptr[extra->table].name));
+    return ROOT_INVALID;
+  }
+  return ROOT_ONLY_MEMBERS;
+}
+
 static bool check_project(Reader *r) {
   const MsManifest *m = r->out;
+  const RootCheck root = check_workspace_root(r);
+  if (root != ROOT_PROJECT) {
+    return root == ROOT_ONLY_MEMBERS;
+  }
   if (m->name.len == 0 || m->source.len == 0) {
     MsStrBuild missing = ms_strbuild_new();
     ms_strbuild_append_text(&missing, m->name.len == 0 ? "name" : "");
     ms_strbuild_append_text(&missing, m->name.len == 0 && m->source.len == 0 ? ", " : "");
     ms_strbuild_append_text(&missing, m->source.len == 0 ? "source" : "");
-    return fail_at(r, m->location,
-                   formatted(r, "[project] requires name and source; missing: %a, e.g. name = \"app\", source = \"src\" "
-                                "(add entry = \"src/main.ms\" for an executable)", ms_project_text(r->arena, &missing), m->name));
+    return manifest_fail_at(r, m->location,
+                            manifest_formatted(r, "[project] requires name and source; missing: %a, e.g. name = \"app\", "
+                                                  "source = \"src\" (add entry = \"src/main.ms\" for an executable)",
+                                               ms_project_text(r->arena, &missing), m->name));
   }
-  return check_source(r) && check_entry(r) && check_aliases(r) && check_embeds(r);
+  return check_source(r) && check_entry(r) && check_aliases(r) && manifest_check_packages(r) && check_embeds(r);
 }
 
 bool ms_manifest_find(const ManifestNameList *list, MsSpan name, MsSpan *target) {
@@ -361,7 +422,7 @@ static bool read_document(Reader *r, TomlDocument *document) {
   MsPos at = {0};
   MsSpan message = {0};
   if (!toml_parse(r->arena, text, bom ? 3 : 0, document, &at, &message)) {
-    return fail_at(r, at, message);
+    return manifest_fail_at(r, at, message);
   }
   return true;
 }
@@ -386,7 +447,9 @@ bool ms_manifest_read(MsArena *arena, MsSpan filename, MsManifest *out, MsProjec
   ms_bytes_free(&bytes);
   TomlDocument document = {0};
   Reader reader = {.arena = arena, .out = out, .document = &document, .error = error};
-  const bool ok = read_document(&reader, &document) && read_tables(&reader) && check_project(&reader);
+  bool ok = read_document(&reader, &document) && read_tables(&reader);
+  manifest_sort_packages(out);
+  ok = ok && check_project(&reader);
   toml_free(&document);
   return ok;
 }
@@ -394,4 +457,8 @@ bool ms_manifest_read(MsArena *arena, MsSpan filename, MsManifest *out, MsProjec
 void ms_manifest_free(MsManifest *manifest) {
   manifest_name_list_free(&manifest->aliases);
   manifest_name_list_free(&manifest->embeds);
+  dependency_list_free(&manifest->dependencies);
+  manifest_name_list_free(&manifest->path_dependencies);
+  allowed_effects_list_free(&manifest->allowed_effects);
+  manifest_span_list_free(&manifest->members);
 }

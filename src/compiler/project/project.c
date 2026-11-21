@@ -62,3 +62,29 @@ bool ms_std_source_find(MsSpan name, MsStdSource *out) {
   }
   return false;
 }
+
+MsSpan ms_project_quote(MsArena *arena, MsSpan text) {
+  MsStrBuild out = ms_strbuild_new();
+  ms_strbuild_append_byte(&out, '"');
+  for (size_t i = 0; i < text.len; i++) {
+    const uint8_t b = text.ptr[i];
+    if (b == '"' || b == '\\') {
+      ms_strbuild_append_byte(&out, '\\');
+      ms_strbuild_append_byte(&out, b);
+    } else if (b == '\n' || b == '\r' || b == '\t' || b == 0) {
+      ms_strbuild_append_byte(&out, '\\');
+      ms_strbuild_append_byte(&out, b == '\n' ? 'n' : b == '\r' ? 'r' : b == '\t' ? 't' : '0');
+    } else if (b < 0x20 || b == 0x7f) {
+      ms_strbuild_append_text(&out, "\\u{");
+      if (b >= 0x10) {
+        ms_strbuild_append_byte(&out, (uint8_t)"0123456789abcdef"[b >> 4]);
+      }
+      ms_strbuild_append_byte(&out, (uint8_t)"0123456789abcdef"[b & 15]);
+      ms_strbuild_append_byte(&out, '}');
+    } else {
+      ms_strbuild_append_byte(&out, b);
+    }
+  }
+  ms_strbuild_append_byte(&out, '"');
+  return ms_project_text(arena, &out);
+}
