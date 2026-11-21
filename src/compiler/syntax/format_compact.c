@@ -3,6 +3,7 @@
  *
  * Each rewrite is a source edit found on the parsed tree. A candidate that contains a comment,
  * spans several lines in an unexpected place, or would exceed the line width is left as written. */
+#include "base/sort.h"
 #include "compiler/syntax/format_internal.h"
 #include "compiler/syntax/walk.h"
 
@@ -236,9 +237,10 @@ static void compact_stmt(void *ctx, const MsStmt *s) {
   }
 }
 
-static int compact_order(const void *a, const void *b) {
-  const FmtEdit *x = a;
-  const FmtEdit *y = b;
+static int64_t compact_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const FmtEdit *x = (const void *)a;
+  const FmtEdit *y = (const void *)b;
   if (x->from != y->from) {
     return x->from < y->from ? -1 : 1;
   }
@@ -266,7 +268,7 @@ bool fmt_compact(Fmt *f, const MsModule *module, MsSpan source, MsSpan *out) {
     return false;
   }
   FmtEdit *edits = c.edits.ptr;
-  qsort(edits, count, sizeof *edits, compact_order);
+  ms_sort((uint8_t *)edits, count, sizeof *edits, compact_order, NULL);
   // Edits that start inside an earlier one are dropped.
   size_t kept = 0;
   size_t cursor = 0;

@@ -1,4 +1,5 @@
 /* syntax/format_text.c: line, tab and literal-text helpers of the formatter, and one formatting pass. */
+#include "base/sort.h"
 #include "compiler/syntax/format_internal.h"
 #include "compiler/syntax/walk.h"
 
@@ -192,9 +193,10 @@ typedef struct Span {
 } Span;
 MS_LIST_DEFINE(LitList, lit_list, Span)
 
-static int span_order(const void *a, const void *b) {
-  const Span *x = a;
-  const Span *y = b;
+static int64_t span_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const Span *x = (const void *)a;
+  const Span *y = (const void *)b;
   if (x->lo != y->lo) {
     return x->lo < y->lo ? -1 : 1;
   }
@@ -315,7 +317,7 @@ bool fmt_once(Fmt *f, MsSpan source, MsSpan *out) {
     *out = fmt_tabify(f, lined);
     return true;
   }
-  qsort(list, nspans, sizeof *list, span_order);
+  ms_sort((uint8_t *)list, nspans, sizeof *list, span_order, NULL);
   // The line-based passes cannot see inside a multi-line text literal, so a one-line placeholder
   // stands in for each and the literal text returns afterwards, shifted with the line it lands on.
   const MsSpan marker = fmt_marker(f, normalized);

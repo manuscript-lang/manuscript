@@ -1,4 +1,5 @@
 /* syntax/format_import.c: import grouping and wrapping. */
+#include "base/sort.h"
 #include "compiler/syntax/format_internal.h"
 #include "compiler/syntax/walk.h"
 
@@ -26,8 +27,11 @@ typedef struct ImportStatement {
 } ImportStatement;
 MS_LIST_DEFINE(StatementList, statement_list, ImportStatement)
 
-static int str_order(const void *a, const void *b) {
-  return fmt_compare(*(const MsSpan *)a, *(const MsSpan *)b);
+static int64_t str_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const MsSpan *x = (const void *)a;
+  const MsSpan *y = (const void *)b;
+  return fmt_compare(*x, *y);
 }
 
 typedef struct MergedImport {
@@ -36,11 +40,12 @@ typedef struct MergedImport {
 } MergedImport;
 MS_LIST_DEFINE(MergedList, merged_list, MergedImport)
 
-static int merged_order(const void *a, const void *b) {
-  const MergedImport *x = a;
-  const MergedImport *y = b;
+static int64_t merged_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const MergedImport *x = (const void *)a;
+  const MergedImport *y = (const void *)b;
   const int sections = fmt_import_section(x->path) - fmt_import_section(y->path);
-  return sections != 0 ? sections : str_order(&x->path, &y->path);
+  return sections != 0 ? sections : str_order(env, (const uint8_t *)&x->path, (const uint8_t *)&y->path);
 }
 
 /* The names joined by ", ". */
@@ -181,7 +186,7 @@ static void fmt_sort_names(SpanList *names) {
   if (n <= 1) {
     return;
   }
-  qsort(items, n, sizeof *items, str_order);
+  ms_sort((uint8_t *)items, n, sizeof *items, str_order, NULL);
   size_t kept = 1;
   for (size_t j = 1; j < n; j++) {
     if (!fmt_eq(items[j], items[kept - 1])) {
@@ -209,7 +214,7 @@ static MsSpan fmt_render_run(Fmt *f, const ImportStatement *list, size_t from, s
     fmt_sort_names(&merged[m].names);
   }
   if (nmerged > 1) {
-    qsort(merged, nmerged, sizeof *merged, merged_order);
+    ms_sort((uint8_t *)merged, nmerged, sizeof *merged, merged_order, NULL);
   }
   const MsSpan rendered = fmt_render_imports(f, merged, nmerged);
   for (size_t m = 0; m < nmerged; m++) {
