@@ -296,7 +296,32 @@ uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, MsPos pos, 
 
 
 
-static MsTy body_number(MsBody *b, const MsExpr *e) {
+/* The values a sized integer type holds, as magnitudes: the largest negative one and the largest
+ * positive one. False for a type that is not a sized integer (`Int` itself is the default). */
+static bool body_int_limits(const MsBody *b, MsTy ty, uint64_t *negative, uint64_t *positive) {
+    static const struct {
+        const char *name;
+        uint64_t negative, positive;
+    } limits[] = {{"Int8", 128, 127},        {"Int16", 32768, 32767},       {"Int32", 2147483648u, 2147483647u},
+                  {"UInt8", 0, 255},         {"UInt16", 0, 65535},          {"UInt32", 0, 4294967295u},
+                  {"UInt64", 0, UINT64_MAX}};
+    if (ty == MS_TY_NONE || ms_ty_kind(&b->c->tys, ty) != MS_K_PRIMITIVE) {
+        return false;
+    }
+    const MsStr name = ms_name(b->c->names, b->c->tys.name[ty]);
+    for (size_t i = 0; i < sizeof limits / sizeof *limits; i++) {
+        if (strlen(limits[i].name) == name.len && memcmp(limits[i].name, name.ptr, name.len) == 0) {
+            *negative = limits[i].negative;
+            *positive = limits[i].positive;
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The type of a number literal: a sized integer or `Float32` the context expects when the value
+ * fits it, else `Int` or `Float`. A literal outside its type is a diagnostic, left to Rust. */
+static MsTy body_number(MsBody *b, const MsExpr *e, MsTy expected, bool negated) {
     MsCheck *c = b->c;
     const MsStr text = ms_number_canonical(&c->arena, ms_name(c->names, e->u.sym));
     if (ms_number_is_decimal(text)) {
@@ -306,8 +331,19 @@ static MsTy body_number(MsBody *b, const MsExpr *e) {
     char *end = NULL;
     errno = 0;
     if (ms_number_is_fractional(text)) {
-        const double value = strtod(digits, &end);
-        return *end != '\0' || isinf(value) ? ms_body_unsupported(b) : b->float_ty;
+        const bool narrow = expected != MS_TY_NONE && expected != b->float_ty && ms_ty_kind(&c->tys, expected) == MS_K_PRIMITIVE &&
+                            ms_name_is(c->names, c->tys.name[expected], "Float32");
+        const double value = narrow ? (double)strtof(digits, &end) : strtod(digits, &end);
+        if (*end != '\0' || isinf(value)) {
+            return ms_body_unsupported(b);
+        }
+        return narrow ? expected : b->float_ty;
+    }
+    uint64_t negative = 0, positive = 0;
+    if (body_int_limits(b, expected, &negative, &positive)) {
+        const uint64_t value = strtoull(digits, &end, 10);
+        const bool fits = *end == '\0' && errno == 0 && value <= (negated ? negative : positive);
+        return fits ? expected : ms_body_unsupported(b);
     }
     (void)strtoll(digits, &end, 10);
     return *end != '\0' || errno != 0 ? ms_body_unsupported(b) : b->int_ty;
@@ -853,7 +889,7 @@ static MsTy body_try(MsBody *b, const MsExpr *operand) {
     return ms_body_unsupported(b);
 }
 
-static MsTy body_unary(MsBody *b, const MsExpr *e) {
+static MsTy body_unary(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *operand = e->u.bin.left;
     const MsUnaryOp op = (MsUnaryOp)e->op;
     if (op == MS_U_TRY) {
@@ -865,7 +901,7 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
         if (text.len == 19 && memcmp(text.ptr, "9223372036854775808", 19) == 0) {
             return ms_body_unsupported(b);
         }
-        const MsTy literal = body_number(b, operand);
+        const MsTy literal = body_number(b, operand, expected, true);
         return literal == MS_TY_NONE ? literal : ms_body_record(b, operand->id, literal);
     }
     const MsTy operand_ty = ms_body_expr(b, operand, MS_TY_NONE);
@@ -1140,12 +1176,12 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
         return body_expr_optional(b, e, expected);
     }
     switch ((MsExprKind)e->kind) {
-    case MS_E_NUMBER: ty = body_number(b, e); break;
+    case MS_E_NUMBER: ty = body_number(b, e, expected, false); break;
     case MS_E_BOOL: ty = b->bool_ty; break;
     case MS_E_VOID: ty = b->void_ty; break;
     case MS_E_TEXT: ty = body_text(b, e); break;
     case MS_E_NAME: ty = body_name(b, e, expected); break;
-    case MS_E_UNARY: ty = body_unary(b, e); break;
+    case MS_E_UNARY: ty = body_unary(b, e, expected); break;
     case MS_E_BINARY: ty = body_binary(b, e); break;
     case MS_E_MEMBER: ty = body_member(b, e); break;
     case MS_E_INDEX:
