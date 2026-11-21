@@ -145,6 +145,7 @@
 #include "check/program.c"
 #include "check/dump_methods.c"
 #include "check/api_model.c"
+#include "check/dump_sites.c"
 #include "check/dump_facts.c"
 #include "own/ownership_places.c"
 #include "own/ownership_bits.c"
