@@ -29,6 +29,40 @@ bool ms_body_is_function_value(const MsBody *b, MsTy ty) {
     return closure_value(b, tys->result[ty]) || tys->result[ty] == b->void_ty;
 }
 
+bool ms_body_is_callback_type(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    if (ty == MS_TY_NONE || ms_ty_kind(tys, ty) != MS_K_FUNCTION || tys->nparams[ty] > 16) {
+        return false;
+    }
+    const MsTyParam *params = ms_ty_params(tys, ty);
+    for (uint32_t i = 0; i < tys->nparams[ty]; i++) {
+        if ((params[i].flags & ~(MS_PARAM_POSITIONAL | MS_PARAM_MOVE | MS_PARAM_VAR)) != 0 || !closure_value(b, params[i].ty)) {
+            return false;
+        }
+    }
+    return closure_value(b, tys->result[ty]) || tys->result[ty] == b->void_ty;
+}
+
+bool ms_body_reads_where_var_expected(const MsBody *b, MsTy actual, MsTy expected) {
+    const MsTyTable *tys = &b->c->tys;
+    if (actual == MS_TY_NONE || expected == MS_TY_NONE || ms_ty_kind(tys, actual) != MS_K_FUNCTION ||
+        ms_ty_kind(tys, expected) != MS_K_FUNCTION || tys->nparams[actual] != tys->nparams[expected] ||
+        !ms_body_same_type(b, tys->result[actual], tys->result[expected])) {
+        return false;
+    }
+    const MsTyParam *have = ms_ty_params(tys, actual), *want = ms_ty_params(tys, expected);
+    bool differs = false;
+    for (uint32_t i = 0; i < tys->nparams[actual]; i++) {
+        const unsigned mine = have[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE), theirs = want[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE);
+        // A plain parameter stands where `var` or `move` is expected, never the other way round.
+        if ((mine != theirs && mine != 0) || !ms_body_same_type(b, have[i].ty, want[i].ty)) {
+            return false;
+        }
+        differs = differs || mine != theirs;
+    }
+    return differs;
+}
+
 /* A function value whose parameters are plain values and whose result is any bindable type: the only ones a
  * lambda is checked for. A parameter of another type is owned or borrowed by the function type's mode, which the
  * ownership walk does not model for a lambda's own parameters yet. */
