@@ -50,10 +50,7 @@ MsTy lb_ty(Lb *lb, MsTy ty) {
 }
 
 /* A record, Optional or Result type. */
-static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
-    if (ms_classify(lb->classifier, ty) == MS_CLASS_RESOURCE) {
-        return MIR_NONE; // its close is not recorded yet
-    }
+static MirTy lb_mir_aggregate(Lb *lb, MsTy ty) {
     const MirTy record = lr_type(lb, ty);
     if (record != MIR_NONE) {
         return record;
@@ -64,6 +61,14 @@ static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
     }
     const MirTy iface = li_type(lb, ty);
     return iface != MIR_NONE ? iface : la_type(lb, ty);
+}
+
+static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
+    const MirTy mir = lb_mir_aggregate(lb, ty);
+    if (mir != MIR_NONE && ms_classify(lb->classifier, ty) == MS_CLASS_RESOURCE) {
+        lc_register(lb, ty, mir);
+    }
+    return mir;
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
@@ -97,6 +102,9 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     }
     if (ty == lb->string_ty) {
         return MIR_STR;
+    }
+    if (ms_classify(lb->classifier, ty) == MS_CLASS_RESOURCE && !lc_has_closer(lb, ty)) {
+        return MIR_NONE; // a value that closes but not by a close of its own: left to the Rust lowering
     }
     const MirTy list = lst_type(lb, ty);
     if (list != MIR_NONE) {
@@ -138,7 +146,7 @@ void lb_drop(Lb *lb, MirValue v) {
 /* Whether a value of `ty` owns something its holder must release: a String, a function value or a
  * record holding a String. */
 bool lb_owns(Lb *lb, MirTy ty) {
-    return ty != MIR_NONE && (ty == MIR_STR || lb_is_fn(lb, ty) || mir_needs_drop(lb->m, ty));
+    return ty != MIR_NONE && (ty == MIR_STR || lb_is_fn(lb, ty) || mir_needs_drop(lb->m, ty) || lc_is_resource(lb, ty));
 }
 
 /* An owned temporary of the statement: dropped where the statement ends, newest first. Where no such
@@ -235,6 +243,13 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
     const uint32_t binding = facts->res_ref[e->id];
     if (lb->var_of[binding] != MIR_NONE) {
         return (LbVal){mir_b_use_var(&lb->b, lb->var_of[binding]), false};
+    }
+    MirValue held;
+    if (lc_is_slot_local(lb, binding)) { // a resource lives in its slot and is read from it
+        if (facts->moved_out[e->id] || !lc_use(lb, binding, &held)) {
+            return LB_UNSUPPORTED(lb); // a move of it is not lowered yet
+        }
+        return (LbVal){held, false};
     }
     if (lb->value_of[binding] == MIR_NONE) {
         return LB_UNSUPPORTED(lb); // a name no statement of this function bound: a field default naming a sibling field
@@ -1145,6 +1160,10 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
     const MsTy ty = lb_ty(lb, lb->facts->bindings.ty[binding]);
     LbVal value = lb_expr(lb, s->u.bind.value);
     if (!lb->ok) {
+        return;
+    }
+    if (ms_classify(lb->classifier, ty) == MS_CLASS_RESOURCE) { // closed where its scope ends, by the elaborate pass
+        lb->ok = lc_bind(lb, s, binding, value);
         return;
     }
     if (lb_is_fn(lb, lb_mir_ty(lb, ty)) && (!value.owned || s->u.bind.is_mutable)) {
