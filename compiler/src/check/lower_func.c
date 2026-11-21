@@ -278,7 +278,7 @@ static bool lb_push_inst(LbInst **list, uint32_t *n, uint32_t *cap, const LbInst
  * on first use; MIR_NONE when its signature is not handled or it failed before. Copies are named
  * `name`, `name.1`, `name.2`, ... in the order they are created. Their bodies are lowered by
  * `lb_drain_instances` once the module's own functions are. */
-static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
+uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
     if (lb_find_inst(lb->dead_insts, lb->ndead_insts, sym, args, nargs) != NULL) {
         return MIR_NONE;
     }
@@ -442,7 +442,8 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
              .float_ty = ms_check_primitive(c, "Float"),
              .bool_ty = ms_check_primitive(c, "Bool"),
              .string_ty = ms_check_primitive(c, "String"),
-             .void_ty = ms_check_primitive(c, "Void")};
+             .void_ty = ms_check_primitive(c, "Void"),
+             .never_ty = ms_check_primitive(c, "Never")};
     lb.views = calloc((size_t)nmodules + 1, sizeof *lb.views);
     bool ready = lb.views != NULL;
     for (uint32_t i = 0; ready && i < nmodules; i++) {

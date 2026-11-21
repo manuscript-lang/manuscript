@@ -535,7 +535,6 @@ MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
     return lb_copy(lb, value.v);
 }
 
-static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
 
 /* The module function a call reaches: the callee's own, or for a generic callee its copy for the
  * type arguments the checker inferred at this call, seen through the instance being lowered. */
@@ -687,7 +686,7 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     case MS_E_APPLY: return lst_index(lb, e);
     case MS_E_LIST: return lst_literal(lb, e);
     case MS_E_MAP: return lm_literal(lb, e);
-    case MS_E_VOID:
+    case MS_E_VOID: return (LbVal){mir_b_unit(&lb->b), false};
     case MS_E_PROBE: break;
     }
     return lb_unsupported(lb);
@@ -1090,11 +1089,12 @@ static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
 }
 
 static void lb_return(Lb *lb, const MsStmt *s) {
-    if (s->u.expr == NULL) {
+    const MirValue ok_unit = s->u.expr == NULL ? la_ok_unit(lb) : MIR_NONE;
+    if (s->u.expr == NULL && ok_unit == MIR_NONE) {
         lb_return_void(lb);
         return;
     }
-    LbVal value = lb_expr(lb, s->u.expr);
+    LbVal value = s->u.expr == NULL ? (LbVal){ok_unit, lb_owns(lb, lb->b.f.ret)} : lb_expr(lb, s->u.expr);
     if (!lb->ok) {
         return;
     }
@@ -1102,7 +1102,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
     if (lb_owns(lb, value_ty) && !value.owned && !lb->b.f.ret_borrowed) {
         value = lb_hand_out(lb, s->u.expr, value.v);
     }
-    const bool leaves_var = !lb->b.f.ret_borrowed && lb_names_var(lb, s->u.expr);
+    const bool leaves_var = !lb->b.f.ret_borrowed && s->u.expr != NULL && lb_names_var(lb, s->u.expr);
     lb_own_temps(lb, lb->stmt_mark);
     lb_own_vars(lb, 0, leaves_var ? value.v : MIR_NONE);
     lscope_exit_to(&lb->scopes, 0);

@@ -107,7 +107,7 @@ typedef struct Lb {
     MirModule *m;
     MirBuilder b;
     LScopes scopes; /* ownership scopes: the function body is depth 0 */
-    MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
+    MsTy int_ty, float_ty, bool_ty, string_ty, void_ty, never_ty;
     /* By binding id: the value a `let` or parameter names, or the variable a `var` is. */
     MirValue *value_of;
     MirVar *var_of;
@@ -205,6 +205,9 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty);
 void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
 void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
+
+/* The module function for generic `sym` at type arguments `args`: its existing copy, or a new one. */
+uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
 void lb_write_back(Lb *lb);
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
 bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
@@ -267,6 +270,7 @@ LbVal lr_field(Lb *lb, const MsExpr *e);
 MirTy la_type(Lb *lb, MsTy ty);
 LbVal la_none(Lb *lb, const MsExpr *e);
 LbVal la_nullary(Lb *lb, const MsExpr *e);
+MirValue la_ok_unit(Lb *lb);
 LbVal la_none_owned(Lb *lb, const MsExpr *e);
 LbVal la_case(Lb *lb, const MsExpr *call);
 MirValue la_test(Lb *lb, MirValue subject);
