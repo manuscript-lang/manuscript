@@ -1343,13 +1343,20 @@ impl InstCheck<'_, '_> {
     /// Scope markers: `begin S P` (P is the parent scope plus one, 0 for none), `own v S K`
     /// (K 0 drops, 1 closes), `end S`.
     fn scope_markers(&self) -> Result<(), String> {
-        let Imm::Scope(..) = self.inst.imm else {
+        let Imm::Scope(_, kind) = self.inst.imm else {
             return Err("a scope marker takes scope numbers".into());
         };
         self.want(self.res.is_none(), "a scope marker has no result")?;
         match self.inst.op {
             Op::ScopeOwn => {
                 self.arity(1)?;
+                // A close function (its index plus two) runs on the address of a slot.
+                if kind >= 2 {
+                    return self.want(
+                        self.t(0) == Ty::PTR,
+                        "scope.own with a close function takes a slot address",
+                    );
+                }
                 self.want(
                     self.v.needs_drop(self.t(0)),
                     "scope.own takes a value that needs a drop",
