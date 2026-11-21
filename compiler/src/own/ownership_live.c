@@ -130,7 +130,8 @@ static void live_call(LiveWalk *w, const MsExpr *e) {
     const bool through_local = callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_BINDING;
     const bool operation = callee->kind == MS_E_MEMBER &&
                            (w->facts->call_interface[e->id] != MS_TY_NONE || w->facts->call_method[e->id] != MS_NONE);
-    if (w->facts->call_callee[e->id] == MS_NONE && !through_local && !operation) {
+    const bool builds_case = callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_CASE;
+    if (w->facts->call_callee[e->id] == MS_NONE && !through_local && !operation && !builds_case) {
         w->supported = false; /* anything else the walk does not follow */
         return;
     }
