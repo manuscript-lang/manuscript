@@ -1,5 +1,6 @@
-/* Standard output through the C library's stdout, which buffers it (line by line on a terminal). The buffer is flushed at exit, before standard error and before the scheduler blocks. Output of a task under a test capture goes to that capture's buffer
- * instead. */
+/* Standard output through the C library's stdout, which buffers it (line by line on a terminal). The
+ * buffer is flushed at exit, before standard error and before the scheduler blocks. Output of a task under a test
+ * capture goes to that capture's buffer instead. */
 #include "runtime/io/stdout.h"
 
 #include <errno.h>
