@@ -815,7 +815,7 @@ static MsTy body_explicit_call(MsBody *b, const MsExpr *e) {
     }
     const bool generic = syms->kind[sym] == MS_SYM_FN && syms->nvars[sym] != 0 && syms->decl[sym] != NULL &&
                          syms->decl[sym]->kind == MS_D_FN;
-    return generic ? ms_body_generic_call(b, e, sym, &apply->u.apply.types) : ms_body_unsupported(b);
+    return generic ? ms_body_generic_call(b, e, sym, &apply->u.apply.types, MS_TY_NONE) : ms_body_unsupported(b);
 }
 
 static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
@@ -853,7 +853,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return ms_body_unsupported(b);
     }
     if (syms->nvars[sym] != 0) {
-        return ms_body_generic_call(b, e, sym, NULL);
+        return ms_body_generic_call(b, e, sym, NULL, expected);
     }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
