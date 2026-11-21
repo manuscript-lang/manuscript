@@ -16,6 +16,7 @@
 #include "promise_remote.h"
 #include "queue.h"
 #include "worker.h"
+#include "../entry/entry.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/obj.h"
 #include "scheduler.h"
@@ -462,6 +463,14 @@ static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) 
     wake(row);
 }
 
+/* A task under a test's output capture that ended with a fault leaves its record for the test runner. */
+static void keep_for_test(MsGuardStatus status, const MsFaultText *message) {
+    const uint64_t capture = ms_task_capture();
+    if (status == MS_GUARD_FAULT && capture != 0) {
+        ms_test_keep_fault(capture, message);
+    }
+}
+
 static void work_entry(void *argument) {
     const MsPromise id = (MsPromise)(uintptr_t)argument; // NOLINT(performance-no-int-to-ptr): the id travels as the argument word
     const ptrdiff_t row = row_of(id);
@@ -470,6 +479,7 @@ static void work_entry(void *argument) {
     }
     MsFaultText message = {0};
     const MsGuardStatus status = ms_guard_call(run_closure, table.cold[row].closure, &message);
+    keep_for_test(status, &message);
     /* Ending drops the closure, which closes what it captured: like any implicit close it runs shielded, since a
      * cancelled task would otherwise be cancelled again at its first park. */
     ms_shield_enter();
@@ -579,6 +589,7 @@ static void end_guarded_run(MsPromise id, MsGuardStatus status, MsFaultText mess
         ms_fault_text_free(&message);
         return;
     }
+    keep_for_test(status, &message);
     if (status == MS_GUARD_FAULT) {
         table.cold[row].report = message;
         table.hot[row].state = STATE_FAILED;
@@ -672,6 +683,7 @@ static void taken_entry(void *argument) {
     post_promise_mail((uint32_t)((uint64_t)taken->id >> ISOLATE_SHIFT), started);
     MsFaultText message = {0};
     const MsGuardStatus status = ms_guard_call(run_closure, taken->closure, &message);
+    keep_for_test(status, &message);
     /* Dropping the closure closes what it captured: like any implicit close it runs shielded. */
     ms_shield_enter();
     msrt_obj_drop(taken->closure);
