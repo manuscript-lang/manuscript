@@ -14,11 +14,11 @@ use ms_cli::backend::Io;
 use ms_cli::engine::Engine;
 
 /// A lowering that ignores the program and returns fixed MIR.
-struct Fixed(&'static str);
+struct Fixed;
 
 impl Lower for Fixed {
     fn lower(&self, _: &ms_check::Program, _: &str) -> Result<Module, String> {
-        ms_mir::parse::parse_module(self.0).map_err(|e| e.to_string())
+        Ok(exit_seven())
     }
 }
 
@@ -26,12 +26,21 @@ struct Counted(std::cell::Cell<usize>);
 impl Lower for Counted {
     fn lower(&self, program: &ms_check::Program, entry: &str) -> Result<Module, String> {
         self.0.set(self.0.get() + 1);
-        Fixed(EXIT_SEVEN).lower(program, entry)
+        Fixed.lower(program, entry)
     }
 }
 
-const EXIT_SEVEN: &str =
-    "module \"t\"\nentry @main\nfn @main() -> int {\nb0:\n  %c: int = iconst 7\n  ret %c\n}\n";
+/// `fn main() -> int { 7 }`.
+fn exit_seven() -> Module {
+    let mut m = ms_mir::ir::Module::new("t");
+    let mut b =
+        ms_mir::builder::FuncBuilder::new(&mut m, "main", Vec::new(), ms_mir::types::Ty::INT);
+    let seven = b.iconst(7);
+    b.ret(Some(seven));
+    let main = b.finish();
+    m.entry = Some(main);
+    m
+}
 
 fn ms<L: Lower>(backend: &Engine<L>, args: &[&str]) -> (i32, String, String) {
     let syms = ms_syntax::Names::global();
@@ -65,7 +74,7 @@ const MAIN: &str = "export fn main() Int:\n    return 0\n";
 fn run_returns_the_program_status() {
     let dir = scratch("run");
     let source = write(&dir, "main.ms", MAIN);
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (7, ""));
 }
@@ -75,7 +84,7 @@ fn run_json_reports_native_build_failures() {
     let dir = scratch("run-json-build-error");
     let source = write(&dir, "main.ms", MAIN);
     let missing = dir.join("missing.o");
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     let (status, stdout, stderr) = ms(
         &backend,
         &[
@@ -112,7 +121,7 @@ fn build_writes_an_executable_and_reports_it() {
     let dir = scratch("build");
     let source = write(&dir, "main.ms", MAIN);
     let out = dir.join("prog");
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     let (status, stdout, err) = ms(&backend, &["build", &source, "-o", out.to_str().unwrap()]);
     assert_eq!(status, 0, "{err}");
     assert!(stdout.starts_with("Built "), "{stdout}");
@@ -141,7 +150,7 @@ fn build_fails_when_its_metadata_cannot_be_written() {
     let output = dir.join("program");
     let metadata = dir.join("program.ms-build.json");
     std::fs::create_dir(&metadata).unwrap();
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     for structured in [false, true] {
         let mut args = vec!["build", &source, "-o", output.to_str().unwrap()];
         if structured {
@@ -347,7 +356,7 @@ fn build_metadata_preserves_case_variant_source_links_on_cold_and_warm_paths() {
 fn checker_diagnostics_stop_before_lowering() {
     let dir = scratch("diagnostics");
     let source = write(&dir, "main.ms", "export fn main() Int:\n    return \"x\"\n");
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!(status, 1);
     assert!(err.contains(": type: "), "{err}");
@@ -362,7 +371,7 @@ fn checker_diagnostics_stop_before_lowering() {
 #[test]
 fn entry_must_be_a_parameterless_main() {
     let dir = scratch("entry");
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     for (text, expected) in [
         (
             "export fn other() Int:\n    return 0\n",
@@ -384,7 +393,7 @@ fn entry_must_be_a_parameterless_main() {
 #[test]
 fn check_reports_an_invalid_declared_main_and_names_the_callee_consuming_a_parameter() {
     let dir = scratch("check-entry");
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     let bad = write(&dir, "bad.ms", include_str!("check_entry/bad_main.ms"));
     let (status, _, err) = ms(&backend, &["check", &bad]);
     assert_eq!(status, 1);
@@ -414,7 +423,7 @@ fn imports_load_in_dependency_order() {
         "main.ms",
         "import one from \"./lib.ms\"\n\nexport fn main() Int:\n    return one()\n",
     );
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     assert_eq!(ms(&backend, &["run", &source]).0, 7);
 
     let missing = write(
@@ -444,7 +453,7 @@ fn unavailable_lowering_is_a_lowering_diagnostic() {
 fn build_refuses_to_overwrite_source_and_directories() {
     let dir = scratch("protected");
     let source = write(&dir, "main.ms", MAIN);
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     let (status, _, err) = ms(&backend, &["build", &source, "-o", &source]);
     assert_eq!(status, 2);
     assert!(err.contains("would overwrite main.ms"), "{err}");
@@ -460,7 +469,7 @@ fn build_metadata_must_not_replace_its_entry_source() {
         let source = write(&dir, "program.ms-build.json", MAIN);
         let output = dir.join("program");
         std::fs::write(&output, b"previous executable").unwrap();
-        let backend = Engine::new(Fixed(EXIT_SEVEN));
+        let backend = Engine::new(Fixed);
         let mut args = vec!["build", source.as_str(), "-o", output.to_str().unwrap()];
         if structured {
             args.push("--json");
@@ -494,7 +503,7 @@ fn build_metadata_must_not_replace_an_imports_canonical_source() {
     let output = dir.join("program");
     std::fs::write(&output, b"previous executable").unwrap();
     let (status, stdout, stderr) = ms(
-        &Engine::new(Fixed(EXIT_SEVEN)),
+        &Engine::new(Fixed),
         &["build", &source, "-o", output.to_str().unwrap(), "--json"],
     );
     assert_eq!(status, 1, "{stdout}{stderr}");
@@ -514,7 +523,7 @@ fn build_metadata_must_not_replace_the_requested_source_symlink() {
     common::symlink_file(Path::new(&source), &requested).unwrap();
     let output = dir.join("program");
     let (status, stdout, stderr) = ms(
-        &Engine::new(Fixed(EXIT_SEVEN)),
+        &Engine::new(Fixed),
         &[
             "build",
             requested.to_str().unwrap(),
@@ -601,7 +610,7 @@ fn build_metadata_must_not_replace_embedded_inputs() {
     let asset = write(&assets, "program.ms-build.json", "embedded contents");
     let output = assets.join("program");
     let (status, stdout, stderr) = ms(
-        &Engine::new(Fixed(EXIT_SEVEN)),
+        &Engine::new(Fixed),
         &["build", &source, "-o", output.to_str().unwrap(), "--json"],
     );
     assert_eq!(status, 1, "{stdout}{stderr}");
@@ -622,7 +631,7 @@ fn build_executable_must_not_replace_an_imports_canonical_source() {
     common::symlink_file(Path::new(&target), &dir.join("dep.ms")).unwrap();
     let metadata = write(&dir, "program.ms-build.json", "previous metadata");
     let (status, stdout, stderr) = ms(
-        &Engine::new(Fixed(EXIT_SEVEN)),
+        &Engine::new(Fixed),
         &["build", &source, "-o", &target, "--json"],
     );
     assert_eq!(status, 1, "{stdout}{stderr}");
@@ -644,7 +653,7 @@ fn build_metadata_must_not_replace_an_enclosing_manifest_target() {
     let output = dir.join("program");
     std::fs::write(&output, b"previous executable").unwrap();
     let (status, stdout, stderr) = ms(
-        &Engine::new(Fixed(EXIT_SEVEN)),
+        &Engine::new(Fixed),
         &["build", &source, "-o", output.to_str().unwrap(), "--json"],
     );
     assert_eq!(status, 1, "{stdout}{stderr}");
@@ -670,7 +679,7 @@ fn library_projects_have_no_executable_entry() {
         "lib.ms",
         "export fn one() Int:\n    return 1\n",
     );
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     let manifest = dir.join("ms.toml");
     let (status, _, err) = ms(&backend, &["build", manifest.to_str().unwrap()]);
     assert_eq!(status, 1);
@@ -1385,7 +1394,7 @@ fn build_output_must_not_replace_an_explicit_link_input() {
     let dir = scratch("output-is-link-input");
     let source = write(&dir, "main.ms", MAIN);
     let object = write(&dir, "support.o", "native object");
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     let (status, stdout, stderr) = ms(
         &backend,
         &["build", &source, "--link", &object, "-o", &object],
@@ -1401,7 +1410,7 @@ fn build_metadata_must_not_replace_an_explicit_link_input() {
     let source = write(&dir, "main.ms", MAIN);
     let object = write(&dir, "program.ms-build.json", "native object");
     let output = dir.join("program");
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed);
     let (status, stdout, stderr) = ms(
         &backend,
         &[
