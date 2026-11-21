@@ -11,6 +11,7 @@
 #include "ms/hints.h"
 #include "ms/effects.h"
 #include "ms/facts.h"
+#include "ms/methods.h"
 #include "ms/ownership.h"
 #include "ms/walk.h"
 
@@ -810,6 +811,64 @@ static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects
     ms_buf_puts(out, ", \"effects_known\": true");
 }
 
+/* Whether rows `a` and `b` have one key: impl blocks of one type share it. */
+static bool facts_same_key(const FactsRow *a, const FactsRow *b) {
+    return a->key.len == b->key.len && memcmp(a->key.data, b->key.data, a->key.len) == 0;
+}
+
+/* The entities, one JSON object each; of rows with one key only the last prints, as the Rust map keeps it. */
+static void facts_put_entities(MsBuf *out, const FactsRow *items, size_t count, const char *file, size_t file_len) {
+    bool first = true;
+    for (size_t i = 0; i < count; i++) {
+        if (i + 1 < count && facts_same_key(&items[i], &items[i + 1])) {
+            continue;
+        }
+        ms_buf_puts(out, first ? "\n    " : ",\n    ");
+        first = false;
+        ms_buf_puts(out, "{\"key\": ");
+        facts_put_json_buf(out, &items[i].key);
+        ms_buf_puts(out, ", \"file\": ");
+        ms_facts_put_json(out, file, file_len);
+        ms_buf_printf(out, ", \"kind\": \"%s\", \"name\": ", items[i].kind);
+        facts_put_json_buf(out, &items[i].name);
+        /* Impl blocks that share a key must all be kept for the targets and flow to be complete. */
+        bool complete = true;
+        for (size_t k = i + 1; k > 0 && facts_same_key(&items[k - 1], &items[i]); k--) {
+            complete = complete && items[k - 1].sites_known;
+        }
+        ms_buf_printf(out, ", \"line\": %u, \"scopes\": %u, \"ownership_known\": %s, \"sites_known\": %s, \"external\": ", items[i].line,
+                      items[i].scopes, items[i].own_known ? "true" : "false", complete ? "true" : "false");
+        ms_buf_put(out, items[i].external.data, items[i].external.len);
+        ms_buf_printf(out, ", \"first\": %u, \"last\": %u, ", items[i].first, items[i].last);
+        ms_buf_put(out, items[i].effects.data, items[i].effects.len);
+        ms_buf_put(out, items[i].meta.data, items[i].meta.len);
+        ms_buf_put(out, items[i].body.data, items[i].body.len);
+        ms_buf_putc(out, '}');
+    }
+}
+
+/* The flows, one per key: of rows with one key, the flow of the block that merges last is the one kept. */
+static void facts_put_flows(MsBuf *out, const FactsRow *items, size_t count) {
+    bool first = true;
+    for (size_t i = 0; i < count; i++) {
+        if (i + 1 < count && facts_same_key(&items[i], &items[i + 1])) {
+            continue;
+        }
+        /* Impl blocks of one type share a key: the flow of the block that merges last is the one kept. */
+        size_t best = i;
+        for (size_t k = i; k > 0 && facts_same_key(&items[k - 1], &items[i]); k--) {
+            const bool later = items[k - 1].group > items[best].group || (items[k - 1].group == items[best].group && items[k - 1].line > items[best].line);
+            best = later ? k - 1 : best;
+        }
+        ms_buf_puts(out, first ? "\n    {\"key\": " : ",\n    {\"key\": ");
+        first = false;
+        facts_put_json_buf(out, &items[i].key);
+        ms_buf_puts(out, ", \"steps\": ");
+        ms_buf_put(out, items[best].flow.data, items[best].flow.len);
+        ms_buf_putc(out, '}');
+    }
+}
+
 /* The call targets and flow of a row. A declaration that runs no code (a type, an interface) has none; a callable has them
  * when the checker kept its body. */
 static void facts_fill_sites(MsSites *sites, FactsRow *row, const MsDecl *d, const MsMethod *method) {
@@ -886,54 +945,11 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
     const size_t count = rows.len / sizeof *items;
     qsort(items, count, sizeof *items, facts_compare_rows);
     ms_buf_puts(out, "{\n  \"entities\": [");
-    bool first = true;
-    for (size_t i = 0; i < count; i++) {
-        if (i + 1 < count && items[i].key.len == items[i + 1].key.len && memcmp(items[i].key.data, items[i + 1].key.data, items[i].key.len) == 0) {
-            continue; /* impl blocks of one type share a key: the last block prints, as the Rust map keeps it */
-        }
-        ms_buf_puts(out, first ? "\n    " : ",\n    ");
-        first = false;
-        ms_buf_puts(out, "{\"key\": ");
-        facts_put_json_buf(out, &items[i].key);
-        ms_buf_puts(out, ", \"file\": ");
-        ms_facts_put_json(out, file.data, file.len - 1);
-        ms_buf_printf(out, ", \"kind\": \"%s\", \"name\": ", items[i].kind);
-        facts_put_json_buf(out, &items[i].name);
-        /* Impl blocks that share a key must all be kept for the targets and flow to be complete. */
-        bool complete = true;
-        for (size_t k = i + 1; k > 0 && items[k - 1].key.len == items[i].key.len && memcmp(items[k - 1].key.data, items[i].key.data, items[i].key.len) == 0; k--) {
-            complete = complete && items[k - 1].sites_known;
-        }
-        ms_buf_printf(out, ", \"line\": %u, \"scopes\": %u, \"ownership_known\": %s, \"sites_known\": %s, \"external\": ", items[i].line,
-                      items[i].scopes, items[i].own_known ? "true" : "false", complete ? "true" : "false");
-        ms_buf_put(out, items[i].external.data, items[i].external.len);
-        ms_buf_printf(out, ", \"first\": %u, \"last\": %u, ", items[i].first, items[i].last);
-        ms_buf_put(out, items[i].effects.data, items[i].effects.len);
-        ms_buf_put(out, items[i].meta.data, items[i].meta.len);
-        ms_buf_put(out, items[i].body.data, items[i].body.len);
-        ms_buf_putc(out, '}');
-    }
+    facts_put_entities(out, items, count, file.data, file.len - 1);
     ms_buf_puts(out, "\n  ],\n  \"imports\": ");
     facts_put_imports(out, module, file.data, file.len - 1);
     ms_buf_puts(out, ", \"flows\": [");
-    first = true;
-    for (size_t i = 0; i < count; i++) {
-        if (i + 1 < count && items[i].key.len == items[i + 1].key.len && memcmp(items[i].key.data, items[i + 1].key.data, items[i].key.len) == 0) {
-            continue;
-        }
-        /* Impl blocks of one type share a key: the flow of the block that merges last is the one kept. */
-        size_t best = i;
-        for (size_t k = i; k > 0 && items[k - 1].key.len == items[i].key.len && memcmp(items[k - 1].key.data, items[i].key.data, items[i].key.len) == 0; k--) {
-            const bool later = items[k - 1].group > items[best].group || (items[k - 1].group == items[best].group && items[k - 1].line > items[best].line);
-            best = later ? k - 1 : best;
-        }
-        ms_buf_puts(out, first ? "\n    {\"key\": " : ",\n    {\"key\": ");
-        first = false;
-        facts_put_json_buf(out, &items[i].key);
-        ms_buf_puts(out, ", \"steps\": ");
-        ms_buf_put(out, items[best].flow.data, items[best].flow.len);
-        ms_buf_putc(out, '}');
-    }
+    facts_put_flows(out, items, count);
     ms_buf_puts(out, "\n  ]\n}\n");
     for (size_t i = 0; i < count; i++) {
         ms_buf_free(&items[i].name);

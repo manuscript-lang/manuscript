@@ -10,6 +10,8 @@
 #include "ms/dump.h"
 #include "ms/hints.h"
 #include "ms/facts.h"
+#include "ms/hints.h"
+#include "ms/methods.h"
 #include "ms/walk.h"
 
 typedef enum FsSiteKind { FSITE_FUNCTION, FSITE_CONSTANT, FSITE_OPERATION, FSITE_CONSTRUCT, FSITE_HTTP_SERVE } FsSiteKind;
@@ -332,11 +334,11 @@ static const FsSite *fs_at(const MsSites *s, uint32_t offset) {
 static void fs_steps_push(MsSites *s, FsSteps *list, FsStep *step) {
     if (list->len == list->cap) {
         const uint32_t cap = list->cap != 0 ? list->cap * 2 : 4;
-        FsStep **grown = MS_NEW_N(&s->arena, FsStep *, cap);
+        void **grown = ms_alloc(&s->arena, (size_t)cap * sizeof(void *), _Alignof(void *));
         if (list->len > 0) {
-            memcpy(grown, list->ptr, list->len * sizeof *grown);
+            memcpy(grown, list->ptr, (size_t)list->len * sizeof(void *));
         }
-        list->ptr = grown;
+        list->ptr = (FsStep **)grown;
         list->cap = cap;
     }
     list->ptr[list->len++] = step;
@@ -405,11 +407,11 @@ typedef struct FsEvents {
     } spawns, pending, closures;
 } FsEvents;
 
-static void fs_pending_push(MsSites *s, void *list_, FsPending item) {
+static void fs_pending_push(MsSites *s, void *target, FsPending item) {
     struct {
         FsPending *ptr;
         uint32_t len, cap;
-    } *list = list_;
+    } *list = target;
     (void)s;
     if (list->len == list->cap) {
         list->cap = list->cap != 0 ? list->cap * 2 : 8;
@@ -710,7 +712,7 @@ static void fs_put_external(MsBuf *out, const FsSiteList *sites) {
             continue;
         }
         ms_buf_puts(out, sep);
-        ms_facts_put_json(out, (const char *)targets[i].ptr, targets[i].len);
+        ms_facts_put_json(out, targets[i].ptr, targets[i].len);
         sep = ", ";
     }
     ms_buf_putc(out, ']');
