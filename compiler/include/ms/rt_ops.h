@@ -1,7 +1,8 @@
 /* The runtime functions the C lowering can call from their `ms-sig` declaration. The table is
  * generated from the headers' signatures (`cargo xtask symbols`), so no function is named in the
  * compiler: each parameter's role comes from its declared type, and a function whose signature is
- * tagged `@op=<mnemonic>` is exactly that MIR instruction on its arguments. */
+ * tagged `@op=<mnemonic>` is exactly that MIR instruction on its arguments, and one tagged `@seq=` is the short
+ * instruction sequence the tag lists. */
 #ifndef MS_RT_OPS_H
 #define MS_RT_OPS_H
 
@@ -30,6 +31,7 @@ typedef enum MsRtRet { MS_RT_RET_VOID, MS_RT_RET_INT, MS_RT_RET_FLOAT, MS_RT_RET
 typedef struct MsRtFn {
     const char *symbol;
     const char *op; /* the MIR mnemonic, or "" */
+    const char *seq; /* `@seq=`: a short MIR instruction sequence over the arguments, or "" (see lower_native.c) */
     MsRtParam params[MS_RT_MAX_PARAMS];
     uint32_t nparams;
     MsRtRet ret;

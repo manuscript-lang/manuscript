@@ -146,7 +146,7 @@ fn symbols(check: bool) -> Result<String, String> {
 }
 
 /// The C table of runtime functions for the C lowering (`compiler/src/rt_ops.c`): every function with
-/// its `@op=<mnemonic>` when it is one MIR instruction, each parameter classed by its declared type
+/// its `@op=<mnemonic>` when it is one MIR instruction (or `@seq=` when it is a short sequence), each parameter classed by its declared type
 /// (a list, by reference when `*mut`; a string; an element descriptor or element; an int, float or
 /// bool; an `out` string or list that is the result; anything else), its result, and `@leaf`. No
 /// function is named in the compiler.
@@ -181,6 +181,11 @@ fn rt_ops_table(symbols: &str) -> String {
         };
         let op = rest
             .split(" @op=")
+            .nth(1)
+            .and_then(|r| r.split(' ').next())
+            .unwrap_or("");
+        let seq = rest
+            .split(" @seq=")
             .nth(1)
             .and_then(|r| r.split(' ').next())
             .unwrap_or("");
@@ -219,7 +224,7 @@ fn rt_ops_table(symbols: &str) -> String {
         }
         let leaf = rest.contains(" @leaf");
         out.push_str(&format!(
-            "    {{\"{name}\", \"{op}\", {{{}}}, {}, {ret}, {leaf}, {}}},\n",
+            "    {{\"{name}\", \"{op}\", \"{seq}\", {{{}}}, {}, {ret}, {leaf}, {}}},\n",
             kinds.join(", "),
             kinds.len(),
             twinned.contains(name)
