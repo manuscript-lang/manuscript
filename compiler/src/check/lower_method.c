@@ -123,5 +123,5 @@ LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row) {
         return lb_unsupported(lb);
     }
     const bool mutating = (methods->access[row] & MS_METHOD_MUTATING) != 0;
-    return lb_call_func(lb, e, lb->method_func[row], methods->ty[row], e->u.call.callee->u.member.left, mutating);
+    return lb_call_func(lb, e, lb->method_func[row], methods->ty[row], e->u.call.callee->u.member.left, mutating, MS_NONE);
 }

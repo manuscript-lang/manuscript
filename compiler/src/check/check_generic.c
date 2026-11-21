@@ -191,7 +191,7 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
         return ms_body_unsupported(b);
     }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
-    if (!ms_body_is_admitted(b, result)) {
+    if (result != b->void_ty && !ms_body_is_admitted(b, result)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;

@@ -1614,10 +1614,16 @@ static void body_undo(MsBody *b, uint32_t first_binding, size_t written_start, s
     b->facts->bindings.count = first_binding;
 }
 
-/* A parameter has no default, or the `none` of an `Optional` (which `T?` implies). */
-/* A parameter without a default, or an Optional one defaulting to `none`. */
+/* A default that is a literal: it reads nothing, so it means the same at every call. */
+static bool body_is_literal_default(const MsExpr *def) {
+    return def != NULL && (def->kind == MS_E_NUMBER || def->kind == MS_E_BOOL ||
+                           (def->kind == MS_E_TEXT && def->u.text.len == 1 && def->u.text.ptr[0].expr == NULL));
+}
+
+/* A parameter without a default, one defaulting to a literal (typed with the body), or an Optional
+ * one defaulting to `none`. Other defaults stay with the Rust checker. */
 static bool body_default_fits(const MsBody *b, const MsParam *p, MsTy ty) {
-    return p->def == NULL ||
+    return p->def == NULL || body_is_literal_default(p->def) ||
            (p->def->kind == MS_E_NAME && ms_name_is(b->c->names, p->def->u.sym, "none") && body_is_optional(b, ty));
 }
 
@@ -1741,6 +1747,11 @@ static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool export
     const MsTyParam *params = ms_ty_params(&b->c->tys, sig);
     for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
         const uint8_t flags = (params[i].flags & MS_PARAM_VAR) != 0 ? MS_BIND_MUTABLE : 0;
+        const MsExpr *def = fn->params.ptr[i]->def;
+        // A literal default of exactly the parameter's type; a mismatch is the Rust checker's to report.
+        if (body_is_literal_default(def) && (flags != 0 || ms_body_expr(b, def, MS_TY_NONE) != params[i].ty)) {
+            (void)ms_body_unsupported(b);
+        }
         (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, fn->params.ptr[i]->pos, flags, MS_ROLE_PARAM);
     }
     if (b->supported) {

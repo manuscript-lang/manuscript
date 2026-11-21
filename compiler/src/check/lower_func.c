@@ -196,8 +196,7 @@ uint32_t lb_view_enter(Lb *lb, uint32_t view) {
     return left;
 }
 
-/* The view of `module`, or MS_NONE when it is not being lowered. */
-static uint32_t lb_view_of(const Lb *lb, MsModId module) {
+uint32_t lb_view_of(const Lb *lb, MsModId module) {
     for (uint32_t v = 0; v < lb->nviews; v++) {
         if (lb->views[v].module == module) {
             return v;

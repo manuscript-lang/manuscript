@@ -178,12 +178,26 @@ static uint32_t ln_var_receiver(Lb *lb, const MsExpr *receiver) {
     return lb->var_of[binding] != MIR_NONE && lb_var_owned(lb, binding) ? binding : MS_NONE;
 }
 
+/* `text.to_string()`: a String is its own text, so the call is a copy the caller owns (a temporary
+ * is that copy already). The runtime declares no function for it. */
+static LbVal ln_string_text(Lb *lb, const MsExpr *receiver) {
+    const LbVal value = lb_expr(lb, receiver);
+    if (!lb->ok || value.owned) {
+        return value;
+    }
+    const MirImm one = {.tag = MI_INT, .i = 1};
+    return (LbVal){mir_b_emit(&lb->b, MOP_Clone, &value.v, 1, one, MIR_STR), true};
+}
+
 /* A method call the runtime implements: evaluates the receiver and arguments, then calls. */
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
-    const MsTy receiver_ty = lb->facts->call_receiver[e->id];
+    const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a type variable is the instance's argument
     const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
     const uint32_t nargs = e->u.call.args.len;
+    if (fn == NULL && receiver_ty == lb->string_ty && nargs == 0 && ms_name_is(lb->c->names, callee->u.member.name, "to_string")) {
+        return ln_string_text(lb, callee->u.member.left);
+    }
     if (fn == NULL || fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
         return lb_unsupported(lb);
     }

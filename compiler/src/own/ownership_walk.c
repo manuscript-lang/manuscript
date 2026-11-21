@@ -500,7 +500,8 @@ static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     if (decl == NULL || decl->kind != MS_D_FN) {
         return NULL;
     }
-    if (w->check->syms.module[sym] != w->module) {
+    // A function with no body here: another module's, or an extern, which the runtime implements.
+    if (w->check->syms.module[sym] != w->module || decl->u.fn.external) {
         return own_foreign_callee(w, e, sym, decl);
     }
     const OwnSummary *summary = &w->summaries[decl->id];
@@ -889,8 +890,8 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     const OwnSummary *callee = own_callee(w, e);
     if (callee == NULL || e->u.call.callee->kind != MS_E_NAME ||
-        e->u.call.args.len != w->check->syms.decl[w->facts->call_callee[e->id]]->u.fn.params.len) {
-        w->supported = false;
+        e->u.call.args.len > w->check->syms.decl[w->facts->call_callee[e->id]]->u.fn.params.len) {
+        w->supported = false; /* fewer is fine: the parameters left out take their defaults, which read nothing here */
         return;
     }
     own_arguments(w, e, callee);
