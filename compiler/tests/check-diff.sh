@@ -151,6 +151,11 @@ if ! grep -q 'body_generic_interface_shape.ms 17:1$' "$out/bodies.keys"; then
     echo "FAIL bodies: a value for a generic interface instance is no longer checked in C (compiler/tests/scope/body_generic_interface_shape.ms)"
     status=1
 fi
+# The smallest Int (`-9223372036854775808`) is a literal of its own.
+if ! grep -q 'body_int_minimum.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_int_minimum.ms 4:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: the smallest Int literal is no longer checked in C (compiler/tests/scope/body_int_minimum.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else
