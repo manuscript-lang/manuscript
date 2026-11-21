@@ -68,7 +68,7 @@ jobs:
       # (`use_stats_runtime` in tools/lib.ms builds it the same way): without this its compile
       # missed the sccache and cost about 65 s in each LLVM pull request job that needs it.
       - name: Build the leak-counting runtime
-        run: cargo xtask runtime --stats
+        run: cmake -DMS_STATS=ON -P cmake/BuildRuntime.cmake
       - uses: ./.github/actions/sccache-save
         if: ${{ !cancelled() }}
         with:

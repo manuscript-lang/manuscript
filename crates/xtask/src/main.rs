@@ -1,42 +1,11 @@
-//! Repository build steps, run as `cargo xtask <step>`.
-//!
-//! `runtime` builds the C runtime (`runtime/`, with the vendored libraries it links) once and leaves the
-//! stripped archive at `target/ms-native/libms_native.a`, where `ms-cli`'s build script embeds it. On Linux it
-//! also leaves `libms_native_musl.a`, the runtime of `ms build --static`.
-//! `runtime --stats` builds `libms_native_stats.a`, the counting runtime of the leak checks.
+//! Repository build steps, run as `cargo xtask <step>`: `symbols` regenerates the runtime signature table. The runtime
+//! archives and the C tests are built by `cmake -P cmake/BuildRuntime.cmake` (see that file).
 
-#[path = "../../../runtime/build_c.rs"]
-mod build_c;
-
-use build_c::{CRuntime, archiver, build_c_runtime, run_c_tests};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitCode};
+use std::process::ExitCode;
 
 fn main() -> ExitCode {
     match std::env::args().nth(1).as_deref() {
-        Some("runtime") => {
-            let flag = std::env::args().nth(2);
-            match runtime(flag.as_deref() == Some("--stats")) {
-                Ok(archive) => {
-                    println!("{}", archive.display());
-                    ExitCode::SUCCESS
-                }
-                Err(message) => {
-                    eprintln!("xtask runtime: {message}");
-                    ExitCode::FAILURE
-                }
-            }
-        }
-        Some("c-test") => match c_tests() {
-            Ok(report) => {
-                println!("{report}");
-                ExitCode::SUCCESS
-            }
-            Err(message) => {
-                eprintln!("xtask c-test: {message}");
-                ExitCode::FAILURE
-            }
-        },
         Some("symbols") => {
             let check = std::env::args().nth(2).as_deref() == Some("--check");
             match symbols(check) {
@@ -52,7 +21,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: cargo xtask runtime [--stats] | cargo xtask c-test | cargo xtask symbols [--check]"
+                "usage: cargo xtask symbols [--check]"
             );
             ExitCode::from(2)
         }
@@ -511,162 +480,6 @@ fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>
         declared.insert(name.to_string(), (params, ret));
     }
     declared
-}
-
-/// Builds the C unit tests for this host's runtime target and runs them: the Windows leg of `make c-test`.
-fn c_tests() -> Result<String, String> {
-    let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
-    let root = manifest.join("../..");
-    let arch = std::env::consts::ARCH;
-    let triple = match std::env::consts::OS {
-        "linux" => Some(format!("{arch}-unknown-linux-gnu")),
-        "windows" => Some(format!("{arch}-pc-windows-gnullvm")),
-        _ => None,
-    };
-    run_c_tests(
-        &root,
-        &root.join("target/ms-native/c-tests"),
-        triple.as_deref(),
-    )
-}
-
-/// Builds the C runtime archive and returns its path.
-/// On Linux it also leaves `libms_native_musl.a` beside it, the runtime of `ms build --static`.
-fn runtime(stats: bool) -> Result<PathBuf, String> {
-    // Cargo can reuse this executable from another checkout when target directories are shared.
-    // Its runtime environment names the active package; the compiled path may name the old one.
-    let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
-    let root = manifest.join("../..");
-    let out = root.join("target/ms-native");
-    // Linux programs link the system glibc (and `--static` programs musl) and Windows programs
-    // mingw-w64 (gnullvm), all with the bundled lld, so the runtime is built for that target.
-    let arch = std::env::consts::ARCH;
-    let triple = match std::env::consts::OS {
-        "linux" => Some(format!("{arch}-unknown-linux-gnu")),
-        "windows" => Some(format!("{arch}-pc-windows-gnullvm")),
-        _ => None,
-    };
-    // One CMake build per archive, run one after another (CMake started beside a running build also
-    // fails on Windows with `AssignProcessToJobObject: (50) The request is not supported`).
-    // The counting runtime (`stats`) differs from the others: its allocator counts live blocks.
-    let mut jobs: Vec<(PathBuf, Option<String>, &str, bool)> =
-        vec![(out.join("build"), triple.clone(), "libms_native.a", false)];
-    if stats {
-        jobs.push((
-            out.join("build-stats"),
-            triple,
-            "libms_native_stats.a",
-            true,
-        ));
-    }
-    if std::env::consts::OS == "linux" {
-        jobs.push((
-            out.join("build-musl"),
-            Some(format!("{arch}-unknown-linux-musl")),
-            "libms_native_musl.a",
-            false,
-        ));
-    }
-    let mut archives = Vec::new();
-    for (dir, triple, name, stats) in &jobs {
-        let plan = build_c_runtime(&root, dir, triple.as_deref(), *stats, true)?;
-        let archive = out.join(name);
-        let _ = std::fs::remove_file(&archive);
-        add_c_runtime(&root, triple.as_deref(), &plan, &archive)?;
-        strip_debug(&archive);
-        archives.push(archive);
-    }
-    Ok(archives.remove(0))
-}
-
-/// Adds the C objects the CMake build made for `triple`, and every member of the libraries they use, to `archive`.
-fn add_c_runtime(
-    root: &Path,
-    triple: Option<&str>,
-    plan: &CRuntime,
-    archive: &Path,
-) -> Result<(), String> {
-    let files = &plan.objects;
-    if files.is_empty() {
-        return Ok(());
-    }
-    let ar = archiver(root, triple);
-    let mut command = Command::new(&ar);
-    let mut response = None;
-    command.arg("rcs").arg(archive);
-    if cfg!(windows) {
-        // The folded library members overflow Windows' 32 KiB command line; llvm-ar reads a response file.
-        let list = archive.with_extension("rsp");
-        let names: Vec<String> = files
-            .iter()
-            .map(|f| f.to_string_lossy().replace('\\', "/"))
-            .collect();
-        std::fs::write(&list, names.join("\n"))
-            .map_err(|e| format!("write {}: {e}", list.display()))?;
-        command.arg(format!("@{}", list.display()));
-        response = Some(list);
-    } else {
-        command.args(files);
-    }
-    let status = command
-        .status()
-        .map_err(|e| format!("run {}: {e}", ar.display()))?;
-    if let Some(list) = response {
-        let _ = std::fs::remove_file(list);
-    }
-    if !status.success() {
-        return Err(format!(
-            "adding the C objects to {} failed",
-            archive.display()
-        ));
-    }
-    Ok(())
-}
-
-/// Drops the debug sections the library objects carry. Without a strip tool the archive is kept as built.
-/// Windows keeps the archive whole: `llvm-strip` is the only strip tool there, and it rewrites some members
-/// (the ring assembly objects) so that `ld` rejects the archive when they are linked.
-fn strip_debug(archive: &Path) {
-    if cfg!(windows) {
-        return;
-    }
-    let flag = if cfg!(target_os = "macos") {
-        "-S"
-    } else {
-        "--strip-debug"
-    };
-    // GNU `strip` first on Linux: `llvm-strip --strip-debug` rewrites the GCC-built objects of `ring`
-    // (`.group` sections) into files GNU ld refuses ("file format not recognized"), so every program
-    // that linked TLS or crypto failed wherever LLVM binutils were installed.
-    let tools = if cfg!(target_os = "linux") {
-        ["strip", "llvm-strip"]
-    } else {
-        ["llvm-strip", "strip"]
-    };
-    let original = archive.with_extension("unstripped");
-    if std::fs::copy(archive, &original).is_err() {
-        return;
-    }
-    for tool in tools {
-        let stripped = Command::new(tool)
-            .arg(flag)
-            .arg(archive)
-            .status()
-            .is_ok_and(|status| status.success());
-        if stripped {
-            let _ = std::fs::remove_file(&original);
-            return;
-        }
-        // A failed tool may have left a partial file: start the next one from the original.
-        if std::fs::copy(&original, archive).is_err() {
-            return;
-        }
-    }
-    let _ = std::fs::remove_file(&original);
 }
 
 #[cfg(test)]
