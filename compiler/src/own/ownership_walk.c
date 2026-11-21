@@ -524,6 +524,11 @@ static const OwnSummary *own_foreign_callee(const OwnWalk *w, const MsExpr *e, M
     return &foreign;
 }
 
+/* Whether a callee is written as a name, alone or with type arguments: `f` or `f[Int]`. */
+static bool own_is_plain_name(const MsExpr *callee) {
+    return callee->kind == MS_E_NAME || (callee->kind == MS_E_APPLY && callee->u.apply.left->kind == MS_E_NAME);
+}
+
 /* The summary of the function a call names, or NULL when the walk cannot reason about it. */
 static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     const uint32_t sym = w->facts->call_callee[e->id];
@@ -983,9 +988,14 @@ static void own_interface_call(OwnWalk *w, const MsExpr *e) {
     }
 }
 
-/* `Type(a, b)`: a record this module or another declares, built from its arguments. */
+/* `Type(a, b)`: a record this module or another declares, built from its arguments. With written
+ * type arguments (`Box[Int](1)`, `List[Int]()`, `Map[String, Int]()`) it is the same construction. */
 static bool own_is_constructor(const OwnWalk *w, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
+    if (callee->kind == MS_E_APPLY && callee->u.apply.left->kind == MS_E_NAME) {
+        const uint32_t applied = w->facts->call_callee[e->id];
+        return applied != MS_NONE && w->check->syms.kind[applied] == MS_SYM_TYPE;
+    }
     if (callee->kind != MS_E_NAME) {
         return false;
     }
@@ -1082,7 +1092,7 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
         return;
     }
     const OwnSummary *callee = own_callee(w, e);
-    if (callee == NULL || e->u.call.callee->kind != MS_E_NAME || !own_arguments_fit(w, e)) {
+    if (callee == NULL || !own_is_plain_name(e->u.call.callee) || !own_arguments_fit(w, e)) {
         OWN_DECLINE(w);
         return;
     }
