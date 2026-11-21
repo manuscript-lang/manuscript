@@ -508,7 +508,7 @@ bool lb_has_self(const LbCallable *c) {
 
 /* The parameters of a callable in call order: the receiver (a method's) first. */
 uint32_t lb_slots(const LbCallable *c) {
-    return c->fn->params.len + (lb_has_self(c) ? 1u : 0u);
+    return c->fn == NULL ? 0u : c->fn->params.len + (lb_has_self(c) ? 1u : 0u);
 }
 
 /* The source parameter behind a slot: NULL for a method's receiver. */
@@ -816,7 +816,14 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
 
 /* `e`, wrapped in `some` where the checker found a payload used for an Optional. */
 LbVal lb_expr(Lb *lb, const MsExpr *e) {
+    const MirLoc outer = lb->b.loc;
+    if (lb->cur.value != NULL) { // a constant has no statements: each instruction reports its own expression
+        mir_b_set_loc(&lb->b, lb_loc(lb, e->pos));
+    }
     LbVal value = lb_expr_plain(lb, e);
+    if (lb->cur.value != NULL) {
+        mir_b_set_loc(&lb->b, outer);
+    }
     if (lb->ok && lb->facts->coerce_iface[e->id] != MS_TY_NONE) {
         value = li_box(lb, e, value);
     }
