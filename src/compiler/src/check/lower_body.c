@@ -500,6 +500,39 @@ static bool lb_is_sized_int(MirTy ty) {
     return ty == MIR_INT8 || ty == MIR_INT16 || ty == MIR_INT32 || ty == MIR_UINT8 || ty == MIR_UINT16 || ty == MIR_UINT32;
 }
 
+/* `left op right` on unsigned 64-bit integers: the checked instructions for the sum, difference and product, the
+ * runtime for the quotient and remainder, and an order of its own. */
+static LbVal lb_unsigned_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
+    const MirValue args[2] = {left.v, right.v};
+    switch (op) {
+    case MS_B_ADD: return (LbVal){mir_b_binop(&lb->b, MOP_UAddChk, left.v, right.v), false};
+    case MS_B_SUB: return (LbVal){mir_b_binop(&lb->b, MOP_USubChk, left.v, right.v), false};
+    case MS_B_MUL: return (LbVal){mir_b_binop(&lb->b, MOP_UMulChk, left.v, right.v), false};
+    case MS_B_DIV:
+    case MS_B_REM: {
+        const MirTy types[2] = {MIR_UINT64, MIR_UINT64};
+        const char *name = op == MS_B_DIV ? "msrt_uint_div" : "msrt_uint_rem";
+        return (LbVal){mir_b_call_rt(&lb->b, lb_runtime_extern(lb, name, types, 2, MIR_UINT64, MR_NONE, false), args, 2), false};
+    }
+    case MS_B_EQ:
+    case MS_B_NE:
+    case MS_B_LT:
+    case MS_B_GT:
+    case MS_B_LE:
+    case MS_B_GE: {
+        const MirImm cc = {.tag = MI_CC, .a = (uint32_t)lb_cc(op)};
+        MirValue result = mir_b_emit(&lb->b, MOP_UICmp, args, 2, cc, MIR_BOOL);
+        if (op == MS_B_NE) {
+            result = mir_b_emit(&lb->b, MOP_Not, &result, 1, (MirImm){0}, MIR_BOOL);
+        }
+        return (LbVal){result, false};
+    }
+    case MS_B_OR:
+    case MS_B_AND: break;
+    }
+    return LB_UNSUPPORTED(lb);
+}
+
 /* `left op right` on lowered operands (not `and` and `or`, which short-circuit). */
 static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     const MirTy ty = mir_b_ty(&lb->b, left.v);
@@ -509,10 +542,12 @@ static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     if (lb_is_number_type(lb, ty, false) || lb_is_number_type(lb, ty, true)) {
         return lb_number_apply(lb, op, left, right, lb_is_number_type(lb, ty, true));
     }
+    if (ty == MIR_UINT64) {
+        return lb_unsigned_apply(lb, op, left, right);
+    }
     const bool sized = lb_is_sized_int(ty);
-    const bool divides = op == MS_B_DIV || op == MS_B_REM;
-    if (lb_owns(lb, ty) || (ty != MIR_INT && ty != MIR_FLOAT && ty != MIR_BOOL && !sized) || (sized && divides)) {
-        return LB_UNSUPPORTED(lb); // sized division and the other native types' operations are not lowered yet
+    if (lb_owns(lb, ty) || (ty != MIR_INT && ty != MIR_FLOAT && ty != MIR_BOOL && !sized)) {
+        return LB_UNSUPPORTED(lb); // the other native types' operations are not lowered yet
     }
     const MirOp arithmetic = lb_arithmetic_op(op, ty);
     if (arithmetic == MOP_COUNT) {
