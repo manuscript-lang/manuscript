@@ -27,6 +27,7 @@ typedef struct MsFsJob {
   uv_statfs_t filesystem;
   bool found;
   bool not_regular; /* a whole-file job found something that is not a regular file */
+  void *handle;     /* what a handle operation works on */
 } MsFsJob;
 
 MsFsJob ms_fs_job(const MsString *path);
@@ -84,6 +85,7 @@ bool ms_fs_same_file(const uv_stat_t *a, const uv_stat_t *b);
 
 /* Runs one libuv call to its end: a synchronous request, cleaned up. Each returns 0 or a negative UV_* code. */
 int ms_fs_stat_path(const char *path, bool follow, uv_stat_t *out);
+int ms_fs_fstat(uv_file fd, uv_stat_t *out);
 int ms_fs_remove_one(const char *path);
 int ms_fs_realpath(const char *path, MsStrBuild *out);
 
@@ -101,5 +103,10 @@ void ms_fs_read_limited(uv_file fd, int64_t max, bool cancellable, const uv_stat
 MS_NODISCARD bool ms_fs_limit(uint8_t present, int64_t value, int64_t *out);
 
 #define MS_FS_UNLIMITED INT64_MAX
+
+
+/* Whether a listing entry (its name, and the libuv `type` the listing gave) is a directory or a symbolic link: its own
+ * kind, or an lstat of `directory`/name when the filesystem gives none. */
+void ms_fs_entry_kind(MsSpan directory, MsSpan name, int type, bool *is_directory, bool *is_symlink);
 
 #endif

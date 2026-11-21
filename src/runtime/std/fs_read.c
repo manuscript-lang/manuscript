@@ -27,7 +27,7 @@ static int close_file(uv_file fd) {
   return code;
 }
 
-static int fstat_file(uv_file fd, uv_stat_t *out) {
+int ms_fs_fstat(uv_file fd, uv_stat_t *out) {
   uv_fs_t request;
   const int code = uv_fs_fstat(NULL, &request, fd, NULL);
   if (code == 0) {
@@ -157,7 +157,7 @@ static bool open_regular(MsFsJob *job, int flags, uv_file *fd) {
   }
   *fd = opened;
   uv_stat_t stat;
-  if (fstat_file(*fd, &stat) == 0 && ms_fs_is_regular(&stat)) {
+  if (ms_fs_fstat(*fd, &stat) == 0 && ms_fs_is_regular(&stat)) {
     return true;
   }
   (void)close_file(*fd);
@@ -190,7 +190,7 @@ static void read_whole_here(MsFsJob *job) {
     return;
   }
   uv_stat_t stat;
-  const bool have_stat = fstat_file(fd, &stat) == 0;
+  const bool have_stat = ms_fs_fstat(fd, &stat) == 0;
   if (have_stat && ms_fs_is_directory(&stat)) {
     ms_fail_status(&job->fail, MS_STATUS_INVALID_INPUT);
   } else {

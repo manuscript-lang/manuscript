@@ -4,8 +4,10 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 #include <uv.h>
 
 #include "runtime/sys/fs.h"
@@ -42,4 +44,65 @@ int ms_sys_fs_chmod_link(const char *path, uint32_t mode) {
   (void)mode;
   return UV_ENOTSUP;
 #endif
+}
+
+int ms_sys_fs_set_times_fd(int fd, int64_t accessed_seconds, int64_t accessed_nanos, int64_t modified_seconds,
+                           int64_t modified_nanos) {
+  const struct timespec times[2] = {timespec_of(accessed_seconds, accessed_nanos),
+                                    timespec_of(modified_seconds, modified_nanos)};
+  int result = -1;
+  do {
+    result = futimens(fd, times);
+  } while (result != 0 && errno == EINTR);
+  return result == 0 ? 0 : uv_translate_sys_error(errno);
+}
+
+int ms_sys_fs_seek(int fd, int64_t offset, int origin, int64_t *position) {
+  static const int whence[] = {SEEK_SET, SEEK_CUR, SEEK_END};
+  const off_t moved = lseek(fd, (off_t)offset, whence[origin]);
+  if (moved < 0) {
+    return uv_translate_sys_error(errno);
+  }
+  *position = (int64_t)moved;
+  return 0;
+}
+
+int ms_sys_fs_dup(int fd) {
+  int copy = -1;
+  do {
+    copy = fcntl(fd, F_DUPFD_CLOEXEC, 0);
+  } while (copy < 0 && errno == EINTR);
+  return copy < 0 ? uv_translate_sys_error(errno) : copy;
+}
+
+int ms_sys_fs_try_lock(int fd, bool exclusive, bool *taken) {
+  int result = -1;
+  do {
+    result = flock(fd, (exclusive ? LOCK_EX : LOCK_SH) | LOCK_NB);
+  } while (result != 0 && errno == EINTR);
+  if (result == 0) {
+    *taken = true;
+    return 0;
+  }
+  if (errno == EWOULDBLOCK) {
+    *taken = false;
+    return 0;
+  }
+  return uv_translate_sys_error(errno);
+}
+
+int ms_sys_fs_unlock(int fd) {
+  int result = -1;
+  do {
+    result = flock(fd, LOCK_UN);
+  } while (result != 0 && errno == EINTR);
+  return result == 0 ? 0 : uv_translate_sys_error(errno);
+}
+
+bool ms_sys_fs_waitable(int fd) {
+  struct stat info;
+  if (fstat(fd, &info) != 0) {
+    return false;
+  }
+  return !S_ISREG(info.st_mode) && !S_ISDIR(info.st_mode);
 }

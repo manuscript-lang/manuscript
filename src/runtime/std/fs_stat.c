@@ -207,6 +207,24 @@ static int compare_entries(const void *left, const void *right) {
   return ms_string_compare(&a->name, &b->name);
 }
 
+void ms_fs_entry_kind(MsSpan directory, MsSpan name, int type, bool *is_directory, bool *is_symlink) {
+  *is_directory = type == UV_DIRENT_DIR;
+  *is_symlink = type == UV_DIRENT_LINK;
+  if (type != UV_DIRENT_UNKNOWN) {
+    return;
+  }
+  MsStrBuild full = ms_strbuild_new();
+  ms_fs_path_join(directory, name, &full);
+  MsOsText text = ms_os_text_new(ms_strbuild_span(&full));
+  uv_stat_t stat;
+  if (ms_fs_stat_path(text.ptr, false, &stat) == 0) {
+    *is_directory = ms_fs_is_directory(&stat);
+    *is_symlink = ms_fs_is_link(&stat);
+  }
+  ms_os_text_free(&text);
+  ms_strbuild_free(&full);
+}
+
 /* Adds one directory entry to the job's list, or fails the job: the kind comes from the listing, or from an lstat
  * where the filesystem reports none. */
 static void list_add(ListJob *job, const uv_dirent_t *entry) {
@@ -215,21 +233,11 @@ static void list_add(ListJob *job, const uv_dirent_t *entry) {
     return;
   }
   MsFsEntry item = {0};
-  if (entry->type == UV_DIRENT_UNKNOWN) {
-    MsStrBuild full = ms_strbuild_new();
-    ms_fs_path_join(job->base.path, ms_span_of_text(entry->name), &full);
-    MsOsText text = ms_os_text_new(ms_strbuild_span(&full));
-    uv_stat_t stat;
-    if (ms_fs_stat_path(text.ptr, false, &stat) == 0) {
-      item.directory = ms_fs_is_directory(&stat) ? 1 : 0;
-      item.symlink = ms_fs_is_link(&stat) ? 1 : 0;
-    }
-    ms_os_text_free(&text);
-    ms_strbuild_free(&full);
-  } else {
-    item.directory = entry->type == UV_DIRENT_DIR ? 1 : 0;
-    item.symlink = entry->type == UV_DIRENT_LINK ? 1 : 0;
-  }
+  bool directory = false;
+  bool symlink = false;
+  ms_fs_entry_kind(job->base.path, ms_span_of_text(entry->name), (int)entry->type, &directory, &symlink);
+  item.directory = directory ? 1 : 0;
+  item.symlink = symlink ? 1 : 0;
   MsStrBuild name = ms_strbuild_new();
   ms_fs_append_lossy(&name, ms_span_of_text(entry->name));
   item.name = ms_strbuild_finish(&name);
