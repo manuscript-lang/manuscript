@@ -87,6 +87,16 @@ void opt_block_set_insts(MirBlockData *b, const MirInst *src, uint32_t n) {
   mir_block_set_insts(b, &list);
 }
 
+void opt_block_set_params(MirBlockData *b, const MirBlockParam *src, uint32_t n) {
+  MirBlockParamList list = {0};
+  mir_block_param_list_reserve(&list, n);
+  for (uint32_t i = 0; i < n; i++) {
+    mir_block_param_list_push(&list, src[i]);
+  }
+  mir_block_param_list_free(&b->params);
+  b->params = list;
+}
+
 void opt_block_append(MirBlockData *b, const MirInst *src, uint32_t n) {
   for (uint32_t i = 0; i < n; i++) {
     mir_inst_list_push(&b->insts, src[i]);
