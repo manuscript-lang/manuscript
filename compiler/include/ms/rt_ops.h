@@ -30,7 +30,7 @@ typedef enum MsRtParam {
     MS_RT_KEY_REF,  /* a key passed by address: stored in a slot the call borrows */
     MS_RT_HANDLE,   /* `handle x: *const ObjCell<T>`: a runtime object, borrowed */
     MS_RT_OUT_HANDLE, /* `out: *mut *mut ObjCell<T>`: the runtime object the call creates, written through a pointer */
-    MS_RT_OUT_SCALAR, /* `out: *mut i64|f64|u8`: an Int, Float or Bool the call writes through a pointer */
+    MS_RT_OUT_SCALAR, /* `out: *mut i64|f64|u8|u64`: an Int, Float or Bool the call writes through a pointer */
     MS_RT_OUT_RECORD, /* `out: *mut XOut`, `*mut Instant`: a record the runtime fills in; the call yields it */
     MS_RT_RECORD,   /* `*const Instant`: a record passed by address, stored in a slot the call borrows */
     MS_RT_ERR,      /* the trailing `ErrSlot`: a string the call writes the failure text to */

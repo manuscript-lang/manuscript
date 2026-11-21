@@ -41,8 +41,14 @@ typedef struct MsBindings {
     MsPos *pos;           /* where its name is written */
     uint8_t *flags;       /* MS_BIND_* */
     uint8_t *role;        /* MsBindRole */
+    uint8_t *conflict;    /* MsConflict: whether a payload name written in capitals names a type or a case */
+    MsTy *conflict_ty;    /* the type that owns the case, for MS_CONFLICT_CASE */
     uint32_t count;
 } MsBindings;
+/* A capitalised payload name that coincides with a name in scope still binds a fresh value, and the lint MSL106 says
+ * so. TYPE: it is a type name. CASE_ANY: it is a case of some visible enum, more than one. CASE: it is a case of
+ * `conflict_ty`. The Rust checker's `Info`. */
+typedef enum MsConflict { MS_CONFLICT_NONE, MS_CONFLICT_TYPE, MS_CONFLICT_CASE_ANY, MS_CONFLICT_CASE } MsConflict;
 /* MS_BIND_RESOURCE: set by the ownership walk when the binding's type must be closed, so leaving its scope calls `close`. */
 /* MS_BIND_FED: a read of the binding only computes its own next value (`total = total + 1`). */
 /* MS_BIND_BORROWS: set by the ownership walk when the binding is a reference into another binding (`y := x`,
@@ -92,6 +98,7 @@ typedef struct MsFacts {
     MsTy *type_ref_ty;    /* by type-reference node id: what a written type means */
     uint32_t *pattern_binding; /* by pattern node id: binding id, or MS_NONE */
     uint32_t *arm_case;   /* by match-arm node id: the case index the arm matches */
+    MsTy *arm_contract;   /* by match-arm node id: the type an arm of a match over an interface value names, else MS_TY_NONE */
     /* calls, by call-expression node id */
     uint32_t *call_callee;     /* symbol id of the called function, else MS_NONE */
     bool *const_use;           /* by name node: a module constant read, which evaluates its initializer */
@@ -108,6 +115,7 @@ typedef struct MsFacts {
     uint32_t *assign_binding; /* by assignment statement node id: the binding it writes, else MS_NONE */
     uint32_t *field_store_root; /* by assignment statement node id: the `var` a field store changes, else MS_NONE */
     bool *each_list;  /* by `for` statement node id: it iterates a list, not a range */
+    bool *call_borrows; /* by call node id: a native whose result points into its receiver (`s.chars()`) */
     MsTy *coerce_iface; /* by expression node id: the concrete type of a value passed as an interface (the expression's own type), else MS_TY_NONE */
     bool *call_reordered; /* by call node id: an argument is not at its parameter's position (labels out of order or skipping a default); passes that pair arguments with parameters by index leave the call to Rust */
     bool *some_wrap;  /* by expression node id: a value of the payload type used where an Optional is expected, so it is wrapped in `some` */

@@ -60,7 +60,9 @@ typedef struct LbJob {
 /* A function or method being lowered: its syntax, the node its facts hang on, its signature, and
  * the receiver a method takes as parameter 0. */
 typedef struct LbCallable {
-    const MsFunc *fn;
+    const MsFunc *fn;     /* NULL for a module constant */
+    MsExpr *value;       /* a module constant's initializer: the function of no parameters returns it */
+    MsSym const_name;
     uint32_t node;  /* the declaration (or method) node: `param_consumed`, `ret_borrowed` */
     MsPos pos;
     MsSym name;     /* the MIR name, with the receiver's for a method */
@@ -190,6 +192,8 @@ typedef struct Lb {
     const MsStmt *fail_stmt; /* the statement being lowered then, or NULL */
     bool first_pass;      /* the report lists the functions the checker did not record once, in the first pass */
     bool dead;            /* control cannot reach the current position */
+    const MsExpr *iterable; /* the `for` iterable being lowered: a native call there yields a list the loop owns, never a view */
+    bool twin_ok;         /* the native call being marshalled is that iterable, so its base function (not a borrowing twin) is right */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
 
@@ -305,6 +309,7 @@ bool lx_is_extern(const Lb *lb, MsSymId callee);
  * failure text (MIR_NONE for an absent one). */
 typedef struct LbNativeStatus {
     MirTy out_ty;
+    bool found; // the call returns whether it wrote the value (a bool), not a status (an int)
 } LbNativeStatus;
 typedef struct LbNativeSlots {
     MirValue out;
@@ -320,6 +325,9 @@ LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee);
 /* lower_status.c: a native reporting failure by a status, called for a `Result[T, Error]`. */
 bool ls_reports_status(Lb *lb, const struct MsRtFn *fn, MirTy result_ty);
 LbVal ls_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
+/* A native returning whether it found a value, written through an `out` scalar, called for an Optional of it. */
+bool ls_reports_found(Lb *lb, const struct MsRtFn *fn, MirTy result_ty);
+LbVal ls_found_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */

@@ -66,6 +66,7 @@ typedef struct OwnWalk {
     uint32_t self_binding; /* the receiver of the method being walked, else MS_NONE */
     bool self_consuming;   /* the method is `move`: the receiver is its own, so it may change it */
     bool quiet;         /* a summary round: diagnostics are left to the final pass */
+    bool *lent;          /* by binding id: a lambda parameter the caller lends; moving a non-copy one out is left to Rust */
     bool *closure_holds; /* by binding id: a closure that borrows non-copy locals; moving it would let it outlive them */
     bool lambda_escaping; /* the lambda being walked is returned, stored or handed to a `move` parameter */
     uint32_t captured[8]; /* the non-copy bindings the lambda being walked reads */
@@ -147,6 +148,7 @@ static void own_declare(OwnWalk *w, uint32_t binding, Perm perm, bool parameter)
     w->param_index[binding] = MS_NONE;
     w->deferred[binding] = false;
     w->closure_holds[binding] = false;
+    w->lent[binding] = false;
 }
 
 /* The binding whose storage `binding` names: itself, or what it borrows. */
@@ -319,6 +321,10 @@ static void own_record(OwnWalk *w, const MsExpr *e, uint32_t binding) {
 }
 
 static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
+    if (w->lent[binding]) {
+        OWN_DECLINE(w); /* the function type borrows its argument: moving it out has its own message */
+        return;
+    }
     if (w->perm[binding] == PERM_BORROWED && w->deferred[binding]) {
         OWN_DECLINE(w); /* moving a part out would make the scrutinee consume its parameter */
         return;
@@ -782,6 +788,31 @@ static void own_intrinsic_call(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+/* Whether the method a call resolved to, declared in another module, was walked there and returns a new value:
+ * no reference into its receiver or arguments, and no argument it takes over. The method's own module is walked
+ * first when that has not happened (as for a function of another module); a method of this module is not
+ * summarized before its callers are walked. */
+static bool own_method_result_owned(const OwnWalk *w, const MsExpr *e) {
+    const MsMethods *methods = w->facts->methods;
+    const uint32_t row = w->facts->call_method[e->id];
+    const MsModId home = methods->module[row];
+    if (methods->decl[row] == NULL || home == w->module || home == MS_NONE) {
+        return false;
+    }
+    MsCheck *c = w->check;
+    MsFacts *facts = c->mods[home].facts;
+    if (facts == NULL) {
+        return false;
+    }
+    if (facts->body_checked == NULL) {
+        ms_module_check_bodies_with(c, home, c->methods);
+        ms_module_check_ownership(c, home);
+    }
+    const uint32_t id = ms_method_of_func(methods->decl[row])->id;
+    return facts->body_checked != NULL && facts->ownership_done && facts->body_checked[id] &&
+           facts->param_consumed[id] == 0 && !facts->ret_borrowed[id];
+}
+
 /* A method of a type, called on a local or a temporary: a method that changes its receiver changes
  * the local in place, and no argument may read it; the others borrow it. The checker admitted only
  * arguments and results of scalars, so nothing returned holds a borrow. */
@@ -790,7 +821,7 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     // A result that is not a plain value may be a reference into the receiver (`list.get(i)`), which
     // this walk does not follow: the function is left to the Rust checker.
     const MsTy result = w->facts->expr_ty[e->id];
-    if (ms_classify(w->classifier, result) != MS_CLASS_COPY) {
+    if (ms_classify(w->classifier, result) != MS_CLASS_COPY && !own_method_result_owned(w, e)) {
         OWN_DECLINE(w);
         return;
     }
@@ -1229,7 +1260,18 @@ typedef struct Scrutinee {
     bool deferred;
 } Scrutinee;
 
+/* A call of a native whose result points into its receiver local (`s.chars()`): what it yields is the
+ * receiver's, so the receiver stays unchanged while the result is in use. */
+static Scrutinee own_borrowed_call(OwnWalk *w, const MsExpr *e) {
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    own_expr(w, e, DEMAND_READ);
+    return (Scrutinee){false, own_resolve(w, w->facts->res_ref[receiver->id]), false};
+}
+
 static Scrutinee own_scrutinee(OwnWalk *w, const MsExpr *e) {
+    if (e->kind == MS_E_CALL && w->facts->call_borrows[e->id]) {
+        return own_borrowed_call(w, e);
+    }
     const bool name = e->kind == MS_E_NAME && w->facts->res_kind[e->id] == MS_RES_BINDING;
     if (!name) {
         own_expr(w, e, DEMAND_MOVE);
@@ -1447,6 +1489,11 @@ static bool own_arms_are_names(const OwnWalk *w, const MsExpr *e) {
 }
 
 static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning) {
+    // The arms of a match over an interface value bind the whole value as a concrete type: not followed.
+    if (ms_ty_kind(&w->check->tys, w->facts->expr_ty[e->u.match.scrutinee->id]) == MS_K_CONTRACT) {
+        OWN_DECLINE(w);
+        return;
+    }
     const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
     const bool borrowed = !returning && demand != DEMAND_MOVE && !copied && own_arms_are_names(w, e);
     w->facts->borrowed_match[e->id] = borrowed;
@@ -1498,7 +1545,9 @@ static void own_lambda(OwnWalk *w, const MsExpr *e, bool escaping) {
     const uint32_t mark = w->ndeclared;
     w->floor = w->facts->lambda_first[e->id];
     for (uint32_t i = 0; i < e->u.lambda.params.len; i++) {
-        own_declare(w, w->by_node[e->u.lambda.params.ptr[i]->id], PERM_IMMUTABLE, false);
+        const uint32_t param = w->by_node[e->u.lambda.params.ptr[i]->id];
+        own_declare(w, param, PERM_IMMUTABLE, false);
+        w->lent[param] = w->class_of[param] != MS_CLASS_COPY;
     }
     own_block(w, &e->u.lambda.body);
     own_end_scope(w, mark);
@@ -1581,6 +1630,7 @@ static void own_allocate(OwnWalk *w, MsArena *arena) {
     w->is_param = MS_NEW_N(arena, bool, n);
     w->deferred = MS_NEW_N(arena, bool, n);
     w->closure_holds = MS_NEW_N(arena, bool, n);
+    w->lent = MS_NEW_N(arena, bool, n);
     w->param_mode = MS_NEW_N(arena, uint8_t, n);
     w->param_index = MS_NEW_N(arena, uint32_t, n);
     w->summaries = MS_NEW_N(arena, OwnSummary, (size_t)w->facts->node_count + 1);
@@ -1653,6 +1703,7 @@ static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
             facts->refusal[method->id] = w->declined;
         }
         facts->ret_borrowed[method->id] = walked && w->has_borrowed_return && !w->has_owned_return;
+        facts->param_consumed[method->id] = walked ? w->consumed : 0;
     }
 }
 
