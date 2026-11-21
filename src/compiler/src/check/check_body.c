@@ -2545,6 +2545,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->call_reordered, 0, nodes * sizeof *facts->call_reordered);
     facts->some_wrap = MS_NEW_N(arena, bool, nodes);
     memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
+    facts->partial_move = MS_NEW_N(arena, bool, nodes);
+    memset(facts->partial_move, 0, nodes * sizeof *facts->partial_move);
     facts->moved_out = MS_NEW_N(arena, bool, nodes);
     memset(facts->moved_out, 0, nodes * sizeof *facts->moved_out);
     facts->borrowed_match = MS_NEW_N(arena, bool, nodes);

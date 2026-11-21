@@ -113,6 +113,7 @@
 #include "check/lower_alt.c"
 #include "check/lower_closure.c"
 #include "check/lower_close.c"
+#include "check/lower_split.c"
 #include "check/lower_eq.c"
 #include "check/lower_iface.c"
 #include "check/lower_method.c"

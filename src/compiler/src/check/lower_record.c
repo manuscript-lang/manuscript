@@ -119,8 +119,10 @@ LbVal lr_construct(Lb *lb, const MsExpr *call) {
 
 /* `record.field` where the checker resolved a field. */
 LbVal lr_field(Lb *lb, const MsExpr *e) {
-    if (lb->facts->res_kind[e->id] != MS_RES_FIELD) {
-        return LB_UNSUPPORTED(lb);
+    MirValue owner = MIR_NONE;
+    const bool moved = lb->facts->partial_move[e->id];
+    if (lb->facts->res_kind[e->id] != MS_RES_FIELD || (moved && !ls_owner_of(lb, e, &owner))) {
+        return LB_UNSUPPORTED(lb); // a field that leaves a holder other than a split resource local is not lowered yet
     }
     const LbVal holder = lb_expr(lb, e->u.member.left);
     if (!lb->ok) {
@@ -136,7 +138,12 @@ LbVal lr_field(Lb *lb, const MsExpr *e) {
     }
     const MirTy field = lb->m->type_defs[record->id].fields[index].ty;
     const MirImm imm = {.tag = MI_FIELD, .a = record->id, .b = index};
-    return (LbVal){mir_b_emit(&lb->b, MOP_TypeGet, &holder.v, 1, imm, field), false};
+    const MirValue got = mir_b_emit(&lb->b, MOP_TypeGet, &holder.v, 1, imm, field);
+    if (!moved) {
+        return (LbVal){got, false};
+    }
+    lscope_disown(&lb->scopes, owner); // the field's owner gives it up: the value goes to its new owner without a copy
+    return (LbVal){mir_b_emit(&lb->b, MOP_MoveOut, &got, 1, (MirImm){0}, field), true};
 }
 
 /* The fields a store `a.b.c = v` selects, outermost first, down to the name `a`; false when a link is not a field the
@@ -214,7 +221,7 @@ void lr_assign_field(Lb *lb, const MsStmt *s) {
         }
         value = (LbVal){lb_copy(lb, value.v), true};
     }
-    const bool takes = through_pointer && lb_owns(lb, root_ty); // a record that needs dropping is taken out of its slot and put back
+    const bool takes = through_pointer && mir_needs_drop(lb->m, root_ty); // a record that needs dropping is taken out of its slot and put back
     MirValue root = MIR_NONE;
     if (takes) {
         root = mir_b_emit(&lb->b, MOP_Take, &address, 1, (MirImm){.tag = MI_TY, .a = root_ty}, root_ty);

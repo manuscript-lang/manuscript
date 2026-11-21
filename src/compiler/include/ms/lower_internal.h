@@ -42,6 +42,7 @@ typedef struct LbVal {
 #define LB_MAX_TARGS 8
 typedef struct LbInst {
     MsSymId sym;
+    uint32_t row; /* the method row for a copy of a method of a generic type, else MS_NONE */
     uint32_t nargs;
     MsTy args[LB_MAX_TARGS];
     uint32_t func; /* its module function; MIR_NONE once it failed */
@@ -112,8 +113,11 @@ typedef struct LbStatusFn {
 typedef struct LbCloser {
     MirTy ty;
     uint32_t row;
+    uint32_t func; /* the close of a generic type's copy, else MIR_NONE: the row's function */
     bool owned; /* a `move` close: it takes the value */
     uint32_t thunk, result;
+    MsTy contract; /* an interface value that closes through its vtable (row MS_NONE), else MS_TY_NONE */
+    uint32_t slot; /* its `close` operation's slot in the interface */
 } LbCloser;
 
 /* The function that returns a failed close as a function's own result, by what it is made for. */
@@ -124,10 +128,14 @@ typedef struct LbCloseExit {
 } LbCloseExit;
 
 /* A local that lives in a stack slot the elaborate pass closes. */
+enum { LB_MAX_MOVED = 4 };
 typedef struct LbSlotLocal {
     uint32_t view, binding;
     MirValue slot;
     MirTy ty;
+    uint32_t nmoved;                 /* resource fields that leave the local, each an owner of its own (lower_split.c) */
+    uint32_t moved[LB_MAX_MOVED];    /* their field indexes */
+    MirValue owner[LB_MAX_MOVED];    /* the address of each, which the scope closes unless the field left */
 } LbSlotLocal;
 
 typedef struct Lb {
@@ -230,6 +238,7 @@ void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param);
 void lb_depth(Lb *lb, MirOp op);
 /* The module function a call reaches (lower_func.c): the callee's own, or its copy for a generic one. */
 uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
+uint32_t lb_method_instance(Lb *lb, uint32_t row, const MsTy *args, uint32_t nargs); /* a method of a generic type, for its arguments */
 bool lb_lines_have_diagnostic(const MsModuleRow *row, uint32_t first, uint32_t end);
 uint32_t lb_add_stub(Lb *lb, const LbCallable *c); /* a function with the signature and no body; MIR_NONE when not handled */
 bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over its stub; false when not handled */
@@ -240,11 +249,19 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
 /* Interface values (lower_iface.c, included after lower_body.c). */
 MirTy li_type(Lb *lb, MsTy ty);
 LbVal li_call(Lb *lb, const MsExpr *e);
+/* The slot of the consuming `close() Void!` operation an interface declares (so a value of it closes through its
+ * vtable), with the result type of the operation; false when it declares none. */
+bool li_closer(Lb *lb, MsTy contract, uint32_t *slot, MirTy *result);
+/* Frees the box of an interface value whose payload a consuming operation took. */
+void li_free_box(MirBuilder *b, MirValue value);
 LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed as an interface */
 
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
+uint32_t lm_instance(Lb *lb, uint32_t row, MsTy receiver); /* the copy of a generic type's method for `receiver`, or MIR_NONE */
+LbCallable lm_callable(Lb *lb, uint32_t row);
+bool lm_match(Lb *lb, uint32_t row, MsTy receiver, MsTy *args); /* the type arguments of row's impl for `receiver` */
 void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos, MsSite site); /* reports a function whose body the checker did not record */
 enum { LA_OK = 0, LA_ERROR = 1 }; /* the order of the cases of `Result` in core.ms */
 void lb_set_entry(Lb *lb, uint32_t user); /* makes `user`, the lowered `main`, the program's entry, behind a wrapper unless it returns Int (lower_entry.c) */
@@ -262,6 +279,14 @@ bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved);  /* a read of 
 bool lc_is_resource(Lb *lb, MirTy mir);               /* a registered resource type, owned even when it holds nothing to drop */
 MirValue lc_slot_of(const Lb *lb, uint32_t binding);
 bool lc_is_slot_local(const Lb *lb, uint32_t binding);
+bool lc_exits_clean(const Lb *lb);
+uint32_t lc_field_thunk(Lb *lb, MirTy field);       /* the function that closes a resource field in place, or MIR_NONE */
+LbSlotLocal *lc_push_slot(Lb *lb, LbSlotLocal local);
+/* lower_split.c: a resource field that a function moves out of a local it owns. */
+uint32_t ls_moved_fields(Lb *lb, uint32_t binding, uint32_t *fields);
+bool ls_own(Lb *lb, uint32_t binding, MirValue value, const uint32_t *fields, uint32_t nfields);
+bool ls_has_resource_part(Lb *lb, MirTy record); /* a field of the record is a resource */
+bool ls_owner_of(const Lb *lb, const MsExpr *member, MirValue *owner);
 bool lc_is_closer_row(Lb *lb, uint32_t row);
 void lc_check(Lb *lb);                             /* fails the function when it drops a resource */
 

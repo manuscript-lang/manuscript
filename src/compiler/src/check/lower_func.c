@@ -182,7 +182,17 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
     for (uint32_t i = 0; i < lb_slots(c); i++) {
         if (lb_param_moves(lb, c, i)) { // the function owns what it was handed
             const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
-            if (lc_is_resource(lb, mir_b_ty(&lb->b, lb->value_of[binding]))) {
+            const MirTy param_ty = mir_b_ty(&lb->b, lb->value_of[binding]);
+            // A closer's own receiver is released through its parts only: its own close is the function running.
+            const bool own_close = i == 0 && lb_has_self(c) && c->consuming && ms_name_is(lb->c->names, c->fn->name, "close") &&
+                                   ms_closes_itself(lb->classifier, c->self_ty);
+            if (own_close && ls_moved_fields(lb, binding, (uint32_t[LB_MAX_MOVED]){0}) == 0) {
+                if (ls_has_resource_part(lb, param_ty)) {
+                    (void)LB_UNSUPPORTED(lb); // each resource part closes on its own: not lowered
+                } else {
+                    lscope_own(&lb->scopes, lb->value_of[binding], 0);
+                }
+            } else if (lc_is_resource(lb, param_ty)) {
                 if (!lc_own_param(lb, binding)) { // closed at its scope's end
                     (void)LB_UNSUPPORTED(lb);
                 }
@@ -262,6 +272,7 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
     lb->nstatus_fns = lb->cstatus_fns = 0;
     lb->closers = NULL; // the resource types and their helpers are rebuilt with the module
     lb->nclosers = lb->cclosers = 0;
+    lb->ninsts = 0; // the copies of this pass: stubs made while signatures lower are among them
     lb->exits = NULL;
     lb->nexits = lb->cexits = 0;
     for (uint32_t k = 0; k < lb->nviews; k++) {
@@ -303,9 +314,9 @@ uint32_t lb_add_stub(Lb *lb, const LbCallable *c) {
 
 /* ---- generic instances ---- */
 
-static LbInst *lb_find_inst(LbInst *list, uint32_t n, MsSymId sym, const MsTy *args, uint32_t nargs) {
+static LbInst *lb_find_inst(LbInst *list, uint32_t n, MsSymId sym, uint32_t row, const MsTy *args, uint32_t nargs) {
     for (uint32_t i = 0; i < n; i++) {
-        if (list[i].sym == sym && list[i].nargs == nargs && memcmp(list[i].args, args, nargs * sizeof *args) == 0) {
+        if (list[i].sym == sym && list[i].row == row && list[i].nargs == nargs && memcmp(list[i].args, args, nargs * sizeof *args) == 0) {
             return &list[i];
         }
     }
@@ -331,14 +342,14 @@ static bool lb_push_inst(LbInst **list, uint32_t *n, uint32_t *cap, const LbInst
  * `name`, `name.1`, `name.2`, ... in the order they are created. Their bodies are lowered by
  * `lb_drain_instances` once the module's own functions are. */
 uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
-    if (lb_find_inst(lb->dead_insts, lb->ndead_insts, sym, args, nargs) != NULL) {
+    if (lb_find_inst(lb->dead_insts, lb->ndead_insts, sym, MS_NONE, args, nargs) != NULL) {
         return MIR_NONE;
     }
-    const LbInst *known = lb_find_inst(lb->insts, lb->ninsts, sym, args, nargs);
+    const LbInst *known = lb_find_inst(lb->insts, lb->ninsts, sym, MS_NONE, args, nargs);
     if (known != NULL) {
         return known->func;
     }
-    LbInst inst = {.sym = sym, .nargs = nargs, .func = MIR_NONE};
+    LbInst inst = {.sym = sym, .row = MS_NONE, .nargs = nargs, .func = MIR_NONE};
     memcpy(inst.args, args, nargs * sizeof *args);
     const MsDecl *d = lb->c->syms.decl[sym];
     const MsDef *def = ms_def(lb->mut, sym);
@@ -352,7 +363,7 @@ uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
     const uint32_t caller = lb_view_enter(lb, home);
     uint32_t serial = 0;
     for (uint32_t i = 0; i < lb->ninsts; i++) {
-        serial += lb->insts[i].sym == sym ? 1 : 0;
+        serial += lb->insts[i].sym == sym && lb->insts[i].row == MS_NONE ? 1 : 0;
     }
     const MsStr base = ms_name(lb->c->names, d->u.fn.name);
     char *text = MS_NEW_N(&lb->m->arena, char, base.len + 16);
@@ -386,19 +397,79 @@ uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
     return inst.func;
 }
 
+/* The copy of the method `row` of a generic type for `args` (the impl's variables, in order), created on first
+ * use like a generic function's; MIR_NONE when its signature is not handled or it failed before. */
+uint32_t lb_method_instance(Lb *lb, uint32_t row, const MsTy *args, uint32_t nargs) {
+    const MsMethods *methods = lb->facts->methods;
+    if (lb->rows == NULL || row >= methods->count || lb->rows[row].method == NULL || nargs != methods->nvars[row]) {
+        return MIR_NONE;
+    }
+    if (lb_find_inst(lb->dead_insts, lb->ndead_insts, MS_NONE, row, args, nargs) != NULL) {
+        return MIR_NONE;
+    }
+    const LbInst *known = lb_find_inst(lb->insts, lb->ninsts, MS_NONE, row, args, nargs);
+    if (known != NULL) {
+        return known->func;
+    }
+    LbInst inst = {.sym = MS_NONE, .row = row, .nargs = nargs, .func = MIR_NONE};
+    memcpy(inst.args, args, nargs * sizeof *args);
+    const uint32_t home = lb->rows[row].view;
+    if (!lb->views[home].facts->body_checked[lb->rows[row].method->id] ||
+        lb_lines_have_diagnostic(&lb->c->mods[lb->views[home].module], lb->rows[row].first_line, lb->rows[row].end_line)) {
+        (void)lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst);
+        return MIR_NONE;
+    }
+    const uint32_t caller = lb_view_enter(lb, home);
+    uint32_t serial = 0;
+    for (uint32_t i = 0; i < lb->ninsts; i++) {
+        serial += lb->insts[i].row == row ? 1 : 0;
+    }
+    const LbCallable callable = lm_callable(lb, row);
+    const MsStr base = ms_name(&lb->m->names, callable.name);
+    char *text = MS_NEW_N(&lb->m->arena, char, base.len + 16);
+    const int len = serial == 0 ? snprintf(text, base.len + 16, "%.*s", (int)base.len, base.ptr)
+                                : snprintf(text, base.len + 16, "%.*s.%u", (int)base.len, base.ptr, serial);
+    const MsTy *saved_vars = lb->sub_vars, *saved_args = lb->sub_args;
+    const uint32_t saved_n = lb->nsub;
+    const bool saved_override = lb->has_override;
+    const MsSym saved_name = lb->name_override;
+    lb->sub_vars = methods->vars + methods->vars_at[row];
+    lb->sub_args = inst.args;
+    lb->nsub = nargs;
+    lb->has_override = true;
+    lb->name_override = mir_name(lb->m, text, (size_t)len);
+    inst.func = lb_add_stub(lb, &callable);
+    lb->sub_vars = saved_vars;
+    lb->sub_args = saved_args;
+    lb->nsub = saved_n;
+    lb->has_override = saved_override;
+    lb->name_override = saved_name;
+    (void)lb_view_enter(lb, caller);
+    if (inst.func == MIR_NONE) {
+        (void)lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst);
+        return MIR_NONE;
+    }
+    if (!lb_push_inst(&lb->insts, &lb->ninsts, &lb->cinsts, &inst)) {
+        (void)LB_UNSUPPORTED(lb);
+        return MIR_NONE;
+    }
+    return inst.func;
+}
+
 /* Lowers the body of every copy created so far, and those the bodies create in turn. A copy that
  * does not lower is remembered as dead: the next pass makes its callers fail. True when one died. */
 static bool lb_drain_instances(Lb *lb, uint32_t *lowered) {
     bool died = false;
     for (uint32_t i = 0; i < lb->ninsts; i++) {
         const LbInst inst = lb->insts[i]; // the list may grow while the body is lowered
-        (void)lb_view_enter(lb, lb_view_of(lb, lb->c->syms.module[inst.sym]));
-        lb->sub_vars = ms_def(lb->mut, inst.sym)->vars;
+        const bool method = inst.row != MS_NONE;
+        (void)lb_view_enter(lb, method ? lb->rows[inst.row].view : lb_view_of(lb, lb->c->syms.module[inst.sym]));
+        lb->sub_vars = method ? lb->facts->methods->vars + lb->facts->methods->vars_at[inst.row] : ms_def(lb->mut, inst.sym)->vars;
         lb->sub_args = inst.args;
         lb->nsub = inst.nargs;
         lb->has_override = true;
         lb->name_override = lb->m->funcs[inst.func].name;
-        const LbCallable callable = lb_function_callable(lb, lb->c->syms.decl[inst.sym], inst.sym);
+        const LbCallable callable = method ? lm_callable(lb, inst.row) : lb_function_callable(lb, lb->c->syms.decl[inst.sym], inst.sym);
         const bool done = lb_function(lb, &callable, inst.func);
         *lowered += done ? 1 : 0;
         if (!done) {
@@ -461,7 +532,6 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
     lm_stubs(lb, nrows, method_failed);
     bool changed = false;
     *lowered = 0;
-    lb->ninsts = 0;
     for (uint32_t v = 0; v < lb->nviews; v++) {
         (void)lb_view_enter(lb, v);
         const MsModuleRow *row = &lb->c->mods[lb->module];

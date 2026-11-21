@@ -132,6 +132,15 @@ static bool is_marked(const MsNameMap *set, const MsTyTable *tys, MsTy type) {
 
 static MsClass class_in(MsClassifier *classifier, MsTy type, ClassWalk *walk);
 
+bool ms_closes_itself(MsClassifier *classifier, MsTy type) {
+    return is_marked(&classifier->closeable, &classifier->check->tys, type);
+}
+
+bool ms_is_close_name(MsClassifier *classifier, MsSym name) {
+    return name == close_name(classifier);
+}
+
+
 /* A type variable is a resource when a bound is `Closeable`. */
 static MsClass variable_class(MsClassifier *classifier, MsTy type) {
     const MsVarInfo *info = ms_var_info(classifier->check, type);
