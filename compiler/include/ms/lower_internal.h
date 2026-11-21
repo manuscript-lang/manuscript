@@ -169,6 +169,7 @@ bool lb_lines_have_diagnostic(const MsModuleRow *row, uint32_t first, uint32_t e
 uint32_t lb_add_stub(Lb *lb, const LbCallable *c); /* a function with the signature and no body; MIR_NONE when not handled */
 bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over its stub; false when not handled */
 /* A call of module function `func` of signature `sig`; `receiver` is the method receiver, else NULL. */
+uint32_t lb_view_of(const Lb *lb, MsModId module); /* the view of `module`, or MS_NONE when it is not being lowered */
 LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating);
 
 /* Interface values (lower_iface.c, included after lower_body.c). */
@@ -179,7 +180,7 @@ LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed a
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
-void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos); /* reports a function whose body the checker did not record */
+void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos, MsSite site); /* reports a function whose body the checker did not record */
 uint32_t lb_view_enter(Lb *lb, uint32_t view); /* reads module `view` from here on; returns the view it left */
 uint32_t lm_prepare(Lb *lb);                                 /* the method rows of every view; their count */
 void lm_stubs(Lb *lb, uint32_t nrows, const bool *failed);   /* a stub for each method to lower */

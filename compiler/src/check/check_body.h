@@ -31,6 +31,7 @@ typedef struct MsBody {
     bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
     bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
     bool supported;         /* false once a construct outside the handled set is met */
+    MsSite gave_up;         /* the first `ms_body_unsupported` call of this function */
 } MsBody;
 
 /* A parameter or local of this type can be called and passed around (check_closure.c). */
@@ -95,7 +96,8 @@ bool ms_body_reordered(const MsExpr *call, const uint32_t *slot); /* some argume
 bool ms_body_bind_arguments(const MsExpr *call, const MsSym *names, const bool *positional, uint32_t nparams, uint32_t *slot, bool *covered);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
 void ms_body_report(MsBody *b, MsPos pos, MsStr message); /* a type diagnostic, held until the function is claimed */
-MsTy ms_body_unsupported(MsBody *b);
+MsTy ms_body_give_up(MsBody *b, const char *file, uint32_t line);
+#define ms_body_unsupported(b) ms_body_give_up((b), __FILE__, (uint32_t)__LINE__)
 /* Records the type of expression node `node` and returns it. */
 MsTy ms_body_record(MsBody *b, uint32_t node, MsTy ty);
 /* The type of `e` where `expected` is what the context wants (MS_TY_NONE for no expectation); a
