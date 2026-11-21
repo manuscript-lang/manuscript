@@ -1793,6 +1793,7 @@ static void body_assign_field(MsBody *b, const MsStmt *s) {
         return;
     }
     b->facts->field_store_root[s->id] = binding;
+    b->facts->bindings.flags[binding] |= MS_BIND_FIELD_STORED;
 }
 
 /* `name = value` and `name op= value` (the parser writes the second as `name = name op value`).
