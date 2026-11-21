@@ -64,6 +64,7 @@ typedef struct OwnWalk {
     MsPos consumed_at[32];
     uint8_t *param_mode; /* by binding id: 0 plain, 1 `var`, 2 `move` (parameters only) */
     bool quiet;         /* a summary round: diagnostics are left to the final pass */
+    bool *lent;          /* by binding id: a lambda parameter the caller lends; moving a non-copy one out is left to Rust */
     bool *closure_holds; /* by binding id: a closure that borrows non-copy locals; moving it would let it outlive them */
     bool lambda_escaping; /* the lambda being walked is returned, stored or handed to a `move` parameter */
     uint32_t captured[8]; /* the non-copy bindings the lambda being walked reads */
@@ -145,6 +146,7 @@ static void own_declare(OwnWalk *w, uint32_t binding, Perm perm, bool parameter)
     w->param_index[binding] = MS_NONE;
     w->deferred[binding] = false;
     w->closure_holds[binding] = false;
+    w->lent[binding] = false;
 }
 
 /* The binding whose storage `binding` names: itself, or what it borrows. */
@@ -317,6 +319,10 @@ static void own_record(OwnWalk *w, const MsExpr *e, uint32_t binding) {
 }
 
 static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
+    if (w->lent[binding]) {
+        OWN_DECLINE(w); /* the function type borrows its argument: moving it out has its own message */
+        return;
+    }
     if (w->perm[binding] == PERM_BORROWED && w->deferred[binding]) {
         OWN_DECLINE(w); /* moving a part out would make the scrutinee consume its parameter */
         return;
@@ -1488,7 +1494,9 @@ static void own_lambda(OwnWalk *w, const MsExpr *e, bool escaping) {
     const uint32_t mark = w->ndeclared;
     w->floor = w->facts->lambda_first[e->id];
     for (uint32_t i = 0; i < e->u.lambda.params.len; i++) {
-        own_declare(w, w->by_node[e->u.lambda.params.ptr[i]->id], PERM_IMMUTABLE, false);
+        const uint32_t param = w->by_node[e->u.lambda.params.ptr[i]->id];
+        own_declare(w, param, PERM_IMMUTABLE, false);
+        w->lent[param] = w->class_of[param] != MS_CLASS_COPY;
     }
     own_block(w, &e->u.lambda.body);
     own_end_scope(w, mark);
@@ -1567,6 +1575,7 @@ static void own_allocate(OwnWalk *w, MsArena *arena) {
     w->is_param = MS_NEW_N(arena, bool, n);
     w->deferred = MS_NEW_N(arena, bool, n);
     w->closure_holds = MS_NEW_N(arena, bool, n);
+    w->lent = MS_NEW_N(arena, bool, n);
     w->param_mode = MS_NEW_N(arena, uint8_t, n);
     w->param_index = MS_NEW_N(arena, uint32_t, n);
     w->summaries = MS_NEW_N(arena, OwnSummary, (size_t)w->facts->node_count + 1);
