@@ -43,6 +43,11 @@ import (
 	msstd_handler_new,
 	msstd_handler_share,
 	msstd_handler_take,
+	msstd_idle_cancel,
+	msstd_idle_drain,
+	msstd_idle_group,
+	msstd_idle_inflight,
+	msstd_idle_park,
 	msstd_xchg_finish,
 	msstd_xchg_method,
 	msstd_xchg_next,
@@ -53,6 +58,7 @@ import (
 	msstd_xchg_target,
 	msstd_xchg_wait_gone from "@std/internal/http.ms",
 	msstd_conn_accept_tls_with,
+	msstd_conn_alias,
 	msstd_conn_alpn,
 	msstd_conn_close,
 	msstd_conn_share,
@@ -166,6 +172,7 @@ export fn start_server(
 		listener: listener,
 		drain: cancel_switch(),
 		live: [],
+		idle: msstd_idle_group(),
 		grace: options.grace.clone(),
 	)
 	stopping := cancel_switch()
@@ -199,6 +206,9 @@ type Accepting:
 	// Fired by close: idle connections end and busy ones finish their request.
 	drain: Cancel
 	live: List[Promise[Void]]
+	// Names this server's connections between requests, which wait in the runtime's idle
+	// pool without a task, and its requests in flight.
+	idle: Int
 	grace: Duration?
 
 fn move Accepting.close() Void!:
@@ -209,6 +219,7 @@ fn move Accepting.close() Void!:
 fn var Accepting.finish() Void:
 	msstd_listener_close(self.listener)
 	self.drain.cancel()
+	msstd_idle_drain(self.idle)
 
 	if span := self.grace:
 		if span.to_nanoseconds() == 0:
@@ -222,6 +233,14 @@ fn var Accepting.finish() Void:
 	while not self.live.is_empty():
 		if connection := self.live.pop():
 			void connection.wait()
+
+	// Requests the idle pool started finish within the grace period; the rest are cancelled.
+	var waited = 0
+	while msstd_idle_inflight(self.idle) > 0:
+		if span := self.grace:
+			if waited >= span.to_nanoseconds(): msstd_idle_cancel(self.idle)
+		void sleep(nanoseconds(1000000)).wait()
+		waited = waited + 1000000
 
 // Drops the connections that have ended, so a long-lived server holds only live ones.
 fn var Accepting.prune() Void:
@@ -286,6 +305,7 @@ fn accept_loop(
 				msstd_handler_share(serving),
 				rules.clone(),
 				accepting.drain.signal(),
+				accepting.idle,
 				accepting.grace.clone(),
 				share_tls(secured),
 			)
@@ -306,6 +326,7 @@ fn start_connection(
 	serving: NativeHandler,
 	rules: Rules,
 	drain: Signal,
+	idle: Int,
 	grace: Duration?,
 	secured: NativeTlsServer?,
 ) Promise[Void]:
@@ -313,7 +334,7 @@ fn start_connection(
 	// first and cancels the connection only after the grace period.
 	ending := drain.clone()
 	return promise(
-		fn: serve_connection(raw, serving, rules, drain, secured),
+		fn: serve_connection(raw, serving, rules, drain, idle, secured),
 		options: PromiseOptions(
 			placement: Placement.Spread,
 			drain: ending,
@@ -328,6 +349,7 @@ fn serve_connection(
 	serving: NativeHandler,
 	rules: Rules,
 	drain: Signal,
+	idle: Int,
 	secured: NativeTlsServer?,
 ) Void!:
 	// The connection ends through the drain, not through a stop request (see `call`).
@@ -347,7 +369,7 @@ fn serve_connection(
 	if msstd_conn_alpn(conn) == "h2":
 		return serve_h2(conn, serving, rules, drain)
 	else:
-		return serve_h1(conn, serving, rules, drain)
+		return serve_h1(conn, serving, rules, drain, idle)
 
 // ---- HTTP/1.1 ----
 
@@ -371,21 +393,55 @@ fn next_head(conn: NativeConnection, rules: Rules, drain: Signal) NativeExchange
 
 	return got.get()
 
+// Serves one request of an HTTP/1.1 connection. When the connection can carry another it
+// waits in the runtime's idle pool, without a task: a task never moves, so a connection
+// parked in one could not be taken over by a thread that is free while this one runs a
+// long handler. The pool starts `serve_h1_again` as a promise when the peer sends the
+// next request, on whichever thread is free.
 fn serve_h1(
 	conn: NativeConnection,
 	serving: NativeHandler,
 	rules: Rules,
 	drain: Signal,
+	idle: Int,
 ) Void!:
-	while not drain.cancelled():
-		head := next_head(conn, rules, drain.clone())
-		if not head.is_some(): break
+	if drain.cancelled():
+		msstd_conn_close(conn)
+		return ok()
 
-		kept := msstd_handler_call(serving, head.get())
-		if kept.is_error() or not kept.get(): break
+	head := next_head(conn, rules, drain.clone())
+	if not head.is_some():
+		msstd_conn_close(conn)
+		return ok()
 
-	msstd_conn_close(conn)
+	kept := msstd_handler_call(serving, head.get())
+	if kept.is_error() or not kept.get() or drain.cancelled():
+		msstd_conn_close(conn)
+		return ok()
+
+	again_conn := msstd_conn_alias(conn)
+	again_serving := msstd_handler_share(serving)
+	again_rules := rules.clone()
+	again_drain := drain.clone()
+	parked := msstd_idle_park(
+		conn,
+		fn: serve_h1_again(again_conn, again_serving, again_rules, again_drain, idle),
+		idle,
+		rules.timeout.clone(),
+	)
+	if parked.is_error(): msstd_conn_close(conn)
 	return ok()
+
+// The next request of an idle connection, started by the pool.
+fn serve_h1_again(
+	conn: NativeConnection,
+	serving: NativeHandler,
+	rules: Rules,
+	drain: Signal,
+	idle: Int,
+) Void:
+	_hold := hold_stop()
+	void serve_h1(conn, serving, rules, drain, idle)
 
 // ---- HTTP/2 ----
 

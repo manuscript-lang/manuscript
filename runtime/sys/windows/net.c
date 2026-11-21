@@ -290,6 +290,16 @@ int ms_sys_net_peer_addr(MsSock s, MsAddr *out) {
 
 int ms_sys_net_shutdown(MsSock s, int how) { return shutdown((SOCKET)s, how == 1 ? SD_SEND : SD_BOTH) != 0 ? MS_SYS_ERROR : MS_SYS_OK; }
 void ms_sys_net_close(MsSock s) { closesocket((SOCKET)s); }
+
+int ms_sys_net_duplicate(MsSock s, MsSock *out) {
+    WSAPROTOCOL_INFOW info;
+    if (WSADuplicateSocketW((SOCKET)s, GetCurrentProcessId(), &info) != 0) return MS_SYS_ERROR;
+    const SOCKET copy = WSASocketW(FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO, &info, 0,
+                                   WSA_FLAG_NO_HANDLE_INHERIT);
+    if (copy == INVALID_SOCKET) return MS_SYS_ERROR;
+    *out = (MsSock)copy;
+    return MS_SYS_OK;
+}
 int ms_sys_net_error(void) { return WSAGetLastError(); }
 
 int ms_sys_net_addr_from_raw(const void *sockaddr, size_t length, MsAddr *out) {
