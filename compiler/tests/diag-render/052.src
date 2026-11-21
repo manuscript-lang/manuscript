@@ -1,0 +1,11 @@
+fn wrap(x: Int) Int?:
+	return x"""
+
+fn nothing() Int?:
+	return none
+
+fn take(v: Int?) Int:
+	retu‮n 3
+
+fn main() Int:
+	return take(5) + take(none) + take(wrap(2)) + take(nothing())

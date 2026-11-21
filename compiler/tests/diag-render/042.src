@@ -1,0 +1,6 @@
+// conform: tags=diagnostics
+// conform: tags=diagnostics
+// conform: phase=check
+if found := afeer):
+            sum += found
+        peer += 1

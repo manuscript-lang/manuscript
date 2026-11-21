@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected end of statement, found name 'move'; put one statement per line, and join operands with an operator or a comma inside brackets",
+      "position": {
+        "file": "073.ms",
+        "line": 7,
+        "column": 23,
+        "offset": 247
+      },
+      "end": {
+        "file": "073.ms",
+        "line": 7,
+        "column": 27,
+        "offset": 251
+      }
+    }
+  ]
+}

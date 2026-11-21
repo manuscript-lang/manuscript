@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1002",
+      "phase": "parse",
+      "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it",
+      "position": {
+        "file": "030.ms",
+        "line": 5,
+        "column": 5,
+        "offset": 114
+      }
+    }
+  ]
+}

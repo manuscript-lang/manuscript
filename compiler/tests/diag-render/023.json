@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected '=', found name 'ate'",
+      "position": {
+        "file": "023.ms",
+        "line": 4,
+        "column": 16,
+        "offset": 65
+      },
+      "end": {
+        "file": "023.ms",
+        "line": 4,
+        "column": 19,
+        "offset": 68
+      }
+    }
+  ]
+}

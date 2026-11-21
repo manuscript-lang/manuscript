@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "phase": "type",
+      "message": "extern Result value has type Map, which cannot cross the native boundary; an extern Result holds sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them, or Void",
+      "position": {
+        "file": "result_map.ms",
+        "line": 4,
+        "column": 18,
+        "offset": 43
+      }
+    }
+  ]
+}

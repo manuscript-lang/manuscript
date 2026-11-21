@@ -1,0 +1,5 @@
+024.ms:4:10: parse: enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block
+   |
+ 4 |     value: Int
+   |          ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
