@@ -1,7 +1,7 @@
 /* The macOS link (ms/build_link.h): lld over generated SDK stubs, then a debug companion. Apple's SDK is not
  * redistributable and is absent without Xcode tools, so the stubs (`.tbd` text files, which lld reads like the real
  * ones) export exactly the symbols the program and runtime import but do not define; dyld binds those names in the
- * real libSystem, Security and CoreFoundation. */
+ * real libSystem, Security, CoreFoundation and SystemConfiguration. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -83,7 +83,7 @@ static bool bm_write_tbd(const char *path, const char *install_name, const MsBuf
     return ok;
 }
 
-/* Writes `usr/lib/libSystem.tbd` and the two framework stubs under `sdk`, for the symbols the object and the inputs import
+/* Writes `usr/lib/libSystem.tbd` and the three framework stubs under `sdk`, for the symbols the object and the inputs import
  * and do not define. */
 static bool bm_stubs(const BlJob *job, const char *sdk, MsBuf *why) {
     MsMachoSymbols symbols = {0};
@@ -105,7 +105,7 @@ static bool bm_stubs(const BlJob *job, const char *sdk, MsBuf *why) {
         ms_macho_collect(contents[nfiles].data == NULL ? "" : contents[nfiles].data, contents[nfiles].len, &symbols);
         nfiles++;
     }
-    MsBuf system = {0}, security = {0}, core = {0};
+    MsBuf system = {0}, security = {0}, core = {0}, configuration = {0};
     if (ok) {
         /* lld's own lazy-binding stubs import this, spelled without the usual leading underscore. */
         const MsStr binder = {"dyld_stub_binder", 16};
@@ -119,15 +119,17 @@ static bool bm_stubs(const BlJob *job, const char *sdk, MsBuf *why) {
                 continue;
             }
             const MsStr name = undefined[i];
-            MsBuf *list = bm_starts(name, "_Sec") || bm_starts(name, "_kSec") ? &security
-                          : bm_starts(name, "_CF") || bm_starts(name, "_kCF") ? &core
-                                                                              : &system;
+            MsBuf *list = bm_starts(name, "_Sec") || bm_starts(name, "_kSec")   ? &security
+                          : bm_starts(name, "_CF") || bm_starts(name, "_kCF")   ? &core
+                          : bm_starts(name, "_SC") || bm_starts(name, "_kSC")   ? &configuration
+                                                                                : &system;
             MS_VEC_PUSH(*list, MsStr, name);
         }
         char path[BL_PATH];
         (void)snprintf(path, sizeof path, "%s/usr/lib", sdk);
         const char *const dirs[] = {"usr", "usr/lib", "System", "System/Library", "System/Library/Frameworks",
-                                    "System/Library/Frameworks/Security.framework", "System/Library/Frameworks/CoreFoundation.framework"};
+                                    "System/Library/Frameworks/Security.framework", "System/Library/Frameworks/CoreFoundation.framework",
+                                    "System/Library/Frameworks/SystemConfiguration.framework"};
         for (size_t i = 0; ok && i < sizeof dirs / sizeof dirs[0]; i++) {
             (void)snprintf(path, sizeof path, "%s/%s", sdk, dirs[i]);
             ok = ms_build_make_path(path);
@@ -141,6 +143,8 @@ static bool bm_stubs(const BlJob *job, const char *sdk, MsBuf *why) {
         ok = ok && bm_write_tbd(path, "/System/Library/Frameworks/Security.framework/Versions/A/Security", &security, why);
         (void)snprintf(path, sizeof path, "%s/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation.tbd", sdk);
         ok = ok && bm_write_tbd(path, "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation", &core, why);
+        (void)snprintf(path, sizeof path, "%s/System/Library/Frameworks/SystemConfiguration.framework/SystemConfiguration.tbd", sdk);
+        ok = ok && bm_write_tbd(path, "/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/SystemConfiguration", &configuration, why);
     }
     for (size_t i = 0; i < nfiles; i++) {
         ms_buf_free(&contents[i]);
@@ -148,6 +152,7 @@ static bool bm_stubs(const BlJob *job, const char *sdk, MsBuf *why) {
     ms_buf_free(&system);
     ms_buf_free(&security);
     ms_buf_free(&core);
+    ms_buf_free(&configuration);
     ms_macho_free(&symbols);
     return ok;
 }
@@ -201,7 +206,7 @@ bool ms_link_prepare(BlJob *job, MsBuf *why) {
     for (size_t i = 0; i < job->ninputs; i++) {
         ms_link_push(job, bm_absolute(job, job->inputs[i]));
     }
-    const char *const tail[] = {"-lSystem", "-framework", "Security", "-framework", "CoreFoundation"};
+    const char *const tail[] = {"-lSystem", "-framework", "Security", "-framework", "CoreFoundation", "-framework", "SystemConfiguration"};
     for (size_t i = 0; i < sizeof tail / sizeof tail[0]; i++) {
         ms_link_push(job, tail[i]);
     }
