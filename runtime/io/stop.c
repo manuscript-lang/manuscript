@@ -64,6 +64,12 @@ static void on_signal(uv_signal_t *handle, int signal_number) {
     state.on_stop(request_of(signal_number));
 }
 
+void ms_io_stop_raise(int signal_number) {
+    if (state.running) {
+        state.on_stop(request_of(signal_number));
+    }
+}
+
 static void on_grace(uv_timer_t *handle) {
     (void)handle;
     state.on_expired();
