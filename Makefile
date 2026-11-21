@@ -32,7 +32,7 @@ runtime:
 	cmake -P cmake/BuildRuntime.cmake
 
 check: runtime
-	cargo xtask symbols --check
+	"$(RELEASE_MS)" run tools/ms/symbols.ms -- --check
 	cargo fmt --all --check
 	cargo clippy --workspace --all-targets -- -D warnings
 
@@ -287,6 +287,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/html.ms
 	"$(RELEASE_MS)" test tools/ms/review_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/diagram_cmd.ms
+	"$(RELEASE_MS)" test tools/ms/symbols.ms
 	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
 	"$(RELEASE_MS)" test tools/ms/cli.ms
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
@@ -299,6 +300,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/imports.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/report.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed_calls.ms --link target/c-tool/libmstool.a

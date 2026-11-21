@@ -1,7 +1,7 @@
 /* ms_sched.h: the scheduler services C natives use while the scheduler is still Rust: cancellation, the blocking
  * pool, and (Windows) overlapped pipes and waitable objects. The Rust side is crates/ms-rt/src/glue/c_sched.rs.
  *
- * Not part of the program ABI, so `cargo xtask symbols --check` ignores it. Task waits that are already C symbols
+ * Not part of the program ABI, so `ms run tools/ms/symbols.ms -- --check` ignores it. Task waits that are already C symbols
  * (msrt_task_wait_fd, msrt_task_sleep, msrt_token_new, msrt_token_park, msrt_token_free, msrt_token_post_remote)
  * are declared here too, so a native includes one header.
  *

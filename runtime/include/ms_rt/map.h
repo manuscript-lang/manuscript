@@ -51,21 +51,21 @@ void msrt_map_add_table(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, co
 
 /* ms-sig: msrt_map_contains(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8 @domain=map @leaf */
 uint8_t msrt_map_contains(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
-/* ms-sig: msrt_map_contains_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8 @domain=map @leaf @pure */
+/* ms-sig: msrt_map_contains_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8 @domain=map @leaf @pure @word_key_of=msrt_map_contains */
 uint8_t msrt_map_contains_w8(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
-/* ms-sig: msrt_map_contains_sw8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8 @domain=map @leaf @pure */
+/* ms-sig: msrt_map_contains_sw8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8 @domain=map @leaf @pure @text_key_of=msrt_map_contains */
 uint8_t msrt_map_contains_sw8(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
 /* ms-sig: msrt_map_get_ptr(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> *const u8 @domain=map @leaf */
 const uint8_t *msrt_map_get_ptr(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
-/* ms-sig: msrt_map_get_ptr_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> *const u8 @domain=map @leaf @pure */
+/* ms-sig: msrt_map_get_ptr_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> *const u8 @domain=map @leaf @pure @word_key_of=msrt_map_get_ptr */
 const uint8_t *msrt_map_get_ptr_w8(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
-/* ms-sig: msrt_map_get_ptr_sw8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> *const u8 @domain=map @leaf @pure */
+/* ms-sig: msrt_map_get_ptr_sw8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> *const u8 @domain=map @leaf @pure @text_key_of=msrt_map_get_ptr */
 const uint8_t *msrt_map_get_ptr_sw8(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
 /* ms-sig: msrt_map_get(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut u8) -> u8 @domain=map @leaf */
 uint8_t msrt_map_get(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key, uint8_t *out);
-/* ms-sig: msrt_map_get_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut u8) -> u8 @domain=map @leaf */
+/* ms-sig: msrt_map_get_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut u8) -> u8 @domain=map @leaf @word_key_of=msrt_map_get */
 uint8_t msrt_map_get_w8(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key, uint8_t *out);
-/* ms-sig: msrt_map_get_sw8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut u8) -> u8 @domain=map @leaf */
+/* ms-sig: msrt_map_get_sw8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut u8) -> u8 @domain=map @leaf @text_key_of=msrt_map_get */
 uint8_t msrt_map_get_sw8(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key, uint8_t *out);
 
 /* ms-sig: msrt_map_keys(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVal) @domain=map @leaf */

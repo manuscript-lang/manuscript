@@ -16,7 +16,9 @@
 uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out);
 
 /* The same for every module of the checked program, into one MIR module: a call reaches a function
- * another module declares, and a generic function is copied from its own module's facts. */
-uint32_t ms_lower_program(MsCheck *c, MirModule *out);
+ * another module declares, and a generic function is copied from its own module's facts. `entry` is
+ * the module that holds `main`: its source file is file 0, then the project modules in the order its
+ * imports reach them, then the standard library's. */
+uint32_t ms_lower_program(MsCheck *c, MsModId entry, MirModule *out);
 
 #endif
