@@ -82,3 +82,9 @@ bool ms_sys_fs_waitable(int fd) {
   (void)fd;
   return false;
 }
+
+int ms_sys_fs_clone_file(int output, int input) {
+  (void)output;
+  (void)input;
+  return UV_ENOTSUP;
+}

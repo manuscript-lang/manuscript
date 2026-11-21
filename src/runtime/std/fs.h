@@ -152,4 +152,10 @@ uint8_t msstd_fs_file_set_times(MsObj *handle, const MsFsTimestamp *accessed, co
 /* ms-sig: msstd_fs_file_read_lines(handle h: *mut ObjCell<Stream>, max_bytes: i64, max_lines: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
 uint8_t msstd_fs_file_read_lines(MsObj *handle, int64_t max_bytes, int64_t max_lines, MsList *out, MsString *err);
 
+/* Copies a file or tree. `clone` is "none", "try" or "force"; `filter` is null or a closure over (source, destination). */
+/* ms-sig: msstd_fs_copy(source: *const StrVal, destination: *const StrVal, flags: i64, clone: *const StrVal, has_entries: HasRaw, entries: i64, has_bytes: HasRaw, bytes: i64, filter: *mut Closure, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_copy(const MsString *source, const MsString *destination, int64_t flags, const MsString *clone,
+                      uint8_t has_entries, int64_t entries, uint8_t has_bytes, int64_t bytes, MsObj *filter,
+                      MsString *err);
+
 #endif

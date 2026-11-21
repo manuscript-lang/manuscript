@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/file.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -105,4 +106,15 @@ bool ms_sys_fs_waitable(int fd) {
     return false;
   }
   return !S_ISREG(info.st_mode) && !S_ISDIR(info.st_mode);
+}
+
+int ms_sys_fs_clone_file(int output, int input) {
+#ifdef __linux__
+  enum { MS_FICLONE = 0x40049409 }; /* _IOW(0x94, 9, int); the header has no stable spelling under musl */
+  return ioctl(output, MS_FICLONE, input) == 0 ? 0 : uv_translate_sys_error(errno);
+#else
+  (void)output;
+  (void)input;
+  return UV_ENOTSUP;
+#endif
 }
