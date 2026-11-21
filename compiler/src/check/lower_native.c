@@ -22,7 +22,10 @@ static MirTy ln_param_ty(MsRtParam kind, MirTy given) {
     case MS_RT_FLOAT: return MIR_FLOAT;
     case MS_RT_BOOL: return MIR_BOOL;
     case MS_RT_STR: return MIR_STR;
-    case MS_RT_DESC: return MIR_PTR;
+    case MS_RT_DESC:
+    case MS_RT_KEY_DESC:
+    case MS_RT_VAL_DESC:
+    case MS_RT_KEY_REF: return MIR_PTR;
     default: return given;
     }
 }
@@ -36,6 +39,41 @@ static MirTy ln_ret_ty(MsRtRet ret) {
     }
 }
 
+/* Which type a descriptor of role `kind` describes: 0 the element, 1 the key, 2 the value. */
+static uint32_t ln_described(MsRtParam kind) {
+    if (kind == MS_RT_KEY_DESC) {
+        return 1;
+    }
+    return kind == MS_RT_VAL_DESC ? 2 : 0;
+}
+
+/* Descriptors and key slots, made once the arguments are evaluated, in parameter order. `of` is the type a
+ * descriptor describes by role (element, key, value). */
+static bool ln_make_addresses(Lb *lb, const MsRtFn *fn, MirValue *operands, uint32_t count, const bool *is_desc,
+                              const bool *is_key_ref, const MirTy *of) {
+    for (uint32_t i = 0, param = 0; i < count; i++, param++) {
+        while (param < fn->nparams && (fn->params[param] == MS_RT_OUT_STR || fn->params[param] == MS_RT_OUT_LIST)) {
+            param++;
+        }
+        const MsRtParam kind = fn->params[param];
+        if (is_desc[i]) {
+            const MirTy described = of[ln_described(kind)];
+            if (described == MIR_NONE) {
+                return false;
+            }
+            operands[i] = mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = described}, MIR_PTR);
+        } else if (is_key_ref[i]) {
+            if (mir_b_ty(&lb->b, operands[i]) != of[1]) {
+                return false;
+            }
+            const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = of[1]}, MIR_PTR);
+            lb_store(lb, slot, operands[i]);
+            operands[i] = slot;
+        }
+    }
+    return true;
+}
+
 /* Calls `fn` on `args` (the receiver first, then the call's arguments, already evaluated), yielding
  * `result_ty`. `variable` is the variable that holds a by-reference list, which then holds what the
  * function yields. Null when the signature cannot be marshalled. */
@@ -43,6 +81,8 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
     MirValue operands[MS_RT_MAX_PARAMS];
     MirTy types[MS_RT_MAX_PARAMS];
     bool is_desc[MS_RT_MAX_PARAMS] = {false};
+    bool is_key_ref[MS_RT_MAX_PARAMS] = {false};
+    MirTy map_ty = MIR_NONE;
     uint32_t count = 0;
     uint32_t next = 0;
     MirTy element = MIR_NONE;
@@ -55,7 +95,7 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
         }
         if (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST) {
             has_out = true;
-        } else if (kind == MS_RT_DESC) {
+        } else if (kind == MS_RT_DESC || kind == MS_RT_KEY_DESC || kind == MS_RT_VAL_DESC) {
             types[count] = MIR_PTR;
             is_desc[count] = true;
             operands[count++] = MIR_NONE; // the descriptor is made once the arguments are evaluated
@@ -66,12 +106,16 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
             const MirValue value = args[next++];
             const MirTy given = mir_b_ty(&lb->b, value);
             const bool list = kind == MS_RT_LIST || kind == MS_RT_LIST_VAR;
-            if (list && !lb_is_list(lb, given)) {
+            if ((list && !lb_is_list(lb, given)) || (kind == MS_RT_MAP && !lb_is_map(lb, given))) {
                 return false;
             }
             if (list) {
                 element = mir_ty_data(lb->m, given)->elem;
             }
+            if (kind == MS_RT_MAP) {
+                map_ty = given;
+            }
+            is_key_ref[count] = kind == MS_RT_KEY_REF;
             operands[count] = value;
             types[count++] = ln_param_ty(kind, given);
         }
@@ -87,13 +131,16 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
     if (is_op && op < 0) {
         return false;
     }
-    for (uint32_t i = 0; i < count; i++) { // the descriptor of the element type follows the arguments
-        if (is_desc[i]) {
-            if (element == MIR_NONE) {
-                return false;
-            }
-            operands[i] = mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = element}, MIR_PTR);
-        }
+    MirTy of[3] = {element, MIR_NONE, MIR_NONE}; // the type a descriptor describes: element, key, value
+    const MsRtFn *entry = fn;
+    uint8_t role = MR_NONE;
+    if (map_ty != MIR_NONE) { // a function with a specialisation for the map's layout is called as that
+        of[1] = mir_ty_data(lb->m, map_ty)->args[0];
+        of[2] = mir_ty_data(lb->m, map_ty)->args[1];
+        entry = lm_specialize(lb, fn, of[1], of[2], &role);
+    }
+    if (!ln_make_addresses(lb, fn, operands, count, is_desc, is_key_ref, of)) {
+        return false;
     }
     if (is_op) { // an instruction takes the arguments, not the descriptor
         uint32_t kept = 0;
@@ -107,7 +154,7 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
         return true;
     }
     const MirTy ret = has_out ? result_ty : ln_ret_ty(fn->ret);
-    const uint32_t ext = mir_extern_get(lb->m, fn->symbol, types, count, ret, fn->leaf, MR_NONE);
+    const uint32_t ext = lb_runtime_extern(lb, entry->symbol, types, count, ret, role, entry->pure);
     *out = mir_b_call_rt(&lb->b, ext, operands, count);
     return true;
 }
@@ -163,7 +210,9 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     MsRtParam kinds[MS_RT_MAX_PARAMS];
     uint32_t value_params = 0;
     for (uint32_t i = 1; i < fn->nparams; i++) {
-        if (fn->params[i] != MS_RT_DESC && fn->params[i] != MS_RT_OUT_STR && fn->params[i] != MS_RT_OUT_LIST) {
+        const MsRtParam kind = fn->params[i];
+        if (kind != MS_RT_DESC && kind != MS_RT_KEY_DESC && kind != MS_RT_VAL_DESC && kind != MS_RT_OUT_STR &&
+            kind != MS_RT_OUT_LIST) {
             kinds[value_params++] = fn->params[i];
         }
     }

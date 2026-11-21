@@ -1,5 +1,5 @@
 /* ms_rt/base.h: what every module header includes. The ABI of a module lives in ms_rt/<module>.h and the
- * symbols it defines in C are listed in runtime/symbols/<module>.txt (`cargo xtask symbols --check`
+ * symbols it defines in C are listed in runtime/symbols/<module>.txt (`ms run tools/ms/symbols.ms -- --check`
  * compares the two with the recorded signatures).
  *
  * Rules for everything under runtime/sys and runtime/core:

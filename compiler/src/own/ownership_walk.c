@@ -455,6 +455,42 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
 
 /* ---- calls ---- */
 
+/* The summary of a function another module declares, which that module's own walk recorded in its
+ * facts (that module is checked and walked now if it has not been): its parameters borrow unless
+ * declared `var` or `move`. A native (extern or built-in) function returns a new value. A function
+ * that moves a parameter, or whose result borrows from one, is left alone: its summary would name
+ * positions in another file. */
+static const OwnSummary *own_foreign_callee(const OwnWalk *w, const MsExpr *e, MsSymId sym, const MsDecl *decl) {
+    static const OwnSummary foreign = {.usable = true};
+    if (w->check->syms.native[sym] != MS_NATIVE_SOURCE ||
+        ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY) {
+        return &foreign;
+    }
+    MsCheck *c = w->check;
+    const MsModId home = c->syms.module[sym];
+    MsFacts *facts = c->mods[home].facts;
+    if (facts == NULL) {
+        return NULL;
+    }
+    if (facts->body_checked == NULL) {
+        ms_module_check_bodies_with(c, home, c->methods);
+        ms_module_check_ownership(c, home);
+    }
+    if (facts->body_checked != NULL && facts->ownership_done && facts->body_checked[decl->id]) {
+        // Walked by that module: it moves no parameter and its result borrows from none.
+        return facts->param_consumed[decl->id] == 0 && !facts->ret_borrowed[decl->id] ? &foreign : NULL;
+    }
+    // Not walked: nothing is borrowed or moved when no parameter can be (every one copies).
+    const MsTyTable *tys = &c->tys;
+    const MsTy sig = c->syms.ty[sym];
+    for (uint32_t i = 0; i < tys->nparams[sig]; i++) {
+        if (ms_classify(w->classifier, ms_ty_params(tys, sig)[i].ty) != MS_CLASS_COPY) {
+            return NULL;
+        }
+    }
+    return &foreign;
+}
+
 /* The summary of the function a call names, or NULL when the walk cannot reason about it. */
 static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     const uint32_t sym = w->facts->call_callee[e->id];
@@ -465,13 +501,7 @@ static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
         return NULL;
     }
     if (w->check->syms.module[sym] != w->module) {
-        // Another module's function: its declaration id indexes that module's tables, not these.
-        // Its parameters borrow unless declared `var` or `move`, and a result that copies holds no
-        // borrow. A native (extern or built-in) function returns a new value; a function with a
-        // body in another module has a summary this walk does not compute, so only a copy is safe.
-        static const OwnSummary foreign = {.usable = true};
-        const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
-        return copied || w->check->syms.native[sym] != MS_NATIVE_SOURCE ? &foreign : NULL;
+        return own_foreign_callee(w, e, sym, decl);
     }
     const OwnSummary *summary = &w->summaries[decl->id];
     return summary->usable ? summary : NULL;
@@ -825,7 +855,7 @@ static void own_record_owned_borrow(OwnWalk *w, const MsExpr *e, const OwnSummar
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const MsExpr *callee_expr = e->u.call.callee;
-    if (w->facts->call_reordered[e->id] || ms_is_index_store(w->check->names, e)) {
+    if ((w->facts->call_reordered[e->id] && !own_is_constructor(w, e)) || ms_is_index_store(w->check->names, e)) { /* a construction reads its arguments in source order */
         w->supported = false; /* the arguments are paired with parameters by index below; a store has its own order */
         return;
     }
@@ -910,6 +940,7 @@ static bool own_bind_borrowed_call(OwnWalk *w, const MsStmt *s, uint32_t binding
     }
     own_expr(w, value, DEMAND_READ);
     own_declare_borrow(w, binding, origins[0], s->u.bind.pattern->pos, "binding of a part of it");
+    w->facts->bindings.flags[binding] |= MS_BIND_BORROWS;
     return true;
 }
 
@@ -951,6 +982,7 @@ static void own_bind(OwnWalk *w, const MsStmt *s) {
     }
     own_expr(w, s->u.bind.value, DEMAND_READ);
     own_declare_borrow(w, binding, own_resolve(w, source), s->u.bind.pattern->pos, "binding of a borrowed value");
+    w->facts->bindings.flags[binding] |= MS_BIND_BORROWS;
 }
 
 /* Whether returning the name hands back a reference into a parameter: a parameter itself, or a
@@ -1509,16 +1541,6 @@ static bool own_summarize(OwnWalk *w, const MsDecl *d, const uint32_t *by_node) 
     return changed;
 }
 
-/* Whether some node is a call of a function: only then does one function's walk depend on another's. */
-static bool own_has_calls(const MsFacts *facts) {
-    for (uint32_t i = 0; i <= facts->node_count; i++) {
-        if (facts->call_callee[i] != MS_NONE && !facts->const_use[i]) {
-            return true;
-        }
-    }
-    return false;
-}
-
 /* Walks every function whose liveness the pass handles until the summaries stop changing, so a
  * caller sees what its callees return. Diagnostics wait for the final pass. */
 static void own_summary_rounds(OwnWalk *w, const MsModuleRow *row, const uint32_t *by_node) {
@@ -1567,9 +1589,10 @@ static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
 void ms_module_check_ownership(MsCheck *c, MsModId module) {
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
-    if (facts == NULL || facts->body_checked == NULL) {
+    if (facts == NULL || facts->body_checked == NULL || facts->ownership_done) {
         return;
     }
+    facts->ownership_done = true;
     MsArena scratch = {0};
     MsLiveness live = ms_liveness_new(&scratch, facts);
     OwnWalk w = {.check = c, .module = module, .facts = facts, .live = &live,
@@ -1582,9 +1605,9 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         const bool claimed = d->kind == MS_D_FN && facts->body_checked[d->id];
         w.summaries[d->id].usable = claimed && ms_liveness_function(&live, facts, &d->u.fn);
     }
-    if (own_has_calls(facts)) {
-        own_summary_rounds(&w, row, by_node);
-    }
+    // Also for a module without calls: the summaries are where `ret_borrowed` and `param_consumed`
+    // come from, and a caller in another module reads them.
+    own_summary_rounds(&w, row, by_node);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
         if (d->kind == MS_D_FN && facts->body_checked[d->id]) {

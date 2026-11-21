@@ -1,5 +1,5 @@
 # Runtime symbols of ms_rt/bytes.h defined in C (runtime/core/bytes.c and bytes_text.c); one per line. Each is compiled out of the Rust
-# runtime when the archive is built by `cargo xtask runtime`; plain `cargo test` keeps the Rust definitions.
+# runtime when the archive is built by `cmake -P cmake/BuildRuntime.cmake`; plain `cargo test` keeps the Rust definitions.
 msrt_bytes_drop
 msrt_bytes_copy
 msrt_bytes_contains

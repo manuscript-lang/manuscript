@@ -61,7 +61,7 @@ jobs:
       # The packaging tool is a Manuscript program, so a debug ms runs it; it then builds the shipped binary.
       - name: Build ms to run the packaging tool
         run: |
-          cargo xtask runtime
+          cmake -P cmake/BuildRuntime.cmake
           cargo build --locked -p ms-cli
       - name: Build and package
         run: target/debug/ms run tools/package.ms -- "${{ matrix.os }}" "${{ matrix.arch }}"
