@@ -429,43 +429,23 @@ static MsSymId scope_declare_one(MsCheck *c, MsModId module, const MsDecl *d, Ms
     return added != MS_NONE ? added : ms_sym_new(c, module, &spec);
 }
 
-/* Whether `d` declares a name of the module: an impl and a test declare none. */
-static bool scope_is_named(const MsDecl *d) {
-    return d->kind != MS_D_IMPL && d->kind != MS_D_TEST && ms_decl_name(d) != 0;
-}
-
-/* The symbol of each declaration of the module, by declaration index (MS_NONE for one that declares
- * no name). They exist before the imports are bound, so two modules that import each other each
- * find the other's names. */
-static MsSymId *scope_create_symbols(MsCheck *c, MsModId module) {
+static void scope_declare_symbols(MsCheck *c, MsModId module) {
     const MsModule *syntax = c->mods[module].syntax;
-    MsSymId *symbols = MS_NEW_N(&c->arena, MsSymId, (size_t)syntax->ndecls + 1);
     for (uint32_t i = 0; i < syntax->ndecls; i++) {
         const MsDecl *d = syntax->decls[i];
-        symbols[i] = MS_NONE;
-        if (!scope_is_named(d)) {
+        const MsSym name = ms_decl_name(d);
+        if (d->kind == MS_D_IMPL || d->kind == MS_D_TEST || name == 0) {
             continue;
         }
-        const MsSym name = ms_decl_name(d);
+        MsSymId sym = MS_NONE;
         const bool opaque = d->kind == MS_D_TYPE && d->u.type.external;
         if (opaque || ms_decl_is_nominal(d)) {
-            symbols[i] = scope_registered_symbol(c, module, d, name);
+            sym = scope_registered_symbol(c, module, d, name);
         }
-        if (symbols[i] == MS_NONE) {
-            symbols[i] = scope_declare_one(c, module, d, name);
+        if (sym == MS_NONE) {
+            sym = scope_declare_one(c, module, d, name);
         }
-    }
-    return symbols;
-}
-
-/* Binds each declaration's name in the module, after its imports: a name an import already took is
- * reported at the declaration. */
-static void scope_bind_symbols(MsCheck *c, MsModId module, const MsSymId *symbols) {
-    const MsModule *syntax = c->mods[module].syntax;
-    for (uint32_t i = 0; i < syntax->ndecls; i++) {
-        if (symbols[i] != MS_NONE) {
-            scope_add_symbol(c, module, ms_decl_name(syntax->decls[i]), symbols[i], syntax->decls[i]->pos);
-        }
+        scope_add_symbol(c, module, name, sym, d->pos);
     }
 }
 
@@ -475,7 +455,13 @@ void ms_module_declare(MsCheck *c, MsModId module) {
     }
     c->mods[module].declared = true;
     scope_begin_module(c, module);
-    const MsSymId *symbols = scope_create_symbols(c, module);
+    if (ms_text_starts_with(ms_name(c->names, c->mods[module].path), scope_std_prefix)) {
+        // Standard modules import each other in cycles: declare a module's own names first, so a
+        // module reached through a cycle already has its symbols when the import asks for them.
+        scope_declare_symbols(c, module);
+        scope_import_symbols(c, module);
+        return;
+    }
     scope_import_symbols(c, module);
-    scope_bind_symbols(c, module, symbols);
+    scope_declare_symbols(c, module);
 }

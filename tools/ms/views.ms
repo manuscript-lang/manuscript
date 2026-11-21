@@ -64,6 +64,8 @@ export type Fact:
 	// False when the C checker did not keep the function in its ownership walk: scopes,
 	// result_ownership and the slot modes are then empty, not zero.
 	ownership_known: Bool = true
+	// False when the C checker did not keep the body: external and the flow are then empty, not zero.
+	sites_known: Bool = true
 
 // One line of a view: a label and what hangs under it.
 export type Node:

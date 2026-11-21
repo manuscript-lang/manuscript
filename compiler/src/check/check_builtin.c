@@ -33,7 +33,7 @@ MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected) {
     // `ok()` stands for `ok(void)`: a Void payload may be left out.
     const bool omitted = nargs == 0 && payload == b->void_ty;
     if (nargs == 0 ? !omitted
-                   : (!ms_body_is_admitted(b, payload) || ms_body_expr(b, e->u.call.args.ptr[0].value, payload) == MS_TY_NONE)) {
+                   : ((payload != b->void_ty && !ms_body_is_admitted(b, payload)) || ms_body_expr(b, e->u.call.args.ptr[0].value, payload) == MS_TY_NONE)) {
         return ms_body_unsupported(b);
     }
     b->facts->res_kind[callee->id] = MS_RES_CASE;

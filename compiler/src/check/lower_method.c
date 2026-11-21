@@ -85,7 +85,8 @@ void lm_stubs(Lb *lb, uint32_t nrows, const bool *failed) {
         }
         const uint32_t outer = lb_view_enter(lb, lb->rows[i].view);
         if (!lb->facts->body_checked[lb->rows[i].method->id]) {
-            lb_why_unchecked(lb, lb->rows[i].method->func.name, lb->rows[i].method->pos);
+            lb_why_unchecked(lb, lb->rows[i].method->func.name, lb->rows[i].method->pos,
+                             lb->facts->refusal[lb->rows[i].method->id]);
         }
         if (lm_eligible(lb, i, failed)) {
             const LbCallable callable = lm_callable(lb, i);
@@ -123,5 +124,5 @@ LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row) {
         return lb_unsupported(lb);
     }
     const bool mutating = (methods->access[row] & MS_METHOD_MUTATING) != 0;
-    return lb_call_func(lb, e, lb->method_func[row], methods->ty[row], e->u.call.callee->u.member.left, mutating, MS_NONE);
+    return lb_call_func(lb, e, lb->method_func[row], methods->ty[row], e->u.call.callee->u.member.left, mutating);
 }

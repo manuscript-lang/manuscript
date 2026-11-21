@@ -41,6 +41,20 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty) {
 }
 
 static bool body_is_admitted(const MsBody *b, MsTy ty);
+
+/* `Int8` through `UInt64` and `Float32`: values that are passed, held and returned, whose
+ * operations (arithmetic, comparison, literals) the pass does not check yet. */
+static bool body_is_sized_number(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    static const MsBuiltin sized[] = {MS_BI_INT8,  MS_BI_INT16,  MS_BI_INT32,  MS_BI_INT64, MS_BI_UINT8,
+                                      MS_BI_UINT16, MS_BI_UINT32, MS_BI_UINT64, MS_BI_FLOAT32};
+    for (size_t i = 0; ty != MS_TY_NONE && i < sizeof sized / sizeof sized[0]; i++) {
+        if (ms_ty_is(tys, ty, sized[i])) {
+            return true;
+        }
+    }
+    return false;
+}
 static bool body_is_bindable(const MsBody *b, MsTy ty);
 
 /* A `type`, `enum`, interface or native type (`Bytes`, `Promise[T]`) a module declares, whose type arguments (if it has any) are
@@ -96,7 +110,7 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
  * types. A value that closes is classified a resource by the ownership pass; the lowering leaves
  * it to the Rust lowering until it records the close. */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_map(b, ty) || ms_body_is_function_value(b, ty) ||
+    return body_is_value_type(b, ty) || body_is_sized_number(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_map(b, ty) || ms_body_is_function_value(b, ty) ||
            body_is_own_nominal(b, ty);
 }
 
@@ -120,7 +134,7 @@ static bool body_is_optional(const MsBody *b, MsTy ty) {
 
 /* What a parameter or a local can hold. */
 static bool body_is_bindable(const MsBody *b, MsTy ty) {
-    return ty == b->invalid_ty || body_is_admitted(b, ty) || body_is_optional(b, ty) || ms_body_is_result(b, ty);
+    return ms_body_has_invalid(b, ty) || body_is_admitted(b, ty) || body_is_optional(b, ty) || ms_body_is_result(b, ty);
 }
 
 bool ms_body_is_bindable(const MsBody *b, MsTy ty) {
@@ -205,8 +219,11 @@ static bool body_is_comparable(const MsBody *b, MsTy ty) {
 void (*ms_body_decline_hook)(const char *file, int line);
 
 MsTy ms_body_unsupported_at(MsBody *b, const char *file, int line) {
-    if (b->supported && ms_body_decline_hook != NULL) {
-        ms_body_decline_hook(file, line);
+    if (b->supported) {
+        b->gave_up = (MsSite){file, (uint32_t)line};
+        if (ms_body_decline_hook != NULL) {
+            ms_body_decline_hook(file, line);
+        }
     }
     b->supported = false;
     return MS_TY_NONE;
@@ -1627,17 +1644,19 @@ static void body_undo(MsBody *b, uint32_t first_binding, size_t written_start, s
     b->facts->bindings.count = first_binding;
 }
 
-/* A default that is a literal: it reads nothing, so it means the same at every call. */
-static bool body_is_literal_default(const MsExpr *def) {
-    return def != NULL && (def->kind == MS_E_NUMBER || def->kind == MS_E_BOOL ||
-                           (def->kind == MS_E_TEXT && def->u.text.len == 1 && def->u.text.ptr[0].expr == NULL));
-}
-
-/* A parameter without a default, one defaulting to a literal (typed with the body), or an Optional
- * one defaulting to `none`. Other defaults stay with the Rust checker. */
+/* A parameter has no default, the `none` of an `Optional` (which `T?` implies), or a literal of
+ * its own type (checked with the body, where its node gets a type). */
 static bool body_default_fits(const MsBody *b, const MsParam *p, MsTy ty) {
-    return p->def == NULL || body_is_literal_default(p->def) ||
-           (p->def->kind == MS_E_NAME && ms_name_is(b->c->names, p->def->u.sym, "none") && body_is_optional(b, ty));
+    if (p->def == NULL) {
+        return true;
+    }
+    switch ((MsExprKind)p->def->kind) {
+    case MS_E_NAME: return ms_name_is(b->c->names, p->def->u.sym, "none") && body_is_optional(b, ty);
+    case MS_E_NUMBER: return ty == b->int_ty || ty == b->float_ty;
+    case MS_E_BOOL: return ty == b->bool_ty;
+    case MS_E_TEXT: return ty == b->string_ty && p->def->u.text.len == 1 && p->def->u.text.ptr[0].expr == NULL;
+    default: return false;
+    }
 }
 
 static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig) {
@@ -1739,7 +1758,11 @@ typedef struct BodySelf {
  * bindings' `callable` name. */
 static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool exported, const MsFunc *fn, MsTy sig,
                                 const BodySelf *self) {
-    if (fn->external || !body_signature_supported(b, fn, sig)) {
+    if (fn->external) {
+        return;
+    }
+    if (!body_signature_supported(b, fn, sig)) {
+        b->facts->refusal[node] = (MsSite){__FILE__, (uint32_t)__LINE__};
         return;
     }
     const uint32_t first_binding = b->facts->bindings.count;
@@ -1760,12 +1783,13 @@ static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool export
     const MsTyParam *params = ms_ty_params(&b->c->tys, sig);
     for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
         const uint8_t flags = (params[i].flags & MS_PARAM_VAR) != 0 ? MS_BIND_MUTABLE : 0;
+        (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, fn->params.ptr[i]->pos, flags, MS_ROLE_PARAM);
+    }
+    for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
         const MsExpr *def = fn->params.ptr[i]->def;
-        // A literal default of exactly the parameter's type; a mismatch is the Rust checker's to report.
-        if (body_is_literal_default(def) && (flags != 0 || ms_body_expr(b, def, MS_TY_NONE) != params[i].ty)) {
+        if (def != NULL && def->kind != MS_E_NAME && ms_body_expr(b, def, params[i].ty) != params[i].ty) {
             (void)ms_body_unsupported(b);
         }
-        (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, fn->params.ptr[i]->pos, flags, MS_ROLE_PARAM);
     }
     if (b->supported) {
         body_statements(b, &fn->body, pos);
@@ -1774,6 +1798,7 @@ static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool export
         b->facts->body_checked[node] = true;
         body_commit_diags(b, diags_start);
     } else {
+        b->facts->refusal[node] = b->gave_up;
         body_undo(b, first_binding, written_start, diags_start);
     }
 }
@@ -1795,7 +1820,7 @@ static void body_check_methods(MsBody *b) {
     const MsMethod **rows = ms_method_rows(b->c, b->module, m, NULL);
     for (uint32_t i = 0; i < m->count; i++) {
         const MsMethod *method = rows[i];
-        if (method == NULL || (m->access[i] & MS_METHOD_CONSUMING) != 0 ||
+        if (method == NULL ||
             !body_is_admitted(b, m->receiver[i])) {
             continue;
         }
@@ -1835,6 +1860,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->refusal = MS_NEW_N(arena, MsSite, nodes);
+    memset(facts->refusal, 0, nodes * sizeof *facts->refusal);
     facts->param_consumed = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->param_consumed, 0, nodes * sizeof *facts->param_consumed);
     facts->ret_borrowed = MS_NEW_N(arena, bool, nodes);

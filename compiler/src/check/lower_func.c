@@ -1,6 +1,8 @@
 /* The per-function driver of the lowering: the signature of a function or method, its stub in the
  * module, starting and finishing a body, and the pass over a module (`ms_lower_module`) that repeats
  * without the functions that failed. Expressions and statements are lower_body.c's. */
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "ms/lower_internal.h"
@@ -130,14 +132,19 @@ static void lb_why(Lb *lb, const LbCallable *c, const char *reason) {
     }
 }
 
-void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos) {
+void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos, MsSite site) {
     if (lb->why == NULL || !lb->first_pass) {
         return;
     }
     const MsStr text = ms_name(lb->c->names, name);
     const MsStr path = ms_name(lb->c->names, lb->c->mods[lb->module].path);
-    ms_buf_printf(lb->why, "%.*s\t%.*s:%u:%u\tbody not checked\n", (int)text.len, text.ptr, (int)path.len, path.ptr,
+    const char *base = site.file == NULL ? NULL : strrchr(site.file, '/');
+    ms_buf_printf(lb->why, "%.*s\t%.*s:%u:%u\tbody not checked", (int)text.len, text.ptr, (int)path.len, path.ptr,
                   pos.line, pos.column);
+    if (site.file != NULL) {
+        ms_buf_printf(lb->why, " (%s:%u)", base != NULL ? base + 1 : site.file, site.line);
+    }
+    ms_buf_puts(lb->why, "\n");
 }
 
 /* Lowers one checked function over its stub `slot` in the module; false when it is not handled. */
@@ -196,6 +203,7 @@ uint32_t lb_view_enter(Lb *lb, uint32_t view) {
     return left;
 }
 
+/* The view of `module`, or MS_NONE when it is not being lowered. */
 uint32_t lb_view_of(const Lb *lb, MsModId module) {
     for (uint32_t v = 0; v < lb->nviews; v++) {
         if (lb->views[v].module == module) {
@@ -392,8 +400,8 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
             const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !lb->views[v].failed[i] &&
                                  !lb_has_diagnostic(row, i);
             syms[v][i] = checked ? ms_decl_own_symbol(lb->c, lb->module, d) : MS_NONE;
-            if (d->kind == MS_D_FN && !lb->facts->body_checked[d->id]) {
-                lb_why_unchecked(lb, d->u.fn.name, d->pos);
+            if (d->kind == MS_D_FN && !d->u.fn.external && !lb->facts->body_checked[d->id]) {
+                lb_why_unchecked(lb, d->u.fn.name, d->pos, lb->facts->refusal[d->id]);
             }
             if (syms[v][i] != MS_NONE && lb->c->syms.nvars[syms[v][i]] != 0) {
                 syms[v][i] = MS_NONE; // a generic function is checked here but not lowered: it needs one copy per type argument
@@ -441,7 +449,8 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
              .float_ty = ms_check_primitive(c, "Float"),
              .bool_ty = ms_check_primitive(c, "Bool"),
              .string_ty = ms_check_primitive(c, "String"),
-             .void_ty = ms_check_primitive(c, "Void")};
+             .void_ty = ms_check_primitive(c, "Void"),
+             .never_ty = ms_check_primitive(c, "Never")};
     lb.views = calloc((size_t)nmodules + 1, sizeof *lb.views);
     bool ready = lb.views != NULL;
     for (uint32_t i = 0; ready && i < nmodules; i++) {
@@ -496,7 +505,7 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
 
 /* Appends `module` and then the project modules it imports, each once, in import order: the order
  * in which the program's source files are first reached from the entry. */
-static void lb_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modules, uint32_t *n) {
+void ms_module_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modules, uint32_t *n) {
     if (seen[module]) {
         return;
     }
@@ -505,7 +514,7 @@ static void lb_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modu
     const MsModuleRow *row = &c->mods[module];
     for (uint32_t i = 0; row->import_targets != NULL && i < row->syntax->nimports; i++) {
         if (row->import_targets[i] != MS_NONE) {
-            lb_reach(c, row->import_targets[i], seen, modules, n);
+            ms_module_reach(c, row->import_targets[i], seen, modules, n);
         }
     }
 }
@@ -523,7 +532,7 @@ uint32_t ms_lower_program_why(MsCheck *c, MsModId entry, MirModule *out, MsBuf *
         return 0;
     }
     uint32_t n = 0;
-    lb_reach(c, entry, seen, modules, &n); // the entry first: its source file is file 0
+    ms_module_reach(c, entry, seen, modules, &n); // the entry first: its source file is file 0
     for (uint32_t i = 0; i < c->nmods; i++) {
         if (!seen[i]) {
             modules[n++] = i; // the standard library's modules, which no import target names

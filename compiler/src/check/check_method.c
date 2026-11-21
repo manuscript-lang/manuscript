@@ -12,6 +12,7 @@
 
 #include "ms/implements.h"
 #include "ms/infer.h"
+#include "ms/parse.h"
 
 typedef struct Target {
     MsTy sig;             /* the signature, receiver not included */
@@ -364,20 +365,6 @@ static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     return b->c->tys.result[target.sig];
 }
 
-/* `value.name(args)` on a local of an unbounded type variable: only the operations every value has
- * (`to_string`). Each instance of the function resolves it for its own type argument. */
-static MsTy body_value_call(MsBody *b, const MsExpr *e, MsTy variable) {
-    Target target;
-    if (!intrinsic_in(b, "ValueOperations", variable, e->u.call.callee->u.member.name, &target) ||
-        !arguments_fit(b, e, &target)) {
-        return ms_body_unsupported(b);
-    }
-    (void)ms_body_expr(b, e->u.call.callee->u.member.left, MS_TY_NONE);
-    b->facts->call_interface[e->id] = variable;
-    b->facts->call_receiver[e->id] = variable;
-    return b->c->tys.result[target.sig];
-}
-
 /* The operation `name` of the interfaces that bound the type variable `var`: its own, found in
  * exactly one bound. `contract` is the bound it comes from. */
 static bool bound_operation(const MsBody *b, MsTy var, MsSym name, Target *out, MsTy *contract) {
@@ -485,9 +472,6 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
         return receiver_ty != MS_TY_NONE && (ms_body_is_handle(b, receiver_ty) || ms_body_is_bindable(b, receiver_ty))
                    ? body_resolved_call(b, e, receiver_ty, MS_NONE)
                    : ms_body_unsupported(b);
-    }
-    if (ms_ty_kind(&b->c->tys, local_ty) == MS_K_VARIABLE && ms_var_info(b->c, local_ty)->nbounds == 0) {
-        return body_value_call(b, e, local_ty);
     }
     return body_resolved_call(b, e, local_ty, binding);
 }
