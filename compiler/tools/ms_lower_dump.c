@@ -86,8 +86,16 @@ static bool has_back_edge(const MirFunc *f) {
     return false;
 }
 
-/* Whether the function called `name` in `module` holds one. */
+/* Whether the function called `name` in `module` holds one. A lambda (`f.closure`, `f.closure.1`) is part of the
+ * function it is written in: the `match` may be its body. */
 static bool function_diverges(const MsNames *names, const MsModule *module, MsStr name) {
+    static const char lambda[] = ".closure";
+    for (uint32_t at = 0; at + sizeof lambda - 1 <= name.len; at++) {
+        if (memcmp(name.ptr + at, lambda, sizeof lambda - 1) == 0) {
+            name.len = at;
+            break;
+        }
+    }
     for (uint32_t i = 0; i < module->ndecls; i++) {
         const MsDecl *d = module->decls[i];
         const MsStr own = d->kind == MS_D_FN ? ms_name(names, d->u.fn.name) : (MsStr){0};
