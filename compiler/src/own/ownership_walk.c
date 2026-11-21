@@ -776,6 +776,10 @@ static void own_record_owned_borrow(OwnWalk *w, const MsExpr *e, const OwnSummar
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const MsExpr *callee_expr = e->u.call.callee;
+    if (w->facts->call_reordered[e->id]) {
+        w->supported = false; /* the arguments are paired with parameters by index below */
+        return;
+    }
     if (callee_expr->kind == MS_E_NAME && w->facts->res_kind[callee_expr->id] == MS_RES_BINDING) {
         own_expr(w, callee_expr, DEMAND_READ); /* a call through a function-typed local reads it */
         for (uint32_t i = 0; i < e->u.call.args.len; i++) {
