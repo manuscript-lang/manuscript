@@ -3,6 +3,7 @@
 #define MS_PROJECT_INTERNAL_H
 
 #include "base/strbuild.h"
+#include "base/intern.h"
 #include "compiler/project/project.h"
 
 /* The text of `builder` copied into `arena`; the builder is freed. */
@@ -31,5 +32,19 @@ MS_NODISCARD bool ms_project_source_path(MsArena *arena, MsSpan root, MsSpan pat
 /* The error as the user should read it: a cause and a fix. `import_path` is the import string when the failure
  * came from an import, else empty. */
 MsSpan ms_project_explain(MsArena *arena, const MsProjectError *error, MsSpan import_path);
+
+/* The `.ms` files under `source` (when `include_source`) and the test and bench files under `root`, sorted
+ * and without repeats, as absolute paths. */
+MS_NODISCARD bool ms_project_discover(MsArena *arena, MsSpan root, MsSpan source, bool include_source,
+                                      MsSpanList *files, MsProjectError *error);
+
+/* The module an `[embed]` directory generates: its source (for `name`, an `@assets`), and the logical path under
+ * the project root that an import of the embed resolves to. */
+MS_NODISCARD bool ms_project_embed_generate(MsArena *arena, MsSpan name, MsSpan directory, MsSpan *source,
+                                            MsProjectError *error);
+MsSpan ms_project_embed_module_path(MsArena *arena, MsSpan root, MsSpan name);
+/* Whether `canonical` is the generated module of one of the manifest's embeds. */
+MS_NODISCARD bool ms_project_embed_of(MsArena *arena, const struct MsManifest *manifest, MsSpan canonical,
+                                      MsSpan *name, MsSpan *directory);
 
 #endif

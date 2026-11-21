@@ -210,7 +210,8 @@ int ms_check_command(int argc, char **argv) {
   MsNames names;
   ms_names_init(&names);
   MsGraph graph = {0};
-  ms_project_load(&arena, &names, ms_span_of_text(options.target), NULL, &graph);
+  const MsLoadOptions load = {.project_sources = true};
+  ms_project_load(&arena, &names, ms_span_of_text(options.target), &load, &graph);
   FindingList findings = {0};
   MsCheckProgram program = {0};
   add_graph_findings(&graph, &findings);

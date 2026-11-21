@@ -34,6 +34,7 @@ typedef struct Loader {
   ModuleList modules;
   MsSpanList active;  /* canonical paths being loaded, for cycle text */
   MsSpanList loaded;  /* canonical path of modules[i] */
+  GraphDiagList diagnostics;
 } Loader;
 
 static MsPos start_position(void) {
@@ -97,6 +98,16 @@ static bool overlay_text(const MsOverlay *overlay, MsSpan path, MsSpan *text) {
 static bool read_source(Loader *loader, MsSpan canonical, MsSpan *text, Failure *failure) {
   if (overlay_text(loader->overlay, canonical, text)) {
     return true;
+  }
+  MsSpan name = {0};
+  MsSpan directory = {0};
+  if (ms_project_embed_of(loader->arena, loader->manifest, canonical, &name, &directory)) {
+    MsProjectError error = {0};
+    if (ms_project_embed_generate(loader->arena, name, directory, text, &error)) {
+      return true;
+    }
+    *failure = failure_text(FAIL_ERROR, ms_project_error_text(loader->arena, &error));
+    return false;
   }
   MsBytes bytes = {0};
   if (!ms_file_read(canonical, &bytes)) {
@@ -209,6 +220,12 @@ static bool visit(Loader *loader, MsSpan canonical, int32_t *index, Failure *fai
 }
 
 static void finish(Loader *loader, MsGraph *out) {
+  out->diagnostic_count = loader->diagnostics.len;
+  out->diagnostics = ms_arena_alloc_array(loader->arena, sizeof(MsGraphDiag), _Alignof(MsGraphDiag),
+                                          loader->diagnostics.len == 0 ? 1 : loader->diagnostics.len);
+  for (size_t i = 0; i < loader->diagnostics.len; i++) {
+    out->diagnostics[i] = loader->diagnostics.ptr[i];
+  }
   out->count = loader->modules.len;
   out->modules = ms_arena_alloc_array(loader->arena, sizeof(MsGraphModule), _Alignof(MsGraphModule),
                                       loader->modules.len == 0 ? 1 : loader->modules.len);
@@ -305,6 +322,61 @@ static void describe_manifest(const MsManifest *manifest, MsGraph *out) {
   out->manifest_position = manifest->location;
 }
 
+/* Loads one discovered file; a failure is a diagnostic and the load goes on. */
+static void add_discovered(Loader *loader, MsSpan file) {
+  MsProjectError error = {0};
+  MsSpan canonical = {0};
+  int32_t index = MS_NO_MODULE;
+  Failure failure = {0};
+  if (ms_project_source_path(loader->arena, loader->root, file, loader->overlay, &canonical, &error)) {
+    if (visit(loader, canonical, &index, &failure)) {
+      return;
+    }
+  } else {
+    failure = failure_text(FAIL_ERROR, ms_project_error_text(loader->arena, &error));
+  }
+  graph_diag_list_push(&loader->diagnostics, failure_diag(&failure, file, start_position()));
+}
+
+static void load_discovered(Loader *loader, const MsManifest *manifest, bool include_source) {
+  MsSpanList files = {0};
+  MsProjectError error = {0};
+  if (!ms_project_discover(loader->arena, manifest->root, manifest->source, include_source, &files, &error)) {
+    const MsSpan message = error.kind == MS_PERR_PATH ? ms_project_explain(loader->arena, &error, (MsSpan){0})
+                                                      : ms_project_error_text(loader->arena, &error);
+    graph_diag_list_push(&loader->diagnostics, resolution(manifest->file, start_position(), message));
+  }
+  for (size_t i = 0; i < files.len; i++) {
+    add_discovered(loader, files.ptr[i]);
+  }
+  ms_span_list_free(&files);
+}
+
+static void load_graph(Loader *loader, MsSpan filename, MsSpan target, bool is_manifest, const MsLoadOptions *options,
+                       MsGraph *out) {
+  MsProjectError error = {0};
+  MsSpan entry = {0};
+  int32_t index = MS_NO_MODULE;
+  Failure failure = {0};
+  if (target.len != 0) {
+    if (!ms_project_source_path(loader->arena, loader->root, target, loader->overlay, &entry, &error)) {
+      fail_error(loader->arena, filename, &error, out);
+      return;
+    }
+    if (!visit(loader, entry, &index, &failure)) {
+      fail_graph(loader->arena, out, failure_diag(&failure, filename, start_position()));
+      return;
+    }
+  }
+  const bool tests = options != NULL && options->tests;
+  const bool sources = options != NULL && options->project_sources;
+  if (is_manifest && (target.len == 0 || tests || sources)) {
+    load_discovered(loader, loader->manifest, target.len == 0 || sources);
+  }
+  finish(loader, out);
+  out->entry = index == MS_NO_MODULE ? (MsSpan){0} : out->modules[index].name;
+}
+
 void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLoadOptions *options,
                      MsGraph *out) {
   *out = (MsGraph){0};
@@ -330,22 +402,9 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
   if (is_manifest) {
     describe_manifest(&manifest, out);
   }
-  MsSpan entry = {0};
-  int32_t index = MS_NO_MODULE;
-  Failure failure = {0};
-  const MsSpan target = is_manifest ? manifest.entry : absolute;
-  if (target.len == 0) {
-    fail_graph(arena, out, resolution(filename, start_position(),
-                                      ms_span_of_text("a project without an entry (a library) is not implemented yet")));
-  } else if (!ms_project_source_path(arena, loader.root, target, loader.overlay, &entry, &error)) {
-    fail_error(arena, filename, &error, out);
-  } else if (!visit(&loader, entry, &index, &failure)) {
-    fail_graph(arena, out, failure_diag(&failure, filename, start_position()));
-  } else {
-    finish(&loader, out);
-    out->entry = out->modules[index].name;
-  }
+  load_graph(&loader, filename, is_manifest ? manifest.entry : absolute, is_manifest, options, out);
   module_list_free(&loader.modules);
+  graph_diag_list_free(&loader.diagnostics);
   ms_span_list_free(&loader.active);
   ms_span_list_free(&loader.loaded);
   ms_manifest_free(&manifest);

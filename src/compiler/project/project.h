@@ -121,6 +121,7 @@ typedef struct MsGraph {
 
 typedef struct MsLoadOptions {
   bool tests;               /* add the project's test.ms, *_test.ms, bench.ms and *_bench.ms files */
+  bool project_sources;     /* add every source file of a manifest's project too (`ms check`) */
   const MsOverlay *overlay; /* unsaved contents in place of disk, or NULL */
 } MsLoadOptions;
 
