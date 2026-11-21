@@ -208,14 +208,14 @@ fn rt_ops_table(symbols: &str) -> String {
                 .unwrap_or("")
         };
         out.push_str(&format!(
-            "    {{\"{name}\", \"{op}\", {{{}}}, {}, {ret}, {leaf}, {}, {pure}, \"{}\", \"{}\", {fresh}, {}, {}}},\n",
-            kinds.join(", "),
-            kinds.len(),
-            twinned.contains(name),
+            "    {{\"{name}\", \"{op}\", \"{}\", \"{}\", {}, {}, {ret}, {{{}}}, {leaf}, {}, {pure}, {fresh}, {}}},\n",
             twin("word_key_of="),
             twin("text_key_of="),
-            imm.is_some(),
-            imm.unwrap_or(0)
+            imm.unwrap_or(0),
+            kinds.len(),
+            kinds.join(", "),
+            twinned.contains(name),
+            imm.is_some()
         ));
     }
     out.push_str("};\n");

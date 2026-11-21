@@ -41,7 +41,7 @@ MirTy lb_fn_ty(Lb *lb, MsTy ty) {
 
 /* A name no function of the module has: `base`, else `base.1`, `base.2`, ... (what the Rust text
  * form prints for a name two functions share, so the text names one function each). */
-static MsSym lb_unique_name(Lb *lb, MsStr base) {
+MsSym lb_unique_name(Lb *lb, MsStr base) {
     for (uint32_t k = 0;; k++) {
         const MsStr text = k == 0 ? base : ms_arena_fmt(&lb->m->arena, "%.*s.%u", (int)base.len, base.ptr, k);
         const MsSym sym = mir_name(lb->m, text.ptr, text.len);

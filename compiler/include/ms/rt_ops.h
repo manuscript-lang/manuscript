@@ -33,18 +33,18 @@ typedef enum MsRtRet { MS_RT_RET_VOID, MS_RT_RET_INT, MS_RT_RET_FLOAT, MS_RT_RET
 
 typedef struct MsRtFn {
     const char *symbol;
-    const char *op; /* the MIR mnemonic, or "" */
-    MsRtParam params[MS_RT_MAX_PARAMS];
+    const char *op;        /* the MIR mnemonic, or "" */
+    const char *word_twin; /* its specialisation for a one-word key over a one-word value, or "" */
+    const char *text_twin; /* its specialisation for a String key over a one-word value, or "" */
+    int64_t imm;
     uint32_t nparams;
     MsRtRet ret;
+    MsRtParam params[MS_RT_MAX_PARAMS];
     bool leaf;
     bool twinned; /* a borrowing twin exists (`@view_of=` and siblings): the result may be lent */
     bool pure;    /* only reads memory and cannot fault (`@pure`) */
-    const char *word_twin; /* its specialisation for a one-word key over a one-word value, or "" */
-    const char *text_twin; /* its specialisation for a String key over a one-word value, or "" */
     bool fresh;   /* `@fresh`: the result is a new value, never a reference into an argument */
     bool has_imm; /* `@imm=<n>`: the `@op=` instruction carries the integer `imm` */
-    int64_t imm;
 } MsRtFn;
 
 /* The function named `symbol`, or NULL. */

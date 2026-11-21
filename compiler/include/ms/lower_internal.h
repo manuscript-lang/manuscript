@@ -160,6 +160,7 @@ bool lb_owns(Lb *lb, MirTy ty);
 MirValue lb_move_argument(Lb *lb, const MsExpr *e);
 MirValue lb_load(Lb *lb, MirValue slot, MirTy ty);     /* reads a value from memory */
 void lb_store(Lb *lb, MirValue slot, MirValue value);  /* writes a value to memory */
+MsSym lb_unique_name(Lb *lb, MsStr base);              /* a function name not yet used in the module, from `base` */
 /* The parameters of a callable (lower_body.c) as lower_func.c reads them. */
 bool lb_has_self(const LbCallable *c);
 uint32_t lb_slots(const LbCallable *c);
