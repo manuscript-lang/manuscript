@@ -30,7 +30,7 @@ target/release/examples/c_lower_oracle $files > "$out/program.rust" 2>/dev/null
 
 # One line per function: `program name sig line:col|block`, `.N` copy suffixes stripped. A location names its file by
 # number and Rust and C number them differently (first reference in Rust's body order, import order in C), so each
-# `!N:` becomes the file's name from the module's `file N "name"` table. A same-named function in two files is told
+# `!N:` and the file of a `scope` line become the file's name from the module's `file N "name"` table. A same-named function in two files is told
 # apart by the location it was declared at.
 keyed() {
     sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g' "$1" | awk '
@@ -42,7 +42,12 @@ keyed() {
                 out = out substr(rest, 1, RSTART) "!" name ":"
                 rest = substr(rest, RSTART + RLENGTH)
             }
-            return out rest
+            line = out rest
+            if (match(line, /^  scope "[^"]*" [0-9]+ /)) { # `scope "name" FILE parent line`: the file of an inlined frame
+                n = line; sub(/^  scope "[^"]*" /, "", n); sub(/ .*$/, "", n)
+                if (n in files) sub(/" [0-9]+ /, "\" " files[n] " ", line)
+            }
+            return line
         }
         /^=== / { file = $2; delete files; next }
         /^file [0-9]+ "/ { n = $2; name = $3; gsub(/"/, "", name); files[n] = name; next }
