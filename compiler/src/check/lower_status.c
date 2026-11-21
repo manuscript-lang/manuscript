@@ -192,7 +192,7 @@ LbVal ls_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, Mi
         has_out = has_out || fn->params[i] == MS_RT_OUT_STR || fn->params[i] == MS_RT_OUT_LIST ||
                   fn->params[i] == MS_RT_OUT_HANDLE || fn->params[i] == MS_RT_OUT_SCALAR;
     }
-    const bool plain = payload == MIR_STR || payload == MIR_INT || payload == MIR_FLOAT || payload == MIR_BOOL ||
+    const bool plain = payload == MIR_STR || payload == MIR_BYTES || payload == MIR_INT || payload == MIR_FLOAT || payload == MIR_BOOL ||
                        mir_ty_data(lb->m, payload)->kind == MK_LIST ||
                        (out_handle && mir_ty_data(lb->m, payload)->kind == MK_OBJ);
     if ((payload == MIR_VOID) == has_out || (has_out && !plain)) {

@@ -404,6 +404,10 @@ static MsTy ty_resolve_named(MsResolver *r, const MsTypeRef *t) {
         r->refs[t->id] = base;
         return base;
     }
+    if (c->tys.kind[base] == MS_K_VARIABLE && t->args.len == 0) {
+        r->refs[t->id] = base; /* the variable the scope declared, which carries its bounds */
+        return base;
+    }
     const MsTy *written = ty_resolve_all(r, &t->args);
     uint32_t nwritten = t->args.len;
     uint32_t arity = 0;

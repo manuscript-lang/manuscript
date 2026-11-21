@@ -30,6 +30,7 @@ typedef struct MsBody {
     MsBuf diags;            /* MsCheckDiag of the function being checked, reported once it is claimed */
     const char *context;    /* what the next `ms_body_expr` value is for ("the return value"), or NULL */
     bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
+    MsTy result_hint;       /* with `infer_result`: the result the context expects, whose variables the body decides */
     bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
     bool supported;         /* false once a construct outside the handled set is met */
     MsSite gave_up;         /* the first `ms_body_unsupported` call of this function */
@@ -85,6 +86,9 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty);
 /* `ok(v)`, `error(e)` and `some(v)`, the built-in cases of Result and Optional (check_builtin.c). */
 bool ms_body_is_builtin_case(const MsBody *b, MsSym name);
 MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
+/* `ok(v)` or `error(e)` returned where the result is still being decided and the context expects the Result `hint`: the
+ * payload fixes what `hint` leaves open. MS_TY_NONE when the call is not one. */
+MsTy ms_body_builtin_open(MsBody *b, const MsExpr *e, MsTy hint);
 /* An enum case called like a function where the context expects its enum (check_alt.c). */
 bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name);
 /* A type declared `opaque` in another module: its cases, fields and constructor are denied here (a Rust diagnostic). */
