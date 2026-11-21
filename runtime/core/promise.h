@@ -94,6 +94,10 @@ MsPromiseProbe ms_promise_probe(MsPromise id);
  * reports a deadlock while the work runs elsewhere. */
 bool ms_promise_completes_elsewhere(MsPromise id);
 
+/* Whether the promise has ended as far as this isolate can tell without waiting: no yield, no ask. A promise of
+ * another isolate reads as not ended. For mail handlers and the idle path, where the running task is parked. */
+bool ms_promise_finished(MsPromise id);
+
 /* Whether `id` belongs to another isolate's table. */
 bool ms_promise_is_foreign(MsPromise id);
 /* Marks a pending promise as a wait group member: ms_group_finished is called when it finishes. */
