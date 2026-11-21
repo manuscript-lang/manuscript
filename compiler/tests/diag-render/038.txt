@@ -1,0 +1,5 @@
+038.ms:5:20: parse: expected ')', found '&'; close the parenthesis, separating items with commas
+   |
+ 5 | fn old(value: Read & Equl) Void:
+   |                    ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

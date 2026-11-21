@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block",
+      "position": {
+        "file": "024.ms",
+        "line": 4,
+        "column": 10,
+        "offset": 84
+      },
+      "end": {
+        "file": "024.ms",
+        "line": 4,
+        "column": 11,
+        "offset": 85
+      }
+    }
+  ]
+}

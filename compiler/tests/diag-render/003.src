@@ -1,0 +1,6 @@
+// conform: tags=formatter,maps,parser,strings,tier-core
+// conform: phase=parse
+// conf﻿orm: origin=pkg/compiler/map_transform*/s_test.go:16 TestMapTransformContracts
+fn transform(value: Int, key: String) Int: value
+
+fn wrong(values': Map[String, Int]) Map[St Int]: values.map(transform*/

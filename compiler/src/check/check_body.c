@@ -1338,6 +1338,12 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
         return ms_body_unsupported(b);
     }
+    for (uint32_t i = 0; b->tparams != NULL && i < b->tparams->len; i++) {
+        if (b->tparams->ptr[i]->name == t->name) {
+            b->facts->type_ref_ty[t->id] = b->tvars[i];
+            return b->tvars[i];
+        }
+    }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
     const bool primitive = sym != MS_NONE && b->c->syms.decl[sym] == NULL && ty != MS_TY_NONE && body_is_admitted(b, ty) &&
@@ -1683,34 +1689,36 @@ static void body_jump_statement(MsBody *b, const MsStmt *s) {
     b->breaks += s->kind == MS_S_BREAK;
 }
 
-/* Checks the statements of a nested scope in order; whether control falls out of the end. A
- * statement after one that never falls through is left to the Rust checker. */
-/* Checks the statements in the current scope; whether control falls out of the end. */
+/* Checks the statements in the current scope; whether control falls out of the end. A statement after
+ * one that never falls through is still checked, but it neither makes the block fall through again nor
+ * counts its `break`s toward the enclosing loop. */
 static bool body_run(MsBody *b, const MsStmts *body) {
     bool falls = true;
     for (uint32_t i = 0; i < body->len && b->supported; i++) {
         const MsStmt *s = body->ptr[i];
-        if (!falls) {
-            (void)ms_body_unsupported(b);
-            break;
-        }
+        const uint32_t breaks = b->breaks;
+        bool normal = true;
         switch ((MsStmtKind)s->kind) {
         case MS_S_BIND: body_bind_statement(b, s); break;
         case MS_S_RETURN:
             body_return_statement(b, s);
-            falls = false;
+            normal = false;
             break;
-        case MS_S_IF: falls = body_if_statement(b, s); break;
-        case MS_S_WHILE: falls = body_while_statement(b, s); break;
+        case MS_S_IF: normal = body_if_statement(b, s); break;
+        case MS_S_WHILE: normal = body_while_statement(b, s); break;
         case MS_S_ASSIGN: body_assign_statement(b, s); break;
         case MS_S_BREAK:
         case MS_S_CONTINUE:
             body_jump_statement(b, s);
-            falls = false;
+            normal = false;
             break;
-        case MS_S_CALL: falls = body_call_statement(b, s); break;
-        case MS_S_FOR: falls = body_for_statement(b, s); break;
+        case MS_S_CALL: normal = body_call_statement(b, s); break;
+        case MS_S_FOR: normal = body_for_statement(b, s); break;
         }
+        if (!falls) {
+            b->breaks = breaks;
+        }
+        falls = falls && normal;
     }
     return falls;
 }
@@ -2043,7 +2051,11 @@ static void body_check_test(MsBody *b, const MsDecl *d) {
 
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     if (!body_is_test_fixture(b, &d->u.fn) || b->fixture != MS_TY_NONE) {
+        b->tparams = &d->u.fn.type_params;
+        b->tvars = ms_def(b->c, sym)->vars;
         body_check_callable(b, d->id, d->pos, d->is_exported, &d->u.fn, b->c->syms.ty[sym], NULL);
+        b->tparams = NULL;
+        b->tvars = NULL;
     }
 }
 

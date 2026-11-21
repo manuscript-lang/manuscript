@@ -1,0 +1,3 @@
+// conform: tags=dia\ngnostics
+// conform: phase=check
+fn (

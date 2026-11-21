@@ -1,0 +1,2 @@
+fn identit	y(value: Int) Int:
+    return value

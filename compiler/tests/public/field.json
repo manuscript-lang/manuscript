@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "phase": "type",
+      "message": "public signature exposes private type Secret; add 'export' to its declaration or keep the function private",
+      "position": {
+        "file": "field.ms",
+        "line": 4,
+        "column": 8,
+        "offset": 29
+      }
+    }
+  ]
+}

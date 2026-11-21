@@ -1,0 +1,5 @@
+059.ms:12:12: parse: multi-line text must start on the line after its opening '"""'; add a line break after the opening quotes
+    |
+ 12 | type Custom"""er:
+    |            ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "phase": "type",
+      "message": "an interface declares at least one operation; only the standard library declares a property without operations, like `Data`",
+      "position": {
+        "file": "exported.ms",
+        "line": 1,
+        "column": 8,
+        "offset": 7
+      }
+    }
+  ]
+}

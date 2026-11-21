@@ -1,0 +1,5 @@
+046.ms:3:46: parse: unexpected source character '@'; this character is not part of Manuscript's syntax outside text
+   |
+ 3 | fn nested[T](r: Result[Result[T, Error], Erro@rirst(r: Result[Result[Int, E1], E2])enum  Void: nested(r)
+   |                                              ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
