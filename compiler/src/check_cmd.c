@@ -208,9 +208,16 @@ const char *ms_check_diagnose(MsCheckRun *run) {
         return "a package effect the scan cannot follow";
     }
     size_t total = npackage_diags;
+    /* Ownership and unused names are checked only for a program that type checks, as the Rust command does. */
+    bool clean = npackage_diags == 0;
     for (uint32_t i = 0; i < graph->count; i++) {
-        ms_module_check_ownership(check, run->ids[i]);
-        ms_module_check_unused(check, run->ids[i]);
+        clean = clean && check->mods[run->ids[i]].ndiags == 0;
+    }
+    for (uint32_t i = 0; i < graph->count; i++) {
+        if (clean) {
+            ms_module_check_ownership(check, run->ids[i]);
+            ms_module_check_unused(check, run->ids[i]);
+        }
         if (!check_module_covered(check, run->ids[i])) {
             return "a function or declaration no C pass covers";
         }
