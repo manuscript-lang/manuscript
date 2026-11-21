@@ -16,7 +16,7 @@ if(MS_WINDOWS)
   target_compile_definitions(ms_backend PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
 target_compile_options(ms_backend PRIVATE -O2 -Wall -Wextra -Werror -Wno-format-truncation -Wno-unknown-warning-option)
-set_target_properties(ms_backend PROPERTIES C_EXTENSIONS OFF ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/compiler")
+set_target_properties(ms_backend PROPERTIES C_EXTENSIONS OFF POSITION_INDEPENDENT_CODE ON ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/compiler")
 
 # MS_BACKEND_ONLY: the Rust build wants libms_backend.a alone, so it does not need what the rest links (libcrypto,
 # mimalloc).

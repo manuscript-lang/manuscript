@@ -6,10 +6,7 @@
 
 /* The `List` the module sees, or MS_NONE when a declaration shadows it. */
 static MsSymId list_symbol(const MsBody *b) {
-    MsCheck *c = b->c;
-    const MsSym name = ms_intern_cstr(c->names, "List");
-    const MsSymId sym = ms_map_get(&c->std_types, name);
-    return sym != MS_NONE && ms_map_get(&c->mods[b->module].names, name) == sym ? sym : MS_NONE;
+    return ms_body_visible_builtin(b, MS_BI_LIST);
 }
 
 bool ms_body_is_list(const MsBody *b, MsTy ty) {

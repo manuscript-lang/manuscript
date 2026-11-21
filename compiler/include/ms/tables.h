@@ -117,6 +117,7 @@ typedef struct MsCheck {
     MsModuleRow *mods;
     uint32_t nmods, mods_cap;
     MsNameMap std_types; /* standard type name -> symbol, as the world map of the Rust loader */
+    MsSymId builtin_sym_plus_one[MS_BUILTIN_COUNT]; /* the symbol that declares each builtin type, plus one; 0 when none (ms_builtin_symbol) */
     MsNameMap module_by_path; /* module path -> module id */
     MsNameMap primitives;     /* primitive type name -> symbol; those symbols belong to no module */
     MsDef *defs;              /* by symbol id; grown on demand */
