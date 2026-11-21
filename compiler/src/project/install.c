@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/build_tool.h"
 #include "ms/packages.h"
 #include "ms_rt/sys_process.h"
 #include "project/host.h"
