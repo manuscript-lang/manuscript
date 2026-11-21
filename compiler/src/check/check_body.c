@@ -736,6 +736,54 @@ static MsTy body_declared_signature(const MsBody *b, MsSymId sym) {
     return own == MS_NONE ? MS_TY_NONE : syms->ty[own];
 }
 
+static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function, const MsTyParam *params, MsStr callee);
+
+/* The function `// ms: constructor` marks in module `module`, whose result is `record`, or MS_NONE. */
+static MsSymId body_constructor_in(const MsBody *b, MsModId module, MsTy record) {
+    const MsSyms *syms = &b->c->syms;
+    const MsModuleRow *row = &b->c->mods[module];
+    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        const MsSymId own = d->kind == MS_D_FN ? ms_decl_own_symbol(b->c, module, d) : MS_NONE;
+        if (own != MS_NONE && syms->nvars[own] == 0 && ms_doc_has_marker(row->text, d->pos.offset, "constructor") &&
+            ms_ty_kind(&b->c->tys, syms->ty[own]) == MS_K_FUNCTION && b->c->tys.result[syms->ty[own]] == record) {
+            return own;
+        }
+    }
+    return MS_NONE;
+}
+
+/* The constructor function of the extern type `sym`: `// ms: constructor` above a function of its file (the
+ * type's own half or the source half of a mixed standard file) whose result is that type. `Bytes(values)`
+ * is a call of it. MS_NONE when the type declares none. */
+static MsSymId body_constructor_function(const MsBody *b, MsSymId sym, MsTy record) {
+    MsCheck *c = b->c;
+    const MsModId module = c->syms.module[sym];
+    const MsStr path = ms_name(c->names, c->mods[module].path);
+    const MsSymId own = body_constructor_in(b, module, record);
+    if (own != MS_NONE) {
+        return own;
+    }
+    const MsStr source_path = ms_arena_fmt(&c->arena, "%.*s+source", (int)path.len, path.ptr);
+    const MsSym twin = ms_intern(c->names, source_path.ptr, source_path.len);
+    const uint32_t other = ms_map_get(&c->module_by_path, twin);
+    return other == MS_NONE ? MS_NONE : body_constructor_in(b, other, record);
+}
+
+/* `T(args)` of an extern type that declares a constructor function: checked as a call of it. */
+static MsTy body_construct_by_function(MsBody *b, const MsExpr *e, MsSymId type, MsSymId ctor) {
+    const MsSyms *syms = &b->c->syms;
+    const MsTyTable *tys = &b->c->tys;
+    const MsTy sig = syms->ty[ctor];
+    const MsFunc *function = &syms->decl[ctor]->u.fn;
+    if (tys->nparams[sig] != function->params.len ||
+        !body_arguments(b, e, function, ms_ty_params(tys, sig), ms_name(b->c->names, syms->name[type]))) {
+        return ms_body_unsupported(b);
+    }
+    b->facts->call_callee[e->id] = ctor;
+    return tys->result[sig];
+}
+
 static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     ms_body_check_home(b, sym);
     const MsSyms *syms = &b->c->syms;
@@ -746,6 +794,12 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     if (nargs == 0 && body_constructible_extern(b, sym, decl, record)) {
         b->facts->call_callee[e->id] = sym;
         return record;
+    }
+    if (decl != NULL && decl->kind == MS_D_TYPE && decl->u.type.external && syms->nvars[sym] == 0 && syms->module[sym] != MS_NONE) {
+        const MsSymId ctor = body_constructor_function(b, sym, record);
+        if (ctor != MS_NONE) {
+            return body_construct_by_function(b, e, sym, ctor);
+        }
     }
     if (syms->nvars[sym] != 0 || decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.external ||
         (syms->module[sym] != b->module && decl->u.type.opaque) || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
