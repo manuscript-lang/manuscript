@@ -22,4 +22,5 @@ fn main() Int:
 	b := make(3)
 	p := Pair(first: 1, second: 2.5)
 	if swap_sum(p) > 1.0: return unbox(b)
+
 	return 0

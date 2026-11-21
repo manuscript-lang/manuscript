@@ -1,5 +1,6 @@
-// Builds `ms` for a target and archives it as dist/manuscript-rust-<os>-<arch>.{tar.gz,zip}
-// with a .sha256 beside it. `ms` is the Manuscript front (tools/ms/main.ms over libms) and
+// Builds `ms` for a target and archives it as
+// dist/manuscript-rust-<os>-<arch>.{tar.gz,zip} with a .sha256 beside it. `ms` is the
+// Manuscript front (tools/ms/main.ms over libms) and
 // `ms-rust`, beside it, is the Rust command line it hands the stages C does not cover to; the
 // front finds it in its own directory. The release runner for each target builds both
 // natively. Usage: ms run tools/package.ms [-- OS ARCH]
@@ -72,34 +73,37 @@ fn main() Int:
 	staging := temporary("ms-package-").get()
 	bundle := f"{staging.path()}/{name}"
 	create_directory(f"{bundle}/examples/hello/src", recursive: true).get()
+
 	rust := f"target/{triple}/release/{executable}"
 	rust_name := if target_os == "windows": "ms-rust.exe" else: "ms-rust"
 	copy(rust, f"{bundle}/{rust_name}").get()
 
 	// The front links libms with the tool entry points, built here for this host.
-	// Windows programs use the llvm-mingw ABI, so libms is built with the same clang as the runtime.
-	var configure = ["-S", ".", "-B", "target/cmake/tools", "-G", "Ninja", "-DMS_BUILD_RUNTIME=OFF"]
+	// Windows programs use the llvm-mingw ABI, so libms is built with the same clang as
+	// the runtime.
+	var configure = [
+		"-S", ".", "-B", "target/cmake/tools", "-G", "Ninja", "-DMS_BUILD_RUNTIME=OFF"
+	]
 	mingw := env("MS_MINGW", "")
+
 	if target_os == "windows" and mingw != "":
 		mingw_triple := if target_arch == "arm64": "aarch64-w64-mingw32" else: "x86_64-w64-mingw32"
 		configure.append(f"-DCMAKE_C_COMPILER={mingw}/bin/{mingw_triple}-clang.exe")
+
 	code = run_program("cmake", configure)
 	if code != 0: return code
 
-	code = run_program("cmake", ["--build", "target/cmake/tools", "--target", "ms_tool"])
+	code = run_program(
+		"cmake",
+		["--build", "target/cmake/tools", "--target", "ms_tool"],
+	)
 	if code != 0: return code
 
 	code = run_program(
 		rust,
 		[
-			"build",
-			"tools/ms/main.ms",
-			"--build-type",
-			"Release",
-			"--link",
-			"target/cmake/tools/compiler/libmstool.a",
-			"-o",
-			f"{bundle}/{executable}",
+			"build", "tools/ms/main.ms", "--build-type", "Release", "--link",
+			"target/cmake/tools/compiler/libmstool.a", "-o", f"{bundle}/{executable}"
 		],
 	)
 	if code != 0: return code
