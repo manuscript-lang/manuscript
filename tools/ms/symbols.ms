@@ -384,14 +384,18 @@ fn rt_ops_text(symbols: String) String:
 // Every `.ms` file under `dir`, sorted.
 fn stdlib_files(dir: String) List[String]!:
 	var found = List[String]()
+
 	for entry in list(dir)?:
 		path := f"{dir}/{entry.name}"
+
 		if entry.directory: found.extend(stdlib_files(path)?)
 		else if entry.name.ends_with(".ms"): found.append(path)
+
 	return ok(found.sorted())
 
-// The error kind and words of each runtime status (`// ms: status <n> <kind> <words>` in the standard library) and
-// the per-extern wording of a status (`// ms: words <n> <words>` covering the externs a file declares or lists with
+// The error kind and words of each runtime status (`// ms: status <n> <kind> <words>`
+// in the standard library) and the per-extern wording of a status
+// (`// ms: words <n> <words>` covering the externs a file declares or lists with
 // `// ms: native`), the tables `ms_rt_status_rows` merges for the C lowering.
 fn status_rows_text() String!:
 	var rows = Map[Int, String]()
@@ -404,18 +408,33 @@ fn status_rows_text() String!:
 		for raw in read_text(path)?.split("\n"):
 			if rest := raw.cut_prefix("// ms: status "):
 				parts := rest.split(" ")
-				if parts.length() < 3: return error(Error(f"{path}: malformed status row: {raw}"))
+				if parts.length() < 3: return error(
+					Error(f"{path}: malformed status row: {raw}")
+				)
+
 				text := parts.drop(2).join(" ")
 				number := parts[0].parse_int()
-				if number.is_none(): return error(Error(f"{path}: malformed status row: {raw}"))
-				rows.add(number.get(), f"    \{{parts[0]}, \"{parts[1]}\", \"{text}\"\},\n")
+				if number.is_none(): return error(
+					Error(f"{path}: malformed status row: {raw}")
+				)
+
+				rows.add(
+					number.get(),
+					f"    \{{parts[0]}, \"{parts[1]}\", \"{text}\"\},\n",
+				)
 			else if rest := raw.cut_prefix("// ms: words "):
-				if split := rest.split_once(" "): local.append([split.before.clone(), split.after.clone()])
+				if split := rest.split_once(" "): local.append(
+					[split.before.clone(), split.after.clone()]
+				)
 				else: return error(Error(f"{path}: malformed words row: {raw}"))
 			else if rest := raw.cut_prefix("// ms: native "):
 				externs.extend(rest.split(" "))
-			else if rest := raw.cut_prefix("export extern fn "): externs.append(before(rest, "("))
-			else if rest := raw.cut_prefix("extern fn "): externs.append(before(rest, "("))
+			else if rest := raw.cut_prefix("export extern fn "): externs.append(
+				before(rest, "(")
+			)
+			else if rest := raw.cut_prefix("extern fn "): externs.append(
+				before(rest, "(")
+			)
 
 		for sym in externs:
 			for row in local:

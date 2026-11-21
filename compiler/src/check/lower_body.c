@@ -50,10 +50,7 @@ MsTy lb_ty(Lb *lb, MsTy ty) {
 }
 
 /* A record, Optional or Result type. */
-static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
-    if (ms_classify(lb->classifier, ty) == MS_CLASS_RESOURCE) {
-        return MIR_NONE; // its close is not recorded yet
-    }
+static MirTy lb_mir_aggregate(Lb *lb, MsTy ty) {
     const MirTy record = lr_type(lb, ty);
     if (record != MIR_NONE) {
         return record;
@@ -64,6 +61,14 @@ static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
     }
     const MirTy iface = li_type(lb, ty);
     return iface != MIR_NONE ? iface : la_type(lb, ty);
+}
+
+static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
+    const MirTy mir = lb_mir_aggregate(lb, ty);
+    if (mir != MIR_NONE && ms_classify(lb->classifier, ty) == MS_CLASS_RESOURCE) {
+        lc_register(lb, ty, mir);
+    }
+    return mir;
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
@@ -97,6 +102,9 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     }
     if (ty == lb->string_ty) {
         return MIR_STR;
+    }
+    if (ms_classify(lb->classifier, ty) == MS_CLASS_RESOURCE && !lc_has_closer(lb, ty)) {
+        return MIR_NONE; // a value that closes but not by a close of its own: left to the Rust lowering
     }
     const MirTy list = lst_type(lb, ty);
     if (list != MIR_NONE) {
@@ -138,7 +146,7 @@ void lb_drop(Lb *lb, MirValue v) {
 /* Whether a value of `ty` owns something its holder must release: a String, a function value or a
  * record holding a String. */
 bool lb_owns(Lb *lb, MirTy ty) {
-    return ty != MIR_NONE && (ty == MIR_STR || lb_is_fn(lb, ty) || mir_needs_drop(lb->m, ty));
+    return ty != MIR_NONE && (ty == MIR_STR || lb_is_fn(lb, ty) || mir_needs_drop(lb->m, ty) || lc_is_resource(lb, ty));
 }
 
 /* An owned temporary of the statement: dropped where the statement ends, newest first. Where no such
@@ -180,15 +188,18 @@ static MirValue lb_copy(Lb *lb, MirValue v) {
 static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
     const MsStr text = ms_number_canonical(&lb->m->arena, ms_name(lb->c->names, e->u.sym));
     char *digits = ms_arena_strndup(&lb->m->arena, text.ptr, text.len);
-    if (lb_ty(lb, lb->facts->expr_ty[e->id]) == lb->float_ty) {
-        const double value = strtod(digits, NULL);
+    const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
+        // A `Float32` literal rounds once, from its text, to binary32.
+        const double value = ty == MIR_FLOAT32 ? (double)strtof(digits, NULL) : strtod(digits, NULL);
         MirImm imm = {.tag = MI_FLOAT};
         const double signed_value = negate ? -value : value;
         memcpy(&imm.i, &signed_value, sizeof signed_value);
-        return (LbVal){mir_b_emit(&lb->b, MOP_FConst, NULL, 0, imm, MIR_FLOAT), false};
+        return (LbVal){mir_b_emit(&lb->b, MOP_FConst, NULL, 0, imm, ty), false};
     }
     const int64_t value = (int64_t)strtoull(digits, NULL, 10);
-    return (LbVal){mir_b_iconst(&lb->b, negate ? -value : value), false};
+    const MirImm imm = {.tag = MI_INT, .i = negate ? -value : value};
+    return (LbVal){mir_b_emit(&lb->b, MOP_IConst, NULL, 0, imm, ty == MIR_NONE ? MIR_INT : ty), false};
 }
 
 /* A literal with no interpolation. */
@@ -235,6 +246,14 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
     const uint32_t binding = facts->res_ref[e->id];
     if (lb->var_of[binding] != MIR_NONE) {
         return (LbVal){mir_b_use_var(&lb->b, lb->var_of[binding]), false};
+    }
+    MirValue held;
+    if (lc_is_slot_local(lb, binding)) { // a resource lives in its slot and is read from it
+        const bool moved = facts->moved_out[e->id];
+        if (!lc_use(lb, binding, &held, moved)) {
+            return LB_UNSUPPORTED(lb);
+        }
+        return (LbVal){held, moved}; // a moved value belongs to its new owner
     }
     if (lb->value_of[binding] == MIR_NONE) {
         return LB_UNSUPPORTED(lb); // a name no statement of this function bound: a field default naming a sibling field
@@ -507,7 +526,7 @@ uint32_t lb_slot_node(const LbCallable *c, uint32_t slot) {
 bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot) {
     const MsParam *param = lb_slot_param(c, slot);
     const bool declared = param != NULL && param->moving;
-    return declared || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
+    return declared || (slot == 0 && lb_has_self(c) && c->consuming) || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
 }
 
 /* Whether `e` names a `let` local, a payload an arm took out of its scrutinee or a `move` parameter: a value the function owns, so using it
@@ -1147,6 +1166,10 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
     if (!lb->ok) {
         return;
     }
+    if (ms_classify(lb->classifier, ty) == MS_CLASS_RESOURCE) { // closed where its scope ends, by the elaborate pass
+        lb->ok = lc_bind(lb, s, binding, value);
+        return;
+    }
     if (lb_is_fn(lb, lb_mir_ty(lb, ty)) && (!value.owned || s->u.bind.is_mutable)) {
         lb->ok = false; // a function value is owned by the one local made from a lambda or a name
         return;
@@ -1331,6 +1354,10 @@ static void lb_if(Lb *lb, const MsStmt *s) {
         return;
     }
     const MirValue subject = cond.v; // an `if name := value` unwraps it in the then-branch
+    if (s->u.branch.binding != NULL && mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->kind != MK_OPT) {
+        (void)LB_UNSUPPORTED(lb); // a Result's Ok payload: the release of the rest is not lowered yet
+        return;
+    }
     if (s->u.branch.binding != NULL) {
         cond.v = la_test(lb, subject);
     }
