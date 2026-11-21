@@ -12,6 +12,7 @@ cmake_minimum_required(VERSION 3.20)
 if(NOT MS_ROOT)
   cmake_path(GET CMAKE_CURRENT_LIST_DIR PARENT_PATH MS_ROOT)
 endif()
+include("${MS_ROOT}/cmake/MsPinnedLibs.cmake")
 if(NOT MS_OUT)
   set(MS_OUT "${MS_ROOT}/target/ms-native")
 endif()
@@ -76,22 +77,10 @@ function(archiver_for triple out)
   endif()
 endfunction()
 
-# The folder holding the pinned C libraries for `triple` (include/, lib/lib*.a), built once per target by build.sh.
+# The folder holding the pinned C libraries for `triple` (cmake/MsPinnedLibs.cmake).
 function(libs_prefix_for triple out)
   compiler_for("${triple}" compiler)
-  execute_process(
-    COMMAND "${CMAKE_COMMAND}" -E env MS_C_LIBS=pinned "CC=${compiler}" sh "${MS_ROOT}/runtime/third_party/build.sh" "${triple}"
-    OUTPUT_VARIABLE prefix
-    RESULT_VARIABLE status)
-  if(NOT status EQUAL 0)
-    message(FATAL_ERROR "build.sh failed (the C build needs cmake and ninja: `sh runtime/third_party/libs.sh install`)")
-  endif()
-  string(STRIP "${prefix}" prefix)
-  # build.sh runs under MSYS2 on Windows and prints /d/a/x; CMake and the compiler read D:/a/x.
-  if(host_os STREQUAL "Windows" AND prefix MATCHES "^/([A-Za-z])/(.*)$")
-    string(TOUPPER "${CMAKE_MATCH_1}" drive)
-    set(prefix "${drive}:/${CMAKE_MATCH_2}")
-  endif()
+  ms_pinned_libs_prefix("${triple}" "${compiler}" prefix)
   set(${out} "${prefix}" PARENT_SCOPE)
 endfunction()
 
