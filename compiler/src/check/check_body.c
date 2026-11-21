@@ -23,6 +23,7 @@
 #include "ms/implements.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
+#include "ms/ty_algebra.h"
 #include "ms/facts.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
