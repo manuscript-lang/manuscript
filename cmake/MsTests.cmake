@@ -102,6 +102,10 @@ list(REMOVE_ITEM _std_sources ${_json_sources})
 list(REMOVE_ITEM _std_sources "${_rt}/std/pool.c")
 file(GLOB _std_support CONFIGURE_DEPENDS "${_tests}/std_support/*.c")
 file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
+if(MS_WINDOWS)
+  # The reactor's Windows half (pipes, kernel objects) and the thread primitives it starts.
+  list(APPEND _io_sources "${_rt}/io/windows/platform.c" "${_rt}/sys/thread.c")
+endif()
 
 # core_*: all of runtime/core and this platform's runtime/sys layer, the allocator's live-block counts on.
 # task_abi.c is linked by core_task_abi alone: the other tests stub the task ABI and run without a scheduler.

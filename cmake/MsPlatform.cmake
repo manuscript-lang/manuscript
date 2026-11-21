@@ -67,6 +67,10 @@ set(MS_C_FLAGS -fno-stack-protector
     # A fault walks frame pointers to name the program line that called into the runtime, and the Rust runtime
     # is built with them (.cargo/config.toml), so C frames must keep theirs.
     -fno-omit-frame-pointer)
+if(MS_HOST_MSVC)
+  # The MSVC C library deprecates getenv, strdup and friends; the runtime uses the portable names.
+  list(APPEND MS_C_FLAGS -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS)
+endif()
 if(NOT MS_WINDOWS)
   # Windows objects are not position independent.
   list(APPEND MS_C_FLAGS -fPIC)
