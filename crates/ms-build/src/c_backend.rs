@@ -31,6 +31,7 @@ struct Options {
     verify: bool,
     tables: bool,
     count_ops: bool,
+    poison_slots: bool,
 }
 
 unsafe extern "C" {
@@ -91,14 +92,15 @@ fn ir_of(
     shown: &str,
     speed: bool,
     checks: bool,
-    count_ops: bool,
+    build: &BuildOptions,
 ) -> Result<(Vec<u8>, Vec<u8>), String> {
     let options = Options {
         speed,
         checks,
         verify: true,
         tables: true,
-        count_ops,
+        count_ops: build.count_ops,
+        poison_slots: build.poison_slots,
     };
     let (mut ir, mut meta, mut why) = (Text::empty(), Text::empty(), Text::empty());
     // SAFETY: every pointer is valid for the call, both texts are passed with their lengths, the
@@ -235,7 +237,7 @@ fn compile_in(
         &ms_mir::print::display_names(module),
         speed,
         checks,
-        build.count_ops,
+        build,
     )?;
     let tools: PathBuf = llvm_tools(build).map_err(|e| e.to_string())?.ok_or(
         "no LLVM tools are available for this platform; set MS_LLVM_TOOLS to a directory with opt and llc",
@@ -255,6 +257,9 @@ fn compile_in(
         let mut opt = tool("opt");
         if !build.vectorize {
             opt.args(["-vectorize-loops=false", "-vectorize-slp=false"]);
+        }
+        if build.llvm_verify {
+            opt.arg("-verify-each");
         }
         opt.args([&triple, "-passes=default<O3>"])
             .arg(&input)

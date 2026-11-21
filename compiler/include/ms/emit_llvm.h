@@ -15,6 +15,21 @@
  * partial). */
 bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue, MsBuf *out, MsBuf *why);
 
+/* How `mir_emit_llvm_program` writes a module. */
+typedef struct MirLlvmOptions {
+    bool export_all;   /* every function gets an external symbol, which the tables unit names */
+    bool places;       /* a source place on every instruction, for the fault tables */
+    bool slot_scopes;  /* mark where each stack slot that lives in one block starts and stops living, so LLVM
+                          may share its stack space. The markers take the form the pinned LLVM reads (one
+                          pointer argument); an older clang rejects it. */
+    bool poison_slots; /* fill each stack slot that lives in one block with 0xDD where that block ends, so a
+                          pointer that outlives the slot reads garbage in every build */
+} MirLlvmOptions;
+
+/* `mir_emit_llvm` as `how` says. The three functions below are this with one option set. */
+bool mir_emit_llvm_program(const MirModule *m, const MirData *data, const MirGlue *glue, const MirLlvmOptions *how,
+                           MsBuf *out, MsBuf *why);
+
 /* The same with `export_all`: every function gets an external symbol, which the tables unit of
  * `mir_emit_llvm_main` names. */
 bool mir_emit_llvm_with(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all,

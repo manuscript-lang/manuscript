@@ -210,6 +210,15 @@ static uint32_t lo_rt(LoCx *c, uint32_t *cache, const char *name, const MirTy *p
     return *cache;
 }
 
+/* `msrt_cleanup_push(thunk, slot)`. The runtime keeps `slot` until the cleanup is discarded or run,
+ * which another block may do, so the slot is not a one-block temporary (`mir_confined_slots`). */
+static uint32_t lo_cleanup_push_rt(LoCx *c) {
+    const MirTy ptr_pair[2] = {MIR_PTR, MIR_PTR};
+    const uint32_t push = lo_rt(c, &c->cleanup_push, "msrt_cleanup_push", ptr_pair, 2, MIR_INT);
+    c->m->externs[push].retains = true;
+    return push;
+}
+
 /* The function `cleanup.thunk` the runtime calls with the address of a spilled value: it loads
  * the value and calls closer `closer`. */
 static uint32_t lo_cleanup_thunk(LoCx *c, uint32_t closer) {
@@ -291,7 +300,6 @@ static void lo_make_releases(LoCx *c) {
 /* `cleanup.push v` becomes a spill of `v` to a frame slot and `msrt_cleanup_push(thunk, slot)`;
  * `cleanup.run h` becomes `msrt_cleanup_run(h)`. */
 static void lo_expand_cleanups(LoCx *c, MirFunc *f) {
-    const MirTy ptr_pair[2] = {MIR_PTR, MIR_PTR};
     for (uint32_t b = 0; b < f->nblocks; b++) {
         uint32_t pushes = 0;
         for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
@@ -326,10 +334,8 @@ static void lo_expand_cleanups(LoCx *c, MirFunc *f) {
             out[n++] = mir_inst(MOP_Store, mir_imm_none(), MIR_NONE, held.loc,
                                 mir_args_copy(c->m, stored, 2), 2);
             out[n++] = mir_inst(MOP_FuncAddr, thunk, addr, held.loc, NULL, 0);
-            out[n++] = mir_inst(MOP_CallRt,
-                                mir_imm_ext(lo_rt(c, &c->cleanup_push, "msrt_cleanup_push", ptr_pair,
-                                                  2, MIR_INT)),
-                                held.res, held.loc, mir_args_copy(c->m, pushed, 2), 2);
+            out[n++] = mir_inst(MOP_CallRt, mir_imm_ext(lo_cleanup_push_rt(c)), held.res, held.loc,
+                                mir_args_copy(c->m, pushed, 2), 2);
         }
         f->blocks[b].insts = out;
         f->blocks[b].ninsts = f->blocks[b].cinsts = n;

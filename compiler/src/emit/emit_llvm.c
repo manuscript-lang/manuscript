@@ -42,6 +42,9 @@ typedef struct LCx {
     bool pure;           /* `f` reads and writes no memory, cannot fault and always returns */
     const char *tbaa;    /* `, !tbaa !N` for the list element access being written, or NULL */
     uint32_t body_line;  /* the line of `f`'s first instruction that has one; 0 until looked up, UINT32_MAX for none */
+    const struct LlTemps *temps; /* the slots of `f` that live in one block; NULL when it has none */
+    bool scopes;         /* mark where each such slot starts and stops living (`MirLlvmOptions.slot_scopes`) */
+    bool poison;         /* fill each such slot with LL_POISON where its block ends */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -1697,6 +1700,86 @@ static void ll_place(LCx *c, size_t from, MirLoc loc) {
     ll_debug_tag(c->out, from, ll_debug_location(c->dbg, line, scope));
 }
 
+/* A stack slot that lives in one block (`mir_confined_slots`): nothing reads it before that block's
+ * first access or after its terminator, so LLVM may give its storage to another block's slot. */
+typedef struct LlTemp {
+    MirValue slot;
+    uint32_t bytes;
+} LlTemp;
+
+/* The temporaries of a function, grouped by block: those of block `b` are `v[first[b]]` up to
+ * `v[first[b + 1]]`. */
+typedef struct LlTemps {
+    const uint32_t *first;
+    const LlTemp *v;
+} LlTemps;
+
+/* The byte a dead temporary is filled with when slots are poisoned, the one the counting runtime
+ * writes over freed heap blocks. */
+enum { LL_POISON = 0xDD };
+
+/* The temporaries of `c->f`, in `arena`; NULL when it has none. */
+static const LlTemps *ll_temps(LCx *c, MsArena *arena) {
+    const MirFunc *f = c->f;
+    const MirBlock *home = mir_confined_slots(arena, c->m, f);
+    if (home == NULL) {
+        return NULL;
+    }
+    uint32_t *first = MS_NEW_N(arena, uint32_t, (size_t)f->nblocks + 2);
+    memset(first, 0, sizeof *first * ((size_t)f->nblocks + 2));
+    uint32_t total = 0;
+    for (MirValue v = 0; v < f->nvalues; v++) {
+        if (home[v] != MIR_NONE) {
+            first[home[v] + 2]++; /* counts, shifted so the fill below leaves offsets in place */
+            total++;
+        }
+    }
+    if (total == 0) {
+        return NULL;
+    }
+    for (uint32_t b = 2; b < f->nblocks + 2; b++) {
+        first[b] += first[b - 1];
+    }
+    LlTemp *temps = MS_NEW_N(arena, LlTemp, total);
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        const MirBlockData *block = &f->blocks[b];
+        for (uint32_t k = 0; k < block->ninsts; k++) {
+            const MirInst *inst = &block->insts[k];
+            if (inst->op == MOP_Slot && inst->res != MIR_NONE && home[inst->res] != MIR_NONE) {
+                temps[first[home[inst->res] + 1]++] =
+                    (LlTemp){inst->res, ll_slot_bytes(c->layouts, (MirTy)inst->imm.a)};
+            }
+        }
+    }
+    LlTemps *out = MS_NEW_N(arena, LlTemps, 1);
+    *out = (LlTemps){first, temps};
+    return out;
+}
+
+/* Starts the life of the temporaries of block `b`, before its first instruction. */
+static void ll_temps_begin(const LCx *c, uint32_t b) {
+    for (uint32_t k = c->temps ? c->temps->first[b] : 0; c->temps && k < c->temps->first[b + 1]; k++) {
+        if (c->scopes) {
+            ms_buf_printf(c->out, "  call void @llvm.lifetime.start.p0(ptr %%s%u)\n", c->temps->v[k].slot);
+        }
+    }
+}
+
+/* Ends the life of the temporaries of block `b`, before its terminator. The poison fill is volatile
+ * so that LLVM keeps a store to memory nothing reads again. */
+static void ll_temps_end(const LCx *c, uint32_t b) {
+    for (uint32_t k = c->temps ? c->temps->first[b] : 0; c->temps && k < c->temps->first[b + 1]; k++) {
+        const LlTemp *temp = &c->temps->v[k];
+        if (c->poison) {
+            ms_buf_printf(c->out, "  call void @llvm.memset.p0.i64(ptr %%s%u, i8 %d, i64 %u, i1 true)\n", temp->slot,
+                          (int)(int8_t)LL_POISON, temp->bytes);
+        }
+        if (c->scopes) {
+            ms_buf_printf(c->out, "  call void @llvm.lifetime.end.p0(ptr %%s%u)\n", temp->slot);
+        }
+    }
+}
+
 static bool ll_block(LCx *c, uint32_t b, const uint32_t *last) {
     const MirBlockData *block = &c->f->blocks[b];
     ms_buf_printf(c->out, "b%u:\n", b);
@@ -1708,6 +1791,7 @@ static bool ll_block(LCx *c, uint32_t b, const uint32_t *last) {
             return false;
         }
     }
+    ll_temps_begin(c, b);
     uint32_t part = 0;
     for (uint32_t k = 0; k < block->ninsts; k++) {
         const size_t from = c->out->len;
@@ -1717,6 +1801,7 @@ static bool ll_block(LCx *c, uint32_t b, const uint32_t *last) {
         ll_place(c, from, block->insts[k].loc);
     }
     const size_t from = c->out->len;
+    ll_temps_end(c, b);
     if (!ll_term(c, &block->term, b)) {
         return false;
     }
@@ -1800,6 +1885,7 @@ static bool ll_function(LCx *c, uint32_t index) {
     mir_framed_closures(c->m, f, c->framed);
     MsArena scratch = {0};
     c->borrowed = mir_framed_iface_borrows(&scratch, c->m, f);
+    c->temps = c->scopes || c->poison ? ll_temps(c, &scratch) : NULL;
     ll_last_pieces(c->m, f, last);
     ll_header(c, index);
     bool ok = true;
@@ -1810,6 +1896,7 @@ static bool ll_function(LCx *c, uint32_t index) {
     free(c->framed);
     c->framed = NULL;
     c->borrowed = NULL;
+    c->temps = NULL;
     ms_arena_free(&scratch);
     if (ok) {
         ms_buf_puts(c->out, "}\n\n");
@@ -1912,6 +1999,9 @@ static const char ll_declarations[] =
     "declare i64 @llvm.fptosi.sat.i64.f64(double)\n"
     "declare ptr @llvm.frameaddress.p0(i32)\n"
     "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)\n"
+    "declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)\n"
+    "declare void @llvm.lifetime.start.p0(ptr)\n"
+    "declare void @llvm.lifetime.end.p0(ptr)\n"
     "@msrt_ascii_chars = external global [0 x i8]\n"
     "declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)\n"
@@ -2135,8 +2225,9 @@ static const char *ll_host_triple(void) {
 #endif
 }
 
-static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all, bool places,
+static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue, const MirLlvmOptions *how,
                     MsBuf *out, MsBuf *why) {
+    const bool export_all = how->export_all, places = how->places;
     MirLayouts layouts;
     mir_layouts_init(&layouts, m);
     bool ok = true;
@@ -2165,11 +2256,11 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     for (uint32_t g = 0; glue != NULL && g < glue->n; g++) {
         is_glue[glue->v[g].func] = true;
     }
-    LCx module = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, 0, 0, false, false, NULL, 0};
+    LCx module = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, 0, 0, false, false, NULL, 0, NULL, false, false};
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base,
                  total_scopes + i + 1, is_glue[i] && ll_glue_depth(m, is_glue, depth, i) >= 3,
-                 ll_pure_function(&module, purity, i), NULL, 0};
+                 ll_pure_function(&module, purity, i), NULL, 0, NULL, how->slot_scopes, how->poison_slots};
         scope_base += m->funcs[i].nscopes;
         if (ll_function(&c, i)) {
             continue;
@@ -2181,7 +2272,7 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     free(is_glue);
     free(depth);
     free(purity);
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0, false, false, NULL, 0};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0, false, false, NULL, 0, NULL, false, false};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);
@@ -2200,17 +2291,22 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     return ok;
 }
 
+bool mir_emit_llvm_program(const MirModule *m, const MirData *data, const MirGlue *glue, const MirLlvmOptions *how,
+                           MsBuf *out, MsBuf *why) {
+    return ll_emit(m, data, glue, how, out, why);
+}
+
 bool mir_emit_llvm_with(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all,
                         MsBuf *out, MsBuf *why) {
-    return ll_emit(m, data, glue, export_all, false, out, why);
+    return ll_emit(m, data, glue, &(MirLlvmOptions){.export_all = export_all}, out, why);
 }
 
 bool mir_emit_llvm_places(const MirModule *m, const MirData *data, const MirGlue *glue, MsBuf *out, MsBuf *why) {
-    return ll_emit(m, data, glue, false, true, out, why);
+    return ll_emit(m, data, glue, &(MirLlvmOptions){.places = true}, out, why);
 }
 
 bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue, MsBuf *out, MsBuf *why) {
-    return mir_emit_llvm_with(m, data, glue, false, out, why);
+    return ll_emit(m, data, glue, &(MirLlvmOptions){0}, out, why);
 }
 
 #include "emit_llvm_main.inc"
