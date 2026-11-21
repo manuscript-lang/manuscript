@@ -339,6 +339,19 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     return b->c->tys.result[target.sig];
 }
 
+void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty) {
+    Target target;
+    if (b->methods == NULL || ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE ||
+        !method_row(b, ty, ms_intern_cstr(b->c->names, "to_string"), 0, &target)) {
+        return;
+    }
+    const MsTyTable *tys = &b->c->tys;
+    if (target.mutating || target.consuming || tys->nparams[target.sig] != 0 || tys->result[target.sig] != b->string_ty) {
+        return; // an ordinary method of that name: the type prints structurally
+    }
+    b->facts->text_method[part->id] = target.method;
+}
+
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
     const MsExpr *receiver = callee->u.member.left;
