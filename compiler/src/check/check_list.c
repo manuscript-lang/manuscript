@@ -100,6 +100,14 @@ MsTy ms_body_index(MsBody *b, const MsExpr *e) {
     if (list != MS_TY_NONE && left->kind != MS_E_MAP && ms_body_is_map(b, list)) {
         return ms_body_map_index(b, list, index);
     }
+    if (list != MS_TY_NONE && ms_ty_is(&b->c->tys, list, MS_BI_BYTES)) { // read as a byte, a `UInt8`
+        return ms_body_expr(b, index, b->int_ty) == MS_TY_NONE ? MS_TY_NONE : ms_check_primitive(b->c, "UInt8");
+    }
+    if (list == b->string_ty) {
+        (void)ms_body_expr(b, index, MS_TY_NONE);
+        ms_body_report(b, e->pos, ms_arena_fmt(&b->c->arena, "indexing a String by integer is not supported; use for c in s.chars(), s.scalar_at(offset, default) at a byte offset, or s.slice(start, end)"));
+        return b->invalid_ty;
+    }
     if (list == MS_TY_NONE || !ms_body_is_list(b, list)) {
         return ms_body_unsupported(b);
     }
