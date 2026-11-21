@@ -24,6 +24,7 @@ BINDING_WIDTH := 9
 SYMBOL_WIDTH := 11
 RESOURCE_WIDTH := 3
 REACH_WIDTH := 4
+CONFLICT_WIDTH := 8
 // MS_RES_BINDING: a name that resolves to a local, parameter or pattern name.
 BINDING_RESOLUTION := 1
 
@@ -46,6 +47,8 @@ export type Analyzed:
 	// Whether the effect scan saw every callable it reached, so no violation is
 	// missing.
 	reach_complete: Bool = false
+	// The capitalised match payload names that coincide with a type or a case (MSL106).
+	conflicts: List[Conflict] = []
 
 // A function that reaches an effect it does not permit: where the reference that brings
 // the effect in is, and what `ms lint` says about it.
@@ -54,6 +57,20 @@ export type Reach:
 	line: Int
 	column: Int
 	message: String
+
+// A capitalised payload name that still binds a fresh value: the arm, where the name is
+// written, what it coincides with, the payload's type and, when the payload is the enum
+// that owns the case, the nested pattern the name would have to be.
+export type Conflict:
+	arm: Int
+	offset: Int
+	line: Int
+	column: Int
+	identity: String
+	payload: String
+	nested: String
+	// The type an arm of a match over an interface value names, "" for any other arm.
+	contract: String
 
 // A binding the scope closes (a resource): where it is introduced and what its type
 // offers.
@@ -69,6 +86,11 @@ export type Resource:
 	followed: Bool
 	// A `flush` or `commit` method taking nothing and returning a Result, "" for none.
 	finisher: String
+
+// The name at `at`, "" for -1.
+fn optional_name(names: List[String], at: Int) String:
+	if at < 0: return ""
+	return names[at].clone()
 
 // The analysis of `text`; none when it does not parse or is not covered yet.
 export fn analyze(text: String) Analyzed?:
@@ -133,6 +155,24 @@ export fn analyze(text: String) Analyzed?:
 				line: rows[first + 1],
 				column: rows[first + 2],
 				message: names[rows[first + 3]].clone(),
+			)
+		)
+
+	// The span of each node row follows the effect rows: two offsets per node.
+	at += 2 + rows[at + 1] * REACH_WIDTH + 2 * rows[0]
+
+	for index in 0..rows[at]:
+		first := at + 1 + index * CONFLICT_WIDTH
+		found.conflicts.append(
+			Conflict(
+				arm: rows[first],
+				offset: rows[first + 1],
+				line: rows[first + 2],
+				column: rows[first + 3],
+				identity: names[rows[first + 4]].clone(),
+				payload: names[rows[first + 5]].clone(),
+				nested: optional_name(names, rows[first + 6]),
+				contract: optional_name(names, rows[first + 7]),
 			)
 		)
 

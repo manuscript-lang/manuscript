@@ -1069,6 +1069,67 @@ static void analyze_ownership(Analysis *a, const MsCheck *check, const MsFacts *
     }
 }
 
+/* The `Name(_, _)` that a nested pattern of case `name` of `owner` would have to write: the name, and an underscore for
+ * each of the case's fields when it has any. */
+static int64_t put_nested_case(Analysis *a, const MsCheck *check, MsTy owner, MsSym name) {
+    const MsStr text = ms_name(check->names, name);
+    MsBuf out = {0};
+    ms_buf_put(&out, text.ptr, text.len);
+    const uint32_t def = check->tys.def[owner];
+    const MsDef *definition = def != 0 && def - 1 < check->defs_cap ? &check->defs[def - 1] : NULL;
+    for (uint32_t i = 0; definition != NULL && i < definition->ncases; i++) {
+        if (definition->cases[i].name == name && definition->cases[i].nfields != 0) {
+            ms_buf_puts(&out, "(");
+            for (uint32_t k = 0; k < definition->cases[i].nfields; k++) {
+                ms_buf_puts(&out, k == 0 ? "_" : ", _");
+            }
+            ms_buf_puts(&out, ")");
+        }
+    }
+    const int64_t at = put_name(a, (const char *)out.data, out.len);
+    ms_buf_free(&out);
+    return at;
+}
+
+/* The conflict rows (MSL106), after the effect rows: the count of capitalised payload names that coincide with a type or
+ * a case, and for each the arm's node id, the name's offset, line and column, what it coincides with (`a type name`, `a
+ * visible alternative case name` or `a case of T`), the type of the payload, when the payload is the enum that owns
+ * the case, the nested pattern to write, and for an arm of a match over an interface value the type it names (-1 for
+ * none of the last two). */
+static void analyze_conflicts(Analysis *a, const MsCheck *check, const MsFacts *facts) {
+    const MsBindings *b = &facts->bindings;
+    int64_t count = 0;
+    for (uint32_t k = 0; k < b->count; k++) {
+        count += b->conflict[k] != MS_CONFLICT_NONE;
+    }
+    put_row(a, count);
+    for (uint32_t k = 0; k < b->count; k++) {
+        if (b->conflict[k] == MS_CONFLICT_NONE) {
+            continue;
+        }
+        MsBuf identity = {0};
+        if (b->conflict[k] == MS_CONFLICT_TYPE) {
+            ms_buf_puts(&identity, "a type name");
+        } else if (b->conflict[k] == MS_CONFLICT_CASE_ANY) {
+            ms_buf_puts(&identity, "a visible alternative case name");
+        } else {
+            ms_buf_puts(&identity, "a case of ");
+            ms_ty_show(&identity, check->names, &check->tys, b->conflict_ty[k]);
+        }
+        const bool nested = b->conflict[k] == MS_CONFLICT_CASE && b->ty[k] == b->conflict_ty[k] &&
+                            ms_ty_kind(&check->tys, b->ty[k]) == MS_K_ALTERNATIVE;
+        put_row(a, b->decl_node[k]);
+        put_row(a, b->pos[k].offset);
+        put_row(a, b->pos[k].line);
+        put_row(a, b->pos[k].column);
+        put_row(a, put_name(a, (const char *)identity.data, identity.len));
+        put_row(a, put_type(a, check, b->ty[k]));
+        put_row(a, nested ? put_nested_case(a, check, b->ty[k], b->name[k]) : -1);
+        put_row(a, put_type(a, check, facts->arm_contract[b->decl_node[k]]));
+        ms_buf_free(&identity);
+    }
+}
+
 /* Takes the effect rows of module `id`: 1 when the scan saw every callable it reached (a missing violation proves
  * nothing otherwise), the count of violations of the module's own callables, and for each its offset, line, column and
  * the message `ms lint` prints as MSL116. Run before the ownership pass, which leaves a function it cannot follow
@@ -1198,6 +1259,7 @@ static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id, const c
     free(start);
     free(end);
     tree_drop(&tree);
+    analyze_conflicts(a, check, facts);
 }
 
 /* Loads the project `path` belongs to, with `overlay` (path, text pairs) in place of disk, and checks every module of
