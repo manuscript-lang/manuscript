@@ -1,0 +1,15 @@
+# Runtime symbols of ms_rt/sys.h defined in C (src/runtime/sys); one per line. Internal to the runtime, not natives programs call.
+ms_sys_map_anon
+ms_sys_prefer_huge_pages
+ms_sys_map_region
+ms_sys_commit
+ms_sys_commit_guard
+ms_sys_release
+ms_sys_guard
+ms_sys_unmap
+ms_sys_monotonic_ns
+ms_sys_thread_spawn
+ms_sys_thread_join
+ms_sys_sleep_ms
+ms_sys_fault_handler_install
+ms_sys_interface_index

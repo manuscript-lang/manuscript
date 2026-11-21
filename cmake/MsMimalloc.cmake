@@ -1,5 +1,5 @@
 # mimalloc: the runtime's allocator, built as one object from its static.c, no libc override.
-set(MS_MIMALLOC_DIR "${CMAKE_SOURCE_DIR}/runtime/third_party/mimalloc")
+set(MS_MIMALLOC_DIR "${CMAKE_SOURCE_DIR}/src/runtime/third_party/mimalloc")
 add_library(ms_mimalloc STATIC "${MS_MIMALLOC_DIR}/src/static.c")
 target_include_directories(ms_mimalloc PUBLIC "${MS_MIMALLOC_DIR}/include")
 target_include_directories(ms_mimalloc PRIVATE "${MS_MIMALLOC_DIR}/src")

@@ -4,7 +4,7 @@
 *.toml text eol=lf
 tests/conformance/** text eol=lf
 # The compiler prelude test keeps CRLF on purpose, on every platform.
-compiler/tests/prelude/crlf.ms -text
+src/compiler/tests/prelude/crlf.ms -text
 # Everything else is text with LF too: tests compare byte offsets and sizes of fixtures,
 # recorded corpora and guide text, and git detects binary files on its own.
 * text=auto eol=lf
@@ -12,5 +12,5 @@ compiler/tests/prelude/crlf.ms -text
 tests/conformance/fixtures/e2e/projects/*_suite/data/** -text
 
 # Vendored C libraries stay byte-exact (no line-ending conversion).
-runtime/third_party/** -text
-compiler/tests/prelude/crlf.ms -text
+src/runtime/third_party/** -text
+src/compiler/tests/prelude/crlf.ms -text

@@ -93,7 +93,7 @@ fn stdlib_imports(files: List[String]) List[String]:
 	var issues = List[String]()
 
 	for path in files:
-		if not path.starts_with("stdlib/") or not path.ends_with(".ms"): continue
+		if not path.starts_with("src/stdlib/") or not path.ends_with(".ms"): continue
 
 		text := read_text(path).get_or("")
 		var number = 0
@@ -114,18 +114,18 @@ fn stdlib_imports(files: List[String]) List[String]:
 
 	return issues
 
-// ---- the internal-surface rule: every `extern fn` under stdlib/internal is used elsewhere ----
+// ---- the internal-surface rule: every `extern fn` under src/stdlib/internal is used elsewhere ----
 
 export fn internal_externs(files: List[String]) List[String]:
 	var sources = Map[String, String]()
 	for path in files:
-		if path.starts_with("stdlib/") and path.ends_with(".ms"):
+		if path.starts_with("src/stdlib/") and path.ends_with(".ms"):
 			if text := read_text(path): sources.add(path.clone(), text)
 
 	var issues = List[String]()
 
 	for path in sources.keys():
-		if not path.starts_with("stdlib/internal/"): continue
+		if not path.starts_with("src/stdlib/internal/"): continue
 
 		for name in extern_names(sources.get_or(path, "")):
 			var used = false
@@ -458,16 +458,16 @@ export fn layering(files: List[String]) List[String]:
 
 	return issues
 
-// The `ms` command line is read in one place: the command tree in tools/ms/cli.ms. Any
-// other source under tools/ms that imports `arguments` is parsing raw words by hand;
+// The `ms` command line is read in one place: the command tree in src/ms/cli.ms. Any
+// other source under src/ms that imports `arguments` is parsing raw words by hand;
 // give the command a flag or an argument in cli.ms (or, for a helper program, a
 // `Command` run through `run_tool`) instead.
 export fn raw_arguments(files: List[String]) List[String]:
 	var issues = List[String]()
 
 	for path in files:
-		if not path.starts_with("tools/ms/") or not path.ends_with(".ms"): continue
-		if path == "tools/ms/cli.ms": continue
+		if not path.starts_with("src/ms/") or not path.ends_with(".ms"): continue
+		if path == "src/ms/cli.ms": continue
 
 		// The names of the import being read, collected until its `from`.
 		var names = ""
@@ -488,7 +488,7 @@ export fn raw_arguments(files: List[String]) List[String]:
 				)
 			):
 				issues.append(
-					f"{path}: reads the raw command line; declare the flags and arguments in tools/ms/cli.ms (a helper program runs a Command with run_tool) and read them from Matches"
+					f"{path}: reads the raw command line; declare the flags and arguments in src/ms/cli.ms (a helper program runs a Command with run_tool) and read them from Matches"
 				)
 			names = ""
 

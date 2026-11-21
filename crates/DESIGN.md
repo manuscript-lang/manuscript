@@ -1,6 +1,6 @@
 # Rust implementation: design contract
 
-This describes the Rust implementation; code generation is the C back end in `compiler/`. Current ownership rules live in [OWNERSHIP.md](ms-check/OWNERSHIP.md); exact runtime layouts and symbols live in [ABI.md](ms-rt-abi/ABI.md) and `ms-rt-abi`.
+This describes the Rust implementation; code generation is the C back end in `src/compiler/`. Current ownership rules live in [OWNERSHIP.md](ms-check/OWNERSHIP.md); exact runtime layouts and symbols live in [ABI.md](ms-rt-abi/ABI.md) and `ms-rt-abi`.
 
 ## Decisions (taken 2026-10-19, owner direction: keep today's behavior, maximum native speed)
 
@@ -19,7 +19,7 @@ This describes the Rust implementation; code generation is the C back end in `co
                  (public surface: `ms_check::api` only; every other module is private)
     -> ms-lower  (checked HIR and ownership facts to MIR, native standard calls)
     -> ms-mir    (representation, ownership elaboration, optimizer, verifier, text format, interpreter)
-    -> ms-build  (MIR -> LLVM IR by the C back end in `compiler/` -> `opt`, `llc` -> object file)
+    -> ms-build  (MIR -> LLVM IR by the C back end in `src/compiler/` -> `opt`, `llc` -> object file)
     -> linker driver + ms-native (ms-rt and the ms-std-* crates in one static library, embedded in ms) -> executable
 tools: ms-driver (manifest, aliases and import resolution in `project`; module graph loading, entry rule, checking), ms-build (lowering seam, optimize, codegen and link; the `ms build/run/test/profile` engine in ms-cli sits on it), ms-tooling (lint, inspect, review, diagram; agent guide, `search_symbol` standard-library lookup, docgen), ms-lsp, ms-cli (`ms`)
 ```
@@ -41,7 +41,7 @@ Keep public crate APIs small and documented with rustdoc; cross-crate changes mu
 
 ## Runtime ABI rules
 
-- Runtime symbols use `msrt_`; native standard-library symbols use `msstd_`. `stdlib/*.ms` owns public signatures and names its native symbols with `extern fn`.
+- Runtime symbols use `msrt_`; native standard-library symbols use `msstd_`. `src/stdlib/*.ms` owns public signatures and names its native symbols with `extern fn`.
 - Scalars cross the C-layout ABI directly. Aggregates cross by pointer, and constructed aggregates use a trailing output pointer. Fallible calls use status codes and outputs; see [ABI conventions](ms-rt-abi/ABI.md#1-conventions).
 - Arguments are borrowed unless documented as consuming; `var` receivers are exclusive mutable pointers. Returned values are owned, while source operations that return a borrow keep the borrow relationship checked by `ms-check`.
 - `ms-rt-abi` defines shared layouts and constants; its layout tests keep compiler and runtime assumptions aligned.

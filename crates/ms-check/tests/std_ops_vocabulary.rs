@@ -4,7 +4,7 @@
 
 use ms_check::api::ownership::discards_entries;
 
-const COLLECTIONS: &str = include_str!("../../../stdlib/collections/collections.ms");
+const COLLECTIONS: &str = include_str!("../../../src/stdlib/collections/collections.ms");
 
 fn declares_mutator(name: &str) -> bool {
     COLLECTIONS

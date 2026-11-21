@@ -1,6 +1,6 @@
 //! `prelude_import_fix` of `ms-check`'s `prelude_imports.rs`, copied with the checker removed, for
-//! the C port in `compiler/src/syntax/prelude_fix.c` to be diffed against
-//! (`compiler/tests/prelude-fix-diff.sh`). Each stdin line is a source with `\n` and `\r`
+//! the C port in `src/compiler/src/syntax/prelude_fix.c` to be diffed against
+//! (`src/compiler/tests/prelude-fix-diff.sh`). Each stdin line is a source with `\n` and `\r`
 //! escapes; each output line lists the fix of every import binding of its editor-recovery parse.
 //! `gen COUNT SEED` writes random sources. Temporary tooling for the C rewrite: delete it with the
 //! Rust checker.

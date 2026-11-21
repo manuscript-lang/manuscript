@@ -22,7 +22,7 @@ binary/source/runtime digest are in `environment.json`.
 Host: Linux x86-64, AMD EPYC 9V45 96-Core Processor. Both builds use Rust
 1.99.1; Manuscript uses its pinned LLVM 23.1.1 Release pipeline and musl runtime.
 The idiomatic Rust control uses pinned `toml` 0.9.8, `Value::Table` and `to_string`,
-with opt-level 3 and its lockfile committed. No compiler/runtime/native changes
+with opt-level 3 and its lockfile committed. No src/compiler/runtime/native changes
 are part of this patch.
 
 These are **public table serialization plus a full-output equality guard** timings,

@@ -4,7 +4,7 @@ Paired measurements for the `statistics.correlation` and `linear_regression` cha
 
 ## Revisions and machine
 
-- Before: compiler, runtime and stdlib from `451995a1c` (main) plus the unrelated parser/formatter commits of the #3476 branch (`ec8ad9956`); `stdlib/math/statistics.ms` is unchanged there.
+- Before: compiler, runtime and stdlib from `451995a1c` (main) plus the unrelated parser/formatter commits of the #3476 branch (`ec8ad9956`); `src/stdlib/math/statistics.ms` is unchanged there.
 - After: `517041a67`, the #3468 branch merged with the same main.
 - Both built with `ms build ... --build-type Release`, once with the default LLVM backend and once with `MS_BACKEND=cranelift`; the `ms` binaries are the debug `target/debug/ms` of each revision.
 - Intel Xeon @ 2.10GHz, 4 vCPU virtual machine, Linux 6.18; each process pinned with `taskset -c 1`. Shared host: expect noise of several percent.

@@ -11,5 +11,5 @@ Verified (2026-11-18, release LLVM, `bench/perf/everyday-round5`): `List.binary_
 Fixed (2026-11-18, issue #4521): LLVM 23's early-exit vectorizer turned a pure arithmetic "find the next match" loop (a custom `Iterator` adapter over a counter) into a vector loop costing about 50 instructions per found item (250 ms against 41 ms). A global switch cost `contains` 1.26x, so `ms-mir-llvm` `loops.rs` finds loops with two or more exits and no element reads, and the backend marks their back-edges `llvm.loop.vectorize.enable=false`. Loops that read elements (`contains`, scans) stay vectorized. Guard: `bench/perf/guards/iterchain`.
 
 Apply when: writing a stdlib search or sort loop, or a sort comparator that captures.
-Evidence: `crates/ms-mir/src/opt/sortgen.rs` (`comparator_env`), `stdlib/collections/collections.ms` (`binary_search`), fixture `e2e/accept/sort-and-search-large-capturing`.
+Evidence: `crates/ms-mir/src/opt/sortgen.rs` (`comparator_env`), `src/stdlib/collections/collections.ms` (`binary_search`), fixture `e2e/accept/sort-and-search-large-capturing`.
 Verify: `MS=./target/release/ms sh bench/perf/everyday-round5/run.sh 5` rows `m_binary_search`, `r_sort_field`.

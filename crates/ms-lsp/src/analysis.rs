@@ -357,7 +357,7 @@ fn check(syms: ms_syntax::Names, graph: Graph, options: &Options) -> Analysis {
         project_root: checked.project_root,
         package_roots: checked.package_roots,
         program: checked.program,
-        // A checkout's own `stdlib/` sources are checked as bundled modules at startup; read from disk
+        // A checkout's own `src/stdlib/` sources are checked as bundled modules at startup; read from disk
         // they cannot see the internal modules they import, so their diagnostics would be spurious.
         diagnostics: checked
             .diagnostics

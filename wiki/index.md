@@ -9,8 +9,8 @@ Durable lessons for agents working on Manuscript. Read this page before implemen
 | Domain | Covers |
 | --- | --- |
 | [Language](language/index.md) | Syntax, types, imports, removals, language decisions |
-| [Compiler and build](compiler/index.md) | Checking, lowering, MIR, Cranelift, build, fault sites |
-| [Runtime](runtime/index.md) | Cancellation, cleanup, resources, networking, promises, test helpers |
+| [Compiler and build](src/compiler/index.md) | Checking, lowering, MIR, Cranelift, build, fault sites |
+| [Runtime](src/runtime/index.md) | Cancellation, cleanup, resources, networking, promises, test helpers |
 | [Tooling and docs](tooling-and-docs/index.md) | Formatter, LSP, CLI, diagnostics, documentation, site |
 | [Repository maintenance](repository/index.md) | Cleanup, CI, releases, Pages, Windows targets |
 | [Standard-library design](stdlib-design/index.md) | Stdlib API shape, failure modes, naming, construction |

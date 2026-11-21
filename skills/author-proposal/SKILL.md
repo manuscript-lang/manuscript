@@ -13,9 +13,9 @@ The default design is no new syntax, no new type, and no new keyword. Earn each 
 
 Do this before writing any section. A proposal that invents syntax or names without it is rejected.
 
-- Read `tools/ms/data/agent-skill/SKILL.md` and the relevant pages in `documentation/core-language/` (types, functions, control flow, errors, modules, cleanup) and `documentation/glossary.md`.
+- Read `src/ms/data/agent-skill/SKILL.md` and the relevant pages in `documentation/core-language/` (types, functions, control flow, errors, modules, cleanup) and `documentation/glossary.md`.
 - Read `crates/DESIGN.md` for the pipeline, ABI, and recorded decisions, and `wiki/` for the domain (see `wiki/index.yml`).
-- Find existing idioms with `ms search_symbol <words>` and read the nearest `stdlib/*.ms` modules. Copy their naming, argument order, error handling, and ownership style.
+- Find existing idioms with `ms search_symbol <words>` and read the nearest `src/stdlib/*.ms` modules. Copy their naming, argument order, error handling, and ownership style.
 - Read `proposals/` for decisions already made (names, direction, rejected ideas). A past proposal is a record of decisions, not a source of syntax; verify anything it shows against the guide.
 - Never contradict a stated user decision (spelling, casing, names, scope). Quote the decision in Status; if the design needs to reverse one, put it in Open questions, do not assume.
 - Do not import syntax from other languages (guards, tuples, records, static methods, lowercase generics, and so on). If Manuscript lacks a construct, the design works without it or proposes it as its own explicit, justified language change.

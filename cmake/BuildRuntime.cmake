@@ -81,11 +81,11 @@ endfunction()
 function(libs_prefix_for triple out)
   compiler_for("${triple}" compiler)
   execute_process(
-    COMMAND "${CMAKE_COMMAND}" -E env MS_C_LIBS=pinned "CC=${compiler}" sh "${MS_ROOT}/runtime/third_party/build.sh" "${triple}"
+    COMMAND "${CMAKE_COMMAND}" -E env MS_C_LIBS=pinned "CC=${compiler}" sh "${MS_ROOT}/src/runtime/third_party/build.sh" "${triple}"
     OUTPUT_VARIABLE prefix
     RESULT_VARIABLE status)
   if(NOT status EQUAL 0)
-    message(FATAL_ERROR "build.sh failed (the C build needs cmake and ninja: `sh runtime/third_party/libs.sh install`)")
+    message(FATAL_ERROR "build.sh failed (the C build needs cmake and ninja: `sh src/runtime/third_party/libs.sh install`)")
   endif()
   string(STRIP "${prefix}" prefix)
   # build.sh runs under MSYS2 on Windows and prints /d/a/x; CMake and the compiler read D:/a/x.

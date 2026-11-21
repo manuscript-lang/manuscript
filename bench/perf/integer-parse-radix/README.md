@@ -124,7 +124,7 @@ results. Later sessions fix both issues. The corresponding older Rust/runner
 sources are retained as `.txt` snapshots. An earlier two-producer exploration had
 an ordering flaw and is excluded entirely from this report.
 
-[`artifacts.json`](artifacts.json) records compiler/archive/binary and retained-file
+[`artifacts.json`](artifacts.json) records src/compiler/archive/binary and retained-file
 hashes. No allocator, RSS, or instruction-count measurement is claimed. The parser
 helpers themselves allocate no buffers before or after; setup-string allocations
 are outside the timer. The existing radix-formatting stop rule was respected;

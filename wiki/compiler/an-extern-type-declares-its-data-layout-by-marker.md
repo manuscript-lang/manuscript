@@ -1,7 +1,7 @@
 # An extern type declares its plain-data layout with `// ms: fields`
 
 `Decimal` is an `extern type` the runtime passes as three words (`msstd_decimal_*` take `*const DecType`). The
-declaration says so: `// ms: fields lo hi exp` above `export extern type Decimal` in `stdlib/math/decimal.ms`.
+declaration says so: `// ms: fields lo hi exp` above `export extern type Decimal` in `src/stdlib/math/decimal.ms`.
 
 - C lowering (`lx_type`) reads it with `ms_doc_marker_args` and makes a MIR record with one integer field per
   name; an extern type without the marker stays a runtime object. No type name appears in C.

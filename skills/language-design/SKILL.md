@@ -46,7 +46,7 @@ Chinmay's design preferences for languages, standard libraries, runtimes, compil
 - Derive diagrams and tooling from typed source. Write terse, technical docs with concrete signatures and examples; give each rule one home, link to it, and name unresolved decisions plainly.
 - Bias toward removing syntax and keywords: token cost matters (Manuscript should use fewer tokens than Go). Prefer one consistent rule for every type over special cases, markers, or marker interfaces that exist for one type, and do not split an API along implementation axes (one `promise` constructor with options, not several); derive behavior from rules that already exist.
 - Use plain, familiar names (`Date`, not `Calendar`) and one term per concept (`type`, never "record"; "borrow", never "lend"). Keep a type and its methods together, and types near their domain; lower layers never import higher ones.
-- Do not expose internals (stdlib externs live in `stdlib/internal/`), and ship one public interface per concern rather than several overlapping ones.
+- Do not expose internals (stdlib externs live in `src/stdlib/internal/`), and ship one public interface per concern rather than several overlapping ones.
 - A proposal starts from what exists today and first principles (what problem, is this the most effective fix), not a clean-slate redesign; tighten it, then run the skeptic review. A fix for one API's ergonomics may belong in the language instead.
 - `ms fmt` is zero-config: tune the defaults, never add a config file.
 - A stdlib function with more than three parameters takes an options record; three or fewer stay positional. A closure capture truly borrows or is a compile error, never a hidden copy. Callbacks may change the element they receive (`fn(var T)`).

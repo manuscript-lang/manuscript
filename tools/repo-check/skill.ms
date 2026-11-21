@@ -1,7 +1,7 @@
 // The agent skill teaches executable, versioned Manuscript: its examples check clean,
 // its pages are reachable and substantive, its server example is the tested fixture,
 // its manifests are accepted, and each common mistake fails as stated. The generated
-// call and module tables are checked by tools/ms/skill_calls.ms.
+// call and module tables are checked by src/ms/skill_calls.ms.
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	create_directory, remove, write_file from "@std/os/fs.ms",
@@ -12,8 +12,8 @@ import (
 	read_text from "./util.ms",
 )
 
-SKILL := "tools/ms/data/agent-skill"
-MISTAKES := "tools/ms/data/mistakes.txt"
+SKILL := "src/ms/data/agent-skill"
+MISTAKES := "src/ms/data/mistakes.txt"
 SCRATCH := "target/skill-check"
 EXAMPLES := 25
 MANIFESTS := 6
