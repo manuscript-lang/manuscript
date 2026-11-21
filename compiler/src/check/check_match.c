@@ -74,7 +74,7 @@ static bool match_is_wildcard(const MsBody *b, const MsExpr *path) {
 /* Checks one arm's pattern against the scrutinee type; false when it is not one handled without a
  * diagnostic. */
 static bool match_literal_arm(MsBody *b, const MsArm *arm, bool last, MsTy scrutinee, MatchSeen *seen) {
-    if (arm->bindings.len != 0 || arm->body.len != 0) {
+    if (arm->bindings.len != 0) {
         return false;
     }
     if (match_is_wildcard(b, arm->path)) {
@@ -99,35 +99,37 @@ static bool match_literal_arm(MsBody *b, const MsArm *arm, bool last, MsTy scrut
     return true;
 }
 
-/* The result type: the expected one, else the first arm's value. Arms are all values or all
- * statements; a mix, or a value that is not a primitive, is left to Rust. */
-static MsTy match_arm_values(MsBody *b, const MsExpr *e, MsTy expected) {
-    const MsArm *const *arms = (const MsArm *const *)e->u.match.arms.ptr;
-    const uint32_t count = e->u.match.arms.len;
-    const bool valued = arms[0]->value != NULL;
-    MsTy result = expected;
-    for (uint32_t i = 0; i < count && b->supported; i++) {
-        if ((arms[i]->value != NULL) != valued) {
-            return ms_body_unsupported(b);
-        }
-        if (!valued) {
-            continue;
-        }
-        const MsTy ty = ms_body_expr(b, arms[i]->value, result);
-        if (ty == MS_TY_NONE || ty == b->void_ty) {
-            return ms_body_unsupported(b);
-        }
-        result = ty;
+/* One arm's body: a statement arm runs its block (`falls` says it can reach the end), a value arm
+ * is checked against the result so far, which its value then fixes. The arm's bindings close
+ * with it. */
+static bool match_arm_body(MsBody *b, const MsArm *arm, bool valued, MsTy *result, bool *falls) {
+    const uint32_t first = b->facts->bindings.count;
+    if ((arm->value != NULL) != valued) {
+        return false;
     }
-    if (valued) {
-        return result;
+    if (!valued) {
+        *falls = ms_body_block(b, &arm->body) || *falls;
+        ms_body_close_from(b, first);
+        return b->supported;
     }
-    return expected == MS_TY_NONE || expected == b->void_ty ? b->void_ty : ms_body_unsupported(b);
+    const MsTy ty = ms_body_block_value(b, &arm->body, arm->value, *result);
+    ms_body_close_from(b, first);
+    if (ty == MS_TY_NONE || ty == b->void_ty) {
+        return false;
+    }
+    *result = ty;
+    return true;
 }
 
 MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *scrutinee = e->u.match.scrutinee;
     const MsTy ty = ms_body_expr(b, scrutinee, MS_TY_NONE);
+    if (ty == b->invalid_ty) {
+        // The scrutinee is already reported: the arms are not checked, and the match neither falls
+        // through nor has a value beyond the one the context expects.
+        b->match_falls = false;
+        return expected != MS_TY_NONE ? expected : b->never_ty;
+    }
     if (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_ALTERNATIVE) {
         return ms_body_match_alternative(b, e, expected, ty);
     }
@@ -138,17 +140,23 @@ MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected) {
     if (count == 0 || (e->u.match.arms.ptr[0]->from_if && ty != b->bool_ty)) {
         return ms_body_unsupported(b);
     }
+    const bool valued = e->u.match.arms.ptr[0]->value != NULL;
+    if (!valued && expected != MS_TY_NONE && expected != b->void_ty) {
+        return ms_body_unsupported(b);
+    }
     MatchSeen seen = {0};
-    bool ok = true;
-    for (uint32_t i = 0; i < count && ok; i++) {
-        ok = match_literal_arm(b, e->u.match.arms.ptr[i], i == count - 1, ty, &seen);
+    MsTy result = valued ? expected : b->void_ty;
+    bool ok = true, falls = false;
+    for (uint32_t i = 0; i < count && ok && b->supported; i++) {
+        const MsArm *arm = e->u.match.arms.ptr[i];
+        ok = match_literal_arm(b, arm, i == count - 1, ty, &seen) && match_arm_body(b, arm, valued, &result, &falls);
     }
     const bool covered = seen.wildcard || (ty == b->bool_ty && seen.has_true && seen.has_false);
     ms_buf_free(&seen.keys);
-    if (!ok || !covered) {
+    if (!ok || !covered || !b->supported) {
         return ms_body_unsupported(b);
     }
-    const MsTy result = match_arm_values(b, e, expected);
-    b->match_falls = true;
-    return result;
+    // A statement match falls through when some arm does; a value match always has a value.
+    b->match_falls = valued || falls;
+    return b->match_falls ? result : b->never_ty;
 }

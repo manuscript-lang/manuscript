@@ -8,13 +8,16 @@
 #include <string.h>
 
 #include "ms/dump.h"
+#include "ms/hints.h"
 #include "ms/effects.h"
 #include "ms/facts.h"
+#include "ms/methods.h"
 #include "ms/ownership.h"
 #include "ms/walk.h"
 
 typedef struct FactsRow {
     const char *kind;
+    MsBuf file; /* the module's name, NUL-terminated */
     MsBuf name;
     MsBuf key;
     uint32_t line;
@@ -24,6 +27,10 @@ typedef struct FactsRow {
     uint32_t first, last; /* the lines the entity owns: its own line to the line before the next entity */
     uint32_t scopes;      /* the bindings that close at scope end */
     bool own_known;       /* the ownership columns (modes, result ownership, scopes) are the checker's */
+    MsBuf external;       /* the JSON array of call targets outside the project (dump_sites.c) */
+    MsBuf flow;           /* the JSON array of flow steps */
+    bool sites_known;     /* the checker kept the body: external and flow are complete */
+    uint32_t group;       /* where the merged impl block of a method starts, else its own line: the order flows are written in */
 } FactsRow;
 
 static void facts_put_str(MsBuf *out, const MsNames *names, MsSym s) {
@@ -62,7 +69,12 @@ static void facts_put_type_text(MsBuf *out, const MsNames *names, const MsTypeRe
 }
 
 /* A JSON string of `text`, escaped as the Rust writer's html-safe form does. */
-static void facts_put_json(MsBuf *out, const char *text, size_t len) {
+bool ms_facts_is_std(const MsCheck *c, MsModId module) {
+    const MsStr path = ms_name(c->names, c->mods[module].path);
+    return path.len >= 5 && memcmp(path.ptr, "@std/", 5) == 0;
+}
+
+void ms_facts_put_json(MsBuf *out, const char *text, size_t len) {
     ms_buf_putc(out, '"');
     for (size_t i = 0; i < len; i++) {
         const unsigned char ch = (unsigned char)text[i];
@@ -84,7 +96,152 @@ static void facts_put_json(MsBuf *out, const char *text, size_t len) {
     ms_buf_putc(out, '"');
 }
 
-static void facts_put_json_buf(MsBuf *out, const MsBuf *text) { facts_put_json(out, text->data == NULL ? "" : text->data, text->len); }
+static void facts_put_json_buf(MsBuf *out, const MsBuf *text) { ms_facts_put_json(out, text->data == NULL ? "" : text->data, text->len); }
+
+
+/* ---- referenced project types ---- */
+
+/* The symbol that declares the nominal type `ty` is an instance of, or MS_NONE. */
+static MsSymId facts_type_symbol(const MsCheck *c, MsTy ty) {
+    const MsKind kind = ms_ty_kind(&c->tys, ty);
+    if (kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT) {
+        return MS_NONE;
+    }
+    for (MsSymId s = 0; s < c->syms.count; s++) {
+        const MsDecl *d = c->syms.decl[s];
+        const bool nominal = d != NULL && (d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE);
+        if (nominal && c->syms.ty[s] != MS_TY_NONE && c->tys.id[c->syms.ty[s]] == c->tys.id[ty]) {
+            return s;
+        }
+    }
+    return MS_NONE;
+}
+
+typedef struct FactsRefList {
+    MsBuf keys; /* the entity keys found, as quoted JSON strings separated by ", " */
+    uint32_t count;
+    MsTy seen[256];
+    uint32_t nseen;
+} FactsRefList;
+
+static bool facts_ref_has(const FactsRefList *list, const MsBuf *quoted) {
+    const char *at = list->keys.data;
+    const size_t total = list->keys.len;
+    for (size_t i = 0; at != NULL && i + quoted->len <= total; i++) {
+        if (memcmp(at + i, quoted->data, quoted->len) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The project types the written type names, in the order the Rust collector finds them: a stack that takes the first
+ * type argument first, then the parameters, then the result. Each shared subtree is visited once. */
+static void facts_collect_refs(const MsCheck *c, MsTy root, FactsRefList *list) {
+    MsTy pending[128];
+    uint32_t top = 0;
+    pending[top++] = root;
+    while (top > 0) {
+        const MsTy ty = pending[--top];
+        bool visited = false;
+        for (uint32_t i = 0; i < list->nseen; i++) {
+            visited = visited || list->seen[i] == ty;
+        }
+        if (visited || ty == MS_TY_NONE) {
+            continue;
+        }
+        if (list->nseen < 256) {
+            list->seen[list->nseen++] = ty;
+        }
+        const MsSymId sym = facts_type_symbol(c, ty);
+        const MsDecl *decl = sym == MS_NONE ? NULL : c->syms.decl[sym];
+        if (decl != NULL && !(decl->synthetic && decl->kind == MS_D_INTERFACE) && !ms_facts_is_std(c, c->syms.module[sym])) {
+            MsBuf quoted = {0};
+            MsBuf key = {0};
+            const MsStr file = ms_name(c->names, c->mods[c->syms.module[sym]].path);
+            const MsStr name = ms_name(c->names, c->syms.name[sym]);
+            ms_buf_printf(&key, "%.*s#%s#%.*s", (int)file.len, file.ptr, ms_facts_kind_of(decl), (int)name.len, name.ptr);
+            ms_facts_put_json(&quoted, key.data, key.len);
+            if (!facts_ref_has(list, &quoted)) {
+                ms_buf_puts(&list->keys, list->count == 0 ? "" : ", ");
+                ms_buf_put(&list->keys, quoted.data, quoted.len);
+                list->count++;
+            }
+            ms_buf_free(&key);
+            ms_buf_free(&quoted);
+        }
+        if (ms_ty_kind(&c->tys, ty) == MS_K_FUNCTION) {
+            const MsTyParam *params = ms_ty_params(&c->tys, ty);
+            pending[top < 128 ? top++ : 127] = c->tys.result[ty];
+            for (uint32_t i = c->tys.nparams[ty]; i > 0 && top < 128; i--) {
+                pending[top++] = params[i - 1].ty;
+            }
+        }
+        const MsTy *args = ms_ty_args(&c->tys, ty);
+        for (uint32_t i = c->tys.nargs[ty]; i > 0 && top < 128; i--) {
+            pending[top++] = args[i - 1];
+        }
+    }
+}
+
+/* Replaces the next `"refs": []` of `body` after `*from` with the list, and moves `*from` past it. */
+static void facts_patch_refs(MsBuf *body, size_t *from, const FactsRefList *list) {
+    static const char empty[] = "\"refs\": []";
+    const size_t width = sizeof empty - 1;
+    char *text = body->data;
+    size_t at = *from;
+    while (at + width <= body->len && memcmp(text + at, empty, width) != 0) {
+        at++;
+    }
+    if (at + width > body->len) {
+        return;
+    }
+    MsBuf patched = {0};
+    ms_buf_put(&patched, text, at);
+    ms_buf_puts(&patched, "\"refs\": [");
+    ms_buf_put(&patched, list->keys.data == NULL ? "" : list->keys.data, list->keys.len);
+    ms_buf_putc(&patched, ']');
+    *from = patched.len;
+    ms_buf_put(&patched, text + at + width, body->len - at - width);
+    ms_buf_free(body);
+    *body = patched;
+}
+
+/* The checked types a slot of a row is written with: one for a parameter or a field, a case's payload types for a case. */
+typedef struct FactsSlotTypes {
+    MsTy ty[16];
+    uint32_t count;
+} FactsSlotTypes;
+
+/* Fills the `refs` of the slots of a row's JSON `body`, in the order they appear, from the checked types. */
+static void facts_row_refs(const MsCheck *c, MsBuf *body, const FactsSlotTypes *slots, uint32_t count) {
+    size_t from = 0;
+    for (uint32_t i = 0; i < count; i++) {
+        FactsRefList list = {0};
+        for (uint32_t k = 0; k < slots[i].count; k++) {
+            facts_collect_refs(c, slots[i].ty[k], &list);
+        }
+        facts_patch_refs(body, &from, &list);
+        ms_buf_free(&list.keys);
+    }
+}
+
+/* A function signature's slots: its parameters, then its result. */
+static uint32_t facts_signature_slots(const MsCheck *c, MsTy sig, uint32_t nparams, bool has_result, FactsSlotTypes *slots) {
+    uint32_t n = 0;
+    const bool function = sig != MS_TY_NONE && ms_ty_kind(&c->tys, sig) == MS_K_FUNCTION;
+    for (uint32_t i = 0; i < nparams && n < 63; i++) {
+        slots[n].count = function && i < c->tys.nparams[sig] ? 1u : 0u;
+        slots[n].ty[0] = slots[n].count != 0 ? ms_ty_params(&c->tys, sig)[i].ty : MS_TY_NONE;
+        n++;
+    }
+    if (has_result && n < 64) {
+        slots[n].count = function ? 1u : 0u;
+        slots[n].ty[0] = function ? c->tys.result[sig] : MS_TY_NONE;
+        n++;
+    }
+    return n;
+}
 
 static void facts_put_slot(MsBuf *out, const MsNames *names, MsSym name, const MsTypeRef *ty, bool exclusive, const char *mode) {
     MsBuf text = {0};
@@ -173,6 +330,8 @@ static FactsRow *facts_add_row(MsBuf *rows, const MsNames *names, const char *fi
     memset(row, 0, sizeof *row);
     row->kind = kind;
     row->line = line;
+    ms_buf_puts(&row->file, file);
+    ms_buf_putc(&row->file, '\0');
     ms_buf_printf(&row->key, "%s#%s#", file, kind);
     return row;
 }
@@ -192,7 +351,7 @@ static int facts_compare_rows(const void *a, const void *b) {
     return x->line < y->line ? -1 : x->line > y->line; /* equal keys: the earlier declaration first */
 }
 
-static const char *facts_kind_of(const MsDecl *d) {
+const char *ms_facts_kind_of(const MsDecl *d) {
     switch (d->kind) {
     case MS_D_FN: return "fn";
     case MS_D_CONST: return "constant";
@@ -206,7 +365,7 @@ static const char *facts_kind_of(const MsDecl *d) {
 }
 
 /* The impl's display name: `Contract for Type`, or `Type` for an inherent or synthesized impl. */
-static void facts_put_impl_name(MsBuf *out, const MsNames *names, const MsDecl *d) {
+void ms_facts_put_impl_name(MsBuf *out, const MsNames *names, const MsDecl *d) {
     if (d->u.impl.contract != NULL && !d->synthetic) {
         facts_put_str(out, names, d->u.impl.contract->kind == MS_TYPE_NAMED ? d->u.impl.contract->name : 0);
         ms_buf_puts(out, " for ");
@@ -383,7 +542,43 @@ static void facts_fill_fn(FactsRow *row, const MsNames *names, const FactsOwn *o
         ownership = facts->ret_borrowed[d->id] ? "borrow" : "owned";
     }
     facts_put_tail(&row->body, names, d->u.fn.result, "", facts_tries_of(params, d->u.fn.body), ownership);
+    FactsSlotTypes slots[64];
+    const MsSymId sym = ms_decl_own_symbol(own->check, own->module, d);
+    const uint32_t n = facts_signature_slots(own->check, sym == MS_NONE ? MS_TY_NONE : own->check->syms.ty[sym], params.len, d->u.fn.result != NULL, slots);
+    facts_row_refs(own->check, &row->body, slots, n);
     free(modes);
+}
+
+/* The `refs` of a record's fields, from its checked field types. */
+static void facts_type_refs(const FactsOwn *own, const MsDecl *d, MsBuf *body) {
+    MsCheck *c = own->check;
+    const MsSymId sym = ms_decl_own_symbol(c, own->module, d);
+    const MsDef *def = sym == MS_NONE ? NULL : ms_def(c, sym);
+    FactsSlotTypes slots[64];
+    uint32_t n = 0;
+    for (uint32_t i = 0; def != NULL && i < d->u.type.fields.len && n < 64; i++) {
+        slots[n].count = i < def->nfields ? 1u : 0u;
+        slots[n].ty[0] = i < def->nfields ? def->fields[i].ty : MS_TY_NONE;
+        n++;
+    }
+    facts_row_refs(c, body, slots, n);
+}
+
+/* The `refs` of an enum's cases: for each case, the types of its payload. */
+static void facts_enum_refs(const FactsOwn *own, const MsDecl *d, MsBuf *body) {
+    MsCheck *c = own->check;
+    const MsSymId sym = ms_decl_own_symbol(c, own->module, d);
+    const MsDef *def = sym == MS_NONE ? NULL : ms_def(c, sym);
+    FactsSlotTypes slots[64];
+    uint32_t n = 0;
+    for (uint32_t i = 0; def != NULL && i < d->u.enumeration.cases.len && i < def->ncases && n < 64; i++) {
+        slots[n].count = 0;
+        for (uint32_t k = 0; k < def->cases[i].nfields && slots[n].count < 16; k++) {
+            slots[n].ty[slots[n].count++] = def->cases[i].fields[k].ty;
+        }
+        n++;
+    }
+    facts_row_refs(c, body, slots, n);
 }
 
 static void facts_fill_decl(FactsRow *row, const MsNames *names, const FactsOwn *own, const MsDecl *d) {
@@ -405,6 +600,7 @@ static void facts_fill_decl(FactsRow *row, const MsNames *names, const FactsOwn 
         facts_put_case_slots(body, names, d);
         ms_buf_putc(body, ']');
         facts_put_tail(body, names, NULL, "", 0, "");
+        facts_enum_refs(own, d, body);
         return;
     case MS_D_INTERFACE:
         facts_put_str(&row->name, names, d->u.iface.name);
@@ -428,7 +624,7 @@ static void facts_fill_decl(FactsRow *row, const MsNames *names, const FactsOwn 
         return;
     }
     case MS_D_IMPL:
-        facts_put_impl_name(&row->name, names, d);
+        ms_facts_put_impl_name(&row->name, names, d);
         break;
     default:
         ms_buf_put(&row->name, d->u.test.name.ptr, d->u.test.name.len);
@@ -437,10 +633,13 @@ static void facts_fill_decl(FactsRow *row, const MsNames *names, const FactsOwn 
     }
     ms_buf_putc(body, ']');
     facts_put_tail(body, names, result, "", tries, "");
+    if (d->kind == MS_D_TYPE) {
+        facts_type_refs(own, d, body);
+    }
 }
 
-static void facts_fill_method(FactsRow *row, const MsNames *names, const MsDecl *impl, const MsMethod *m) {
-    facts_put_impl_name(&row->name, names, impl);
+static void facts_fill_method(FactsRow *row, const MsNames *names, const FactsOwn *own, const MsDecl *impl, const MsMethod *m) {
+    ms_facts_put_impl_name(&row->name, names, impl);
     ms_buf_putc(&row->name, '.');
     facts_put_str(&row->name, names, m->func.name);
     ms_buf_puts(&row->body, ", \"slots\": ");
@@ -452,6 +651,16 @@ static void facts_fill_method(FactsRow *row, const MsNames *names, const MsDecl 
         mode = "move";
     }
     facts_put_tail(&row->body, names, m->func.result, mode, facts_tries_of(m->func.params, m->func.body), "");
+    const MsMethods *rows = own->check->methods == NULL ? NULL : &own->check->methods->methods;
+    for (uint32_t r = 0; rows != NULL && r < rows->count; r++) {
+        if (rows->decl[r] != &m->func) {
+            continue;
+        }
+        FactsSlotTypes slots[64];
+        const uint32_t n = facts_signature_slots(own->check, rows->ty[r], m->func.params.len, m->func.result != NULL, slots);
+        facts_row_refs(own->check, &row->body, slots, n);
+        break;
+    }
 }
 
 /* `"field": ["a", "b"]` for `count` strings; `key_prefix`, when set, goes in front of each. */
@@ -537,17 +746,7 @@ static void facts_put_meta(MsBuf *out, const MsCheck *c, MsModId m, const MsDecl
     ms_buf_free(&ty);
 }
 
-static int facts_str_compare(const void *a, const void *b) {
-    const MsStr x = *(const MsStr *)a, y = *(const MsStr *)b;
-    const uint32_t common = x.len < y.len ? x.len : y.len;
-    const int order = common == 0 ? 0 : memcmp(x.ptr, y.ptr, common);
-    if (order != 0) {
-        return order;
-    }
-    return (x.len > y.len) - (x.len < y.len);
-}
-
-/* `[{"file", "paths"}]`: the module's import paths, sorted and unique. */
+/* `{"file", "paths"}`: the module's import paths, sorted and unique. */
 static void facts_put_imports(MsBuf *out, const MsModule *module, const char *file, size_t file_len) {
     MsBuf paths = {0};
     for (uint32_t i = 0; i < module->nimports; i++) {
@@ -557,21 +756,21 @@ static void facts_put_imports(MsBuf *out, const MsModule *module, const char *fi
     MsStr *items = ms_buf_items(&paths);
     const size_t count = paths.len / sizeof *items;
     if (count > 1) {
-        qsort(items, count, sizeof *items, facts_str_compare);
+        qsort(items, count, sizeof *items, ms_str_compare_ptr);
     }
-    ms_buf_puts(out, "[{\"file\": ");
-    facts_put_json(out, file, file_len);
+    ms_buf_puts(out, "{\"file\": ");
+    ms_facts_put_json(out, file, file_len);
     ms_buf_puts(out, ", \"paths\": [");
     const char *sep = "";
     for (size_t i = 0; i < count; i++) {
-        if (i > 0 && facts_str_compare(&items[i - 1], &items[i]) == 0) {
+        if (i > 0 && ms_str_compare_ptr(&items[i - 1], &items[i]) == 0) {
             continue;
         }
         ms_buf_puts(out, sep);
-        facts_put_json(out, items[i].ptr, items[i].len);
+        ms_facts_put_json(out, items[i].ptr, items[i].len);
         sep = ", ";
     }
-    ms_buf_puts(out, "]}]");
+    ms_buf_puts(out, "]}");
     ms_buf_free(&paths);
 }
 
@@ -588,7 +787,7 @@ static bool facts_has_default(MsParams params) {
  * one it does not cover (methods, tests, impls), prints empty lists and `"effects_known": false`.
  * `calls` lists the project functions the body calls, as entity keys: a function with a method or
  * interface call or an implicit `close` is partial, so its calls are never printed short. */
-static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects *rows, uint32_t nrows, const char *file) {
+static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects *rows, uint32_t nrows) {
     const MsEntityEffects *found = NULL;
     for (uint32_t r = 0; r < nrows; r++) {
         found = rows[r].decl == d ? &rows[r] : found;
@@ -607,27 +806,105 @@ static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects
     ms_buf_puts(out, ", ");
     facts_put_strings(out, "permits", found->permits, found->npermits, NULL);
     ms_buf_puts(out, ", ");
-    MsBuf prefix = {0};
-    ms_buf_printf(&prefix, "%s#fn#", file);
-    ms_buf_putc(&prefix, '\0');
-    facts_put_strings(out, "calls", found->calls, found->ncalls, prefix.data);
-    ms_buf_free(&prefix);
+    facts_put_strings(out, "calls", found->calls, found->ncalls, NULL);
     ms_buf_puts(out, ", \"effects_known\": true");
 }
 
-void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
+/* Whether rows `a` and `b` have one key: impl blocks of one type share it. */
+static bool facts_same_key(const FactsRow *a, const FactsRow *b) {
+    return a->key.len == b->key.len && memcmp(a->key.data, b->key.data, a->key.len) == 0;
+}
+
+/* The entities, one JSON object each; of rows with one key only the last prints, as the Rust map keeps it. */
+static void facts_put_entities(MsBuf *out, const FactsRow *items, size_t count) {
+    bool first = true;
+    for (size_t i = 0; i < count; i++) {
+        if (i + 1 < count && facts_same_key(&items[i], &items[i + 1])) {
+            continue;
+        }
+        ms_buf_puts(out, first ? "\n    " : ",\n    ");
+        first = false;
+        ms_buf_puts(out, "{\"key\": ");
+        facts_put_json_buf(out, &items[i].key);
+        ms_buf_puts(out, ", \"file\": ");
+        ms_facts_put_json(out, items[i].file.data, items[i].file.len - 1);
+        ms_buf_printf(out, ", \"kind\": \"%s\", \"name\": ", items[i].kind);
+        facts_put_json_buf(out, &items[i].name);
+        /* Impl blocks that share a key must all be kept for the targets and flow to be complete. */
+        bool complete = true;
+        for (size_t k = i + 1; k > 0 && facts_same_key(&items[k - 1], &items[i]); k--) {
+            complete = complete && items[k - 1].sites_known;
+        }
+        ms_buf_printf(out, ", \"line\": %u, \"scopes\": %u, \"ownership_known\": %s, \"sites_known\": %s, \"external\": ", items[i].line,
+                      items[i].scopes, items[i].own_known ? "true" : "false", complete ? "true" : "false");
+        ms_buf_put(out, items[i].external.data, items[i].external.len);
+        ms_buf_printf(out, ", \"first\": %u, \"last\": %u, ", items[i].first, items[i].last);
+        ms_buf_put(out, items[i].effects.data, items[i].effects.len);
+        ms_buf_put(out, items[i].meta.data, items[i].meta.len);
+        ms_buf_put(out, items[i].body.data, items[i].body.len);
+        ms_buf_putc(out, '}');
+    }
+}
+
+/* The flows, one per key: of rows with one key, the flow of the block that merges last is the one kept. */
+static void facts_put_flows(MsBuf *out, const FactsRow *items, size_t count) {
+    bool first = true;
+    for (size_t i = 0; i < count; i++) {
+        if (i + 1 < count && facts_same_key(&items[i], &items[i + 1])) {
+            continue;
+        }
+        /* Impl blocks of one type share a key: the flow of the block that merges last is the one kept. */
+        size_t best = i;
+        for (size_t k = i; k > 0 && facts_same_key(&items[k - 1], &items[i]); k--) {
+            const bool later = items[k - 1].group > items[best].group || (items[k - 1].group == items[best].group && items[k - 1].line > items[best].line);
+            best = later ? k - 1 : best;
+        }
+        ms_buf_puts(out, first ? "\n    {\"key\": " : ",\n    {\"key\": ");
+        first = false;
+        facts_put_json_buf(out, &items[i].key);
+        ms_buf_puts(out, ", \"steps\": ");
+        ms_buf_put(out, items[best].flow.data, items[best].flow.len);
+        ms_buf_putc(out, '}');
+    }
+}
+
+/* The call targets and flow of a row. A declaration that runs no code (a type, an interface) has none; a callable has them
+ * when the checker kept its body. */
+static void facts_fill_sites(MsSites *sites, FactsRow *row, const MsDecl *d, const MsMethod *method) {
+    if (method != NULL) {
+        row->sites_known = ms_sites_method(sites, d, method, &row->external, &row->flow);
+        return;
+    }
+    const bool runs = d->kind == MS_D_FN || d->kind == MS_D_CONST || d->kind == MS_D_TEST;
+    if (runs) {
+        row->sites_known = ms_sites_decl(sites, d, &row->external, &row->flow);
+        return;
+    }
+    ms_buf_puts(&row->external, "[]");
+    ms_buf_puts(&row->flow, "[]");
+    row->sites_known = d->kind != MS_D_IMPL;
+}
+
+/* One import entry of the document: the file and its JSON object. */
+typedef struct FactsImport {
+    MsBuf file;
+    MsBuf json;
+} FactsImport;
+
+/* Adds the rows and the import entry of module `m`, whose source is `text`. */
+static void facts_add_module(MsBuf *rows, MsBuf *imports, MsCheck *c, MsModId m, MsStr text) {
     const MsModuleRow *row = &c->mods[m];
     const MsModule *module = row->syntax;
     const MsNames *names = c->names;
     MsBuf file = {0};
     facts_put_str(&file, names, row->path);
     ms_buf_putc(&file, '\0');
-    MsBuf rows = {0};
     uint32_t total_lines = 1; /* the lines of the source, as the Rust side counts them: newlines plus one */
     for (uint32_t i = 0; i < text.len; i++) {
         total_lines += text.ptr[i] == '\n' ? 1 : 0;
     }
     MsArena scratch = {0};
+    MsSites *sites = ms_sites_new(c, m, text);
     FactsOwn own = {.check = c, .module = m, .classifier = ms_classifier_new(c)};
     ms_classifier_mark_methods(own.classifier, c->mods[m].facts == NULL ? NULL : c->mods[m].facts->methods);
     uint32_t neffects = 0;
@@ -637,11 +914,13 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
         if (d->synthetic && d->kind == MS_D_INTERFACE) {
             continue;
         }
-        FactsRow *fact = facts_add_row(&rows, names, file.data, facts_kind_of(d),
+        FactsRow *fact = facts_add_row(rows, names, file.data, ms_facts_kind_of(d),
                                        d->kind == MS_D_IMPL ? facts_impl_line(module, names, i) : d->pos.line);
         facts_fill_decl(fact, names, &own, d);
+        facts_fill_sites(sites, fact, d, NULL);
+        fact->group = d->kind == MS_D_IMPL ? facts_impl_line(module, names, i) : d->pos.line;
         facts_seal_key(fact);
-        facts_put_effects(&fact->effects, d, effect_rows, neffects, file.data);
+        facts_put_effects(&fact->effects, d, effect_rows, neffects);
         facts_put_meta(&fact->meta, c, m, d, NULL);
         fact->first = d->pos.line;
         const uint32_t decl_last = i + 1 < module->ndecls ? module->decls[i + 1]->pos.line - 1 : total_lines;
@@ -651,10 +930,12 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
         }
         for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
             const MsMethod *meth = d->u.impl.methods.ptr[k];
-            FactsRow *method = facts_add_row(&rows, names, file.data, "method", meth->pos.line);
-            facts_fill_method(method, names, d, meth);
+            FactsRow *method = facts_add_row(rows, names, file.data, "method", meth->pos.line);
+            facts_fill_method(method, names, &own, d, meth);
+            facts_fill_sites(sites, method, d, meth);
+            method->group = fact->group;
             facts_seal_key(method);
-            facts_put_effects(&method->effects, NULL, effect_rows, neffects, file.data);
+            facts_put_effects(&method->effects, NULL, effect_rows, neffects);
             MsBuf label = {0};
             facts_put_str(&label, names, d->u.impl.receiver->kind == MS_TYPE_NAMED ? d->u.impl.receiver->name : 0);
             ms_buf_putc(&label, '.');
@@ -665,46 +946,68 @@ void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
             method->last = k + 1 < d->u.impl.methods.len ? d->u.impl.methods.ptr[k + 1]->pos.line - 1 : decl_last;
         }
     }
-    FactsRow *items = ms_buf_items(&rows);
-    const size_t count = rows.len / sizeof *items;
+    FactsImport *entry = ms_buf_push(imports, sizeof *entry);
+    memset(entry, 0, sizeof *entry);
+    ms_buf_puts(&entry->file, file.data);
+    facts_put_imports(&entry->json, module, file.data, file.len - 1);
+    ms_sites_free(sites);
+    ms_arena_free(&scratch);
+    ms_classifier_free(own.classifier);
+    ms_buf_free(&file);
+}
+
+static int facts_compare_imports(const void *a, const void *b) {
+    const FactsImport *x = a, *y = b;
+    return strcmp(x->file.data, y->file.data);
+}
+
+/* Writes the document of the collected rows and imports, and frees both. */
+static void facts_write(MsBuf *out, MsBuf *rows, MsBuf *imports) {
+    FactsRow *items = ms_buf_items(rows);
+    const size_t count = rows->len / sizeof *items;
     qsort(items, count, sizeof *items, facts_compare_rows);
     ms_buf_puts(out, "{\n  \"entities\": [");
-    bool first = true;
-    for (size_t i = 0; i < count; i++) {
-        if (i + 1 < count && items[i].key.len == items[i + 1].key.len && memcmp(items[i].key.data, items[i + 1].key.data, items[i].key.len) == 0) {
-            continue; /* impl blocks of one type share a key: the last block prints, as the Rust map keeps it */
-        }
-        ms_buf_puts(out, first ? "\n    " : ",\n    ");
-        first = false;
-        ms_buf_puts(out, "{\"key\": ");
-        facts_put_json_buf(out, &items[i].key);
-        ms_buf_puts(out, ", \"file\": ");
-        facts_put_json(out, file.data, file.len - 1);
-        ms_buf_printf(out, ", \"kind\": \"%s\", \"name\": ", items[i].kind);
-        facts_put_json_buf(out, &items[i].name);
-        ms_buf_printf(out, ", \"line\": %u, \"scopes\": %u, \"ownership_known\": %s, \"external\": [], \"first\": %u, \"last\": %u, ",
-                      items[i].line, items[i].scopes, items[i].own_known ? "true" : "false", items[i].first, items[i].last);
-        ms_buf_put(out, items[i].effects.data, items[i].effects.len);
-        ms_buf_put(out, items[i].meta.data, items[i].meta.len);
-        ms_buf_put(out, items[i].body.data, items[i].body.len);
-        ms_buf_putc(out, '}');
+    facts_put_entities(out, items, count);
+    FactsImport *entries = ms_buf_items(imports);
+    const size_t nentries = imports->len / sizeof *entries;
+    qsort(entries, nentries, sizeof *entries, facts_compare_imports);
+    ms_buf_puts(out, "\n  ],\n  \"imports\": [");
+    for (size_t i = 0; i < nentries; i++) {
+        ms_buf_puts(out, i == 0 ? "" : ", ");
+        ms_buf_put(out, entries[i].json.data, entries[i].json.len);
+        ms_buf_free(&entries[i].file);
+        ms_buf_free(&entries[i].json);
     }
-    ms_buf_puts(out, "\n  ],\n  \"imports\": ");
-    facts_put_imports(out, module, file.data, file.len - 1);
-    ms_buf_puts(out, ", \"flows\": []\n}\n");
+    ms_buf_puts(out, "], \"flows\": [");
+    facts_put_flows(out, items, count);
+    ms_buf_puts(out, "\n  ]\n}\n");
     for (size_t i = 0; i < count; i++) {
+        ms_buf_free(&items[i].file);
         ms_buf_free(&items[i].name);
         ms_buf_free(&items[i].key);
         ms_buf_free(&items[i].body);
         ms_buf_free(&items[i].effects);
         ms_buf_free(&items[i].meta);
+        ms_buf_free(&items[i].external);
+        ms_buf_free(&items[i].flow);
     }
-    ms_arena_free(&scratch);
-    ms_classifier_free(own.classifier);
-    ms_buf_free(&rows);
-    ms_buf_free(&file);
+    ms_buf_free(rows);
+    ms_buf_free(imports);
 }
 
+void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text) {
+    MsBuf rows = {0}, imports = {0};
+    facts_add_module(&rows, &imports, c, m, text);
+    facts_write(out, &rows, &imports);
+}
+
+void ms_dump_project_facts(MsBuf *out, MsCheck *c, const MsModId *mods, const MsStr *texts, uint32_t count) {
+    MsBuf rows = {0}, imports = {0};
+    for (uint32_t i = 0; i < count; i++) {
+        facts_add_module(&rows, &imports, c, mods[i], texts[i]);
+    }
+    facts_write(out, &rows, &imports);
+}
 /* The builtin kinds the typed lint rules ask about; any other type is "Other". A node with type arguments also
  * names the kind of the first ("arg"). */
 static const char *nodes_kind(const MsTyTable *tys, MsTy ty) {

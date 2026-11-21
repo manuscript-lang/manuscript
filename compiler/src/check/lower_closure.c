@@ -41,7 +41,7 @@ MirTy lb_fn_ty(Lb *lb, MsTy ty) {
 
 /* A name no function of the module has: `base`, else `base.1`, `base.2`, ... (what the Rust text
  * form prints for a name two functions share, so the text names one function each). */
-static MsSym lb_unique_name(Lb *lb, MsStr base) {
+MsSym lb_unique_name(Lb *lb, MsStr base) {
     for (uint32_t k = 0;; k++) {
         const MsStr text = k == 0 ? base : ms_arena_fmt(&lb->m->arena, "%.*s.%u", (int)base.len, base.ptr, k);
         const MsSym sym = mir_name(lb->m, text.ptr, text.len);
@@ -100,13 +100,13 @@ LbVal lb_function_value(Lb *lb, const MsExpr *e) {
     const uint32_t func = sym < lb->c->syms.count ? lb->func_of[sym] : MIR_NONE;
     const MirTy fty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (func == MIR_NONE || !lb_is_fn(lb, fty)) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     if (lb->thunk_of[sym] == MIR_NONE) {
         lb->thunk_of[sym] = lb_thunk(lb, func);
     }
     if (lb->thunk_of[sym] == MIR_NONE) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirImm target = {.tag = MI_FUNC, .a = lb->thunk_of[sym]};
     return (LbVal){mir_b_emit(&lb->b, MOP_ClosureNew, NULL, 0, target, fty), true};
@@ -117,12 +117,12 @@ LbVal lb_function_value(Lb *lb, const MsExpr *e) {
 LbVal lb_call_value(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind != MS_E_NAME || lb->facts->res_kind[callee->id] != MS_RES_BINDING) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirTy fty = lb_mir_ty(lb, lb->facts->bindings.ty[lb->facts->res_ref[callee->id]]);
     const uint32_t count = e->u.call.args.len;
     if (!lb_is_fn(lb, fty) || mir_ty_data(lb->m, mir_ty_unscoped(fty))->nargs != count) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     MirValue *args = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
     MirValue *temps = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
@@ -130,7 +130,7 @@ LbVal lb_call_value(Lb *lb, const MsExpr *e) {
     args[0] = lb_expr(lb, callee).v;
     for (uint32_t i = 0; i < count && lb->ok; i++) {
         if (e->u.call.args.ptr[i].has_name) {
-            return lb_unsupported(lb);
+            return LB_UNSUPPORTED(lb);
         }
         const LbVal value = lb_expr(lb, e->u.call.args.ptr[i].value);
         args[i + 1] = value.v;
@@ -219,7 +219,7 @@ static uint32_t lb_add_closure(Lb *lb, const MsExpr *e, const MirTyData *fn, con
 LbVal lb_lambda(Lb *lb, const MsExpr *e) {
     const MirTy fty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (!lb_is_fn(lb, fty) || !lb_lambda_params_plain(e)) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirTyData *fn = mir_ty_data(lb->m, mir_ty_unscoped(fty));
     LbCaptures found = {.lb = lb, .first = lb->facts->lambda_first[e->id]};
@@ -252,7 +252,7 @@ LbVal lb_lambda(Lb *lb, const MsExpr *e) {
         }
     }
     if (found.overflow || fn->nargs != e->u.lambda.params.len) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const uint32_t func = lb_add_closure(lb, e, fn, &found, cap_tys, by_ref);
     const MirImm target = {.tag = MI_FUNC, .a = func};

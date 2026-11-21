@@ -157,7 +157,7 @@ typedef struct MsEntityEffects {
     uint32_t neffects;
     const MsStr *permits; /* `allow_effect` patterns in force, as written */
     uint32_t npermits;
-    const MsStr *calls; /* project callables the body calls: declaration names, sorted and unique */
+    const MsStr *calls; /* project callables the body calls: entity keys `path#fn#name`, sorted and unique */
     uint32_t ncalls;
     const MsStr *external; /* callees outside the project: their symbol ids, sorted and unique */
     uint32_t nexternal;
@@ -192,5 +192,11 @@ typedef struct MsPackageViolation {
  * driver. False when the graph is malformed. */
 MS_NODISCARD bool ms_effect_package_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules,
                                                uint32_t count, MsPackageViolation **out, uint32_t *nout, bool *complete);
+
+/* The violations of the project's own modules among `modules` (no `cap`, no `package`), with the text `ms lint`
+ * reports as MSL116 (`root` reaches E: a -> b; permit it ...). `*complete` is false when a project callable reaches code
+ * the scan cannot see through, so a missing violation proves nothing. False when the graph is malformed. */
+MS_NODISCARD bool ms_effect_project_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules, uint32_t count,
+                                               MsPackageViolation **out, uint32_t *nout, bool *complete);
 
 #endif

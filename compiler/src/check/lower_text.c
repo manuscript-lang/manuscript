@@ -44,7 +44,7 @@ static bool lt_literal(Lb *lb, MsStr lit, LtPieces *pieces) {
 }
 
 /* The runtime function `name` over `params`, declared once per name and operand types. */
-static uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want) {
+uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want) {
     for (uint32_t i = 0; i < lb->m->nexterns; i++) {
         const MirExtern *known = &lb->m->externs[i];
         if (known->name == want->name && known->nparams == want->nparams &&
@@ -55,12 +55,38 @@ static uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want) {
     return mir_add_extern(lb->m, want);
 }
 
+/* The text of a value of checker type `checked` through the `to_string` its runtime declares;
+ * `.v` is MIR_NONE (the function still lowerable) when the type declares none. */
+LbVal lt_scalar_text(Lb *lb, MsTy checked, MirValue v) {
+    const struct MsRtFn *form = lb_native_function(lb, checked, ms_intern_cstr(lb->c->names, "to_string"));
+    if (form == NULL) {
+        return (LbVal){MIR_NONE, false};
+    }
+    return lb_native_call(lb, form, &v, 1, MIR_STR);
+}
+
+/* `value.to_string()` where the type declares no runtime method of that name: a String's copy of itself, else the
+ * scalar's runtime text form; another type marks the function unsupported. */
+LbVal lt_to_string(Lb *lb, LbVal value, MsTy checked) {
+    if (mir_b_ty(&lb->b, value.v) == MIR_STR) {
+        return value.owned ? value : (LbVal){lb_copy(lb, value.v), true};
+    }
+    const LbVal text = lt_scalar_text(lb, checked, value.v);
+    if (!lb->ok || text.v == MIR_NONE) {
+        return LB_UNSUPPORTED(lb);
+    }
+    if (value.owned) {
+        lb_drop(lb, value.v);
+    }
+    return text;
+}
+
 /* The piece `value` of a text: a string as it is, a value with a text form as that form's result
  * (or itself when the join writes it). Any other type marks the function unsupported. */
 static LtPiece lt_piece(Lb *lb, LbVal value, MsTy checked, uint32_t own_form) {
     if (own_form != MS_NONE) { // the type's own `to_string`, resolved by the checker
         if (!lm_has(lb, own_form) || lb->method_func[own_form] == MIR_NONE) {
-            (void)lb_unsupported(lb);
+            (void)LB_UNSUPPORTED(lb);
             return (LtPiece){MIR_NONE, false, false};
         }
         const MirValue text = mir_b_call(&lb->b, lb->method_func[own_form], &value.v, 1);
@@ -77,14 +103,17 @@ static LtPiece lt_piece(Lb *lb, LbVal value, MsTy checked, uint32_t own_form) {
     if (ty == MIR_INT) {
         return (LtPiece){value.v, true, value.owned}; // the join writes an integer itself (`msrt_string_fmtN`)
     }
-    const struct MsRtFn *form = lb_native_function(lb, checked, ms_intern_cstr(lb->c->names, "to_string"));
-    if (form == NULL) {
-        (void)lb_unsupported(lb); // no declared text form for this type
-        return (LtPiece){MIR_NONE, false, false};
-    }
-    const LbVal text = lb_native_call(lb, form, &value.v, 1, MIR_STR);
+    LbVal text = lt_scalar_text(lb, checked, value.v);
     if (!lb->ok) {
         return (LtPiece){MIR_NONE, false, false};
+    }
+    if (text.v == MIR_NONE) { // no declared text form: a record or enum prints its fields
+        text = lf_text(lb, value);
+        if (!lb->ok) {
+            return (LtPiece){MIR_NONE, false, false};
+        }
+        lb_hold_temp(lb, text.v); // the statement drops it
+        return (LtPiece){text.v, false, false};
     }
     if (value.owned) {
         lb_drop(lb, value.v);
@@ -198,7 +227,7 @@ LbVal lt_text(Lb *lb, const MsExpr *e) {
     LtPieces pieces = {MS_NEW_N(&lb->b.scratch, LtPiece, (size_t)lt_count(e) + 1), 0};
     lt_collect(lb, e, &pieces);
     if (!lb->ok || pieces.len < 2) {
-        return lb_unsupported(lb); // one piece is a plain literal or name, lowered elsewhere
+        return LB_UNSUPPORTED(lb); // one piece is a plain literal or name, lowered elsewhere
     }
     return lt_join(lb, &pieces);
 }

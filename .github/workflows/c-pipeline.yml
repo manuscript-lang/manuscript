@@ -43,7 +43,7 @@ jobs:
           arch: ${{ matrix.leg.arch }}
       - name: Build ms and its runtime
         run: |
-          cargo xtask runtime
+          cmake -P cmake/BuildRuntime.cmake
           cargo build --release --locked -p ms-cli
       - name: stop-hold under Windows
         run: |

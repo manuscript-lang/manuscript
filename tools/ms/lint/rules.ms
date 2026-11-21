@@ -2,8 +2,10 @@
 import (
 	lint_counter from "./counter.ms",
 	lint_defaults from "./defaults.ms",
+	lint_effects from "./effects.ms",
 	Finding from "./finding.ms",
 	lint_flow from "./flow.ms",
+	lint_flush from "./flush.ms",
 	lint_imports from "./imports.ms",
 	lint_interpolation from "./interpolation.ms",
 	lint_matches from "./matches.ms",
@@ -22,5 +24,7 @@ export fn lint_all(file: String, text: String) List[Finding]:
 	found.extend(lint_recursion(file, text))
 	found.extend(lint_defaults(file, text))
 	found.extend(lint_counter(file, text))
+	found.extend(lint_flush(file, text))
+	found.extend(lint_effects(file, text))
 	found.extend(lint_interpolation(file, text))
 	return found

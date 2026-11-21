@@ -17,10 +17,6 @@
 #include "ms_rt/test.h"
 #include "support/sched_env.h"
 
-/* ms_sched.h clashes with task.h (the wait bits), so the two calls are declared here. */
-void ms_sched_flush_stdout(void);
-int32_t ms_sched_stdout_error(void);
-
 static void expect(bool condition, const char *what) {
     if (!condition) {
         fprintf(stderr, "core_stdout: failed: %s\n", what);

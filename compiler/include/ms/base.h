@@ -67,6 +67,16 @@ typedef struct MsStr {
     uint32_t len;
 } MsStr;
 
+static inline bool ms_str_starts(MsStr s, const char *prefix) {
+    const size_t n = strlen(prefix);
+    return s.len >= n && memcmp(s.ptr, prefix, n) == 0;
+}
+
+static inline bool ms_str_ends(MsStr s, const char *suffix) {
+    const size_t n = strlen(suffix);
+    return s.len >= n && memcmp(s.ptr + s.len - n, suffix, n) == 0;
+}
+
 char *ms_arena_strndup(MsArena *a, const char *s, size_t n); /* NUL-terminated copy */
 MsStr ms_arena_fmt(MsArena *a, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 MsStr ms_arena_vfmt(MsArena *a, const char *fmt, va_list ap) __attribute__((format(printf, 2, 0)));

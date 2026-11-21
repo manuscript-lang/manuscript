@@ -5,8 +5,9 @@
 // The entity keys, kinds and lines must be equal. Then each field in FIELDS is
 // compared; a field joins FIELDS when the C checker's column for it exists. effects,
 // reach, permits and calls are compared only for entities the C checker marks
-// effects_known. Not compared yet, and printed empty by the C writer: external, scopes,
-// result_ownership, passing modes, refs, `move` receivers (checker facts), flows.
+// effects_known. external and the flow are compared only for entities the C checker
+// marks sites_known; refs are compared for every function, method, type and enum. Not
+// compared yet, and printed empty by the C writer: `move` receivers (checker facts).
 // Imports are compared per file. The process fails when anything differs, and the
 // output counts the entities and fields compared so a silent skip shows.
 import (
@@ -16,16 +17,33 @@ import (
 	read_file from "@std/os/fs.ms",
 
 	run_tool from "./cli.ms",
-	Fact, Facts, Slot from "./views.ms",
+	Fact, Facts, Node, Slot from "./views.ms",
 )
 
 FIELDS := [
-	"name", "slots", "result", "receiver", "tries", "effects", "reach", "permits"
+	"name", "slots", "refs", "result", "receiver", "tries", "effects", "reach",
+	"permits", "external"
 ]
 
 fn slot_text(s: Slot) String: f"{s.name}:{s.ty}:{s.exclusive}"
 
 fn mode_text(s: Slot) String: f"{s.name}:{s.mode}"
+
+fn refs_text(f: Fact) String:
+	var parts = f.slots.map(fn(s: Slot) String: s.refs.join(","))
+	if r := f.result: parts.append(r.refs.join(","))
+	return parts.join(";")
+
+fn steps_text(nodes: List[Node], depth: Int) String:
+	var out = ""
+
+	for n in nodes:
+		out = out.concat(
+			f"{"  ".repeat(depth)}{n.kind} {n.label} -> {n.reference} @{n.file}:{n.line}\n"
+		)
+		out = out.concat(steps_text(n.children, depth + 1))
+
+	return out
 
 fn modes_text(slots: List[Slot]) String: slots.map(mode_text).join(", ")
 
@@ -43,6 +61,7 @@ fn field_diff(field: String, want: Fact, got: Fact) String:
 
 	// `move` versus `borrow` needs the checker's moving-parameter facts; only `var` is syntax.
 	if field == "receiver" and (want.receiver == "var") != (got.receiver == "var"): return f"receiver {want.receiver} != {got.receiver}"
+	if field == "refs" and refs_text(want) != refs_text(got): return f"refs [{refs_text(want)}] != [{refs_text(got)}]"
 	if field == "tries" and want.tries != got.tries: return f"tries {want.tries} != {got.tries}"
 
 	// The C writer types only functions; the other kinds print an empty type and error.
@@ -69,6 +88,7 @@ fn field_diff(field: String, want: Fact, got: Fact) String:
 	if not got.effects_known: return ""
 
 	// The C checker leaves these empty when it cannot see all of what the entity calls.
+	if field == "external" and got.sites_known and want.external != got.external: return f"external {want.external} != {got.external}"
 	if field == "effects" and want.effects != got.effects: return f"effects {want.effects} != {got.effects}"
 	if field == "calls" and want.calls != got.calls: return f"calls {want.calls} != {got.calls}"
 	if field == "reach" and want.reach != got.reach: return f"reach {want.reach} != {got.reach}"
@@ -88,6 +108,12 @@ fn show(m: Matches) Void!:
 	var out = ""
 	var differ = 0
 	var compared = 0
+	var want_flows = Map[String, String]()
+	for f in want.flows: want_flows.add(f.key.clone(), steps_text(f.steps, 0))
+
+	var got_flows = Map[String, String]()
+	for f in got.flows: got_flows.add(f.key.clone(), steps_text(f.steps, 0))
+
 	var got_index = Map[String, Int]()
 	for i in 0..got.entities.length(): got_index.add(got.entities[i].key.clone(), i)
 
@@ -106,6 +132,13 @@ fn show(m: Matches) Void!:
 			out = out.concat(
 				f"{w.key}: kind or line {w.kind}:{w.line} != {g.kind}:{g.line}\n"
 			)
+			differ += 1
+
+		if (
+			g.sites_known
+			and want_flows.get_or(w.key, "") != got_flows.get_or(w.key, "")
+		):
+			out = out.concat(f"{w.key}: flow differs\n")
 			differ += 1
 
 		for field in FIELDS:
