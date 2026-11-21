@@ -512,6 +512,9 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     if (fn == NULL) {
         return ln_method_without_function(lb, e, receiver_ty);
     }
+    if (fn->fallback) {
+        return la_fallback(lb, e);
+    }
     if (fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
         return LB_UNSUPPORTED(lb);
     }
