@@ -5,6 +5,7 @@
  * per round and polls once per POLL_EVERY switches), then runs the next ready task, or idles when none is.
  */
 #include "scheduler.h"
+#include "../io/probe.h"
 
 #include "array.h"
 #include "context.h"
@@ -251,7 +252,9 @@ void ms_task_switch_away(MsSched *sched) {
     for (;;) {
         MsTaskHandle handle = 0;
         if (!dequeue(sched, &handle)) {
+            MS_PROBE("sched idle");
             ms_park_idle(sched);
+            MS_PROBE("sched idle done");
             continue;
         }
         MsTask *const next = ms_task_lookup(sched, handle);
@@ -259,6 +262,7 @@ void ms_task_switch_away(MsSched *sched) {
             continue;
         }
         next->state = MS_STATE_RUNNING;
+        MS_PROBE("sched run %llx", (unsigned long long)handle);
         if (next == current) {
             return;
         }
