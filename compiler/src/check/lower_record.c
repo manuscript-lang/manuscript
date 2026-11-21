@@ -49,7 +49,12 @@ MirTy lr_type(Lb *lb, MsTy ty) {
 static MirValue lr_default(Lb *lb, const MsDecl *decl, MsSymId sym, uint32_t index, MirTy field_ty) {
     const MsExpr *def = decl->u.type.fields.ptr[index]->def;
     const MsFacts *own = lb->facts;
-    lb->facts = lb->c->mods[lb->c->syms.module[sym]].facts;
+    const MsFacts *home = lb->c->mods[lb->c->syms.module[sym]].facts;
+    if (home == NULL || home->expr_ty == NULL || home->expr_ty[def->id] == MS_TY_NONE) { // this run did not check the default (the library): nothing to lower from
+        (void)LB_UNSUPPORTED(lb);
+        return MIR_NONE;
+    }
+    lb->facts = home;
     if (lb->c->syms.module[sym] == lb->module) { // a default of another file has no position here
         lb->b.loc = lb_loc(lb, def->pos); // the rest of the statement stays at the default's position, as the Rust lowering leaves it
     }
@@ -71,7 +76,7 @@ LbVal lr_construct(Lb *lb, const MsExpr *call) {
         return lm_empty(lb, ty); // `Map[K, V]()`
     }
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_TYPE || sym == MS_NONE) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MsDef *def = &lb->c->defs[sym];
     const MsDecl *decl = lb->c->syms.decl[sym];
@@ -84,7 +89,7 @@ LbVal lr_construct(Lb *lb, const MsExpr *call) {
         names[i] = def->fields[i].name;
     }
     if (decl == NULL || def->nfields != nfields || !ms_body_bind_arguments(call, names, NULL, nfields, slot, covered)) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     MirValue *values = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)nfields + 1);
     for (uint32_t i = 0; i < count && lb->ok; i++) {
@@ -107,19 +112,19 @@ LbVal lr_construct(Lb *lb, const MsExpr *call) {
 /* `record.field` where the checker resolved a field. */
 LbVal lr_field(Lb *lb, const MsExpr *e) {
     if (lb->facts->res_kind[e->id] != MS_RES_FIELD) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const LbVal holder = lb_expr(lb, e->u.member.left);
     if (!lb->ok) {
         return LB_FAIL;
     }
     if (holder.owned) {
-        return lb_unsupported(lb); // a field of a temporary: the temporary is released after the read
+        return LB_UNSUPPORTED(lb); // a field of a temporary: the temporary is released after the read
     }
     const MirTyData *record = mir_ty_data(lb->m, mir_b_ty(&lb->b, holder.v));
     const uint32_t index = lb->facts->res_ref[e->id];
     if (record->kind != MK_TYPE || index >= lb->m->type_defs[record->id].nfields) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirTy field = lb->m->type_defs[record->id].fields[index].ty;
     const MirImm imm = {.tag = MI_FIELD, .a = record->id, .b = index};

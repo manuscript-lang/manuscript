@@ -7,7 +7,6 @@
 
 #include "ms/lower_internal.h"
 
-enum { LA_OK = 0, LA_ERROR = 1 }; /* the order of the cases of `Result` in core.ms */
 
 /* The cases of `Result[T, E]`, as `enum Result` declares them in core.ms (the checker's tables do not
  * carry the cases of a core enum): `ok(value: T)` and `error(cause: E)`. */
@@ -59,7 +58,7 @@ MirTy la_type(Lb *lb, MsTy ty) {
 LbVal la_none(Lb *lb, const MsExpr *e) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_OPT) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     return (LbVal){mir_b_emit(&lb->b, MOP_OptNone, NULL, 0, (MirImm){0}, ty), false};
 }
@@ -77,7 +76,7 @@ LbVal la_case(Lb *lb, const MsExpr *call) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[call->id]);
     uint32_t count = call->u.call.args.len;
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirCaseDef *def = &lb->m->alts[mir_ty_data(lb->m, ty)->id].cases[lb->facts->res_ref[callee->id]];
     MirValue *payload = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)def->nfields + 1);
@@ -96,26 +95,35 @@ LbVal la_case(Lb *lb, const MsExpr *call) {
     return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, payload, count, imm, ty), lb_owns(lb, ty)};
 }
 
+/* Whether the function being lowered returns `Void!`, a Result whose success holds nothing. */
+bool la_returns_void_result(const Lb *lb) {
+    const MirTy ty = lb->b.f.ret;
+    const MirTyData *data = ty == MIR_NONE ? NULL : mir_ty_data(lb->m, ty);
+    return data != NULL && data->kind == MK_ALT && lb->m->alts[data->id].std == MSTD_RESULT &&
+           lb->m->alts[data->id].cases[LA_OK].fields[0].ty == MIR_VOID;
+}
+
+/* `ok(unit)` of the function's `Void!` result. */
+MirValue la_ok_of(Lb *lb, MirValue unit) {
+    const MirImm imm = {.tag = MI_CASE, .a = mir_ty_data(lb->m, lb->b.f.ret)->id, .b = LA_OK};
+    return mir_b_emit(&lb->b, MOP_AltNew, &unit, 1, imm, lb->b.f.ret);
+}
+
 /* The `ok(void)` a bare `return` stands for in a function that returns `Void!`: the value of the
  * `return`, then the unit that fills the case. MIR_NONE when the function returns something else. */
 MirValue la_ok_unit(Lb *lb) {
-    const MirTy ty = lb->b.f.ret;
-    const MirTyData *data = ty == MIR_NONE ? NULL : mir_ty_data(lb->m, ty);
-    if (data == NULL || data->kind != MK_ALT || lb->m->alts[data->id].std != MSTD_RESULT ||
-        lb->m->alts[data->id].cases[LA_OK].fields[0].ty != MIR_VOID) {
+    if (!la_returns_void_result(lb)) {
         return MIR_NONE;
     }
     (void)mir_b_unit(&lb->b);
-    const MirValue unit = mir_b_unit(&lb->b);
-    const MirImm imm = {.tag = MI_CASE, .a = data->id, .b = LA_OK};
-    return mir_b_emit(&lb->b, MOP_AltNew, &unit, 1, imm, ty);
+    return la_ok_of(lb, mir_b_unit(&lb->b));
 }
 
 /* A case without payload, named: `Empty`. */
 LbVal la_nullary(Lb *lb, const MsExpr *e) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirImm imm = {.tag = MI_CASE, .a = mir_ty_data(lb->m, ty)->id, .b = lb->facts->res_ref[e->id]};
     return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, NULL, 0, imm, ty), false};
@@ -169,13 +177,13 @@ LbVal la_try(Lb *lb, const MsExpr *e) {
     const MirTy ret = lb->b.f.ret;
     if (!lb->ok || mir_ty_data(lb->m, mir_b_ty(&lb->b, result.v))->kind != MK_ALT ||
         mir_ty_data(lb->m, ret)->kind != MK_ALT) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirTyData *held = mir_ty_data(lb->m, mir_b_ty(&lb->b, result.v));
     const MirTyData *back = mir_ty_data(lb->m, ret);
     const MirTy cause = lb->m->alts[held->id].cases[LA_ERROR].fields[0].ty;
     if (lb->m->alts[back->id].std != MSTD_RESULT || lb->m->alts[back->id].cases[LA_ERROR].fields[0].ty != cause) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirValue tag = mir_b_emit(&lb->b, MOP_AltTag, &result.v, 1, (MirImm){0}, MIR_INT);
     const MirValue failed = mir_b_icmp(&lb->b, MCC_EQ, tag, mir_b_iconst(&lb->b, LA_ERROR));

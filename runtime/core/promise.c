@@ -443,14 +443,16 @@ static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) 
     Hot *const hot = &table.hot[row];
     Cold *const cold = &table.cold[row];
     MsObj *const closure = cold->closure;
-    cold->closure = NULL;
     if (status == MS_GUARD_FAULT && cold->started != NULL) {
         /* The work ran on another isolate, whose report cannot name where this one started it. */
         ms_fault_text_add_started(&message, cold->started, cold->started_count);
     }
     release_started(cold);
     if (closure != NULL) {
+        /* Dropping the closure can park (a captured resource closes). The row keeps the closure until then, so an end
+         * that races with it waits for the drop instead of freeing the row under it. */
         msrt_obj_drop(closure);
+        cold->closure = NULL;
     }
     hot->flags &= (uint16_t) ~(FLAG_REMOTE | FLAG_WANT_CANCEL);
     if (cold->creator != 0) {

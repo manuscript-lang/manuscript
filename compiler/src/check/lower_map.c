@@ -79,7 +79,7 @@ static MirValue lm_entry(Lb *lb, const MsExpr *e, MirTy ty) {
 /* `Map[K, V]()`: an empty map. */
 LbVal lm_empty(Lb *lb, MirTy ty) {
     if (!lb_is_map(lb, ty)) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const uint32_t make = lb_runtime_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
     return (LbVal){mir_b_call_rt(&lb->b, make, NULL, 0), true};
@@ -89,7 +89,7 @@ LbVal lm_empty(Lb *lb, MirTy ty) {
 LbVal lm_literal(Lb *lb, const MsExpr *e) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (!lb_is_map(lb, ty)) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirTyData *data = mir_ty_data(lb->m, ty);
     const MirTy key_ty = data->args[0];
@@ -219,7 +219,7 @@ LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at) {
     const MirTyData *data = mir_ty_data(lb->m, ty);
     const LbVal key = lb_expr(lb, at);
     if (!lb->ok || mir_b_ty(&lb->b, key.v) != data->args[0]) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirValue key_desc = lm_desc(lb, data->args[0]);
     const MirValue value_desc = lm_desc(lb, data->args[1]);

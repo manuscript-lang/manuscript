@@ -88,6 +88,11 @@ uint8_t ms_tool_facts_project(const ms_str *path, ms_str *out, ms_str *message_o
  * standard error and the exit status (as decimal text) the Rust command would produce; status 2 means the C passes
  * cannot give that answer (message in `message_out`) and the caller runs the Rust command; 1 is an error. */
 uint8_t ms_tool_check(const ms_str *target, uint8_t json, ms_list *out, ms_str *message_out);
+/* `ms build TARGET`: builds the executable `output` from the program at `target`, linking `runtime`; `tools` holds `opt`
+ * and `llc`, `lld` is the linker and `files` its startup files. Status 0 is a written executable, 1 a failed build (the
+ * message), 2 a program the C pipeline does not cover (the reason): the Rust command builds it. */
+uint8_t ms_tool_build(const ms_str *target, const ms_str *output, const ms_str *runtime, const ms_str *tools, const ms_str *lld,
+                      const ms_str *files, uint8_t release, ms_list *out, ms_str *message_out);
 
 /* The workspace of the project whose manifest is `manifest` (project/workspace.c), as rows: `root\t<directory>`, then
  * `member\t<name>\t<directory>` in member order; no rows when there is none. With `root_only` set, only a workspace
