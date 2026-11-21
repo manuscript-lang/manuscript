@@ -62,14 +62,13 @@ void ms_stdout_flush(void) {
 void ms_stdout_release(void) { ms_stdout_flush(); }
 
 /* Appends to capture `id`; false when it has ended (the output then goes to standard output). */
-static bool capture_append(uint64_t id, MsSpan data, MsSpan end) {
+static bool capture_append(uint64_t id, MsSpan data) {
   bool found = false;
   ms_spin_lock(&captures.lock);
   for (size_t i = 0; i < captures.list.len && !found; i++) {
     Capture *capture = &captures.list.ptr[i];
     if (capture->id == id) {
       buffer_append(&capture->text, data);
-      buffer_append(&capture->text, end);
       found = true;
     }
   }
@@ -77,27 +76,22 @@ static bool capture_append(uint64_t id, MsSpan data, MsSpan end) {
   return found;
 }
 
-void ms_stdout_write(MsSpan data, MsSpan end) {
+void ms_stdout_write(MsSpan data) {
   const uint64_t capture = ms_task_capture();
-  if (capture != 0 && capture_append(capture, data, end)) {
+  if (capture != 0 && capture_append(capture, data)) {
     return;
   }
   write_out(data);
-  write_out(end);
 }
 
-void msrt_io_write_stdout(const MsString *text) { ms_stdout_write(ms_string_span(text), ms_span_of(NULL, 0)); }
-
-void msrt_io_write_stdout_line(const MsString *text, const MsString *end) {
-  ms_stdout_write(ms_string_span(text), ms_string_span(end));
-}
+void msrt_io_write_stdout(const MsString *text) { ms_stdout_write(ms_string_span(text)); }
 
 void msrt_io_write_stderr(const MsString *text) {
   ms_stdout_flush();
   ms_sys_stderr_write(ms_string_span(text));
 }
 
-void msrt_io_write_bytes_stdout(const MsList *bytes) { ms_stdout_write(ms_span_of(bytes->ptr, bytes->len), ms_span_of(NULL, 0)); }
+void msrt_io_write_bytes_stdout(const MsList *bytes) { ms_stdout_write(ms_span_of(bytes->ptr, bytes->len)); }
 
 void msrt_io_write_bytes_stderr(const MsList *bytes) {
   ms_stdout_flush();
