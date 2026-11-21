@@ -255,6 +255,9 @@ c-compiler-test:
 	sh compiler/tests/check-diff.sh
 	sh compiler/tests/diag-render-diff.sh
 	sh compiler/tests/entry-diff.sh
+	sh compiler/tests/prelude-import-diff.sh
+	sh compiler/tests/public-signature-diff.sh
+	sh compiler/tests/extern-diff.sh
 	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh

@@ -190,8 +190,12 @@ static void sites_expr(void *ctx, const MsExpr *e) {
         }
         return;
     }
-    if (row != MS_NONE || s->facts->call_interface[e->id] != MS_TY_NONE) {
+    if (row != MS_NONE) {
         s->partial = true;
+        return;
+    }
+    if (s->facts->call_interface[e->id] != MS_TY_NONE) {
+        s->partial = s->partial || ms_effect_dispatch(s->c, s->facts, e->id) == MS_DISPATCH_PARTIAL;
         return;
     }
     const MsSymId callee = s->facts->call_callee[e->id];
