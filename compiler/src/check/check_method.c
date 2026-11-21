@@ -266,6 +266,22 @@ static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *
     return ms_implements_property(b->c, b->methods, receiver, MS_PROP_CLONABLE) == MS_FIT_YES && intrinsic_in(b, "CloneOperations", receiver, name, out);
 }
 
+/* The function-typed field `name` of a record `receiver` with no type arguments: `value.operation(x)` calls
+ * the function the field holds. */
+static MsTy function_field(const MsBody *b, MsTy receiver, MsSym name) {
+    const MsTyTable *tys = &b->c->tys;
+    if (ms_ty_kind(tys, receiver) != MS_K_TYPE || tys->def[receiver] == 0 || tys->nargs[receiver] != 0) {
+        return MS_TY_NONE;
+    }
+    const MsDef *def = ms_def(b->c, tys->def[receiver] - 1);
+    for (uint32_t i = 0; i < def->nfields; i++) {
+        if (def->fields[i].name == name) {
+            return ms_body_is_function_value(b, def->fields[i].ty) ? def->fields[i].ty : MS_TY_NONE;
+        }
+    }
+    return MS_TY_NONE;
+}
+
 static bool body_is_primitive(const MsBody *b, MsTy ty) {
     // Every primitive with operations: `Void` and `Never` have none, the invalid type is an earlier error.
     return ty != MS_TY_NONE && ty != b->void_ty && ty != b->never_ty && ms_ty_kind(&b->c->tys, ty) == MS_K_PRIMITIVE;
@@ -412,7 +428,8 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved) {
-        return ms_body_unsupported(b);
+        const MsTy field = function_field(b, receiver_ty, name);
+        return field == MS_TY_NONE ? ms_body_unsupported(b) : ms_body_call_function(b, e, field);
     }
     if ((target.consuming && target.method == MS_NONE) || (target.mutating && immutable)) {
         return ms_body_unsupported(b);
