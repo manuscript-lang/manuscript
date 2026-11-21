@@ -985,6 +985,10 @@ static MsTy body_try(MsBody *b, const MsExpr *operand) {
         const bool same_error = ms_body_is_result(b, b->result) && ms_ty_args(tys, b->result)[1] == ms_ty_args(tys, operand_ty)[1];
         return same_error ? ms_ty_args(tys, operand_ty)[0] : ms_body_unsupported(b);
     }
+    // `f()?` on an Optional in a function that returns one: `none` leaves the function, else the value.
+    if (ms_ty_is(tys, operand_ty, MS_BI_OPTIONAL) && ms_ty_is(tys, b->result, MS_BI_OPTIONAL)) {
+        return ms_ty_args(tys, operand_ty)[0];
+    }
     return ms_body_unsupported(b);
 }
 
