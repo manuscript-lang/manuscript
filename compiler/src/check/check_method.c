@@ -188,22 +188,31 @@ static bool intrinsic_in(const MsBody *b, const char *iface_name, MsTy receiver,
     return false;
 }
 
-/* An operation of a primitive receiver: its own interface, then the one every value has. */
-static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
-    const char *own = NULL;
-    if (receiver == b->string_ty) {
-        own = "StringOperations";
-    } else if (receiver == b->int_ty) {
-        own = "IntOperations";
-    } else if (receiver == b->float_ty) {
-        own = "FloatOperations";
+/* Whether `name` is one of the `members`: the primitives a shared interface of intrinsics.ms covers. */
+static bool primitive_in(MsStr name, const char *const *members) {
+    for (; *members != NULL; members++) {
+        if (strlen(*members) == name.len && memcmp(*members, name.ptr, name.len) == 0) {
+            return true;
+        }
     }
-    // `Int` shares the generic integer interfaces, applied to itself, after its own.
-    const bool integer = receiver == b->int_ty;
-    return (own != NULL && intrinsic_in(b, own, receiver, name, out)) ||
-           (integer && (intrinsic_in(b, "IntegerOperations", receiver, name, out) ||
-                        intrinsic_in(b, "SignedIntegerOperations", receiver, name, out))) ||
-           intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
+    return false;
+}
+
+/* An operation of a primitive receiver: its own `<Type>Operations` interface, the generic ones its
+ * family shares (applied to itself), then the ones every value has. Mirrors `SHARED_OPERATIONS`. */
+static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
+    static const char *const integers[] = {"Int", "Int8", "Int16", "Int32", "UInt8", "UInt16", "UInt32", "UInt64", NULL};
+    static const char *const signed_integers[] = {"Int", "Int8", "Int16", "Int32", NULL};
+    if (ms_ty_kind(&b->c->tys, receiver) == MS_K_PRIMITIVE) {
+        const MsStr type = ms_name(b->c->names, b->c->tys.name[receiver]);
+        const char *own = ms_arena_fmt(&b->c->arena, "%.*sOperations", (int)type.len, type.ptr).ptr;
+        if (intrinsic_in(b, own, receiver, name, out) ||
+            (primitive_in(type, integers) && intrinsic_in(b, "IntegerOperations", receiver, name, out)) ||
+            (primitive_in(type, signed_integers) && intrinsic_in(b, "SignedIntegerOperations", receiver, name, out))) {
+            return true;
+        }
+    }
+    return intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
 }
 
 /* The natives whose result points into their receiver (`view`, `split`, `chars`, ...): the
@@ -282,7 +291,8 @@ static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *
 }
 
 static bool body_is_primitive(const MsBody *b, MsTy ty) {
-    return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
+    // Every primitive with operations: `Void` and `Never` have none, the invalid type is an earlier error.
+    return ty != MS_TY_NONE && ty != b->void_ty && ty != b->never_ty && ms_ty_kind(&b->c->tys, ty) == MS_K_PRIMITIVE;
 }
 
 /* The arguments of a method call against its signature, paired with parameters by position or
@@ -425,9 +435,16 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
                    value_operation(b, receiver_ty, name, &target);
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
-    if (!resolved || (target.consuming && target.method == MS_NONE) || (target.mutating && immutable) ||
-        (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) ||
-        !arguments_fit(b, e, &target)) {
+    if (!resolved) {
+        return ms_body_unsupported(b);
+    }
+    if ((target.consuming && target.method == MS_NONE) || (target.mutating && immutable)) {
+        return ms_body_unsupported(b);
+    }
+    if (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) {
+        return ms_body_unsupported(b);
+    }
+    if (!arguments_fit(b, e, &target)) {
         return ms_body_unsupported(b);
     }
     if (target.method == MS_NONE) {

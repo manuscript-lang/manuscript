@@ -111,6 +111,8 @@ void lb_reset_state(Lb *lb) {
     lb->nparts = lb->cparts = 0;
     lb->temps = NULL;
     lb->ntemps = lb->ctemps = lb->stmt_mark = lb->branching = 0;
+    lb->slots = NULL;
+    lb->nslots = lb->cslots = 0;
     (void)lscope_push(&lb->scopes); // the body's own scope: depth 0
 }
 
@@ -165,17 +167,27 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
     lb_reset_state(lb);
     for (uint32_t i = 0; i < lb_slots(c); i++) {
         if (lb_param_moves(lb, c, i)) { // the function owns what it was handed
-            lscope_own(&lb->scopes, lb->value_of[lb->binding_at[lb_slot_node(c, i)]], 0);
+            const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
+            if (lc_is_resource(lb, mir_b_ty(&lb->b, lb->value_of[binding]))) {
+                lb->ok = lc_own_param(lb, binding) && lb->ok; // closed at its scope's end
+            } else {
+                lscope_own(&lb->scopes, lb->value_of[binding], 0);
+            }
         }
     }
     lb_statements(lb, &c->fn->body);
-    if (lb->ok && !lb->dead && lb->b.f.ret == MIR_VOID) {
-        lb_return_void(lb); // the end of a function that returns nothing
+    if (lb->ok && !lb->dead && (lb->b.f.ret == MIR_VOID || la_returns_void_result(lb))) {
+        lb_return_void(lb); // the end of a function that returns nothing, or `ok` of nothing
     }
     if (!lb->ok) {
         lb_why(lb, c, NULL);
+    } else if (!lb->dead) {
+        lb_why(lb, c, "falls off the end");
     }
     lb->ok = lb->ok && lb->dead;
+    if (lb->ok) {
+        lc_check(lb);
+    }
     MirFunc f = {0};
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
@@ -221,6 +233,10 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
     memset(lb->type_of, 0xff, (lb->c->tys.count + 1) * sizeof *lb->type_of);
     lb->eqs = NULL; // they live in the module's arena, which is rebuilt each pass
     lb->neqs = lb->ceqs = 0;
+    lb->closers = NULL; // the resource types and their helpers are rebuilt with the module
+    lb->nclosers = lb->cclosers = 0;
+    lb->exits = NULL;
+    lb->nexits = lb->cexits = 0;
     for (uint32_t k = 0; k < lb->nviews; k++) {
         LbView *v = &lb->views[k];
         const MsBindings *bindings = &v->facts->bindings;
@@ -441,7 +457,27 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
 /* Lowers `modules` into `out`. A failed function leaves a stub, and calls to it were lowered against
  * it, so the pass repeats without it (its callers then fail too) until a pass loses nothing. That is
  * at most one pass per function; programs lose a function or two. */
-static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nmodules, MirModule *out, MsBuf *why) {
+/* The lowered `main` of the entry module (the first view), or MIR_NONE: the function named `main`
+ * that the last pass kept. */
+static uint32_t lb_entry_main(const Lb *lb, MsModId entry) {
+    const MsModule *syntax = lb->c->mods[entry].syntax;
+    if (lb->views[0].module != entry) {
+        return MIR_NONE;
+    }
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        const MsDecl *d = syntax->decls[i];
+        if (d->kind != MS_D_FN || !ms_name_is(lb->c->names, d->u.fn.name, "main") || lb->views[0].failed[i]) {
+            continue;
+        }
+        const MsSymId sym = ms_map_get(&lb->c->mods[entry].names, d->u.fn.name);
+        return sym == MS_NONE || lb->c->syms.decl[sym] != d ? MIR_NONE : lb->func_of[sym];
+    }
+    return MIR_NONE;
+}
+
+/* `program`: `modules[0]` holds the program's `main`, which becomes the module's entry. */
+static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nmodules, bool program, MirModule *out,
+                                 MsBuf *why) {
     Lb lb = {.c = c,
              .mut = c,
              .m = out,
@@ -485,6 +521,10 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
                 break;
             }
         }
+        const uint32_t user = program && lb.func_of != NULL ? lb_entry_main(&lb, modules[0]) : MIR_NONE;
+        if (user != MIR_NONE) {
+            lb_set_entry(&lb, user);
+        }
         ms_classifier_free(lb.classifier);
         free(method_failed);
     }
@@ -502,7 +542,7 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
 }
 
 uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
-    return lb_lower_modules(c, &module, 1, out, NULL);
+    return lb_lower_modules(c, &module, 1, false, out, NULL);
 }
 
 /* Appends `module` and then the project modules it imports, each once, in import order: the order
@@ -541,7 +581,7 @@ uint32_t ms_lower_program_why(MsCheck *c, MsModId entry, MirModule *out, MsBuf *
         }
     }
     free(seen);
-    const uint32_t lowered = lb_lower_modules(c, modules, n, out, why);
+    const uint32_t lowered = lb_lower_modules(c, modules, n, true, out, why);
     free(modules);
     return lowered;
 }
