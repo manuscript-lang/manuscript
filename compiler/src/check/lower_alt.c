@@ -137,7 +137,7 @@ MirValue la_payload(Lb *lb, MirValue subject) {
     const MirTy held = data->kind == MK_OPT ? data->elem : lb->m->alts[data->id].cases[LA_OK].fields[0].ty;
     if (data->kind == MK_OPT) {
         if (lb_owns(lb, held)) {
-            (void)lb_unsupported(lb); // taking an owned payload out of an Optional is not lowered yet
+            lb->ok = false; // taking an owned payload out of an Optional is not lowered yet
             return subject;
         }
         return mir_b_emit(&lb->b, MOP_OptGet, &subject, 1, (MirImm){0}, data->elem);

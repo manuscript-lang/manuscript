@@ -25,7 +25,7 @@ if [ "$#" -gt 0 ]; then
 else
     files=$(find compiler/tests/lower_program -name main.ms | sort)
 fi
-MS_LOWER_WHY=1 "$dump" stdlib --program $files > "$out/program.c" 2> "$out/program.why" || { grep -v '^why ' "$out/program.why" >&2; exit 1; }
+"$dump" stdlib --program $files > "$out/program.c" 2> "$out/program.why" || { grep -v '^why ' "$out/program.why" >&2; exit 1; }
 target/release/examples/c_lower_oracle $files > "$out/program.rust" 2>/dev/null
 
 # One line per function: `program name sig line:col|block`, `.N` copy suffixes stripped. A location names its file by
@@ -77,10 +77,6 @@ echo "census: $total functions in Rust, $equal equal, $divergent divergent (veri
 # with its first message, a module left unchecked).
 echo "programs: $(grep -c '^=== ' "$out/program.c") ($(grep -c '^status lowered' "$out/program.c") lowered)"
 grep '^status ' "$out/program.c" | grep -v '^status lowered' | cut -c1-110 | sort | uniq -c | sort -rn | head -8
-# Why functions were left out: the call site that gave up (compiler/src/check/lower_body.c lb_unsupported), most common
-# first. A caller of a function that failed fails too, so the top entries over-count the root causes.
-echo "causes (lowering gave up at, count):"
-grep '^why ' "$out/program.why" | awk '{ print $2 }' | sed "s|^$(pwd)/||" | sort | uniq -c | sort -rn | head -8
 sort "$out/program.report" | head -30
 if [ "$differs" -ne 0 ]; then
     echo "FAIL lower program: functions that differ"

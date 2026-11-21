@@ -202,14 +202,7 @@ static bool body_is_comparable(const MsBody *b, MsTy ty) {
 }
 
 /* Gives up on the function; the caller returns `<invalid>` (MS_TY_NONE) up the tree. */
-MsTy ms_body_unsupported_at(MsBody *b, const char *file, int line) {
-    static int why = -1;
-    if (why < 0) {
-        why = getenv("MS_CHECK_WHY") != NULL;
-    }
-    if (why && b->supported) {
-        fprintf(stderr, "why %s:%d\n", file, line);
-    }
+MsTy ms_body_unsupported(MsBody *b) {
     b->supported = false;
     return MS_TY_NONE;
 }
@@ -622,7 +615,19 @@ static bool body_has_default(const MsBody *b, MsSymId sym, const MsDecl *decl, u
     return home->expr_ty != NULL && home->expr_ty[def->id] != MS_TY_NONE;
 }
 
+/* A type another module declares has its field defaults typed once that module's bodies are
+ * checked (body_check_defaults); a construction leaving a field out needs them. Done before the
+ * caller holds pointers into the tables, which checking may move. */
+void ms_body_check_home(MsBody *b, MsSymId sym) {
+    const MsModId home = b->c->syms.module[sym];
+    if (home != MS_NONE && home != b->module && b->methods != NULL && b->c->mods[home].facts != NULL &&
+        b->c->mods[home].facts->body_checked == NULL) {
+        ms_module_check_bodies_with(b->c, home, b->methods);
+    }
+}
+
 static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
+    ms_body_check_home(b, sym);
     const MsSyms *syms = &b->c->syms;
     const MsTy record = syms->ty[sym];
     const MsDef *def = ms_def(b->c, sym);

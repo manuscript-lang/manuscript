@@ -191,10 +191,8 @@ bool lb_closures(Lb *lb, bool ok);
 #define LB_FAIL ((LbVal){MIR_NONE, false})
 
 /* Helpers of lower_body.c the files after it use. `lb_unsupported` marks the function as not
- * handled and returns `LB_FAIL`; with MS_LOWER_WHY set in the environment it prints the call site and the function
- * (the census in compiler/tests/lower-program-diff.sh groups skips by it). */
-LbVal lb_unsupported_at(Lb *lb, const char *file, int line);
-#define lb_unsupported(lb) lb_unsupported_at((lb), __FILE__, __LINE__)
+ * handled and returns `LB_FAIL`. */
+LbVal lb_unsupported(Lb *lb);
 LbVal lb_expr(Lb *lb, const MsExpr *e);
 MirTy lb_mir_ty(Lb *lb, MsTy ty);
 void lb_emit_plain(Lb *lb, MirOp op);

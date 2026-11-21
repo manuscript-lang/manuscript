@@ -71,13 +71,13 @@ LbVal lst_index(Lb *lb, const MsExpr *e) {
 void lst_for(Lb *lb, const MsStmt *s) {
     const uint32_t binding = lb->binding_at[s->id];
     if (binding == MS_NONE) {
-        (void)lb_unsupported(lb);
+        lb->ok = false;
         return;
     }
     const uint32_t outer = lscope_push(&lb->scopes);
     const LbVal list = lb_expr(lb, s->u.each.iter);
     if (!lb->ok || !lb_is_list(lb, mir_b_ty(&lb->b, list.v))) {
-        (void)lb_unsupported(lb);
+        lb->ok = false;
         return;
     }
     if (list.owned) {

@@ -98,7 +98,7 @@ export fn rust_arch() String:
 // allocator built with MS_ALLOC_STATS) and points MS_RT_LIB at it. The caller's `ms` is
 // the release build (`make build`). Returns a nonzero status when a build fails.
 export fn use_stats_runtime() Int:
-	code := run_program("cargo", ["xtask", "runtime", "--stats"])
+	code := run_program("cmake", ["-DMS_STATS=ON", "-P", "cmake/BuildRuntime.cmake"])
 	if code != 0: return code
 
 	lib := canonicalize("target/ms-native/libms_native_stats.a").get()
