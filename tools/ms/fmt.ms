@@ -16,6 +16,8 @@ import (
 	stat,
 	write_file from "@std/os/fs.ms",
 	relative from "@std/os/path.ms",
+
+	root_members from "./workspace.ms",
 	expect_equal from "@std/test/test.ms",
 
 	flag, list_of, number, object, render_document, text, with from "./json_out.ms",
@@ -47,10 +49,17 @@ fn expand_targets(targets: List[String]) List[String]?:
 			files.append(target.clone())
 			continue
 
-		found := ms_tool_discover(target)
-		if found.is_error(): return none
+		// A workspace root without a `[project]` stands for its members, as in the other commands.
+		var manifests = [target.clone()]
+		if members := root_members(target):
+			manifests = []
+			for member in members: manifests.append(member.manifest.clone())
 
-		for path in found.get(): files.append(path.clone())
+		for manifest in manifests:
+			found := ms_tool_discover(manifest)
+			if found.is_error(): return none
+
+			for path in found.get(): files.append(path.clone())
 
 	return files
 
