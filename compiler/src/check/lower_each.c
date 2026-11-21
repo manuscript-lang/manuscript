@@ -1,5 +1,6 @@
-/* List methods that call a function value on each element: `map` and `filter`. Each is a loop over the receiver that
- * builds the result list, as the Rust lowering emits (crates/ms-lower native/mutate.rs `list_higher_order`). */
+/* List methods that call a function value on elements. `map` and `filter` are each a loop over the receiver that
+ * builds the result list, as the Rust lowering emits (crates/ms-lower native/mutate.rs `list_higher_order`); `sorted`
+ * hands the runtime's sort a function that compares two element slots (native/list.rs `list_sorted`). */
 #include "ms/lower_internal.h"
 
 /* What one loop over a list reads and writes. */
@@ -65,36 +66,83 @@ static MirValue le_loop(Lb *lb, LeLoop *loop) {
     return mir_b_use_var(b, loop->built);
 }
 
+/* The function the runtime's sort calls on two element slots: loads both and asks the source comparison, whose
+ * type is `comparison`. One per call, internal to the module. */
+static uint32_t le_sort_compare(Lb *lb, MirTy comparison, MirTy element) {
+    MirBuilder outer = lb->b;
+    const MirParam params[3] = {{comparison, MM_BORROW}, {MIR_PTR, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+    mir_b_init(&lb->b, lb->m, lb_unique_name(lb, (MsStr){"sort.cmp", 8}), params, 3, MIR_INT);
+    MirValue args[3];
+    mir_b_params(&lb->b, args, 3);
+    const MirValue operands[3] = {args[0], lb_load(lb, args[1], element), lb_load(lb, args[2], element)};
+    mir_b_ret(&lb->b, mir_b_emit(&lb->b, MOP_CallInd, operands, 3, (MirImm){0}, MIR_INT));
+    MirFunc f = {0};
+    const bool built = mir_b_into_func(&lb->b, &f);
+    lb->b = outer;
+    f.linkage = ML_INTERNAL;
+    f.sort = MSORT_GENERIC;
+    return built ? mir_add_func(lb->m, &f) : MIR_NONE;
+}
+
+/* `list.sorted(comparison)`: the runtime's stable sort of a copy, ordered by the sign the comparison returns. */
+static LbVal le_sorted(Lb *lb, LbVal list, LbVal comparison, MirTy element) {
+    MirBuilder *b = &lb->b;
+    const MirTy list_ty = mir_b_ty(b, list.v);
+    const MirTy comparison_ty = mir_b_ty(b, comparison.v);
+    const uint32_t compare = le_sort_compare(lb, comparison_ty, element);
+    if (compare == MIR_NONE) {
+        return LB_UNSUPPORTED(lb);
+    }
+    const MirValue address = mir_b_emit(b, MOP_FuncAddr, NULL, 0, (MirImm){.tag = MI_FUNC, .a = compare}, MIR_PTR);
+    const MirValue descriptor = mir_b_emit(b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = element}, MIR_PTR);
+    const MirTy params[4] = {list_ty, MIR_PTR, MIR_PTR, comparison_ty};
+    const uint32_t sort = lb_runtime_extern(lb, "msrt_list_sorted", params, 4, list_ty, MR_LIST_SORTED, false);
+    const MirValue operands[4] = {list.v, descriptor, address, comparison.v};
+    const MirValue sorted = mir_b_call_rt(b, sort, operands, 4);
+    if (list.owned) {
+        lb_drop(lb, list.v); // the sort copied what it kept
+    }
+    if (comparison.owned) {
+        (void)mir_b_emit(b, MOP_Drop, &comparison.v, 1, (MirImm){0}, MIR_NONE);
+    }
+    return (LbVal){sorted, true};
+}
+
 bool lb_each_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out) {
     const MsExpr *callee = e->u.call.callee;
     const bool is_map = ms_name_is(lb->c->names, callee->u.member.name, "map");
+    const bool is_sorted = ms_name_is(lb->c->names, callee->u.member.name, "sorted");
     const MirTy list_ty = lb_mir_ty(lb, receiver_ty);
     if (!lb_is_list(lb, list_ty) || e->u.call.args.len != 1 ||
-        !(is_map || ms_name_is(lb->c->names, callee->u.member.name, "filter"))) {
+        !(is_map || is_sorted || ms_name_is(lb->c->names, callee->u.member.name, "filter"))) {
         return false;
     }
     *out = LB_FAIL;
     const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    const MirTy element = mir_ty_data(lb->m, list_ty)->elem;
     const LbVal list = lb_expr(lb, callee->u.member.left);
     const LbVal function = lb->ok ? lb_expr(lb, e->u.call.args.ptr[0].value) : LB_FAIL;
     if (!lb->ok) {
         return true;
     }
     const MirTy function_ty = mir_b_ty(&lb->b, function.v);
+    const uint32_t takes = is_sorted ? 2 : 1;
     if (!lb_is_list(lb, result_ty) || !lb_is_fn(lb, function_ty) ||
-        mir_ty_data(lb->m, mir_ty_unscoped(function_ty))->nargs != 1) {
+        mir_ty_data(lb->m, mir_ty_unscoped(function_ty))->nargs != takes) {
         *out = LB_UNSUPPORTED(lb);
+        return true;
+    }
+    if (is_sorted) {
+        *out = le_sorted(lb, list, function, element);
         return true;
     }
     if (list.owned) {
         lb_hold_temp(lb, list.v); // read in place by the loop: a temporary receiver lives to the end of the statement
     }
-    LeLoop loop = {.list = list.v, .function = function.v, .element = mir_ty_data(lb->m, list_ty)->elem,
-                   .result_ty = result_ty, .is_map = is_map};
-    const MirValue built = le_loop(lb, &loop);
+    LeLoop loop = {.list = list.v, .function = function.v, .element = element, .result_ty = result_ty, .is_map = is_map};
+    *out = (LbVal){le_loop(lb, &loop), true};
     if (function.owned) {
         lb_drop(lb, function.v);
     }
-    *out = (LbVal){built, true};
     return true;
 }
