@@ -693,15 +693,6 @@ static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const 
     return true;
 }
 
-/* The attribute that tells LLVM how a narrow C result is extended, and the instruction that widens it. */
-static const char *ll_ret_attribute(LlWiden widen) {
-    switch (widen) {
-    case LL_SEXT: return "signext ";
-    case LL_FPEXT: return "";
-    default: return "zeroext ";
-    }
-}
-
 static const char *ll_widen_op(LlWiden widen) {
     switch (widen) {
     case LL_SEXT: return "sext";
@@ -737,8 +728,10 @@ static bool ll_call_rt(LCx *c, const MirInst *inst, uint32_t block, uint32_t ind
         const bool runtime_float = rk != NULL && rk->widen == LL_FPEXT && !ll_extern_is_c(c, def); /* a double */
         const bool narrow = rk != NULL && strcmp(rk->reg, rk->mem) != 0 && !runtime_float;
         if (narrow) {
-            /* The C function returns the narrow type; the attribute makes LLVM trust or provide the high bits. */
-            ms_buf_printf(c->out, "  %%v%ur = call %s%s ", inst->res, ll_ret_attribute(rk->widen), rk->mem);
+            /* The C function returns the narrow type. The bits above it are the callee's to leave as they are (the
+             * AAPCS64 does not make a callee extend its result), so the call carries no extension attribute: the
+             * `sext` or `zext` after it reads the low bits only. */
+            ms_buf_printf(c->out, "  %%v%ur = call %s ", inst->res, rk->mem);
         } else if (rk != NULL) {
             ms_buf_printf(c->out, "  %%v%u = call %s ", inst->res, rk->reg);
         } else {

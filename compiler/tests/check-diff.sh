@@ -113,8 +113,8 @@ if ! grep -q 'body_resource_param.ms 11:1$' "$out/bodies.keys" || ! grep -q 'bod
     echo "FAIL bodies: a function over a type that closes is no longer checked in C (compiler/tests/scope/body_resource_param.ms)"
     status=1
 fi
-# A lambda with a written result in a generic method row, a list of `MapEntry`, and a `Set` are claimed.
-if ! grep -q 'body_closure_methods.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_closure_methods.ms 4:1$' "$out/bodies.keys" || ! grep -q 'body_closure_methods.ms 8:1$' "$out/bodies.keys"; then
+# A lambda with a written result in a generic method row, a list of `MapEntry`, a `Set`, a function passed for a `var` callback and a plain value for `E?` are claimed.
+if ! grep -q 'body_closure_methods.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_closure_methods.ms 4:1$' "$out/bodies.keys" || ! grep -q 'body_closure_methods.ms 8:1$' "$out/bodies.keys" || ! grep -q 'body_closure_methods.ms 15:1$' "$out/bodies.keys" || ! grep -q 'body_closure_methods.ms 18:1$' "$out/bodies.keys"; then
     echo "FAIL bodies: a closure method, a MapEntry list or a Set is no longer checked in C (compiler/tests/scope/body_closure_methods.ms)"
     status=1
 fi
