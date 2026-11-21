@@ -58,7 +58,8 @@ typedef struct OwnWalk {
     uint32_t *origin;   /* by binding id: what a borrowed binding borrows from, else MS_NONE */
     bool *is_param;     /* by binding id */
     uint32_t *param_index; /* by binding id: the parameter's position, else MS_NONE */
-    OwnSummary *summaries; /* by declaration node id */
+    OwnSummary *summaries; /* by declaration node id, methods included */
+    const MsMethod **methods; /* this module's methods, by method row */
     uint32_t floor;     /* inside a lambda: the bindings below it are captured, and must be copies */
     uint32_t borrowed_params;
     uint32_t consumed;  /* parameters this walk moved */
@@ -291,6 +292,14 @@ static void own_error_used_again(OwnWalk *w, const MsExpr *e, uint32_t binding) 
     const uint32_t next = w->live->next[e->id];
     const MsPos next_pos = w->live->pos[next];
     const MsStr note = own_consumed_note(w);
+    if (w->class_of[binding] == MS_CLASS_RESOURCE) {
+        own_error(w, e->pos,
+                  ms_arena_fmt(&w->check->arena,
+                               "`%.*s` is moved here but used again at %u:%u%.*s; a resource has one owner and cannot "
+                               "be cloned, so move it only at its last use, or pass it where it is only read",
+                               (int)name.len, name.ptr, next_pos.line, next_pos.column, (int)note.len, note.ptr));
+        return;
+    }
     own_error(w, e->pos,
               ms_arena_fmt(&w->check->arena,
                            "`%.*s` is moved here but used again at %u:%u%.*s; a value has one owner, so move it only at "
@@ -681,7 +690,7 @@ static bool own_arguments_overlap(const OwnWalk *w, const MsExpr *call, uint32_t
 
 /* A resource parameter handed to a `move` position must itself be declared `move`: a resource has
  * one owner, so who owns it is declared. */
-static void own_require_declared_move(OwnWalk *w, const MsExpr *arg) {
+static void own_require_declared_move_as(OwnWalk *w, const MsExpr *arg, const char *what) {
     const uint32_t binding = own_argument_local(w, arg);
     if (binding == MS_NONE || !w->is_param[binding] || w->perm[binding] != PERM_IMMUTABLE ||
         w->param_mode[binding] == 2 || w->class_of[binding] != MS_CLASS_RESOURCE) {
@@ -690,9 +699,13 @@ static void own_require_declared_move(OwnWalk *w, const MsExpr *arg) {
     const MsStr name = own_name(w, binding);
     own_error(w, arg->pos,
               ms_arena_fmt(&w->check->arena,
-                           "cannot pass `%.*s` as a `move` argument: it is not declared `move`, so the caller keeps it; "
+                           "cannot pass `%.*s` as a `move` %s: it is not declared `move`, so the caller keeps it; "
                            "write `move %.*s: <Type>` in the signature",
-                           (int)name.len, name.ptr, (int)name.len, name.ptr));
+                           (int)name.len, name.ptr, what, (int)name.len, name.ptr));
+}
+
+static void own_require_declared_move(OwnWalk *w, const MsExpr *arg) {
+    own_require_declared_move_as(w, arg, "argument");
 }
 
 /* A change in place of `place` (a part of local `binding`, shown as `text`): the binding's permission
@@ -854,7 +867,7 @@ static bool own_method_unwalked(const OwnWalk *w, uint32_t row) {
 /* The arguments of a method call, by what the method does with each parameter: a `var` one changes a
  * variable, a `move` one (or a plain one the method's own walk found it consumes) is handed over, the
  * rest are read. `consumed` has the receiver at bit 0. */
-static void own_method_arguments(OwnWalk *w, const MsExpr *e, uint32_t row, uint32_t consumed) {
+static void own_method_arguments(OwnWalk *w, const MsExpr *e, uint32_t row, uint32_t consumed, const OwnSummary *summary) {
     const MsTyTable *tys = &w->check->tys;
     const MsTy sig = w->facts->methods->ty[row];
     const MsTyParam *params = ms_ty_params(tys, sig);
@@ -878,7 +891,13 @@ static void own_method_arguments(OwnWalk *w, const MsExpr *e, uint32_t row, uint
             own_mutate(w, arg, binding);
         } else if ((handed >> i & 1u) != 0) {
             own_require_declared_move(w, arg);
+            const bool noted = summary != NULL && summary->consumed_at != NULL && (consumed >> (i + 1) & 1u) != 0 &&
+                               (params[i].flags & MS_PARAM_MOVE) == 0;
+            const MsFunc *declared = w->facts->methods->decl[row];
+            w->note_param = noted && i < declared->params.len ? declared->params.ptr[i]->name : MS_NONE;
+            w->note_at = w->note_param == MS_NONE ? w->note_at : summary->consumed_at[i + 1];
             own_expr(w, arg, DEMAND_MOVE);
+            w->note_param = MS_NONE;
         } else {
             own_expr(w, arg, DEMAND_READ);
         }
@@ -917,6 +936,7 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     // What the method moves of its parameters, and whether its result is a reference into them, is known
     // once its module's walk has run; a call over plain values needs neither.
     uint32_t consumed = 0;
+    const OwnSummary *summary = NULL;
     if (!plain && own_method_unwalked(w, row) && ms_classify(w->classifier, result) == MS_CLASS_COPY) {
         consumed = 0; // nothing to walk: what such a method takes is what its signature says (`move`, `var`), and a plain result borrows nothing
     } else if (!plain && own_is_owning_native(w, row)) {
@@ -924,11 +944,21 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     } else if (!plain) {
         const MsFacts *home = NULL;
         const MsMethod *walked = w->facts->methods->native[row] == MS_NATIVE_SOURCE ? own_walked_method(w, row, &home) : NULL;
-        if (walked == NULL || home->ret_borrowed[walked->id]) {
+        const MsMethod *own = w->facts->methods->module[row] == w->module && w->methods != NULL ? own_method_of_row(w, row) : NULL;
+        if (own != NULL && w->summaries[own->id].usable && !own->func.external && own->func.body.len != 0) {
+            // A method of this module: its summary, from the rounds that settled before the callers' final walk.
+            if (w->summaries[own->id].returns_borrow) {
+                OWN_DECLINE(w);
+                return;
+            }
+            consumed = w->summaries[own->id].consumed;
+            summary = &w->summaries[own->id];
+        } else if (walked == NULL || home->ret_borrowed[walked->id]) {
             OWN_DECLINE(w);
             return;
+        } else {
+            consumed = home->param_consumed[walked->id];
         }
-        consumed = home->param_consumed[walked->id];
     }
     const uint8_t access = w->facts->methods->access[row];
     const bool mutating = (access & MS_METHOD_MUTATING) != 0;
@@ -939,6 +969,7 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
             OWN_DECLINE(w);
             return;
         }
+        own_require_declared_move_as(w, receiver, "receiver");
         own_expr(w, receiver, DEMAND_MOVE);
     } else if (mutating && receiver->kind != MS_E_CALL) { /* a temporary result is changed unseen: nothing else names it */
         bool overlaps = binding == MS_NONE;
@@ -956,7 +987,7 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     } else {
         own_expr(w, receiver, DEMAND_READ);
     }
-    own_method_arguments(w, e, row, consumed);
+    own_method_arguments(w, e, row, consumed, summary);
 }
 
 static MsPlace own_target_place(OwnWalk *w, const MsExpr *target, uint32_t root, MsStr *text);
@@ -1346,6 +1377,9 @@ static bool own_is_method_call(const OwnWalk *w, const MsExpr *e) {
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
+    if (e->kind == MS_E_NAME && w->facts->res_kind[e->id] == MS_RES_NONE && ms_name_is(w->check->names, e->u.sym, "none")) {
+        return; /* `none` is neither a borrow nor a new value of its own */
+    }
     if (e->kind == MS_E_MATCH) {
         own_match(w, e, DEMAND_MOVE, true);
         return;
@@ -1367,7 +1401,9 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE); /* returns whatever this function returns: neither kind of return */
         return;
     }
-    if (!w->facts->some_wrap[e->id] && own_returns_parameter_borrow(w, e)) { /* `some` makes a new value around it */
+    // A parameter wrapped for an Optional result stays a reference, unless its type may be a copy (a type variable).
+    const bool wrapped_copy = w->facts->some_wrap[e->id] && ms_ty_kind(&w->check->tys, w->facts->expr_ty[e->id]) == MS_K_VARIABLE;
+    if (!wrapped_copy && own_returns_parameter_borrow(w, e)) {
         w->borrowed_params |= 1u << w->param_index[own_resolve(w, w->facts->res_ref[e->id])];
         w->borrowed_return = w->has_borrowed_return ? w->borrowed_return : e->pos;
         w->has_borrowed_return = true;
@@ -1835,9 +1871,9 @@ static void own_allocate(OwnWalk *w, MsArena *arena) {
 
 /* Walks one function and records what its callers need to know. Returns whether the summary
  * changed. */
-static bool own_summarize(OwnWalk *w, const MsDecl *d, const uint32_t *by_node) {
-    OwnSummary *summary = &w->summaries[d->id];
-    const bool handled = own_function(w, &d->u.fn, NULL, by_node) && d->u.fn.params.len < 32;
+static bool own_summarize(OwnWalk *w, uint32_t id, const MsFunc *function, const MsMethod *method, const uint32_t *by_node) {
+    OwnSummary *summary = &w->summaries[id];
+    const bool handled = own_function(w, function, method, by_node) && function->params.len < 32;
     const bool returns_borrow = handled && w->has_borrowed_return && !w->has_owned_return;
     const uint32_t mask = returns_borrow ? w->borrowed_params : 0;
     const uint32_t consumed = handled ? w->consumed : 0;
@@ -1864,7 +1900,13 @@ static void own_summary_rounds(OwnWalk *w, const MsModuleRow *row, const uint32_
         for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
             const MsDecl *d = row->syntax->decls[i];
             if (d->kind == MS_D_FN && w->summaries[d->id].usable) {
-                changed = own_summarize(w, d, by_node) || changed;
+                changed = own_summarize(w, d->id, &d->u.fn, NULL, by_node) || changed;
+            }
+        }
+        for (uint32_t i = 0; w->methods != NULL && i < w->facts->methods->count; i++) {
+            const MsMethod *method = w->methods[i];
+            if (method != NULL && w->summaries[method->id].usable) {
+                changed = own_summarize(w, method->id, &method->func, method, by_node) || changed;
             }
         }
         if (!changed) {
@@ -1875,25 +1917,29 @@ static void own_summary_rounds(OwnWalk *w, const MsModuleRow *row, const uint32_
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) { /* no fixpoint: leave every function to Rust */
         w->summaries[row->syntax->decls[i]->id].usable = false;
     }
+    for (uint32_t i = 0; w->methods != NULL && i < w->facts->methods->count; i++) {
+        if (w->methods[i] != NULL) {
+            w->summaries[w->methods[i]->id].usable = false;
+        }
+    }
     w->quiet = false;
 }
 
 /* The impl methods of the module the checker claimed, walked once: nothing calls one through a summary,
  * since the checker admits only scalar results for a method call. */
-static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
+static void own_methods(OwnWalk *w, const uint32_t *by_node) {
     const MsFacts *facts = w->facts;
     if (facts->methods == NULL) {
         return;
     }
-    const MsMethod **rows = ms_method_rows(w->check, w->module, facts->methods, NULL);
+    const MsMethod **rows = w->methods;
     w->quiet = false;
     for (uint32_t i = 0; i < facts->methods->count; i++) {
         const MsMethod *method = rows[i];
         if (method == NULL || !facts->body_checked[method->id]) {
             continue;
         }
-        const bool walked = ms_liveness_function(live, facts, &method->func) &&
-                            own_function(w, &method->func, method, by_node);
+        const bool walked = w->summaries[method->id].usable && own_function(w, &method->func, method, by_node);
         facts->body_checked[method->id] = walked;
         if (!walked) {
             facts->refusal[method->id] = w->declined;
@@ -1916,6 +1962,7 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
                  .classifier = ms_classifier_new(c)};
     ms_classifier_mark_methods(w.classifier, facts->methods);
     own_allocate(&w, &scratch);
+    w.methods = facts->methods == NULL ? NULL : ms_method_rows(c, module, facts->methods, NULL);
     const uint32_t *by_node = own_bindings_by_node(facts, &scratch);
     // A `test` block walks as a function of no parameters.
     MsFunc **tests = MS_NEW_N(&scratch, MsFunc *, row->syntax->ndecls + 1);
@@ -1929,6 +1976,12 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         }
         const bool claimed = (d->kind == MS_D_FN || d->kind == MS_D_TEST) && facts->body_checked[d->id];
         w.summaries[d->id].usable = claimed && ms_liveness_function(&live, facts, function);
+    }
+    for (uint32_t i = 0; w.methods != NULL && i < facts->methods->count; i++) {
+        const MsMethod *method = w.methods[i];
+        if (method != NULL) {
+            w.summaries[method->id].usable = facts->body_checked[method->id] && ms_liveness_function(&live, facts, &method->func);
+        }
     }
     // Also for a module without calls: the summaries are where `ret_borrowed` and `param_consumed`
     // come from, and a caller in another module reads them.
@@ -1957,7 +2010,7 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
             facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, tests[i], NULL, by_node);
         }
     }
-    own_methods(&w, &live, by_node);
+    own_methods(&w, by_node);
     free(w.active.items);
     free(w.declared);
     free(w.pending);

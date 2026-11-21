@@ -344,7 +344,7 @@ static uint32_t ln_without_descriptors(LnCall *call) {
 static bool ln_emit_view(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, MirValue *out) {
     const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = result_ty}, MIR_PTR);
     ln_push(call, MS_RT_OUT_STR, slot, MIR_PTR);
-    const uint32_t ext = lb_runtime_extern(lb, fn->symbol, call->types, call->count, MIR_VOID, MR_NONE, false);
+    const uint32_t ext = lb_runtime_extern(lb, fn->symbol, call->types, call->count, MIR_VOID, MR_BORROWS_ARGUMENT, false);
     (void)mir_b_call_rt(&lb->b, ext, call->operands, call->count);
     *out = lb_load(lb, slot, result_ty);
     return true;

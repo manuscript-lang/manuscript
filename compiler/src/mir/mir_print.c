@@ -220,7 +220,7 @@ static const char *mp_mode_prefix(const MirModule *m, MirTy ty, uint8_t mode) {
 }
 
 static const char *const mp_role_names[] = {
-    [MR_STRBUILDER_APPEND] = "strbuilder_append", [MR_STRBUILDER_APPEND_INT] = "strbuilder_append_int",
+    [MR_BORROWS_ARGUMENT] = "borrows_argument", [MR_STRBUILDER_APPEND] = "strbuilder_append", [MR_STRBUILDER_APPEND_INT] = "strbuilder_append_int",
     [MR_STRING_CONCAT] = "string_concat", [MR_STRING_JOIN] = "string_join",
     [MR_STRING_APPEND] = "string_append", [MR_INT_TO_STRING] = "int_to_string",
     [MR_LIST_SORTED] = "list_sorted", [MR_LIST_SORT_INTS] = "list_sort_ints",
@@ -231,7 +231,8 @@ static const char *const mp_role_names[] = {
     [MR_SPAWNS_TASK] = "spawns_task", [MR_SHIELD_ENTER] = "shield_enter",
     [MR_SHIELD_EXIT] = "shield_exit", [MR_UNWINDING] = "unwinding",
     [MR_MAP_PROBE_INT] = "map_probe_int", [MR_MAP_PROBE_STR] = "map_probe_str",
-    [MR_SET_PROBE_INT] = "set_probe_int",
+    [MR_SET_PROBE_INT] = "set_probe_int", [MR_STRING_SLICE] = "string_slice",
+    [MR_BYTES_READ_WORD] = "bytes_read_word", [MR_BYTES_INDEX_OF_BYTE] = "bytes_index_of_byte",
 };
 
 /* The role named by a textual attribute, or MR_NONE. */
