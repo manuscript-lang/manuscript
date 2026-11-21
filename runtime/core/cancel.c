@@ -91,6 +91,7 @@ static void publish(size_t slot, uint32_t state) {
         made = ms_sys_realloc(NULL, sizeof *made);
         if (made == NULL) {
             ms_sched()->hooks.fault(MS_FAULT_KIND_FAULT, "cancel: out of memory");
+            return;
         }
         memset((void *)made, 0, sizeof *made);
         atomic_store_explicit(cell, made, memory_order_release);
