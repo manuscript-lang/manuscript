@@ -83,6 +83,7 @@
 #include "syntax/constfold.c"
 #include "check/lower_scope.c"
 #include "check/lower_body.c"
+#include "check/lower_func.c"
 #include "check/lower_record.c"
 #include "check/lower_list.c"
 #include "check/lower_map.c"
