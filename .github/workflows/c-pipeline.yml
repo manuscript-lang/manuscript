@@ -33,7 +33,8 @@ jobs:
       matrix:
         leg: >-
           ${{ fromJSON(
-          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025"}]' ||
+          inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15"}]' ||
+          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
           '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]') }}
     steps:
       - uses: actions/checkout@v7
@@ -45,14 +46,22 @@ jobs:
         run: |
           cargo xtask runtime
           cargo build --release --locked -p ms-cli
-      - name: stop-hold under Windows
+      - name: Hello through the C pipeline
         run: |
-          target/release/ms run tests/conformance/fixtures/e2e/accept/stop-hold.ms; echo "exit=$?"
-          printf 'import hold_stop, spawn, watch_signals from "@std/os/process.ms"\nimport seconds from "@std/time.ms"\nfn main() Void!:\n\t_h := hold_stop()\n\tvar s = watch_signals([15], none)?\n\tc := spawn("sh", ["-c", "echo ppid=$PPID; kill -TERM $PPID; echo kill=$?"])?\n\tprint(f"status {c.wait()?}")\n\tprint(f"sig {s.next(timeout: seconds(3))?}")\n' > probe.ms
-          target/release/ms run probe.ms; echo "exit=$?"
-          which sh; sh -c 'echo $PPID; kill -l | head -3'
-      - name: Keep nothing
-        run: mkdir -p keep && echo x > keep/x
+          printf 'import stdout from "@std/io/io.ms"\n\nexport fn main() Int:\n    _w := stdout().write("hello\\n")\n    return 0\n' > hello.ms
+          MS_BACKEND=c target/release/ms build hello.ms --build-type Debug -o hello
+          ./hello
+      - name: Compare the corpus
+        run: sh compiler/tests/build-diff.sh '${{ inputs.limit }}' | tee build-diff.log
+      - name: Keep the logs of the programs that differ or fail
+        if: always()
+        run: |
+          mkdir -p keep
+          for f in $(grep -E '^(DIFF|cfail)' build-diff.log | awk '{print $2}'); do
+            id=$(echo "$f" | tr '/' '_')
+            cp target/c-compiler/build-diff/"$id".* keep/ 2>/dev/null || true
+          done
+          cp build-diff.log keep/ 2>/dev/null || true
       - uses: actions/upload-artifact@v7
         if: always()
         with:
