@@ -182,6 +182,57 @@ MirValue la_payload(Lb *lb, MirValue subject, bool borrowed) {
     return la_field(lb, subject, data->id, LA_OK, held);
 }
 
+/* `receiver.get_or(fallback)` (a native marked `@fallback`): the payload when the receiver holds one, else the
+ * argument, which is evaluated first. Payloads that need no drop only; an owned one is left to the Rust lowering. */
+LbVal la_fallback(Lb *lb, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    if (e->u.call.args.len != 1) {
+        return LB_UNSUPPORTED(lb);
+    }
+    const LbVal subject = lb_expr(lb, callee->u.member.left);
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
+    const MirTy held = mir_b_ty(&lb->b, subject.v);
+    const MirTyKind kind = held == MIR_NONE ? MK_INT : mir_ty_data(lb->m, held)->kind;
+    const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    if ((kind != MK_OPT && kind != MK_ALT) || result_ty == MIR_NONE || lb_owns(lb, result_ty) || (subject.owned && lb_owns(lb, held))) {
+        return LB_UNSUPPORTED(lb);
+    }
+    const MsExpr *given = e->u.call.args.ptr[0].value;
+    if (!lb->facts->some_wrap[given->id] && lb->facts->expr_ty[given->id] != lb->facts->expr_ty[e->id]) {
+        return LB_UNSUPPORTED(lb); // an argument already optional where the parameter is `T?`
+    }
+    lb_at_expression(lb, given);
+    const LbVal fallback = lb_expr_plain(lb, given);
+    if (!lb->ok || fallback.owned) {
+        return lb->ok ? LB_UNSUPPORTED(lb) : LB_FAIL;
+    }
+    MirBuilder *b = &lb->b;
+    const MirValue present = la_test(lb, subject.v);
+    const MirBlock yes = mir_b_new_block(b);
+    const MirBlock no = mir_b_new_block(b);
+    mir_b_br_if(b, present, yes, NULL, 0, no, NULL, 0);
+    mir_b_seal_block(b, yes);
+    mir_b_seal_block(b, no);
+    const MirBlock join = mir_b_new_block(b);
+    const MirValue result = mir_b_add_block_param(b, join, result_ty, MM_BORROW);
+    mir_b_switch_to(b, yes);
+    MirValue payload;
+    if (kind == MK_OPT) {
+        payload = la_payload(lb, subject.v, true);
+    } else { // read in place: the receiver keeps its payload, whatever else it owns
+        const MirImm field = {.tag = MI_ALTFIELD, .a = mir_ty_data(lb->m, held)->id, .b = LA_OK, .c = 0};
+        payload = mir_b_emit(b, MOP_AltGet, &subject.v, 1, field, result_ty);
+    }
+    mir_b_br(b, join, &payload, 1);
+    mir_b_switch_to(b, no);
+    mir_b_br(b, join, &fallback.v, 1);
+    mir_b_seal_block(b, join);
+    mir_b_switch_to(b, join);
+    return (LbVal){result, false};
+}
+
 /* `call()?` on a Result inside a function that returns a Result with the same error type: the
  * success value; an error leaves the function with it. */
 LbVal la_try(Lb *lb, const MsExpr *e) {
