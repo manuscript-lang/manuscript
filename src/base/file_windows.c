@@ -4,6 +4,7 @@
 #define NOMINMAX
 #define NOGDI
 #define NOUSER
+#include <errno.h>
 #include <windows.h>
 
 #include "base/file.h"
@@ -106,6 +107,40 @@ void ms_path_remove(MsSpan path) {
     }
   }
   ms_os_wide_free(&wide);
+}
+
+bool ms_file_real_path(MsSpan path, MsString *out) {
+  MsOsWide wide = ms_os_wide_new(path, true);
+  if (wide.ptr == NULL) {
+    errno = EINVAL;
+    return false;
+  }
+  HANDLE handle = CreateFileW((const WCHAR *)wide.ptr, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                              NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+  ms_os_wide_free(&wide);
+  if (handle == INVALID_HANDLE_VALUE) {
+    const DWORD error = GetLastError();
+    errno = error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND ? ENOENT
+            : error == ERROR_ACCESS_DENIED                                   ? EACCES
+                                                                              : EIO;
+    return false;
+  }
+  WCHAR resolved[MAX_PATH_UNITS];
+  const DWORD units = GetFinalPathNameByHandleW(handle, resolved, MAX_PATH_UNITS, FILE_NAME_NORMALIZED);
+  (void)CloseHandle(handle);
+  char utf8[MAX_PATH_UNITS * 3];
+  if (units == 0 || units >= MAX_PATH_UNITS ||
+      WideCharToMultiByte(CP_UTF8, 0, resolved, -1, utf8, sizeof utf8, NULL, NULL) <= 0) {
+    errno = EIO;
+    return false;
+  }
+  MsSpan text = ms_span_of_text(utf8);
+  if (ms_span_starts_with(text, ms_span_of_text("\\\\?\\"))) { /* the verbatim prefix */
+    text = ms_span_of(text.ptr + 4, text.len - 4);
+  }
+  ms_string_release(out);
+  *out = ms_string_from_span(text);
+  return true;
 }
 
 bool ms_dir_current(MsString *path) {
