@@ -230,14 +230,12 @@ static bool lc_exits_clean(const Lb *lb) {
     return true;
 }
 
-bool lc_bind(Lb *lb, const MsStmt *s, uint32_t binding, LbVal value) {
-    const MirTy ty = mir_b_ty(&lb->b, value.v);
+/* Puts the owned resource `value` of local `binding` in a slot the elaborate pass closes at its scope's
+ * end; false when the function cannot be left to that pass. */
+static bool lc_slot_own(Lb *lb, uint32_t binding, MirValue value) {
+    const MirTy ty = mir_b_ty(&lb->b, value);
     LbCloser *closer = lc_find(lb, ty);
-    const MsFacts *facts = lb->facts;
-    const bool plain = !s->u.bind.is_mutable && s->u.bind.pattern->kind == MS_P_NAME && value.owned &&
-                       (facts->bindings.flags[binding] & MS_BIND_RESOURCE) != 0 &&
-                       (facts->bindings.flags[binding] & MS_BIND_BORROWS) == 0;
-    if (!plain || closer == NULL || lb->method_func[closer->row] == MIR_NONE || !lc_exits_clean(lb)) {
+    if (closer == NULL || lb->method_func[closer->row] == MIR_NONE || !lc_exits_clean(lb)) {
         return false;
     }
     const uint32_t func = lb->method_func[closer->row];
@@ -263,12 +261,27 @@ bool lc_bind(Lb *lb, const MsStmt *s, uint32_t binding, LbVal value) {
     }
     const MirImm slot_ty = {.tag = MI_TY, .a = ty};
     const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, slot_ty, MIR_PTR);
-    const MirValue put[2] = {slot, value.v};
+    const MirValue put[2] = {slot, value};
     (void)mir_b_emit(&lb->b, mir_needs_drop(lb->m, ty) ? MOP_Put : MOP_Store, put, 2, (MirImm){0}, MIR_NONE);
     lscope_own(&lb->scopes, slot, closer->thunk + 2);
     const LbSlotLocal local = {.view = lb->view, .binding = binding, .slot = slot, .ty = ty};
     MIR_PUSH(lb->m, lb->slots, lb->nslots, lb->cslots, LbSlotLocal, local);
     return true;
+}
+
+static bool lc_owned_local(const Lb *lb, uint32_t binding) {
+    const uint8_t flags = lb->facts->bindings.flags[binding];
+    return (flags & MS_BIND_RESOURCE) != 0 && (flags & MS_BIND_BORROWS) == 0;
+}
+
+bool lc_bind(Lb *lb, const MsStmt *s, uint32_t binding, LbVal value) {
+    const bool plain = !s->u.bind.is_mutable && s->u.bind.pattern->kind == MS_P_NAME && value.owned &&
+                       lc_owned_local(lb, binding);
+    return plain && lc_slot_own(lb, binding, value.v);
+}
+
+bool lc_own_param(Lb *lb, uint32_t binding) {
+    return lc_owned_local(lb, binding) && lc_slot_own(lb, binding, lb->value_of[binding]);
 }
 
 bool lc_use(Lb *lb, uint32_t binding, MirValue *out) {

@@ -522,7 +522,7 @@ uint32_t lb_slot_node(const LbCallable *c, uint32_t slot) {
 bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot) {
     const MsParam *param = lb_slot_param(c, slot);
     const bool declared = param != NULL && param->moving;
-    return declared || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
+    return declared || (slot == 0 && lb_has_self(c) && c->consuming) || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
 }
 
 /* Whether `e` names a `let` local, a payload an arm took out of its scrutinee or a `move` parameter: a value the function owns, so using it
