@@ -2,8 +2,13 @@
  * files must therefore not share names. */
 /* lstat, readlink and getcwd for project/path.c. */
 #define _POSIX_C_SOURCE 200809L
+/* macOS hides mkdtemp (build/object.c) behind _DARWIN_C_SOURCE once _POSIX_C_SOURCE is set. */
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE
+#endif
 #include "syntax/base.c"
 #include "syntax/token.c"
+#include "syntax/doc.c"
 #include "syntax/lex.c"
 #include "syntax/dump_base.c"
 #include "syntax/diag.c"
@@ -65,6 +70,7 @@
 #include "opt/opt_reserve.c"
 #include "mir/mir_builder.c"
 #include "opt/opt_appendfast.c"
+#include "opt/opt_probe.c"
 #include "opt/opt_sortgen_drift.c"
 #include "opt/opt_sortgen.c"
 #include "opt/opt_copyelim.c"
@@ -84,16 +90,22 @@
 #include "syntax/constfold.c"
 #include "check/lower_scope.c"
 #include "check/lower_body.c"
+#include "check/lower_entry.c"
 #include "check/lower_func.c"
 #include "check/lower_record.c"
 #include "rt_ops.c"
 #include "check/lower_list.c"
+#include "check/lower_extern.c"
+#include "check/lower_out.c"
 #include "check/lower_native.c"
 #include "check/lower_map.c"
 #include "check/lower_enum.c"
 #include "check/lower_text.c"
+#include "check/lower_format.c"
 #include "check/lower_alt.c"
 #include "check/lower_closure.c"
+#include "check/lower_close.c"
+#include "check/lower_eq.c"
 #include "check/lower_iface.c"
 #include "check/lower_method.c"
 #include "syntax/walk.c"
@@ -138,6 +150,8 @@
 #include "check/implements.c"
 #include "check/program.c"
 #include "check/dump_methods.c"
+#include "check/api_model.c"
+#include "check/dump_sites.c"
 #include "check/dump_facts.c"
 #include "own/ownership_places.c"
 #include "own/ownership_bits.c"
@@ -152,6 +166,14 @@
 #include "emit/emit_entry.c"
 #include "emit/emit_llvm.c"
 #include "emit/emit_program.c"
+#if !defined(_WIN32)
+#include "build/tool.c"
+#include "build/object.c"
+#include "build/macho.c"
+#include "build/link.c"
+#include "build/link_linux.c"
+#include "build/link_macos.c"
+#endif
 /* The project loader uses POSIX file calls, which the Windows tools do not need; the back end library the Rust
  * `ms` links leaves it out on every platform (cmake/MsCompiler.cmake, target ms_backend). */
 #if !defined(_WIN32) && !defined(MS_LIBMS_NO_PROJECT)
@@ -171,4 +193,5 @@
 
 #include "project/graph_check.c"
 #include "check_cmd.c"
+#include "build_cmd.c"
 #endif

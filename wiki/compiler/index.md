@@ -6,6 +6,7 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 
 - [The C parser returns false on failure and speculation restores a checkpoint](the-c-parser-returns-false-on-failure-and-speculation-restores-a-checkpoint.md): `longjmp` is banned; node ids are spent on abandoned attempts exactly as in Rust.
 - [Fallible native calls share one error builder](fallible-native-calls-share-one-error-builder.md): the status-to-`Error` chain was inlined at every call site (web server MIR 12,070 to 6,414 lines, binary 3.96 to 3.65 MB).
+- [C lowering of extern natives grows slice by slice](c-lowering-of-extern-natives-grows-slice-by-slice.md): extern calls and types lower; `ErrSlot`, `HasRaw` and `out` handles still decline in `ln_marshal`.
 - [Callback adapters do not change generic type identity](callback-adapters-do-not-change-generic-type-identity.md): reader conversion applies at a callable value boundary; implementation overlap and receiver matching preserve nested callback modes.
 
 - [Checker state must scale with the function, not the program](checker-state-must-scale-with-the-function-not-the-program.md): uid-indexed arrays, scans over all methods and `Info` clones were half of `ms check` on a large project.
@@ -40,11 +41,13 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [Checks and list growth are MIR; the backends only lower](checks-and-list-growth-are-mir-the-backends-only-lower.md)
 - [The C front end is diffed against the Rust one, not rewritten from the docs](the-c-front-end-is-diffed-against-rust-not-reimplemented-from-the-docs.md): `make c-compiler-test` compares tokens (later trees) and diagnostics byte for byte on the corpus and on mutants.
 - [The C body checker admits maps by key and value type](the-c-body-checker-admits-maps-by-key-and-value-type.md): annotations and literals; ownership and lowering follow.
+- [The C lowering of a whole program sets its entry](the-c-lowering-of-a-whole-program-sets-its-entry.md): `main` or its `main.1` wrapper; `Void!` ends with `ok(void)`; the census compares files by name.
 - [The C lowering makes one copy per type-argument list](the-c-lowering-makes-one-copy-per-type-argument-list.md): the checker records the type arguments; copies are named by creation order and compared by signature.
 - [The C lowering holds statement temporaries and reads `xs[i]` as an index](the-c-lowering-holds-statement-temporaries-and-reads-name-indexes.md): `ms_expr_index`, `lb_hold_temp` and `lst_for` follow the Rust lowering.
 - [C MIR passes: shallow clones, unity build, unzeroed allocations](c-mir-passes-share-arrays-and-a-unity-build.md): what bit the port of the optimiser to C, and that it is not a perf target.
 - [The C back end runs inside `ms`, and `llc` is its assembler](the-c-back-end-runs-in-process-and-llc-is-the-assembler.md): libms is linked, not spawned; assembly goes through `module asm` because the pinned tools have no assembler.
 - [The C ownership classifier learns closeable types from method rows](c-checker-learns-closeable-types-from-method-rows.md): why the checker refused every type that closes, what the walk and lowering still decline.
+- [An extern type is source-constructible when its declaration says so](an-extern-type-is-source-constructible-by-marker-comment.md): `// ms: constructible` replaces a name list for `StringBuilder()`.
 - [Native types are declared `extern type`, never recognised by name](native-types-are-declared-extern-not-recognised-by-name.md): `List` is `extern type List[T]:` with its constructor field; scope binds a native module's type to the loader's symbol, not a twin.
 - [C `ms check` answers only what the corpus diff proves](c-ms-check-answers-only-what-the-corpus-diff-proves.md): guards for unported checks, the two traps the diff found, how to remove a guard.
 - [The C loader attaches packages; package rules need a complete effect scan](the-c-loader-attaches-packages-but-the-checker-does-not-enforce-them-yet.md): what `ms_project_load_packages` and `ms_graph_check_packages` cover, and when the build must fall back.

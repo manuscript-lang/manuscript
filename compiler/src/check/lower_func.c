@@ -1,6 +1,8 @@
 /* The per-function driver of the lowering: the signature of a function or method, its stub in the
  * module, starting and finishing a body, and the pass over a module (`ms_lower_module`) that repeats
  * without the functions that failed. Expressions and statements are lower_body.c's. */
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "ms/lower_internal.h"
@@ -105,9 +107,48 @@ void lb_reset_state(Lb *lb) {
     lscope_init(&lb->scopes, &lb->b);
     lb->vars = NULL; // the arena they live in is freed between passes
     lb->nvars = lb->cvars = 0;
+    lb->parts = NULL;
+    lb->nparts = lb->cparts = 0;
     lb->temps = NULL;
     lb->ntemps = lb->ctemps = lb->stmt_mark = lb->branching = 0;
+    lb->slots = NULL;
+    lb->nslots = lb->cslots = 0;
     (void)lscope_push(&lb->scopes); // the body's own scope: depth 0
+}
+
+/* One line of the report of functions that did not lower: `name<TAB>file:line:col<TAB>reason`, the
+ * place being the statement the lowering stopped at (the declaration when it never started). */
+static void lb_why(Lb *lb, const LbCallable *c, const char *reason) {
+    if (lb->why == NULL) {
+        return;
+    }
+    const MsStr name = ms_name(&lb->m->names, lb->has_override ? lb->name_override : c->name);
+    const MsStr path = ms_name(lb->c->names, lb->c->mods[lb->module].path);
+    const MsPos at = lb->fail_site != NULL && lb->fail_stmt != NULL ? lb->fail_stmt->pos : c->pos;
+    ms_buf_printf(lb->why, "%.*s\t%.*s:%u:%u\t", (int)name.len, name.ptr, (int)path.len, path.ptr, at.line, at.column);
+    if (reason != NULL) {
+        ms_buf_printf(lb->why, "%s\n", reason);
+    } else if (lb->fail_site != NULL) {
+        const char *base = strrchr(lb->fail_site, '/');
+        ms_buf_printf(lb->why, "%s:%d\n", base != NULL ? base + 1 : lb->fail_site, lb->fail_line);
+    } else {
+        ms_buf_puts(lb->why, "unhandled\n");
+    }
+}
+
+void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos, MsSite site) {
+    if (lb->why == NULL || !lb->first_pass) {
+        return;
+    }
+    const MsStr text = ms_name(lb->c->names, name);
+    const MsStr path = ms_name(lb->c->names, lb->c->mods[lb->module].path);
+    const char *base = site.file == NULL ? NULL : strrchr(site.file, '/');
+    ms_buf_printf(lb->why, "%.*s\t%.*s:%u:%u\tbody not checked", (int)text.len, text.ptr, (int)path.len, path.ptr,
+                  pos.line, pos.column);
+    if (site.file != NULL) {
+        ms_buf_printf(lb->why, " (%s:%u)", base != NULL ? base + 1 : site.file, site.line);
+    }
+    ms_buf_puts(lb->why, "\n");
 }
 
 /* Lowers one checked function over its stub `slot` in the module; false when it is not handled. */
@@ -116,21 +157,37 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
     lb->closure = false;
     lb->jobs = NULL; // the arena they live in is freed between passes
     lb->njobs = lb->cjobs = 0;
+    lb->fail_site = NULL;
+    lb->fail_stmt = NULL;
     lb->ok = lb_begin(lb, c);
     if (!lb->ok) {
+        lb_why(lb, c, "signature");
         return false;
     }
     lb_reset_state(lb);
     for (uint32_t i = 0; i < lb_slots(c); i++) {
         if (lb_param_moves(lb, c, i)) { // the function owns what it was handed
-            lscope_own(&lb->scopes, lb->value_of[lb->binding_at[lb_slot_node(c, i)]], 0);
+            const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
+            if (lc_is_resource(lb, mir_b_ty(&lb->b, lb->value_of[binding]))) {
+                lb->ok = lc_own_param(lb, binding) && lb->ok; // closed at its scope's end
+            } else {
+                lscope_own(&lb->scopes, lb->value_of[binding], 0);
+            }
         }
     }
     lb_statements(lb, &c->fn->body);
-    if (lb->ok && !lb->dead && lb->b.f.ret == MIR_VOID) {
-        lb_return_void(lb); // the end of a function that returns nothing
+    if (lb->ok && !lb->dead && (lb->b.f.ret == MIR_VOID || la_returns_void_result(lb))) {
+        lb_return_void(lb); // the end of a function that returns nothing, or `ok` of nothing
+    }
+    if (!lb->ok) {
+        lb_why(lb, c, NULL);
+    } else if (!lb->dead) {
+        lb_why(lb, c, "falls off the end");
     }
     lb->ok = lb->ok && lb->dead;
+    if (lb->ok) {
+        lc_check(lb);
+    }
     MirFunc f = {0};
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
@@ -161,7 +218,7 @@ uint32_t lb_view_enter(Lb *lb, uint32_t view) {
 }
 
 /* The view of `module`, or MS_NONE when it is not being lowered. */
-static uint32_t lb_view_of(const Lb *lb, MsModId module) {
+uint32_t lb_view_of(const Lb *lb, MsModId module) {
     for (uint32_t v = 0; v < lb->nviews; v++) {
         if (lb->views[v].module == module) {
             return v;
@@ -174,6 +231,12 @@ static uint32_t lb_view_of(const Lb *lb, MsModId module) {
 static void lb_index_bindings(Lb *lb, MsArena *arena) {
     lb->type_of = MS_NEW_N(arena, MirTy, lb->c->tys.count + 1);
     memset(lb->type_of, 0xff, (lb->c->tys.count + 1) * sizeof *lb->type_of);
+    lb->eqs = NULL; // they live in the module's arena, which is rebuilt each pass
+    lb->neqs = lb->ceqs = 0;
+    lb->closers = NULL; // the resource types and their helpers are rebuilt with the module
+    lb->nclosers = lb->cclosers = 0;
+    lb->exits = NULL;
+    lb->nexits = lb->cexits = 0;
     for (uint32_t k = 0; k < lb->nviews; k++) {
         LbView *v = &lb->views[k];
         const MsBindings *bindings = &v->facts->bindings;
@@ -187,6 +250,12 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
         v->var_of = MS_NEW_N(arena, MirVar, bindings->count + 1);
         memset(v->var_of, 0xff, (bindings->count + 1) * sizeof *v->var_of);
         memset(v->value_of, 0xff, (bindings->count + 1) * sizeof *v->value_of);
+        const MsStr path = ms_name(lb->c->names, lb->c->mods[v->module].path);
+        char *text = MS_NEW_N(arena, char, (size_t)path.len + 1);
+        memcpy(text, path.ptr, path.len);
+        const MsStr file = {text, path.len};
+        v->file = lb->m->nfiles; // a location names its file by this index
+        MIR_PUSH(lb->m, lb->m->files, lb->m->nfiles, lb->m->cfiles, MsStr, file);
     }
     (void)lb_view_enter(lb, 0);
 }
@@ -234,7 +303,7 @@ static bool lb_push_inst(LbInst **list, uint32_t *n, uint32_t *cap, const LbInst
  * on first use; MIR_NONE when its signature is not handled or it failed before. Copies are named
  * `name`, `name.1`, `name.2`, ... in the order they are created. Their bodies are lowered by
  * `lb_drain_instances` once the module's own functions are. */
-static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
+uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
     if (lb_find_inst(lb->dead_insts, lb->ndead_insts, sym, args, nargs) != NULL) {
         return MIR_NONE;
     }
@@ -349,6 +418,9 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
             const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !lb->views[v].failed[i] &&
                                  !lb_has_diagnostic(row, i);
             syms[v][i] = checked ? ms_decl_own_symbol(lb->c, lb->module, d) : MS_NONE;
+            if (d->kind == MS_D_FN && !d->u.fn.external && !lb->facts->body_checked[d->id]) {
+                lb_why_unchecked(lb, d->u.fn.name, d->pos, lb->facts->refusal[d->id]);
+            }
             if (syms[v][i] != MS_NONE && lb->c->syms.nvars[syms[v][i]] != 0) {
                 syms[v][i] = MS_NONE; // a generic function is checked here but not lowered: it needs one copy per type argument
             }
@@ -385,15 +457,38 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
 /* Lowers `modules` into `out`. A failed function leaves a stub, and calls to it were lowered against
  * it, so the pass repeats without it (its callers then fail too) until a pass loses nothing. That is
  * at most one pass per function; programs lose a function or two. */
-static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nmodules, MirModule *out) {
+/* The lowered `main` of the entry module (the first view), or MIR_NONE: the function named `main`
+ * that the last pass kept. */
+static uint32_t lb_entry_main(const Lb *lb, MsModId entry) {
+    const MsModule *syntax = lb->c->mods[entry].syntax;
+    if (lb->views[0].module != entry) {
+        return MIR_NONE;
+    }
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        const MsDecl *d = syntax->decls[i];
+        if (d->kind != MS_D_FN || !ms_name_is(lb->c->names, d->u.fn.name, "main") || lb->views[0].failed[i]) {
+            continue;
+        }
+        const MsSymId sym = ms_map_get(&lb->c->mods[entry].names, d->u.fn.name);
+        return sym == MS_NONE || lb->c->syms.decl[sym] != d ? MIR_NONE : lb->func_of[sym];
+    }
+    return MIR_NONE;
+}
+
+/* `program`: `modules[0]` holds the program's `main`, which becomes the module's entry. */
+static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nmodules, bool program, MirModule *out,
+                                 MsBuf *why) {
     Lb lb = {.c = c,
              .mut = c,
              .m = out,
+             .why = why,
+             .first_pass = true,
              .int_ty = ms_check_primitive(c, "Int"),
              .float_ty = ms_check_primitive(c, "Float"),
              .bool_ty = ms_check_primitive(c, "Bool"),
              .string_ty = ms_check_primitive(c, "String"),
-             .void_ty = ms_check_primitive(c, "Void")};
+             .void_ty = ms_check_primitive(c, "Void"),
+             .never_ty = ms_check_primitive(c, "Never")};
     lb.views = calloc((size_t)nmodules + 1, sizeof *lb.views);
     bool ready = lb.views != NULL;
     for (uint32_t i = 0; ready && i < nmodules; i++) {
@@ -420,9 +515,15 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
             mir_module_free(out);
             mir_module_init(out);
             lb_index_bindings(&lb, &out->arena);
-            if (!lb_pass(&lb, nrows, method_failed, &lowered)) {
+            const bool lost = lb_pass(&lb, nrows, method_failed, &lowered);
+            lb.first_pass = false;
+            if (!lost) {
                 break;
             }
+        }
+        const uint32_t user = program && lb.func_of != NULL ? lb_entry_main(&lb, modules[0]) : MIR_NONE;
+        if (user != MIR_NONE) {
+            lb_set_entry(&lb, user);
         }
         ms_classifier_free(lb.classifier);
         free(method_failed);
@@ -441,18 +542,46 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
 }
 
 uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
-    return lb_lower_modules(c, &module, 1, out);
+    return lb_lower_modules(c, &module, 1, false, out, NULL);
 }
 
-uint32_t ms_lower_program(MsCheck *c, MirModule *out) {
+/* Appends `module` and then the project modules it imports, each once, in import order: the order
+ * in which the program's source files are first reached from the entry. */
+void ms_module_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modules, uint32_t *n) {
+    if (seen[module]) {
+        return;
+    }
+    seen[module] = true;
+    modules[(*n)++] = module;
+    const MsModuleRow *row = &c->mods[module];
+    for (uint32_t i = 0; row->import_targets != NULL && i < row->syntax->nimports; i++) {
+        if (row->import_targets[i] != MS_NONE) {
+            ms_module_reach(c, row->import_targets[i], seen, modules, n);
+        }
+    }
+}
+
+uint32_t ms_lower_program(MsCheck *c, MsModId entry, MirModule *out) {
+    return ms_lower_program_why(c, entry, out, NULL);
+}
+
+uint32_t ms_lower_program_why(MsCheck *c, MsModId entry, MirModule *out, MsBuf *why) {
     MsModId *modules = calloc((size_t)c->nmods + 1, sizeof *modules); /* owned, freed below */
-    if (modules == NULL) {
+    bool *seen = calloc((size_t)c->nmods + 1, sizeof *seen);          /* owned, freed below */
+    if (modules == NULL || seen == NULL) {
+        free(modules);
+        free(seen);
         return 0;
     }
+    uint32_t n = 0;
+    ms_module_reach(c, entry, seen, modules, &n); // the entry first: its source file is file 0
     for (uint32_t i = 0; i < c->nmods; i++) {
-        modules[i] = i;
+        if (!seen[i]) {
+            modules[n++] = i; // the standard library's modules, which no import target names
+        }
     }
-    const uint32_t lowered = lb_lower_modules(c, modules, c->nmods, out);
+    free(seen);
+    const uint32_t lowered = lb_lower_modules(c, modules, n, true, out, why);
     free(modules);
     return lowered;
 }

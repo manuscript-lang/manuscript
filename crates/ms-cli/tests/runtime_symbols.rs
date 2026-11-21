@@ -85,6 +85,6 @@ fn runtime_symbol_catalogue_matches_archive() {
     let stale: Vec<_> = catalogued.difference(&exported).collect();
     assert!(
         unlisted.is_empty() && stale.is_empty(),
-        "crates/ms-lower/rt_symbols.txt is out of date (run `cargo xtask symbols`).\nexported but not listed: {unlisted:?}\nlisted but not exported: {stale:?}"
+        "crates/ms-lower/rt_symbols.txt is out of date (run `ms run tools/ms/symbols.ms`).\nexported but not listed: {unlisted:?}\nlisted but not exported: {stale:?}"
     );
 }

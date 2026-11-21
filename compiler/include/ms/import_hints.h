@@ -7,6 +7,10 @@
 #include "ms/ast.h"
 #include "ms/tables.h"
 
+/* The source-backed prelude names (the standard library declares them, so no import is needed). */
+extern const char *const ms_prelude_names[];
+extern const size_t ms_prelude_name_count;
+
 /* `; add: import Name from "@std/..."` naming the first standard module (in path order) that
  * exports `name`, or `; use the prelude Name declaration directly; ...` for a prelude name, else
  * empty. `checking_sources` is true while the checker is inside a bundled source module, when no

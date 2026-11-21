@@ -10,8 +10,9 @@
 
 #include "check/check_body.h"
 
-static bool closure_primitive(const MsBody *b, MsTy ty) {
-    return ms_body_is_plain_value(b, ty);
+/* What a function value may take or give: any type a binding can hold. */
+static bool closure_value(const MsBody *b, MsTy ty) {
+    return ms_body_is_bindable(b, ty);
 }
 
 bool ms_body_is_function_value(const MsBody *b, MsTy ty) {
@@ -21,11 +22,62 @@ bool ms_body_is_function_value(const MsBody *b, MsTy ty) {
     }
     const MsTyParam *params = ms_ty_params(tys, ty);
     for (uint32_t i = 0; i < tys->nparams[ty]; i++) {
-        if ((params[i].flags & ~MS_PARAM_POSITIONAL) != 0 || !closure_primitive(b, params[i].ty)) {
+        if ((params[i].flags & ~(MS_PARAM_POSITIONAL | MS_PARAM_MOVE)) != 0 || !closure_value(b, params[i].ty)) {
             return false;
         }
     }
-    return closure_primitive(b, tys->result[ty]) || tys->result[ty] == b->void_ty;
+    return closure_value(b, tys->result[ty]) || tys->result[ty] == b->void_ty;
+}
+
+bool ms_body_is_callback_type(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    if (ty == MS_TY_NONE || ms_ty_kind(tys, ty) != MS_K_FUNCTION || tys->nparams[ty] > 16) {
+        return false;
+    }
+    const MsTyParam *params = ms_ty_params(tys, ty);
+    for (uint32_t i = 0; i < tys->nparams[ty]; i++) {
+        if ((params[i].flags & ~(MS_PARAM_POSITIONAL | MS_PARAM_MOVE | MS_PARAM_VAR)) != 0 || !closure_value(b, params[i].ty)) {
+            return false;
+        }
+    }
+    return closure_value(b, tys->result[ty]) || tys->result[ty] == b->void_ty;
+}
+
+bool ms_body_reads_where_var_expected(const MsBody *b, MsTy actual, MsTy expected) {
+    const MsTyTable *tys = &b->c->tys;
+    if (actual == MS_TY_NONE || expected == MS_TY_NONE || ms_ty_kind(tys, actual) != MS_K_FUNCTION ||
+        ms_ty_kind(tys, expected) != MS_K_FUNCTION || tys->nparams[actual] != tys->nparams[expected] ||
+        !ms_body_same_type(b, tys->result[actual], tys->result[expected])) {
+        return false;
+    }
+    const MsTyParam *have = ms_ty_params(tys, actual), *want = ms_ty_params(tys, expected);
+    bool differs = false;
+    for (uint32_t i = 0; i < tys->nparams[actual]; i++) {
+        const unsigned mine = have[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE), theirs = want[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE);
+        // A plain parameter stands where `var` or `move` is expected, never the other way round.
+        if ((mine != theirs && mine != 0) || !ms_body_same_type(b, have[i].ty, want[i].ty)) {
+            return false;
+        }
+        differs = differs || mine != theirs;
+    }
+    return differs;
+}
+
+/* A function value whose parameters and result are plain values: the only ones a lambda is checked
+ * for. A parameter of another type is owned or borrowed by the function type's mode, which the
+ * ownership walk does not model for a lambda's own parameters yet. */
+static bool closure_plain(const MsBody *b, MsTy fn) {
+    const MsTyTable *tys = &b->c->tys;
+    if (!ms_body_is_function_value(b, fn)) {
+        return false;
+    }
+    const MsTyParam *params = ms_ty_params(tys, fn);
+    for (uint32_t i = 0; i < tys->nparams[fn]; i++) {
+        if ((params[i].flags & ~MS_PARAM_POSITIONAL) != 0 || !ms_body_is_plain_value(b, params[i].ty)) {
+            return false;
+        }
+    }
+    return ms_body_is_plain_value(b, tys->result[fn]) || tys->result[fn] == b->void_ty;
 }
 
 /* The name a function type's parameter `index` carries: `_0`, `_1`, as the parser spells them. */
@@ -71,7 +123,7 @@ MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding) {
             return ms_body_unsupported(b);
         }
     }
-    return tys->result[fn];
+    return ms_body_has_invalid(b, tys->result[fn]) ? b->invalid_ty : tys->result[fn];
 }
 
 /* A module function named as a value. */
@@ -116,7 +168,9 @@ static MsTy closure_result(MsBody *b, const MsTypeRef *written, MsTy expected) {
     return closure_declared(b, written, expected);
 }
 
-static MsTy closure_signature(MsBody *b, const MsExpr *e, MsTy expected, MsTy *result) {
+/* `open_result`: the expected result still holds variables a written result decides, so it is not
+ * the context the written one is checked against. */
+static MsTy closure_signature(MsBody *b, const MsExpr *e, MsTy expected, bool open_result, MsTy *result) {
     const MsTyTable *tys = &b->c->tys;
     const bool context = expected != MS_TY_NONE && ms_ty_kind(tys, expected) == MS_K_FUNCTION &&
                          tys->nparams[expected] == e->u.lambda.params.len;
@@ -132,7 +186,7 @@ static MsTy closure_signature(MsBody *b, const MsExpr *e, MsTy expected, MsTy *r
         }
         params[i] = (MsTyParam){.name = closure_slot_name(b, i), .ty = closure_declared(b, p->ty, from_context), .flags = MS_PARAM_POSITIONAL};
     }
-    *result = closure_result(b, e->u.lambda.result, context ? tys->result[expected] : MS_TY_NONE);
+    *result = closure_result(b, e->u.lambda.result, context && !open_result ? tys->result[expected] : MS_TY_NONE);
     if (!b->supported) {
         return MS_TY_NONE;
     }
@@ -158,11 +212,11 @@ static MsTy closure_with_result(MsBody *b, MsTy fn, MsTy result) {
  * `return` of the body decides the result. */
 static MsTy closure_check(MsBody *b, const MsExpr *e, MsTy expected, bool infer) {
     MsTy result = MS_TY_NONE;
-    if (infer && e->u.lambda.result != NULL) {
-        return ms_body_unsupported(b);
-    }
-    const MsTy fn = closure_signature(b, e, expected, &result);
-    if (!b->supported || !ms_body_is_function_value(b, fn)) {
+    // A written result is the result: the body is checked against it, and the call binds its variable to it.
+    const bool open_result = infer && e->u.lambda.result != NULL;
+    infer = infer && !open_result;
+    const MsTy fn = closure_signature(b, e, expected, open_result, &result);
+    if (!b->supported || !closure_plain(b, fn)) {
         return ms_body_unsupported(b);
     }
     const MsTy outer_result = b->result;

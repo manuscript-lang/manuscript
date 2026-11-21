@@ -33,6 +33,7 @@
 
 #ifdef _WIN32
 #define PSAPI_VERSION 2 /* GetProcessMemoryInfo from kernel32, so no extra library */
+#include <io.h>
 #include <windows.h>
 #include <psapi.h>
 #else
@@ -246,6 +247,7 @@ typedef struct MsChild {
     bool exited, finished, stopped, loop_ready, started; /* finished: the loop thread has ended */
 #ifdef _WIN32
     HANDLE job;
+    bool terminated; /* ended by child_signal: Windows reports that as an ordinary exit code, a signal death is -1 */
 #endif
 } MsChild;
 
@@ -287,6 +289,7 @@ static void child_signal(MsChild *child, bool force) {
     if (!child->exited && child->started) {
 #ifdef _WIN32
         (void)force;
+        child->terminated = true;
         TerminateJobObject(child->job, 1);
         TerminateProcess(child->process.process_handle, 1);
 #else
@@ -432,13 +435,14 @@ static void on_exit(uv_process_t *process, int64_t status, int term_signal) {
     MsChild *child = process->data;
     child_lock(child);
     child->exited = true;
-    child->code = term_signal != 0 ? -1 : status;
 #ifdef _WIN32
+    child->code = term_signal != 0 || child->terminated ? -1 : status;
     PROCESS_MEMORY_COUNTERS counters = {.cb = sizeof counters};
     if (GetProcessMemoryInfo(process->process_handle, &counters, sizeof counters)) {
         child->max_resident = (int64_t)counters.PeakWorkingSetSize;
     }
 #else
+    child->code = term_signal != 0 ? -1 : status;
     if (child->max_resident == 0) {
         child->max_resident = reaped_children_peak();
     }
@@ -763,6 +767,28 @@ uint8_t msstd_process_command_spawn(const MsStr *program, const MsVec *arguments
     return command_finish(&fail, program, has_cwd != 0 ? cwd : NULL, err);
 }
 
+#ifdef _WIN32
+/* The parent end of a piped stream as the stream table takes it on Windows: an overlapped pipe handle that the reactor
+ * adopts, which is what its reads and writes park on. libuv made a C runtime descriptor; the handle moves to a
+ * duplicate that the reactor owns, and the descriptor closes. -1 when the pipe cannot be adopted. */
+static int64_t adopt_pipe(int fd) {
+    HANDLE copy = NULL;
+    const HANDLE source = (HANDLE)_get_osfhandle(fd);
+    const bool duplicated = source != INVALID_HANDLE_VALUE &&
+                            DuplicateHandle(GetCurrentProcess(), source, GetCurrentProcess(), &copy, 0, FALSE,
+                                            DUPLICATE_SAME_ACCESS);
+    _close(fd);
+    if (!duplicated) {
+        return -1;
+    }
+    if (!ms_sched_pipe_adopt((intptr_t)copy)) {
+        CloseHandle(copy);
+        return -1;
+    }
+    return (int64_t)(intptr_t)copy;
+}
+#endif
+
 /* The runtime stream-table id of a piped stream: the first call moves the descriptor into the table. */
 int64_t msstd_process_subprocess_stream_id(MsObj *object, int64_t which) {
     MsChild *child = (MsChild *)object;
@@ -774,7 +800,12 @@ int64_t msstd_process_subprocess_stream_id(MsObj *object, int64_t which) {
         const int fd = child->descriptors[stream];
         const int64_t access = stream == STREAM_IN ? STREAM_WRITES : STREAM_READS;
         child->descriptors[stream] = -1;
-        child->ids[stream] = fd < 0 ? -1 : msrt_streams_open(fd, STREAM_OWNS | STREAM_NONBLOCK | access);
+#ifdef _WIN32
+        const int64_t descriptor = fd < 0 ? -1 : adopt_pipe(fd);
+#else
+        const int64_t descriptor = fd;
+#endif
+        child->ids[stream] = descriptor < 0 ? -1 : msrt_streams_open(descriptor, STREAM_OWNS | STREAM_NONBLOCK | access);
     }
     return child->ids[stream];
 }
@@ -949,12 +980,10 @@ uint8_t msstd_process_command_run(const MsStr *program, const MsVec *arguments, 
 #ifdef _WIN32
 uint8_t msstd_process_replace(const MsStr *program, const MsVec *arguments, const MsVec *env_names,
                               const MsVec *env_values, MsStr *err) {
-    (void)program;
-    (void)arguments;
-    (void)env_names;
-    (void)env_values;
     MsFsFail fail = {0};
-    ms_fs_fail_status(&fail, STATUS_UNSUPPORTED); /* Windows has no exec */
+    /* Windows has no exec, but a call that is wrong on every platform is rejected the same way. */
+    const bool valid = arguments->len != 0 && command_valid(program, arguments, false, NULL, env_names, env_values);
+    ms_fs_fail_status(&fail, valid ? STATUS_UNSUPPORTED : STATUS_INVALID_INPUT);
     return ms_fs_finish(&fail, err);
 }
 #else

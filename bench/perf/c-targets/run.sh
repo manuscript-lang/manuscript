@@ -25,7 +25,7 @@ pte_kb() { awk '/^VmPTE/{print $2}' "/proc/$1/status"; }
 now() { date +%s%N; }
 
 if want_it build; then
-  s=$(now); (cd "$root" && cargo xtask runtime >/dev/null 2>&1); e=$(now)
+  s=$(now); (cd "$root" && cmake -P cmake/BuildRuntime.cmake >/dev/null 2>&1); e=$(now)
   say "runtime_build_seconds $(( (e - s) / 1000000000 ))"
 fi
 

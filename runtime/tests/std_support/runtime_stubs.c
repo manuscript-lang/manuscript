@@ -10,6 +10,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "ms_rt/io.h"
 #include "ms_rt/start.h"
 #include "../../std/abi.h"
 #include "ms_rt/obj.h"

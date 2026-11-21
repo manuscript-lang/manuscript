@@ -44,13 +44,19 @@ jobs:
           arch: ${{ matrix.leg.arch }}
       - name: Build ms and its runtime
         run: |
-          cargo xtask runtime
+          cmake -P cmake/BuildRuntime.cmake
           cargo build --release --locked -p ms-cli
       - name: Hello through the C pipeline
         run: |
           printf 'import stdout from "@std/io/io.ms"\n\nexport fn main() Int:\n    _w := stdout().write("hello\\n")\n    return 0\n' > hello.ms
           MS_BACKEND=c target/release/ms build hello.ms --build-type Debug -o hello
           ./hello
+      - name: Hello through the C link
+        if: matrix.leg.os != 'windows'
+        run: |
+          cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
+          cmake --build target/cmake/tools --target ms_build_object ms_build_link
+          sh compiler/tests/c-link-hello.sh
       - name: Compare the corpus
         run: sh compiler/tests/build-diff.sh '${{ inputs.limit }}' | tee build-diff.log
       - name: Keep the logs of the programs that differ or fail

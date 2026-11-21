@@ -12,6 +12,7 @@
 
 #include "ms/implements.h"
 #include "ms/infer.h"
+#include "ms/parse.h"
 
 typedef struct Target {
     MsTy sig;             /* the signature, receiver not included */
@@ -74,11 +75,13 @@ static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver, MsInfer *i
     }
     MsTy *receiver_bound = MS_NEW_N(&b->c->arena, MsTy, m->nvars[i]);
     memcpy(receiver_bound, in->bound, m->nvars[i] * sizeof *receiver_bound);
-    uint32_t first = 0;
-    if (ms_infer_defaults(in, &first) != 0) {
-        memcpy(in->bound, receiver_bound, m->nvars[i] * sizeof *receiver_bound); // the arguments may bind the rest
-        *open = true;
-        return ms_infer_apply(in, m->ty[i]);
+    // A variable the receiver leaves unbound is the method's own: the arguments may bind it (`ok_or(cause)`
+    // binds `E` to the cause's type), and only what they leave unbound takes its default.
+    for (uint32_t v = 0; v < m->nvars[i]; v++) {
+        if (receiver_bound[v] == MS_TY_NONE) {
+            *open = true;
+            return ms_infer_apply(in, m->ty[i]);
+        }
     }
     return row_bounds_met(b, in) ? ms_infer_apply(in, m->ty[i]) : MS_TY_NONE;
 }
@@ -187,18 +190,31 @@ static bool intrinsic_in(const MsBody *b, const char *iface_name, MsTy receiver,
     return false;
 }
 
-/* An operation of a primitive receiver: its own interface, then the one every value has. */
-static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
-    const char *own = NULL;
-    if (receiver == b->string_ty) {
-        own = "StringOperations";
-    } else if (receiver == b->int_ty) {
-        own = "IntOperations";
-    } else if (receiver == b->float_ty) {
-        own = "FloatOperations";
+/* Whether `name` is one of the `members`: the primitives a shared interface of intrinsics.ms covers. */
+static bool primitive_in(MsStr name, const char *const *members) {
+    for (; *members != NULL; members++) {
+        if (strlen(*members) == name.len && memcmp(*members, name.ptr, name.len) == 0) {
+            return true;
+        }
     }
-    return (own != NULL && intrinsic_in(b, own, receiver, name, out)) ||
-           intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
+    return false;
+}
+
+/* An operation of a primitive receiver: its own `<Type>Operations` interface, the generic ones its
+ * family shares (applied to itself), then the ones every value has. Mirrors `SHARED_OPERATIONS`. */
+static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
+    static const char *const integers[] = {"Int", "Int8", "Int16", "Int32", "UInt8", "UInt16", "UInt32", "UInt64", NULL};
+    static const char *const signed_integers[] = {"Int", "Int8", "Int16", "Int32", NULL};
+    if (ms_ty_kind(&b->c->tys, receiver) == MS_K_PRIMITIVE) {
+        const MsStr type = ms_name(b->c->names, b->c->tys.name[receiver]);
+        const char *own = ms_arena_fmt(&b->c->arena, "%.*sOperations", (int)type.len, type.ptr).ptr;
+        if (intrinsic_in(b, own, receiver, name, out) ||
+            (primitive_in(type, integers) && intrinsic_in(b, "IntegerOperations", receiver, name, out)) ||
+            (primitive_in(type, signed_integers) && intrinsic_in(b, "SignedIntegerOperations", receiver, name, out))) {
+            return true;
+        }
+    }
+    return intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
 }
 
 /* The natives whose result points into their receiver (`view`, `split`, `chars`, ...): the
@@ -237,6 +253,13 @@ static bool value_clonable(const MsBody *b, MsTy ty, uint32_t depth) {
         }
         return plain;
     }
+    case MS_K_ALTERNATIVE: {
+        bool plain = ms_ty_is(tys, ty, MS_BI_OPTIONAL) || ms_ty_is(tys, ty, MS_BI_RESULT);
+        for (uint32_t i = 0; plain && i < tys->nargs[ty]; i++) {
+            plain = value_clonable(b, ms_ty_args(tys, ty)[i], depth + 1);
+        }
+        return plain;
+    }
     case MS_K_TYPE: {
         Target closing;
         const MsDef *def = tys->def[ty] == 0 ? NULL : ms_def(b->c, tys->def[ty] - 1);
@@ -257,6 +280,9 @@ static bool value_clonable(const MsBody *b, MsTy ty, uint32_t depth) {
 static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, receiver);
+    if (kind == MS_K_VARIABLE) {
+        return intrinsic_in(b, "ValueOperations", receiver, name, out); // every value shows as text
+    }
     if (kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_NATIVE) {
         return false;
     }
@@ -267,7 +293,8 @@ static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *
 }
 
 static bool body_is_primitive(const MsBody *b, MsTy ty) {
-    return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
+    // Every primitive with operations: `Void` and `Never` have none, the invalid type is an earlier error.
+    return ty != MS_TY_NONE && ty != b->void_ty && ty != b->never_ty && ms_ty_kind(&b->c->tys, ty) == MS_K_PRIMITIVE;
 }
 
 /* The arguments of a method call against its signature, paired with parameters by position or
@@ -316,7 +343,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
         }
         MsTy payload = MS_TY_NONE;
         const bool optional = ms_body_optional_payload(b, param->ty, &payload);
-        if ((!ms_body_is_admitted(b, param->ty) && !optional) || ms_body_expr(b, value, param->ty) == MS_TY_NONE) {
+        if ((!ms_body_is_admitted(b, param->ty) && !ms_body_is_callback_type(b, param->ty) && !optional) || ms_body_expr(b, value, param->ty) == MS_TY_NONE) {
             return false;
         }
     }
@@ -327,6 +354,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
             return false;
         }
         target->sig = ms_infer_apply(&target->in, sig);
+        ms_body_record_function_arguments(b, e, target->sig, slot);
     }
     const MsTy result = tys->result[target->sig];
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty ||
@@ -400,7 +428,8 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     MsTy dispatch = receiver_ty; /* the interface an operation is called through */
     bool resolved;
     if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_VARIABLE) {
-        resolved = bound_operation(b, receiver_ty, name, &target, &dispatch);
+        resolved = bound_operation(b, receiver_ty, name, &target, &dispatch) ||
+                   value_operation(b, receiver_ty, name, &target);
     } else if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT) {
         resolved = operation_of(b, receiver_ty, name, &target);
     } else {
@@ -408,9 +437,16 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
                    value_operation(b, receiver_ty, name, &target);
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
-    if (!resolved || target.consuming || (target.mutating && immutable) ||
-        (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) ||
-        !arguments_fit(b, e, &target)) {
+    if (!resolved) {
+        return ms_body_unsupported(b);
+    }
+    if ((target.consuming && target.method == MS_NONE) || (target.mutating && immutable)) {
+        return ms_body_unsupported(b);
+    }
+    if (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) {
+        return ms_body_unsupported(b);
+    }
+    if (!arguments_fit(b, e, &target)) {
         return ms_body_unsupported(b);
     }
     if (target.method == MS_NONE) {

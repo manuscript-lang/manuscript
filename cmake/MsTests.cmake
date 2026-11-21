@@ -102,8 +102,14 @@ list(REMOVE_ITEM _std_sources ${_json_sources})
 list(REMOVE_ITEM _std_sources "${_rt}/std/pool.c")
 file(GLOB _std_support CONFIGURE_DEPENDS "${_tests}/std_support/*.c")
 file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
+# The io tests have no scheduler stub, so they link the real thread primitives the reactor starts on Windows; the entry tests take the stub in ms_test_core.
+set(_io_thread "")
 if(MS_WINDOWS)
-  list(APPEND _io_sources "${_rt}/io/windows/platform.c") # the reactor's Windows half: overlapped pipes and waitable objects
+  set(_io_thread "${_rt}/sys/thread.c")
+endif()
+if(MS_WINDOWS)
+  # The reactor's Windows half (pipes, kernel objects).
+  list(APPEND _io_sources "${_rt}/io/windows/platform.c")
 endif()
 
 # core_*: all of runtime/core and this platform's runtime/sys layer, the allocator's live-block counts on.
@@ -112,10 +118,8 @@ set(_task_abi "${_rt}/core/task_abi.c")
 # fault_abi.c is linked by core_fault_abi alone: the other tests use the weak fault stubs of tests/support.
 set(_fault_abi "${_rt}/core/fault_abi.c")
 list(REMOVE_ITEM _core_sources "${_task_abi}" "${_fault_abi}")
-# The scheduler hooks of the tests (support/sched_env.c) poll descriptors, so they are POSIX-only for now.
-if(MS_WINDOWS)
-  list(FILTER _support_sources EXCLUDE REGEX "sched_env\\.c$")
-else()
+# The pipe calls the Windows streams make into the scheduler (support/sched_pipe_stubs_win.c) belong to Windows only.
+if(NOT MS_WINDOWS)
   list(FILTER _support_sources EXCLUDE REGEX "sched_pipe_stubs_win\\.c$")
 endif()
 # The pipe calls the Windows streams make into the scheduler, stubbed for tests that run one task on no reactor.
@@ -191,7 +195,7 @@ file(GLOB _io_tests CONFIGURE_DEPENDS "${_tests}/io_*.c")
 list(FILTER _io_tests EXCLUDE REGEX "io_ring_test\\.c$")
 foreach(file ${_io_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" ${_io_sources} ${_os_sources} INCLUDES ${MS_LIB_uv_INCLUDES}
+  ms_test(${name} SOURCES "${file}" "${_tests}/support/child.c" ${_io_sources} ${_io_thread} ${_os_sources} INCLUDES ${MS_LIB_uv_INCLUDES}
           LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 endforeach()
 

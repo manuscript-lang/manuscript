@@ -32,7 +32,8 @@ for file in "$@"; do
 		prepend) sed -i '1i // edited' "$work/repo/proj/a.ms" ;;
 		cut) head -n $((lines * 3 / 4)) "$file" >"$work/repo/proj/a.ms" ;;
 		esac
-		(cd "$work/repo/proj" && "$MS_FACTS" facts a.ms >/dev/null 2>&1) || continue
+		(cd "$work/repo/proj" && "$MS_FACTS" facts a.ms >"$work/facts.json" 2>/dev/null) || continue
+		head -c1 "$work/facts.json" | grep -q "{" || continue
 		git -C "$work/repo" diff --no-renames >"$work/p.patch"
 		[ -s "$work/p.patch" ] || continue
 		ran=$((ran + 1))

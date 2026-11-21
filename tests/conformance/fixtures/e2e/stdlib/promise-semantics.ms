@@ -321,3 +321,24 @@ test "an explicit cancel gives no drain notice":
 	reason := worker.wait() | expect_error?
 	expect_equal(reason.kind, "ECANCELED")?
 	expect_equal(notice.signal().cancelled(), false)?
+
+type Latch:
+	name: String
+
+// Closing parks, like a socket that flushes before it closes.
+fn move Latch.close() Void!:
+	void sleep(milliseconds(5)).wait()
+
+fn Latch.hold() Int!:
+	void sleep(milliseconds(100000)).wait()
+	return ok(1)
+
+// The work's drop of what it captured can park. A wait that gave up first must still
+// find the work ended, so the row is not freed under the drop.
+test "a promise that times out finishes closing what it captured before its wait returns":
+	for round in 0..20:
+		latch := Latch(name: "held")
+		reason := promise(fn: latch.hold()).with(
+			options: PromiseOptions(timeout: milliseconds(2))
+		).wait() | expect_error?
+		expect_equal(reason.kind, "ETIMEDOUT")?
