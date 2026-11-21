@@ -67,6 +67,7 @@ typedef struct LbCallable {
     MsTy sig;       /* the signature, receiver not included */
     MsTy self_ty;   /* MS_TY_NONE for a function */
     bool mutating;  /* the receiver is a `var` one */
+    bool consuming; /* the receiver is a `move` one */
 } LbCallable;
 
 /* What the lowering reads of one source module: its facts, and the tables its node and binding ids
@@ -94,6 +95,39 @@ typedef struct LbEq {
     MirTy ty;
     uint32_t func;
 } LbEq;
+
+/* The function building the `Error` of a native's status table (lower_status.c). */
+typedef struct LbStatusFn {
+    MirTy error;
+    bool said;
+    const char *domain;
+    uint32_t nrows;
+    struct MsStatusRow *rows;
+    uint32_t func;
+} LbStatusFn;
+
+/* A resource type with its own `close` (lower_close.c): its MIR type, the method row, and the helper
+ * functions the elaborate pass runs, made on first use. */
+typedef struct LbCloser {
+    MirTy ty;
+    uint32_t row;
+    bool owned; /* a `move` close: it takes the value */
+    uint32_t thunk, result;
+} LbCloser;
+
+/* The function that returns a failed close as a function's own result, by what it is made for. */
+typedef struct LbCloseExit {
+    MirTy rty, ret;
+    bool pending, borrowed;
+    uint32_t func;
+} LbCloseExit;
+
+/* A local that lives in a stack slot the elaborate pass closes. */
+typedef struct LbSlotLocal {
+    uint32_t view, binding;
+    MirValue slot;
+    MirTy ty;
+} LbSlotLocal;
 
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
@@ -129,8 +163,16 @@ typedef struct Lb {
     uint32_t ninsts, cinsts;
     LbEq *eqs;            /* this pass's equality functions (module arena) */
     uint32_t neqs, ceqs;
+    LbStatusFn *status_fns; /* this pass's status error functions (module arena) */
+    uint32_t nstatus_fns, cstatus_fns;
     LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
     uint32_t ndead_insts, cdead_insts;
+    LbCloser *closers;    /* this pass's resource types (module arena) */
+    uint32_t nclosers, cclosers;
+    LbCloseExit *exits;
+    uint32_t nexits, cexits;
+    LbSlotLocal *slots;   /* the resource locals of the function being lowered */
+    uint32_t nslots, cslots;
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
     MirTy *type_of;       /* by checker type: the record it lowered to, MIR_NONE, or LB_TYPE_PENDING while its fields lower */
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
@@ -201,10 +243,23 @@ LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed a
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
 void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos, MsSite site); /* reports a function whose body the checker did not record */
+enum { LA_OK = 0, LA_ERROR = 1 }; /* the order of the cases of `Result` in core.ms */
+void lb_set_entry(Lb *lb, uint32_t user); /* makes `user`, the lowered `main`, the program's entry, behind a wrapper unless it returns Int (lower_entry.c) */
 uint32_t lb_view_enter(Lb *lb, uint32_t view); /* reads module `view` from here on; returns the view it left */
 uint32_t lm_prepare(Lb *lb);                                 /* the method rows of every view; their count */
 void lm_stubs(Lb *lb, uint32_t nrows, const bool *failed);   /* a stub for each method to lower */
 bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered);   /* true when one did not lower */
+
+/* lower_close.c: resource locals closed by the elaborate pass. */
+bool lc_has_closer(Lb *lb, MsTy ty);               /* a direct `close` of the type itself that does not change `self` */
+void lc_register(Lb *lb, MsTy ty, MirTy mir);      /* the MIR type of a resource with one */
+bool lc_bind(Lb *lb, const MsStmt *s, uint32_t binding, LbVal value); /* the local `binding` made from `value`; false when not handled */
+bool lc_own_param(Lb *lb, uint32_t binding);        /* a `move` resource parameter the function closes; false when not handled */
+bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved);  /* a read of a slot local */
+bool lc_is_resource(Lb *lb, MirTy mir);               /* a registered resource type, owned even when it holds nothing to drop */
+bool lc_is_slot_local(const Lb *lb, uint32_t binding);
+bool lc_is_closer_row(Lb *lb, uint32_t row);
+void lc_check(Lb *lb);                             /* fails the function when it drops a resource */
 
 /* lower_closure.c: function values and lambdas. */
 MirTy lb_fn_ty(Lb *lb, MsTy ty);
@@ -262,6 +317,9 @@ MirValue lb_native_status_call(Lb *lb, const struct MsRtFn *fn, const MirValue *
 MirValue lo_out_slot(Lb *lb, MirTy ty);
 MirValue lo_take_out(Lb *lb, MirValue slot, MirTy ty);
 LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee);
+/* lower_status.c: a native reporting failure by a status, called for a `Result[T, Error]`. */
+bool ls_reports_status(Lb *lb, const struct MsRtFn *fn, MirTy result_ty);
+LbVal ls_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */
@@ -310,6 +368,8 @@ MirTy la_type(Lb *lb, MsTy ty);
 LbVal la_none(Lb *lb, const MsExpr *e);
 LbVal la_nullary(Lb *lb, const MsExpr *e);
 MirValue la_ok_unit(Lb *lb);
+bool la_returns_void_result(const Lb *lb); /* the function being lowered returns `Void!` */
+MirValue la_ok_of(Lb *lb, MirValue unit);     /* `ok(unit)` of that result */
 LbVal la_none_owned(Lb *lb, const MsExpr *e);
 LbVal la_case(Lb *lb, const MsExpr *call);
 MirValue la_test(Lb *lb, MirValue subject);
