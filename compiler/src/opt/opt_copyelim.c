@@ -6,7 +6,7 @@
  * before the copy would: a borrowed parameter is neither mutated nor released by its callee, and
  * neither is anything projected out of one. The pass also turns a copy of a dying source into a
  * move, and a copy of a payload of a dying alternative, option or type into a move out of it.
- * Port of crates/ms-mir/src/opt/copyelim.rs; the order of every rewrite is the Rust pass's. */
+ * Port of the former Rust crates/ms-mir/src/opt/copyelim.rs; the order of every rewrite is the Rust pass's. */
 #include <stdlib.h>
 #include <string.h>
 

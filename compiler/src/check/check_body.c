@@ -289,9 +289,14 @@ static MsTy body_number(MsBody *b, const MsExpr *e) {
 static MsTy body_text(MsBody *b, const MsExpr *e) {
     for (uint32_t i = 0; i < e->u.text.len; i++) {
         const MsExpr *part = e->u.text.ptr[i].expr;
-        if (part != NULL && ms_body_expr(b, part, MS_TY_NONE) == MS_TY_NONE) {
+        if (part == NULL) {
+            continue;
+        }
+        const MsTy ty = ms_body_expr(b, part, MS_TY_NONE);
+        if (ty == MS_TY_NONE) {
             return MS_TY_NONE;
         }
+        ms_body_text_method(b, part, ty);
     }
     return b->string_ty;
 }
@@ -1275,8 +1280,23 @@ static bool body_returns_nothing(const MsBody *b) {
            (ms_body_is_result(b, b->result) && ms_ty_args(tys, b->result)[0] == b->void_ty);
 }
 
+/* A `return` in a function literal whose result is not known yet: its value (or the lack of one) fixes it. */
+static void body_return_deciding(MsBody *b, const MsExpr *value) {
+    b->context = "the return value";
+    const MsTy ty = value == NULL ? b->void_ty : ms_body_expr(b, value, MS_TY_NONE);
+    if (ty == MS_TY_NONE || !(ty == b->void_ty || body_is_bindable(b, ty))) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    b->result = ty;
+}
+
 static void body_return_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *value = s->u.expr;
+    if (b->infer_result && b->result == MS_TY_NONE) {
+        body_return_deciding(b, value);
+        return;
+    }
     if (value == NULL) {
         if (!b->supported || body_returns_nothing(b)) {
             return;
@@ -1736,6 +1756,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->call_receiver = MS_NEW_N(arena, MsTy, nodes);
     facts->call_interface = MS_NEW_N(arena, MsTy, nodes);
     memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
+    facts->text_method = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->text_method, 0xff, nodes * sizeof *facts->text_method);
     memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
     facts->call_type_args_at = MS_NEW_N(arena, uint32_t, nodes);

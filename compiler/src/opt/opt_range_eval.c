@@ -1,6 +1,6 @@
 /* range: the transfer function, the interval an instruction's result lies in given the intervals of
  * its operands. Port of `eval`, `arithmetic`, `bitwise` and `other_ops` in
- * crates/ms-mir/src/opt/range.rs. */
+ * the former Rust crates/ms-mir/src/opt/range.rs. */
 #include "opt/opt_range.h"
 
 enum { RGE_LEN_MAX_SHIFT = 47 }; /* no address space holds more list elements than 2^47 */

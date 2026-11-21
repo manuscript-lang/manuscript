@@ -3,7 +3,7 @@
  * recursion. A callee is inlined when it is a plain function outside every direct-call cycle (or
  * on one that another function checks) and either carries `inline(always)` or is small enough and,
  * if it has a loop, called from inside one. Callees are processed before callers, so a caller sees
- * the already inlined body of its callee. Port of crates/ms-mir/src/opt/inline.rs; the closure
+ * the already inlined body of its callee. Port of the former Rust crates/ms-mir/src/opt/inline.rs; the closure
  * halves are in opt_inline_closure.c. Positions keep their scope numbers: the C function has no
  * scope table to nest the callee's under. */
 #include <string.h>

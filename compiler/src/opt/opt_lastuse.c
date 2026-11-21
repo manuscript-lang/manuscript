@@ -10,7 +10,7 @@
  *
  * The family only ever extends `v`'s life, never past its original drop. A candidate is left alone
  * when a family member is stored to memory, captured, kept by a cleanup, or when `v` takes part in a
- * conditional drop. Port of crates/ms-mir/src/opt/lastuse.rs; every id it creates, and the order of
+ * conditional drop. Port of the former Rust crates/ms-mir/src/opt/lastuse.rs; every id it creates, and the order of
  * every drop it places, is the Rust pass's. */
 #include <stdlib.h>
 #include <string.h>

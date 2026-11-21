@@ -1,6 +1,6 @@
 /* The sorts `sortgen` generates: a stable driftsort (the algorithm of Rust's `slice::sort`) and
  * its helpers, written as MIR functions that call a known comparator directly so the backend
- * can inline it. Port of the `build_*` functions of crates/ms-mir/src/opt/sortgen.rs.
+ * can inline it. Port of the `build_*` functions of the former Rust crates/ms-mir/src/opt/sortgen.rs.
  *
  * The input is cut into runs: a natural run that is long enough (a descending one is reversed in
  * place) or a stretch that is left unsorted. Neighbouring runs are merged in a tree split near
