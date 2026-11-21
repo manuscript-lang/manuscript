@@ -96,6 +96,7 @@
 #include "rt_ops.c"
 #include "check/lower_list.c"
 #include "check/lower_extern.c"
+#include "check/lower_status.c"
 #include "check/lower_out.c"
 #include "check/lower_native.c"
 #include "check/lower_map.c"

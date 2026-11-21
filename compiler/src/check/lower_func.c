@@ -223,6 +223,8 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
     memset(lb->type_of, 0xff, (lb->c->tys.count + 1) * sizeof *lb->type_of);
     lb->eqs = NULL; // they live in the module's arena, which is rebuilt each pass
     lb->neqs = lb->ceqs = 0;
+    lb->status_fns = NULL;
+    lb->nstatus_fns = lb->cstatus_fns = 0;
     for (uint32_t k = 0; k < lb->nviews; k++) {
         LbView *v = &lb->views[k];
         const MsBindings *bindings = &v->facts->bindings;
