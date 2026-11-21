@@ -33,8 +33,24 @@ import (
 fn text_of(data: Bytes) String:
 	return data.decode_utf8().get_or("")
 
+// Replaces the working directory with <DIR> and the digits after `"duration_ns": ` with
+// 0, the only value that varies between runs.
 fn normalize(text: String, dir: String) String:
-	return text.replace(dir, "<DIR>")
+	marker := "\"duration_ns\": "
+	parts := text.replace(dir, "<DIR>").split(marker)
+	var out = parts[0].clone()
+
+	for index in 1..parts.length():
+		rest := parts[index]
+		var start = 0
+		while (
+			start < rest.length()
+			and "0123456789".contains(rest.slice(start, start + 1))
+		):
+			start += 1
+		out += marker + "0" + rest.slice(start, rest.length())
+
+	return out
 
 // Every file under `root` as relative path then normalized content.
 fn tree_of(root: String, dir: String) Map[String, String]:
