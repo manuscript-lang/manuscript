@@ -176,9 +176,13 @@ static void test_project(void) {
     write_file("lib/src/main.ms", "");
     MsProjectError err = {0};
     CHECK(!ms_project_load(&arena, &names, path_of("lib/ms.toml"), &g, &err) && ms_project_error_is_unsupported(&err));
-    write_file("dep/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\n[dependencies]\n\"@pg\" = { path = \"src\" }\n");
-    write_file("dep/src/main.ms", "");
-    CHECK(!ms_project_load(&arena, &names, path_of("dep/src/main.ms"), &g, &err) && ms_project_error_is_unsupported(&err));
+    /* Packages are loaded by ms_project_load_packages; this entry point hands them back. */
+    write_file("ws/ms.toml", "[workspace]\nmembers = [\"app\", \"pg\"]\n");
+    write_file("ws/app/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\n[dependencies]\n\"@pg\" = { path = \"../pg\" }\n");
+    write_file("ws/app/src/main.ms", "");
+    write_file("ws/pg/ms.toml", "[project]\nname = \"pg\"\nsource = \"src\"\n");
+    write_file("ws/pg/src/lib.ms", "");
+    CHECK(!ms_project_load(&arena, &names, path_of("ws/app/src/main.ms"), &g, &err) && ms_project_error_is_unsupported(&err));
 }
 
 int main(void) {
