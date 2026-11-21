@@ -226,10 +226,28 @@ int ms_sys_net_read(MsSock s, void *buf, size_t n, size_t *done) {
     return r == 0 && n > 0 ? MS_SYS_EOF : MS_SYS_OK;
 }
 
-/* WinSock reports a peer's end only through a read that reaches it, so queued bytes hide it: no answer here. */
+/* SIO_TCP_INFO (Windows 10 1703 and later) reports the connection's TCP state, which shows a FIN behind queued bytes:
+   the peer ended its side once the state is CLOSE_WAIT or later. The SDK struct is larger than the State field read
+   here; the buffer is sized for it. */
+#ifndef SIO_TCP_INFO
+#define SIO_TCP_INFO _WSAIORW(IOC_VENDOR, 39)
+#endif
+enum { TCPSTATE_CLOSED = 0, TCPSTATE_CLOSING = 8, TCPSTATE_CLOSE_WAIT = 7, TCPSTATE_LAST_ACK = 9, TCPSTATE_TIME_WAIT = 10 };
+
+/* A socket the system cannot describe (a unix-domain socket, an older Windows) is not known to have ended. */
 int ms_sys_net_peer_ended(MsSock s) {
-    (void)s;
-    return 0;
+    DWORD version = 0;
+    DWORD returned = 0;
+    union {
+        int state; /* TCP_INFO_v0 starts with State */
+        unsigned char bytes[256];
+    } info;
+    memset(&info, 0, sizeof info);
+    if (WSAIoctl((SOCKET)s, SIO_TCP_INFO, &version, sizeof version, &info, sizeof info, &returned, NULL, NULL) != 0 || returned < sizeof(int)) {
+        return 0;
+    }
+    return info.state == TCPSTATE_CLOSE_WAIT || info.state == TCPSTATE_CLOSING || info.state == TCPSTATE_LAST_ACK ||
+           info.state == TCPSTATE_TIME_WAIT || info.state == TCPSTATE_CLOSED;
 }
 
 int ms_sys_net_peek(MsSock s, void *buf, size_t n, size_t *done) {

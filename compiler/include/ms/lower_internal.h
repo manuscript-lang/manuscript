@@ -56,6 +56,25 @@ typedef struct LbJob {
     uint32_t ncaps;
 } LbJob;
 
+/* A function or method being lowered: its syntax, the node its facts hang on, its signature, and
+ * the receiver a method takes as parameter 0. */
+typedef struct LbCallable {
+    const MsFunc *fn;
+    uint32_t node;  /* the declaration (or method) node: `param_consumed`, `ret_borrowed` */
+    MsPos pos;
+    MsSym name;     /* the MIR name, with the receiver's for a method */
+    MsTy sig;       /* the signature, receiver not included */
+    MsTy self_ty;   /* MS_TY_NONE for a function */
+    bool mutating;  /* the receiver is a `var` one */
+} LbCallable;
+
+/* An impl method the module wrote: its row, where it starts, and the source lines it owns. */
+typedef struct LbMethodRow {
+    const MsMethod *method; /* NULL for a row no method of this module carries */
+    MsPos owner_pos;        /* where the impl declaration starts: the method's location in MIR */
+    uint32_t first_line, end_line;
+} LbMethodRow;
+
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
@@ -74,7 +93,9 @@ typedef struct Lb {
     uint32_t njobs, cjobs;
     bool closure;         /* lowering a closure body: no call depth, no `var` parameters */
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
-    const MsDecl *decl;   /* the function being lowered */
+    LbCallable cur;       /* the function or method being lowered */
+    uint32_t *method_func; /* by method row: the module function a method call reaches, or MIR_NONE */
+    struct LbMethodRow *rows; /* by method row: the syntax of an impl method (method NULL for others) */
     /* The instance being lowered or stubbed: its function's variables and what they stand for. */
     const MsTy *sub_vars, *sub_args;
     uint32_t nsub;
@@ -101,10 +122,28 @@ typedef struct Lb {
  * and `lb_mir_ty` are declared further down). */
 void lb_statements(Lb *lb, const MsStmts *body);
 void lb_return_void(Lb *lb);
+uint32_t lb_scoped(Lb *lb, const MsStmts *body);          /* lowers `body` in its own scope; its owner depth */
+MirBlock lb_step_block(Lb *lb, LbLoop *loop);             /* where `continue` of `loop` goes */
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
 void lb_hold_temp(Lb *lb, MirValue v); /* an owned temporary that lives to the end of the statement */
 MirLoc lb_loc(const Lb *lb, MsPos pos);
 void lb_reset_state(Lb *lb);
+
+/* Helpers of lower_body.c that lower_record.c and lower_method.c call. */
+bool lb_owns(Lb *lb, MirTy ty);
+MirValue lb_move_argument(Lb *lb, const MsExpr *e);
+bool lb_lines_have_diagnostic(const MsModuleRow *row, uint32_t first, uint32_t end);
+uint32_t lb_add_stub(Lb *lb, const LbCallable *c); /* a function with the signature and no body; MIR_NONE when not handled */
+bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over its stub; false when not handled */
+/* A call of module function `func` of signature `sig`; `receiver` is the method receiver, else NULL. */
+LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating);
+
+/* lower_method.c: methods of impls. */
+bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
+LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
+uint32_t lm_prepare(Lb *lb, MsModId module);                              /* the method rows; their count */
+void lm_stubs(Lb *lb, MsModId module, uint32_t nrows, const bool *failed); /* a stub for each method to lower */
+bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered);   /* true when one did not lower */
 
 /* lower_closure.c: function values and lambdas. */
 MirTy lb_fn_ty(Lb *lb, MsTy ty);
@@ -126,6 +165,8 @@ void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
 void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 void lb_write_back(Lb *lb);
+LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
+bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
 bool lb_owns(Lb *lb, MirTy ty);                        /* whether a value of the type is dropped by its holder */
 MirValue lb_move_argument(Lb *lb, const MsExpr *e);    /* an argument for a `move` parameter */
 

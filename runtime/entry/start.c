@@ -27,6 +27,7 @@
 #include "../io/reactor.h"
 #include "../io/stop.h"
 #include "entry.h"
+#include "../core/stdout.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/cabi.h"
 #include "ms_rt/list.h"

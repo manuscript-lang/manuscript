@@ -685,19 +685,13 @@ pub const VALUE_SIZE: usize = 24;
 pub const MAX_CALL_DEPTH: i64 = 200_000;
 /// Fault frames shown before "... outer frames omitted".
 pub const MAX_FAULT_FRAMES: usize = 32;
-/// Exit statuses.
-/// A fault ends the process the way a C program ends: as `abort` does (status 134, the shell's
-/// 128 + SIGABRT), or, for a stack overflow or an allocation the system refused, as a
-/// segmentation fault does (139). The same numbers on every platform: Windows' own abort status
-/// (3) would collide with a `main` that returns 3, and a status above `MAX_MAIN_EXIT` cannot. The
-/// process still exits normally after reporting, so no core dump or crash dialog appears.
-pub const EXIT_ABORT: i32 = 134;
-/// The status of a stack overflow; see [`EXIT_ABORT`].
-pub const EXIT_STACK_OVERFLOW: i32 = 139;
-/// The status of an allocation the system refused; see [`EXIT_ABORT`].
-pub const EXIT_NO_MEMORY: i32 = 139;
-pub const EXIT_INTERRUPT: i32 = 130;
-pub const EXIT_TERMINATE: i32 = 143;
+// Exit statuses and fault kinds, generated from `runtime/include/ms_rt/fault.h` (build.rs).
+// A fault ends the process the way a C program ends: as `abort` does (status 134, the shell's
+// 128 + SIGABRT), or, for a stack overflow or an allocation the system refused, as a
+// segmentation fault does (139). The same numbers on every platform: Windows' own abort status
+// (3) would collide with a `main` that returns 3, and a status above `MAX_MAIN_EXIT` cannot. The
+// process still exits normally after reporting, so no core dump or crash dialog appears.
+include!(concat!(env!("OUT_DIR"), "/fault_header.rs"));
 /// Largest `main` return value.
 pub const MAX_MAIN_EXIT: i64 = 125;
 

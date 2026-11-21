@@ -27,15 +27,6 @@ static const char *const families[] = {
     "Self can only be a whole parameter or result type",
 };
 
-static bool only_std_imports(const MsModule *module) {
-    for (uint32_t i = 0; i < module->nimports; i++) {
-        if (module->imports[i].path.len < 5 || memcmp(module->imports[i].path.ptr, "@std/", 5) != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static bool is_listed(const MsDiag *d) {
     char text[1024];
     snprintf(text, sizeof text, "%.*s", (int)d->message.len, d->message.ptr);
@@ -52,7 +43,7 @@ static void print_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
     char *text = read_whole_file(path, &length);
     MsModule *module = MS_NEW(syntax, MsModule);
     MsDiag diag;
-    if (text != NULL && ms_parse(syntax, names, text, length, module, &diag) && only_std_imports(module)) {
+    if (text != NULL && ms_parse(syntax, names, text, length, module, &diag) && ms_module_only_std_imports(module)) {
         printf("== %s\n", path);
         const MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
         MsInherentError *errors = NULL;

@@ -7,7 +7,7 @@ import (
 	cancel_switch,
 	promise,
 	set_options,
-	wait_any from "@std/concurrency/promise.ms",
+	wait_first from "@std/concurrency/promise.ms",
 	stderr from "@std/io/io.ms",
 	ExchangeLimits,
 	NativeExchange,
@@ -505,6 +505,9 @@ fn serve_h2(
 
 // How many requests a connection tracks before it drops the ones that have ended.
 PRUNE_AT := 64
+// What `watch` finishes with when the peer is gone; a handler finishes with 0 or a
+// status.
+PEER_GONE := -1
 
 // Keeps the requests still running, so a long-lived connection holds a promise per live
 // request and not one per request served.
@@ -581,10 +584,14 @@ fn handler_frames(report: String) String:
 
 	return kept
 
-// Cancels the handler once the peer is gone from the exchange.
-fn watch(native: NativeExchange, stopper: Cancel) Void!:
-	if msstd_xchg_wait_gone(native).is_ok(): stopper.cancel()
-	return ok()
+// Finishes with PEER_GONE once the peer is gone from the exchange. An exchange that
+// cannot be watched never finishes: the handler is left to run.
+fn watch(native: NativeExchange) Int!:
+	if msstd_xchg_wait_gone(native).is_ok(): return ok(PEER_GONE)
+
+	while true:
+		sleep(60.minutes()).wait()?
+	return ok(0)
 
 // Runs the handler of one request and ends its response; true when the connection can
 // carry another request. The handler is cancelled when its time passes (the request is
@@ -613,22 +620,26 @@ fn run_handler(
 		answer(native, 400)
 		return false
 
-	stopper := cancel_switch()
 	limits := rules.limits.clone()
 	running := promise(
 		fn: call(handler, native, limits.clone()),
 		options: PromiseOptions(
 			placement: Placement.Here,
 			timeout: rules.timeout.clone(),
-			cancel: stopper.signal(),
 		)
 	)
 	gone := promise(
-		fn: watch(msstd_xchg_share(native), stopper),
+		fn: watch(msstd_xchg_share(native)),
 		options: PromiseOptions(placement: Placement.Here)
 	)
-	outcome := running.wait()
-	gone.cancel()
+
+	// The first to finish decides, and the other is cancelled and waited for. (A cancel
+	// switch fired by the watcher would do the same, but a fired switch keeps its slot
+	// for good: a request cancelled by its peer then leaked about 65 bytes.)
+	outcome := wait_first([running, gone])
+
+	// The peer left: nobody reads a response.
+	if outcome.is_ok() and outcome.get() == PEER_GONE: return false
 
 	if outcome.is_error():
 		kind := outcome.err().kind

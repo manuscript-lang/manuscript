@@ -9,6 +9,7 @@
 #include "ms_rt/search.h"
 #include "ms_rt/strbuild.h"
 #include "ms_rt/utf8.h"
+#include "string_slice.h"
 
 /* A list that grows starts with room for this many elements. */
 #define MS_LIST_FIRST_CAPACITY 4
@@ -18,21 +19,6 @@
 #define MS_SURROGATE_LAST UINT32_C(0xDFFF)
 /* U+FFFD, the replacement for a stray byte. */
 static const uint8_t replacement_character[] = {0xEF, 0xBF, 0xBD};
-
-/* The runtime checked an invariant that only a bug can break: the report names the module. */
-MS_NORETURN static void internal_fault(void) {
-    static const uint8_t message[] = "string: internal bounds error";
-    msrt_fault(message, sizeof message - 1);
-}
-
-/* bytes[start..end]; the callers' arithmetic keeps both in range, so a bad range is a runtime bug. */
-static MsBytes slice(MsBytes bytes, size_t start, size_t end) {
-    MsBytes part = {0};
-    if (!ms_bytes_slice(bytes, start, end, &part)) {
-        internal_fault();
-    }
-    return part;
-}
 
 /* Allocates room for `count` elements of `size` bytes; null for none. */
 static void *alloc_elements(size_t count, size_t size) {
@@ -81,7 +67,7 @@ static MsStr character_at(MsBytes rest, size_t *width) {
     if (rune.rune == MS_RUNE_ERROR && rune.width == 1) {
         return ms_str_from_bytes(replacement_character, sizeof replacement_character);
     }
-    MsBytes character = slice(rest, 0, rune.width);
+    MsBytes character = ms_string_slice(rest, 0, rune.width);
     return ms_str_from_bytes(character.ptr, character.len);
 }
 
@@ -96,7 +82,7 @@ void msrt_string_chars(const MsStr *s, MsVec *out) {
     size_t at = 0;
     while (at < text.len) {
         size_t width = 0;
-        strings_push(&list, character_at(slice(text, at, text.len), &width));
+        strings_push(&list, character_at(ms_string_slice(text, at, text.len), &width));
         at += width;
     }
     *out = list;
@@ -117,7 +103,7 @@ void msrt_string_lines(const MsStr *s, MsVec *out) {
     MsVec list = {0};
     size_t start = 0;
     for (;;) {
-        size_t found = find_line_feed(slice(text, start, text.len));
+        size_t found = find_line_feed(ms_string_slice(text, start, text.len));
         if (found == SIZE_MAX) {
             break;
         }
@@ -125,12 +111,12 @@ void msrt_string_lines(const MsStr *s, MsVec *out) {
         if (end > start && text.ptr[end - 1] == '\r') {
             end--;
         }
-        MsBytes line = slice(text, start, end);
+        MsBytes line = ms_string_slice(text, start, end);
         strings_push(&list, ms_str_from_bytes(line.ptr, line.len));
         start += found + 1;
     }
     if (start < text.len) {
-        MsBytes last = slice(text, start, text.len);
+        MsBytes last = ms_string_slice(text, start, text.len);
         strings_push(&list, ms_str_from_bytes(last.ptr, last.len));
     }
     *out = list;
@@ -157,9 +143,9 @@ void msrt_string_fields(const MsStr *s, MsVec *out) {
     size_t at = 0;
     while (at < text.len) {
         size_t width = 0;
-        const bool space = space_at(slice(text, at, text.len), &width);
+        const bool space = space_at(ms_string_slice(text, at, text.len), &width);
         if (space && in_field) {
-            MsBytes field = slice(text, field_start, at);
+            MsBytes field = ms_string_slice(text, field_start, at);
             strings_push(&list, ms_str_from_bytes(field.ptr, field.len));
             in_field = false;
         } else if (!space && !in_field) {
@@ -169,7 +155,7 @@ void msrt_string_fields(const MsStr *s, MsVec *out) {
         at += width;
     }
     if (in_field) {
-        MsBytes field = slice(text, field_start, text.len);
+        MsBytes field = ms_string_slice(text, field_start, text.len);
         strings_push(&list, ms_str_from_bytes(field.ptr, field.len));
     }
     *out = list;
@@ -210,7 +196,7 @@ static bool encode_scalars(const int64_t *values, size_t count, MsBytesMut *buff
         size_t width = ms_utf8_encode((uint32_t)values[k], encoded);
         MsBytesMut room = {0};
         if (!ms_bytes_mut_slice(*buffer, used, buffer->len, &room) || !ms_bytes_copy(room, ms_bytes_of(encoded, width))) {
-            internal_fault();
+            ms_string_internal_fault();
         }
         used += width;
     }
@@ -245,7 +231,7 @@ void msrt_string_to_bytes(const MsStr *s, MsVec *out) {
     if (copy != NULL) {
         MsBytesMut destination = ms_bytes_mut(copy, text.len);
         if (!ms_bytes_copy(destination, text)) {
-            internal_fault();
+            ms_string_internal_fault();
         }
     }
     *out = (MsVec){.ptr = copy, .len = text.len, .cap = text.len};
