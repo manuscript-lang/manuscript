@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "ms/check.h"
+#include "ms/doc.h"
 #include "ms/methods.h"
 #include "ms/ownership.h"
 #include "ms/rt_ops.h"
