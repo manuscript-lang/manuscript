@@ -118,31 +118,32 @@ static MsSysError do_chmod(const char *path, uint32_t mode) { WITH_REQUEST(uv_fs
 
 static MsSysError do_access(const char *path, int32_t mode) { WITH_REQUEST(uv_fs_access(NULL, &req, path, mode, NULL)); }
 
-static MsSysError do_symlink(const char *target, const char *path) {
+static MsSysError do_symlink(const char *referent, const char *link_path) {
     int flags = 0;
 #ifdef _WIN32
-    /* Windows makes a directory link and a file link differently: ask what the target is, relative to the link. */
+    /* Windows makes a directory link and a file link differently: ask what the referent is, relative to the link. */
     MsSysStat info;
-    const char *separator = strrchr(path, '/');
-    const char *backslash = strrchr(path, '\\');
+    const char *separator = strrchr(link_path, '/');
+    const char *backslash = strrchr(link_path, '\\');
     separator = backslash != NULL && (separator == NULL || backslash > separator) ? backslash : separator;
-    const bool absolute = target[0] == '/' || target[0] == '\\' || (target[0] != 0 && target[1] == ':');
+    const bool absolute = referent[0] == '/' || referent[0] == '\\' || (referent[0] != 0 && referent[1] == ':');
     char *joined = NULL;
     if (!absolute && separator != NULL) {
-        const size_t directory = (size_t)(separator - path) + 1;
-        joined = malloc(directory + strlen(target) + 1);
+        const size_t directory = (size_t)(separator - link_path) + 1;
+        joined = malloc(directory + strlen(referent) + 1);
         if (joined != NULL) {
-            memcpy(joined, path, directory);
-            strcpy(joined + directory, target);
+            memcpy(joined, link_path, directory);
+            strcpy(joined + directory, referent);
         }
     }
-    if (ms_sys_fs_stat(joined != NULL ? joined : target, true, &info) == 0 && (info.mode & MS_SYS_S_IFMT) == MS_SYS_S_IFDIR) {
+    if (ms_sys_fs_stat(joined != NULL ? joined : referent, true, &info) == 0 && (info.mode & MS_SYS_S_IFMT) == MS_SYS_S_IFDIR) {
         flags = UV_FS_SYMLINK_DIR;
     }
     free(joined);
 #endif
     uv_fs_t req;
-    (void)uv_fs_symlink(NULL, &req, target, path, flags, NULL);
+    // NOLINTNEXTLINE(readability-suspicious-call-argument): libuv names the text the link holds `path` and the link `new_path`.
+    (void)uv_fs_symlink(NULL, &req, referent, link_path, flags, NULL);
     return finish(&req);
 }
 
@@ -194,7 +195,7 @@ static MsSysError do_chown(const char *path, int64_t uid, int64_t gid, bool foll
 
 static MsSysError do_truncate(const char *path, int64_t size) {
     uv_fs_t open;
-    const int fd = (int)uv_fs_open(NULL, &open, path, UV_FS_O_WRONLY, 0, NULL);
+    const int fd = uv_fs_open(NULL, &open, path, UV_FS_O_WRONLY, 0, NULL);
     if (fd < 0) {
         return finish(&open);
     }
