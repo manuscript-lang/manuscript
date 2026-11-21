@@ -50,7 +50,7 @@ typedef struct MsOverlay {
   size_t count;
 } MsOverlay;
 
-/* A `.ms` file the executable carries: the bundled standard library (stdlib/*.ms), by its name below `@std/`
+/* A `.ms` file the executable carries: the bundled standard library (the .ms files of stdlib/), by its name below `@std/`
  * (`io/io.ms`, `bytes.ms`). Sorted by name, static storage. */
 typedef struct MsStdSource {
   MsSpan name;
