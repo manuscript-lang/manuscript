@@ -223,8 +223,6 @@ void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
 void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 
-/* The module function for generic `sym` at type arguments `args`: its existing copy, or a new one. */
-uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
 void lb_write_back(Lb *lb);
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
 bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
