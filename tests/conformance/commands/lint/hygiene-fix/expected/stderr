@@ -1,0 +1,10 @@
+<DIR>/main.ms:2:16: warning MSL001: Remove trailing whitespace
+   |
+ 2 | fn main() Void:   
+   |                ^
+<DIR>/main.ms:3:13: warning MSL002: End the file with a newline
+   |
+ 3 |     print("hi")
+   |             ^
+2 warnings; warnings do not fail ms lint; pass --deny-warnings to fail on them
+ms: applied 1 fix in 1 file
