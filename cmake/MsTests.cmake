@@ -109,10 +109,8 @@ set(_task_abi "${_rt}/core/task_abi.c")
 # fault_abi.c is linked by core_fault_abi alone: the other tests use the weak fault stubs of tests/support.
 set(_fault_abi "${_rt}/core/fault_abi.c")
 list(REMOVE_ITEM _core_sources "${_task_abi}" "${_fault_abi}")
-# The scheduler hooks of the tests (support/sched_env.c) poll descriptors, so they are POSIX-only for now.
-if(MS_WINDOWS)
-  list(FILTER _support_sources EXCLUDE REGEX "sched_env\\.c$")
-else()
+# The pipe calls the Windows streams make into the scheduler (support/sched_pipe_stubs_win.c) belong to Windows only.
+if(NOT MS_WINDOWS)
   list(FILTER _support_sources EXCLUDE REGEX "sched_pipe_stubs_win\\.c$")
 endif()
 # The pipe calls the Windows streams make into the scheduler, stubbed for tests that run one task on no reactor.
@@ -188,7 +186,7 @@ file(GLOB _io_tests CONFIGURE_DEPENDS "${_tests}/io_*.c")
 list(FILTER _io_tests EXCLUDE REGEX "io_ring_test\\.c$")
 foreach(file ${_io_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" ${_io_sources} ${_os_sources} INCLUDES ${MS_LIB_uv_INCLUDES}
+  ms_test(${name} SOURCES "${file}" "${_tests}/support/child.c" ${_io_sources} ${_os_sources} INCLUDES ${MS_LIB_uv_INCLUDES}
           LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 endforeach()
 

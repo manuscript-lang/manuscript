@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <uv.h>
 
 #include "../entry/entry.h"
 #include "ms_rt/alloc.h"
@@ -45,23 +45,26 @@ static void burn(void) {
 }
 
 int main(void) {
-    char time_path[64];
-    char alloc_path[64];
-    snprintf(time_path, sizeof time_path, "/tmp/ms-entry-profile-%d.folded", (int)getpid());
-    snprintf(alloc_path, sizeof alloc_path, "/tmp/ms-entry-profile-%d.allocs", (int)getpid());
+    char directory[512];
+    size_t directory_size = sizeof directory;
+    expect(uv_os_tmpdir(directory, &directory_size) == 0, "tmpdir");
+    char time_path[640];
+    char alloc_path[640];
+    snprintf(time_path, sizeof time_path, "%s/ms-entry-profile-%d.folded", directory, (int)uv_os_getpid());
+    snprintf(alloc_path, sizeof alloc_path, "%s/ms-entry-profile-%d.allocs", directory, (int)uv_os_getpid());
 
     /* Off by default: nothing is written. */
-    unsetenv("MS_PROFILE");
-    unsetenv("MS_PROFILE_ALLOCS");
+    (void)uv_os_unsetenv("MS_PROFILE");
+    (void)uv_os_unsetenv("MS_PROFILE_ALLOCS");
     ms_profile_start();
     ms_profile_attach_runtime_thread();
     ms_profile_finish();
     expect(slurp(time_path) == NULL, "no file without MS_PROFILE");
 
-    setenv("MS_PROFILE", time_path, 1);
-    setenv("MS_PROFILE_HZ", "1000", 1);
-    setenv("MS_PROFILE_ALLOCS", alloc_path, 1);
-    setenv("MS_PROFILE_ALLOC_PERIOD", "4", 1);
+    expect(uv_os_setenv("MS_PROFILE", time_path) == 0, "setenv MS_PROFILE");
+    expect(uv_os_setenv("MS_PROFILE_HZ", "1000") == 0, "setenv MS_PROFILE_HZ");
+    expect(uv_os_setenv("MS_PROFILE_ALLOCS", alloc_path) == 0, "setenv MS_PROFILE_ALLOCS");
+    expect(uv_os_setenv("MS_PROFILE_ALLOC_PERIOD", "4") == 0, "setenv MS_PROFILE_ALLOC_PERIOD");
     msrt_heap_claim();
     ms_profile_start();
     ms_profile_attach_runtime_thread();
@@ -80,7 +83,7 @@ int main(void) {
     expect(allocs != NULL, "the allocation profile is written");
     expect(strstr(allocs, "# period 4") != NULL, "the allocation profile reports its period");
     expect(strstr(allocs, "# allocs") != NULL, "the allocation profile counts allocations");
-    char bytes_path[80];
+    char bytes_path[660];
     snprintf(bytes_path, sizeof bytes_path, "%s.bytes", alloc_path);
     char *bytes = slurp(bytes_path);
     expect(bytes != NULL && strstr(bytes, "# bytes") != NULL, "the byte profile is written");

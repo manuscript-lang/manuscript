@@ -1,4 +1,8 @@
+#ifdef _WIN32
+#include <uv.h>
+#else
 #include <poll.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +23,17 @@ static int fake_watch(int fd, uint32_t events) {
 
 static void fake_unwatch(int fd) { watched[fd] = 0; }
 
+#ifdef _WIN32
+/* Windows tests that use this environment wait on no descriptor: nothing becomes ready, so a wait is a short sleep. */
+static long fake_wait(int64_t timeout_ns, MsPollReady *out, size_t capacity) {
+    (void)out;
+    (void)capacity;
+    if (timeout_ns != 0) {
+        uv_sleep(1);
+    }
+    return 0;
+}
+#else
 /* A real poll(2) over the watched descriptors; an interest is one-shot, as in the reactor. */
 static long fake_wait(int64_t timeout_ns, MsPollReady *out, size_t capacity) {
     struct pollfd fds[MAX_FDS];
@@ -46,6 +61,7 @@ static long fake_wait(int64_t timeout_ns, MsPollReady *out, size_t capacity) {
     }
     return ready;
 }
+#endif
 
 static void fake_fault(MsFaultKind kind, const char *message) {
     (void)kind;
