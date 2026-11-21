@@ -1,0 +1,59 @@
+type Big:
+	name: String
+	items: List[Int]
+
+fn items_of(b: Big) List[Int]:
+	return b.items
+
+fn both(b: Big) Int:
+	n := size(b.items)
+	return n.length() + b.name.length()
+
+fn size(xs: List[Int]) List[Int]:
+	return xs
+
+fn branch(b: Big, flag: Bool) Int:
+	if flag:
+		ys := size(b.items)
+		return ys.length()
+
+	return b.items.length() + b.name.length()
+
+fn reinit(b: Big) Int:
+	var c = b
+	first := size(c.items).length()
+	c.items = [first]
+	return c.items.length()
+
+fn nested(w: Wrap) List[Int]:
+	return w.inner.items
+
+type Wrap:
+	inner: Big
+	tag: Int
+
+type Cell:
+	items: List[Int]
+
+type Holder:
+	inner: Cell
+
+fn paths(b: Cell, first: Bool) List[Int]:
+	if first:
+		return b.items.clone()
+
+	w := Holder(inner: b)
+	return w.inner.items.clone()
+
+type Source:
+	id: Int
+
+fn move Source.close() Void!:
+	return ok()
+
+type Stream:
+	source: Source
+	closed: Bool = false
+
+fn move Stream.close() Void!:
+	return self.source.close()

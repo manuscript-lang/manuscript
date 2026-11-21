@@ -67,6 +67,7 @@ typedef struct OwnWalk {
     MsPos consumed_at[32];
     uint8_t *param_mode; /* by binding id: 0 plain, 1 `var`, 2 `move` (parameters only) */
     uint32_t self_binding; /* the receiver of the method being walked, else MS_NONE */
+    bool self_closer;      /* the method is the `close` of its own type, which runs on the whole value */
     bool self_consuming;   /* the method is `move`: the receiver is its own, so it may change it */
     bool quiet;         /* a summary round: diagnostics are left to the final pass */
     bool *lent;          /* by binding id: a lambda parameter the caller lends; moving a non-copy one out is left to Rust */
@@ -417,6 +418,55 @@ static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
 
 static void own_construct(OwnWalk *w, const MsExpr *e);
 
+/* The local a field chain `a.b.c` is rooted in, or NULL when a link is not a field of a name. */
+static const MsExpr *own_field_root(const OwnWalk *w, const MsExpr *e) {
+    while (e->kind == MS_E_MEMBER && w->facts->res_kind[e->id] == MS_RES_FIELD) {
+        e = e->u.member.left;
+    }
+    return e->kind == MS_E_NAME && w->facts->res_kind[e->id] == MS_RES_BINDING ? e : NULL;
+}
+
+/* Whether a holder on the path of the field may have one of its parts leave: a type that closes itself would be closed
+ * with a hole in it, except by its own `close`, which runs on the whole value. */
+static bool own_holders_open(OwnWalk *w, const MsExpr *e, const MsExpr *root) {
+    for (const MsExpr *at = e; at->kind == MS_E_MEMBER; at = at->u.member.left) {
+        const MsExpr *holder = at->u.member.left;
+        const bool own_close = holder == root && w->self_closer && w->facts->res_ref[root->id] == w->self_binding;
+        if (ms_closes_itself(w->classifier, w->facts->expr_ty[holder->id]) && !own_close) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* A field moves out of a holder this function owns (a `:=` local, a `move` parameter, the receiver of a `move` method) at the
+ * holder's last use: the field goes to its new owner without a copy and the rest of the holder is released where it
+ * goes out of scope. A holder used again, borrowed, changed, captured, or closed by a type of its own is left to
+ * Rust. */
+static void own_partial_move(OwnWalk *w, const MsExpr *e) {
+    const MsExpr *root = own_field_root(w, e);
+    const uint32_t binding = root == NULL ? MS_NONE : w->facts->res_ref[root->id];
+    const bool receiver = binding != MS_NONE && binding == w->self_binding;
+    if (root == NULL || binding < w->floor || w->perm[binding] != PERM_IMMUTABLE || w->lent[binding] ||
+        w->closure_holds[binding] || (receiver && !w->self_consuming) || (w->is_param[binding] && !receiver && w->param_mode[binding] != 2) ||
+        ms_ty_kind(&w->check->tys, w->facts->expr_ty[e->id]) == MS_K_VARIABLE || !own_is_last(w, root) ||
+        !own_holders_open(w, e, root)) {
+        OWN_DECLINE(w);
+        return;
+    }
+    own_check_change(w, e->pos, binding, "move");
+    if (w->is_param[binding]) {
+        const uint32_t index = w->param_index[binding];
+        if ((w->consumed & (1u << index)) == 0) {
+            w->consumed_at[index] = e->pos;
+        }
+        w->consumed |= 1u << index;
+    }
+    w->facts->partial_move[e->id] = true;
+    own_record(w, root, binding);
+}
+
+
 static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     own_check_wrap(w, e);
     if (w->facts->coerce_iface[e->id] != MS_TY_NONE && e->kind != MS_E_CALL) {
@@ -446,9 +496,10 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         own_expr(w, e->u.bin.right, DEMAND_READ);
         return;
     case MS_E_MEMBER:
-        /* A field reads its holder; moving one out of it is a partial move, not modelled yet. */
+        /* A field reads its holder; one that is not a plain value leaves it only as a partial move. */
         if (demand == DEMAND_MOVE && ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
-            OWN_DECLINE(w);
+            own_partial_move(w, e);
+            return;
         }
         own_expr(w, e->u.member.left, DEMAND_READ);
         return;
@@ -1049,13 +1100,13 @@ static void own_interface_call(OwnWalk *w, const MsExpr *e) {
     const MsExpr *receiver = e->u.call.callee->u.member.left;
     const MsMethod *op = own_operation(w, w->facts->call_receiver[e->id], e->u.call.callee->u.member.name);
     const uint32_t root = own_receiver_root(w, receiver);
-    if (op == NULL || root == MS_NONE || op->consuming || e->u.call.args.len > op->func.params.len) {
+    if (op == NULL || root == MS_NONE || (op->consuming && op->mutating) || e->u.call.args.len > op->func.params.len) {
         OWN_DECLINE(w);
         return;
     }
     // A result that is not a plain value may be a reference into the receiver or a borrowed argument
     // (`slice`); an operation that changes its receiver and takes its arguments by value hands back a value of its own.
-    bool owned = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY || op->mutating;
+    bool owned = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY || op->mutating || op->consuming;
     uint32_t handed = 0;
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsParam *param = op->func.params.ptr[i];
@@ -1070,7 +1121,10 @@ static void own_interface_call(OwnWalk *w, const MsExpr *e) {
         OWN_DECLINE(w);
         return;
     }
-    if (op->mutating) {
+    if (op->consuming) {
+        own_require_declared_move_as(w, receiver, "receiver"); // the operation takes its receiver, as a consuming method does
+        own_expr(w, receiver, DEMAND_MOVE);
+    } else if (op->mutating) {
         MsStr text;
         const MsPlace place = own_target_place(w, receiver, root, &text);
         own_mutate_place(w, receiver->pos, root, place, text);
@@ -1830,6 +1884,7 @@ static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const MsM
         own_declare(w, self, method->mutating ? PERM_MUTABLE : PERM_IMMUTABLE, true);
         w->self_binding = self;
         w->self_consuming = method->consuming;
+        w->self_closer = method->consuming && ms_is_close_name(w->classifier, function->name);
         w->param_index[self] = 0;
         w->param_mode[self] = method->mutating ? 1 : 0;
     }
@@ -1857,6 +1912,7 @@ static bool own_function(OwnWalk *w, const MsFunc *function, const MsMethod *met
     w->note_param = MS_NONE;
     w->self_binding = MS_NONE;
     w->self_consuming = false;
+    w->self_closer = false;
     w->supported = true;
     w->by_node = by_node;
     own_declare_parameters(w, function, method, by_node);

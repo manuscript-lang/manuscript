@@ -121,6 +121,8 @@ typedef struct MsFacts {
     MsTy *coerce_iface; /* by expression node id: the concrete type of a value passed as an interface (the expression's own type), else MS_TY_NONE */
     bool *call_reordered; /* by call node id: an argument is not at its parameter's position (labels out of order or skipping a default); passes that pair arguments with parameters by index leave the call to Rust */
     bool *some_wrap;  /* by expression node id: a value of the payload type used where an Optional is expected, so it is wrapped in `some` */
+    bool *partial_move;   /* by member node id: the field leaves its holder at the holder's last use (ownership pass); the rest of the holder is released
+                           * where it goes out of scope */
     bool *moved_out;      /* by name node id: the use moves a binding's value out (ownership pass; a resource closed at scope end is closed only on the paths that keep it) */
     bool *borrowed_match; /* by match node id: every arm yields a reference and the value is only read, so the match is a reference too (ownership pass) */
     bool *body_checked;   /* by declaration node id: the function's body was checked */

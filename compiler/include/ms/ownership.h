@@ -92,6 +92,10 @@ void ms_classifier_mark_methods(MsClassifier *classifier, const MsMethods *rows)
 void ms_classifier_mark_owned_close(MsClassifier *classifier, MsSym interface_id) MS_NONNULL;
 
 MsClass ms_classify(MsClassifier *classifier, MsTy type) MS_NONNULL;
+/* Whether `type` declares a `close` of its own: its value is released by that close, never field by field. */
+bool ms_closes_itself(MsClassifier *classifier, MsTy type) MS_NONNULL;
+/* Whether `name` is the operation `Closeable` declares. */
+bool ms_is_close_name(MsClassifier *classifier, MsSym name) MS_NONNULL;
 
 /* ---- liveness: which use of a binding is its last ---- */
 

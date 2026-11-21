@@ -116,8 +116,8 @@ LbVal lr_construct(Lb *lb, const MsExpr *call) {
 
 /* `record.field` where the checker resolved a field. */
 LbVal lr_field(Lb *lb, const MsExpr *e) {
-    if (lb->facts->res_kind[e->id] != MS_RES_FIELD) {
-        return LB_UNSUPPORTED(lb);
+    if (lb->facts->res_kind[e->id] != MS_RES_FIELD || lb->facts->partial_move[e->id]) {
+        return LB_UNSUPPORTED(lb); // a field that leaves its holder: moved out, the rest released, which is not lowered yet
     }
     const LbVal holder = lb_expr(lb, e->u.member.left);
     if (!lb->ok) {
