@@ -1338,6 +1338,12 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
         return ms_body_unsupported(b);
     }
+    for (uint32_t i = 0; b->tparams != NULL && i < b->tparams->len; i++) {
+        if (b->tparams->ptr[i]->name == t->name) {
+            b->facts->type_ref_ty[t->id] = b->tvars[i];
+            return b->tvars[i];
+        }
+    }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
     const bool primitive = sym != MS_NONE && b->c->syms.decl[sym] == NULL && ty != MS_TY_NONE && body_is_admitted(b, ty) &&
@@ -2044,7 +2050,11 @@ static void body_check_test(MsBody *b, const MsDecl *d) {
 
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     if (!body_is_test_fixture(b, &d->u.fn) || b->fixture != MS_TY_NONE) {
+        b->tparams = &d->u.fn.type_params;
+        b->tvars = ms_def(b->c, sym)->vars;
         body_check_callable(b, d->id, d->pos, d->is_exported, &d->u.fn, b->c->syms.ty[sym], NULL);
+        b->tparams = NULL;
+        b->tvars = NULL;
     }
 }
 
