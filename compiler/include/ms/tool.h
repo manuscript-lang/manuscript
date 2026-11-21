@@ -141,9 +141,11 @@ void ms_tool_keywords(ms_list *out);
 
 /* ---- analysis (the language server) ---- */
 
-/* Checks `text` as a module of its own (`extern type Analysis` on the Manuscript side) (a program that imports a project module is status 2: not covered yet) and
- * reports what the checker knows, keyed by the syntax-node ids of `ms_tool_tree_nodes` (`Syntax.id`), so a tool joins
- * them to a tree of the same text. the rows hold three counts (nodes, bindings, symbols) and then the rows:
+/* Checks `text` as the module at `path`: the project it belongs to loads with `overlay` (path and text, alternating) in
+ * place of the files on disk, so unsaved buffers are seen, and the rows describe `text`. With an empty `path` the text is
+ * a module of its own and an import of a project module is status 2.
+ * `extern type Analysis` on the Manuscript side. The result reports what the checker knows, keyed by the syntax-node ids of `ms_tool_tree_nodes` (`Syntax.id`), so a tool joins
+ * them to a tree of the same text. The rows hold three counts (nodes, bindings, symbols) and then the rows:
  *   node, MS_TOOL_ANALYZE_NODE_WIDTH:     id, resolution (MsResolution), reference (binding, symbol, field, case or
  *                                         method id, -1 for none), type of the expression, type of the written type,
  *                                         symbol id of the function a call expression calls (-1 for none)
@@ -157,7 +159,7 @@ void ms_tool_keywords(ms_list *out);
 #define MS_TOOL_ANALYZE_NODE_WIDTH 6
 #define MS_TOOL_ANALYZE_BINDING_WIDTH 9
 #define MS_TOOL_ANALYZE_SYMBOL_WIDTH 11
-ms_object *ms_tool_analyze(const ms_str *text);
+ms_object *ms_tool_analyze(const ms_str *path, const ms_str *text, const ms_list *overlay);
 /* 0 analysed, 1 syntax error, 2 not covered; the message of a status other than 0. */
 uint8_t ms_tool_analysis_status(ms_object *analysis);
 void ms_tool_analysis_message(ms_object *analysis, ms_str *out);
