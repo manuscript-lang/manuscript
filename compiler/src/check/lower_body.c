@@ -186,8 +186,7 @@ MirValue lb_copy(Lb *lb, MirValue v) {
     return mir_b_emit(&lb->b, MOP_Clone, &v, 1, one, mir_b_ty(&lb->b, v));
 }
 
-/* Whether `e` names a local or a field under one (`g`, `g.cells`): a place, which evaluating again only reads. */
-static bool lb_is_place(const Lb *lb, const MsExpr *e) {
+bool lb_is_place(const Lb *lb, const MsExpr *e) {
     while (e->kind == MS_E_MEMBER) {
         e = e->u.member.left;
     }

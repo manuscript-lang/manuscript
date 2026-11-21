@@ -287,6 +287,8 @@ LbVal lb_expr(Lb *lb, const MsExpr *e);
 /* `value`, the borrowed read of the place `e`, read again once the expressions after it were evaluated: one of them
  * may have replaced what the place holds (crates/ms-lower call.rs `refresh`). Other values are returned as they are. */
 LbVal lb_refresh(Lb *lb, const MsExpr *e, LbVal value);
+/* Whether `e` names a local or a field under one (`g`, `g.cells`): a place, which evaluating again only reads. */
+bool lb_is_place(const Lb *lb, const MsExpr *e);
 MirTy lb_mir_ty(Lb *lb, MsTy ty);
 void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
