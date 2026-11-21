@@ -1,7 +1,8 @@
 // `ms_tool_facts` from Manuscript: prints the fact model of one document, the JSON that
 // `ms_check_dump STDLIB --facts FILE` prints, so `make c-tools-test` compares the two.
 //   ms run tools/ms/facts_entry.ms --link target/c-tool/libmstool.a -- FILE.ms
-// With `--project` it prints the facts of the project FILE belongs to (`ms_tool_facts_project`):
+// With `--project` it prints the facts of the project FILE belongs to
+// (`ms_tool_facts_project`):
 //   ms run tools/ms/facts_entry.ms --link target/c-tool/libmstool.a -- --project FILE.ms
 import (
 	stdout from "@std/io/io.ms",
@@ -29,6 +30,7 @@ fn main() Int:
 
 		var project_out = stdout()
 		if project_out.write(project.get()).is_error(): return 1
+
 		return 0
 
 	if args.length() != 1: return 2

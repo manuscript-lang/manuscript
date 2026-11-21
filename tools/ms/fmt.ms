@@ -39,21 +39,25 @@ export enum DiscoverError:
 
 extern fn ms_tool_discover(target: String) List[String]!DiscoverError
 
-// What expanding the targets came to: the files to format and the targets that failed, each
-// as the outcome it reports.
+// What expanding the targets came to: the files to format and the targets that failed,
+// each as the outcome it reports.
 type Expanded:
 	files: List[String] = []
 	failures: List[Outcome] = []
 	// A project libms does not cover: the Rust command answers.
 	rust: Bool = false
 
-// The failure of `target` as `ms fmt` reports it. A manifest error carries its position, as
+// The failure of `target` as `ms fmt` reports it. A manifest error carries its
+// position, as
 // `file:line:column: cause`; every other message is plain.
 fn failure_of(cwd: String, target: String, message: String) Outcome:
 	display := shown_target(cwd, target)
 
 	// A path that is not there reads as the missing file it is.
-	if message.starts_with("stat ") and message.ends_with(": no such file or directory"): return missing(display)
+	if (
+		message.starts_with("stat ")
+		and message.ends_with(": no such file or directory")
+	): return missing(display)
 
 	parts := message.split(": ")
 
@@ -71,7 +75,14 @@ fn failure_of(cwd: String, target: String, message: String) Outcome:
 					display.clone(),
 					target.clone(),
 					"",
-					Issue("MS2001", "resolution", cause.clone(), line.get(), column.get(), offset),
+					Issue(
+						"MS2001",
+						"resolution",
+						cause.clone(),
+						line.get(),
+						column.get(),
+						offset,
+					),
 					f"{display}:{line.get()}:{column.get()}: {cause}",
 				)
 
@@ -122,7 +133,6 @@ fn expand_targets(cwd: String, targets: List[String]) Expanded:
 	var out = Expanded()
 
 	for target in targets:
-
 		// A workspace root without a `[project]` stands for its members, as in the
 		// other commands.
 		var manifests = [target.clone()]
@@ -136,7 +146,13 @@ fn expand_targets(cwd: String, targets: List[String]) Expanded:
 
 			if found.is_error():
 				match found.err():
-					Failed(message): out.failures.append(failure_of(cwd, manifest, message.clone()))
+					Failed(message): out.failures.append(
+						failure_of(
+							cwd,
+							manifest,
+							message.clone(),
+						)
+					)
 					Unsupported(_): out.rust = true
 
 				continue
@@ -355,8 +371,8 @@ export fn run_fmt(m: Matches) Printed?:
 	expanded := expand_targets(cwd, request.targets)
 	if expanded.rust: return none
 
-	// Resolve every file first, so a file that cannot be read is reported before anything is
-	// written.
+	// Resolve every file first, so a file that cannot be read is reported before
+	// anything is written.
 	var found = Map[String, String]()
 	var order = List[String]()
 	var sources = Map[String, String]()
@@ -379,7 +395,13 @@ export fn run_fmt(m: Matches) Printed?:
 		data := read_file(target).wait()
 
 		if data.is_error():
-			failures.append(failure_of(cwd, target, f"cannot read {display}: {data.err().message}"))
+			failures.append(
+				failure_of(
+					cwd,
+					target,
+					f"cannot read {display}: {data.err().message}",
+				)
+			)
 			bad.add(absolute.clone(), failures[failures.length() - 1].clone())
 			continue
 
@@ -392,7 +414,14 @@ export fn run_fmt(m: Matches) Printed?:
 					display.clone(),
 					absolute.clone(),
 					"error",
-					Issue("MS1001", "parse", message.clone(), 1, 1, 0),
+					Issue(
+						"MS1001",
+						"parse",
+						message.clone(),
+						1,
+						1,
+						0,
+					),
 					f"{display}:1:1: parse: {message}\nfmt only formats source that parses; fix the syntax error above, then re-run ms fmt {display}",
 				)
 			)
@@ -430,12 +459,15 @@ export fn run_fmt(m: Matches) Printed?:
 	var result = Printed()
 
 	for outcome in outcomes:
-		if outcome.state == "error" or outcome.state == "needs_formatting" or outcome.state.is_empty():
+		if (
+			outcome.state == "error"
+			or outcome.state == "needs_formatting"
+			or outcome.state.is_empty()
+		):
 			result.status = 1
 			if not request.json: result.stderr += outcome.message + "\n"
 
 	if outcomes.is_empty() and not request.json:
 		result.stderr += f"ms fmt: no .ms files found in {request.targets.join(", ")}\n"
-
 	if request.json: result.stdout = document(outcomes)
 	return result
