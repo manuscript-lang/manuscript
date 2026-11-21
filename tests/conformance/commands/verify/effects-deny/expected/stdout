@@ -1,0 +1,4 @@
+check  passed
+fmt    passed
+lint   failed
+test   skipped
