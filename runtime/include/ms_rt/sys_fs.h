@@ -71,6 +71,12 @@ enum {
 MS_NODISCARD MsSysError ms_sys_fs_open(const char *path, int32_t flags, uint32_t mode, MsSysFd *fd);
 /* Closes once and never retries, even when interrupted: the descriptor is gone either way. */
 MS_NODISCARD MsSysError ms_sys_fs_close(MsSysFd fd);
+
+/* Closes after the real result is known: a failure here cannot change it. */
+static inline void ms_sys_fs_close_quietly(MsSysFd fd) {
+    const MsSysError ignored = ms_sys_fs_close(fd);
+    (void)ignored;
+}
 /* A second descriptor over the same open file; the two share the file position. */
 MS_NODISCARD MsSysError ms_sys_fs_dup(MsSysFd fd, MsSysFd *out);
 /* Switches a descriptor opened with MS_SYS_O_NONBLOCK back to blocking mode (a no-op on Windows). */

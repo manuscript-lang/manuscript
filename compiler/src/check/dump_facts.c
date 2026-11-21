@@ -10,6 +10,7 @@
 #include "ms/dump.h"
 #include "ms/effects.h"
 #include "ms/facts.h"
+#include "ms/ownership.h"
 #include "ms/walk.h"
 
 typedef struct FactsRow {

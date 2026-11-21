@@ -166,6 +166,21 @@ static void test_lossy(void) {
     CHECK(read_manifest("# \xff\xfe\n" MANIFEST, &p, &err, &text));
 }
 
+/* ms_project_unquote reads what ms_project_quote writes, and refuses what Go's strconv.Unquote refuses. */
+static void test_unquote(void) {
+    const char *text;
+    CHECK(ms_project_unquote(&arena, "\"a\\tb\\\"c\\\\\"", &text) && strcmp(text, "a\tb\"c\\") == 0);
+    CHECK(ms_project_unquote(&arena, "\"\\u00e9\\x41\\101\"", &text) && strcmp(text, "\xc3\xa9" "AA") == 0);
+    CHECK(!ms_project_unquote(&arena, "x", &text));
+    CHECK(!ms_project_unquote(&arena, "\"open", &text));
+    CHECK(!ms_project_unquote(&arena, "\"a\"b\"", &text));
+    CHECK(!ms_project_unquote(&arena, "\"\\q\"", &text));
+    CHECK(!ms_project_unquote(&arena, "\"\\xff\"", &text)); /* the decoded text must be UTF-8 */
+    CHECK(!ms_project_unquote(&arena, "\"\\ud800\"", &text));
+    const char *quoted = ms_project_quote(&arena, "tab\t \"q\" \xc3\xa9 \x01");
+    CHECK(ms_project_unquote(&arena, quoted, &text) && strcmp(text, "tab\t \"q\" \xc3\xa9 \x01") == 0);
+}
+
 #define URL "https://github.com/acme/pg.git"
 #define SHA "0123456789abcdef0123456789abcdef01234567"
 
@@ -272,6 +287,7 @@ int main(void) {
     test_read();
     test_errors();
     test_invalid();
+    test_unquote();
     test_lossy();
     test_packages();
     test_imports();
