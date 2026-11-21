@@ -730,6 +730,9 @@ static void send_ended(const Taken *taken, MsGuardStatus status, MsFaultText mes
         msrt_free(message.bytes);
         msrt_free(mail);
     }
+    /* The mail carries the message text only; the structured detail stays with this isolate and ends here. */
+    MsFaultText detail = {.detail = message.detail};
+    ms_fault_text_free(&detail);
 }
 
 static void taken_entry(void *argument) {
