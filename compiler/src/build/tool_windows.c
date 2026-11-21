@@ -29,6 +29,35 @@ static bool bw_wide(const char *text, MsBuf *out) {
     return MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, -1, wide, n) == n;
 }
 
+/* `path` as a UTF-16 file name in `out`. A drive or UNC path of MAX_PATH or more characters gets the extended-length
+ * prefix (`\\?\`, with `\` for `/`), which the file functions need beyond 260 characters; shorter paths are left alone. */
+static bool bw_wide_path(const char *path, MsBuf *out) {
+    if (!bw_wide(path, out)) {
+        return false;
+    }
+    const WCHAR *wide = (const WCHAR *)out->data;
+    const size_t n = out->len / sizeof(WCHAR) - 1;
+    const bool drive = n >= 3 && wide[1] == L':' && (wide[2] == L'\\' || wide[2] == L'/');
+    const bool unc = n >= 3 && wide[0] == L'\\' && wide[1] == L'\\' && wide[2] != L'?';
+    if (n < 248 || (!drive && !unc)) {
+        return true;
+    }
+    MsBuf prefixed = {0};
+    static const WCHAR local[] = L"\\\\?\\";
+    static const WCHAR share[] = L"\\\\?\\UNC\\";
+    const WCHAR *head = unc ? share : local;
+    const size_t head_len = unc ? 8 : 4;
+    WCHAR *dest = ms_buf_push(&prefixed, (head_len + n + 1) * sizeof(WCHAR));
+    memcpy(dest, head, head_len * sizeof(WCHAR));
+    for (size_t i = unc ? 2 : 0; i < n; i++) {
+        dest[head_len + i - (unc ? 2 : 0)] = wide[i] == L'/' ? L'\\' : wide[i];
+    }
+    dest[head_len + n - (unc ? 2 : 0)] = 0;
+    ms_buf_free(out);
+    *out = prefixed;
+    return true;
+}
+
 /* One argument as the Microsoft C runtime reads it back: quoted when it holds a space, tab or quote, with backslashes
  * before a quote doubled. */
 static void bw_quote(MsBuf *line, const char *arg) {
@@ -98,7 +127,7 @@ bool ms_build_run_in(const char *what, const char *const *argv, const char *cwd,
         bw_quote(&line, argv[i]);
     }
     ms_buf_putc(&line, 0);
-    bool ok = bw_wide(line.data, &wide_line) && bw_wide(log, &wide_log) && (cwd == NULL || bw_wide(cwd, &wide_cwd));
+    bool ok = bw_wide(line.data, &wide_line) && bw_wide_path(log, &wide_log) && (cwd == NULL || bw_wide(cwd, &wide_cwd));
     SECURITY_ATTRIBUTES inherit = {sizeof inherit, NULL, TRUE};
     HANDLE out = INVALID_HANDLE_VALUE, in = INVALID_HANDLE_VALUE;
     if (ok) {
@@ -213,7 +242,7 @@ bool ms_build_make_path(const char *path) {
 
 void ms_build_unlink(const char *path) {
     MsBuf wide = {0};
-    if (bw_wide(path, &wide)) {
+    if (bw_wide_path(path, &wide)) {
         const WCHAR *name = (const WCHAR *)wide.data;
         (void)SetFileAttributesW(name, FILE_ATTRIBUTE_NORMAL); /* a read-only file would refuse to go */
         if (!DeleteFileW(name)) {
