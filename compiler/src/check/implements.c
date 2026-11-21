@@ -1,5 +1,6 @@
 /* Interface satisfaction (ms/implements.h). */
 #include "ms/implements.h"
+#include "ms/infer.h"
 
 #include <string.h>
 
@@ -323,6 +324,41 @@ static bool fit_method(const MsMethods *m, MsTy receiver, MsSym name, uint32_t *
     return found;
 }
 
+/* The signature of the receiver's own method called `name`, when exactly one row has it: a row without
+ * type variables is the receiver's own, a generic row (`fn PipeSource[T].next()`) is the one its receiver
+ * pattern binds for this instance, every variable bound. */
+static bool fit_signature(MsCheck *c, const MsMethods *m, MsTy receiver, MsSym name, MsTy *signature) {
+    bool found = false;
+    for (uint32_t i = 0; i < m->count; i++) {
+        if (m->decl[i] == NULL || m->decl[i]->name != name) {
+            continue;
+        }
+        MsTy sig = MS_TY_NONE;
+        if (m->nvars[i] == 0) {
+            sig = m->receiver[i] == receiver ? m->ty[i] : MS_TY_NONE;
+        } else if (m->receiver[i] != receiver) {
+            MsArena scratch = {0};
+            MsInfer in;
+            ms_infer_init(&in, c, &scratch, m->vars + m->vars_at[i], m->nvars[i]);
+            bool bound = ms_infer_match(&in, m->receiver[i], receiver) == MS_MATCH_OK;
+            for (uint32_t v = 0; bound && v < m->nvars[i]; v++) {
+                bound = in.bound[v] != MS_TY_NONE;
+            }
+            sig = bound ? ms_infer_apply(&in, m->ty[i]) : MS_TY_NONE;
+            ms_arena_free(&scratch);
+        }
+        if (sig == MS_TY_NONE) {
+            continue;
+        }
+        if (found) {
+            return false;
+        }
+        *signature = sig;
+        found = true;
+    }
+    return found;
+}
+
 /* A type satisfies an interface by having its operations: each present with the same signature
  * once `Self` is the receiver. A missing operation is NO; one present with another signature is
  * UNKNOWN, since the C tables do not compare labels and `var`-ness the way the Rust checker does. */
@@ -349,18 +385,18 @@ static MsFit fit_shape(MsCheck *c, const MsMethodTable *table, MsTy receiver, Ms
     args[nargs] = receiver;
     MsFit answer = MS_FIT_YES;
     for (uint32_t i = 0; i < ops->count; i++) {
-        uint32_t row;
+        MsTy have;
         if (ops->items[i].nvars != 0) {
             return MS_FIT_UNKNOWN;
         }
-        if (!fit_method(&table->methods, receiver, ops->items[i].name, &row)) {
+        if (!fit_signature(c, &table->methods, receiver, ops->items[i].name, &have)) {
             return MS_FIT_NO;
         }
         MsArena scratch = {0};
         const MsTySubst subst = {.vars = vars, .args = args, .count = nargs + 1};
         const MsTy wanted = ms_ty_subst(&c->tys, &scratch, ops->items[i].ty, &subst);
         ms_arena_free(&scratch);
-        answer = wanted == table->methods.ty[row] ? answer : MS_FIT_UNKNOWN;
+        answer = wanted == have ? answer : MS_FIT_UNKNOWN;
     }
     return answer;
 }
