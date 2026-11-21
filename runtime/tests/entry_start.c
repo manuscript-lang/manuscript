@@ -59,7 +59,7 @@ static int64_t main_sleeping(void) {
 
 static int64_t main_out_of_range(void) { return 200; }
 
-enum { MODE_OUT_OF_RANGE, MODE_SLEEPING, EXECUTABLE_BYTES = 1024, DIRECTORY_BYTES = 512, PATH_BYTES = 640, CHILD_SECONDS = 30 };
+enum { MODE_OUT_OF_RANGE, MODE_SLEEPING, EXECUTABLE_BYTES = 1024, DIRECTORY_BYTES = 512, PATH_BYTES = 640, MODE_NAME_BYTES = 32, CHILD_SECONDS = 30 };
 
 static const char *const mode_names[] = {"out_of_range", "sleeping"};
 
@@ -82,7 +82,13 @@ static int run_in_child(const char *self, int mode, int request) {
     } else {
         (void)uv_os_unsetenv("MS_ENTRY_START_READY");
     }
-    char *const argv[] = {(char *)self, (char *)"child", (char *)mode_names[mode], NULL};
+    /* Writable copies: the spawn API takes a mutable argv. */
+    char program[EXECUTABLE_BYTES];
+    char word[] = "child";
+    char mode_name[MODE_NAME_BYTES];
+    expect(snprintf(program, sizeof program, "%s", self) < (int)sizeof program, "program path fits");
+    expect(snprintf(mode_name, sizeof mode_name, "%s", mode_names[mode]) < (int)sizeof mode_name, "mode name fits");
+    char *const argv[] = {program, word, mode_name, NULL};
     MsTestChild *child = ms_test_child_start(self, argv);
     expect(child != NULL, "start the child");
     if (request != 0) {
