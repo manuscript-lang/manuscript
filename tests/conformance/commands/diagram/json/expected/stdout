@@ -1,0 +1,202 @@
+{
+  "format": 1,
+  "view": "calls",
+  "entity": "",
+  "tree": {
+    "label": "CALLS VIEW",
+    "kind": "",
+    "reference": "",
+    "file": "",
+    "line": 0,
+    "omitted": 0,
+    "children": [
+      {
+        "label": "main  [fn] src/main.ms:7",
+        "kind": "fn",
+        "reference": "src/main.ms#fn#main",
+        "file": "src/main.ms",
+        "line": 7,
+        "omitted": 0,
+        "children": [
+          {
+            "label": "parse_total  [fn] src/shapes.ms:15",
+            "kind": "fn",
+            "reference": "src/shapes.ms#fn#parse_total",
+            "file": "src/shapes.ms",
+            "line": 15,
+            "omitted": 0,
+            "children": [
+              {
+                "label": "area  [fn] src/shapes.ms:8",
+                "kind": "fn",
+                "reference": "src/shapes.ms#fn#area",
+                "file": "src/shapes.ms",
+                "line": 8,
+                "omitted": 0,
+                "children": []
+              },
+              {
+                "label": "read_number  [fn] src/shapes.ms:11",
+                "kind": "fn",
+                "reference": "src/shapes.ms#fn#read_number",
+                "file": "src/shapes.ms",
+                "line": 11,
+                "omitted": 0,
+                "children": [
+                  {
+                    "label": "Failure",
+                    "kind": "external",
+                    "reference": "Failure",
+                    "file": "",
+                    "line": 0,
+                    "omitted": 0,
+                    "children": []
+                  },
+                  {
+                    "label": "Result[Int, Failure]",
+                    "kind": "external",
+                    "reference": "Result[Int, Failure]",
+                    "file": "",
+                    "line": 0,
+                    "omitted": 0,
+                    "children": []
+                  },
+                  {
+                    "label": "String.parse_int",
+                    "kind": "external",
+                    "reference": "String.parse_int",
+                    "file": "",
+                    "line": 0,
+                    "omitted": 0,
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "label": "Result[Int, Failure].get_or",
+                "kind": "external",
+                "reference": "Result[Int, Failure].get_or",
+                "file": "",
+                "line": 0,
+                "omitted": 0,
+                "children": []
+              },
+              {
+                "label": "Shape",
+                "kind": "external",
+                "reference": "Shape",
+                "file": "",
+                "line": 0,
+                "omitted": 0,
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "@std/core.ms::print",
+            "kind": "external",
+            "reference": "@std/core.ms+source#fn#print",
+            "file": "",
+            "line": 0,
+            "omitted": 0,
+            "children": []
+          }
+        ]
+      },
+      {
+        "label": "main total  [test] src/main.ms:12",
+        "kind": "test",
+        "reference": "src/main.ms#test#main total",
+        "file": "src/main.ms",
+        "line": 12,
+        "omitted": 0,
+        "children": [
+          {
+            "label": "parse_total  [fn] src/shapes.ms:15",
+            "kind": "fn",
+            "reference": "src/shapes.ms#fn#parse_total",
+            "file": "src/shapes.ms",
+            "line": 15,
+            "omitted": 0,
+            "children": [
+              {
+                "label": "area  [fn] src/shapes.ms:8",
+                "kind": "fn",
+                "reference": "src/shapes.ms#fn#area",
+                "file": "src/shapes.ms",
+                "line": 8,
+                "omitted": 0,
+                "children": []
+              },
+              {
+                "label": "read_number  [fn] src/shapes.ms:11",
+                "kind": "fn",
+                "reference": "src/shapes.ms#fn#read_number",
+                "file": "src/shapes.ms",
+                "line": 11,
+                "omitted": 0,
+                "children": [
+                  {
+                    "label": "Failure",
+                    "kind": "external",
+                    "reference": "Failure",
+                    "file": "",
+                    "line": 0,
+                    "omitted": 0,
+                    "children": []
+                  },
+                  {
+                    "label": "Result[Int, Failure]",
+                    "kind": "external",
+                    "reference": "Result[Int, Failure]",
+                    "file": "",
+                    "line": 0,
+                    "omitted": 0,
+                    "children": []
+                  },
+                  {
+                    "label": "String.parse_int",
+                    "kind": "external",
+                    "reference": "String.parse_int",
+                    "file": "",
+                    "line": 0,
+                    "omitted": 0,
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "label": "Result[Int, Failure].get_or",
+                "kind": "external",
+                "reference": "Result[Int, Failure].get_or",
+                "file": "",
+                "line": 0,
+                "omitted": 0,
+                "children": []
+              },
+              {
+                "label": "Shape",
+                "kind": "external",
+                "reference": "Shape",
+                "file": "",
+                "line": 0,
+                "omitted": 0,
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "@std/test/test.ms::expect_equal",
+            "kind": "external",
+            "reference": "@std/test/test.ms#fn#expect_equal",
+            "file": "",
+            "line": 0,
+            "omitted": 0,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}
+

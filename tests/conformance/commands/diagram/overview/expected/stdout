@@ -1,0 +1,3 @@
+src/main.ms  [entry]  1 fn, 1 test  effects: std.console.write
+  -> src/shapes.ms  (2 calls)
+src/shapes.ms  3 fn, 2 types  effects: none
