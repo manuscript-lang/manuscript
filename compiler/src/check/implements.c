@@ -121,7 +121,7 @@ static MsFit fit_equal(FitWalk *w, MsTy ty) {
     if (builtin == MS_BI_REGEX) {
         return MS_FIT_NO;
     }
-    if (builtin == MS_BI_LIST || builtin == MS_BI_MAP || builtin == MS_BI_SET) {
+    if (builtin == MS_BI_LIST || builtin == MS_BI_MAP || builtin == MS_BI_SET || builtin == MS_BI_OPTIONAL) {
         MsFit answer = MS_FIT_YES;
         for (uint32_t i = 0; i < t->nargs[ty]; i++) {
             answer = fit_all(answer, fit_equal(w, ms_ty_args(t, ty)[i]));
