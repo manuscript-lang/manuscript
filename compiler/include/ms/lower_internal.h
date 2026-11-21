@@ -274,7 +274,7 @@ MirValue la_ok_unit(Lb *lb);
 LbVal la_none_owned(Lb *lb, const MsExpr *e);
 LbVal la_case(Lb *lb, const MsExpr *call);
 MirValue la_test(Lb *lb, MirValue subject);
-MirValue la_payload(Lb *lb, MirValue subject);
+MirValue la_payload(Lb *lb, MirValue subject, bool borrowed);
 LbVal la_try(Lb *lb, const MsExpr *e);
 
 #endif

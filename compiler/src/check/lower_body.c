@@ -1137,7 +1137,9 @@ void lb_enter(Lb *lb, MirBlock block) {
 /* Names the payload an `if name := value` unwrapped. */
 static void lb_bind_payload(Lb *lb, const MsPattern *pattern, MirValue payload) {
     lb->value_of[lb->facts->pattern_binding[pattern->id]] = payload;
-    lb_name_value(lb, payload, pattern->u.name, false);
+    if (!lb_owns(lb, mir_b_ty(&lb->b, payload))) { // the Rust lowering leaves a payload borrowed from its holder unnamed
+        lb_name_value(lb, payload, pattern->u.name, false);
+    }
 }
 
 /* `if cond: then else: else`; the else branch may be empty. */
@@ -1158,7 +1160,7 @@ static void lb_if(Lb *lb, const MsStmt *s) {
     mir_b_seal_block(&lb->b, else_block);
     lb_enter(lb, then_block);
     if (s->u.branch.binding != NULL) {
-        lb_bind_payload(lb, s->u.branch.binding, la_payload(lb, subject));
+        lb_bind_payload(lb, s->u.branch.binding, la_payload(lb, subject, !cond.owned));
     }
     (void)lb_scoped(lb, &s->u.branch.body);
     const bool then_live = !lb->dead;
