@@ -1260,7 +1260,18 @@ typedef struct Scrutinee {
     bool deferred;
 } Scrutinee;
 
+/* A call of a native whose result points into its receiver local (`s.chars()`): what it yields is the
+ * receiver's, so the receiver stays unchanged while the result is in use. */
+static Scrutinee own_borrowed_call(OwnWalk *w, const MsExpr *e) {
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    own_expr(w, e, DEMAND_READ);
+    return (Scrutinee){false, own_resolve(w, w->facts->res_ref[receiver->id]), false};
+}
+
 static Scrutinee own_scrutinee(OwnWalk *w, const MsExpr *e) {
+    if (e->kind == MS_E_CALL && w->facts->call_borrows[e->id]) {
+        return own_borrowed_call(w, e);
+    }
     const bool name = e->kind == MS_E_NAME && w->facts->res_kind[e->id] == MS_RES_BINDING;
     if (!name) {
         own_expr(w, e, DEMAND_MOVE);
