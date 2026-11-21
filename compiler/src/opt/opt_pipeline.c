@@ -127,9 +127,10 @@ static bool op_strfuse(MirModule *m) {
     return changed;
 }
 
-/* The view fast path is inlinable, so the inliner runs again for it. */
-static bool op_viewfast(MirModule *m) {
-    const bool changed = mir_opt_viewfast(m);
+/* The runtime fast paths are inlinable, so the inliner runs again for them. */
+static bool op_fastpaths(MirModule *m) {
+    bool changed = mir_opt_viewfast(m);
+    changed |= mir_opt_bytesfast(m);
     return changed && mir_opt_inline(m);
 }
 
@@ -140,7 +141,7 @@ static bool op_exit_drops(MirModule *m) {
 
 static const OpStep op_early_steps[] = {
     {"simplify", mir_opt_simplify}, {"copyelim", mir_opt_copyelim}, {"probe", mir_opt_probe},
-    {"inline", mir_opt_inline},     {"strfuse", op_strfuse},        {"viewfast", op_viewfast},        {"loopslot", mir_opt_loopslot},
+    {"inline", mir_opt_inline},     {"strfuse", op_strfuse},        {"fastpaths", op_fastpaths},        {"loopslot", mir_opt_loopslot},
 };
 
 static const OpStep op_late_steps[] = {

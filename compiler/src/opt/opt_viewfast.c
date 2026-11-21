@@ -1,5 +1,5 @@
-/* The `viewfast` pass: `String.view(start, end)` runs as a few instructions in the caller instead of a
- * runtime call.
+/* The `viewfast` pass: `String.view(start, end)`, `String.slice(start, end)` and `Bytes.view(start, end)` run as a
+ * few instructions in the caller instead of a runtime call.
  *
  * Lowering calls `msrt_string_view(text, start, end, out)`, which checks the bounds and writes a view of the
  * receiver's bytes through `out`. The common case is decided from the receiver's two words: a range inside
@@ -8,7 +8,7 @@
  * bytes. Everything else (an empty range, a negative bound, a fault) calls the runtime.
  *
  * The fast path is one generated function marked `inline(always)`, shared by every call site.
- * Port of the former Rust crates/ms-lower/src/rtinline.rs `view_fn`; the bit layout is
+ * Port of the former Rust crates/ms-lower/src/rtinline.rs `view_fn` and `bytes_view_fn`; the bit layout is
  * runtime/include/ms_rt/string.h. */
 #include "opt/opt_build.h"
 
@@ -198,22 +198,33 @@ static void vf_entry(MirBuilder *b, VfView *v, MirBlock *inline_block, MirBlock 
     mir_b_seal_block(b, *flat_block);
 }
 
-/* Builds `string_view(text, start, end, out)`, which calls `slow` (the runtime function) when the fast path does
- * not apply. */
-static uint32_t vf_build(MirModule *m, uint32_t slow_ext) {
+/* Builds `string_view(text, start, end, out)` (`slice` false) or `string_slice(text, start, end) -> String`, which
+ * calls the runtime function `slow_ext` when the fast path does not apply. A view longer than fifteen bytes
+ * borrows the receiver's bytes; a longer slice is an owned copy, so it takes the runtime. The slice writes its
+ * piece to a slot of its own and takes it. */
+static uint32_t vf_build(MirModule *m, uint32_t slow_ext, bool slice) {
     const MirParam params[4] = {{MIR_STR, MM_BORROW}, {MIR_INT, MM_BORROW}, {MIR_INT, MM_BORROW}, {MIR_PTR, MM_BORROW}};
     MirBuilder b;
-    mir_b_init_fast_path(&b, m, ms_intern_cstr(&m->names, "string_view"), params, 4, MIR_VOID);
+    mir_b_init_fast_path(&b, m, ms_intern_cstr(&m->names, slice ? "string_slice" : "string_view"), params,
+                         slice ? 3 : 4, slice ? MIR_STR : MIR_VOID);
     VfView v = {0};
     MirValue ps[4];
-    mir_b_params(&b, ps, 4);
+    mir_b_params(&b, ps, slice ? 3 : 4);
     v.text = ps[0], v.start = ps[1], v.end = ps[2], v.out = ps[3];
     v.slow = mir_b_new_block(&b);
     const MirBlock join = mir_b_new_block(&b);
+    MirValue result = MIR_NONE;
+    if (slice) {
+        result = mir_b_add_block_param(&b, join, MIR_STR, MM_MOVE);
+    }
     MirBlock flat_block = mir_b_new_block(&b);
     MirBlock inline_block = mir_b_new_block(&b);
     vf_entry(&b, &v, &inline_block, &flat_block);
-    const MirBlock short_block = mir_b_new_block(&b), long_block = mir_b_new_block(&b);
+    if (slice) {
+        v.out = mir_b_emit(&b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_PTR);
+    }
+    const MirBlock short_block = mir_b_new_block(&b);
+    const MirBlock long_block = slice ? v.slow : mir_b_new_block(&b);
     const MirValue short_p = mir_b_add_block_param(&b, short_block, MIR_PTR, MM_BORROW);
     const MirValue short_n = mir_b_add_block_param(&b, short_block, MIR_INT, MM_BORROW);
     mir_b_switch_to(&b, inline_block); // its bytes sit in the slot: an ASCII range of it is packed from there
@@ -231,16 +242,76 @@ static uint32_t vf_build(MirModule *m, uint32_t slow_ext) {
     const MirValue flat_args[2] = {flat_from, flat_n};
     mir_b_br_if(&b, fits, short_block, flat_args, 2, long_block, NULL, 0);
     mir_b_seal_block(&b, short_block);
-    mir_b_seal_block(&b, long_block);
-    mir_b_switch_to(&b, long_block); // longer text: a view over the bytes, tagged as borrowed
-    vf_store_words(&b, v.out, flat_from, ob_int(&b, MOP_Or, flat_n, (int64_t)(3ULL << VF_TAG_SHIFT)));
-    mir_b_br(&b, join, NULL, 0);
+    if (!slice) {
+        mir_b_seal_block(&b, long_block);
+        mir_b_switch_to(&b, long_block); // longer text: a view over the bytes, tagged as borrowed
+        vf_store_words(&b, v.out, flat_from, ob_int(&b, MOP_Or, flat_n, (int64_t)(3ULL << VF_TAG_SHIFT)));
+        mir_b_br(&b, join, NULL, 0);
+    }
     mir_b_switch_to(&b, short_block);
     vf_short_block(&b, &v, short_p, short_n);
-    mir_b_br(&b, join, NULL, 0);
+    if (slice) {
+        const MirValue piece = mir_b_emit(&b, MOP_Take, &v.out, 1, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_STR);
+        mir_b_br(&b, join, &piece, 1);
+    } else {
+        mir_b_br(&b, join, NULL, 0);
+    }
     mir_b_seal_block(&b, v.slow);
     mir_b_switch_to(&b, v.slow); // the runtime handles the rest
-    const MirValue rest[4] = {v.text, v.start, v.end, v.out};
+    if (slice) {
+        const MirValue rest[3] = {v.text, v.start, v.end};
+        const MirValue copy = mir_b_call_rt(&b, slow_ext, rest, 3);
+        mir_b_br(&b, join, &copy, 1);
+    } else {
+        const MirValue rest[4] = {v.text, v.start, v.end, v.out};
+        (void)mir_b_call_rt(&b, slow_ext, rest, 4);
+        mir_b_br(&b, join, NULL, 0);
+    }
+    mir_b_seal_block(&b, join);
+    mir_b_switch_to(&b, join);
+    mir_b_ret(&b, slice ? result : mir_b_unit(&b));
+    uint32_t id = MIR_NONE;
+    return mir_b_finish(&b, &id) ? id : MIR_NONE;
+}
+
+/* `Bytes.view(start, end)` on a range that is in bounds and not empty is the view `{ptr + start, end - start, 0}`;
+ * an empty range, a negative bound or a fault continues in the runtime. `bytes` is the list itself, or its address
+ * when it is held in memory. */
+static uint32_t vf_build_bytes(MirModule *m, uint32_t slow_ext, MirTy bytes_ty) {
+    const MirParam params[4] = {{bytes_ty, MM_BORROW}, {MIR_INT, MM_BORROW}, {MIR_INT, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+    MirBuilder b;
+    mir_b_init_fast_path(&b, m, ms_intern_cstr(&m->names, bytes_ty == MIR_PTR ? "bytes_view_at" : "bytes_view"), params, 4,
+                         MIR_VOID);
+    MirValue ps[4];
+    mir_b_params(&b, ps, 4);
+    const MirValue bytes = ps[0], start = ps[1], end = ps[2], out = ps[3];
+    const MirBlock fast = mir_b_new_block(&b), slow = mir_b_new_block(&b), join = mir_b_new_block(&b);
+    MirValue list = bytes;
+    if (bytes_ty != MIR_PTR) {
+        list = mir_b_emit(&b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = bytes_ty}, MIR_PTR);
+        const MirValue spill[2] = {list, bytes};
+        (void)mir_b_emit(&b, MOP_Store, spill, 2, (MirImm){0}, MIR_NONE);
+    }
+    const MirValue len = ob_load(&b, list, VF_WORD, MIR_INT);
+    const MirValue zero = mir_b_iconst(&b, 0);
+    MirValue ok = ob_and(&b, mir_b_icmp(&b, MCC_GE, start, zero), mir_b_icmp(&b, MCC_LT, start, end));
+    ok = ob_and(&b, ok, mir_b_icmp(&b, MCC_LE, end, len));
+    mir_b_br_if(&b, ok, fast, NULL, 0, slow, NULL, 0);
+    mir_b_seal_block(&b, fast);
+    mir_b_seal_block(&b, slow);
+    mir_b_switch_to(&b, fast);
+    const MirValue data = ob_load(&b, list, 0, MIR_PTR);
+    const MirValue first = ob_past(&b, data, start);
+    const MirValue n = mir_b_binop(&b, MOP_ISub, end, start);
+    const MirValue lo[2] = {out, first};
+    (void)mir_b_emit(&b, MOP_Store, lo, 2, (MirImm){0}, MIR_NONE);
+    const MirValue mid[2] = {ob_add(&b, out, VF_WORD), n};
+    (void)mir_b_emit(&b, MOP_Store, mid, 2, (MirImm){0}, MIR_NONE);
+    const MirValue hi[2] = {ob_add(&b, out, 2 * VF_WORD), zero};
+    (void)mir_b_emit(&b, MOP_Store, hi, 2, (MirImm){0}, MIR_NONE);
+    mir_b_br(&b, join, NULL, 0);
+    mir_b_switch_to(&b, slow);
+    const MirValue rest[4] = {bytes, start, end, out};
     (void)mir_b_call_rt(&b, slow_ext, rest, 4);
     mir_b_br(&b, join, NULL, 0);
     mir_b_seal_block(&b, join);
@@ -250,49 +321,71 @@ static uint32_t vf_build(MirModule *m, uint32_t slow_ext) {
     return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }
 
-/* Whether `e` is `msrt_string_view`: a borrowing native over a string, two bounds and the address the view goes to. */
-static bool vf_is_view(const MirExtern *e) {
-    return e->role == MR_BORROWS_ARGUMENT && e->nparams == 4 && e->ret == MIR_VOID && e->params[0].ty == MIR_STR &&
-           e->params[1].ty == MIR_INT && e->params[2].ty == MIR_INT && e->params[3].ty == MIR_PTR;
+/* The runtime functions this pass replaces, told apart by role and signature (no name is read). `String.view` and
+ * `Bytes.view` are borrowing natives of a receiver, two bounds and the address the view goes to; the receiver is a
+ * string or a byte list. `String.slice` has its own role and returns the copy. */
+typedef enum VfKind { VK_NONE, VK_STRING_VIEW, VK_STRING_SLICE, VK_BYTES_VIEW } VfKind;
+
+static VfKind vf_kind(const MirExtern *e) {
+    if (e->role == MR_STRING_SLICE) {
+        const bool shape = e->nparams == 3 && e->ret == MIR_STR && e->params[0].ty == MIR_STR &&
+                           e->params[1].ty == MIR_INT && e->params[2].ty == MIR_INT;
+        return shape ? VK_STRING_SLICE : VK_NONE;
+    }
+    if (e->role != MR_BORROWS_ARGUMENT || e->nparams != 4 || e->ret != MIR_VOID || e->params[1].ty != MIR_INT ||
+        e->params[2].ty != MIR_INT || e->params[3].ty != MIR_PTR) {
+        return VK_NONE;
+    }
+    if (e->params[0].ty == MIR_STR) {
+        return VK_STRING_VIEW;
+    }
+    return e->params[0].ty == MIR_BYTES || e->params[0].ty == MIR_PTR ? VK_BYTES_VIEW : VK_NONE;
 }
 
-static uint32_t vf_first_site(const MirModule *m) {
-    for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
-        const MirFunc *f = &m->funcs[fi];
-        for (uint32_t bi = 0; bi < f->nblocks; bi++) {
-            for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
-                const MirInst *inst = &f->blocks[bi].insts[ii];
-                if (inst->op == MOP_CallRt && vf_is_view(&m->externs[inst->imm.a])) {
-                    return inst->imm.a;
-                }
-            }
-        }
-    }
-    return MIR_NONE;
-}
+/* One generated function per kind and receiver type. */
+typedef struct VfHelper {
+    VfKind kind;
+    MirTy ty;
+    uint32_t func;
+} VfHelper;
 
 bool mir_opt_viewfast(MirModule *m) {
-    const uint32_t slow = vf_first_site(m);
-    if (slow == MIR_NONE) {
-        return false;
-    }
-    const uint32_t original = m->nfuncs; /* the helper keeps its own call to the runtime */
-    const uint32_t helper = vf_build(m, slow);
-    if (helper == MIR_NONE) {
-        return false;
-    }
+    const uint32_t original = m->nfuncs; /* the helpers keep their own calls to the runtime */
+    VfHelper *helpers = NULL;
+    uint32_t nhelpers = 0, chelpers = 0;
+    bool changed = false;
     for (uint32_t fi = 0; fi < original; fi++) {
-        MirFunc *f = &m->funcs[fi];
-        for (uint32_t bi = 0; bi < f->nblocks; bi++) {
-            for (uint32_t ii = 0; ii < f->blocks[bi].ninsts; ii++) {
-                MirInst *inst = &f->blocks[bi].insts[ii];
-                if (inst->op != MOP_CallRt || !vf_is_view(&m->externs[inst->imm.a])) {
+        for (uint32_t bi = 0; bi < m->funcs[fi].nblocks; bi++) {
+            for (uint32_t ii = 0; ii < m->funcs[fi].blocks[bi].ninsts; ii++) {
+                MirInst *inst = &m->funcs[fi].blocks[bi].insts[ii];
+                if (inst->op != MOP_CallRt) {
                     continue;
+                }
+                const MirExtern *e = &m->externs[inst->imm.a];
+                const VfKind kind = vf_kind(e);
+                if (kind == VK_NONE) {
+                    continue;
+                }
+                const MirTy ty = e->params[0].ty;
+                uint32_t helper = MIR_NONE;
+                for (uint32_t h = 0; h < nhelpers; h++) {
+                    if (helpers[h].kind == kind && helpers[h].ty == ty) {
+                        helper = helpers[h].func;
+                    }
+                }
+                if (helper == MIR_NONE) {
+                    helper = kind == VK_BYTES_VIEW ? vf_build_bytes(m, inst->imm.a, ty) : vf_build(m, inst->imm.a, kind == VK_STRING_SLICE);
+                    if (helper == MIR_NONE) {
+                        continue;
+                    }
+                    MIR_PUSH(m, helpers, nhelpers, chelpers, VfHelper, ((VfHelper){kind, ty, helper}));
+                    inst = &m->funcs[fi].blocks[bi].insts[ii]; /* the function array may have moved */
                 }
                 inst->op = MOP_Call;
                 inst->imm = (MirImm){.tag = MI_FUNC, .a = helper};
+                changed = true;
             }
         }
     }
-    return true;
+    return changed;
 }

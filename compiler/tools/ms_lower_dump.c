@@ -139,7 +139,6 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         MirModule mir;
         mir_module_init(&mir);
         (void)ms_lower_module(check, id, &mir);
-        (void)mir_opt_viewfast(&mir); // Rust's lowering calls the generated view fast path; C leaves it to this pass
         verified = verify_module(&mir, path);
         MsBuf elaborate_error = {0};
         if (!mir_elaborate(&mir, &elaborate_error)) { // Rust's output has its drops placed
@@ -211,7 +210,6 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
                 ms_arena_free(&arena);
                 return true;
             }
-            (void)mir_opt_viewfast(&mir); // see lower_file
             verified = verify_module(&mir, path);
             MsBuf elaborate_error = {0};
             if (!mir_elaborate(&mir, &elaborate_error)) {
