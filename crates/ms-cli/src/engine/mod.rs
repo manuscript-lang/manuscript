@@ -184,13 +184,10 @@ impl<L: Lower> Engine<L> {
         };
         let module = compiled.module;
         // `MS_EMIT_OPT=1` prints the code after the optimizer, the form that gets compiled.
-        let text = if std::env::var_os("MS_EMIT_OPT").is_some_and(|v| v == "1") {
-            match ms_build::c_backend::optimized_mir(&module) {
-                Ok(text) => text,
-                Err(why) => return Err(BackendError(why)),
-            }
-        } else {
-            ms_mir::print::print_module_unique(&module)
+        let optimize = std::env::var_os("MS_EMIT_OPT").is_some_and(|v| v == "1");
+        let text = match ms_build::c_backend::emitted_mir(&module, optimize) {
+            Ok(text) => text,
+            Err(why) => return Err(BackendError(why)),
         };
         Ok(crate::util::write_output(
             io,

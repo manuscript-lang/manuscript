@@ -11,7 +11,7 @@ Verified (port of `crates/ms-mir/src/opt` to `compiler/src/opt/opt_*.c`, 2026-11
 - Perf check (2026-11-20): the whole speed pipeline takes about 3 ms and 13 MB on the largest corpus module, so the optimiser is not a perf or memory target.
 
 Apply when: adding or changing a C MIR pass or a `MirFunc` field.
-Evidence: `compiler/tests/mir-diff.sh`, `compiler/src/opt/opt_inline.c`, issue #4816.
-Verify: `mir-diff.sh` shows no FAIL.
+Evidence: `compiler/tests/mir-pass-frozen.sh`, `compiler/src/opt/opt_inline.c`, issue #4816.
+Verify: `sh compiler/tests/mir-pass-frozen.sh` shows no FAIL.
 
-- The Rust `depth`, `exit_drops`, `count_ops`, `cancel_edges`, `unwind` passes and the table, debug-type, debug-file and slot-scope code are deleted (2026-11-21); their C ports are checked by the frozen goldens in `compiler/tests/mir/frozen` (`sh compiler/tests/mir-pass-frozen.sh`). Rust `elaborate` (with `cancel_exit`, `persist` and the few `unwind` analyses it uses), `expand`, `expand_owned`, `glue`, `frames` and `copies` stay while `ms-lower` is Rust (it runs `elaborate`) and the interpreter oracle runs `expand`/`glue`; `mir-pass-diff.sh` still diffs those against C. Delete them with `ms-lower` and `ms-mir`.
+- No MIR pass is left in Rust (2026-11-21): `ms-mir` keeps only the module data type, builder, text parse/print and layout; lowering prints Raw MIR and the C pipeline (`mir_pipeline_prepare`: verify, elaborate, glue, cancel edges, copy probe) does the rest. Passes are checked by the frozen goldens in `compiler/tests/mir/frozen` (`sh compiler/tests/mir-pass-frozen.sh`); `ms emit` prints the elaborated MIR from C.

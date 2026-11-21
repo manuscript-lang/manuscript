@@ -133,7 +133,7 @@ impl<'m> FuncBuilder<'m> {
         let Some(inst) = self.f.blocks[self.cur.index()].insts.last().cloned() else {
             return;
         };
-        let modes = crate::verify::arg_modes(self.m, &self.f, &inst);
+        let modes = self.forwarded_modes(&inst);
         let taken: Vec<Value> = inst
             .args
             .iter()
@@ -151,6 +151,47 @@ impl<'m> FuncBuilder<'m> {
             .collect();
         for v in owned {
             self.emit(Op::Drop, &[v], Imm::None, None);
+        }
+    }
+
+    /// The mode each operand of a forwarding call takes.
+    fn forwarded_modes(&self, inst: &Inst) -> Vec<Mode> {
+        let n = inst.args.len();
+        match (inst.op, inst.imm) {
+            (Op::Call, Imm::Func(g)) => self.m.funcs[g.index()]
+                .params
+                .iter()
+                .map(|p| p.mode)
+                .collect(),
+            (Op::CallRt, Imm::Ext(e)) => self.m.externs[e.index()]
+                .params
+                .iter()
+                .map(|p| p.mode)
+                .collect(),
+            (Op::CallInd | Op::CallMethod, imm) => {
+                let owned = match (inst.op, imm) {
+                    (Op::CallMethod, Imm::Method(i, k)) => self
+                        .m
+                        .ifaces
+                        .get(i.index())
+                        .and_then(|x| x.methods.get(k as usize))
+                        .map_or(0, |s| s.owned),
+                    (Op::CallInd, _) => {
+                        match inst.args.first().map(|&c| self.m.types.kind(self.f.ty(c))) {
+                            Some(TyKind::Fn(_, _, owned)) => *owned,
+                            _ => 0,
+                        }
+                    }
+                    _ => 0,
+                };
+                (0..n)
+                    .map(|i| match i.checked_sub(1) {
+                        Some(k) if crate::types::owns(owned, k) => Mode::Move,
+                        _ => Mode::Borrow,
+                    })
+                    .collect()
+            }
+            _ => vec![Mode::Borrow; n],
         }
     }
 
