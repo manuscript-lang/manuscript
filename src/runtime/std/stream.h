@@ -7,6 +7,7 @@
 
 #include <uv.h>
 
+#include "base/bytes.h"
 #include "base/desc.h"
 #include "runtime/std/fail.h"
 
@@ -39,6 +40,11 @@ bool ms_stream_admit(const MsStream *stream, MsStreamAccess access, MsFail *fail
  * waited on. `*count` is what was transferred. */
 bool ms_stream_read_raw(const MsStream *stream, uint8_t *buffer, size_t length, size_t *count, MsFail *fail);
 bool ms_stream_write_raw(const MsStream *stream, const uint8_t *data, size_t length, size_t *count, MsFail *fail);
+
+/* One read of up to `max` bytes (a default chunk without one): `*out` is a new buffer; `*eof` when nothing was left. */
+bool ms_stream_read(MsStream *stream, bool has_max, int64_t max, MsBytes *out, bool *eof, MsFail *fail);
+/* Writes all of `data`. A stream of standard output or error first flushes what the program printed. */
+bool ms_stream_write(MsStream *stream, MsSpan data, MsFail *fail);
 
 /* Closes the descriptor once: false with `fail` set when the release failed. */
 bool ms_stream_close(MsStream *stream, MsFail *fail);

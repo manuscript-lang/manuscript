@@ -8,6 +8,7 @@
 #include "base/alloc.h"
 #include "runtime/core/task.h"
 #include "runtime/io/pool.h"
+#include "runtime/io/stdout.h"
 #include "runtime/std/fs_job.h"
 #include "runtime/sys/fs.h"
 
@@ -98,6 +99,8 @@ typedef struct RawJob {
   bool write;
 } RawJob;
 
+enum { STREAM_CHUNK = 64 * 1024 }; /* the most a read takes and a write sends at once */
+
 static void raw_job(void *data) {
   RawJob *job = data;
   const unsigned size = job->length > (size_t)INT_MAX ? (unsigned)INT_MAX : (unsigned)job->length;
@@ -123,17 +126,19 @@ static bool wait_ready(const MsStream *stream, bool for_write, MsFail *fail) {
 
 static bool transfer(const MsStream *stream, RawJob *job, const char *operation, size_t *count, MsFail *fail) {
   job->fd = stream->fd;
-  if (!wait_ready(stream, job->write, fail)) {
-    return false;
-  }
-  if (!stream->waitable && !ms_pool_on_thread()) {
-    if (ms_pool_run_shielded(raw_job, job) != MS_POOL_DONE) {
-      ms_fail_text(fail, "cancelled");
+  do {
+    if (!wait_ready(stream, job->write, fail)) {
       return false;
     }
-  } else {
-    raw_job(job);
-  }
+    if (!stream->waitable && !ms_pool_on_thread()) {
+      if (ms_pool_run_shielded(raw_job, job) != MS_POOL_DONE) {
+        ms_fail_text(fail, "cancelled");
+        return false;
+      }
+    } else {
+      raw_job(job);
+    }
+  } while (job->result == UV_EAGAIN); /* a non-blocking descriptor that was not ready after all */
   if (job->result < 0) {
     ms_fail_uv_text(fail, (int)job->result, operation, ms_string_span(&stream->name));
     return false;
@@ -150,4 +155,48 @@ bool ms_stream_read_raw(const MsStream *stream, uint8_t *buffer, size_t length, 
 bool ms_stream_write_raw(const MsStream *stream, const uint8_t *data, size_t length, size_t *count, MsFail *fail) {
   RawJob job = {.data = data, .length = length, .write = true};
   return transfer(stream, &job, "write", count, fail);
+}
+
+bool ms_stream_read(MsStream *stream, bool has_max, int64_t max, MsBytes *out, bool *eof, MsFail *fail) {
+  if (!ms_stream_admit(stream, MS_STREAM_READ, fail)) {
+    return false;
+  }
+  if (has_max && max <= 0) {
+    ms_fail_status(fail, MS_STATUS_INVALID_INPUT);
+    return false;
+  }
+  const size_t wanted = !has_max || max > STREAM_CHUNK ? STREAM_CHUNK : (size_t)max;
+  uint8_t *buffer = ms_alloc(wanted);
+  size_t count = 0;
+  if (!ms_stream_read_raw(stream, buffer, wanted, &count, fail)) {
+    ms_free(buffer);
+    return false;
+  }
+  *eof = count == 0;
+  *out = ms_bytes_from_span(ms_span_of(buffer, count));
+  ms_free(buffer);
+  return true;
+}
+
+bool ms_stream_write(MsStream *stream, MsSpan data, MsFail *fail) {
+  if (!ms_stream_admit(stream, MS_STREAM_WRITE, fail)) {
+    return false;
+  }
+  if (stream->fd >= 1 && stream->fd <= 2) {
+    ms_stdout_flush(); /* what the program printed comes first */
+  }
+  size_t done = 0;
+  while (done < data.len) {
+    size_t count = 0;
+    const size_t step = data.len - done < STREAM_CHUNK ? data.len - done : STREAM_CHUNK;
+    if (!ms_stream_write_raw(stream, data.ptr + done, step, &count, fail)) {
+      return false;
+    }
+    if (count == 0) {
+      ms_fail_text(fail, "short write");
+      return false;
+    }
+    done += count;
+  }
+  return true;
 }

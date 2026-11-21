@@ -17,4 +17,4 @@ object step in `compiler/link/object.c` hands it to the pinned `opt` and `llc`.
 - `emit_tables.c`: the function names and module-wide scope list the fault tables (compiler/link) need; build it
   before `emit_name_symbols`.
 
-Not written yet: the purity and glue-depth hints that only speed up LLVM.
+- `emit_hints.c`: purity (`memory(none)`) and deep-glue (`noinline`) hints, which only speed up LLVM.

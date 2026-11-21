@@ -3,6 +3,7 @@
 
 #include "compiler/emit/emit_debug.h"
 #include "compiler/emit/emit_decl.h"
+#include "compiler/emit/emit_hints.h"
 #include "compiler/emit/emit_func.h"
 
 /* The LLVM target triple of the machine the emitter runs on, which is the one the program is built for.
@@ -82,6 +83,8 @@ bool emit_module(const MirModule *module, const MirData *data, const MirGlue *gl
     emit_debug_init(&debug);
     cx.debug = &debug;
   }
+  EmitHints hints;
+  emit_hints_init(&hints, module, glue);
   uint32_t scope_base = 0;
   bool ok = true;
   for (uint32_t index = 0; index < module->funcs.len; index++) {
@@ -91,6 +94,8 @@ bool emit_module(const MirModule *module, const MirData *data, const MirGlue *gl
     cx.body_line = 0;
     cx.scope_base = scope_base;
     cx.body_scope = total_scopes + index + 1;
+    cx.noinline = emit_hint_deep_glue(&cx, &hints, index);
+    cx.pure = emit_hint_pure(&cx, &hints, index);
     scope_base += (uint32_t)cx.func->scopes.len;
     if (emit_function(&cx, index)) {
       continue;
@@ -99,6 +104,7 @@ bool emit_module(const MirModule *module, const MirData *data, const MirGlue *gl
     ms_strbuild_printf(why, ": %s\n", cx.why != NULL ? cx.why : "unsupported");
     ok = false;
   }
+  emit_hints_free(&hints);
   cx.func = NULL;
   emit_define_data(&cx);
   emit_declarations(&cx);
