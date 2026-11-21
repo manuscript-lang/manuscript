@@ -475,10 +475,9 @@ static bool lb_is_number_type(const Lb *lb, MirTy ty, bool decimal) {
     return text.len == strlen(want) && memcmp(text.ptr, want, text.len) == 0;
 }
 
-/* Whether `ty` is a sized integer (`Int8` to `UInt64`): its sum, difference, product and order are the checked instructions. */
+/* Whether `ty` is a sized integer (`Int8` to `UInt32`, not the unsigned 64-bit `UInt64` with its own instructions): its sum, difference, product and order are the checked instructions. */
 static bool lb_is_sized_int(MirTy ty) {
-    return ty == MIR_INT8 || ty == MIR_INT16 || ty == MIR_INT32 || ty == MIR_UINT8 || ty == MIR_UINT16 || ty == MIR_UINT32 ||
-        ty == MIR_UINT64;
+    return ty == MIR_INT8 || ty == MIR_INT16 || ty == MIR_INT32 || ty == MIR_UINT8 || ty == MIR_UINT16 || ty == MIR_UINT32;
 }
 
 /* `left op right` on lowered operands (not `and` and `or`, which short-circuit). */

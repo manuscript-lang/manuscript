@@ -15,7 +15,7 @@ sh compiler/tests/cbuild.sh ms_lower_dump
 dump=${MS_C_BUILD:-target/cmake/test}/compiler/ms_lower_dump
 
 files=$(find compiler/tests/lower tests/conformance/fixtures -name '*.ms' | sort)
-"$dump" stdlib $files > "$out/lower.c"
+MS_LOWER_RUN_OUT="$out/run.c" "$dump" stdlib $files > "$out/lower.c" # the run output of every lowered function comes from the same lowering
 # Rust lowering is slow per file, so it runs only where C lowered something.
 lowered_files=$(awk '/^=== / { file = $2 } /^fn @/ { print file }' "$out/lower.c" | sort -u)
 target/release/examples/c_lower_oracle $lowered_files > "$out/lower.rust" 2>/dev/null
@@ -93,7 +93,6 @@ fi
 # What the functions compute: the same calls on the C module and on the Rust one, for every function
 # C lowered that Rust also emitted once. This is the check for the divergent constructs and holds for
 # all the others as well.
-"$dump" stdlib --run $lowered_files > "$out/run.c"
 "$dump" --run-mir "$out/lower.rust" > "$out/run.rust"
 # Each line keyed by file and function, then only the keys with as many lines on both sides.
 run_keyed() { sed -E 's/^([^ ]+ [A-Za-z_][A-Za-z_0-9]*)\.[0-9]+\(/\1(/' "$1" | awk '{ print $1 " " substr($2, 1, index($2, "(") - 1) "|" $0 }' | sort; }
