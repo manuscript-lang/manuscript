@@ -11,4 +11,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
   for (uint32_t index = 0; index < program->modules.len; index++) {
     ms_check_declare(program, index);
   }
+  for (uint32_t index = 0; index < program->modules.len; index++) {
+    ms_check_resolve_types(program, index);
+  }
 }

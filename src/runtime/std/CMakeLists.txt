@@ -90,3 +90,8 @@ target_link_libraries(ms_std_system PUBLIC ms_base ms_values uv)
 add_library(ms_std_process STATIC fail.c process.c signals.c)
 ms_target_defaults(ms_std_process)
 target_link_libraries(ms_std_process PUBLIC ms_base ms_values ms_sys ms_io ms_core ms_entry uv)
+
+# @std/net: IP addresses, CIDR ranges, host:port text and the network diagnostics (no event loop).
+add_library(ms_std_net STATIC net.c net_addr.c net_ip.c)
+ms_target_defaults(ms_std_net)
+target_link_libraries(ms_std_net PUBLIC ms_base ms_values)

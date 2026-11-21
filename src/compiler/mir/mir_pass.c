@@ -197,3 +197,43 @@ bool *mir_parking_funcs(MsArena *arena, const MirModule *module) {
   }
   return parks;
 }
+
+MirValue mir_block_emit(MirModule *module, MirFunc *func, MirBlockData *block, MirOp op, const MirValue *args,
+                        uint32_t count, MirImm imm, MirTy ty, MirLoc loc) {
+  const MirValue result = ty == MIR_NONE ? MIR_NONE : mir_new_value(func, ty);
+  mir_inst_list_push(&block->insts, mir_inst(op, imm, result, loc, mir_args_copy(module, args, count), count));
+  return result;
+}
+
+void mir_block_set_insts(MirBlockData *block, MirInstList *insts) {
+  mir_inst_list_free(&block->insts);
+  block->insts = *insts;
+  *insts = (MirInstList){0};
+}
+
+static void replace_use(MirValue *use, MirValue from, MirValue to) {
+  *use = *use == from ? to : *use;
+}
+
+static void replace_in_target(MirTarget *target, MirValue from, MirValue to) {
+  for (uint32_t index = 0; index < target->nargs; index++) {
+    replace_use(&target->args[index], from, to);
+  }
+}
+
+void mir_func_replace_uses(MirFunc *func, MirValue from, MirValue to) {
+  for (size_t bi = 0; bi < func->blocks.len; bi++) {
+    MirBlockData *block = &func->blocks.ptr[bi];
+    for (size_t ii = 0; ii < block->insts.len; ii++) {
+      for (uint32_t arg = 0; arg < block->insts.ptr[ii].nargs; arg++) {
+        replace_use(&block->insts.ptr[ii].args[arg], from, to);
+      }
+    }
+    replace_use(&block->term.value, from, to);
+    replace_in_target(&block->term.a, from, to);
+    replace_in_target(&block->term.b, from, to);
+    for (uint32_t index = 0; index < block->term.ncases; index++) {
+      replace_in_target(&block->term.cases[index].target, from, to);
+    }
+  }
+}

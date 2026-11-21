@@ -1,6 +1,7 @@
 /* compiler/mir/mir_glue.c: the glue pass. It plans which functions the module is missing from what its
  * functions drop, clone and name (mir_glue_demand.c), then builds them in a fixed order, so one module always
  * gets the same functions and names. */
+#include "compiler/mir/mir_expand.h"
 #include "compiler/mir/mir_glue_demand.h"
 
 /* What this round makes. */
@@ -143,4 +144,11 @@ bool mir_glue(MirModule *module, MirGlue *glue) {
   build_closures(module, glue, &plan);
   plan_free(&plan);
   return made;
+}
+
+void mir_glue_run_and_expand(MirModule *module, MirGlue *glue) {
+  while (mir_glue(module, glue)) {
+    (void)mir_expand_owned(module);
+  }
+  (void)mir_expand_owned(module);
 }

@@ -25,6 +25,18 @@ MirImm mir_imm_int(int64_t value);
 MirImm mir_imm_cc(MirCc cc);
 MirImm mir_imm_ext(uint32_t external);
 
+/* Appends to `block` an instruction with the given operands (copied into the module arena) and, unless `ty` is
+ * MIR_NONE, a fresh result of that type; returns the result or MIR_NONE. */
+MirValue mir_block_emit(MirModule *module, MirFunc *func, MirBlockData *block, MirOp op, const MirValue *args,
+                        uint32_t count, MirImm imm, MirTy ty, MirLoc loc);
+
+/* Replaces the instruction list of `block` by `insts`, releasing the old one; the list is moved. */
+void mir_block_set_insts(MirBlockData *block, MirInstList *insts);
+
+/* Every use of `from` in `func` (operands, conditions and block arguments) becomes `to`, which has the same
+ * type. */
+void mir_func_replace_uses(MirFunc *func, MirValue from, MirValue to);
+
 /* An empty function with `func`'s signature: a pass that takes a function out of the module to rewrite it
  * leaves this behind, so a recursive call still reads which arguments the callee consumes and whether its
  * result borrows. */
