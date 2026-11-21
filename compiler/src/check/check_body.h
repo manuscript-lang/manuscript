@@ -20,6 +20,7 @@ typedef struct MsBody {
     MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
     MsTy invalid_ty;        /* the type of an expression that already drew a diagnostic */
     MsTy result;
+    MsTy fixture;           /* the type a test file's `make_fixture` returns (its tests bind `fixture`), or MS_TY_NONE */
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */
     uint32_t function;      /* the declaration node of the function being checked */
     bool *closed;           /* by binding id: its block ended, so the name is free again */
@@ -29,13 +30,20 @@ typedef struct MsBody {
     MsBuf diags;            /* MsCheckDiag of the function being checked, reported once it is claimed */
     const char *context;    /* what the next `ms_body_expr` value is for ("the return value"), or NULL */
     bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
+    MsTy result_hint;       /* with `infer_result`: the result the context expects, whose variables the body decides */
     bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
+    const MsTypeParams *tparams; /* the type parameters of the function being checked, and their variables */
+    const MsTy *tvars;
     bool supported;         /* false once a construct outside the handled set is met */
     MsSite gave_up;         /* the first `ms_body_unsupported` call of this function */
 } MsBody;
 
 /* A parameter or local of this type can be called and passed around (check_closure.c). */
 bool ms_body_is_function_value(const MsBody *b, MsTy ty);
+/* A function type that may be expected of an argument: its parameters may be `var` or `move`. */
+bool ms_body_is_callback_type(const MsBody *b, MsTy ty);
+/* Whether `actual` is `expected` except that it reads parameters `expected` may change or take. */
+bool ms_body_reads_where_var_expected(const MsBody *b, MsTy actual, MsTy expected);
 /* Whether `ty` is `<invalid>` or built from it: an earlier diagnostic is why. */
 bool ms_body_has_invalid(const MsBody *b, MsTy ty);
 /* `callee(args)` through the function-typed binding `binding`. */
@@ -48,6 +56,13 @@ MsTy ms_body_lambda_inferred(MsBody *b, const MsExpr *e, MsTy settled); /* `sett
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
 /* Lists (check_list.c): whether `ty` is a `List` of admitted elements, a `List[...]` annotation,
  * a list literal and an index expression. */
+/* The standard type that declares builtin `kind`, when the module sees it under its own name (no
+ * declaration of the module shadows it); MS_NONE otherwise. */
+static inline MsSymId ms_body_visible_builtin(const MsBody *b, MsBuiltin kind) {
+    const MsSymId sym = ms_builtin_symbol(b->c, kind);
+    return sym != MS_NONE && ms_map_get(&b->c->mods[b->module].names, b->c->syms.name[sym]) == sym ? sym : MS_NONE;
+}
+
 bool ms_body_is_list(const MsBody *b, MsTy ty);
 MsBuiltin ms_body_standard_identity(const MsBody *b, MsTy ty);
 bool ms_body_same_type(const MsBody *b, MsTy x, MsTy y);
@@ -57,6 +72,7 @@ MsTy ms_body_list_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected);
 /* Maps (check_map.c): whether `ty` is a `Map` of an admitted key and value, a `Map[K, V]` annotation, a literal. */
 bool ms_body_is_map(const MsBody *b, MsTy ty);
+bool ms_body_is_set(const MsBody *b, MsTy ty);
 MsTy ms_body_map_index(MsBody *b, MsTy map, const MsExpr *key);
 MsTy ms_body_map_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_map(MsBody *b, const MsExpr *e, MsTy expected);
@@ -72,9 +88,16 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty);
 /* `ok(v)`, `error(e)` and `some(v)`, the built-in cases of Result and Optional (check_builtin.c). */
 bool ms_body_is_builtin_case(const MsBody *b, MsSym name);
 MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
+/* `ok(v)` or `error(e)` returned where the result is still being decided and the context expects the Result `hint`: the
+ * payload fixes what `hint` leaves open. MS_TY_NONE when the call is not one. */
+MsTy ms_body_builtin_open(MsBody *b, const MsExpr *e, MsTy hint);
 /* An enum case called like a function where the context expects its enum (check_alt.c). */
 bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name);
+/* A type declared `opaque` in another module: its cases, fields and constructor are denied here (a Rust diagnostic). */
+bool ms_body_is_foreign_opaque(const MsBody *b, MsTy ty);
 MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected);
+/* Whether `label` is the name of the payload field of `ok` (`success`) or `error` of the Result type `result`. */
+bool ms_body_result_label(const MsBody *b, MsTy result, bool success, MsSym label);
 bool ms_body_is_qualified_case(MsBody *b, const MsExpr *member); /* `Enum.Case` with `Enum` a non-generic enum of this module */
 MsTy ms_body_qualified_case(MsBody *b, const MsExpr *e);           /* a qualified case without payload */
 MsTy ms_body_qualified_case_call(MsBody *b, const MsExpr *e);      /* a qualified case with its payload */
@@ -89,7 +112,7 @@ void ms_body_close_from(MsBody *b, uint32_t first); /* the bindings declared sin
 void ms_body_check_home(MsBody *b, MsSymId sym); /* type the field defaults of the module that declares `sym` */
 bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in); /* one argument of an open signature: checked against its parameter, or binding its variables */
 MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
-MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written, MsTy expected);
 /* A call `receiver.name(args)' (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 bool ms_body_reordered(const MsExpr *call, const uint32_t *slot); /* some argument is not at its parameter's index */

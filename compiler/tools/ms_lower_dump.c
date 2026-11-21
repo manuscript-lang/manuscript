@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dump_io.h"
 #include "ms/check.h"
 #include "ms/lower.h"
 #include "ms/desugar.h"
@@ -208,6 +209,10 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
                 for (uint32_t i = 0; i < mir.nfiles; i++) { // locations name a file by number: Rust and C number them differently
                     printf("file %u \"%.*s\"\n", i, (int)mir.files[i].len, mir.files[i].ptr);
                 }
+                if (mir.entry != MIR_NONE) {
+                    const MsStr entry = ms_name(&mir.names, mir.funcs[mir.entry].name);
+                    printf("entry @%.*s\n", (int)entry.len, entry.ptr);
+                }
             }
             for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
                 MsBuf out = {0};
@@ -269,10 +274,6 @@ static int run_oracle_dump(const char *path) {
 }
 
 /* `MS_WHY=1`: each place the body checker gave a function up, as `WHY file:line` on stderr, in the order met. */
-static void print_decline(const char *file, int line) {
-    const char *base = strrchr(file, '/');
-    fprintf(stderr, "WHY %s:%d\n", base == NULL ? file : base + 1, line);
-}
 
 int main(int argc, char **argv) {
     if (getenv("MS_WHY") != NULL) {

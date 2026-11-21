@@ -33,21 +33,8 @@ static void wake(int slot) {
     }
 }
 
-static BOOL WINAPI on_event(DWORD kind) {
-    int signal;
-    switch (kind) {
-    case CTRL_C_EVENT:
-    case CTRL_BREAK_EVENT:
-        signal = SIGNAL_INT;
-        break;
-    case CTRL_CLOSE_EVENT:
-    case CTRL_LOGOFF_EVENT:
-    case CTRL_SHUTDOWN_EVENT:
-        signal = SIGNAL_TERM;
-        break;
-    default:
-        return FALSE;
-    }
+/* Counts `signal` for every observer of it. */
+static void deliver(int signal) {
     const uint64_t bit = UINT64_C(1) << (signal - 1);
     for (int slot = 0; slot < SLOTS; slot++) {
         if ((atomic_load(&slot_mask[slot]) & bit) != 0) {
@@ -55,8 +42,25 @@ static BOOL WINAPI on_event(DWORD kind) {
             wake(slot);
         }
     }
-    return FALSE;
 }
+
+static BOOL WINAPI on_event(DWORD kind) {
+    switch (kind) {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+        deliver(SIGNAL_INT);
+        return FALSE;
+    case CTRL_CLOSE_EVENT:
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+        deliver(SIGNAL_TERM);
+        return FALSE;
+    default:
+        return FALSE;
+    }
+}
+
+void ms_sys_signal_raise(int signal) { deliver(signal); }
 
 bool ms_sys_signal_valid(int64_t signal) {
     return signal >= 1 && signal <= MS_SYS_SIGNAL_MAX && signal != SIGNAL_KILL;

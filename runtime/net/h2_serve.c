@@ -16,6 +16,7 @@ struct MsH2Serve {
     MsH2ServeHooks hooks;
     uint8_t closed;      /* the connection is over: handlers fail, nothing more is read or flushed */
     uint8_t flushing;    /* a task is writing output now */
+    uint8_t orphaned;    /* the row closed under handlers still running: the last release frees the state */
     uint32_t handlers;   /* requests delivered and not yet released */
     uint64_t joiner;     /* token the connection task parks on while handlers finish; 0 when none */
 };
@@ -115,10 +116,18 @@ static void dispatch(MsH2Serve *serve) {
 }
 
 /* The row's release hook: runs once when the row closes. */
-static void serve_free(void *app) {
-    MsH2Serve *serve = app;
+static void serve_destroy(MsH2Serve *serve) {
     ms_h2conn_free(serve->h2);
     free(serve);
+}
+
+static void serve_free(void *app) {
+    MsH2Serve *serve = app;
+    if (serve->handlers > 0) {
+        serve->orphaned = 1; /* a cancelled connection task closed the row while handlers run: they free it */
+        return;
+    }
+    serve_destroy(serve);
 }
 
 MsH2Serve *ms_h2_serve_new(MsConnTable *table, MsConnId id, MsH2Conn *h2, const MsH2ServeHooks *hooks) {
@@ -190,6 +199,7 @@ MsNetStatus ms_h2_serve_run(MsH2Serve *serve) {
     }
     if (serve->joiner != 0) {
         msrt_token_free(serve->joiner);
+        serve->joiner = 0;
     }
     (void)ms_conn_close_io(serve->table, serve->id);
     return status;
@@ -306,6 +316,10 @@ void ms_h2_serve_release(MsH2Serve *serve, int32_t stream, uint32_t code) {
     ms_h2conn_release(serve->h2, stream, code);
     flush(serve);
     serve->handlers--;
+    if (serve->orphaned != 0 && serve->handlers == 0) {
+        serve_destroy(serve);
+        return;
+    }
     if (serve->closed != 0 && serve->handlers == 0) {
         wake(serve->joiner); /* last use of `serve`: the connection task may free it from here */
     }

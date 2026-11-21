@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms_rt/io.h"
 #include "stream.h"
 
 enum { STREAM_DEFAULT_CHUNK = 65536, STREAM_WRITE_STEP = 1 << 20 };

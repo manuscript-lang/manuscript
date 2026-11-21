@@ -63,6 +63,8 @@ typedef struct OwnWalk {
     uint32_t consumed;  /* parameters this walk moved */
     MsPos consumed_at[32];
     uint8_t *param_mode; /* by binding id: 0 plain, 1 `var`, 2 `move` (parameters only) */
+    uint32_t self_binding; /* the receiver of the method being walked, else MS_NONE */
+    bool self_consuming;   /* the method is `move`: the receiver is its own, so it may change it */
     bool quiet;         /* a summary round: diagnostics are left to the final pass */
     bool *closure_holds; /* by binding id: a closure that borrows non-copy locals; moving it would let it outlive them */
     bool lambda_escaping; /* the lambda being walked is returned, stored or handed to a `move` parameter */
@@ -200,6 +202,22 @@ static void own_queue_release(OwnWalk *w, uint32_t holder) {
 
 /* ---- diagnostics ---- */
 
+/* How to end a borrow that blocks a change: clone the iterable, the captured value or the initializer. */
+static MsStr own_borrow_remedy(const OwnWalk *w, const Borrow *b, bool closure, MsStr holder) {
+    if (b->holder >= OWN_HIDDEN_HOLDER) {
+        return ms_arena_fmt(&w->check->arena, "iterate over a clone instead by appending `.clone()` to the loop's "
+                                              "iterable expression");
+    }
+    if (closure) {
+        return ms_arena_fmt(&w->check->arena,
+                            "or build `%.*s` from a clone: bind `.clone()` of the captured value first and capture "
+                            "that binding",
+                            (int)holder.len, holder.ptr);
+    }
+    return ms_arena_fmt(&w->check->arena, "or give `%.*s` its own value by ending its initializer with `.clone()`",
+                        (int)holder.len, holder.ptr);
+}
+
 /* A change (`what`: "move", "reassign" or "change") of `target` while some live borrow reads a part
  * of it that overlaps. `shown` is how the diagnostic names the place; a borrow held by `binding`
  * itself (the place's own root) does not count. */
@@ -213,17 +231,7 @@ static void own_check_change_place(OwnWalk *w, MsPos pos, uint32_t binding, MsPl
         }
         const MsStr holder = own_name(w, b->holder);
         const bool closure = strcmp(b->why, "closure capture") == 0;
-        const MsStr remedy =
-            b->holder >= OWN_HIDDEN_HOLDER
-                ? ms_arena_fmt(&w->check->arena, "iterate over a clone instead by appending `.clone()` to the loop's "
-                                                 "iterable expression")
-            : closure
-                ? ms_arena_fmt(&w->check->arena,
-                               "or build `%.*s` from a clone: bind `.clone()` of the captured value first and capture "
-                               "that binding",
-                               (int)holder.len, holder.ptr)
-                : ms_arena_fmt(&w->check->arena, "or give `%.*s` its own value by ending its initializer with `.clone()`",
-                               (int)holder.len, holder.ptr);
+        const MsStr remedy = own_borrow_remedy(w, b, closure, holder);
         own_error(w, pos,
                   ms_arena_fmt(&w->check->arena,
                                "cannot %s `%.*s` while `%.*s` borrows it (%s, at %u:%u); finish using `%.*s` before "
@@ -356,6 +364,9 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
             w->captured[w->ncaptured++] = own_resolve(w, binding);
         }
     }
+    if (binding < w->floor && w->lambda_escaping && w->perm[binding] == PERM_MUTABLE) {
+        OWN_DECLINE(w); /* an escaping closure copies a `var`: a later use of it is an error left to Rust */
+    }
     if (demand == DEMAND_MOVE && w->closure_holds[binding]) {
         OWN_DECLINE(w); /* the closure would outlive the locals it borrows */
     }
@@ -384,7 +395,6 @@ static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
     }
 }
 
-static void own_construct(OwnWalk *w, const MsExpr *e);
 
 static void own_construct(OwnWalk *w, const MsExpr *e);
 
@@ -686,6 +696,14 @@ static void own_mutate_place(OwnWalk *w, MsPos pos, uint32_t binding, MsPlace pl
                                "%.*s.clone()`",
                                (int)text.len, text.ptr, (int)name.len, name.ptr, (int)from.len, from.ptr, (int)name.len,
                                name.ptr, (int)name.len, name.ptr));
+    } else if (perm == PERM_IMMUTABLE && binding == w->self_binding) {
+        if (!w->self_consuming) {
+            own_error(w, pos,
+                      ms_arena_fmt(&w->check->arena,
+                                   "cannot change `%.*s`: this method does not change its receiver; write `fn var` in "
+                                   "its declaration to allow that",
+                                   (int)text.len, text.ptr));
+        }
     } else if (perm == PERM_IMMUTABLE && w->is_param[binding] && w->param_mode[binding] != 2) {
         own_error(w, pos,
                   ms_arena_fmt(&w->check->arena,
@@ -992,10 +1010,17 @@ static void own_bind_lambda(OwnWalk *w, const MsStmt *s, uint32_t binding) {
     w->ncaptured = start;
 }
 
+static bool own_arms_are_names(const OwnWalk *w, const MsExpr *e);
+
 static void own_bind(OwnWalk *w, const MsStmt *s) {
     const uint32_t binding = w->facts->pattern_binding[s->u.bind.pattern->id];
     own_declare(w, binding, s->u.bind.is_mutable ? PERM_MUTABLE : PERM_IMMUTABLE, false);
     if (own_bind_borrowed_call(w, s, binding)) {
+        return;
+    }
+    const MsExpr *value = s->u.bind.value;
+    if (value->kind == MS_E_MATCH && w->class_of[binding] != MS_CLASS_COPY && own_arms_are_names(w, value)) {
+        OWN_DECLINE(w); /* a binding of a match over names borrows from every arm's origin: left to Rust */
         return;
     }
     if (s->u.bind.value->kind == MS_E_LAMBDA && !s->u.bind.is_mutable) {
@@ -1067,6 +1092,11 @@ static bool own_is_fresh_intrinsic(const OwnWalk *w, const MsExpr *e) {
     if (callee->kind != MS_E_MEMBER || w->facts->call_interface[e->id] == MS_TY_NONE ||
         ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
         return false;
+    }
+    if (ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_VARIABLE) {
+        // An operation every value has (`to_string`, `clone`) is recorded against the variable itself, not
+        // against a bound that declares it; it builds a new value.
+        return w->facts->call_interface[e->id] == w->facts->call_receiver[e->id];
     }
     const MsRtFn *fn = ms_rt_method_fn(w->check, w->facts->call_receiver[e->id], callee->u.member.name);
     return fn != NULL && fn->fresh;
@@ -1419,6 +1449,7 @@ static bool own_arms_are_names(const OwnWalk *w, const MsExpr *e) {
 static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning) {
     const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
     const bool borrowed = !returning && demand != DEMAND_MOVE && !copied && own_arms_are_names(w, e);
+    w->facts->borrowed_match[e->id] = borrowed;
     /* Arms that are not all references produce a value, so a place among them moves. */
     Demand arm_demand = demand;
     if (!borrowed && demand == DEMAND_READ) {
@@ -1486,6 +1517,8 @@ static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const MsM
     if (method != NULL) {
         const uint32_t self = by_node[method->id];
         own_declare(w, self, method->mutating ? PERM_MUTABLE : PERM_IMMUTABLE, true);
+        w->self_binding = self;
+        w->self_consuming = method->consuming;
         w->param_index[self] = 0;
         w->param_mode[self] = method->mutating ? 1 : 0;
     }
@@ -1511,6 +1544,8 @@ static bool own_function(OwnWalk *w, const MsFunc *function, const MsMethod *met
     w->borrowed_params = 0;
     w->consumed = 0;
     w->note_param = MS_NONE;
+    w->self_binding = MS_NONE;
+    w->self_consuming = false;
     w->supported = true;
     w->by_node = by_node;
     own_declare_parameters(w, function, method, by_node);
@@ -1635,10 +1670,18 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
     ms_classifier_mark_methods(w.classifier, facts->methods);
     own_allocate(&w, &scratch);
     const uint32_t *by_node = own_bindings_by_node(facts, &scratch);
+    // A `test` block walks as a function of no parameters.
+    MsFunc **tests = MS_NEW_N(&scratch, MsFunc *, row->syntax->ndecls + 1);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        const bool claimed = d->kind == MS_D_FN && facts->body_checked[d->id];
-        w.summaries[d->id].usable = claimed && ms_liveness_function(&live, facts, &d->u.fn);
+        const MsFunc *function = &d->u.fn;
+        if (d->kind == MS_D_TEST) {
+            tests[i] = MS_NEW(&scratch, MsFunc);
+            *tests[i] = (MsFunc){.body = d->u.test.body};
+            function = tests[i];
+        }
+        const bool claimed = (d->kind == MS_D_FN || d->kind == MS_D_TEST) && facts->body_checked[d->id];
+        w.summaries[d->id].usable = claimed && ms_liveness_function(&live, facts, function);
     }
     // Also for a module without calls: the summaries are where `ret_borrowed` and `param_consumed`
     // come from, and a caller in another module reads them.
@@ -1648,13 +1691,23 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         if (d->kind == MS_D_FN && facts->body_checked[d->id]) {
             facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, &d->u.fn, NULL, by_node);
             if (!facts->body_checked[d->id]) {
-                const MsSite summary = w.summaries[d->id].declined;
-                facts->refusal[d->id] = w.summaries[d->id].usable ? w.declined
-                                        : summary.file != NULL    ? summary
-                                                                  : (MsSite){"ownership_live.c", 0};
+                MsSite refusal = w.declined;
+                if (!w.summaries[d->id].usable) {
+                    refusal = w.summaries[d->id].declined;
+                    if (refusal.file == NULL) {
+                        refusal = (MsSite){"ownership_live.c", 0};
+                    }
+                }
+                facts->refusal[d->id] = refusal;
             }
             facts->ret_borrowed[d->id] = facts->body_checked[d->id] && w.summaries[d->id].returns_borrow;
             facts->param_consumed[d->id] = facts->body_checked[d->id] ? w.summaries[d->id].consumed : 0;
+        }
+    }
+    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        if (d->kind == MS_D_TEST && facts->body_checked[d->id]) {
+            facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, tests[i], NULL, by_node);
         }
     }
     own_methods(&w, &live, by_node);

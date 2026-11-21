@@ -3,6 +3,7 @@
 #   cmake -P cmake/BuildRuntime.cmake                    libms_native.a (and libms_native_musl.a on Linux)
 #   cmake -DMS_STATS=ON -P cmake/BuildRuntime.cmake      also libms_native_stats.a, the counting runtime
 #   cmake -DMS_MODE=tests -P cmake/BuildRuntime.cmake    the C unit tests of this host's runtime target, run with ctest
+#   cmake -DMS_MODE=linker -P cmake/BuildRuntime.cmake   the files `ms_build_link` links with, in target/ms-linker
 # Archives land in target/ms-native (MS_OUT). The compiler for a target is `clang`, llvm-mingw's clang for Windows
 # (`MS_MINGW`, else target/llvm-bundle/mingw) and musl-gcc for musl (`MS_MUSL_CC`). What to compile is decided by the CMake
 # project at the root (CMakeLists.txt, cmake/); this file picks the compiler and the library folder for a target, configures
@@ -123,6 +124,21 @@ function(configure triple build stats tests)
     # The libraries are static archives; their headers say so only when told.
     list(APPEND args "-DMS_LIBS_DEFINES=NGHTTP2_STATICLIB\\;PCRE2_STATIC\\;CURL_STATICLIB")
   endif()
+  # A cache left by another checkout path or another compiler makes CMake stop ("does not match the source used to
+  # generate the cache", "different compiler"): such a build folder holds nothing worth keeping.
+  if(EXISTS "${build}/CMakeCache.txt")
+    file(STRINGS "${build}/CMakeCache.txt" cache_home REGEX "^CMAKE_HOME_DIRECTORY:INTERNAL=")
+    file(STRINGS "${build}/CMakeCache.txt" cache_cc REGEX "^CMAKE_C_COMPILER:(FILEPATH|STRING)=")
+    string(REGEX REPLACE "^[^=]*=" "" cache_home "${cache_home}")
+    string(REGEX REPLACE "^[^=]*=" "" cache_cc "${cache_cc}")
+    cmake_path(GET compiler FILENAME want_cc)
+    cmake_path(GET cache_cc FILENAME have_cc)
+    cmake_path(COMPARE "${cache_home}" NOT_EQUAL "${MS_ROOT}" other_source)
+    if(other_source OR NOT have_cc STREQUAL want_cc)
+      message(STATUS "discarding the stale CMake cache in ${build}")
+      file(REMOVE_RECURSE "${build}")
+    endif()
+  endif()
   # The build is the same wherever it runs: the caller's flags do not reach it.
   execute_process(COMMAND "${CMAKE_COMMAND}" -E env --unset=CFLAGS --unset=LDFLAGS "${CMAKE_COMMAND}" ${args}
                   COMMAND_ERROR_IS_FATAL ANY)
@@ -179,6 +195,11 @@ function(build_archive triple dir name stats)
   endif()
   strip_debug("${archive}")
 endfunction()
+
+if(MS_MODE STREQUAL "linker")
+  include("${MS_ROOT}/cmake/LinkerFiles.cmake")
+  return()
+endif()
 
 if(MS_MODE STREQUAL "tests")
   set(triple "${host_triple}")

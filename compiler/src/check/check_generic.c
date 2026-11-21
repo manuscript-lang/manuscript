@@ -50,7 +50,7 @@ bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *para
     const MsTyTable *tys = &b->c->tys;
     const MsTy want = ms_infer_apply(in, param->ty);
     if (!ms_body_mentions_unbound(b, in, want)) {
-        return ms_body_is_admitted(b, want) && ms_body_expr(b, value, want) != MS_TY_NONE;
+        return (ms_body_is_admitted(b, want) || ms_body_is_callback_type(b, want)) && ms_body_expr(b, value, want) != MS_TY_NONE;
     }
     MsTy actual = MS_TY_NONE;
     if (value->kind == MS_E_LAMBDA) {
@@ -65,7 +65,20 @@ bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *para
     } else {
         actual = ms_body_expr(b, value, MS_TY_NONE);
     }
-    return actual != MS_TY_NONE && ms_body_is_admitted(b, actual) && ms_infer_match(in, param->ty, actual) == MS_MATCH_OK;
+    if (actual == MS_TY_NONE || !ms_body_is_admitted(b, actual)) {
+        return false;
+    }
+    if (ms_infer_match(in, param->ty, actual) == MS_MATCH_OK) {
+        return true;
+    }
+    // A plain value where an Optional of a variable is expected (`ok_or(cause)` with `cause: E?`): the
+    // value is the payload, and the call wraps it in `some`.
+    if (!ms_ty_is(tys, param->ty, MS_BI_OPTIONAL) || tys->nargs[param->ty] != 1 || ms_ty_is(tys, actual, MS_BI_OPTIONAL) ||
+        ms_infer_match(in, ms_ty_args(tys, param->ty)[0], actual) != MS_MATCH_OK) {
+        return false;
+    }
+    b->facts->some_wrap[value->id] = true; // the expression keeps its own type, as the Rust checker records it
+    return true;
 }
 
 /* A function passed for a parameter has the parameter's type (`fn(move T) U`), as the Rust checker
@@ -121,16 +134,27 @@ static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc
     return true;
 }
 
-/* Every variable is bound to a primitive and each of its bounds, with the bindings applied, is met. */
+/* A variable bound to a type built from variables (`T` as `List[T]`) can grow without end through a
+ * cycle of applications, which the Rust checker reports (recursion.rs); the graph is not built here yet.
+ * A variable passed on as itself cannot grow. */
+static bool generic_grows(MsBody *b, const MsInfer *in) {
+    for (uint32_t i = 0; i < in->nvars; i++) {
+        if (ms_ty_kind(&b->c->tys, in->bound[i]) != MS_K_VARIABLE &&
+            ms_ty_has_variable(&b->c->tys, &b->c->arena, in->bound[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Every variable is bound to an admitted type and each of its bounds, with the bindings applied, is met. */
 static bool generic_bounds(MsBody *b, MsInfer *in) {
     if (b->methods == NULL) {
         return false;
     }
     for (uint32_t i = 0; i < in->nvars; i++) {
-        // A type argument that mentions the caller's own variables is a recursive application the
-        // Rust checker's recursion rules judge (recursion.rs); it stays there.
-        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i]) ||
-            ms_ty_has_variable(&b->c->tys, &b->c->arena, in->bound[i])) {
+        // A type built from the caller's variables is declined by the growth guard in the caller.
+        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i])) {
             return false;
         }
         const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
@@ -167,7 +191,36 @@ static void generic_record_type_args(MsBody *b, const MsExpr *e, const MsInfer *
     }
 }
 
-MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written) {
+/* Variables the arguments left unbound take their type from the type the context expects of the
+ * call's result (`x: List[Int] := empty()`). A variable with a default keeps it when it already fits
+ * the expected type, which this does not judge: those calls, and a result the expected type
+ * contradicts (Rust reports a conflict), stay declined. */
+static bool generic_from_expected(MsBody *b, MsInfer *in, MsTy result, MsTy expected) {
+    uint32_t unbound = 0;
+    for (uint32_t i = 0; i < in->nvars; i++) {
+        const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
+        if (in->bound[i] != MS_TY_NONE) {
+            continue;
+        }
+        if (info != NULL && info->def != MS_TY_NONE) {
+            return false;
+        }
+        unbound++;
+    }
+    if (unbound == 0 || expected == MS_TY_NONE || expected == b->invalid_ty || ms_body_has_invalid(b, expected)) {
+        return unbound == 0;
+    }
+    MsInfer trial = *in;
+    trial.bound = MS_NEW_N(&b->c->arena, MsTy, (size_t)in->nvars + 1);
+    memcpy(trial.bound, in->bound, in->nvars * sizeof *trial.bound);
+    if (ms_infer_match(&trial, result, expected) != MS_MATCH_OK) {
+        return false;
+    }
+    memcpy(in->bound, trial.bound, in->nvars * sizeof *trial.bound);
+    return true;
+}
+
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written, MsTy expected) {
     const MsDef *def = ms_def(b->c, sym);
     const MsTy sig = b->c->syms.ty[sym];
     MsInfer in;
@@ -190,16 +243,20 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
     }
     uint32_t first = 0;
     uint32_t slot[16];
-    if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in, slot) || ms_infer_defaults(&in, &first) != 0 || !generic_bounds(b, &in)) {
+    if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in, slot)) {
         return ms_body_unsupported(b);
     }
-    for (uint32_t i = 0; i < in.nvars; i++) {
-        // A variable bound to a type built from variables (`T` as `List[T]`) can grow without end through a
-        // cycle of calls, which the Rust checker reports (recursion.rs); the graph is not built here yet.
-        if (ms_ty_kind(&b->c->tys, in.bound[i]) != MS_K_VARIABLE &&
-            ms_ty_has_variable(&b->c->tys, &b->c->arena, in.bound[i])) {
-            return ms_body_unsupported(b);
-        }
+    if (!generic_from_expected(b, &in, b->c->tys.result[sig], expected)) {
+        return ms_body_unsupported(b);
+    }
+    if (ms_infer_defaults(&in, &first) != 0) {
+        return ms_body_unsupported(b);
+    }
+    if (!generic_bounds(b, &in)) {
+        return ms_body_unsupported(b);
+    }
+    if (generic_grows(b, &in)) {
+        return ms_body_unsupported(b);
     }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
     if (ms_body_has_invalid(b, result)) {
@@ -292,8 +349,8 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
         return ms_body_unsupported(b);
     }
     const MsTy result = ms_ty_apply(b->c, syms->ty[sym], in.bound, def->nvars);
-    // A type applied to the caller's own variables may be a cycle of applications that never ends,
-    // which the Rust checker reports (recursion.rs); the graph is not built here yet.
+    // A type applied to the caller's own variables may be a cycle of applications that never ends (its
+    // defaults call back into the caller), which the Rust checker reports (recursion.rs).
     if (result == MS_TY_NONE || !ms_body_is_bindable(b, result) || ms_ty_has_variable(&b->c->tys, &b->c->arena, result)) {
         return ms_body_unsupported(b);
     }

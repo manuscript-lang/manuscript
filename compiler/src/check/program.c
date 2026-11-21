@@ -8,6 +8,7 @@
 #include "ms/interface_sig.h"
 #include "ms/param_order.h"
 #include "ms/methods.h"
+#include "ms/ownership.h"
 #include "ms/program.h"
 #include "ms/public_sig.h"
 #include "ms/stdlib.h"
@@ -39,7 +40,11 @@ static void program_desugar(MsCheck *c, MsModId m) {
 
 void ms_program_desugar_bundled(MsCheck *c) {
     for (MsModId m = 0; !c->std_desugared && m < c->nmods; m++) {
-        program_desugar(c, m);
+        // A project module is desugared where it is checked, which reports what the desugaring rejects.
+        const MsStr path = ms_name(c->names, c->mods[m].path);
+        if (path.len >= 5 && memcmp(path.ptr, "@std/", 5) == 0) {
+            program_desugar(c, m);
+        }
     }
     c->std_desugared = true;
 }

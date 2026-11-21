@@ -19,6 +19,11 @@ enum {
     MS_STOP_TERMINATE = 15, /* SIGTERM: terminate, console close, logoff, shutdown */
 };
 
+/* The stop request a signal number stands for: MS_STOP_INTERRUPT for SIGINT (and Ctrl-Break on Windows),
+ * MS_STOP_TERMINATE for every other watched signal (SIGTERM; console close, logoff and shutdown reach Windows
+ * programs as SIGHUP). */
+int ms_io_stop_request_of(int signal_number);
+
 /* A stop request arrived; `signal` is MS_STOP_INTERRUPT or MS_STOP_TERMINATE. */
 typedef void (*MsStopFn)(int signal);
 /* The grace period armed by ms_io_stop_arm ran out. It ends the process. */
@@ -27,6 +32,11 @@ typedef void (*MsStopExpiredFn)(void);
 /* Starts the stop thread. Call once, before the first task. False when the loop or the thread cannot start; nothing
  * is left running then. */
 MS_NODISCARD bool ms_io_stop_start(MsStopFn on_stop, MsStopExpiredFn on_expired);
+
+/* Raises a stop request from this process, as the signal would: `signal` is SIGINT or SIGTERM (2 or 15). Windows has
+ * no signal a process can send itself, so `send_signal` of its own id comes here. Safe from any thread once
+ * ms_io_stop_start succeeded; does nothing before. */
+void ms_io_stop_raise(int signal);
 
 /* Arms the grace timer: `on_expired` runs `seconds` from now unless ms_io_stop_end comes first. Arming again
  * restarts it. Safe from any thread once ms_io_stop_start succeeded. */

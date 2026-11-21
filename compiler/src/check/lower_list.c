@@ -26,7 +26,7 @@ LbVal lst_literal(Lb *lb, const MsExpr *e) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     const MsExprs *items = &e->u.list;
     if (!lb_is_list(lb, ty)) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     MirValue *values = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)items->len + 1);
     for (uint32_t i = 0; i < items->len && lb->ok; i++) {
@@ -43,14 +43,14 @@ LbVal lst_index(Lb *lb, const MsExpr *e) {
     MsExpr *left = NULL;
     MsExpr *at = NULL;
     if (!ms_expr_index(e, &left, &at)) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const LbVal list = lb_expr(lb, left);
     if (lb->ok && lb_is_map(lb, mir_b_ty(&lb->b, list.v))) {
         return lm_index(lb, list, at);
     }
     if (!lb->ok || !lb_is_list(lb, mir_b_ty(&lb->b, list.v))) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const LbVal index = lb_expr(lb, at);
     if (!lb->ok) {

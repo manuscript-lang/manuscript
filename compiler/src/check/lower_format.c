@@ -58,12 +58,6 @@ static MirValue lf_copy(Lb *lb, MirValue v) {
 
 static uint32_t lf_helper(Lb *lb, MirTy ty);
 
-/* A type written by its own generated `format`: a record, an enum, an Optional or a list. */
-static bool lf_has_format(const Lb *lb, MirTy ty) {
-    const uint8_t kind = mir_ty_data(lb->m, ty)->kind;
-    return kind == MK_TYPE || kind == MK_ALT || kind == MK_OPT || kind == MK_LIST;
-}
-
 /* The checker type of a scalar MIR type, whose runtime declares its text form. */
 static MsTy lf_scalar_ty(const Lb *lb, MirTy ty) {
     if (ty == MIR_INT) {
@@ -103,17 +97,17 @@ static MirValue lf_element(Lb *lb, MirTy ty, MirValue v, MirValue depth) {
         mir_b_br(b, join, &marks, 1);
         mir_b_switch_to(b, plain);
         text = lf_copy(lb, v);
-    } else if (lf_has_format(lb, ty)) {
+    } else if (lb_is_aggregate(lb, ty)) {
         const MirValue args[2] = {v, child};
         text = mir_b_call(b, lf_helper(lb, ty), args, 2);
     } else if (ty == MIR_INT || ty == MIR_FLOAT || ty == MIR_BOOL) {
         const MsTy checked = lf_scalar_ty(lb, ty);
         text = lt_scalar_text(lb, checked, v).v;
         if (text == MIR_NONE && lb->ok) {
-            (void)lb_unsupported(lb);
+            (void)LB_UNSUPPORTED(lb);
         }
     } else {
-        (void)lb_unsupported(lb); // a list, map or function field has no text form here yet
+        (void)LB_UNSUPPORTED(lb); // a list, map or function field has no text form here yet
     }
     if (!lb->ok) {
         return MIR_NONE;
@@ -331,14 +325,34 @@ static uint32_t lf_helper(Lb *lb, MirTy ty) {
     return lf_build(lb, ty);
 }
 
+/* `value.to_string()` where the type declares no runtime method of that name: a String's copy of itself, the scalar's
+ * runtime text form, or the structural text of a record or enum; another type marks the function unsupported. */
+LbVal lt_to_string(Lb *lb, LbVal value, MsTy checked) {
+    if (mir_b_ty(&lb->b, value.v) == MIR_STR) {
+        const MirImm one = {.tag = MI_INT, .i = 1}; // the clone the lowering gives a borrowed String it keeps
+        return value.owned ? value : (LbVal){mir_b_emit(&lb->b, MOP_Clone, &value.v, 1, one, MIR_STR), true};
+    }
+    const LbVal text = lt_scalar_text(lb, checked, value.v);
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
+    if (text.v == MIR_NONE) { // no declared text form: a record or enum prints its fields (owns and drops `value`)
+        return lf_text(lb, value);
+    }
+    if (value.owned) {
+        lb_drop(lb, value.v);
+    }
+    return text;
+}
+
 LbVal lf_text(Lb *lb, LbVal value) {
     const MirTy ty = mir_b_ty(&lb->b, value.v);
-    if (!lf_has_format(lb, ty)) {
-        return lb_unsupported(lb); // maps and functions have their own text, not lowered yet
+    if (!lb_is_aggregate(lb, ty)) {
+        return LB_UNSUPPORTED(lb); // maps and functions have their own text, not lowered yet
     }
     const uint32_t func = lf_helper(lb, ty);
     if (func == MIR_NONE || !lb->ok) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirValue args[2] = {value.v, mir_b_iconst(&lb->b, 0)};
     const MirValue text = mir_b_call(&lb->b, func, args, 2);

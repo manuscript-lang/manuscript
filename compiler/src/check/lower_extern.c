@@ -26,7 +26,7 @@ LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee) {
     const MsRtFn *fn = ms_rt_fn_find(name.ptr, name.len);
     const uint32_t nargs = e->u.call.args.len;
     if (fn == NULL || nargs > MS_RT_MAX_PARAMS) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     MirValue args[MS_RT_MAX_PARAMS];
     for (uint32_t i = 0; i < nargs && lb->ok; i++) {
@@ -39,11 +39,14 @@ LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee) {
     const MsTy result = lb->facts->expr_ty[e->id];
     const MirTy result_ty = result == lb->void_ty ? MIR_VOID : lb_mir_ty(lb, result);
     if (!lb->ok || result_ty == MIR_NONE) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
+    }
+    if (ls_reports_status(lb, fn, result_ty)) {
+        return ls_call(lb, fn, args, nargs, result_ty);
     }
     const LbVal call = lb_native_call(lb, fn, args, nargs, result_ty);
     if (lb->ok && result_ty != MIR_VOID && mir_b_ty(&lb->b, call.v) != result_ty) {
-        return lb_unsupported(lb); // the marshalled call yields something else (a handle written through `out`)
+        return LB_UNSUPPORTED(lb); // the marshalled call yields something else (a handle written through `out`)
     }
     return call;
 }

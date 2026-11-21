@@ -9,6 +9,7 @@
 
 #include "ms/check.h"
 #include "ms/check_run.h"
+#include "ms/check_run_state.h"
 #include "ms/diag_render.h"
 #include "ms/entry.h"
 #include "ms/facts.h"
@@ -16,6 +17,26 @@
 #include "ms/program.h"
 #include "ms/project.h"
 #include "ms/stdlib.h"
+
+/* An inherent `impl` of a type this module declares: every method's body was claimed by the body and
+ * ownership passes. An implementation of an interface, and methods added to another module's type, keep the
+ * Rust checker's contract and ownership-of-type rules. */
+static bool check_methods_covered(const MsCheck *c, MsModId id, const MsDecl *d) {
+    const MsModuleRow *row = &c->mods[id];
+    if (d->u.impl.contract != NULL || d->u.impl.receiver == NULL || row->facts == NULL) {
+        return false;
+    }
+    const MsSymId type = ms_map_get(&row->names, d->u.impl.receiver->name);
+    if (type == MS_NONE || c->syms.module[type] != id) {
+        return false;
+    }
+    for (uint32_t i = 0; i < d->u.impl.methods.len; i++) {
+        if (!row->facts->body_checked[d->u.impl.methods.ptr[i]->id]) {
+            return false;
+        }
+    }
+    return true;
+}
 
 /* Every default of the type's fields was typed by the body pass; a default it declined (a conversion Rust
  * rewrites) has no diagnostic here and stays with Rust. */
@@ -35,7 +56,10 @@ static bool check_module_covered(const MsCheck *c, MsModId id) {
     const MsModuleRow *row = &c->mods[id];
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        if (d->kind == MS_D_IMPL || d->kind == MS_D_TEST) {
+        if (d->kind == MS_D_IMPL && !check_methods_covered(c, id, d)) {
+            return false;
+        }
+        if (d->kind == MS_D_TEST && (row->facts == NULL || !row->facts->body_checked[d->id])) {
             return false;
         }
         if (d->kind == MS_D_TYPE && !d->u.type.external && !check_defaults_covered(row, d)) {
@@ -100,23 +124,12 @@ static const char *check_unported(const MsCheck *c, const MsModule *module) {
     return NULL;
 }
 
-typedef struct CheckRun {
-    MsNames names;
-    MsArena arena, std_syntax;
-    MsGraph graph;
-    MsCheck check;
-    bool have_check;
-    MsModId *ids;
-    MsReport *reports;
-    size_t nreports;
-    bool load_failed; /* the graph holds the diagnostics of the load, and nothing was checked */
-} CheckRun;
 
 /* Loads the graph and the standard library and declares the modules. NULL, or what the C passes cannot answer. */
-static const char *check_load(CheckRun *run, const MsStdFile *std_files, uint32_t nstd, const char *target) {
+const char *ms_check_load(MsCheckRun *run, const MsStdFile *std_files, uint32_t nstd, const char *target) {
     MsProjectError error = {0};
     MsGraph *graph = &run->graph;
-    if (!ms_project_load(&run->arena, &run->names, target, graph, &error)) {
+    if (!ms_project_load_packages(&run->arena, &run->names, target, graph, &error)) {
         return ms_project_error_is_unsupported(&error) ? "a project the loader does not read" : "the loader failed";
     }
     if (graph->ndiagnostics != 0) {
@@ -149,15 +162,15 @@ static const char *check_load(CheckRun *run, const MsStdFile *std_files, uint32_
 }
 
 /* The path the terminal prints for a file: its logical name under the source root. */
-static const char *check_shown_file(CheckRun *run, const char *name) {
+static const char *check_shown_file(MsCheckRun *run, const char *name) {
     return run->graph.source_root == NULL || ms_path_is_abs(name) ? name : MS_PATH_JOIN(&run->arena, run->graph.source_root, name);
 }
 
-static const char *check_shown(CheckRun *run, uint32_t module) {
+static const char *check_shown(MsCheckRun *run, uint32_t module) {
     return check_shown_file(run, run->graph.modules[module].name);
 }
 
-static void check_add_report(CheckRun *run, uint32_t module, const MsCheckDiag *diag) {
+static void check_add_report(MsCheckRun *run, uint32_t module, const MsCheckDiag *diag) {
     run->reports[run->nreports++] = (MsReport){.diag = diag->diag,
                                                .file = run->graph.modules[module].name,
                                                .shown = check_shown(run, module),
@@ -166,7 +179,7 @@ static void check_add_report(CheckRun *run, uint32_t module, const MsCheckDiag *
 
 /* Runs the passes over every module and gathers their diagnostics, the entry check last. NULL, or what the C
  * passes cannot answer. */
-static const char *check_diagnose(CheckRun *run) {
+const char *ms_check_diagnose(MsCheckRun *run) {
     const MsGraph *graph = &run->graph;
     if (run->load_failed) {
         run->reports = MS_NEW_N(&run->arena, MsReport, graph->ndiagnostics + 1);
@@ -184,10 +197,27 @@ static const char *check_diagnose(CheckRun *run) {
     if (ms_graph_check(check, graph, run->ids, unchecked) != 0) {
         return "a module the passes left unchecked";
     }
-    size_t total = 0;
+    /* What a build owes its fetched packages: natives outside a member and effects a package lacks. */
+    MsGraphDiag *package_diags = NULL;
+    uint32_t npackage_diags = 0;
+    bool complete = true;
+    if (graph->package_count != 0 && !ms_graph_check_packages(check, &run->arena, graph, run->ids, &package_diags, &npackage_diags, &complete)) {
+        return "the package rules";
+    }
+    if (!complete) {
+        return "a package effect the scan cannot follow";
+    }
+    size_t total = npackage_diags;
+    /* Ownership and unused names are checked only for a program that type checks, as the Rust command does. */
+    bool clean = npackage_diags == 0;
     for (uint32_t i = 0; i < graph->count; i++) {
-        ms_module_check_ownership(check, run->ids[i]);
-        ms_module_check_unused(check, run->ids[i]);
+        clean = clean && check->mods[run->ids[i]].ndiags == 0;
+    }
+    for (uint32_t i = 0; i < graph->count; i++) {
+        if (clean) {
+            ms_module_check_ownership(check, run->ids[i]);
+            ms_module_check_unused(check, run->ids[i]);
+        }
         if (!check_module_covered(check, run->ids[i])) {
             return "a function or declaration no C pass covers";
         }
@@ -199,6 +229,12 @@ static const char *check_diagnose(CheckRun *run) {
         for (uint32_t k = 0; k < row->ndiags; k++) {
             check_add_report(run, i, &row->diags[k]);
         }
+    }
+    for (uint32_t i = 0; i < npackage_diags; i++) {
+        run->reports[run->nreports++] = (MsReport){.diag = package_diags[i].diag,
+                                                   .file = package_diags[i].file,
+                                                   .shown = check_shown_file(run, package_diags[i].file),
+                                                   .phase = "type"};
     }
     /* The entry module, when it has no diagnostic, must declare a `main` the runtime can start. */
     const uint32_t entry = graph->count - 1;
@@ -221,7 +257,7 @@ static bool check_in_position_order(const MsReport *reports, size_t count) {
 }
 
 /* Whether the C answer for these diagnostics equals the Rust one. NULL, or why not. */
-static const char *check_renderable(const CheckRun *run, bool json) {
+static const char *check_renderable(const MsCheckRun *run, bool json) {
     /* JSON diagnostics carry the machine-applicable `fix` the C passes do not all build yet. */
     if (json && run->nreports != 0) {
         return "a diagnostic in the JSON document (its fix is not built in C yet)";
@@ -242,7 +278,7 @@ static const char *check_renderable(const CheckRun *run, bool json) {
     return all_parse || check_in_position_order(run->reports, run->nreports) ? NULL : "diagnostics not in position order";
 }
 
-static int check_print(const CheckRun *run, const char *target, bool json, MsBuf *out, MsBuf *err) {
+static int check_print(const MsCheckRun *run, const char *target, bool json, MsBuf *out, MsBuf *err) {
     if (run->nreports != 0) {
         if (json) {
             ms_render_json(out, run->reports, run->nreports);
@@ -261,24 +297,28 @@ static int check_print(const CheckRun *run, const char *target, bool json, MsBuf
     return 0;
 }
 
+void ms_check_run_free(MsCheckRun *run) {
+    if (run->have_check) {
+        ms_check_free(&run->check);
+    }
+    ms_arena_free(&run->std_syntax);
+    ms_arena_free(&run->arena);
+    ms_names_free(&run->names);
+}
+
 int ms_check_run(const MsStdFile *std_files, uint32_t nstd, const char *target, bool json, MsBuf *out, MsBuf *err,
                  const char **handover_reason) {
-    CheckRun run = {0};
+    MsCheckRun run = {0};
     ms_names_init(&run.names);
     int status = MS_CHECK_HANDOVER;
-    const char *why = check_load(&run, std_files, nstd, target);
-    why = why != NULL ? why : check_diagnose(&run);
+    const char *why = ms_check_load(&run, std_files, nstd, target);
+    why = why != NULL ? why : ms_check_diagnose(&run);
     why = why != NULL ? why : check_renderable(&run, json);
     if (why == NULL) {
         status = check_print(&run, target, json, out, err);
     } else if (handover_reason != NULL) {
         *handover_reason = why;
     }
-    if (run.have_check) {
-        ms_check_free(&run.check);
-    }
-    ms_arena_free(&run.std_syntax);
-    ms_arena_free(&run.arena);
-    ms_names_free(&run.names);
+    ms_check_run_free(&run);
     return status;
 }

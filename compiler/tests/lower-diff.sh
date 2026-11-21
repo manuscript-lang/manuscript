@@ -49,6 +49,31 @@ cut -d'|' -f1 "$out/lower.c.compared" > "$out/lower.compared.keys"
 awk -F'|' -v list="$out/lower.compared.keys" '
     BEGIN { while ((getline line < list) > 0) keep[line] = 1 }
     $1 in keep' "$out/lower.rust.all" > "$out/lower.rust.compared"
+# A function both sides emit once must have the same signature: parameter and result types, `move` modes and
+# the `ret_borrowed`, `ret_view` and `export` flags, which callers lowered by either side rely on. The text
+# comparison above keys on the types, so a function whose signature differs would be left out of it as
+# a function only C produced; this lists them, divergent functions included.
+signatures() {
+    sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g' "$1" | awk '
+        /^=== / { file = $2; next }
+        /^fn @/ { name = $2; sub(/\(.*/, "", name); sig = $0; sub(/^fn @[^(]*/, "", sig); sub(/ !.*$/, "", sig)
+                  print file " " name "|" sig }' | sort
+}
+signatures "$out/lower.c" > "$out/sig.c"
+signatures "$out/lower.rust" > "$out/sig.rust"
+# Names each side emits once.
+cut -d'|' -f1 "$out/sig.c" | uniq -u > "$out/sig.c.once"
+cut -d'|' -f1 "$out/sig.rust" | uniq -u > "$out/sig.rust.once"
+awk -F'|' -v c="$out/sig.c.once" -v r="$out/sig.rust.once" '
+    BEGIN { while ((getline l < c) > 0) inc[l] = 1; while ((getline l < r) > 0) inr[l] = 1 }
+    FNR == NR { if ($1 in inc && $1 in inr) csig[$1] = $2; next }
+    ($1 in csig) && csig[$1] != $2 { printf "%s\n  C:    %s\n  Rust: %s\n", $1, csig[$1], $2; bad++ }
+    END { exit bad > 0 }' "$out/sig.c" "$out/sig.rust" > "$out/sig.diff" || {
+    echo "FAIL lower signatures: C and Rust differ on a function both emit"
+    head -20 "$out/sig.diff"
+    exit 1
+}
+
 if cmp -s "$out/lower.rust.compared" "$out/lower.c.compared" && [ -s "$out/lower.c.compared" ]; then
     echo "ok   lower ($(wc -l < "$out/lower.c.compared") functions compared of $(wc -l < "$out/lower.c.keyed") lowered in C)"
 else

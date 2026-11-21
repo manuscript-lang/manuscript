@@ -23,6 +23,7 @@
 #include "fs_support.h"
 #include "ms_rt/chars.h"
 #include "ms_rt/safe.h"
+#include "ms_rt/io.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/terminal.h"
 #include "ms_sched.h"
@@ -56,9 +57,11 @@ typedef struct MsTerminal {
     _Atomic uint32_t references; /* handles and running reads; the last release destroys it */
     _Atomic uint32_t handles;    /* handles alone; the last one's drop closes the terminal */
     _Atomic bool closed;         /* set once, by close */
+    _Atomic bool abandoned;      /* the running read job's caller gave up (timeout or cancel): it reads nothing more */
     uint32_t parts;              /* PART_* bits, set while opening and read while destroying */
     bool input_was_nonblocking;  /* the descriptors' modes before libuv reopened them, put back at destroy */
     bool output_was_nonblocking;
+    uv_mutex_t read_lock; /* held by a read job from start to end: an abandoned job may still be ending when the next starts */
     uv_loop_t loop;     /* runs only inside a read wait, one at a time per terminal */
     uv_tty_t input;     /* on `loop` */
     uv_tty_t output;    /* writes only; used from the runtime thread */
@@ -213,6 +216,7 @@ static void terminal_destroy(MsTerminal *terminal) {
     (void)ms_sys_fd_set_nonblocking(OUTPUT_FD, terminal->output_was_nonblocking);
     ms_fs_buffer_free(&terminal->restore);
     ms_fs_buffer_free(&terminal->text);
+    uv_mutex_destroy(&terminal->read_lock);
     free(terminal);
 }
 
@@ -349,6 +353,11 @@ static MsTerminal *terminal_open(MsStr *err) {
     atomic_init(&terminal->references, 1);
     atomic_init(&terminal->handles, 0);
     atomic_init(&terminal->closed, false);
+    if (uv_mutex_init(&terminal->read_lock) < 0) {
+        msrt_string_from_bytes((const uint8_t *)"out of memory", 13, err);
+        free(terminal);
+        return NULL;
+    }
     terminal->input_was_nonblocking = is_nonblocking(INPUT_FD);
     terminal->output_was_nonblocking = is_nonblocking(OUTPUT_FD);
     if (terminal_setup(terminal) < 0) {
@@ -491,6 +500,11 @@ typedef struct ReadWait {
 static void on_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer) {
     ReadWait *wait = handle->data;
     (void)suggested;
+    if (atomic_load(&wait->terminal->abandoned)) {
+        /* No buffer: libuv reports UV_ENOBUFS and leaves the bytes in the descriptor for the next wait. */
+        *buffer = uv_buf_init(NULL, 0);
+        return;
+    }
     *buffer = uv_buf_init((char *)wait->bytes, (unsigned int)sizeof wait->bytes);
 }
 
@@ -502,7 +516,7 @@ static void on_read(uv_stream_t *stream, ssize_t count, const uv_buf_t *buffer) 
     }
     if (count > 0) {
         wait->length = (size_t)count;
-    } else {
+    } else if (count != UV_ENOBUFS) {
         wait->ended = true;
     }
     (void)uv_read_stop(stream);
@@ -516,10 +530,15 @@ static void on_quick_timeout(uv_timer_t *timer) { uv_stop(timer->loop); }
 static void read_run(void *data) {
     ReadWait *wait = data;
     MsTerminal *terminal = wait->terminal;
+    /* One job at a time on the loop: a wait the caller gave up on (a timed-out `next`) ends when its wake-up reaches it,
+     * and a job that started meanwhile would share its loop and input and could take a key into the abandoned wait. */
+    uv_mutex_lock(&terminal->read_lock);
     if (atomic_load(&terminal->closed)) {
         wait->ended = true;
+        uv_mutex_unlock(&terminal->read_lock);
         return;
     }
+    atomic_store(&terminal->abandoned, false); /* the previous job ended: its caller's give-up is not this one's */
     terminal->input.data = wait;
     (void)uv_timer_init(&terminal->loop, &wait->timer);
     if (wait->quick) {
@@ -534,6 +553,7 @@ static void read_run(void *data) {
     uv_timer_stop(&wait->timer);
     uv_close((uv_handle_t *)&wait->timer, NULL);
     (void)uv_run(&terminal->loop, UV_RUN_NOWAIT);
+    uv_mutex_unlock(&terminal->read_lock);
 }
 
 /* Frees a wait, on the runtime thread: now, or after the pool finished an abandoned one. */
@@ -619,6 +639,7 @@ uint8_t msstd_terminal_raw_terminal_read(const MsObj *handle, uint8_t quick) {
     if (outcome != MS_SCHED_DONE) {
         /* The pool owns the wait now and ends it when the wake-up reaches it; the handle keeps the terminal alive. A
          * bounded read (`next(timeout:)`) whose time is up ends here too, as a timeout. */
+        atomic_store(&terminal->abandoned, true);
         (void)uv_async_send(&terminal->wake);
         if (outcome == MS_SCHED_TIMED_OUT) {
             return STATUS_TIMED_OUT;

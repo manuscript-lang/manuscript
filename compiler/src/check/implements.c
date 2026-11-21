@@ -49,9 +49,10 @@ static bool fit_row_is_equals(const MsCheck *c, const MsMethods *m, uint32_t row
 }
 
 static MsFit fit_equal(FitWalk *w, MsTy ty);
+static MsFit fit_structural(FitWalk *w, MsTy ty, MsProperty property);
 
 /* The answer for the parts of `ty` a definition lists, once its variables are replaced by the arguments. */
-static MsFit fit_equal_parts(FitWalk *w, MsTy ty, const MsTyParam *parts, uint32_t count, const MsDef *def) {
+static MsFit fit_equal_parts(FitWalk *w, MsTy ty, const MsTyParam *parts, uint32_t count, const MsDef *def, MsProperty property) {
     MsFit answer = MS_FIT_YES;
     // Interning a substituted type may move the table's argument pool, so the arguments are copied out.
     MsTy args[FIT_ARGS];
@@ -64,7 +65,7 @@ static MsFit fit_equal_parts(FitWalk *w, MsTy ty, const MsTyParam *parts, uint32
         const MsTySubst subst = {.vars = def->vars, .args = args, .count = def->nvars};
         const MsTy part = ms_ty_subst(&w->c->tys, &scratch, parts[i].ty, &subst);
         ms_arena_free(&scratch);
-        answer = fit_all(answer, fit_equal(w, part));
+        answer = fit_all(answer, fit_structural(w, part, property));
     }
     return answer;
 }
@@ -144,12 +145,106 @@ static MsFit fit_equal(FitWalk *w, MsTy ty) {
         return MS_FIT_UNKNOWN;
     }
     w->active[w->depth++] = ty;
-    MsFit answer = fit_equal_parts(w, ty, def.fields, def.nfields, &def);
+    MsFit answer = fit_equal_parts(w, ty, def.fields, def.nfields, &def, MS_PROP_EQUAL);
     for (uint32_t k = 0; k < def.ncases && answer != MS_FIT_NO; k++) {
-        answer = fit_all(answer, fit_equal_parts(w, ty, def.cases[k].fields, def.cases[k].nfields, &def));
+        answer = fit_all(answer, fit_equal_parts(w, ty, def.cases[k].fields, def.cases[k].nfields, &def, MS_PROP_EQUAL));
     }
     w->depth--;
     return answer;
+}
+
+/* ---- Clonable and Data of a declared type ---- */
+
+/* Whether a row the standard library marks (`// ms: data`, `// ms: clonable`: a row with no method) vouches
+ * for `ty` having `property`. */
+static bool fit_vouched(const FitWalk *w, MsTy ty, MsProperty property) {
+    const MsMethods *m = &w->table->methods;
+    const MsTyTable *t = &w->c->tys;
+    for (uint32_t i = 0; i < m->count; i++) {
+        if (m->decl[i] == NULL && m->contract[i] != MS_TY_NONE && t->id[m->receiver[i]] == t->id[ty] &&
+            ms_ty_is(t, m->contract[i], ms_property_builtin(property))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Whether a method of the declared type `ty` implements the property or is a `close`, which make the
+ * structural answer one the Rust checker decides by other rules. */
+static bool fit_has_deciding_row(const FitWalk *w, MsTy ty, MsProperty property) {
+    const MsMethods *m = &w->table->methods;
+    const MsTyTable *t = &w->c->tys;
+    for (uint32_t i = 0; i < m->count; i++) {
+        if (t->def[m->receiver[i]] != t->def[ty] || m->decl[i] == NULL) {
+            continue;
+        }
+        if ((m->contract[i] != MS_TY_NONE && ms_ty_is(t, m->contract[i], ms_property_builtin(property))) ||
+            ms_name_is(w->c->names, m->decl[i]->name, "close")) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Clonable (a value with one owner but no resource, function or handle in it) and Data (plain
+ * values only) as the parts of the value decide them. Only a confident YES or NO is given: whatever
+ * the Rust checker decides by a declaration it makes (an opaque type, an impl, a native's own `clone`)
+ * is UNKNOWN. */
+static MsFit fit_data(FitWalk *w, MsTy ty, MsProperty property) {
+    const MsTyTable *t = &w->c->tys;
+    switch (ms_ty_kind(t, ty)) {
+    case MS_K_PRIMITIVE:
+        return ms_ty_is(t, ty, MS_BI_NEVER) && property == MS_PROP_DATA ? MS_FIT_NO : MS_FIT_YES;
+    case MS_K_INVALID:
+        return MS_FIT_YES;
+    case MS_K_FUNCTION:
+        return MS_FIT_NO;
+    case MS_K_NATIVE:
+    case MS_K_TYPE:
+    case MS_K_ALTERNATIVE:
+        break;
+    default:
+        return MS_FIT_UNKNOWN;
+    }
+    if (fit_vouched(w, ty, property)) {
+        return MS_FIT_YES;
+    }
+    const MsBuiltin builtin = t->builtin[ty];
+    if (builtin == MS_BI_LIST || (property == MS_PROP_CLONABLE && (builtin == MS_BI_MAP || builtin == MS_BI_SET || builtin == MS_BI_OPTIONAL))) {
+        MsFit answer = MS_FIT_YES;
+        for (uint32_t i = 0; i < t->nargs[ty]; i++) {
+            answer = fit_all(answer, fit_structural(w, ms_ty_args(t, ty)[i], property));
+        }
+        return answer;
+    }
+    if (ms_ty_kind(t, ty) == MS_K_NATIVE || t->def[ty] == 0 || w->depth == FIT_DEPTH) {
+        return MS_FIT_UNKNOWN; // a native owns storage the runtime decides about
+    }
+    for (uint32_t i = 0; i < w->depth; i++) {
+        if (w->active[i] == ty) {
+            return property == MS_PROP_CLONABLE ? MS_FIT_YES : MS_FIT_UNKNOWN; // a cycle is cloned; Data decides it elsewhere
+        }
+    }
+    const MsSymId sym = t->def[ty] - 1;
+    const MsDecl *decl = sym < w->c->syms.count ? w->c->syms.decl[sym] : NULL;
+    if (decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.opaque || fit_has_deciding_row(w, ty, property)) {
+        return MS_FIT_UNKNOWN;
+    }
+    const MsDef def = *ms_def(w->c, sym); // by value: a later ms_def may move the rows
+    if (def.nvars != t->nargs[ty]) {
+        return MS_FIT_UNKNOWN;
+    }
+    w->active[w->depth++] = ty;
+    MsFit answer = fit_equal_parts(w, ty, def.fields, def.nfields, &def, property);
+    for (uint32_t k = 0; k < def.ncases && answer != MS_FIT_NO; k++) {
+        answer = fit_all(answer, fit_equal_parts(w, ty, def.cases[k].fields, def.cases[k].nfields, &def, property));
+    }
+    w->depth--;
+    return answer;
+}
+
+static MsFit fit_structural(FitWalk *w, MsTy ty, MsProperty property) {
+    return property == MS_PROP_EQUAL ? fit_equal(w, ty) : fit_data(w, ty, property);
 }
 
 static MsFit fit_primitive_property(const MsTyTable *t, MsTy receiver, MsProperty property) {
@@ -226,6 +321,11 @@ static MsFit fit_shape(MsCheck *c, const MsMethodTable *table, MsTy receiver, Ms
     return answer;
 }
 
+MsFit ms_implements_equal(MsCheck *c, const MsMethodTable *table, MsTy ty) {
+    FitWalk walk = {.c = c, .table = table};
+    return fit_structural(&walk, ty, MS_PROP_EQUAL);
+}
+
 MsFit ms_implements(MsCheck *c, const MsMethodTable *table, MsTy receiver, MsTy contract) {
     const MsTyTable *t = &c->tys;
     if (receiver == contract) {
@@ -236,9 +336,10 @@ MsFit ms_implements(MsCheck *c, const MsMethodTable *table, MsTy receiver, MsTy 
     }
     MsProperty property;
     if (fit_property(t, contract, &property)) {
-        if (property == MS_PROP_EQUAL && ms_ty_kind(t, receiver) != MS_K_PRIMITIVE) {
+        if ((property == MS_PROP_EQUAL || property == MS_PROP_CLONABLE || property == MS_PROP_DATA) &&
+            ms_ty_kind(t, receiver) != MS_K_PRIMITIVE) {
             FitWalk walk = {.c = c, .table = table};
-            return fit_equal(&walk, receiver);
+            return fit_structural(&walk, receiver, property);
         }
         return fit_primitive_property(t, receiver, property);
     }

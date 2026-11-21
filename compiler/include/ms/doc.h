@@ -26,4 +26,8 @@ size_t ms_doc_text_end(MsStr s);
 
 size_t ms_doc_effect_lines(MsStr source, size_t offset, MsStr *names, size_t max);
 
+/* Whether a `// ms: MARKER` line is in the comment block above the declaration at `offset`: a bundled
+ * declaration states a property there that has nothing else to be written as. */
+bool ms_doc_has_marker(MsStr source, size_t offset, const char *marker);
+
 #endif

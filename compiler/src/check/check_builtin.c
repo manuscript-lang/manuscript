@@ -24,11 +24,15 @@ MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     const MsTyTable *tys = &b->c->tys;
     const uint32_t nargs = e->u.call.args.len;
-    if (expected == MS_TY_NONE || !ms_ty_is(tys, expected, MS_BI_RESULT) || tys->nargs[expected] != 2 || nargs > 1 ||
-        (nargs == 1 && e->u.call.args.ptr[0].has_name)) {
+    if (expected == MS_TY_NONE || !ms_ty_is(tys, expected, MS_BI_RESULT) || tys->nargs[expected] != 2 || nargs > 1) {
         return ms_body_unsupported(b);
     }
     const bool success = ms_name_is(b->c->names, callee->u.sym, "ok");
+    // A label must be the payload field's own name (`ok(value: v)`, `error(cause: e)`), as core.ms declares it.
+    if (nargs == 1 && e->u.call.args.ptr[0].has_name &&
+        !ms_body_result_label(b, expected, success, e->u.call.args.ptr[0].name)) {
+        return ms_body_unsupported(b);
+    }
     const MsTy payload = ms_ty_args(tys, expected)[success ? 0 : 1];
     // `ok()` stands for `ok(void)`: a Void payload may be left out.
     const bool omitted = nargs == 0 && payload == b->void_ty;
@@ -39,4 +43,29 @@ MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected) {
     b->facts->res_kind[callee->id] = MS_RES_CASE;
     b->facts->res_ref[callee->id] = success ? 0 : 1;
     return expected;
+}
+
+MsTy ms_body_builtin_open(MsBody *b, const MsExpr *e, MsTy hint) {
+    const MsTyTable *tys = &b->c->tys;
+    if (e->kind != MS_E_CALL || e->u.call.callee->kind != MS_E_NAME || e->u.call.args.len > 1 || hint == MS_TY_NONE ||
+        !ms_ty_is(tys, hint, MS_BI_RESULT) || tys->nargs[hint] != 2) {
+        return MS_TY_NONE;
+    }
+    const MsExpr *callee = e->u.call.callee;
+    const bool success = ms_name_is(b->c->names, callee->u.sym, "ok");
+    // Only the payload of the success case is open; an `error(e)` leaves the success type to the context.
+    if (!success || e->u.call.args.len != 1 || e->u.call.args.ptr[0].has_name) {
+        return MS_TY_NONE;
+    }
+    const MsTy payload = ms_body_expr(b, e->u.call.args.ptr[0].value, MS_TY_NONE);
+    const MsSymId result = ms_map_get(&b->c->std_types, ms_intern_cstr(b->c->names, "Result"));
+    if (payload == MS_TY_NONE || result == MS_NONE || b->c->syms.ty[result] == MS_TY_NONE ||
+        !(payload == b->void_ty || ms_body_is_admitted(b, payload))) {
+        return MS_TY_NONE;
+    }
+    const MsTy args[2] = {payload, ms_ty_args(tys, hint)[1]};
+    const MsTy ty = ms_ty_apply(b->c, b->c->syms.ty[result], args, 2);
+    b->facts->res_kind[callee->id] = MS_RES_CASE;
+    b->facts->res_ref[callee->id] = 0;
+    return ms_body_record(b, e->id, ty);
 }

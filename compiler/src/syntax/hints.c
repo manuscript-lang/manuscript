@@ -156,7 +156,7 @@ MsStr ms_did_you_mean(MsArena *arena, MsStr name, const MsStr *candidates, size_
 
 /* ---- lists ---- */
 
-static int compare_names(const void *a, const void *b) {
+int ms_str_compare_ptr(const void *a, const void *b) {
     return ms_str_compare(*(const MsStr *)a, *(const MsStr *)b);
 }
 
@@ -169,7 +169,7 @@ size_t ms_unique_sorted(MsArena *arena, const MsStr *names, size_t count, MsStr 
         }
     }
     if (kept > 1) {
-        qsort(sorted, kept, sizeof sorted[0], compare_names);
+        qsort(sorted, kept, sizeof sorted[0], ms_str_compare_ptr);
     }
     size_t unique = 0;
     for (size_t i = 0; i < kept; i++) {
