@@ -661,6 +661,9 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (builds_record) {
         return lr_construct(lb, e);
     }
+    if (lx_is_extern(lb, callee)) {
+        return lx_call(lb, e, callee);
+    }
     return lb_call_func(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false);
 }
 

@@ -30,11 +30,13 @@ target/release/examples/c_lower_oracle $files > "$out/program.rust" 2>/dev/null
 
 # One line per function: `program name sig line:col|block`, `.N` copy suffixes stripped.
 keyed() {
-    sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g' "$1" | awk '
+    # A bundled module's file number depends on which modules the program reaches: C numbers every one it checked, Rust only
+    # the ones main reaches. Only the project's own file 0 is compared by number.
+    sed -E -e 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g' -e 's/![1-9][0-9]*:/!F:/g' "$1" | awk '
         /^=== / { file = $2; next }
         /^; divergent$/ { looped = 1; next }
         /^fn @/ { name = $2; sub(/\(.*/, "", name); sig = $0; sub(/^fn @[^(]*/, "", sig)
-                  loc = sig; sub(/^.* ![0-9]+:/, "", loc); sub(/ .*$/, "", loc)
+                  loc = sig; sub(/^.* ![0-9A-Z]+:/, "", loc); sub(/ .*$/, "", loc)
                   sub(/ (ret_borrowed|ret_view|export|!).*$/, "", sig)
                   key = file " " name " " sig " " loc; body = ""; infn = 1 }
         infn { body = body $0 "\\n" }
