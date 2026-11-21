@@ -299,6 +299,8 @@ uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, MsPos pos, 
     bindings->callable[id] = b->function;
     bindings->flags[id] = flags;
     bindings->role[id] = (uint8_t)role;
+    bindings->conflict[id] = MS_CONFLICT_NONE;
+    bindings->conflict_ty[id] = MS_TY_NONE;
     return id;
 }
 
@@ -2125,6 +2127,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->pattern_binding = MS_NEW_N(arena, uint32_t, nodes);
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
+    facts->arm_contract = MS_NEW_N(arena, MsTy, nodes);
+    memset(facts->arm_contract, 0, nodes * sizeof *facts->arm_contract);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
     facts->refusal = MS_NEW_N(arena, MsSite, nodes);
     memset(facts->refusal, 0, nodes * sizeof *facts->refusal);
@@ -2185,6 +2189,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     bindings->pos = MS_NEW_N(arena, MsPos, nodes);
     bindings->flags = MS_NEW_N(arena, uint8_t, nodes);
     bindings->role = MS_NEW_N(arena, uint8_t, nodes);
+    bindings->conflict = MS_NEW_N(arena, uint8_t, nodes);
+    bindings->conflict_ty = MS_NEW_N(arena, MsTy, nodes);
     bindings->count = 0;
 }
 
