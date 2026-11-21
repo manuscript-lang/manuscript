@@ -392,15 +392,20 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
         return invalid_receiver_call(b, e, binding);
     }
     Target target;
+    MsSym name = callee->u.member.name;
+    if (ms_is_index_store(b->c->names, e)) {
+        // `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`.
+        name = ms_intern_cstr(b->c->names, ms_ty_is(&b->c->tys, receiver_ty, MS_BI_MAP) ? "add" : "set");
+    }
     MsTy dispatch = receiver_ty; /* the interface an operation is called through */
     bool resolved;
     if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_VARIABLE) {
-        resolved = bound_operation(b, receiver_ty, callee->u.member.name, &target, &dispatch);
+        resolved = bound_operation(b, receiver_ty, name, &target, &dispatch);
     } else if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT) {
-        resolved = operation_of(b, receiver_ty, callee->u.member.name, &target);
+        resolved = operation_of(b, receiver_ty, name, &target);
     } else {
-        resolved = method_row(b, receiver_ty, callee->u.member.name, e->u.call.args.len, &target) ||
-                   value_operation(b, receiver_ty, callee->u.member.name, &target);
+        resolved = method_row(b, receiver_ty, name, e->u.call.args.len, &target) ||
+                   value_operation(b, receiver_ty, name, &target);
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved || target.consuming || (target.mutating && immutable) ||
