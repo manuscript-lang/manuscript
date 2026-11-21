@@ -340,7 +340,7 @@ void lc_check(Lb *lb) {
             const MirInst *inst = &f->blocks[k].insts[i];
             const bool owns = inst->op == MOP_ScopeOwn && inst->imm.b == 0;
             if ((inst->op == MOP_Drop || owns) && lc_find(lb, mir_b_ty(&lb->b, inst->args[0])) != NULL) {
-                lb->ok = false;
+                (void)LB_UNSUPPORTED(lb);
                 return;
             }
         }

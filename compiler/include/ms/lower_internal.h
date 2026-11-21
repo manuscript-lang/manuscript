@@ -60,7 +60,9 @@ typedef struct LbJob {
 /* A function or method being lowered: its syntax, the node its facts hang on, its signature, and
  * the receiver a method takes as parameter 0. */
 typedef struct LbCallable {
-    const MsFunc *fn;
+    const MsFunc *fn;     /* NULL for a module constant */
+    MsExpr *value;       /* a module constant's initializer: the function of no parameters returns it */
+    MsSym const_name;
     uint32_t node;  /* the declaration (or method) node: `param_consumed`, `ret_borrowed` */
     MsPos pos;
     MsSym name;     /* the MIR name, with the receiver's for a method */
@@ -294,6 +296,7 @@ bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `
 MirTy lst_type(Lb *lb, MsTy ty);
 bool lb_is_list(const Lb *lb, MirTy ty);
 LbVal lst_literal(Lb *lb, const MsExpr *e);
+LbVal lst_empty(Lb *lb, MirTy ty);
 LbVal lst_index(Lb *lb, const MsExpr *e);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
@@ -352,6 +355,7 @@ LbVal lq_equal(Lb *lb, LbVal x, LbVal y, bool negate);
 
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);
+LbVal lt_single(Lb *lb, const MsExpr *hole);
 LbVal lt_scalar_text(Lb *lb, MsTy checked, MirValue v);
 LbVal lt_to_string(Lb *lb, LbVal value, MsTy checked);
 uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want);
