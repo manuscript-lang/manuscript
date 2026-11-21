@@ -134,6 +134,7 @@ typedef struct MsPackage {
     const char *const *files; /* the locked files by `/` path, sorted */
     const char *const *hashes; /* the expected SHA-256 of each */
     uint32_t file_count;
+    bool member; /* a workspace member: its files are the project's own, so they are not hashed and may declare natives */
 } MsPackage;
 
 /* One `[dependencies]` entry as `alias\turl\tkind\treference` (kind tag, sha or version; the reference is the tag, the
@@ -153,6 +154,33 @@ const char *ms_embed_module_path(MsArena *a, const char *root, const char *name)
 /* The source of that module for the directory `root` (which holds the files): every file as Base64 text. A symbolic
  * link, names that differ only by letter case, a file over 16 MiB or more than 64 MiB in all is an error. */
 MS_NODISCARD bool ms_embed_generate(MsArena *a, const char *name, const char *root, const char **source, MsProjectError *err);
+
+/* ---- workspaces (project/workspace.c) ---- */
+
+/* One project of a workspace. */
+typedef struct MsMember {
+    const char *name; /* `[project] name`, unique in the workspace */
+    const char *root; /* the canonical directory holding the member's ms.toml */
+} MsMember;
+
+/* A workspace root and the members it lists, the root's own project first when it has one. */
+typedef struct MsWorkspace {
+    const char *root; /* the canonical directory holding the root ms.toml and ms.lock */
+    MsMember *members;
+    uint32_t count;
+} MsWorkspace;
+
+/* The member whose directory is `dir`, or NULL. */
+const MsMember *ms_workspace_member_at(const MsWorkspace *w, const char *dir);
+/* Expands and checks the members of a parsed workspace root. */
+MS_NODISCARD bool ms_workspace_read(MsArena *a, const MsProject *root_project, MsWorkspace *out, MsProjectError *err);
+/* The workspace that contains the project whose manifest is `manifest`: the manifest itself when it has `[workspace]`,
+ * else the nearest ancestor manifest that lists this directory. `*found` is false for a project outside any
+ * workspace. */
+MS_NODISCARD bool ms_workspace_find(MsArena *a, const char *manifest, MsWorkspace *out, bool *found, MsProjectError *err);
+/* The members of `manifest` when it is a workspace root with no `[project]` of its own, so a command aimed at it means
+ * "every member"; `*found` is false for any other manifest or file. */
+MS_NODISCARD bool ms_workspace_root_members(MsArena *a, const char *manifest, MsWorkspace *out, bool *found, MsProjectError *err);
 
 /* ---- packages (project/attach.c) ---- */
 
@@ -225,6 +253,7 @@ typedef struct MsGraphPackage {
     const char *spec;
     const char *const *effects;
     uint32_t effect_count;
+    bool member; /* a workspace member: it may declare natives */
 } MsGraphPackage;
 
 typedef struct MsGraph {
