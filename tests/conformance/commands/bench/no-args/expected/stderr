@@ -1,0 +1,40 @@
+ms bench: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms bench ms.toml
+
+Usage: ms bench <file.ms|ms.toml> [--json] [--filter text] [--time duration] [--samples count] [--iterations count] [--ops] [--baseline file --fail-over percent] [--timeout duration] [--build-type level] [-- program arguments]
+
+Build and run bench blocks in the module and its imported modules. A project also loads bench.ms and *_bench.ms files.
+A bench body is one iteration: the @std/test/bench.ms driver repeats it until a sample takes --time (this calibration is the warmup),
+then times --samples samples and reports per-iteration min, median, mean, max, and standard deviation. One more counted run
+reports the runtime's work per operation: allocations, bytes allocated, list copies and string clones. These counts do not depend
+on machine load, so they can gate a build where times cannot.
+Each bench runs in its own process with the project directory (or the file's directory) as the working directory. A bench that
+fails (an error, a fault, or the timeout) fails by name. Standard output written by a bench is discarded.
+Arguments after -- are passed to the bench executable; its exit status is 1 when any bench failed.
+
+Options:
+  --json              Emit one versioned result with each bench's statistics under stats (nanoseconds per iteration)
+  --time <duration>    Target duration of one sample (default 100ms; at least 1ms)
+  --samples <count>    Timed samples per bench (default 10)
+  --iterations <count> Fixed iterations per sample; skips calibration
+  --ops                Build with a counter of the MIR operations the program executes and run each bench once; the same on
+                       every platform and backend, and it counts your code, not the runtime. Times of an --ops run are not meaningful
+  --baseline <file>    An earlier `--json` result; the run fails when a work count rose more than --fail-over (times are never compared)
+  --fail-over <percent> Rise over the baseline a work count may have (default 3)
+  --filter <text>      Run only benches whose module::name contains text
+  --timeout <duration> Fail a bench that runs longer (default 10m; 0 disables)
+  --bench <full-name>  Select exact module::name (repeatable); --test is the same option
+  --match <regex>      Include names matching a regular expression
+  --exclude <regex>    Exclude names matching a regular expression
+  --list              List selected benches without running them
+  --fail-fast         Stop after the first failed bench
+  --repeat <count>     Run the selected benches count times
+  --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive); benchmark with the default Release
+  --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
+  --static              Linux: link a static musl executable instead of the system glibc
+  -h, --help  Show this help without executing the command
+
+Examples:
+  ms bench bench.ms
+  ms bench ms.toml --filter "parse" --time 500ms
+  ms bench ms.toml --json --samples 20 > bench.json
+  ms bench ms.toml --baseline bench.json --fail-over 3

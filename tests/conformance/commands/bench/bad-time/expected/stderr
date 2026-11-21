@@ -1,0 +1,1 @@
+invalid --time "0"; use a duration of at least 1ms such as 200ms or 1s
