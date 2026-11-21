@@ -411,8 +411,8 @@ static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
     return (LbVal){same, false};
 }
 
-/* Whether `ty` is a record, enum, optional or list: `==` on it calls a generated function. */
-static bool lb_is_aggregate(const Lb *lb, MirTy ty) {
+/* Whether `ty` is a record, enum, optional or list: `==` and `format` on it call a generated function. */
+bool lb_is_aggregate(const Lb *lb, MirTy ty) {
     const uint8_t kind = mir_ty_data(lb->m, ty)->kind;
     return kind == MK_TYPE || kind == MK_ALT || kind == MK_OPT || kind == MK_LIST;
 }
