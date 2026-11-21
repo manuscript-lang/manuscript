@@ -13,5 +13,8 @@ object step in `compiler/link/object.c` hands it to the pinned `opt` and `llc`.
   alternatives and optionals, unchecked list operations, string bytes and constant data, static data.
 - `emit_closure.c`, `emit_iface.c`, `emit_task.c`: closures and indirect calls, interfaces, the cancellation poll.
 
-Not written yet (a function using one reports the op name in `why`): fault tables and source places (`places`
-is accepted and ignored), and the purity and glue-depth hints that only speed up LLVM.
+- `emit_debug.c`: source places (`places`): a `!dbg` location per instruction, column = module-wide scope number.
+- `emit_tables.c`: the function names and module-wide scope list the fault tables (compiler/link) need; build it
+  before `emit_name_symbols`.
+
+Not written yet: the purity and glue-depth hints that only speed up LLVM.

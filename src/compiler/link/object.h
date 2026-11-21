@@ -4,6 +4,7 @@
 #define MS_COMPILER_LINK_OBJECT_H
 
 #include "base/strbuild.h"
+#include "compiler/emit/emit_tables.h"
 
 typedef struct ObjectOptions {
   MsSpan opt;       /* the `opt` executable */
@@ -12,6 +13,8 @@ typedef struct ObjectOptions {
   bool speed;       /* optimize (O3); otherwise the IR goes straight to the code generator at -O0 */
   bool vectorize;   /* with `speed`: allow LLVM's loop and SLP vectorizers */
   bool verify;      /* check the IR after every pass */
+  const MirModule *module;        /* with `tables`: the renamed module (emit_name_symbols) */
+  const EmitTableInfo *tables;    /* NULL for no fault tables; the program then needs emit_entry_main(tables=true) */
 } ObjectOptions;
 
 /* Compiles `ir` to the object file `object`. On failure `why` gets the tool's name and its output. */
