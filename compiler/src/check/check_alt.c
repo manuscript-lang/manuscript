@@ -39,6 +39,19 @@ static bool alt_info(const MsBody *b, MsTy ty, AltInfo *out) {
     return out->ncases != 0 && out->def.nvars == c->tys.nargs[ty];
 }
 
+bool ms_body_is_foreign_opaque(const MsBody *b, MsTy ty) {
+    const MsCheck *c = b->c;
+    const uint32_t def = ty == MS_TY_NONE ? 0 : c->tys.def[ty];
+    if (def == 0) {
+        return false;
+    }
+    const MsDecl *decl = c->syms.decl[def - 1];
+    if (decl == NULL || c->syms.module[def - 1] == b->module) {
+        return false;
+    }
+    return (decl->kind == MS_D_ENUM && decl->u.enumeration.opaque) || (decl->kind == MS_D_TYPE && decl->u.type.opaque);
+}
+
 bool ms_body_optional_payload(const MsBody *b, MsTy ty, MsTy *payload) {
     AltInfo info = {0};
     if (ty == MS_TY_NONE || !alt_info(b, ty, &info) || !info.optional) {
@@ -290,7 +303,8 @@ static MsTy alt_qualifier(MsBody *b, const MsExpr *member) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, left->u.sym);
     const MsSyms *syms = &b->c->syms;
-    if (sym == MS_NONE || syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_ENUM || syms->nvars[sym] != 0) {
+    if (sym == MS_NONE || syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_ENUM || syms->nvars[sym] != 0 ||
+        ms_body_is_foreign_opaque(b, syms->ty[sym])) {
         return MS_TY_NONE;
     }
     return syms->ty[sym];

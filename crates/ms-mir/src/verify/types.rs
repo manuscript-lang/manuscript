@@ -1350,6 +1350,13 @@ impl InstCheck<'_, '_> {
         match self.inst.op {
             Op::ScopeOwn => {
                 self.arity(1)?;
+                // A close function (its index plus two) runs on the address of a slot.
+                if matches!(self.inst.imm, Imm::Scope(_, kind) if kind >= 2) {
+                    return self.want(
+                        self.t(0) == Ty::PTR,
+                        "scope.own with a close function takes a slot address",
+                    );
+                }
                 self.want(
                     self.v.needs_drop(self.t(0)),
                     "scope.own takes a value that needs a drop",

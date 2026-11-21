@@ -432,8 +432,9 @@ export fn cpu_usage() CpuUsage!:
 // Sends `signal`, from 0 through 64, to process `pid`, a signed 32-bit id; other values
 // return EINVAL, and the OS decides which signals and permissions are supported.
 // Signal 0 only checks that the process exists. On Windows, a positive PID supports
-// signal 0 and forced termination with INT, KILL, or TERM. A pid that names no process
-// returns ENOENT.
+// signal 0 and forced termination of another process with INT, KILL, or TERM; INT or
+// TERM sent to the process's own id is a stop request, as on every other platform.
+// A pid that names no process returns ENOENT.
 // ms: effect std.process.signal
 export fn send_signal(pid: Int, signal: Int) Void!:
 	return msstd_process_send_signal(pid, signal)

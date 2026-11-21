@@ -599,7 +599,8 @@ static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
  * resolve there) inside a scope named for the callee, as a frame called from this line. Only
  * literals and `none` are lowered; any other default refuses the function. */
 static MirValue lb_default_argument(Lb *lb, const MsExpr *call, MsSymId callee, const MsExpr *def) {
-    const bool plain = def->kind == MS_E_NUMBER || def->kind == MS_E_BOOL || def->kind == MS_E_VOID ||
+    const bool plain = def->kind == MS_E_NUMBER || def->kind == MS_E_BOOL || def->kind == MS_E_VOID || def->kind == MS_E_CALL ||
+                       def->kind == MS_E_LIST ||
                        (def->kind == MS_E_TEXT && def->u.text.len == 1 && def->u.text.ptr[0].expr == NULL);
     const uint32_t home = lb_view_of(lb, lb->c->syms.module[callee]);
     if (!plain || home == MS_NONE) {
