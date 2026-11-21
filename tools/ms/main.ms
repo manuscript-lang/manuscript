@@ -26,6 +26,7 @@ import (
 	run_members from "./test/members.ms",
 	run_bench, run_test from "./test/run.ms",
 	run_verify from "./verify.ms",
+	run_watch from "./watch.ms",
 	root_members from "./workspace.ms",
 )
 
@@ -72,12 +73,10 @@ fn is_source_command(command: String) Bool:
 		"profile"
 	].contains(command)
 
-// Runs `ms test` or `ms bench` in the front; none when the Rust command line must: a
-// `--watch`, several targets that are not all manifests, or a workspace root whose members
-// need the Rust command line to explain them.
+// Runs `ms test` or `ms bench` in the front; none when the Rust command line must:
+// several targets that are not all manifests, or a workspace root whose members need
+// the Rust command line to explain them.
 fn run_tests(root: Command, matches: Matches, inv: Invocation) Int?:
-	if inv.watch: return none
-
 	bench := inv.command == "bench"
 	manifests := inv.targets.filter(fn target: target.ends_with("ms.toml"))
 
@@ -146,6 +145,10 @@ fn run_source_command(root: Command, matches: Matches) Int:
 		return 2
 
 	if inv.command == "profile": return run_profile(inv)
+	if inv.watch and ["check", "lint", "test", "run"].contains(inv.command): return run_watch(
+		inv,
+		command_line(),
+	)
 
 	if inv.command == "check":
 		if status := run_check(inv): return status

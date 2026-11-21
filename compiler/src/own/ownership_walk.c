@@ -851,6 +851,21 @@ static void own_record_owned_borrow(OwnWalk *w, const MsExpr *e, const OwnSummar
     }
 }
 
+/* Whether the call passes every parameter of the function it names, or leaves out only ones with a
+ * default (the arguments are positional here: reordered calls were declined). */
+static bool own_arguments_fit(const OwnWalk *w, const MsExpr *e) {
+    const MsFunc *fn = &w->check->syms.decl[w->facts->call_callee[e->id]]->u.fn;
+    if (e->u.call.args.len > fn->params.len) {
+        return false;
+    }
+    for (uint32_t i = e->u.call.args.len; i < fn->params.len; i++) {
+        if (fn->params.ptr[i]->def == NULL) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* A call of a function this module declares: each argument is read, since a parameter that is
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
@@ -888,8 +903,7 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
         return;
     }
     const OwnSummary *callee = own_callee(w, e);
-    if (callee == NULL || e->u.call.callee->kind != MS_E_NAME ||
-        e->u.call.args.len > w->check->syms.decl[w->facts->call_callee[e->id]]->u.fn.params.len) {
+    if (callee == NULL || e->u.call.callee->kind != MS_E_NAME || !own_arguments_fit(w, e)) {
         w->supported = false;
         return;
     }
