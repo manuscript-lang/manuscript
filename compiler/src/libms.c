@@ -94,6 +94,7 @@
 #include "check/lower_map.c"
 #include "check/lower_enum.c"
 #include "check/lower_text.c"
+#include "check/lower_format.c"
 #include "check/lower_alt.c"
 #include "check/lower_closure.c"
 #include "check/lower_eq.c"
