@@ -1296,7 +1296,7 @@ static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     if (e->kind == MS_E_NAME && ms_name_is(b->c->names, e->u.sym, "none") && ms_body_find_binding(b, e->u.sym) == MS_NONE) {
         return ms_body_record(b, e->id, expected);
     }
-    const MsTy ty = ms_body_expr(b, e, MS_TY_NONE);
+    const MsTy ty = ms_body_expr(b, e, body_literal_hint(b, e, payload)); // `get_or(0)` on an Optional of a sized Int
     if (ty == MS_TY_NONE || ty == expected) {
         return ty;
     }
