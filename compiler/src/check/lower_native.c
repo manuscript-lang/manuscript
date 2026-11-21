@@ -6,6 +6,8 @@
  * the arguments; any other is a runtime call. No type or method is named here. A method whose
  * signature the table cannot marshal (a handle, a slot, an error slot) is left to the Rust lowering. */
 #include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "ms/lower_internal.h"
 #include "ms/rt_ops.h"
