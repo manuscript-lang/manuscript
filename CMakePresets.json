@@ -8,8 +8,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/.artifacts/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_C_COMPILER_LAUNCHER": "$env{MS_CCACHE}"
+        "CMAKE_C_COMPILER": "clang"
       }
     },
     {

@@ -1,5 +1,6 @@
 add_subdirectory(base)
 add_subdirectory(driver)
+add_subdirectory(lint)
 
 # `cmake --build <dir> --target conform-c`: the one progress number (plan rule 4).
 # MS_ORACLE_DIR holds the oracle `ms-conform` built from 660429d4, outside the repository.
