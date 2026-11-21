@@ -5,5 +5,4 @@ export fn tagged(name: String, tag: String = "!") String:
 	return name + tag
 
 export fn ignore[T](value: T, loud: Bool = false) Void:
-	if loud:
-		return
+	if loud: return
