@@ -2,8 +2,8 @@
 // that need it. The formatter is libms's (`ms_tool_format`,
 // compiler/include/ms/tool.h), so a program that imports this module links
 // `libmstool.a`. A directory or an `ms.toml` is expanded by `ms_tool_discover`. A
-// workspace, `--drop-labels` (the label rewrite), a file that is missing or not valid UTF-8,
-// and every error go to the Rust command, so those keep the Rust wording.
+// workspace, `--drop-labels` (the label rewrite), a file that is missing or not valid
+// UTF-8, and every error go to the Rust command, so those keep the Rust wording.
 import (
 	Bytes from "@std/bytes.ms",
 	JsonValue from "@std/data/json.ms",
@@ -16,11 +16,10 @@ import (
 	stat,
 	write_file from "@std/os/fs.ms",
 	relative from "@std/os/path.ms",
-
-	root_members from "./workspace.ms",
 	expect_equal from "@std/test/test.ms",
 
 	flag, list_of, number, object, render_document, text, with from "./json_out.ms",
+	root_members from "./workspace.ms",
 )
 
 // The first syntax error: `code` is the byte offset, `message` is
@@ -30,9 +29,9 @@ export enum FormatError:
 
 extern fn ms_tool_format(text: String) String!FormatError
 
-// The files of a directory or of the project an ms.toml names. Status 1 is an error with the
-// Rust text and status 2 a project the C reader does not cover; both leave the command to
-// the Rust `ms`, which words them.
+// The files of a directory or of the project an ms.toml names. Status 1 is an error
+// with the Rust text and status 2 a project the C reader does not cover; both leave the
+// command to the Rust `ms`, which words them.
 export enum DiscoverError:
 	Failed(message: String)
 	Unsupported(message: String)
@@ -49,8 +48,10 @@ fn expand_targets(targets: List[String]) List[String]?:
 			files.append(target.clone())
 			continue
 
-		// A workspace root without a `[project]` stands for its members, as in the other commands.
+		// A workspace root without a `[project]` stands for its members, as in the
+		// other commands.
 		var manifests = [target.clone()]
+
 		if members := root_members(target):
 			manifests = []
 			for member in members: manifests.append(member.manifest.clone())
@@ -286,7 +287,6 @@ export fn run_fmt(args: List[String]) Printed?:
 	var order = List[String]()
 	var sources = Map[String, String]()
 	var modes = Map[String, Int]()
-
 	expanded := expand_targets(request.targets)
 	if expanded.is_none(): return none
 
