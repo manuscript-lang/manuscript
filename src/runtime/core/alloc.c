@@ -18,3 +18,10 @@ static const MsAllocator allocator = {mimalloc_allocate, mimalloc_reallocate, mi
 const MsAllocator *ms_core_allocator(void) {
   return &allocator;
 }
+
+void ms_core_heap_stats(int64_t *used, int64_t *committed) {
+  size_t current_commit = 0;
+  mi_process_info(NULL, NULL, NULL, NULL, NULL, &current_commit, NULL, NULL);
+  *used = (int64_t)current_commit;
+  *committed = (int64_t)current_commit;
+}
