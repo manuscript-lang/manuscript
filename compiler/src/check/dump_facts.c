@@ -787,31 +787,7 @@ static bool facts_has_default(MsParams params) {
  * one it does not cover (methods, tests, impls), prints empty lists and `"effects_known": false`.
  * `calls` lists the project functions the body calls, as entity keys: a function with a method or
  * interface call or an implicit `close` is partial, so its calls are never printed short. */
-/* Whether callee symbol id `id` is a function of a module of the project (not the standard library). */
-static bool facts_is_project_callee(const MsCheck *c, MsStr id) {
-    for (uint32_t s = 0; s < c->syms.count; s++) {
-        const MsStr name = ms_name(c->names, c->syms.id[s]);
-        if (name.len != id.len || memcmp(name.ptr, id.ptr, id.len) != 0 || c->syms.module[s] == MS_NONE) {
-            continue;
-        }
-        const MsStr path = ms_name(c->names, c->mods[c->syms.module[s]].path);
-        return !(path.len >= 5 && memcmp(path.ptr, "@std/", 5) == 0);
-    }
-    return false;
-}
-
-/* Whether the entity calls a function of another project module. The effect scan lists such a call among the
- * external ones, and Rust lists it among the calls, so the effect columns of the entity are not claimed. */
-static bool facts_calls_other_module(const MsCheck *c, const MsEntityEffects *found) {
-    for (uint32_t i = 0; i < found->nexternal; i++) {
-        if (facts_is_project_callee(c, found->external[i])) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static void facts_put_effects(MsBuf *out, const MsCheck *c, const MsDecl *d, const MsEntityEffects *rows, uint32_t nrows, const char *file) {
+static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects *rows, uint32_t nrows) {
     const MsEntityEffects *found = NULL;
     for (uint32_t r = 0; r < nrows; r++) {
         found = rows[r].decl == d ? &rows[r] : found;
@@ -819,7 +795,7 @@ static void facts_put_effects(MsBuf *out, const MsCheck *c, const MsDecl *d, con
     const bool scanned = d != NULL && (d->kind == MS_D_FN || d->kind == MS_D_CONST);
     const bool declaration = d != NULL && !scanned && d->kind != MS_D_IMPL && d->kind != MS_D_TEST &&
                              !(d->kind == MS_D_TYPE && facts_has_default(d->u.type.fields)); /* a default runs code */
-    if (found == NULL || found->partial || facts_calls_other_module(c, found)) {
+    if (found == NULL || found->partial) {
         ms_buf_printf(out, "\"effects\": [], \"reach\": [], \"permits\": [], \"calls\": [], \"effects_known\": %s",
                       declaration ? "true" : "false");
         return;
@@ -830,11 +806,7 @@ static void facts_put_effects(MsBuf *out, const MsCheck *c, const MsDecl *d, con
     ms_buf_puts(out, ", ");
     facts_put_strings(out, "permits", found->permits, found->npermits, NULL);
     ms_buf_puts(out, ", ");
-    MsBuf prefix = {0};
-    ms_buf_printf(&prefix, "%s#fn#", file);
-    ms_buf_putc(&prefix, '\0');
-    facts_put_strings(out, "calls", found->calls, found->ncalls, prefix.data);
-    ms_buf_free(&prefix);
+    facts_put_strings(out, "calls", found->calls, found->ncalls, NULL);
     ms_buf_puts(out, ", \"effects_known\": true");
 }
 
@@ -948,7 +920,7 @@ static void facts_add_module(MsBuf *rows, MsBuf *imports, MsCheck *c, MsModId m,
         facts_fill_sites(sites, fact, d, NULL);
         fact->group = d->kind == MS_D_IMPL ? facts_impl_line(module, names, i) : d->pos.line;
         facts_seal_key(fact);
-        facts_put_effects(&fact->effects, c, d, effect_rows, neffects, file.data);
+        facts_put_effects(&fact->effects, d, effect_rows, neffects);
         facts_put_meta(&fact->meta, c, m, d, NULL);
         fact->first = d->pos.line;
         const uint32_t decl_last = i + 1 < module->ndecls ? module->decls[i + 1]->pos.line - 1 : total_lines;
@@ -963,7 +935,7 @@ static void facts_add_module(MsBuf *rows, MsBuf *imports, MsCheck *c, MsModId m,
             facts_fill_sites(sites, method, d, meth);
             method->group = fact->group;
             facts_seal_key(method);
-            facts_put_effects(&method->effects, c, NULL, effect_rows, neffects, file.data);
+            facts_put_effects(&method->effects, NULL, effect_rows, neffects);
             MsBuf label = {0};
             facts_put_str(&label, names, d->u.impl.receiver->kind == MS_TYPE_NAMED ? d->u.impl.receiver->name : 0);
             ms_buf_putc(&label, '.');

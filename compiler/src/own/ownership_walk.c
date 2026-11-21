@@ -41,6 +41,7 @@ typedef struct OwnSummary {
     uint32_t consumed;       /* bit i: the function moves its plain parameter i, so callers hand it over */
     const MsPos *consumed_at; /* where, by parameter; NULL when nothing is consumed */
     bool usable;
+    MsSite declined; /* where the walk gave up when it is not usable; no file when liveness did */
     bool returns_borrow;
 } OwnSummary;
 
@@ -80,8 +81,18 @@ typedef struct OwnWalk {
     uint32_t *declared; /* bindings in scope, innermost last */
     uint32_t ndeclared, declared_cap;
     bool supported;
+    MsSite declined;    /* where the walk first gave up on the function, for the refusal report */
     const uint32_t *by_node; /* the binding each introducing node made */
 } OwnWalk;
+
+/* Gives up on the function (it stays with the Rust ownership pass), noting the first place. */
+#define OWN_DECLINE(w) own_decline((w), __FILE__, (uint32_t)__LINE__)
+static void own_decline(OwnWalk *w, const char *file, uint32_t line) {
+    if (w->supported) {
+        w->declined = (MsSite){file, line};
+    }
+    w->supported = false;
+}
 
 typedef enum Demand { DEMAND_READ, DEMAND_MOVE } Demand;
 
@@ -301,11 +312,11 @@ static void own_record(OwnWalk *w, const MsExpr *e, uint32_t binding) {
 
 static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
     if (w->perm[binding] == PERM_BORROWED && w->deferred[binding]) {
-        w->supported = false; /* moving a part out would make the scrutinee consume its parameter */
+        OWN_DECLINE(w); /* moving a part out would make the scrutinee consume its parameter */
         return;
     }
     if (w->class_of[binding] == MS_CLASS_RESOURCE && w->is_param[binding] && w->perm[binding] == PERM_MUTABLE) {
-        w->supported = false; /* a resource var parameter has its own message */
+        OWN_DECLINE(w); /* a resource var parameter has its own message */
         return;
     }
     if (w->perm[binding] == PERM_BORROWED) {
@@ -340,13 +351,13 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
         // a closure reads a value with one owner in place while it lives; one that outlives the
         // statement would have to take it over, which is left to Rust
         if (w->lambda_escaping || demand == DEMAND_MOVE || w->ncaptured == 8) {
-            w->supported = false;
+            OWN_DECLINE(w);
         } else {
             w->captured[w->ncaptured++] = own_resolve(w, binding);
         }
     }
     if (demand == DEMAND_MOVE && w->closure_holds[binding]) {
-        w->supported = false; /* the closure would outlive the locals it borrows */
+        OWN_DECLINE(w); /* the closure would outlive the locals it borrows */
     }
     if (demand != DEMAND_MOVE || w->class_of[binding] == MS_CLASS_COPY) {
         own_record(w, e, binding);
@@ -369,7 +380,7 @@ static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
     const MsTy optional = w->facts->expr_ty[e->id];
     if (w->facts->some_wrap[e->id] && ms_classify(w->classifier, ms_ty_args(&w->check->tys, optional)[0]) != MS_CLASS_COPY &&
         !own_is_fresh(w, e)) {
-        w->supported = false;
+        OWN_DECLINE(w);
     }
 }
 
@@ -380,7 +391,7 @@ static void own_construct(OwnWalk *w, const MsExpr *e);
 static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     own_check_wrap(w, e);
     if (w->facts->coerce_iface[e->id] != MS_TY_NONE && e->kind != MS_E_CALL) {
-        w->supported = false; /* a named value boxed into an interface: moved or copied, not followed yet */
+        OWN_DECLINE(w); /* a named value boxed into an interface: moved or copied, not followed yet */
         return;
     }
     switch ((MsExprKind)e->kind) {
@@ -408,7 +419,7 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     case MS_E_MEMBER:
         /* A field reads its holder; moving one out of it is a partial move, not modelled yet. */
         if (demand == DEMAND_MOVE && ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
-            w->supported = false;
+            OWN_DECLINE(w);
         }
         own_expr(w, e->u.member.left, DEMAND_READ);
         return;
@@ -417,7 +428,7 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         MsExpr *list = NULL;
         MsExpr *index = NULL;
         if (!ms_expr_index(e, &list, &index)) {
-            w->supported = false;
+            OWN_DECLINE(w);
             return;
         }
         own_expr(w, list, DEMAND_READ);
@@ -435,7 +446,7 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
             own_expr(w, e->u.map.ptr[i].value, DEMAND_MOVE);
         }
         return;
-    case MS_E_PROBE: w->supported = false; return; /* not modeled */
+    case MS_E_PROBE: OWN_DECLINE(w); return; /* not modeled */
     case MS_E_LAMBDA: {
         const uint32_t start = w->ncaptured;
         own_lambda(w, e, demand == DEMAND_MOVE);
@@ -500,7 +511,7 @@ static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     if (decl == NULL || decl->kind != MS_D_FN) {
         return NULL;
     }
-    if (w->check->syms.module[sym] != w->module) {
+    if (w->check->syms.module[sym] != w->module || decl->u.fn.external) { // an extern has no body to summarize
         return own_foreign_callee(w, e, sym, decl);
     }
     const OwnSummary *summary = &w->summaries[decl->id];
@@ -703,7 +714,7 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
         handed |= (param->is_mutable || param->moving || (callee->consumed >> i & 1u) != 0 ? 1u : 0u) << i;
     }
     if (own_arguments_overlap(w, call, handed)) {
-        w->supported = false;
+        OWN_DECLINE(w);
         return;
     }
     for (uint32_t i = 0; i < call->u.call.args.len; i++) {
@@ -718,7 +729,7 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
             MsExpr *part_of = NULL;
             MsExpr *part_at = NULL;
             if (ms_expr_index(arg, &part_of, &part_at) || arg->kind == MS_E_MEMBER) {
-                w->supported = false; /* a part of a variable is a place too: changing it is left to Rust */
+                OWN_DECLINE(w); /* a part of a variable is a place too: changing it is left to Rust */
                 return;
             }
             own_error(w, arg->pos,
@@ -756,7 +767,7 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     // this walk does not follow: the function is left to the Rust checker.
     const MsTy result = w->facts->expr_ty[e->id];
     if (ms_classify(w->classifier, result) != MS_CLASS_COPY) {
-        w->supported = false;
+        OWN_DECLINE(w);
         return;
     }
     const uint8_t access = w->facts->methods->access[w->facts->call_method[e->id]];
@@ -765,7 +776,7 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     if ((access & MS_METHOD_CONSUMING) != 0) {
         // The method takes its receiver: a local is moved out, a temporary is dropped by the method.
         if (mutating) {
-            w->supported = false;
+            OWN_DECLINE(w);
             return;
         }
         own_expr(w, receiver, DEMAND_MOVE);
@@ -775,7 +786,7 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
             overlaps = own_mentions(w, e->u.call.args.ptr[i].value, binding);
         }
         if (overlaps) {
-            w->supported = false;
+            OWN_DECLINE(w);
             return;
         }
         own_mutate(w, receiver, binding);
@@ -795,7 +806,7 @@ static void own_interface_call(OwnWalk *w, const MsExpr *e) {
     const uint32_t binding = own_argument_local(w, receiver);
     const bool changeable = binding == MS_NONE || (w->facts->bindings.flags[binding] & MS_BIND_MUTABLE) != 0;
     if (changeable || ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
-        w->supported = false;
+        OWN_DECLINE(w);
         return;
     }
     own_expr(w, receiver, DEMAND_READ);
@@ -871,7 +882,7 @@ static bool own_arguments_fit(const OwnWalk *w, const MsExpr *e) {
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const MsExpr *callee_expr = e->u.call.callee;
     if ((w->facts->call_reordered[e->id] && !own_is_constructor(w, e)) || ms_is_index_store(w->check->names, e)) { /* a construction reads its arguments in source order */
-        w->supported = false; /* the arguments are paired with parameters by index below; a store has its own order */
+        OWN_DECLINE(w); /* the arguments are paired with parameters by index below; a store has its own order */
         return;
     }
     if (callee_expr->kind == MS_E_NAME && w->facts->res_kind[callee_expr->id] == MS_RES_BINDING) {
@@ -904,7 +915,7 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     const OwnSummary *callee = own_callee(w, e);
     if (callee == NULL || e->u.call.callee->kind != MS_E_NAME || !own_arguments_fit(w, e)) {
-        w->supported = false;
+        OWN_DECLINE(w);
         return;
     }
     own_arguments(w, e, callee);
@@ -949,7 +960,7 @@ static bool own_bind_borrowed_call(OwnWalk *w, const MsStmt *s, uint32_t binding
         return false;
     }
     if (s->u.bind.is_mutable || count != 1) {
-        w->supported = false; /* an exclusive borrow, or one that holds several places */
+        OWN_DECLINE(w); /* an exclusive borrow, or one that holds several places */
         return true;
     }
     own_expr(w, value, DEMAND_READ);
@@ -991,7 +1002,7 @@ static void own_bind(OwnWalk *w, const MsStmt *s) {
         return;
     }
     if (s->u.bind.is_mutable) {
-        w->supported = false; /* a `var` borrow of a name: exclusive borrows come with calls and assignment */
+        OWN_DECLINE(w); /* a `var` borrow of a name: exclusive borrows come with calls and assignment */
         return;
     }
     own_expr(w, s->u.bind.value, DEMAND_READ);
@@ -1022,12 +1033,12 @@ static void own_returned_borrow_call(OwnWalk *w, const MsExpr *e) {
     uint32_t origins[4];
     uint32_t count = 0;
     if (!own_call_origins(w, e, origins, &count) || count == 0) {
-        w->supported = false;
+        OWN_DECLINE(w);
         return;
     }
     for (uint32_t i = 0; i < count; i++) {
         if (!w->is_param[origins[i]] || w->param_mode[origins[i]] == 2) { /* a `move` parameter is owned */
-            w->supported = false;
+            OWN_DECLINE(w);
             return;
         }
         w->borrowed_params |= 1u << w->param_index[origins[i]];
@@ -1069,7 +1080,7 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
     if (e->kind == MS_E_CALL && !own_is_constructor(w, e) && !own_is_value_call(w, e) && !own_is_fresh_intrinsic(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
         if (callee == NULL || (callee->returns_borrow && own_is_self_call(w, e))) {
-            w->supported = false;
+            OWN_DECLINE(w);
         } else if (callee->returns_borrow) {
             own_returned_borrow_call(w, e);
             return;
@@ -1250,7 +1261,7 @@ static MsPlace own_target_place(OwnWalk *w, const MsExpr *target, uint32_t root,
 static void own_field_store(OwnWalk *w, const MsStmt *s, uint32_t root) {
     const MsExpr *target = s->u.assign.target;
     if (ms_classify(w->classifier, w->facts->expr_ty[target->id]) == MS_CLASS_RESOURCE) {
-        w->supported = false;
+        OWN_DECLINE(w);
         return;
     }
     own_expr(w, s->u.assign.value, DEMAND_MOVE);
@@ -1267,7 +1278,7 @@ static void own_assign(OwnWalk *w, const MsStmt *s) {
         return;
     }
     if (binding == MS_NONE || w->perm[binding] != PERM_MUTABLE) {
-        w->supported = false; /* a field store or an assignment the checker rejects */
+        OWN_DECLINE(w); /* a field store or an assignment the checker rejects */
         return;
     }
     own_expr(w, s->u.assign.value, DEMAND_MOVE);
@@ -1299,7 +1310,7 @@ static void own_if(OwnWalk *w, const MsStmt *s) {
     const uint32_t mark = w->ndeclared;
     uint32_t payload = MS_NONE;
     if (!own_if_condition(w, s, &payload)) {
-        w->supported = false;
+        OWN_DECLINE(w);
         return;
     }
     own_release_pending(w);
@@ -1339,7 +1350,7 @@ static void own_for_list(OwnWalk *w, const MsStmt *s) {
     }
     const uint32_t variable = w->by_node[s->id];
     if (variable == MS_NONE) {
-        w->supported = false;
+        OWN_DECLINE(w);
         return;
     }
     if (ms_classify(w->classifier, w->facts->bindings.ty[variable]) == MS_CLASS_COPY) {
@@ -1366,7 +1377,7 @@ static void own_for(OwnWalk *w, const MsStmt *s) {
     own_release_pending(w);
     const uint32_t counter = w->by_node[s->id];
     if (counter == MS_NONE) {
-        w->supported = false;
+        OWN_DECLINE(w);
         return;
     }
     BorrowSet entry = own_set_copy(&w->active);
@@ -1381,7 +1392,7 @@ static void own_for(OwnWalk *w, const MsStmt *s) {
 static void own_arm(OwnWalk *w, const MsArm *arm, const Scrutinee *source, Demand demand, bool returning) {
     const uint32_t mark = w->ndeclared;
     if (!own_arm_payloads(w, arm, source)) {
-        w->supported = false;
+        OWN_DECLINE(w);
         return;
     }
     own_block_value(w, &arm->body, arm->value, demand, returning);
@@ -1551,7 +1562,8 @@ static bool own_summarize(OwnWalk *w, const MsDecl *d, const uint32_t *by_node) 
         memcpy(at, w->consumed_at, sizeof w->consumed_at);
     }
     *summary = (OwnSummary){.usable = handled, .returns_borrow = returns_borrow, .borrowed_params = mask,
-                            .consumed = consumed, .consumed_at = at};
+                            .consumed = consumed, .consumed_at = at,
+                            .declined = handled ? (MsSite){0} : w->declined};
     return changed;
 }
 
@@ -1596,6 +1608,9 @@ static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
         const bool walked = ms_liveness_function(live, facts, &method->func) &&
                             own_function(w, &method->func, method, by_node);
         facts->body_checked[method->id] = walked;
+        if (!walked) {
+            facts->refusal[method->id] = w->declined;
+        }
         facts->ret_borrowed[method->id] = walked && w->has_borrowed_return && !w->has_owned_return;
     }
 }
@@ -1626,6 +1641,12 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         const MsDecl *d = row->syntax->decls[i];
         if (d->kind == MS_D_FN && facts->body_checked[d->id]) {
             facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, &d->u.fn, NULL, by_node);
+            if (!facts->body_checked[d->id]) {
+                const MsSite summary = w.summaries[d->id].declined;
+                facts->refusal[d->id] = w.summaries[d->id].usable ? w.declined
+                                        : summary.file != NULL    ? summary
+                                                                  : (MsSite){"ownership_live.c", 0};
+            }
             facts->ret_borrowed[d->id] = facts->body_checked[d->id] && w.summaries[d->id].returns_borrow;
             facts->param_consumed[d->id] = facts->body_checked[d->id] ? w.summaries[d->id].consumed : 0;
         }
