@@ -49,6 +49,9 @@ void ms_idle_drain(uintptr_t group);
 size_t ms_idle_inflight(uintptr_t group);
 /* Asks the requests in flight of `group`, on every thread, to end as a cancelled promise does. */
 void ms_idle_cancel(uintptr_t group);
+
+/* Frees `group` once nothing runs or waits in it: no request in flight and no idle row left. */
+void ms_idle_group_free(uintptr_t group);
 /* The scheduler is looking for work: starts the request of a row that waited its turn. True when one started. */
 bool ms_idle_turn(void);
 /* Ends the rows this thread owns, as its scheduler ends. */
