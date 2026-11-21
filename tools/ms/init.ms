@@ -1,6 +1,7 @@
 // `ms init [--lib | --workspace] [directory]`: create a runnable project or a workspace.
 // Exit statuses: 0 created; 1 a file exists or cannot be written; 2 usage error.
 import (
+	Matches from "@std/cli/command.ms",
 	stderr, stdout from "@std/io/io.ms",
 	working_directory from "@std/os/env.ms",
 	create_directory, read_file, stat, temporary, write_file from "@std/os/fs.ms",
@@ -146,31 +147,28 @@ fn create(absolute: String, files: List[File]) Void!:
 	append_once(under(absolute, ".gitignore"), IGNORE, ignores_cache)?
 	append_once(under(absolute, ".gitattributes"), ATTRIBUTES, pins_source)?
 
-export fn run_init(args: List[String]) Int:
-	var directory = "."
-	var given = false
-	var library = false
-	var workspace = false
+// Reads the parsed `ms init` words, then creates the project.
+export fn run_init_command(m: Matches) Int:
+	library := m.bool("lib")
+	workspace := m.bool("workspace")
+	directory := m.string_or_none("directory").get_or(".")
 
-	for arg in args:
-		if arg == "--lib" and not library and not workspace:
-			library = true
-		else if arg == "--workspace" and not workspace and not library:
-			workspace = true
-		else if arg.starts_with("-") or given:
-			complain(
-				f"unexpected init argument: {arg}; ms init takes --lib or --workspace (not both) and at most one directory, e.g. ms init --lib greeter"
-			)
-			return 2
-		else if arg.is_empty():
-			complain(
-				"ms init: the directory is empty; pass a directory name such as ms init hello, or omit it for the current directory"
-			)
-			return 2
-		else:
-			directory = arg.clone()
-			given = true
+	if library and workspace:
+		complain(
+			"ms init takes --lib or --workspace, not both; e.g. ms init --lib greeter"
+		)
+		return 2
 
+	if directory.is_empty():
+		complain(
+			"ms init: the directory is empty; pass a directory name such as ms init hello, or omit it for the current directory"
+		)
+		return 2
+
+	return run_init(directory, library, workspace)
+
+// Creates a project in `directory`: a library, a workspace, or an application.
+export fn run_init(directory: String, library: Bool, workspace: Bool) Int:
 	here := working_directory()
 
 	if here.is_error():
@@ -237,9 +235,9 @@ test "init creates a project, keeps an existing gitattributes and refuses to ove
 	kept := join([root.clone(), "kept"])
 	create_directory(kept.clone(), true)?
 	write_file(join([kept.clone(), ".gitattributes"]), "*.png binary").wait()?
-	expect_equal(run_init([join([root.clone(), "fresh"])]), 0)?
-	expect_equal(run_init([kept.clone()]), 0)?
-	expect_equal(run_init([kept.clone()]), 1)?
+	expect_equal(run_init(join([root.clone(), "fresh"]), false, false), 0)?
+	expect_equal(run_init(kept.clone(), false, false), 0)?
+	expect_equal(run_init(kept.clone(), false, false), 1)?
 
 	fresh := read_file(join([root.clone(), "fresh/.gitattributes"])).wait()?
 	expect_equal(fresh.decode_utf8().get_or(""), ATTRIBUTES)?

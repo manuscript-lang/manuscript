@@ -7,11 +7,12 @@
 // `SKILL_DIR` holds `references/standard-calls.md` and `references/standard-modules.md`;
 // `update` rewrites their generated blocks, `check` fails when one is stale.
 import (
+	Arg, Command, Matches from "@std/cli/command.ms",
 	parse from "@std/data/json.ms",
-	arguments from "@std/os/env.ms",
 	read_file, write_file from "@std/os/fs.ms",
 	expect_equal from "@std/test/test.ms",
 
+	run_program from "./cli.ms",
 	Declaration, Module from "./docgen.ms",
 	keywords from "./syntax.ms",
 )
@@ -160,20 +161,38 @@ fn targets(directory: String, modules: List[Module]) List[Target]:
 		),
 	]
 
-// ms: allow_effect std.env.read
+fn skill_calls_tool() Command:
+	return Command(
+		name: "skill_calls.ms",
+		about: "Keep the call tables of the agent skill pages in step with the model",
+		children: [
+			Command(
+				name: "update",
+				about: "Rewrite the stale blocks",
+				args: [
+					Arg("model", help: "The model JSON"),
+					Arg("skill", help: "The skill directory"),
+				],
+			),
+			Command(
+				name: "check",
+				about: "Fail when a block is stale",
+				args: [
+					Arg("model", help: "The model JSON"),
+					Arg("skill", help: "The skill directory"),
+				],
+			),
+		],
+	)
+
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.fs.write
-fn main() Int?!:
-	args := arguments()
-
-	if args.length() != 3 or (args[0] != "update" and args[0] != "check"):
-		print("usage: skill_calls.ms update|check MODEL.json SKILL_DIR")
-		return ok(2)
-
-	model := parse[Model](read_file(args[1]).wait()?.decode_utf8().get_or(""))?
+fn sync(m: Matches) Int!:
+	update := m.path[1] == "update"
+	model := parse[Model](read_file(m.string("model")).wait()?.decode_utf8().get_or(""))?
 	var stale = false
 
-	for target in targets(args[2], model.modules):
+	for target in targets(m.string("skill"), model.modules):
 		page := read_file(target.path).wait()?.decode_utf8().get_or("")
 		updated := splice_between(page, target.start, target.end, target.block)
 
@@ -191,11 +210,14 @@ fn main() Int?!:
 			stale = true
 			print(f"{target.path}: stale")
 
-		if args[0] == "update": write_file(target.path, updated.get(), replace: true).wait()?
+		if update: write_file(target.path, updated.get(), replace: true).wait()?
 
-	if args[0] == "check" and stale: return ok(1)
+	if not update and stale: return ok(1)
 
 	return ok(0)
+
+fn main() Int:
+	return run_program(skill_calls_tool(), sync)
 
 test "a block is replaced between its markers":
 	page := "head\n<!-- calls:start -->\nold\n<!-- calls:end -->\ntail\n"

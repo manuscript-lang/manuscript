@@ -8,12 +8,13 @@
 // `[kind, label, callee, children]`.
 //   ms run tools/ms/html.ms -- HEAD.json SOURCE_DIR [BASE.json]
 import (
+	Arg, Command, Matches from "@std/cli/command.ms",
 	JsonValue, parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
-	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 
+	run_tool from "./cli.ms",
 	flag, list_of, number, object, render_compact, text, with from "./json_out.ms",
 	DiffInput, compare_facts from "./review.ms",
 	Fact, Facts, Node, Slot from "./views.ms",
@@ -288,26 +289,39 @@ export fn html_page(
 
 // ---- Entry ----
 
-fn usage() Error: Error("usage: html.ms HEAD.json SOURCE_DIR [BASE.json]")
-
 fn load(path: String) Facts!:
 	return ok(parse[Facts](read_file(path).wait()?.decode_utf8().get_or(""))?)
 
 // ms: allow_effect std.env.read
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.console.write
-fn main() Void!:
-	args := arguments()
-	if args.length() < 2: return error(usage())
+fn html_tool() Command:
+	return Command(
+		name: "html.ms",
+		about: "Render the interactive page of a project's facts",
+		args: [
+			Arg("head", help: "HEAD.json"),
+			Arg(
+				"sources",
+				help: "The directory the facts' files are under",
+			),
+			Arg(
+				"base",
+				help: "BASE.json, to mark what changed",
+				required: false,
+			),
+		],
+	)
 
-	head := load(args[0])?
+fn show(m: Matches) Void!:
+	head := load(m.string("head"))?
 	var sources = Map[String, String]()
 	for f in head.entities:
 		if not sources.contains(f.file):
 			sources.add(
 				f.file.clone(),
 				read_file(
-					f"{args[1]}/{f.file}"
+					f"{m.string("sources")}/{f.file}"
 				).wait()?.decode_utf8().get_or(""),
 			)
 	for entry in head.imports:
@@ -315,12 +329,12 @@ fn main() Void!:
 			sources.add(
 				entry.file.clone(),
 				read_file(
-					f"{args[1]}/{entry.file}"
+					f"{m.string("sources")}/{entry.file}"
 				).wait()?.decode_utf8().get_or(""),
 			)
 
 	var base: Facts? = none
-	if args.length() > 2: base = load(args[2])?
+	if path := m.string_or_none("base"): base = load(path)?
 
 	page := files().read("page.html", none).get_or(
 		"".to_bytes()
@@ -328,6 +342,10 @@ fn main() Void!:
 	var out = stdout()
 	out.write(html_page(page, head, sources, [], base))?
 	out.flush()?
+	return ok()
+
+fn main() Int:
+	return run_tool(html_tool(), show)
 
 test "type hints share one type table and sort by position":
 	var ix = Index(
