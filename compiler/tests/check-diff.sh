@@ -136,6 +136,16 @@ if ! grep -q 'body_sized_mismatch.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body
     echo "FAIL bodies: a sized integer used as another type is no longer checked in C (compiler/tests/scope/body_sized_mismatch.ms)"
     status=1
 fi
+# A number literal given for an Optional of a sized number takes that type and is wrapped.
+if ! grep -q 'body_optional_sized.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_optional_sized.ms 10:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a literal given for an Optional sized number is no longer checked in C (compiler/tests/scope/body_optional_sized.ms)"
+    status=1
+fi
+# `Void` as a type argument (`Result[Void, Error]`) is an annotation C accepts.
+if ! grep -q 'body_void_argument.ms 1:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a Void type argument is no longer checked in C (compiler/tests/scope/body_void_argument.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else

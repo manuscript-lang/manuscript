@@ -29,6 +29,7 @@ typedef struct MsBody {
     MsBuf written;          /* expression ids whose type this function wrote, to undo them */
     MsBuf diags;            /* MsCheckDiag of the function being checked, reported once it is claimed */
     const char *context;    /* what the next `ms_body_expr` value is for ("the return value"), or NULL */
+    const MsExpr *never_ok; /* the one expression a `Never` call may be: a `return` value or a call statement */
     bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
     MsTy result_hint;       /* with `infer_result`: the result the context expects, whose variables the body decides */
     bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
@@ -56,6 +57,7 @@ MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_lambda_inferred(MsBody *b, const MsExpr *e, MsTy settled); /* `settled` fixes the parameter types; the body decides the result */
 /* The primitive type a written annotation names, or MS_TY_NONE after giving up. */
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
+MsTy ms_body_type_argument(MsBody *b, const MsTypeRef *t);
 /* Lists (check_list.c): whether `ty` is a `List` of admitted elements, a `List[...]` annotation,
  * a list literal and an index expression. */
 /* The standard type that declares builtin `kind`, when the module sees it under its own name (no
