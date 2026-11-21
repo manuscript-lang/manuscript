@@ -722,7 +722,7 @@ static MsTy body_explicit_call(MsBody *b, const MsExpr *e) {
 static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
-        return ms_body_method_call(b, e);
+        return ms_body_is_qualified_case(b, callee) ? ms_body_qualified_case_call(b, e) : ms_body_method_call(b, e);
     }
     const uint32_t called = callee->kind == MS_E_NAME ? ms_body_find_binding(b, callee->u.sym) : MS_NONE;
     if (called != MS_NONE) {
@@ -851,6 +851,9 @@ static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e
  * only the path matters, nothing is borrowed or moved out of the holder. */
 static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     const MsExpr *receiver = e->u.member.left;
+    if (use == MEMBER_READ && ms_body_is_qualified_case(b, e)) {
+        return ms_body_qualified_case(b, e);
+    }
     if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER) {
         return ms_body_unsupported(b);
     }
@@ -1780,6 +1783,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->call_reordered, 0, nodes * sizeof *facts->call_reordered);
     facts->some_wrap = MS_NEW_N(arena, bool, nodes);
     memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
+    facts->moved_out = MS_NEW_N(arena, bool, nodes);
+    memset(facts->moved_out, 0, nodes * sizeof *facts->moved_out);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);

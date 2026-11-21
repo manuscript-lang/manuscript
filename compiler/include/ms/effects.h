@@ -193,4 +193,10 @@ typedef struct MsPackageViolation {
 MS_NODISCARD bool ms_effect_package_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules,
                                                uint32_t count, MsPackageViolation **out, uint32_t *nout, bool *complete);
 
+/* The violations of the project's own modules among `modules` (no `cap`, no `package`), with the text `ms lint`
+ * reports as MSL116 (`root` reaches E: a -> b; permit it ...). `*complete` is false when a project callable reaches code
+ * the scan cannot see through, so a missing violation proves nothing. False when the graph is malformed. */
+MS_NODISCARD bool ms_effect_project_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules, uint32_t count,
+                                               MsPackageViolation **out, uint32_t *nout, bool *complete);
+
 #endif
