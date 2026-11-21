@@ -151,7 +151,7 @@ typedef struct Lb {
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
 
-/* lower_body.c: what the files that lower a construct call back into (`lb_unsupported`, `lb_expr`
+/* lower_body.c: what the files that lower a construct call back into (`LB_UNSUPPORTED`, `lb_expr`
  * and `lb_mir_ty` are declared further down). */
 void lb_statements(Lb *lb, const MsStmts *body);
 void lb_return_void(Lb *lb);
@@ -218,10 +218,10 @@ bool lb_closures(Lb *lb, bool ok);
 
 #define LB_FAIL ((LbVal){MIR_NONE, false})
 
-/* Helpers of lower_body.c the files after it use. `lb_unsupported` marks the function as not
+/* Helpers of lower_body.c the files after it use. `LB_UNSUPPORTED` marks the function as not
  * handled and returns `LB_FAIL`. */
 LbVal lb_unsupported_at(Lb *lb, const char *site, int line);
-#define lb_unsupported(lb) lb_unsupported_at((lb), __FILE__, __LINE__)
+#define LB_UNSUPPORTED(lb) lb_unsupported_at((lb), __FILE__, __LINE__)
 LbVal lb_expr(Lb *lb, const MsExpr *e);
 MirTy lb_mir_ty(Lb *lb, MsTy ty);
 void lb_emit_plain(Lb *lb, MirOp op);

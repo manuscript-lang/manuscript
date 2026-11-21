@@ -2,6 +2,10 @@
  * files must therefore not share names. */
 /* lstat, readlink and getcwd for project/path.c. */
 #define _POSIX_C_SOURCE 200809L
+/* macOS hides mkdtemp (build/object.c) behind _DARWIN_C_SOURCE once _POSIX_C_SOURCE is set. */
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE
+#endif
 #include "syntax/base.c"
 #include "syntax/token.c"
 #include "syntax/doc.c"
@@ -187,4 +191,5 @@
 
 #include "project/graph_check.c"
 #include "check_cmd.c"
+#include "build_cmd.c"
 #endif
