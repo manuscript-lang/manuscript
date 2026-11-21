@@ -28,13 +28,14 @@ fi
 "$dump" stdlib --program $files > "$out/program.c"
 target/release/examples/c_lower_oracle $files > "$out/program.rust" 2>/dev/null
 
-# One line per function: `program name sig line:col|block`, `.N` copy suffixes stripped.
+# One line per function: `program name sig line:col|block`, `.N` copy suffixes stripped. The file number of a source
+# location is dropped: Rust numbers files by first reference, C by module order, and the line and column say the rest.
 keyed() {
-    sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g' "$1" | awk '
+    sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g; s/ !([0-9]+):([0-9]+:[0-9]+)/ !\2/g' "$1" | awk '
         /^=== / { file = $2; next }
         /^; divergent$/ { looped = 1; next }
         /^fn @/ { name = $2; sub(/\(.*/, "", name); sig = $0; sub(/^fn @[^(]*/, "", sig)
-                  loc = sig; sub(/^.* ![0-9]+:/, "", loc); sub(/ .*$/, "", loc)
+                  loc = sig; sub(/^.* !/, "", loc); sub(/ .*$/, "", loc)
                   sub(/ (ret_borrowed|ret_view|export|!).*$/, "", sig)
                   key = file " " name " " sig " " loc; body = ""; infn = 1 }
         infn { body = body $0 "\\n" }

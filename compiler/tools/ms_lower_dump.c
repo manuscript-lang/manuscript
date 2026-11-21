@@ -133,20 +133,33 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
     return verified;
 }
 
-/* The whole-program lowering: every module of the checked program into one MirModule (declared in ms/lower.h).
- * Until the driver lands, the entry module alone, so callees in other modules are missing and the comparison
- * (compiler/tests/lower-program-diff.sh) counts them as skipped. */
-#ifndef MS_HAVE_LOWER_PROGRAM
-static uint32_t lower_program(MsCheck *c, const MsModId *ids, uint32_t count, MirModule *out) {
-    return ms_lower_module(c, ids[count - 1], out);
-}
-#else
-static uint32_t lower_program(MsCheck *c, const MsModId *ids, uint32_t count, MirModule *out) {
-    (void)ids;
-    (void)count;
+/* The whole-program lowering: every module of the checked program into one MirModule (compiler/include/ms/lower.h). */
+static uint32_t lower_program(MsCheck *c, MirModule *out) {
     return ms_lower_program(c, out);
 }
-#endif
+
+/* Checks the bodies and ownership of the standard-library source modules `module` imports, and those they import, so
+ * a call into one has a lowered callee. `seen` is by module id. */
+static void check_std_imports(MsCheck *check, MsNames *names, const MsModule *module, bool *seen) {
+    for (uint32_t i = 0; i < module->nimports; i++) {
+        const MsStr path = module->imports[i].path;
+        if (path.len < 5 || memcmp(path.ptr, "@std/", 5) != 0) {
+            continue;
+        }
+        const MsModId id = ms_map_get(&check->module_by_path, ms_intern(names, path.ptr, path.len));
+        if (id == MS_NONE || seen[id] || !check->mods[id].source) {
+            continue;
+        }
+        seen[id] = true;
+        const MsModuleRow *row = &check->mods[id];
+        const MsModule *syntax = row->syntax;
+        check_std_imports(check, names, syntax, seen);
+        (void)ms_program_check_module(check, id, row->text);
+        if (check->mods[id].facts != NULL) {
+            ms_module_check_ownership(check, id);
+        }
+    }
+}
 
 /* Loads the project `path` (entry file plus the modules it imports), checks every module, lowers the program and
  * prints each function. A program with diagnostics prints nothing. */
@@ -168,13 +181,18 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
         ms_graph_add_modules(&check, names, &arena, &graph, ids);
         if (ms_graph_check(&check, &graph, ids, NULL) == 0) {
             const MsModule **modules = MS_NEW_N(&arena, const MsModule *, graph.count);
+            bool *seen = calloc((size_t)check.nmods + 1, sizeof *seen);
             for (uint32_t i = 0; i < graph.count; i++) {
                 ms_module_check_ownership(&check, ids[i]);
                 modules[i] = &graph.modules[i].syntax;
             }
+            for (uint32_t i = 0; i < graph.count; i++) {
+                check_std_imports(&check, names, modules[i], seen);
+            }
+            free(seen);
             MirModule mir;
             mir_module_init(&mir);
-            (void)lower_program(&check, ids, graph.count, &mir);
+            (void)lower_program(&check, &mir);
             verified = verify_module(&mir, path);
             MsBuf elaborate_error = {0};
             if (!mir_elaborate(&mir, &elaborate_error)) {
