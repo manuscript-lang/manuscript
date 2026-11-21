@@ -455,6 +455,13 @@ void ms_module_declare(MsCheck *c, MsModId module) {
     }
     c->mods[module].declared = true;
     scope_begin_module(c, module);
+    if (ms_text_starts_with(ms_name(c->names, c->mods[module].path), scope_std_prefix)) {
+        // Standard modules import each other in cycles: declare a module's own names first, so a
+        // module reached through a cycle already has its symbols when the import asks for them.
+        scope_declare_symbols(c, module);
+        scope_import_symbols(c, module);
+        return;
+    }
     scope_import_symbols(c, module);
     scope_declare_symbols(c, module);
 }
