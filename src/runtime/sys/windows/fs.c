@@ -88,3 +88,15 @@ int ms_sys_fs_clone_file(int output, int input) {
   (void)input;
   return UV_ENOTSUP;
 }
+
+bool ms_sys_fs_watch_recursive(void) {
+  return true;
+}
+
+bool ms_sys_fs_watch_names_self(void) {
+  return false;
+}
+
+const char *ms_sys_fs_watch_ready_prefix(void) {
+  return "";
+}

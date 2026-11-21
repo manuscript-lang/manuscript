@@ -34,4 +34,13 @@ bool ms_sys_fs_waitable(int fd);
 /* Makes `output` share the data blocks of `input` (copy on write): UV_ENOTSUP where the filesystem or host cannot. */
 int ms_sys_fs_clone_file(int output, int input);
 
+/* File watching (libuv's uv_fs_event underneath). Whether a watch on a directory covers its subtree (macOS, Windows);
+ * elsewhere a recursive watcher holds a handle per directory. */
+bool ms_sys_fs_watch_recursive(void);
+/* Whether the host names a change to a watched directory by the directory's own name (FSEvents, inotify). */
+bool ms_sys_fs_watch_names_self(void);
+/* The name prefix of the file a new watcher touches until the host's event stream reports it (FSEvents starts its
+ * stream late); empty where watches are live at once. */
+const char *ms_sys_fs_watch_ready_prefix(void);
+
 #endif
