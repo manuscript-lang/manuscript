@@ -64,6 +64,59 @@ static MsExpr *range_call(Parser *p, MsExpr *start, MsExpr *stop) {
   return parse_mk_call(p, pos, callee, args, 2);
 }
 
+/* A pipe step that is a function name: `| f`, `| f(a: 1)`, `| f.g(a: 1)`. */
+MS_NODISCARD static bool pipe_named_step(Parser *p, MsExpr *lhs, MsExpr **out) {
+  MsToken name = parse_peek(p);
+  if (name.kind != MS_T_Name) {
+    const char *hint = "";
+    if (name.kind == MS_T_Newline) {
+      hint = "; to continue a flow on the next line, end this line before '|' and start the next line with "
+             "'|'";
+    }
+    MsSpan dn = parse_describe(p, name);
+    parse_fail(p, name,
+               parse_fmt(p,
+                         "a pipe step is a function name, a call without its first argument, or a "
+                         "'.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found %S%s",
+                         dn, hint));
+    return false;
+  }
+  p->at++;
+  MsExpr *callee = parse_mk_name(p, name.pos, parse_sym(p, name));
+  size_t links = 0;
+  /* A '.' on a later line continues the flow and applies to the step's result. */
+  while (parse_kind(p) == MS_T_Dot && parse_peek(p).pos.line == p->tokens[p->at - 1].pos.line) {
+    if (!parse_link(p, &links))
+      return false;
+    p->at++;
+    MsToken member = {0};
+    if (!parse_need_token(p, MS_T_Name, &member))
+      return false;
+    callee = parse_mk_member(p, member.pos, callee, parse_sym(p, member));
+  }
+  if (parse_kind(p) == MS_T_LBracket) {
+    MsSpan n = parse_text(p, name);
+    parse_fail(p, parse_peek(p),
+               parse_fmt(p,
+                         "a pipe step cannot take type arguments; bind the instance to a name first, e.g. "
+                         "step := %S[Int], then write x | step",
+                         n));
+    return false;
+  }
+  Args rest = {NULL, 0};
+  if (parse_take(p, MS_T_LParen)) {
+    if (!parse_call_arguments(p, &rest))
+      return false;
+  }
+  MsArg *args = MS_ARENA_NEW_ARRAY(p->arena, MsArg, rest.len + 1);
+  args[0] = (MsArg){lhs->pos, false, 0, lhs};
+  if (rest.len != 0) {
+    __builtin_memcpy(args + 1, rest.ptr, rest.len * sizeof(MsArg));
+  }
+  *out = parse_mk_call(p, name.pos, callee, args, rest.len + 1);
+  return true;
+}
+
 /* Parses one `| step` after `lhs` and desugars it to the ordinary expression the step names. */
 MS_NODISCARD static bool parse_pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
   p->at++;
@@ -85,55 +138,8 @@ MS_NODISCARD static bool parse_pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
   if (parse_kind(p) == MS_T_Dot) {
     if (!parse_postfix(p, lhs, &step))
       return false;
-  } else {
-    MsToken name = parse_peek(p);
-    if (name.kind != MS_T_Name) {
-      const char *hint = "";
-      if (name.kind == MS_T_Newline) {
-        hint = "; to continue a flow on the next line, end this line before '|' and start the next line with "
-               "'|'";
-      }
-      MsSpan dn = parse_describe(p, name);
-      parse_fail(p, name,
-                 parse_fmt(p,
-                           "a pipe step is a function name, a call without its first argument, or a "
-                           "'.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found %S%s",
-                           dn, hint));
-      return false;
-    }
-    p->at++;
-    MsExpr *callee = parse_mk_name(p, name.pos, parse_sym(p, name));
-    size_t links = 0;
-    /* A '.' on a later line continues the flow and applies to the step's result. */
-    while (parse_kind(p) == MS_T_Dot && parse_peek(p).pos.line == p->tokens[p->at - 1].pos.line) {
-      if (!parse_link(p, &links))
-        return false;
-      p->at++;
-      MsToken member = {0};
-      if (!parse_need_token(p, MS_T_Name, &member))
-        return false;
-      callee = parse_mk_member(p, member.pos, callee, parse_sym(p, member));
-    }
-    if (parse_kind(p) == MS_T_LBracket) {
-      MsSpan n = parse_text(p, name);
-      parse_fail(p, parse_peek(p),
-                 parse_fmt(p,
-                           "a pipe step cannot take type arguments; bind the instance to a name first, e.g. "
-                           "step := %S[Int], then write x | step",
-                           n));
-      return false;
-    }
-    Args rest = {NULL, 0};
-    if (parse_take(p, MS_T_LParen)) {
-      if (!parse_call_arguments(p, &rest))
-        return false;
-    }
-    MsArg *args = MS_ARENA_NEW_ARRAY(p->arena, MsArg, rest.len + 1);
-    args[0] = (MsArg){lhs->pos, false, 0, lhs};
-    if (rest.len != 0) {
-      __builtin_memcpy(args + 1, rest.ptr, rest.len * sizeof(MsArg));
-    }
-    step = parse_mk_call(p, name.pos, callee, args, rest.len + 1);
+  } else if (!pipe_named_step(p, lhs, &step)) {
+    return false;
   }
   if (parse_kind(p) == MS_T_Question) {
     MsToken question = parse_peek(p);
@@ -217,6 +223,25 @@ static bool is_increment(const Parser *p, MsToken op, const MsExpr *e) {
          parse_ahead(p, 1).kind == op.kind && parse_ahead(p, 2).kind == MS_T_Newline;
 }
 
+/* Rejects `x++`-style operators and chained comparisons at the operator `op` after `e`. */
+MS_NODISCARD static bool binary_operator_allowed(Parser *p, MsToken op, const MsExpr *e, int level,
+                                                 bool compared) {
+  if (is_increment(p, op, e)) {
+    const char *o = ms_tok_str((MsTok)op.kind);
+    MsSpan n = ms_names_span(p->names, e->u.sym);
+    parse_fail(p, op, parse_fmt(p, "Manuscript has no '%s%s' operator; write '%S %s= 1'", o, o, n, o));
+    return false;
+  }
+  if (level == 4 && compared) {
+    parse_fail(
+        p, op,
+        ms_span_of_text(
+            "comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < c"));
+    return false;
+  }
+  return true;
+}
+
 MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
   MsExpr *e = NULL;
   if (!leading_operand(p, min, &e))
@@ -249,19 +274,8 @@ MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
     if (level < min) {
       break;
     }
-    if (is_increment(p, op, e)) {
-      const char *o = ms_tok_str((MsTok)op.kind);
-      MsSpan n = ms_names_span(p->names, e->u.sym);
-      parse_fail(p, op, parse_fmt(p, "Manuscript has no '%s%s' operator; write '%S %s= 1'", o, o, n, o));
+    if (!binary_operator_allowed(p, op, e, level, compared))
       return false;
-    }
-    if (level == 4 && compared) {
-      parse_fail(
-          p, op,
-          ms_span_of_text(
-              "comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < c"));
-      return false;
-    }
     p->at++;
     if (!parse_link(p, &links))
       return false;

@@ -8,7 +8,7 @@
 #include "base/list.h"
 #include "base/utf8.h"
 #include "compiler/syntax/lex.h"
-#include "compiler/syntax/message.h"
+#include "base/message.h"
 
 typedef struct Level {
   size_t indent, depth;

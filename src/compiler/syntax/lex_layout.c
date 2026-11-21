@@ -57,9 +57,9 @@ bool lex_continues_next(const Scanner *s) {
   return false;
 }
 
-/* A block header on the previous line that lacks its closing ':' when an indented line follows
- * it, with the fix that inserts the ':'. Returns false when there is none. */
-static bool missing_colon(Scanner *s) {
+/* The first token of the unfinished line before the trailing newlines, or NULL when that line is not a
+ * single-line header ending at `last`. `*last_out` is its last token. */
+static const MsToken *previous_line_start(const Scanner *s, const MsToken **last_out) {
   size_t nt = lex_token_count(s);
   size_t li = nt;
   while (li > 0 &&
@@ -67,11 +67,11 @@ static bool missing_colon(Scanner *s) {
     li--;
   }
   if (li == 0) {
-    return false;
+    return NULL;
   }
   const MsToken *last = lex_token_at(s, li - 1);
   if (last->kind == MS_T_Colon || last->kind == MS_T_Indent || last->kind == MS_T_Dedent) {
-    return false;
+    return NULL;
   }
   size_t i = nt;
   while (i > 0 && lex_token_at(s, i - 1)->kind == MS_T_Newline) {
@@ -86,13 +86,18 @@ static bool missing_colon(Scanner *s) {
     j--;
   }
   if (j == i) {
-    return false;
+    return NULL;
   }
   const MsToken *first = lex_token_at(s, j);
   if (first->pos.line != last->end.line) {
-    return false;
+    return NULL;
   }
-  switch (first->kind) {
+  *last_out = last;
+  return first;
+}
+
+static bool starts_block_header(MsTok kind) {
+  switch (kind) {
   case MS_T_Fn:
   case MS_T_If:
   case MS_T_Else:
@@ -104,16 +109,19 @@ static bool missing_colon(Scanner *s) {
   case MS_T_Impl:
   case MS_T_Test:
   case MS_T_Interface:
-    break;
+    return true;
   default:
     return false;
   }
-  /* A ':' outside brackets already opened an inline body (`if x: return`), so an indented line
-   * after it is over-indented, not a missing ':'. */
+}
+
+/* Whether a ':' outside brackets already ends a line's header (`if x: return`), so an indented line after
+ * it is over-indented, not a missing ':'. */
+static bool line_has_colon(const Scanner *s, uint32_t line) {
   int depth = 0;
-  for (size_t k = 0; k < nt; k++) {
+  for (size_t k = 0; k < lex_token_count(s); k++) {
     const MsToken *t = lex_token_at(s, k);
-    if (t->pos.line != first->pos.line) {
+    if (t->pos.line != line) {
       continue;
     }
     switch (t->kind) {
@@ -129,12 +137,23 @@ static bool missing_colon(Scanner *s) {
       break;
     case MS_T_Colon:
       if (depth == 0) {
-        return false;
+        return true;
       }
       break;
     default:
       break;
     }
+  }
+  return false;
+}
+
+/* A block header on the previous line that lacks its closing ':' when an indented line follows
+ * it, with the fix that inserts the ':'. Returns false when there is none. */
+static bool missing_colon(Scanner *s) {
+  const MsToken *last = NULL;
+  const MsToken *first = previous_line_start(s, &last);
+  if (first == NULL || !starts_block_header((MsTok)first->kind) || line_has_colon(s, first->pos.line)) {
+    return false;
   }
   MsPos end = last->end;
   MsSpan message = ms_message_format(s->arena,

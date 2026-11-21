@@ -177,6 +177,37 @@ static Nodes lay_trim_trailing_comma(Nodes nodes) {
   return (Nodes){nodes.ptr, (size_t)last};
 }
 
+/* The binding level of the operator at nodes[index] (pipe 0, `or` 1, ... member dot 6), or -1 when the
+ * node is not one the layout breaks at. */
+static int lay_precedence(Nodes nodes, size_t index) {
+  switch ((MsTok)nodes.ptr[index].tok.kind) {
+  case MS_T_Pipe:
+    return 0;
+  case MS_T_Or:
+    return 1;
+  case MS_T_And:
+    return 2;
+  case MS_T_EqEq:
+  case MS_T_NotEq:
+  case MS_T_Lt:
+  case MS_T_Gt:
+  case MS_T_Le:
+  case MS_T_Ge:
+    return 3;
+  case MS_T_Plus:
+  case MS_T_Minus:
+    return 4;
+  case MS_T_Star:
+  case MS_T_Slash:
+  case MS_T_Percent:
+    return 5;
+  case MS_T_Dot:
+    return lay_optional_dot(nodes, index) ? -1 : 6;
+  default:
+    return -1;
+  }
+}
+
 /* The operator the layout breaks at: the lowest precedence one among the first-level nodes, and
  * how many of it there are. -1 for none. */
 static int lay_layout_operators(Nodes nodes, size_t *count_out) {
@@ -192,41 +223,8 @@ static int lay_layout_operators(Nodes nodes, size_t *count_out) {
     if (node->group >= 0) {
       continue;
     }
-    int p;
-    switch ((MsTok)node->tok.kind) {
-    case MS_T_Pipe:
-      p = 0;
-      break;
-    case MS_T_Or:
-      p = 1;
-      break;
-    case MS_T_And:
-      p = 2;
-      break;
-    case MS_T_EqEq:
-    case MS_T_NotEq:
-    case MS_T_Lt:
-    case MS_T_Gt:
-    case MS_T_Le:
-    case MS_T_Ge:
-      p = 3;
-      break;
-    case MS_T_Plus:
-    case MS_T_Minus:
-      p = 4;
-      break;
-    case MS_T_Star:
-    case MS_T_Slash:
-    case MS_T_Percent:
-      p = 5;
-      break;
-    case MS_T_Dot:
-      if (lay_optional_dot(nodes, index)) {
-        continue;
-      }
-      p = 6;
-      break;
-    default:
+    const int p = lay_precedence(nodes, index);
+    if (p < 0) {
       continue;
     }
     if (p < level) {
@@ -336,8 +334,8 @@ size_t lay_following_width(const Layout *l, Nodes rest, bool clause) {
  * rather than inserting another pair of parentheses. */
 static void lay_item(const Layout *l, Nodes nodes, size_t indent, MsStrBuild *out) {
   size_t count;
-  const int operator= lay_layout_operators(nodes, &count);
-  if (operator<0) {
+  const int breaker = lay_layout_operators(nodes, &count);
+  if (breaker < 0) {
     lay_sequence(l, nodes, indent, indent, true, out);
     return;
   }
@@ -352,14 +350,14 @@ static void lay_item(const Layout *l, Nodes nodes, size_t indent, MsStrBuild *ou
       start = i + 1;
     }
   }
-  if (!long_line || (operator== MS_T_Dot && count<2) || fmt_is_comparison((MsTok) operator)) {
+  if (!long_line || (breaker == MS_T_Dot && count < 2) || fmt_is_comparison((MsTok)breaker)) {
     fmt_put(out, fmt_tail(&text, 0)); // keep comparison operands together
     ms_strbuild_free(&text);
     return;
   }
   ms_strbuild_free(&text);
   NodesList parts = {0};
-  lay_split(nodes, (MsTok) operator, & parts);
+  lay_split(nodes, (MsTok)breaker, &parts);
   const Nodes *list = parts.ptr;
   for (size_t index = 0; index < parts.len; index++) {
     if (index > 0) {
@@ -393,6 +391,35 @@ static void lay_packed(const Layout *l, const Group *g, const Nodes *parts, size
   fmt_put(out, lay_text(l, &g->close));
 }
 
+static bool lay_has_comment(Nodes nodes) {
+  for (size_t i = 0; i < nodes.len; i++) {
+    if (nodes.ptr[i].tok.kind == MS_T_Comment) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* The operator a group breaks at, or -1. `*flow` is set for a long pipe flow, which breaks at each pipe. */
+static int lay_group_breaker(const Group *g, Nodes nodes, MsSpan flat, size_t column, bool *flow) {
+  size_t count;
+  int breaker = lay_layout_operators(nodes, &count);
+  if (g->items || (breaker == MS_T_Dot && count < 2)) {
+    breaker = -1;
+  }
+  if (breaker >= 0 && fmt_is_comparison((MsTok)breaker)) {
+    breaker = -1; // keep each comparison together as one operand
+  }
+  // A flow of three or more stages that is not short reads one stage per line.
+  size_t pipes = 0;
+  for (size_t i = 0; i < nodes.len; i++) {
+    pipes += nodes.ptr[i].group < 0 && nodes.ptr[i].tok.kind == MS_T_Pipe;
+  }
+  *flow = !g->callee && !g->parameters && g->open.kind == MS_T_LParen && pipes >= 2 &&
+          column + fmt_chars(flat) > FMT_FLOW_WIDTH;
+  return *flow ? MS_T_Pipe : breaker;
+}
+
 void lay_group(const Layout *l, size_t gid, size_t indent, size_t column, size_t following, MsStrBuild *out) {
   const Group *g = lay_group_at(l, gid);
   const Nodes nodes = lay_trim_trailing_comma(g->nodes);
@@ -403,28 +430,10 @@ void lay_group(const Layout *l, size_t gid, size_t indent, size_t column, size_t
   const MsSpan flat = fmt_take(l->fmt, &flat_buf);
   const size_t suffix = lay_suffix_width(l, g, following);
   bool force = g->force || column + fmt_chars(flat) + suffix > FMT_WIDTH;
-  size_t count;
-  int operator= lay_layout_operators(nodes, &count);
-  if (g->items || (operator== MS_T_Dot && count<2)) {
-    operator= - 1;
-  }
-  if (operator>= 0 && fmt_is_comparison((MsTok) operator)) {
-    operator= - 1; // keep each comparison together as one operand
-  }
-  for (size_t i = 0; i < nodes.len; i++) {
-    force = force || nodes.ptr[i].tok.kind == MS_T_Comment;
-  }
-  // A flow of three or more stages that is not short reads one stage per line.
-  size_t pipes = 0;
-  for (size_t i = 0; i < nodes.len; i++) {
-    pipes += nodes.ptr[i].group < 0 && nodes.ptr[i].tok.kind == MS_T_Pipe;
-  }
-  const bool flow = !g->callee && !g->parameters && g->open.kind == MS_T_LParen && pipes >= 2 &&
-                    column + fmt_chars(flat) > FMT_FLOW_WIDTH;
-  if (flow) {
-    force = true;
-    operator= MS_T_Pipe;
-  }
+  bool force_flow = false;
+  int breaker = lay_group_breaker(g, nodes, flat, column, &force_flow);
+  force = force || force_flow || lay_has_comment(nodes);
+  const bool flow = force_flow;
   NodesList parts_buf = {0};
   lay_split(nodes, MS_T_Comma, &parts_buf);
   size_t nparts = parts_buf.len;
@@ -441,8 +450,8 @@ void lay_group(const Layout *l, size_t gid, size_t indent, size_t column, size_t
     }
     force = true;
   }
-  if (force && nparts == 1 && operator>= 0) {
-    lay_split(nodes, (MsTok) operator, & parts_buf);
+  if (force && nparts == 1 && breaker >= 0) {
+    lay_split(nodes, (MsTok)breaker, &parts_buf);
     nparts = parts_buf.len;
   }
   const Nodes *parts = parts_buf.ptr;
@@ -460,8 +469,8 @@ void lay_group(const Layout *l, size_t gid, size_t indent, size_t column, size_t
     const Nodes remaining = {nodes.ptr + 1, nodes.len - 1};
     lay_split(remaining, MS_T_Comma, &parts_buf);
     nparts = parts_buf.len;
-    if (nparts == 1 && operator>= 0) {
-      lay_split(remaining, (MsTok) operator, & parts_buf);
+    if (nparts == 1 && breaker >= 0) {
+      lay_split(remaining, (MsTok)breaker, &parts_buf);
       nparts = parts_buf.len;
     }
     parts = parts_buf.ptr;

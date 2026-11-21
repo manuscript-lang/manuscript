@@ -15,7 +15,7 @@
 #include "base/utf8.h"
 #include "compiler/syntax/ast.h"
 #include "compiler/syntax/lex.h"
-#include "compiler/syntax/message.h"
+#include "base/message.h"
 #include "compiler/syntax/parse.h"
 
 enum { FMT_WIDTH = 88, FMT_FLOW_WIDTH = 50 };
