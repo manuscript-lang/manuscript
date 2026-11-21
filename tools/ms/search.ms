@@ -8,12 +8,13 @@
 // `ms-tooling` example `api_model` prints.
 //   ms run tools/ms/search.ms -- MODEL.json [--json] [--limit N] [name or words...]
 import (
+	Arg, Matches from "@std/cli/command.ms",
 	parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
-	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
 	is_alphabetic, is_lowercase, is_numeric, is_uppercase from "@std/unicode.ms",
 
+	run_tool, tree_tool from "./cli.ms",
 	Declaration, Member, Module, indent, json_string, string_array from "./docgen.ms",
 )
 
@@ -792,37 +793,15 @@ type Request:
 	limit: Int
 	json: Bool
 
-fn parse_request(args: List[String]) Request!:
-	var request = Request([], 5, false)
-	var i = 0
-
-	while i < args.length():
-		arg := args[i]
-		i += 1
-
-		if arg == "--json": request.json = true
-		else if arg == "--limit" or arg.starts_with("--limit="):
-			var text = ""
-
-			if parts := arg.split_once("="): text = parts.after.clone()
-			else if i < args.length():
-				text = args[i].clone()
-				i += 1
-
-			count := text.parse_int().get_or(0)
-			if count < 1: return error(
-				Error(
-					"ms search_symbol: --limit needs a positive number, e.g. ms search_symbol Config --limit 3"
-				)
-			)
-
-			request.limit = count.min(10)
-		else if arg.starts_with("-"): return error(
-			Error(f"unknown option {arg} for ms search_symbol")
+fn parse_request(m: Matches) Request!:
+	limit := m.int_or_none("limit").get_or(5)
+	if limit < 1: return error(
+		Error(
+			"ms search_symbol: --limit needs a positive number, e.g. ms search_symbol Config --limit 3"
 		)
-		else: request.names.append(arg.clone())
+	)
 
-	return ok(request)
+	return ok(Request(m.list("query"), limit.min(10), m.bool("json")))
 
 fn blank(names: List[String]) Bool:
 	for name in names:
@@ -850,13 +829,14 @@ fn run(modules: List[Module], request: Request) String:
 
 	return render_text(query, described, 0, 0)
 
-// ms: allow_effect std.env.read
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.console.write
-fn main() Void!:
-	args := arguments()
-	model := parse[Model](read_file(args[0]).wait()?.decode_utf8().get_or(""))?
-	rest := args.slice(1, args.length())?
-	request := parse_request(rest)?
+fn show(m: Matches) Void!:
+	model := parse[Model](read_file(m.string("model")).wait()?.decode_utf8().get_or(""))?
+	request := parse_request(m)?
 	var out = stdout()
 	out.write(run(model.modules, request))?
+	return ok()
+
+fn main() Int:
+	return run_tool(tree_tool("search_symbol", [Arg("model")]), show)

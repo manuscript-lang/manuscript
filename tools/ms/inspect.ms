@@ -7,12 +7,14 @@
 // prints.
 //   ms run tools/ms/inspect.ms -- INSPECT.json [ascii|mermaid]
 import (
+	Arg, Command, Matches from "@std/cli/command.ms",
 	sha256 from "@std/crypto/crypto.ms",
 	hex_encode from "@std/data/encoding.ms",
 	parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
-	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
+
+	run_tool from "./cli.ms",
 )
 
 export type Span:
@@ -149,20 +151,36 @@ export fn diagram_mermaid(inspection: Inspection) String:
 
 	return out
 
-// ms: allow_effect std.env.read
-// ms: allow_effect std.fs.read
-// ms: allow_effect std.console.write
-fn main() Void!:
-	args := arguments()
-	if args.is_empty(): return error(
-		Error("usage: inspect.ms INSPECT.json [ascii|mermaid]")
+fn inspect_tool() Command:
+	return Command(
+		name: "inspect.ms",
+		about: "Draw the call graph of an `ms inspect` document",
+		args: [
+			Arg("document", help: "The `ms inspect` JSON"),
+			Arg(
+				"format",
+				required: false,
+				help: "ascii (default) or mermaid",
+			),
+		],
 	)
 
-	document := parse[Inspection](read_file(args[0]).wait()?.decode_utf8().get_or(""))?
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.console.write
+fn show(m: Matches) Void!:
+	document := parse[Inspection](
+		read_file(m.string("document")).wait()?.decode_utf8().get_or("")
+	)?
 	inspection := application_only(document)
 	var out = stdout()
 
-	if args.get_or(1, "ascii") == "mermaid": out.write(diagram_mermaid(inspection))?
+	if m.string_or_none("format").get_or("ascii") == "mermaid": out.write(
+		diagram_mermaid(inspection)
+	)?
 	else: out.write(diagram_ascii(inspection))?
 
 	out.flush()?
+	return ok()
+
+fn main() Int:
+	return run_tool(inspect_tool(), show)

@@ -5,7 +5,7 @@
  *
  * Checked operations are only weakened when the pass proves they cannot fault (constant operands
  * that do not overflow, a constant divisor other than 0 and -1). Owned droppable values are never
- * merged or deleted, so ownership stays linear. Port of crates/ms-mir/src/opt/simplify.rs; the
+ * merged or deleted, so ownership stays linear. Port of the former Rust crates/ms-mir/src/opt/simplify.rs; the
  * order of every rewrite and every value it creates is the Rust pass's. */
 #include <math.h>
 #include <stdlib.h>

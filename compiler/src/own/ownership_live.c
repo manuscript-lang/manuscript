@@ -194,12 +194,19 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
             live_expr(w, e->u.list.ptr[i - 1]);
         }
         return;
-    case MS_E_PROBE:
-    case MS_E_MAP: w->supported = false; return; /* collections are not modeled */
+    case MS_E_MAP:
+        for (uint32_t i = e->u.map.len; i > 0; i--) {
+            live_expr(w, e->u.map.ptr[i - 1].value);
+            live_expr(w, e->u.map.ptr[i - 1].key);
+        }
+        return;
+    case MS_E_PROBE: w->supported = false; return; /* not modeled */
     case MS_E_LAMBDA: live_lambda(w, e); return;
     case MS_E_CALL:
         if (ms_call_builds_case(w->facts, e)) {
-            live_expr(w, e->u.call.args.ptr[0].value);
+            for (uint32_t i = e->u.call.args.len; i > 0; i--) {
+                live_expr(w, e->u.call.args.ptr[i - 1].value);
+            }
             return;
         }
         live_call(w, e);

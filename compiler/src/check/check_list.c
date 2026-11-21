@@ -79,6 +79,9 @@ MsTy ms_body_index(MsBody *b, const MsExpr *e) {
         return ms_body_unsupported(b);
     }
     const MsTy list = ms_body_expr(b, left, MS_TY_NONE);
+    if (list != MS_TY_NONE && left->kind != MS_E_MAP && ms_body_is_map(b, list)) {
+        return ms_body_map_index(b, list, index);
+    }
     if (list == MS_TY_NONE || left->kind == MS_E_LIST || !ms_body_is_list(b, list)) {
         return ms_body_unsupported(b);
     }

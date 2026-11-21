@@ -43,7 +43,7 @@ runs:
         if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|compiler/|.*\.md$)'; then
           rust=false
         fi
-        # Pull requests build programs with Cranelift (the Debug backend). Only code that is specific to the
+        # Only code that is specific to the
         # LLVM release path also runs the LLVM corpus and the release gates, as main does: the LLVM backend
         # and its glue, the MIR passes and lowering it consumes (drop, clone and closure glue is built in
         # crates/ms-mir, so a change there decides what LLVM builds), the LLVM driver in ms-build, the LLVM tests, the pinned LLVM and lld tools

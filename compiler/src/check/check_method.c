@@ -18,6 +18,8 @@ typedef struct Target {
     const MsFunc *func;   /* its declaration: parameter defaults; NULL when none is at hand */
     uint32_t method;      /* the method row, or MS_NONE for an interface operation */
     bool mutating, consuming;
+    bool open;            /* variables of the method itself are still unbound: the arguments bind them */
+    MsInfer in;           /* the bindings of an open row */
 } Target;
 
 /* Binds the row's variables by matching its receiver type against the actual one. A built-in
@@ -58,38 +60,71 @@ static bool row_bounds_met(const MsBody *b, MsInfer *in) {
 
 /* The signature of row `i` for `receiver`: the row's own when it has no type variables, else with
  * the variables its receiver type binds (`WriteStream[T]` against `WriteStream[String]`) applied.
- * MS_TY_NONE when the row does not fit or leaves a variable open. */
-static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver) {
+ * A variable the receiver leaves open belongs to the method itself (`map[U]`): the row is then
+ * `open` and `*in` keeps the bindings for the arguments to extend. MS_TY_NONE when the row does not fit. */
+static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver, MsInfer *in, bool *open) {
     const MsMethods *m = &b->methods->methods;
+    *open = false;
     if (m->nvars[i] == 0) {
         return m->receiver[i] == receiver ? m->ty[i] : MS_TY_NONE;
     }
-    MsInfer in;
-    ms_infer_init(&in, b->c, &b->c->arena, m->vars + m->vars_at[i], m->nvars[i]);
-    uint32_t first = 0;
-    if (!row_receiver_fits(b, &in, m->receiver[i], receiver) || ms_infer_defaults(&in, &first) != 0 ||
-        !row_bounds_met(b, &in)) {
+    ms_infer_init(in, b->c, &b->c->arena, m->vars + m->vars_at[i], m->nvars[i]);
+    if (!row_receiver_fits(b, in, m->receiver[i], receiver)) {
         return MS_TY_NONE;
     }
-    return ms_infer_apply(&in, m->ty[i]);
+    MsTy *receiver_bound = MS_NEW_N(&b->c->arena, MsTy, m->nvars[i]);
+    memcpy(receiver_bound, in->bound, m->nvars[i] * sizeof *receiver_bound);
+    uint32_t first = 0;
+    if (ms_infer_defaults(in, &first) != 0) {
+        memcpy(in->bound, receiver_bound, m->nvars[i] * sizeof *receiver_bound); // the arguments may bind the rest
+        *open = true;
+        return ms_infer_apply(in, m->ty[i]);
+    }
+    return row_bounds_met(b, in) ? ms_infer_apply(in, m->ty[i]) : MS_TY_NONE;
 }
 
-/* The row of the impls that gives `receiver` a method `name`; false when none or ambiguous. */
-static bool method_row(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
+/* Whether a call of `given` arguments fits the signature `sig` of `func`: every parameter without a
+ * default is supplied. Methods of one name may differ in their parameters (`sorted()` and
+ * `sorted(compare)`); the call's argument count picks among them, as the Rust checker's does. */
+static bool row_arity_fits(const MsBody *b, MsTy sig, const MsFunc *func, uint32_t given) {
+    const MsTyTable *tys = &b->c->tys;
+    if (given == UINT32_MAX) {
+        return true;
+    }
+    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || given > tys->nparams[sig]) {
+        return false;
+    }
+    uint32_t required = tys->nparams[sig];
+    if (func != NULL && func->params.len == required) {
+        required = 0;
+        for (uint32_t i = 0; i < func->params.len; i++) {
+            required += func->params.ptr[i]->def == NULL ? 1u : 0u;
+        }
+    }
+    return given >= required;
+}
+
+/* The row of the impls that gives `receiver` a method `name`, among those a call of `given`
+ * arguments fits (UINT32_MAX: any); false when none or ambiguous. */
+static bool method_row(const MsBody *b, MsTy receiver, MsSym name, uint32_t given, Target *out) {
     const MsMethods *m = &b->methods->methods;
     bool found = false;
     for (uint32_t i = 0; i < m->count; i++) {
         if (m->decl[i] == NULL || m->decl[i]->name != name) {
             continue;
         }
-        const MsTy sig = row_signature(b, i, receiver);
-        if (sig == MS_TY_NONE) {
+        MsInfer in = {0};
+        bool open = false;
+        const MsTy sig = row_signature(b, i, receiver, &in, &open);
+        if (sig == MS_TY_NONE || !row_arity_fits(b, sig, m->decl[i], given)) {
             continue;
         }
         if (found) {
             return false;
         }
         *out = (Target){.sig = sig,
+                        .open = open,
+                        .in = in,
                         .func = m->decl[i],
                         .method = i,
                         .mutating = (m->access[i] & MS_METHOD_MUTATING) != 0,
@@ -188,11 +223,37 @@ static bool body_is_primitive(const MsBody *b, MsTy ty) {
     return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
 }
 
+/* One argument of an open row: against its parameter when that is settled, else its type binds the
+ * parameter's variables. A function literal whose parameters are settled gets them and takes its
+ * result from its body, which binds the variables of the parameter's result. */
+static bool open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in) {
+    const MsTyTable *tys = &b->c->tys;
+    const MsTy want = ms_infer_apply(in, param->ty);
+    if (!ms_body_mentions_unbound(b, in, want)) {
+        return ms_body_is_admitted(b, want) && ms_body_expr(b, value, want) != MS_TY_NONE;
+    }
+    MsTy actual = MS_TY_NONE;
+    if (value->kind == MS_E_LAMBDA) {
+        bool settled = ms_ty_kind(tys, want) == MS_K_FUNCTION;
+        for (uint32_t i = 0; settled && i < tys->nparams[want]; i++) {
+            settled = !ms_body_mentions_unbound(b, in, ms_ty_params(tys, want)[i].ty);
+        }
+        actual = settled ? ms_body_lambda_inferred(b, value, want) : MS_TY_NONE;
+        if (actual != MS_TY_NONE) {
+            (void)ms_body_record(b, value->id, actual);
+        }
+    } else {
+        actual = ms_body_expr(b, value, MS_TY_NONE);
+    }
+    return actual != MS_TY_NONE && ms_body_is_admitted(b, actual) && ms_infer_match(in, param->ty, actual) == MS_MATCH_OK;
+}
+
 /* The arguments of a method call against its signature, paired with parameters by position or
  * label; parameters left out must have a default in the declaration. A label or a count that does
  * not fit is a diagnostic the Rust checker reports. `e`'s `call_reordered` fact is set when some
- * argument is not at its parameter's index. */
-static bool arguments_fit(MsBody *b, const MsExpr *e, const Target *target) {
+ * argument is not at its parameter's index. An open row is closed by the arguments: its bindings
+ * must settle every variable and meet every bound, and `target->sig` becomes the signature at them. */
+static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
     const MsTyTable *tys = &b->c->tys;
     const MsTy sig = target->sig;
     const uint32_t given = e->u.call.args.len;
@@ -221,15 +282,31 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, const Target *target) {
     }
     for (uint32_t i = 0; i < given; i++) {
         const MsTyParam *param = &params[slot[i]];
+        if ((param->flags & ~(MS_PARAM_MOVE | MS_PARAM_POSITIONAL)) != 0) {
+            return false;
+        }
+        const MsExpr *value = e->u.call.args.ptr[i].value;
+        if (target->open) {
+            if (!open_argument(b, value, param, &target->in)) {
+                return false;
+            }
+            continue;
+        }
         MsTy payload = MS_TY_NONE;
         const bool optional = ms_body_optional_payload(b, param->ty, &payload);
-        if ((param->flags & ~(MS_PARAM_MOVE | MS_PARAM_POSITIONAL)) != 0 || (!ms_body_is_admitted(b, param->ty) && !optional) ||
-            ms_body_expr(b, e->u.call.args.ptr[i].value, param->ty) == MS_TY_NONE) {
+        if ((!ms_body_is_admitted(b, param->ty) && !optional) || ms_body_expr(b, value, param->ty) == MS_TY_NONE) {
             return false;
         }
     }
     b->facts->call_reordered[e->id] = ms_body_reordered(e, slot);
-    const MsTy result = tys->result[sig];
+    if (target->open) {
+        uint32_t first = 0;
+        if (ms_infer_defaults(&target->in, &first) != 0 || !row_bounds_met(b, &target->in)) {
+            return false;
+        }
+        target->sig = ms_infer_apply(&target->in, sig);
+    }
+    const MsTy result = tys->result[target->sig];
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty ||
            result == b->void_ty || ms_body_is_bindable(b, result);
 }
@@ -300,7 +377,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     } else if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT) {
         resolved = operation_of(b, receiver_ty, callee->u.member.name, &target);
     } else {
-        resolved = method_row(b, receiver_ty, callee->u.member.name, &target);
+        resolved = method_row(b, receiver_ty, callee->u.member.name, e->u.call.args.len, &target);
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved || target.consuming || (target.mutating && immutable) ||
@@ -317,6 +394,19 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     return b->c->tys.result[target.sig];
 }
 
+void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty) {
+    Target target;
+    if (b->methods == NULL || ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE ||
+        !method_row(b, ty, ms_intern_cstr(b->c->names, "to_string"), 0, &target)) {
+        return;
+    }
+    const MsTyTable *tys = &b->c->tys;
+    if (target.mutating || target.consuming || tys->nparams[target.sig] != 0 || tys->result[target.sig] != b->string_ty) {
+        return; // an ordinary method of that name: the type prints structurally
+    }
+    b->facts->text_method[part->id] = target.method;
+}
+
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
     const MsExpr *receiver = callee->u.member.left;
@@ -329,7 +419,7 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
     }
     const MsTy local_ty = binding == MS_NONE ? MS_TY_NONE : b->facts->bindings.ty[binding];
     Target row;
-    if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, &row))) {
+    if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, e->u.call.args.len, &row))) {
         const MsTy receiver_ty = ms_body_expr(b, receiver, MS_TY_NONE);
         if (body_is_primitive(b, receiver_ty)) {
             return body_intrinsic_call(b, e, receiver_ty);

@@ -136,6 +136,10 @@ bool ms_group_add(int64_t group_id, MsPromise id, int64_t tag) {
         push_done(group, (uint32_t)tag);
         return true;
     }
+    /* A foreign promise finishes in its owner's group table, not this one: the caller polls it with wait_any. */
+    if (ms_promise_is_foreign(id)) {
+        return false;
+    }
     Member *const member = member_row(id);
     if (member->id == id && member->group != 0) {
         return false;

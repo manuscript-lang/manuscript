@@ -5,12 +5,11 @@
 // exiting with status 2.
 import (
 	Matches from "@std/cli/command.ms",
-	exists, stat from "@std/os/fs.ms",
+	stat from "@std/os/fs.ms",
 	Os, os from "@std/os/system.ms",
-	compile from "@std/regex.ms",
-	parse_duration from "@std/time.ms",
 
 	quote from "./quote.ms",
+	TestOptions, test_options from "./test/options.ms",
 )
 
 // The `--view` names of `ms diagram`.
@@ -38,9 +37,8 @@ export type Invocation:
 	with_text: Bool = false
 	each: Bool = false
 	build_type_name: String = ""
-	test_timeout: String = ""
-	test_filter: String = ""
-	test_options: List[String] = []
+	// The selection and run options of `ms test` and `ms bench`.
+	tests: TestOptions = TestOptions()
 	format: String = ""
 	view: String = ""
 	entity: String = ""
@@ -84,51 +82,6 @@ fn positive(m: Matches, name: String) Void!:
 		if value <= 0: usage(f"invalid --{name}; use a positive integer")?
 	return ok(void)
 
-// The test and bench options the supervisor receives, as `--name=value` in a fixed
-// order after the switches; each value is checked here.
-fn selection_options(m: Matches) List[String]!:
-	var options = List[String]()
-	for name in ["list", "fail-fast", "ops"]:
-		if on(m, name): options.append(f"--{name}")
-	for name in ["test", "bench"]:
-		for value in m.list(name): options.append(f"--test={value}")
-
-	for name in ["match", "exclude"]:
-		if value := m.string_or_none(name):
-			compiled := compile(value)
-			if compiled.is_error():
-				usage(
-					f"invalid --{name}: {compiled.err().message}; supply a valid regular expression"
-				)?
-			options.append(f"--{name}={value}")
-
-	for name in ["repeat", "runs", "samples", "iterations"]:
-		positive(m, name)?
-		if value := m.string_or_none(name): options.append(f"--{name}={value}")
-
-	for name in ["shuffle", "seed"]:
-		if value := m.string_or_none(name): options.append(f"--{name}={value}")
-
-	if value := m.string_or_none("time"):
-		parsed := parse_duration(value)
-		if parsed.is_error() or parsed.get().nanos < 1000000:
-			usage(
-				f"invalid --time {quote(value)}; use a duration of at least 1ms such as 200ms or 1s"
-			)?
-		options.append(f"--time={value}")
-
-	if value := m.string_or_none("fuzz"):
-		parsed := parse_duration(value)
-		if parsed.is_error() or parsed.get().nanos <= 0:
-			usage(
-				f"invalid --fuzz {quote(value)}; use a positive duration such as 30s or 5m"
-			)?
-		options.append(f"--fuzz={value}")
-
-	for name in ["baseline", "fail-over"]:
-		if value := m.string_or_none(name): options.append(f"--{name}={value}")
-	return ok(options)
-
 // Reads the values the tree parsed for a source command: `m.path` is `ms <command>`.
 // The file of a command that takes one resolves a directory to its ms.toml.
 export fn invocation(m: Matches) Invocation!:
@@ -156,7 +109,6 @@ export fn invocation(m: Matches) Invocation!:
 	inv.each = on(m, "each")
 	inv.allocs = on(m, "allocs")
 	inv.build_type_name = m.string_or_none("build-type").get_or("")
-	inv.test_filter = m.string_or_none("filter").get_or("")
 	inv.format = m.string_or_none("format").get_or("")
 	inv.view = m.string_or_none("view").get_or("")
 	inv.entity = m.string_or_none("entity").get_or("")
@@ -166,15 +118,11 @@ export fn invocation(m: Matches) Invocation!:
 	inv.depth = m.int_or_none("depth").get_or(0)
 	inv.top = m.int_or_none("top").get_or(0)
 
-	if value := m.string_or_none("timeout"):
-		parsed := parse_duration(value)
-		if parsed.is_error() or parsed.get().nanos < 0:
-			usage(
-				f"invalid --timeout {quote(value)}; use a duration such as 30s or 2m, or 0 to disable"
-			)?
-		inv.test_timeout = value
+	if command == "test" or command == "bench":
+		options := test_options(m)
+		if options.is_error(): usage(options.err())?
+		inv.tests = options.get()
 
-	inv.test_options = selection_options(m)?
 	return ok(inv)
 
 // Rejects option combinations the command does not accept and normalises what is left
@@ -218,22 +166,6 @@ export fn validate(var inv: Invocation) Void!:
 		usage(
 			f"unknown --format {quote(inv.format)} for ms diagram; use ascii, mermaid, or html"
 		)?
-
-	if command == "test" or command == "bench":
-		var test_args = inv.test_options.clone()
-		if not inv.test_timeout.is_empty(): test_args.append(
-			f"--timeout={inv.test_timeout}"
-		)
-		if not inv.test_filter.is_empty(): test_args.append(
-			f"--filter={inv.test_filter}"
-		)
-
-		if not inv.arguments.is_empty():
-			test_args.append("--")
-			test_args.extend(inv.arguments.clone())
-
-		inv.arguments = test_args
-
 	if inv.watch and inv.structured:
 		usage(
 			"--json cannot be combined with --watch; remove --watch for one versioned result"

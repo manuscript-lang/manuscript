@@ -2,13 +2,13 @@
 // `ms help` and `--help` generate from them (@std/cli/command.ms). `main.ms` parses the
 // command line with it and dispatches on the command it selects.
 import (
-	Arg, Command, Flag, FlagKind from "@std/cli/command.ms",
+	Arg, Command, Flag, FlagKind, Matches from "@std/cli/command.ms",
+	stderr, stdout from "@std/io/io.ms",
+	arguments from "@std/os/env.ms",
 	expect_contains,
 	expect_equal,
-	expect_false,
 	expect_ok,
 	expect_some,
-	expect_true,
 	fail from "@std/test/test.ms",
 )
 
@@ -44,13 +44,18 @@ fn build_flags(build_help: String) List[Flag]:
 	]
 
 fn file_arg() Arg:
-	return Arg("file", help: "A .ms file, or a project directory or ms.toml")
+	return Arg(
+		"file",
+		help: "A .ms file, or a project directory or ms.toml (default ms.toml)",
+		default: "ms.toml",
+	)
 
 fn targets_arg() Arg:
 	return Arg(
 		"targets",
-		help: "Files, directories or ms.toml; each keeps its own import root",
+		help: "Files, directories or ms.toml; each keeps its own import root (default ms.toml)",
 		rest: true,
+		default: "ms.toml",
 	)
 
 fn selection_flags(noun: String, timeout_help: String) List[Flag]:
@@ -205,7 +210,7 @@ fn run_command() Command:
 			),
 		].concat(
 			build_flags(
-				"Debug, Release, or MinSizeRel (case-insensitive; default Debug, Cranelift, fast to build; Release uses LLVM)"
+				"Debug, Release, or MinSizeRel (case-insensitive; default Debug, fast to build; Release optimizes)"
 			)
 		),
 		examples: ["ms run ms.toml -- first second", "ms run main.ms --watch"],
@@ -265,7 +270,7 @@ fn test_command() Command:
 		)
 		.concat(
 			build_flags(
-				"Debug, Release, or MinSizeRel (case-insensitive; default Debug, Cranelift, fast to build; Release uses LLVM)"
+				"Debug, Release, or MinSizeRel (case-insensitive; default Debug, fast to build; Release optimizes)"
 			)
 		),
 		examples: [
@@ -389,7 +394,7 @@ fn verify_command() Command:
 			Arg(
 				"target",
 				help: "A .ms file, directory or ms.toml (default ms.toml)",
-				required: false,
+				default: "ms.toml",
 			)
 		],
 		flags: [
@@ -624,7 +629,7 @@ fn install_command() Command:
 		args: [
 			Arg(
 				"manifest",
-				help: "The project's ms.toml (default ms.toml)",
+				help: "The project's ms.toml (default: the nearest above)",
 				required: false,
 			)
 		],
@@ -796,24 +801,50 @@ export fn spec() Command:
 		],
 	)
 
-// Whether the option `token` of `command` (`--name` or a one-letter `-o`) takes a
-// value in the next argument, for scanning a command line before it is parsed.
-export fn takes_value(root: Command, command: String, token: String) Bool:
-	if token.contains("=") or not token.starts_with("-"): return false
+// The command line of `ms <command>` in the one canonical spelling the Rust `ms` reads:
+// the positional words first (a leading dash gets a `./`), then each flag that was
+// given as `--name=value`, then the words after `--`. Words that must not read as
+// options follow a
+// `--` of their own. `targets` replaces the `targets` words of the command when it is not empty.
+export fn rust_arguments(
+	root: Command,
+	m: Matches,
+	targets: List[String] = [],
+) List[String]:
+	command := m.path[1].clone()
+	node := root.child(command)
+	if node.is_none(): return [command]
 
-	child := root.child(command)
-	if child.is_none(): return false
+	var out = [command.clone()]
+	var loose = List[String]()
 
-	long := token.starts_with("--")
-	key := token.view(if long: 2 else: 1, token.length())
+	for arg in node.get().args:
+		given := if arg.name == "targets" and not targets.is_empty(): targets.clone() else: m.list(
+			arg.name
+		)
 
-	for flag in child.get().flags:
-		if long and flag.name != key: continue
-		if not long and flag.short != key: continue
+		for value in given:
+			if not value.starts_with("-"): out.append(value.clone())
+			else if arg.name == "query": loose.append(value.clone())
+			else if out.length() == 1: out.append(f"./{value}")
+			else: loose.append(value.clone())
 
-		return flag.kind != FlagKind.Bool
+	for flag in node.get().flags:
+		for value in m.list(flag.name):
+			if flag.kind == FlagKind.Bool:
+				if value == "true": out.append(f"--{flag.name}")
+			else:
+				out.append(f"--{flag.name}={value}")
 
-	return false
+	if not loose.is_empty():
+		out.append("--")
+		out.extend(loose)
+
+	if not m.passthrough.is_empty():
+		out.append("--")
+		out.extend(m.passthrough.clone())
+
+	return out
 
 test "the command tree is a valid schema and every command has help":
 	root := spec()
@@ -827,14 +858,38 @@ test "the command tree is a valid schema and every command has help":
 		text := root.help([child.name.clone()]) | expect_some?
 		text | expect_contains("Usage:\n  ms " + child.name)?
 
-test "takes_value reads the flag kinds of a command":
+test "rust_arguments writes the target first and the flags as --name=value":
 	root := spec()
-	expect_true(takes_value(root, "build", "-o"))?
-	expect_true(takes_value(root, "build", "--build-type"))?
-	expect_false(takes_value(root, "build", "--json"))?
-	expect_false(takes_value(root, "build", "--build-type=Debug"))?
-	expect_false(takes_value(root, "check", "--link"))?
-	expect_false(takes_value(root, "nope", "-o"))?
+	parsed := root.parse(["build", "-o", "out", "--static", "a.ms"]) | expect_ok?
+
+	match parsed:
+		Run(matches):
+			rust_arguments(root, matches) | expect_equal(
+				["build", "a.ms", "--output=out", "--static"]
+			)?
+		Help(_): return fail("help")
+
+test "rust_arguments defaults the target and keeps the program arguments":
+	root := spec()
+	parsed := root.parse(["run", "--", "x", "--y"]) | expect_ok?
+
+	match parsed:
+		Run(matches):
+			rust_arguments(root, matches) | expect_equal(
+				["run", "ms.toml", "--", "x", "--y"]
+			)?
+		Help(_): return fail("help")
+
+test "rust_arguments protects a target that begins with a dash":
+	root := spec()
+	parsed := root.parse(["check", "--json", "--", "-x.ms", "b.ms"]) | expect_ok?
+
+	match parsed:
+		Run(matches):
+			rust_arguments(root, matches) | expect_equal(
+				["check", "./-x.ms", "b.ms", "--json"]
+			)?
+		Help(_): return fail("help")
 
 test "run keeps the words after dashes for the program":
 	parsed := spec().parse(["run", "a.ms", "--json", "--", "x", "--y"]) | expect_ok?
@@ -844,3 +899,81 @@ test "run keeps the words after dashes for the program":
 			matches.string("file") | expect_equal("a.ms")?
 			matches.passthrough | expect_equal(["x", "--y"])?
 		Help(_): return fail("help")
+
+// The words this program was started with: the only place the tools read them.
+export fn command_line() List[String]:
+	return arguments()
+
+// Parses the program's own command line against `tool`. Help text and usage errors come
+// back as the Error for `usage_status` to print.
+export fn tool_matches(tool: Command) Matches!:
+	given := arguments()
+	parsed := tool.parse(given)
+	if parsed.is_error():
+		return error(
+			Error(
+				parsed.err().message + "\n" + tool.usage_hint(given),
+				kind: "EINVAL",
+			)
+		)
+
+	match parsed.get():
+		Help(text): return error(Error(text.clone(), kind: "HELP"))
+		Run(matches): return ok(matches.clone())
+
+// Prints the Error of `tool_matches` and returns the program's exit status: help
+// succeeds, a usage error is 2.
+export fn usage_status(failure: Error) Int:
+	if failure.kind == "HELP":
+		stdout().write(failure.message).get()
+		return 0
+
+	stderr().write(failure.message + "\n").get()
+	return 2
+
+// The command `name` of the `ms` tree for a helper program that reads the same flags,
+// with `leading` arguments (an input the helper takes first) before the command's own.
+export fn tree_tool(name: String, leading: List[Arg]) Command:
+	var tool = search_symbol_command()
+	if name == "diagram": tool = diagram_command()
+	if name == "review": tool = review_command()
+	tool.args = leading.concat(tool.args.clone())
+	return tool
+
+// Runs a helper program: parses its command line against `tool`, then `body`. A usage
+// error exits 2 and a failed body prints its message and exits 1.
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.console.read
+// ms: allow_effect std.console.write
+export fn run_tool(tool: Command, body: fn(Matches) Void!) Int:
+	parsed := tool_matches(tool)
+	if parsed.is_error(): return usage_status(parsed.err())
+
+	done := body(parsed.get())
+
+	if done.is_error():
+		stderr().write(done.err().message + "\n").get()
+		return 1
+
+	return 0
+
+// Runs a helper program that ends with an exit status of its own: like `run_tool`, but
+// `body` returns the status.
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.console.read
+// ms: allow_effect std.console.write
+export fn run_program(tool: Command, body: fn(Matches) Int!) Int:
+	parsed := tool_matches(tool)
+	if parsed.is_error(): return usage_status(parsed.err())
+
+	done := body(parsed.get())
+
+	if done.is_error():
+		stderr().write(done.err().message + "\n").get()
+		return 1
+
+	return done.get()

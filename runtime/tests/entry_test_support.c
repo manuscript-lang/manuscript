@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "../core/fault_kept.h"
 #include "../core/task.h"
 #include "../entry/entry.h"
 #include "ms_rt/alloc.h"

@@ -4,7 +4,6 @@ name: Nightly safety
 # A failure here is a real bug: file an issue and fix the cause, never skip the check.
 #   miri          the runtime and the native crates under Miri, one job, crate by crate (needs nightly; see documentation/contributing/rust-toolchain.md)
 #   cancel-sweep  cancels every e2e stdlib test at each park and fails when cancellation leaks heap blocks
-#   drift-check   runs the corpus under LLVM and Cranelift and fails on any difference
 #   poison-check  runs the corpus under both backends with dead stack slots filled with a pattern
 #   ownership-fuzz  random move/borrow/closure programs, leak-counted, Debug vs Release
 #   view-matrix   generated view programs (trim, slice, split) with temporaries after them, poisoned, in Debug and Release
@@ -59,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, drift-check, poison-check, view-matrix, ownership-fuzz, bench-gate, c-compiler-test]
+        check: [cancel-sweep, poison-check, view-matrix, ownership-fuzz, bench-gate, c-compiler-test]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-env

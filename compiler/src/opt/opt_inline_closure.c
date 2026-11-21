@@ -2,7 +2,7 @@
  * becomes a direct call and is inlined; a call that passes such a closure to a callee that calls
  * it gets a private specialised copy of the callee; a runtime sort whose comparator is a known
  * closure gets a copy of the generic comparison thunk that calls the closure's code directly.
- * Port of the corresponding parts of crates/ms-mir/src/opt/inline.rs. */
+ * Port of the corresponding parts of the former Rust crates/ms-mir/src/opt/inline.rs. */
 #include <string.h>
 
 #include "opt/opt_inline.h"

@@ -1,5 +1,5 @@
 /* range: the state and helpers its source files share (opt_range*.c). Port of
- * crates/ms-mir/src/opt/range.rs and range/prove.rs; see opt_range.c for the algorithm. */
+ * the former Rust crates/ms-mir/src/opt/range.rs and range/prove.rs; see opt_range.c for the algorithm. */
 #ifndef MS_OPT_RANGE_H
 #define MS_OPT_RANGE_H
 
