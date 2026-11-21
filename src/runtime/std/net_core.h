@@ -1,0 +1,83 @@
+/* runtime/std/net_core.h: the socket behind the handles of @std/net (a connection, a listener or a datagram socket).
+ *
+ * A NetCore wraps one libuv handle of the network loop (net_loop.h). Every field after `closed` belongs to the loop
+ * thread alone. Manuscript handles (NetHandle) count references on the core; the libuv handle holds one more, released
+ * when libuv has closed it, and the last release frees the core. */
+#ifndef MS_RUNTIME_STD_NET_CORE_H
+#define MS_RUNTIME_STD_NET_CORE_H
+
+#include <stdatomic.h>
+#include <uv.h>
+
+#include "abi/status.h"
+#include "base/desc.h"
+#include "base/string.h"
+#include "runtime/std/net_loop.h"
+
+typedef enum MsNetKind { MS_NET_CONNECTION, MS_NET_LISTENER, MS_NET_DATAGRAM } MsNetKind;
+
+typedef struct MsNetCore {
+  union {
+    uv_handle_t handle;
+    uv_stream_t stream;
+    uv_tcp_t tcp;
+    uv_pipe_t pipe;
+    uv_udp_t udp;
+  } h;
+  MsNetKind kind;
+  bool is_pipe;           /* a Unix domain (or named pipe) socket */
+  atomic_uint references; /* handles, plus one for the libuv handle */
+  atomic_uint handles;    /* the Manuscript handles alive; the last drop closes the socket */
+  atomic_uint ends;       /* ends of the object still open (share / close_if_last) */
+  atomic_bool closed;
+  MsString local; /* the addresses as text, set before the core is shared */
+  MsString peer;
+  char *path;               /* a Unix listener's file, removed when the core closes */
+  uint8_t *stash;           /* loop thread: bytes read ahead of a reader that gave up */
+  size_t stash_length;
+  bool eof;                 /* loop thread: the peer ended its side */
+  bool broken;              /* loop thread: a write was abandoned, so the stream is torn */
+  void *reading;            /* loop thread: the read or receive in progress */
+  void *accepting;          /* loop thread: accept operations waiting, oldest first */
+  void *ready;              /* loop thread: accepted connections nobody took yet, oldest first */
+} MsNetCore;
+
+/* The object a Manuscript program holds: a reference on a core. */
+typedef struct MsNetHandle {
+  MsObj header;
+  MsNetCore *core;
+} MsNetHandle;
+
+/* A core of `kind` with one reference (the libuv handle's), not yet initialised on the loop. */
+MsNetCore *ms_net_core_new(MsNetKind kind, bool is_pipe);
+void ms_net_core_unref(MsNetCore *core);
+/* A handle holding a new reference on `core`. */
+MsObj *ms_net_handle_new(MsNetCore *core);
+MsNetCore *ms_net_handle_core(const MsObj *handle);
+/* Closes the socket once (ends operations in flight, closes the libuv handle). Safe from any thread. */
+void ms_net_core_close(MsNetCore *core);
+/* Loop thread: records the socket's own and peer address as text, from the libuv handle. */
+void ms_net_core_name(MsNetCore *core);
+/* The text of a socket address: ip and port, bracketed for IPv6. */
+void ms_net_address_text(const struct sockaddr *address, MsString *out);
+
+/* Handle natives shared by the three kinds. */
+/* Another handle on the same end (alias) and on a new end (share). */
+MsObj *ms_net_handle_alias(const MsObj *handle);
+MsObj *ms_net_handle_share(const MsObj *handle);
+void ms_net_handle_close(const MsObj *handle);
+void ms_net_handle_close_if_last(const MsObj *handle);
+
+/* Loop thread: the ends of the per-kind work (net_conn.c, net_listen.c, net_dgram.c). */
+void ms_net_conn_close_ops(MsNetCore *core);
+void ms_net_listen_close_ops(MsNetCore *core);
+void ms_net_dgram_close_ops(MsNetCore *core);
+
+
+/* Ends a native: the status for how a wait ended and the libuv `status` of the operation, with `err` filled for a
+ * failure ("<operation>: <reason>"). A stop request cancels the task and does not return. */
+uint8_t ms_net_finish(MsNetWait wait, int status, const char *operation, MsString *err);
+/* Loop thread: closes a core that was never handed to a handle. */
+void ms_net_core_discard(MsNetCore *core);
+
+#endif
