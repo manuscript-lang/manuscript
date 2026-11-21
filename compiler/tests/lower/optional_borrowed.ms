@@ -1,16 +1,13 @@
 fn greet(name: String?) String:
-	if value := name:
-		return "Hello, " + value
+	if value := name: return "Hello, " + value
 	return "Hello!"
 
 fn keep(name: String?) String:
-	if value := name:
-		return value.clone()
+	if value := name: return value.clone()
 	return "Anonymous"
 
 fn first_or(items: List[String]?, fallback: String) String:
-	if values := items:
-		return fallback + values[0]
+	if values := items: return fallback + values[0]
 	return fallback
 
 fn main() Int:
