@@ -20,3 +20,13 @@ add_library(ms_std_data STATIC
   json_write.c)
 ms_target_defaults(ms_std_data)
 target_link_libraries(ms_std_data PUBLIC ms_base ms_values)
+
+# @std/time: durations, instants, clocks, RFC 3339 text, calendar fields and the host zone setting.
+add_library(ms_std_time STATIC
+  time.c
+  time_civil.c
+  time_clock.c
+  time_system.c
+  time_text.c)
+ms_target_defaults(ms_std_time)
+target_link_libraries(ms_std_time PUBLIC ms_base)
