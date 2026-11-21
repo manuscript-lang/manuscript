@@ -229,7 +229,7 @@ bool ms_body_same_type(const MsBody *b, MsTy x, MsTy y) {
  * Promise and Error types, which have hints of their own. */
 static bool body_is_comparable(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
-    if (body_is_value_type(b, ty)) {
+    if (body_is_value_type(b, ty) || body_is_sized_number(b, ty)) {
         return true;
     }
     const MsKind kind = ms_ty_kind(tys, ty);
@@ -946,7 +946,9 @@ static MsTy body_unary(MsBody *b, const MsExpr *e, MsTy expected) {
         const MsTy literal = body_number(b, operand, expected, true);
         return literal == MS_TY_NONE ? literal : ms_body_record(b, operand->id, literal);
     }
-    const MsTy operand_ty = ms_body_expr(b, operand, MS_TY_NONE);
+    // A sign keeps the number type the context expects, so a literal inside it fits that type.
+    const MsTy hint = op != MS_U_NOT && body_is_sized_number(b, expected) ? expected : MS_TY_NONE;
+    const MsTy operand_ty = ms_body_expr(b, operand, hint);
     if (operand_ty == MS_TY_NONE) {
         return MS_TY_NONE;
     }
