@@ -49,7 +49,12 @@ MirTy lr_type(Lb *lb, MsTy ty) {
 static MirValue lr_default(Lb *lb, const MsDecl *decl, MsSymId sym, uint32_t index, MirTy field_ty) {
     const MsExpr *def = decl->u.type.fields.ptr[index]->def;
     const MsFacts *own = lb->facts;
-    lb->facts = lb->c->mods[lb->c->syms.module[sym]].facts;
+    const MsFacts *home = lb->c->mods[lb->c->syms.module[sym]].facts;
+    if (home == NULL || home->expr_ty == NULL || home->expr_ty[def->id] == MS_TY_NONE) { // this run did not check the default (the library): nothing to lower from
+        (void)lb_unsupported(lb);
+        return MIR_NONE;
+    }
+    lb->facts = home;
     if (lb->c->syms.module[sym] == lb->module) { // a default of another file has no position here
         lb->b.loc = lb_loc(lb, def->pos); // the rest of the statement stays at the default's position, as the Rust lowering leaves it
     }
