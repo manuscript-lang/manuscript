@@ -58,13 +58,49 @@ static void be_apply_shown(MirModule *m, MsSym *display, uint32_t ndisplay, MsBy
 
 /* The passes and the emitter over a parsed module. The IR goes to `ir`, the tables meta to `meta`
  * when asked for, and the reason for a failure to `why`. */
+/* The copies of object values the lowered code makes, which have one owner and are duplicated only by `.clone()`:
+ * printed one per line, or refused when `strict` (lowering must move the value or call its clone). */
+static bool be_probe_copies(const MirModule *m, uint8_t probe, MsBuf *why) {
+    if (probe == 0) {
+        return true;
+    }
+    MsBuf sites = {0};
+    mir_object_copies(m, &sites);
+    bool ok = true;
+    if (sites.len != 0 && probe == 1) {
+        size_t start = 0;
+        while (start < sites.len) {
+            const char *newline = memchr(sites.data + start, '\n', sites.len - start);
+            const size_t end = newline != NULL ? (size_t)(newline - sites.data) : sites.len;
+            (void)fprintf(stderr, "copy-probe\t%.*s\n", (int)(end - start), (const char *)sites.data + start);
+            start = end + 1;
+        }
+    } else if (sites.len != 0) {
+        uint32_t count = 0;
+        for (size_t i = 0; i < sites.len; i++) {
+            count += sites.data[i] == '\n';
+        }
+        ms_buf_printf(why,
+                      "the lowered code copies %u object value(s), which have one owner (this is a Manuscript bug: "
+                      "lowering must move the value or call its clone):\n%.*s",
+                      count, (int)sites.len, (const char *)sites.data);
+        ok = false;
+    }
+    ms_buf_free(&sites);
+    return ok;
+}
+
 static bool be_emit(MirModule *m, MsBytes shown, const MsBackendOptions *options, MsBuf *ir, MsBuf *meta,
                     MsBuf *why) {
+    const MirPipelineOptions pipeline = {.checks = options->checks, .verify = options->verify, .count_ops = options->count_ops,
+                                         .cancel_edges = options->cancel_edges};
+    if (!mir_pipeline_prepare(m, &pipeline, why) || !be_probe_copies(m, options->copy_probe, why)) {
+        return false;
+    }
     if (!mir_optimize(m, options->speed ? MIR_OPT_SPEED : MIR_OPT_NONE, options->verify, why)) {
         return false;
     }
     MirGlue glue = {0};
-    const MirPipelineOptions pipeline = {.checks = options->checks, .verify = options->verify, .count_ops = options->count_ops};
     if (!mir_pipeline_finish(m, &pipeline, &glue, why)) {
         return false;
     }
@@ -122,7 +158,8 @@ bool ms_backend_ir(const char *mir, size_t mir_len, const char *name, const char
     return true;
 }
 
-bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name, MsBackendText *out, MsBackendText *why) {
+bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name, bool optimize, MsBackendText *out,
+                          MsBackendText *why) {
     MirModule m;
     mir_module_init(&m);
     MsBuf text = {0}, why_buf = {0};
@@ -132,7 +169,9 @@ bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name, MsB
     if (!ok) {
         ms_buf_printf(&why_buf, "%s:%u: %.*s", name, line, (int)message.len, message.ptr);
     } else {
-        ok = mir_optimize(&m, MIR_OPT_SPEED, true, &why_buf);
+        const MirPipelineOptions pipeline = {.verify = true,
+                                             .cancel_edges = getenv("MS_CANCEL_EDGES") != NULL}; // NOLINT(concurrency-mt-unsafe)
+        ok = mir_pipeline_prepare(&m, &pipeline, &why_buf) && (!optimize || mir_optimize(&m, MIR_OPT_SPEED, true, &why_buf));
         if (ok) {
             mir_print_module(&m, &text);
         }

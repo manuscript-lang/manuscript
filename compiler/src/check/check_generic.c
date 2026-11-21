@@ -198,14 +198,18 @@ static bool generic_grows(MsBody *b, const MsInfer *in, MsSymId callee) {
     return false;
 }
 
-/* Whether a field of the type declaration has a default value, an expression that can call back. */
-static bool generic_has_defaults(const MsDecl *decl) {
+/* Whether a field default of the type declaration calls something that is not a native function: an
+ * expression that can come back to the caller. */
+static bool generic_defaults_call(const MsCheck *c, MsModId home, const MsDecl *decl) {
+    CallBack scan = {.c = c, .home = home};
+    const MsVisitor visitor = {.ctx = &scan, .expr = generic_scan_call};
     for (uint32_t i = 0; i < decl->u.type.fields.len; i++) {
-        if (decl->u.type.fields.ptr[i]->def != NULL) {
-            return true;
+        const MsExpr *def = decl->u.type.fields.ptr[i]->def;
+        if (def != NULL) {
+            ms_walk_expr(&visitor, def);
         }
     }
-    return false;
+    return scan.found;
 }
 
 /* Every variable is bound to an admitted type and each of its bounds, with the bindings applied, is met. */
@@ -413,7 +417,7 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
     // A type applied to the caller's own variables may be a cycle of applications that never ends: its
     // defaults call back into the caller, or an argument grows. The Rust checker reports both (recursion.rs).
     if (result == MS_TY_NONE || !ms_body_is_bindable(b, result) || generic_grows(b, &in, sym) ||
-        (generic_has_defaults(decl) && ms_ty_has_variable(&b->c->tys, result))) {
+        (ms_ty_has_variable(&b->c->tys, result) && generic_defaults_call(b->c, b->c->syms.module[sym], decl))) {
         return ms_body_unsupported(b);
     }
     b->facts->call_reordered[e->id] = ms_body_reordered(e, slot);

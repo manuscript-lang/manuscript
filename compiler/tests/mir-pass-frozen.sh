@@ -1,6 +1,6 @@
 #!/bin/sh
-# Checks each C MIR pass (and each optimisation pass, frozen as opt-<pass>) against the frozen output of the Rust pass on the repository's .mir
-# files (compiler/tests/mir/frozen/<pass>.out.gz, made by `MS_MIR_FREEZE=1 sh compiler/tests/mir-pass-diff.sh`).
+# Checks each C MIR pass (and each optimisation pass, frozen as opt-<pass>) against its golden output on the repository's .mir
+# files (compiler/tests/mir/frozen/<pass>.out.gz; the Rust passes that first made them are deleted).
 # Needs no Rust build. Run from the repository root. After a deliberate change of a pass or of a
 # fixture, refresh with `MS_MIR_REFRESH=1`, which rewrites the golden from the C pass and leaves the
 # diff to review.
@@ -11,7 +11,7 @@ mkdir -p "$out"
 sh compiler/tests/cbuild.sh ms_mir_pass ms_mir_dump
 bin=target/cmake/test/compiler/ms_mir_pass
 dump=target/cmake/test/compiler/ms_mir_dump
-# The elaborate fixtures made task programs, which the elaborate-cancel list names (see mir-pass-diff.sh).
+# The elaborate fixtures made task programs, which the elaborate-cancel list names .
 mkdir -p target/c-compiler/mir-pass/task
 for f in $(git ls-files 'compiler/tests/mir/elaborate/*.mir'); do
     { head -1 "$f"; echo 'extern @msrt_promise_start(int) -> int spawns_task'; tail -n +2 "$f"; } > "target/c-compiler/mir-pass/task/$(basename "$f")"

@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::{BuildOptions, CopyProbe};
+use crate::BuildOptions;
 use ms_mir::ir::Module;
 
 /// An exclusively owned temporary directory beside the final executable.
@@ -134,30 +134,6 @@ pub fn runtime_override(build: &BuildOptions) -> Result<Option<PathBuf>, String>
     }
 }
 
-/// Reports or rejects the copies of object values in `module` (`MS_COPY_PROBE`,
-/// `MS_COPY_PROBE=strict`): one-owner lowering duplicates an object only through `.clone()`.
-fn probe_copies(module: &Module, probe: CopyProbe) -> Result<(), String> {
-    if probe == CopyProbe::Off {
-        return Ok(());
-    }
-    let sites = ms_mir::copies::object_copies(module);
-    if probe == CopyProbe::Report {
-        for s in &sites {
-            eprintln!("copy-probe\t{s}");
-        }
-        return Ok(());
-    }
-    if sites.is_empty() {
-        return Ok(());
-    }
-    let text: Vec<String> = sites.iter().map(|s| s.to_string()).collect();
-    Err(format!(
-        "the lowered code copies {} object value(s), which have one owner (this is a Manuscript bug: lowering must move the value or call its clone):\n{}",
-        sites.len(),
-        text.join("\n")
-    ))
-}
-
 /// Optimize `module`, generate code and link the executable at `output`. The
 /// executable replaces `output` only when the whole build succeeds.
 pub fn build_executable(
@@ -174,14 +150,6 @@ pub fn build_executable(
             missing.display()
         ));
     }
-    if let Err(errors) = ms_mir::verify::verify_module(module) {
-        let text: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
-        return Err(format!(
-            "the compiler produced invalid code (this is a Manuscript bug, so report it with the source that triggers it):\n{}",
-            text.join("\n")
-        ));
-    }
-    probe_copies(module, build.copy_probe)?;
     let timings = build.timings;
     let started = std::time::Instant::now();
     let phase = |name: &str| {

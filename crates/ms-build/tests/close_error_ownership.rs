@@ -24,7 +24,6 @@ fn close_errors_preserve_owned_identity_and_disjoint_borrowing() {
         },
     )
     .expect("lower precedence and borrowing fixture");
-    ms_mir::verify::verify_module(&module).expect("ownership verified without exceptions");
 
     for (name, borrowed) in [
         ("borrowed_ok", 1 << Std::OK),
