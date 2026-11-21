@@ -400,8 +400,34 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
  * or returning one that lives elsewhere. */
 static bool own_is_constructor(const OwnWalk *w, const MsExpr *e);
 
+static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e);
+static bool own_is_value_call(const OwnWalk *w, const MsExpr *e);
+static bool own_is_fresh_intrinsic(const OwnWalk *w, const MsExpr *e);
+static bool own_is_method_call(const OwnWalk *w, const MsExpr *e);
+
+/* Whether the call `e` returns a value of its own: a construction, an intrinsic, a function value, a method (its own
+ * walk declines a result that is a reference) or a function whose result is no reference into its arguments. */
+static bool own_call_is_fresh(const OwnWalk *w, const MsExpr *e) {
+    if (own_is_constructor(w, e) || own_is_value_call(w, e) || own_is_fresh_intrinsic(w, e) || own_is_method_call(w, e)) {
+        return true;
+    }
+    const OwnSummary *callee = own_callee(w, e);
+    return callee != NULL && !callee->returns_borrow;
+}
+
 static bool own_is_fresh(const OwnWalk *w, const MsExpr *e) {
-    return e->kind == MS_E_BINARY || e->kind == MS_E_TEXT || (e->kind == MS_E_CALL && own_is_constructor(w, e));
+    switch ((MsExprKind)e->kind) {
+    case MS_E_NUMBER: case MS_E_BOOL: case MS_E_VOID: case MS_E_TEXT: case MS_E_LIST: case MS_E_MAP: case MS_E_LAMBDA:
+    case MS_E_BINARY:
+        return true;
+    case MS_E_UNARY:
+        return e->op != MS_U_TRY;
+    case MS_E_CALL:
+        return own_call_is_fresh(w, e);
+    case MS_E_NAME: case MS_E_MEMBER: case MS_E_APPLY: case MS_E_INDEX: case MS_E_PROBE: case MS_E_MATCH:
+        return false;
+    }
+    return false;
 }
 
 /* A payload wrapped in `some` where an Optional is expected: a name wraps as it moves or returns,
@@ -932,6 +958,15 @@ static bool own_is_borrowing_native(const OwnWalk *w, uint32_t row) {
     return ms_doc_has_marker(w->check->mods[methods->module[row]].text, method->pos.offset, "borrows");
 }
 
+/* Whether the call `e` is of a method whose result points into its receiver and is no copy (`xs.get(i)`, `opt.get()`). */
+static bool own_call_lends(const OwnWalk *w, const MsExpr *e) {
+    if (e->kind != MS_E_CALL || e->u.call.callee->kind != MS_E_MEMBER || w->facts->methods == NULL ||
+        w->facts->call_method[e->id] == MS_NONE || ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY) {
+        return false;
+    }
+    return own_is_borrowing_native(w, w->facts->call_method[e->id]);
+}
+
 /* Whether method `row` has no body to walk: a runtime operation or an intrinsic declared with `...`. */
 static bool own_method_unwalked(const OwnWalk *w, uint32_t row) {
     const MsMethods *methods = w->facts->methods;
@@ -993,6 +1028,19 @@ static bool own_args_touch(const OwnWalk *w, const MsExpr *call, uint32_t held) 
     return false;
 }
 
+static uint32_t own_receiver_root(const OwnWalk *w, const MsExpr *receiver);
+static MsPlace own_target_place(OwnWalk *w, const MsExpr *target, uint32_t root, MsStr *text);
+
+/* Whether `receiver` is a name or a chain of fields the checker resolved, read from a name. */
+static bool own_is_field_path(const OwnWalk *w, const MsExpr *receiver) {
+    for (; receiver->kind == MS_E_MEMBER; receiver = receiver->u.member.left) {
+        if (w->facts->res_kind[receiver->id] != MS_RES_FIELD) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* A method of a type, called on a local or a temporary: a method that changes its receiver changes
  * the local in place, and no argument may read it; the others borrow it. A result that is not a plain
  * value may be a reference into the receiver (`list.get(i)`), which this walk does not follow: the
@@ -1048,15 +1096,23 @@ static void own_method_call(OwnWalk *w, const MsExpr *e, Demand demand) {
         own_require_declared_move_as(w, receiver, "receiver");
         own_expr(w, receiver, DEMAND_MOVE);
     } else if (mutating && receiver->kind != MS_E_CALL) { /* a temporary result is changed unseen: nothing else names it */
-        bool overlaps = binding == MS_NONE;
+        const uint32_t root = own_receiver_root(w, receiver);
+        bool overlaps = root == MS_NONE || !own_is_field_path(w, receiver);
         for (uint32_t i = 0; i < e->u.call.args.len && !overlaps; i++) {
-            overlaps = own_mentions(w, e->u.call.args.ptr[i].value, binding);
+            overlaps = own_mentions(w, e->u.call.args.ptr[i].value, root);
         }
         if (overlaps) {
             OWN_DECLINE(w);
             return;
         }
-        own_mutate(w, receiver, binding);
+        if (receiver->kind == MS_E_MEMBER) { // a field of a local (`self.items.append(x)`) changes that place
+            MsStr text;
+            const MsPlace place = own_target_place(w, receiver, root, &text);
+            own_mutate_place(w, receiver->pos, root, place, text);
+            own_record(w, receiver, root);
+        } else {
+            own_mutate(w, receiver, binding);
+        }
     } else if (own_args_touch(w, e, binding)) {
         OWN_DECLINE(w); /* an argument may change the receiver read in place */
         return;
@@ -1065,8 +1121,6 @@ static void own_method_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     own_method_arguments(w, e, row, consumed, summary);
 }
-
-static MsPlace own_target_place(OwnWalk *w, const MsExpr *target, uint32_t root, MsStr *text);
 
 /* The local a receiver names, directly or as the root of a field path (`self.sink`). */
 static uint32_t own_receiver_root(const OwnWalk *w, const MsExpr *receiver) {
@@ -1306,7 +1360,7 @@ static Scrutinee own_borrowed_call(OwnWalk *w, const MsExpr *e) {
 /* `x := f(a)` where `f` returns a reference into `a`: the binding borrows it like a name. */
 static bool own_bind_borrowed_call(OwnWalk *w, const MsStmt *s, uint32_t binding) {
     const MsExpr *value = s->u.bind.value;
-    if (value->kind == MS_E_CALL && w->facts->call_borrows[value->id]) {
+    if (value->kind == MS_E_CALL && (w->facts->call_borrows[value->id] || own_call_lends(w, value))) {
         const Scrutinee source = own_borrowed_call(w, value);
         if (source.owned) {
             OWN_DECLINE(w); // a binding of a part of a temporary: Rust's report for it is not followed
@@ -1580,7 +1634,7 @@ static void own_block(OwnWalk *w, const MsStmts *body) {
 /* What a matched value is: owned (moved in, so its parts are too) or a place read in place, whose
  * parts borrow from `origin`. `deferred` marks a parameter that moving a part would consume. */
 static Scrutinee own_scrutinee(OwnWalk *w, const MsExpr *e) {
-    if (e->kind == MS_E_CALL && w->facts->call_borrows[e->id]) {
+    if (e->kind == MS_E_CALL && (w->facts->call_borrows[e->id] || own_call_lends(w, e))) {
         return own_borrowed_call(w, e);
     }
     const bool name = e->kind == MS_E_NAME && w->facts->res_kind[e->id] == MS_RES_BINDING;

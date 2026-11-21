@@ -384,14 +384,14 @@ bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved) {
     return false;
 }
 
-bool lc_slot_of(const Lb *lb, uint32_t binding, MirValue *slot) {
+/* The stack slot of the resource local `binding`, else MIR_NONE. */
+MirValue lc_slot_of(const Lb *lb, uint32_t binding) {
     for (uint32_t i = 0; i < lb->nslots; i++) {
         if (lb->slots[i].view == lb->view && lb->slots[i].binding == binding) {
-            *slot = lb->slots[i].slot;
-            return true;
+            return lb->slots[i].slot;
         }
     }
-    return false;
+    return MIR_NONE;
 }
 
 bool lc_is_slot_local(const Lb *lb, uint32_t binding) {

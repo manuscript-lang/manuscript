@@ -277,8 +277,8 @@ bool lc_bind(Lb *lb, const MsStmt *s, uint32_t binding, LbVal value); /* the loc
 bool lc_own_param(Lb *lb, uint32_t binding);        /* a `move` resource parameter the function closes; false when not handled */
 bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved);  /* a read of a slot local */
 bool lc_is_resource(Lb *lb, MirTy mir);               /* a registered resource type, owned even when it holds nothing to drop */
+MirValue lc_slot_of(const Lb *lb, uint32_t binding);
 bool lc_is_slot_local(const Lb *lb, uint32_t binding);
-bool lc_slot_of(const Lb *lb, uint32_t binding, MirValue *slot); /* the slot a resource local lives in */
 bool lc_exits_clean(const Lb *lb);
 uint32_t lc_field_thunk(Lb *lb, MirTy field);       /* the function that closes a resource field in place, or MIR_NONE */
 LbSlotLocal *lc_push_slot(Lb *lb, LbSlotLocal local);
@@ -313,6 +313,8 @@ LbVal lb_expr(Lb *lb, const MsExpr *e);
 /* `value`, the borrowed read of the place `e`, read again once the expressions after it were evaluated: one of them
  * may have replaced what the place holds (crates/ms-lower call.rs `refresh`). Other values are returned as they are. */
 LbVal lb_refresh(Lb *lb, const MsExpr *e, LbVal value);
+/* Whether `e` names a local or a field under one (`g`, `g.cells`): a place, which evaluating again only reads. */
+bool lb_is_place(const Lb *lb, const MsExpr *e);
 MirTy lb_mir_ty(Lb *lb, MsTy ty);
 void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
@@ -335,6 +337,12 @@ bool lst_read_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 LbVal lst_get(Lb *lb, const MsExpr *left, const MsExpr *at);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
+/* The local `var` a by-reference receiver names, else MS_NONE. */
+uint32_t lb_var_receiver(Lb *lb, const MsExpr *receiver);
+/* StringBuilder and BytesBuilder (lower_builder.c). */
+bool lbd_is_builder(Lb *lb, MsTy ty);
+LbVal lbd_new(Lb *lb);
+bool lbd_method(Lb *lb, const MsExpr *e, LbVal *out);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
 /* lower_extern.c: a call of a bodiless `extern fn`, by its own symbol in the ms-sig table. */
 MirTy lx_type(Lb *lb, MsTy ty);
@@ -376,6 +384,7 @@ uint32_t lb_string_concat(Lb *lb);
 
 MirTy lm_type(Lb *lb, MsTy ty);
 bool lb_is_map(const Lb *lb, MirTy ty);
+bool lb_is_set(const Lb *lb, MirTy ty);
 LbVal lm_literal(Lb *lb, const MsExpr *e);
 LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at);
 struct MsRtFn;
@@ -405,6 +414,8 @@ bool lb_numeric_conversion(Lb *lb, MirValue x, MsTy checked_result, LbVal *out);
 bool lb_int_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 /* lower_optional.c: methods that are instructions. Each returns whether the call is one of its methods and sets `out`. */
 bool lb_optional_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out); /* `get_or` of an Optional */
+/* lower_each.c: `map` and `filter` of a list, a loop that calls the function value on each element. */
+bool lb_each_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 bool lb_clone_method(Lb *lb, const MsExpr *e, LbVal *out);                      /* `clone` of a value no runtime function copies */
 
 /* User enums (lower_enum.c, included after lower_body.c). */

@@ -233,17 +233,48 @@ LbVal la_fallback(Lb *lb, const MsExpr *e) {
     return (LbVal){result, false};
 }
 
+/* Leaves the function with `value`: the locals are released, the scopes closed and the depth guard left. */
+static void la_return(Lb *lb, MirValue value) {
+    lb_own_vars(lb, 0, MIR_NONE);
+    lscope_exit_to(&lb->scopes, 0);
+    lb_write_back(lb);
+    lb_emit_plain(lb, MOP_DepthLeave);
+    mir_b_ret(&lb->b, value);
+}
+
+/* `call()?` on an Optional inside a function that returns an Optional: the payload when there is one; `none` leaves. */
+static LbVal la_try_optional(Lb *lb, MirValue result, MirTy ret) {
+    const MirValue some = mir_b_emit(&lb->b, MOP_OptIsSome, &result, 1, (MirImm){0}, MIR_BOOL);
+    const MirBlock go_on = mir_b_new_block(&lb->b);
+    const MirBlock fail_block = mir_b_new_block(&lb->b);
+    mir_b_br_if(&lb->b, some, go_on, NULL, 0, fail_block, NULL, 0);
+    mir_b_seal_block(&lb->b, go_on);
+    mir_b_seal_block(&lb->b, fail_block);
+    lb_enter(lb, fail_block);
+    la_return(lb, mir_b_emit(&lb->b, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, ret));
+    lb_enter(lb, go_on);
+    const MirValue value = la_payload(lb, result, false);
+    return (LbVal){value, lb_owns(lb, mir_b_ty(&lb->b, value))};
+}
+
 /* `call()?` on a Result inside a function that returns a Result with the same error type: the
  * success value; an error leaves the function with it. */
 LbVal la_try(Lb *lb, const MsExpr *e) {
     const LbVal result = lb_expr(lb, e->u.bin.left);
     const MirTy ret = lb->b.f.ret;
-    if (!lb->ok || mir_ty_data(lb->m, mir_b_ty(&lb->b, result.v))->kind != MK_ALT ||
-        mir_ty_data(lb->m, ret)->kind != MK_ALT) {
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
+    const MirTyKind result_kind = mir_ty_data(lb->m, mir_b_ty(&lb->b, result.v))->kind;
+    const MirTyKind ret_kind = mir_ty_data(lb->m, ret)->kind;
+    if (result_kind != ret_kind || (result_kind != MK_ALT && result_kind != MK_OPT)) {
         return LB_UNSUPPORTED(lb);
     }
     const MirTyData *held = mir_ty_data(lb->m, mir_b_ty(&lb->b, result.v));
     const MirTyData *back = mir_ty_data(lb->m, ret);
+    if (held->kind == MK_OPT && back->kind == MK_OPT) {
+        return la_try_optional(lb, result.v, ret);
+    }
     const MirTy cause = lb->m->alts[held->id].cases[LA_ERROR].fields[0].ty;
     if (lb->m->alts[back->id].std != MSTD_RESULT || lb->m->alts[back->id].cases[LA_ERROR].fields[0].ty != cause) {
         return LB_UNSUPPORTED(lb);
@@ -259,11 +290,7 @@ LbVal la_try(Lb *lb, const MsExpr *e) {
     const MirValue error = la_field(lb, result.v, held->id, LA_ERROR, cause);
     const MirImm error_case = {.tag = MI_CASE, .a = back->id, .b = LA_ERROR};
     const MirValue handed = mir_b_emit(&lb->b, MOP_AltNew, &error, 1, error_case, ret);
-    lb_own_vars(lb, 0, MIR_NONE);
-    lscope_exit_to(&lb->scopes, 0);
-    lb_write_back(lb);
-    lb_emit_plain(lb, MOP_DepthLeave);
-    mir_b_ret(&lb->b, handed);
+    la_return(lb, handed);
     lb_enter(lb, go_on);
     const MirValue value = la_payload(lb, result.v, false);
     return (LbVal){value, lb_owns(lb, mir_b_ty(&lb->b, value))}; // an owned value moves out of the result

@@ -74,11 +74,14 @@ LbVal lr_construct(Lb *lb, const MsExpr *call) {
     }
     const MirTy ty = lb_mir_ty(lb, built); // through the class check: a resource is not lowered
     const MsSymId sym = lb->facts->call_callee[call->id];
-    if (lb_is_map(lb, ty) && call->u.call.args.len == 0) {
-        return lm_empty(lb, ty); // `Map[K, V]()`
+    if ((lb_is_map(lb, ty) || lb_is_set(lb, ty)) && call->u.call.args.len == 0) {
+        return lm_empty(lb, ty); // `Map[K, V]()`, `Set[T]()`
     }
     if (lb_is_list(lb, ty) && call->u.call.args.len == 0) {
         return lst_empty(lb, ty); // `List[T]()`
+    }
+    if (lbd_is_builder(lb, built) && call->u.call.args.len == 0) {
+        return lbd_new(lb); // `StringBuilder()`
     }
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_TYPE || sym == MS_NONE) {
         return LB_UNSUPPORTED(lb);
@@ -193,7 +196,10 @@ void lr_assign_field(Lb *lb, const MsStmt *s) {
         (void)LB_UNSUPPORTED(lb);
         return;
     }
-    const bool through_pointer = lb_is_pointer_param(lb, binding);
+    // A record reached by address: a `var` parameter's pointer, or the slot a resource local lives in.
+    const MirValue slot = lc_slot_of(lb, binding);
+    const MirValue address = slot != MIR_NONE ? slot : lb->value_of[binding];
+    const bool through_pointer = slot != MIR_NONE || lb_is_pointer_param(lb, binding);
     if (lb->var_of[binding] == MIR_NONE && !through_pointer) {
         (void)LB_UNSUPPORTED(lb);
         return;
@@ -218,9 +224,9 @@ void lr_assign_field(Lb *lb, const MsStmt *s) {
     const bool takes = through_pointer && mir_needs_drop(lb->m, root_ty); // a record that needs dropping is taken out of its slot and put back
     MirValue root = MIR_NONE;
     if (takes) {
-        root = mir_b_emit(&lb->b, MOP_Take, &lb->value_of[binding], 1, (MirImm){.tag = MI_TY, .a = root_ty}, root_ty);
+        root = mir_b_emit(&lb->b, MOP_Take, &address, 1, (MirImm){.tag = MI_TY, .a = root_ty}, root_ty);
     } else if (through_pointer) {
-        root = lb_load(lb, lb->value_of[binding], root_ty);
+        root = lb_load(lb, address, root_ty);
     } else {
         root = mir_b_use_var(&lb->b, lb->var_of[binding]);
     }
@@ -229,10 +235,10 @@ void lr_assign_field(Lb *lb, const MsStmt *s) {
         return;
     }
     if (takes) {
-        const MirValue args[2] = {lb->value_of[binding], updated};
+        const MirValue args[2] = {address, updated};
         (void)mir_b_emit(&lb->b, MOP_Put, args, 2, (MirImm){0}, MIR_NONE);
     } else if (through_pointer) {
-        lb_store(lb, lb->value_of[binding], updated);
+        lb_store(lb, address, updated);
     } else {
         mir_b_def_var(&lb->b, lb->var_of[binding], updated);
     }

@@ -88,8 +88,8 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
             return lb_sized_numbers[i].mir;
         }
     }
-    if (ms_ty_is(&lb->c->tys, ty, MS_BI_BYTES)) {
-        return MIR_BYTES;
+    if (ms_ty_is(&lb->c->tys, ty, MS_BI_BYTES) || lbd_is_builder(lb, ty)) {
+        return MIR_BYTES; // a builder is the buffer it appends to
     }
     if (ms_ty_kind(&lb->c->tys, ty) == MS_K_FUNCTION) {
         return lb_fn_ty(lb, ty);
@@ -186,8 +186,7 @@ MirValue lb_copy(Lb *lb, MirValue v) {
     return mir_b_emit(&lb->b, MOP_Clone, &v, 1, one, mir_b_ty(&lb->b, v));
 }
 
-/* Whether `e` names a local or a field under one (`g`, `g.cells`): a place, which evaluating again only reads. */
-static bool lb_is_place(const Lb *lb, const MsExpr *e) {
+bool lb_is_place(const Lb *lb, const MsExpr *e) {
     while (e->kind == MS_E_MEMBER) {
         e = e->u.member.left;
     }
@@ -609,8 +608,8 @@ static MirValue lb_var_argument(Lb *lb, const MsExpr *arg, uint32_t *binding_out
         (void)lb_load(lb, lb->value_of[binding], lb_mir_ty(lb, lb->facts->bindings.ty[binding]));
         return lb->value_of[binding];
     }
-    MirValue home;
-    if (lc_slot_of(lb, binding, &home)) { // a resource local lives in the slot its scope closes: the callee changes it there
+    const MirValue home = lc_slot_of(lb, binding);
+    if (home != MIR_NONE) { // a resource local lives in the slot its scope closes: the callee changes it there
         (void)lb_expr(lb, arg);
         return home;
     }
@@ -783,9 +782,8 @@ static void lb_call_args_bind(Lb *lb, LbCallArgs *k, const MsExpr *e, const MsEx
         if (i < k->offset) {
             k->exprs[i] = receiver;
             k->by_var[i] = mutating;
-            MirValue home;
             k->in_slot = mutating && receiver != NULL && receiver->kind == MS_E_NAME && lb->facts->res_kind[receiver->id] == MS_RES_BINDING &&
-                         lc_slot_of(lb, lb->facts->res_ref[receiver->id], &home);
+                         lc_slot_of(lb, lb->facts->res_ref[receiver->id]) != MIR_NONE;
             continue;
         }
         k->exprs[i] = at < given ? e->u.call.args.ptr[at].value : NULL;
@@ -809,9 +807,8 @@ static void lb_call_args_eval(Lb *lb, LbCallArgs *k, const MsExpr *e, uint32_t f
             k->args[i] = lb_default_argument(lb, e, *callee, declared->params.ptr[i - k->offset]->def);
             continue;
         }
-        MirValue home;
         if (k->by_var[i] && k->exprs[i]->kind == MS_E_NAME && lb->facts->res_kind[k->exprs[i]->id] == MS_RES_BINDING &&
-            lc_slot_of(lb, lb->facts->res_ref[k->exprs[i]->id], &home)) {
+            lc_slot_of(lb, lb->facts->res_ref[k->exprs[i]->id]) != MIR_NONE) {
             (void)lb_expr(lb, k->exprs[i]); // the receiver is read first, as the Rust lowering does, before the slot is passed
             continue;
         }
