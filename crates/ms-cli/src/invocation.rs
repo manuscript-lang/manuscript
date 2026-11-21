@@ -690,8 +690,8 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             ),
         ));
     }
-    // `ms test` and `ms run` compile with Cranelift (Debug) unless told otherwise: it builds
-    // several times faster. `ms build` and `ms bench` default to Release (LLVM).
+    // `ms test` and `ms run` compile in Debug unless told otherwise: it builds several times
+    // faster. `ms build` and `ms bench` default to Release.
     let kind = match BuildType::parse_or(&inv.build_type_name, default_build_type(&command)) {
         Ok(kind) => kind,
         Err(message) => {
