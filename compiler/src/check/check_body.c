@@ -1987,9 +1987,25 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
 
 /* `for name in xs` over a list of Int, Float, Bool, String or lists: the element type. An element that
  * owns something is borrowed from the list. */
-static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) {
+/* The `MapEntry[K, V]` a loop over `map` yields, or MS_TY_NONE. */
+static MsTy body_map_entry(MsBody *b, MsTy map) {
+    const MsSymId entry = ms_map_get(&b->c->std_types, ms_intern_cstr(b->c->names, "MapEntry"));
+    if (entry == MS_NONE || b->c->syms.ty[entry] == MS_TY_NONE) {
+        return MS_TY_NONE;
+    }
+    return ms_ty_apply(b->c, b->c->syms.ty[entry], ms_ty_args(&b->c->tys, map), 2);
+}
+
+static bool body_for_list_element(MsBody *b, const MsStmt *s, MsTy *element) {
+    const MsExpr *iter = s->u.each.iter;
     b->borrow_ok = iter; // `for c in s.chars()` reads the borrowing result in place
     const MsTy ty = ms_body_expr(b, iter, MS_TY_NONE);
+    if (ms_body_is_map(b, ty) || ms_body_is_set(b, ty)) {
+        // A set yields its elements, a map its entries; ownership and lowering leave the loop to Rust.
+        *element = ms_body_is_set(b, ty) ? ms_ty_args(&b->c->tys, ty)[0] : body_map_entry(b, ty);
+        b->facts->each_collection[s->id] = true;
+        return *element != MS_TY_NONE && body_is_bindable(b, *element);
+    }
     if (!ms_body_is_list(b, ty)) {
         return false;
     }
@@ -2013,7 +2029,7 @@ static bool body_for_statement(MsBody *b, const MsStmt *s) {
         }
         // The call itself stays untyped: the standard library's signatures are not resolved here yet.
         b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
-    } else if (body_for_list_element(b, iter, &element)) {
+    } else if (body_for_list_element(b, s, &element)) {
         b->facts->each_list[s->id] = true;
     } else {
         (void)ms_body_unsupported(b);
@@ -2509,6 +2525,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
     facts->each_list = MS_NEW_N(arena, bool, nodes);
     memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
+    facts->each_collection = MS_NEW_N(arena, bool, nodes);
+    memset(facts->each_collection, 0, nodes * sizeof *facts->each_collection);
     facts->call_borrows = MS_NEW_N(arena, bool, nodes);
     memset(facts->call_borrows, 0, nodes * sizeof *facts->call_borrows);
     facts->field_store_root = MS_NEW_N(arena, uint32_t, nodes);
