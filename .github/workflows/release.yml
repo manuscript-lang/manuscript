@@ -29,7 +29,7 @@ jobs:
             *) exit 1 ;;
           esac
 
-  # The shipped binary is the Rust `ms`: rust-dist.yml builds, packages and smoke-tests it
+  # The shipped `ms` is the Manuscript front beside `ms-rust`: rust-dist.yml builds, packages and smoke-tests them
   # on a native runner of each of the six targets, and every target gates on a tag.
   rust:
     name: Rust distributions

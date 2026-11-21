@@ -86,7 +86,10 @@ jobs:
           fi
           cmp LICENSE "extracted distribution/$name/LICENSE"
           # The shipped ms must run on glibc 2.28, the manylinux_2_28 container's version.
-          if [ '${{ matrix.os }}' = linux ]; then sh toolchain/check-glibc-floor.sh "$ms"; fi
+          if [ '${{ matrix.os }}' = linux ]; then
+            sh toolchain/check-glibc-floor.sh "$ms"
+            sh toolchain/check-glibc-floor.sh "$(dirname "$ms")/ms-rust"
+          fi
           "$ms" --version
           cd "extracted distribution/$name/examples/hello"
           bin="../../$(basename "$ms")"

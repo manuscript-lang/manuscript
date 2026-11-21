@@ -29,7 +29,7 @@ Arguments: 2
 
 Use this built binary when reproducing a compiler issue, so the result reflects your checkout.
 
-`ms run tools/package.ms [-- OS ARCH]` builds the same binary with debug sections stripped and writes `dist/manuscript-rust-<os>-<arch>` as a `.tar.gz` (`.zip` on Windows) with a `.sha256` file. The workflow builds the six release targets natively, and every leg gates the check.
+`ms run tools/package.ms [-- OS ARCH]` builds the same binary with debug sections stripped and writes `dist/manuscript-rust-<os>-<arch>` as a `.tar.gz` (`.zip` on Windows) with a `.sha256` file. The archive holds two programs: `ms`, the Manuscript front (`tools/ms/main.ms`, linked with `libmstool.a`, so it needs CMake and Ninja), and `ms-rust`, the Rust command line the front hands the stages it has not taken over to. `ms` looks for `ms-rust` beside itself, then on the `PATH`; `$MS_RUST_CLI` overrides both. The workflow builds the six release targets natively, and every leg gates the check.
 
 `.cargo/config.toml` forces frame pointers: fault traces and `ms profile` walk them. On Windows, fault reporting uses native unwind records to reach the first generated source frame, then follows contiguous generated callers. Attribution stops at a native callback or generated glue boundary; complete mixed native/generated stack unwinding is not supported.
 

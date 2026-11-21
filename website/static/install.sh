@@ -4,7 +4,7 @@
 #   curl -fsSL https://manuscript-lang.github.io/manuscript/install.sh | sh
 #
 # It downloads the release archive for this machine, checks its SHA-256, and copies `ms`
-# into a bin directory. Settings, all optional:
+# and `ms-rust` into a bin directory. Settings, all optional:
 #   MS_VERSION      a release such as 2026.11.0 (default: the latest release)
 #   MS_INSTALL_DIR  where `ms` goes (default: $HOME/.local/bin)
 #   MS_RELEASE_URL  a directory URL that holds the archives (default: GitHub releases)
@@ -62,9 +62,12 @@ fi
 
 tar -xzf "$work/$name.tar.gz" -C "$work"
 mkdir -p "$dir"
-cp "$work/$name/ms" "$dir/ms.new"
-chmod 755 "$dir/ms.new"
-mv "$dir/ms.new" "$dir/ms"
+# `ms` finds `ms-rust`, the Rust command line it hands some stages to, in its own directory.
+for file in ms-rust ms; do
+	cp "$work/$name/$file" "$dir/$file.new"
+	chmod 755 "$dir/$file.new"
+	mv "$dir/$file.new" "$dir/$file"
+done
 
 echo "Installed $("$dir/ms" --version) to $dir/ms"
 case ":$PATH:" in

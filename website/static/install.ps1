@@ -2,7 +2,7 @@
 #
 #   irm https://manuscript-lang.github.io/manuscript/install.ps1 | iex
 #
-# It downloads the release archive for this machine, checks its SHA-256, copies `ms.exe`
+# It downloads the release archive for this machine, checks its SHA-256, copies `ms.exe` and `ms-rust.exe`
 # into a bin directory and adds that directory to your user PATH. Settings, all optional:
 #   $env:MS_VERSION      a release such as 2026.11.0 (default: the latest release)
 #   $env:MS_INSTALL_DIR  where `ms.exe` goes (default: $HOME\.ms\bin)
@@ -38,6 +38,8 @@ try {
 
     Expand-Archive "$work\$name.zip" -DestinationPath $work
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    # `ms.exe` finds `ms-rust.exe`, the Rust command line it hands some stages to, in its own directory.
+    Copy-Item "$work\$name\ms-rust.exe" "$dir\ms-rust.exe" -Force
     Copy-Item "$work\$name\ms.exe" "$dir\ms.exe" -Force
 } finally {
     Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue

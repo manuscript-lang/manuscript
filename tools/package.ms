@@ -1,7 +1,8 @@
-// Builds the Rust ms for a target: one binary with the native runtime embedded,
-// archived as dist/manuscript-rust-<os>-<arch>.{tar.gz,zip} with a .sha256 beside it.
-// The release runner for each target builds it natively. Usage: ms run tools/package.ms
-// [-- OS ARCH]
+// Builds `ms` for a target and archives it as dist/manuscript-rust-<os>-<arch>.{tar.gz,zip}
+// with a .sha256 beside it. `ms` is the Manuscript front (tools/ms/main.ms over libms) and
+// `ms-rust`, beside it, is the Rust command line it hands the stages C does not cover to; the
+// front finds it in its own directory. The release runner for each target builds both
+// natively. Usage: ms run tools/package.ms [-- OS ARCH]
 import (
 	arguments,
 	change_directory,
@@ -71,7 +72,35 @@ fn main() Int:
 	staging := temporary("ms-package-").get()
 	bundle := f"{staging.path()}/{name}"
 	create_directory(f"{bundle}/examples/hello/src", recursive: true).get()
-	copy(f"target/{triple}/release/{executable}", f"{bundle}/{executable}").get()
+	rust := f"target/{triple}/release/{executable}"
+	rust_name := if target_os == "windows": "ms-rust.exe" else: "ms-rust"
+	copy(rust, f"{bundle}/{rust_name}").get()
+
+	// The front links libms with the tool entry points, built here for this host.
+	code = run_program(
+		"cmake",
+		["-S", ".", "-B", "target/cmake/tools", "-G", "Ninja", "-DMS_BUILD_RUNTIME=OFF"],
+	)
+	if code != 0: return code
+
+	code = run_program("cmake", ["--build", "target/cmake/tools", "--target", "ms_tool"])
+	if code != 0: return code
+
+	code = run_program(
+		rust,
+		[
+			"build",
+			"tools/ms/main.ms",
+			"--build-type",
+			"Release",
+			"--link",
+			"target/cmake/tools/compiler/libmstool.a",
+			"-o",
+			f"{bundle}/{executable}",
+		],
+	)
+	if code != 0: return code
+
 	copy("LICENSE", f"{bundle}/LICENSE").get()
 	copy("examples/hello/ms.toml", f"{bundle}/examples/hello/ms.toml").get()
 	copy("examples/hello/test.ms", f"{bundle}/examples/hello/test.ms").get()
@@ -81,6 +110,7 @@ fn main() Int:
 	for dir in ["", "/examples", "/examples/hello", "/examples/hello/src"]:
 		chmod(f"{bundle}{dir}", 493).get()
 	chmod(f"{bundle}/{executable}", 493).get()
+	chmod(f"{bundle}/{rust_name}", 493).get()
 	chmod(f"{bundle}/LICENSE", 420).get()
 	for file in ["ms.toml", "test.ms", "src/main.ms"]:
 		chmod(f"{bundle}/examples/hello/{file}", 420).get()

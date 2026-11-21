@@ -82,9 +82,9 @@ static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc
         return false;
     }
     const MsTyParam *params = ms_ty_params(tys, sig);
-    MsSym names[16];
-    bool positional[16], covered[16];
-    uint32_t slot[16];
+    MsSym names[16] = {0};
+    bool positional[16] = {false}, covered[16] = {false};
+    uint32_t slot[16] = {0};
     for (uint32_t i = 0; i < nparams; i++) {
         names[i] = params[i].name;
         positional[i] = (params[i].flags & MS_PARAM_POSITIONAL) != 0;
