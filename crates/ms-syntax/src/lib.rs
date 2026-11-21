@@ -1,12 +1,11 @@
 //! Manuscript syntax: positions, diagnostics, the typed AST, the lexer with
-//! layout, the strict and recovering parsers, and the formatter.
+//! layout, and the strict and recovering parsers.
 //!
 
 pub mod ast;
 pub mod diag;
 pub mod doc;
 pub mod dump;
-pub mod format;
 pub mod fxmap;
 pub mod lexer;
 pub mod number;
@@ -20,7 +19,6 @@ pub mod visit;
 
 pub use ast::*;
 pub use diag::{Cause, Diagnostic, DiagnosticFix, Phase};
-pub use format::format;
 pub use partial::{is_declaration_line, parse_partial};
 pub use pos::{Pos, Span};
 pub use symbol::{Entered, Interner, Names, Session, Symbol};

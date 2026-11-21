@@ -77,6 +77,7 @@ unsafe extern "C" {
         options: *const LinkOptions,
         why: *mut Text,
     ) -> bool;
+    fn ms_backend_format(src: *const c_char, len: usize, out: *mut Text, why: *mut Text) -> bool;
     fn ms_backend_free(text: *mut Text);
 }
 
@@ -105,6 +106,52 @@ impl Text {
 /// The reason libms gave, as an error message.
 fn reason(why: Text) -> String {
     String::from_utf8_lossy(&why.take()).trim_end().to_string()
+}
+
+/// The first syntax error `ms fmt` met: where it is and what it says.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FormatError {
+    /// Byte offset of the error.
+    pub offset: usize,
+    /// 1-based line.
+    pub line: u32,
+    /// 1-based column.
+    pub column: u32,
+    /// The message.
+    pub message: String,
+}
+
+impl std::fmt::Display for FormatError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}: {}", self.line, self.column, self.message)
+    }
+}
+
+/// `source` formatted by the C formatter (`ms fmt`); invalid syntax never produces output.
+pub fn format(source: &str) -> Result<String, FormatError> {
+    let (mut out, mut why) = (Text::empty(), Text::empty());
+    // SAFETY: the text is passed with its length and the outputs are empty texts libms fills.
+    let ok = unsafe {
+        ms_backend_format(
+            source.as_ptr().cast(),
+            source.len(),
+            &raw mut out,
+            &raw mut why,
+        )
+    };
+    if ok {
+        return Ok(String::from_utf8_lossy(&out.take()).into_owned());
+    }
+    let text = String::from_utf8_lossy(&why.take()).into_owned();
+    let mut parts = text.splitn(4, '\t');
+    let mut number = || parts.next().and_then(|p| p.parse().ok()).unwrap_or(0);
+    let (offset, line, column) = (number(), number() as u32, number() as u32);
+    Err(FormatError {
+        offset,
+        line,
+        column,
+        message: parts.next().unwrap_or("").to_string(),
+    })
 }
 
 /// The MIR of `module` after the optimizer at its speed level, as text (`MS_EMIT_OPT=1 ms emit`).

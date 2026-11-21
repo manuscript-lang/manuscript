@@ -1,0 +1,6 @@
+fn f(mode: Int) Int:
+    if not (
+            mode == 2
+        ):
+            return 2
+    return 3

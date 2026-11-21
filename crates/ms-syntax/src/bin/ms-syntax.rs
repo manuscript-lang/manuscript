@@ -1,8 +1,7 @@
-//! Developer tool: parse and format Manuscript files.
+//! Developer tool: parse and time Manuscript files.
 //!
 //! ```text
 //! ms-syntax parse [--json] FILE...     print diagnostics (or "ok") per file
-//! ms-syntax fmt FILE                   print the formatted source
 //! ms-syntax bench FILE...              time parsing the files
 //! ```
 
@@ -83,43 +82,8 @@ fn run() -> i32 {
             );
             0
         }
-        Some("fmt") => {
-            let mut failed = 0;
-            for path in &args[1..] {
-                let text = std::fs::read_to_string(path).expect("read");
-                let file: Arc<str> = Arc::from(path.as_str());
-                match ms_syntax::format(&file, &text) {
-                    Ok(out) => print!("{out}"),
-                    Err(d) => {
-                        failed += 1;
-                        eprintln!("{d}");
-                    }
-                }
-            }
-            i32::from(failed > 0)
-        }
-        Some("fmt-check") => {
-            let mut bad = 0;
-            for path in &args[1..] {
-                let text = std::fs::read_to_string(path).expect("read");
-                let file: Arc<str> = Arc::from(path.as_str());
-                match ms_syntax::format(&file, &text) {
-                    Ok(out) if out == text => {}
-                    Ok(_) => {
-                        bad += 1;
-                        println!("{path}: differs");
-                    }
-                    Err(d) => {
-                        bad += 1;
-                        println!("{path}: {d}");
-                    }
-                }
-            }
-            println!("{} files, {bad} not formatted", args.len() - 1);
-            i32::from(bad > 0)
-        }
         _ => {
-            eprintln!("usage: ms-syntax parse [--json] FILE... | fmt FILE | bench FILE...");
+            eprintln!("usage: ms-syntax parse [--json] FILE... | bench FILE...");
             2
         }
     }

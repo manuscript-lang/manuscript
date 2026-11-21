@@ -255,6 +255,7 @@ dependencies = [
 name = "ms-lsp"
 version = "0.0.0"
 dependencies = [
+ "ms-build",
  "ms-check",
  "ms-driver",
  "ms-json",
@@ -282,6 +283,7 @@ version = "0.0.0"
 name = "ms-tooling"
 version = "0.0.0"
 dependencies = [
+ "ms-build",
  "ms-check",
  "ms-driver",
  "ms-json",

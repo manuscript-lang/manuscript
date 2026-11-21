@@ -1,4 +1,4 @@
-/* The source formatter: the port of crates/ms-syntax/src/format.rs. */
+/* The source formatter. */
 #ifndef MS_FORMAT_H
 #define MS_FORMAT_H
 

@@ -1,0 +1,4 @@
+import A from "./a.ms"
+
+fn f() Int:
+	return 1

@@ -1,0 +1,8 @@
+import (
+	A from "./a.ms",
+	B, C from "./b.ms",
+	D, E from "./d.ms",
+)
+
+fn f() Int:
+	return 1

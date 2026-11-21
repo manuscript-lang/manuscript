@@ -12,10 +12,6 @@ fn parse(source: &str) -> Result<(), String> {
         .map_err(|e| e.message)
 }
 
-fn format(source: &str) -> String {
-    ms_syntax::format(&file(), source).unwrap()
-}
-
 #[test]
 fn line_comments_stand_alone_and_trail_code() {
     parse("// top\nfn f() Int:\n\t// inside\n\treturn 1 // trailing\n").unwrap();
@@ -59,37 +55,6 @@ fn block_comment_errors() {
 fn block_comment_does_not_end_a_continued_pipe() {
     parse("fn f() Int:\n\treturn [1]\n\t\t// step\n\t\t| length\n").unwrap();
     parse("fn f() Int:\n\treturn [1]\n\t\t/* step */\n\t\t| length\n").unwrap();
-}
-
-#[test]
-fn formatter_keeps_block_contents_and_normalizes_trailing_gap() {
-    let source = "fn f() Int:\n\t/*\n\tkeep   this\n\t   and this\n\t*/\n\treturn 1 // x\n";
-    let out = format(source);
-    assert_eq!(
-        out,
-        "fn f() Int:\n\t/*\n\tkeep   this\n\t   and this\n\t*/\n\treturn 1  // x\n"
-    );
-    assert_eq!(format(&out), out);
-}
-
-#[test]
-fn formatter_is_idempotent_on_block_before_declaration() {
-    let source = "/*\nDocs for f.\n  Indented line.\n*/\nfn f() Int:\n\treturn 1  // one\n";
-    let out = format(source);
-    assert_eq!(out, source);
-}
-
-#[test]
-fn formatter_restores_many_comment_and_text_spans_in_order() {
-    let mut source = String::new();
-    for i in 0..128 {
-        source.push_str(&format!(
-            "/* docs {i}\n\tkeep this indentation\n*/\nfn text_{i}() String:\n\t/* inside {i} */\n\treturn \"\"\"\n\t\tfirst {i}\n\t\tsecond\n\t\t\"\"\"\n\n"
-        ));
-    }
-    let formatted = format(&source);
-    assert_eq!(formatted, source.trim_end().to_string() + "\n");
-    assert_eq!(format(&formatted), formatted);
 }
 
 #[test]

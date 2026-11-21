@@ -20,10 +20,6 @@ fn imports(source: &str) -> Vec<(String, String)> {
         .collect()
 }
 
-fn format(source: &str) -> String {
-    ms_syntax::format(&file(), source).unwrap()
-}
-
 fn pair(name: &str, path: &str) -> (String, String) {
     (name.into(), path.into())
 }
@@ -72,39 +68,4 @@ fn malformed_groups_are_rejected() {
             "{source}"
         );
     }
-}
-
-#[test]
-fn format_groups_adjacent_imports() {
-    let source = "import A from \"./a.ms\"\nimport B, C from \"./b.ms\"\nimport (\n\tD,\n\tE,\n) from \"./d.ms\"\n\nfn f() Int:\n\treturn 1\n";
-    let expected = "import (\n\tA from \"./a.ms\",\n\tB, C from \"./b.ms\",\n\tD, E from \"./d.ms\",\n)\n\nfn f() Int:\n\treturn 1\n";
-    let once = format(source);
-    assert_eq!(once, expected);
-    assert_eq!(format(&once), once);
-}
-
-#[test]
-fn format_keeps_lone_import_and_commented_neighbors() {
-    let lone = "import A from \"./a.ms\"\n\nfn f() Int:\n\treturn 1\n";
-    assert_eq!(format(lone), lone);
-    let commented =
-        "import A from \"./a.ms\"  // keep\nimport B from \"./b.ms\"\n\nfn f() Int:\n\treturn 1\n";
-    assert_eq!(format(commented), commented);
-}
-
-#[test]
-fn format_wraps_a_wide_clause_one_name_per_line() {
-    let names: Vec<String> = (0..12).map(|i| format!("long_imported_name_{i}")).collect();
-    let source = format!(
-        "import {} from \"./wide.ms\"\nimport Z from \"./z.ms\"\n",
-        names.join(", ")
-    );
-    let once = format(&source);
-    assert!(once.contains("\tlong_imported_name_0,\n"), "{once}");
-    assert!(
-        once.contains("\tlong_imported_name_9 from \"./wide.ms\",\n"),
-        "{once}"
-    );
-    assert_eq!(format(&once), once);
-    assert_eq!(imports(&once).len(), 13);
 }

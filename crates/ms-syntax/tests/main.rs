@@ -10,8 +10,6 @@ mod comments;
 mod corpus;
 mod crlf_interpolation_positions;
 mod enums;
-mod format_comments;
-mod format_edits;
 mod grouped_imports;
 mod interpolation_positions;
 mod lambda_hints;

@@ -47,6 +47,11 @@ MS_NODISCARD MS_NONNULL bool ms_backend_ir(const char *mir, size_t mir_len, cons
 MS_NODISCARD MS_NONNULL bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name,
                                                   MsBackendText *out, MsBackendText *why);
 
+/* The formatter (`ms fmt`): `src` (UTF-8, any line ends) formatted, as text. On a syntax error `why` is
+ * "offset<TAB>line<TAB>column<TAB>message" of the first one and nothing is formatted. */
+MS_NODISCARD MS_NONNULL bool ms_backend_format(const char *src, size_t len, MsBackendText *out,
+                                               MsBackendText *why);
+
 /* Adds the fault tables to `asm_text`, the assembly of the IR that came with `meta`. `prefix` is what
  * the target puts before a symbol ("_" on Apple, else ""); the `.loc` lines are left out of the result. */
 MS_NODISCARD MS_NONNULL bool ms_backend_tables(const char *meta, size_t meta_len, const char *asm_text,

@@ -965,9 +965,15 @@ impl Server<'_> {
                 if uri::is_standard_library(&d.uri) {
                     return ok(Json::Arr(Vec::new()));
                 }
-                let file: std::sync::Arc<str> = uri::filename(&d.uri).into();
-                match ms_syntax::format(&file, &d.text) {
-                    Err(e) => Outcome::Error(failure(-32602, &e.to_string())),
+                match ms_build::c_backend::format(&d.text) {
+                    Err(e) => {
+                        let file: std::sync::Arc<str> = uri::filename(&d.uri).into();
+                        let message = match ms_syntax::parser::parse(&file, &d.text) {
+                            Err(issue) => issue.to_string(),
+                            Ok(_) => e.to_string(),
+                        };
+                        Outcome::Error(failure(-32602, &message))
+                    }
                     Ok(formatted) => {
                         let range = Range {
                             start: Position::default(),

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Compares the C front end with the Rust one, byte for byte, on every Manuscript file in the
+# Compares the C front end with the Rust one, byte for byte (the formatter has no Rust version left), on every Manuscript file in the
 # repository and on mutated copies of them (token streams, and syntax trees once the parser exists).
 # Run from the repository root: `make c-compiler-test`. MS_FUZZ sets the mutant count (default 3000;
 # the nightly run uses more); MS_FUZZ_SEED picks the files.
@@ -27,10 +27,10 @@ mkdir -p "$out/layout"
 ls "$out"/layout/*.ms > "$out/layout.txt"
 
 status=0
-for mode in ${MS_MODES:-tokens ast codes partial ids format}; do
+for mode in ${MS_MODES:-tokens ast codes partial ids}; do
     for set in files fuzz layout; do
-        # The layout set is for the formatter alone.
-        if [ "$set" = layout ] && [ "$mode" != format ]; then
+        # The layout set is for the formatter alone (below).
+        if [ "$set" = layout ]; then
             continue
         fi
         # xargs keeps the command line short and the oracle's per-process cost low.
@@ -44,6 +44,18 @@ for mode in ${MS_MODES:-tokens ast codes partial ids format}; do
             status=1
         fi
     done
+done
+# The formatter, over the same sets: formatted output formats to itself. Its cases with expected output are
+# compiler/tests/format-golden.sh; the Rust formatter it replaced matched it on every set here.
+for set in files fuzz layout; do
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$bin/ms_syntax_dump" stable | grep -v -e '^===' -e '^error invalid-utf8' > "$out/stable-$set.c" || true
+    if [ -s "$out/stable-$set.c" ]; then
+        echo "FAIL format $set: output is not stable"
+        head -5 "$out/stable-$set.c"
+        status=1
+    else
+        echo "ok   format $set"
+    fi
 done
 # Codes of messages in every phase: the committed list of phase<TAB>message lines.
 "$oracle" codes compiler/tests/codes.txt | sed 1d > "$out/codes-list.rust"

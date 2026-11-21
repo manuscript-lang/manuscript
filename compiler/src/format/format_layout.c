@@ -1,5 +1,5 @@
-/* Expression layout for the formatter (crates/ms-syntax/src/format.rs, "Expression layout" and
- * "Statement grouping"): breaks long expressions at their delimiters and operators.
+/* Expression layout for the formatter (layout and
+ * statement grouping): breaks long expressions at their delimiters and operators.
  *
  * The tokens of the text form a tree of delimited groups. A group that fits its line is printed
  * flat; otherwise it is printed one item per line, or packed into rows when its items are plain

@@ -128,7 +128,7 @@ fn redundant_label_edits_preserve_intervening_comments() {
             assert!(edited.contains(comment), "{edited}");
             let checked = check(&edited);
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
-            let formatted = ms_syntax::format(&"labels.ms".into(), &edited).unwrap();
+            let formatted = ms_build::c_backend::format(&edited).unwrap();
             assert!(formatted.contains(comment), "{formatted}");
             assert_eq!(drop_redundant_labels(&checked, &edited), (edited, 0));
         }

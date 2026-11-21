@@ -1,4 +1,4 @@
-/* The source formatter (crates/ms-syntax/src/format.rs).
+/* The source formatter.
  *
  * The formatter keeps the lexer's tokens and comment text. Line passes (indentation, blank lines,
  * imports, comment reflow) work on the text and the tokens of each line; the layout pass

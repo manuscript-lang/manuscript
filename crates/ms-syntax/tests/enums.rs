@@ -1,5 +1,5 @@
 use ms_syntax::ast::DeclKind;
-use ms_syntax::{format, parse_partial};
+use ms_syntax::parse_partial;
 use std::sync::Arc;
 
 #[test]
@@ -23,9 +23,6 @@ fn enum_declarations_preserve_forms_and_formatting() {
             assert!(hidden.opaque);
         }
         assert!(module.decls[2].export);
-        let formatted = format(&file, &source).unwrap();
-        assert_eq!(format(&file, &formatted).unwrap(), formatted);
-        assert!(formatted.contains("export opaque enum Hidden:"));
     }
 }
 

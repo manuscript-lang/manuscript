@@ -1,0 +1,5 @@
+import A from "./a.ms"  // keep
+import B from "./b.ms"
+
+fn f() Int:
+	return 1

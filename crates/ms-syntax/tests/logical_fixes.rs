@@ -44,8 +44,6 @@ fn logical_operator_fixes_preserve_operand_boundaries() {
                     let module = ms_syntax::parser::parse(&file, &repaired).unwrap();
                     let tree = ms_syntax::dump::dump_module(ms_syntax::Names::global(), &module);
                     assert!(tree.contains(&format!("binary \"{keyword}\"")), "{tree}");
-                    let formatted = ms_syntax::format(&file, &repaired).unwrap();
-                    assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
                     let (partial, errors) = ms_syntax::parse_partial(&file, &source);
                     assert_eq!(errors.len(), 1);
                     assert_eq!(errors[0].fix.as_ref(), Some(&fix));

@@ -1,0 +1,6 @@
+// module intro
+
+
+// about f
+fn f() Int:
+	return 1

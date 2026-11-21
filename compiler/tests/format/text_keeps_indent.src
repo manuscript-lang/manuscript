@@ -1,0 +1,9 @@
+fn f(n: Int) String:
+	if n > 0:
+		return f"""
+            a {n}
+              b
+            """
+	return r"""
+        {"x": 1}
+        """

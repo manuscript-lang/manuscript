@@ -1,0 +1,8 @@
+fn g(a: String, b: String) String:
+    return a + b
+
+fn f(x: String) String:
+    return g(a_rather_long_argument_name_to_force_wrapping, """
+        t
+          u
+        """) + a_rather_long_argument_name_to_force_wrapping

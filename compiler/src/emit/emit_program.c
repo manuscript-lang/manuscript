@@ -8,6 +8,7 @@
 
 #include "ms/emit_entry.h"
 #include "ms/emit_llvm.h"
+#include "ms/format.h"
 #include "ms/mir_asm_tables.h"
 #include "ms/mir_opt.h"
 
@@ -146,6 +147,25 @@ bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name, MsB
     ms_buf_free(&why_buf);
     *out = ms_backend_take(&text);
     return true;
+}
+
+bool ms_backend_format(const char *src, size_t len, MsBackendText *out, MsBackendText *why) {
+    MsArena arena = {0};
+    MsBuf text = {0}, why_buf = {0};
+    MsDiag diag;
+    bool ok = ms_format(&arena, src, len, &text, &diag);
+    if (!ok) {
+        ms_buf_printf(&why_buf, "%lld\t%lld\t%lld\t", (long long)diag.pos.offset, (long long)diag.pos.line,
+                      (long long)diag.pos.column);
+        ms_buf_put(&why_buf, diag.message.ptr, diag.message.len);
+        ms_buf_free(&text);
+        *why = ms_backend_take(&why_buf);
+    } else {
+        ms_buf_free(&why_buf);
+        *out = ms_backend_take(&text);
+    }
+    ms_arena_free(&arena);
+    return ok;
 }
 
 bool ms_backend_tables(const char *meta, size_t meta_len, const char *asm_text, size_t asm_len,

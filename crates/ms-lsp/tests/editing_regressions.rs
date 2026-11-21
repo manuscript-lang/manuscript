@@ -224,7 +224,7 @@ fn adding_imports_preserves_grouped_declarations_and_file_directives() {
                 .find(|a| title(a) == "Add `import Bytes from \"@std/bytes.ms\"`")
                 .expect("add import fix");
             let fixed = apply(&source, action);
-            ms_syntax::format(&"main.ms".into(), &fixed).expect("fixed source parses");
+            ms_build::c_backend::format(&fixed).expect("fixed source parses");
             let d = Document::new("file:///tmp/import-fix.ms", &fixed);
             let checked = analyze(syms, &support::session(), &d, &Documents::new());
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
@@ -350,7 +350,7 @@ fn removing_the_last_unused_import_drops_the_separator() {
             .expect("quick fix");
         let fixed = apply(&source, action);
         assert!(fixed.starts_with(expected), "{fixed}");
-        ms_syntax::format(&"main.ms".into(), &fixed).expect("fixed source parses");
+        ms_build::c_backend::format(&fixed).expect("fixed source parses");
     }
 }
 
@@ -380,7 +380,7 @@ fn removing_an_unused_name_from_a_group_leaves_no_blank_line() {
             if newline == "\r\n" {
                 assert!(!fixed.replace("\r\n", "").contains('\n'), "{fixed:?}");
             }
-            ms_syntax::format(&"main.ms".into(), &fixed).expect("fixed source parses");
+            ms_build::c_backend::format(&fixed).expect("fixed source parses");
         }
     }
 }
@@ -401,7 +401,7 @@ fn organize_imports_moves_whole_multiline_declarations() {
                     organized.find("@std/math").unwrap() < organized.find("@std/string").unwrap()
                 );
                 let valid = organized.split("fn broken(").next().unwrap();
-                ms_syntax::format(&"main.ms".into(), valid).expect("organized imports parse");
+                ms_build::c_backend::format(valid).expect("organized imports parse");
             }
         }
     }
@@ -419,7 +419,7 @@ fn organize_imports_preserves_eof_separator() {
                 .replace('\n', newline);
             let (_, found) = actions(&source, "source.organizeImports");
             let organized = apply(&source, found.first().expect("organize imports"));
-            ms_syntax::format(&"main.ms".into(), &organized).expect("organized source parses");
+            ms_build::c_backend::format(&organized).expect("organized source parses");
             assert!(organized.starts_with("import "), "{organized}");
             assert!(organized.find("@std/math").unwrap() < organized.find("@std/string").unwrap());
             assert!(!organized.ends_with('\n'), "preserve missing final newline");
@@ -430,7 +430,7 @@ fn organize_imports_preserves_eof_separator() {
     let source = "import StringBuilder from \"@std/string_builder.ms\"\nimport parse from \"@std/data/json.ms\"\r\nimport sqrt from \"@std/math/math.ms\"";
     let (_, found) = actions(source, "source.organizeImports");
     let organized = apply(source, found.first().expect("mixed-newline imports"));
-    ms_syntax::format(&"main.ms".into(), &organized).expect("mixed newline result parses");
+    ms_build::c_backend::format(&organized).expect("mixed newline result parses");
     assert!(organized.ends_with("import StringBuilder from \"@std/string_builder.ms\""));
     let (_, repeated) = actions(&organized, "source.organizeImports");
     assert!(repeated.is_empty());

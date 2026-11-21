@@ -65,8 +65,6 @@ fn multiline_interpolations_keep_positions_across_literal_lines() {
     );
     let module = ms_syntax::parser::parse(&file, &source).unwrap();
     assert_eq!(names(&module), expected_positions(&source));
-    let formatted = ms_syntax::format(&file, &source).unwrap();
-    assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
 }
 
 #[test]

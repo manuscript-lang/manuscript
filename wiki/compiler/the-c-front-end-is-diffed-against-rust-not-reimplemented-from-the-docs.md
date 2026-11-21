@@ -2,9 +2,9 @@
 
 # The C front end is diffed against the Rust one, not rewritten from the docs
 
-Verified: `compiler/` ports `ms-syntax` stage by stage. Messages, positions, fixes and token boundaries equal the Rust front end's byte for byte, including odd ones (a CRLF source, `{:?}` quoting of a non-ASCII character, node ids in allocation order). The corpus has too few error cases for that, so `make c-compiler-test` also compares mutated copies of every `.ms` file; a first port of the lexer passed the whole corpus and 30,000 mutants, which found nothing to fix, but a mutant run is what catches a missed message.
+Verified: `compiler/` ports `ms-syntax` stage by stage. The formatter is done: its Rust version is deleted, and `compiler/tests/format-golden.sh` (cases in `compiler/tests/format/`, `NAME.src` with `NAME.expected`) plus the `stable` run in `syntax-diff.sh` (output formats to itself on the corpus, mutants and re-laid-out copies) replace the comparison. It matched Rust on all 7,268 files, 3,000 mutants and 2,996 re-laid-out copies before the deletion. Add a formatter case there, not a Rust test. Messages, positions, fixes and token boundaries equal the Rust front end's byte for byte, including odd ones (a CRLF source, `{:?}` quoting of a non-ASCII character, node ids in allocation order). The corpus has too few error cases for that, so `make c-compiler-test` also compares mutated copies of every `.ms` file; a first port of the lexer passed the whole corpus and 30,000 mutants, which found nothing to fix, but a mutant run is what catches a missed message.
 
-Apply when: changing `compiler/src`, `crates/ms-syntax/src/{lexer,parser,dump}.rs`, or the oracle `crates/ms-syntax/examples/c_oracle.rs`. A change to the Rust front end changes the oracle: port it to C in the same change, or the comparison fails.
+Apply when: changing `compiler/src`, `crates/ms-syntax/src/{lexer,parser,dump}.rs` (the formatter has no Rust side), or the oracle `crates/ms-syntax/examples/c_oracle.rs`. A change to the Rust front end changes the oracle: port it to C in the same change, or the comparison fails.
 Evidence: [compiler/README.md](../../compiler/README.md), `compiler/tests/syntax-diff.sh`.
 Verify: `make c-compiler-test` prints `ok` for every mode and set.
 

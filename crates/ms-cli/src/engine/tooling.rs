@@ -1033,11 +1033,24 @@ pub fn drop_redundant_labels(
     Ok(ms_tooling::labels::drop_redundant_labels(program, source).0)
 }
 
-/// `ms fmt`: the formatter in `ms-syntax`; source that does not parse is reported, never rewritten.
+/// `ms fmt`: the C formatter in libms; source that does not parse is reported, never rewritten. The
+/// report is the strict parser's diagnostic, so it carries the fix the parser knows.
 pub fn format_source(file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
+    let failure = match ms_build::c_backend::format(source) {
+        Ok(formatted) => return Ok(formatted),
+        Err(failure) => failure,
+    };
     let name: std::sync::Arc<str> = file.display.as_str().into();
-    ms_syntax::format::format(&name, source)
-        .map_err(|issue| FormatFailure::Syntax(Box::new(command_diagnostic(&issue))))
+    let issue = ms_syntax::parser::parse(&name, source)
+        .err()
+        .unwrap_or_else(|| {
+            Box::new(ms_syntax::Diagnostic::parse(
+                &name,
+                ms_syntax::Pos::new(failure.offset as u32, failure.line, failure.column),
+                failure.message,
+            ))
+        });
+    Err(FormatFailure::Syntax(Box::new(command_diagnostic(&issue))))
 }
 
 #[cfg(test)]

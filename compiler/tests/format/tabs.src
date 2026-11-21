@@ -1,0 +1,16 @@
+fn f(n: Int) Int:
+    var t = 0
+    for i in 0..n:
+        if i > 1:
+            t += i
+    return t
+
+fn text() String:
+	return """
+		a	b
+		"""
+
+fn g(xs: List[Int]) Int:
+    return xs
+        | map(g)
+        | sum()

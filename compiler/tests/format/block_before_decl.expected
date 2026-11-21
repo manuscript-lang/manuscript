@@ -1,0 +1,6 @@
+/*
+Docs for f.
+  Indented line.
+*/
+fn f() Int:
+	return 1  // one

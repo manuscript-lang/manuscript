@@ -1,7 +1,6 @@
 //! Multi-line (`"""`) and raw (`r"""`) text literals.
 
 use ms_syntax::dump::dump_module;
-use ms_syntax::format;
 use std::sync::Arc;
 
 fn dump(source: &str) -> Result<String, String> {
@@ -123,55 +122,6 @@ fn interpolation_errors_point_into_the_right_line() {
 }
 
 #[test]
-fn formatting_is_idempotent_and_keeps_text() {
-    let file: Arc<str> = Arc::from("m.ms");
-    let source = "fn f(n: Int) String:\n\tif n > 0:\n\t\treturn f\"\"\"\n            a {n}\n              b\n            \"\"\"\n\treturn r\"\"\"\n        {\"x\": 1}\n        \"\"\"\n";
-    let once = format(&file, source).unwrap();
-    assert_eq!(once, source);
-    assert_eq!(format(&file, &once).unwrap(), once);
-}
-
-#[test]
-fn formatting_moves_text_with_the_line_it_lands_on() {
-    let file: Arc<str> = Arc::from("m.ms");
-    let long = "a_rather_long_argument_name_to_force_wrapping";
-    let source = format!(
-        "fn g(a: String, b: String) String:\n    return a + b\n\nfn f(x: String) String:\n    return g({long}, \"\"\"\n        t\n          u\n        \"\"\") + {long}\n"
-    );
-    let once = format(&file, &source).unwrap();
-    println!("{once}");
-    assert_eq!(format(&file, &once).unwrap(), once);
-    assert_eq!(dump(&source).unwrap().matches("t\\x0a  u").count(), 1);
-    assert_eq!(dump(&once).unwrap().matches("t\\x0a  u").count(), 1);
-}
-
-#[test]
-fn formatting_keeps_whitespace_only_text_lines() {
-    let file: Arc<str> = Arc::from("m.ms");
-    let source = include_str!("data/multiline/blank_wrapping.ms");
-    for raw in [false, true] {
-        for newline in ["\n", "\r\n"] {
-            for blank in ["", "  ", "            ", "            \t", "        \u{a0}"] {
-                let source = source.replace("            \n", &format!("{blank}\n"));
-                let source = if raw {
-                    source.replacen("\"\"\"", "r\"\"\"", 1)
-                } else {
-                    source
-                };
-                let source = source.replace('\n', newline);
-                let once = format(&file, &source).unwrap();
-                assert_eq!(
-                    parts_of(&dump(&source).unwrap()),
-                    parts_of(&dump(&once).unwrap()),
-                    "{once}"
-                );
-                assert_eq!(format(&file, &once).unwrap(), once);
-            }
-        }
-    }
-}
-
-#[test]
 fn names_and_paths_stay_one_line() {
     let file: Arc<str> = Arc::from("m.ms");
     for source in [
@@ -219,13 +169,4 @@ fn recovery_keeps_a_multi_line_import_path_in_one_chunk() {
     let messages: Vec<&str> = issues.iter().map(|d| d.message.as_str()).collect();
     assert_eq!(messages.len(), 1, "{messages:?}");
     assert!(messages[0].contains("one-line text"), "{messages:?}");
-}
-
-#[test]
-fn restoring_adjacent_literals_uses_the_restored_line_indentation() {
-    let file: Arc<str> = Arc::from("m.ms");
-    let source = "fn f() String:\n\treturn \"\"\"\n        first\n        \"\"\" + \"\"\"\n        second\n        \"\"\"\n";
-    let once = format(&file, source).unwrap();
-    assert_eq!(once, source);
-    assert_eq!(format(&file, &once).unwrap(), once);
 }

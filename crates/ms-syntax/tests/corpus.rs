@@ -1,8 +1,8 @@
-//! Parser and formatter tests against the repository corpus and the recorded
+//! Parser tests against the repository corpus and the recorded
 //! fixtures under `tests/data`.
 
 use ms_syntax::dump::{dump_module, quote};
-use ms_syntax::{format, parse_partial};
+use ms_syntax::parse_partial;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -36,67 +36,6 @@ fn big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
         .unwrap()
         .join()
         .unwrap()
-}
-
-fn repository_sources() -> Vec<PathBuf> {
-    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
-        for entry in std::fs::read_dir(dir).unwrap() {
-            let path = entry.unwrap().path();
-            let name = path.file_name().unwrap().to_string_lossy().to_string();
-            if path.is_dir() {
-                let skip = name.starts_with('.')
-                    || name.starts_with("target")
-                    || matches!(
-                        name.as_str(),
-                        "vendor"
-                            | "toolchain"
-                            | "node_modules"
-                            | "crates"
-                            | "bench"
-                            | "conformance"
-                    );
-                if !skip {
-                    walk(&path, out);
-                }
-            } else if path.extension().is_some_and(|e| e == "ms") {
-                out.push(path);
-            }
-        }
-    }
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut out = Vec::new();
-    walk(&root, &mut out);
-    out.sort();
-    out
-}
-
-#[test]
-fn repository_sources_parse_and_are_formatted() {
-    big_stack(|| {
-        let files = repository_sources();
-        assert!(files.len() > 100, "found {} sources", files.len());
-        for path in files {
-            let text = std::fs::read_to_string(&path).unwrap();
-            let file: Arc<str> = Arc::from(path.to_string_lossy().as_ref());
-            // Sources written to test failures on purpose are listed in tests/ directories only.
-            if ms_syntax::parser::parse(&file, &text).is_err() {
-                continue;
-            }
-            let once = format(&file, &text).unwrap();
-            assert_eq!(
-                once,
-                text,
-                "{} is not formatted as the recorded output",
-                path.display()
-            );
-            assert_eq!(
-                format(&file, &once).unwrap(),
-                once,
-                "formatting is not idempotent for {}",
-                path.display()
-            );
-        }
-    });
 }
 
 #[test]
@@ -171,79 +110,6 @@ fn recovery_matches_oracle() {
             assert_eq!(got, want, "{}", path.display());
         }
     });
-}
-
-#[test]
-fn formatter_matches_oracle() {
-    big_stack(|| {
-        let files = sorted(&data("format"), "src");
-        let inputs: Vec<_> = files
-            .iter()
-            .filter(|p| p.to_string_lossy().ends_with(".in.src"))
-            .collect();
-        assert!(inputs.len() >= 30);
-        for path in inputs {
-            let text = std::fs::read_to_string(path).unwrap();
-            let want =
-                std::fs::read_to_string(path.to_string_lossy().replace(".in.src", ".out.src"))
-                    .unwrap();
-            let file: Arc<str> = Arc::from("f.ms");
-            if update_golden() {
-                let out = path.to_string_lossy().replace(".in.src", ".out.src");
-                std::fs::write(out, format(&file, &text).unwrap()).unwrap();
-                continue;
-            }
-            assert_eq!(format(&file, &text).unwrap(), want, "{}", path.display());
-        }
-    });
-}
-
-#[test]
-fn setup_paragraphs_are_stable_with_lf_and_crlf() {
-    let source = include_str!("data/format/040.in.src");
-    let expected = include_str!("data/format/040.out.src");
-    let file: Arc<str> = Arc::from("setup.ms");
-    for input in [source.to_string(), source.replace('\n', "\r\n")] {
-        let once = format(&file, &input).unwrap();
-        assert_eq!(once, expected);
-        assert_eq!(format(&file, &once).unwrap(), once);
-    }
-}
-
-#[test]
-fn short_callbacks_are_compact_without_changing_block_bodies() {
-    let source = include_str!("data/format/041.in.src");
-    let expected = include_str!("data/format/041.out.src");
-    let file: Arc<str> = Arc::from("callbacks.ms");
-    for input in [source.to_string(), source.replace('\n', "\r\n")] {
-        let once = format(&file, &input).unwrap();
-        assert_eq!(once, expected);
-        assert_eq!(format(&file, &once).unwrap(), once);
-    }
-}
-
-#[test]
-fn prose_paragraphs_keep_related_steps_together() {
-    let source = include_str!("data/format/042.in.src");
-    let expected = include_str!("data/format/042.out.src");
-    let file: Arc<str> = Arc::from("paragraphs.ms");
-    for input in [source.to_string(), source.replace('\n', "\r\n")] {
-        let once = format(&file, &input).unwrap();
-        assert_eq!(once, expected);
-        assert_eq!(format(&file, &once).unwrap(), once);
-    }
-}
-
-#[test]
-fn callback_defaults_keep_the_enclosing_function_suite_aligned() {
-    let source = include_str!("data/format/043.in.src");
-    let expected = include_str!("data/format/043.out.src");
-    let file: Arc<str> = Arc::from("defaults.ms");
-    for input in [source.to_string(), source.replace('\n', "\r\n")] {
-        let once = format(&file, &input).unwrap();
-        assert_eq!(once, expected);
-        assert_eq!(format(&file, &once).unwrap(), once);
-    }
 }
 
 #[test]

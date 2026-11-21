@@ -1,11 +1,9 @@
-//! Deterministic mutation testing of the parser, partial parser and formatter. Each accepted and
+//! Deterministic mutation testing of the parser and partial parser. Each accepted and
 //! rejected conformance program is damaged in seeded ways (delete, duplicate, swap, insert,
-//! truncate); whatever the damage, nothing may panic, diagnostics must point into the source,
-//! formatting must refuse exactly the sources the parser refuses, and formatted output must parse
-//! and format to itself.
+//! truncate); whatever the damage, nothing may panic and diagnostics must point into the source.
 
+use ms_syntax::parse_partial;
 use ms_syntax::parser::parse;
-use ms_syntax::{format, parse_partial};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -124,23 +122,6 @@ fn check(source: &str) {
         if let Some(end) = diagnostic.end {
             assert!(in_source(end.offset) && end.offset >= diagnostic.pos.offset);
         }
-    }
-
-    match (format(&file, source), parsed) {
-        (Err(_), Err(_)) => {}
-        (Ok(formatted), Ok(_)) => {
-            assert!(
-                parse(&file, &formatted).is_ok(),
-                "formatted output does not parse"
-            );
-            assert_eq!(
-                format(&file, &formatted).as_deref().ok(),
-                Some(formatted.as_str()),
-                "formatting is not idempotent"
-            );
-        }
-        (Ok(_), Err(_)) => panic!("invalid syntax produced formatted output"),
-        (Err(error), Ok(_)) => panic!("valid syntax failed to format: {}", error.message),
     }
 }
 

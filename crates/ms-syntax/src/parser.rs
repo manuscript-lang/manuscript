@@ -3784,11 +3784,6 @@ fn plain_chain(e: &Expr) -> bool {
     }
 }
 
-/// Whether `left[index] op= value` is accepted: both parts can be evaluated twice without effect.
-pub(crate) fn plain_index_target(left: &Expr, index: &Expr) -> bool {
-    plain_chain(left) && plain_index(index)
-}
-
 /// The member name of an index assignment; no source name can spell it.
 pub const INDEX_SET: &str = "[]=";
 

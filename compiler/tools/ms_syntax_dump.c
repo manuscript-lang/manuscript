@@ -66,7 +66,7 @@ static void dump_node_ids(MsBuf *out, const MsModule *mod) {
 }
 #endif
 
-typedef enum Mode { MODE_AST, MODE_TOKENS, MODE_CODES, MODE_PARTIAL, MODE_IDS, MODE_FORMAT } Mode;
+typedef enum Mode { MODE_AST, MODE_TOKENS, MODE_CODES, MODE_PARTIAL, MODE_IDS, MODE_FORMAT, MODE_STABLE } Mode;
 
 typedef struct Source {
     const char *path;
@@ -153,6 +153,22 @@ static void dump_format(MsBuf *out, MsArena *arena, const Source *src) {
     }
 }
 
+/* The formatter's invariant on one source that parses: the output formats to itself. Prints "unstable" when not. */
+static void dump_stable(MsBuf *out, MsArena *arena, const Source *src) {
+    MsDiag diag;
+    MsBuf once = {0}, again = {0};
+    if (!ms_format(arena, src->text, src->len, &once, &diag)) {
+        goto done;
+    }
+    if (!ms_format(arena, once.data, once.len, &again, &diag) || again.len != once.len ||
+        memcmp(again.data, once.data, once.len) != 0) {
+        ms_buf_puts(out, "unstable\n");
+    }
+done:
+    ms_buf_free(&once);
+    ms_buf_free(&again);
+}
+
 static void dump_source(MsBuf *out, const Source *src, Mode mode) {
     ms_buf_printf(out, "=== %s\n", src->path);
     if (!ms_utf8_valid(src->text, src->len)) {
@@ -177,13 +193,16 @@ static void dump_source(MsBuf *out, const Source *src, Mode mode) {
     case MODE_FORMAT:
         dump_format(out, &arena, src);
         break;
+    case MODE_STABLE:
+        dump_stable(out, &arena, src);
+        break;
     }
     ms_arena_free(&arena);
 }
 
 static bool parse_mode(const char *name, Mode *mode) {
-    static const char *const names[] = {"ast", "tokens", "codes", "partial", "ids", "format"};
-    for (int i = 0; i < 6; i++) {
+    static const char *const names[] = {"ast", "tokens", "codes", "partial", "ids", "format", "stable"};
+    for (int i = 0; i < 7; i++) {
         if (strcmp(name, names[i]) == 0) {
             *mode = (Mode)i;
             return true;
@@ -195,7 +214,7 @@ static bool parse_mode(const char *name, Mode *mode) {
 int main(int argc, char **argv) {
     Mode mode = MODE_AST;
     if (argc < 3 || !parse_mode(argv[1], &mode)) {
-        fputs("usage: ms_syntax_dump tokens|ast|codes|partial|ids|format FILE...\n", stderr);
+        fputs("usage: ms_syntax_dump tokens|ast|codes|partial|ids|format|stable FILE...\n", stderr);
         return 2;
     }
     MsBuf out = {0};

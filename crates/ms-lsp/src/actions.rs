@@ -9,7 +9,6 @@ use crate::uri;
 use crate::workspace;
 use ms_check::api::syntax::ModRef;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 fn action_for(
     d: &Document,
@@ -67,8 +66,7 @@ fn line_range(source: &str, line: usize) -> Range {
 
 /// The "Format Manuscript document" action, absent when already formatted.
 pub fn format_actions(d: &Document) -> Vec<Json> {
-    let file: Arc<str> = uri::filename(&d.uri).into();
-    let Ok(formatted) = ms_syntax::format(&file, &d.text) else {
+    let Ok(formatted) = ms_build::c_backend::format(&d.text) else {
         return Vec::new();
     };
     if formatted == d.text {

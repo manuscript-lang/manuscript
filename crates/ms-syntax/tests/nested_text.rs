@@ -28,8 +28,6 @@ fn nested_fstrings_keep_braces_inside_nested_text() {
                 visit::walk_decl(&mut texts, decl);
             }
             assert_eq!(texts.0, [literal]);
-            let formatted = ms_syntax::format(&file, &source).unwrap();
-            assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
             let damaged = "fn broken(\n".to_string() + &source;
             let (partial, diagnostics) = ms_syntax::parse_partial(&file, &damaged);
             assert!(!diagnostics.is_empty());
@@ -69,8 +67,6 @@ fn check_deeply_nested_fstrings() {
             visit::walk_decl(&mut count, decl);
         }
         assert_eq!(count.0, depth);
-        let formatted = ms_syntax::format(&file, &source).unwrap();
-        assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
     }
 }
 
@@ -109,7 +105,5 @@ fn nested_interpolations_inside_multiline_functions_keep_expression_forms() {
             format!("fn get() String:\n    x := f\"{{f\"{{fn x: x}}\"}} {{1..2}}\"{ending}");
         let module = ms_syntax::parser::parse(&file, &source).unwrap();
         assert_eq!(module.decls.len(), 1);
-        let formatted = ms_syntax::format(&file, &source).unwrap();
-        assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
     }
 }

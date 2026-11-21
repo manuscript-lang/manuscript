@@ -1,0 +1,6 @@
+fn f() Int:
+	/*
+	keep   this
+	   and this
+	*/
+	return 1  // x

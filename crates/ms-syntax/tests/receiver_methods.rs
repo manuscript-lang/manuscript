@@ -1,5 +1,4 @@
 use ms_syntax::ast::DeclKind;
-use ms_syntax::format;
 use std::sync::Arc;
 
 const ACCEPTED: &str = include_str!("data/receiver_methods/accepted.ms");
@@ -19,8 +18,6 @@ fn receiver_methods_parse_as_own_methods() {
     };
     assert!(close.methods[0].mutating);
     assert!(matches!(module.decls[3].kind, DeclKind::Fn(_)));
-    let formatted = format(&file, ACCEPTED).unwrap();
-    assert_eq!(format(&file, &formatted).unwrap(), formatted);
 }
 
 #[test]

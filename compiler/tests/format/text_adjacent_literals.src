@@ -1,0 +1,6 @@
+fn f() String:
+	return """
+        first
+        """ + """
+        second
+        """
