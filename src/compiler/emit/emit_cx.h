@@ -11,6 +11,8 @@
 
 #include "base/strbuild.h"
 #include "compiler/mir/mir.h"
+#include "compiler/mir/mir_data.h"
+#include "compiler/mir/mir_glue.h"
 #include "compiler/mir/mir_layout.h"
 
 #define EMIT_DIRECT_BYTES 16
@@ -23,6 +25,8 @@ typedef struct EmitCx {
   const MirFunc *func;     /* the function being written; NULL for module-level text */
   MsStrBuild *out;         /* borrowed */
   MirLayouts *layouts;     /* borrowed */
+  const MirData *data;     /* borrowed: the static data; NULL when the module has none */
+  const MirGlue *glue;     /* borrowed: the helper functions glue made; NULL when none */
   uint32_t next;           /* counter for generated register names */
   const char *why;         /* the reason an instruction cannot be written; static text */
   const bool *framed;      /* per value: a closure object kept in the frame; NULL when none */
@@ -84,6 +88,9 @@ void emit_copy_leaf(EmitCx *cx, MirValue dst, uint32_t out_index, MirValue src, 
 void emit_zero_leaf(EmitCx *cx, MirValue dst, uint32_t index, MirLeaf leaf);
 /* Formats `%name<number>` into `out`. */
 void emit_register_name(char *out, size_t capacity, const char *prefix, uint32_t number);
+/* `%<prefix><number><suffix><second>`: `%w3_5`, `%u4b`, `%v7.1` (suffix NULL and second MIR_NONE for none). */
+void emit_text_name(char *out, size_t capacity, const char *prefix, uint32_t number, const char *suffix,
+                    uint32_t second);
 bool emit_memory_inst(EmitCx *cx, const MirInst *inst, bool *handled);
 
 /* ---- operations by family; each sets `*handled` and returns false only when `cx->why` is set ---- */
@@ -100,6 +107,17 @@ bool emit_checked_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool
 bool emit_rt_direct(EmitCx *cx, MirTy type);
 /* Whether extern `def` is a function of a C library (not the runtime's own, which takes a Float32 as a double). */
 bool emit_extern_is_c(const EmitCx *cx, const MirExtern *def);
+/* `typedesc`, `str`, `global.get`, `global.set`: the operations that name static data. */
+bool emit_data_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
+/* One definition per data symbol, preceded by a declaration of each runtime symbol it names. */
+void emit_define_data(EmitCx *cx);
+/* A call of the code at register `callee` (NULL: the MIR function `inst` names), `lead` first when given. */
+void emit_call_to(EmitCx *cx, const MirInst *inst, const EmitSite *site, const char *callee, const char *lead);
+/* Writes `%q<n> = getelementptr i8, ptr <base>, i64 offset` and names it in `out`. */
+void emit_offset_pointer(EmitCx *cx, const char *base, uint32_t offset, char *out, size_t capacity);
+/* Closures and function addresses, interfaces, and the cancellation poll. */
+bool emit_closure_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
+bool emit_iface_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_call_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_record_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_option_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);

@@ -82,23 +82,46 @@ uint32_t emit_slot_bytes(EmitCx *cx, MirTy type) {
   return (size + 7U) / 8U * 8U;
 }
 
-/* `%<prefix><number>` into `out` (NUL-terminated); a name that does not fit is cut. */
-void emit_register_name(char *out, size_t capacity, const char *prefix, uint32_t number) {
+static size_t put_text(char *out, size_t capacity, size_t length, const char *text) {
+  for (const char *at = text; *at != '\0' && length + 1 < capacity; at++) {
+    out[length++] = *at;
+  }
+  return length;
+}
+
+static size_t put_number(char *out, size_t capacity, size_t length, uint32_t number) {
   char digits[16];
   size_t digit_count = 0;
   do {
     digits[digit_count++] = (char)('0' + number % 10);
     number /= 10;
   } while (number != 0);
+  while (digit_count > 0 && length + 1 < capacity) {
+    out[length++] = digits[--digit_count];
+  }
+  return length;
+}
+
+/* `%<prefix><number><suffix><second>` into `out` (NUL-terminated); `suffix` may be NULL, `second` MIR_NONE
+ * for none. A name that does not fit is cut. */
+void emit_text_name(char *out, size_t capacity, const char *prefix, uint32_t number, const char *suffix,
+                    uint32_t second) {
   size_t length = 0;
   if (capacity > 1) {
     out[length++] = '%';
   }
-  for (const char *at = prefix; *at != '\0' && length + 1 < capacity; at++) {
-    out[length++] = *at;
+  length = put_text(out, capacity, length, prefix);
+  length = put_number(out, capacity, length, number);
+  if (suffix != NULL) {
+    length = put_text(out, capacity, length, suffix);
   }
-  while (digit_count > 0 && length + 1 < capacity) {
-    out[length++] = digits[--digit_count];
+  if (second != MIR_NONE) {
+    length = put_number(out, capacity, length, second);
   }
   out[length] = '\0';
+}
+
+/* `%<prefix><number>` into `out`. */
+void emit_register_name(char *out, size_t capacity, const char *prefix, uint32_t number) {
+  emit_text_name(out, capacity, prefix, number, NULL, MIR_NONE);
 }
