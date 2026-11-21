@@ -136,7 +136,13 @@ static void add_check_findings(const MsCheckProgram *program, const MsNames *nam
     const MsCheckDiag *issue = &program->diagnostics.ptr[i];
     const MsSpan file = ms_names_span(names, program->modules.ptr[issue->module].file);
     const char *phase = issue->phase == MS_CHECK_RESOLUTION ? "resolution" : "type";
-    const MsDiag diag = {.pos = issue->pos, .message = ms_string_span(&issue->message)};
+    MsDiag diag = {.pos = issue->pos, .message = ms_string_span(&issue->message)};
+    if (issue->has_fix) {
+      diag.has_fix = true;
+      diag.fix_pos = issue->fix_pos;
+      diag.fix_end = issue->fix_end;
+      diag.replacement = ms_string_span(&issue->fix_text);
+    }
     finding_list_push(findings, (Finding){.file = file, .phase = phase, .diag = diag});
   }
 }
