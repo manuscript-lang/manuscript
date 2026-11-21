@@ -147,6 +147,16 @@ static bool generic_grows(MsBody *b, const MsInfer *in) {
     return false;
 }
 
+/* Whether a field of the type declaration has a default value, an expression that can call back. */
+static bool generic_has_defaults(const MsDecl *decl) {
+    for (uint32_t i = 0; i < decl->u.type.fields.len; i++) {
+        if (decl->u.type.fields.ptr[i]->def != NULL) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* Every variable is bound to an admitted type and each of its bounds, with the bindings applied, is met. */
 static bool generic_bounds(MsBody *b, MsInfer *in) {
     if (b->methods == NULL) {
@@ -154,7 +164,7 @@ static bool generic_bounds(MsBody *b, MsInfer *in) {
     }
     for (uint32_t i = 0; i < in->nvars; i++) {
         // A type built from the caller's variables is declined by the growth guard in the caller.
-        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i])) {
+        if (in->bound[i] == MS_TY_NONE || (in->bound[i] != b->void_ty && !ms_body_is_admitted(b, in->bound[i]))) {
             return false;
         }
         const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
@@ -349,9 +359,10 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
         return ms_body_unsupported(b);
     }
     const MsTy result = ms_ty_apply(b->c, syms->ty[sym], in.bound, def->nvars);
-    // A type applied to the caller's own variables may be a cycle of applications that never ends (its
-    // defaults call back into the caller), which the Rust checker reports (recursion.rs).
-    if (result == MS_TY_NONE || !ms_body_is_bindable(b, result) || ms_ty_has_variable(&b->c->tys, result)) {
+    // A type applied to the caller's own variables may be a cycle of applications that never ends: its
+    // defaults call back into the caller, or an argument grows. The Rust checker reports both (recursion.rs).
+    if (result == MS_TY_NONE || !ms_body_is_bindable(b, result) || generic_grows(b, &in) ||
+        (generic_has_defaults(decl) && ms_ty_has_variable(&b->c->tys, result))) {
         return ms_body_unsupported(b);
     }
     b->facts->call_reordered[e->id] = ms_body_reordered(e, slot);
