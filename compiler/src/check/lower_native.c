@@ -258,14 +258,17 @@ static bool ln_value_param(Lb *lb, LnCall *call, MsRtParam kind, const MirValue 
     call->next++;
     const MirTy given = mir_b_ty(&lb->b, value);
     const bool list = kind == MS_RT_LIST || kind == MS_RT_LIST_VAR;
-    if ((list && !lb_is_list(lb, given)) || (kind == MS_RT_MAP && !lb_is_map(lb, given))) {
+    const bool bytes = kind == MS_RT_LIST && given == MIR_BYTES; // a `Bytes` is a list of bytes to a borrowing native
+    if ((list && !bytes && !lb_is_list(lb, given)) || (kind == MS_RT_MAP && !lb_is_map(lb, given))) {
         return false;
     }
     const bool scalar = kind == MS_RT_INT || kind == MS_RT_FLOAT || kind == MS_RT_BOOL || kind == MS_RT_STR;
     if (scalar && given != ln_param_ty(kind, given)) {
         return false; // an optional or a sized integer for a plain word: the call converts it, and this does not
     }
-    if (list) {
+    if (bytes) {
+        call->element = MIR_UINT8;
+    } else if (list) {
         call->element = mir_ty_data(lb->m, given)->elem;
     }
     if (kind == MS_RT_MAP) {
