@@ -58,7 +58,7 @@ MirTy la_type(Lb *lb, MsTy ty) {
 LbVal la_none(Lb *lb, const MsExpr *e) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_OPT) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     return (LbVal){mir_b_emit(&lb->b, MOP_OptNone, NULL, 0, (MirImm){0}, ty), false};
 }
@@ -76,7 +76,7 @@ LbVal la_case(Lb *lb, const MsExpr *call) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[call->id]);
     uint32_t count = call->u.call.args.len;
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirCaseDef *def = &lb->m->alts[mir_ty_data(lb->m, ty)->id].cases[lb->facts->res_ref[callee->id]];
     MirValue *payload = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)def->nfields + 1);
@@ -123,7 +123,7 @@ MirValue la_ok_unit(Lb *lb) {
 LbVal la_nullary(Lb *lb, const MsExpr *e) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_ALT) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirImm imm = {.tag = MI_CASE, .a = mir_ty_data(lb->m, ty)->id, .b = lb->facts->res_ref[e->id]};
     return (LbVal){mir_b_emit(&lb->b, MOP_AltNew, NULL, 0, imm, ty), false};
@@ -177,13 +177,13 @@ LbVal la_try(Lb *lb, const MsExpr *e) {
     const MirTy ret = lb->b.f.ret;
     if (!lb->ok || mir_ty_data(lb->m, mir_b_ty(&lb->b, result.v))->kind != MK_ALT ||
         mir_ty_data(lb->m, ret)->kind != MK_ALT) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirTyData *held = mir_ty_data(lb->m, mir_b_ty(&lb->b, result.v));
     const MirTyData *back = mir_ty_data(lb->m, ret);
     const MirTy cause = lb->m->alts[held->id].cases[LA_ERROR].fields[0].ty;
     if (lb->m->alts[back->id].std != MSTD_RESULT || lb->m->alts[back->id].cases[LA_ERROR].fields[0].ty != cause) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirValue tag = mir_b_emit(&lb->b, MOP_AltTag, &result.v, 1, (MirImm){0}, MIR_INT);
     const MirValue failed = mir_b_icmp(&lb->b, MCC_EQ, tag, mir_b_iconst(&lb->b, LA_ERROR));

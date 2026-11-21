@@ -7,10 +7,7 @@
 
 /* The `Map` the module sees, or MS_NONE when a declaration shadows it. */
 static MsSymId map_symbol(const MsBody *b) {
-    MsCheck *c = b->c;
-    const MsSym name = ms_intern_cstr(c->names, "Map");
-    const MsSymId sym = ms_map_get(&c->std_types, name);
-    return sym != MS_NONE && ms_map_get(&c->mods[b->module].names, name) == sym ? sym : MS_NONE;
+    return ms_body_visible_builtin(b, MS_BI_MAP);
 }
 
 static bool map_is_key(const MsBody *b, MsTy key) {
@@ -24,6 +21,12 @@ bool ms_body_is_map(const MsBody *b, MsTy ty) {
     }
     const MsTy *args = ms_ty_args(tys, ty);
     return map_is_key(b, args[0]) && ms_body_is_admitted(b, args[1]);
+}
+
+/* `Set[T]` of a hashable primitive: a set held and passed like a map. */
+bool ms_body_is_set(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    return ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_SET) && tys->nargs[ty] == 1 && map_is_key(b, ms_ty_args(tys, ty)[0]);
 }
 
 static MsTy map_of(MsBody *b, MsTy key, MsTy value) {

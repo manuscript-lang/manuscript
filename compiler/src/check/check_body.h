@@ -48,6 +48,13 @@ MsTy ms_body_lambda_inferred(MsBody *b, const MsExpr *e, MsTy settled); /* `sett
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
 /* Lists (check_list.c): whether `ty` is a `List` of admitted elements, a `List[...]` annotation,
  * a list literal and an index expression. */
+/* The standard type that declares builtin `kind`, when the module sees it under its own name (no
+ * declaration of the module shadows it); MS_NONE otherwise. */
+static inline MsSymId ms_body_visible_builtin(const MsBody *b, MsBuiltin kind) {
+    const MsSymId sym = ms_builtin_symbol(b->c, kind);
+    return sym != MS_NONE && ms_map_get(&b->c->mods[b->module].names, b->c->syms.name[sym]) == sym ? sym : MS_NONE;
+}
+
 bool ms_body_is_list(const MsBody *b, MsTy ty);
 MsBuiltin ms_body_standard_identity(const MsBody *b, MsTy ty);
 bool ms_body_same_type(const MsBody *b, MsTy x, MsTy y);
@@ -57,6 +64,7 @@ MsTy ms_body_list_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected);
 /* Maps (check_map.c): whether `ty` is a `Map` of an admitted key and value, a `Map[K, V]` annotation, a literal. */
 bool ms_body_is_map(const MsBody *b, MsTy ty);
+bool ms_body_is_set(const MsBody *b, MsTy ty);
 MsTy ms_body_map_index(MsBody *b, MsTy map, const MsExpr *key);
 MsTy ms_body_map_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_map(MsBody *b, const MsExpr *e, MsTy expected);

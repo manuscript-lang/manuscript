@@ -73,7 +73,7 @@ LbVal lt_to_string(Lb *lb, LbVal value, MsTy checked) {
     }
     const LbVal text = lt_scalar_text(lb, checked, value.v);
     if (!lb->ok || text.v == MIR_NONE) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     if (value.owned) {
         lb_drop(lb, value.v);
@@ -86,7 +86,7 @@ LbVal lt_to_string(Lb *lb, LbVal value, MsTy checked) {
 static LtPiece lt_piece(Lb *lb, LbVal value, MsTy checked, uint32_t own_form) {
     if (own_form != MS_NONE) { // the type's own `to_string`, resolved by the checker
         if (!lm_has(lb, own_form) || lb->method_func[own_form] == MIR_NONE) {
-            (void)lb_unsupported(lb);
+            (void)LB_UNSUPPORTED(lb);
             return (LtPiece){MIR_NONE, false, false};
         }
         const MirValue text = mir_b_call(&lb->b, lb->method_func[own_form], &value.v, 1);
@@ -227,7 +227,7 @@ LbVal lt_text(Lb *lb, const MsExpr *e) {
     LtPieces pieces = {MS_NEW_N(&lb->b.scratch, LtPiece, (size_t)lt_count(e) + 1), 0};
     lt_collect(lb, e, &pieces);
     if (!lb->ok || pieces.len < 2) {
-        return lb_unsupported(lb); // one piece is a plain literal or name, lowered elsewhere
+        return LB_UNSUPPORTED(lb); // one piece is a plain literal or name, lowered elsewhere
     }
     return lt_join(lb, &pieces);
 }
