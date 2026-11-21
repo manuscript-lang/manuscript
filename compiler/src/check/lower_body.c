@@ -822,8 +822,11 @@ LbVal lb_expr(Lb *lb, const MsExpr *e) {
     }
     const MirTy payload = mir_b_ty(&lb->b, value.v);
     const bool owns = lb_owns(lb, payload);
-    if (value.owned != owns) {
-        return LB_UNSUPPORTED(lb); // a borrowed payload stays a view, an owned one is wrapped (the ownership pass decides which)
+    if (value.owned && !owns) {
+        return LB_UNSUPPORTED(lb);
+    }
+    if (owns && !value.owned) {
+        value = (LbVal){lb_copy(lb, value.v), true}; // an owning Optional holds its own copy of a borrowed payload
     }
     const MirTy ty = mir_ty_opt(lb->m, payload);
     return (LbVal){mir_b_emit(&lb->b, MOP_OptSome, &value.v, 1, (MirImm){0}, ty), owns};
