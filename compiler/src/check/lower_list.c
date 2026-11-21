@@ -38,6 +38,11 @@ LbVal lst_literal(Lb *lb, const MsExpr *e) {
     return (LbVal){mir_b_emit(&lb->b, MOP_ListLit, values, items->len, (MirImm){0}, ty), true};
 }
 
+/* `List[T]()`: a list literal of no items. */
+LbVal lst_empty(Lb *lb, MirTy ty) {
+    return (LbVal){mir_b_emit(&lb->b, MOP_ListLit, NULL, 0, (MirImm){0}, ty), true};
+}
+
 /* `list[index]`: the list is borrowed for the read, and dropped after it when it is a temporary. */
 LbVal lst_index(Lb *lb, const MsExpr *e) {
     MsExpr *left = NULL;
@@ -71,13 +76,13 @@ LbVal lst_index(Lb *lb, const MsExpr *e) {
 void lst_for(Lb *lb, const MsStmt *s) {
     const uint32_t binding = lb->binding_at[s->id];
     if (binding == MS_NONE) {
-        lb->ok = false;
+        (void)LB_UNSUPPORTED(lb);
         return;
     }
     const uint32_t outer = lscope_push(&lb->scopes);
     const LbVal list = lb_expr(lb, s->u.each.iter);
     if (!lb->ok || !lb_is_list(lb, mir_b_ty(&lb->b, list.v))) {
-        lb->ok = false;
+        (void)LB_UNSUPPORTED(lb);
         return;
     }
     if (list.owned) {

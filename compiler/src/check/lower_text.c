@@ -206,6 +206,21 @@ static LbVal lt_join(Lb *lb, LtPieces *pieces) {
     return (LbVal){joined, true};
 }
 
+/* `f"{value}"`: the value's text and no join. A string is the value itself, an integer goes through
+ * its `to_string` (only a join writes an integer itself). */
+LbVal lt_single(Lb *lb, const MsExpr *hole) {
+    const LbVal value = lb_expr(lb, hole);
+    if (!lb->ok) {
+        return value;
+    }
+    const MsTy checked = lb->facts->expr_ty[hole->id];
+    if (mir_b_ty(&lb->b, value.v) == MIR_INT) {
+        return lt_scalar_text(lb, checked, value.v);
+    }
+    const LtPiece piece = lt_piece(lb, value, checked, lb->facts->text_method[hole->id]);
+    return (LbVal){piece.v, piece.owned};
+}
+
 /* An interpolated text, or a chain of `+` over strings. */
 LbVal lt_text(Lb *lb, const MsExpr *e) {
     LtPieces pieces = {MS_NEW_N(&lb->b.scratch, LtPiece, (size_t)lt_count(e) + 1), 0};
