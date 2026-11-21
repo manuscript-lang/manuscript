@@ -221,8 +221,13 @@ stdlib-bench: build
 # The C build: one CMake project (CMakeLists.txt, cmake/) for the runtime archive, its tests and the fuzz harnesses,
 # generated with Ninja; ccache is used when installed. `c-configure` and `c-build` make target/cmake/test (sanitizers on).
 C_BUILD ?= target/cmake/test
-.PHONY: c-configure c-build
-c-configure:
+# The system C libraries the CMake builds find with pkg-config. Nothing is installed here: a missing one stops the
+# build with the command that installs it.
+.PHONY: c-deps c-configure c-build
+c-deps:
+	@pkg-config --exists libuv libnghttp2 libssl libcrypto libpcre2-8 zlib libcurl 2>/dev/null || { echo "make: the C libraries are not all installed (pkg-config). Install them with: sh runtime/third_party/libs.sh install" >&2; exit 1; }
+
+c-configure: c-deps
 	cmake -S . -B $(C_BUILD) -G Ninja -DMS_SANITIZE=ON
 
 c-build: c-configure
@@ -235,7 +240,7 @@ c-test: c-build
 # The C style gate (documentation/contributing/c-style.md): strict warnings on every C file, clang-tidy on the
 # files that differ from C_LINT_BASE (all of them when it is unset).
 .PHONY: c-lint
-c-lint:
+c-lint: c-deps
 	cmake -S . -B target/cmake/lint -G Ninja -DMS_BUILD_COMPILER=OFF -DMS_BUILD_TESTS=OFF
 	C_LINT_BASE="$(C_LINT_BASE)" cmake --build target/cmake/lint --target c-lint
 
@@ -281,10 +286,14 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/diff.ms
 	"$(RELEASE_MS)" test tools/ms/mark.ms
 	"$(RELEASE_MS)" test tools/ms/html.ms
+	"$(RELEASE_MS)" test tools/ms/review_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
 	"$(RELEASE_MS)" test tools/ms/cli.ms
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
 	"$(RELEASE_MS)" test tools/ms/install.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/lsp/analysis.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/project.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/workspace.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/matches.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
@@ -292,6 +301,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/typed_calls.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/skill_calls.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/fixes.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/interpolation.ms --link target/c-tool/libmstool.a
@@ -319,6 +329,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	sh tools/ms/review-diff.sh target/release/ms-tooling-dev target/c-tool/review target/c-tool/report target/c-tool/review-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/html.ms -o target/c-tool/html
 	sh tools/ms/html-diff.sh target/release/ms-tooling-dev target/c-tool/html target/c-tool/html-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/review_cmd.ms -o target/c-tool/review_cmd
+	sh tools/ms/review-cmd-diff.sh "$(RELEASE_MS)" target/c-tool/review_cmd target/release/ms-tooling-dev target/c-tool/review-cmd-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/inspect.ms -o target/c-tool/inspect
 	sh tools/ms/inspect-diff.sh "$(RELEASE_MS)" target/c-tool/inspect target/c-tool/inspect-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/facts_diff.ms -o target/c-tool/facts_diff

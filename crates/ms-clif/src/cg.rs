@@ -621,11 +621,7 @@ fn compile_with_isa(
     flags
         .set(
             "enable_verifier",
-            if opts.build.clif_verify {
-                "true"
-            } else {
-                "false"
-            },
+            if opts.clif_verify { "true" } else { "false" },
         )
         .map_err(|e| e.to_string())?;
     if single_pass(m, opts) {
@@ -788,7 +784,7 @@ fn compile_with_isa(
                         temps = l.finish();
                         g.vars.insert(i, vars);
                     }
-                    crate::slotshare::share(&mut ctx.func, &temps, g.opts.build.poison_slots);
+                    crate::slotshare::share(&mut ctx.func, &temps, g.opts.poison_slots);
                     let fid = g.funcs[i];
                     prepare(&g, &mut ctx);
                     pipe.submit(&mut g, std::mem::replace(&mut ctx, Context::new()), fid, i)?;
@@ -813,7 +809,7 @@ fn compile_with_isa(
                     l.lower_glue(kind, ty);
                     temps = l.finish();
                 }
-                crate::slotshare::share(&mut ctx.func, &temps, g.opts.build.poison_slots);
+                crate::slotshare::share(&mut ctx.func, &temps, g.opts.poison_slots);
                 define(&mut g, &mut ctx, id, "glue")?;
             }
         }
@@ -1076,7 +1072,7 @@ fn prepare(g: &Gen, ctx: &mut Context) {
             ctx.func.dfg.ext_funcs[func_ref].colocated = false;
         }
     }
-    if g.opts.dump_clif || g.opts.build.dump_clif {
+    if g.opts.dump_clif {
         eprintln!("; {}\n{}", ctx.func.name, ctx.func.display());
     }
     if g.opts.opt_level != "none" {
@@ -1235,7 +1231,7 @@ fn emit_main(
         l.lower_main(entry_id);
         temps = l.finish();
     }
-    crate::slotshare::share(&mut ctx.func, &temps, g.opts.build.poison_slots);
+    crate::slotshare::share(&mut ctx.func, &temps, g.opts.poison_slots);
     define(g, ctx, id, "main")
 }
 

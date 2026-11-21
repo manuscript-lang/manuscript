@@ -1,6 +1,7 @@
 /* ms_rt/fault.h: the families of fault, the statuses a process exits with, and the faults, cleanups, shields and
- * guards generated code calls (runtime/core/fault_abi.c; symbols in runtime/symbols/fault.txt). The numbers are the ones
- * `ms-rt-abi` records (crates/ms-rt-abi/src/record.rs) and generated code and tools read, so they never change.
+ * guards generated code calls (runtime/core/fault_abi.c; symbols in runtime/symbols/fault.txt). The numbers never
+ * change: generated code and tools read them, and `ms-rt-abi` generates its `FaultKind` and `EXIT_*` constants from the
+ * `MS_FAULT_KIND_*` and `MS_EXIT_*` lines below (crates/ms-rt-abi/build.rs), so keep one `NAME = number` per line.
  * Exit statuses are C-style: this is the one place that names them, no code writes a literal.
  */
 #ifndef MS_RT_FAULT_H

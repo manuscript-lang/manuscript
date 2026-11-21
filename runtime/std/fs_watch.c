@@ -673,7 +673,7 @@ static bool watcher_init_common(MsFsWatcher *watcher) {
 
 uint8_t msstd_fs_watch(const MsStr *path, uint8_t recursive, int64_t interval_ns, uint8_t has_max, int64_t max, void **out, MsStr *err) {
     MsFsFail fail = {0};
-    const MsBytes root = ms_fs_string_bytes(path);
+    const MsBytes root = msrt_str_bytes(path);
     int64_t limit = MS_FS_UNLIMITED;
     if (!ms_fs_limit(has_max, max, &limit) || interval_ns <= 0 || root.len == 0) {
         ms_fs_fail_status(&fail, STATUS_INVALID_INPUT);
@@ -779,10 +779,10 @@ static void native_start(MsFsWatcher *watcher, MsBytes root, MsFsFail *fail) {
 uint8_t msstd_fs_watch_native(const MsStr *path, uint8_t recursive, uint8_t has_max, int64_t max, uint8_t has_events, int64_t events,
                               const MsStr *overflow, void **out, MsStr *err) {
     MsFsFail fail = {0};
-    const MsBytes root = ms_fs_string_bytes(path);
+    const MsBytes root = msrt_str_bytes(path);
     int64_t limit = MS_FS_UNLIMITED;
     const int64_t capacity = has_events != 0 ? events : DEFAULT_EVENT_CAPACITY;
-    if (!ms_fs_limit(has_max, max, &limit) || !native_arguments_valid(root, has_max != 0 ? limit : MS_FS_UNLIMITED, capacity, ms_fs_string_bytes(overflow))) {
+    if (!ms_fs_limit(has_max, max, &limit) || !native_arguments_valid(root, has_max != 0 ? limit : MS_FS_UNLIMITED, capacity, msrt_str_bytes(overflow))) {
         ms_fs_fail_status(&fail, STATUS_INVALID_INPUT);
         return ms_fs_finish_at(&fail, root, err);
     }
@@ -797,7 +797,7 @@ uint8_t msstd_fs_watch_native(const MsStr *path, uint8_t recursive, uint8_t has_
     if (ready) {
         watcher->recursive = recursive != 0;
         watcher->capacity = (size_t)capacity;
-        watcher->ignore_overflow = ms_fs_string_bytes(overflow).len == 6;
+        watcher->ignore_overflow = msrt_str_bytes(overflow).len == 6;
         watcher->queue = calloc(watcher->capacity, sizeof(WatchEvent));
         watcher->root = malloc(root.len + 1);
         ready = watcher->queue != NULL && watcher->root != NULL;

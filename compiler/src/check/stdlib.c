@@ -162,10 +162,6 @@ static MsStr sl_at(Loader *l, MsStr file, MsPos p) {
     return ms_arena_fmt(l->syn, "%.*s:%u:%u", (int)file.len, file.ptr, p.line, p.column);
 }
 
-static int by_name(const void *a, const void *b) {
-    return strcmp(((const MsStdFile *)a)->name, ((const MsStdFile *)b)->name);
-}
-
 static bool is_extension(const char *name) {
     for (size_t i = 0; i < sizeof extension_modules / sizeof *extension_modules; i++) {
         if (strcmp(extension_modules[i], name) == 0) {
@@ -504,7 +500,7 @@ bool ms_std_load(MsCheck *c, MsArena *syn, const MsStdFile *in, uint32_t nfiles,
     l.n = nfiles;
     MsStdFile *files = MS_NEW_N(syn, MsStdFile, nfiles ? nfiles : 1);
     memcpy(files, in, nfiles * sizeof *files);
-    qsort(files, nfiles, sizeof *files, by_name);
+    qsort(files, nfiles, sizeof *files, ms_std_file_by_name);
     l.files = files;
     l.loaded = MS_NEW_N(syn, Loaded, nfiles ? nfiles : 1);
     memset(l.loaded, 0, sizeof *l.loaded * (nfiles ? nfiles : 1));

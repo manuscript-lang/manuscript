@@ -89,6 +89,7 @@
 #include "check/lower_text.c"
 #include "check/lower_alt.c"
 #include "check/lower_closure.c"
+#include "check/lower_method.c"
 #include "syntax/walk.c"
 #include "check/ty_subst.c"
 #include "check/ty_algebra.c"
@@ -140,11 +141,14 @@
 #include "libms_api.c"
 #include "emit/emit_entry.c"
 #include "emit/emit_llvm.c"
-/* The project loader uses POSIX file calls; the Windows tools (ms_mir_build, ms_asm_tables) do not need it. */
-#ifndef _WIN32
+#include "emit/emit_program.c"
+/* The project loader uses POSIX file calls, which the Windows tools do not need; the back end library the Rust
+ * `ms` links leaves it out on every platform (cmake/MsCompiler.cmake, target ms_backend). */
+#if !defined(_WIN32) && !defined(MS_LIBMS_NO_PROJECT)
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/discover.c"
+#include "project/embed.c"
 #include "project/resolve.c"
 #include "project/load.c"
 #include "project/semver.c"
@@ -152,6 +156,7 @@
 #include "project/solve.c"
 #include "project/packages.c"
 #include "project/install.c"
+#include "project/attach.c"
 
 #include "project/graph_check.c"
 #endif

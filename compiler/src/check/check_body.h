@@ -14,7 +14,7 @@ typedef struct MsBody {
     MsModId module;
     MsFacts *facts;
     MsLiteralFacts *literals;
-    MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
+    MsTy int_ty, float_ty, bool_ty, string_ty, void_ty, never_ty;
     uint32_t lambda_floor;  /* bindings below this id belong to an enclosing function: captured */
     MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
     MsTy invalid_ty;        /* the type of an expression that already drew a diagnostic */
@@ -27,6 +27,7 @@ typedef struct MsBody {
     MsBuf written;          /* expression ids whose type this function wrote, to undo them */
     MsBuf diags;            /* MsCheckDiag of the function being checked, reported once it is claimed */
     const char *context;    /* what the next `ms_body_expr` value is for ("the return value"), or NULL */
+    bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
     bool supported;         /* false once a construct outside the handled set is met */
 } MsBody;
 
@@ -74,6 +75,7 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
 /* A call `receiver.name(args)' (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
+void ms_body_report(MsBody *b, MsPos pos, MsStr message); /* a type diagnostic, held until the function is claimed */
 MsTy ms_body_unsupported(MsBody *b);
 /* Records the type of expression node `node` and returns it. */
 MsTy ms_body_record(MsBody *b, uint32_t node, MsTy ty);
