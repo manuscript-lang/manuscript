@@ -1,9 +1,9 @@
 type Secret:
-    a: Int
+	a: Int
 
 export fn handler() fn(Secret) Void:
-    return fn(s: Secret) Void:
-        return
+	return fn(s: Secret) Void:
+		return
 
 fn main() Void:
-    return
+	return

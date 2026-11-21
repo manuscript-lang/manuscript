@@ -657,7 +657,7 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     case MS_E_BINARY: return lb_binary(lb, e);
     case MS_E_MATCH: return lb_match(lb, e);
     case MS_E_CALL: return lb_call(lb, e);
-    case MS_E_MEMBER: return lr_field(lb, e);
+    case MS_E_MEMBER: return lb->facts->res_kind[e->id] == MS_RES_CASE ? la_nullary(lb, e) : lr_field(lb, e);
     case MS_E_INDEX:
     case MS_E_APPLY: return lst_index(lb, e);
     case MS_E_LIST: return lst_literal(lb, e);

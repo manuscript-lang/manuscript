@@ -15,6 +15,7 @@
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
 #include "ms/mir_opt.h"
+#include "opt/opt_build.h"
 
 enum {
     AF_MAX_PIECE = 16,         /* longest piece the fast path copies */
@@ -27,34 +28,6 @@ enum {
 #define AF_SPARE_FIELD ((INT64_C(1) << 30) - 1)
 #define AF_ASCII (INT64_C(1) << 61)
 
-static MirValue af_load(MirBuilder *b, MirValue base, int64_t at, MirTy ty);
-
-static MirValue af_add(MirBuilder *b, MirValue p, int64_t at) {
-    if (at == 0) {
-        return p;
-    }
-    const MirValue args[2] = {p, mir_b_iconst(b, at)};
-    return mir_b_emit(b, MOP_PtrAdd, args, 2, (MirImm){0}, MIR_PTR);
-}
-
-static MirValue af_load(MirBuilder *b, MirValue base, int64_t at, MirTy ty) {
-    const MirValue p = af_add(b, base, at);
-    return mir_b_emit(b, MOP_Load, &p, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
-}
-
-static MirValue af_int(MirBuilder *b, MirOp op, MirValue x, int64_t y) {
-    return mir_b_binop(b, op, x, mir_b_iconst(b, y));
-}
-
-static MirValue af_past(MirBuilder *b, MirValue p, MirValue by) {
-    const MirValue args[2] = {p, by};
-    return mir_b_emit(b, MOP_PtrAdd, args, 2, (MirImm){0}, MIR_PTR);
-}
-
-static MirValue af_loadu(MirBuilder *b, MirValue p, int64_t width) {
-    return mir_b_emit(b, MOP_PtrLoadU, &p, 1, (MirImm){.tag = MI_INT, .i = width}, MIR_INT);
-}
-
 static void af_storeu(MirBuilder *b, MirValue p, MirValue v, int64_t width) {
     const MirValue args[2] = {p, v};
     (void)mir_b_emit(b, MOP_PtrStoreU, args, 2, (MirImm){.tag = MI_INT, .i = width}, MIR_NONE);
@@ -64,9 +37,9 @@ static void af_storeu(MirBuilder *b, MirValue p, MirValue v, int64_t width) {
  * storing so the ranges may touch; then branches to `done`. */
 static void af_copy_ends(MirBuilder *b, MirValue src, MirValue dst, MirValue n, int64_t width,
                          MirBlock done) {
-    const MirValue back = af_int(b, MOP_ISub, n, width);
-    const MirValue src_hi = af_past(b, src, back), dst_hi = af_past(b, dst, back);
-    const MirValue lo = af_loadu(b, src, width), hi = af_loadu(b, src_hi, width);
+    const MirValue back = ob_int(b, MOP_ISub, n, width);
+    const MirValue src_hi = ob_past(b, src, back), dst_hi = ob_past(b, dst, back);
+    const MirValue lo = ob_loadu(b, src, width), hi = ob_loadu(b, src_hi, width);
     af_storeu(b, dst, lo, width);
     af_storeu(b, dst_hi, hi, width);
     mir_b_br(b, done, NULL, 0);
@@ -74,11 +47,11 @@ static void af_copy_ends(MirBuilder *b, MirValue src, MirValue dst, MirValue n, 
 
 /* One to three bytes: the first, middle and last. */
 static void af_copy_small(MirBuilder *b, MirValue src, MirValue dst, MirValue n, MirBlock done) {
-    const MirValue half = af_int(b, MOP_Ushr, n, 1), last = af_int(b, MOP_ISub, n, 1);
-    const MirValue src_mid = af_past(b, src, half), src_last = af_past(b, src, last);
-    const MirValue dst_mid = af_past(b, dst, half), dst_last = af_past(b, dst, last);
-    const MirValue x0 = af_loadu(b, src, 1), x1 = af_loadu(b, src_mid, 1);
-    const MirValue x2 = af_loadu(b, src_last, 1);
+    const MirValue half = ob_int(b, MOP_Ushr, n, 1), last = ob_int(b, MOP_ISub, n, 1);
+    const MirValue src_mid = ob_past(b, src, half), src_last = ob_past(b, src, last);
+    const MirValue dst_mid = ob_past(b, dst, half), dst_last = ob_past(b, dst, last);
+    const MirValue x0 = ob_loadu(b, src, 1), x1 = ob_loadu(b, src_mid, 1);
+    const MirValue x2 = ob_loadu(b, src_last, 1);
     af_storeu(b, dst, x0, 1);
     af_storeu(b, dst_mid, x1, 1);
     af_storeu(b, dst_last, x2, 1);
@@ -125,16 +98,12 @@ static void af_spill(MirBuilder *b, MirValue a, MirValue piece, AfWords *w) {
     args[0] = w->slot_b;
     args[1] = piece;
     (void)mir_b_emit(b, MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
-    w->aw0 = af_load(b, w->slot_a, 0, MIR_INT);
-    w->aw1 = af_load(b, w->slot_a, 8, MIR_INT);
-    w->bw0 = af_load(b, w->slot_b, 0, MIR_INT);
-    w->bw1 = af_load(b, w->slot_b, 8, MIR_INT);
+    w->aw0 = ob_load(b, w->slot_a, 0, MIR_INT);
+    w->aw1 = ob_load(b, w->slot_a, 8, MIR_INT);
+    w->bw0 = ob_load(b, w->slot_b, 0, MIR_INT);
+    w->bw1 = ob_load(b, w->slot_b, 8, MIR_INT);
     w->zero = mir_b_iconst(b, 0);
     w->one = mir_b_iconst(b, 1);
-}
-
-static MirValue af_and(MirBuilder *b, MirValue x, MirValue y) {
-    return mir_b_binop(b, MOP_And, x, y);
 }
 
 static MirValue af_or(MirBuilder *b, MirValue x, MirValue y) { return mir_b_binop(b, MOP_Or, x, y); }
@@ -142,12 +111,12 @@ static MirValue af_or(MirBuilder *b, MirValue x, MirValue y) { return mir_b_bino
 /* Whether the piece is ASCII, as the receiver's flag stays valid; `inline_piece` selects how the
  * piece records it. */
 static MirValue af_ascii(MirBuilder *b, const AfWords *w, MirValue inline_piece) {
-    const MirValue a_flag = af_int(b, MOP_And, w->aw1, AF_ASCII);
-    const MirValue b_flag = af_int(b, MOP_And, w->bw1, AF_ASCII);
+    const MirValue a_flag = ob_int(b, MOP_And, w->aw1, AF_ASCII);
+    const MirValue b_flag = ob_int(b, MOP_And, w->bw1, AF_ASCII);
     const MirValue a_plain = mir_b_icmp(b, MCC_EQ, a_flag, w->zero);
     const MirValue b_flagged = mir_b_icmp(b, MCC_NE, b_flag, w->zero);
-    const MirValue high0 = af_int(b, MOP_And, w->bw0, (int64_t)UINT64_C(0x8080808080808080));
-    const MirValue high1 = af_int(b, MOP_And, w->bw1, INT64_C(0x0080808080808080));
+    const MirValue high0 = ob_int(b, MOP_And, w->bw0, (int64_t)UINT64_C(0x8080808080808080));
+    const MirValue high1 = ob_int(b, MOP_And, w->bw1, INT64_C(0x0080808080808080));
     const MirValue bits_ascii = mir_b_icmp(b, MCC_EQ, af_or(b, high0, high1), w->zero);
     const MirValue b_ascii = mir_b_select(b, inline_piece, bits_ascii, b_flagged);
     return af_or(b, a_plain, b_ascii);
@@ -156,20 +125,20 @@ static MirValue af_ascii(MirBuilder *b, const AfWords *w, MirValue inline_piece)
 /* Emits the fast-path condition into the current block; `la` and `lb` receive the lengths. */
 static MirValue af_condition(MirBuilder *b, const AfWords *w, MirValue *la, MirValue *lb,
                              MirValue *inline_piece) {
-    const MirValue atag = af_int(b, MOP_Ushr, w->aw1, AF_TAG_SHIFT);
+    const MirValue atag = ob_int(b, MOP_Ushr, w->aw1, AF_TAG_SHIFT);
     const MirValue owned = mir_b_icmp(b, MCC_EQ, atag, w->zero);
-    *la = af_int(b, MOP_And, w->aw1, AF_LEN_MASK);
+    *la = ob_int(b, MOP_And, w->aw1, AF_LEN_MASK);
     const MirValue has_text = mir_b_icmp(b, MCC_GT, *la, w->zero);
-    const MirValue btag = af_int(b, MOP_Ushr, w->bw1, AF_TAG_SHIFT);
+    const MirValue btag = ob_int(b, MOP_Ushr, w->bw1, AF_TAG_SHIFT);
     *inline_piece = mir_b_icmp(b, MCC_EQ, btag, w->one);
-    MirValue inline_len = af_int(b, MOP_Ushr, w->bw1, AF_INLINE_LEN_SHIFT);
-    inline_len = af_int(b, MOP_And, inline_len, AF_INLINE_MAX);
-    const MirValue flat_len = af_int(b, MOP_And, w->bw1, AF_LEN_MASK);
+    MirValue inline_len = ob_int(b, MOP_Ushr, w->bw1, AF_INLINE_LEN_SHIFT);
+    inline_len = ob_int(b, MOP_And, inline_len, AF_INLINE_MAX);
+    const MirValue flat_len = ob_int(b, MOP_And, w->bw1, AF_LEN_MASK);
     *lb = mir_b_select(b, *inline_piece, inline_len, flat_len);
     const MirValue some = mir_b_icmp(b, MCC_GT, *lb, w->zero);
     const MirValue short_piece = mir_b_icmp(b, MCC_LE, *lb, mir_b_iconst(b, AF_MAX_PIECE));
-    MirValue spare = af_int(b, MOP_Ushr, w->aw1, AF_SPARE_SHIFT);
-    spare = af_int(b, MOP_And, spare, AF_SPARE_FIELD);
+    MirValue spare = ob_int(b, MOP_Ushr, w->aw1, AF_SPARE_SHIFT);
+    spare = ob_int(b, MOP_And, spare, AF_SPARE_FIELD);
     const MirValue room = mir_b_icmp(b, MCC_GE, spare, *lb);
     const MirValue end = mir_b_binop(b, MOP_IAdd, w->aw0, *la);
     const MirValue below = mir_b_icmp(b, MCC_LT, w->bw0, w->aw0);
@@ -179,7 +148,7 @@ static MirValue af_condition(MirBuilder *b, const AfWords *w, MirValue *la, MirV
     MirValue ok = owned;
     const MirValue rest[6] = {has_text, some, short_piece, room, apart, ascii};
     for (uint32_t i = 0; i < 6; i++) {
-        ok = af_and(b, ok, rest[i]);
+        ok = ob_and(b, ok, rest[i]);
     }
     return ok;
 }
@@ -191,16 +160,16 @@ static MirValue af_take(MirBuilder *b, MirValue slot) {
 /* The fast block: copy the piece, write the NUL and the new length word, return the string. */
 static void af_fast_block(MirBuilder *b, const AfWords *w, MirValue la, MirValue lb,
                           MirValue inline_piece) {
-    const MirValue text = af_load(b, w->slot_a, 0, MIR_PTR);
-    const MirValue flat_from = af_load(b, w->slot_b, 0, MIR_PTR);
+    const MirValue text = ob_load(b, w->slot_a, 0, MIR_PTR);
+    const MirValue flat_from = ob_load(b, w->slot_b, 0, MIR_PTR);
     const MirValue from = mir_b_select(b, inline_piece, w->slot_b, flat_from);
-    const MirValue dst = af_past(b, text, la);
+    const MirValue dst = ob_past(b, text, la);
     af_copy_short(b, from, dst, lb);
-    af_storeu(b, af_past(b, dst, lb), w->zero, 1);
+    af_storeu(b, ob_past(b, dst, lb), w->zero, 1);
     const MirValue grown = mir_b_binop(b, MOP_IAdd, w->aw1, lb);
-    const MirValue used = af_int(b, MOP_Shl, lb, AF_SPARE_SHIFT);
+    const MirValue used = ob_int(b, MOP_Shl, lb, AF_SPARE_SHIFT);
     const MirValue tagged = mir_b_binop(b, MOP_ISub, grown, used);
-    const MirValue args[2] = {af_add(b, w->slot_a, 8), tagged};
+    const MirValue args[2] = {ob_add(b, w->slot_a, 8), tagged};
     (void)mir_b_emit(b, MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
     mir_b_ret(b, af_take(b, w->slot_a));
 }

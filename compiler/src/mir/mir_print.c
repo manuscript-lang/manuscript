@@ -230,6 +230,8 @@ static const char *const mp_role_names[] = {
     [MR_TAKES_DYING] = "takes_dying", [MR_VIEW_RESULT] = "view_result",
     [MR_SPAWNS_TASK] = "spawns_task", [MR_SHIELD_ENTER] = "shield_enter",
     [MR_SHIELD_EXIT] = "shield_exit", [MR_UNWINDING] = "unwinding",
+    [MR_MAP_PROBE_INT] = "map_probe_int", [MR_MAP_PROBE_STR] = "map_probe_str",
+    [MR_SET_PROBE_INT] = "set_probe_int",
 };
 
 /* The role named by a textual attribute, or MR_NONE. */

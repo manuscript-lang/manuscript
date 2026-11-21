@@ -327,6 +327,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
             return false;
         }
         target->sig = ms_infer_apply(&target->in, sig);
+        ms_body_record_function_arguments(b, e, target->sig, slot);
     }
     const MsTy result = tys->result[target->sig];
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty ||
@@ -408,7 +409,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
                    value_operation(b, receiver_ty, name, &target);
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
-    if (!resolved || target.consuming || (target.mutating && immutable) ||
+    if (!resolved || (target.consuming && target.method == MS_NONE) || (target.mutating && immutable) ||
         (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) ||
         !arguments_fit(b, e, &target)) {
         return ms_body_unsupported(b);
