@@ -100,7 +100,7 @@ LbVal li_call(Lb *lb, const MsExpr *e) {
     }
     const uint32_t count = e->u.call.args.len;
     if (slot == MS_NONE || count != lb->m->ifaces[mir_ty_data(lb->m, iface)->id].methods[slot].nparams) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     MirValue *args = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 2);
     const LbVal receiver = lb_expr(lb, callee->u.member.left);
@@ -210,11 +210,11 @@ LbVal li_box(Lb *lb, const MsExpr *e, LbVal value) {
     const MirTy iface = li_type(lb, contract);
     const MirTy data_ty = lb_mir_ty(lb, concrete);
     if (iface == MIR_NONE || data_ty == MIR_NONE || (!value.owned && lb_owns(lb, data_ty))) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const uint32_t table = li_vtable(lb, concrete, contract, data_ty, iface);
     if (table == MS_NONE) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirImm imm = {.tag = MI_VTABLE, .a = table};
     return (LbVal){mir_b_emit(&lb->b, MOP_IfaceNew, &value.v, 1, imm, iface), true};

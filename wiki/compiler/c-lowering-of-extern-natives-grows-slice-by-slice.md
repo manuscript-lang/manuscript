@@ -10,4 +10,4 @@ Verified: a call of a bodiless `extern fn` (`msstd_*`, `msrt_*`) lowers through 
 
 `lower-program-diff.sh` is the oracle: a function whose text differs from Rust fails it, so each shape lands with a stdlib function that uses it.
 
-Apply when: lowering natives in C, or asking why a stdlib function is not lowered (`target/cmake/test/compiler/ms_lower_dump stdlib --program FILE`, then instrument `lb_unsupported`).
+Apply when: lowering natives in C, or asking why a stdlib function is not lowered (`target/cmake/test/compiler/ms_lower_dump stdlib --program FILE`, then instrument `LB_UNSUPPORTED`).
