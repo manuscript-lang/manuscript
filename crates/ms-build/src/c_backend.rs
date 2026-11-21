@@ -32,6 +32,16 @@ struct Backend {
     poison_slots: bool,
 }
 
+/// `MsLinkOptions`.
+#[repr(C)]
+struct LinkOptions {
+    lld: *const c_char,
+    llc: *const c_char,
+    files: *const c_char,
+    strip: bool,
+    musl: bool,
+}
+
 /// `MsObjectOptions`.
 #[repr(C)]
 struct ObjectOptions {
@@ -57,6 +67,14 @@ unsafe extern "C" {
         mir_len: usize,
         name: *const c_char,
         out: *mut Text,
+        why: *mut Text,
+    ) -> bool;
+    fn ms_build_link(
+        object: *const c_char,
+        inputs: *const *const c_char,
+        ninputs: usize,
+        out: *const c_char,
+        options: *const LinkOptions,
         why: *mut Text,
     ) -> bool;
     fn ms_backend_free(text: *mut Text);
@@ -163,4 +181,45 @@ pub fn compile(
     } else {
         Err(reason(why))
     }
+}
+
+/// What a link names: the `lld` and `llc` executables (`llc` only for the glibc stubs of a dynamic Linux link) and the
+/// directory of bundled startup files.
+pub struct LinkFiles<'a> {
+    pub lld: &'a CString,
+    pub llc: Option<&'a CString>,
+    pub files: &'a CString,
+    pub strip: bool,
+    pub musl: bool,
+}
+
+/// Links `object` and `inputs` into the executable `out` with libms (`compiler/src/build/link.c`).
+pub fn build_link(
+    object: &CString,
+    inputs: &[CString],
+    out: &CString,
+    files: &LinkFiles,
+) -> Result<(), String> {
+    let pointers: Vec<*const c_char> = inputs.iter().map(|path| path.as_ptr()).collect();
+    let options = LinkOptions {
+        lld: files.lld.as_ptr(),
+        llc: files.llc.map_or(std::ptr::null(), |path| path.as_ptr()),
+        files: files.files.as_ptr(),
+        strip: files.strip,
+        musl: files.musl,
+    };
+    let mut why = Text::empty();
+    // SAFETY: every string is NUL-terminated and outlives the call, `pointers` holds one pointer per input, and `why`
+    // is an empty text libms fills.
+    let linked = unsafe {
+        ms_build_link(
+            object.as_ptr(),
+            pointers.as_ptr(),
+            pointers.len(),
+            out.as_ptr(),
+            &raw const options,
+            &raw mut why,
+        )
+    };
+    if linked { Ok(()) } else { Err(reason(why)) }
 }

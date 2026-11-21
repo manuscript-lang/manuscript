@@ -235,7 +235,11 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
     // Arms are all values or all statements. A statement match falls through when some arm does
     // (`b->match_falls`); the statement after one whose arms all return or break is unreachable.
     bool any_falls = false;
-    const bool valued = e->u.match.arms.ptr[0]->value != NULL;
+    // A match yields a value when any arm does; an arm without one must leave (`return`, `fail`).
+    bool valued = false;
+    for (uint32_t i = 0; i < count; i++) {
+        valued = valued || e->u.match.arms.ptr[i]->value != NULL;
+    }
     MsTy result = expected;
     if (!valued && expected != MS_TY_NONE && expected != b->void_ty) {
         return ms_body_unsupported(b);
@@ -246,8 +250,7 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
         const uint32_t index = alt_arm_case(b, arm, ty, &info, &is_wildcard);
         const bool last_with_cases_left = i == count - 1 && arm->bindings.len == 0 && covered < info.ncases;
         const bool fresh_case = index != MS_NONE && !seen[index];
-        const bool well_formed = (arm->value != NULL) == valued && !wildcard &&
-                                 (is_wildcard ? last_with_cases_left : fresh_case);
+        const bool well_formed = !wildcard && (is_wildcard ? last_with_cases_left : fresh_case);
         if (!well_formed) {
             return ms_body_unsupported(b);
         }
@@ -261,14 +264,14 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
                 return ms_body_unsupported(b);
             }
         }
-        if (!valued) {
+        if (arm->value == NULL) {
             const bool falls = ms_body_block(b, &arm->body);
             ms_body_close_from(b, first);
-            if (!b->supported) {
+            if (!b->supported || (valued && falls)) {
                 return ms_body_unsupported(b);
             }
             any_falls = any_falls || falls;
-            result = b->void_ty;
+            result = valued ? result : b->void_ty;
             continue;
         }
         const MsTy value = ms_body_block_value(b, &arm->body, arm->value, result);
