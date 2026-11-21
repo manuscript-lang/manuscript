@@ -12,6 +12,7 @@
 
 #include "ms/implements.h"
 #include "ms/infer.h"
+#include "ms/parse.h"
 
 typedef struct Target {
     MsTy sig;             /* the signature, receiver not included */

@@ -969,7 +969,7 @@ static void put_row(Analysis *a, int64_t v) {
 static void put_effect_row(Analysis *a, int64_t v) {
     if (a->neffects == a->effects_cap) {
         a->effects_cap = a->effects_cap == 0 ? 32 : a->effects_cap * 2;
-        a->effects = realloc(a->effects, a->effects_cap * sizeof *a->effects);
+        a->effects = ms_array_resize(a->effects, (uint32_t)a->effects_cap, sizeof *a->effects);
     }
     a->effects[a->neffects++] = v;
 }

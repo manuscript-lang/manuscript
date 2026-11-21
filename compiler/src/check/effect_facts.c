@@ -447,6 +447,9 @@ bool ms_effect_project_violations(MsArena *arena, const MsCheck *c, const MsEffe
     MsPackageViolation *rows = MS_NEW_N(arena, MsPackageViolation, (size_t)reach.nviolations + 1);
     for (uint32_t k = 0; k < reach.nviolations; k++) {
         const MsViolation *v = &reach.violations[k];
+        if (v->path[0] >= fx.n) {
+            continue; /* a path starts at one of the nodes */
+        }
         const MsEffectModule *own = fx.module[fx_module_of(&fx, v->path[0])];
         if (own != NULL && own->package == NULL) {
             const MsStr file = v->file;
