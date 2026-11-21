@@ -3,8 +3,9 @@
 
 #include <string.h>
 
+#define MACHO_MAGIC_64 0xfeedfacfu
+
 enum {
-    MACHO_MAGIC_64 = 0xfeedfacfu,
     MACHO_LC_SEGMENT_64 = 0x19,
     MACHO_LC_SYMTAB = 0x2,
     MACHO_N_EXT = 0x01,

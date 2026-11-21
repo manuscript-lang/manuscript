@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Only kernel32 is used; the full header's macros (winspool's BIDI_TEXT, min, max) clash with names in the unity TU. */
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#define NOGDI
+#define NOUSER
 #include <windows.h>
 
 #include <direct.h>

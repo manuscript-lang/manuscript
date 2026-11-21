@@ -11,8 +11,6 @@
 #include "ms/base.h"
 #include "ms/build_tool.h"
 
-extern char **environ;
-
 /* The target the host builds for, as the LLVM triple; NULL where the build is not ported. */
 static const char *bo_triple(void) {
 #if defined(__x86_64__) && defined(__linux__)
