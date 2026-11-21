@@ -284,13 +284,27 @@ bool lc_own_param(Lb *lb, uint32_t binding) {
     return lc_owned_local(lb, binding) && lc_slot_own(lb, binding, lb->value_of[binding]);
 }
 
-bool lc_use(Lb *lb, uint32_t binding, MirValue *out) {
+/* A read of the slot local `binding`. A `moved` read hands the value to a new owner, so the slot is no
+ * longer the scope's to close on this path; a failed close then has nothing to stand in for, so the
+ * close must succeed with a plain unit. */
+bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved) {
     for (uint32_t i = 0; i < lb->nslots; i++) {
         const LbSlotLocal *local = &lb->slots[i];
-        if (local->view == lb->view && local->binding == binding) {
-            *out = lb_load(lb, local->slot, local->ty);
-            return true;
+        if (local->view != lb->view || local->binding != binding) {
+            continue;
         }
+        if (moved) {
+            const LbCloser *closer = lc_find(lb, local->ty);
+            const MirTy rty = closer == NULL ? MIR_NONE : lc_result_ty(lb, lb->method_func[closer->row]);
+            if (rty != MIR_NONE && lb->m->alts[mir_ty_data(lb->m, rty)->id].cases[LC_OK].fields[0].ty != MIR_VOID) {
+                return false;
+            }
+        }
+        *out = lb_load(lb, local->slot, local->ty);
+        if (moved) {
+            lscope_disown(&lb->scopes, local->slot);
+        }
+        return true;
     }
     return false;
 }
