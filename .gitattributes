@@ -8,3 +8,5 @@ tests/conformance/** text eol=lf
 * text=auto eol=lf
 # Vendored published-suite data keeps its exact bytes, including CR line endings.
 tests/conformance/fixtures/e2e/projects/*_suite/data/** -text
+# Vendored libraries keep their exact bytes (the lock digest covers them), CRLF included.
+src/third_party/** -text
