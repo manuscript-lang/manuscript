@@ -6,7 +6,7 @@
 #define MS_RUNTIME_STD_CRYPTO_H
 
 #include "base/bytes.h"
-#include "runtime/std/status.h"
+#include "abi/status.h"
 
 /* ms-sig: msstd_crypto_digest(alg: i64, data: *const VecVal, out: *mut VecVal) @domain=cryptography */
 void msstd_crypto_digest(int64_t alg, const MsBytes *data, MsBytes *out);

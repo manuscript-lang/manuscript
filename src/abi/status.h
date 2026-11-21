@@ -9,7 +9,11 @@ typedef enum MsStatus {
   MS_STATUS_OUT_OF_RANGE = 2,
   MS_STATUS_LIMIT_EXCEEDED = 3,
   MS_STATUS_INVALID_DATA = 4,
-  MS_STATUS_FAILED = 11
+  MS_STATUS_NOT_FOUND = 5,              /* a name, path or process that does not exist */
+  MS_STATUS_PERMISSION_DENIED = 8,      /* the host refused the operation */
+  MS_STATUS_UNSUPPORTED = 9,            /* a format, algorithm or key size the native does not know */
+  MS_STATUS_FAILED = 11,
+  MS_STATUS_AUTHENTICATION_FAILED = 18 /* a tag or signature that does not verify */
 } MsStatus;
 
 #endif

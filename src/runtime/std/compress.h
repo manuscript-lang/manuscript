@@ -9,7 +9,7 @@
 
 #include "base/bytes.h"
 #include "base/string.h"
-#include "runtime/std/status.h"
+#include "abi/status.h"
 
 /* ms-sig: msstd_compress_compress(data: *const VecVal, format: *const StrVal, level: i64, has_max: HasRaw,
  * max: i64, out: *mut VecVal) -> u8 @domain=compression */
