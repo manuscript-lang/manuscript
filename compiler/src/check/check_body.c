@@ -943,8 +943,9 @@ static MsTy body_unary(MsBody *b, const MsExpr *e, MsTy expected) {
     if (op == MS_U_NEG && operand->kind == MS_E_NUMBER) {
         // A negated literal is typed as the literal; -9223372036854775808 is Int's own case.
         const MsStr text = ms_number_canonical(&b->c->arena, ms_name(b->c->names, operand->u.sym));
-        if (text.len == 19 && memcmp(text.ptr, "9223372036854775808", 19) == 0) {
-            return ms_body_unsupported(b);
+        uint64_t negative = 0, positive = 0;
+        if (text.len == 19 && memcmp(text.ptr, "9223372036854775808", 19) == 0 && !body_int_limits(b, expected, &negative, &positive)) {
+            return ms_body_record(b, operand->id, b->int_ty);
         }
         const MsTy literal = body_number(b, operand, expected, true);
         return literal == MS_TY_NONE ? literal : ms_body_record(b, operand->id, literal);
