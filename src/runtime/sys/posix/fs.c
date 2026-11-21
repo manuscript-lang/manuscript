@@ -138,3 +138,14 @@ const char *ms_sys_fs_watch_ready_prefix(void) {
   return "";
 #endif
 }
+
+int ms_sys_fs_redirect_null(int which) {
+  const int null = open("/dev/null", O_RDWR | O_CLOEXEC);
+  if (null < 0) {
+    return uv_translate_sys_error(errno);
+  }
+  const int moved = dup2(null, which);
+  const int code = moved < 0 ? uv_translate_sys_error(errno) : 0;
+  (void)close(null);
+  return code;
+}
