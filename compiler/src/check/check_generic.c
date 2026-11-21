@@ -146,6 +146,15 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
     return result;
 }
 
+static bool generic_is_native(const MsBody *b, MsSymId sym) {
+    return ms_ty_kind(&b->c->tys, b->c->syms.ty[sym]) == MS_K_NATIVE;
+}
+
+static bool generic_is_nominal(const MsBody *b, MsSymId sym) {
+    const MsKind kind = ms_ty_kind(&b->c->tys, b->c->syms.ty[sym]);
+    return kind == MS_K_TYPE || kind == MS_K_NATIVE;
+}
+
 /* `Name[Args](fields)` or `Name(fields)` for a generic type: the written arguments give the first
  * variables, each field argument binds the rest, bounds must hold, and the call has the type
  * applied to them. Arguments pair with fields by label or position (ms_body_bind_arguments);
@@ -156,7 +165,7 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
     const MsDecl *decl = syms->decl[sym];
     const uint32_t nargs = e->u.call.args.len;
     if (decl == NULL || decl->kind != MS_D_TYPE || (syms->module[sym] != b->module && decl->u.type.opaque) ||
-        ms_ty_kind(&b->c->tys, syms->ty[sym]) != MS_K_TYPE || def->nvars == 0 || nargs > def->nfields ||
+        !generic_is_nominal(b, sym) || (generic_is_native(b, sym) && nargs != 0) || def->nvars == 0 || nargs > def->nfields ||
         def->nfields != decl->u.type.fields.len || nargs > 16) {
         return ms_body_unsupported(b);
     }
