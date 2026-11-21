@@ -96,6 +96,11 @@ int main(void) {
     expect_paths(root, "src/b.ms src/b.ms src/main.ms src/sub/a.ms src/sub/a_test.ms test.ms tests/helper.ms tests/x_bench.ms");
     expect_paths(MS_PATH_JOIN(&arena, root, "src/b.ms"), "src/b.ms");
 
+    /* Formatting reads only a project's own modules: dependencies and a missing ms.lock do not matter. */
+    write_file("dep/ms.toml", "[project]\nname = \"d\"\nsource = \"src\"\n\n[dependencies]\n\"@a\" = { url = \"file:///x\", tag = \"v1\" }\n");
+    write_file("dep/src/z.ms", "");
+    expect_paths(MS_PATH_JOIN(&arena, root, "dep/ms.toml"), "dep/src/z.ms");
+
     const char **paths;
     uint32_t count;
     MsProjectError err = {0};
