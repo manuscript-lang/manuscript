@@ -6,11 +6,12 @@
 //
 //   ms run tools/ms/lint_diff.ms --link libmstool.a -- RUST_MS WORKDIR SEED file.ms...
 import (
+	Arg, Command, FlagKind, Matches from "@std/cli/command.ms",
 	parse from "@std/data/json.ms",
-	arguments from "@std/os/env.ms",
 	create_directory, read_file, write_file from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
 
+	run_program from "./cli.ms",
 	lint_source from "./lint/text.ms",
 )
 
@@ -111,17 +112,32 @@ fn theirs(rust: String, path: String) List[String]?!:
 	lines.sort()
 	return ok(lines.distinct())
 
-fn main() Int:
-	args := arguments()
-	rust := args[0]
-	work := args[1]
-	seed := args[2].parse_int().get_or(1)
+fn lint_diff_tool() Command:
+	return Command(
+		name: "lint_diff.ms",
+		about: "Compare the lint findings of the Rust ms and this linter on mutated copies",
+		args: [
+			Arg("rust", help: "The Rust ms to ask"),
+			Arg("work", help: "Where the mutated copies go"),
+			Arg("seed", kind: FlagKind.Int, help: "The mutation seed"),
+			Arg(
+				"files",
+				rest: true,
+				help: "The .ms files to mutate and lint",
+			),
+		],
+	)
+
+fn compare(m: Matches) Int!:
+	rust := m.string("rust")
+	work := m.string("work")
+	seed := m.int("seed")
 	var checked = 0
 	var findings = 0
 	var failed = 0
 
-	for index in 3..args.length():
-		source := args[index]
+	for index in 3..(3 + m.list("files").length()):
+		source := m.list("files")[index - 3].clone()
 		data := read_file(source).wait().get().decode_utf8().get_or("")
 		copy := f"{work}/{source}"
 		void create_directory(directory_of(copy), recursive: true)
@@ -139,6 +155,9 @@ fn main() Int:
 				print(f"  ours: {actual}")
 
 	print(f"{checked} files, {findings} findings, {failed} different")
-	if failed > 0: return 1
+	if failed > 0: return ok(1)
 
-	return 0
+	return ok(0)
+
+fn main() Int:
+	return run_program(lint_diff_tool(), compare)

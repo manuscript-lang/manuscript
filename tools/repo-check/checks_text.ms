@@ -459,3 +459,39 @@ export fn layering(files: List[String]) List[String]:
 				)
 
 	return issues
+
+// The `ms` command line is read in one place: the command tree in tools/ms/cli.ms. Any
+// other source under tools/ms that imports `arguments` is parsing raw words by hand;
+// give the command a flag or an argument in cli.ms (or, for a helper program, a
+// `Command` run through `run_tool`) instead.
+export fn raw_arguments(files: List[String]) List[String]:
+	var issues = List[String]()
+
+	for path in files:
+		if not path.starts_with("tools/ms/") or not path.ends_with(".ms"): continue
+		if path == "tools/ms/cli.ms": continue
+
+		// The names of the import being read, collected until its `from`.
+		var names = ""
+
+		for line in (read_text(path).get_or("")).lines():
+			from_at := line.index_of(" from \"")
+
+			if from_at.is_none():
+				names = names + " " + line
+				continue
+
+			module := line.slice(from_at.get() + 7, line.length())
+			if (
+				module.starts_with("@std/os/env.ms")
+				and contains_word(
+					names + " " + line.slice(0, from_at.get()),
+					"arguments",
+				)
+			):
+				issues.append(
+					f"{path}: reads the raw command line; declare the flags and arguments in tools/ms/cli.ms (a helper program runs a Command with run_tool) and read them from Matches"
+				)
+			names = ""
+
+	return issues

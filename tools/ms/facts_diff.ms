@@ -10,11 +10,12 @@
 // Imports are compared per file. The process fails when anything differs, and the
 // output counts the entities and fields compared so a silent skip shows.
 import (
+	Arg, Command, Matches from "@std/cli/command.ms",
 	parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
-	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
 
+	run_tool from "./cli.ms",
 	Fact, Facts, Slot from "./views.ms",
 )
 
@@ -63,12 +64,9 @@ fn load(path: String) Facts!:
 // ms: allow_effect std.env.read
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.console.write
-fn main() Void!:
-	args := arguments()
-	if args.length() != 2: return error(Error("usage: facts_diff.ms RUST.json C.json"))
-
-	want := load(args[0])?
-	got := load(args[1])?
+fn show(m: Matches) Void!:
+	want := load(m.string("rust"))?
+	got := load(m.string("c"))?
 	var out = ""
 	var differ = 0
 	var compared = 0
@@ -135,3 +133,13 @@ fn main() Void!:
 	stream.write(out)?
 	stream.flush()?
 	if differ > 0: return error(Error("facts differ"))
+
+fn facts_diff_tool() Command:
+	return Command(
+		name: "facts_diff.ms",
+		about: "Compare the facts of the Rust checker with the C checker's",
+		args: [Arg("rust", help: "RUST.json"), Arg("c", help: "C.json")],
+	)
+
+fn main() Int:
+	return run_tool(facts_diff_tool(), show)

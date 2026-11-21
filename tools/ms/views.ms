@@ -7,12 +7,13 @@
 // `ms-tooling-dev facts FILE` prints.
 //   ms run tools/ms/views.ms -- FACTS.json VIEW [ENTITY] [DEPTH] [ascii|mermaid|json]
 import (
+	Arg, Command, FlagKind, Matches from "@std/cli/command.ms",
 	parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
-	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
 	is_alphabetic, is_numeric from "@std/unicode.ms",
 
+	run_tool from "./cli.ms",
 	json_string from "./docgen.ms",
 )
 
@@ -1262,22 +1263,34 @@ export fn render(
 
 	return ok(tree_ascii(tree))
 
-// ms: allow_effect std.env.read
-// ms: allow_effect std.fs.read
-// ms: allow_effect std.console.write
-fn main() Void!:
-	args := arguments()
-	if args.length() < 2: return error(
-		Error(
-			"usage: views.ms FACTS.json VIEW [ENTITY] [DEPTH] [ascii|mermaid|json]"
-		)
+fn views_tool() Command:
+	return Command(
+		name: "views.ms",
+		about: "Render one view of a facts file",
+		args: [
+			Arg("facts", help: "The facts JSON"),
+			Arg("view", help: "The view name"),
+			Arg("entity", required: false),
+			Arg("depth", required: false, kind: FlagKind.Int),
+			Arg("format", required: false, help: "ascii, mermaid or json"),
+		],
 	)
 
-	facts := parse[Facts](read_file(args[0]).wait()?.decode_utf8().get_or(""))?
-	entity := args.get_or(2, "")
-	depth := args.get_or(3, "0").parse_int().get_or(0)
-	format := args.get_or(4, "ascii")
-	text := render(model_of(facts), args[1].clone(), entity, depth, format)?
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.console.write
+fn show(m: Matches) Void!:
+	facts := parse[Facts](read_file(m.string("facts")).wait()?.decode_utf8().get_or(""))?
+	text := render(
+		model_of(facts),
+		m.string("view"),
+		m.string_or_none("entity").get_or(""),
+		m.int_or_none("depth").get_or(0),
+		m.string_or_none("format").get_or("ascii"),
+	)?
 	var out = stdout()
 	out.write(text)?
 	out.flush()?
+	return ok()
+
+fn main() Int:
+	return run_tool(views_tool(), show)
