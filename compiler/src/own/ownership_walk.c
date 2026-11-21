@@ -412,11 +412,17 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         }
         own_expr(w, e->u.member.left, DEMAND_READ);
         return;
-    case MS_E_INDEX: /* only a scalar element is read: the checker admits no other */
+    case MS_E_INDEX:
     case MS_E_APPLY: { /* `xs[i]` read as a type application: the checker admits it only as an index */
         MsExpr *list = NULL;
         MsExpr *index = NULL;
         if (!ms_expr_index(e, &list, &index)) {
+            w->supported = false;
+            return;
+        }
+        // An element with one owner is read in place; handing it out (returned, bound, passed on) borrows from the list
+        // or copies it, which is not followed yet.
+        if (demand != DEMAND_READ && ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
             w->supported = false;
             return;
         }
