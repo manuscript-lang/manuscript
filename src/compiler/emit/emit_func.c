@@ -30,6 +30,9 @@ static bool emit_instruction(EmitCx *cx, const MirInst *inst, const EmitSite *si
     ok = emit_memory_inst(cx, inst, &handled);
   }
   if (!handled) {
+    ok = emit_data_op(cx, inst, site, &handled);
+  }
+  if (!handled) {
     ok = emit_call_op(cx, inst, site, &handled);
   }
   if (!handled) {

@@ -34,33 +34,8 @@ static void slot_name(char out[static 48], char prefix, uint32_t block, uint32_t
   out[at] = 0;
 }
 
-/* Whether the runtime takes a value of `type` as its scalar leaves (the C ABI of the runtime): scalars,
- * pointers, handles and the optional of a pointer. Anything else crosses as the address of a copy. */
 bool emit_rt_direct(EmitCx *cx, MirTy type) {
-  const MirTyData *data = mir_ty_data(cx->module, type);
-  switch ((MirTyKind)data->kind) {
-  case MK_VOID:
-  case MK_BOOL:
-  case MK_INT:
-  case MK_FLOAT:
-  case MK_INT8:
-  case MK_INT16:
-  case MK_INT32:
-  case MK_FLOAT32:
-  case MK_UINT8:
-  case MK_UINT16:
-  case MK_UINT32:
-  case MK_UINT64:
-  case MK_PTR:
-  case MK_FN:
-    return true;
-  case MK_OBJ:
-    return data->obj_class == MIR_OBJ_HANDLE;
-  case MK_OPT:
-    return mir_opt_is_nullable(cx->layouts, data->elem);
-  default:
-    return false;
-  }
+  return mir_rt_direct(cx->module, cx->layouts, type);
 }
 
 /* The frame slots one runtime call needs: a copy of each argument that does not pass directly, and the result

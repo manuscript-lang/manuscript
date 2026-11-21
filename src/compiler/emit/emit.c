@@ -41,7 +41,7 @@ MsSpan emit_host_triple(void) {
 #endif
 }
 
-bool emit_module(const MirModule *module, const EmitOptions *options, MsStrBuild *out, MsStrBuild *why) {
+bool emit_module(const MirModule *module, const MirData *data, const EmitOptions *options, MsStrBuild *out, MsStrBuild *why) {
 #ifdef EMIT_TRIPLE
   ms_strbuild_printf(out, "target triple = \"%s\"\n", EMIT_TRIPLE);
 #endif
@@ -51,6 +51,7 @@ bool emit_module(const MirModule *module, const EmitOptions *options, MsStrBuild
   cx.module = module;
   cx.out = out;
   cx.layouts = &layouts;
+  cx.data = data;
   cx.export_all = options->export_all;
   bool ok = true;
   for (uint32_t index = 0; index < module->funcs.len; index++) {
@@ -65,6 +66,7 @@ bool emit_module(const MirModule *module, const EmitOptions *options, MsStrBuild
     ok = false;
   }
   cx.func = NULL;
+  emit_define_data(&cx);
   emit_declarations(&cx);
   mir_layouts_free(&layouts);
   write_tbaa(out);
