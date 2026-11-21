@@ -211,8 +211,8 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
     MirFunc f = {0};
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
-        const MsStr name = ms_name(lb->c->names, c->fn == NULL ? c->const_name : c->fn->name);
-        const bool is_main = c->fn != NULL && !lb_has_self(c) && name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
+        const MsStr name = c->fn == NULL ? (MsStr){0} : ms_name(lb->c->names, c->fn->name);
+        const bool is_main = !lb_has_self(c) && name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
         if (is_main && lb->b.f.ret == MIR_INT) { // any other `main` gets a wrapper, which is the export
             lb->b.f.linkage = ML_EXPORT;
         }
