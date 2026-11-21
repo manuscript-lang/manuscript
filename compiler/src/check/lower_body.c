@@ -289,6 +289,9 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
     if (lb->var_of[binding] != MIR_NONE) {
         return (LbVal){mir_b_use_var(&lb->b, lb->var_of[binding]), false};
     }
+    if (lb_is_pointer_param(lb, binding)) {
+        return (LbVal){lb_load(lb, lb->value_of[binding], lb_mir_ty(lb, facts->bindings.ty[binding])), false};
+    }
     MirValue held;
     if (lc_is_slot_local(lb, binding)) { // a resource lives in its slot and is read from it
         const bool moved = facts->moved_out[e->id];
@@ -602,6 +605,10 @@ static MirValue lb_var_argument(Lb *lb, const MsExpr *arg, uint32_t *binding_out
     }
     const uint32_t binding = lb->facts->res_ref[arg->id];
     *binding_out = binding;
+    if (lb_is_pointer_param(lb, binding)) { // already an address: the callee changes the caller's value in place
+        (void)lb_load(lb, lb->value_of[binding], lb_mir_ty(lb, lb->facts->bindings.ty[binding]));
+        return lb->value_of[binding];
+    }
     if (lb->var_of[binding] == MIR_NONE) {
         (void)LB_UNSUPPORTED(lb);
         return MIR_NONE;
@@ -1277,7 +1284,9 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
     // An owned result is joined as a moved value: each arm hands over a value it owns. A match whose arms
     // are all references (the ownership pass's `borrowed_match`) joins them without copying.
     const bool owned_result = lb->ok && lb_owns(lb, result_ty) && !lb->facts->borrowed_match[e->id];
-    const bool void_result = lb->ok && lb_ty(lb, lb->facts->expr_ty[e->id]) == lb->void_ty;
+    // A match used as a statement joins no value: its type is Void, or Never when every arm leaves the function.
+    const MsTy match_ty = lb_ty(lb, lb->facts->expr_ty[e->id]);
+    const bool void_result = lb->ok && (match_ty == lb->void_ty || match_ty == lb->never_ty);
     if (!lb->ok || (result_ty == MIR_NONE && !void_result) || (owned_result && lb->b.f.ret_borrowed) ||
         aggregate || lb_is_fn(lb, result_ty)) {
         return LB_UNSUPPORTED(lb);
@@ -1397,7 +1406,9 @@ void lb_write_back(Lb *lb) {
     for (uint32_t i = 0; i < lb_slots(&lb->cur); i++) {
         if (lb_slot_mutable(&lb->cur, i)) {
             const uint32_t binding = lb->binding_at[lb_slot_node(&lb->cur, i)];
-            lb_store(lb, lb->value_of[binding], mir_b_use_var(&lb->b, lb->var_of[binding]));
+            if (!lb_is_pointer_param(lb, binding)) {
+                lb_store(lb, lb->value_of[binding], mir_b_use_var(&lb->b, lb->var_of[binding]));
+            }
         }
     }
 }
@@ -1415,6 +1426,19 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except) {
             lscope_own_in(&lb->scopes, owner->depth, current, 0);
         }
     }
+}
+
+/* Whether `binding` is a `var` parameter holding a record. Rust reads such a parameter from its pointer at each use and
+ * stores a changed field back at once, where a scalar or a String is carried in a variable and stored when the
+ * function returns. */
+bool lb_is_pointer_param(Lb *lb, uint32_t binding) {
+    for (uint32_t i = 0; i < lb_slots(&lb->cur); i++) {
+        if (lb_slot_mutable(&lb->cur, i) && lb->binding_at[lb_slot_node(&lb->cur, i)] == binding) {
+            const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
+            return ty != MIR_NONE && mir_ty_data(lb->m, ty)->kind == MK_TYPE;
+        }
+    }
+    return false;
 }
 
 bool lb_var_owned(const Lb *lb, uint32_t binding) {
@@ -1651,12 +1675,12 @@ static void lb_jump(Lb *lb, const MsStmt *s) {
 
 /* `name = value` writes the `var` the checker resolved the statement to. */
 static void lb_assign(Lb *lb, const MsStmt *s) {
-    const uint32_t binding = lb->facts->assign_binding[s->id];
-    if (binding == MS_NONE || lb->var_of[binding] == MIR_NONE) {
-        (void)LB_UNSUPPORTED(lb);
+    if (s->u.assign.member_target) {
+        lr_assign_field(lb, s);
         return;
     }
-    if (s->u.assign.member_target) {
+    const uint32_t binding = lb->facts->assign_binding[s->id];
+    if (binding == MS_NONE || lb->var_of[binding] == MIR_NONE) {
         (void)LB_UNSUPPORTED(lb);
         return;
     }

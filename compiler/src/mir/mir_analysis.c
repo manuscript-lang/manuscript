@@ -1,7 +1,7 @@
 /* MIR analysis: ownership modes of operands and results, terminator targets, predecessors,
  * reverse post-order, dominators, value sets, and block editing. Port of the helpers named in
- * ms/mir_analysis.h; the output of every function equals the Rust one's (compared by
- * compiler/tests/mir-diff.sh). Owns nothing: results live in the arena the caller passes. */
+ * ms/mir_analysis.h; checked through the passes' frozen goldens
+ * (compiler/tests/mir-pass-frozen.sh). Owns nothing: results live in the arena the caller passes. */
 #include <string.h>
 
 #include "ms/mir_analysis.h"

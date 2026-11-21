@@ -103,6 +103,9 @@ static bool lb_begin(Lb *lb, const LbCallable *c) {
         if (lb_slot_mutable(c, i)) {
             const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
             const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
+            if (lb_is_pointer_param(lb, binding)) {
+                continue; // a record is read from its pointer at each use
+            }
             lb->var_of[binding] = mir_b_declare_var(&lb->b, ty, MM_BORROW);
             mir_b_def_var(&lb->b, lb->var_of[binding], lb_load(lb, values[i], ty));
         }
