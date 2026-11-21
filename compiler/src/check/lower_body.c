@@ -84,7 +84,11 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
         return MIR_STR;
     }
     const MirTy list = lst_type(lb, ty);
-    return list != MIR_NONE ? list : lb_mir_alt(lb, ty);
+    if (list != MIR_NONE) {
+        return list;
+    }
+    const MirTy map = lm_type(lb, ty);
+    return map != MIR_NONE ? map : lb_mir_alt(lb, ty);
 }
 
 MirLoc lb_loc(const Lb *lb, MsPos pos) {
@@ -186,11 +190,11 @@ static LbVal lb_text(Lb *lb, const MsExpr *e) {
 /* A `var` parameter arrives as a pointer to the caller's variable. The body works on a copy held
  * in an SSA variable: it is loaded on entry and stored back before every return (`noalias` says
  * nothing else touches the memory meanwhile). */
-static MirValue lb_load(Lb *lb, MirValue slot, MirTy ty) {
+MirValue lb_load(Lb *lb, MirValue slot, MirTy ty) {
     return mir_b_emit(&lb->b, MOP_Load, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
 }
 
-static void lb_store(Lb *lb, MirValue slot, MirValue value) {
+void lb_store(Lb *lb, MirValue slot, MirValue value) {
     const MirValue args[2] = {slot, value};
     (void)mir_b_emit(&lb->b, MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
 }
@@ -618,9 +622,9 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     case MS_E_INDEX:
     case MS_E_APPLY: return lst_index(lb, e);
     case MS_E_LIST: return lst_literal(lb, e);
+    case MS_E_MAP: return lm_literal(lb, e);
     case MS_E_VOID:
-    case MS_E_PROBE:
-    case MS_E_MAP: break;
+    case MS_E_PROBE: break;
     }
     return lb_unsupported(lb);
 }

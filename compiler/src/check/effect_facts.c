@@ -20,8 +20,8 @@ typedef struct FxNode {
 typedef struct Fx {
     MsArena *arena;
     const MsCheck *c;
-    MsModId project;
-    MsStr text; /* the project module's source */
+    const MsMethods *methods; /* the program's method table, shared by every module */
+    const MsEffectModule *const *module; /* by module: the project or package module, else NULL */
     FxNode *nodes;
     MsReachNode *reach;
     uint32_t n, cap;
@@ -30,6 +30,24 @@ typedef struct Fx {
     bool *have_lines;
     MsDirectives *header; /* by module */
 } Fx;
+
+/* Records which modules are project code, and sizes the per-module tables. */
+static void fx_set_modules(Fx *fx, const MsEffectModule *modules, uint32_t count) {
+    const MsEffectModule **by_module = MS_NEW_N(fx->arena, const MsEffectModule *, (size_t)fx->c->nmods + 1);
+    memset(by_module, 0, ((size_t)fx->c->nmods + 1) * sizeof *by_module);
+    for (uint32_t i = 0; i < count; i++) {
+        by_module[modules[i].id] = &modules[i];
+    }
+    fx->module = (const MsEffectModule *const *)by_module;
+    fx->methods = count > 0 && fx->c->mods[modules[0].id].facts != NULL ? fx->c->mods[modules[0].id].facts->methods : NULL;
+    const size_t nkeys = (size_t)fx->c->syms.count + (fx->methods != NULL ? fx->methods->count : 0) + 1;
+    fx->index = MS_NEW_N(fx->arena, uint32_t, nkeys);
+    memset(fx->index, 0, nkeys * sizeof *fx->index);
+    fx->lines = MS_NEW_N(fx->arena, MsSourceLines, (size_t)fx->c->nmods + 1);
+    fx->have_lines = MS_NEW_N(fx->arena, bool, (size_t)fx->c->nmods + 1);
+    memset(fx->have_lines, 0, ((size_t)fx->c->nmods + 1) * sizeof *fx->have_lines);
+    fx->header = MS_NEW_N(fx->arena, MsDirectives, (size_t)fx->c->nmods + 1);
+}
 
 static uint32_t fx_add(Fx *fx, MsSymId sym) {
     if (fx->index[sym] != 0) {
@@ -55,7 +73,7 @@ static uint32_t fx_add(Fx *fx, MsSymId sym) {
 
 static const MsSourceLines *fx_lines(Fx *fx, MsModId m) {
     if (!fx->have_lines[m]) {
-        fx->lines[m] = ms_lines_index(fx->arena, m == fx->project ? fx->text : fx->c->mods[m].text);
+        fx->lines[m] = ms_lines_index(fx->arena, fx->module[m] != NULL ? fx->module[m]->text : fx->c->mods[m].text);
         fx->header[m] = ms_lines_header(fx->arena, fx->lines[m]);
         fx->have_lines[m] = true;
     }
@@ -85,7 +103,7 @@ static uint32_t fx_edges(Fx *fx, uint32_t i, const MsScanNode *scan) {
  * can read the body (a method of the project module the checker checked). */
 static void fx_fill_method(Fx *fx, uint32_t i, uint32_t row) {
     const MsCheck *c = fx->c;
-    const MsMethods *methods = fx->c->mods[fx->project].facts->methods;
+    const MsMethods *methods = fx->methods;
     const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
     const MsModId m = methods->module[row];
     MsReachNode *node = &fx->reach[i];
@@ -94,13 +112,15 @@ static void fx_fill_method(Fx *fx, uint32_t i, uint32_t row) {
     node->file = ms_name(c->names, c->mods[m].path);
     node->label = ms_name(c->names, method->func.name);
     node->pos = method->pos;
-    node->project = m == fx->project;
+    const MsEffectModule *own = fx->module[m];
+    node->project = own != NULL;
+    node->cap = own != NULL ? own->cap : (MsEffectScope){0};
     node->declared = above.declared.names;
     node->ndeclared = above.declared.count;
     node->allow_fn = above.allow;
-    node->allow_file = fx->header[m].allow;
+    node->allow_file = fx->header[m].allow.present ? fx->header[m].allow : node->cap; /* a package's manifest effects bound its files */
     const MsFacts *facts = c->mods[m].facts;
-    if (m == fx->project && facts != NULL && facts->body_checked != NULL && facts->body_checked[method->id]) {
+    if (own != NULL && facts != NULL && facts->body_checked != NULL && facts->body_checked[method->id]) {
         const MsScanNode scan = ms_effect_scan_method(fx->arena, c, m, method);
         fx_edges(fx, i, &scan);
     } else if (node->ndeclared == 0) {
@@ -125,17 +145,19 @@ static void fx_fill(Fx *fx, uint32_t i) {
     node->file = ms_name(c->names, c->mods[m].path);
     node->label = name;
     node->pos = d->pos;
-    node->project = m == fx->project;
-    node->entry = node->project && name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
+    const MsEffectModule *own = fx->module[m];
+    node->project = own != NULL;
+    node->cap = own != NULL ? own->cap : (MsEffectScope){0};
+    node->entry = node->project && !node->cap.present && name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
     node->declared = above.declared.names;
     node->ndeclared = above.declared.count;
     node->allow_fn = above.allow;
-    node->allow_file = fx->header[m].allow;
+    node->allow_file = fx->header[m].allow.present ? fx->header[m].allow : node->cap; /* a package's manifest effects bound its files */
     const bool has_body = (d->kind == MS_D_FN && !d->u.fn.external) || d->kind == MS_D_CONST;
     if (!has_body || c->syms.native[sym] != MS_NATIVE_SOURCE) {
         return;
     }
-    if (m == fx->project && c->mods[m].facts != NULL && c->mods[m].facts->body_checked != NULL &&
+    if (own != NULL && c->mods[m].facts != NULL && c->mods[m].facts->body_checked != NULL &&
         c->mods[m].facts->body_checked[d->id]) {
         const MsScanNode scan = ms_effect_scan_decl(fx->arena, c, m, d);
         fx_edges(fx, i, &scan);
@@ -190,8 +212,12 @@ static void sites_expr(void *ctx, const MsExpr *e) {
         }
         return;
     }
-    if (row != MS_NONE || s->facts->call_interface[e->id] != MS_TY_NONE) {
+    if (row != MS_NONE) {
         s->partial = true;
+        return;
+    }
+    if (s->facts->call_interface[e->id] != MS_TY_NONE) {
+        s->partial = s->partial || ms_effect_dispatch(s->c, s->facts, e->id) == MS_DISPATCH_PARTIAL;
         return;
     }
     const MsSymId callee = s->facts->call_callee[e->id];
@@ -237,14 +263,9 @@ MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId modul
     if (row->facts == NULL || row->facts->body_checked == NULL) {
         return NULL;
     }
-    Fx fx = {.arena = arena, .c = c, .project = module, .text = text};
-    const size_t nkeys = (size_t)c->syms.count + row->facts->methods->count + 1;
-    fx.index = MS_NEW_N(arena, uint32_t, nkeys);
-    memset(fx.index, 0, nkeys * sizeof *fx.index);
-    fx.lines = MS_NEW_N(arena, MsSourceLines, (size_t)c->nmods + 1);
-    fx.have_lines = MS_NEW_N(arena, bool, (size_t)c->nmods + 1);
-    memset(fx.have_lines, 0, ((size_t)c->nmods + 1) * sizeof *fx.have_lines);
-    fx.header = MS_NEW_N(arena, MsDirectives, (size_t)c->nmods + 1);
+    const MsEffectModule only = {.id = module, .text = text};
+    Fx fx = {.arena = arena, .c = c};
+    fx_set_modules(&fx, &only, 1);
     MsEntityEffects *rows = MS_NEW_N(arena, MsEntityEffects, (size_t)row->syntax->ndecls + 1);
     memset(rows, 0, ((size_t)row->syntax->ndecls + 1) * sizeof *rows);
     uint32_t *node_of = MS_NEW_N(arena, uint32_t, (size_t)row->syntax->ndecls + 1);
@@ -306,4 +327,78 @@ MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId modul
         out->partial = out->partial || sites.partial;
     }
     return rows;
+}
+
+/* ---- fetched packages ---- */
+
+/* The module of node `i`. */
+static MsModId fx_module_of(const Fx *fx, uint32_t i) {
+    const MsSymId sym = fx->nodes[i].sym;
+    return sym >= fx->c->syms.count ? fx->methods->module[sym - fx->c->syms.count] : fx->c->syms.module[sym];
+}
+
+/* Adds a node for every checked function, constant and method of the listed modules. */
+static void fx_add_modules(Fx *fx, const MsEffectModule *modules, uint32_t count) {
+    for (uint32_t k = 0; k < count; k++) {
+        const MsModuleRow *row = &fx->c->mods[modules[k].id];
+        for (uint32_t i = 0; row->facts != NULL && row->facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
+            const MsDecl *d = row->syntax->decls[i];
+            const MsSymId sym = d->kind == MS_D_FN || d->kind == MS_D_CONST ? ms_decl_own_symbol(fx->c, modules[k].id, d) : MS_NONE;
+            if (sym != MS_NONE) {
+                (void)fx_add(fx, sym);
+            }
+        }
+    }
+    for (uint32_t row = 0; fx->methods != NULL && row < fx->methods->count; row++) {
+        if (fx->module[fx->methods->module[row]] != NULL && fx->methods->decl[row] != NULL) {
+            (void)fx_add(fx, fx->c->syms.count + row);
+        }
+    }
+}
+
+/* "package P reaches E through a -> b, which its ms.toml does not declare; ..." */
+static const char *fx_package_message(const Fx *fx, const char *package, const MsViolation *v) {
+    MsBuf path = {0};
+    for (uint32_t k = 0; k < v->npath; k++) {
+        const MsStr label = fx->reach[v->path[k]].label;
+        ms_buf_printf(&path, "%s%.*s", k > 0 ? " -> " : "", (int)label.len, label.ptr);
+    }
+    const char *text = ms_arena_fmt(fx->arena, "package %s reaches %.*s through %.*s, which its ms.toml does not declare; add it to effects under [project], or stop calling it", package, (int)v->effect.len, v->effect.ptr, (int)path.len, path.data == NULL ? "" : path.data).ptr;
+    ms_buf_free(&path);
+    return text;
+}
+
+bool ms_effect_package_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules, uint32_t count, MsPackageViolation **out, uint32_t *nout, bool *complete) {
+    Fx fx = {.arena = arena, .c = c};
+    *out = NULL;
+    *nout = 0;
+    *complete = true;
+    fx_set_modules(&fx, modules, count);
+    fx_add_modules(&fx, modules, count);
+    for (uint32_t i = 0; i < fx.n; i++) {
+        fx_fill(&fx, i);
+    }
+    MsReach reach = {0};
+    if (!ms_reach_resolve(arena, fx.reach, fx.n, &reach)) {
+        return false;
+    }
+    bool *seen = MS_NEW_N(arena, bool, (size_t)fx.n + 1);
+    for (uint32_t i = 0; i < fx.n; i++) {
+        memset(seen, 0, (size_t)fx.n * sizeof *seen);
+        if (fx.reach[i].project && fx.reach[i].cap.present && fx_reaches_partial(&fx, i, seen)) {
+            *complete = false;
+        }
+    }
+    MsPackageViolation *rows = MS_NEW_N(arena, MsPackageViolation, (size_t)reach.nviolations + 1);
+    for (uint32_t k = 0; k < reach.nviolations; k++) {
+        const MsViolation *v = &reach.violations[k];
+        const MsEffectModule *own = fx.module[fx_module_of(&fx, v->path[0])];
+        if (own != NULL && own->package != NULL) {
+            const MsStr file = v->file;
+            rows[*nout] = (MsPackageViolation){.file = ms_arena_strndup(arena, file.ptr, file.len), .pos = v->pos, .message = fx_package_message(&fx, own->package, v)};
+            (*nout)++;
+        }
+    }
+    *out = rows;
+    return true;
 }

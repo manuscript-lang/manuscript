@@ -4,8 +4,10 @@
 
 #include "ms/check.h"
 #include "ms/desugar.h"
+#include "ms/extern_sig.h"
 #include "ms/methods.h"
 #include "ms/program.h"
+#include "ms/public_sig.h"
 #include "ms/stdlib.h"
 
 /* The modules whose methods every module sees: the prelude's types (`List`, `Optional`, `Result`,
@@ -81,6 +83,9 @@ bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
     if (nerrors > 0) {
         return false;
     }
+    if (c->mods[module].text.len == 0) {
+        c->mods[module].text = text; // the exact-source fixes of name resolution read it
+    }
     ms_module_resolve_types(c, module);
     for (size_t i = 0; i < sizeof program_prelude / sizeof *program_prelude; i++) {
         program_add_bundled(c, (MsStr){program_prelude[i], (uint32_t)strlen(program_prelude[i])});
@@ -97,6 +102,8 @@ bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
     c->mods[module].impls_added = true;
     ms_module_ensure_operations(c, module, c->methods);
     ms_module_add_implementations(c, module, c->methods);
+    ms_module_check_public(c, module, c->methods);
+    ms_module_check_externs(c, module);
     ms_module_check_bodies_with(c, module, c->methods);
     return true;
 }
