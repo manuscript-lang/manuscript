@@ -48,6 +48,7 @@ Borrows [start, end) of the receiver without copying; negative bounds are relati
 Bounds outside 0 <= start <= end <= length() raise a fault. Like `List.get`, the result borrows
 the receiver, which cannot change while the view is used; `.clone()` keeps the bytes.
 */
+// ms: borrows
 fn Bytes.view(start: Int, end: Int) Bytes: ...
 
 // Returns an unsigned byte; negative indexes are relative to the end. An

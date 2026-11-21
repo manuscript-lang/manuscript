@@ -8,6 +8,10 @@
 
 /* ms-sig: msrt_bytes_drop(b: *mut VecVal) @domain=binary @leaf */
 void msrt_bytes_drop(MsList *b);
+/* ms-sig: msrt_bytes_length(b: *const VecVal) -> i64 @domain=binary @leaf @op=list.len */
+int64_t msrt_bytes_length(const MsList *b);
+/* ms-sig: msrt_bytes_is_empty(b: *const VecVal) -> u8 @domain=binary @leaf @seq=list.len:$0>int,iconst:#0>int,icmp.eq:%0:%1>bool */
+uint8_t msrt_bytes_is_empty(const MsList *b);
 /* ms-sig: msrt_bytes_copy(b: *const VecVal, out: *mut VecVal) @domain=binary @leaf */
 void msrt_bytes_copy(const MsList *b, MsList *out);
 /* ms-sig: msrt_bytes_contains(b: *const VecVal, v: *const VecVal) -> u8 @domain=binary @leaf */

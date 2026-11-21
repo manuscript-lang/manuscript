@@ -23,7 +23,7 @@
 #include "ms/desugar.h"
 #include "ms/methods.h"
 #include "ms/program.h"
-#include "ms/rt_ops.h"
+#include "ms/mir_opt.h"
 #include "ms/ownership.h"
 #include "ms/mir_analysis.h"
 #include "ms/mir_pass.h"
@@ -79,25 +79,6 @@ static bool has_back_edge(const MirFunc *f) {
         const MirTerm *term = &f->blocks[i].term;
         for (uint32_t t = 0; t < mir_term_ntargets(term); t++) {
             if (mir_term_target_const(term, t)->block <= i) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-/* Whether `f` calls a runtime function that returns a view of its receiver (`String.view`): Rust lowers that call
- * through a generated fast-path function, which C leaves to its optimizer passes, so the text differs by design. */
-static bool calls_borrowing_native(const MirModule *m, const MirFunc *f) {
-    for (uint32_t b = 0; b < f->nblocks; b++) {
-        for (uint32_t i = 0; i < f->blocks[b].ninsts; i++) {
-            const MirInst *inst = &f->blocks[b].insts[i];
-            if (inst->op != MOP_CallRt || inst->imm.tag != MI_EXT) {
-                continue;
-            }
-            const MsStr name = ms_name(&m->names, m->externs[inst->imm.a].name);
-            const MsRtFn *fn = ms_rt_fn_find((const char *)name.ptr, name.len);
-            if (fn != NULL && fn->borrows) {
                 return true;
             }
         }
@@ -210,7 +191,7 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
             MsBuf out = {0};
             mir_print_func(&mir, &mir.funcs[i], &out);
-            if (function_diverges(names, module, ms_name(&mir.names, mir.funcs[i].name)) || has_back_edge(&mir.funcs[i]) || calls_borrowing_native(&mir, &mir.funcs[i])) {
+            if (function_diverges(names, module, ms_name(&mir.names, mir.funcs[i].name)) || has_back_edge(&mir.funcs[i])) {
                 printf("; divergent\n");
             }
             printf("%.*s\n", (int)out.len, (const char *)out.data);
@@ -289,7 +270,7 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
             for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
                 MsBuf out = {0};
                 mir_print_func(&mir, &mir.funcs[i], &out);
-                if (program_function_diverges(names, modules, graph.count, ms_name(&mir.names, mir.funcs[i].name)) || has_back_edge(&mir.funcs[i]) || calls_borrowing_native(&mir, &mir.funcs[i])) {
+                if (program_function_diverges(names, modules, graph.count, ms_name(&mir.names, mir.funcs[i].name)) || has_back_edge(&mir.funcs[i])) {
                     printf("; divergent\n");
                 }
                 printf("%.*s\n", (int)out.len, (const char *)out.data);

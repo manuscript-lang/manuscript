@@ -242,16 +242,31 @@ LbVal ls_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, Mi
     return (LbVal){result, owns};
 }
 
+/* Whether `elem` is what the out parameter `kind` writes: a scalar, a String, or a list. */
+static bool ls_out_matches(const Lb *lb, MsRtParam kind, MirTy elem) {
+    switch (kind) {
+    case MS_RT_OUT_SCALAR: return elem == MIR_INT || elem == MIR_FLOAT || elem == MIR_BOOL;
+    case MS_RT_OUT_STR: return elem == MIR_STR;
+    case MS_RT_OUT_LIST: return elem == MIR_BYTES || lb_is_list(lb, elem);
+    case MS_RT_LIST: case MS_RT_LIST_VAR: case MS_RT_STR: case MS_RT_INT: case MS_RT_FLOAT: case MS_RT_BOOL:
+    case MS_RT_UINT64: case MS_RT_MAP: case MS_RT_ALT: case MS_RT_ELEMENT: case MS_RT_DESC: case MS_RT_KEY_DESC:
+    case MS_RT_VAL_DESC: case MS_RT_KEY_REF: case MS_RT_HANDLE: case MS_RT_OUT_HANDLE: case MS_RT_OUT_RECORD:
+    case MS_RT_RECORD: case MS_RT_ERR: case MS_RT_HAS: case MS_RT_OTHER: return false;
+    }
+    return false;
+}
+
 bool ls_reports_found(Lb *lb, const MsRtFn *fn, MirTy result_ty) {
     if (fn->ret != MS_RT_RET_BOOL || result_ty == MIR_VOID || mir_ty_data(lb->m, result_ty)->kind != MK_OPT) {
         return false;
     }
     const MirTy elem = mir_ty_data(lb->m, result_ty)->elem;
-    bool has_out = false;
     for (uint32_t i = 0; i < fn->nparams; i++) {
-        has_out = has_out || fn->params[i] == MS_RT_OUT_SCALAR;
+        if (ls_out_matches(lb, fn->params[i], elem)) {
+            return true;
+        }
     }
-    return has_out && (elem == MIR_INT || elem == MIR_FLOAT || elem == MIR_BOOL);
+    return false;
 }
 
 /* `some(value)` when the native reports it found one, else `none`. */
@@ -270,7 +285,8 @@ LbVal ls_found_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nar
     mir_b_seal_block(b, yes);
     mir_b_seal_block(b, no);
     const MirBlock join = mir_b_new_block(b);
-    const MirValue result = mir_b_add_block_param(b, join, result_ty, MM_BORROW);
+    const bool owns = lb_owns(lb, result_ty);
+    const MirValue result = mir_b_add_block_param(b, join, result_ty, owns ? MM_MOVE : MM_BORROW);
     mir_b_switch_to(b, yes);
     const MirValue value = lo_take_out(lb, slots.out, elem);
     const MirValue some = mir_b_emit(b, MOP_OptSome, &value, 1, (MirImm){0}, result_ty);
@@ -280,5 +296,5 @@ LbVal ls_found_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nar
     mir_b_br(b, join, &none, 1);
     mir_b_seal_block(b, join);
     mir_b_switch_to(b, join);
-    return (LbVal){result, lb_owns(lb, result_ty)};
+    return (LbVal){result, owns};
 }
