@@ -1,7 +1,7 @@
 //! The Manuscript back end: checked program to native executable.
 //!
 //! ```text
-//! lower (seam) -> optimize (ms-mir) -> ms-clif -> link with ms-rt
+//! lower (seam) -> C back end (libms, LLVM) -> link with ms-rt
 //! ```
 //!
 //! `ms-driver` owns everything before lowering.

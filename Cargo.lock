@@ -450,7 +450,6 @@ dependencies = [
  "ms-driver",
  "ms-lower",
  "ms-mir",
- "ms-mir-llvm",
  "ms-syntax",
  "object",
 ]
@@ -539,14 +538,6 @@ dependencies = [
 
 [[package]]
 name = "ms-mir"
-version = "0.0.0"
-dependencies = [
- "ms-mir",
- "ms-rt-abi",
-]
-
-[[package]]
-name = "ms-mir-llvm"
 version = "0.0.0"
 dependencies = [
  "ms-mir",

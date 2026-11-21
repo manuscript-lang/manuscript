@@ -610,7 +610,7 @@ mod staging_file_tests {
         write_metadata_with(
             &output,
             BuildType::Debug,
-            ms_build::Backend::Cranelift,
+            ms_build::Backend::Llvm,
             &next,
         )
         .unwrap();
