@@ -107,7 +107,7 @@ function(ms_compiler_exe name)
     # No libm or libdl; libms hashes packages with libcrypto (project/packages.c) and allocates through the
     # force-included ms_mimalloc.h.
     target_link_libraries(${name} PRIVATE ms_mimalloc ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK})
-    target_link_libraries(${name} PRIVATE ws2_32 iphlpapi userenv ole32 dbghelp advapi32 user32 shell32 psapi crypt32 bcrypt)
+    target_link_libraries(${name} PRIVATE ws2_32 iphlpapi userenv ole32 dbghelp advapi32 user32 shell32 psapi crypt32 bcrypt synchronization)
   else()
     target_link_libraries(${name} PRIVATE m ms_mimalloc ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
   endif()

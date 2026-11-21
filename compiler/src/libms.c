@@ -177,6 +177,7 @@
 #include "build/link.c"
 #include "build/link_linux.c"
 #include "build/link_macos.c"
+#include "build/link_windows.c"
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/discover.c"
