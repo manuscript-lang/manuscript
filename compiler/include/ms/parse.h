@@ -9,6 +9,8 @@
 
 /* The member name of an index assignment; no source name can spell it. */
 #define MS_INDEX_SET "[]="
+/* Whether `call` is an index assignment, `place[key] = value` written as `place.[]=(key, value)`. */
+bool ms_is_index_store(const MsNames *names, const MsExpr *call);
 /* Whether `left[index] op= value` is accepted: both parts can be evaluated twice without effect. */
 bool ms_plain_index_target(const MsExpr *left, const MsExpr *index);
 
