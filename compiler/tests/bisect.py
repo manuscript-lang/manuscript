@@ -1,5 +1,5 @@
 import subprocess, sys, glob, os
-llvm = glob.glob(os.path.expanduser('~/.cache/ms/llvm/*/'))[0]
+llvm = glob.glob(os.environ['RUNNER_TEMP'] + '/ms-cache/ms/llvm/*/')[0]
 opt, llc = llvm + 'opt', llvm + 'llc'
 tri = '-mtriple=arm64-apple-darwin'
 def run(cmd):
