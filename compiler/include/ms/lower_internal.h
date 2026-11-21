@@ -272,6 +272,8 @@ LbVal lb_lambda(Lb *lb, const MsExpr *e);
 /* `ty` seen through the generic instance being lowered: its type variables replaced by the type arguments. */
 MsTy lb_ty(Lb *lb, MsTy ty);
 LbVal lb_function_value(Lb *lb, const MsExpr *e);
+void lb_at_expression(Lb *lb, const MsExpr *e);
+int64_t lb_number_bits(Lb *lb, const MsExpr *e, MirTy ty, bool negate);
 LbVal lb_call_value(Lb *lb, const MsExpr *e);
 /* Lowers the queued lambdas after their maker; `ok` is whether the maker was lowered. */
 bool lb_closures(Lb *lb, bool ok);

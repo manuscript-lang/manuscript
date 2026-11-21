@@ -185,23 +185,40 @@ MirValue lb_copy(Lb *lb, MirValue v) {
     return mir_b_emit(&lb->b, MOP_Clone, &v, 1, one, mir_b_ty(&lb->b, v));
 }
 
+/* A module constant has no statements to give its instructions a position: each expression sets its
+ * own as it starts, and the position stays until the next one starts (an operator sets it again once
+ * its operands are evaluated), as in the Rust lowering. */
+void lb_at_expression(Lb *lb, const MsExpr *e) {
+    if (lb->cur.value != NULL) {
+        mir_b_set_loc(&lb->b, lb_loc(lb, e->pos));
+    }
+}
+
 /* ---- literals ---- */
 
-static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
+/* The register value of the number literal `e` at the type `ty`, negated or not: a float's bits, or
+ * the integer. A `Float32` literal rounds once, from its text, to binary32. */
+int64_t lb_number_bits(Lb *lb, const MsExpr *e, MirTy ty, bool negate) {
     const MsStr text = ms_number_canonical(&lb->m->arena, ms_name(lb->c->names, e->u.sym));
     char *digits = ms_arena_strndup(&lb->m->arena, text.ptr, text.len);
-    const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
-        // A `Float32` literal rounds once, from its text, to binary32.
         const double value = ty == MIR_FLOAT32 ? (double)strtof(digits, NULL) : strtod(digits, NULL);
-        MirImm imm = {.tag = MI_FLOAT};
         const double signed_value = negate ? -value : value;
-        memcpy(&imm.i, &signed_value, sizeof signed_value);
-        return (LbVal){mir_b_emit(&lb->b, MOP_FConst, NULL, 0, imm, ty), false};
+        int64_t bits = 0;
+        memcpy(&bits, &signed_value, sizeof signed_value);
+        return bits;
     }
     const int64_t value = (int64_t)strtoull(digits, NULL, 10);
-    const MirImm imm = {.tag = MI_INT, .i = negate ? -value : value};
-    return (LbVal){mir_b_emit(&lb->b, MOP_IConst, NULL, 0, imm, ty == MIR_NONE ? MIR_INT : ty), false};
+    return negate ? -value : value;
+}
+
+static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
+    const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    const int64_t bits = lb_number_bits(lb, e, ty, negate);
+    if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
+        return (LbVal){mir_b_emit(&lb->b, MOP_FConst, NULL, 0, (MirImm){.tag = MI_FLOAT, .i = bits}, ty), false};
+    }
+    return (LbVal){mir_b_emit(&lb->b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = bits}, ty == MIR_NONE ? MIR_INT : ty), false};
 }
 
 /* A literal, an interpolation of one value, or a join of several pieces. */
@@ -429,6 +446,7 @@ static MsStr lb_literal_text(const MsExpr *e) {
 static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
     const LbVal left = lb_expr(lb, e->u.bin.left);
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
+    lb_at_expression(lb, e); // the operator, after its operands
     if (!lb->ok || left.owned || right.owned) {
         return LB_UNSUPPORTED(lb); // an owned temporary needs its drop placed
     }
@@ -467,6 +485,7 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     }
     const LbVal left = lb_expr(lb, e->u.bin.left);
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
+    lb_at_expression(lb, e); // the operator, after its operands
     if (!lb->ok) {
         return LB_FAIL;
     }
@@ -816,14 +835,8 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
 
 /* `e`, wrapped in `some` where the checker found a payload used for an Optional. */
 LbVal lb_expr(Lb *lb, const MsExpr *e) {
-    const MirLoc outer = lb->b.loc;
-    if (lb->cur.value != NULL) { // a constant has no statements: each instruction reports its own expression
-        mir_b_set_loc(&lb->b, lb_loc(lb, e->pos));
-    }
+    lb_at_expression(lb, e);
     LbVal value = lb_expr_plain(lb, e);
-    if (lb->cur.value != NULL) {
-        mir_b_set_loc(&lb->b, outer);
-    }
     if (lb->ok && lb->facts->coerce_iface[e->id] != MS_TY_NONE) {
         value = li_box(lb, e, value);
     }
