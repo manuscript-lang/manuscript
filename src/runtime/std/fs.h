@@ -173,4 +173,22 @@ uint8_t msstd_fs_glob_entries(const MsString *path, const MsList *patterns, cons
                               uint8_t has_max_entries, int64_t max_entries, uint8_t has_max_results,
                               int64_t max_results, MsObj *filter, MsList *out, MsString *err);
 
+/* One watcher event: the path, and `rename` (an entry appeared or went) or `change`. */
+typedef struct MsFsEvent {
+  MsString path;
+  MsString kind;
+} MsFsEvent;
+
+/* ms-sig: msstd_fs_watch(path: *const StrVal, recursive: u8, interval_ns: i64, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<Watcher>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_watch(const MsString *path, uint8_t recursive, int64_t interval_ns, uint8_t has_max, int64_t max,
+                       MsObj **out, MsString *err);
+/* ms-sig: msstd_fs_watch_native(path: *const StrVal, recursive: u8, has_max: HasRaw, max: i64, has_events: HasRaw, events: i64, overflow: *const StrVal, out: *mut *mut ObjCell<Watcher>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_watch_native(const MsString *path, uint8_t recursive, uint8_t has_max, int64_t max, uint8_t has_events,
+                              int64_t events, const MsString *overflow, MsObj **out, MsString *err);
+/* The next batch of events (a list of MsFsEvent), parking until there is one; MS_STATUS_NONE once a watched root is gone. */
+/* ms-sig: msstd_fs_watch_next(handle h: *mut ObjCell<Watcher>, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_watch_next(MsObj *handle, MsList *out, MsString *err);
+/* ms-sig: msstd_fs_watch_close(handle h: *mut ObjCell<Watcher>) @domain=filesystem */
+void msstd_fs_watch_close(MsObj *handle);
+
 #endif

@@ -118,3 +118,23 @@ int ms_sys_fs_clone_file(int output, int input) {
   return UV_ENOTSUP;
 #endif
 }
+
+bool ms_sys_fs_watch_recursive(void) {
+#ifdef __APPLE__
+  return true;
+#else
+  return false;
+#endif
+}
+
+bool ms_sys_fs_watch_names_self(void) {
+  return true;
+}
+
+const char *ms_sys_fs_watch_ready_prefix(void) {
+#ifdef __APPLE__
+  return ".ms-watch-ready-";
+#else
+  return "";
+#endif
+}
