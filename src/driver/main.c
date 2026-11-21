@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "base/cstr.h"
+#include "driver/fmt_command.h"
 #include "driver/phases.h"
 
 enum { EXIT_NOT_IMPLEMENTED = 70, EXIT_USAGE = 64 };
@@ -30,6 +31,7 @@ int main(int argc, char **argv) {
     (void)fprintf(stderr, "usage: ms-c <command> [args]\n");
     return EXIT_USAGE;
   }
+  if (ms_cstr_equal(argv[1], "fmt")) return ms_fmt_command(argc - 2, argv + 2);
   size_t count = 0;
   const MsPhase *phases = ms_phases(&count);
   size_t missing = 0;

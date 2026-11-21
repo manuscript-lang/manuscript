@@ -1,0 +1,12 @@
+diff --git a/src/shapes.ms b/src/shapes.ms
+--- a/src/shapes.ms
++++ b/src/shapes.ms
+@@ -16,4 +16,7 @@
+ 	var total = 0
+ 	for item in items:
+ 		total += read_number(item).get_or(0)
+-	return total + area(Shape(1, 1)) - 1
++	return total + area(Shape(1, 1)) - 1 + perimeter(Shape(0, 0))
++
++fn perimeter(shape: Shape) Int:
++	return 2 * (shape.width + shape.height)

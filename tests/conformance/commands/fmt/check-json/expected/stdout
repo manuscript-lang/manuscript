@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "files": [
+    {
+      "path": "main.ms",
+      "status": "needs_formatting"
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "MSF001",
+      "phase": "format",
+      "message": "Formatting needed: main.ms; run ms fmt main.ms to rewrite it",
+      "position": {
+        "file": "main.ms",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      }
+    }
+  ]
+}

@@ -17,9 +17,18 @@ add_test(NAME core_unit COMMAND core_unit)
 add_library(ms_values STATIC
   ascii_chars.c
   bits.c
+  bytes.c
+  bytes_text.c
   index_fault.c
+  list.c
+  list_derive.c
+  list_edit.c
+  list_fault.c
+  list_range.c
   num.c
   num_text.c
+  sort.c
+  sort_ints.c
   string_case.c
   string_cut.c
   string_lists.c

@@ -1,0 +1,6 @@
+build
+main.ms
+--build-type
+Debug
+-o
+out

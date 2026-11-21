@@ -1,0 +1,97 @@
+{
+  "format": 2,
+  "mode": "diff",
+  "input": "diff (1 files, 1 source, +4 -1)",
+  "result": "0 need attention, 2 internal",
+  "base_checked": true,
+  "sections": [
+    {
+      "title": "SUMMARY",
+      "lines": [
+        "changed entities      2",
+        "contract              0",
+        "effect                0",
+        "error flow            0",
+        "resource              0",
+        "internal only         2"
+      ]
+    },
+    {
+      "title": "LOOK HERE FIRST",
+      "headers": [
+        "#",
+        "TIER",
+        "ENTITY",
+        "CHANGE",
+        "REACH",
+        "WHERE",
+        "SCORE"
+      ]
+    },
+    {
+      "title": "EVIDENCE",
+      "headers": [
+        "#",
+        "DETAIL"
+      ]
+    },
+    {
+      "title": "EFFECTS"
+    },
+    {
+      "title": "ERROR FLOW"
+    },
+    {
+      "title": "RESOURCES"
+    },
+    {
+      "title": "DEPENDENCIES"
+    },
+    {
+      "title": "INTERNAL",
+      "lines": [
+        "parse_total (body changed)",
+        "perimeter (added)"
+      ]
+    },
+    {
+      "title": "READING THIS REPORT",
+      "lines": [
+        "Static analysis of checked source; tests are not run.",
+        "INTERNAL means no tracked contract, effect, error-flow, or resource change; runtime behavior can still change.",
+        "Use --explain \u003cnumber|id\u003e with --diff for evidence and a focused diagram."
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "src/shapes.ms#fn#perimeter",
+      "tier": "INTERNAL",
+      "entity": "perimeter",
+      "where": "src/shapes.ms:21",
+      "changes": [
+        "added"
+      ],
+      "reach": 0,
+      "score": 1,
+      "terms": [
+        "added +1"
+      ],
+      "number": null
+    },
+    {
+      "id": "src/shapes.ms#fn#parse_total",
+      "tier": "INTERNAL",
+      "entity": "parse_total",
+      "where": "src/shapes.ms:15",
+      "changes": [
+        "body changed"
+      ],
+      "reach": 0,
+      "score": 0,
+      "terms": null,
+      "number": null
+    }
+  ],
+  "digest": "sha256:5dd872ce48786ce4ed3a5432a8954e035c0de9e98d1647ffc4e873593ed0afcc"
+}
