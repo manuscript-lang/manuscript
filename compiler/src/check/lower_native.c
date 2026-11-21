@@ -29,7 +29,8 @@ static MirTy ln_param_ty(MsRtParam kind, MirTy given) {
     case MS_RT_DESC:
     case MS_RT_KEY_DESC:
     case MS_RT_VAL_DESC:
-    case MS_RT_KEY_REF: return MIR_PTR;
+    case MS_RT_KEY_REF:
+    case MS_RT_RECORD: return MIR_PTR;
     default: return given;
     }
 }
@@ -68,29 +69,6 @@ static bool ln_flatten_optional(Lb *lb, MirValue value, MirTy want, MirValue *ha
     }
     *payload = value;
     *has = mir_b_bconst(&lb->b, true);
-    return true;
-}
-
-/* Descriptors and key slots, made once the arguments are evaluated, in operand order; `kinds` is the parameter
- * kind of each operand. `of` is the type a descriptor describes by role (element, key, value). */
-static bool ln_make_addresses(Lb *lb, MirValue *operands, uint32_t count, const MsRtParam *kinds, const bool *is_desc,
-                              const bool *is_key_ref, const MirTy *of) {
-    for (uint32_t i = 0; i < count; i++) {
-        if (is_desc[i]) {
-            const MirTy described = of[ln_described(kinds[i])];
-            if (described == MIR_NONE) {
-                return false;
-            }
-            operands[i] = mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = described}, MIR_PTR);
-        } else if (is_key_ref[i]) {
-            if (mir_b_ty(&lb->b, operands[i]) != of[1]) {
-                return false;
-            }
-            const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = of[1]}, MIR_PTR);
-            lb_store(lb, slot, operands[i]);
-            operands[i] = slot;
-        }
-    }
     return true;
 }
 
@@ -217,6 +195,36 @@ static void ln_push(LnCall *call, MsRtParam kind, MirValue operand, MirTy type) 
     call->operands[call->count++] = operand;
 }
 
+/* A value stored in a fresh slot of `ty`, whose address the call takes. */
+static MirValue ln_slot_of(Lb *lb, MirTy ty, MirValue value) {
+    const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = ty}, MIR_PTR);
+    lb_store(lb, slot, value);
+    return slot;
+}
+
+/* Descriptors and slots for keys and records, made once the arguments are evaluated, in operand order. `of` is the
+ * type a descriptor describes by role (element, key, value). */
+static bool ln_make_addresses(Lb *lb, LnCall *call, const MirTy *of) {
+    for (uint32_t i = 0; i < call->count; i++) {
+        MirValue *operand = &call->operands[i];
+        if (call->is_desc[i]) {
+            const MirTy described = of[ln_described(call->kinds[i])];
+            if (described == MIR_NONE) {
+                return false;
+            }
+            *operand = mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = described}, MIR_PTR);
+        } else if (call->is_key_ref[i]) {
+            if (mir_b_ty(&lb->b, *operand) != of[1]) {
+                return false;
+            }
+            *operand = ln_slot_of(lb, of[1], *operand);
+        } else if (call->kinds[i] == MS_RT_RECORD) {
+            *operand = ln_slot_of(lb, mir_b_ty(&lb->b, *operand), *operand);
+        }
+    }
+    return true;
+}
+
 /* The frame room for the `out` value or the failure text of a status call. */
 static bool ln_slot_param(Lb *lb, LnCall *call, MsRtParam kind, const LbNativeStatus *status, LbNativeSlots *slots) {
     if (status == NULL || (kind != MS_RT_ERR && status->out_ty == MIR_NONE)) {
@@ -267,6 +275,9 @@ static bool ln_value_param(Lb *lb, LnCall *call, MsRtParam kind, const MirValue 
                         kind == MS_RT_UINT64;
     if (scalar && given != ln_param_ty(kind, given)) {
         return false; // an optional or a sized integer for a plain word: the call converts it, and this does not
+    }
+    if (kind == MS_RT_RECORD && (given == MIR_NONE || mir_ty_data(lb->m, given)->kind != MK_TYPE)) {
+        return false;
     }
     if (bytes) {
         call->element = MIR_UINT8;
@@ -340,7 +351,7 @@ static bool ln_emit(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, boo
         of[2] = mir_ty_data(lb->m, call->map_ty)->args[1];
         entry = lm_specialize(lb, fn, of[1], of[2], &role);
     }
-    if (!ln_make_addresses(lb, call->operands, call->count, call->kinds, call->is_desc, call->is_key_ref, of)) {
+    if (!ln_make_addresses(lb, call, of)) {
         return false;
     }
     if (fn->seq[0] != '\0') { // a short sequence of instructions over the arguments, not the descriptors
@@ -434,6 +445,10 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
     const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
     const uint32_t nargs = e->u.call.args.len;
+    LbVal int_result;
+    if (fn == NULL && lb_int_method(lb, e, receiver_ty, &int_result)) {
+        return int_result;
+    }
     if (fn == NULL && nargs == 0 && ms_name_is(lb->c->names, callee->u.member.name, "to_string")) {
         const LbVal value = lb_expr(lb, callee->u.member.left); // a String is its own text, a scalar prints through its runtime form
         return lb->ok ? lt_to_string(lb, value, receiver_ty) : LB_FAIL;

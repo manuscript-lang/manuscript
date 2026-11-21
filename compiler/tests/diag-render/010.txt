@@ -1,0 +1,5 @@
+010.ms:4:4: parse: expected a name, found '('; give it a name, e.g. fn add(a: Int, b: Int) Int:
+   |
+ 4 | fn (r: Token?!) Token!?:
+   |    ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

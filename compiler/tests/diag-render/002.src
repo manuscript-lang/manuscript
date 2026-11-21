@@ -1,0 +1,2 @@
+fn use() Int:
+    'return inc\>ment(1)

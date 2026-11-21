@@ -356,6 +356,8 @@ LbVal lf_text(Lb *lb, LbVal value);
 /* Whether the method `name` is spelled as a conversion to a primitive type: `to_int16`, `to_float`. */
 bool lb_is_conversion_name(const Lb *lb, MsSym name);
 bool lb_numeric_conversion(Lb *lb, MirValue x, MsTy checked_result, LbVal *out);
+/* `abs` or `sign` of an `Int`: true when `e` is one (`out` is its value), false before anything is lowered. */
+bool lb_int_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);

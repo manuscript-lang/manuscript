@@ -3,6 +3,7 @@
 #   cmake -P cmake/BuildRuntime.cmake                    libms_native.a (and libms_native_musl.a on Linux)
 #   cmake -DMS_STATS=ON -P cmake/BuildRuntime.cmake      also libms_native_stats.a, the counting runtime
 #   cmake -DMS_MODE=tests -P cmake/BuildRuntime.cmake    the C unit tests of this host's runtime target, run with ctest
+#   cmake -DMS_MODE=linker -P cmake/BuildRuntime.cmake   the files `ms_build_link` links with, in target/ms-linker
 # Archives land in target/ms-native (MS_OUT). The compiler for a target is `clang`, llvm-mingw's clang for Windows
 # (`MS_MINGW`, else target/llvm-bundle/mingw) and musl-gcc for musl (`MS_MUSL_CC`). What to compile is decided by the CMake
 # project at the root (CMakeLists.txt, cmake/); this file picks the compiler and the library folder for a target, configures
@@ -194,6 +195,11 @@ function(build_archive triple dir name stats)
   endif()
   strip_debug("${archive}")
 endfunction()
+
+if(MS_MODE STREQUAL "linker")
+  include("${MS_ROOT}/cmake/LinkerFiles.cmake")
+  return()
+endif()
 
 if(MS_MODE STREQUAL "tests")
   set(triple "${host_triple}")

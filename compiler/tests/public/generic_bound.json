@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "phase": "type",
+      "message": "public signature exposes private type Bound; add 'export' to its declaration or keep the function private",
+      "position": {
+        "file": "generic_bound.ms",
+        "line": 4,
+        "column": 8,
+        "offset": 43
+      }
+    }
+  ]
+}

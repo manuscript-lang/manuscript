@@ -1,0 +1,3 @@
+fn identity(value: Int) Int:
+   0x return value
+

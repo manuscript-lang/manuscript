@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1001",
+      "phase": "parse",
+      "message": "source must be valid UTF-8; re-save the file with UTF-8 encoding",
+      "position": {
+        "file": "109.ms",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      }
+    }
+  ]
+}

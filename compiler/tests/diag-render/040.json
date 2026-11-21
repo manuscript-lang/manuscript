@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1001",
+      "phase": "parse",
+      "message": "unterminated raw text literal; r\"...\" must close on the same line and cannot hold a quote, so add the quote or use r\"\"\" multi-line raw text",
+      "position": {
+        "file": "040.ms",
+        "line": 4,
+        "column": 17,
+        "offset": 191
+      }
+    }
+  ]
+}

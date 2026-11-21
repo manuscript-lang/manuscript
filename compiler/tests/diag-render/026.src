@@ -1,0 +1,4 @@
+// conform: tags=diagnostics
+// conform: phase=check
+f_n answer(input: Int) Int:
+    return inp|

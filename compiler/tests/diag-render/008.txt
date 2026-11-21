@@ -1,0 +1,5 @@
+008.ms:5:11: parse: tabs are allowed only in indentation, and lone carriage returns not at all; use spaces between tokens, and line endings of LF or CRLF
+   |
+ 5 | template :    = "Literal braces: {name}"
+   |           ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
