@@ -81,7 +81,7 @@ function(ms_compiler_exe name)
     target_compile_options(${name} PRIVATE -std=c11 -O1 -Wall -Wextra -Werror -include "${_c}/include/ms_mimalloc.h")
   endif()
   if(MS_WINDOWS)
-    # The Windows tools (ms_mir_build, ms_asm_tables) read no project: no libcrypto, libdl or libm. They still allocate
+    # The Windows tools (ms_mir_build, ms_asm_tables, ms_build_object, ms_build_link) read no project: no libcrypto, libdl or libm. They still allocate
     # through the force-included ms_mimalloc.h, so they link the allocator.
     target_link_libraries(${name} PRIVATE ms_mimalloc)
   else()
@@ -100,7 +100,7 @@ file(GLOB _tools CONFIGURE_DEPENDS "${_c}/tools/ms_*.c")
 foreach(file ${_tools})
   get_filename_component(name "${file}" NAME_WE)
   # Windows builds only the tools of the C pipeline (`MS_BACKEND=c`): the rest read the project with POSIX calls.
-  if(MS_WINDOWS AND NOT name MATCHES "^ms_(mir_build|asm_tables)$")
+  if(MS_WINDOWS AND NOT name MATCHES "^ms_(mir_build|asm_tables|build_object|build_link)$")
     continue()
   endif()
   ms_compiler_exe(${name} "${file}" WITH_LIBMS INCLUDES "${_c}/tools")

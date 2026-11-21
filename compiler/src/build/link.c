@@ -12,7 +12,7 @@
 
 bool ms_link_exists(const char *path) {
     struct stat st;
-    return stat(path, &st) == 0 && S_ISREG(st.st_mode);
+    return stat(path, &st) == 0 && (st.st_mode & S_IFMT) == S_IFREG;
 }
 
 void ms_link_push(BlJob *job, const char *arg) { MS_VEC_PUSH(job->argv, const char *, arg); }

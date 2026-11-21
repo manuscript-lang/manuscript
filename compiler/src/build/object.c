@@ -4,14 +4,9 @@
 #include "ms/build_object.h"
 
 #include <errno.h>
-#include <fcntl.h>
-#include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 #include "ms/base.h"
 #include "ms/build_tool.h"
@@ -28,6 +23,10 @@ static const char *bo_triple(void) {
     return "x86_64-apple-darwin";
 #elif defined(__aarch64__) && defined(__APPLE__)
     return "aarch64-apple-darwin";
+#elif defined(__x86_64__) && defined(_WIN32)
+    return "x86_64-w64-windows-gnu";
+#elif defined(__aarch64__) && defined(_WIN32)
+    return "aarch64-w64-windows-gnu";
 #else
     return NULL;
 #endif
@@ -238,7 +237,10 @@ bool ms_build_object(const char *mir, size_t mir_len, const char *shown, size_t 
     if (!ms_backend_ir(mir, mir_len, "program.mir", shown, shown_len, &backend, &ir, &meta, why)) {
         return false;
     }
-    const char *temp = getenv("TMPDIR"); // NOLINT(concurrency-mt-unsafe): read before any thread starts.
+    // NOLINTBEGIN(concurrency-mt-unsafe): read before any thread starts.
+    const char *temp = getenv("TMPDIR");
+    temp = temp != NULL && *temp != '\0' ? temp : getenv("TEMP");
+    // NOLINTEND(concurrency-mt-unsafe)
     MsBuf pattern = {0};
     ms_buf_printf(&pattern, "%s/ms-cbackend-XXXXXX", temp != NULL && *temp != '\0' ? temp : "/tmp");
     ms_buf_putc(&pattern, 0);
