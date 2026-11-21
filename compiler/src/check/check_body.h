@@ -72,6 +72,9 @@ MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
 /* An enum case called like a function where the context expects its enum (check_alt.c). */
 bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name);
 MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected);
+bool ms_body_is_qualified_case(MsBody *b, const MsExpr *member); /* `Enum.Case` with `Enum` a non-generic enum of this module */
+MsTy ms_body_qualified_case(MsBody *b, const MsExpr *e);           /* a qualified case without payload */
+MsTy ms_body_qualified_case_call(MsBody *b, const MsExpr *e);      /* a qualified case with its payload */
 MsTy ms_body_case_name(MsBody *b, const MsExpr *e, MsTy expected);
 /* Records the row of the own `to_string() String` of `part`'s type, which is its text form (check_method.c). */
 void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty);
