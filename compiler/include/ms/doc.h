@@ -24,6 +24,8 @@ void ms_doc_comments_above(MsBuf *out, MsStr source, size_t line_start, bool has
 /* The length of the text literal that starts at `s[0]` (`"` or `f"`), or 0 when it is not closed. */
 size_t ms_doc_text_end(MsStr s);
 
+/* The text after `// ms: <marker> ` in the comment lines above the declaration at `offset`; false when there is none. */
+bool ms_doc_marker_args(MsStr source, size_t offset, const char *marker, MsStr *args);
 size_t ms_doc_effect_lines(MsStr source, size_t offset, MsStr *names, size_t max);
 
 /* Whether a `// ms: MARKER` line is in the comment block above the declaration at `offset`: a bundled
