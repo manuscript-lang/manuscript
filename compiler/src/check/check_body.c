@@ -41,6 +41,20 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty) {
 }
 
 static bool body_is_admitted(const MsBody *b, MsTy ty);
+
+/* `Int8` through `UInt64` and `Float32`: values that are passed, held and returned, whose
+ * operations (arithmetic, comparison, literals) the pass does not check yet. */
+static bool body_is_sized_number(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    static const MsBuiltin sized[] = {MS_BI_INT8,  MS_BI_INT16,  MS_BI_INT32,  MS_BI_INT64, MS_BI_UINT8,
+                                      MS_BI_UINT16, MS_BI_UINT32, MS_BI_UINT64, MS_BI_FLOAT32};
+    for (size_t i = 0; ty != MS_TY_NONE && i < sizeof sized / sizeof sized[0]; i++) {
+        if (ms_ty_is(tys, ty, sized[i])) {
+            return true;
+        }
+    }
+    return false;
+}
 static bool body_is_bindable(const MsBody *b, MsTy ty);
 
 /* A `type`, `enum`, interface or native type (`Bytes`, `Promise[T]`) a module declares, whose type arguments (if it has any) are
@@ -96,7 +110,7 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
  * types. A value that closes is classified a resource by the ownership pass; the lowering leaves
  * it to the Rust lowering until it records the close. */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_map(b, ty) || ms_body_is_function_value(b, ty) ||
+    return body_is_value_type(b, ty) || body_is_sized_number(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_map(b, ty) || ms_body_is_function_value(b, ty) ||
            body_is_own_nominal(b, ty);
 }
 
@@ -1806,7 +1820,7 @@ static void body_check_methods(MsBody *b) {
     const MsMethod **rows = ms_method_rows(b->c, b->module, m, NULL);
     for (uint32_t i = 0; i < m->count; i++) {
         const MsMethod *method = rows[i];
-        if (method == NULL || (m->access[i] & MS_METHOD_CONSUMING) != 0 ||
+        if (method == NULL ||
             !body_is_admitted(b, m->receiver[i])) {
             continue;
         }

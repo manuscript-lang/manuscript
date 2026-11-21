@@ -34,7 +34,7 @@ LbVal lb_unsupported_at(Lb *lb, const char *site, int line) {
 /* `ty` as the function being lowered sees it: the variables of the instance are the types they
  * stand for, through arguments, parameters and results (`List[T]` becomes `List[Int]`). A variable
  * is matched by id, as the checker's substitution does. */
-static MsTy lb_ty(Lb *lb, MsTy ty) {
+MsTy lb_ty(Lb *lb, MsTy ty) {
     if (lb->nsub == 0 || ty == MS_TY_NONE) {
         return ty;
     }
@@ -67,8 +67,22 @@ static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
+/* The sized numbers, by the standard type the checker knows them as. */
+static const struct {
+    MsBuiltin builtin;
+    MirTy mir;
+} lb_sized_numbers[] = {
+    {MS_BI_INT8, MIR_INT8},     {MS_BI_INT16, MIR_INT16},   {MS_BI_INT32, MIR_INT32},   {MS_BI_UINT8, MIR_UINT8},
+    {MS_BI_UINT16, MIR_UINT16}, {MS_BI_UINT32, MIR_UINT32}, {MS_BI_UINT64, MIR_UINT64}, {MS_BI_FLOAT32, MIR_FLOAT32},
+};
+
 MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     ty = lb_ty(lb, ty);
+    for (size_t i = 0; i < sizeof lb_sized_numbers / sizeof lb_sized_numbers[0]; i++) {
+        if (ms_ty_is(&lb->c->tys, ty, lb_sized_numbers[i].builtin)) {
+            return lb_sized_numbers[i].mir;
+        }
+    }
     if (ms_ty_kind(&lb->c->tys, ty) == MS_K_FUNCTION) {
         return lb_fn_ty(lb, ty);
     }
