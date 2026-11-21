@@ -89,6 +89,7 @@
 #include "check/lower_text.c"
 #include "check/lower_alt.c"
 #include "check/lower_closure.c"
+#include "check/lower_method.c"
 #include "syntax/walk.c"
 #include "check/ty_subst.c"
 #include "check/ty_algebra.c"
@@ -155,6 +156,7 @@
 #include "project/solve.c"
 #include "project/packages.c"
 #include "project/install.c"
+#include "project/attach.c"
 
 #include "project/graph_check.c"
 #endif

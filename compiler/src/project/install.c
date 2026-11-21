@@ -711,26 +711,41 @@ static bool install_write_lock(MsArena *a, const char *root, const MsResolved *r
 }
 
 bool ms_install(MsArena *a, const MsInstallOptions *options, MsInstallReport *out, MsProjectError *err) {
-    MsProject project;
-    if (!ms_project_read(a, options->manifest, &project, err)) {
-        return false;
-    }
-    bool unsupported = project.is_workspace;
-    if (unsupported || install_in_workspace(a, project.root, &unsupported)) {
-        ms_project_error_unsupported(err, "install in a workspace");
-        return false;
+    const uint32_t nroots = options->member_count > 0 ? options->member_count : 1;
+    MsRoot *roots = MS_NEW_N(a, MsRoot, nroots);
+    const char *lock_root = options->lock_root;
+    if (options->member_count > 0) {
+        for (uint32_t i = 0; i < nroots; i++) {
+            MsProject *member = MS_NEW(a, MsProject);
+            if (!ms_project_read(a, options->member_manifests[i], member, err)) {
+                return false;
+            }
+            roots[i] = (MsRoot){.name = options->member_names[i], .manifest = {.deps = member->dependencies, .ndeps = member->dependency_count,
+                                                                               .has_version = member->has_version, .version = member->version}};
+        }
+    } else {
+        MsProject *project = MS_NEW(a, MsProject);
+        if (!ms_project_read(a, options->manifest, project, err)) {
+            return false;
+        }
+        bool unsupported = project->is_workspace;
+        if (unsupported || install_in_workspace(a, project->root, &unsupported)) {
+            ms_project_error_unsupported(err, "install in a workspace");
+            return false;
+        }
+        lock_root = project->root;
+        roots[0] = (MsRoot){.name = "the project", .manifest = {.deps = project->dependencies, .ndeps = project->dependency_count,
+                                                                 .has_version = project->has_version, .version = project->version}};
     }
     MsLock old;
-    if (!ms_lock_read(a, project.root, &old, err)) {
+    if (!ms_lock_read(a, lock_root, &old, err)) {
         return false;
     }
     Remote remote = {.arena = a, .cache = ms_package_cache_dir(a)};
     const MsRemote interface = {.user = &remote, .tags = remote_tags, .fetch = remote_fetch};
-    const MsRoot root = {.name = "the project", .manifest = {.deps = project.dependencies, .ndeps = project.dependency_count,
-                                                             .has_version = project.has_version, .version = project.version}};
     MsResolved resolved;
     const char *failure;
-    const bool resolved_ok = ms_resolve(a, &root, 1, &old, options->update, options->update_count, &interface, &resolved, &failure);
+    const bool resolved_ok = ms_resolve(a, roots, nroots, &old, options->update, options->update_count, &interface, &resolved, &failure);
     if (!resolved_ok) {
         ms_buf_free(&remote.records);
         if (remote.unsupported) {
@@ -740,7 +755,7 @@ bool ms_install(MsArena *a, const MsInstallOptions *options, MsInstallReport *ou
         }
         return false;
     }
-    if (!install_write_lock(a, project.root, &resolved, options, err)) {
+    if (!install_write_lock(a, lock_root, &resolved, options, err)) {
         ms_buf_free(&remote.records);
         return false;
     }

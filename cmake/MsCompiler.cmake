@@ -111,7 +111,7 @@ if(MS_WINDOWS)
 endif()
 
 # Unit tests of the checker and the driver; ctest runs them.
-foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test project_discover_test semver_test lock_test resolve_test graph_check_test install_test embed_test)
+foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test project_discover_test semver_test lock_test resolve_test graph_check_test install_test embed_test attach_test)
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
 ms_compiler_exe(std_embed_test "${_c}/tests/std_embed_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
@@ -137,7 +137,7 @@ ms_compiler_exe(effect_graph_gen "${_c}/tests/effect_graph_gen.c" PLAIN)
 
 # libmstool.a: libms plus the tool interface (compiler/include/ms/tool.h), the archive a Manuscript tool links
 # with `--link`. No sanitizers: it links into programs built by `ms`.
-add_library(ms_tool STATIC "${_c}/src/libms.c" "${_c}/src/tool.c")
+add_library(ms_tool STATIC "${_c}/src/libms.c" "${_c}/src/tool.c" $<TARGET_OBJECTS:ms_std_embed>)
 target_include_directories(ms_tool PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include"
                            "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include" "${_mimalloc_include}" ${MS_LIB_crypto_INCLUDES})
 target_compile_options(ms_tool PRIVATE -O1 -g -Wall -Wextra -Werror -Wno-format-truncation

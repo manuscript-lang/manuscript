@@ -119,6 +119,9 @@ static void own_declare(OwnWalk *w, uint32_t binding, Perm perm, bool parameter)
     w->declared[w->ndeclared++] = binding;
     w->perm[binding] = (uint8_t)perm;
     w->class_of[binding] = (uint8_t)ms_classify(w->classifier, w->facts->bindings.ty[binding]);
+    if (w->class_of[binding] == MS_CLASS_RESOURCE) {
+        w->facts->bindings.flags[binding] |= MS_BIND_RESOURCE;
+    }
     w->origin[binding] = MS_NONE;
     w->is_param[binding] = parameter;
     w->param_mode[binding] = 0;
@@ -371,7 +374,13 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         own_expr(w, e->u.bin.left, DEMAND_READ);
         own_expr(w, e->u.bin.right, DEMAND_READ);
         return;
-    case MS_E_MEMBER: own_expr(w, e->u.member.left, DEMAND_READ); return; /* a copied field reads its holder */
+    case MS_E_MEMBER:
+        /* A field reads its holder; moving one out of it is a partial move, not modelled yet. */
+        if (demand == DEMAND_MOVE && ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
+            w->supported = false;
+        }
+        own_expr(w, e->u.member.left, DEMAND_READ);
+        return;
     case MS_E_INDEX: /* only a scalar element is read: the checker admits no other */
     case MS_E_APPLY: { /* `xs[i]` read as a type application: the checker admits it only as an index */
         const MsExpr *list = NULL;
@@ -672,6 +681,13 @@ static void own_intrinsic_call(OwnWalk *w, const MsExpr *e) {
  * arguments and results of scalars, so nothing returned holds a borrow. */
 static void own_method_call(OwnWalk *w, const MsExpr *e) {
     const MsExpr *receiver = e->u.call.callee->u.member.left;
+    // A result that is not a plain value may be a reference into the receiver (`list.get(i)`), which
+    // this walk does not follow: the function is left to the Rust checker.
+    const MsTy result = w->facts->expr_ty[e->id];
+    if (ms_classify(w->classifier, result) != MS_CLASS_COPY) {
+        w->supported = false;
+        return;
+    }
     const bool mutating = (w->facts->methods->access[w->facts->call_method[e->id]] & MS_METHOD_MUTATING) != 0;
     const uint32_t binding = own_argument_local(w, receiver);
     if (mutating) {
@@ -1152,7 +1168,7 @@ static void own_while(OwnWalk *w, const MsStmt *s) {
 }
 
 /* `for i in a..b`: the bounds are read once; the counter is a fresh copied binding per iteration. */
-/* `for name in xs` over a list of copies: the loop variable is a plain value, and the list stays
+/* `for name in xs`: the loop variable is a plain value, or borrows a String element, and the list stays
  * unchanged for the whole loop, which a hidden borrow on it says. */
 static void own_for_list(OwnWalk *w, const MsStmt *s) {
     const uint32_t mark = w->ndeclared;
@@ -1169,7 +1185,12 @@ static void own_for_list(OwnWalk *w, const MsStmt *s) {
         w->supported = false;
         return;
     }
-    own_declare(w, variable, PERM_IMMUTABLE, false);
+    if (ms_classify(w->classifier, w->facts->bindings.ty[variable]) == MS_CLASS_COPY) {
+        own_declare(w, variable, PERM_IMMUTABLE, false);
+    } else { // a String element is borrowed from the list; moving it out is left to the Rust walk
+        own_declare(w, variable, PERM_BORROWED, false);
+        w->deferred[variable] = true;
+    }
     BorrowSet entry = own_set_copy(&w->active);
     own_block(w, &s->u.each.body);
     own_join(w, entry);
@@ -1414,7 +1435,7 @@ static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
     if (facts->methods == NULL) {
         return;
     }
-    const MsMethod **rows = ms_method_rows(w->check, w->module, facts->methods);
+    const MsMethod **rows = ms_method_rows(w->check, w->module, facts->methods, NULL);
     w->quiet = false;
     for (uint32_t i = 0; i < facts->methods->count; i++) {
         const MsMethod *method = rows[i];

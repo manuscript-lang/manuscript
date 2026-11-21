@@ -40,6 +40,12 @@ typedef struct MsInstalledCopy {
 
 typedef struct MsInstallOptions {
     const char *manifest;       /* path of ms.toml */
+    /* A workspace installs every member's dependencies into one lock at `lock_root`: the members' ms.toml paths
+     * and the names diagnostics call them. `member_count` 0 installs `manifest` alone (and fails for a member). */
+    const char *lock_root;
+    const char *const *member_manifests;
+    const char *const *member_names;
+    uint32_t member_count;
     const char *const *update;  /* names whose repositories are re-picked */
     uint32_t update_count;
     bool locked; /* fail instead of changing ms.lock */
@@ -52,8 +58,8 @@ typedef struct MsInstallReport {
 } MsInstallReport;
 
 /* Resolves the dependencies of the project, fetches them into the cache and writes ms.lock when it changed (it is
- * removed when the project has no dependencies). A workspace member or root fails as MS_PERR_UNSUPPORTED: its
- * members share one lock, which the Rust driver handles. */
+ * removed when the project has no dependencies). A workspace member or root fails as MS_PERR_UNSUPPORTED unless the
+ * caller names the workspace's members (it reads the members: tools/ms/workspace.ms). */
 MS_NODISCARD bool ms_install(MsArena *a, const MsInstallOptions *options, MsInstallReport *out, MsProjectError *err);
 
 #endif

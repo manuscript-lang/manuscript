@@ -244,7 +244,6 @@ static MsSchedHooks scheduler_hooks(void) {
         .task_fault = hook_task_fault,
     };
     ms_promise_hooks(&hooks);
-    ms_promise_set_fault_keeper(ms_test_keep_fault);
     return hooks;
 }
 

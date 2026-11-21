@@ -20,7 +20,7 @@ fn tool(program: &str) -> String {
 }
 
 fn debug_file(path: &Path) -> PathBuf {
-    if let Some(bundle) = ms_clif::link::debug_companion_path(path).filter(|p| p.exists()) {
+    if let Some(bundle) = ms_build::link::debug_companion_path(path).filter(|p| p.exists()) {
         let dir = bundle.join("Contents/Resources/DWARF");
         let files: Vec<_> = std::fs::read_dir(dir)
             .unwrap()

@@ -41,13 +41,13 @@ fn main() {
     stage("verify", || ms_mir::verify::verify_module(&module).unwrap());
     stage("llvm_available", || {
         assert!(
-            ms_build::llvm_available(&ms_clif::BuildOptions::default()),
+            ms_build::llvm_available(&ms_build::BuildOptions::default()),
             "LLVM is required; fallback is not a measurement"
         )
     });
     // The C back end optimizes, finishes the MIR and writes the object in one call, so those
     // stages are measured together.
-    let build = ms_clif::BuildOptions::default();
+    let build = ms_build::BuildOptions::default();
     let llvm_object = stage("codegen", || {
         ms_build::c_backend::compile(&module, true, true, &build).unwrap()
     });
@@ -57,12 +57,12 @@ fn main() {
         std::fs::write(&object, llvm_object).unwrap()
     });
     stage("link", || {
-        ms_clif::link::link_with(
+        ms_build::link::link_with(
             &object,
             &[Path::new(&args[3])],
             output,
             false,
-            &ms_clif::BuildOptions::default(),
+            &ms_build::BuildOptions::default(),
         )
         .unwrap()
     });

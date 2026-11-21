@@ -223,6 +223,10 @@ static void body_report(MsBody *b, MsPos pos, MsStr message) {
     MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
 }
 
+void ms_body_report(MsBody *b, MsPos pos, MsStr message) {
+    body_report(b, pos, message);
+}
+
 static MsStr body_show(MsBody *b, MsTy ty);
 
 MsTy ms_body_record(MsBody *b, uint32_t node, MsTy ty) {
@@ -524,12 +528,12 @@ static bool body_is_unknown(const MsBody *b, MsSym name) {
            !body_is_case_name(b, name);
 }
 
-/* A read of a module constant this pass has checked: a call of no arguments, typed as the
- * constant's initializer. */
+/* A read of a module constant, its own or an imported one, whose initializer this pass has typed: a
+ * call of no arguments, typed as the initializer. */
 static MsTy body_constant_use(MsBody *b, const MsExpr *e) {
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, e->u.sym);
     const MsSyms *syms = &b->c->syms;
-    if (sym == MS_NONE || syms->module[sym] != b->module || syms->decl[sym] == NULL ||
+    if (sym == MS_NONE || syms->decl[sym] == NULL ||
         syms->decl[sym]->kind != MS_D_CONST || syms->ty[sym] == MS_TY_NONE) {
         return ms_body_unsupported(b);
     }
@@ -547,7 +551,8 @@ static MsTy body_name(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     if (binding == MS_NONE && !body_text_is(b, e->u.sym, "none")) {
         const MsSymId named = ms_map_get(&b->c->mods[b->module].names, e->u.sym);
-        if (named != MS_NONE && b->c->syms.kind[named] == MS_SYM_FN) {
+        const bool constant = named != MS_NONE && b->c->syms.decl[named] != NULL && b->c->syms.decl[named]->kind == MS_D_CONST;
+        if (named != MS_NONE && b->c->syms.kind[named] == MS_SYM_FN && !constant) {
             return ms_body_function_name(b, e);
         }
         return body_is_unknown(b, e->u.sym) ? body_unknown_name(b, e) : body_constant_use(b, e);
@@ -775,6 +780,18 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
     return body_is_numeric(b, operand_ty) ? operand_ty : ms_body_unsupported(b);
 }
 
+/* A field's declared type at the type arguments of the record that holds it. */
+static MsTy body_field_at(MsBody *b, MsTy record, MsTy declared) {
+    uint32_t nvars = 0;
+    const MsTy *vars = ms_sym_vars(b->c, b->c->tys.def[record] - 1, &nvars);
+    const uint32_t count = b->c->tys.nargs[record];
+    if (vars == NULL || count == 0 || nvars < count) {
+        return declared;
+    }
+    const MsTySubst subst = {.vars = vars, .args = ms_ty_args(&b->c->tys, record), .count = count};
+    return ms_ty_subst(&b->c->tys, &b->c->arena, declared, &subst);
+}
+
 /* `local.field` where the local holds a record this module declares and the field is a Copy
  * primitive (Int, Float, Bool): the field's type. Anything else a member can be (a method, a case, a module path)
  * is not checked yet. */
@@ -805,14 +822,14 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
         if (def->fields[i].name != e->u.member.name) {
             continue;
         }
-        const MsTy field = def->fields[i].ty;
+        const MsTy field = body_field_at(b, record, def->fields[i].ty);
         const bool path = use == MEMBER_RECEIVER && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
-        if (!path && use != MEMBER_STORE && (!body_is_value_type(b, field) || field == b->string_ty)) {
-            break; /* reading a String field borrows or moves it out of its holder */
+        if (!path && use != MEMBER_STORE && !body_is_admitted(b, field)) {
+            break;
         }
         b->facts->res_kind[e->id] = MS_RES_FIELD;
         b->facts->res_ref[e->id] = i;
-        return def->fields[i].ty;
+        return field;
     }
     return ms_body_unsupported(b);
 }
@@ -1305,15 +1322,15 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
     return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
 }
 
-/* `for name in xs` over a list of Int, Float or Bool: the element type. Elements that need
- * cleanup (text, lists) are left to the Rust checker. */
+/* `for name in xs` over a list of Int, Float, Bool or String: the element type. A String element is
+ * borrowed from the list; lists of lists are left to the Rust checker. */
 static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) {
     const MsTy ty = ms_body_expr(b, iter, MS_TY_NONE);
     if (!ms_body_is_list(b, ty)) {
         return false;
     }
     *element = ms_ty_args(&b->c->tys, ty)[0];
-    return body_is_value_type(b, *element) && *element != b->string_ty;
+    return body_is_value_type(b, *element);
 }
 
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
@@ -1612,7 +1629,7 @@ static void body_check_methods(MsBody *b) {
         return;
     }
     const MsMethods *m = &b->methods->methods;
-    const MsMethod **rows = ms_method_rows(b->c, b->module, m);
+    const MsMethod **rows = ms_method_rows(b->c, b->module, m, NULL);
     for (uint32_t i = 0; i < m->count; i++) {
         const MsMethod *method = rows[i];
         if (method == NULL || m->nvars[i] != 0 || (m->access[i] & MS_METHOD_CONSUMING) != 0 ||

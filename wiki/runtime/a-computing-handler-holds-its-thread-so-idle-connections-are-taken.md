@@ -34,3 +34,12 @@ CPU scales with the look count; 1 ms costs what the two modes cost, but its slow
 Apply when: changing the HTTP reactor loop, connection ownership, or the scheduler's idle states.
 Evidence: [steal.rs](../../crates/ms-std-net/src/http/server/steal.rs), [watch.rs](../../crates/ms-rt/src/watch.rs), [proposal](../../proposals/http-connection-stealing.md), [results](../../bench/perf/http-tail/README.md).
 Verify: fixture `http-long-handler-does-not-hold-others`; `bench/perf/http-tail` slow mix p99 and fixed-load CPU against the dated baseline.
+
+C idle pool (`runtime/core/idle.c`, 2026-11-20), failures that cost days, in order of surprise:
+
+- Starting every ready row of one poll makes each a task of the held thread; only one request starts per scheduler turn (`ms_idle_turn` in the idle hook), the rest stay idle rows a resting thread can take.
+- A promise started from the scheduler's own context (idle hook, poll callback) is linked to whichever task last switched away, and a task that ends cancels what it started: pool requests use `ms_promise_start_detached`.
+- A registration's promise id is recycled once dropped. Never cancel a stored id after its callback ran (a take once cancelled an unrelated promise through the old registration); the old registration of a taken row ends by itself and closes its descriptor.
+- A task-held peer-gone watch, a pinned client stream and `Placement.Spread` interact: pinned streams used to keep every spread connection on the caller's thread, so the fixture saw one thread. Spread now ignores pinning.
+- Before closing a descriptor the thread's reactor watched, forget it (`msrt_task_forget_fd`).
+- `| tail -1` on a build hid a compile error and made every later fixture result stale; check the exit status.

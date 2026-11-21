@@ -11,7 +11,7 @@ fn element_wise_list_loops_are_vectorized() {
     if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
-    let tools = ms_clif::link::llvm_tools(&ms_cli::engine::build_options_from_env())
+    let tools = ms_build::link::llvm_tools(&ms_cli::engine::build_options_from_env())
         .unwrap()
         .unwrap();
     let dir = std::env::temp_dir().join(format!("ms-vectorized-{}", std::process::id()));
@@ -159,7 +159,7 @@ fn element_wise_list_loops_use_neon() {
     if !ms_build::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
-    let tools = ms_clif::link::llvm_tools(&ms_cli::engine::build_options_from_env())
+    let tools = ms_build::link::llvm_tools(&ms_cli::engine::build_options_from_env())
         .unwrap()
         .unwrap();
     let dir = std::env::temp_dir().join(format!("ms-neon-{}", std::process::id()));
