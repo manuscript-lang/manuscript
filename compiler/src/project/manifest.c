@@ -785,11 +785,6 @@ static bool manifest_add_project_key(Builder *b, const Entry *e) {
     return true;
 }
 
-static bool manifest_is_dir(const char *path) {
-    MsSysStat info;
-    return ms_sys_fs_stat(path, true, &info) == 0 && host_is_dir(&info);
-}
-
 bool ms_project_is_file(const char *path) {
     MsSysStat info;
     return ms_sys_fs_stat(path, true, &info) == 0 && host_is_reg(&info);
@@ -943,7 +938,7 @@ static bool manifest_check_declared(Builder *b) {
         if (!ms_project_source_path(a, p->root, embed->target, &target, &cause)) {
             return manifest_fail_at(r, embed->value_pos, ms_arena_fmt(a, "embed %s target cannot be resolved: %s; keep embedded directories inside the project root", embed->name, ms_project_error_text(a, &cause)).ptr);
         }
-        if (!manifest_is_dir(target)) {
+        if (!host_dir_exists(target)) {
             return manifest_fail_at(r, embed->value_pos, ms_arena_fmt(a, "embed %s must name an existing directory; %s is not one, so create it or fix the path in [embed]", embed->name, ms_project_quote(a, target)).ptr);
         }
         embed->target = target;
@@ -973,7 +968,7 @@ static bool manifest_finish(Builder *b) {
     if (!ms_project_source_path(a, p->root, p->source, &p->source, &cause)) {
         return manifest_fail_wrapped(r, b->source_pos, &cause);
     }
-    if (!manifest_is_dir(p->source)) {
+    if (!host_dir_exists(p->source)) {
         return manifest_fail_at(r, b->source_pos, ms_arena_fmt(a, "project source must be an existing directory; %s does not exist or is not a directory, so create it or fix source in [project]", ms_project_quote(a, p->source)).ptr);
     }
     if (b->has_entry) {
