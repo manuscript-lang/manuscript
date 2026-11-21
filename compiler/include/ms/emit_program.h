@@ -24,6 +24,7 @@ typedef struct MsBackendOptions {
     bool checks; /* keep the bounds and overflow checks */
     bool verify; /* verify the module after each pass */
     bool tables; /* write source places into the IR and fill `meta`, for ms_backend_tables */
+    bool count_ops; /* count executed MIR operations (`ms bench --ops`) */
 } MsBackendOptions;
 
 /* Optimizes and finishes the module `mir` describes and writes it as LLVM IR. `name` is what a parse
