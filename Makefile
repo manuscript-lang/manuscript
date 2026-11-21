@@ -301,6 +301,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/imports.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/test/watch.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/report.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
