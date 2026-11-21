@@ -111,6 +111,7 @@ void lb_reset_state(Lb *lb) {
     lb->nparts = lb->cparts = 0;
     lb->temps = NULL;
     lb->ntemps = lb->ctemps = lb->stmt_mark = lb->branching = 0;
+    lb->in_condition = false;
     lb->slots = NULL;
     lb->nslots = lb->cslots = 0;
     (void)lscope_push(&lb->scopes); // the body's own scope: depth 0

@@ -804,6 +804,9 @@ static bool own_method_result_owned(const OwnWalk *w, const MsExpr *e) {
     if (methods->decl[row] == NULL || home == w->module || home == MS_NONE) {
         return false;
     }
+    if (methods->decl[row]->body.len == 0) {
+        return false; // a native (`: ...`) has no body to walk: its result may be what the receiver keeps (`names.get(0)`)
+    }
     MsCheck *c = w->check;
     MsFacts *facts = c->mods[home].facts;
     if (facts == NULL) {

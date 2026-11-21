@@ -184,6 +184,7 @@ typedef struct Lb {
     uint32_t ntemps, ctemps;
     uint32_t stmt_mark;   /* `ntemps` where the statement being lowered began */
     uint32_t branching;   /* conditional contexts around the expression being lowered (an arm, a short-circuit's right side) */
+    bool in_condition;    /* the condition of an `if` is being lowered: its temporaries live until it is computed */
     MsBuf *why;           /* NULL, or where each function that does not lower is listed (`ms_lower_program_why`) */
     const char *fail_site; /* the lowering source line that refused the function being lowered, when known */
     int fail_line;
