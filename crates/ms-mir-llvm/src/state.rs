@@ -238,7 +238,7 @@ impl<'m> Gen<'m> {
         name
     }
 
-    /// The symbol of the static `TypeDesc` for slots of type `ty` (`crates/ms-rt/ABI.md`,
+    /// The symbol of the static `TypeDesc` for slots of type `ty` (`crates/ms-rt-abi/ABI.md`,
     /// section 5).
     pub fn typedesc_symbol(&mut self, ty: Ty) -> String {
         use ms_rt_abi::{
