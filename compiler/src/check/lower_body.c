@@ -246,10 +246,11 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
     }
     MirValue held;
     if (lc_is_slot_local(lb, binding)) { // a resource lives in its slot and is read from it
-        if (facts->moved_out[e->id] || !lc_use(lb, binding, &held)) {
-            return LB_UNSUPPORTED(lb); // a move of it is not lowered yet
+        const bool moved = facts->moved_out[e->id];
+        if (!lc_use(lb, binding, &held, moved)) {
+            return LB_UNSUPPORTED(lb);
         }
-        return (LbVal){held, false};
+        return (LbVal){held, moved}; // a moved value belongs to its new owner
     }
     if (lb->value_of[binding] == MIR_NONE) {
         return LB_UNSUPPORTED(lb); // a name no statement of this function bound: a field default naming a sibling field
