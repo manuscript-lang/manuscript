@@ -9,5 +9,7 @@
   A bound, passed or returned result leaves the function to Rust.
 - The ownership walk (`own_borrowed_call`) treats the result like a borrowed local list: the receiver
   stays unchanged for the whole loop.
-- Lowering declines these calls (`call_borrows`): Rust uses borrowing twins (`string_view` with a slot)
-  and scans `for c in s.chars()` without building a list, and C must match that MIR before it lowers them.
+- Lowering lowers such a call only as the iterable of a `for` (`lb->iterable`): the base runtime function
+  yields an owned list of copies that the loop's scope drops, so no twin is chosen. Rust uses borrowing twins and
+  scans `for c in s.chars()`; a function with a loop is verified and run-compared, not text-compared, so the
+  shapes may differ. Any other use (`s.view(a, b).clone()`) still declines until C matches the twin MIR.

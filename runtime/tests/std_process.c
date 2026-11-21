@@ -10,6 +10,10 @@
 #include "fake_rt.h"
 #include "ms_rt/process.h"
 
+#ifdef _WIN32
+#include "ms_sched.h"
+#endif
+
 static int failures;
 #define CHECK(cond) do { if (!(cond)) { printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); failures++; } } while (0)
 
@@ -166,21 +170,50 @@ static uint8_t wait_for(MsObj *child, int64_t timeout_ns, int64_t *code) {
     return status;
 }
 
+/* A piped stream's id is the descriptor on POSIX; on Windows it is the adopted pipe handle, which only the
+ * scheduler's pipe calls (stubbed to wait inline here) read, write and close. */
+static int64_t stream_write(int64_t stream, const char *data, size_t length) {
+#ifdef _WIN32
+    int32_t os_error = 0;
+    return ms_sched_pipe_write((intptr_t)stream, (const uint8_t *)data, length, &os_error) == MS_PIPE_OK ? (int64_t)length : -1;
+#else
+    return write((int)stream, data, length);
+#endif
+}
+
+static int64_t stream_read(int64_t stream, char *buffer, size_t capacity) {
+#ifdef _WIN32
+    size_t count = 0;
+    int32_t os_error = 0;
+    return ms_sched_pipe_read((intptr_t)stream, (uint8_t *)buffer, capacity, &count, &os_error) == MS_PIPE_OK ? (int64_t)count : -1;
+#else
+    return read((int)stream, buffer, capacity);
+#endif
+}
+
+static void stream_close(int64_t stream) {
+#ifdef _WIN32
+    ms_sched_pipe_close((intptr_t)stream);
+#else
+    close((int)stream);
+#endif
+}
+
 static void subprocess_pipes_and_close(void) {
     int64_t modes[3] = {0, 0, 0};
     MsObj *child = NULL;
     CHECK(spawn("cat", NULL, 0, modes, &child) == STATUS_OK);
     int64_t code = 0;
     CHECK(wait_for(child, 20000000, &code) == STATUS_TIMED_OUT);
-    const int in = (int)msstd_process_subprocess_stream_id(child, 0);
-    const int out = (int)msstd_process_subprocess_stream_id(child, 1);
+    const int64_t in = msstd_process_subprocess_stream_id(child, 0);
+    const int64_t out = msstd_process_subprocess_stream_id(child, 1);
     CHECK(in >= 0 && out >= 0);
-    CHECK(write(in, "ping", 4) == 4);
-    close(in);
+    CHECK(stream_write(in, "ping", 4) == 4);
+    stream_close(in);
     CHECK(wait_for(child, 5000000000LL, &code) == STATUS_OK && code == 0);
     char buffer[8];
-    CHECK(read(out, buffer, sizeof buffer) == 4 && memcmp(buffer, "ping", 4) == 0);
-    close(out);
+    CHECK(stream_read(out, buffer, sizeof buffer) == 4 && memcmp(buffer, "ping", 4) == 0);
+    stream_close(out);
     CHECK(msstd_process_subprocess_pid(child) > 0);
     CHECK(msstd_process_subprocess_max_resident(child) > 0);
     msstd_process_subprocess_close(child);

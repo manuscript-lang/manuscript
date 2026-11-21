@@ -192,6 +192,8 @@ typedef struct Lb {
     const MsStmt *fail_stmt; /* the statement being lowered then, or NULL */
     bool first_pass;      /* the report lists the functions the checker did not record once, in the first pass */
     bool dead;            /* control cannot reach the current position */
+    const MsExpr *iterable; /* the `for` iterable being lowered: a native call there yields a list the loop owns, never a view */
+    bool twin_ok;         /* the native call being marshalled is that iterable, so its base function (not a borrowing twin) is right */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
 
