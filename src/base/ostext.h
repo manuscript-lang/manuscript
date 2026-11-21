@@ -16,16 +16,5 @@ void ms_os_text_free(MsOsText *text);
 
 /* Appends the system message of the C error number `error_number`. */
 void ms_os_error_text(int error_number, MsStrBuild *out);
-#ifdef _WIN32
-/* UTF-16 text for the Windows API. Ownership: owned, freed with ms_os_wide_free. */
-typedef struct MsOsWide {
-  uint16_t *ptr; /* owned: UTF-16 units followed by a 0 unit; NULL when the span is not valid UTF-8 */
-} MsOsWide;
-
-/* `span` as UTF-16. With `as_path`, a drive or UNC path long enough to need it gets the extended-length
- * prefix and `\` separators. */
-MsOsWide ms_os_wide_new(MsSpan span, bool as_path);
-void ms_os_wide_free(MsOsWide *text);
-#endif
 
 #endif
