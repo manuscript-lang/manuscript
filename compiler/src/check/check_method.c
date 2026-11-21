@@ -501,7 +501,9 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
         return ms_body_unsupported(b);
     }
     const uint32_t binding = receiver->kind == MS_E_NAME ? ms_body_find_binding(b, receiver->u.sym) : MS_NONE;
-    if (receiver->kind == MS_E_NAME && binding == MS_NONE) {
+    // A name that is no local is a module constant (a value like any call result) or something this
+    // pass does not take a method of.
+    if (receiver->kind == MS_E_NAME && binding == MS_NONE && !ms_body_names_constant(b, receiver->u.sym)) {
         return ms_body_unsupported(b);
     }
     const MsTy local_ty = binding == MS_NONE ? MS_TY_NONE : b->facts->bindings.ty[binding];

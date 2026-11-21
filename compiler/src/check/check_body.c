@@ -2316,7 +2316,7 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
 
 /* Whether `name` is a module constant whose initializer this pass has already typed (constants are checked in
  * declaration order, so an earlier one): a use of it is a call of no arguments. */
-static bool body_names_constant(const MsBody *b, MsSym name) {
+bool ms_body_names_constant(const MsBody *b, MsSym name) {
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, name);
     const MsSyms *syms = &b->c->syms;
     return sym != MS_NONE && syms->decl[sym] != NULL && syms->decl[sym]->kind == MS_D_CONST && syms->ty[sym] != MS_TY_NONE &&
@@ -2348,7 +2348,7 @@ static BodyConstant body_constant_kind(const MsBody *b, const MsExpr *e, const M
         const BodyConstant left = body_constant_kind(b, e->u.bin.left, at);
         return left != BODY_CONSTANT_OK ? left : body_constant_kind(b, e->u.bin.right, at);
     }
-    case MS_E_NAME: return body_names_constant(b, e->u.sym) ? BODY_CONSTANT_OK : BODY_CONSTANT_UNSURE;
+    case MS_E_NAME: return ms_body_names_constant(b, e->u.sym) ? BODY_CONSTANT_OK : BODY_CONSTANT_UNSURE;
     case MS_E_LIST:
         for (uint32_t i = 0; i < e->u.list.len; i++) {
             const BodyConstant kind = body_constant_kind(b, e->u.list.ptr[i], at);
