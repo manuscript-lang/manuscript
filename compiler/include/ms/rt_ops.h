@@ -21,6 +21,7 @@ typedef enum MsRtParam {
     MS_RT_INT,
     MS_RT_FLOAT,
     MS_RT_BOOL,
+    MS_RT_UINT64,
     MS_RT_OUT_STR,  /* the result, a string, written through a pointer */
     MS_RT_OUT_LIST, /* the result, a list, written through a pointer */
     MS_RT_MAP,      /* a map, borrowed */
@@ -30,6 +31,7 @@ typedef enum MsRtParam {
     MS_RT_HANDLE,   /* `handle x: *const ObjCell<T>`: a runtime object, borrowed */
     MS_RT_OUT_HANDLE, /* `out: *mut *mut ObjCell<T>`: the runtime object the call creates, written through a pointer */
     MS_RT_OUT_SCALAR, /* `out: *mut i64|f64|u8`: an Int, Float or Bool the call writes through a pointer */
+    MS_RT_OUT_RECORD, /* `out: *mut XOut`: a record the runtime fills in; the call yields it */
     MS_RT_ERR,      /* the trailing `ErrSlot`: a string the call writes the failure text to */
     MS_RT_HAS,      /* `HasRaw`: an optional scalar crosses as `has, value`; the next parameter is the value and takes no argument */
     MS_RT_OTHER     /* anything the lowering does not marshal: a handle, a slot, an error slot */
