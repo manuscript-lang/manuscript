@@ -3,7 +3,7 @@ name: CI/CD
 # One workflow, four triggers:
 #   pull request  the Linux legs; a pull request that touches
 #                 LLVM-related code (see .github/actions/rust-scope) also starts the `llvm` jobs: the LLVM corpus (amd64) and the LLVM backend tests with the release gates. The Linux legs, each one job (`ab`: the tests and the conformance corpus together); the language checks
-#                 and the book run inside linux-arm64. A green pull request auto-merges; there
+#                 and the book run beside them in `linux-checks`. A green pull request auto-merges; there
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
 #   merge queue   the same as a pull request, in case a queue is configured again.
@@ -106,8 +106,8 @@ jobs:
   # `gates: false` skips the gates. On pull requests linux-amd64 runs the second pass in `conformance` and
   # leaves the gates to linux-arm64, so each job stays under ten minutes. On pull requests linux-arm64 runs
   # format and clippy: it finishes about 4 minutes before linux-amd64, which carries the corpus.
-  # `docs`: also the language checks and the book (in the conformance part on pull requests); on main
-  # the book is uploaded for Pages.
+  # `docs`: also the language checks and the book (main and manual runs; a pull request runs them in
+  # `linux-checks`); on main the book is uploaded for Pages.
   # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
   # in tests/conformance/expect-fail.<os>.txt with a reason.
   rust:
@@ -126,7 +126,7 @@ jobs:
         part: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group') && '["ab"]' || '["a", "b"]') }}
         leg: >-
           ${{ fromJSON(
-          (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "second_pass": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "lint": true, "docs": true, "gates_part": "a"}]' ||
+          (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "second_pass": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "lint": true, "gates_part": "a"}]' ||
           inputs.os == 'linux' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "second_pass": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}]' ||
           inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "second_pass": "a"}]' ||
           inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "second_pass": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
@@ -191,6 +191,32 @@ jobs:
         with:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
+
+  # The language checks (repository rules, licenses, the C style gate, the VS Code package) and the book run beside
+  # the two Linux legs on a pull request, not inside one: they were 7 of linux-arm64's 15 minutes. They share the
+  # arm64 sccache entry, so the Rust build they need is cached. Main and manual runs keep them in `rust` (the book
+  # is uploaded for Pages there).
+  checks:
+    needs: due
+    if: needs.due.outputs.run == 'true' && needs.due.outputs.rust == 'true' && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
+    name: linux-checks
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - id: sccache
+        uses: ./.github/actions/sccache
+        with:
+          prefix: cargo-sccache-linux-arm64-
+      - uses: ./.github/actions/rust-env
+        with:
+          os: linux
+          arch: arm64
+          llvm-consumers: 'false'
+      - uses: ./.github/actions/language-checks
+      - uses: ./.github/actions/book-checks
 
   # A pull request that touches LLVM-related code (rust-scope) also runs the LLVM suite, in jobs of its own so
   # that no job passes ten minutes: the LLVM corpus (amd64) and the LLVM backend tests with the release
@@ -294,8 +320,8 @@ jobs:
   # pull request cannot merge.
   budget:
     name: Time budget
-    needs: [rust, llvm, c]
-    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.rust.result == 'success' && (needs.llvm.result == 'success' || needs.llvm.result == 'skipped') && (needs.c.result == 'success' || needs.c.result == 'skipped') }}
+    needs: [rust, checks, llvm, c]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.rust.result == 'success' && (needs.checks.result == 'success' || needs.checks.result == 'skipped') && (needs.llvm.result == 'success' || needs.llvm.result == 'skipped') && (needs.c.result == 'success' || needs.c.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -320,7 +346,7 @@ jobs:
   platforms:
     name: Platform checks
     if: always()
-    needs: [due, rust, llvm, c, budget]
+    needs: [due, rust, checks, llvm, c, budget]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -333,6 +359,7 @@ jobs:
           LLVM_RESULT: ${{ needs.llvm.result }}
           BUDGET: ${{ needs.budget.result }}
           C_RESULT: ${{ needs.c.result }}
+          CHECKS_RESULT: ${{ needs.checks.result }}
           DUE: ${{ needs.due.outputs.run }}
           RUST: ${{ needs.due.outputs.rust }}
         run: |
@@ -342,6 +369,8 @@ jobs:
           test "$LLVM_RESULT" != cancelled || exit 1
           test "$C_RESULT" != failure || exit 1
           test "$C_RESULT" != cancelled || exit 1
+          test "$CHECKS_RESULT" != failure || exit 1
+          test "$CHECKS_RESULT" != cancelled || exit 1
           # The Rust jobs are skipped on a pull request that changes only documentation or the C compiler.
           test "$RESULT" = success || test "$DUE" = false || test "$RUST" = false
       # A red scheduled run on main is reported once: one open issue names the failing legs and tests and the pull
