@@ -1,0 +1,1 @@
+# Runtime symbols of ms_rt/alt.h: none. Every function there is @inline, lowered as MIR with no C body.

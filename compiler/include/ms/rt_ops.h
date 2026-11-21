@@ -25,6 +25,7 @@ typedef enum MsRtParam {
     MS_RT_OUT_STR,  /* the result, a string, written through a pointer */
     MS_RT_OUT_LIST, /* the result, a list, written through a pointer */
     MS_RT_MAP,      /* a map, borrowed */
+    MS_RT_ALT,      /* an Optional or a Result, borrowed */
     MS_RT_KEY_DESC, /* the descriptor of a map's key type */
     MS_RT_VAL_DESC, /* the descriptor of a map's value type */
     MS_RT_KEY_REF,  /* a key passed by address: stored in a slot the call borrows */
