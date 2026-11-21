@@ -1,69 +1,40 @@
 name: C pipeline platforms
-
-# `MS_BACKEND=c ms build` (the C back end linked into `ms`, then the pinned LLVM tools) on the platforms the pull request jobs do not
-# run: the corpus of `compiler/tests/build-diff.sh` built by both back ends and compared. Manual runs only; the
-# Linux legs run the same script through `make c-compiler-test`.
-
+# Temporary debug copy: a macOS crash report (branch only, never merged).
 on:
   workflow_dispatch:
     inputs:
       limit:
-        description: Programs to build and compare (0 is every `phase=run` program)
         default: '150'
       os:
-        description: Platforms
         type: choice
         options: [all, darwin, windows]
         default: all
-
-permissions:
-  contents: read
-
 defaults:
   run:
     shell: bash
-
 jobs:
-  build-diff:
-    name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }}
-    runs-on: ${{ matrix.leg.runner }}
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        leg: >-
-          ${{ fromJSON(
-          inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15"}]' ||
-          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
-          '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]') }}
+  mac-debug:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      RUSTC_WRAPPER: ''
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-env
         with:
-          os: ${{ matrix.leg.os }}
-          arch: ${{ matrix.leg.arch }}
-      - name: Build ms and its runtime
+          os: darwin
+          arch: arm64
+      - name: Build ms
+        run: make build
+      - name: Crash report
         run: |
-          cargo xtask runtime
-          cargo build --release --locked -p ms-cli
-      - name: Hello through the C pipeline
-        run: |
-          printf 'import stdout from "@std/io/io.ms"\n\nexport fn main() Int:\n    _w := stdout().write("hello\\n")\n    return 0\n' > hello.ms
-          MS_BACKEND=c target/release/ms build hello.ms --build-type Debug -o hello
-          ./hello
-      - name: Compare the corpus
-        run: sh compiler/tests/build-diff.sh '${{ inputs.limit }}' | tee build-diff.log
-      - name: Keep the logs of the programs that differ or fail
-        if: always()
-        run: |
-          mkdir -p keep
-          for f in $(grep -E '^(DIFF|cfail)' build-diff.log | awk '{print $2}'); do
-            id=$(echo "$f" | tr '/' '_')
-            cp target/c-compiler/build-diff/"$id".* keep/ 2>/dev/null || true
+          cd tests/conformance/fixtures/e2e/stdlib
+          "$GITHUB_WORKSPACE/target/release/ms" test fetch.ms --filter "times out" 2>&1 | tail -5 || true
+          sleep 20
+          ls -la ~/Library/Logs/DiagnosticReports /Library/Logs/DiagnosticReports 2>&1 | head -20
+          for r in ~/Library/Logs/DiagnosticReports/*.ips /Library/Logs/DiagnosticReports/*.ips; do
+            [ -f "$r" ] || continue
+            echo "=== $r"; head -c 12000 "$r"
           done
-          cp build-diff.log keep/ 2>/dev/null || true
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: build-diff-${{ matrix.leg.os }}-${{ matrix.leg.arch }}
-          path: keep
+          # a second try under lldb: run the test program in the foreground
+          "$GITHUB_WORKSPACE/target/release/ms" build fetch.ms -o /tmp/fetch_prog 2>&1 | tail -3 || true
