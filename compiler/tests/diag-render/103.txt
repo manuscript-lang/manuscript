@@ -1,0 +1,5 @@
+103.ms:24:16: parse: expected ':', found '='; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body
+    |
+ 24 |         if row = 0: return
+    |                ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

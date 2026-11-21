@@ -5,6 +5,7 @@
 #define MS_IMPLEMENTS_H
 
 #include "ms/methods.h"
+#include "ms/ty_algebra.h"
 
 typedef enum MsFit {
     MS_FIT_YES,
@@ -19,5 +20,8 @@ typedef enum MsFit {
 MsFit ms_implements(MsCheck *c, const MsMethodTable *table, MsTy receiver, MsTy contract);
 /* Whether `==` accepts two values of `ty`: the Equal property, derived from its parts and a variable's bounds. */
 MsFit ms_implements_equal(MsCheck *c, const MsMethodTable *table, MsTy ty);
+
+/* Whether `ty` has the built-in property (Equal, Hashable, Clonable, Data), from its parts. */
+MsFit ms_implements_property(MsCheck *c, const MsMethodTable *table, MsTy ty, MsProperty property);
 
 #endif

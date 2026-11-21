@@ -5,11 +5,6 @@
 
 #include "ms/tables.h"
 
-/* Whether `ty` mentions a type variable anywhere, through arguments, parameters and results. A
- * type built by repeated doubling (`Pair[T, T]` nested n times) is a DAG of n nodes but a tree of
- * 2^n paths, so every node is visited once. `scratch` holds the visit marks. */
-bool ms_ty_has_variable(const MsTyTable *t, MsArena *scratch, MsTy ty);
-
 /* Whether two implementations could apply to one receiver and contract: `a` with `x` and `b` with
  * `y` unify, binding only the variables `vars`. */
 bool ms_ty_overlap(const MsTyTable *t, MsArena *scratch, MsTy a, MsTy b, MsTy x, MsTy y,

@@ -1,0 +1,3 @@
+fn f() Int:
+    xs := [1]
+    xs.append(2)  /r" error.length()

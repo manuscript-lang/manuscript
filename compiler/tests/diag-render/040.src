@@ -1,0 +1,8 @@
+// conform: tags=control-flo..formatter,lists,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/lsp/if_let_test.go:9 TestIfLetBindingReferencesAndRename
+fn read(values: r"ist[Int]) Int:
+    if first := values.first():
+        return first + 1
+
+ turn0

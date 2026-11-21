@@ -1,0 +1,5 @@
+056.ms:5:16: parse: unexpected source character '\u{202e}'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCII
+   |
+ 5 |     return appl‮y(value: 3, tranorm: fn(value: Int) Int: return value - 1)
+   |                ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

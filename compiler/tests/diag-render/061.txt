@@ -1,0 +1,5 @@
+061.ms:3:15: parse: expected ':', found name 'nt'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body
+   |
+ 3 | fn use() Itry nt:
+   |               ^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

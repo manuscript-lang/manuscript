@@ -1,0 +1,5 @@
+040.ms:4:17: parse: unterminated raw text literal; r"..." must close on the same line and cannot hold a quote, so add the quote or use r""" multi-line raw text
+   |
+ 4 | fn read(values: r"ist[Int]) Int:
+   |                 ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
