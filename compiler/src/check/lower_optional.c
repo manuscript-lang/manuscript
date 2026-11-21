@@ -40,8 +40,12 @@ static LbVal lop_get_or(Lb *lb, const MsExpr *receiver, const MsExpr *argument, 
     if (!is_plain && owns) {
         return LB_UNSUPPORTED(lb); // an Optional fallback that owns its payload is not unwrapped here yet
     }
-    const LbVal optional = lb_expr(lb, receiver);
-    const LbVal fallback = lb->ok ? (is_plain ? lb_expr_plain(lb, argument) : lb_expr(lb, argument)) : LB_FAIL;
+    LbVal optional = lb_expr(lb, receiver);
+    LbVal fallback = LB_FAIL;
+    if (lb->ok) {
+        fallback = is_plain ? lb_expr_plain(lb, argument) : lb_expr(lb, argument);
+    }
+    optional = lb_refresh(lb, receiver, optional);
     if (!lb->ok) {
         return LB_FAIL;
     }

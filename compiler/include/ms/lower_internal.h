@@ -284,6 +284,9 @@ bool lb_closures(Lb *lb, bool ok);
 LbVal lb_unsupported_at(Lb *lb, const char *site, int line);
 #define LB_UNSUPPORTED(lb) lb_unsupported_at((lb), __FILE__, __LINE__)
 LbVal lb_expr(Lb *lb, const MsExpr *e);
+/* `value`, the borrowed read of the place `e`, read again once the expressions after it were evaluated: one of them
+ * may have replaced what the place holds (crates/ms-lower call.rs `refresh`). Other values are returned as they are. */
+LbVal lb_refresh(Lb *lb, const MsExpr *e, LbVal value);
 MirTy lb_mir_ty(Lb *lb, MsTy ty);
 void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);

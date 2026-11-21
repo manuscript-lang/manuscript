@@ -59,6 +59,10 @@ fn main() Void:
 	print(name_or(["a"], -1))
 	print(name_or(["a"], 3))
 
+	grid := Grid(cells: [1, 2], width: 1)
+	print(cell(grid, 0))
+	print(cell_or(grid, 4))
+
 fn byte_at(b: Bytes, i: Int) Int:
 	return b.get(i).to_int()
 
@@ -76,3 +80,13 @@ fn item_or(xs: List[Int], i: Int) Int:
 
 fn name_or(xs: List[String], i: Int) String:
 	return xs.get_or(i, "none")
+
+type Grid:
+	cells: List[Int]
+	width: Int
+
+fn cell(g: Grid, x: Int) Int:
+	return g.cells.get(x + g.width)
+
+fn cell_or(g: Grid, x: Int) Int:
+	return g.cells.get_or(x + g.width, 3)

@@ -135,9 +135,10 @@ bool lst_read_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out) {
         *out = LB_UNSUPPORTED(lb); // arguments out of order, or a fallback that is itself an Optional
         return true;
     }
-    const LbVal list = lb_expr(lb, callee->u.member.left);
+    LbVal list = lb_expr(lb, callee->u.member.left);
     const LbVal index = lb->ok ? lb_expr(lb, args[0].value) : LB_FAIL;
     const LbVal fallback = lb->ok && has_fallback ? lb_expr_plain(lb, args[1].value) : LB_FAIL;
+    list = lb_refresh(lb, callee->u.member.left, list);
     if (!lb->ok) {
         return true;
     }

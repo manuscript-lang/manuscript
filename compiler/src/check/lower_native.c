@@ -486,22 +486,10 @@ static uint32_t ln_argument_kinds(const MsRtFn *fn, MsRtParam *kinds) {
     return count;
 }
 
-/* A method call the runtime implements: evaluates the receiver and arguments, then calls. */
-LbVal lb_native_method(Lb *lb, const MsExpr *e) {
+/* A method call the runtime function `fn` implements: evaluates the receiver and arguments, then calls. */
+static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
     const MsExpr *callee = e->u.call.callee;
-    const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
-    LbVal item;
-    if (lst_read_method(lb, e, receiver_ty, &item)) {
-        return item;
-    }
-    const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
     const uint32_t nargs = e->u.call.args.len;
-    if (fn == NULL) {
-        fn = lb_bytes_instruction(lb, receiver_ty, callee->u.member.name);
-    }
-    if (fn == NULL) {
-        return ln_method_without_function(lb, e, receiver_ty);
-    }
     if (fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
         return LB_UNSUPPORTED(lb);
     }
@@ -544,6 +532,10 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
             lb_hold_temp(lb, value.v); // a borrowed argument lives to the end of the statement
         }
     }
+    if (!by_reference && nargs > 0) { // an argument may have replaced what the receiver's place holds
+        first = lb_refresh(lb, receiver, first);
+        args[0] = first.v;
+    }
     const MirTy result_ty = by_reference ? first_ty : lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (!lb->ok) {
         return LB_FAIL;
@@ -564,4 +556,19 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
         lb_hold_temp(lb, first.v); // a temporary receiver lives to the end of the statement
     }
     return call;
+}
+
+/* A method call of a native type: instructions where the method is some, else its runtime function. */
+LbVal lb_native_method(Lb *lb, const MsExpr *e) {
+    const MsSym name = e->u.call.callee->u.member.name;
+    const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
+    LbVal item;
+    if (lst_read_method(lb, e, receiver_ty, &item)) {
+        return item;
+    }
+    const MsRtFn *fn = lb_native_function(lb, receiver_ty, name);
+    if (fn == NULL) {
+        fn = lb_bytes_instruction(lb, receiver_ty, name);
+    }
+    return fn == NULL ? ln_method_without_function(lb, e, receiver_ty) : ln_method_call(lb, e, fn);
 }
