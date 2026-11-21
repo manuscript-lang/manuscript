@@ -71,7 +71,7 @@ MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected) {
 }
 
 /* Whether `left` is a value, never a function or type the bracket could apply type arguments to: a local or
- * a field path from one (`self.items`), an element (`xs[i][j]`), or a call's result. */
+ * a field path from one (`self.items`), an element (`xs[i][j]`), a call's result, or a literal. */
 static bool list_receiver_is_local(const MsBody *b, const MsExpr *left) {
     for (;;) {
         MsExpr *inner = NULL;
@@ -84,7 +84,8 @@ static bool list_receiver_is_local(const MsBody *b, const MsExpr *left) {
             break;
         }
     }
-    return left->kind == MS_E_CALL || (left->kind == MS_E_NAME && ms_body_find_binding(b, left->u.sym) != MS_NONE);
+    return left->kind == MS_E_CALL || left->kind == MS_E_LIST ||
+           (left->kind == MS_E_NAME && ms_body_find_binding(b, left->u.sym) != MS_NONE);
 }
 
 /* `xs[i]`, written as an index or as a bracket that reads as a type application: the receiver must be
@@ -98,6 +99,14 @@ MsTy ms_body_index(MsBody *b, const MsExpr *e) {
     const MsTy list = ms_body_expr(b, left, MS_TY_NONE);
     if (list != MS_TY_NONE && left->kind != MS_E_MAP && ms_body_is_map(b, list)) {
         return ms_body_map_index(b, list, index);
+    }
+    if (list != MS_TY_NONE && ms_ty_is(&b->c->tys, list, MS_BI_BYTES)) { // read as a byte, a `UInt8`
+        return ms_body_expr(b, index, b->int_ty) == MS_TY_NONE ? MS_TY_NONE : ms_check_primitive(b->c, "UInt8");
+    }
+    if (list == b->string_ty) {
+        (void)ms_body_expr(b, index, MS_TY_NONE);
+        ms_body_report(b, e->pos, ms_arena_fmt(&b->c->arena, "indexing a String by integer is not supported; use for c in s.chars(), s.scalar_at(offset, default) at a byte offset, or s.slice(start, end)"));
+        return b->invalid_ty;
     }
     if (list == MS_TY_NONE || !ms_body_is_list(b, list)) {
         return ms_body_unsupported(b);

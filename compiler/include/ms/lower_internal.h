@@ -60,11 +60,10 @@ typedef struct LbJob {
 /* A function or method being lowered: its syntax, the node its facts hang on, its signature, and
  * the receiver a method takes as parameter 0. */
 typedef struct LbCallable {
-    const MsFunc *fn;     /* NULL for a module constant */
+    const MsFunc *fn;    /* NULL for a module constant */
     MsExpr *value;       /* a module constant's initializer: the function of no parameters returns it */
-    MsSym const_name;
-    uint32_t node;  /* the declaration (or method) node: `param_consumed`, `ret_borrowed` */
     MsPos pos;
+    uint32_t node;  /* the declaration (or method) node: `param_consumed`, `ret_borrowed` */
     MsSym name;     /* the MIR name, with the receiver's for a method */
     MsTy sig;       /* the signature, receiver not included */
     MsTy self_ty;   /* MS_TY_NONE for a function */
@@ -151,7 +150,6 @@ typedef struct Lb {
     uint32_t *thunk_of;   /* by symbol id: the closure function forwarding to it, or MIR_NONE */
     LbJob *jobs;          /* the lambdas made by the function being lowered, to lower after it */
     uint32_t njobs, cjobs;
-    bool closure;         /* lowering a closure body: no call depth, no `var` parameters */
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
     LbCallable cur;       /* the function or method being lowered */
     uint32_t *method_func; /* by method row: the module function a method call reaches, or MIR_NONE */
@@ -160,7 +158,6 @@ typedef struct Lb {
     const MsTy *sub_vars, *sub_args;
     uint32_t nsub;
     MsSym name_override; /* the instance's name, when `has_override` */
-    bool has_override;
     LbInst *insts;        /* this pass's instances, in creation order (malloc) */
     uint32_t ninsts, cinsts;
     LbEq *eqs;            /* this pass's equality functions (module arena) */
@@ -185,14 +182,16 @@ typedef struct Lb {
     MirValue *temps;      /* the owned temporaries of the statement being lowered, dropped where it ends (newest first) */
     uint32_t ntemps, ctemps;
     uint32_t stmt_mark;   /* `ntemps` where the statement being lowered began */
+    int fail_line;
     uint32_t branching;   /* conditional contexts around the expression being lowered (an arm, a short-circuit's right side) */
     MsBuf *why;           /* NULL, or where each function that does not lower is listed (`ms_lower_program_why`) */
     const char *fail_site; /* the lowering source line that refused the function being lowered, when known */
-    int fail_line;
     const MsStmt *fail_stmt; /* the statement being lowered then, or NULL */
+    const MsExpr *iterable; /* the `for` iterable being lowered: a native call there yields a list the loop owns, never a view */
+    bool closure;         /* lowering a closure body: no call depth, no `var` parameters */
+    bool has_override;    /* `name_override` names the instance being lowered */
     bool first_pass;      /* the report lists the functions the checker did not record once, in the first pass */
     bool dead;            /* control cannot reach the current position */
-    const MsExpr *iterable; /* the `for` iterable being lowered: a native call there yields a list the loop owns, never a view */
     bool twin_ok;         /* the native call being marshalled is that iterable, so its base function (not a borrowing twin) is right */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
@@ -272,6 +271,8 @@ LbVal lb_lambda(Lb *lb, const MsExpr *e);
 /* `ty` seen through the generic instance being lowered: its type variables replaced by the type arguments. */
 MsTy lb_ty(Lb *lb, MsTy ty);
 LbVal lb_function_value(Lb *lb, const MsExpr *e);
+void lb_at_expression(Lb *lb, const MsExpr *e);
+int64_t lb_number_bits(Lb *lb, const MsExpr *e, MirTy ty, bool negate);
 LbVal lb_call_value(Lb *lb, const MsExpr *e);
 /* Lowers the queued lambdas after their maker; `ok` is whether the maker was lowered. */
 bool lb_closures(Lb *lb, bool ok);
@@ -390,6 +391,7 @@ LbVal la_none_owned(Lb *lb, const MsExpr *e);
 LbVal la_case(Lb *lb, const MsExpr *call);
 MirValue la_test(Lb *lb, MirValue subject);
 MirValue la_payload(Lb *lb, MirValue subject, bool borrowed);
+MirValue la_take_ok(Lb *lb, MirValue subject); /* an owned Result's Ok value, moved out of it */
 LbVal la_try(Lb *lb, const MsExpr *e);
 
 #endif

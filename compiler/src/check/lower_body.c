@@ -16,6 +16,7 @@
 #include "ms/facts.h"
 #include "ms/lower.h"
 #include "ms/lower_internal.h"
+#include "ms/rt_ops.h"
 #include "ms/lower_scope.h"
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
@@ -185,23 +186,40 @@ MirValue lb_copy(Lb *lb, MirValue v) {
     return mir_b_emit(&lb->b, MOP_Clone, &v, 1, one, mir_b_ty(&lb->b, v));
 }
 
+/* A module constant has no statements to give its instructions a position: each expression sets its
+ * own as it starts, and the position stays until the next one starts (an operator sets it again once
+ * its operands are evaluated), as in the Rust lowering. */
+void lb_at_expression(Lb *lb, const MsExpr *e) {
+    if (lb->cur.value != NULL) {
+        mir_b_set_loc(&lb->b, lb_loc(lb, e->pos));
+    }
+}
+
 /* ---- literals ---- */
 
-static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
+/* The register value of the number literal `e` at the type `ty`, negated or not: a float's bits, or
+ * the integer. A `Float32` literal rounds once, from its text, to binary32. */
+int64_t lb_number_bits(Lb *lb, const MsExpr *e, MirTy ty, bool negate) {
     const MsStr text = ms_number_canonical(&lb->m->arena, ms_name(lb->c->names, e->u.sym));
     char *digits = ms_arena_strndup(&lb->m->arena, text.ptr, text.len);
-    const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
-        // A `Float32` literal rounds once, from its text, to binary32.
         const double value = ty == MIR_FLOAT32 ? (double)strtof(digits, NULL) : strtod(digits, NULL);
-        MirImm imm = {.tag = MI_FLOAT};
         const double signed_value = negate ? -value : value;
-        memcpy(&imm.i, &signed_value, sizeof signed_value);
-        return (LbVal){mir_b_emit(&lb->b, MOP_FConst, NULL, 0, imm, ty), false};
+        int64_t bits = 0;
+        memcpy(&bits, &signed_value, sizeof signed_value);
+        return bits;
     }
     const int64_t value = (int64_t)strtoull(digits, NULL, 10);
-    const MirImm imm = {.tag = MI_INT, .i = negate ? -value : value};
-    return (LbVal){mir_b_emit(&lb->b, MOP_IConst, NULL, 0, imm, ty == MIR_NONE ? MIR_INT : ty), false};
+    return negate ? -value : value;
+}
+
+static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
+    const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    const int64_t bits = lb_number_bits(lb, e, ty, negate);
+    if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
+        return (LbVal){mir_b_emit(&lb->b, MOP_FConst, NULL, 0, (MirImm){.tag = MI_FLOAT, .i = bits}, ty), false};
+    }
+    return (LbVal){mir_b_emit(&lb->b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = bits}, ty == MIR_NONE ? MIR_INT : ty), false};
 }
 
 /* A literal, an interpolation of one value, or a join of several pieces. */
@@ -401,11 +419,55 @@ static LbVal lb_compare(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     return (LbVal){result, false};
 }
 
+/* The runtime function of `left op right` on big integers, or NULL for a comparison. */
+static const MsRtFn *lb_bigint_operator(MsBinaryOp op) {
+    const char *symbol = NULL;
+    switch (op) {
+    case MS_B_ADD: symbol = "msstd_bigint_add"; break;
+    case MS_B_SUB: symbol = "msstd_bigint_subtract"; break;
+    case MS_B_MUL: symbol = "msstd_bigint_multiply"; break;
+    case MS_B_DIV: symbol = "msstd_bigint_quotient"; break;
+    case MS_B_REM: symbol = "msstd_bigint_modulo"; break;
+    default: return NULL;
+    }
+    return ms_rt_fn_find(symbol, strlen(symbol));
+}
+
+/* Arithmetic on big integers, which the runtime performs; the operands are borrowed and their owned temporaries are
+ * released at the end of the statement. */
+static LbVal lb_bigint_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
+    const MsRtFn *fn = lb_bigint_operator(op);
+    if (fn == NULL) {
+        return LB_UNSUPPORTED(lb);
+    }
+    const MirValue args[2] = {left.v, right.v};
+    const LbVal result = lb_native_call(lb, fn, args, 2, mir_b_ty(&lb->b, left.v));
+    for (uint32_t i = 0; lb->ok && i < 2; i++) {
+        if ((i == 0 ? left : right).owned) {
+            lb_hold_temp(lb, args[i]);
+        }
+    }
+    return result;
+}
+
+/* Whether `ty` is the runtime's big integer. */
+static bool lb_is_bigint(const Lb *lb, MirTy ty) {
+    const MirTyData *data = mir_ty_data(lb->m, ty);
+    if (data->kind != MK_OBJ) {
+        return false;
+    }
+    const MsStr name = ms_name(&lb->m->names, data->name);
+    return name.len == 6 && memcmp(name.ptr, "BigInt", 6) == 0;
+}
+
 /* `left op right` on lowered operands (not `and` and `or`, which short-circuit). */
 static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     const MirTy ty = mir_b_ty(&lb->b, left.v);
     if (op == MS_B_ADD && ty == MIR_STR) {
         return lb_concat(lb, left, right);
+    }
+    if (lb_is_bigint(lb, ty)) {
+        return lb_bigint_apply(lb, op, left, right);
     }
     if (lb_owns(lb, ty) || (ty != MIR_INT && ty != MIR_FLOAT && ty != MIR_BOOL)) {
         return LB_UNSUPPORTED(lb); // the operations of the sized numbers and the other native types are not lowered yet
@@ -429,6 +491,7 @@ static MsStr lb_literal_text(const MsExpr *e) {
 static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
     const LbVal left = lb_expr(lb, e->u.bin.left);
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
+    lb_at_expression(lb, e); // the operator, after its operands
     if (!lb->ok || left.owned || right.owned) {
         return LB_UNSUPPORTED(lb); // an owned temporary needs its drop placed
     }
@@ -467,6 +530,7 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     }
     const LbVal left = lb_expr(lb, e->u.bin.left);
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
+    lb_at_expression(lb, e); // the operator, after its operands
     if (!lb->ok) {
         return LB_FAIL;
     }
@@ -816,14 +880,8 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
 
 /* `e`, wrapped in `some` where the checker found a payload used for an Optional. */
 LbVal lb_expr(Lb *lb, const MsExpr *e) {
-    const MirLoc outer = lb->b.loc;
-    if (lb->cur.value != NULL) { // a constant has no statements: each instruction reports its own expression
-        mir_b_set_loc(&lb->b, lb_loc(lb, e->pos));
-    }
+    lb_at_expression(lb, e);
     LbVal value = lb_expr_plain(lb, e);
-    if (lb->cur.value != NULL) {
-        mir_b_set_loc(&lb->b, outer);
-    }
     if (lb->ok && lb->facts->coerce_iface[e->id] != MS_TY_NONE) {
         value = li_box(lb, e, value);
     }
@@ -1393,8 +1451,9 @@ static void lb_return(Lb *lb, const MsStmt *s) {
 static uint32_t lb_scoped_taking(Lb *lb, const MsStmts *body, const MsPattern *pattern, MirValue taken) {
     const uint32_t depth = lscope_push(&lb->scopes);
     if (pattern != NULL) {
-        const MirTy elem = mir_ty_data(lb->m, mir_b_ty(&lb->b, taken))->elem;
-        const MirValue part = mir_b_emit(&lb->b, MOP_OptUnbox, &taken, 1, (MirImm){0}, elem);
+        const MirTyData *holder = mir_ty_data(lb->m, mir_b_ty(&lb->b, taken));
+        const MirValue part = holder->kind == MK_OPT ? mir_b_emit(&lb->b, MOP_OptUnbox, &taken, 1, (MirImm){0}, holder->elem)
+                                                     : la_take_ok(lb, taken); // a Result's Ok value moves out, the rest is released
         lb_own_payload(lb, lb->facts->pattern_binding[pattern->id], pattern->u.name, part);
     }
     lb_statements(lb, body);
@@ -1432,8 +1491,10 @@ static void lb_if(Lb *lb, const MsStmt *s) {
         return;
     }
     const MirValue subject = cond.v; // an `if name := value` unwraps it in the then-branch
-    if (s->u.branch.binding != NULL && mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->kind != MK_OPT) {
-        (void)LB_UNSUPPORTED(lb); // a Result's Ok payload: the release of the rest is not lowered yet
+    const MirTyData *held = mir_ty_data(lb->m, mir_b_ty(&lb->b, subject));
+    const bool result_subject = held->kind == MK_ALT && lb->m->alts[held->id].std == MSTD_RESULT;
+    if (s->u.branch.binding != NULL && held->kind != MK_OPT && !(result_subject && cond.owned)) {
+        (void)LB_UNSUPPORTED(lb); // a borrowed Result keeps its Ok value: read in place, not lowered yet
         return;
     }
     if (s->u.branch.binding != NULL) {
@@ -1447,7 +1508,8 @@ static void lb_if(Lb *lb, const MsStmt *s) {
     mir_b_seal_block(&lb->b, then_block);
     mir_b_seal_block(&lb->b, else_block);
     lb_enter(lb, then_block);
-    const bool takes = s->u.branch.binding != NULL && cond.owned && lb_owns(lb, mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->elem);
+    const MirTy payload_ty = result_subject ? lb->m->alts[held->id].cases[LA_OK].fields[0].ty : held->elem;
+    const bool takes = s->u.branch.binding != NULL && cond.owned && (result_subject || lb_owns(lb, payload_ty)); // an owned Result's holder needs a drop whatever its Ok value is
     if (s->u.branch.binding != NULL && !takes) {
         lb_bind_payload(lb, s->u.branch.binding, la_payload(lb, subject, !cond.owned));
     }
