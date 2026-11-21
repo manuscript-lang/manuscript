@@ -861,8 +861,13 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     if (callee_expr->kind == MS_E_NAME && w->facts->res_kind[callee_expr->id] == MS_RES_BINDING) {
         own_expr(w, callee_expr, DEMAND_READ); /* a call through a function-typed local reads it */
+        const MsTy fn = w->facts->expr_ty[callee_expr->id];
         for (uint32_t i = 0; i < e->u.call.args.len; i++) {
-            own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
+            const bool moves = (ms_ty_params(&w->check->tys, fn)[i].flags & MS_PARAM_MOVE) != 0;
+            if (moves) {
+                own_require_declared_move(w, e->u.call.args.ptr[i].value);
+            }
+            own_expr(w, e->u.call.args.ptr[i].value, moves ? DEMAND_MOVE : DEMAND_READ);
         }
         return;
     }
