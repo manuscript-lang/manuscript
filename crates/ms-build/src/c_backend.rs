@@ -299,8 +299,12 @@ fn compile_in(
     }
     let plain = dir.join("program.plain.s");
     let mut llc = tool("llc");
+    // A module with a function the emitter marked `optnone` (a size tier, #3928) goes through the
+    // fast code generator: llc's -O3 two-address and register-allocation passes are superlinear in
+    // one function's size even when the function is optnone, and `opt` already ran the IR passes.
+    let size_tiered = ir_text.windows(8).any(|w| w == b" optnone");
     llc.args([
-        if speed { "-O3" } else { "-O0" },
+        if speed && !size_tiered { "-O3" } else { "-O0" },
         "-filetype=asm",
         "-relocation-model=pic",
         &triple,

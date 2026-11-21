@@ -301,6 +301,7 @@ fn result_kind(text: String) String:
 	if text == "-> i64": return "MS_RT_RET_INT"
 	if text == "-> f64": return "MS_RT_RET_FLOAT"
 	if text == "-> u8": return "MS_RT_RET_BOOL"
+	if text.starts_with("-> *mut ObjCell<"): return "MS_RT_RET_HANDLE"
 	if text.is_empty(): return "MS_RT_RET_VOID"
 
 	return "MS_RT_RET_OTHER"
