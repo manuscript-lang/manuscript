@@ -54,6 +54,7 @@ typedef struct MsRtFn {
     bool twinned; /* a borrowing twin exists (`@view_of=` and siblings): the result may be lent */
     bool pure;    /* only reads memory and cannot fault (`@pure`) */
     bool fresh;   /* `@fresh`: the result is a new value, never a reference into an argument */
+    bool borrows; /* `@borrows`: the result points into the receiver (`String.view`); the caller does not own it */
     bool has_imm; /* `@imm=<n>`: the `@op=` instruction carries the integer `imm` */
     const char *domain; /* `@domain=`: how its failures name their module ("network"), or "" */
 } MsRtFn;
