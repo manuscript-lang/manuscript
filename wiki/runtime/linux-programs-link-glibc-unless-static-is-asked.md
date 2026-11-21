@@ -7,7 +7,7 @@ Why: static musl's resolver looks up `/etc/hosts` case-sensitively (`lookup("Loc
 Decision (user, 2026-11-01): the floor is glibc 2.28, fixed once, independent of the build host ([proposal](../../proposals/glibc-2-28-floor.md)).
 
 Mechanism:
-- Archives: `cargo xtask runtime` builds `libms_native.a` for `<arch>-unknown-linux-gnu` and `libms_native_musl.a` for musl, and `ms` embeds both.
+- Archives: `cmake -P cmake/BuildRuntime.cmake` builds `libms_native.a` for `<arch>-unknown-linux-gnu` and `libms_native_musl.a` for musl, and `ms` embeds both.
 - Stubs: lld links against stub glibc libraries that `ms-build` generates from `toolchain/glibc/<arch>.symbols` (glibc 2.28's ABI lists, made by `generate.sh`). It never reads the host's `libc.so.6`.
 - Binding: every symbol binds at its newest version up to 2.28, and `-z now` resolves all of them at load.
 - Entry: the gnu archive defines what `crt1.o` and `libc_nonshared.a` would (`crates/ms-native/src/entry.rs`): `_start` with an `.init_array` runner (glibc before 2.34 does not run it), and `stat64` and friends over `__xstat64`. The aarch64 `__stack_chk_guard` comes from the loader stub.

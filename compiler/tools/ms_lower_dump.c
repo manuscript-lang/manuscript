@@ -96,6 +96,11 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         }
         const MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
         ms_program_begin(check);
+        // The core library declares `Error`, whose field defaults a construction in the module takes.
+        const MsModId core = ms_map_get(&check->module_by_path, ms_intern_cstr(check->names, "@std/core.ms"));
+        if (core != MS_NONE) {
+            ms_module_check_bodies_with(check, core, check->methods);
+        }
         (void)ms_program_check_module(check, id, (MsStr){text, (uint32_t)length});
         if (check->mods[id].facts != NULL) { // an inherent error leaves the module unchecked
             // The ownership walk fills `ret_borrowed` and narrows `body_checked` to the functions it handles.
@@ -133,20 +138,6 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
     return verified;
 }
 
-/* The whole-program lowering: every module of the checked program into one MirModule (declared in ms/lower.h).
- * Until the driver lands, the entry module alone, so callees in other modules are missing and the comparison
- * (compiler/tests/lower-program-diff.sh) counts them as skipped. */
-#ifndef MS_HAVE_LOWER_PROGRAM
-static uint32_t lower_program(MsCheck *c, const MsModId *ids, uint32_t count, MirModule *out) {
-    return ms_lower_module(c, ids[count - 1], out);
-}
-#else
-static uint32_t lower_program(MsCheck *c, const MsModId *ids, uint32_t count, MirModule *out) {
-    (void)ids;
-    (void)count;
-    return ms_lower_program(c, out);
-}
-#endif
 
 /* Loads the project `path` (entry file plus the modules it imports), checks every module, lowers the program and
  * prints each function. A program with diagnostics prints nothing. */
@@ -174,7 +165,7 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
             }
             MirModule mir;
             mir_module_init(&mir);
-            (void)lower_program(&check, ids, graph.count, &mir);
+            (void)ms_lower_program(&check, ids[graph.count - 1], &mir);
             verified = verify_module(&mir, path);
             MsBuf elaborate_error = {0};
             if (!mir_elaborate(&mir, &elaborate_error)) {

@@ -215,6 +215,7 @@ static bool generic_is_nominal(const MsBody *b, MsSymId sym) {
  * fields left out take their default. Natives (`Map[K, V]()`) have no fields to give. */
 MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written) {
     const MsSyms *syms = &b->c->syms;
+    ms_module_resolve_types(b->c, syms->module[sym]); // the declaring module's fields and variables
     const MsDef *def = ms_def(b->c, sym);
     const MsDecl *decl = syms->decl[sym];
     const uint32_t nargs = e->u.call.args.len;
@@ -242,7 +243,7 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
     }
     MsSym *names = MS_NEW_N(&b->c->arena, MsSym, def->nfields + 1);
     bool *covered = MS_NEW_N(&b->c->arena, bool, def->nfields + 1);
-    uint32_t slot[16];
+    uint32_t slot[16] = {0};
     for (uint32_t i = 0; i < def->nfields; i++) {
         names[i] = def->fields[i].name;
     }

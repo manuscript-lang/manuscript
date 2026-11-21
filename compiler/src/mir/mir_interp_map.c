@@ -1,5 +1,5 @@
-/* The runtime's maps for the interpreter: `msrt_map_new`, `msrt_map_add` and the lookups
- * `msrt_map_get_ptr`, `_w8`, `_sw8`. A map is the value `MV_MAP` whose blob holds keys and values
+/* The runtime's maps for the interpreter: `msrt_map_new`, `msrt_map_add`, `msrt_map_length`, `msrt_map_contains` and the lookups
+ * `msrt_map_get_ptr`, each with its `_w8`, `_sw8` specialisation. A map is the value `MV_MAP` whose blob holds keys and values
  * alternately in insertion order; a key or value passes through a memory cell (the slot the
  * lowering made) and a lookup returns a pointer to a new cell holding the value. The shaped lookups
  * differ from the general one only in speed, so they share one implementation. */
@@ -88,6 +88,16 @@ bool ip_map_runtime(MirInterp *it, MsStr name, const MirVal *args, uint32_t coun
             return true;
         }
         ip_map_set(map, *key, *value);
+        return true;
+    }
+    const bool contains = ip_map_name(name, "msrt_map_contains") || ip_map_name(name, "msrt_map_contains_w8") ||
+                          ip_map_name(name, "msrt_map_contains_sw8");
+    if (ip_map_name(name, "msrt_map_length") && count == 1 && args[0].tag == MV_MAP) {
+        *result = mir_val_int(args[0].as.blob == NULL ? 0 : (int64_t)(args[0].as.blob->count / 2));
+        return true;
+    }
+    if (contains && count == 4 && args[0].tag == MV_MAP && ip_map_cell(it, &args[3]) != NULL) {
+        *result = mir_val_bool(ip_map_find(&args[0], *ip_map_cell(it, &args[3])) != 0);
         return true;
     }
     const bool lookup = ip_map_name(name, "msrt_map_get_ptr") || ip_map_name(name, "msrt_map_get_ptr_w8") ||

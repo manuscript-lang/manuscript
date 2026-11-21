@@ -830,7 +830,7 @@ static void own_record_owned_borrow(OwnWalk *w, const MsExpr *e, const OwnSummar
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const MsExpr *callee_expr = e->u.call.callee;
-    if (w->facts->call_reordered[e->id] || ms_is_index_store(w->check->names, e)) {
+    if ((w->facts->call_reordered[e->id] && !own_is_constructor(w, e)) || ms_is_index_store(w->check->names, e)) { /* a construction reads its arguments in source order */
         w->supported = false; /* the arguments are paired with parameters by index below; a store has its own order */
         return;
     }
@@ -910,6 +910,7 @@ static bool own_bind_borrowed_call(OwnWalk *w, const MsStmt *s, uint32_t binding
     }
     own_expr(w, value, DEMAND_READ);
     own_declare_borrow(w, binding, origins[0], s->u.bind.pattern->pos, "binding of a part of it");
+    w->facts->bindings.flags[binding] |= MS_BIND_BORROWS;
     return true;
 }
 
@@ -951,6 +952,7 @@ static void own_bind(OwnWalk *w, const MsStmt *s) {
     }
     own_expr(w, s->u.bind.value, DEMAND_READ);
     own_declare_borrow(w, binding, own_resolve(w, source), s->u.bind.pattern->pos, "binding of a borrowed value");
+    w->facts->bindings.flags[binding] |= MS_BIND_BORROWS;
 }
 
 /* Whether returning the name hands back a reference into a parameter: a parameter itself, or a
@@ -1509,16 +1511,6 @@ static bool own_summarize(OwnWalk *w, const MsDecl *d, const uint32_t *by_node) 
     return changed;
 }
 
-/* Whether some node is a call of a function: only then does one function's walk depend on another's. */
-static bool own_has_calls(const MsFacts *facts) {
-    for (uint32_t i = 0; i <= facts->node_count; i++) {
-        if (facts->call_callee[i] != MS_NONE && !facts->const_use[i]) {
-            return true;
-        }
-    }
-    return false;
-}
-
 /* Walks every function whose liveness the pass handles until the summaries stop changing, so a
  * caller sees what its callees return. Diagnostics wait for the final pass. */
 static void own_summary_rounds(OwnWalk *w, const MsModuleRow *row, const uint32_t *by_node) {
@@ -1582,9 +1574,9 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         const bool claimed = d->kind == MS_D_FN && facts->body_checked[d->id];
         w.summaries[d->id].usable = claimed && ms_liveness_function(&live, facts, &d->u.fn);
     }
-    if (own_has_calls(facts)) {
-        own_summary_rounds(&w, row, by_node);
-    }
+    // Also for a module without calls: the summaries are where `ret_borrowed` and `param_consumed`
+    // come from, and a caller in another module reads them.
+    own_summary_rounds(&w, row, by_node);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
         if (d->kind == MS_D_FN && facts->body_checked[d->id]) {

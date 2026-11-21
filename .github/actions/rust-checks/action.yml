@@ -168,7 +168,7 @@ runs:
     - name: C unit tests
       if: ${{ !cancelled() && env.UNIT == 'true' && runner.os == 'Windows' }}
       shell: bash
-      run: cargo xtask c-test
+      run: cmake -DMS_MODE=tests -P cmake/BuildRuntime.cmake
     - name: Native Windows project paths
       if: env.UNIT == 'true' && runner.os == 'Windows'
       shell: bash
