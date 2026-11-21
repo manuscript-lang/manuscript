@@ -156,7 +156,7 @@ bool lb_owns(Lb *lb, MirTy ty) {
 void lb_hold_temp(Lb *lb, MirValue v) {
     const bool simple = lb->stmt != NULL && lb->branching == 0 &&
                         (lb->stmt->kind == MS_S_BIND || lb->stmt->kind == MS_S_RETURN ||
-                         lb->stmt->kind == MS_S_ASSIGN || lb->stmt->kind == MS_S_CALL);
+                         lb->stmt->kind == MS_S_ASSIGN || lb->stmt->kind == MS_S_CALL || lb->stmt->kind == MS_S_IF);
     if (!simple) {
         lb_drop(lb, v);
         return;
@@ -1417,6 +1417,7 @@ static void lb_bind_payload(Lb *lb, const MsPattern *pattern, MirValue payload) 
 
 /* `if cond: then else: else`; the else branch may be empty. */
 static void lb_if(Lb *lb, const MsStmt *s) {
+    const uint32_t temps = lb->ntemps;
     LbVal cond = lb_expr(lb, s->u.branch.cond);
     if (!lb->ok) {
         return;
@@ -1429,6 +1430,7 @@ static void lb_if(Lb *lb, const MsStmt *s) {
     if (s->u.branch.binding != NULL) {
         cond.v = la_test(lb, subject);
     }
+    lb_release_temps(lb, temps); // the condition's temporaries end with the condition
     const MirBlock then_block = mir_b_new_block(&lb->b);
     const MirBlock else_block = mir_b_new_block(&lb->b);
     const MirBlock join = mir_b_new_block(&lb->b);
