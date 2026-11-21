@@ -41,7 +41,36 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty) {
 }
 
 static bool body_is_admitted(const MsBody *b, MsTy ty);
+
+/* `Int8` through `UInt64` and `Float32`: values that are passed, held and returned, whose
+ * operations (arithmetic, comparison, literals) the pass does not check yet. */
+static bool body_is_sized_number(const MsBody *b, MsTy ty) {
+    const MsTyTable *tys = &b->c->tys;
+    static const MsBuiltin sized[] = {MS_BI_INT8,  MS_BI_INT16,  MS_BI_INT32,  MS_BI_INT64, MS_BI_UINT8,
+                                      MS_BI_UINT16, MS_BI_UINT32, MS_BI_UINT64, MS_BI_FLOAT32};
+    for (size_t i = 0; ty != MS_TY_NONE && i < sizeof sized / sizeof sized[0]; i++) {
+        if (ms_ty_is(tys, ty, sized[i])) {
+            return true;
+        }
+    }
+    return false;
+}
 static bool body_is_bindable(const MsBody *b, MsTy ty);
+
+/* Whether `arg` meets the interfaces that bound the variable `var` (`MapEntry[T: Hashable, U]`): each
+ * bound is an interface without arguments of its own, which the tables must answer for `arg`. A bound
+ * the tables cannot answer, or one over other variables, counts as unmet. */
+static bool body_meets_bounds(const MsBody *b, MsTy var, MsTy arg) {
+    const MsVarInfo *info = ms_var_info(b->c, var);
+    for (uint32_t k = 0; k < info->nbounds; k++) {
+        const MsTy contract = info->bounds[k];
+        if (b->methods == NULL || b->c->tys.nargs[contract] != 0 || ms_ty_has_variable(&b->c->tys, &b->c->arena, contract) ||
+            ms_implements(b->c, b->methods, arg, contract) != MS_FIT_YES) {
+            return false;
+        }
+    }
+    return true;
+}
 
 /* A `type`, `enum`, interface or native type (`Bytes`, `Promise[T]`) a module declares, whose type arguments (if it has any) are
  * themselves admitted. */
@@ -67,7 +96,7 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     }
     for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
         const MsTy arg = ms_ty_args(tys, ty)[i];
-        if (arg == b->invalid_ty || !(arg == b->void_ty || body_is_bindable(b, arg)) || ms_var_info(b->c, vars[i])->nbounds != 0) {
+        if (arg == b->invalid_ty || !(arg == b->void_ty || body_is_bindable(b, arg)) || !body_meets_bounds(b, vars[i], arg)) {
             return false;
         }
     }
@@ -96,7 +125,7 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
  * types. A value that closes is classified a resource by the ownership pass; the lowering leaves
  * it to the Rust lowering until it records the close. */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_map(b, ty) || ms_body_is_function_value(b, ty) ||
+    return body_is_value_type(b, ty) || body_is_sized_number(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_map(b, ty) || ms_body_is_set(b, ty) || ms_body_is_function_value(b, ty) ||
            body_is_own_nominal(b, ty);
 }
 
@@ -887,7 +916,7 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     if (use == MEMBER_READ && ms_body_is_qualified_case(b, e)) {
         return ms_body_qualified_case(b, e);
     }
-    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER) {
+    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER && receiver->kind != MS_E_CALL) {
         return ms_body_unsupported(b);
     }
     const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, MEMBER_RECEIVER))
@@ -1806,7 +1835,7 @@ static void body_check_methods(MsBody *b) {
     const MsMethod **rows = ms_method_rows(b->c, b->module, m, NULL);
     for (uint32_t i = 0; i < m->count; i++) {
         const MsMethod *method = rows[i];
-        if (method == NULL || (m->access[i] & MS_METHOD_CONSUMING) != 0 ||
+        if (method == NULL ||
             !body_is_admitted(b, m->receiver[i])) {
             continue;
         }
@@ -1886,6 +1915,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
     facts->moved_out = MS_NEW_N(arena, bool, nodes);
     memset(facts->moved_out, 0, nodes * sizeof *facts->moved_out);
+    facts->borrowed_match = MS_NEW_N(arena, bool, nodes);
+    memset(facts->borrowed_match, 0, nodes * sizeof *facts->borrowed_match);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);
