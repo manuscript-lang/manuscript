@@ -1,0 +1,2 @@
+main.ms:2:1: parse: unterminated delimiter '(' opened at line 1:8; add the matching ')' before the end of the file
+fmt only formats source that parses; fix the syntax error above, then re-run ms fmt main.ms

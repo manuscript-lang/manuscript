@@ -36,3 +36,18 @@ message("conform-c results")
 foreach(counted IN LISTS totals)
   message("${counted}")
 endforeach()
+
+# Command fixtures (tests/conformance/commands): replayed by the Manuscript runner on the oracle ms,
+# with the ms under test named by MS.
+get_filename_component(oracle_dir "${MS_CONFORM}" DIRECTORY)
+execute_process(
+  COMMAND "${CMAKE_COMMAND}" -E env "MS=${MS_C}" "${oracle_dir}/ms${CMAKE_EXECUTABLE_SUFFIX}"
+    run tools/command-fixtures.ms -- check ${COMMAND_EXTRA}
+  WORKING_DIRECTORY "${SOURCE_DIR}"
+  OUTPUT_VARIABLE command_output
+  ERROR_VARIABLE command_errors)
+string(REGEX MATCH "commands: [0-9]+/[0-9]+" command_total "${command_output}")
+if(NOT command_total)
+  message(FATAL_ERROR "conform-c: no command counts\n${command_errors}\n${command_output}")
+endif()
+message("${command_total}")
