@@ -1,19 +1,16 @@
-/* Standard output through the C library's stdout, which buffers it (line by line on a terminal). A line is one write, so lines stay
- * whole across threads; the buffer is flushed at exit, before standard error and before the scheduler blocks. Output of a task under a test capture goes to that capture's buffer
- * instead. */
+/* Standard output through the C library's stdout, which buffers it (line by line on a terminal). The
+ * buffer is flushed at exit, before standard error and before the scheduler blocks. Output of a task under a test
+ * capture goes to that capture's buffer instead. */
 #include "runtime/io/stdout.h"
 
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdio.h>
 
-#include "base/alloc.h"
 #include "base/list.h"
 #include "runtime/core/fault_kept.h"
 #include "runtime/core/task.h"
 #include "runtime/sys/spin.h"
-
-enum { LINE_STACK = 1024 };
 
 MS_LIST_DEFINE(ByteBuffer, byte_buffer, uint8_t)
 
@@ -85,20 +82,8 @@ void ms_stdout_write(MsSpan data, MsSpan end) {
   if (capture != 0 && capture_append(capture, data, end)) {
     return;
   }
-  /* One write, so lines of different threads cannot interleave: the C library buffers (line by line on a terminal) and
-   * locks the stream for it. The line ending joins the text in a stack buffer, or a heap block for a long line. */
-  if (end.len == 0) {
-    write_out(data);
-    return;
-  }
-  uint8_t stack[LINE_STACK];
-  uint8_t *line = data.len + end.len <= sizeof stack ? stack : ms_alloc(data.len + end.len);
-  __builtin_memcpy(line, data.ptr, data.len);
-  __builtin_memcpy(line + data.len, end.ptr, end.len);
-  write_out(ms_span_of(line, data.len + end.len));
-  if (line != stack) {
-    ms_free(line);
-  }
+  write_out(data);
+  write_out(end);
 }
 
 void msrt_io_write_stdout(const MsString *text) { ms_stdout_write(ms_string_span(text), ms_span_of(NULL, 0)); }
