@@ -8,11 +8,14 @@
  * can be compared function by function (compiler/tests/lower-diff.sh). Files that fail to parse
  * or import project modules print nothing. Output: `=== path`, then one `fn` block per function.
  * With `--run` it prints what mir_run.h computes for each lowered function instead.
+ * With MS_LOWER_RUN_OUT=PATH the text mode also writes what `--run` would print to PATH, from the same lowering.
  * ms_lower_dump --run-mir FILE: the same for every module in a Rust oracle dump (`=== path`
  * sections of MIR text), so the two can be compared where the text differs by design. */
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "dump_io.h"
 #include "ms/check.h"
@@ -20,7 +23,7 @@
 #include "ms/desugar.h"
 #include "ms/methods.h"
 #include "ms/program.h"
-#include "ms/rt_ops.h"
+#include "ms/mir_opt.h"
 #include "ms/ownership.h"
 #include "ms/mir_analysis.h"
 #include "ms/mir_pass.h"
@@ -46,15 +49,26 @@ static void print_list_consts(const MirModule *mir) {
     }
 }
 
-static void note_divergent_stmt(void *flag, const MsStmt *s) {
+/* What a function holds that C lowers its own way: a loop or `match`, or a `var` that a `return name` hands out (Rust
+ * wraps such a `var` in an Optional to move it out, C moves the value the `var` holds). */
+typedef struct Divergence {
+    bool found;
+    bool has_var;
+    bool returns_name;
+} Divergence;
+
+static void note_divergent_stmt(void *ctx, const MsStmt *s) {
+    Divergence *d = ctx;
     if (s->kind == MS_S_WHILE || s->kind == MS_S_FOR) {
-        *(bool *)flag = true;
+        d->found = true;
     }
+    d->has_var = d->has_var || (s->kind == MS_S_BIND && s->u.bind.is_mutable);
+    d->returns_name = d->returns_name || (s->kind == MS_S_RETURN && s->u.expr != NULL && s->u.expr->kind == MS_E_NAME);
 }
 
-static void note_divergent_expr(void *flag, const MsExpr *e) {
+static void note_divergent_expr(void *ctx, const MsExpr *e) {
     if (e->kind == MS_E_MATCH) {
-        *(bool *)flag = true;
+        ((Divergence *)ctx)->found = true;
     }
 }
 
@@ -72,35 +86,16 @@ static bool has_back_edge(const MirFunc *f) {
     return false;
 }
 
-/* Whether `f` calls a runtime function that returns a view of its receiver (`String.view`): Rust lowers that call
- * through a generated fast-path function, which C leaves to its optimizer passes, so the text differs by design. */
-static bool calls_borrowing_native(const MirModule *m, const MirFunc *f) {
-    for (uint32_t b = 0; b < f->nblocks; b++) {
-        for (uint32_t i = 0; i < f->blocks[b].ninsts; i++) {
-            const MirInst *inst = &f->blocks[b].insts[i];
-            if (inst->op != MOP_CallRt || inst->imm.tag != MI_EXT) {
-                continue;
-            }
-            const MsStr name = ms_name(&m->names, m->externs[inst->imm.a].name);
-            const MsRtFn *fn = ms_rt_fn_find((const char *)name.ptr, name.len);
-            if (fn != NULL && fn->borrows) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 /* Whether the function called `name` in `module` holds one. */
 static bool function_diverges(const MsNames *names, const MsModule *module, MsStr name) {
     for (uint32_t i = 0; i < module->ndecls; i++) {
         const MsDecl *d = module->decls[i];
         const MsStr own = d->kind == MS_D_FN ? ms_name(names, d->u.fn.name) : (MsStr){0};
         if (own.len == name.len && own.len != 0 && memcmp(own.ptr, name.ptr, name.len) == 0) {
-            bool flag = false;
-            const MsVisitor visitor = {.ctx = &flag, .stmt = note_divergent_stmt, .expr = note_divergent_expr};
+            Divergence found = {0};
+            const MsVisitor visitor = {.ctx = &found, .stmt = note_divergent_stmt, .expr = note_divergent_expr};
             ms_walk_decl(&visitor, d);
-            return flag;
+            return found.found || (found.has_var && found.returns_name);
         }
     }
     return false;
@@ -128,6 +123,24 @@ static bool verify_module(const MirModule *mir, const char *path) {
     }
     mir_verify_errors_free(&errors);
     return ok;
+}
+
+static int run_out_fd = -1; /* MS_LOWER_RUN_OUT: where the text mode also writes the `--run` output */
+
+/* Runs the module's functions with the interpreter's output going to `run_out_fd`. */
+static void run_module_to_file(MirModule *mir, const char *path) {
+    if (mir_expand_owned_needed(mir)) {
+        (void)mir_expand_owned(mir); // the interpreter has no owned shorthands (`alt.take`)
+    }
+    (void)fflush(stdout);
+    const int saved = dup(STDOUT_FILENO);
+    if (saved < 0 || dup2(run_out_fd, STDOUT_FILENO) < 0) {
+        return;
+    }
+    run_module(mir, path);
+    (void)fflush(stdout);
+    (void)dup2(saved, STDOUT_FILENO);
+    (void)close(saved);
 }
 
 static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const char *path, bool run) {
@@ -178,11 +191,14 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
             MsBuf out = {0};
             mir_print_func(&mir, &mir.funcs[i], &out);
-            if (function_diverges(names, module, ms_name(&mir.names, mir.funcs[i].name)) || has_back_edge(&mir.funcs[i]) || calls_borrowing_native(&mir, &mir.funcs[i])) {
+            if (function_diverges(names, module, ms_name(&mir.names, mir.funcs[i].name)) || has_back_edge(&mir.funcs[i])) {
                 printf("; divergent\n");
             }
             printf("%.*s\n", (int)out.len, (const char *)out.data);
             ms_buf_free(&out);
+        }
+        if (!run && run_out_fd >= 0) {
+            run_module_to_file(&mir, path); // after the text: running expands the owned shorthands
         }
         mir_module_free(&mir);
     }
@@ -254,7 +270,7 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
             for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
                 MsBuf out = {0};
                 mir_print_func(&mir, &mir.funcs[i], &out);
-                if (program_function_diverges(names, modules, graph.count, ms_name(&mir.names, mir.funcs[i].name)) || has_back_edge(&mir.funcs[i]) || calls_borrowing_native(&mir, &mir.funcs[i])) {
+                if (program_function_diverges(names, modules, graph.count, ms_name(&mir.names, mir.funcs[i].name)) || has_back_edge(&mir.funcs[i])) {
                     printf("; divergent\n");
                 }
                 printf("%.*s\n", (int)out.len, (const char *)out.data);
@@ -350,8 +366,15 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verified = true;
+    const char *run_out = getenv("MS_LOWER_RUN_OUT");
+    if (run_out != NULL && !run) {
+        run_out_fd = open(run_out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    }
     for (int i = run ? 3 : 2; i < argc; i++) {
         verified = lower_file(&check, &syntax, &names, argv[i], run) && verified;
+    }
+    if (run_out_fd >= 0) {
+        (void)close(run_out_fd);
     }
     ms_check_free(&check);
     ms_arena_free(&syntax);

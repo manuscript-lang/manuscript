@@ -92,16 +92,6 @@ pub enum HelperKey {
         in_slot: bool,
     },
     Thunk(FuncId, MTy),
-    /// The inlinable fast path of `String.view`.
-    StringView,
-    /// The inlinable fast path of `String.slice`.
-    StringSlice,
-    /// The inlinable fast path of `Bytes.view`, for the `Bytes` type.
-    BytesView(MTy),
-    StrFast(crate::rtstr::StrFn),
-    /// The inlinable fixed-width `Bytes` read.
-    BytesReadWord,
-    BytesIndexOfByte,
     /// The close of an owner whose failure is dropped: a function of its own, by the type it closes.
     CloseSilent(MTy, crate::close::CloseKind),
     /// The close of a loop's cursor over an owned list of the given type, closing the elements it

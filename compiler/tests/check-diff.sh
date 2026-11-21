@@ -181,6 +181,16 @@ if ! grep -q 'body_generic_receiver_interface.ms 17:1$' "$out/bodies.keys"; then
     echo "FAIL bodies: a generic type given for an interface is no longer checked in C (compiler/tests/scope/body_generic_receiver_interface.ms)"
     status=1
 fi
+# A type variable given where another type is expected, and the reverse, are reported in C.
+if ! grep -q 'body_variable_mismatch.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_variable_mismatch.ms 4:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a type variable used as another type is no longer checked in C (compiler/tests/scope/body_variable_mismatch.ms)"
+    status=1
+fi
+# A loop over a list whose element is a type variable is checked in C.
+if ! grep -q 'body_for_variable_list.ms 1:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a loop over a list of a type variable is no longer checked in C (compiler/tests/scope/body_for_variable_list.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else

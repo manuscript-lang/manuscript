@@ -1018,11 +1018,28 @@ pub enum ExternRole {
     MapProbeStr,
     /// The same for a `Set[Int]`.
     SetProbeInt,
+    /// `String.slice`: the `viewfast` pass runs a short or ASCII piece in the caller. It returns the
+    /// copy; the runtime function takes the address of the result.
+    StringSlice,
+    /// `Bytes` fixed-width read: the `bytesfast` pass loads little-endian words in the caller.
+    BytesReadWord,
+    /// `Bytes.index_of_byte`: the `bytesfast` pass searches the next sixteen bytes in the caller.
+    BytesIndexOfByte,
+    /// String fast paths the `strfast` pass runs in the caller: `parse_int`, a one-byte `contains`,
+    /// the affix tests, `compare` and the scalar reads. What each answers follows from its role.
+    StringParseInt,
+    StringContains,
+    StringStartsWith,
+    StringEndsWith,
+    StringCompare,
+    StringScalarStep,
+    StringScalarAt,
 }
 
 impl ExternRole {
     /// The attribute spelling in textual MIR; `None` has none.
     pub const NAMES: &'static [(ExternRole, &'static str)] = &[
+        (ExternRole::BorrowsArgument, "borrows_argument"),
         (ExternRole::StrBuilderAppend, "strbuilder_append"),
         (ExternRole::StrBuilderAppendInt, "strbuilder_append_int"),
         (ExternRole::StringConcat, "string_concat"),
@@ -1050,6 +1067,16 @@ impl ExternRole {
         (ExternRole::MapProbeInt, "map_probe_int"),
         (ExternRole::MapProbeStr, "map_probe_str"),
         (ExternRole::SetProbeInt, "set_probe_int"),
+        (ExternRole::StringSlice, "string_slice"),
+        (ExternRole::BytesReadWord, "bytes_read_word"),
+        (ExternRole::BytesIndexOfByte, "bytes_index_of_byte"),
+        (ExternRole::StringParseInt, "string_parse_int"),
+        (ExternRole::StringContains, "string_contains"),
+        (ExternRole::StringStartsWith, "string_starts_with"),
+        (ExternRole::StringEndsWith, "string_ends_with"),
+        (ExternRole::StringCompare, "string_compare"),
+        (ExternRole::StringScalarStep, "string_scalar_step"),
+        (ExternRole::StringScalarAt, "string_scalar_at"),
     ];
 
     /// The textual attribute of this role.

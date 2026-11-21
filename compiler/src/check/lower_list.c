@@ -50,11 +50,17 @@ LbVal lst_index(Lb *lb, const MsExpr *e) {
     if (!ms_expr_index(e, &left, &at)) {
         return LB_UNSUPPORTED(lb);
     }
+    return lst_get(lb, left, at);
+}
+
+/* `list[at]` and `bytes.get(at)`: one element read in place. */
+LbVal lst_get(Lb *lb, const MsExpr *left, const MsExpr *at) {
     const LbVal list = lb_expr(lb, left);
     if (lb->ok && lb_is_map(lb, mir_b_ty(&lb->b, list.v))) {
         return lm_index(lb, list, at);
     }
-    if (!lb->ok || !lb_is_list(lb, mir_b_ty(&lb->b, list.v))) {
+    const bool bytes = lb->ok && mir_b_ty(&lb->b, list.v) == MIR_BYTES;
+    if (!lb->ok || !(bytes || lb_is_list(lb, mir_b_ty(&lb->b, list.v)))) {
         return LB_UNSUPPORTED(lb);
     }
     const LbVal index = lb_expr(lb, at);
@@ -62,7 +68,7 @@ LbVal lst_index(Lb *lb, const MsExpr *e) {
         return LB_FAIL;
     }
     const MirValue args[2] = {list.v, index.v};
-    const MirTy element = mir_ty_data(lb->m, mir_b_ty(&lb->b, list.v))->elem;
+    const MirTy element = bytes ? MIR_UINT8 : mir_ty_data(lb->m, mir_b_ty(&lb->b, list.v))->elem;
     const MirValue item = mir_b_emit(&lb->b, MOP_ListGet, args, 2, (MirImm){0}, element);
     if (list.owned) {
         lb_drop(lb, list.v);
