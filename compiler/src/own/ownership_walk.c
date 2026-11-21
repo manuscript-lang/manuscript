@@ -1127,9 +1127,29 @@ static uint32_t own_borrowed_name(const OwnWalk *w, const MsStmt *s, uint32_t bi
     return same_type && allowed && kept ? source : MS_NONE;
 }
 
+typedef struct Scrutinee {
+    bool owned;
+    uint32_t origin;
+    bool deferred;
+} Scrutinee;
+
+/* A call of a native whose result points into its receiver local (`s.chars()`): what it yields is the
+ * receiver's, so the receiver stays unchanged while the result is in use. */
+static Scrutinee own_borrowed_call(OwnWalk *w, const MsExpr *e) {
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    own_expr(w, e, DEMAND_READ);
+    return (Scrutinee){false, own_resolve(w, w->facts->res_ref[receiver->id]), false};
+}
+
 /* `x := f(a)` where `f` returns a reference into `a`: the binding borrows it like a name. */
 static bool own_bind_borrowed_call(OwnWalk *w, const MsStmt *s, uint32_t binding) {
     const MsExpr *value = s->u.bind.value;
+    if (value->kind == MS_E_CALL && w->facts->call_borrows[value->id]) {
+        const Scrutinee source = own_borrowed_call(w, value);
+        own_declare_borrow(w, binding, source.origin, s->u.bind.pattern->pos, "binding of a part of it");
+        w->facts->bindings.flags[binding] |= MS_BIND_BORROWS;
+        return true;
+    }
     const OwnSummary *callee = value->kind == MS_E_CALL ? own_callee(w, value) : NULL;
     uint32_t origins[4];
     uint32_t count = 0;
@@ -1388,20 +1408,6 @@ static void own_block(OwnWalk *w, const MsStmts *body) {
 
 /* What a matched value is: owned (moved in, so its parts are too) or a place read in place, whose
  * parts borrow from `origin`. `deferred` marks a parameter that moving a part would consume. */
-typedef struct Scrutinee {
-    bool owned;
-    uint32_t origin;
-    bool deferred;
-} Scrutinee;
-
-/* A call of a native whose result points into its receiver local (`s.chars()`): what it yields is the
- * receiver's, so the receiver stays unchanged while the result is in use. */
-static Scrutinee own_borrowed_call(OwnWalk *w, const MsExpr *e) {
-    const MsExpr *receiver = e->u.call.callee->u.member.left;
-    own_expr(w, e, DEMAND_READ);
-    return (Scrutinee){false, own_resolve(w, w->facts->res_ref[receiver->id]), false};
-}
-
 static Scrutinee own_scrutinee(OwnWalk *w, const MsExpr *e) {
     if (e->kind == MS_E_CALL && w->facts->call_borrows[e->id]) {
         return own_borrowed_call(w, e);
