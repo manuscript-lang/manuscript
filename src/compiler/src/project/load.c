@@ -450,7 +450,7 @@ static void load_free(GraphLoader *l) {
     ms_buf_free(&l->failures);
 }
 
-static bool load_graph(MsArena *a, MsNames *names, const char *filename, const MsOverlay *overlay, MsGraph *out, MsProjectError *err);
+static bool load_graph(MsArena *a, MsNames *names, const char *filename, const MsOverlay *overlay, const MsLoadTests *tests, MsGraph *out, MsProjectError *err);
 
 /* The packages of a project, which the loader hands on to the caller. */
 static bool load_attach(MsArena *a, MsProject *project, MsProjectError *err) {
@@ -458,7 +458,7 @@ static bool load_attach(MsArena *a, MsProject *project, MsProjectError *err) {
 }
 
 bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err) {
-    if (!load_graph(a, names, filename, NULL, out, err)) {
+    if (!load_graph(a, names, filename, NULL, NULL, out, err)) {
         return false;
     }
     if (out->package_count > 0) {
@@ -469,11 +469,15 @@ bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *
 }
 
 bool ms_project_load_packages(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err) {
-    return load_graph(a, names, filename, NULL, out, err);
+    return load_graph(a, names, filename, NULL, NULL, out, err);
 }
 
 bool ms_project_load_overlay(MsArena *a, MsNames *names, const char *filename, const MsOverlay *overlay, MsGraph *out, MsProjectError *err) {
-    return load_graph(a, names, filename, overlay, out, err);
+    return load_graph(a, names, filename, overlay, NULL, out, err);
+}
+
+bool ms_project_load_tests(MsArena *a, MsNames *names, const char *filename, const MsLoadTests *tests, MsGraph *out, MsProjectError *err) {
+    return load_graph(a, names, filename, NULL, tests, out, err);
 }
 
 /* A manifest that cannot be read is the graph's one diagnostic, named by the entry's path from the project root. */
@@ -500,7 +504,43 @@ static void load_packages(MsArena *a, const MsProject *project, MsGraph *out) {
     }
 }
 
-static bool load_graph(MsArena *a, MsNames *names, const char *filename, const MsOverlay *overlay, MsGraph *out, MsProjectError *err) {
+/* Visits each of `files` as an extra entry of a test build, in order. A file that does not load is one more diagnostic;
+ * the graph keeps what loaded. */
+static void load_add_files(GraphLoader *l, const char *const *files, uint32_t count) {
+    for (uint32_t i = 0; i < count; i++) {
+        const char *canonical;
+        MsProjectError failure;
+        LoadFailure fail;
+        int32_t module;
+        if (!ms_project_source_path_overlay(l->arena, l->root, files[i], &l->overlay, &canonical, &failure)) {
+            load_report(l, load_from_error(l->arena, files[i], &failure));
+        } else if (!load_visit(l, ms_intern_cstr(&l->paths, canonical), &module, &fail)) {
+            load_report(l, load_diag_of(l, &fail, files[i], load_start));
+        }
+    }
+}
+
+/* The directory a test build without a manifest takes as its root: the entry's, moved up until every extra file lies
+ * below it. */
+static bool load_common_root(MsArena *a, const char *root, const char *const *files, uint32_t count, const char **out,
+                             MsProjectError *err) {
+    const char *current = root;
+    for (uint32_t i = 0; i < count; i++) {
+        const char *dir = ms_path_dir(a, files[i]);
+        const char *rel;
+        while (!(ms_path_rel(a, current, dir, &rel, err) && !ms_path_escapes(rel))) {
+            const char *parent = ms_path_dir(a, current);
+            if (strcmp(parent, current) == 0) {
+                break;
+            }
+            current = parent;
+        }
+    }
+    *out = current;
+    return true;
+}
+
+static bool load_graph(MsArena *a, MsNames *names, const char *filename, const MsOverlay *overlay, const MsLoadTests *tests, MsGraph *out, MsProjectError *err) {
     *out = (MsGraph){0};
     MsProjectError failure;
     const char *absolute;
@@ -529,7 +569,7 @@ static bool load_graph(MsArena *a, MsNames *names, const char *filename, const M
         config = &project;
         root = project.root;
         if (is_manifest) {
-            if (project.entry[0] == 0) {
+            if (project.entry[0] == 0 && tests == NULL) {
                 ms_project_error_unsupported(err, "a library manifest");
                 return false;
             }
@@ -539,6 +579,26 @@ static bool load_graph(MsArena *a, MsNames *names, const char *filename, const M
             out->manifest_pos = project.location;
         } else {
             project.entry = absolute;
+        }
+    }
+    /* A test build's extra files, absolute and canonical; without a manifest the root moves up to hold them all. */
+    const char **extras = NULL;
+    const uint32_t nextras = tests != NULL ? tests->count : 0;
+    if (nextras != 0) {
+        extras = MS_NEW_N(a, const char *, nextras);
+        for (uint32_t i = 0; i < nextras; i++) {
+            const char *abs;
+            if (!ms_path_abs(a, tests->extra[i], &abs, &failure) || !ms_path_eval_symlinks(a, abs, &extras[i], &failure)) {
+                out->source_root = root;
+                out->diagnostics = MS_NEW(a, MsGraphDiag);
+                out->diagnostics[0] = load_from_error(a, filename, &failure);
+                out->ndiagnostics = 1;
+                return true;
+            }
+        }
+        if (config == NULL && !load_common_root(a, root, extras, nextras, &root, &failure)) {
+            *err = failure;
+            return false;
         }
     }
     out->source_root = root;
@@ -561,12 +621,30 @@ static bool load_graph(MsArena *a, MsNames *names, const char *filename, const M
     }
     int32_t module;
     LoadFailure fail;
-    if (load_visit(&l, ms_intern_cstr(&l.paths, entry), &module, &fail)) {
+    const bool no_entry = config != NULL && config->entry[0] == 0; /* a library, loaded for its tests */
+    if (no_entry) {
+        /* nothing to visit first */
+    } else if (load_visit(&l, ms_intern_cstr(&l.paths, entry), &module, &fail)) {
         out->entry = ((MsGraphModule *)ms_buf_items(&l.modules))[module].name;
     } else {
         /* An incomplete strict graph cannot be checked. */
         l.modules.len = 0;
         load_report(&l, load_diag_of(&l, &fail, filename, load_start));
+        load_finish(&l, out);
+        load_free(&l);
+        return true;
+    }
+    if (tests != NULL) {
+        load_add_files(&l, (const char *const *)extras, nextras);
+        if (config != NULL && is_manifest) {
+            const char **found;
+            uint32_t nfound;
+            if (!ms_project_discover(a, config, no_entry, &found, &nfound, &failure)) {
+                load_report(&l, load_from_error(a, filename, &failure));
+            } else {
+                load_add_files(&l, found, nfound);
+            }
+        }
     }
     load_finish(&l, out);
     load_free(&l);

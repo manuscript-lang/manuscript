@@ -17,6 +17,7 @@ typedef struct MsCheckRun {
     MsModId *ids;
     MsReport *reports;
     size_t nreports;
+    const MsLoadTests *tests; /* set before loading: a test build, which has no `main` to require */
     bool load_failed; /* the graph holds the diagnostics of the load, and nothing was checked */
 } MsCheckRun;
 

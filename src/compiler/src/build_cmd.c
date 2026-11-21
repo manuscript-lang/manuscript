@@ -17,8 +17,19 @@
 #include "ms/mir_pass.h"
 #include "ms/program.h"
 
-/* The line of the lowering's refusals that names `main` (the program's own place and why), else the first. */
-static void build_refusal(const MsBuf *refused, MsBuf *out) {
+static bool build_line_has(const char *line, size_t length, const char *needle) {
+    const size_t n = strlen(needle);
+    for (size_t i = 0; i + n <= length; i++) {
+        if (memcmp(line + i, needle, n) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The line of the lowering's refusals that names `main` (the program's own place and why), else the first. A test build
+ * takes the first line of the test runner instead, which every test needs. */
+static void build_refusal(const MsBuf *refused, bool tests, MsBuf *out) {
     size_t start = 0, chosen = 0, chosen_len = 0;
     bool found = false;
     while (start < refused->len) {
@@ -26,7 +37,8 @@ static void build_refusal(const MsBuf *refused, MsBuf *out) {
         while (end < refused->len && refused->data[end] != '\n') {
             end++;
         }
-        const bool is_main = end - start > 5 && memcmp(refused->data + start, "main\t", 5) == 0;
+        const bool is_main = tests ? build_line_has((const char *)refused->data + start, end - start, "test_runner.ms:")
+                                   : end - start > 5 && memcmp(refused->data + start, "main\t", 5) == 0;
         if (!found && (is_main || start == 0)) {
             chosen = start;
             chosen_len = end - start;
@@ -38,18 +50,24 @@ static void build_refusal(const MsBuf *refused, MsBuf *out) {
 }
 
 /* The program's MIR text after the pipeline's first step, or NULL and why. */
-static const char *build_mir_text(MsCheckRun *run, MsBuf *text, MsBuf *err) {
+static const char *build_mir_text(MsCheckRun *run, uint8_t tests, MsBuf *text, MsBuf *names, MsBuf *err) {
     MsCheck *check = &run->check;
+    if (tests != 0) {
+        ms_program_reach_bundled(check, "@std/internal/test_runner.ms");
+    }
     (void)ms_program_check_bundled(check);
     MirModule mir;
     mir_module_init(&mir);
-    const MsModId entry = run->ids[run->graph.count - 1];
     MsBuf refused = {0};
-    (void)ms_lower_program_why(check, entry, &mir, &refused);
+    if (tests != 0) {
+        (void)ms_lower_tests_why(check, run->ids, run->graph.count, tests == 2, &mir, names, &refused);
+    } else {
+        (void)ms_lower_program_why(check, run->ids[run->graph.count - 1], &mir, &refused);
+    }
     const char *why = NULL;
     if (mir.entry == MIR_NONE) {
-        why = "a program the C lowering does not cover";
-        build_refusal(&refused, err); /* what the census shows beside the reason */
+        why = tests != 0 ? "tests the C lowering does not cover" : "a program the C lowering does not cover";
+        build_refusal(&refused, tests != 0, err); /* what the census shows beside the reason */
     } else {
         const MirPipelineOptions options = {.checks = true, .verify = true};
         if (!mir_pipeline_prepare(&mir, &options, err)) {
@@ -125,24 +143,75 @@ static int build_object_and_link(const MsBuildRequest *request, const MsBuf *mir
     return status;
 }
 
+/* `<output>.tests`: the source root, the project root and each test's identity, which `ms test` reads. */
+static bool build_write_listing(const MsBuildRequest *request, const MsGraph *graph, const MsBuf *names) {
+    char path[4096], staged[4096];
+    if (snprintf(path, sizeof path, "%s.tests", request->output) >= (int)sizeof path ||
+        snprintf(staged, sizeof staged, "%s.part", path) >= (int)sizeof staged) {
+        return false;
+    }
+    MsBuf text = {0};
+    ms_buf_printf(&text, "%s\n%s\n", graph->source_root != NULL ? graph->source_root : "", graph->project_root != NULL ? graph->project_root : "");
+    ms_buf_put(&text, names->data, names->len);
+    const bool ok = ms_build_write(staged, text.data, text.len) && rename(staged, path) == 0;
+    ms_buf_free(&text);
+    return ok;
+}
+
+/* The lines of `text` as an array, for the loader's extra files; NULL entries end nothing: `count` says how many. */
+static const char **build_split_lines(MsArena *a, const char *text, uint32_t *count) {
+    *count = 0;
+    if (text == NULL || text[0] == 0) {
+        return NULL;
+    }
+    uint32_t lines = 1;
+    for (const char *p = text; *p != 0; p++) {
+        lines += *p == '\n' ? 1u : 0u;
+    }
+    const char **out = MS_NEW_N(a, const char *, lines);
+    const char *start = text;
+    for (const char *p = text;; p++) {
+        if (*p == '\n' || *p == 0) {
+            if (p > start) {
+                out[(*count)++] = ms_arena_strndup(a, start, (size_t)(p - start));
+            }
+            start = p + 1;
+        }
+        if (*p == 0) {
+            break;
+        }
+    }
+    return out;
+}
+
 int ms_build_program(const MsStdFile *std_files, uint32_t nstd, const MsBuildRequest *request, MsBuf *err,
                      const char **handover_reason) {
     MsCheckRun run = {0};
     ms_names_init(&run.names);
     int status = MS_BUILD_HANDOVER;
+    MsLoadTests load = {0};
+    if (request->tests != 0) {
+        load.extra = (const char *const *)build_split_lines(&run.arena, request->extra, &load.count);
+        run.tests = &load;
+    }
     const char *why = ms_check_load(&run, std_files, nstd, request->target);
     why = why != NULL ? why : ms_check_diagnose(&run);
     if (why == NULL && (run.load_failed || run.nreports != 0)) {
         why = "a diagnostic, which the Rust command renders";
     }
-    MsBuf mir = {0};
-    why = why != NULL ? why : build_mir_text(&run, &mir, err);
+    MsBuf mir = {0}, names = {0};
+    why = why != NULL ? why : build_mir_text(&run, request->tests, &mir, &names, err);
     if (why == NULL) {
         status = build_object_and_link(request, &mir, err);
+        if (status == 0 && request->tests != 0 && !build_write_listing(request, &run.graph, &names)) {
+            ms_buf_printf(err, "cannot write %s.tests", request->output);
+            status = 1;
+        }
     } else if (handover_reason != NULL) {
         *handover_reason = why;
     }
     ms_buf_free(&mir);
+    ms_buf_free(&names);
     ms_check_run_free(&run);
     return status;
 }

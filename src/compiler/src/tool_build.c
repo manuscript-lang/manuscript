@@ -29,10 +29,11 @@ static char *copy_path(const ms_str *text) {
     return path;
 }
 
-uint8_t ms_tool_build(const ms_str *target, const ms_str *output, const ms_str *runtime, const ms_str *tools,
-                      const ms_str *lld, const ms_str *files, uint8_t release, ms_list *out, ms_str *message_out) {
-    (void)out; /* nothing to return: the executable is the result */
-    char *paths[6] = {copy_path(target), copy_path(output), copy_path(runtime), copy_path(tools), copy_path(lld), copy_path(files)};
+static uint8_t tool_build(const ms_str *target, const ms_str *output, const ms_str *runtime, const ms_str *tools,
+                          const ms_str *lld, const ms_str *files, uint8_t release, uint8_t tests, const ms_str *extra,
+                          ms_str *message_out) {
+    char *paths[7] = {copy_path(target), copy_path(output), copy_path(runtime), copy_path(tools), copy_path(lld), copy_path(files),
+                      extra != NULL ? copy_path(extra) : NULL};
     bool complete = true;
     for (size_t i = 0; i < 6; i++) {
         complete = complete && paths[i] != NULL;
@@ -43,7 +44,8 @@ uint8_t ms_tool_build(const ms_str *target, const ms_str *output, const ms_str *
     MsBuf err = {0};
     if (complete) {
         const MsBuildRequest request = {.target = paths[0], .output = paths[1], .runtime = paths[2], .tools = paths[3],
-                                        .lld = paths[4], .files = paths[5], .release = release != 0, .version = MS_VERSION};
+                                        .lld = paths[4], .files = paths[5], .release = release != 0, .version = MS_VERSION,
+                                        .tests = tests, .extra = paths[6]};
         uint32_t nstd = 0;
         const MsStdFile *std_files = ms_std_embedded(&nstd);
         const char *reason = "not covered by the C build";
@@ -71,8 +73,21 @@ uint8_t ms_tool_build(const ms_str *target, const ms_str *output, const ms_str *
         ms_string_new((const uint8_t *)text, length, message_out);
     }
     ms_buf_free(&err);
-    for (size_t i = 0; i < 6; i++) {
+    for (size_t i = 0; i < 7; i++) {
         free(paths[i]);
     }
     return result;
+}
+
+uint8_t ms_tool_build(const ms_str *target, const ms_str *output, const ms_str *runtime, const ms_str *tools,
+                      const ms_str *lld, const ms_str *files, uint8_t release, ms_list *out, ms_str *message_out) {
+    (void)out; /* nothing to return: the executable is the result */
+    return tool_build(target, output, runtime, tools, lld, files, release, 0, NULL, message_out);
+}
+
+uint8_t ms_tool_build_tests(const ms_str *target, const ms_str *output, const ms_str *runtime, const ms_str *tools,
+                            const ms_str *lld, const ms_str *files, uint8_t release, uint8_t bench, const ms_str *extra,
+                            ms_list *out, ms_str *message_out) {
+    (void)out;
+    return tool_build(target, output, runtime, tools, lld, files, release, bench != 0 ? 2 : 1, extra, message_out);
 }

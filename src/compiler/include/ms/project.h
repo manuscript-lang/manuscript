@@ -315,6 +315,15 @@ MS_NODISCARD bool ms_project_load_packages(MsArena *a, MsNames *names, const cha
  * naming files that exist only there. `overlay` may be NULL. */
 MS_NODISCARD bool ms_project_load_overlay(MsArena *a, MsNames *names, const char *filename, const MsOverlay *overlay, MsGraph *out, MsProjectError *err);
 
+/* The extra source files of a test build (`ms test A.ms B.ms`). */
+typedef struct MsLoadTests {
+    const char *const *extra;
+    uint32_t count;
+} MsLoadTests;
+/* Like ms_project_load_packages for a test build: the extra files are entries too, and the tests of a manifest's project
+ * are discovered (with every source file of a library, which has no entry). */
+MS_NODISCARD bool ms_project_load_tests(MsArena *a, MsNames *names, const char *filename, const MsLoadTests *tests, MsGraph *out, MsProjectError *err);
+
 /* ---- checking a graph (project/graph_check.c) ---- */
 
 /* Adds each module of the graph to the checker, in graph order, with its imports resolved to the modules they name

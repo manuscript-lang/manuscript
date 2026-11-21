@@ -481,6 +481,9 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
         }
     }
     changed = lm_lower(lb, nrows, method_failed, lowered) || changed;
+    if (lb->testing) {
+        lt_lower(lb);
+    }
     return lb_drain_instances(lb, lowered) || changed;
 }
 
@@ -507,11 +510,13 @@ static uint32_t lb_entry_main(const Lb *lb, MsModId entry) {
 
 /* `program`: `modules[0]` holds the program's `main`, which becomes the module's entry. */
 static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nmodules, bool program, MirModule *out,
-                                 MsBuf *why) {
+                                 MsBuf *why, const LbTestBuild *build) {
     Lb lb = {.c = c,
              .mut = c,
              .m = out,
              .why = why,
+             .testing = build != NULL,
+             .bench = build != NULL && build->bench,
              .first_pass = true,
              .int_ty = ms_check_primitive(c, "Int"),
              .float_ty = ms_check_primitive(c, "Float"),
@@ -555,6 +560,9 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
         if (user != MIR_NONE) {
             lb_set_entry(&lb, user);
         }
+        if (build != NULL && lb.func_of != NULL) {
+            (void)lt_entry(&lb, build->names);
+        }
         ms_classifier_free(lb.classifier);
         free(method_failed);
     }
@@ -572,7 +580,7 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
 }
 
 uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
-    return lb_lower_modules(c, &module, 1, false, out, NULL);
+    return lb_lower_modules(c, &module, 1, false, out, NULL, NULL);
 }
 
 /* Appends `module` and then the project modules it imports, each once, in import order: the order
@@ -611,7 +619,33 @@ uint32_t ms_lower_program_why(MsCheck *c, MsModId entry, MirModule *out, MsBuf *
         }
     }
     free(seen);
-    const uint32_t lowered = lb_lower_modules(c, modules, n, true, out, why);
+    const uint32_t lowered = lb_lower_modules(c, modules, n, true, out, why, NULL);
     free(modules);
+    return lowered;
+}
+
+uint32_t ms_lower_tests_why(MsCheck *c, const MsModId *modules, uint32_t nmodules, bool bench, MirModule *out, MsBuf *names,
+                            MsBuf *why) {
+    bool *seen = calloc((size_t)c->nmods + 1, sizeof *seen);
+    MsModId *all = calloc((size_t)c->nmods + 1, sizeof *all);
+    if (seen == NULL || all == NULL) {
+        free(seen);
+        free(all);
+        return 0;
+    }
+    uint32_t n = 0;
+    for (uint32_t i = 0; i < nmodules; i++) { // the project's modules first, in the graph's order
+        seen[modules[i]] = true;
+        all[n++] = modules[i];
+    }
+    for (uint32_t i = 0; i < c->nmods; i++) {
+        if (!seen[i]) {
+            all[n++] = i; // the standard library's modules, which no import target names
+        }
+    }
+    const LbTestBuild build = {.bench = bench, .names = names};
+    const uint32_t lowered = lb_lower_modules(c, all, n, false, out, why, &build);
+    free(seen);
+    free(all);
     return lowered;
 }

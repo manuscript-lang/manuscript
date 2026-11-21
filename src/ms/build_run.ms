@@ -32,6 +32,18 @@ extern fn ms_tool_build(
 	release: Bool,
 ) List[String]!BuildError
 
+extern fn ms_tool_build_tests(
+	target: String,
+	output: String,
+	runtime: String,
+	tools: String,
+	lld: String,
+	files: String,
+	release: Bool,
+	bench: Bool,
+	extra: String,
+) List[String]!BuildError
+
 // The tools directory, `lld`, the linker's files and the runtime archive, or none while
 // one is not named.
 fn tool_paths(env: Map[String, String]) List[String]?:
@@ -103,6 +115,42 @@ fn built_in_c(inv: Invocation, output: String) Built:
 		return Built.Rust
 
 	return Built.Done
+
+// Builds the tests of `inv`'s program into `output` (and `<output>.tests`) in C. False when the C
+// pipeline did not build them and the Rust command must: a diagnostic (Rust renders it), a test or
+// the runner the lowering does not cover, an option C does not read, a missing tool path.
+export fn build_tests_in_c(inv: Invocation, output: String, bench: Bool) Bool:
+	if bench or inv.static_libc or inv.watch or not inv.link.is_empty(): return false
+	if inv.tests.ops: return false
+
+	kind := inv.build_type_name.lower()
+	if kind != "" and kind != "debug" and kind != "release": return false
+
+	vars := environment()
+	if vars.is_error(): return false
+
+	env := vars.get()
+	paths := tool_paths(env)
+	if paths.is_none(): return false
+
+	extra := inv.targets.drop(1).join("\n")
+	built := ms_tool_build_tests(
+		inv.filename.clone(),
+		output.clone(),
+		paths.get()[3],
+		paths.get()[0],
+		paths.get()[1],
+		paths.get()[2],
+		kind == "release",
+		bench,
+		extra,
+	)
+
+	if built.is_error():
+		if env.contains("MS_DRIVER_TRACE"): trace(built.err())
+		return false
+
+	return true
 
 // The exit status, or none when the Rust command must run.
 export fn run_build(inv: Invocation) Int?:

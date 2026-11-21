@@ -27,4 +27,11 @@ uint32_t ms_lower_program(MsCheck *c, MsModId entry, MirModule *out);
  * `unhandled`. A caller of a refused function is listed too, at its call. */
 uint32_t ms_lower_program_why(MsCheck *c, MsModId entry, MirModule *out, MsBuf *why);
 
+/* The test build: `modules` (the checked program's, project modules first) lowered with each `test` block of a project
+ * module (a `bench` block, with `bench`) a function and the entry a runner over them. `names` receives each test's
+ * `module::name` identity, one per line, in index order. The entry is MIR_NONE when a test or the runner did not
+ * lower; `why` lists what did not. */
+uint32_t ms_lower_tests_why(MsCheck *c, const MsModId *modules, uint32_t nmodules, bool bench, MirModule *out, MsBuf *names,
+                            MsBuf *why);
+
 #endif

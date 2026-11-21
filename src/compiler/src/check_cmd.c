@@ -129,7 +129,9 @@ static const char *check_unported(const MsCheck *c, const MsModule *module) {
 const char *ms_check_load(MsCheckRun *run, const MsStdFile *std_files, uint32_t nstd, const char *target) {
     MsProjectError error = {0};
     MsGraph *graph = &run->graph;
-    if (!ms_project_load_packages(&run->arena, &run->names, target, graph, &error)) {
+    const bool loaded = run->tests != NULL ? ms_project_load_tests(&run->arena, &run->names, target, run->tests, graph, &error)
+                                           : ms_project_load_packages(&run->arena, &run->names, target, graph, &error);
+    if (!loaded) {
         return ms_project_error_is_unsupported(&error) ? "a project the loader does not read" : "the loader failed";
     }
     if (graph->ndiagnostics != 0) {
@@ -239,7 +241,7 @@ const char *ms_check_diagnose(MsCheckRun *run) {
     /* The entry module, when it has no diagnostic, must declare a `main` the runtime can start. */
     const uint32_t entry = graph->count - 1;
     MsCheckDiag entry_diag;
-    if (check->mods[run->ids[entry]].ndiags == 0 && ms_check_entry(check, run->ids[entry], true, &entry_diag)) {
+    if (run->tests == NULL && check->mods[run->ids[entry]].ndiags == 0 && ms_check_entry(check, run->ids[entry], true, &entry_diag)) {
         check_add_report(run, entry, &entry_diag);
     }
     return NULL;

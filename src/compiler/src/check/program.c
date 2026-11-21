@@ -106,6 +106,14 @@ static void program_add_bundled(MsCheck *c, MsStr path) {
     }
 }
 
+void ms_program_reach_bundled(MsCheck *c, const char *path) {
+    ms_program_desugar_bundled(c);
+    if (c->methods == NULL) {
+        ms_program_begin(c);
+    }
+    program_add_bundled(c, (MsStr){path, (uint32_t)strlen(path)});
+}
+
 bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
     ms_program_desugar_bundled(c);
     if (c->methods == NULL) {

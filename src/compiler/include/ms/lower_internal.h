@@ -16,6 +16,18 @@
 /* `type_of` of a record whose fields are being lowered: reaching it again means the record holds itself. */
 #define LB_TYPE_PENDING (MIR_NONE - 1)
 
+/* A `test` block of a project module: the view it is in, its declaration, and the function it lowered to (MIR_NONE when it
+ * did not lower). */
+typedef struct LbTest {
+    uint32_t view, decl, func;
+} LbTest;
+
+/* What a test build asks of the lowering. */
+typedef struct LbTestBuild {
+    bool bench;
+    MsBuf *names;
+} LbTestBuild;
+
 typedef struct LbLoop {
     MirBlock next, exit; /* `continue` goes to `next`, `break` to `exit` */
     struct LbLoop *outer;
@@ -193,6 +205,10 @@ typedef struct Lb {
     bool first_pass;      /* the report lists the functions the checker did not record once, in the first pass */
     bool dead;            /* control cannot reach the current position */
     bool twin_ok;         /* the native call being marshalled is that iterable, so its base function (not a borrowing twin) is right */
+    LbTest *tests;        /* this pass's test blocks, in module and source order (module arena) */
+    uint32_t ntests, ctests;
+    bool testing;         /* a test build (`ms_lower_tests_why`) */
+    bool bench;           /* the test build lowers `bench` blocks, not `test` blocks */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
 
@@ -247,6 +263,8 @@ bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
 void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos, MsSite site); /* reports a function whose body the checker did not record */
 enum { LA_OK = 0, LA_ERROR = 1 }; /* the order of the cases of `Result` in core.ms */
+void lt_lower(Lb *lb);               /* lowers the test blocks of the project modules (lower_tests.c) */
+bool lt_entry(Lb *lb, MsBuf *names); /* the runner entry over them, and their identities one per line; false when one did not lower */
 void lb_set_entry(Lb *lb, uint32_t user); /* makes `user`, the lowered `main`, the program's entry, behind a wrapper unless it returns Int (lower_entry.c) */
 uint32_t lb_view_enter(Lb *lb, uint32_t view); /* reads module `view` from here on; returns the view it left */
 uint32_t lm_prepare(Lb *lb);                                 /* the method rows of every view; their count */

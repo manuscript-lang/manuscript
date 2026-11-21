@@ -4,8 +4,9 @@
 // Exit statuses: 0 every selected test passed; 1 a test failed, none matched, or the
 // build failed; 2 usage error.
 //
-// The compiler stage is the Rust `ms build` with `MS_BUILD_TARGET=tests`, which also
-// writes `<output>.tests`: the source root, the project root and each test's identity.
+// The compiler stage is the C pipeline (`build_tests_in_c`) and, for what it does not cover,
+// the Rust `ms build` with `MS_BUILD_TARGET=tests`. Both write `<output>.tests`: the source
+// root, the project root and each test's identity.
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	base64_encode from "@std/data/encoding.ms",
@@ -19,6 +20,7 @@ import (
 	Duration, monotonic, nanoseconds, seconds from "@std/time.ms",
 
 	Invocation from "../args.ms",
+	build_tests_in_c from "../build_run.ms",
 	rust_cli from "../bridge.ms",
 	errno_text from "../errno.ms",
 	flag, list_of, number, object, render_document, text, with from "../json_out.ms",
@@ -333,6 +335,8 @@ fn build_tests(
 	var document: Document,
 	var out: Out,
 ) Int?:
+	if build_tests_in_c(inv, executable, inv.command == "bench"): return none
+
 	var args = ["build", inv.filename.clone(), "-o", executable.clone()]
 
 	if not inv.build_type_name.is_empty():

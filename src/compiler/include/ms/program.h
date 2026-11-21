@@ -20,6 +20,9 @@ void ms_program_desugar_bundled(MsCheck *c);
  * The first call also desugars the bundled modules. False when the module has an inherent error,
  * which the Rust checker reports and stops at: nothing is checked. */
 bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text);
+/* Makes the bundled module `path` part of the program though no source imports it (the test runner a test build
+ * calls), so ms_program_check_bundled checks it. */
+void ms_program_reach_bundled(MsCheck *c, const char *path);
 
 /* Checks the bodies, and runs the ownership walk, of every bundled module with source that the
  * program's imports reach, so a whole-program lowering (`ms_lower_program`) has their facts. Call it

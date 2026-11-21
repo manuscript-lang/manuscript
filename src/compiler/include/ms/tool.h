@@ -94,6 +94,13 @@ uint8_t ms_tool_check(const ms_str *target, uint8_t json, ms_list *out, ms_str *
 uint8_t ms_tool_build(const ms_str *target, const ms_str *output, const ms_str *runtime, const ms_str *tools, const ms_str *lld,
                       const ms_str *files, uint8_t release, ms_list *out, ms_str *message_out);
 
+/* `ms test` / `ms bench`: like ms_tool_build for the tests (the benches, with `bench`) of `target` and the further sources
+ * `extra` (one per line, may be empty). Also writes `<output>.tests`: the source root, the project root and each test's
+ * identity, one per line. */
+uint8_t ms_tool_build_tests(const ms_str *target, const ms_str *output, const ms_str *runtime, const ms_str *tools, const ms_str *lld,
+                            const ms_str *files, uint8_t release, uint8_t bench, const ms_str *extra, ms_list *out,
+                            ms_str *message_out);
+
 /* The workspace of the project whose manifest is `manifest` (project/workspace.c), as rows: `root\t<directory>`, then
  * `member\t<name>\t<directory>` in member order; no rows when there is none. With `root_only` set, only a workspace
  * root without a `[project]` of its own counts (the manifest itself, so a command aimed at it means every member);
