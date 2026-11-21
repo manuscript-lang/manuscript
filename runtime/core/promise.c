@@ -556,9 +556,8 @@ static void start_task(MsPromise id, MsObj *closure, bool rooted) {
 
 /* Puts the work in this isolate's queue, where its waiter runs it inline or another isolate takes it once it is
  * `age_ns` old. False when workers are off or the queue has no room: the caller starts a task instead. */
-static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns, bool spread) {
-    /* Spread work moves by the caller's word, so streams pinned here do not keep it: it captures only what it owns. */
-    if (ms_workers_limit() <= 1 || (!spread && ms_sched_pinned_here())) {
+static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns) {
+    if (ms_workers_limit() <= 1) {
         return false;
     }
     const size_t row = row_or_fault(id);
@@ -591,13 +590,13 @@ void ms_promise_start_here(MsPromise id, MsObj *closure) { start_task(id, closur
 void ms_promise_start_detached(MsPromise id, MsObj *closure) { start_task(id, closure, true); }
 
 void ms_promise_start(MsPromise id, MsObj *closure) {
-    if (!queue_work(id, closure, 0, false)) {
+    if (!queue_work(id, closure, 0)) {
         start_task(id, closure, false);
     }
 }
 
 void ms_promise_start_spread(MsPromise id, MsObj *closure) {
-    if (!queue_work(id, closure, MS_WORKER_BEAT_NS, true)) {
+    if (!queue_work(id, closure, MS_WORKER_BEAT_NS)) {
         start_task(id, closure, false);
     }
 }

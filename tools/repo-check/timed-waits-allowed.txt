@@ -22,4 +22,3 @@ crates/ms-clif/tests/native.rs 1 test: lets time pass
 crates/ms-lsp/tests/supervise.rs 1 test: lets time pass
 crates/ms-mir/tests/unwind.rs 1 test: lets time pass
 crates/ms-tooling/tests/lint_tasks.rs 1 test: lets time pass
-crates/ms-rt/src/task.rs 1 the task sleep binding
