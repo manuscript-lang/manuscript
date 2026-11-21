@@ -126,7 +126,7 @@ static void scan_conversion(ScanState *s, const MsExpr *e, MsTy source) {
         bool charged = methods->contract[row] != MS_TY_NONE && tys->def[target] != 0 &&
                        tys->def[methods->contract[row]] == tys->def[target];
         if (methods->inherent[row] && ops != NULL) {
-            const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
+            const MsMethod *method = ms_method_of_func(methods->decl[row]);
             for (uint32_t k = 0; k < ops->count; k++) {
                 charged = charged || ops->items[k].name == method->func.name;
             }
