@@ -61,6 +61,9 @@ bool ms_path_escapes(const char *rel);
 /* The entry names of `dir` other than `.` and `..`, in byte order. A directory that cannot be opened fails as
  * `<open_op> <dir>: <reason>`. */
 MS_NODISCARD bool ms_path_list_dir(MsArena *a, const char *dir, const char *open_op, const char *const **names, uint32_t *count, MsProjectError *err);
+/* Removes a file or a tree, making read-only entries writable first; a path already gone is not a failure. On failure
+ * *error is the message. */
+MS_NODISCARD bool ms_remove_all(MsArena *a, const char *path, const char **error);
 MS_NODISCARD bool ms_path_eval_symlinks(MsArena *a, const char *path, const char **out, MsProjectError *err);
 
 

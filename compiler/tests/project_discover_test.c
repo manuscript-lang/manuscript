@@ -1,11 +1,9 @@
 /* Unit test of source discovery (compiler/src/project/discover.c), with the rules of crates/ms-driver discovery.rs. */
-#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
+#include "host_test.h"
 #include "ms/project.h"
 
 static int failures;
@@ -19,14 +17,14 @@ static int failures;
     } while (0)
 
 static MsArena arena;
-static char root[64];
+static char root[256];
 
 static void write_file(const char *name, const char *text) {
     const char *path = MS_PATH_JOIN(&arena, root, name);
     char *copy = ms_arena_strndup(&arena, path, strlen(path));
     for (char *slash = strchr(copy + strlen(root) + 1, '/'); slash != NULL; slash = strchr(slash + 1, '/')) {
         *slash = 0;
-        mkdir(copy, 0700);
+        host_mkdir(copy);
         *slash = '/';
     }
     FILE *f = fopen(path, "w");
@@ -70,8 +68,7 @@ static void expect_paths(const char *target, const char *want) {
 }
 
 int main(void) {
-    snprintf(root, sizeof root, "%s", "/tmp/ms_discover_XXXXXX");
-    CHECK(mkdtemp(root) != NULL);
+    CHECK(host_make_root(root, sizeof root, "ms_discover"));
     write_file("ms.toml", "[project]\nname = \"p\"\nsource = \"src\"\nentry = \"src/main.ms\"\n");
     write_file("src/main.ms", "");
     write_file("src/b.ms", "");
@@ -86,8 +83,8 @@ int main(void) {
     write_file("tests/helper.ms", "");
     write_file("test.ms", "");
     write_file("node_modules/dep_test.ms", "");
-    CHECK(symlink("sub", MS_PATH_JOIN(&arena, root, "src/linkdir.ms")) == 0);
-    CHECK(symlink("b.ms", MS_PATH_JOIN(&arena, root, "src/alias.ms")) == 0);
+    CHECK(host_symlink("sub", MS_PATH_JOIN(&arena, root, "src/linkdir.ms")));
+    CHECK(host_symlink("b.ms", MS_PATH_JOIN(&arena, root, "src/alias.ms")));
 
     /* A manifest: source modules, tests elsewhere under the root, then the entry (a duplicate is not collapsed). */
     expect_paths(MS_PATH_JOIN(&arena, root, "ms.toml"),
@@ -107,9 +104,7 @@ int main(void) {
     CHECK(!ms_project_format_paths(&arena, MS_PATH_JOIN(&arena, root, "missing"), &paths, &count, &err));
     CHECK(strncmp(ms_project_error_text(&arena, &err), "stat ", 5) == 0);
 
-    char command[160];
-    snprintf(command, sizeof command, "rm -rf %s", root);
-    CHECK(system(command) == 0);
+    host_remove_tree(root);
     ms_arena_free(&arena);
     if (failures != 0) {
         fprintf(stderr, "%d failure(s)\n", failures);

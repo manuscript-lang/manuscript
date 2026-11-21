@@ -1,13 +1,10 @@
 /* Unit test of `ms install` (compiler/src/project/install.c) against local git repositories: the fetch, the cache, the
  * lock, and the checks a download must pass. Needs `git` on PATH. */
-#define _XOPEN_SOURCE 700
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
+#include "host_test.h"
 #include "ms/packages.h"
 
 static int failures;
@@ -21,20 +18,7 @@ static int failures;
     } while (0)
 
 static MsArena arena;
-static char root[64];
-
-static void run(const char *format, ...) __attribute__((format(printf, 1, 2)));
-static void run(const char *format, ...) {
-    char command[1024];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(command, sizeof command, format, args);
-    va_end(args);
-    if (system(command) != 0) {
-        fprintf(stderr, "command failed: %s\n", command);
-        failures++;
-    }
-}
+static char root[256];
 
 static const char *path(const char *name) {
     return MS_PATH_JOIN(&arena, root, name);
@@ -44,7 +28,7 @@ static void write_file(const char *name, const char *text) {
     char *copy = ms_arena_strndup(&arena, path(name), strlen(path(name)));
     for (char *slash = strchr(copy + strlen(root) + 1, '/'); slash != NULL; slash = strchr(slash + 1, '/')) {
         *slash = 0;
-        mkdir(copy, 0700);
+        host_mkdir(copy);
         *slash = '/';
     }
     FILE *f = fopen(copy, "w");
@@ -62,20 +46,51 @@ static const char *read_text(const char *name) {
     return text != NULL ? text : "";
 }
 
-/* A package repository `name` at `version` (ms.toml and one source file), committed and tagged `tag`. */
-static void commit_package(const char *name, const char *version, const char *tag) {
-    write_file(MS_PATH_JOIN(&arena, name, "ms.toml"),
-               ms_arena_fmt(&arena, "[project]\nname = \"%s\"\nsource = \"src\"\nversion = \"%s\"\neffects = [\"std.fs.read\"]\n", name, version).ptr);
-    write_file(MS_PATH_JOIN(&arena, name, "src/lib.ms"), ms_arena_fmt(&arena, "// %s\n", version).ptr);
-    run("cd %s/%s && git add -A && git commit -q -m %s && git tag %s", root, name, tag, tag);
+/* The `file://` URL of the repository `name`. */
+static const char *repository_url(const char *name) {
+    const char *directory = path(name);
+    return ms_arena_fmt(&arena, "file://%s%s", directory[0] == '/' ? "" : "/", directory).ptr;
 }
 
-static void make_repository(const char *name) {
-    run("mkdir -p %s/%s && cd %s/%s && git init -q -b main && git config user.email t@example.com && git config user.name t",
-        root, name, root, name);
+/* A package repository `name` at `version` (ms.toml and one source file), committed and tagged `tag`, plus `extra`. */
+static void commit_files(const char *name, const char *version, const char *tag, const HostFile *extra, size_t extra_count) {
+    HostFile files[8] = {
+        {"ms.toml",
+         ms_arena_fmt(&arena, "[project]\nname = \"%s\"\nsource = \"src\"\nversion = \"%s\"\neffects = [\"std.fs.read\"]\n", name, version).ptr,
+         "100644"},
+        {"src/lib.ms", ms_arena_fmt(&arena, "// %s\n", version).ptr, "100644"},
+    };
+    for (size_t i = 0; i < extra_count; i++) {
+        files[2 + i] = extra[i];
+    }
+    CHECK(host_git_commit(&arena, path(name), path("scratch"), files, 2 + extra_count, tag));
 }
 
-/* `ms install` of the project at root/project, its report joined by newlines, or the error text prefixed `error: `. */
+static void commit_package(const char *name, const char *version, const char *tag) { commit_files(name, version, tag, NULL, 0); }
+
+/* Makes every copy in the cache writable and edits its source. */
+static void tamper_cache(void) {
+    const char *const *names;
+    uint32_t count;
+    MsProjectError err = {0};
+    CHECK(ms_path_list_dir(&arena, path("cache"), "open", &names, &count, &err));
+    for (uint32_t i = 0; i < count; i++) {
+        const char *file = MS_PATH_JOIN(&arena, path("cache"), names[i], "src/lib.ms");
+        if (host_exists(file)) {
+            const MsSysError writable = ms_sys_fs_chmod(file, 0644);
+            CHECK(writable == 0);
+            FILE *f = fopen(file, "w");
+            CHECK(f != NULL);
+            if (f != NULL) {
+                fputs("tampered\n", f);
+                fclose(f);
+            }
+        }
+    }
+}
+
+static void make_repository(const char *name) { CHECK(host_git_init(&arena, path(name))); }
+
 static const char *install(const char *const *update, uint32_t count, bool locked, bool frozen) {
     MsInstallReport report;
     MsProjectError err = {0};
@@ -100,18 +115,18 @@ static void write_project(const char *dependency) {
 }
 
 int main(void) {
-    snprintf(root, sizeof root, "/tmp/ms-install-test-XXXXXX");
-    if (mkdtemp(root) == NULL) {
+    if (!host_make_root(root, sizeof root, "ms-install-test")) {
         return 1;
     }
-    setenv("MS_PACKAGE_CACHE", path("cache"), 1);
-    setenv("GIT_CONFIG_GLOBAL", "/dev/null", 1);
-    setenv("GIT_CONFIG_SYSTEM", "/dev/null", 1);
+    host_mkdir(path("scratch"));
+    host_set_env("MS_PACKAGE_CACHE", path("cache"));
+    host_set_env("GIT_CONFIG_GLOBAL", "/dev/null");
+    host_set_env("GIT_CONFIG_SYSTEM", "/dev/null");
 
     make_repository("wire");
     commit_package("wire", "1.0.0", "v1.0.0");
     commit_package("wire", "1.1.0", "v1.1.0");
-    const char *url = ms_arena_fmt(&arena, "file://%s/wire", root).ptr;
+    const char *url = repository_url("wire");
     write_project(ms_arena_fmt(&arena, "\"@wire\" = { url = \"%s\", version = \"^1.0\" }", url).ptr);
 
     /* The highest tag that satisfies the requirement is fetched, pinned and reported. */
@@ -127,12 +142,12 @@ int main(void) {
     CHECK(strcmp(read_text("project/ms.lock"), lock) == 0);
 
     /* The cache is read-only and a removed copy is downloaded again at the locked revision, to the same hash. */
-    run("chmod -R u+w %s && rm -rf %s", path("cache"), path("cache"));
+    host_remove_tree(path("cache"));
     CHECK(strstr(install(NULL, 0, true, false), "fetched std.fs.read") != NULL);
     CHECK(strcmp(read_text("project/ms.lock"), lock) == 0);
 
     /* A copy edited in the cache is noticed and restored. */
-    run("cd %s && for d in */; do chmod -R u+w \"$d\"; echo tampered > \"$d/src/lib.ms\"; done", path("cache"));
+    tamper_cache();
     CHECK(strstr(install(NULL, 0, true, false), "fetched std.fs.read") != NULL);
 
     /* A new requirement changes the lock: --locked refuses, --frozen leaves it, a plain install writes it. */
@@ -147,7 +162,7 @@ int main(void) {
     /* No dependencies removes ms.lock. */
     write_file("project/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\nentry = \"src/main.ms\"\n");
     CHECK(strcmp(install(NULL, 0, false, false), "") == 0);
-    CHECK(access(path("project/ms.lock"), F_OK) != 0);
+    CHECK(!host_exists(path("project/ms.lock")));
 
     /* A tag the repository lacks. */
     write_project(ms_arena_fmt(&arena, "\"@wire\" = { url = \"%s\", tag = \"v9.9.9\" }", url).ptr);
@@ -157,19 +172,26 @@ int main(void) {
     /* A package may not hold a link, an entry, [embed], a Windows-hostile name or names differing by case. */
     make_repository("bad");
     commit_package("bad", "1.0.0", "v1.0.0");
-    write_file("bad/link-target", "x\n");
-    run("cd %s/bad && ln -s link-target link && git add -A && git commit -q -m link && git tag v1.1.0", root);
-    const char *bad = ms_arena_fmt(&arena, "file://%s/bad", root).ptr;
+    const HostFile target = {"link-target", "x\n", "100644"};
+    const HostFile link = {"link", "link-target", "120000"};
+    const HostFile with_link[] = {target, link};
+    commit_files("bad", "1.0.0", "v1.1.0", with_link, 2);
+    const char *bad = repository_url("bad");
     write_project(ms_arena_fmt(&arena, "\"@bad\" = { url = \"%s\", tag = \"v1.1.0\" }", bad).ptr);
     CHECK(strstr(install(NULL, 0, false, false), "contains the symbolic link link; a package holds regular files only") != NULL);
-    run("cd %s/bad && git rm -q -f link && printf x > aux.txt && git add -A && git commit -q -m aux && git tag v1.2.0", root);
+    const HostFile aux = {"aux.txt", "x", "100644"};
+    const HostFile with_aux[] = {target, aux};
+    commit_files("bad", "1.0.0", "v1.2.0", with_aux, 2);
     write_project(ms_arena_fmt(&arena, "\"@bad\" = { url = \"%s\", tag = \"v1.2.0\" }", bad).ptr);
     CHECK(strstr(install(NULL, 0, false, false), "aux.txt has the name \"aux.txt\", which Windows cannot create; rename it") != NULL);
-    run("cd %s/bad && git rm -q -f aux.txt && printf x > Readme && printf y > README && git add -A && git commit -q -m case && git tag v1.3.0", root);
+    const HostFile lower = {"Readme", "x", "100644"};
+    const HostFile upper = {"README", "y", "100644"};
+    const HostFile with_case[] = {target, lower, upper};
+    commit_files("bad", "1.0.0", "v1.3.0", with_case, 3);
     write_project(ms_arena_fmt(&arena, "\"@bad\" = { url = \"%s\", tag = \"v1.3.0\" }", bad).ptr);
     CHECK(strstr(install(NULL, 0, false, false), "differ only by letter case") != NULL);
 
-    run("chmod -R u+w %s; rm -rf %s", root, root);
+    host_remove_tree(root);
     ms_arena_free(&arena);
     if (failures != 0) {
         fprintf(stderr, "%d failure(s)\n", failures);

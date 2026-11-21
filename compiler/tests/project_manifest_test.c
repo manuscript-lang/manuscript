@@ -1,12 +1,10 @@
 /* Unit test of ms.toml reading and import resolution (compiler/src/project/{manifest,resolve}.c), with the cases of
  * crates/ms-driver/tests/project_project.rs. */
-#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
+#include "host_test.h"
 #include "ms/project.h"
 
 static int failures;
@@ -22,14 +20,14 @@ static int failures;
 #define MANIFEST "[project]\nname = \"sample\"\nsource = \"src\"\nentry = \"src/main.ms\"\n"
 
 static MsArena arena;
-static char root[64];
+static char root[256];
 
 static void write_file(const char *name, const char *text) {
     const char *path = MS_PATH_JOIN(&arena, root, name);
     char *copy = ms_arena_strndup(&arena, path, strlen(path));
     for (char *slash = strchr(copy + strlen(root) + 1, '/'); slash != NULL; slash = strchr(slash + 1, '/')) {
         *slash = 0;
-        mkdir(copy, 0700);
+        host_mkdir(copy);
         *slash = '/';
     }
     FILE *f = fopen(path, "w");
@@ -41,18 +39,16 @@ static void write_file(const char *name, const char *text) {
 }
 
 static void new_project(void) {
-    snprintf(root, sizeof root, "%s", "/tmp/ms_project_XXXXXX");
-    CHECK(mkdtemp(root) != NULL);
+    CHECK(host_make_root(root, sizeof root, "ms_project"));
     write_file("src/main.ms", "");
     write_file("src/value.ms", "");
     write_file("src/main.txt", "");
-    mkdir(MS_PATH_JOIN(&arena, root, "src/directory.ms"), 0700);
+    host_mkdir(MS_PATH_JOIN(&arena, root, "src/directory.ms"));
 }
 
 static void remove_tree(void) {
-    char command[160];
-    snprintf(command, sizeof command, "rm -rf %s", root);
-    CHECK(system(command) == 0);
+    host_remove_tree(root);
+    host_remove_tree(ms_arena_fmt(&arena, "%s.outside", root).ptr);
 }
 
 typedef enum Outcome { OK, FAILS, UNSUPPORTED } Outcome;
@@ -261,10 +257,16 @@ static void test_imports(void) {
     CHECK(!ms_project_resolve_import(&arena, &p, p.entry, "./", &got, &err));
     CHECK(strstr(ms_project_error_text(&arena, &err), "names a directory, not a module") != NULL);
 
-    CHECK(symlink("/etc/hostname", MS_PATH_JOIN(&arena, p.source, "out.ms")) == 0);
+    const char *outside = ms_arena_fmt(&arena, "%s.outside", root).ptr; /* a file beside the project root */
+    FILE *outside_file = fopen(outside, "w");
+    CHECK(outside_file != NULL);
+    if (outside_file != NULL) {
+        fclose(outside_file);
+    }
+    CHECK(host_symlink(outside, MS_PATH_JOIN(&arena, p.source, "out.ms")));
     CHECK(!ms_project_resolve_import(&arena, &p, p.entry, "./out.ms", &got, &err));
     CHECK(strstr(ms_project_error_text(&arena, &err), "path escapes project root") != NULL);
-    CHECK(symlink(MS_PATH_JOIN(&arena, p.source, "value.ms"), MS_PATH_JOIN(&arena, p.source, "link.ms")) == 0);
+    CHECK(host_symlink(MS_PATH_JOIN(&arena, p.source, "value.ms"), MS_PATH_JOIN(&arena, p.source, "link.ms")));
     CHECK(ms_project_resolve_import(&arena, &p, p.entry, "./link.ms", &got, &err));
     CHECK(strcmp(got, MS_PATH_JOIN(&arena, p.source, "value.ms")) == 0);
 

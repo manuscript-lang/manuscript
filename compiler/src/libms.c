@@ -175,8 +175,8 @@
 #include "build/link_linux.c"
 #include "build/link_macos.c"
 #endif
-/* The project loader uses POSIX file calls, which the Windows tools do not need; the back end library the Rust
- * `ms` links leaves it out on every platform (cmake/MsCompiler.cmake, target ms_backend). */
+/* The project loader goes through the OS layer (runtime/sys) on every platform; the back end library the Rust `ms`
+ * links leaves it out (cmake/MsCompiler.cmake, target ms_backend). */
 #if !defined(MS_LIBMS_NO_PROJECT)
 #include "project/path.c"
 #include "project/manifest.c"
@@ -194,5 +194,7 @@
 
 #include "project/graph_check.c"
 #include "check_cmd.c"
+#if !defined(_WIN32) /* the back end (build/) is not on Windows yet */
 #include "build_cmd.c"
+#endif
 #endif

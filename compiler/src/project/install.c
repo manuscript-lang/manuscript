@@ -19,6 +19,9 @@ static const char *install_os_error(MsArena *a, MsSysError code) {
     return ms_arena_fmt(a, "%s (os error %d)", message, code).ptr;
 }
 
+/* Drops the result of a best-effort call. */
+static void install_ignore(MsSysError code) { (void)code; }
+
 /* A name that differs between processes and between calls, for temporary paths. */
 static unsigned long install_unique(void) { return (unsigned long)ms_sys_fs_random(); }
 
@@ -62,7 +65,7 @@ static bool install_make_dirs(MsArena *a, const char *path, const char **error) 
 }
 
 /* Removes a tree even when git made some of it read-only. A path that is already gone is not a failure. */
-static bool install_remove_all(MsArena *a, const char *path, const char **error) {
+bool ms_remove_all(MsArena *a, const char *path, const char **error) {
     MsSysStat info;
     MsSysError failure = ms_sys_fs_stat(path, false, &info);
     if (failure != 0) {
@@ -73,7 +76,7 @@ static bool install_remove_all(MsArena *a, const char *path, const char **error)
         return false;
     }
     if (host_is_dir(&info)) {
-        (void)ms_sys_fs_chmod(path, 0755);
+        install_ignore(ms_sys_fs_chmod(path, 0755));
         const char *const *names;
         uint32_t count;
         MsProjectError listing = {0};
@@ -82,7 +85,7 @@ static bool install_remove_all(MsArena *a, const char *path, const char **error)
             return false;
         }
         for (uint32_t i = 0; i < count; i++) {
-            if (!install_remove_all(a, MS_PATH_JOIN(a, path, names[i]), error)) {
+            if (!ms_remove_all(a, MS_PATH_JOIN(a, path, names[i]), error)) {
                 return false;
             }
         }
@@ -116,11 +119,11 @@ static void install_read_only(MsArena *a, const char *dir) {
             if (host_is_dir(&info)) {
                 install_read_only(a, path);
             } else {
-                (void)ms_sys_fs_chmod(path, info.mode & 07555);
+                install_ignore(ms_sys_fs_chmod(path, info.mode & 07555));
             }
         }
     }
-    (void)ms_sys_fs_chmod(dir, 0555);
+    install_ignore(ms_sys_fs_chmod(dir, 0555));
 }
 
 /* ---- git ---- */
@@ -411,7 +414,7 @@ static bool install_store(MsArena *a, const char *temporary, const char *root, c
         return false;
     }
     MsSysStat info;
-    if (ms_sys_fs_stat(destination, false, &info) == 0 && !ms_package_cached_intact(a, root, hash) && !install_remove_all(a, destination, error)) {
+    if (ms_sys_fs_stat(destination, false, &info) == 0 && !ms_package_cached_intact(a, root, hash) && !ms_remove_all(a, destination, error)) {
         return false;
     }
     failure = ms_sys_fs_rename(temporary, destination);
@@ -459,7 +462,7 @@ static bool install_download_into(MsArena *a, const char *key, const char *url, 
     const char *commit;
     if (!install_fetch_commit(a, key, url, reference, locked, temporary, protocols, &commit, error) ||
         !install_reject_unportable(a, key, temporary, protocols, error) ||
-        !install_remove_all(a, MS_PATH_JOIN(a, temporary, ".git"), error)) {
+        !ms_remove_all(a, MS_PATH_JOIN(a, temporary, ".git"), error)) {
         return false;
     }
     MsStr index;
@@ -494,10 +497,11 @@ static bool install_download(Remote *r, MsArena *a, const char *url, const char 
     const char *root = r->cache;
     const char *temporary = MS_PATH_JOIN(a, root, ms_arena_fmt(a, ".tmp-%lu", install_unique()).ptr);
     const char *ignored;
-    bool ok = install_make_dirs(a, root, error) && install_remove_all(a, temporary, error) && install_make_dirs(a, temporary, error) &&
+    bool ok = install_make_dirs(a, root, error) && ms_remove_all(a, temporary, error) && install_make_dirs(a, temporary, error) &&
               install_download_into(a, url, url, ms_arena_strndup(a, reference, strlen(reference)), locked, temporary, root,
                                     install_protocols(nested), out, error);
-    (void)install_remove_all(a, temporary, &ignored);
+    const bool removed = ms_remove_all(a, temporary, &ignored); /* a leftover is replaced by the next download */
+    (void)removed;
     if (ok) {
         out->entry.spec = spec;
     }
@@ -651,7 +655,7 @@ static bool install_write_lock(MsArena *a, const char *root, const MsResolved *r
         return false;
     }
     if (empty) {
-        (void)ms_sys_fs_unlink(path);
+        install_ignore(ms_sys_fs_unlink(path));
         return true;
     }
     const MsSysError failure = install_write_file(path, text, strlen(text));

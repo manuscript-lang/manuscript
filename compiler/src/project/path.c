@@ -556,23 +556,31 @@ static bool path_has_trailing_dot_or_space(const char *path) {
     return false;
 }
 
-/* The failure of the first missing prefix of `path`, as the component walk of Unix reports it. */
-static MsSysError path_missing_prefix(const char *path, const char *spelled, MsArena *a, const char **failing) {
-    for (const char *c = path; *c != 0; c++) {
-        if (path_sep(*c) && c > path + path_volume_len(path)) {
-            char *head = ms_arena_strndup(a, path, (size_t)(c - path));
-            char *resolved;
-            size_t length;
-            const MsSysError failure = ms_sys_fs_canonicalize(head, &resolved, &length);
-            if (failure != 0) {
-                *failing = ms_path_clean(a, head);
-                return failure;
-            }
-            free(resolved);
+/* Why `path` is missing, as the component walk of Unix reports it: the first prefix that cannot be resolved with its
+ * failure, or ERROR_DIRECTORY (HOST_NOT_DIRECTORY) when a file stands where a directory should. */
+static MsSysError path_missing_prefix(MsArena *a, const char *path, MsSysError original, const char **failing, bool *not_directory) {
+    *failing = path;
+    *not_directory = false;
+    for (const char *c = path + path_volume_len(path); *c != 0; c++) {
+        if (!path_sep(*c) || c == path + path_volume_len(path)) {
+            continue;
+        }
+        const char *head = ms_arena_strndup(a, path, (size_t)(c - path));
+        char *resolved;
+        size_t length;
+        const MsSysError failure = ms_sys_fs_canonicalize(head, &resolved, &length);
+        if (failure != 0) {
+            *failing = ms_path_clean(a, head);
+            return failure;
+        }
+        free(resolved);
+        MsSysStat info;
+        if (ms_sys_fs_stat(head, true, &info) == 0 && !host_is_dir(&info)) {
+            *not_directory = true;
+            return HOST_NOT_DIRECTORY;
         }
     }
-    *failing = spelled;
-    return ms_sys_fs_error_of(MS_SYS_ERR_OTHER);
+    return original;
 }
 
 bool ms_path_eval_symlinks(MsArena *a, const char *input, const char **out, MsProjectError *err) {
@@ -581,8 +589,17 @@ bool ms_path_eval_symlinks(MsArena *a, const char *input, const char **out, MsPr
     MsSysError failure = ms_sys_fs_canonicalize(input, &canonical, &length);
     if (failure != 0) {
         const char *failing = input;
+        bool not_directory = false;
+        if (ms_sys_fs_error_kind(failure) == MS_SYS_ERR_LINK_LOOP) {
+            ms_project_error_message(err, "EvalSymlinks: too many links");
+            return false;
+        }
         if (host_missing(failure)) {
-            failure = path_missing_prefix(input, input, a, &failing);
+            failure = path_missing_prefix(a, input, failure, &failing, &not_directory);
+        }
+        if (not_directory) {
+            *err = (MsProjectError){.kind = MS_PERR_ERRNO, .err_no = HOST_NOT_DIRECTORY};
+            return false;
         }
         ms_project_error_path(err, a, "lstat", failing, failure);
         return false;
