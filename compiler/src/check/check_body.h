@@ -143,6 +143,7 @@ MsTy ms_body_block_value(MsBody *b, const MsStmts *body, const MsExpr *value, Ms
 uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, MsPos pos, uint8_t flags, MsBindRole role);
 /* The visible binding of `name`, or MS_NONE. */
 uint32_t ms_body_find_binding(const MsBody *b, MsSym name);
+bool ms_body_names_constant(const MsBody *b, MsSym name); /* a typed module constant no local hides */
 /* A `match` over an enum or `Optional` scrutinee of type `ty` (check_alt.c). */
 /* Whether `ty` is an `Optional`, and its payload type (check_alt.c). */
 bool ms_body_optional_payload(const MsBody *b, MsTy ty, MsTy *payload);

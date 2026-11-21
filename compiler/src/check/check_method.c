@@ -221,12 +221,12 @@ static bool primitive_in(MsStr name, const char *const *members) {
     return false;
 }
 
-/* The operations a type has when it has the property that grants them: `clone` (Clonable), `equals` (Equal) and `hash` (Hashable). */
+/* The operations a type has when it has the property that grants them: `clone` (Clonable), and `equals` (Equal). */
 static bool derived_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
     const struct {
         MsProperty property;
         const char *interface;
-    } derived[] = {{MS_PROP_CLONABLE, "CloneOperations"}, {MS_PROP_EQUAL, "EqualOperations"}, {MS_PROP_HASHABLE, "HashOperations"}};
+    } derived[] = {{MS_PROP_CLONABLE, "CloneOperations"}, {MS_PROP_EQUAL, "EqualOperations"}};
     for (size_t i = 0; i < sizeof derived / sizeof *derived; i++) {
         if (intrinsic_in(b, derived[i].interface, receiver, name, out) &&
             ms_implements_property(b->c, b->methods, receiver, derived[i].property) == MS_FIT_YES) {
@@ -501,7 +501,9 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
         return ms_body_unsupported(b);
     }
     const uint32_t binding = receiver->kind == MS_E_NAME ? ms_body_find_binding(b, receiver->u.sym) : MS_NONE;
-    if (receiver->kind == MS_E_NAME && binding == MS_NONE) {
+    // A name that is no local is a module constant (a value like any call result) or something this
+    // pass does not take a method of.
+    if (receiver->kind == MS_E_NAME && binding == MS_NONE && !ms_body_names_constant(b, receiver->u.sym)) {
         return ms_body_unsupported(b);
     }
     const MsTy local_ty = binding == MS_NONE ? MS_TY_NONE : b->facts->bindings.ty[binding];

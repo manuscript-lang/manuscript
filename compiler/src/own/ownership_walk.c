@@ -391,12 +391,13 @@ static bool own_is_fresh(const OwnWalk *w, const MsExpr *e) {
     return e->kind == MS_E_BINARY || e->kind == MS_E_TEXT || (e->kind == MS_E_CALL && own_is_constructor(w, e));
 }
 
-/* A payload wrapped in `some` where an Optional is expected: a value that owns something wraps only
- * when it is fresh; a borrowed one stays a view (`opt.view`), which this pass does not decide yet. */
+/* A payload wrapped in `some` where an Optional is expected: a name wraps as it moves or returns,
+ * and a fresh value owns what it wraps; a part of something (`r.name`) stays a view (`opt.view`),
+ * which this pass does not decide yet. */
 static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
     const MsTy optional = w->facts->expr_ty[e->id];
     if (w->facts->some_wrap[e->id] && ms_classify(w->classifier, ms_ty_args(&w->check->tys, optional)[0]) != MS_CLASS_COPY &&
-        !own_is_fresh(w, e)) {
+        !own_is_fresh(w, e) && !(e->kind == MS_E_NAME && w->facts->res_kind[e->id] == MS_RES_BINDING)) {
         OWN_DECLINE(w);
     }
 }
@@ -830,6 +831,13 @@ static const MsMethod *own_walked_method(const OwnWalk *w, uint32_t row, const M
     return method;
 }
 
+/* Whether method `row` has no body to walk: a runtime operation or an intrinsic declared with `...`. */
+static bool own_method_unwalked(const OwnWalk *w, uint32_t row) {
+    const MsMethods *methods = w->facts->methods;
+    const MsFunc *declared = methods->decl[row];
+    return methods->native[row] != MS_NATIVE_SOURCE || (declared != NULL && (declared->external || declared->body.len == 0));
+}
+
 /* The arguments of a method call, by what the method does with each parameter: a `var` one changes a
  * variable, a `move` one (or a plain one the method's own walk found it consumes) is handed over, the
  * rest are read. `consumed` has the receiver at bit 0. */
@@ -864,6 +872,20 @@ static void own_method_arguments(OwnWalk *w, const MsExpr *e, uint32_t row, uint
     }
 }
 
+/* Whether an argument of the call mentions the variable `held` (a `var`) that the call reads in place
+ * while the arguments run: an argument may change it, which the overlap rule of Rust reports. */
+static bool own_args_touch(const OwnWalk *w, const MsExpr *call, uint32_t held) {
+    if (held == MS_NONE || (w->facts->bindings.flags[held] & MS_BIND_MUTABLE) == 0) {
+        return false;
+    }
+    for (uint32_t i = 0; i < call->u.call.args.len; i++) {
+        if (own_mentions(w, call->u.call.args.ptr[i].value, held)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* A method of a type, called on a local or a temporary: a method that changes its receiver changes
  * the local in place, and no argument may read it; the others borrow it. A result that is not a plain
  * value may be a reference into the receiver (`list.get(i)`), which this walk does not follow: the
@@ -882,7 +904,9 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     // What the method moves of its parameters, and whether its result is a reference into them, is known
     // once its module's walk has run; a call over plain values needs neither.
     uint32_t consumed = 0;
-    if (!plain) {
+    if (!plain && own_method_unwalked(w, row) && ms_classify(w->classifier, result) == MS_CLASS_COPY) {
+        consumed = 0; // nothing to walk: what such a method takes is what its signature says (`move`, `var`), and a plain result borrows nothing
+    } else if (!plain) {
         const MsFacts *home = NULL;
         const MsMethod *walked = w->facts->methods->native[row] == MS_NATIVE_SOURCE ? own_walked_method(w, row, &home) : NULL;
         if (walked == NULL || home->ret_borrowed[walked->id]) {
@@ -911,6 +935,9 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
             return;
         }
         own_mutate(w, receiver, binding);
+    } else if (own_args_touch(w, e, binding)) {
+        OWN_DECLINE(w); /* an argument may change the receiver read in place */
+        return;
     } else {
         own_expr(w, receiver, DEMAND_READ);
     }
@@ -976,6 +1003,9 @@ static void own_interface_call(OwnWalk *w, const MsExpr *e) {
         MsStr text;
         const MsPlace place = own_target_place(w, receiver, root, &text);
         own_mutate_place(w, receiver->pos, root, place, text);
+    } else if (own_args_touch(w, e, root)) {
+        OWN_DECLINE(w);
+        return;
     } else {
         own_expr(w, receiver, DEMAND_READ);
     }
@@ -1064,6 +1094,10 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
         return;
     }
     if (callee_expr->kind == MS_E_NAME && w->facts->res_kind[callee_expr->id] == MS_RES_BINDING) {
+        if (own_args_touch(w, e, w->facts->res_ref[callee_expr->id])) {
+            OWN_DECLINE(w); /* an argument may change the function value being called */
+            return;
+        }
         own_expr(w, callee_expr, DEMAND_READ); /* a call through a function-typed local reads it */
         const MsTy fn = w->facts->expr_ty[callee_expr->id];
         for (uint32_t i = 0; i < e->u.call.args.len; i++) {
@@ -1311,7 +1345,7 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE); /* returns whatever this function returns: neither kind of return */
         return;
     }
-    if (own_returns_parameter_borrow(w, e)) {
+    if (!w->facts->some_wrap[e->id] && own_returns_parameter_borrow(w, e)) { /* `some` makes a new value around it */
         w->borrowed_params |= 1u << w->param_index[own_resolve(w, w->facts->res_ref[e->id])];
         w->borrowed_return = w->has_borrowed_return ? w->borrowed_return : e->pos;
         w->has_borrowed_return = true;

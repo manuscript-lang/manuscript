@@ -257,6 +257,10 @@ export fn join(parts: List[Bytes]) Bytes:
 export fn values(data: Bytes) List[UInt8]:
 	return msrt_bytes_values(data)
 
+// `Bytes(values)` builds the bytes from a list of values: the call is this function's.
+// ms: constructor
+extern fn msrt_bytes_from_values(values: List[UInt8]) Bytes
+
 // Builds a byte sequence efficiently before freezing it into an immutable value.
 // ms: constructible
 export extern type BytesBuilder

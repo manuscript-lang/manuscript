@@ -9,3 +9,6 @@ fn take(v: Int?) Int:
 
 fn main() Int:
 	return take(5) + take(none) + take(wrap(2)) + take(nothing())
+
+fn byte_of(n: Int) UInt8:
+	return n.to_uint8().get_or(0)
