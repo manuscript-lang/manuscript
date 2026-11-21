@@ -7,8 +7,8 @@ compiler/syntax: base abi
 compiler/project: base abi compiler/syntax
 compiler/check: base abi compiler/syntax compiler/project
 compiler/own: base abi compiler/syntax compiler/check
-compiler/lower: base abi compiler/syntax compiler/check compiler/own
-compiler/mir: base abi compiler/check compiler/lower
+compiler/lower: base abi compiler/syntax compiler/check compiler/own compiler/mir
+compiler/mir: base abi compiler/check
 compiler/opt: base abi compiler/check compiler/mir
 compiler/emit: base abi compiler/check compiler/mir compiler/opt
 compiler/link: base abi compiler/mir compiler/emit

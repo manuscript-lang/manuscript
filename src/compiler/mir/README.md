@@ -18,4 +18,5 @@ exchange a `MirModule` in memory; there is no text between them. Allowed include
 - `mir_print.h`, `mir_print.c`, `mir_print_func.c`, `mir_print_ty.c`: the text form (`ms emit`), a dump only; passes exchange the in-memory module.
 - `mir_persist.h`, `mir_persist.c`: persistent sets and maps of dense ids for the ownership passes. `mir_hash.h`, `mir_hash.c`: an arena-backed `uint64_t` map for the same passes.
 - `mir_elab.h` and `mir_elab*.c`: drop elaboration. Reads the scope markers a Raw function carries, runs a move-state dataflow, and places the drops, closes and drop flags where each scope ends. Cancel exits are not ported yet.
+- `mir_pipeline.h`, `mir_pipeline.c`: the passes between lowering and the emitter in order (prepare, finish, backend).
 - `mir_lower_ops.h`, `mir_lower_ops.c`, `mir_lower_ops_blocks.c`: the last pass, turning clone, drop, cleanup and fault-message ops into plain calls and copies.
