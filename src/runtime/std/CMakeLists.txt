@@ -92,7 +92,7 @@ ms_target_defaults(ms_std_process)
 target_link_libraries(ms_std_process PUBLIC ms_base ms_values ms_sys ms_io ms_core ms_entry uv)
 
 # @std/fs natives that work on paths: whole files, metadata, listing, directories, removal, links, attributes.
-add_library(ms_std_fs STATIC fs_job.c fs_name.c fs_read.c fs_stat.c fs_ops.c fs_dir.c stream.c file.c)
+add_library(ms_std_fs STATIC fs_job.c fs_name.c fs_read.c fs_stat.c fs_ops.c fs_dir.c stream.c file.c fs_tree.c fs_copy.c)
 ms_target_defaults(ms_std_fs)
 target_link_libraries(ms_std_fs PUBLIC ms_base ms_sys ms_io ms_core uv ms_std_process)
 
