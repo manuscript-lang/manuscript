@@ -28,8 +28,7 @@ fn lower(path: &Path) -> String {
         },
     )
     .expect("lower");
-    ms_mir::verify::verify_module(&module).expect("verified MIR");
-    ms_mir::print::print_module(&module)
+    ms_build::c_backend::emitted_mir(&module, false).expect("elaborate")
 }
 
 /// The printed MIR after the optimizer, the form that gets compiled.
@@ -49,7 +48,7 @@ fn optimized(path: &Path) -> String {
         },
     )
     .expect("lower");
-    ms_build::c_backend::optimized_mir(&module).expect("optimize")
+    ms_build::c_backend::emitted_mir(&module, true).expect("optimize")
 }
 
 fn quoted(rest: &str) -> Vec<&str> {
@@ -155,8 +154,7 @@ fn rsa_source_calls_and_function_values() {
     )
     .expect("lower RSA fixture");
     assert_eq!(tests.len(), 4);
-    ms_mir::verify::verify_module(&module).expect("verified RSA MIR");
-    let mir = ms_mir::print::print_module(&module);
+    let mir = ms_build::c_backend::emitted_mir(&module, false).expect("elaborate");
     for name in [
         "sign",
         "verify",

@@ -38,7 +38,6 @@ fn main() {
             .unwrap()
     });
     stage("drop_checked", || drop(checked));
-    stage("verify", || ms_mir::verify::verify_module(&module).unwrap());
     stage("llvm_available", || {
         assert!(
             ms_build::llvm_available(&ms_build::BuildOptions::default()),

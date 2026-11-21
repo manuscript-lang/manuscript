@@ -3,21 +3,14 @@ name = "ms-mir"
 version = "0.0.0"
 edition.workspace = true
 publish.workspace = true
-description = "Mid-level IR for the Manuscript compiler: types, builder, verifier, text format, optimizer and reference interpreter"
+description = "Mid-level IR for the Manuscript compiler: types, builder and text format"
 autotests = false
 
 [lints]
 workspace = true
 
-[features]
-# The reference interpreter (`interp`), a test oracle the shipped compiler does not need.
-test-support = []
-
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
-
-[dev-dependencies]
-ms-mir = { path = ".", features = ["test-support"] }
 
 [[test]]
 name = "it"
