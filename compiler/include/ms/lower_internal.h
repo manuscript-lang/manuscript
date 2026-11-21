@@ -200,6 +200,8 @@ LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed a
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
 void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos, MsSite site); /* reports a function whose body the checker did not record */
+enum { LA_OK = 0, LA_ERROR = 1 }; /* the order of the cases of `Result` in core.ms */
+void lb_set_entry(Lb *lb, uint32_t user); /* makes `user`, the lowered `main`, the program's entry, behind a wrapper unless it returns Int (lower_entry.c) */
 uint32_t lb_view_enter(Lb *lb, uint32_t view); /* reads module `view` from here on; returns the view it left */
 uint32_t lm_prepare(Lb *lb);                                 /* the method rows of every view; their count */
 void lm_stubs(Lb *lb, uint32_t nrows, const bool *failed);   /* a stub for each method to lower */
@@ -309,6 +311,8 @@ MirTy la_type(Lb *lb, MsTy ty);
 LbVal la_none(Lb *lb, const MsExpr *e);
 LbVal la_nullary(Lb *lb, const MsExpr *e);
 MirValue la_ok_unit(Lb *lb);
+bool la_returns_void_result(const Lb *lb); /* the function being lowered returns `Void!` */
+MirValue la_ok_of(Lb *lb, MirValue unit);     /* `ok(unit)` of that result */
 LbVal la_none_owned(Lb *lb, const MsExpr *e);
 LbVal la_case(Lb *lb, const MsExpr *call);
 MirValue la_test(Lb *lb, MirValue subject);
