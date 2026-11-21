@@ -476,22 +476,21 @@ static bool il_is_const_op(uint8_t op) {
 
 static void il_note_consts(IlRun *r, uint32_t first_block) {
     const MirFunc *f = &r->m->funcs[r->fi];
-    if (f->nvalues > r->nconsts || r->consts == NULL) {
-        /* Grows by doubling: one call site per inlined call would otherwise copy the whole table. */
-        if (f->nvalues > r->cconsts) {
-            uint32_t cap = r->cconsts == 0 ? 64 : r->cconsts;
-            while (cap < f->nvalues) {
-                cap *= 2;
-            }
-            uint8_t *grown = ms_alloc_zeroed(r->arena, cap, 1);
-            if (r->consts != NULL) {
-                memcpy(grown, r->consts, r->nconsts);
-            }
-            r->consts = grown;
-            r->cconsts = cap;
+    /* The table grows by doubling: copying it whole for every inlined call made a long function
+     * quadratic. */
+    if (r->consts == NULL || f->nvalues > r->cconsts) {
+        uint32_t cap = r->cconsts == 0 ? 64 : r->cconsts;
+        while (cap < f->nvalues) {
+            cap *= 2;
         }
-        r->nconsts = f->nvalues;
+        uint8_t *grown = ms_alloc_zeroed(r->arena, cap, 1);
+        if (r->consts != NULL) {
+            memcpy(grown, r->consts, r->nconsts);
+        }
+        r->consts = grown;
+        r->cconsts = cap;
     }
+    r->nconsts = f->nvalues;
     for (uint32_t b = first_block; b < f->nblocks; b++) {
         for (uint32_t i = 0; i < f->blocks[b].ninsts; i++) {
             const MirInst *in = &f->blocks[b].insts[i];
