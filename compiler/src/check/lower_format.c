@@ -325,6 +325,25 @@ static uint32_t lf_helper(Lb *lb, MirTy ty) {
     return lf_build(lb, ty);
 }
 
+/* `value.to_string()` where the type declares no runtime method of that name: a String's copy of itself, the scalar's
+ * runtime text form, or the structural text of a record or enum; another type marks the function unsupported. */
+LbVal lt_to_string(Lb *lb, LbVal value, MsTy checked) {
+    if (mir_b_ty(&lb->b, value.v) == MIR_STR) {
+        return value.owned ? value : (LbVal){lf_copy(lb, value.v), true};
+    }
+    const LbVal text = lt_scalar_text(lb, checked, value.v);
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
+    if (text.v == MIR_NONE) { // no declared text form: a record or enum prints its fields (owns and drops `value`)
+        return lf_text(lb, value);
+    }
+    if (value.owned) {
+        lb_drop(lb, value.v);
+    }
+    return text;
+}
+
 LbVal lf_text(Lb *lb, LbVal value) {
     const MirTy ty = mir_b_ty(&lb->b, value.v);
     if (!lb_is_aggregate(lb, ty)) {

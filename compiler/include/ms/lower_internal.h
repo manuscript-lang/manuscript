@@ -247,9 +247,6 @@ bool lc_is_resource(Lb *lb, MirTy mir);               /* a registered resource t
 bool lc_is_slot_local(const Lb *lb, uint32_t binding);
 bool lc_is_closer_row(Lb *lb, uint32_t row);
 void lc_check(Lb *lb);                             /* fails the function when it drops a resource */
-uint32_t lb_slots(const LbCallable *c);
-bool lb_slot_mutable(const LbCallable *c, uint32_t slot);
-MsSym lb_unique_name(Lb *lb, MsStr base);
 
 /* lower_closure.c: function values and lambdas. */
 MirTy lb_fn_ty(Lb *lb, MsTy ty);

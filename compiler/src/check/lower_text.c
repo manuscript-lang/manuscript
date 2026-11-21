@@ -65,25 +65,6 @@ LbVal lt_scalar_text(Lb *lb, MsTy checked, MirValue v) {
     return lb_native_call(lb, form, &v, 1, MIR_STR);
 }
 
-/* `value.to_string()` where the type declares no runtime method of that name: a String's copy of itself, the scalar's
- * runtime text form, or the structural text of a record or enum; another type marks the function unsupported. */
-LbVal lt_to_string(Lb *lb, LbVal value, MsTy checked) {
-    if (mir_b_ty(&lb->b, value.v) == MIR_STR) {
-        return value.owned ? value : (LbVal){lb_copy(lb, value.v), true};
-    }
-    const LbVal text = lt_scalar_text(lb, checked, value.v);
-    if (!lb->ok) {
-        return LB_FAIL;
-    }
-    if (text.v == MIR_NONE) { // no declared text form: a record or enum prints its fields (owns and drops `value`)
-        return lf_text(lb, value);
-    }
-    if (value.owned) {
-        lb_drop(lb, value.v);
-    }
-    return text;
-}
-
 /* The piece `value` of a text: a string as it is, a value with a text form as that form's result
  * (or itself when the join writes it). Any other type marks the function unsupported. */
 static LtPiece lt_piece(Lb *lb, LbVal value, MsTy checked, uint32_t own_form) {
