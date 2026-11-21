@@ -5,7 +5,7 @@ weight = 1
 
 # Repository architecture
 
-`ms` is a Rust workspace under `crates/`. It compiles Manuscript to native code through Cranelift, or through LLVM for optimized builds when its tools are available. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
+`ms` is a Rust workspace under `crates/`. It compiles Manuscript to native code through the C back end (`compiler/`, linked into `ms`) and the pinned LLVM tools, for every build type. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
 
 ## Follow one compilation
 
@@ -14,7 +14,7 @@ weight = 1
     -> ms-check   (resolve, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics)
     -> ms-lower   (checked HIR to MIR, including native standard calls)
     -> ms-mir     (optimizer, verifier)
-    -> ms-clif    (MIR to Cranelift object code; line tables; perf map)
+    -> ms-build   (MIR to LLVM IR in C, `opt` and `llc`, then the link)
     -> link with ms-native (ms-rt and the ms-std-* crates) -> executable
 ```
 
@@ -33,7 +33,7 @@ weight = 1
 | --- | --- |
 | `ms-syntax` | Lexer, parser, syntax tree, formatter |
 | `ms-check` | Resolution, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics; editor queries |
-| `ms-lower`, `ms-mir`, `ms-clif` | Checked HIR to MIR; optimizer and verifier; Cranelift and LLVM code generation |
+| `ms-lower`, `ms-mir` | Checked HIR to MIR; optimizer and verifier |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime (with the `ffi` and `glue` helpers the native crates build on), C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module, depending on `ms-rt` as an ordinary Rust crate |
 | `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |

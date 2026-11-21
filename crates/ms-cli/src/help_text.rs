@@ -141,7 +141,7 @@ Options:
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
   --static              Linux: link a static musl executable instead of the system glibc
-  Default build type: Debug (Cranelift, fast to build); use --build-type Release for LLVM
+  Default build type: Debug (fast to build); use --build-type Release for optimized code
   -h, --help  Show this help without executing the command
 
 Examples:
@@ -176,7 +176,7 @@ Options:
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
   --static              Linux: link a static musl executable instead of the system glibc
-  Default build type: Debug (Cranelift, fast to build); use --build-type Release for LLVM
+  Default build type: Debug (fast to build); use --build-type Release for optimized code
   -h, --help  Show this help without executing the command
 
 Examples:

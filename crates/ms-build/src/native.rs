@@ -4,7 +4,6 @@
 use std::path::{Path, PathBuf};
 
 use crate::{BuildOptions, CopyProbe};
-use ms_clif::Options;
 use ms_mir::ir::Module;
 
 /// An exclusively owned temporary directory beside the final executable.
@@ -107,21 +106,6 @@ impl Profile {
     fn speed(self) -> bool {
         self != Profile::Debug
     }
-
-    fn options(self, build: &BuildOptions) -> Options {
-        let mut options = Options {
-            clif_verify: build.clif_verify,
-            poison_slots: build.poison_slots,
-            dump_clif: build.dump_clif,
-            ..Options::default()
-        };
-        if self == Profile::Debug {
-            options.opt_level = "none";
-        } else if self == Profile::MinSizeRel {
-            options.opt_level = "speed_and_size";
-        }
-        options
-    }
 }
 
 /// Native inputs beyond the explicit link files: the selected runtime archive.
@@ -208,10 +192,9 @@ pub fn build_executable(
             );
         }
     };
-    let options = profile.options(build);
     // The C pipeline runs the optimizer and the finishing passes itself.
-    let compiled = crate::c_backend::compile(module, profile.speed(), options.checks, build)
-        .map(|object| vec![object]);
+    let compiled =
+        crate::c_backend::compile(module, profile.speed(), true, build).map(|object| vec![object]);
     phase("mir optimize");
     let mut objects = compiled.map_err(|e| {
         format!(
@@ -251,7 +234,7 @@ pub fn build_executable(
         cleanup();
         return Err(format!("cannot write {}: {error}", object_path.display()));
     }
-    // The functions LLVM compiled link beside the Cranelift object, ahead of the runtime.
+    // Any further objects link beside the first, ahead of the runtime.
     let mut inputs: Vec<&Path> = extra.iter().map(PathBuf::as_path).collect();
     inputs.push(runtime);
     for (k, (path, llvm)) in llvm_paths.iter().zip(&objects).enumerate() {

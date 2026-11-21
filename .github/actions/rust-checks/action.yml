@@ -252,18 +252,6 @@ runs:
         CONFORM_SHARD: ${{ env.PR == 'true' && '0/4' || '0/1' }}
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/conform.ms
-    # The dev profile turns Cranelift's own debug assertions off for speed (Cargo.toml). Main, scheduled and manual
-    # runs build `ms` once more with them on and replay the Cranelift run and test phases, so an assertion
-    # that fires on the IR we generate is still caught.
-    - name: Conformance corpus (Cranelift with its debug assertions on)
-      if: env.CRANELIFT == 'true' && env.LLVM == 'true' && env.PR != 'true' && runner.os == 'Linux'
-      env:
-        MS_BACKEND: cranelift
-      shell: bash
-      run: |
-        cargo build --profile checked --locked -p ms-cli
-        target/debug/ms run tools/conform-run.ms -- run --ms target/checked/ms --phase run,test --exclude-tag aliasing \
-          --expect-fail tests/conformance/expect-fail.txt --strict --quiet
     - name: LLVM backend size, build time and kernel times against Cranelift
       if: env.GATES == 'true'
       shell: bash
@@ -359,7 +347,6 @@ runs:
         path: |
           .artifacts/conform.md
           target/cargo-timings/cargo-timing-*.html
-          ${{ runner.temp }}/ms-clif-tests-*
           ${{ runner.temp }}/ms-native-conformance/
           ${{ runner.temp }}/ms-dwarf-*
           ${{ runner.temp }}/ms-build-debug-*
