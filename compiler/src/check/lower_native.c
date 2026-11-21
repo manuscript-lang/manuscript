@@ -338,9 +338,13 @@ static uint32_t ln_var_receiver(Lb *lb, const MsExpr *receiver) {
 /* A method call the runtime implements: evaluates the receiver and arguments, then calls. */
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
-    const MsTy receiver_ty = lb->facts->call_receiver[e->id];
+    const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
     const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
     const uint32_t nargs = e->u.call.args.len;
+    if (fn == NULL && nargs == 0 && ms_name_is(lb->c->names, callee->u.member.name, "to_string")) {
+        const LbVal value = lb_expr(lb, callee->u.member.left); // a String is its own text, a scalar prints through its runtime form
+        return lb->ok ? lt_to_string(lb, value, receiver_ty) : LB_FAIL;
+    }
     if (fn == NULL || fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
         return lb_unsupported(lb);
     }
