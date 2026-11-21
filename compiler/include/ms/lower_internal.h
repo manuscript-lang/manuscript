@@ -60,7 +60,9 @@ typedef struct LbJob {
 /* A function or method being lowered: its syntax, the node its facts hang on, its signature, and
  * the receiver a method takes as parameter 0. */
 typedef struct LbCallable {
-    const MsFunc *fn;
+    const MsFunc *fn;     /* NULL for a module constant */
+    MsExpr *value;       /* a module constant's initializer: the function of no parameters returns it */
+    MsSym const_name;
     uint32_t node;  /* the declaration (or method) node: `param_consumed`, `ret_borrowed` */
     MsPos pos;
     MsSym name;     /* the MIR name, with the receiver's for a method */
