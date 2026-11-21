@@ -1046,8 +1046,10 @@ static void body_report_mismatch(MsBody *b, const MsExpr *e, MsTy actual, MsTy e
     const MsStr want = body_show(b, expected);
     const MsStr found = body_show(b, actual);
     const char *hint = body_conversion_hint(b, actual, expected);
-    const MsStr message = ms_arena_fmt(&b->c->arena, "expected %.*s, found %.*s (in %s)%s%s", (int)want.len, want.ptr,
-                                       (int)found.len, found.ptr, context, *hint != '\0' ? "; " : "", hint);
+    // An empty context is a value with no statement around it, such as a field default.
+    const MsStr where = *context == '\0' ? (MsStr){"", 0} : ms_arena_fmt(&b->c->arena, " (in %s)", context);
+    const MsStr message = ms_arena_fmt(&b->c->arena, "expected %.*s, found %.*s%.*s%s%s", (int)want.len, want.ptr,
+                                       (int)found.len, found.ptr, (int)where.len, where.ptr, *hint != '\0' ? "; " : "", hint);
     body_report(b, e->pos, message);
 }
 
@@ -1125,6 +1127,11 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
         if (context == NULL || !body_is_comparable(b, ty) || !body_is_comparable(b, expected)) {
+            return ms_body_unsupported(b);
+        }
+        // Rust attaches a source rewrite to these conversions in a bare context; the Rust checker keeps them.
+        if (*context == '\0' && ((ty == b->int_ty && expected == b->float_ty) ||
+                                 (expected == b->string_ty && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty)))) {
             return ms_body_unsupported(b);
         }
         body_report_mismatch(b, e, ty, expected, context);
@@ -1947,22 +1954,32 @@ static void body_check_defaults(MsBody *b) {
         if (sym == MS_NONE || b->c->syms.nvars[sym] != 0 || d->u.type.external || ms_def(b->c, sym)->nfields != d->u.type.fields.len) {
             continue;
         }
+        // A default reads the fields declared before it; its mistakes are the type's, reported once.
+        const uint32_t first_binding = b->facts->bindings.count;
+        b->first_binding = first_binding;
+        b->function = 0;
+        b->result = MS_TY_NONE;
         for (uint32_t f = 0; f < d->u.type.fields.len; f++) {
-            const MsExpr *def = d->u.type.fields.ptr[f]->def;
+            const MsParam *param = d->u.type.fields.ptr[f];
             const MsTy field = ms_def(b->c, sym)->fields[f].ty;
-            if (def == NULL || !body_is_bindable(b, field)) {
-                continue;
+            if (param->def != NULL && body_is_bindable(b, field)) {
+                const uint32_t bindings_start = b->facts->bindings.count;
+                const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
+                const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
+                b->supported = true;
+                b->context = "";
+                if (ms_body_expr(b, param->def, field) == MS_TY_NONE || !b->supported) {
+                    body_undo(b, bindings_start, written_start, diags_start);
+                } else {
+                    body_commit_diags(b, diags_start);
+                }
             }
-            const uint32_t first_binding = b->facts->bindings.count;
-            const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
-            const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
-            b->first_binding = first_binding;
-            b->function = 0;
             b->supported = true;
-            b->result = MS_TY_NONE;
-            if (ms_body_expr(b, def, field) == MS_TY_NONE || !b->supported || MS_VEC_LEN(b->diags, MsCheckDiag) != diags_start) {
-                body_undo(b, first_binding, written_start, diags_start);
+            if (!body_is_bindable(b, field)) {
+                break; // a later default might read it
             }
+            (void)ms_body_bind(b, ms_def(b->c, sym)->fields[f].name, field, param->id, param->pos,
+                               param->is_mutable ? MS_BIND_MUTABLE : 0, MS_ROLE_PARAM);
         }
     }
 }
