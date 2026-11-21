@@ -71,30 +71,7 @@ void ms_io_forget(int fd);
 MS_NODISCARD MS_NONNULL bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *count);
 
 #ifdef _WIN32
-/* ---- Windows: overlapped named pipes and waitable kernel objects (runtime/io/windows) ---- */
-
-/* What a pipe read or write came to. */
-typedef enum MsIoPipeStatus {
-    MS_IO_PIPE_OK = 0,          /* *count bytes were read or taken */
-    MS_IO_PIPE_WOULD_BLOCK = 1, /* nothing yet: wait for the pipe's key, then call again */
-    MS_IO_PIPE_END = 2,         /* reads only: the other end closed and every byte was read */
-    MS_IO_PIPE_FAILED = 3,      /* *os_code holds the system error */
-    MS_IO_PIPE_NOT_FOUND = 4,   /* the handle is not an adopted pipe */
-} MsIoPipeStatus;
-
-/* Takes over the overlapped named pipe `handle`, which the reactor closes with ms_io_pipe_drop. False, and the handle
- * still the caller's, when it was not opened for overlapped I/O. Tasks wait on the handle to read and on the handle
- * plus one to write (handles are multiples of four). */
-MS_NODISCARD bool ms_io_pipe_adopt(uintptr_t handle);
-bool ms_io_pipe_adopted(uintptr_t handle);
-/* One non-blocking read into `buffer`. */
-MS_NODISCARD MS_NONNULL_ARGS(3, 4) MsIoPipeStatus ms_io_pipe_read(uintptr_t handle, MsBytesMut buffer, size_t *count, int32_t *os_code);
-/* One non-blocking write from `data`: takes up to 64 KiB and reports WOULD_BLOCK while an earlier write is in flight. */
-MS_NODISCARD MS_NONNULL_ARGS(3, 4) MsIoPipeStatus ms_io_pipe_write(uintptr_t handle, MsBytes data, size_t *count, int32_t *os_code);
-/* Wakes the task parked on `key` (for reading) whenever the pipe becomes readable or writable. */
-void ms_io_pipe_group(uintptr_t handle, uintptr_t key);
-/* Closes the pipe and its handle; a pending operation is cancelled. */
-void ms_io_pipe_drop(uintptr_t handle);
+/* ---- Windows: waitable kernel objects (runtime/io/windows) ---- */
 
 /* Watches the waitable kernel object `handle` (a process): a task waiting on it for reading wakes once it is
  * signalled. The caller keeps it open until ms_io_object_drop. False when the wait cannot be registered. */
