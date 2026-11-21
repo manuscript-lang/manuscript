@@ -23,6 +23,9 @@ MS_NODISCARD bool ms_file_rename(MsSpan from, MsSpan to);
 void ms_path_remove(MsSpan path);
 /* Removes a directory and everything in it, or a file; a missing path is fine. */
 void ms_path_remove_tree(MsSpan path);
+/* The canonical absolute path of `path`: symbolic links resolved, `.` and `..` folded. The path must exist.
+ * On failure the C `errno` holds the cause (ENOENT for a missing path). */
+MS_NODISCARD MS_NONNULL bool ms_file_real_path(MsSpan path, MsString *out);
 /* The current working directory; false when it cannot be read. */
 MS_NODISCARD MS_NONNULL bool ms_dir_current(MsString *path);
 /* The directory for temporary files: TMPDIR or TEMP when set, else the host default. */
