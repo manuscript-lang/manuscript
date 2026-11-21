@@ -31,6 +31,8 @@ bool mir_opt_simplify(MirModule *m);  /* folding, identities, block cleanup, val
 bool mir_opt_simplify_func(MirModule *m, MirFunc *f);
 bool mir_opt_simplify_phis(MirModule *m); /* only trivial block-parameter elimination */
 bool mir_opt_sortgen(MirModule *m);    /* sorts by a known comparator run as generated code */
+bool mir_opt_viewfast(MirModule *m);   /* `String.view`, `String.slice` and `Bytes.view` run inline for a range inside the text, else call the runtime */
+bool mir_opt_bytesfast(MirModule *m);  /* a fixed-width `Bytes` read and a byte search run inline in the common case */
 bool mir_opt_probe(MirModule *m);      /* a map or set lookup of a fixed layout runs as a probe loop in the caller */
 bool mir_opt_appendfast(MirModule *m); /* `string_append` on an owned string with room runs inline */
 

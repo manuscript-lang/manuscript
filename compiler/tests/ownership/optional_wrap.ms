@@ -20,3 +20,7 @@ fn wrapped(name: String) String?:
 fn kept(name: String) String?:
 	label := name
 	return label
+
+fn find(s: String, t: String) String?:
+	if s.length() > 1: return t
+	return none
