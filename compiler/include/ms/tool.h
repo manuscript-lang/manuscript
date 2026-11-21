@@ -40,6 +40,15 @@ uint8_t ms_tool_format(const ms_str *text, ms_str *out, int64_t *code_out, ms_st
  * manifest (the caller falls back to `ms`'s Rust reader), with what is missing in `message_out`. */
 uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *message_out);
 
+/* The project an ms.toml describes (ms_project_read), as rows whose first field names the kind, in this order:
+ * `root`, `file`, `name`, `source` and `entry` (a library has an empty entry) with one field each; `version` when
+ * `[project] version` is set; `alias`, `embed` and `path` as `kind\tname\ttarget` (the target a canonical path),
+ * `dep` as `dep\talias\turl\tkind\treference` (the row ms_tool_dependencies returns), `allow` as
+ * `allow\tname\tpattern...` for `[effects]`, `effect` for each `[project] effects`, `workspace` when a `[workspace]`
+ * table exists and `member` for each of its members as written. Status 0 is success; 1 is an error with the Rust
+ * driver's text in `message_out`; 2 means the C reader does not cover the manifest. */
+uint8_t ms_tool_project(const ms_str *manifest, ms_list *out, ms_str *message_out);
+
 /* The files `ms fmt` formats for `target` (ms_project_format_paths): the file itself, or the modules of a directory or
  * of the project an ms.toml names, in order. Status 0 is success; 1 is an error with the Rust driver's text in
  * `message_out`; 2 means the C reader does not cover the target (a workspace root, a project with dependencies). */
@@ -58,6 +67,18 @@ uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t l
  * standard error and the exit status (as decimal text) the Rust command would produce; status 2 means the C passes
  * cannot give that answer (message in `message_out`) and the caller runs the Rust command; 1 is an error. */
 uint8_t ms_tool_check(const ms_str *target, uint8_t json, ms_list *out, ms_str *message_out);
+
+/* The workspace of the project whose manifest is `manifest` (project/workspace.c), as rows: `root\t<directory>`, then
+ * `member\t<name>\t<directory>` in member order; no rows when there is none. With `root_only` set, only a workspace
+ * root without a `[project]` of its own counts (the manifest itself, so a command aimed at it means every member);
+ * otherwise it is the workspace that lists the project. Status 0 is success; 1 is an error with the Rust text in
+ * `message_out`; 2 means the C reader does not cover a manifest. */
+uint8_t ms_tool_workspace(const ms_str *manifest, uint8_t root_only, ms_list *out, ms_str *message_out);
+
+/* The same for a workspace: every member's dependencies resolve into one ms.lock at `lock_root`. `members` are
+ * `name\tmanifest` rows, in member order (tools/ms/workspace.ms reads them). */
+uint8_t ms_tool_install_workspace(const ms_str *lock_root, const ms_list *members, const ms_list *update, uint8_t locked, uint8_t frozen,
+                                  ms_list *out, ms_str *message_out);
 
 /* ---- syntax trees ---- */
 
@@ -117,5 +138,31 @@ void ms_tool_tree_names(ms_object *tree, ms_list *out);
 void ms_tool_node_kinds(ms_list *out);
 /* The reserved words, in token order: `and` through `while`, without the `_` token. */
 void ms_tool_keywords(ms_list *out);
+
+/* ---- analysis (the language server) ---- */
+
+/* Checks `text` as a module of its own (`extern type Analysis` on the Manuscript side) (a program that imports a project module is status 2: not covered yet) and
+ * reports what the checker knows, keyed by the syntax-node ids of `ms_tool_tree_nodes` (`Syntax.id`), so a tool joins
+ * them to a tree of the same text. the rows hold three counts (nodes, bindings, symbols) and then the rows:
+ *   node, MS_TOOL_ANALYZE_NODE_WIDTH:     id, resolution (MsResolution), reference (binding, symbol, field, case or
+ *                                         method id, -1 for none), type of the expression, type of the written type,
+ *                                         symbol id of the function a call expression calls (-1 for none)
+ *   binding, MS_TOOL_ANALYZE_BINDING_WIDTH: name, type, declaring node id, line, column, offset, role (MsBindRole),
+ *                                         flags (1 mutable, 2 moving, 4 fed), reads
+ *   symbol, MS_TOOL_ANALYZE_SYMBOL_WIDTH: id, name, kind (0 type, 1 fn, 2 alias), module path, 1 when declared in this
+ *                                         text, 1 when exported, declaration node id (-1 for a primitive), offset, line,
+ *                                         column, type
+ * Every name, module path and type text is an index into the names (-1 for none); types print as source reads them.
+ */
+#define MS_TOOL_ANALYZE_NODE_WIDTH 6
+#define MS_TOOL_ANALYZE_BINDING_WIDTH 9
+#define MS_TOOL_ANALYZE_SYMBOL_WIDTH 11
+ms_object *ms_tool_analyze(const ms_str *text);
+/* 0 analysed, 1 syntax error, 2 not covered; the message of a status other than 0. */
+uint8_t ms_tool_analysis_status(ms_object *analysis);
+void ms_tool_analysis_message(ms_object *analysis, ms_str *out);
+/* The counts and rows described above, and the name and type texts they index. */
+void ms_tool_analysis_rows(ms_object *analysis, ms_list *out);
+void ms_tool_analysis_names(ms_object *analysis, ms_list *out);
 
 #endif

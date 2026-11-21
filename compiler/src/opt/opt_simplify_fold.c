@@ -1,6 +1,6 @@
 /* The folding half of `simplify`: constant folding, algebraic identities, strength reduction and
  * the trivial block-parameter elimination. Port of the `fold` and `phis` functions and the rules
- * of crates/ms-mir/src/opt/simplify.rs. Constants go on the right of commutative operations, and
+ * of the former Rust crates/ms-mir/src/opt/simplify.rs. Constants go on the right of commutative operations, and
  * every constant or identity the Rust rules know is applied in the same order, creating the same
  * values. */
 #include <math.h>
@@ -36,20 +36,14 @@ typedef struct SfEnv {
     uint32_t cap;
 } SfEnv;
 
-static void *sf_zeroed(MsArena *a, size_t n, size_t elem) {
-    void *p = ms_alloc(a, elem * (n + 1), 16);
-    memset(p, 0, elem * (n + 1));
-    return p;
-}
-
 /* Makes room for every value of the function (it grows while the pass makes constants). */
 static void sf_env_fit(SfEnv *e) {
     if (e->f->nvalues <= e->cap && e->consts != NULL) {
         return;
     }
     const uint32_t cap = e->f->nvalues + e->f->nvalues / 2 + 8;
-    SfK *consts = sf_zeroed(e->arena, cap, sizeof(SfK));
-    SfDef *defs = sf_zeroed(e->arena, cap, sizeof(SfDef));
+    SfK *consts = ms_alloc_zeroed(e->arena, cap, sizeof(SfK));
+    SfDef *defs = ms_alloc_zeroed(e->arena, cap, sizeof(SfDef));
     if (e->cap > 0 && e->consts != NULL && e->defs != NULL) {
         memcpy(consts, e->consts, sizeof(SfK) * e->cap);
         memcpy(defs, e->defs, sizeof(SfDef) * e->cap);
@@ -801,7 +795,7 @@ bool mir_simplify_fold(MirModule *m, MirFunc *f) {
 
 /* The block each value is defined in (UINT32_MAX when none). */
 static uint32_t *sf_def_blocks(MsArena *arena, const MirFunc *f) {
-    uint32_t *d = sf_zeroed(arena, f->nvalues, sizeof(uint32_t));
+    uint32_t *d = ms_alloc_zeroed(arena, f->nvalues, sizeof(uint32_t));
     for (uint32_t v = 0; v < f->nvalues; v++) {
         d[v] = UINT32_MAX;
     }
@@ -821,7 +815,7 @@ static uint32_t *sf_def_blocks(MsArena *arena, const MirFunc *f) {
 
 /* The edges entering each block as targets: block b's are `edge[start[b]..start[b + 1]]`. */
 static const MirTarget **sf_incoming(MsArena *arena, const MirFunc *f, uint32_t **start) {
-    uint32_t *st = sf_zeroed(arena, (size_t)f->nblocks + 1, sizeof(uint32_t));
+    uint32_t *st = ms_alloc_zeroed(arena, (size_t)f->nblocks + 1, sizeof(uint32_t));
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         const MirTerm *t = &f->blocks[bi].term;
         for (uint32_t s = 0; s < mir_term_ntargets(t); s++) {
@@ -831,9 +825,9 @@ static const MirTarget **sf_incoming(MsArena *arena, const MirFunc *f, uint32_t 
     for (uint32_t b = 0; b < f->nblocks; b++) {
         st[b + 1] += st[b];
     }
-    uint32_t *fill = sf_zeroed(arena, (size_t)f->nblocks + 1, sizeof(uint32_t));
+    uint32_t *fill = ms_alloc_zeroed(arena, (size_t)f->nblocks + 1, sizeof(uint32_t));
     memcpy(fill, st, sizeof(uint32_t) * f->nblocks);
-    const MirTarget **edge = sf_zeroed(arena, (size_t)st[f->nblocks] + 1, sizeof(MirTarget *));
+    const MirTarget **edge = ms_alloc_zeroed(arena, (size_t)st[f->nblocks] + 1, sizeof(MirTarget *));
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
         const MirTerm *t = &f->blocks[bi].term;
         for (uint32_t s = 0; s < mir_term_ntargets(t); s++) {
@@ -921,7 +915,7 @@ bool mir_simplify_phis(MirModule *m, MirFunc *f) {
     s.subst = mir_subst_new(&arena, f->nvalues);
     s.drop = MS_NEW_N(&arena, uint8_t *, (size_t)f->nblocks + 1);
     for (uint32_t bi = 0; bi < f->nblocks; bi++) {
-        s.drop[bi] = sf_zeroed(&arena, f->blocks[bi].nparams, 1);
+        s.drop[bi] = ms_alloc_zeroed(&arena, f->blocks[bi].nparams, 1);
     }
     for (uint32_t bi = 1; bi < f->nblocks; bi++) {
         sf_classify_params(&s, bi);

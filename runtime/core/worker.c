@@ -19,6 +19,7 @@ typedef struct Worker {
 /* Process-wide: written by the main isolate (configure, start, shutdown), read by threads only through `limit`. */
 static MsWorkerEnv config;
 static _Atomic uint32_t limit_cache = 1;
+static _Atomic bool stress_on;
 static Worker workers[MS_MAX_ISOLATES];
 static _Atomic uint32_t started;
 static _Atomic uint32_t spawning;
@@ -26,11 +27,22 @@ static _Atomic uint32_t spawning;
 void ms_workers_configure(const MsWorkerEnv *env) {
     config = *env;
     config.hooks.service = true;
-    atomic_store(&limit_cache, env->limit < 1 ? 1 : env->limit);
+    atomic_store(&stress_on, env->stress);
+    ms_workers_set_limit(env->limit);
+}
+
+bool ms_workers_stress(void) { return atomic_load_explicit(&stress_on, memory_order_relaxed); }
+
+int64_t ms_workers_own_beat(void) {
+    return ms_workers_stress() ? MS_WORKER_STRESS_OWN_BEAT_NS : MS_WORKER_OWN_BEAT_NS;
 }
 
 void ms_workers_set_limit(uint32_t limit) {
-    const uint32_t bounded = limit < 1 ? 1 : (limit > MS_MAX_ISOLATES ? MS_MAX_ISOLATES : limit);
+    uint32_t bounded = limit > MS_MAX_ISOLATES ? MS_MAX_ISOLATES : limit;
+    const uint32_t floor = ms_workers_stress() ? 2 : 1; /* stress mode needs a thread to take the work */
+    if (bounded < floor) {
+        bounded = floor;
+    }
     atomic_store(&limit_cache, bounded);
 }
 

@@ -41,7 +41,7 @@ fn optimized(path: &Path) -> String {
         CheckRequest::default(),
     );
     assert!(loaded.success(), "{:?}", loaded.diagnostics);
-    let mut module = lower_program(
+    let module = lower_program(
         syms,
         &loaded.program.expect("program"),
         &Options {
@@ -49,9 +49,7 @@ fn optimized(path: &Path) -> String {
         },
     )
     .expect("lower");
-    ms_mir::opt::optimize(&mut module, ms_mir::opt::Level::Speed, true);
-    ms_mir::depth::lower(&mut module);
-    ms_mir::print::print_module(&module)
+    ms_build::c_backend::optimized_mir(&module).expect("optimize")
 }
 
 fn quoted(rest: &str) -> Vec<&str> {

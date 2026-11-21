@@ -1,5 +1,5 @@
 /* range: which lists share a length. Port of `length_origins`, `byte_lists`, `alias_loop_lists`
- * and `counted_lists` in crates/ms-mir/src/opt/range.rs.
+ * and `counted_lists` in the former Rust crates/ms-mir/src/opt/range.rs.
  *
  * A list length can flow through element replacement and block arguments without the elements
  * flowing with it. Each value gets an origin: values with the same origin have the same length.

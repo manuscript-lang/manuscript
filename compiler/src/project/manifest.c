@@ -10,6 +10,7 @@
 
 #include "ms/lock.h"
 #include "ms/project.h"
+#include "ms/text.h"
 #include "ms/resolve.h"
 
 enum { MAX_LINE = 65535 };
@@ -82,10 +83,6 @@ static bool manifest_unsupported(const Reader *r, const char *what) {
 }
 
 /* ---- reading the document ---- */
-
-static bool manifest_is_bare(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
-}
 
 static int manifest_hex_digit(char c) {
     if (c >= '0' && c <= '9') return c - '0';
@@ -187,7 +184,7 @@ static bool manifest_end_of_line(const Reader *r, size_t *at) {
 }
 
 /* A number or boolean on one line, skipped. Arrays, tables, dates and bare words are left to the Rust reader. */
-static bool is_scalar_char(char c) { return manifest_is_bare(c) || c == '.' || c == '+'; }
+static bool is_scalar_char(char c) { return ms_text_is_bare_key_char(c) || c == '.' || c == '+'; }
 
 static bool manifest_skip_scalar(const Reader *r, size_t *at) {
     char first = '\0';
@@ -321,7 +318,7 @@ static bool manifest_read_key(const Reader *r, size_t *at, const char **out) {
         return manifest_read_string(r, at, out, &control);
     }
     const size_t start = *at;
-    while (*at < r->length && manifest_is_bare(r->text[*at])) {
+    while (*at < r->length && ms_text_is_bare_key_char(r->text[*at])) {
         (*at)++;
     }
     if (*at == start) {
@@ -726,7 +723,7 @@ static bool manifest_is_dir(const char *path) {
     return stat(path, &info) == 0 && S_ISDIR(info.st_mode);
 }
 
-static bool manifest_is_file(const char *path) {
+bool ms_project_is_file(const char *path) {
     struct stat info;
     return stat(path, &info) == 0 && S_ISREG(info.st_mode);
 }
@@ -796,16 +793,12 @@ static bool manifest_read_entries(Builder *b, const Entry *entries, size_t count
 }
 
 /* Orders rows whose first member is the name (MsAlias, DepRow, EffectRow), as the Rust maps iterate. */
-static int manifest_name_order(const void *x, const void *y) {
-    return strcmp(*(const char *const *)x, *(const char *const *)y);
-}
-
 /* The rows of `buf` sorted by name and copied into the arena. */
 static void *manifest_sorted(MsArena *a, MsBuf *buf, size_t size, uint32_t *count) {
     const size_t n = buf->len / size;
     void *rows = ms_buf_items(buf);
     if (n > 1) {
-        qsort(rows, n, size, manifest_name_order);
+        qsort(rows, n, size, ms_cmp_cstr);
     }
     void *copy = ms_alloc(a, (n + 1) * size, _Alignof(max_align_t));
     if (n > 0) {
@@ -926,7 +919,7 @@ static bool manifest_finish(Builder *b) {
         if (strcmp(ms_path_ext(p->entry), ".ms") != 0) {
             return manifest_fail_at(r, b->entry_pos, "entry requires .ms extension; set entry to a .ms file such as \"src/main.ms\"");
         }
-        if (!manifest_is_file(p->entry)) {
+        if (!ms_project_is_file(p->entry)) {
             return manifest_fail_at(r, b->entry_pos, ms_arena_fmt(a, "project entry must be an existing regular file; create %s or fix entry in [project]", p->entry).ptr);
         }
     }

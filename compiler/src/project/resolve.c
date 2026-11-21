@@ -68,28 +68,57 @@ bool ms_project_source_path(MsArena *a, const char *root, const char *path, cons
 
 /* ---- imports ---- */
 
+/* The names of `[aliases]` and of the packages the manifest depends on, sorted. */
+static uint32_t resolve_declared(MsArena *a, const MsProject *p, const char ***names) {
+    const char **all = MS_NEW_N(a, const char *, p->alias_count + p->dep_count + 1);
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < p->alias_count + p->dep_count; i++) {
+        const char *name = i < p->alias_count ? p->aliases[i].name : p->deps[i - p->alias_count].name;
+        uint32_t at = 0;
+        while (at < count && strcmp(all[at], name) < 0) {
+            at++;
+        }
+        if (at < count && strcmp(all[at], name) == 0) {
+            continue;
+        }
+        memmove(all + at + 1, all + at, (count - at) * sizeof *all);
+        all[at] = name;
+        count++;
+    }
+    *names = all;
+    return count;
+}
+
 /* "; declared aliases: @a, @b", or the advice for a project that declares none. */
 static const char *resolve_alias_hint(MsArena *a, const MsProject *p) {
-    if (p->alias_count == 0) {
+    const char **declared;
+    const uint32_t count = resolve_declared(a, p, &declared);
+    if (count == 0) {
         return "; this project declares none, so add one under [aliases] in ms.toml, e.g. @lib = \"src/lib\" (use @std/... for the standard library)";
     }
     MsBuf names = {0};
     ms_buf_puts(&names, "; declared aliases: ");
-    for (uint32_t i = 0; i < p->alias_count; i++) {
+    for (uint32_t i = 0; i < count; i++) {
         if (i > 0) {
             ms_buf_puts(&names, ", ");
         }
-        ms_buf_puts(&names, p->aliases[i].name);
+        ms_buf_puts(&names, declared[i]);
     }
     char *text = ms_arena_strndup(a, names.data, names.len);
     ms_buf_free(&names);
     return text;
 }
 
+/* What `name` names in `[aliases]`, else the source directory of the package it depends on. */
 static const char *resolve_find_alias(const MsProject *p, const char *name, size_t length) {
     for (uint32_t i = 0; i < p->alias_count; i++) {
         if (strlen(p->aliases[i].name) == length && memcmp(p->aliases[i].name, name, length) == 0) {
             return p->aliases[i].target;
+        }
+    }
+    for (uint32_t i = 0; i < p->dep_count; i++) {
+        if (strlen(p->deps[i].name) == length && memcmp(p->deps[i].name, name, length) == 0) {
+            return p->deps[i].target;
         }
     }
     return NULL;
@@ -101,7 +130,8 @@ static bool resolve_fail_message(MsProjectError *err, const char *message) {
 }
 
 /* The path a local import names, before symlinks are resolved and confinement is checked. */
-static bool resolve_import_target(MsArena *a, const MsProject *p, const char *importer, const char *path, const char **out, MsProjectError *err) {
+static bool resolve_import_target(MsArena *a, const MsProject *project, const char *importer, const char *path, const char **out, bool *generated, MsProjectError *err) {
+    const MsProject *p = ms_project_scope(project, importer);
     if (strchr(path, '\\') != NULL) {
         return resolve_fail_message(err, "import paths use / separators; write \"./dir/file.ms\" instead of backslashes");
     }
@@ -122,6 +152,18 @@ static bool resolve_import_target(MsArena *a, const MsProject *p, const char *im
         const size_t alias_length = slash != NULL ? (size_t)(slash - path) : strlen(path);
         const char *remainder = slash != NULL ? slash + 1 : "";
         const char *alias = ms_arena_strndup(a, path, alias_length);
+        for (uint32_t i = 0; i < p->embed_count; i++) {
+            if (strcmp(p->embed[i].name, alias) != 0) {
+                continue;
+            }
+            if (remainder[0] != 0) {
+                return resolve_fail_message(err, ms_arena_fmt(a, "embed %s names a generated module, so import it as \"%s\" alone", alias, alias).ptr);
+            }
+            /* Generated on load; no file exists, so there is nothing to canonicalize. */
+            *out = ms_embed_module_path(a, project->root, alias);
+            *generated = true;
+            return true;
+        }
         const char *base = resolve_find_alias(p, alias, alias_length);
         if (base == NULL || base[0] == 0) {
             return resolve_fail_message(err, ms_arena_fmt(a, "unknown import alias %s%s", alias, resolve_alias_hint(a, p)).ptr);
@@ -153,5 +195,13 @@ static bool resolve_import_target(MsArena *a, const MsProject *p, const char *im
 
 bool ms_project_resolve_import(MsArena *a, const MsProject *p, const char *importer, const char *path, const char **out, MsProjectError *err) {
     const char *target;
-    return resolve_import_target(a, p, importer, path, &target, err) && ms_project_source_path(a, p->root, target, out, err);
+    bool generated = false;
+    if (!resolve_import_target(a, p, importer, path, &target, &generated, err)) {
+        return false;
+    }
+    if (generated) {
+        *out = target;
+        return true;
+    }
+    return ms_project_source_path(a, ms_project_confinement_root(p, importer, path, target), target, out, err);
 }

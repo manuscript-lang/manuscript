@@ -58,7 +58,11 @@ static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
         return record;
     }
     const MirTy user_enum = le_type(lb, ty);
-    return user_enum != MIR_NONE ? user_enum : la_type(lb, ty);
+    if (user_enum != MIR_NONE) {
+        return user_enum;
+    }
+    const MirTy iface = li_type(lb, ty);
+    return iface != MIR_NONE ? iface : la_type(lb, ty);
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
@@ -80,7 +84,11 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
         return MIR_STR;
     }
     const MirTy list = lst_type(lb, ty);
-    return list != MIR_NONE ? list : lb_mir_alt(lb, ty);
+    if (list != MIR_NONE) {
+        return list;
+    }
+    const MirTy map = lm_type(lb, ty);
+    return map != MIR_NONE ? map : lb_mir_alt(lb, ty);
 }
 
 MirLoc lb_loc(const Lb *lb, MsPos pos) {
@@ -182,11 +190,11 @@ static LbVal lb_text(Lb *lb, const MsExpr *e) {
 /* A `var` parameter arrives as a pointer to the caller's variable. The body works on a copy held
  * in an SSA variable: it is loaded on entry and stored back before every return (`noalias` says
  * nothing else touches the memory meanwhile). */
-static MirValue lb_load(Lb *lb, MirValue slot, MirTy ty) {
+MirValue lb_load(Lb *lb, MirValue slot, MirTy ty) {
     return mir_b_emit(&lb->b, MOP_Load, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
 }
 
-static void lb_store(Lb *lb, MirValue slot, MirValue value) {
+void lb_store(Lb *lb, MirValue slot, MirValue value) {
     const MirValue args[2] = {slot, value};
     (void)mir_b_emit(&lb->b, MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
 }
@@ -403,8 +411,36 @@ static MirValue lb_var_argument(Lb *lb, const MsExpr *arg, uint32_t *binding_out
 
 /* Whether parameter `index` of the function declared by `d` is handed over: declared `move`, or
  * moved by the body (the ownership pass's `param_consumed`). */
-static bool lb_param_moves(const Lb *lb, const MsDecl *d, uint32_t index) {
-    return d->u.fn.params.ptr[index]->moving || ((lb->facts->param_consumed[d->id] >> index) & 1u) != 0;
+static bool lb_has_self(const LbCallable *c) {
+    return c->self_ty != MS_TY_NONE;
+}
+
+/* The parameters of a callable in call order: the receiver (a method's) first. */
+static uint32_t lb_slots(const LbCallable *c) {
+    return c->fn->params.len + (lb_has_self(c) ? 1u : 0u);
+}
+
+/* The source parameter behind a slot: NULL for a method's receiver. */
+static const MsParam *lb_slot_param(const LbCallable *c, uint32_t slot) {
+    const uint32_t first = lb_has_self(c) ? 1u : 0u;
+    return slot < first ? NULL : c->fn->params.ptr[slot - first];
+}
+
+static bool lb_slot_mutable(const LbCallable *c, uint32_t slot) {
+    const MsParam *param = lb_slot_param(c, slot);
+    return param == NULL ? c->mutating : param->is_mutable;
+}
+
+/* The node whose binding a parameter slot introduces: a method's node for its `self`. */
+static uint32_t lb_slot_node(const LbCallable *c, uint32_t slot) {
+    const MsParam *param = lb_slot_param(c, slot);
+    return param == NULL ? c->node : param->id;
+}
+
+static bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot) {
+    const MsParam *param = lb_slot_param(c, slot);
+    const bool declared = param != NULL && param->moving;
+    return declared || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
 }
 
 /* Whether `e` names a `let` local or a `move` parameter: a String the function owns, so using it
@@ -418,10 +454,9 @@ static bool lb_names_owned(const Lb *lb, const MsExpr *e) {
     if (facts->bindings.role[binding] == MS_ROLE_LET) {
         return true;
     }
-    const MsFunc *fn = &lb->decl->u.fn;
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        if (lb->binding_at[fn->params.ptr[i]->id] == binding) {
-            return lb_param_moves(lb, lb->decl, i);
+    for (uint32_t i = 0; i < lb_slots(&lb->cur); i++) {
+        if (lb->binding_at[lb_slot_node(&lb->cur, i)] == binding) {
+            return lb_param_moves(lb, &lb->cur, i);
         }
     }
     return false;
@@ -466,38 +501,35 @@ static uint32_t lb_callee_func(Lb *lb, const MsExpr *e, MsSymId callee) {
     return lb_instance(lb, callee, args, nargs);
 }
 
-static LbVal lb_call(Lb *lb, const MsExpr *e) {
-    const uint32_t callee = lb->facts->call_callee[e->id];
-    if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
-        return la_case(lb, e);
-    }
-    if (callee == MS_NONE && lb->facts->call_method[e->id] != MS_NONE) {
-        return lst_method(lb, e);
-    }
-    if (callee == MS_NONE) {
-        return lb_call_value(lb, e);
-    }
-    if (lb->c->syms.kind[callee] == MS_SYM_TYPE) {
-        return lr_construct(lb, e);
-    }
-    const uint32_t func = lb_callee_func(lb, e, callee);
-    const uint32_t count = e->u.call.args.len;
-    if (func == MIR_NONE || count != lb->c->tys.nparams[lb->c->syms.ty[callee]]) {
+/* A call of the module function `func` of signature `sig`. `receiver` is the expression a method
+ * is called on (its first argument, by `var` address when the method changes it), else NULL. */
+LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating) {
+    const uint32_t offset = receiver != NULL ? 1u : 0u;
+    const uint32_t given = e->u.call.args.len;
+    const uint32_t count = given + offset;
+    if (func == MIR_NONE || given != lb->c->tys.nparams[sig] || count != lb->m->funcs[func].nparams) {
         return lb_unsupported(lb);
     }
-    const MsTyParam *params = ms_ty_params(&lb->c->tys, lb->c->syms.ty[callee]);
+    const MsTyParam *params = ms_ty_params(&lb->c->tys, sig);
     MirValue *args = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
     MirValue *temps = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1); // owned arguments
     uint32_t ntemps = 0;
     MirValue *slots = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
     uint32_t *bindings = MS_NEW_N(&lb->b.scratch, uint32_t, (size_t)count + 1);
+    const MsExpr **exprs = MS_NEW_N(&lb->b.scratch, const MsExpr *, (size_t)count + 1);
+    bool *by_var = MS_NEW_N(&lb->b.scratch, bool, (size_t)count + 1);
+    for (uint32_t i = 0; i < count; i++) {
+        exprs[i] = i < offset ? receiver : e->u.call.args.ptr[i - offset].value;
+        by_var[i] = i < offset ? mutating : (params[i - offset].flags & MS_PARAM_VAR) != 0;
+    }
     // Values first, then the slots of the `var` arguments, in argument order each.
     for (uint32_t i = 0; i < count && lb->ok; i++) {
         slots[i] = MIR_NONE;
-        if ((params[i].flags & MS_PARAM_MOVE) != 0 || (i < lb->m->funcs[func].nparams && lb->m->funcs[func].params[i].mode == MM_MOVE)) {
-            args[i] = lb_move_argument(lb, e->u.call.args.ptr[i].value);
-        } else if ((params[i].flags & MS_PARAM_VAR) == 0) {
-            const LbVal value = lb_expr(lb, e->u.call.args.ptr[i].value);
+        const bool moves = i >= offset && (params[i - offset].flags & MS_PARAM_MOVE) != 0;
+        if (moves || (i < lb->m->funcs[func].nparams && lb->m->funcs[func].params[i].mode == MM_MOVE)) {
+            args[i] = lb_move_argument(lb, exprs[i]);
+        } else if (!by_var[i]) {
+            const LbVal value = lb_expr(lb, exprs[i]);
             args[i] = value.v;
             if (value.owned) {
                 temps[ntemps++] = value.v; // dropped where the statement ends
@@ -505,8 +537,8 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
         }
     }
     for (uint32_t i = 0; i < count && lb->ok; i++) {
-        if ((params[i].flags & MS_PARAM_VAR) != 0) {
-            args[i] = lb_var_argument(lb, e->u.call.args.ptr[i].value, &bindings[i], &slots[i]);
+        if (by_var[i]) {
+            args[i] = lb_var_argument(lb, exprs[i], &bindings[i], &slots[i]);
         }
     }
     if (!lb->ok) {
@@ -517,9 +549,13 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     bool owns_result = false;
     if (how != MS_OWNED_NONE) {
         // A borrowing callee over a temporary: the caller owns the result, which is the temporary itself
-        // when it came back whole and a copy taken before the temporary is dropped otherwise.
+        // when it came back whole and a copy taken before the temporary is dropped otherwise. The
+        // ownership walk numbers the arguments after the receiver, which this does not follow yet.
         const uint32_t whole = lb->facts->call_owned_param[e->id];
-        const bool is_whole = how == MS_OWNED_WHOLE && whole < count;
+        const bool is_whole = how == MS_OWNED_WHOLE && whole < given;
+        if (receiver != NULL) {
+            return lb_unsupported(lb);
+        }
         if (is_whole) {
             result = args[whole];
             for (uint32_t i = 0; i < ntemps; i++) {
@@ -546,7 +582,32 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return (LbVal){result, owns_result || (lb_owns(lb, result_ty) && !borrowed)}; // else a String result is the caller's
 }
 
-static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
+static LbVal lb_call(Lb *lb, const MsExpr *e) {
+    if (lb->facts->call_reordered[e->id]) {
+        return lb_unsupported(lb); // arguments are paired with parameters by index below
+    }
+    const uint32_t callee = lb->facts->call_callee[e->id];
+    const uint32_t method = lb->facts->call_method[e->id];
+    if (method != MS_NONE) {
+        return lm_has(lb, method) ? lm_call(lb, e, method) : lst_method(lb, e);
+    }
+    if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
+        return la_case(lb, e);
+    }
+    const MsTy dispatch = lb->facts->call_interface[e->id];
+    if (dispatch != MS_TY_NONE && ms_ty_kind(&lb->c->tys, lb->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
+        return li_call(lb, e);
+    }
+    if (callee == MS_NONE) {
+        return lb_call_value(lb, e);
+    }
+    if (lb->c->syms.kind[callee] == MS_SYM_TYPE) {
+        return lr_construct(lb, e);
+    }
+    return lb_call_func(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false);
+}
+
+LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
@@ -561,9 +622,9 @@ static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     case MS_E_INDEX:
     case MS_E_APPLY: return lst_index(lb, e);
     case MS_E_LIST: return lst_literal(lb, e);
+    case MS_E_MAP: return lm_literal(lb, e);
     case MS_E_VOID:
-    case MS_E_PROBE:
-    case MS_E_MAP: break;
+    case MS_E_PROBE: break;
     }
     return lb_unsupported(lb);
 }
@@ -781,10 +842,9 @@ void lb_write_back(Lb *lb) {
     if (lb->closure) {
         return; // a closure has no `var` parameters of its own
     }
-    const MsFunc *fn = &lb->decl->u.fn;
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        if (fn->params.ptr[i]->is_mutable) {
-            const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
+    for (uint32_t i = 0; i < lb_slots(&lb->cur); i++) {
+        if (lb_slot_mutable(&lb->cur, i)) {
+            const uint32_t binding = lb->binding_at[lb_slot_node(&lb->cur, i)];
             lb_store(lb, lb->value_of[binding], mir_b_use_var(&lb->b, lb->var_of[binding]));
         }
     }
@@ -805,7 +865,7 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except) {
     }
 }
 
-static bool lb_var_owned(const Lb *lb, uint32_t binding) {
+bool lb_var_owned(const Lb *lb, uint32_t binding) {
     for (uint32_t i = 0; i < lb->nvars; i++) {
         if (lb->vars[i].binding == binding) {
             return true;
@@ -879,7 +939,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
 
 /* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
  * the scope's depth. */
-static uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
+uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
     const uint32_t depth = lscope_push(&lb->scopes);
     lb_statements(lb, body);
     if (!lb->dead) {
@@ -977,7 +1037,7 @@ static void lb_while(Lb *lb, const MsStmt *s) {
 }
 
 /* The block `continue` and the end of the body go to; a `for` makes it on first use. */
-static MirBlock lb_step_block(Lb *lb, LbLoop *loop) {
+MirBlock lb_step_block(Lb *lb, LbLoop *loop) {
     if (!loop->stepped) {
         loop->next = mir_b_new_block(&lb->b);
         loop->stepped = true;
@@ -1125,355 +1185,4 @@ void lb_statements(Lb *lb, const MsStmts *body) {
     for (uint32_t i = 0; i < body->len && lb->ok && !lb->dead; i++) {
         lb_statement(lb, body->ptr[i]);
     }
-}
-
-/* ---- functions ---- */
-
-/* The function's MIR signature into `params` (one per source parameter) and `ret`; false when a
- * parameter or the result is not a type this pass handles. */
-static bool lb_signature(Lb *lb, const MsFunc *fn, MsSymId sym, MirParam *params, MirTy *ret) {
-    const MsTy sig = lb->c->syms.ty[sym];
-    const MsTyParam *sig_params = ms_ty_params(&lb->c->tys, sig);
-    const MsTy result = lb->c->tys.result[sig];
-    *ret = result == lb->void_ty ? MIR_VOID : lb_mir_ty(lb, result);
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        const MirTy ty = lb_mir_ty(lb, sig_params[i].ty);
-        const bool moving = lb_param_moves(lb, lb->c->syms.decl[sym], i);
-        if (ty == MIR_NONE || (moving && !lb_owns(lb, ty)) || (fn->params.ptr[i]->is_mutable && lb_is_fn(lb, ty))) { // only a String is handed over so far
-            return false;
-        }
-        params[i] = (MirParam){fn->params.ptr[i]->is_mutable ? MIR_PTR : ty, moving ? MM_MOVE : MM_BORROW};
-    }
-    return *ret != MIR_NONE;
-}
-
-/* The indexes of the `var` parameters, which no other memory overlaps (the text form's `noalias`). */
-static void lb_mark_noalias(Lb *lb, const MsFunc *fn) {
-    uint32_t count = 0;
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        count += fn->params.ptr[i]->is_mutable ? 1 : 0;
-    }
-    if (count == 0) {
-        return;
-    }
-    uint32_t *indexes = MS_NEW_N(&lb->m->arena, uint32_t, count);
-    uint32_t next = 0;
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        if (fn->params.ptr[i]->is_mutable) {
-            indexes[next++] = i;
-        }
-    }
-    lb->b.f.noalias = indexes;
-    lb->b.f.nnoalias = count;
-}
-
-/* Starts the function and binds its parameters; false when its signature is not handled. */
-static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
-    const MsFunc *fn = &d->u.fn;
-    MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, fn->params.len + 1);
-    MirTy ret = MIR_NONE;
-    if (!lb_signature(lb, fn, sym, params, &ret)) {
-        return false;
-    }
-    const MsStr name = ms_name(lb->c->names, fn->name);
-    mir_b_init(&lb->b, lb->m, lb->has_override ? lb->name_override : mir_name(lb->m, name.ptr, name.len), params,
-               fn->params.len, ret);
-    lb->b.f.loc = lb_loc(lb, d->pos);
-    lb->b.f.ret_borrowed = lb->facts->ret_borrowed[d->id]; // every result is a reference into the arguments
-    lb_mark_noalias(lb, fn);
-    MirValue *values = MS_NEW_N(&lb->m->arena, MirValue, fn->params.len + 1);
-    mir_b_params(&lb->b, values, fn->params.len);
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
-        lb->value_of[binding] = values[i];
-        if (!fn->params.ptr[i]->is_mutable) { // Rust names no `var` parameter: its value is a pointer
-            lb_name_value(lb, values[i], fn->params.ptr[i]->name, true);
-        }
-    }
-    lb_depth(lb, MOP_DepthEnter);
-    for (uint32_t i = 0; i < fn->params.len; i++) {
-        if (fn->params.ptr[i]->is_mutable) {
-            const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
-            const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
-            lb->var_of[binding] = mir_b_declare_var(&lb->b, ty, MM_BORROW);
-            mir_b_def_var(&lb->b, lb->var_of[binding], lb_load(lb, values[i], ty));
-        }
-    }
-    return true;
-}
-
-/* The state of a body about to be lowered: its builder is started and `lb->decl` is set. */
-void lb_reset_state(Lb *lb) {
-    lb->dead = false;
-    lb->loop = NULL;
-    lb->stmt = NULL;
-    lscope_init(&lb->scopes, &lb->b);
-    lb->vars = NULL; // the arena they live in is freed between passes
-    lb->nvars = lb->cvars = 0;
-    lb->temps = NULL;
-    lb->ntemps = lb->ctemps = lb->stmt_mark = lb->branching = 0;
-    (void)lscope_push(&lb->scopes); // the body's own scope: depth 0
-}
-
-/* Lowers one checked function over its stub `slot` in the module; false when it is not handled. */
-static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
-    lb->decl = d;
-    lb->closure = false;
-    lb->jobs = NULL; // the arena they live in is freed between passes
-    lb->njobs = lb->cjobs = 0;
-    lb->ok = lb_begin(lb, d, sym);
-    if (!lb->ok) {
-        return false;
-    }
-    lb_reset_state(lb);
-    for (uint32_t i = 0; i < d->u.fn.params.len; i++) {
-        if (lb_param_moves(lb, d, i)) { // the function owns what it was handed
-            lscope_own(&lb->scopes, lb->value_of[lb->binding_at[d->u.fn.params.ptr[i]->id]], 0);
-        }
-    }
-    lb_statements(lb, &d->u.fn.body);
-    if (lb->ok && !lb->dead && lb->b.f.ret == MIR_VOID) {
-        lb_return_void(lb); // the end of a function that returns nothing
-    }
-    lb->ok = lb->ok && lb->dead;
-    MirFunc f = {0};
-    if (lb->ok) {
-        mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
-        const MsStr name = ms_name(lb->c->names, d->u.fn.name);
-        const bool is_main = name.len == 4 && memcmp(name.ptr, "main", 4) == 0;
-        if (is_main && lb->b.f.ret == MIR_INT) { // any other `main` gets a wrapper, which is the export
-            lb->b.f.linkage = ML_EXPORT;
-        }
-    }
-    // Finishing also frees the builder's scratch tables, which a failed function needs too.
-    const bool built = mir_b_into_func(&lb->b, &f);
-    if (lb->ok && built) {
-        lb->m->funcs[slot] = f;
-    }
-    return lb_closures(lb, lb->ok && built); // the lambdas it made are lowered after it
-}
-
-static void lb_index_bindings(Lb *lb, MsArena *arena) {
-    const MsBindings *bindings = &lb->facts->bindings;
-    const size_t nodes = (size_t)lb->facts->node_count + 1;
-    lb->binding_at = MS_NEW_N(arena, uint32_t, nodes);
-    memset(lb->binding_at, 0xff, nodes * sizeof *lb->binding_at);
-    for (uint32_t i = 0; i < bindings->count; i++) {
-        lb->binding_at[bindings->decl_node[i]] = i;
-    }
-    lb->type_of = MS_NEW_N(arena, MirTy, lb->c->tys.count + 1);
-    memset(lb->type_of, 0xff, (lb->c->tys.count + 1) * sizeof *lb->type_of);
-    lb->value_of = MS_NEW_N(arena, MirValue, bindings->count + 1);
-    lb->var_of = MS_NEW_N(arena, MirVar, bindings->count + 1);
-    memset(lb->var_of, 0xff, (bindings->count + 1) * sizeof *lb->var_of);
-    memset(lb->value_of, 0xff, (bindings->count + 1) * sizeof *lb->value_of);
-}
-
-/* Adds a function with the declared signature and an empty body, so calls can name it before its
- * body is lowered (recursion and any order of declarations). */
-static uint32_t lb_add_stub(Lb *lb, const MsDecl *d, MsSymId sym) {
-    const MsFunc *fn = &d->u.fn;
-    MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, fn->params.len + 1);
-    MirTy ret = MIR_NONE;
-    if (!lb_signature(lb, fn, sym, params, &ret)) {
-        return MIR_NONE;
-    }
-    const MsStr name = ms_name(lb->c->names, fn->name);
-    MirFunc stub = {0};
-    mir_func_init(lb->m, &stub, lb->has_override ? lb->name_override : mir_name(lb->m, name.ptr, name.len), params,
-                  fn->params.len, ret);
-    stub.ret_borrowed = lb->facts->ret_borrowed[d->id]; // callers read it before the body is lowered
-    return mir_add_func(lb->m, &stub);
-}
-
-/* ---- generic instances ---- */
-
-static LbInst *lb_find_inst(LbInst *list, uint32_t n, MsSymId sym, const MsTy *args, uint32_t nargs) {
-    for (uint32_t i = 0; i < n; i++) {
-        if (list[i].sym == sym && list[i].nargs == nargs && memcmp(list[i].args, args, nargs * sizeof *args) == 0) {
-            return &list[i];
-        }
-    }
-    return NULL;
-}
-
-static bool lb_push_inst(LbInst **list, uint32_t *n, uint32_t *cap, const LbInst *inst) {
-    if (*n == *cap) {
-        const uint32_t grown = *cap == 0 ? 8 : *cap * 2;
-        LbInst *bigger = realloc(*list, (size_t)grown * sizeof **list);
-        if (bigger == NULL) {
-            return false;
-        }
-        *list = bigger;
-        *cap = grown;
-    }
-    (*list)[(*n)++] = *inst;
-    return true;
-}
-
-/* The copy of the generic function `sym` for `args`, created (with its signature and an empty body)
- * on first use; MIR_NONE when its signature is not handled or it failed before. Copies are named
- * `name`, `name.1`, `name.2`, ... in the order they are created. Their bodies are lowered by
- * `lb_drain_instances` once the module's own functions are. */
-static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs) {
-    if (lb_find_inst(lb->dead_insts, lb->ndead_insts, sym, args, nargs) != NULL) {
-        return MIR_NONE;
-    }
-    const LbInst *known = lb_find_inst(lb->insts, lb->ninsts, sym, args, nargs);
-    if (known != NULL) {
-        return known->func;
-    }
-    LbInst inst = {.sym = sym, .nargs = nargs, .func = MIR_NONE};
-    memcpy(inst.args, args, nargs * sizeof *args);
-    const MsDecl *d = lb->c->syms.decl[sym];
-    const MsDef *def = ms_def(lb->mut, sym);
-    if (d == NULL || d->kind != MS_D_FN || def == NULL || def->nvars != nargs || !lb->facts->body_checked[d->id]) {
-        (void)lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst);
-        return MIR_NONE;
-    }
-    uint32_t serial = 0;
-    for (uint32_t i = 0; i < lb->ninsts; i++) {
-        serial += lb->insts[i].sym == sym ? 1 : 0;
-    }
-    const MsStr base = ms_name(lb->c->names, d->u.fn.name);
-    char *text = MS_NEW_N(&lb->m->arena, char, base.len + 16);
-    const int len = serial == 0 ? snprintf(text, base.len + 16, "%.*s", (int)base.len, base.ptr)
-                                : snprintf(text, base.len + 16, "%.*s.%u", (int)base.len, base.ptr, serial);
-    const MsTy *saved_vars = lb->sub_vars, *saved_args = lb->sub_args;
-    const uint32_t saved_n = lb->nsub;
-    const bool saved_override = lb->has_override;
-    const MsSym saved_name = lb->name_override;
-    lb->sub_vars = def->vars;
-    lb->sub_args = inst.args;
-    lb->nsub = nargs;
-    lb->has_override = true;
-    lb->name_override = mir_name(lb->m, text, (size_t)len);
-    inst.func = lb_add_stub(lb, d, sym);
-    lb->sub_vars = saved_vars;
-    lb->sub_args = saved_args;
-    lb->nsub = saved_n;
-    lb->has_override = saved_override;
-    lb->name_override = saved_name;
-    if (inst.func == MIR_NONE) {
-        (void)lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst);
-        return MIR_NONE;
-    }
-    if (!lb_push_inst(&lb->insts, &lb->ninsts, &lb->cinsts, &inst)) {
-        lb->ok = false;
-        return MIR_NONE;
-    }
-    return inst.func;
-}
-
-/* Lowers the body of every copy created so far, and those the bodies create in turn. A copy that
- * does not lower is remembered as dead: the next pass makes its callers fail. True when one died. */
-static bool lb_drain_instances(Lb *lb, uint32_t *lowered) {
-    bool died = false;
-    for (uint32_t i = 0; i < lb->ninsts; i++) {
-        const LbInst inst = lb->insts[i]; // the list may grow while the body is lowered
-        lb->sub_vars = ms_def(lb->mut, inst.sym)->vars;
-        lb->sub_args = inst.args;
-        lb->nsub = inst.nargs;
-        lb->has_override = true;
-        lb->name_override = lb->m->funcs[inst.func].name;
-        const bool done = lb_function(lb, lb->c->syms.decl[inst.sym], inst.sym, inst.func);
-        *lowered += done ? 1 : 0;
-        if (!done) {
-            died = lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst) || died;
-        }
-    }
-    lb->nsub = 0;
-    lb->has_override = false;
-    return died;
-}
-
-/* Whether the checker reported anything inside declaration `index`: on lines from its own to the
- * next declaration's. A program with a diagnostic does not build, so such a function is not
- * lowered (its body may be ill-typed). */
-static bool lb_has_diagnostic(const MsModuleRow *row, uint32_t index) {
-    const uint32_t first = row->syntax->decls[index]->pos.line;
-    const uint32_t end = index + 1 < row->syntax->ndecls ? row->syntax->decls[index + 1]->pos.line : UINT32_MAX;
-    for (uint32_t k = 0; k < row->ndiags; k++) {
-        const uint32_t line = row->diags[k].diag.pos.line;
-        if (line >= first && line < end) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/* One pass over the module's checked functions: stub each one not in `failed`, then lower them.
- * A function that does not lower is marked in `failed`; true when any new one was. */
-static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
-    const MsModuleRow *row = &lb->c->mods[module];
-    const uint32_t ndecls = row->syntax->ndecls;
-    memset(lb->func_of, 0xff, (size_t)lb->c->syms.count * sizeof *lb->func_of);
-    memset(lb->thunk_of, 0xff, (size_t)lb->c->syms.count * sizeof *lb->thunk_of);
-    MsSymId *syms = MS_NEW_N(&lb->m->arena, MsSymId, (size_t)ndecls + 1);
-    for (uint32_t i = 0; i < ndecls; i++) {
-        const MsDecl *d = row->syntax->decls[i];
-        const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !failed[i] && !lb_has_diagnostic(row, i);
-        syms[i] = checked ? ms_decl_own_symbol(lb->c, module, d) : MS_NONE;
-        if (syms[i] != MS_NONE && lb->c->syms.nvars[syms[i]] != 0) {
-            syms[i] = MS_NONE; // a generic function is checked here but not lowered: it needs one copy per type argument
-        }
-        if (syms[i] != MS_NONE) {
-            lb->func_of[syms[i]] = lb_add_stub(lb, d, syms[i]);
-        }
-    }
-    bool changed = false;
-    *lowered = 0;
-    lb->ninsts = 0;
-    for (uint32_t i = 0; i < ndecls; i++) {
-        if (syms[i] == MS_NONE) {
-            continue;
-        }
-        const bool unlowerable = lb->func_of[syms[i]] == MIR_NONE;
-        const bool done = !unlowerable && lb_function(lb, row->syntax->decls[i], syms[i], lb->func_of[syms[i]]);
-        failed[i] = !done;
-        changed = changed || !done;
-        *lowered += done ? 1 : 0;
-    }
-    return lb_drain_instances(lb, lowered) || changed;
-}
-
-/* A failed function leaves a stub, and calls to it were lowered against it, so the pass repeats
- * without it (its callers then fail too) until a pass loses nothing. That is at most one pass per
- * function; programs lose a function or two. */
-uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
-    const MsModuleRow *row = &c->mods[module];
-    const MsFacts *facts = row->facts;
-    if (facts == NULL || facts->body_checked == NULL) {
-        return 0;
-    }
-    Lb lb = {.c = c,
-             .mut = c,
-             .facts = facts,
-             .m = out,
-             .int_ty = lb_primitive(c, "Int"),
-             .float_ty = lb_primitive(c, "Float"),
-             .bool_ty = lb_primitive(c, "Bool"),
-             .string_ty = lb_primitive(c, "String"),
-             .void_ty = lb_primitive(c, "Void")};
-    lb.classifier = ms_classifier_new(c);
-    ms_classifier_mark_methods(lb.classifier, facts->methods);
-    bool *failed = calloc((size_t)row->syntax->ndecls + 1, sizeof *failed);
-    lb.func_of = calloc((size_t)c->syms.count + 1, sizeof *lb.func_of);
-    lb.thunk_of = calloc((size_t)c->syms.count + 1, sizeof *lb.thunk_of);
-    uint32_t lowered = 0;
-    while (failed != NULL && lb.func_of != NULL && lb.thunk_of != NULL) {
-        mir_module_free(out);
-        mir_module_init(out);
-        lb_index_bindings(&lb, &out->arena);
-        if (!lb_pass(&lb, module, failed, &lowered)) {
-            break;
-        }
-    }
-    ms_classifier_free(lb.classifier);
-    free(lb.func_of);
-    free(lb.insts);
-    free(lb.dead_insts);
-    free(lb.thunk_of);
-    free(failed);
-    return lowered;
 }

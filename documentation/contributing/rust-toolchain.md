@@ -64,13 +64,11 @@ Under Miri the allocator takes its reservation from the heap in place of `mmap` 
 | `ms-syntax` | Lexer, parser, syntax tree, formatter |
 | `ms-check` | Resolution, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics |
 | `ms-mir` | MIR representation, ownership elaboration, optimizer, verifier, text format, interpreter |
-| `ms-mir-llvm` | MIR to LLVM IR text: functions, glue, descriptors, vtables and globals; depends only on `ms-mir` and `ms-rt-abi` |
-| `ms-clif` | MIR to Cranelift object code, line tables, perf map, and native linking with cached lld/LLVM tools and embedded startup files |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime (with the `ffi` and `glue` helpers the native crates build on), C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module, depending on `ms-rt` as an ordinary Rust crate |
 | `ms-lower` | Checked HIR to MIR, including native standard calls |
 | `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
-| `ms-build` | Lowering seam, optimization, native codegen and link |
+| `ms-build` | Lowering seam, optimization, native codegen, and linking with cached lld/LLVM tools and embedded startup files (`link`, `build.rs`) |
 | `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, agent skill, docgen; language server |
 | `ms-cli` | The `ms` binary (the conformance runner is `tools/conform-run.ms`) |
 
@@ -82,9 +80,9 @@ The following details describe the compiler's generated artifacts and platform i
 
 ### Optimization
 
-`ms-mir-llvm` writes LLVM IR straight from MIR (`mir_llvm`, `glue_llvm`, assembled by `llvm_ir.rs`) and `ms-build` runs the pinned `opt` and `llc` to optimize it (`default<O3>` and `-O3`; `Os` and `-O2` for MinSizeRel). The pinned `lld` then links the objects side by side, with no `clang` or `cc`. The LLVM modules define the data, descriptors, `main` and the fault and profile tables. Debug builds stay on Cranelift. Fault traces and profiles keep their source frames because the runtime tables are rebuilt from LLVM's DWARF (`ms-build/src/llvm/tables.rs`). The code targets the baseline CPU of each architecture; LLVM does the vectorizing and the build emits no per-CPU copies or dispatchers. `llc` aligns loops to 32 bytes on x86-64, so a small loop does not straddle a cache line depending on where the linker places the function. `MS_VECTORIZE=off` disables the loop and SLP vectorizers.
+Every build emits LLVM IR text from MIR in C (`compiler/src/emit/emit_llvm.c`, linked into `ms` as libms) and `ms-build` runs the pinned `opt` and `llc` to optimize it (`default<O3>` and `-O3`; `Os` and `-O2` for MinSizeRel). The pinned `lld` links the objects, with no `clang` or `cc`. Debug builds skip `opt` and run `llc -O0`. Fault traces and profiles keep their source frames through the runtime tables that `ms_asm_tables` builds from the assembly `.loc` lines. The code targets the baseline CPU of each architecture; LLVM does the vectorizing and the build emits no per-CPU copies or dispatchers. `MS_VECTORIZE=off` disables the loop and SLP vectorizers.
 
-`MS_BACKEND=cranelift` opts out; `MS_LLVM_TOOLS` names a directory holding `opt`, `llc` and `llvm-link`. See [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup) for downloads, caches and fallback behavior. On Windows the IR targets the mingw-w64 triple.
+`MS_LLVM_TOOLS` names a directory holding `opt`, `llc` and `llvm-link`. See [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup) for downloads, caches and fallback behavior. On Windows the IR targets the mingw-w64 triple.
 
 ### Platform linking
 
@@ -92,7 +90,7 @@ Use a compatible local `lld` through `MS_LLD`, or let `ms` cache the SHA-256-ver
 
 **Linux.** Linux links dynamic executables that run on glibc 2.28 or newer: the runtime is built for `<arch>-unknown-linux-gnu` and defines `_start` itself (`crates/ms-native`), and lld links it, with the bundled static `libunwind.a`, against stub glibc libraries generated from `toolchain/glibc/<arch>.symbols` (`toolchain/glibc/generate.sh` regenerates them from glibc 2.28's ABI lists). The host's glibc, `libc6-dev` and a C compiler are never used.
 
-`--static` instead links a static musl executable over the startup files and libc copied from the Rust toolchain by `crates/ms-clif/build.rs`, with a second runtime built for the musl target (`libms_native_musl.a`); `ms` embeds both.
+`--static` instead links a static musl executable over the startup files and libc copied from the Rust toolchain by `crates/ms-build/build.rs`, with a second runtime built for the musl target (`libms_native_musl.a`); `ms` embeds both.
 
 **macOS.** macOS links against `.tbd` stubs generated from the imported symbols; it needs no SDK, and `dsymutil` (if present) writes `<output>.dSYM` beside the executable, which should stay with it for source lookup.
 

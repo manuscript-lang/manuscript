@@ -246,8 +246,4 @@ void ms_task_switch_away(MsSched *sched);
 void ms_task_enqueue(MsSched *sched, MsTask *task);
 size_t ms_task_ready_count(const MsSched *sched);
 
-/* Native state that one thread alone may touch (the Rust session of a network stream, the terminal) keeps the
- * promises started there on that thread (sched_abi.c; goes away with ms-std-net). */
-bool ms_sched_pinned_here(void);
-
 #endif

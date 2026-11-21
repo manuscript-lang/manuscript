@@ -9,7 +9,7 @@
  * piece, the NUL and the new length word. Every other case calls the runtime.
  *
  * The fast path is one generated function marked `inline(always)`, shared by every call site.
- * Port of crates/ms-mir/src/opt/appendfast.rs; the bit layout is runtime/include/ms_rt/string.h. */
+ * Port of the former Rust crates/ms-mir/src/opt/appendfast.rs; the bit layout is runtime/include/ms_rt/string.h. */
 #include <string.h>
 
 #include "ms/mir_analysis.h"

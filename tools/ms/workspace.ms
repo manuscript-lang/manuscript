@@ -1,166 +1,124 @@
-// A workspace root: an `ms.toml` with `[workspace] members` and no `[project]` of its
-// own stands for its members. This reads the happy path; anything the Rust command line
-// words as an error (a bad pattern, a missing directory, a member without a name, a
-// repeated name, a member with its own `ms.lock`) returns `none` so the caller hands
-// the command to it.
+// Workspaces: a root `ms.toml` with `[workspace] members` names directories that each
+// hold a project. Members import one another through `{ path = "../util" }`
+// dependencies and share the root's `ms.lock`. libms reads them (`ms_tool_workspace`,
+// compiler/include/ms/tool.h; the compiler needs the same members for path
+// dependencies), so a program that imports this module links `libmstool.a`.
 import (
-	TomlValue, parse from "@std/data/toml.ms",
-	working_directory from "@std/os/env.ms",
-	FileKind, canonicalize, exists, list, read_file, stat from "@std/os/fs.ms",
-	basename, dirname, join, resolve from "@std/os/path.ms",
-	expect_equal from "@std/test/test.ms",
+	create_directory, temporary, write_file from "@std/os/fs.ms",
+	join from "@std/os/path.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
+
+	ProjectError from "./project.ms",
 )
 
+// A project of a workspace.
 export type Member:
+	// `[project] name`, unique in the workspace.
 	name: String
-	// The member's `ms.toml`, absolute.
+	// The member's `ms.toml`.
 	manifest: String
+	// The canonical directory holding it.
+	root: String
 
-fn table_of(value: TomlValue, key: String) TomlValue?:
-	match value:
-		TableValue(entries): return entries.get(key)
-		_: return none
+// A workspace root and its members, the root's own project first when it has one.
+export type Workspace:
+	// The canonical directory holding the root `ms.toml` and `ms.lock`.
+	root: String
+	members: List[Member]
 
-fn string_item(item: TomlValue) String?:
-	match item:
-		StringValue(text): return text.clone()
-		_: return none
+extern fn ms_tool_workspace(manifest: String, root_only: Bool) List[String]!ProjectError
 
-fn strings_of(value: TomlValue) List[String]?:
-	match value:
-		ArrayValue(items):
-			var out = List[String]()
+// The text of either kind of error.
+export fn message_of(error: ProjectError) String:
+	match error:
+		Failed(message): return message.clone()
+		Unsupported(message): return message.clone()
 
-			for item in items:
-				text := string_item(item)
-				if text.is_none(): return none
-
-				out.append(text.get())
-
-			return out
-		_: return none
-
-fn parsed(path: String) TomlValue?:
-	data := read_file(path).wait()
-	if data.is_error(): return none
-
-	document := parse(data.get().decode_utf8().get_or(""))
-	if document.is_error(): return none
-
-	return document.get()
-
-// The `[project] name` of the manifest at `path`; none when it has none.
-fn project_name(path: String) String?:
-	document := parsed(path)
-	if document.is_none(): return none
-
-	project := table_of(document.get(), "project")
-	if project.is_none(): return none
-
-	name := table_of(project.get(), "name")
-	if name.is_none(): return none
-
-	match name.get():
-		StringValue(text):
-			if text.is_empty(): return none
-			return text.clone()
-		_: return none
-
-fn is_directory(path: String) Bool:
-	info := stat(path)
-	return info.is_ok() and info.get().kind == FileKind.Directory
-
-// The members of the workspace root at `manifest`, or none when it is not a workspace
-// root or something about it needs the Rust command line to explain.
-export fn root_members(manifest: String) List[Member]?:
-	if basename(manifest) != "ms.toml": return none
-
-	document := parsed(manifest)
-	if document.is_none(): return none
-
-	workspace := table_of(document.get(), "workspace").clone()
-	if workspace.is_none(): return none
-
-	// A root with a project of its own is a project, not a list of members.
-	if project_name(manifest.clone()).is_some(): return none
-
-	found := table_of(workspace.get(), "members")
-	if found.is_none(): return none
-
-	patterns := strings_of(found.get())
-	if patterns.is_none() or patterns.get().is_empty(): return none
-
-	here := working_directory()
-	if here.is_error(): return none
-
-	root := canonicalize(
-		dirname(
-			resolve(here.get(), [manifest.clone()]).get_or(manifest.clone())
-		)
-	)
-	if root.is_error(): return none
-
-	var dirs = List[String]()
-
-	for pattern in patterns.get():
-		var base = pattern.clone()
-		wildcard := pattern.ends_with("/*")
-		if wildcard: base = pattern.slice(0, pattern.length() - 2)
-		if (
-			base.is_empty()
-			or base.contains("*")
-			or base.starts_with("/")
-			or base.contains("..")
-		):
-			return none
-
-		parent := canonicalize(join([root.get(), base]))
-		if parent.is_error() or not within(root.get(), parent.get()): return none
-
-		if not wildcard:
-			dirs.append(parent.get())
-			continue
-
-		listing := list(parent.get())
-		if listing.is_error(): return none
-
-		var children = List[String]()
-
-		for entry in listing.get():
-			if entry.name.starts_with("."): continue
-
-			path := join([parent.get(), entry.name])
-			held := exists(join([path.clone(), "ms.toml"]))
-
-			if held.get_or(false) and is_directory(path):
-				canonical := canonicalize(path)
-				if canonical.is_ok() and within(root.get(), canonical.get()):
-					children.append(canonical.get())
-
-		dirs.extend(children.sorted())
-
-	if dirs.is_empty(): return none
-
+fn from_rows(rows: List[String]) Workspace?:
+	var root = ""
 	var members = List[Member]()
-	var seen = List[String]()
 
-	for dir in dirs:
-		if seen.contains(dir): continue
+	for row in rows:
+		fields := row.split("\t")
 
-		seen.append(dir.clone())
+		if fields[0] == "root": root = fields[1].clone()
+		else if fields[0] == "member": members.append(
+			Member(
+				fields[1].clone(),
+				join([fields[2].clone(), "ms.toml"]),
+				fields[2].clone(),
+			)
+		)
 
-		path := join([dir.clone(), "ms.toml"])
-		name := project_name(path)
-		if name.is_none() or exists(join([dir.clone(), "ms.lock"])).get_or(false): return none
+	if root.is_empty(): return none
 
-		for member in members:
-			if member.name == name.get(): return none
-		members.append(Member(name.get(), path))
+	return Workspace(root, members)
 
-	return members
+// The workspace that contains the project whose `ms.toml` is `manifest`: the manifest
+// itself when it has `[workspace]`, else the nearest ancestor manifest that lists this
+// directory. None for a project outside any workspace.
+export fn find(manifest: String) Workspace?!ProjectError:
+	return ok(from_rows(ms_tool_workspace(manifest, false)?))
 
-fn within(root: String, dir: String) Bool:
-	return dir == root or dir.starts_with(root + "/") or dir.starts_with(root + "\\")
+// The members of `manifest` when it is a workspace root with no `[project]` of its own,
+// so a command aimed at it means "every member". None for any other manifest or file.
+export fn root_workspace(manifest: String) Workspace?!ProjectError:
+	return ok(from_rows(ms_tool_workspace(manifest, true)?))
+
+// The members of the workspace root at `manifest`, or none when it is not one or
+// something about it needs the Rust command line to explain.
+export fn root_members(manifest: String) List[Member]?:
+	found := root_workspace(manifest)
+	if found.is_error() or found.get().is_none(): return none
+
+	return found.get().get().members.clone()
+
+// ---------------------------------------------------------------- tests
+
+fn write_manifest(directory: String, text: String) Void!:
+	create_directory(directory.clone(), true)?
+	write_file(join([directory, "ms.toml"]), text, replace: true).wait()?
+
+fn project_text(name: String) String:
+	return f"[project]\nname = \"{name}\"\nsource = \"src\"\n"
 
 test "a bare path is not a workspace root":
 	expect_equal(root_members("nowhere/ms.toml").is_none(), true)?
+
+test "members expand in order, the wildcard sorted and hidden directories skipped":
+	scratch := temporary("ms-workspace-")?
+	root := scratch.path()
+	write_manifest(root.clone(), "[workspace]\nmembers = [\"app\", \"libs/*\"]\n")?
+	write_manifest(join([root.clone(), "app"]), project_text("app"))?
+	write_manifest(join([root.clone(), "libs/zeta"]), project_text("zeta"))?
+	write_manifest(join([root.clone(), "libs/beta"]), project_text("beta"))?
+	write_manifest(join([root.clone(), "libs/.hidden"]), project_text("hidden"))?
+	create_directory(join([root.clone(), "app/src"]), true)?
+	create_directory(join([root.clone(), "libs/zeta/src"]), true)?
+	create_directory(join([root.clone(), "libs/beta/src"]), true)?
+
+	found := root_workspace(join([root.clone(), "ms.toml"])).get().get()
+	var names = List[String]()
+	for member in found.members: names.append(member.name.clone())
+	expect_equal(names.join(","), "app,beta,zeta")?
+
+	// A member's manifest finds the workspace it belongs to; an unrelated one does not.
+	beta := join([root.clone(), "libs/beta/ms.toml"])
+	expect_equal(find(beta).get().get().members.length(), 3)?
+
+test "member errors read like the Rust command's":
+	scratch := temporary("ms-workspace-")?
+	root := scratch.path()
+	write_manifest(root.clone(), "[workspace]\nmembers = [\"../out\"]\n")?
+
+	manifest := join([root.clone(), "ms.toml"])
+	got := root_workspace(manifest.clone())
+	expect_true(
+		message_of(got.err()).starts_with(
+			"workspace member \"../out\" is not a relative directory inside the workspace;"
+		)
+	)?
+	write_manifest(root.clone(), "[workspace]\nmembers = [\"app\"]\n")?
+
+	got2 := root_workspace(manifest.clone())
+	expect_true(message_of(got2.err()).contains("\"app\" does not exist;"))?

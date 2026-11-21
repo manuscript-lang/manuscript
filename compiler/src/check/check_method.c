@@ -15,6 +15,7 @@
 
 typedef struct Target {
     MsTy sig;             /* the signature, receiver not included */
+    const MsFunc *func;   /* its declaration: parameter defaults; NULL when none is at hand */
     uint32_t method;      /* the method row, or MS_NONE for an interface operation */
     bool mutating, consuming;
 } Target;
@@ -73,8 +74,30 @@ static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver) {
     return ms_infer_apply(&in, m->ty[i]);
 }
 
-/* The row of the impls that gives `receiver` a method `name`; false when none or ambiguous. */
-static bool method_row(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
+/* Whether a call of `given` arguments fits the signature `sig` of `func`: every parameter without a
+ * default is supplied. Methods of one name may differ in their parameters (`sorted()` and
+ * `sorted(compare)`); the call's argument count picks among them, as the Rust checker's does. */
+static bool row_arity_fits(const MsBody *b, MsTy sig, const MsFunc *func, uint32_t given) {
+    const MsTyTable *tys = &b->c->tys;
+    if (given == UINT32_MAX) {
+        return true;
+    }
+    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || given > tys->nparams[sig]) {
+        return false;
+    }
+    uint32_t required = tys->nparams[sig];
+    if (func != NULL && func->params.len == required) {
+        required = 0;
+        for (uint32_t i = 0; i < func->params.len; i++) {
+            required += func->params.ptr[i]->def == NULL ? 1u : 0u;
+        }
+    }
+    return given >= required;
+}
+
+/* The row of the impls that gives `receiver` a method `name`, among those a call of `given`
+ * arguments fits (UINT32_MAX: any); false when none or ambiguous. */
+static bool method_row(const MsBody *b, MsTy receiver, MsSym name, uint32_t given, Target *out) {
     const MsMethods *m = &b->methods->methods;
     bool found = false;
     for (uint32_t i = 0; i < m->count; i++) {
@@ -82,13 +105,14 @@ static bool method_row(const MsBody *b, MsTy receiver, MsSym name, Target *out) 
             continue;
         }
         const MsTy sig = row_signature(b, i, receiver);
-        if (sig == MS_TY_NONE) {
+        if (sig == MS_TY_NONE || !row_arity_fits(b, sig, m->decl[i], given)) {
             continue;
         }
         if (found) {
             return false;
         }
         *out = (Target){.sig = sig,
+                        .func = m->decl[i],
                         .method = i,
                         .mutating = (m->access[i] & MS_METHOD_MUTATING) != 0,
                         .consuming = (m->access[i] & MS_METHOD_CONSUMING) != 0};
@@ -108,6 +132,7 @@ static bool operation_of(const MsBody *b, MsTy contract, MsSym name, Target *out
         const MsOperation *op = &ops->items[i];
         if (op->name == name) {
             *out = (Target){.sig = op->ty,
+                            .func = &op->decl->func,
                             .method = MS_NONE,
                             .mutating = op->decl->mutating,
                             .consuming = op->decl->consuming};
@@ -143,7 +168,7 @@ static bool intrinsic_in(const MsBody *b, const char *iface_name, MsTy receiver,
             }
             sig = ms_infer_apply(&in, sig);
         }
-        *out = (Target){.sig = sig, .method = MS_NONE, .mutating = op->decl->mutating, .consuming = op->decl->consuming};
+        *out = (Target){.sig = sig, .func = &op->decl->func, .method = MS_NONE, .mutating = op->decl->mutating, .consuming = op->decl->consuming};
         return true;
     }
     return false;
@@ -185,21 +210,47 @@ static bool body_is_primitive(const MsBody *b, MsTy ty) {
     return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
 }
 
-static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig) {
+/* The arguments of a method call against its signature, paired with parameters by position or
+ * label; parameters left out must have a default in the declaration. A label or a count that does
+ * not fit is a diagnostic the Rust checker reports. `e`'s `call_reordered` fact is set when some
+ * argument is not at its parameter's index. */
+static bool arguments_fit(MsBody *b, const MsExpr *e, const Target *target) {
     const MsTyTable *tys = &b->c->tys;
-    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != e->u.call.args.len) {
+    const MsTy sig = target->sig;
+    const uint32_t given = e->u.call.args.len;
+    const uint32_t nparams = ms_ty_kind(tys, sig) == MS_K_FUNCTION ? tys->nparams[sig] : 0;
+    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || given > nparams) {
         return false;
     }
     const MsTyParam *params = ms_ty_params(tys, sig);
-    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
-        const MsArg *arg = &e->u.call.args.ptr[i];
-        MsTy payload = MS_TY_NONE;
-        const bool optional = ms_body_optional_payload(b, params[i].ty, &payload);
-        if (arg->has_name || (params[i].flags & ~MS_PARAM_MOVE) != 0 || (!ms_body_is_admitted(b, params[i].ty) && !optional) ||
-            ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
+    MsSym *names = MS_NEW_N(&b->c->arena, MsSym, nparams + 1);
+    bool *positional = MS_NEW_N(&b->c->arena, bool, nparams + 1);
+    bool *covered = MS_NEW_N(&b->c->arena, bool, nparams + 1);
+    uint32_t *slot = MS_NEW_N(&b->c->arena, uint32_t, given + 1);
+    for (uint32_t i = 0; i < nparams; i++) {
+        names[i] = params[i].name;
+        positional[i] = (params[i].flags & MS_PARAM_POSITIONAL) != 0;
+    }
+    const MsFunc *func = target->func;
+    const bool declared = func != NULL && func->params.len == nparams;
+    if (!ms_body_bind_arguments(e, names, positional, nparams, slot, covered)) {
+        return false;
+    }
+    for (uint32_t i = 0; i < nparams; i++) {
+        if (!covered[i] && (!declared || func->params.ptr[i]->def == NULL)) {
             return false;
         }
     }
+    for (uint32_t i = 0; i < given; i++) {
+        const MsTyParam *param = &params[slot[i]];
+        MsTy payload = MS_TY_NONE;
+        const bool optional = ms_body_optional_payload(b, param->ty, &payload);
+        if ((param->flags & ~(MS_PARAM_MOVE | MS_PARAM_POSITIONAL)) != 0 || (!ms_body_is_admitted(b, param->ty) && !optional) ||
+            ms_body_expr(b, e->u.call.args.ptr[i].value, param->ty) == MS_TY_NONE) {
+            return false;
+        }
+    }
+    b->facts->call_reordered[e->id] = ms_body_reordered(e, slot);
     const MsTy result = tys->result[sig];
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty ||
            result == b->void_ty || ms_body_is_bindable(b, result);
@@ -213,7 +264,7 @@ static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     Target target;
     if (!intrinsic_operation(b, receiver_ty, callee->u.member.name, &target) || target.consuming || target.mutating ||
         native_result_borrows(b, receiver_ty, callee->u.member.name, e->u.call.args.len) ||
-        !arguments_fit(b, e, target.sig)) {
+        !arguments_fit(b, e, &target)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_interface[e->id] = receiver_ty;
@@ -241,11 +292,28 @@ static bool bound_operation(const MsBody *b, MsTy var, MsSym name, Target *out, 
     return found;
 }
 
+/* A call on a receiver of the invalid type (its own error is reported): the arguments are still
+ * checked, without an expected type, and the call is invalid, which silences what uses it. */
+static MsTy invalid_receiver_call(MsBody *b, const MsExpr *e, uint32_t binding) {
+    if (binding != MS_NONE && ms_body_expr(b, e->u.call.callee->u.member.left, b->invalid_ty) == MS_TY_NONE) {
+        return ms_body_unsupported(b);
+    }
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        if (ms_body_expr(b, e->u.call.args.ptr[i].value, MS_TY_NONE) == MS_TY_NONE) {
+            return ms_body_unsupported(b);
+        }
+    }
+    return b->invalid_ty;
+}
+
 /* A method of `receiver_ty` (a type with impls) or an operation of an interface, called on the
  * receiver expression; `binding` is the local it names, or MS_NONE for a temporary, which a
  * mutating method may change. */
 static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uint32_t binding) {
     const MsExpr *callee = e->u.call.callee;
+    if (receiver_ty == b->invalid_ty) {
+        return invalid_receiver_call(b, e, binding);
+    }
     Target target;
     MsTy dispatch = receiver_ty; /* the interface an operation is called through */
     bool resolved;
@@ -254,12 +322,12 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     } else if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT) {
         resolved = operation_of(b, receiver_ty, callee->u.member.name, &target);
     } else {
-        resolved = method_row(b, receiver_ty, callee->u.member.name, &target);
+        resolved = method_row(b, receiver_ty, callee->u.member.name, e->u.call.args.len, &target);
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved || target.consuming || (target.mutating && immutable) ||
         (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) ||
-        !arguments_fit(b, e, target.sig)) {
+        !arguments_fit(b, e, &target)) {
         return ms_body_unsupported(b);
     }
     if (target.method == MS_NONE) {
@@ -269,6 +337,19 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     }
     b->facts->call_receiver[e->id] = receiver_ty;
     return b->c->tys.result[target.sig];
+}
+
+void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty) {
+    Target target;
+    if (b->methods == NULL || ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE ||
+        !method_row(b, ty, ms_intern_cstr(b->c->names, "to_string"), 0, &target)) {
+        return;
+    }
+    const MsTyTable *tys = &b->c->tys;
+    if (target.mutating || target.consuming || tys->nparams[target.sig] != 0 || tys->result[target.sig] != b->string_ty) {
+        return; // an ordinary method of that name: the type prints structurally
+    }
+    b->facts->text_method[part->id] = target.method;
 }
 
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
@@ -283,7 +364,7 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
     }
     const MsTy local_ty = binding == MS_NONE ? MS_TY_NONE : b->facts->bindings.ty[binding];
     Target row;
-    if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, &row))) {
+    if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, e->u.call.args.len, &row))) {
         const MsTy receiver_ty = ms_body_expr(b, receiver, MS_TY_NONE);
         if (body_is_primitive(b, receiver_ty)) {
             return body_intrinsic_call(b, e, receiver_ty);

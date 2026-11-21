@@ -112,6 +112,27 @@ void *msstd_handler_take(void);
 /* ms-sig: msstd_handler_keep(keep: u8) @domain=HTTP */
 void msstd_handler_keep(uint8_t keep);
 
+/* Idle connections (runtime/net/idle_natives.c over runtime/core/idle.c). After a response that keeps the connection
+ * alive the serving task hands it here and ends: the connection waits as a row, without a task, so a resting thread can
+ * take it when this one is held up by a long handler. When the peer sends a request (or input is already held) the
+ * pool starts `next`, a plain function value, as a promise of the thread that serves it; `next` reads the head, serves
+ * the request and parks the connection again, or closes it. `timeout` bounds the wait; an expired one closes the
+ * connection. The pool owns `next` from the call, also when it fails (STATUS_CLOSED: the connection is gone). */
+/* ms-sig: msstd_idle_park(handle c: *const ObjCell<ConnH>, next: *mut Closure, group: i64, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP @keeps:next */
+uint8_t msstd_idle_park(const void *conn, void *next, int64_t group, uint8_t has_timeout, int64_t timeout, MsStr *err);
+/* A number that names one server's idle connections, for msstd_idle_drain. */
+/* ms-sig: msstd_idle_group() -> i64 @domain=HTTP */
+int64_t msstd_idle_group(void);
+/* Closes the idle connections of `group` now; requests in flight finish. */
+/* ms-sig: msstd_idle_drain(group: i64) @domain=HTTP */
+void msstd_idle_drain(int64_t group);
+/* The requests of `group` running or waiting to run. */
+/* ms-sig: msstd_idle_inflight(group: i64) -> i64 @domain=HTTP */
+int64_t msstd_idle_inflight(int64_t group);
+/* Asks the requests in flight of `group` to end as a cancelled promise does (the grace period of a close ran out). */
+/* ms-sig: msstd_idle_cancel(group: i64) @domain=HTTP */
+void msstd_idle_cancel(int64_t group);
+
 /* HTTP/2 connections (runtime/net/exchange_h2_natives.c over exchange_h2.c). After a handshake that chose h2 (see
  * msstd_conn_alpn), `open` starts HTTP/2 on the connection (limits of 0 are the defaults, `idle` bounds a wait with
  * no stream open). One task runs `run` for the life of the connection; another loops on `next`, which answers an

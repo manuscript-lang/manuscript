@@ -4,6 +4,25 @@
 # `cmake --build <build> --target ms_syntax_dump`. Adding a tool `compiler/tools/ms_<name>.c` needs no edit here;
 # a unit test `compiler/tests/<name>_test.c` needs a line below.
 set(_c "${CMAKE_SOURCE_DIR}/compiler")
+
+# libms_backend.a: what the Rust `ms` links to run the C back end in process (crates/ms-build/build.rs,
+# compiler/include/ms/emit_program.h). No sanitizers, no project loader and the C library's allocator, so it
+# brings no library of its own into `ms`.
+add_library(ms_backend STATIC "${_c}/src/libms.c")
+target_include_directories(ms_backend PRIVATE "${_c}/include" "${_c}/src" "${CMAKE_SOURCE_DIR}/runtime/include")
+target_compile_definitions(ms_backend PRIVATE MS_LIBMS_NO_PROJECT)
+if(MS_WINDOWS)
+  # The Microsoft C library marks fopen and friends deprecated in favour of its own _s functions.
+  target_compile_definitions(ms_backend PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+target_compile_options(ms_backend PRIVATE -O2 -Wall -Wextra -Werror -Wno-format-truncation -Wno-unknown-warning-option)
+set_target_properties(ms_backend PROPERTIES C_EXTENSIONS OFF ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/compiler")
+
+# MS_BACKEND_ONLY: the Rust build wants libms_backend.a alone, so it does not need what the rest links (libcrypto,
+# mimalloc).
+if(MS_BACKEND_ONLY)
+  return()
+endif()
 if(NOT MS_BUILD_RUNTIME)
   # libms hashes packages with libcrypto (project/packages.c); a build without the runtime has no MsLibs.cmake to name it.
   find_package(OpenSSL REQUIRED)
@@ -62,7 +81,9 @@ function(ms_compiler_exe name)
     target_compile_options(${name} PRIVATE -std=c11 -O1 -Wall -Wextra -Werror -include "${_c}/include/ms_mimalloc.h")
   endif()
   if(MS_WINDOWS)
-    # The Windows tools (ms_mir_build, ms_asm_tables) read no project: no libcrypto, libdl or libm.
+    # The Windows tools (ms_mir_build, ms_asm_tables) read no project: no libcrypto, libdl or libm. They still allocate
+    # through the force-included ms_mimalloc.h, so they link the allocator.
+    target_link_libraries(${name} PRIVATE ms_mimalloc)
   else()
     # libms hashes packages with libcrypto (project/packages.c).
     target_link_libraries(${name} PRIVATE m ms_mimalloc ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
@@ -90,10 +111,11 @@ if(MS_WINDOWS)
 endif()
 
 # Unit tests of the checker and the driver; ctest runs them.
-foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test project_discover_test semver_test lock_test resolve_test graph_check_test install_test)
+foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test project_discover_test semver_test lock_test resolve_test graph_check_test install_test embed_test attach_test)
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
 ms_compiler_exe(std_embed_test "${_c}/tests/std_embed_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
+ms_compiler_exe(package_check_test "${_c}/tests/package_check_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
 ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST)
 # The embedded standard library: std_embed_gen writes std_embed_data.inc from stdlib/, std_embed.c includes it. Only
 # the executables that load the library link ms_std_embed.

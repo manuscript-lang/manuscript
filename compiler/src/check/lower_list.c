@@ -11,7 +11,7 @@ MirTy lst_type(Lb *lb, MsTy ty) {
         return MIR_NONE;
     }
     const MirTy element = lb_mir_ty(lb, ms_ty_args(tys, ty)[0]);
-    if (element != MIR_INT && element != MIR_FLOAT && element != MIR_BOOL) {
+    if (element != MIR_INT && element != MIR_FLOAT && element != MIR_BOOL && element != MIR_STR && !lb_is_list(lb, element)) {
         return MIR_NONE;
     }
     return mir_ty_list(lb->m, element);
@@ -30,7 +30,7 @@ LbVal lst_literal(Lb *lb, const MsExpr *e) {
     }
     MirValue *values = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)items->len + 1);
     for (uint32_t i = 0; i < items->len && lb->ok; i++) {
-        values[i] = lb_expr(lb, items->ptr[i]).v;
+        values[i] = lb_owns(lb, mir_ty_data(lb->m, ty)->elem) ? lb_move_argument(lb, items->ptr[i]) : lb_expr(lb, items->ptr[i]).v; // the list owns its Strings
     }
     if (!lb->ok) {
         return LB_FAIL;
@@ -46,6 +46,9 @@ LbVal lst_index(Lb *lb, const MsExpr *e) {
         return lb_unsupported(lb);
     }
     const LbVal list = lb_expr(lb, left);
+    if (lb->ok && lb_is_map(lb, mir_b_ty(&lb->b, list.v))) {
+        return lm_index(lb, list, at);
+    }
     if (!lb->ok || !lb_is_list(lb, mir_b_ty(&lb->b, list.v))) {
         return lb_unsupported(lb);
     }
@@ -196,9 +199,14 @@ LbVal lst_method(Lb *lb, const MsExpr *e) {
     if (lst_is(name, "append") && count == 1) {
         return lst_append(lb, e);
     }
-    const bool known = (lst_is(name, "length") || lst_is(name, "is_empty")) ? count == 0
-                       : lst_is(name, "get") ? count == 1
-                       : lst_is(name, "get_or") && count == 2;
+    bool known = false;
+    if (lst_is(name, "length") || lst_is(name, "is_empty")) {
+        known = count == 0;
+    } else if (lst_is(name, "get")) {
+        known = count == 1;
+    } else if (lst_is(name, "get_or")) {
+        known = count == 2;
+    }
     if (!known || !lb_is_list(lb, lb_mir_ty(lb, lb->facts->call_receiver[e->id]))) {
         return lb_unsupported(lb);
     }

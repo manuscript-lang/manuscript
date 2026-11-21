@@ -1,7 +1,8 @@
 //! The C half of the runtime build, shared by `cargo xtask runtime` (crates/xtask) and the build script of `ms-rt`
 //! (crates/ms-rt/build.rs), which both include this file with `#[path]`. What to compile is decided by the CMake
 //! project at the repository root (`CMakeLists.txt`, `cmake/`); this file only picks the compiler and the library
-//! folder for a target, runs `cmake` with Ninja, and reads back the object list it leaves.
+//! folder for a target, runs `cmake` with Ninja, and reads back the object list it leaves. The build script of
+//! `ms-build` includes it too, for `build_c_backend`: the compiler's back end as a library for this host.
 #![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
@@ -249,4 +250,43 @@ pub fn run_c_tests(root: &Path, work: &Path, triple: Option<&str>) -> Result<Str
         ]),
         "ctest",
     )
+}
+
+/// Builds `libms_backend.a` (the C back end, `compiler/include/ms/emit_program.h`) for this host in `work/cmake`
+/// and returns the folder holding it. A Windows host builds it for MSVC, the target of the Rust `ms` there.
+pub fn build_c_backend(root: &Path, work: &Path) -> Result<PathBuf, String> {
+    let build = work.join("cmake");
+    let mut configure = Command::new("cmake");
+    configure
+        .arg("-S")
+        .arg(root)
+        .arg("-B")
+        .arg(&build)
+        .args([
+            "-G",
+            "Ninja",
+            "-DMS_BUILD_RUNTIME=OFF",
+            "-DMS_BUILD_TESTS=OFF",
+            "-DMS_BUILD_COMPILER=ON",
+            "-DMS_BACKEND_ONLY=ON",
+            "-DCMAKE_BUILD_TYPE=",
+            "-DCMAKE_C_COMPILER=clang",
+        ])
+        .env_remove("CFLAGS")
+        .env_remove("LDFLAGS");
+    if cfg!(windows) {
+        configure.arg(format!(
+            "-DCMAKE_C_COMPILER_TARGET={}-pc-windows-msvc",
+            std::env::consts::ARCH
+        ));
+    }
+    run(&mut configure, "cmake configure")?;
+    run(
+        Command::new("cmake")
+            .arg("--build")
+            .arg(&build)
+            .args(["--target", "ms_backend"]),
+        "cmake build",
+    )?;
+    Ok(build.join("compiler"))
 }

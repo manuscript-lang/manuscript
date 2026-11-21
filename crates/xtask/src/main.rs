@@ -1,17 +1,14 @@
 //! Repository build steps, run as `cargo xtask <step>`.
 //!
-//! `runtime` builds `ms-native` (the runtime plus every `ms-std-*` crate) once and leaves the stripped
-//! archive at `target/ms-native/libms_native.a`, where `ms-cli`'s build script embeds it.
-//! `runtime --alloc-profile` also builds `libms_native_allocs.a`, the same runtime with allocation
-//! sampling for `ms profile --allocs`; release packaging asks for it, pull request CI does not.
+//! `runtime` builds the C runtime (`runtime/`, with the vendored libraries it links) once and leaves the
+//! stripped archive at `target/ms-native/libms_native.a`, where `ms-cli`'s build script embeds it. On Linux it
+//! also leaves `libms_native_musl.a`, the runtime of `ms build --static`.
 //! `runtime --stats` builds `libms_native_stats.a`, the counting runtime of the leak checks.
-//! `runtime --sched-stress` builds `libms_native_stress.a`, the runtime with the scheduler stress mode,
-//! which only `make stress-sched` embeds (in a separate `ms`).
 
 #[path = "../../../runtime/build_c.rs"]
 mod build_c;
 
-use build_c::{CRuntime, archiver, build_c_runtime, c_compiler, run_c_tests};
+use build_c::{CRuntime, archiver, build_c_runtime, run_c_tests};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
@@ -19,11 +16,7 @@ fn main() -> ExitCode {
     match std::env::args().nth(1).as_deref() {
         Some("runtime") => {
             let flag = std::env::args().nth(2);
-            match runtime(
-                flag.as_deref() == Some("--alloc-profile"),
-                flag.as_deref() == Some("--sched-stress"),
-                flag.as_deref() == Some("--stats"),
-            ) {
+            match runtime(flag.as_deref() == Some("--stats")) {
                 Ok(archive) => {
                     println!("{}", archive.display());
                     ExitCode::SUCCESS
@@ -59,7 +52,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: cargo xtask runtime [--alloc-profile | --sched-stress | --stats] | cargo xtask c-test | cargo xtask symbols [--check]"
+                "usage: cargo xtask runtime [--stats] | cargo xtask c-test | cargo xtask symbols [--check]"
             );
             ExitCode::from(2)
         }
@@ -68,106 +61,23 @@ fn main() -> ExitCode {
 
 /// Regenerates `crates/ms-lower/rt_symbols.txt`, the C signature of every exported runtime function
 /// that lowering marshals calls from (`ms-lower/build.rs` turns it into a lookup table). `--check`
-/// compares instead of writing.
+/// fails when the file is stale instead of writing it.
 ///
-/// Two sources, so no signature is written by hand: the tests that `ms_rt::native!` generates for
-/// each shim (they record the raw ABI types with `type_name`, so a type change shows up here), and a
-/// scan of the plain `extern "C"` functions, whose signatures are already ABI types.
+/// The source is the `/* ms-sig: ... */` comments above the prototypes in `runtime/include/ms_rt/*.h`;
+/// `check_c_abi` compares each with the C prototype.
 fn symbols(check: bool) -> Result<String, String> {
     let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
     let root = manifest.join("../..");
-    let recorded = root.join("target/ms-native/signatures.txt");
-    std::fs::create_dir_all(recorded.parent().expect("parent")).map_err(|e| e.to_string())?;
-    let _ = std::fs::remove_file(&recorded);
-    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-    // Only the runtime crates: `ms-cli`'s build script insists on a fresh runtime archive, which
-    // would need the table this step writes.
-    let mut crates = vec!["ms-rt".to_string()];
-    for entry in std::fs::read_dir(root.join("crates")).map_err(|e| e.to_string())? {
-        let name = entry
-            .map_err(|e| e.to_string())?
-            .file_name()
-            .to_string_lossy()
-            .into_owned();
-        if name.starts_with("ms-std-") {
-            crates.push(name);
-        }
-    }
-    crates.sort();
-    let status = Command::new(cargo)
-        .current_dir(&root)
-        .env("MS_SIG_OUT", &recorded)
-        .args(["test", "--lib", "--locked"])
-        .args(crates.iter().flat_map(|c| ["-p", c.as_str()]))
-        .args(["--", "ms_signature"])
-        .status()
-        .map_err(|e| format!("cargo test: {e}"))?;
-    if !status.success() {
-        return Err("collecting the native signatures failed".into());
-    }
     let mut table = std::collections::BTreeMap::new();
-    // No Rust crate declares natives once the last `ms-std-*` crate is gone, so no test writes the file.
-    let text = match std::fs::read_to_string(&recorded) {
-        Ok(text) => text,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
-        Err(e) => return Err(format!("{}: {e}", recorded.display())),
-    };
-    for line in text.lines().filter(|l| !l.is_empty()) {
-        let name = line.split('(').next().unwrap_or(line).to_string();
-        if let Some(old) = table.insert(name.clone(), line.to_string())
-            && old != line
-        {
-            return Err(format!(
-                "{name} is declared twice with different signatures"
-            ));
-        }
-    }
-    let mut files = Vec::new();
-    for entry in std::fs::read_dir(root.join("crates")).map_err(|e| e.to_string())? {
-        let dir = entry.map_err(|e| e.to_string())?.path();
-        let is_runtime = dir
-            .file_name()
-            .and_then(|n| n.to_str())
-            .is_some_and(|n| n == "ms-rt" || n.starts_with("ms-std-"));
-        if is_runtime {
-            rust_files(&dir.join("src"), &mut files);
-        }
-    }
-    files.sort();
     let mut flags: std::collections::BTreeMap<String, Vec<String>> = Default::default();
-    // `//! ms: domain <words>`: how the failures of the file's functions name their domain.
-    let mut file_domains: Vec<(String, String)> = Vec::new();
-    for file in files {
-        let source =
-            std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
-        if let Some(domain) = source
-            .lines()
-            .find_map(|l| l.trim().strip_prefix("//! ms: domain "))
-        {
-            file_domains.push((source.clone(), domain.trim().to_string()));
-        }
-        for (name, found) in scan_flags(&source).map_err(|e| format!("{}: {e}", file.display()))? {
-            flags.entry(name).or_default().extend(found);
-        }
-        for (name, line) in scan_exports(&source) {
-            if let Some(old) = table.insert(name.clone(), line.clone())
-                && old != line
-            {
-                return Err(format!(
-                    "{name} has two signatures: `{old}` and `{line}` ({})",
-                    file.display()
-                ));
-            }
-        }
-    }
     for (name, line, found) in header_signatures(&root)? {
         if let Some(old) = table.insert(name.clone(), line.clone())
             && old != line
         {
             return Err(format!(
-                "{name} has two signatures: `{old}` (Rust) and `{line}` (a runtime/include/ms_rt header)"
+                "{name} has two signatures: `{old}` and `{line}` (runtime/include/ms_rt headers)"
             ));
         }
         flags.entry(name).or_default().extend(found);
@@ -185,20 +95,6 @@ fn symbols(check: bool) -> Result<String, String> {
          # `@shared_view_of=<sym>`, `@first_of=<sym>`, `@iter_of=<sym>` declare the function as the\n\
          # borrowing twin of `<sym>` (a lent result, the first element, a one-at-a-time walk).\n",
     );
-    for name in table.keys() {
-        let declared = flags
-            .get(name)
-            .is_some_and(|f| f.iter().any(|f| f.starts_with("domain=")));
-        if declared {
-            continue;
-        }
-        if let Some((_, domain)) = file_domains.iter().find(|(s, _)| defines(s, name)) {
-            flags
-                .entry(name.clone())
-                .or_default()
-                .push(format!("domain={domain}"));
-        }
-    }
     for (name, found) in &flags {
         if !table.contains_key(name) {
             return Err(format!(
@@ -519,214 +415,6 @@ fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>
     declared
 }
 
-fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            rust_files(&path, out);
-        } else if path.extension().is_some_and(|e| e == "rs") {
-            out.push(path);
-        }
-    }
-}
-
-/// The flags that declare a runtime function as the twin of another (`view_of=<sym>`): the entry
-/// lowering calls instead of `<sym>` when the result is only read in place. See
-/// `crates/ms-lower/src/rtcall.rs` (`Twin`).
-const TWIN_FLAGS: [&str; 4] = ["view_of=", "shared_view_of=", "first_of=", "iter_of="];
-
-/// The `// ms: flag ..` comments of `source`: each names the flags of the runtime function whose
-/// name is the first `msrt_*`/`msstd_*` identifier on the next code line. The flags are the
-/// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`, `borrows`, `keeps:<param>`
-/// for a function value the runtime stores and drops itself, `takes:<param>` for a value
-/// argument the runtime takes ownership of, `domain=<word>` for how its failures
-/// name their domain when it differs from the file's `//! ms: domain`, `spawns` for a function that starts a
-/// task running code of the program, `borrows` for a function whose result may point into the storage of an argument passed by value (the bytes of an inline `String`), so the backends keep that argument's slot for the whole function, `takes_self` for a function with a `<name>_take` twin that reuses its first argument when it dies at the call, and `op=<mnemonic>` for a function
-/// that is exactly one MIR instruction on its arguments); an unknown flag or a
-/// marker with no function after it is an error.
-fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
-    let mut found = Vec::new();
-    let mut pending: Option<Vec<String>> = None;
-    for (n, line) in source.lines().enumerate() {
-        let t = line.trim();
-        if let Some(list) = t.strip_prefix("// ms:") {
-            let list: Vec<String> = list.split_whitespace().map(str::to_string).collect();
-            if let Some(bad) = list.iter().find(|f| {
-                ![
-                    "leaf",
-                    "pure",
-                    "fresh",
-                    "borrows",
-                    "spawns",
-                    "takes_self",
-                    "retains",
-                ]
-                .contains(&f.as_str())
-                    && !f.starts_with("keeps:")
-                    && !f.starts_with("takes:")
-                    && !f.starts_with("op=")
-                    && !f.starts_with("domain=")
-                    && !TWIN_FLAGS.iter().any(|t| f.starts_with(t))
-            }) {
-                return Err(format!("line {}: unknown flag `{bad}`", n + 1));
-            }
-            pending = Some(list);
-            continue;
-        }
-        let Some(flags) = pending.take() else {
-            continue;
-        };
-        if t.is_empty() || t.starts_with("//") || t.starts_with("#[") {
-            pending = Some(flags);
-            continue;
-        }
-        let name = t
-            .split(|c: char| !(c.is_alphanumeric() || c == '_'))
-            .find(|w| w.starts_with("msrt_") || w.starts_with("msstd_"))
-            .ok_or_else(|| {
-                format!(
-                    "line {}: `// ms:` is not followed by a runtime function",
-                    n + 1
-                )
-            })?;
-        found.push((name.to_string(), flags));
-    }
-    Ok(found)
-}
-
-/// Whether `source` defines the runtime function `name`: by hand (`fn name(`) or through a
-/// shim macro row (`name => ..`, `macro!(name, ..)`).
-fn defines(source: &str, name: &str) -> bool {
-    source.lines().any(|l| {
-        let t = l.trim();
-        t.strip_prefix(name)
-            .is_some_and(|r| r.trim_start().starts_with("=>"))
-            || [
-                format!("fn {name}("),
-                format!("fn {name}<"),
-                format!("!({name},"),
-            ]
-            .iter()
-            .any(|p| t.contains(p.as_str()))
-    })
-}
-
-/// The `pub extern "C" fn msrt_*`/`msstd_*` functions written by hand in `source`, as
-/// `(name, "name(params) -> ret")` with module paths dropped from the types.
-fn scan_exports(source: &str) -> Vec<(String, String)> {
-    let mut found = Vec::new();
-    let code: String = source
-        .lines()
-        .filter(|l| !l.trim_start().starts_with("//"))
-        .collect::<Vec<_>>()
-        .join("\n");
-    let mut rest = code.as_str();
-    while let Some(at) = rest.find("extern \"C") {
-        rest = &rest[at + 1..];
-        let Some(after) = rest.split_once("fn ").map(|(_, a)| a) else {
-            break;
-        };
-        // `extern "C" fn msrt_x(` only: skip function pointer types and extern blocks.
-        let head = &rest[..rest.len() - after.len()];
-        if head.len() > 24 || !head.starts_with("xtern \"C") {
-            continue;
-        }
-        let name: String = after
-            .chars()
-            .take_while(|c| c.is_alphanumeric() || *c == '_')
-            .collect();
-        if !(name.starts_with("msrt_") || name.starts_with("msstd_")) {
-            continue;
-        }
-        let Some(open) = after.find('(') else {
-            continue;
-        };
-        let mut depth = 0usize;
-        let mut close = None;
-        for (i, c) in after[open..].char_indices() {
-            match c {
-                '(' | '[' | '<' => depth += 1,
-                ')' | ']' => depth -= 1,
-                '>' if !after[open..][..i].ends_with('-') => depth -= 1,
-                _ => {}
-            }
-            if depth == 0 {
-                close = Some(open + i);
-                break;
-            }
-        }
-        let Some(close) = close else { continue };
-        let params = split_params(&after[open + 1..close]);
-        let tail = &after[close + 1..];
-        let end = tail.find(['{', ';']).unwrap_or(tail.len());
-        let ret = tail[..end]
-            .trim()
-            .strip_prefix("->")
-            .map(|r| strip_paths(&squash(r)));
-        let mut line = format!("{name}({})", params.join(", "));
-        if let Some(ret) = ret {
-            line.push_str(" -> ");
-            line.push_str(&ret);
-        }
-        found.push((name, line));
-    }
-    found
-}
-
-/// Splits a parameter list at its top-level commas and normalizes each `name: type`.
-fn split_params(list: &str) -> Vec<String> {
-    let mut params = Vec::new();
-    let (mut depth, mut start) = (0i32, 0usize);
-    let bytes = list.as_bytes();
-    for (i, c) in list.char_indices() {
-        match c {
-            '(' | '[' | '<' => depth += 1,
-            ')' | ']' => depth -= 1,
-            '>' if i == 0 || bytes[i - 1] != b'-' => depth -= 1,
-            ',' if depth == 0 => {
-                params.push(&list[start..i]);
-                start = i + 1;
-            }
-            _ => {}
-        }
-    }
-    params.push(&list[start..]);
-    params
-        .into_iter()
-        .map(|p| strip_paths(&squash(p)))
-        .map(|p| p.strip_prefix('_').map(str::to_string).unwrap_or(p))
-        .filter(|p| !p.is_empty())
-        .collect()
-}
-
-fn squash(s: &str) -> String {
-    s.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-/// `*const ms_rt_abi::StrVal` as `*const StrVal`: drops every `path::` prefix.
-fn strip_paths(ty: &str) -> String {
-    let mut out = String::new();
-    let mut word = String::new();
-    let mut chars = ty.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c.is_alphanumeric() || c == '_' {
-            word.push(c);
-        } else if c == ':' && chars.peek() == Some(&':') {
-            chars.next();
-            word.clear();
-        } else {
-            out.push_str(&word);
-            word.clear();
-            out.push(c);
-        }
-    }
-    out.push_str(&word);
-    out
-}
-
 /// Builds the C unit tests for this host's runtime target and runs them: the Windows leg of `make c-test`.
 fn c_tests() -> Result<String, String> {
     let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
@@ -746,9 +434,9 @@ fn c_tests() -> Result<String, String> {
     )
 }
 
-/// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.
+/// Builds the C runtime archive and returns its path.
 /// On Linux it also leaves `libms_native_musl.a` beside it, the runtime of `ms build --static`.
-fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathBuf, String> {
+fn runtime(stats: bool) -> Result<PathBuf, String> {
     // Cargo can reuse this executable from another checkout when target directories are shared.
     // Its runtime environment names the active package; the compiled path may name the old one.
     let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
@@ -756,49 +444,25 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
     let root = manifest.join("../..");
     let out = root.join("target/ms-native");
-    let target = out.join("build");
     // Linux programs link the system glibc (and `--static` programs musl) and Windows programs
     // mingw-w64 (gnullvm), all with the bundled lld, so the runtime is built for that target.
-    // `ring`'s C sources need a C compiler (llvm-mingw's clang on Windows, a musl-targeting one for
-    // `--static`): building the runtime needs one, using `ms` does not.
     let arch = std::env::consts::ARCH;
     let triple = match std::env::consts::OS {
         "linux" => Some(format!("{arch}-unknown-linux-gnu")),
         "windows" => Some(format!("{arch}-pc-windows-gnullvm")),
         _ => None,
     };
-    // The archives are independent builds in their own target directories (cargo locks a target
-    // directory, so a shared one serialises them), so they build side by side: the gnu, musl,
-    // allocation-profiling and stress runtimes finish in about the time of the slowest.
-    let mut jobs: Vec<(PathBuf, Option<String>, &str, &str)> =
-        vec![(target.clone(), triple.clone(), "libms_native.a", "")];
+    // One CMake build per archive, run one after another (CMake started beside a running build also
+    // fails on Windows with `AssignProcessToJobObject: (50) The request is not supported`).
+    // The counting runtime (`stats`) differs from the others: its allocator counts live blocks.
+    let mut jobs: Vec<(PathBuf, Option<String>, &str, bool)> =
+        vec![(out.join("build"), triple.clone(), "libms_native.a", false)];
     if stats {
-        // The counting runtime of the leak checks: the allocator counts live blocks (MS_ALLOC_STATS) and the
-        // runtime prints them at exit.
         jobs.push((
             out.join("build-stats"),
-            triple.clone(),
+            triple,
             "libms_native_stats.a",
-            "ms-rt/stats",
-        ));
-    }
-    if alloc_profile {
-        // The feature changes the runtime, so sharing a directory would rebuild it whenever the
-        // two archives alternate.
-        jobs.push((
-            out.join("build-allocs"),
-            triple.clone(),
-            "libms_native_allocs.a",
-            "alloc-profile",
-        ));
-    }
-    if sched_stress {
-        // The scheduler stress mode, for `make stress-sched`; never part of a shipped `ms`.
-        jobs.push((
-            out.join("build-stress"),
-            triple.clone(),
-            "libms_native_stress.a",
-            "sched-stress",
+            true,
         ));
     }
     if std::env::consts::OS == "linux" {
@@ -806,120 +470,19 @@ fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathB
             out.join("build-musl"),
             Some(format!("{arch}-unknown-linux-musl")),
             "libms_native_musl.a",
-            "",
+            false,
         ));
     }
-    // The C half does not depend on the Rust features, so each triple's CMake build runs once and its
-    // objects go into every archive of that triple (CMake started beside a running build also fails on
-    // Windows with `AssignProcessToJobObject: (50) The request is not supported`, so they run one by one).
-    // The counting runtime (`stats`) is the one C build that differs: its allocator counts live blocks.
-    let mut plans: Vec<(Option<String>, bool, Result<CRuntime, String>)> = Vec::new();
-    for (dir, triple, _, features) in &jobs {
-        let stats = features.contains("stats");
-        if !plans.iter().any(|(t, s, _)| t == triple && *s == stats) {
-            plans.push((
-                triple.clone(),
-                stats,
-                build_c_runtime(&root, dir, triple.as_deref(), stats, true),
-            ));
-        }
+    let mut archives = Vec::new();
+    for (dir, triple, name, stats) in &jobs {
+        let plan = build_c_runtime(&root, dir, triple.as_deref(), *stats, true)?;
+        let archive = out.join(name);
+        let _ = std::fs::remove_file(&archive);
+        add_c_runtime(&root, triple.as_deref(), &plan, &archive)?;
+        strip_debug(&archive);
+        archives.push(archive);
     }
-    let plan_of = |triple: &Option<String>, stats: bool| {
-        plans
-            .iter()
-            .find(|(t, s, _)| t == triple && *s == stats)
-            .expect("a plan for every job's triple")
-            .2
-            .as_ref()
-    };
-    let mut built = std::thread::scope(|scope| {
-        let handles: Vec<_> = jobs
-            .iter()
-            .map(|(dir, triple, name, features)| {
-                let (root, out) = (&root, &out);
-                let plan = plan_of(triple, features.contains("stats"));
-                scope.spawn(move || match plan {
-                    Ok(plan) => {
-                        build_archive(root, out, dir, triple.as_deref(), name, features, plan)
-                    }
-                    Err(message) => Err(message.clone()),
-                })
-            })
-            .collect();
-        handles
-            .into_iter()
-            .map(|h| {
-                h.join()
-                    .unwrap_or_else(|_| Err("archive build panicked".into()))
-            })
-            .collect::<Vec<_>>()
-    });
-    let archive = built.remove(0)?;
-    built.into_iter().collect::<Result<Vec<_>, _>>()?;
-    Ok(archive)
-}
-
-/// Builds `ms-native` for `triple` (the host when `None`) and copies its stripped archive to `out/name`.
-fn build_archive(
-    root: &Path,
-    out: &Path,
-    target: &Path,
-    triple: Option<&str>,
-    name: &str,
-    features: &str,
-    plan: &CRuntime,
-) -> Result<PathBuf, String> {
-    let arch = std::env::consts::ARCH;
-    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-    let mut command = Command::new(cargo);
-    command
-        .args([
-            "build",
-            "--release",
-            "--locked",
-            "-p",
-            "ms-native",
-            "--features",
-            features,
-            "--manifest-path",
-        ])
-        .arg(root.join("Cargo.toml"))
-        .env("CARGO_TARGET_DIR", target)
-        // `ms-rt`'s build script compiles out the Rust definition of every symbol in `runtime/symbols/<module>.txt`.
-        .env("MS_C_RUNTIME", "1")
-        // The runtime ships without debug info; symbol names are enough for the profiler.
-        .env("CARGO_PROFILE_RELEASE_DEBUG", "0")
-        .env_remove("RUSTC_WORKSPACE_WRAPPER")
-        .env_remove("CARGO_ENCODED_RUSTFLAGS")
-        .env_remove("RUSTFLAGS");
-    if plan.has_reactor() {
-        // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
-        command.env("MS_C_REACTOR", "1");
-    }
-    if let Some(triple) = triple {
-        // The glibc target builds with the host's C compiler.
-        if !triple.ends_with("linux-gnu") {
-            let cc = format!("CC_{}", triple.replace('-', "_"));
-            if std::env::var_os(&cc).is_none() {
-                command.env(cc, c_compiler(root, triple, arch));
-            }
-        }
-        command.args(["--target", triple]);
-    }
-    let status = command.status().map_err(|e| format!("run cargo: {e}"))?;
-    if !status.success() {
-        return Err(format!("building {name} failed"));
-    }
-    let release = match triple {
-        Some(triple) => target.join(triple).join("release"),
-        None => target.join("release"),
-    };
-    let built = release.join("libms_native.a");
-    let archive = out.join(name);
-    std::fs::copy(&built, &archive).map_err(|e| format!("copy {}: {e}", built.display()))?;
-    add_c_runtime(root, triple, plan, &archive)?;
-    strip_debug(&archive);
-    Ok(archive)
+    Ok(archives.remove(0))
 }
 
 /// Adds the C objects the CMake build made for `triple`, and every member of the libraries they use, to `archive`.
@@ -966,10 +529,9 @@ fn add_c_runtime(
     Ok(())
 }
 
-/// Drops the debug sections the toolchain's precompiled std, core and alloc objects carry (about 4 MB
-/// of every linked program). Without a strip tool the archive is kept as built. Windows keeps the
-/// archive whole: `llvm-strip` is the only strip tool there, and it rewrites some members (the ring
-/// assembly objects) so that `ld` rejects the archive when they are linked.
+/// Drops the debug sections the library objects carry. Without a strip tool the archive is kept as built.
+/// Windows keeps the archive whole: `llvm-strip` is the only strip tool there, and it rewrites some members
+/// (the ring assembly objects) so that `ld` rejects the archive when they are linked.
 fn strip_debug(archive: &Path) {
     if cfg!(windows) {
         return;

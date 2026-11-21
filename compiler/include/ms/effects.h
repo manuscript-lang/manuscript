@@ -10,7 +10,10 @@
 #ifndef MS_EFFECTS_H
 #define MS_EFFECTS_H
 
+#include "ms/ast.h"
 #include "ms/base.h"
+#include "ms/check.h"
+#include "ms/facts.h"
 #include "ms/tables.h"
 #include "ms_rt/safe.h"
 
@@ -126,6 +129,24 @@ typedef struct MsScanNode {
  * The edges live in `arena`. */
 MsScanNode ms_effect_scan_decl(MsArena *arena, const MsCheck *c, MsModId module, const MsDecl *d);
 
+/* A source method of a plain impl is a node too: its key is the symbol count plus its row in the
+ * method table, so it shares the edge type with functions. A method of a generic impl, a native
+ * one and a property stay `partial` where they are called. */
+static inline bool ms_effect_method_is_node(const MsMethods *m, uint32_t row) {
+    return row < m->count && m->native[row] == MS_NATIVE_SOURCE && m->decl[row] != NULL && m->nvars[row] == 0;
+}
+static inline MsSymId ms_effect_method_node(const MsCheck *c, uint32_t row) { return c->syms.count + row; }
+
+/* What a call through an interface or an intrinsic costs the scan, which Rust reads off the receiver:
+ * a primitive receiver reaches nothing, an interface or bound type variable runs a method the scan
+ * cannot name (`unknown`, no edge: the callee is charged where a value is converted to the
+ * interface, which the C checker does not accept yet), any other receiver stays `partial`. */
+typedef enum MsDispatch { MS_DISPATCH_PARTIAL, MS_DISPATCH_NOTHING, MS_DISPATCH_UNKNOWN } MsDispatch;
+MsDispatch ms_effect_dispatch(const MsCheck *c, const MsFacts *facts, uint32_t call);
+
+/* Scans the body of `method`, which `module` wrote and the checker checked. */
+MsScanNode ms_effect_scan_method(MsArena *arena, const MsCheck *c, MsModId module, const MsMethod *method);
+
 /* ---- per-entity facts (effect_facts.c) ---- */
 
 /* What the review facts say about one project function or constant, for the facts JSON. All strings
@@ -146,8 +167,33 @@ typedef struct MsEntityEffects {
 } MsEntityEffects;
 
 /* Facts for every body-checked function and constant of project `module`, whose source is `text`
- * (the other modules' text is the checker's own). The result has one row per such declaration in
+ * (the other modules' text is the checker's own). Run the ownership walk first: it marks bindings that close at scope end (MS_BIND_RESOURCE), whose implicit `close` call makes a function `partial`. The result has one row per such declaration in
  * declaration order; `*count` is the number of rows. */
 MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId module, MsStr text, uint32_t *count);
+
+/* ---- fetched packages (effect_facts.c) ---- */
+
+/* A module whose callables the scan treats as code written for this build: the project's own, or a fetched package's
+ * (`cap` present: the effects its manifest declares, which nothing in its files may widen). */
+typedef struct MsEffectModule {
+    MsModId id;
+    MsStr text;           /* the module's source */
+    MsEffectScope cap;    /* a fetched package's `[project] effects`; absent for the project's own modules */
+    const char *package;  /* the name diagnostics use for the package (`@host/acme/wire@v1`); NULL for the project */
+} MsEffectModule;
+
+/* A package callable that reaches an effect its manifest does not declare. */
+typedef struct MsPackageViolation {
+    const char *file;    /* the module's path as the checker names it */
+    MsPos pos;           /* the first reference in the callable that brings the effect in */
+    const char *message; /* the Rust text */
+} MsPackageViolation;
+
+/* The violations of the package modules among `modules` (every module of the build that is not the standard
+ * library, bodies checked first), in node order. `*complete` is false when a package callable reaches code the scan
+ * cannot see through, so a missing violation proves nothing: the caller must then leave the build to the Rust
+ * driver. False when the graph is malformed. */
+MS_NODISCARD bool ms_effect_package_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules,
+                                               uint32_t count, MsPackageViolation **out, uint32_t *nout, bool *complete);
 
 #endif

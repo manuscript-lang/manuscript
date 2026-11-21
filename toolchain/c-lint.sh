@@ -4,6 +4,7 @@
 # Usage (from the repository root, `make c-lint`): c-lint.sh [base]
 #   With a git ref as base, clang-tidy runs only on C files that differ from it (all of them when a header
 #   differs); the warnings always run on every file. Without it, both run on everything.
+# toolchain/c-duplicates.py also fails a static function body copied into a second file.
 # toolchain/c-lint-pending.txt lists files written before the guide that do not pass yet. A listed file may
 # fail; a listed file that passes must be removed from the list, so the list only shrinks.
 set -eu
@@ -29,6 +30,8 @@ for f in $(cd compiler/src && find . -name '*.c' | sed 's|^\./||' | sort); do
     case "$f" in driver.c|libms.c|std_embed.c|tool.c|tool_check.c) continue ;; esac
     echo "$included" | grep -qx "$f" || { echo "c-lint: compiler/src/$f is not included by libms.c" >&2; exit 1; }
 done
+# No static function body is copied into a second file (the list of known copies only shrinks).
+python3 toolchain/c-duplicates.py || { echo "c-lint: duplicated functions (toolchain/c-duplicates.py)" >&2; exit 1; }
 changed=$files
 if [ -n "$base" ]; then
     git rev-parse --verify --quiet "$base^{commit}" > /dev/null || { echo "c-lint: $base is not a commit" >&2; exit 1; }

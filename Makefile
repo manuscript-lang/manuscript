@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -27,7 +27,7 @@ verify: check repo-check workflow-check bench-check lsp-test unit docs-check lic
 
 verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
-# Builds the native runtime (ms-native) into target/ms-native; every build of ms-cli embeds it.
+# Builds the native C runtime into target/ms-native; every build of ms-cli embeds it.
 runtime:
 	cargo xtask runtime
 
@@ -74,11 +74,11 @@ rebuild:
 	rm -f "$(RELEASE_MS)"
 	$(MAKE) build
 
-# The frozen conformance corpus against the Rust `ms`, every phase, with programs built by Cranelift (about 3x
-# faster than LLVM; see documentation/contributing/development.md). Excludes fixtures whose answer depends on
+# The frozen conformance corpus against the Rust `ms`, every phase, on the release `ms` that `make build` produced.
+# Excludes fixtures whose answer depends on
 # aliasing; known differences are listed in tests/conformance/expect-fail.txt. CONFORM_SHARD=i/n splits the run.
 conform: build
-	CONFORM_FAST=1 MS_BACKEND=cranelift $(MS) run tools/conform.ms
+	CONFORM_FAST=1 $(MS) run tools/conform.ms
 
 # The same corpus with programs built by LLVM (Release), as CI runs on main and on pull requests that touch
 # LLVM-related code. Run it after changing LLVM code. It runs on `target/debug/ms`, so that is rebuilt first.
@@ -86,21 +86,15 @@ conform-llvm: build
 	cargo build --locked -p ms-cli
 	$(MS) run tools/conform.ms
 
-# Release build time, IR size, direct-emission share and kernel times of the LLVM backend against Cranelift.
+# Release build time, IR size, direct-emission share and kernel times of the LLVM backend.
 llvm-report: build
 	MS=$(MS) $(MS) run tools/llvm-direct-check.ms -- report
 
-# Backend drift: the run and test phases of the corpus under LLVM (Release default) and under Cranelift
-# (MS_BACKEND=cranelift), compared directly; any differing stdout, stderr or exit status fails.
-drift-check: build
-	$(MS) run tools/conform-run.ms -- diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
-
-# The corpus under both backends with every dead statement stack slot filled with a pattern (MS_POISON_SLOTS=1), so a
+# The corpus with every dead statement stack slot filled with a pattern (MS_POISON_SLOTS=1), so a
 # pointer that outlives its slot fails in every build, not only where the backend happens to reuse the slot.
 poison-check: build
 	cargo build --locked -p ms-cli
 	MS_POISON_SLOTS=1 $(MS) run tools/conform.ms
-	CONFORM_FAST=1 MS_BACKEND=cranelift MS_POISON_SLOTS=1 $(MS) run tools/conform.ms
 
 # Generates a program per view operation, way of holding the text and set of later temporaries, runs each in Debug and Release with dead slots poisoned, and fails when a view prints anything but its expected text. Nightly on main.
 view-matrix: build
@@ -126,11 +120,9 @@ scaling-check: build
 leak-check: build
 	$(MS) run tools/leak-check.ms
 
-# Runs the e2e stdlib tests with MS_SCHED_STRESS=1 (a promise never starts on its creator; the first idle thread takes it) and fails on a file that passes without it. Only a runtime built with the sched-stress feature has the mode, so this builds a separate `ms` (target/stress) that embeds it and runs everything with that one. STRESS_CHANGED=<ref> runs only fixtures changed since <ref>. Nightly on main; not in PR CI.
-stress-sched:
-	cargo xtask runtime --sched-stress
-	MS_NATIVE_LIB=$(CURDIR)/target/ms-native/libms_native_stress.a cargo build --release --locked -p ms-cli --target-dir target/stress
-	MS=target/stress/release/ms target/stress/release/ms run tools/stress-sched.ms
+# Runs the e2e stdlib tests with MS_SCHED_STRESS=1 (a promise never starts on its creator; the first idle thread takes it) and fails on a file that passes without it. Every runtime has the mode. STRESS_CHANGED=<ref> runs only fixtures changed since <ref>. Nightly on main; not in PR CI.
+stress-sched: build
+	$(MS) run tools/stress-sched.ms
 
 # Cancels each e2e stdlib test at every park in turn and fails when cancellation leaves more blocks live than the uncancelled run.
 cancel-sweep: build
@@ -221,8 +213,13 @@ stdlib-bench: build
 # The C build: one CMake project (CMakeLists.txt, cmake/) for the runtime archive, its tests and the fuzz harnesses,
 # generated with Ninja; ccache is used when installed. `c-configure` and `c-build` make target/cmake/test (sanitizers on).
 C_BUILD ?= target/cmake/test
-.PHONY: c-configure c-build
-c-configure:
+# The system C libraries the CMake builds find with pkg-config. Nothing is installed here: a missing one stops the
+# build with the command that installs it.
+.PHONY: c-deps c-configure c-build
+c-deps:
+	@pkg-config --exists libuv libnghttp2 libssl libcrypto libpcre2-8 zlib libcurl 2>/dev/null || { echo "make: the C libraries are not all installed (pkg-config). Install them with: sh runtime/third_party/libs.sh install" >&2; exit 1; }
+
+c-configure: c-deps
 	cmake -S . -B $(C_BUILD) -G Ninja -DMS_SANITIZE=ON
 
 c-build: c-configure
@@ -235,7 +232,7 @@ c-test: c-build
 # The C style gate (documentation/contributing/c-style.md): strict warnings on every C file, clang-tidy on the
 # files that differ from C_LINT_BASE (all of them when it is unset).
 .PHONY: c-lint
-c-lint:
+c-lint: c-deps
 	cmake -S . -B target/cmake/lint -G Ninja -DMS_BUILD_COMPILER=OFF -DMS_BUILD_TESTS=OFF
 	C_LINT_BASE="$(C_LINT_BASE)" cmake --build target/cmake/lint --target c-lint
 
@@ -252,6 +249,9 @@ c-compiler-test:
 	sh compiler/tests/check-diff.sh
 	sh compiler/tests/diag-render-diff.sh
 	sh compiler/tests/entry-diff.sh
+	sh compiler/tests/prelude-import-diff.sh
+	sh compiler/tests/public-signature-diff.sh
+	sh compiler/tests/extern-diff.sh
 	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
@@ -281,10 +281,15 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/diff.ms
 	"$(RELEASE_MS)" test tools/ms/mark.ms
 	"$(RELEASE_MS)" test tools/ms/html.ms
+	"$(RELEASE_MS)" test tools/ms/review_cmd.ms
+	"$(RELEASE_MS)" test tools/ms/diagram_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
 	"$(RELEASE_MS)" test tools/ms/cli.ms
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
 	"$(RELEASE_MS)" test tools/ms/install.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/lsp/analysis.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/project.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/workspace.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/matches.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
@@ -292,6 +297,9 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/typed_calls.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/recursion.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/analysis.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/skill_calls.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/fixes.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/interpolation.ms --link target/c-tool/libmstool.a
@@ -319,6 +327,10 @@ c-tools-test: build target/c-tool/libmstool.a
 	sh tools/ms/review-diff.sh target/release/ms-tooling-dev target/c-tool/review target/c-tool/report target/c-tool/review-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/html.ms -o target/c-tool/html
 	sh tools/ms/html-diff.sh target/release/ms-tooling-dev target/c-tool/html target/c-tool/html-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/review_cmd.ms -o target/c-tool/review_cmd
+	sh tools/ms/review-cmd-diff.sh "$(RELEASE_MS)" target/c-tool/review_cmd target/release/ms-tooling-dev target/c-tool/review-cmd-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/diagram_cmd.ms -o target/c-tool/diagram_cmd
+	sh tools/ms/diagram-cmd-diff.sh "$(RELEASE_MS)" target/c-tool/diagram_cmd target/release/ms-tooling-dev target/c-tool/diagram-cmd-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/inspect.ms -o target/c-tool/inspect
 	sh tools/ms/inspect-diff.sh "$(RELEASE_MS)" target/c-tool/inspect target/c-tool/inspect-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/facts_diff.ms -o target/c-tool/facts_diff

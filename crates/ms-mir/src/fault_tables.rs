@@ -1,4 +1,4 @@
-//! The symbol and line tables handed to `msrt_start` (`crates/ms-rt/ABI.md`), shared by the
+//! The symbol and line tables handed to `msrt_start` (`crates/ms-rt-abi/ABI.md`), shared by the
 //! backends. Code addresses are left zero: the backend relocates the entries listed in
 //! [`Built::pcs`] and the table's own pointers ([`Built::pointers`]).
 

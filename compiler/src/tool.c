@@ -2,12 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/check.h"
 #include "ms/diag.h"
+#include "ms/facts.h"
 #include "ms/format.h"
 #include "ms/lex.h"
 #include "ms/packages.h"
 #include "ms/parse.h"
+#include "ms/program.h"
 #include "ms/project.h"
+#include "ms/std_embed.h"
 #include "ms/tool.h"
 
 static void push_int(ms_list *out, int64_t v) {
@@ -140,6 +144,71 @@ uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *messa
     return status;
 }
 
+/* One row of `ms_tool_project`: its kind, then its fields, separated by tabs. */
+static void push_row(MsArena *a, ms_list *out, const char *kind, const char *first, const char *second) {
+    if (first == NULL) {
+        push_text(out, kind);
+    } else if (second == NULL) {
+        push_text(out, ms_arena_fmt(a, "%s\t%s", kind, first).ptr);
+    } else {
+        push_text(out, ms_arena_fmt(a, "%s\t%s\t%s", kind, first, second).ptr);
+    }
+}
+
+static void push_aliases(MsArena *a, ms_list *out, const char *kind, const MsAlias *aliases, uint32_t count) {
+    for (uint32_t i = 0; i < count; i++) {
+        push_row(a, out, kind, aliases[i].name, aliases[i].target);
+    }
+}
+
+uint8_t ms_tool_project(const ms_str *manifest, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest));
+    MsProject p;
+    MsProjectError error = {0};
+    uint8_t status = 0;
+    if (!ms_project_read(&arena, path, &p, &error)) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    } else {
+        push_row(&arena, out, "root", p.root, NULL);
+        push_row(&arena, out, "file", p.file, NULL);
+        push_row(&arena, out, "name", p.name, NULL);
+        push_row(&arena, out, "source", p.source, NULL);
+        push_row(&arena, out, "entry", p.entry, NULL);
+        if (p.has_version) {
+            push_row(&arena, out, "version", ms_version_text(&arena, &p.version), NULL);
+        }
+        push_aliases(&arena, out, "alias", p.aliases, p.alias_count);
+        push_aliases(&arena, out, "embed", p.embed, p.embed_count);
+        push_aliases(&arena, out, "path", p.path_dependencies, p.path_dependency_count);
+        for (uint32_t i = 0; i < p.dependency_count; i++) {
+            push_row(&arena, out, "dep", ms_project_dependency_row(&arena, &p.dependencies[i]), NULL);
+        }
+        for (uint32_t i = 0; i < p.allowed_effect_count; i++) {
+            const MsEffectRule *rule = &p.allowed_effects[i];
+            MsBuf patterns = {0};
+            for (uint32_t k = 0; k < rule->count; k++) {
+                ms_buf_printf(&patterns, "%s%s", k > 0 ? "\t" : "", rule->patterns[k]);
+            }
+            push_row(&arena, out, "allow", rule->name, ms_arena_strndup(&arena, patterns.data == NULL ? "" : patterns.data, patterns.len));
+            ms_buf_free(&patterns);
+        }
+        for (uint32_t i = 0; i < p.effect_count; i++) {
+            push_row(&arena, out, "effect", p.effects[i], NULL);
+        }
+        if (p.is_workspace) {
+            push_row(&arena, out, "workspace", NULL, NULL);
+        }
+        for (uint32_t i = 0; i < p.member_count; i++) {
+            push_row(&arena, out, "member", p.members[i], NULL);
+        }
+    }
+    ms_arena_free(&arena);
+    return status;
+}
+
 uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out) {
     MsArena arena = {0};
     const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(target), ms_str_len(target));
@@ -168,30 +237,88 @@ static const char *install_state_name(MsInstallState state) {
     return "";
 }
 
-uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out) {
-    MsArena arena = {0};
-    const size_t update_count = ms_list_len(update);
-    const char **names = MS_NEW_N(&arena, const char *, update_count + 1);
-    for (size_t i = 0; i < update_count; i++) {
-        ms_value value = ms_list_get(update, i);
-        names[i] = ms_arena_strndup(&arena, (const char *)value.as.buf.data, value.as.buf.len);
-        ms_value_free(&value);
-    }
-    const MsInstallOptions options = {.manifest = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest)),
-                                      .update = names, .update_count = (uint32_t)update_count, .locked = locked != 0, .frozen = frozen != 0};
+static uint8_t install_run(MsArena *arena, MsInstallOptions options, ms_list *out, ms_str *message_out) {
     MsInstallReport report = {0};
     MsProjectError error = {0};
     uint8_t status = 0;
-    if (!ms_install(&arena, &options, &report, &error)) {
-        const char *text = ms_project_error_text(&arena, &error);
+    if (!ms_install(arena, &options, &report, &error)) {
+        const char *text = ms_project_error_text(arena, &error);
         ms_string_new((const uint8_t *)text, strlen(text), message_out);
         status = ms_project_error_is_unsupported(&error) ? 2 : 1;
     }
     for (uint32_t i = 0; status == 0 && i < report.count; i++) {
         const MsInstalledCopy *c = &report.copies[i];
-        push_text(out, ms_arena_fmt(&arena, "%s\t%s\t%s\t%s\t%s", c->name, c->copy.entry.spec, c->copy.entry.revision,
-                                   install_state_name(c->state), c->effects).ptr);
+        push_text(out, ms_arena_fmt(arena, "%s\t%s\t%s\t%s\t%s", c->name, c->copy.entry.spec, c->copy.entry.revision,
+                                    install_state_name(c->state), c->effects).ptr);
     }
+    return status;
+}
+
+static const char **install_names(MsArena *arena, const ms_list *update, size_t *count) {
+    *count = ms_list_len(update);
+    const char **names = MS_NEW_N(arena, const char *, *count + 1);
+    for (size_t i = 0; i < *count; i++) {
+        ms_value value = ms_list_get(update, i);
+        names[i] = ms_arena_strndup(arena, (const char *)value.as.buf.data, value.as.buf.len);
+        ms_value_free(&value);
+    }
+    return names;
+}
+
+uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    size_t count = 0;
+    const char **names = install_names(&arena, update, &count);
+    const MsInstallOptions options = {.manifest = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest)),
+                                      .update = names, .update_count = (uint32_t)count, .locked = locked != 0, .frozen = frozen != 0};
+    const uint8_t status = install_run(&arena, options, out, message_out);
+    ms_arena_free(&arena);
+    return status;
+}
+
+uint8_t ms_tool_workspace(const ms_str *manifest, uint8_t root_only, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest));
+    MsWorkspace workspace = {0};
+    MsProjectError error = {0};
+    bool found = false;
+    const bool ok = root_only != 0 ? ms_workspace_root_members(&arena, path, &workspace, &found, &error) : ms_workspace_find(&arena, path, &workspace, &found, &error);
+    uint8_t status = 0;
+    if (!ok) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    } else if (found) {
+        push_row(&arena, out, "root", workspace.root, NULL);
+        for (uint32_t i = 0; i < workspace.count; i++) {
+            push_row(&arena, out, "member", workspace.members[i].name, workspace.members[i].root);
+        }
+    }
+    ms_arena_free(&arena);
+    return status;
+}
+
+uint8_t ms_tool_install_workspace(const ms_str *lock_root, const ms_list *members, const ms_list *update, uint8_t locked, uint8_t frozen,
+                                  ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    size_t count = 0;
+    const char **names = install_names(&arena, update, &count);
+    /* Members are `name\tmanifest` rows. */
+    const size_t total = ms_list_len(members);
+    const char **member_names = MS_NEW_N(&arena, const char *, total + 1);
+    const char **manifests = MS_NEW_N(&arena, const char *, total + 1);
+    for (size_t i = 0; i < total; i++) {
+        ms_value value = ms_list_get(members, i);
+        const char *row = ms_arena_strndup(&arena, (const char *)value.as.buf.data, value.as.buf.len);
+        ms_value_free(&value);
+        const char *tab = strchr(row, '\t');
+        member_names[i] = tab == NULL ? row : ms_arena_strndup(&arena, row, (size_t)(tab - row));
+        manifests[i] = tab == NULL ? row : tab + 1;
+    }
+    const MsInstallOptions options = {.lock_root = ms_arena_strndup(&arena, (const char *)ms_str_data(lock_root), ms_str_len(lock_root)),
+                                      .member_names = member_names, .member_manifests = manifests, .member_count = (uint32_t)total,
+                                      .update = names, .update_count = (uint32_t)count, .locked = locked != 0, .frozen = frozen != 0};
+    const uint8_t status = install_run(&arena, options, out, message_out);
     ms_arena_free(&arena);
     return status;
 }
@@ -776,5 +903,227 @@ void ms_tool_keywords(ms_list *out) {
         value.as.buf.data = (const uint8_t *)word;
         value.as.buf.len = strlen(word);
         ms_list_push(out, &value);
+    }
+}
+
+/* ---- analysis for the language server ---- */
+
+static void push_name(ms_list *out, const char *data, size_t len) {
+    ms_value value;
+    memset(&value, 0, sizeof value);
+    value.kind = MS_STRING;
+    value.as.buf.data = (const uint8_t *)data;
+    value.as.buf.len = len;
+    ms_list_push(out, &value);
+}
+
+/* The result of ms_tool_analyze: the rows and name texts, kept in C until the caller reads them. */
+typedef struct Analysis {
+    uint8_t status; /* 0 analysed, 1 syntax error, 2 not covered */
+    char *message;
+    int64_t *rows;
+    size_t nrows, rows_cap;
+    char **names;
+    size_t *name_lens;
+    size_t nnames, names_cap;
+} Analysis;
+
+static void analysis_drop(void *payload) {
+    Analysis *a = payload;
+    free(a->message);
+    free(a->rows);
+    for (size_t i = 0; i < a->nnames; i++) {
+        free(a->names[i]);
+    }
+    free(a->names);
+    free(a->name_lens);
+}
+
+static void put_row(Analysis *a, int64_t v) {
+    if (a->nrows == a->rows_cap) {
+        a->rows_cap = a->rows_cap == 0 ? 256 : a->rows_cap * 2;
+        a->rows = realloc(a->rows, a->rows_cap * sizeof *a->rows);
+    }
+    a->rows[a->nrows++] = v;
+}
+
+static int64_t put_name(Analysis *a, const char *data, size_t len) {
+    if (a->nnames == a->names_cap) {
+        a->names_cap = a->names_cap == 0 ? 64 : a->names_cap * 2;
+        a->names = realloc(a->names, a->names_cap * sizeof *a->names);
+        a->name_lens = realloc(a->name_lens, a->names_cap * sizeof *a->name_lens);
+    }
+    char *copy = malloc(len + 1);
+    memcpy(copy, data, len);
+    copy[len] = 0;
+    a->names[a->nnames] = copy;
+    a->name_lens[a->nnames] = len;
+    return (int64_t)a->nnames++;
+}
+
+/* The type as source reads it; -1 for no type. */
+static int64_t put_type(Analysis *a, const MsCheck *c, MsTy ty) {
+    if (ty == MS_TY_NONE) {
+        return -1;
+    }
+    MsBuf text = {0};
+    ms_ty_show(&text, c->names, &c->tys, ty);
+    const int64_t at = put_name(a, text.data == NULL ? "" : (const char *)text.data, text.len);
+    ms_buf_free(&text);
+    return at;
+}
+
+/* Whether node `n` has a resolution or a type to report. */
+static bool analyzed(const MsFacts *facts, uint32_t n) {
+    return facts->res_kind[n] != MS_RES_NONE || facts->call_callee[n] != MS_NONE || facts->expr_ty[n] != MS_TY_NONE || facts->type_ref_ty[n] != MS_TY_NONE;
+}
+
+static bool imports_only_std(const MsModule *module) {
+    for (uint32_t i = 0; i < module->nimports; i++) {
+        if (module->imports[i].path.len < 5 || memcmp(module->imports[i].path.ptr, "@std/", 5) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void fail(Analysis *a, uint8_t status, const char *text, size_t len) {
+    a->status = status;
+    a->message = malloc(len + 1);
+    memcpy(a->message, text, len);
+    a->message[len] = 0;
+}
+
+static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id) {
+    const MsFacts *facts = check->mods[id].facts;
+    const MsNames *table = check->names;
+    if (facts == NULL) {
+        return;
+    }
+    /* Header: node rows, binding rows, symbol rows. */
+    int64_t nodes = 0, symbols = 0;
+    bool *seen = calloc(check->syms.count + 1, sizeof *seen);
+    for (uint32_t n = 0; n <= facts->node_count; n++) {
+        nodes += analyzed(facts, n);
+        if (seen != NULL && facts->res_kind[n] == MS_RES_SYMBOL && facts->res_ref[n] < check->syms.count) {
+            seen[facts->res_ref[n]] = true;
+        }
+        if (seen != NULL && facts->call_callee[n] != MS_NONE && facts->call_callee[n] < check->syms.count) {
+            seen[facts->call_callee[n]] = true;
+        }
+    }
+    for (uint32_t s = 0; seen != NULL && s < check->syms.count; s++) {
+        symbols += seen[s];
+    }
+    put_row(a, nodes);
+    put_row(a, facts->bindings.count);
+    put_row(a, symbols);
+    for (uint32_t n = 0; n <= facts->node_count; n++) {
+        if (!analyzed(facts, n)) {
+            continue;
+        }
+        put_row(a, n);
+        put_row(a, facts->res_kind[n]);
+        put_row(a, facts->res_kind[n] == MS_RES_NONE ? -1 : (int64_t)facts->res_ref[n]);
+        put_row(a, put_type(a, check, facts->expr_ty[n]));
+        put_row(a, put_type(a, check, facts->type_ref_ty[n]));
+        put_row(a, facts->call_callee[n] == MS_NONE ? -1 : (int64_t)facts->call_callee[n]);
+    }
+    const MsBindings *b = &facts->bindings;
+    for (uint32_t k = 0; k < b->count; k++) {
+        const MsStr name = ms_name(table, b->name[k]);
+        put_row(a, put_name(a, name.ptr, name.len));
+        put_row(a, put_type(a, check, b->ty[k]));
+        put_row(a, b->decl_node[k]);
+        put_row(a, b->pos[k].line);
+        put_row(a, b->pos[k].column);
+        put_row(a, b->pos[k].offset);
+        put_row(a, b->role[k]);
+        put_row(a, b->flags[k]);
+        put_row(a, b->reads[k]);
+    }
+    /* Every symbol a name resolved to, once, in id order. */
+    for (uint32_t s = 0; seen != NULL && s < check->syms.count; s++) {
+        if (!seen[s]) {
+            continue;
+        }
+        const MsStr name = ms_name(table, check->syms.name[s]);
+        const MsModId home = check->syms.module[s];
+        const MsStr path = home == MS_NONE ? (MsStr){"", 0} : ms_name(table, check->mods[home].path);
+        const MsDecl *decl = check->syms.decl[s];
+        put_row(a, s);
+        put_row(a, put_name(a, name.ptr, name.len));
+        put_row(a, check->syms.kind[s]);
+        put_row(a, put_name(a, path.ptr, path.len));
+        put_row(a, home == id ? 1 : 0);
+        put_row(a, check->syms.is_exported[s] ? 1 : 0);
+        put_row(a, decl == NULL ? -1 : (int64_t)decl->id);
+        put_row(a, decl == NULL ? 0 : decl->pos.offset);
+        put_row(a, decl == NULL ? 0 : decl->pos.line);
+        put_row(a, decl == NULL ? 0 : decl->pos.column);
+        put_row(a, put_type(a, check, check->syms.ty[s]));
+    }
+    free(seen);
+}
+
+ms_object *ms_tool_analyze(const ms_str *text) {
+    ms_object *obj = ms_object_new(sizeof(Analysis), analysis_drop);
+    Analysis *a = ms_payload(obj);
+    const char *src = (const char *)ms_str_data(text);
+    const size_t len = ms_str_len(text);
+    if (!ms_utf8_valid(src, len)) {
+        fail(a, 1, "invalid UTF-8", 13);
+        return obj;
+    }
+    MsNames table;
+    ms_names_init(&table);
+    MsArena syntax = {0};
+    MsModule module;
+    MsDiag diag;
+    if (!ms_parse(&syntax, &table, src, len, &module, &diag)) {
+        fail(a, 1, diag.message.ptr, diag.message.len);
+    } else if (!imports_only_std(&module)) {
+        fail(a, 2, "imports a project module", 24);
+    } else {
+        MsCheck check;
+        ms_check_init(&check, &table);
+        uint32_t nfiles = 0;
+        const MsStdFile *files = ms_std_embedded(&nfiles);
+        MsStr err = {0};
+        if (!ms_std_load(&check, &syntax, files, nfiles, &err)) {
+            fail(a, 1, err.ptr, err.len);
+        } else {
+            const MsModId id = ms_module_add(&check, ms_intern_cstr(&table, "main.ms"), &module);
+            ms_program_begin(&check);
+            (void)ms_program_check_module(&check, id, (MsStr){src, (uint32_t)len});
+            analyze_facts(a, &check, id);
+        }
+        ms_check_free(&check);
+    }
+    ms_arena_free(&syntax);
+    ms_names_free(&table);
+    return obj;
+}
+
+uint8_t ms_tool_analysis_status(ms_object *analysis) { return ((Analysis *)ms_payload(analysis))->status; }
+
+void ms_tool_analysis_message(ms_object *analysis, ms_str *out) {
+    const Analysis *a = ms_payload(analysis);
+    if (a->message != NULL) {
+        ms_string_new((const uint8_t *)a->message, strlen(a->message), out);
+    }
+}
+
+void ms_tool_analysis_rows(ms_object *analysis, ms_list *out) {
+    const Analysis *a = ms_payload(analysis);
+    for (size_t i = 0; i < a->nrows; i++) {
+        push_int(out, a->rows[i]);
+    }
+}
+
+void ms_tool_analysis_names(ms_object *analysis, ms_list *out) {
+    const Analysis *a = ms_payload(analysis);
+    for (size_t i = 0; i < a->nnames; i++) {
+        push_name(out, a->names[i], a->name_lens[i]);
     }
 }

@@ -17,42 +17,13 @@ const VERSION: u8 = 1;
 const TRUNCATED: u8 = 1;
 const HAS_SITE: u8 = 2;
 
-/// The family of a fault, chosen by the runtime entry point that raised it.
-#[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FaultKind {
-    /// Any fault without a more specific family.
-    Fault = 0,
-    IncompleteCleanup = 1,
-    StackOverflow = 2,
-    Deadlock = 3,
-    DivisionByZero = 4,
-    Overflow = 5,
-    IndexOutOfRange = 6,
-    /// A test expectation failed (not a fault: the test returned an error).
-    TestFailure = 7,
-    OutOfMemory = 8,
-}
+pub use crate::FaultKind;
 
 impl FaultKind {
-    pub fn from_code(code: u8) -> FaultKind {
-        match code {
-            1 => FaultKind::IncompleteCleanup,
-            2 => FaultKind::StackOverflow,
-            3 => FaultKind::Deadlock,
-            4 => FaultKind::DivisionByZero,
-            5 => FaultKind::Overflow,
-            6 => FaultKind::IndexOutOfRange,
-            7 => FaultKind::TestFailure,
-            8 => FaultKind::OutOfMemory,
-            _ => FaultKind::Fault,
-        }
-    }
-
     /// The status a process exits with after this kind of fault: 1 for a failed test.
     pub fn exit_status(self) -> i32 {
         match self {
-            FaultKind::TestFailure => 1,
+            FaultKind::TestFailure => crate::EXIT_TEST_FAILURE,
             FaultKind::StackOverflow => crate::EXIT_STACK_OVERFLOW,
             FaultKind::OutOfMemory => crate::EXIT_NO_MEMORY,
             _ => crate::EXIT_ABORT,
@@ -64,21 +35,6 @@ impl FaultKind {
         status == crate::EXIT_ABORT
             || status == crate::EXIT_STACK_OVERFLOW
             || status == crate::EXIT_NO_MEMORY
-    }
-
-    /// The stable name the JSON reports use.
-    pub fn name(self) -> &'static str {
-        match self {
-            FaultKind::Fault => "fault",
-            FaultKind::IncompleteCleanup => "incomplete_cleanup",
-            FaultKind::StackOverflow => "stack_overflow",
-            FaultKind::Deadlock => "deadlock",
-            FaultKind::DivisionByZero => "division_by_zero",
-            FaultKind::Overflow => "overflow",
-            FaultKind::IndexOutOfRange => "index_out_of_range",
-            FaultKind::TestFailure => "test_failure",
-            FaultKind::OutOfMemory => "out_of_memory",
-        }
     }
 }
 

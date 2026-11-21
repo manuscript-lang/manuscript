@@ -6,6 +6,8 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 
+#include "../entry/entry.h"
+#include "fault_kept.h"
 #include "ms_sched.h"
 #include "spin.h"
 #include "task.h"
@@ -92,7 +94,7 @@ static void flush_locked(void) {
     }
 }
 
-int32_t ms_sched_stdout_error(void) { return (int32_t)atomic_load_explicit(&first_error, memory_order_relaxed); }
+int32_t ms_sched_stdout_error(void) { return atomic_load_explicit(&first_error, memory_order_relaxed); }
 
 void ms_sched_flush_stdout(void) {
     ms_spin_lock(&out.lock);
@@ -203,6 +205,7 @@ void msrt_test_capture_take(int64_t id, MsStr *out_text) {
 
 /* Ends capture `id`; later output of its tasks goes to standard output. */
 void msrt_test_capture_free(int64_t id) {
+    ms_test_drop_fault((uint64_t)id);
     ms_spin_lock(&captures.lock);
     for (size_t i = 0; i < captures.length; i++) {
         if (captures.items[i].id == (uint64_t)id) {

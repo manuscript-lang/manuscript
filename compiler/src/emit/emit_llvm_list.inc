@@ -11,9 +11,10 @@ static MirTy ll_list_elem(const LCx *c, MirTy list_ty) {
 static void ll_element_address(LCx *c, const MirInst *inst, MirTy elem, char *out, size_t cap) {
     const uint32_t n = c->next++;
     const uint32_t stride = mir_type_mem(c->layouts, elem).size;
-    ms_buf_printf(c->out, "  %%e%u = mul i64 %%v%u, %u\n  %%e%ua = add i64 %%v%u, %%e%u\n", n, inst->args[1],
-                  stride, n, inst->args[0], n);
-    ms_buf_printf(c->out, "  %%e%up = inttoptr i64 %%e%ua to ptr\n", n, n);
+    ms_buf_printf(c->out,
+                  "  %%e%u = mul i64 %%v%u, %u\n  %%e%ub = inttoptr i64 %%v%u to ptr\n"
+                  "  %%e%up = getelementptr i8, ptr %%e%ub, i64 %%e%u\n",
+                  n, inst->args[1], stride, n, inst->args[0], n, n, n);
     (void)snprintf(out, cap, "%%e%up", n);
 }
 

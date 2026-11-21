@@ -83,12 +83,16 @@
 #include "syntax/constfold.c"
 #include "check/lower_scope.c"
 #include "check/lower_body.c"
+#include "check/lower_func.c"
 #include "check/lower_record.c"
 #include "check/lower_list.c"
+#include "check/lower_map.c"
 #include "check/lower_enum.c"
 #include "check/lower_text.c"
 #include "check/lower_alt.c"
 #include "check/lower_closure.c"
+#include "check/lower_iface.c"
+#include "check/lower_method.c"
 #include "syntax/walk.c"
 #include "check/ty_subst.c"
 #include "check/ty_algebra.c"
@@ -102,6 +106,8 @@
 #include "check/stdlib.c"
 #include "check/check_scope.c"
 #include "check/check_entry.c"
+#include "check/check_public.c"
+#include "check/check_extern.c"
 #include "check/check_types.c"
 #include "check/check_decls.c"
 #include "check/check_list.c"
@@ -140,11 +146,14 @@
 #include "libms_api.c"
 #include "emit/emit_entry.c"
 #include "emit/emit_llvm.c"
-/* The project loader uses POSIX file calls; the Windows tools (ms_mir_build, ms_asm_tables) do not need it. */
-#ifndef _WIN32
+#include "emit/emit_program.c"
+/* The project loader uses POSIX file calls, which the Windows tools do not need; the back end library the Rust
+ * `ms` links leaves it out on every platform (cmake/MsCompiler.cmake, target ms_backend). */
+#if !defined(_WIN32) && !defined(MS_LIBMS_NO_PROJECT)
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/discover.c"
+#include "project/embed.c"
 #include "project/resolve.c"
 #include "project/load.c"
 #include "project/semver.c"
@@ -152,6 +161,8 @@
 #include "project/solve.c"
 #include "project/packages.c"
 #include "project/install.c"
+#include "project/workspace.c"
+#include "project/attach.c"
 
 #include "project/graph_check.c"
 #include "check_cmd.c"

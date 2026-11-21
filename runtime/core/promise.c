@@ -11,11 +11,15 @@
 
 #include "array.h"
 #include "cancel.h"
+#include "fault.h"
+#include "fault_kept.h"
 #include "group.h"
+#include "idle.h"
 #include "isolate.h"
 #include "promise_remote.h"
 #include "queue.h"
 #include "worker.h"
+#include "../entry/entry.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/obj.h"
 #include "scheduler.h"
@@ -85,6 +89,8 @@ typedef struct Cold {
     uint32_t prev_started;
     uint32_t runner;            /* the isolate that took the work (FLAG_REMOTE), once it said so */
     MsTaskHandle runner_task;   /* the task running it there, or 0 */
+    uintptr_t *started;         /* return addresses of the code that started the work, for a fault report, or NULL */
+    size_t started_count;
 } Cold;
 
 /* Remote tokens to post when a promise finishes: (row, generation) entries of promises another isolate waits on. */
@@ -154,6 +160,25 @@ static size_t row_or_fault(MsPromise id) {
         fail("promise: no such promise");
     }
     return (size_t)row;
+}
+
+enum { STARTED_CAPTURE_MAX = 64 };
+
+/* Remembers where the running code is, so a fault in the work can say what started it. */
+static void capture_started(Cold *cold) {
+    uintptr_t found[STARTED_CAPTURE_MAX];
+    const size_t count = ms_fault_capture_frames(found, STARTED_CAPTURE_MAX);
+    cold->started = count == 0 ? NULL : msrt_alloc(count * sizeof found[0]);
+    if (cold->started != NULL) {
+        memcpy(cold->started, found, count * sizeof found[0]);
+        cold->started_count = count;
+    }
+}
+
+static void release_started(Cold *cold) {
+    msrt_free(cold->started);
+    cold->started = NULL;
+    cold->started_count = 0;
 }
 
 static void release_result(size_t row) {
@@ -419,6 +444,11 @@ static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) 
     Cold *const cold = &table.cold[row];
     MsObj *const closure = cold->closure;
     cold->closure = NULL;
+    if (status == MS_GUARD_FAULT && cold->started != NULL) {
+        /* The work ran on another isolate, whose report cannot name where this one started it. */
+        ms_fault_text_add_started(&message, cold->started, cold->started_count);
+    }
+    release_started(cold);
     if (closure != NULL) {
         msrt_obj_drop(closure);
     }
@@ -462,6 +492,23 @@ static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) 
     wake(row);
 }
 
+/* The work of `row` ended with a fault: the report names where the work was started from, and a task under a test's
+ * output capture leaves its record for the test runner. */
+static void finish_report(size_t row, MsGuardStatus status, MsFaultText *message) {
+    if (status != MS_GUARD_FAULT) {
+        return;
+    }
+    Cold *const cold = &table.cold[row];
+    if (cold->started != NULL) {
+        ms_fault_text_add_started(message, cold->started, cold->started_count);
+        release_started(cold);
+    }
+    const uint64_t capture = ms_task_capture();
+    if (capture != 0) {
+        ms_test_keep_fault(capture, message);
+    }
+}
+
 static void work_entry(void *argument) {
     const MsPromise id = (MsPromise)(uintptr_t)argument; // NOLINT(performance-no-int-to-ptr): the id travels as the argument word
     const ptrdiff_t row = row_of(id);
@@ -470,6 +517,7 @@ static void work_entry(void *argument) {
     }
     MsFaultText message = {0};
     const MsGuardStatus status = ms_guard_call(run_closure, table.cold[row].closure, &message);
+    finish_report((size_t)row, status, &message);
     /* Ending drops the closure, which closes what it captured: like any implicit close it runs shielded, since a
      * cancelled task would otherwise be cancelled again at its first park. */
     ms_shield_enter();
@@ -477,23 +525,29 @@ static void work_entry(void *argument) {
     ms_shield_exit();
 }
 
-static void start_task(MsPromise id, MsObj *closure) {
+static void start_task(MsPromise id, MsObj *closure, bool rooted) {
     const size_t row = row_or_fault(id);
     Cold *const cold = &table.cold[row];
     if (cold->closure != NULL || (table.hot[row].flags & FLAG_DEFERRED) != 0) {
         fail("promise: already started");
     }
     cold->closure = closure;
-    cold->creator = ms_task_current();
+    cold->creator = rooted ? 0 : ms_task_current();
     cold->started_at = ms_cleanup_base();
-    link_started(row);
+    capture_started(cold);
+    if (!rooted) {
+        link_started(row);
+    }
     MsTaskStatus status = MS_TASK_OK;
     void *const argument = (void *)(uintptr_t)id; // NOLINT(performance-no-int-to-ptr): the id travels as the argument word
     const MsTaskHandle task = ms_task_spawn(work_entry, argument, MS_SPAWN_DETACHED, 0, &status);
     if (task == 0) {
-        unlink_started(row, cold->creator);
+        if (!rooted) {
+            unlink_started(row, cold->creator);
+        }
         cold->closure = NULL;
         cold->creator = 0;
+        release_started(cold);
         msrt_obj_drop(closure);
         fail("promise: cannot start the work: out of stacks");
     }
@@ -503,7 +557,7 @@ static void start_task(MsPromise id, MsObj *closure) {
 /* Puts the work in this isolate's queue, where its waiter runs it inline or another isolate takes it once it is
  * `age_ns` old. False when workers are off or the queue has no room: the caller starts a task instead. */
 static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns) {
-    if (ms_workers_limit() <= 1 || ms_sched_pinned_here()) {
+    if (ms_workers_limit() <= 1) {
         return false;
     }
     const size_t row = row_or_fault(id);
@@ -513,29 +567,37 @@ static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns) {
         fail("promise: already started");
     }
     const int64_t now = ms_sched_now();
+    if (ms_workers_stress() && age_ns < MS_WORKER_BEAT_NS) {
+        age_ns = MS_WORKER_BEAT_NS; /* stress mode queues every start aged, so any idle isolate may take it */
+    }
     if (!ms_queue_push(ms_sched()->isolate, (uint64_t)id, closure, now - age_ns)) {
         return false;
     }
     cold->closure = closure;
     cold->creator = ms_task_current();
     cold->started_at = ms_cleanup_base();
+    capture_started(cold);
     link_started(row);
     hot->flags |= FLAG_DEFERRED | FLAG_QUEUED | FLAG_REMOTE_WAKE;
     ms_workers_nudge();
     return true;
 }
 
+void ms_promise_start_here(MsPromise id, MsObj *closure) { start_task(id, closure, false); }
+
+/* For work the runtime starts from the scheduler's own contexts, which run on whichever task last switched away: no task
+ * owns it, so it is on no task's list of started promises (a task that ends cancels the promises on its list). */
+void ms_promise_start_detached(MsPromise id, MsObj *closure) { start_task(id, closure, true); }
+
 void ms_promise_start(MsPromise id, MsObj *closure) {
     if (!queue_work(id, closure, 0)) {
-        start_task(id, closure);
+        start_task(id, closure, false);
     }
 }
 
-void ms_promise_start_here(MsPromise id, MsObj *closure) { start_task(id, closure); }
-
 void ms_promise_start_spread(MsPromise id, MsObj *closure) {
     if (!queue_work(id, closure, MS_WORKER_BEAT_NS)) {
-        start_task(id, closure);
+        start_task(id, closure, false);
     }
 }
 
@@ -568,7 +630,7 @@ void ms_promise_start_idle(MsPromise id, MsObj *closure) {
     if (ms_task_count() <= 1) {
         ms_promise_defer(id, closure);
     } else {
-        start_task(id, closure);
+        start_task(id, closure, false);
     }
 }
 
@@ -579,6 +641,7 @@ static void end_guarded_run(MsPromise id, MsGuardStatus status, MsFaultText mess
         ms_fault_text_free(&message);
         return;
     }
+    finish_report((size_t)row, status, &message);
     if (status == MS_GUARD_FAULT) {
         table.cold[row].report = message;
         table.hot[row].state = STATE_FAILED;
@@ -604,6 +667,9 @@ static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
         /* Work on this stack notices a limit only at its own waits, so a bounded wait leaves queued work to run as a
          * task of its own, which a limit can cancel (a consumer that never waits would otherwise outlive it). */
         return false;
+    }
+    if (was_queued && ms_workers_stress()) {
+        return false; /* stress mode: the waiter parks and another isolate takes the work */
     }
     if (was_queued && !claim_queued(row)) {
         return false;
@@ -672,6 +738,9 @@ static void taken_entry(void *argument) {
     post_promise_mail((uint32_t)((uint64_t)taken->id >> ISOLATE_SHIFT), started);
     MsFaultText message = {0};
     const MsGuardStatus status = ms_guard_call(run_closure, taken->closure, &message);
+    if (status == MS_GUARD_FAULT && ms_task_capture() != 0) {
+        ms_test_keep_fault(ms_task_capture(), &message);
+    }
     /* Dropping the closure closes what it captured: like any implicit close it runs shielded. */
     ms_shield_enter();
     msrt_obj_drop(taken->closure);
@@ -715,6 +784,9 @@ static bool run_own(MsPromise id) {
 /* The scheduler is about to block: take the oldest queued work of this isolate (its owner is idle) or of another that
  * waited out the beat. */
 static bool idle_work(int64_t *wait_ns) {
+    if (ms_idle_turn()) {
+        return true;
+    }
     const uint32_t self = ms_sched()->isolate;
     const int64_t now = ms_sched_now();
     int64_t wait = -1;
@@ -723,7 +795,7 @@ static bool idle_work(int64_t *wait_ns) {
         if (!own && !ms_isolate_live(other)) {
             continue;
         }
-        const int64_t beat = own ? MS_WORKER_OWN_BEAT_NS : MS_WORKER_BEAT_NS;
+        const int64_t beat = own ? ms_workers_own_beat() : MS_WORKER_BEAT_NS;
         uint64_t id = 0;
         void *work = NULL;
         if (ms_queue_steal(other, now - beat, &id, &work)) {
@@ -753,7 +825,7 @@ static bool work_pending(void) {
     for (uint32_t other = 0; other < MS_MAX_ISOLATES; other++) {
         const bool own = other == self;
         if ((own || ms_isolate_live(other)) &&
-            ms_queue_oldest(other) <= now - (own ? MS_WORKER_OWN_BEAT_NS : MS_WORKER_BEAT_NS)) {
+            ms_queue_oldest(other) <= now - (own ? ms_workers_own_beat() : MS_WORKER_BEAT_NS)) {
             return true;
         }
     }
@@ -1032,6 +1104,7 @@ void ms_promise_drop(MsPromise id) {
     }
     const size_t row = (size_t)found;
     release_result(row);
+    release_started(&table.cold[row]);
     ms_fault_text_free(&table.cold[row].report);
     if ((table.hot[row].flags & FLAG_WATCHED) != 0) {
         post_watches(row);
@@ -1200,6 +1273,8 @@ MsPromiseProbe ms_promise_probe(MsPromise id) {
     }
     return ended_without_value(state) ? MS_PROMISE_FAILED_PROBE : MS_PROMISE_DONE_PROBE;
 }
+
+bool ms_promise_is_foreign(MsPromise id) { return is_foreign(id); }
 
 bool ms_promise_completes_elsewhere(MsPromise id) {
     if (is_foreign(id)) {
@@ -1546,6 +1621,7 @@ void ms_promises_teardown(void) {
     for (size_t row = 0; row < table.count; row++) {
         if (table.hot[row].state != STATE_FREE) {
             release_result(row);
+            release_started(&table.cold[row]);
             ms_fault_text_free(&table.cold[row].report);
         }
     }
