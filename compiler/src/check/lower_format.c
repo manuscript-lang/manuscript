@@ -98,8 +98,13 @@ static MirValue lf_element(Lb *lb, MirTy ty, MirValue v, MirValue depth) {
         mir_b_switch_to(b, plain);
         text = lf_copy(lb, v);
     } else if (lb_is_aggregate(lb, ty)) {
+        const uint32_t helper = lf_helper(lb, ty);
+        if (helper == MIR_NONE || !lb->ok) {
+            (void)LB_UNSUPPORTED(lb); // the nested type's text form is not lowered
+            return MIR_NONE;
+        }
         const MirValue args[2] = {v, child};
-        text = mir_b_call(b, lf_helper(lb, ty), args, 2);
+        text = mir_b_call(b, helper, args, 2);
     } else if (ty == MIR_INT || ty == MIR_FLOAT || ty == MIR_BOOL) {
         const MsTy checked = lf_scalar_ty(lb, ty);
         text = lt_scalar_text(lb, checked, v).v;
