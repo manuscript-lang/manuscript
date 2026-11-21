@@ -143,7 +143,8 @@ static MirValue lm_missing_message(Lb *lb, MirValue key) {
 /* The runtime entry point that looks a key up. A key of one integer word or a String, over a value of one
  * word, has a fixed slot layout the runtime probes without descriptor dispatch (`_w8`, `_sw8`); any other
  * map takes the general entry point. The shape is read from the layout leaves, not from a list of types. */
-static const char *lm_lookup_symbol(Lb *lb, MirTy key, MirTy value) {
+static const char *lm_lookup_symbol(Lb *lb, MirTy key, MirTy value, uint8_t *role) {
+    *role = MR_NONE;
     MirLayouts layouts;
     mir_layouts_init(&layouts, lb->m);
     const MirLeafSpan key_leaves = mir_leaves(&layouts, key);
@@ -157,9 +158,14 @@ static const char *lm_lookup_symbol(Lb *lb, MirTy key, MirTy value) {
         return "msrt_map_get_ptr";
     }
     if (word_key) {
+        *role = MR_MAP_PROBE_INT;
         return "msrt_map_get_ptr_w8";
     }
-    return text_key ? "msrt_map_get_ptr_sw8" : "msrt_map_get_ptr";
+    if (text_key) {
+        *role = MR_MAP_PROBE_STR;
+        return "msrt_map_get_ptr_sw8";
+    }
+    return "msrt_map_get_ptr";
 }
 
 /* `map[key]` with the lowered receiver `map`: the map is borrowed for the lookup and dropped after
@@ -175,9 +181,10 @@ LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at) {
     const MirValue value_desc = lm_desc(lb, data->args[1]);
     const MirValue key_slot = lm_slot(lb, data->args[0]);
     lb_store(lb, key_slot, key.v);
-    const char *symbol = lm_lookup_symbol(lb, data->args[0], data->args[1]);
+    uint8_t role;
+    const char *symbol = lm_lookup_symbol(lb, data->args[0], data->args[1], &role);
     const MirTy params[4] = {ty, MIR_PTR, MIR_PTR, MIR_PTR};
-    const uint32_t lookup_fn = lm_extern(lb, symbol, params, 4, MIR_PTR, MR_NONE, strcmp(symbol, "msrt_map_get_ptr") != 0);
+    const uint32_t lookup_fn = lm_extern(lb, symbol, params, 4, MIR_PTR, role, strcmp(symbol, "msrt_map_get_ptr") != 0);
     const MirValue lookup[4] = {map.v, key_desc, value_desc, key_slot};
     const MirValue found = mir_b_call_rt(&lb->b, lookup_fn, lookup, 4);
     const MirValue absent = mir_b_emit(&lb->b, MOP_PtrIsNull, &found, 1, (MirImm){0}, MIR_BOOL);
