@@ -169,7 +169,10 @@
 #if !defined(_WIN32)
 #include "build/tool.c"
 #include "build/object.c"
+#include "build/macho.c"
 #include "build/link.c"
+#include "build/link_linux.c"
+#include "build/link_macos.c"
 #endif
 /* The project loader uses POSIX file calls, which the Windows tools do not need; the back end library the Rust
  * `ms` links leaves it out on every platform (cmake/MsCompiler.cmake, target ms_backend). */

@@ -1470,7 +1470,7 @@ static void body_return_statement(MsBody *b, const MsStmt *s) {
 
 static void body_close_scope(MsBody *b, uint32_t scope_start);
 
-/* `if name = optional`: the payload is bound for the then-branch only. */
+/* `if name = optional` or `if name = result`: the payload (a Result's Ok value) is bound for the then-branch only. */
 static bool body_if_let_statement(MsBody *b, const MsStmt *s) {
     const MsPattern *pattern = s->u.branch.binding;
     MsTy payload = MS_TY_NONE;
@@ -1479,7 +1479,12 @@ static bool body_if_let_statement(MsBody *b, const MsStmt *s) {
         return false;
     }
     const MsTy ty = ms_body_expr(b, s->u.branch.cond, MS_TY_NONE);
-    if (!ms_body_optional_payload(b, ty, &payload) || !body_is_bindable(b, payload)) {
+    const MsTyTable *tys = &b->c->tys;
+    const bool result = ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_RESULT) && tys->nargs[ty] == 2;
+    if (result) {
+        payload = ms_ty_args(tys, ty)[0]; // the Ok payload; the error is not captured
+    }
+    if ((!result && !ms_body_optional_payload(b, ty, &payload)) || !body_is_bindable(b, payload)) {
         (void)ms_body_unsupported(b);
         return false;
     }

@@ -522,7 +522,7 @@ uint32_t lb_slot_node(const LbCallable *c, uint32_t slot) {
 bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot) {
     const MsParam *param = lb_slot_param(c, slot);
     const bool declared = param != NULL && param->moving;
-    return declared || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
+    return declared || (slot == 0 && lb_has_self(c) && c->consuming) || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
 }
 
 /* Whether `e` names a `let` local, a payload an arm took out of its scrutinee or a `move` parameter: a value the function owns, so using it
@@ -1350,6 +1350,10 @@ static void lb_if(Lb *lb, const MsStmt *s) {
         return;
     }
     const MirValue subject = cond.v; // an `if name := value` unwraps it in the then-branch
+    if (s->u.branch.binding != NULL && mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->kind != MK_OPT) {
+        (void)LB_UNSUPPORTED(lb); // a Result's Ok payload: the release of the rest is not lowered yet
+        return;
+    }
     if (s->u.branch.binding != NULL) {
         cond.v = la_test(lb, subject);
     }

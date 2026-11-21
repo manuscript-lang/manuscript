@@ -32,9 +32,6 @@ static bool lb_signature(Lb *lb, const LbCallable *c, MirParam *params, MirTy *r
         const MsTy source = i < first ? c->self_ty : sig_params[i - first].ty;
         const MirTy ty = lb_mir_ty(lb, source);
         const bool moving = lb_param_moves(lb, c, i);
-        if ((moving || (i == 0 && c->consuming)) && lc_is_resource(lb, ty)) {
-            return false; // the function owns a resource and must close it: not lowered yet
-        }
         const bool mutable_slot = lb_slot_mutable(c, i);
         if (ty == MIR_NONE || (moving && !lb_owns(lb, ty)) || (mutable_slot && lb_is_fn(lb, ty))) { // only a String is handed over so far
             return false;
@@ -170,7 +167,12 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
     lb_reset_state(lb);
     for (uint32_t i = 0; i < lb_slots(c); i++) {
         if (lb_param_moves(lb, c, i)) { // the function owns what it was handed
-            lscope_own(&lb->scopes, lb->value_of[lb->binding_at[lb_slot_node(c, i)]], 0);
+            const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
+            if (lc_is_resource(lb, mir_b_ty(&lb->b, lb->value_of[binding]))) {
+                lb->ok = lc_own_param(lb, binding) && lb->ok; // closed at its scope's end
+            } else {
+                lscope_own(&lb->scopes, lb->value_of[binding], 0);
+            }
         }
     }
     lb_statements(lb, &c->fn->body);
