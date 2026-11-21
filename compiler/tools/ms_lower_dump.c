@@ -55,6 +55,8 @@ typedef struct Divergence {
     bool found;
     bool has_var;
     bool returns_name;
+    bool builds; /* calls `.build()`, which takes a `var` builder: lowered as a copy that is dropped, Rust moves it */
+    const MsNames *names;
 } Divergence;
 
 static void note_divergent_stmt(void *ctx, const MsStmt *s) {
@@ -67,8 +69,12 @@ static void note_divergent_stmt(void *ctx, const MsStmt *s) {
 }
 
 static void note_divergent_expr(void *ctx, const MsExpr *e) {
+    Divergence *d = ctx;
     if (e->kind == MS_E_MATCH) {
-        ((Divergence *)ctx)->found = true;
+        d->found = true;
+    }
+    if (e->kind == MS_E_CALL && e->u.call.callee->kind == MS_E_MEMBER && ms_name_is(d->names, e->u.call.callee->u.member.name, "build")) {
+        d->builds = true;
     }
 }
 
@@ -92,10 +98,10 @@ static bool function_diverges(const MsNames *names, const MsModule *module, MsSt
         const MsDecl *d = module->decls[i];
         const MsStr own = d->kind == MS_D_FN ? ms_name(names, d->u.fn.name) : (MsStr){0};
         if (own.len == name.len && own.len != 0 && memcmp(own.ptr, name.ptr, name.len) == 0) {
-            Divergence found = {0};
+            Divergence found = {.names = names};
             const MsVisitor visitor = {.ctx = &found, .stmt = note_divergent_stmt, .expr = note_divergent_expr};
             ms_walk_decl(&visitor, d);
-            return found.found || (found.has_var && found.returns_name);
+            return found.found || (found.has_var && (found.returns_name || found.builds));
         }
     }
     return false;

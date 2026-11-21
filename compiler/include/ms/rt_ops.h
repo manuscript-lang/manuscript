@@ -59,6 +59,7 @@ typedef struct MsRtFn {
     bool has_imm; /* `@imm=<n>`: the `@op=` instruction carries the integer `imm` */
     bool fallback; /* `@fallback`: an Optional or Result method that yields the payload, or its one argument when there is none */
     const char *domain; /* `@domain=`: how its failures name their module ("network"), or "" */
+    const char *view;   /* the `@view_of=` twin, whose result borrows the receiver, or "" */
 } MsRtFn;
 
 /* Whether `fn` reports failure by a status the caller turns into a `Result` (see lower_extern.c). */

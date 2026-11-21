@@ -11,7 +11,8 @@ MirTy lst_type(Lb *lb, MsTy ty) {
         return MIR_NONE;
     }
     const MirTy element = lb_mir_ty(lb, ms_ty_args(tys, ty)[0]);
-    if (element != MIR_INT && element != MIR_FLOAT && element != MIR_BOOL && element != MIR_STR && !lb_is_list(lb, element)) {
+    const bool sized = element >= MIR_INT8 && element <= MIR_UINT64; // `List[UInt8]` and the other sized numbers
+    if (element != MIR_INT && element != MIR_FLOAT && element != MIR_BOOL && element != MIR_STR && !sized && !lb_is_list(lb, element)) {
         return MIR_NONE;
     }
     return mir_ty_list(lb->m, element);
@@ -70,7 +71,9 @@ LbVal lst_get(Lb *lb, const MsExpr *left, const MsExpr *at) {
     const MirValue args[2] = {list.v, index.v};
     const MirTy element = bytes ? MIR_UINT8 : mir_ty_data(lb->m, mir_b_ty(&lb->b, list.v))->elem;
     const MirValue item = mir_b_emit(&lb->b, MOP_ListGet, args, 2, (MirImm){0}, element);
-    if (list.owned) {
+    if (list.owned && lb_owns(lb, element)) {
+        lb_hold_temp(lb, list.v); // the element points into the list: it lives to the end of the statement
+    } else if (list.owned) {
         lb_drop(lb, list.v);
     }
     return (LbVal){item, false};

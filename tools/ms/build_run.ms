@@ -13,6 +13,7 @@ import (
 	SpawnOptions, Stdio, spawn from "@std/os/process.ms",
 
 	Invocation from "./args.ms",
+	check_rows from "./check_run.ms",
 )
 
 // Status 1 is a failed build (the message); status 2 is a program the C pipeline does
@@ -40,25 +41,49 @@ fn tool_paths(env: Map[String, String]) List[String]?:
 	runtime := env.get("MS_RT_LIB")?
 	return [tools.clone(), lld.clone(), files.clone(), runtime.clone()]
 
-// Whether the C pipeline built `inv`'s program into `output`; false when the Rust
-// command must build it.
-fn built_in_c(inv: Invocation, output: String) Bool:
-	if inv.structured or inv.static_libc or inv.watch: return false
-	if not inv.link.is_empty(): return false
-	if inv.targets.length() > 1: return false
+// How the C pipeline answered: built, or reported the program's diagnostics (the exit
+// status 1 the Rust command gives), or left the command to the Rust one.
+enum Built:
+	Done
+	Diagnosed
+	Rust
+
+// Whether a handover is only the program's own errors, which the C checker renders as
+// the Rust command does.
+fn is_diagnostic(error: BuildError) Bool:
+	match error:
+		Unsupported(message): return message.starts_with("a diagnostic")
+		Failed(_message): return false
+
+// Prints the errors of `target` the way `ms check` does; false when the C checker
+// does not give them (a warning-only program is built by the Rust command).
+fn report_diagnostics(target: String) Bool:
+	rows := check_rows(target, false)
+	if rows.is_none(): return false
+	if rows.get()[2] != "1": return false
+
+	stdout().write(rows.get()[0].clone()).get()
+	stderr().write(rows.get()[1].clone()).get()
+	return true
+
+// What the C pipeline did with `inv`'s program for `output`.
+fn built_in_c(inv: Invocation, output: String) Built:
+	if inv.structured or inv.static_libc or inv.watch: return Built.Rust
+	if not inv.link.is_empty(): return Built.Rust
+	if inv.targets.length() > 1: return Built.Rust
 
 	kind := inv.build_type_name.lower()
-	if kind != "" and kind != "debug" and kind != "release": return false
+	if kind != "" and kind != "debug" and kind != "release": return Built.Rust
 
 	target := if inv.targets.is_empty(): inv.filename.clone() else: inv.targets[0].clone()
-	if not target.ends_with(".ms"): return false
+	if not target.ends_with(".ms"): return Built.Rust
 
 	vars := environment()
-	if vars.is_error(): return false
+	if vars.is_error(): return Built.Rust
 
 	env := vars.get()
 	paths := tool_paths(env)
-	if paths.is_none(): return false
+	if paths.is_none(): return Built.Rust
 
 	// A failed or declined C build is the Rust command's to report, in its words.
 	built := ms_tool_build(
@@ -73,9 +98,11 @@ fn built_in_c(inv: Invocation, output: String) Bool:
 
 	if built.is_error():
 		if env.contains("MS_DRIVER_TRACE"): trace(built.err())
-		return false
+		if is_diagnostic(built.err()) and report_diagnostics(target): return Built.Diagnosed
 
-	return true
+		return Built.Rust
+
+	return Built.Done
 
 // The exit status, or none when the Rust command must run.
 export fn run_build(inv: Invocation) Int?:
@@ -84,7 +111,10 @@ export fn run_build(inv: Invocation) Int?:
 	// The Rust command makes the output's directory and refuses a directory as output.
 	if directory(shown): return none
 	if shown.contains("/") and not directory(shown.slice(0, shown.last_index_of("/")?)): return none
-	if not built_in_c(inv, shown): return none
+
+	built := built_in_c(inv, shown)
+	if built == Built.Rust: return none
+	if built == Built.Diagnosed: return 1
 
 	stdout().write(f"Built {shown}\n").get()
 	return 0
@@ -97,10 +127,11 @@ export fn run_program(inv: Invocation) Int?:
 
 	dir := root.get().clone()
 	executable := f"{dir}/program"
+	built := built_in_c(inv, executable)
 
-	if not built_in_c(inv, executable):
+	if built != Built.Done:
 		void remove(dir, recursive: true)
-		return none
+		return if built == Built.Diagnosed: 1 else: none
 
 	child := spawn(
 		executable,

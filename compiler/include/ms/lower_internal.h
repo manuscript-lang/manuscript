@@ -287,6 +287,8 @@ LbVal lb_expr(Lb *lb, const MsExpr *e);
 /* `value`, the borrowed read of the place `e`, read again once the expressions after it were evaluated: one of them
  * may have replaced what the place holds (crates/ms-lower call.rs `refresh`). Other values are returned as they are. */
 LbVal lb_refresh(Lb *lb, const MsExpr *e, LbVal value);
+/* Whether `e` names a local or a field under one (`g`, `g.cells`): a place, which evaluating again only reads. */
+bool lb_is_place(const Lb *lb, const MsExpr *e);
 MirTy lb_mir_ty(Lb *lb, MsTy ty);
 void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
@@ -294,6 +296,8 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 
 void lb_write_back(Lb *lb);
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
+void lb_param_into_var(Lb *lb, uint32_t binding);        /* a handed-over parameter whose fields are assigned, as a `var` the function owns */
+bool lb_is_pointer_param(Lb *lb, uint32_t binding);   /* a `var` record parameter: read and written through its pointer */
 bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
 
 /* Lists of scalars (lower_list.c, included after lower_body.c). */
@@ -307,6 +311,12 @@ bool lst_read_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 LbVal lst_get(Lb *lb, const MsExpr *left, const MsExpr *at);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
+/* The local `var` a by-reference receiver names, else MS_NONE. */
+uint32_t lb_var_receiver(Lb *lb, const MsExpr *receiver);
+/* StringBuilder and BytesBuilder (lower_builder.c). */
+bool lbd_is_builder(Lb *lb, MsTy ty);
+LbVal lbd_new(Lb *lb);
+bool lbd_method(Lb *lb, const MsExpr *e, LbVal *out);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
 /* lower_extern.c: a call of a bodiless `extern fn`, by its own symbol in the ms-sig table. */
 MirTy lx_type(Lb *lb, MsTy ty);
@@ -388,6 +398,7 @@ LbVal lr_construct(Lb *lb, const MsExpr *call);
 MsTy le_field_ty(Lb *lb, const MsDef *def, MsTy ty, MsTy declared);
 LbVal lm_empty(Lb *lb, MirTy ty);
 LbVal lr_field(Lb *lb, const MsExpr *e);
+void lr_assign_field(Lb *lb, const MsStmt *s);
 
 /* Optional and Result (lower_alt.c, included after lower_body.c). */
 MirTy la_type(Lb *lb, MsTy ty);

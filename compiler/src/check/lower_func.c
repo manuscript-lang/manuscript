@@ -103,6 +103,9 @@ static bool lb_begin(Lb *lb, const LbCallable *c) {
         if (lb_slot_mutable(c, i)) {
             const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
             const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
+            if (lb_is_pointer_param(lb, binding)) {
+                continue; // a record is read from its pointer at each use
+            }
             lb->var_of[binding] = mir_b_declare_var(&lb->b, ty, MM_BORROW);
             mir_b_def_var(&lb->b, lb->var_of[binding], lb_load(lb, values[i], ty));
         }
@@ -183,6 +186,8 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
                 if (!lc_own_param(lb, binding)) { // closed at its scope's end
                     (void)LB_UNSUPPORTED(lb);
                 }
+            } else if ((lb->facts->bindings.flags[binding] & MS_BIND_FIELD_STORED) != 0) {
+                lb_param_into_var(lb, binding); // a field of it is assigned: it is owned at each exit with the value it holds there
             } else {
                 lscope_own(&lb->scopes, lb->value_of[binding], 0);
             }

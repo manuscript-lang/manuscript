@@ -435,7 +435,7 @@ MirValue lb_native_status_call(Lb *lb, const struct MsRtFn *fn, const MirValue *
 
 /* The receiver of a by-reference list parameter: a `var` list local the function owns, whose
  * variable then holds what the instruction yields. */
-static uint32_t ln_var_receiver(Lb *lb, const MsExpr *receiver) {
+uint32_t lb_var_receiver(Lb *lb, const MsExpr *receiver) {
     if (receiver->kind != MS_E_NAME || lb->facts->res_kind[receiver->id] != MS_RES_BINDING) {
         return MS_NONE;
     }
@@ -504,6 +504,38 @@ static LbVal ln_call_reporting(Lb *lb, const MsRtFn *fn, const MirValue *args, u
     return lb_native_call(lb, fn, args, nargs, result_ty);
 }
 
+/* The function a call of `fn` reaches when `fn` has borrowing twins (`@view_of=` and siblings), as Rust chooses
+ * (crates/ms-lower native/method.rs): a receiver the call made, or a literal, is trimmed into a value of its own by
+ * `fn` itself; a String read from a place the function holds is lent, so its `@view_of=` twin is called and the
+ * caller copies the view where it keeps it. NULL when the choice is not lowered yet (a lent list, a borrowed call). */
+static const MsRtFn *ln_twin_choice(const Lb *lb, const MsRtFn *fn, const MsExpr *receiver, LbVal value, MirTy result_ty) {
+    if (lb_is_place(lb, receiver)) {
+        const bool lends_text = result_ty == MIR_STR && fn->view[0] != '\0';
+        return lends_text ? ms_rt_fn_find(fn->view, strlen(fn->view)) : NULL;
+    }
+    return value.owned || receiver->kind == MS_E_TEXT ? fn : NULL;
+}
+
+/* The call of the method `e`, through `fn` or the twin of it the receiver calls for. A view that is the whole value
+ * of a `name := ...` is copied here: the local keeps a String of its own. */
+static LbVal ln_call_choosing_twin(Lb *lb, const MsExpr *e, const MsRtFn *fn, LbVal receiver, const MirValue *args,
+                                   uint32_t nargs, MirTy result_ty) {
+    const MsRtFn *chosen = fn;
+    lb->twin_ok = lb->iterable == e;
+    if (fn->twinned && !lb->twin_ok && fn->params[0] != MS_RT_LIST_VAR) {
+        chosen = ln_twin_choice(lb, fn, e->u.call.callee->u.member.left, receiver, result_ty);
+        lb->twin_ok = chosen != NULL;
+        chosen = chosen != NULL ? chosen : fn; // refused below, at the site that names the reason
+    }
+    LbVal call = ln_call_reporting(lb, chosen, args, nargs, result_ty);
+    lb->twin_ok = false;
+    const bool is_bound = lb->stmt != NULL && lb->stmt->kind == MS_S_BIND && lb->stmt->u.bind.value == e;
+    if (lb->ok && chosen != fn && is_bound) {
+        call = (LbVal){lb_copy(lb, call.v), true};
+    }
+    return call;
+}
+
 /* A method call the runtime function `fn` implements: evaluates the receiver and arguments, then calls. */
 static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
     const MsExpr *callee = e->u.call.callee;
@@ -522,7 +554,7 @@ static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
     uint32_t binding = MS_NONE;
     LbVal first;
     if (by_reference) {
-        binding = ln_var_receiver(lb, receiver);
+        binding = lb_var_receiver(lb, receiver);
         if (binding == MS_NONE) {
             return LB_UNSUPPORTED(lb);
         }
@@ -561,9 +593,7 @@ static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
     if (!lb->ok) {
         return LB_FAIL;
     }
-    lb->twin_ok = lb->iterable == e;
-    const LbVal call = ln_call_reporting(lb, fn, args, nargs + 1, result_ty);
-    lb->twin_ok = false;
+    const LbVal call = ln_call_choosing_twin(lb, e, fn, first, args, nargs + 1, result_ty);
     if (!lb->ok) {
         return LB_FAIL;
     }
@@ -583,6 +613,10 @@ static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
 
 /* A method call of a native type: instructions where the method is some, else its runtime function. */
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
+    LbVal builder;
+    if (lbd_method(lb, e, &builder)) {
+        return builder;
+    }
     const MsSym name = e->u.call.callee->u.member.name;
     const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
     LbVal item;
