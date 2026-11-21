@@ -217,7 +217,7 @@ static int host_open_flags(int32_t flags) {
 /* The result of a finished synchronous libuv request: the count it transferred, or the negative errno. The request is
  * cleaned up. libuv retries an interrupted call itself, as MS_RETRY_INTERRUPTED does for the calls it does not own. */
 static ssize_t uv_result(uv_fs_t *req) {
-    const ssize_t result = (ssize_t)req->result;
+    const ssize_t result = req->result;
     uv_fs_req_cleanup(req);
     return result;
 }
@@ -291,6 +291,7 @@ MsSysError ms_sys_fs_read(MsSysFd fd, uint8_t *buffer, size_t capacity, size_t *
 }
 
 MsSysError ms_sys_fs_write(MsSysFd fd, const uint8_t *data, size_t length, size_t *count) {
+    // NOLINTNEXTLINE(performance-no-int-to-ptr): the write path shares the transfer helper, which never writes through the buffer.
     return transfer(true, fd, (uint8_t *)(uintptr_t)data, length, -1, count);
 }
 
@@ -299,6 +300,7 @@ MsSysError ms_sys_fs_pread(MsSysFd fd, uint8_t *buffer, size_t capacity, int64_t
 }
 
 MsSysError ms_sys_fs_pwrite(MsSysFd fd, const uint8_t *data, size_t length, int64_t offset, size_t *count) {
+    // NOLINTNEXTLINE(performance-no-int-to-ptr): the write path shares the transfer helper, which never writes through the buffer.
     return transfer(true, fd, (uint8_t *)(uintptr_t)data, length, offset, count);
 }
 

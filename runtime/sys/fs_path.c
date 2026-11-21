@@ -142,6 +142,7 @@ static MsSysError do_symlink(const char *target, const char *path) {
     free(joined);
 #endif
     uv_fs_t req;
+    // NOLINTNEXTLINE(readability-suspicious-call-argument): uv_fs_symlink takes the target, then the link path.
     (void)uv_fs_symlink(NULL, &req, target, path, flags, NULL);
     return finish(&req);
 }
@@ -194,7 +195,7 @@ static MsSysError do_chown(const char *path, int64_t uid, int64_t gid, bool foll
 
 static MsSysError do_truncate(const char *path, int64_t size) {
     uv_fs_t open;
-    const int fd = (int)uv_fs_open(NULL, &open, path, UV_FS_O_WRONLY, 0, NULL);
+    const int fd = uv_fs_open(NULL, &open, path, UV_FS_O_WRONLY, 0, NULL);
     if (fd < 0) {
         return finish(&open);
     }
