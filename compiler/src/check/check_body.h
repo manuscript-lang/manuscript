@@ -81,6 +81,7 @@ void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty);
 /* A call of a generic function of the module (check_generic.c). */
 /* `written` is the explicit type arguments of `f[Int](x)`, or NULL. */
 bool ms_body_mentions_unbound(const MsBody *b, const MsInfer *in, MsTy ty); /* `ty` mentions a variable `in` has not bound */
+void ms_body_record_function_arguments(MsBody *b, const MsExpr *call, MsTy sig, const uint32_t *slot); /* a function argument has its parameter's type */
 bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in); /* one argument of an open signature: checked against its parameter, or binding its variables */
 MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
 MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);

@@ -324,6 +324,7 @@ static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
         }
         w->consumed |= 1u << index;
     }
+    w->facts->moved_out[e->id] = true;
     own_record(w, e, binding);
 }
 
@@ -727,9 +728,17 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
         w->supported = false;
         return;
     }
-    const bool mutating = (w->facts->methods->access[w->facts->call_method[e->id]] & MS_METHOD_MUTATING) != 0;
+    const uint8_t access = w->facts->methods->access[w->facts->call_method[e->id]];
+    const bool mutating = (access & MS_METHOD_MUTATING) != 0;
     const uint32_t binding = own_argument_local(w, receiver);
-    if (mutating) {
+    if ((access & MS_METHOD_CONSUMING) != 0) {
+        // The method takes its receiver: a local is moved out, a temporary is dropped by the method.
+        if (mutating) {
+            w->supported = false;
+            return;
+        }
+        own_expr(w, receiver, DEMAND_MOVE);
+    } else if (mutating) {
         bool overlaps = binding == MS_NONE;
         for (uint32_t i = 0; i < e->u.call.args.len && !overlaps; i++) {
             overlaps = own_mentions(w, e->u.call.args.ptr[i].value, binding);

@@ -107,6 +107,7 @@ fn install_manifest(manifest: String, update: List[String]) Installed:
 		for member in workspace.members: rows.append(
 			f"{member.name}\t{member.manifest}"
 		)
+
 		got := ms_tool_install_workspace(
 			workspace.root.clone(),
 			rows,
@@ -152,10 +153,14 @@ fn pin_of(kind: String, reference: String) Pin:
 // The text of the manifest, or the failure to print.
 fn read_manifest(command: String, path: String) String!Printed:
 	data := read_file(path).wait()
-	if data.is_error(): return error(failure(command, f"read {path}: {data.err().message}"))
+	if data.is_error(): return error(
+		failure(command, f"read {path}: {data.err().message}")
+	)
 
 	text := data.get().decode_utf8()
-	if text.is_none(): return error(failure(command, f"read {path}: stream did not contain valid UTF-8"))
+	if text.is_none(): return error(
+		failure(command, f"read {path}: stream did not contain valid UTF-8")
+	)
 
 	return ok(text.get())
 

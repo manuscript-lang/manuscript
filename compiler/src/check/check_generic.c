@@ -68,10 +68,24 @@ bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *para
     return actual != MS_TY_NONE && ms_body_is_admitted(b, actual) && ms_infer_match(in, param->ty, actual) == MS_MATCH_OK;
 }
 
+/* A function passed for a parameter has the parameter's type (`fn(move T) U`), as the Rust checker
+ * records it, whatever ownership mode the function's own type spells. `slot[i]` is the parameter
+ * of argument i. */
+void ms_body_record_function_arguments(MsBody *b, const MsExpr *call, MsTy sig, const uint32_t *slot) {
+    const MsTyTable *tys = &b->c->tys;
+    const MsTyParam *params = ms_ty_params(tys, sig);
+    for (uint32_t i = 0; i < call->u.call.args.len; i++) {
+        const MsTy want = params[slot[i]].ty;
+        if (ms_ty_kind(tys, want) == MS_K_FUNCTION) {
+            (void)ms_body_record(b, call->u.call.args.ptr[i].value->id, want);
+        }
+    }
+}
+
 /* Matches each argument against its parameter, binding the variables. Arguments pair with
  * parameters by label or position; a parameter left out must have a default in `func`, the callee's
  * declaration. */
-static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc *func, MsInfer *in) {
+static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc *func, MsInfer *in, uint32_t *slot) {
     const MsTyTable *tys = &b->c->tys;
     const uint32_t given = e->u.call.args.len;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION) {
@@ -84,7 +98,6 @@ static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc
     const MsTyParam *params = ms_ty_params(tys, sig);
     MsSym names[16];
     bool positional[16], covered[16];
-    uint32_t slot[16];
     for (uint32_t i = 0; i < nparams; i++) {
         names[i] = params[i].name;
         positional[i] = (params[i].flags & MS_PARAM_POSITIONAL) != 0;
@@ -173,7 +186,8 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
         }
     }
     uint32_t first = 0;
-    if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in) || ms_infer_defaults(&in, &first) != 0 || !generic_bounds(b, &in)) {
+    uint32_t slot[16];
+    if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in, slot) || ms_infer_defaults(&in, &first) != 0 || !generic_bounds(b, &in)) {
         return ms_body_unsupported(b);
     }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
@@ -181,6 +195,7 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
         return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;
+    ms_body_record_function_arguments(b, e, ms_infer_apply(&in, sig), slot);
     generic_record_type_args(b, e, &in);
     return result;
 }

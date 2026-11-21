@@ -1,12 +1,12 @@
 export type Counter:
-    count: Int
+	count: Int
 
 fn Counter.total(other: Int) Int:
-    return self.count + other
+	return self.count + other
 
 fn var Counter.bump(by: Int) Int:
-    self.count += by
-    return self.count
+	self.count += by
+	return self.count
 
 export fn make(start: Int) Counter:
-    return Counter(count: start)
+	return Counter(count: start)
