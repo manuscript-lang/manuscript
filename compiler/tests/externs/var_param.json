@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "subcode": "MS3000.18",
+      "phase": "type",
+      "message": "extern parameter buffer cannot be var; a native borrows its arguments",
+      "position": {
+        "file": "var_param.ms",
+        "line": 1,
+        "column": 20,
+        "offset": 19
+      }
+    }
+  ]
+}

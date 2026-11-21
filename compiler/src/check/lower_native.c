@@ -445,6 +445,10 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
     const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
     const uint32_t nargs = e->u.call.args.len;
+    LbVal int_result;
+    if (fn == NULL && lb_int_method(lb, e, receiver_ty, &int_result)) {
+        return int_result;
+    }
     if (fn == NULL && nargs == 0 && ms_name_is(lb->c->names, callee->u.member.name, "to_string")) {
         const LbVal value = lb_expr(lb, callee->u.member.left); // a String is its own text, a scalar prints through its runtime form
         return lb->ok ? lt_to_string(lb, value, receiver_ty) : LB_FAIL;

@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected ')', found '='; close the parenthesis, separating items with commas ('{' at column 11 starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f)",
+      "position": {
+        "file": "099.ms",
+        "line": 18,
+        "column": 19,
+        "offset": 510
+      },
+      "end": {
+        "file": "099.ms",
+        "line": 18,
+        "column": 20,
+        "offset": 511
+      }
+    }
+  ]
+}

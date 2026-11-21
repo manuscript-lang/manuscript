@@ -1,4 +1,4 @@
-import monotonic, now, nanoseconds from "@std/time.ms"
+import monotonic, nanoseconds, now from "@std/time.ms"
 
 fn main() Void:
 	a := monotonic()

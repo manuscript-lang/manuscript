@@ -1,0 +1,5 @@
+069.ms:6:5: parse: expected 'from', found name 'MapEntry'; imports read: import name from "path.ms"
+   |
+ 6 |     MapEntry,
+   |     ^^^^^^^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

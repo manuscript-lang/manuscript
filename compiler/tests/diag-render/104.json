@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected an expression, found 'type'; 'type' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter",
+      "position": {
+        "file": "104.ms",
+        "line": 10,
+        "column": 33,
+        "offset": 266
+      },
+      "end": {
+        "file": "104.ms",
+        "line": 10,
+        "column": 37,
+        "offset": 270
+      }
+    }
+  ]
+}

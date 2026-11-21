@@ -1,0 +1,3 @@
+// celseonform: tags=diagnostics
+// conform: phase=check
+broken := :[

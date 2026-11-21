@@ -19,7 +19,7 @@ import (
 	result_message,
 	string_at from "./rpc.ms",
 	document_symbols, folding_ranges from "./structure.ms",
-	Position, position_at, replace_range from "./text.ms",
+	Position, offset_at, position_at, replace_range from "./text.ms",
 	filename, is_file from "./uri.ms",
 )
 
@@ -44,7 +44,17 @@ export type Outcome:
 
 // What the server asks of the outside world, so tests can stand in for the checker and
 // the formatter.
+// What the checker found for a request: text to show and the byte range it covers.
+export type Found:
+	text: String
+	start: Int
+	end: Int
+
 export type Backend:
+	// The text and range to show for the byte offset in a buffer (path, text, offset).
+	hover: fn(String, String, Int) Found?
+	// Where the name at the byte offset is declared, in the same buffer.
+	definition: fn(String, String, Int) Found?
 	// The diagnostics of one open document: file path and buffer text.
 	check: fn(String, String) List[JsonValue]
 	// The formatted text of a buffer, or why it cannot be formatted.
@@ -65,6 +75,33 @@ fn range_end(change: JsonValue, which: String) Position:
 		character: int_at(change, ["range", which, "character"], 0),
 	)
 
+// The byte offset of the request's `position`.
+fn request_offset(text: String, params: JsonValue) Int:
+	return offset_at(
+		text,
+		Position(
+			line: int_at(params, ["position", "line"], 0),
+			character: int_at(params, ["position", "character"], 0),
+		),
+	)
+
+fn position_json(text: String, offset: Int) JsonValue:
+	at := position_at(text, offset)
+	return object(
+		[
+			field("line", number(at.line)),
+			field("character", number(at.character)),
+		]
+	)
+
+fn range_json(text: String, start: Int, end: Int) JsonValue:
+	return object(
+		[
+			field("start", position_json(text, start)),
+			field("end", position_json(text, end)),
+		]
+	)
+
 fn capabilities(server: Server) JsonValue:
 	return object(
 		[
@@ -80,6 +117,14 @@ fn capabilities(server: Server) JsonValue:
 						),
 						field(
 							"documentFormattingProvider",
+							JsonValue.BoolValue(true),
+						),
+						field(
+							"hoverProvider",
+							JsonValue.BoolValue(true),
+						),
+						field(
+							"definitionProvider",
 							JsonValue.BoolValue(true),
 						),
 					]
@@ -293,6 +338,66 @@ fn var Server.handle(body: String, backend: Backend) Outcome:
 		document := self.documents.get(string_at(params, ["textDocument", "uri"]))
 		result = JsonValue.Null
 		if document.is_some(): result = list(folding_ranges(document.get().text))
+	else if method == "textDocument/hover":
+		uri := string_at(params, ["textDocument", "uri"])
+		document := self.documents.get(uri)
+		result = JsonValue.Null
+
+		if document.is_some() and is_file(uri):
+			text := document.get().text
+			found := backend.hover(filename(uri), text, request_offset(text, params))
+			if shown := found: result = object(
+				[
+					field(
+						"contents",
+						object(
+							[
+								field(
+									"kind",
+									json_text(
+										"markdown"
+									),
+								),
+								field(
+									"value",
+									json_text(
+										f"```ms\n{shown.text}\n```"
+									),
+								),
+							]
+						),
+					),
+					field(
+						"range",
+						range_json(text, shown.start, shown.end),
+					),
+				]
+			)
+	else if method == "textDocument/definition":
+		uri := string_at(params, ["textDocument", "uri"])
+		document := self.documents.get(uri)
+		result = JsonValue.Null
+
+		if document.is_some() and is_file(uri):
+			text := document.get().text
+			found := backend.definition(
+				filename(uri),
+				text,
+				request_offset(text, params),
+			)
+			if target := found: result = object(
+				[
+					field("uri", json_text(uri)),
+					field(
+						"range",
+						range_json(
+							text,
+							target.start,
+							target.end,
+						),
+					),
+				]
+			)
 	else if method == "textDocument/formatting":
 		uri := string_at(params, ["textDocument", "uri"])
 		document := self.documents.get(uri).map(
@@ -347,7 +452,18 @@ fn shout(path: String, source: String) Result[String, Error]:
 	if source.contains("bad"): return error(Error("cannot parse"))
 	return ok(source.upper())
 
-fn fake() Backend: Backend(check: no_diagnostics, format: shout)
+fn nothing_found(path: String, source: String, offset: Int) Found?: none
+
+// A fixed answer: the first word of the buffer.
+fn first_word(path: String, source: String, offset: Int) Found?:
+	return Found(text: "word: String", start: 0, end: 5)
+
+fn fake() Backend: Backend(
+	check: no_diagnostics,
+	format: shout,
+	hover: first_word,
+	definition: first_word,
+)
 
 fn initialized_server() Server:
 	var server = Server(version: "0.0.0")
@@ -516,3 +632,39 @@ test "the outline and folds answer for open documents and are empty or null othe
 		fake(),
 	)
 	expect_equal(unknown.messages[0], "{\"jsonrpc\":\"2.0\",\"id\":11,\"result\":null}")?
+
+test "hover and definition answer with a range, and nothing for an unknown buffer":
+	var server = initialized_server()
+	server.handle(
+		"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\",\"version\":1,\"text\":\"hello world\\n\"}}}",
+		fake(),
+	)
+
+	hovered := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":20,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"},\"position\":{\"line\":0,\"character\":2}}}",
+		fake(),
+	)
+	expect_equal(
+		hovered.messages[hovered.messages.length() - 1].contains(
+			"word: String"
+		),
+		true,
+	)?
+	expect_equal(
+		hovered.messages[hovered.messages.length() - 1].contains(
+			"\"character\":5"
+		),
+		true,
+	)?
+
+	defined := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":21,\"method\":\"textDocument/definition\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"},\"position\":{\"line\":0,\"character\":2}}}",
+		fake(),
+	)
+	expect_equal(defined.messages[0].contains("file:///a.ms"), true)?
+
+	unknown := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":22,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"file:///none.ms\"},\"position\":{\"line\":0,\"character\":0}}}",
+		fake(),
+	)
+	expect_equal(unknown.messages[0].contains("\"result\":null"), true)?

@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected ')', found name 'tagged_detail'; close the parenthesis, separating items with commas",
+      "position": {
+        "file": "085.ms",
+        "line": 7,
+        "column": 9,
+        "offset": 253
+      },
+      "end": {
+        "file": "085.ms",
+        "line": 7,
+        "column": 22,
+        "offset": 266
+      }
+    }
+  ]
+}

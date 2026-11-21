@@ -1,0 +1,5 @@
+006.ms:2:16: parse: unterminated text literal; text must close with '"' on the same line, so add the quote or write \n for a line break
+   |
+ 2 | export fn fresf"(value: Int) Int:
+   |                ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

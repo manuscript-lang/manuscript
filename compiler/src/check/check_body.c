@@ -1165,8 +1165,17 @@ static MsTy body_binary_same(MsBody *b, const MsExpr *e, MsTy ty) {
 static MsTy body_binary(MsBody *b, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     const MsTy left = ms_body_expr(b, e->u.bin.left, MS_TY_NONE);
-    const MsTy hint = left == MS_TY_NONE ? MS_TY_NONE : body_literal_hint(b, e->u.bin.right, left);
-    const MsTy right = left == MS_TY_NONE ? MS_TY_NONE : ms_body_expr(b, e->u.bin.right, hint);
+    // `opt == value` compares as `opt == Optional`: the plain side wraps without `some`, but `none` has its own report.
+    const MsTyTable *tys = &b->c->tys;
+    const MsExpr *plain = e->u.bin.right;
+    const bool none_operand = plain->kind == MS_E_NAME && ms_name_is(b->c->names, plain->u.sym, "none");
+    const bool wraps = (op == MS_B_EQ || op == MS_B_NE) && left != MS_TY_NONE && ms_ty_is(tys, left, MS_BI_OPTIONAL) &&
+                       tys->nargs[left] == 1 && !none_operand;
+    MsTy hint = MS_TY_NONE;
+    if (left != MS_TY_NONE) {
+        hint = wraps ? left : body_literal_hint(b, plain, left);
+    }
+    const MsTy right = left == MS_TY_NONE ? MS_TY_NONE : ms_body_expr(b, plain, hint);
     if (right == MS_TY_NONE) {
         return MS_TY_NONE;
     }
@@ -1183,6 +1192,9 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
     }
     if (body_is_wrapped_operand(b, op, left, right)) {
         return b->bool_ty;
+    }
+    if (left == right && ms_ty_is(tys, left, MS_BI_BIGINT)) {
+        return comparison ? b->bool_ty : left; // every operator applies to a BigInt; no constant range to overflow
     }
     if (left != right) {
         return ms_body_unsupported(b);
@@ -1772,34 +1784,36 @@ static void body_jump_statement(MsBody *b, const MsStmt *s) {
     b->breaks += s->kind == MS_S_BREAK;
 }
 
-/* Checks the statements of a nested scope in order; whether control falls out of the end. A
- * statement after one that never falls through is left to the Rust checker. */
-/* Checks the statements in the current scope; whether control falls out of the end. */
+/* Checks the statements in the current scope; whether control falls out of the end. A statement after
+ * one that never falls through is still checked, but it neither makes the block fall through again nor
+ * counts its `break`s toward the enclosing loop. */
 static bool body_run(MsBody *b, const MsStmts *body) {
     bool falls = true;
     for (uint32_t i = 0; i < body->len && b->supported; i++) {
         const MsStmt *s = body->ptr[i];
-        if (!falls) {
-            (void)ms_body_unsupported(b);
-            break;
-        }
+        const uint32_t breaks = b->breaks;
+        bool normal = true;
         switch ((MsStmtKind)s->kind) {
         case MS_S_BIND: body_bind_statement(b, s); break;
         case MS_S_RETURN:
             body_return_statement(b, s);
-            falls = false;
+            normal = false;
             break;
-        case MS_S_IF: falls = body_if_statement(b, s); break;
-        case MS_S_WHILE: falls = body_while_statement(b, s); break;
+        case MS_S_IF: normal = body_if_statement(b, s); break;
+        case MS_S_WHILE: normal = body_while_statement(b, s); break;
         case MS_S_ASSIGN: body_assign_statement(b, s); break;
         case MS_S_BREAK:
         case MS_S_CONTINUE:
             body_jump_statement(b, s);
-            falls = false;
+            normal = false;
             break;
-        case MS_S_CALL: falls = body_call_statement(b, s); break;
-        case MS_S_FOR: falls = body_for_statement(b, s); break;
+        case MS_S_CALL: normal = body_call_statement(b, s); break;
+        case MS_S_FOR: normal = body_for_statement(b, s); break;
         }
+        if (!falls) {
+            b->breaks = breaks;
+        }
+        falls = falls && normal;
     }
     return falls;
 }

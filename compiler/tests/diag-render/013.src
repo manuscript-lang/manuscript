@@ -1,0 +1,2 @@
+́xport fn double(n: Int) In..t:
+    return n * 2

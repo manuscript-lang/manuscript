@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "mismatched closing delimiter ')'; the '{' opened at line 53:16 needs '}'",
+      "position": {
+        "file": "107.ms",
+        "line": 55,
+        "column": 9,
+        "offset": 1910
+      }
+    }
+  ]
+}

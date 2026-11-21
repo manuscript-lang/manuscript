@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found ':='",
+      "position": {
+        "file": "097.ms",
+        "line": 9,
+        "column": 14,
+        "offset": 296
+      },
+      "end": {
+        "file": "097.ms",
+        "line": 9,
+        "column": 16,
+        "offset": 298
+      }
+    }
+  ]
+}

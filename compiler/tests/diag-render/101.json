@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1001",
+      "phase": "parse",
+      "message": "invalid Unicode scalar escape; use only hexadecimal digits 0-9 and a-f inside \\u{...}",
+      "position": {
+        "file": "101.ms",
+        "line": 27,
+        "column": 73,
+        "offset": 880
+      }
+    }
+  ]
+}
