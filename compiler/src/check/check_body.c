@@ -913,7 +913,8 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (ms_body_has_invalid(b, result)) {
         return b->invalid_ty;
     }
-    return body_is_bindable(b, result) || result == b->void_ty || ms_body_is_handle(b, result) ? result
+    return body_is_bindable(b, result) || result == b->void_ty || (result == b->never_ty && b->never_ok == e) ||
+            ms_body_is_handle(b, result) ? result
                                                                                           : ms_body_unsupported(b);
 }
 
@@ -1351,6 +1352,9 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     if (expected == b->invalid_ty) {
         return ms_body_record(b, e->id, ty); // what was asked for is already reported
     }
+    if (ty == b->never_ty) {
+        return ms_body_record(b, e->id, ty); // a Never value (`panic(...)`) stands where any type is expected
+    }
     if (expected != MS_TY_NONE && body_coerces_to_interface(b, ty, expected)) {
         b->facts->coerce_iface[e->id] = ty; // the lowering boxes it behind its vtable; the expression has the interface type
         return ms_body_record(b, e->id, expected);
@@ -1605,13 +1609,14 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
 /* Whether control leaves the statement: it does unless it is a `match` whose every arm returns or breaks. */
 static bool body_call_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *value = s->u.expr;
+    b->never_ok = value;
     const MsTy ty = ms_body_expr(b, value, MS_TY_NONE);
     const bool propagated = value->kind == MS_E_UNARY && value->op == MS_U_TRY;
     if (ty == MS_TY_NONE || (propagated && ty != b->void_ty && ty != b->invalid_ty)) {
         (void)ms_body_unsupported(b);
         return false;
     }
-    if (value->kind == MS_E_MATCH && !b->match_falls) {
+    if ((value->kind == MS_E_MATCH && !b->match_falls) || ty == b->never_ty) {
         return false;
     }
     if (propagated || !ms_ty_is(&b->c->tys, ty, MS_BI_RESULT)) {
@@ -1669,6 +1674,7 @@ static void body_return_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     b->context = "the return value";
+    b->never_ok = value;
     (void)ms_body_expr(b, value, b->result);
 }
 
