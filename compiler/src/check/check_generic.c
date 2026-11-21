@@ -4,6 +4,7 @@
  * variable bound to one, bounds that are certainly met. Explicit type arguments, defaults
  * that are needed, bounds whose answer is unknown and every other form leave the function to the
  * Rust checker. Records `call_callee` and the type arguments (`call_type_args_*`). */
+#include <stdlib.h>
 #include <string.h>
 
 #include "check_body.h"
@@ -167,13 +168,20 @@ static bool generic_calls_back(MsBody *b, MsSymId callee) {
         ms_walk_callable(&visitor, func->params, func->body);
         return scan.found;
     }
-    MsArena *arena = &b->c->arena;
-    MsModId *reached = MS_NEW_N(arena, MsModId, (size_t)b->c->nmods + 1);
-    bool *seen = MS_NEW_N(arena, bool, (size_t)b->c->nmods + 1);
-    memset(seen, 0, ((size_t)b->c->nmods + 1) * sizeof *seen);
+    const size_t count = (size_t)b->c->nmods + 1;
+    MsModId *reached = calloc(count, sizeof *reached);
+    bool *seen = calloc(count, sizeof *seen);
+    if (reached == NULL || seen == NULL) {
+        free(reached);
+        free(seen);
+        return true; // cannot tell: assume it can
+    }
     uint32_t n = 0;
     ms_module_reach(b->c, home, seen, reached, &n);
-    return seen[b->module];
+    const bool back = seen[b->module];
+    free(reached);
+    free(seen);
+    return back;
 }
 
 /* A variable bound to a type built from variables (`T` as `List[T]`) can grow without end through a
@@ -184,16 +192,6 @@ static bool generic_grows(MsBody *b, const MsInfer *in, MsSymId callee) {
     for (uint32_t i = 0; i < in->nvars; i++) {
         if (ms_ty_kind(&b->c->tys, in->bound[i]) != MS_K_VARIABLE && ms_ty_has_variable(&b->c->tys, in->bound[i]) &&
             generic_calls_back(b, callee)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/* Whether a field of the type declaration has a default value, an expression that can call back. */
-static bool generic_has_defaults(const MsDecl *decl) {
-    for (uint32_t i = 0; i < decl->u.type.fields.len; i++) {
-        if (decl->u.type.fields.ptr[i]->def != NULL) {
             return true;
         }
     }
