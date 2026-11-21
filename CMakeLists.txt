@@ -11,5 +11,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(MsWarnings)
 
+# Compiler cache when installed (plan section 5).
+find_program(MS_CCACHE ccache)
+if(MS_CCACHE)
+  set(CMAKE_C_COMPILER_LAUNCHER "${MS_CCACHE}")
+endif()
+
 enable_testing()
 add_subdirectory(src)

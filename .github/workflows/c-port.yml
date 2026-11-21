@@ -38,11 +38,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - if: runner.os == 'macOS'
-        run: brew install ninja
+        run: brew install ninja ccache
       - if: runner.os == 'Windows'
-        run: choco install ninja llvm --no-progress -y
+        run: choco install ninja ccache llvm --no-progress -y
       - if: runner.os == 'Linux'
-        run: sudo apt-get install -y ninja-build
+        run: sudo apt-get install -y ninja-build ccache
+      - uses: actions/cache@v6
+        with:
+          path: ${{ runner.os == 'Windows' && '~/AppData/Local/ccache' || runner.os == 'macOS' && '~/Library/Caches/ccache' || '~/.cache/ccache' }}
+          key: ccache-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
+          restore-keys: ccache-${{ matrix.os }}-${{ matrix.arch }}-
       - run: cmake --preset debug
       - run: cmake --build --preset debug
       - run: ctest --preset debug
