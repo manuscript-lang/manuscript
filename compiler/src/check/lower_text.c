@@ -3,39 +3,15 @@
  * to a call (a longer text joins the first group, then that result with the next pieces). Pieces
  * that are all strings join with `msrt_string_concatN`. A piece whose type declares its own
  * `to_string() String` calls the method the checker resolved (`text_method`). Every other piece
- * becomes a string through its intrinsic text form, one table (`lt_forms`) read by type; a form the join writes itself (an
- * integer, in decimal) joins with `msrt_string_fmtN` and a mask of which pieces it is. */
+ * becomes a string through the `to_string` its runtime declares (`lb_native_function`). An
+ * integer is written in decimal by the join itself, with `msrt_string_fmtN` and a mask of which
+ * pieces are integers. */
 #include <stdio.h>
 #include <string.h>
 
 #include "ms/lower_internal.h"
 
 enum { LT_MAX_JOIN = 6 };
-
-/* How a value of one type becomes text: the runtime function that writes it, or `fused` when the
- * join itself writes it (the piece stays the raw value). A type without a row has no text form
- * here and leaves the function to the Rust lowering. */
-typedef struct LtForm {
-    MirTy ty;
-    const char *symbol;
-    MirRole role;
-    bool fused;
-} LtForm;
-
-static const LtForm lt_forms[] = {
-    {MIR_INT, "msrt_int_to_string", MR_INT_TO_STRING, true},
-    {MIR_FLOAT, "msrt_float_to_string", MR_NONE, false},
-    {MIR_BOOL, "msrt_bool_to_string", MR_NONE, false},
-};
-
-static const LtForm *lt_form_of(MirTy ty) {
-    for (size_t i = 0; i < sizeof lt_forms / sizeof lt_forms[0]; i++) {
-        if (lt_forms[i].ty == ty) {
-            return &lt_forms[i];
-        }
-    }
-    return NULL;
-}
 
 /* One operand of a join: a string, or a value the join writes itself (`is_int`: an integer). */
 typedef struct LtPiece {
@@ -81,7 +57,7 @@ static uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want) {
 
 /* The piece `value` of a text: a string as it is, a value with a text form as that form's result
  * (or itself when the join writes it). Any other type marks the function unsupported. */
-static LtPiece lt_piece(Lb *lb, LbVal value, uint32_t own_form) {
+static LtPiece lt_piece(Lb *lb, LbVal value, MsTy checked, uint32_t own_form) {
     if (own_form != MS_NONE) { // the type's own `to_string`, resolved by the checker
         if (!lm_has(lb, own_form) || lb->method_func[own_form] == MIR_NONE) {
             (void)lb_unsupported(lb);
@@ -98,23 +74,22 @@ static LtPiece lt_piece(Lb *lb, LbVal value, uint32_t own_form) {
     if (ty == MIR_STR) {
         return (LtPiece){value.v, false, value.owned};
     }
-    const LtForm *form = lt_form_of(ty);
+    if (ty == MIR_INT) {
+        return (LtPiece){value.v, true, value.owned}; // the join writes an integer itself (`msrt_string_fmtN`)
+    }
+    const struct MsRtFn *form = lb_native_function(lb, checked, ms_intern_cstr(lb->c->names, "to_string"));
     if (form == NULL) {
-        (void)lb_unsupported(lb);
+        (void)lb_unsupported(lb); // no declared text form for this type
         return (LtPiece){MIR_NONE, false, false};
     }
-    if (form->fused) {
-        return (LtPiece){value.v, true, value.owned};
+    const LbVal text = lb_native_call(lb, form, &value.v, 1, MIR_STR);
+    if (!lb->ok) {
+        return (LtPiece){MIR_NONE, false, false};
     }
-    MirParam *params = MS_NEW_N(&lb->m->arena, MirParam, 1);
-    params[0] = (MirParam){ty, MM_BORROW};
-    const MirExtern ext = {.name = mir_name(lb->m, form->symbol, strlen(form->symbol)),
-                           .params = params, .nparams = 1, .ret = MIR_STR, .fresh = true, .leaf = true, .role = form->role};
-    const MirValue text = mir_b_call_rt(&lb->b, lt_runtime_extern(lb, &ext), &value.v, 1);
     if (value.owned) {
         lb_drop(lb, value.v);
     }
-    return (LtPiece){text, false, true};
+    return (LtPiece){text.v, false, text.owned};
 }
 
 /* The pieces of `e`, evaluated left to right. */
@@ -135,7 +110,7 @@ static void lt_collect(Lb *lb, const MsExpr *e, LtPieces *pieces) {
             if (!lb->ok) {
                 return;
             }
-            const LtPiece piece = lt_piece(lb, value, lb->facts->text_method[part->expr->id]);
+            const LtPiece piece = lt_piece(lb, value, lb->facts->expr_ty[part->expr->id], lb->facts->text_method[part->expr->id]);
             if (!lb->ok) {
                 return;
             }
