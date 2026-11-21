@@ -20,10 +20,10 @@
 
 #include "check/check_body.h"
 #include "ms/doc.h"
+#include "ms/ty_algebra.h"
 #include "ms/implements.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
-#include "ms/ty_algebra.h"
 #include "ms/facts.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
@@ -66,7 +66,7 @@ static bool body_meets_bounds(const MsBody *b, MsTy var, MsTy arg) {
     const MsVarInfo *info = ms_var_info(b->c, var);
     for (uint32_t k = 0; k < info->nbounds; k++) {
         const MsTy contract = info->bounds[k];
-        if (b->methods == NULL || b->c->tys.nargs[contract] != 0 || ms_ty_has_variable(&b->c->tys, &b->c->arena, contract) ||
+        if (b->methods == NULL || b->c->tys.nargs[contract] != 0 || ms_ty_has_variable(&b->c->tys, contract) ||
             ms_implements(b->c, b->methods, arg, contract) != MS_FIT_YES) {
             return false;
         }
@@ -299,6 +299,8 @@ uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, MsPos pos, 
     bindings->callable[id] = b->function;
     bindings->flags[id] = flags;
     bindings->role[id] = (uint8_t)role;
+    bindings->conflict[id] = MS_CONFLICT_NONE;
+    bindings->conflict_ty[id] = MS_TY_NONE;
     return id;
 }
 
@@ -500,10 +502,10 @@ static bool body_has_receiver(const MsBody *b) {
 }
 
 /* The names a typo could have meant: the bindings in scope and the module's functions. */
-static size_t body_value_names(MsBody *b, const MsStr **out) {
+static size_t body_value_names(MsBody *b, MsArena *scratch, const MsStr **out) {
     const MsBindings *bindings = &b->facts->bindings;
     const MsNameMap *names = &b->c->mods[b->module].names;
-    MsStr *list = MS_NEW_N(&b->c->arena, MsStr, (size_t)bindings->count + names->cap);
+    MsStr *list = MS_NEW_N(scratch, MsStr, (size_t)bindings->count + names->cap);
     size_t count = 0;
     for (uint32_t i = b->first_binding; i < bindings->count; i++) {
         if (!b->closed[i]) {
@@ -537,11 +539,15 @@ static const char *body_unknown_advice(MsBody *b, MsStr name) {
     if (import.len != 0) {
         return ms_arena_strndup(&b->c->arena, import.ptr, import.len);
     }
+    // The candidate list and the distance tables are scratch: only the advice outlives the search.
+    MsArena scratch = {0};
     const MsStr *candidates = NULL;
-    const size_t count = body_value_names(b, &candidates);
-    const MsStr near = ms_did_you_mean(&b->c->arena, name, candidates, count);
-    if (near.len != 0) {
-        return ms_arena_strndup(&b->c->arena, near.ptr, near.len);
+    const size_t count = body_value_names(b, &scratch, &candidates);
+    const MsStr near = ms_did_you_mean(&scratch, name, candidates, count);
+    const char *advice = near.len == 0 ? NULL : ms_arena_strndup(&b->c->arena, near.ptr, near.len);
+    ms_arena_free(&scratch);
+    if (advice != NULL) {
+        return advice;
     }
     return ms_arena_fmt(&b->c->arena,
                         "; declare it with '%.*s := ...' before use, define 'fn %.*s(...) T:', or import it from "
@@ -876,6 +882,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     if (syms->nvars[sym] != 0) {
         return ms_body_generic_call(b, e, sym, NULL, expected);
+    }
+    if (syms->ty[sym] == MS_TY_NONE) {
+        ms_module_resolve_types(b->c, syms->module[sym]); // a native function's signature is resolved on first call
     }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
@@ -2204,6 +2213,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->pattern_binding = MS_NEW_N(arena, uint32_t, nodes);
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
+    facts->arm_contract = MS_NEW_N(arena, MsTy, nodes);
+    memset(facts->arm_contract, 0, nodes * sizeof *facts->arm_contract);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
     facts->refusal = MS_NEW_N(arena, MsSite, nodes);
     memset(facts->refusal, 0, nodes * sizeof *facts->refusal);
@@ -2264,6 +2275,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     bindings->pos = MS_NEW_N(arena, MsPos, nodes);
     bindings->flags = MS_NEW_N(arena, uint8_t, nodes);
     bindings->role = MS_NEW_N(arena, uint8_t, nodes);
+    bindings->conflict = MS_NEW_N(arena, uint8_t, nodes);
+    bindings->conflict_ty = MS_NEW_N(arena, MsTy, nodes);
     bindings->count = 0;
 }
 
