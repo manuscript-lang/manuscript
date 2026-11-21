@@ -71,6 +71,7 @@ typedef struct MsTyTable {
     uint32_t *args_at, *nargs; /* into args_pool */
     uint32_t *params_at, *nparams; /* into params_pool */
     MsTy *result;
+    bool *open; /* the type mentions a type variable, itself or through arguments, parameters or result */
     uint32_t count, cap;
     MsTy *args_pool;
     uint32_t args_len, args_cap;
@@ -90,6 +91,8 @@ MsTy ms_ty_fresh(MsTyTable *t, const MsTyDesc *d);
 static inline MsKind ms_ty_kind(const MsTyTable *t, MsTy ty) { return (MsKind)t->kind[ty]; }
 static inline MsBuiltin ms_ty_builtin(const MsTyTable *t, MsTy ty) { return (MsBuiltin)t->builtin[ty]; }
 static inline bool ms_ty_is(const MsTyTable *t, MsTy ty, MsBuiltin b) { return t->builtin[ty] == b; }
+/* Whether `ty` mentions a type variable anywhere, through arguments, parameters and results. */
+static inline bool ms_ty_has_variable(const MsTyTable *t, MsTy ty) { return t->open[ty]; }
 static inline const MsTy *ms_ty_args(const MsTyTable *t, MsTy ty) { return t->args_pool + t->args_at[ty]; }
 static inline const MsTyParam *ms_ty_params(const MsTyTable *t, MsTy ty) {
     return t->params_pool + t->params_at[ty];

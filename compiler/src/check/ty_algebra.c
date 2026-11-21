@@ -3,43 +3,6 @@
 
 #include <string.h>
 
-/* ---- walks that share visited nodes ---- */
-
-typedef struct VarWalk {
-    const MsTyTable *t;
-    bool *seen; /* by type row */
-} VarWalk;
-
-static bool walk_has_variable(VarWalk *w, MsTy ty) {
-    if (ms_ty_kind(w->t, ty) == MS_K_VARIABLE) {
-        return true;
-    }
-    if (w->seen[ty]) {
-        return false;
-    }
-    w->seen[ty] = true;
-    const MsTy *args = ms_ty_args(w->t, ty);
-    for (uint32_t i = 0; i < w->t->nargs[ty]; i++) {
-        if (walk_has_variable(w, args[i])) {
-            return true;
-        }
-    }
-    const MsTyParam *params = ms_ty_params(w->t, ty);
-    for (uint32_t i = 0; i < w->t->nparams[ty]; i++) {
-        if (walk_has_variable(w, params[i].ty)) {
-            return true;
-        }
-    }
-    return w->t->result[ty] != MS_TY_NONE && walk_has_variable(w, w->t->result[ty]);
-}
-
-bool ms_ty_has_variable(const MsTyTable *t, MsArena *scratch, MsTy ty) {
-    bool *seen = MS_NEW_N(scratch, bool, t->count);
-    memset(seen, 0, t->count * sizeof *seen);
-    VarWalk walk = {t, seen};
-    return walk_has_variable(&walk, ty);
-}
-
 /* ---- unification of two implementations' receivers and contracts ---- */
 
 typedef struct Binding {
