@@ -17,7 +17,7 @@
 /* Which functions can fault: a checked operation, an explicit fault, an indirect call or a
  * runtime call, directly or through a callee. A function that parks can also fault. */
 static bool *uw_faulting_funcs(MsArena *a, const MirModule *m, const bool *parks) {
-  const uint32_t n = m->funcs.len;
+  const uint32_t n = (uint32_t)m->funcs.len;
   bool *faults = MS_ARENA_NEW_ARRAY(a, bool, n ? n : 1);
   __builtin_memcpy(faults, parks, n);
   for (uint32_t i = 0; i < n; i++) {
@@ -174,7 +174,7 @@ static bool uw_register(UwCx *cx, MirFunc *f, const bool *def, uint32_t ndef,
   const UwFacts facts = {.cx = cx, .f = f, .owned_def = def, .nowned = ndef,
              .closed_by_with = closed_by_with, .holes = holes, .hoisted = hoisted};
   const UwWalk walk = uw_analyze(&facts);
-  if (uw_walk_idle(&walk, f->blocks.len)) {
+  if (uw_walk_idle(&walk, (uint32_t)f->blocks.len)) {
     return other_changes;
   }
   UwStacks flow_stacks, open_stacks;
@@ -215,7 +215,7 @@ static bool uw_function(UwCx *cx, MirFunc *f, uint32_t fi) {
   const bool wrapped = uw_wrap_with_closers(cx, f);
   const bool shields = uw_cover_shielded_slots(cx, f);
   const bool closes = uw_cover_inline_closes(cx, f);
-  uw_own_resize(cx, &def, &ndef, f->values.len);
+  uw_own_resize(cx, &def, &ndef, (uint32_t)f->values.len);
   const UwHash closed_by_with = uw_closed_by_with(cx, f);
   UwHash *hoisted = NULL;
   const bool hoists = uw_hoist_loops(cx, f, &def, &ndef, &closed_by_with, &hoisted);
@@ -226,7 +226,7 @@ static bool uw_function(UwCx *cx, MirFunc *f, uint32_t fi) {
  * adds are appended after them. */
 static UwTable uw_pointer_params(MsArena *a, const MirModule *m) {
   UwTable t = {.v = MS_ARENA_NEW_ARRAY(a, bool *, m->funcs.len ? m->funcs.len : 1),
-        .len = MS_ARENA_NEW_ARRAY(a, uint32_t, m->funcs.len ? m->funcs.len : 1), .n = m->funcs.len};
+        .len = MS_ARENA_NEW_ARRAY(a, uint32_t, m->funcs.len ? m->funcs.len : 1), .n = (uint32_t)m->funcs.len};
   for (uint32_t f = 0; f < m->funcs.len; f++) {
     t.len[f] = m->funcs.ptr[f].nparams;
     t.v[f] = MS_ARENA_NEW_ARRAY(a, bool, t.len[f] ? t.len[f] : 1);
@@ -246,7 +246,7 @@ bool mir_unwind(MirModule *m) {
   if (!mir_starts_tasks(m)) {
     return false;
   }
-  UwCx cx = {.m = m, .nfuncs0 = m->funcs.len};
+  UwCx cx = {.m = m, .nfuncs0 = (uint32_t)m->funcs.len};
   cx.parks = mir_parking_funcs(&cx.pass, m);
   cx.faults = uw_faulting_funcs(&cx.pass, m, cx.parks);
   MirParam cleanup_param = {MIR_INT, MM_BORROW};
@@ -259,7 +259,7 @@ bool mir_unwind(MirModule *m) {
   cx.pointer = uw_pointer_params(&cx.pass, m);
   cx.targets = uw_closure_targets(&cx.pass, m, &cx.ntargets);
   bool changed = false;
-  const uint32_t count = m->funcs.len;
+  const uint32_t count = (uint32_t)m->funcs.len;
   for (uint32_t fi = 0; fi < count; fi++) {
     MirFunc f = m->funcs.ptr[fi];
     m->funcs.ptr[fi] = uw_stand_in(m, &f);

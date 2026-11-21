@@ -427,7 +427,7 @@ static bool uw_shield_registered(UwShield *s, MirValue slot, uint32_t blk, uint3
       bool discarded = false;
       for (uint32_t n = from == MIR_NONE ? 0 : from; n <= at && !discarded; n++) {
         const uint32_t pb = s->path[n];
-        const uint32_t hi = pb == blk ? upto : f->blocks.ptr[pb].insts.len;
+        const uint32_t hi = pb == blk ? upto : (uint32_t)f->blocks.ptr[pb].insts.len;
         uint32_t lo = 0;
         if (n == from && from != MIR_NONE) {
           lo = k + 1 < hi ? k + 1 : hi;

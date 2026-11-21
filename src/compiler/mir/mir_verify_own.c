@@ -203,13 +203,13 @@ static void mv_check_closure_uses(Mv *v, const MirBits *family, const MirBits *f
 
 void mv_scoped_closures(Mv *v) {
   const MirFunc *f = v->cx.f;
-  MirBits family = mir_bits_new(&v->scratch, f->values.len);
+  MirBits family = mir_bits_new(&v->scratch, (uint32_t)f->values.len);
   if (!mv_seed_family(v, &family)) {
     return;
   }
   while (mv_grow_family(v, &family)) {
   }
-  MirBits slots = mir_bits_new(&v->scratch, f->values.len);
+  MirBits slots = mir_bits_new(&v->scratch, (uint32_t)f->values.len);
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
       const MirInst *in = &f->blocks.ptr[b].insts.ptr[i];
@@ -274,20 +274,20 @@ static void mv_own_init(Mv *v, MvOwn *o) {
   const MirModule *m = v->cx.m;
   const MirFunc *f = v->cx.f;
   o->v = v;
-  o->owned_def = mv_flags(v, f->values.len);
-  o->views = mv_flags(v, f->values.len);
-  o->watched = mv_flags(v, f->values.len);
-  o->owner_of = mv_values_none(v, f->values.len);
-  o->pointer_owner = mv_values_none(v, f->values.len);
-  o->words = f->values.len / 64 + 1;
+  o->owned_def = mv_flags(v, (uint32_t)f->values.len);
+  o->views = mv_flags(v, (uint32_t)f->values.len);
+  o->watched = mv_flags(v, (uint32_t)f->values.len);
+  o->owner_of = mv_values_none(v, (uint32_t)f->values.len);
+  o->pointer_owner = mv_values_none(v, (uint32_t)f->values.len);
+  o->words = (uint32_t)(f->values.len / 64) + 1;
   o->dropped_in = MS_ARENA_NEW_ARRAY(&v->scratch, uint64_t *, f->blocks.len + 1);
   o->dropped = MS_ARENA_NEW_ARRAY(&v->scratch, uint64_t, o->words);
   o->entry_state = MS_ARENA_NEW_ARRAY(&v->scratch, MvSet, f->blocks.len + 1);
   __builtin_memset(o->dropped_in, 0, sizeof *o->dropped_in * (f->blocks.len + 1));
   __builtin_memset(o->dropped, 0, sizeof *o->dropped * o->words);
   __builtin_memset(o->entry_state, 0, sizeof *o->entry_state * (f->blocks.len + 1));
-  o->has_entry = mv_flags(v, f->blocks.len);
-  o->back_target = mv_flags(v, f->blocks.len);
+  o->has_entry = mv_flags(v, (uint32_t)f->blocks.len);
+  o->back_target = mv_flags(v, (uint32_t)f->blocks.len);
   o->scratch_values = mv_values_none(v, mv_max_operands(f));
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     const MirBlockData *blk = &f->blocks.ptr[b];
