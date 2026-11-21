@@ -974,7 +974,8 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     if (use == MEMBER_READ && ms_body_is_qualified_case(b, e)) {
         return ms_body_qualified_case(b, e);
     }
-    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER && receiver->kind != MS_E_CALL) {
+    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER && receiver->kind != MS_E_CALL && receiver->kind != MS_E_INDEX &&
+        receiver->kind != MS_E_APPLY) {
         return ms_body_unsupported(b);
     }
     const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, MEMBER_RECEIVER))
@@ -1048,9 +1049,8 @@ static MsTy body_report_operands(MsBody *b, const MsExpr *e, MsTy left, MsTy rig
  * the Rust checker; a written `equals` can only widen what compares, never narrow it. `depth` bounds the walk
  * (a type that holds itself is deeper than the bound and is not admitted). */
 static bool body_is_native_equal(const MsBody *b, MsTy ty);
-static bool body_variable_equatable(const MsBody *b, MsTy var);
 
-static bool body_is_equatable(const MsBody *b, MsTy ty, uint32_t depth) {
+static bool body_is_equatable(MsBody *b, MsTy ty, uint32_t depth) {
     const MsTyTable *tys = &b->c->tys;
     if (ty == MS_TY_NONE || depth > 8) {
         return false;
@@ -1059,7 +1059,7 @@ static bool body_is_equatable(const MsBody *b, MsTy ty, uint32_t depth) {
         return true;
     }
     if (ms_ty_kind(tys, ty) == MS_K_VARIABLE) {
-        return body_variable_equatable(b, ty);
+        return ms_implements_equal(b->c, b->methods, ty) == MS_FIT_YES;
     }
     if ((ms_ty_is(tys, ty, MS_BI_LIST) || ms_ty_is(tys, ty, MS_BI_OPTIONAL)) && tys->nargs[ty] == 1) {
         return body_is_equatable(b, ms_ty_args(tys, ty)[0], depth + 1);
@@ -1090,17 +1090,6 @@ static bool body_is_native_equal(const MsBody *b, MsTy ty) {
     static const MsBuiltin equal[] = {MS_BI_DECIMAL, MS_BI_BYTES, MS_BI_DURATION, MS_BI_INSTANT, MS_BI_BIGINT, MS_BI_TIMESTAMP};
     for (size_t i = 0; ty != MS_TY_NONE && i < sizeof equal / sizeof equal[0]; i++) {
         if (ms_ty_is(&b->c->tys, ty, equal[i])) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/* A type variable is equatable when one of its bounds is `Equal` or `Hashable`. */
-static bool body_variable_equatable(const MsBody *b, MsTy var) {
-    const MsVarInfo *info = ms_var_info(b->c, var);
-    for (uint32_t k = 0; k < info->nbounds; k++) {
-        if (ms_ty_is(&b->c->tys, info->bounds[k], MS_BI_EQUAL) || ms_ty_is(&b->c->tys, info->bounds[k], MS_BI_HASHABLE)) {
             return true;
         }
     }
@@ -1150,7 +1139,7 @@ static MsTy body_literal_hint(MsBody *b, const MsExpr *literal, MsTy other) {
 }
 
 /* `opt == plain`: the plain side wraps without `some`, so the operands compare as the Optional does. */
-static bool body_is_wrapped_operand(const MsBody *b, MsBinaryOp op, MsTy left, MsTy right) {
+static bool body_is_wrapped_operand(MsBody *b, MsBinaryOp op, MsTy left, MsTy right) {
     const MsTyTable *tys = &b->c->tys;
     return (op == MS_B_EQ || op == MS_B_NE) && ms_ty_is(tys, left, MS_BI_OPTIONAL) && tys->nargs[left] == 1 &&
            ms_body_same_type(b, ms_ty_args(tys, left)[0], right) && body_is_equatable(b, left, 0);
@@ -1432,6 +1421,12 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
         return ms_body_unsupported(b);
     }
+    for (uint32_t i = 0; b->tparams != NULL && i < b->tparams->len; i++) {
+        if (b->tparams->ptr[i]->name == t->name) {
+            b->facts->type_ref_ty[t->id] = b->tvars[i];
+            return b->tvars[i];
+        }
+    }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
     const bool primitive = sym != MS_NONE && b->c->syms.decl[sym] == NULL && ty != MS_TY_NONE && body_is_admitted(b, ty) &&
@@ -1521,8 +1516,7 @@ static void body_assign_field(MsBody *b, const MsStmt *s) {
         root = root->u.member.left;
     }
     const uint32_t binding = root->kind == MS_E_NAME ? ms_body_find_binding(b, root->u.sym) : MS_NONE;
-    if (target->kind != MS_E_MEMBER || binding == MS_NONE || binding < b->lambda_floor ||
-        (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+    if (target->kind != MS_E_MEMBER || binding == MS_NONE || binding < b->lambda_floor) {
         (void)ms_body_unsupported(b);
         return;
     }
@@ -1605,7 +1599,10 @@ static bool body_returns_nothing(const MsBody *b) {
 /* A `return` in a function literal whose result is not known yet: its value (or the lack of one) fixes it. */
 static void body_return_deciding(MsBody *b, const MsExpr *value) {
     b->context = "the return value";
-    const MsTy ty = value == NULL ? b->void_ty : ms_body_expr(b, value, MS_TY_NONE);
+    MsTy ty = value == NULL ? b->void_ty : ms_body_builtin_open(b, value, b->result_hint);
+    if (ty == MS_TY_NONE && b->supported && value != NULL) {
+        ty = ms_body_expr(b, value, MS_TY_NONE);
+    }
     if (ty == MS_TY_NONE || !(ty == b->void_ty || body_is_bindable(b, ty))) {
         (void)ms_body_unsupported(b);
         return;
@@ -2135,7 +2132,11 @@ static void body_check_test(MsBody *b, const MsDecl *d) {
 
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     if (!body_is_test_fixture(b, &d->u.fn) || b->fixture != MS_TY_NONE) {
+        b->tparams = &d->u.fn.type_params;
+        b->tvars = ms_def(b->c, sym)->vars;
         body_check_callable(b, d->id, d->pos, d->is_exported, &d->u.fn, b->c->syms.ty[sym], NULL);
+        b->tparams = NULL;
+        b->tvars = NULL;
     }
 }
 

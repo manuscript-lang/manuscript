@@ -1,5 +1,11 @@
 /* Linking with the pinned lld (ms/build_link.h): the steps every host shares. What differs per host is in
  * link_linux.c, link_macos.c and link_windows.c (link_internal.h). */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
 #include "ms/build_link.h"
 
 #include <stdio.h>
@@ -9,6 +15,10 @@
 #include "build/link_internal.h"
 #include "ms/base.h"
 #include "ms/build_tool.h"
+
+#ifndef S_ISREG /* the Windows C library has the masks only */
+#define S_ISREG(mode) (((mode) & _S_IFMT) == _S_IFREG)
+#endif
 
 bool ms_link_exists(const char *path) {
     struct stat st;
