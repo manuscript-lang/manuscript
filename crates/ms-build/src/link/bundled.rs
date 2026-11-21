@@ -39,7 +39,9 @@ bundled!(
     "libole32.a",
     "libws2_32.a",
     "libuser32.a",
-    "libshell32.a"
+    "libshell32.a",
+    "libsynchronization.a",
+    "libclang_rt.builtins.a"
 );
 #[cfg(target_os = "macos")]
 bundled!();

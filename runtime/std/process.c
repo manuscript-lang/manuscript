@@ -17,6 +17,10 @@
 #include "ms_rt/sys_process.h"
 
 #include "fs_support.h"
+#ifdef _WIN32
+#include "../io/stop.h"
+#include "ms_rt/sys_signal.h"
+#endif
 
 enum {
     MAX_ID = 2147483647,
@@ -205,6 +209,15 @@ uint8_t msstd_process_send_signal(int64_t pid, int64_t signal, MsStr *err) {
         return invalid(err);
     }
     MsFsFail fail = {0};
+#ifdef _WIN32
+    /* A process cannot signal itself on Windows (`kill` ends it), so SIGINT and SIGTERM sent to its own id are
+     * delivered as the stop request and to the observers, as POSIX delivers them. */
+    if (pid == (int64_t)uv_os_getpid() && (signal == 2 || signal == 15)) {
+        ms_io_stop_raise((int)signal);
+        ms_sys_signal_raise((int)signal);
+        return finish(&fail, err);
+    }
+#endif
     const int code = uv_kill((int)pid, (int)signal);
     if (code == UV_ESRCH) {
         ms_fs_fail_status(&fail, STATUS_NOT_FOUND); /* the same NotFound on every platform */

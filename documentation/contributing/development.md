@@ -10,6 +10,7 @@ Run commands from the repository root. `rust-toolchain.toml` pins Rust and `.nod
 The debugger display helpers in `tools/debugger/` are Python (gdb and lldb embed it). Their decoding test, `display_helper_decoding_matches_the_layouts`, needs Python 3 as `python3` or `python`. It fails, not skips, without Python, and `make doctor` reports it. Every CI runner image (Linux, macOS and Windows, both architectures) has it.
 
 ```sh
+make setup    # once per machine: the C build tools and libraries
 make doctor
 make verify
 ```
