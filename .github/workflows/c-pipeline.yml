@@ -52,7 +52,6 @@ jobs:
           MS_BACKEND=c target/release/ms build hello.ms --build-type Debug -o hello
           ./hello
       - name: Hello through the C link
-        if: matrix.leg.os != 'windows'
         run: |
           cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
           cmake --build target/cmake/tools --target ms_build_object ms_build_link
