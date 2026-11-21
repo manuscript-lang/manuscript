@@ -36,3 +36,16 @@ Build output goes to `.artifacts/build/<preset>`. Generated files never go into 
 3. Start the file with a comment saying what it owns. Check `base` first for any helper.
 
 `ms-c` runs every phase and names each one not yet implemented (exit status 70).
+
+## Oracle and the gate
+
+The frozen Rust `ms` and `ms-conform` from `660429d4` are the oracle. Build them from that
+commit (`make build`, `cargo build --release --locked -p ms-conform`), keep them outside the
+repository, and point `MS_ORACLE_DIR` at the directory holding both.
+
+```sh
+MS_ORACLE_DIR=<dir> cmake --build --preset debug --target conform-c
+```
+
+prints `phase: passed/total` for `parse`, `check`, `run` and `test`. Select a subset with
+`-DMS_CONFORM_EXTRA="--tag;tier-core"`. A PR that lowers any phase count is not merged.
