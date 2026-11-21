@@ -1,6 +1,5 @@
 /* Methods that are instructions and that no runtime declaration describes: an Optional's payload or a default, and
  * `clone` (crates/ms-lower native/optional.rs `optional_method`, native/method.rs). */
-
 #include "ms/lower_internal.h"
 
 /* The payload of `optional` as a value the caller owns: an owned Optional hands it over, a borrowed one is copied. */
