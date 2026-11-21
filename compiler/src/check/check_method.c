@@ -258,11 +258,28 @@ static bool bound_operation(const MsBody *b, MsTy var, MsSym name, Target *out, 
     return found;
 }
 
+/* A call on a receiver of the invalid type (its own error is reported): the arguments are still
+ * checked, without an expected type, and the call is invalid, which silences what uses it. */
+static MsTy invalid_receiver_call(MsBody *b, const MsExpr *e, uint32_t binding) {
+    if (binding != MS_NONE && ms_body_expr(b, e->u.call.callee->u.member.left, b->invalid_ty) == MS_TY_NONE) {
+        return ms_body_unsupported(b);
+    }
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        if (ms_body_expr(b, e->u.call.args.ptr[i].value, MS_TY_NONE) == MS_TY_NONE) {
+            return ms_body_unsupported(b);
+        }
+    }
+    return b->invalid_ty;
+}
+
 /* A method of `receiver_ty` (a type with impls) or an operation of an interface, called on the
  * receiver expression; `binding` is the local it names, or MS_NONE for a temporary, which a
  * mutating method may change. */
 static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uint32_t binding) {
     const MsExpr *callee = e->u.call.callee;
+    if (receiver_ty == b->invalid_ty) {
+        return invalid_receiver_call(b, e, binding);
+    }
     Target target;
     MsTy dispatch = receiver_ty; /* the interface an operation is called through */
     bool resolved;

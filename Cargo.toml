@@ -1,7 +1,6 @@
 [workspace]
 members = ["crates/*"]
-# A bare `cargo build/test/check` covers the compiler and tools. The native runtime (`ms-native` and
-# the `ms-std-*` crates) is built by `cargo xtask runtime` and embedded by `ms-cli`'s build script; test it with `-p` or
+# A bare `cargo build/test/check` covers the compiler and tools. The native runtime (C, in `runtime/`) is built by `cargo xtask runtime` and embedded by `ms-cli`'s build script; test it with `-p` or
 # `--workspace`.
 default-members = [
     "crates/ms-check",
@@ -13,7 +12,6 @@ default-members = [
     "crates/ms-lower",
     "crates/ms-lsp",
     "crates/ms-mir",
-    "crates/ms-rt",
     "crates/ms-rt-abi",
     "crates/ms-syntax",
     "crates/ms-tooling",
@@ -25,7 +23,7 @@ edition = "2024"
 publish = false
 
 [workspace.lints.rust]
-# Only ms-rt and ms-rt-abi (the C ABI the compiled code links against) opt out.
+# Only ms-rt-abi (the C ABI the compiled code links against) opts out.
 unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
 
@@ -56,6 +54,7 @@ opt-level = 2
 opt-level = 2
 [profile.dev.package.ms-json]
 opt-level = 2
+
 # Tests that loop over every split point, byte or random case of a checksum, hash, codec or big-number routine,
 # and the Cranelift code generator's native tests, spent most of the Rust test time unoptimized (checksum 12 s,
 # oracle 14 s, ms-clif native 70 s on four cores); optimized they take a fraction, and sccache

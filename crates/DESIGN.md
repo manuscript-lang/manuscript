@@ -1,6 +1,6 @@
 # Rust and Cranelift implementation: design contract
 
-This describes the Rust and Cranelift implementation. Current ownership rules live in [OWNERSHIP.md](ms-check/OWNERSHIP.md); exact runtime layouts and symbols live in [ABI.md](ms-rt/ABI.md) and `ms-rt-abi`.
+This describes the Rust and Cranelift implementation. Current ownership rules live in [OWNERSHIP.md](ms-check/OWNERSHIP.md); exact runtime layouts and symbols live in [ABI.md](ms-rt-abi/ABI.md) and `ms-rt-abi`.
 
 ## Decisions (taken 2026-10-19, owner direction: keep today's behavior, maximum native speed)
 
@@ -42,7 +42,7 @@ Keep public crate APIs small and documented with rustdoc; cross-crate changes mu
 ## Runtime ABI rules
 
 - Runtime symbols use `msrt_`; native standard-library symbols use `msstd_`. `stdlib/*.ms` owns public signatures and names its native symbols with `extern fn`.
-- Scalars cross the C-layout ABI directly. Aggregates cross by pointer, and constructed aggregates use a trailing output pointer. Fallible calls use status codes and outputs; see [ABI conventions](ms-rt/ABI.md#1-conventions).
+- Scalars cross the C-layout ABI directly. Aggregates cross by pointer, and constructed aggregates use a trailing output pointer. Fallible calls use status codes and outputs; see [ABI conventions](ms-rt-abi/ABI.md#1-conventions).
 - Arguments are borrowed unless documented as consuming; `var` receivers are exclusive mutable pointers. Returned values are owned, while source operations that return a borrow keep the borrow relationship checked by `ms-check`.
 - `ms-rt-abi` defines shared layouts and constants; its layout tests keep compiler and runtime assumptions aligned.
 - Layering: `ms-rt-abi` < `ms-rt` < `ms-std-*` < `ms-native`. `ms-rt` is the only crate that defines `msrt_*` symbols and also exports the safe helpers the native crates use (`ms_rt::ffi`: the `native!` macro and value marshalling; `ms_rt::glue`: strings, faults, cancellation, task waits and the blocking pool). A native crate calls those as Rust items, so a signature change is a compile error, not a link-time surprise. `ms-native` is the only staticlib; `ms-rt` is an rlib, and its `testing` feature turns faults into panics for tests that drive the natives through the C ABI.

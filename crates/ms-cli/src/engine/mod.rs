@@ -104,11 +104,8 @@ impl<L: Lower> Engine<L> {
         if let Some(runtime) = ms_build::runtime_override(&build)? {
             return Ok(runtime);
         }
-        if self.profile_allocs.get() {
-            if build.static_musl {
-                return Err("--allocs does not support --static; profile the glibc build".into());
-            }
-            return runtime::embedded_allocs();
+        if self.profile_allocs.get() && build.static_musl {
+            return Err("--allocs does not support --static; profile the glibc build".into());
         }
         runtime::embedded(build.static_musl)
     }

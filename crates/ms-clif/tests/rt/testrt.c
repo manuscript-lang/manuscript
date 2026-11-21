@@ -1,5 +1,5 @@
 /* Minimal stand-in for ms-rt used by the backend's differential tests.
-   Implements only the symbols generated code imports, per crates/ms-rt/ABI.md. */
+   Implements only the symbols generated code imports, per crates/ms-rt-abi/ABI.md. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

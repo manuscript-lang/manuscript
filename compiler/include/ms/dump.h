@@ -34,7 +34,7 @@ void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m, MsStr text)
 
 /* The module's fact model as JSON (see compiler/src/check/dump_facts.c); `text` is its source, and the
  * bodies must have been checked for the effect columns. */
-void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text);
+void ms_dump_module_facts(MsBuf *out, MsCheck *c, MsModId m, MsStr text);
 
 /* `{"nodes": [{"id", "kind"}]}`: the type kind of each expression the checker typed, by node id. */
 void ms_dump_module_nodes(MsBuf *out, const MsCheck *c, MsModId m);
