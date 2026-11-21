@@ -416,7 +416,9 @@ pub struct DescriptionPolicy {
 
 /// Reads the policy that ships with the compiler.
 pub fn standard_description_policy() -> Result<DescriptionPolicy, String> {
-    parse_policy(include_str!("../../../../tools/ms/data/description_backlog.json"))
+    parse_policy(include_str!(
+        "../../../../tools/ms/data/description_backlog.json"
+    ))
 }
 
 fn parse_policy(text: &str) -> Result<DescriptionPolicy, String> {

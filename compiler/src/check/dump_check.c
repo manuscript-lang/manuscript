@@ -410,25 +410,45 @@ void ms_dump_module_ownership(MsBuf *out, const MsCheck *c, MsModId m) {
     }
 }
 
-void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m) {
+/* `word a,b,c`, the names sorted by the caller; nothing for an empty list. */
+static void dump_names(MsBuf *out, const char *word, const MsStr *names, uint32_t count) {
+    if (count == 0) {
+        return;
+    }
+    ms_buf_printf(out, "%s ", word);
+    for (uint32_t k = 0; k < count; k++) {
+        ms_buf_printf(out, "%s%.*s", k == 0 ? "" : ",", (int)names[k].len, names[k].ptr);
+    }
+    ms_buf_printf(out, "\n");
+}
+
+void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
     const MsModuleRow *row = &c->mods[m];
     const MsFacts *facts = row->facts;
     MsArena scratch = {0};
+    uint32_t nrows = 0;
+    const MsEntityEffects *rows = ms_effect_facts(&scratch, c, m, text, &nrows);
     for (uint32_t i = 0; facts != NULL && facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
         if ((d->kind != MS_D_FN && d->kind != MS_D_CONST) || !facts->body_checked[d->id]) {
             continue;
         }
-        const MsScanNode node = ms_effect_scan_decl(&scratch, c, m, d);
-        if (node.partial) {
-            continue;
+        const MsEntityEffects *facts_row = NULL;
+        for (uint32_t r = 0; r < nrows; r++) {
+            facts_row = rows[r].decl == d ? &rows[r] : facts_row;
         }
+        if (facts_row == NULL || facts_row->partial) {
+            continue; // what it reaches is not fully visible yet: not claimed
+        }
+        const MsScanNode node = ms_effect_scan_decl(&scratch, c, m, d);
         ms_buf_printf(out, "%s %u:%u\n", d->kind == MS_D_CONST ? "const" : "fn", d->pos.line, d->pos.column);
         for (uint32_t k = 0; k < node.nedges; k++) {
             const MsStr name = ms_name(c->names, c->syms.name[node.edges[k].callee]);
             ms_buf_printf(out, "edge %.*s %u:%u\n", (int)name.len, name.ptr, node.edges[k].pos.line,
                           node.edges[k].pos.column);
         }
+        dump_names(out, "reach", facts_row->effects, facts_row->neffects);
+        dump_names(out, "permits", facts_row->permits, facts_row->npermits);
     }
     ms_arena_free(&scratch);
 }

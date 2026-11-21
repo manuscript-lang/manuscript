@@ -1414,8 +1414,9 @@ impl<'a> Parser<'a> {
                 let type_params = self.type_params()?;
                 if self.kind() == Tok::Colon {
                     self.at = keyword;
-                    let token = self.peek();
-                    let mut decl = self.type_declaration(token)?;
+                    let type_token = self.peek();
+                    let mut decl = self.type_declaration(type_token)?;
+                    decl.pos = token.pos; // the declaration starts at `extern`, where its comment sits above
                     if let DeclKind::Type(t) = &mut decl.kind {
                         t.external = true;
                     }

@@ -29,11 +29,6 @@ static UwTable uw_table_new(MsArena *a, const MirModule *m) {
     return t;
 }
 
-static int uw_cmp_u32(const void *x, const void *y) {
-    const uint32_t a = *(const uint32_t *)x, b = *(const uint32_t *)y;
-    return a < b ? -1 : a > b;
-}
-
 uint32_t *uw_closure_targets(MsArena *a, const MirModule *m, uint32_t *n) {
     uint32_t *out = MS_NEW_N(a, uint32_t, m->nfuncs ? m->nfuncs : 1);
     MirBits seen = mir_bits_new(a, m->nfuncs);
@@ -49,7 +44,7 @@ uint32_t *uw_closure_targets(MsArena *a, const MirModule *m, uint32_t *n) {
         }
     }
     if (*n > 1) {
-        qsort(out, *n, sizeof *out, uw_cmp_u32);
+        qsort(out, *n, sizeof *out, ms_cmp_u32);
     }
     return out;
 }

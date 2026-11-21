@@ -18,7 +18,8 @@ pub fn attach_test_thread() {
     thread_local!(static DONE: Cell<bool> = const { Cell::new(false) });
     if !DONE.with(Cell::get) {
         // SAFETY: no preconditions; the thread keeps the scheduler until it ends.
-        assert!(unsafe { ms_start_attach_thread() }, "cannot open the event loop");
+        let attached = unsafe { ms_start_attach_thread() };
+        assert!(attached, "cannot open the event loop");
         DONE.with(|d| d.set(true));
     }
 }

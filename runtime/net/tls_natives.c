@@ -64,7 +64,6 @@ static uint8_t status_of(MsX509Status status) {
     return STATUS_FAILED;
 }
 
-static MsBytes bytes_of_string(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
 static CertificateInfo record_of(const MsX509Info *item) {
     CertificateInfo info = {
@@ -86,7 +85,7 @@ static CertificateInfo record_of(const MsX509Info *item) {
 uint8_t msstd_tls_parse_certificates(const MsStr *pem, uint8_t has_max, int64_t max, MsVec *out) {
     MsX509Info *items = NULL;
     size_t count = 0;
-    const MsX509Status status = ms_x509_parse(bytes_of_string(pem), has_max != 0 ? max : INT64_MAX, &items, &count);
+    const MsX509Status status = ms_x509_parse(msrt_str_bytes(pem), has_max != 0 ? max : INT64_MAX, &items, &count);
     if (status != MS_X509_OK) {
         return status_of(status);
     }
@@ -100,5 +99,5 @@ uint8_t msstd_tls_parse_certificates(const MsStr *pem, uint8_t has_max, int64_t 
 }
 
 uint8_t msstd_tls_verify_certificates(const MsStr *chain, const MsStr *roots, const MsStr *server_name, const MsTlsTimestamp *now) {
-    return status_of(ms_x509_verify(bytes_of_string(chain), bytes_of_string(roots), bytes_of_string(server_name), now->seconds));
+    return status_of(ms_x509_verify(msrt_str_bytes(chain), msrt_str_bytes(roots), msrt_str_bytes(server_name), now->seconds));
 }
