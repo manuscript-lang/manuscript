@@ -318,6 +318,30 @@ void ms_doc_leading_comment(MsBuf *out, MsStr source, size_t offset) {
     }
 }
 
+bool ms_doc_has_marker(MsStr source, size_t offset, const char *marker) {
+    if (offset > source.len) {
+        return false;
+    }
+    size_t line_start = offset;
+    while (line_start > 0 && source.ptr[line_start - 1] != '\n') {
+        line_start--;
+    }
+    DocLines l;
+    doc_lines_init(&l, source, line_start);
+    bool found = false;
+    char line_text[64];
+    (void)snprintf(line_text, sizeof line_text, "// ms: %s", marker);
+    for (size_t i = 0; !found && doc_lines_fill(&l, i); i++) {
+        const MsStr line = doc_trim(doc_trim_cr(l.lines[i]));
+        if (!ms_str_starts(line, "//")) {
+            break;
+        }
+        found = line.len == strlen(line_text) && memcmp(line.ptr, line_text, line.len) == 0;
+    }
+    free(l.lines);
+    return found;
+}
+
 size_t ms_doc_effect_lines(MsStr source, size_t offset, MsStr *names, size_t max) {
     if (offset > source.len) {
         return 0;

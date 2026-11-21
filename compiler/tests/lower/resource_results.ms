@@ -12,8 +12,8 @@ fn read(l: Latch) Int:
 
 fn twice(id: Int) Int!:
 	l := open_latch(id)
-	if read(l) > 5:
-		return ok(0)
+	if read(l) > 5: return ok(0)
+
 	return ok(read(l) * 2)
 
 fn main() Int:

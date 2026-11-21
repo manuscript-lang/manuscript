@@ -188,15 +188,18 @@ static MirValue lb_copy(Lb *lb, MirValue v) {
 static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
     const MsStr text = ms_number_canonical(&lb->m->arena, ms_name(lb->c->names, e->u.sym));
     char *digits = ms_arena_strndup(&lb->m->arena, text.ptr, text.len);
-    if (lb_ty(lb, lb->facts->expr_ty[e->id]) == lb->float_ty) {
-        const double value = strtod(digits, NULL);
+    const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
+        // A `Float32` literal rounds once, from its text, to binary32.
+        const double value = ty == MIR_FLOAT32 ? (double)strtof(digits, NULL) : strtod(digits, NULL);
         MirImm imm = {.tag = MI_FLOAT};
         const double signed_value = negate ? -value : value;
         memcpy(&imm.i, &signed_value, sizeof signed_value);
-        return (LbVal){mir_b_emit(&lb->b, MOP_FConst, NULL, 0, imm, MIR_FLOAT), false};
+        return (LbVal){mir_b_emit(&lb->b, MOP_FConst, NULL, 0, imm, ty), false};
     }
     const int64_t value = (int64_t)strtoull(digits, NULL, 10);
-    return (LbVal){mir_b_iconst(&lb->b, negate ? -value : value), false};
+    const MirImm imm = {.tag = MI_INT, .i = negate ? -value : value};
+    return (LbVal){mir_b_emit(&lb->b, MOP_IConst, NULL, 0, imm, ty == MIR_NONE ? MIR_INT : ty), false};
 }
 
 /* A literal with no interpolation. */
