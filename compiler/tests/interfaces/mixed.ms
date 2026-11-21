@@ -1,8 +1,7 @@
 interface Marker: ...
 
-interface Named {
-    fn name() String
-}
+interface Named:
+	fn name() String
 
-fn main() {
-}
+fn main() Void:
+	return
