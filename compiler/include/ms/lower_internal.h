@@ -209,6 +209,8 @@ bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered);   /* tru
 MirTy lb_fn_ty(Lb *lb, MsTy ty);
 bool lb_is_fn(const Lb *lb, MirTy ty);
 LbVal lb_lambda(Lb *lb, const MsExpr *e);
+/* `ty` seen through the generic instance being lowered: its type variables replaced by the type arguments. */
+MsTy lb_ty(Lb *lb, MsTy ty);
 LbVal lb_function_value(Lb *lb, const MsExpr *e);
 LbVal lb_call_value(Lb *lb, const MsExpr *e);
 /* Lowers the queued lambdas after their maker; `ok` is whether the maker was lowered. */
@@ -286,6 +288,7 @@ LbVal lq_equal(Lb *lb, LbVal x, LbVal y, bool negate);
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);
 LbVal lt_scalar_text(Lb *lb, MsTy checked, MirValue v);
+LbVal lt_to_string(Lb *lb, LbVal value, MsTy checked);
 uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want);
 
 /* Structural text of a record or enum (lower_format.c, included after lower_text.c). */

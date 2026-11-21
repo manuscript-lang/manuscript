@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include "ms/base.h"
+#include "ms/build_tool.h"
 
 extern char **environ;
 
@@ -32,31 +33,6 @@ static const char *bo_triple(void) {
 #endif
 }
 
-/* The text of `path`, or false. */
-static bool bo_read(const char *path, MsBuf *out) {
-    FILE *file = fopen(path, "rb");
-    if (file == NULL) {
-        return false;
-    }
-    char chunk[16384];
-    size_t n;
-    while ((n = fread(chunk, 1, sizeof chunk, file)) > 0) {
-        ms_buf_put(out, chunk, n);
-    }
-    const bool ok = ferror(file) == 0;
-    (void)fclose(file);
-    return ok;
-}
-
-static bool bo_write(const char *path, const void *bytes, size_t len) {
-    FILE *file = fopen(path, "wb");
-    if (file == NULL) {
-        return false;
-    }
-    const bool ok = fwrite(bytes, 1, len, file) == len;
-    return fclose(file) == 0 && ok;
-}
-
 /* The path `name` in the directory `dir`. */
 static void bo_path(MsBuf *out, const char *dir, const char *name) {
     out->len = 0;
@@ -64,38 +40,14 @@ static void bo_path(MsBuf *out, const char *dir, const char *name) {
     ms_buf_putc(out, 0);
 }
 
-/* Runs `argv` (NULL-terminated) with its output in `log`. The reason of a failure goes to `why`. */
+/* Runs `argv`; the reason of a failure goes to `why`. */
 static bool bo_run(const char *what, char *const *argv, const char *log, MsBackendText *why) {
-    posix_spawn_file_actions_t actions;
-    posix_spawn_file_actions_init(&actions);
-    posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0);
-    posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, log, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-    posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDERR_FILENO);
-    pid_t pid = 0;
-    const int spawned = posix_spawn(&pid, argv[0], &actions, NULL, argv, environ);
-    posix_spawn_file_actions_destroy(&actions);
-    MsBuf message = {0};
-    if (spawned != 0) {
-        ms_buf_printf(&message, "cannot run %s: %s", what, strerror(spawned));
-        *why = ms_backend_take(&message);
-        return false;
-    }
-    int status = 0;
-    while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
-    }
-    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+    MsBuf reason = {0};
+    if (ms_build_run(what, argv, log, &reason)) {
+        ms_buf_free(&reason);
         return true;
     }
-    MsBuf output = {0};
-    (void)bo_read(log, &output);
-    size_t end = output.len;
-    while (end > 0 && (output.data[end - 1] == '\n' || output.data[end - 1] == '\r' || output.data[end - 1] == ' ')) {
-        end--;
-    }
-    ms_buf_printf(&message, "%s failed: ", what);
-    ms_buf_put(&message, output.data, end);
-    ms_buf_free(&output);
-    *why = ms_backend_take(&message);
+    *why = ms_backend_take(&reason);
     return false;
 }
 
@@ -167,14 +119,14 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
     bo_path(&wrapped, dir, "program.asm.ll");
     bo_path(&obj, dir, "program.o");
     bo_path(&log, dir, "tool.log");
-    bool ok = bo_write(ll.data, ir->ptr, ir->len);
+    bool ok = ms_build_write(ll.data, ir->ptr, ir->len);
     if (!ok) {
         MsBuf message = {0};
         ms_buf_printf(&message, "cannot write %s", ll.data);
         *why = ms_backend_take(&message);
     }
     if (ok && o->keep_ll != NULL) {
-        (void)bo_write(o->keep_ll, ir->ptr, ir->len);
+        (void)ms_build_write(o->keep_ll, ir->ptr, ir->len);
     }
     const char *input = ll.data;
     if (ok && o->backend.speed) {
@@ -217,7 +169,7 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
     }
     MsBuf assembly = {0}, wrapped_text = {0};
     MsBackendText with_tables = {0};
-    if (ok && !bo_read(plain.data, &assembly)) {
+    if (ok && !ms_build_read(plain.data, &assembly)) {
         MsBuf message = {0};
         ms_buf_printf(&message, "cannot read %s", plain.data);
         *why = ms_backend_take(&message);
@@ -234,7 +186,7 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
     }
     if (ok) {
         bo_asm_module(with_tables.ptr == NULL ? "" : with_tables.ptr, with_tables.len, &wrapped_text);
-        ok = bo_write(wrapped.data, wrapped_text.data, wrapped_text.len);
+        ok = ms_build_write(wrapped.data, wrapped_text.data, wrapped_text.len);
         if (!ok) {
             MsBuf message = {0};
             ms_buf_printf(&message, "cannot write %s", wrapped.data);
@@ -248,7 +200,7 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
     }
     if (ok) {
         MsBuf bytes = {0};
-        ok = bo_read(obj.data, &bytes);
+        ok = ms_build_read(obj.data, &bytes);
         if (ok) {
             *object = ms_backend_take(&bytes);
         } else {

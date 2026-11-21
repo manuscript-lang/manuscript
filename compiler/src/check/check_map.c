@@ -7,10 +7,7 @@
 
 /* The `Map` the module sees, or MS_NONE when a declaration shadows it. */
 static MsSymId map_symbol(const MsBody *b) {
-    MsCheck *c = b->c;
-    const MsSym name = ms_intern_cstr(c->names, "Map");
-    const MsSymId sym = ms_map_get(&c->std_types, name);
-    return sym != MS_NONE && ms_map_get(&c->mods[b->module].names, name) == sym ? sym : MS_NONE;
+    return ms_body_visible_builtin(b, MS_BI_MAP);
 }
 
 static bool map_is_key(const MsBody *b, MsTy key) {
