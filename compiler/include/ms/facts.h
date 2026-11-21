@@ -126,6 +126,7 @@ typedef struct MsFacts {
     bool *body_checked;   /* by declaration node id: the function's body was checked */
     MsSite *refusal;      /* by declaration node id: where the body checker gave up on the body, or NULL file when it did not */
     uint32_t *param_consumed; /* by declaration node id: bit i is set when the function moves its plain parameter i, so callers hand it over (ownership pass) */
+    const MsPos **param_consumed_at; /* by declaration node id: where the function moves each parameter (by position), NULL when it moves none; a caller's diagnostic names it */
     bool ownership_done; /* the ownership pass walked this module */
     bool *ret_borrowed;   /* by declaration node id: every result is a reference into the arguments (ownership pass) */
     MsBindings bindings;
