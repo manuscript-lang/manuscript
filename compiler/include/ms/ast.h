@@ -280,6 +280,12 @@ typedef struct MsMethod {
     MsTypeRefs receiver_args;
 } MsMethod;
 
+/* The method that holds `func` as its `func` member. */
+static inline const MsMethod *ms_method_of_func(const MsFunc *func) {
+    /* The members of a method are laid out at their own alignment, so the step back to the method is aligned too. */
+    return __builtin_assume_aligned((const char *)func - offsetof(MsMethod, func), _Alignof(MsMethod));
+}
+
 typedef struct MsCase {
     uint32_t id;
     MsPos pos;

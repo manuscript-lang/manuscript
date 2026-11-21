@@ -104,7 +104,7 @@ static uint32_t fx_edges(Fx *fx, uint32_t i, const MsScanNode *scan) {
 static void fx_fill_method(Fx *fx, uint32_t i, uint32_t row) {
     const MsCheck *c = fx->c;
     const MsMethods *methods = fx->methods;
-    const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
+    const MsMethod *method = ms_method_of_func(methods->decl[row]);
     const MsModId m = methods->module[row];
     MsReachNode *node = &fx->reach[i];
     const MsSourceLines *lines = fx_lines(fx, m);
@@ -204,7 +204,7 @@ static void sites_expr(void *ctx, const MsExpr *e) {
     const uint32_t row = s->facts->call_method[e->id];
     if (row != MS_NONE && ms_effect_method_is_node(s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
         const MsMethods *methods = s->facts->methods;
-        const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
+        const MsMethod *method = ms_method_of_func(methods->decl[row]);
         if (methods->module[row] == s->project) {
             sites_push(s, &s->calls, &s->ncalls, &s->ccalls, ms_name(s->c->names, method->func.name));
         } else {

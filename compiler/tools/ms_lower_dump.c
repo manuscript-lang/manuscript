@@ -42,8 +42,8 @@ static void note_divergent_stmt(void *ctx, const MsStmt *s) {
 
 static void note_divergent_expr(void *ctx, const MsExpr *e) {
     Divergence *d = ctx;
-    const MsExpr *left = NULL;
-    const MsExpr *at = NULL;
+    MsExpr *left = NULL;
+    MsExpr *at = NULL;
     const bool indexed = (e->kind == MS_E_INDEX || e->kind == MS_E_APPLY) && ms_expr_index(e, &left, &at);
     const MsTy receiver = indexed ? d->facts->expr_ty[left->id] : MS_TY_NONE;
     if (e->kind == MS_E_MATCH || (receiver != MS_TY_NONE && ms_ty_is(&d->check->tys, receiver, MS_BI_MAP))) {
