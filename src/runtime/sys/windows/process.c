@@ -1,9 +1,9 @@
 /* Process state on Windows: no user or group ids and no umask, so those report unsupported; the title is the console
  * title. A process without a console keeps the title it was given in memory, as a program expects get_title to return
  * what set_title stored. Errors are libuv statuses. */
+#include <uv.h>
 #include <windows.h>
 
-#include <uv.h>
 #include <wchar.h>
 
 #include "base/alloc.h"
