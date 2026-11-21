@@ -174,9 +174,7 @@ static MirValue lc_close_at(Lb *lb, MirBuilder *b, const LbCloser *closer, MirVa
     const uint32_t iface = mir_ty_data(lb->m, closer->ty)->id;
     const MirImm method = {.tag = MI_METHOD, .a = iface, .b = closer->slot};
     const MirValue result = mir_b_emit(b, MOP_CallMethod, &value, 1, method, lc_ret(lb, closer));
-    const MirValue data = mir_b_emit(b, MOP_IfaceData, &value, 1, (MirImm){0}, MIR_PTR);
-    (void)mir_b_emit(b, MOP_Free, &data, 1, (MirImm){0}, MIR_NONE);
-    (void)mir_b_emit(b, MOP_Forget, &value, 1, (MirImm){0}, MIR_NONE);
+    li_free_box(b, value);
     return result;
 }
 
@@ -273,7 +271,7 @@ static uint32_t lc_exit(Lb *lb, MirTy rty, bool pending) {
 
 /* Whether the function being lowered holds nothing the elaborate pass does not own: a failed close
  * returns at once, so no cleanup the lowering still runs by hand may be pending. */
-static bool lc_exits_clean(const Lb *lb) {
+bool lc_exits_clean(const Lb *lb) {
     if (lb->closure || lb->nvars != 0 || lb->ntemps != 0) {
         return false;
     }
@@ -288,6 +286,11 @@ static bool lc_exits_clean(const Lb *lb) {
 /* Puts the owned resource `value` of local `binding` in a slot the elaborate pass closes at its scope's
  * end; false when the function cannot be left to that pass. */
 static bool lc_slot_own(Lb *lb, uint32_t binding, MirValue value) {
+    uint32_t fields[LB_MAX_MOVED];
+    const uint32_t moved = ls_moved_fields(lb, binding, fields);
+    if (moved != 0) {
+        return ls_own(lb, binding, value, fields, moved);
+    }
     const MirTy ty = mir_b_ty(&lb->b, value);
     LbCloser *closer = lc_find(lb, ty);
     if (closer == NULL || !lc_callable(lb, closer) || !lc_exits_clean(lb)) {
@@ -318,9 +321,24 @@ static bool lc_slot_own(Lb *lb, uint32_t binding, MirValue value) {
     const MirValue put[2] = {slot, value};
     (void)mir_b_emit(&lb->b, mir_needs_drop(lb->m, ty) ? MOP_Put : MOP_Store, put, 2, (MirImm){0}, MIR_NONE);
     lscope_own(&lb->scopes, slot, closer->thunk + 2);
-    const LbSlotLocal local = {.view = lb->view, .binding = binding, .slot = slot, .ty = ty};
-    MIR_PUSH(lb->m, lb->slots, lb->nslots, lb->cslots, LbSlotLocal, local);
+    (void)lc_push_slot(lb, (LbSlotLocal){.view = lb->view, .binding = binding, .slot = slot, .ty = ty});
     return true;
+}
+
+LbSlotLocal *lc_push_slot(Lb *lb, LbSlotLocal local) {
+    MIR_PUSH(lb->m, lb->slots, lb->nslots, lb->cslots, LbSlotLocal, local);
+    return &lb->slots[lb->nslots - 1];
+}
+
+uint32_t lc_field_thunk(Lb *lb, MirTy field) {
+    LbCloser *closer = lc_find(lb, field);
+    if (closer == NULL || !lc_callable(lb, closer)) {
+        return MIR_NONE;
+    }
+    if (closer->thunk == MIR_NONE) {
+        closer->thunk = lc_thunk(lb, closer, false);
+    }
+    return closer->thunk;
 }
 
 static bool lc_owned_local(const Lb *lb, uint32_t binding) {
@@ -353,7 +371,11 @@ bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved) {
                 return false;
             }
         }
-        *out = lb_load(lb, local->slot, local->ty);
+        if (moved && mir_needs_drop(lb->m, local->ty)) { // the value leaves its slot, which is not the scope's to close any more
+            *out = mir_b_emit(&lb->b, MOP_Take, &local->slot, 1, (MirImm){.tag = MI_TY, .a = local->ty}, local->ty);
+        } else {
+            *out = lb_load(lb, local->slot, local->ty);
+        }
         if (moved) {
             lscope_disown(&lb->scopes, local->slot);
         }

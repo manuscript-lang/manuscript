@@ -128,11 +128,28 @@ bool li_closer(Lb *lb, MsTy contract, uint32_t *slot, MirTy *result) {
     return false;
 }
 
+/* Whether the operation `name` of `contract` takes its receiver. */
+static bool li_consumes(const Lb *lb, MsTy contract, MsSym name) {
+    const MsOperations *ops = li_operations(lb, contract);
+    for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
+        if (ops->items[i].decl->func.name == name) {
+            return ops->items[i].decl->consuming;
+        }
+    }
+    return false;
+}
+
+void li_free_box(MirBuilder *b, MirValue value) {
+    const MirValue data = mir_b_emit(b, MOP_IfaceData, &value, 1, (MirImm){0}, MIR_PTR);
+    (void)mir_b_emit(b, MOP_Free, &data, 1, (MirImm){0}, MIR_NONE);
+    (void)mir_b_emit(b, MOP_Forget, &value, 1, (MirImm){0}, MIR_NONE);
+}
+
 /* `receiver.operation(args)` where the receiver is an interface value: the operation's slot in the
  * interface, called with the receiver first. Arguments are borrowed. */
 LbVal li_call(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
-    const MsTy contract = lb->facts->call_receiver[e->id];
+    const MsTy contract = lb_ty(lb, lb->facts->call_receiver[e->id]);
     const MirTy iface = li_type(lb, contract);
     const MsOperations *ops = iface == MIR_NONE ? NULL : li_operations(lb, contract);
     uint32_t slot = MS_NONE;
@@ -143,14 +160,24 @@ LbVal li_call(Lb *lb, const MsExpr *e) {
     if (slot == MS_NONE || count != lb->m->ifaces[mir_ty_data(lb->m, iface)->id].methods[slot].nparams) {
         return LB_UNSUPPORTED(lb);
     }
+    const MirMethodSig *wanted = &lb->m->ifaces[mir_ty_data(lb->m, iface)->id].methods[slot];
+    const bool consuming = li_consumes(lb, contract, callee->u.member.name);
     MirValue *args = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 2);
     const LbVal receiver = lb_expr(lb, callee->u.member.left);
     args[0] = receiver.v;
-    if (receiver.owned) {
+    if (consuming && !receiver.owned) {
+        return LB_UNSUPPORTED(lb); // an operation that takes its receiver is handed one it owns
+    }
+    if (receiver.owned && !consuming) {
         lb_hold_temp(lb, receiver.v); // dropped where the statement ends
     }
     for (uint32_t i = 0; i < count && lb->ok; i++) {
-        const LbVal value = lb_expr(lb, e->u.call.args.ptr[i].value);
+        const MsExpr *arg = e->u.call.args.ptr[i].value;
+        if (mir_owns(wanted->owned, i)) {
+            args[i + 1] = lb_move_argument(lb, arg);
+            continue;
+        }
+        const LbVal value = lb_expr(lb, arg);
         args[i + 1] = value.v;
         if (value.owned) {
             lb_hold_temp(lb, value.v);
@@ -161,7 +188,11 @@ LbVal li_call(Lb *lb, const MsExpr *e) {
     }
     const MirMethodSig *sig = &lb->m->ifaces[mir_ty_data(lb->m, iface)->id].methods[slot];
     const MirImm imm = {.tag = MI_METHOD, .a = mir_ty_data(lb->m, iface)->id, .b = slot};
-    return (LbVal){mir_b_emit(&lb->b, MOP_CallMethod, args, count + 1, imm, sig->ret), false};
+    const MirValue result = mir_b_emit(&lb->b, MOP_CallMethod, args, count + 1, imm, sig->ret);
+    if (consuming) {
+        li_free_box(&lb->b, args[0]);
+    }
+    return (LbVal){result, lb_owns(lb, sig->ret)};
 }
 
 /* The method row of `receiver` that satisfies operation `op` of `contract`: a method of that name with the operation's
@@ -252,8 +283,8 @@ static uint32_t li_vtable(Lb *lb, MsTy concrete, MsTy contract, MirTy data_ty, M
  * methods that satisfy it. The box owns the value: a value that needs a drop must arrive as an
  * owned temporary, one that does not is copied in. */
 LbVal li_box(Lb *lb, const MsExpr *e, LbVal value) {
-    const MsTy concrete = lb->facts->coerce_iface[e->id];
-    const MsTy contract = lb->facts->expr_ty[e->id];
+    const MsTy concrete = lb_ty(lb, lb->facts->coerce_iface[e->id]);
+    const MsTy contract = lb_ty(lb, lb->facts->expr_ty[e->id]);
     const MirTy iface = li_type(lb, contract);
     const MirTy data_ty = lb_mir_ty(lb, concrete);
     if (iface == MIR_NONE || data_ty == MIR_NONE || (!value.owned && lb_owns(lb, data_ty))) {

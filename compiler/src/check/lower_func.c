@@ -182,7 +182,17 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
     for (uint32_t i = 0; i < lb_slots(c); i++) {
         if (lb_param_moves(lb, c, i)) { // the function owns what it was handed
             const uint32_t binding = lb->binding_at[lb_slot_node(c, i)];
-            if (lc_is_resource(lb, mir_b_ty(&lb->b, lb->value_of[binding]))) {
+            const MirTy param_ty = mir_b_ty(&lb->b, lb->value_of[binding]);
+            // A closer's own receiver is released through its parts only: its own close is the function running.
+            const bool own_close = i == 0 && lb_has_self(c) && c->consuming && ms_name_is(lb->c->names, c->fn->name, "close") &&
+                                   ms_closes_itself(lb->classifier, c->self_ty);
+            if (own_close && ls_moved_fields(lb, binding, (uint32_t[LB_MAX_MOVED]){0}) == 0) {
+                if (ls_has_resource_part(lb, param_ty)) {
+                    (void)LB_UNSUPPORTED(lb); // each resource part closes on its own: not lowered
+                } else {
+                    lscope_own(&lb->scopes, lb->value_of[binding], 0);
+                }
+            } else if (lc_is_resource(lb, param_ty)) {
                 if (!lc_own_param(lb, binding)) { // closed at its scope's end
                     (void)LB_UNSUPPORTED(lb);
                 }
@@ -262,6 +272,7 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
     lb->nstatus_fns = lb->cstatus_fns = 0;
     lb->closers = NULL; // the resource types and their helpers are rebuilt with the module
     lb->nclosers = lb->cclosers = 0;
+    lb->ninsts = 0; // the copies of this pass: stubs made while signatures lower are among them
     lb->exits = NULL;
     lb->nexits = lb->cexits = 0;
     for (uint32_t k = 0; k < lb->nviews; k++) {
@@ -521,7 +532,6 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
     lm_stubs(lb, nrows, method_failed);
     bool changed = false;
     *lowered = 0;
-    lb->ninsts = 0;
     for (uint32_t v = 0; v < lb->nviews; v++) {
         (void)lb_view_enter(lb, v);
         const MsModuleRow *row = &lb->c->mods[lb->module];

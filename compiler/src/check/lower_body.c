@@ -611,6 +611,7 @@ static MirValue lb_var_argument(Lb *lb, const MsExpr *arg, uint32_t *binding_out
     }
     MirValue home;
     if (lc_slot_of(lb, binding, &home)) { // a resource local lives in the slot its scope closes: the callee changes it there
+        (void)lb_expr(lb, arg);
         return home;
     }
     if (lb->var_of[binding] == MIR_NONE) {
@@ -686,11 +687,7 @@ static bool lb_names_owned(const Lb *lb, const MsExpr *e) {
  * fails the caller with it. */
 /* A `move` argument: an owned temporary is handed over as it is, an owned name moves out of its
  * scope, and anything else is copied. */
-MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
-    if (e->kind == MS_E_NAME && lb->facts->res_kind[e->id] == MS_RES_NONE) {
-        return la_none_owned(lb, e).v; // `none` where the holder owns what it holds
-    }
-    const LbVal value = lb_expr(lb, e);
+static MirValue lb_move_value(Lb *lb, const MsExpr *e, LbVal value) {
     if (!lb->ok || value.owned) {
         return value.v;
     }
@@ -699,6 +696,13 @@ MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
         return value.v;
     }
     return lb_copy(lb, value.v);
+}
+
+MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
+    if (e->kind == MS_E_NAME && lb->facts->res_kind[e->id] == MS_RES_NONE) {
+        return la_none_owned(lb, e).v; // `none` where the holder owns what it holds
+    }
+    return lb_move_value(lb, e, lb_expr(lb, e));
 }
 
 /* The module function a call reaches: the callee's own, or for a generic callee its copy for the
@@ -756,6 +760,7 @@ typedef struct {
     uint32_t *bindings;
     const MsExpr **exprs;
     bool *by_var;
+    bool in_slot; /* the receiver is a resource local that lives in its slot */
 } LbCallArgs;
 
 static LbCallArgs lb_call_args_new(Lb *lb, uint32_t count, uint32_t offset) {
@@ -771,13 +776,16 @@ static LbCallArgs lb_call_args_new(Lb *lb, uint32_t count, uint32_t offset) {
 }
 
 /* The expression and passing mode of each argument; a missing one is a parameter with a default. */
-static void lb_call_args_bind(LbCallArgs *k, const MsExpr *e, const MsExpr *receiver, bool mutating, const MsTyParam *params) {
+static void lb_call_args_bind(Lb *lb, LbCallArgs *k, const MsExpr *e, const MsExpr *receiver, bool mutating, const MsTyParam *params) {
     const uint32_t given = e->u.call.args.len;
     for (uint32_t i = 0; i < k->count; i++) {
         const uint32_t at = i - k->offset;
         if (i < k->offset) {
             k->exprs[i] = receiver;
             k->by_var[i] = mutating;
+            MirValue home;
+            k->in_slot = mutating && receiver != NULL && receiver->kind == MS_E_NAME && lb->facts->res_kind[receiver->id] == MS_RES_BINDING &&
+                         lc_slot_of(lb, lb->facts->res_ref[receiver->id], &home);
             continue;
         }
         k->exprs[i] = at < given ? e->u.call.args.ptr[at].value : NULL;
@@ -788,6 +796,9 @@ static void lb_call_args_bind(LbCallArgs *k, const MsExpr *e, const MsExpr *rece
 /* Values first, then the slots of the `var` arguments, in argument order each. */
 static void lb_call_args_eval(Lb *lb, LbCallArgs *k, const MsExpr *e, uint32_t func, const MsTyParam *params,
                               const MsSymId *callee, const MsFunc *declared) {
+    LbVal *evaluated = MS_NEW_N(&lb->b.scratch, LbVal, (size_t)k->count + 1); // a `move` argument read, copied after the receiver's slot is read
+    bool *deferred = MS_NEW_N(&lb->b.scratch, bool, (size_t)k->count + 1);
+    memset(deferred, 0, ((size_t)k->count + 1) * sizeof *deferred);
     for (uint32_t i = 0; i < k->count && lb->ok; i++) {
         k->slots[i] = MIR_NONE;
         if (k->exprs[i] == NULL) {
@@ -798,9 +809,20 @@ static void lb_call_args_eval(Lb *lb, LbCallArgs *k, const MsExpr *e, uint32_t f
             k->args[i] = lb_default_argument(lb, e, *callee, declared->params.ptr[i - k->offset]->def);
             continue;
         }
+        MirValue home;
+        if (k->by_var[i] && k->exprs[i]->kind == MS_E_NAME && lb->facts->res_kind[k->exprs[i]->id] == MS_RES_BINDING &&
+            lc_slot_of(lb, lb->facts->res_ref[k->exprs[i]->id], &home)) {
+            (void)lb_expr(lb, k->exprs[i]); // the receiver is read first, as the Rust lowering does, before the slot is passed
+            continue;
+        }
         const bool moves = i >= k->offset && (params[i - k->offset].flags & MS_PARAM_MOVE) != 0;
         if (moves || (i < lb->m->funcs[func].nparams && lb->m->funcs[func].params[i].mode == MM_MOVE)) {
-            k->args[i] = lb_move_argument(lb, k->exprs[i]);
+            if (k->in_slot && !(k->exprs[i]->kind == MS_E_NAME && lb->facts->res_kind[k->exprs[i]->id] == MS_RES_NONE)) {
+                evaluated[i] = lb_expr(lb, k->exprs[i]);
+                deferred[i] = true;
+            } else {
+                k->args[i] = lb_move_argument(lb, k->exprs[i]);
+            }
         } else if (!k->by_var[i]) {
             const LbVal value = lb_expr(lb, k->exprs[i]);
             k->args[i] = value.v;
@@ -812,6 +834,11 @@ static void lb_call_args_eval(Lb *lb, LbCallArgs *k, const MsExpr *e, uint32_t f
     for (uint32_t i = 0; i < k->count && lb->ok; i++) {
         if (k->by_var[i] && k->exprs[i] != NULL) {
             k->args[i] = lb_var_argument(lb, k->exprs[i], &k->bindings[i], &k->slots[i]);
+        }
+    }
+    for (uint32_t i = 0; i < k->count && lb->ok; i++) {
+        if (deferred[i]) {
+            k->args[i] = lb_move_value(lb, k->exprs[i], evaluated[i]);
         }
     }
 }
@@ -850,7 +877,7 @@ static LbVal lb_call_declared(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, 
     }
     const MsTyParam *params = ms_ty_params(&lb->c->tys, sig);
     LbCallArgs k = lb_call_args_new(lb, count, offset);
-    lb_call_args_bind(&k, e, receiver, mutating, params);
+    lb_call_args_bind(lb, &k, e, receiver, mutating, params);
     lb_call_args_eval(lb, &k, e, func, params, callee, declared);
     if (!lb->ok) {
         return LB_FAIL;

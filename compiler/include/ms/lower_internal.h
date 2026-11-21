@@ -128,10 +128,14 @@ typedef struct LbCloseExit {
 } LbCloseExit;
 
 /* A local that lives in a stack slot the elaborate pass closes. */
+enum { LB_MAX_MOVED = 4 };
 typedef struct LbSlotLocal {
     uint32_t view, binding;
     MirValue slot;
     MirTy ty;
+    uint32_t nmoved;                 /* resource fields that leave the local, each an owner of its own (lower_split.c) */
+    uint32_t moved[LB_MAX_MOVED];    /* their field indexes */
+    MirValue owner[LB_MAX_MOVED];    /* the address of each, which the scope closes unless the field left */
 } LbSlotLocal;
 
 typedef struct Lb {
@@ -248,6 +252,8 @@ LbVal li_call(Lb *lb, const MsExpr *e);
 /* The slot of the consuming `close() Void!` operation an interface declares (so a value of it closes through its
  * vtable), with the result type of the operation; false when it declares none. */
 bool li_closer(Lb *lb, MsTy contract, uint32_t *slot, MirTy *result);
+/* Frees the box of an interface value whose payload a consuming operation took. */
+void li_free_box(MirBuilder *b, MirValue value);
 LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed as an interface */
 
 /* lower_method.c: methods of impls. */
@@ -273,6 +279,14 @@ bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved);  /* a read of 
 bool lc_is_resource(Lb *lb, MirTy mir);               /* a registered resource type, owned even when it holds nothing to drop */
 bool lc_is_slot_local(const Lb *lb, uint32_t binding);
 bool lc_slot_of(const Lb *lb, uint32_t binding, MirValue *slot); /* the slot a resource local lives in */
+bool lc_exits_clean(const Lb *lb);
+uint32_t lc_field_thunk(Lb *lb, MirTy field);       /* the function that closes a resource field in place, or MIR_NONE */
+LbSlotLocal *lc_push_slot(Lb *lb, LbSlotLocal local);
+/* lower_split.c: a resource field that a function moves out of a local it owns. */
+uint32_t ls_moved_fields(Lb *lb, uint32_t binding, uint32_t *fields);
+bool ls_own(Lb *lb, uint32_t binding, MirValue value, const uint32_t *fields, uint32_t nfields);
+bool ls_has_resource_part(Lb *lb, MirTy record); /* a field of the record is a resource */
+bool ls_owner_of(const Lb *lb, const MsExpr *member, MirValue *owner);
 bool lc_is_closer_row(Lb *lb, uint32_t row);
 void lc_check(Lb *lb);                             /* fails the function when it drops a resource */
 
