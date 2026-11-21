@@ -270,31 +270,6 @@ static bool body_is_primitive(const MsBody *b, MsTy ty) {
     return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
 }
 
-/* One argument of an open row: against its parameter when that is settled, else its type binds the
- * parameter's variables. A function literal whose parameters are settled gets them and takes its
- * result from its body, which binds the variables of the parameter's result. */
-static bool open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in) {
-    const MsTyTable *tys = &b->c->tys;
-    const MsTy want = ms_infer_apply(in, param->ty);
-    if (!ms_body_mentions_unbound(b, in, want)) {
-        return ms_body_is_admitted(b, want) && ms_body_expr(b, value, want) != MS_TY_NONE;
-    }
-    MsTy actual = MS_TY_NONE;
-    if (value->kind == MS_E_LAMBDA) {
-        bool settled = ms_ty_kind(tys, want) == MS_K_FUNCTION;
-        for (uint32_t i = 0; settled && i < tys->nparams[want]; i++) {
-            settled = !ms_body_mentions_unbound(b, in, ms_ty_params(tys, want)[i].ty);
-        }
-        actual = settled ? ms_body_lambda_inferred(b, value, want) : MS_TY_NONE;
-        if (actual != MS_TY_NONE) {
-            (void)ms_body_record(b, value->id, actual);
-        }
-    } else {
-        actual = ms_body_expr(b, value, MS_TY_NONE);
-    }
-    return actual != MS_TY_NONE && ms_body_is_admitted(b, actual) && ms_infer_match(in, param->ty, actual) == MS_MATCH_OK;
-}
-
 /* The arguments of a method call against its signature, paired with parameters by position or
  * label; parameters left out must have a default in the declaration. A label or a count that does
  * not fit is a diagnostic the Rust checker reports. `e`'s `call_reordered` fact is set when some
@@ -334,7 +309,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
         }
         const MsExpr *value = e->u.call.args.ptr[i].value;
         if (target->open) {
-            if (!open_argument(b, value, param, &target->in)) {
+            if (!ms_body_open_argument(b, value, param, &target->in)) {
                 return false;
             }
             continue;
