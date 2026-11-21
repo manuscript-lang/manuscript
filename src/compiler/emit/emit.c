@@ -22,9 +22,9 @@
 #endif
 
 /* The metadata the list element accesses refer to: a root, the scalar element type and its access tag. */
-#define EMIT_TBAA_ROOT 0
-#define EMIT_TBAA_SCALAR 1
-#define EMIT_TBAA_SCALAR_TAG 2
+#define EMIT_TBAA_ROOT 900000
+#define EMIT_TBAA_SCALAR 900001
+#define EMIT_TBAA_SCALAR_TAG 900002
 
 static void write_tbaa(MsStrBuild *out) {
   ms_strbuild_printf(out,
