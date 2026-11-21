@@ -2481,6 +2481,16 @@ static void body_check_methods(MsBody *b) {
     }
 }
 
+/* What the ownership pass records per function: the parameters it moves (and where), and whether its result borrows. */
+static void body_allocate_summaries(MsArena *arena, MsFacts *facts, size_t nodes) {
+    facts->param_consumed = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->param_consumed, 0, nodes * sizeof *facts->param_consumed);
+    facts->param_consumed_at = MS_NEW_N(arena, const MsPos *, nodes);
+    memset((void *)facts->param_consumed_at, 0, nodes * sizeof(const MsPos *));
+    facts->ret_borrowed = MS_NEW_N(arena, bool, nodes);
+    memset(facts->ret_borrowed, 0, nodes * sizeof *facts->ret_borrowed);
+}
+
 static void body_allocate(MsBody *b, MsFacts *facts) {
     MsArena *arena = &b->c->arena;
     const size_t nodes = (size_t)facts->node_count + 1;
@@ -2497,12 +2507,7 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
     facts->refusal = MS_NEW_N(arena, MsSite, nodes);
     memset(facts->refusal, 0, nodes * sizeof *facts->refusal);
-    facts->param_consumed = MS_NEW_N(arena, uint32_t, nodes);
-    memset(facts->param_consumed, 0, nodes * sizeof *facts->param_consumed);
-    facts->param_consumed_at = MS_NEW_N(arena, const MsPos *, nodes);
-    memset(facts->param_consumed_at, 0, nodes * sizeof *facts->param_consumed_at);
-    facts->ret_borrowed = MS_NEW_N(arena, bool, nodes);
-    memset(facts->ret_borrowed, 0, nodes * sizeof *facts->ret_borrowed);
+    body_allocate_summaries(arena, facts, nodes);
     facts->const_use = MS_NEW_N(arena, bool, nodes);
     memset(facts->const_use, 0, nodes * sizeof *facts->const_use);
     facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);

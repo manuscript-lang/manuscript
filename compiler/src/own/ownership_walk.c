@@ -963,10 +963,9 @@ static void own_method_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const OwnSummary *summary = NULL;
     if (!plain && own_method_unwalked(w, row) && ms_classify(w->classifier, result) == MS_CLASS_COPY) {
         consumed = 0; // nothing to walk: what such a method takes is what its signature says (`move`, `var`), and a plain result borrows nothing
-    } else if (!plain && own_is_owning_native(w, row)) {
-        // Nothing to learn from a walk either: the result is the native's own value (no `// ms: borrows`).
-    } else if (!plain && demand == DEMAND_READ && own_is_borrowing_native(w, row)) {
-        // A result that points into the receiver, only read here (`xs.get(i).clone()`): nothing keeps it.
+    } else if (!plain && (own_is_owning_native(w, row) || (demand == DEMAND_READ && own_is_borrowing_native(w, row)))) {
+        // Nothing to learn from a walk: the result is the native's own value, or points into the receiver and is
+        // only read here (`xs.get(i).clone()`, `// ms: borrows`).
     } else if (!plain) {
         const MsFacts *home = NULL;
         const MsMethod *walked = w->facts->methods->native[row] == MS_NATIVE_SOURCE ? own_walked_method(w, row, &home) : NULL;
