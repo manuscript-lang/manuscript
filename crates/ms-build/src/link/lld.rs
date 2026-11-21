@@ -5,8 +5,8 @@
 //! SDK nor a C compiler.
 
 use crate::{BuildOptions, Error};
+use std::ffi::CString;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::bundled::{FILES, LINKER_ID};
@@ -154,7 +154,13 @@ fn lld_path(build: &BuildOptions) -> Result<PathBuf, Error> {
     ))
 }
 
-/// Links `object` and `inputs` (the runtime built for this platform) into the executable `out`.
+fn c_path(path: &Path) -> Result<CString, Error> {
+    CString::new(path.to_string_lossy().as_bytes())
+        .map_err(|_| Error(format!("{} holds a NUL", path.display())))
+}
+
+/// Links `object` and `inputs` (the runtime built for this platform) into the executable `out` with libms
+/// (`compiler/src/build/link.c`), which runs the pinned `lld` over the bundled files.
 pub fn link(
     object: &Path,
     inputs: &[&Path],
@@ -163,219 +169,39 @@ pub fn link(
     build: &BuildOptions,
 ) -> Result<(), Error> {
     let musl = is_static(build);
-    let dir = extract()?;
-    let lld = lld_path(build)?;
-    let mut command = Command::new(&lld);
-    #[cfg(target_os = "linux")]
-    linux_arguments(&mut command, &dir, &lld, object, inputs, out, strip, musl)?;
-    #[cfg(target_os = "windows")]
-    windows_arguments(&mut command, &dir, object, inputs, out, strip);
-    #[cfg(target_os = "macos")]
-    let stubs = macos_arguments(&mut command, &dir, object, inputs, out, strip)?;
-    let result = command.output();
-    #[cfg(target_os = "macos")]
-    let _ = std::fs::remove_dir_all(stubs);
-    let o = result.map_err(|e| Error(format!("cannot run the bundled linker: {e}")))?;
-    if o.status.success() {
-        return Ok(());
-    }
-    let stderr = String::from_utf8_lossy(&o.stderr);
-    let detail = if stderr.trim().is_empty() {
-        "the linker printed nothing".to_string()
+    let dir = c_path(&extract()?)?;
+    let lld = c_path(&lld_path(build)?)?;
+    // The glibc stubs of a dynamic Linux link are assembled with `llc`.
+    let llc = if cfg!(target_os = "linux") && !musl {
+        let tools = llvm_tools(build)?.ok_or_else(|| {
+            Error("no LLVM tools are available for this platform; set MS_LLVM_TOOLS".into())
+        })?;
+        Some(c_path(&tools.join("llc"))?)
     } else {
-        stderr.trim_end().to_string()
+        None
     };
-    // A symbol outside the runtime's `msrt_`/`msstd_` names is an `extern fn` nobody linked.
-    let foreign = detail.lines().find_map(|line| {
-        let name = line.split_once("undefined symbol: ")?.1.trim();
-        (!name.starts_with("msrt_") && !name.starts_with("msstd_")).then_some(name)
-    });
-    let advice = match foreign {
-        Some(name) => format!(
-            "{name} is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>"
-        ),
-        None => "A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error".to_string(),
-    };
-    #[cfg(target_os = "linux")]
-    let advice = if musl {
-        advice
-    } else {
-        format!(
-            "{advice}. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead"
-        )
-    };
-    Err(Error(format!(
-        "linking failed ({}); the linker output follows. {advice}:\n{detail}",
-        o.status
-    )))
+    crate::c_backend::build_link(
+        &c_path(object)?,
+        inputs
+            .iter()
+            .map(|path| c_path(path))
+            .collect::<Result<Vec<_>, _>>()?
+            .as_slice(),
+        &c_path(out)?,
+        &crate::c_backend::LinkFiles {
+            lld: &lld,
+            llc: llc.as_ref(),
+            files: &dir,
+            strip,
+            musl,
+        },
+    )
+    .map_err(Error)
 }
 
 /// Whether Linux links static musl; the runtime archive must be the musl build to match.
 pub fn is_static(build: &BuildOptions) -> bool {
     cfg!(target_os = "linux") && build.static_musl
-}
-
-/// Drops runtime and standard-library code the program never reaches: the runtime archive is one
-/// object per Rust codegen unit with a section per function, so unused pieces cost nothing.
-#[cfg(target_os = "linux")]
-#[allow(clippy::too_many_arguments)]
-fn linux_arguments(
-    command: &mut Command,
-    dir: &Path,
-    lld: &Path,
-    object: &Path,
-    inputs: &[&Path],
-    out: &Path,
-    strip: bool,
-    musl: bool,
-) -> Result<(), Error> {
-    command
-        .args(["-flavor", "gnu", "--gc-sections", "--eh-frame-hdr"])
-        .arg("-o")
-        .arg(out);
-    if strip {
-        command.arg("--strip-all");
-    }
-    if !musl {
-        // The runtime archive defines `_start`, which hands `main` to glibc's `__libc_start_main`.
-        // Every symbol binds at load (`-z now`), so a program never fails at a later call.
-        let stubs = glibc_stubs::stubs(dir, lld)?;
-        command
-            .args(["--dynamic-linker", glibc_stubs::loader()])
-            .args(["-z", "now", "-z", "relro"])
-            .arg(object)
-            .arg("--start-group")
-            .args(inputs)
-            .arg(dir.join("libunwind.a"))
-            .arg("--end-group")
-            .arg("--as-needed");
-        for library in glibc_stubs::libraries() {
-            command.arg(stubs.join(library));
-        }
-        return Ok(());
-    }
-    command
-        .arg("-static")
-        .arg(dir.join("crt1.o"))
-        .arg(dir.join("crti.o"))
-        .arg(object)
-        .arg("--start-group")
-        .args(inputs)
-        .arg(dir.join("libunwind.a"))
-        .arg(dir.join("libc.a"))
-        .arg("--end-group")
-        .arg(dir.join("crtn.o"));
-    Ok(())
-}
-
-/// Links a console executable over mingw-w64's startup object and CRT, dropping unreachable sections
-/// (`--gc-sections`, the `/opt:ref` of the MSVC linker) and keeping DWARF in the image. The import
-/// libraries (`libkernel32.a`, ...) are the ones llvm-mingw generates from the DLL export lists.
-#[cfg(target_os = "windows")]
-fn windows_arguments(
-    command: &mut Command,
-    dir: &Path,
-    object: &Path,
-    inputs: &[&Path],
-    out: &Path,
-    strip: bool,
-) {
-    let machine = if cfg!(target_arch = "aarch64") {
-        "arm64pe"
-    } else {
-        "i386pep"
-    };
-    command
-        .args(["-flavor", "gnu", "-m", machine, "--gc-sections"])
-        .args(["--subsystem", "console"])
-        // Identical inputs must link to identical bytes.
-        .arg("--no-insert-timestamp")
-        .arg("-o")
-        .arg(out);
-    if strip {
-        command.arg("--strip-all");
-    }
-    command
-        .arg(dir.join("crt2.o"))
-        .arg(object)
-        .arg("--start-group")
-        .args(inputs);
-    for lib in [
-        "libmingw32.a",
-        "libunwind.a",
-        "libmoldname.a",
-        "libmingwex.a",
-        "libucrt.a",
-        "libadvapi32.a",
-        "libbcrypt.a",
-        "libcrypt32.a",
-        "libdbghelp.a",
-        "libntdll.a",
-        "libsecur32.a",
-        "libshell32.a",
-        "libuser32.a",
-        "libuserenv.a",
-        "libiphlpapi.a",
-        "libpsapi.a",
-        "libole32.a",
-        "libws2_32.a",
-        "libsynchronization.a",
-        "libclang_rt.builtins.a",
-        "libkernel32.a",
-    ] {
-        command.arg(dir.join(lib));
-    }
-    command.arg("--end-group");
-}
-
-/// Returns the directory of generated stubs to remove after the link.
-#[cfg(target_os = "macos")]
-fn macos_arguments(
-    command: &mut Command,
-    dir: &Path,
-    object: &Path,
-    inputs: &[&Path],
-    out: &Path,
-    strip: bool,
-) -> Result<PathBuf, Error> {
-    let arch = if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else {
-        "x86_64"
-    };
-    let sdk = sdk_stubs(dir, arch, object, inputs)?;
-    command
-        .args(["-flavor", "darwin", "-arch", arch])
-        .args(["-platform_version", "macos", "12.0", "12.0"])
-        .arg("-syslibroot")
-        .arg(&sdk)
-        .arg("-dead_strip")
-        // lld turns `adrp x10, got; ...; ldr x8, [x10, got]` into `adr x8` at the adrp, clobbering
-        // an x8 the code in between still uses (a list of string literals stored a shift result).
-        // Workaround: remove once lld is fixed (#1748).
-        .arg("-ignore_optimization_hints");
-    if strip {
-        command.arg("-x");
-    }
-    super::macos_debug_arguments(command, object, inputs, out)
-        .map_err(|e| Error(format!("cannot resolve native debug paths: {e}")))?;
-    command.args([
-        "-lSystem",
-        "-framework",
-        "Security",
-        "-framework",
-        "CoreFoundation",
-    ]);
-    Ok(sdk)
-}
-
-#[cfg(any(target_os = "macos", test))]
-fn sdk_stubs(dir: &Path, arch: &str, object: &Path, inputs: &[&Path]) -> Result<PathBuf, Error> {
-    let sdk = staging(dir, "sdk").map_err(|e| Error(format!("cannot stage the SDK stubs: {e}")))?;
-    macos_stubs::write(&sdk, arch, object, inputs).inspect_err(|_| {
-        let _ = std::fs::remove_dir_all(&sdk);
-    })?;
-    Ok(sdk)
 }
 
 /// Writes the bundled linker and its support files to a per-build cache entry, once.
@@ -446,11 +272,6 @@ fn cache_root() -> PathBuf {
         .or_else(|| set("HOME").map(|home| home.join(".cache")))
         .unwrap_or_else(std::env::temp_dir)
 }
-
-#[cfg(target_os = "linux")]
-mod glibc_stubs;
-#[cfg(any(target_os = "macos", test))]
-mod macos_stubs;
 
 #[cfg(test)]
 mod tests;
