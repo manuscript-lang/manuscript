@@ -338,7 +338,18 @@ static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
         return;
     }
     if (w->perm[binding] == PERM_BORROWED && w->deferred[binding]) {
-        OWN_DECLINE(w); /* moving a part out would make the scrutinee consume its parameter */
+        const uint32_t parent = w->origin[binding]; /* moving a part out consumes the parameter it was matched from */
+        if (parent == MS_NONE || !w->is_param[parent] || w->param_mode[parent] != 0 || w->class_of[parent] == MS_CLASS_COPY) {
+            OWN_DECLINE(w);
+            return;
+        }
+        const uint32_t index = w->param_index[parent];
+        if ((w->consumed & (1u << index)) == 0) {
+            w->consumed_at[index] = e->pos;
+        }
+        w->consumed |= 1u << index;
+        w->facts->moved_out[e->id] = true;
+        own_record(w, e, binding);
         return;
     }
     if (w->class_of[binding] == MS_CLASS_RESOURCE && w->is_param[binding] && w->perm[binding] == PERM_MUTABLE) {
@@ -376,6 +387,18 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
     if (binding < w->floor && w->class_of[binding] != MS_CLASS_COPY) {
         // a closure reads a value with one owner in place while it lives; one that outlives the
         // statement would have to take it over, which is left to Rust
+        if (w->lambda_escaping && demand != DEMAND_MOVE && w->perm[binding] != PERM_MUTABLE && w->ncaptured < 8) {
+            const uint32_t seen = w->ncaptured;
+            bool again = false;
+            for (uint32_t i = 0; i < seen; i++) {
+                again = again || w->captured[i] == binding;
+            }
+            if (!again) { // an escaping closure owns what it captures: the capture moves the binding in
+                w->captured[w->ncaptured++] = binding;
+                own_move_out(w, e, binding);
+            }
+            return;
+        }
         if (w->lambda_escaping || demand == DEMAND_MOVE || w->ncaptured == 8) {
             OWN_DECLINE(w);
         } else {
@@ -1584,6 +1607,13 @@ static Scrutinee own_scrutinee(OwnWalk *w, const MsExpr *e) {
         return own_borrowed_call(w, e);
     }
     const bool name = e->kind == MS_E_NAME && w->facts->res_kind[e->id] == MS_RES_BINDING;
+    if (e->kind == MS_E_MEMBER && own_is_field_path(w, e)) {
+        const uint32_t root = own_receiver_root(w, e);
+        if (root != MS_NONE && w->is_param[root] && w->param_mode[root] == 0) {
+            own_expr(w, e, DEMAND_READ); /* `if cancel := options.cancel`: the part is read in place from the parameter */
+            return (Scrutinee){false, own_resolve(w, root), false};
+        }
+    }
     if (!name) {
         own_expr(w, e, DEMAND_MOVE);
         return (Scrutinee){true, MS_NONE, false};
