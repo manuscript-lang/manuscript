@@ -184,4 +184,5 @@
 
 #include "project/graph_check.c"
 #include "check_cmd.c"
+#include "build_cmd.c"
 #endif
