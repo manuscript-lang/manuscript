@@ -877,6 +877,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (syms->nvars[sym] != 0) {
         return ms_body_generic_call(b, e, sym, NULL, expected);
     }
+    if (syms->ty[sym] == MS_TY_NONE) {
+        ms_module_resolve_types(b->c, syms->module[sym]); // a native function's signature is resolved on first call
+    }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION) {
