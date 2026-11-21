@@ -599,6 +599,9 @@ fn handler_frames(report: String) String:
 // Finishes with PEER_GONE once the peer is gone from the exchange. An exchange that
 // cannot be watched never finishes: the handler is left to run.
 fn watch(native: NativeExchange) Int!:
+	// A stop request (SIGINT, SIGTERM) must not end the watch: it would finish first and
+	// the request in flight would be dropped without an answer, whatever the grace period.
+	_hold := hold_stop()
 	if msstd_xchg_wait_gone(native).is_ok(): return ok(PEER_GONE)
 
 	while true:
