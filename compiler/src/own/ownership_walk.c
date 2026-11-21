@@ -788,19 +788,107 @@ static void own_intrinsic_call(OwnWalk *w, const MsExpr *e) {
     }
 }
 
-/* A method of a type, called on a local or a temporary: a method that changes its receiver changes
- * the local in place, and no argument may read it; the others borrow it. The checker admitted only
- * arguments and results of scalars, so nothing returned holds a borrow. */
-static void own_method_call(OwnWalk *w, const MsExpr *e) {
-    const MsExpr *receiver = e->u.call.callee->u.member.left;
-    // A result that is not a plain value may be a reference into the receiver (`list.get(i)`), which
-    // this walk does not follow: the function is left to the Rust checker.
-    const MsTy result = w->facts->expr_ty[e->id];
-    if (ms_classify(w->classifier, result) != MS_CLASS_COPY) {
+/* The method that implements `row`, found in the module that declares it. */
+static const MsMethod *own_method_of_row(const OwnWalk *w, uint32_t row) {
+    const MsMethods *methods = w->facts->methods;
+    const MsModule *syntax = w->check->mods[methods->module[row]].syntax;
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        const MsDecl *d = syntax->decls[i];
+        for (uint32_t k = 0; d->kind == MS_D_IMPL && k < d->u.impl.methods.len; k++) {
+            if (&d->u.impl.methods.ptr[k]->func == methods->decl[row]) {
+                return d->u.impl.methods.ptr[k];
+            }
+        }
+    }
+    return NULL;
+}
+
+/* The method `row` and the facts of its module, once that module's walk has run; NULL for a method of this
+ * module (walked after the functions) or one the walk did not take. */
+static const MsMethod *own_walked_method(const OwnWalk *w, uint32_t row, const MsFacts **facts_out) {
+    const MsMethods *methods = w->facts->methods;
+    MsCheck *c = w->check;
+    const MsModId home = methods->module[row];
+    MsFacts *facts = c->mods[home].facts;
+    if (home == w->module || facts == NULL || methods->decl[row] == NULL) {
+        return NULL;
+    }
+    if (facts->body_checked == NULL) {
+        ms_module_check_bodies_with(c, home, c->methods);
+        ms_module_check_ownership(c, home);
+    }
+    const MsMethod *method = own_method_of_row(w, row);
+    if (method == NULL || method->func.external || method->func.body.len == 0 || facts->body_checked == NULL || !facts->ownership_done || !facts->body_checked[method->id]) {
+        return NULL;
+    }
+    *facts_out = facts;
+    return method;
+}
+
+/* The arguments of a method call, by what the method does with each parameter: a `var` one changes a
+ * variable, a `move` one (or a plain one the method's own walk found it consumes) is handed over, the
+ * rest are read. `consumed` has the receiver at bit 0. */
+static void own_method_arguments(OwnWalk *w, const MsExpr *e, uint32_t row, uint32_t consumed) {
+    const MsTyTable *tys = &w->check->tys;
+    const MsTy sig = w->facts->methods->ty[row];
+    const MsTyParam *params = ms_ty_params(tys, sig);
+    uint32_t handed = 0;
+    for (uint32_t i = 0; i < e->u.call.args.len && i < tys->nparams[sig]; i++) {
+        const bool takes = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0 || (consumed >> (i + 1) & 1u) != 0;
+        handed |= (takes ? 1u : 0u) << i;
+    }
+    if (own_arguments_overlap(w, e, handed)) {
         OWN_DECLINE(w);
         return;
     }
-    const uint8_t access = w->facts->methods->access[w->facts->call_method[e->id]];
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        const MsExpr *arg = e->u.call.args.ptr[i].value;
+        if (i >= tys->nparams[sig]) {
+            own_expr(w, arg, DEMAND_READ);
+        } else if ((params[i].flags & MS_PARAM_VAR) != 0) {
+            const uint32_t binding = own_argument_local(w, arg);
+            if (binding == MS_NONE) {
+                OWN_DECLINE(w); /* a place that is not a variable has its own message */
+                return;
+            }
+            own_mutate(w, arg, binding);
+        } else if ((handed >> i & 1u) != 0) {
+            own_require_declared_move(w, arg);
+            own_expr(w, arg, DEMAND_MOVE);
+        } else {
+            own_expr(w, arg, DEMAND_READ);
+        }
+    }
+}
+
+/* A method of a type, called on a local or a temporary: a method that changes its receiver changes
+ * the local in place, and no argument may read it; the others borrow it. A result that is not a plain
+ * value may be a reference into the receiver (`list.get(i)`), which this walk does not follow: the
+ * function is left to the Rust checker unless the method is known to return a value of its own. */
+static void own_method_call(OwnWalk *w, const MsExpr *e) {
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    const uint32_t row = w->facts->call_method[e->id];
+    const MsTy result = w->facts->expr_ty[e->id];
+    const MsTyTable *tys = &w->check->tys;
+    const MsTy sig = w->facts->methods->ty[row];
+    const MsTyParam *params = ms_ty_params(tys, sig);
+    bool plain = ms_classify(w->classifier, result) == MS_CLASS_COPY;
+    for (uint32_t i = 0; i < tys->nparams[sig]; i++) {
+        plain = plain && ms_classify(w->classifier, params[i].ty) == MS_CLASS_COPY;
+    }
+    // What the method moves of its parameters, and whether its result is a reference into them, is known
+    // once its module's walk has run; a call over plain values needs neither.
+    uint32_t consumed = 0;
+    if (!plain) {
+        const MsFacts *home = NULL;
+        const MsMethod *walked = w->facts->methods->native[row] == MS_NATIVE_SOURCE ? own_walked_method(w, row, &home) : NULL;
+        if (walked == NULL || home->ret_borrowed[walked->id]) {
+            OWN_DECLINE(w);
+            return;
+        }
+        consumed = home->param_consumed[walked->id];
+    }
+    const uint8_t access = w->facts->methods->access[row];
     const bool mutating = (access & MS_METHOD_MUTATING) != 0;
     const uint32_t binding = own_argument_local(w, receiver);
     if ((access & MS_METHOD_CONSUMING) != 0) {
@@ -810,6 +898,8 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
             return;
         }
         own_expr(w, receiver, DEMAND_MOVE);
+    } else if (mutating && receiver->kind == MS_E_CALL) {
+        own_expr(w, receiver, DEMAND_READ); /* a temporary: nothing else names it */
     } else if (mutating) {
         bool overlaps = binding == MS_NONE;
         for (uint32_t i = 0; i < e->u.call.args.len && !overlaps; i++) {
@@ -823,25 +913,77 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     } else {
         own_expr(w, receiver, DEMAND_READ);
     }
-    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
-        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
-    }
+    own_method_arguments(w, e, row, consumed);
 }
 
-/* An operation of an interface value, dispatched at run time: the receiver and the arguments are
- * read. The operation may change the receiver, which the walk cannot see, so a receiver that is a
- * `var` binding is left to the Rust checker; the result is a plain value like a method's. */
+static MsPlace own_target_place(OwnWalk *w, const MsExpr *target, uint32_t root, MsStr *text);
+
+/* The local a receiver names, directly or as the root of a field path (`self.sink`). */
+static uint32_t own_receiver_root(const OwnWalk *w, const MsExpr *receiver) {
+    while (receiver->kind == MS_E_MEMBER) {
+        receiver = receiver->u.member.left;
+    }
+    return own_argument_local(w, receiver);
+}
+
+/* The declaration of the operation a call through the interface `contract` names. */
+static const MsMethod *own_operation(const OwnWalk *w, MsTy contract, MsSym name) {
+    const MsTyTable *tys = &w->check->tys;
+    if (tys->def[contract] == 0) {
+        return NULL;
+    }
+    const MsOperations *ops = ms_interface_operations(w->check->methods, tys->def[contract] - 1);
+    for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
+        if (ops->items[i].name == name && ops->items[i].nvars == 0) {
+            return ops->items[i].decl;
+        }
+    }
+    return NULL;
+}
+
+/* An operation of an interface value, dispatched at run time. What the operation declares is what
+ * it does: a `var` one changes its receiver (a local, or a part of one, changed in place), a `move`
+ * parameter takes its argument, the rest are read; the result is a value of its own. A receiver that
+ * is not rooted in a local, an operation that consumes it or a `var` parameter is left to the Rust
+ * checker. */
 static void own_interface_call(OwnWalk *w, const MsExpr *e) {
     const MsExpr *receiver = e->u.call.callee->u.member.left;
-    const uint32_t binding = own_argument_local(w, receiver);
-    const bool changeable = binding == MS_NONE || (w->facts->bindings.flags[binding] & MS_BIND_MUTABLE) != 0;
-    if (changeable || ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
+    const MsMethod *op = own_operation(w, w->facts->call_receiver[e->id], e->u.call.callee->u.member.name);
+    const uint32_t root = own_receiver_root(w, receiver);
+    if (op == NULL || root == MS_NONE || op->consuming || e->u.call.args.len > op->func.params.len) {
         OWN_DECLINE(w);
         return;
     }
-    own_expr(w, receiver, DEMAND_READ);
+    // A result that is not a plain value may be a reference into the receiver or a borrowed argument
+    // (`slice`); an operation that changes its receiver and takes its arguments by value hands back a value of its own.
+    bool owned = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY || op->mutating;
+    uint32_t handed = 0;
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
-        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
+        const MsParam *param = op->func.params.ptr[i];
+        owned = owned && (param->moving || ms_classify(w->classifier, w->facts->expr_ty[e->u.call.args.ptr[i].value->id]) == MS_CLASS_COPY);
+        if (param->is_mutable) {
+            OWN_DECLINE(w);
+            return;
+        }
+        handed |= (param->moving ? 1u : 0u) << i;
+    }
+    if (!owned || own_arguments_overlap(w, e, handed)) {
+        OWN_DECLINE(w);
+        return;
+    }
+    if (op->mutating) {
+        MsStr text;
+        const MsPlace place = own_target_place(w, receiver, root, &text);
+        own_mutate_place(w, receiver->pos, root, place, text);
+    } else {
+        own_expr(w, receiver, DEMAND_READ);
+    }
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        const MsExpr *arg = e->u.call.args.ptr[i].value;
+        if ((handed >> i & 1u) != 0) {
+            own_require_declared_move(w, arg);
+        }
+        own_expr(w, arg, (handed >> i & 1u) != 0 ? DEMAND_MOVE : DEMAND_READ);
     }
 }
 
@@ -1108,6 +1250,17 @@ static bool own_is_fresh_intrinsic(const OwnWalk *w, const MsExpr *e) {
     return fn != NULL && fn->fresh;
 }
 
+/* Whether the call is a method or an interface operation, which `own_call` judges itself. */
+static bool own_is_method_call(const OwnWalk *w, const MsExpr *e) {
+    if (e->u.call.callee->kind != MS_E_MEMBER) {
+        return false;
+    }
+    if (w->facts->call_interface[e->id] != MS_TY_NONE) {
+        return ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_CONTRACT;
+    }
+    return w->facts->call_method[e->id] != MS_NONE && w->facts->methods != NULL;
+}
+
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
@@ -1119,7 +1272,7 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE);
         return;
     }
-    if (e->kind == MS_E_CALL && !own_is_constructor(w, e) && !own_is_value_call(w, e) && !own_is_fresh_intrinsic(w, e)) {
+    if (e->kind == MS_E_CALL && !own_is_constructor(w, e) && !own_is_value_call(w, e) && !own_is_fresh_intrinsic(w, e) && !own_is_method_call(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
         if (callee == NULL || (callee->returns_borrow && own_is_self_call(w, e))) {
             OWN_DECLINE(w);
@@ -1667,6 +1820,7 @@ static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
             facts->refusal[method->id] = w->declined;
         }
         facts->ret_borrowed[method->id] = walked && w->has_borrowed_return && !w->has_owned_return;
+        facts->param_consumed[method->id] = walked ? w->consumed : 0;
     }
 }
 
