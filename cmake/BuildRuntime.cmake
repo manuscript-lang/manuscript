@@ -123,6 +123,21 @@ function(configure triple build stats tests)
     # The libraries are static archives; their headers say so only when told.
     list(APPEND args "-DMS_LIBS_DEFINES=NGHTTP2_STATICLIB\\;PCRE2_STATIC\\;CURL_STATICLIB")
   endif()
+  # A cache left by another checkout path or another compiler makes CMake stop ("does not match the source used to
+  # generate the cache", "different compiler"): such a build folder holds nothing worth keeping.
+  if(EXISTS "${build}/CMakeCache.txt")
+    file(STRINGS "${build}/CMakeCache.txt" cache_home REGEX "^CMAKE_HOME_DIRECTORY:INTERNAL=")
+    file(STRINGS "${build}/CMakeCache.txt" cache_cc REGEX "^CMAKE_C_COMPILER:(FILEPATH|STRING)=")
+    string(REGEX REPLACE "^[^=]*=" "" cache_home "${cache_home}")
+    string(REGEX REPLACE "^[^=]*=" "" cache_cc "${cache_cc}")
+    cmake_path(GET compiler FILENAME want_cc)
+    cmake_path(GET cache_cc FILENAME have_cc)
+    cmake_path(COMPARE "${cache_home}" NOT_EQUAL "${MS_ROOT}" other_source)
+    if(other_source OR NOT have_cc STREQUAL want_cc)
+      message(STATUS "discarding the stale CMake cache in ${build}")
+      file(REMOVE_RECURSE "${build}")
+    endif()
+  endif()
   # The build is the same wherever it runs: the caller's flags do not reach it.
   execute_process(COMMAND "${CMAKE_COMMAND}" -E env --unset=CFLAGS --unset=LDFLAGS "${CMAKE_COMMAND}" ${args}
                   COMMAND_ERROR_IS_FATAL ANY)
