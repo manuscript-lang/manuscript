@@ -610,6 +610,7 @@ static const MsRtFn rt_fns[] = {
     {"msstd_headers_values", "", {MS_RT_OTHER, MS_RT_STR, MS_RT_OUT_LIST}, 3, MS_RT_RET_BOOL, false, false, false, "", "", false, false, 0},
     {"msstd_idle_cancel", "", {MS_RT_INT}, 1, MS_RT_RET_VOID, false, false, false, "", "", false, false, 0},
     {"msstd_idle_drain", "", {MS_RT_INT}, 1, MS_RT_RET_VOID, false, false, false, "", "", false, false, 0},
+    {"msstd_idle_free", "", {MS_RT_INT}, 1, MS_RT_RET_VOID, false, false, false, "", "", false, false, 0},
     {"msstd_idle_group", "", {}, 0, MS_RT_RET_INT, false, false, false, "", "", false, false, 0},
     {"msstd_idle_inflight", "", {MS_RT_INT}, 1, MS_RT_RET_INT, false, false, false, "", "", false, false, 0},
     {"msstd_idle_park", "", {MS_RT_OTHER, MS_RT_OTHER, MS_RT_INT, MS_RT_OTHER, MS_RT_INT, MS_RT_OTHER}, 6, MS_RT_RET_BOOL, false, false, false, "", "", false, false, 0},

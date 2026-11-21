@@ -624,6 +624,7 @@ msstd_headers_remove(handle h: *const ObjCell<HeadersH>, name: *const StrVal) ->
 msstd_headers_values(handle h: *const ObjCell<HeadersH>, name: *const StrVal, out: *mut VecVal) -> u8 @domain=HTTP
 msstd_idle_cancel(group: i64) @domain=HTTP
 msstd_idle_drain(group: i64) @domain=HTTP
+msstd_idle_free(group: i64) @domain=HTTP
 msstd_idle_group() -> i64 @domain=HTTP
 msstd_idle_inflight(group: i64) -> i64 @domain=HTTP
 msstd_idle_park(handle c: *const ObjCell<ConnH>, next: *mut Closure, group: i64, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=HTTP @keeps:next
