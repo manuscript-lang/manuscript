@@ -79,6 +79,7 @@ typedef struct LbMethodRow {
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
+    MsModId module; /* the module being lowered: a callee another module declares is not lowered here */
     MsCheck *mut; /* the same table, for `ms_def`, which adds rows on demand */
     const MsFacts *facts;
     MirModule *m;

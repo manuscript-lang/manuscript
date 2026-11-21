@@ -110,9 +110,6 @@ static void generic_record_type_args(MsBody *b, const MsExpr *e, const MsInfer *
 }
 
 MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written) {
-    if (b->c->syms.module[sym] != b->module) {
-        return ms_body_unsupported(b); /* an imported generic: its declaration ids belong to another module */
-    }
     const MsDef *def = ms_def(b->c, sym);
     const MsTy sig = b->c->syms.ty[sym];
     MsInfer in;
