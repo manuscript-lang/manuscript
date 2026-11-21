@@ -9,12 +9,8 @@
 
 #include "base/safe.h"
 
-typedef struct MsArenaChunk MsArenaChunk;
-
 typedef struct MsArena {
-  MsArenaChunk *chunks; /* owned: newest first */
-  uint8_t *cursor;      /* next free byte in the newest chunk */
-  uint8_t *end;         /* end of the newest chunk */
+  void *heap; /* owned: a mimalloc heap, made on first use; NULL while empty */
 } MsArena;
 
 static inline MsArena ms_arena_new(void) {
@@ -30,8 +26,7 @@ MS_RETURNS_NONNULL void *ms_arena_alloc_zeroed(MsArena *arena, size_t size, size
 /* A copy of `span` in the arena. */
 MsSpan ms_arena_copy(MsArena *arena, MsSpan span);
 
-/* Forgets everything but keeps the newest chunk, so a scratch arena used once per function costs no
- * allocation after the first use. */
+/* Forgets everything; the arena is usable again (mimalloc keeps the pages for reuse). */
 void ms_arena_reset(MsArena *arena);
 
 void ms_arena_free(MsArena *arena);

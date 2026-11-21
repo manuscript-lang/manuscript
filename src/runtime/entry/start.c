@@ -263,7 +263,6 @@ static void runtime_thread(void *argument) {
 }
 
 int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *const *argv) {
-  ms_alloc_install(ms_core_allocator());
   ms_fault_install_base_hook();
   ms_obj_install_bounded_drop();
   ms_frames_install(tables); /* without them a report simply has no source frames */
