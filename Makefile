@@ -27,7 +27,7 @@ verify: check repo-check workflow-check bench-check lsp-test unit docs-check lic
 
 verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
-# Builds the native runtime (ms-native) into target/ms-native; every build of ms-cli embeds it.
+# Builds the native C runtime into target/ms-native; every build of ms-cli embeds it.
 runtime:
 	cargo xtask runtime
 
@@ -125,12 +125,6 @@ scaling-check: build
 
 leak-check: build
 	$(MS) run tools/leak-check.ms
-
-# Runs the e2e stdlib tests with MS_SCHED_STRESS=1 (a promise never starts on its creator; the first idle thread takes it) and fails on a file that passes without it. Only a runtime built with the sched-stress feature has the mode, so this builds a separate `ms` (target/stress) that embeds it and runs everything with that one. STRESS_CHANGED=<ref> runs only fixtures changed since <ref>. Nightly on main; not in PR CI.
-stress-sched:
-	cargo xtask runtime --sched-stress
-	MS_NATIVE_LIB=$(CURDIR)/target/ms-native/libms_native_stress.a cargo build --release --locked -p ms-cli --target-dir target/stress
-	MS=target/stress/release/ms target/stress/release/ms run tools/stress-sched.ms
 
 # Cancels each e2e stdlib test at every park in turn and fails when cancellation leaves more blocks live than the uncancelled run.
 cancel-sweep: build

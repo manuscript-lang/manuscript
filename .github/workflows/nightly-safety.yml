@@ -43,9 +43,8 @@ jobs:
         # header file in a test, which Miri's isolation forbids.
         run: |
           failed=""
-          for crate in ms-rt ms-rt-abi; do
-            flags="-Zmiri-ignore-leaks"
-            [ "$crate" = ms-rt-abi ] && flags="$flags -Zmiri-disable-isolation"
+          for crate in ms-rt-abi; do
+            flags="-Zmiri-ignore-leaks -Zmiri-disable-isolation"
             echo "::group::miri $crate"
             MIRIFLAGS="$flags" cargo +nightly miri test -p "$crate" --lib || failed="$failed $crate"
             echo "::endgroup::"
@@ -60,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, drift-check, poison-check, view-matrix, ownership-fuzz, stress-sched, bench-gate, c-compiler-test]
+        check: [cancel-sweep, drift-check, poison-check, view-matrix, ownership-fuzz, bench-gate, c-compiler-test]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-env

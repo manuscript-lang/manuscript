@@ -28,6 +28,14 @@ static bool scan_is_node(const MsCheck *c, MsSymId sym) {
     return kind == MS_D_FN || kind == MS_D_TYPE || kind == MS_D_CONST;
 }
 
+MsDispatch ms_effect_dispatch(const MsCheck *c, const MsFacts *facts, uint32_t call) {
+    const MsKind kind = ms_ty_kind(&c->tys, facts->call_receiver[call]);
+    if (kind == MS_K_PRIMITIVE) {
+        return MS_DISPATCH_NOTHING;
+    }
+    return kind == MS_K_CONTRACT || kind == MS_K_VARIABLE ? MS_DISPATCH_UNKNOWN : MS_DISPATCH_PARTIAL;
+}
+
 /* Records a reference to `callee`; the first one keeps its position. */
 static void scan_edge(ScanState *s, MsSymId callee, MsPos pos) {
     for (uint32_t i = 0; i < s->nedges; i++) {
@@ -51,8 +59,19 @@ static void scan_edge(ScanState *s, MsSymId callee, MsPos pos) {
 static void scan_call(ScanState *s, const MsExpr *e) {
     const MsSyms *syms = &s->check->syms;
     const MsSymId callee = s->facts->call_callee[e->id];
-    if (s->facts->call_method[e->id] != MS_NONE || s->facts->call_interface[e->id] != MS_TY_NONE) {
+    const uint32_t row = s->facts->call_method[e->id];
+    if (row != MS_NONE && ms_effect_method_is_node(s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
+        scan_edge(s, ms_effect_method_node(s->check, row), e->pos);
+        return;
+    }
+    if (row != MS_NONE) {
         s->partial = true;
+        return;
+    }
+    if (s->facts->call_interface[e->id] != MS_TY_NONE) {
+        const MsDispatch dispatch = ms_effect_dispatch(s->check, s->facts, e->id);
+        s->partial = s->partial || dispatch == MS_DISPATCH_PARTIAL;
+        s->unknown = s->unknown || dispatch == MS_DISPATCH_UNKNOWN;
         return;
     }
     if (callee == MS_NONE) {
@@ -107,15 +126,26 @@ static void scan_expr(void *ctx, const MsExpr *e) {
     }
 }
 
+static MsScanNode scan_finish(ScanState *s, uint32_t callable) {
+    // A binding that must be closed calls its `close` when its scope ends, an edge no expression names.
+    const MsBindings *bindings = &s->facts->bindings;
+    for (uint32_t i = 0; i < bindings->count && !s->partial; i++) {
+        s->partial = bindings->callable[i] == callable && (bindings->flags[i] & MS_BIND_RESOURCE) != 0;
+    }
+    return (MsScanNode){.edges = s->edges, .nedges = s->nedges, .unknown = s->unknown, .write = s->write,
+                       .partial = s->partial};
+}
+
 MsScanNode ms_effect_scan_decl(MsArena *arena, const MsCheck *c, MsModId module, const MsDecl *d) {
     ScanState s = {.arena = arena, .check = c, .facts = c->mods[module].facts};
     const MsVisitor visitor = {.ctx = &s, .stmt = scan_stmt, .expr = scan_expr};
     ms_walk_decl(&visitor, d);
-    // A binding that must be closed calls its `close` when its scope ends, an edge no expression names.
-    const MsBindings *bindings = &s.facts->bindings;
-    for (uint32_t i = 0; i < bindings->count && !s.partial; i++) {
-        s.partial = bindings->callable[i] == d->id && (bindings->flags[i] & MS_BIND_RESOURCE) != 0;
-    }
-    return (MsScanNode){.edges = s.edges, .nedges = s.nedges, .unknown = s.unknown, .write = s.write,
-                       .partial = s.partial};
+    return scan_finish(&s, d->id);
+}
+
+MsScanNode ms_effect_scan_method(MsArena *arena, const MsCheck *c, MsModId module, const MsMethod *method) {
+    ScanState s = {.arena = arena, .check = c, .facts = c->mods[module].facts};
+    const MsVisitor visitor = {.ctx = &s, .stmt = scan_stmt, .expr = scan_expr};
+    ms_walk_callable(&visitor, method->func.params, method->func.body);
+    return scan_finish(&s, method->id);
 }
