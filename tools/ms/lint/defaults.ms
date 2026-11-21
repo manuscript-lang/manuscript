@@ -11,6 +11,7 @@ import (
 	Analyzed, analyze from "./analysis.ms",
 	Finding, finding, with_fix from "./finding.ms",
 	first_offset, last_offset, span from "./spans.ms",
+	has_call, may_write, mentions, spelling from "./uses.ms",
 )
 
 type Scan:
@@ -19,47 +20,11 @@ type Scan:
 	source: Bytes
 	file: String
 
-fn spelling(s: Scan, at: Int) String:
-	return s.tree.names[s.tree.a[at]].clone()
-
 fn text_of(s: Scan, at: Int) String:
 	found := span(s.source, first_offset(s.tree, at), last_offset(s.tree, at))
 	if found.is_none(): return ""
 
 	return found.get()
-
-// How many times the name `name` is spelled in the subtree at `at`.
-fn mentions(s: Scan, at: Int, name: String) Int:
-	var total = if s.tree.kind[at] == node_kind("Name") and spelling(s, at) == name: 1 else: 0
-	for child in children(s.tree, at): total += mentions(s, child, name)
-	return total
-
-// Whether the subtree at `at` assigns the name or passes it to a call, which may change
-// it.
-fn may_write(s: Scan, at: Int, name: String) Bool:
-	node := s.tree.kind[at]
-	if (
-		node == node_kind("Assign")
-		and s.tree.flags[at] % 2 == 0
-		and spelling(s, at) == name
-	):
-		return true
-
-	if node == node_kind("Call"):
-		for argument in children(s.tree, children(s.tree, at)[1]):
-			value := children(s.tree, argument)[0]
-			if s.tree.kind[value] == node_kind("Name") and spelling(s, value) == name: return true
-
-	for child in children(s.tree, at):
-		if may_write(s, child, name): return true
-	return false
-
-fn has_call(s: Scan, at: Int) Bool:
-	if s.tree.kind[at] == node_kind("Call"): return true
-
-	for child in children(s.tree, at):
-		if has_call(s, child): return true
-	return false
 
 // A literal, a name, or text without interpolation.
 fn is_simple(s: Scan, at: Int) Bool:
@@ -106,8 +71,8 @@ fn default_then_override(
 	assign := then[0]
 	if s.tree.kind[assign] != node_kind("Assign") or s.tree.flags[assign] != 0: return
 
-	name := spelling(s, pattern)
-	if spelling(s, assign) != name: return
+	name := spelling(s.tree, pattern)
+	if spelling(s.tree, assign) != name: return
 
 	default := bind[2]
 	condition := branch[1]
@@ -115,11 +80,11 @@ fn default_then_override(
 	if not is_simple(s, default) or not is_scalar(s, default): return
 
 	// `x := if c: b else: a` reads `a` after `c` runs; a call in `c` can change a `var` `a`.
-	if s.tree.kind[default] == node_kind("Name") and has_call(s, condition): return
-	if mentions(s, condition, name) + mentions(s, replacement, name) > 0: return
+	if s.tree.kind[default] == node_kind("Name") and has_call(s.tree, condition): return
+	if mentions(s.tree, condition, name) + mentions(s.tree, replacement, name) > 0: return
 
 	for later in rest:
-		if may_write(s, later, name): return
+		if may_write(s.tree, later, name): return
 
 	from := s.tree.offset[first]
 	to := last_offset(s.tree, replacement)
