@@ -47,8 +47,8 @@ if [ -n "$base" ]; then
 fi
 if [ -n "$base" ]; then
     # clang-tidy runs on the C files this change touches, plus the files that include a header it touches. A change to
-    # the lint rules or the toolchain checks everything; the nightly run checks everything regardless.
-    others=$(git diff --name-only "$base" -- .clang-tidy toolchain 'runtime/**CMakeLists.txt' 'compiler/**CMakeLists.txt' | grep -v '\.c$' || true)
+    # the lint rules or the warning list checks everything; the nightly run checks everything regardless.
+    others=$(git diff --name-only "$base" -- .clang-tidy toolchain/c-warnings.txt 'runtime/**CMakeLists.txt' 'compiler/**CMakeLists.txt' | grep -v '\.c$' || true)
     if [ -z "$others" ]; then
         touched=$(git diff --name-only --diff-filter=d "$base" -- runtime compiler || true)
         changed=$(python3 toolchain/c-dependents.py $touched | grep '\.c$' || true)
