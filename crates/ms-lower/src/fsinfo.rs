@@ -1,12 +1,12 @@
 //! `FileSystem.stat` and `FileHandle.stat`: the runtime fills a flat word type
-//! (`InfoOut`, written by `runtime/std/fs_support.c`) and this module builds the `FileInfo` type from it.
+//! (`InfoOut`, written by `src/runtime/std/fs_support.c`) and this module builds the `FileInfo` type from it.
 
 use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::{AltId, Ty as MTy, TyKind, TypeId};
 
-/// `InfoOut` word order after the leading name. The producer in `runtime/std` writes the same.
+/// `InfoOut` word order after the leading name. The producer in `src/runtime/std` writes the same.
 const WORDS: [&str; 21] = [
     "size",
     "mode",

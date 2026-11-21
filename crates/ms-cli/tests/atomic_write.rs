@@ -3,7 +3,7 @@ use crate::common;
 use std::process::Command;
 
 fn helper(name: &str) -> String {
-    let source = include_str!("../../../stdlib/os/fs.ms");
+    let source = include_str!("../../../src/stdlib/os/fs.ms");
     let marker = format!("fn {name}(");
     let start = source.find(&marker).expect("atomic helper exists");
     let mut declaration = String::new();

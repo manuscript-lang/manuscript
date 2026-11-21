@@ -1,4 +1,4 @@
-//! Embeds `stdlib/*.ms` and `stdlib/*/*.ms`. The files in `stdlib/core/` are the implicit prelude; they keep
+//! Embeds `src/stdlib/*.ms` and `src/stdlib/*/*.ms`. The files in `src/stdlib/core/` are the implicit prelude; they keep
 //! their flat `@std/<file>.ms` paths, so the directory groups them without changing any import.
 
 use std::fmt::Write as _;
@@ -7,7 +7,7 @@ use std::path::PathBuf;
 fn main() {
     let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
     let dir = manifest
-        .join("../../stdlib")
+        .join("../../src/stdlib")
         .canonicalize()
         .expect("stdlib");
     println!("cargo:rerun-if-changed={}", dir.display());
@@ -60,7 +60,7 @@ fn main() {
     std::fs::write(dest, out).expect("write");
 }
 
-/// The file that holds a bundled module: the prelude files live in `stdlib/core/` but are named flat.
+/// The file that holds a bundled module: the prelude files live in `src/stdlib/core/` but are named flat.
 fn source_path(dir: &std::path::Path, name: &str) -> PathBuf {
     let flat = dir.join(name);
     if flat.exists() {
@@ -87,7 +87,7 @@ fn eager_modules(names: &[String], texts: &[String]) -> Vec<bool> {
         .map(|(name, text)| {
             let file: std::sync::Arc<str> = std::sync::Arc::from(format!("@std/{name}").as_str());
             ms_syntax::parser::parse(&file, text)
-                .unwrap_or_else(|d| panic!("parse stdlib/{name}: {d}"))
+                .unwrap_or_else(|d| panic!("parse src/stdlib/{name}: {d}"))
         })
         .collect();
     let mut eager = vec![false; names.len()];

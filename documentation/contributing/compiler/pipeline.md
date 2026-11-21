@@ -24,7 +24,7 @@ Consumers go through the checker's public API (the HIR and its ownership facts),
 
 ## Checking each module once
 
-Each module is checked once and shared by whatever needs it. Native standard declarations resolve when the registry loads from `stdlib/*.ms`.
+Each module is checked once and shared by whatever needs it. Native standard declarations resolve when the registry loads from `src/stdlib/*.ms`.
 
 ## Adding a pass
 

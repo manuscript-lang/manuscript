@@ -160,7 +160,7 @@ fn c_path(path: &Path) -> Result<CString, Error> {
 }
 
 /// Links `object` and `inputs` (the runtime built for this platform) into the executable `out` with libms
-/// (`compiler/src/build/link.c`), which runs the pinned `lld` over the bundled files.
+/// (`src/compiler/src/build/link.c`), which runs the pinned `lld` over the bundled files.
 pub fn link(
     object: &Path,
     inputs: &[&Path],

@@ -137,7 +137,7 @@ fn main() Int:
 
 	if issues.is_empty():
 		print(
-			"Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, thread affinity, cancel by return, timed waits, tools/ms command-line reads, and the agent skill agree."
+			"Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, thread affinity, cancel by return, timed waits, src/ms command-line reads, and the agent skill agree."
 		)
 		return 0
 

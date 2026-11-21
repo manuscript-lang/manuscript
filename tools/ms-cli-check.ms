@@ -1,7 +1,7 @@
-// Checks the Manuscript command-line front on the argument lines in tools/ms/cases.txt.
+// Checks the Manuscript command-line front on the argument lines in src/ms/cases.txt.
 // Against the Rust `ms`: a line the Rust `ms` rejects with status 2 must exit 2 in the
 // front, and a line the front hands over (`delegate ...`) must not be one Rust rejects.
-// Against tools/ms/cases.golden: the exact output of every usage error and help
+// Against src/ms/cases.golden: the exact output of every usage error and help
 // request. Usage: ms run tools/ms-cli-check.ms [-- path/to/ms [path/to/libmstool.a
 // [--update]]];
 // --update rewrites the golden file from the front's current output.
@@ -34,7 +34,7 @@ fn main() Int:
 	rust := args.get_or(0, "target/release/ms")
 	link := args.get_or(1, "target/c-tool/libmstool.a")
 	update := args.get_or(2, "") == "--update"
-	cases := text(read_file("tools/ms/cases.txt").wait().get())
+	cases := text(read_file("src/ms/cases.txt").wait().get())
 	var failures = 0
 	var golden = ""
 
@@ -48,13 +48,9 @@ fn main() Int:
 
 		front := run(
 			rust,
-			[
-				"run",
-				"tools/ms/main.ms",
-				"--link",
-				link.clone(),
-				"--",
-			].concat(words),
+			["run", "src/ms/main.ms", "--link", link.clone(), "--"].concat(
+				words
+			),
 			RunOptions(env: plan),
 		).wait().get()
 		delegated := text(front.stdout).starts_with("delegate ")
@@ -70,10 +66,10 @@ fn main() Int:
 			golden += f"== {line}\nstatus {front.exit_code}\n{text(front.stdout)}--- stderr\n{text(front.stderr)}\n"
 
 	if update:
-		write_file("tools/ms/cases.golden", golden.to_bytes(), replace: true).wait().get()
-		note("rewrote tools/ms/cases.golden")
-	else if golden != text(read_file("tools/ms/cases.golden").wait().get()):
-		note("DIFF tools/ms/cases.golden; run with --update to review the change")
+		write_file("src/ms/cases.golden", golden.to_bytes(), replace: true).wait().get()
+		note("rewrote src/ms/cases.golden")
+	else if golden != text(read_file("src/ms/cases.golden").wait().get()):
+		note("DIFF src/ms/cases.golden; run with --update to review the change")
 		failures += 1
 
 	if failures > 0: return 1

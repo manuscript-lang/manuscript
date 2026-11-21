@@ -13,7 +13,7 @@ recorded here before it is committed.)_
 
 - **Unsigned binary32 conversion (ABI_VERSION unchanged).** `msrt_uint_to_float32(v: i64) -> f64` treats the input as a `UInt64` bit pattern, rounds directly to binary32, then widens the result for the runtime scalar ABI. Going through `msrt_uint_to_float` first can double-round near binary32 midpoints.
 - **`ms_abi.h` v1 functions (ABI_VERSION unchanged).** A function argument of a user extern crosses as an `ms_fn`: `msrt_fn_new(closure, sig)` makes an object (closure at offset 16, signature word at 24) around a generated closure that takes its arguments from 24-byte cells and puts its result in the cell after the last parameter slot (`CALL_MAX_PARAMS` = 6). `ms_call_v1` converts `ms_value` arguments into the cells, calls the closure through its code pointer (two pointer parameters, the platform C convention), and converts the result. `ms_on_stop_v1` hooks run from `stop_requested` (`start.rs`), after the main task's cancel is raised.
-- **`ms_abi.h` v1 (ABI_VERSION unchanged).** User `extern fn` shims follow `crates/ms-rt-abi/include/ms_abi.h` instead of the runtime conventions: sized numbers cross as the same-width C types (`signext`/`zeroext`), `Bytes` as `const ms_bytes *`, `List[T]` as an `ms_list` (`ListRef`: the list's address and an `ELEM_*` element code), a user `extern type` as an object from `ms_object_new_v1` (payload at offset 32, the shim's drop at 16). Outputs (`out`, `code_out`, `message_out`) are filled with empty values before the call and dropped after it, unlike the uninitialised `out` below. `ms-rt` exports the header's functions as `ms_*_v1` (`runtime/core/cabi.c`).
+- **`ms_abi.h` v1 (ABI_VERSION unchanged).** User `extern fn` shims follow `crates/ms-rt-abi/include/ms_abi.h` instead of the runtime conventions: sized numbers cross as the same-width C types (`signext`/`zeroext`), `Bytes` as `const ms_bytes *`, `List[T]` as an `ms_list` (`ListRef`: the list's address and an `ELEM_*` element code), a user `extern type` as an object from `ms_object_new_v1` (payload at offset 32, the shim's drop at 16). Outputs (`out`, `code_out`, `message_out`) are filled with empty values before the call and dropped after it, unlike the uninitialised `out` below. `ms-rt` exports the header's functions as `ms_*_v1` (`src/runtime/core/cabi.c`).
 - **extern (ABI_VERSION unchanged).** `extern fn` declarations call a native symbol of the same name under the conventions below, for scalars, borrowed `String` arguments, and `Int`/`Float`/`Bool`/`String`/`Void` results, or `Result[T, E]` as a `u8` status (`n` names the `n`th case of a payload-free `E`) plus `out` (`documentation/core-language/functions/native-functions.md`). `crates/ms-rt-abi/include/ms_abi.h` is the C view of `StrVal` for such natives; `msrt_string_from_bytes` is how they build owned string results.
 - **v3 (collection creator evidence).** `MapVal` appends a static key descriptor pointer (56 bytes).
   `msrt_map_stamp` captures creator-module equality and hashing without replacing existing evidence;
@@ -21,7 +21,7 @@ recorded here before it is committed.)_
   pointer and use the supplied builtin descriptor.
 - **v2.2 (stdlib natives, ABI_VERSION unchanged).** Standard-library natives that need no runtime state live in `ms-std-<module>`
   crates (rlibs linked into `libms_native.a` with `ms-rt`) and are named `msstd_<module>_<name>`; the argument and ownership rules above apply.
-  `@std/math` (now `runtime/std/stdmath.c`) exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results come from the host libm and may differ from Go in the last bit). `ms-rt` gains
+  `@std/math` (now `src/runtime/std/stdmath.c`) exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results come from the host libm and may differ from Go in the last bit). `ms-rt` gains
   `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (string `out`; a digit count out of range faults),
   `msrt_float_truncate_to_int` and `msrt_float_to_float32` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
 - **v2.7 (`ms-std-fs` watchers).** `msstd_fs_watch` (polling, snapshot comparison every interval) and `msstd_fs_watch_native` (inotify on Linux, kqueue plus snapshot comparison
@@ -37,7 +37,7 @@ recorded here before it is committed.)_
   clone mode string and entry/byte budgets (`i64::MAX` = unlimited). Callbacks are `extern "C-unwind"` thunks with a captured `env`: strings
   passed to them are borrowed for the call (the runtime releases its copies afterwards), `copy`'s returns non-zero to keep an entry and
   `glob_entries`' returns non-zero to exclude it.
-  Glob matching lives in `runtime/std/path.c` (shared with `@std/fs`) (braces, extglobs, `**`, and dotfile rules).
+  Glob matching lives in `src/runtime/std/path.c` (shared with `@std/fs`) (braces, extglobs, `**`, and dotfile rules).
 - **v2.5 (`ms-std-process`).** `msstd_process_*` covers process control and child processes. `STATUS_TIMEOUT` (13) and `STATUS_OUTPUT_LIMIT` (14)
   join the table (`Timeout`, `LimitExceeded`). `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes
   the arguments, input bytes, optional limit and optional timeout and returns `CommandOut` (exit code, stdout, stderr); `command_spawn` returns a
@@ -52,12 +52,12 @@ recorded here before it is committed.)_
   entry (bit 0 directory, bit 1 symlink). Streams are refcounted `Handle<Stream>` objects (`Obj` header, then the value); reads and writes
   poll in 50 ms slices so cancellation interrupts them. `STATUS_NONE` from `read`/`read_line` means end of stream. Generic `io.copy`,
   `read_all` and `read_line` over user-defined `ReadStream`s stay compiler-lowered.
-- **v2.3 (`runtime/std/time*.c`).** `msstd_time_*` covers `@std/time`. `Duration` is an `i64` of nanoseconds by value.
+- **v2.3 (`src/runtime/std/time*.c`).** `msstd_time_*` covers `@std/time`. `Duration` is an `i64` of nanoseconds by value.
   `Timestamp` is `repr(C) { seconds: i64, nanos: i64 }` and `Instant` is `repr(C) { domain: u64, tick: i64 }`; both are passed by pointer
   and returned through a trailing `out`. `msstd_time_clock_now` uses domain 1 (the process monotonic clock); `Date` is returned as
   `CalendarOut` (ten `i64` fields in declaration order, then an owned zone-name string). Fallible calls return `STATUS_*` codes (`TimeError`
   maps `InvalidInput`/`OutOfRange`/`InvalidData` to the numbers codes; `Closed` is never produced natively). Zones are resolved in Manuscript
-  (`stdlib/internal/zone.ms`, bundled IANA data); the natives take an offset and an abbreviation. `msstd_time_system_zone` and `msstd_time_system_zone_file` report the host's `TZ` and `/etc/localtime`. `ms_rt::glue` is the shared glue (read/build strings, faults, cancellation).
+  (`src/stdlib/internal/zone.ms`, bundled IANA data); the natives take an offset and an abbreviation. `msstd_time_system_zone` and `msstd_time_system_zone_file` report the host's `TZ` and `/etc/localtime`. `ms_rt::glue` is the shared glue (read/build strings, faults, cancellation).
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
   Only closures keep an `Obj` header and a count.
   `String` is a two-word owned `StrVal` (`{ptr, tagged}`) over immutable bytes (section 3).
@@ -73,7 +73,7 @@ recorded here before it is committed.)_
   Clone becomes explicit `msrt_list_copy` / `msrt_slot_copy`. The sections below
   describe v2 only.
 - **v2.1 (implemented runtime, `ABI_VERSION` 2).** Everything below is implemented and tested in `ms-rt`;
-  `crates/ms-lower/rt_symbols.txt` lists every exported symbol with its C signature. It is generated, not written: `ms run tools/ms/symbols.ms` collects the signatures that the `native!` macro records from its own parameter types, and scans the plain `extern "C"` functions. `cargo xtask symbols --check` (part of `make check`) fails when the file is stale, the `runtime_symbol_catalogue_matches_archive` test fails when it and the runtime archive disagree, and each `extern fn` in `stdlib/*.ms` names its symbol.
+  `crates/ms-lower/rt_symbols.txt` lists every exported symbol with its C signature. It is generated, not written: `ms run src/ms/symbols.ms` collects the signatures that the `native!` macro records from its own parameter types, and scans the plain `extern "C"` functions. `cargo xtask symbols --check` (part of `make check`) fails when the file is stale, the `runtime_symbol_catalogue_matches_archive` test fails when it and the runtime archive disagree, and each `extern fn` in `src/stdlib/*.ms` names its symbol.
   - Strings: owned, immutable, uniquely owned buffers; empty and one-ASCII-byte results are static strings (tag `10`).
     The scalar count of the long string last measured is cached in a one-entry hint with a position for sequential indexing.
   - Optional/fallible conventions as in section 1: `Int?` result = `u8` present + `out: *mut i64`; `String?` = `OptStr { value: StrVal }` (16 bytes; none is a static empty string with a null `ptr`) through `out`, or a `present: u8` result with `out: *mut StrVal`
@@ -393,7 +393,7 @@ Spawn is an `mmap` plus guard `mprotect` unless a pooled stack (32 kept) is avai
 `eq`, `hash`, `io`, `process`, `profile`. Future crates (`ms-std-fs`...)
 use their own prefix and link only when imported; they depend on `ms-rt-abi` and call
 `msrt_*` for allocation and faults. The authoritative symbol list is the `#[no_mangle]`
-items in `ms-rt/src` (`cargo doc -p ms-rt`); language names follow `stdlib/*.ms`
+items in `ms-rt/src` (`cargo doc -p ms-rt`); language names follow `src/stdlib/*.ms`
 (`String.split` -> `msrt_string_split`). Argument order: receiver pointer(s), descriptors,
 declared parameters, flattened optionals, `out` last.
 

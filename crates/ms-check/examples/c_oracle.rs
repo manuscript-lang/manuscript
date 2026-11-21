@@ -1,5 +1,5 @@
 //! Prints the checker's standard-library tables in a canonical text form, so the C checker in
-//! `compiler/` can be compared with it byte for byte (`make c-compiler-test`).
+//! `src/compiler/` can be compared with it byte for byte (`make c-compiler-test`).
 //! Temporary tooling for the C rewrite: delete it with the Rust checker.
 
 use ms_check::Session;

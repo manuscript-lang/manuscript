@@ -22,7 +22,7 @@ runs:
     - name: Hash the runtime sources
       id: hash
       shell: bash
-      run: echo "value=${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'vendor/**', 'crates/ms-rt-abi/**', 'runtime/{include,symbols,sys,core,io,net,std}/**', 'CMakeLists.txt', 'cmake/**', 'runtime/third_party/{build.sh,c-libs.lock,llhttp/**}') }}" >> "$GITHUB_OUTPUT"
+      run: echo "value=${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'vendor/**', 'crates/ms-rt-abi/**', 'src/runtime/{include,symbols,sys,core,io,net,std}/**', 'CMakeLists.txt', 'cmake/**', 'src/runtime/third_party/{build.sh,c-libs.lock,llhttp/**}') }}" >> "$GITHUB_OUTPUT"
     - name: Restore the native runtime
       id: runtime
       uses: actions/cache@v6
@@ -33,14 +33,14 @@ runs:
         key: ms-native-${{ github.event_name == 'pull_request' && 'pr' || 'allocs' }}-${{ inputs.os }}-${{ inputs.arch }}-${{ env.ImageVersion }}-${{ steps.hash.outputs.value }}
         restore-keys: |
           ms-native-allocs-${{ inputs.os }}-${{ inputs.arch }}-${{ env.ImageVersion }}-${{ steps.hash.outputs.value }}
-    # The archives fold in our builds of the vendored C libraries (runtime/third_party/build.sh); they take one to
+    # The archives fold in our builds of the vendored C libraries (src/runtime/third_party/build.sh); they take one to
     # three minutes per target, so they are cached on the pins and the build script (the key names the target).
     - name: Restore the C libraries
       if: steps.runtime.outputs.cache-matched-key == ''
       uses: actions/cache@v6
       with:
         path: target/c-libs/*-pinned-*
-        key: c-libs-${{ inputs.os }}-${{ inputs.arch }}-${{ env.ImageVersion }}-${{ hashFiles('runtime/third_party/build.sh', 'runtime/third_party/c-libs.lock') }}
+        key: c-libs-${{ inputs.os }}-${{ inputs.arch }}-${{ env.ImageVersion }}-${{ hashFiles('src/runtime/third_party/build.sh', 'src/runtime/third_party/c-libs.lock') }}
     - name: Build the native runtime
       if: steps.runtime.outputs.cache-matched-key == ''
       shell: bash

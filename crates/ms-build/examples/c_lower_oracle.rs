@@ -1,5 +1,5 @@
-//! Prints the MIR the Rust lowering makes for each source file, so the C lowering in `compiler/`
-//! can be compared with it function by function (`compiler/tests/lower-diff.sh`).
+//! Prints the MIR the Rust lowering makes for each source file, so the C lowering in `src/compiler/`
+//! can be compared with it function by function (`src/compiler/tests/lower-diff.sh`).
 //! Temporary tooling for the C rewrite: delete it with `ms-lower`.
 
 use ms_driver::{CheckRequest, check_graph, load_file};

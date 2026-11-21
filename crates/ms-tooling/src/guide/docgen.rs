@@ -105,11 +105,11 @@ pub fn site_files(syms: ms_syntax::Names) -> BTreeMap<String, Vec<u8>> {
         let path = source_path.strip_suffix(".ms").unwrap_or(source_path);
         let title = source_path.rsplit('/').next().unwrap_or(source_path);
         let source = if path == "prelude" {
-            "stdlib/core/core.ms".to_string()
+            "src/stdlib/core/core.ms".to_string()
         } else if matches!(source_path, "core.ms" | "intrinsics.ms" | "string.ms") {
-            format!("stdlib/core/{source_path}")
+            format!("src/stdlib/core/{source_path}")
         } else {
-            format!("stdlib/{source_path}")
+            format!("src/stdlib/{source_path}")
         };
         let old = stdlib::module_stem(&module.path).replace('/', "-");
         let aliases = if old != path {
@@ -417,7 +417,7 @@ pub struct DescriptionPolicy {
 /// Reads the policy that ships with the compiler.
 pub fn standard_description_policy() -> Result<DescriptionPolicy, String> {
     parse_policy(include_str!(
-        "../../../../tools/ms/data/description_backlog.json"
+        "../../../../src/ms/data/description_backlog.json"
     ))
 }
 

@@ -13,7 +13,7 @@ const TABLE: &str = include_str!("../../ms-lower/rt_symbols.txt");
 /// (`extern const MsTypeDesc msrt_desc_int;`, `extern uint8_t msrt_ascii_chars[][2];`).
 fn data_exports() -> BTreeSet<String> {
     let headers =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runtime/include/ms_rt");
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src/runtime/include/ms_rt");
     let mut names = BTreeSet::new();
     for entry in std::fs::read_dir(headers).expect("runtime headers") {
         let path = entry.expect("header").path();
@@ -85,6 +85,6 @@ fn runtime_symbol_catalogue_matches_archive() {
     let stale: Vec<_> = catalogued.difference(&exported).collect();
     assert!(
         unlisted.is_empty() && stale.is_empty(),
-        "crates/ms-lower/rt_symbols.txt is out of date (run `ms run tools/ms/symbols.ms`).\nexported but not listed: {unlisted:?}\nlisted but not exported: {stale:?}"
+        "crates/ms-lower/rt_symbols.txt is out of date (run `ms run src/ms/symbols.ms`).\nexported but not listed: {unlisted:?}\nlisted but not exported: {stale:?}"
     );
 }

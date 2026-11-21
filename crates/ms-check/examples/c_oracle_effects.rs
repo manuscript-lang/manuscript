@@ -1,9 +1,9 @@
 //! Prints what the effect graph and the effect directives give for a text graph or for source
-//! files, so the C checker in `compiler/` can be compared with it byte for byte
-//! (`compiler/tests/check-diff.sh`). Temporary tooling for the C rewrite: delete it with the
+//! files, so the C checker in `src/compiler/` can be compared with it byte for byte
+//! (`src/compiler/tests/check-diff.sh`). Temporary tooling for the C rewrite: delete it with the
 //! Rust checker.
 //!
-//!   c_oracle_effects graph < GRAPH     resolve the graph described in `compiler/tests/effect-graph.md`
+//!   c_oracle_effects graph < GRAPH     resolve the graph described in `src/compiler/tests/effect-graph.md`
 //!   c_oracle_effects directives FILE.. header and per-line directives of each source file
 
 use ms_check::effect_oracle::{Directives, Lines, ReachNode, resolve};

@@ -1,5 +1,5 @@
 //! Folds constant arithmetic the way `ms-check`'s `constfaults.rs` does, for the C port in
-//! `compiler/src/syntax/constfold.c` to be diffed against (`compiler/tests/constfold-diff.sh`). Each
+//! `src/compiler/src/syntax/constfold.c` to be diffed against (`src/compiler/tests/constfold-diff.sh`). Each
 //! stdin line is an expression; each output block lists, node by node in pre-order, its folded
 //! value under several integer ranges, its literal kind, and the constant-fault messages.
 //! `gen COUNT SEED` writes random expressions. Temporary tooling for the C rewrite: delete it

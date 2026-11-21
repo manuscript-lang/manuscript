@@ -1,8 +1,8 @@
-//! The C back end: the lowered module goes to libms as MIR text (`compiler/include/ms/build_object.h`, linked
+//! The C back end: the lowered module goes to libms as MIR text (`src/compiler/include/ms/build_object.h`, linked
 //! into this crate by `build.rs`), which runs the optimizer and finishing passes, writes LLVM IR, compiles it with
 //! the pinned LLVM tools (`opt`, `llc`) and appends the fault tables, so no C toolchain and no helper program is
 //! needed. A program the emitter cannot write fails with the reason; the corpus diff
-//! (`compiler/tests/build-diff.sh`) counts the gaps.
+//! (`src/compiler/tests/build-diff.sh`) counts the gaps.
 
 // The calls into libms are the only unsafe code of this crate.
 #![allow(unsafe_code)]
@@ -204,7 +204,7 @@ pub struct LinkFiles<'a> {
     pub musl: bool,
 }
 
-/// Links `object` and `inputs` into the executable `out` with libms (`compiler/src/build/link.c`).
+/// Links `object` and `inputs` into the executable `out` with libms (`src/compiler/src/build/link.c`).
 pub fn build_link(
     object: &CString,
     inputs: &[CString],

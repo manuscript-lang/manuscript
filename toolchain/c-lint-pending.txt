@@ -1,4 +1,4 @@
-runtime/fuzz/http1_fuzz.c
-runtime/fuzz/num_fuzz.c
-runtime/sys/glibc/compat.c
-runtime/tests/clibs_smoke.c
+src/runtime/fuzz/http1_fuzz.c
+src/runtime/fuzz/num_fuzz.c
+src/runtime/sys/glibc/compat.c
+src/runtime/tests/clibs_smoke.c

@@ -10,6 +10,6 @@ Apply when: a sibling crate needs a checker type or query, or you add a `pub` it
 - Add a `pub use` line to `api.rs` to widen the contract; that line is the review point. Do not make a module `pub` again.
 - Tests that need checker internals (type constructors, `type_key`) live inside the crate as `*_tests.rs`, not in `tests/`.
 - `tools/repo-check` (`layering.rs`) lists the allowed normal dependencies of each compiler crate. Compiler crates reach the runtime only through `ms-rt-abi`; a runtime-only test edge goes in `[dev-dependencies]`.
-- `ms-lower` parses `Decimal` literals itself (`decimal_literal.rs`); the Decimal arithmetic is C (`runtime/std/decimal.c`). Keep new compiler-side helpers out of `ms-std-*` crates for the same reason.
+- `ms-lower` parses `Decimal` literals itself (`decimal_literal.rs`); the Decimal arithmetic is C (`src/runtime/std/decimal.c`). Keep new compiler-side helpers out of `ms-std-*` crates for the same reason.
 - `ms_check::api` also re-exports the syntax vocabulary lowering walks (`ast`, `visit`, `number`, `Names`, `NodeId`, `Pos`), so `ms-lower` has no `ms-syntax` dependency of its own.
 - `editor.rs` (member and import-completion queries) is a leaf over the checker: no checker module names `crate::editor` (repo-check enforces it). It stays in the crate because it needs `Checker` and method resolution internals; a separate crate would have to export those. `hints.rs` and `suggestions.rs` are checker diagnostics, not editor code.
