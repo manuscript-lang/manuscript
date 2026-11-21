@@ -4,7 +4,9 @@
 #include "base/file.h"
 #include "base/path.h"
 #include "base/process.h"
+#include "base/bytes.h"
 #include "compiler/emit/emit.h"
+#include "compiler/link/asm_tables.h"
 
 /* Runs `argv` with its output in `log`; on failure `why` names `what` and holds the output. */
 static bool run_tool(MsSpan what, const MsSpan *argv, size_t argc, MsSpan log, MsStrBuild *why) {
@@ -55,7 +57,7 @@ static bool has_optnone(MsSpan ir) {
  * function's size even when it is optnone. AArch64's -O0 GlobalISel Localizer pass is too (#5540), so the
  * selection-DAG path is used. */
 static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan object, MsSpan log,
-                     bool size_tiered, MsStrBuild *why) {
+                     bool size_tiered, const char *filetype, MsStrBuild *why) {
   MsSpan argv[12];
   size_t argc = 0;
   argv[argc++] = options->llc;
@@ -63,7 +65,7 @@ static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
   if (size_tiered) {
     argv[argc++] = ms_span_of_text("-global-isel=0");
   }
-  argv[argc++] = ms_span_of_text("-filetype=obj");
+  argv[argc++] = ms_span_of_text(filetype);
   argv[argc++] = ms_span_of_text("-relocation-model=pic");
   argv[argc++] = triple_flag;
 #if defined(__x86_64__)
@@ -74,6 +76,67 @@ static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
   argv[argc++] = ms_span_of_text("-o");
   argv[argc++] = object;
   return run_tool(ms_span_of_text("llc (LLVM code generator)"), argv, argc, log, why);
+}
+
+/* The assembly `text` as an IR module of `module asm` lines, which `llc` assembles into the object. */
+static void wrap_assembly(MsSpan triple, MsSpan text, MsStrBuild *ir) {
+  ms_strbuild_append_text(ir, "target triple = \"");
+  ms_strbuild_append(ir, triple);
+  ms_strbuild_append_text(ir, "\"\n");
+  size_t start = 0;
+  while (start < text.len) {
+    size_t end = start;
+    while (end < text.len && text.ptr[end] != '\n') {
+      end++;
+    }
+    ms_strbuild_append_text(ir, "module asm \"");
+    for (size_t at = start; at < end; at++) {
+      uint8_t byte = text.ptr[at];
+      if (byte >= 0x20 && byte < 0x7f && byte != '"' && byte != '\\') {
+        ms_strbuild_append_byte(ir, byte);
+        continue;
+      }
+      ms_strbuild_append_byte(ir, '\\');
+      if (byte < 16) {
+        ms_strbuild_append_byte(ir, '0');
+      }
+      ms_strbuild_append_u64_radix(ir, byte, 16);
+    }
+    ms_strbuild_append_text(ir, "\"\n");
+    start = end + 1;
+  }
+}
+
+/* The object of a program with fault tables: `llc` writes the assembly, the tables are added to it, and `llc`
+ * assembles the result. */
+static bool tables_object(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan object, MsSpan log,
+                          bool size_tiered, MsStrBuild *why) {
+  MsString assembly_path = in_directory(options->directory, "program.s");
+  MsString wrapped_path = in_directory(options->directory, "tables.ll");
+  bool ok = generate(options, triple_flag, input, ms_string_span(&assembly_path), log, size_tiered,
+                     "-filetype=asm", why);
+  MsBytes assembly = {0};
+  ok = ok && ms_file_read(ms_string_span(&assembly_path), &assembly);
+  MsArena arena = ms_arena_new();
+  MsStrBuild text = ms_strbuild_new();
+  MsStrBuild ir = ms_strbuild_new();
+  ok = ok && link_asm_tables(&arena, options->module, options->tables, ms_bytes_span(&assembly), &text, why);
+  if (ok) {
+    wrap_assembly(ms_span_of(triple_flag.ptr + 9, triple_flag.len - 9), ms_strbuild_span(&text), &ir);
+    ok = ms_file_write(ms_string_span(&wrapped_path), ms_strbuild_span(&ir));
+  }
+  ObjectOptions plain = *options;
+  plain.speed = false;
+  ok = ok && generate(&plain, triple_flag, ms_string_span(&wrapped_path), object, log, false, "-filetype=obj", why);
+  ms_path_remove(ms_string_span(&assembly_path));
+  ms_path_remove(ms_string_span(&wrapped_path));
+  ms_strbuild_free(&ir);
+  ms_strbuild_free(&text);
+  ms_bytes_free(&assembly);
+  ms_arena_free(&arena);
+  ms_string_release(&assembly_path);
+  ms_string_release(&wrapped_path);
+  return ok;
 }
 
 bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object, MsStrBuild *why) {
@@ -99,7 +162,13 @@ bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object, Ms
     ok = optimize(options, ms_string_span(&triple_flag), input, ms_string_span(&bitcode), ms_string_span(&log), why);
     input = ms_string_span(&bitcode);
   }
-  ok = ok && generate(options, ms_string_span(&triple_flag), input, object, ms_string_span(&log), has_optnone(ir), why);
+  bool tiered = has_optnone(ir);
+  if (ok && options->tables != NULL) {
+    ok = tables_object(options, ms_string_span(&triple_flag), input, object, ms_string_span(&log), tiered, why);
+  } else {
+    ok = ok && generate(options, ms_string_span(&triple_flag), input, object, ms_string_span(&log), tiered,
+                        "-filetype=obj", why);
+  }
   ms_path_remove(ms_string_span(&text));
   ms_path_remove(ms_string_span(&bitcode));
   ms_path_remove(ms_string_span(&log));

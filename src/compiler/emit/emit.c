@@ -1,6 +1,7 @@
 /* Owns the module driver: one LLVM module from one MirModule. */
 #include "compiler/emit/emit.h"
 
+#include "compiler/emit/emit_debug.h"
 #include "compiler/emit/emit_decl.h"
 #include "compiler/emit/emit_func.h"
 
@@ -33,6 +34,24 @@ static void write_tbaa(MsStrBuild *out) {
                      EMIT_TBAA_SCALAR);
 }
 
+/* The file name the compile unit shows: the base name of the first function's file. */
+static MsSpan source_name(const MirModule *module) {
+  for (uint32_t index = 0; index < module->funcs.len; index++) {
+    uint32_t file = module->funcs.ptr[index].loc.file;
+    if (file >= module->files.len) {
+      continue;
+    }
+    MsSpan name = module->files.ptr[file];
+    for (size_t at = name.len; at > 0; at--) {
+      if (name.ptr[at - 1] == '/' || name.ptr[at - 1] == '\\') {
+        return ms_span_of(name.ptr + at, name.len - at);
+      }
+    }
+    return name;
+  }
+  return ms_span_of_text("ms");
+}
+
 MsSpan emit_host_triple(void) {
 #ifdef EMIT_TRIPLE
   return ms_span_of_text(EMIT_TRIPLE);
@@ -54,11 +73,25 @@ bool emit_module(const MirModule *module, const MirData *data, const MirGlue *gl
   cx.data = data;
   cx.glue = glue;
   cx.export_all = options->export_all;
+  EmitDebug debug;
+  uint32_t total_scopes = 0;
+  for (uint32_t index = 0; index < module->funcs.len; index++) {
+    total_scopes += (uint32_t)module->funcs.ptr[index].scopes.len;
+  }
+  if (options->places) {
+    emit_debug_init(&debug);
+    cx.debug = &debug;
+  }
+  uint32_t scope_base = 0;
   bool ok = true;
   for (uint32_t index = 0; index < module->funcs.len; index++) {
     cx.func = &module->funcs.ptr[index];
     cx.why = NULL;
     cx.next = 0;
+    cx.body_line = 0;
+    cx.scope_base = scope_base;
+    cx.body_scope = total_scopes + index + 1;
+    scope_base += (uint32_t)cx.func->scopes.len;
     if (emit_function(&cx, index)) {
       continue;
     }
@@ -71,5 +104,9 @@ bool emit_module(const MirModule *module, const MirData *data, const MirGlue *gl
   emit_declarations(&cx);
   mir_layouts_free(&layouts);
   write_tbaa(out);
+  if (options->places) {
+    emit_debug_finish(&cx, source_name(module));
+    emit_debug_free(&debug);
+  }
   return ok;
 }

@@ -1,4 +1,4 @@
-set(LINK_SOURCES link.c link_job.c object.c)
+set(LINK_SOURCES link.c link_job.c object.c asm_scan.c asm_tables.c)
 if(WIN32)
   list(APPEND LINK_SOURCES link_windows.c)
 elseif(APPLE)

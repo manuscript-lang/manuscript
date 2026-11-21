@@ -3,6 +3,7 @@
 
 #include "base/alloc.h"
 #include "base/fatal.h"
+#include "compiler/emit/emit_debug.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
 
@@ -129,19 +130,23 @@ static bool emit_block(EmitCx *cx, uint32_t block, const uint32_t *last) {
   uint32_t part = 0;
   for (uint32_t index = 0; index < data->insts.len; index++) {
     EmitSite site = {block, index, &part};
+    size_t from = ms_strbuild_length(cx->out);
     if (!emit_instruction(cx, &data->insts.ptr[index], &site)) {
       return false;
     }
+    emit_debug_place(cx, from, data->insts.ptr[index].loc);
   }
+  size_t from = ms_strbuild_length(cx->out);
   if (!emit_terminator(cx, &data->term, block)) {
     return false;
   }
   emit_edge_blocks(cx, &data->term, block);
+  emit_debug_place(cx, from, data->term_loc);
   return true;
 }
 
 /* `define <result> @name(<hidden result pointer>, <leaves of each parameter>)`; returns after `nounwind`. */
-static void emit_header(EmitCx *cx, uint32_t index, const char *tier) {
+static void emit_header(EmitCx *cx, uint32_t index, const char *tier, uint32_t subprogram) {
   const MirFunc *func = cx->func;
   MsStrBuild *out = cx->out;
   bool exported = cx->export_all || func->linkage == ML_EXPORT || cx->module->entry == index;
@@ -179,6 +184,9 @@ static void emit_header(EmitCx *cx, uint32_t index, const char *tier) {
   ms_strbuild_append_text(out, tier);
   if (cx->pure) {
     ms_strbuild_append_text(out, " willreturn nofree nosync memory(none)");
+  }
+  if (cx->debug != NULL) {
+    ms_strbuild_printf(out, " !dbg !%u", subprogram);
   }
   ms_strbuild_append_text(out, " {\n");
 }
@@ -244,6 +252,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   MsArena scratch = {0};
   cx->framed = mir_framed_closures(&scratch, cx->module, func);
   cx->borrowed = mir_framed_iface_borrows(&scratch, cx->module, func);
+  uint32_t subprogram = cx->debug != NULL ? emit_debug_subprogram(cx, index) : 0;
   MsStrBuild *module_out = cx->out;
   MsStrBuild body = ms_strbuild_new();
   cx->out = &body;
@@ -253,7 +262,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   }
   cx->out = module_out;
   if (ok) {
-    emit_header(cx, index, size_tier(cx, count_lines(ms_strbuild_span(&body))));
+    emit_header(cx, index, size_tier(cx, count_lines(ms_strbuild_span(&body))), subprogram);
     ms_strbuild_append(module_out, ms_strbuild_span(&body));
     ms_strbuild_append_text(module_out, "}\n\n");
   }
