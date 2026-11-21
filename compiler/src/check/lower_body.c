@@ -1366,10 +1366,16 @@ static void lb_return(Lb *lb, const MsStmt *s) {
 }
 
 
-/* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
- * the scope's depth. */
-uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
+/* Lowers `body` in its own ownership scope, whose end is where control falls out of it. When `taken` is a
+ * value, the scope first unboxes the owned Optional `taken` into the payload `pattern` names. Returns the
+ * scope's depth. */
+static uint32_t lb_scoped_taking(Lb *lb, const MsStmts *body, const MsPattern *pattern, MirValue taken) {
     const uint32_t depth = lscope_push(&lb->scopes);
+    if (pattern != NULL) {
+        const MirTy elem = mir_ty_data(lb->m, mir_b_ty(&lb->b, taken))->elem;
+        const MirValue part = mir_b_emit(&lb->b, MOP_OptUnbox, &taken, 1, (MirImm){0}, elem);
+        lb_own_payload(lb, lb->facts->pattern_binding[pattern->id], pattern->u.name, part);
+    }
     lb_statements(lb, body);
     if (!lb->dead) {
         lb_own_vars(lb, depth, MIR_NONE);
@@ -1380,6 +1386,8 @@ uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
     lscope_pop(&lb->scopes, !lb->dead);
     return depth;
 }
+
+uint32_t lb_scoped(Lb *lb, const MsStmts *body) { return lb_scoped_taking(lb, body, NULL, MIR_NONE); }
 
 /* Starts emitting into `block`, which some live edge reaches. */
 void lb_enter(Lb *lb, MirBlock block) {
@@ -1416,15 +1424,20 @@ static void lb_if(Lb *lb, const MsStmt *s) {
     mir_b_seal_block(&lb->b, then_block);
     mir_b_seal_block(&lb->b, else_block);
     lb_enter(lb, then_block);
-    if (s->u.branch.binding != NULL) {
+    const bool takes = s->u.branch.binding != NULL && cond.owned && lb_owns(lb, mir_ty_data(lb->m, mir_b_ty(&lb->b, subject))->elem);
+    if (s->u.branch.binding != NULL && !takes) {
         lb_bind_payload(lb, s->u.branch.binding, la_payload(lb, subject, !cond.owned));
     }
-    (void)lb_scoped(lb, &s->u.branch.body);
+    // An owned Optional temporary: the payload moves out into the branch's scope; the else branch drops the holder.
+    (void)lb_scoped_taking(lb, &s->u.branch.body, takes ? s->u.branch.binding : NULL, subject);
     const bool then_live = !lb->dead;
     if (then_live) {
         mir_b_br(&lb->b, join, NULL, 0);
     }
     lb_enter(lb, else_block);
+    if (takes) {
+        lb_drop(lb, subject);
+    }
     (void)lb_scoped(lb, &s->u.branch.else_body);
     const bool else_live = !lb->dead;
     if (else_live) {
