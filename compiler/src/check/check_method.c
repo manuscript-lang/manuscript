@@ -138,23 +138,36 @@ static bool method_row(const MsBody *b, MsTy receiver, MsSym name, uint32_t give
     return found;
 }
 
-/* The operation of the interface `contract` called `name`. */
+/* The operation of the interface `contract` called `name`. An interface with type arguments
+ * (`Sink[String]`) gives the operation's signature with them in place of the interface's variables. */
 static bool operation_of(const MsBody *b, MsTy contract, MsSym name, Target *out) {
-    const MsTyTable *tys = &b->c->tys;
-    if (ms_ty_kind(tys, contract) != MS_K_CONTRACT || tys->def[contract] == 0 || tys->nargs[contract] != 0) {
+    MsCheck *c = b->c;
+    const MsTyTable *tys = &c->tys;
+    if (ms_ty_kind(tys, contract) != MS_K_CONTRACT || tys->def[contract] == 0) {
         return false;
     }
-    const MsOperations *ops = ms_interface_operations(b->methods, tys->def[contract] - 1);
+    const MsSymId sym = tys->def[contract] - 1;
+    const MsOperations *ops = ms_interface_operations(b->methods, sym);
     for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
         const MsOperation *op = &ops->items[i];
-        if (op->name == name) {
-            *out = (Target){.sig = op->ty,
-                            .func = &op->decl->func,
-                            .method = MS_NONE,
-                            .mutating = op->decl->mutating,
-                            .consuming = op->decl->consuming};
-            return op->nvars == 0;
+        if (op->name != name || op->nvars != 0) {
+            continue;
         }
+        MsTy sig = op->ty;
+        if (tys->nargs[contract] != 0) {
+            const MsDef *definition = ms_def(c, sym);
+            if (definition == NULL || definition->nvars != tys->nargs[contract]) {
+                return false;
+            }
+            const MsTySubst subst = {.vars = definition->vars, .args = ms_ty_args(tys, contract), .count = definition->nvars};
+            sig = ms_ty_subst(&c->tys, &c->arena, sig, &subst);
+        }
+        *out = (Target){.sig = sig,
+                        .func = &op->decl->func,
+                        .method = MS_NONE,
+                        .mutating = op->decl->mutating,
+                        .consuming = op->decl->consuming};
+        return true;
     }
     return false;
 }

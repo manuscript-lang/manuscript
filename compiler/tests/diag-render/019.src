@@ -1,0 +1,4 @@
+iport value f\nrom "./dep.ms"
+
+export fn main() Int:
+    return value()

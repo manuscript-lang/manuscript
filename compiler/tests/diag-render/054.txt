@@ -1,0 +1,5 @@
+054.ms:5:1: parse: 'def' is not a Manuscript declaration keyword; declare a function as 'fn name(a: Int) Int:' with the result type after the parameters
+   |
+ 5 | def f() -> Void:
+   | ^^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

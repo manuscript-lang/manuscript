@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "phase": "type",
+      "message": "required b follows optional a; put optional parameters and fields last",
+      "position": {
+        "file": "method.ms",
+        "line": 4,
+        "column": 20,
+        "offset": 36
+      }
+    }
+  ]
+}

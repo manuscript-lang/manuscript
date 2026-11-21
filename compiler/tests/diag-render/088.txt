@@ -1,0 +1,5 @@
+088.ms:7:29: parse: expected ':', found '...'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body
+   |
+ 7 | fn wrong(value: Int?) Int!St...ing: value.ok_or_else(cause)
+   |                             ^^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

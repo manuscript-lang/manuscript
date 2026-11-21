@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "unexpected source character '`'; text uses double quotes with {expression} interpolation",
+      "position": {
+        "file": "075.ms",
+        "line": 11,
+        "column": 18,
+        "offset": 283
+      },
+      "end": {
+        "file": "075.ms",
+        "line": 11,
+        "column": 19,
+        "offset": 284
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "'def' is not a Manuscript declaration keyword; declare a function as 'fn name(a: Int) Int:' with the result type after the parameters",
+      "position": {
+        "file": "054.ms",
+        "line": 5,
+        "column": 1,
+        "offset": 168
+      },
+      "end": {
+        "file": "054.ms",
+        "line": 5,
+        "column": 4,
+        "offset": 171
+      },
+      "fix": {
+        "position": {
+          "file": "054.ms",
+          "line": 5,
+          "column": 1,
+          "offset": 168
+        },
+        "end": {
+          "file": "054.ms",
+          "line": 5,
+          "column": 4,
+          "offset": 171
+        },
+        "replacement": "fn"
+      }
+    }
+  ]
+}

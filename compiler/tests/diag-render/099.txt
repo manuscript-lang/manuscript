@@ -1,0 +1,5 @@
+099.ms:18:19: parse: expected ')', found '='; close the parenthesis, separating items with commas ('{' at column 11 starts an interpolation in f"..." text; write \{ and \} for literal braces, or drop the f)
+    |
+ 18 |         f"{(((-48)= / (-43)) * 647476542643)} {41} {((((-48) / (-43)) * 647476542643) < 41)} sum {(((-‮8) / (-43)) * 647476542643) + 41}"
+    |                   ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

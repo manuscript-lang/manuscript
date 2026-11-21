@@ -1,0 +1,5 @@
+106.ms:36:11: parse: expected '=', found '&'
+    |
+ 36 |     var ac&6 = 0
+    |           ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

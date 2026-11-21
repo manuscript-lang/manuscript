@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "unexpected source character '\\u{200b}'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCII",
+      "position": {
+        "file": "033.ms",
+        "line": 3,
+        "column": 28,
+        "offset": 80
+      }
+    }
+  ]
+}

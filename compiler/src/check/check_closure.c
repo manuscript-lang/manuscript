@@ -73,7 +73,7 @@ static bool closure_plain(const MsBody *b, MsTy fn) {
     }
     const MsTyParam *params = ms_ty_params(tys, fn);
     for (uint32_t i = 0; i < tys->nparams[fn]; i++) {
-        if ((params[i].flags & ~MS_PARAM_POSITIONAL) != 0 || !ms_body_is_plain_value(b, params[i].ty)) {
+        if ((params[i].flags & ~MS_PARAM_POSITIONAL) != 0 || !(ms_body_is_plain_value(b, params[i].ty) || ms_body_is_bindable(b, params[i].ty))) {
             return false;
         }
     }

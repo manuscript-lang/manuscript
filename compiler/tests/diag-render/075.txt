@@ -1,0 +1,5 @@
+075.ms:11:18: parse: unexpected source character '`'; text uses double quotes with {expression} interpolation
+    |
+ 11 | or: captures the `var` parameter `c`
+    |                  ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
