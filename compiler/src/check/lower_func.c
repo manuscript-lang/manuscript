@@ -32,6 +32,9 @@ static bool lb_signature(Lb *lb, const LbCallable *c, MirParam *params, MirTy *r
         const MsTy source = i < first ? c->self_ty : sig_params[i - first].ty;
         const MirTy ty = lb_mir_ty(lb, source);
         const bool moving = lb_param_moves(lb, c, i);
+        if ((moving || (i == 0 && c->consuming)) && lc_is_resource(lb, ty)) {
+            return false; // the function owns a resource and must close it: not lowered yet
+        }
         const bool mutable_slot = lb_slot_mutable(c, i);
         if (ty == MIR_NONE || (moving && !lb_owns(lb, ty)) || (mutable_slot && lb_is_fn(lb, ty))) { // only a String is handed over so far
             return false;

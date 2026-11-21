@@ -67,6 +67,7 @@ typedef struct LbCallable {
     MsTy sig;       /* the signature, receiver not included */
     MsTy self_ty;   /* MS_TY_NONE for a function */
     bool mutating;  /* the receiver is a `var` one */
+    bool consuming; /* the receiver is a `move` one */
 } LbCallable;
 
 /* What the lowering reads of one source module: its facts, and the tables its node and binding ids
