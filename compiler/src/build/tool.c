@@ -1,4 +1,7 @@
 /* Helpers of the build steps (ms/build_tool.h): files and the tools they run. */
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L /* lstat, mkdtemp, strerror_r; libms.c defines it first for the whole unit */
+#endif
 #include "ms/build_tool.h"
 
 #include <errno.h>
@@ -12,10 +15,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-extern char **environ;
-
 bool ms_build_read(const char *path, MsBuf *out) {
-    FILE *file = fopen(path, "rb");
+    FILE *file = fopen(path, "rbe");
     if (file == NULL) {
         return false;
     }
@@ -30,7 +31,7 @@ bool ms_build_read(const char *path, MsBuf *out) {
 }
 
 bool ms_build_write(const char *path, const void *bytes, size_t len) {
-    FILE *file = fopen(path, "wb");
+    FILE *file = fopen(path, "wbe");
     if (file == NULL) {
         return false;
     }
@@ -50,7 +51,26 @@ bool ms_build_run(const char *what, const char *const *argv, const char *log, Ms
     return ms_build_run_in(what, argv, NULL, log, output);
 }
 
+/* `posix_spawnp` takes mutable strings, so the arguments are copied rather than cast. */
+static char **bt_copy_argv(const char *const *argv, MsBuf *strings, MsBuf *pointers) {
+    size_t n = 0;
+    while (argv[n] != NULL) {
+        ms_buf_puts(strings, argv[n]);
+        ms_buf_putc(strings, 0);
+        n++;
+    }
+    char *at = strings->data;
+    for (size_t i = 0; i < n; i++) {
+        MS_VEC_PUSH(*pointers, char *, at);
+        at += strlen(at) + 1;
+    }
+    MS_VEC_PUSH(*pointers, char *, NULL);
+    return ms_buf_items(pointers);
+}
+
 bool ms_build_run_in(const char *what, const char *const *argv, const char *cwd, const char *log, MsBuf *output) {
+    MsBuf strings = {0}, pointers = {0};
+    char **mutable_argv = bt_copy_argv(argv, &strings, &pointers);
     posix_spawn_file_actions_t actions;
     posix_spawn_file_actions_init(&actions);
     if (cwd != NULL) {
@@ -64,8 +84,10 @@ bool ms_build_run_in(const char *what, const char *const *argv, const char *cwd,
     posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, log, O_WRONLY | O_CREAT | O_TRUNC, 0600);
     posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDERR_FILENO);
     pid_t pid = 0;
-    const int spawned = posix_spawnp(&pid, argv[0], &actions, NULL, (char *const *)argv, environ) /* NOLINT(cppcoreguidelines-pro-type-const-cast) */;
+    const int spawned = posix_spawnp(&pid, mutable_argv[0], &actions, NULL, mutable_argv, environ);
     posix_spawn_file_actions_destroy(&actions);
+    ms_buf_free(&strings);
+    ms_buf_free(&pointers);
     if (spawned != 0) {
         ms_buf_printf(output, "cannot run %s: ", what);
         ms_build_errno_text(spawned, output);
@@ -120,7 +142,7 @@ void ms_build_unlink(const char *path) {
 void ms_build_remove_tree(const char *path) {
     DIR *dir = opendir(path);
     if (dir != NULL) {
-        for (const struct dirent *entry = readdir(dir); entry != NULL; entry = readdir(dir)) {
+        for (const struct dirent *entry = readdir(dir); entry != NULL; entry = readdir(dir)) { // NOLINT(concurrency-mt-unsafe): one stream, one thread.
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
                 continue;
             }
