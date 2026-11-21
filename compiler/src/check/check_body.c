@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "check/check_body.h"
+#include "ms/doc.h"
 #include "ms/implements.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
@@ -700,6 +701,16 @@ void ms_body_check_home(MsBody *b, MsSymId sym) {
     }
 }
 
+/* An `extern type` the standard library declares buildable from source with no arguments
+ * (`// ms: constructible` above it): `StringBuilder()`. The others have a literal or a function. */
+static bool body_constructible_extern(const MsBody *b, MsSymId sym, const MsDecl *decl, MsTy record) {
+    const MsSyms *syms = &b->c->syms;
+    return decl != NULL && decl->kind == MS_D_TYPE && decl->u.type.external && syms->nvars[sym] == 0 &&
+           ms_ty_kind(&b->c->tys, record) == MS_K_NATIVE && body_is_admitted(b, record) &&
+           syms->module[sym] != MS_NONE &&
+           ms_doc_has_marker(b->c->mods[syms->module[sym]].text, decl->pos.offset, "constructible");
+}
+
 static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     ms_body_check_home(b, sym);
     const MsSyms *syms = &b->c->syms;
@@ -707,6 +718,10 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     const MsDef *def = ms_def(b->c, sym);
     const MsDecl *decl = syms->decl[sym];
     const uint32_t nargs = e->u.call.args.len;
+    if (nargs == 0 && body_constructible_extern(b, sym, decl, record)) {
+        b->facts->call_callee[e->id] = sym;
+        return record;
+    }
     if (syms->nvars[sym] != 0 || decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.external ||
         (syms->module[sym] != b->module && decl->u.type.opaque) || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
         !body_is_admitted(b, record) || nargs > def->nfields || def->nfields != decl->u.type.fields.len) {
@@ -1559,7 +1574,8 @@ static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) 
         return false;
     }
     *element = ms_ty_args(&b->c->tys, ty)[0];
-    return body_is_value_type(b, *element) || ms_body_is_list(b, *element);
+    return body_is_value_type(b, *element) || body_is_sized_number(b, *element) || ms_body_is_list(b, *element) ||
+           body_is_own_nominal(b, *element);
 }
 
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
