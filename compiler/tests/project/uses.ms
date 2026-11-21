@@ -1,7 +1,7 @@
 // Imports of project modules resolve through the graph: a type and a function of
-// another module.
+// another module, and an imported constant.
 import (
-	double from "./lib.ms",
+	LIMIT, double from "./lib.ms",
 	Point, origin from "./shapes.ms",
 )
 
@@ -10,3 +10,6 @@ fn start() Point:
 
 fn shifted(p: Point) Int:
 	return double(p.x)
+
+fn capped(n: Int) Int:
+	return n + LIMIT

@@ -119,6 +119,9 @@ static void own_declare(OwnWalk *w, uint32_t binding, Perm perm, bool parameter)
     w->declared[w->ndeclared++] = binding;
     w->perm[binding] = (uint8_t)perm;
     w->class_of[binding] = (uint8_t)ms_classify(w->classifier, w->facts->bindings.ty[binding]);
+    if (w->class_of[binding] == MS_CLASS_RESOURCE) {
+        w->facts->bindings.flags[binding] |= MS_BIND_RESOURCE;
+    }
     w->origin[binding] = MS_NONE;
     w->is_param[binding] = parameter;
     w->param_mode[binding] = 0;
@@ -1179,7 +1182,7 @@ static void own_while(OwnWalk *w, const MsStmt *s) {
 }
 
 /* `for i in a..b`: the bounds are read once; the counter is a fresh copied binding per iteration. */
-/* `for name in xs` over a list of copies: the loop variable is a plain value, and the list stays
+/* `for name in xs`: the loop variable is a plain value, or borrows a String element, and the list stays
  * unchanged for the whole loop, which a hidden borrow on it says. */
 static void own_for_list(OwnWalk *w, const MsStmt *s) {
     const uint32_t mark = w->ndeclared;
@@ -1196,7 +1199,12 @@ static void own_for_list(OwnWalk *w, const MsStmt *s) {
         w->supported = false;
         return;
     }
-    own_declare(w, variable, PERM_IMMUTABLE, false);
+    if (ms_classify(w->classifier, w->facts->bindings.ty[variable]) == MS_CLASS_COPY) {
+        own_declare(w, variable, PERM_IMMUTABLE, false);
+    } else { // a String element is borrowed from the list; moving it out is left to the Rust walk
+        own_declare(w, variable, PERM_BORROWED, false);
+        w->deferred[variable] = true;
+    }
     BorrowSet entry = own_set_copy(&w->active);
     own_block(w, &s->u.each.body);
     own_join(w, entry);

@@ -146,7 +146,7 @@ typedef struct MsEntityEffects {
 } MsEntityEffects;
 
 /* Facts for every body-checked function and constant of project `module`, whose source is `text`
- * (the other modules' text is the checker's own). The result has one row per such declaration in
+ * (the other modules' text is the checker's own). Run the ownership walk first: it marks bindings that close at scope end (MS_BIND_RESOURCE), whose implicit `close` call makes a function `partial`. The result has one row per such declaration in
  * declaration order; `*count` is the number of rows. */
 MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId module, MsStr text, uint32_t *count);
 

@@ -108,6 +108,11 @@ MsScanNode ms_effect_scan_decl(MsArena *arena, const MsCheck *c, MsModId module,
     ScanState s = {.arena = arena, .check = c, .facts = c->mods[module].facts};
     const MsVisitor visitor = {.ctx = &s, .stmt = scan_stmt, .expr = scan_expr};
     ms_walk_decl(&visitor, d);
+    // A binding that must be closed calls its `close` when its scope ends, an edge no expression names.
+    const MsBindings *bindings = &s.facts->bindings;
+    for (uint32_t i = 0; i < bindings->count && !s.partial; i++) {
+        s.partial = bindings->callable[i] == d->id && (bindings->flags[i] & MS_BIND_RESOURCE) != 0;
+    }
     return (MsScanNode){.edges = s.edges, .nedges = s.nedges, .unknown = s.unknown, .write = s.write,
                        .partial = s.partial};
 }
