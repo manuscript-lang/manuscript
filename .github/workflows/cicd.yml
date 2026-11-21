@@ -113,7 +113,7 @@ jobs:
   rust:
     needs: due
     # A pull request that changes only documentation or the C compiler takes no runner for the Rust jobs.
-    if: needs.due.outputs.run == 'true' && needs.due.outputs.rust == 'true'
+    if: github.ref_name != 'claude/macos-fetch-segv' && needs.due.outputs.run == 'true' && needs.due.outputs.rust == 'true'
     name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }}${{ matrix.part == 'a' && ' · tests' || matrix.part == 'b' && ' · conformance' || '' }}
     runs-on: ${{ matrix.leg.runner }}
     timeout-minutes: 75
@@ -231,6 +231,42 @@ jobs:
           llvm-job: ${{ matrix.leg.job }}
           shard: ${{ matrix.leg.shard }}
           suffix: -llvm-${{ matrix.leg.job }}${{ matrix.leg.index }}
+
+  # Temporary: crash report for the macOS fetch segfault, from the debug branch only (never merged).
+  mac-debug:
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == 'claude/macos-fetch-segv'
+    name: mac-debug-${{ matrix.arch }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'macos-15' || 'macos-15-intel' }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, amd64]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/rust-env
+        with:
+          os: darwin
+          arch: ${{ matrix.arch }}
+      - name: Build ms
+        run: |
+          make build
+      - name: Crash report
+        run: |
+          mkdir -p /tmp/p && cd /tmp/p
+          cat > f.ms <<'EOF'
+          import fetch from "@std/net/fetch.ms"
+
+          fn main() Int:
+              r := fetch("http://127.0.0.1:1/").wait()
+              if r.is_ok(): return 1
+              return 0
+          EOF
+          "$GITHUB_WORKSPACE/target/release/ms" build f.ms -o prog 2>&1 | tail -5
+          ./prog; echo "exit=$?"
+          lldb -b -o 'process launch' -o 'bt all' -o 'register read' -o 'disassemble -p -c 8' -- ./prog 2>&1 | tail -80
 
   # C checks, in jobs of their own so the Rust jobs stay under ten minutes: only a pull request that touches the C
   # runtime or compiler (`due` decides from the scope) starts them. `runtime`: the unit tests under AddressSanitizer
