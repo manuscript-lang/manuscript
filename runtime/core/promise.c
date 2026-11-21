@@ -1274,6 +1274,8 @@ MsPromiseProbe ms_promise_probe(MsPromise id) {
     return ended_without_value(state) ? MS_PROMISE_FAILED_PROBE : MS_PROMISE_DONE_PROBE;
 }
 
+bool ms_promise_is_foreign(MsPromise id) { return is_foreign(id); }
+
 bool ms_promise_completes_elsewhere(MsPromise id) {
     if (is_foreign(id)) {
         return true;
