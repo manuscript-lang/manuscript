@@ -74,18 +74,16 @@ fn is_source_command(command: String) Bool:
 		"profile"
 	].contains(command)
 
-// Runs `ms test` or `ms bench`: one file, one project, or several manifests and workspace
-// roots, whose members each run as this command line again.
+// Runs `ms test` or `ms bench`: one file, one project, or several manifests and
+// workspace roots, whose members each run as this command line again.
 fn run_tests(root: Command, matches: Matches, inv: Invocation) Int:
 	bench := inv.command == "bench"
 	manifests := inv.targets.filter(fn target: target.ends_with("ms.toml"))
-
 	if inv.targets.length() > 1 and manifests.length() == inv.targets.length(): return run_members(
 		inv,
 		manifests,
 		member_lines(root, matches, manifests),
 	)
-
 	if not inv.filename.ends_with("ms.toml"): return run_one(inv)
 
 	space := root_workspace(inv.filename)
