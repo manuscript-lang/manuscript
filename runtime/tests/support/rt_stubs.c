@@ -8,6 +8,7 @@
 #include "ms_rt/desc.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/task.h"
+#include "fault.h"
 #include "rt_calls.h"
 #include "rt_stubs.h"
 
@@ -66,3 +67,11 @@ __attribute__((weak)) uint8_t msrt_rollback_needed(void) { return 1; }
 
 /* Weak: core_task_abi links the real one (runtime/core/task_abi.c), every other core test runs without a scheduler. */
 __attribute__((weak)) void msrt_task_grow(MsGrowFn shim, void *block) { shim(block); }
+
+/* Weak: the fault record of a test capture belongs to the entry layer (runtime/entry/test_support.c); the core tests keep none. */
+__attribute__((weak)) void ms_test_keep_fault(uint64_t capture, const MsFaultText *text) {
+    (void)capture;
+    (void)text;
+}
+
+__attribute__((weak)) void ms_test_drop_fault(uint64_t capture) { (void)capture; }

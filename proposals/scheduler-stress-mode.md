@@ -18,7 +18,7 @@ Proposal and implementation in one PR, 2026-11-15, checked against 7d4b8c2f.
 
 ## Design
 
-- `MS_SCHED_STRESS` set to anything but empty or `0` turns it on; read once (`sched::stress`).
+- `MS_SCHED_STRESS` set to anything but empty or `0` turns it on; read once (`ms_workers_stress`).
 - `sched::limit` is at least 2, so another thread always exists.
 - `sched::submit` in stress mode (`submit_stress`) pushes the start to the first idle thread other than the creator (lowest index), else the next thread in turn. The start is already aged, so any idle thread may also take it. It returns sequence 0: the creator's queue holds nothing, `remove_pending` finds nothing, and the waiter parks.
 - Cancel of such a start sets `WANT_CANCEL`, the same path as a start taken but not yet running.
@@ -30,7 +30,7 @@ Proposal and implementation in one PR, 2026-11-15, checked against 7d4b8c2f.
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-rt/src/sched.rs` | `stress`, `submit_stress`, limit floor | `promise::tests` run with stress forced |
+| `runtime/core/worker.c`, `promise.c` | `ms_workers_stress`, aged queueing, no inline claim, limit floor | `promise::tests` run with stress forced |
 | `tools/stress-sched.ms`, `Makefile` | the sweep and `make stress-sched` | run on the fixtures |
 | `documentation/contributing/development.md`, `wiki/runtime` | how to use it | none |
 
