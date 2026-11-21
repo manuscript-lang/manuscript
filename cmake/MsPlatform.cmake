@@ -71,7 +71,7 @@ endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
   # gcc 10+ calls libgcc's __aarch64_cas8_acq_rel and friends for atomics by default; a program links the runtime
   # archive with lld and no libgcc, so the atomics are inlined (the Rust runtime did the same).
-  list(APPEND MS_C_FLAGS -mno-outline-atomics)
+  add_compile_options(-mno-outline-atomics)
 endif()
 # A compiler for a target other than this host's is told which: pass -DCMAKE_C_COMPILER_TARGET=<triple> on the first
 # configure (`musl-gcc` already targets musl and llvm-mingw's clang wrapper mingw-w64, so they need none).
