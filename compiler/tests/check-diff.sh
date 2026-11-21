@@ -23,6 +23,26 @@ desugar_oracle=target/release/examples/c_oracle_desugar
 methods_oracle=target/release/examples/c_oracle_methods
 
 sh compiler/tests/cbuild.sh ms_check_dump types_test ownership_test recursion_test ty_algebra_test infer_test implements_test ms_effect_dump effect_graph_gen ms_desugar_dump ms_methods_dump
+
+# `par_dump OUT LIST TOOL ARGS...`: runs `TOOL ARGS... FILES` over the files listed in LIST, one chunk per core side by side,
+# and joins the outputs in file order into OUT. Every section of the dump names its own file, so a chunk is independent.
+par_dump() {
+    par_out=$1
+    par_list=$2
+    shift 2
+    rm -f "$par_out".chunk.*
+    split -n "l/$(nproc 2>/dev/null || echo 2)" -d "$par_list" "$par_out.list."
+    par_pids=""
+    for chunk in "$par_out".list.*; do
+        "$@" $(cat "$chunk") > "$par_out.chunk.${chunk##*.}" &
+        par_pids="$par_pids $!"
+    done
+    for pid in $par_pids; do
+        wait "$pid"
+    done
+    cat "$par_out".chunk.* > "$par_out"
+    rm -f "$par_out".list.* "$par_out".chunk.*
+}
 bin=target/cmake/test/compiler
 "$bin/ownership_test"
 "$bin/types_test"
@@ -45,7 +65,8 @@ fi
 # and the whole conformance corpus. The files must produce some, or the comparison proves nothing.
 files=$(find compiler/tests/scope tests/conformance/fixtures -name '*.ms' | sort)
 "$oracle" --scope $files > "$out/scope.rust"
-"$bin/ms_check_dump" stdlib --scope $files > "$out/scope.c"
+printf '%s\n' $files > "$out/scope.list"
+par_dump "$out/scope.c" "$out/scope.list" "$bin/ms_check_dump" stdlib --scope
 # The Rust checker stops before every pass when desugaring an inherent `impl` fails; the C
 # checker does not desugar yet, so those files are left out of the comparison until it does.
 drop_unchecked() {
@@ -87,7 +108,8 @@ keyed() {
     awk '/^== / { file = $2; key = ""; next } /^(fn|const) / { key = file " " $2 } key != "" { print key "|" $0 }' "$1"
 }
 "$oracle" --bodies $files > "$out/bodies.rust"
-"$bin/ms_check_dump" stdlib --bodies $files > "$out/bodies.c.all"
+printf '%s\n' $files > "$out/bodies.list"
+par_dump "$out/bodies.c.all" "$out/bodies.list" "$bin/ms_check_dump" stdlib --bodies
 drop_unowned "$out/bodies.rust" "$out/bodies.c.all" > "$out/bodies.c"
 keyed "$out/bodies.c" > "$out/bodies.c.raw"
 # A function the ownership walk handed back is marked; Rust's ownership diagnostics inside it have no
@@ -191,6 +213,11 @@ if ! grep -q 'body_for_variable_list.ms 1:1$' "$out/bodies.keys"; then
     echo "FAIL bodies: a loop over a list of a type variable is no longer checked in C (compiler/tests/scope/body_for_variable_list.ms)"
     status=1
 fi
+# A loop over a map or a set is checked in C (ownership and lowering leave it to Rust).
+if ! grep -q 'body_for_collection.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_for_collection.ms 7:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a loop over a map or a set is no longer checked in C (compiler/tests/scope/body_for_collection.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else
@@ -219,7 +246,8 @@ done
 # on the ownership fixtures and the corpus. Only functions the C walk handles are compared.
 ownership_files=$(find compiler/tests/ownership compiler/tests/scope tests/conformance/fixtures -name '*.ms' | sort)
 "$oracle" --ownership $ownership_files > "$out/ownership.rust"
-"$bin/ms_check_dump" stdlib --ownership $ownership_files > "$out/ownership.c.all"
+printf '%s\n' $ownership_files > "$out/ownership.list"
+par_dump "$out/ownership.c.all" "$out/ownership.list" "$bin/ms_check_dump" stdlib --ownership
 drop_unowned "$out/ownership.rust" "$out/ownership.c.all" > "$out/ownership.c"
 keyed "$out/ownership.c" > "$out/ownership.c.keyed"
 cut -d'|' -f1 "$out/ownership.c.keyed" | sort -u > "$out/ownership.keys"
@@ -237,7 +265,8 @@ fi
 # Effect scan: the callables each function or constant the C checker checked references (first
 # reference of each, in source order), against the Rust scan's. Only functions C claims are compared.
 "$oracle" --effects $files > "$out/effects.rust"
-"$bin/ms_check_dump" stdlib --effects $files > "$out/effects.c"
+printf '%s\n' $files > "$out/effects.list"
+par_dump "$out/effects.c" "$out/effects.list" "$bin/ms_check_dump" stdlib --effects
 # The Rust checker scans effects only for a program it accepts; leave the others out.
 awk '/^== / { file = $2 } /^unchecked$/ { print file }' "$out/effects.rust" > "$out/effects.unchecked"
 for side in rust c; do
