@@ -10,6 +10,7 @@
 #include "base/file.h"
 #include "base/list.h"
 #include "base/strbuild.h"
+#include "base/sort.h"
 #include "compiler/syntax/diag_json.h"
 #include "compiler/syntax/format.h"
 
@@ -33,9 +34,10 @@ static void print_span(FILE *stream, MsSpan text) {
   (void)fwrite(text.ptr, 1, text.len, stream);
 }
 
-static int order_targets(const void *a, const void *b) {
-  const MsSpan *x = a;
-  const MsSpan *y = b;
+static int64_t order_targets(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const MsSpan *x = (const void *)a;
+  const MsSpan *y = (const void *)b;
   const size_t common = x->len < y->len ? x->len : y->len;
   for (size_t index = 0; index < common; index++) {
     if (x->ptr[index] != y->ptr[index]) {
@@ -221,7 +223,7 @@ int ms_fmt_command(int argc, char **argv) {
   for (size_t index = 0; index < targets.len; index++) {
     targets.ptr[index] = display_of(targets.ptr[index]);
   }
-  qsort(targets.ptr, targets.len, sizeof targets.ptr[0], order_targets);
+  ms_sort((uint8_t *)targets.ptr, targets.len, sizeof targets.ptr[0], order_targets, NULL);
   const size_t count = unique_targets(targets.ptr, targets.len);
   FmtOutcome *outcomes = calloc(count, sizeof *outcomes);
   if (outcomes == NULL) {
