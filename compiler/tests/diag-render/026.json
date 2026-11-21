@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected a module declaration or import, found name 'f_n'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+      "position": {
+        "file": "026.ms",
+        "line": 3,
+        "column": 1,
+        "offset": 53
+      },
+      "end": {
+        "file": "026.ms",
+        "line": 3,
+        "column": 4,
+        "offset": 56
+      }
+    }
+  ]
+}

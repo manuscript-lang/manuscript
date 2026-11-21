@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: setup lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: setup lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-model docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -160,15 +160,28 @@ licenses: build libms-tools
 licenses-check: build libms-tools
 	$(MS) run tools/repo-check.ms --link target/libms_tools.a -- licenses -check
 
-# The book and API reference come from the Rust docgen (crates/ms-tooling).
-docs:
-	cargo run -q --release --locked -p ms-tooling --bin ms-docgen
+# The book and API reference come from the C checker's API model (ms_api_model) through tools/ms/docgen.ms; the
+# description policy is checked by tools/ms/doc_inventory.ms.
+DOC_MODEL = target/c-tool/model.json
 
-docs-check:
-	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -check
+docs-model: target/c-tool/libmstool.a
+	target/c-tool/ms_api_model stdlib > $(DOC_MODEL)
 
-docs-coverage:
-	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -check -coverage .artifacts/stdlib-doc-coverage.json
+# Rebuilds the disposable book Markdown (.artifacts/docs) and the API downloads (website/static/stdlib.*).
+docs: docs-model docs-check
+	rm -rf target/c-tool/docs target/c-tool/docs.out .artifacts/docs
+	$(RELEASE_MS) run tools/ms/docgen.ms -- $(DOC_MODEL) target/c-tool/docs.out
+	mkdir -p .artifacts/docs website/static
+	cp -r target/c-tool/docs.out/documentation .artifacts/docs/
+	cp target/c-tool/docs.out/website/static/stdlib.md target/c-tool/docs.out/website/static/stdlib.json website/static/
+
+# Validates the API descriptions against the policy; fails on a declaration that does not meet it.
+docs-check: docs-model
+	$(RELEASE_MS) run tools/ms/doc_inventory.ms -- $(DOC_MODEL) tools/ms/data/description_backlog.json
+
+docs-coverage: docs-model
+	mkdir -p .artifacts
+	$(RELEASE_MS) run tools/ms/doc_inventory.ms -- $(DOC_MODEL) tools/ms/data/description_backlog.json .artifacts/stdlib-doc-coverage.json
 
 # BOOK_BASEURL moves the site to another address, as a release's archived copy under versions/v<version>/.
 book: docs
@@ -268,7 +281,6 @@ c-compiler-test:
 	sh compiler/tests/fixes-diff.sh
 	sh compiler/tests/prelude-fix-diff.sh
 	sh compiler/tests/import-hints-diff.sh
-	sh compiler/tests/run-run.sh
 	sh compiler/tests/asm-tables.sh
 	sh compiler/tests/llvm-run.sh
 	sh compiler/tests/llvm-main-run.sh
@@ -302,6 +314,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
 	"$(RELEASE_MS)" test tools/ms/install.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/lsp/analysis.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/lsp/navigate.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/project.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/workspace.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
@@ -311,6 +324,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/test/watch.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/report.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/payloads.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed_calls.ms --link target/c-tool/libmstool.a

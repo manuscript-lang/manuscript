@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "unmatched closing delimiter ']'; remove it or add the matching opener before it",
+      "position": {
+        "file": "031.ms",
+        "line": 3,
+        "column": 7,
+        "offset": 64
+      },
+      "end": {
+        "file": "031.ms",
+        "line": 3,
+        "column": 8,
+        "offset": 65
+      }
+    }
+  ]
+}

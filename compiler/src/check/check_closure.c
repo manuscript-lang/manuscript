@@ -73,7 +73,7 @@ static bool closure_plain(const MsBody *b, MsTy fn) {
     }
     const MsTyParam *params = ms_ty_params(tys, fn);
     for (uint32_t i = 0; i < tys->nparams[fn]; i++) {
-        if ((params[i].flags & ~MS_PARAM_POSITIONAL) != 0 || !ms_body_is_plain_value(b, params[i].ty)) {
+        if ((params[i].flags & ~MS_PARAM_POSITIONAL) != 0 || !(ms_body_is_plain_value(b, params[i].ty) || ms_body_is_bindable(b, params[i].ty))) {
             return false;
         }
     }
@@ -106,10 +106,9 @@ static MsTy closure_positional(MsBody *b, MsTy sig) {
     return ms_ty_intern(tys, &desc);
 }
 
-/* `callee(args)` where `callee` names a binding of function type: positional arguments of the
- * parameter types. */
-MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding) {
-    const MsTy fn = b->facts->bindings.ty[binding];
+/* `callee(args)` where `callee` is an expression of the function type `fn` (a binding or a field):
+ * positional arguments of the parameter types. */
+MsTy ms_body_call_function(MsBody *b, const MsExpr *e, MsTy fn) {
     const MsExpr *callee = e->u.call.callee;
     const MsTyTable *tys = &b->c->tys;
     if (!ms_body_is_function_value(b, fn) || tys->nparams[fn] != e->u.call.args.len ||
@@ -124,6 +123,11 @@ MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding) {
         }
     }
     return ms_body_has_invalid(b, tys->result[fn]) ? b->invalid_ty : tys->result[fn];
+}
+
+/* `callee(args)` where `callee` names a binding of function type. */
+MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding) {
+    return ms_body_call_function(b, e, b->facts->bindings.ty[binding]);
 }
 
 /* A module function named as a value. */

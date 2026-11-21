@@ -305,6 +305,7 @@ bool lx_is_extern(const Lb *lb, MsSymId callee);
  * failure text (MIR_NONE for an absent one). */
 typedef struct LbNativeStatus {
     MirTy out_ty;
+    bool found; // the call returns whether it wrote the value (a bool), not a status (an int)
 } LbNativeStatus;
 typedef struct LbNativeSlots {
     MirValue out;
@@ -320,6 +321,9 @@ LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee);
 /* lower_status.c: a native reporting failure by a status, called for a `Result[T, Error]`. */
 bool ls_reports_status(Lb *lb, const struct MsRtFn *fn, MirTy result_ty);
 LbVal ls_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
+/* A native returning whether it found a value, written through an `out` scalar, called for an Optional of it. */
+bool ls_reports_found(Lb *lb, const struct MsRtFn *fn, MirTy result_ty);
+LbVal ls_found_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */

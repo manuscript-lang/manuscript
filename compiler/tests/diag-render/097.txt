@@ -1,0 +1,5 @@
+097.ms:9:14: parse: a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found ':='
+   |
+ 9 |     written |:= stdout().write(f"{text}\n")
+   |              ^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

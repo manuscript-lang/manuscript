@@ -1,0 +1,5 @@
+// conform: tags=closures,formatter,parser,tiertype -core
+// conform: phase=parse
+// conform:​or"igin=documentation/core-language/basics/grammar.md:77
+fn example() Int:
+    return appl‮y(value: 3, tranorm: fn(value: Int) Int: return value - 1)

@@ -38,11 +38,10 @@ MsTy lb_ty(Lb *lb, MsTy ty) {
     if (lb->nsub == 0 || ty == MS_TY_NONE) {
         return ty;
     }
-    MsArena scratch = {0};
-    if (ms_ty_kind(&lb->c->tys, ty) != MS_K_VARIABLE && !ms_ty_has_variable(&lb->c->tys, &scratch, ty)) {
-        ms_arena_free(&scratch);
+    if (!ms_ty_has_variable(&lb->c->tys, ty)) {
         return ty;
     }
+    MsArena scratch = {0};
     const MsTySubst subst = {lb->sub_vars, lb->sub_args, lb->nsub};
     const MsTy result = ms_ty_subst(&lb->mut->tys, &scratch, ty, &subst);
     ms_arena_free(&scratch);
@@ -1137,6 +1136,10 @@ static LbVal lb_arm(Lb *lb, const MsArm *arm, const LbSubject *subject, bool voi
 /* `match` over literal arms with one value each. A Bool match is also how `if c: a else: b` is
  * written. Every arm's value joins in one block parameter. */
 static LbVal lb_match(Lb *lb, const MsExpr *e) {
+    // A match over an interface value tests the concrete type behind it, which lowering does not do yet.
+    if (ms_ty_kind(&lb->c->tys, lb->facts->expr_ty[e->u.match.scrutinee->id]) == MS_K_CONTRACT) {
+        return LB_UNSUPPORTED(lb);
+    }
     const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     LbVal scrutinee = lb_expr(lb, e->u.match.scrutinee);
     const MirTy scrutinee_ty = lb->ok ? mir_b_ty(&lb->b, scrutinee.v) : MIR_NONE;
@@ -1352,7 +1355,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
         return;
     }
     const MirTy value_ty = mir_b_ty(&lb->b, value.v);
-    if (lb_owns(lb, value_ty) && !value.owned && !lb->b.f.ret_borrowed) {
+    if (s->u.expr != NULL && lb_owns(lb, value_ty) && !value.owned && !lb->b.f.ret_borrowed) {
         value = lb_hand_out(lb, s->u.expr, value.v);
     }
     const bool leaves_var = !lb->b.f.ret_borrowed && s->u.expr != NULL && lb_names_var(lb, s->u.expr);

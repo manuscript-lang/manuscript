@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function",
+      "position": {
+        "file": "049.ms",
+        "line": 3,
+        "column": 5,
+        "offset": 70
+      },
+      "end": {
+        "file": "049.ms",
+        "line": 3,
+        "column": 6,
+        "offset": 71
+      }
+    }
+  ]
+}

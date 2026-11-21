@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "subcode": "MS3000.18",
+      "phase": "type",
+      "message": "extern parameter value cannot have a default; the native symbol takes every argument",
+      "position": {
+        "file": "default_param.ms",
+        "line": 1,
+        "column": 16,
+        "offset": 15
+      }
+    }
+  ]
+}
