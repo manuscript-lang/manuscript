@@ -1,6 +1,7 @@
 /* runtime/std/ws_handshake.c: the opening handshake of RFC 6455 and the origin policy of the server upgrade.
  * Pure functions over parsed heads: the server exchange and the client do the I/O. */
 #include "base/alloc.h"
+#include "base/chars.h"
 #include "runtime/std/crypto.h"
 #include "runtime/std/encoding.h"
 #include "runtime/std/http_h1.h"
@@ -110,23 +111,6 @@ static MsSpan skip_token_or_quoted(MsSpan s) {
   return ms_span_of(s.ptr + s.len, 0);
 }
 
-static uint8_t fold(uint8_t b) {
-  return (uint8_t)(b >= 'A' && b <= 'Z' ? b + 32 : b);
-}
-
-static bool ci_equal(MsSpan a, const char *text) {
-  const MsSpan b = ms_span_of_text(text);
-  if (a.len != b.len) {
-    return false;
-  }
-  for (size_t i = 0; i < a.len; i++) {
-    if (fold(a.ptr[i]) != fold(b.ptr[i])) {
-      return false;
-    }
-  }
-  return true;
-}
-
 static bool line_has_token(MsSpan line, const char *value) {
   MsSpan s = line;
   for (;;) {
@@ -135,7 +119,7 @@ static bool line_has_token(MsSpan line, const char *value) {
     if (token.len == 0 || (s.len > 0 && s.ptr[0] != ',')) {
       return false;
     }
-    if (ci_equal(token, value)) {
+    if (ms_ascii_is_text_fold(token, value)) {
       return true;
     }
     if (s.len == 0) {
@@ -281,7 +265,7 @@ static bool bare_origin(MsSpan origin, MsSpan *scheme, MsSpan *authority) {
   }
   *scheme = ms_span_of(origin.ptr, at);
   *authority = tail(origin, at + 3);
-  if (!ci_equal(*scheme, "http") && !ci_equal(*scheme, "https")) {
+  if (!ms_ascii_is_text_fold(*scheme, "http") && !ms_ascii_is_text_fold(*scheme, "https")) {
     return false;
   }
   return authority->len > 0 && ms_http_valid_authority(*authority);
@@ -303,9 +287,9 @@ bool ms_ws_origin_allowed(const MsHeaders *fields, MsSpan host, bool tls, const 
   }
   bool same_host = authority.len == host.len;
   for (size_t i = 0; same_host && i < host.len; i++) {
-    same_host = fold(authority.ptr[i]) == fold(host.ptr[i]);
+    same_host = ms_ascii_to_lower(authority.ptr[i]) == ms_ascii_to_lower(host.ptr[i]);
   }
-  return count == 0 && ci_equal(scheme, tls ? "https" : "http") && same_host;
+  return count == 0 && ms_ascii_is_text_fold(scheme, tls ? "https" : "http") && same_host;
 }
 
 /* ---- server side ---- */
@@ -487,7 +471,7 @@ static void push_caller_fields(const MsHeaders *headers, MsList *fields, MsBytes
     const MsSpan name = ms_headers_group_name(headers, g);
     for (size_t v = 0; v < ms_headers_group_size(headers, g); v++) {
       MsBytes value = clean_value(ms_headers_group_value(headers, g, v));
-      if (ci_equal(name, "User-Agent")) {
+      if (ms_ascii_is_text_fold(name, "User-Agent")) {
         ms_bytes_free(agent);
         *agent = value;
         continue;

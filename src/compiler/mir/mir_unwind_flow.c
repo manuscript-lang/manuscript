@@ -162,7 +162,7 @@ typedef struct UwGraph {
 } UwGraph;
 
 static UwGraph uw_graph(MsArena *a, const MirFunc *f, const MirBlock *rpo, uint32_t nrpo) {
-  const uint32_t n = f->blocks.len;
+  const uint32_t n = (uint32_t)f->blocks.len;
   UwGraph g = {.n = n, .succs = MS_ARENA_NEW_ARRAY(a, uint32_t *, n), .nsuccs = MS_ARENA_NEW_ARRAY(a, uint32_t, n),
         .preds = MS_ARENA_NEW_ARRAY(a, uint32_t *, n), .npreds = MS_ARENA_NEW_ARRAY(a, uint32_t, n),
         .pos = MS_ARENA_NEW_ARRAY(a, uint32_t, n)};
@@ -276,7 +276,7 @@ static bool uw_flow_trim(UwFlowPass *p) {
  * when the plan never settles, which cannot happen. */
 bool uw_plan_flow(UwCx *cx, const MirFunc *f, const UwWalk *walk, UwStacks *stacks, UwFlow *out) {
   MsArena *a = &cx->fn;
-  const uint32_t n = f->blocks.len;
+  const uint32_t n = (uint32_t)f->blocks.len;
   MirBlock *rpo = NULL;
   const uint32_t nrpo = mir_rpo(a, f, &rpo);
   const UwGraph g = uw_graph(a, f, rpo, nrpo);

@@ -392,7 +392,7 @@ static void uw_loop_exits(UwApply *ap, uint32_t li, const UwLoop *body, MirValue
     const MirLoc loc = f->blocks.ptr[b].term_loc;
     if (f->blocks.ptr[b].term.kind == MT_RET) {
       const MirInst inst = uw_discard_of(ap, first, loc);
-      mir_block_insert(&f->blocks.ptr[b], f->blocks.ptr[b].insts.len, &inst);
+      mir_block_insert(&f->blocks.ptr[b], (uint32_t)f->blocks.ptr[b].insts.len, &inst);
     }
     const uint32_t nt = mir_term_ntargets(&f->blocks.ptr[b].term);
     for (uint32_t slot = 0; slot < nt; slot++) {
@@ -434,7 +434,7 @@ static void uw_apply_one(UwApply *ap, uint32_t li, const UwPick *pick) {
   /* The registering block takes over the header's entry edges. */
   const uint32_t pre = mir_new_block(f);
   uw_sets_push(cx, ap->covered, (UwHash){0});
-  const uint32_t np = f->blocks.ptr[h].params.len;
+  const uint32_t np = (uint32_t)f->blocks.ptr[h].params.len;
   MirBlockParam *params = MS_ARENA_NEW_ARRAY(&m->arena, MirBlockParam, np + 1);
   MirValue *args = MS_ARENA_NEW_ARRAY(&m->arena, MirValue, np + 1);
   for (uint32_t k = 0; k < np; k++) {
@@ -489,7 +489,7 @@ static void uw_apply_one(UwApply *ap, uint32_t li, const UwPick *pick) {
  * changed. */
 bool uw_hoist_loops(UwCx *cx, MirFunc *f, bool **def, uint32_t *ndef, const UwHash *closed_by_with,
           UwHash **hoisted) {
-  const uint32_t n = f->blocks.len;
+  const uint32_t n = (uint32_t)f->blocks.len;
   UwBlockSets covered = {0};
   for (uint32_t b = 0; b < n; b++) {
     uw_sets_push(cx, &covered, (UwHash){0});
@@ -523,7 +523,7 @@ bool uw_hoist_loops(UwCx *cx, MirFunc *f, bool **def, uint32_t *ndef, const UwHa
       uw_apply_one(&ap, li, &chosen[li]);
     }
   }
-  uw_own_resize(cx, def, ndef, f->values.len);
+  uw_own_resize(cx, def, ndef, (uint32_t)f->values.len);
   *hoisted = covered.v;
   return changed;
 }

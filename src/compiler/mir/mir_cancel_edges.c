@@ -190,8 +190,8 @@ static bool ce_function(CeCx *cx) {
     return false;
   }
   ce_make_exit(cx);
-  uint32_t nvalues = f->values.len;
-  uint32_t norig = f->blocks.len - 1; /* blocks made since are the cancel exits */
+  uint32_t nvalues = (uint32_t)f->values.len;
+  uint32_t norig = (uint32_t)f->blocks.len - 1; /* blocks made since are the cancel exits */
   MsArena scratch = ms_arena_new();
   cx->scratch = &scratch;
   CeFlow flow = {.entry = MS_ARENA_NEW_ARRAY(&scratch, MirBits, f->blocks.len),
