@@ -89,7 +89,11 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
         return list;
     }
     const MirTy map = lm_type(lb, ty);
-    return map != MIR_NONE ? map : lb_mir_alt(lb, ty);
+    if (map != MIR_NONE) {
+        return map;
+    }
+    const MirTy native = lx_type(lb, ty);
+    return native != MIR_NONE ? native : lb_mir_alt(lb, ty);
 }
 
 MirLoc lb_loc(const Lb *lb, MsPos pos) {
