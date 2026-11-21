@@ -57,6 +57,12 @@ jobs:
           path: ${{ github.workspace }}/.artifacts/ccache
           key: ccache-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
           restore-keys: ccache-${{ matrix.os }}-${{ matrix.arch }}-
+      - if: matrix.os == 'darwin' && matrix.arch == 'amd64'
+        run: |
+          ls -la /usr/local/include | head -30
+          ls /usr/local/include/uv* 2>&1 | head
+          clang -E -H -std=c17 -isystem src/third_party/libuv/include -Isrc/third_party/libuv/src src/third_party/libuv/src/unix/stream.c 2>&1 >/dev/null | grep -E 'uv\.h|unix\.h|darwin\.h' | head
+          clang -E -std=c17 -isystem src/third_party/libuv/include -Isrc/third_party/libuv/src src/third_party/libuv/src/unix/stream.c 2>/dev/null | grep -n -B3 -A12 'struct uv_write_s {' | head -40
       - if: runner.os != 'Windows'
         run: cmake --preset debug
       - if: runner.os == 'Windows'
