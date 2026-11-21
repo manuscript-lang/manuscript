@@ -35,6 +35,8 @@ typedef struct MsBody {
     bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
     const MsTypeParams *tparams; /* the type parameters of the function being checked, and their variables */
     const MsTy *tvars;
+    const MsTypeRefs *receiver_args; /* in a method of a generic type: the receiver's written arguments (`Deque[T]`), and their variables */
+    const MsTy *receiver_vars;
     bool supported;         /* false once a construct outside the handled set is met */
     MsSite gave_up;         /* the first `ms_body_unsupported` call of this function */
     const MsExpr *borrow_ok; /* the one call whose borrowing result the context uses in place (a loop's iterable, a receiver) */

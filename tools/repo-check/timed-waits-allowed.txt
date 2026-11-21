@@ -14,7 +14,6 @@ crates/ms-cli/tests/fifo_cleanup.rs 1 test: lets time pass so a read stays block
 crates/ms-cli/tests/shutdown_windows.rs 2 test: channel deadlines for readiness and exit after Ctrl-Break, not a wait for time
 crates/ms-cli/tests/shutdown.rs 2 test: lets time pass before a signal
 crates/ms-build/src/link/fetch.rs 1 the pause before retrying a failed tools download (a backoff, not a poll)
-crates/ms-build/src/link/lld/glibc_stubs/tests.rs 2 test: channel deadline of a hung link, not a wait for time
 crates/ms-build/src/link/lld/tests.rs 2 test: channel deadline of a hung link, not a wait for time
 crates/ms-lsp/tests/supervise.rs 1 test: lets time pass
 crates/ms-tooling/tests/lint_tasks.rs 1 test: lets time pass

@@ -200,6 +200,16 @@ static bool generic_has_defaults(const MsDecl *decl) {
     return false;
 }
 
+/* Whether a field of the type declaration has a default value, an expression that can call back. */
+static bool generic_has_defaults(const MsDecl *decl) {
+    for (uint32_t i = 0; i < decl->u.type.fields.len; i++) {
+        if (decl->u.type.fields.ptr[i]->def != NULL) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* Every variable is bound to an admitted type and each of its bounds, with the bindings applied, is met. */
 static bool generic_bounds(MsBody *b, MsInfer *in) {
     if (b->methods == NULL) {
