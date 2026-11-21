@@ -40,5 +40,10 @@ for entry in x86_64-linux-gnu: aarch64-linux-gnu: x86_64-apple-macos:_ aarch64-a
     clang -S -g -O1 --target="$triple" compiler/tests/asm_tables_input.c -o "$out/input.s"
     "$bin/ms_asm_tables" "$out/input.meta" "$out/input.s" --prefix "$pre" > "$out/input.tables.s"
     clang -c --target="$triple" "$out/input.tables.s" -o "$out/input.o"
+    # Mach-O keeps only `L` labels out of its symbol table: a `.L` one splits the function into atoms, which breaks the
+    # CFI of a large function in the assembler.
+    case "$pre" in
+    _) if grep -q '^\.Lms' "$out/input.tables.s"; then echo "FAIL asm-tables $triple: a .Lms label on Mach-O"; exit 1; fi ;;
+    esac
     echo "ok   asm-tables $triple"
 done
