@@ -127,6 +127,9 @@ static bool lc_callable(const Lb *lb, const LbCloser *closer) {
 }
 
 static MirTy lc_result_ty(const Lb *lb, const LbCloser *closer) {
+    if (closer->contract != MS_TY_NONE) {
+        return MIR_NONE; // an interface value's close result is dropped where its scope ends
+    }
     const MirTy ret = lc_ret(lb, closer);
     if (ret == MIR_VOID || ret == MIR_NONE || mir_ty_data(lb->m, ret)->kind != MK_ALT ||
         lb->m->alts[mir_ty_data(lb->m, ret)->id].std != MSTD_RESULT) {
@@ -297,7 +300,7 @@ static bool lc_slot_own(Lb *lb, uint32_t binding, MirValue value) {
         return false;
     }
     const MirTy rty = lc_result_ty(lb, closer);
-    if (lc_ret(lb, closer) != MIR_VOID && rty == MIR_NONE) {
+    if (closer->contract == MS_TY_NONE && lc_ret(lb, closer) != MIR_VOID && rty == MIR_NONE) {
         return false;
     }
     if (closer->thunk == MIR_NONE) {
