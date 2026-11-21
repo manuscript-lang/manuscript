@@ -30,3 +30,5 @@ Organized copy of the LLVM Language Reference for work on direct LLVM emission (
 | [Intrinsics: vector, matrix and predication](intrinsics-vector.md) | Reductions, vector manipulation, masks, matrix, vector-predication (vp.*) and masked memory intrinsics. |
 | [Intrinsics: floating point](intrinsics-floating-point.md) | Float conversion, constrained FP, libm-equivalent and FP environment intrinsics. |
 | [Intrinsics: general and miscellaneous](intrinsics-general.md) | llvm.dbg.*, lifetime markers, expect, assume, stackmaps, EH, trampolines, convergence, atomics, ARC and others. |
+
+Update: `crates/ms-mir-llvm` is deleted. Release builds emit LLVM IR from C (`compiler/src/emit/emit_llvm.c`); references to `ms-mir-llvm` files in older wiki pages name the removed Rust emitter (see git history).

@@ -6,6 +6,7 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 
+#include "../entry/entry.h"
 #include "ms_sched.h"
 #include "spin.h"
 #include "task.h"
@@ -203,6 +204,7 @@ void msrt_test_capture_take(int64_t id, MsStr *out_text) {
 
 /* Ends capture `id`; later output of its tasks goes to standard output. */
 void msrt_test_capture_free(int64_t id) {
+    ms_test_drop_fault((uint64_t)id);
     ms_spin_lock(&captures.lock);
     for (size_t i = 0; i < captures.length; i++) {
         if (captures.items[i].id == (uint64_t)id) {

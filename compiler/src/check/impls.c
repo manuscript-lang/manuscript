@@ -452,6 +452,25 @@ static bool impl_any_earlier_block(const Impl *im, bool (*visit)(const MsDecl *,
     return found;
 }
 
+/* The first inherent impl of `module` with the same receiver form as `impl`: the block the others
+ * are one with. `impl` itself when it is the first, or implements an interface. */
+const MsDecl *ms_impl_first_block(MsCheck *c, MsModId module, const MsDecl *impl) {
+    if (impl->u.impl.contract != NULL) {
+        return impl;
+    }
+    const MsModule *syntax = c->mods[module].syntax;
+    const MsTypeParams params = impl_type_parameters(c, impl, module);
+    MsArena scratch = {0};
+    const MsStr form = ms_inherent_form(&scratch, c->names, impl, params);
+    const Impl probe = {.c = c, .decl = impl};
+    const MsDecl *first = impl;
+    for (uint32_t i = 0; i < syntax->ndecls && syntax->decls[i] != impl && first == impl; i++) {
+        first = impl_same_form(&probe, &scratch, form, params, syntax->decls[i]) ? syntax->decls[i] : impl;
+    }
+    ms_arena_free(&scratch);
+    return first;
+}
+
 static bool impl_visit_declares(const MsDecl *other, MsSym name) {
     return impl_declares(other, other->u.impl.methods.len, name);
 }

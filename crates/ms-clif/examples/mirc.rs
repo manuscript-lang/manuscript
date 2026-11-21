@@ -67,5 +67,5 @@ fn main() {
         None => inputs.push(cc_obj("testrt")),
     }
     let refs: Vec<&std::path::Path> = inputs.iter().map(|p| p.as_path()).collect();
-    ms_clif::link::link_all(&objp, &refs, &out).unwrap_or_else(|e| panic!("{e}"));
+    ms_build::link::link_all(&objp, &refs, &out).unwrap_or_else(|e| panic!("{e}"));
 }

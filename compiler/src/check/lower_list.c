@@ -11,7 +11,7 @@ MirTy lst_type(Lb *lb, MsTy ty) {
         return MIR_NONE;
     }
     const MirTy element = lb_mir_ty(lb, ms_ty_args(tys, ty)[0]);
-    if (element != MIR_INT && element != MIR_FLOAT && element != MIR_BOOL) {
+    if (element != MIR_INT && element != MIR_FLOAT && element != MIR_BOOL && element != MIR_STR && !lb_is_list(lb, element)) {
         return MIR_NONE;
     }
     return mir_ty_list(lb->m, element);
@@ -30,7 +30,7 @@ LbVal lst_literal(Lb *lb, const MsExpr *e) {
     }
     MirValue *values = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)items->len + 1);
     for (uint32_t i = 0; i < items->len && lb->ok; i++) {
-        values[i] = lb_expr(lb, items->ptr[i]).v;
+        values[i] = lb_owns(lb, mir_ty_data(lb->m, ty)->elem) ? lb_move_argument(lb, items->ptr[i]) : lb_expr(lb, items->ptr[i]).v; // the list owns its Strings
     }
     if (!lb->ok) {
         return LB_FAIL;

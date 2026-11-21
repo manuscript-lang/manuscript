@@ -4,12 +4,11 @@
 //
 // The entity keys, kinds and lines must be equal. Then each field in FIELDS is
 // compared; a field joins FIELDS when the C checker's column for it exists. effects,
-// reach and permits are compared only for entities the C checker marks effects_known.
-// Not compared yet, and printed empty by the C writer: calls (the effect scan misses
-// implicit close calls), external, error, scopes, result_ownership, passing modes,
-// refs, `move` receivers (checker facts), imports and flows. The process fails when
-// anything differs, and the output counts the entities and fields compared so a silent
-// skip shows.
+// reach, permits and calls are compared only for entities the C checker marks
+// effects_known. Not compared yet, and printed empty by the C writer: external, scopes,
+// result_ownership, passing modes, refs, `move` receivers (checker facts), flows.
+// Imports are compared per file. The process fails when anything differs, and the
+// output counts the entities and fields compared so a silent skip shows.
 import (
 	parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
@@ -24,6 +23,10 @@ FIELDS := [
 ]
 
 fn slot_text(s: Slot) String: f"{s.name}:{s.ty}:{s.exclusive}"
+
+fn mode_text(s: Slot) String: f"{s.name}:{s.mode}"
+
+fn modes_text(slots: List[Slot]) String: slots.map(mode_text).join(", ")
 
 fn slots_text(slots: List[Slot]) String: slots.map(slot_text).join(", ")
 
@@ -40,10 +43,33 @@ fn field_diff(field: String, want: Fact, got: Fact) String:
 	// `move` versus `borrow` needs the checker's moving-parameter facts; only `var` is syntax.
 	if field == "receiver" and (want.receiver == "var") != (got.receiver == "var"): return f"receiver {want.receiver} != {got.receiver}"
 	if field == "tries" and want.tries != got.tries: return f"tries {want.tries} != {got.tries}"
+
+	// The C writer types only functions; the other kinds print an empty type and error.
+	if field == "ty" and want.kind == "fn" and want.ty != got.ty: return f"ty {want.ty} != {got.ty}"
+	if field == "error" and want.kind == "fn" and want.error != got.error: return f"error {want.error} != {got.error}"
+
+	// The ownership columns are the checker's only for a function its ownership walk
+	// kept.
+	if (
+		field == "modes"
+		and got.ownership_known
+		and modes_text(want.slots) != modes_text(got.slots)
+	): return f"modes [{modes_text(want.slots)}] != [{modes_text(got.slots)}]"
+	if field == "scopes" and got.ownership_known and want.scopes != got.scopes: return f"scopes {want.scopes} != {got.scopes}"
+	if (
+		field == "result_ownership"
+		and got.ownership_known
+		and want.result_ownership != got.result_ownership
+	): return f"result_ownership {want.result_ownership} != {got.result_ownership}"
+	if field == "label" and want.label != got.label: return f"label {want.label} != {got.label}"
+	if field == "first" and want.first != got.first: return f"first {want.first} != {got.first}"
+	if field == "last" and want.last != got.last: return f"last {want.last} != {got.last}"
+	if field == "exported" and want.exported != got.exported: return f"exported {want.exported} != {got.exported}"
 	if not got.effects_known: return ""
 
 	// The C checker leaves these empty when it cannot see all of what the entity calls.
 	if field == "effects" and want.effects != got.effects: return f"effects {want.effects} != {got.effects}"
+	if field == "calls" and want.calls != got.calls: return f"calls {want.calls} != {got.calls}"
 	if field == "reach" and want.reach != got.reach: return f"reach {want.reach} != {got.reach}"
 	if field == "permits" and want.permits != got.permits: return f"permits {want.permits} != {got.permits}"
 
@@ -90,6 +116,26 @@ fn main() Void!:
 			if not text.is_empty():
 				out = out.concat(f"{w.key}: {text}\n")
 				differ += 1
+
+	for w in want.imports:
+		var found = false
+
+		for g in got.imports:
+			if g.file == w.file:
+				found = true
+
+				want_paths := w.paths.join(",")
+				got_paths := g.paths.join(",")
+
+				if want_paths != got_paths:
+					out = out.concat(
+						f"imports of {w.file}: {want_paths} != {got_paths}\n"
+					)
+					differ += 1
+
+		if not found:
+			out = out.concat(f"imports of {w.file} missing in C\n")
+			differ += 1
 
 	var want_keys = Set[String]()
 	for w in want.entities: want_keys.add(w.key.clone())

@@ -14,17 +14,22 @@ MirTy le_type(Lb *lb, MsTy ty) {
     if (sym >= lb->c->defs_cap || lb->c->syms.kind[sym] != MS_SYM_TYPE || lb->c->defs[sym].ncases == 0) {
         return MIR_NONE;
     }
+    if (lb->type_of[ty] == LB_TYPE_PENDING) {
+        return MIR_NONE; // an enum that holds itself (`next: List?`) is not lowered
+    }
     if (lb->type_of[ty] != MIR_NONE) {
         return lb->type_of[ty];
     }
     const MsDef *def = &lb->c->defs[sym];
     MirCaseDef *cases = MS_NEW_N(&lb->m->arena, MirCaseDef, def->ncases);
+    lb->type_of[ty] = LB_TYPE_PENDING;
     for (uint32_t i = 0; i < def->ncases; i++) {
         const MsCaseRow *row = &def->cases[i];
         MirField *fields = MS_NEW_N(&lb->m->arena, MirField, (size_t)row->nfields + 1);
         for (uint32_t slot = 0; slot < row->nfields; slot++) {
             const MirTy payload = lb_mir_ty(lb, row->fields[slot].ty);
             if (payload == MIR_NONE || mir_needs_drop(lb->m, payload)) {
+                lb->type_of[ty] = MIR_NONE;
                 return MIR_NONE;
             }
             const MsStr field = ms_name(lb->c->names, row->fields[slot].name);

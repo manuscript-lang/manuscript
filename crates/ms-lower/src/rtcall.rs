@@ -1,6 +1,6 @@
 //! Calls into `ms-rt` driven by the declared signature of the symbol (generated from the runtime sources).
 //!
-//! The runtime ABI is regular (`ms-rt/ABI.md`, section 1): optional scalars flatten into
+//! The runtime ABI is regular (`ms-rt-abi/ABI.md`, section 1): optional scalars flatten into
 //! `has_x: HasRaw, x`, descriptors follow the receiver, constructed values and fallible results
 //! come back through a trailing `out` pointer, and `u8` statuses name the error case. This
 //! module marshals a call from the symbol's parameter names and types and the checked
