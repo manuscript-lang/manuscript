@@ -32,7 +32,26 @@ bool ms_build_run(const char *what, const char *const *argv, const char *log, Ms
     return ms_build_run_in(what, argv, NULL, log, output);
 }
 
+/* `posix_spawnp` takes mutable strings, so the arguments are copied rather than cast. */
+static char **bt_copy_argv(const char *const *argv, MsBuf *strings, MsBuf *pointers) {
+    size_t n = 0;
+    while (argv[n] != NULL) {
+        ms_buf_puts(strings, argv[n]);
+        ms_buf_putc(strings, 0);
+        n++;
+    }
+    char *at = strings->data;
+    for (size_t i = 0; i < n; i++) {
+        MS_VEC_PUSH(*pointers, char *, at);
+        at += strlen(at) + 1;
+    }
+    MS_VEC_PUSH(*pointers, char *, NULL);
+    return ms_buf_items(pointers);
+}
+
 bool ms_build_run_in(const char *what, const char *const *argv, const char *cwd, const char *log, MsBuf *output) {
+    MsBuf strings = {0}, pointers = {0};
+    char **mutable_argv = bt_copy_argv(argv, &strings, &pointers);
     posix_spawn_file_actions_t actions;
     posix_spawn_file_actions_init(&actions);
     if (cwd != NULL) {
@@ -46,13 +65,10 @@ bool ms_build_run_in(const char *what, const char *const *argv, const char *cwd,
     posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, log, O_WRONLY | O_CREAT | O_TRUNC, 0600);
     posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDERR_FILENO);
     pid_t pid = 0;
-    /* posix_spawnp takes char *const argv[] but never writes through it. */
-    const union {
-        const char *const *read_only;
-        char *const *writable;
-    } args = {.read_only = argv};
-    const int spawned = posix_spawnp(&pid, argv[0], &actions, NULL, args.writable, environ);
+    const int spawned = posix_spawnp(&pid, mutable_argv[0], &actions, NULL, mutable_argv, environ);
     posix_spawn_file_actions_destroy(&actions);
+    ms_buf_free(&strings);
+    ms_buf_free(&pointers);
     if (spawned != 0) {
         ms_buf_printf(output, "cannot run %s: ", what);
         ms_build_errno_text(spawned, output);

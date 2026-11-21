@@ -1,0 +1,5 @@
+091.ms:25:10: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it
+    |
+ 25 |     print}("after b")
+    |          ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

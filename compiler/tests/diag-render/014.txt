@@ -1,0 +1,5 @@
+014.ms:20:10: parse: unexpected source character '\u{301}'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCII
+    |
+ 20 |     bump(́c, "x")
+    |          ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

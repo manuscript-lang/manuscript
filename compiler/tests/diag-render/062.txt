@@ -1,0 +1,5 @@
+062.ms:4:13: parse: mismatched closing delimiter ')'; the '[' opened at line 4:5 needs ']'
+   |
+ 4 | fn f[lue: T?) Void: return
+   |             ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

@@ -1,0 +1,5 @@
+028.ms:3:7: parse: expected a name, found 'enum'; 'enum' is a reserved word and cannot be used as a name
+   |
+ 3 | fn f()enum Int:
+   |       ^^^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "subcode": "MS3000.18",
+      "phase": "type",
+      "message": "extern parameter m has type Map, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them",
+      "position": {
+        "file": "param_map.ms",
+        "line": 1,
+        "column": 18,
+        "offset": 17
+      }
+    }
+  ]
+}

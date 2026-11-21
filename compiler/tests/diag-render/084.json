@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected end of statement, found '...'; put one statement per line, and join operands with an operator or a comma inside brackets",
+      "position": {
+        "file": "084.ms",
+        "line": 14,
+        "column": 23,
+        "offset": 297
+      },
+      "end": {
+        "file": "084.ms",
+        "line": 14,
+        "column": 26,
+        "offset": 300
+      }
+    }
+  ]
+}

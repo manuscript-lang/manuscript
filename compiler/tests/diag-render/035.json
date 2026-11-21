@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected '(', found '%'; a call or parameter list starts with '('",
+      "position": {
+        "file": "035.ms",
+        "line": 3,
+        "column": 8,
+        "offset": 63
+      },
+      "end": {
+        "file": "035.ms",
+        "line": 3,
+        "column": 9,
+        "offset": 64
+      }
+    }
+  ]
+}

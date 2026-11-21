@@ -1,0 +1,5 @@
+005.ms:1:19: parse: unterminated text literal; text must close with '"' on the same line, so add the quote or write \n for a line break
+   |
+ 1 | import parse from "@std/json/json.m    return
+   |                   ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
