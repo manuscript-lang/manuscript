@@ -238,7 +238,7 @@ struct WatchRow {
 
 typedef struct MsFsWatcher {
     MsObj header;
-    uint64_t token;
+    uint64_t token; /* the waiting task's token, 0 while none; guarded by `lock` */
     int64_t interval_ns; /* polling */
     int64_t max;         /* polling */
     Snapshot before;     /* polling */
@@ -271,6 +271,42 @@ typedef struct MsFsWatcher {
 static void watcher_lock(MsFsWatcher *watcher) { uv_mutex_lock(&watcher->lock); }
 static void watcher_unlock(MsFsWatcher *watcher) { uv_mutex_unlock(&watcher->lock); }
 
+/* A token belongs to the isolate that made it, and a promise task can call `next` on any isolate, so the waiting task
+ * makes its own token for each wait: it registers one (with the lock held, so a change cannot slip between its last
+ * look and the park), and watching threads wake whichever token is registered. A wake with none registered is not
+ * lost, since the waiter looks at the state again before it parks. */
+static uint64_t watcher_enter_wait(MsFsWatcher *watcher) {
+    watcher->token = msrt_token_new(1);
+    return watcher->token;
+}
+
+static void watcher_wake(MsFsWatcher *watcher) {
+    if (!watcher->lock_ready) {
+        return; /* nobody can be waiting yet */
+    }
+    watcher_lock(watcher);
+    if (watcher->token != 0) {
+        msrt_token_post_remote(watcher->token, 1);
+    }
+    watcher_unlock(watcher);
+}
+
+static void watcher_leave_wait(MsFsWatcher *watcher, uint64_t token) {
+    watcher_lock(watcher);
+    watcher->token = 0;
+    watcher_unlock(watcher);
+    msrt_token_free(token);
+}
+
+/* Parks on `token` (from watcher_enter_wait) until a wake or the timeout, then ends the wait; false when a stop
+ * request ended it. */
+static bool watcher_park(MsFsWatcher *watcher, uint64_t token, int64_t timeout_ns, uint32_t *result) {
+    uint64_t value = 0;
+    *result = msrt_token_park(token, timeout_ns, &value);
+    watcher_leave_wait(watcher, token);
+    return (*result & MS_WAIT_CANCELLED) == 0;
+}
+
 /* Records a failure for `next` unless one is already waiting. Pool and watch threads call this. */
 static void set_terminal(MsFsWatcher *watcher, uint8_t status, const char *text) {
     watcher_lock(watcher);
@@ -281,7 +317,7 @@ static void set_terminal(MsFsWatcher *watcher, uint8_t status, const char *text)
         }
     }
     watcher_unlock(watcher);
-    msrt_token_post_remote(watcher->token, 1);
+    watcher_wake(watcher);
 }
 
 static void queue_event(MsFsWatcher *watcher, const uint8_t *path, size_t length, bool rename) {
@@ -298,21 +334,21 @@ static void queue_event(MsFsWatcher *watcher, const uint8_t *path, size_t length
         }
         watcher_unlock(watcher);
         free(copy);
-        msrt_token_post_remote(watcher->token, 1);
+        watcher_wake(watcher);
         return;
     }
     const size_t slot = (watcher->head + watcher->count) % watcher->capacity;
     watcher->queue[slot] = (WatchEvent){.path = copy, .length = length, .rename = rename};
     watcher->count++;
     watcher_unlock(watcher);
-    msrt_token_post_remote(watcher->token, 1);
+    watcher_wake(watcher);
 }
 
 static void mark_ended(MsFsWatcher *watcher) {
     watcher_lock(watcher);
     watcher->ended = true;
     watcher_unlock(watcher);
-    msrt_token_post_remote(watcher->token, 1);
+    watcher_wake(watcher);
 }
 
 /* ---- handles (native) ---- */
@@ -530,7 +566,7 @@ static void watch_event(uv_fs_event_t *handle, const char *filename, int events,
         watcher_lock(watcher);
         watcher->ready = true;
         watcher_unlock(watcher);
-        msrt_token_post_remote(watcher->token, 1);
+        watcher_wake(watcher);
         return;
     }
     MsFsBuffer full_buffer = {0};
@@ -643,9 +679,6 @@ static void watcher_drop(MsObj *object) {
     if (watcher->lock_ready) {
         uv_mutex_destroy(&watcher->lock);
     }
-    if (watcher->token != 0) {
-        msrt_token_free(watcher->token);
-    }
     msrt_free(watcher);
 }
 
@@ -659,7 +692,6 @@ static MsFsWatcher *watcher_new(void) {
 /* ---- creating watchers ---- */
 
 static bool watcher_init_common(MsFsWatcher *watcher) {
-    watcher->token = msrt_token_new(1);
     if (uv_mutex_init(&watcher->lock) != 0) {
         return false;
     }
@@ -729,12 +761,14 @@ static void native_wait_ready(MsFsWatcher *watcher, MsBytes root) {
         }
         (void)uv_fs_close(NULL, &request, (uv_file)file, NULL);
         uv_fs_req_cleanup(&request);
-        uint64_t value = 0;
-        const uint32_t result = msrt_token_park(watcher->token, READY_SLICE_NS, &value);
         watcher_lock(watcher);
-        const bool ready = watcher->ready;
+        const uint64_t token = watcher->ready ? 0 : watcher_enter_wait(watcher);
         watcher_unlock(watcher);
-        if (ready || (result & MS_WAIT_CANCELLED) != 0) {
+        if (token == 0) {
+            break;
+        }
+        uint32_t result = 0;
+        if (!watcher_park(watcher, token, READY_SLICE_NS, &result)) {
             break;
         }
     }
@@ -816,10 +850,11 @@ uint8_t msstd_fs_watch_native(const MsStr *path, uint8_t recursive, uint8_t has_
 /* ---- waiting ---- */
 
 /* A wait that parks until the watcher is woken or closed. False when a stop request ended it. */
-static bool wait_for_wake(const MsFsWatcher *watcher, int64_t timeout_ns, uint32_t *result) {
-    uint64_t value = 0;
-    *result = msrt_token_park(watcher->token, timeout_ns, &value);
-    return (*result & MS_WAIT_CANCELLED) == 0;
+static bool wait_for_wake(MsFsWatcher *watcher, int64_t timeout_ns, uint32_t *result) {
+    watcher_lock(watcher);
+    const uint64_t token = watcher_enter_wait(watcher);
+    watcher_unlock(watcher);
+    return watcher_park(watcher, token, timeout_ns, result);
 }
 
 static uint8_t next_polling(MsFsWatcher *watcher, MsVec *out, MsFsFail *fail) {
@@ -906,15 +941,18 @@ static uint8_t next_native(MsFsWatcher *watcher, MsVec *out, MsFsFail *fail) {
             watcher_unlock(watcher);
             return STATUS_NONE;
         }
+        const uint64_t token = watcher_enter_wait(watcher);
         watcher_unlock(watcher);
+        uint32_t result = 0;
         if (ms_fs_poll_cancel(fail)) {
+            watcher_leave_wait(watcher, token);
             return STATUS_FAILED;
         }
         if (ms_sched_read_limit_passed()) {
+            watcher_leave_wait(watcher, token);
             return STATUS_TIMED_OUT;
         }
-        uint32_t result = 0;
-        if (!wait_for_wake(watcher, -1, &result)) {
+        if (!watcher_park(watcher, token, -1, &result)) {
             ms_fs_fail_text(fail, "cancelled");
             return STATUS_FAILED;
         }
@@ -951,6 +989,6 @@ void msstd_fs_watch_close(void *handle) {
     } else {
         watcher->closed = true;
     }
-    msrt_token_post_remote(watcher->token, 1);
+    watcher_wake(watcher);
     native_shutdown(watcher);
 }
