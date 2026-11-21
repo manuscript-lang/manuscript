@@ -76,7 +76,7 @@ uint8_t msrt_list_slice(const MsList *v, const MsTypeDesc *d, int64_t start, int
 uint8_t msrt_list_slice_view(const MsList *v, const MsTypeDesc *d, int64_t start, int64_t end, MsList *out, MsStr *err);
 /* ms-sig: msrt_list_take(v: *const VecVal, d: ElemDesc, count: i64, out: *mut VecVal) @domain=collection @leaf */
 void msrt_list_take(const MsList *v, const MsTypeDesc *d, int64_t count, MsList *out);
-/* ms-sig: msrt_list_drop_n(v: *const VecVal, d: ElemDesc, count: i64, out: *mut VecVal) @domain=collection @leaf */
+/* ms-sig: msrt_list_drop_n(v: *const VecVal, d: ElemDesc, count: i64, out: *mut VecVal) @domain=collection @leaf @method=List.drop */
 void msrt_list_drop_n(const MsList *v, const MsTypeDesc *d, int64_t count, MsList *out);
 /* ms-sig: msrt_list_pieces(v: *const VecVal, d: ElemDesc, od: *const TypeDesc, size: i64, step: i64, short_last: u8, out: *mut VecVal) @domain=collection @leaf */
 void msrt_list_pieces(const MsList *v, const MsTypeDesc *d, const MsTypeDesc *od, int64_t size, int64_t step, uint8_t short_last, MsList *out);

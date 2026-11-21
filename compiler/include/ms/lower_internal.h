@@ -311,6 +311,12 @@ bool lst_read_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 LbVal lst_get(Lb *lb, const MsExpr *left, const MsExpr *at);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
+/* The local `var` a by-reference receiver names, else MS_NONE. */
+uint32_t lb_var_receiver(Lb *lb, const MsExpr *receiver);
+/* StringBuilder and BytesBuilder (lower_builder.c). */
+bool lbd_is_builder(Lb *lb, MsTy ty);
+LbVal lbd_new(Lb *lb);
+bool lbd_method(Lb *lb, const MsExpr *e, LbVal *out);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
 /* lower_extern.c: a call of a bodiless `extern fn`, by its own symbol in the ms-sig table. */
 MirTy lx_type(Lb *lb, MsTy ty);
@@ -381,6 +387,8 @@ bool lb_numeric_conversion(Lb *lb, MirValue x, MsTy checked_result, LbVal *out);
 bool lb_int_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 /* lower_optional.c: methods that are instructions. Each returns whether the call is one of its methods and sets `out`. */
 bool lb_optional_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out); /* `get_or` of an Optional */
+/* lower_each.c: `map` and `filter` of a list, a loop that calls the function value on each element. */
+bool lb_each_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 bool lb_clone_method(Lb *lb, const MsExpr *e, LbVal *out);                      /* `clone` of a value no runtime function copies */
 
 /* User enums (lower_enum.c, included after lower_body.c). */
