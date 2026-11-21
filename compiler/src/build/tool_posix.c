@@ -47,10 +47,11 @@ bool ms_build_run_in(const char *what, const char *const *argv, const char *cwd,
     posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDERR_FILENO);
     pid_t pid = 0;
     /* posix_spawnp takes char *const argv[] but never writes through it. */
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-qual"
-    const int spawned = posix_spawnp(&pid, argv[0], &actions, NULL, (char *const *)argv, environ) /* NOLINT(cppcoreguidelines-pro-type-const-cast) */;
-#pragma clang diagnostic pop
+    const union {
+        const char *const *read_only;
+        char *const *writable;
+    } args = {.read_only = argv};
+    const int spawned = posix_spawnp(&pid, argv[0], &actions, NULL, args.writable, environ);
     posix_spawn_file_actions_destroy(&actions);
     if (spawned != 0) {
         ms_buf_printf(output, "cannot run %s: ", what);
