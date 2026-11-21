@@ -1305,15 +1305,15 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
     return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
 }
 
-/* `for name in xs` over a list of Int, Float or Bool: the element type. Elements that need
- * cleanup (text, lists) are left to the Rust checker. */
+/* `for name in xs` over a list of Int, Float, Bool or String: the element type. A String element is
+ * borrowed from the list; lists of lists are left to the Rust checker. */
 static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) {
     const MsTy ty = ms_body_expr(b, iter, MS_TY_NONE);
     if (!ms_body_is_list(b, ty)) {
         return false;
     }
     *element = ms_ty_args(&b->c->tys, ty)[0];
-    return body_is_value_type(b, *element) && *element != b->string_ty;
+    return body_is_value_type(b, *element);
 }
 
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
