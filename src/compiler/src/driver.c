@@ -78,7 +78,7 @@ int ms_cmd_check(int argc, char **argv, const char **reason) {
     uint32_t nstd = 0;
     const MsStdFile *std_files = ms_std_embedded(&nstd);
     MsBuf out = {0}, err = {0};
-    const int status = ms_check_run(std_files, nstd, target, json, &out, &err, reason);
+    const int status = ms_check_run(std_files, nstd, target, (MsCheckFormat){.json = json}, &out, &err, reason);
     if (status != MS_CHECK_HANDOVER) {
         if (out.len != 0) {
             fwrite(out.data, 1, out.len, stdout);

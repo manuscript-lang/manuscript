@@ -257,8 +257,7 @@ void ms_render_text(MsBuf *out, const MsReport *items, size_t count) {
 
 /* ---- json ---- */
 
-/* A JSON string as Go's encoder with HTML escaping writes it. */
-static void render_json_string(MsBuf *out, MsStr text) {
+void ms_render_json_string(MsBuf *out, MsStr text) {
     ms_buf_putc(out, '"');
     for (uint32_t at = 0; at < text.len;) {
         uint32_t c = 0;
@@ -289,7 +288,7 @@ static void render_json_string(MsBuf *out, MsStr text) {
 }
 
 static void render_json_text(MsBuf *out, const char *text) {
-    render_json_string(out, (MsStr){text, (uint32_t)strlen(text)});
+    ms_render_json_string(out, (MsStr){text, (uint32_t)strlen(text)});
 }
 
 /* `{file, line, column, offset}` as an object whose members sit `depth` levels deep. */
@@ -317,7 +316,7 @@ static void render_json_diag(MsBuf *out, const MsReport *r) {
         render_json_text(out, r->phase);
     }
     ms_buf_puts(out, ",\n      \"message\": ");
-    render_json_string(out, d->message);
+    ms_render_json_string(out, d->message);
     ms_buf_puts(out, ",\n      \"position\": ");
     render_json_position(out, r->file, d->pos, 3);
     if (d->has_end) {
@@ -330,7 +329,7 @@ static void render_json_diag(MsBuf *out, const MsReport *r) {
         ms_buf_puts(out, ",\n        \"end\": ");
         render_json_position(out, r->file, d->fix_end, 4);
         ms_buf_puts(out, ",\n        \"replacement\": ");
-        render_json_string(out, d->replacement);
+        ms_render_json_string(out, d->replacement);
         ms_buf_puts(out, "\n      }");
     }
     ms_buf_puts(out, "\n    }");
@@ -345,4 +344,18 @@ void ms_render_json(MsBuf *out, const MsReport *items, size_t count) {
     }
     ms_buf_puts(out, count > 0 ? "\n  ]\n}\n" : "]\n}\n");
     free(order);
+}
+
+void ms_render_json_add_text(MsBuf *document, MsStr standard_output, MsStr standard_error) {
+    static const char closing[] = "\n}\n";
+    const size_t tail = sizeof closing - 1;
+    if (document->len < tail || memcmp(document->data + document->len - tail, closing, tail) != 0) {
+        return;
+    }
+    document->len -= tail;
+    ms_buf_puts(document, ",\n  \"text\": {\n    \"stdout\": ");
+    ms_render_json_string(document, standard_output);
+    ms_buf_puts(document, ",\n    \"stderr\": ");
+    ms_render_json_string(document, standard_error);
+    ms_buf_puts(document, "\n  }\n}\n");
 }

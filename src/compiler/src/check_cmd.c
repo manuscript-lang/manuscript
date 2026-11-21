@@ -259,7 +259,7 @@ static bool check_in_position_order(const MsReport *reports, size_t count) {
 /* Whether the C answer for these diagnostics equals the Rust one. NULL, or why not. */
 static const char *check_renderable(const MsCheckRun *run, bool json) {
     /* JSON diagnostics carry the machine-applicable `fix` the C passes do not all build yet. */
-    if (json && run->nreports != 0) {
+    if (json && run->nreports != 0 && getenv("MS_EXPERIMENT_JSON") == NULL) {
         return "a diagnostic in the JSON document (its fix is not built in C yet)";
     }
     /* The terminal report names project modules in `add: import` suggestions the C hints do not read. */
@@ -278,7 +278,8 @@ static const char *check_renderable(const MsCheckRun *run, bool json) {
     return all_parse || check_in_position_order(run->reports, run->nreports) ? NULL : "diagnostics not in position order";
 }
 
-static int check_print(const MsCheckRun *run, const char *target, bool json, MsBuf *out, MsBuf *err) {
+/* What the command writes for the checked run: the terminal text to `out` and `err`, or the document to `out`. */
+static int check_print_one(const MsCheckRun *run, const char *target, bool json, MsBuf *out, MsBuf *err) {
     if (run->nreports != 0) {
         if (json) {
             ms_render_json(out, run->reports, run->nreports);
@@ -297,6 +298,22 @@ static int check_print(const MsCheckRun *run, const char *target, bool json, MsB
     return 0;
 }
 
+static MsStr check_buf_text(const MsBuf *b) {
+    return (MsStr){b->len == 0 ? "" : b->data, (uint32_t)b->len};
+}
+
+static int check_print(const MsCheckRun *run, const char *target, MsCheckFormat format, MsBuf *out, MsBuf *err) {
+    const int status = check_print_one(run, target, format.json, out, err);
+    if (format.json && format.with_text) { // the document also carries what the terminal form prints
+        MsBuf text_out = {0}, text_err = {0};
+        (void)check_print_one(run, target, false, &text_out, &text_err);
+        ms_render_json_add_text(out, check_buf_text(&text_out), check_buf_text(&text_err));
+        ms_buf_free(&text_out);
+        ms_buf_free(&text_err);
+    }
+    return status;
+}
+
 void ms_check_run_free(MsCheckRun *run) {
     if (run->have_check) {
         ms_check_free(&run->check);
@@ -306,19 +323,66 @@ void ms_check_run_free(MsCheckRun *run) {
     ms_names_free(&run->names);
 }
 
-int ms_check_run(const MsStdFile *std_files, uint32_t nstd, const char *target, bool json, MsBuf *out, MsBuf *err,
-                 const char **handover_reason) {
+int ms_check_run(const MsStdFile *std_files, uint32_t nstd, const char *target, MsCheckFormat format, MsBuf *out,
+                 MsBuf *err, const char **handover_reason) {
     MsCheckRun run = {0};
     ms_names_init(&run.names);
     int status = MS_CHECK_HANDOVER;
     const char *why = ms_check_load(&run, std_files, nstd, target);
     why = why != NULL ? why : ms_check_diagnose(&run);
-    why = why != NULL ? why : check_renderable(&run, json);
+    why = why != NULL ? why : check_renderable(&run, format.json);
+    if (why == NULL && format.json && format.with_text) {
+        why = check_renderable(&run, false);
+    }
     if (why == NULL) {
-        status = check_print(&run, target, json, out, err);
+        status = check_print(&run, target, format, out, err);
     } else if (handover_reason != NULL) {
         *handover_reason = why;
     }
     ms_check_run_free(&run);
+    return status;
+}
+
+/* Appends `document` (an indented JSON value ending in a newline) as a member value `depth` spaces deep: every line
+ * after the first is indented, and the final newline is left to the caller. A JSON string holds no raw newline. */
+static void check_put_nested(MsBuf *out, const MsBuf *document, size_t depth) {
+    const bool ends_line = document->len != 0 && document->data[document->len - 1] == '\n';
+    const size_t length = ends_line ? document->len - 1 : document->len;
+    for (size_t i = 0; i < length; i++) {
+        ms_buf_putc(out, document->data[i]);
+        if (document->data[i] == '\n') {
+            ms_buf_printf(out, "%*s", (int)depth, "");
+        }
+    }
+}
+
+int ms_check_run_each(const MsStdFile *std_files, uint32_t nstd, const char *const *targets, size_t count, MsBuf *out,
+                      const char **handover_reason) {
+    const MsCheckFormat format = {.json = true, .with_text = true};
+    MsBuf results = {0};
+    int status = 0;
+    ms_buf_puts(&results, "{\n  \"results\": [");
+    for (size_t i = 0; i < count && status != MS_CHECK_HANDOVER; i++) {
+        MsBuf document = {0}, standard_error = {0};
+        const int one = ms_check_run(std_files, nstd, targets[i], format, &document, &standard_error, handover_reason);
+        if (one == MS_CHECK_HANDOVER) {
+            status = MS_CHECK_HANDOVER;
+        } else {
+            ms_buf_puts(&results, i == 0 ? "\n    {\n      \"target\": " : ",\n    {\n      \"target\": ");
+            ms_render_json_string(&results, (MsStr){targets[i], (uint32_t)strlen(targets[i])});
+            ms_buf_printf(&results, ",\n      \"exit_code\": %d,\n      \"document\": ", one);
+            check_put_nested(&results, &document, 6);
+            ms_buf_puts(&results, ",\n      \"stderr\": ");
+            ms_render_json_string(&results, check_buf_text(&standard_error));
+            ms_buf_puts(&results, "\n    }");
+        }
+        ms_buf_free(&document);
+        ms_buf_free(&standard_error);
+    }
+    if (status != MS_CHECK_HANDOVER) {
+        ms_buf_puts(&results, count == 0 ? "]\n}\n" : "\n  ]\n}\n");
+        ms_buf_put(out, results.data, results.len);
+    }
+    ms_buf_free(&results);
     return status;
 }

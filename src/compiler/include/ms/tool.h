@@ -84,10 +84,11 @@ uint8_t ms_tool_facts(const ms_str *text, ms_str *out, ms_str *message_out);
  * means the loader does not cover the project (a library manifest, test discovery). */
 uint8_t ms_tool_facts_project(const ms_str *path, ms_str *out, ms_str *message_out);
 
-/* `ms check FILE.ms [--json]` (src/compiler/include/ms/check_run.h). Status 0 fills `out` with the standard output, the
- * standard error and the exit status (as decimal text) the Rust command would produce; status 2 means the C passes
- * cannot give that answer (message in `message_out`) and the caller runs the Rust command; 1 is an error. */
-uint8_t ms_tool_check(const ms_str *target, uint8_t json, ms_list *out, ms_str *message_out);
+/* `ms check FILE.ms... [--json [--with-text [--each]]]` (src/compiler/include/ms/check_run.h): one target, or several
+ * with `each`. Status 0 fills `out` with the standard output, the standard error and the exit status (as decimal text)
+ * the Rust command would produce; status 2 means the C passes cannot give that answer (why, in `message_out`) and the
+ * caller runs the Rust command; 1 is an error. */
+uint8_t ms_tool_check(const ms_list *targets, uint8_t json, uint8_t with_text, uint8_t each, ms_list *out, ms_str *message_out);
 /* `ms build TARGET`: builds the executable `output` from the program at `target`, linking `runtime`; `tools` holds `opt`
  * and `llc`, `lld` is the linker and `files` its startup files. Status 0 is a written executable, 1 a failed build (the
  * message), 2 a program the C pipeline does not cover (the reason): the Rust command builds it. */

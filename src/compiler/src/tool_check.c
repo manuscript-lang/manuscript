@@ -1,5 +1,7 @@
-/* `ms_tool_check` (include/ms/tool.h): `ms check FILE.ms [--json]` for the Manuscript front. A separate archive member
- * from tool.c: it needs the embedded standard library (3 MB), which only programs that call it should carry. */
+/* `ms_tool_check` (include/ms/tool.h): `ms check FILE.ms... [--json [--with-text [--each]]]` for the Manuscript
+ * front. A separate archive member from tool.c: it needs the embedded standard library (3 MB), which only programs that
+ * call it should carry. */
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,28 +19,61 @@ static void push_text(ms_list *out, const char *text, size_t length) {
     ms_list_push(out, &value);
 }
 
-uint8_t ms_tool_check(const ms_str *target, uint8_t json, ms_list *out, ms_str *message_out) {
-    const size_t length = ms_str_len(target);
-    char *path = malloc(length + 1); /* not ms_str_cstring: this archive's free() is mimalloc's, the runtime's is not */
-    if (path != NULL) {
-        memcpy(path, ms_str_data(target), length);
-        path[length] = '\0';
+static void set_message(ms_str *message_out, const char *text) {
+    ms_string_new((const uint8_t *)text, strlen(text), message_out);
+}
+
+/* The targets as C strings in one allocation the caller frees (`*paths_out`, with the texts after the pointers), or
+ * NULL when memory ran out or a path holds a NUL byte. */
+static const char *const *copy_targets(const ms_list *targets, size_t count) {
+    size_t bytes = 0;
+    for (size_t i = 0; i < count; i++) {
+        ms_value value = ms_list_get(targets, i);
+        bytes += value.as.buf.len + 1;
+        ms_value_free(&value);
     }
-    if (path == NULL || strlen(path) != length) {
-        free(path);
-        static const char text[] = "the path holds a NUL byte";
-        ms_string_new((const uint8_t *)text, sizeof text - 1, message_out);
+    char **paths = malloc(count * sizeof *paths + bytes + 1); /* not the runtime's allocator: this archive's free() is mimalloc's */
+    if (paths == NULL) {
+        return NULL;
+    }
+    char *text = (char *)(paths + count);
+    bool whole = true;
+    for (size_t i = 0; i < count; i++) {
+        ms_value value = ms_list_get(targets, i);
+        const size_t length = value.as.buf.len;
+        memcpy(text, value.as.buf.data, length);
+        text[length] = '\0';
+        whole = whole && strlen(text) == length;
+        paths[i] = text;
+        text += length + 1;
+        ms_value_free(&value);
+    }
+    if (!whole) {
+        free(paths);
+        return NULL;
+    }
+    return (const char *const *)paths;
+}
+
+uint8_t ms_tool_check(const ms_list *targets, uint8_t json, uint8_t with_text, uint8_t each, ms_list *out, ms_str *message_out) {
+    const size_t count = ms_list_len(targets);
+    const char *const *paths = copy_targets(targets, count);
+    if (paths == NULL || count == 0 || (count != 1 && each == 0)) {
+        free((void *)paths);
+        set_message(message_out, paths == NULL ? "a path that holds a NUL byte" : "one target, or several with --each");
         return 1;
     }
     uint32_t nstd = 0;
     const MsStdFile *std_files = ms_std_embedded(&nstd);
     MsBuf stdout_text = {0}, stderr_text = {0};
-    const int status = ms_check_run(std_files, nstd, path, json != 0, &stdout_text, &stderr_text, NULL);
-    free(path);
+    const char *reason = "not covered by the C checker";
+    const MsCheckFormat format = {.json = json != 0, .with_text = with_text != 0};
+    const int status = each != 0 ? ms_check_run_each(std_files, nstd, paths, count, &stdout_text, &reason)
+                                 : ms_check_run(std_files, nstd, paths[0], format, &stdout_text, &stderr_text, &reason);
+    free((void *)paths);
     uint8_t result = 0;
     if (status == MS_CHECK_HANDOVER) {
-        static const char text[] = "not covered by the C checker";
-        ms_string_new((const uint8_t *)text, sizeof text - 1, message_out);
+        set_message(message_out, reason);
         result = 2;
     } else {
         char code[16];
