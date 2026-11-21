@@ -130,10 +130,11 @@ static MsSysError do_symlink(const char *referent, const char *link_path) {
     char *joined = NULL;
     if (!absolute && separator != NULL) {
         const size_t directory = (size_t)(separator - link_path) + 1;
-        joined = malloc(directory + strlen(referent) + 1);
+        const size_t referent_size = strlen(referent) + 1;
+        joined = malloc(directory + referent_size);
         if (joined != NULL) {
             memcpy(joined, link_path, directory);
-            strcpy(joined + directory, referent);
+            memcpy(joined + directory, referent, referent_size);
         }
     }
     if (ms_sys_fs_stat(joined != NULL ? joined : referent, true, &info) == 0 && (info.mode & MS_SYS_S_IFMT) == MS_SYS_S_IFDIR) {
