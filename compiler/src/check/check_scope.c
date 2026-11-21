@@ -399,7 +399,7 @@ static void scope_import_symbols(MsCheck *c, MsModId module) {
 /* A symbol the loader registered for this very declaration (an `extern type` or an exported
  * type of a bundled source module), or MS_NONE. */
 static MsSymId scope_registered_symbol(const MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {
-    MsSymId found = c->mods[module].source || d->kind == MS_D_FN ? ms_map_get(&c->mods[module].scope, name) : MS_NONE;
+    MsSymId found = c->mods[module].source ? ms_map_get(&c->mods[module].scope, name) : MS_NONE;
     if (found == MS_NONE) {
         found = ms_map_get(&c->std_types, name); // a native module's type is registered by the loader
     }
@@ -434,7 +434,7 @@ static void scope_declare_symbols(MsCheck *c, MsModId module) {
         }
         MsSymId sym = MS_NONE;
         const bool opaque = d->kind == MS_D_TYPE && d->u.type.external;
-        if (opaque || ms_decl_is_nominal(d) || d->kind == MS_D_FN) {
+        if (opaque || ms_decl_is_nominal(d)) {
             sym = scope_registered_symbol(c, module, d, name);
         }
         if (sym == MS_NONE) {
