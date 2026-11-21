@@ -1,9 +1,9 @@
 type Secret:
-    a: Int
+	a: Int
 
 export enum Shape:
-    Round(inner: Secret)
-    Square
+	Round(inner: Secret)
+	Square
 
 fn main() Void:
-    return
+	return

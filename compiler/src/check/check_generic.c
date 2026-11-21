@@ -43,26 +43,81 @@ bool ms_body_mentions_unbound(const MsBody *b, const MsInfer *in, MsTy ty) {
     return false;
 }
 
-/* Matches each argument against its parameter, binding the variables. */
-static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, MsInfer *in) {
+/* One argument of an open row: against its parameter when that is settled, else its type binds the
+ * parameter's variables. A function literal whose parameters are settled gets them and takes its
+ * result from its body, which binds the variables of the parameter's result. */
+bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in) {
     const MsTyTable *tys = &b->c->tys;
-    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != e->u.call.args.len || e->u.call.args.len > 16) {
+    const MsTy want = ms_infer_apply(in, param->ty);
+    if (!ms_body_mentions_unbound(b, in, want)) {
+        return ms_body_is_admitted(b, want) && ms_body_expr(b, value, want) != MS_TY_NONE;
+    }
+    MsTy actual = MS_TY_NONE;
+    if (value->kind == MS_E_LAMBDA) {
+        bool settled = ms_ty_kind(tys, want) == MS_K_FUNCTION;
+        for (uint32_t i = 0; settled && i < tys->nparams[want]; i++) {
+            settled = !ms_body_mentions_unbound(b, in, ms_ty_params(tys, want)[i].ty);
+        }
+        actual = settled ? ms_body_lambda_inferred(b, value, want) : MS_TY_NONE;
+        if (actual != MS_TY_NONE) {
+            (void)ms_body_record(b, value->id, actual);
+        }
+    } else {
+        actual = ms_body_expr(b, value, MS_TY_NONE);
+    }
+    return actual != MS_TY_NONE && ms_body_is_admitted(b, actual) && ms_infer_match(in, param->ty, actual) == MS_MATCH_OK;
+}
+
+/* A function passed for a parameter has the parameter's type (`fn(move T) U`), as the Rust checker
+ * records it, whatever ownership mode the function's own type spells. `slot[i]` is the parameter
+ * of argument i. */
+void ms_body_record_function_arguments(MsBody *b, const MsExpr *call, MsTy sig, const uint32_t *slot) {
+    const MsTyTable *tys = &b->c->tys;
+    const MsTyParam *params = ms_ty_params(tys, sig);
+    for (uint32_t i = 0; i < call->u.call.args.len; i++) {
+        const MsTy want = params[slot[i]].ty;
+        if (ms_ty_kind(tys, want) == MS_K_FUNCTION) {
+            (void)ms_body_record(b, call->u.call.args.ptr[i].value->id, want);
+        }
+    }
+}
+
+/* Matches each argument against its parameter, binding the variables. Arguments pair with
+ * parameters by label or position; a parameter left out must have a default in `func`, the callee's
+ * declaration. */
+static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc *func, MsInfer *in, uint32_t *slot) {
+    const MsTyTable *tys = &b->c->tys;
+    const uint32_t given = e->u.call.args.len;
+    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION) {
+        return false;
+    }
+    const uint32_t nparams = tys->nparams[sig];
+    if (given > nparams || nparams > 16 || func->params.len != nparams) {
         return false;
     }
     const MsTyParam *params = ms_ty_params(tys, sig);
-    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
-        const MsArg *arg = &e->u.call.args.ptr[i];
-        // Explicit type arguments already fix some variables: the argument is checked against that.
-        const MsTy want = ms_infer_apply(in, params[i].ty);
-        const bool fixed = !ms_ty_has_variable(tys, &b->c->arena, want);
-        if (arg->has_name || params[i].flags != 0 || (fixed && !ms_body_is_admitted(b, want))) {
-            return false;
-        }
-        const MsTy actual = ms_body_expr(b, arg->value, fixed ? want : MS_TY_NONE);
-        if (actual == MS_TY_NONE || !ms_body_is_admitted(b, actual) || ms_infer_match(in, params[i].ty, actual) != MS_MATCH_OK) {
+    MsSym names[16] = {0};
+    bool positional[16] = {false}, covered[16] = {false};
+    for (uint32_t i = 0; i < nparams; i++) {
+        names[i] = params[i].name;
+        positional[i] = (params[i].flags & MS_PARAM_POSITIONAL) != 0;
+    }
+    if (!ms_body_bind_arguments(e, names, positional, nparams, slot, covered)) {
+        return false;
+    }
+    for (uint32_t i = 0; i < nparams; i++) {
+        if (!covered[i] && func->params.ptr[i]->def == NULL) {
             return false;
         }
     }
+    for (uint32_t i = 0; i < given; i++) {
+        const MsTyParam *param = &params[slot[i]];
+        if ((param->flags & ~MS_PARAM_POSITIONAL) != 0 ||
+            !ms_body_open_argument(b, e->u.call.args.ptr[i].value, param, in)) {
+            return false;
+        }
+    }
+    b->facts->call_reordered[e->id] = ms_body_reordered(e, slot);
     return true;
 }
 
@@ -72,7 +127,10 @@ static bool generic_bounds(MsBody *b, MsInfer *in) {
         return false;
     }
     for (uint32_t i = 0; i < in->nvars; i++) {
-        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i])) {
+        // A type argument that mentions the caller's own variables is a recursive application the
+        // Rust checker's recursion rules judge (recursion.rs); it stays there.
+        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i]) ||
+            ms_ty_has_variable(&b->c->tys, &b->c->arena, in->bound[i])) {
             return false;
         }
         const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
@@ -109,7 +167,36 @@ static void generic_record_type_args(MsBody *b, const MsExpr *e, const MsInfer *
     }
 }
 
-MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written) {
+/* Variables the arguments left unbound take their type from the type the context expects of the
+ * call's result (`x: List[Int] := empty()`). A variable with a default keeps it when it already fits
+ * the expected type, which this does not judge: those calls, and a result the expected type
+ * contradicts (Rust reports a conflict), stay declined. */
+static bool generic_from_expected(MsBody *b, MsInfer *in, MsTy result, MsTy expected) {
+    uint32_t unbound = 0;
+    for (uint32_t i = 0; i < in->nvars; i++) {
+        const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
+        if (in->bound[i] != MS_TY_NONE) {
+            continue;
+        }
+        if (info != NULL && info->def != MS_TY_NONE) {
+            return false;
+        }
+        unbound++;
+    }
+    if (unbound == 0 || expected == MS_TY_NONE || expected == b->invalid_ty || ms_body_has_invalid(b, expected)) {
+        return unbound == 0;
+    }
+    MsInfer trial = *in;
+    trial.bound = MS_NEW_N(&b->c->arena, MsTy, (size_t)in->nvars + 1);
+    memcpy(trial.bound, in->bound, in->nvars * sizeof *trial.bound);
+    if (ms_infer_match(&trial, result, expected) != MS_MATCH_OK) {
+        return false;
+    }
+    memcpy(in->bound, trial.bound, in->nvars * sizeof *trial.bound);
+    return true;
+}
+
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written, MsTy expected) {
     const MsDef *def = ms_def(b->c, sym);
     const MsTy sig = b->c->syms.ty[sym];
     MsInfer in;
@@ -131,16 +218,47 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
         }
     }
     uint32_t first = 0;
-    if (!generic_arguments(b, e, sig, &in) || ms_infer_defaults(&in, &first) != 0 || !generic_bounds(b, &in)) {
+    uint32_t slot[16];
+    if (!generic_arguments(b, e, sig, &b->c->syms.decl[sym]->u.fn, &in, slot)) {
         return ms_body_unsupported(b);
     }
+    if (!generic_from_expected(b, &in, b->c->tys.result[sig], expected)) {
+        return ms_body_unsupported(b);
+    }
+    if (ms_infer_defaults(&in, &first) != 0) {
+        return ms_body_unsupported(b);
+    }
+    if (!generic_bounds(b, &in)) {
+        return ms_body_unsupported(b);
+    }
+    for (uint32_t i = 0; i < in.nvars; i++) {
+        // A variable bound to a type built from variables (`T` as `List[T]`) can grow without end through a
+        // cycle of calls, which the Rust checker reports (recursion.rs); the graph is not built here yet.
+        if (ms_ty_kind(&b->c->tys, in.bound[i]) != MS_K_VARIABLE &&
+            ms_ty_has_variable(&b->c->tys, &b->c->arena, in.bound[i])) {
+            return ms_body_unsupported(b);
+        }
+    }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
-    if (!ms_body_is_admitted(b, result)) {
+    if (ms_body_has_invalid(b, result)) {
+        return b->invalid_ty;
+    }
+    if (!ms_body_is_bindable(b, result) && result != b->void_ty && !ms_body_is_handle(b, result)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;
+    ms_body_record_function_arguments(b, e, ms_infer_apply(&in, sig), slot);
     generic_record_type_args(b, e, &in);
     return result;
+}
+
+static bool generic_is_native(const MsBody *b, MsSymId sym) {
+    return ms_ty_kind(&b->c->tys, b->c->syms.ty[sym]) == MS_K_NATIVE;
+}
+
+static bool generic_is_nominal(const MsBody *b, MsSymId sym) {
+    const MsKind kind = ms_ty_kind(&b->c->tys, b->c->syms.ty[sym]);
+    return kind == MS_K_TYPE || kind == MS_K_NATIVE;
 }
 
 /* `Name[Args](fields)` or `Name(fields)` for a generic type: the written arguments give the first
@@ -149,11 +267,12 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
  * fields left out take their default. Natives (`Map[K, V]()`) have no fields to give. */
 MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written) {
     const MsSyms *syms = &b->c->syms;
+    ms_module_resolve_types(b->c, syms->module[sym]); // the declaring module's fields and variables
     const MsDef *def = ms_def(b->c, sym);
     const MsDecl *decl = syms->decl[sym];
     const uint32_t nargs = e->u.call.args.len;
     if (decl == NULL || decl->kind != MS_D_TYPE || (syms->module[sym] != b->module && decl->u.type.opaque) ||
-        ms_ty_kind(&b->c->tys, syms->ty[sym]) != MS_K_TYPE || def->nvars == 0 || nargs > def->nfields ||
+        !generic_is_nominal(b, sym) || (generic_is_native(b, sym) && nargs != 0) || def->nvars == 0 || nargs > def->nfields ||
         def->nfields != decl->u.type.fields.len || nargs > 16) {
         return ms_body_unsupported(b);
     }
@@ -176,7 +295,7 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
     }
     MsSym *names = MS_NEW_N(&b->c->arena, MsSym, def->nfields + 1);
     bool *covered = MS_NEW_N(&b->c->arena, bool, def->nfields + 1);
-    uint32_t slot[16];
+    uint32_t slot[16] = {0};
     for (uint32_t i = 0; i < def->nfields; i++) {
         names[i] = def->fields[i].name;
     }

@@ -129,12 +129,9 @@ typedef struct MsScanNode {
  * The edges live in `arena`. */
 MsScanNode ms_effect_scan_decl(MsArena *arena, const MsCheck *c, MsModId module, const MsDecl *d);
 
-/* A source method of a plain impl is a node too: its key is the symbol count plus its row in the
- * method table, so it shares the edge type with functions. A method of a generic impl, a native
- * one and a property stay `partial` where they are called. */
-static inline bool ms_effect_method_is_node(const MsMethods *m, uint32_t row) {
-    return row < m->count && m->native[row] == MS_NATIVE_SOURCE && m->decl[row] != NULL && m->nvars[row] == 0;
-}
+/* A source method is a node too: its key is the symbol count plus its row in the method table, so it
+ * shares the edge type with functions. */
+bool ms_effect_method_is_node(const MsCheck *c, const MsMethods *m, uint32_t row);
 static inline MsSymId ms_effect_method_node(const MsCheck *c, uint32_t row) { return c->syms.count + row; }
 
 /* What a call through an interface or an intrinsic costs the scan, which Rust reads off the receiver:
@@ -160,7 +157,7 @@ typedef struct MsEntityEffects {
     uint32_t neffects;
     const MsStr *permits; /* `allow_effect` patterns in force, as written */
     uint32_t npermits;
-    const MsStr *calls; /* project callables the body calls: declaration names, sorted and unique */
+    const MsStr *calls; /* project callables the body calls: entity keys `path#fn#name`, sorted and unique */
     uint32_t ncalls;
     const MsStr *external; /* callees outside the project: their symbol ids, sorted and unique */
     uint32_t nexternal;
@@ -195,5 +192,11 @@ typedef struct MsPackageViolation {
  * driver. False when the graph is malformed. */
 MS_NODISCARD bool ms_effect_package_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules,
                                                uint32_t count, MsPackageViolation **out, uint32_t *nout, bool *complete);
+
+/* The violations of the project's own modules among `modules` (no `cap`, no `package`), with the text `ms lint`
+ * reports as MSL116 (`root` reaches E: a -> b; permit it ...). `*complete` is false when a project callable reaches code
+ * the scan cannot see through, so a missing violation proves nothing. False when the graph is malformed. */
+MS_NODISCARD bool ms_effect_project_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules, uint32_t count,
+                                               MsPackageViolation **out, uint32_t *nout, bool *complete);
 
 #endif

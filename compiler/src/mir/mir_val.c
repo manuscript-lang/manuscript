@@ -44,7 +44,7 @@ MirVal ip_ptr(uint64_t address) {
 static bool ip_is_aggregate(MirVal value) {
     switch ((MirValTag)value.tag) {
     case MV_STR: case MV_TYPE: case MV_ALT: case MV_LIST: case MV_OPT: case MV_CLOSURE:
-    case MV_IFACE:
+    case MV_IFACE: case MV_MAP:
         return true;
     case MV_VOID: case MV_BOOL: case MV_INT: case MV_FLOAT: case MV_PTR:
         return false;
@@ -271,24 +271,36 @@ static void ip_shortest(char *text, size_t size, double value) {
         for (const char *p = text + (text[0] == '-' ? 1 : 0); p < mark; p++) {
             if (*p != '.') mantissa = mantissa * 10 + (unsigned long long)(*p - '0');
         }
-        long double best_gap = -1;
-        char best[48] = {0};
-        for (int step = -1; step <= 1; step += 2) {
+        /* The neighbour on the side of the exact value is the closer one: compare the exact digits with the text's.
+         * No long double: aarch64 builds have no compiler-rt for its soft-float routines. */
+        static char exact[1100];
+        snprintf(exact, sizeof exact, "%.*e", 1000, value);
+        const char *exact_mark = strchr(exact, 'e');
+        bool above = exact_mark != NULL && strtol(exact_mark + 1, NULL, 10) == exponent;
+        if (above) {
+            const char *t = text + (text[0] == '-' ? 1 : 0);
+            const char *x = exact + (exact[0] == '-' ? 1 : 0);
+            above = false;
+            for (; t < mark; t++) {
+                if (*t == '.') continue;
+                if (*x == '.') x++;
+                if (*x != *t) {
+                    above = *x > *t;
+                    break;
+                }
+                x++;
+            }
+            if (t == mark) above = true; /* the digits agree, so the exact value lies above the text */
+        }
+        for (int pick = 0; pick < 2; pick++) {
+            int step = (pick == 0) == above ? 1 : -1;
             char digits[32];
             int ndigits = snprintf(digits, sizeof digits, "%llu", mantissa + (unsigned long long)step);
             char candidate[48];
             snprintf(candidate, sizeof candidate, "%s%c.%se%ld", value < 0 ? "-" : "", digits[0],
                      digits + 1, exponent + ndigits - (precision + 1));
-            double back = strtod(candidate, NULL);
-            if (back != value) continue;
-            long double gap = fabsl(strtold(candidate, NULL) - (long double)value);
-            if (best_gap < 0 || gap < best_gap) {
-                best_gap = gap;
-                memcpy(best, candidate, sizeof best);
-            }
-        }
-        if (best_gap >= 0) {
-            memcpy(text, best, 48 < size ? 48 : size);
+            if (strtod(candidate, NULL) != value) continue;
+            snprintf(text, size, "%s", candidate);
             return;
         }
     }
@@ -366,7 +378,7 @@ void ip_show(MsBuf *out, MirVal value) {
         break;
     }
     case MV_PTR: case MV_TYPE: case MV_ALT: case MV_LIST: case MV_OPT: case MV_CLOSURE:
-    case MV_IFACE:
+    case MV_IFACE: case MV_MAP:
         ms_buf_puts(out, "<value>");
         break;
     }

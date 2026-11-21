@@ -12,7 +12,7 @@ inputs:
 runs:
   using: composite
   steps:
-    # `cargo xtask runtime` folds libuv, OpenSSL and the other C libraries into the runtime archives; they come
+    # `cmake -P cmake/BuildRuntime.cmake` folds libuv, OpenSSL and the other C libraries into the runtime archives; they come
     # from the system packages through runtime/third_party/libs.sh, with CMake, Ninja and ccache (Windows takes MSYS2 packages, below).
     - name: Install the C libraries
       if: runner.os == 'Linux' || runner.os == 'macOS'

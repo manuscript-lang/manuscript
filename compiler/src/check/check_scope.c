@@ -8,12 +8,7 @@
 #include "ms/import_hints.h"
 #include "ms/prelude_fix.h"
 
-enum { PRELUDE_NAME_COUNT = 13, CONSTRUCTOR_COUNT = 4 };
-
-/* Types every module sees without an import (`STANDARD_PRELUDE_NAMES`). */
-static const char *const scope_prelude_names[PRELUDE_NAME_COUNT] = {
-    "Equal", "Stringable", "Comparable", "Hashable", "Clonable", "Optional", "Result",
-    "Error", "List",       "Map",        "Set",      "ListEntry", "MapEntry"};
+enum { CONSTRUCTOR_COUNT = 4 };
 
 static const char *const scope_constructors[CONSTRUCTOR_COUNT] = {"some", "none", "ok", "error"};
 
@@ -103,7 +98,7 @@ bool ms_is_prelude_symbol(const MsCheck *c, MsSymId sym) {
             return true;
         }
     }
-    if (!scope_in(name, scope_prelude_names, PRELUDE_NAME_COUNT)) {
+    if (!scope_in(name, ms_prelude_names, ms_prelude_name_count)) {
         return false;
     }
     return ms_map_get(&c->std_types, c->syms.name[sym]) == sym;
@@ -219,8 +214,8 @@ static void scope_add_prelude(MsCheck *c, MsModId module) {
             (void)ms_map_add(names, print, symbol);
         }
     }
-    for (size_t i = 0; i < PRELUDE_NAME_COUNT; i++) {
-        const MsSym name = ms_intern_cstr(c->names, scope_prelude_names[i]);
+    for (size_t i = 0; i < ms_prelude_name_count; i++) {
+        const MsSym name = ms_intern_cstr(c->names, ms_prelude_names[i]);
         const MsSymId symbol = ms_map_get(&c->std_types, name);
         if (symbol == MS_NONE || c->syms.module[symbol] == module || scope_imports_name(syntax, name)) {
             continue;
@@ -401,24 +396,6 @@ static void scope_import_symbols(MsCheck *c, MsModId module) {
 
 /* ---- declarations ---- */
 
-static MsSymKind scope_symbol_kind(const MsDecl *d) {
-    switch ((MsDeclKind)d->kind) {
-    case MS_D_TYPE:
-    case MS_D_ENUM:
-    case MS_D_INTERFACE: return MS_SYM_TYPE;
-    case MS_D_ALIAS: return MS_SYM_ALIAS;
-    case MS_D_FN:
-    case MS_D_CONST:
-    case MS_D_IMPL:
-    case MS_D_TEST: return MS_SYM_FN;
-    }
-    return MS_SYM_FN;
-}
-
-static bool scope_is_nominal_decl(const MsDecl *d) {
-    return d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE;
-}
-
 /* A symbol the loader registered for this very declaration (an `extern type` or an exported
  * type of a bundled source module), or MS_NONE. */
 static MsSymId scope_registered_symbol(const MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {
@@ -436,7 +413,7 @@ static MsSymId scope_declare_one(MsCheck *c, MsModId module, const MsDecl *d, Ms
     const MsStr identity = ms_arena_fmt(&c->arena, "%.*s#%.*s", (int)path.len, path.ptr, (int)text.len, text.ptr);
     const MsSymSpec spec = {.name = name,
                             .id = scope_intern_text(c, identity),
-                            .kind = scope_symbol_kind(d),
+                            .kind = ms_decl_symbol_kind(d),
                             .native = external_fn ? MS_NATIVE_EXTERN : MS_NATIVE_SOURCE,
                             .native_name = external_fn ? name : 0,
                             .is_exported = d->is_exported,
@@ -457,7 +434,7 @@ static void scope_declare_symbols(MsCheck *c, MsModId module) {
         }
         MsSymId sym = MS_NONE;
         const bool opaque = d->kind == MS_D_TYPE && d->u.type.external;
-        if (opaque || scope_is_nominal_decl(d)) {
+        if (opaque || ms_decl_is_nominal(d)) {
             sym = scope_registered_symbol(c, module, d, name);
         }
         if (sym == MS_NONE) {
@@ -473,6 +450,13 @@ void ms_module_declare(MsCheck *c, MsModId module) {
     }
     c->mods[module].declared = true;
     scope_begin_module(c, module);
+    if (ms_text_starts_with(ms_name(c->names, c->mods[module].path), scope_std_prefix)) {
+        // Standard modules import each other in cycles: declare a module's own names first, so a
+        // module reached through a cycle already has its symbols when the import asks for them.
+        scope_declare_symbols(c, module);
+        scope_import_symbols(c, module);
+        return;
+    }
     scope_import_symbols(c, module);
     scope_declare_symbols(c, module);
 }

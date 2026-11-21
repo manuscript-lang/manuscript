@@ -9,6 +9,7 @@
 #define MS_CHECK_H
 
 #include "ms/tables.h"
+#include "ms/text.h"
 
 /* The row of the module with this path, or MS_NONE. */
 MsModId ms_module_find(const MsCheck *c, MsSym path);
@@ -38,6 +39,56 @@ typedef struct MsTypeScope {
     const MsTy *types;
     uint32_t len;
 } MsTypeScope;
+
+/* The standard-library symbol that declares builtin `b`, or MS_NONE: how a pass finds `List` or `Map`
+ * without spelling its name. */
+static inline MsSymId ms_builtin_symbol(const MsCheck *c, MsBuiltin b) {
+    const MsSymId plus_one = c->builtin_sym_plus_one[b];
+    return plus_one == 0 ? MS_NONE : plus_one - 1;
+}
+
+/* Whether `name` is a type variable of `scope` or of an enclosing one. */
+static inline bool ms_type_scope_has(const MsTypeScope *scope, MsSym name) {
+    for (; scope != NULL; scope = scope->parent) {
+        for (uint32_t i = 0; i < scope->len; i++) {
+            if (scope->names[i] == name) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* Whether the interned name `name` spells `text`. */
+static inline bool ms_name_is(const MsNames *names, MsSym name, const char *text) {
+    return ms_text_is(ms_name(names, name), text);
+}
+
+/* The type of the primitive called `name`, or MS_TY_NONE. */
+static inline MsTy ms_check_primitive(const MsCheck *c, const char *name) {
+    const MsSymId sym = ms_map_get(&c->primitives, ms_intern_cstr(c->names, name));
+    return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
+}
+
+/* The `<invalid>` type a diagnostic leaves behind. */
+static inline MsTy ms_check_invalid_ty(MsCheck *c) {
+    const MsSym name = ms_intern_cstr(c->names, "<invalid>");
+    const MsTyDesc desc = {.name = name, .id = name, .kind = MS_K_INVALID};
+    return ms_ty_intern(&c->tys, &desc);
+}
+
+/* Whether `d` makes a nominal type: a type, an enum or an interface. */
+static inline bool ms_decl_is_nominal(const MsDecl *d) {
+    return d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE;
+}
+
+/* The kind of symbol a declaration registers. */
+static inline MsSymKind ms_decl_symbol_kind(const MsDecl *d) {
+    if (ms_decl_is_nominal(d)) {
+        return MS_SYM_TYPE;
+    }
+    return d->kind == MS_D_ALIAS ? MS_SYM_ALIAS : MS_SYM_FN;
+}
 
 /* Resolves the written types of one module: a context that the resolution functions share. */
 typedef struct MsResolver {
@@ -104,5 +155,13 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, struct MsMethodTabl
  * Like the Rust pass it reports only for a module with no other diagnostic, and it exempts names
  * that begin with `_`. Call after ms_module_check_bodies (and the ownership pass). */
 void ms_module_check_unused(MsCheck *c, MsModId module);
+
+/* Appends `module` and then the project modules it imports (transitively), each once, in import order.
+ * `seen` and `modules` have room for every module; `*n` counts `modules`. */
+void ms_module_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modules, uint32_t *n);
+
+/* Called with the source line of each construct the body checker gives up on (first one per function);
+ * a tool sets it to rank what keeps functions with the Rust checker. */
+extern void (*ms_body_decline_hook)(const char *file, int line);
 
 #endif

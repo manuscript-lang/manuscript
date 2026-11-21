@@ -17,6 +17,7 @@ import (
 	Invocation, invocation, validate from "./args.ms",
 	rust_cli from "./bridge.ms",
 	run_check from "./check_run.ms",
+	run_build, run_program from "./build_run.ms",
 	command_line, rust_arguments, spec from "./cli.ms",
 	run_explain from "./explain.ms",
 	Printed, run_fmt from "./fmt.ms",
@@ -26,6 +27,7 @@ import (
 	run_members from "./test/members.ms",
 	run_bench, run_test from "./test/run.ms",
 	run_verify from "./verify.ms",
+	run_watch from "./watch.ms",
 	root_members from "./workspace.ms",
 )
 
@@ -72,12 +74,10 @@ fn is_source_command(command: String) Bool:
 		"profile"
 	].contains(command)
 
-// Runs `ms test` or `ms bench` in the front; none when the Rust command line must: a
-// `--watch`, several targets that are not all manifests, or a workspace root whose members
-// need the Rust command line to explain them.
+// Runs `ms test` or `ms bench` in the front; none when the Rust command line must:
+// several targets that are not all manifests, or a workspace root whose members need
+// the Rust command line to explain them.
 fn run_tests(root: Command, matches: Matches, inv: Invocation) Int?:
-	if inv.watch: return none
-
 	bench := inv.command == "bench"
 	manifests := inv.targets.filter(fn target: target.ends_with("ms.toml"))
 
@@ -146,11 +146,17 @@ fn run_source_command(root: Command, matches: Matches) Int:
 		return 2
 
 	if inv.command == "profile": return run_profile(inv)
+	if inv.watch and ["check", "lint", "test", "run"].contains(inv.command): return run_watch(
+		inv,
+		command_line(),
+	)
 
 	if inv.command == "check":
 		if status := run_check(inv): return status
-	if inv.command == "check":
-		if status := run_check(inv): return status
+	if inv.command == "build":
+		if status := run_build(inv): return status
+	if inv.command == "run":
+		if status := run_program(inv): return status
 	if inv.command == "test" or inv.command == "bench":
 		if status := run_tests(root, matches, inv): return status
 	return delegate(rust_arguments(root, matches))
@@ -187,18 +193,16 @@ fn dispatch(root: Command, matches: Matches) Int:
 		return delegate(rust_arguments(root, matches))
 
 	if command == "install" or command == "add" or command == "remove":
-		if done := run_manifest_command(command, matches):
-			out(done.stdout)
-			err(done.stderr)
-			return done.status
-
-		return delegate(rust_arguments(root, matches))
+		done := run_manifest_command(command, matches)
+		out(done.stdout)
+		err(done.stderr)
+		return done.status
 
 	if is_source_command(command): return run_source_command(root, matches)
 
 	return delegate(rust_arguments(root, matches))
 
-fn run_manifest_command(command: String, matches: Matches) Printed?:
+fn run_manifest_command(command: String, matches: Matches) Printed:
 	if command == "install": return run_install(matches)
 	if command == "add": return run_add(matches)
 

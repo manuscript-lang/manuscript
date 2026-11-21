@@ -205,3 +205,11 @@ fn source_function_value_cannot_copy_a_borrowed_callback_result() {
     .expect_err("non-Clonable callback result");
     assert!(error.to_string().contains("non-Clonable borrow"), "{error}");
 }
+
+/// The Manuscript front end names a record and an alternative `Parsed` (two packages): the text
+/// the C optimizer reads must tell them apart, or `match` over the alternative fails to verify.
+#[test]
+fn the_front_end_optimizes_with_a_record_and_an_alternative_of_one_name() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tools/ms/main.ms");
+    assert!(optimized(&path).contains("alt Parsed"));
+}

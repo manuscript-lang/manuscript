@@ -23,16 +23,16 @@ vscode-install: vscode-package
 		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
-verify: check repo-check workflow-check bench-check lsp-test unit docs-check licenses-check
+verify: check repo-check c-lint workflow-check bench-check lsp-test unit docs-check licenses-check
 
 verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
 # Builds the native C runtime into target/ms-native; every build of ms-cli embeds it.
 runtime:
-	cargo xtask runtime
+	cmake -P cmake/BuildRuntime.cmake
 
 check: runtime
-	cargo xtask symbols --check
+	"$(RELEASE_MS)" run tools/ms/symbols.ms -- --check
 	cargo fmt --all --check
 	cargo clippy --workspace --all-targets -- -D warnings
 
@@ -253,7 +253,10 @@ c-compiler-test:
 	sh compiler/tests/public-signature-diff.sh
 	sh compiler/tests/extern-diff.sh
 	sh compiler/tests/interface-diff.sh
+	sh compiler/tests/param-order-diff.sh
+	sh compiler/tests/field-defaults-diff.sh
 	sh compiler/tests/lower-diff.sh
+	sh compiler/tests/lower-program-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
 	sh compiler/tests/fixes-diff.sh
@@ -272,10 +275,11 @@ FORCE:
 C_TOOL = target/cmake/tools/compiler
 target/c-tool/libmstool.a: FORCE
 	cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
-	cmake --build target/cmake/tools --target ms_tool ms_syntax_dump ms_check_dump
+	cmake --build target/cmake/tools --target ms_tool ms_syntax_dump ms_check_dump ms_api_model
 	mkdir -p target/c-tool
 	cp $(C_TOOL)/libmstool.a $@
 	cp $(C_TOOL)/ms_syntax_dump target/c-tool/ms_syntax_dump
+	cp $(C_TOOL)/ms_api_model target/c-tool/ms_api_model
 
 # The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; `search_symbol` against the Rust one; the `ms diagram` views and call graph against the Rust ones; and the C checker's fact dump against the Rust facts.
 c-tools-test: build target/c-tool/libmstool.a
@@ -284,6 +288,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/html.ms
 	"$(RELEASE_MS)" test tools/ms/review_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/diagram_cmd.ms
+	"$(RELEASE_MS)" test tools/ms/symbols.ms
 	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
 	"$(RELEASE_MS)" test tools/ms/cli.ms
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
@@ -296,11 +301,17 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/imports.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/test/watch.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/report.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed_calls.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/recursion.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/defaults.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/counter.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/flush.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/effects.ms --link target/c-tool/libmstool.a
+
 	"$(RELEASE_MS)" test tools/ms/lint/analysis.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/skill_calls.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/fixes.ms --link target/c-tool/libmstool.a
@@ -310,6 +321,11 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" run tools/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt
 	cmp target/c-tool/ast.c.txt target/c-tool/ast.ms.txt
 	cargo run -q --release --locked -p ms-tooling --example api_model > target/c-tool/model.json
+	target/c-tool/ms_api_model stdlib > target/c-tool/model.c.json && cmp target/c-tool/model.json target/c-tool/model.c.json
+	"$(RELEASE_MS)" build tools/ms/facts_entry.ms --link target/c-tool/libmstool.a -o target/c-tool/facts_entry
+	mkdir -p target/c-tool/facts && cp tools/ms/facts_entry.ms target/c-tool/facts/main.ms && cd target/c-tool/facts && ../facts_entry main.ms > entry.json && ../../cmake/tools/compiler/ms_check_dump ../../../stdlib --facts main.ms > dump.json && cmp entry.json dump.json
+	rm -rf target/c-tool/proj && mkdir -p target/c-tool/proj/src && printf 'import helper from "./src/lib.ms"\n\nfn main() Int:\n\treturn helper(2)\n' > target/c-tool/proj/a.ms && printf 'export fn helper(n: Int) Int:\n\treturn n + 1\n' > target/c-tool/proj/src/lib.ms
+	target/c-tool/facts_entry --project target/c-tool/proj/a.ms > target/c-tool/proj/facts.json && grep -q '"key": "a.ms#fn#main"' target/c-tool/proj/facts.json && grep -q '"key": "src/lib.ms#fn#helper"' target/c-tool/proj/facts.json && grep -q '"paths": \["./src/lib.ms"\]' target/c-tool/proj/facts.json && grep -q '"calls": \["src/lib.ms#fn#helper"\], "effects_known": true' target/c-tool/proj/facts.json
 	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -coverage target/c-tool/coverage.rust.json -artifacts target/c-tool/docs.rust -static target/c-tool/static.rust
 	rm -rf target/c-tool/docs.ms
 	"$(RELEASE_MS)" run tools/ms/docgen.ms -- target/c-tool/model.json target/c-tool/docs.ms
@@ -319,8 +335,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" run tools/ms/doc_inventory.ms -- target/c-tool/model.json tools/ms/data/description_backlog.json target/c-tool/coverage.ms.json
 	cmp target/c-tool/coverage.rust.json target/c-tool/coverage.ms.json
 	"$(RELEASE_MS)" test tools/ms/doc_inventory.ms
-	"$(RELEASE_MS)" build tools/ms/search.ms -o target/c-tool/search
-	sh tools/ms/search-diff.sh "$(RELEASE_MS)" target/c-tool/model.json target/c-tool/search
+	"$(RELEASE_MS)" build tools/ms/search.ms --link target/c-tool/libmstool.a -o target/c-tool/search
+	sh tools/ms/search-diff.sh "$(RELEASE_MS)" target/c-tool/search
 	cargo build -q --release --locked -p ms-tooling --bin ms-tooling-dev
 	"$(RELEASE_MS)" build tools/ms/views.ms -o target/c-tool/views
 	sh tools/ms/views-diff.sh target/release/ms-tooling-dev target/c-tool/views target/c-tool/views-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms

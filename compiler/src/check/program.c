@@ -6,7 +6,9 @@
 #include "ms/desugar.h"
 #include "ms/extern_sig.h"
 #include "ms/interface_sig.h"
+#include "ms/param_order.h"
 #include "ms/methods.h"
+#include "ms/ownership.h"
 #include "ms/program.h"
 #include "ms/public_sig.h"
 #include "ms/stdlib.h"
@@ -36,7 +38,7 @@ static void program_desugar(MsCheck *c, MsModId m) {
     ms_module_desugar(c, m, c->mods[m].text, foreign, nforeign, &errors, &nerrors);
 }
 
-static void program_desugar_bundled(MsCheck *c) {
+void ms_program_desugar_bundled(MsCheck *c) {
     for (MsModId m = 0; !c->std_desugared && m < c->nmods; m++) {
         program_desugar(c, m);
     }
@@ -99,7 +101,7 @@ static void program_add_bundled(MsCheck *c, MsStr path) {
 }
 
 bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
-    program_desugar_bundled(c);
+    ms_program_desugar_bundled(c);
     if (c->methods == NULL) {
         ms_program_begin(c);
     }
@@ -131,6 +133,24 @@ bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
     ms_module_check_public(c, module, c->methods);
     ms_module_check_externs(c, module);
     ms_module_check_interfaces(c, module);
+    ms_module_check_param_order(c, module);
     ms_module_check_bodies_with(c, module, c->methods);
     return true;
 }
+
+uint32_t ms_program_check_bundled(MsCheck *c) {
+    uint32_t checked = 0;
+    for (MsModId m = 0; m < c->nmods; m++) {
+        const MsModuleRow *row = &c->mods[m];
+        // `impls_added` marks the modules the program's imports reach (program_add_bundled).
+        if (!row->source || !row->impls_added || row->syntax == NULL || row->text.len == 0 ||
+            (row->facts != NULL && row->facts->body_checked != NULL)) {
+            continue;
+        }
+        ms_module_check_bodies_with(c, m, c->methods);
+        ms_module_check_ownership(c, m);
+        checked++;
+    }
+    return checked;
+}
+

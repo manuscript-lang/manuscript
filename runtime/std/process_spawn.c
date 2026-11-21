@@ -33,6 +33,7 @@
 
 #ifdef _WIN32
 #define PSAPI_VERSION 2 /* GetProcessMemoryInfo from kernel32, so no extra library */
+#include <io.h>
 #include <windows.h>
 #include <psapi.h>
 #else
@@ -766,6 +767,28 @@ uint8_t msstd_process_command_spawn(const MsStr *program, const MsVec *arguments
     return command_finish(&fail, program, has_cwd != 0 ? cwd : NULL, err);
 }
 
+#ifdef _WIN32
+/* The parent end of a piped stream as the stream table takes it on Windows: an overlapped pipe handle that the reactor
+ * adopts, which is what its reads and writes park on. libuv made a C runtime descriptor; the handle moves to a
+ * duplicate that the reactor owns, and the descriptor closes. -1 when the pipe cannot be adopted. */
+static int64_t adopt_pipe(int fd) {
+    HANDLE copy = NULL;
+    const HANDLE source = (HANDLE)_get_osfhandle(fd);
+    const bool duplicated = source != INVALID_HANDLE_VALUE &&
+                            DuplicateHandle(GetCurrentProcess(), source, GetCurrentProcess(), &copy, 0, FALSE,
+                                            DUPLICATE_SAME_ACCESS);
+    _close(fd);
+    if (!duplicated) {
+        return -1;
+    }
+    if (!ms_sched_pipe_adopt((intptr_t)copy)) {
+        CloseHandle(copy);
+        return -1;
+    }
+    return (int64_t)(intptr_t)copy;
+}
+#endif
+
 /* The runtime stream-table id of a piped stream: the first call moves the descriptor into the table. */
 int64_t msstd_process_subprocess_stream_id(MsObj *object, int64_t which) {
     MsChild *child = (MsChild *)object;
@@ -777,7 +800,12 @@ int64_t msstd_process_subprocess_stream_id(MsObj *object, int64_t which) {
         const int fd = child->descriptors[stream];
         const int64_t access = stream == STREAM_IN ? STREAM_WRITES : STREAM_READS;
         child->descriptors[stream] = -1;
-        child->ids[stream] = fd < 0 ? -1 : msrt_streams_open(fd, STREAM_OWNS | STREAM_NONBLOCK | access);
+#ifdef _WIN32
+        const int64_t descriptor = fd < 0 ? -1 : adopt_pipe(fd);
+#else
+        const int64_t descriptor = fd;
+#endif
+        child->ids[stream] = descriptor < 0 ? -1 : msrt_streams_open(descriptor, STREAM_OWNS | STREAM_NONBLOCK | access);
     }
     return child->ids[stream];
 }

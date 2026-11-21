@@ -212,16 +212,6 @@ compiler/tests/run/strings.mir
 compiler/tests/run/strlit.mir
 compiler/tests/run/strtail.mir
 compiler/tests/run/twice.mir
-crates/ms-clif/kernels/chain_walk.mir
-crates/ms-clif/kernels/collatz.mir
-crates/ms-clif/kernels/life.mir
-crates/ms-clif/kernels/map_count.mir
-crates/ms-clif/kernels/map_homes.mir
-crates/ms-clif/kernels/matmul.mir
-crates/ms-clif/kernels/mul_const.mir
-crates/ms-clif/kernels/nbody.mir
-crates/ms-clif/kernels/sieve.mir
-crates/ms-clif/kernels/trees.mir
 crates/ms-mir/tests/fixtures-opt-nocheck/alt_known.mir
 crates/ms-mir/tests/fixtures-opt/alt_impossible.mir
 crates/ms-mir/tests/fixtures-opt/arith_checks.mir

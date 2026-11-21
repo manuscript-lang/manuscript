@@ -7,6 +7,7 @@
 
 #include "../core/fault.h"
 #include "ms_rt/desc.h"
+#include "ms_rt/io.h"
 #include "ms_rt/start.h"
 
 /* The arguments msrt_start received; msrt_argv and msrt_args read them. */
@@ -14,11 +15,6 @@ void ms_entry_set_arguments(int argc, const char *const *argv);
 
 /* Runs the exit hooks registered with msrt_process_on_exit, once each, in registration order. */
 void ms_process_run_exit_hooks(void);
-
-/* Standard output (runtime/core/stdout.c): writes out what the runtime buffered, and the OS code of the first failed
- * write (0 when none). Declared here, not through ms_sched.h, whose wait bits clash with core/task.h. */
-void ms_sched_flush_stdout(void);
-int32_t ms_sched_stdout_error(void);
 
 /* The profiler (runtime/entry/profile.c): sampling the program's stack and allocations while it runs. */
 void ms_profile_start(void);

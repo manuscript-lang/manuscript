@@ -93,7 +93,9 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
-        let recv = if held.is_some() {
+        // Only an argument evaluated after the receiver can change a place it names; with none the
+        // receiver is read once.
+        let recv = if held.is_some() || view.arguments.is_empty() {
             recv
         } else {
             self.refresh(recv_expr, recv, at)?

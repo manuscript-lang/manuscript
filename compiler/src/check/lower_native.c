@@ -1,31 +1,396 @@
-/* A call of a bodiless method the runtime implements: the runtime function is named by the
- * receiver's type and the method (`msrt_list_append` for `List.append`), and when its `ms-sig` is
- * tagged `@op=<mnemonic>` (runtime/include/ms_rt) the call is that MIR instruction on the receiver
- * and the arguments. Each parameter's role comes from its declared type (rt_ops.h), so no type or
- * method is named here. A method with no tagged function is left to the Rust lowering. */
+/* A call of a bodiless method the runtime implements. The runtime function is named by the
+ * receiver's type and the method (`msrt_list_append` for `List.append`, `msrt_int_to_string` for
+ * `Int.to_string`) and its parameters come from its `ms-sig` declaration (rt_ops.h): the receiver is
+ * the first, the others are the call's arguments, an element descriptor is a `typedesc`, and an
+ * `out` string or list is the result. A function tagged `@op=<mnemonic>` is that MIR instruction on
+ * the arguments; any other is a runtime call. No type or method is named here. A method whose
+ * signature the table cannot marshal (a handle, a slot, an error slot) is left to the Rust lowering. */
 #include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "ms/lower_internal.h"
+#include "ms/mir_pass.h"
 #include "ms/rt_ops.h"
 
 /* `msrt_<type>_<method>`, the type in lower case. */
-static const MsRtOp *ln_function(Lb *lb, MsTy receiver, MsSym method) {
-    const MsStr type = ms_name(lb->c->names, lb->c->tys.name[receiver]);
-    const MsStr name = ms_name(lb->c->names, method);
-    const size_t size = type.len + name.len + 8;
-    char *symbol = MS_NEW_N(&lb->b.scratch, char, size);
-    size_t length = 0;
-    for (const char *part = "msrt_"; *part != '\0'; part++) {
-        symbol[length++] = *part;
+const MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method) {
+    return ms_rt_method_fn(lb->c, receiver, method);
+}
+
+/* The MIR type a value of parameter kind `kind` has, given the value passed (for a list). */
+static MirTy ln_param_ty(MsRtParam kind, MirTy given) {
+    switch (kind) {
+    case MS_RT_INT: return MIR_INT;
+    case MS_RT_FLOAT: return MIR_FLOAT;
+    case MS_RT_BOOL: return MIR_BOOL;
+    case MS_RT_STR: return MIR_STR;
+    case MS_RT_DESC:
+    case MS_RT_KEY_DESC:
+    case MS_RT_VAL_DESC:
+    case MS_RT_KEY_REF: return MIR_PTR;
+    default: return given;
     }
-    for (size_t i = 0; i < type.len; i++) {
-        symbol[length++] = (char)tolower((unsigned char)type.ptr[i]);
+}
+
+static MirTy ln_ret_ty(MsRtRet ret) {
+    switch (ret) {
+    case MS_RT_RET_INT: return MIR_INT;
+    case MS_RT_RET_FLOAT: return MIR_FLOAT;
+    case MS_RT_RET_BOOL: return MIR_BOOL;
+    default: return MIR_VOID;
     }
-    symbol[length++] = '_';
-    for (size_t i = 0; i < name.len; i++) {
-        symbol[length++] = name.ptr[i];
+}
+
+/* Which type a descriptor of role `kind` describes: 0 the element, 1 the key, 2 the value. */
+static uint32_t ln_described(MsRtParam kind) {
+    if (kind == MS_RT_KEY_DESC) {
+        return 1;
     }
-    return ms_rt_op_find(symbol, length);
+    return kind == MS_RT_VAL_DESC ? 2 : 0;
+}
+
+/* An optional scalar argument as the runtime takes it, `has, value` (`HasRaw` and the parameter after it): an optional
+ * yields its presence and payload, a plain value is present. False when `value` is not a `want`. */
+static bool ln_flatten_optional(Lb *lb, MirValue value, MirTy want, MirValue *has, MirValue *payload) {
+    const MirTy given = mir_b_ty(&lb->b, value);
+    if (given != MIR_NONE && mir_ty_data(lb->m, given)->kind == MK_OPT) {
+        if (mir_ty_data(lb->m, given)->elem != want) {
+            return false;
+        }
+        *has = mir_b_emit(&lb->b, MOP_OptIsSome, &value, 1, (MirImm){0}, MIR_BOOL);
+        *payload = mir_b_emit(&lb->b, MOP_OptGet, &value, 1, (MirImm){0}, want);
+        return true;
+    }
+    if (given != want) {
+        return false;
+    }
+    *payload = value;
+    *has = mir_b_bconst(&lb->b, true);
+    return true;
+}
+
+/* Descriptors and key slots, made once the arguments are evaluated, in operand order; `kinds` is the parameter
+ * kind of each operand. `of` is the type a descriptor describes by role (element, key, value). */
+static bool ln_make_addresses(Lb *lb, MirValue *operands, uint32_t count, const MsRtParam *kinds, const bool *is_desc,
+                              const bool *is_key_ref, const MirTy *of) {
+    for (uint32_t i = 0; i < count; i++) {
+        if (is_desc[i]) {
+            const MirTy described = of[ln_described(kinds[i])];
+            if (described == MIR_NONE) {
+                return false;
+            }
+            operands[i] = mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = described}, MIR_PTR);
+        } else if (is_key_ref[i]) {
+            if (mir_b_ty(&lb->b, operands[i]) != of[1]) {
+                return false;
+            }
+            const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = of[1]}, MIR_PTR);
+            lb_store(lb, slot, operands[i]);
+            operands[i] = slot;
+        }
+    }
+    return true;
+}
+
+/* The type a step of a `@seq=` tag names: `int`, `float` or `bool`. */
+static MirTy ln_seq_ty(const char *name, size_t length) {
+    if (length == 3 && memcmp(name, "int", 3) == 0) {
+        return MIR_INT;
+    }
+    if (length == 5 && memcmp(name, "float", 5) == 0) {
+        return MIR_FLOAT;
+    }
+    return length == 4 && memcmp(name, "bool", 4) == 0 ? MIR_BOOL : MIR_NONE;
+}
+
+/* The values a `@seq=` step can name: the call's arguments (`$N`) and the results of the steps before it (`%N`). */
+typedef struct LnOperands {
+    const MirValue *args;
+    uint32_t nargs;
+    const MirValue *steps;
+    uint32_t nsteps;
+} LnOperands;
+
+static bool ln_operand(char sigil, long n, LnOperands from, MirValue *out) {
+    if (sigil == '$' && n >= 0 && (uint32_t)n < from.nargs) {
+        *out = from.args[n];
+        return true;
+    }
+    if (sigil == '%' && n >= 0 && (uint32_t)n < from.nsteps) {
+        *out = from.steps[n];
+        return true;
+    }
+    return false;
+}
+
+/* A `@seq=` tag: comma-separated steps `mnemonic:operand:..>type`, each operand `$N` (argument N), `%N` (step N's
+ * result) or `#value` (the immediate of an `iconst` or `fconst`). The last step is the result and takes `result_ty`. It
+ * is the instruction sequence Rust's lowering emits for the same method, so the two compare equal. */
+static bool ln_sequence(Lb *lb, const char *seq, const MirValue *args, uint32_t nargs, MirTy result_ty, MirValue *out) {
+    MirValue steps[MS_RT_MAX_PARAMS * 2];
+    uint32_t nsteps = 0;
+    const char *p = seq;
+    while (*p != '\0') {
+        const char *end = strchr(p, ',');
+        const char *stop = end != NULL ? end : p + strlen(p);
+        const char *arrow = memchr(p, '>', (size_t)(stop - p));
+        if (arrow == NULL || nsteps == sizeof steps / sizeof *steps) {
+            return false;
+        }
+        const char *colon = memchr(p, ':', (size_t)(arrow - p));
+        const char *name_end = colon != NULL ? colon : arrow;
+        int op = mir_op_from_name(p, (size_t)(name_end - p));
+        MirImm imm = {0};
+        if (op < 0) { // `icmp.eq`: the comparison and its condition
+            const char *dot = memchr(p, '.', (size_t)(name_end - p));
+            const int head = dot != NULL ? mir_op_from_name(p, (size_t)(dot - p)) : -1;
+            for (int cc = 0; head >= 0 && cc < 6; cc++) {
+                if (strlen(mir_cc_name[cc]) == (size_t)(name_end - dot - 1) &&
+                    memcmp(mir_cc_name[cc], dot + 1, (size_t)(name_end - dot - 1)) == 0) {
+                    op = head;
+                    imm = (MirImm){.tag = MI_CC, .a = (uint32_t)cc};
+                }
+            }
+        }
+        MirTy ty = ln_seq_ty(arrow + 1, (size_t)(stop - arrow - 1));
+        if (op < 0 || ty == MIR_NONE) {
+            return false;
+        }
+        MirValue operands[3];
+        uint32_t noperands = 0;
+        for (const char *q = colon; q != NULL && q < arrow;) {
+            const char *item = q + 1;
+            const char *item_end = memchr(item, ':', (size_t)(arrow - item));
+            item_end = item_end != NULL ? item_end : arrow;
+            char *tail = NULL;
+            const long n = item[0] == '#' ? 0 : strtol(item + 1, &tail, 10);
+            if (item[0] == '#') {
+                if (op == MOP_FConst) {
+                    const double value = strtod(item + 1, NULL);
+                    imm.tag = MI_FLOAT;
+                    memcpy(&imm.i, &value, sizeof value);
+                } else {
+                    imm.tag = MI_INT;
+                    imm.i = strtoll(item + 1, NULL, 10);
+                }
+            } else if (noperands == 3 || tail != item_end ||
+                       !ln_operand(item[0], n, (LnOperands){args, nargs, steps, nsteps}, &operands[noperands])) {
+                return false;
+            } else {
+                noperands++;
+            }
+            q = item_end < arrow ? item_end : NULL;
+        }
+        if (end == NULL) {
+            ty = result_ty;
+        }
+        steps[nsteps++] = mir_b_emit(&lb->b, (MirOp)op, operands, noperands, imm, ty);
+        p = end != NULL ? end + 1 : stop;
+    }
+    if (nsteps == 0) {
+        return false;
+    }
+    *out = steps[nsteps - 1];
+    return true;
+}
+
+/* What the parameters of a runtime function make of the evaluated arguments: one operand per runtime parameter, in
+ * order (`kinds` and `types` say what each is), and what the descriptors and the result need to know. */
+typedef struct LnCall {
+    MirValue operands[MS_RT_MAX_PARAMS];
+    MirTy types[MS_RT_MAX_PARAMS];
+    MsRtParam kinds[MS_RT_MAX_PARAMS];
+    bool is_desc[MS_RT_MAX_PARAMS];
+    bool is_key_ref[MS_RT_MAX_PARAMS];
+    uint32_t count;
+    uint32_t next; // the next argument
+    MirTy element; // the element type of a list argument
+    MirTy map_ty;
+    bool has_out; // a string or list result written through a pointer
+} LnCall;
+
+static void ln_push(LnCall *call, MsRtParam kind, MirValue operand, MirTy type) {
+    call->kinds[call->count] = kind;
+    call->types[call->count] = type;
+    call->operands[call->count++] = operand;
+}
+
+/* The frame room for the `out` value or the failure text of a status call. */
+static bool ln_slot_param(Lb *lb, LnCall *call, MsRtParam kind, const LbNativeStatus *status, LbNativeSlots *slots) {
+    if (status == NULL || (kind != MS_RT_ERR && status->out_ty == MIR_NONE)) {
+        return false; // an out handle or an error slot needs the status split
+    }
+    const MirValue slot = lo_out_slot(lb, kind == MS_RT_ERR ? MIR_STR : status->out_ty);
+    if (kind == MS_RT_ERR) {
+        slots->err = slot;
+    } else {
+        slots->out = slot;
+    }
+    ln_push(call, kind, slot, MIR_PTR);
+    return true;
+}
+
+/* `HasRaw` and the parameter after it, which take one optional scalar argument. */
+static bool ln_has_param(Lb *lb, LnCall *call, const MsRtFn *fn, uint32_t at, const MirValue *args, uint32_t nargs) {
+    const MsRtParam payload = at + 1 < fn->nparams ? fn->params[at + 1] : MS_RT_OTHER;
+    if (call->next == nargs || (payload != MS_RT_INT && payload != MS_RT_FLOAT && payload != MS_RT_BOOL)) {
+        return false;
+    }
+    const MirValue value = args[call->next];
+    call->next++;
+    MirValue has = MIR_NONE;
+    MirValue scalar = MIR_NONE;
+    if (!ln_flatten_optional(lb, value, ln_param_ty(payload, MIR_NONE), &has, &scalar)) {
+        return false;
+    }
+    ln_push(call, MS_RT_HAS, has, MIR_BOOL);
+    ln_push(call, payload, scalar, ln_param_ty(payload, MIR_NONE));
+    return true;
+}
+
+/* A parameter that takes the next argument as it is. */
+static bool ln_value_param(Lb *lb, LnCall *call, MsRtParam kind, const MirValue *args, uint32_t nargs) {
+    if (call->next == nargs) {
+        return false;
+    }
+    const MirValue value = args[call->next];
+    call->next++;
+    const MirTy given = mir_b_ty(&lb->b, value);
+    const bool list = kind == MS_RT_LIST || kind == MS_RT_LIST_VAR;
+    if ((list && !lb_is_list(lb, given)) || (kind == MS_RT_MAP && !lb_is_map(lb, given))) {
+        return false;
+    }
+    if (list) {
+        call->element = mir_ty_data(lb->m, given)->elem;
+    }
+    if (kind == MS_RT_MAP) {
+        call->map_ty = given;
+    }
+    call->is_key_ref[call->count] = kind == MS_RT_KEY_REF;
+    ln_push(call, kind, value, ln_param_ty(kind, given));
+    return true;
+}
+
+/* The operand of parameter `at` of `fn` (two, for a `HasRaw` pair); false when it cannot be made. `*at` moves past
+ * the parameters used. */
+static bool ln_param(Lb *lb, LnCall *call, const MsRtFn *fn, uint32_t *at, const MirValue *args, uint32_t nargs,
+                     const LbNativeStatus *status, LbNativeSlots *slots) {
+    const MsRtParam kind = fn->params[*at];
+    const bool needs_op = kind == MS_RT_LIST_VAR || kind == MS_RT_ELEMENT; // passed by address: only an instruction takes the value
+    if (kind == MS_RT_OTHER || (needs_op && fn->op[0] == '\0')) {
+        return false;
+    }
+    if (kind == MS_RT_ERR || kind == MS_RT_OUT_HANDLE ||
+        (status != NULL && (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST))) {
+        return ln_slot_param(lb, call, kind, status, slots);
+    }
+    if (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST) {
+        call->has_out = true;
+        return true;
+    }
+    if (kind == MS_RT_DESC || kind == MS_RT_KEY_DESC || kind == MS_RT_VAL_DESC) {
+        call->is_desc[call->count] = true;
+        ln_push(call, kind, MIR_NONE, MIR_PTR); // the descriptor is made once the arguments are evaluated
+        return true;
+    }
+    if (kind == MS_RT_HAS) {
+        (*at)++; // the payload parameter belongs to this argument
+        return ln_has_param(lb, call, fn, *at - 1, args, nargs);
+    }
+    return ln_value_param(lb, call, kind, args, nargs);
+}
+
+/* Compacts the operands the instruction takes: the descriptors are not among them. Returns their number. */
+static uint32_t ln_without_descriptors(LnCall *call) {
+    uint32_t kept = 0;
+    for (uint32_t i = 0; i < call->count; i++) {
+        if (!call->is_desc[i]) {
+            call->operands[kept] = call->operands[i];
+            kept++;
+        }
+    }
+    return kept;
+}
+
+/* Emits the call, instruction or sequence the operands of `call` make for `fn`. */
+static bool ln_emit(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, bool status, MirValue *out) {
+    const bool is_op = fn->op[0] != '\0';
+    const int op = is_op ? mir_op_from_name(fn->op, strlen(fn->op)) : -1;
+    if (is_op && op < 0) {
+        return false;
+    }
+    MirTy of[3] = {call->element, MIR_NONE, MIR_NONE}; // the type a descriptor describes: element, key, value
+    const MsRtFn *entry = fn;
+    uint8_t role = MR_NONE;
+    if (call->map_ty != MIR_NONE) { // a function with a specialisation for the map's layout is called as that
+        of[1] = mir_ty_data(lb->m, call->map_ty)->args[0];
+        of[2] = mir_ty_data(lb->m, call->map_ty)->args[1];
+        entry = lm_specialize(lb, fn, of[1], of[2], &role);
+    }
+    if (!ln_make_addresses(lb, call->operands, call->count, call->kinds, call->is_desc, call->is_key_ref, of)) {
+        return false;
+    }
+    if (fn->seq[0] != '\0') { // a short sequence of instructions over the arguments, not the descriptors
+        const uint32_t kept = ln_without_descriptors(call);
+        return ln_sequence(lb, fn->seq, call->operands, kept, result_ty, out);
+    }
+    if (is_op) { // an instruction takes the arguments, not the descriptor
+        const uint32_t kept = ln_without_descriptors(call);
+        const MirImm imm = fn->has_imm ? (MirImm){.tag = MI_INT, .i = fn->imm} : (MirImm){0};
+        *out = mir_b_emit(&lb->b, (MirOp)op, call->operands, kept, imm, result_ty);
+        return true;
+    }
+    MirTy ret = call->has_out ? result_ty : ln_ret_ty(fn->ret);
+    if (status) {
+        ret = MIR_INT;
+    }
+    const uint32_t ext = lb_runtime_extern(lb, entry->symbol, call->types, call->count, ret, role, entry->pure);
+    *out = mir_b_call_rt(&lb->b, ext, call->operands, call->count);
+    return true;
+}
+
+/* Calls `fn` on `args` (the receiver first, then the call's arguments, already evaluated), yielding
+ * `result_ty`. A call in `status` mode yields the status the runtime returns (an int); the value it creates is
+ * written through the `out` parameter into a slot of `out_ty`, and the slots are handed back in `slots` for the caller's
+ * success and failure paths. False when the signature cannot be marshalled. */
+static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty,
+                       const LbNativeStatus *status, LbNativeSlots *slots, MirValue *out) {
+    LnCall call = {.element = MIR_NONE, .map_ty = MIR_NONE};
+    if (status != NULL) {
+        *slots = (LbNativeSlots){MIR_NONE, MIR_NONE};
+    }
+    for (uint32_t i = 0; i < fn->nparams; i++) {
+        if (!ln_param(lb, &call, fn, &i, args, nargs, status, slots)) {
+            return false;
+        }
+    }
+    const bool missing_result = call.has_out && (result_ty == MIR_NONE || result_ty == MIR_VOID);
+    if (call.next != nargs || missing_result || fn->twinned) { // a twinned result may be a view into an argument; choosing the twin is not lowered here yet
+        return false;
+    }
+    return ln_emit(lb, fn, &call, result_ty, status != NULL, out);
+}
+
+/* A call of `fn` for the evaluated arguments; the result is owned when its type is. */
+LbVal lb_native_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty) {
+    MirValue result = MIR_NONE;
+    if (!ln_marshal(lb, fn, args, nargs, result_ty, NULL, NULL, &result)) {
+        return LB_UNSUPPORTED(lb);
+    }
+    return (LbVal){result, lb_owns(lb, result_ty)};
+}
+
+/* A call of a function that reports failure by a status (`-> u8`, 0 for success): the status, an int, is the
+ * result, and `slots` holds the frame room the call wrote its value (`status->out_ty`) and failure text to. */
+MirValue lb_native_status_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs,
+                               const LbNativeStatus *status, LbNativeSlots *slots) {
+    MirValue result = MIR_NONE;
+    if (!ln_marshal(lb, fn, args, nargs, MIR_INT, status, slots, &result)) {
+        (void)LB_UNSUPPORTED(lb);
+        return MIR_NONE;
+    }
+    return result;
 }
 
 /* The receiver of a by-reference list parameter: a `var` list local the function owns, whose
@@ -38,69 +403,80 @@ static uint32_t ln_var_receiver(Lb *lb, const MsExpr *receiver) {
     return lb->var_of[binding] != MIR_NONE && lb_var_owned(lb, binding) ? binding : MS_NONE;
 }
 
+/* A method call the runtime implements: evaluates the receiver and arguments, then calls. */
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
-    const MsTy receiver_ty = lb->facts->call_receiver[e->id];
-    const MsRtOp *fn = ln_function(lb, receiver_ty, callee->u.member.name);
-    const int op = fn == NULL ? -1 : mir_op_from_name(fn->op, strlen(fn->op));
-    if (op < 0 || !lb_is_list(lb, lb_mir_ty(lb, receiver_ty))) {
-        return lb_unsupported(lb);
+    const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
+    const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
+    const uint32_t nargs = e->u.call.args.len;
+    if (fn == NULL && nargs == 0 && ms_name_is(lb->c->names, callee->u.member.name, "to_string")) {
+        const LbVal value = lb_expr(lb, callee->u.member.left); // a String is its own text, a scalar prints through its runtime form
+        return lb->ok ? lt_to_string(lb, value, receiver_ty) : LB_FAIL;
     }
-    uint32_t wanted = 0;
-    for (uint32_t i = 0; i < fn->nparams; i++) {
-        wanted += fn->params[i] == MS_RT_VALUE ? 1u : 0u;
-    }
-    if (e->u.call.args.len != wanted || fn->nparams == 0) {
-        return lb_unsupported(lb);
+    if (fn == NULL || fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
+        return LB_UNSUPPORTED(lb);
     }
     const MsExpr *receiver = callee->u.member.left;
     const bool by_reference = fn->params[0] == MS_RT_LIST_VAR;
     uint32_t binding = MS_NONE;
-    LbVal list;
+    LbVal first;
     if (by_reference) {
         binding = ln_var_receiver(lb, receiver);
         if (binding == MS_NONE) {
-            return lb_unsupported(lb);
+            return LB_UNSUPPORTED(lb);
         }
-        list = (LbVal){mir_b_use_var(&lb->b, lb->var_of[binding]), false};
+        first = (LbVal){mir_b_use_var(&lb->b, lb->var_of[binding]), false};
     } else {
-        list = lb_expr(lb, receiver);
+        first = lb_expr(lb, receiver);
     }
     if (!lb->ok) {
         return LB_FAIL;
     }
-    const MirTy list_ty = mir_b_ty(&lb->b, list.v);
-    const MirTy element = lb_is_list(lb, list_ty) ? mir_ty_data(lb->m, list_ty)->elem : MIR_NONE;
-    MirValue operands[MS_RT_MAX_PARAMS];
-    uint32_t count = 0;
-    uint32_t next_argument = 0;
-    for (uint32_t i = 0; i < fn->nparams && lb->ok; i++) {
-        if (fn->params[i] == MS_RT_LIST || fn->params[i] == MS_RT_LIST_VAR) {
-            operands[count++] = list.v;
-        } else if (fn->params[i] != MS_RT_DESC) {
-            const MsExpr *argument = e->u.call.args.ptr[next_argument++].value;
-            const MirValue value = lb_owns(lb, element) ? lb_move_argument(lb, argument) : lb_expr(lb, argument).v;
-            operands[count++] = value;
+    const MirTy first_ty = mir_b_ty(&lb->b, first.v);
+    const MirTy element = lb_is_list(lb, first_ty) ? mir_ty_data(lb->m, first_ty)->elem : MIR_NONE;
+    MirValue args[MS_RT_MAX_PARAMS];
+    args[0] = first.v;
+    MsRtParam kinds[MS_RT_MAX_PARAMS];
+    uint32_t value_params = 0;
+    for (uint32_t i = 1; i < fn->nparams; i++) {
+        const MsRtParam kind = fn->params[i];
+        if (kind == MS_RT_HAS) {
+            kinds[value_params++] = kind;
+            i++; // its payload parameter takes no argument of its own
+        } else if (kind != MS_RT_DESC && kind != MS_RT_KEY_DESC && kind != MS_RT_VAL_DESC && kind != MS_RT_OUT_STR &&
+            kind != MS_RT_OUT_LIST) {
+            kinds[value_params++] = fn->params[i];
         }
     }
-    if (!lb->ok || element == MIR_NONE) {
-        return lb_unsupported(lb);
+    if (value_params != nargs) {
+        return LB_UNSUPPORTED(lb);
     }
-    for (uint32_t i = 0; i < fn->nparams; i++) { // the descriptor of the element type follows the arguments
-        if (fn->params[i] == MS_RT_DESC) {
-            (void)mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = element}, MIR_PTR);
+    for (uint32_t i = 0; i < nargs && lb->ok; i++) {
+        const MsExpr *argument = e->u.call.args.ptr[i].value;
+        if (kinds[i] == MS_RT_ELEMENT && lb_owns(lb, element)) {
+            args[i + 1] = lb_move_argument(lb, argument);
+            continue;
+        }
+        const LbVal value = lb_expr(lb, argument);
+        args[i + 1] = value.v;
+        if (lb->ok && value.owned) {
+            lb_hold_temp(lb, value.v); // a borrowed argument lives to the end of the statement
         }
     }
-    const MirTy result_ty = by_reference ? list_ty : lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
-    LbVal result;
+    const MirTy result_ty = by_reference ? first_ty : lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
+    const LbVal call = lb_native_call(lb, fn, args, nargs + 1, result_ty);
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
     if (by_reference) {
-        mir_b_def_var(&lb->b, lb->var_of[binding], mir_b_emit(&lb->b, (MirOp)op, operands, count, (MirImm){0}, result_ty));
-        result = (LbVal){mir_b_unit(&lb->b), false};
-    } else {
-        result = (LbVal){mir_b_emit(&lb->b, (MirOp)op, operands, count, (MirImm){0}, result_ty), false};
-        if (list.owned) {
-            lb_hold_temp(lb, list.v); // a temporary receiver lives to the end of the statement
-        }
+        mir_b_def_var(&lb->b, lb->var_of[binding], call.v);
+        return (LbVal){mir_b_unit(&lb->b), false};
     }
-    return result;
+    if (first.owned) {
+        lb_hold_temp(lb, first.v); // a temporary receiver lives to the end of the statement
+    }
+    return call;
 }

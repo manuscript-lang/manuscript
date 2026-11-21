@@ -51,7 +51,8 @@ uint8_t ms_tool_project(const ms_str *manifest, ms_list *out, ms_str *message_ou
 
 /* The files `ms fmt` formats for `target` (ms_project_format_paths): the file itself, or the modules of a directory or
  * of the project an ms.toml names, in order. Status 0 is success; 1 is an error with the Rust driver's text in
- * `message_out`; 2 means the C reader does not cover the target (a workspace root, a project with dependencies). */
+ * `message_out`; 2 means the C reader does not cover the target (a workspace root). Formatting reads only the project's own
+ * modules, so its dependencies and ms.lock are not consulted. */
 uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out);
 
 /* Resolves and fetches the dependencies of the project whose ms.toml is `manifest` (ms_install in ms/packages.h) and
@@ -59,14 +60,39 @@ uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out
  * ms.lock and `frozen` leaves it alone. Rows, in copy-id order, are `name\tspec\trevision\tstate\teffects`: the
  * alias that reaches the copy (else its id), `url#reference`, the full commit, `fetched`, `cached` (downloaded, but
  * the cache held the content) or `kept` (the locked copy was intact in the cache), and `[project] effects` joined by
- * spaces (`none` without any). Status 0 is success; 1 is an error with the Rust text in `message_out`; 2 means the C
- * reader does not cover the project (a workspace, a manifest form it lacks). */
+ * spaces (`none` without any). Status 0 is success; 1 is an error with the Rust text in `message_out`. A project in a
+ * workspace installs through ms_tool_install_workspace; here it is an error. */
+/* Whether `text` is a version requirement (`1.2`, `~1.2.3`, `=1.2.3-rc.1`). Status 0 when it is; 1 with the Rust text
+ * of the problem in `message_out`. */
+uint8_t ms_tool_requirement(const ms_str *text, ms_list *out, ms_str *message_out);
 uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out);
+
+/* The standard library's API model as one JSON document: every public module's declarations with their types, fields,
+ * cases, operations, members and comments, in the form the Rust `ms-tooling` `api_model` example prints (see
+ * ms/api_model.h). `ms search_symbol` and the generated reference read it; it checks the embedded library on each call. */
+void ms_tool_api_model(ms_str *out);
+
+/* The fact model of one document as JSON, the document `ms-tooling-dev facts` prints and `tools/ms/views.ms` reads
+ * (see compiler/src/check/dump_facts.c for the columns the C checker fills). Status 0 fills `out`; 1 is an error
+ * (invalid UTF-8, a syntax error) with its text in `message_out`; 2 means the document imports a project module, which
+ * this entry does not load. */
+uint8_t ms_tool_facts(const ms_str *text, ms_str *out, ms_str *message_out);
+
+/* The fact model of the project the file `path` belongs to: every local module it imports, in one document whose keys,
+ * `file` fields and `imports` rows carry the modules' names relative to the project root (`a.ms`, `src/lib.ms`).
+ * Status 0 fills `out`; 1 is an error (a missing file, a syntax or import error) with its text in `message_out`; 2
+ * means the loader does not cover the project (a library manifest, test discovery). */
+uint8_t ms_tool_facts_project(const ms_str *path, ms_str *out, ms_str *message_out);
 
 /* `ms check FILE.ms [--json]` (compiler/include/ms/check_run.h). Status 0 fills `out` with the standard output, the
  * standard error and the exit status (as decimal text) the Rust command would produce; status 2 means the C passes
  * cannot give that answer (message in `message_out`) and the caller runs the Rust command; 1 is an error. */
 uint8_t ms_tool_check(const ms_str *target, uint8_t json, ms_list *out, ms_str *message_out);
+/* `ms build TARGET`: builds the executable `output` from the program at `target`, linking `runtime`; `tools` holds `opt`
+ * and `llc`, `lld` is the linker and `files` its startup files. Status 0 is a written executable, 1 a failed build (the
+ * message), 2 a program the C pipeline does not cover (the reason): the Rust command builds it. */
+uint8_t ms_tool_build(const ms_str *target, const ms_str *output, const ms_str *runtime, const ms_str *tools, const ms_str *lld,
+                      const ms_str *files, uint8_t release, ms_list *out, ms_str *message_out);
 
 /* The workspace of the project whose manifest is `manifest` (project/workspace.c), as rows: `root\t<directory>`, then
  * `member\t<name>\t<directory>` in member order; no rows when there is none. With `root_only` set, only a workspace
@@ -141,9 +167,11 @@ void ms_tool_keywords(ms_list *out);
 
 /* ---- analysis (the language server) ---- */
 
-/* Checks `text` as a module of its own (`extern type Analysis` on the Manuscript side) (a program that imports a project module is status 2: not covered yet) and
- * reports what the checker knows, keyed by the syntax-node ids of `ms_tool_tree_nodes` (`Syntax.id`), so a tool joins
- * them to a tree of the same text. the rows hold three counts (nodes, bindings, symbols) and then the rows:
+/* Checks `text` as the module at `path`: the project it belongs to loads with `overlay` (path and text, alternating) in
+ * place of the files on disk, so unsaved buffers are seen, and the rows describe `text`. With an empty `path` the text is
+ * a module of its own and an import of a project module is status 2.
+ * `extern type Analysis` on the Manuscript side. The result reports what the checker knows, keyed by the syntax-node ids of `ms_tool_tree_nodes` (`Syntax.id`), so a tool joins
+ * them to a tree of the same text. The rows hold three counts (nodes, bindings, symbols) and then the rows:
  *   node, MS_TOOL_ANALYZE_NODE_WIDTH:     id, resolution (MsResolution), reference (binding, symbol, field, case or
  *                                         method id, -1 for none), type of the expression, type of the written type,
  *                                         symbol id of the function a call expression calls (-1 for none)
@@ -152,12 +180,17 @@ void ms_tool_keywords(ms_list *out);
  *   symbol, MS_TOOL_ANALYZE_SYMBOL_WIDTH: id, name, kind (0 type, 1 fn, 2 alias), module path, 1 when declared in this
  *                                         text, 1 when exported, declaration node id (-1 for a primitive), offset, line,
  *                                         column, type
+ * then the ownership rows (MSL114): the count of name nodes that move a value out and their ids, then the count of
+ * resource bindings (flag 8) and for each its binding index, 1 when the ownership pass followed its function and the
+ * name of its `flush` or `commit` method taking nothing and returning a Result (-1 for none); then the effect rows (MSL116):
+ * 1 when the scan saw every callable it reached, the count of undeclared-effect violations and for each its offset, line,
+ * column and message.
  * Every name, module path and type text is an index into the names (-1 for none); types print as source reads them.
  */
 #define MS_TOOL_ANALYZE_NODE_WIDTH 6
 #define MS_TOOL_ANALYZE_BINDING_WIDTH 9
 #define MS_TOOL_ANALYZE_SYMBOL_WIDTH 11
-ms_object *ms_tool_analyze(const ms_str *text);
+ms_object *ms_tool_analyze(const ms_str *path, const ms_str *text, const ms_list *overlay);
 /* 0 analysed, 1 syntax error, 2 not covered; the message of a status other than 0. */
 uint8_t ms_tool_analysis_status(ms_object *analysis);
 void ms_tool_analysis_message(ms_object *analysis, ms_str *out);

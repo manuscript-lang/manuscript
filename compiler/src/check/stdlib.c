@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/check.h"
 #include "ms/parse.h"
 #include "ms/stdlib.h"
 
@@ -217,10 +218,6 @@ static MsSym intern_fmt(Loader *l, const char *fmt, ...) {
 
 /* The bare type of a nominal symbol: variables are filled in by `declare_identities`. */
 /* The kind of type a nominal declaration makes. */
-static bool is_nominal(const MsDecl *d) {
-    return d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE;
-}
-
 static MsKind nominal_kind(const MsDecl *d) {
     switch ((MsDeclKind)d->kind) {
     case MS_D_ENUM: return MS_K_ALTERNATIVE;
@@ -233,6 +230,14 @@ static MsKind nominal_kind(const MsDecl *d) {
     case MS_D_TEST: return MS_K_TYPE;
     }
     return MS_K_TYPE;
+}
+
+/* Makes `sym` the standard type called `name`, and the declaration of `builtin` when it is one. */
+static void register_std_type(MsCheck *c, MsSym name, MsSymId sym, MsBuiltin builtin) {
+    (void)ms_map_add(&c->std_types, name, sym);
+    if (builtin != MS_B_NONE) {
+        c->builtin_sym_plus_one[builtin] = sym + 1;
+    }
 }
 
 static MsTy nominal_type(Loader *l, MsSymId s, MsKind kind, MsBuiltin builtin) {
@@ -275,7 +280,7 @@ static bool register_extern_type(Loader *l, MsModId m, const MsDecl *d) {
         b = ms_builtin_source(file, ms_name(c->names, name));
     }
     c->syms.ty[s] = nominal_type(l, s, MS_K_NATIVE, b);
-    ms_map_add(&c->std_types, name, s);
+    register_std_type(c, name, s, b);
     return true;
 }
 
@@ -359,7 +364,7 @@ static bool check_native_impl(Loader *l, MsStr file, const MsDecl *d) {
 
 /* The kind of the nominal type a native declaration makes; false for a function, constant or alias. */
 static bool native_nominal_kind(const MsDecl *d, MsKind *kind) {
-    if (!is_nominal(d)) {
+    if (!ms_decl_is_nominal(d)) {
         return false;
     }
     const bool external = d->kind == MS_D_TYPE && d->u.type.external;
@@ -407,8 +412,9 @@ static bool register_native_decl(Loader *l, MsModId m, MsStr stem, const MsDecl 
     if (ms_map_get(&c->std_types, name) != MS_NONE) {
         return sl_fail(l, "duplicate standard type %.*s", (int)name_text.len, name_text.ptr);
     }
-    c->syms.ty[sym] = nominal_type(l, sym, kind, ms_builtin_from_id(ms_name(c->names, id)));
-    (void)ms_map_add(&c->std_types, name, sym);
+    const MsBuiltin builtin = ms_builtin_from_id(ms_name(c->names, id));
+    c->syms.ty[sym] = nominal_type(l, sym, kind, builtin);
+    register_std_type(c, name, sym, builtin);
     return true;
 }
 

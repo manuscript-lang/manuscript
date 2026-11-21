@@ -46,13 +46,6 @@ static void add_file(const char *dir, const char *rel, const char *name) {
     files[nfiles++] = (MsStdFile){strdup(name), text, (size_t)n};
 }
 
-/* Checks the bodies of module `id` against a fresh program: the library's method table, with the
- * bundled modules' and the imports' impls (ms_program_check_module). */
-static void check_bodies_with_methods(MsCheck *check, MsModId id, const char *text, size_t length) {
-    ms_program_begin(check);
-    (void)ms_program_check_module(check, id, (MsStr){text, (uint32_t)length});
-}
-
 /* Loads `path` with the project modules it imports (ms_project_load) and adds them to the checker,
  * dependencies first, each importing through its graph targets. The entry is the last module, named
  * `main.ms`. False when the graph has diagnostics or the loader does not cover the request. */
@@ -80,7 +73,8 @@ static bool add_project(MsCheck *check, MsNames *names, const char *path, MsModI
             ms_module_desugar(check, rows[m], (MsStr){graph.modules[m].source, (uint32_t)graph.modules[m].length}, NULL,
                               0, &errors, &nerrors);
             // A module is checked before the ones that import it: its constants carry their types.
-            check_bodies_with_methods(check, rows[m], graph.modules[m].source, graph.modules[m].length);
+            ms_program_begin(check);
+            (void)ms_program_check_module(check, rows[m], (MsStr){graph.modules[m].source, (uint32_t)graph.modules[m].length});
         }
     }
     *entry = rows[graph.count - 1];
@@ -132,7 +126,8 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             }
             MsBuf dump = {0};
             if (json_mode != 0) {
-                check_bodies_with_methods(check, id, check_text, (size_t)n);
+                ms_program_begin(check);
+                (void)ms_program_check_module(check, id, (MsStr){check_text, (uint32_t)n});
                 if (json_mode == 1) {
                     ms_module_check_ownership(check, id); // marks the bindings that close at scope end
                     ms_dump_module_facts(&dump, check, id, (MsStr){check_text, (uint32_t)n});
@@ -146,7 +141,8 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             }
             printf("== %s\n", paths[i]);
             if (bodies) {
-                check_bodies_with_methods(check, id, check_text, (size_t)n);
+                ms_program_begin(check);
+                (void)ms_program_check_module(check, id, (MsStr){check_text, (uint32_t)n});
                 for (uint32_t k = 0; project && k < check->mods[id].ndiags; k++) {
                     const MsCheckDiag *d = &check->mods[id].diags[k];
                     if (d->phase == MS_PHASE_RESOLUTION) {
@@ -207,14 +203,54 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
     }
 }
 
+
+/* `--project-facts FILE`: the fact document of the project FILE belongs to (every local module it imports),
+ * the model `ms_tool_facts_project` prints, checked in dependency order. */
+static int project_facts(const char *path) {
+    MsNames names;
+    ms_names_init(&names);
+    MsArena arena = {0};
+    MsArena syntax = {0};
+    MsCheck check;
+    ms_check_init(&check, &names);
+    MsStr err = {0};
+    MsGraph graph;
+    MsProjectError error = {0};
+    int status = 1;
+    if (ms_project_load(&arena, &names, path, &graph, &error) && graph.ndiagnostics == 0 &&
+        ms_std_load(&check, &syntax, files, nfiles, &err)) {
+        MsModId *ids = MS_NEW_N(&arena, MsModId, graph.count + 1);
+        MsStr *texts = MS_NEW_N(&arena, MsStr, graph.count + 1);
+        ms_graph_add_modules(&check, &names, &arena, &graph, ids);
+        (void)ms_graph_check(&check, &graph, ids, NULL);
+        for (uint32_t m = 0; m < graph.count; m++) {
+            texts[m] = (MsStr){graph.modules[m].source, (uint32_t)graph.modules[m].length};
+            ms_module_check_ownership(&check, ids[m]);
+        }
+        MsBuf json = {0};
+        ms_dump_project_facts(&json, &check, ids, texts, graph.count);
+        printf("%.*s", (int)json.len, (const char *)json.data);
+        ms_buf_free(&json);
+        status = 0;
+    }
+    ms_check_free(&check);
+    ms_arena_free(&syntax);
+    ms_arena_free(&arena);
+    ms_names_free(&names);
+    return status;
+}
+
 int main(int argc, char **argv) {
+    if (getenv("MS_WHY") != NULL) {
+        ms_body_decline_hook = print_decline;
+    }
     const bool ownership = argc >= 3 && strcmp(argv[2], "--ownership") == 0;
     const bool effects = argc >= 3 && strcmp(argv[2], "--effects") == 0;
     const int json_mode = json_mode_of(argc >= 3 ? argv[2] : "");
     project_mode = argc >= 3 && strcmp(argv[2], "--project") == 0;
     const bool bodies = ownership || effects || project_mode || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
     const bool scope = bodies || json_mode != 0 || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
-    if (argc != 2 && !scope) {
+    if (argc != 2 && !scope && strcmp(argv[2], "--project-facts") != 0) {
         fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership|--effects|--facts|--nodes FILE...]\n", stderr);
         return 2;
     }
@@ -254,6 +290,9 @@ int main(int argc, char **argv) {
     }
     closedir(d);
 
+    if (argc == 4 && strcmp(argv[2], "--project-facts") == 0) {
+        return project_facts(argv[3]);
+    }
     MsNames names;
     ms_names_init(&names);
     MsArena syntax = {0};

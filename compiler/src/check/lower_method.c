@@ -26,20 +26,17 @@ static LbCallable lm_callable(Lb *lb, uint32_t row) {
                         .name = lm_name(lb, methods->receiver[row], r->method->func.name),
                         .sig = methods->ty[row],
                         .self_ty = methods->receiver[row],
-                        .mutating = (methods->access[row] & MS_METHOD_MUTATING) != 0};
+                        .mutating = (methods->access[row] & MS_METHOD_MUTATING) != 0,
+                        .consuming = (methods->access[row] & MS_METHOD_CONSUMING) != 0};
 }
 
-/* The rows of this module's impl methods, each with the lines it owns: from its own to the next
- * method's or declaration's. */
-uint32_t lm_prepare(Lb *lb, MsModId module) {
+/* The rows of the impl methods module `view` wrote, each with the lines it owns: from its own to
+ * the next method's or declaration's. */
+static void lm_prepare_view(Lb *lb, uint32_t view) {
     const MsMethods *methods = lb->facts->methods;
+    const MsModId module = lb->views[view].module;
     const MsDecl **owners = MS_NEW_N(&lb->mut->arena, const MsDecl *, (size_t)methods->count + 1);
     const MsMethod **found = ms_method_rows(lb->mut, module, methods, owners);
-    lb->rows = calloc((size_t)methods->count + 1, sizeof *lb->rows);
-    lb->method_func = calloc((size_t)methods->count + 1, sizeof *lb->method_func);
-    if (lb->rows == NULL || lb->method_func == NULL) {
-        return 0;
-    }
     const MsModule *syntax = lb->c->mods[module].syntax;
     for (uint32_t i = 0; i < methods->count; i++) {
         if (found[i] == NULL) {
@@ -55,25 +52,48 @@ uint32_t lm_prepare(Lb *lb, MsModId module) {
             const uint32_t line = found[k] == NULL ? 0 : found[k]->pos.line;
             end = line > first && line < end ? line : end;
         }
-        lb->rows[i] = (LbMethodRow){.method = found[i], .owner_pos = ms_impl_first_block(lb->mut, module, owners[i])->pos, .first_line = first, .end_line = end};
+        lb->rows[i] = (LbMethodRow){.method = found[i], .view = view, .owner_pos = ms_impl_first_block(lb->mut, module, owners[i])->pos, .first_line = first, .end_line = end};
+    }
+}
+
+uint32_t lm_prepare(Lb *lb) {
+    const MsMethods *methods = lb->facts->methods; // the program's table: the same from every view
+    lb->rows = calloc((size_t)methods->count + 1, sizeof *lb->rows);
+    lb->method_func = calloc((size_t)methods->count + 1, sizeof *lb->method_func);
+    if (lb->rows == NULL || lb->method_func == NULL) {
+        return 0;
+    }
+    for (uint32_t v = 0; v < lb->nviews; v++) {
+        lm_prepare_view(lb, v);
     }
     return methods->count;
 }
 
-static bool lm_eligible(const Lb *lb, MsModId module, uint32_t row, const bool *failed) {
+/* Whether method `row` is lowered this pass; read with its module's view entered. */
+static bool lm_eligible(const Lb *lb, uint32_t row, const bool *failed) {
     const LbMethodRow *r = &lb->rows[row];
-    return r->method != NULL && lb->facts->body_checked[r->method->id] && !failed[row] &&
-           !lb_lines_have_diagnostic(&lb->c->mods[module], r->first_line, r->end_line);
+    // A method of a generic impl needs one copy per type argument, which the lowering does not make yet.
+    return lb->facts->body_checked[r->method->id] && lb->facts->methods->nvars[row] == 0 && !failed[row] &&
+           !lb_lines_have_diagnostic(&lb->c->mods[lb->module], r->first_line, r->end_line);
 }
 
 /* Stubs for the methods the pass lowers, so calls and recursion can name them. */
-void lm_stubs(Lb *lb, MsModId module, uint32_t nrows, const bool *failed) {
+void lm_stubs(Lb *lb, uint32_t nrows, const bool *failed) {
     for (uint32_t i = 0; i < nrows; i++) {
         lb->method_func[i] = MIR_NONE;
-        if (lm_eligible(lb, module, i, failed)) {
+        if (lb->rows[i].method == NULL) {
+            continue;
+        }
+        const uint32_t outer = lb_view_enter(lb, lb->rows[i].view);
+        if (!lb->facts->body_checked[lb->rows[i].method->id]) {
+            lb_why_unchecked(lb, lb->rows[i].method->func.name, lb->rows[i].method->pos,
+                             lb->facts->refusal[lb->rows[i].method->id]);
+        }
+        if (lm_eligible(lb, i, failed)) {
             const LbCallable callable = lm_callable(lb, i);
             lb->method_func[i] = lb_add_stub(lb, &callable);
         }
+        (void)lb_view_enter(lb, outer);
     }
 }
 
@@ -85,6 +105,7 @@ bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered) {
         if (lb->rows[i].method == NULL || failed[i]) {
             continue;
         }
+        (void)lb_view_enter(lb, lb->rows[i].view);
         const LbCallable callable = lm_callable(lb, i);
         const bool done = lb->method_func[i] != MIR_NONE && lb_function(lb, &callable, lb->method_func[i]);
         failed[i] = !done;
@@ -101,8 +122,13 @@ bool lm_has(const Lb *lb, uint32_t row) {
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row) {
     const MsMethods *methods = lb->facts->methods;
     if (row >= methods->count || lb->method_func == NULL) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const bool mutating = (methods->access[row] & MS_METHOD_MUTATING) != 0;
-    return lb_call_func(lb, e, lb->method_func[row], methods->ty[row], e->u.call.callee->u.member.left, mutating);
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    if (lc_is_closer_row(lb, row) && receiver->kind == MS_E_NAME && lb->facts->res_kind[receiver->id] == MS_RES_BINDING &&
+        lc_is_slot_local(lb, lb->facts->res_ref[receiver->id])) {
+        return LB_UNSUPPORTED(lb); // a close by hand: the pass would close the value again
+    }
+    return lb_call_func(lb, e, lb->method_func[row], methods->ty[row], receiver, mutating);
 }

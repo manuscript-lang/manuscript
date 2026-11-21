@@ -6,10 +6,7 @@
 
 /* The `List` the module sees, or MS_NONE when a declaration shadows it. */
 static MsSymId list_symbol(const MsBody *b) {
-    MsCheck *c = b->c;
-    const MsSym name = ms_intern_cstr(c->names, "List");
-    const MsSymId sym = ms_map_get(&c->std_types, name);
-    return sym != MS_NONE && ms_map_get(&c->mods[b->module].names, name) == sym ? sym : MS_NONE;
+    return ms_body_visible_builtin(b, MS_BI_LIST);
 }
 
 bool ms_body_is_list(const MsBody *b, MsTy ty) {
@@ -18,7 +15,7 @@ bool ms_body_is_list(const MsBody *b, MsTy ty) {
         return false;
     }
     const MsTy element = ms_ty_args(tys, ty)[0];
-    return ms_body_is_plain_value(b, element) || ms_body_is_list(b, element);
+    return ms_body_is_admitted(b, element);
 }
 
 static MsTy list_of(MsBody *b, MsTy element) {
@@ -52,7 +49,10 @@ MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected) {
     uint32_t first = 0;
     if (element == MS_TY_NONE) {
         if (items->len == 0) {
-            return ms_body_unsupported(b); // "cannot infer list element type"
+            if (!b->c->mods[b->module].unknown_type) { // one unknown type is reported once; later `<invalid>` only restates it
+                ms_body_report(b, e->pos, ms_arena_fmt(&b->c->arena, "cannot infer list element type; add an annotation, e.g. xs: List[Int] := []"));
+            }
+            return list_of(b, b->invalid_ty); // as Rust: `List[<invalid>]`, which silences what uses it
         }
         element = ms_body_expr(b, items->ptr[0], MS_TY_NONE);
         first = 1;
@@ -73,8 +73,8 @@ MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected) {
 /* `xs[i]`, written as an index or as a bracket that reads as a type application: the receiver must be
  * a local, which makes the bracket an index. */
 MsTy ms_body_index(MsBody *b, const MsExpr *e) {
-    const MsExpr *left = NULL;
-    const MsExpr *index = NULL;
+    MsExpr *left = NULL;
+    MsExpr *index = NULL;
     if (!ms_expr_index(e, &left, &index) || (e->kind == MS_E_APPLY && (left->kind != MS_E_NAME || ms_body_find_binding(b, left->u.sym) == MS_NONE))) {
         return ms_body_unsupported(b);
     }
@@ -86,8 +86,5 @@ MsTy ms_body_index(MsBody *b, const MsExpr *e) {
         return ms_body_unsupported(b);
     }
     const MsTy element = ms_ty_args(&b->c->tys, list)[0];
-    if (element != b->int_ty && element != b->float_ty && element != b->bool_ty) {
-        return ms_body_unsupported(b); // an element with one owner is borrowed in place: the walk does not follow it
-    }
     return ms_body_expr(b, index, b->int_ty) == MS_TY_NONE ? MS_TY_NONE : element;
 }

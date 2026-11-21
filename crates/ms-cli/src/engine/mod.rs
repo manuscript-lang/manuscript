@@ -15,7 +15,6 @@ mod runtime;
 mod search;
 pub mod testing;
 mod tooling;
-mod watch;
 
 pub use search::search_symbol;
 pub use tooling::{
@@ -145,9 +144,6 @@ impl<L: Lower> Engine<L> {
     }
 
     pub fn run(&self, syms: ms_syntax::Names, request: &RunRequest, io: &mut Io) -> BackendResult {
-        if request.watch {
-            return watch::run(syms, self, request, io);
-        }
         run::run(syms, self, request, io)
     }
 
@@ -157,9 +153,6 @@ impl<L: Lower> Engine<L> {
         request: &TestRequest,
         io: &mut Io,
     ) -> BackendResult {
-        if request.watch {
-            return watch::test(syms, self, request, io);
-        }
         testing::test(syms, self, request, io)
     }
 
@@ -197,7 +190,7 @@ impl<L: Lower> Engine<L> {
                 Err(why) => return Err(BackendError(why)),
             }
         } else {
-            ms_mir::print::print_module(&module)
+            ms_mir::print::print_module_unique(&module)
         };
         Ok(crate::util::write_output(
             io,

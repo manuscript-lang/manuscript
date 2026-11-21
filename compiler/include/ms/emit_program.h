@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "ms/base.h"
 #include "ms_rt/safe.h"
 
 /* Bytes the back end allocated; `ptr` is null when `len` is 0. */
@@ -20,12 +21,16 @@ typedef struct MsBackendText {
     size_t len;
 } MsBackendText;
 
+/* Hands the bytes of `buf` to the caller as a text and leaves `buf` empty. */
+MsBackendText ms_backend_take(MsBuf *buf);
+
 typedef struct MsBackendOptions {
     bool speed;  /* run the optimizer at its speed level */
     bool checks; /* keep the bounds and overflow checks */
     bool verify; /* verify the module after each pass */
     bool tables; /* write source places into the IR and fill `meta`, for ms_backend_tables */
     bool count_ops; /* count executed MIR operations (`ms bench --ops`) */
+    bool poison_slots; /* fill dead one-block stack slots with a pattern (`MS_POISON_SLOTS`) */
 } MsBackendOptions;
 
 /* Optimizes and finishes the module `mir` describes and writes it as LLVM IR. `name` is what a parse

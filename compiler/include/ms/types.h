@@ -28,7 +28,8 @@ typedef enum MsBuiltin {
     MS_BI_UINT32, MS_BI_UINT64, MS_BI_FLOAT, MS_BI_FLOAT32, MS_BI_FLOAT64, MS_BI_BOOL,
     MS_BI_STRING, MS_BI_VOID, MS_BI_NEVER, MS_BI_TIMESTAMP, MS_BI_INSTANT, MS_BI_DURATION,
     MS_BI_URL, MS_BI_IPADDRESS, MS_BI_CIDR, MS_BI_JSONVALUE, MS_BI_JSONENCODE, MS_BI_PROMISE,
-    MS_BI_TASKGROUP, MS_BI_TESTHOOKS
+    MS_BI_TASKGROUP, MS_BI_TESTHOOKS,
+    MS_BUILTIN_COUNT
 } MsBuiltin;
 
 size_t ms_primitive_count(void);              /* the primitive types, the one list every pass reads */

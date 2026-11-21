@@ -176,7 +176,7 @@ struct MsExpr {
 /* The receiver and index of `left[index]`, however the bracket was parsed: an index, or an
  * application whose one bracket entry also reads as a value (`xs[i]` before name resolution says
  * `xs` is a value). False for any other expression. */
-static inline bool ms_expr_index(const MsExpr *e, const MsExpr **left, const MsExpr **index) {
+static inline bool ms_expr_index(const MsExpr *e, MsExpr **left, MsExpr **index) {
     if (e->kind == MS_E_INDEX) {
         *left = e->u.bin.left;
         *index = e->u.bin.right;
@@ -279,6 +279,12 @@ typedef struct MsMethod {
     bool consuming;
     MsTypeRefs receiver_args;
 } MsMethod;
+
+/* The method that holds `func` as its `func` member. */
+static inline const MsMethod *ms_method_of_func(const MsFunc *func) {
+    /* The members of a method are laid out at their own alignment, so the step back to the method is aligned too. */
+    return __builtin_assume_aligned((const char *)func - offsetof(MsMethod, func), _Alignof(MsMethod));
+}
 
 typedef struct MsCase {
     uint32_t id;
