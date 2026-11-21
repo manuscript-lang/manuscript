@@ -115,8 +115,11 @@ bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered) {
     return changed;
 }
 
+/* Whether the method of `row` is one this lowering makes a function for: declared with a body. A native
+ * (`fn List[T].length() Int: ...`) has none, and a call of it is its runtime function. */
 bool lm_has(const Lb *lb, uint32_t row) {
-    return lb->rows != NULL && row < lb->facts->methods->count && lb->rows[row].method != NULL;
+    return lb->rows != NULL && row < lb->facts->methods->count && lb->rows[row].method != NULL &&
+           lb->rows[row].method->func.body.len != 0;
 }
 
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row) {
