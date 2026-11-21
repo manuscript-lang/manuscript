@@ -324,6 +324,7 @@ static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
         }
         w->consumed |= 1u << index;
     }
+    w->facts->moved_out[e->id] = true;
     own_record(w, e, binding);
 }
 

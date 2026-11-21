@@ -1780,6 +1780,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->call_reordered, 0, nodes * sizeof *facts->call_reordered);
     facts->some_wrap = MS_NEW_N(arena, bool, nodes);
     memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
+    facts->moved_out = MS_NEW_N(arena, bool, nodes);
+    memset(facts->moved_out, 0, nodes * sizeof *facts->moved_out);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);
