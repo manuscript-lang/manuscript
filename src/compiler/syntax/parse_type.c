@@ -164,54 +164,59 @@ bool parse_take_move(Parser *p, const MsTok *nexts, size_t n) {
   return false;
 }
 
+/* `fn(T, var U) R`, after `first`, the `fn` token. */
+MS_NODISCARD static bool fn_type(Parser *p, MsToken first, MsTypeRef **out) {
+  MsParams params = {NULL, 0};
+  p->at++;
+  if (!parse_need(p, MS_T_LParen))
+    return false;
+  if (!parse_take(p, MS_T_RParen)) {
+    size_t m = parse_mark(p);
+    uint32_t count = 0;
+    for (;;) {
+      /* `fn(var List[Int]) Void`: a parameter the function changes in place. */
+      bool moving = parse_take_move(p, (const MsTok[]){MS_T_Var, MS_T_Name, MS_T_Fn}, 3);
+      bool is_mutable = parse_take(p, MS_T_Var);
+      if (moving && is_mutable) {
+        parse_fail(p, parse_previous(p),
+                   ms_span_of_text("a parameter is either `move` (the callee takes it) or `var` (the "
+                                   "callee changes it in place), not both"));
+        return false;
+      }
+      MsTypeRef *ty = NULL;
+      if (!parse_typ(p, &ty))
+        return false;
+      parse_push_ptr(
+          p, parse_mk_param(p, ty->pos, parse_numbered_name(p, "_", count), ty, NULL, is_mutable, moving));
+      count++;
+      if (!parse_take(p, MS_T_Comma)) {
+        break;
+      }
+      if (parse_kind(p) == MS_T_RParen) {
+        break;
+      }
+    }
+    if (!parse_need(p, MS_T_RParen))
+      return false;
+    params.ptr = parse_finish(p, m, &params.len, sizeof(void *), _Alignof(void *));
+  }
+  MsTypeRef *result = NULL;
+  if (!parse_typ(p, &result))
+    return false;
+  MsTypeRef *t = MS_ARENA_NEW(p->arena, MsTypeRef);
+  t->id = parse_new_id(p);
+  t->pos = first.pos;
+  t->kind = MS_TYPE_FN;
+  t->params = params;
+  t->result = result;
+  *out = t;
+  return true;
+}
+
 MS_NODISCARD static bool typ_inner(Parser *p, MsTypeRef **out) {
   MsToken first = parse_peek(p);
   if (first.kind == MS_T_Fn) {
-    p->at++;
-    if (!parse_need(p, MS_T_LParen))
-      return false;
-    MsParams params = {NULL, 0};
-    if (!parse_take(p, MS_T_RParen)) {
-      size_t m = parse_mark(p);
-      uint32_t count = 0;
-      for (;;) {
-        /* `fn(var List[Int]) Void`: a parameter the function changes in place. */
-        bool moving = parse_take_move(p, (const MsTok[]){MS_T_Var, MS_T_Name, MS_T_Fn}, 3);
-        bool is_mutable = parse_take(p, MS_T_Var);
-        if (moving && is_mutable) {
-          parse_fail(p, parse_previous(p),
-                     ms_span_of_text("a parameter is either `move` (the callee takes it) or `var` (the "
-                                     "callee changes it in place), not both"));
-          return false;
-        }
-        MsTypeRef *ty = NULL;
-        if (!parse_typ(p, &ty))
-          return false;
-        parse_push_ptr(
-            p, parse_mk_param(p, ty->pos, parse_numbered_name(p, "_", count), ty, NULL, is_mutable, moving));
-        count++;
-        if (!parse_take(p, MS_T_Comma)) {
-          break;
-        }
-        if (parse_kind(p) == MS_T_RParen) {
-          break;
-        }
-      }
-      if (!parse_need(p, MS_T_RParen))
-        return false;
-      params.ptr = parse_finish(p, m, &params.len, sizeof(void *), _Alignof(void *));
-    }
-    MsTypeRef *result = NULL;
-    if (!parse_typ(p, &result))
-      return false;
-    MsTypeRef *t = MS_ARENA_NEW(p->arena, MsTypeRef);
-    t->id = parse_new_id(p);
-    t->pos = first.pos;
-    t->kind = MS_TYPE_FN;
-    t->params = params;
-    t->result = result;
-    *out = t;
-    return true;
+    return fn_type(p, first, out);
   }
   MsTypeRef *t;
   if (parse_take(p, MS_T_LParen)) {
@@ -337,6 +342,53 @@ MS_NODISCARD bool parse_need_name_colon(Parser *p, MsToken name) {
   return true;
 }
 
+/* One parameter: `[move|var] name[: Type][= default]`; it is pushed onto the open scratch list. */
+MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
+  bool moving = parse_take_move(p, (const MsTok[]){MS_T_Var, MS_T_Name}, 2);
+  bool is_mutable = parse_take(p, MS_T_Var);
+  if (moving && is_mutable) {
+    parse_fail(p, parse_previous(p),
+               ms_span_of_text("a parameter is either `move` (the callee takes it) or `var` (the callee "
+                               "changes it in place), not both"));
+    return false;
+  }
+  MsToken name = {0};
+  if (!parse_need_token(p, MS_T_Name, &name))
+    return false;
+  MsTypeRef *ty = NULL;
+  MsExpr *def = NULL;
+  if (parse_take(p, MS_T_Colon)) {
+    if (parse_kind(p) == MS_T_Var) {
+      MsToken t = parse_peek(p);
+      MsSpan n = parse_text(p, name);
+      MsSpan rep = parse_fmt(p, "var %S:", n);
+      parse_fail_fix_range(
+          p, name, t,
+          parse_fmt(p, "'var' goes before the parameter name, not its type; write var %S: Type", n), rep);
+      return false;
+    }
+    if (!parse_typ(p, &ty))
+      return false;
+  } else if (!inferred || parse_kind(p) == MS_T_Name) {
+    if (!parse_need_name_colon(p, name))
+      return false;
+  }
+  if (parse_take(p, MS_T_Assign)) {
+    if (!defaults) {
+      parse_fail(p, parse_previous(p),
+                 ms_span_of_text("function types and case payloads cannot have defaults; put the default "
+                                 "on a named function parameter or a type field instead"));
+      return false;
+    }
+    if (!parse_expression(p, 0, &def))
+      return false;
+  } else if (defaults && ty != NULL) {
+    def = parse_implicit_none(p, ty);
+  }
+  parse_push_ptr(p, parse_mk_param(p, name.pos, parse_sym(p, name), ty, def, is_mutable, moving));
+  return true;
+}
+
 MS_NODISCARD bool parse_parameters(Parser *p, bool defaults, bool inferred, MsParams *out) {
   if (!parse_need(p, MS_T_LParen))
     return false;
@@ -347,48 +399,8 @@ MS_NODISCARD bool parse_parameters(Parser *p, bool defaults, bool inferred, MsPa
   }
   size_t m = parse_mark(p);
   for (;;) {
-    bool moving = parse_take_move(p, (const MsTok[]){MS_T_Var, MS_T_Name}, 2);
-    bool is_mutable = parse_take(p, MS_T_Var);
-    if (moving && is_mutable) {
-      parse_fail(p, parse_previous(p),
-                 ms_span_of_text("a parameter is either `move` (the callee takes it) or `var` (the callee "
-                                 "changes it in place), not both"));
+    if (!parameter(p, defaults, inferred))
       return false;
-    }
-    MsToken name = {0};
-    if (!parse_need_token(p, MS_T_Name, &name))
-      return false;
-    MsTypeRef *ty = NULL;
-    MsExpr *def = NULL;
-    if (parse_take(p, MS_T_Colon)) {
-      if (parse_kind(p) == MS_T_Var) {
-        MsToken t = parse_peek(p);
-        MsSpan n = parse_text(p, name);
-        MsSpan rep = parse_fmt(p, "var %S:", n);
-        parse_fail_fix_range(
-            p, name, t,
-            parse_fmt(p, "'var' goes before the parameter name, not its type; write var %S: Type", n), rep);
-        return false;
-      }
-      if (!parse_typ(p, &ty))
-        return false;
-    } else if (!inferred || parse_kind(p) == MS_T_Name) {
-      if (!parse_need_name_colon(p, name))
-        return false;
-    }
-    if (parse_take(p, MS_T_Assign)) {
-      if (!defaults) {
-        parse_fail(p, parse_previous(p),
-                   ms_span_of_text("function types and case payloads cannot have defaults; put the default "
-                                   "on a named function parameter or a type field instead"));
-        return false;
-      }
-      if (!parse_expression(p, 0, &def))
-        return false;
-    } else if (defaults && ty != NULL) {
-      def = parse_implicit_none(p, ty);
-    }
-    parse_push_ptr(p, parse_mk_param(p, name.pos, parse_sym(p, name), ty, def, is_mutable, moving));
     if (!parse_take(p, MS_T_Comma)) {
       break;
     }

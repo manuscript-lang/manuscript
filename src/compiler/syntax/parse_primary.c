@@ -163,6 +163,51 @@ MS_NODISCARD bool parse_postfix(Parser *p, MsExpr *e, MsExpr **out) {
   return true;
 }
 
+/* Rejects an argument written with `=` (a label or an arrow closure) or with `var`. */
+MS_NODISCARD static bool argument_is_plain(Parser *p) {
+  if (parse_kind(p) == MS_T_Name && parse_ahead(p, 1).kind == MS_T_Assign) {
+    MsToken eq = parse_ahead(p, 1);
+    MsSpan n = parse_text(p, parse_peek(p));
+    MsToken gt = parse_ahead(p, 2);
+    if (gt.kind == MS_T_Gt && gt.pos.offset == eq.end.offset) {
+      /* `x => x * 2`: a closure written with an arrow. */
+      MsToken nm = parse_peek(p);
+      MsSpan message = parse_fmt(p,
+                                 "there is no '=>' closure; write fn %S: body, with the parameter after fn "
+                                 "and a colon before the body",
+                                 n);
+      parse_fail_fix_range(p, nm, gt, message, parse_fmt(p, "fn %S:", n));
+      return false;
+    }
+    parse_fail(p, eq, parse_fmt(p, "argument labels use a colon; write %S: value", n));
+    return false;
+  }
+  if (parse_kind(p) == MS_T_Var) {
+    MsToken t = parse_peek(p);
+    t.end = parse_ahead(p, 1).pos;
+    parse_fail_fix_range(p, t, t,
+                         ms_span_of_text("a call does not write `var`: the callee's parameter declares "
+                                         "that it changes the argument; write the argument plainly"),
+                         ms_span_of_text(""));
+    return false;
+  }
+  return true;
+}
+
+/* Rejects `x -> ...` after the argument `value`. */
+MS_NODISCARD static bool argument_is_not_arrow(Parser *p, const MsExpr *value) {
+  if (value->kind == MS_E_NAME && parse_kind(p) == MS_T_Arrow) {
+    MsSpan n = ms_names_span(p->names, value->u.sym);
+    parse_fail(p, parse_peek(p),
+               parse_fmt(p,
+                         "arrow closures are not supported; write 'fn %S: %S + 1', or 'fn(%S: Int) Int: %S "
+                         "+ 1' with explicit types",
+                         n, n, n, n));
+    return false;
+  }
+  return true;
+}
+
 /* Parses the arguments after an opening parenthesis, through `)`. */
 MS_NODISCARD bool parse_call_arguments(Parser *p, Args *out) {
   Args result = {NULL, 0};
@@ -180,44 +225,13 @@ MS_NODISCARD bool parse_call_arguments(Parser *p, Args *out) {
       has_name = true;
       p->at += 2;
     }
-    if (parse_kind(p) == MS_T_Name && parse_ahead(p, 1).kind == MS_T_Assign) {
-      MsToken eq = parse_ahead(p, 1);
-      MsSpan n = parse_text(p, parse_peek(p));
-      MsToken gt = parse_ahead(p, 2);
-      if (gt.kind == MS_T_Gt && gt.pos.offset == eq.end.offset) {
-        /* `x => x * 2`: a closure written with an arrow. */
-        MsToken nm = parse_peek(p);
-        MsSpan message = parse_fmt(p,
-                                   "there is no '=>' closure; write fn %S: body, with the parameter after fn "
-                                   "and a colon before the body",
-                                   n);
-        parse_fail_fix_range(p, nm, gt, message, parse_fmt(p, "fn %S:", n));
-        return false;
-      }
-      parse_fail(p, eq, parse_fmt(p, "argument labels use a colon; write %S: value", n));
+    if (!argument_is_plain(p))
       return false;
-    }
-    if (parse_kind(p) == MS_T_Var) {
-      MsToken t = parse_peek(p);
-      t.end = parse_ahead(p, 1).pos;
-      parse_fail_fix_range(p, t, t,
-                           ms_span_of_text("a call does not write `var`: the callee's parameter declares "
-                                           "that it changes the argument; write the argument plainly"),
-                           ms_span_of_text(""));
-      return false;
-    }
     MsExpr *value = NULL;
     if (!parse_expression(p, 0, &value))
       return false;
-    if (value->kind == MS_E_NAME && parse_kind(p) == MS_T_Arrow) {
-      MsSpan n = ms_names_span(p->names, value->u.sym);
-      parse_fail(p, parse_peek(p),
-                 parse_fmt(p,
-                           "arrow closures are not supported; write 'fn %S: %S + 1', or 'fn(%S: Int) Int: %S "
-                           "+ 1' with explicit types",
-                           n, n, n, n));
+    if (!argument_is_not_arrow(p, value))
       return false;
-    }
     MsArg a = {pos, has_name, name, value};
     parse_push(p, &a, sizeof a);
     if (!parse_take(p, MS_T_Comma)) {

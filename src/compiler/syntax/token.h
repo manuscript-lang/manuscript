@@ -8,20 +8,21 @@
   X(Comment, "#comment")                                                                                     \
   X(Newline, "NEWLINE")                                                                                      \
   X(Indent, "INDENT")                                                                                        \
-  X(Dedent, "DEDENT") X(Eof, "EOF") X(Name, "NAME") X(Number, "NUMBER") X(String, "STRING") X(And, "and")    \
-      X(Break, "break") X(Continue, "continue") X(Else, "else") X(Enum, "enum") X(Export, "export")          \
-          X(Extern, "extern") X(False, "false") X(Fixture, "fixture") X(Fn, "fn") X(For, "for") X(If, "if")  \
-              X(Impl, "impl") X(Import, "import") X(In, "in") X(Interface, "interface") X(Match, "match")    \
-                  X(Not, "not") X(Or, "or") X(Return, "return") X(SelfKw, "self") X(Test, "test")            \
-                      X(True, "true") X(Try, "try") X(Type, "type") X(Void, "void") X(Var, "var")            \
-                          X(While, "while") X(Underscore, "_") X(LParen, "(") X(RParen, ")")                 \
-                              X(LBracket, "[") X(RBracket, "]") X(LBrace, "{") X(RBrace, "}") X(Colon, ":")  \
-                                  X(Comma, ",") X(Dot, ".") X(Plus, "+") X(Minus, "-") X(Star, "*")          \
-                                      X(Slash, "/") X(Percent, "%") X(Lt, "<") X(Gt, ">") X(Assign, "=")     \
-                                          X(Amp, "&") X(Pipe, "|") X(Ellipsis, "...") X(DotDot, "..")        \
-                                              X(Question, "?") X(Bang, "!") X(ColonAssign, ":=")             \
-                                                  X(Arrow, "->") X(EqEq, "==") X(NotEq, "!=") X(Le, "<=")    \
-                                                      X(Ge, ">=")
+  X(Dedent, "DEDENT")                                                                                        \
+  X(Eof, "EOF")                                                                                              \
+  X(Name, "NAME") X(Number, "NUMBER") X(String, "STRING") X(And, "and") X(Break, "break")                    \
+      X(Continue, "continue") X(Else, "else") X(Enum, "enum") X(Export, "export") X(Extern, "extern")        \
+          X(False, "false") X(Fixture, "fixture") X(Fn, "fn") X(For, "for") X(If, "if") X(Impl, "impl")      \
+              X(Import, "import") X(In, "in") X(Interface, "interface") X(Match, "match") X(Not, "not")      \
+                  X(Or, "or") X(Return, "return") X(SelfKw, "self") X(Test, "test") X(True, "true")          \
+                      X(Try, "try") X(Type, "type") X(Void, "void") X(Var, "var") X(While, "while")          \
+                          X(Underscore, "_") X(LParen, "(") X(RParen, ")") X(LBracket, "[") X(RBracket, "]") \
+                              X(LBrace, "{") X(RBrace, "}") X(Colon, ":") X(Comma, ",") X(Dot, ".")          \
+                                  X(Plus, "+") X(Minus, "-") X(Star, "*") X(Slash, "/") X(Percent, "%")      \
+                                      X(Lt, "<") X(Gt, ">") X(Assign, "=") X(Amp, "&") X(Pipe, "|")          \
+                                          X(Ellipsis, "...") X(DotDot, "..") X(Question, "?") X(Bang, "!")   \
+                                              X(ColonAssign, ":=") X(Arrow, "->") X(EqEq, "==")              \
+                                                  X(NotEq, "!=") X(Le, "<=") X(Ge, ">=")
 
 typedef enum MsTok {
 #define X(name, text) MS_T_##name,

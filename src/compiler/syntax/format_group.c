@@ -238,23 +238,29 @@ static void group_wrap(Grouper *g, size_t start, uint32_t limit) {
   }
 }
 
-static void group_stmt(void *ctx, const MsStmt *s) {
-  Grouper *g = ctx;
-  if (fmt_is_destructure_head(s)) {
-    return;
-  }
-  const MsExpr *value = fmt_statement_value(s);
-  if (value == NULL || fmt_suite_expression(value)) {
-    return;
-  }
-  size_t start = group_start_of(g, s->pos.offset);
-  if (start == FMT_NONE) {
-    return;
-  }
+/* The start of the value of an index store, `xs[i] = value`, which is the call of `[]=`. */
+static size_t group_call_value_start(const Grouper *g, const MsExpr *value, size_t start) {
   const MsToken *tokens = g->tokens;
-  if (tokens[start].kind == MS_T_String || tokens[start].kind == MS_T_Fn) {
-    return;
+  // `xs[i] = value` is a call of `[]=`; only the value wraps.
+  size_t at = start;
+  while (at < g->ntokens && tokens[at].pos.offset < value->end.offset) {
+    const size_t end = group_pair(g, at);
+    if (end != FMT_NONE) {
+      at = end + 1;
+      continue;
+    }
+    if (tokens[at].kind == MS_T_Assign) {
+      start = at + 1;
+      break;
+    }
+    at++;
   }
+  return start;
+}
+
+/* The token index where the wrapped value of statement `s` starts, given the statement's first token. */
+static size_t group_value_start(const Grouper *g, const MsStmt *s, const MsExpr *value, size_t start) {
+  const MsToken *tokens = g->tokens;
   switch ((MsStmtKind)s->kind) {
   case MS_S_IF:
     start += 1;
@@ -295,27 +301,32 @@ static void group_stmt(void *ctx, const MsStmt *s) {
     start++;
     break;
   }
-  case MS_S_CALL: {
-    // `xs[i] = value` is a call of `[]=`; only the value wraps.
-    size_t at = start;
-    while (at < g->ntokens && tokens[at].pos.offset < value->end.offset) {
-      const size_t end = group_pair(g, at);
-      if (end != FMT_NONE) {
-        at = end + 1;
-        continue;
-      }
-      if (tokens[at].kind == MS_T_Assign) {
-        start = at + 1;
-        break;
-      }
-      at++;
-    }
-    break;
-  }
+  case MS_S_CALL:
+    return group_call_value_start(g, value, start);
   default:
     break;
   }
-  group_wrap(g, start, value->end.offset);
+  return start;
+}
+
+static void group_stmt(void *ctx, const MsStmt *s) {
+  Grouper *g = ctx;
+  if (fmt_is_destructure_head(s)) {
+    return;
+  }
+  const MsExpr *value = fmt_statement_value(s);
+  if (value == NULL || fmt_suite_expression(value)) {
+    return;
+  }
+  size_t start = group_start_of(g, s->pos.offset);
+  if (start == FMT_NONE) {
+    return;
+  }
+  const MsToken *tokens = g->tokens;
+  if (tokens[start].kind == MS_T_String || tokens[start].kind == MS_T_Fn) {
+    return;
+  }
+  group_wrap(g, group_value_start(g, s, value, start), value->end.offset);
 }
 
 static int fmt_edit_order(const void *a, const void *b) {

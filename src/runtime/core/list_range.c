@@ -4,6 +4,7 @@
 #include "base/alloc.h"
 #include "runtime/core/fault.h"
 #include "runtime/core/list_support.h"
+#include "runtime/core/scratch.h"
 
 static const MsList empty_list = {0};
 
@@ -78,11 +79,12 @@ uint8_t msrt_list_range_by(int64_t start, int64_t end, int64_t step, uint8_t has
 /* `to_set`: a set of copies of the elements. */
 void msrt_list_to_set(const MsList *v, const MsTypeDesc *d, MsMap *out) {
   MsMap set = {0};
-  uint8_t *copy = ms_alloc(d->size);
+  MsrtScratch copy;
+  msrt_scratch_open(&copy, d->size);
   for (size_t i = 0; i < v->len; i++) {
-    ms_slot_copy(d, ms_list_slot(v, d, i), copy);
-    ms_map_insert(&set, d, NULL, copy, NULL);
+    ms_slot_copy(d, ms_list_slot(v, d, i), copy.ptr);
+    ms_map_insert(&set, d, NULL, copy.ptr, NULL);
   }
-  ms_free(copy);
+  msrt_scratch_close(&copy);
   *out = set;
 }

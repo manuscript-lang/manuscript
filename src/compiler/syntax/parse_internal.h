@@ -9,7 +9,7 @@
 #include "base/list.h"
 #include "base/strbuild.h"
 #include "base/utf8.h"
-#include "compiler/syntax/message.h"
+#include "base/message.h"
 #include "compiler/syntax/parse.h"
 
 /* Binding power of the operand of a prefix `not` or `try`. */

@@ -1,119 +1,97 @@
 /* Owns statements and suites. */
 #include "compiler/syntax/parse_internal.h"
 
+/* A keyword of another language written as a statement: the words that name it, the advice, and whether
+ * the advice quotes the word (`%S`) or carries a fix edit. */
+typedef struct ForeignKeyword {
+  const char *words[3]; /* NULL ends the list */
+  const char *advice;
+  const char *fix; /* replacement for the word, or NULL */
+  bool quotes_word;
+} ForeignKeyword;
+
+static const char FAILURES_ADVICE[] =
+    "'%S' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a "
+    "Result with 'call()?', or handle it with 'if value := result:' and an else branch";
+
+static const ForeignKeyword FOREIGN_KEYWORDS[] = {
+    {{"assert"},
+     "there is no 'assert': in a test block write 'expect_equal(actual, expected)?' or "
+     "'expect_true(condition)?', imported from \"@std/test/test.ms\"",
+     NULL,
+     false},
+    {{"pass"}, "'pass' is not a keyword; write 'void' for an empty block or match arm", "void", false},
+    {{"const", "val", "final"},
+     "'%S' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' "
+     "when it changes",
+     NULL,
+     true},
+    {{"throw", "raise", "catch"}, FAILURES_ADVICE, NULL, true},
+    {{"elseif"}, "'elseif' is not a keyword; write 'else if <condition>:' for a further branch", NULL, false},
+    {{"elif"}, "there is no 'elif': write 'else if <condition>:' for a further branch", NULL, false},
+    {{"def"}, "there is no 'def': declare a function with 'fn name(a: Int) Int:'", NULL, false},
+    {{"switch"},
+     "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == "
+     "a:' with 'else if' for plain values",
+     NULL,
+     false},
+    {{"except", "finally"}, FAILURES_ADVICE, NULL, true},
+    {{"loop"}, "'loop' is not a keyword; write 'while true:' and leave it with 'break'", NULL, false},
+    {{"foreach"}, "'foreach' is not a keyword; write 'for item in items:'", NULL, false},
+    {{"class"},
+     "'class' is not a keyword inside a fn; declare a type with 'type Name:' at module level",
+     NULL,
+     false},
+    {{"del"},
+     "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or "
+     "m.remove(key)",
+     NULL,
+     false},
+    {{"global", "nonlocal"},
+     "'%S' is not a keyword; a fn sees module constants directly, and mutable state lives in a 'var' or a "
+     "field passed explicitly",
+     NULL,
+     true},
+    {{"yield"},
+     "'yield' is not a keyword; there are no generators, so build a list and return it",
+     NULL,
+     false},
+    {{"async", "await"},
+     "'%S' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) "
+     "from \"@std/concurrency/promise.ms\"",
+     NULL,
+     true},
+    {{"go"},
+     "'go' is not a keyword; start concurrent work with promise(fn: ...) from "
+     "\"@std/concurrency/promise.ms\": result := promise(fn: work()), then result.wait()",
+     NULL,
+     false},
+};
+
+static bool names_keyword(const ForeignKeyword *entry, MsSpan name) {
+  for (size_t index = 0; index < MS_COUNT_OF(entry->words) && entry->words[index] != NULL; index++) {
+    if (ms_span_is_text(name, entry->words[index])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* A name that is a keyword in another language, written as a statement: reports how to say it in
  * Manuscript and returns true. */
 static bool report_foreign_keyword(Parser *p, MsToken t, MsSpan n) {
-  if (ms_span_is_text(n, "assert")) {
-    parse_fail(
-        p, t,
-        ms_span_of_text("there is no 'assert': in a test block write 'expect_equal(actual, expected)?' or "
-                        "'expect_true(condition)?', imported from \"@std/test/test.ms\""));
-    return true;
-  }
-  if (ms_span_is_text(n, "pass")) {
-    parse_fail_fix(p, t,
-                   ms_span_of_text("'pass' is not a keyword; write 'void' for an empty block or match arm"),
-                   ms_span_of_text("void"));
-    return true;
-  }
-  if (ms_span_is_text(n, "const") || ms_span_is_text(n, "val") || ms_span_is_text(n, "final")) {
-    parse_fail(p, t,
-               parse_fmt(p,
-                         "'%S' is not a keyword; write 'name := ...' for a binding that is not reassigned, "
-                         "or 'var name = ...' when it changes",
-                         n));
-    return true;
-  }
-  if (ms_span_is_text(n, "throw") || ms_span_is_text(n, "raise") || ms_span_is_text(n, "catch")) {
-    parse_fail(
-        p, t,
-        parse_fmt(
-            p,
-            "'%S' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate "
-            "a Result with 'call()?', or handle it with 'if value := result:' and an else branch",
-            n));
-    return true;
-  }
-  if (ms_span_is_text(n, "elseif")) {
-    parse_fail(
-        p, t,
-        ms_span_of_text("'elseif' is not a keyword; write 'else if <condition>:' for a further branch"));
-    return true;
-  }
-  if (ms_span_is_text(n, "elif")) {
-    parse_fail(p, t,
-               ms_span_of_text("there is no 'elif': write 'else if <condition>:' for a further branch"));
-    return true;
-  }
-  if (ms_span_is_text(n, "def")) {
-    parse_fail(p, t, ms_span_of_text("there is no 'def': declare a function with 'fn name(a: Int) Int:'"));
-    return true;
-  }
-  if (ms_span_is_text(n, "switch")) {
-    parse_fail(p, t,
-               ms_span_of_text("'switch' is not a keyword; write 'match value:' with one arm per case of "
-                               "your own type, or 'if x == a:' with 'else if' for plain values"));
-    return true;
-  }
-  if (ms_span_is_text(n, "except") || ms_span_is_text(n, "finally")) {
-    parse_fail(
-        p, t,
-        parse_fmt(
-            p,
-            "'%S' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate "
-            "a Result with 'call()?', or handle it with 'if value := result:' and an else branch",
-            n));
-    return true;
-  }
-  if (ms_span_is_text(n, "loop")) {
-    parse_fail(p, t,
-               ms_span_of_text("'loop' is not a keyword; write 'while true:' and leave it with 'break'"));
-    return true;
-  }
-  if (ms_span_is_text(n, "foreach")) {
-    parse_fail(p, t, ms_span_of_text("'foreach' is not a keyword; write 'for item in items:'"));
-    return true;
-  }
-  if (ms_span_is_text(n, "class")) {
-    parse_fail(p, t,
-               ms_span_of_text(
-                   "'class' is not a keyword inside a fn; declare a type with 'type Name:' at module level"));
-    return true;
-  }
-  if (ms_span_is_text(n, "del")) {
-    parse_fail(p, t,
-               ms_span_of_text("'del' is not a keyword; remove from a collection with its methods, such as "
-                               "xs.remove(i) or m.remove(key)"));
-    return true;
-  }
-  if (ms_span_is_text(n, "global") || ms_span_is_text(n, "nonlocal")) {
-    parse_fail(p, t,
-               parse_fmt(p,
-                         "'%S' is not a keyword; a fn sees module constants directly, and mutable state "
-                         "lives in a 'var' or a field passed explicitly",
-                         n));
-    return true;
-  }
-  if (ms_span_is_text(n, "yield")) {
-    parse_fail(
-        p, t,
-        ms_span_of_text("'yield' is not a keyword; there are no generators, so build a list and return it"));
-    return true;
-  }
-  if (ms_span_is_text(n, "async") || ms_span_is_text(n, "await")) {
-    parse_fail(p, t,
-               parse_fmt(p,
-                         "'%S' is not a keyword; call the function directly, or start concurrent work with "
-                         "promise(fn: ...) from \"@std/concurrency/promise.ms\"",
-                         n));
-    return true;
-  }
-  if (ms_span_is_text(n, "go")) {
-    parse_fail(p, t,
-               ms_span_of_text(
-                   "'go' is not a keyword; start concurrent work with promise(fn: ...) from "
-                   "\"@std/concurrency/promise.ms\": result := promise(fn: work()), then result.wait()"));
+  for (size_t index = 0; index < MS_COUNT_OF(FOREIGN_KEYWORDS); index++) {
+    const ForeignKeyword *entry = &FOREIGN_KEYWORDS[index];
+    if (!names_keyword(entry, n)) {
+      continue;
+    }
+    const MsSpan advice =
+        entry->quotes_word ? parse_fmt(p, entry->advice, n) : ms_span_of_text(entry->advice);
+    if (entry->fix != NULL) {
+      parse_fail_fix(p, t, advice, ms_span_of_text(entry->fix));
+    } else {
+      parse_fail(p, t, advice);
+    }
     return true;
   }
   return false;

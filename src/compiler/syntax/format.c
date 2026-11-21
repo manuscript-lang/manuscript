@@ -114,9 +114,9 @@ static void para_visit_block(void *ctx, MsStmts body) {
 
 enum { GROUP_NONE, GROUP_CONSTANT, GROUP_ALIAS, GROUP_IMPORT };
 
-static void fmt_paragraph_breaks(Fmt *f, const MsModule *module, const MsSpan *lines, size_t nlines,
-                                 bool *breaks) {
-  Paragraphs p = {.fmt = f, .lines = lines, .nlines = nlines, .breaks = breaks};
+/* Breaks between top-level declarations and import sections. */
+static void para_top_level(Paragraphs *p, const MsModule *module, size_t nlines) {
+  Fmt *f = p->fmt;
   // Imports may be interleaved with declarations. Separate each import section while keeping
   // consecutive imports, constants and aliases together.
   uint8_t *group_of = MS_ARENA_NEW_ARRAY(f->arena, uint8_t, nlines + 2);
@@ -154,11 +154,15 @@ static void fmt_paragraph_breaks(Fmt *f, const MsModule *module, const MsSpan *l
     const uint8_t a = group_of[lines_sorted[i - 1]];
     const uint8_t b = group_of[lines_sorted[i]];
     if (a == GROUP_NONE || a != b) {
-      para_before(&p, lines_sorted[i]);
+      para_before(p, lines_sorted[i]);
     }
   }
   u32_list_free(&top_level);
-  // Clauses of a grouped import are separated by section.
+}
+
+/* Clauses of a grouped import are separated by section. */
+static void para_import_clauses(Paragraphs *p, const MsModule *module) {
+  Fmt *f = p->fmt;
   for (uint32_t i = 1; i < module->nimports; i++) {
     const MsImport *a = &module->imports[i - 1];
     const MsImport *b = &module->imports[i];
@@ -168,10 +172,17 @@ static void fmt_paragraph_breaks(Fmt *f, const MsModule *module, const MsSpan *l
       const MsSpan qa = ms_message_format(f->arena, "\"%S", a->path);
       const MsSpan qb = ms_message_format(f->arena, "\"%S", b->path);
       if (fmt_import_section(qa) != fmt_import_section(qb)) {
-        para_before(&p, b->clause.line);
+        para_before(p, b->clause.line);
       }
     }
   }
+}
+
+static void fmt_paragraph_breaks(Fmt *f, const MsModule *module, const MsSpan *lines, size_t nlines,
+                                 bool *breaks) {
+  Paragraphs p = {.fmt = f, .lines = lines, .nlines = nlines, .breaks = breaks};
+  para_top_level(&p, module, nlines);
+  para_import_clauses(&p, module);
   const MsVisitor visitor = {.ctx = &p, .block = para_visit_block};
   for (uint32_t i = 0; i < module->ndecls; i++) {
     const MsDecl *d = module->decls[i];

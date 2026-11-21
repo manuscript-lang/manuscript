@@ -174,7 +174,7 @@ void ms_defs_free(MsDefs *defs) {
     for (size_t at = 0; at < def->cases.len; at++) {
       ms_ty_param_list_free(&def->cases.ptr[at].fields);
     }
-    ms_case_list_free(&def->cases);
+    ms_ty_case_list_free(&def->cases);
     ms_operation_list_free(&def->operations);
   }
   ms_free(defs->by_index);
