@@ -197,7 +197,11 @@ static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Targ
     } else if (receiver == b->float_ty) {
         own = "FloatOperations";
     }
+    // `Int` shares the generic integer interfaces, applied to itself, after its own.
+    const bool integer = receiver == b->int_ty;
     return (own != NULL && intrinsic_in(b, own, receiver, name, out)) ||
+           (integer && (intrinsic_in(b, "IntegerOperations", receiver, name, out) ||
+                        intrinsic_in(b, "SignedIntegerOperations", receiver, name, out))) ||
            intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
 }
 
