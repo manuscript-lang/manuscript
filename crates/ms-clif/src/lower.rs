@@ -199,7 +199,7 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// the block's last CLIF block ends.
     fn end_block_temps(&mut self) {
         let temps = std::mem::take(&mut self.block_temps);
-        if !self.g.opts.build.poison_slots {
+        if !self.g.opts.poison_slots {
             return;
         }
         let end = self.b.current_block().expect("a block is being lowered");

@@ -1,7 +1,7 @@
 //! Compiles LLVM IR text to an object file.
 
-use ms_clif::link::llvm_tools;
-use ms_clif::{BuildOptions, Error};
+use crate::link::llvm_tools;
+use crate::{BuildOptions, Error};
 use ms_mir_llvm::Void;
 use std::path::{Path, PathBuf};
 use std::process::Command;

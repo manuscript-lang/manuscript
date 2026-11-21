@@ -13,8 +13,8 @@ use std::ffi::{CString, c_char};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use ms_clif::BuildOptions;
-use ms_clif::link::llvm_tools;
+use crate::BuildOptions;
+use crate::link::llvm_tools;
 use ms_mir::ir::Module;
 
 /// Whether `MS_BACKEND=c` asks for the C back end.
@@ -36,6 +36,7 @@ struct Options {
     checks: bool,
     verify: bool,
     tables: bool,
+    count_ops: bool,
 }
 
 unsafe extern "C" {
@@ -91,12 +92,19 @@ fn reason(why: Text) -> String {
 
 /// The LLVM IR of `mir` and the description its fault tables are built from. `shown` names the
 /// functions as a fault trace shows them (`ms_mir::print::display_names`).
-fn ir_of(mir: &str, shown: &str, speed: bool, checks: bool) -> Result<(Vec<u8>, Vec<u8>), String> {
+fn ir_of(
+    mir: &str,
+    shown: &str,
+    speed: bool,
+    checks: bool,
+    count_ops: bool,
+) -> Result<(Vec<u8>, Vec<u8>), String> {
     let options = Options {
         speed,
         checks,
         verify: true,
         tables: true,
+        count_ops,
     };
     let (mut ir, mut meta, mut why) = (Text::empty(), Text::empty(), Text::empty());
     // SAFETY: every pointer is valid for the call, both texts are passed with their lengths, the
@@ -233,6 +241,7 @@ fn compile_in(
         &ms_mir::print::display_names(module),
         speed,
         checks,
+        build.count_ops,
     )?;
     let tools: PathBuf = llvm_tools(build).map_err(|e| e.to_string())?.ok_or(
         "no LLVM tools are available for this platform; set MS_LLVM_TOOLS to a directory with opt and llc",
