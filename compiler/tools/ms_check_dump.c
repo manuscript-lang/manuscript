@@ -203,9 +203,41 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
     }
 }
 
-static void print_decline(const char *file, int line) {
-    const char *base = strrchr(file, '/');
-    fprintf(stderr, "WHY %s:%d\n", base == NULL ? file : base + 1, line);
+
+/* `--project-facts FILE`: the fact document of the project FILE belongs to (every local module it imports),
+ * the model `ms_tool_facts_project` prints, checked in dependency order. */
+static int project_facts(const char *path) {
+    MsNames names;
+    ms_names_init(&names);
+    MsArena arena = {0};
+    MsArena syntax = {0};
+    MsCheck check;
+    ms_check_init(&check, &names);
+    MsStr err = {0};
+    MsGraph graph;
+    MsProjectError error = {0};
+    int status = 1;
+    if (ms_project_load(&arena, &names, path, &graph, &error) && graph.ndiagnostics == 0 &&
+        ms_std_load(&check, &syntax, files, nfiles, &err)) {
+        MsModId *ids = MS_NEW_N(&arena, MsModId, graph.count + 1);
+        MsStr *texts = MS_NEW_N(&arena, MsStr, graph.count + 1);
+        ms_graph_add_modules(&check, &names, &arena, &graph, ids);
+        (void)ms_graph_check(&check, &graph, ids, NULL);
+        for (uint32_t m = 0; m < graph.count; m++) {
+            texts[m] = (MsStr){graph.modules[m].source, (uint32_t)graph.modules[m].length};
+            ms_module_check_ownership(&check, ids[m]);
+        }
+        MsBuf json = {0};
+        ms_dump_project_facts(&json, &check, ids, texts, graph.count);
+        printf("%.*s", (int)json.len, (const char *)json.data);
+        ms_buf_free(&json);
+        status = 0;
+    }
+    ms_check_free(&check);
+    ms_arena_free(&syntax);
+    ms_arena_free(&arena);
+    ms_names_free(&names);
+    return status;
 }
 
 int main(int argc, char **argv) {
@@ -218,7 +250,7 @@ int main(int argc, char **argv) {
     project_mode = argc >= 3 && strcmp(argv[2], "--project") == 0;
     const bool bodies = ownership || effects || project_mode || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
     const bool scope = bodies || json_mode != 0 || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
-    if (argc != 2 && !scope) {
+    if (argc != 2 && !scope && strcmp(argv[2], "--project-facts") != 0) {
         fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership|--effects|--facts|--nodes FILE...]\n", stderr);
         return 2;
     }
@@ -258,6 +290,9 @@ int main(int argc, char **argv) {
     }
     closedir(d);
 
+    if (argc == 4 && strcmp(argv[2], "--project-facts") == 0) {
+        return project_facts(argv[3]);
+    }
     MsNames names;
     ms_names_init(&names);
     MsArena syntax = {0};

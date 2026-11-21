@@ -4,7 +4,10 @@
  * payload (an optional) or length then element by element (a list), leaving at the first difference. */
 #include <string.h>
 
+#include "ms/hints.h"
 #include "ms/lower_internal.h"
+#include "ms/mir_analysis.h"
+#include "ms/mir_pass.h"
 #include "ms/rt_ops.h"
 
 static MirValue lq_element(Lb *lb, MirBuilder *b, MirTy ty, MirValue x, MirValue y);
@@ -99,101 +102,112 @@ static MirImm lq_case_field(const void *where, uint32_t i) {
     return (MirImm){.tag = MI_ALTFIELD, .a = c->alt, .b = c->which, .c = i};
 }
 
+/* The body comparing two records, field by field. */
+static bool lq_body_record(Lb *lb, MirBuilder *b, const MirTyData *data, MirValue x, MirValue y, MirBlock yes, MirBlock no) {
+    const MirTypeDef *def = &lb->m->type_defs[data->id];
+    if (!lq_fields(lb, b, def->fields, def->nfields, lq_record_field, &data->id, MOP_TypeGet, x, y, no)) {
+        return false;
+    }
+    mir_b_br(b, yes, NULL, 0);
+    return true;
+}
+
+/* The body comparing two values of an enum: the tags, then the fields of the case. */
+static bool lq_body_alt(Lb *lb, MirBuilder *b, const MirTyData *data, MirValue x, MirValue y, MirBlock yes, MirBlock no) {
+    const MirAltDef *alt = &lb->m->alts[data->id];
+    const MirValue tx = mir_b_emit(b, MOP_AltTag, &x, 1, (MirImm){0}, MIR_INT);
+    const MirValue other_tag = mir_b_emit(b, MOP_AltTag, &y, 1, (MirImm){0}, MIR_INT);
+    const MirValue same = mir_b_icmp(b, MCC_EQ, tx, other_tag);
+    const MirBlock dispatch = mir_b_new_block(b);
+    mir_b_br_if(b, same, dispatch, NULL, 0, no, NULL, 0);
+    mir_b_seal_block(b, dispatch);
+    mir_b_switch_to(b, dispatch);
+    MirBlock *blocks = MS_NEW_N(&b->scratch, MirBlock, (size_t)alt->ncases + 1);
+    MirCase *arms = MS_NEW_N(&b->scratch, MirCase, (size_t)alt->ncases + 1);
+    for (uint32_t i = 0; i < alt->ncases; i++) {
+        blocks[i] = mir_b_new_block(b);
+        arms[i] = (MirCase){(int64_t)i, {blocks[i], NULL, 0}};
+    }
+    mir_b_switch(b, tx, arms, alt->ncases, yes);
+    for (uint32_t i = 0; i < alt->ncases; i++) {
+        mir_b_seal_block(b, blocks[i]);
+        mir_b_switch_to(b, blocks[i]);
+        const LqCase at = {data->id, i};
+        if (!lq_fields(lb, b, alt->cases[i].fields, alt->cases[i].nfields, lq_case_field, &at, MOP_AltGet, x, y, no)) {
+            return false;
+        }
+        mir_b_br(b, yes, NULL, 0);
+    }
+    return true;
+}
+
+/* The body comparing two optionals: both empty, or both set and equal inside. */
+static bool lq_body_opt(Lb *lb, MirBuilder *b, const MirTyData *data, MirValue x, MirValue y, MirBlock yes, MirBlock no) {
+    const MirValue sx = mir_b_emit(b, MOP_OptIsSome, &x, 1, (MirImm){0}, MIR_BOOL);
+    const MirValue sy = mir_b_emit(b, MOP_OptIsSome, &y, 1, (MirImm){0}, MIR_BOOL);
+    const MirValue same = mir_b_icmp(b, MCC_EQ, sx, sy);
+    const MirBlock both = mir_b_new_block(b);
+    const MirBlock check = mir_b_new_block(b);
+    mir_b_br_if(b, same, check, NULL, 0, no, NULL, 0);
+    mir_b_seal_block(b, check);
+    mir_b_switch_to(b, check);
+    mir_b_br_if(b, sx, both, NULL, 0, yes, NULL, 0);
+    mir_b_seal_block(b, both);
+    mir_b_switch_to(b, both);
+    const MirValue l = mir_b_emit(b, MOP_OptGet, &x, 1, (MirImm){0}, data->elem);
+    const MirValue r = mir_b_emit(b, MOP_OptGet, &y, 1, (MirImm){0}, data->elem);
+    const MirValue equal = lq_element(lb, b, data->elem, l, r);
+    if (equal == MIR_NONE) {
+        return false;
+    }
+    mir_b_br_if(b, equal, yes, NULL, 0, no, NULL, 0);
+    return true;
+}
+
+/* The body comparing two lists: the lengths, then the elements in order. */
+static bool lq_body_list(Lb *lb, MirBuilder *b, const MirTyData *data, MirValue x, MirValue y, MirBlock yes, MirBlock no) {
+    const MirValue nx = mir_b_emit(b, MOP_ListLen, &x, 1, (MirImm){0}, MIR_INT);
+    const MirValue ny = mir_b_emit(b, MOP_ListLen, &y, 1, (MirImm){0}, MIR_INT);
+    const MirValue same = mir_b_icmp(b, MCC_EQ, nx, ny);
+    const MirBlock header = mir_b_new_block(b);
+    const MirBlock body = mir_b_new_block(b);
+    const MirBlock latch = mir_b_new_block(b);
+    const MirVar index = mir_b_declare_var(b, MIR_INT, MM_BORROW);
+    mir_b_def_var(b, index, mir_b_iconst(b, 0));
+    mir_b_br_if(b, same, header, NULL, 0, no, NULL, 0);
+    mir_b_switch_to(b, header);
+    const MirValue more = mir_b_icmp(b, MCC_LT, mir_b_use_var(b, index), nx);
+    mir_b_br_if(b, more, body, NULL, 0, yes, NULL, 0);
+    mir_b_seal_block(b, body);
+    mir_b_switch_to(b, body);
+    const MirValue at = mir_b_use_var(b, index);
+    const MirValue lx[2] = {x, at};
+    const MirValue ly[2] = {y, at};
+    const MirValue l = mir_b_emit(b, MOP_ListGet, lx, 2, (MirImm){0}, data->elem);
+    const MirValue r = mir_b_emit(b, MOP_ListGet, ly, 2, (MirImm){0}, data->elem);
+    const MirValue equal = lq_element(lb, b, data->elem, l, r);
+    if (equal == MIR_NONE) {
+        return false;
+    }
+    mir_b_br_if(b, equal, latch, NULL, 0, no, NULL, 0);
+    mir_b_seal_block(b, latch);
+    mir_b_switch_to(b, latch);
+    const MirValue next = mir_b_binop(b, MOP_IAdd, mir_b_use_var(b, index), mir_b_iconst(b, 1));
+    mir_b_def_var(b, index, next);
+    mir_b_br(b, header, NULL, 0);
+    mir_b_seal_block(b, header);
+    return true;
+}
+
 /* The body after the entry block: false when a part cannot be compared. */
 static bool lq_body(Lb *lb, MirBuilder *b, MirTy ty, MirValue x, MirValue y, MirBlock yes, MirBlock no) {
     const MirTyData *data = mir_ty_data(lb->m, ty);
     switch (data->kind) {
-    case MK_TYPE: {
-        const MirTypeDef *def = &lb->m->type_defs[data->id];
-        if (!lq_fields(lb, b, def->fields, def->nfields, lq_record_field, &data->id, MOP_TypeGet, x, y, no)) {
-            return false;
-        }
-        mir_b_br(b, yes, NULL, 0);
-        return true;
-    }
-    case MK_ALT: {
-        const MirAltDef *alt = &lb->m->alts[data->id];
-        const MirValue tx = mir_b_emit(b, MOP_AltTag, &x, 1, (MirImm){0}, MIR_INT);
-        const MirValue ty_ = mir_b_emit(b, MOP_AltTag, &y, 1, (MirImm){0}, MIR_INT);
-        const MirValue same = mir_b_icmp(b, MCC_EQ, tx, ty_);
-        const MirBlock dispatch = mir_b_new_block(b);
-        mir_b_br_if(b, same, dispatch, NULL, 0, no, NULL, 0);
-        mir_b_seal_block(b, dispatch);
-        mir_b_switch_to(b, dispatch);
-        MirBlock *blocks = MS_NEW_N(&b->scratch, MirBlock, (size_t)alt->ncases + 1);
-        MirCase *arms = MS_NEW_N(&b->scratch, MirCase, (size_t)alt->ncases + 1);
-        for (uint32_t i = 0; i < alt->ncases; i++) {
-            blocks[i] = mir_b_new_block(b);
-            arms[i] = (MirCase){(int64_t)i, {blocks[i], NULL, 0}};
-        }
-        mir_b_switch(b, tx, arms, alt->ncases, yes);
-        for (uint32_t i = 0; i < alt->ncases; i++) {
-            mir_b_seal_block(b, blocks[i]);
-            mir_b_switch_to(b, blocks[i]);
-            const LqCase at = {data->id, i};
-            if (!lq_fields(lb, b, alt->cases[i].fields, alt->cases[i].nfields, lq_case_field, &at, MOP_AltGet, x, y, no)) {
-                return false;
-            }
-            mir_b_br(b, yes, NULL, 0);
-        }
-        return true;
-    }
-    case MK_OPT: {
-        const MirValue sx = mir_b_emit(b, MOP_OptIsSome, &x, 1, (MirImm){0}, MIR_BOOL);
-        const MirValue sy = mir_b_emit(b, MOP_OptIsSome, &y, 1, (MirImm){0}, MIR_BOOL);
-        const MirValue same = mir_b_icmp(b, MCC_EQ, sx, sy);
-        const MirBlock both = mir_b_new_block(b);
-        const MirBlock check = mir_b_new_block(b);
-        mir_b_br_if(b, same, check, NULL, 0, no, NULL, 0);
-        mir_b_seal_block(b, check);
-        mir_b_switch_to(b, check);
-        mir_b_br_if(b, sx, both, NULL, 0, yes, NULL, 0);
-        mir_b_seal_block(b, both);
-        mir_b_switch_to(b, both);
-        const MirValue l = mir_b_emit(b, MOP_OptGet, &x, 1, (MirImm){0}, data->elem);
-        const MirValue r = mir_b_emit(b, MOP_OptGet, &y, 1, (MirImm){0}, data->elem);
-        const MirValue equal = lq_element(lb, b, data->elem, l, r);
-        if (equal == MIR_NONE) {
-            return false;
-        }
-        mir_b_br_if(b, equal, yes, NULL, 0, no, NULL, 0);
-        return true;
-    }
-    case MK_LIST: {
-        const MirValue nx = mir_b_emit(b, MOP_ListLen, &x, 1, (MirImm){0}, MIR_INT);
-        const MirValue ny = mir_b_emit(b, MOP_ListLen, &y, 1, (MirImm){0}, MIR_INT);
-        const MirValue same = mir_b_icmp(b, MCC_EQ, nx, ny);
-        const MirBlock header = mir_b_new_block(b);
-        const MirBlock body = mir_b_new_block(b);
-        const MirBlock latch = mir_b_new_block(b);
-        const MirVar index = mir_b_declare_var(b, MIR_INT, MM_BORROW);
-        mir_b_def_var(b, index, mir_b_iconst(b, 0));
-        mir_b_br_if(b, same, header, NULL, 0, no, NULL, 0);
-        mir_b_switch_to(b, header);
-        const MirValue more = mir_b_icmp(b, MCC_LT, mir_b_use_var(b, index), nx);
-        mir_b_br_if(b, more, body, NULL, 0, yes, NULL, 0);
-        mir_b_seal_block(b, body);
-        mir_b_switch_to(b, body);
-        const MirValue at = mir_b_use_var(b, index);
-        const MirValue lx[2] = {x, at};
-        const MirValue ly[2] = {y, at};
-        const MirValue l = mir_b_emit(b, MOP_ListGet, lx, 2, (MirImm){0}, data->elem);
-        const MirValue r = mir_b_emit(b, MOP_ListGet, ly, 2, (MirImm){0}, data->elem);
-        const MirValue equal = lq_element(lb, b, data->elem, l, r);
-        if (equal == MIR_NONE) {
-            return false;
-        }
-        mir_b_br_if(b, equal, latch, NULL, 0, no, NULL, 0);
-        mir_b_seal_block(b, latch);
-        mir_b_switch_to(b, latch);
-        const MirValue next = mir_b_binop(b, MOP_IAdd, mir_b_use_var(b, index), mir_b_iconst(b, 1));
-        mir_b_def_var(b, index, next);
-        mir_b_br(b, header, NULL, 0);
-        mir_b_seal_block(b, header);
-        return true;
-    }
-    default:
-        return false;
+    case MK_TYPE: return lq_body_record(lb, b, data, x, y, yes, no);
+    case MK_ALT: return lq_body_alt(lb, b, data, x, y, yes, no);
+    case MK_OPT: return lq_body_opt(lb, b, data, x, y, yes, no);
+    case MK_LIST: return lq_body_list(lb, b, data, x, y, yes, no);
+    default: return false;
     }
 }
 

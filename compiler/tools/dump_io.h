@@ -9,6 +9,13 @@
 #include <string.h>
 
 #include "ms/base.h"
+#include "ms/check.h"
+
+/* `ms_body_decline_hook` for `MS_WHY=1`: each place the body checker gave a function up, as `WHY file:line` on stderr. */
+static inline void print_decline(const char *file, int line) {
+    const char *base = strrchr(file, '/');
+    fprintf(stderr, "WHY %s:%d\n", base == NULL ? file : base + 1, line);
+}
 
 /* Splits `line` at tabs in place; returns the field count (at most `max`). */
 static inline size_t split_fields(char *line, char **fields, size_t max) {
