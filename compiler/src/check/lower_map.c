@@ -75,6 +75,15 @@ static MirValue lm_entry(Lb *lb, const MsExpr *e, MirTy ty) {
     return lb_owns(lb, ty) ? lb_move_argument(lb, e) : lb_expr(lb, e).v;
 }
 
+/* `Map[K, V]()`: an empty map. */
+LbVal lm_empty(Lb *lb, MirTy ty) {
+    if (!lb_is_map(lb, ty)) {
+        return lb_unsupported(lb);
+    }
+    const uint32_t make = lm_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
+    return (LbVal){mir_b_call_rt(&lb->b, make, NULL, 0), true};
+}
+
 /* `{k: v, ...}`: the map lives in one slot while the entries are added, then is taken back. */
 LbVal lm_literal(Lb *lb, const MsExpr *e) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
