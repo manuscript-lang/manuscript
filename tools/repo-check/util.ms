@@ -18,6 +18,7 @@ export fn skipped(path: String) Bool:
 		or path.starts_with("runtime/third_party/")
 		or path.starts_with("website/themes/")
 		or path.starts_with("tests/conformance/fixtures/")
+		or path.starts_with("compiler/tests/prelude/")
 	)
 
 export fn is_word_byte(byte: UInt8) Bool:
