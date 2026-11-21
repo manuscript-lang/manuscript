@@ -16,7 +16,7 @@ install)
     elif command -v brew >/dev/null 2>&1; then
         brew install cmake ninja ccache pkgconf libuv libnghttp2 openssl@3 pcre2 zlib curl
     elif command -v apk >/dev/null 2>&1; then
-        apk add cmake samurai ccache pkgconf libuv-dev nghttp2-dev nghttp2-static openssl-dev openssl-libs-static pcre2-dev zlib-dev zlib-static curl-dev curl-static
+        apk add cmake samurai ccache pkgconf libuv-dev libuv-static nghttp2-dev nghttp2-static openssl-dev openssl-libs-static pcre2-dev pcre2-static zlib-dev zlib-static curl-dev curl-static
     elif command -v dnf >/dev/null 2>&1; then
         # The release container (manylinux_2_28, AlmaLinux 8): EPEL has ccache and ninja, PowerTools
         # the development files.
