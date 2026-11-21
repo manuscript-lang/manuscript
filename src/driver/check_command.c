@@ -9,6 +9,7 @@
 #include "base/file.h"
 #include "base/path.h"
 #include "compiler/check/program.h"
+#include "compiler/own/own.h"
 #include "compiler/project/project.h"
 #include "compiler/syntax/diag_json.h"
 #include "driver/snippet.h"
@@ -184,6 +185,7 @@ int ms_check_command(int argc, char **argv) {
   add_graph_findings(&graph, &findings);
   if (findings.len == 0) {
     ms_check_graph(&program, &names, &graph);
+    ms_own_check(&program);
     add_check_findings(&program, &names, &findings);
   }
   report(&findings, &options, graph.source_root);
