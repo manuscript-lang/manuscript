@@ -45,7 +45,7 @@ fn extern_move_markers_match_the_runtime_flags() {
         &std::fs::read_to_string(root.join("crates/ms-lower/rt_symbols.txt")).expect("symbols"),
     );
     let mut files = Vec::new();
-    sources(&root.join("stdlib"), &mut files);
+    sources(&root.join("src/stdlib"), &mut files);
     let names = ms_syntax::Names::global();
     let mut wrong = Vec::new();
     for path in files {

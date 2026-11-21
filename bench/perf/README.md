@@ -4,7 +4,7 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 
 | Directory | Measures | Run | Results |
 | --- | --- | --- | --- |
-| [`stdlib/`](stdlib) | ns per operation for each standard-library case (Manuscript only) | `make stdlib-bench` | [`stdlib/results.md`](stdlib/results.md) |
+| [`src/stdlib/`](stdlib) | ns per operation for each standard-library case (Manuscript only) | `make stdlib-bench` | [`src/stdlib/results.md`](src/stdlib/results.md) |
 | [`programs/`](programs) | the same pure-Manuscript programs against hand-written Go and Rust, as a ratio | `MS=./target/release/ms GO=go ms run bench/tools/programs.ms -- 7` | [`programs/results.md`](programs/results.md) |
 | [`llvm-release.md`](llvm-release.md) | LLVM against Cranelift on all 31 benchmarks | see the page | [`llvm-release.md`](llvm-release.md) |
 | [`kernels/`](kernels) | whole numeric and data-structure kernels (sieve, n-body, life, matmul, trees, collatz, Int map) against hand-written Go and Rust | `MS=./target/release/ms GO=go ms run bench/tools/kernels.ms -- kernels 5` | [`kernels/README.md`](kernels/README.md) |

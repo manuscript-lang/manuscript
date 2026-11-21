@@ -9,5 +9,5 @@ Findings that stop further removal (verified on `80fd348b`):
 - A promise started in a `return` owns what it captures (#2686), and a returned promise's closure owns the clones bound before it (`Placement.Here` for thread-bound handles), so no `*Args` record or `owned_promise` remains.
 
 Apply when: touching connection, listener, datagram or WebSocket ends, or trying to drop an `*Args` record.
-Evidence: [net.ms](../../stdlib/net/net.ms), [net-broken-pipe.ms](../../tests/conformance/fixtures/e2e/stdlib/net-broken-pipe.ms).
+Evidence: [net.ms](../../src/stdlib/net/net.ms), [net-broken-pipe.ms](../../tests/conformance/fixtures/e2e/stdlib/net-broken-pipe.ms).
 Verify: `ms test tests/conformance/fixtures/e2e/stdlib/{net,tls,net-broken-pipe}.ms`.

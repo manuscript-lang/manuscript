@@ -1,5 +1,5 @@
-// Writes stdlib/internal/tzdata.ms, the IANA time-zone data that `@std/time` reads:
-//   ms run tools/tzdata.ms -- /usr/share/zoneinfo/tzdata.zi > stdlib/internal/tzdata.ms
+// Writes src/stdlib/internal/tzdata.ms, the IANA time-zone data that `@std/time` reads:
+//   ms run tools/tzdata.ms -- /usr/share/zoneinfo/tzdata.zi > src/stdlib/internal/tzdata.ms
 // The argument is the compact source that the `tzdata` package installs (`tzdata.zi`,
 // Homebrew and MSYS2 ship the same file); `zic` from the same package compiles it. Each
 // distinct zone is compiled in the slim TZif form, so zones that share data are stored

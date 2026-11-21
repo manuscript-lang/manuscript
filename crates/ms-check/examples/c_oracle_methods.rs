@@ -1,6 +1,6 @@
 //! Prints the operations of the interfaces a module declares and the methods its implementations
-//! add, in a canonical text form, so the C checker in `compiler/` can be compared with it byte for
-//! byte (`compiler/tests/check-diff.sh`). Temporary tooling for the C rewrite: delete it with the
+//! add, in a canonical text form, so the C checker in `src/compiler/` can be compared with it byte for
+//! byte (`src/compiler/tests/check-diff.sh`). Temporary tooling for the C rewrite: delete it with the
 //! Rust checker.
 //!
 //!   c_oracle_methods FILE..   each file that imports only `@std/` modules, as module `main.ms`
@@ -31,7 +31,7 @@ fn show(syms: Names, t: &Ty) -> String {
 }
 
 /// `dedupe`: an inherent row repeats the bounds the interface and the impl both carried; the C
-/// checker states each once (see compiler/tests/check-divergences.txt).
+/// checker states each once (see src/compiler/tests/check-divergences.txt).
 fn variables(syms: Names, vars: &[Ty], dedupe: bool) -> String {
     let each: Vec<String> = vars
         .iter()

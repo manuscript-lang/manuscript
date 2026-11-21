@@ -9,7 +9,7 @@ positive result. The predicate, escaping and output remain unchanged.
 ## 2026-11-10
 
 - Baseline: main `2050d2b4f56bc9851cb58c17f6eabb125610e7a2`. Candidate: the
-  guard/break change in `stdlib/data/xml.ms` accompanying this page.
+  guard/break change in `src/stdlib/data/xml.ms` accompanying this page.
 - Linux x86-64, AMD EPYC 9V74, 5 visible vCPUs, approximately 17 GiB RAM.
   Fresh source-built Rust 1.99.1 Release compiler; native Cranelift Release programs.
 - Fifteen alternating before/after pairs pinned to CPU 0. Both modules compiled

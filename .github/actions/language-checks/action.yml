@@ -22,7 +22,7 @@ runs:
       env:
         BASE_REF: ${{ github.base_ref }}
       run: |
-        sh runtime/third_party/libs.sh install
+        sh src/runtime/third_party/libs.sh install
         base=
         # The checkout is shallow: one more level gives the merge commit's parents, so the gate can tell what this change added from what main removed since.
         if [ -n "$BASE_REF" ]; then git fetch --no-tags --depth=2 origin "$GITHUB_SHA" || true; git fetch --depth=1 origin "$BASE_REF"; base=FETCH_HEAD; fi

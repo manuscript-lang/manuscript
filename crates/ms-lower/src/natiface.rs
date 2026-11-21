@@ -554,10 +554,10 @@ mod tests {
     }
 
     /// An interface the runtime implements has a binding for every operation it declares, so an
-    /// operation added to `stdlib/*.ms` cannot compile into a forwarder that only faults.
+    /// operation added to `src/stdlib/*.ms` cannot compile into a forwarder that only faults.
     #[test]
     fn every_native_interface_method_is_bound() {
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib");
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src/stdlib");
         let native: BTreeSet<(&str, &str)> = METHODS
             .iter()
             .map(|(module, iface, ..)| (*module, *iface))

@@ -1,5 +1,5 @@
 //! Embed the release version from `.msversion` and the prebuilt native static library (the C runtime in
-//! `runtime/`) that compiled programs link.
+//! `src/runtime/`) that compiled programs link.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -67,7 +67,7 @@ fn embed_native(crates: &Path, file: &str, var: &str) {
 fn reject_stale(crates: &Path, archive: &Path) {
     let built = std::fs::metadata(archive).and_then(|m| m.modified()).ok();
     let Some(built) = built else { return };
-    for dir in ["runtime", "cmake"] {
+    for dir in ["src/runtime", "cmake"] {
         let dir = crates.join("..").join(dir);
         println!("cargo:rerun-if-changed={}", dir.display());
         if let Some(newer) = newer_than(&dir, built) {

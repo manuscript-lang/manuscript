@@ -110,7 +110,7 @@ Float parsing. It reuses already output-validated executables.
 All **2,624** invocations succeeded. Earlier exploratory sessions are retained
 locally but do not establish the final decision; this report uses the complete
 final sessions and the longer confirmation. [`artifacts.json`](artifacts.json)
-records revision, compiler/archive/executable hashes and retained source/data hashes.
+records revision, src/compiler/archive/executable hashes and retained source/data hashes.
 Historical absolute paths in raw records and the matched-location plan identify
 measured artifacts; portable runners accept new executable paths.
 

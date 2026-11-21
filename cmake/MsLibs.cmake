@@ -1,6 +1,6 @@
 # The C libraries the runtime links: libuv, llhttp, nghttp2, OpenSSL, PCRE2, zlib, libcurl.
 # llhttp is vendored and compiled here. The others come from pkg-config (MS_C_LIBS=system) or from the folder
-# MS_LIBS_PREFIX (pinned builds of runtime/third_party/build.sh, the MSYS2 packages on Windows).
+# MS_LIBS_PREFIX (pinned builds of src/runtime/third_party/build.sh, the MSYS2 packages on Windows).
 # Each library gets MS_LIB_<NAME>_INCLUDES (a list), MS_LIB_<NAME>_ARCHIVES (static archives, folded into the
 # runtime archive) and MS_LIB_<NAME>_LINK (what a test links).
 set(MS_LIB_NAMES uv nghttp2 ssl crypto pcre2 z curl)
@@ -29,7 +29,7 @@ if(NOT MS_LIBS_WIRED)
   # A target whose libraries are not wired can still have zlib (MS_LIBS_ONLY=z): the in-memory deflate and inflate
   # code is plain C, compiled here from the vendored sources like llhttp (no build system, no prefix).
   if("z" IN_LIST MS_LIBS_ONLY)
-    set(MS_ZLIB_DIR "${CMAKE_SOURCE_DIR}/runtime/third_party/zlib")
+    set(MS_ZLIB_DIR "${CMAKE_SOURCE_DIR}/src/runtime/third_party/zlib")
     add_library(ms_zlib STATIC)
     foreach(_f adler32 compress crc32 deflate infback inffast inflate inftrees trees uncompr zutil)
       target_sources(ms_zlib PRIVATE "${MS_ZLIB_DIR}/${_f}.c")
@@ -67,7 +67,7 @@ elseif(MS_C_LIBS STREQUAL "system")
     pkg_check_modules(MS_PKG_${name} QUIET ${_pkg_${name}})
     if(NOT MS_PKG_${name}_FOUND)
       message(FATAL_ERROR "${_pkg_${name}} not found by pkg-config. Install the C libraries with: "
-                          "sh runtime/third_party/libs.sh install")
+                          "sh src/runtime/third_party/libs.sh install")
     endif()
     set(MS_LIB_${name}_INCLUDES ${MS_PKG_${name}_INCLUDE_DIRS})
     set(MS_LIB_${name}_LINK ${MS_PKG_${name}_LINK_LIBRARIES} ${MS_PKG_${name}_LDFLAGS_OTHER})
@@ -87,7 +87,7 @@ elseif(MS_C_LIBS STREQUAL "prefix")
   foreach(name ${MS_LIB_NAMES})
     set(_file "${MS_LIBS_PREFIX}/lib/${_archive_${name}}")
     if(NOT EXISTS "${_file}")
-      message(FATAL_ERROR "${_file} is missing; run: sh runtime/third_party/libs.sh install")
+      message(FATAL_ERROR "${_file} is missing; run: sh src/runtime/third_party/libs.sh install")
     endif()
     if(MS_LIBS_IDIRAFTER)
       set(MS_LIB_${name}_INCLUDES "")
@@ -102,7 +102,7 @@ else()
 endif()
 
 # llhttp: three vendored sources, compiled with the runtime's flags.
-set(MS_LLHTTP_DIR "${CMAKE_SOURCE_DIR}/runtime/third_party/llhttp")
+set(MS_LLHTTP_DIR "${CMAKE_SOURCE_DIR}/src/runtime/third_party/llhttp")
 add_library(ms_llhttp STATIC "${MS_LLHTTP_DIR}/src/api.c" "${MS_LLHTTP_DIR}/src/http.c"
                              "${MS_LLHTTP_DIR}/src/llhttp.c")
 target_include_directories(ms_llhttp PUBLIC "${MS_LLHTTP_DIR}/include")

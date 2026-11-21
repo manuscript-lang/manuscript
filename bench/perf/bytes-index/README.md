@@ -139,7 +139,7 @@ clean.
 ## Reproduce
 
 Build the compiler/runtime normally, preserve the baseline native archive, and
-build this exact source with that compiler/archive. Apply the focused patch,
+build this exact source with that src/compiler/archive. Apply the focused patch,
 rebuild the runtime, and build a second program with that archive. Keep compiler
 and source fixed, using MS_RT_LIB to select each archive:
 

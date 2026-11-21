@@ -7,7 +7,7 @@ Decision: `@std/image/image.ms` (types, transforms, format dispatch) and the cod
 Verified: a decoder compares the header's implied size with the real input before it allocates (PPM/BMP raster length, PNG inflate budget equal to the header-implied size, JPEG blocks per scan at most 8 bits of remaining data), rejects oversized dimensions at the header (PNG at IHDR), and returns `EBADMSG`, `ENOTSUP` or `EOVERFLOW`. Mutation fuzzing (`image-fuzz.ms`, 15k inputs, PNG CRCs repaired so mutations get past the gate) found no faults; hostile-header cases are fixed tests. JPEG output stays within 2 levels of libjpeg, which needs libjpeg's triangle ("fancy") chroma upsampling, not replication (error 29 without it).
 
 Apply when: adding a decoder or format to the image module, or any binary parser fed untrusted bytes.
-Evidence: [image.ms](../../stdlib/image/image.ms), [image tests](../../tests/conformance/fixtures/e2e/stdlib/image.ms), [fuzz](../../tests/conformance/fixtures/e2e/stdlib/image-fuzz.ms), vector generators beside them (Pillow and an independent PNG writer).
+Evidence: [image.ms](../../src/stdlib/image/image.ms), [image tests](../../tests/conformance/fixtures/e2e/stdlib/image.ms), [fuzz](../../tests/conformance/fixtures/e2e/stdlib/image-fuzz.ms), vector generators beside them (Pillow and an independent PNG writer).
 Verify: `ms test tests/conformance/fixtures/e2e/stdlib/image.ms` and `image-fuzz.ms`.
 
 Layout: modules cannot import each other cyclically and have no re-exports, so codecs import only `codec.ms` (the `Raster` they return, error and size helpers) and never `image.ms`; `image.ms` converts `Raster` to `Image` and passes `width, height, channels, pixels` to encoders so a borrowed `Image` is not copied.

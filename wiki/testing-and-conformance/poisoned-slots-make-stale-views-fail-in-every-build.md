@@ -2,7 +2,7 @@
 
 # Poisoned slots make a stale view fail in every build
 
-Verified 2026-11-16: whether a pointer into a dead stack slot misbehaves depends on what the backend reuses the slot for. The split-in-frame bug (#4284) showed `[:]` only in LLVM Release; Debug and Cranelift passed, and valgrind or ASan cannot see it (the stack memory is valid). `MS_POISON_SLOTS=1` fills each slot with `0xDD` where its use ends (a volatile `memset` before `lifetime.end`, written by `ll_temps_end` in `compiler/src/emit/emit_llvm.c`; a plain store would be dead), so the stale read faults or prints garbage deterministically. A corpus pass means no confined slot is read after its end.
+Verified 2026-11-16: whether a pointer into a dead stack slot misbehaves depends on what the backend reuses the slot for. The split-in-frame bug (#4284) showed `[:]` only in LLVM Release; Debug and Cranelift passed, and valgrind or ASan cannot see it (the stack memory is valid). `MS_POISON_SLOTS=1` fills each slot with `0xDD` where its use ends (a volatile `memset` before `lifetime.end`, written by `ll_temps_end` in `src/compiler/src/emit/emit_llvm.c`; a plain store would be dead), so the stale read faults or prints garbage deterministically. A corpus pass means no confined slot is read after its end.
 
 Why a build option: the fill changes the code, so it is in `BuildOptions` and the cache key.
 

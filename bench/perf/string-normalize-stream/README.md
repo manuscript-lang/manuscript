@@ -36,7 +36,7 @@ case inventory. No expected value is produced by the operation being measured.
 Use the coordinated shared runner with `--identity-file` only after a native
 build/correctness window and a separate timing grant. Baseline and candidate
 runtimes must be built from the same source path, with an exit trap restoring
-the candidate. Pin compiler/archive/helper/program/source hashes and preserve
+the candidate. Pin src/compiler/archive/helper/program/source hashes and preserve
 normal public build metadata verbatim. Report its backend label without
 inferring an effective optimization level or investigating code generation.
 

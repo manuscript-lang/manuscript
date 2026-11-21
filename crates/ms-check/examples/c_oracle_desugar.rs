@@ -1,12 +1,12 @@
-//! Prints what inherent-impl desugaring gives for source files, so the C checker in `compiler/`
-//! can be compared with it byte for byte (`compiler/tests/check-diff.sh`). Temporary tooling for
+//! Prints what inherent-impl desugaring gives for source files, so the C checker in `src/compiler/`
+//! can be compared with it byte for byte (`src/compiler/tests/check-diff.sh`). Temporary tooling for
 //! the C rewrite: delete it with the Rust checker.
 //!
 //!   c_oracle_desugar user|std FILE..
 //!   c_oracle_desugar foreign FOREIGN FILE..
 //!
 //! `user` desugars each file as a project module, `std` as a bundled `@std/` module, and `foreign`
-//! as a project module whose methods may also name the types of stdlib/core/core.ms.
+//! as a project module whose methods may also name the types of src/stdlib/core/core.ms.
 
 use ms_check::desugar_oracle::desugar_inherent_impls;
 use ms_syntax::Names;
@@ -34,7 +34,7 @@ fn ids(out: &mut String, d: &Decl) {
 
 /// What the C pass does not build: the interface synthesized for a type's own methods and the
 /// impl that carries it. The C pass keeps the written blocks, so only their methods are compared
-/// (see compiler/tests/check-divergences.txt).
+/// (see src/compiler/tests/check-divergences.txt).
 fn is_inherent(syms: Names, d: &Decl) -> bool {
     match &d.kind {
         DeclKind::Interface(i) => syms.str(i.name).ends_with("$methods"),

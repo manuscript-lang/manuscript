@@ -320,7 +320,7 @@ fixtures. The `JSON report`,
 [Markdown report](full-rollback/checks/conform-report.md) and
 `completed log` are preserved exactly.
 `The before/after input-integrity proof`
-records matching compiler/harness/native/helper/expectation hashes and dedicated
+records matching src/compiler/harness/native/helper/expectation hashes and dedicated
 read-only snapshots. All builds and timing finished before this suite; no native
 writer ran during it. The requested current-main local validation is complete;
 the original unavailable session's overall exit remains unestablished.

@@ -1,0 +1,98 @@
+help
+help check
+help nope
+help a b
+nope
+chek a.ms
+--help
+-h
+check --help
+check a.ms --bogus
+check a.ms --json
+check a.ms --json --with-text
+check a.ms --each
+check a.ms --fix --watch
+check -- a.ms b.ms
+lint a.ms --deny-warnings
+check a.ms --deny-warnings
+build a.ms -o out
+build a.ms -o
+build a.ms --build-type
+build a.ms --build-type Fast
+build a.ms --static
+build a.ms --link x.a
+check a.ms --link x.a
+run a.ms -- x y
+run a.ms x
+check a.ms -- x
+test a.ms --time 1s
+bench a.ms --runs 3
+test a.ms --runs 0
+test a.ms --runs=3 --seed 5
+test a.ms --seed x
+test a.ms --timeout 5x
+test a.ms --timeout 30s --filter foo
+bench a.ms --time 1us
+bench a.ms --fuzz 0
+test a.ms --fuzz 30s
+diagram a.ms --view class
+diagram a.ms --view bogus
+diagram a.ms --depth 3
+diagram a.ms --format x
+diagram a.ms --format html --view flow
+diagram a.ms --json --format ascii
+diagram a.ms --diff p
+profile a.ms --top 0
+profile a.ms --top 5 --out-dir d
+profile a.ms -o d
+build a.ms --out-dir d
+build a.ms --top 5
+build a.ms --allocs
+build a.ms --format x
+build a.ms --view x
+build a.ms --watch
+run a.ms --json --watch
+fmt a.ms --check
+check a.ms --check
+build a.ms --list
+--version
+version x
+init a b
+init -x
+init --lib --workspace
+verify --bogus
+verify a b
+explain
+explain MS1000
+explain ms1000 MSL001
+explain MS2001.1 --json
+explain --json MSL001 nope MS1000
+explain nope
+explain --json
+explain --help
+explain a -h
+fmt --json src/ms/explain.ms
+fmt --bogus src/ms/explain.ms
+fmt --check src/ms/explain.ms src/ms/fmt.ms ./tools/ms/explain.ms
+fmt --check --json src/ms/explain.ms src/ms/main.ms
+fmt --check --json src/ms/cases.txt
+fmt --check src/ms
+fmt --check --drop-labels src/ms/explain.ms
+install --bogus
+install --update
+add
+add https://h/x.git
+add https://h/x.git --tag
+add https://h/x.git --tag a --sha b
+add https://h/x.git --bogus
+remove
+remove @a @b
+fmt --check src/ms/test
+fmt --check --json src/ms/test
+fmt --check src/ms/lint src/ms/explain.ms
+fmt --check nothere.ms
+fmt --check --json nothere.ms src/ms/explain.ms
+fmt --check nodir/ms.toml
+fmt --check ""
+test nodir/ms.toml
+bench nodir/ms.toml

@@ -1,0 +1,9 @@
+# Defined in src/runtime/std/compress.c.
+msstd_compress_compress
+msstd_compress_decoder_end
+msstd_compress_decoder_new
+msstd_compress_decoder_push
+msstd_compress_decompress
+msstd_compress_encoder_end
+msstd_compress_encoder_new
+msstd_compress_encoder_push

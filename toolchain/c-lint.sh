@@ -17,18 +17,18 @@ rm -rf "$out"; mkdir -p "$out"
 # The flags come from the CMake project (cmake/MsLint.cmake, `make c-lint`): warnings, include paths and library headers.
 [ -f "${MS_LINT_FLAGS:-}" ] || { echo "c-lint: run it through CMake (make c-lint or cmake --build <dir> --target c-lint)" >&2; exit 1; }
 flags=$(cat "$MS_LINT_FLAGS")
-# A source under runtime/sys/<os>/ or runtime/io/<os>/ compiles only on that system, so the others are left to that system's build.
+# A source under src/runtime/sys/<os>/ or src/runtime/io/<os>/ compiles only on that system, so the others are left to that system's build.
 case "$(uname -s)" in Darwin) other='/(sys|io)/(linux|glibc|windows)/' ;; *) other='/(sys|io)/(darwin|windows)/' ;; esac
 # std_embed.c includes a file the build generates, which a lone compile does not see.
-files=$(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2>/dev/null | grep -Ev "$other" | grep -v "^compiler/src/std_embed.c$" | sort)
-# compiler/src is one translation unit, libms.c, that includes each source once: a file included twice redeclares its
+files=$(find src/runtime/sys src/runtime/core src/runtime/io src/runtime/net src/runtime/std src/runtime/tests src/runtime/fuzz src/compiler/src src/compiler/tests src/compiler/tools -name '*.c' 2>/dev/null | grep -Ev "$other" | grep -v "^src/compiler/src/std_embed.c$" | sort)
+# src/compiler/src is one translation unit, libms.c, that includes each source once: a file included twice redeclares its
 # types, and one left out is not built. driver.c, tool.c, tool_check.c, tool_build.c, tool_search.c, tool_facts.c and std_embed.c are the entry points, outside it.
-included=$(sed -n 's/^#include "\(.*\.c\)"$/\1/p' compiler/src/libms.c)
+included=$(sed -n 's/^#include "\(.*\.c\)"$/\1/p' src/compiler/src/libms.c)
 twice=$(echo "$included" | sort | uniq -d)
 [ -z "$twice" ] || { echo "c-lint: libms.c includes twice: $twice" >&2; exit 1; }
-for f in $(cd compiler/src && find . -name '*.c' | sed 's|^\./||' | sort); do
+for f in $(cd src/compiler/src && find . -name '*.c' | sed 's|^\./||' | sort); do
     case "$f" in driver.c|libms.c|std_embed.c|tool.c|tool_check.c|tool_build.c|tool_search.c|tool_facts.c) continue ;; esac
-    echo "$included" | grep -qx "$f" || { echo "c-lint: compiler/src/$f is not included by libms.c" >&2; exit 1; }
+    echo "$included" | grep -qx "$f" || { echo "c-lint: src/compiler/src/$f is not included by libms.c" >&2; exit 1; }
 done
 # No static function body is copied into a second file (the list of known copies only shrinks).
 python3 toolchain/c-duplicates.py || { echo "c-lint: duplicated functions (toolchain/c-duplicates.py)" >&2; exit 1; }
@@ -54,7 +54,7 @@ check() { # file: writes "$out/<n>.log" when the file fails
     # shellcheck disable=SC2086
     clang -fsyntax-only $flags -I"$(dirname "$file")" "$file" > "$log" 2>&1 || return 0
     # clang-tidy reads production sources only: tests and fuzz harnesses get the warnings.
-    case "$file" in runtime/tests/*|runtime/fuzz/*|compiler/tests/*|compiler/tools/*) rm -f "$log"; return 0 ;; esac
+    case "$file" in src/runtime/tests/*|src/runtime/fuzz/*|src/compiler/tests/*|src/compiler/tools/*) rm -f "$log"; return 0 ;; esac
     case " $(echo $changed) " in *" $file "*) ;; *) rm -f "$log"; return 0 ;; esac
     # shellcheck disable=SC2086
     "$tidy" --quiet "$file" -- $flags -I"$(dirname "$file")" > "$log" 2>&1 || return 0
@@ -75,7 +75,7 @@ status=0
 banned='(^|[^[:alnum:]_.>])(sprintf|vsprintf|strcpy|stpcpy|strcat|strtok|gets|tmpnam|mktemp)[[:space:]]*\('
 # Every system's sources count, including the ones this system does not compile.
 # shellcheck disable=SC2086
-if hits=$(grep -nHE "$banned" $(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2> /dev/null) $(find runtime/include runtime/core runtime/net runtime/std runtime/sys runtime/io runtime/tests compiler/include compiler/src -name '*.h' 2> /dev/null) | grep -vE ':[0-9]+:[[:space:]]*(/?\*|//)'); then
+if hits=$(grep -nHE "$banned" $(find src/runtime/sys src/runtime/core src/runtime/io src/runtime/net src/runtime/std src/runtime/tests src/runtime/fuzz src/compiler/src src/compiler/tests src/compiler/tools -name '*.c' 2> /dev/null) $(find src/runtime/include src/runtime/core src/runtime/net src/runtime/std src/runtime/sys src/runtime/io src/runtime/tests src/compiler/include src/compiler/src -name '*.h' 2> /dev/null) | grep -vE ':[0-9]+:[[:space:]]*(/?\*|//)'); then
     echo "$hits" >&2
     echo "c-lint: sprintf, strcpy, strcat, strtok and the like are banned; use snprintf or a bounded copy" >&2
     status=1

@@ -7,7 +7,7 @@ New benchmark/test coverage and experimental evidence are retained.
 
 Baseline: `d4a94aa9283348133542078e22ccaa3b2c9dc348`. The unapplied candidate changes
 only the ordinary Manuscript implementation of `ascii_decode` in
-`stdlib/encoding.ms`; its signature, accepted bytes, error identity, and output
+`src/stdlib/encoding.ms`; its signature, accepted bytes, error identity, and output
 are unchanged. No compiler, native runtime, lifetime, or platform mechanism changes.
 
 The original validates a copied byte list, maps it into an integer scalar list,
@@ -160,7 +160,7 @@ and raw results are retained. This candidate is not applied.
 
 The GitHub tree upload was interrupted before publication; a read of the expected
 tree returned not-found and no branch existed. The evidence-only change was then
-rebased onto main `81b804d58`. Production `stdlib/encoding.ms` still matches that
+rebased onto main `81b804d58`. Production `src/stdlib/encoding.ms` still matches that
 main exactly. The current native runtime and release compiler rebuilt
 successfully; the three new ASCII tests passed in Debug and Release, all four
 existing encoding tests passed in Release, and repository invariants and saved

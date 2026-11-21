@@ -1,0 +1,3 @@
+# Defined in src/runtime/std/random.c.
+msstd_random_os_bytes
+msstd_random_v7_next

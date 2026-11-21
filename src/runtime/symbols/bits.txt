@@ -1,0 +1,15 @@
+# Runtime symbols of ms_rt/bits.h defined in C (src/runtime/core/bits.c); one per line.
+msrt_bits_bit_and
+msrt_bits_bit_or
+msrt_bits_bit_xor
+msrt_bits_count_ones
+msrt_bits_leading_zeros
+msrt_bits_rotate_left
+msrt_bits_rotate_right
+msrt_bits_shift_left
+msrt_bits_shift_right
+msrt_bits_shift_right_unsigned
+msrt_bits_trailing_zeros
+msrt_bits_wrapping_add
+msrt_bits_wrapping_multiply
+msrt_bits_wrapping_subtract

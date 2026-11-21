@@ -5,7 +5,7 @@ The supported grammar has 19 fixed calendar/time bytes, an optional dot and
 therefore occupy 20–35 bytes. The length check rejects oversized fractions
 without scanning the unbounded digit run (#3282).
 
-The parser is C (`runtime/std/time_text.c`) and its limits are checked by `runtime/tests/std_time.c`; the Rust
+The parser is C (`src/runtime/std/time_text.c`) and its limits are checked by `src/runtime/tests/std_time.c`; the Rust
 producer that timed the old parser went away with its crate. Time the public Manuscript benchmarks below instead.
 
 The public Manuscript benchmarks include the ordinary timestamp from the latest
