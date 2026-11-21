@@ -354,6 +354,9 @@ fn body_facts(files: &[String]) {
             println!("unchecked");
             continue;
         }
+        if !program.ownership_checked() {
+            println!("ownership-skipped");
+        }
         print_body_facts(syms, &module, &program, &loaded);
     }
 }
@@ -525,6 +528,9 @@ fn ownership_diagnostics(files: &[String]) {
             ms_check::ImportMap::default(),
             ms_check::CheckOptions::default(),
         );
+        if !program.ownership_checked() {
+            println!("ownership-skipped");
+        }
         for (i, d) in module.decls.iter().enumerate() {
             if !matches!(&d.kind, DeclKind::Fn(f) if !f.external) {
                 continue;

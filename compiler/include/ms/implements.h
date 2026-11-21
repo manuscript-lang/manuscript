@@ -17,5 +17,7 @@ typedef enum MsFit {
  * own methods supply each operation with the exact signature. Generic impls, structural
  * properties of composite types and generic interfaces are UNKNOWN. */
 MsFit ms_implements(MsCheck *c, const MsMethodTable *table, MsTy receiver, MsTy contract);
+/* Whether `==` accepts two values of `ty`: the Equal property, derived from its parts and a variable's bounds. */
+MsFit ms_implements_equal(MsCheck *c, const MsMethodTable *table, MsTy ty);
 
 #endif
