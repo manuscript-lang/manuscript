@@ -45,7 +45,8 @@ typedef enum {
 
 /* What a host error code means. */
 MsSysErrorKind ms_sys_fs_error_kind(MsSysError error);
-/* The host code for a kind this layer reports itself (invalid, exists, io, bad descriptor, unsupported). */
+/* The host code for a kind this layer reports itself (invalid, exists, io, bad descriptor, unsupported, not found,
+ * permission). */
 MsSysError ms_sys_fs_error_of(MsSysErrorKind kind);
 /* The host's detail text for a code: fixed wording on Unix, the system message on Windows. Written to `buffer` and
  * NUL-terminated, truncated to fit; returns the length written. */

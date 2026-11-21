@@ -87,12 +87,14 @@ MsSysError ms_sys_fs_error_of(MsSysErrorKind kind) {
         return EBADF;
     case MS_SYS_ERR_UNSUPPORTED:
         return ENOTSUP;
-    case MS_SYS_ERR_OTHER:
     case MS_SYS_ERR_NOT_FOUND:
+        return ENOENT;
+    case MS_SYS_ERR_PERMISSION:
+        return EACCES;
+    case MS_SYS_ERR_OTHER:
     case MS_SYS_ERR_NOT_EMPTY:
     case MS_SYS_ERR_NOT_DIRECTORY:
     case MS_SYS_ERR_IS_DIRECTORY:
-    case MS_SYS_ERR_PERMISSION:
     case MS_SYS_ERR_WOULD_BLOCK:
     case MS_SYS_ERR_LINK_LOOP:
     case MS_SYS_ERR_INTERRUPTED:

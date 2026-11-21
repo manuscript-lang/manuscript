@@ -73,13 +73,15 @@ MsSysError ms_sys_fs_error_of(MsSysErrorKind kind) {
         return MS_ERROR_INVALID_HANDLE;
     case MS_SYS_ERR_UNSUPPORTED:
         return MS_ERROR_NOT_SUPPORTED;
+    case MS_SYS_ERR_NOT_FOUND:
+        return ERROR_FILE_NOT_FOUND;
+    case MS_SYS_ERR_PERMISSION:
+        return ERROR_ACCESS_DENIED;
     case MS_SYS_ERR_IO:
     case MS_SYS_ERR_OTHER:
-    case MS_SYS_ERR_NOT_FOUND:
     case MS_SYS_ERR_NOT_EMPTY:
     case MS_SYS_ERR_NOT_DIRECTORY:
     case MS_SYS_ERR_IS_DIRECTORY:
-    case MS_SYS_ERR_PERMISSION:
     case MS_SYS_ERR_WOULD_BLOCK:
     case MS_SYS_ERR_LINK_LOOP:
     case MS_SYS_ERR_INTERRUPTED:

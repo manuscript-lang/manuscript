@@ -210,7 +210,7 @@ static bool install_git(MsArena *a, const char *dir, const char *protocols, cons
     MS_VEC_PUSH(argv, char *, NULL);
 
     MsSysRun run;
-    const MsSysError failure = ms_sys_process_run((char *const *)ms_buf_items(&argv), install_git_environment(a, protocols), NULL, false, &run);
+    const MsSysError failure = ms_sys_process_run((char **)ms_buf_items(&argv), install_git_environment(a, protocols), NULL, false, &run);
     bool ok = false;
     if (failure != 0) {
         *error = ms_arena_fmt(a, "cannot run git (%s); install git and put it on PATH", install_os_error(a, failure)).ptr;

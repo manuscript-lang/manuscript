@@ -43,7 +43,7 @@ typedef struct MsSysRun {
  * environment in the program's. `cwd` is the working directory, or NULL for this process's. `merge` sends the
  * program's standard error into `out`. Fails when the program cannot be started (MS_SYS_ERR_NOT_FOUND for a missing
  * one); a nonzero exit is not a failure here. */
-MS_NODISCARD MsSysError ms_sys_process_run(char *const *argv, char *const *env, const char *cwd, bool merge,
+MS_NODISCARD MsSysError ms_sys_process_run(char **argv, char *const *env, const char *cwd, bool merge,
                                            MsSysRun *run);
 void ms_sys_process_run_free(MsSysRun *run);
 
