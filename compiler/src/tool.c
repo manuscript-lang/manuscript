@@ -978,15 +978,6 @@ static bool analyzed(const MsFacts *facts, uint32_t n) {
     return facts->res_kind[n] != MS_RES_NONE || facts->call_callee[n] != MS_NONE || facts->expr_ty[n] != MS_TY_NONE || facts->type_ref_ty[n] != MS_TY_NONE;
 }
 
-static bool imports_only_std(const MsModule *module) {
-    for (uint32_t i = 0; i < module->nimports; i++) {
-        if (module->imports[i].path.len < 5 || memcmp(module->imports[i].path.ptr, "@std/", 5) != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static void fail(Analysis *a, uint8_t status, const char *text, size_t len) {
     a->status = status;
     a->message = malloc(len + 1);
@@ -1066,7 +1057,26 @@ static void analyze_facts(Analysis *a, const MsCheck *check, MsModId id) {
     free(seen);
 }
 
-ms_object *ms_tool_analyze(const ms_str *text) {
+/* Loads the project `path` belongs to, with `overlay` (path, text pairs) in place of disk, and checks every module of
+ * its graph; the facts of the entry (the last module) are the result. Status 2 when the graph does not load. */
+static void analyze_project(Analysis *a, MsCheck *check, MsNames *table, const char *path, const MsOverlay *overlay) {
+    MsArena graph_arena = {0};
+    MsGraph graph;
+    MsProjectError error = {0};
+    if (!ms_project_load_overlay(&graph_arena, table, path, overlay, &graph, &error) || graph.ndiagnostics != 0 ||
+        graph.count == 0) {
+        fail(a, 2, "the project does not load", 25);
+    } else {
+        MsModId *ids = MS_NEW_N(&graph_arena, MsModId, graph.count);
+        ms_graph_add_modules(check, table, &graph_arena, &graph, ids);
+        ms_program_begin(check);
+        (void)ms_graph_check(check, &graph, ids, NULL);
+        analyze_facts(a, check, ids[graph.count - 1]);
+    }
+    ms_arena_free(&graph_arena);
+}
+
+ms_object *ms_tool_analyze(const ms_str *path, const ms_str *text, const ms_list *overlay) {
     ms_object *obj = ms_object_new(sizeof(Analysis), analysis_drop);
     Analysis *a = ms_payload(obj);
     const char *src = (const char *)ms_str_data(text);
@@ -1080,9 +1090,15 @@ ms_object *ms_tool_analyze(const ms_str *text) {
     MsArena syntax = {0};
     MsModule module;
     MsDiag diag;
+    /* Not ms_str_cstring: this archive's free() is mimalloc's, the runtime's is not. */
+    const size_t entry_len = ms_str_len(path);
+    char *entry = malloc(entry_len + 1);
+    memcpy(entry, ms_str_data(path), entry_len);
+    entry[entry_len] = 0;
+    const bool named = entry_len != 0 && strlen(entry) == entry_len;
     if (!ms_parse(&syntax, &table, src, len, &module, &diag)) {
         fail(a, 1, diag.message.ptr, diag.message.len);
-    } else if (!imports_only_std(&module)) {
+    } else if (!named && !ms_module_only_std_imports(&module)) {
         fail(a, 2, "imports a project module", 24);
     } else {
         MsCheck check;
@@ -1092,6 +1108,36 @@ ms_object *ms_tool_analyze(const ms_str *text) {
         MsStr err = {0};
         if (!ms_std_load(&check, &syntax, files, nfiles, &err)) {
             fail(a, 1, err.ptr, err.len);
+        } else if (named) {
+            /* The entry's text and every other open buffer replace the files on disk. */
+            const size_t pairs = ms_list_len(overlay) / 2;
+            MsOverlayFile *rows = calloc(pairs + 1, sizeof *rows);
+            ms_value *held = calloc(2 * pairs + 1, sizeof *held);
+            char **file_paths = calloc(pairs + 1, sizeof *file_paths);
+            uint32_t count = 0;
+            for (size_t i = 0; i < pairs; i++) {
+                held[2 * i] = ms_list_get(overlay, 2 * i);
+                held[2 * i + 1] = ms_list_get(overlay, 2 * i + 1);
+                const size_t file_len = held[2 * i].as.buf.len;
+                file_paths[i] = malloc(file_len + 1);
+                memcpy(file_paths[i], held[2 * i].as.buf.data, file_len);
+                file_paths[i][file_len] = 0;
+                if (strlen(file_paths[i]) == file_len) {
+                    rows[count++] = (MsOverlayFile){file_paths[i], (const char *)held[2 * i + 1].as.buf.data,
+                                                    held[2 * i + 1].as.buf.len};
+                }
+            }
+            rows[count++] = (MsOverlayFile){entry, src, len};
+            const MsOverlay all = {rows, count};
+            analyze_project(a, &check, &table, entry, &all);
+            for (size_t i = 0; i < pairs; i++) {
+                ms_value_free(&held[2 * i]);
+                ms_value_free(&held[2 * i + 1]);
+                free(file_paths[i]);
+            }
+            free(file_paths);
+            free(held);
+            free(rows);
         } else {
             const MsModId id = ms_module_add(&check, ms_intern_cstr(&table, "main.ms"), &module);
             ms_program_begin(&check);
@@ -1100,6 +1146,7 @@ ms_object *ms_tool_analyze(const ms_str *text) {
         }
         ms_check_free(&check);
     }
+    free(entry);
     ms_arena_free(&syntax);
     ms_names_free(&table);
     return obj;

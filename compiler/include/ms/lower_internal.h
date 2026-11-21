@@ -176,8 +176,6 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 void lb_write_back(Lb *lb);
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
 bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
-bool lb_owns(Lb *lb, MirTy ty);                        /* whether a value of the type is dropped by its holder */
-MirValue lb_move_argument(Lb *lb, const MsExpr *e);    /* an argument for a `move` parameter */
 
 /* Lists of scalars (lower_list.c, included after lower_body.c). */
 MirTy lst_type(Lb *lb, MsTy ty);
@@ -186,6 +184,8 @@ LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_index(Lb *lb, const MsExpr *e);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
+const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
+LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 /* Stores `value` in the stack slot `slot`. */
 void lb_store(Lb *lb, MirValue slot, MirValue value);
 
@@ -193,6 +193,9 @@ void lb_store(Lb *lb, MirValue slot, MirValue value);
 static inline bool lb_is_scalar(MirTy ty) {
     return ty == MIR_INT || ty == MIR_FLOAT || ty == MIR_BOOL;
 }
+
+/* The runtime function that joins two strings, declared on first use. */
+uint32_t lb_string_concat(Lb *lb);
 
 MirTy lm_type(Lb *lb, MsTy ty);
 bool lb_is_map(const Lb *lb, MirTy ty);

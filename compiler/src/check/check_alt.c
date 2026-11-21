@@ -71,11 +71,6 @@ static MsTy alt_field_ty(MsBody *b, const AltInfo *info, MsTy ty, uint32_t index
     return ms_ty_subst(&b->c->tys, &b->c->arena, info->def.cases[index].fields[slot].ty, &subst);
 }
 
-static bool alt_is(const MsBody *b, MsSym name, const char *text) {
-    const MsStr s = ms_name(b->c->names, name);
-    return s.len == strlen(text) && memcmp(s.ptr, text, s.len) == 0;
-}
-
 /* The case an arm names, or MS_NONE; `*wildcard` is set for a `_` arm. A qualifier must be the
  * enum's own name; any other form is a diagnostic or not handled. */
 static uint32_t alt_arm_case(const MsBody *b, const MsArm *arm, MsTy ty, const AltInfo *info, bool *wildcard) {
@@ -98,7 +93,7 @@ static uint32_t alt_arm_case(const MsBody *b, const MsArm *arm, MsTy ty, const A
     } else {
         return MS_NONE;
     }
-    if (alt_is(b, name, "_")) {
+    if (ms_name_is(b->c->names, name, "_")) {
         *wildcard = path->kind == MS_E_NAME && !arm->bare;
         return MS_NONE;
     }
@@ -125,7 +120,7 @@ static bool alt_bind_payload(MsBody *b, const MsArm *arm, MsTy ty, const AltInfo
     }
     for (uint32_t slot = 0; slot < arm->bindings.len; slot++) {
         const MsSym name = arm->bindings.ptr[slot].name;
-        if (alt_is(b, name, "_")) {
+        if (ms_name_is(b->c->names, name, "_")) {
             continue;
         }
         if (alt_name_may_be_case(b, name)) {
