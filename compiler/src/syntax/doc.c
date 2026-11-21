@@ -362,7 +362,7 @@ bool ms_doc_marker_args(MsStr source, size_t offset, const char *marker, MsStr *
             break;
         }
         if (prefix_len > 0 && line.len > (size_t)prefix_len && memcmp(line.ptr, prefix, (size_t)prefix_len) == 0) {
-            *args = doc_trim((MsStr){line.ptr + prefix_len, line.len - (size_t)prefix_len});
+            *args = doc_trim((MsStr){line.ptr + prefix_len, (uint32_t)(line.len - (size_t)prefix_len)});
             found = true;
         }
     }

@@ -50,16 +50,20 @@ fn tracked_files() List[String]:
 		)
 	return files
 
-// `ms fmt --check` over the repository's own sources; crate test inputs deliberately keep their
-// original spelling, and recorded agent solutions are evidence that stays as the agent
-// wrote it. A file that does not parse is a negative fixture; the nested-match and test
-// suites own it.
+// `ms fmt --check` over the repository's own sources, test fixtures included (the corpus test of
+// ms-syntax checks the same set); crate test inputs deliberately keep their original
+// spelling, and recorded agent solutions are evidence that stays as the agent wrote it.
+// A file that does not parse is a negative fixture; the nested-match and test suites
+// own it.
 fn format_drift(files: List[String]) List[String]:
 	var candidates = List[String]()
 
 	for path in files:
 		if not path.ends_with(".ms") or skipped(path): continue
-		if path.contains("/tests/") or path.starts_with("bench/agent/results/sources/"): continue
+		if (
+			path.starts_with("crates/")
+			or path.starts_with("bench/agent/results/sources/")
+		): continue
 
 		candidates.append(path.clone())
 
