@@ -1025,7 +1025,8 @@ static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
 static bool body_coerces_to_interface(const MsBody *b, MsTy ty, MsTy expected) {
     const MsTyTable *tys = &b->c->tys;
     return b->methods != NULL && ms_ty_kind(tys, expected) == MS_K_CONTRACT && ty != expected &&
-           ms_ty_kind(tys, ty) == MS_K_TYPE && ms_implements(b->c, b->methods, ty, expected) == MS_FIT_YES;
+           ms_ty_kind(tys, ty) != MS_K_CONTRACT && ms_ty_kind(tys, ty) != MS_K_VARIABLE &&
+           ms_implements(b->c, b->methods, ty, expected) == MS_FIT_YES;
 }
 
 MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
