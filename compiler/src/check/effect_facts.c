@@ -170,11 +170,16 @@ static void fx_fill(Fx *fx, uint32_t i) {
 
 /* ---- call sites of one body ---- */
 
+/* Whether the checker body-checked `module` in this run: the project's modules, not the library. */
+static bool fx_is_checked(const MsCheck *c, MsModId module) {
+    return c->mods[module].facts != NULL && c->mods[module].facts->body_checked != NULL;
+}
+
 typedef struct Sites {
     const MsCheck *c;
     const MsFacts *facts;
-    MsModId project;
     MsArena *arena;
+    const MsEffectModule *const *module; /* by module: those whose callables the scan follows */
     MsStr *calls, *external;
     uint32_t ncalls, nexternal, ccalls, cexternal;
     bool partial;
@@ -198,6 +203,14 @@ static void sites_push(Sites *s, MsStr **list, uint32_t *n, uint32_t *cap, MsStr
     (*list)[(*n)++] = text;
 }
 
+/* The entity key of function `name` of `module`: `path#fn#name`, the key the fact document gives it. */
+static void sites_call(Sites *s, MsModId module, MsSym name) {
+    const MsStr path = ms_name(s->c->names, s->c->mods[module].path);
+    const MsStr callee = ms_name(s->c->names, name);
+    const MsStr key = ms_arena_fmt(s->arena, "%.*s#fn#%.*s", (int)path.len, path.ptr, (int)callee.len, callee.ptr);
+    sites_push(s, &s->calls, &s->ncalls, &s->ccalls, key);
+}
+
 static void sites_expr(void *ctx, const MsExpr *e) {
     Sites *s = ctx;
     if (e->kind != MS_E_CALL) {
@@ -207,8 +220,8 @@ static void sites_expr(void *ctx, const MsExpr *e) {
     if (row != MS_NONE && ms_effect_method_is_node(s->c, s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
         const MsMethods *methods = s->facts->methods;
         const MsMethod *method = ms_method_of_func(methods->decl[row]);
-        if (methods->module[row] == s->project) {
-            sites_push(s, &s->calls, &s->ncalls, &s->ccalls, ms_name(s->c->names, method->func.name));
+        if (s->module[methods->module[row]] != NULL) {
+            sites_call(s, methods->module[row], method->func.name);
         } else {
             s->partial = true;
         }
@@ -228,8 +241,8 @@ static void sites_expr(void *ctx, const MsExpr *e) {
         return;
     }
     const MsDecl *d = s->c->syms.decl[callee];
-    if (s->c->syms.module[callee] == s->project && d != NULL && d->kind == MS_D_FN) {
-        sites_push(s, &s->calls, &s->ncalls, &s->ccalls, ms_name(s->c->names, s->c->syms.name[callee]));
+    if (s->module[s->c->syms.module[callee]] != NULL && d != NULL && d->kind == MS_D_FN) {
+        sites_call(s, s->c->syms.module[callee], s->c->syms.name[callee]);
     } else {
         sites_push(s, &s->external, &s->nexternal, &s->cexternal, ms_name(s->c->names, s->c->syms.id[callee]));
     }
@@ -259,15 +272,35 @@ static bool fx_reaches_partial(const Fx *fx, uint32_t from, bool *seen) {
     return false;
 }
 
+/* `module` first (the scan reads the method table from the first), then the project modules it imports,
+ * which the checker body-checked: a call into one of them is followed, not left external. */
+static const MsEffectModule *fx_checked_modules(MsArena *arena, const MsCheck *c, MsModId module, MsStr text, uint32_t *count) {
+    MsModId *reached = MS_NEW_N(arena, MsModId, (size_t)c->nmods + 1);
+    bool *seen = MS_NEW_N(arena, bool, (size_t)c->nmods + 1);
+    memset(seen, 0, ((size_t)c->nmods + 1) * sizeof *seen);
+    uint32_t nreached = 0;
+    ms_module_reach(c, module, seen, reached, &nreached);
+    MsEffectModule *list = MS_NEW_N(arena, MsEffectModule, (size_t)nreached + 1);
+    list[0] = (MsEffectModule){.id = module, .text = text};
+    *count = 1;
+    for (uint32_t i = 1; i < nreached; i++) {
+        if (fx_is_checked(c, reached[i])) {
+            list[(*count)++] = (MsEffectModule){.id = reached[i], .text = c->mods[reached[i]].text};
+        }
+    }
+    return list;
+}
+
 MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId module, MsStr text, uint32_t *count) {
     const MsModuleRow *row = &c->mods[module];
     *count = 0;
     if (row->facts == NULL || row->facts->body_checked == NULL) {
         return NULL;
     }
-    const MsEffectModule only = {.id = module, .text = text};
     Fx fx = {.arena = arena, .c = c};
-    fx_set_modules(&fx, &only, 1);
+    uint32_t nchecked = 0;
+    const MsEffectModule *checked = fx_checked_modules(arena, c, module, text, &nchecked);
+    fx_set_modules(&fx, checked, nchecked);
     MsEntityEffects *rows = MS_NEW_N(arena, MsEntityEffects, (size_t)row->syntax->ndecls + 1);
     memset(rows, 0, ((size_t)row->syntax->ndecls + 1) * sizeof *rows);
     uint32_t *node_of = MS_NEW_N(arena, uint32_t, (size_t)row->syntax->ndecls + 1);
@@ -313,7 +346,7 @@ MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId modul
             out->permits = permit->names;
             out->npermits = permit->count;
         }
-        Sites sites = {.c = c, .facts = row->facts, .project = module, .arena = arena};
+        Sites sites = {.c = c, .facts = row->facts, .arena = arena, .module = fx.module};
         const MsVisitor visitor = {.ctx = &sites, .expr = sites_expr};
         ms_walk_decl(&visitor, out->decl);
         if (sites.ncalls != 0) {
