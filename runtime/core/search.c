@@ -106,7 +106,10 @@ static size_t two_way_from(const uint8_t *hay, size_t n, const uint8_t *nd, size
     return found == SIZE_MAX ? SIZE_MAX : found + from;
 }
 
-typedef uint8_t MsByteVector __attribute__((vector_size(16), aligned(1), may_alias));
+typedef uint8_t MsByteVector __attribute__((vector_size(16)));
+/* Loads through unaligned addresses. Kept apart from the value type: GCC 8 to 14 on aarch64 crash on a function
+ * that takes or returns a vector declared aligned(1). */
+typedef uint8_t MsByteVectorLoad __attribute__((vector_size(16), aligned(1), may_alias));
 
 /* Two bytes of the needle, tested together at every start of a 16-byte window: the rare byte and the last one
  * (the first when the rare one is the last). A start where both match is a candidate. */
@@ -132,8 +135,8 @@ static PairProbe pair_probe_new(const uint8_t *needle, size_t length, size_t rar
 
 /* 0xff in lane k when the needle's two bytes sit at start + k; reads 16 bytes at each offset. */
 static inline MsByteVector probe_window(const uint8_t *hay, size_t start, const PairProbe *probe) {
-    const MsByteVector rare = *(const MsByteVector *)(hay + start + probe->rare_offset);
-    const MsByteVector last = *(const MsByteVector *)(hay + start + probe->last_offset);
+    const MsByteVector rare = *(const MsByteVectorLoad *)(hay + start + probe->rare_offset);
+    const MsByteVector last = *(const MsByteVectorLoad *)(hay + start + probe->last_offset);
     return (rare == probe->rare_byte) & (last == probe->last_byte);
 }
 
