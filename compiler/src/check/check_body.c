@@ -1574,7 +1574,8 @@ static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) 
         return false;
     }
     *element = ms_ty_args(&b->c->tys, ty)[0];
-    return body_is_value_type(b, *element) || ms_body_is_list(b, *element);
+    return body_is_value_type(b, *element) || body_is_sized_number(b, *element) || ms_body_is_list(b, *element) ||
+           body_is_own_nominal(b, *element);
 }
 
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
