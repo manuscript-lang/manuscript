@@ -371,7 +371,13 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         own_expr(w, e->u.bin.left, DEMAND_READ);
         own_expr(w, e->u.bin.right, DEMAND_READ);
         return;
-    case MS_E_MEMBER: own_expr(w, e->u.member.left, DEMAND_READ); return; /* a copied field reads its holder */
+    case MS_E_MEMBER:
+        /* A field reads its holder; moving one out of it is a partial move, not modelled yet. */
+        if (demand == DEMAND_MOVE && ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
+            w->supported = false;
+        }
+        own_expr(w, e->u.member.left, DEMAND_READ);
+        return;
     case MS_E_INDEX: /* only a scalar element is read: the checker admits no other */
     case MS_E_APPLY: { /* `xs[i]` read as a type application: the checker admits it only as an index */
         const MsExpr *list = NULL;
