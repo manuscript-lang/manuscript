@@ -1,4 +1,5 @@
 /* Byte I/O on connection rows (conn_io.h). */
+#include "../io/probe.h"
 #include "conn_io.h"
 
 #include <stdlib.h>
@@ -469,7 +470,9 @@ MsNetStatus ms_conn_close_io(MsConnTable *table, MsConnId id) {
     }
     ext_release(row->ext);
     row->ext = NULL;
+    MS_PROBE("conn close fd=%d", row->fd);
     msrt_task_forget_fd(row->fd); /* a task still parked on the descriptor would otherwise leave libuv watching a closed one */
     ms_sys_net_close(row->fd);
+    MS_PROBE("conn closed");
     return ms_conn_close(table, id) == 0 ? MS_NET_OK : MS_NET_CLOSED;
 }

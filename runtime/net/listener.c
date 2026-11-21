@@ -9,6 +9,7 @@
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_fs.h"
 #include "ms_sched.h"
+#include "../io/probe.h"
 #include "status.h"
 
 struct MsListener {
@@ -99,6 +100,7 @@ MsNetStatus ms_listener_accept(MsListener *listener, int64_t deadline_ns, MsConn
         }
         MsSock accepted = MS_SOCK_INVALID;
         const int result = ms_sys_net_accept(listener->socket, &accepted, NULL);
+        MS_PROBE("accept result=%d sock=%d", result, (int)accepted);
         if (result == MS_SYS_ERROR) {
             *error_code = ms_sys_net_error();
             return MS_NET_FAILED;

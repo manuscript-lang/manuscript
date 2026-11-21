@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "../io/reactor.h"
+#include "../io/probe.h"
 #include "ms_rt/sys.h"
 #include "ms_sched.h"
 #include "status.h"
@@ -76,7 +77,9 @@ MsNetStatus ms_net_connect(MsConnTable *table, const MsAddr *address, uint8_t pr
         return MS_NET_FAILED;
     }
     MsSock socket = MS_SOCK_INVALID;
+    MS_PROBE("connect begin");
     const int started = ms_sys_net_tcp_connect(address, &socket);
+    MS_PROBE("connect started=%d sock=%d", started, (int)socket);
     if (started == MS_SYS_ERROR) {
         if (error_code != NULL) {
             *error_code = ms_sys_net_error();
