@@ -450,12 +450,21 @@ static LbVal ln_conversion_method(Lb *lb, const MsExpr *e) {
     return converted;
 }
 
+/* `bytes.get(index)`: a read of the list of bytes, not the runtime's `get` with its default. */
+static bool ln_is_bytes_get(const Lb *lb, const MsExpr *e, MsTy receiver_ty) {
+    return e->u.call.args.len == 1 && ms_name_is(lb->c->names, e->u.call.callee->u.member.name, "get") &&
+        ms_name_is(lb->c->names, lb->c->tys.name[receiver_ty], "Bytes");
+}
+
 /* A method no runtime function implements: `abs` or `sign` of an Int, `to_string`, or a conversion to another number. */
 static LbVal ln_method_without_function(Lb *lb, const MsExpr *e, MsTy receiver_ty) {
     const MsExpr *callee = e->u.call.callee;
     LbVal int_result;
     if (lb_int_method(lb, e, receiver_ty, &int_result)) {
         return int_result;
+    }
+    if (ln_is_bytes_get(lb, e, receiver_ty)) {
+        return lst_get(lb, callee->u.member.left, e->u.call.args.ptr[0].value); // `Bytes` is a list of bytes
     }
     if (e->u.call.args.len != 0) {
         return LB_UNSUPPORTED(lb);
@@ -473,7 +482,7 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsTy receiver_ty = lb_ty(lb, lb->facts->call_receiver[e->id]); // a generic's receiver is its instance's type
     const MsRtFn *fn = lb_native_function(lb, receiver_ty, callee->u.member.name);
     const uint32_t nargs = e->u.call.args.len;
-    if (fn == NULL) {
+    if (fn == NULL || ln_is_bytes_get(lb, e, receiver_ty)) {
         return ln_method_without_function(lb, e, receiver_ty);
     }
     if (fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
