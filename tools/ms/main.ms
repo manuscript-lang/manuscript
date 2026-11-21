@@ -17,6 +17,7 @@ import (
 	Invocation, invocation, validate from "./args.ms",
 	rust_cli from "./bridge.ms",
 	run_check from "./check_run.ms",
+	run_build from "./build_run.ms",
 	command_line, rust_arguments, spec from "./cli.ms",
 	run_explain from "./explain.ms",
 	Printed, run_fmt from "./fmt.ms",
@@ -152,8 +153,8 @@ fn run_source_command(root: Command, matches: Matches) Int:
 
 	if inv.command == "check":
 		if status := run_check(inv): return status
-	if inv.command == "check":
-		if status := run_check(inv): return status
+	if inv.command == "build":
+		if status := run_build(inv): return status
 	if inv.command == "test" or inv.command == "bench":
 		if status := run_tests(root, matches, inv): return status
 	return delegate(rust_arguments(root, matches))
