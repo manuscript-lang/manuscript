@@ -24,6 +24,9 @@ enum { MS_SYS_SIGNAL_MAX = 64, MS_SYS_SIGNALS_FULL = -1 /* no observer slot is f
 bool ms_sys_signal_valid(int64_t signal);
 /* Runs on the OS's thread when a signal arrives or the observer is stopped; only where there is no descriptor. */
 typedef void (*MsSysSignalNotify)(void *context);
+/* Windows only: counts SIGINT (2) or SIGTERM (15) for this process's own observers, as a console control event
+ * would. `kill` of the process's own id uses it, the way POSIX delivers a signal a process sends itself. */
+void ms_sys_signal_raise(int signal);
 /* Starts observing the signals whose bit (signal - 1) is set in `mask`. The OS buffers about `capacity` signals
  * (at most 64 KiB). Returns 0, MS_SYS_SIGNALS_FULL, or the host's error code. */
 MS_NODISCARD MsSysError ms_sys_signals_open(uint64_t mask, size_t capacity, MsSysSignalNotify notify, void *context,
