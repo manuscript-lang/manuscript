@@ -196,6 +196,11 @@ if ! grep -q 'body_for_collection.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body
     echo "FAIL bodies: a loop over a map or a set is no longer checked in C (compiler/tests/scope/body_for_collection.ms)"
     status=1
 fi
+# Arithmetic over literals alone takes the sized type the context expects.
+if ! grep -q 'body_literal_arithmetic.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_literal_arithmetic.ms 7:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: literal arithmetic in a sized context is no longer checked in C (compiler/tests/scope/body_literal_arithmetic.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else

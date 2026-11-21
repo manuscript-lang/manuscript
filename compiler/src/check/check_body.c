@@ -1402,12 +1402,19 @@ static MsTy body_binary_same(MsBody *b, const MsExpr *e, MsTy ty) {
     return ty;
 }
 
-static MsTy body_binary(MsBody *b, const MsExpr *e) {
+static MsTy body_binary(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     const MsExpr *plain = e->u.bin.right;
     const MsTyTable *tys = &b->c->tys;
     MsTy left, right;
-    if (ms_literal_tree_kind(b->literals, e->u.bin.left) != MS_LITERAL_NONE &&
+    const MsTy literal_hint = expected == MS_TY_NONE ? MS_TY_NONE : body_literal_hint(b, e, expected);
+    if (literal_hint != MS_TY_NONE) {
+        // Arithmetic over literals alone takes the sized type the context expects (`b: Int8 := 100 + 27`).
+        b->borrow_ok = e->u.bin.left;
+        left = ms_body_expr(b, e->u.bin.left, literal_hint);
+        b->borrow_ok = plain;
+        right = ms_body_expr(b, plain, literal_hint);
+    } else if (ms_literal_tree_kind(b->literals, e->u.bin.left) != MS_LITERAL_NONE &&
         ms_literal_tree_kind(b->literals, plain) == MS_LITERAL_NONE) {
         // A literal tree beside another operand takes that operand's type, so the other side is checked first.
         b->borrow_ok = plain;
@@ -1546,7 +1553,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_TEXT: ty = body_text(b, e); break;
     case MS_E_NAME: ty = body_name(b, e, expected); break;
     case MS_E_UNARY: ty = body_unary(b, e, expected); break;
-    case MS_E_BINARY: ty = body_binary(b, e); break;
+    case MS_E_BINARY: ty = body_binary(b, e, expected); break;
     case MS_E_MEMBER: ty = body_member(b, e); break;
     case MS_E_INDEX:
     case MS_E_APPLY: ty = ms_body_index(b, e); break;
