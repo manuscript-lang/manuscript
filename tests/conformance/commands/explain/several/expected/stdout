@@ -1,0 +1,6 @@
+MSL001: Trailing whitespace (warning)
+  repair: delete the spaces or tabs at the end of the line; `ms lint --fix` does it
+MSL102: Unused import (warning)
+  repair: remove the import or use the name; `ms lint --fix` removes it
+MS2002: Modules and imports
+  repair: check the path, extension and [aliases] entry the message names
