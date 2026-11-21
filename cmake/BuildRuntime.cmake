@@ -1,4 +1,4 @@
-# Builds the runtime archives and runs the C unit tests for a target: what `cargo xtask runtime` and `cargo xtask c-test` did.
+# Builds the runtime archives and runs the C unit tests for a target: what the removed `cargo xtask runtime` and `c-test` did.
 # Run it in script mode from the repository root:
 #   cmake -P cmake/BuildRuntime.cmake                    libms_native.a (and libms_native_musl.a on Linux)
 #   cmake -DMS_STATS=ON -P cmake/BuildRuntime.cmake      also libms_native_stats.a, the counting runtime
