@@ -237,7 +237,7 @@ runs:
     # passes than the Release builds above (#4357). Main and scheduled runs replay the run and test phases
     # that way on every platform; a pull request replays one quarter of them on the Linux legs.
     - name: Conformance corpus (Debug build, unoptimized MIR)
-      if: env.CONFORM == 'true' && (env.SECOND_PASS == 'true' || env.PR == 'true' && env.LLVM != 'true')
+      if: ${{ !cancelled() && env.CONFORM == 'true' && (env.SECOND_PASS == 'true' || env.PR == 'true' && env.LLVM != 'true') }}
       env:
         CONFORM_BACKEND_ONLY: '1'
         CONFORM_BUILD_TYPE: Debug
