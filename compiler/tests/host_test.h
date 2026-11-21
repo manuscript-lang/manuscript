@@ -94,8 +94,11 @@ static inline bool host_git(MsArena *a, const char *repository, const char *cons
     }
     argv[used] = NULL;
     MsSysRun run;
-    if (ms_sys_process_run(argv, NULL, repository, true, &run) != 0) {
-        fprintf(stderr, "cannot run git\n");
+    const MsSysError started = ms_sys_process_run(argv, NULL, repository, true, &run);
+    if (started != 0) {
+        char reason[256];
+        (void)ms_sys_fs_error_text(started, reason, sizeof reason);
+        fprintf(stderr, "cannot run git: %s\n", reason);
         return false;
     }
     const bool ok = run.code == 0;
