@@ -49,11 +49,12 @@ static const struct {
 };
 
 /* `ms check FILE.ms [--json]`: the one target and optional --json; anything else is a handover. */
-int ms_cmd_check(int argc, char **argv) {
+int ms_cmd_check(int argc, char **argv, const char **reason) {
 #ifdef _WIN32
     /* The project loader is POSIX only for now (libms.c): the Rust command checks. */
     (void)argc;
     (void)argv;
+    *reason = "the project loader is POSIX only";
     return MS_CMD_HANDOVER;
 #else
     const char *target = NULL;
@@ -64,18 +65,20 @@ int ms_cmd_check(int argc, char **argv) {
         } else if (argv[i][0] != '-' && target == NULL) {
             target = argv[i];
         } else {
+            *reason = "arguments the C command does not take";
             return MS_CMD_HANDOVER;
         }
     }
     const size_t n = target == NULL ? 0 : strlen(target);
     struct stat st;
     if (n < 4 || strcmp(target + n - 3, ".ms") != 0 || stat(target, &st) != 0 || !S_ISREG(st.st_mode)) {
+        *reason = "a target that is not a .ms file";
         return MS_CMD_HANDOVER;
     }
     uint32_t nstd = 0;
     const MsStdFile *std_files = ms_std_embedded(&nstd);
     MsBuf out = {0}, err = {0};
-    const int status = ms_check_run(std_files, nstd, target, json, &out, &err);
+    const int status = ms_check_run(std_files, nstd, target, json, &out, &err, reason);
     if (status != MS_CHECK_HANDOVER) {
         if (out.len != 0) {
             fwrite(out.data, 1, out.len, stdout);
@@ -93,12 +96,12 @@ int ms_cmd_check(int argc, char **argv) {
 /* Commands whose own logic (the TOOL stage) is in C: they run when the other stages they need are. */
 static const struct {
     const char *name;
-    int (*run)(int argc, char **argv);
+    int (*run)(int argc, char **argv, const char **reason);
 } c_commands[] = {
     {"check", ms_cmd_check},
 };
 
-static int (*c_command(const char *name))(int, char **) {
+static int (*c_command(const char *name))(int, char **, const char **) {
     for (size_t i = 0; i < sizeof c_commands / sizeof c_commands[0]; i++) {
         if (strcmp(c_commands[i].name, name) == 0) {
             return c_commands[i].run;
@@ -229,17 +232,18 @@ int ms_driver_main(int argc, char **argv) {
         fprintf(stderr, "ms driver: %s -> %s\n", command, in_c ? "c" : "rust");
     }
     if (in_c) {
-        int (*const run)(int, char **) = c_command(command);
+        int (*const run)(int, char **, const char **) = c_command(command);
         if (run == NULL) {
             fprintf(stderr, "ms: command %s is marked as C but has no C entry\n", command);
             return 70;
         }
-        const int status = run(argc - 1, argv + 1);
+        const char *reason = "not covered";
+        const int status = run(argc - 1, argv + 1, &reason);
         if (status != MS_CMD_HANDOVER) {
             return status;
         }
         if (trace) {
-            fprintf(stderr, "ms driver: %s -> rust (handover)\n", command);
+            fprintf(stderr, "ms driver: %s -> rust (handover)\nms driver: check handover: %s\n", command, reason);
         }
     }
     char *cli = cli_override != NULL && *cli_override != '\0' ? copy_string(cli_override)

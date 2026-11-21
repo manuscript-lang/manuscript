@@ -54,6 +54,11 @@ uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out
  * reader does not cover the project (a workspace, a manifest form it lacks). */
 uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out);
 
+/* `ms check FILE.ms [--json]` (compiler/include/ms/check_run.h). Status 0 fills `out` with the standard output, the
+ * standard error and the exit status (as decimal text) the Rust command would produce; status 2 means the C passes
+ * cannot give that answer (message in `message_out`) and the caller runs the Rust command; 1 is an error. */
+uint8_t ms_tool_check(const ms_str *target, uint8_t json, ms_list *out, ms_str *message_out);
+
 /* ---- syntax trees ---- */
 
 /* A parsed module, kept in C. `extern type Tree` on the Manuscript side. A parse that fails still

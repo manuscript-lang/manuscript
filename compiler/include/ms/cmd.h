@@ -6,7 +6,7 @@
 
 #define MS_CMD_HANDOVER (-1)
 
-/* `ms check FILE.ms [--json]`; argv[0] is the command name. */
-int ms_cmd_check(int argc, char **argv);
+/* `ms check FILE.ms [--json]`; argv[0] is the command name. On a handover `*reason` says why (static text). */
+int ms_cmd_check(int argc, char **argv, const char **reason);
 
 #endif
