@@ -70,12 +70,21 @@ MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected) {
     return ty;
 }
 
+/* Whether `left` is a local, or a field path from one (`self.items`): a value, never a function or type the
+ * bracket could apply type arguments to. */
+static bool list_receiver_is_local(const MsBody *b, const MsExpr *left) {
+    while (left->kind == MS_E_MEMBER) {
+        left = left->u.member.left;
+    }
+    return left->kind == MS_E_NAME && ms_body_find_binding(b, left->u.sym) != MS_NONE;
+}
+
 /* `xs[i]`, written as an index or as a bracket that reads as a type application: the receiver must be
  * a local, which makes the bracket an index. */
 MsTy ms_body_index(MsBody *b, const MsExpr *e) {
     MsExpr *left = NULL;
     MsExpr *index = NULL;
-    if (!ms_expr_index(e, &left, &index) || (e->kind == MS_E_APPLY && (left->kind != MS_E_NAME || ms_body_find_binding(b, left->u.sym) == MS_NONE))) {
+    if (!ms_expr_index(e, &left, &index) || (e->kind == MS_E_APPLY && !list_receiver_is_local(b, left))) {
         return ms_body_unsupported(b);
     }
     const MsTy list = ms_body_expr(b, left, MS_TY_NONE);
