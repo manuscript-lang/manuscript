@@ -22,7 +22,7 @@ fn main() {
 }
 
 /// Embed the native archive `file`: the environment variable `var` names one, else
-/// `target/ms-native/<file>`, which `cargo xtask runtime` (`make runtime`) builds. The build script
+/// `target/ms-native/<file>`, which `cmake -P cmake/BuildRuntime.cmake` (`make runtime`) builds. The build script
 /// never compiles the runtime.
 fn embed_native(crates: &Path, file: &str, var: &str) {
     println!("cargo:rerun-if-env-changed={var}_LIB");
@@ -35,7 +35,7 @@ fn embed_native(crates: &Path, file: &str, var: &str) {
     let bytes = std::fs::read(&archive).unwrap_or_else(|e| {
         panic!(
             "cannot read the native runtime {}: {e}\n\
-             build it first with `cargo xtask runtime` (or `make runtime`), or set {var}_LIB to a prebuilt {file}",
+             build it first with `cmake -P cmake/BuildRuntime.cmake` (or `make runtime`), or set {var}_LIB to a prebuilt {file}",
             archive.display()
         )
     });
@@ -73,7 +73,7 @@ fn reject_stale(crates: &Path, archive: &Path) {
         if let Some(newer) = newer_than(&dir, built) {
             panic!(
                 "the native runtime {} is older than {}\n\
-                 rebuild it with `cargo xtask runtime` (or `make runtime`); tests and programs would otherwise run a stale runtime",
+                 rebuild it with `cmake -P cmake/BuildRuntime.cmake` (or `make runtime`); tests and programs would otherwise run a stale runtime",
                 archive.display(),
                 newer.display()
             );

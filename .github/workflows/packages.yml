@@ -38,7 +38,7 @@ jobs:
       - name: Build ms
         shell: bash
         run: |
-          cargo xtask runtime
+          cmake -P cmake/BuildRuntime.cmake
           cargo build --release --locked -p ms-cli
       - name: Fetch the package and run the service
         shell: bash

@@ -29,7 +29,7 @@ verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
 # Builds the native C runtime into target/ms-native; every build of ms-cli embeds it.
 runtime:
-	cargo xtask runtime
+	cmake -P cmake/BuildRuntime.cmake
 
 check: runtime
 	cargo xtask symbols --check
