@@ -40,6 +40,7 @@ target_compile_definitions(pcre2 PUBLIC PCRE2_CODE_UNIT_WIDTH=8 PCRE2_STATIC
 include(cmake/zlib.cmake)
 include(cmake/libuv.cmake)
 include(cmake/nghttp2.cmake)
+include(cmake/openssl.cmake)
 include(cmake/curl.cmake)
 # The vendored files must match the lock (offline).
 add_test(NAME third_party_lock

@@ -1,6 +1,6 @@
-# curl 8.23.0 (libcurl only), static. HTTP and HTTP/2 (nghttp2) with zlib, a threaded resolver and no TLS
-# backend until OpenSSL is vendored. The configuration header comes from curl's own template, filled in
-# with the results of the checks below. Windows uses curl's config-win32.h and needs no generated header.
+# curl 8.23.0 (libcurl only), static. HTTP and HTTP/2 (nghttp2) with zlib and a threaded resolver; TLS through
+# OpenSSL on Unix (Windows has no TLS backend yet). The configuration header comes from curl's own template,
+# filled in with the results of the checks below. Windows uses curl's config-win32.h and needs no generated header.
 set(CURL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/curl)
 set(CURL_GEN ${CMAKE_CURRENT_BINARY_DIR}/curl_gen)
 
@@ -70,6 +70,8 @@ stdlib.h;string.h;strings.h;time.h;utime.h;dirent.h;ifaddrs.h;sys/eventfd.h;sys/
   set(USE_UNIX_SOCKETS 1)
   set(USE_RESOLV_THREADED 1)
   set(USE_NGHTTP2 1)
+  set(USE_OPENSSL 1)
+  set(HAVE_SSL_SET0_WBIO 1)
   foreach(name DICT FILE FTP GOPHER IMAP LDAP LDAPS MQTT POP3 RTSP SMTP TELNET TFTP SMB)
     set(CURL_DISABLE_${name} 1)
   endforeach()
@@ -87,5 +89,6 @@ stdlib.h;string.h;strings.h;time.h;utime.h;dirent.h;ifaddrs.h;sys/eventfd.h;sys/
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_compile_definitions(curl PRIVATE _GNU_SOURCE)
   endif()
-  target_link_libraries(curl PUBLIC Threads::Threads)
+  target_link_libraries(curl PUBLIC openssl_ssl Threads::Threads)
+  add_dependencies(curl openssl_build)
 endif()
