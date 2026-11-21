@@ -174,6 +174,8 @@ static uint32_t lb_view_of(const Lb *lb, MsModId module) {
 static void lb_index_bindings(Lb *lb, MsArena *arena) {
     lb->type_of = MS_NEW_N(arena, MirTy, lb->c->tys.count + 1);
     memset(lb->type_of, 0xff, (lb->c->tys.count + 1) * sizeof *lb->type_of);
+    lb->eqs = NULL; // they live in the module's arena, which is rebuilt each pass
+    lb->neqs = lb->ceqs = 0;
     for (uint32_t k = 0; k < lb->nviews; k++) {
         LbView *v = &lb->views[k];
         const MsBindings *bindings = &v->facts->bindings;

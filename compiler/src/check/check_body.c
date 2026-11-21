@@ -923,6 +923,42 @@ static MsTy body_report_operands(MsBody *b, const MsExpr *e, MsTy left, MsTy rig
     return comparison ? b->bool_ty : b->invalid_ty;
 }
 
+/* Whether `==` accepts two values of `ty` by structure: primitives, and records, enums, lists and
+ * optionals built only of such parts. A type with type arguments, a native type or an interface is left to
+ * the Rust checker; a written `equals` can only widen what compares, never narrow it. `depth` bounds the walk
+ * (a type that holds itself is deeper than the bound and is not admitted). */
+static bool body_is_equatable(const MsBody *b, MsTy ty, uint32_t depth) {
+    const MsTyTable *tys = &b->c->tys;
+    if (ty == MS_TY_NONE || depth > 8) {
+        return false;
+    }
+    if (body_is_value_type(b, ty)) {
+        return true;
+    }
+    if ((ms_ty_is(tys, ty, MS_BI_LIST) || ms_ty_is(tys, ty, MS_BI_OPTIONAL)) && tys->nargs[ty] == 1) {
+        return body_is_equatable(b, ms_ty_args(tys, ty)[0], depth + 1);
+    }
+    const MsKind kind = ms_ty_kind(tys, ty);
+    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE) || tys->def[ty] == 0 || tys->builtin[ty] != 0 || tys->nargs[ty] != 0 ||
+        !body_is_own_nominal(b, ty)) {
+        return false;
+    }
+    const MsDef *def = &b->c->defs[tys->def[ty] - 1];
+    for (uint32_t i = 0; i < def->nfields; i++) {
+        if (!body_is_equatable(b, def->fields[i].ty, depth + 1)) {
+            return false;
+        }
+    }
+    for (uint32_t i = 0; i < def->ncases; i++) {
+        for (uint32_t k = 0; k < def->cases[i].nfields; k++) {
+            if (!body_is_equatable(b, def->cases[i].fields[k].ty, depth + 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 static MsTy body_binary(MsBody *b, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     const MsTy left = ms_body_expr(b, e->u.bin.left, MS_TY_NONE);
@@ -940,6 +976,9 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
     }
     if (left != right && body_is_value_type(b, left) && body_is_value_type(b, right)) {
         return body_report_operands(b, e, left, right);
+    }
+    if (left == right && (op == MS_B_EQ || op == MS_B_NE) && body_is_equatable(b, left, 0)) {
+        return b->bool_ty;
     }
     if (left != right || !body_is_value_type(b, left)) {
         return ms_body_unsupported(b);

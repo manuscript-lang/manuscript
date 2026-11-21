@@ -402,6 +402,12 @@ static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
     return (LbVal){same, false};
 }
 
+/* Whether `ty` is a record, enum, optional or list: `==` on it calls a generated function. */
+static bool lb_is_aggregate(const Lb *lb, MirTy ty) {
+    const uint8_t kind = mir_ty_data(lb->m, ty)->kind;
+    return kind == MK_TYPE || kind == MK_ALT || kind == MK_OPT || kind == MK_LIST;
+}
+
 static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     if (op == MS_B_AND || op == MS_B_OR) {
@@ -417,6 +423,9 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
     if (!lb->ok) {
         return LB_FAIL;
+    }
+    if ((op == MS_B_EQ || op == MS_B_NE) && lb_is_aggregate(lb, mir_b_ty(&lb->b, left.v))) {
+        return lq_equal(lb, left, right, op == MS_B_NE);
     }
     return lb_apply(lb, op, left, right);
 }
