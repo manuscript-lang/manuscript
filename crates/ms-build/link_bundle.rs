@@ -12,7 +12,7 @@ const MUSL_FILES: [&str; 5] = ["crt1.o", "crti.o", "crtn.o", "libc.a", "libunwin
 /// Files copied from llvm-mingw's `<arch>-w64-mingw32/lib`: the C startup object, the CRT and unwinder
 /// libraries, and the import libraries for every DLL the runtime (Rust's `std` plus the standard library
 /// crates) calls.
-const MINGW_FILES: [&str; 21] = [
+const MINGW_FILES: [&str; 22] = [
     "crt2.o",
     "libmingw32.a",
     "libmingwex.a",
@@ -34,6 +34,7 @@ const MINGW_FILES: [&str; 21] = [
     "libws2_32.a",
     "libuser32.a",
     "libshell32.a",
+    "libsynchronization.a",
 ];
 
 pub fn bundle() {
@@ -51,15 +52,36 @@ pub fn bundle() {
         for name in MINGW_FILES {
             let to = bundle.join(name);
             copy(&lib.join(name), &to, name);
-            // The CRT objects carry line tables for code the program never shows in a debugger.
-            strip_debug(&to, Some(&mingw().join("bin/llvm-strip")));
-            // Import objects in an archive make the tool reject the whole file: strip member by member.
+            // The CRT objects carry line tables for code the program never shows in a debugger. An archive without
+            // any (the import libraries) is left alone: a binutils `strip` on the PATH accepts it and drops its
+            // import objects, which took WaitOnAddress out of libsynchronization.a.
             if has_line_tables(&to) {
-                strip_members(&to);
+                strip_debug(&to, Some(&mingw().join("bin/llvm-strip")));
+                // Import objects in an archive make llvm-strip reject the whole file: strip member by member.
+                if has_line_tables(&to) {
+                    strip_members(&to);
+                }
             }
             assert_no_line_tables(&to, name);
             names.push(name.to_string());
         }
+        // The compiler runtime: stack probes (`___chkstk_ms`) that the runtime and the C libraries call and that the mingw
+        // libraries do not define. It sits under `lib/clang/<version>/lib/windows`.
+        let builtins = std::fs::read_dir(mingw().join("lib/clang"))
+            .expect("read llvm-mingw's lib/clang")
+            .filter_map(Result::ok)
+            .map(|e| {
+                e.path()
+                    .join(format!("lib/windows/libclang_rt.builtins-{arch}.a"))
+            })
+            .find(|p| p.is_file())
+            .unwrap_or_else(|| panic!("llvm-mingw has no libclang_rt.builtins-{arch}.a"));
+        copy(
+            &builtins,
+            &bundle.join("libclang_rt.builtins.a"),
+            "the compiler runtime",
+        );
+        names.push("libclang_rt.builtins.a".to_string());
     }
     println!(
         "cargo:rustc-env=MS_EXE_SUFFIX={}",
@@ -267,10 +289,17 @@ fn copy(from: &Path, to: &Path, what: &str) {
 /// shipped.
 fn strip_debug(file: &Path, preferred: Option<&Path>) {
     let original = std::fs::read(file).expect("read bundled file");
+    // With a named tool, no other: a `strip` found on the PATH can rewrite an archive of import objects without
+    // them.
+    let fallbacks: &[&std::ffi::OsStr] = if preferred.is_some() {
+        &[]
+    } else {
+        &["strip".as_ref(), "llvm-strip".as_ref()]
+    };
     let tools = preferred
         .into_iter()
         .map(Path::as_os_str)
-        .chain(["strip".as_ref(), "llvm-strip".as_ref()]);
+        .chain(fallbacks.iter().copied());
     for tool in tools {
         let done = Command::new(tool)
             .arg("--strip-debug")

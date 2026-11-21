@@ -242,7 +242,7 @@ bool lc_has_closer(Lb *lb, MsTy ty);               /* a direct `close` of the ty
 void lc_register(Lb *lb, MsTy ty, MirTy mir);      /* the MIR type of a resource with one */
 bool lc_bind(Lb *lb, const MsStmt *s, uint32_t binding, LbVal value); /* the local `binding` made from `value`; false when not handled */
 bool lc_own_param(Lb *lb, uint32_t binding);        /* a `move` resource parameter the function closes; false when not handled */
-bool lc_use(Lb *lb, uint32_t binding, MirValue *out);  /* a read of a slot local */
+bool lc_use(Lb *lb, uint32_t binding, MirValue *out, bool moved);  /* a read of a slot local */
 bool lc_is_resource(Lb *lb, MirTy mir);               /* a registered resource type, owned even when it holds nothing to drop */
 bool lc_is_slot_local(const Lb *lb, uint32_t binding);
 bool lc_is_closer_row(Lb *lb, uint32_t row);

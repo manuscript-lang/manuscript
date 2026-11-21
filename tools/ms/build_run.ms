@@ -1,19 +1,22 @@
 // `ms build FILE.ms [-o OUTPUT]` over libms (`ms_tool_build`, compiler/include/ms/tool.h). The C pipeline loads and
-// checks the program, lowers it whole, compiles it with the pinned LLVM tools and links it. When it cannot give the
-// answer the Rust command would (any diagnostic, a function the lowering does not cover, a program the loader does
-// not read, a missing tool path) `run_build` returns none and the caller runs the Rust command.
-// The tools are named by `MS_LLVM_TOOLS` (a directory with opt and llc), `MS_LLD`, `MS_LINKER_FILES` (the startup
-// files of ms/build_link.h) and `MS_RT_LIB` (the runtime archive) until the C side fetches and embeds them.
+// checks the program, lowers it whole, compiles it with the pinned LLVM tools and links
+// it. When it cannot give the answer the Rust command would (any diagnostic, a function
+// the lowering does not cover, a program the loader does not read, a missing tool path)
+// `run_build` returns none and the caller runs the Rust command. The tools are named by
+// `MS_LLVM_TOOLS` (a directory with opt and llc), `MS_LLD`, `MS_LINKER_FILES` (the
+// startup files of ms/build_link.h) and `MS_RT_LIB` (the runtime archive) until the C
+// side fetches and embeds them.
 import (
+	stderr, stdout from "@std/io/io.ms",
 	environment from "@std/os/env.ms",
 	remove, stat, temporary_directory from "@std/os/fs.ms",
 	SpawnOptions, Stdio, spawn from "@std/os/process.ms",
-	stderr, stdout from "@std/io/io.ms",
 
 	Invocation from "./args.ms",
 )
 
-// Status 1 is a failed build (the message); status 2 is a program the C pipeline does not cover.
+// Status 1 is a failed build (the message); status 2 is a program the C pipeline does
+// not cover.
 export enum BuildError:
 	Failed(message: String)
 	Unsupported(message: String)
@@ -28,7 +31,8 @@ extern fn ms_tool_build(
 	release: Bool,
 ) List[String]!BuildError
 
-// The tools directory, `lld`, the linker's files and the runtime archive, or none while one is not named.
+// The tools directory, `lld`, the linker's files and the runtime archive, or none while
+// one is not named.
 fn tool_paths(env: Map[String, String]) List[String]?:
 	tools := env.get("MS_LLVM_TOOLS")?
 	lld := env.get("MS_LLD")?
@@ -36,7 +40,8 @@ fn tool_paths(env: Map[String, String]) List[String]?:
 	runtime := env.get("MS_RT_LIB")?
 	return [tools.clone(), lld.clone(), files.clone(), runtime.clone()]
 
-// Whether the C pipeline built `inv`'s program into `output`; false when the Rust command must build it.
+// Whether the C pipeline built `inv`'s program into `output`; false when the Rust
+// command must build it.
 fn built_in_c(inv: Invocation, output: String) Bool:
 	if inv.structured or inv.static_libc or inv.watch: return false
 	if not inv.link.is_empty(): return false
@@ -100,12 +105,14 @@ export fn run_program(inv: Invocation) Int?:
 	child := spawn(
 		executable,
 		inv.arguments,
-		SpawnOptions(stdin: Stdio.Inherit, stdout: Stdio.Inherit, stderr: Stdio.Inherit),
+		SpawnOptions(
+			stdin: Stdio.Inherit,
+			stdout: Stdio.Inherit,
+			stderr: Stdio.Inherit,
+		),
 	)
-
 	var status = 1
 	if child.is_ok(): status = child.get().wait().get_or(1)
-
 	void remove(dir, recursive: true)
 	return status
 
@@ -113,7 +120,9 @@ export fn run_program(inv: Invocation) Int?:
 fn trace(error: BuildError) Void:
 	match error:
 		Failed(message): stderr().write(f"ms build: C build failed: {message}\n").get()
-		Unsupported(message): stderr().write(f"ms build: handed to Rust: {message}\n").get()
+		Unsupported(message): stderr().write(
+			f"ms build: handed to Rust: {message}\n"
+		).get()
 
 fn directory(path: String) Bool:
 	info := stat(path)

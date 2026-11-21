@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "check/check_body.h"
+#include "ms/doc.h"
 #include "ms/implements.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
@@ -700,6 +701,16 @@ void ms_body_check_home(MsBody *b, MsSymId sym) {
     }
 }
 
+/* An `extern type` the standard library declares buildable from source with no arguments
+ * (`// ms: constructible` above it): `StringBuilder()`. The others have a literal or a function. */
+static bool body_constructible_extern(const MsBody *b, MsSymId sym, const MsDecl *decl, MsTy record) {
+    const MsSyms *syms = &b->c->syms;
+    return decl != NULL && decl->kind == MS_D_TYPE && decl->u.type.external && syms->nvars[sym] == 0 &&
+           ms_ty_kind(&b->c->tys, record) == MS_K_NATIVE && body_is_admitted(b, record) &&
+           syms->module[sym] != MS_NONE &&
+           ms_doc_has_marker(b->c->mods[syms->module[sym]].text, decl->pos.offset, "constructible");
+}
+
 static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     ms_body_check_home(b, sym);
     const MsSyms *syms = &b->c->syms;
@@ -707,6 +718,10 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     const MsDef *def = ms_def(b->c, sym);
     const MsDecl *decl = syms->decl[sym];
     const uint32_t nargs = e->u.call.args.len;
+    if (nargs == 0 && body_constructible_extern(b, sym, decl, record)) {
+        b->facts->call_callee[e->id] = sym;
+        return record;
+    }
     if (syms->nvars[sym] != 0 || decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.external ||
         (syms->module[sym] != b->module && decl->u.type.opaque) || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
         !body_is_admitted(b, record) || nargs > def->nfields || def->nfields != decl->u.type.fields.len) {
@@ -1208,6 +1223,9 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
         b->facts->coerce_iface[e->id] = ty; // the lowering boxes it behind its vtable; the expression has the interface type
         return ms_body_record(b, e->id, expected);
     }
+    if (expected != MS_TY_NONE && !ms_body_same_type(b, ty, expected) && ms_body_reads_where_var_expected(b, ty, expected)) {
+        return ms_body_record(b, e->id, expected); // a function that reads where `var` is expected stands in for it
+    }
     if (expected != MS_TY_NONE && !ms_body_same_type(b, ty, expected)) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
@@ -1266,7 +1284,8 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
-    const bool primitive = body_is_value_type(b, ty) && b->c->syms.decl[sym] == NULL;
+    const bool primitive = sym != MS_NONE && b->c->syms.decl[sym] == NULL && ty != MS_TY_NONE && body_is_admitted(b, ty) &&
+                           ms_ty_kind(&b->c->tys, ty) == MS_K_PRIMITIVE;
     const bool declared = ty != MS_TY_NONE && body_is_own_nominal(b, ty) && body_is_admitted(b, ty);
     if (!primitive && !declared) {
         return ms_body_unsupported(b);
@@ -1555,7 +1574,8 @@ static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) 
         return false;
     }
     *element = ms_ty_args(&b->c->tys, ty)[0];
-    return body_is_value_type(b, *element) || ms_body_is_list(b, *element);
+    return body_is_value_type(b, *element) || body_is_sized_number(b, *element) || ms_body_is_list(b, *element) ||
+           body_is_own_nominal(b, *element);
 }
 
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
