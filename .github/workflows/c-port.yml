@@ -38,7 +38,7 @@ jobs:
     # Windows builds the mingw-w64 ABI (what ms links programs with) inside MSYS2's CLANG64 or CLANGARM64 shell, which also
     # brings the perl and make pair OpenSSL's Configure needs.
     env:
-      CCACHE_DIR: ${{ runner.temp }}/ccache
+      CCACHE_DIR: ${{ github.workspace }}/.artifacts/ccache
     steps:
       - uses: actions/checkout@v7
       - if: runner.os == 'macOS'
@@ -54,14 +54,14 @@ jobs:
         run: sudo apt-get install -y ninja-build ccache
       - uses: actions/cache@v6
         with:
-          path: ${{ runner.os == 'Windows' && format('{0}/ccache', runner.temp) || runner.os == 'macOS' && '~/Library/Caches/ccache' || '~/.cache/ccache' }}
+          path: ${{ matrix.os == 'windows' && format('{0}/.artifacts/ccache', github.workspace) || runner.os == 'macOS' && '~/Library/Caches/ccache' || '~/.cache/ccache' }}
           key: ccache-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
           restore-keys: ccache-${{ matrix.os }}-${{ matrix.arch }}-
-      - shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
+      - shell: ${{ matrix.os == 'windows' && 'msys2 {0}' || 'bash' }}
         run: cmake --preset debug
-      - shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
+      - shell: ${{ matrix.os == 'windows' && 'msys2 {0}' || 'bash' }}
         run: cmake --build --preset debug
-      - shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
+      - shell: ${{ matrix.os == 'windows' && 'msys2 {0}' || 'bash' }}
         run: ctest --preset debug
-      - shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
+      - shell: ${{ matrix.os == 'windows' && 'msys2 {0}' || 'bash' }}
         run: cmake --build --preset debug --target lint
