@@ -67,8 +67,22 @@ static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
+/* The sized numbers, by the standard type the checker knows them as. */
+static const struct {
+    MsBuiltin builtin;
+    MirTy mir;
+} lb_sized_numbers[] = {
+    {MS_BI_INT8, MIR_INT8},     {MS_BI_INT16, MIR_INT16},   {MS_BI_INT32, MIR_INT32},   {MS_BI_UINT8, MIR_UINT8},
+    {MS_BI_UINT16, MIR_UINT16}, {MS_BI_UINT32, MIR_UINT32}, {MS_BI_UINT64, MIR_UINT64}, {MS_BI_FLOAT32, MIR_FLOAT32},
+};
+
 MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     ty = lb_ty(lb, ty);
+    for (size_t i = 0; i < sizeof lb_sized_numbers / sizeof lb_sized_numbers[0]; i++) {
+        if (ms_ty_is(&lb->c->tys, ty, lb_sized_numbers[i].builtin)) {
+            return lb_sized_numbers[i].mir;
+        }
+    }
     if (ms_ty_kind(&lb->c->tys, ty) == MS_K_FUNCTION) {
         return lb_fn_ty(lb, ty);
     }
@@ -105,7 +119,7 @@ void lb_emit_plain(Lb *lb, MirOp op) {
 }
 
 /* `depth.enter` and `depth.leave` bracket a function; a closure body has neither. */
-static void lb_depth(Lb *lb, MirOp op) {
+void lb_depth(Lb *lb, MirOp op) {
     if (!lb->closure) {
         lb_emit_plain(lb, op);
     }
@@ -225,7 +239,6 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
 /* ---- operators ---- */
 
 static LbVal lb_match(Lb *lb, const MsExpr *e);
-static void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param);
 
 static LbVal lb_unary(Lb *lb, const MsExpr *e) {
     const MsExpr *operand = e->u.bin.left;
@@ -411,12 +424,6 @@ static LbVal lb_string_equal(Lb *lb, const MsExpr *e) {
     return (LbVal){same, false};
 }
 
-/* Whether `ty` is a record, enum, optional or list: `==` on it calls a generated function. */
-static bool lb_is_aggregate(const Lb *lb, MirTy ty) {
-    const uint8_t kind = mir_ty_data(lb->m, ty)->kind;
-    return kind == MK_TYPE || kind == MK_ALT || kind == MK_OPT || kind == MK_LIST;
-}
-
 static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     if (op == MS_B_AND || op == MS_B_OR) {
@@ -465,33 +472,33 @@ static MirValue lb_var_argument(Lb *lb, const MsExpr *arg, uint32_t *binding_out
 
 /* Whether parameter `index` of the function declared by `d` is handed over: declared `move`, or
  * moved by the body (the ownership pass's `param_consumed`). */
-static bool lb_has_self(const LbCallable *c) {
+bool lb_has_self(const LbCallable *c) {
     return c->self_ty != MS_TY_NONE;
 }
 
 /* The parameters of a callable in call order: the receiver (a method's) first. */
-static uint32_t lb_slots(const LbCallable *c) {
+uint32_t lb_slots(const LbCallable *c) {
     return c->fn->params.len + (lb_has_self(c) ? 1u : 0u);
 }
 
 /* The source parameter behind a slot: NULL for a method's receiver. */
-static const MsParam *lb_slot_param(const LbCallable *c, uint32_t slot) {
+const MsParam *lb_slot_param(const LbCallable *c, uint32_t slot) {
     const uint32_t first = lb_has_self(c) ? 1u : 0u;
     return slot < first ? NULL : c->fn->params.ptr[slot - first];
 }
 
-static bool lb_slot_mutable(const LbCallable *c, uint32_t slot) {
+bool lb_slot_mutable(const LbCallable *c, uint32_t slot) {
     const MsParam *param = lb_slot_param(c, slot);
     return param == NULL ? c->mutating : param->is_mutable;
 }
 
 /* The node whose binding a parameter slot introduces: a method's node for its `self`. */
-static uint32_t lb_slot_node(const LbCallable *c, uint32_t slot) {
+uint32_t lb_slot_node(const LbCallable *c, uint32_t slot) {
     const MsParam *param = lb_slot_param(c, slot);
     return param == NULL ? c->node : param->id;
 }
 
-static bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot) {
+bool lb_param_moves(const Lb *lb, const LbCallable *c, uint32_t slot) {
     const MsParam *param = lb_slot_param(c, slot);
     const bool declared = param != NULL && param->moving;
     return declared || ((lb->facts->param_consumed[c->node] >> slot) & 1u) != 0;
@@ -534,7 +541,6 @@ MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
     }
     return lb_copy(lb, value.v);
 }
-
 
 /* The module function a call reaches: the callee's own, or for a generic callee its copy for the
  * type arguments the checker inferred at this call, seen through the instance being lowered. */
@@ -1098,7 +1104,7 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
 /* ---- statements ---- */
 
 /* Names `value` for a debugger, as the Rust lowering does: parameters and single-definition locals. */
-static void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param) {
+void lb_name_value(Lb *lb, MirValue value, MsSym name, bool param) {
     const MsStr text = ms_name(lb->c->names, name);
     const MirNamedValue named = {value, mir_name(lb->m, text.ptr, text.len), param, 0};
     MIR_PUSH(lb->m, lb->b.f.names, lb->b.f.nnames, lb->b.f.cnames, MirNamedValue, named);

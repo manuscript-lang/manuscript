@@ -8,3 +8,5 @@ Two traps found by `compiler/tests/check-cmd-diff.sh` (the whole fixture corpus,
 
 Apply when: porting a checker pass (delete its `check_unported` line only when the script shows no difference), or adding a case where C would answer instead of Rust. The script takes about 20 minutes; run it with `JOBS=16`.
 Evidence: `compiler/tests/check-cmd-diff.sh`; the plan for the Manuscript front is `/mnt/project-files/c-cli/ms-front-plan.md`.
+
+Package projects (2026-11): `ms_check_run` loads with `ms_project_load_packages` and adds `ms_graph_check_packages` diagnostics (native in a package, undeclared package effect). The corpus holds no `[dependencies]` project, so those paths were diffed by hand against Rust with a local git package (natives and effects match); an incomplete effect scan hands over. Add a corpus fixture before trusting more package cases.

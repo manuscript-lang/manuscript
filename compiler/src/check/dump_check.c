@@ -299,8 +299,8 @@ static void dump_stmts(MsBuf *out, const MsCheck *c, const MsFacts *facts, const
             dump_stmts(out, c, facts, &s->u.loop.body);
             break;
         case MS_S_ASSIGN: dump_expr(out, c, facts, s->u.assign.value); break;
-        case MS_S_FOR: // the range call itself is untyped; its bounds are, and a list loop's iterable is not listed
-            for (uint32_t i = 0; !facts->each_list[s->id] && i < s->u.each.iter->u.call.args.len; i++) {
+        case MS_S_FOR: // a call as the iterable is untyped itself (a range, or a function returning a list); its arguments are
+            for (uint32_t i = 0; s->u.each.iter->kind == MS_E_CALL && i < s->u.each.iter->u.call.args.len; i++) {
                 dump_expr(out, c, facts, s->u.each.iter->u.call.args.ptr[i].value);
             }
             dump_stmts(out, c, facts, &s->u.each.body);

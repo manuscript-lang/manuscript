@@ -15,10 +15,11 @@ const MsRtFn *ms_rt_fn_find(const char *symbol, size_t length) {
     while (low < high) {
         const size_t middle = low + (high - low) / 2;
         const MsRtFn *row = &rt_fns[middle];
-        const size_t common = strlen(row->symbol) < length ? strlen(row->symbol) : length;
+        const size_t row_length = strlen(row->symbol);
+        const size_t common = row_length < length ? row_length : length;
         int order = strncmp(row->symbol, symbol, common);
-        if (order == 0) {
-            order = strlen(row->symbol) == length ? 0 : (strlen(row->symbol) < length ? -1 : 1);
+        if (order == 0 && row_length != length) {
+            order = row_length < length ? -1 : 1;
         }
         if (order == 0) {
             return row;
