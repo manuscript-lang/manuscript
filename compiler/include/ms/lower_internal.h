@@ -96,6 +96,16 @@ typedef struct LbEq {
     uint32_t func;
 } LbEq;
 
+/* The function building the `Error` of a native's status table (lower_status.c). */
+typedef struct LbStatusFn {
+    MirTy error;
+    bool said;
+    const char *domain;
+    uint32_t nrows;
+    struct MsStatusRow *rows;
+    uint32_t func;
+} LbStatusFn;
+
 /* A resource type with its own `close` (lower_close.c): its MIR type, the method row, and the helper
  * functions the elaborate pass runs, made on first use. */
 typedef struct LbCloser {
@@ -153,6 +163,8 @@ typedef struct Lb {
     uint32_t ninsts, cinsts;
     LbEq *eqs;            /* this pass's equality functions (module arena) */
     uint32_t neqs, ceqs;
+    LbStatusFn *status_fns; /* this pass's status error functions (module arena) */
+    uint32_t nstatus_fns, cstatus_fns;
     LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
     uint32_t ndead_insts, cdead_insts;
     LbCloser *closers;    /* this pass's resource types (module arena) */
@@ -304,6 +316,9 @@ MirValue lb_native_status_call(Lb *lb, const struct MsRtFn *fn, const MirValue *
 MirValue lo_out_slot(Lb *lb, MirTy ty);
 MirValue lo_take_out(Lb *lb, MirValue slot, MirTy ty);
 LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee);
+/* lower_status.c: a native reporting failure by a status, called for a `Result[T, Error]`. */
+bool ls_reports_status(Lb *lb, const struct MsRtFn *fn, MirTy result_ty);
+LbVal ls_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */

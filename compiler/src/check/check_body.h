@@ -20,6 +20,7 @@ typedef struct MsBody {
     MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
     MsTy invalid_ty;        /* the type of an expression that already drew a diagnostic */
     MsTy result;
+    MsTy fixture;           /* the type a test file's `make_fixture` returns (its tests bind `fixture`), or MS_TY_NONE */
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */
     uint32_t function;      /* the declaration node of the function being checked */
     bool *closed;           /* by binding id: its block ended, so the name is free again */
@@ -86,6 +87,8 @@ bool ms_body_is_builtin_case(const MsBody *b, MsSym name);
 MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
 /* An enum case called like a function where the context expects its enum (check_alt.c). */
 bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name);
+/* A type declared `opaque` in another module: its cases, fields and constructor are denied here (a Rust diagnostic). */
+bool ms_body_is_foreign_opaque(const MsBody *b, MsTy ty);
 MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected);
 /* Whether `label` is the name of the payload field of `ok` (`success`) or `error` of the Result type `result`. */
 bool ms_body_result_label(const MsBody *b, MsTy result, bool success, MsSym label);
