@@ -465,7 +465,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
         const MsTy field = function_field(b, receiver_ty, name);
         return field == MS_TY_NONE ? ms_body_unsupported(b) : ms_body_call_function(b, e, field);
     }
-    if ((target.consuming && target.method == MS_NONE) || (target.mutating && immutable)) {
+    if (target.mutating && immutable) {
         return ms_body_unsupported(b);
     }
     if (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) {
