@@ -12,11 +12,6 @@ static bool workspace_fail(MsProjectError *err, const char *message) {
     return false;
 }
 
-static bool workspace_is_file(const char *path) {
-    struct stat info;
-    return stat(path, &info) == 0 && S_ISREG(info.st_mode);
-}
-
 /* Whether `dir` is `root` or below it, by path components. */
 static bool workspace_within(const char *root, const char *dir) {
     const size_t length = strlen(root);
@@ -41,8 +36,6 @@ const MsMember *ms_workspace_member_at(const MsWorkspace *w, const char *dir) {
     }
     return NULL;
 }
-
-static int workspace_compare(const void *x, const void *y) { return strcmp(*(const char *const *)x, *(const char *const *)y); }
 
 static bool workspace_bad_pattern(MsArena *a, MsProjectError *err, const char *pattern, const char *why) {
     return workspace_fail(err, ms_arena_fmt(a, "workspace member %s %s; write a directory below the workspace root such as \"app\" or \"libs/*\"", ms_debug_quote(a, pattern), why).ptr);
@@ -80,7 +73,7 @@ static bool workspace_expand(MsArena *a, const char *root, const char *pattern, 
         }
         const char *path = MS_PATH_JOIN(a, parent, names[i]);
         const char *canonical;
-        if (workspace_is_file(MS_PATH_JOIN(a, path, "ms.toml")) && ms_path_eval_symlinks(a, path, &canonical, err)) {
+        if (ms_project_is_file(MS_PATH_JOIN(a, path, "ms.toml")) && ms_path_eval_symlinks(a, path, &canonical, err)) {
             if (workspace_within(root, canonical)) {
                 MS_VEC_PUSH(children, const char *, canonical);
             }
@@ -88,7 +81,7 @@ static bool workspace_expand(MsArena *a, const char *root, const char *pattern, 
     }
     const size_t found = MS_VEC_LEN(children, const char *);
     if (found > 1) {
-        qsort(children.data, found, sizeof(const char *), workspace_compare);
+        qsort(children.data, found, sizeof(const char *), ms_cmp_cstr);
     }
     for (size_t i = 0; i < found; i++) {
         MS_VEC_PUSH(*dirs, const char *, MS_VEC_AT(children, const char *, i));
@@ -109,7 +102,7 @@ static bool workspace_member(MsArena *a, const char *root, const char *dir, cons
         }
         return workspace_fail(err, ms_arena_fmt(a, "workspace member %s: %s", shown, ms_project_error_text(a, &cause)).ptr);
     }
-    if (strcmp(dir, root) != 0 && workspace_is_file(MS_PATH_JOIN(a, dir, "ms.lock"))) {
+    if (strcmp(dir, root) != 0 && ms_project_is_file(MS_PATH_JOIN(a, dir, "ms.lock"))) {
         return workspace_fail(err, ms_arena_fmt(a, "workspace member %s has its own ms.lock, which is never read; the workspace keeps one ms.lock at %s, so delete the member's", shown, root).ptr);
     }
     if (project.name[0] == 0) {
@@ -186,7 +179,7 @@ bool ms_workspace_find(MsArena *a, const char *manifest, MsWorkspace *out, bool 
         const char *candidate = MS_PATH_JOIN(a, dir, "ms.toml");
         MsProject root;
         bool is_root;
-        if (workspace_is_file(candidate)) {
+        if (ms_project_is_file(candidate)) {
             if (!workspace_is_root(a, candidate, &root, &is_root, err)) {
                 return false;
             }
@@ -208,7 +201,7 @@ bool ms_workspace_find(MsArena *a, const char *manifest, MsWorkspace *out, bool 
 
 bool ms_workspace_root_members(MsArena *a, const char *manifest, MsWorkspace *out, bool *found, MsProjectError *err) {
     *found = false;
-    if (strcmp(ms_path_base(a, manifest), "ms.toml") != 0 || !workspace_is_file(manifest)) {
+    if (strcmp(ms_path_base(a, manifest), "ms.toml") != 0 || !ms_project_is_file(manifest)) {
         return true;
     }
     MsProject root;

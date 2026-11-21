@@ -141,6 +141,8 @@ typedef struct MsPackage {
  * commit or the requirement as written), the row ms_tool_dependencies returns. */
 const char *ms_project_dependency_row(MsArena *a, const MsDependency *d);
 
+/* Whether `path` names a regular file (links followed). */
+bool ms_project_is_file(const char *path);
 /* The whole file at `path`, NUL-terminated after its `*length` bytes (which may include NULs); NULL with *err set. */
 const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err);
 /* The nearest ms.toml in `filename`'s directory or above, NULL when there is none. */
