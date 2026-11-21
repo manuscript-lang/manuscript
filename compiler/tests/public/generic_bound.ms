@@ -1,8 +1,8 @@
 interface Bound:
-    fn name() String
+	fn name() String
 
 export fn pick[T: Bound](x: T) T:
-    return x
+	return x
 
 fn main() Void:
-    return
+	return

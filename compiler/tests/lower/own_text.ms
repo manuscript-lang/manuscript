@@ -10,6 +10,6 @@ fn show(p: Point, n: Int) String:
 
 fn main() Int:
 	text := show(Point(x: 1, y: 2), 3)
-	if text.length() > 100:
-		return 1
+	if text.length() > 100: return 1
+
 	return 0

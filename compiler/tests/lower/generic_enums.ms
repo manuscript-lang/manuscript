@@ -19,6 +19,5 @@ fn present(p: Pair[Bool]) Bool:
 		Neither: false
 
 fn main() Int:
-	if present(empty()):
-		return 1
+	if present(empty()): return 1
 	return sum(make(2))
