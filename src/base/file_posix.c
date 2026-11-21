@@ -94,6 +94,16 @@ void ms_path_remove(MsSpan path) {
   ms_os_text_free(&name);
 }
 
+bool ms_dir_current(MsString *path) {
+  char buffer[MAX_PATH_BYTES];
+  if (getcwd(buffer, sizeof buffer) == NULL) {
+    return false;
+  }
+  ms_string_release(path);
+  *path = ms_string_from_span(ms_span_of_text(buffer));
+  return true;
+}
+
 static bool skips(const char *entry_name) {
   MsSpan text = ms_span_of_text(entry_name);
   return ms_span_is_text(text, ".") || ms_span_is_text(text, "..");
