@@ -364,7 +364,7 @@ fn move StopHold.close() Void!:
 
 /*
 Holds SIGINT and SIGTERM back from the calling task until the returned hold closes at the end of its scope, so the task can handle them itself: read them with `watch_signals`, forward them to a child, and keep waiting. Without a hold a stop request ends the task's waits and unwinds it. A cancel aimed at the task by other code still applies. Holds nest. A request that arrived while held applies when the last hold closes, at the task's next cancellation point.
-```
+```manuscript
 _hold := hold_stop()
 signals := watch_signals([2, 15], none)?
 child := spawn("worker")?
