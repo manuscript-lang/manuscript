@@ -1209,7 +1209,8 @@ static bool lb_names_var(const Lb *lb, const MsExpr *e) {
 
 /* Leaves a function that returns nothing. */
 void lb_return_void(Lb *lb) {
-    const MirValue unit = mir_b_unit(&lb->b);
+    const MirValue nothing = mir_b_unit(&lb->b);
+    const MirValue unit = la_returns_void_result(lb) ? la_ok_of(lb, nothing) : nothing; // `Void!` ends with `ok(void)`
     lb_own_vars(lb, 0, MIR_NONE);
     lscope_exit_to(&lb->scopes, 0);
     lb_write_back(lb);

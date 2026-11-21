@@ -42,7 +42,12 @@ keyed() {
                 out = out substr(rest, 1, RSTART) "!" name ":"
                 rest = substr(rest, RSTART + RLENGTH)
             }
-            return out rest
+            line = out rest
+            if (match(line, /^  scope "[^"]*" [0-9]+ /)) { # `scope "name" FILE parent line`: the file of an inlined frame
+                n = line; sub(/^  scope "[^"]*" /, "", n); sub(/ .*$/, "", n)
+                if (n in files) sub(/" [0-9]+ /, "\" " files[n] " ", line)
+            }
+            return line
         }
         /^=== / { file = $2; delete files; next }
         /^file [0-9]+ "/ { n = $2; name = $3; gsub(/"/, "", name); files[n] = name; next }

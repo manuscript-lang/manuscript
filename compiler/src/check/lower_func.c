@@ -167,11 +167,13 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
         }
     }
     lb_statements(lb, &c->fn->body);
-    if (lb->ok && !lb->dead && lb->b.f.ret == MIR_VOID) {
-        lb_return_void(lb); // the end of a function that returns nothing
+    if (lb->ok && !lb->dead && (lb->b.f.ret == MIR_VOID || la_returns_void_result(lb))) {
+        lb_return_void(lb); // the end of a function that returns nothing, or `ok` of nothing
     }
     if (!lb->ok) {
         lb_why(lb, c, NULL);
+    } else if (!lb->dead) {
+        lb_why(lb, c, "falls off the end");
     }
     lb->ok = lb->ok && lb->dead;
     MirFunc f = {0};
@@ -439,7 +441,27 @@ static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lower
 /* Lowers `modules` into `out`. A failed function leaves a stub, and calls to it were lowered against
  * it, so the pass repeats without it (its callers then fail too) until a pass loses nothing. That is
  * at most one pass per function; programs lose a function or two. */
-static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nmodules, MirModule *out, MsBuf *why) {
+/* The lowered `main` of the entry module (the first view), or MIR_NONE: the function named `main`
+ * that the last pass kept. */
+static uint32_t lb_entry_main(const Lb *lb, MsModId entry) {
+    const MsModule *syntax = lb->c->mods[entry].syntax;
+    if (lb->views[0].module != entry) {
+        return MIR_NONE;
+    }
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        const MsDecl *d = syntax->decls[i];
+        if (d->kind != MS_D_FN || !ms_name_is(lb->c->names, d->u.fn.name, "main") || lb->views[0].failed[i]) {
+            continue;
+        }
+        const MsSymId sym = ms_map_get(&lb->c->mods[entry].names, d->u.fn.name);
+        return sym == MS_NONE || lb->c->syms.decl[sym] != d ? MIR_NONE : lb->func_of[sym];
+    }
+    return MIR_NONE;
+}
+
+/* `program`: `modules[0]` holds the program's `main`, which becomes the module's entry. */
+static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nmodules, bool program, MirModule *out,
+                                 MsBuf *why) {
     Lb lb = {.c = c,
              .mut = c,
              .m = out,
@@ -483,6 +505,10 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
                 break;
             }
         }
+        const uint32_t user = program && lb.func_of != NULL ? lb_entry_main(&lb, modules[0]) : MIR_NONE;
+        if (user != MIR_NONE) {
+            lb_set_entry(&lb, user);
+        }
         ms_classifier_free(lb.classifier);
         free(method_failed);
     }
@@ -500,7 +526,7 @@ static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nm
 }
 
 uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
-    return lb_lower_modules(c, &module, 1, out, NULL);
+    return lb_lower_modules(c, &module, 1, false, out, NULL);
 }
 
 /* Appends `module` and then the project modules it imports, each once, in import order: the order
@@ -539,7 +565,7 @@ uint32_t ms_lower_program_why(MsCheck *c, MsModId entry, MirModule *out, MsBuf *
         }
     }
     free(seen);
-    const uint32_t lowered = lb_lower_modules(c, modules, n, out, why);
+    const uint32_t lowered = lb_lower_modules(c, modules, n, true, out, why);
     free(modules);
     return lowered;
 }
