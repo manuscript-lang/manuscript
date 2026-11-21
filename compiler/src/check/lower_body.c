@@ -405,8 +405,8 @@ static LbVal lb_apply(Lb *lb, MsBinaryOp op, LbVal left, LbVal right) {
     if (op == MS_B_ADD && ty == MIR_STR) {
         return lb_concat(lb, left, right);
     }
-    if (lb_owns(lb, ty)) {
-        return LB_UNSUPPORTED(lb);
+    if (lb_owns(lb, ty) || (ty != MIR_INT && ty != MIR_FLOAT && ty != MIR_BOOL)) {
+        return LB_UNSUPPORTED(lb); // the operations of the sized numbers and the other native types are not lowered yet
     }
     const MirOp arithmetic = lb_arithmetic_op(op, ty);
     if (arithmetic == MOP_COUNT) {
@@ -467,6 +467,9 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
     if (!lb->ok) {
         return LB_FAIL;
+    }
+    if (mir_b_ty(&lb->b, left.v) != mir_b_ty(&lb->b, right.v)) {
+        return LB_UNSUPPORTED(lb); // an Optional beside the plain value it wraps
     }
     if ((op == MS_B_EQ || op == MS_B_NE) && lb_is_aggregate(lb, mir_b_ty(&lb->b, left.v))) {
         return lq_equal(lb, left, right, op == MS_B_NE);
