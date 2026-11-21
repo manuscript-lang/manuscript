@@ -1,4 +1,4 @@
-//! Turns the generated runtime signature table (`rt_symbols.txt`, written by `cargo xtask symbols`)
+//! Turns the generated runtime signature table (`rt_symbols.txt`, written by `ms run tools/ms/symbols.ms`)
 //! into a sorted table, so lowering looks a symbol up by binary search and a malformed entry fails
 //! the build.
 

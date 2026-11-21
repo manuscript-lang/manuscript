@@ -4,9 +4,10 @@
 // crates/ms-cli/src/engine/search.rs. Project declarations arrive with the C checker;
 // until then `project_total` is 0 and only library matches appear.
 //
-// The model is built by the C checker (`ms_tool_api_model`, compiler/src/check/api_model.c), which
-// checks the embedded standard library; compiler/tests/api-model-diff.sh holds it byte for byte to
-// the JSON the Rust `ms-tooling` example `api_model` prints.
+// The model is built by the C checker (`ms_tool_api_model`,
+// compiler/src/check/api_model.c), which checks the embedded standard library;
+// compiler/tests/api-model-diff.sh holds it byte for byte to the JSON the Rust
+// `ms-tooling` example `api_model` prints.
 //   ms run tools/ms/search.ms --link target/c-tool/libmstool.a -- [--json] [--limit N] [name or words...]
 import (
 	Matches from "@std/cli/command.ms",

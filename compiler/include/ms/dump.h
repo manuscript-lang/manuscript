@@ -52,6 +52,10 @@ void ms_sites_free(MsSites *s);
 bool ms_sites_decl(MsSites *s, const MsDecl *d, MsBuf *external, MsBuf *flow);
 bool ms_sites_method(MsSites *s, const MsDecl *impl, const MsMethod *method, MsBuf *external, MsBuf *flow);
 
+/* The fact model of a whole project: the entities and imports of each module `mods[i]` (source `texts[i]`),
+ * in one document, so keys and files carry the modules' own names. */
+void ms_dump_project_facts(MsBuf *out, MsCheck *c, const MsModId *mods, const MsStr *texts, uint32_t count);
+
 /* `{"nodes": [{"id", "kind"}]}`: the type kind of each expression the checker typed, by node id. */
 void ms_dump_module_nodes(MsBuf *out, const MsCheck *c, MsModId m);
 

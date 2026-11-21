@@ -51,7 +51,8 @@ uint8_t ms_tool_project(const ms_str *manifest, ms_list *out, ms_str *message_ou
 
 /* The files `ms fmt` formats for `target` (ms_project_format_paths): the file itself, or the modules of a directory or
  * of the project an ms.toml names, in order. Status 0 is success; 1 is an error with the Rust driver's text in
- * `message_out`; 2 means the C reader does not cover the target (a workspace root, a project with dependencies). */
+ * `message_out`; 2 means the C reader does not cover the target (a workspace root). Formatting reads only the project's own
+ * modules, so its dependencies and ms.lock are not consulted. */
 uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out);
 
 /* Resolves and fetches the dependencies of the project whose ms.toml is `manifest` (ms_install in ms/packages.h) and
@@ -76,6 +77,12 @@ void ms_tool_api_model(ms_str *out);
  * (invalid UTF-8, a syntax error) with its text in `message_out`; 2 means the document imports a project module, which
  * this entry does not load. */
 uint8_t ms_tool_facts(const ms_str *text, ms_str *out, ms_str *message_out);
+
+/* The fact model of the project the file `path` belongs to: every local module it imports, in one document whose keys,
+ * `file` fields and `imports` rows carry the modules' names relative to the project root (`a.ms`, `src/lib.ms`).
+ * Status 0 fills `out`; 1 is an error (a missing file, a syntax or import error) with its text in `message_out`; 2
+ * means the loader does not cover the project (a library manifest, test discovery). */
+uint8_t ms_tool_facts_project(const ms_str *path, ms_str *out, ms_str *message_out);
 
 /* `ms check FILE.ms [--json]` (compiler/include/ms/check_run.h). Status 0 fills `out` with the standard output, the
  * standard error and the exit status (as decimal text) the Rust command would produce; status 2 means the C passes

@@ -90,3 +90,7 @@ remove @a @b
 fmt --check tools/ms/test
 fmt --check --json tools/ms/test
 fmt --check tools/ms/lint tools/ms/explain.ms
+fmt --check nothere.ms
+fmt --check --json nothere.ms tools/ms/explain.ms
+fmt --check nodir/ms.toml
+fmt --check ""
