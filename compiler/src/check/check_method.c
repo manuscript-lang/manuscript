@@ -219,64 +219,55 @@ static bool native_result_borrows(const MsBody *b, MsTy receiver, MsSym name, ui
     return false;
 }
 
-static bool body_is_primitive(const MsBody *b, MsTy ty) {
-    return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
-}
-
-/* Whether `ty` mentions the type variable `var` (variables are the same by their id, as in infer.c). */
-static bool ty_mentions(const MsTyTable *tys, MsTy ty, MsTy var) {
-    if (ty == var || (ms_ty_kind(tys, ty) == MS_K_VARIABLE && tys->id[ty] == tys->id[var])) {
-        return true;
-    }
-    for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
-        if (ty_mentions(tys, ms_ty_args(tys, ty)[i], var)) {
-            return true;
-        }
-    }
-    if (ms_ty_kind(tys, ty) != MS_K_FUNCTION) {
+/* Whether `ty` is plainly clonable: a primitive, or a list, map, set, optional or record of such,
+ * holding no resource (a type with a `close`) or function. The Rust checker's finer cases (alternatives,
+ * cycles, interface-valued fields) are left to it. */
+static bool value_clonable(const MsBody *b, MsTy ty, uint32_t depth) {
+    const MsTyTable *tys = &b->c->tys;
+    if (depth > 4) {
         return false;
     }
-    for (uint32_t i = 0; i < tys->nparams[ty]; i++) {
-        if (ty_mentions(tys, ms_ty_params(tys, ty)[i].ty, var)) {
-            return true;
+    switch (ms_ty_kind(tys, ty)) {
+    case MS_K_PRIMITIVE:
+        return true;
+    case MS_K_NATIVE: {
+        bool plain = ms_ty_is(tys, ty, MS_BI_LIST) || ms_ty_is(tys, ty, MS_BI_MAP) || ms_ty_is(tys, ty, MS_BI_SET);
+        for (uint32_t i = 0; plain && i < tys->nargs[ty]; i++) {
+            plain = value_clonable(b, ms_ty_args(tys, ty)[i], depth + 1);
         }
+        return plain;
     }
-    return ty_mentions(tys, tys->result[ty], var);
+    case MS_K_TYPE: {
+        Target closing;
+        const MsDef *def = tys->def[ty] == 0 ? NULL : ms_def(b->c, tys->def[ty] - 1);
+        bool plain = def != NULL && !method_row(b, ty, ms_intern_cstr(b->c->names, "close"), 0, &closing);
+        for (uint32_t i = 0; plain && i < def->nfields; i++) {
+            plain = value_clonable(b, def->fields[i].ty, depth + 1);
+        }
+        return plain;
+    }
+    default:
+        return false;
+    }
 }
 
-/* Whether `ty` mentions a variable of the open row that no argument has bound yet. */
-static bool mentions_unbound(const MsBody *b, const MsInfer *in, MsTy ty) {
-    for (uint32_t k = 0; k < in->nvars; k++) {
-        if (in->bound[k] == MS_TY_NONE && ty_mentions(&b->c->tys, ty, in->vars[k])) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/* One argument of an open row: against its parameter when that is settled, else its type binds the
- * parameter's variables. A function literal whose parameters are settled gets them and takes its
- * result from its body, which binds the variables of the parameter's result. */
-static bool open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in) {
+/* `to_string` and `clone`, which exist without an impl: every non-generic value shows as text, and
+ * data values (types, alternatives, lists, maps, sets, bytes) clone deeply (`native_method` of the
+ * Rust checker). */
+static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
     const MsTyTable *tys = &b->c->tys;
-    const MsTy want = ms_infer_apply(in, param->ty);
-    if (!mentions_unbound(b, in, want)) {
-        return ms_body_is_admitted(b, want) && ms_body_expr(b, value, want) != MS_TY_NONE;
+    const MsKind kind = ms_ty_kind(tys, receiver);
+    if (kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_NATIVE) {
+        return false;
     }
-    MsTy actual = MS_TY_NONE;
-    if (value->kind == MS_E_LAMBDA) {
-        bool settled = ms_ty_kind(tys, want) == MS_K_FUNCTION;
-        for (uint32_t i = 0; settled && i < tys->nparams[want]; i++) {
-            settled = !mentions_unbound(b, in, ms_ty_params(tys, want)[i].ty);
-        }
-        actual = settled ? ms_body_lambda_inferred(b, value, want) : MS_TY_NONE;
-        if (actual != MS_TY_NONE) {
-            (void)ms_body_record(b, value->id, actual);
-        }
-    } else {
-        actual = ms_body_expr(b, value, MS_TY_NONE);
+    if (intrinsic_in(b, "ValueOperations", receiver, name, out)) {
+        return true;
     }
-    return actual != MS_TY_NONE && ms_body_is_admitted(b, actual) && ms_infer_match(in, param->ty, actual) == MS_MATCH_OK;
+    return value_clonable(b, receiver, 0) && intrinsic_in(b, "CloneOperations", receiver, name, out);
+}
+
+static bool body_is_primitive(const MsBody *b, MsTy ty) {
+    return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
 }
 
 /* The arguments of a method call against its signature, paired with parameters by position or
@@ -318,7 +309,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
         }
         const MsExpr *value = e->u.call.args.ptr[i].value;
         if (target->open) {
-            if (!open_argument(b, value, param, &target->in)) {
+            if (!ms_body_open_argument(b, value, param, &target->in)) {
                 return false;
             }
             continue;
@@ -401,14 +392,20 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
         return invalid_receiver_call(b, e, binding);
     }
     Target target;
+    MsSym name = callee->u.member.name;
+    if (ms_is_index_store(b->c->names, e)) {
+        // `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`.
+        name = ms_intern_cstr(b->c->names, ms_ty_is(&b->c->tys, receiver_ty, MS_BI_MAP) ? "add" : "set");
+    }
     MsTy dispatch = receiver_ty; /* the interface an operation is called through */
     bool resolved;
     if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_VARIABLE) {
-        resolved = bound_operation(b, receiver_ty, callee->u.member.name, &target, &dispatch);
+        resolved = bound_operation(b, receiver_ty, name, &target, &dispatch);
     } else if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT) {
-        resolved = operation_of(b, receiver_ty, callee->u.member.name, &target);
+        resolved = operation_of(b, receiver_ty, name, &target);
     } else {
-        resolved = method_row(b, receiver_ty, callee->u.member.name, e->u.call.args.len, &target);
+        resolved = method_row(b, receiver_ty, name, e->u.call.args.len, &target) ||
+                   value_operation(b, receiver_ty, name, &target);
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved || target.consuming || (target.mutating && immutable) ||

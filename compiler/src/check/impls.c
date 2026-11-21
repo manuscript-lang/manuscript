@@ -358,17 +358,6 @@ static const MsTypeScope *impl_scope_with(MsCheck *c, const MsTypeScope *parent,
     return scope;
 }
 
-static bool impl_scope_has(const MsTypeScope *scope, MsSym name) {
-    for (; scope != NULL; scope = scope->parent) {
-        for (uint32_t i = 0; i < scope->len; i++) {
-            if (scope->names[i] == name) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 /* The type parameters a method declares for itself, in the impl's scope: `r->scope` gains them. */
 static MsTy *impl_method_variables(Impl *im, const MsMethod *method, uint32_t index) {
     MsCheck *c = im->c;
@@ -377,7 +366,7 @@ static MsTy *impl_method_variables(Impl *im, const MsMethod *method, uint32_t in
     const MsStr path = impl_text(c, c->mods[im->r->module].path);
     for (uint32_t i = 0; i < params->len; i++) {
         const MsStr name = impl_text(c, params->ptr[i]->name);
-        if (impl_scope_has(im->r->scope, params->ptr[i]->name)) {
+        if (ms_type_scope_has(im->r->scope, params->ptr[i]->name)) {
             impl_type_error(im, params->ptr[i]->pos,
                             ms_arena_fmt(&c->arena,
                                          "type parameter %.*s shadows a type parameter of the impl; choose a different "

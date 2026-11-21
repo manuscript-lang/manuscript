@@ -729,6 +729,9 @@ static void send_ended(const Taken *taken, MsGuardStatus status, MsFaultText mes
         msrt_free(message.bytes);
         msrt_free(mail);
     }
+    /* The mail carries the message text only; the structured detail stays with this isolate and ends here. */
+    MsFaultText detail = {.detail = message.detail};
+    ms_fault_text_free(&detail);
 }
 
 static void taken_entry(void *argument) {
@@ -1239,6 +1242,14 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
             return MS_PROMISE_TIMEOUT;
         }
     }
+}
+
+bool ms_promise_finished(MsPromise id) {
+    if (is_foreign(id)) {
+        return false; /* asking its owner waits */
+    }
+    const ptrdiff_t row = row_of(id);
+    return row < 0 || table.hot[row].state != STATE_PENDING;
 }
 
 bool ms_promise_done(MsPromise id) {

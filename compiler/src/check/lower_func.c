@@ -148,20 +148,47 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
     return lb_closures(lb, lb->ok && built); // the lambdas it made are lowered after it
 }
 
-static void lb_index_bindings(Lb *lb, MsArena *arena) {
-    const MsBindings *bindings = &lb->facts->bindings;
-    const size_t nodes = (size_t)lb->facts->node_count + 1;
-    lb->binding_at = MS_NEW_N(arena, uint32_t, nodes);
-    memset(lb->binding_at, 0xff, nodes * sizeof *lb->binding_at);
-    for (uint32_t i = 0; i < bindings->count; i++) {
-        lb->binding_at[bindings->decl_node[i]] = i;
+uint32_t lb_view_enter(Lb *lb, uint32_t view) {
+    const uint32_t left = lb->view;
+    const LbView *v = &lb->views[view];
+    lb->view = view;
+    lb->module = v->module;
+    lb->facts = v->facts;
+    lb->binding_at = v->binding_at;
+    lb->value_of = v->value_of;
+    lb->var_of = v->var_of;
+    return left;
+}
+
+/* The view of `module`, or MS_NONE when it is not being lowered. */
+static uint32_t lb_view_of(const Lb *lb, MsModId module) {
+    for (uint32_t v = 0; v < lb->nviews; v++) {
+        if (lb->views[v].module == module) {
+            return v;
+        }
     }
+    return MS_NONE;
+}
+
+/* The tables of every view, which live in the output module's arena and so are rebuilt each pass. */
+static void lb_index_bindings(Lb *lb, MsArena *arena) {
     lb->type_of = MS_NEW_N(arena, MirTy, lb->c->tys.count + 1);
     memset(lb->type_of, 0xff, (lb->c->tys.count + 1) * sizeof *lb->type_of);
-    lb->value_of = MS_NEW_N(arena, MirValue, bindings->count + 1);
-    lb->var_of = MS_NEW_N(arena, MirVar, bindings->count + 1);
-    memset(lb->var_of, 0xff, (bindings->count + 1) * sizeof *lb->var_of);
-    memset(lb->value_of, 0xff, (bindings->count + 1) * sizeof *lb->value_of);
+    for (uint32_t k = 0; k < lb->nviews; k++) {
+        LbView *v = &lb->views[k];
+        const MsBindings *bindings = &v->facts->bindings;
+        const size_t nodes = (size_t)v->facts->node_count + 1;
+        v->binding_at = MS_NEW_N(arena, uint32_t, nodes);
+        memset(v->binding_at, 0xff, nodes * sizeof *v->binding_at);
+        for (uint32_t i = 0; i < bindings->count; i++) {
+            v->binding_at[bindings->decl_node[i]] = i;
+        }
+        v->value_of = MS_NEW_N(arena, MirValue, bindings->count + 1);
+        v->var_of = MS_NEW_N(arena, MirVar, bindings->count + 1);
+        memset(v->var_of, 0xff, (bindings->count + 1) * sizeof *v->var_of);
+        memset(v->value_of, 0xff, (bindings->count + 1) * sizeof *v->value_of);
+    }
+    (void)lb_view_enter(lb, 0);
 }
 
 /* Adds a function with the declared signature and an empty body, so calls can name it before its
@@ -219,10 +246,14 @@ static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t narg
     memcpy(inst.args, args, nargs * sizeof *args);
     const MsDecl *d = lb->c->syms.decl[sym];
     const MsDef *def = ms_def(lb->mut, sym);
-    if (d == NULL || d->kind != MS_D_FN || def == NULL || def->nvars != nargs || !lb->facts->body_checked[d->id]) {
+    // The declaration's ids and facts are its own module's, which may not be the caller's.
+    const uint32_t home = lb_view_of(lb, lb->c->syms.module[sym]);
+    if (d == NULL || d->kind != MS_D_FN || def == NULL || def->nvars != nargs || home == MS_NONE ||
+        !lb->views[home].facts->body_checked[d->id]) {
         (void)lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst);
         return MIR_NONE;
     }
+    const uint32_t caller = lb_view_enter(lb, home);
     uint32_t serial = 0;
     for (uint32_t i = 0; i < lb->ninsts; i++) {
         serial += lb->insts[i].sym == sym ? 1 : 0;
@@ -247,6 +278,7 @@ static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t narg
     lb->nsub = saved_n;
     lb->has_override = saved_override;
     lb->name_override = saved_name;
+    (void)lb_view_enter(lb, caller);
     if (inst.func == MIR_NONE) {
         (void)lb_push_inst(&lb->dead_insts, &lb->ndead_insts, &lb->cdead_insts, &inst);
         return MIR_NONE;
@@ -264,6 +296,7 @@ static bool lb_drain_instances(Lb *lb, uint32_t *lowered) {
     bool died = false;
     for (uint32_t i = 0; i < lb->ninsts; i++) {
         const LbInst inst = lb->insts[i]; // the list may grow while the body is lowered
+        (void)lb_view_enter(lb, lb_view_of(lb, lb->c->syms.module[inst.sym]));
         lb->sub_vars = ms_def(lb->mut, inst.sym)->vars;
         lb->sub_args = inst.args;
         lb->nsub = inst.nargs;
@@ -300,86 +333,126 @@ static bool lb_has_diagnostic(const MsModuleRow *row, uint32_t index) {
     return lb_lines_have_diagnostic(row, row->syntax->decls[index]->pos.line, end);
 }
 
-/* One pass over the module's checked functions: stub each one not in `failed`, then lower them.
- * A function that does not lower is marked in `failed`; true when any new one was. */
-static bool lb_pass(Lb *lb, MsModId module, uint32_t nrows, bool *failed, uint32_t *lowered) {
-    const MsModuleRow *row = &lb->c->mods[module];
-    const uint32_t ndecls = row->syntax->ndecls;
+/* One pass over the checked functions of every view: stub each one not marked failed, then lower
+ * them. A function that does not lower is marked failed; true when any new one was. */
+static bool lb_pass(Lb *lb, uint32_t nrows, bool *method_failed, uint32_t *lowered) {
     memset(lb->func_of, 0xff, (size_t)lb->c->syms.count * sizeof *lb->func_of);
     memset(lb->thunk_of, 0xff, (size_t)lb->c->syms.count * sizeof *lb->thunk_of);
-    MsSymId *syms = MS_NEW_N(&lb->m->arena, MsSymId, (size_t)ndecls + 1);
-    for (uint32_t i = 0; i < ndecls; i++) {
-        const MsDecl *d = row->syntax->decls[i];
-        const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !failed[i] && !lb_has_diagnostic(row, i);
-        syms[i] = checked ? ms_decl_own_symbol(lb->c, module, d) : MS_NONE;
-        if (syms[i] != MS_NONE && lb->c->syms.nvars[syms[i]] != 0) {
-            syms[i] = MS_NONE; // a generic function is checked here but not lowered: it needs one copy per type argument
-        }
-        if (syms[i] != MS_NONE) {
-            const LbCallable callable = lb_function_callable(lb, d, syms[i]);
-            lb->func_of[syms[i]] = lb_add_stub(lb, &callable);
+    MsSymId **syms = MS_NEW_N(&lb->m->arena, MsSymId *, (size_t)lb->nviews + 1); // by view, by declaration
+    for (uint32_t v = 0; v < lb->nviews; v++) {
+        (void)lb_view_enter(lb, v);
+        const MsModuleRow *row = &lb->c->mods[lb->module];
+        const uint32_t ndecls = row->syntax->ndecls;
+        syms[v] = MS_NEW_N(&lb->m->arena, MsSymId, (size_t)ndecls + 1);
+        for (uint32_t i = 0; i < ndecls; i++) {
+            const MsDecl *d = row->syntax->decls[i];
+            const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !lb->views[v].failed[i] &&
+                                 !lb_has_diagnostic(row, i);
+            syms[v][i] = checked ? ms_decl_own_symbol(lb->c, lb->module, d) : MS_NONE;
+            if (syms[v][i] != MS_NONE && lb->c->syms.nvars[syms[v][i]] != 0) {
+                syms[v][i] = MS_NONE; // a generic function is checked here but not lowered: it needs one copy per type argument
+            }
+            if (syms[v][i] != MS_NONE) {
+                const LbCallable callable = lb_function_callable(lb, d, syms[v][i]);
+                lb->func_of[syms[v][i]] = lb_add_stub(lb, &callable);
+            }
         }
     }
-    bool *method_failed = failed + ndecls; // the methods follow the declarations
-    lm_stubs(lb, module, nrows, method_failed);
+    lm_stubs(lb, nrows, method_failed);
     bool changed = false;
     *lowered = 0;
     lb->ninsts = 0;
-    for (uint32_t i = 0; i < ndecls; i++) {
-        if (syms[i] == MS_NONE) {
-            continue;
+    for (uint32_t v = 0; v < lb->nviews; v++) {
+        (void)lb_view_enter(lb, v);
+        const MsModuleRow *row = &lb->c->mods[lb->module];
+        for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+            const MsSymId sym = syms[v][i];
+            if (sym == MS_NONE) {
+                continue;
+            }
+            const bool unlowerable = lb->func_of[sym] == MIR_NONE;
+            const LbCallable callable = lb_function_callable(lb, row->syntax->decls[i], sym);
+            const bool done = !unlowerable && lb_function(lb, &callable, lb->func_of[sym]);
+            lb->views[v].failed[i] = !done;
+            changed = changed || !done;
+            *lowered += done ? 1 : 0;
         }
-        const bool unlowerable = lb->func_of[syms[i]] == MIR_NONE;
-        const LbCallable callable = lb_function_callable(lb, row->syntax->decls[i], syms[i]);
-        const bool done = !unlowerable && lb_function(lb, &callable, lb->func_of[syms[i]]);
-        failed[i] = !done;
-        changed = changed || !done;
-        *lowered += done ? 1 : 0;
     }
     changed = lm_lower(lb, nrows, method_failed, lowered) || changed;
     return lb_drain_instances(lb, lowered) || changed;
 }
 
-/* A failed function leaves a stub, and calls to it were lowered against it, so the pass repeats
- * without it (its callers then fail too) until a pass loses nothing. That is at most one pass per
- * function; programs lose a function or two. */
-uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
-    const MsModuleRow *row = &c->mods[module];
-    const MsFacts *facts = row->facts;
-    if (facts == NULL || facts->body_checked == NULL) {
-        return 0;
-    }
+/* Lowers `modules` into `out`. A failed function leaves a stub, and calls to it were lowered against
+ * it, so the pass repeats without it (its callers then fail too) until a pass loses nothing. That is
+ * at most one pass per function; programs lose a function or two. */
+static uint32_t lb_lower_modules(MsCheck *c, const MsModId *modules, uint32_t nmodules, MirModule *out) {
     Lb lb = {.c = c,
              .mut = c,
-             .facts = facts,
              .m = out,
-             .int_ty = lb_primitive(c, "Int"),
-             .float_ty = lb_primitive(c, "Float"),
-             .bool_ty = lb_primitive(c, "Bool"),
-             .string_ty = lb_primitive(c, "String"),
-             .void_ty = lb_primitive(c, "Void")};
-    lb.classifier = ms_classifier_new(c);
-    ms_classifier_mark_methods(lb.classifier, facts->methods);
-    const uint32_t nrows = lm_prepare(&lb, module);
-    bool *failed = calloc((size_t)row->syntax->ndecls + nrows + 1, sizeof *failed);
-    lb.func_of = calloc((size_t)c->syms.count + 1, sizeof *lb.func_of);
-    lb.thunk_of = calloc((size_t)c->syms.count + 1, sizeof *lb.thunk_of);
-    uint32_t lowered = 0;
-    while (failed != NULL && lb.func_of != NULL && lb.thunk_of != NULL) {
-        mir_module_free(out);
-        mir_module_init(out);
-        lb_index_bindings(&lb, &out->arena);
-        if (!lb_pass(&lb, module, nrows, failed, &lowered)) {
-            break;
+             .int_ty = ms_check_primitive(c, "Int"),
+             .float_ty = ms_check_primitive(c, "Float"),
+             .bool_ty = ms_check_primitive(c, "Bool"),
+             .string_ty = ms_check_primitive(c, "String"),
+             .void_ty = ms_check_primitive(c, "Void")};
+    lb.views = calloc((size_t)nmodules + 1, sizeof *lb.views);
+    bool ready = lb.views != NULL;
+    for (uint32_t i = 0; ready && i < nmodules; i++) {
+        const MsModuleRow *row = &c->mods[modules[i]];
+        if (row->facts == NULL || row->facts->body_checked == NULL) {
+            continue; // the checker did not record this module's bodies
         }
+        LbView *v = &lb.views[lb.nviews++];
+        *v = (LbView){.module = modules[i], .facts = row->facts};
+        v->failed = calloc((size_t)row->syntax->ndecls + 1, sizeof *v->failed);
+        ready = v->failed != NULL;
     }
-    ms_classifier_free(lb.classifier);
+    uint32_t lowered = 0;
+    if (ready && lb.nviews != 0) {
+        (void)lb_view_enter(&lb, 0);
+        lb.classifier = ms_classifier_new(c);
+        ms_classifier_mark_methods(lb.classifier, lb.facts->methods);
+        const uint32_t nrows = lm_prepare(&lb);
+        bool *method_failed = calloc((size_t)nrows + 1, sizeof *method_failed);
+        lb.func_of = calloc((size_t)c->syms.count + 1, sizeof *lb.func_of);
+        lb.thunk_of = calloc((size_t)c->syms.count + 1, sizeof *lb.thunk_of);
+        while (method_failed != NULL && lb.func_of != NULL && lb.thunk_of != NULL && lb.rows != NULL &&
+               lb.method_func != NULL) {
+            mir_module_free(out);
+            mir_module_init(out);
+            lb_index_bindings(&lb, &out->arena);
+            if (!lb_pass(&lb, nrows, method_failed, &lowered)) {
+                break;
+            }
+        }
+        ms_classifier_free(lb.classifier);
+        free(method_failed);
+    }
+    for (uint32_t v = 0; v < lb.nviews; v++) {
+        free(lb.views[v].failed);
+    }
+    free(lb.views);
     free(lb.func_of);
     free(lb.rows);
     free(lb.method_func);
     free(lb.insts);
     free(lb.dead_insts);
     free(lb.thunk_of);
-    free(failed);
+    return lowered;
+}
+
+uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
+    return lb_lower_modules(c, &module, 1, out);
+}
+
+uint32_t ms_lower_program(MsCheck *c, MirModule *out) {
+    MsModId *modules = calloc((size_t)c->nmods + 1, sizeof *modules); /* owned, freed below */
+    if (modules == NULL) {
+        return 0;
+    }
+    for (uint32_t i = 0; i < c->nmods; i++) {
+        modules[i] = i;
+    }
+    const uint32_t lowered = lb_lower_modules(c, modules, c->nmods, out);
+    free(modules);
     return lowered;
 }

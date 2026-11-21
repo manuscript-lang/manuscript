@@ -7,6 +7,7 @@
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
+#include "ms/infer.h"
 #include "ms/methods.h"
 
 typedef struct MsBody {
@@ -76,6 +77,9 @@ MsTy ms_body_case_name(MsBody *b, const MsExpr *e, MsTy expected);
 void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty);
 /* A call of a generic function of the module (check_generic.c). */
 /* `written` is the explicit type arguments of `f[Int](x)`, or NULL. */
+bool ms_body_mentions_unbound(const MsBody *b, const MsInfer *in, MsTy ty); /* `ty` mentions a variable `in` has not bound */
+bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in); /* one argument of an open signature: checked against its parameter, or binding its variables */
+MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
 MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
 /* A call `receiver.name(args)' (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);

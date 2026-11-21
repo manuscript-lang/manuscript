@@ -3,26 +3,24 @@
 // `libmstool.a`.
 // `add` and `remove` edit the `[dependencies]` and `[effects]` tables of `ms.toml` with
 // manifest_edit.ms, keeping every comment and the layout of the rest of the file.
-// Anything the Rust command words differently (an unusual manifest, a requirement that
-// does not parse) goes to the Rust command, before a file is touched.
+// A dependency that cannot be installed is not left in the manifest.
 import (
+	Matches from "@std/cli/command.ms",
 	working_directory from "@std/os/env.ms",
 	exists, read_file, write_file from "@std/os/fs.ms",
 	dirname, join from "@std/os/path.ms",
-	expect_equal from "@std/test/test.ms",
+	expect_true from "@std/test/test.ms",
 
 	Printed from "./fmt.ms",
 	Pin,
 	add_dependency,
 	allow_effects,
 	default_name,
-	remove_dependency,
-	valid_alias from "./manifest_edit.ms",
-	find, root_workspace from "./workspace.ms",
+	remove_dependency from "./manifest_edit.ms",
+	find, message_of, root_workspace from "./workspace.ms",
 )
 
-// Status 1 of `ms_tool_install` is an error with the Rust text; status 2 is a project
-// the C reader does not cover.
+// Status 1 of the natives below is an error with the Rust text.
 export enum InstallError:
 	Failed(message: String)
 	Unsupported(message: String)
@@ -43,6 +41,9 @@ extern fn ms_tool_install_workspace(
 	locked: Bool,
 	frozen: Bool,
 ) List[String]!InstallError
+
+// The Rust text of why `text` is not a version requirement.
+extern fn ms_tool_requirement(text: String) List[String]!InstallError
 
 // ---------------------------------------------------------------- the commands
 
@@ -90,62 +91,42 @@ fn fetched_rows(rows: List[String]) String:
 type Installed:
 	rows: List[String] = []
 	message: String = ""
-	// The C reader does not cover the project.
-	rust: Bool = false
+
+fn install_error(error: InstallError) String:
+	match error:
+		Failed(message): return message.clone()
+		Unsupported(message): return message.clone()
 
 fn install_manifest(manifest: String, update: List[String]) Installed:
 	// A project of a workspace installs every member into the root's one lock.
 	space := find(manifest.clone())
-	if space.is_error(): return Installed(rust: true)
-
-	var got = ms_tool_install(manifest, update, false, false)
+	if space.is_error(): return Installed(message: message_of(space.err()))
 
 	if workspace := space.get():
 		var rows = List[String]()
 		for member in workspace.members: rows.append(
 			f"{member.name}\t{member.manifest}"
 		)
-		got = ms_tool_install_workspace(
+		got := ms_tool_install_workspace(
 			workspace.root.clone(),
 			rows,
 			update,
 			false,
 			false,
 		)
+		if got.is_error(): return Installed(message: install_error(got.err()))
 
-	if got.is_error():
-		match got.err():
-			Failed(message): return Installed(message: message.clone())
-			Unsupported(message): return Installed(message: message.clone(), rust: true)
+		return Installed(rows: got.get().clone())
+
+	got := ms_tool_install(manifest, update, false, false)
+	if got.is_error(): return Installed(message: install_error(got.err()))
 
 	return Installed(rows: got.get().clone())
 
-// Runs `ms install`; none when the Rust command must.
-export fn run_install(args: List[String]) Printed?:
-	var update = List[String]()
-	var manifest = ""
-	var at = 0
-
-	while at < args.length():
-		arg := args[at].clone()
-
-		if arg == "--update":
-			if at + 1 >= args.length(): return Printed(
-				stderr: "ms install: --update needs a package name such as @pg\n",
-				status: 1,
-			)
-
-			update.append(args[at + 1].clone())
-			at += 1
-		else if arg.starts_with("-"):
-			return Printed(
-				stderr: f"ms install: unknown option {arg}; see ms install --help\n",
-				status: 1,
-			)
-		else:
-			manifest = arg
-
-		at += 1
+// Runs `ms install`.
+export fn run_install(m: Matches) Printed:
+	update := m.list("update")
+	var manifest = m.string_or_none("manifest").get_or("")
 
 	if manifest.is_empty():
 		found := find_project()
@@ -157,61 +138,9 @@ export fn run_install(args: List[String]) Printed?:
 		manifest = found.get()
 
 	done := install_manifest(manifest, update)
-	if done.rust: return none
 	if not done.message.is_empty(): return failure("install", done.message)
 
 	return Printed(stdout: fetched_rows(done.rows))
-
-// Whether `text` is a version requirement the Rust parser accepts: one to three numbers
-// with an optional `^`, `~` or `=`, and an optional `-` suffix of identifiers.
-fn requirement_parses(text: String) Bool:
-	var rest = text.clone()
-	if rest.starts_with("^") or rest.starts_with("~") or rest.starts_with("="): rest = rest.slice(
-		1,
-		rest.length(),
-	)
-
-	var numbers = rest.clone()
-
-	if at := rest.index_of("-"):
-		numbers = rest.slice(0, at)
-
-		suffix := rest.slice(at + 1, rest.length())
-		if suffix.is_empty(): return false
-
-		for id in suffix.split("."):
-			if id.is_empty(): return false
-
-			for c in id.chars():
-				ok := (
-					(c >= "a" and c <= "z")
-					or (c >= "A" and c <= "Z")
-					or (c >= "0" and c <= "9")
-					or c == "-"
-				)
-				if not ok: return false
-
-	parts := numbers.split(".")
-	if parts.is_empty() or parts.length() > 3: return false
-
-	for part in parts:
-		if part.is_empty(): return false
-
-		for c in part.chars():
-			if c < "0" or c > "9": return false
-
-	return true
-
-fn is_commit(text: String) Bool:
-	if text.length() != 40: return false
-
-	for c in text.chars():
-		if not (
-			(c >= "0" and c <= "9")
-			or (c >= "a" and c <= "f")
-			or (c >= "A" and c <= "F")
-		): return false
-	return true
 
 // How the flag `ms add` was given pins the dependency.
 fn pin_of(kind: String, reference: String) Pin:
@@ -220,60 +149,38 @@ fn pin_of(kind: String, reference: String) Pin:
 
 	return Pin.Tag(reference.clone())
 
-fn read_text(path: String) String?:
+// The text of the manifest, or the failure to print.
+fn read_manifest(command: String, path: String) String!Printed:
 	data := read_file(path).wait()
-	if data.is_error(): return none
+	if data.is_error(): return error(failure(command, f"read {path}: {data.err().message}"))
 
-	return data.get().decode_utf8()
+	text := data.get().decode_utf8()
+	if text.is_none(): return error(failure(command, f"read {path}: stream did not contain valid UTF-8"))
+
+	return ok(text.get())
 
 fn quoted_list(effects: List[String]) String:
 	var out = List[String]()
 	for effect in effects: out.append(f"\"{effect}\"")
 	return out.join(", ")
 
-// Runs `ms add`; none when the Rust command must.
-export fn run_add(args: List[String]) Printed?:
-	var url = ""
+// Runs `ms add`.
+export fn run_add(m: Matches) Printed:
+	url := m.string("url")
+	var name = m.string_or_none("as").get_or("")
+	allow := m.bool("allow")
 	var kind = ""
 	var reference = ""
-	var name = ""
-	var allow = false
-	var at = 0
 
-	while at < args.length():
-		arg := args[at].clone()
-		var needs = ""
-		if arg == "--version": needs = "a requirement such as 1.2"
-		if arg == "--tag": needs = "a tag"
-		if arg == "--sha": needs = "a full commit"
-		if arg == "--as": needs = "a package name such as @pg"
-		if not needs.is_empty() and at + 1 >= args.length(): return failure(
-			"add",
-			f"{arg} needs {needs}",
-		)
-
-		if arg == "--version" or arg == "--tag" or arg == "--sha":
+	for choice in ["version", "tag", "sha"]:
+		if value := m.string_or_none(choice):
 			if not kind.is_empty(): return failure(
 				"add",
 				"name exactly one of --version, --tag and --sha",
 			)
 
-			kind = arg.slice(2, arg.length())
-			reference = args[at + 1].clone()
-			at += 1
-		else if arg == "--as":
-			name = args[at + 1].clone()
-			at += 1
-		else if arg == "--allow":
-			allow = true
-		else if arg.starts_with("-"):
-			return failure("add", f"unknown option {arg}; see ms add --help")
-		else if url.is_empty():
-			url = arg
-		else:
-			return failure("add", "one repository URL at a time")
-
-		at += 1
+			kind = choice.clone()
+			reference = value.clone()
 
 	if url.is_empty(): return failure(
 		"add",
@@ -293,11 +200,9 @@ export fn run_add(args: List[String]) Printed?:
 
 		name = made.get()
 
-	// A requirement or a name the Rust command words an error for, and a manifest this
-	// does not edit, are left to it.
-	if kind == "version" and not requirement_parses(reference): return none
-	if kind == "sha" and not is_commit(reference): return none
-	if not valid_alias(name): return none
+	if kind == "version":
+		parsed := ms_tool_requirement(reference)
+		if parsed.is_error(): return failure("add", install_error(parsed.err()))
 
 	manifest := find_project()
 	if manifest.is_none(): return failure(
@@ -309,8 +214,8 @@ export fn run_add(args: List[String]) Printed?:
 		f"{manifest.get()} is a workspace root; run ms add inside a member directory",
 	)
 
-	original := read_text(manifest.get())
-	if original.is_none(): return none
+	original := read_manifest("add", manifest.get())
+	if original.is_error(): return original.err()
 
 	edited := add_dependency(original.get(), name, url, pin_of(kind, reference))
 	if edited.is_error(): return failure("add", edited.err().message)
@@ -328,11 +233,8 @@ export fn run_add(args: List[String]) Printed?:
 
 	done := install_manifest(manifest.get(), [])
 
-	if done.rust or not done.message.is_empty():
-		// A dependency that cannot be installed is not left in the manifest.
+	if not done.message.is_empty():
 		void write_file(manifest.get(), original.get(), replace: true).wait()
-		if done.rust: return none
-
 		return failure("add", done.message)
 
 	var out = fetched_rows(done.rows)
@@ -364,11 +266,9 @@ export fn run_add(args: List[String]) Printed?:
 
 	return Printed(stdout: out)
 
-// Runs `ms remove`; none when the Rust command must.
-export fn run_remove(args: List[String]) Printed?:
-	if args.length() != 1: return failure("remove", "name one package: ms remove @name")
-
-	name := args[0].clone()
+// Runs `ms remove`.
+export fn run_remove(m: Matches) Printed:
+	name := m.string("name")
 	manifest := find_project()
 	if manifest.is_none(): return failure(
 		"remove",
@@ -379,8 +279,8 @@ export fn run_remove(args: List[String]) Printed?:
 		f"{manifest.get()} is a workspace root; run ms remove inside a member directory",
 	)
 
-	original := read_text(manifest.get())
-	if original.is_none(): return none
+	original := read_manifest("remove", manifest.get())
+	if original.is_error(): return original.err()
 
 	edited := remove_dependency(original.get(), name)
 	if edited.is_error(): return failure("remove", edited.err().message)
@@ -393,10 +293,8 @@ export fn run_remove(args: List[String]) Printed?:
 
 	done := install_manifest(manifest.get(), [])
 
-	if done.rust or not done.message.is_empty():
+	if not done.message.is_empty():
 		void write_file(manifest.get(), original.get(), replace: true).wait()
-		if done.rust: return none
-
 		return failure("remove", done.message)
 
 	return Printed(stdout: f"removed {name}\n")
@@ -404,8 +302,8 @@ export fn run_remove(args: List[String]) Printed?:
 // ---------------------------------------------------------------- tests
 
 test "requirements the Rust parser accepts":
-	expect_equal(requirement_parses("1.2"), true)?
-	expect_equal(requirement_parses("~1.2.3"), true)?
-	expect_equal(requirement_parses("=1.2.3-rc.1"), true)?
-	expect_equal(requirement_parses("1.2.3.4"), false)?
-	expect_equal(requirement_parses("x"), false)?
+	expect_true(ms_tool_requirement("1.2").is_ok())?
+	expect_true(ms_tool_requirement("~1.2.3").is_ok())?
+	expect_true(ms_tool_requirement("=1.2.3-rc.1").is_ok())?
+	expect_true(ms_tool_requirement("1.2.3.4").is_error())?
+	expect_true(ms_tool_requirement("x").is_error())?

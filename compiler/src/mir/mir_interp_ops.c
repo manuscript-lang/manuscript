@@ -585,6 +585,11 @@ MirVal ip_default_val(const MirInterp *it, MirTy ty, uint32_t depth) {
     case MK_PTR: return ip_ptr(0);
     case MK_LIST: return ip_aggregate(MV_LIST, 0, NULL);
     case MK_OPT: return ip_aggregate(MV_OPT, 0, NULL);
+    case MK_OBJ:
+        if (mir_name_is(it->module, data->name, "Map")) {
+            return ip_aggregate(MV_MAP, 0, NULL);
+        }
+        break;
     case MK_TYPE: {
         const MirTypeDef *def = &it->module->type_defs[data->id];
         MirBlob *blob = ip_blob_new(def->nfields);
@@ -594,7 +599,7 @@ MirVal ip_default_val(const MirInterp *it, MirTy ty, uint32_t depth) {
         return ip_aggregate(MV_TYPE, 0, blob);
     }
     case MK_VOID: case MK_INT: case MK_INT8: case MK_INT16: case MK_INT32: case MK_UINT8:
-    case MK_UINT16: case MK_UINT32: case MK_UINT64: case MK_BYTES: case MK_ALT: case MK_OBJ:
+    case MK_UINT16: case MK_UINT32: case MK_UINT64: case MK_BYTES: case MK_ALT:
     case MK_FN: case MK_IFACE:
         break;
     }
@@ -1071,7 +1076,9 @@ static IpFlow ip_op_call_runtime(IpCtx *c) {
     const IpHost *host = ip_find_host(it, name);
     MirVal result = ip_void();
     MsStr error = {.ptr = "", .len = 0};
-    if (host == NULL) {
+    if (ip_map_runtime(it, name, args, count, &result, &flow)) {
+        // a map function: the interpreter keeps maps itself
+    } else if (host == NULL) {
         flow = ip_internal(it, "unregistered runtime function %.*s", (int)name.len, name.ptr);
     } else if (!host->fn(host->context, &it->out, args, count, &result, &error)) {
         flow = ip_raise_text(it, MF_UNREACHABLE, error);

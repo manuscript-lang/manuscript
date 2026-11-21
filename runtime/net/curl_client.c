@@ -22,8 +22,7 @@
 
 enum {
     BUFFER_BYTES = 256 * 1024, /* body bytes buffered per transfer before it is paused */
-    DRIVER_STACK = 2 * 1024 * 1024, /* libcurl's TLS handshake and resolver callbacks run here */
-    INIT_STACK = 8 * 1024 * 1024,   /* library initialization (OpenSSL, the macOS trust and proxy frameworks) is deep */
+    DRIVER_STACK = 512 * 1024,
     POLL_MS = 1000,
     DEFAULT_REDIRECTS = 20
 };
@@ -78,6 +77,7 @@ static struct {
     uv_mutex_t lock;
     CURLM *multi;
     MsSysThread *thread;
+    bool global; /* curl_global_init has run: libcurl's allocators are set, so every other call may follow */
     MsCurlTransfer *work;
     MsCurlClient *dead; /* released clients the driver frees: a share's connections belong to the driver's multi */
     bool stop;
@@ -327,13 +327,21 @@ static void driver_main(void *argument) {
     }
 }
 
-/* Initializes libcurl and creates the multi handle on a thread with a large stack: the caller is a task on a
- * 512 KiB stack slot, too small for what OpenSSL and the platform frameworks do while initializing. */
-static void init_main(void *argument) {
-    (void)argument;
-    if (curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK) {
-        driver.multi = curl_multi_init();
+/* Initializes libcurl once. The caller holds the lock. libcurl sets its allocators here, so no other call (not
+ * even curl_share_init) is valid before it: on macOS the unset allocator is a null function pointer. */
+static bool global_ensure(void) {
+    if (!driver.global) {
+        driver.global = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
     }
+    return driver.global;
+}
+
+static bool global_ready(void) {
+    uv_once(&driver_once, driver_init_lock);
+    uv_mutex_lock(&driver.lock);
+    const bool ready = global_ensure();
+    uv_mutex_unlock(&driver.lock);
+    return ready;
 }
 
 /* Starts the driver if it is not running. */
@@ -342,9 +350,8 @@ static bool driver_ensure(void) {
     uv_mutex_lock(&driver.lock);
     if (driver.thread == NULL) {
         driver.stop = false;
-        MsSysThread *const init = ms_sys_thread_spawn(INIT_STACK, init_main, NULL);
-        if (init != NULL) {
-            ms_sys_thread_join(init);
+        if (global_ensure()) {
+            driver.multi = curl_multi_init();
         }
         driver.thread = driver.multi == NULL ? NULL : ms_sys_thread_spawn(DRIVER_STACK, driver_main, NULL);
         if (driver.thread == NULL && driver.multi != NULL) {
@@ -372,6 +379,7 @@ void ms_curl_shutdown(void) {
         curl_multi_cleanup(driver.multi);
         curl_global_cleanup();
         uv_mutex_lock(&driver.lock);
+        driver.global = false;
         driver.thread = NULL;
         driver.multi = NULL;
         uv_mutex_unlock(&driver.lock);
@@ -391,6 +399,9 @@ static uint8_t *copy_bytes(MsBytes bytes) {
 static char *terminated(MsBytes text);
 
 MsCurlClient *ms_curl_client_new(const MsCurlClientOptions *options) {
+    if (!global_ready()) {
+        return NULL;
+    }
     MsCurlClient *client = calloc(1, sizeof *client);
     if (client == NULL) {
         return NULL;

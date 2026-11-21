@@ -16,6 +16,18 @@ rm -rf "$work"
 mkdir -p "$work"
 work=$(realpath "$work")
 failed=0
+# Runs the Rust oracle quietly. Its one known crash (an entity removed from a file the diff adds) is
+# reported by its message and skipped; any other crash fails the script instead of passing as output.
+oracle() {
+	sh -c '"$0" "$@" 2>&1' "$dev" "$@" 2>/dev/null
+}
+crashed=0
+# Fails on a crash of the oracle other than its known one; $1 says what ran.
+note_crash() {
+	[ "$crashed" -ge 128 ] || { crashed=0; return 0; }
+	case "$want" in *"a key comes from base or head"*) ;; *) echo "oracle crashed ($crashed): $1"; failed=1 ;; esac
+	crashed=0
+}
 for file in "$@"; do
 	name=$(basename "$file")
 	ran=0
@@ -39,7 +51,8 @@ for file in "$@"; do
 		ran=$((ran + 1))
 		for options in "" "--no-base" "--added $name" "--touch $name:3 --touch $name:$((lines / 4)) --touch $name:$((lines / 2)) --touch $name:$((lines * 2 / 3)) --touch $name:$lines"; do
 			# shellcheck disable=SC2086
-			want=$(cd "$work/base" && "$dev" review "$name" "../head/$name" $options 2>&1) || true
+			want=$(cd "$work/base" && oracle review "$name" "../head/$name" $options) || crashed=$?
+			note_crash "$file $variant"
 			# shellcheck disable=SC2086
 			got=$("$review" "$work/base.json" "$work/head.json" $options 2>&1) || true
 			# The Rust tool panics on an entity removed from a file the diff adds; the port drops it.
@@ -54,9 +67,10 @@ for file in "$@"; do
 			fi
 			for extra in "--format ascii" "--format markdown" "--format json --all" "--all" "--effect std.*" "--effect std.fs.read --format json"; do
 				# shellcheck disable=SC2086
-				want=$(cd "$work/base" && "$dev" report "$name" "../head/$name" --stats 2 1 7 3 $options $extra 2>&1) || true
+				want=$(cd "$work/base" && oracle report "$name" "../head/$name" --stats 2 1 7 3 $options $extra) || crashed=$?
+				note_crash "$file $variant"
 				# shellcheck disable=SC2086
-				got=$("$report" "$work/base.json" "$work/head.json" --stats 2 1 7 3 $options $extra 2>&1) || true
+				got=$("$report" "$work/base.json" "$work/head.json" --stats=2,1,7,3 $options $extra 2>&1) || true
 				[ "$want" = "$got" ] && continue
 				case "$want" in *"a key comes from base or head"*) continue ;; esac
 				echo "report differs: $file $variant options='$options $extra'"
@@ -69,7 +83,8 @@ for file in "$@"; do
 	done
 	for extra in "--format ascii" "--format markdown" "--format json" "--all"; do
 		# shellcheck disable=SC2086
-		want=$(cd "$work/base" && "$dev" report --project "$name" $extra 2>&1) || true
+		want=$(cd "$work/base" && oracle report --project "$name" $extra) || crashed=$?
+		note_crash "$file project"
 		# shellcheck disable=SC2086
 		got=$("$report" --project "$work/base.json" $extra 2>&1) || true
 		[ "$want" = "$got" ] && continue

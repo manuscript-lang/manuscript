@@ -252,7 +252,10 @@ c-compiler-test:
 	sh compiler/tests/prelude-import-diff.sh
 	sh compiler/tests/public-signature-diff.sh
 	sh compiler/tests/extern-diff.sh
+	sh compiler/tests/interface-diff.sh
+	sh compiler/tests/param-order-diff.sh
 	sh compiler/tests/lower-diff.sh
+	sh compiler/tests/lower-program-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
 	sh compiler/tests/fixes-diff.sh
@@ -299,6 +302,9 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/typed_calls.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/recursion.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/defaults.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/counter.ms --link target/c-tool/libmstool.a
+
 	"$(RELEASE_MS)" test tools/ms/lint/analysis.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/skill_calls.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/fixes.ms --link target/c-tool/libmstool.a
