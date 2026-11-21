@@ -99,6 +99,8 @@ export fn plan_review(
 				)
 			)
 
+			// Workaround for #5235: `plan.base.add(name, reverse_apply(...)?)` fails to
+			// compile.
 			text := reverse_apply("", file.hunks)?
 			plan.base.add(name, text)
 			continue
