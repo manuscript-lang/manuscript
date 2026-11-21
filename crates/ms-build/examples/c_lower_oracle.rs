@@ -22,7 +22,10 @@ fn main() {
         };
         let options = Options { entry };
         match lower_program(syms, &program, &options) {
-            Ok(module) => print!("{}", ms_mir::print::print_module(&module)),
+            Ok(module) => match ms_build::c_backend::emitted_mir(&module, false) {
+                Ok(text) => print!("{text}"),
+                Err(e) => println!("error {e}"),
+            },
             Err(e) => println!("error {e}"),
         }
     }

@@ -30,6 +30,8 @@ struct Backend {
     tables: bool,
     count_ops: bool,
     poison_slots: bool,
+    cancel_edges: bool,
+    copy_probe: u8,
 }
 
 /// `MsLinkOptions`.
@@ -66,6 +68,7 @@ unsafe extern "C" {
         mir: *const c_char,
         mir_len: usize,
         name: *const c_char,
+        optimize: bool,
         out: *mut Text,
         why: *mut Text,
     ) -> bool;
@@ -107,8 +110,9 @@ fn reason(why: Text) -> String {
     String::from_utf8_lossy(&why.take()).trim_end().to_string()
 }
 
-/// The MIR of `module` after the optimizer at its speed level, as text (`MS_EMIT_OPT=1 ms emit`).
-pub fn optimized_mir(module: &Module) -> Result<String, String> {
+/// The MIR of `module` after elaboration, and after the optimizer at its speed level when `optimize`,
+/// as text (`ms emit`, `MS_EMIT_OPT=1 ms emit`).
+pub fn emitted_mir(module: &Module, optimize: bool) -> Result<String, String> {
     let mir = ms_mir::print::print_module_unique(module);
     let (mut out, mut why) = (Text::empty(), Text::empty());
     // SAFETY: the text is passed with its length, the name is NUL-terminated, and the outputs are
@@ -118,6 +122,7 @@ pub fn optimized_mir(module: &Module) -> Result<String, String> {
             mir.as_ptr().cast(),
             mir.len(),
             c"program.mir".as_ptr(),
+            optimize,
             &raw mut out,
             &raw mut why,
         )
@@ -150,6 +155,12 @@ pub fn compile(
             tables: true,
             count_ops: build.count_ops,
             poison_slots: build.poison_slots,
+            cancel_edges: std::env::var_os("MS_CANCEL_EDGES").is_some(),
+            copy_probe: match build.copy_probe {
+                crate::CopyProbe::Off => 0,
+                crate::CopyProbe::Report => 1,
+                crate::CopyProbe::Strict => 2,
+            },
         },
         tools: tools.as_ptr(),
         vectorize: build.vectorize,

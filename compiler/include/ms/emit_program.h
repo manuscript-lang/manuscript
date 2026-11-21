@@ -31,6 +31,8 @@ typedef struct MsBackendOptions {
     bool tables; /* write source places into the IR and fill `meta`, for ms_backend_tables */
     bool count_ops; /* count executed MIR operations (`ms bench --ops`) */
     bool poison_slots; /* fill dead one-block stack slots with a pattern (`MS_POISON_SLOTS`) */
+    bool cancel_edges; /* explicit cancel exits in task programs (`MS_CANCEL_EDGES`) */
+    uint8_t copy_probe; /* 1 prints each implicit copy of an object value, 2 refuses the program (`MS_COPY_PROBE`) */
 } MsBackendOptions;
 
 /* Optimizes and finishes the module `mir` describes and writes it as LLVM IR. `name` is what a parse
@@ -42,9 +44,10 @@ MS_NODISCARD MS_NONNULL bool ms_backend_ir(const char *mir, size_t mir_len, cons
                                            const MsBackendOptions *options, MsBackendText *ir,
                                            MsBackendText *meta, MsBackendText *why);
 
-/* The module `mir` describes after the optimizer at its speed level (before the finishing passes and the
- * emitter), as MIR text: what `MS_EMIT_OPT=1 ms emit` prints. */
-MS_NODISCARD MS_NONNULL bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name,
+/* The module `mir` describes after elaboration and, when `optimize`, the optimizer at its speed level (before
+ * the finishing passes and the emitter), as MIR text: what `ms emit` (`MS_EMIT_OPT=1` for the optimized form)
+ * prints. */
+MS_NODISCARD MS_NONNULL bool ms_backend_optimized(const char *mir, size_t mir_len, const char *name, bool optimize,
                                                   MsBackendText *out, MsBackendText *why);
 
 /* Adds the fault tables to `asm_text`, the assembly of the IR that came with `meta`. `prefix` is what

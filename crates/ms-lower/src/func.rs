@@ -623,12 +623,8 @@ fn drain(syms: ms_check::api::Names, cx: &mut Cx, m: &mut Module) -> Result<(), 
             Some(i) => cx.queue.remove(i),
             None => match cx.queue.pop() {
                 Some(j) => j,
-                // Every function is lowered: place the Raw functions' scope-exit drops.
-                None => {
-                    ms_mir::elaborate::run_with(m, ms_mir::cancel_edges::enabled())
-                        .map_err(Error::new)?;
-                    return Ok(());
-                }
+                // Every function is lowered; the C pipeline places the scope-exit drops.
+                None => return Ok(()),
             },
         };
         lower_job(syms, cx, m, next)?;

@@ -8,7 +8,7 @@ Measured 2026-11-12: speculating (vector overflow flag per chunk, scalar replay)
 
 Apply when: adding overflow-check elimination, bounds narrowing, or constant folding.
 Evidence: [overflow faults](../../tests/conformance/fixtures/e2e/accept/numeric-faults.ms), [bounded arithmetic](../../tests/conformance/fixtures/e2e/accept/bounded-int-arithmetic.ms), [counter step](../../tests/conformance/fixtures/e2e/accept/counter-steps-keep-overflow-faults.ms), [int identities](../../tests/conformance/fixtures/e2e/accept/int-identities.ms).
-Evidence: [interpreter](../../crates/ms-mir/src/interp.rs), [native lowering](../../crates/ms-clif/src/lower.rs), [simplifier boundary regressions](../../crates/ms-mir/tests/opt_simplify.rs).
+Evidence: [interpreter](../../compiler/src/mir/mir_interp.c), [native lowering](../../crates/ms-clif/src/lower.rs).
 Evidence: [simplifier and checked-CSE regressions](../../crates/ms-mir/tests/opt_simplify.rs), [dominator-scoped value numbering](../../crates/ms-mir/src/opt/simplify.rs).
 Evidence: [range analysis](../../crates/ms-mir/src/opt/range.rs), [saved-length regressions](../../crates/ms-mir/tests/opt_range.rs).
 Evidence: [integer conversion regression](../../tests/conformance/fixtures/e2e/accept/int-float32-rounding.ms), [MIR conversion fixture](../../crates/ms-mir/tests/fixtures/int_to_float32.mir).
