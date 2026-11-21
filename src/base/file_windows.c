@@ -108,6 +108,19 @@ void ms_path_remove(MsSpan path) {
   ms_os_wide_free(&wide);
 }
 
+bool ms_dir_current(MsString *path) {
+  WCHAR wide[MAX_PATH_UNITS];
+  DWORD units = GetCurrentDirectoryW(MAX_PATH_UNITS, wide);
+  char utf8[MAX_PATH_UNITS * 3];
+  if (units == 0 || units >= MAX_PATH_UNITS ||
+      WideCharToMultiByte(CP_UTF8, 0, wide, -1, utf8, sizeof utf8, NULL, NULL) <= 0) {
+    return false;
+  }
+  ms_string_release(path);
+  *path = ms_string_from_span(ms_span_of_text(utf8));
+  return true;
+}
+
 static void remove_found(MsSpan parent, const WIN32_FIND_DATAW *found) {
   char name[1024];
   if (WideCharToMultiByte(CP_UTF8, 0, found->cFileName, -1, name, sizeof name, NULL, NULL) <= 0) {
