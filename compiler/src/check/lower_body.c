@@ -58,7 +58,11 @@ static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
         return record;
     }
     const MirTy user_enum = le_type(lb, ty);
-    return user_enum != MIR_NONE ? user_enum : la_type(lb, ty);
+    if (user_enum != MIR_NONE) {
+        return user_enum;
+    }
+    const MirTy iface = li_type(lb, ty);
+    return iface != MIR_NONE ? iface : la_type(lb, ty);
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
@@ -582,6 +586,10 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     }
     if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
         return la_case(lb, e);
+    }
+    const MsTy dispatch = lb->facts->call_interface[e->id];
+    if (dispatch != MS_TY_NONE && ms_ty_kind(&lb->c->tys, lb->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
+        return li_call(lb, e);
     }
     if (callee == MS_NONE) {
         return lb_call_value(lb, e);
