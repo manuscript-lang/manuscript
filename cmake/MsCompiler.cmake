@@ -115,6 +115,7 @@ foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
 ms_compiler_exe(std_embed_test "${_c}/tests/std_embed_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
+ms_compiler_exe(package_check_test "${_c}/tests/package_check_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
 ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" WITH_LIBMS TEST)
 # The embedded standard library: std_embed_gen writes std_embed_data.inc from stdlib/, std_embed.c includes it. Only
 # the executables that load the library link ms_std_embed.
