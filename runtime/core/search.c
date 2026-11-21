@@ -106,7 +106,9 @@ static size_t two_way_from(const uint8_t *hay, size_t n, const uint8_t *nd, size
     return found == SIZE_MAX ? SIZE_MAX : found + from;
 }
 
-typedef uint8_t MsByteVector __attribute__((vector_size(16), aligned(1), may_alias));
+typedef uint8_t MsByteVector __attribute__((vector_size(16)));
+/* Loads through unaligned addresses, kept apart from the value type. */
+typedef uint8_t MsByteVectorLoad __attribute__((vector_size(16), aligned(1), may_alias));
 
 /* Two bytes of the needle, tested together at every start of a 16-byte window: the rare byte and the last one
  * (the first when the rare one is the last). A start where both match is a candidate. */
@@ -119,28 +121,32 @@ typedef struct PairProbe {
     MsByteVector last_byte;
 } PairProbe;
 
-static PairProbe pair_probe_new(const uint8_t *needle, size_t length, size_t rare_index) {
+static void pair_probe_init(PairProbe *probe, const uint8_t *needle, size_t length, size_t rare_index) {
     const MsByteVector zero = {0};
     const size_t other = rare_index == length - 1 ? 0 : length - 1;
-    return (PairProbe){.rare_offset = rare_index,
-                       .last_offset = other,
-                       .rare_value = needle[rare_index],
-                       .last_value = needle[other],
-                       .rare_byte = zero + needle[rare_index],
-                       .last_byte = zero + needle[other]};
+    probe->rare_offset = rare_index;
+    probe->last_offset = other;
+    probe->rare_value = needle[rare_index];
+    probe->last_value = needle[other];
+    probe->rare_byte = zero + needle[rare_index];
+    probe->last_byte = zero + needle[other];
 }
 
-/* 0xff in lane k when the needle's two bytes sit at start + k; reads 16 bytes at each offset. */
-static inline MsByteVector probe_window(const uint8_t *hay, size_t start, const PairProbe *probe) {
-    const MsByteVector rare = *(const MsByteVector *)(hay + start + probe->rare_offset);
-    const MsByteVector last = *(const MsByteVector *)(hay + start + probe->last_offset);
-    return (rare == probe->rare_byte) & (last == probe->last_byte);
+/* 0xff in lane k when the needle's two bytes sit at start + k; reads 16 bytes at each offset. The lanes leave as two
+ * 64-bit halves: GCC on aarch64 crashes on a function that takes or returns a vector. */
+static inline void probe_window(const uint8_t *hay, size_t start, const PairProbe *probe, uint64_t halves[2]) {
+    const MsByteVector rare = *(const MsByteVectorLoad *)(hay + start + probe->rare_offset);
+    const MsByteVector last = *(const MsByteVectorLoad *)(hay + start + probe->last_offset);
+    const MsByteVector lanes = (rare == probe->rare_byte) & (last == probe->last_byte);
+    __builtin_memcpy(halves, &lanes, 16);
 }
 
-static inline bool any_lane_set(MsByteVector lanes) {
-    uint64_t halves[2];
-    __builtin_memcpy(halves, &lanes, sizeof halves);
-    return (halves[0] | halves[1]) != 0;
+/* Whether any of the thirty-two starts from `start` is a candidate. */
+static inline bool any_candidate(const uint8_t *hay, size_t start, const PairProbe *probe) {
+    uint64_t first[2], second[2];
+    probe_window(hay, start, probe, first);
+    probe_window(hay, start + 16, probe, second);
+    return ((first[0] | first[1]) | (second[0] | second[1])) != 0;
 }
 
 /* The candidate mask of fewer than sixteen starts, one scalar test each: bit 7 of byte k of half k / 8. */
@@ -159,12 +165,13 @@ static void probe_tail(const uint8_t *hay, size_t start, size_t starts, const Pa
  * than a few units per byte the rest is the linear Two-Way search. */
 static size_t find_long(const uint8_t *hay, size_t n, const uint8_t *nd, size_t m, size_t r) {
     const uint64_t high = UINT64_C(0x8080808080808080);
-    const PairProbe probe = pair_probe_new(nd, m, r);
+    PairProbe probe;
+    pair_probe_init(&probe, nd, m, r);
     const size_t last_start = n - m;
     size_t start = 0, work = 0;
     while (start <= last_start) {
         while (start <= last_start && last_start - start >= 31 &&
-               !any_lane_set(probe_window(hay, start, &probe) | probe_window(hay, start + 16, &probe))) {
+               !any_candidate(hay, start, &probe)) {
             start += 32;
         }
         if (start > last_start) {
@@ -173,8 +180,7 @@ static size_t find_long(const uint8_t *hay, size_t n, const uint8_t *nd, size_t 
         uint64_t halves[2] = {0, 0};
         size_t starts = last_start - start + 1;
         if (starts >= 16) {
-            const MsByteVector window = probe_window(hay, start, &probe);
-            __builtin_memcpy(halves, &window, sizeof halves);
+            probe_window(hay, start, &probe, halves);
             starts = 16;
         } else {
             probe_tail(hay, start, starts, &probe, halves);
