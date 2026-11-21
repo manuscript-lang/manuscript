@@ -56,7 +56,9 @@ fn normalize(text: String, dir: String) String:
 fn tree_of(root: String, dir: String) Map[String, String]:
 	var files = Map[String, String]()
 
-	for found in glob(root, GlobOptions(patterns: ["**/*"])).get_or([]):
+	for found in glob(root, GlobOptions(patterns: ["**/*", "**/.*", "**/.*/**"])).get_or(
+		[]
+	):
 		path := f"{root}/{found.path}"
 		if found.entry.directory: continue
 
@@ -132,7 +134,9 @@ fn difference(case_dir: String, outcome: Outcome) String:
 	tree := f"{case_dir}/expected/tree"
 	var recorded = 0
 
-	for found in glob(tree, GlobOptions(patterns: ["**/*"])).get_or([]):
+	for found in glob(tree, GlobOptions(patterns: ["**/*", "**/.*", "**/.*/**"])).get_or(
+		[]
+	):
 		if found.entry.directory: continue
 
 		recorded += 1
