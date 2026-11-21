@@ -1,0 +1,10 @@
+# One implementation per OS family (plan 6.4); the posix files branch on __APPLE__ for macOS constants.
+if(WIN32)
+  set(MS_SYS_OS windows)
+else()
+  set(MS_SYS_OS posix)
+endif()
+file(GLOB MS_SYS_SOURCES CONFIGURE_DEPENDS "${MS_SYS_OS}/*.c")
+add_library(ms_sys STATIC ${MS_SYS_SOURCES})
+ms_target_defaults(ms_sys)
+target_link_libraries(ms_sys PUBLIC ms_abi)
