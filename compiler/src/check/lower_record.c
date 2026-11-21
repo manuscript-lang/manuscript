@@ -78,6 +78,9 @@ LbVal lr_construct(Lb *lb, const MsExpr *call) {
     if (lb_is_list(lb, ty) && call->u.call.args.len == 0) {
         return lst_empty(lb, ty); // `List[T]()`
     }
+    if (lbd_is_builder(lb, built) && call->u.call.args.len == 0) {
+        return lbd_new(lb); // `StringBuilder()`
+    }
     if (ty == MIR_NONE || mir_ty_data(lb->m, ty)->kind != MK_TYPE || sym == MS_NONE) {
         return LB_UNSUPPORTED(lb);
     }

@@ -307,6 +307,12 @@ bool lst_read_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 LbVal lst_get(Lb *lb, const MsExpr *left, const MsExpr *at);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
+/* The local `var` a by-reference receiver names, else MS_NONE. */
+uint32_t lb_var_receiver(Lb *lb, const MsExpr *receiver);
+/* StringBuilder and BytesBuilder (lower_builder.c). */
+bool lbd_is_builder(Lb *lb, MsTy ty);
+LbVal lbd_new(Lb *lb);
+bool lbd_method(Lb *lb, const MsExpr *e, LbVal *out);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
 /* lower_extern.c: a call of a bodiless `extern fn`, by its own symbol in the ms-sig table. */
 MirTy lx_type(Lb *lb, MsTy ty);

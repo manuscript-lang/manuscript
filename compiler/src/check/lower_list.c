@@ -11,7 +11,8 @@ MirTy lst_type(Lb *lb, MsTy ty) {
         return MIR_NONE;
     }
     const MirTy element = lb_mir_ty(lb, ms_ty_args(tys, ty)[0]);
-    if (element != MIR_INT && element != MIR_FLOAT && element != MIR_BOOL && element != MIR_STR && !lb_is_list(lb, element)) {
+    const bool sized = element >= MIR_INT8 && element <= MIR_UINT64; // `List[UInt8]` and the other sized numbers
+    if (element != MIR_INT && element != MIR_FLOAT && element != MIR_BOOL && element != MIR_STR && !sized && !lb_is_list(lb, element)) {
         return MIR_NONE;
     }
     return mir_ty_list(lb->m, element);

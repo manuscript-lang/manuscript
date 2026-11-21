@@ -88,8 +88,8 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
             return lb_sized_numbers[i].mir;
         }
     }
-    if (ms_ty_is(&lb->c->tys, ty, MS_BI_BYTES)) {
-        return MIR_BYTES;
+    if (ms_ty_is(&lb->c->tys, ty, MS_BI_BYTES) || lbd_is_builder(lb, ty)) {
+        return MIR_BYTES; // a builder is the buffer it appends to
     }
     if (ms_ty_kind(&lb->c->tys, ty) == MS_K_FUNCTION) {
         return lb_fn_ty(lb, ty);
