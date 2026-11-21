@@ -209,8 +209,8 @@ int64_t lb_number_bits(Lb *lb, const MsExpr *e, MirTy ty, bool negate) {
         memcpy(&bits, &signed_value, sizeof signed_value);
         return bits;
     }
-    const int64_t value = (int64_t)strtoull(digits, NULL, 10);
-    return negate ? -value : value;
+    const uint64_t magnitude = strtoull(digits, NULL, 10);
+    return (int64_t)(negate ? 0 - magnitude : magnitude); // -9223372036854775808 negates to itself
 }
 
 static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
