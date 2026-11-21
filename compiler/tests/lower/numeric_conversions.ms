@@ -31,5 +31,11 @@ fn main() Int:
 	f: Float32 := 1.5
 	a := widen_byte(byte) + widen_short(small) + use(small, byte)
 	if narrow_wide(wide).is_none() and narrow_int(narrow).is_some():
-		return a + int_as_float(4).to_string().length() + small_as_float(tiny).to_string().length() + float32_widen(f).to_string().length()
+		return (
+			a
+			+ int_as_float(4).to_string().length()
+			+ small_as_float(tiny).to_string().length()
+			+ float32_widen(f).to_string().length()
+		)
+
 	return a
