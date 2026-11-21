@@ -42,6 +42,8 @@ void opt_id_push(MsArena *a, OptIdList *l, uint32_t x);
 
 /* Makes `src[0..n]` the instructions of `b`. */
 void opt_block_set_insts(MirBlockData *b, const MirInst *src, uint32_t n);
+/* Makes `src[0..n]` the parameters of `b`. */
+void opt_block_set_params(MirBlockData *b, const MirBlockParam *src, uint32_t n);
 /* Appends `src[0..n]` to the instructions of `b`. */
 void opt_block_append(MirBlockData *b, const MirInst *src, uint32_t n);
 

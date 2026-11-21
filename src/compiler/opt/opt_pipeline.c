@@ -29,16 +29,56 @@ static bool checked(const MirModule *m, bool verify, const char *pass, MsStrBuil
   return ok;
 }
 
-/* What an unoptimised build needs. */
+/* Instructions in one function above which an unoptimised build treats it as long: owned values drop at their
+ * last use and the Cranelift backend allocates registers in a single pass. */
+#define OPT_LONG_FUNCTION_INSTS 4000u
+/* The same limit in a program that starts tasks. The unwind pass registers a cleanup for every owned value live
+ * at each place that can fault or park, so values that live to scope end make a function's code and frame grow
+ * with the square of its length; a frame past a task's stack slot overflows it. Dropping at the last use keeps
+ * the live set, and so the growth, small. */
+#define OPT_TASK_LONG_FUNCTION_INSTS 300u
+
+static bool reads_alt_payload(const MirFunc *f) {
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
+      if (f->blocks.ptr[b].insts.ptr[i].op == MOP_AltGet) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/* Owned values otherwise live to scope end, and register allocation grows with the number that are live at once,
+ * so only a long function pays for the earlier drops. A function that reads alternative payloads also drops
+ * early, so that the payloads it copies out of a dying value can be moved (`copytakes`). */
+static void lastuse_long(MirModule *m) {
+  const uint32_t long_function = mir_starts_tasks(m) ? OPT_TASK_LONG_FUNCTION_INSTS : OPT_LONG_FUNCTION_INSTS;
+  for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
+    const MirFunc *f = &m->funcs.ptr[fi];
+    if (mir_inst_count(f) > long_function || reads_alt_payload(f)) {
+      (void)opt_lastuse_func(m, &m->funcs.ptr[fi]);
+    }
+  }
+}
+
+/* What an unoptimised build needs. A copy whose source dies right after it is a move; keeping the copies makes
+ * rebuilding a value from itself, or unwrapping a nested `try` result, quadratic in the depth. */
 static void unoptimised(MirModule *m) {
+  (void)opt_inline_small(m);
   (void)opt_simplify_phis(m);
   (void)opt_strfuse(m);
+  (void)opt_copyelim(m);
+  lastuse_long(m);
   (void)opt_bytetake(m);
+  (void)opt_copyelim_takes(m);
 }
 
 /* One round of the passes that read the module but rewrite only their own function. */
 static bool function_round(MirModule *m, MirFunc *f) {
-  return opt_simplify_func(m, f);
+  bool changed = opt_simplify_func(m, f);
+  changed |= opt_copyelim_func(m, f);
+  return changed;
 }
 
 /* Runs each function's rounds (at most three, stopping at the first that changes nothing) on a copy and stores
@@ -75,12 +115,13 @@ typedef struct Step {
 } Step;
 
 static const Step early_steps[] = {
-    {"simplify", opt_simplify},
-    {"strfuse", opt_strfuse},
+    {"simplify", opt_simplify}, {"copyelim", opt_copyelim}, {"inline", opt_inline}, {"strfuse", opt_strfuse},
 };
 
 static const Step late_steps[] = {
+    {"lastuse", opt_lastuse},
     {"bytetake", opt_bytetake},
+    {"copyelim takes", opt_copyelim_takes},
     {"simplify", opt_simplify},
 };
 
