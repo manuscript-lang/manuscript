@@ -391,6 +391,7 @@ LbVal la_none_owned(Lb *lb, const MsExpr *e);
 LbVal la_case(Lb *lb, const MsExpr *call);
 MirValue la_test(Lb *lb, MirValue subject);
 MirValue la_payload(Lb *lb, MirValue subject, bool borrowed);
+MirValue la_take_ok(Lb *lb, MirValue subject); /* an owned Result's Ok value, moved out of it */
 LbVal la_try(Lb *lb, const MsExpr *e);
 
 #endif
