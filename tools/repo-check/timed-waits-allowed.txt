@@ -6,6 +6,7 @@
 crates/ms-cli/src/engine/run.rs 2 follow-up: tooling drains child output with a 100 ms timeout
 crates/ms-cli/src/engine/testing.rs 4 follow-up: tooling drains child output and polls
 crates/ms-cli/src/process.rs 1 the supervised wait takes its deadline (the run timeout, the records tick) from its one event channel
+crates/ms-cli/tests/doc_examples.rs 1 test: polls the spawned ms against a deadline, so a hung example fails instead of holding the runner
 crates/ms-cli/tests/blocking_reads.rs 2 test: lets time pass so a read stays blocked
 crates/ms-cli/tests/extern_link.rs 1 test: time for a child to start
 crates/ms-cli/tests/fifo_cancel.rs 1 test: lets time pass so a read stays blocked
