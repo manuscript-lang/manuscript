@@ -22,7 +22,8 @@
 
 enum {
     BUFFER_BYTES = 256 * 1024, /* body bytes buffered per transfer before it is paused */
-    DRIVER_STACK = 512 * 1024,
+    DRIVER_STACK = 2 * 1024 * 1024, /* libcurl's TLS handshake and resolver callbacks run here */
+    INIT_STACK = 8 * 1024 * 1024,   /* library initialization (OpenSSL, the macOS trust and proxy frameworks) is deep */
     POLL_MS = 1000,
     DEFAULT_REDIRECTS = 20
 };
@@ -326,14 +327,24 @@ static void driver_main(void *argument) {
     }
 }
 
+/* Initializes libcurl and creates the multi handle on a thread with a large stack: the caller is a task on a
+ * 512 KiB stack slot, too small for what OpenSSL and the platform frameworks do while initializing. */
+static void init_main(void *argument) {
+    (void)argument;
+    if (curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK) {
+        driver.multi = curl_multi_init();
+    }
+}
+
 /* Starts the driver if it is not running. */
 static bool driver_ensure(void) {
     uv_once(&driver_once, driver_init_lock);
     uv_mutex_lock(&driver.lock);
     if (driver.thread == NULL) {
         driver.stop = false;
-        if (curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK) {
-            driver.multi = curl_multi_init();
+        MsSysThread *const init = ms_sys_thread_spawn(INIT_STACK, init_main, NULL);
+        if (init != NULL) {
+            ms_sys_thread_join(init);
         }
         driver.thread = driver.multi == NULL ? NULL : ms_sys_thread_spawn(DRIVER_STACK, driver_main, NULL);
         if (driver.thread == NULL && driver.multi != NULL) {
