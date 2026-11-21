@@ -71,3 +71,8 @@ add_library(ms_std_bignum STATIC
 ms_target_defaults(ms_std_bignum)
 add_dependencies(ms_std_bignum openssl_build)
 target_link_libraries(ms_std_bignum PUBLIC ms_base ms_values openssl_crypto m)
+
+# @std/os/system: host names, users, CPUs, memory, priorities and network interfaces, one libuv call each (no event loop).
+add_library(ms_std_system STATIC system.c)
+ms_target_defaults(ms_std_system)
+target_link_libraries(ms_std_system PUBLIC ms_base ms_values uv)

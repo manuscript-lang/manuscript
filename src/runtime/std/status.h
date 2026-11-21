@@ -7,6 +7,8 @@
 #include "abi/status.h"
 
 enum {
+  MS_STATUS_NOT_FOUND = 5,              /* a name, path or process that does not exist */
+  MS_STATUS_PERMISSION_DENIED = 8,      /* the host refused the operation */
   MS_STATUS_UNSUPPORTED = 9,            /* a format, algorithm or key size the native does not know */
   MS_STATUS_AUTHENTICATION_FAILED = 18, /* a tag or signature that does not verify */
 };
