@@ -86,6 +86,9 @@ void emit_copy_leaf(EmitCx *cx, MirValue dst, uint32_t out_index, MirValue src, 
 void emit_zero_leaf(EmitCx *cx, MirValue dst, uint32_t index, MirLeaf leaf);
 /* Formats `%name<number>` into `out`. */
 void emit_register_name(char *out, size_t capacity, const char *prefix, uint32_t number);
+/* `%<prefix><number><suffix><second>`: `%w3_5`, `%u4b`, `%v7.1` (suffix NULL and second MIR_NONE for none). */
+void emit_text_name(char *out, size_t capacity, const char *prefix, uint32_t number, const char *suffix,
+                    uint32_t second);
 bool emit_memory_inst(EmitCx *cx, const MirInst *inst, bool *handled);
 
 /* ---- operations by family; each sets `*handled` and returns false only when `cx->why` is set ---- */
