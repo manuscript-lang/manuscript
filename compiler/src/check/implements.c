@@ -257,7 +257,8 @@ static MsFit fit_data(FitWalk *w, MsTy ty, MsProperty property) {
     const MsDecl *decl = sym < w->c->syms.count ? w->c->syms.decl[sym] : NULL;
     const bool declared = decl != NULL && (decl->kind == MS_D_TYPE || decl->kind == MS_D_ENUM);
     const bool opaque = declared && (decl->kind == MS_D_TYPE ? decl->u.type.opaque : decl->u.enumeration.opaque);
-    if (!declared || opaque || fit_has_deciding_row(w, ty, property)) {
+    // Opaque hides a type's fields from other modules, which only keeps it out of Data; a clone copies them.
+    if (!declared || (opaque && property != MS_PROP_CLONABLE) || fit_has_deciding_row(w, ty, property)) {
         return MS_FIT_UNKNOWN;
     }
     const MsDef def = *ms_def(w->c, sym); // by value: a later ms_def may move the rows

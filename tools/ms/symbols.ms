@@ -285,7 +285,15 @@ fn param_kind(at: Int, p: String) String:
 	if ty == "*mut VecVal" and at == 0: return "MS_RT_LIST_VAR"
 	if ty == "*const StrVal": return "MS_RT_STR"
 	if ty == "*mut StrVal" and pname == "out": return "MS_RT_OUT_STR"
-	if (ty == "*mut i64" or ty == "*mut f64" or ty == "*mut u8") and pname == "out": return "MS_RT_OUT_SCALAR"
+	if (
+		(
+			ty == "*mut i64"
+			or ty == "*mut f64"
+			or ty == "*mut u8"
+			or ty == "*mut u64"
+		)
+		and pname == "out"
+	): return "MS_RT_OUT_SCALAR"
 	if ty == "ElemDesc": return "MS_RT_DESC"
 	if ty == "*const MapVal": return "MS_RT_MAP"
 	if ty == "KeyDesc": return "MS_RT_KEY_DESC"
@@ -381,11 +389,12 @@ fn rt_ops_text(symbols: String) String:
 		leaf := rest.contains(" @leaf")
 		pure := rest.contains(" @pure")
 		fresh := rest.contains(" @fresh")
+		borrows := rest.contains(" @borrows")
 		has_imm := imm.is_some()
 		imm_value := imm.get_or(0)
 		domain := flag_value(rest, "domain=").get_or("")
 		out = out.concat(
-			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {has_imm}, \"{domain}\"\},\n"
+			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {borrows}, {has_imm}, \"{domain}\"\},\n"
 		)
 
 	return out.concat("};\n")

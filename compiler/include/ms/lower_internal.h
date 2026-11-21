@@ -60,7 +60,9 @@ typedef struct LbJob {
 /* A function or method being lowered: its syntax, the node its facts hang on, its signature, and
  * the receiver a method takes as parameter 0. */
 typedef struct LbCallable {
-    const MsFunc *fn;
+    const MsFunc *fn;     /* NULL for a module constant */
+    MsExpr *value;       /* a module constant's initializer: the function of no parameters returns it */
+    MsSym const_name;
     uint32_t node;  /* the declaration (or method) node: `param_consumed`, `ret_borrowed` */
     MsPos pos;
     MsSym name;     /* the MIR name, with the receiver's for a method */
@@ -190,6 +192,8 @@ typedef struct Lb {
     const MsStmt *fail_stmt; /* the statement being lowered then, or NULL */
     bool first_pass;      /* the report lists the functions the checker did not record once, in the first pass */
     bool dead;            /* control cannot reach the current position */
+    const MsExpr *iterable; /* the `for` iterable being lowered: a native call there yields a list the loop owns, never a view */
+    bool twin_ok;         /* the native call being marshalled is that iterable, so its base function (not a borrowing twin) is right */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
 
