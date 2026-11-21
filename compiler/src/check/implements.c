@@ -326,14 +326,25 @@ static bool fit_method(const MsMethods *m, MsTy receiver, MsSym name, uint32_t *
  * UNKNOWN, since the C tables do not compare labels and `var`-ness the way the Rust checker does. */
 static MsFit fit_shape(MsCheck *c, const MsMethodTable *table, MsTy receiver, MsTy contract) {
     const MsTyTable *t = &c->tys;
-    if (t->def[contract] == 0 || t->nargs[contract] != 0) {
+    // The interface's own variables take the arguments of this instance (`Source[String]`), and `Self` the receiver.
+    enum { MAX_VARS = 8 };
+    uint32_t nvars = 0;
+    const MsTy *own = t->def[contract] == 0 ? NULL : ms_sym_vars(c, t->def[contract] - 1, &nvars);
+    const uint32_t nargs = t->nargs[contract];
+    if (t->def[contract] == 0 || (nargs != 0 && (own == NULL || nvars < nargs)) || nargs >= MAX_VARS) {
         return MS_FIT_UNKNOWN;
     }
     const MsOperations *ops = ms_interface_operations(table, t->def[contract] - 1);
     if (ops == NULL) {
         return MS_FIT_UNKNOWN;
     }
-    const MsTy self = ms_self_variable(c, contract);
+    MsTy vars[MAX_VARS], args[MAX_VARS];
+    for (uint32_t i = 0; i < nargs; i++) {
+        vars[i] = own[i];
+        args[i] = ms_ty_args(t, contract)[i];
+    }
+    vars[nargs] = ms_self_variable(c, contract);
+    args[nargs] = receiver;
     MsFit answer = MS_FIT_YES;
     for (uint32_t i = 0; i < ops->count; i++) {
         uint32_t row;
@@ -344,7 +355,7 @@ static MsFit fit_shape(MsCheck *c, const MsMethodTable *table, MsTy receiver, Ms
             return MS_FIT_NO;
         }
         MsArena scratch = {0};
-        const MsTySubst subst = {.vars = &self, .args = &receiver, .count = 1};
+        const MsTySubst subst = {.vars = vars, .args = args, .count = nargs + 1};
         const MsTy wanted = ms_ty_subst(&c->tys, &scratch, ops->items[i].ty, &subst);
         ms_arena_free(&scratch);
         answer = wanted == table->methods.ty[row] ? answer : MS_FIT_UNKNOWN;
