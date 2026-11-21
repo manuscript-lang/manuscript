@@ -535,7 +535,6 @@ MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
     return lb_copy(lb, value.v);
 }
 
-static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t nargs);
 
 /* The module function a call reaches: the callee's own, or for a generic callee its copy for the
  * type arguments the checker inferred at this call, seen through the instance being lowered. */
