@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MSL102",
+      "severity": "warning",
+      "message": "Import read_file is never used",
+      "position": {
+        "file": "main.ms",
+        "line": 1,
+        "column": 8,
+        "offset": 7
+      },
+      "fix": {
+        "position": {
+          "file": "main.ms",
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "file": "main.ms",
+          "line": 2,
+          "column": 1,
+          "offset": 38
+        },
+        "replacement": ""
+      }
+    },
+    {
+      "code": "MSL001",
+      "severity": "warning",
+      "message": "Remove trailing whitespace",
+      "position": {
+        "file": "main.ms",
+        "line": 3,
+        "column": 16,
+        "offset": 54
+      }
+    },
+    {
+      "code": "MSL002",
+      "severity": "warning",
+      "message": "End the file with a newline",
+      "position": {
+        "file": "main.ms",
+        "line": 4,
+        "column": 13,
+        "offset": 70
+      }
+    }
+  ]
+}

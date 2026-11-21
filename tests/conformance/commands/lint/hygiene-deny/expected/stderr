@@ -1,0 +1,13 @@
+<DIR>/main.ms:1:8: warning MSL102: Import read_file is never used
+   |
+ 1 | import read_file from "@std/os/fs.ms"
+   |        ^
+<DIR>/main.ms:3:16: warning MSL001: Remove trailing whitespace
+   |
+ 3 | fn main() Void:   
+   |                ^
+<DIR>/main.ms:4:13: warning MSL002: End the file with a newline
+   |
+ 4 |     print("hi")
+   |             ^
+3 warnings; failing because of --deny-warnings
