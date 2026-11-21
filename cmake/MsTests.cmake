@@ -40,7 +40,7 @@ endif()
 function(ms_test_objects name)
   add_library(${name} OBJECT ${ARGN})
   target_include_directories(${name} PRIVATE "${_rt}/include" "${_rt}/core" "${_rt}/std" "${_tests}/support"
-                             "${MS_MIMALLOC_DIR}/include")
+                             "${MS_MIMALLOC_DIR}/include" ${MS_LIB_uv_INCLUDES})
   target_compile_options(${name} PRIVATE ${_test_flags} ${_lib_compile})
   target_compile_definitions(${name} PRIVATE ${MS_LIBS_DEFINES})
   set_target_properties(${name} PROPERTIES C_EXTENSIONS ON POSITION_INDEPENDENT_CODE OFF)
@@ -62,11 +62,11 @@ function(ms_test name)
     list(APPEND _objects $<TARGET_OBJECTS:${o}>)
   endforeach()
   add_executable(${name} ${T_SOURCES} ${_objects})
-  target_include_directories(${name} PRIVATE "${_rt}/include" "${_rt}/core" "${_rt}/std" "${_tests}/support" ${T_INCLUDES})
+  target_include_directories(${name} PRIVATE "${_rt}/include" "${_rt}/core" "${_rt}/std" "${_tests}/support" ${T_INCLUDES} ${MS_LIB_uv_INCLUDES})
   target_compile_options(${name} PRIVATE ${_flags} ${_lib_compile} ${T_FLAGS})
   target_compile_definitions(${name} PRIVATE ${T_DEFINES} ${MS_LIBS_DEFINES})
   target_link_options(${name} PRIVATE ${_flags})
-  target_link_libraries(${name} PRIVATE ${T_LIBS} ${_syslibs} ms_mimalloc)
+  target_link_libraries(${name} PRIVATE ${T_LIBS} ${MS_LIB_uv_LINK} ${_syslibs} ms_mimalloc)
   set_target_properties(${name} PROPERTIES C_EXTENSIONS ON RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
   add_test(NAME ${name} COMMAND ${name} WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
   if(MS_SANITIZE AND NOT T_PLAIN)
@@ -85,6 +85,7 @@ else()
   set(_pthread pthread)
 endif()
 file(GLOB _os_sources CONFIGURE_DEPENDS "${_rt}/sys/${_os}/*.c")
+list(APPEND _os_sources "${_rt}/sys/fs_path.c" "${_rt}/sys/spawn.c") # files and processes by path, over libuv
 string(TOLOWER "${CMAKE_SYSTEM_NAME}" _platform)
 # The Linux and macOS socket layer is its own file; on Windows sys/windows/net.c is already one of _os_sources.
 set(_platform_net "${_rt}/sys/${_platform}/net.c")
@@ -169,7 +170,7 @@ ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_os_so
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} ${_pipe_stubs} "${_rt}/core/utf8.c" "${_rt}/sys/${_os}/fs.c" "${_rt}/sys/${_os}/clock.c" "${_rt}/sys/${_os}/fd.c"
+  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} ${_pipe_stubs} "${_rt}/core/utf8.c" "${_rt}/sys/${_os}/fs.c" "${_rt}/sys/fs_path.c" "${_rt}/sys/spawn.c" "${_rt}/sys/${_os}/clock.c" "${_rt}/sys/${_os}/fd.c"
           "${_rt}/sys/${_os}/ifindex.c" "${_rt}/sys/${_os}/process.c" "${_rt}/sys/${_os}/signal.c" ${_win_std_extra}
           INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_z_INCLUDES}
           LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})

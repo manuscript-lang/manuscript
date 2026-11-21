@@ -532,8 +532,8 @@ bool ms_path_eval_symlinks(MsArena *a, const char *input, const char **out, MsPr
 
 #else
 
-/* The ordinary spelling of a canonical `\\?\` path: `C:/dir` or `//server/share/dir`, or NULL when it has no
- * ordinary spelling. */
+/* The ordinary spelling of a canonical path: `C:/dir` or `//server/share/dir`, or NULL when it has none. libuv hands
+ * back the ordinary form with backslashes; a `\\?\` form is read as well. */
 static const char *path_ordinary(MsArena *a, const char *canonical) {
     const char *rest;
     if (strncmp(canonical, "\\\\?\\UNC\\", 8) == 0) {
@@ -542,6 +542,12 @@ static const char *path_ordinary(MsArena *a, const char *canonical) {
     }
     if (strncmp(canonical, "\\\\?\\", 4) == 0 && isalpha((unsigned char)canonical[4]) && canonical[5] == ':') {
         return ms_path_clean(a, canonical + 4);
+    }
+    if (isalpha((unsigned char)canonical[0]) && canonical[1] == ':' && (canonical[2] == '\\' || canonical[2] == '/')) {
+        return ms_path_clean(a, canonical);
+    }
+    if (canonical[0] == '\\' && canonical[1] == '\\' && canonical[2] != '?') {
+        return ms_path_clean(a, ms_arena_fmt(a, "//%s", canonical + 2).ptr);
     }
     return NULL;
 }

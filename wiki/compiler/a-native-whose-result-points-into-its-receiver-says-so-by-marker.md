@@ -12,4 +12,4 @@
 - Lowering lowers such a call only as the iterable of a `for` (`lb->iterable`): the base runtime function
   yields an owned list of copies that the loop's scope drops, so no twin is chosen. Rust uses borrowing twins and
   scans `for c in s.chars()`; a function with a loop is verified and run-compared, not text-compared, so the
-  shapes may differ. A native that returns a view (`String.view`, `view_bytes`: the runtime table's `borrows` flag, from `@borrows`) writes it through a slot and loads it, so the MIR does not own it; Rust calls a generated fast-path function there, so the dump tool marks such functions divergent (verified and run-compared). A borrowed list used outside a `for` still declines.
+  shapes may differ. Any other use (`s.view(a, b).clone()`) still declines until C matches the twin MIR.

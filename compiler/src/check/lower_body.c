@@ -777,6 +777,9 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (dispatch != MS_TY_NONE && ms_ty_kind(&lb->c->tys, lb->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
         return li_call(lb, e);
     }
+    if (callee == MS_NONE && dispatch != MS_TY_NONE && lb->facts->call_borrows[e->id] && lb->iterable != e) {
+        return LB_UNSUPPORTED(lb); // a borrowed result used elsewhere is lent by a twin that is not lowered yet
+    }
     if (callee == MS_NONE && dispatch != MS_TY_NONE) {
         return lb_native_method(lb, e); // an operation of a primitive: its runtime function
     }
