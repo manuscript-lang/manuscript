@@ -175,7 +175,7 @@ bool ls_reports_status(Lb *lb, const MsRtFn *fn, MirTy result_ty) {
 
 /* `ok(value)` for status 0, else `error(...)` built from the status (and the text the native stored): the call of `fn`
  * on the evaluated `args`, whose result type is `result_ty` (a `Result[T, Error]`). Bare statuses and values written
- * through an `out` slot are lowered; a payload another shape builds (a handle, an interface, an Optional) is not, and
+ * through an `out` slot (a handle included) are lowered; a payload another shape builds (an interface, an Optional) is not, and
  * the call is left to the Rust lowering. */
 LbVal ls_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty) {
     const MirTyData *data = mir_ty_data(lb->m, result_ty);
@@ -186,12 +186,15 @@ LbVal ls_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, Mi
     const MirTy payload = alt->cases[LS_OK].fields[0].ty;
     const MirTy error = alt->cases[LS_ERROR].fields[0].ty;
     bool has_out = false;
+    bool out_handle = false;
     for (uint32_t i = 0; i < fn->nparams; i++) {
+        out_handle = out_handle || fn->params[i] == MS_RT_OUT_HANDLE;
         has_out = has_out || fn->params[i] == MS_RT_OUT_STR || fn->params[i] == MS_RT_OUT_LIST ||
                   fn->params[i] == MS_RT_OUT_HANDLE || fn->params[i] == MS_RT_OUT_SCALAR;
     }
     const bool plain = payload == MIR_STR || payload == MIR_INT || payload == MIR_FLOAT || payload == MIR_BOOL ||
-                       mir_ty_data(lb->m, payload)->kind == MK_LIST;
+                       mir_ty_data(lb->m, payload)->kind == MK_LIST ||
+                       (out_handle && mir_ty_data(lb->m, payload)->kind == MK_OBJ);
     if ((payload == MIR_VOID) == has_out || (has_out && !plain)) {
         return LB_UNSUPPORTED(lb);
     }
