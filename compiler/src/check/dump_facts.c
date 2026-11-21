@@ -522,9 +522,9 @@ static bool facts_has_default(MsParams params) {
 
 /* The effect columns of one entity. A function the effect scan cannot see through completely, or
  * one it does not cover (methods, tests, impls), prints empty lists and `"effects_known": false`.
- * `calls` stays empty: the scan misses the implicit `close` calls of resource scopes, which Rust
- * lists, until the effect checker reports them. */
-static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects *rows, uint32_t nrows) {
+ * `calls` lists the project functions the body calls, as entity keys: a function with a method or
+ * interface call or an implicit `close` is partial, so its calls are never printed short. */
+static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects *rows, uint32_t nrows, const char *file) {
     const MsEntityEffects *found = NULL;
     for (uint32_t r = 0; r < nrows; r++) {
         found = rows[r].decl == d ? &rows[r] : found;
@@ -542,7 +542,13 @@ static void facts_put_effects(MsBuf *out, const MsDecl *d, const MsEntityEffects
     facts_put_strings(out, "reach", found->effects, found->neffects, NULL);
     ms_buf_puts(out, ", ");
     facts_put_strings(out, "permits", found->permits, found->npermits, NULL);
-    ms_buf_puts(out, ", \"calls\": [], \"effects_known\": true");
+    ms_buf_puts(out, ", ");
+    MsBuf prefix = {0};
+    ms_buf_printf(&prefix, "%s#fn#", file);
+    ms_buf_putc(&prefix, '\0');
+    facts_put_strings(out, "calls", found->calls, found->ncalls, prefix.data);
+    ms_buf_free(&prefix);
+    ms_buf_puts(out, ", \"effects_known\": true");
 }
 
 void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
@@ -569,7 +575,7 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
                                        d->kind == MS_D_IMPL ? facts_impl_line(module, names, i) : d->pos.line);
         facts_fill_decl(fact, names, d);
         facts_seal_key(fact);
-        facts_put_effects(&fact->effects, d, effect_rows, neffects);
+        facts_put_effects(&fact->effects, d, effect_rows, neffects, file.data);
         facts_put_meta(&fact->meta, c, m, d, NULL);
         fact->first = d->pos.line;
         const uint32_t decl_last = i + 1 < module->ndecls ? module->decls[i + 1]->pos.line - 1 : total_lines;
@@ -582,7 +588,7 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
             FactsRow *method = facts_add_row(&rows, names, file.data, "method", meth->pos.line);
             facts_fill_method(method, names, d, meth);
             facts_seal_key(method);
-            facts_put_effects(&method->effects, NULL, effect_rows, neffects);
+            facts_put_effects(&method->effects, NULL, effect_rows, neffects, file.data);
             MsBuf label = {0};
             facts_put_str(&label, names, d->u.impl.receiver->kind == MS_TYPE_NAMED ? d->u.impl.receiver->name : 0);
             ms_buf_putc(&label, '.');

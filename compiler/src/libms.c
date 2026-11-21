@@ -156,6 +156,7 @@
 #include "project/solve.c"
 #include "project/packages.c"
 #include "project/install.c"
+#include "project/attach.c"
 
 #include "project/graph_check.c"
 #endif
