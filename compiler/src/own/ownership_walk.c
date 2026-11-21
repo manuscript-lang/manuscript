@@ -1051,6 +1051,11 @@ static bool own_is_fresh_intrinsic(const OwnWalk *w, const MsExpr *e) {
         ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
         return false;
     }
+    if (ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_VARIABLE) {
+        // An operation every value has (`to_string`, `clone`) is recorded against the variable itself, not
+        // against a bound that declares it; it builds a new value.
+        return w->facts->call_interface[e->id] == w->facts->call_receiver[e->id];
+    }
     const MsRtFn *fn = ms_rt_method_fn(w->check, w->facts->call_receiver[e->id], callee->u.member.name);
     return fn != NULL && fn->fresh;
 }
