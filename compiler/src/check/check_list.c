@@ -71,7 +71,7 @@ MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected) {
 }
 
 /* Whether `left` is a value, never a function or type the bracket could apply type arguments to: a local or
- * a field path from one (`self.items`), an element (`xs[i][j]`), or a call's result. */
+ * a field path from one (`self.items`), an element (`xs[i][j]`), a call's result, or a literal. */
 static bool list_receiver_is_local(const MsBody *b, const MsExpr *left) {
     for (;;) {
         MsExpr *inner = NULL;
@@ -84,7 +84,8 @@ static bool list_receiver_is_local(const MsBody *b, const MsExpr *left) {
             break;
         }
     }
-    return left->kind == MS_E_CALL || (left->kind == MS_E_NAME && ms_body_find_binding(b, left->u.sym) != MS_NONE);
+    return left->kind == MS_E_CALL || left->kind == MS_E_LIST ||
+           (left->kind == MS_E_NAME && ms_body_find_binding(b, left->u.sym) != MS_NONE);
 }
 
 /* `xs[i]`, written as an index or as a bracket that reads as a type application: the receiver must be

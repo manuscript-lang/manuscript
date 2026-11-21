@@ -19,6 +19,7 @@ export enum RoundingMode:
 	Ceil  // Rounds toward positive infinity.
 
 // An exact decimal value. Conversions are explicit because binary floats may round.
+// ms: fields lo hi exp
 // ms: data
 export extern type Decimal
 

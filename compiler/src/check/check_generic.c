@@ -232,7 +232,7 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
             return ms_body_unsupported(b);
         }
         for (uint32_t i = 0; i < written->len; i++) {
-            given[i] = ms_body_annotation(b, written->ptr[i]);
+            given[i] = ms_body_type_argument(b, written->ptr[i]);
             if (given[i] == MS_TY_NONE) {
                 return MS_TY_NONE;
             }
@@ -303,7 +303,7 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
             return ms_body_unsupported(b);
         }
         for (uint32_t i = 0; i < written->len; i++) {
-            given[i] = ms_body_annotation(b, written->ptr[i]);
+            given[i] = ms_body_type_argument(b, written->ptr[i]);
             if (given[i] == MS_TY_NONE) {
                 return MS_TY_NONE;
             }
