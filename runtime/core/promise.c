@@ -5,6 +5,7 @@
  * promises a task started form a doubly linked list threaded through the cold rows by index, with its head in the
  * task record, so a cancelled frame visits only its own promises and ending one is constant time.
  */
+#include "../io/probe.h"
 #include "promise.h"
 
 #include <string.h>
@@ -434,6 +435,7 @@ static void run_closure(void *closure) { ((MsClosure *)closure)->code(closure); 
 
 /* The task of promise `id` ended with `status` (a MsGuardStatus); records how, drops the closure and wakes. */
 static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) {
+    MS_PROBE("work_ended id=%llx status=%d", (unsigned long long)id, (int)status);
     const ptrdiff_t found = row_of(id);
     if (found < 0) {
         ms_fault_text_free(&message);
@@ -451,7 +453,9 @@ static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) 
     if (closure != NULL) {
         /* Dropping the closure can park (a captured resource closes). The row keeps the closure until then, so an end
          * that races with it waits for the drop instead of freeing the row under it. */
+        MS_PROBE("work_ended drop closure");
         msrt_obj_drop(closure);
+        MS_PROBE("work_ended dropped");
         cold->closure = NULL;
     }
     hot->flags &= (uint16_t) ~(FLAG_REMOTE | FLAG_WANT_CANCEL);
@@ -1018,6 +1022,7 @@ static uint32_t park_on(MsPromise id, int64_t at_ns) {
         return 0;
     }
     const bool remote = (table.hot[row].flags & FLAG_REMOTE_WAKE) != 0;
+    MS_PROBE("park_on id=%llx", (unsigned long long)id);
     const uint64_t token = ms_token_new(remote ? MS_TOKEN_REMOTE : 0);
     if (token == 0) {
         fail("promise: out of wait tokens");
@@ -1031,6 +1036,7 @@ static uint32_t park_on(MsPromise id, int64_t at_ns) {
         table.hot[after].token = 0;
     }
     (void)ms_token_free(token);
+    MS_PROBE("park_on done id=%llx", (unsigned long long)id);
     return status == MS_TOKEN_OK ? result : 0;
 }
 
@@ -1052,6 +1058,7 @@ static void give_notice(MsPromise id, size_t row) {
 }
 
 bool ms_promise_end(MsPromise id) {
+    MS_PROBE("promise_end id=%llx", (unsigned long long)id);
     if (is_foreign(id)) {
         return ms_remote_end(id);
     }

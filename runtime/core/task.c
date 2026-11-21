@@ -419,6 +419,7 @@ void ms_task_cancel(MsTaskHandle handle) {
     MsSched *const sched = ms_sched();
     MsTask *const current = ms_task_running();
     MsTask *const task = ms_task_lookup(sched, handle);
+    MS_PROBE("task_cancel %llx found=%d state=%d cur=%llx", (unsigned long long)handle, task != NULL, task != NULL ? (int)task->state : -1, (unsigned long long)current->handle);
     if (task == NULL || task->state == MS_STATE_DONE) {
         return;
     }
