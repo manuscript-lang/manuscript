@@ -187,9 +187,11 @@ static bool fit_has_deciding_row(const FitWalk *w, MsTy ty, MsProperty property)
     return false;
 }
 
+static bool fit_method(const MsMethods *m, MsTy receiver, MsSym name, uint32_t *row);
+
 /* Clonable (a value with one owner but no resource, function or handle in it) and Data (plain
  * values only) as the parts of the value decide them. Only a confident YES or NO is given: whatever
- * the Rust checker decides by a declaration it makes (an opaque type, an impl, a native's own `clone`)
+ * the Rust checker decides by a declaration it makes (an opaque type, an impl)
  * is UNKNOWN. */
 static MsFit fit_data(FitWalk *w, MsTy ty, MsProperty property) {
     const MsTyTable *t = &w->c->tys;
@@ -230,6 +232,18 @@ static MsFit fit_data(FitWalk *w, MsTy ty, MsProperty property) {
             answer = fit_all(answer, fit_structural(w, ms_ty_args(t, ty)[i], property));
         }
         return answer;
+    }
+    if (ms_ty_kind(t, ty) == MS_K_NATIVE && property == MS_PROP_CLONABLE) {
+        // A native is cloned through the infallible `clone` it declares, when its arguments are clonable too.
+        uint32_t row;
+        const MsMethods *m = &w->table->methods;
+        if (fit_method(m, ty, ms_intern_cstr(w->c->names, "clone"), &row) && t->result[m->ty[row]] == ty) {
+            MsFit answer = MS_FIT_YES;
+            for (uint32_t i = 0; i < t->nargs[ty]; i++) {
+                answer = fit_all(answer, fit_structural(w, ms_ty_args(t, ty)[i], property));
+            }
+            return answer;
+        }
     }
     if (ms_ty_kind(t, ty) == MS_K_NATIVE || t->def[ty] == 0 || w->depth == FIT_DEPTH) {
         return MS_FIT_UNKNOWN; // a native owns storage the runtime decides about
