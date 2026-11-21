@@ -130,14 +130,15 @@ static MirValue la_field(Lb *lb, MirValue subject, uint32_t alt, uint32_t index,
     return taken;
 }
 
-/* The value `subject` holds, once `la_test` found it present. */
-MirValue la_payload(Lb *lb, MirValue subject) {
+/* The value `subject` holds, once `la_test` found it present. A `borrowed` subject (a name, a parameter) keeps
+ * its payload, which is read in place; an owned Optional is not unwrapped here when its payload is owned. */
+MirValue la_payload(Lb *lb, MirValue subject, bool borrowed) {
     const MirTy ty = mir_b_ty(&lb->b, subject);
     const MirTyData *data = mir_ty_data(lb->m, ty);
     const MirTy held = data->kind == MK_OPT ? data->elem : lb->m->alts[data->id].cases[LA_OK].fields[0].ty;
     if (data->kind == MK_OPT) {
-        if (lb_owns(lb, held)) {
-            lb->ok = false; // taking an owned payload out of an Optional is not lowered yet
+        if (lb_owns(lb, held) && !borrowed) {
+            lb->ok = false; // taking an owned payload out of an owned Optional is not lowered yet
             return subject;
         }
         return mir_b_emit(&lb->b, MOP_OptGet, &subject, 1, (MirImm){0}, data->elem);
@@ -177,6 +178,6 @@ LbVal la_try(Lb *lb, const MsExpr *e) {
     lb_emit_plain(lb, MOP_DepthLeave);
     mir_b_ret(&lb->b, handed);
     lb_enter(lb, go_on);
-    const MirValue value = la_payload(lb, result.v);
+    const MirValue value = la_payload(lb, result.v, false);
     return (LbVal){value, lb_owns(lb, mir_b_ty(&lb->b, value))}; // an owned value moves out of the result
 }
