@@ -27,7 +27,6 @@
 #include "ms/facts.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
-#include "ms/ty_algebra.h"
 
 
 
@@ -975,7 +974,8 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     if (use == MEMBER_READ && ms_body_is_qualified_case(b, e)) {
         return ms_body_qualified_case(b, e);
     }
-    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER && receiver->kind != MS_E_CALL) {
+    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER && receiver->kind != MS_E_CALL && receiver->kind != MS_E_INDEX &&
+        receiver->kind != MS_E_APPLY) {
         return ms_body_unsupported(b);
     }
     const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, MEMBER_RECEIVER))
