@@ -2019,13 +2019,22 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
 }
 
 
+/* Whether `name` is a module constant whose initializer this pass has already typed (constants are checked in
+ * declaration order, so an earlier one): a use of it is a call of no arguments. */
+static bool body_names_constant(const MsBody *b, MsSym name) {
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, name);
+    const MsSyms *syms = &b->c->syms;
+    return sym != MS_NONE && syms->decl[sym] != NULL && syms->decl[sym]->kind == MS_D_CONST && syms->ty[sym] != MS_TY_NONE &&
+           ms_body_find_binding(b, name) == MS_NONE;
+}
+
 /* How far a constant's initializer is from literals and operators. */
 typedef enum BodyConstant { BODY_CONSTANT_OK, BODY_CONSTANT_REJECTED, BODY_CONSTANT_UNSURE } BodyConstant;
 
 /* Walks an initializer in the order Rust does and stops at the first part that is not a literal
  * or an operator: a call, an index or a lambda is rejected at `*at`; a name, member or collection
  * is not classified here. */
-static BodyConstant body_constant_kind(const MsExpr *e, const MsExpr **at) {
+static BodyConstant body_constant_kind(const MsBody *b, const MsExpr *e, const MsExpr **at) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER:
     case MS_E_BOOL:
@@ -2033,21 +2042,36 @@ static BodyConstant body_constant_kind(const MsExpr *e, const MsExpr **at) {
     case MS_E_TEXT:
         for (uint32_t i = 0; i < e->u.text.len; i++) {
             const MsExpr *part = e->u.text.ptr[i].expr;
-            const BodyConstant kind = part == NULL ? BODY_CONSTANT_OK : body_constant_kind(part, at);
+            const BodyConstant kind = part == NULL ? BODY_CONSTANT_OK : body_constant_kind(b, part, at);
             if (kind != BODY_CONSTANT_OK) {
                 return kind;
             }
         }
         return BODY_CONSTANT_OK;
-    case MS_E_UNARY: return body_constant_kind(e->u.bin.left, at);
+    case MS_E_UNARY: return body_constant_kind(b, e->u.bin.left, at);
     case MS_E_BINARY: {
-        const BodyConstant left = body_constant_kind(e->u.bin.left, at);
-        return left != BODY_CONSTANT_OK ? left : body_constant_kind(e->u.bin.right, at);
+        const BodyConstant left = body_constant_kind(b, e->u.bin.left, at);
+        return left != BODY_CONSTANT_OK ? left : body_constant_kind(b, e->u.bin.right, at);
     }
-    case MS_E_NAME:
-    case MS_E_MEMBER:
+    case MS_E_NAME: return body_names_constant(b, e->u.sym) ? BODY_CONSTANT_OK : BODY_CONSTANT_UNSURE;
     case MS_E_LIST:
-    case MS_E_MAP: return BODY_CONSTANT_UNSURE;
+        for (uint32_t i = 0; i < e->u.list.len; i++) {
+            const BodyConstant kind = body_constant_kind(b, e->u.list.ptr[i], at);
+            if (kind != BODY_CONSTANT_OK) {
+                return kind;
+            }
+        }
+        return BODY_CONSTANT_OK;
+    case MS_E_MAP:
+        for (uint32_t i = 0; i < e->u.map.len; i++) {
+            const BodyConstant key = body_constant_kind(b, e->u.map.ptr[i].key, at);
+            const BodyConstant value = key != BODY_CONSTANT_OK ? key : body_constant_kind(b, e->u.map.ptr[i].value, at);
+            if (value != BODY_CONSTANT_OK) {
+                return value;
+            }
+        }
+        return BODY_CONSTANT_OK;
+    case MS_E_MEMBER: return BODY_CONSTANT_UNSURE;
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:
@@ -2072,7 +2096,7 @@ static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
         expected = ms_body_annotation(b, d->u.konst.ty);
     }
     const MsExpr *rejected = NULL;
-    const BodyConstant kind = body_constant_kind(d->u.konst.value, &rejected);
+    const BodyConstant kind = body_constant_kind(b, d->u.konst.value, &rejected);
     const bool literal = kind == BODY_CONSTANT_OK;
     MsTy ty = MS_TY_NONE;
     if (b->supported && kind == BODY_CONSTANT_REJECTED) {
@@ -2084,7 +2108,7 @@ static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
     } else if (b->supported && literal) {
         ty = ms_body_expr(b, d->u.konst.value, expected);
     }
-    if (b->supported && (literal || kind == BODY_CONSTANT_REJECTED) && (ty == b->invalid_ty || body_is_value_type(b, ty))) {
+    if (b->supported && (literal || kind == BODY_CONSTANT_REJECTED) && (ty == b->invalid_ty || body_is_value_type(b, ty) || ms_body_is_list(b, ty) || ms_body_is_map(b, ty))) {
         b->facts->body_checked[d->id] = true;
         body_commit_diags(b, diags_start);
         // Like the Rust checker's, the constant's symbol is a function of no parameters.
