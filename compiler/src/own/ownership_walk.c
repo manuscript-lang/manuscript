@@ -460,6 +460,42 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
 
 /* ---- calls ---- */
 
+/* The summary of a function another module declares, which that module's own walk recorded in its
+ * facts (that module is checked and walked now if it has not been): its parameters borrow unless
+ * declared `var` or `move`. A native (extern or built-in) function returns a new value. A function
+ * that moves a parameter, or whose result borrows from one, is left alone: its summary would name
+ * positions in another file. */
+static const OwnSummary *own_foreign_callee(const OwnWalk *w, const MsExpr *e, MsSymId sym, const MsDecl *decl) {
+    static const OwnSummary foreign = {.usable = true};
+    if (w->check->syms.native[sym] != MS_NATIVE_SOURCE ||
+        ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY) {
+        return &foreign;
+    }
+    MsCheck *c = w->check;
+    const MsModId home = c->syms.module[sym];
+    MsFacts *facts = c->mods[home].facts;
+    if (facts == NULL) {
+        return NULL;
+    }
+    if (facts->body_checked == NULL) {
+        ms_module_check_bodies_with(c, home, c->methods);
+        ms_module_check_ownership(c, home);
+    }
+    if (facts->body_checked != NULL && facts->ownership_done && facts->body_checked[decl->id]) {
+        // Walked by that module: it moves no parameter and its result borrows from none.
+        return facts->param_consumed[decl->id] == 0 && !facts->ret_borrowed[decl->id] ? &foreign : NULL;
+    }
+    // Not walked: nothing is borrowed or moved when no parameter can be (every one copies).
+    const MsTyTable *tys = &c->tys;
+    const MsTy sig = c->syms.ty[sym];
+    for (uint32_t i = 0; i < tys->nparams[sig]; i++) {
+        if (ms_classify(w->classifier, ms_ty_params(tys, sig)[i].ty) != MS_CLASS_COPY) {
+            return NULL;
+        }
+    }
+    return &foreign;
+}
+
 /* The summary of the function a call names, or NULL when the walk cannot reason about it. */
 static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     const uint32_t sym = w->facts->call_callee[e->id];
@@ -470,13 +506,7 @@ static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
         return NULL;
     }
     if (w->check->syms.module[sym] != w->module) {
-        // Another module's function: its declaration id indexes that module's tables, not these.
-        // Its parameters borrow unless declared `var` or `move`, and a result that copies holds no
-        // borrow. A native (extern or built-in) function returns a new value; a function with a
-        // body in another module has a summary this walk does not compute, so only a copy is safe.
-        static const OwnSummary foreign = {.usable = true};
-        const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
-        return copied || w->check->syms.native[sym] != MS_NATIVE_SOURCE ? &foreign : NULL;
+        return own_foreign_callee(w, e, sym, decl);
     }
     const OwnSummary *summary = &w->summaries[decl->id];
     return summary->usable ? summary : NULL;
@@ -836,8 +866,13 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     if (callee_expr->kind == MS_E_NAME && w->facts->res_kind[callee_expr->id] == MS_RES_BINDING) {
         own_expr(w, callee_expr, DEMAND_READ); /* a call through a function-typed local reads it */
+        const MsTy fn = w->facts->expr_ty[callee_expr->id];
         for (uint32_t i = 0; i < e->u.call.args.len; i++) {
-            own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
+            const bool moves = (ms_ty_params(&w->check->tys, fn)[i].flags & MS_PARAM_MOVE) != 0;
+            if (moves) {
+                own_require_declared_move(w, e->u.call.args.ptr[i].value);
+            }
+            own_expr(w, e->u.call.args.ptr[i].value, moves ? DEMAND_MOVE : DEMAND_READ);
         }
         return;
     }
@@ -1559,9 +1594,10 @@ static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
 void ms_module_check_ownership(MsCheck *c, MsModId module) {
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
-    if (facts == NULL || facts->body_checked == NULL) {
+    if (facts == NULL || facts->body_checked == NULL || facts->ownership_done) {
         return;
     }
+    facts->ownership_done = true;
     MsArena scratch = {0};
     MsLiveness live = ms_liveness_new(&scratch, facts);
     OwnWalk w = {.check = c, .module = module, .facts = facts, .live = &live,

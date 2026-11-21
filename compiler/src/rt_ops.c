@@ -1,5 +1,5 @@
 /* The generated table of runtime functions (rt_ops_data.inc, written
- * by `cargo xtask symbols` from the `ms-sig` tags), searched by symbol. libms.c includes this file. */
+ * by `ms run tools/ms/symbols.ms` from the `ms-sig` tags), searched by symbol. libms.c includes this file. */
 #include <string.h>
 
 #include <ctype.h>
