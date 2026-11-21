@@ -8,12 +8,7 @@
 #include "ms/import_hints.h"
 #include "ms/prelude_fix.h"
 
-enum { PRELUDE_NAME_COUNT = 13, CONSTRUCTOR_COUNT = 4 };
-
-/* Types every module sees without an import (`STANDARD_PRELUDE_NAMES`). */
-static const char *const scope_prelude_names[PRELUDE_NAME_COUNT] = {
-    "Equal", "Stringable", "Comparable", "Hashable", "Clonable", "Optional", "Result",
-    "Error", "List",       "Map",        "Set",      "ListEntry", "MapEntry"};
+enum { CONSTRUCTOR_COUNT = 4 };
 
 static const char *const scope_constructors[CONSTRUCTOR_COUNT] = {"some", "none", "ok", "error"};
 
@@ -103,7 +98,7 @@ bool ms_is_prelude_symbol(const MsCheck *c, MsSymId sym) {
             return true;
         }
     }
-    if (!scope_in(name, scope_prelude_names, PRELUDE_NAME_COUNT)) {
+    if (!scope_in(name, ms_prelude_names, ms_prelude_name_count)) {
         return false;
     }
     return ms_map_get(&c->std_types, c->syms.name[sym]) == sym;
@@ -219,8 +214,8 @@ static void scope_add_prelude(MsCheck *c, MsModId module) {
             (void)ms_map_add(names, print, symbol);
         }
     }
-    for (size_t i = 0; i < PRELUDE_NAME_COUNT; i++) {
-        const MsSym name = ms_intern_cstr(c->names, scope_prelude_names[i]);
+    for (size_t i = 0; i < ms_prelude_name_count; i++) {
+        const MsSym name = ms_intern_cstr(c->names, ms_prelude_names[i]);
         const MsSymId symbol = ms_map_get(&c->std_types, name);
         if (symbol == MS_NONE || c->syms.module[symbol] == module || scope_imports_name(syntax, name)) {
             continue;
