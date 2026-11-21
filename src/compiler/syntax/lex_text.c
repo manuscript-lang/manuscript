@@ -191,8 +191,8 @@ MS_NODISCARD static bool scan_interpolation(Scanner *s) {
   open.offset -= 1;
   if (s->interpolations.len >= MAX_INTERPOLATION_DEPTH) {
     return lex_fail_at_format(
-        s, open, "nesting exceeds %d levels; split the expression, type, or block into named parts",
-        MAX_INTERPOLATION_DEPTH);
+        s, open, "nesting exceeds %u levels; split the expression, type, or block into named parts",
+        (unsigned)MAX_INTERPOLATION_DEPTH);
   }
   pos_list_push(&s->interpolations, open);
   if (!interpolation_body(s, open)) {

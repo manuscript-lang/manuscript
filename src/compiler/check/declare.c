@@ -16,9 +16,11 @@ void ms_check_program_init(MsCheckProgram *program, MsNames *names) {
 void ms_check_program_free(MsCheckProgram *program) {
   for (size_t index = 0; index < program->modules.len; index++) {
     ms_scope_free(&program->modules.ptr[index].scope);
+    ms_scope_free(&program->modules.ptr[index].imports);
   }
   for (size_t index = 0; index < program->diagnostics.len; index++) {
     ms_string_release(&program->diagnostics.ptr[index].message);
+    ms_string_release(&program->diagnostics.ptr[index].fix_text);
   }
   ms_module_list_free(&program->modules);
   ms_symbol_list_free(&program->symbols);
@@ -37,6 +39,14 @@ void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsChec
                      MsString message) {
   ms_check_diag_list_push(&program->diagnostics,
                           (MsCheckDiag){.module = module, .pos = pos, .phase = phase, .message = message});
+}
+
+void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString replacement) {
+  MsCheckDiag *last = ms_check_diag_list_last(&program->diagnostics);
+  last->has_fix = true;
+  last->fix_pos = pos;
+  last->fix_end = end;
+  last->fix_text = replacement;
 }
 
 /* The name a declaration introduces, or false for impl and test declarations. */

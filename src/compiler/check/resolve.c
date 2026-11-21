@@ -28,14 +28,11 @@ static bool in_variables(const Resolver *resolver, MsName name) {
   return false;
 }
 
-static bool is_imported(const Resolver *resolver, MsName name) {
-  const MsModule *tree = resolver->program->modules.ptr[resolver->module].tree;
-  for (uint32_t index = 0; index < tree->nimports; index++) {
-    if (tree->imports[index].name == name) {
-      return true;
-    }
-  }
-  return false;
+/* An imported name is a type unless it bound to a function; one that did not resolve is not reported twice. */
+static bool is_imported_type(const Resolver *resolver, MsName name) {
+  const MsCheckProgram *program = resolver->program;
+  const MsSymbolId *id = ms_scope_get(&program->modules.ptr[resolver->module].imports, name);
+  return id != NULL && (*id == 0 || program->symbols.ptr[*id].kind != MS_SYMBOL_FN);
 }
 
 static bool is_declared_type(const Resolver *resolver, MsName name) {
@@ -58,7 +55,7 @@ static bool is_known(const Resolver *resolver, MsName name) {
   size_t dot = 0;
   return ms_span_find(text, ms_span_of_text("."), &dot) || ms_span_is_text(text, "Self") ||
          ms_builtin_primitive(text) != MS_BUILTIN_NONE || is_prelude_type(text) ||
-         in_variables(resolver, name) || is_imported(resolver, name) || is_declared_type(resolver, name);
+         in_variables(resolver, name) || is_imported_type(resolver, name) || is_declared_type(resolver, name);
 }
 
 static void report_unknown(Resolver *resolver, const MsTypeRef *type) {
