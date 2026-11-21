@@ -1506,16 +1506,6 @@ static bool own_summarize(OwnWalk *w, const MsDecl *d, const uint32_t *by_node) 
     return changed;
 }
 
-/* Whether some node is a call of a function: only then does one function's walk depend on another's. */
-static bool own_has_calls(const MsFacts *facts) {
-    for (uint32_t i = 0; i <= facts->node_count; i++) {
-        if (facts->call_callee[i] != MS_NONE && !facts->const_use[i]) {
-            return true;
-        }
-    }
-    return false;
-}
-
 /* Walks every function whose liveness the pass handles until the summaries stop changing, so a
  * caller sees what its callees return. Diagnostics wait for the final pass. */
 static void own_summary_rounds(OwnWalk *w, const MsModuleRow *row, const uint32_t *by_node) {
@@ -1579,9 +1569,9 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         const bool claimed = d->kind == MS_D_FN && facts->body_checked[d->id];
         w.summaries[d->id].usable = claimed && ms_liveness_function(&live, facts, &d->u.fn);
     }
-    if (own_has_calls(facts)) {
-        own_summary_rounds(&w, row, by_node);
-    }
+    // Also for a module without calls: the summaries are where `ret_borrowed` and `param_consumed`
+    // come from, and a caller in another module reads them.
+    own_summary_rounds(&w, row, by_node);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
         if (d->kind == MS_D_FN && facts->body_checked[d->id]) {

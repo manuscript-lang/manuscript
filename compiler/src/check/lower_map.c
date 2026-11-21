@@ -81,7 +81,7 @@ LbVal lm_empty(Lb *lb, MirTy ty) {
     if (!lb_is_map(lb, ty)) {
         return lb_unsupported(lb);
     }
-    const uint32_t make = lm_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
+    const uint32_t make = lb_runtime_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
     return (LbVal){mir_b_call_rt(&lb->b, make, NULL, 0), true};
 }
 

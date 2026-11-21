@@ -18,6 +18,14 @@ export enum CheckError:
 // The standard output, the standard error and the exit status (as text) of `ms check`.
 extern fn ms_tool_check(target: String, json: Bool) List[String]!CheckError
 
+// The standard output, the standard error and the exit status (as text) of `ms check
+// TARGET`; none when the C checker does not cover it.
+export fn check_rows(target: String, json: Bool) List[String]?:
+	got := ms_tool_check(target, json)
+	if got.is_error(): return none
+
+	return got.get()
+
 // The exit status, or none when the Rust command must run.
 export fn run_check(inv: Invocation) Int?:
 	if inv.watch or inv.fix or inv.with_text or inv.each or inv.deny_warnings: return none
@@ -26,10 +34,7 @@ export fn run_check(inv: Invocation) Int?:
 	target := inv.targets[0].clone()
 	if not target.ends_with(".ms"): return none
 
-	got := ms_tool_check(target, inv.structured)
-	if got.is_error(): return none
-
-	rows := got.get()
+	rows := check_rows(target, inv.structured)?
 	stdout().write(rows[0].clone()).get()
 	stderr().write(rows[1].clone()).get()
 	return rows[2].parse_int().get()
