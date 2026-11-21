@@ -188,7 +188,7 @@ bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot) {
     }
     if (c->value != NULL) {
         MsStmt ret = {.pos = c->value->pos, .kind = MS_S_RETURN};
-        ret.u.expr = (MsExpr *)c->value;
+        ret.u.expr = c->value;
         MsStmt *list[1] = {&ret};
         lb_statements(lb, &(MsStmts){.ptr = list, .len = 1});
     } else {

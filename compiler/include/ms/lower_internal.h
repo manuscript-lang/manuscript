@@ -61,7 +61,7 @@ typedef struct LbJob {
  * the receiver a method takes as parameter 0. */
 typedef struct LbCallable {
     const MsFunc *fn;     /* NULL for a module constant */
-    const MsExpr *value; /* a module constant's initializer: the function of no parameters returns it */
+    MsExpr *value;       /* a module constant's initializer: the function of no parameters returns it */
     MsSym const_name;
     uint32_t node;  /* the declaration (or method) node: `param_consumed`, `ret_borrowed` */
     MsPos pos;
