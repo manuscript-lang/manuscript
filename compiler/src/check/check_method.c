@@ -221,6 +221,21 @@ static bool primitive_in(MsStr name, const char *const *members) {
     return false;
 }
 
+/* The operations a type has when it has the property that grants them: `clone` (Clonable), `equals` (Equal) and `hash` (Hashable). */
+static bool derived_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
+    const struct {
+        MsProperty property;
+        const char *interface;
+    } derived[] = {{MS_PROP_CLONABLE, "CloneOperations"}, {MS_PROP_EQUAL, "EqualOperations"}, {MS_PROP_HASHABLE, "HashOperations"}};
+    for (size_t i = 0; i < sizeof derived / sizeof *derived; i++) {
+        if (intrinsic_in(b, derived[i].interface, receiver, name, out) &&
+            ms_implements_property(b->c, b->methods, receiver, derived[i].property) == MS_FIT_YES) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* An operation of a primitive receiver: its own `<Type>Operations` interface, the generic ones its
  * family shares (applied to itself), then the ones every value has. Mirrors `SHARED_OPERATIONS`. */
 static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
@@ -235,7 +250,7 @@ static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Targ
             return true;
         }
     }
-    return intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
+    return intrinsic_in(b, "ValueOperations", receiver, name, out) || derived_operation(b, receiver, name, out);
 }
 
 /* `to_string` and `clone`, which exist without an impl: every non-generic value shows as text, and
@@ -253,7 +268,7 @@ static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *
     if (intrinsic_in(b, "ValueOperations", receiver, name, out)) {
         return true;
     }
-    return ms_implements_property(b->c, b->methods, receiver, MS_PROP_CLONABLE) == MS_FIT_YES && intrinsic_in(b, "CloneOperations", receiver, name, out);
+    return derived_operation(b, receiver, name, out);
 }
 
 /* The function-typed field `name` of a record `receiver`, with the receiver's type arguments in place of the
