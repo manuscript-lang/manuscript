@@ -91,6 +91,11 @@ add_library(ms_std_process STATIC fail.c process.c signals.c)
 ms_target_defaults(ms_std_process)
 target_link_libraries(ms_std_process PUBLIC ms_base ms_values ms_sys ms_io ms_core ms_entry uv)
 
+# @std/fs natives that work on paths: whole files, metadata, listing, directories, removal, links, attributes.
+add_library(ms_std_fs STATIC fs_job.c fs_name.c fs_read.c fs_stat.c fs_ops.c)
+ms_target_defaults(ms_std_fs)
+target_link_libraries(ms_std_fs PUBLIC ms_base ms_sys ms_io ms_core uv ms_std_process)
+
 # @std/net: IP addresses, CIDR ranges, host:port text and the network diagnostics (no event loop).
 add_library(ms_std_net STATIC http_abi.c http_headers.c http_sniff.c http_target.c net.c net_addr.c net_ip.c)
 ms_target_defaults(ms_std_net)
