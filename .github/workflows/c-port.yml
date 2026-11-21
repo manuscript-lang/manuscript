@@ -54,7 +54,7 @@ jobs:
         run: sudo apt-get install -y ninja-build ccache
       - uses: actions/cache@v6
         with:
-          path: ${{ matrix.os == 'windows' && format('{0}/.artifacts/ccache', github.workspace) || runner.os == 'macOS' && '~/Library/Caches/ccache' || '~/.cache/ccache' }}
+          path: ${{ github.workspace }}/.artifacts/ccache
           key: ccache-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
           restore-keys: ccache-${{ matrix.os }}-${{ matrix.arch }}-
       - shell: ${{ matrix.os == 'windows' && 'msys2 {0}' || 'bash' }}
