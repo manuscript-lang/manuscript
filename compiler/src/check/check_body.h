@@ -91,7 +91,10 @@ bool ms_body_reordered(const MsExpr *call, const uint32_t *slot); /* some argume
 bool ms_body_bind_arguments(const MsExpr *call, const MsSym *names, const bool *positional, uint32_t nparams, uint32_t *slot, bool *covered);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
 void ms_body_report(MsBody *b, MsPos pos, MsStr message); /* a type diagnostic, held until the function is claimed */
-MsTy ms_body_unsupported(MsBody *b);
+MsTy ms_body_unsupported_at(MsBody *b, const char *file, int line);
+/* With MS_CHECK_WHY set in the environment each function given up on prints `why <call site>` (the census of what
+ * the C checker leaves to Rust). */
+#define ms_body_unsupported(b) ms_body_unsupported_at((b), __FILE__, __LINE__)
 /* Records the type of expression node `node` and returns it. */
 MsTy ms_body_record(MsBody *b, uint32_t node, MsTy ty);
 /* The type of `e` where `expected` is what the context wants (MS_TY_NONE for no expectation); a

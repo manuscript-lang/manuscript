@@ -202,7 +202,14 @@ static bool body_is_comparable(const MsBody *b, MsTy ty) {
 }
 
 /* Gives up on the function; the caller returns `<invalid>` (MS_TY_NONE) up the tree. */
-MsTy ms_body_unsupported(MsBody *b) {
+MsTy ms_body_unsupported_at(MsBody *b, const char *file, int line) {
+    static int why = -1;
+    if (why < 0) {
+        why = getenv("MS_CHECK_WHY") != NULL;
+    }
+    if (why && b->supported) {
+        fprintf(stderr, "why %s:%d\n", file, line);
+    }
     b->supported = false;
     return MS_TY_NONE;
 }

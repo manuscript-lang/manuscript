@@ -292,7 +292,7 @@ static uint32_t lb_instance(Lb *lb, MsSymId sym, const MsTy *args, uint32_t narg
         return MIR_NONE;
     }
     if (!lb_push_inst(&lb->insts, &lb->ninsts, &lb->cinsts, &inst)) {
-        lb->ok = false;
+        (void)lb_unsupported(lb);
         return MIR_NONE;
     }
     return inst.func;
