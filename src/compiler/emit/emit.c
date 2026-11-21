@@ -22,9 +22,9 @@
 #endif
 
 /* The metadata the list element accesses refer to: a root, the scalar element type and its access tag. */
-#define EMIT_TBAA_ROOT 0
-#define EMIT_TBAA_SCALAR 1
-#define EMIT_TBAA_SCALAR_TAG 2
+#define EMIT_TBAA_ROOT 900000
+#define EMIT_TBAA_SCALAR 900001
+#define EMIT_TBAA_SCALAR_TAG 900002
 
 static void write_tbaa(MsStrBuild *out) {
   ms_strbuild_printf(out,
@@ -41,7 +41,7 @@ MsSpan emit_host_triple(void) {
 #endif
 }
 
-bool emit_module(const MirModule *module, const MirData *data, const EmitOptions *options, MsStrBuild *out, MsStrBuild *why) {
+bool emit_module(const MirModule *module, const MirData *data, const MirGlue *glue, const EmitOptions *options, MsStrBuild *out, MsStrBuild *why) {
 #ifdef EMIT_TRIPLE
   ms_strbuild_printf(out, "target triple = \"%s\"\n", EMIT_TRIPLE);
 #endif
@@ -52,6 +52,7 @@ bool emit_module(const MirModule *module, const MirData *data, const EmitOptions
   cx.out = out;
   cx.layouts = &layouts;
   cx.data = data;
+  cx.glue = glue;
   cx.export_all = options->export_all;
   bool ok = true;
   for (uint32_t index = 0; index < module->funcs.len; index++) {

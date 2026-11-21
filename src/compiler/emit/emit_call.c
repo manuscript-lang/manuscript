@@ -87,6 +87,18 @@ void emit_frame_slots(EmitCx *cx) {
       case MOP_CallMethod:
         frame_call(cx, inst, block, index);
         break;
+      case MOP_ClosureNew:
+        if (cx->framed != NULL && cx->framed[inst->res]) {
+          ms_strbuild_printf(cx->out, "  %%o%u_%u = alloca [%u x i8], align 16\n", block, index,
+                             mir_closure_layout(cx->layouts, &cx->module->funcs.ptr[inst->imm.a]).size);
+        }
+        break;
+      case MOP_IfaceBorrow:
+        if (cx->borrowed != NULL && cx->borrowed[inst->res]) {
+          ms_strbuild_printf(cx->out, "  %%i%u_%u = alloca [%u x i8], align 8\n", block, index,
+                             emit_slot_bytes(cx, value_type(cx, inst->args[0])));
+        }
+        break;
       case MOP_StrByte:
         ms_strbuild_printf(cx->out, "  %%y%u_%u = alloca [16 x i8], align 8\n", block, index);
         break;
@@ -101,15 +113,19 @@ void emit_frame_slots(EmitCx *cx) {
 }
 
 /* Every leaf of every argument, in order, after the hidden result pointer when there is one. */
-static void call_arguments(EmitCx *cx, const MirInst *inst, const char *result_area, uint32_t block,
-                           uint32_t index) {
+static void call_arguments(EmitCx *cx, const MirInst *inst, const char *result_area, const char *lead,
+                           uint32_t block, uint32_t index) {
   MsStrBuild *out = cx->out;
   bool first = true;
   if (result_area != NULL) {
     ms_strbuild_printf(out, "ptr %s", result_area);
     first = false;
   }
-  for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+  if (lead != NULL) {
+    ms_strbuild_printf(out, "%s%s", first ? "" : ", ", lead);
+    first = false;
+  }
+  for (uint32_t arg = lead != NULL ? 1 : 0; arg < inst->nargs; arg++) {
     MirTy type = value_type(cx, inst->args[arg]);
     if (emit_is_indirect(cx, type)) {
       ms_strbuild_printf(out, "%sptr %%x%u_%u_%u", first ? "" : ", ", block, index, arg);
@@ -136,9 +152,12 @@ static void spill_arguments(EmitCx *cx, const MirInst *inst, uint32_t block, uin
   }
 }
 
-/* A call of function `callee`. A result of several leaves comes back through a stack area that the call is
- * given and that is read leaf by leaf afterwards. */
-static void call_function(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index) {
+/* A call of `callee` (the register holding a code pointer), or of the MIR function the instruction names when it
+ * is NULL; `lead`, when given, is the first argument in place of operand 0. A result of several leaves comes
+ * back through a stack area that the call is given and that is read leaf by leaf afterwards. */
+void emit_call_to(EmitCx *cx, const MirInst *inst, const EmitSite *site, const char *callee, const char *lead) {
+  uint32_t block = site->block;
+  uint32_t index = site->index;
   MsStrBuild *out = cx->out;
   spill_arguments(cx, inst, block, index);
   uint32_t result_leaves = inst->res == MIR_NONE ? 0 : (uint32_t)emit_value_leaves(cx, inst->res).len;
@@ -149,9 +168,13 @@ static void call_function(EmitCx *cx, const MirInst *inst, uint32_t block, uint3
   } else {
     ms_strbuild_append_text(out, "  call void ");
   }
-  emit_function_symbol(cx, inst->imm.a);
+  if (callee != NULL) {
+    ms_strbuild_append_text(out, callee);
+  } else {
+    emit_function_symbol(cx, inst->imm.a);
+  }
   ms_strbuild_append_byte(out, '(');
-  call_arguments(cx, inst, result_leaves > 1 ? area : NULL, block, index);
+  call_arguments(cx, inst, result_leaves > 1 ? area : NULL, lead, block, index);
   ms_strbuild_append_text(out, ")\n");
   if (result_leaves > 1) {
     emit_leaves_at(cx, inst->res, area, true);
@@ -276,7 +299,7 @@ bool emit_call_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *h
   *handled = true;
   switch ((MirOp)inst->op) {
   case MOP_Call:
-    call_function(cx, inst, site->block, site->index);
+    emit_call_to(cx, inst, site, NULL, NULL);
     return true;
   case MOP_CallRt:
     return call_runtime(cx, inst, site->block, site->index);

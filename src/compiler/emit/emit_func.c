@@ -4,6 +4,7 @@
 #include "base/alloc.h"
 #include "base/fatal.h"
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/mir/mir_pass.h"
 
 /* Body lines above which a function is compiled without LLVM's optimizer (`optnone`): SROA, the SLP vectorizer
  * and the code generator grow faster than linearly with one function's size, so a generated function of
@@ -30,6 +31,27 @@ static bool emit_instruction(EmitCx *cx, const MirInst *inst, const EmitSite *si
     ok = emit_memory_inst(cx, inst, &handled);
   }
   if (!handled) {
+    ok = emit_closure_op(cx, inst, site, &handled);
+  }
+  if (!handled) {
+    ok = emit_iface_op(cx, inst, site, &handled);
+  }
+  if (!handled) {
+    ok = emit_task_op(cx, inst, site, &handled);
+  }
+  if (!handled) {
+    ok = emit_string_op(cx, inst, site, &handled);
+  }
+  if (!handled) {
+    ok = emit_list_op(cx, inst, site, &handled);
+  }
+  if (!handled) {
+    ok = emit_option_op(cx, inst, site, &handled);
+  }
+  if (!handled) {
+    ok = emit_record_op(cx, inst, site, &handled);
+  }
+  if (!handled) {
     ok = emit_data_op(cx, inst, site, &handled);
   }
   if (!handled) {
@@ -53,13 +75,7 @@ static bool emit_instruction(EmitCx *cx, const MirInst *inst, const EmitSite *si
                      "  %%l%us = or i1 %%l%ua, %%l%ub\n",
                      number, inst->res, (long long)lo, number, inst->res, (long long)hi, number, number, number);
   char bad[24];
-  emit_register_name(bad, sizeof bad, "l", number);
-  size_t length = 0;
-  while (bad[length] != 0) {
-    length++;
-  }
-  bad[length++] = 's';
-  bad[length] = 0;
+  emit_text_name(bad, sizeof bad, "l", number, "s", MIR_NONE);
   emit_fault_if(cx, site, bad, "msrt_fault_int_range", NULL, 0);
   return true;
 }
@@ -225,6 +241,9 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   }
   uint32_t *last = ms_alloc_zeroed(bytes);
   count_pieces(cx, last);
+  MsArena scratch = {0};
+  cx->framed = mir_framed_closures(&scratch, cx->module, func);
+  cx->borrowed = mir_framed_iface_borrows(&scratch, cx->module, func);
   MsStrBuild *module_out = cx->out;
   MsStrBuild body = ms_strbuild_new();
   cx->out = &body;
@@ -240,5 +259,8 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   }
   ms_strbuild_free(&body);
   ms_free(last);
+  ms_arena_free(&scratch);
+  cx->framed = NULL;
+  cx->borrowed = NULL;
   return ok;
 }

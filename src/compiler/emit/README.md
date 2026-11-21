@@ -9,6 +9,9 @@ object step in `compiler/link/object.c` hands it to the pinned `opt` and `llc`.
 - `emit_term.c`, `emit_func.c`, `emit.c`, `emit_decl.c`, `emit_entry.c`: terminators and phis, one function, the
   module, its declarations, symbol names and the C `main`.
 
-Not written yet (a function using one reports `<op>` in `why`): records, alternatives, optionals, lists, strings,
-closures, interfaces, tasks, data and fault tables (they wait for the MIR glue, data and tables headers),
-and source places.
+- `emit_record.c`, `emit_option.c`, `emit_list.c`, `emit_string.c`, `emit_data.c`: records and the one-block `if`,
+  alternatives and optionals, unchecked list operations, string bytes and constant data, static data.
+- `emit_closure.c`, `emit_iface.c`, `emit_task.c`: closures and indirect calls, interfaces, the cancellation poll.
+
+Not written yet (a function using one reports the op name in `why`): fault tables and source places (`places`
+is accepted and ignored), and the purity and glue-depth hints that only speed up LLVM.
