@@ -231,6 +231,9 @@ int64_t lb_number_bits(Lb *lb, const MsExpr *e, MirTy ty, bool negate) {
 
 static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
     const MirTy ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
+    if (ms_number_is_decimal(ms_number_canonical(&lb->m->arena, ms_name(lb->c->names, e->u.sym)))) {
+        return LB_UNSUPPORTED(lb); // a Decimal is a runtime value, not a number of the MIR
+    }
     const int64_t bits = lb_number_bits(lb, e, ty, negate);
     if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
         return (LbVal){mir_b_emit(&lb->b, MOP_FConst, NULL, 0, (MirImm){.tag = MI_FLOAT, .i = bits}, ty), false};

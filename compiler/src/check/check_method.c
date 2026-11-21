@@ -511,7 +511,7 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
     const MsTy local_ty = binding == MS_NONE ? MS_TY_NONE : b->facts->bindings.ty[binding];
     Target row;
     if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, e->u.call.args.len, &row))) {
-        if (receiver->kind == MS_E_CALL) {
+        if (receiver->kind == MS_E_CALL || receiver->kind == MS_E_INDEX) {
             b->borrow_ok = receiver; // `s.view(a, b).clone()`: a borrowing receiver is used in place
         }
         const MsTy receiver_ty = ms_body_expr(b, receiver, MS_TY_NONE);
