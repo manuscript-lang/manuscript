@@ -1,14 +1,8 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	Source, stdout from "@std/io/io.ms",
-	collect,
-	filter,
-	fold,
-	from_bytes,
-	from_list,
-	lines,
-	map,
-	take from "@std/io/steps.ms",
+	filter, lines, map, take from "@std/io/steps.ms",
+	collect, fold, from_bytes, from_list from "@std/io/streams.ms",
 	Instant, monotonic from "@std/time.ms",
 )
 

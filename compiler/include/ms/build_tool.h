@@ -7,6 +7,11 @@
 
 #include "ms/base.h"
 
+/* The process environment, which POSIX leaves out of its headers; one declaration for the whole unit. */
+#ifndef _WIN32
+extern char **environ;
+#endif
+
 /* Appends the bytes of `path` to `out`; false when it cannot be read. */
 bool ms_build_read(const char *path, MsBuf *out);
 /* Writes `len` bytes to `path`. */
