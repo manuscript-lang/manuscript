@@ -90,6 +90,7 @@ MsNetStatus ms_net_connect(MsConnTable *table, const MsAddr *address, uint8_t pr
         status = id != 0 ? MS_NET_OK : MS_NET_FAILED; /* the table is full */
     }
     if (status != MS_NET_OK) {
+        msrt_task_forget_fd((int32_t)socket); /* the connect parked on it */
         ms_sys_net_close(socket);
         return status;
     }

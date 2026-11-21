@@ -12,7 +12,7 @@ work=${4:-target/c-link-hello}
 exe=
 case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) exe=.exe ;; esac
 if [ -n "${LOCALAPPDATA:-}" ] && [ -n "$exe" ]; then
-	cache=$LOCALAPPDATA/ms
+	cache=$(cygpath -u "$LOCALAPPDATA")/ms
 else
 	cache=${XDG_CACHE_HOME:-$HOME/.cache}/ms
 fi

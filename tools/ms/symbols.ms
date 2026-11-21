@@ -271,6 +271,11 @@ fn flag_value(text: String, key: String) String?:
 		if value := flag.cut_prefix(key): return value.trim()
 	return none
 
+// The runtime's value records: a user type whose fields the runtime reads or fills in
+// as a C struct.
+fn is_value_record(name: String) Bool:
+	return name == "Instant" or name == "Timestamp" or name == "DecType"
+
 fn param_kind(at: Int, p: String) String:
 	parts := p.split_once(":")
 	pname := (if parts.is_some(): parts.get().before.trim() else: "")
@@ -287,12 +292,20 @@ fn param_kind(at: Int, p: String) String:
 	if ty == "ValDesc": return "MS_RT_VAL_DESC"
 	if ty == "HasRaw": return "MS_RT_HAS"
 	if ty == "ErrSlot": return "MS_RT_ERR"
+	if (
+		ty.starts_with("*mut ")
+		and (ty.ends_with("Out") or is_value_record(ty.replace("*mut ", "")))
+		and ty != "*mut InfoOut"
+		and pname == "out"
+	): return "MS_RT_OUT_RECORD"
+	if ty.starts_with("*const ") and is_value_record(ty.replace("*const ", "")): return "MS_RT_RECORD"
 	if ty.starts_with("*mut *mut ObjCell<") and pname == "out": return "MS_RT_OUT_HANDLE"
 	if ty.starts_with("*const ObjCell<") and pname.starts_with("handle "): return "MS_RT_HANDLE"
 	if ty == "*const u8" and pname == "key": return "MS_RT_KEY_REF"
 	if ty == "*const u8": return "MS_RT_ELEMENT"
 	if ty == "i64": return "MS_RT_INT"
 	if ty == "f64": return "MS_RT_FLOAT"
+	if ty == "u64": return "MS_RT_UINT64"
 	if ty == "u8" or ty == "bool": return "MS_RT_BOOL"
 
 	return "MS_RT_OTHER"
@@ -301,6 +314,7 @@ fn result_kind(text: String) String:
 	if text == "-> i64": return "MS_RT_RET_INT"
 	if text == "-> f64": return "MS_RT_RET_FLOAT"
 	if text == "-> u8": return "MS_RT_RET_BOOL"
+	if text.starts_with("-> *mut ObjCell<"): return "MS_RT_RET_HANDLE"
 	if text.is_empty(): return "MS_RT_RET_VOID"
 
 	return "MS_RT_RET_OTHER"
