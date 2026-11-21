@@ -203,7 +203,6 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 /* Stores `value` in the stack slot `slot`. */
-void lb_store(Lb *lb, MirValue slot, MirValue value);
 
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */
 static inline bool lb_is_scalar(MirTy ty) {

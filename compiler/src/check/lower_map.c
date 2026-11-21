@@ -64,11 +64,11 @@ static MirValue lm_desc(Lb *lb, MirTy ty) {
     return mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = ty}, MIR_PTR);
 }
 
-/* Fills `slot` with a key or value the map takes: an owned one is put (the slot now owns it), a plain
+/* Fills `dest` with a key or value the map takes: an owned one is put (the slot now owns it), a plain
  * one is stored. */
-static void lm_fill(Lb *lb, MirValue slot, MirValue value) {
-    const MirValue args[2] = {slot, value};
-    (void)mir_b_emit(&lb->b, lb_owns(lb, mir_b_ty(&lb->b, value)) ? MOP_Put : MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
+static void lm_fill(Lb *lb, MirValue dest, MirValue item) {
+    const MirValue args[2] = {dest, item};
+    (void)mir_b_emit(&lb->b, lb_owns(lb, mir_b_ty(&lb->b, item)) ? MOP_Put : MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
 }
 
 /* A key or value the map takes: an owned type moves in, anything else is read. */
@@ -178,14 +178,22 @@ static LmShape lm_shape(Lb *lb, MirTy key, MirTy value) {
     if (!word_value) {
         return LM_GENERAL;
     }
-    return word_key ? LM_WORD : (text_key ? LM_TEXT : LM_GENERAL);
+    if (word_key) {
+        return LM_WORD;
+    }
+    return text_key ? LM_TEXT : LM_GENERAL;
 }
 
 /* The entry of `generic` that fits a map of `key` and `value`: the specialisation the runtime declares
  * for the layout (`@word_key_of`, `@text_key_of`), else `generic` itself. */
 const MsRtFn *lm_specialize(Lb *lb, const MsRtFn *generic, MirTy key, MirTy value) {
     const LmShape shape = lm_shape(lb, key, value);
-    const char *twin = shape == LM_WORD ? generic->word_twin : (shape == LM_TEXT ? generic->text_twin : "");
+    const char *twin = "";
+    if (shape == LM_WORD) {
+        twin = generic->word_twin;
+    } else if (shape == LM_TEXT) {
+        twin = generic->text_twin;
+    }
     const MsRtFn *found = twin[0] != '\0' ? ms_rt_fn_find(twin, strlen(twin)) : NULL;
     return found != NULL ? found : generic;
 }

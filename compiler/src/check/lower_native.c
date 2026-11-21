@@ -54,6 +54,41 @@ static MirTy ln_ret_ty(MsRtRet ret) {
     }
 }
 
+/* Which type a descriptor of role `kind` describes: 0 the element, 1 the key, 2 the value. */
+static uint32_t ln_described(MsRtParam kind) {
+    if (kind == MS_RT_KEY_DESC) {
+        return 1;
+    }
+    return kind == MS_RT_VAL_DESC ? 2 : 0;
+}
+
+/* Descriptors and key slots, made once the arguments are evaluated, in parameter order. `of` is the type a
+ * descriptor describes by role (element, key, value). */
+static bool ln_make_addresses(Lb *lb, const MsRtFn *fn, MirValue *operands, uint32_t count, const bool *is_desc,
+                              const bool *is_key_ref, const MirTy *of) {
+    for (uint32_t i = 0, param = 0; i < count; i++, param++) {
+        while (param < fn->nparams && (fn->params[param] == MS_RT_OUT_STR || fn->params[param] == MS_RT_OUT_LIST)) {
+            param++;
+        }
+        const MsRtParam kind = fn->params[param];
+        if (is_desc[i]) {
+            const MirTy described = of[ln_described(kind)];
+            if (described == MIR_NONE) {
+                return false;
+            }
+            operands[i] = mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = described}, MIR_PTR);
+        } else if (is_key_ref[i]) {
+            if (mir_b_ty(&lb->b, operands[i]) != of[1]) {
+                return false;
+            }
+            const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = of[1]}, MIR_PTR);
+            lb_store(lb, slot, operands[i]);
+            operands[i] = slot;
+        }
+    }
+    return true;
+}
+
 /* Calls `fn` on `args` (the receiver first, then the call's arguments, already evaluated), yielding
  * `result_ty`. `variable` is the variable that holds a by-reference list, which then holds what the
  * function yields. Null when the signature cannot be marshalled. */
@@ -111,29 +146,15 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
     if (is_op && op < 0) {
         return false;
     }
-    // A map's key and value types come from the map; a function with a specialisation for the map's layout is called as that.
-    const MirTy key_ty = map_ty == MIR_NONE ? MIR_NONE : mir_ty_data(lb->m, map_ty)->args[0];
-    const MirTy value_ty = map_ty == MIR_NONE ? MIR_NONE : mir_ty_data(lb->m, map_ty)->args[1];
-    const MsRtFn *entry = map_ty == MIR_NONE ? fn : lm_specialize(lb, fn, key_ty, value_ty);
-    for (uint32_t i = 0, param = 0; i < count; i++, param++) {
-        while (param < fn->nparams && (fn->params[param] == MS_RT_OUT_STR || fn->params[param] == MS_RT_OUT_LIST)) {
-            param++;
-        }
-        const MsRtParam kind = fn->params[param];
-        if (is_desc[i]) {
-            const MirTy of = kind == MS_RT_KEY_DESC ? key_ty : (kind == MS_RT_VAL_DESC ? value_ty : element);
-            if (of == MIR_NONE) {
-                return false;
-            }
-            operands[i] = mir_b_emit(&lb->b, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = of}, MIR_PTR);
-        } else if (is_key_ref[i]) {
-            if (mir_b_ty(&lb->b, operands[i]) != key_ty) {
-                return false;
-            }
-            const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = key_ty}, MIR_PTR);
-            lb_store(lb, slot, operands[i]);
-            operands[i] = slot;
-        }
+    MirTy of[3] = {element, MIR_NONE, MIR_NONE}; // the type a descriptor describes: element, key, value
+    const MsRtFn *entry = fn;
+    if (map_ty != MIR_NONE) { // a function with a specialisation for the map's layout is called as that
+        of[1] = mir_ty_data(lb->m, map_ty)->args[0];
+        of[2] = mir_ty_data(lb->m, map_ty)->args[1];
+        entry = lm_specialize(lb, fn, of[1], of[2]);
+    }
+    if (!ln_make_addresses(lb, fn, operands, count, is_desc, is_key_ref, of)) {
+        return false;
     }
     if (is_op) { // an instruction takes the arguments, not the descriptor
         uint32_t kept = 0;
