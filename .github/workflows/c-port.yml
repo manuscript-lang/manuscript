@@ -57,11 +57,23 @@ jobs:
           path: ${{ github.workspace }}/.artifacts/ccache
           key: ccache-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
           restore-keys: ccache-${{ matrix.os }}-${{ matrix.arch }}-
-      - shell: ${{ matrix.os == 'windows' && 'msys2 {0}' || 'bash' }}
+      - if: runner.os != 'Windows'
         run: cmake --preset debug
-      - shell: ${{ matrix.os == 'windows' && 'msys2 {0}' || 'bash' }}
+      - if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: cmake --preset debug
+      - if: runner.os != 'Windows'
         run: cmake --build --preset debug
-      - shell: ${{ matrix.os == 'windows' && 'msys2 {0}' || 'bash' }}
+      - if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: cmake --build --preset debug
+      - if: runner.os != 'Windows'
         run: ctest --preset debug
-      - shell: ${{ matrix.os == 'windows' && 'msys2 {0}' || 'bash' }}
+      - if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: ctest --preset debug
+      - if: runner.os != 'Windows'
+        run: cmake --build --preset debug --target lint
+      - if: runner.os == 'Windows'
+        shell: msys2 {0}
         run: cmake --build --preset debug --target lint
