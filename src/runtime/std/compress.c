@@ -162,7 +162,7 @@ uint8_t msstd_compress_compress(const MsBytes *data, const MsString *format_name
     return MS_STATUS_INVALID_INPUT;
   }
   if (!parse_format(format_name, &format)) {
-    return COMPRESS_STATUS_UNSUPPORTED;
+    return MS_STATUS_UNSUPPORTED;
   }
   Encoder *encoder = encoder_open(format, (int)level);
   if (encoder == NULL) {
@@ -182,7 +182,7 @@ uint8_t msstd_compress_compress(const MsBytes *data, const MsString *format_name
 uint8_t msstd_compress_encoder_new(const MsString *name, int64_t level, void **out) {
   Format format = FORMAT_GZIP;
   if (!parse_format(name, &format)) {
-    return COMPRESS_STATUS_UNSUPPORTED;
+    return MS_STATUS_UNSUPPORTED;
   }
   if (level < 0 || level > LEVEL_MAX) {
     return MS_STATUS_INVALID_INPUT;
@@ -340,7 +340,7 @@ uint8_t msstd_compress_decompress(const MsBytes *data, const MsString *format_na
     return MS_STATUS_INVALID_INPUT;
   }
   if (!parse_format(format_name, &format)) {
-    return COMPRESS_STATUS_UNSUPPORTED;
+    return MS_STATUS_UNSUPPORTED;
   }
   Decoder *decoder = decoder_open(format, has_max ? max : INT64_MAX);
   if (decoder == NULL) {
@@ -354,7 +354,7 @@ uint8_t msstd_compress_decompress(const MsBytes *data, const MsString *format_na
 uint8_t msstd_compress_decoder_new(const MsString *name, uint8_t has_max, int64_t max, void **out) {
   Format format = FORMAT_GZIP;
   if (!parse_format(name, &format)) {
-    return COMPRESS_STATUS_UNSUPPORTED;
+    return MS_STATUS_UNSUPPORTED;
   }
   Decoder *decoder = decoder_open(format, has_max ? max : INT64_MAX);
   if (decoder == NULL) {
