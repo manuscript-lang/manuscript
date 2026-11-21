@@ -1787,6 +1787,8 @@ static bool body_default_fits(const MsBody *b, const MsParam *p, MsTy ty) {
     case MS_E_NUMBER: return ty == b->int_ty || ty == b->float_ty;
     case MS_E_BOOL: return ty == b->bool_ty;
     case MS_E_TEXT: return ty == b->string_ty && p->def->u.text.len == 1 && p->def->u.text.ptr[0].expr == NULL;
+    case MS_E_CALL: // a construction or call: checked with the body (an unchecked default refuses the function)
+    case MS_E_LIST: return true;
     default: return false;
     }
 }
