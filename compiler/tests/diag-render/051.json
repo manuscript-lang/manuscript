@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "parameter 'a' has no type; every parameter is written name: Type, e.g. a: Int",
+      "position": {
+        "file": "051.ms",
+        "line": 4,
+        "column": 8,
+        "offset": 109
+      },
+      "end": {
+        "file": "051.ms",
+        "line": 4,
+        "column": 9,
+        "offset": 110
+      }
+    }
+  ]
+}

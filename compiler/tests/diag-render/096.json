@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected '=', found number 0",
+      "position": {
+        "file": "096.ms",
+        "line": 13,
+        "column": 15,
+        "offset": 403
+      },
+      "end": {
+        "file": "096.ms",
+        "line": 13,
+        "column": 16,
+        "offset": 404
+      }
+    }
+  ]
+}

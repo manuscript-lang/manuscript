@@ -1,0 +1,5 @@
+// conform: tags=diagmove nostics
+// conform: phase=check
+impl T]:
+    fn get() T:
+        return self.value

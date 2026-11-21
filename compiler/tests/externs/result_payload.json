@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "phase": "type",
+      "message": "extern error type ReadError must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out",
+      "position": {
+        "file": "result_payload.ms",
+        "line": 4,
+        "column": 18,
+        "offset": 58
+      }
+    }
+  ]
+}

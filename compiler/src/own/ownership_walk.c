@@ -63,6 +63,8 @@ typedef struct OwnWalk {
     uint32_t consumed;  /* parameters this walk moved */
     MsPos consumed_at[32];
     uint8_t *param_mode; /* by binding id: 0 plain, 1 `var`, 2 `move` (parameters only) */
+    uint32_t self_binding; /* the receiver of the method being walked, else MS_NONE */
+    bool self_consuming;   /* the method is `move`: the receiver is its own, so it may change it */
     bool quiet;         /* a summary round: diagnostics are left to the final pass */
     bool *lent;          /* by binding id: a lambda parameter the caller lends; moving a non-copy one out is left to Rust */
     bool *closure_holds; /* by binding id: a closure that borrows non-copy locals; moving it would let it outlive them */
@@ -700,6 +702,14 @@ static void own_mutate_place(OwnWalk *w, MsPos pos, uint32_t binding, MsPlace pl
                                "%.*s.clone()`",
                                (int)text.len, text.ptr, (int)name.len, name.ptr, (int)from.len, from.ptr, (int)name.len,
                                name.ptr, (int)name.len, name.ptr));
+    } else if (perm == PERM_IMMUTABLE && binding == w->self_binding) {
+        if (!w->self_consuming) {
+            own_error(w, pos,
+                      ms_arena_fmt(&w->check->arena,
+                                   "cannot change `%.*s`: this method does not change its receiver; write `fn var` in "
+                                   "its declaration to allow that",
+                                   (int)text.len, text.ptr));
+        }
     } else if (perm == PERM_IMMUTABLE && w->is_param[binding] && w->param_mode[binding] != 2) {
         own_error(w, pos,
                   ms_arena_fmt(&w->check->arena,
@@ -1515,6 +1525,8 @@ static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const MsM
     if (method != NULL) {
         const uint32_t self = by_node[method->id];
         own_declare(w, self, method->mutating ? PERM_MUTABLE : PERM_IMMUTABLE, true);
+        w->self_binding = self;
+        w->self_consuming = method->consuming;
         w->param_index[self] = 0;
         w->param_mode[self] = method->mutating ? 1 : 0;
     }
@@ -1540,6 +1552,8 @@ static bool own_function(OwnWalk *w, const MsFunc *function, const MsMethod *met
     w->borrowed_params = 0;
     w->consumed = 0;
     w->note_param = MS_NONE;
+    w->self_binding = MS_NONE;
+    w->self_consuming = false;
     w->supported = true;
     w->by_node = by_node;
     own_declare_parameters(w, function, method, by_node);

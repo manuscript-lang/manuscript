@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "subcode": "MS3000.18",
+      "phase": "type",
+      "message": "extern parameter f has type fn(Int) List[Int], which cannot cross the native boundary; a function an extern takes has at most 6 parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Void",
+      "position": {
+        "file": "callback_result.ms",
+        "line": 1,
+        "column": 16,
+        "offset": 15
+      }
+    }
+  ]
+}

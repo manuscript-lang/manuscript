@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected a name, found '('; give it a name, e.g. fn add(a: Int, b: Int) Int:",
+      "position": {
+        "file": "010.ms",
+        "line": 4,
+        "column": 4,
+        "offset": 28
+      },
+      "end": {
+        "file": "010.ms",
+        "line": 4,
+        "column": 5,
+        "offset": 29
+      }
+    }
+  ]
+}

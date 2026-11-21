@@ -1,0 +1,37 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "unexpected source character '#'; comments start with '//' (or '/* */' for a block)",
+      "position": {
+        "file": "108.ms",
+        "line": 31,
+        "column": 46,
+        "offset": 931
+      },
+      "end": {
+        "file": "108.ms",
+        "line": 31,
+        "column": 47,
+        "offset": 932
+      },
+      "fix": {
+        "position": {
+          "file": "108.ms",
+          "line": 31,
+          "column": 46,
+          "offset": 931
+        },
+        "end": {
+          "file": "108.ms",
+          "line": 31,
+          "column": 47,
+          "offset": 932
+        },
+        "replacement": "//"
+      }
+    }
+  ]
+}

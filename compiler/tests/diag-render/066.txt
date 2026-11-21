@@ -1,0 +1,5 @@
+066.ms:4:9: parse: expected '(', found ':'; a call or parameter list starts with '('
+   |
+ 4 | fn combi:ne(first: Int = 3, second: Int = first) Int:
+   |         ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

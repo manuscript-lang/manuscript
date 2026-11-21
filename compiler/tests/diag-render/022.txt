@@ -1,0 +1,5 @@
+022.ms:1:12: parse: unexpected source character '$'; this character is not part of Manuscript's syntax outside text
+   |
+ 1 | import Id, $how from "@wire/lib.ms"
+   |            ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

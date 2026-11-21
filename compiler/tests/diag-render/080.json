@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "a block comment must start its own line; write a trailing comment with '//'",
+      "position": {
+        "file": "080.ms",
+        "line": 6,
+        "column": 5,
+        "offset": 260
+      }
+    }
+  ]
+}

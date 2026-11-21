@@ -974,7 +974,8 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     if (use == MEMBER_READ && ms_body_is_qualified_case(b, e)) {
         return ms_body_qualified_case(b, e);
     }
-    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER && receiver->kind != MS_E_CALL) {
+    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER && receiver->kind != MS_E_CALL && receiver->kind != MS_E_INDEX &&
+        receiver->kind != MS_E_APPLY) {
         return ms_body_unsupported(b);
     }
     const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, MEMBER_RECEIVER))
@@ -1047,13 +1048,16 @@ static MsTy body_report_operands(MsBody *b, const MsExpr *e, MsTy left, MsTy rig
  * optionals built only of such parts. A type with type arguments, a native type or an interface is left to
  * the Rust checker; a written `equals` can only widen what compares, never narrow it. `depth` bounds the walk
  * (a type that holds itself is deeper than the bound and is not admitted). */
-static bool body_is_equatable(const MsBody *b, MsTy ty, uint32_t depth) {
+static bool body_is_equatable(MsBody *b, MsTy ty, uint32_t depth) {
     const MsTyTable *tys = &b->c->tys;
     if (ty == MS_TY_NONE || depth > 8) {
         return false;
     }
     if (body_is_value_type(b, ty)) {
         return true;
+    }
+    if (ms_ty_kind(tys, ty) == MS_K_VARIABLE) {
+        return ms_implements_equal(b->c, b->methods, ty) == MS_FIT_YES;
     }
     if ((ms_ty_is(tys, ty, MS_BI_LIST) || ms_ty_is(tys, ty, MS_BI_OPTIONAL)) && tys->nargs[ty] == 1) {
         return body_is_equatable(b, ms_ty_args(tys, ty)[0], depth + 1);
@@ -1334,6 +1338,12 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
         return ms_body_unsupported(b);
     }
+    for (uint32_t i = 0; b->tparams != NULL && i < b->tparams->len; i++) {
+        if (b->tparams->ptr[i]->name == t->name) {
+            b->facts->type_ref_ty[t->id] = b->tvars[i];
+            return b->tvars[i];
+        }
+    }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
     const bool primitive = sym != MS_NONE && b->c->syms.decl[sym] == NULL && ty != MS_TY_NONE && body_is_admitted(b, ty) &&
@@ -1423,8 +1433,7 @@ static void body_assign_field(MsBody *b, const MsStmt *s) {
         root = root->u.member.left;
     }
     const uint32_t binding = root->kind == MS_E_NAME ? ms_body_find_binding(b, root->u.sym) : MS_NONE;
-    if (target->kind != MS_E_MEMBER || binding == MS_NONE || binding < b->lambda_floor ||
-        (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+    if (target->kind != MS_E_MEMBER || binding == MS_NONE || binding < b->lambda_floor) {
         (void)ms_body_unsupported(b);
         return;
     }
@@ -1507,7 +1516,10 @@ static bool body_returns_nothing(const MsBody *b) {
 /* A `return` in a function literal whose result is not known yet: its value (or the lack of one) fixes it. */
 static void body_return_deciding(MsBody *b, const MsExpr *value) {
     b->context = "the return value";
-    const MsTy ty = value == NULL ? b->void_ty : ms_body_expr(b, value, MS_TY_NONE);
+    MsTy ty = value == NULL ? b->void_ty : ms_body_builtin_open(b, value, b->result_hint);
+    if (ty == MS_TY_NONE && b->supported && value != NULL) {
+        ty = ms_body_expr(b, value, MS_TY_NONE);
+    }
     if (ty == MS_TY_NONE || !(ty == b->void_ty || body_is_bindable(b, ty))) {
         (void)ms_body_unsupported(b);
         return;
@@ -1677,34 +1689,36 @@ static void body_jump_statement(MsBody *b, const MsStmt *s) {
     b->breaks += s->kind == MS_S_BREAK;
 }
 
-/* Checks the statements of a nested scope in order; whether control falls out of the end. A
- * statement after one that never falls through is left to the Rust checker. */
-/* Checks the statements in the current scope; whether control falls out of the end. */
+/* Checks the statements in the current scope; whether control falls out of the end. A statement after
+ * one that never falls through is still checked, but it neither makes the block fall through again nor
+ * counts its `break`s toward the enclosing loop. */
 static bool body_run(MsBody *b, const MsStmts *body) {
     bool falls = true;
     for (uint32_t i = 0; i < body->len && b->supported; i++) {
         const MsStmt *s = body->ptr[i];
-        if (!falls) {
-            (void)ms_body_unsupported(b);
-            break;
-        }
+        const uint32_t breaks = b->breaks;
+        bool normal = true;
         switch ((MsStmtKind)s->kind) {
         case MS_S_BIND: body_bind_statement(b, s); break;
         case MS_S_RETURN:
             body_return_statement(b, s);
-            falls = false;
+            normal = false;
             break;
-        case MS_S_IF: falls = body_if_statement(b, s); break;
-        case MS_S_WHILE: falls = body_while_statement(b, s); break;
+        case MS_S_IF: normal = body_if_statement(b, s); break;
+        case MS_S_WHILE: normal = body_while_statement(b, s); break;
         case MS_S_ASSIGN: body_assign_statement(b, s); break;
         case MS_S_BREAK:
         case MS_S_CONTINUE:
             body_jump_statement(b, s);
-            falls = false;
+            normal = false;
             break;
-        case MS_S_CALL: falls = body_call_statement(b, s); break;
-        case MS_S_FOR: falls = body_for_statement(b, s); break;
+        case MS_S_CALL: normal = body_call_statement(b, s); break;
+        case MS_S_FOR: normal = body_for_statement(b, s); break;
         }
+        if (!falls) {
+            b->breaks = breaks;
+        }
+        falls = falls && normal;
     }
     return falls;
 }
@@ -2037,7 +2051,11 @@ static void body_check_test(MsBody *b, const MsDecl *d) {
 
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     if (!body_is_test_fixture(b, &d->u.fn) || b->fixture != MS_TY_NONE) {
+        b->tparams = &d->u.fn.type_params;
+        b->tvars = ms_def(b->c, sym)->vars;
         body_check_callable(b, d->id, d->pos, d->is_exported, &d->u.fn, b->c->syms.ty[sym], NULL);
+        b->tparams = NULL;
+        b->tvars = NULL;
     }
 }
 

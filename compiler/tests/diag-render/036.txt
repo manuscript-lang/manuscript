@@ -1,0 +1,5 @@
+036.ms:3:10: parse: expected '(', found '%'; a call or parameter list starts with '('
+   |
+ 3 | fn sample%d(value: Int = 3) Int:
+   |          ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

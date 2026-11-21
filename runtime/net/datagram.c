@@ -34,6 +34,7 @@ typedef struct Handle {
 /* Closes the descriptor once, when the socket is closed and no call is using it. */
 static void release_if_idle(Core *core) {
     if (atomic_load(&core->closed) && atomic_load(&core->busy) == 0 && !atomic_flag_test_and_set(&core->released)) {
+        msrt_task_forget_fd((int32_t)core->fd); /* see conn_io.c: a watched descriptor is forgotten before it closes */
         ms_sys_net_close(core->fd);
     }
 }

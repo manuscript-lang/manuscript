@@ -1,0 +1,5 @@
+049.ms:3:5: parse: only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function
+   |
+ 3 |     b.atype ppend(2)
+   |     ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

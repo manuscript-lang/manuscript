@@ -23,7 +23,7 @@ set_target_properties(ms_backend PROPERTIES C_EXTENSIONS OFF POSITION_INDEPENDEN
 if(MS_BACKEND_ONLY)
   return()
 endif()
-if(NOT MS_BUILD_RUNTIME)
+if(NOT MS_BUILD_RUNTIME AND NOT MS_WINDOWS)
   # libms hashes packages with libcrypto (project/packages.c); a build without the runtime has no MsLibs.cmake to name it.
   find_package(OpenSSL REQUIRED)
   set(MS_LIB_crypto_INCLUDES ${OPENSSL_INCLUDE_DIR})
@@ -33,6 +33,9 @@ set(_cflags -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-format-truncation)
 set(_clink "")
 if(MS_WINDOWS)
   list(APPEND _cflags -D_CRT_SECURE_NO_WARNINGS)
+  # ms_mimalloc.h renames malloc and free, and the C library declares them dllimport (_ACRTIMP): the renamed mi_malloc
+  # would then be an import. Declaring the C library's functions plain makes them link as ordinary symbols.
+  list(APPEND _cflags -D_ACRTIMP= -D_DCRTIMP=)
   # __int128 division (constfold, range analysis) calls __divti3 and __modti3, which MSVC libraries lack: link the
   # compiler-rt builtins that ship with LLVM.
   execute_process(COMMAND "${CMAKE_C_COMPILER}" --rtlib=compiler-rt --print-libgcc-file-name
@@ -81,7 +84,7 @@ function(ms_compiler_exe name)
     target_compile_options(${name} PRIVATE -std=c11 -O1 -Wall -Wextra -Werror -include "${_c}/include/ms_mimalloc.h")
   endif()
   if(MS_WINDOWS)
-    # The Windows tools (ms_mir_build, ms_asm_tables) read no project: no libcrypto, libdl or libm. They still allocate
+    # The Windows tools (ms_mir_build, ms_asm_tables, ms_build_object, ms_build_link) read no project: no libcrypto, libdl or libm. They still allocate
     # through the force-included ms_mimalloc.h, so they link the allocator.
     target_link_libraries(${name} PRIVATE ms_mimalloc)
   else()
@@ -100,7 +103,7 @@ file(GLOB _tools CONFIGURE_DEPENDS "${_c}/tools/ms_*.c")
 foreach(file ${_tools})
   get_filename_component(name "${file}" NAME_WE)
   # Windows builds only the tools of the C pipeline (`MS_BACKEND=c`): the rest read the project with POSIX calls.
-  if(MS_WINDOWS AND NOT name MATCHES "^ms_(mir_build|asm_tables)$")
+  if(MS_WINDOWS AND NOT name MATCHES "^ms_(mir_build|asm_tables|build_object|build_link)$")
     continue()
   endif()
   ms_compiler_exe(${name} "${file}" WITH_LIBMS INCLUDES "${_c}/tools")

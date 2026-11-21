@@ -1,0 +1,5 @@
+065.ms:5:11: parse: expected an expression, found '&'; write a value, name, call, or literal here
+   |
+ 5 |     while &true: break
+   |           ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

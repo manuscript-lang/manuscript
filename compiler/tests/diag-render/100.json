@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected an expression, found '\u003e'; write a value, name, call, or literal here",
+      "position": {
+        "file": "100.ms",
+        "line": 18,
+        "column": 23,
+        "offset": 489
+      },
+      "end": {
+        "file": "100.ms",
+        "line": 18,
+        "column": 24,
+        "offset": 490
+      }
+    }
+  ]
+}

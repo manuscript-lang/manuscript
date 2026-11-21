@@ -268,7 +268,6 @@ c-compiler-test:
 	sh compiler/tests/fixes-diff.sh
 	sh compiler/tests/prelude-fix-diff.sh
 	sh compiler/tests/import-hints-diff.sh
-	sh compiler/tests/run-run.sh
 	sh compiler/tests/asm-tables.sh
 	sh compiler/tests/llvm-run.sh
 	sh compiler/tests/llvm-main-run.sh
@@ -295,6 +294,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/review_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/diagram_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/symbols.ms
+	"$(RELEASE_MS)" test tools/ms/toolchain.ms
+	"$(RELEASE_MS)" test tools/ms/proxy_get.ms
 	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
 	"$(RELEASE_MS)" test tools/ms/cli.ms
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms

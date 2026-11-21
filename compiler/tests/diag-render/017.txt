@@ -1,0 +1,5 @@
+017.ms:4:3: parse: unexpected source character '\u{1}'; this character is not part of Manuscript's syntax
+   |
+ 4 | fn␁operation() Void!: ok()
+   |   ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
