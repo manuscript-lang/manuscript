@@ -722,7 +722,7 @@ static MsTy body_explicit_call(MsBody *b, const MsExpr *e) {
 static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
-        return ms_body_method_call(b, e);
+        return ms_body_is_qualified_case(b, callee) ? ms_body_qualified_case_call(b, e) : ms_body_method_call(b, e);
     }
     const uint32_t called = callee->kind == MS_E_NAME ? ms_body_find_binding(b, callee->u.sym) : MS_NONE;
     if (called != MS_NONE) {
@@ -851,6 +851,9 @@ static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e
  * only the path matters, nothing is borrowed or moved out of the holder. */
 static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     const MsExpr *receiver = e->u.member.left;
+    if (use == MEMBER_READ && ms_body_is_qualified_case(b, e)) {
+        return ms_body_qualified_case(b, e);
+    }
     if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER) {
         return ms_body_unsupported(b);
     }

@@ -117,14 +117,22 @@ typedef struct CheckRun {
     MsModId *ids;
     MsReport *reports;
     size_t nreports;
+    bool load_failed; /* the graph holds the diagnostics of the load, and nothing was checked */
 } CheckRun;
 
 /* Loads the graph and the standard library and declares the modules. NULL, or what the C passes cannot answer. */
 static const char *check_load(CheckRun *run, const MsStdFile *std_files, uint32_t nstd, const char *target) {
     MsProjectError error = {0};
     MsGraph *graph = &run->graph;
-    if (!ms_project_load(&run->arena, &run->names, target, graph, &error) || graph->ndiagnostics != 0 || graph->count == 0) {
-        return "the load";
+    if (!ms_project_load(&run->arena, &run->names, target, graph, &error)) {
+        return ms_project_error_is_unsupported(&error) ? "a project the loader does not read" : "the loader failed";
+    }
+    if (graph->ndiagnostics != 0) {
+        run->load_failed = true;
+        return NULL;
+    }
+    if (graph->count == 0) {
+        return "an empty graph";
     }
     for (uint32_t i = 0; i < graph->count; i++) {
         if (check_has_directive(&graph->modules[i])) {
@@ -148,10 +156,13 @@ static const char *check_load(CheckRun *run, const MsStdFile *std_files, uint32_
     return NULL;
 }
 
-/* The path the terminal prints for a module: its logical name under the source root. */
-static const char *check_shown(CheckRun *run, uint32_t module) {
-    const char *const name = run->graph.modules[module].name;
+/* The path the terminal prints for a file: its logical name under the source root. */
+static const char *check_shown_file(CheckRun *run, const char *name) {
     return run->graph.source_root == NULL || ms_path_is_abs(name) ? name : MS_PATH_JOIN(&run->arena, run->graph.source_root, name);
+}
+
+static const char *check_shown(CheckRun *run, uint32_t module) {
+    return check_shown_file(run, run->graph.modules[module].name);
 }
 
 static void check_add_report(CheckRun *run, uint32_t module, const MsCheckDiag *diag) {
@@ -165,6 +176,17 @@ static void check_add_report(CheckRun *run, uint32_t module, const MsCheckDiag *
  * passes cannot answer. */
 static const char *check_diagnose(CheckRun *run) {
     const MsGraph *graph = &run->graph;
+    if (run->load_failed) {
+        run->reports = MS_NEW_N(&run->arena, MsReport, graph->ndiagnostics + 1);
+        for (uint32_t i = 0; i < graph->ndiagnostics; i++) {
+            const MsGraphDiag *d = &graph->diagnostics[i];
+            run->reports[run->nreports++] = (MsReport){.diag = d->diag,
+                                                       .file = d->file,
+                                                       .shown = check_shown_file(run, d->file),
+                                                       .phase = d->phase == MS_GRAPH_PARSE ? "parse" : "resolution"};
+        }
+        return NULL;
+    }
     MsCheck *check = &run->check;
     bool *unchecked = MS_NEW_N(&run->arena, bool, graph->count);
     if (ms_graph_check(check, graph, run->ids, unchecked) != 0) {
@@ -219,8 +241,13 @@ static const char *check_renderable(const CheckRun *run, bool json) {
         }
     }
     /* ms_render_text lists diagnostics in position order; the Rust command keeps the checker's order unless every
-     * diagnostic is a syntax error. They agree when the checker's order already is position order. */
-    return check_in_position_order(run->reports, run->nreports) ? NULL : "diagnostics not in position order";
+     * diagnostic is a syntax error, which it sorts. They agree then, and otherwise when the checker's order already
+     * is position order. */
+    bool all_parse = true;
+    for (size_t i = 0; i < run->nreports; i++) {
+        all_parse = all_parse && strcmp(run->reports[i].phase, "parse") == 0;
+    }
+    return all_parse || check_in_position_order(run->reports, run->nreports) ? NULL : "diagnostics not in position order";
 }
 
 static int check_print(const CheckRun *run, const char *target, bool json, MsBuf *out, MsBuf *err) {
