@@ -47,7 +47,7 @@ repository, and point `MS_ORACLE_DIR` at the directory holding both.
 MS_ORACLE_DIR=<dir> cmake --build --preset debug --target conform-c
 ```
 
-prints `phase: passed/total` for `parse`, `check`, `run` and `test`. Select a subset with
+prints `phase: passed/total` for `parse`, `check`, `run` and `test`, then `commands: passed/total` for the command fixtures. Select a subset with
 `-DMS_CONFORM_EXTRA="--tag;tier-core"`. A PR that lowers any phase count is not merged.
 
 ## Command fixtures
