@@ -4,7 +4,9 @@ add_library(uv STATIC
   ${UV_SRC}/fs-poll.c ${UV_SRC}/idna.c ${UV_SRC}/inet.c ${UV_SRC}/random.c ${UV_SRC}/strscpy.c
   ${UV_SRC}/strtok.c ${UV_SRC}/thread-common.c ${UV_SRC}/threadpool.c ${UV_SRC}/timer.c
   ${UV_SRC}/uv-common.c ${UV_SRC}/uv-data-getter-setters.c ${UV_SRC}/version.c)
-target_include_directories(uv SYSTEM PUBLIC libuv/include PRIVATE libuv/src)
+target_include_directories(uv SYSTEM PUBLIC libuv/include)
+# libuv's own sources take its headers with -I, ahead of any libuv installed on the system (macOS Intel runners have one).
+target_include_directories(uv BEFORE PRIVATE libuv/include libuv/src)
 target_compile_definitions(uv PUBLIC USING_UV_SHARED=0)
 if(WIN32)
   file(GLOB UV_WIN_SOURCES CONFIGURE_DEPENDS ${UV_SRC}/win/*.c)

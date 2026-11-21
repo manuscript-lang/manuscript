@@ -27,18 +27,24 @@ else()
   set(CURL_HEADERS arpa/inet.h fcntl.h ifaddrs.h libgen.h locale.h netdb.h netinet/in.h netinet/tcp.h
     netinet/udp.h poll.h pwd.h stdbool.h stdatomic.h strings.h sys/ioctl.h sys/param.h sys/poll.h
     sys/resource.h sys/select.h sys/types.h sys/un.h termios.h unistd.h utime.h dirent.h sys/filio.h
-    sys/sockio.h linux/tcp.h sys/eventfd.h fnmatch.h sched.h signal.h sys/socket.h sys/stat.h sys/time.h sys/uio.h
-    stdlib.h string.h time.h)
+    sys/sockio.h linux/tcp.h sys/eventfd.h
+    fnmatch.h sched.h signal.h sys/socket.h sys/stat.h sys/time.h sys/uio.h stdlib.h string.h time.h)
+  # The headers the function checks include, in this order, when the platform has them (a missing one would fail every
+  # check). net/if.h needs sys/socket.h first.
+  set(CURL_SYMBOL_HEADERS sys/types.h sys/socket.h sys/stat.h sys/time.h sys/uio.h sys/un.h sys/ioctl.h unistd.h fcntl.h
+    fnmatch.h libgen.h locale.h netdb.h net/if.h poll.h pwd.h sched.h signal.h stdlib.h string.h strings.h time.h utime.h
+    dirent.h ifaddrs.h sys/eventfd.h sys/resource.h)
   set(CURL_FOUND_HEADERS)
   include(CheckIncludeFiles)
   check_include_files("sys/types.h;sys/socket.h;net/if.h" HAVE_NET_IF_H)
-  if(HAVE_NET_IF_H)
-    list(APPEND CURL_FOUND_HEADERS sys/socket.h net/if.h)
-  endif()
   foreach(header IN LISTS CURL_HEADERS)
     string(TOUPPER "HAVE_${header}" var)
     string(REGEX REPLACE "[/.]" "_" var "${var}")
     check_include_file(${header} ${var})
+  endforeach()
+  foreach(header IN LISTS CURL_SYMBOL_HEADERS)
+    string(TOUPPER "HAVE_${header}" var)
+    string(REGEX REPLACE "[/.]" "_" var "${var}")
     if(${var})
       list(APPEND CURL_FOUND_HEADERS ${header})
     endif()
