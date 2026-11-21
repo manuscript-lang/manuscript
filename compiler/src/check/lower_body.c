@@ -25,11 +25,6 @@ LbVal lb_unsupported(Lb *lb) {
     return LB_FAIL;
 }
 
-static MsTy lb_primitive(const MsCheck *c, const char *name) {
-    const MsSymId sym = ms_map_get(&c->primitives, ms_intern_cstr(c->names, name));
-    return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
-}
-
 /* `ty` as the function being lowered sees it: the variables of the instance are the types they
  * stand for, through arguments, parameters and results (`List[T]` becomes `List[Int]`). A variable
  * is matched by id, as the checker's substitution does. */
