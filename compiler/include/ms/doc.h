@@ -21,6 +21,9 @@ void ms_doc_comments_above(MsBuf *out, MsStr source, size_t line_start, bool has
 
 /* The names on `// ms: effect NAME` lines in the comment block above the declaration at `offset`, in
  * source order, as slices of `source`; returns how many there are, writing at most `max`. */
+/* The length of the text literal that starts at `s[0]` (`"` or `f"`), or 0 when it is not closed. */
+size_t ms_doc_text_end(MsStr s);
+
 size_t ms_doc_effect_lines(MsStr source, size_t offset, MsStr *names, size_t max);
 
 #endif

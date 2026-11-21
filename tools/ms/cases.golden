@@ -57,10 +57,10 @@ Standalone directories discover .ms files recursively, skipping hidden/vendor/no
 Each input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.
 
 Usage:
-  ms check [flags] <targets...>
+  ms check [flags] [targets...]
 
 Arguments:
-  targets  Files, directories or ms.toml; each keeps its own import root
+  targets  Files, directories or ms.toml; each keeps its own import root (default ms.toml)
 
 Flags:
       --json       Emit versioned JSON diagnostics instead of terminal messages
@@ -86,21 +86,20 @@ Run 'ms --help' for usage.
 == help a b
 status 2
 --- stderr
-cli: unknown command a for ms
+cli: unknown command a for ms; did you mean add?
 Run 'ms --help' for usage.
 
 == nope
 status 2
 --- stderr
-unknown command: nope
-Commands: check, lint, build, emit, run, test, bench, fmt, verify, inspect, diagram, review, profile, init, install, add, remove, lsp, search_symbol, explain, version, help. Run 'ms --help' for details.
+cli: unknown command nope for ms
+Run 'ms --help' for usage.
 
 == chek a.ms
 status 2
 --- stderr
-unknown command: chek
-Did you mean 'ms check'?
-Commands: check, lint, build, emit, run, test, bench, fmt, verify, inspect, diagram, review, profile, init, install, add, remove, lsp, search_symbol, explain, version, help. Run 'ms --help' for details.
+cli: unknown command chek for ms; did you mean check?
+Run 'ms --help' for usage.
 
 == --help
 status 0
@@ -210,10 +209,10 @@ Standalone directories discover .ms files recursively, skipping hidden/vendor/no
 Each input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.
 
 Usage:
-  ms check [flags] <targets...>
+  ms check [flags] [targets...]
 
 Arguments:
-  targets  Files, directories or ms.toml; each keeps its own import root
+  targets  Files, directories or ms.toml; each keeps its own import root (default ms.toml)
 
 Flags:
       --json       Emit versioned JSON diagnostics instead of terminal messages
@@ -234,7 +233,7 @@ Examples:
 status 2
 --- stderr
 cli: unknown flag --bogus
-Run 'ms help check' for usage.
+Run 'ms check --help' for usage.
 
 == check a.ms --each
 status 2
@@ -246,29 +245,23 @@ status 2
 --- stderr
 --fix cannot be combined with --watch; use ms check <file> --fix
 
-== check
-status 2
---- stderr
-cli: missing required targets
-Run 'ms help check' for usage.
-
 == check a.ms --deny-warnings
 status 2
 --- stderr
 cli: unknown flag --deny-warnings
-Run 'ms help check' for usage.
+Run 'ms check --help' for usage.
 
 == build a.ms -o
 status 2
 --- stderr
 cli: flag -o needs a value
-Run 'ms help build' for usage.
+Run 'ms build --help' for usage.
 
 == build a.ms --build-type
 status 2
 --- stderr
 cli: flag --build-type needs a value
-Run 'ms help build' for usage.
+Run 'ms build --help' for usage.
 
 == build a.ms --build-type Fast
 status 2
@@ -279,25 +272,25 @@ unknown build type "Fast"; expected Debug, Release, or MinSizeRel
 status 2
 --- stderr
 cli: unknown flag --link
-Run 'ms help check' for usage.
+Run 'ms check --help' for usage.
 
 == run a.ms x
 status 2
 --- stderr
 cli: unexpected argument x
-Run 'ms help run' for usage.
+Run 'ms run --help' for usage.
 
 == test a.ms --time 1s
 status 2
 --- stderr
 cli: unknown flag --time
-Run 'ms help test' for usage.
+Run 'ms test --help' for usage.
 
 == bench a.ms --runs 3
 status 2
 --- stderr
 cli: unknown flag --runs
-Run 'ms help bench' for usage.
+Run 'ms bench --help' for usage.
 
 == test a.ms --runs 0
 status 2
@@ -308,7 +301,7 @@ invalid --runs; use a positive integer
 status 2
 --- stderr
 cli: flag seed: x is not an integer
-Run 'ms help test' for usage.
+Run 'ms test --help' for usage.
 
 == test a.ms --timeout 5x
 status 2
@@ -324,7 +317,7 @@ invalid --time "1us"; use a duration of at least 1ms such as 200ms or 1s
 status 2
 --- stderr
 cli: unknown flag --fuzz
-Run 'ms help bench' for usage.
+Run 'ms bench --help' for usage.
 
 == diagram a.ms --view bogus
 status 2
@@ -365,43 +358,43 @@ invalid --top; use a positive integer
 status 2
 --- stderr
 cli: unknown flag -o
-Run 'ms help profile' for usage.
+Run 'ms profile --help' for usage.
 
 == build a.ms --out-dir d
 status 2
 --- stderr
 cli: unknown flag --out-dir
-Run 'ms help build' for usage.
+Run 'ms build --help' for usage.
 
 == build a.ms --top 5
 status 2
 --- stderr
 cli: unknown flag --top
-Run 'ms help build' for usage.
+Run 'ms build --help' for usage.
 
 == build a.ms --allocs
 status 2
 --- stderr
 cli: unknown flag --allocs
-Run 'ms help build' for usage.
+Run 'ms build --help' for usage.
 
 == build a.ms --format x
 status 2
 --- stderr
 cli: unknown flag --format
-Run 'ms help build' for usage.
+Run 'ms build --help' for usage.
 
 == build a.ms --view x
 status 2
 --- stderr
 cli: unknown flag --view
-Run 'ms help build' for usage.
+Run 'ms build --help' for usage.
 
 == build a.ms --watch
 status 2
 --- stderr
 cli: unknown flag --watch
-Run 'ms help build' for usage.
+Run 'ms build --help' for usage.
 
 == run a.ms --json --watch
 status 2
@@ -412,60 +405,60 @@ status 2
 status 2
 --- stderr
 cli: unknown flag --check
-Run 'ms help check' for usage.
+Run 'ms check --help' for usage.
 
 == build a.ms --list
 status 2
 --- stderr
 cli: unknown flag --list
-Run 'ms help build' for usage.
+Run 'ms build --help' for usage.
 
 == version x
 status 2
 --- stderr
 cli: unexpected argument x
-Run 'ms help version' for usage.
+Run 'ms version --help' for usage.
 
 == init a b
 status 2
 --- stderr
 cli: unexpected argument b
-Run 'ms help init' for usage.
+Run 'ms init --help' for usage.
 
 == init -x
 status 2
 --- stderr
 cli: unknown flag -x
-Run 'ms help init' for usage.
+Run 'ms init --help' for usage.
 
 == init --lib --workspace
 status 2
 --- stderr
-unexpected init argument: --workspace; ms init takes --lib or --workspace (not both) and at most one directory, e.g. ms init --lib greeter
+ms init takes --lib or --workspace, not both; e.g. ms init --lib greeter
 
 == verify --bogus
 status 2
 --- stderr
 cli: unknown flag --bogus
-Run 'ms help verify' for usage.
+Run 'ms verify --help' for usage.
 
 == verify a b
 status 2
 --- stderr
 cli: unexpected argument b
-Run 'ms help verify' for usage.
+Run 'ms verify --help' for usage.
 
 == explain
 status 2
 --- stderr
 cli: missing required code
-Run 'ms help explain' for usage.
+Run 'ms explain --help' for usage.
 
 == explain --json
 status 2
 --- stderr
 cli: missing required code
-Run 'ms help explain' for usage.
+Run 'ms explain --help' for usage.
 
 == explain --help
 status 0
@@ -513,12 +506,6 @@ Examples:
   ms explain MS2001 MS3050 --json
 --- stderr
 
-== fmt
-status 2
---- stderr
-cli: missing required targets
-Run 'ms help fmt' for usage.
-
 == fmt --json tools/ms/explain.ms
 status 2
 --- stderr
@@ -528,47 +515,47 @@ status 2
 status 2
 --- stderr
 cli: unknown flag --bogus
-Run 'ms help fmt' for usage.
+Run 'ms fmt --help' for usage.
 
 == install --bogus
 status 2
 --- stderr
 cli: unknown flag --bogus
-Run 'ms help install' for usage.
+Run 'ms install --help' for usage.
 
 == install --update
 status 2
 --- stderr
 cli: flag --update needs a value
-Run 'ms help install' for usage.
+Run 'ms install --help' for usage.
 
 == add
 status 2
 --- stderr
 cli: missing required url
-Run 'ms help add' for usage.
+Run 'ms add --help' for usage.
 
 == add https://h/x.git --tag
 status 2
 --- stderr
 cli: flag --tag needs a value
-Run 'ms help add' for usage.
+Run 'ms add --help' for usage.
 
 == add https://h/x.git --bogus
 status 2
 --- stderr
 cli: unknown flag --bogus
-Run 'ms help add' for usage.
+Run 'ms add --help' for usage.
 
 == remove
 status 2
 --- stderr
 cli: missing required name
-Run 'ms help remove' for usage.
+Run 'ms remove --help' for usage.
 
 == remove @a @b
 status 2
 --- stderr
 cli: unexpected argument @b
-Run 'ms help remove' for usage.
+Run 'ms remove --help' for usage.
 

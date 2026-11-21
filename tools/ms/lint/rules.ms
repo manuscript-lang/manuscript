@@ -1,10 +1,13 @@
 // Every lint rule ported to Manuscript, run over one module's text.
 import (
+	lint_counter from "./counter.ms",
+	lint_defaults from "./defaults.ms",
 	Finding from "./finding.ms",
 	lint_flow from "./flow.ms",
 	lint_imports from "./imports.ms",
 	lint_interpolation from "./interpolation.ms",
 	lint_matches from "./matches.ms",
+	lint_recursion from "./recursion.ms",
 	lint_terse from "./terse.ms",
 	lint_source from "./text.ms",
 )
@@ -16,5 +19,8 @@ export fn lint_all(file: String, text: String) List[Finding]:
 	found.extend(lint_terse(file, text))
 	found.extend(lint_flow(file, text))
 	found.extend(lint_imports(file, text))
+	found.extend(lint_recursion(file, text))
+	found.extend(lint_defaults(file, text))
+	found.extend(lint_counter(file, text))
 	found.extend(lint_interpolation(file, text))
 	return found

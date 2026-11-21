@@ -117,11 +117,11 @@ MsLiveness ms_liveness_new(MsArena *arena, const MsFacts *facts);
  * the function unanalysed, for a statement or expression the walk does not handle yet. */
 bool ms_liveness_function(MsLiveness *live, const MsFacts *facts, const MsFunc *function);
 
-/* `ok(v)` or `error(e)`: a call whose callee name the checker resolved to a case of Result, so it built
+/* `ok(v)`, `Both(a, b)`: a call whose callee name the checker resolved to an enum case, so it built
  * a value rather than calling a function, a method or a function value. */
 static inline bool ms_call_builds_case(const MsFacts *facts, const MsExpr *call) {
     const MsExpr *callee = call->u.call.callee;
-    return callee->kind == MS_E_NAME && facts->res_kind[callee->id] == MS_RES_CASE && call->u.call.args.len == 1;
+    return callee->kind == MS_E_NAME && facts->res_kind[callee->id] == MS_RES_CASE;
 }
 
 /* ---- the pass ---- */

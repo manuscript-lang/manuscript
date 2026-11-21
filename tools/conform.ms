@@ -1,8 +1,8 @@
 // The frozen conformance corpus against the Rust ms on this host (`make conform`).
 // Known failures: tests/conformance/expect-fail.txt plus expect-fail.<os>.txt when
-// present. CONFORM_SHARD=i/n splits the run. CONFORM_FAST=1 builds every program with
-// Cranelift (the Debug backend, about 3x faster than LLVM) and still runs all four
-// phases: the quick local loop. CONFORM_LEAKS=1 also checks for leaked heap blocks.
+// present. CONFORM_SHARD=i/n splits the run. CONFORM_FAST=1 tests the release `ms`
+// that `make build` produced and runs all four phases: the quick local loop.
+// CONFORM_LEAKS=1 also checks for leaked heap blocks.
 // Arguments after `--` go to `conform-run.ms run`. Usage: ms run tools/conform.ms [--
 // extra conform-run.ms run arguments]
 import (
@@ -51,7 +51,8 @@ fn main() Int:
 	shard := env("CONFORM_SHARD", "0/1")
 
 	// `CONFORM_BACKEND_ONLY=1` is for a run whose lint, check and parse phases another job of the
-	// same pull request already ran (the LLVM job beside the Cranelift legs).
+	// same pull request already ran (the LLVM job beside the Linux legs, or a second
+	// pass in the same job).
 	skip_frontend := env("CONFORM_BACKEND_ONLY", "") != ""
 
 	if not skip_frontend:
@@ -63,15 +64,9 @@ fn main() Int:
 
 	extra := arguments()
 
-	// Only `run` and `test` reach a code generator, so a second pass with
-	// `MS_BACKEND=cranelift` skips the check and parse phases: the LLVM pass already
-	// ran them, and their results do not depend on the backend. `CONFORM_ALL_PHASES=1`
-	// keeps them, for a Cranelift run that is the only pass (pull requests in CI).
-	all_phases := env("CONFORM_ALL_PHASES", "") != ""
-	backend_only := (
-		skip_frontend
-		or env("MS_BACKEND", "") == "cranelift" and not fast and not all_phases
-	)
+	// Only `run` and `test` reach the code generator; `check` and `parse` do not depend
+	// on it.
+	backend_only := skip_frontend
 	phases := if backend_only: "run,test" else: "run,check,test"
 	main_run := [
 		"run",

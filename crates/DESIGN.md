@@ -1,6 +1,6 @@
-# Rust and Cranelift implementation: design contract
+# Rust implementation: design contract
 
-This describes the Rust and Cranelift implementation. Current ownership rules live in [OWNERSHIP.md](ms-check/OWNERSHIP.md); exact runtime layouts and symbols live in [ABI.md](ms-rt/ABI.md) and `ms-rt-abi`.
+This describes the Rust implementation; code generation is the C back end in `compiler/`. Current ownership rules live in [OWNERSHIP.md](ms-check/OWNERSHIP.md); exact runtime layouts and symbols live in [ABI.md](ms-rt-abi/ABI.md) and `ms-rt-abi`.
 
 ## Decisions (taken 2026-10-19, owner direction: keep today's behavior, maximum native speed)
 
@@ -9,7 +9,7 @@ This describes the Rust and Cranelift implementation. Current ownership rules li
 3. **Faults** abort the process after running scope-end cleanups in reverse order (a runtime cleanup stack, no frame unwinding in generated code). `ms test` runs each test file in its own promise (`@std/internal/test_runner.ms`); a fault ends that promise, so it fails the running test and ends only its file. Recursive call graphs use a stack-pointer limit check at function entry (`depth.enter`, expanded by `ms_mir::depth` into `stack.low`, a branch and a call that runs the function on a new stack segment); non-recursive call graphs omit it.
 4. **Promises, no language-level concurrency.** `ms-rt/src/task.rs` runs stackful coroutines parked on descriptors, timers and tokens, with a blocking thread pool (`MS_POOL_THREADS`) for work the kernel cannot wait on: DNS, and file-system calls and regular-file reads and writes. Work is started only through standard-library calls that return a `Promise[T]` and `promise(fn: ...)` in `@std/concurrency/promise.ms`; the language has no `spawn`. A promise reads what it captures, `wait` gives the result, and dropping an unfinished promise cancels it and waits for it to end; a fault ends only that promise. Signal and shutdown cancellation is one global flag checked by runtime calls and I/O, not on loop back edges (atomic relaxed load). The earlier task groups, worker threads, process groups and channels (`proposals/taskgroup.md`, `proposals/channels.md`, `proposals/worker-threads.md`) were removed; history is in git.
 5. **Native tool: `ms profile`** replaces the debugger (the debugger and DAP are dropped). It captures sampling profiles of a native program (folded stacks, pprof-compatible output and a `perf` map file) using frame pointers plus a PC-to-source table. `perf record` works on any `ms build` output because the compiler keeps frame pointers and emits a perf map and DWARF line tables.
-6. **Linking** runs a pinned static `lld` that `ms` downloads into its cache on first use (released by manuscript-lang/llvm-bundle, pinned by checksum in `toolchain/lld.lock`). Linux links dynamic executables against stubs of glibc 2.28 generated from `toolchain/glibc/<arch>.symbols` (the runtime archive defines `_start`), so they run on glibc 2.28 or newer, or with `--static` static musl executables over the startup files and libc that `crates/ms-clif/build.rs` copies from the Rust toolchain; macOS links against `.tbd` stubs generated from the symbols the program imports. Windows links the mingw-w64 CRT and import libraries from the pinned llvm-mingw release (`toolchain/fetch-mingw.sh`), with the runtime built for `gnullvm` (see `proposals/bundled-linker.md`).
+6. **Linking** runs a pinned static `lld` that `ms` downloads into its cache on first use (released by manuscript-lang/llvm-bundle, pinned by checksum in `toolchain/lld.lock`). Linux links dynamic executables against stubs of glibc 2.28 generated from `toolchain/glibc/<arch>.symbols` (the runtime archive defines `_start`), so they run on glibc 2.28 or newer, or with `--static` static musl executables over the startup files and libc that `crates/ms-build/build.rs` copies from the Rust toolchain; macOS links against `.tbd` stubs generated from the symbols the program imports. Windows links the mingw-w64 CRT and import libraries from the pinned llvm-mingw release (`toolchain/fetch-mingw.sh`), with the runtime built for `gnullvm` (see `proposals/bundled-linker.md`).
 
 ## Pipeline and crates (`crates/`)
 
@@ -19,7 +19,7 @@ This describes the Rust and Cranelift implementation. Current ownership rules li
                  (public surface: `ms_check::api` only; every other module is private)
     -> ms-lower  (checked HIR and ownership facts to MIR, native standard calls)
     -> ms-mir    (representation, ownership elaboration, optimizer, verifier, text format, interpreter)
-    -> ms-clif   (MIR -> Cranelift -> object file; line tables; perf map)
+    -> ms-build  (MIR -> LLVM IR by the C back end in `compiler/` -> `opt`, `llc` -> object file)
     -> linker driver + ms-native (ms-rt and the ms-std-* crates in one static library, embedded in ms) -> executable
 tools: ms-driver (manifest, aliases and import resolution in `project`; module graph loading, entry rule, checking), ms-build (lowering seam, optimize, codegen and link; the `ms build/run/test/profile` engine in ms-cli sits on it), ms-tooling (lint, inspect, review, diagram; agent guide, `search_symbol` standard-library lookup, docgen), ms-lsp, ms-cli (`ms`)
 ```
@@ -42,7 +42,7 @@ Keep public crate APIs small and documented with rustdoc; cross-crate changes mu
 ## Runtime ABI rules
 
 - Runtime symbols use `msrt_`; native standard-library symbols use `msstd_`. `stdlib/*.ms` owns public signatures and names its native symbols with `extern fn`.
-- Scalars cross the C-layout ABI directly. Aggregates cross by pointer, and constructed aggregates use a trailing output pointer. Fallible calls use status codes and outputs; see [ABI conventions](ms-rt/ABI.md#1-conventions).
+- Scalars cross the C-layout ABI directly. Aggregates cross by pointer, and constructed aggregates use a trailing output pointer. Fallible calls use status codes and outputs; see [ABI conventions](ms-rt-abi/ABI.md#1-conventions).
 - Arguments are borrowed unless documented as consuming; `var` receivers are exclusive mutable pointers. Returned values are owned, while source operations that return a borrow keep the borrow relationship checked by `ms-check`.
 - `ms-rt-abi` defines shared layouts and constants; its layout tests keep compiler and runtime assumptions aligned.
 - Layering: `ms-rt-abi` < `ms-rt` < `ms-std-*` < `ms-native`. `ms-rt` is the only crate that defines `msrt_*` symbols and also exports the safe helpers the native crates use (`ms_rt::ffi`: the `native!` macro and value marshalling; `ms_rt::glue`: strings, faults, cancellation, task waits and the blocking pool). A native crate calls those as Rust items, so a signature change is a compile error, not a link-time surprise. `ms-native` is the only staticlib; `ms-rt` is an rlib, and its `testing` feature turns faults into panics for tests that drive the natives through the C ABI.

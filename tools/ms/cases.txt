@@ -13,7 +13,6 @@ check a.ms --json --with-text
 check a.ms --each
 check a.ms --fix --watch
 check -- a.ms b.ms
-check
 lint a.ms --deny-warnings
 check a.ms --deny-warnings
 build a.ms -o out
@@ -72,7 +71,6 @@ explain nope
 explain --json
 explain --help
 explain a -h
-fmt
 fmt --json tools/ms/explain.ms
 fmt --bogus tools/ms/explain.ms
 fmt --check tools/ms/explain.ms tools/ms/fmt.ms ./tools/ms/explain.ms
@@ -89,3 +87,6 @@ add https://h/x.git --tag a --sha b
 add https://h/x.git --bogus
 remove
 remove @a @b
+fmt --check tools/ms/test
+fmt --check --json tools/ms/test
+fmt --check tools/ms/lint tools/ms/explain.ms

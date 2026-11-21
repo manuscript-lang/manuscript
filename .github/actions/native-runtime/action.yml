@@ -22,7 +22,7 @@ runs:
     - name: Hash the runtime sources
       id: hash
       shell: bash
-      run: echo "value=${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'vendor/**', 'crates/xtask/**', 'crates/ms-native/**', 'crates/ms-rt/**', 'crates/ms-rt-abi/**', 'crates/ms-rt-hot/**', 'crates/ms-std-*/**', 'runtime/{include,symbols,sys,core,io,net,std}/**', 'runtime/build_c.rs', 'CMakeLists.txt', 'cmake/**', 'runtime/third_party/{build.sh,c-libs.lock,llhttp/**}') }}" >> "$GITHUB_OUTPUT"
+      run: echo "value=${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'vendor/**', 'crates/xtask/**', 'crates/ms-rt-abi/**', 'runtime/{include,symbols,sys,core,io,net,std}/**', 'runtime/build_c.rs', 'CMakeLists.txt', 'cmake/**', 'runtime/third_party/{build.sh,c-libs.lock,llhttp/**}') }}" >> "$GITHUB_OUTPUT"
     - name: Restore the native runtime
       id: runtime
       uses: actions/cache@v6
@@ -44,7 +44,7 @@ runs:
     - name: Build the native runtime
       if: steps.runtime.outputs.cache-matched-key == ''
       shell: bash
-      run: cargo xtask runtime ${{ github.event_name != 'pull_request' && '--alloc-profile' || '' }}
+      run: cargo xtask runtime
     # Also after a build: a restore-key hit restores main's archives (cache-matched-key is empty then, so the
     # build runs), and the build skips the allocation-profiling archive on pull requests, leaving the
     # restored one older than the runtime sources.

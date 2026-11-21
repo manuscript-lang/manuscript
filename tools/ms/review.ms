@@ -6,12 +6,13 @@
 // `ms-tooling-dev facts FILE` prints.
 //   ms run tools/ms/review.ms -- BASE.json HEAD.json [--no-base] [--added FILE]... [--touch FILE:LINE]...
 import (
+	Arg, Command, Flag, FlagKind, Matches from "@std/cli/command.ms",
 	parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
-	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 
+	run_tool from "./cli.ms",
 	json_string from "./docgen.ms",
 	Fact, Facts from "./views.ms",
 )
@@ -431,54 +432,62 @@ export fn findings_json(findings: List[Finding]) String:
 
 // ---- Entry ----
 
-fn usage() Error:
-	return Error(
-		"usage: review.ms BASE.json HEAD.json [--no-base] [--added FILE]... [--touch FILE:LINE]..."
-	)
-
 fn load(path: String) Facts!:
 	return ok(parse[Facts](read_file(path).wait()?.decode_utf8().get_or(""))?)
+
+fn review_tool() Command:
+	return Command(
+		name: "review.ms",
+		about: "Rank what a change affects, from the facts of the base and head",
+		args: [
+			Arg("base", help: "The base facts JSON"),
+			Arg("head", help: "The head facts JSON"),
+		],
+		flags: [
+			Flag(
+				"no-base",
+				FlagKind.Bool,
+				help: "The base was not rebuilt from the diff",
+			),
+			Flag("added", FlagKind.List, help: "A source the change adds"),
+			Flag("touch", FlagKind.List, help: "FILE:LINE a change touches"),
+		],
+	)
+
+// The changed-source inputs of `--no-base`, `--added` and `--touch FILE:LINE`.
+export fn diff_input(m: Matches) DiffInput!:
+	var input = DiffInput(
+		added: m.list("added").to_set(),
+		touched: Map[String, List[Int]](),
+		base_checked: not m.bool("no-base"),
+	)
+
+	for value in m.list("touch"):
+		cut := value.last_index_of(":").get_or(-1)
+		if cut < 0: return error(Error(f"--touch needs FILE:LINE, not {value}"))
+
+		file := value.slice(0, cut)
+		line := value.slice(cut + 1, value.length()).parse_int().get_or(0)
+		var lines = input.touched.get(file).get_or([])
+		lines.append(line)
+		input.touched.add(file, lines)
+
+	return ok(input)
 
 // ms: allow_effect std.env.read
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.console.write
-fn main() Void!:
-	args := arguments()
-	if args.length() < 2: return error(usage())
-
-	base := load(args[0])?
-	head := load(args[1])?
-	var input = DiffInput(
-		added: Set[String](),
-		touched: Map[String, List[Int]](),
-		base_checked: true,
-	)
-	var i = 2
-
-	while i < args.length():
-		option := args[i].clone()
-		i += 1
-
-		if option == "--no-base": input.base_checked = false
-		else if option == "--added" or option == "--touch":
-			value := args.get_or(i, "")
-			i += 1
-
-			if option == "--added": input.added.add(value)
-			else:
-				cut := value.last_index_of(":").get_or(-1)
-				if cut < 0: return error(usage())
-
-				file := value.slice(0, cut)
-				line := value.slice(cut + 1, value.length()).parse_int().get_or(0)
-				var lines = input.touched.get(file).get_or([])
-				lines.append(line)
-				input.touched.add(file, lines)
-		else: return error(usage())
-
+fn show(m: Matches) Void!:
+	base := load(m.string("base"))?
+	head := load(m.string("head"))?
+	input := diff_input(m)?
 	var out = stdout()
 	out.write(findings_json(compare_facts(base, head, input)))?
 	out.flush()?
+	return ok()
+
+fn main() Int:
+	return run_tool(review_tool(), show)
 
 // ---- Tests: the behavior crates/ms-tooling/tests/review.rs pinned ----
 

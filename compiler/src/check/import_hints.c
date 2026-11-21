@@ -2,6 +2,7 @@
  * import_hint, type_import_hint and export_message of crates/ms-check/src/hints.rs. */
 #include <string.h>
 
+#include "ms/check.h"
 #include "ms/text.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
@@ -11,9 +12,10 @@
 #define HINT_LIST_LIMIT 12
 
 /* Source-backed prelude names (STANDARD_PRELUDE_NAMES) and functions (STANDARD_PRELUDE_FUNCTIONS). */
-static const char *const prelude_names[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable",
+const char *const ms_prelude_names[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable",
                                             "Optional", "Result", "Error", "List", "Map", "Set",
                                             "ListEntry", "MapEntry"};
+const size_t ms_prelude_name_count = sizeof ms_prelude_names / sizeof *ms_prelude_names;
 static const char *const prelude_function_module = "@std/core.ms";
 static const char *const prelude_function = "print";
 
@@ -73,23 +75,6 @@ static size_t standard_module_names(MsArena *arena, const MsCheck *c, MsStr **ou
     return ms_unique_sorted(arena, paths, n, out);
 }
 
-static MsSymKind kind_of_declaration(const MsDecl *d) {
-    switch ((MsDeclKind)d->kind) {
-    case MS_D_TYPE:
-    case MS_D_ENUM:
-    case MS_D_INTERFACE:
-        return MS_SYM_TYPE;
-    case MS_D_ALIAS:
-        return MS_SYM_ALIAS;
-    case MS_D_FN:
-    case MS_D_CONST:
-    case MS_D_IMPL:
-    case MS_D_TEST:
-        return MS_SYM_FN;
-    }
-    return MS_SYM_FN;
-}
-
 static MsSym declared_name(const MsDecl *d) {
     switch ((MsDeclKind)d->kind) {
     case MS_D_FN:
@@ -127,7 +112,7 @@ static void add_source_exports(const MsCheck *c, MsBuf *list, MsModId m) {
         const MsDecl *d = syntax->decls[i];
         MsSym name = declared_name(d);
         if (d->is_exported && name != 0) {
-            add_export(list, ms_name(c->names, name), kind_of_declaration(d));
+            add_export(list, ms_name(c->names, name), ms_decl_symbol_kind(d));
         }
     }
 }
@@ -188,8 +173,8 @@ bool ms_standard_import_ok(MsArena *arena, const MsCheck *c, MsStr path, MsStr n
 /* ---- import hints ---- */
 
 static bool is_prelude_name(MsStr name) {
-    for (size_t i = 0; i < MS_COUNT_OF(prelude_names); i++) {
-        if (ms_str_equal(name, cstr(prelude_names[i]))) {
+    for (size_t i = 0; i < MS_COUNT_OF(ms_prelude_names); i++) {
+        if (ms_str_equal(name, cstr(ms_prelude_names[i]))) {
             return true;
         }
     }

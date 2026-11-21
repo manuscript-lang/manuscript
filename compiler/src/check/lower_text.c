@@ -1,8 +1,11 @@
 /* Strings built from pieces: `a + b + c` and `f"{x} and {y}"`. The pieces of a sum or an
  * interpolation are evaluated left to right and joined by one runtime call, at most LT_MAX_JOIN
  * to a call (a longer text joins the first group, then that result with the next pieces). Pieces
- * that are all strings join with `msrt_string_concatN`; an integer piece is written in decimal by
- * the join itself, with `msrt_string_fmtN` and a mask of which pieces are integers. */
+ * that are all strings join with `msrt_string_concatN`. A piece whose type declares its own
+ * `to_string() String` calls the method the checker resolved (`text_method`). Every other piece
+ * becomes a string through the `to_string` its runtime declares (`lb_native_function`). An
+ * integer is written in decimal by the join itself, with `msrt_string_fmtN` and a mask of which
+ * pieces are integers. */
 #include <stdio.h>
 #include <string.h>
 
@@ -10,7 +13,7 @@
 
 enum { LT_MAX_JOIN = 6 };
 
-/* One operand of a join: a string, or an integer the join writes itself. */
+/* One operand of a join: a string, or a value the join writes itself (`is_int`: an integer). */
 typedef struct LtPiece {
     MirValue v;
     bool is_int;
@@ -40,6 +43,55 @@ static bool lt_literal(Lb *lb, MsStr lit, LtPieces *pieces) {
     return true;
 }
 
+/* The runtime function `name` over `params`, declared once per name and operand types. */
+static uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want) {
+    for (uint32_t i = 0; i < lb->m->nexterns; i++) {
+        const MirExtern *known = &lb->m->externs[i];
+        if (known->name == want->name && known->nparams == want->nparams &&
+            (want->nparams == 0 || memcmp(known->params, want->params, (size_t)want->nparams * sizeof *want->params) == 0)) {
+            return i;
+        }
+    }
+    return mir_add_extern(lb->m, want);
+}
+
+/* The piece `value` of a text: a string as it is, a value with a text form as that form's result
+ * (or itself when the join writes it). Any other type marks the function unsupported. */
+static LtPiece lt_piece(Lb *lb, LbVal value, MsTy checked, uint32_t own_form) {
+    if (own_form != MS_NONE) { // the type's own `to_string`, resolved by the checker
+        if (!lm_has(lb, own_form) || lb->method_func[own_form] == MIR_NONE) {
+            (void)lb_unsupported(lb);
+            return (LtPiece){MIR_NONE, false, false};
+        }
+        const MirValue text = mir_b_call(&lb->b, lb->method_func[own_form], &value.v, 1);
+        if (value.owned) {
+            lb_drop(lb, value.v);
+        }
+        lb_hold_temp(lb, text); // the statement drops it, where the operand's own text would end
+        return (LtPiece){text, false, false};
+    }
+    const MirTy ty = mir_b_ty(&lb->b, value.v);
+    if (ty == MIR_STR) {
+        return (LtPiece){value.v, false, value.owned};
+    }
+    if (ty == MIR_INT) {
+        return (LtPiece){value.v, true, value.owned}; // the join writes an integer itself (`msrt_string_fmtN`)
+    }
+    const struct MsRtFn *form = lb_native_function(lb, checked, ms_intern_cstr(lb->c->names, "to_string"));
+    if (form == NULL) {
+        (void)lb_unsupported(lb); // no declared text form for this type
+        return (LtPiece){MIR_NONE, false, false};
+    }
+    const LbVal text = lb_native_call(lb, form, &value.v, 1, MIR_STR);
+    if (!lb->ok) {
+        return (LtPiece){MIR_NONE, false, false};
+    }
+    if (value.owned) {
+        lb_drop(lb, value.v);
+    }
+    return (LtPiece){text.v, false, text.owned};
+}
+
 /* The pieces of `e`, evaluated left to right. */
 static void lt_collect(Lb *lb, const MsExpr *e, LtPieces *pieces) {
     if (e->kind == MS_E_BINARY && e->op == MS_B_ADD) {
@@ -55,12 +107,14 @@ static void lt_collect(Lb *lb, const MsExpr *e, LtPieces *pieces) {
                 continue;
             }
             const LbVal value = lb_expr(lb, part->expr);
-            const MirTy ty = lb->ok ? mir_b_ty(&lb->b, value.v) : MIR_NONE;
-            if (ty != MIR_INT && ty != MIR_STR) {
-                (void)lb_unsupported(lb); // other values need their own text form
+            if (!lb->ok) {
                 return;
             }
-            lt_push(pieces, (LtPiece){value.v, ty == MIR_INT, value.owned});
+            const LtPiece piece = lt_piece(lb, value, lb->facts->expr_ty[part->expr->id], lb->facts->text_method[part->expr->id]);
+            if (!lb->ok) {
+                return;
+            }
+            lt_push(pieces, piece);
         }
         return;
     }
@@ -87,17 +141,10 @@ static uint32_t lt_join_extern(Lb *lb, const LtPiece *group, uint32_t count, boo
     for (uint32_t i = 0; i < count; i++) {
         params[next++] = (MirParam){group[i].is_int ? MIR_INT : MIR_STR, MM_BORROW};
     }
-    for (uint32_t i = 0; i < lb->m->nexterns; i++) { // one declaration per name and operand types
-        const MirExtern *known = &lb->m->externs[i];
-        if (known->name == name && known->nparams == nparams &&
-            memcmp(known->params, params, (size_t)nparams * sizeof *params) == 0) {
-            return i;
-        }
-    }
     const MirExtern ext = {
         .name = name, .params = params, .nparams = nparams, .ret = MIR_STR, .fresh = true, .leaf = true,
         .role = !with_ints && count == 2 ? MR_STRING_CONCAT : MR_STRING_JOIN};
-    return mir_add_extern(lb->m, &ext);
+    return lt_runtime_extern(lb, &ext);
 }
 
 /* One runtime call over up to LT_MAX_JOIN pieces; the temporaries among them are dropped after. */

@@ -6,16 +6,17 @@
 //       [--stats FILES SOURCES INSERTIONS DELETIONS] [--all] [--effect NAME] [--format ascii|markdown|json]
 //   ms run tools/ms/report.ms -- --project HEAD.json [--all] [--format ...]
 import (
+	Arg, Command, Flag, FlagKind, Matches from "@std/cli/command.ms",
 	sha256 from "@std/crypto/crypto.ms",
 	hex_encode from "@std/data/encoding.ms",
 	JsonValue, parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
-	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 
+	run_tool from "./cli.ms",
 	flag, list_of, number, object, render_document, text, with from "./json_out.ms",
-	DiffInput, Finding, compare_facts from "./review.ms",
+	DiffInput, Finding, compare_facts, diff_input from "./review.ms",
 	Facts from "./views.ms",
 )
 
@@ -523,82 +524,93 @@ fn table_text(s: Section, md: Bool) String:
 
 // ---- Entry ----
 
-fn usage() Error:
-	return Error(
-		"usage: report.ms BASE.json HEAD.json [--no-base] [--added FILE]... [--touch FILE:LINE]... [--stats F S I D] [--all] [--effect NAME] [--format ascii|markdown|json]\n       report.ms --project HEAD.json [--all] [--format ...]"
-	)
-
 fn load(path: String) Facts!:
 	return ok(parse[Facts](read_file(path).wait()?.decode_utf8().get_or(""))?)
+
+fn report_tool() Command:
+	return Command(
+		name: "report.ms",
+		about: "Print the review report of a change, or the map of a project",
+		args: [
+			Arg("first", help: "BASE.json, or HEAD.json with --project"),
+			Arg("second", help: "HEAD.json", required: false),
+		],
+		flags: [
+			Flag(
+				"project",
+				FlagKind.Bool,
+				help: "Map one project instead of comparing two",
+			),
+			Flag(
+				"no-base",
+				FlagKind.Bool,
+				help: "The base was not rebuilt from the diff",
+			),
+			Flag("all", FlagKind.Bool, help: "Show every row"),
+			Flag("effect", help: "Keep findings that reach this effect"),
+			Flag("format", help: "ascii, markdown or json"),
+			Flag("added", FlagKind.List, help: "A source the change adds"),
+			Flag(
+				"touch",
+				FlagKind.List,
+				help: "FILE:LINE a change touches",
+			),
+			Flag(
+				"stats",
+				help: "FILES,SOURCES,INSERTIONS,DELETIONS of the diff",
+			),
+		],
+	)
+
+// `--stats FILES,SOURCES,INSERTIONS,DELETIONS`; zeros when absent.
+fn diff_stats(m: Matches) DiffStats:
+	text := m.string_or_none("stats").get_or("0,0,0,0")
+	parts := text.split(",").map(fn part: part.parse_int().get_or(0))
+	if parts.length() != 4: return DiffStats()
+
+	return DiffStats(
+		files: parts[0],
+		sources: parts[1],
+		insertions: parts[2],
+		deletions: parts[3],
+	)
 
 // ms: allow_effect std.env.read
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.console.write
-fn main() Void!:
-	args := arguments()
-	var project = false
-	var paths = List[String]()
-	var input = DiffInput(
-		added: Set[String](),
-		touched: Map[String, List[Int]](),
-		base_checked: true,
+fn show(m: Matches) Void!:
+	options := ReviewOptions(
+		all: m.bool("all"),
+		effect: m.string_or_none("effect").get_or(""),
 	)
-	var stats = DiffStats()
-	var options = ReviewOptions()
-	var format = "ascii"
-	var i = 0
-
-	while i < args.length():
-		option := args[i].clone()
-		i += 1
-
-		if option == "--project": project = true
-		else if option == "--no-base": input.base_checked = false
-		else if option == "--all": options.all = true
-		else if option == "--effect":
-			options.effect = args.get_or(i, "")
-			i += 1
-		else if option == "--format":
-			format = args.get_or(i, "")
-			i += 1
-		else if option == "--added":
-			input.added.add(args.get_or(i, ""))
-			i += 1
-		else if option == "--touch":
-			value := args.get_or(i, "")
-			i += 1
-
-			cut := value.last_index_of(":").get_or(-1)
-			if cut < 0: return error(usage())
-
-			file := value.slice(0, cut)
-			var lines = input.touched.get(file).get_or([])
-			lines.append(value.slice(cut + 1, value.length()).parse_int().get_or(0))
-			input.touched.add(file, lines)
-		else if option == "--stats":
-			stats = DiffStats(
-				files: args.get_or(i, "0").parse_int().get_or(0),
-				sources: args.get_or(i + 1, "0").parse_int().get_or(0),
-				insertions: args.get_or(i + 2, "0").parse_int().get_or(
-					0
-				),
-				deletions: args.get_or(i + 3, "0").parse_int().get_or(0),
-			)
-			i += 4
-		else if option.starts_with("--"): return error(usage())
-		else: paths.append(option)
-
+	format := m.string_or_none("format").get_or("ascii")
+	first := load(m.string("first"))?
 	var report = Report()
 
-	if project:
-		if paths.length() != 1: return error(usage())
+	if m.bool("project"):
+		if m.string_or_none("second").is_some(): return error(
+			Error("--project takes one facts file")
+		)
 
-		report = project_report(load(paths[0])?, options)
+		report = project_report(first, options)
 	else:
-		if paths.length() != 2: return error(usage())
+		second := m.string_or_none("second")
+		if second.is_none(): return error(
+			Error("a change needs BASE.json and HEAD.json")
+		)
 
-		report = diff_report(load(paths[0])?, load(paths[1])?, input, stats, options)
+		report = diff_report(
+			first,
+			load(second.get())?,
+			diff_input(m)?,
+			diff_stats(m),
+			options,
+		)
 
 	var out = stdout()
 	out.write(render(report, format))?
 	out.flush()?
+	return ok()
+
+fn main() Int:
+	return run_tool(report_tool(), show)

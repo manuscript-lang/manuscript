@@ -61,6 +61,10 @@ typedef struct OwnWalk {
     MsPos consumed_at[32];
     uint8_t *param_mode; /* by binding id: 0 plain, 1 `var`, 2 `move` (parameters only) */
     bool quiet;         /* a summary round: diagnostics are left to the final pass */
+    bool *closure_holds; /* by binding id: a closure that borrows non-copy locals; moving it would let it outlive them */
+    bool lambda_escaping; /* the lambda being walked is returned, stored or handed to a `move` parameter */
+    uint32_t captured[8]; /* the non-copy bindings the lambda being walked reads */
+    uint32_t ncaptured;
     bool *deferred;     /* by binding id: a part of a parameter that the match or `if` would consume if it moved */
     BorrowSet active;   /* live borrows in push order; a released one has holder MS_NONE */
     uint32_t *pending;  /* holders whose borrows end with the statement */
@@ -81,7 +85,7 @@ typedef enum Demand { DEMAND_READ, DEMAND_MOVE } Demand;
 
 static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning);
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand);
-static void own_lambda(OwnWalk *w, const MsExpr *e);
+static void own_lambda(OwnWalk *w, const MsExpr *e, bool escaping);
 
 /* Holders at or above this are not bindings: the hidden borrow a `for` loop keeps on its iterable. */
 #define OWN_HIDDEN_HOLDER 0xF0000000u
@@ -119,11 +123,15 @@ static void own_declare(OwnWalk *w, uint32_t binding, Perm perm, bool parameter)
     w->declared[w->ndeclared++] = binding;
     w->perm[binding] = (uint8_t)perm;
     w->class_of[binding] = (uint8_t)ms_classify(w->classifier, w->facts->bindings.ty[binding]);
+    if (w->class_of[binding] == MS_CLASS_RESOURCE) {
+        w->facts->bindings.flags[binding] |= MS_BIND_RESOURCE;
+    }
     w->origin[binding] = MS_NONE;
     w->is_param[binding] = parameter;
     w->param_mode[binding] = 0;
     w->param_index[binding] = MS_NONE;
     w->deferred[binding] = false;
+    w->closure_holds[binding] = false;
 }
 
 /* The binding whose storage `binding` names: itself, or what it borrows. */
@@ -191,10 +199,16 @@ static void own_check_change_place(OwnWalk *w, MsPos pos, uint32_t binding, MsPl
             continue;
         }
         const MsStr holder = own_name(w, b->holder);
+        const bool closure = strcmp(b->why, "closure capture") == 0;
         const MsStr remedy =
             b->holder >= OWN_HIDDEN_HOLDER
                 ? ms_arena_fmt(&w->check->arena, "iterate over a clone instead by appending `.clone()` to the loop's "
                                                  "iterable expression")
+            : closure
+                ? ms_arena_fmt(&w->check->arena,
+                               "or build `%.*s` from a clone: bind `.clone()` of the captured value first and capture "
+                               "that binding",
+                               (int)holder.len, holder.ptr)
                 : ms_arena_fmt(&w->check->arena, "or give `%.*s` its own value by ending its initializer with `.clone()`",
                                (int)holder.len, holder.ptr);
         own_error(w, pos,
@@ -320,7 +334,16 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     const uint32_t binding = w->facts->res_ref[e->id];
     if (binding < w->floor && w->class_of[binding] != MS_CLASS_COPY) {
-        w->supported = false; /* a closure that captures a value with one owner */
+        // a closure reads a value with one owner in place while it lives; one that outlives the
+        // statement would have to take it over, which is left to Rust
+        if (w->lambda_escaping || demand == DEMAND_MOVE || w->ncaptured == 8) {
+            w->supported = false;
+        } else {
+            w->captured[w->ncaptured++] = own_resolve(w, binding);
+        }
+    }
+    if (demand == DEMAND_MOVE && w->closure_holds[binding]) {
+        w->supported = false; /* the closure would outlive the locals it borrows */
     }
     if (demand != DEMAND_MOVE || w->class_of[binding] == MS_CLASS_COPY) {
         own_record(w, e, binding);
@@ -347,8 +370,16 @@ static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+static void own_construct(OwnWalk *w, const MsExpr *e);
+
+static void own_construct(OwnWalk *w, const MsExpr *e);
+
 static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     own_check_wrap(w, e);
+    if (w->facts->coerce_iface[e->id] != MS_TY_NONE && e->kind != MS_E_CALL) {
+        w->supported = false; /* a named value boxed into an interface: moved or copied, not followed yet */
+        return;
+    }
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER:
     case MS_E_BOOL:
@@ -371,11 +402,17 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         own_expr(w, e->u.bin.left, DEMAND_READ);
         own_expr(w, e->u.bin.right, DEMAND_READ);
         return;
-    case MS_E_MEMBER: own_expr(w, e->u.member.left, DEMAND_READ); return; /* a copied field reads its holder */
+    case MS_E_MEMBER:
+        /* A field reads its holder; moving one out of it is a partial move, not modelled yet. */
+        if (demand == DEMAND_MOVE && ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
+            w->supported = false;
+        }
+        own_expr(w, e->u.member.left, DEMAND_READ);
+        return;
     case MS_E_INDEX: /* only a scalar element is read: the checker admits no other */
     case MS_E_APPLY: { /* `xs[i]` read as a type application: the checker admits it only as an index */
-        const MsExpr *list = NULL;
-        const MsExpr *index = NULL;
+        MsExpr *list = NULL;
+        MsExpr *index = NULL;
         if (!ms_expr_index(e, &list, &index)) {
             w->supported = false;
             return;
@@ -389,12 +426,22 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
             own_expr(w, e->u.list.ptr[i], DEMAND_MOVE);
         }
         return;
-    case MS_E_PROBE:
-    case MS_E_MAP: w->supported = false; return; /* collections are not modeled */
-    case MS_E_LAMBDA: own_lambda(w, e); return;
+    case MS_E_MAP: /* each key and value moves into the map */
+        for (uint32_t i = 0; i < e->u.map.len; i++) {
+            own_expr(w, e->u.map.ptr[i].key, DEMAND_MOVE);
+            own_expr(w, e->u.map.ptr[i].value, DEMAND_MOVE);
+        }
+        return;
+    case MS_E_PROBE: w->supported = false; return; /* not modeled */
+    case MS_E_LAMBDA: {
+        const uint32_t start = w->ncaptured;
+        own_lambda(w, e, demand == DEMAND_MOVE);
+        w->ncaptured = start;
+        return;
+    }
     case MS_E_CALL:
         if (ms_call_builds_case(w->facts, e)) {
-            own_expr(w, e->u.call.args.ptr[0].value, DEMAND_READ); /* a primitive payload is copied */
+            own_construct(w, e); /* each payload moves into the value, a plain one is copied */
             return;
         }
         own_call(w, e, demand);
@@ -518,8 +565,8 @@ static bool own_mentions(const OwnWalk *w, const MsExpr *e, uint32_t binding) {
         return false;
     case MS_E_INDEX: return own_mentions(w, e->u.bin.left, binding) || own_mentions(w, e->u.bin.right, binding);
     case MS_E_APPLY: {
-        const MsExpr *list = NULL;
-        const MsExpr *index = NULL;
+        MsExpr *list = NULL;
+        MsExpr *index = NULL;
         return !ms_expr_index(e, &list, &index) || own_mentions(w, list, binding) || own_mentions(w, index, binding);
     }
     case MS_E_MEMBER:
@@ -635,8 +682,8 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
                 own_mutate(w, arg, binding);
                 continue;
             }
-            const MsExpr *part_of = NULL;
-            const MsExpr *part_at = NULL;
+            MsExpr *part_of = NULL;
+            MsExpr *part_at = NULL;
             if (ms_expr_index(arg, &part_of, &part_at) || arg->kind == MS_E_MEMBER) {
                 w->supported = false; /* a part of a variable is a place too: changing it is left to Rust */
                 return;
@@ -699,6 +746,23 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+/* An operation of an interface value, dispatched at run time: the receiver and the arguments are
+ * read. The operation may change the receiver, which the walk cannot see, so a receiver that is a
+ * `var` binding is left to the Rust checker; the result is a plain value like a method's. */
+static void own_interface_call(OwnWalk *w, const MsExpr *e) {
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    const uint32_t binding = own_argument_local(w, receiver);
+    const bool changeable = binding == MS_NONE || (w->facts->bindings.flags[binding] & MS_BIND_MUTABLE) != 0;
+    if (changeable || ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_COPY) {
+        w->supported = false;
+        return;
+    }
+    own_expr(w, receiver, DEMAND_READ);
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
+    }
+}
+
 /* `Type(a, b)`: a record this module or another declares, built from its arguments. */
 static bool own_is_constructor(const OwnWalk *w, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
@@ -750,6 +814,10 @@ static void own_record_owned_borrow(OwnWalk *w, const MsExpr *e, const OwnSummar
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const MsExpr *callee_expr = e->u.call.callee;
+    if (w->facts->call_reordered[e->id]) {
+        w->supported = false; /* the arguments are paired with parameters by index below */
+        return;
+    }
     if (callee_expr->kind == MS_E_NAME && w->facts->res_kind[callee_expr->id] == MS_RES_BINDING) {
         own_expr(w, callee_expr, DEMAND_READ); /* a call through a function-typed local reads it */
         for (uint32_t i = 0; i < e->u.call.args.len; i++) {
@@ -757,9 +825,12 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
         }
         return;
     }
-    if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_interface[e->id] != MS_TY_NONE &&
-        ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) != MS_K_CONTRACT) {
-        own_intrinsic_call(w, e);
+    if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_interface[e->id] != MS_TY_NONE) {
+        if (ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
+            own_interface_call(w, e);
+        } else {
+            own_intrinsic_call(w, e);
+        }
         return;
     }
     if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_method[e->id] != MS_NONE && w->facts->methods != NULL) {
@@ -826,10 +897,31 @@ static bool own_bind_borrowed_call(OwnWalk *w, const MsStmt *s, uint32_t binding
     return true;
 }
 
+/* `name := fn ...`: the closure lives as long as the name, so what it reads in place stays borrowed
+ * until the name's last use. */
+static void own_bind_lambda(OwnWalk *w, const MsStmt *s, uint32_t binding) {
+    const MsExpr *lambda = s->u.bind.value;
+    const uint32_t start = w->ncaptured;
+    own_lambda(w, lambda, false);
+    for (uint32_t i = start; i < w->ncaptured && w->supported; i++) {
+        if (w->captured[i] >= w->facts->lambda_first[lambda->id]) {
+            continue; /* a local of an enclosing closure's body, not of this one's surroundings */
+        }
+        const Borrow borrow = {.holder = binding, .origin = w->captured[i], .pos = lambda->pos, .why = "closure capture"};
+        own_push_borrow(w, &borrow);
+        w->closure_holds[binding] = true;
+    }
+    w->ncaptured = start;
+}
+
 static void own_bind(OwnWalk *w, const MsStmt *s) {
     const uint32_t binding = w->facts->pattern_binding[s->u.bind.pattern->id];
     own_declare(w, binding, s->u.bind.is_mutable ? PERM_MUTABLE : PERM_IMMUTABLE, false);
     if (own_bind_borrowed_call(w, s, binding)) {
+        return;
+    }
+    if (s->u.bind.value->kind == MS_E_LAMBDA && !s->u.bind.is_mutable) {
+        own_bind_lambda(w, s, binding);
         return;
     }
     const uint32_t source = w->class_of[binding] == MS_CLASS_COPY ? MS_NONE : own_borrowed_name(w, s, binding);
@@ -1159,7 +1251,7 @@ static void own_while(OwnWalk *w, const MsStmt *s) {
 }
 
 /* `for i in a..b`: the bounds are read once; the counter is a fresh copied binding per iteration. */
-/* `for name in xs` over a list of copies: the loop variable is a plain value, and the list stays
+/* `for name in xs`: the loop variable is a plain value, or borrows a String element, and the list stays
  * unchanged for the whole loop, which a hidden borrow on it says. */
 static void own_for_list(OwnWalk *w, const MsStmt *s) {
     const uint32_t mark = w->ndeclared;
@@ -1176,7 +1268,12 @@ static void own_for_list(OwnWalk *w, const MsStmt *s) {
         w->supported = false;
         return;
     }
-    own_declare(w, variable, PERM_IMMUTABLE, false);
+    if (ms_classify(w->classifier, w->facts->bindings.ty[variable]) == MS_CLASS_COPY) {
+        own_declare(w, variable, PERM_IMMUTABLE, false);
+    } else { // a String element is borrowed from the list; moving it out is left to the Rust walk
+        own_declare(w, variable, PERM_BORROWED, false);
+        w->deferred[variable] = true;
+    }
     BorrowSet entry = own_set_copy(&w->active);
     own_block(w, &s->u.each.body);
     own_join(w, entry);
@@ -1270,7 +1367,9 @@ static void own_statement(OwnWalk *w, const MsStmt *s) {
 
 /* An anonymous function: its parameters are owned by its body, its returns are its own, and it
  * captures only copies, which it reads when it is made. */
-static void own_lambda(OwnWalk *w, const MsExpr *e) {
+static void own_lambda(OwnWalk *w, const MsExpr *e, bool escaping) {
+    const bool outer_escaping = w->lambda_escaping;
+    w->lambda_escaping = escaping;
     const bool had_borrowed = w->has_borrowed_return, had_owned = w->has_owned_return;
     const MsPos borrowed_at = w->borrowed_return, owned_at = w->owned_return;
     const uint32_t outer_floor = w->floor, outer_params = w->borrowed_params;
@@ -1283,6 +1382,7 @@ static void own_lambda(OwnWalk *w, const MsExpr *e) {
     own_end_scope(w, mark);
     w->floor = outer_floor;
     w->borrowed_params = outer_params;
+    w->lambda_escaping = outer_escaping;
     w->has_borrowed_return = had_borrowed;
     w->has_owned_return = had_owned;
     w->borrowed_return = borrowed_at;
@@ -1354,6 +1454,7 @@ static void own_allocate(OwnWalk *w, MsArena *arena) {
     w->origin = MS_NEW_N(arena, uint32_t, n);
     w->is_param = MS_NEW_N(arena, bool, n);
     w->deferred = MS_NEW_N(arena, bool, n);
+    w->closure_holds = MS_NEW_N(arena, bool, n);
     w->param_mode = MS_NEW_N(arena, uint8_t, n);
     w->param_index = MS_NEW_N(arena, uint32_t, n);
     w->summaries = MS_NEW_N(arena, OwnSummary, (size_t)w->facts->node_count + 1);

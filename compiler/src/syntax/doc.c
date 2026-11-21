@@ -1,5 +1,6 @@
 /* Documentation comments (ms/doc.h). */
 #include "ms/doc.h"
+#include <stdlib.h>
 
 static bool doc_is_space(char ch) { return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\f' || ch == '\v'; }
 
@@ -69,7 +70,7 @@ static bool doc_lines_fill(DocLines *l, size_t upto) {
         }
         if (l->count == l->cap) {
             l->cap = l->cap != 0 ? l->cap * 2 : 8;
-            l->lines = ms_array_resize(l->lines, l->cap, sizeof *l->lines);
+            l->lines = ms_array_resize(l->lines, (uint32_t)l->cap, sizeof *l->lines);
         }
         l->lines[l->count++] = (MsStr){l->source.ptr + at, (uint32_t)(l->rest - at)};
         if (at == 0) {
@@ -203,7 +204,7 @@ void ms_doc_comments_above(MsBuf *out, MsStr source, size_t line_start, bool has
         }
         if (nblocks == cap) {
             cap = cap != 0 ? cap * 2 : 8;
-            blocks = ms_array_resize(blocks, cap, sizeof *blocks);
+            blocks = ms_array_resize(blocks, (uint32_t)cap, sizeof *blocks);
         }
         blocks[nblocks++] = (DocBlock){block_from, scratch.len - block_from};
     }
@@ -219,7 +220,7 @@ void ms_doc_comments_above(MsBuf *out, MsStr source, size_t line_start, bool has
 }
 
 /* The end of the text literal that starts at `s[0]` (`"` or `f"`), or 0 when it is not closed. */
-static size_t doc_text_end(MsStr s) {
+size_t ms_doc_text_end(MsStr s) {
     size_t i = 0;
     const bool formatted = s.len > 0 && s.ptr[0] == 'f';
     if (formatted) {
@@ -238,7 +239,7 @@ static size_t doc_text_end(MsStr s) {
             depth--;
             i++;
         } else if (ch == '"' && depth > 0) {
-            const size_t end = doc_text_end((MsStr){s.ptr + i, (uint32_t)(s.len - i)});
+            const size_t end = ms_doc_text_end((MsStr){s.ptr + i, (uint32_t)(s.len - i)});
             if (end == 0) {
                 return 0;
             }
@@ -269,7 +270,7 @@ static void doc_trailing_comment(MsBuf *out, MsStr source, size_t offset) {
             const bool formatted = i > 0 && line.ptr[i - 1] == 'f' &&
                                    (i == 1 || !(doc_is_alnum(line.ptr[i - 2]) || line.ptr[i - 2] == '_'));
             const size_t from = i - (formatted ? 1u : 0u);
-            const size_t length = doc_text_end((MsStr){line.ptr + from, (uint32_t)(line.len - from)});
+            const size_t length = ms_doc_text_end((MsStr){line.ptr + from, (uint32_t)(line.len - from)});
             if (length == 0) {
                 return;
             }

@@ -3,9 +3,10 @@
 // `libmstool.a`.
 // `add` and `remove` edit the `[dependencies]` and `[effects]` tables of `ms.toml` with
 // manifest_edit.ms, keeping every comment and the layout of the rest of the file.
-// Anything the Rust command words differently (a workspace root, a requirement that
+// Anything the Rust command words differently (an unusual manifest, a requirement that
 // does not parse) goes to the Rust command, before a file is touched.
 import (
+	Matches from "@std/cli/command.ms",
 	working_directory from "@std/os/env.ms",
 	exists, read_file, write_file from "@std/os/fs.ms",
 	dirname, join from "@std/os/path.ms",
@@ -18,16 +19,27 @@ import (
 	default_name,
 	remove_dependency,
 	valid_alias from "./manifest_edit.ms",
+	find, root_workspace from "./workspace.ms",
 )
 
 // Status 1 of `ms_tool_install` is an error with the Rust text; status 2 is a project
-// the C reader does not cover (a workspace).
+// the C reader does not cover.
 export enum InstallError:
 	Failed(message: String)
 	Unsupported(message: String)
 
 extern fn ms_tool_install(
 	manifest: String,
+	update: List[String],
+	locked: Bool,
+	frozen: Bool,
+) List[String]!InstallError
+
+// A workspace's members (`name\tmanifest` rows) resolve into one `ms.lock` at
+// `lock_root`.
+extern fn ms_tool_install_workspace(
+	lock_root: String,
+	members: List[String],
 	update: List[String],
 	locked: Bool,
 	frozen: Bool,
@@ -56,6 +68,12 @@ fn find_project() String?:
 
 	return none
 
+// Whether `manifest` is a workspace root with no `[project]`, which has no dependencies
+// of its own to edit.
+fn is_root(manifest: String) Bool:
+	found := root_workspace(manifest)
+	return found.is_ok() and found.get().is_some()
+
 fn fetched_rows(rows: List[String]) String:
 	var out = ""
 
@@ -77,7 +95,24 @@ type Installed:
 	rust: Bool = false
 
 fn install_manifest(manifest: String, update: List[String]) Installed:
-	got := ms_tool_install(manifest, update, false, false)
+	// A project of a workspace installs every member into the root's one lock.
+	space := find(manifest.clone())
+	if space.is_error(): return Installed(rust: true)
+
+	var got = ms_tool_install(manifest, update, false, false)
+
+	if workspace := space.get():
+		var rows = List[String]()
+		for member in workspace.members: rows.append(
+			f"{member.name}\t{member.manifest}"
+		)
+		got = ms_tool_install_workspace(
+			workspace.root.clone(),
+			rows,
+			update,
+			false,
+			false,
+		)
 
 	if got.is_error():
 		match got.err():
@@ -87,31 +122,9 @@ fn install_manifest(manifest: String, update: List[String]) Installed:
 	return Installed(rows: got.get().clone())
 
 // Runs `ms install`; none when the Rust command must.
-export fn run_install(args: List[String]) Printed?:
-	var update = List[String]()
-	var manifest = ""
-	var at = 0
-
-	while at < args.length():
-		arg := args[at].clone()
-
-		if arg == "--update":
-			if at + 1 >= args.length(): return Printed(
-				stderr: "ms install: --update needs a package name such as @pg\n",
-				status: 1,
-			)
-
-			update.append(args[at + 1].clone())
-			at += 1
-		else if arg.starts_with("-"):
-			return Printed(
-				stderr: f"ms install: unknown option {arg}; see ms install --help\n",
-				status: 1,
-			)
-		else:
-			manifest = arg
-
-		at += 1
+export fn run_install(m: Matches) Printed?:
+	update := m.list("update")
+	var manifest = m.string_or_none("manifest").get_or("")
 
 	if manifest.is_empty():
 		found := find_project()
@@ -198,48 +211,22 @@ fn quoted_list(effects: List[String]) String:
 	return out.join(", ")
 
 // Runs `ms add`; none when the Rust command must.
-export fn run_add(args: List[String]) Printed?:
-	var url = ""
+export fn run_add(m: Matches) Printed?:
+	url := m.string("url")
+	var name = m.string_or_none("as").get_or("")
+	allow := m.bool("allow")
 	var kind = ""
 	var reference = ""
-	var name = ""
-	var allow = false
-	var at = 0
 
-	while at < args.length():
-		arg := args[at].clone()
-		var needs = ""
-		if arg == "--version": needs = "a requirement such as 1.2"
-		if arg == "--tag": needs = "a tag"
-		if arg == "--sha": needs = "a full commit"
-		if arg == "--as": needs = "a package name such as @pg"
-		if not needs.is_empty() and at + 1 >= args.length(): return failure(
-			"add",
-			f"{arg} needs {needs}",
-		)
-
-		if arg == "--version" or arg == "--tag" or arg == "--sha":
+	for choice in ["version", "tag", "sha"]:
+		if value := m.string_or_none(choice):
 			if not kind.is_empty(): return failure(
 				"add",
 				"name exactly one of --version, --tag and --sha",
 			)
 
-			kind = arg.slice(2, arg.length())
-			reference = args[at + 1].clone()
-			at += 1
-		else if arg == "--as":
-			name = args[at + 1].clone()
-			at += 1
-		else if arg == "--allow":
-			allow = true
-		else if arg.starts_with("-"):
-			return failure("add", f"unknown option {arg}; see ms add --help")
-		else if url.is_empty():
-			url = arg
-		else:
-			return failure("add", "one repository URL at a time")
-
-		at += 1
+			kind = choice.clone()
+			reference = value.clone()
 
 	if url.is_empty(): return failure(
 		"add",
@@ -270,9 +257,13 @@ export fn run_add(args: List[String]) Printed?:
 		"add",
 		"no ms.toml here or above; run `ms init` first",
 	)
+	if is_root(manifest.get()): return failure(
+		"add",
+		f"{manifest.get()} is a workspace root; run ms add inside a member directory",
+	)
 
 	original := read_text(manifest.get())
-	if original.is_none() or original.get().contains("[workspace"): return none
+	if original.is_none(): return none
 
 	edited := add_dependency(original.get(), name, url, pin_of(kind, reference))
 	if edited.is_error(): return failure("add", edited.err().message)
@@ -327,18 +318,20 @@ export fn run_add(args: List[String]) Printed?:
 	return Printed(stdout: out)
 
 // Runs `ms remove`; none when the Rust command must.
-export fn run_remove(args: List[String]) Printed?:
-	if args.length() != 1: return failure("remove", "name one package: ms remove @name")
-
-	name := args[0].clone()
+export fn run_remove(m: Matches) Printed?:
+	name := m.string("name")
 	manifest := find_project()
 	if manifest.is_none(): return failure(
 		"remove",
 		"no ms.toml here or above; run `ms init` first",
 	)
+	if is_root(manifest.get()): return failure(
+		"remove",
+		f"{manifest.get()} is a workspace root; run ms remove inside a member directory",
+	)
 
 	original := read_text(manifest.get())
-	if original.is_none() or original.get().contains("[workspace"): return none
+	if original.is_none(): return none
 
 	edited := remove_dependency(original.get(), name)
 	if edited.is_error(): return failure("remove", edited.err().message)

@@ -2,6 +2,7 @@
 // test on one target in one result. Orchestration only: each step is this command line
 // run as a child with its streams captured.
 import (
+	Matches from "@std/cli/command.ms",
 	JsonValue, parse from "@std/data/json.ms",
 	stderr, stdout from "@std/io/io.ms",
 	RunOptions, process_info, run from "@std/os/process.ms",
@@ -138,35 +139,11 @@ fn print_findings(step: Step) Int:
 
 	return found.length()
 
-export fn run_verify(args: List[String]) Int:
-	var structured = false
-	var skip_test = false
-	var deny_warnings = false
-	var positional = false
-	var targets = List[String]()
-
-	for arg in args:
-		if arg == "--" and not positional:
-			positional = true
-		else if arg == "--json" and not positional:
-			structured = true
-		else if arg == "--no-test" and not positional:
-			skip_test = true
-		else if arg == "--deny-warnings" and not positional:
-			deny_warnings = true
-		else if arg.starts_with("-") and not positional:
-			complain(
-				f"unknown option {arg} for ms verify; run 'ms help verify' for its options"
-			)
-			return 2
-		else:
-			targets.append(arg.clone())
-
-	if targets.length() > 1:
-		complain("ms verify takes one target; pass a .ms file, directory, or ms.toml")
-		return 2
-
-	given := targets.first().get_or("ms.toml")
+export fn run_verify(m: Matches) Int:
+	structured := m.bool("json")
+	skip_test := m.bool("no-test")
+	deny_warnings := m.bool("deny-warnings")
+	given := m.string("target")
 
 	if given.is_empty():
 		complain(

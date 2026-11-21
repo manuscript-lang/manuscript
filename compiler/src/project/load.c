@@ -117,6 +117,7 @@ typedef struct GraphLoader {
     MsNames paths;      /* canonical paths, and request keys, as symbols */
     const char *root;   /* canonical project root */
     const MsProject *project; /* NULL without a manifest */
+    MsOverlay overlay;  /* canonical unsaved buffers, read in place of disk */
     MsBuf info;         /* LoadPathInfo by path symbol */
     MsBuf requests;     /* uint32_t by request-key symbol: target path symbol + 1, 0 for none */
     MsBuf active;       /* MsSym: the import stack, so a cycle can name its whole path */
@@ -165,7 +166,8 @@ static LoadFailure load_failure_error(const MsProjectError *err) { return (LoadF
 /* The name diagnostics use for a canonical file: its path from the project root. */
 static bool load_logical(GraphLoader *l, const char *canonical, const char **out, LoadFailure *fail) {
     MsProjectError err;
-    if (ms_path_rel(l->arena, l->root, canonical, out, &err)) {
+    const bool named = l->project != NULL ? ms_project_logical(l->arena, l->project, canonical, out, &err) : ms_path_rel(l->arena, l->root, canonical, out, &err);
+    if (named) {
         return true;
     }
     *fail = load_failure_error(&err);
@@ -262,11 +264,11 @@ static bool load_resolve(GraphLoader *l, const char *importer, const MsImport *i
     MsProjectError err;
     if (l->project == NULL) {
         MsProject bare = {.root = l->root, .name = "", .source = "", .entry = ""};
-        if (!ms_project_resolve_import(l->arena, &bare, importer, path, &resolved, &err)) {
+        if (!ms_project_resolve_import_overlay(l->arena, &bare, &l->overlay, importer, path, &resolved, &err)) {
             *fail = load_failure_diag(load_resolution(file, item->pos, load_explain(l->arena, &err, path)));
             return false;
         }
-    } else if (!ms_project_resolve_import(l->arena, l->project, importer, path, &resolved, &err)) {
+    } else if (!ms_project_resolve_import_overlay(l->arena, l->project, &l->overlay, importer, path, &resolved, &err)) {
         *fail = load_failure_diag(load_resolution(file, item->pos, load_explain(l->arena, &err, path)));
         return false;
     }
@@ -301,7 +303,18 @@ static bool load_module(GraphLoader *l, MsSym canonical, const char *file, int32
     const char *text = NULL;
     const LoadEmbedded embedded = load_embedded(l, path, &text, &err);
     if (embedded == LOAD_NOT_EMBEDDED) {
-        text = load_read(l->arena, path, &length, &err);
+        const MsOverlayFile *buffer = ms_overlay_find(&l->overlay, path);
+        if (buffer != NULL) {
+            text = buffer->text;
+            length = buffer->length;
+        } else {
+            text = load_read(l->arena, path, &length, &err);
+        }
+        /* A package file is checked against the locked index as it is read. */
+        const MsPackage *package = text != NULL && l->project != NULL ? ms_project_package_of(l->project, path) : NULL;
+        if (package != NULL && !ms_package_verify_file(l->arena, package, path, text, length, &err)) {
+            text = NULL;
+        }
     } else if (embedded == LOAD_EMBEDDED) {
         length = strlen(text);
     }
@@ -437,7 +450,57 @@ static void load_free(GraphLoader *l) {
     ms_buf_free(&l->failures);
 }
 
+static bool load_graph(MsArena *a, MsNames *names, const char *filename, const MsOverlay *overlay, MsGraph *out, MsProjectError *err);
+
+/* The packages of a project, which the loader hands on to the caller. */
+static bool load_attach(MsArena *a, MsProject *project, MsProjectError *err) {
+    return ms_project_attach(a, project, err);
+}
+
 bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err) {
+    if (!load_graph(a, names, filename, NULL, out, err)) {
+        return false;
+    }
+    if (out->package_count > 0) {
+        ms_project_error_unsupported(err, "[dependencies] in the module graph");
+        return false;
+    }
+    return true;
+}
+
+bool ms_project_load_packages(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err) {
+    return load_graph(a, names, filename, NULL, out, err);
+}
+
+bool ms_project_load_overlay(MsArena *a, MsNames *names, const char *filename, const MsOverlay *overlay, MsGraph *out, MsProjectError *err) {
+    return load_graph(a, names, filename, overlay, out, err);
+}
+
+/* A manifest that cannot be read is the graph's one diagnostic, named by the entry's path from the project root. */
+static void load_manifest_failed(MsArena *a, const char *filename, const char *absolute, const char *root, const MsProject *project, MsProjectError *failure, MsGraph *out) {
+    const char *shown = filename;
+    const char *rel;
+    const char *base = project->root != NULL ? project->root : root;
+    if (ms_path_rel(a, base, absolute, &rel, failure) && !ms_path_escapes(rel)) {
+        shown = rel;
+    }
+    out->source_root = base;
+    out->diagnostics = MS_NEW(a, MsGraphDiag);
+    out->diagnostics[0] = load_from_error(a, shown, failure);
+    out->ndiagnostics = 1;
+}
+
+/* Lists the packages of `project` in the graph. */
+static void load_packages(MsArena *a, const MsProject *project, MsGraph *out) {
+    out->package_count = project->package_count;
+    out->packages = MS_NEW_N(a, MsGraphPackage, project->package_count + 1);
+    for (uint32_t i = 0; i < project->package_count; i++) {
+        const MsPackage *package = &project->packages[i];
+        out->packages[i] = (MsGraphPackage){.prefix = ms_arena_fmt(a, "%s/", package->key).ptr, .spec = package->spec, .effects = package->project.effects, .effect_count = package->project.effect_count, .member = package->member};
+    }
+}
+
+static bool load_graph(MsArena *a, MsNames *names, const char *filename, const MsOverlay *overlay, MsGraph *out, MsProjectError *err) {
     *out = (MsGraph){0};
     MsProjectError failure;
     const char *absolute;
@@ -454,27 +517,15 @@ bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *
     const bool is_manifest = strcmp(ms_path_base(a, absolute), "ms.toml") == 0;
     const char *manifest = is_manifest ? absolute : load_enclosing_manifest(a, root);
     if (manifest != NULL) {
-        if (!ms_project_read(a, manifest, &project, &failure)) {
+        if (!ms_project_read(a, manifest, &project, &failure) || !load_attach(a, &project, &failure)) {
             if (ms_project_error_is_unsupported(&failure)) {
                 *err = failure;
                 return false;
             }
-            const char *shown = filename;
-            const char *rel;
-            const char *base = project.root != NULL ? project.root : root;
-            if (ms_path_rel(a, base, absolute, &rel, &failure) && !ms_path_escapes(rel)) {
-                shown = rel;
-            }
-            out->source_root = base;
-            out->diagnostics = MS_NEW(a, MsGraphDiag);
-            out->diagnostics[0] = load_from_error(a, shown, &failure);
-            out->ndiagnostics = 1;
+            load_manifest_failed(a, filename, absolute, root, &project, &failure, out);
             return true;
         }
-        if (project.dependency_count + project.path_dependency_count > 0 || project.is_workspace) {
-            ms_project_error_unsupported(err, "[dependencies] and [workspace] in the module graph");
-            return false;
-        }
+        load_packages(a, &project, out);
         config = &project;
         root = project.root;
         if (is_manifest) {
@@ -494,9 +545,15 @@ bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *
 
     GraphLoader l = {.arena = a, .names = names, .root = root, .project = config};
     ms_names_init(&l.paths);
+    if (overlay != NULL && !ms_overlay_canonical(a, root, overlay, &l.overlay, &failure)) {
+        load_report(&l, load_from_error(a, filename, &failure));
+        load_finish(&l, out);
+        load_free(&l);
+        return true;
+    }
     const char *entry;
     const char *entry_input = config != NULL && config->entry[0] != 0 ? config->entry : absolute;
-    if (!ms_project_source_path(a, root, entry_input, &entry, &failure)) {
+    if (!ms_project_source_path_overlay(a, root, entry_input, &l.overlay, &entry, &failure)) {
         load_report(&l, load_from_error(a, filename, &failure));
         load_finish(&l, out);
         load_free(&l);

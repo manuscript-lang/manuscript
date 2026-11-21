@@ -6,6 +6,7 @@
 #include "ms/text.h"
 #include "ms/check.h"
 #include "ms/import_hints.h"
+#include "ms/prelude_fix.h"
 
 enum { PRELUDE_NAME_COUNT = 13, CONSTRUCTOR_COUNT = 4 };
 
@@ -68,6 +69,15 @@ void ms_report(MsCheck *c, MsModId module, const MsCheckDiag *diag) {
     if (row->unknown_type && diag->phase != MS_PHASE_RESOLUTION &&
         ms_text_contains(diag->diag.message, "<invalid>")) {
         return;
+    }
+    /* One message at one position is reported once (the Rust checker's `unique_diagnostics`). */
+    for (uint32_t i = 0; i < row->ndiags; i++) {
+        const MsDiag *old = &row->diags[i].diag;
+        if (old->pos.offset == diag->diag.pos.offset && old->pos.line == diag->diag.pos.line &&
+            old->pos.column == diag->diag.pos.column && old->message.len == diag->diag.message.len &&
+            memcmp(old->message.ptr, diag->diag.message.ptr, old->message.len) == 0) {
+            return;
+        }
     }
     if (row->ndiags == row->diags_cap) {
         row->diags_cap = ms_capacity_for(row->diags_cap, row->ndiags + 1);
@@ -283,6 +293,28 @@ static MsSymId scope_import_target(MsCheck *c, const MsImport *item) {
     return found;
 }
 
+/* An import of a name every module already sees, with the exact-source edit that removes it (when the module's
+ * source is known: `ms_program_check_module` records it). */
+static void scope_report_redundant_import(MsCheck *c, MsModId module, const MsImport *item) {
+    const MsStr name = ms_name(c->names, item->name);
+    MsPos end = item->name_pos;
+    end.offset += name.len;
+    end.column += name.len;
+    MsCheckDiag diag = {.diag = {.pos = item->name_pos, .has_end = true, .end = end,
+                                 .message = ms_prelude_import_message(&c->arena, name)},
+                        .phase = MS_PHASE_RESOLUTION};
+    const MsModule *syntax = c->mods[module].syntax;
+    MsFix fix;
+    if (c->mods[module].text.len > 0 &&
+        ms_prelude_import_fix(&c->arena, c->mods[module].text, syntax->imports, syntax->nimports, item, &fix)) {
+        diag.diag.has_fix = true;
+        diag.diag.fix_pos = fix.pos;
+        diag.diag.fix_end = fix.end;
+        diag.diag.replacement = fix.replacement;
+    }
+    ms_report(c, module, &diag);
+}
+
 static void scope_report_failed_import(MsCheck *c, MsModId module, const MsImport *item, bool in_standard) {
     const uint32_t width = ms_name(c->names, item->name).len;
     MsPos end = item->name_pos;
@@ -360,29 +392,14 @@ static void scope_import_symbols(MsCheck *c, MsModId module) {
             scope_report_failed_import(c, module, item, in_standard);
             continue;
         }
+        if (ms_is_prelude_symbol(c, found)) {
+            scope_report_redundant_import(c, module, item);
+        }
         scope_add_symbol(c, module, item->name, found, item->name_pos);
     }
 }
 
 /* ---- declarations ---- */
-
-static MsSymKind scope_symbol_kind(const MsDecl *d) {
-    switch ((MsDeclKind)d->kind) {
-    case MS_D_TYPE:
-    case MS_D_ENUM:
-    case MS_D_INTERFACE: return MS_SYM_TYPE;
-    case MS_D_ALIAS: return MS_SYM_ALIAS;
-    case MS_D_FN:
-    case MS_D_CONST:
-    case MS_D_IMPL:
-    case MS_D_TEST: return MS_SYM_FN;
-    }
-    return MS_SYM_FN;
-}
-
-static bool scope_is_nominal_decl(const MsDecl *d) {
-    return d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE;
-}
 
 /* A symbol the loader registered for this very declaration (an `extern type` or an exported
  * type of a bundled source module), or MS_NONE. */
@@ -401,7 +418,7 @@ static MsSymId scope_declare_one(MsCheck *c, MsModId module, const MsDecl *d, Ms
     const MsStr identity = ms_arena_fmt(&c->arena, "%.*s#%.*s", (int)path.len, path.ptr, (int)text.len, text.ptr);
     const MsSymSpec spec = {.name = name,
                             .id = scope_intern_text(c, identity),
-                            .kind = scope_symbol_kind(d),
+                            .kind = ms_decl_symbol_kind(d),
                             .native = external_fn ? MS_NATIVE_EXTERN : MS_NATIVE_SOURCE,
                             .native_name = external_fn ? name : 0,
                             .is_exported = d->is_exported,
@@ -422,7 +439,7 @@ static void scope_declare_symbols(MsCheck *c, MsModId module) {
         }
         MsSymId sym = MS_NONE;
         const bool opaque = d->kind == MS_D_TYPE && d->u.type.external;
-        if (opaque || scope_is_nominal_decl(d)) {
+        if (opaque || ms_decl_is_nominal(d)) {
             sym = scope_registered_symbol(c, module, d, name);
         }
         if (sym == MS_NONE) {

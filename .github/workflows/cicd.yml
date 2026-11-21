@@ -1,7 +1,7 @@
 name: CI/CD
 
 # One workflow, four triggers:
-#   pull request  the Linux legs with programs built by Cranelift (the Debug backend); a pull request that touches
+#   pull request  the Linux legs; a pull request that touches
 #                 LLVM-related code (see .github/actions/rust-scope) also starts the `llvm` jobs: the LLVM corpus (amd64) and the LLVM backend tests with the release gates. The Linux legs, each one job (`ab`: the tests and the conformance corpus together); the language checks
 #                 and the book run inside linux-arm64. A green pull request auto-merges; there
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
@@ -101,9 +101,9 @@ jobs:
   # One job per platform leg and part. Pull requests run the Linux legs; a manual run's `os` input picks
   # one platform; a scheduled run covers all six. The matrix is picked in an expression because a job `if`
   # cannot read it, and a separate job to pick it would cost one more job per run.
-  # `lint`: also format and clippy. `cranelift`: the part (`a` or `b`) that also runs the corpus and
-  # fixtures with `MS_BACKEND=cranelift`, the backend Debug builds use; the gates run in the other part.
-  # `gates: false` skips the gates. On pull requests linux-amd64 runs Cranelift in `conformance` and
+  # `lint`: also format and clippy. `second_pass`: the part (`a` or `b`) that also runs the second
+  # corpus pass (run and test again at Debug); the gates run in the other part.
+  # `gates: false` skips the gates. On pull requests linux-amd64 runs the second pass in `conformance` and
   # leaves the gates to linux-arm64, so each job stays under ten minutes. On pull requests linux-arm64 runs
   # format and clippy: it finishes about 4 minutes before linux-amd64, which carries the corpus.
   # `docs`: also the language checks and the book (in the conformance part on pull requests); on main
@@ -126,11 +126,11 @@ jobs:
         part: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group') && '["ab"]' || '["a", "b"]') }}
         leg: >-
           ${{ fromJSON(
-          (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "cranelift": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "lint": true, "docs": true, "gates_part": "a"}]' ||
-          inputs.os == 'linux' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}]' ||
-          inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}]' ||
-          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
-          '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}, {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]'
+          (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "second_pass": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "lint": true, "docs": true, "gates_part": "a"}]' ||
+          inputs.os == 'linux' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "second_pass": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}]' ||
+          inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "second_pass": "a"}]' ||
+          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "second_pass": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
+          '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "second_pass": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true, "gates_part": "a"}, {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "second_pass": "a"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025", "second_pass": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]'
           ) }}
     env:
       PR: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
@@ -179,7 +179,7 @@ jobs:
           arch: ${{ matrix.leg.arch }}
           part: ${{ matrix.part }}
           lint: ${{ matrix.leg.lint || false }}
-          cranelift: ${{ matrix.leg.cranelift || '' }}
+          second-pass: ${{ matrix.leg.second_pass || '' }}
           gates: ${{ matrix.leg.gates || 'true' }}
           gates-part: ${{ matrix.leg.gates_part || '' }}
           # A pull request that touches LLVM code runs the LLVM suite in the `llvm` jobs, not here.

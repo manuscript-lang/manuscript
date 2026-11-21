@@ -176,9 +176,56 @@ static void test_project(void) {
     write_file("lib/src/main.ms", "");
     MsProjectError err = {0};
     CHECK(!ms_project_load(&arena, &names, path_of("lib/ms.toml"), &g, &err) && ms_project_error_is_unsupported(&err));
-    write_file("dep/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\n[dependencies]\n\"@pg\" = { path = \"src\" }\n");
-    write_file("dep/src/main.ms", "");
-    CHECK(!ms_project_load(&arena, &names, path_of("dep/src/main.ms"), &g, &err) && ms_project_error_is_unsupported(&err));
+    /* Packages are loaded by ms_project_load_packages; this entry point hands them back. */
+    write_file("ws/ms.toml", "[workspace]\nmembers = [\"app\", \"pg\"]\n");
+    write_file("ws/app/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\n[dependencies]\n\"@pg\" = { path = \"../pg\" }\n");
+    write_file("ws/app/src/main.ms", "");
+    write_file("ws/pg/ms.toml", "[project]\nname = \"pg\"\nsource = \"src\"\n");
+    write_file("ws/pg/src/lib.ms", "");
+    CHECK(!ms_project_load(&arena, &names, path_of("ws/app/src/main.ms"), &g, &err) && ms_project_error_is_unsupported(&err));
+}
+
+
+static MsGraph load_with(const char *name, const MsOverlayFile *files, uint32_t count) {
+    MsGraph graph;
+    MsProjectError err = {0};
+    const MsOverlay overlay = {.files = files, .count = count};
+    CHECK(ms_project_load_overlay(&arena, &names, path_of(name), &overlay, &graph, &err));
+    return graph;
+}
+
+/* Unsaved buffers replace files on disk and add files that are not there. */
+static void test_overlay(void) {
+    write_file("ov/a.ms", "import b from \"./b.ms\"\nexport fn a() Int: return 1\n");
+    write_file("ov/b.ms", "export fn b() Int: return 1\n");
+    MsOverlayFile broken[] = {{.path = path_of("ov/b.ms"), .text = "export fn b(", .length = 12}};
+    MsGraph g = load_with("ov/a.ms", broken, 1);
+    CHECK(g.ndiagnostics >= 1);
+    /* A new file only the editor has, imported by the entry, which may itself be unsaved. */
+    const char *entry = "import c from \"./c.ms\"\nexport fn a() Int: return 1\n";
+    const char *c = "export fn c() Int: return 1\n";
+    MsOverlayFile added[] = {{.path = path_of("ov/a.ms"), .text = entry, .length = strlen(entry)},
+                             {.path = path_of("ov/c.ms"), .text = c, .length = strlen(c)}};
+    g = load_with("ov/a.ms", added, 2);
+    CHECK(g.ndiagnostics == 0 && g.count == 2);
+    g = load("ov/a.ms");
+    CHECK(g.ndiagnostics == 0 && g.count == 2); /* the disk is unchanged and still imports b.ms */
+    /* Without the buffer, the missing file is the usual error. */
+    MsOverlayFile only_entry[] = {{.path = path_of("ov/a.ms"), .text = entry, .length = strlen(entry)}};
+    g = load_with("ov/a.ms", only_entry, 1);
+    CHECK(g.ndiagnostics == 1);
+    /* Two spellings of one file with different text conflict; a file outside the root is left out. */
+    const char *one = "export fn b() Int: return 1\n", *two = "export fn b() Int: return 2\n";
+    MsOverlayFile spellings[] = {{.path = path_of("ov/b.ms"), .text = one, .length = strlen(one)},
+                                 {.path = path_of("ov/./b.ms"), .text = two, .length = strlen(two)}};
+    g = load_with("ov/a.ms", spellings, 2);
+    CHECK(g.ndiagnostics == 1);
+    if (g.ndiagnostics == 1) {
+        CHECK(strstr(diag_text(&g, 0), "conflicting editor overlays") != NULL);
+    }
+    MsOverlayFile outside[] = {{.path = "/nonexistent-dir/x.ms", .text = one, .length = strlen(one)}};
+    g = load_with("ov/a.ms", outside, 1);
+    CHECK(g.ndiagnostics == 0);
 }
 
 int main(void) {
@@ -190,6 +237,7 @@ int main(void) {
     test_missing();
     test_parse_errors();
     test_project();
+    test_overlay();
     char command[160];
     snprintf(command, sizeof command, "rm -rf %s", root);
     CHECK(system(command) == 0);

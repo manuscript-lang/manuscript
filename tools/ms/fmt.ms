@@ -1,12 +1,12 @@
 // `ms fmt [--check] [--json] [--] <file.ms>...`: formats the files in place, or reports the ones
 // that need it. The formatter is libms's (`ms_tool_format`,
 // compiler/include/ms/tool.h), so a program that imports this module links
-// `libmstool.a`. Only explicit `.ms` files are handled here; a directory, an `ms.toml`
-// or `--drop-labels` (module discovery and the label rewrite) go to the Rust command,
-// as does a file that is missing or not valid UTF-8, so those errors keep the Rust
-// wording.
+// `libmstool.a`. A directory or an `ms.toml` is expanded by `ms_tool_discover`. A
+// workspace, `--drop-labels` (the label rewrite), a file that is missing or not valid
+// UTF-8, and every error go to the Rust command, so those keep the Rust wording.
 import (
 	Bytes from "@std/bytes.ms",
+	Matches from "@std/cli/command.ms",
 	JsonValue from "@std/data/json.ms",
 	working_directory from "@std/os/env.ms",
 	canonicalize,
@@ -20,6 +20,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 
 	flag, list_of, number, object, render_document, text, with from "./json_out.ms",
+	root_members from "./workspace.ms",
 )
 
 // The first syntax error: `code` is the byte offset, `message` is
@@ -28,6 +29,41 @@ export enum FormatError:
 	Failed(code: Int, message: String)
 
 extern fn ms_tool_format(text: String) String!FormatError
+
+// The files of a directory or of the project an ms.toml names. Status 1 is an error
+// with the Rust text and status 2 a project the C reader does not cover; both leave the
+// command to the Rust `ms`, which words them.
+export enum DiscoverError:
+	Failed(message: String)
+	Unsupported(message: String)
+
+extern fn ms_tool_discover(target: String) List[String]!DiscoverError
+
+// The files `ms fmt` formats for each target: a `.ms` file is itself, a directory or an
+// `ms.toml` is what libms finds there. none when the Rust command must answer.
+fn expand_targets(targets: List[String]) List[String]?:
+	var files = List[String]()
+
+	for target in targets:
+		if target.ends_with(".ms"):
+			files.append(target.clone())
+			continue
+
+		// A workspace root without a `[project]` stands for its members, as in the
+		// other commands.
+		var manifests = [target.clone()]
+
+		if members := root_members(target):
+			manifests = []
+			for member in members: manifests.append(member.manifest.clone())
+
+		for manifest in manifests:
+			found := ms_tool_discover(manifest)
+			if found.is_error(): return none
+
+			for path in found.get(): files.append(path.clone())
+
+	return files
 
 // One file's result in the `--json` document.
 type Outcome:
@@ -57,29 +93,15 @@ export type Request:
 	// Whether the Rust command must answer.
 	rust: Bool = false
 
-// The options and targets of `args`, after the command name.
-export fn parse_request(args: List[String]) Request:
-	var request = Request()
-	var positional = false
+// The options and targets the command tree parsed for `ms fmt`.
+export fn parse_request(m: Matches) Request:
+	var request = Request(
+		check: m.bool("check"),
+		json: m.bool("json"),
+		targets: m.list("targets"),
+	)
 
-	for arg in args:
-		if not positional and arg == "--":
-			positional = true
-		else if not positional and arg == "--check":
-			request.check = true
-		else if not positional and arg == "--json":
-			request.json = true
-		else if not positional and arg == "--drop-labels":
-			request.rust = true
-		else if not positional and arg.starts_with("-"):
-			request.usage = f"unknown option {arg} for ms fmt; run 'ms help fmt' for its options"
-			return request
-		else:
-			request.targets.append(arg.clone())
-
-	if request.targets.is_empty():
-		request.usage = "ms fmt: missing a target; pass .ms files, directories, or ms.toml"
-	else if request.targets.contains(""):
+	if m.bool("drop-labels") or request.targets.contains(""):
 		request.rust = true
 	else if request.json and not request.check:
 		request.usage = "--json requires ms fmt --check; remove --json to format files in place"
@@ -235,8 +257,8 @@ export type Printed:
 	status: Int = 0
 
 // Runs `ms fmt`; none when the Rust command must, before any file is touched.
-export fn run_fmt(args: List[String]) Printed?:
-	request := parse_request(args)
+export fn run_fmt(m: Matches) Printed?:
+	request := parse_request(m)
 	if not request.usage.is_empty(): return Printed(
 		stderr: request.usage + "\n",
 		status: 2,
@@ -252,10 +274,10 @@ export fn run_fmt(args: List[String]) Printed?:
 	var order = List[String]()
 	var sources = Map[String, String]()
 	var modes = Map[String, Int]()
+	expanded := expand_targets(request.targets)
+	if expanded.is_none(): return none
 
-	for target in request.targets:
-		if not target.ends_with(".ms"): return none
-
+	for target in expanded.get():
 		real := canonicalize(target)
 		info := stat(target)
 		if real.is_error() or info.is_error() or not info.get().is_file(): return none

@@ -307,7 +307,7 @@ static UwHash el_handle_keys(ElCx *cx, MirModule *m, MirFunc *f) {
     }
     uint64_t *owners = uh_keys(cx->ma, &owned_at);
     for (uint32_t i = 0; i < owned_at.n; i++) {
-        uint64_t n;
+        uint64_t n = 0;
         uh_get(&owned_at, owners[i], &n);
         if (n > 1 && el_is_slot_owner(cx, (MirValue)owners[i]) && !uh_has(&hkeys, owners[i])) {
             uh_put(cx->ma, &hkeys, owners[i], mir_new_value(m, f, MIR_INT));

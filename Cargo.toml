@@ -1,21 +1,16 @@
 [workspace]
 members = ["crates/*"]
-# A bare `cargo build/test/check` covers the compiler and tools. The native runtime (`ms-native` and
-# the `ms-std-*` crates) is built by `cargo xtask runtime` and embedded by `ms-cli`'s build script; test it with `-p` or
+# A bare `cargo build/test/check` covers the compiler and tools. The native runtime (C, in `runtime/`) is built by `cargo xtask runtime` and embedded by `ms-cli`'s build script; test it with `-p` or
 # `--workspace`.
 default-members = [
     "crates/ms-check",
     "crates/ms-cli",
-    "crates/ms-clif",
-    "crates/ms-mir-llvm",
     "crates/ms-build",
     "crates/ms-driver",
     "crates/ms-json",
     "crates/ms-lower",
     "crates/ms-lsp",
     "crates/ms-mir",
-    "crates/ms-mir-llvm",
-    "crates/ms-rt",
     "crates/ms-rt-abi",
     "crates/ms-syntax",
     "crates/ms-tooling",
@@ -27,7 +22,7 @@ edition = "2024"
 publish = false
 
 [workspace.lints.rust]
-# Only ms-rt and ms-rt-abi (the C ABI the compiled code links against) opt out.
+# Only ms-rt-abi (the C ABI the compiled code links against) opts out.
 unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
 
@@ -58,19 +53,9 @@ opt-level = 2
 opt-level = 2
 [profile.dev.package.ms-json]
 opt-level = 2
-# The LLVM backend writes the IR text of every Release program the corpus and tests build: about 3 s of a
-# 9 s yaml `ms test` unoptimized.
-[profile.dev.package.ms-mir-llvm]
-opt-level = 2
 
-# Tests that loop over every split point, byte or random case of a checksum, hash, codec or big-number routine,
-# and the Cranelift code generator's native tests, spent most of the Rust test time unoptimized (checksum 12 s,
-# oracle 14 s, ms-clif native 70 s on four cores); optimized they take a fraction, and sccache
-# caches the build cost. Programs the `ms` binary compiles are no faster for it (measured on yaml, regex, bigint).
-[profile.dev.package.ms-clif]
-opt-level = 2
-
-# The RustCrypto crates behind @std/crypto, for the same tests.
+# The RustCrypto crates behind @std/crypto: tests that loop over every split point, byte or random case of a hash
+# spent most of their time unoptimized; optimized they take a fraction, and sccache caches the build cost.
 [profile.dev.package.sha2]
 opt-level = 2
 
@@ -93,48 +78,3 @@ opt-level = 3
 opt-level = 3
 [profile.release.package.adler2]
 opt-level = 3
-
-# Cranelift is slow to build unoptimized; keep it lightly optimized in dev builds. Its debug assertions are
-# off: the single-pass register allocator's `validate_lru` alone was a third of all instructions in a debug
-# `ms test` (every program the corpus and the e2e tests compile goes through it).
-[profile.dev.package.regalloc2]
-opt-level = 1
-debug-assertions = false
-overflow-checks = false
-
-[profile.dev.package.cranelift-codegen]
-opt-level = 1
-debug-assertions = false
-overflow-checks = false
-[profile.dev.package.cranelift-frontend]
-opt-level = 1
-debug-assertions = false
-overflow-checks = false
-[profile.dev.package.cranelift-object]
-opt-level = 1
-debug-assertions = false
-overflow-checks = false
-
-# The dev profile with the Cranelift crates' own debug assertions back on. `main` builds `ms` with it
-# (`cargo build --profile checked -p ms-cli`) and runs the Cranelift corpus, so an assertion that fires on
-# the IR we generate is still caught within 30 minutes of a merge; pull requests skip it for speed.
-[profile.checked]
-inherits = "dev"
-[profile.checked.package.regalloc2]
-debug-assertions = true
-overflow-checks = true
-[profile.checked.package.cranelift-codegen]
-debug-assertions = true
-overflow-checks = true
-[profile.checked.package.cranelift-frontend]
-debug-assertions = true
-overflow-checks = true
-[profile.checked.package.cranelift-object]
-debug-assertions = true
-overflow-checks = true
-
-# Cranelift 0.136.0 plus one change: the x64 backend branches directly on the overflow flag of
-# `sadd_overflow`, `ssub_overflow` and `usub_overflow` (as it already does for `uadd_overflow`
-# and the multiplies) instead of `seto`, `test`, `jne`. See vendor/cranelift-codegen/PATCH.md.
-[patch.crates-io]
-cranelift-codegen = { path = "vendor/cranelift-codegen" }

@@ -68,6 +68,29 @@ uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t l
  * ms/api_model.h). `ms search_symbol` and the generated reference read it; it checks the embedded library on each call. */
 void ms_tool_api_model(ms_str *out);
 
+/* The fact model of one document as JSON, the document `ms-tooling-dev facts` prints and `tools/ms/views.ms` reads
+ * (see compiler/src/check/dump_facts.c for the columns the C checker fills). Status 0 fills `out`; 1 is an error
+ * (invalid UTF-8, a syntax error) with its text in `message_out`; 2 means the document imports a project module, which
+ * this entry does not load. */
+uint8_t ms_tool_facts(const ms_str *text, ms_str *out, ms_str *message_out);
+
+/* `ms check FILE.ms [--json]` (compiler/include/ms/check_run.h). Status 0 fills `out` with the standard output, the
+ * standard error and the exit status (as decimal text) the Rust command would produce; status 2 means the C passes
+ * cannot give that answer (message in `message_out`) and the caller runs the Rust command; 1 is an error. */
+uint8_t ms_tool_check(const ms_str *target, uint8_t json, ms_list *out, ms_str *message_out);
+
+/* The workspace of the project whose manifest is `manifest` (project/workspace.c), as rows: `root\t<directory>`, then
+ * `member\t<name>\t<directory>` in member order; no rows when there is none. With `root_only` set, only a workspace
+ * root without a `[project]` of its own counts (the manifest itself, so a command aimed at it means every member);
+ * otherwise it is the workspace that lists the project. Status 0 is success; 1 is an error with the Rust text in
+ * `message_out`; 2 means the C reader does not cover a manifest. */
+uint8_t ms_tool_workspace(const ms_str *manifest, uint8_t root_only, ms_list *out, ms_str *message_out);
+
+/* The same for a workspace: every member's dependencies resolve into one ms.lock at `lock_root`. `members` are
+ * `name\tmanifest` rows, in member order (tools/ms/workspace.ms reads them). */
+uint8_t ms_tool_install_workspace(const ms_str *lock_root, const ms_list *members, const ms_list *update, uint8_t locked, uint8_t frozen,
+                                  ms_list *out, ms_str *message_out);
+
 /* ---- syntax trees ---- */
 
 /* A parsed module, kept in C. `extern type Tree` on the Manuscript side. A parse that fails still
@@ -129,9 +152,11 @@ void ms_tool_keywords(ms_list *out);
 
 /* ---- analysis (the language server) ---- */
 
-/* Checks `text` as a module of its own (`extern type Analysis` on the Manuscript side) (a program that imports a project module is status 2: not covered yet) and
- * reports what the checker knows, keyed by the syntax-node ids of `ms_tool_tree_nodes` (`Syntax.id`), so a tool joins
- * them to a tree of the same text. the rows hold three counts (nodes, bindings, symbols) and then the rows:
+/* Checks `text` as the module at `path`: the project it belongs to loads with `overlay` (path and text, alternating) in
+ * place of the files on disk, so unsaved buffers are seen, and the rows describe `text`. With an empty `path` the text is
+ * a module of its own and an import of a project module is status 2.
+ * `extern type Analysis` on the Manuscript side. The result reports what the checker knows, keyed by the syntax-node ids of `ms_tool_tree_nodes` (`Syntax.id`), so a tool joins
+ * them to a tree of the same text. The rows hold three counts (nodes, bindings, symbols) and then the rows:
  *   node, MS_TOOL_ANALYZE_NODE_WIDTH:     id, resolution (MsResolution), reference (binding, symbol, field, case or
  *                                         method id, -1 for none), type of the expression, type of the written type,
  *                                         symbol id of the function a call expression calls (-1 for none)
@@ -145,7 +170,7 @@ void ms_tool_keywords(ms_list *out);
 #define MS_TOOL_ANALYZE_NODE_WIDTH 6
 #define MS_TOOL_ANALYZE_BINDING_WIDTH 9
 #define MS_TOOL_ANALYZE_SYMBOL_WIDTH 11
-ms_object *ms_tool_analyze(const ms_str *text);
+ms_object *ms_tool_analyze(const ms_str *path, const ms_str *text, const ms_list *overlay);
 /* 0 analysed, 1 syntax error, 2 not covered; the message of a status other than 0. */
 uint8_t ms_tool_analysis_status(ms_object *analysis);
 void ms_tool_analysis_message(ms_object *analysis, ms_str *out);

@@ -164,12 +164,19 @@ const MirTarget *mir_term_target_const(const MirTerm *t, uint32_t index) {
     if (t->kind == MT_SWITCH && index < t->ncases) {
         return &t->cases[index].target;
     }
+    /* A switch keeps its default in `b`, even when it has no cases. */
+    if (t->kind == MT_SWITCH) {
+        return &t->b;
+    }
     return index == 0 ? &t->a : &t->b;
 }
 
 MirTarget *mir_term_target(MirTerm *t, uint32_t index) {
     if (t->kind == MT_SWITCH && index < t->ncases) {
         return &t->cases[index].target;
+    }
+    if (t->kind == MT_SWITCH) {
+        return &t->b;
     }
     return index == 0 ? &t->a : &t->b;
 }

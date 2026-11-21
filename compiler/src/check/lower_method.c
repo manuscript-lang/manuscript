@@ -62,7 +62,9 @@ uint32_t lm_prepare(Lb *lb, MsModId module) {
 
 static bool lm_eligible(const Lb *lb, MsModId module, uint32_t row, const bool *failed) {
     const LbMethodRow *r = &lb->rows[row];
-    return r->method != NULL && lb->facts->body_checked[r->method->id] && !failed[row] &&
+    // A method of a generic impl needs one copy per type argument, which the lowering does not make yet.
+    return r->method != NULL && lb->facts->body_checked[r->method->id] && lb->facts->methods->nvars[row] == 0 &&
+           !failed[row] &&
            !lb_lines_have_diagnostic(&lb->c->mods[module], r->first_line, r->end_line);
 }
 

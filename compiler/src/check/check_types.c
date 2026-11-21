@@ -30,12 +30,6 @@ static void ty_res_error(MsResolver *r, MsPos pos, MsStr message) {
 
 /* ---- types ---- */
 
-static MsTy ty_invalid(MsCheck *c) {
-    const MsSym name = ms_intern_cstr(c->names, "<invalid>");
-    const MsTyDesc desc = {.name = name, .id = name, .kind = MS_K_INVALID};
-    return ms_ty_intern(&c->tys, &desc);
-}
-
 /* The description of an existing type, to build a changed copy of it. */
 static MsTyDesc ty_desc_of(const MsTyTable *t, MsTy ty) {
     return (MsTyDesc){.name = t->name[ty],
@@ -294,7 +288,7 @@ MsTy ms_alias_target(MsResolver *r, MsSymId alias) {
     }
     const MsDecl *decl = c->syms.decl[alias];
     if (decl == NULL || c->syms.module[alias] != r->module) {
-        return ty_invalid(c);
+        return ms_check_invalid_ty(c);
     }
     if (ty_resolving(r, alias)) {
         const MsStr name = ty_text(c, c->syms.name[alias]);
@@ -303,7 +297,7 @@ MsTy ms_alias_target(MsResolver *r, MsSymId alias) {
                                   "type alias %.*s refers to itself; an alias names another type, so break the cycle "
                                   "with a type or enum",
                                   (int)name.len, name.ptr));
-        return ty_invalid(c);
+        return ms_check_invalid_ty(c);
     }
     ty_push_alias(r, alias);
     uint32_t nvars = 0;
@@ -329,7 +323,7 @@ static MsTy ty_resolve_alias_use(MsResolver *r, const MsTypeRef *t, MsSymId alia
                                    "%.*s is a type set, which constrains a type parameter and has no values; write fn "
                                    "f[T: %.*s](...) or use one of its members",
                                    (int)name.len, name.ptr, (int)name.len, name.ptr));
-        return ty_invalid(c);
+        return ms_check_invalid_ty(c);
     }
     uint32_t nvars = 0;
     const MsTy *vars = ms_sym_vars(c, alias, &nvars);
@@ -345,7 +339,7 @@ static MsTy ty_resolve_alias_use(MsResolver *r, const MsTypeRef *t, MsSymId alia
         ty_type_error(r, t->pos,
                       ms_arena_fmt(&c->arena, "alias %.*s takes %u type arguments, found %u; write %.*s", (int)name.len,
                                    name.ptr, nvars, nwritten, (int)sketch.len, sketch.ptr));
-        return ty_invalid(c);
+        return ms_check_invalid_ty(c);
     }
     const MsTySubst subst = {.vars = vars, .args = written, .count = nvars};
     const MsTy result = ms_ty_subst(&c->tys, &c->arena, target, &subst);
@@ -397,7 +391,7 @@ static MsTy ty_resolve_named(MsResolver *r, const MsTypeRef *t) {
     if (base == MS_TY_NONE) {
         ty_report(r, MS_PHASE_RESOLUTION, t->pos, ty_unknown_message(r, name), name);
         c->mods[r->module].unknown_type = true;
-        return ty_invalid(c);
+        return ms_check_invalid_ty(c);
     }
     if (ms_text_is(ty_text(c, name), "Self") && t->args.len == 0 && c->tys.nargs[base] != 0) {
         /* `Self` in an implementation already carries the receiver's arguments. */
@@ -477,7 +471,9 @@ static MsTy ty_resolve_fn(MsResolver *r, const MsTypeRef *t) {
     const MsTy signature = ms_resolve_signature(r, &t->params, t->result);
     MsTyDesc desc = ty_desc_of(&c->tys, signature);
     MsTyParam *positional = MS_NEW_N(&c->arena, MsTyParam, desc.nparams);
-    memcpy(positional, desc.params, (size_t)desc.nparams * sizeof *positional);
+    if (desc.nparams != 0) {
+        memcpy(positional, desc.params, (size_t)desc.nparams * sizeof *positional);
+    }
     for (uint32_t i = 0; i < desc.nparams; i++) {
         positional[i].flags |= MS_PARAM_POSITIONAL;
     }
@@ -489,7 +485,7 @@ static MsTy ty_resolve_fn(MsResolver *r, const MsTypeRef *t) {
 
 MsTy ms_resolve_type(MsResolver *r, const MsTypeRef *t) {
     if (t == NULL) {
-        return ty_invalid(r->c);
+        return ms_check_invalid_ty(r->c);
     }
     return t->kind == MS_TYPE_FN ? ty_resolve_fn(r, t) : ty_resolve_named(r, t);
 }

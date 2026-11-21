@@ -5,8 +5,12 @@
 
 #include "ms/api_model.h"
 #include "ms/doc.h"
+#include "ms/import_hints.h"
+#include "ms/text.h"
 #include "ms/methods.h"
 #include "ms/program.h"
+
+static MsStr api_cstr(const char *s) { return (MsStr){s, (uint32_t)strlen(s)}; }
 
 typedef struct ApiStrs {
     MsStr *items;
@@ -190,7 +194,7 @@ static void ops_put(ApiOps *ops, MsStr key, MsStr value) {
     }
     if (ops->count == ops->cap) {
         ops->cap = ops->cap != 0 ? ops->cap * 2 : 16;
-        ops->items = ms_array_resize(ops->items, ops->cap, sizeof *ops->items);
+        ops->items = ms_array_resize(ops->items, (uint32_t)ops->cap, sizeof *ops->items);
     }
     ops->items[ops->count++] = (ApiOp){key, value};
 }
@@ -583,7 +587,7 @@ static void render_default(Api *api, MsBuf *b, const MsParam *p, const MsStr *so
         if (ch == '"') {
             const bool formatted = end > start && source->ptr[end - 1] == 'f';
             const size_t from = end - (formatted ? 1u : 0u);
-            const size_t length = doc_text_end((MsStr){source->ptr + from, (uint32_t)(source->len - from)});
+            const size_t length = ms_doc_text_end((MsStr){source->ptr + from, (uint32_t)(source->len - from)});
             if (length == 0) {
                 break;
             }
@@ -1126,7 +1130,7 @@ static uint32_t api_group_position(Api *api, MsModId module, uint32_t offset) {
     const MsDecl *mine = api_impl_of(c, module, offset);
     for (uint32_t i = 0; mine != NULL && i < syntax->ndecls; i++) {
         const MsDecl *d = syntax->decls[i];
-        if (d->kind != MS_D_IMPL || d->u.impl.receiver == NULL) {
+        if (d->kind != MS_D_IMPL || d->u.impl.receiver == NULL || mine->u.impl.receiver == NULL) {
             continue;
         }
         if (d == mine) {
@@ -1398,42 +1402,12 @@ static void emit_members(MsBuf *o, const ApiDecl *d, int depth) {
     }
 }
 
-static void emit_decl(Api *api, const ApiDecl *d, int depth) {
+/* The `type_parameters`, `fields` and `cases` entries of `d`; the caller has written the indent of the first. */
+static void emit_shape(Api *api, const ApiDecl *d, int depth) {
     MsBuf *o = api->out;
     MsCheck *c = api->c;
     const MsSymId sym = d->sym;
     const MsDecl *decl = c->syms.decl[sym];
-    indent(o, depth);
-    ms_buf_puts(o, "{\n");
-    indent(o, depth + 1);
-    ms_buf_puts(o, "\"declaration\": ");
-    json_string(o, d->declaration);
-    ms_buf_puts(o, ",\n");
-    indent(o, depth + 1);
-    ms_buf_puts(o, "\"name\": ");
-    json_string(o, d->name);
-    ms_buf_puts(o, ",\n");
-    indent(o, depth + 1);
-    MsBuf doc = {0};
-    MsStr effects[16];
-    const size_t neffects = api_doc_and_effects(api, d, &doc, effects);
-    ms_buf_puts(o, "\"doc\": ");
-    json_string(o, (MsStr){doc.data == NULL ? "" : doc.data, (uint32_t)doc.len});
-    ms_buf_free(&doc);
-    ms_buf_puts(o, ",\n");
-    indent(o, depth + 1);
-    ms_buf_puts(o, "\"effects\": ");
-    json_strings(o, effects, neffects, depth + 1);
-    ms_buf_puts(o, ",\n");
-    indent(o, depth + 1);
-    ms_buf_printf(o, "\"kind\": \"%s\",\n", decl_kind(api, sym));
-    indent(o, depth + 1);
-    ms_buf_printf(o, "\"opaque\": %s,\n", decl_opaque(decl) ? "true" : "false");
-    indent(o, depth + 1);
-    ms_buf_puts(o, "\"type\": ");
-    json_string(o, decl_type_text(api, sym, d->name));
-    ms_buf_puts(o, ",\n");
-    indent(o, depth + 1);
     MsStr list[256] = {{0}};
     uint32_t nvars = 0;
     const MsTy *vars = c->syms.ty[sym] == MS_TY_NONE && decl == NULL ? NULL : ms_sym_vars(c, sym, &nvars);
@@ -1473,6 +1447,45 @@ static void emit_decl(Api *api, const ApiDecl *d, int depth) {
     json_strings(o, list, nlist, depth + 1);
     ms_buf_puts(o, ",\n");
     indent(o, depth + 1);
+}
+
+static void emit_decl(Api *api, const ApiDecl *d, int depth) {
+    MsBuf *o = api->out;
+    MsCheck *c = api->c;
+    const MsSymId sym = d->sym;
+    const MsDecl *decl = c->syms.decl[sym];
+    indent(o, depth);
+    ms_buf_puts(o, "{\n");
+    indent(o, depth + 1);
+    ms_buf_puts(o, "\"declaration\": ");
+    json_string(o, d->declaration);
+    ms_buf_puts(o, ",\n");
+    indent(o, depth + 1);
+    ms_buf_puts(o, "\"name\": ");
+    json_string(o, d->name);
+    ms_buf_puts(o, ",\n");
+    indent(o, depth + 1);
+    MsBuf doc = {0};
+    MsStr effects[16];
+    const size_t neffects = api_doc_and_effects(api, d, &doc, effects);
+    ms_buf_puts(o, "\"doc\": ");
+    json_string(o, (MsStr){doc.data == NULL ? "" : doc.data, (uint32_t)doc.len});
+    ms_buf_free(&doc);
+    ms_buf_puts(o, ",\n");
+    indent(o, depth + 1);
+    ms_buf_puts(o, "\"effects\": ");
+    json_strings(o, effects, neffects, depth + 1);
+    ms_buf_puts(o, ",\n");
+    indent(o, depth + 1);
+    ms_buf_printf(o, "\"kind\": \"%s\",\n", decl_kind(api, sym));
+    indent(o, depth + 1);
+    ms_buf_printf(o, "\"opaque\": %s,\n", decl_opaque(decl) ? "true" : "false");
+    indent(o, depth + 1);
+    ms_buf_puts(o, "\"type\": ");
+    json_string(o, decl_type_text(api, sym, d->name));
+    ms_buf_puts(o, ",\n");
+    indent(o, depth + 1);
+    emit_shape(api, d, depth);
     ms_buf_puts(o, "\"operations\": ");
     json_strings(o, d->operations.items, d->operations.count, depth + 1);
     ms_buf_puts(o, ",\n");
@@ -1560,7 +1573,7 @@ static void api_share_native_names(MsCheck *c, MsModId m) {
 
 /* Declares, resolves and checks every module so the tables the model reads are complete. */
 static void api_prepare_program(MsCheck *c) {
-    program_desugar_bundled(c);
+    ms_program_desugar_bundled(c);
     for (MsModId m = 0; m < c->nmods; m++) {
         ms_module_declare(c, m);
         api_share_native_names(c, m);
@@ -1586,7 +1599,7 @@ void ms_api_model_json(MsBuf *out, MsCheck *c, const MsStdFile *files, uint32_t 
     api_prepare_program(c);
     ApiModule *mods = calloc(c->nmods + 1u, sizeof *mods);
     uint32_t nmods = 0;
-    ApiModule prelude = {.path = cstr("prelude")};
+    ApiModule prelude = {.path = api_cstr("prelude")};
     for (MsModId m = 0; m < c->nmods; m++) {
         const MsStr path = ms_name(c->names, c->mods[m].path);
         if (!is_public(path)) {
@@ -1605,14 +1618,14 @@ void ms_api_model_json(MsBuf *out, MsCheck *c, const MsStdFile *files, uint32_t 
         nmods += mod->ndecls > 0 ? 1 : 0;
     }
     for (size_t i = 0; i < ms_primitive_count(); i++) {
-        const MsStr name = cstr(ms_primitive_name(i));
+        const MsStr name = api_cstr(ms_primitive_name(i));
         const uint32_t sym = ms_map_get(&c->primitives, ms_intern(c->names, name.ptr, name.len));
         if (sym != MS_NONE) {
             module_add(&api, &prelude, sym);
         }
     }
-    for (size_t i = 0; i < sizeof prelude_names / sizeof *prelude_names; i++) {
-        const uint32_t sym = ms_map_get(&c->std_types, ms_intern(c->names, prelude_names[i], (uint32_t)strlen(prelude_names[i])));
+    for (size_t i = 0; i < ms_prelude_name_count; i++) {
+        const uint32_t sym = ms_map_get(&c->std_types, ms_intern(c->names, ms_prelude_names[i], (uint32_t)strlen(ms_prelude_names[i])));
         if (sym != MS_NONE) {
             module_add(&api, &prelude, sym);
         }

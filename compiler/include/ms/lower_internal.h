@@ -54,6 +54,7 @@ typedef struct LbJob {
     uint32_t func;
     uint32_t *caps;
     uint32_t ncaps;
+    bool *by_ref; /* by capture: the environment holds a pointer to the local, which the closure reads in place */
 } LbJob;
 
 /* A function or method being lowered: its syntax, the node its facts hang on, its signature, and
@@ -78,6 +79,7 @@ typedef struct LbMethodRow {
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
+    MsModId module; /* the module being lowered: a callee another module declares is not lowered here */
     MsCheck *mut; /* the same table, for `ms_def`, which adds rows on demand */
     const MsFacts *facts;
     MirModule *m;
@@ -132,11 +134,18 @@ void lb_reset_state(Lb *lb);
 /* Helpers of lower_body.c that lower_record.c and lower_method.c call. */
 bool lb_owns(Lb *lb, MirTy ty);
 MirValue lb_move_argument(Lb *lb, const MsExpr *e);
+MirValue lb_load(Lb *lb, MirValue slot, MirTy ty);     /* reads a value from memory */
+void lb_store(Lb *lb, MirValue slot, MirValue value);  /* writes a value to memory */
 bool lb_lines_have_diagnostic(const MsModuleRow *row, uint32_t first, uint32_t end);
 uint32_t lb_add_stub(Lb *lb, const LbCallable *c); /* a function with the signature and no body; MIR_NONE when not handled */
 bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over its stub; false when not handled */
 /* A call of module function `func` of signature `sig`; `receiver` is the method receiver, else NULL. */
 LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating);
+
+/* Interface values (lower_iface.c, included after lower_body.c). */
+MirTy li_type(Lb *lb, MsTy ty);
+LbVal li_call(Lb *lb, const MsExpr *e);
+LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed as an interface */
 
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
@@ -167,8 +176,6 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 void lb_write_back(Lb *lb);
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
 bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
-bool lb_owns(Lb *lb, MirTy ty);                        /* whether a value of the type is dropped by its holder */
-MirValue lb_move_argument(Lb *lb, const MsExpr *e);    /* an argument for a `move` parameter */
 
 /* Lists of scalars (lower_list.c, included after lower_body.c). */
 MirTy lst_type(Lb *lb, MsTy ty);
@@ -176,7 +183,24 @@ bool lb_is_list(const Lb *lb, MirTy ty);
 LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_index(Lb *lb, const MsExpr *e);
 void lst_for(Lb *lb, const MsStmt *s);
-LbVal lst_method(Lb *lb, const MsExpr *e);
+LbVal lb_native_method(Lb *lb, const MsExpr *e);
+const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
+LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
+/* Stores `value` in the stack slot `slot`. */
+void lb_store(Lb *lb, MirValue slot, MirValue value);
+
+/* Whether `ty` is a plain scalar a closure captures and a map holds by value. */
+static inline bool lb_is_scalar(MirTy ty) {
+    return ty == MIR_INT || ty == MIR_FLOAT || ty == MIR_BOOL;
+}
+
+/* The runtime function that joins two strings, declared on first use. */
+uint32_t lb_string_concat(Lb *lb);
+
+MirTy lm_type(Lb *lb, MsTy ty);
+bool lb_is_map(const Lb *lb, MirTy ty);
+LbVal lm_literal(Lb *lb, const MsExpr *e);
+LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at);
 
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);
