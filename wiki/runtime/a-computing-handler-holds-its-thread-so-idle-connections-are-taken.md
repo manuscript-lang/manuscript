@@ -43,3 +43,5 @@ C idle pool (`runtime/core/idle.c`, 2026-11-20), failures that cost days, in ord
 - A task-held peer-gone watch, a pinned client stream and `Placement.Spread` interact: pinned streams used to keep every spread connection on the caller's thread, so the fixture saw one thread. Spread now ignores pinning.
 - Before closing a descriptor the thread's reactor watched, forget it (`msrt_task_forget_fd`).
 - `| tail -1` on a build hid a compile error and made every later fixture result stale; check the exit status.
+- Code run from `idle_mail` (the mail drain of a parked task) must not yield: `tidy_run` called `ms_promise_done`, which yields, and the nested yield marked the parked task RUNNING while it still waited, so its wake was dropped (3 to 7 hangs in 100, fixed in #5331). Find such a hang by dumping every task's wait token and the fd waiters per isolate from gdb: a task waiting on a promise with no registration anywhere.
+- The pool's unit test (`runtime/tests/entry_idle.c`) runs on the entry's real reactor and scheduler, not a poll(2) fake, so it builds on Windows and covers the real take path.

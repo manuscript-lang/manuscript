@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <uv.h>
 
 #include "../entry/entry.h"
 #include "ms_rt/alloc.h"
@@ -33,6 +33,24 @@ static char *slurp(const char *path) {
     return text;
 }
 
+/* The profiler reads its settings with getenv, which on Windows sees only the C library's own copy of the environment:
+ * the Win32 call (and so libuv's) does not update it once it exists, _putenv_s does both. */
+static int set_env(const char *name, const char *value) {
+#ifdef _WIN32
+    return _putenv_s(name, value);
+#else
+    return uv_os_setenv(name, value);
+#endif
+}
+
+static void unset_env(const char *name) {
+#ifdef _WIN32
+    (void)_putenv_s(name, "");
+#else
+    (void)uv_os_unsetenv(name);
+#endif
+}
+
 static volatile unsigned sink;
 
 static void burn(void) {
@@ -45,23 +63,26 @@ static void burn(void) {
 }
 
 int main(void) {
-    char time_path[64];
-    char alloc_path[64];
-    snprintf(time_path, sizeof time_path, "/tmp/ms-entry-profile-%d.folded", (int)getpid());
-    snprintf(alloc_path, sizeof alloc_path, "/tmp/ms-entry-profile-%d.allocs", (int)getpid());
+    char directory[512];
+    size_t directory_size = sizeof directory;
+    expect(uv_os_tmpdir(directory, &directory_size) == 0, "tmpdir");
+    char time_path[640];
+    char alloc_path[640];
+    snprintf(time_path, sizeof time_path, "%s/ms-entry-profile-%d.folded", directory, (int)uv_os_getpid());
+    snprintf(alloc_path, sizeof alloc_path, "%s/ms-entry-profile-%d.allocs", directory, (int)uv_os_getpid());
 
     /* Off by default: nothing is written. */
-    unsetenv("MS_PROFILE");
-    unsetenv("MS_PROFILE_ALLOCS");
+    unset_env("MS_PROFILE");
+    unset_env("MS_PROFILE_ALLOCS");
     ms_profile_start();
     ms_profile_attach_runtime_thread();
     ms_profile_finish();
     expect(slurp(time_path) == NULL, "no file without MS_PROFILE");
 
-    setenv("MS_PROFILE", time_path, 1);
-    setenv("MS_PROFILE_HZ", "1000", 1);
-    setenv("MS_PROFILE_ALLOCS", alloc_path, 1);
-    setenv("MS_PROFILE_ALLOC_PERIOD", "4", 1);
+    expect(set_env("MS_PROFILE", time_path) == 0, "setenv MS_PROFILE");
+    expect(set_env("MS_PROFILE_HZ", "1000") == 0, "setenv MS_PROFILE_HZ");
+    expect(set_env("MS_PROFILE_ALLOCS", alloc_path) == 0, "setenv MS_PROFILE_ALLOCS");
+    expect(set_env("MS_PROFILE_ALLOC_PERIOD", "4") == 0, "setenv MS_PROFILE_ALLOC_PERIOD");
     msrt_heap_claim();
     ms_profile_start();
     ms_profile_attach_runtime_thread();
@@ -80,7 +101,7 @@ int main(void) {
     expect(allocs != NULL, "the allocation profile is written");
     expect(strstr(allocs, "# period 4") != NULL, "the allocation profile reports its period");
     expect(strstr(allocs, "# allocs") != NULL, "the allocation profile counts allocations");
-    char bytes_path[80];
+    char bytes_path[660];
     snprintf(bytes_path, sizeof bytes_path, "%s.bytes", alloc_path);
     char *bytes = slurp(bytes_path);
     expect(bytes != NULL && strstr(bytes, "# bytes") != NULL, "the byte profile is written");

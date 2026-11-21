@@ -136,12 +136,17 @@ fn table_at(document: TomlValue, key: String) Map[String, TomlValue]:
 	var none_found = Map[String, TomlValue]()
 
 	match document:
-		TableValue(values):
-			found := values.get(key)
-			if found.is_none(): return none_found
-			match found.get():
-				TableValue(inner): return inner.clone()
-				_: return none_found
+		TableValue(values): return table_in(values, key)
+		_: return none_found
+
+// The table `key` of the table `values`, empty when it has none.
+fn table_in(values: Map[String, TomlValue], key: String) Map[String, TomlValue]:
+	var none_found = Map[String, TomlValue]()
+	found := values.get(key)
+	if found.is_none(): return none_found
+
+	match found.get():
+		TableValue(inner): return inner.clone()
 		_: return none_found
 
 // The text of a manifest value, or the empty text.

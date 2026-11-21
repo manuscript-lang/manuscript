@@ -36,6 +36,10 @@ typedef struct MsBody {
 
 /* A parameter or local of this type can be called and passed around (check_closure.c). */
 bool ms_body_is_function_value(const MsBody *b, MsTy ty);
+/* A function type that may be expected of an argument: its parameters may be `var` or `move`. */
+bool ms_body_is_callback_type(const MsBody *b, MsTy ty);
+/* Whether `actual` is `expected` except that it reads parameters `expected` may change or take. */
+bool ms_body_reads_where_var_expected(const MsBody *b, MsTy actual, MsTy expected);
 /* Whether `ty` is `<invalid>` or built from it: an earlier diagnostic is why. */
 bool ms_body_has_invalid(const MsBody *b, MsTy ty);
 /* `callee(args)` through the function-typed binding `binding`. */
@@ -64,14 +68,13 @@ MsTy ms_body_list_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected);
 /* Maps (check_map.c): whether `ty` is a `Map` of an admitted key and value, a `Map[K, V]` annotation, a literal. */
 bool ms_body_is_map(const MsBody *b, MsTy ty);
+bool ms_body_is_set(const MsBody *b, MsTy ty);
 MsTy ms_body_map_index(MsBody *b, MsTy map, const MsExpr *key);
 MsTy ms_body_map_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_map(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_index(MsBody *b, const MsExpr *e);
 /* Int, Float, Bool or String: what a binding or argument of the handled set may hold. */
 bool ms_body_is_primitive_value(const MsBody *b, MsTy ty);
-/* `Int8` through `UInt64` and `Float32`: the sized numbers, which carry their own operations interface. */
-bool ms_body_is_sized_number(const MsBody *b, MsTy ty);
 /* A type whose values the pass can pass around (see body_is_admitted). */
 bool ms_body_is_admitted(const MsBody *b, MsTy ty);
 /* What a local can hold: an admitted type, an Optional or a Result of one. */
@@ -84,6 +87,8 @@ MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
 /* An enum case called like a function where the context expects its enum (check_alt.c). */
 bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name);
 MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected);
+/* Whether `label` is the name of the payload field of `ok` (`success`) or `error` of the Result type `result`. */
+bool ms_body_result_label(const MsBody *b, MsTy result, bool success, MsSym label);
 bool ms_body_is_qualified_case(MsBody *b, const MsExpr *member); /* `Enum.Case` with `Enum` a non-generic enum of this module */
 MsTy ms_body_qualified_case(MsBody *b, const MsExpr *e);           /* a qualified case without payload */
 MsTy ms_body_qualified_case_call(MsBody *b, const MsExpr *e);      /* a qualified case with its payload */
@@ -98,7 +103,7 @@ void ms_body_close_from(MsBody *b, uint32_t first); /* the bindings declared sin
 void ms_body_check_home(MsBody *b, MsSymId sym); /* type the field defaults of the module that declares `sym` */
 bool ms_body_open_argument(MsBody *b, const MsExpr *value, const MsTyParam *param, MsInfer *in); /* one argument of an open signature: checked against its parameter, or binding its variables */
 MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
-MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written, MsTy expected);
 /* A call `receiver.name(args)' (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 bool ms_body_reordered(const MsExpr *call, const uint32_t *slot); /* some argument is not at its parameter's index */
