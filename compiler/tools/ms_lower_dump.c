@@ -18,6 +18,7 @@
 #include "ms/methods.h"
 #include "ms/program.h"
 #include "ms/ownership.h"
+#include "ms/mir_analysis.h"
 #include "ms/mir_pass.h"
 #include "ms/mir_verify.h"
 #include "ms/parse.h"
@@ -40,6 +41,20 @@ static void note_divergent_expr(void *flag, const MsExpr *e) {
     if (e->kind == MS_E_MATCH) {
         *(bool *)flag = true;
     }
+}
+
+/* Whether a block branches back to itself or to an earlier one: a loop, of any origin (a `while`
+ * is one, and so is the loop of a generated text function, which has no source to inspect). */
+static bool has_back_edge(const MirFunc *f) {
+    for (uint32_t i = 0; i < f->nblocks; i++) {
+        const MirTerm *term = &f->blocks[i].term;
+        for (uint32_t t = 0; t < mir_term_ntargets(term); t++) {
+            if (mir_term_target_const(term, t)->block <= i) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 /* Whether the function called `name` in `module` holds one. */
@@ -126,7 +141,7 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
             MsBuf out = {0};
             mir_print_func(&mir, &mir.funcs[i], &out);
-            if (function_diverges(names, module, ms_name(&mir.names, mir.funcs[i].name))) {
+            if (function_diverges(names, module, ms_name(&mir.names, mir.funcs[i].name)) || has_back_edge(&mir.funcs[i])) {
                 printf("; divergent\n");
             }
             printf("%.*s\n", (int)out.len, (const char *)out.data);
@@ -195,7 +210,7 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
             for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
                 MsBuf out = {0};
                 mir_print_func(&mir, &mir.funcs[i], &out);
-                if (program_function_diverges(names, modules, graph.count, ms_name(&mir.names, mir.funcs[i].name))) {
+                if (program_function_diverges(names, modules, graph.count, ms_name(&mir.names, mir.funcs[i].name)) || has_back_edge(&mir.funcs[i])) {
                     printf("; divergent\n");
                 }
                 printf("%.*s\n", (int)out.len, (const char *)out.data);

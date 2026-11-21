@@ -32,4 +32,5 @@ fn main() Int:
 	var out = stdout()
 	written := out.write(facts.get())
 	if written.is_error(): return 1
+
 	return 0
