@@ -12,7 +12,7 @@ crate-type = ["rlib"]
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
-jiff = { version = "0.2", default-features = false, features = ["std", "tz-system", "tzdb-bundle-always"] }
+jiff = { version = "1.0", default-features = false, features = ["std", "tz-system", "tzdb-bundle-always"] }
 
 [lints]
 workspace = true
