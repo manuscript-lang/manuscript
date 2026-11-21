@@ -11,8 +11,10 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "ms/base.h"
 #include "ms/build_tool.h"
@@ -43,15 +45,64 @@ static void bo_path(MsBuf *out, const char *dir, const char *name) {
     ms_buf_putc(out, 0);
 }
 
+/* Whether MS_TIMINGS asks for stage timings on stderr, so a slow platform shows which stage grows. */
+static bool bo_timings(void) {
+    // NOLINTBEGIN(concurrency-mt-unsafe): read before any thread starts.
+    const char *value = getenv("MS_TIMINGS");
+    // NOLINTEND(concurrency-mt-unsafe)
+    return value != NULL;
+}
+
+static double bo_now(void) {
+    struct timespec t;
+    return timespec_get(&t, TIME_UTC) == 0 ? 0.0 : (double)t.tv_sec + (double)t.tv_nsec / 1e9;
+}
+
+/* Prints how long the stage `what` that started at `start` took, when MS_TIMINGS is set. */
+static void bo_timed(const char *what, double start) {
+    if (bo_timings()) {
+        (void)fprintf(stderr, "timing %s: %.3fs\n", what, bo_now() - start);
+    }
+}
+
 /* Runs `argv`; the reason of a failure goes to `why`. */
 static bool bo_run(const char *what, const char *const *argv, const char *log, MsBackendText *why) {
     MsBuf reason = {0};
-    if (ms_build_run(what, argv, log, &reason)) {
+    const double start = bo_now();
+    const bool ok = ms_build_run(what, argv, log, &reason);
+    bo_timed(what, start);
+    if (ok) {
         ms_buf_free(&reason);
         return true;
     }
     *why = ms_backend_take(&reason);
     return false;
+}
+
+/* The slowest passes of the `llc -time-passes` report in `log`, as `timing llc pass` lines. */
+static void bo_print_llc_passes(const char *log) {
+    MsBuf report = {0};
+    if (ms_build_read(log, &report) && report.len > 0) {
+        ms_buf_putc(&report, 0);
+        const char *line = strstr(report.data, "Pass execution timing report");
+        for (int shown = 0; line != NULL && shown < 6;) {
+            const char *end = strchr(line, '\n');
+            const int len = end != NULL ? (int)(end - line) : (int)strlen(line);
+            const char *percent = strstr(line, "%)");
+            if (percent != NULL && percent < line + len) {
+                const char *text = line;
+                int width = len;
+                while (width > 0 && *text == ' ') {
+                    text++;
+                    width--;
+                }
+                (void)fprintf(stderr, "timing llc pass: %.*s\n", width, text);
+                shown++;
+            }
+            line = end != NULL ? end + 1 : NULL;
+        }
+    }
+    ms_buf_free(&report);
 }
 
 /* The assembly as `module asm` lines of an LLVM module, so `llc` assembles it. The COFF `@feat.00` symbol is left
@@ -174,7 +225,7 @@ static bool bo_has_optnone(const MsBackendText *ir) {
 /* `llc` to assembly text. */
 static bool bo_to_assembly(const BoFiles *f, const MsObjectOptions *o, const char *input, bool size_tiered,
                            MsBackendText *why) {
-    const char *argv[15];
+    const char *argv[16];
     size_t n = 0;
     argv[n++] = f->llc.data;
     /* A module with an `optnone` function (a size tier, #3928) goes through the fast code generator: llc's -O3
@@ -191,11 +242,19 @@ static bool bo_to_assembly(const BoFiles *f, const MsObjectOptions *o, const cha
     argv[n++] = "-align-loops=32";
     argv[n++] = "-mcpu=x86-64";
 #endif
+    const bool timings = bo_timings();
+    if (timings) {
+        argv[n++] = "-time-passes";
+    }
     argv[n++] = input;
     argv[n++] = "-o";
     argv[n++] = f->plain.data;
     argv[n] = NULL;
-    return bo_run("llc (LLVM code generator)", argv, f->log.data, why);
+    const bool ok = bo_run("llc (LLVM code generator)", argv, f->log.data, why);
+    if (ok && timings) {
+        bo_print_llc_passes(f->log.data);
+    }
+    return ok;
 }
 
 /* Adds the fault tables to the assembly and writes it back as a module-asm IR file. */
@@ -211,7 +270,9 @@ static bool bo_add_tables(const BoFiles *f, const MsBackendText *meta, MsBackend
 #else
         "";
 #endif
+    const double start = bo_now();
     bool ok = ms_backend_tables(meta->ptr, meta->len, assembly.data, assembly.len, prefix, &with_tables, why);
+    bo_timed("fault tables", start);
     if (ok) {
         bo_asm_module(with_tables.ptr == NULL ? "" : with_tables.ptr, with_tables.len, &wrapped_text);
         if (!ms_build_write(f->wrapped.data, wrapped_text.data, wrapped_text.len)) {
@@ -271,7 +332,10 @@ bool ms_build_object(const char *mir, size_t mir_len, const char *shown, size_t 
     MsBackendOptions backend = options->backend;
     backend.tables = true;
     backend.verify = true;
-    if (!ms_backend_ir(mir, mir_len, "program.mir", shown, shown_len, &backend, &ir, &meta, why)) {
+    const double start = bo_now();
+    const bool lowered = ms_backend_ir(mir, mir_len, "program.mir", shown, shown_len, &backend, &ir, &meta, why);
+    bo_timed("front end (print, optimize, emit IR)", start);
+    if (!lowered) {
         return false;
     }
     // NOLINTBEGIN(concurrency-mt-unsafe): read before any thread starts.
