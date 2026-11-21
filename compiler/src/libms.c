@@ -168,16 +168,18 @@
 #include "emit/emit_entry.c"
 #include "emit/emit_llvm.c"
 #include "emit/emit_program.c"
-/* What reaches the host's files and programs goes through the OS layer (runtime/sys). The back end library the Rust `ms`
- * links leaves it out (cmake/MsCompiler.cmake, target ms_backend): it brings no runtime with it. */
-#if !defined(MS_LIBMS_NO_PROJECT)
 #include "build/tool.c"
+#include "build/tool_posix.c"
+#include "build/tool_windows.c"
 #include "build/object.c"
 #include "build/macho.c"
 #include "build/link.c"
 #include "build/link_linux.c"
 #include "build/link_macos.c"
 #include "build/link_windows.c"
+/* What reaches the host's files and programs goes through the OS layer (runtime/sys). The back end library the Rust `ms`
+ * links leaves the project loader out (cmake/MsCompiler.cmake, target ms_backend): it brings no runtime with it. */
+#if !defined(MS_LIBMS_NO_PROJECT)
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/discover.c"

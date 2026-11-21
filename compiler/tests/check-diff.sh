@@ -71,11 +71,24 @@ fi
 # Each line is keyed by file and function so that only the functions C claims are compared, with
 # the diagnostics inside each (`diag L:C: message`): one Rust reports and C does not, or the
 # reverse, is a difference.
-"$oracle" --bodies $files > "$out/bodies.rust"
-"$bin/ms_check_dump" stdlib --bodies $files > "$out/bodies.c"
+# The Rust checker walks ownership only for a program that type checks, so it prints no ownership
+# diagnostic in a file with another error; the oracle marks those files, and a diagnostic C reports
+# there that Rust does not is an ownership one (C declines the functions that carry the error).
+drop_unowned() {
+    awk -v rust="$1" '
+        BEGIN { while ((getline line < rust) > 0) {
+            if (line ~ /^== /) file = substr(line, 4)
+            else if (line == "ownership-skipped") skip[file] = 1
+            else if (line ~ /^diag /) seen[file SUBSEP line] = 1 } }
+        /^== / { file = substr($0, 4) }
+        !((file in skip) && /^diag / && !((file SUBSEP $0) in seen)) { print }' "$2"
+}
 keyed() {
     awk '/^== / { file = $2; key = ""; next } /^(fn|const) / { key = file " " $2 } key != "" { print key "|" $0 }' "$1"
 }
+"$oracle" --bodies $files > "$out/bodies.rust"
+"$bin/ms_check_dump" stdlib --bodies $files > "$out/bodies.c.all"
+drop_unowned "$out/bodies.rust" "$out/bodies.c.all" > "$out/bodies.c"
 keyed "$out/bodies.c" > "$out/bodies.c.raw"
 # A function the ownership walk handed back is marked; Rust's ownership diagnostics inside it have no
 # C twin yet, so a marked function that C reports nothing in is compared without Rust's diagnostics.
@@ -146,7 +159,8 @@ done
 # on the ownership fixtures and the corpus. Only functions the C walk handles are compared.
 ownership_files=$(find compiler/tests/ownership compiler/tests/scope tests/conformance/fixtures -name '*.ms' | sort)
 "$oracle" --ownership $ownership_files > "$out/ownership.rust"
-"$bin/ms_check_dump" stdlib --ownership $ownership_files > "$out/ownership.c"
+"$bin/ms_check_dump" stdlib --ownership $ownership_files > "$out/ownership.c.all"
+drop_unowned "$out/ownership.rust" "$out/ownership.c.all" > "$out/ownership.c"
 keyed "$out/ownership.c" > "$out/ownership.c.keyed"
 cut -d'|' -f1 "$out/ownership.c.keyed" | sort -u > "$out/ownership.keys"
 keyed "$out/ownership.rust" | awk -F'|' -v list="$out/ownership.keys" '

@@ -1,15 +1,29 @@
 /* Linking with the pinned lld (ms/build_link.h): the steps every host shares. What differs per host is in
  * link_linux.c, link_macos.c and link_windows.c (link_internal.h). */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
 #include "ms/build_link.h"
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "build/link_internal.h"
 #include "ms/base.h"
 #include "ms/build_tool.h"
 
-bool ms_link_exists(const char *path) { return ms_build_is_file(path); }
+#ifndef S_ISREG /* the Windows C library has the masks only */
+#define S_ISREG(mode) (((mode) & _S_IFMT) == _S_IFREG)
+#endif
+
+bool ms_link_exists(const char *path) {
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISREG(st.st_mode);
+}
 
 void ms_link_push(BlJob *job, const char *arg) { MS_VEC_PUSH(job->argv, const char *, arg); }
 
@@ -55,14 +69,18 @@ bool ms_build_link(const char *object, const char *const *inputs, size_t ninputs
     bool ok = ms_link_prepare(&job, &reason);
     if (ok) {
         ms_link_push(&job, NULL);
+        const size_t log_size = strlen(out) + sizeof ".link.log";
+        char *log = ms_alloc(&job.arena, log_size, 1);
+        (void)snprintf(log, log_size, "%s.link.log", out);
         MsBuf detail = {0};
-        ok = ms_build_run("the bundled linker", (const char *const *)ms_buf_items(&job.argv), &detail);
+        ok = ms_build_run("the bundled linker", (const char *const *)ms_buf_items(&job.argv), log, &detail);
         if (!ok) {
             ms_buf_puts(&reason, "linking failed; the linker output follows. ");
             ms_link_advice(&detail, options->musl, &reason);
             ms_buf_printf(&reason, ":\n%.*s", (int)detail.len, detail.data == NULL ? "" : detail.data);
         }
         ms_buf_free(&detail);
+        ms_build_unlink(log);
         ok = ms_link_finish(&job, ok, &reason) && ok;
     } else {
         (void)ms_link_finish(&job, false, &reason);

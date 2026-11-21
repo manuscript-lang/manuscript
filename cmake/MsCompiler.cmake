@@ -50,6 +50,9 @@ set(_cflags -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-format-truncation)
 set(_clink "")
 if(MS_WINDOWS)
   list(APPEND _cflags -D_CRT_SECURE_NO_WARNINGS)
+  # ms_mimalloc.h renames malloc and free, and the C library declares them dllimport (_ACRTIMP): the renamed mi_malloc
+  # would then be an import. Declaring the C library's functions plain makes them link as ordinary symbols.
+  list(APPEND _cflags -D_ACRTIMP= -D_DCRTIMP=)
   # __int128 division (constfold, range analysis) calls __divti3 and __modti3, which MSVC libraries lack: link the
   # compiler-rt builtins that ship with LLVM.
   execute_process(COMMAND "${CMAKE_C_COMPILER}" --rtlib=compiler-rt --print-libgcc-file-name

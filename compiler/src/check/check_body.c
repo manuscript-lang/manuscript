@@ -1048,13 +1048,16 @@ static MsTy body_report_operands(MsBody *b, const MsExpr *e, MsTy left, MsTy rig
  * optionals built only of such parts. A type with type arguments, a native type or an interface is left to
  * the Rust checker; a written `equals` can only widen what compares, never narrow it. `depth` bounds the walk
  * (a type that holds itself is deeper than the bound and is not admitted). */
-static bool body_is_equatable(const MsBody *b, MsTy ty, uint32_t depth) {
+static bool body_is_equatable(MsBody *b, MsTy ty, uint32_t depth) {
     const MsTyTable *tys = &b->c->tys;
     if (ty == MS_TY_NONE || depth > 8) {
         return false;
     }
     if (body_is_value_type(b, ty)) {
         return true;
+    }
+    if (ms_ty_kind(tys, ty) == MS_K_VARIABLE) {
+        return ms_implements_equal(b->c, b->methods, ty) == MS_FIT_YES;
     }
     if ((ms_ty_is(tys, ty, MS_BI_LIST) || ms_ty_is(tys, ty, MS_BI_OPTIONAL)) && tys->nargs[ty] == 1) {
         return body_is_equatable(b, ms_ty_args(tys, ty)[0], depth + 1);
@@ -1424,8 +1427,7 @@ static void body_assign_field(MsBody *b, const MsStmt *s) {
         root = root->u.member.left;
     }
     const uint32_t binding = root->kind == MS_E_NAME ? ms_body_find_binding(b, root->u.sym) : MS_NONE;
-    if (target->kind != MS_E_MEMBER || binding == MS_NONE || binding < b->lambda_floor ||
-        (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+    if (target->kind != MS_E_MEMBER || binding == MS_NONE || binding < b->lambda_floor) {
         (void)ms_body_unsupported(b);
         return;
     }

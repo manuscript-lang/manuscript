@@ -7,10 +7,15 @@
 #include "ms/base.h"
 #include "ms/build_tool.h"
 #include "ms/hints.h"
-#include "ms_rt/sys_fs.h"
 #include "ms/text.h"
 
 #if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
+
+#include <errno.h>
+
+#include <sys/stat.h>
+
+#include <unistd.h>
 
 #if defined(__aarch64__)
 #define BL_TRIPLE "-mtriple=aarch64-unknown-linux-gnu"
@@ -101,28 +106,27 @@ static bool bl_stub(const MsLinkOptions *o, const char *stage, const char *sonam
         }
         ms_buf_puts(&script, " };\n");
     }
-    char ll[BL_PATH], obj[BL_PATH], map[BL_PATH], lib[BL_PATH];
+    char ll[BL_PATH], obj[BL_PATH], map[BL_PATH], log[BL_PATH], lib[BL_PATH];
     (void)snprintf(ll, sizeof ll, "%s/%s.ll", stage, soname);
     (void)snprintf(obj, sizeof obj, "%s/%s.o", stage, soname);
     (void)snprintf(map, sizeof map, "%s/%s.map", stage, soname);
+    (void)snprintf(log, sizeof log, "%s/%s.log", stage, soname);
     (void)snprintf(lib, sizeof lib, "%s/%s", stage, soname);
-    int written = ms_build_write_file(ll, ir.data, ir.len);
-    written = written != 0 ? written : ms_build_write_file(map, script.data, script.len);
-    bool ok = written == 0;
+    bool ok = ms_build_write(ll, ir.data, ir.len) && ms_build_write(map, script.data, script.len);
     if (!ok) {
         ms_buf_printf(why, "cannot write the %s stub: ", soname);
-        ms_build_errno_text(written, why);
+        ms_build_errno_text(errno, why);
     }
     if (ok) {
         const char *llc[] = {o->llc, "-filetype=obj", "-relocation-model=pic", BL_TRIPLE, ll, "-o", obj, NULL};
-        ok = ms_build_run("llc (glibc stubs)", llc, why);
+        ok = ms_build_run("llc (glibc stubs)", llc, log, why);
     }
     if (ok) {
         const char *lld[] = {o->lld, "-flavor", "gnu", "-shared", "-soname", soname,
                        "--version-script", map, "-o", lib, obj, NULL};
-        ok = ms_build_run("lld (glibc stubs)", lld, why);
+        ok = ms_build_run("lld (glibc stubs)", lld, log, why);
     }
-    const char *const made[] = {ll, obj, map};
+    const char *const made[] = {ll, obj, map, log};
     for (size_t i = 0; i < sizeof made / sizeof made[0]; i++) {
         ms_build_unlink(made[i]);
     }
@@ -152,10 +156,9 @@ static bool bl_stubs(const MsLinkOptions *o, char *out, size_t out_size, MsBuf *
     bl_parse(table.data, table.len, &exports);
     char stage[BL_PATH];
     (void)snprintf(stage, sizeof stage, "%s/.glibc-XXXXXX", o->files);
-    const int made = ms_build_make_dir(stage);
-    if (made != 0) {
+    if (!ms_build_make_dir(stage)) {
         ms_buf_printf(why, "cannot create the glibc stubs in %s: ", out);
-        ms_build_errno_text(made, why);
+        ms_build_errno_text(errno, why);
         ms_buf_free(&table);
         ms_buf_free(&exports);
         return false;
@@ -167,8 +170,7 @@ static bool bl_stubs(const MsLinkOptions *o, char *out, size_t out_size, MsBuf *
     char stage_done[BL_PATH];
     (void)snprintf(stage_done, sizeof stage_done, "%s/.ok", stage);
     ok = ok && ms_build_write(stage_done, "", 0);
-    const MsSysError renamed = ok ? ms_sys_fs_rename(stage, out) : 0;
-    bool installed = ok && renamed == 0;
+    bool installed = ok && rename(stage, out) == 0;
     if (!installed) {
         for (size_t i = 0; i < sizeof bl_libraries / sizeof bl_libraries[0]; i++) {
             char path[BL_PATH];
@@ -180,7 +182,7 @@ static bool bl_stubs(const MsLinkOptions *o, char *out, size_t out_size, MsBuf *
         installed = ok && ms_link_exists(done); /* another build installed its set first */
         if (ok && !installed) {
             ms_buf_printf(why, "cannot install the glibc stubs in %s: ", out);
-            ms_build_errno_text(renamed, why);
+            ms_build_errno_text(errno, why);
         }
     }
     ms_buf_free(&table);
