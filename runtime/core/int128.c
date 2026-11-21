@@ -11,6 +11,7 @@ typedef __int128 I128;
 U128 __udivmodti4(U128 n, U128 d, U128 *rem); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 U128 __udivti3(U128 n, U128 d); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 U128 __umodti3(U128 n, U128 d); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
+I128 __modti3(I128 n, I128 d); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 I128 __divti3(I128 n, I128 d); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 
 /* Shift-and-subtract division, one quotient bit per step; the wide case is rare (decimal and big-number code). */
@@ -57,4 +58,13 @@ __attribute__((weak)) I128 __divti3(I128 n, I128 d) { // NOLINT(bugprone-reserve
     U128 rem;
     const U128 quotient = divmod(magnitude_n, magnitude_d, &rem);
     return (n < 0) != (d < 0) ? (I128)(-quotient) : (I128)quotient;
+}
+
+/* The remainder takes the sign of the dividend. */
+__attribute__((weak)) I128 __modti3(I128 n, I128 d) { // NOLINT(bugprone-reserved-identifier): the name the compiler calls
+    const U128 magnitude_n = n < 0 ? -(U128)n : (U128)n;
+    const U128 magnitude_d = d < 0 ? -(U128)d : (U128)d;
+    U128 rem;
+    (void)divmod(magnitude_n, magnitude_d, &rem);
+    return n < 0 ? (I128)(-rem) : (I128)rem;
 }
