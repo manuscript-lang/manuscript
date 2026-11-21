@@ -75,3 +75,31 @@ bool lb_numeric_conversion(Lb *lb, MirValue x, MsTy checked_result, LbVal *out) 
     *out = (LbVal){converted, false};
     return true;
 }
+
+/* `abs` and `sign` of an `Int`, which no runtime function implements: a comparison and a selection. `abs` of the
+ * minimum faults through the checked subtraction. The `-1` constant `abs` defines is unused; the oracle compares the
+ * text of the Rust lowering, which defines it too. */
+static MirValue ln_int_abs_or_sign(Lb *lb, bool is_abs, MirValue x) {
+    MirBuilder *b = &lb->b;
+    const MirValue zero = mir_b_iconst(b, 0);
+    const MirValue minus = mir_b_iconst(b, -1);
+    const MirValue negative = mir_b_icmp(b, MCC_LT, x, zero);
+    if (is_abs) {
+        return mir_b_select(b, negative, mir_b_binop(b, MOP_ISubChk, zero, x), x);
+    }
+    const MirValue one = mir_b_iconst(b, 1);
+    const MirValue positive = mir_b_icmp(b, MCC_GT, x, zero);
+    return mir_b_select(b, negative, minus, mir_b_select(b, positive, one, zero));
+}
+
+bool lb_int_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out) {
+    const MsExpr *callee = e->u.call.callee;
+    const bool is_abs = ms_name_is(lb->c->names, callee->u.member.name, "abs");
+    if (e->u.call.args.len != 0 || !(is_abs || ms_name_is(lb->c->names, callee->u.member.name, "sign")) ||
+        lb_mir_ty(lb, receiver_ty) != MIR_INT) {
+        return false;
+    }
+    const LbVal x = lb_expr(lb, callee->u.member.left);
+    *out = lb->ok ? (LbVal){ln_int_abs_or_sign(lb, is_abs, x.v), false} : LB_FAIL;
+    return true;
+}

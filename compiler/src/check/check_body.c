@@ -877,6 +877,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (syms->nvars[sym] != 0) {
         return ms_body_generic_call(b, e, sym, NULL, expected);
     }
+    if (syms->ty[sym] == MS_TY_NONE) {
+        ms_module_resolve_types(b->c, syms->module[sym]); // a native function's signature is resolved on first call
+    }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION) {
@@ -1086,7 +1089,13 @@ static bool body_is_equatable(MsBody *b, MsTy ty, uint32_t depth) {
 static MsTy body_binary(MsBody *b, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     const MsTy left = ms_body_expr(b, e->u.bin.left, MS_TY_NONE);
-    const MsTy right = left == MS_TY_NONE ? MS_TY_NONE : ms_body_expr(b, e->u.bin.right, MS_TY_NONE);
+    // `opt == value` compares as `opt == Optional`: the plain side wraps without `some`, but `none` has its own report.
+    const MsTyTable *tys = &b->c->tys;
+    const MsExpr *plain = e->u.bin.right;
+    const bool none_operand = plain->kind == MS_E_NAME && ms_name_is(b->c->names, plain->u.sym, "none");
+    const bool wraps = (op == MS_B_EQ || op == MS_B_NE) && left != MS_TY_NONE && ms_ty_is(tys, left, MS_BI_OPTIONAL) &&
+                       tys->nargs[left] == 1 && !none_operand;
+    const MsTy right = left == MS_TY_NONE ? MS_TY_NONE : ms_body_expr(b, plain, wraps ? left : MS_TY_NONE);
     if (right == MS_TY_NONE) {
         return MS_TY_NONE;
     }
@@ -1103,6 +1112,9 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
     }
     if (left == right && (op == MS_B_EQ || op == MS_B_NE) && body_is_equatable(b, left, 0)) {
         return b->bool_ty;
+    }
+    if (left == right && ms_ty_is(tys, left, MS_BI_BIGINT)) {
+        return comparison ? b->bool_ty : left; // every operator applies to a BigInt; no constant range to overflow
     }
     if (left != right || !body_is_value_type(b, left)) {
         return ms_body_unsupported(b);
@@ -1340,6 +1352,12 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     }
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
         return ms_body_unsupported(b);
+    }
+    for (uint32_t i = 0; b->tparams != NULL && i < b->tparams->len; i++) {
+        if (b->tparams->ptr[i]->name == t->name) {
+            b->facts->type_ref_ty[t->id] = b->tvars[i];
+            return b->tvars[i];
+        }
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
@@ -1686,34 +1704,36 @@ static void body_jump_statement(MsBody *b, const MsStmt *s) {
     b->breaks += s->kind == MS_S_BREAK;
 }
 
-/* Checks the statements of a nested scope in order; whether control falls out of the end. A
- * statement after one that never falls through is left to the Rust checker. */
-/* Checks the statements in the current scope; whether control falls out of the end. */
+/* Checks the statements in the current scope; whether control falls out of the end. A statement after
+ * one that never falls through is still checked, but it neither makes the block fall through again nor
+ * counts its `break`s toward the enclosing loop. */
 static bool body_run(MsBody *b, const MsStmts *body) {
     bool falls = true;
     for (uint32_t i = 0; i < body->len && b->supported; i++) {
         const MsStmt *s = body->ptr[i];
-        if (!falls) {
-            (void)ms_body_unsupported(b);
-            break;
-        }
+        const uint32_t breaks = b->breaks;
+        bool normal = true;
         switch ((MsStmtKind)s->kind) {
         case MS_S_BIND: body_bind_statement(b, s); break;
         case MS_S_RETURN:
             body_return_statement(b, s);
-            falls = false;
+            normal = false;
             break;
-        case MS_S_IF: falls = body_if_statement(b, s); break;
-        case MS_S_WHILE: falls = body_while_statement(b, s); break;
+        case MS_S_IF: normal = body_if_statement(b, s); break;
+        case MS_S_WHILE: normal = body_while_statement(b, s); break;
         case MS_S_ASSIGN: body_assign_statement(b, s); break;
         case MS_S_BREAK:
         case MS_S_CONTINUE:
             body_jump_statement(b, s);
-            falls = false;
+            normal = false;
             break;
-        case MS_S_CALL: falls = body_call_statement(b, s); break;
-        case MS_S_FOR: falls = body_for_statement(b, s); break;
+        case MS_S_CALL: normal = body_call_statement(b, s); break;
+        case MS_S_FOR: normal = body_for_statement(b, s); break;
         }
+        if (!falls) {
+            b->breaks = breaks;
+        }
+        falls = falls && normal;
     }
     return falls;
 }
@@ -2046,7 +2066,11 @@ static void body_check_test(MsBody *b, const MsDecl *d) {
 
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     if (!body_is_test_fixture(b, &d->u.fn) || b->fixture != MS_TY_NONE) {
+        b->tparams = &d->u.fn.type_params;
+        b->tvars = ms_def(b->c, sym)->vars;
         body_check_callable(b, d->id, d->pos, d->is_exported, &d->u.fn, b->c->syms.ty[sym], NULL);
+        b->tparams = NULL;
+        b->tvars = NULL;
     }
 }
 

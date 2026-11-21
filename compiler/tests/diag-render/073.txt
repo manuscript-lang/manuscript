@@ -1,0 +1,5 @@
+073.ms:7:23: parse: expected end of statement, found name 'move'; put one statement per line, and join operands with an operator or a comma inside brackets
+   |
+ 7 |     m := Map[Key, Int]move ()
+   |                       ^^^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

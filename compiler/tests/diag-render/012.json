@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1002",
+      "phase": "parse",
+      "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4",
+      "position": {
+        "file": "012.ms",
+        "line": 4,
+        "column": 3,
+        "offset": 66
+      }
+    }
+  ]
+}

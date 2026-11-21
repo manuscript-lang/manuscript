@@ -1,0 +1,5 @@
+107.ms:55:9: parse: mismatched closing delimiter ')'; the '{' opened at line 53:16 needs '}'
+    |
+ 55 |         )
+    |         ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

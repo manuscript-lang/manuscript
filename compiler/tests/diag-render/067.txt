@@ -1,0 +1,5 @@
+067.ms:11:1: parse: unterminated delimiter '(' opened at line 8:12; add the matching ')' before the end of the file
+    |
+ 11 | 
+    | ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

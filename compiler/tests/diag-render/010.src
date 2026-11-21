@@ -1,0 +1,11 @@
+type Token:
+    id: Int
+
+fn (r: Token?!) Token!?:
+    if item := r.get():
+        return ok(item)
+
+    return none
+
+fn main() Void:
+    return

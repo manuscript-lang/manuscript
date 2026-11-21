@@ -123,12 +123,6 @@ static MvSet mvs_clone(MsArena *arena, const MvSet *s) {
     return c;
 }
 
-static void mvs_union(MsArena *arena, MvSet *into, const MvSet *from) {
-    for (uint32_t i = 0; i < from->count; i++) {
-        mvs_add(arena, into, from->ids[i]);
-    }
-}
-
 static bool mvs_equal(const MvSet *a, const MvSet *b) {
     return a->count == b->count && (a->count == 0 || memcmp(a->ids, b->ids, sizeof *a->ids * a->count) == 0);
 }
@@ -401,21 +395,59 @@ static MvDef *mv_collect_defs(Mv *v) {
     return defs;
 }
 
+/* The dominator tree as entry and exit numbers of a depth-first walk, so "a dominates b" is two
+ * comparisons rather than a climb up the tree: that climb made a use of a value defined at the top of
+ * a long function cost its depth, and verification quadratic. Unreachable blocks have no numbers. */
 typedef struct MvFlow {
     const MvDef *defs;
-    const MirBlock *idom;
+    const uint32_t *tin;
+    const uint32_t *tout;
 } MvFlow;
 
-static bool mv_dominates(const MirBlock *idom, MirBlock a, MirBlock b) {
-    for (;;) {
-        if (a == b) {
-            return true;
-        }
-        if (b == 0 || idom[b] == MIR_NONE || idom[b] == b) {
-            return false;
-        }
-        b = idom[b];
+static MvFlow mv_flow(Mv *v, const MvDef *defs, const MirBlock *idom) {
+    const uint32_t n = v->cx.f->nblocks;
+    uint32_t *tin = MS_NEW_N(&v->scratch, uint32_t, n);
+    uint32_t *tout = MS_NEW_N(&v->scratch, uint32_t, n);
+    uint32_t *child = MS_NEW_N(&v->scratch, uint32_t, n); /* first child, then the next sibling chain */
+    uint32_t *sibling = MS_NEW_N(&v->scratch, uint32_t, n);
+    uint32_t *stack = MS_NEW_N(&v->scratch, uint32_t, n);
+    for (uint32_t b = 0; b < n; b++) {
+        tin[b] = tout[b] = child[b] = sibling[b] = MIR_NONE;
     }
+    for (uint32_t b = n; b-- > 1;) {
+        if (idom[b] != MIR_NONE && idom[b] != b) {
+            sibling[b] = child[idom[b]];
+            child[idom[b]] = b;
+        }
+    }
+    uint32_t clock = 0, top = 0;
+    if (n > 0) {
+        tin[0] = clock++;
+        stack[top++] = 0;
+    }
+    while (top > 0) {
+        const uint32_t b = stack[top - 1];
+        const uint32_t next = child[b];
+        if (next == MIR_NONE) {
+            tout[b] = clock++;
+            top--;
+        } else {
+            child[b] = sibling[next];
+            tin[next] = clock++;
+            stack[top++] = next;
+        }
+    }
+    return (MvFlow){defs, tin, tout};
+}
+
+static bool mv_dominates(const MvFlow *flow, MirBlock a, MirBlock b) {
+    if (a == b) {
+        return true;
+    }
+    if (flow->tin[a] == MIR_NONE || flow->tin[b] == MIR_NONE) {
+        return false;
+    }
+    return flow->tin[a] < flow->tin[b] && flow->tout[b] < flow->tout[a];
 }
 
 /* Whether the use of `x` at instruction `index` of `block` follows its definition. */
@@ -426,7 +458,7 @@ static bool mv_use_ok(Mv *v, const MvFlow *flow, MirValue x, MirBlock block, int
         return false;
     }
     const MvDef *d = &flow->defs[x];
-    bool ok = d->block == block ? d->index < index : mv_dominates(flow->idom, d->block, block);
+    bool ok = d->block == block ? d->index < index : mv_dominates(flow, d->block, block);
     if (!ok) {
         mv_err(v, block, "%s: %%%u does not dominate its use", what, x);
     }
@@ -560,9 +592,12 @@ typedef struct MvOwn {
     bool *views;            /* the value points into its operands */
     MirValue *pointer_owner; /* the owner a pointer from a runtime lookup points into */
     bool *watched;          /* some borrow points into the owner: its drops matter */
-    MvSet *dropped_in;      /* per block: owners an explicit drop released on some path there */
+    uint64_t **dropped_in;  /* per block: bit set of owners an explicit drop released on some path there, or NULL */
+    uint64_t *dropped;      /* the block being walked: the same set, reused across blocks */
+    uint32_t words;         /* 64-bit words in one bit set over the function's values */
     MvSet *entry_state;     /* per block: the live set on its first incoming edge */
     bool *has_entry;
+    bool *back_target;      /* some edge into the block comes from a later block: its entry state is read again */
     MirValue *scratch_values; /* room for the largest operand list */
 } MvOwn;
 
@@ -606,11 +641,15 @@ static void mv_own_init(Mv *v, MvOwn *o) {
     o->watched = mv_flags(v, f->nvalues);
     o->owner_of = mv_values_none(v, f->nvalues);
     o->pointer_owner = mv_values_none(v, f->nvalues);
-    o->dropped_in = MS_NEW_N(&v->scratch, MvSet, f->nblocks + 1);
+    o->words = f->nvalues / 64 + 1;
+    o->dropped_in = MS_NEW_N(&v->scratch, uint64_t *, f->nblocks + 1);
+    o->dropped = MS_NEW_N(&v->scratch, uint64_t, o->words);
     o->entry_state = MS_NEW_N(&v->scratch, MvSet, f->nblocks + 1);
     memset(o->dropped_in, 0, sizeof *o->dropped_in * (f->nblocks + 1));
+    memset(o->dropped, 0, sizeof *o->dropped * o->words);
     memset(o->entry_state, 0, sizeof *o->entry_state * (f->nblocks + 1));
     o->has_entry = mv_flags(v, f->nblocks);
+    o->back_target = mv_flags(v, f->nblocks);
     o->scratch_values = mv_values_none(v, mv_max_operands(f));
     for (uint32_t b = 0; b < f->nblocks; b++) {
         const MirBlockData *blk = &f->blocks[b];
@@ -635,11 +674,37 @@ static MirValue mv_owner_or_self(const MvOwn *o, MirValue x) {
     return o->owned_def[x] ? x : o->owner_of[x];
 }
 
-static void mv_report_dead_borrow(Mv *v, MirBlock bi, const MirInst *in, const MvSet *dropped,
+/* The dropped owners are a bit set over value ids, not a sorted array: a long function drops
+ * thousands of watched owners and every block carries them, so the array form made verification
+ * quadratic in memory with a large constant. */
+static bool mvd_has(const uint64_t *bits, uint32_t id) {
+    return (bits[id / 64] >> (id % 64) & 1) != 0;
+}
+
+/* Adds the set `from` to the one a successor block starts with. */
+static void mvd_merge_into(MvOwn *o, MirBlock target, const uint64_t *from) {
+    uint32_t last = o->words;
+    while (last > 0 && from[last - 1] == 0) {
+        last--;
+    }
+    if (last == 0) {
+        return;
+    }
+    uint64_t **into = &o->dropped_in[target];
+    if (*into == NULL) {
+        *into = MS_NEW_N(&o->v->scratch, uint64_t, o->words);
+        memset(*into, 0, sizeof **into * o->words);
+    }
+    for (uint32_t i = 0; i < last; i++) {
+        (*into)[i] |= from[i];
+    }
+}
+
+static void mv_report_dead_borrow(Mv *v, MirBlock bi, const MirInst *in, const uint64_t *dropped,
                                   const MvOwn *o) {
     for (uint32_t k = 0; k < in->nargs; k++) {
         MirValue owner = o->owner_of[in->args[k]];
-        if (owner != MIR_NONE && mvs_has(dropped, owner)) {
+        if (owner != MIR_NONE && mvd_has(dropped, owner)) {
             mv_err(v, bi, "%s: %%%u points into %%%u, which was consumed before this use",
                    mv_op_name(in), in->args[k], owner);
         }
@@ -721,11 +786,11 @@ static void mv_check_operands(MvOwn *o, MirBlock bi, const MirInst *in, MvSet *l
     }
 }
 
-static void mv_own_inst(MvOwn *o, MirBlock bi, const MirInst *in, MvSet *live, MvSet *dropped) {
+static void mv_own_inst(MvOwn *o, MirBlock bi, const MirInst *in, MvSet *live, uint64_t *dropped) {
     Mv *v = o->v;
     mv_report_dead_borrow(v, bi, in, dropped, o);
     if ((in->op == MOP_Drop || in->op == MOP_DropIf) && in->nargs > 0 && o->watched[in->args[0]]) {
-        mvs_add(&v->scratch, dropped, in->args[0]);
+        dropped[in->args[0] / 64] |= (uint64_t)1 << (in->args[0] % 64);
     }
     mv_track_result(o, in);
     mv_check_operands(o, bi, in, live);
@@ -754,10 +819,12 @@ static void mv_own_ret(MvOwn *o, MirBlock bi, const MirTerm *t, MvSet *live) {
 }
 
 /* The live set a successor starts with, after the edge's arguments are passed. */
-static MvSet mv_edge_live(MvOwn *o, MirBlock bi, const MirTarget *t, const MvSet *live) {
+static MvSet mv_edge_live(MvOwn *o, MirBlock bi, const MirTarget *t, const MvSet *live, bool last) {
     Mv *v = o->v;
     const MirBlockData *dest = &v->cx.f->blocks[t->block];
-    MvSet after = mvs_clone(&v->scratch, live);
+    /* The last edge out of a block takes the block's set as it is when it passes no values: the block
+     * is finished with it, and copying it for every block made a long function quadratic. */
+    MvSet after = last && t->nargs == 0 ? *live : mvs_clone(&v->scratch, live);
     MirValue *seen = o->scratch_values;
     uint32_t nseen = 0;
     for (uint32_t k = 0; k < t->nargs; k++) {
@@ -797,7 +864,7 @@ static void mv_merge_entry(MvOwn *o, MirBlock bi, MirBlock dest, MvSet after) {
 }
 
 static void mv_own_edges(MvOwn *o, MirBlock bi, const MirTerm *term, const MvSet *live,
-                         const MvSet *dropped) {
+                         const uint64_t *dropped) {
     Mv *v = o->v;
     uint32_t n = mir_term_ntargets(term);
     /* A borrow handed to a successor reads its owner's storage there, so the owner must not have
@@ -806,7 +873,7 @@ static void mv_own_edges(MvOwn *o, MirBlock bi, const MirTerm *term, const MvSet
         const MirTarget *t = mir_term_target_const(term, k);
         for (uint32_t a = 0; a < t->nargs; a++) {
             MirValue owner = o->owner_of[t->args[a]];
-            if (owner != MIR_NONE && mvs_has(dropped, owner)) {
+            if (owner != MIR_NONE && mvd_has(dropped, owner)) {
                 mv_err(v, bi, "branch: %%%u points into %%%u, which was consumed before this use",
                        t->args[a], owner);
             }
@@ -814,8 +881,8 @@ static void mv_own_edges(MvOwn *o, MirBlock bi, const MirTerm *term, const MvSet
     }
     for (uint32_t k = 0; k < n; k++) {
         const MirTarget *t = mir_term_target_const(term, k);
-        mvs_union(&v->scratch, &o->dropped_in[t->block], dropped);
-        mv_merge_entry(o, bi, t->block, mv_edge_live(o, bi, t, live));
+        mvd_merge_into(o, t->block, dropped);
+        mv_merge_entry(o, bi, t->block, mv_edge_live(o, bi, t, live, k + 1 == n));
     }
 }
 
@@ -823,7 +890,9 @@ static void mv_own_edges(MvOwn *o, MirBlock bi, const MirTerm *term, const MvSet
 static bool mv_own_block_start(MvOwn *o, MirBlock bi, MvSet *live) {
     const MirBlockData *blk = &o->v->cx.f->blocks[bi];
     if (o->has_entry[bi]) {
-        *live = mvs_clone(&o->v->scratch, &o->entry_state[bi]);
+        /* Every forward edge into the block has been merged by now, so only a later (back) edge
+         * reads its entry state again; otherwise the block works on it in place. */
+        *live = o->back_target[bi] ? mvs_clone(&o->v->scratch, &o->entry_state[bi]) : o->entry_state[bi];
     } else if (bi != 0) {
         return false;
     }
@@ -841,19 +910,37 @@ static void mv_own_block(MvOwn *o, MirBlock bi) {
     if (!mv_own_block_start(o, bi, &live)) {
         return;
     }
-    MvSet dropped = mvs_clone(&o->v->scratch, &o->dropped_in[bi]);
+    uint64_t *dropped = o->dropped;
+    if (o->dropped_in[bi] != NULL) {
+        memcpy(dropped, o->dropped_in[bi], sizeof *dropped * o->words);
+    } else {
+        memset(dropped, 0, sizeof *dropped * o->words);
+    }
     for (uint32_t i = 0; i < blk->ninsts; i++) {
-        mv_own_inst(o, bi, &blk->insts[i], &live, &dropped);
+        mv_own_inst(o, bi, &blk->insts[i], &live, dropped);
     }
     if (blk->term.kind == MT_RET) {
         mv_own_ret(o, bi, &blk->term, &live);
     }
-    mv_own_edges(o, bi, &blk->term, &live, &dropped);
+    mv_own_edges(o, bi, &blk->term, &live, dropped);
 }
 
 static void mv_check_ownership(Mv *v, const MirBlock *rpo, uint32_t count) {
     MvOwn o;
     mv_own_init(v, &o);
+    uint32_t *rank = MS_NEW_N(&v->scratch, uint32_t, v->cx.f->nblocks + 1);
+    for (uint32_t i = 0; i < count; i++) {
+        rank[rpo[i]] = i;
+    }
+    for (uint32_t i = 0; i < count; i++) {
+        const MirTerm *term = &v->cx.f->blocks[rpo[i]].term;
+        for (uint32_t k = 0; k < mir_term_ntargets(term); k++) {
+            const MirBlock to = mir_term_target_const(term, k)->block;
+            if (rank[to] <= i) {
+                o.back_target[to] = true;
+            }
+        }
+    }
     for (uint32_t i = 0; i < count; i++) {
         mv_own_block(&o, rpo[i]);
     }
@@ -869,7 +956,7 @@ static void mv_check_blocks(Mv *v, const MvDef *defs) {
     if (mir_preds_count(&preds, 0) > 0) {
         mv_err(v, 0, "the entry block must not have predecessors");
     }
-    MvFlow flow = {defs, mir_dominators(&v->scratch, f, rpo, count, &preds)};
+    MvFlow flow = mv_flow(v, defs, mir_dominators(&v->scratch, f, rpo, count, &preds));
     for (uint32_t i = 0; i < count; i++) {
         mv_check_block(v, &flow, rpo[i]);
     }

@@ -30,6 +30,8 @@ import (
 	system_info from "@std/os/system.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 	seconds, sleep from "@std/time.ms",
+
+	parse_https, proxy_for, proxy_get from "./proxy_get.ms",
 )
 
 // One downloadable archive: where it is and the digest it must have.
@@ -40,6 +42,8 @@ export type Pin:
 // A download is tried this many times; a runner's DNS or network blip must not fail a
 // build.
 ATTEMPTS := 4
+// The largest archive taken.
+MAX_ARCHIVE := 268435456
 
 // The archive of `kind` (`lld` or `llvm-tools`) that `lock` (the text of
 // toolchain/lld.lock) names for `os` (`linux`, `darwin`, `windows`) and `arch`
@@ -89,8 +93,11 @@ export fn cache_root() String!:
 	return error(Error("HOME is not set; cannot place the tool cache", kind: "ENOENT"))
 
 // The body of `url`, retried with a growing pause when the connection fails or the
-// server answers with an error that can pass (5xx, 429).
+// server answers with an error that can pass (5xx, 429). `HTTPS_PROXY` (and `NO_PROXY`)
+// route it through an HTTP proxy with proxy_get.ms.
 export fn download(url: String) Bytes!:
+	target := parse_https(url)?
+	proxy := proxy_for(environment()?, target.host)
 	var last = Error("no attempt was made", kind: "EIO")
 	var pause = 1
 
@@ -99,11 +106,18 @@ export fn download(url: String) Bytes!:
 			sleep(seconds(pause)).wait()?
 			pause *= 2
 
+		if via := proxy:
+			through := proxy_get(via, url, MAX_ARCHIVE)
+			if through.is_ok(): return through
+
+			last = through.err()
+			continue
+
 		sent := fetch(
 			url,
 			FetchOptions(
 				timeout: seconds(120),
-				max_response_bytes: 268435456,
+				max_response_bytes: MAX_ARCHIVE,
 			),
 		).wait()
 

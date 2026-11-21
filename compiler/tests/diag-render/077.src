@@ -1,0 +1,23 @@
+fn render(count: Int, max: Int) String:
+	var out = "head\n"
+
+	for at in 0..count:
+		if at >= max: break
+
+		out += "item\n"
+
+	if count > max:
+		out += "more\n"
+
+	extra := count - max
+
+	if extra > 1:
+		out += "extra\n"
+		for at in 0..extra:
+			out += "- x\n"
+
+	return out
+
+fn main()|Int:
+	print(render(7, 5))
+	return 0

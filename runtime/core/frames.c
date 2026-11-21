@@ -1,5 +1,6 @@
 /* Symbol tables and frame walking for fault reports. See frames.h. */
 #include <stdatomic.h>
+#include <stdlib.h>
 
 #include "frames.h"
 #include "ms_rt/alloc.h"
@@ -62,6 +63,11 @@ struct SortedTables {
     uint32_t *scopes;
 };
 
+/* A block of the system allocator; a zero size still gets a block, so NULL always means failure. */
+static void *sys_alloc(size_t size) {
+    return malloc(size != 0 ? size : 1);
+}
+
 /* The copy of `tables` with functions and lines in address order, or NULL when a size overflows. */
 static SortedTables *sorted_copy(const MsTables *tables) {
     const bool scoped = tables->abi_version >= MS_TABLES_WITH_SCOPES && tables->line_scopes != NULL;
@@ -77,12 +83,28 @@ static SortedTables *sorted_copy(const MsTables *tables) {
         !ms_size_mul(longest, 2 * sizeof(SortKey), &key_bytes) || !ms_size_mul(longest, sizeof(uint32_t), &order_bytes)) {
         return NULL;
     }
-    SortedTables *const copy = msrt_alloc(sizeof *copy);
-    copy->funcs = msrt_alloc(func_bytes);
-    copy->lines = msrt_alloc(line_bytes);
-    copy->scopes = msrt_alloc(scope_bytes);
-    SortKey *const keys = msrt_alloc(key_bytes);
-    uint32_t *const order = msrt_alloc(order_bytes);
+    /* The system allocator: the copy belongs to the runtime, so the counting runtime reports only the program's blocks and
+     * nothing has to free it before the process ends. */
+    SortedTables *const copy = sys_alloc(sizeof *copy);
+    SortKey *const keys = sys_alloc(key_bytes);
+    uint32_t *const order = sys_alloc(order_bytes);
+    if (copy != NULL) {
+        copy->funcs = sys_alloc(func_bytes);
+        copy->lines = sys_alloc(line_bytes);
+        copy->scopes = sys_alloc(scope_bytes);
+    }
+    if (copy == NULL || keys == NULL || order == NULL || copy->funcs == NULL || copy->lines == NULL ||
+        copy->scopes == NULL) {
+        if (copy != NULL) {
+            free(copy->funcs);
+            free(copy->lines);
+            free(copy->scopes);
+        }
+        free(copy);
+        free(keys);
+        free(order);
+        return NULL;
+    }
     for (size_t i = 0; i < tables->func_count; i++) {
         keys[i] = (SortKey){.address = tables->funcs[i].address, .index = (uint32_t)i};
     }
@@ -98,8 +120,8 @@ static SortedTables *sorted_copy(const MsTables *tables) {
         copy->lines[i] = tables->lines[order[i]];
         copy->scopes[i] = scoped ? tables->line_scopes[order[i]] : 0;
     }
-    msrt_free(keys);
-    msrt_free(order);
+    free(keys);
+    free(order);
     copy->tables = *tables;
     copy->tables.funcs = copy->funcs;
     copy->tables.lines = copy->lines;
@@ -110,10 +132,10 @@ static SortedTables *sorted_copy(const MsTables *tables) {
 void ms_frames_release(void) {
     atomic_store_explicit(&installed_tables, NULL, memory_order_release);
     if (owned_copy != NULL) {
-        msrt_free(owned_copy->funcs);
-        msrt_free(owned_copy->lines);
-        msrt_free(owned_copy->scopes);
-        msrt_free(owned_copy);
+        free(owned_copy->funcs);
+        free(owned_copy->lines);
+        free(owned_copy->scopes);
+        free(owned_copy);
         owned_copy = NULL;
     }
 }

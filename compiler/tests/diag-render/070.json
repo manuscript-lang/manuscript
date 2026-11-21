@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1002",
+      "phase": "parse",
+      "message": "suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declaration",
+      "position": {
+        "file": "070.ms",
+        "line": 5,
+        "column": 1,
+        "offset": 187
+      },
+      "end": {
+        "file": "070.ms",
+        "line": 5,
+        "column": 1,
+        "offset": 187
+      }
+    }
+  ]
+}
