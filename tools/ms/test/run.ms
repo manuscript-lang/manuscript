@@ -398,6 +398,7 @@ export fn run_bench(inv: Invocation) Int:
 fn program_name() String:
 	info := process_info()
 	if info.is_ok() and info.get().os == "windows": return "program.exe"
+
 	return "program"
 
 fn run_command(inv: Invocation, bench: Bool) Int:
