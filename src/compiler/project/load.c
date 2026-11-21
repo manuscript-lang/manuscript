@@ -6,6 +6,7 @@
 #include "base/file.h"
 #include "base/path.h"
 #include "base/utf8.h"
+#include "compiler/project/manifest.h"
 #include "compiler/project/project_internal.h"
 #include "compiler/syntax/parse.h"
 
@@ -28,6 +29,7 @@ typedef struct Loader {
   MsArena *arena;
   MsNames *names;
   const MsOverlay *overlay;
+  const MsManifest *manifest; /* NULL for a file with no ms.toml above it */
   MsSpan root;
   ModuleList modules;
   MsSpanList active;  /* canonical paths being loaded, for cycle text */
@@ -135,8 +137,8 @@ static bool import_module(Loader *loader, MsSpan importer, MsSpan file, const Ms
                           Failure *failure) {
   MsProjectError error = {0};
   MsSpan target = {0};
-  if (!ms_project_resolve_import(loader->arena, loader->root, loader->overlay, importer, item->path, &target,
-                                 &error)) {
+  if (!ms_project_resolve_in(loader->arena, loader->manifest, loader->root, loader->overlay, importer,
+                             item->path, &target, &error)) {
     const MsSpan message = ms_project_explain(loader->arena, &error, item->path);
     failure->kind = FAIL_DIAGNOSTIC;
     failure->diag = resolution(file, item->pos, message);
@@ -223,6 +225,10 @@ static void fail_graph(MsArena *arena, MsGraph *out, MsGraphDiag diag) {
 }
 
 static void fail_error(MsArena *arena, MsSpan filename, const MsProjectError *error, MsGraph *out) {
+  if (error->kind == MS_PERR_MANIFEST) {
+    fail_graph(arena, out, resolution(error->file, error->position, error->message));
+    return;
+  }
   fail_graph(arena, out, resolution(filename, start_position(), ms_project_explain(arena, error, (MsSpan){0})));
 }
 
@@ -260,22 +266,78 @@ static bool canonical_root(MsArena *arena, MsSpan absolute, MsSpan *root, MsProj
   return true;
 }
 
+/* The nearest ms.toml in `directory` or above it, as an absolute path. */
+static bool enclosing_manifest(MsArena *arena, MsSpan directory, MsSpan *manifest) {
+  for (MsSpan current = directory;;) {
+    MsStrBuild candidate = ms_strbuild_new();
+    ms_path_append_joined(&candidate, current, ms_span_of_text("ms.toml"));
+    if (ms_file_is_regular(ms_strbuild_span(&candidate))) {
+      *manifest = ms_project_text(arena, &candidate);
+      return true;
+    }
+    ms_strbuild_free(&candidate);
+    const MsSpan parent = ms_path_parent(current);
+    if (parent.len == 0 || parent.len == current.len) {
+      return false;
+    }
+    current = parent;
+  }
+}
+
+/* Reads the manifest that governs `absolute`: the file itself when it is an ms.toml, else the nearest one
+ * above it. `found` says whether there was one. */
+static bool read_governing_manifest(MsArena *arena, MsSpan absolute, MsSpan root, MsManifest *manifest,
+                                    bool *found, MsProjectError *error) {
+  MsSpan path = absolute;
+  *found = true;
+  if (!ms_span_is_text(ms_path_file_name(absolute), "ms.toml") && !enclosing_manifest(arena, root, &path)) {
+    *found = false;
+    return true;
+  }
+  return ms_manifest_read(arena, path, manifest, error);
+}
+
+static void describe_manifest(const MsManifest *manifest, MsGraph *out) {
+  out->project_root = manifest->root;
+  out->configuration = manifest->configuration;
+  out->library = manifest->entry.len == 0;
+  out->manifest_file = manifest->file;
+  out->manifest_position = manifest->location;
+}
+
 void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLoadOptions *options,
                      MsGraph *out) {
   *out = (MsGraph){0};
   MsProjectError error = {0};
   MsSpan absolute = {0};
   MsSpan root = {0};
-  if (!absolute_name(arena, filename, &absolute, &error) || !canonical_root(arena, absolute, &root, &error)) {
+  MsManifest manifest = {0};
+  bool governed = false;
+  if (!absolute_name(arena, filename, &absolute, &error) || !canonical_root(arena, absolute, &root, &error) ||
+      !read_governing_manifest(arena, absolute, root, &manifest, &governed, &error)) {
+    out->source_root = manifest.root;
     fail_error(arena, filename, &error, out);
+    ms_manifest_free(&manifest);
     return;
   }
-  Loader loader = {.arena = arena, .names = names, .overlay = options == NULL ? NULL : options->overlay, .root = root};
-  out->source_root = root;
+  Loader loader = {.arena = arena,
+                   .names = names,
+                   .overlay = options == NULL ? NULL : options->overlay,
+                   .manifest = governed ? &manifest : NULL,
+                   .root = governed ? manifest.root : root};
+  out->source_root = loader.root;
+  const bool is_manifest = ms_span_is_text(ms_path_file_name(absolute), "ms.toml");
+  if (is_manifest) {
+    describe_manifest(&manifest, out);
+  }
   MsSpan entry = {0};
   int32_t index = MS_NO_MODULE;
   Failure failure = {0};
-  if (!ms_project_source_path(arena, root, absolute, loader.overlay, &entry, &error)) {
+  const MsSpan target = is_manifest ? manifest.entry : absolute;
+  if (target.len == 0) {
+    fail_graph(arena, out, resolution(filename, start_position(),
+                                      ms_span_of_text("a project without an entry (a library) is not implemented yet")));
+  } else if (!ms_project_source_path(arena, loader.root, target, loader.overlay, &entry, &error)) {
     fail_error(arena, filename, &error, out);
   } else if (!visit(&loader, entry, &index, &failure)) {
     fail_graph(arena, out, failure_diag(&failure, filename, start_position()));
@@ -286,4 +348,5 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
   module_list_free(&loader.modules);
   ms_span_list_free(&loader.active);
   ms_span_list_free(&loader.loaded);
+  ms_manifest_free(&manifest);
 }

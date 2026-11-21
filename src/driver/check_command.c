@@ -73,9 +73,34 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
   return 0;
 }
 
-static bool is_directory_or_manifest(const char *target) {
-  const MsSpan path = ms_span_of_text(target);
-  return ms_dir_exists(path) || ms_span_is_text(ms_path_file_name(path), "ms.toml");
+/* A directory names the ms.toml inside it; one without a manifest would check every file below it. */
+static bool resolve_target(MsArena *arena, CheckOptions *options) {
+  const MsSpan path = ms_span_of_text(options->target);
+  if (!ms_dir_exists(path)) {
+    return true;
+  }
+  MsStrBuild manifest = ms_strbuild_new();
+  ms_path_append_joined(&manifest, path, ms_span_of_text("ms.toml"));
+  const MsSpan named = ms_arena_copy(arena, ms_strbuild_span(&manifest));
+  ms_strbuild_free(&manifest);
+  if (!ms_file_is_regular(named)) {
+    return false;
+  }
+  char *copy = ms_arena_alloc(arena, named.len + 1, 1);
+  __builtin_memcpy(copy, named.ptr, named.len);
+  copy[named.len] = '\0';
+  options->target = copy;
+  return true;
+}
+
+/* Modules of the program that are the project's own, not the bundled standard library. */
+static size_t project_modules(const MsCheckProgram *program, const MsNames *names) {
+  size_t count = 0;
+  for (size_t i = 0; i < program->modules.len; i++) {
+    const MsSpan file = ms_names_span(names, program->modules.ptr[i].file);
+    count += ms_span_starts_with(file, ms_span_of_text("@std/")) ? 0 : 1;
+  }
+  return count;
 }
 
 static void add_graph_findings(const MsGraph *graph, FindingList *findings) {
@@ -146,11 +171,16 @@ static void write_document(MsStrBuild *out, const FindingList *findings, const C
   ms_strbuild_append_text(out, "\n}\n");
 }
 
-static void report(const FindingList *findings, const CheckOptions *options, MsSpan root) {
+static void report(const FindingList *findings, const CheckOptions *options, MsSpan root, size_t modules,
+                   bool project) {
   MsStrBuild std_out = ms_strbuild_new();
   MsStrBuild std_err = ms_strbuild_new();
   if (findings->len == 0) {
-    ms_strbuild_printf(&std_out, "Checked %s\n", options->target);
+    ms_strbuild_printf(&std_out, "Checked %s", options->target);
+    if (project) {
+      ms_strbuild_printf(&std_out, " (%zu %s)", modules, modules == 1 ? "module" : "modules");
+    }
+    ms_strbuild_append_byte(&std_out, '\n');
   }
   append_terminal_text(&std_err, root, findings);
   if (options->json) {
@@ -172,10 +202,11 @@ int ms_check_command(int argc, char **argv) {
   if (status != 0) {
     return status;
   }
-  if (is_directory_or_manifest(options.target)) {
-    return refuse("ms check: directories and ms.toml projects are not implemented yet", STATUS_NOT_IMPLEMENTED);
-  }
   MsArena arena = ms_arena_new();
+  if (!resolve_target(&arena, &options)) {
+    ms_arena_free(&arena);
+    return refuse("ms check: a directory without ms.toml is not implemented yet", STATUS_NOT_IMPLEMENTED);
+  }
   MsNames names;
   ms_names_init(&names);
   MsGraph graph = {0};
@@ -188,7 +219,8 @@ int ms_check_command(int argc, char **argv) {
     ms_own_check(&program);
     add_check_findings(&program, &names, &findings);
   }
-  report(&findings, &options, graph.source_root);
+  report(&findings, &options, graph.source_root, program.names == NULL ? 0 : project_modules(&program, &names),
+         graph.project_root.len != 0);
   const int result = findings.len == 0 ? 0 : STATUS_FAILED;
   finding_list_free(&findings);
   if (program.names != NULL) {
