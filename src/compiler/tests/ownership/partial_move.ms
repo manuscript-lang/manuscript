@@ -39,8 +39,7 @@ type Holder:
 	inner: Cell
 
 fn paths(b: Cell, first: Bool) List[Int]:
-	if first:
-		return b.items.clone()
+	if first: return b.items.clone()
 
 	w := Holder(inner: b)
 	return w.inner.items.clone()
