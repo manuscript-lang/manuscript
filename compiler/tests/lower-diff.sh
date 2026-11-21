@@ -31,11 +31,19 @@ target/release/examples/c_lower_oracle $lowered_files > "$out/lower.rust" 2>/dev
 # by name and signature: `@name.N` is read as `@name`, and the key carries the parameter and result types.
 keyed() {
     sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g' "$1" | awk '
-        /^=== / { file = $2; next }
+        function viewed(line,    n) { # `list.const.view N` names a table by number, in the order a lowering made it
+            if (match(line, /list\.const\.view [0-9]+/)) {
+                n = substr(line, RSTART + 16, RLENGTH - 16)
+                if (n in consts) line = substr(line, 1, RSTART + 15) consts[n] substr(line, RSTART + RLENGTH)
+            }
+            return line
+        }
+        /^=== / { file = $2; delete consts; next }
+        /^consts [0-9]+ \[/ { n = $2; table = $0; sub(/^consts [0-9]+ /, "", table); consts[n] = table; next }
         /^; divergent$/ { looped = 1; next }
         /^fn @/ { name = $2; sub(/\(.*/, "", name); sig = $0; sub(/^fn @[^(]*/, "", sig); sub(/ (ret_borrowed|ret_view|export|!).*$/, "", sig)
                   key = file " " name " " sig; body = ""; infn = 1 }
-        infn { body = body $0 "\\n" }
+        infn { body = body viewed($0) "\\n" }
         infn && /^}/ { if (!looped) print key "|" body; infn = 0; looped = 0 }' | sort
 }
 keyed "$out/lower.c" > "$out/lower.c.keyed"
