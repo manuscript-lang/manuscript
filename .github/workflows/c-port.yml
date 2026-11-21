@@ -1,0 +1,48 @@
+name: C port
+
+# The C build (src/, CMake with Ninja). Pull requests that touch C files build the two Linux legs;
+# scheduled and manual runs build all six platforms. Steps are one-line calls to cmake and ctest.
+on:
+  pull_request:
+    paths: ['src/**', 'cmake/**', 'CMakeLists.txt', 'CMakePresets.json', '.github/workflows/c-port.yml']
+  schedule:
+    - cron: '21 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      os:
+        description: Platforms
+        type: choice
+        options: [all, linux]
+        default: all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: c-port-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(github.event_name == 'pull_request' || inputs.os == 'linux' && '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm"}]' || '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm"},{"os":"darwin","arch":"amd64","runner":"macos-15-intel"},{"os":"darwin","arch":"arm64","runner":"macos-15"},{"os":"windows","arch":"amd64","runner":"windows-2025"},{"os":"windows","arch":"arm64","runner":"windows-11-arm"}]') }}
+    steps:
+      - uses: actions/checkout@v7
+      - if: runner.os == 'macOS'
+        run: brew install ninja
+      - if: runner.os == 'Windows'
+        run: choco install ninja llvm --no-progress -y
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y ninja-build
+      - run: cmake --preset debug
+      - run: cmake --build --preset debug
+      - run: ctest --preset debug
