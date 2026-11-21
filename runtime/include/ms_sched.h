@@ -94,7 +94,8 @@ MsSchedWait ms_sched_pool_run(MsSchedJobFn run, MsSchedJobFn release, void *data
 MsSchedWait ms_sched_pool_run_shielded(MsSchedJobFn run, void *data);
 
 #ifdef _WIN32
-/* Overlapped named pipes driven by the runtime poller (a pipe is adopted once, then closed here). */
+/* Blocking pipes (a child's piped streams): each read and write runs on the blocking pool and parks the task, on
+ * whichever thread it runs. A pipe is adopted once, then closed here. */
 typedef enum {
     MS_PIPE_OK = 0,
     MS_PIPE_CANCELLED = 1,

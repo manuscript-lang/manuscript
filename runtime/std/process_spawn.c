@@ -557,11 +557,20 @@ static void start_failure(MsFsFail *fail, int error, const char *program) {
     }
 }
 
-/* A pipe pair for one standard stream: `parent` stays here, `child` goes to the process. */
-static bool make_pipe(int stream, int *parent, int *child) {
+/* The flags of the parent end of a stream's pipe when a task reads or writes it. The runtime polls a POSIX descriptor,
+ * so it is non-blocking; a Windows end is a blocking handle, because an overlapped one belongs to the one loop that
+ * registered it and a task can run on any thread: its reads and writes run on the blocking pool instead. */
+#ifdef _WIN32
+enum { TASK_PARENT_FLAGS = 0 };
+#else
+enum { TASK_PARENT_FLAGS = UV_NONBLOCK_PIPE };
+#endif
+
+/* A pipe pair for one standard stream: `parent` (opened with `parent_flags`) stays here, `child` goes to the process. */
+static bool make_pipe(int stream, int parent_flags, int *parent, int *child) {
     int ends[2];
-    const int read_flags = stream == STREAM_IN ? 0 : UV_NONBLOCK_PIPE;
-    const int write_flags = stream == STREAM_IN ? UV_NONBLOCK_PIPE : 0;
+    const int read_flags = stream == STREAM_IN ? 0 : parent_flags;
+    const int write_flags = stream == STREAM_IN ? parent_flags : 0;
     if (uv_pipe(ends, read_flags, write_flags) != 0) {
         return false;
     }
@@ -582,15 +591,15 @@ static void descriptor_close(int fd) {
 
 /* Starts the process with the given modes; on success the parent ends of its pipes are in `parent` (-1 for a stream
  * that is not piped). The loop is initialised and the process spawned, but the loop thread is not started. */
-static bool child_spawn(MsChild *child, const Command *command, const int64_t modes[STREAM_COUNT], int parent[STREAM_COUNT],
-                        MsFsFail *fail) {
+static bool child_spawn(MsChild *child, const Command *command, const int64_t modes[STREAM_COUNT], int parent_flags,
+                        int parent[STREAM_COUNT], MsFsFail *fail) {
     uv_stdio_container_t stdio[STREAM_COUNT];
     int theirs[STREAM_COUNT] = {-1, -1, -1};
     for (int stream = 0; stream < STREAM_COUNT; stream++) {
         parent[stream] = -1;
         stdio[stream] = (uv_stdio_container_t){.flags = UV_IGNORE};
         if (modes[stream] == STDIO_PIPE) {
-            if (!make_pipe(stream, &parent[stream], &theirs[stream])) {
+            if (!make_pipe(stream, parent_flags, &parent[stream], &theirs[stream])) {
                 ms_fs_fail_text(fail, "pipe: system call failed");
                 break;
             }
@@ -750,7 +759,7 @@ uint8_t msstd_process_command_spawn(const MsStr *program, const MsVec *arguments
         child = child_new(NULL);
         if (child == NULL) {
             ms_fs_fail_text(&fail, "out of memory");
-        } else if (!child_spawn(child, &command, modes, parent, &fail) || !child_run_loop(child)) {
+        } else if (!child_spawn(child, &command, modes, TASK_PARENT_FLAGS, parent, &fail) || !child_run_loop(child)) {
             if (!ms_fs_failed(&fail)) {
                 ms_fs_fail_text(&fail, "cannot start the process thread");
             }
@@ -768,9 +777,9 @@ uint8_t msstd_process_command_spawn(const MsStr *program, const MsVec *arguments
 }
 
 #ifdef _WIN32
-/* The parent end of a piped stream as the stream table takes it on Windows: an overlapped pipe handle that the reactor
- * adopts, which is what its reads and writes park on. libuv made a C runtime descriptor; the handle moves to a
- * duplicate that the reactor owns, and the descriptor closes. -1 when the pipe cannot be adopted. */
+/* The parent end of a piped stream as the stream table takes it on Windows: a blocking pipe handle that the scheduler
+ * adopts, which is what its pool reads and writes use. libuv made a C runtime descriptor; the handle moves to a
+ * duplicate that the scheduler owns, and the descriptor closes. -1 when the pipe cannot be adopted. */
 static int64_t adopt_pipe(int fd) {
     HANDLE copy = NULL;
     const HANDLE source = (HANDLE)_get_osfhandle(fd);
@@ -959,7 +968,7 @@ uint8_t msstd_process_command_run(const MsStr *program, const MsVec *arguments, 
         if (child == NULL) {
             free(run);
             ms_fs_fail_text(&fail, "out of memory");
-        } else if (!child_spawn(child, &command, modes, parent, &fail)) {
+        } else if (!child_spawn(child, &command, modes, UV_NONBLOCK_PIPE, parent, &fail)) {
             child_free(&child->header);
         } else if (!run_attach(child, parent) || !child_run_loop(child)) {
             ms_fs_fail_text(&fail, "cannot start the process thread");

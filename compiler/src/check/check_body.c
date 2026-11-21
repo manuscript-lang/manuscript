@@ -985,6 +985,10 @@ static MsTy body_try(MsBody *b, const MsExpr *operand) {
         const bool same_error = ms_body_is_result(b, b->result) && ms_ty_args(tys, b->result)[1] == ms_ty_args(tys, operand_ty)[1];
         return same_error ? ms_ty_args(tys, operand_ty)[0] : ms_body_unsupported(b);
     }
+    // `f()?` on an Optional in a function that returns one: `none` leaves the function, else the value.
+    if (ms_ty_is(tys, operand_ty, MS_BI_OPTIONAL) && ms_ty_is(tys, b->result, MS_BI_OPTIONAL)) {
+        return ms_ty_args(tys, operand_ty)[0];
+    }
     return ms_body_unsupported(b);
 }
 
@@ -1620,6 +1624,13 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
         if (b->tparams->ptr[i]->name == t->name) {
             b->facts->type_ref_ty[t->id] = b->tvars[i];
             return b->tvars[i];
+        }
+    }
+    for (uint32_t i = 0; b->receiver_args != NULL && i < b->receiver_args->len; i++) {
+        const MsTypeRef *written = b->receiver_args->ptr[i];
+        if (written->kind == MS_TYPE_NAMED && written->args.len == 0 && written->name == t->name) {
+            b->facts->type_ref_ty[t->id] = b->receiver_vars[i];
+            return b->receiver_vars[i];
         }
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
@@ -2376,7 +2387,21 @@ static void body_check_methods(MsBody *b) {
             continue;
         }
         const BodySelf self = {.ty = m->receiver[i], .mutating = (m->access[i] & MS_METHOD_MUTATING) != 0};
+        // The row's variables are the receiver's written arguments, then the method's own.
+        const uint32_t nown = method->func.type_params.len;
+        const MsTy *vars = m->vars + m->vars_at[i];
+        const bool named = nown <= m->nvars[i] && m->nvars[i] - nown == method->receiver_args.len;
+        if (named) {
+            b->receiver_args = &method->receiver_args;
+            b->receiver_vars = vars;
+            b->tparams = &method->func.type_params;
+            b->tvars = vars + (m->nvars[i] - nown);
+        }
         body_check_callable(b, method->id, method->pos, false, &method->func, m->ty[i], &self);
+        b->receiver_args = NULL;
+        b->receiver_vars = NULL;
+        b->tparams = NULL;
+        b->tvars = NULL;
     }
 }
 
