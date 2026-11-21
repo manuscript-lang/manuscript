@@ -57,4 +57,7 @@ bool mir_glue(MirModule *module, MirGlue *glue);
  * drops are `drop` ops, which lower_ops rewrites to calls of the element's drop glue. */
 uint32_t mir_glue_list_release(MirModule *module, MirTy ty);
 
+/* Runs mir_glue and the owned expansion until nothing new is made, then expands once more. */
+void mir_glue_run_and_expand(MirModule *module, MirGlue *glue);
+
 #endif
