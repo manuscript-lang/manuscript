@@ -13,3 +13,4 @@ exchange a `MirModule` in memory; there is no text between them. Allowed include
 - `mir_desc.h`, `mir_desc.c`: how a type's descriptor is made (kind, size, inner types, slot glue, equality and hash).
 - `mir_glue.h`, `mir_glue*.c`: the pass that makes drop, clone, slot, block and closure functions. `mir_glue_demand.c` finds what the module needs; `mir_glue_drop.c`, `mir_glue_alt.c`, `mir_glue_clone.c`, `mir_glue_alt_clone.c`, `mir_glue_closure.c`, `mir_glue_deep.c` build them; `mir_glue_build.c` holds the table and emit helpers.
 - `mir_data.h`, `mir_data.c`, `mir_data_const.c`: the static data (descriptors, vtables, globals, unit blocks, long string literals, constant bytes and lists) as symbols with relocations; built after glue.
+- `mir_tables.h`, `mir_tables.c`: the fault tables blob (functions, line ranges, inlined scopes, strings) the runtime reads, with the code-address relocations the back end fills.
