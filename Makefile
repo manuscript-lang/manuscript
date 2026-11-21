@@ -164,7 +164,11 @@ licenses-check: build libms-tools
 # description policy is checked by tools/ms/doc_inventory.ms.
 DOC_MODEL = target/c-tool/model.json
 
-docs-model: target/c-tool/libmstool.a
+# The docs tools run on the Rust-built ms; an order-only prerequisite builds it when it is missing (a fresh checkout).
+$(RELEASE_MS):
+	$(MAKE) build
+
+docs-model: target/c-tool/libmstool.a | $(RELEASE_MS)
 	target/c-tool/ms_api_model stdlib > $(DOC_MODEL)
 
 # Rebuilds the disposable book Markdown (.artifacts/docs) and the API downloads (website/static/stdlib.*).
