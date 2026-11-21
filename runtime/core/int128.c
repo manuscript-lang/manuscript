@@ -13,6 +13,9 @@ U128 __udivti3(U128 n, U128 d); // NOLINT(bugprone-reserved-identifier): the nam
 U128 __umodti3(U128 n, U128 d); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 I128 __modti3(I128 n, I128 d); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 I128 __divti3(I128 n, I128 d); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
+I128 __ashlti3(I128 value, int count); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
+I128 __ashrti3(I128 value, int count); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
+I128 __lshrti3(I128 value, int count); // NOLINT(bugprone-reserved-identifier): the name the compiler calls
 
 /* Shift-and-subtract division, one quotient bit per step; the wide case is rare (decimal and big-number code). */
 static U128 divmod(U128 n, U128 d, U128 *rem) {
@@ -67,4 +70,60 @@ __attribute__((weak)) I128 __modti3(I128 n, I128 d) { // NOLINT(bugprone-reserve
     U128 rem;
     (void)divmod(magnitude_n, magnitude_d, &rem);
     return n < 0 ? (I128)(-rem) : (I128)rem;
+}
+
+/* Shifts by a count that is not a constant: gcc on aarch64 calls these. They work on 64-bit halves, so they never
+ * shift a 128-bit value themselves (that would call them). A count outside 0 to 127 is undefined, as in C. */
+__attribute__((weak)) I128 __ashlti3(I128 value, int count) { // NOLINT(bugprone-reserved-identifier): the name the compiler calls
+    const uint64_t low = (uint64_t)(U128)value;
+    const uint64_t high = (uint64_t)((U128)value >> 64);
+    uint64_t out_low;
+    uint64_t out_high;
+    if (count == 0) {
+        return value;
+    }
+    if (count >= 64) {
+        out_low = 0;
+        out_high = low << (count - 64);
+    } else {
+        out_low = low << count;
+        out_high = (high << count) | (low >> (64 - count));
+    }
+    return (I128)(((U128)out_high << 64) | out_low);
+}
+
+__attribute__((weak)) I128 __lshrti3(I128 value, int count) { // NOLINT(bugprone-reserved-identifier): the name the compiler calls
+    const uint64_t low = (uint64_t)(U128)value;
+    const uint64_t high = (uint64_t)((U128)value >> 64);
+    uint64_t out_low;
+    uint64_t out_high;
+    if (count == 0) {
+        return value;
+    }
+    if (count >= 64) {
+        out_high = 0;
+        out_low = high >> (count - 64);
+    } else {
+        out_high = high >> count;
+        out_low = (low >> count) | (high << (64 - count));
+    }
+    return (I128)(((U128)out_high << 64) | out_low);
+}
+
+__attribute__((weak)) I128 __ashrti3(I128 value, int count) { // NOLINT(bugprone-reserved-identifier): the name the compiler calls
+    const uint64_t low = (uint64_t)(U128)value;
+    const int64_t high = (int64_t)((U128)value >> 64);
+    int64_t out_high;
+    uint64_t out_low;
+    if (count == 0) {
+        return value;
+    }
+    if (count >= 64) {
+        out_high = high < 0 ? -1 : 0;
+        out_low = (uint64_t)(high >> (count - 64));
+    } else {
+        out_high = high >> count;
+        out_low = (low >> count) | ((uint64_t)high << (64 - count));
+    }
+    return (I128)(((U128)(uint64_t)out_high << 64) | out_low);
 }
