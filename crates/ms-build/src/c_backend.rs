@@ -318,6 +318,9 @@ fn compile_in(
     let asm = std::fs::read(&plain).map_err(|e| format!("cannot read {}: {e}", plain.display()))?;
     let wrapped = dir.join("program.asm.ll");
     write(&wrapped, &asm_module(&with_tables(&meta, &asm)?))?;
+    if build.keep_ll {
+        let _ = std::fs::copy(&wrapped, "ms-keep.asm.ll");
+    }
     let object = dir.join("program.o");
     run(
         tool("llc")
