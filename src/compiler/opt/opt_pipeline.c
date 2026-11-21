@@ -72,6 +72,8 @@ static void unoptimised(MirModule *m) {
   lastuse_long(m);
   (void)opt_bytetake(m);
   (void)opt_copyelim_takes(m);
+  /* After the early drops: a long function keeps the ones it moved up. */
+  (void)opt_exit_drops(m);
 }
 
 /* One round of the passes that read the module but rewrite only their own function. */
@@ -145,6 +147,7 @@ static const Step early_steps[] = {
 };
 
 static const Step late_steps[] = {
+    {"exit_drops", opt_exit_drops},
     {"reserve", opt_reserve},
     {"lastuse", opt_lastuse},
     {"bytetake", opt_bytetake},
