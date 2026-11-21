@@ -136,6 +136,8 @@ typedef struct Lb {
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
     uint32_t nvars, cvars;
+    uint32_t *parts;      /* the bindings of owned payloads a match arm took out of its scrutinee: locals the arm owns */
+    uint32_t nparts, cparts;
     MirValue *temps;      /* the owned temporaries of the statement being lowered, dropped where it ends (newest first) */
     uint32_t ntemps, ctemps;
     uint32_t stmt_mark;   /* `ntemps` where the statement being lowered began */
