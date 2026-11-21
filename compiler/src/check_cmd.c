@@ -36,7 +36,10 @@ static bool check_module_covered(const MsCheck *c, MsModId id) {
     const MsModuleRow *row = &c->mods[id];
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        if (d->kind == MS_D_IMPL || d->kind == MS_D_TEST) {
+        if (d->kind == MS_D_IMPL) {
+            return false;
+        }
+        if (d->kind == MS_D_TEST && (row->facts == NULL || !row->facts->body_checked[d->id])) {
             return false;
         }
         if (d->kind == MS_D_TYPE && !d->u.type.external && !check_defaults_covered(row, d)) {
