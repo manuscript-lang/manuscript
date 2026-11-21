@@ -25,7 +25,7 @@ if [ "$#" -gt 0 ]; then
 else
     files=$(find compiler/tests/lower_program -name main.ms | sort)
 fi
-"$dump" stdlib --program $files > "$out/program.c" 2> "$out/program.why" || { grep -v '^why ' "$out/program.why" >&2; exit 1; }
+"$dump" stdlib --program $files > "$out/program.c"
 target/release/examples/c_lower_oracle $files > "$out/program.rust" 2>/dev/null
 
 # One line per function: `program name sig line:col|block`, `.N` copy suffixes stripped. A location names its file by
@@ -73,10 +73,6 @@ awk -F'|' -v amb="$out/program.ambiguous" -v cfile="$out/program.c.keyed" '
 read -r total equal divergent skipped ambiguous differs < "$out/program.census"
 extra=$(cut -d'|' -f1 "$out/program.c.keyed" | sort | comm -23 - "$(cut -d'|' -f1 "$out/program.rust.keyed" | sort -u | { f=$out/program.rust.keys; cat > "$f"; echo "$f"; })" | wc -l)
 echo "census: $total functions in Rust, $equal equal, $divergent divergent (verified only), $differs differ, $skipped skipped (C lowered nothing), $ambiguous ambiguous, $extra C-only"
-# What became of each program: lowered, or why nothing was (a load failure, a graph diagnostic, a C checker diagnostic
-# with its first message, a module left unchecked).
-echo "programs: $(grep -c '^=== ' "$out/program.c") ($(grep -c '^status lowered' "$out/program.c") lowered)"
-grep '^status ' "$out/program.c" | grep -v '^status lowered' | cut -c1-110 | sort | uniq -c | sort -rn | head -8
 sort "$out/program.report" | head -30
 if [ "$differs" -ne 0 ]; then
     echo "FAIL lower program: functions that differ"

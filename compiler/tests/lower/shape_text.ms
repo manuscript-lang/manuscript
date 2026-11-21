@@ -1,29 +1,27 @@
 type Point:
-    x: Int
-    y: Int
+	x: Int
+	y: Int
 
 fn show(p: Point) String:
-    return f"<{p}>"
-
-fn main() Int:
-    text := show(Point(x: 1, y: 2))
-    if text.length() > 100:
-        return 1
-    return 0
+	return f"<{p}>"
 
 enum Shape:
-    Dot
-    Circle(Float)
-    Box(Int, Bool)
+	Dot
+	Circle(radius: Float)
+	Box(width: Int, solid: Bool)
 
 type Mark:
-    name: String
-    at: Point
-    kind: Shape
+	name: String
+	at: Point
+	kind: Shape
 
 fn describe(s: Shape, m: Mark) String:
-    return f"{s} and {m}"
+	return f"{s} and {m}"
 
-fn run() Int:
-    s := describe(Box(2, true), Mark(name: "", at: Point(x: 1, y: 2), kind: Dot))
-    return s.length()
+fn main() Int:
+	text := show(Point(x: 1, y: 2))
+	box := Box(2, true)
+	at := Point(x: 3, y: 4)
+	mark := Mark(name: "", at: at, kind: Dot)
+	both := describe(box, mark)
+	return text.length() + both.length()

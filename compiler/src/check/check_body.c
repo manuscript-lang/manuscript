@@ -133,13 +133,13 @@ static bool body_is_numeric(const MsBody *b, MsTy ty) {
 
 /* Whether the type is `<invalid>` or built from it, as `Result[Int, <invalid>]`: an earlier
  * diagnostic is why, so nothing built on it reports. */
-static bool body_has_invalid(const MsBody *b, MsTy ty) {
+bool ms_body_has_invalid(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     if (ty == b->invalid_ty) {
         return true;
     }
     for (uint32_t i = 0; ty != MS_TY_NONE && i < tys->nargs[ty]; i++) {
-        if (body_has_invalid(b, ms_ty_args(tys, ty)[i])) {
+        if (ms_body_has_invalid(b, ms_ty_args(tys, ty)[i])) {
             return true;
         }
     }
@@ -717,7 +717,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
         }
     }
     for (uint32_t i = nargs; i < nparams; i++) {
-        if (body_has_invalid(b, params[i].ty)) {
+        if (ms_body_has_invalid(b, params[i].ty)) {
             return false;
         }
         if (function->params.ptr[i]->def != NULL) {
@@ -775,8 +775,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return syms->nvars[sym] != 0 ? ms_body_generic_construct(b, e, sym, NULL) : body_construct(b, e, sym);
     }
     if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
-        syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||
-        syms->decl[sym]->u.fn.external) {
+        syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN) {
         return ms_body_unsupported(b);
     }
     if (syms->nvars[sym] != 0) {
@@ -793,7 +792,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
-    if (body_has_invalid(b, result)) {
+    if (ms_body_has_invalid(b, result)) {
         return b->invalid_ty;
     }
     return body_is_bindable(b, result) || result == b->void_ty || ms_body_is_handle(b, result) ? result
