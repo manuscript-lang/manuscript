@@ -273,7 +273,7 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
         }
         const MsTy value = ms_body_block_value(b, &arm->body, arm->value, result);
         ms_body_close_from(b, first);
-        if (value == MS_TY_NONE || value == b->void_ty) {
+        if (value == MS_TY_NONE || (value == b->void_ty && result != MS_TY_NONE && result != b->void_ty)) {
             return ms_body_unsupported(b);
         }
         result = value;
