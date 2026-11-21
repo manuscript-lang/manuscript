@@ -308,7 +308,10 @@ fn param_kind(at: Int, p: String) String:
 	): return "MS_RT_OUT_RECORD"
 	if ty.starts_with("*const ") and is_value_record(ty.replace("*const ", "")): return "MS_RT_RECORD"
 	if ty.starts_with("*mut *mut ObjCell<") and pname == "out": return "MS_RT_OUT_HANDLE"
-	if ty.starts_with("*const ObjCell<") and pname.starts_with("handle "): return "MS_RT_HANDLE"
+	if (
+		(ty.starts_with("*const ObjCell<") or ty.starts_with("*mut ObjCell<"))
+		and pname.starts_with("handle ")
+	): return "MS_RT_HANDLE"
 	if ty == "*const u8" and pname == "key": return "MS_RT_KEY_REF"
 	if ty == "*const u8": return "MS_RT_ELEMENT"
 	if ty == "i64": return "MS_RT_INT"
@@ -389,11 +392,12 @@ fn rt_ops_text(symbols: String) String:
 		leaf := rest.contains(" @leaf")
 		pure := rest.contains(" @pure")
 		fresh := rest.contains(" @fresh")
+		borrows := rest.contains(" @borrows")
 		has_imm := imm.is_some()
 		imm_value := imm.get_or(0)
 		domain := flag_value(rest, "domain=").get_or("")
 		out = out.concat(
-			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {has_imm}, \"{domain}\"\},\n"
+			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {borrows}, {has_imm}, \"{domain}\"\},\n"
 		)
 
 	return out.concat("};\n")

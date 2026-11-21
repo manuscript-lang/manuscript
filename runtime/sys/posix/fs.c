@@ -291,7 +291,7 @@ MsSysError ms_sys_fs_read(MsSysFd fd, uint8_t *buffer, size_t capacity, size_t *
 }
 
 MsSysError ms_sys_fs_write(MsSysFd fd, const uint8_t *data, size_t length, size_t *count) {
-    // NOLINTNEXTLINE(performance-no-int-to-ptr): libuv takes a mutable buffer for a write it only reads.
+    // NOLINTNEXTLINE(performance-no-int-to-ptr): the write path shares the transfer helper, which never writes through the buffer.
     return transfer(true, fd, (uint8_t *)(uintptr_t)data, length, -1, count);
 }
 
@@ -300,7 +300,7 @@ MsSysError ms_sys_fs_pread(MsSysFd fd, uint8_t *buffer, size_t capacity, int64_t
 }
 
 MsSysError ms_sys_fs_pwrite(MsSysFd fd, const uint8_t *data, size_t length, int64_t offset, size_t *count) {
-    // NOLINTNEXTLINE(performance-no-int-to-ptr): libuv takes a mutable buffer for a write it only reads.
+    // NOLINTNEXTLINE(performance-no-int-to-ptr): the write path shares the transfer helper, which never writes through the buffer.
     return transfer(true, fd, (uint8_t *)(uintptr_t)data, length, offset, count);
 }
 
