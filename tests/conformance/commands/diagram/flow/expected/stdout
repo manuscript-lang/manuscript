@@ -1,0 +1,7 @@
+FLOW VIEW
+`- parse_total  [fn] src/shapes.ms:15
+   |- for item in items
+   |  |- call read_number
+   |  `- native Result[Int, Failure].get_or
+   |- call area
+   `- return total + area(Shape(1, 1)) - 1

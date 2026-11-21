@@ -1,0 +1,27 @@
+flowchart TD
+    n69b2fb32b1511bc1["src/main.ms::main"]
+    n9d1978dfd06c86f2["src/main.ms::main total"]
+    nc3834019eaec33a9["src/shapes.ms::Failure"]
+    n5b89f0e827feb28f["src/shapes.ms::area"]
+    nada8d7451ea61441["src/shapes.ms::parse_total"]
+    n29b856358a2f01c2["src/shapes.ms::read_number"]
+    n6211cf00e06427ef["src/shapes.ms::Shape"]
+    n69b2fb32b1511bc1 -->|function| nada8d7451ea61441
+    n47b5d13e8cc08788["@std/core.ms::print"]
+    n69b2fb32b1511bc1 -->|function| n47b5d13e8cc08788
+    nd773f7cc3ca7239d["@std/test/test.ms::expect_equal"]
+    n9d1978dfd06c86f2 -->|function| nd773f7cc3ca7239d
+    n9d1978dfd06c86f2 -->|function| nada8d7451ea61441
+    n2a39633c6c367ae0["String.parse_int"]
+    n29b856358a2f01c2 -->|operation| n2a39633c6c367ae0
+    n10b15f53482dbda8["Result[Int, Failure]"]
+    n29b856358a2f01c2 -->|construct| n10b15f53482dbda8
+    n29b856358a2f01c2 -->|construct| n10b15f53482dbda8
+    n7031edbcf9c42caa["Failure"]
+    n29b856358a2f01c2 -->|construct| n7031edbcf9c42caa
+    nada8d7451ea61441 -->|function| n29b856358a2f01c2
+    na52776602d3f9f56["Result[Int, Failure].get_or"]
+    nada8d7451ea61441 -->|operation| na52776602d3f9f56
+    nada8d7451ea61441 -->|function| n5b89f0e827feb28f
+    ne0e492707f85ff1f["Shape"]
+    nada8d7451ea61441 -->|construct| ne0e492707f85ff1f
