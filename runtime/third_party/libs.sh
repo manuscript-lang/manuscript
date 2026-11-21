@@ -23,7 +23,7 @@ install)
         sudo=; [ "$(id -u)" = 0 ] || sudo=sudo
         $sudo dnf install -y epel-release dnf-plugins-core
         $sudo dnf config-manager --set-enabled powertools
-        $sudo dnf install -y pkgconf-pkg-config cmake ninja-build ccache libuv-devel libnghttp2-devel openssl-devel pcre2-devel zlib-devel libcurl-devel
+        $sudo dnf install -y pkgconf-pkg-config cmake ninja-build ccache clang libuv-devel libnghttp2-devel openssl-devel pcre2-devel zlib-devel libcurl-devel
     elif [ -x "${MS_MSYS2:-C:/msys64}/usr/bin/pacman.exe" ]; then
         case "${PROCESSOR_ARCHITECTURE:-}" in ARM64) env=clangarm64 ;; *) env=clang64 ;; esac
         pre=mingw-w64-clang-$(if [ "$env" = clangarm64 ]; then echo aarch64; else echo x86_64; fi)
