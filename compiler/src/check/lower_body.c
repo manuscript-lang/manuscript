@@ -209,8 +209,8 @@ int64_t lb_number_bits(Lb *lb, const MsExpr *e, MirTy ty, bool negate) {
         memcpy(&bits, &signed_value, sizeof signed_value);
         return bits;
     }
-    // Negated as unsigned: `-9223372036854775808` is the magnitude 2^63, which no signed negation holds.
     const uint64_t magnitude = strtoull(digits, NULL, 10);
+    /* Negated as an unsigned value: the magnitude of Int.min does not fit a signed one. */
     return (int64_t)(negate ? 0 - magnitude : magnitude);
 }
 

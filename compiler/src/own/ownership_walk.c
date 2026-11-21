@@ -1187,6 +1187,9 @@ typedef struct Scrutinee {
 static Scrutinee own_borrowed_call(OwnWalk *w, const MsExpr *e) {
     const MsExpr *receiver = e->u.call.callee->u.member.left;
     own_expr(w, e, DEMAND_READ);
+    if (receiver->kind != MS_E_NAME) { // a temporary: it lives to the end of the statement and nothing else can change it
+        return (Scrutinee){true, MS_NONE, false};
+    }
     return (Scrutinee){false, own_resolve(w, w->facts->res_ref[receiver->id]), false};
 }
 
@@ -1195,6 +1198,10 @@ static bool own_bind_borrowed_call(OwnWalk *w, const MsStmt *s, uint32_t binding
     const MsExpr *value = s->u.bind.value;
     if (value->kind == MS_E_CALL && w->facts->call_borrows[value->id]) {
         const Scrutinee source = own_borrowed_call(w, value);
+        if (source.owned) {
+            OWN_DECLINE(w); // a binding of a part of a temporary: Rust's report for it is not followed
+            return true;
+        }
         own_declare_borrow(w, binding, source.origin, s->u.bind.pattern->pos, "binding of a part of it");
         w->facts->bindings.flags[binding] |= MS_BIND_BORROWS;
         return true;
