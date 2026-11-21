@@ -131,6 +131,11 @@ if ! grep -q 'body_closure_methods.ms 1:1$' "$out/bodies.keys" || ! grep -q 'bod
     echo "FAIL bodies: a closure method, a MapEntry list or a Set is no longer checked in C (compiler/tests/scope/body_closure_methods.ms)"
     status=1
 fi
+# A sized integer given where another type is expected, and the reverse, are reported in C.
+if ! grep -q 'body_sized_mismatch.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_sized_mismatch.ms 4:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a sized integer used as another type is no longer checked in C (compiler/tests/scope/body_sized_mismatch.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else
