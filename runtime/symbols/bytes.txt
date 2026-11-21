@@ -2,6 +2,8 @@
 # runtime when the archive is built by `cmake -P cmake/BuildRuntime.cmake`; plain `cargo test` keeps the Rust definitions.
 msrt_bytes_drop
 msrt_bytes_copy
+msrt_bytes_length
+msrt_bytes_is_empty
 msrt_bytes_contains
 msrt_bytes_index_of
 msrt_bytes_index_of_byte
