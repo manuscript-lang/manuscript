@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ms/ty_algebra.h"
 #include "check/check_body.h"
 #include "ms/implements.h"
 #include "ms/check.h"

@@ -1,4 +1,7 @@
 /* Linking with the pinned lld (ms/build_link.h). Linux only; see the header. */
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L /* mkdtemp; libms.c defines it first for the whole unit */
+#endif
 #include "ms/build_link.h"
 
 #include <errno.h>
@@ -128,15 +131,15 @@ static bool bl_stub(const MsLinkOptions *o, const char *stage, const char *sonam
     (void)snprintf(lib, sizeof lib, "%s/%s", stage, soname);
     bool ok = ms_build_write(ll, ir.data, ir.len) && ms_build_write(map, script.data, script.len);
     if (!ok) {
-        ms_buf_printf(why, "cannot write the %s stub: %s", soname, strerror(errno));
+        ms_buf_printf(why, "cannot write the %s stub: ", soname);
+        ms_build_put_errno(why, errno);
     }
     if (ok) {
-        char *llc[] = {(char *)o->llc, (char *)"-filetype=obj", (char *)"-relocation-model=pic", (char *)BL_TRIPLE, ll, (char *)"-o", obj, NULL};
+        const char *llc[] = {o->llc, "-filetype=obj", "-relocation-model=pic", BL_TRIPLE, ll, "-o", obj, NULL};
         ok = ms_build_run("llc (glibc stubs)", llc, log, why);
     }
     if (ok) {
-        char *lld[] = {(char *)o->lld, (char *)"-flavor", (char *)"gnu", (char *)"-shared", (char *)"-soname", (char *)soname,
-                       (char *)"--version-script", map, (char *)"-o", lib, obj, NULL};
+        const char *lld[] = {o->lld, "-flavor", "gnu", "-shared", "-soname", soname, "--version-script", map, "-o", lib, obj, NULL};
         ok = ms_build_run("lld (glibc stubs)", lld, log, why);
     }
     const char *const made[] = {ll, obj, map, log};
@@ -170,7 +173,8 @@ static bool bl_stubs(const MsLinkOptions *o, char *out, size_t out_size, MsBuf *
     char stage[BL_PATH];
     (void)snprintf(stage, sizeof stage, "%s/.glibc-XXXXXX", o->files);
     if (mkdtemp(stage) == NULL) {
-        ms_buf_printf(why, "cannot create the glibc stubs in %s: %s", out, strerror(errno));
+        ms_buf_printf(why, "cannot create the glibc stubs in %s: ", out);
+        ms_build_put_errno(why, errno);
         ms_buf_free(&table);
         ms_buf_free(&exports);
         return false;
@@ -193,7 +197,8 @@ static bool bl_stubs(const MsLinkOptions *o, char *out, size_t out_size, MsBuf *
         (void)rmdir(stage);
         installed = ok && bl_exists(done); /* another build installed its set first */
         if (ok && !installed) {
-            ms_buf_printf(why, "cannot install the glibc stubs in %s: %s", out, strerror(errno));
+            ms_buf_printf(why, "cannot install the glibc stubs in %s: ", out);
+        ms_build_put_errno(why, errno);
         }
     }
     ms_buf_free(&table);
@@ -296,7 +301,7 @@ bool ms_build_link(const char *object, const char *const *inputs, size_t ninputs
         }
         MS_VEC_PUSH(argv, const char *, NULL);
         MsBuf detail = {0};
-        ok = ms_build_run("the bundled linker", (char *const *)ms_buf_items(&argv), log, &detail);
+        ok = ms_build_run("the bundled linker", (const char *const *)ms_buf_items(&argv), log, &detail);
         if (!ok) {
             ms_buf_printf(&reason, "linking failed; the linker output follows. ");
             MsBuf advice = {0};

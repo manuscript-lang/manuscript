@@ -158,6 +158,7 @@ void lb_return_void(Lb *lb);
 uint32_t lb_scoped(Lb *lb, const MsStmts *body);          /* lowers `body` in its own scope; its owner depth */
 MirBlock lb_step_block(Lb *lb, LbLoop *loop);             /* where `continue` of `loop` goes */
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
+MirValue lb_copy(Lb *lb, MirValue v); /* a borrowed String copied into a value the caller owns */
 void lb_hold_temp(Lb *lb, MirValue v); /* an owned temporary that lives to the end of the statement */
 MirLoc lb_loc(const Lb *lb, MsPos pos);
 void lb_reset_state(Lb *lb);
