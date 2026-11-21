@@ -347,7 +347,6 @@ LbVal lq_equal(Lb *lb, LbVal x, LbVal y, bool negate);
 LbVal lt_text(Lb *lb, const MsExpr *e);
 LbVal lt_scalar_text(Lb *lb, MsTy checked, MirValue v);
 LbVal lt_to_string(Lb *lb, LbVal value, MsTy checked);
-MirValue lb_copy(Lb *lb, MirValue v); /* `clone 1 v`: an owned copy of a borrowed String */
 uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want);
 
 /* Structural text of a record or enum (lower_format.c, included after lower_text.c). */
