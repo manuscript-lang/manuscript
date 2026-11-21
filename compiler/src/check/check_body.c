@@ -1277,8 +1277,53 @@ static MsTy body_applied_annotation(MsBody *b, const MsTypeRef *t) {
     return ty;
 }
 
+/* The `Void` a function type writes as its result, or the annotation's own type. */
+static MsTy body_fn_result(MsBody *b, const MsTypeRef *t) {
+    if (t->kind == MS_TYPE_NAMED && t->args.len == 0) {
+        const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
+        if (sym != MS_NONE && b->c->syms.ty[sym] == b->void_ty) {
+            b->facts->type_ref_ty[t->id] = b->void_ty;
+            return b->void_ty;
+        }
+    }
+    return ms_body_annotation(b, t);
+}
+
+/* `fn(A, B) R`: a function type whose parameters and result are annotations the pass admits, with
+ * the positional parameters the Rust resolver gives a written function type. */
+static MsTy body_fn_annotation(MsBody *b, const MsTypeRef *t) {
+    if (t->params.len > 16) {
+        return ms_body_unsupported(b);
+    }
+    MsTyParam *params = MS_NEW_N(&b->c->arena, MsTyParam, t->params.len + 1);
+    for (uint32_t i = 0; i < t->params.len; i++) {
+        const MsParam *p = t->params.ptr[i];
+        const MsTy ty = ms_body_annotation(b, p->ty);
+        if (ty == MS_TY_NONE) {
+            return MS_TY_NONE;
+        }
+        const uint8_t flags = (uint8_t)((p->is_mutable ? MS_PARAM_VAR : 0) | (p->moving ? MS_PARAM_MOVE : 0) | MS_PARAM_POSITIONAL);
+        params[i] = (MsTyParam){.name = p->name, .ty = ty, .flags = flags};
+    }
+    const MsTy result = body_fn_result(b, t->result);
+    if (result == MS_TY_NONE) {
+        return MS_TY_NONE;
+    }
+    const MsSym fn = ms_intern_cstr(b->c->names, "fn");
+    const MsTyDesc desc = {.name = fn, .id = fn, .kind = MS_K_FUNCTION, .params = params, .nparams = t->params.len, .result = result};
+    const MsTy ty = ms_ty_intern(&b->c->tys, &desc);
+    if (!body_is_bindable(b, ty)) {
+        return ms_body_unsupported(b);
+    }
+    b->facts->type_ref_ty[t->id] = ty;
+    return ty;
+}
+
 /* The primitive type a written annotation names, or MS_TY_NONE. */
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
+    if (t->kind == MS_TYPE_FN) {
+        return body_fn_annotation(b, t);
+    }
     if (t->kind == MS_TYPE_NAMED && t->args.len != 0) {
         const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
         const bool list = sym != MS_NONE && b->c->syms.ty[sym] != MS_TY_NONE && ms_ty_is(&b->c->tys, b->c->syms.ty[sym], MS_BI_LIST);
@@ -1302,9 +1347,10 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     return ty;
 }
 
+/* A `var (` group only changes the layout: each entry is an ordinary binding. */
 static void body_bind_statement(MsBody *b, const MsStmt *s) {
     const MsPattern *pattern = s->u.bind.pattern;
-    if (pattern->kind != MS_P_NAME || s->u.bind.has_group) {
+    if (pattern->kind != MS_P_NAME) {
         (void)ms_body_unsupported(b);
         return;
     }
@@ -1741,6 +1787,8 @@ static bool body_default_fits(const MsBody *b, const MsParam *p, MsTy ty) {
     case MS_E_NUMBER: return ty == b->int_ty || ty == b->float_ty;
     case MS_E_BOOL: return ty == b->bool_ty;
     case MS_E_TEXT: return ty == b->string_ty && p->def->u.text.len == 1 && p->def->u.text.ptr[0].expr == NULL;
+    case MS_E_CALL: // a construction or call: checked with the body (an unchecked default refuses the function)
+    case MS_E_LIST: return true;
     default: return false;
     }
 }

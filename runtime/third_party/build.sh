@@ -38,6 +38,9 @@ trap 'rmdir "$lock" 2>/dev/null' EXIT
 trap 'exit 1' INT TERM
 if [ -f "$out/.complete" ]; then emit; exit 0; fi
 rm -rf "$out"
+# A clean build starts every library from scratch: the CMake caches of an earlier build (another source folder, a
+# different compiler) refuse to be reused and are of no use once the output folder is gone.
+rm -rf "$root/build/$triple"
 jobs=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
 mkdir -p "$out/lib" "$out/include"
 vendor=$repository/runtime/third_party
@@ -152,5 +155,10 @@ case "$triple" in
     sh "$repository/toolchain/check-glibc-archives.sh" "$out" "$arch" || exit 1 ;;
 esac
 rm -f "$out/step.log"
+# The intermediate build folders and the outputs of earlier keys are of no further use (a changed pin builds anew).
+rm -rf "$root/build/$triple"
+for old in "$root/$triple-$mode"-*; do
+    case "$old" in "$out"|*.lock) ;; *) [ -d "$old" ] && rm -rf "$old" ;; esac
+done
 touch "$out/.complete"
 emit

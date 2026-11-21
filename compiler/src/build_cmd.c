@@ -17,16 +17,24 @@
 #include "ms/mir_pass.h"
 #include "ms/program.h"
 
-/* Whether the lowering produced the process entry, an exported `main`, which it names as the module's entry. */
-static bool build_find_entry(MirModule *m) {
-    for (uint32_t i = 0; i < m->nfuncs; i++) {
-        const MsStr name = ms_name(&m->names, m->funcs[i].name);
-        if (m->funcs[i].linkage == ML_EXPORT && name.len == 4 && memcmp(name.ptr, "main", 4) == 0) {
-            m->entry = i;
-            return true;
+/* The line of the lowering's refusals that names `main` (the program's own place and why), else the first. */
+static void build_refusal(const MsBuf *refused, MsBuf *out) {
+    size_t start = 0, chosen = 0, chosen_len = 0;
+    bool found = false;
+    while (start < refused->len) {
+        size_t end = start;
+        while (end < refused->len && refused->data[end] != '\n') {
+            end++;
         }
+        const bool is_main = end - start > 5 && memcmp(refused->data + start, "main\t", 5) == 0;
+        if (!found && (is_main || start == 0)) {
+            chosen = start;
+            chosen_len = end - start;
+            found = is_main;
+        }
+        start = end + 1;
     }
-    return false;
+    ms_buf_put(out, refused->data + chosen, chosen_len);
 }
 
 /* The program's MIR text after the pipeline's first step, or NULL and why. */
@@ -36,10 +44,12 @@ static const char *build_mir_text(MsCheckRun *run, MsBuf *text, MsBuf *err) {
     MirModule mir;
     mir_module_init(&mir);
     const MsModId entry = run->ids[run->graph.count - 1];
-    (void)ms_lower_program(check, entry, &mir);
+    MsBuf refused = {0};
+    (void)ms_lower_program_why(check, entry, &mir, &refused);
     const char *why = NULL;
-    if (!build_find_entry(&mir)) {
+    if (mir.entry == MIR_NONE) {
         why = "a program the C lowering does not cover";
+        build_refusal(&refused, err); /* what the census shows beside the reason */
     } else {
         const MirPipelineOptions options = {.checks = true, .verify = true};
         if (!mir_pipeline_prepare(&mir, &options, err)) {
@@ -48,6 +58,7 @@ static const char *build_mir_text(MsCheckRun *run, MsBuf *text, MsBuf *err) {
             mir_print_module(&mir, text);
         }
     }
+    ms_buf_free(&refused);
     mir_module_free(&mir);
     return why;
 }
