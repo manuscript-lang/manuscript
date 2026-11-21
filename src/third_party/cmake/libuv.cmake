@@ -5,8 +5,12 @@ add_library(uv STATIC
   ${UV_SRC}/strtok.c ${UV_SRC}/thread-common.c ${UV_SRC}/threadpool.c ${UV_SRC}/timer.c
   ${UV_SRC}/uv-common.c ${UV_SRC}/uv-data-getter-setters.c ${UV_SRC}/version.c)
 target_include_directories(uv SYSTEM PUBLIC libuv/include)
-# libuv's own sources take its headers with -I, ahead of any libuv installed on the system (macOS Intel runners have one).
-target_include_directories(uv BEFORE PRIVATE libuv/include libuv/src)
+# A libuv installed on the system (macOS Intel runners have one in /usr/local/include, reached through CPATH) would
+# shadow ours: -isystem sorts after CPATH, so macOS takes the vendored headers with a plain -I, for us and our users.
+if(APPLE)
+  target_compile_options(uv PUBLIC -I${CMAKE_CURRENT_SOURCE_DIR}/libuv/include)
+endif()
+target_include_directories(uv PRIVATE libuv/src)
 target_compile_definitions(uv PUBLIC USING_UV_SHARED=0)
 if(WIN32)
   file(GLOB UV_WIN_SOURCES CONFIGURE_DEPENDS ${UV_SRC}/win/*.c)
