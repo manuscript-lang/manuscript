@@ -223,6 +223,10 @@ static void body_report(MsBody *b, MsPos pos, MsStr message) {
     MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
 }
 
+void ms_body_report(MsBody *b, MsPos pos, MsStr message) {
+    body_report(b, pos, message);
+}
+
 static MsStr body_show(MsBody *b, MsTy ty);
 
 MsTy ms_body_record(MsBody *b, uint32_t node, MsTy ty) {

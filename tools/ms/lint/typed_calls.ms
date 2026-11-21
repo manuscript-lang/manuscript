@@ -2,7 +2,7 @@
 // zero (MSL118), `get(i)` on a list (MSL119), a map `get` chained with `get_or`
 // (MSL120), a Result `get` as a statement (MSL129, MSL130), a printed Result (MSL131),
 // a `slice` with a fallback (MSL132), a Void value bound or printed (MSL134) and
-// `to_string()` on Bytes (MSL135), a promise dropped as a statement (MSL115) and a map entry rebuilt from its own lookup (MSL127). Each reports only what the checker's facts prove, so
+// `to_string()` on Bytes (MSL135), a promise dropped as a statement (MSL115) a map entry rebuilt from its own lookup (MSL127) and a `while true` loop that never waits (MSL111). Each reports only what the checker's facts prove, so
 // a node the checker did not type yields no finding.
 import (
 	Bytes from "@std/bytes.ms",
@@ -515,6 +515,52 @@ fn dropped_promise(s: Scan, at: Int, var out: List[Finding]) Void:
 	if s.tree.kind[at] != s.call or text.is_none(): out.append(found)
 	else: out.append(with_fix(found, from, to, f"void {text.get()} | .wait()"))
 
+// Receiver kinds whose methods run to completion without waiting.
+LOCAL_KINDS := [
+	"Int", "Float", "Bool", "String", "List", "Map", "Set", "Optional", "Result",
+	"Bytes"
+]
+
+// Whether the subtree at `at` can wait, call something that may, or leave the loop. A
+// call counts as running to completion only when the checker typed its receiver as a
+// primitive or a core collection; any other call, or an untyped one, may wait.
+fn may_wait_or_exit(s: Scan, at: Int) Bool:
+	node := s.tree.kind[at]
+	if node == node_kind("Break") or node == s.ret: return true
+	if node == node_kind("Lambda") or node == node_kind("Match"): return true
+
+	if node == s.call:
+		method := dotted(s, at)
+		if method.is_none() or not LOCAL_KINDS.contains(kind(s, method.get().receiver)): return true
+
+	for child in children(s.tree, at):
+		if may_wait_or_exit(s, child): return true
+	return false
+
+fn imports_promise(s: Scan) Bool:
+	for at in 0..s.tree.kind.length():
+		if s.tree.kind[at] != node_kind("Import"): continue
+		if s.tree.names[s.tree.b[at]].ends_with("promise.ms"): return true
+
+	return false
+
+// A `while true` loop whose body never waits starves its sibling tasks (MSL111).
+fn busy_loop(s: Scan, at: Int, var out: List[Finding]) Void:
+	parts := children(s.tree, at)
+	cond := parts[0]
+	if s.tree.kind[cond] != node_kind("Bool") or s.tree.flags[cond] != 1: return
+	if may_wait_or_exit(s, parts[1]) or not imports_promise(s): return
+
+	out.append(
+		report(
+			s,
+			"MSL111",
+			"error",
+			"This loop never waits or exits, so other tasks cannot run and a timeout cannot stop it; wait inside the loop (sleep, or wait on a promise or a pipe), or return",
+			cond,
+		)
+	)
+
 // The findings of these rules for the module in `source`, given its checker facts.
 export fn lint_typed_calls(
 	tree: Syntax,
@@ -532,7 +578,9 @@ export fn lint_typed_calls(
 		if node == s.binary and tree.flags[at] == OP_EQ: emptiness(s, at, false, out)
 		else if node == s.branch:
 			if tree.kind[parts[0]] == s.absent: emptiness(s, parts[1], true, out)
-		else if node == s.loop: emptiness(s, parts[0], true, out)
+		else if node == s.loop:
+			emptiness(s, parts[0], true, out)
+			busy_loop(s, at, out)
 		else if node == s.ret and not parts.is_empty(): emptiness(
 			s,
 			parts[0],
@@ -677,3 +725,15 @@ test "a promise dropped as a statement is waited for":
 	found.length() | expect_equal(expected: 1)?
 	found[0].code | expect_equal(expected: "MSL115")?
 	found[0].fix_text | expect_equal(expected: "void promise(fn: work()) | .wait()")?
+
+test "a while true loop that never waits is reported when promises are in play":
+	source := "import promise from \"@std/concurrency/promise.ms\"\n\nfn f() Void:\n    var i = 0\n    while true:\n        i += 1\n"
+	found := lint_with(source, [])
+	found.length() | expect_equal(expected: 1)?
+	found[0].code | expect_equal(expected: "MSL111")?
+
+	plain := "fn f() Void:\n    var i = 0\n    while true:\n        i += 1\n"
+	lint_with(plain, []).length() | expect_equal(expected: 0)?
+
+	waits := "import promise from \"@std/concurrency/promise.ms\"\n\nfn f() Void:\n    while true:\n        work()\n"
+	lint_with(waits, []).length() | expect_equal(expected: 0)?
