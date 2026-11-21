@@ -37,7 +37,7 @@ bool ms_link_prepare(BlJob *job, MsBuf *why) {
     static const char *const libraries[] = {"libmingw32.a", "libunwind.a", "libmoldname.a", "libmingwex.a", "libucrt.a", "libadvapi32.a",
                                             "libbcrypt.a", "libcrypt32.a", "libdbghelp.a", "libntdll.a", "libsecur32.a", "libshell32.a",
                                             "libuser32.a", "libuserenv.a", "libiphlpapi.a", "libpsapi.a", "libole32.a", "libws2_32.a",
-                                            "libkernel32.a"};
+                                            "libsynchronization.a", "libclang_rt.builtins.a", "libkernel32.a"};
     for (size_t i = 0; i < sizeof libraries / sizeof libraries[0]; i++) {
         ms_link_push(job, ms_arena_fmt(&job->arena, "%s/%s", o->files, libraries[i]).ptr);
     }
