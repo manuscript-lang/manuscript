@@ -261,6 +261,13 @@ static uint32_t default_limit(void) {
     return wanted > (long)MS_MAX_ISOLATES ? MS_MAX_ISOLATES : (wanted < 1 ? 1 : (uint32_t)wanted);
 }
 
+/* MS_SCHED_STRESS set to anything but empty or 0 turns on the scheduler stress mode (worker.h). */
+static bool stress_requested(void) {
+    char text[ENV_TEXT_BYTES];
+    size_t size = sizeof text;
+    return uv_os_getenv("MS_SCHED_STRESS", text, &size) == 0 && text[0] != '\0' && strcmp(text, "0") != 0;
+}
+
 void msrt_runtime_set_threads(int64_t threads) {
     ms_workers_set_limit(threads < 1 ? 1 : (threads > (int64_t)MS_MAX_ISOLATES ? MS_MAX_ISOLATES : (uint32_t)threads));
 }
@@ -281,7 +288,7 @@ static void worker_finish(void) {
 
 /* Starts the worker isolates' configuration: the limit is the core count unless MS_THREADS says otherwise. */
 static void configure_workers(void) {
-    MsWorkerEnv env = {.limit = default_limit(), .hooks = scheduler_hooks(), .setup = worker_setup, .finish = worker_finish};
+    MsWorkerEnv env = {.stress = stress_requested(), .limit = default_limit(), .hooks = scheduler_hooks(), .setup = worker_setup, .finish = worker_finish};
     ms_workers_configure(&env);
 }
 

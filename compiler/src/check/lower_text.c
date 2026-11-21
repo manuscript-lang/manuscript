@@ -1,8 +1,9 @@
 /* Strings built from pieces: `a + b + c` and `f"{x} and {y}"`. The pieces of a sum or an
  * interpolation are evaluated left to right and joined by one runtime call, at most LT_MAX_JOIN
  * to a call (a longer text joins the first group, then that result with the next pieces). Pieces
- * that are all strings join with `msrt_string_concatN`. Every other piece becomes a string through
- * its type's text form, one table (`lt_forms`) read by type; a form the join writes itself (an
+ * that are all strings join with `msrt_string_concatN`. A piece whose type declares its own
+ * `to_string() String` calls the method the checker resolved (`text_method`). Every other piece
+ * becomes a string through its intrinsic text form, one table (`lt_forms`) read by type; a form the join writes itself (an
  * integer, in decimal) joins with `msrt_string_fmtN` and a mask of which pieces it is. */
 #include <stdio.h>
 #include <string.h>
@@ -80,7 +81,19 @@ static uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want) {
 
 /* The piece `value` of a text: a string as it is, a value with a text form as that form's result
  * (or itself when the join writes it). Any other type marks the function unsupported. */
-static LtPiece lt_piece(Lb *lb, LbVal value) {
+static LtPiece lt_piece(Lb *lb, LbVal value, uint32_t own_form) {
+    if (own_form != MS_NONE) { // the type's own `to_string`, resolved by the checker
+        if (!lm_has(lb, own_form) || lb->method_func[own_form] == MIR_NONE) {
+            (void)lb_unsupported(lb);
+            return (LtPiece){MIR_NONE, false, false};
+        }
+        const MirValue text = mir_b_call(&lb->b, lb->method_func[own_form], &value.v, 1);
+        if (value.owned) {
+            lb_drop(lb, value.v);
+        }
+        lb_hold_temp(lb, text); // the statement drops it, where the operand's own text would end
+        return (LtPiece){text, false, false};
+    }
     const MirTy ty = mir_b_ty(&lb->b, value.v);
     if (ty == MIR_STR) {
         return (LtPiece){value.v, false, value.owned};
@@ -122,7 +135,7 @@ static void lt_collect(Lb *lb, const MsExpr *e, LtPieces *pieces) {
             if (!lb->ok) {
                 return;
             }
-            const LtPiece piece = lt_piece(lb, value);
+            const LtPiece piece = lt_piece(lb, value, lb->facts->text_method[part->expr->id]);
             if (!lb->ok) {
                 return;
             }

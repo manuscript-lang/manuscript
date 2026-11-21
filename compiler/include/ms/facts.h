@@ -88,6 +88,7 @@ typedef struct MsFacts {
     uint32_t *call_callee;     /* symbol id of the called function, else MS_NONE */
     bool *const_use;           /* by name node: a module constant read, which evaluates its initializer */
     uint32_t *call_method;     /* method id when the call is a method call, else MS_NONE */
+    uint32_t *text_method;     /* by interpolated expression: the row of its type's own `to_string() String`, else MS_NONE */
     MsTy *call_receiver;       /* the receiver's type for a method call */
     uint8_t *call_owned_borrow; /* a call returning a borrow over a temporary argument: MS_OWNED_CLONE or MS_OWNED_WHOLE */
     uint32_t *call_owned_param; /* MS_OWNED_WHOLE: the parameter whose argument comes back whole */

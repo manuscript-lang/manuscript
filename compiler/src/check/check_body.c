@@ -290,9 +290,14 @@ static MsTy body_number(MsBody *b, const MsExpr *e) {
 static MsTy body_text(MsBody *b, const MsExpr *e) {
     for (uint32_t i = 0; i < e->u.text.len; i++) {
         const MsExpr *part = e->u.text.ptr[i].expr;
-        if (part != NULL && ms_body_expr(b, part, MS_TY_NONE) == MS_TY_NONE) {
+        if (part == NULL) {
+            continue;
+        }
+        const MsTy ty = ms_body_expr(b, part, MS_TY_NONE);
+        if (ty == MS_TY_NONE) {
             return MS_TY_NONE;
         }
+        ms_body_text_method(b, part, ty);
     }
     return b->string_ty;
 }
@@ -1382,15 +1387,15 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
     return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
 }
 
-/* `for name in xs` over a list of Int, Float, Bool or String: the element type. A String element is
- * borrowed from the list; lists of lists are left to the Rust checker. */
+/* `for name in xs` over a list of Int, Float, Bool, String or lists: the element type. An element that
+ * owns something is borrowed from the list. */
 static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) {
     const MsTy ty = ms_body_expr(b, iter, MS_TY_NONE);
     if (!ms_body_is_list(b, ty)) {
         return false;
     }
     *element = ms_ty_args(&b->c->tys, ty)[0];
-    return body_is_value_type(b, *element);
+    return body_is_value_type(b, *element) || ms_body_is_list(b, *element);
 }
 
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
@@ -1748,6 +1753,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->call_receiver = MS_NEW_N(arena, MsTy, nodes);
     facts->call_interface = MS_NEW_N(arena, MsTy, nodes);
     memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
+    facts->text_method = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->text_method, 0xff, nodes * sizeof *facts->text_method);
     memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
     facts->call_type_args_at = MS_NEW_N(arena, uint32_t, nodes);

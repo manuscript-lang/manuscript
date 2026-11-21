@@ -1,6 +1,6 @@
-# Rust and Cranelift implementation: design contract
+# Rust implementation: design contract
 
-This describes the Rust and Cranelift implementation. Current ownership rules live in [OWNERSHIP.md](ms-check/OWNERSHIP.md); exact runtime layouts and symbols live in [ABI.md](ms-rt-abi/ABI.md) and `ms-rt-abi`.
+This describes the Rust implementation; code generation is the C back end in `compiler/`. Current ownership rules live in [OWNERSHIP.md](ms-check/OWNERSHIP.md); exact runtime layouts and symbols live in [ABI.md](ms-rt-abi/ABI.md) and `ms-rt-abi`.
 
 ## Decisions (taken 2026-10-19, owner direction: keep today's behavior, maximum native speed)
 
@@ -19,7 +19,7 @@ This describes the Rust and Cranelift implementation. Current ownership rules li
                  (public surface: `ms_check::api` only; every other module is private)
     -> ms-lower  (checked HIR and ownership facts to MIR, native standard calls)
     -> ms-mir    (representation, ownership elaboration, optimizer, verifier, text format, interpreter)
-    -> ms-clif   (MIR -> Cranelift -> object file; line tables; perf map)
+    -> ms-build  (MIR -> LLVM IR by the C back end in `compiler/` -> `opt`, `llc` -> object file)
     -> linker driver + ms-native (ms-rt and the ms-std-* crates in one static library, embedded in ms) -> executable
 tools: ms-driver (manifest, aliases and import resolution in `project`; module graph loading, entry rule, checking), ms-build (lowering seam, optimize, codegen and link; the `ms build/run/test/profile` engine in ms-cli sits on it), ms-tooling (lint, inspect, review, diagram; agent guide, `search_symbol` standard-library lookup, docgen), ms-lsp, ms-cli (`ms`)
 ```

@@ -61,7 +61,7 @@ jobs:
       - name: Build the workspace
         run: cargo build --workspace --all-targets --locked --keep-going
       # The corpus-only jobs (`-p ms-cli`, no workspace build) unify features differently and compile
-      # the Cranelift crates, ms-clif, ms-build and ms-cli again (about 40 s) unless this build is cached too.
+      # ms-build and ms-cli again unless this build is cached too.
       - name: Build the CLI alone
         run: cargo build --locked -p ms-cli
       # The leak-counting runtime that the ownership count gate and the LLVM corpus link against
