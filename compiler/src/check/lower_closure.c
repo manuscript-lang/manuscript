@@ -302,7 +302,7 @@ LbVal lb_lambda(Lb *lb, const MsExpr *e) {
         // a `var` is shared with its maker; a value that is dropped stays where it lives
         by_ref[i] = ty != MIR_NONE && lb_owns(lb, ty);
         cap_tys[i] = by_ref[i] ? MIR_PTR : ty;
-        found.overflow = !(by_ref[i] || lb_is_scalar(ty)) || lb->var_of[binding] != MIR_NONE || values[i] == MIR_NONE;
+        found.overflow = !(by_ref[i] || lb_is_scalar(ty)) || lb->var_of[binding] != MIR_NONE || lb_is_pointer_param(lb, binding) || values[i] == MIR_NONE;
         if (by_ref[i] && !found.overflow) {
             const MirImm slot_ty = {.tag = MI_TY, .a = ty};
             const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, slot_ty, MIR_PTR);

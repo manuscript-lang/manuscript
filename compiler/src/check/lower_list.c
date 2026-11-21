@@ -71,7 +71,9 @@ LbVal lst_get(Lb *lb, const MsExpr *left, const MsExpr *at) {
     const MirValue args[2] = {list.v, index.v};
     const MirTy element = bytes ? MIR_UINT8 : mir_ty_data(lb->m, mir_b_ty(&lb->b, list.v))->elem;
     const MirValue item = mir_b_emit(&lb->b, MOP_ListGet, args, 2, (MirImm){0}, element);
-    if (list.owned) {
+    if (list.owned && lb_owns(lb, element)) {
+        lb_hold_temp(lb, list.v); // the element points into the list: it lives to the end of the statement
+    } else if (list.owned) {
         lb_drop(lb, list.v);
     }
     return (LbVal){item, false};
