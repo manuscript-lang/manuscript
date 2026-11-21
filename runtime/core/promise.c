@@ -407,6 +407,18 @@ static void unlink_started(size_t row, MsTaskHandle creator) {
 
 static void run_closure(void *closure) { ((MsClosure *)closure)->code(closure); }
 
+static MsPromiseFaultKeeper fault_keeper;
+
+void ms_promise_set_fault_keeper(MsPromiseFaultKeeper keeper) { fault_keeper = keeper; }
+
+/* Hands a fault that ended work run under a test output capture to the keeper, which the test runner reads. */
+static void keep_fault(MsGuardStatus status, const MsFaultText *message) {
+    const uint64_t capture = ms_task_capture();
+    if (status == MS_GUARD_FAULT && capture != 0 && fault_keeper != NULL) {
+        fault_keeper(capture, message);
+    }
+}
+
 /* The task of promise `id` ended with `status` (a MsGuardStatus); records how, drops the closure and wakes. */
 static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) {
     const ptrdiff_t found = row_of(id);
@@ -470,6 +482,7 @@ static void work_entry(void *argument) {
     }
     MsFaultText message = {0};
     const MsGuardStatus status = ms_guard_call(run_closure, table.cold[row].closure, &message);
+    keep_fault(status, &message);
     /* Ending drops the closure, which closes what it captured: like any implicit close it runs shielded, since a
      * cancelled task would otherwise be cancelled again at its first park. */
     ms_shield_enter();
@@ -626,6 +639,7 @@ static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
     MsGuardStatus status = MS_GUARD_OK;
     if (guarded) {
         status = ms_guard_call(run_closure, closure, &message);
+        keep_fault(status, &message);
     } else {
         run_closure(closure);
     }
@@ -672,6 +686,7 @@ static void taken_entry(void *argument) {
     post_promise_mail((uint32_t)((uint64_t)taken->id >> ISOLATE_SHIFT), started);
     MsFaultText message = {0};
     const MsGuardStatus status = ms_guard_call(run_closure, taken->closure, &message);
+    keep_fault(status, &message);
     /* Dropping the closure closes what it captured: like any implicit close it runs shielded. */
     ms_shield_enter();
     msrt_obj_drop(taken->closure);

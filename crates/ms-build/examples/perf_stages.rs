@@ -53,7 +53,9 @@ fn main() {
     });
     let output = Path::new(&args[2]);
     let object = output.with_extension("llvm.o");
-    stage("write_objects", || std::fs::write(&object, llvm_object).unwrap());
+    stage("write_objects", || {
+        std::fs::write(&object, llvm_object).unwrap()
+    });
     stage("link", || {
         ms_clif::link::link_with(
             &object,

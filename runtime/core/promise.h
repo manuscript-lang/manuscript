@@ -46,6 +46,11 @@ typedef bool (*MsPromiseRetry)(MsPromise id, uintptr_t state, uint32_t bits);
 typedef void (*MsPromiseUnread)(int64_t pipe, void *block, const MsTypeDesc *desc);
 void ms_promise_set_unread(MsPromiseUnread unread);
 
+/* A task that ran under a test output capture ended its promise's work with a fault: the entry layer keeps the report
+ * for the test runner (msrt_test_capture_fault). Set once at start; NULL keeps nothing. */
+typedef void (*MsPromiseFaultKeeper)(uint64_t capture, const MsFaultText *message);
+void ms_promise_set_fault_keeper(MsPromiseFaultKeeper keeper);
+
 /* Fills the hooks the promise table needs from the scheduler (end_started, the timer callbacks, teardown) into
  * `hooks`, keeping the others. Call before ms_sched_set_hooks. */
 void ms_promise_hooks(MsSchedHooks *hooks) MS_NONNULL;

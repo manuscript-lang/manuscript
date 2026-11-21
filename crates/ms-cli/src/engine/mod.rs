@@ -607,13 +607,7 @@ mod staging_file_tests {
         std::fs::create_dir(&occupied).unwrap();
         std::fs::write(occupied.join("sentinel"), b"preserve this directory").unwrap();
         let next = AtomicUsize::new(0);
-        write_metadata_with(
-            &output,
-            BuildType::Debug,
-            ms_build::Backend::Llvm,
-            &next,
-        )
-        .unwrap();
+        write_metadata_with(&output, BuildType::Debug, ms_build::Backend::Llvm, &next).unwrap();
         assert_eq!(next.load(Ordering::Relaxed), 2);
         assert_eq!(
             std::fs::read(occupied.join("sentinel")).unwrap(),
