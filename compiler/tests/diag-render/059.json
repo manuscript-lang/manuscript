@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "multi-line text must start on the line after its opening '\"\"\"'; add a line break after the opening quotes",
+      "position": {
+        "file": "059.ms",
+        "line": 12,
+        "column": 12,
+        "offset": 302
+      }
+    }
+  ]
+}

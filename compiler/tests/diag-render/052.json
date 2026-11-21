@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "bidirectional text controls (U+202A..U+202E, U+2066..U+2069) are not allowed in text because they can make source display differently from how it is read; write the escape instead, e.g. \\u{202E}",
+      "position": {
+        "file": "052.ms",
+        "line": 8,
+        "column": 6,
+        "offset": 96
+      }
+    }
+  ]
+}

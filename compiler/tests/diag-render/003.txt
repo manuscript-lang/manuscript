@@ -1,0 +1,5 @@
+003.ms:6:16: parse: unexpected source character '\''; text uses double quotes, e.g. "text"
+   |
+ 6 | fn wrong(values': Map[String, Int]) Map[St Int]: values.map(transform*/
+   |                ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

@@ -218,10 +218,19 @@ fn asm_module(asm: &[u8]) -> Vec<u8> {
     module
 }
 
+/// Prints how long a build stage took to stderr when `MS_TIMINGS` is set, so a slow platform shows
+/// which stage grows (the scaling gate reports only the total).
+fn timed<T>(what: &str, stage: impl FnOnce() -> T) -> T {
+    let start = std::time::Instant::now();
+    let result = stage();
+    if std::env::var_os("MS_TIMINGS").is_some() {
+        eprintln!("timing {what}: {:.3}s", start.elapsed().as_secs_f64());
+    }
+    result
+}
+
 fn run(command: &mut Command, what: &str) -> Result<(), String> {
-    let output = command
-        .output()
-        .map_err(|e| format!("cannot run {what}: {e}"))?;
+    let output = timed(what, || command.output()).map_err(|e| format!("cannot run {what}: {e}"))?;
     if output.status.success() {
         Ok(())
     } else {
@@ -261,13 +270,15 @@ fn compile_in(
     checks: bool,
     build: &BuildOptions,
 ) -> Result<Vec<u8>, String> {
-    let (ir_text, meta) = ir_of(
-        &ms_mir::print::print_module_unique(module),
-        &ms_mir::print::display_names(module),
-        speed,
-        checks,
-        build,
-    )?;
+    let (ir_text, meta) = timed("front end (print, optimize, emit IR)", || {
+        ir_of(
+            &ms_mir::print::print_module_unique(module),
+            &ms_mir::print::display_names(module),
+            speed,
+            checks,
+            build,
+        )
+    })?;
     let tools: PathBuf = llvm_tools(build).map_err(|e| e.to_string())?.ok_or(
         "no LLVM tools are available for this platform; set MS_LLVM_TOOLS to a directory with opt and llc",
     )?;
@@ -321,7 +332,10 @@ fn compile_in(
     // `.loc` lines are dropped, so the object carries no line tables.
     let asm = std::fs::read(&plain).map_err(|e| format!("cannot read {}: {e}", plain.display()))?;
     let wrapped = dir.join("program.asm.ll");
-    write(&wrapped, &asm_module(&with_tables(&meta, &asm)?))?;
+    write(
+        &wrapped,
+        &asm_module(&timed("fault tables", || with_tables(&meta, &asm))?),
+    )?;
     let object = dir.join("program.o");
     run(
         tool("llc")

@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected ':', found '='; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body",
+      "position": {
+        "file": "103.ms",
+        "line": 24,
+        "column": 16,
+        "offset": 528
+      },
+      "end": {
+        "file": "103.ms",
+        "line": 24,
+        "column": 17,
+        "offset": 529
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+086.ms:5:11: parse: expected 'from', found '='; imports read: import name from "path.ms"
+   |
+ 5 | import Byt=>es from "@std/bytes.ms"
+   |           ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

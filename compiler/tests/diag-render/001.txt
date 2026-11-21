@@ -1,0 +1,5 @@
+001.ms:1:21: parse: expected ':', found end of line; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body
+   |
+ 1 | export fn answer() I
+   |                     ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
