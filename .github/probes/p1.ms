@@ -1,9 +1,12 @@
-import (
-	SpawnOptions, Stdio, spawn from "@std/os/process.ms",
-)
+import SpawnOptions, Stdio, spawn from "@std/os/process.ms"
 
 fn main() Void:
-	started := spawn("EXE", ["a"], SpawnOptions(stdin: Stdio.Inherit, stderr: Stdio.Inherit))
+	started := spawn(
+		"EXE",
+		["a"],
+		SpawnOptions(stdin: Stdio.Inherit, stderr: Stdio.Inherit),
+	)
+
 	if started.is_error():
 		print("probe 1: spawn failed")
 		return
@@ -11,6 +14,7 @@ fn main() Void:
 	var child = started.get()
 	var out = child.stdout()
 	var n = 0
+
 	while true:
 		chunk := out.next()
 		if chunk.is_error(): break
