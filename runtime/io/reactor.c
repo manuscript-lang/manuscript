@@ -10,6 +10,7 @@
  */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c11 */
 
+#include "probe.h"
 #include "reactor.h"
 #include "reactor_internal.h"
 #include "ring.h"
@@ -128,7 +129,9 @@ static void row_stop(MsIoReactor *reactor, MsIoRow *row) {
 /* Ends a row's handle. The row's memory joins the free list when libuv has finished closing it; a row without a
  * handle joins it now. */
 static void row_discard(MsIoReactor *reactor, MsIoRow *row) {
+    MS_PROBE("row_discard fd=%d", row->fd);
     row_stop(reactor, row);
+    MS_PROBE("row_stopped");
     reactor->rows[row->fd] = NULL;
     if (row->polled) {
         row->next_free = reactor->free_rows;
@@ -458,11 +461,13 @@ void ms_io_unwatch(int fd) {
     if (row == NULL) {
         return;
     }
+    PROBE("io_unwatch fd=%d keep=%d started=%d", fd, (int)row->keep, (int)row->started);
     if (row->keep) {
         row_stop(reactor, row);
     } else {
         row_discard(reactor, row);
     }
+    PROBE("io_unwatch done");
 }
 
 void ms_io_forget(int fd) {

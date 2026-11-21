@@ -4,6 +4,7 @@
  * list's tasks ask for. A woken task unlinks its own node in constant time, and only the descriptor it waited
  * on is looked at again. Timers are a heap with lazy deletion (timers.h).
  */
+#include "../io/probe.h"
 #include "array.h"
 #include "ms_rt/alloc.h"
 #include "scheduler.h"
@@ -144,11 +145,14 @@ bool ms_park_watch(MsSched *sched, MsTask *task, int fd, uint32_t events, bool *
 /* Removes a waiter node, leaving the poller watching what the other waiters still ask. */
 static void leave_node(MsSched *sched, int fd, MsNode node) {
     MsFdQueue *const queue = &sched->fd_queues[fd];
+    MS_PROBE("leave_node fd=%d", fd);
     unlink_node(sched, queue, node);
     node_free(sched, node);
     sched->fd_waiting--;
     if (queue->oldest == 0) {
+        MS_PROBE("unwatch fd=%d", fd);
         sched->poll.unwatch(fd);
+        MS_PROBE("unwatched fd=%d", fd);
     } else {
         ms_park_rearm(sched, fd);
     }
