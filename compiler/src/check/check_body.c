@@ -1297,7 +1297,9 @@ static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     if (e->kind == MS_E_NAME && ms_name_is(b->c->names, e->u.sym, "none") && ms_body_find_binding(b, e->u.sym) == MS_NONE) {
         return ms_body_record(b, e->id, expected);
     }
-    const MsTy ty = ms_body_expr(b, e, MS_TY_NONE);
+    // A number literal takes the sized type the Optional wraps (`UInt8?` holds `5`).
+    const bool literal = e->kind == MS_E_NUMBER || (e->kind == MS_E_UNARY && e->u.bin.left->kind == MS_E_NUMBER);
+    const MsTy ty = ms_body_expr(b, e, literal && body_is_sized_number(b, payload) ? payload : MS_TY_NONE);
     if (ty == MS_TY_NONE || ty == expected) {
         return ty;
     }
