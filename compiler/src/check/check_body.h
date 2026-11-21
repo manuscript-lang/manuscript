@@ -49,6 +49,7 @@ bool ms_body_reads_where_var_expected(const MsBody *b, MsTy actual, MsTy expecte
 bool ms_body_has_invalid(const MsBody *b, MsTy ty);
 /* `callee(args)` through the function-typed binding `binding`. */
 MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding);
+MsTy ms_body_call_function(MsBody *b, const MsExpr *e, MsTy fn);
 /* A module function named as a value; an anonymous function. */
 MsTy ms_body_function_name(MsBody *b, const MsExpr *e);
 MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected);
@@ -144,6 +145,8 @@ uint32_t ms_body_find_binding(const MsBody *b, MsSym name);
 /* Whether `ty` is an `Optional`, and its payload type (check_alt.c). */
 bool ms_body_optional_payload(const MsBody *b, MsTy ty, MsTy *payload);
 MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy ty);
+/* A `match` over an interface value: arms that name implementing types, then `_` (check_alt.c). */
+MsTy ms_body_match_contract(MsBody *b, const MsExpr *e, MsTy expected, MsTy ty);
 /* A `match` expression (check_match.c). */
 MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected);
 

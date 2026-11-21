@@ -139,11 +139,18 @@ fn measure(
 			args.append(e.clone())
 
 	// No build cache, so a repeat measures the build again.
-	options := RunOptions(timeout: seconds(limit), env: {"MS_CACHE": "off"})
+	options := RunOptions(
+		timeout: seconds(limit),
+		env: {"MS_CACHE": "off", "MS_TIMINGS": "1"},
+	)
 	started := monotonic()
 	ran := run(ms.clone(), args, options).wait()
 	took := (monotonic().difference(started).to_nanoseconds().to_float() / 1000000000.0)
 	if ran.is_error(): return -1.0
+
+	// The stage timings of a build, so a platform that grows names the stage.
+	for line in ran.get().stderr.decode_utf8().get_or("").split("\n"):
+		if line.starts_with("timing "): say(f"  {file} {line}\n")
 	if ran.get().exit_code != 0: return -1.0
 
 	return took

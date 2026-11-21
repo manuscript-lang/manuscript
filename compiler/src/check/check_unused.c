@@ -50,7 +50,9 @@ void ms_module_check_unused(MsCheck *c, MsModId module) {
         const MsStr name = ms_name(c->names, bindings->name[i]);
         const bool ignored = name.len != 0 && name.ptr[0] == '_';
         const bool checked = facts->body_checked[bindings->callable[i]];
-        if (checked && unused_is_local(bindings->role[i]) && !ignored && bindings->reads[i] == 0) {
+        // A payload name that shadows a case or a type is explained by the lint MSL106.
+        const bool shadows = bindings->conflict[i] != MS_CONFLICT_NONE;
+        if (checked && unused_is_local(bindings->role[i]) && !ignored && !shadows && bindings->reads[i] == 0) {
             unused_report(c, module, i);
         }
     }

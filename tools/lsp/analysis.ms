@@ -21,11 +21,11 @@ extern fn ms_tool_analysis_rows(analysis: Analysis) List[Int]
 extern fn ms_tool_analysis_names(analysis: Analysis) List[String]
 
 // How a name resolved: MsResolution in compiler/include/ms/facts.h.
-RES_BINDING := 1
-RES_SYMBOL := 2
-RES_FIELD := 3
-RES_CASE := 4
-RES_METHOD := 5
+export RES_BINDING := 1
+export RES_SYMBOL := 2
+export RES_FIELD := 3
+export RES_CASE := 4
+export RES_METHOD := 5
 
 // A node the checker resolved or typed. `target` is a binding, symbol, field, case or
 // method id by `kind`; types are source text, empty when unknown.
@@ -38,6 +38,9 @@ export type NodeFact:
 	// The symbol a call expression calls, -1 when it is not a call of a declared
 	// function.
 	callee: Int
+	// Byte offsets of the node's text.
+	start: Int
+	end: Int
 
 export type BindingFact:
 	name: String
@@ -111,6 +114,8 @@ export fn analyze_in(
 				text_of(names, rows[at + 3]),
 				text_of(names, rows[at + 4]),
 				rows[at + 5],
+				0,
+				0,
 			)
 		)
 		at += 6
@@ -148,6 +153,17 @@ export fn analyze_in(
 			)
 		)
 		at += 11
+
+	// Past the ownership rows (moved names, then resources) and the effect rows come
+	// the node spans.
+	at += rows[at] + 1
+	at += rows[at] * 3 + 1
+	at += rows[at + 1] * 4 + 2
+
+	for index in 0..facts.nodes.length():
+		facts.nodes[index].start = rows[at]
+		facts.nodes[index].end = rows[at + 1]
+		at += 2
 
 	return ok(facts)
 

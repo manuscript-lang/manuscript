@@ -41,8 +41,14 @@ typedef struct MsBindings {
     MsPos *pos;           /* where its name is written */
     uint8_t *flags;       /* MS_BIND_* */
     uint8_t *role;        /* MsBindRole */
+    uint8_t *conflict;    /* MsConflict: whether a payload name written in capitals names a type or a case */
+    MsTy *conflict_ty;    /* the type that owns the case, for MS_CONFLICT_CASE */
     uint32_t count;
 } MsBindings;
+/* A capitalised payload name that coincides with a name in scope still binds a fresh value, and the lint MSL106 says
+ * so. TYPE: it is a type name. CASE_ANY: it is a case of some visible enum, more than one. CASE: it is a case of
+ * `conflict_ty`. The Rust checker's `Info`. */
+typedef enum MsConflict { MS_CONFLICT_NONE, MS_CONFLICT_TYPE, MS_CONFLICT_CASE_ANY, MS_CONFLICT_CASE } MsConflict;
 /* MS_BIND_RESOURCE: set by the ownership walk when the binding's type must be closed, so leaving its scope calls `close`. */
 /* MS_BIND_FED: a read of the binding only computes its own next value (`total = total + 1`). */
 /* MS_BIND_BORROWS: set by the ownership walk when the binding is a reference into another binding (`y := x`,
@@ -92,6 +98,7 @@ typedef struct MsFacts {
     MsTy *type_ref_ty;    /* by type-reference node id: what a written type means */
     uint32_t *pattern_binding; /* by pattern node id: binding id, or MS_NONE */
     uint32_t *arm_case;   /* by match-arm node id: the case index the arm matches */
+    MsTy *arm_contract;   /* by match-arm node id: the type an arm of a match over an interface value names, else MS_TY_NONE */
     /* calls, by call-expression node id */
     uint32_t *call_callee;     /* symbol id of the called function, else MS_NONE */
     bool *const_use;           /* by name node: a module constant read, which evaluates its initializer */
