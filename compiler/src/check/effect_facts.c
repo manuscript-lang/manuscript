@@ -202,7 +202,7 @@ static void sites_expr(void *ctx, const MsExpr *e) {
         return;
     }
     const uint32_t row = s->facts->call_method[e->id];
-    if (row != MS_NONE && ms_effect_method_is_node(s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
+    if (row != MS_NONE && ms_effect_method_is_node(s->c, s->facts->methods, row) && s->facts->call_interface[e->id] == MS_TY_NONE) {
         const MsMethods *methods = s->facts->methods;
         const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
         if (methods->module[row] == s->project) {
