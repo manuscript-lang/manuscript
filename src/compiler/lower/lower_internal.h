@@ -26,6 +26,7 @@ typedef struct Lower {
   LowerTyMap types;            /* type (after substitution) -> MIR type */
   MsNames instance_keys;       /* instance key text -> dense id, the index into `instances` */
   LowerInstanceList instances;
+  MirIdList files; /* checker module index -> MIR file id, MIR_NONE until first used */
 } Lower;
 
 /* The type variables being replaced while one instance is lowered, and what replaces them. */
@@ -36,6 +37,15 @@ typedef struct LowerSubst {
 } LowerSubst;
 
 #define lower_fail(cx, ...) (ms_strbuild_printf((cx)->error, __VA_ARGS__), false)
+
+/* ---- instances and the driver (lower_func.c) ---- */
+
+/* The MIR function for symbol `symbol` instantiated with `args` (type arguments of the use, in the caller's
+ * terms; `caller` replaces the caller's variables in them). It is reserved at once and its body lowered later. */
+uint32_t lower_instance(Lower *cx, MsSymbolId symbol, const MsTy *args, uint32_t nargs, const LowerSubst *caller);
+
+/* The MIR file id of checker module `module`. */
+uint32_t lower_file(Lower *cx, uint32_t module);
 
 /* ---- types (lower_types.c) ---- */
 
