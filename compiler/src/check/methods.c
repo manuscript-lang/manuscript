@@ -110,17 +110,6 @@ static bool self_misplaced(const MsTyTable *t, MsTy signature) {
 
 /* ---- an operation's own type variables ---- */
 
-static bool scope_declares(const MsTypeScope *scope, MsSym name) {
-    for (; scope != NULL; scope = scope->parent) {
-        for (uint32_t i = 0; i < scope->len; i++) {
-            if (scope->names[i] == name) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 /* The variables `method` declares for itself, named `Interface/operation/T`. A name the interface
  * or the operation already has is reported, and still declared. */
 static MsTy *declare_operation_variables(MsResolver *r, MsTy contract, const MsMethod *method) {
@@ -131,7 +120,7 @@ static MsTy *declare_operation_variables(MsResolver *r, MsTy contract, const MsM
     const MsStr operation = ms_name(c->names, method->func.name);
     for (uint32_t i = 0; i < params->len; i++) {
         const MsStr name = ms_name(c->names, params->ptr[i]->name);
-        if (scope_declares(r->scope, params->ptr[i]->name)) {
+        if (ms_type_scope_has(r->scope, params->ptr[i]->name)) {
             report_type_error(r, params->ptr[i]->pos,
                               ms_arena_fmt(&c->arena,
                                            "type parameter %.*s shadows a type parameter of the receiver; choose a "

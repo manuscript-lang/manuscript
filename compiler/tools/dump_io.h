@@ -26,6 +26,23 @@ static inline size_t split_fields(char *line, char **fields, size_t max) {
     return n;
 }
 
+/* The source text with "\n" escapes turned back into newlines, and "\r" ones too when `carriage`. */
+static inline MsStr dump_unescape(MsArena *arena, const char *s, bool carriage) {
+    char *out = ms_arena_strndup(arena, s, strlen(s));
+    size_t n = 0;
+    for (size_t i = 0; s[i] != 0; i++) {
+        const bool escape = s[i] == '\\' && (s[i + 1] == 'n' || (carriage && s[i + 1] == 'r'));
+        if (escape) {
+            out[n++] = s[i + 1] == 'n' ? '\n' : '\r';
+            i++;
+        } else {
+            out[n++] = s[i];
+        }
+    }
+    out[n] = 0;
+    return (MsStr){out, (uint32_t)n};
+}
+
 /* Reads one line into `line` without its newline; false at end of input. */
 static inline bool read_line(MsBuf *line) {
     line->len = 0;
