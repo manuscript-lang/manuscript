@@ -20,6 +20,7 @@
 #include "ms/mir_builder.h"
 #include "ms/mir_opt.h"
 #include "ms/mir_pass.h"
+#include "opt/opt_build.h"
 
 enum { PB_SLOTS = 0, PB_INDEX = 8, PB_LEN = 16, PB_MASK = 40 };
 #define PB_LIVE INT64_MIN
@@ -44,34 +45,6 @@ static bool pb_shape(uint8_t role, PbShape *out) {
     }
 }
 
-static MirValue pb_add(MirBuilder *b, MirValue p, int64_t at) {
-    if (at == 0) {
-        return p;
-    }
-    const MirValue args[2] = {p, mir_b_iconst(b, at)};
-    return mir_b_emit(b, MOP_PtrAdd, args, 2, (MirImm){0}, MIR_PTR);
-}
-
-static MirValue pb_past(MirBuilder *b, MirValue p, MirValue by) {
-    const MirValue args[2] = {p, by};
-    return mir_b_emit(b, MOP_PtrAdd, args, 2, (MirImm){0}, MIR_PTR);
-}
-
-static MirValue pb_load(MirBuilder *b, MirValue p, int64_t at, MirTy ty) {
-    const MirValue addr = pb_add(b, p, at);
-    return mir_b_emit(b, MOP_Load, &addr, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
-}
-
-static MirValue pb_loadu(MirBuilder *b, MirValue p, int64_t width) {
-    return mir_b_emit(b, MOP_PtrLoadU, &p, 1, (MirImm){.tag = MI_INT, .i = width}, MIR_INT);
-}
-
-static MirValue pb_int(MirBuilder *b, MirOp op, MirValue x, int64_t y) {
-    return mir_b_binop(b, op, x, mir_b_iconst(b, y));
-}
-
-static MirValue pb_and(MirBuilder *b, MirValue x, MirValue y) { return mir_b_binop(b, MOP_And, x, y); }
-
 static MirValue pb_fold(MirBuilder *b, MirValue x, int64_t m) {
     const MirValue k = mir_b_iconst(b, m);
     return mir_b_binop(b, MOP_Xor, mir_b_binop(b, MOP_IMul, x, k), mir_b_binop(b, MOP_UMulHi, x, k));
@@ -88,14 +61,14 @@ static void pb_br_if(MirBuilder *b, MirValue cond, MirBlock then, MirBlock other
  * bytes or more is folded here, eight bytes at a time; the rare short text that is not inline calls
  * the runtime, which hashes it the same way. */
 static MirValue pb_string_hash(MirBuilder *b, MirModule *m, MirValue key, MirValue k) {
-    const MirValue w0 = pb_load(b, key, 0, MIR_INT), w1 = pb_load(b, key, 8, MIR_INT);
-    const MirValue tag = pb_int(b, MOP_Ushr, w1, 62);
+    const MirValue w0 = ob_load(b, key, 0, MIR_INT), w1 = ob_load(b, key, 8, MIR_INT);
+    const MirValue tag = ob_int(b, MOP_Ushr, w1, 62);
     const MirValue is_inline = mir_b_icmp(b, MCC_EQ, tag, mir_b_iconst(b, 1));
     const MirBlock shorter = mir_b_new_block(b), longer = mir_b_new_block(b), done = mir_b_new_block(b);
     const MirVar hash = mir_b_declare_var(b, MIR_INT, MM_BORROW);
     pb_br_if(b, is_inline, shorter, longer);
     mir_b_switch_to(b, longer);
-    const MirValue size = pb_int(b, MOP_And, w1, PB_LEN_MASK);
+    const MirValue size = ob_int(b, MOP_And, w1, PB_LEN_MASK);
     const MirValue wide = mir_b_icmp(b, MCC_GE, size, mir_b_iconst(b, 16));
     const MirBlock fold_in = mir_b_new_block(b), call = mir_b_new_block(b);
     const MirBlock header = mir_b_new_block(b), body = mir_b_new_block(b), tail = mir_b_new_block(b);
@@ -106,31 +79,31 @@ static MirValue pb_string_hash(MirBuilder *b, MirModule *m, MirValue key, MirVal
     mir_b_def_var(b, hash, mir_b_call_rt(b, ext, &k, 1));
     mir_b_br(b, done, NULL, 0);
     mir_b_switch_to(b, fold_in);
-    const MirValue data = pb_load(b, key, 0, MIR_PTR);
-    const MirValue h0 = pb_int(b, MOP_Xor, pb_int(b, MOP_IMul, size, PB_K1), PB_K0);
+    const MirValue data = ob_load(b, key, 0, MIR_PTR);
+    const MirValue h0 = ob_int(b, MOP_Xor, ob_int(b, MOP_IMul, size, PB_K1), PB_K0);
     const MirVar acc = mir_b_declare_var(b, MIR_INT, MM_BORROW), at = mir_b_declare_var(b, MIR_INT, MM_BORROW);
     mir_b_def_var(b, acc, h0);
     mir_b_def_var(b, at, mir_b_iconst(b, 0));
     mir_b_br(b, header, NULL, 0);
     mir_b_switch_to(b, header);
     const MirValue i = mir_b_use_var(b, at);
-    const MirValue end = pb_int(b, MOP_IAdd, i, 8);
+    const MirValue end = ob_int(b, MOP_IAdd, i, 8);
     pb_br_if(b, mir_b_icmp(b, MCC_LE, end, size), body, tail);
     mir_b_switch_to(b, body);
-    const MirValue word = pb_loadu(b, pb_past(b, data, i), 8);
+    const MirValue word = ob_loadu(b, ob_past(b, data, i), 8);
     mir_b_def_var(b, acc, pb_fold(b, mir_b_binop(b, MOP_Xor, mir_b_use_var(b, acc), word), PB_K1));
     mir_b_def_var(b, at, end);
     mir_b_br(b, header, NULL, 0);
     mir_b_seal_block(b, header);
     mir_b_switch_to(b, tail);
-    const MirValue last = pb_loadu(b, pb_past(b, data, pb_int(b, MOP_ISub, size, 8)), 8);
+    const MirValue last = ob_loadu(b, ob_past(b, data, ob_int(b, MOP_ISub, size, 8)), 8);
     mir_b_def_var(b, hash, pb_fold(b, mir_b_binop(b, MOP_Xor, mir_b_use_var(b, acc), last), PB_K0));
     mir_b_br(b, done, NULL, 0);
     mir_b_switch_to(b, shorter);
     /* Length, and the bytes past the eighth (the string keeps the rest of its words zero). */
-    const MirValue n = pb_int(b, MOP_And, pb_int(b, MOP_Ushr, w1, 56), 15);
-    const MirValue high = pb_int(b, MOP_And, w1, (INT64_C(1) << 56) - 1);
-    const MirValue s0 = pb_int(b, MOP_Xor, pb_int(b, MOP_IMul, n, PB_K1), PB_K0);
+    const MirValue n = ob_int(b, MOP_And, ob_int(b, MOP_Ushr, w1, 56), 15);
+    const MirValue high = ob_int(b, MOP_And, w1, (INT64_C(1) << 56) - 1);
+    const MirValue s0 = ob_int(b, MOP_Xor, ob_int(b, MOP_IMul, n, PB_K1), PB_K0);
     const MirValue h1 = pb_fold(b, mir_b_binop(b, MOP_Xor, s0, w0), PB_K1);
     mir_b_def_var(b, hash, pb_fold(b, mir_b_binop(b, MOP_Xor, h1, high), PB_K0));
     mir_b_br(b, done, NULL, 0);
@@ -147,43 +120,43 @@ static MirValue pb_text_matches(MirBuilder *b, MirModule *m, MirValue slot, MirV
     const MirBlock words = mir_b_new_block(b), compare = mir_b_new_block(b), matched = mir_b_new_block(b);
     const MirVar verdict = mir_b_declare_var(b, MIR_BOOL, MM_BORROW);
     mir_b_def_var(b, verdict, mir_b_bconst(b, false));
-    const MirValue stored = pb_load(b, slot, 0, MIR_INT);
+    const MirValue stored = ob_load(b, slot, 0, MIR_INT);
     pb_br_if(b, mir_b_icmp(b, MCC_EQ, stored, h), words, matched);
     mir_b_switch_to(b, words);
-    const MirValue e0 = mir_b_icmp(b, MCC_EQ, pb_load(b, slot, 8, MIR_INT), pb_load(b, key, 0, MIR_INT));
-    const MirValue e1 = mir_b_icmp(b, MCC_EQ, pb_load(b, slot, 16, MIR_INT), pb_load(b, key, 8, MIR_INT));
+    const MirValue e0 = mir_b_icmp(b, MCC_EQ, ob_load(b, slot, 8, MIR_INT), ob_load(b, key, 0, MIR_INT));
+    const MirValue e1 = mir_b_icmp(b, MCC_EQ, ob_load(b, slot, 16, MIR_INT), ob_load(b, key, 8, MIR_INT));
     mir_b_def_var(b, verdict, mir_b_bconst(b, true));
-    pb_br_if(b, pb_and(b, e0, e1), matched, compare);
+    pb_br_if(b, ob_and(b, e0, e1), matched, compare);
     mir_b_switch_to(b, compare);
-    const MirValue sw = pb_load(b, slot, 16, MIR_INT), kw = pb_load(b, key, 8, MIR_INT);
-    const MirValue sn = pb_int(b, MOP_And, sw, PB_LEN_MASK), kn = pb_int(b, MOP_And, kw, PB_LEN_MASK);
+    const MirValue sw = ob_load(b, slot, 16, MIR_INT), kw = ob_load(b, key, 8, MIR_INT);
+    const MirValue sn = ob_int(b, MOP_And, sw, PB_LEN_MASK), kn = ob_int(b, MOP_And, kw, PB_LEN_MASK);
     const MirValue one = mir_b_iconst(b, 1);
-    const MirValue sf = mir_b_icmp(b, MCC_NE, pb_int(b, MOP_Ushr, sw, 62), one);
-    const MirValue kf = mir_b_icmp(b, MCC_NE, pb_int(b, MOP_Ushr, kw, 62), one);
+    const MirValue sf = mir_b_icmp(b, MCC_NE, ob_int(b, MOP_Ushr, sw, 62), one);
+    const MirValue kf = mir_b_icmp(b, MCC_NE, ob_int(b, MOP_Ushr, kw, 62), one);
     const MirValue conds[3] = {mir_b_icmp(b, MCC_EQ, sn, kn), mir_b_icmp(b, MCC_GE, sn, mir_b_iconst(b, 16)),
                                mir_b_icmp(b, MCC_LE, sn, mir_b_iconst(b, 32))};
-    MirValue wide = pb_and(b, sf, kf);
+    MirValue wide = ob_and(b, sf, kf);
     for (uint32_t i = 0; i < 3; i++) {
-        wide = pb_and(b, wide, conds[i]);
+        wide = ob_and(b, wide, conds[i]);
     }
     const MirBlock blocks = mir_b_new_block(b), general = mir_b_new_block(b);
     pb_br_if(b, wide, blocks, general);
     mir_b_switch_to(b, blocks);
-    const MirValue sp = pb_load(b, slot, 8, MIR_PTR), kp = pb_load(b, key, 0, MIR_PTR);
-    const MirValue offsets[4] = {MIR_NONE, mir_b_iconst(b, 8), pb_int(b, MOP_ISub, sn, 16),
-                                 pb_int(b, MOP_ISub, sn, 8)};
+    const MirValue sp = ob_load(b, slot, 8, MIR_PTR), kp = ob_load(b, key, 0, MIR_PTR);
+    const MirValue offsets[4] = {MIR_NONE, mir_b_iconst(b, 8), ob_int(b, MOP_ISub, sn, 16),
+                                 ob_int(b, MOP_ISub, sn, 8)};
     MirValue all = mir_b_bconst(b, true);
     for (uint32_t i = 0; i < 4; i++) {
-        const MirValue x = i == 0 ? sp : pb_past(b, sp, offsets[i]);
-        const MirValue y = i == 0 ? kp : pb_past(b, kp, offsets[i]);
-        all = pb_and(b, all, mir_b_icmp(b, MCC_EQ, pb_loadu(b, x, 8), pb_loadu(b, y, 8)));
+        const MirValue x = i == 0 ? sp : ob_past(b, sp, offsets[i]);
+        const MirValue y = i == 0 ? kp : ob_past(b, kp, offsets[i]);
+        all = ob_and(b, all, mir_b_icmp(b, MCC_EQ, ob_loadu(b, x, 8), ob_loadu(b, y, 8)));
     }
     mir_b_def_var(b, verdict, all);
     mir_b_br(b, matched, NULL, 0);
     mir_b_switch_to(b, general);
     const MirTy two_strs[2] = {MIR_STR, MIR_STR};
     const uint32_t eq = mir_extern_get(m, "msrt_string_eq", two_strs, 2, MIR_BOOL, true, MR_STRING_EQ);
-    const MirValue pair[2] = {pb_load(b, slot, 8, MIR_STR), k};
+    const MirValue pair[2] = {ob_load(b, slot, 8, MIR_STR), k};
     mir_b_def_var(b, verdict, mir_b_call_rt(b, eq, pair, 2));
     mir_b_br(b, matched, NULL, 0);
     mir_b_seal_block(b, matched);
@@ -195,22 +168,22 @@ static MirValue pb_text_matches(MirBuilder *b, MirModule *m, MirValue slot, MirV
 static MirValue pb_find(MirBuilder *b, MirModule *m, const PbShape *shape, MirValue map, MirValue key) {
     const MirValue null = mir_b_emit(b, MOP_PtrNull, NULL, 0, (MirImm){0}, MIR_PTR);
     const MirBlock go = mir_b_new_block(b), hit = mir_b_new_block(b), miss = mir_b_new_block(b);
-    const MirValue len = pb_load(b, map, PB_LEN, MIR_INT);
+    const MirValue len = ob_load(b, map, PB_LEN, MIR_INT);
     pb_br_if(b, mir_b_icmp(b, MCC_EQ, len, mir_b_iconst(b, 0)), miss, go);
     mir_b_switch_to(b, go);
-    const MirValue k = pb_load(b, key, 0, shape->text ? MIR_STR : MIR_INT);
+    const MirValue k = ob_load(b, key, 0, shape->text ? MIR_STR : MIR_INT);
     MirValue h;
     if (shape->text) {
         h = pb_string_hash(b, m, key, k);
     } else {
-        const MirValue x = pb_int(b, MOP_Xor, k, PB_K0);
-        h = mir_b_binop(b, MOP_Xor, pb_int(b, MOP_IMul, x, PB_K1), mir_b_binop(b, MOP_UMulHi, x, mir_b_iconst(b, PB_K1)));
+        const MirValue x = ob_int(b, MOP_Xor, k, PB_K0);
+        h = mir_b_binop(b, MOP_Xor, ob_int(b, MOP_IMul, x, PB_K1), mir_b_binop(b, MOP_UMulHi, x, mir_b_iconst(b, PB_K1)));
     }
-    h = pb_int(b, MOP_Or, h, PB_LIVE);
-    const MirValue index = pb_load(b, map, PB_INDEX, MIR_PTR);
-    const MirValue slots = pb_load(b, map, PB_SLOTS, MIR_PTR);
-    const MirValue mask = pb_load(b, map, PB_MASK, MIR_INT);
-    const MirValue start = pb_and(b, mir_b_binop(b, MOP_Xor, h, pb_int(b, MOP_Ushr, h, 32)), mask);
+    h = ob_int(b, MOP_Or, h, PB_LIVE);
+    const MirValue index = ob_load(b, map, PB_INDEX, MIR_PTR);
+    const MirValue slots = ob_load(b, map, PB_SLOTS, MIR_PTR);
+    const MirValue mask = ob_load(b, map, PB_MASK, MIR_INT);
+    const MirValue start = ob_and(b, mir_b_binop(b, MOP_Xor, h, ob_int(b, MOP_Ushr, h, 32)), mask);
     const MirVar pos = mir_b_declare_var(b, MIR_INT, MM_BORROW);
     mir_b_def_var(b, pos, start);
     const MirBlock header = mir_b_new_block(b), tagged = mir_b_new_block(b), check = mir_b_new_block(b);
@@ -218,24 +191,24 @@ static MirValue pb_find(MirBuilder *b, MirModule *m, const PbShape *shape, MirVa
     mir_b_br(b, header, NULL, 0);
     mir_b_switch_to(b, header);
     const MirValue at = mir_b_use_var(b, pos);
-    const MirValue entry = mir_b_emit(b, MOP_Load, (MirValue[]){pb_past(b, index, pb_int(b, MOP_Shl, at, 3))}, 1,
+    const MirValue entry = mir_b_emit(b, MOP_Load, (MirValue[]){ob_past(b, index, ob_int(b, MOP_Shl, at, 3))}, 1,
                                       (MirImm){.tag = MI_TY, .a = MIR_INT}, MIR_INT);
     pb_br_if(b, mir_b_icmp(b, MCC_EQ, entry, mir_b_iconst(b, 0)), miss, tagged);
     mir_b_switch_to(b, tagged);
     const MirValue diff = mir_b_binop(b, MOP_Xor, entry, h);
-    pb_br_if(b, mir_b_icmp(b, MCC_EQ, pb_int(b, MOP_Ushr, diff, 32), mir_b_iconst(b, 0)), check, next);
+    pb_br_if(b, mir_b_icmp(b, MCC_EQ, ob_int(b, MOP_Ushr, diff, 32), mir_b_iconst(b, 0)), check, next);
     mir_b_switch_to(b, check);
-    const MirValue number = pb_int(b, MOP_ISub, pb_int(b, MOP_And, entry, 0xffffffff), 1);
-    const MirValue slot = pb_past(b, slots, pb_int(b, MOP_IMul, number, shape->stride));
+    const MirValue number = ob_int(b, MOP_ISub, ob_int(b, MOP_And, entry, 0xffffffff), 1);
+    const MirValue slot = ob_past(b, slots, ob_int(b, MOP_IMul, number, shape->stride));
     MirValue found;
     if (shape->text) {
         found = pb_text_matches(b, m, slot, key, k, h);
     } else {
-        found = mir_b_icmp(b, MCC_EQ, pb_load(b, slot, 8, MIR_INT), k);
+        found = mir_b_icmp(b, MCC_EQ, ob_load(b, slot, 8, MIR_INT), k);
     }
     pb_br_if(b, found, hit, next);
     mir_b_switch_to(b, next);
-    mir_b_def_var(b, pos, pb_and(b, pb_int(b, MOP_IAdd, at, 1), mask));
+    mir_b_def_var(b, pos, ob_and(b, ob_int(b, MOP_IAdd, at, 1), mask));
     mir_b_br(b, header, NULL, 0);
     mir_b_seal_block(b, header);
     const MirVar out = mir_b_declare_var(b, MIR_PTR, MM_BORROW);
@@ -244,7 +217,7 @@ static MirValue pb_find(MirBuilder *b, MirModule *m, const PbShape *shape, MirVa
     mir_b_def_var(b, out, null);
     mir_b_br(b, done, NULL, 0);
     mir_b_switch_to(b, hit);
-    mir_b_def_var(b, out, pb_add(b, slot, shape->value_at));
+    mir_b_def_var(b, out, ob_add(b, slot, shape->value_at));
     mir_b_br(b, done, NULL, 0);
     mir_b_seal_block(b, done);
     mir_b_switch_to(b, done);
@@ -269,7 +242,7 @@ static MirValue pb_answer(MirBuilder *b, PbAnswer answer, MirValue p, MirValue o
     mir_b_def_var(b, verdict, mir_b_bconst(b, false));
     pb_br_if(b, missing, done, copy);
     mir_b_switch_to(b, copy);
-    const MirValue stored[2] = {out, pb_load(b, p, 0, MIR_INT)};
+    const MirValue stored[2] = {out, ob_load(b, p, 0, MIR_INT)};
     (void)mir_b_emit(b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
     mir_b_def_var(b, verdict, mir_b_bconst(b, true));
     mir_b_br(b, done, NULL, 0);
