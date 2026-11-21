@@ -279,6 +279,12 @@ static bool ln_value_param(Lb *lb, LnCall *call, MsRtParam kind, const MirValue 
     if (kind == MS_RT_RECORD && (given == MIR_NONE || mir_ty_data(lb->m, given)->kind != MK_TYPE)) {
         return false;
     }
+    if (kind == MS_RT_ALT) {
+        const MirTyKind held = given == MIR_NONE ? MK_INT : mir_ty_data(lb->m, given)->kind;
+        if (held != MK_OPT && held != MK_ALT) {
+            return false;
+        }
+    }
     if (bytes) {
         call->element = MIR_UINT8;
     } else if (list) {
@@ -338,7 +344,7 @@ static uint32_t ln_without_descriptors(LnCall *call) {
 static bool ln_emit_view(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, MirValue *out) {
     const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = result_ty}, MIR_PTR);
     ln_push(call, MS_RT_OUT_STR, slot, MIR_PTR);
-    const uint32_t ext = lb_runtime_extern(lb, fn->symbol, call->types, call->count, MIR_VOID, MR_NONE, false);
+    const uint32_t ext = lb_runtime_extern(lb, fn->symbol, call->types, call->count, MIR_VOID, MR_BORROWS_ARGUMENT, false);
     (void)mir_b_call_rt(&lb->b, ext, call->operands, call->count);
     *out = lb_load(lb, slot, result_ty);
     return true;
@@ -486,6 +492,18 @@ static uint32_t ln_argument_kinds(const MsRtFn *fn, MsRtParam *kinds) {
     return count;
 }
 
+/* A call of `fn`: one that reports failure by a status or absence by a flag (`-> u8`) becomes the `Result` or Optional
+ * its result type says, as a call of a declared `extern fn` does (lower_extern.c); any other is a plain call. */
+static LbVal ln_call_reporting(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty) {
+    if (ls_reports_status(lb, fn, result_ty)) {
+        return ls_call(lb, fn, args, nargs, result_ty);
+    }
+    if (ls_reports_found(lb, fn, result_ty)) {
+        return ls_found_call(lb, fn, args, nargs, result_ty);
+    }
+    return lb_native_call(lb, fn, args, nargs, result_ty);
+}
+
 /* A method call the runtime function `fn` implements: evaluates the receiver and arguments, then calls. */
 static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
     const MsExpr *callee = e->u.call.callee;
@@ -541,9 +559,7 @@ static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
         return LB_FAIL;
     }
     lb->twin_ok = lb->iterable == e;
-    // A native that reports "found" by a Bool and writes the value through an out parameter yields an Optional.
-    const LbVal call = !by_reference && ls_reports_found(lb, fn, result_ty) ? ls_found_call(lb, fn, args, nargs + 1, result_ty)
-                                                                           : lb_native_call(lb, fn, args, nargs + 1, result_ty);
+    const LbVal call = ln_call_reporting(lb, fn, args, nargs + 1, result_ty);
     lb->twin_ok = false;
     if (!lb->ok) {
         return LB_FAIL;
@@ -553,7 +569,11 @@ static LbVal ln_method_call(Lb *lb, const MsExpr *e, const MsRtFn *fn) {
         return (LbVal){mir_b_unit(&lb->b), false};
     }
     if (first.owned) {
-        lb_hold_temp(lb, first.v); // a temporary receiver lives to the end of the statement
+        if (fn->params[0] == MS_RT_ALT) {
+            lb_drop(lb, first.v); // an Optional or Result is tested in place, then released at once, as Rust does
+        } else {
+            lb_hold_temp(lb, first.v); // a temporary receiver lives to the end of the statement
+        }
     }
     return call;
 }
@@ -567,8 +587,5 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
         return item;
     }
     const MsRtFn *fn = lb_native_function(lb, receiver_ty, name);
-    if (fn == NULL) {
-        fn = lb_bytes_instruction(lb, receiver_ty, name);
-    }
     return fn == NULL ? ln_method_without_function(lb, e, receiver_ty) : ln_method_call(lb, e, fn);
 }

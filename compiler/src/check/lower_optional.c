@@ -1,27 +1,7 @@
-/* The methods of an Optional and of Bytes that are instructions rather than a runtime call: an Optional's presence
- * and its payload or a default, and the list operations Bytes shares (crates/ms-lower native/optional.rs
- * `optional_method`, native/method.rs). */
-#include <stdio.h>
-#include <string.h>
+/* Methods that are instructions and that no runtime declaration describes: an Optional's payload or a default, and
+ * `clone` (crates/ms-lower native/optional.rs `optional_method`, native/method.rs). */
 
 #include "ms/lower_internal.h"
-#include "ms/rt_ops.h"
-
-/* `value.is_some()` or `value.is_none()`: only reads, so an owned receiver is released at once. */
-static LbVal lop_presence(Lb *lb, const MsExpr *receiver, bool is_none) {
-    const LbVal value = lb_expr(lb, receiver);
-    if (!lb->ok) {
-        return LB_FAIL;
-    }
-    MirValue present = mir_b_emit(&lb->b, MOP_OptIsSome, &value.v, 1, (MirImm){0}, MIR_BOOL);
-    if (is_none) {
-        present = mir_b_emit(&lb->b, MOP_Not, &present, 1, (MirImm){0}, MIR_BOOL);
-    }
-    if (value.owned) {
-        lb_drop(lb, value.v);
-    }
-    return (LbVal){present, false};
-}
 
 /* The payload of `optional` as a value the caller owns: an owned Optional hands it over, a borrowed one is copied. */
 static MirValue lop_payload(Lb *lb, LbVal optional, MirTy payload_ty) {
@@ -89,34 +69,12 @@ bool lb_optional_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out) {
         return false;
     }
     const MsExpr *callee = e->u.call.callee;
-    const MsExpr *receiver = callee->u.member.left;
-    const MsSym name = callee->u.member.name;
-    const uint32_t nargs = e->u.call.args.len;
-    const bool is_none = ms_name_is(lb->c->names, name, "is_none");
-    if (nargs == 0 && (is_none || ms_name_is(lb->c->names, name, "is_some"))) {
-        *out = lop_presence(lb, receiver, is_none);
-        return true;
+    if (e->u.call.args.len != 1 || !ms_name_is(lb->c->names, callee->u.member.name, "get_or")) {
+        return false;
     }
-    if (nargs == 1 && ms_name_is(lb->c->names, name, "get_or")) {
-        *out = lop_get_or(lb, receiver, e->u.call.args.ptr[0].value, mir_ty_data(lb->m, optional_ty)->elem);
-        return true;
-    }
-    return false;
-}
-
-const MsRtFn *lb_bytes_instruction(Lb *lb, MsTy receiver_ty, MsSym method) {
-    if (lb_mir_ty(lb, receiver_ty) != MIR_BYTES) {
-        return NULL;
-    }
-    const MsStr name = ms_name(lb->c->names, method);
-    char symbol[96];
-    const int length = snprintf(symbol, sizeof symbol, "msrt_list_%.*s", (int)name.len, name.ptr);
-    if (length < 0 || (size_t)length >= sizeof symbol) {
-        return NULL;
-    }
-    const MsRtFn *fn = ms_rt_fn_find(symbol, (size_t)length);
-    const bool is_instructions = fn != NULL && fn->nparams == 1 && (fn->op[0] != '\0' || fn->seq[0] != '\0');
-    return is_instructions ? fn : NULL;
+    const MirTy payload_ty = mir_ty_data(lb->m, optional_ty)->elem;
+    *out = lop_get_or(lb, callee->u.member.left, e->u.call.args.ptr[0].value, payload_ty);
+    return true;
 }
 
 bool lb_clone_method(Lb *lb, const MsExpr *e, LbVal *out) {

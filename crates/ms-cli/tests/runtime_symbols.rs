@@ -71,7 +71,7 @@ fn exported() -> BTreeSet<String> {
 fn catalogued() -> BTreeSet<String> {
     TABLE
         .lines()
-        .filter(|l| runtime_name(l))
+        .filter(|l| runtime_name(l) && !l.contains(" @inline")) // `@inline`: lowered as MIR, no C body to export
         .filter_map(|l| l.split('(').next())
         .map(str::to_string)
         .chain(data_exports())

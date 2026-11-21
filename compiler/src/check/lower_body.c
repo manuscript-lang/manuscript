@@ -923,6 +923,9 @@ LbVal lb_expr(Lb *lb, const MsExpr *e) {
     if (value.owned && !owns) {
         return LB_UNSUPPORTED(lb);
     }
+    if (owns && !value.owned && lb->b.f.ret_borrowed) {
+        return LB_UNSUPPORTED(lb); // the result is a reference into the arguments: a copy would leak, a view has no MIR yet
+    }
     if (owns && !value.owned) {
         value = (LbVal){lb_copy(lb, value.v), true}; // an owning Optional holds its own copy of a borrowed payload
     }
