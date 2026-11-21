@@ -63,6 +63,11 @@ uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out
  * reader does not cover the project (a workspace, a manifest form it lacks). */
 uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out);
 
+/* The same for a workspace: every member's dependencies resolve into one ms.lock at `lock_root`. `members` are
+ * `name\tmanifest` rows, in member order (tools/ms/workspace.ms reads them). */
+uint8_t ms_tool_install_workspace(const ms_str *lock_root, const ms_list *members, const ms_list *update, uint8_t locked, uint8_t frozen,
+                                  ms_list *out, ms_str *message_out);
+
 /* ---- syntax trees ---- */
 
 /* A parsed module, kept in C. `extern type Tree` on the Manuscript side. A parse that fails still

@@ -223,6 +223,10 @@ static void body_report(MsBody *b, MsPos pos, MsStr message) {
     MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
 }
 
+void ms_body_report(MsBody *b, MsPos pos, MsStr message) {
+    body_report(b, pos, message);
+}
+
 static MsStr body_show(MsBody *b, MsTy ty);
 
 MsTy ms_body_record(MsBody *b, uint32_t node, MsTy ty) {
@@ -776,6 +780,18 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
     return body_is_numeric(b, operand_ty) ? operand_ty : ms_body_unsupported(b);
 }
 
+/* A field's declared type at the type arguments of the record that holds it. */
+static MsTy body_field_at(MsBody *b, MsTy record, MsTy declared) {
+    uint32_t nvars = 0;
+    const MsTy *vars = ms_sym_vars(b->c, b->c->tys.def[record] - 1, &nvars);
+    const uint32_t count = b->c->tys.nargs[record];
+    if (vars == NULL || count == 0 || nvars < count) {
+        return declared;
+    }
+    const MsTySubst subst = {.vars = vars, .args = ms_ty_args(&b->c->tys, record), .count = count};
+    return ms_ty_subst(&b->c->tys, &b->c->arena, declared, &subst);
+}
+
 /* `local.field` where the local holds a record this module declares and the field is a Copy
  * primitive (Int, Float, Bool): the field's type. Anything else a member can be (a method, a case, a module path)
  * is not checked yet. */
@@ -806,14 +822,14 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
         if (def->fields[i].name != e->u.member.name) {
             continue;
         }
-        const MsTy field = def->fields[i].ty;
+        const MsTy field = body_field_at(b, record, def->fields[i].ty);
         const bool path = use == MEMBER_RECEIVER && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
-        if (!path && use != MEMBER_STORE && (!body_is_value_type(b, field) || field == b->string_ty)) {
-            break; /* reading a String field borrows or moves it out of its holder */
+        if (!path && use != MEMBER_STORE && !body_is_admitted(b, field)) {
+            break;
         }
         b->facts->res_kind[e->id] = MS_RES_FIELD;
         b->facts->res_ref[e->id] = i;
-        return def->fields[i].ty;
+        return field;
     }
     return ms_body_unsupported(b);
 }

@@ -4,12 +4,11 @@
 //
 // The entity keys, kinds and lines must be equal. Then each field in FIELDS is
 // compared; a field joins FIELDS when the C checker's column for it exists. effects,
-// reach and permits are compared only for entities the C checker marks effects_known.
-// Not compared yet, and printed empty by the C writer: calls (the effect scan misses
-// implicit close calls), external, error, scopes, result_ownership, passing modes,
-// refs, `move` receivers (checker facts), flows. Imports are compared per file. The
-// process fails when anything differs, and the output counts the entities and fields
-// compared so a silent skip shows.
+// reach, permits and calls are compared only for entities the C checker marks
+// effects_known. Not compared yet, and printed empty by the C writer: external, scopes,
+// result_ownership, passing modes, refs, `move` receivers (checker facts), flows.
+// Imports are compared per file. The process fails when anything differs, and the
+// output counts the entities and fields compared so a silent skip shows.
 import (
 	parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
@@ -44,11 +43,15 @@ fn field_diff(field: String, want: Fact, got: Fact) String:
 	// The C writer types only functions; the other kinds print an empty type and error.
 	if field == "ty" and want.kind == "fn" and want.ty != got.ty: return f"ty {want.ty} != {got.ty}"
 	if field == "error" and want.kind == "fn" and want.error != got.error: return f"error {want.error} != {got.error}"
+	if field == "label" and want.label != got.label: return f"label {want.label} != {got.label}"
+	if field == "first" and want.first != got.first: return f"first {want.first} != {got.first}"
+	if field == "last" and want.last != got.last: return f"last {want.last} != {got.last}"
 	if field == "exported" and want.exported != got.exported: return f"exported {want.exported} != {got.exported}"
 	if not got.effects_known: return ""
 
 	// The C checker leaves these empty when it cannot see all of what the entity calls.
 	if field == "effects" and want.effects != got.effects: return f"effects {want.effects} != {got.effects}"
+	if field == "calls" and want.calls != got.calls: return f"calls {want.calls} != {got.calls}"
 	if field == "reach" and want.reach != got.reach: return f"reach {want.reach} != {got.reach}"
 	if field == "permits" and want.permits != got.permits: return f"permits {want.permits} != {got.permits}"
 

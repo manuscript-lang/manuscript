@@ -102,24 +102,39 @@ typedef struct MsProject {
     const char *entry;         /* canonical entry file, "" for a library */
     const char *configuration; /* the manifest text as read */
     MsAlias *aliases;          /* sorted by name */
-    uint32_t alias_count;
     MsAlias *embed;            /* [embed]: name and canonical directory */
-    uint32_t embed_count;
     MsDependency *dependencies; /* [dependencies] with a url */
-    uint32_t dependency_count;
     MsAlias *path_dependencies; /* [dependencies] written { path = "../member" }: canonical directory */
-    uint32_t path_dependency_count;
     MsEffectRule *allowed_effects; /* [effects] */
-    uint32_t allowed_effect_count;
     const char *const *effects; /* [project] effects */
+    const char *const *members; /* [workspace] members, as written */
+    MsAlias *deps;             /* attached: each dependency name and the canonical source directory of its package */
+    struct MsPackage *packages; /* attached: every fetched package this project reaches, sorted by key; empty in a package */
+    MsVersion version;         /* [project] version, when has_version */
+    uint32_t alias_count;
+    uint32_t embed_count;
+    uint32_t dependency_count;
+    uint32_t path_dependency_count;
+    uint32_t allowed_effect_count;
     uint32_t effect_count;
-    bool is_workspace;          /* a [workspace] table is present */
-    const char *const *members; /* its members, as written */
     uint32_t member_count;
-    bool has_version;           /* [project] version */
-    MsVersion version;
+    uint32_t dep_count;
+    uint32_t package_count;
     MsPos location;            /* the [project] header */
+    bool is_workspace;         /* a [workspace] table is present */
+    bool has_version;          /* [project] version */
 } MsProject;
+
+/* A fetched package a project can import from (project/attach.c). */
+typedef struct MsPackage {
+    const char *key;   /* the name diagnostics use: `@github.com/acme/wire@v1.4.2` */
+    const char *spec;  /* the manifest value the lock pinned, `url#tag` */
+    const char *root;  /* canonical cache directory holding the files */
+    MsProject project; /* its manifest, with its own dependencies wired */
+    const char *const *files; /* the locked files by `/` path, sorted */
+    const char *const *hashes; /* the expected SHA-256 of each */
+    uint32_t file_count;
+} MsPackage;
 
 /* One `[dependencies]` entry as `alias\turl\tkind\treference` (kind tag, sha or version; the reference is the tag, the
  * commit or the requirement as written), the row ms_tool_dependencies returns. */
@@ -138,6 +153,22 @@ const char *ms_embed_module_path(MsArena *a, const char *root, const char *name)
 /* The source of that module for the directory `root` (which holds the files): every file as Base64 text. A symbolic
  * link, names that differ only by letter case, a file over 16 MiB or more than 64 MiB in all is an error. */
 MS_NODISCARD bool ms_embed_generate(MsArena *a, const char *name, const char *root, const char **source, MsProjectError *err);
+
+/* ---- packages (project/attach.c) ---- */
+
+/* Resolves every `[dependencies]` url of `p` through its ms.lock and the package cache, recursively, and fills
+ * `deps` and `packages`. A project with a path dependency or inside a workspace fails as MS_PERR_UNSUPPORTED. */
+MS_NODISCARD bool ms_project_attach(MsArena *a, MsProject *p, MsProjectError *err);
+/* The fetched package that holds `path` (the longest matching root), or NULL. */
+const MsPackage *ms_project_package_of(const MsProject *p, const char *path);
+/* The manifest whose aliases and dependencies apply to imports written in `importer`. */
+const MsProject *ms_project_scope(const MsProject *p, const char *importer);
+/* The directory imports from `importer` that name `target` may not leave. */
+const char *ms_project_confinement_root(const MsProject *p, const char *importer, const char *path, const char *target);
+/* The name diagnostics use for the canonical file `canonical`: its path from the project root, or `@package/path`. */
+MS_NODISCARD bool ms_project_logical(MsArena *a, const MsProject *p, const char *canonical, const char **out, MsProjectError *err);
+/* Checks the bytes read from the canonical file `canonical` of a fetched package against the locked index. */
+MS_NODISCARD bool ms_package_verify_file(MsArena *a, const MsPackage *package, const char *canonical, const void *bytes, size_t length, MsProjectError *err);
 
 /* ---- discovery (project/discover.c) ---- */
 
@@ -188,6 +219,14 @@ typedef struct MsGraphModule {
     const int32_t *targets;
 } MsGraphModule;
 
+/* A fetched package the graph reaches: the checker lets it use only its declared effects and no native declarations. */
+typedef struct MsGraphPackage {
+    const char *prefix; /* `@github.com/acme/wire@v1.4.2/`, which starts the logical path of each of its modules */
+    const char *spec;
+    const char *const *effects;
+    uint32_t effect_count;
+} MsGraphPackage;
+
 typedef struct MsGraph {
     MsGraphModule *modules; /* dependency order; empty when a strict load failed */
     uint32_t count;
@@ -199,6 +238,8 @@ typedef struct MsGraph {
     const char *configuration;
     const char *manifest_file; /* where [project] is declared, for diagnostics; NULL without a manifest */
     MsPos manifest_pos;
+    MsGraphPackage *packages; /* every package reached, however deep; empty without [dependencies] */
+    uint32_t package_count;
 } MsGraph;
 
 /* Loads the module `filename` (a .ms file) with everything it imports, as the Rust driver's strict `load_file` does.
@@ -206,6 +247,10 @@ typedef struct MsGraph {
  * the request (MS_PERR_UNSUPPORTED in `err`: a library manifest, test discovery, anything the manifest reader
  * leaves out), so the caller can hand the command to the Rust driver. Modules parse into `names` and `a`. */
 MS_NODISCARD bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err);
+/* Like ms_project_load, and loads a project with `[dependencies]` too: the modules of its packages are named
+ * `@package/path` and `out->packages` lists the packages for the checker's effect and native rules. Only a caller
+ * whose checker enforces those rules may use it; ms_project_load reports such a project as unsupported. */
+MS_NODISCARD bool ms_project_load_packages(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err);
 
 /* ---- checking a graph (project/graph_check.c) ---- */
 
