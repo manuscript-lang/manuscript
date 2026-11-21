@@ -365,6 +365,7 @@ static MsTy body_text(MsBody *b, const MsExpr *e) {
         if (part == NULL) {
             continue;
         }
+        b->borrow_ok = part; // an interpolated value is read where the text is built
         const MsTy ty = ms_body_expr(b, part, MS_TY_NONE);
         if (ty == MS_TY_NONE) {
             return MS_TY_NONE;
@@ -825,6 +826,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
         const MsStr name = ms_name(b->c->names, params[i].name);
         b->context = ms_arena_fmt(&b->c->arena, "argument '%.*s' of %.*s", (int)name.len, name.ptr, (int)callee.len,
                                   callee.ptr).ptr;
+        b->borrow_ok = handed ? NULL : arg->value; // a borrowing result handed to a parameter that only reads it
         if (ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
             return false;
         }
@@ -911,7 +913,8 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (ms_body_has_invalid(b, result)) {
         return b->invalid_ty;
     }
-    return body_is_bindable(b, result) || result == b->void_ty || ms_body_is_handle(b, result) ? result
+    return body_is_bindable(b, result) || result == b->void_ty || (result == b->never_ty && b->never_ok == e) ||
+            ms_body_is_handle(b, result) ? result
                                                                                           : ms_body_unsupported(b);
 }
 
@@ -1186,6 +1189,7 @@ static MsTy body_binary_same(MsBody *b, const MsExpr *e, MsTy ty) {
 
 static MsTy body_binary(MsBody *b, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
+    b->borrow_ok = e->u.bin.left; // an operand is read in place
     const MsTy left = ms_body_expr(b, e->u.bin.left, MS_TY_NONE);
     // `opt == value` compares as `opt == Optional`: the plain side wraps without `some`, but `none` has its own report.
     const MsTyTable *tys = &b->c->tys;
@@ -1197,6 +1201,7 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
     if (left != MS_TY_NONE) {
         hint = wraps ? left : body_literal_hint(b, plain, left);
     }
+    b->borrow_ok = plain;
     const MsTy right = left == MS_TY_NONE ? MS_TY_NONE : ms_body_expr(b, plain, hint);
     if (right == MS_TY_NONE) {
         return MS_TY_NONE;
@@ -1292,7 +1297,9 @@ static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     if (e->kind == MS_E_NAME && ms_name_is(b->c->names, e->u.sym, "none") && ms_body_find_binding(b, e->u.sym) == MS_NONE) {
         return ms_body_record(b, e->id, expected);
     }
-    const MsTy ty = ms_body_expr(b, e, MS_TY_NONE);
+    // A number literal takes the sized type the Optional wraps (`UInt8?` holds `5`).
+    const bool literal = e->kind == MS_E_NUMBER || (e->kind == MS_E_UNARY && e->u.bin.left->kind == MS_E_NUMBER);
+    const MsTy ty = ms_body_expr(b, e, literal && body_is_sized_number(b, payload) ? payload : MS_TY_NONE);
     if (ty == MS_TY_NONE || ty == expected) {
         return ty;
     }
@@ -1347,6 +1354,9 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     if (expected == b->invalid_ty) {
         return ms_body_record(b, e->id, ty); // what was asked for is already reported
     }
+    if (ty == b->never_ty) {
+        return ms_body_record(b, e->id, ty); // a Never value (`panic(...)`) stands where any type is expected
+    }
     if (expected != MS_TY_NONE && body_coerces_to_interface(b, ty, expected)) {
         b->facts->coerce_iface[e->id] = ty; // the lowering boxes it behind its vtable; the expression has the interface type
         return ms_body_record(b, e->id, expected);
@@ -1358,6 +1368,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
         if (context == NULL || !body_is_comparable(b, ty) || !body_is_comparable(b, expected)) {
+            if (getenv("MS_DBG")) { MsStr x = body_show(b, ty), y = body_show(b, expected); fprintf(stderr, "MIS %.*s -> %.*s ctx=%d\n", (int)x.len, x.ptr, (int)y.len, y.ptr, context != NULL); }
             return ms_body_unsupported(b);
         }
         // Rust attaches a source rewrite to these conversions in a bare context; the Rust checker keeps them.
@@ -1374,6 +1385,19 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
 
 /* ---- statements ---- */
 
+/* The `Void` a function type, a type argument (`Result[Void, E]`, `adopt[Void](..)`) or a result writes,
+ * or the annotation's own type. */
+MsTy ms_body_type_argument(MsBody *b, const MsTypeRef *t) {
+    if (t->kind == MS_TYPE_NAMED && t->args.len == 0) {
+        const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
+        if (sym != MS_NONE && b->c->syms.ty[sym] == b->void_ty) {
+            b->facts->type_ref_ty[t->id] = b->void_ty;
+            return b->void_ty;
+        }
+    }
+    return ms_body_annotation(b, t);
+}
+
 /* `Name[A, B]` or `T?`: a generic type the module sees, applied to annotations; the application is
  * kept only when a local can hold it (its arguments admitted and unbounded). */
 static MsTy body_applied_annotation(MsBody *b, const MsTypeRef *t) {
@@ -1384,7 +1408,7 @@ static MsTy body_applied_annotation(MsBody *b, const MsTypeRef *t) {
     }
     MsTy args[8];
     for (uint32_t i = 0; i < t->args.len; i++) {
-        args[i] = ms_body_annotation(b, t->args.ptr[i]);
+        args[i] = ms_body_type_argument(b, t->args.ptr[i]);
         if (args[i] == MS_TY_NONE) {
             return MS_TY_NONE;
         }
@@ -1395,18 +1419,6 @@ static MsTy body_applied_annotation(MsBody *b, const MsTypeRef *t) {
     }
     b->facts->type_ref_ty[t->id] = ty;
     return ty;
-}
-
-/* The `Void` a function type writes as its result, or the annotation's own type. */
-static MsTy body_fn_result(MsBody *b, const MsTypeRef *t) {
-    if (t->kind == MS_TYPE_NAMED && t->args.len == 0) {
-        const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
-        if (sym != MS_NONE && b->c->syms.ty[sym] == b->void_ty) {
-            b->facts->type_ref_ty[t->id] = b->void_ty;
-            return b->void_ty;
-        }
-    }
-    return ms_body_annotation(b, t);
 }
 
 /* `fn(A, B) R`: a function type whose parameters and result are annotations the pass admits, with
@@ -1425,7 +1437,7 @@ static MsTy body_fn_annotation(MsBody *b, const MsTypeRef *t) {
         const uint8_t flags = (uint8_t)((p->is_mutable ? MS_PARAM_VAR : 0) | (p->moving ? MS_PARAM_MOVE : 0) | MS_PARAM_POSITIONAL);
         params[i] = (MsTyParam){.name = p->name, .ty = ty, .flags = flags};
     }
-    const MsTy result = body_fn_result(b, t->result);
+    const MsTy result = ms_body_type_argument(b, t->result);
     if (result == MS_TY_NONE) {
         return MS_TY_NONE;
     }
@@ -1467,6 +1479,7 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
                            ms_ty_kind(&b->c->tys, ty) == MS_K_PRIMITIVE;
     const bool declared = ty != MS_TY_NONE && body_is_own_nominal(b, ty) && body_is_admitted(b, ty);
     if (!primitive && !declared) {
+        if (getenv("MS_DBG")) { MsStr nm = ms_name(b->c->names, t->name); fprintf(stderr, "ANN %.*s sym=%d ty=%d line=%u\n", (int)nm.len, nm.ptr, (int)sym, (int)ty, (unsigned)t->pos.line); }
         return ms_body_unsupported(b);
     }
     b->facts->type_ref_ty[t->id] = ty;
@@ -1488,6 +1501,7 @@ static void body_bind_statement(MsBody *b, const MsStmt *s) {
         const MsStr name = ms_name(b->c->names, pattern->u.name);
         b->context = ms_arena_fmt(&b->c->arena, "the initializer of '%.*s'", (int)name.len, name.ptr).ptr;
     }
+    b->borrow_ok = s->u.bind.is_mutable ? NULL : s->u.bind.value; // `head := s.view(0, 2)` borrows `s` for as long as `head` lives
     const MsTy value = ms_body_expr(b, s->u.bind.value, expected);
     if (value == MS_TY_NONE || !body_is_local(b, value)) {
         (void)ms_body_unsupported(b);
@@ -1600,13 +1614,14 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
 /* Whether control leaves the statement: it does unless it is a `match` whose every arm returns or breaks. */
 static bool body_call_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *value = s->u.expr;
+    b->never_ok = value;
     const MsTy ty = ms_body_expr(b, value, MS_TY_NONE);
     const bool propagated = value->kind == MS_E_UNARY && value->op == MS_U_TRY;
     if (ty == MS_TY_NONE || (propagated && ty != b->void_ty && ty != b->invalid_ty)) {
         (void)ms_body_unsupported(b);
         return false;
     }
-    if (value->kind == MS_E_MATCH && !b->match_falls) {
+    if ((value->kind == MS_E_MATCH && !b->match_falls) || ty == b->never_ty) {
         return false;
     }
     if (propagated || !ms_ty_is(&b->c->tys, ty, MS_BI_RESULT)) {
@@ -1664,6 +1679,7 @@ static void body_return_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     b->context = "the return value";
+    b->never_ok = value;
     (void)ms_body_expr(b, value, b->result);
 }
 
