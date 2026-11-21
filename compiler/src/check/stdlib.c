@@ -318,6 +318,9 @@ static void register_source_stubs(Loader *l, MsModId m, const MsModule *mod) {
         td.builtin = b;
         td.def = s + 1;
         c->syms.ty[s] = ms_ty_intern(&c->tys, &td);
+        if (b != MS_B_NONE) {
+            c->builtin_sym_plus_one[b] = s + 1;
+        }
     }
 }
 
