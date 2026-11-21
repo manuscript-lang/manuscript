@@ -1,4 +1,5 @@
 add_subdirectory(base)
+add_subdirectory(compiler)
 add_subdirectory(driver)
 
 # `cmake --build <dir> --target conform-c`: the one progress number (plan rule 4).
