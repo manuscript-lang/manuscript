@@ -619,53 +619,88 @@ static MirValue lb_default_argument(Lb *lb, const MsExpr *call, MsSymId callee, 
     return value.v;
 }
 
-static LbVal lb_call_declared(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating,
-                              const MsSymId *callee) {
-    const uint32_t offset = receiver != NULL ? 1u : 0u;
+/* The arguments of one call as evaluated: values (or the slots of `var` arguments) by parameter
+ * position, receiver first, and the temporaries the statement drops. */
+typedef struct LbArgs {
+    uint32_t count, offset, given;
+    MirValue *args, *temps, *slots;
+    uint32_t ntemps;
+    uint32_t *bindings;
+    const MsExpr **exprs; /* NULL where the call leaves the parameter to its default */
+    bool *by_var;
+} LbArgs;
+
+/* How many arguments the callee takes, receiver included: a call may leave out parameters that
+ * have a default, which it evaluates itself (`declared` is the callee's declaration, if known). */
+static uint32_t lb_call_count(const Lb *lb, const MsExpr *e, MsTy sig, const MsFunc *declared, uint32_t offset) {
     const uint32_t given = e->u.call.args.len;
     const uint32_t nparams = lb->c->tys.nparams[sig];
-    const MsFunc *declared = callee == NULL ? NULL : &lb->c->syms.decl[*callee]->u.fn;
-    // A call may leave out parameters that have a default, which it evaluates itself.
-    const uint32_t count = (declared != NULL && declared->params.len == nparams && given <= nparams ? nparams : given) + offset;
-    if (func == MIR_NONE || (given != nparams && count != nparams + offset) || count != lb->m->funcs[func].nparams) {
-        return LB_UNSUPPORTED(lb);
-    }
+    const bool defaults = declared != NULL && declared->params.len == nparams && given <= nparams;
+    return (defaults ? nparams : given) + offset;
+}
+
+/* Evaluates the values first, then the slots of the `var` arguments, in argument order each. */
+static void lb_evaluate_arguments(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, MsSymId callee, LbArgs *a) {
     const MsTyParam *params = ms_ty_params(&lb->c->tys, sig);
-    MirValue *args = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
-    MirValue *temps = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1); // owned arguments
-    uint32_t ntemps = 0;
-    MirValue *slots = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
-    uint32_t *bindings = MS_NEW_N(&lb->b.scratch, uint32_t, (size_t)count + 1);
-    const MsExpr **exprs = MS_NEW_N(&lb->b.scratch, const MsExpr *, (size_t)count + 1);
-    bool *by_var = MS_NEW_N(&lb->b.scratch, bool, (size_t)count + 1);
-    for (uint32_t i = 0; i < count; i++) {
-        exprs[i] = i < offset ? receiver : i - offset < given ? e->u.call.args.ptr[i - offset].value : NULL;
-        by_var[i] = i < offset ? mutating : (params[i - offset].flags & MS_PARAM_VAR) != 0;
-    }
-    // Values first, then the slots of the `var` arguments, in argument order each.
-    for (uint32_t i = 0; i < count && lb->ok; i++) {
-        if (exprs[i] == NULL) {
-            slots[i] = MIR_NONE;
-            args[i] = lb_default_argument(lb, e, *callee, declared->params.ptr[i - offset]->def);
+    for (uint32_t i = 0; i < a->count && lb->ok; i++) {
+        if (a->exprs[i] == NULL) {
+            const MsFunc *declared = &lb->c->syms.decl[callee]->u.fn;
+            a->args[i] = lb_default_argument(lb, e, callee, declared->params.ptr[i - a->offset]->def);
             continue;
         }
-        slots[i] = MIR_NONE;
-        const bool moves = i >= offset && (params[i - offset].flags & MS_PARAM_MOVE) != 0;
+        const bool moves = i >= a->offset && (params[i - a->offset].flags & MS_PARAM_MOVE) != 0;
         if (moves || (i < lb->m->funcs[func].nparams && lb->m->funcs[func].params[i].mode == MM_MOVE)) {
-            args[i] = lb_move_argument(lb, exprs[i]);
-        } else if (!by_var[i]) {
-            const LbVal value = lb_expr(lb, exprs[i]);
-            args[i] = value.v;
+            a->args[i] = lb_move_argument(lb, a->exprs[i]);
+        } else if (!a->by_var[i]) {
+            const LbVal value = lb_expr(lb, a->exprs[i]);
+            a->args[i] = value.v;
             if (value.owned) {
-                temps[ntemps++] = value.v; // dropped where the statement ends
+                a->temps[a->ntemps++] = value.v; // dropped where the statement ends
             }
         }
     }
-    for (uint32_t i = 0; i < count && lb->ok; i++) {
-        if (by_var[i] && exprs[i] != NULL) {
-            args[i] = lb_var_argument(lb, exprs[i], &bindings[i], &slots[i]);
+    for (uint32_t i = 0; i < a->count && lb->ok; i++) {
+        if (a->by_var[i] && a->exprs[i] != NULL) {
+            a->args[i] = lb_var_argument(lb, a->exprs[i], &a->bindings[i], &a->slots[i]);
         }
     }
+}
+
+/* Calls function `func`; `callee` is the declaration whose defaults may fill omitted arguments,
+ * or MS_NONE when the call names every parameter. */
+static LbVal lb_call_declared(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating,
+                              MsSymId callee) {
+    LbArgs a = {.offset = receiver != NULL ? 1u : 0u, .given = e->u.call.args.len};
+    const MsFunc *declared = callee == MS_NONE ? NULL : &lb->c->syms.decl[callee]->u.fn;
+    a.count = lb_call_count(lb, e, sig, declared, a.offset);
+    const uint32_t nparams = lb->c->tys.nparams[sig];
+    if (func == MIR_NONE || (a.given != nparams && a.count != nparams + a.offset) || a.count != lb->m->funcs[func].nparams) {
+        return LB_UNSUPPORTED(lb);
+    }
+    const size_t slots = (size_t)a.count + 1;
+    a.args = MS_NEW_N(&lb->b.scratch, MirValue, slots);
+    a.temps = MS_NEW_N(&lb->b.scratch, MirValue, slots); // owned arguments
+    a.slots = MS_NEW_N(&lb->b.scratch, MirValue, slots);
+    a.bindings = MS_NEW_N(&lb->b.scratch, uint32_t, slots);
+    a.exprs = MS_NEW_N(&lb->b.scratch, const MsExpr *, slots);
+    a.by_var = MS_NEW_N(&lb->b.scratch, bool, slots);
+    const MsTyParam *params = ms_ty_params(&lb->c->tys, sig);
+    for (uint32_t i = 0; i < a.count; i++) {
+        const uint32_t at = i - a.offset; // the argument's position, past the receiver
+        if (i < a.offset) {
+            a.exprs[i] = receiver;
+            a.by_var[i] = mutating;
+        } else {
+            a.exprs[i] = at < a.given ? e->u.call.args.ptr[at].value : NULL;
+            a.by_var[i] = (params[at].flags & MS_PARAM_VAR) != 0;
+        }
+        a.slots[i] = MIR_NONE;
+    }
+    lb_evaluate_arguments(lb, e, func, sig, callee, &a);
+    MirValue *args = a.args, *temps = a.temps, *slots_of = a.slots;
+    uint32_t *bindings = a.bindings;
+    uint32_t ntemps = a.ntemps;
+    const uint32_t count = a.count, given = a.given;
     if (!lb->ok) {
         return LB_FAIL;
     }
@@ -697,9 +732,9 @@ static LbVal lb_call_declared(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, 
         }
     }
     for (uint32_t i = 0; i < count; i++) {
-        if (slots[i] != MIR_NONE) {
+        if (slots_of[i] != MIR_NONE) {
             const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[bindings[i]]);
-            mir_b_def_var(&lb->b, lb->var_of[bindings[i]], lb_load(lb, slots[i], ty));
+            mir_b_def_var(&lb->b, lb->var_of[bindings[i]], lb_load(lb, slots_of[i], ty));
         }
     }
     const bool borrowed = lb->m->funcs[func].ret_borrowed; // a reference into the arguments
@@ -708,7 +743,7 @@ static LbVal lb_call_declared(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, 
 }
 
 LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating) {
-    return lb_call_declared(lb, e, func, sig, receiver, mutating, NULL);
+    return lb_call_declared(lb, e, func, sig, receiver, mutating, MS_NONE);
 }
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
@@ -740,7 +775,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (lx_is_extern(lb, callee)) {
         return lx_call(lb, e, callee);
     }
-    return lb_call_declared(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false, &callee);
+    return lb_call_declared(lb, e, lb_callee_func(lb, e, callee), lb->c->syms.ty[callee], NULL, false, callee);
 }
 
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
@@ -1304,7 +1339,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
         return;
     }
     const MirTy value_ty = mir_b_ty(&lb->b, value.v);
-    if (lb_owns(lb, value_ty) && !value.owned && !lb->b.f.ret_borrowed) {
+    if (s->u.expr != NULL && lb_owns(lb, value_ty) && !value.owned && !lb->b.f.ret_borrowed) {
         value = lb_hand_out(lb, s->u.expr, value.v);
     }
     const bool leaves_var = !lb->b.f.ret_borrowed && s->u.expr != NULL && lb_names_var(lb, s->u.expr);

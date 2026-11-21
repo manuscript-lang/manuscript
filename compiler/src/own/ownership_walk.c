@@ -1639,6 +1639,16 @@ static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
     }
 }
 
+/* Where the walk gave up on declaration `node`, for the refusal report: its own decline, the one
+ * its summary kept, or liveness (which records no site). */
+static MsSite own_refusal(const OwnWalk *w, uint32_t node) {
+    if (w->summaries[node].usable) {
+        return w->declined;
+    }
+    const MsSite summary = w->summaries[node].declined;
+    return summary.file != NULL ? summary : (MsSite){"ownership_live.c", 0};
+}
+
 void ms_module_check_ownership(MsCheck *c, MsModId module) {
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
@@ -1674,10 +1684,7 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         if (d->kind == MS_D_FN && facts->body_checked[d->id]) {
             facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, &d->u.fn, NULL, by_node);
             if (!facts->body_checked[d->id]) {
-                const MsSite summary = w.summaries[d->id].declined;
-                facts->refusal[d->id] = w.summaries[d->id].usable ? w.declined
-                                        : summary.file != NULL    ? summary
-                                                                  : (MsSite){"ownership_live.c", 0};
+                facts->refusal[d->id] = own_refusal(&w, d->id);
             }
             facts->ret_borrowed[d->id] = facts->body_checked[d->id] && w.summaries[d->id].returns_borrow;
             facts->param_consumed[d->id] = facts->body_checked[d->id] ? w.summaries[d->id].consumed : 0;

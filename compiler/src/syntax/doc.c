@@ -1,5 +1,6 @@
 /* Documentation comments (ms/doc.h). */
 #include "ms/doc.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 static bool doc_is_space(char ch) { return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\f' || ch == '\v'; }

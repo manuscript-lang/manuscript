@@ -20,6 +20,7 @@
 
 #include "check/check_body.h"
 #include "ms/doc.h"
+#include "ms/ty_algebra.h"
 #include "ms/implements.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
