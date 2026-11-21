@@ -1,10 +1,7 @@
 /* The Linux link: glibc 2.28 stand-ins generated from glibc.symbols, or static musl (ms/build_link.h). */
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #include "build/link_internal.h"
 #include "ms/base.h"
@@ -13,6 +10,12 @@
 #include "ms/text.h"
 
 #if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
+
+#include <errno.h>
+
+#include <sys/stat.h>
+
+#include <unistd.h>
 
 #if defined(__aarch64__)
 #define BL_TRIPLE "-mtriple=aarch64-unknown-linux-gnu"
