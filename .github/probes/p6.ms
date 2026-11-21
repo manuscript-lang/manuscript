@@ -23,4 +23,8 @@ fn main() Void:
 	void write_file(join([path.clone(), "f"]), "x").wait()
 
 	done := pending.wait()
-	print(f"probe 6: promise watch {done.is_ok()}")
+
+	if done.is_error():
+		print(f"probe 6: promise watch failed: {done.err()}")
+	else:
+		print("probe 6: promise watch true")
