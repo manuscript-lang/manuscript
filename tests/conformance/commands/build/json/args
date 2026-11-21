@@ -1,0 +1,5 @@
+build
+main.ms
+--json
+-o
+out
