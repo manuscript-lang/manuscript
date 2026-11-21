@@ -1086,7 +1086,13 @@ static bool body_is_equatable(MsBody *b, MsTy ty, uint32_t depth) {
 static MsTy body_binary(MsBody *b, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     const MsTy left = ms_body_expr(b, e->u.bin.left, MS_TY_NONE);
-    const MsTy right = left == MS_TY_NONE ? MS_TY_NONE : ms_body_expr(b, e->u.bin.right, MS_TY_NONE);
+    // `opt == value` compares as `opt == Optional`: the plain side wraps without `some`, but `none` has its own report.
+    const MsTyTable *tys = &b->c->tys;
+    const MsExpr *plain = e->u.bin.right;
+    const bool none_operand = plain->kind == MS_E_NAME && ms_name_is(b->c->names, plain->u.sym, "none");
+    const bool wraps = (op == MS_B_EQ || op == MS_B_NE) && left != MS_TY_NONE && ms_ty_is(tys, left, MS_BI_OPTIONAL) &&
+                       tys->nargs[left] == 1 && !none_operand;
+    const MsTy right = left == MS_TY_NONE ? MS_TY_NONE : ms_body_expr(b, plain, wraps ? left : MS_TY_NONE);
     if (right == MS_TY_NONE) {
         return MS_TY_NONE;
     }
@@ -1103,6 +1109,9 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
     }
     if (left == right && (op == MS_B_EQ || op == MS_B_NE) && body_is_equatable(b, left, 0)) {
         return b->bool_ty;
+    }
+    if (left == right && ms_ty_is(tys, left, MS_BI_BIGINT)) {
+        return comparison ? b->bool_ty : left; // every operator applies to a BigInt; no constant range to overflow
     }
     if (left != right || !body_is_value_type(b, left)) {
         return ms_body_unsupported(b);
