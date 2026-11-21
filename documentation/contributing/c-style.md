@@ -5,7 +5,7 @@ weight = 23
 
 # C style and safety
 
-The runtime (`runtime/`) and the compiler core (`compiler/`) are C. This page is the rule for every line of it. The aim is code a reader can check by eye and a compiler can check by machine: make the wrong program fail to compile, then fail a test, before it can fail a user.
+The runtime (`src/runtime/`) and the compiler core (`src/compiler/`) are C. This page is the rule for every line of it. The aim is code a reader can check by eye and a compiler can check by machine: make the wrong program fail to compile, then fail a test, before it can fail a user.
 
 `make c-lint` enforces what a tool can enforce, on every pull request. `make c-test` runs the unit tests under AddressSanitizer and UndefinedBehaviorSanitizer and `make c-fuzz` fuzzes the parsers; run both before pushing C, since CI runs them nightly, not per pull request.
 
@@ -15,7 +15,7 @@ The runtime (`runtime/`) and the compiler core (`compiler/`) are C. This page is
 - The build sets `-fno-strict-aliasing`, so the compiler assumes nothing from pointer types; write as if it did anyway and move bytes with `memcpy`.
 - The runtime switches task stacks itself, so it is built with `-fno-stack-protector`; guard pages under each stack catch overflow instead.
 - No `__attribute__((cleanup))`: cleanup is visible code.
-- `runtime/sys` and `runtime/core` are freestanding: they include only `stdint.h`, `stddef.h`, `stdbool.h` and runtime headers.
+- `src/runtime/sys` and `src/runtime/core` are freestanding: they include only `stdint.h`, `stddef.h`, `stdbool.h` and runtime headers.
 - No variable-length arrays, no `alloca`, no `goto` except one forward jump to a single cleanup label, no `setjmp`, no recursion without a depth limit the code states.
 - No function-like macro where a `static inline` function works. A macro that remains evaluates each argument once.
 
@@ -66,11 +66,11 @@ Manuscript's rule holds in the C too: every allocation has one owner.
 - No mutable global or `static` variable outside the few the runtime design names (per-thread scheduler state). The compiler library has none at all.
 - Data another thread can touch is `_Atomic` or guarded by one named lock, and the field's comment says which. No libc function that keeps hidden state (`strtok`, `localtime`, `getenv` after start-up).
 - No initialiser that runs before `main`.
-- Layering is by directory: `sys` under `core` under `io` under `net` and `std`. System calls only in `runtime/sys`, libuv only in `runtime/io`, OpenSSL, llhttp and nghttp2 only in `runtime/net`, and each other library only in its own `runtime/std/<module>.c`.
+- Layering is by directory: `sys` under `core` under `io` under `net` and `std`. System calls only in `src/runtime/sys`, libuv only in `src/runtime/io`, OpenSSL, llhttp and nghttp2 only in `src/runtime/net`, and each other library only in its own `src/runtime/std/<module>.c`.
 
 ## Shared helpers: where to find what
 
-One copy of each helper, in `runtime/include/ms_rt/`, usable from `runtime/` and `compiler/` (the compiler core includes it with `-Iruntime/include`). Search here before writing a helper, and add to the matching header, never a local copy. Where libc or a library we already link (libuv, OpenSSL, PCRE2, zlib) provides the operation, call it; the helpers below exist only where libc cannot serve: freestanding runtime code, or locale-dependent `<ctype.h>`.
+One copy of each helper, in `src/runtime/include/ms_rt/`, usable from `src/runtime/` and `src/compiler/` (the compiler core includes it with `-Iruntime/include`). Search here before writing a helper, and add to the matching header, never a local copy. Where libc or a library we already link (libuv, OpenSSL, PCRE2, zlib) provides the operation, call it; the helpers below exist only where libc cannot serve: freestanding runtime code, or locale-dependent `<ctype.h>`.
 
 | Need | Header | Names |
 | --- | --- | --- |
@@ -80,8 +80,8 @@ One copy of each helper, in `runtime/include/ms_rt/`, usable from `runtime/` and
 | Byte and substring search | `search.h` | `ms_find`, `ms_needle_find`, `ms_count` |
 | Number to text | `fmt.h` | `msrt_fmt_u64`, `msrt_fmt_i64`, `msrt_fmt_float` |
 | String values: build, copy, release | `string.h`, `strbuild.h` | `ms_str_release`, `ms_str_from_bytes`, `ms_copy_bytes` |
-| Whole file into memory (dump tools) | `compiler/tools/read_file.h` | `read_whole_file` |
-| Line protocol of the dump tools: tab fields, one request per line | `compiler/tools/dump_io.h` | `split_fields`, `read_line`, `str_of`, `number_of`, `put_text`, `ends_with` |
+| Whole file into memory (dump tools) | `src/compiler/tools/read_file.h` | `read_whole_file` |
+| Line protocol of the dump tools: tab fields, one request per line | `src/compiler/tools/dump_io.h` | `split_fields`, `read_line`, `str_of`, `number_of`, `put_text`, `ends_with` |
 
 ## What the tools check
 
@@ -90,15 +90,15 @@ One copy of each helper, in `runtime/include/ms_rt/`, usable from `runtime/` and
 | Warnings in `toolchain/c-warnings.txt`, as errors | every C file, every pull request | conversions, sign changes, shadowing, missing prototypes, VLAs, format strings, const casts, alignment casts, fallthrough |
 | clang-tidy with `.clang-tidy` (bugprone, cert, clang static analyzer, misc, performance, portability, readability, thread-unsafe libc calls, close-on-exec) | changed production files on pull requests, all of them nightly | null dereferences, leaks, use after free, dead stores, unsafe calls, suspicious `sizeof`, the naming rules above, function length |
 | AddressSanitizer and UndefinedBehaviorSanitizer | `make c-test`, `make c-fuzz`, nightly | out-of-bounds, use after free, overflow, bad shifts on every test and fuzz input |
-| Fuzzers in `runtime/fuzz` | nightly | every parser of untrusted bytes has a fuzz harness |
+| Fuzzers in `src/runtime/fuzz` | nightly | every parser of untrusted bytes has a fuzz harness |
 | `-D_FORTIFY_SOURCE=2`, `-fno-delete-null-pointer-checks` | the shipped archive (fortify on glibc and macOS; musl and mingw have none) | libc calls with a known destination size are checked; a null check is never optimised away |
 
 A check is silenced only on the one line that needs it, with `// NOLINT(<check>): <reason>`. A check is switched off for everyone only in `.clang-tidy`, with the reason beside it.
 
 `toolchain/c-lint-pending.txt` lists the files written before this guide that do not pass yet. A listed file may fail; once it passes it must come off the list, and the gate rejects a change that adds a line, so the list only shrinks.
 
-Not checked by a tool yet, so reviewers check them: ownership comments, the layering of includes, and code for other systems: `_WIN32` and `__APPLE__` branches and the `runtime/sys/darwin` and `runtime/sys/windows` folders (the gate runs clang on Linux). The shipped archive is still compiled with `-Wall -Wextra -Werror` only, because musl builds with gcc, whose stricter conversion warnings the pending files do not pass.
+Not checked by a tool yet, so reviewers check them: ownership comments, the layering of includes, and code for other systems: `_WIN32` and `__APPLE__` branches and the `src/runtime/sys/darwin` and `src/runtime/sys/windows` folders (the gate runs clang on Linux). The shipped archive is still compiled with `-Wall -Wextra -Werror` only, because musl builds with gcc, whose stricter conversion warnings the pending files do not pass.
 
 ## Tests
 
-Every C module has a `runtime/tests/<layer>_<module>.c` or a compiler test that runs under the sanitizers. A bug fix adds the input that failed. Code that parses bytes from outside the process is not merged without a fuzz harness.
+Every C module has a `src/runtime/tests/<layer>_<module>.c` or a compiler test that runs under the sanitizers. A bug fix adds the input that failed. Code that parses bytes from outside the process is not merged without a fuzz harness.

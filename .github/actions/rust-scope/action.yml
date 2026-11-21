@@ -40,7 +40,7 @@ runs:
         git fetch --no-tags --depth=2 origin "$GITHUB_SHA"
         BASE=$(git rev-parse "$GITHUB_SHA^1")
         rust=true
-        if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|compiler/|.*\.md$)'; then
+        if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|src/compiler/|.*\.md$)'; then
           rust=false
         fi
         # Only code that is specific to the
@@ -57,14 +57,14 @@ runs:
         # The tutorial and stdlib examples are tested only when the files that hold them change; main runs them
         # on every push, so a compiler change that breaks an example is caught within 30 minutes.
         docs=false
-        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(documentation/|stdlib/|crates/ms-cli/tests/doc_examples)'; then
+        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(documentation/|src/stdlib/|crates/ms-cli/tests/doc_examples)'; then
           docs=true
         fi
         # The C runtime and compiler have their own jobs (unit tests under sanitizers, the C front end against the
         # Rust one). The compiler's C is not part of the Rust build yet, so a pull request that touches only it
         # (above) skips the Rust jobs; runtime C is folded into every program, so it keeps them.
         c=false
-        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(runtime/|compiler/|toolchain/c-|cmake/|CMakeLists\.txt$|Makefile$)'; then
+        if git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qE '^(src/runtime/|src/compiler/|toolchain/c-|cmake/|CMakeLists\.txt$|Makefile$)'; then
           c=true
         fi
         echo "c=$c" >> "$GITHUB_OUTPUT"

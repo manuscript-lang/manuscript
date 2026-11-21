@@ -1,6 +1,6 @@
 // Builds `ms` for a target and archives it as
 // dist/manuscript-rust-<os>-<arch>.{tar.gz,zip} with a .sha256 beside it. `ms` is the
-// Manuscript front (tools/ms/main.ms over libms) and
+// Manuscript front (src/ms/main.ms over libms) and
 // `ms-rust`, beside it, is the Rust command line it hands the stages C does not cover to; the
 // front finds it in its own directory. The release runner for each target builds both
 // natively. Usage: ms run tools/package.ms [-- OS ARCH]
@@ -102,7 +102,7 @@ fn main() Int:
 	code = run_program(
 		rust,
 		[
-			"build", "tools/ms/main.ms", "--build-type", "Release", "--link",
+			"build", "src/ms/main.ms", "--build-type", "Release", "--link",
 			"target/cmake/tools/compiler/libmstool.a", "-o", f"{bundle}/{executable}"
 		],
 	)

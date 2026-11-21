@@ -15,7 +15,7 @@ Method for finding gaps like this: write the same program in C or C++, count ins
 
 `update`, `add` and `add_default` with a borrowed key (`m.update(k.clone(), ...)` read in place) used to copy the key to a temporary, then call `upsert_k`, which hashed and probed again before appending. The miss path now appends directly (`append_entry`): one hash, one probe, the key copied once into its slot. `dedupe` (999,874 distinct lines, the idiomatic `split(" ", 2)[0].clone()` program kept as the measured one) went from 1.75G to 1.36G instructions (checked C 0.65G); guard `mapinsert` 138.2M to 102.8M. The same program reading the first field with `line.index_of(" ")` and a `view`, which is what the C port does, is 0.84G (1.3x): the remaining gap on the idiomatic program is the list `split` builds per line, to be closed by a general fix (views or a split that does not build the list when only the first piece is used), not by rewriting the benchmark.
 
-Profiling `@std` code: debug info names the real `stdlib/` source files (PR 4244), so `callgrind_annotate --auto=yes` shows per-line costs for stdlib functions with no setup.
+Profiling `@std` code: debug info names the real `src/stdlib/` source files (PR 4244), so `callgrind_annotate --auto=yes` shows per-line costs for stdlib functions with no setup.
 
 ## String `<` is generated MIR
 

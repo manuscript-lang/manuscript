@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Problem: the Manuscript front (`tools/ms/main.ms`) is the intended `ms` for every command, but the archive and installers ship the Rust binary only, so nothing the front ports reaches users, and Rust code that the front replaces (`fetch.rs`, `edit.rs`) cannot be deleted.
+- Problem: the Manuscript front (`src/ms/main.ms`) is the intended `ms` for every command, but the archive and installers ship the Rust binary only, so nothing the front ports reaches users, and Rust code that the front replaces (`fetch.rs`, `edit.rs`) cannot be deleted.
 - Change: the distribution ships two programs, `ms` (the front, linked with `libmstool.a`) and `ms-rust` (the existing Rust binary, renamed in the archive only). The front delegates uncovered commands to `ms-rust` beside it. Then the `packages.rs` end-to-end tests move onto the front and `fetch.rs` and `edit.rs` are deleted.
 - Decision requested: none that changes the language; the CLI thread and Chinmay already directed "use `ms` as the front for all commands".
 
@@ -22,12 +22,12 @@ Stage 1 (this PR): packaging, installers, rehearsal and docs. Stage 2: tests mov
 - `bridge.ms::rust_cli` looks for `$MS_RUST_CLI`, then `ms-rust` beside the executable, then `ms-rust` on the PATH.
 - `install.sh` and `install.ps1` copy both files; the release rehearsal asserts `ms-rust` was installed; `rust-dist.yml` checks the glibc floor of both.
 - The cargo binary stays named `ms`: 48 test files and about 95 Makefile and workflow references use `CARGO_BIN_EXE_ms` or `target/*/ms`, and renaming them gains nothing for users.
-- Stage 2: `packages.rs` becomes a Manuscript test (`tools/ms/packages_test.ms`) run by the C pipeline job that already builds `libmstool.a`, with every test kept; no new CI job or shard.
+- Stage 2: `packages.rs` becomes a Manuscript test (`src/ms/packages_test.ms`) run by the C pipeline job that already builds `libmstool.a`, with every test kept; no new CI job or shard.
 
 ## Evidence
 
 - `ms run tools/package.ms` produced `dist/manuscript-rust-linux-amd64.tar.gz`; `ms run tools/dist-check.ms` printed `dist-check ok` with the front as `ms` (locally, linux/amd64).
-- `make ms-cli-check` compares the front's exit statuses with Rust's on `tools/ms/cases.txt`.
+- `make ms-cli-check` compares the front's exit statuses with Rust's on `src/ms/cases.txt`.
 - Removes in stage 2: `fetch.rs` and `edit.rs` and their callers.
 
 ## Alternatives considered

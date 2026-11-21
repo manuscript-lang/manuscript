@@ -13,11 +13,11 @@ runs:
   using: composite
   steps:
     # `cmake -P cmake/BuildRuntime.cmake` folds libuv, OpenSSL and the other C libraries into the runtime archives; they come
-    # from the system packages through runtime/third_party/libs.sh, with CMake, Ninja and ccache (Windows takes MSYS2 packages, below).
+    # from the system packages through src/runtime/third_party/libs.sh, with CMake, Ninja and ccache (Windows takes MSYS2 packages, below).
     - name: Install the C libraries
       if: runner.os == 'Linux' || runner.os == 'macOS'
       shell: bash
-      run: sh runtime/third_party/libs.sh install
+      run: sh src/runtime/third_party/libs.sh install
     # CMake and Ninja come with the Windows runners; ccache (the C build's compiler launcher) does not. Best effort:
     # the build works without it.
     - name: Install ccache

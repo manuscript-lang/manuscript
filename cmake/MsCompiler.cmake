@@ -1,15 +1,15 @@
-# The C compiler (compiler/): libms as one translation unit, the dump tools the differential scripts
-# (compiler/tests/*-diff.sh) run, the compiler's unit tests, the driver and the `libmstool.a` that
+# The C compiler (src/compiler/): libms as one translation unit, the dump tools the differential scripts
+# (src/compiler/tests/*-diff.sh) run, the compiler's unit tests, the driver and the `libmstool.a` that
 # Manuscript tools link with `--link`. Executables land in <build>/compiler. Targets are named for the file:
-# `cmake --build <build> --target ms_syntax_dump`. Adding a tool `compiler/tools/ms_<name>.c` needs no edit here;
-# a unit test `compiler/tests/<name>_test.c` needs a line below.
-set(_c "${CMAKE_SOURCE_DIR}/compiler")
+# `cmake --build <build> --target ms_syntax_dump`. Adding a tool `src/compiler/tools/ms_<name>.c` needs no edit here;
+# a unit test `src/compiler/tests/<name>_test.c` needs a line below.
+set(_c "${CMAKE_SOURCE_DIR}/src/compiler")
 
 # libms_backend.a: what the Rust `ms` links to run the C back end in process (crates/ms-build/build.rs,
-# compiler/include/ms/emit_program.h). No sanitizers, no project loader and the C library's allocator, so it
+# src/compiler/include/ms/emit_program.h). No sanitizers, no project loader and the C library's allocator, so it
 # brings no library of its own into `ms`.
 add_library(ms_backend STATIC "${_c}/src/libms.c")
-target_include_directories(ms_backend PRIVATE "${_c}/include" "${_c}/src" "${CMAKE_SOURCE_DIR}/runtime/include")
+target_include_directories(ms_backend PRIVATE "${_c}/include" "${_c}/src" "${CMAKE_SOURCE_DIR}/src/runtime/include")
 target_compile_definitions(ms_backend PRIVATE MS_LIBMS_NO_PROJECT)
 if(MS_WINDOWS)
   # The Microsoft C library marks fopen and friends deprecated in favour of its own _s functions.
@@ -24,7 +24,7 @@ if(MS_BACKEND_ONLY)
   return()
 endif()
 if(NOT MS_BUILD_RUNTIME)
-  # libms hashes packages with libcrypto (project/packages.c) and runs programs through libuv (runtime/sys/spawn.c); a build
+  # libms hashes packages with libcrypto (project/packages.c) and runs programs through libuv (src/runtime/sys/spawn.c); a build
   # without the runtime has no MsLibs.cmake to name them: they are the pinned builds the runtime links, for this host
   # unless the caller names another folder with -DMS_LIBS_PREFIX.
   if(NOT MS_LIBS_PREFIX)
@@ -73,10 +73,10 @@ set(_bin "${CMAKE_BINARY_DIR}/compiler")
 list(APPEND _cflags -include "${_c}/include/ms_mimalloc.h")
 set(_mimalloc_include "${MS_MIMALLOC_DIR}/include")
 
-# libms: compiler/src/libms.c includes every other source, so it is one object (static helpers must not share
+# libms: src/compiler/src/libms.c includes every other source, so it is one object (static helpers must not share
 # names). Tests and tools link that object.
 add_library(ms_libms OBJECT "${_c}/src/libms.c")
-target_include_directories(ms_libms PUBLIC "${_c}/include" "${_c}/src" "${CMAKE_SOURCE_DIR}/runtime/include" "${_mimalloc_include}" ${MS_LIB_crypto_INCLUDES})
+target_include_directories(ms_libms PUBLIC "${_c}/include" "${_c}/src" "${CMAKE_SOURCE_DIR}/src/runtime/include" "${_mimalloc_include}" ${MS_LIB_crypto_INCLUDES})
 target_compile_options(ms_libms PRIVATE ${_cflags})
 set_target_properties(ms_libms PROPERTIES C_EXTENSIONS OFF)
 
@@ -92,13 +92,13 @@ function(ms_compiler_exe name)
     else()
       set(_os posix)
     endif()
-    list(APPEND _sources "${CMAKE_SOURCE_DIR}/runtime/sys/${_os}/fs.c")
+    list(APPEND _sources "${CMAKE_SOURCE_DIR}/src/runtime/sys/${_os}/fs.c")
     # Files by path, processes, the clock and the process id, over libuv: the same on every platform.
-    list(APPEND _sources "${CMAKE_SOURCE_DIR}/runtime/sys/fs_path.c" "${CMAKE_SOURCE_DIR}/runtime/sys/spawn.c"
-         "${CMAKE_SOURCE_DIR}/runtime/sys/libuv.c")
+    list(APPEND _sources "${CMAKE_SOURCE_DIR}/src/runtime/sys/fs_path.c" "${CMAKE_SOURCE_DIR}/src/runtime/sys/spawn.c"
+         "${CMAKE_SOURCE_DIR}/src/runtime/sys/libuv.c")
   endif()
   add_executable(${name} ${_sources})
-  target_include_directories(${name} PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include" "${_mimalloc_include}"
+  target_include_directories(${name} PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/src/runtime/include" "${_mimalloc_include}"
                              ${MS_LIB_uv_INCLUDES} ${E_INCLUDES})
   if(NOT E_PLAIN)
     target_compile_options(${name} PRIVATE ${_cflags})
@@ -121,7 +121,7 @@ function(ms_compiler_exe name)
   endif()
 endfunction()
 
-# Dump tools: one per compiler/tools/ms_*.c, named for the file.
+# Dump tools: one per src/compiler/tools/ms_*.c, named for the file.
 file(GLOB _tools CONFIGURE_DEPENDS "${_c}/tools/ms_*.c")
 foreach(file ${_tools})
   get_filename_component(name "${file}" NAME_WE)
@@ -133,15 +133,15 @@ foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
 
-# The embedded standard library: std_embed_gen writes std_embed_data.inc from stdlib/, std_embed.c includes it. Only
+# The embedded standard library: std_embed_gen writes std_embed_data.inc from src/stdlib/, std_embed.c includes it. Only
 # the executables that load the library link ms_std_embed.
 ms_compiler_exe(std_embed_gen "${_c}/tools/std_embed_gen.c" WITH_LIBMS INCLUDES "${_c}/tools")
-file(GLOB_RECURSE _std_sources CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/stdlib/*.ms")
+file(GLOB_RECURSE _std_sources CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/stdlib/*.ms")
 set(_std_data "${CMAKE_BINARY_DIR}/compiler/std_embed_data.inc")
-add_custom_command(OUTPUT "${_std_data}" COMMAND std_embed_gen "${CMAKE_SOURCE_DIR}/stdlib" "${_std_data}"
+add_custom_command(OUTPUT "${_std_data}" COMMAND std_embed_gen "${CMAKE_SOURCE_DIR}/src/stdlib" "${_std_data}"
                    DEPENDS std_embed_gen ${_std_sources} VERBATIM)
 add_library(ms_std_embed OBJECT "${_c}/src/std_embed.c" "${_std_data}")
-target_include_directories(ms_std_embed PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include"
+target_include_directories(ms_std_embed PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/src/runtime/include"
                            "${CMAKE_BINARY_DIR}/compiler")
 target_compile_options(ms_std_embed PRIVATE -std=c11 -O1 -Wall -Wextra -Werror)
 
@@ -149,7 +149,7 @@ ms_compiler_exe(std_embed_test "${_c}/tests/std_embed_test.c" $<TARGET_OBJECTS:m
 ms_compiler_exe(package_check_test "${_c}/tests/package_check_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
 
 # The thin C driver in front of the Rust `ms` and the shell helpers of the differential scripts read the checkout the POSIX
-# way; on Windows `ms` is the Manuscript front (tools/ms/main.ms over libmstool.a).
+# way; on Windows `ms` is the Manuscript front (src/ms/main.ms over libmstool.a).
 if(NOT MS_WINDOWS)
   ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST)
   ms_compiler_exe(ms "${_c}/src/driver.c" "${_c}/tools/ms.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS)
@@ -157,22 +157,22 @@ if(NOT MS_WINDOWS)
   ms_compiler_exe(effect_graph_gen "${_c}/tests/effect_graph_gen.c" PLAIN)
 endif()
 
-# libmstool.a: libms plus the tool interface (compiler/include/ms/tool.h), the archive a Manuscript tool links
+# libmstool.a: libms plus the tool interface (src/compiler/include/ms/tool.h), the archive a Manuscript tool links
 # with `--link`. No sanitizers: it links into programs built by `ms`.
 file(STRINGS "${CMAKE_SOURCE_DIR}/.msversion" MS_VERSION_TEXT LIMIT_COUNT 1)
 set_source_files_properties("${_c}/src/tool_build.c" PROPERTIES COMPILE_DEFINITIONS "MS_VERSION=\"${MS_VERSION_TEXT}\"")
 add_library(ms_tool STATIC "${_c}/src/libms.c" "${_c}/src/tool.c" "${_c}/src/tool_check.c" "${_c}/src/tool_build.c" "${_c}/src/tool_search.c" "${_c}/src/tool_facts.c" $<TARGET_OBJECTS:ms_std_embed>)
-target_include_directories(ms_tool PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include"
+target_include_directories(ms_tool PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/src/runtime/include"
                            "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include" "${_mimalloc_include}" ${MS_LIB_crypto_INCLUDES})
 target_compile_options(ms_tool PRIVATE -O1 -g -Wall -Wextra -Werror -Wno-format-truncation
                        -include "${_c}/include/ms_mimalloc.h")
 set_target_properties(ms_tool PROPERTIES POSITION_INDEPENDENT_CODE ON OUTPUT_NAME mstool ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
 
-# libms_tools.a: libms plus the shim Manuscript `extern fn` declarations call (compiler/tools/tool_shim.c, which
+# libms_tools.a: libms plus the shim Manuscript `extern fn` declarations call (src/compiler/tools/tool_shim.c, which
 # includes only ms_abi.h because its names collide with libms's). `make libms-tools` copies it to target/.
 add_library(ms_tools_shim STATIC "${_c}/src/libms.c" "${_c}/tools/tool_shim.c")
 set_source_files_properties("${_c}/src/libms.c" PROPERTIES INCLUDE_DIRECTORIES
-                            "${_c}/include;${_c}/src;${CMAKE_SOURCE_DIR}/runtime/include;${_mimalloc_include};${MS_LIB_crypto_INCLUDES}"
+                            "${_c}/include;${_c}/src;${CMAKE_SOURCE_DIR}/src/runtime/include;${_mimalloc_include};${MS_LIB_crypto_INCLUDES}"
                             COMPILE_OPTIONS "-include;${_c}/include/ms_mimalloc.h")
 set_source_files_properties("${_c}/tools/tool_shim.c" PROPERTIES INCLUDE_DIRECTORIES
                             "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include")

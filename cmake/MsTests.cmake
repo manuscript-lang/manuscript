@@ -1,7 +1,7 @@
-# The C runtime unit tests (runtime/tests), run by ctest. With MS_SANITIZE=ON they build under AddressSanitizer
-# and UBSan, as `make c-test` does. The OS layer under test is this platform's: runtime/sys/posix or runtime/sys/windows.
-set(_tests "${CMAKE_SOURCE_DIR}/runtime/tests")
-set(_rt "${CMAKE_SOURCE_DIR}/runtime")
+# The C runtime unit tests (src/runtime/tests), run by ctest. With MS_SANITIZE=ON they build under AddressSanitizer
+# and UBSan, as `make c-test` does. The OS layer under test is this platform's: src/runtime/sys/posix or src/runtime/sys/windows.
+set(_tests "${CMAKE_SOURCE_DIR}/src/runtime/tests")
+set(_rt "${CMAKE_SOURCE_DIR}/src/runtime")
 
 # Frame pointers, as in every runtime build: the fault report walks them.
 set(_test_flags -O1 -g -Wall -Wextra -Werror -fno-omit-frame-pointer)
@@ -96,7 +96,7 @@ if(MS_WINDOWS)
 endif()
 file(GLOB _support_sources CONFIGURE_DEPENDS "${_tests}/support/*.c")
 file(GLOB _std_sources CONFIGURE_DEPENDS "${_rt}/std/*.c")
-# The JSON natives call the real maps, lists and number formatting of runtime/core, which the std tests fake.
+# The JSON natives call the real maps, lists and number formatting of src/runtime/core, which the std tests fake.
 file(GLOB _json_sources CONFIGURE_DEPENDS "${_rt}/std/json_*.c")
 list(REMOVE_ITEM _std_sources ${_json_sources})
 # The blocking pool needs a scheduler to park on; the std tests stub it (tests/std_support).
@@ -113,7 +113,7 @@ if(MS_WINDOWS)
   list(APPEND _io_sources "${_rt}/io/windows/platform.c")
 endif()
 
-# core_*: all of runtime/core and this platform's runtime/sys layer, the allocator's live-block counts on.
+# core_*: all of src/runtime/core and this platform's src/runtime/sys layer, the allocator's live-block counts on.
 # task_abi.c is linked by core_task_abi alone: the other tests stub the task ABI and run without a scheduler.
 set(_task_abi "${_rt}/core/task_abi.c")
 # fault_abi.c is linked by core_fault_abi alone: the other tests use the weak fault stubs of tests/support.
@@ -141,7 +141,7 @@ foreach(file ${_core_tests})
   elseif(name STREQUAL "core_fault_abi")
     set(_extra "${_fault_abi}")
   elseif(name STREQUAL "core_sched_pool")
-    # The blocking pool (runtime/std/pool.c) over the real scheduler and task ABI, with libuv's threads.
+    # The blocking pool (src/runtime/std/pool.c) over the real scheduler and task ABI, with libuv's threads.
     set(_extra "${_task_abi}" "${_rt}/std/pool.c")
     set(_include ${MS_LIB_uv_INCLUDES})
     set(_libs ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} m)
@@ -149,7 +149,7 @@ foreach(file ${_core_tests})
   ms_test(${name} SOURCES "${file}" ${_extra} OBJECTS ms_test_core INCLUDES ${_include} LIBS ${_libs} DEFINES MS_ALLOC_STATS)
 endforeach()
 
-# The OS layer: runtime/sys/<platform> and the portable thread.c over libuv. The fault test overflows a thread's stack, which
+# The OS layer: src/runtime/sys/<platform> and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
 # On Windows the sampler in the OS layer allocates and spawns a thread, so the test links the core objects (the allocator and
 # the thread stub) and not the OS sources a second time.
@@ -166,7 +166,7 @@ ms_test(sys_sampler SOURCES "${_tests}/sys_sampler.c" "${_rt}/sys/thread.c" ${_o
 ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_os_sources} PLAIN
         INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 
-# std_*: all of runtime/std with the system PCRE2, libcrypto, libuv and zlib.
+# std_*: all of src/runtime/std with the system PCRE2, libcrypto, libuv and zlib.
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
@@ -176,11 +176,11 @@ foreach(file ${_std_tests})
           LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
 
-# The JSON test replays the recorded corpus against the natives over the real runtime/core.
+# The JSON test replays the recorded corpus against the natives over the real src/runtime/core.
 ms_test(json_test SOURCES "${_tests}/json_test.c" ${_json_sources} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
 
 # The HTTP/1 test links the vendored llhttp sources (the same ones the runtime archive compiles).
-set(_llhttp "${CMAKE_SOURCE_DIR}/runtime/third_party/llhttp")
+set(_llhttp "${CMAKE_SOURCE_DIR}/src/runtime/third_party/llhttp")
 ms_test_objects(ms_test_task_sleep "${_tests}/net_doubles/task_sleep.c")
 add_library(ms_test_llhttp OBJECT "${_llhttp}/src/api.c" "${_llhttp}/src/http.c" "${_llhttp}/src/llhttp.c")
 target_include_directories(ms_test_llhttp PRIVATE "${_llhttp}/include")
@@ -191,7 +191,7 @@ endif()
 ms_test(http1_test SOURCES "${_tests}/http1_test.c" "${_rt}/net/http1.c" OBJECTS ms_test_llhttp
         INCLUDES "${_llhttp}/include")
 
-# The reactor test links the reactor, libuv and the descriptor primitives of runtime/sys.
+# The reactor test links the reactor, libuv and the descriptor primitives of src/runtime/sys.
 file(GLOB _io_tests CONFIGURE_DEPENDS "${_tests}/io_*.c")
 list(FILTER _io_tests EXCLUDE REGEX "io_ring_test\\.c$")
 foreach(file ${_io_tests})
@@ -213,7 +213,7 @@ foreach(file ${_entry_tests})
           INCLUDES ${MS_LIB_uv_INCLUDES} LIBS m ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} DEFINES MS_ALLOC_STATS)
 endforeach()
 
-# The socket layer: this platform's sources in runtime/sys (linux or darwin); the test needs only the C library.
+# The socket layer: this platform's sources in src/runtime/sys (linux or darwin); the test needs only the C library.
 ms_test(sys_net_test SOURCES "${_tests}/sys_net_test.c" ${_platform_net})
 
 # The completion ring has no dependency but the C library.
@@ -311,7 +311,7 @@ ms_test(exchange_h2_test SOURCES "${_tests}/exchange_h2_test.c" "${_rt}/net/exch
 ms_test(h2conn_test SOURCES "${_tests}/h2conn_test.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c"
         INCLUDES ${MS_LIB_nghttp2_INCLUDES} LIBS ${MS_LIB_nghttp2_LINK})
 
-# Fuzz harnesses (runtime/fuzz/*_fuzz.c): built always, run by `make c-fuzz` over runtime/fuzz/corpus/<name>
+# Fuzz harnesses (src/runtime/fuzz/*_fuzz.c): built always, run by `make c-fuzz` over src/runtime/fuzz/corpus/<name>
 # (the driver takes -n <inputs> -s <seed> <files>; MS_FUZZER=libfuzzer builds coverage-guided ones instead).
 set(MS_FUZZER "driver" CACHE STRING "driver, or libfuzzer (clang with the libFuzzer runtime)")
 set(_fuzz_deps_http1 "${_rt}/net/http1.c")
@@ -322,7 +322,7 @@ foreach(file ${_fuzzers})
   get_filename_component(name "${file}" NAME_WE)
   string(REPLACE "_fuzz" "" short "${name}")
   if(NOT DEFINED _fuzz_deps_${short})
-    message(FATAL_ERROR "runtime/fuzz/${name}.c has no dependency list in cmake/MsTests.cmake")
+    message(FATAL_ERROR "src/runtime/fuzz/${name}.c has no dependency list in cmake/MsTests.cmake")
   endif()
   set(_objects "")
   set(_fuzz_libs m)

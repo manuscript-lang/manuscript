@@ -1,5 +1,0 @@
-# Runtime symbols of ms_rt/obj.h defined in C (runtime/core/obj.c); one per line.
-msrt_obj_clone
-msrt_obj_drop
-msrt_ops_add
-msrt_counts

@@ -1,6 +1,6 @@
 # Path rules moved from Rust natives to Manuscript (2026-11-05)
 
-Change: the 14 lexical `msstd_path_*` natives became `stdlib/os/path.ms`; only `msstd_path_matches_glob` stays native.
+Change: the 14 lexical `msstd_path_*` natives became `src/stdlib/os/path.ms`; only `msstd_path_matches_glob` stays native.
 Baseline: main `80fd348b`, built in a separate worktree. After: this branch. Both Release builds of the same program (`ms build --build-type Release`) on the same shared Linux x86-64 VM, no other build running, three alternating runs, 200000 iterations each, times in ns per call. This is a smoke comparison, not the controlled protocol in the README; the Rust control now lives in `rust/src/path_rules.rs`.
 
 | operation | before (Rust native) | after (Manuscript) |
@@ -17,7 +17,7 @@ Reading: no operation is above 300 ns except `relative`, which did not change. I
 
 ## 2026-11-06: after the data-oriented rework
 
-Change: `normalize`, `parse` and `join` work on byte spans in one pass and skip the rebuild for an already-clean POSIX path (`stdlib/os/path.ms`). Three Release builds of the same program on the shared VM (`ms build --build-type Release`, 200000 iterations, ns per call, three alternating runs, noisy): the pre-port native build (`7c0f4d7a`), merged main (`09606701`), and this branch.
+Change: `normalize`, `parse` and `join` work on byte spans in one pass and skip the rebuild for an already-clean POSIX path (`src/stdlib/os/path.ms`). Three Release builds of the same program on the shared VM (`ms build --build-type Release`, 200000 iterations, ns per call, three alternating runs, noisy): the pre-port native build (`7c0f4d7a`), merged main (`09606701`), and this branch.
 
 | operation | native | main (first port) | this branch |
 | --- | --- | --- | --- |

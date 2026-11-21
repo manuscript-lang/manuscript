@@ -1,4 +1,4 @@
-//! Builds the C back end (`compiler/`, target `ms_backend` of the CMake project) for this host and links it, so
+//! Builds the C back end (`src/compiler/`, target `ms_backend` of the CMake project) for this host and links it, so
 //! `c_backend.rs` calls it in process. CMake and Ninja do the work.
 
 use std::path::{Path, PathBuf};
@@ -12,9 +12,9 @@ fn main() {
     let root = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"))
         .join("../..");
     for path in [
-        "compiler/src",
-        "compiler/include",
-        "runtime/include",
+        "src/compiler/src",
+        "src/compiler/include",
+        "src/runtime/include",
         "cmake",
         "CMakeLists.txt",
     ] {
@@ -41,7 +41,7 @@ fn run(command: &mut Command, what: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Builds `libms_backend.a` (the C back end, `compiler/include/ms/emit_program.h`) for this host in `work/cmake`
+/// Builds `libms_backend.a` (the C back end, `src/compiler/include/ms/emit_program.h`) for this host in `work/cmake`
 /// and returns the folder holding it. A Windows host builds it for MSVC, the target of the Rust `ms` there.
 fn build_c_backend(root: &Path, work: &Path) -> Result<PathBuf, String> {
     let build = work.join("cmake");

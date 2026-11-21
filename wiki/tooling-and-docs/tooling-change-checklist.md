@@ -6,7 +6,7 @@ Verified: rules gathered from past formatter, LSP, CLI, and diagnostics work; th
 
 Apply when: changing `ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, line tables, or profiling.
 
-Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line tables/profiling. Read [implementation/limits](../../documentation/developer-tooling/implementation.md) and [lessons](../tooling-and-docs/index.md).
+Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line tables/profiling. Read [implementation/limits](../../documentation/developer-tooling/implementation.md) and [lessons](index.md).
 
 - Keep the supplied `Names` handle in editor visitors and look up existing symbols directly instead of re-interning their text through the current session. Retained analysis can outlive the active session guard; test a second empty and populated name table (#3480).
 - Derive semantics from checked symbols/types and shared traversal. Direct-recursion lint compares the checked callee symbol even when explicit type arguments wrap its syntax; stripping that wrapper can lose the symbol facts. Reuse one source index per request; do not re-lex names for import usage or generate inspection output just to find a receiver.

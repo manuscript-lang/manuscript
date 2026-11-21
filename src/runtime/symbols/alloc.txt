@@ -1,0 +1,16 @@
+# Runtime symbols of ms_rt/alloc.h defined in C (src/runtime/core/alloc.c); one per line. The whole Rust allocator module is compiled out of the archive build (crates/ms-rt/src/alloc.rs switches on msrt_alloc).
+msrt_alloc
+msrt_alloc_zeroed
+msrt_realloc
+msrt_free
+msrt_heap_claim
+msrt_heap_release
+msrt_heap_has
+msrt_heap_usable_size
+msrt_heap_trim
+msrt_heap_stats
+msrt_heap_requested
+msrt_heap_sample_every
+msrt_heap_requested_reset
+msrt_heap_live_total
+msrt_heap_live_by_size

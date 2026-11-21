@@ -254,7 +254,7 @@ jobs:
       # The reactor test links libuv, the std tests PCRE2 and OpenSSL: the same system packages the runtime folds in.
       - name: Install the C libraries
         if: matrix.check == 'runtime'
-        run: sh runtime/third_party/libs.sh install
+        run: sh src/runtime/third_party/libs.sh install
       # ccache (the C build's compiler launcher) keeps the objects between runs; a pull request restores the newest entry.
       - name: Install ccache
         if: matrix.check == 'compiler'
@@ -263,7 +263,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/ccache
-          key: ccache-c-${{ matrix.check }}-${{ hashFiles('runtime/**', 'compiler/**', 'CMakeLists.txt', 'cmake/**') }}
+          key: ccache-c-${{ matrix.check }}-${{ hashFiles('src/runtime/**', 'src/compiler/**', 'CMakeLists.txt', 'cmake/**') }}
           restore-keys: ccache-c-${{ matrix.check }}-
       - name: Runtime unit tests
         if: matrix.check == 'runtime'

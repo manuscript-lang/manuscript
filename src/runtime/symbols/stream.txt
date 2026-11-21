@@ -1,0 +1,1 @@
+# ms_rt/stream.h declares the host stream for src/runtime/std and the process natives only; no exported runtime symbols.

@@ -1,4 +1,4 @@
-//! Turns the generated runtime signature table (`rt_symbols.txt`, written by `ms run tools/ms/symbols.ms`)
+//! Turns the generated runtime signature table (`rt_symbols.txt`, written by `ms run src/ms/symbols.ms`)
 //! into a sorted table, so lowering looks a symbol up by binary search and a malformed entry fails
 //! the build.
 
@@ -57,10 +57,10 @@ fn ms_files(dir: &std::path::Path, out: &mut Vec<PathBuf>) {
 
 /// Writes `status_rows.rs`: the error kind and words of each runtime status, declared in the
 /// standard library as `// ms: status <number> <kind> <words>` beside `Error.kind`
-/// (`stdlib/core.ms`), and the per-module wording `// ms: words <number> <words>` that applies to
+/// (`src/stdlib/core.ms`), and the per-module wording `// ms: words <number> <words>` that applies to
 /// every extern the declaring file holds or lists as `// ms: native <symbol>..`. A `-` in the words means the native's own text.
 fn status_rows(manifest: &std::path::Path) {
-    let root = manifest.join("../../stdlib");
+    let root = manifest.join("../../src/stdlib");
     println!("cargo:rerun-if-changed={}", root.display());
     let mut files = Vec::new();
     ms_files(&root, &mut files);

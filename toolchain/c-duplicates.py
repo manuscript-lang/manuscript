@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Fails when a static function body (60 characters or more once whitespace is folded) is copied into a second
-C file of runtime/ or compiler/. Share it through a header instead. toolchain/c-duplicates-pending.txt lists
+C file of src/runtime/ or src/compiler/. Share it through a header instead. toolchain/c-duplicates-pending.txt lists
 function names that are known copies; a listed name that no longer repeats must be removed, so the list only
 shrinks. Tests and third_party are not checked. Usage (from the repository root): c-duplicates.py"""
 import collections, os, re, sys
 
-ROOTS = ("runtime", "compiler")
+ROOTS = ("src/runtime", "src/compiler")
 SKIP = ("third_party", "/tests/", "/fuzz/")
 MIN_BODY = 60
 HEAD = re.compile(r"^static\s+(?:inline\s+)?[\w\s\*]+?\b(\w+)\(([^;{]*?)\)\s*\{", re.M)

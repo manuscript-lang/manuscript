@@ -1,0 +1,17 @@
+# Defined in src/runtime/std/system.c; the Rust ms-std-system natives are deleted.
+msstd_system_cpus
+msstd_system_dev_null
+msstd_system_end_of_line
+msstd_system_endianness
+msstd_system_get_priority
+msstd_system_home_directory
+msstd_system_hostname
+msstd_system_info
+msstd_system_machine
+msstd_system_metrics
+msstd_system_network_interfaces
+msstd_system_os
+msstd_system_os_release
+msstd_system_os_version
+msstd_system_set_priority
+msstd_system_user_info

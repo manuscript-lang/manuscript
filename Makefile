@@ -29,23 +29,23 @@ verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
 # Installs what the C build needs (CMake, Ninja, clang, musl-gcc, perl and the system libraries); run once on a new machine.
 setup:
-	sh runtime/third_party/libs.sh install
+	sh src/runtime/third_party/libs.sh install
 
 # Builds the native C runtime into target/ms-native; every build of ms-cli embeds it. A missing tool is named first,
 # with `make setup`, rather than failing inside CMake.
 runtime:
-	sh runtime/third_party/libs.sh check
+	sh src/runtime/third_party/libs.sh check
 	cmake -P cmake/BuildRuntime.cmake
 
 check: build
-	"$(RELEASE_MS)" run tools/ms/symbols.ms -- --check
+	"$(RELEASE_MS)" run src/ms/symbols.ms -- --check
 	cargo fmt --all --check
 	cargo clippy --workspace --all-targets -- -D warnings
 
 fmt:
 	cargo fmt --all
 
-# The libms entry points that Manuscript tools call with `extern fn` (compiler/tools/tool_shim.c).
+# The libms entry points that Manuscript tools call with `extern fn` (src/compiler/tools/tool_shim.c).
 libms-tools:
 	cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
 	cmake --build target/cmake/tools --target ms_tools_shim
@@ -149,7 +149,7 @@ copy-check: build
 removed-check: build
 	$(MS) run tools/removed-check.ms
 
-# The Manuscript command-line front (tools/ms) against the Rust ms on the argument lines in tools/ms/cases.txt.
+# The Manuscript command-line front (src/ms) against the Rust ms on the argument lines in src/ms/cases.txt.
 ms-cli-check: build target/c-tool/libmstool.a
 	$(MS) run tools/ms-cli-check.ms
 
@@ -160,8 +160,8 @@ licenses: build libms-tools
 licenses-check: build libms-tools
 	$(MS) run tools/repo-check.ms --link target/libms_tools.a -- licenses -check
 
-# The book and API reference come from the C checker's API model (ms_api_model) through tools/ms/docgen.ms; the
-# description policy is checked by tools/ms/doc_inventory.ms.
+# The book and API reference come from the C checker's API model (ms_api_model) through src/ms/docgen.ms; the
+# description policy is checked by src/ms/doc_inventory.ms.
 DOC_MODEL = target/c-tool/model.json
 
 # The docs tools run on the Rust-built ms; an order-only prerequisite builds it when it is missing (a fresh checkout).
@@ -169,23 +169,23 @@ $(RELEASE_MS):
 	$(MAKE) build
 
 docs-model: target/c-tool/libmstool.a | $(RELEASE_MS)
-	target/c-tool/ms_api_model stdlib > $(DOC_MODEL)
+	target/c-tool/ms_api_model src/stdlib > $(DOC_MODEL)
 
 # Rebuilds the disposable book Markdown (.artifacts/docs) and the API downloads (website/static/stdlib.*).
 docs: docs-model docs-check
 	rm -rf target/c-tool/docs target/c-tool/docs.out .artifacts/docs
-	$(RELEASE_MS) run tools/ms/docgen.ms -- $(DOC_MODEL) target/c-tool/docs.out
+	$(RELEASE_MS) run src/ms/docgen.ms -- $(DOC_MODEL) target/c-tool/docs.out
 	mkdir -p .artifacts/docs website/static
 	cp -r target/c-tool/docs.out/documentation .artifacts/docs/
 	cp target/c-tool/docs.out/website/static/stdlib.md target/c-tool/docs.out/website/static/stdlib.json website/static/
 
 # Validates the API descriptions against the policy; fails on a declaration that does not meet it.
 docs-check: docs-model
-	$(RELEASE_MS) run tools/ms/doc_inventory.ms -- $(DOC_MODEL) tools/ms/data/description_backlog.json
+	$(RELEASE_MS) run src/ms/doc_inventory.ms -- $(DOC_MODEL) src/ms/data/description_backlog.json
 
 docs-coverage: docs-model
 	mkdir -p .artifacts
-	$(RELEASE_MS) run tools/ms/doc_inventory.ms -- $(DOC_MODEL) tools/ms/data/description_backlog.json .artifacts/stdlib-doc-coverage.json
+	$(RELEASE_MS) run src/ms/doc_inventory.ms -- $(DOC_MODEL) src/ms/data/description_backlog.json .artifacts/stdlib-doc-coverage.json
 
 # BOOK_BASEURL moves the site to another address, as a release's archived copy under versions/v<version>/.
 book: docs
@@ -203,10 +203,10 @@ dist: build
 dist-check: dist
 	$(MS) run tools/dist-check.ms
 
-# The language server written in Manuscript (tools/lsp): its unit tests and a check of the entry point.
+# The language server written in Manuscript (src/lsp): its unit tests and a check of the entry point.
 lsp-test: build
-	"$(RELEASE_MS)" test tools/lsp/frame.ms tools/lsp/text.ms tools/lsp/uri.ms tools/lsp/structure.ms tools/lsp/server.ms tools/lsp/check.ms
-	"$(RELEASE_MS)" check tools/lsp/main.ms
+	"$(RELEASE_MS)" test src/lsp/frame.ms src/lsp/text.ms src/lsp/uri.ms src/lsp/structure.ms src/lsp/server.ms src/lsp/check.ms
+	"$(RELEASE_MS)" check src/lsp/main.ms
 
 agent-bench-check: build
 	PATH="$(dir $(RELEASE_MS)):$$PATH" "$(RELEASE_MS)" run bench/agent/run.ms -- oracle
@@ -240,7 +240,7 @@ C_BUILD ?= target/cmake/test
 # build with the command that installs it.
 .PHONY: c-deps c-configure c-build
 c-deps:
-	@pkg-config --exists libuv libnghttp2 libssl libcrypto libpcre2-8 zlib libcurl 2>/dev/null || { echo "make: the C libraries are not all installed (pkg-config). Install them with: sh runtime/third_party/libs.sh install" >&2; exit 1; }
+	@pkg-config --exists libuv libnghttp2 libssl libcrypto libpcre2-8 zlib libcurl 2>/dev/null || { echo "make: the C libraries are not all installed (pkg-config). Install them with: sh src/runtime/third_party/libs.sh install" >&2; exit 1; }
 
 c-configure: c-deps
 	cmake -S . -B $(C_BUILD) -G Ninja -DMS_SANITIZE=ON
@@ -254,41 +254,48 @@ c-test: c-build
 
 # The C style gate (documentation/contributing/c-style.md): strict warnings on every C file, clang-tidy on the
 # files that differ from C_LINT_BASE (all of them when it is unset).
+# Editor support for the C code: configures target/cmake/dev (no build) and links its compile_commands.json at the
+# repository root, where clangd and the VS Code C/C++ extension find every include path.
+.PHONY: c-ide
+c-ide: c-deps
+	cmake -S . -B target/cmake/dev -G Ninja
+	ln -sf target/cmake/dev/compile_commands.json compile_commands.json
+
 .PHONY: c-lint
 c-lint: c-deps
 	cmake -S . -B target/cmake/lint -G Ninja -DMS_BUILD_COMPILER=OFF -DMS_BUILD_TESTS=OFF
 	C_LINT_BASE="$(C_LINT_BASE)" cmake --build target/cmake/lint --target c-lint
 
-# The C runtime fuzz harnesses (runtime/fuzz) under AddressSanitizer and UBSan; FUZZ_RUNS, FUZZ_SEED, FUZZER=libfuzzer.
+# The C runtime fuzz harnesses (src/runtime/fuzz) under AddressSanitizer and UBSan; FUZZ_RUNS, FUZZ_SEED, FUZZER=libfuzzer.
 c-fuzz:
-	sh runtime/tests/fuzz.sh
+	sh src/runtime/tests/fuzz.sh
 
 # The C compiler front end and checker against the Rust ones, byte for byte (syntax on the corpus and on mutated copies, checker tables on the standard library); nightly runs more mutants.
 c-compiler-test:
-	sh compiler/tests/syntax-diff.sh
-	sh compiler/tests/mir-pass-frozen.sh
-	sh compiler/tests/check-diff.sh
-	sh compiler/tests/diag-render-diff.sh
-	sh compiler/tests/entry-diff.sh
-	sh compiler/tests/prelude-import-diff.sh
-	sh compiler/tests/public-signature-diff.sh
-	sh compiler/tests/extern-diff.sh
-	sh compiler/tests/interface-diff.sh
-	sh compiler/tests/param-order-diff.sh
-	sh compiler/tests/field-defaults-diff.sh
-	sh compiler/tests/lower-diff.sh
-	sh compiler/tests/lower-program-diff.sh
-	sh compiler/tests/hints-diff.sh
-	sh compiler/tests/constfold-diff.sh
-	sh compiler/tests/fixes-diff.sh
-	sh compiler/tests/prelude-fix-diff.sh
-	sh compiler/tests/import-hints-diff.sh
-	sh compiler/tests/asm-tables.sh
-	sh compiler/tests/llvm-run.sh
-	sh compiler/tests/llvm-main-run.sh
-	sh compiler/tests/data-run.sh
+	sh src/compiler/tests/syntax-diff.sh
+	sh src/compiler/tests/mir-pass-frozen.sh
+	sh src/compiler/tests/check-diff.sh
+	sh src/compiler/tests/diag-render-diff.sh
+	sh src/compiler/tests/entry-diff.sh
+	sh src/compiler/tests/prelude-import-diff.sh
+	sh src/compiler/tests/public-signature-diff.sh
+	sh src/compiler/tests/extern-diff.sh
+	sh src/compiler/tests/interface-diff.sh
+	sh src/compiler/tests/param-order-diff.sh
+	sh src/compiler/tests/field-defaults-diff.sh
+	sh src/compiler/tests/lower-diff.sh
+	sh src/compiler/tests/lower-program-diff.sh
+	sh src/compiler/tests/hints-diff.sh
+	sh src/compiler/tests/constfold-diff.sh
+	sh src/compiler/tests/fixes-diff.sh
+	sh src/compiler/tests/prelude-fix-diff.sh
+	sh src/compiler/tests/import-hints-diff.sh
+	sh src/compiler/tests/asm-tables.sh
+	sh src/compiler/tests/llvm-run.sh
+	sh src/compiler/tests/llvm-main-run.sh
+	sh src/compiler/tests/data-run.sh
 
-# libms with the tool entry points (compiler/include/ms/tool.h): the archive a Manuscript tool links with `--link`.
+# libms with the tool entry points (src/compiler/include/ms/tool.h): the archive a Manuscript tool links with `--link`.
 .PHONY: FORCE
 FORCE:
 
@@ -303,83 +310,83 @@ target/c-tool/libmstool.a: FORCE
 
 # The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; `search_symbol` against the Rust one; the `ms diagram` views and call graph against the Rust ones; and the C checker's fact dump against the Rust facts.
 c-tools-test: build target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/diff.ms
-	"$(RELEASE_MS)" test tools/ms/mark.ms
-	"$(RELEASE_MS)" test tools/ms/html.ms
-	"$(RELEASE_MS)" test tools/ms/review_cmd.ms
-	"$(RELEASE_MS)" test tools/ms/diagram_cmd.ms
-	"$(RELEASE_MS)" test tools/ms/symbols.ms
-	"$(RELEASE_MS)" test tools/ms/toolchain.ms
-	"$(RELEASE_MS)" test tools/ms/proxy_get.ms
-	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
-	"$(RELEASE_MS)" test tools/ms/cli.ms
-	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
-	"$(RELEASE_MS)" test tools/ms/install.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/lsp/analysis.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/lsp/navigate.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/project.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/workspace.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/matches.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/imports.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/test/watch.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/report.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/payloads.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/typed_calls.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/recursion.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/defaults.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/counter.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/flush.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/effects.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/diff.ms
+	"$(RELEASE_MS)" test src/ms/mark.ms
+	"$(RELEASE_MS)" test src/ms/html.ms
+	"$(RELEASE_MS)" test src/ms/review_cmd.ms
+	"$(RELEASE_MS)" test src/ms/diagram_cmd.ms
+	"$(RELEASE_MS)" test src/ms/symbols.ms
+	"$(RELEASE_MS)" test src/ms/toolchain.ms
+	"$(RELEASE_MS)" test src/ms/proxy_get.ms
+	"$(RELEASE_MS)" test src/ms/manifest_edit.ms
+	"$(RELEASE_MS)" test src/ms/cli.ms
+	"$(RELEASE_MS)" test src/ms/toml_edit_test.ms
+	"$(RELEASE_MS)" test src/ms/install.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/lsp/analysis.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/lsp/navigate.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/project.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/workspace.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/text.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/matches.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/terse.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/imports.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/flow.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/test/watch.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/report.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/payloads.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/facts.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/typed.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/typed_calls.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/recursion.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/defaults.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/counter.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/flush.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/effects.ms --link target/c-tool/libmstool.a
 
-	"$(RELEASE_MS)" test tools/ms/lint/analysis.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/skill_calls.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/fixes.ms --link target/c-tool/libmstool.a
-	"$(RELEASE_MS)" test tools/ms/lint/interpolation.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/analysis.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/skill_calls.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/fixes.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test src/ms/lint/interpolation.ms --link target/c-tool/libmstool.a
 	git ls-files '*.ms' > target/c-tool/files.txt
 	target/c-tool/ms_syntax_dump ast $$(cat target/c-tool/files.txt) | sed -E 's/^(error [0-9]+:[0-9]+:[0-9]+) .*/\1/' > target/c-tool/ast.c.txt
-	"$(RELEASE_MS)" run tools/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt
+	"$(RELEASE_MS)" run src/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt
 	cmp target/c-tool/ast.c.txt target/c-tool/ast.ms.txt
 	cargo run -q --release --locked -p ms-tooling --example api_model > target/c-tool/model.json
-	target/c-tool/ms_api_model stdlib > target/c-tool/model.c.json && cmp target/c-tool/model.json target/c-tool/model.c.json
-	"$(RELEASE_MS)" build tools/ms/facts_entry.ms --link target/c-tool/libmstool.a -o target/c-tool/facts_entry
-	mkdir -p target/c-tool/facts && cp tests/conformance/fixtures/e2e/stdlib/log.ms target/c-tool/facts/main.ms && cd target/c-tool/facts && ../facts_entry main.ms > entry.json && ../../cmake/tools/compiler/ms_check_dump ../../../stdlib --facts main.ms > dump.json && cmp entry.json dump.json
+	target/c-tool/ms_api_model src/stdlib > target/c-tool/model.c.json && cmp target/c-tool/model.json target/c-tool/model.c.json
+	"$(RELEASE_MS)" build src/ms/facts_entry.ms --link target/c-tool/libmstool.a -o target/c-tool/facts_entry
+	mkdir -p target/c-tool/facts && cp tests/conformance/fixtures/e2e/stdlib/log.ms target/c-tool/facts/main.ms && cd target/c-tool/facts && ../facts_entry main.ms > entry.json && ../../cmake/tools/compiler/ms_check_dump ../../../src/stdlib --facts main.ms > dump.json && cmp entry.json dump.json
 	rm -rf target/c-tool/proj && mkdir -p target/c-tool/proj/src && printf 'import helper from "./src/lib.ms"\n\nfn main() Int:\n\treturn helper(2)\n' > target/c-tool/proj/a.ms && printf 'export fn helper(n: Int) Int:\n\treturn n + 1\n' > target/c-tool/proj/src/lib.ms
 	target/c-tool/facts_entry --project target/c-tool/proj/a.ms > target/c-tool/proj/facts.json && grep -q '"key": "a.ms#fn#main"' target/c-tool/proj/facts.json && grep -q '"key": "src/lib.ms#fn#helper"' target/c-tool/proj/facts.json && grep -q '"paths": \["./src/lib.ms"\]' target/c-tool/proj/facts.json && grep -q '"calls": \["src/lib.ms#fn#helper"\], "effects_known": true' target/c-tool/proj/facts.json
 	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -coverage target/c-tool/coverage.rust.json -artifacts target/c-tool/docs.rust -static target/c-tool/static.rust
 	rm -rf target/c-tool/docs.ms
-	"$(RELEASE_MS)" run tools/ms/docgen.ms -- target/c-tool/model.json target/c-tool/docs.ms
+	"$(RELEASE_MS)" run src/ms/docgen.ms -- target/c-tool/model.json target/c-tool/docs.ms
 	diff -r target/c-tool/docs.rust/documentation target/c-tool/docs.ms/documentation
 	cmp target/c-tool/static.rust/stdlib.md target/c-tool/docs.ms/website/static/stdlib.md
 	cmp target/c-tool/static.rust/stdlib.json target/c-tool/docs.ms/website/static/stdlib.json
-	"$(RELEASE_MS)" run tools/ms/doc_inventory.ms -- target/c-tool/model.json tools/ms/data/description_backlog.json target/c-tool/coverage.ms.json
+	"$(RELEASE_MS)" run src/ms/doc_inventory.ms -- target/c-tool/model.json src/ms/data/description_backlog.json target/c-tool/coverage.ms.json
 	cmp target/c-tool/coverage.rust.json target/c-tool/coverage.ms.json
-	"$(RELEASE_MS)" test tools/ms/doc_inventory.ms
-	"$(RELEASE_MS)" build tools/ms/search.ms --link target/c-tool/libmstool.a -o target/c-tool/search
-	sh tools/ms/search-diff.sh "$(RELEASE_MS)" target/c-tool/search
+	"$(RELEASE_MS)" test src/ms/doc_inventory.ms
+	"$(RELEASE_MS)" build src/ms/search.ms --link target/c-tool/libmstool.a -o target/c-tool/search
+	sh src/ms/search-diff.sh "$(RELEASE_MS)" target/c-tool/search
 	cargo build -q --release --locked -p ms-tooling --bin ms-tooling-dev
-	"$(RELEASE_MS)" build tools/ms/views.ms -o target/c-tool/views
-	sh tools/ms/views-diff.sh target/release/ms-tooling-dev target/c-tool/views target/c-tool/views-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
-	"$(RELEASE_MS)" build tools/ms/review.ms -o target/c-tool/review
-	"$(RELEASE_MS)" build tools/ms/report.ms -o target/c-tool/report
-	sh tools/ms/review-diff.sh target/release/ms-tooling-dev target/c-tool/review target/c-tool/report target/c-tool/review-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
-	"$(RELEASE_MS)" build tools/ms/html.ms -o target/c-tool/html
-	sh tools/ms/html-diff.sh target/release/ms-tooling-dev target/c-tool/html target/c-tool/html-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
-	"$(RELEASE_MS)" build tools/ms/review_cmd.ms -o target/c-tool/review_cmd
-	sh tools/ms/review-cmd-diff.sh "$(RELEASE_MS)" target/c-tool/review_cmd target/release/ms-tooling-dev target/c-tool/review-cmd-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
-	"$(RELEASE_MS)" build tools/ms/diagram_cmd.ms -o target/c-tool/diagram_cmd
-	sh tools/ms/diagram-cmd-diff.sh "$(RELEASE_MS)" target/c-tool/diagram_cmd target/release/ms-tooling-dev target/c-tool/diagram-cmd-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
-	"$(RELEASE_MS)" build tools/ms/inspect.ms -o target/c-tool/inspect
-	sh tools/ms/inspect-diff.sh "$(RELEASE_MS)" target/c-tool/inspect target/c-tool/inspect-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
-	"$(RELEASE_MS)" build tools/ms/facts_diff.ms -o target/c-tool/facts_diff
-	sh compiler/tests/facts-diff.sh $(C_TOOL)/ms_check_dump target/release/ms-tooling-dev target/c-tool/facts_diff target/c-tool/facts-work $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' | awk 'NR%8==0')
-	sh compiler/tests/nodes-diff.sh $(C_TOOL)/ms_check_dump target/release/ms-tooling-dev target/c-tool/nodes-work $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' | awk 'NR%8==0')
-	"$(RELEASE_MS)" run tools/ms/lint_diff.ms --link target/c-tool/libmstool.a -- "$(RELEASE_MS)" target/c-tool/work 3 $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' 'examples/*.ms' 'stdlib/*.ms' | awk 'NR%4==0')
+	"$(RELEASE_MS)" build src/ms/views.ms -o target/c-tool/views
+	sh src/ms/views-diff.sh target/release/ms-tooling-dev target/c-tool/views target/c-tool/views-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build src/ms/review.ms -o target/c-tool/review
+	"$(RELEASE_MS)" build src/ms/report.ms -o target/c-tool/report
+	sh src/ms/review-diff.sh target/release/ms-tooling-dev target/c-tool/review target/c-tool/report target/c-tool/review-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build src/ms/html.ms -o target/c-tool/html
+	sh src/ms/html-diff.sh target/release/ms-tooling-dev target/c-tool/html target/c-tool/html-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build src/ms/review_cmd.ms -o target/c-tool/review_cmd
+	sh src/ms/review-cmd-diff.sh "$(RELEASE_MS)" target/c-tool/review_cmd target/release/ms-tooling-dev target/c-tool/review-cmd-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build src/ms/diagram_cmd.ms -o target/c-tool/diagram_cmd
+	sh src/ms/diagram-cmd-diff.sh "$(RELEASE_MS)" target/c-tool/diagram_cmd target/release/ms-tooling-dev target/c-tool/diagram-cmd-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build src/ms/inspect.ms -o target/c-tool/inspect
+	sh src/ms/inspect-diff.sh "$(RELEASE_MS)" target/c-tool/inspect target/c-tool/inspect-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build src/ms/facts_diff.ms -o target/c-tool/facts_diff
+	sh src/compiler/tests/facts-diff.sh $(C_TOOL)/ms_check_dump target/release/ms-tooling-dev target/c-tool/facts_diff target/c-tool/facts-work $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' | awk 'NR%8==0')
+	sh src/compiler/tests/nodes-diff.sh $(C_TOOL)/ms_check_dump target/release/ms-tooling-dev target/c-tool/nodes-work $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' | awk 'NR%8==0')
+	"$(RELEASE_MS)" run src/ms/lint_diff.ms --link target/c-tool/libmstool.a -- "$(RELEASE_MS)" target/c-tool/work 3 $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' 'examples/*.ms' 'src/stdlib/*.ms' | awk 'NR%4==0')
 
 # The C driver: stage table and parse entry point, then the thin `ms` in front of a stand-in for the Rust `ms` (no Rust build needed).
 c-driver-test:
-	sh compiler/tests/driver-test.sh
+	sh src/compiler/tests/driver-test.sh

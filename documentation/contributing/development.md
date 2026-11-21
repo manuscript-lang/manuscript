@@ -22,7 +22,7 @@ make verify
 - `make rebuild` is the one command for a clean rebuild: it removes the built C libraries (`target/c-libs`), every CMake cache, the runtime archive and the old `ms`, then runs `make build`. Use it when results look stale (a census or conformance answer that does not match the source, a CMake error about a missing library, a library pin that changed). Downloaded LLVM tools and cargo's cache are kept.
 - `make fmt`, `make docs`, and `make licenses` write corrections and generated output explicitly.
 
-`make repo-check` (the Manuscript program `tools/repo-check.ms` and `tools/repo-check/`, which reads syntax trees through libms) also caps multi-line Manuscript programs held in Rust string literals per file (`INLINE_BASELINE` in `checks_rust.ms`; the counts only go down), and rejects invalid syntax in any `stdlib/*.ms` file, nested matches in repository Manuscript sources, and Markdown fences (`manuscript`, `ms`, `text`), including untracked files Git does not ignore. Keep examples and remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
+`make repo-check` (the Manuscript program `tools/repo-check.ms` and `tools/repo-check/`, which reads syntax trees through libms) also caps multi-line Manuscript programs held in Rust string literals per file (`INLINE_BASELINE` in `checks_rust.ms`; the counts only go down), and rejects invalid syntax in any `src/stdlib/*.ms` file, nested matches in repository Manuscript sources, and Markdown fences (`manuscript`, `ms`, `text`), including untracked files Git does not ignore. Keep examples and remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 
 - Allowance: a deliberate regression puts `// manuscript:allow-nested-match <reason>` before one inner match in a `tests/*.ms` fixture.
 - Each allowance covers one match; implementation and documentation cannot opt out.
@@ -73,7 +73,7 @@ A snippet that leaves names free is marked `"mode":"fragment"`. It is parsed onl
 
 ## Preview and publish the book
 
-Author guides in `documentation/`; standard-library descriptions live above declarations in `stdlib/*.ms`. Site config, assets, and the vendored theme live in `website/`. Lexical rules live in `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
+Author guides in `documentation/`; standard-library descriptions live above declarations in `src/stdlib/*.ms`. Site config, assets, and the vendored theme live in `website/`. Lexical rules live in `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
 
 ```sh
 make docs
@@ -109,7 +109,7 @@ Release tags package through [`rust-dist.yml`](https://github.com/manuscript-lan
 
 ## Generate the standard library reference
 
-`make docs` (`tools/ms/docgen.ms` over the C checker's API model) reads the checker's registry from `stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
+`make docs` (`src/ms/docgen.ms` over the C checker's API model) reads the checker's registry from `src/stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
 
 Generated references live in `.artifacts/docs/documentation/standard-library/reference/` and are mounted by Hugo. `website/static/stdlib.md` and `stdlib.json` (versioned, sorted schema) are generated and ignored by Git; `website/static/llms.txt` points to the plain-text API. Change source or generators, then run `make docs` and the book checks; never hand-edit generated output.
 

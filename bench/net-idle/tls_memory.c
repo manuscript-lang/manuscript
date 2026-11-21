@@ -1,12 +1,12 @@
 /* Where an OpenSSL connection's memory goes: creates N server and client MsTls objects over the memory BIOs of
- * runtime/net/tls.c, runs the handshakes in process and prints the malloc growth per object (glibc mallinfo2).
+ * src/runtime/net/tls.c, runs the handshakes in process and prints the malloc growth per object (glibc mallinfo2).
  * Usage: tls_memory <cert.pem> <key.pem>; run.sh builds and runs it. */
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/ssl.h>
-#include "../../runtime/net/tls.h"
+#include "../../src/runtime/net/tls.h"
 static size_t used(void){ struct mallinfo2 m=mallinfo2(); return m.uordblks; }
 static char *slurp(const char*p,size_t*n){FILE*f=fopen(p,"rb");char*b=calloc(1,65536);*n=fread(b,1,65535,f);fclose(f);return b;}
 int main(int argc,char**argv){

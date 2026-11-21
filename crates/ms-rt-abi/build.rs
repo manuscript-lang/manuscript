@@ -1,15 +1,15 @@
-//! Reads the fault families and exit statuses from `runtime/include/ms_rt/fault.h`, the one
+//! Reads the fault families and exit statuses from `src/runtime/include/ms_rt/fault.h`, the one
 //! place that names them, and writes the Rust constants and `FaultKind` the CLI and the code
 //! generator use. The C header is the source: nothing here repeats a number.
 use std::fmt::Write as _;
 use std::path::Path;
 
-const HEADER: &str = "../../runtime/include/ms_rt/fault.h";
+const HEADER: &str = "../../src/runtime/include/ms_rt/fault.h";
 
 fn main() {
     println!("cargo:rerun-if-changed={HEADER}");
     let text = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(HEADER))
-        .expect("read runtime/include/ms_rt/fault.h");
+        .expect("read src/runtime/include/ms_rt/fault.h");
     let kinds = entries(&text, "MS_FAULT_KIND_");
     let exits = entries(&text, "MS_EXIT_");
     assert!(

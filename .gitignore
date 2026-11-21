@@ -63,3 +63,4 @@ __pycache__/
 
 # Debug dump written by MS_KEEP_LL=1
 /*.ll
+/compile_commands.json

@@ -35,7 +35,7 @@ Checks: >
 # not by rule; short names are fine in short scopes; complexity is reviewed, not counted; one-line early
 # returns stay unbraced; `a, b` declarations of one type are allowed; lowercase suffixes are allowed.
 WarningsAsErrors: '*'
-HeaderFilterRegex: '(runtime/(include|core|sys|io|net|std)|compiler/(include|src))/'
+HeaderFilterRegex: '(src/runtime/(include|core|sys|io|net|std)|src/compiler/(include|src))/'
 CheckOptions:
   - key: bugprone-reserved-identifier.AllowedIdentifiers
     value: '_GNU_SOURCE;_DEFAULT_SOURCE;_POSIX_C_SOURCE;_XOPEN_SOURCE;_DARWIN_C_SOURCE'

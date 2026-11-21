@@ -4,11 +4,11 @@
 //! ```text
 //! ms-tooling-dev lint FILE...
 //! ms-tooling-dev inspect FILE
-//! ms-tooling-dev facts FILE                 the fact model as JSON, the input of tools/ms/views.ms
+//! ms-tooling-dev facts FILE                 the fact model as JSON, the input of src/ms/views.ms
 //! ms-tooling-dev nodes FILE                 `ID KIND` per typed expression, the oracle of `ms_check_dump --nodes`
 //! ms-tooling-dev view FILE VIEW ENTITY DEPTH FORMAT   one `ms diagram` view (ascii, mermaid, json)
 //! ms-tooling-dev review BASE HEAD [--no-base] [--added FILE]... [--touch FILE:LINE]...
-//!                                           the ranked findings of `ms review` as JSON, the oracle of tools/ms/review.ms
+//!                                           the ranked findings of `ms review` as JSON, the oracle of src/ms/review.ms
 //! ms-tooling-dev skill-calls update         rewrite the standard-call table in the agent skill
 //! ```
 //!
@@ -143,7 +143,7 @@ fn skill_calls(args: &[String]) -> i32 {
         MODULES_END, MODULES_START, block_between, block_of, render, render_modules, splice,
         splice_between,
     };
-    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tools/ms/data/agent-skill");
+    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src/ms/data/agent-skill");
     match args.first() {
         Some(mode) if mode == "update" => {
             let path = data.join("references/standard-calls.md");
@@ -209,7 +209,7 @@ fn slot_json(s: &ms_tooling::facts::Slot) -> ms_json::Json {
     ])
 }
 
-/// The fact model of one file, with entities in key order, as `tools/ms/views.ms` reads it.
+/// The fact model of one file, with entities in key order, as `src/ms/views.ms` reads it.
 fn facts_value(facts: &ms_tooling::facts::Facts) -> ms_json::Json {
     let entities = facts
         .entities

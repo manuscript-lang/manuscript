@@ -1,5 +1,5 @@
 //! Answers import-hint queries the way `ms-check` does, for the C port in
-//! `compiler/src/check/import_hints.c` to be diffed against (`compiler/tests/import-hints-diff.sh`).
+//! `src/compiler/src/check/import_hints.c` to be diffed against (`src/compiler/tests/import-hints-diff.sh`).
 //! Each stdin line is `import<TAB>Name`, `typeimport<TAB>Name` or `export<TAB>path<TAB>Name`; each
 //! output line is the hint or the diagnostic the checker gives. `gen COUNT SEED` writes random
 //! queries from the standard library's own names, misspelled. Temporary tooling for the C rewrite:

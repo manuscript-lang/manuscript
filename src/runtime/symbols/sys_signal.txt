@@ -1,0 +1,1 @@
+# ms_rt/sys_signal.h declares the signal-state layer for src/runtime/std only; no exported runtime symbols.

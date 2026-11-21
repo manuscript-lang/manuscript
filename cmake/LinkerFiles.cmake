@@ -1,4 +1,4 @@
-# The files `ms_build_link` links with (`MsLinkOptions.files`, compiler/include/ms/build_link.h), gathered for this host into
+# The files `ms_build_link` links with (`MsLinkOptions.files`, src/compiler/include/ms/build_link.h), gathered for this host into
 # MS_LINKER_OUT (default target/ms-linker). Included by BuildRuntime.cmake for `-DMS_MODE=linker`, which has set host_os,
 # arch, exe_suffix and MS_ROOT.
 #   Linux: crt1.o crti.o crtn.o libc.a of musl (static links), libunwind.a, and glibc.symbols (the glibc 2.28 stand-ins).

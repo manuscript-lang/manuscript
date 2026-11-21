@@ -1,4 +1,0 @@
-# Defined in runtime/std/path.c; the Rust natives and the Rust matcher (ms-std-path) are deleted.
-msstd_path_compile_glob
-msstd_path_glob_matches
-msstd_path_host_windows
