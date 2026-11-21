@@ -74,7 +74,7 @@ jobs:
           primary-key: ${{ steps.sccache.outputs.primary-key }}
       - name: Run the packaged binary on a hello project
         run: |
-          set -eu
+          set -eux
           name="manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}"
           mkdir -p "extracted distribution"
           if [ '${{ matrix.os }}' = windows ]; then
@@ -93,13 +93,14 @@ jobs:
           "$ms" --version
           cd "extracted distribution/$name/examples/hello"
           bin="../../$(basename "$ms")"
-          test "$("$bin" run ms.toml -- first second | tr -d '\r')" = "Arguments: 2"
-          "$bin" test test.ms
-          # A release build links with the pinned lld, so it proves the embedded runtime is usable.
+          # Each command has a time limit, so a hang fails the step with its own line in the log instead of holding the runner for the job's hour.
           exe="$RUNNER_TEMP/hello"
           if [ '${{ matrix.os }}' = windows ]; then exe="$exe.exe"; fi
-          "$bin" build ms.toml -o "$exe"
+          # A release build links with the pinned lld, so it proves the embedded runtime is usable.
+          timeout 300 "$bin" build ms.toml -o "$exe"
           test "$("$exe" first second | tr -d '\r')" = "Arguments: 2"
+          test "$(timeout 300 "$bin" run ms.toml -- first second | tr -d '\r')" = "Arguments: 2"
+          timeout 300 "$bin" test test.ms
       - uses: actions/upload-artifact@v7
         with:
           name: manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}
