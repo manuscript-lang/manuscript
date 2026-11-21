@@ -108,4 +108,24 @@ uint32_t ms_sys_process_id(void);
  * happens when the variable is unset or the file cannot be written. */
 void ms_sys_fault_record_write(MsSpan bytes);
 
+/* sys/{posix,windows}/frames.c: what a stack walk needs from the system. */
+
+/* Whether a walk follows the saved frame pointers (Linux, macOS). Windows generated code does not keep its frame
+ * register at the frame record, so the walk starts from native unwind data instead. */
+bool ms_sys_frame_pointer_chain(void);
+/* Where the walk of generated code begins once the runtime's own frames are passed. */
+typedef struct MsSysNativeStart {
+  uintptr_t pc;
+  uintptr_t sp;
+  uintptr_t fp;
+  size_t budget; /* logical frames left */
+} MsSysNativeStart;
+/* Windows only (the others report false and zero). Whether the system has unwind data for `pc`. */
+bool ms_sys_has_unwind_data(uintptr_t pc);
+/* The calling thread's stack bounds. */
+void ms_sys_stack_bounds(uintptr_t *low, uintptr_t *high);
+/* Unwinds from here to the first frame `is_source` accepts, charging frames from `anchor_pc`'s function on. */
+MS_NODISCARD bool ms_sys_native_start(uintptr_t anchor_pc, bool (*is_source)(uintptr_t, const void *), const void *context,
+                                      size_t budget, MsSysNativeStart *start);
+
 #endif
