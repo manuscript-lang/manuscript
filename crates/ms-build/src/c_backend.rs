@@ -335,6 +335,11 @@ fn compile_in(
         "-relocation-model=pic",
         &triple,
     ]);
+    if size_tiered {
+        // AArch64 selects instructions with GlobalISel at -O0, whose Localizer pass took 56 of 61 s
+        // on a 6400-statement function (#5540); the selection-DAG path is linear in it.
+        llc.arg("-global-isel=0");
+    }
     if cfg!(target_arch = "x86_64") {
         // Loops start on a 32-byte boundary and the CPU is the portable baseline, as the Rust LLVM
         // path set them (#1871): a small loop must not straddle a cache line by link order, and the
