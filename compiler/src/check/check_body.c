@@ -1034,10 +1034,10 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
 
 /* `call()?` on a `Result[T, E]` inside a function that returns `Result[_, E]`, or on an
  * `Optional[T]` inside one that returns an Optional or Void: the success value, with the failure
- * returned from the function. Only the operand of a call is handled, which is a temporary. */
+ * returned from the function. */
 static MsTy body_try(MsBody *b, const MsExpr *operand) {
     const MsTyTable *tys = &b->c->tys;
-    const MsTy operand_ty = operand->kind == MS_E_CALL ? ms_body_expr(b, operand, MS_TY_NONE) : MS_TY_NONE;
+    const MsTy operand_ty = ms_body_expr(b, operand, MS_TY_NONE);
     if (operand_ty == MS_TY_NONE) {
         return ms_body_unsupported(b);
     }
@@ -2398,6 +2398,7 @@ static void body_check_test(MsBody *b, const MsDecl *d) {
         b->facts->body_checked[d->id] = true;
         body_commit_diags(b, diags_start);
     } else {
+        b->facts->refusal[d->id] = b->gave_up;
         body_undo(b, first_binding, written_start, diags_start);
     }
 }
