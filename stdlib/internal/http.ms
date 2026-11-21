@@ -187,13 +187,13 @@ export extern fn msstd_handler_take() NativeExchange
 export extern fn msstd_handler_keep(keep: Bool) Void
 
 // Idle connections (runtime/include/ms_rt/xchg.h). After a response that keeps the
-// connection alive, the serving task parks it here and ends; the pool starts `next` as a
-// promise when the peer sends the next request, on a thread that is not held up.
+// connection alive, the serving task parks it here and ends; the pool starts `next` as
+// a promise when the peer sends the next request, on a thread that is not held up.
 export extern fn msstd_idle_park(
 	connection: NativeConnection,
 	move next: fn() Void,
 	group: Int,
-	timeout: Duration?,
+	timeout: Duration?
 ) Void!
 
 export extern fn msstd_idle_group() Int

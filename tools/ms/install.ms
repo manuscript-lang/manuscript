@@ -18,8 +18,7 @@ import (
 	default_name,
 	remove_dependency,
 	valid_alias from "./manifest_edit.ms",
-	find,
-	root_workspace from "./workspace.ms",
+	find, root_workspace from "./workspace.ms",
 )
 
 // Status 1 of `ms_tool_install` is an error with the Rust text; status 2 is a project
@@ -35,7 +34,8 @@ extern fn ms_tool_install(
 	frozen: Bool,
 ) List[String]!InstallError
 
-// A workspace's members (`name\tmanifest` rows) resolve into one `ms.lock` at `lock_root`.
+// A workspace's members (`name\tmanifest` rows) resolve into one `ms.lock` at
+// `lock_root`.
 extern fn ms_tool_install_workspace(
 	lock_root: String,
 	members: List[String],
@@ -67,8 +67,8 @@ fn find_project() String?:
 
 	return none
 
-// Whether `manifest` is a workspace root with no `[project]`, which has no dependencies of
-// its own to edit.
+// Whether `manifest` is a workspace root with no `[project]`, which has no dependencies
+// of its own to edit.
 fn is_root(manifest: String) Bool:
 	found := root_workspace(manifest)
 	return found.is_ok() and found.get().is_some()
@@ -102,9 +102,16 @@ fn install_manifest(manifest: String, update: List[String]) Installed:
 
 	if workspace := space.get():
 		var rows = List[String]()
-		for member in workspace.members: rows.append(f"{member.name}\t{member.manifest}")
-
-		got = ms_tool_install_workspace(workspace.root.clone(), rows, update, false, false)
+		for member in workspace.members: rows.append(
+			f"{member.name}\t{member.manifest}"
+		)
+		got = ms_tool_install_workspace(
+			workspace.root.clone(),
+			rows,
+			update,
+			false,
+			false,
+		)
 
 	if got.is_error():
 		match got.err():
@@ -297,7 +304,6 @@ export fn run_add(args: List[String]) Printed?:
 		"add",
 		"no ms.toml here or above; run `ms init` first",
 	)
-
 	if is_root(manifest.get()): return failure(
 		"add",
 		f"{manifest.get()} is a workspace root; run ms add inside a member directory",
@@ -368,7 +374,6 @@ export fn run_remove(args: List[String]) Printed?:
 		"remove",
 		"no ms.toml here or above; run `ms init` first",
 	)
-
 	if is_root(manifest.get()): return failure(
 		"remove",
 		f"{manifest.get()} is a workspace root; run ms remove inside a member directory",
