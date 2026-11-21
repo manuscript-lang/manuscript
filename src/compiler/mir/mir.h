@@ -467,6 +467,11 @@ uint32_t mir_vtable_by_name(const MirModule *module, MsName name);
 uint32_t mir_global_by_name(const MirModule *module, MsName name);
 uint32_t mir_extern_by_name(const MirModule *module, MsName name);
 
+/* The targets of a terminator in order: br has one, condbr two (then, else), switch its cases then the default,
+ * the rest none. */
+uint32_t mir_term_ntargets(const MirTerm *term);
+MirTarget *mir_term_target(MirTerm *term, uint32_t index);
+
 /* ---- functions ---- */
 
 /* Starts `func` with an entry block whose parameters mirror `params`. */

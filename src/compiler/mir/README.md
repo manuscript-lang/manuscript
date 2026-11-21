@@ -6,3 +6,4 @@ exchange a `MirModule` in memory; there is no text between them. Allowed include
 - `mir.h`: types, operations, functions, module declarations.
 - `mir_types.c`: the interned type table (packed keys in an `MsNames`) and the opcode table.
 - `mir_module.c`: module construction, declarations, name lookup, release.
+- `mir_builder.h`, `mir_builder.c`: builds a function; source variables become block parameters (Braun et al.).
