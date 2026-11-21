@@ -6,6 +6,7 @@ else()
   target_sources(ms_base PRIVATE file_posix.c process_posix.c)
 endif()
 ms_target_defaults(ms_base)
+target_link_libraries(ms_base PUBLIC mimalloc)
 
 # Unit tests of pure data structures only; the corpus is the gate (plan rule 2).
 foreach(unit safe alloc value map)

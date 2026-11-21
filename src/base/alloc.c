@@ -1,27 +1,27 @@
-/* Owns the allocator hook and the system default (see alloc.h). */
+/* Owns the allocator hook and the mimalloc default (see alloc.h). */
 #include "base/alloc.h"
 
-#include <stdlib.h>
+#include <mimalloc.h>
 
 #include "base/fatal.h"
 
 /* The one other mutable global of base besides the fatal handler: set once before threads. */
 static const MsAllocator *installed = NULL;
 
-static void *system_allocate(size_t size) {
-  return malloc(size == 0 ? 1 : size);
+static void *mimalloc_allocate(size_t size) {
+  return mi_malloc(size);
 }
-static void *system_reallocate(void *block, size_t size) {
-  return realloc(block, size == 0 ? 1 : size);
+static void *mimalloc_reallocate(void *block, size_t size) {
+  return mi_realloc(block, size);
 }
-static void system_release(void *block) {
-  free(block);
+static void mimalloc_release(void *block) {
+  mi_free(block);
 }
 
-static const MsAllocator system_allocator = {system_allocate, system_reallocate, system_release};
+static const MsAllocator mimalloc_allocator = {mimalloc_allocate, mimalloc_reallocate, mimalloc_release};
 
 static const MsAllocator *current(void) {
-  return installed != NULL ? installed : &system_allocator;
+  return installed != NULL ? installed : &mimalloc_allocator;
 }
 
 static void *checked(void *block) {

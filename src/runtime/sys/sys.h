@@ -115,15 +115,9 @@ typedef void (*MsSysFaultFn)(uintptr_t address);
  * Linux and macOS only: Windows reports false. */
 MS_NODISCARD bool ms_sys_fault_handler_install(MsSysFaultFn on_fault);
 
-/* sys/{posix,windows}/stdout.c: the program's standard output. */
-
-/* Writes the front of `bytes` to standard output with one system write; *written is how many it took. Returns 0, or the
- * system's error code (errno, GetLastError) when it took none. */
-int32_t ms_sys_stdout_write(MsSpan bytes, size_t *written) MS_NONNULL;
-/* Whether standard output is a terminal (a console on Windows). */
-bool ms_sys_stdout_is_terminal(void);
-/* Whether `code` from ms_sys_stdout_write means the reader went away, which the program does not report. */
-bool ms_sys_error_is_broken_pipe(int32_t code);
+/* sys/{posix,windows}/stdout.c: Called once before the program writes: standard output takes bytes as they are (Windows
+ * would turn each newline into a carriage return and a newline). */
+void ms_sys_stdout_prepare(void);
 
 /* sys/{posix,windows}/report.c: how a fault reaches the outside. None of these allocates or takes a lock, so a fault
  * that cannot allocate can still be reported. */

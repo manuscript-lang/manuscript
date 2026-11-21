@@ -11,6 +11,7 @@
 #include "runtime/entry/entry.h"
 
 #include <stdatomic.h>
+#include <string.h>
 #include <uv.h>
 
 #include "base/alloc.h"
@@ -263,7 +264,6 @@ static void runtime_thread(void *argument) {
 }
 
 int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *const *argv) {
-  ms_alloc_install(ms_core_allocator());
   ms_fault_install_base_hook();
   ms_obj_install_bounded_drop();
   ms_frames_install(tables); /* without them a report simply has no source frames */
@@ -274,6 +274,7 @@ int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *c
     ms_fault_fatal(MS_FAULT_KIND_FAULT, ms_span_of_text("cannot watch for stop requests"));
   }
   ms_sys_ignore_broken_pipe();
+  ms_sys_stdout_prepare();
   MsSysThread *const thread = ms_sys_thread_spawn(0, runtime_thread, NULL);
   if (thread == NULL) {
     ms_fault_fatal(MS_FAULT_KIND_FAULT, ms_span_of_text("cannot start the main thread"));
@@ -287,7 +288,7 @@ int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *c
     /* Output the buffer could not deliver (a full disk, a closed descriptor): say so instead of exiting as if it had
      * been written. */
     ms_sys_stderr_write(ms_span_of_text("error: write to standard output: "));
-    ms_sys_stderr_write(ms_span_of_text(uv_strerror(uv_translate_sys_error(lost))));
+    ms_sys_stderr_write(ms_span_of_text(strerror(lost)));
     ms_sys_stderr_write(ms_span_of_text("\n"));
     return 1;
   }

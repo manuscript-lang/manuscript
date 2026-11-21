@@ -1,65 +1,22 @@
-/* Owns arena chunks and bump allocation (see arena.h). */
+/* Owns the mimalloc heap behind an arena (see arena.h). */
 #include "base/arena.h"
 
-#include "base/alloc.h"
+#include <mimalloc.h>
+
 #include "base/fatal.h"
 
-#define MS_ARENA_MIN_CHUNK ((size_t)64 * 1024)
 #define MS_ARENA_MAX_ALIGNMENT 16
-
-struct MsArenaChunk {
-  MsArenaChunk *next; /* owned: the older chunk */
-  size_t capacity;
-  _Alignas(MS_ARENA_MAX_ALIGNMENT) uint8_t bytes[]; /* capacity bytes */
-};
-
-static void start_chunk(MsArena *arena, size_t needed) {
-  const size_t previous = arena->chunks != NULL ? arena->chunks->capacity : 0;
-  size_t capacity = previous < MS_ARENA_MIN_CHUNK ? MS_ARENA_MIN_CHUNK : previous;
-  size_t doubled = 0;
-  if (ms_size_mul(capacity, 2, &doubled)) {
-    capacity = doubled;
-  }
-  if (capacity < needed) {
-    capacity = needed;
-  }
-  size_t total = 0;
-  if (!ms_size_add(sizeof(MsArenaChunk), capacity, &total)) {
-    ms_fatal(MS_FATAL_OVERFLOW, "arena size overflow");
-  }
-  MsArenaChunk *chunk = ms_alloc(total);
-  chunk->next = arena->chunks;
-  chunk->capacity = capacity;
-  arena->chunks = chunk;
-  arena->cursor = chunk->bytes;
-  arena->end = chunk->bytes + capacity;
-}
-
-static uint8_t *take(MsArena *arena, size_t size, size_t alignment) {
-  const uintptr_t start = (uintptr_t)arena->cursor;
-  const uintptr_t aligned = (start + (alignment - 1)) & ~(uintptr_t)(alignment - 1);
-  const size_t padding = (size_t)(aligned - start);
-  if (arena->cursor == NULL || size > (size_t)(arena->end - arena->cursor) ||
-      padding > (size_t)(arena->end - arena->cursor) - size) {
-    return NULL;
-  }
-  uint8_t *block = arena->cursor + padding;
-  arena->cursor = block + size;
-  return block;
-}
 
 void *ms_arena_alloc(MsArena *arena, size_t size, size_t alignment) {
   if (alignment == 0 || alignment > MS_ARENA_MAX_ALIGNMENT || (alignment & (alignment - 1)) != 0) {
     ms_fatal(MS_FATAL_INVARIANT, "bad arena alignment");
   }
-  uint8_t *block = take(arena, size, alignment);
+  if (arena->heap == NULL) {
+    arena->heap = mi_heap_new();
+  }
+  void *block = arena->heap != NULL ? mi_heap_malloc_aligned(arena->heap, size, alignment) : NULL;
   if (block == NULL) {
-    size_t needed = 0;
-    if (!ms_size_add(size, alignment, &needed)) {
-      ms_fatal(MS_FATAL_OVERFLOW, "arena size overflow");
-    }
-    start_chunk(arena, needed);
-    block = take(arena, size, alignment);
+    ms_fatal(MS_FATAL_OUT_OF_MEMORY, "out of memory");
   }
   return block;
 }
@@ -86,28 +43,13 @@ MsSpan ms_arena_copy(MsArena *arena, MsSpan span) {
   return ms_span_of(copy, span.len);
 }
 
-void ms_arena_reset(MsArena *arena) {
-  MsArenaChunk *newest = arena->chunks;
-  if (newest == NULL) {
-    return;
-  }
-  MsArenaChunk *older = newest->next;
-  newest->next = NULL;
-  while (older != NULL) {
-    MsArenaChunk *next = older->next;
-    ms_free(older);
-    older = next;
-  }
-  arena->cursor = newest->bytes;
-  arena->end = newest->bytes + newest->capacity;
-}
-
 void ms_arena_free(MsArena *arena) {
-  MsArenaChunk *chunk = arena->chunks;
-  while (chunk != NULL) {
-    MsArenaChunk *next = chunk->next;
-    ms_free(chunk);
-    chunk = next;
+  if (arena->heap != NULL) {
+    mi_heap_destroy(arena->heap);
   }
   *arena = (MsArena){0};
+}
+
+void ms_arena_reset(MsArena *arena) {
+  ms_arena_free(arena);
 }
