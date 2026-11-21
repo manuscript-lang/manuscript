@@ -136,6 +136,8 @@ typedef struct Lb {
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
     uint32_t nvars, cvars;
+    uint32_t *parts;      /* the bindings of owned payloads a match arm took out of its scrutinee: locals the arm owns */
+    uint32_t nparts, cparts;
     MirValue *temps;      /* the owned temporaries of the statement being lowered, dropped where it ends (newest first) */
     uint32_t ntemps, ctemps;
     uint32_t stmt_mark;   /* `ntemps` where the statement being lowered began */
@@ -207,6 +209,8 @@ bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered);   /* tru
 MirTy lb_fn_ty(Lb *lb, MsTy ty);
 bool lb_is_fn(const Lb *lb, MirTy ty);
 LbVal lb_lambda(Lb *lb, const MsExpr *e);
+/* `ty` seen through the generic instance being lowered: its type variables replaced by the type arguments. */
+MsTy lb_ty(Lb *lb, MsTy ty);
 LbVal lb_function_value(Lb *lb, const MsExpr *e);
 LbVal lb_call_value(Lb *lb, const MsExpr *e);
 /* Lowers the queued lambdas after their maker; `ok` is whether the maker was lowered. */

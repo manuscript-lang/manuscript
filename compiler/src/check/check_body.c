@@ -901,7 +901,7 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     if (use == MEMBER_READ && ms_body_is_qualified_case(b, e)) {
         return ms_body_qualified_case(b, e);
     }
-    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER) {
+    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER && receiver->kind != MS_E_CALL) {
         return ms_body_unsupported(b);
     }
     const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, MEMBER_RECEIVER))
@@ -1900,6 +1900,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
     facts->moved_out = MS_NEW_N(arena, bool, nodes);
     memset(facts->moved_out, 0, nodes * sizeof *facts->moved_out);
+    facts->borrowed_match = MS_NEW_N(arena, bool, nodes);
+    memset(facts->borrowed_match, 0, nodes * sizeof *facts->borrowed_match);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);

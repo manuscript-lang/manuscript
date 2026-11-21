@@ -40,6 +40,13 @@ typedef struct MsTypeScope {
     uint32_t len;
 } MsTypeScope;
 
+/* The standard-library symbol that declares builtin `b`, or MS_NONE: how a pass finds `List` or `Map`
+ * without spelling its name. */
+static inline MsSymId ms_builtin_symbol(const MsCheck *c, MsBuiltin b) {
+    const MsSymId plus_one = c->builtin_sym_plus_one[b];
+    return plus_one == 0 ? MS_NONE : plus_one - 1;
+}
+
 /* Whether `name` is a type variable of `scope` or of an enclosing one. */
 static inline bool ms_type_scope_has(const MsTypeScope *scope, MsSym name) {
     for (; scope != NULL; scope = scope->parent) {

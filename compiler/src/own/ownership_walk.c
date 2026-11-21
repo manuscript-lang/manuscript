@@ -997,10 +997,17 @@ static void own_bind_lambda(OwnWalk *w, const MsStmt *s, uint32_t binding) {
     w->ncaptured = start;
 }
 
+static bool own_arms_are_names(const OwnWalk *w, const MsExpr *e);
+
 static void own_bind(OwnWalk *w, const MsStmt *s) {
     const uint32_t binding = w->facts->pattern_binding[s->u.bind.pattern->id];
     own_declare(w, binding, s->u.bind.is_mutable ? PERM_MUTABLE : PERM_IMMUTABLE, false);
     if (own_bind_borrowed_call(w, s, binding)) {
+        return;
+    }
+    const MsExpr *value = s->u.bind.value;
+    if (value->kind == MS_E_MATCH && w->class_of[binding] != MS_CLASS_COPY && own_arms_are_names(w, value)) {
+        OWN_DECLINE(w); /* a binding of a match over names borrows from every arm's origin: left to Rust */
         return;
     }
     if (s->u.bind.value->kind == MS_E_LAMBDA && !s->u.bind.is_mutable) {
@@ -1072,6 +1079,11 @@ static bool own_is_fresh_intrinsic(const OwnWalk *w, const MsExpr *e) {
     if (callee->kind != MS_E_MEMBER || w->facts->call_interface[e->id] == MS_TY_NONE ||
         ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
         return false;
+    }
+    if (ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_VARIABLE) {
+        // An operation every value has (`to_string`, `clone`) is recorded against the variable itself, not
+        // against a bound that declares it; it builds a new value.
+        return w->facts->call_interface[e->id] == w->facts->call_receiver[e->id];
     }
     const MsRtFn *fn = ms_rt_method_fn(w->check, w->facts->call_receiver[e->id], callee->u.member.name);
     return fn != NULL && fn->fresh;
@@ -1424,6 +1436,7 @@ static bool own_arms_are_names(const OwnWalk *w, const MsExpr *e) {
 static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning) {
     const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
     const bool borrowed = !returning && demand != DEMAND_MOVE && !copied && own_arms_are_names(w, e);
+    w->facts->borrowed_match[e->id] = borrowed;
     /* Arms that are not all references produce a value, so a place among them moves. */
     Demand arm_demand = demand;
     if (!borrowed && demand == DEMAND_READ) {
