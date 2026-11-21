@@ -85,7 +85,7 @@ else()
   set(_pthread pthread)
 endif()
 file(GLOB _os_sources CONFIGURE_DEPENDS "${_rt}/sys/${_os}/*.c")
-list(APPEND _os_sources "${_rt}/sys/fs_path.c" "${_rt}/sys/spawn.c") # files and processes by path, over libuv
+list(APPEND _os_sources "${_rt}/sys/fs_path.c" "${_rt}/sys/spawn.c" "${_rt}/sys/libuv.c") # files and processes by path, over libuv
 string(TOLOWER "${CMAKE_SYSTEM_NAME}" _platform)
 # The Linux and macOS socket layer is its own file; on Windows sys/windows/net.c is already one of _os_sources.
 set(_platform_net "${_rt}/sys/${_platform}/net.c")
@@ -170,7 +170,7 @@ ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_os_so
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} ${_pipe_stubs} "${_rt}/core/utf8.c" "${_rt}/sys/${_os}/fs.c" "${_rt}/sys/fs_path.c" "${_rt}/sys/spawn.c" "${_rt}/sys/${_os}/clock.c" "${_rt}/sys/${_os}/fd.c"
+  ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} ${_pipe_stubs} "${_rt}/core/utf8.c" "${_rt}/sys/${_os}/fs.c" "${_rt}/sys/fs_path.c" "${_rt}/sys/spawn.c" "${_rt}/sys/libuv.c" "${_rt}/sys/${_os}/fd.c"
           "${_rt}/sys/${_os}/ifindex.c" "${_rt}/sys/${_os}/process.c" "${_rt}/sys/${_os}/signal.c" ${_win_std_extra}
           INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_z_INCLUDES}
           LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
@@ -261,7 +261,7 @@ ms_test(ws_client_test SOURCES "${_tests}/ws_client_test.c" "${_rt}/net/ws_clien
 ms_test(conn_test SOURCES "${_tests}/conn_test.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" OBJECTS ms_test_llhttp
         INCLUDES "${_llhttp}/include")
 ms_test(conn_io_test SOURCES "${_tests}/conn_io_test.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c"
-        "${_rt}/net/tls.c" ${_platform_net} "${_rt}/sys/${_os}/clock.c" OBJECTS ms_test_task_sleep ms_test_llhttp
+        "${_rt}/net/tls.c" ${_platform_net} "${_rt}/sys/libuv.c" OBJECTS ms_test_task_sleep ms_test_llhttp
         INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK}
         ${CMAKE_DL_LIBS} ${_pthread})
 ms_test(addr_text_test SOURCES "${_tests}/addr_text_test.c" "${_rt}/net/addr_text.c")
@@ -300,12 +300,12 @@ ms_test(h2_test SOURCES "${_tests}/h2_test.c" "${_rt}/net/h2.c" INCLUDES ${MS_LI
         LIBS ${MS_LIB_nghttp2_LINK})
 ms_test(h2_serve_test SOURCES "${_tests}/h2_serve_test.c" "${_rt}/net/h2_serve.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c"
         "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c" ${_platform_net}
-        "${_rt}/sys/${_os}/clock.c" OBJECTS ms_test_task_sleep ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES}
+        "${_rt}/sys/libuv.c" OBJECTS ms_test_task_sleep ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES}
         ${MS_LIB_nghttp2_INCLUDES} LIBS ${MS_LIB_nghttp2_LINK} ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS}
         ${_pthread})
 ms_test(exchange_h2_test SOURCES "${_tests}/exchange_h2_test.c" "${_rt}/net/exchange_h2.c" "${_rt}/net/exchange.c" "${_rt}/net/conn_object.c" "${_rt}/net/headers.c"
         "${_rt}/net/h2_serve.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c" "${_rt}/net/conn_io.c"
-        "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c" ${_platform_net} "${_rt}/sys/${_os}/clock.c"
+        "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c" ${_platform_net} "${_rt}/sys/libuv.c"
         OBJECTS ms_test_task_sleep ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_nghttp2_INCLUDES}
         LIBS ${MS_LIB_nghttp2_LINK} ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS} ${_pthread})
 ms_test(h2conn_test SOURCES "${_tests}/h2conn_test.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c"

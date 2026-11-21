@@ -92,11 +92,10 @@ function(ms_compiler_exe name)
     else()
       set(_os posix)
     endif()
-    foreach(_file fs clock)
-      list(APPEND _sources "${CMAKE_SOURCE_DIR}/runtime/sys/${_os}/${_file}.c")
-    endforeach()
-    # Files by path and processes, over libuv: the same on every platform.
-    list(APPEND _sources "${CMAKE_SOURCE_DIR}/runtime/sys/fs_path.c" "${CMAKE_SOURCE_DIR}/runtime/sys/spawn.c")
+    list(APPEND _sources "${CMAKE_SOURCE_DIR}/runtime/sys/${_os}/fs.c")
+    # Files by path, processes, the clock and the process id, over libuv: the same on every platform.
+    list(APPEND _sources "${CMAKE_SOURCE_DIR}/runtime/sys/fs_path.c" "${CMAKE_SOURCE_DIR}/runtime/sys/spawn.c"
+         "${CMAKE_SOURCE_DIR}/runtime/sys/libuv.c")
   endif()
   add_executable(${name} ${_sources})
   target_include_directories(${name} PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include" "${_mimalloc_include}"

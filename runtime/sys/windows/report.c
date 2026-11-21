@@ -7,7 +7,6 @@
 // NOLINTBEGIN(readability-identifier-naming): the names are Win32's
 MS_WINAPI uintptr_t GetStdHandle(uint32_t which);
 MS_WINAPI int WriteFile(uintptr_t file, const void *buffer, uint32_t count, uint32_t *written, void *overlapped);
-MS_WINAPI uint32_t GetCurrentProcessId(void);
 MS_WINAPI uintptr_t GetCurrentProcess(void);
 MS_WINAPI int TerminateProcess(uintptr_t process, uint32_t status);
 MS_WINAPI uint32_t GetEnvironmentVariableW(const uint16_t *name, uint16_t *buffer, uint32_t capacity);
@@ -34,8 +33,6 @@ void ms_sys_stderr_write(MsBytes bytes) {
         done += written;
     }
 }
-
-uint32_t ms_sys_process_id(void) { return GetCurrentProcessId(); }
 
 /* The value of MS_FAULT_RECORD as UTF-8 in `path`; false when it is unset, empty or too long. */
 static bool record_path(char *path, size_t capacity) {
