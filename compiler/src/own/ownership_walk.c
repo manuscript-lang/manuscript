@@ -370,6 +370,10 @@ static void own_check_wrap(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+static void own_construct(OwnWalk *w, const MsExpr *e);
+
+static void own_construct(OwnWalk *w, const MsExpr *e);
+
 static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     own_check_wrap(w, e);
     switch ((MsExprKind)e->kind) {
@@ -433,7 +437,7 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     case MS_E_CALL:
         if (ms_call_builds_case(w->facts, e)) {
-            own_expr(w, e->u.call.args.ptr[0].value, DEMAND_READ); /* a primitive payload is copied */
+            own_construct(w, e); /* each payload moves into the value, a plain one is copied */
             return;
         }
         own_call(w, e, demand);
