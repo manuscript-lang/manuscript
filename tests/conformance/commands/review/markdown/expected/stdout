@@ -1,0 +1,47 @@
+# Manuscript review report (format 2)
+
+- input: project (no diff)
+- result: 2 modules, 7 entities
+
+## 1. SUMMARY
+
+- modules               2
+- entities              7
+- exported              1
+- tests                 1
+- resource scopes       0
+
+## 2. PUBLIC SURFACE
+
+| ENTITY | KIND | TYPE | WHERE |
+| --- | --- | --- | --- |
+| parse_total | fn | fn(List[String]) Int | src/shapes.ms:15 |
+
+## 3. ENTRY POINTS
+
+| ENTITY | KIND | EFFECTS | WHERE |
+| --- | --- | --- | --- |
+| main total | test | none | src/main.ms:12 |
+
+## 4. ERROR TYPES
+
+| TYPE | FUNCTIONS |
+| --- | --- |
+| Failure | 1 |
+
+## 5. RESOURCES
+
+- none
+
+## 6. DEPENDENCIES
+
+- src/main.ms imports ./shapes.ms, @std/test/test.ms
+- src/shapes.ms imports none
+
+## 7. READING THIS REPORT
+
+- Static analysis of checked source; tests are not run.
+- INTERNAL means no tracked contract, effect, error-flow, or resource change; runtime behavior can still change.
+- Use --explain <number|id> with --diff for evidence and a focused diagram.
+
+digest sha256:126d19de47d67aecad521f1f74cd2f57c6f611b68764241439ef46124c3a882f
