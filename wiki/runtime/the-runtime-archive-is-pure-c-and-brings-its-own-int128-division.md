@@ -2,7 +2,7 @@
 
 # The runtime archive is pure C and carries its own 128-bit division
 
-Verified 2026-11-21 (#5256): `cargo xtask runtime` folds only the CMake C objects (ours, mimalloc, libuv and the other vendored libraries) into `libms_native.a`, with a musl twin on Linux and `--stats` for the counting runtime. No Rust crate is in the archive, so there is no Rust global allocator and no `compiler_builtins`; `ms-cli`'s build script rejects an archive older than `runtime/` or `cmake/`.
+Verified 2026-11-21 (#5256): `cmake -P cmake/BuildRuntime.cmake` folds only the CMake C objects (ours, mimalloc, libuv and the other vendored libraries) into `libms_native.a`, with a musl twin on Linux and `--stats` for the counting runtime. No Rust crate is in the archive, so there is no Rust global allocator and no `compiler_builtins`; `ms-cli`'s build script rejects an archive older than `runtime/` or `cmake/`.
 
 - The Rust staticlib used to supply `__udivti3`, `__umodti3`, `__divti3`, `__modti3`; the C sources divide `__int128` (decimals, big numbers, float formatting), and clang on musl also calls `__udivmodti4`. `runtime/core/int128.c` defines all four, weak. A link error naming one of them means a new 128-bit division needs no new code, only that file in the archive.
 - `ms profile --allocs` uses the ordinary archive: the C profiler installs its own sampler. There is no allocs archive.

@@ -1,5 +1,5 @@
 # Runtime symbols of ms_rt/list.h defined in C (runtime/core/list.c and sort.c); one per line. Each is compiled out of the Rust
-# runtime when the archive is built by `cargo xtask runtime`; plain `cargo test` keeps the Rust definitions.
+# runtime when the archive is built by `cmake -P cmake/BuildRuntime.cmake`; plain `cargo test` keeps the Rust definitions.
 msrt_list_new
 msrt_list_with_capacity
 msrt_list_drop
@@ -7,6 +7,7 @@ msrt_list_copy
 msrt_list_shadow
 msrt_list_free_raw
 msrt_list_push
+msrt_list_is_empty
 msrt_list_length
 msrt_list_append
 msrt_list_reserve

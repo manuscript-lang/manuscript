@@ -40,7 +40,7 @@ fn main() Int:
 
 	// ms-native is built in release mode first; `ms-cli`'s build script embeds the
 	// archive.
-	var code = run_program("cargo", ["xtask", "runtime", "--alloc-profile"])
+	var code = run_program("cmake", ["-P", "cmake/BuildRuntime.cmake"])
 	if code != 0: return code
 
 	// Debug sections are dropped from the shipped binary (symbol names stay for fault

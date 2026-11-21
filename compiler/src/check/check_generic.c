@@ -127,7 +127,10 @@ static bool generic_bounds(MsBody *b, MsInfer *in) {
         return false;
     }
     for (uint32_t i = 0; i < in->nvars; i++) {
-        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i])) {
+        // A type argument that mentions the caller's own variables is a recursive application the
+        // Rust checker's recursion rules judge (recursion.rs); it stays there.
+        if (in->bound[i] == MS_TY_NONE || !ms_body_is_admitted(b, in->bound[i]) ||
+            ms_ty_has_variable(&b->c->tys, &b->c->arena, in->bound[i])) {
             return false;
         }
         const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
@@ -191,7 +194,7 @@ MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeR
         return ms_body_unsupported(b);
     }
     const MsTy result = ms_infer_apply(&in, b->c->tys.result[sig]);
-    if (!ms_body_is_admitted(b, result)) {
+    if (!ms_body_is_admitted(b, result) && result != b->void_ty) {
         return ms_body_unsupported(b);
     }
     b->facts->call_callee[e->id] = sym;
@@ -215,6 +218,7 @@ static bool generic_is_nominal(const MsBody *b, MsSymId sym) {
  * fields left out take their default. Natives (`Map[K, V]()`) have no fields to give. */
 MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written) {
     const MsSyms *syms = &b->c->syms;
+    ms_module_resolve_types(b->c, syms->module[sym]); // the declaring module's fields and variables
     const MsDef *def = ms_def(b->c, sym);
     const MsDecl *decl = syms->decl[sym];
     const uint32_t nargs = e->u.call.args.len;
@@ -242,7 +246,7 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
     }
     MsSym *names = MS_NEW_N(&b->c->arena, MsSym, def->nfields + 1);
     bool *covered = MS_NEW_N(&b->c->arena, bool, def->nfields + 1);
-    uint32_t slot[16];
+    uint32_t slot[16] = {0};
     for (uint32_t i = 0; i < def->nfields; i++) {
         names[i] = def->fields[i].name;
     }

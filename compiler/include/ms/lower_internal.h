@@ -78,6 +78,7 @@ typedef struct LbView {
     MirValue *value_of;   /* by binding id (output arena, per pass) */
     MirVar *var_of;       /* by binding id (output arena, per pass) */
     bool *failed;         /* by declaration: it did not lower in an earlier pass (malloc) */
+    uint32_t file;        /* the module's source file in the output's file table (per pass) */
 } LbView;
 
 /* An impl method a lowered module wrote: its row, where it starts, and the source lines it owns. */
@@ -87,6 +88,12 @@ typedef struct LbMethodRow {
     MsPos owner_pos;        /* where the impl declaration starts: the method's location in MIR */
     uint32_t first_line, end_line;
 } LbMethodRow;
+
+/* The function comparing two values of `ty`, or MIR_NONE when `ty` cannot be compared (lower_eq.c). */
+typedef struct LbEq {
+    MirTy ty;
+    uint32_t func;
+} LbEq;
 
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
@@ -120,6 +127,8 @@ typedef struct Lb {
     bool has_override;
     LbInst *insts;        /* this pass's instances, in creation order (malloc) */
     uint32_t ninsts, cinsts;
+    LbEq *eqs;            /* this pass's equality functions (module arena) */
+    uint32_t neqs, ceqs;
     LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
     uint32_t ndead_insts, cdead_insts;
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
@@ -131,6 +140,11 @@ typedef struct Lb {
     uint32_t ntemps, ctemps;
     uint32_t stmt_mark;   /* `ntemps` where the statement being lowered began */
     uint32_t branching;   /* conditional contexts around the expression being lowered (an arm, a short-circuit's right side) */
+    MsBuf *why;           /* NULL, or where each function that does not lower is listed (`ms_lower_program_why`) */
+    const char *fail_site; /* the lowering source line that refused the function being lowered, when known */
+    int fail_line;
+    const MsStmt *fail_stmt; /* the statement being lowered then, or NULL */
+    bool first_pass;      /* the report lists the functions the checker did not record once, in the first pass */
     bool dead;            /* control cannot reach the current position */
     bool ok;              /* false once a construct outside the handled set is met */
 } Lb;
@@ -165,6 +179,7 @@ LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed a
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
+void lb_why_unchecked(Lb *lb, MsSym name, MsPos pos); /* reports a function whose body the checker did not record */
 uint32_t lb_view_enter(Lb *lb, uint32_t view); /* reads module `view` from here on; returns the view it left */
 uint32_t lm_prepare(Lb *lb);                                 /* the method rows of every view; their count */
 void lm_stubs(Lb *lb, uint32_t nrows, const bool *failed);   /* a stub for each method to lower */
@@ -183,7 +198,8 @@ bool lb_closures(Lb *lb, bool ok);
 
 /* Helpers of lower_body.c the files after it use. `lb_unsupported` marks the function as not
  * handled and returns `LB_FAIL`. */
-LbVal lb_unsupported(Lb *lb);
+LbVal lb_unsupported_at(Lb *lb, const char *site, int line);
+#define lb_unsupported(lb) lb_unsupported_at((lb), __FILE__, __LINE__)
 LbVal lb_expr(Lb *lb, const MsExpr *e);
 MirTy lb_mir_ty(Lb *lb, MsTy ty);
 void lb_emit_plain(Lb *lb, MirOp op);
@@ -201,9 +217,12 @@ LbVal lst_index(Lb *lb, const MsExpr *e);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
+/* lower_extern.c: a call of a bodiless `extern fn`, by its own symbol in the ms-sig table. */
+MirTy lx_type(Lb *lb, MsTy ty);
+bool lx_is_extern(const Lb *lb, MsSymId callee);
+LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 /* Stores `value` in the stack slot `slot`. */
-void lb_store(Lb *lb, MirValue slot, MirValue value);
 
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */
 static inline bool lb_is_scalar(MirTy ty) {
@@ -217,9 +236,23 @@ MirTy lm_type(Lb *lb, MsTy ty);
 bool lb_is_map(const Lb *lb, MirTy ty);
 LbVal lm_literal(Lb *lb, const MsExpr *e);
 LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at);
+struct MsRtFn;
+/* The runtime function `name` over these borrowed parameters, declared once per signature. */
+uint32_t lb_runtime_extern(Lb *lb, const char *name, const MirTy *params, uint32_t nparams, MirTy ret, uint8_t role,
+                           bool reads);
+/* The entry of `generic` that fits a map of `key` and `value` (its declared specialisation, else itself). */
+const struct MsRtFn *lm_specialize(Lb *lb, const struct MsRtFn *generic, MirTy key, MirTy value, uint8_t *role);
+
+/* Equality of records, enums, optionals and lists (lower_eq.c, included after lower_closure.c). */
+LbVal lq_equal(Lb *lb, LbVal x, LbVal y, bool negate);
 
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);
+LbVal lt_scalar_text(Lb *lb, MsTy checked, MirValue v);
+uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want);
+
+/* Structural text of a record or enum (lower_format.c, included after lower_text.c). */
+LbVal lf_text(Lb *lb, LbVal value);
 
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);
@@ -227,6 +260,7 @@ MirTy le_type(Lb *lb, MsTy ty);
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);
+LbVal lm_empty(Lb *lb, MirTy ty);
 LbVal lr_field(Lb *lb, const MsExpr *e);
 
 /* Optional and Result (lower_alt.c, included after lower_body.c). */

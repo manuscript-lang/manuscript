@@ -39,8 +39,7 @@ keyed() {
         infn && /^}/ { if (!looped) print key "|" body; infn = 0; looped = 0 }' | sort
 }
 keyed "$out/lower.c" > "$out/lower.c.keyed"
-# Rust reads a field twice to clone it, C once: see lower-single-reads.pl.
-keyed "$out/lower.rust" | perl compiler/tests/lower-single-reads.pl > "$out/lower.rust.all"
+keyed "$out/lower.rust" > "$out/lower.rust.all"
 # A name Rust emits twice (a closure or an entry wrapper beside the function) is ambiguous: skip it.
 cut -d'|' -f1 "$out/lower.rust.all" | uniq -u > "$out/lower.rust.keys"
 awk -F'|' -v list="$out/lower.rust.keys" '

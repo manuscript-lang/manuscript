@@ -1,7 +1,8 @@
 /* The runtime functions the C lowering can call from their `ms-sig` declaration. The table is
- * generated from the headers' signatures (`cargo xtask symbols`), so no function is named in the
+ * generated from the headers' signatures (`ms run tools/ms/symbols.ms`), so no function is named in the
  * compiler: each parameter's role comes from its declared type, and a function whose signature is
- * tagged `@op=<mnemonic>` is exactly that MIR instruction on its arguments. */
+ * tagged `@op=<mnemonic>` is exactly that MIR instruction on its arguments, and one tagged `@seq=` is the short
+ * instruction sequence the tag lists. */
 #ifndef MS_RT_OPS_H
 #define MS_RT_OPS_H
 
@@ -22,6 +23,10 @@ typedef enum MsRtParam {
     MS_RT_BOOL,
     MS_RT_OUT_STR,  /* the result, a string, written through a pointer */
     MS_RT_OUT_LIST, /* the result, a list, written through a pointer */
+    MS_RT_MAP,      /* a map, borrowed */
+    MS_RT_KEY_DESC, /* the descriptor of a map's key type */
+    MS_RT_VAL_DESC, /* the descriptor of a map's value type */
+    MS_RT_KEY_REF,  /* a key passed by address: stored in a slot the call borrows */
     MS_RT_OTHER     /* anything the lowering does not marshal: a handle, a slot, an error slot */
 } MsRtParam;
 
@@ -35,9 +40,13 @@ typedef struct MsRtFn {
     MsRtRet ret;
     bool leaf;
     bool twinned; /* a borrowing twin exists (`@view_of=` and siblings): the result may be lent */
+    bool pure;    /* only reads memory and cannot fault (`@pure`) */
+    const char *word_twin; /* its specialisation for a one-word key over a one-word value, or "" */
+    const char *text_twin; /* its specialisation for a String key over a one-word value, or "" */
     bool fresh;   /* `@fresh`: the result is a new value, never a reference into an argument */
     bool has_imm; /* `@imm=<n>`: the `@op=` instruction carries the integer `imm` */
     int64_t imm;
+    const char *seq; /* `@seq=`: a short MIR instruction sequence over the arguments, or "" (see lower_native.c) */
 } MsRtFn;
 
 /* The function named `symbol`, or NULL. */

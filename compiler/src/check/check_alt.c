@@ -134,7 +134,7 @@ static bool alt_bind_payload(MsBody *b, const MsArm *arm, MsTy ty, const AltInfo
     return true;
 }
 
-static void alt_close_from(MsBody *b, uint32_t first) {
+void ms_body_close_from(MsBody *b, uint32_t first) {
     for (uint32_t i = first; i < b->facts->bindings.count; i++) {
         b->closed[i] = true;
     }
@@ -181,7 +181,7 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
         }
         if (!valued) {
             const bool falls = ms_body_block(b, &arm->body);
-            alt_close_from(b, first);
+            ms_body_close_from(b, first);
             if (!b->supported) {
                 return ms_body_unsupported(b);
             }
@@ -190,7 +190,7 @@ MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy t
             continue;
         }
         const MsTy value = ms_body_block_value(b, &arm->body, arm->value, result);
-        alt_close_from(b, first);
+        ms_body_close_from(b, first);
         if (value == MS_TY_NONE || value == b->void_ty) {
             return ms_body_unsupported(b);
         }

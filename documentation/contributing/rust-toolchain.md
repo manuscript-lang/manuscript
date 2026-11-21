@@ -13,10 +13,10 @@ Build the compiler, run its tests, and package native releases. `ms` is implemen
 
 Building `ms` needs a C compiler (`ring` compiles C sources), the platform prerequisites below, and the pinned dependencies, downloaded during setup or supplied through the Cargo cache.
 
-The native runtime (`ms-native`) is an explicit step: `make runtime` (`cargo xtask runtime`) builds it into `target/ms-native/libms_native.a`. The build script of `ms-cli` only embeds that archive (or the one `MS_NATIVE_LIB` names) and fails, naming this command, when the archive is missing. Rerun the command after changing `ms-rt`, `ms-rt-abi`, `ms-rt-hot`, or any `ms-std-*` crate.
+The native runtime (`ms-native`) is an explicit step: `make runtime` (`cmake -P cmake/BuildRuntime.cmake`) builds it into `target/ms-native/libms_native.a`. The build script of `ms-cli` only embeds that archive (or the one `MS_NATIVE_LIB` names) and fails, naming this command, when the archive is missing. Rerun the command after changing `ms-rt`, `ms-rt-abi`, `ms-rt-hot`, or any `ms-std-*` crate.
 
 ```sh
-cargo xtask runtime
+cmake -P cmake/BuildRuntime.cmake
 cargo build --release --locked -p ms-cli
 target/release/ms run examples/hello/ms.toml -- first second
 ```
