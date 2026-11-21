@@ -1,0 +1,4 @@
+emit
+ms.toml
+-o
+main.mir
