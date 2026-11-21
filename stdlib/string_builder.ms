@@ -1,4 +1,5 @@
 // Mutable builder for constructing a string without repeated intermediate copies.
+// ms: constructible
 export extern type StringBuilder
 
 // Appends the supplied text in order.
