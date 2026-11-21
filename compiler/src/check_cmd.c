@@ -17,6 +17,18 @@
 #include "ms/project.h"
 #include "ms/stdlib.h"
 
+/* Every default of the type's fields was typed by the body pass; a default it declined (a conversion Rust
+ * rewrites) has no diagnostic here and stays with Rust. */
+static bool check_defaults_covered(const MsModuleRow *row, const MsDecl *d) {
+    for (uint32_t i = 0; i < d->u.type.fields.len; i++) {
+        const MsExpr *def = d->u.type.fields.ptr[i]->def;
+        if (def != NULL && (row->facts == NULL || row->facts->expr_ty == NULL || row->facts->expr_ty[def->id] == MS_TY_NONE)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* Whether the checker's passes decided every function, constant and declaration of the module: a function
  * with a construct they do not handle has no `body_checked`, and an impl or test body is not read at all. */
 static bool check_module_covered(const MsCheck *c, MsModId id) {
@@ -24,6 +36,9 @@ static bool check_module_covered(const MsCheck *c, MsModId id) {
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
         if (d->kind == MS_D_IMPL || d->kind == MS_D_TEST) {
+            return false;
+        }
+        if (d->kind == MS_D_TYPE && !d->u.type.external && !check_defaults_covered(row, d)) {
             return false;
         }
         const bool callable = (d->kind == MS_D_FN && !d->u.fn.external) || d->kind == MS_D_CONST;
@@ -53,59 +68,36 @@ static const char *check_phase_name(MsPhase phase) {
     return phase == MS_PHASE_RESOLUTION ? "resolution" : "type";
 }
 
-static bool check_has_params(const MsParams *params) {
-    for (uint32_t i = 0; i < params->len; i++) {
-        if (params->ptr[i]->def != NULL) {
-            return true;
-        }
-    }
-    return false;
-}
-
 /* What the module uses that a C pass is still missing, or NULL. Each entry names a check the C checker has no
  * port of; `check-cmd-diff.sh` shows the files that need it, and an entry goes when its port lands. */
 static const char *check_unported(const MsCheck *c, const MsModule *module) {
-    bool exported = false, private_type = false;
-    for (uint32_t i = 0; i < module->nimports; i++) {
-        const MsSymId sym = ms_map_get(&c->std_types, module->imports[i].name);
-        if (sym != MS_NONE && ms_is_prelude_symbol(c, sym)) {
-            return "an import of a prelude name (redundant prelude import)";
-        }
-    }
+    (void)c;
     for (uint32_t i = 0; i < module->ndecls; i++) {
         const MsDecl *d = module->decls[i];
-        exported = exported || d->is_exported;
         switch ((MsDeclKind)d->kind) {
         case MS_D_FN:
-            if (d->u.fn.external) return "an extern function";
             if (d->u.fn.type_params.len != 0) return "a generic function";
             break;
         case MS_D_CONST:
             break;
         case MS_D_TYPE:
-            if (d->u.type.external) return "an extern type";
             if (d->u.type.type_params.len != 0) return "a generic type";
-            if (check_has_params(&d->u.type.fields)) return "a field default";
-            private_type = private_type || !d->is_exported;
             break;
         case MS_D_ENUM:
             if (d->u.enumeration.type_params.len != 0) return "a generic type";
-            private_type = private_type || !d->is_exported;
             break;
         case MS_D_ALIAS:
             if (d->u.alias.type_params.len != 0) return "a generic type";
-            private_type = private_type || !d->is_exported;
             break;
         case MS_D_INTERFACE:
-            if (d->u.iface.type_params.len != 0 || d->u.iface.methods.len == 0) return "a generic or empty interface";
-            private_type = private_type || !d->is_exported;
+            if (d->u.iface.type_params.len != 0) return "a generic interface";
             break;
         case MS_D_IMPL:
         case MS_D_TEST:
             break;
         }
     }
-    return exported && private_type ? "a public signature that may expose a private type" : NULL;
+    return NULL;
 }
 
 typedef struct CheckRun {
