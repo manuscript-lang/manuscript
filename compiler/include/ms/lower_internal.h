@@ -284,6 +284,9 @@ bool lb_closures(Lb *lb, bool ok);
 LbVal lb_unsupported_at(Lb *lb, const char *site, int line);
 #define LB_UNSUPPORTED(lb) lb_unsupported_at((lb), __FILE__, __LINE__)
 LbVal lb_expr(Lb *lb, const MsExpr *e);
+/* `value`, the borrowed read of the place `e`, read again once the expressions after it were evaluated: one of them
+ * may have replaced what the place holds (crates/ms-lower call.rs `refresh`). Other values are returned as they are. */
+LbVal lb_refresh(Lb *lb, const MsExpr *e, LbVal value);
 MirTy lb_mir_ty(Lb *lb, MsTy ty);
 void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
@@ -299,6 +302,9 @@ bool lb_is_list(const Lb *lb, MirTy ty);
 LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_empty(Lb *lb, MirTy ty);
 LbVal lst_index(Lb *lb, const MsExpr *e);
+/* `list.get(index)` and `list.get_or(index, fallback)` of a list or Bytes: true when `e` is one (`out` is its value). */
+bool lst_read_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
+LbVal lst_get(Lb *lb, const MsExpr *left, const MsExpr *at);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
@@ -369,6 +375,9 @@ bool lb_is_conversion_name(const Lb *lb, MsSym name);
 bool lb_numeric_conversion(Lb *lb, MirValue x, MsTy checked_result, LbVal *out);
 /* `abs` or `sign` of an `Int`: true when `e` is one (`out` is its value), false before anything is lowered. */
 bool lb_int_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
+/* lower_optional.c: methods that are instructions. Each returns whether the call is one of its methods and sets `out`. */
+bool lb_optional_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out); /* `get_or` of an Optional */
+bool lb_clone_method(Lb *lb, const MsExpr *e, LbVal *out);                      /* `clone` of a value no runtime function copies */
 
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);
