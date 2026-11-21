@@ -32,6 +32,10 @@ install)
             echo "a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4  $work/$musl.tar.gz" | sha256sum -c -
             tar -xzf "$work/$musl.tar.gz" -C "$work"
             (cd "$work/$musl" && ./configure --prefix=/usr/local/musl >/dev/null && make -j"$(nproc)" >/dev/null && $sudo make install >/dev/null)
+            # The container's default GCC 8 crashes on the runtime's vector arguments on aarch64; its newer
+            # toolset, when present, is the compiler musl-gcc wraps.
+            toolset=$(ls -d /opt/rh/gcc-toolset-*/root/usr/bin/gcc 2>/dev/null | sort -V | tail -n 1 || true)
+            [ -z "$toolset" ] || $sudo sed -i "s|REALGCC:-gcc|REALGCC:-$toolset|" /usr/local/musl/bin/musl-gcc
             $sudo ln -sf /usr/local/musl/bin/musl-gcc /usr/local/bin/musl-gcc
             rm -rf "$work"
         fi
