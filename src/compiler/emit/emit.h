@@ -29,7 +29,7 @@ MsSpan emit_host_triple(void);
 
 /* Writes the module's functions, its static data (`data`, NULL for none), its declarations and its debug metadata. False when some function could not be
  * written; `why` then lists one `name: reason` line per function. */
-bool emit_module(const MirModule *module, const MirData *data, const EmitOptions *options, MsStrBuild *out, MsStrBuild *why);
+bool emit_module(const MirModule *module, const MirData *data, const MirGlue *glue, const EmitOptions *options, MsStrBuild *out, MsStrBuild *why);
 
 /* Appends the C `main(argc, argv)` that hands the entry function to the runtime (`msrt_start`). With `tables`
  * the runtime gets `@ms_tables`, the block the asm tables step appends to the assembly; without it, null and
