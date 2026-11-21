@@ -1316,8 +1316,8 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
     }
     const MirTy bound_ty = lb_mir_ty(lb, ty);
     if (bound_ty != MIR_STR && !lb_is_fn(lb, bound_ty) && lb_owns(lb, bound_ty)) {
-        if (!value.owned || (s->u.bind.is_mutable && !lb_is_list(lb, bound_ty))) {
-            (void)LB_UNSUPPORTED(lb); // a record local is made from a call or a construction, and is not a `var` yet
+        if (!value.owned) {
+            (void)LB_UNSUPPORTED(lb); // a record local is made from a call or a construction
             return;
         }
         if (!s->u.bind.is_mutable) {
@@ -1418,9 +1418,6 @@ static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
         return la_none_owned(lb, e); // `none` where the holder owns what it holds
     }
     if (lb_names_var(lb, e)) {
-        if (mir_b_ty(&lb->b, v) != MIR_STR) {
-            (void)LB_UNSUPPORTED(lb); // a `var` list that leaves is wrapped in an Optional the pass does not make yet
-        }
         return (LbVal){v, true}; // a `var` leaves with its current value: lb_own_vars skips it
     }
     if (lb_names_owned(lb, e)) {

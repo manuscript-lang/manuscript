@@ -46,15 +46,26 @@ static void print_list_consts(const MirModule *mir) {
     }
 }
 
-static void note_divergent_stmt(void *flag, const MsStmt *s) {
+/* What a function holds that C lowers its own way: a loop or `match`, or a `var` that a `return name` hands out (Rust
+ * wraps such a `var` in an Optional to move it out, C moves the value the `var` holds). */
+typedef struct Divergence {
+    bool found;
+    bool has_var;
+    bool returns_name;
+} Divergence;
+
+static void note_divergent_stmt(void *ctx, const MsStmt *s) {
+    Divergence *d = ctx;
     if (s->kind == MS_S_WHILE || s->kind == MS_S_FOR) {
-        *(bool *)flag = true;
+        d->found = true;
     }
+    d->has_var = d->has_var || (s->kind == MS_S_BIND && s->u.bind.is_mutable);
+    d->returns_name = d->returns_name || (s->kind == MS_S_RETURN && s->u.expr != NULL && s->u.expr->kind == MS_E_NAME);
 }
 
-static void note_divergent_expr(void *flag, const MsExpr *e) {
+static void note_divergent_expr(void *ctx, const MsExpr *e) {
     if (e->kind == MS_E_MATCH) {
-        *(bool *)flag = true;
+        ((Divergence *)ctx)->found = true;
     }
 }
 
@@ -97,10 +108,10 @@ static bool function_diverges(const MsNames *names, const MsModule *module, MsSt
         const MsDecl *d = module->decls[i];
         const MsStr own = d->kind == MS_D_FN ? ms_name(names, d->u.fn.name) : (MsStr){0};
         if (own.len == name.len && own.len != 0 && memcmp(own.ptr, name.ptr, name.len) == 0) {
-            bool flag = false;
-            const MsVisitor visitor = {.ctx = &flag, .stmt = note_divergent_stmt, .expr = note_divergent_expr};
+            Divergence found = {0};
+            const MsVisitor visitor = {.ctx = &found, .stmt = note_divergent_stmt, .expr = note_divergent_expr};
             ms_walk_decl(&visitor, d);
-            return flag;
+            return found.found || (found.has_var && found.returns_name);
         }
     }
     return false;
