@@ -186,6 +186,21 @@ MirValue lb_copy(Lb *lb, MirValue v) {
     return mir_b_emit(&lb->b, MOP_Clone, &v, 1, one, mir_b_ty(&lb->b, v));
 }
 
+/* Whether `e` names a local or a field under one (`g`, `g.cells`): a place, which evaluating again only reads. */
+static bool lb_is_place(const Lb *lb, const MsExpr *e) {
+    while (e->kind == MS_E_MEMBER) {
+        e = e->u.member.left;
+    }
+    return e->kind == MS_E_NAME && lb->facts->res_kind[e->id] == MS_RES_BINDING;
+}
+
+LbVal lb_refresh(Lb *lb, const MsExpr *e, LbVal value) {
+    if (!lb->ok || value.owned || !lb_owns(lb, mir_b_ty(&lb->b, value.v)) || !lb_is_place(lb, e)) {
+        return value;
+    }
+    return lb_expr(lb, e);
+}
+
 /* A module constant has no statements to give its instructions a position: each expression sets its
  * own as it starts, and the position stays until the next one starts (an operator sets it again once
  * its operands are evaluated), as in the Rust lowering. */
@@ -1671,6 +1686,10 @@ static void lb_assign(Lb *lb, const MsStmt *s) {
 /* `for name in a..b`: a counter from `a` while below `b` (both evaluated once, before the loop),
  * stepped by one after the body or a `continue`. The loop variable is the counter's current value. */
 static void lb_for(Lb *lb, const MsStmt *s) {
+    if (lb->facts->each_collection[s->id]) {
+        (void)LB_UNSUPPORTED(lb);
+        return;
+    }
     if (lb->facts->each_list[s->id]) {
         lst_for(lb, s);
         return;

@@ -1677,6 +1677,11 @@ static void own_for_list(OwnWalk *w, const MsStmt *s) {
 }
 
 static void own_for(OwnWalk *w, const MsStmt *s) {
+    if (w->facts->each_collection[s->id]) {
+        OWN_DECLINE(w); /* a set or a map is iterated by its own protocol; ownership of the loop is left to Rust */
+        own_expr(w, s->u.each.iter, DEMAND_READ);
+        return;
+    }
     if (w->facts->each_list[s->id]) {
         own_for_list(w, s);
         return;
@@ -1928,10 +1933,10 @@ static void own_summary_rounds(OwnWalk *w, const MsModuleRow *row, const uint32_
  * since the checker admits only scalar results for a method call. */
 static void own_methods(OwnWalk *w, const uint32_t *by_node) {
     const MsFacts *facts = w->facts;
-    if (facts->methods == NULL) {
+    const MsMethod **rows = w->methods;
+    if (facts->methods == NULL || rows == NULL) {
         return;
     }
-    const MsMethod **rows = w->methods;
     w->quiet = false;
     for (uint32_t i = 0; i < facts->methods->count; i++) {
         const MsMethod *method = rows[i];
