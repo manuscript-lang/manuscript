@@ -158,4 +158,19 @@ uint8_t msstd_fs_copy(const MsString *source, const MsString *destination, int64
                       uint8_t has_entries, int64_t entries, uint8_t has_bytes, int64_t bytes, MsObj *filter,
                       MsString *err);
 
+/* One PathEntry of glob_entries: the path, then the nested DirectoryEntry's name and two flag bytes. */
+typedef struct MsFsPathEntry {
+  MsString path;
+  MsString name;
+  uint8_t directory;
+  uint8_t symlink;
+} MsFsPathEntry;
+
+/* The sorted matches of `patterns` under `path` that `exclude` and the filter (null, or a closure over (path, name,
+ * directory, symlink)) do not leave out. */
+/* ms-sig: msstd_fs_glob_entries(path: *const StrVal, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, has_max_entries: HasRaw, max_entries: i64, has_max_results: HasRaw, max_results: i64, filter: *mut Closure, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_glob_entries(const MsString *path, const MsList *patterns, const MsList *exclude, uint8_t follow_links,
+                              uint8_t has_max_entries, int64_t max_entries, uint8_t has_max_results,
+                              int64_t max_results, MsObj *filter, MsList *out, MsString *err);
+
 #endif
