@@ -686,7 +686,7 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     case MS_E_APPLY: return lst_index(lb, e);
     case MS_E_LIST: return lst_literal(lb, e);
     case MS_E_MAP: return lm_literal(lb, e);
-    case MS_E_VOID:
+    case MS_E_VOID: return (LbVal){mir_b_unit(&lb->b), false};
     case MS_E_PROBE: break;
     }
     return lb_unsupported(lb);
@@ -1089,11 +1089,12 @@ static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
 }
 
 static void lb_return(Lb *lb, const MsStmt *s) {
-    if (s->u.expr == NULL) {
+    const MirValue ok_unit = s->u.expr == NULL ? la_ok_unit(lb) : MIR_NONE;
+    if (s->u.expr == NULL && ok_unit == MIR_NONE) {
         lb_return_void(lb);
         return;
     }
-    LbVal value = lb_expr(lb, s->u.expr);
+    LbVal value = s->u.expr == NULL ? (LbVal){ok_unit, lb_owns(lb, lb->b.f.ret)} : lb_expr(lb, s->u.expr);
     if (!lb->ok) {
         return;
     }
@@ -1101,7 +1102,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
     if (lb_owns(lb, value_ty) && !value.owned && !lb->b.f.ret_borrowed) {
         value = lb_hand_out(lb, s->u.expr, value.v);
     }
-    const bool leaves_var = !lb->b.f.ret_borrowed && lb_names_var(lb, s->u.expr);
+    const bool leaves_var = !lb->b.f.ret_borrowed && s->u.expr != NULL && lb_names_var(lb, s->u.expr);
     lb_own_temps(lb, lb->stmt_mark);
     lb_own_vars(lb, 0, leaves_var ? value.v : MIR_NONE);
     lscope_exit_to(&lb->scopes, 0);
@@ -1136,7 +1137,9 @@ void lb_enter(Lb *lb, MirBlock block) {
 /* Names the payload an `if name := value` unwrapped. */
 static void lb_bind_payload(Lb *lb, const MsPattern *pattern, MirValue payload) {
     lb->value_of[lb->facts->pattern_binding[pattern->id]] = payload;
-    lb_name_value(lb, payload, pattern->u.name, false);
+    if (!lb_owns(lb, mir_b_ty(&lb->b, payload))) { // the Rust lowering leaves a payload borrowed from its holder unnamed
+        lb_name_value(lb, payload, pattern->u.name, false);
+    }
 }
 
 /* `if cond: then else: else`; the else branch may be empty. */
@@ -1157,7 +1160,7 @@ static void lb_if(Lb *lb, const MsStmt *s) {
     mir_b_seal_block(&lb->b, else_block);
     lb_enter(lb, then_block);
     if (s->u.branch.binding != NULL) {
-        lb_bind_payload(lb, s->u.branch.binding, la_payload(lb, subject));
+        lb_bind_payload(lb, s->u.branch.binding, la_payload(lb, subject, !cond.owned));
     }
     (void)lb_scoped(lb, &s->u.branch.body);
     const bool then_live = !lb->dead;
