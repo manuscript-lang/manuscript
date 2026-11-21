@@ -1,10 +1,11 @@
 [Wiki](../index.md) › [Compiler and build](index.md)
 
-# The C loader attaches packages, but the checker does not enforce them yet
+# The C loader attaches packages; package rules need a complete effect scan
 
 Verified (`compiler/src/project/attach.c`, `compiler/tests/attach_test.c`, 2026-11): `ms_project_load_packages` loads a project with `[dependencies]` from `ms.lock` and the package cache, with the Rust texts for a missing lock entry, a tampered file and an effect a project has not allowed.
 
 - A package module is named `@<repo>@<tag>/<path from the package root>`, imports in it resolve through the package's own `[aliases]` and dependencies, and a file is hashed against the locked index as it is read.
-- `ms_project_load` still reports such a project as unsupported. The C checker has no package scope: it must reject native declarations in a fetched package and cap its effects (`cap` in `effect_reach.c` is never set), and the effect scan covers only the entry module. Until those exist, only a caller that enforces them may use `ms_project_load_packages`.
+- Package rules live in `ms_graph_check_packages` (`graph_check.c`, effect scan generalised to package modules in `effect_facts.c`): native declarations in a non-member package, and a package callable reaching an effect its `[project] effects` lacks (the `cap` of its nodes), with the Rust texts. It sets `*complete` false when the scan cannot see through a package callable (unchecked body, interface call it does not yet follow), and then the build must go to Rust: a missing error proves nothing. The project's own effect violations are lint findings in Rust, not build errors, so the C check does not report them.
+- `ms_project_load` still reports package projects as unsupported; the CLI's check pipeline calls `ms_project_load_packages`, `ms_graph_check` and `ms_graph_check_packages`, and falls back when `*complete` is false.
 - Path dependencies and workspace members load too (`workspace.c`: members, the lock at the workspace root, module names `@workspace/<name>/...`, members may declare natives). `tools/ms/workspace.ms` wraps `ms_tool_workspace`, so there is one workspace reader, in C, because the compiler needs it during a build.
 - `make target/c-tool/libmstool.a` needs `target/cmake/tools` removed after a CMake change; a stale cache gave `-lms_mimalloc` link errors.

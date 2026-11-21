@@ -130,7 +130,8 @@ static void live_call(LiveWalk *w, const MsExpr *e) {
     const bool through_local = callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_BINDING;
     const bool operation = callee->kind == MS_E_MEMBER &&
                            (w->facts->call_interface[e->id] != MS_TY_NONE || w->facts->call_method[e->id] != MS_NONE);
-    if (w->facts->call_callee[e->id] == MS_NONE && !through_local && !operation) {
+    const bool builds_case = callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_CASE;
+    if (w->facts->call_callee[e->id] == MS_NONE && !through_local && !operation && !builds_case) {
         w->supported = false; /* anything else the walk does not follow */
         return;
     }
@@ -194,8 +195,13 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
             live_expr(w, e->u.list.ptr[i - 1]);
         }
         return;
-    case MS_E_PROBE:
-    case MS_E_MAP: w->supported = false; return; /* collections are not modeled */
+    case MS_E_MAP:
+        for (uint32_t i = e->u.map.len; i > 0; i--) {
+            live_expr(w, e->u.map.ptr[i - 1].value);
+            live_expr(w, e->u.map.ptr[i - 1].key);
+        }
+        return;
+    case MS_E_PROBE: w->supported = false; return; /* not modeled */
     case MS_E_LAMBDA: live_lambda(w, e); return;
     case MS_E_CALL:
         if (ms_call_builds_case(w->facts, e)) {
