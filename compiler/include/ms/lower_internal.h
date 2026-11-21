@@ -78,6 +78,7 @@ typedef struct LbView {
     MirValue *value_of;   /* by binding id (output arena, per pass) */
     MirVar *var_of;       /* by binding id (output arena, per pass) */
     bool *failed;         /* by declaration: it did not lower in an earlier pass (malloc) */
+    uint32_t file;        /* the module's source file in the output's file table (per pass) */
 } LbView;
 
 /* An impl method a lowered module wrote: its row, where it starts, and the source lines it owns. */

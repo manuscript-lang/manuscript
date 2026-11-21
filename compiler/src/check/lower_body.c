@@ -88,7 +88,7 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
 }
 
 MirLoc lb_loc(const Lb *lb, MsPos pos) {
-    return (MirLoc){.file = 0, .line = pos.line, .col = pos.column, .scope = lb->b.loc.scope};
+    return (MirLoc){.file = lb->views[lb->view].file, .line = pos.line, .col = pos.column, .scope = lb->b.loc.scope};
 }
 
 void lb_emit_plain(Lb *lb, MirOp op) {
