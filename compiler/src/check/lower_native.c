@@ -333,6 +333,17 @@ static uint32_t ln_without_descriptors(LnCall *call) {
     return kept;
 }
 
+/* A call of a function that returns a view of its receiver: it writes the view through a slot, and the load yields a
+ * value the MIR does not own, so nothing releases it. */
+static bool ln_emit_view(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, MirValue *out) {
+    const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = result_ty}, MIR_PTR);
+    ln_push(call, MS_RT_OUT_STR, slot, MIR_PTR);
+    const uint32_t ext = lb_runtime_extern(lb, fn->symbol, call->types, call->count, MIR_VOID, MR_NONE, false);
+    (void)mir_b_call_rt(&lb->b, ext, call->operands, call->count);
+    *out = lb_load(lb, slot, result_ty);
+    return true;
+}
+
 /* Emits the call, instruction or sequence the operands of `call` make for `fn`. */
 static bool ln_emit(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, const LbNativeStatus *status, MirValue *out) {
     const bool is_op = fn->op[0] != '\0';
@@ -360,6 +371,9 @@ static bool ln_emit(Lb *lb, const MsRtFn *fn, LnCall *call, MirTy result_ty, con
         const MirImm imm = fn->has_imm ? (MirImm){.tag = MI_INT, .i = fn->imm} : (MirImm){0};
         *out = mir_b_emit(&lb->b, (MirOp)op, call->operands, kept, imm, result_ty);
         return true;
+    }
+    if (fn->borrows && call->has_out && status == NULL) {
+        return ln_emit_view(lb, fn, call, result_ty, out);
     }
     MirTy ret = call->has_out || fn->ret == MS_RT_RET_HANDLE ? result_ty : ln_ret_ty(fn->ret);
     if (status != NULL) {
@@ -392,13 +406,13 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
     return ln_emit(lb, fn, &call, result_ty, status, out);
 }
 
-/* A call of `fn` for the evaluated arguments; the result is owned when its type is. */
+/* A call of `fn` for the evaluated arguments; the result is owned when its type is, unless `fn` returns a view of its receiver. */
 LbVal lb_native_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty) {
     MirValue result = MIR_NONE;
     if (!ln_marshal(lb, fn, args, nargs, result_ty, NULL, NULL, &result)) {
         return LB_UNSUPPORTED(lb);
     }
-    return (LbVal){result, lb_owns(lb, result_ty)};
+    return (LbVal){result, lb_owns(lb, result_ty) && !fn->borrows};
 }
 
 /* A call of a function that reports failure by a status (`-> u8`, 0 for success): the status, an int, is the
@@ -464,6 +478,9 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     }
     if (fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
         return LB_UNSUPPORTED(lb);
+    }
+    if (lb->facts->call_borrows[e->id] && !fn->borrows && lb->iterable != e) {
+        return LB_UNSUPPORTED(lb); // a borrowed list used outside a `for` is lent by a twin that is not lowered yet
     }
     const MsExpr *receiver = callee->u.member.left;
     const bool by_reference = fn->params[0] == MS_RT_LIST_VAR;

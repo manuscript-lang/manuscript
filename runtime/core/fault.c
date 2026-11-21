@@ -226,6 +226,22 @@ MS_NORETURN static void fault_in_cleanup(MsUnwind *unwind, MsFaultKind kind, MsB
     finish(unwind, flight);
 }
 
+/* The frames below the program's last one are the library code that ran it (a test runner waiting on the promise
+ * that holds the test): the report ends at the program's frame, as an optimized build's does once those calls are
+ * inlined away. A list with no program frame at all is left whole. */
+static void drop_trailing_library_frames(MsFrameList *list) {
+    if (list->truncated) {
+        return; /* the walk stopped early: these are not the bottom frames */
+    }
+    size_t last = list->count;
+    while (last > 0 && __builtin_strncmp(list->frames[last - 1].file, "@std/", 5) == 0) {
+        last--;
+    }
+    if (last > 0) {
+        list->count = last;
+    }
+}
+
 /* The one place a fault starts. Not inlined: the frame walk starts at its frame, so what it adds to the stack is
  * the same on every path. */
 MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsBytes message, bool out_of_memory) {
@@ -241,6 +257,7 @@ MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsBytes messag
     buffer_append(&flight.text, message.ptr, message.len);
     ms_frames_collect((uintptr_t)__builtin_frame_address(0), (uintptr_t)raise_fault, window_of(unwind),
                       &flight.detail->frames);
+    drop_trailing_library_frames(&flight.detail->frames);
     render_frames(&flight.text, &flight.detail->frames);
     /* A fault that leaves a guarded task abandons its frames, so drop cleanups release what they own; an
      * unguarded fault ends the process. */
