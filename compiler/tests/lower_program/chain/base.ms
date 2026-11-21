@@ -1,2 +1,2 @@
 export fn answer() Int:
-    return 42
+	return 42

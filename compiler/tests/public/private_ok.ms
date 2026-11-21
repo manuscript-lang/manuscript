@@ -1,8 +1,8 @@
 type Secret:
-    a: Int
+	a: Int
 
 fn show(s: Secret) Void:
-    return
+	return
 
 fn main() Void:
-    return
+	return

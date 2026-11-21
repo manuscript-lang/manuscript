@@ -66,6 +66,17 @@ uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out
 uint8_t ms_tool_requirement(const ms_str *text, ms_list *out, ms_str *message_out);
 uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out);
 
+/* The standard library's API model as one JSON document: every public module's declarations with their types, fields,
+ * cases, operations, members and comments, in the form the Rust `ms-tooling` `api_model` example prints (see
+ * ms/api_model.h). `ms search_symbol` and the generated reference read it; it checks the embedded library on each call. */
+void ms_tool_api_model(ms_str *out);
+
+/* The fact model of one document as JSON, the document `ms-tooling-dev facts` prints and `tools/ms/views.ms` reads
+ * (see compiler/src/check/dump_facts.c for the columns the C checker fills). Status 0 fills `out`; 1 is an error
+ * (invalid UTF-8, a syntax error) with its text in `message_out`; 2 means the document imports a project module, which
+ * this entry does not load. */
+uint8_t ms_tool_facts(const ms_str *text, ms_str *out, ms_str *message_out);
+
 /* `ms check FILE.ms [--json]` (compiler/include/ms/check_run.h). Status 0 fills `out` with the standard output, the
  * standard error and the exit status (as decimal text) the Rust command would produce; status 2 means the C passes
  * cannot give that answer (message in `message_out`) and the caller runs the Rust command; 1 is an error. */

@@ -14,6 +14,7 @@
 #include "ms/check.h"
 #include "ms/methods.h"
 #include "ms/ownership.h"
+#include "ms/rt_ops.h"
 #include "ms/parse.h"
 
 /* Who may change a binding (`Perm` in walk.rs). */
@@ -728,9 +729,17 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
         w->supported = false;
         return;
     }
-    const bool mutating = (w->facts->methods->access[w->facts->call_method[e->id]] & MS_METHOD_MUTATING) != 0;
+    const uint8_t access = w->facts->methods->access[w->facts->call_method[e->id]];
+    const bool mutating = (access & MS_METHOD_MUTATING) != 0;
     const uint32_t binding = own_argument_local(w, receiver);
-    if (mutating) {
+    if ((access & MS_METHOD_CONSUMING) != 0) {
+        // The method takes its receiver: a local is moved out, a temporary is dropped by the method.
+        if (mutating) {
+            w->supported = false;
+            return;
+        }
+        own_expr(w, receiver, DEMAND_MOVE);
+    } else if (mutating) {
         bool overlaps = binding == MS_NONE;
         for (uint32_t i = 0; i < e->u.call.args.len && !overlaps; i++) {
             overlaps = own_mentions(w, e->u.call.args.ptr[i].value, binding);
@@ -983,6 +992,18 @@ static bool own_is_value_call(const OwnWalk *w, const MsExpr *e) {
     return callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_BINDING;
 }
 
+/* An operation of a primitive whose runtime function is declared `@fresh`: its result is a new value,
+ * never a reference into the receiver or an argument (`s.clone()`). */
+static bool own_is_fresh_intrinsic(const OwnWalk *w, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    if (callee->kind != MS_E_MEMBER || w->facts->call_interface[e->id] == MS_TY_NONE ||
+        ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
+        return false;
+    }
+    const MsRtFn *fn = ms_rt_method_fn(w->check, w->facts->call_receiver[e->id], callee->u.member.name);
+    return fn != NULL && fn->fresh;
+}
+
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
@@ -994,7 +1015,7 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE);
         return;
     }
-    if (e->kind == MS_E_CALL && !own_is_constructor(w, e) && !own_is_value_call(w, e)) {
+    if (e->kind == MS_E_CALL && !own_is_constructor(w, e) && !own_is_value_call(w, e) && !own_is_fresh_intrinsic(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
         if (callee == NULL || (callee->returns_borrow && own_is_self_call(w, e))) {
             w->supported = false;

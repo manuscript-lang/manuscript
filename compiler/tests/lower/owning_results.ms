@@ -2,8 +2,7 @@ type Oops:
 	code: Int
 
 fn parse(n: Int) Result[String, Oops]:
-	if n < 0:
-		return error(Oops(n))
+	if n < 0: return error(Oops(n))
 	return ok("x")
 
 fn twice(n: Int) Result[String, Oops]:

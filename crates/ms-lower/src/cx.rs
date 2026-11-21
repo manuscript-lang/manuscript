@@ -92,8 +92,6 @@ pub enum HelperKey {
         in_slot: bool,
     },
     Thunk(FuncId, MTy),
-    /// An inlinable map or set lookup of the given slot shape and result.
-    MapProbe(crate::rtinline::Shape, crate::rtinline::Answer),
     /// The inlinable fast path of `String.view`.
     StringView,
     /// The inlinable fast path of `String.slice`.
