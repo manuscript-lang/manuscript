@@ -57,8 +57,8 @@ typedef struct MsRtFn {
     bool fresh;   /* `@fresh`: the result is a new value, never a reference into an argument */
     bool borrows; /* `@borrows`: the result points into the receiver (`String.view`); the caller does not own it */
     bool has_imm; /* `@imm=<n>`: the `@op=` instruction carries the integer `imm` */
+    bool fallback; /* `@fallback`: an Optional or Result method that yields the payload, or its one argument when there is none */
     const char *domain; /* `@domain=`: how its failures name their module ("network"), or "" */
-    bool fallback;      /* `@fallback`: an Optional or Result method that yields the payload, or its one argument when there is none */
 } MsRtFn;
 
 /* Whether `fn` reports failure by a status the caller turns into a `Result` (see lower_extern.c). */

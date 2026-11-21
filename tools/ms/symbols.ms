@@ -399,7 +399,7 @@ fn rt_ops_text(symbols: String) String:
 		domain := flag_value(rest, "domain=").get_or("")
 		fallback := rest.contains(" @fallback")
 		out = out.concat(
-			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {borrows}, {has_imm}, \"{domain}\", {fallback}\},\n"
+			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {borrows}, {has_imm}, {fallback}, \"{domain}\"\},\n"
 		)
 
 	return out.concat("};\n")
