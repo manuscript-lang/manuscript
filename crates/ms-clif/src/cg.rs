@@ -451,7 +451,7 @@ impl<'m> Gen<'m> {
         id
     }
 
-    /// The static `TypeDesc` for slots of type `ty` (`crates/ms-rt/ABI.md`, section 5).
+    /// The static `TypeDesc` for slots of type `ty` (`crates/ms-rt-abi/ABI.md`, section 5).
     pub fn typedesc(&mut self, ty: Ty) -> DataId {
         use ms_rt_abi::{DESC_DROP_OFFSET, DESC_EQ_OFFSET, DESC_HASH_OFFSET};
         if let Some(id) = self.desc_ids.get(&ty) {
@@ -843,7 +843,7 @@ struct Tables {
     built: ms_mir::fault_tables::Built,
 }
 
-/// Builds the symbol and line tables handed to `msrt_start` (`crates/ms-rt/ABI.md`).
+/// Builds the symbol and line tables handed to `msrt_start` (`crates/ms-rt-abi/ABI.md`).
 /// Absolute addresses are zero here and filled by relocations in [`relocate_tables`].
 fn emit_tables(g: &mut Gen) -> Result<Tables, Error> {
     let funcs: Vec<_> = g

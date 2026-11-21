@@ -74,13 +74,17 @@ static void write_project(const char *effects) {
     write_file("project/src/main.ms", "import (\n\tx from \"@wire/lib.ms\",\n)\nfn main() Int:\n\treturn 0\n");
 }
 
-/* The loaded modules' names joined by spaces, or the first diagnostic's message prefixed `error: `. */
-static const char *load(bool with_packages) {
+/* The modules `entry` loads (names joined by spaces and the package count), or the first diagnostic's message prefixed
+ * `error: `, or `unsupported: ` and why. */
+static const char *load_entry(const char *entry, bool with_packages);
+
+static const char *load(bool with_packages) { return load_entry(path("project/src/main.ms"), with_packages); }
+
+static const char *load_entry(const char *entry, bool with_packages) {
     MsNames names;
     ms_names_init(&names);
     MsGraph graph;
     MsProjectError err = {0};
-    const char *entry = path("project/src/main.ms");
     const bool ok = with_packages ? ms_project_load_packages(&arena, &names, entry, &graph, &err) : ms_project_load(&arena, &names, entry, &graph, &err);
     if (!ok) {
         return ms_arena_fmt(&arena, "unsupported: %s", ms_project_error_text(&arena, &err)).ptr;
@@ -132,6 +136,33 @@ int main(void) {
     /* A copy edited in the cache is refused as it is read. */
     run("cd %s && for d in */; do chmod -R u+w \"$d\"; echo tampered > \"$d/src/lib.ms\"; done", path("cache"));
     CHECK(strstr(load(true), "error: @") != NULL && strstr(load(true), "does not match ms.lock; run `ms install` to restore it") != NULL);
+
+    /* A workspace: the app imports the lib through a path dependency, and both share the root's lock. */
+    write_file("ws/ms.toml", "[workspace]\nmembers = [\"app\", \"libs/*\"]\n");
+    write_file("ws/app/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\nentry = \"src/main.ms\"\n[dependencies]\n\"@util\" = { path = \"../libs/util\" }\n");
+    write_file("ws/app/src/main.ms", "import (\n\tx from \"@util/util.ms\",\n)\nfn main() Int:\n\treturn 0\n");
+    write_file("ws/libs/util/ms.toml", "[project]\nname = \"util\"\nsource = \"src\"\n");
+    write_file("ws/libs/util/src/util.ms", "export fn one() Int:\n\treturn 1\n");
+    const char *shared = load_entry(path("ws/app/src/main.ms"), true);
+    CHECK(strstr(shared, "@workspace/util/src/util.ms app/src/main.ms") == NULL && strstr(shared, "@workspace/util/src/util.ms") != NULL && strstr(shared, " |1") != NULL);
+
+    /* A path dependency on a directory the workspace does not list, and one without any workspace. */
+    write_file("ws/app/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\nentry = \"src/main.ms\"\n[dependencies]\n\"@util\" = { path = \"../other\" }\n");
+    write_file("ws/other/ms.toml", "[project]\nname = \"other\"\nsource = \"src\"\n");
+    write_file("ws/other/src/x.ms", "// x\n");
+    CHECK(strstr(load_entry(path("ws/app/src/main.ms"), true), "which is not a workspace member; list it under [workspace] members in ") != NULL);
+    write_file("alone/ms.toml", "[project]\nname = \"a\"\nsource = \"src\"\nentry = \"src/main.ms\"\n[dependencies]\n\"@util\" = { path = \"../ws/libs/util\" }\n");
+    write_file("alone/src/main.ms", "fn main() Int:\n\treturn 0\n");
+    CHECK(strstr(load_entry(path("alone/src/main.ms"), true), "is a path dependency, but no ancestor ms.toml has [workspace] members") != NULL);
+
+    /* The workspace rules: a member with its own lock, and two members with one name. */
+    write_file("ws/app/ms.toml", "[project]\nname = \"app\"\nsource = \"src\"\nentry = \"src/main.ms\"\n[dependencies]\n\"@util\" = { path = \"../libs/util\" }\n");
+    write_file("ws/libs/util/ms.lock", "");
+    CHECK(strstr(load_entry(path("ws/app/src/main.ms"), true), "error: workspace member libs/util has its own ms.lock") != NULL);
+    run("rm %s", path("ws/libs/util/ms.lock"));
+    write_file("ws/libs/dup/ms.toml", "[project]\nname = \"util\"\nsource = \"src\"\n");
+    write_file("ws/libs/dup/src/x.ms", "// x\n");
+    CHECK(strstr(load_entry(path("ws/app/src/main.ms"), true), "error: workspace members libs/dup and libs/util are both named \"util\"; rename one in [project]") != NULL);
 
     run("chmod -R u+w %s && rm -rf %s", root, root);
     if (failures == 0) {

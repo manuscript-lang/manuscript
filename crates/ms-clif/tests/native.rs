@@ -349,39 +349,22 @@ impl Drop for RuntimeArchive {
 }
 
 fn build_runtime(root: &std::path::Path) -> PathBuf {
-    let target = root.join("target").join("ms-native-for-clif");
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
-    let mut command = Command::new(cargo);
-    command.current_dir(root).args([
-        "build",
-        "--release",
-        "-p",
-        "ms-native",
-        "--features",
-        "entry",
-    ]);
-    #[cfg(windows)]
-    let gnullvm = format!("{}-pc-windows-gnullvm", std::env::consts::ARCH);
-    #[cfg(windows)]
-    {
-        // The bundled Windows linker links mingw-w64, so the runtime is a gnullvm build.
-        command.args(["--target", &gnullvm]);
-        command.env(
-            format!("CC_{}", gnullvm.replace('-', "_")),
-            support::mingw_clang(),
-        );
-    }
-    let st = command
-        .arg("--target-dir")
-        .arg(&target)
+    let st = Command::new(cargo)
+        .current_dir(root)
+        .args([
+            "run",
+            "--release",
+            "--locked",
+            "-p",
+            "xtask",
+            "--",
+            "runtime",
+        ])
         .status()
-        .expect("cargo build ms-native");
-    assert!(st.success(), "building ms-native failed");
-    #[cfg(windows)]
-    let release = target.join(&gnullvm).join("release");
-    #[cfg(not(windows))]
-    let release = target.join("release");
-    release.join("libms_native.a")
+        .expect("cargo xtask runtime");
+    assert!(st.success(), "building the runtime failed");
+    root.join("target/ms-native/libms_native.a")
 }
 
 /// Compiles `src` and links it with the real runtime plus the print shim.

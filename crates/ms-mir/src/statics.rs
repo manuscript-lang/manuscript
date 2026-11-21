@@ -14,7 +14,7 @@ use ms_rt_abi::{
 pub enum DescPlan {
     /// A descriptor the runtime defines, by symbol.
     Runtime(&'static str),
-    /// A static table (`crates/ms-rt/ABI.md`, section 5) the backend emits.
+    /// A static table (`crates/ms-rt-abi/ABI.md`, section 5) the backend emits.
     Table(DescTable),
 }
 
