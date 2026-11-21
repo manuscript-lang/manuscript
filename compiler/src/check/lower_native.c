@@ -12,22 +12,7 @@
 
 /* `msrt_<type>_<method>`, the type in lower case. */
 const MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method) {
-    const MsStr type = ms_name(lb->c->names, lb->c->tys.name[receiver]);
-    const MsStr name = ms_name(lb->c->names, method);
-    const size_t size = type.len + name.len + 8;
-    char *symbol = MS_NEW_N(&lb->b.scratch, char, size);
-    size_t length = 0;
-    for (const char *part = "msrt_"; *part != '\0'; part++) {
-        symbol[length++] = *part;
-    }
-    for (size_t i = 0; i < type.len; i++) {
-        symbol[length++] = (char)tolower((unsigned char)type.ptr[i]);
-    }
-    symbol[length++] = '_';
-    for (size_t i = 0; i < name.len; i++) {
-        symbol[length++] = name.ptr[i];
-    }
-    return ms_rt_fn_find(symbol, length);
+    return ms_rt_method_fn(lb->c, receiver, method);
 }
 
 /* The MIR type a value of parameter kind `kind` has, given the value passed (for a list). */
@@ -117,7 +102,8 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
                 operands[kept++] = operands[i];
             }
         }
-        *out = mir_b_emit(&lb->b, (MirOp)op, operands, kept, (MirImm){0}, result_ty);
+        const MirImm imm = fn->has_imm ? (MirImm){.tag = MI_INT, .i = fn->imm} : (MirImm){0};
+        *out = mir_b_emit(&lb->b, (MirOp)op, operands, kept, imm, result_ty);
         return true;
     }
     const MirTy ret = has_out ? result_ty : ln_ret_ty(fn->ret);
