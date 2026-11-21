@@ -156,6 +156,11 @@ if ! grep -q 'body_int_minimum.ms 1:1$' "$out/bodies.keys" || ! grep -q 'body_in
     echo "FAIL bodies: the smallest Int literal is no longer checked in C (compiler/tests/scope/body_int_minimum.ms)"
     status=1
 fi
+# `?` on an Optional in a function that returns one is checked in C.
+if ! grep -q 'body_try_optional.ms 4:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: ? on an Optional is no longer checked in C (compiler/tests/scope/body_try_optional.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else

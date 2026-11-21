@@ -208,7 +208,7 @@ bool ms_stream_write_raw(const MsStream *stream, const uint8_t *data, size_t len
 /* One read into `buffer`, waiting for the descriptor first where that is possible. */
 static bool read_fd(MsStream *stream, uint8_t *buffer, size_t capacity, size_t *count, MsFsFail *fail) {
 #ifdef _WIN32
-    if (stream->adopted) {
+    if (stream->adopted || stream->kind == MS_SYS_FD_PIPE) {
         int32_t os_error = 0;
         const MsPipeStatus status = ms_sched_pipe_read(stream->fd, buffer, capacity, count, &os_error);
         if (status == MS_PIPE_CANCELLED) {
@@ -217,9 +217,6 @@ static bool read_fd(MsStream *stream, uint8_t *buffer, size_t capacity, size_t *
             ms_fs_fail_os(fail, os_error, "read", ms_stream_name(stream));
         }
         return status == MS_PIPE_OK;
-    }
-    if (stream->kind == MS_SYS_FD_PIPE) {
-        return ms_stream_win_read_pipe(stream, buffer, capacity, count, fail);
     }
 #endif
     return wait_ready(stream, false, fail) && ms_stream_read_raw(stream, buffer, capacity, count, fail);

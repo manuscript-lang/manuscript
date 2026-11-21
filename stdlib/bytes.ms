@@ -19,10 +19,6 @@ import (
 // ms: data
 export extern type Bytes
 
-// `Bytes(values)` builds the bytes from a list of values: the call is this function's.
-// ms: constructor
-extern fn msrt_bytes_from_values(values: List[UInt8]) Bytes
-
 // The bytes themselves, copied.
 fn Bytes.as_bytes() Bytes:
 	return self.clone()
@@ -260,6 +256,10 @@ export fn join(parts: List[Bytes]) Bytes:
 // Returns a fresh mutable list of bytes, like data.values().
 export fn values(data: Bytes) List[UInt8]:
 	return msrt_bytes_values(data)
+
+// `Bytes(values)` builds the bytes from a list of values: the call is this function's.
+// ms: constructor
+extern fn msrt_bytes_from_values(values: List[UInt8]) Bytes
 
 // Builds a byte sequence efficiently before freezing it into an immutable value.
 // ms: constructible

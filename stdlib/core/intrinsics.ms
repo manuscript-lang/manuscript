@@ -18,10 +18,6 @@ interface CloneOperations[T]:
 interface EqualOperations[T]:
 	fn equals(other: T) Bool
 
-// Values whose type is Hashable hash with `hash`, without an impl.
-interface HashOperations:
-	fn hash() Int
-
 /*
 Operations shared by every integer type (`Int` and the sized signed and unsigned integers); `T` is the receiver type.
 Each integer type's own `<Type>Operations` interface adds only its conversions to other integer types.

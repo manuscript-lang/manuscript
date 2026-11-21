@@ -1839,7 +1839,10 @@ static size_t ll_header(LCx *c, uint32_t index) {
             first = false;
         }
     }
+    /* Every function that calls another keeps a frame pointer: the fault walker follows the chain, and a frameless
+     * wrapper (a function-value thunk at -O0) would drop its caller's frame from the trace. */
     ms_buf_puts(o, c->noinline ? ") nounwind noinline" : ") nounwind");
+    ms_buf_puts(o, " \"frame-pointer\"=\"non-leaf\"");
     const size_t attributes_at = o->len;
     if (c->pure) {
         ms_buf_puts(o, " willreturn nofree nosync memory(none)");
