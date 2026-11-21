@@ -10,6 +10,7 @@ Run commands from the repository root. `rust-toolchain.toml` pins Rust and `.nod
 The debugger display helpers in `tools/debugger/` are Python (gdb and lldb embed it). Their decoding test, `display_helper_decoding_matches_the_layouts`, needs Python 3 as `python3` or `python`. It fails, not skips, without Python, and `make doctor` reports it. Every CI runner image (Linux, macOS and Windows, both architectures) has it.
 
 ```sh
+make setup    # once per machine: the C build tools and libraries
 make doctor
 make verify
 ```
@@ -68,7 +69,7 @@ Complete tutorial fences carry a `manuscript-example` JSON comment giving `test`
 
 A snippet that leaves names free is marked `"mode":"fragment"`. It is parsed only, unless the marker lists the free names as parameters, `"given":["raw: String"]`, in which case it is type-checked too: its imports and every standard name it uses must resolve, and its names must resolve and its calls must type-check. A `"context"` string adds declarations the snippet assumes, such as a type or helper. `"mode":"error"` expects `ms check` to fail, and `"contains"` names the message it must show. Every `manuscript` fence in `documentation/` needs a marker; use a `text` fence for pseudo-code. Prefer `given` for new fragments.
 
-`make dist` builds a single-binary archive in `dist/` with `tools/package.ms`.
+`make dist` builds an archive in `dist/` with `tools/package.ms`: the Manuscript front `ms` and the Rust command line `ms-rust` beside it.
 
 ## Preview and publish the book
 

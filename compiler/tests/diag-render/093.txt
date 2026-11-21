@@ -1,0 +1,5 @@
+093.ms:6:1: parse: a type declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes
+   |
+ 6 | type Box[T]:
+   | ^^^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

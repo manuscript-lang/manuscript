@@ -1,0 +1,5 @@
+104.ms:10:33: parse: expected an expression, found 'type'; 'type' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter
+    |
+ 10 |         a.append(if i % 97 == 0:type  100.0 else: 0.0)
+    |                                 ^^^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

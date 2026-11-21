@@ -24,15 +24,35 @@ if(MS_BACKEND_ONLY)
   return()
 endif()
 if(NOT MS_BUILD_RUNTIME)
-  # libms hashes packages with libcrypto (project/packages.c); a build without the runtime has no MsLibs.cmake to name it.
-  find_package(OpenSSL REQUIRED)
-  set(MS_LIB_crypto_INCLUDES ${OPENSSL_INCLUDE_DIR})
-  set(MS_LIB_crypto_LINK OpenSSL::Crypto)
+  # libms hashes packages with libcrypto (project/packages.c) and runs programs through libuv (runtime/sys/spawn.c); a build
+  # without the runtime has no MsLibs.cmake to name them: they are the pinned builds the runtime links, for this host
+  # unless the caller names another folder with -DMS_LIBS_PREFIX.
+  if(NOT MS_LIBS_PREFIX)
+    include("${CMAKE_SOURCE_DIR}/cmake/MsPinnedLibs.cmake")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+      set(_libs_triple "${CMAKE_SYSTEM_PROCESSOR}-apple-darwin")
+    elseif(MS_WINDOWS)
+      set(_libs_triple "${CMAKE_SYSTEM_PROCESSOR}-pc-windows-gnullvm")
+    else()
+      set(_libs_triple "${CMAKE_SYSTEM_PROCESSOR}-unknown-linux-gnu")
+    endif()
+    string(REPLACE "arm64" "aarch64" _libs_triple "${_libs_triple}")
+    string(REPLACE "ARM64" "aarch64" _libs_triple "${_libs_triple}")
+    string(REPLACE "AMD64" "x86_64" _libs_triple "${_libs_triple}")
+    ms_pinned_libs_prefix("${_libs_triple}" "${CMAKE_C_COMPILER}" MS_LIBS_PREFIX)
+  endif()
+  set(MS_LIB_crypto_INCLUDES "${MS_LIBS_PREFIX}/include")
+  set(MS_LIB_crypto_LINK "${MS_LIBS_PREFIX}/lib/libcrypto.a")
+  set(MS_LIB_uv_INCLUDES "${MS_LIBS_PREFIX}/include")
+  set(MS_LIB_uv_LINK "${MS_LIBS_PREFIX}/lib/libuv.a")
 endif()
 set(_cflags -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-format-truncation)
 set(_clink "")
 if(MS_WINDOWS)
   list(APPEND _cflags -D_CRT_SECURE_NO_WARNINGS)
+  # ms_mimalloc.h renames malloc and free, and the C library declares them dllimport (_ACRTIMP): the renamed mi_malloc
+  # would then be an import. Declaring the C library's functions plain makes them link as ordinary symbols.
+  list(APPEND _cflags -D_ACRTIMP= -D_DCRTIMP=)
   # __int128 division (constfold, range analysis) calls __divti3 and __modti3, which MSVC libraries lack: link the
   # compiler-rt builtins that ship with LLVM.
   execute_process(COMMAND "${CMAKE_C_COMPILER}" --rtlib=compiler-rt --print-libgcc-file-name
@@ -91,6 +111,7 @@ function(ms_compiler_exe name)
     # No libm or libdl; libms hashes packages with libcrypto (project/packages.c) and allocates through the
     # force-included ms_mimalloc.h.
     target_link_libraries(${name} PRIVATE ms_mimalloc ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK})
+    target_link_libraries(${name} PRIVATE ws2_32 iphlpapi userenv ole32 dbghelp advapi32 user32 shell32 psapi crypt32 bcrypt synchronization)
   else()
     target_link_libraries(${name} PRIVATE m ms_mimalloc ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
   endif()
@@ -105,10 +126,6 @@ endfunction()
 file(GLOB _tools CONFIGURE_DEPENDS "${_c}/tools/ms_*.c")
 foreach(file ${_tools})
   get_filename_component(name "${file}" NAME_WE)
-  # The back end (compiler/src/build/) is not on Windows yet, so the tools that drive it are not built there.
-  if(MS_WINDOWS AND name MATCHES "^ms_(build_link|build_object|macho_symbols)$")
-    continue()
-  endif()
   ms_compiler_exe(${name} "${file}" WITH_LIBMS INCLUDES "${_c}/tools")
 endforeach()
 
@@ -117,12 +134,6 @@ foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
 
-if(MS_WINDOWS)
-  return() # the driver, the embedded standard library and the `ms` front follow the back end
-endif()
-ms_compiler_exe(std_embed_test "${_c}/tests/std_embed_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
-ms_compiler_exe(package_check_test "${_c}/tests/package_check_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
-ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST)
 # The embedded standard library: std_embed_gen writes std_embed_data.inc from stdlib/, std_embed.c includes it. Only
 # the executables that load the library link ms_std_embed.
 ms_compiler_exe(std_embed_gen "${_c}/tools/std_embed_gen.c" WITH_LIBMS INCLUDES "${_c}/tools")
@@ -135,12 +146,17 @@ target_include_directories(ms_std_embed PRIVATE "${_c}/include" "${CMAKE_SOURCE_
                            "${CMAKE_BINARY_DIR}/compiler")
 target_compile_options(ms_std_embed PRIVATE -std=c11 -O1 -Wall -Wextra -Werror)
 
-# The thin `ms` in front of the Rust one.
-ms_compiler_exe(ms "${_c}/src/driver.c" "${_c}/tools/ms.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS)
+ms_compiler_exe(std_embed_test "${_c}/tests/std_embed_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
+ms_compiler_exe(package_check_test "${_c}/tests/package_check_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
 
-# Helpers of the differential scripts: the mutator and the effect graph generator need no libms.
-ms_compiler_exe(mutate "${_c}/tests/mutate.c" PLAIN)
-ms_compiler_exe(effect_graph_gen "${_c}/tests/effect_graph_gen.c" PLAIN)
+# The thin C driver in front of the Rust `ms` and the shell helpers of the differential scripts read the checkout the POSIX
+# way; on Windows `ms` is the Manuscript front (tools/ms/main.ms over libmstool.a).
+if(NOT MS_WINDOWS)
+  ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST)
+  ms_compiler_exe(ms "${_c}/src/driver.c" "${_c}/tools/ms.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS)
+  ms_compiler_exe(mutate "${_c}/tests/mutate.c" PLAIN)
+  ms_compiler_exe(effect_graph_gen "${_c}/tests/effect_graph_gen.c" PLAIN)
+endif()
 
 # libmstool.a: libms plus the tool interface (compiler/include/ms/tool.h), the archive a Manuscript tool links
 # with `--link`. No sanitizers: it links into programs built by `ms`.

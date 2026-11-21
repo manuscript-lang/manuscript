@@ -12,6 +12,9 @@ use std::process::{Command, Stdio};
 
 use ms_json::Json;
 
+/// The longest one `ms` command of an example may run.
+const EXAMPLE_DEADLINE: std::time::Duration = std::time::Duration::from_secs(180);
+
 const MARKER: &str = "<!-- manuscript-example: ";
 
 struct Example {
@@ -111,12 +114,44 @@ fn ms(args: &[&str], stdin: &str, cwd: Option<&Path>) -> (Option<i32>, String, S
     }
     let mut child = command.spawn().unwrap();
     child.stdin.take().unwrap().write_all(stdin.as_bytes()).ok();
-    let out = child.wait_with_output().unwrap();
-    (
-        out.status.code(),
-        String::from_utf8_lossy(&out.stdout).into_owned(),
-        String::from_utf8_lossy(&out.stderr).into_owned(),
-    )
+    // A hung example must fail this test, not hold the runner until the job is cancelled.
+    let mut out = child.stdout.take().unwrap();
+    let mut err = child.stderr.take().unwrap();
+    let read_out = std::thread::spawn(move || {
+        let mut text = Vec::new();
+        out.read_to_end(&mut text).ok();
+        text
+    });
+    let read_err = std::thread::spawn(move || {
+        let mut text = Vec::new();
+        err.read_to_end(&mut text).ok();
+        text
+    });
+    let deadline = std::time::Instant::now() + EXAMPLE_DEADLINE;
+    let mut timed_out = false;
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status.code();
+        }
+        if std::time::Instant::now() >= deadline {
+            timed_out = true;
+            child.kill().ok();
+            child.wait().ok();
+            break None;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    };
+    if timed_out {
+        // A grandchild may still hold the pipes open, so the readers are left to finish on their own.
+        let stderr = format!(
+            "killed: `ms {}` ran longer than {EXAMPLE_DEADLINE:?}",
+            args.join(" ")
+        );
+        return (None, String::new(), stderr);
+    }
+    let stdout = String::from_utf8_lossy(&read_out.join().unwrap_or_default()).into_owned();
+    let stderr = String::from_utf8_lossy(&read_err.join().unwrap_or_default()).into_owned();
+    (status, stdout, stderr)
 }
 
 /// Serves `body` with `status` to every request until the process exits.

@@ -1,0 +1,5 @@
+098.ms:17:71: parse: literal control characters are not allowed in text; write an escape such as \t, \r, or \u{H}
+    |
+ 17 | test "Never faults propagate through initializers and returned values    :
+    |                                                                          ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

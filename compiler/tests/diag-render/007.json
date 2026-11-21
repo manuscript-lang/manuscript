@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1002",
+      "phase": "parse",
+      "message": "tabs are allowed only in indentation, and lone carriage returns not at all; use spaces between tokens, and line endings of LF or CRLF",
+      "position": {
+        "file": "007.ms",
+        "line": 1,
+        "column": 11,
+        "offset": 10
+      }
+    }
+  ]
+}

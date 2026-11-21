@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: setup lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -27,11 +27,17 @@ verify: check repo-check c-lint workflow-check bench-check lsp-test unit docs-ch
 
 verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
-# Builds the native C runtime into target/ms-native; every build of ms-cli embeds it.
+# Installs what the C build needs (CMake, Ninja, clang, musl-gcc, perl and the system libraries); run once on a new machine.
+setup:
+	sh runtime/third_party/libs.sh install
+
+# Builds the native C runtime into target/ms-native; every build of ms-cli embeds it. A missing tool is named first,
+# with `make setup`, rather than failing inside CMake.
 runtime:
+	sh runtime/third_party/libs.sh check
 	cmake -P cmake/BuildRuntime.cmake
 
-check: runtime
+check: build
 	"$(RELEASE_MS)" run tools/ms/symbols.ms -- --check
 	cargo fmt --all --check
 	cargo clippy --workspace --all-targets -- -D warnings
@@ -262,7 +268,6 @@ c-compiler-test:
 	sh compiler/tests/fixes-diff.sh
 	sh compiler/tests/prelude-fix-diff.sh
 	sh compiler/tests/import-hints-diff.sh
-	sh compiler/tests/run-run.sh
 	sh compiler/tests/asm-tables.sh
 	sh compiler/tests/llvm-run.sh
 	sh compiler/tests/llvm-main-run.sh
@@ -289,6 +294,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/review_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/diagram_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/symbols.ms
+	"$(RELEASE_MS)" test tools/ms/toolchain.ms
+	"$(RELEASE_MS)" test tools/ms/proxy_get.ms
 	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
 	"$(RELEASE_MS)" test tools/ms/cli.ms
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms

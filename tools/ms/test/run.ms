@@ -14,7 +14,7 @@ import (
 	working_directory from "@std/os/env.ms",
 	read_file, temporary from "@std/os/fs.ms",
 	dirname, join, resolve from "@std/os/path.ms",
-	RunOptions, run from "@std/os/process.ms",
+	RunOptions, process_info, run from "@std/os/process.ms",
 	expect_equal from "@std/test/test.ms",
 	Duration, monotonic, nanoseconds, seconds from "@std/time.ms",
 
@@ -394,6 +394,13 @@ export fn run_test(inv: Invocation) Int:
 export fn run_bench(inv: Invocation) Int:
 	return run_command(inv, true)
 
+// The file name of the test program: Windows runs only files that end in `.exe`.
+fn program_name() String:
+	info := process_info()
+	if info.is_ok() and info.get().os == "windows": return "program.exe"
+
+	return "program"
+
 fn run_command(inv: Invocation, bench: Bool) Int:
 	var options = inv.tests.clone()
 	structured := inv.structured
@@ -414,7 +421,7 @@ fn run_command(inv: Invocation, bench: Bool) Int:
 
 	holder := scratch.get()
 	directory := holder.path()
-	executable := join([directory, "program"])
+	executable := join([directory, program_name()])
 	failed_build := build_tests(inv, executable, structured, document, out)
 	if status := failed_build: return status
 

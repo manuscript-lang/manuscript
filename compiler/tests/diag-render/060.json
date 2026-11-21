@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "unterminated delimiter '(' opened at line 4:2; add the matching ')' before the end of the file",
+      "position": {
+        "file": "060.ms",
+        "line": 7,
+        "column": 1,
+        "offset": 209
+      }
+    }
+  ]
+}

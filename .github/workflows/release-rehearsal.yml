@@ -74,6 +74,7 @@ jobs:
           cp "$RUNNER_TEMP/good.sha256" "release/$name.$suffix.sha256"
 
           installer
+          test -x "$(dirname "$ms")/ms-rust$([ "$OS" = windows ] && echo .exe)" || { echo "ms-rust was not installed"; exit 1; }
           "$ms" --version | tee version.txt
           grep -q "$expected" version.txt
 
@@ -84,7 +85,8 @@ jobs:
           cd "$RUNNER_TEMP"
           "$ms" init rehearsal-app
           cd rehearsal-app
-          test "$("$ms" run ms.toml -- first second | tr -d '\r')" = "Arguments: 2"
+          # The installed front must find the installed ms-rust beside it, not one on the PATH.
+          test "$(env PATH="$(dirname "$ms"):/usr/bin:/bin" "$ms" run ms.toml -- first second | tr -d '\r')" = "Arguments: 2"
           "$ms" test
 
       - name: Install the skill without the compiler

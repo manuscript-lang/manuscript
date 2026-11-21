@@ -200,6 +200,7 @@ void lb_return_void(Lb *lb);
 uint32_t lb_scoped(Lb *lb, const MsStmts *body);          /* lowers `body` in its own scope; its owner depth */
 MirBlock lb_step_block(Lb *lb, LbLoop *loop);             /* where `continue` of `loop` goes */
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
+MirValue lb_copy(Lb *lb, MirValue v); /* a borrowed String copied into a value the caller owns */
 void lb_hold_temp(Lb *lb, MirValue v); /* an owned temporary that lives to the end of the statement */
 MirLoc lb_loc(const Lb *lb, MsPos pos);
 void lb_reset_state(Lb *lb);
@@ -351,6 +352,12 @@ uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want);
 
 /* Structural text of a record or enum (lower_format.c, included after lower_text.c). */
 LbVal lf_text(Lb *lb, LbVal value);
+/* Converts the number `x` to `checked_result` (a number, or an Optional integer); false when this does not lower. */
+/* Whether the method `name` is spelled as a conversion to a primitive type: `to_int16`, `to_float`. */
+bool lb_is_conversion_name(const Lb *lb, MsSym name);
+bool lb_numeric_conversion(Lb *lb, MirValue x, MsTy checked_result, LbVal *out);
+/* `abs` or `sign` of an `Int`: true when `e` is one (`out` is its value), false before anything is lowered. */
+bool lb_int_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);

@@ -31,6 +31,7 @@ static void listener_drop(MsObj *object) {
     if (atomic_fetch_sub(&listener->handles, 1) != 1) {
         return;
     }
+    msrt_task_forget_fd((int32_t)listener->socket); /* a parked accept left libuv watching it: the next socket with this number would never be ready */
     ms_sys_net_close(listener->socket);
     if (listener->path != NULL) {
         const MsSysError removed = ms_sys_fs_unlink(listener->path); /* nothing to do when it is gone */
