@@ -489,7 +489,7 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
         if (b->facts->call_borrows[receiver->id] && !body_is_primitive(b, receiver_ty)) {
             return ms_body_unsupported(b); // a borrowed list or map is not followed through a method
         }
-        if (body_is_primitive(b, receiver_ty)) {
+        if (body_is_primitive(b, receiver_ty) && !method_row(b, receiver_ty, callee->u.member.name, e->u.call.args.len, &row)) {
             return body_intrinsic_call(b, e, receiver_ty);
         }
         return receiver_ty != MS_TY_NONE && (ms_body_is_handle(b, receiver_ty) || ms_body_is_bindable(b, receiver_ty))
