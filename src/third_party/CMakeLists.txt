@@ -1,8 +1,14 @@
 # Vendored libraries (see c-libs.lock). Built without the project warning set: the code is not ours.
 find_package(Threads REQUIRED)
+# macOS runners carry Homebrew copies of some of these libraries in /usr/local/include, which -isystem does not outrank; plain -I does.
+if(APPLE)
+  set(MS_THIRD_PARTY_SYSTEM "")
+else()
+  set(MS_THIRD_PARTY_SYSTEM SYSTEM)
+endif()
 
 add_library(mimalloc STATIC mimalloc/src/static.c)
-target_include_directories(mimalloc SYSTEM PUBLIC mimalloc/include)
+target_include_directories(mimalloc ${MS_THIRD_PARTY_SYSTEM} PUBLIC mimalloc/include)
 target_include_directories(mimalloc PRIVATE mimalloc/src)
 target_compile_definitions(mimalloc PRIVATE MI_STATIC_LIB)
 target_link_libraries(mimalloc PUBLIC Threads::Threads)
@@ -11,7 +17,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(llhttp STATIC llhttp/src/api.c llhttp/src/http.c llhttp/src/llhttp.c)
-target_include_directories(llhttp SYSTEM PUBLIC llhttp/include)
+target_include_directories(llhttp ${MS_THIRD_PARTY_SYSTEM} PUBLIC llhttp/include)
 
 # PCRE2, 8-bit with Unicode properties and no JIT. The generic headers and tables are copied at configure
 # time, so nothing in the vendored tree is edited.
@@ -32,7 +38,7 @@ add_library(pcre2 STATIC
   ${PCRE2_DIR}/pcre2_serialize.c ${PCRE2_DIR}/pcre2_string_utils.c ${PCRE2_DIR}/pcre2_study.c
   ${PCRE2_DIR}/pcre2_substitute.c ${PCRE2_DIR}/pcre2_substring.c ${PCRE2_DIR}/pcre2_tables.c
   ${PCRE2_DIR}/pcre2_ucd.c ${PCRE2_DIR}/pcre2_valid_utf.c ${PCRE2_DIR}/pcre2_xclass.c)
-target_include_directories(pcre2 SYSTEM PUBLIC ${PCRE2_GEN} PRIVATE ${PCRE2_DIR})
+target_include_directories(pcre2 ${MS_THIRD_PARTY_SYSTEM} PUBLIC ${PCRE2_GEN} PRIVATE ${PCRE2_DIR})
 target_compile_definitions(pcre2 PUBLIC PCRE2_CODE_UNIT_WIDTH=8 PCRE2_STATIC
   PRIVATE HAVE_CONFIG_H SUPPORT_PCRE2_8 SUPPORT_UNICODE)
 

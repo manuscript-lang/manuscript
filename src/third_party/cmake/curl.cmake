@@ -13,12 +13,61 @@ foreach(line IN LISTS CURL_INC_LINES)
 endforeach()
 
 add_library(curl STATIC ${CURL_SOURCES})
-target_include_directories(curl SYSTEM PUBLIC ${CURL_DIR}/include PRIVATE ${CURL_DIR}/lib ${CURL_GEN})
+target_include_directories(curl ${MS_THIRD_PARTY_SYSTEM} PUBLIC ${CURL_DIR}/include PRIVATE ${CURL_DIR}/lib ${CURL_GEN})
 target_compile_definitions(curl PUBLIC CURL_STATICLIB PRIVATE BUILDING_LIBCURL USE_NGHTTP2 HAVE_LIBZ)
 target_link_libraries(curl PUBLIC zlib nghttp2)
 
 if(WIN32)
-  target_compile_definitions(curl PRIVATE WIN32_LEAN_AND_MEAN USE_THREADS_WIN32)
+  # curl's config-win32.h is for MSVC only; mingw-w64 gets the same settings from this generated header.
+  file(MAKE_DIRECTORY ${CURL_GEN})
+  file(GENERATE OUTPUT ${CURL_GEN}/curl_config.h CONTENT [=[
+#define HAVE_FCNTL_H 1
+#define HAVE_IO_H 1
+#define HAVE_LOCALE_H 1
+#define HAVE_STDBOOL_H 1
+#define HAVE_BOOL_T 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_SYS_UTIME_H 1
+#define HAVE_CLOSESOCKET 1
+#define HAVE_FREEADDRINFO 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_GETADDRINFO_THREADSAFE 1
+#define HAVE_GETHOSTNAME 1
+#define HAVE_GETPEERNAME 1
+#define HAVE_GETSOCKNAME 1
+#define HAVE_IOCTLSOCKET 1
+#define HAVE_IOCTLSOCKET_FIONBIO 1
+#define HAVE_SETLOCALE 1
+#define HAVE_SOCKET 1
+#define HAVE_UTIME 1
+#define HAVE_RECV 1
+#define RECV_TYPE_ARG1 SOCKET
+#define RECV_TYPE_ARG2 char *
+#define RECV_TYPE_ARG3 int
+#define RECV_TYPE_ARG4 int
+#define RECV_TYPE_RETV int
+#define HAVE_SEND 1
+#define SEND_TYPE_ARG1 SOCKET
+#define SEND_TYPE_ARG2 char *
+#define SEND_TYPE_ARG3 int
+#define SEND_TYPE_ARG4 int
+#define SEND_TYPE_RETV int
+#define HAVE_SIGNAL 1
+#define SIZEOF_INT 4
+#define SIZEOF_LONG 4
+#define SIZEOF_SIZE_T 8
+#define SIZEOF_CURL_OFF_T 8
+#define SIZEOF_TIME_T 8
+#define SIZEOF_OFF_T 4
+#define HAVE_STRUCT_SOCKADDR_STORAGE 1
+#define HAVE_STRUCT_TIMEVAL 1
+#define HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID 1
+#define USE_RESOLV_THREADED 1
+#define USE_WIN32_CRYPTO 1
+#define USE_UNIX_SOCKETS 1
+#define CURL_OS "mingw-w64"
+]=])
+  target_compile_definitions(curl PRIVATE HAVE_CONFIG_H WIN32_LEAN_AND_MEAN USE_THREADS_WIN32)
   target_link_libraries(curl PUBLIC ws2_32 advapi32 crypt32 bcrypt iphlpapi)
 else()
   include(CheckIncludeFile)
