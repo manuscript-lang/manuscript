@@ -280,7 +280,7 @@ bool ms_path_working_dir(MsArena *a, const char **dir, MsProjectError *err) {
         return false;
     }
     *dir = ms_path_clean(a, cwd);
-    free(cwd);
+    ms_sys_fs_free(cwd);
     return true;
 }
 
@@ -453,7 +453,7 @@ static bool walk_follow(SymlinkWalk *w, MsArena *a, size_t end, MsProjectError *
     ms_buf_free(&w->path);
     w->path = next;
     const bool absolute = target[0] == '/';
-    free(target);
+    ms_sys_fs_free(target);
     if (absolute) {
         w->dest.len = 0;
         ms_buf_putc(&w->dest, '/');
@@ -579,7 +579,7 @@ static MsSysError path_missing_prefix(MsArena *a, const char *path, MsSysError o
             *failing = ms_path_clean(a, head);
             return failure;
         }
-        free(resolved);
+        ms_sys_fs_free(resolved);
         MsSysStat info;
         if (ms_sys_fs_stat(head, true, &info) == 0 && !host_is_dir(&info)) {
             *not_directory = true;
@@ -611,7 +611,7 @@ bool ms_path_eval_symlinks(MsArena *a, const char *input, const char **out, MsPr
         return false;
     }
     const char *text = ms_arena_strndup(a, canonical, length);
-    free(canonical);
+    ms_sys_fs_free(canonical);
     const char *ordinary = path_has_trailing_dot_or_space(text) ? NULL : path_ordinary(a, text);
     if (ordinary == NULL) {
         ms_project_error_message(err, ms_arena_fmt(a, "unsupported Windows project path %s; use names that do not require a verbatim namespace", text).ptr);
@@ -625,7 +625,7 @@ bool ms_path_eval_symlinks(MsArena *a, const char *input, const char **out, MsPr
         ms_project_error_path(err, a, "lstat", ordinary, failure);
         return false;
     }
-    free(again);
+    ms_sys_fs_free(again);
     if (!same) {
         ms_project_error_message(err, ms_arena_fmt(a, "unsupported Windows project path %s; use names that do not require a verbatim namespace", text).ptr);
         return false;

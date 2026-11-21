@@ -477,6 +477,8 @@ static MsSysError query_text(TextCall call, char **text, size_t *length) {
     }
 }
 
+void ms_sys_fs_free(void *buffer) { free(buffer); }
+
 MsSysError ms_sys_fs_current_directory(char **path, size_t *length) { return query_text(uv_cwd, path, length); }
 
 MsSysError ms_sys_fs_temp_directory(char **path, size_t *length) { return query_text(uv_os_tmpdir, path, length); }

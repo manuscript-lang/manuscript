@@ -33,7 +33,7 @@ const char *ms_package_cache_dir(MsArena *a) {
         char *temporary = NULL;
         size_t length = 0;
         base = ms_sys_fs_temp_directory(&temporary, &length) == 0 ? ms_arena_strndup(a, temporary, length) : "/tmp";
-        free(temporary);
+        ms_sys_fs_free(temporary);
     }
     return MS_PATH_JOIN(a, base, "ms", "packages");
 }

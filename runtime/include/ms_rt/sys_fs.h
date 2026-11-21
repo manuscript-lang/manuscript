@@ -6,8 +6,10 @@
  *    is not UTF-8 (MS_SYS_ERROR_INVALID), so callers validate nothing platform-specific;
  *  - a function returns 0 on success, otherwise the host's error code (errno, or the Win32 code). The code is only
  *    interpreted through ms_sys_fs_error_kind and ms_sys_fs_error_text, never compared with host constants;
- *  - a result that has no fixed size is allocated with malloc and the caller frees it: these functions run on
- *    blocking-pool threads, where the runtime's allocator must not be touched;
+ *  - a result that has no fixed size is allocated with the C library's malloc and the caller frees it with
+ *    ms_sys_fs_free, never with a free the caller's translation unit renames: the compiler's sources allocate
+ *    with mimalloc through a force-included header. These functions run on blocking-pool threads, where the
+ *    runtime's allocator must not be touched;
  *  - a descriptor is an MsSysFd, the integer the host uses (a file descriptor, or a HANDLE).
  *
  * Internal to the runtime: programs never call these, so they have no recorded signature.
@@ -246,6 +248,9 @@ void ms_sys_fs_dir_close(MsSysDir *dir);
 
 /* ---- the process's view ---- */
 
+/* Frees a buffer a function above returned: it was allocated here, so it is freed here, whatever allocator the caller's
+ * translation unit renames free to. */
+void ms_sys_fs_free(void *buffer);
 /* The working directory, malloc'd. */
 MS_NODISCARD MsSysError ms_sys_fs_current_directory(char **path, size_t *length);
 /* The directory for temporary files, malloc'd, without a trailing separator (uv_os_tmpdir: $TMPDIR, $TMP, $TEMP, $TEMPDIR, else /tmp; the user's temporary directory on Windows). */
