@@ -455,6 +455,19 @@ static void place_data(TarReader *r, TarItem *item, int64_t declared) {
   r->pos += item->length;
 }
 
+/* A GNU long name or long link special: the name is kept for the next entry. */
+static bool read_long_name(TarReader *r, uint8_t typeflag, int64_t size, MsStrBuild *long_name) {
+  MsSpan body;
+  if (!special(r, size, &body)) {
+    return false;
+  }
+  if (typeflag == TYPE_GNU_LONG_NAME) {
+    ms_strbuild_clear(long_name);
+    ms_strbuild_append(long_name, parse_string(body));
+  }
+  return true;
+}
+
 typedef struct TarState {
   PaxList pax;
   bool have_pax;
@@ -492,13 +505,8 @@ static int next_item(TarReader *r, TarItem *item, TarState *state) {
       continue;
     }
     if (item->typeflag == TYPE_GNU_LONG_NAME || item->typeflag == TYPE_GNU_LONG_LINK) {
-      MsSpan body;
-      if (!special(r, declared, &body)) {
+      if (!read_long_name(r, item->typeflag, declared, &state->long_name)) {
         return -1;
-      }
-      if (item->typeflag == TYPE_GNU_LONG_NAME) {
-        ms_strbuild_clear(&state->long_name);
-        ms_strbuild_append(&state->long_name, parse_string(body));
       }
       continue;
     }
