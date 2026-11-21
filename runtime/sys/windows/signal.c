@@ -5,6 +5,7 @@
 #include <windows.h>
 
 #include <stdatomic.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "ms_rt/sys_signal.h"
@@ -34,6 +35,7 @@ static void wake(int slot) {
 }
 
 static BOOL WINAPI on_event(DWORD kind) {
+    fprintf(stderr, "[dbg] watcher console event %lu\n", (unsigned long)kind);
     int signal;
     switch (kind) {
     case CTRL_C_EVENT:

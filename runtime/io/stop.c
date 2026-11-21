@@ -10,6 +10,7 @@
 #include "stop.h"
 
 #include <signal.h>
+#include <stdio.h>
 #include <stdatomic.h>
 #include <uv.h>
 
@@ -61,6 +62,7 @@ static int request_of(int signal_number) {
 
 static void on_signal(uv_signal_t *handle, int signal_number) {
     (void)handle;
+    fprintf(stderr, "[dbg] stop thread signal %d\n", signal_number);
     state.on_stop(request_of(signal_number));
 }
 
