@@ -34,6 +34,13 @@ target/release/examples/c_lower_oracle $files > "$out/program.rust" 2>/dev/null
 # apart by the location it was declared at.
 keyed() {
     sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g' "$1" | awk -v mode="${2:-body}" '
+        function viewed(line,    n) { # `list.const.view N` names a table by number, in the order a lowering made it
+            if (match(line, /list\.const\.view [0-9]+/)) {
+                n = substr(line, RSTART + 16, RLENGTH - 16)
+                if (n in consts) line = substr(line, 1, RSTART + 15) consts[n] substr(line, RSTART + RLENGTH)
+            }
+            return line
+        }
         function named(line,    out, rest, n, name) {
             out = ""; rest = line
             while (match(rest, / ![0-9]+:/)) {
@@ -49,7 +56,8 @@ keyed() {
             }
             return line
         }
-        /^=== / { file = $2; delete files; next }
+        /^=== / { file = $2; delete files; delete consts; next }
+        /^consts [0-9]+ \[/ { n = $2; table = $0; sub(/^consts [0-9]+ /, "", table); consts[n] = table; next }
         /^file [0-9]+ "/ { n = $2; name = $3; gsub(/"/, "", name); files[n] = name; next }
         /^; divergent$/ { looped = 1; next }
         /^fn @/ { $0 = named($0); name = $2; sub(/\(.*/, "", name); sig = $0; sub(/^fn @[^(]*/, "", sig)
@@ -58,7 +66,7 @@ keyed() {
                   if (mode == "sig") { print file " " name " " loc "|" full; next }
                   sub(/ (ret_borrowed|ret_view|export|!).*$/, "", sig)
                   key = file " " name " " sig " " loc; body = ""; infn = 1; print_head = 1 }
-        infn { line = $0; if (!print_head) line = named(line); print_head = 0; body = body line "\\n" }
+        infn { line = $0; if (!print_head) line = viewed(named(line)); print_head = 0; body = body line "\\n" }
         infn && /^}/ { print key "|" (looped ? "divergent" : body); infn = 0; looped = 0 }' | sort
 }
 keyed "$out/program.c" > "$out/program.c.keyed"

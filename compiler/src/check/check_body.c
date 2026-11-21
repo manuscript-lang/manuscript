@@ -1368,6 +1368,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
         if (context == NULL || !body_is_comparable(b, ty) || !body_is_comparable(b, expected)) {
+            if (getenv("MS_DBG")) { MsStr x = body_show(b, ty), y = body_show(b, expected); fprintf(stderr, "MIS %.*s -> %.*s ctx=%d\n", (int)x.len, x.ptr, (int)y.len, y.ptr, context != NULL); }
             return ms_body_unsupported(b);
         }
         // Rust attaches a source rewrite to these conversions in a bare context; the Rust checker keeps them.
@@ -1384,6 +1385,19 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
 
 /* ---- statements ---- */
 
+/* The `Void` a function type, a type argument (`Result[Void, E]`, `adopt[Void](..)`) or a result writes,
+ * or the annotation's own type. */
+MsTy ms_body_type_argument(MsBody *b, const MsTypeRef *t) {
+    if (t->kind == MS_TYPE_NAMED && t->args.len == 0) {
+        const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
+        if (sym != MS_NONE && b->c->syms.ty[sym] == b->void_ty) {
+            b->facts->type_ref_ty[t->id] = b->void_ty;
+            return b->void_ty;
+        }
+    }
+    return ms_body_annotation(b, t);
+}
+
 /* `Name[A, B]` or `T?`: a generic type the module sees, applied to annotations; the application is
  * kept only when a local can hold it (its arguments admitted and unbounded). */
 static MsTy body_applied_annotation(MsBody *b, const MsTypeRef *t) {
@@ -1394,7 +1408,7 @@ static MsTy body_applied_annotation(MsBody *b, const MsTypeRef *t) {
     }
     MsTy args[8];
     for (uint32_t i = 0; i < t->args.len; i++) {
-        args[i] = ms_body_annotation(b, t->args.ptr[i]);
+        args[i] = ms_body_type_argument(b, t->args.ptr[i]);
         if (args[i] == MS_TY_NONE) {
             return MS_TY_NONE;
         }
@@ -1405,18 +1419,6 @@ static MsTy body_applied_annotation(MsBody *b, const MsTypeRef *t) {
     }
     b->facts->type_ref_ty[t->id] = ty;
     return ty;
-}
-
-/* The `Void` a function type writes as its result, or the annotation's own type. */
-static MsTy body_fn_result(MsBody *b, const MsTypeRef *t) {
-    if (t->kind == MS_TYPE_NAMED && t->args.len == 0) {
-        const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
-        if (sym != MS_NONE && b->c->syms.ty[sym] == b->void_ty) {
-            b->facts->type_ref_ty[t->id] = b->void_ty;
-            return b->void_ty;
-        }
-    }
-    return ms_body_annotation(b, t);
 }
 
 /* `fn(A, B) R`: a function type whose parameters and result are annotations the pass admits, with
@@ -1435,7 +1437,7 @@ static MsTy body_fn_annotation(MsBody *b, const MsTypeRef *t) {
         const uint8_t flags = (uint8_t)((p->is_mutable ? MS_PARAM_VAR : 0) | (p->moving ? MS_PARAM_MOVE : 0) | MS_PARAM_POSITIONAL);
         params[i] = (MsTyParam){.name = p->name, .ty = ty, .flags = flags};
     }
-    const MsTy result = body_fn_result(b, t->result);
+    const MsTy result = ms_body_type_argument(b, t->result);
     if (result == MS_TY_NONE) {
         return MS_TY_NONE;
     }
@@ -1477,6 +1479,7 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
                            ms_ty_kind(&b->c->tys, ty) == MS_K_PRIMITIVE;
     const bool declared = ty != MS_TY_NONE && body_is_own_nominal(b, ty) && body_is_admitted(b, ty);
     if (!primitive && !declared) {
+        if (getenv("MS_DBG")) { MsStr nm = ms_name(b->c->names, t->name); fprintf(stderr, "ANN %.*s sym=%d ty=%d line=%u\n", (int)nm.len, nm.ptr, (int)sym, (int)ty, (unsigned)t->pos.line); }
         return ms_body_unsupported(b);
     }
     b->facts->type_ref_ty[t->id] = ty;

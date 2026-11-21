@@ -1,19 +1,14 @@
 /* The Windows half of the reactor: what libuv's loop does not cover for the scheduler.
  *
- * Sockets are libuv poll handles, as everywhere (../reactor.c). Three more things reach the scheduler here:
- *   - Overlapped named pipes (the standard streams of child processes), as libuv pipe handles with a read
- *     buffer and a write buffer each. A read or write that cannot finish reports "would block" and the
- *     completion queues an event, so a task parks until the pipe is ready.
+ * Sockets are libuv poll handles, as everywhere (../reactor.c). Two more things reach the scheduler here:
  *   - Waitable kernel objects (a child process). The thread pool waits for them and tells the loop through an
  *     async handle; no thread of ours blocks.
  *   - A high-resolution timer. The loop sleeps in whole system ticks (about 15 ms), so a deadline arms a
  *     waitable timer whose signal wakes the loop at the finest resolution the system has.
  *
- * Events use the keys the scheduler already waits on: a pipe's readers wait on its handle, its writers on the
- * handle plus one (handles are multiples of four), and a grouped pipe wakes the one task parked on its group key.
+ * Events use the keys the scheduler already waits on: an object's waiters wait on its handle.
  * Compiled by the Windows legs only; the PR checks are Linux.
  */
-#include <io.h>
 #include <string.h>
 #include <uv.h>
 #include <windows.h>
@@ -22,42 +17,12 @@
 #include "ms_rt/sys.h"
 
 enum {
-    PIPE_BUFFER_BYTES = 64 * 1024,
-    PIPE_WRITER_KEY_OFFSET = 1,
     SPIN_BELOW_NANOSECONDS = 1000000, /* the timer's own latency would overshoot a shorter wait */
     NANOSECONDS_PER_TICK = 100,       /* the unit of a waitable timer's due time */
-    FILE_MODE_INFORMATION_CLASS = 16,
-    FILE_SYNCHRONOUS_MODES = 0x30, /* FILE_SYNCHRONOUS_IO_ALERT | FILE_SYNCHRONOUS_IO_NONALERT: not overlapped */
-    ERROR_IO_DEVICE_CODE = 1117,
-    ERROR_BROKEN_PIPE_CODE = 109,
     FIRST_TABLE_LENGTH = 8,
 };
 
 typedef struct MsWindowsState MsWindowsState;
-
-/* An adopted pipe. The libuv handle is first so a handle pointer is the pipe. */
-typedef struct MsPipe {
-    uv_pipe_t handle;
-    struct MsPipe *next;   /* owned by the list in MsWindowsState */
-    uv_write_t write_request;
-    MsWindowsState *state; /* borrowed from the reactor, valid while the pipe is open */
-    uintptr_t key;         /* the OS handle: what tasks wait on */
-    uintptr_t group_key;   /* the key to wake instead of the pipe's own, when grouped */
-    bool grouped;
-    uint8_t *read_buffer;  /* owned */
-    size_t read_length;    /* bytes the last read left in the buffer */
-    size_t read_offset;    /* how many the scheduler has taken */
-    bool reading;          /* a libuv read is running */
-    bool end_of_stream;
-    int read_status;       /* a negative libuv status, 0 when none */
-    uint8_t *write_buffer; /* owned */
-    bool writing;          /* a libuv write is in flight */
-    int write_status;
-    bool owes_read_event;  /* an event could not be queued */
-    bool owes_write_event;
-    bool close_when_written; /* dropped while a write was in flight: close once it finishes, so no byte is lost */
-    bool closing;
-} MsPipe;
 
 /* A watched kernel object. Its address is the context of the thread-pool wait, so it must not move. */
 typedef struct MsObject {
@@ -76,7 +41,6 @@ struct MsWindowsState {
     size_t signalled_length;
     size_t signalled_capacity;
     MsObject *objects;          /* owned; every watched object */
-    MsPipe *pipes;              /* owned until its close callback; every open pipe */
     HANDLE timer;               /* the high-resolution timer, NULL when the system has none */
     HANDLE timer_wait;
 };
@@ -144,16 +108,7 @@ bool ms_io_windows_wait(MsIoReactor *reactor, int64_t timeout_ns) {
     return true;
 }
 
-/* ---- tables of pipes and objects ---- */
-
-static MsPipe *pipe_find(const MsWindowsState *state, uintptr_t key) {
-    for (MsPipe *pipe = state->pipes; pipe != NULL; pipe = pipe->next) {
-        if (pipe->key == key && !pipe->close_when_written) {
-            return pipe;
-        }
-    }
-    return NULL;
-}
+/* ---- the table of objects ---- */
 
 static MsObject *object_find(const MsWindowsState *state, uintptr_t key) {
     for (MsObject *object = state->objects; object != NULL; object = object->next) {
@@ -166,7 +121,7 @@ static MsObject *object_find(const MsWindowsState *state, uintptr_t key) {
 
 bool ms_io_windows_owns(const MsIoReactor *reactor, uintptr_t fd) {
     const MsWindowsState *const state = state_of(reactor);
-    return pipe_find(state, fd & ~(uintptr_t)3) != NULL || object_find(state, fd) != NULL;
+    return object_find(state, fd) != NULL;
 }
 
 /* ---- objects ---- */
@@ -276,268 +231,11 @@ void ms_io_object_drop(uintptr_t handle) {
     }
 }
 
-/* ---- pipes ---- */
-
-/* The key a pipe event wakes: its group's, or the handle (readers) or handle plus one (writers). */
-static uintptr_t pipe_event_key(const MsPipe *pipe, bool writer) {
-    if (pipe->grouped) {
-        return pipe->group_key;
-    }
-    return writer ? pipe->key + PIPE_WRITER_KEY_OFFSET : pipe->key;
-}
-
-static bool pipe_push(const MsPipe *pipe, bool writer) {
-    const MsIoEvent event = {.id = pipe_event_key(pipe, writer), .result = 0, .kind = writer ? MS_IO_WRITE : MS_IO_READ};
-    return ms_io_reactor_push(pipe->state->reactor, event);
-}
-
-static void pipe_notify(MsPipe *pipe, bool writer) {
-    if (!pipe_push(pipe, writer)) {
-        if (writer) {
-            pipe->owes_write_event = true;
-        } else {
-            pipe->owes_read_event = true;
-        }
-    }
-}
-
-static void on_pipe_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer) {
-    (void)suggested;
-    MsPipe *const pipe = (MsPipe *)handle;
-    *buffer = uv_buf_init((char *)pipe->read_buffer, PIPE_BUFFER_BYTES);
-}
-
-static void on_pipe_read(uv_stream_t *stream, ssize_t count, const uv_buf_t *buffer) {
-    (void)buffer;
-    MsPipe *const pipe = (MsPipe *)stream;
-    if (count == 0) {
-        return; /* libuv's "nothing now" */
-    }
-    (void)uv_read_stop(stream);
-    pipe->reading = false;
-    if (count > 0) {
-        pipe->read_length = (size_t)count;
-        pipe->read_offset = 0;
-    } else if (count == UV_EOF || count == UV_EPIPE || count == UV_ECONNRESET) {
-        pipe->end_of_stream = true;
-    } else {
-        pipe->read_status = (int)count;
-    }
-    pipe_notify(pipe, false);
-}
-
-static void pipe_close(MsPipe *pipe);
-
-static void on_pipe_write(uv_write_t *request, int status) {
-    MsPipe *const pipe = request->data;
-    pipe->writing = false;
-    pipe->write_status = status < 0 ? status : 0;
-    if (pipe->close_when_written) {
-        pipe_close(pipe);
-    } else if (!pipe->closing) {
-        pipe_notify(pipe, true);
-    }
-}
-
-static void on_pipe_closed(uv_handle_t *handle) {
-    MsPipe *const pipe = (MsPipe *)handle;
-    ms_sys_free(pipe->read_buffer);
-    ms_sys_free(pipe->write_buffer);
-    ms_sys_free(pipe);
-}
-
-static void pipe_unlink(MsPipe *pipe) {
-    MsPipe **link = &pipe->state->pipes;
-    while (*link != NULL && *link != pipe) {
-        link = &(*link)->next;
-    }
-    if (*link == pipe) {
-        *link = pipe->next;
-    }
-}
-
-/* Takes `pipe` off the list and ends its handle; libuv finishes the close (and cancels a pending read or write)
- * while the loop runs, then the callback frees it. */
-static void pipe_close(MsPipe *pipe) {
-    pipe_unlink(pipe);
-    pipe->closing = true;
-    uv_close((uv_handle_t *)&pipe->handle, on_pipe_closed);
-}
-
-/* Whether `handle` was opened for overlapped I/O, which libuv's pipes need to be asynchronous. A handle opened
- * without it works, but through a helper thread per call; the scheduler wants the real thing. */
-static bool is_overlapped(HANDLE handle) {
-    typedef struct {
-        union {
-            LONG status;
-            PVOID pointer;
-        };
-        ULONG_PTR information;
-    } StatusBlock;
-    typedef LONG(NTAPI * QueryFile)(HANDLE, StatusBlock *, PVOID, ULONG, ULONG);
-    const HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
-    const FARPROC found = ntdll == NULL ? NULL : GetProcAddress(ntdll, "NtQueryInformationFile");
-    if (found == NULL) {
-        return true;
-    }
-    QueryFile query = NULL;
-    memcpy(&query, &found, sizeof query);
-    StatusBlock block = {0};
-    ULONG mode = 0;
-    if (query(handle, &block, &mode, sizeof mode, FILE_MODE_INFORMATION_CLASS) < 0) {
-        return false;
-    }
-    return (mode & FILE_SYNCHRONOUS_MODES) == 0;
-}
-
-bool ms_io_pipe_adopt(uintptr_t handle) {
-    MsIoReactor *const reactor = ms_io_reactor_current();
-    if (reactor == NULL || !is_overlapped((HANDLE)handle)) {
-        return false;
-    }
-    MsWindowsState *const state = state_of(reactor);
-    MsPipe *const pipe = ms_sys_malloc(sizeof *pipe);
-    if (pipe == NULL) {
-        return false;
-    }
-    *pipe = (MsPipe){.state = state, .key = handle};
-    pipe->read_buffer = ms_sys_malloc(PIPE_BUFFER_BYTES);
-    pipe->write_buffer = ms_sys_malloc(PIPE_BUFFER_BYTES);
-    if (pipe->read_buffer == NULL || pipe->write_buffer == NULL ||
-        uv_pipe_init(ms_io_reactor_loop(reactor), &pipe->handle, 0) != 0) {
-        ms_sys_free(pipe->read_buffer);
-        ms_sys_free(pipe->write_buffer);
-        ms_sys_free(pipe);
-        return false;
-    }
-    /* libuv takes a C runtime descriptor; it owns the handle from here and closes it with the pipe. */
-    const int descriptor = _open_osfhandle((intptr_t)handle, 0);
-    if (descriptor < 0 || uv_pipe_open(&pipe->handle, descriptor) != 0) {
-        pipe->closing = true;
-        uv_close((uv_handle_t *)&pipe->handle, on_pipe_closed);
-        return false;
-    }
-    pipe->write_request.data = pipe;
-    pipe->next = state->pipes;
-    state->pipes = pipe;
-    return true;
-}
-
-bool ms_io_pipe_adopted(uintptr_t handle) {
-    MsIoReactor *const reactor = ms_io_reactor_current();
-    return reactor != NULL && pipe_find(state_of(reactor), handle) != NULL;
-}
-
-/* Starts the read that will fill the buffer. */
-static void pipe_read_start(MsPipe *pipe) {
-    if (pipe->reading || pipe->end_of_stream || pipe->read_status != 0) {
-        return;
-    }
-    const int error = uv_read_start((uv_stream_t *)&pipe->handle, on_pipe_alloc, on_pipe_read);
-    if (error != 0) {
-        pipe->read_status = error;
-        pipe_notify(pipe, false);
-        return;
-    }
-    pipe->reading = true;
-}
-
-/* The OS error code the scheduler reports for a libuv status. */
-static int32_t os_code_of(int status) {
-    return status == UV_EPIPE ? ERROR_BROKEN_PIPE_CODE : ERROR_IO_DEVICE_CODE;
-}
-
-MsIoPipeStatus ms_io_pipe_read(uintptr_t handle, MsBytesMut buffer, size_t *count, int32_t *os_code) {
-    MsIoReactor *const reactor = ms_io_reactor_current();
-    MsPipe *const pipe = reactor == NULL ? NULL : pipe_find(state_of(reactor), handle);
-    if (pipe == NULL) {
-        return MS_IO_PIPE_NOT_FOUND;
-    }
-    const size_t available = pipe->read_length - pipe->read_offset;
-    if (available > 0) {
-        const size_t taken = available < buffer.len ? available : buffer.len;
-        memcpy(buffer.ptr, pipe->read_buffer + pipe->read_offset, taken);
-        pipe->read_offset += taken;
-        if (pipe->read_offset == pipe->read_length) {
-            pipe->read_length = 0;
-            pipe->read_offset = 0;
-        }
-        *count = taken;
-        return MS_IO_PIPE_OK;
-    }
-    if (pipe->end_of_stream) {
-        return MS_IO_PIPE_END;
-    }
-    if (pipe->read_status != 0) {
-        *os_code = os_code_of(pipe->read_status);
-        return MS_IO_PIPE_FAILED;
-    }
-    pipe_read_start(pipe);
-    return MS_IO_PIPE_WOULD_BLOCK;
-}
-
-MsIoPipeStatus ms_io_pipe_write(uintptr_t handle, MsBytes data, size_t *count, int32_t *os_code) {
-    MsIoReactor *const reactor = ms_io_reactor_current();
-    MsPipe *const pipe = reactor == NULL ? NULL : pipe_find(state_of(reactor), handle);
-    if (pipe == NULL) {
-        return MS_IO_PIPE_NOT_FOUND;
-    }
-    if (pipe->write_status != 0) {
-        *os_code = os_code_of(pipe->write_status);
-        return MS_IO_PIPE_FAILED;
-    }
-    if (pipe->writing) {
-        return MS_IO_PIPE_WOULD_BLOCK;
-    }
-    const size_t taken = data.len < PIPE_BUFFER_BYTES ? data.len : PIPE_BUFFER_BYTES;
-    memcpy(pipe->write_buffer, data.ptr, taken);
-    uv_buf_t buffer = uv_buf_init((char *)pipe->write_buffer, (unsigned int)taken);
-    const int error = uv_write(&pipe->write_request, (uv_stream_t *)&pipe->handle, &buffer, 1, on_pipe_write);
-    if (error != 0) {
-        *os_code = os_code_of(error);
-        return MS_IO_PIPE_FAILED;
-    }
-    pipe->writing = true;
-    *count = taken;
-    return MS_IO_PIPE_OK;
-}
-
-void ms_io_pipe_group(uintptr_t handle, uintptr_t key) {
-    MsIoReactor *const reactor = ms_io_reactor_current();
-    MsPipe *const pipe = reactor == NULL ? NULL : pipe_find(state_of(reactor), handle);
-    if (pipe != NULL) {
-        pipe->grouped = true;
-        pipe->group_key = key;
-    }
-}
-
-void ms_io_pipe_drop(uintptr_t handle) {
-    MsIoReactor *const reactor = ms_io_reactor_current();
-    MsPipe *const pipe = reactor == NULL ? NULL : pipe_find(state_of(reactor), handle);
-    if (pipe == NULL) {
-        return;
-    }
-    if (pipe->writing) {
-        /* Closing now would cancel the write in flight and the child would miss its last bytes. */
-        pipe->close_when_written = true;
-        return;
-    }
-    pipe_close(pipe);
-}
-
 /* ---- the reactor's hooks ---- */
 
 void ms_io_windows_flush(MsIoReactor *reactor) {
     MsWindowsState *const state = state_of(reactor);
     signalled_flush(state);
-    for (MsPipe *pipe = state->pipes; pipe != NULL; pipe = pipe->next) {
-        if (pipe->owes_read_event && pipe_push(pipe, false)) {
-            pipe->owes_read_event = false;
-        }
-        if (pipe->owes_write_event && pipe_push(pipe, true)) {
-            pipe->owes_write_event = false;
-        }
-    }
 }
 
 bool ms_io_windows_open(MsIoReactor *reactor) {
@@ -577,9 +275,6 @@ void ms_io_windows_close(MsIoReactor *reactor) {
     timer_close(state);
     while (state->objects != NULL) {
         object_remove(state, state->objects->key);
-    }
-    while (state->pipes != NULL) {
-        pipe_close(state->pipes);
     }
     if (state->async_open) {
         uv_close((uv_handle_t *)&state->signalled_async, on_state_closed);

@@ -179,9 +179,10 @@ static MirValue lt_join_group(Lb *lb, const LtPiece *group, uint32_t count) {
         args[next++] = group[i].v;
     }
     const MirValue joined = mir_b_call_rt(&lb->b, lt_join_extern(lb, group, count, with_ints), args, next);
+    // The operands that are temporaries are the statement's: dropped where it ends, newest first.
     for (uint32_t i = 0; i < count; i++) {
         if (group[i].owned) {
-            lb_drop(lb, group[i].v);
+            lb_hold_temp(lb, group[i].v);
         }
     }
     return joined;
@@ -228,5 +229,6 @@ LbVal lt_text(Lb *lb, const MsExpr *e) {
     if (!lb->ok || pieces.len < 2) {
         return LB_UNSUPPORTED(lb); // one piece is a plain literal or name, lowered elsewhere
     }
+    lb_at_expression(lb, e); // the join, after its pieces
     return lt_join(lb, &pieces);
 }
