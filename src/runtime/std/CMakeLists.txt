@@ -97,6 +97,6 @@ ms_target_defaults(ms_std_fs)
 target_link_libraries(ms_std_fs PUBLIC ms_base ms_sys ms_io ms_core uv ms_std_process)
 
 # @std/net: IP addresses, CIDR ranges, host:port text and the network diagnostics (no event loop).
-add_library(ms_std_net STATIC http_abi.c http_h1.c http_h1_body.c http_h1_framing.c http_h1_write.c h2.c h2_send.c http_headers.c http_sniff.c http_target.c net.c net_addr.c net_ip.c ws_decode.c ws_frame.c ws_handshake.c)
+add_library(ms_std_net STATIC http_abi.c http_h1.c http_h1_body.c http_h1_framing.c http_h1_write.c h2.c h2_send.c http_client.c http_client_send.c http_exchange.c http_redirect.c http_url.c http_headers.c http_sniff.c http_target.c net.c net_addr.c net_ip.c ws_decode.c ws_frame.c ws_handshake.c)
 ms_target_defaults(ms_std_net)
-target_link_libraries(ms_std_net PUBLIC ms_base ms_values ms_std_time ms_std_random ms_std_data ms_std_crypto llhttp nghttp2 zlib)
+target_link_libraries(ms_std_net PUBLIC ms_base ms_values ms_std_time ms_std_random ms_std_data ms_std_crypto ms_std_compress ms_sys llhttp curl nghttp2 zlib)
