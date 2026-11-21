@@ -1,0 +1,29 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3001",
+      "subcode": "MS3001.1",
+      "phase": "type",
+      "message": "expected Int, found Bool",
+      "position": {
+        "file": "two.ms",
+        "line": 2,
+        "column": 14,
+        "offset": 21
+      }
+    },
+    {
+      "code": "MS3001",
+      "subcode": "MS3001.1",
+      "phase": "type",
+      "message": "expected Int, found String",
+      "position": {
+        "file": "two.ms",
+        "line": 3,
+        "column": 14,
+        "offset": 39
+      }
+    }
+  ]
+}

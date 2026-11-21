@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3001",
+      "subcode": "MS3001.1",
+      "phase": "type",
+      "message": "expected Int, found String",
+      "position": {
+        "file": "mismatch.ms",
+        "line": 2,
+        "column": 14,
+        "offset": 23
+      }
+    }
+  ]
+}

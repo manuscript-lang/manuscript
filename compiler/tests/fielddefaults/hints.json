@@ -1,0 +1,41 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3001",
+      "subcode": "MS3001.1",
+      "phase": "type",
+      "message": "expected Int, found Float; Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)",
+      "position": {
+        "file": "hints.ms",
+        "line": 2,
+        "column": 14,
+        "offset": 21
+      }
+    },
+    {
+      "code": "MS3001",
+      "subcode": "MS3001.1",
+      "phase": "type",
+      "message": "expected Bool, found String",
+      "position": {
+        "file": "hints.ms",
+        "line": 3,
+        "column": 15,
+        "offset": 39
+      }
+    },
+    {
+      "code": "MS3001",
+      "subcode": "MS3001.1",
+      "phase": "type",
+      "message": "expected Int, found Bool",
+      "position": {
+        "file": "hints.ms",
+        "line": 4,
+        "column": 14,
+        "offset": 56
+      }
+    }
+  ]
+}

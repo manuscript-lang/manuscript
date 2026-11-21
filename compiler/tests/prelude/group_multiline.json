@@ -1,0 +1,69 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS2003",
+      "phase": "resolution",
+      "message": "redundant prelude import Result; remove Result from this import and use its prelude declaration directly",
+      "position": {
+        "file": "group_multiline.ms",
+        "line": 2,
+        "column": 5,
+        "offset": 10
+      },
+      "end": {
+        "file": "group_multiline.ms",
+        "line": 2,
+        "column": 11,
+        "offset": 16
+      },
+      "fix": {
+        "position": {
+          "file": "group_multiline.ms",
+          "line": 2,
+          "column": 5,
+          "offset": 10
+        },
+        "end": {
+          "file": "group_multiline.ms",
+          "line": 2,
+          "column": 12,
+          "offset": 17
+        },
+        "replacement": ""
+      }
+    },
+    {
+      "code": "MS2003",
+      "phase": "resolution",
+      "message": "redundant prelude import Stringable; remove Stringable from this import and use its prelude declaration directly",
+      "position": {
+        "file": "group_multiline.ms",
+        "line": 3,
+        "column": 5,
+        "offset": 28
+      },
+      "end": {
+        "file": "group_multiline.ms",
+        "line": 3,
+        "column": 15,
+        "offset": 38
+      },
+      "fix": {
+        "position": {
+          "file": "group_multiline.ms",
+          "line": 2,
+          "column": 11,
+          "offset": 16
+        },
+        "end": {
+          "file": "group_multiline.ms",
+          "line": 3,
+          "column": 16,
+          "offset": 39
+        },
+        "replacement": "  // note\n\t"
+      }
+    }
+  ]
+}

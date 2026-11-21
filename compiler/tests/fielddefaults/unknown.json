@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS2001",
+      "subcode": "MS2001.1",
+      "phase": "resolution",
+      "message": "unknown binding missing; declare it with 'missing := ...' before use, define 'fn missing(...) T:', or import it from a module",
+      "position": {
+        "file": "unknown.ms",
+        "line": 2,
+        "column": 14,
+        "offset": 21
+      }
+    }
+  ]
+}

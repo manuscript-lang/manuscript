@@ -1,3 +1,2 @@
-fn g(a Int? , b Int) Int {
+fn g(a: Int?, b: Int) Int:
     return b
-}
