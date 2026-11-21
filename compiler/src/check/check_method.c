@@ -327,7 +327,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
     }
     for (uint32_t i = 0; i < given; i++) {
         const MsTyParam *param = &params[slot[i]];
-        if ((param->flags & ~(MS_PARAM_MOVE | MS_PARAM_POSITIONAL)) != 0) {
+        if ((param->flags & ~(MS_PARAM_VAR | MS_PARAM_MOVE | MS_PARAM_POSITIONAL)) != 0) {
             return false;
         }
         const MsExpr *value = e->u.call.args.ptr[i].value;
