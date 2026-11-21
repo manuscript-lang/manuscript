@@ -524,12 +524,12 @@ static bool body_is_unknown(const MsBody *b, MsSym name) {
            !body_is_case_name(b, name);
 }
 
-/* A read of a module constant this pass has checked: a call of no arguments, typed as the
- * constant's initializer. */
+/* A read of a module constant, its own or an imported one, whose initializer this pass has typed: a
+ * call of no arguments, typed as the initializer. */
 static MsTy body_constant_use(MsBody *b, const MsExpr *e) {
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, e->u.sym);
     const MsSyms *syms = &b->c->syms;
-    if (sym == MS_NONE || syms->module[sym] != b->module || syms->decl[sym] == NULL ||
+    if (sym == MS_NONE || syms->decl[sym] == NULL ||
         syms->decl[sym]->kind != MS_D_CONST || syms->ty[sym] == MS_TY_NONE) {
         return ms_body_unsupported(b);
     }
@@ -547,7 +547,8 @@ static MsTy body_name(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     if (binding == MS_NONE && !body_text_is(b, e->u.sym, "none")) {
         const MsSymId named = ms_map_get(&b->c->mods[b->module].names, e->u.sym);
-        if (named != MS_NONE && b->c->syms.kind[named] == MS_SYM_FN) {
+        const bool constant = named != MS_NONE && b->c->syms.decl[named] != NULL && b->c->syms.decl[named]->kind == MS_D_CONST;
+        if (named != MS_NONE && b->c->syms.kind[named] == MS_SYM_FN && !constant) {
             return ms_body_function_name(b, e);
         }
         return body_is_unknown(b, e->u.sym) ? body_unknown_name(b, e) : body_constant_use(b, e);
