@@ -79,6 +79,8 @@ static bool add_project(MsCheck *check, MsNames *names, const char *path, MsModI
             uint32_t nerrors = 0;
             ms_module_desugar(check, rows[m], (MsStr){graph.modules[m].source, (uint32_t)graph.modules[m].length}, NULL,
                               0, &errors, &nerrors);
+            // A module is checked before the ones that import it: its constants carry their types.
+            check_bodies_with_methods(check, rows[m], graph.modules[m].source, graph.modules[m].length);
         }
     }
     *entry = rows[graph.count - 1];
