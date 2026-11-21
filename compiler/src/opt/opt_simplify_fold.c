@@ -1,6 +1,6 @@
 /* The folding half of `simplify`: constant folding, algebraic identities, strength reduction and
  * the trivial block-parameter elimination. Port of the `fold` and `phis` functions and the rules
- * of crates/ms-mir/src/opt/simplify.rs. Constants go on the right of commutative operations, and
+ * of the former Rust crates/ms-mir/src/opt/simplify.rs. Constants go on the right of commutative operations, and
  * every constant or identity the Rust rules know is applied in the same order, creating the same
  * values. */
 #include <math.h>

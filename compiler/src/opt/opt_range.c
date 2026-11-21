@@ -1,4 +1,4 @@
-/* Range analysis and check elimination. Port of crates/ms-mir/src/opt/range.rs.
+/* Range analysis and check elimination. Port of the former Rust crates/ms-mir/src/opt/range.rs.
  *
  * A sparse interval analysis over `Int` and `Bool` SSA values (i64 intervals, Booleans as `0..=1`)
  * followed by rewrites that remove checks the analysis proves redundant:
