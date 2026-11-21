@@ -15,4 +15,5 @@ exchange a `MirModule` in memory; there is no text between them. Allowed include
 - `mir_data.h`, `mir_data.c`, `mir_data_const.c`: the static data (descriptors, vtables, globals, unit blocks, long string literals, constant bytes and lists) as symbols with relocations; built after glue.
 - `mir_tables.h`, `mir_tables.c`: the fault tables blob (functions, line ranges, inlined scopes, strings) the runtime reads, with the code-address relocations the back end fills.
 - `mir_expand.h`, `mir_expand.c`, `mir_expand_owned.c`: list checks and growth as explicit blocks; the ownership shorthands as reads, drops and frees.
+- `mir_print.h`, `mir_print.c`, `mir_print_func.c`, `mir_print_ty.c`: the text form (`ms emit`), a dump only; passes exchange the in-memory module.
 - `mir_lower_ops.h`, `mir_lower_ops.c`, `mir_lower_ops_blocks.c`: the last pass, turning clone, drop, cleanup and fault-message ops into plain calls and copies.
