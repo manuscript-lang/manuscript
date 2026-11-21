@@ -102,9 +102,14 @@ list(REMOVE_ITEM _std_sources ${_json_sources})
 list(REMOVE_ITEM _std_sources "${_rt}/std/pool.c")
 file(GLOB _std_support CONFIGURE_DEPENDS "${_tests}/std_support/*.c")
 file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
+# The io tests have no scheduler stub, so they link the real thread primitives the reactor starts on Windows; the entry tests take the stub in ms_test_core.
+set(_io_thread "")
 if(MS_WINDOWS)
-  # The reactor's Windows half (pipes, kernel objects) and the thread primitives it starts.
-  list(APPEND _io_sources "${_rt}/io/windows/platform.c" "${_rt}/sys/thread.c")
+  set(_io_thread "${_rt}/sys/thread.c")
+endif()
+if(MS_WINDOWS)
+  # The reactor's Windows half (pipes, kernel objects).
+  list(APPEND _io_sources "${_rt}/io/windows/platform.c")
 endif()
 
 # core_*: all of runtime/core and this platform's runtime/sys layer, the allocator's live-block counts on.
@@ -190,7 +195,7 @@ file(GLOB _io_tests CONFIGURE_DEPENDS "${_tests}/io_*.c")
 list(FILTER _io_tests EXCLUDE REGEX "io_ring_test\\.c$")
 foreach(file ${_io_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" "${_tests}/support/child.c" ${_io_sources} ${_os_sources} INCLUDES ${MS_LIB_uv_INCLUDES}
+  ms_test(${name} SOURCES "${file}" "${_tests}/support/child.c" ${_io_sources} ${_io_thread} ${_os_sources} INCLUDES ${MS_LIB_uv_INCLUDES}
           LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 endforeach()
 
