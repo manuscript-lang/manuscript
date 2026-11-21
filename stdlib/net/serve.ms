@@ -449,8 +449,8 @@ fn serve_h2(
 
 // How many requests a connection tracks before it drops the ones that have ended.
 PRUNE_AT := 64
-
-// What `watch` finishes with when the peer is gone; a handler finishes with 0 or a status.
+// What `watch` finishes with when the peer is gone; a handler finishes with 0 or a
+// status.
 PEER_GONE := -1
 
 // Keeps the requests still running, so a long-lived connection holds a promise per live
@@ -535,7 +535,6 @@ fn watch(native: NativeExchange) Int!:
 
 	while true:
 		sleep(60.minutes()).wait()?
-
 	return ok(0)
 
 // Runs the handler of one request and ends its response; true when the connection can
@@ -577,6 +576,7 @@ fn run_handler(
 		fn: watch(msstd_xchg_share(native)),
 		options: PromiseOptions(placement: Placement.Here)
 	)
+
 	// The first to finish decides, and the other is cancelled and waited for. (A cancel
 	// switch fired by the watcher would do the same, but a fired switch keeps its slot
 	// for good: a request cancelled by its peer then leaked about 65 bytes.)
