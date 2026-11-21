@@ -255,18 +255,28 @@ static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *
     return ms_implements_property(b->c, b->methods, receiver, MS_PROP_CLONABLE) == MS_FIT_YES && intrinsic_in(b, "CloneOperations", receiver, name, out);
 }
 
-/* The function-typed field `name` of a record `receiver` with no type arguments: `value.operation(x)` calls
- * the function the field holds. */
+/* The function-typed field `name` of a record `receiver`, with the receiver's type arguments in place of the
+ * record's variables: `value.operation(x)` calls the function the field holds. */
 static MsTy function_field(const MsBody *b, MsTy receiver, MsSym name) {
-    const MsTyTable *tys = &b->c->tys;
-    if (ms_ty_kind(tys, receiver) != MS_K_TYPE || tys->def[receiver] == 0 || tys->nargs[receiver] != 0) {
+    MsCheck *c = b->c;
+    const MsTyTable *tys = &c->tys;
+    if (ms_ty_kind(tys, receiver) != MS_K_TYPE || tys->def[receiver] == 0) {
         return MS_TY_NONE;
     }
-    const MsDef *def = ms_def(b->c, tys->def[receiver] - 1);
+    const MsDef *def = ms_def(c, tys->def[receiver] - 1);
+    if (def->nvars != tys->nargs[receiver]) {
+        return MS_TY_NONE;
+    }
     for (uint32_t i = 0; i < def->nfields; i++) {
-        if (def->fields[i].name == name) {
-            return ms_body_is_function_value(b, def->fields[i].ty) ? def->fields[i].ty : MS_TY_NONE;
+        if (def->fields[i].name != name) {
+            continue;
         }
+        MsTy field = def->fields[i].ty;
+        if (def->nvars != 0) {
+            const MsTySubst subst = {.vars = def->vars, .args = ms_ty_args(tys, receiver), .count = def->nvars};
+            field = ms_ty_subst(&c->tys, &c->arena, field, &subst);
+        }
+        return ms_body_is_function_value(b, field) ? field : MS_TY_NONE;
     }
     return MS_TY_NONE;
 }
