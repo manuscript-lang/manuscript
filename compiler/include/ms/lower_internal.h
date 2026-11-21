@@ -210,6 +210,9 @@ LbVal lst_index(Lb *lb, const MsExpr *e);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
+/* lower_extern.c: a call of a bodiless `extern fn`, by its own symbol in the ms-sig table. */
+bool lx_is_extern(const Lb *lb, MsSymId callee);
+LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 /* Stores `value` in the stack slot `slot`. */
 

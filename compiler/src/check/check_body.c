@@ -775,8 +775,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return syms->nvars[sym] != 0 ? ms_body_generic_construct(b, e, sym, NULL) : body_construct(b, e, sym);
     }
     if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
-        syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||
-        syms->decl[sym]->u.fn.external) {
+        syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN) {
         return ms_body_unsupported(b);
     }
     if (syms->nvars[sym] != 0) {
