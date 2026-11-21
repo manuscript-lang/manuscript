@@ -224,6 +224,19 @@ const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
 MirTy lx_type(Lb *lb, MsTy ty);
 bool lx_is_extern(const Lb *lb, MsSymId callee);
 
+/* lower_native.c: a native call that reports failure by a status. `out_ty` is the type of the value the call writes
+ * through its `out` parameter (MIR_NONE when it writes none); `slots` returns the frame room for it and for the
+ * failure text (MIR_NONE for an absent one). */
+typedef struct LbNativeStatus {
+    MirTy out_ty;
+} LbNativeStatus;
+typedef struct LbNativeSlots {
+    MirValue out;
+    MirValue err;
+} LbNativeSlots;
+MirValue lb_native_status_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs,
+                               const LbNativeStatus *status, LbNativeSlots *slots);
+
 /* lower_out.c: the room a call's `out` pointer writes to, and the value taken from it after a successful call. */
 MirValue lo_out_slot(Lb *lb, MirTy ty);
 MirValue lo_take_out(Lb *lb, MirValue slot, MirTy ty);

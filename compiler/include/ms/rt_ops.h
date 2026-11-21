@@ -27,6 +27,9 @@ typedef enum MsRtParam {
     MS_RT_KEY_DESC, /* the descriptor of a map's key type */
     MS_RT_VAL_DESC, /* the descriptor of a map's value type */
     MS_RT_KEY_REF,  /* a key passed by address: stored in a slot the call borrows */
+    MS_RT_HANDLE,   /* `handle x: *const ObjCell<T>`: a runtime object, borrowed */
+    MS_RT_OUT_HANDLE, /* `out: *mut *mut ObjCell<T>`: the runtime object the call creates, written through a pointer */
+    MS_RT_ERR,      /* the trailing `ErrSlot`: a string the call writes the failure text to */
     MS_RT_HAS,      /* `HasRaw`: an optional scalar crosses as `has, value`; the next parameter is the value and takes no argument */
     MS_RT_OTHER     /* anything the lowering does not marshal: a handle, a slot, an error slot */
 } MsRtParam;
@@ -49,6 +52,11 @@ typedef struct MsRtFn {
     int64_t imm;
     const char *seq; /* `@seq=`: a short MIR instruction sequence over the arguments, or "" (see lower_native.c) */
 } MsRtFn;
+
+/* Whether `fn` reports failure by a status the caller turns into a `Result` (see lower_extern.c). */
+static inline bool ms_rt_has_err_slot(const MsRtFn *fn) {
+    return fn->nparams > 0 && fn->params[fn->nparams - 1] == MS_RT_ERR;
+}
 
 /* The function named `symbol`, or NULL. */
 const MsRtFn *ms_rt_fn_find(const char *symbol, size_t length);

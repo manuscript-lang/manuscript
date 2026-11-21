@@ -69,17 +69,13 @@ static bool ln_flatten_optional(Lb *lb, MirValue value, MirTy want, MirValue *ha
     return true;
 }
 
-/* Descriptors and key slots, made once the arguments are evaluated, in parameter order. `of` is the type a
- * descriptor describes by role (element, key, value). */
-static bool ln_make_addresses(Lb *lb, const MsRtFn *fn, MirValue *operands, uint32_t count, const bool *is_desc,
+/* Descriptors and key slots, made once the arguments are evaluated, in operand order; `kinds` is the parameter
+ * kind of each operand. `of` is the type a descriptor describes by role (element, key, value). */
+static bool ln_make_addresses(Lb *lb, MirValue *operands, uint32_t count, const MsRtParam *kinds, const bool *is_desc,
                               const bool *is_key_ref, const MirTy *of) {
-    for (uint32_t i = 0, param = 0; i < count; i++, param++) {
-        while (param < fn->nparams && (fn->params[param] == MS_RT_OUT_STR || fn->params[param] == MS_RT_OUT_LIST)) {
-            param++;
-        }
-        const MsRtParam kind = fn->params[param];
+    for (uint32_t i = 0; i < count; i++) {
         if (is_desc[i]) {
-            const MirTy described = of[ln_described(kind)];
+            const MirTy described = of[ln_described(kinds[i])];
             if (described == MIR_NONE) {
                 return false;
             }
@@ -182,11 +178,14 @@ static bool ln_sequence(Lb *lb, const char *seq, const MirValue *args, uint32_t 
 }
 
 /* Calls `fn` on `args` (the receiver first, then the call's arguments, already evaluated), yielding
- * `result_ty`. `variable` is the variable that holds a by-reference list, which then holds what the
- * function yields. Null when the signature cannot be marshalled. */
-static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty, MirValue *out) {
+ * `result_ty`. A call in `status` mode yields the status the runtime returns (an int); the value it creates is
+ * written through the `out` parameter into a slot of `out_ty`, and the slots are handed back in `slots` for the caller's
+ * success and failure paths. False when the signature cannot be marshalled. */
+static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty,
+                       const LbNativeStatus *status, LbNativeSlots *slots, MirValue *out) {
     MirValue operands[MS_RT_MAX_PARAMS];
     MirTy types[MS_RT_MAX_PARAMS];
+    MsRtParam kinds[MS_RT_MAX_PARAMS];
     bool is_desc[MS_RT_MAX_PARAMS] = {false};
     bool is_key_ref[MS_RT_MAX_PARAMS] = {false};
     MirTy map_ty = MIR_NONE;
@@ -194,13 +193,28 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
     uint32_t next = 0;
     MirTy element = MIR_NONE;
     bool has_out = false;
+    if (status != NULL) {
+        *slots = (LbNativeSlots){MIR_NONE, MIR_NONE};
+    }
     for (uint32_t i = 0; i < fn->nparams; i++) {
         const MsRtParam kind = fn->params[i];
         const bool needs_op = kind == MS_RT_LIST_VAR || kind == MS_RT_ELEMENT; // passed by address: only an instruction takes the value
         if (kind == MS_RT_OTHER || (needs_op && fn->op[0] == '\0')) {
             return false;
         }
-        if (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST) {
+        kinds[count] = kind;
+        const bool is_out = kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST || kind == MS_RT_OUT_HANDLE;
+        if (kind == MS_RT_ERR || (is_out && status != NULL)) {
+            if (status == NULL || (kind != MS_RT_ERR && status->out_ty == MIR_NONE)) {
+                return false;
+            }
+            const MirValue slot = lo_out_slot(lb, kind == MS_RT_ERR ? MIR_STR : status->out_ty);
+            *(kind == MS_RT_ERR ? &slots->err : &slots->out) = slot;
+            types[count] = MIR_PTR;
+            operands[count++] = slot;
+        } else if (kind == MS_RT_OUT_HANDLE) {
+            return false; // a handle written through a pointer needs the status split
+        } else if (kind == MS_RT_OUT_STR || kind == MS_RT_OUT_LIST) {
             has_out = true;
         } else if (kind == MS_RT_DESC || kind == MS_RT_KEY_DESC || kind == MS_RT_VAL_DESC) {
             types[count] = MIR_PTR;
@@ -214,6 +228,7 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
                 return false;
             }
             types[count] = MIR_BOOL;
+            kinds[count + 1] = payload;
             types[count + 1] = ln_param_ty(payload, MIR_NONE);
             count += 2;
             i++; // the payload parameter belongs to this argument
@@ -257,7 +272,7 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
         of[2] = mir_ty_data(lb->m, map_ty)->args[1];
         entry = lm_specialize(lb, fn, of[1], of[2], &role);
     }
-    if (!ln_make_addresses(lb, fn, operands, count, is_desc, is_key_ref, of)) {
+    if (!ln_make_addresses(lb, operands, count, kinds, is_desc, is_key_ref, of)) {
         return false;
     }
     if (fn->seq[0] != '\0') { // a short sequence of instructions over the arguments, not the descriptors
@@ -280,7 +295,10 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
         *out = mir_b_emit(&lb->b, (MirOp)op, operands, kept, imm, result_ty);
         return true;
     }
-    const MirTy ret = has_out ? result_ty : ln_ret_ty(fn->ret);
+    MirTy ret = has_out ? result_ty : ln_ret_ty(fn->ret);
+    if (status != NULL) {
+        ret = MIR_INT;
+    }
     const uint32_t ext = lb_runtime_extern(lb, entry->symbol, types, count, ret, role, entry->pure);
     *out = mir_b_call_rt(&lb->b, ext, operands, count);
     return true;
@@ -289,10 +307,22 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
 /* A call of `fn` for the evaluated arguments; the result is owned when its type is. */
 LbVal lb_native_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty) {
     MirValue result = MIR_NONE;
-    if (!ln_marshal(lb, fn, args, nargs, result_ty, &result)) {
+    if (!ln_marshal(lb, fn, args, nargs, result_ty, NULL, NULL, &result)) {
         return lb_unsupported(lb);
     }
     return (LbVal){result, lb_owns(lb, result_ty)};
+}
+
+/* A call of a function that reports failure by a status (`-> u8`, 0 for success): the status, an int, is the
+ * result, and `slots` holds the frame room the call wrote its value (`status->out_ty`) and failure text to. */
+MirValue lb_native_status_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs,
+                               const LbNativeStatus *status, LbNativeSlots *slots) {
+    MirValue result = MIR_NONE;
+    if (!ln_marshal(lb, fn, args, nargs, MIR_INT, status, slots, &result)) {
+        (void)lb_unsupported(lb);
+        return MIR_NONE;
+    }
+    return result;
 }
 
 /* The receiver of a by-reference list parameter: a `var` list local the function owns, whose
