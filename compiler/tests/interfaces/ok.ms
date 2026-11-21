@@ -1,3 +1,2 @@
-interface Ok {
-    fn size() Int
-}
+interface Ok:
+	fn size() Int
