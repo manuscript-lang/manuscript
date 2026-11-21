@@ -974,7 +974,8 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     if (use == MEMBER_READ && ms_body_is_qualified_case(b, e)) {
         return ms_body_qualified_case(b, e);
     }
-    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER && receiver->kind != MS_E_CALL) {
+    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER && receiver->kind != MS_E_CALL && receiver->kind != MS_E_INDEX &&
+        receiver->kind != MS_E_APPLY) {
         return ms_body_unsupported(b);
     }
     const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, MEMBER_RECEIVER))
@@ -1507,7 +1508,10 @@ static bool body_returns_nothing(const MsBody *b) {
 /* A `return` in a function literal whose result is not known yet: its value (or the lack of one) fixes it. */
 static void body_return_deciding(MsBody *b, const MsExpr *value) {
     b->context = "the return value";
-    const MsTy ty = value == NULL ? b->void_ty : ms_body_expr(b, value, MS_TY_NONE);
+    MsTy ty = value == NULL ? b->void_ty : ms_body_builtin_open(b, value, b->result_hint);
+    if (ty == MS_TY_NONE && b->supported && value != NULL) {
+        ty = ms_body_expr(b, value, MS_TY_NONE);
+    }
     if (ty == MS_TY_NONE || !(ty == b->void_ty || body_is_bindable(b, ty))) {
         (void)ms_body_unsupported(b);
         return;
