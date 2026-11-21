@@ -10,7 +10,7 @@
         "file": "two.ms",
         "line": 2,
         "column": 14,
-        "offset": 21
+        "offset": 18
       }
     },
     {
@@ -22,7 +22,7 @@
         "file": "two.ms",
         "line": 3,
         "column": 14,
-        "offset": 39
+        "offset": 33
       }
     }
   ]

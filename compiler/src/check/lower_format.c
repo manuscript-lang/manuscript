@@ -104,10 +104,10 @@ static MirValue lf_element(Lb *lb, MirTy ty, MirValue v, MirValue depth) {
         const MsTy checked = lf_scalar_ty(lb, ty);
         text = lt_scalar_text(lb, checked, v).v;
         if (text == MIR_NONE && lb->ok) {
-            (void)lb_unsupported(lb);
+            (void)LB_UNSUPPORTED(lb);
         }
     } else {
-        (void)lb_unsupported(lb); // a list, map or function field has no text form here yet
+        (void)LB_UNSUPPORTED(lb); // a list, map or function field has no text form here yet
     }
     if (!lb->ok) {
         return MIR_NONE;
@@ -328,11 +328,11 @@ static uint32_t lf_helper(Lb *lb, MirTy ty) {
 LbVal lf_text(Lb *lb, LbVal value) {
     const MirTy ty = mir_b_ty(&lb->b, value.v);
     if (!lb_is_aggregate(lb, ty)) {
-        return lb_unsupported(lb); // maps and functions have their own text, not lowered yet
+        return LB_UNSUPPORTED(lb); // maps and functions have their own text, not lowered yet
     }
     const uint32_t func = lf_helper(lb, ty);
     if (func == MIR_NONE || !lb->ok) {
-        return lb_unsupported(lb);
+        return LB_UNSUPPORTED(lb);
     }
     const MirValue args[2] = {value.v, mir_b_iconst(&lb->b, 0)};
     const MirValue text = mir_b_call(&lb->b, func, args, 2);

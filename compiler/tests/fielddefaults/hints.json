@@ -10,7 +10,7 @@
         "file": "hints.ms",
         "line": 2,
         "column": 14,
-        "offset": 21
+        "offset": 18
       }
     },
     {
@@ -22,7 +22,7 @@
         "file": "hints.ms",
         "line": 3,
         "column": 15,
-        "offset": 39
+        "offset": 33
       }
     },
     {
@@ -34,7 +34,7 @@
         "file": "hints.ms",
         "line": 4,
         "column": 14,
-        "offset": 56
+        "offset": 47
       }
     }
   ]

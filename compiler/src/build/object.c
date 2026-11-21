@@ -41,7 +41,7 @@ static void bo_path(MsBuf *out, const char *dir, const char *name) {
 }
 
 /* Runs `argv`; the reason of a failure goes to `why`. */
-static bool bo_run(const char *what, char *const *argv, const char *log, MsBackendText *why) {
+static bool bo_run(const char *what, const char *const *argv, const char *log, MsBackendText *why) {
     MsBuf reason = {0};
     if (ms_build_run(what, argv, log, &reason)) {
         ms_buf_free(&reason);
@@ -130,39 +130,39 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
     }
     const char *input = ll.data;
     if (ok && o->backend.speed) {
-        char *argv[10];
+        const char *argv[10];
         size_t n = 0;
         argv[n++] = opt.data;
         if (!o->vectorize) {
-            argv[n++] = (char *)"-vectorize-loops=false";
-            argv[n++] = (char *)"-vectorize-slp=false";
+            argv[n++] = "-vectorize-loops=false";
+            argv[n++] = "-vectorize-slp=false";
         }
         if (o->llvm_verify) {
-            argv[n++] = (char *)"-verify-each";
+            argv[n++] = "-verify-each";
         }
         argv[n++] = triple.data;
-        argv[n++] = (char *)"-passes=default<O3>";
-        argv[n++] = (char *)input;
-        argv[n++] = (char *)"-o";
+        argv[n++] = "-passes=default<O3>";
+        argv[n++] = input;
+        argv[n++] = "-o";
         argv[n++] = bc.data;
         argv[n] = NULL;
         ok = bo_run("opt (LLVM optimizer)", argv, log.data, why);
         input = bc.data;
     }
     if (ok) {
-        char *argv[14];
+        const char *argv[14];
         size_t n = 0;
         argv[n++] = llc.data;
-        argv[n++] = (char *)(o->backend.speed ? "-O3" : "-O0");
-        argv[n++] = (char *)"-filetype=asm";
-        argv[n++] = (char *)"-relocation-model=pic";
+        argv[n++] = (o->backend.speed ? "-O3" : "-O0");
+        argv[n++] = "-filetype=asm";
+        argv[n++] = "-relocation-model=pic";
         argv[n++] = triple.data;
 #if defined(__x86_64__)
-        argv[n++] = (char *)"-align-loops=32";
-        argv[n++] = (char *)"-mcpu=x86-64";
+        argv[n++] = "-align-loops=32";
+        argv[n++] = "-mcpu=x86-64";
 #endif
-        argv[n++] = (char *)input;
-        argv[n++] = (char *)"-o";
+        argv[n++] = input;
+        argv[n++] = "-o";
         argv[n++] = plain.data;
         argv[n] = NULL;
         ok = bo_run("llc (LLVM code generator)", argv, log.data, why);
@@ -194,8 +194,8 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
         }
     }
     if (ok) {
-        char *argv[10] = {llc.data, (char *)"-filetype=obj", (char *)"-relocation-model=pic", triple.data, wrapped.data,
-                          (char *)"-o", obj.data, NULL};
+        const char *argv[10] = {llc.data, "-filetype=obj", "-relocation-model=pic", triple.data, wrapped.data,
+                          "-o", obj.data, NULL};
         ok = bo_run("llc (assembler)", argv, log.data, why);
     }
     if (ok) {
@@ -212,7 +212,7 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
     }
     const char *const made[] = {ll.data, bc.data, plain.data, wrapped.data, obj.data, log.data};
     for (size_t i = 0; i < sizeof made / sizeof made[0]; i++) {
-        (void)unlink(made[i]);
+        ms_build_unlink(made[i]);
     }
     ms_backend_free(&with_tables);
     ms_buf_free(&assembly);
@@ -243,13 +243,14 @@ bool ms_build_object(const char *mir, size_t mir_len, const char *shown, size_t 
     ms_buf_printf(&pattern, "%s/ms-cbackend-XXXXXX", temp != NULL && *temp != '\0' ? temp : "/tmp");
     ms_buf_putc(&pattern, 0);
     bool ok = false;
-    if (mkdtemp(pattern.data) == NULL) {
+    if (!ms_build_make_dir(pattern.data)) {
         MsBuf message = {0};
-        ms_buf_printf(&message, "cannot create a build directory: %s", strerror(errno));
+        ms_buf_puts(&message, "cannot create a build directory: ");
+        ms_build_errno_text(errno, &message);
         *why = ms_backend_take(&message);
     } else {
         ok = bo_compile(pattern.data, options, &ir, &meta, object, why);
-        (void)rmdir(pattern.data);
+        ms_build_unlink(pattern.data);
     }
     ms_buf_free(&pattern);
     ms_backend_free(&ir);

@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "check/check_body.h"
+#include "ms/doc.h"
 #include "ms/implements.h"
 #include "ms/check.h"
 #include "ms/constfold.h"
@@ -57,6 +58,21 @@ static bool body_is_sized_number(const MsBody *b, MsTy ty) {
 }
 static bool body_is_bindable(const MsBody *b, MsTy ty);
 
+/* Whether `arg` meets the interfaces that bound the variable `var` (`MapEntry[T: Hashable, U]`): each
+ * bound is an interface without arguments of its own, which the tables must answer for `arg`. A bound
+ * the tables cannot answer, or one over other variables, counts as unmet. */
+static bool body_meets_bounds(const MsBody *b, MsTy var, MsTy arg) {
+    const MsVarInfo *info = ms_var_info(b->c, var);
+    for (uint32_t k = 0; k < info->nbounds; k++) {
+        const MsTy contract = info->bounds[k];
+        if (b->methods == NULL || b->c->tys.nargs[contract] != 0 || ms_ty_has_variable(&b->c->tys, &b->c->arena, contract) ||
+            ms_implements(b->c, b->methods, arg, contract) != MS_FIT_YES) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* A `type`, `enum`, interface or native type (`Bytes`, `Promise[T]`) a module declares, whose type arguments (if it has any) are
  * themselves admitted. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
@@ -81,7 +97,7 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     }
     for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
         const MsTy arg = ms_ty_args(tys, ty)[i];
-        if (arg == b->invalid_ty || !(arg == b->void_ty || body_is_bindable(b, arg)) || ms_var_info(b->c, vars[i])->nbounds != 0) {
+        if (arg == b->invalid_ty || !(arg == b->void_ty || body_is_bindable(b, arg)) || !body_meets_bounds(b, vars[i], arg)) {
             return false;
         }
     }
@@ -110,7 +126,7 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
  * types. A value that closes is classified a resource by the ownership pass; the lowering leaves
  * it to the Rust lowering until it records the close. */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return body_is_value_type(b, ty) || body_is_sized_number(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_map(b, ty) || ms_body_is_function_value(b, ty) ||
+    return body_is_value_type(b, ty) || body_is_sized_number(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_map(b, ty) || ms_body_is_set(b, ty) || ms_body_is_function_value(b, ty) ||
            body_is_own_nominal(b, ty);
 }
 
@@ -281,7 +297,32 @@ uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, MsPos pos, 
 
 
 
-static MsTy body_number(MsBody *b, const MsExpr *e) {
+/* The values a sized integer type holds, as magnitudes: the largest negative one and the largest
+ * positive one. False for a type that is not a sized integer (`Int` itself is the default). */
+static bool body_int_limits(const MsBody *b, MsTy ty, uint64_t *negative, uint64_t *positive) {
+    static const struct {
+        const char *name;
+        uint64_t negative, positive;
+    } limits[] = {{"Int8", 128, 127},        {"Int16", 32768, 32767},       {"Int32", 2147483648u, 2147483647u},
+                  {"UInt8", 0, 255},         {"UInt16", 0, 65535},          {"UInt32", 0, 4294967295u},
+                  {"UInt64", 0, UINT64_MAX}};
+    if (ty == MS_TY_NONE || ms_ty_kind(&b->c->tys, ty) != MS_K_PRIMITIVE) {
+        return false;
+    }
+    const MsStr name = ms_name(b->c->names, b->c->tys.name[ty]);
+    for (size_t i = 0; i < sizeof limits / sizeof *limits; i++) {
+        if (strlen(limits[i].name) == name.len && memcmp(limits[i].name, name.ptr, name.len) == 0) {
+            *negative = limits[i].negative;
+            *positive = limits[i].positive;
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The type of a number literal: a sized integer or `Float32` the context expects when the value
+ * fits it, else `Int` or `Float`. A literal outside its type is a diagnostic, left to Rust. */
+static MsTy body_number(MsBody *b, const MsExpr *e, MsTy expected, bool negated) {
     MsCheck *c = b->c;
     const MsStr text = ms_number_canonical(&c->arena, ms_name(c->names, e->u.sym));
     if (ms_number_is_decimal(text)) {
@@ -291,8 +332,19 @@ static MsTy body_number(MsBody *b, const MsExpr *e) {
     char *end = NULL;
     errno = 0;
     if (ms_number_is_fractional(text)) {
-        const double value = strtod(digits, &end);
-        return *end != '\0' || isinf(value) ? ms_body_unsupported(b) : b->float_ty;
+        const bool narrow = expected != MS_TY_NONE && expected != b->float_ty && ms_ty_kind(&c->tys, expected) == MS_K_PRIMITIVE &&
+                            ms_name_is(c->names, c->tys.name[expected], "Float32");
+        const double value = narrow ? (double)strtof(digits, &end) : strtod(digits, &end);
+        if (*end != '\0' || isinf(value)) {
+            return ms_body_unsupported(b);
+        }
+        return narrow ? expected : b->float_ty;
+    }
+    uint64_t negative = 0, positive = 0;
+    if (body_int_limits(b, expected, &negative, &positive)) {
+        const uint64_t value = strtoull(digits, &end, 10);
+        const bool fits = *end == '\0' && errno == 0 && value <= (negated ? negative : positive);
+        return fits ? expected : ms_body_unsupported(b);
     }
     (void)strtoll(digits, &end, 10);
     return *end != '\0' || errno != 0 ? ms_body_unsupported(b) : b->int_ty;
@@ -649,6 +701,16 @@ void ms_body_check_home(MsBody *b, MsSymId sym) {
     }
 }
 
+/* An `extern type` the standard library declares buildable from source with no arguments
+ * (`// ms: constructible` above it): `StringBuilder()`. The others have a literal or a function. */
+static bool body_constructible_extern(const MsBody *b, MsSymId sym, const MsDecl *decl, MsTy record) {
+    const MsSyms *syms = &b->c->syms;
+    return decl != NULL && decl->kind == MS_D_TYPE && decl->u.type.external && syms->nvars[sym] == 0 &&
+           ms_ty_kind(&b->c->tys, record) == MS_K_NATIVE && body_is_admitted(b, record) &&
+           syms->module[sym] != MS_NONE &&
+           ms_doc_has_marker(b->c->mods[syms->module[sym]].text, decl->pos.offset, "constructible");
+}
+
 static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     ms_body_check_home(b, sym);
     const MsSyms *syms = &b->c->syms;
@@ -656,6 +718,10 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     const MsDef *def = ms_def(b->c, sym);
     const MsDecl *decl = syms->decl[sym];
     const uint32_t nargs = e->u.call.args.len;
+    if (nargs == 0 && body_constructible_extern(b, sym, decl, record)) {
+        b->facts->call_callee[e->id] = sym;
+        return record;
+    }
     if (syms->nvars[sym] != 0 || decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.external ||
         (syms->module[sym] != b->module && decl->u.type.opaque) || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
         !body_is_admitted(b, record) || nargs > def->nfields || def->nfields != decl->u.type.fields.len) {
@@ -764,7 +830,7 @@ static MsTy body_explicit_call(MsBody *b, const MsExpr *e) {
     }
     const bool generic = syms->kind[sym] == MS_SYM_FN && syms->nvars[sym] != 0 && syms->decl[sym] != NULL &&
                          syms->decl[sym]->kind == MS_D_FN;
-    return generic ? ms_body_generic_call(b, e, sym, &apply->u.apply.types) : ms_body_unsupported(b);
+    return generic ? ms_body_generic_call(b, e, sym, &apply->u.apply.types, MS_TY_NONE) : ms_body_unsupported(b);
 }
 
 static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
@@ -802,7 +868,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return ms_body_unsupported(b);
     }
     if (syms->nvars[sym] != 0) {
-        return ms_body_generic_call(b, e, sym, NULL);
+        return ms_body_generic_call(b, e, sym, NULL, expected);
     }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
@@ -838,7 +904,7 @@ static MsTy body_try(MsBody *b, const MsExpr *operand) {
     return ms_body_unsupported(b);
 }
 
-static MsTy body_unary(MsBody *b, const MsExpr *e) {
+static MsTy body_unary(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *operand = e->u.bin.left;
     const MsUnaryOp op = (MsUnaryOp)e->op;
     if (op == MS_U_TRY) {
@@ -850,7 +916,7 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
         if (text.len == 19 && memcmp(text.ptr, "9223372036854775808", 19) == 0) {
             return ms_body_unsupported(b);
         }
-        const MsTy literal = body_number(b, operand);
+        const MsTy literal = body_number(b, operand, expected, true);
         return literal == MS_TY_NONE ? literal : ms_body_record(b, operand->id, literal);
     }
     const MsTy operand_ty = ms_body_expr(b, operand, MS_TY_NONE);
@@ -1125,12 +1191,12 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
         return body_expr_optional(b, e, expected);
     }
     switch ((MsExprKind)e->kind) {
-    case MS_E_NUMBER: ty = body_number(b, e); break;
+    case MS_E_NUMBER: ty = body_number(b, e, expected, false); break;
     case MS_E_BOOL: ty = b->bool_ty; break;
     case MS_E_VOID: ty = b->void_ty; break;
     case MS_E_TEXT: ty = body_text(b, e); break;
     case MS_E_NAME: ty = body_name(b, e, expected); break;
-    case MS_E_UNARY: ty = body_unary(b, e); break;
+    case MS_E_UNARY: ty = body_unary(b, e, expected); break;
     case MS_E_BINARY: ty = body_binary(b, e); break;
     case MS_E_MEMBER: ty = body_member(b, e); break;
     case MS_E_INDEX:
@@ -1156,6 +1222,9 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     if (expected != MS_TY_NONE && body_coerces_to_interface(b, ty, expected)) {
         b->facts->coerce_iface[e->id] = ty; // the lowering boxes it behind its vtable; the expression has the interface type
         return ms_body_record(b, e->id, expected);
+    }
+    if (expected != MS_TY_NONE && !ms_body_same_type(b, ty, expected) && ms_body_reads_where_var_expected(b, ty, expected)) {
+        return ms_body_record(b, e->id, expected); // a function that reads where `var` is expected stands in for it
     }
     if (expected != MS_TY_NONE && !ms_body_same_type(b, ty, expected)) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
@@ -1215,7 +1284,8 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
-    const bool primitive = body_is_value_type(b, ty) && b->c->syms.decl[sym] == NULL;
+    const bool primitive = sym != MS_NONE && b->c->syms.decl[sym] == NULL && ty != MS_TY_NONE && body_is_admitted(b, ty) &&
+                           ms_ty_kind(&b->c->tys, ty) == MS_K_PRIMITIVE;
     const bool declared = ty != MS_TY_NONE && body_is_own_nominal(b, ty) && body_is_admitted(b, ty);
     if (!primitive && !declared) {
         return ms_body_unsupported(b);
@@ -1418,7 +1488,7 @@ static void body_return_statement(MsBody *b, const MsStmt *s) {
 
 static void body_close_scope(MsBody *b, uint32_t scope_start);
 
-/* `if name = optional`: the payload is bound for the then-branch only. */
+/* `if name = optional` or `if name = result`: the payload (a Result's Ok value) is bound for the then-branch only. */
 static bool body_if_let_statement(MsBody *b, const MsStmt *s) {
     const MsPattern *pattern = s->u.branch.binding;
     MsTy payload = MS_TY_NONE;
@@ -1427,7 +1497,12 @@ static bool body_if_let_statement(MsBody *b, const MsStmt *s) {
         return false;
     }
     const MsTy ty = ms_body_expr(b, s->u.branch.cond, MS_TY_NONE);
-    if (!ms_body_optional_payload(b, ty, &payload) || !body_is_bindable(b, payload)) {
+    const MsTyTable *tys = &b->c->tys;
+    const bool result = ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_RESULT) && tys->nargs[ty] == 2;
+    if (result) {
+        payload = ms_ty_args(tys, ty)[0]; // the Ok payload; the error is not captured
+    }
+    if ((!result && !ms_body_optional_payload(b, ty, &payload)) || !body_is_bindable(b, payload)) {
         (void)ms_body_unsupported(b);
         return false;
     }
@@ -1803,6 +1878,46 @@ static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool export
     }
 }
 
+/* `Result[Void, Error]`, the outcome of a test block, or MS_TY_NONE when the library lacks either. */
+static MsTy body_test_outcome(MsBody *b) {
+    const MsSymId result = ms_map_get(&b->c->std_types, ms_intern_cstr(b->c->names, "Result"));
+    const MsSymId error = ms_map_get(&b->c->std_types, ms_intern_cstr(b->c->names, "Error"));
+    if (result == MS_NONE || error == MS_NONE || b->c->syms.ty[result] == MS_TY_NONE || b->c->syms.ty[error] == MS_TY_NONE) {
+        return MS_TY_NONE;
+    }
+    const MsTy args[2] = {b->void_ty, b->c->syms.ty[error]};
+    return ms_ty_apply(b->c, b->c->syms.ty[result], args, 2);
+}
+
+/* A `test` block is a function of no parameters returning `Result[Void, Error]`. A module with a fixture
+ * factory binds `fixture` in its tests, which this pass does not model. */
+static void body_check_test(MsBody *b, const MsDecl *d) {
+    const MsModule *syntax = b->c->mods[b->module].syntax;
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        if (syntax->decls[i]->kind == MS_D_FN && ms_name_is(b->c->names, syntax->decls[i]->u.fn.name, "make_fixture")) {
+            return;
+        }
+    }
+    const MsTy outcome = body_test_outcome(b);
+    if (outcome == MS_TY_NONE) {
+        return;
+    }
+    const uint32_t first_binding = b->facts->bindings.count;
+    const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
+    const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
+    b->first_binding = first_binding;
+    b->function = d->id;
+    b->supported = true;
+    b->result = outcome;
+    body_statements(b, &d->u.test.body, d->pos);
+    if (b->supported) {
+        b->facts->body_checked[d->id] = true;
+        body_commit_diags(b, diags_start);
+    } else {
+        body_undo(b, first_binding, written_start, diags_start);
+    }
+}
+
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     if (!body_is_test_fixture(b, &d->u.fn)) {
         body_check_callable(b, d->id, d->pos, d->is_exported, &d->u.fn, b->c->syms.ty[sym], NULL);
@@ -2088,6 +2203,11 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
             } else {
                 body_check_constant(&b, d, sym);
             }
+        }
+    }
+    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+        if (row->syntax->decls[i]->kind == MS_D_TEST) {
+            body_check_test(&b, row->syntax->decls[i]);
         }
     }
     body_check_methods(&b);

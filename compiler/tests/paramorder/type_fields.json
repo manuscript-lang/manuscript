@@ -9,7 +9,7 @@
         "file": "type_fields.ms",
         "line": 3,
         "column": 5,
-        "offset": 29
+        "offset": 23
       }
     },
     {
@@ -20,7 +20,7 @@
         "file": "type_fields.ms",
         "line": 4,
         "column": 5,
-        "offset": 43
+        "offset": 34
       }
     }
   ]
