@@ -58,7 +58,11 @@ static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
         return record;
     }
     const MirTy user_enum = le_type(lb, ty);
-    return user_enum != MIR_NONE ? user_enum : la_type(lb, ty);
+    if (user_enum != MIR_NONE) {
+        return user_enum;
+    }
+    const MirTy iface = li_type(lb, ty);
+    return iface != MIR_NONE ? iface : la_type(lb, ty);
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
@@ -80,7 +84,11 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
         return MIR_STR;
     }
     const MirTy list = lst_type(lb, ty);
-    return list != MIR_NONE ? list : lb_mir_alt(lb, ty);
+    if (list != MIR_NONE) {
+        return list;
+    }
+    const MirTy map = lm_type(lb, ty);
+    return map != MIR_NONE ? map : lb_mir_alt(lb, ty);
 }
 
 MirLoc lb_loc(const Lb *lb, MsPos pos) {
@@ -182,11 +190,11 @@ static LbVal lb_text(Lb *lb, const MsExpr *e) {
 /* A `var` parameter arrives as a pointer to the caller's variable. The body works on a copy held
  * in an SSA variable: it is loaded on entry and stored back before every return (`noalias` says
  * nothing else touches the memory meanwhile). */
-static MirValue lb_load(Lb *lb, MirValue slot, MirTy ty) {
+MirValue lb_load(Lb *lb, MirValue slot, MirTy ty) {
     return mir_b_emit(&lb->b, MOP_Load, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
 }
 
-static void lb_store(Lb *lb, MirValue slot, MirValue value) {
+void lb_store(Lb *lb, MirValue slot, MirValue value) {
     const MirValue args[2] = {slot, value};
     (void)mir_b_emit(&lb->b, MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
 }
@@ -575,6 +583,9 @@ LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExp
 }
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
+    if (lb->facts->call_reordered[e->id]) {
+        return lb_unsupported(lb); // arguments are paired with parameters by index below
+    }
     const uint32_t callee = lb->facts->call_callee[e->id];
     const uint32_t method = lb->facts->call_method[e->id];
     if (method != MS_NONE) {
@@ -582,6 +593,10 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     }
     if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
         return la_case(lb, e);
+    }
+    const MsTy dispatch = lb->facts->call_interface[e->id];
+    if (dispatch != MS_TY_NONE && ms_ty_kind(&lb->c->tys, lb->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
+        return li_call(lb, e);
     }
     if (callee == MS_NONE) {
         return lb_call_value(lb, e);
@@ -607,9 +622,9 @@ LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     case MS_E_INDEX:
     case MS_E_APPLY: return lst_index(lb, e);
     case MS_E_LIST: return lst_literal(lb, e);
+    case MS_E_MAP: return lm_literal(lb, e);
     case MS_E_VOID:
-    case MS_E_PROBE:
-    case MS_E_MAP: break;
+    case MS_E_PROBE: break;
     }
     return lb_unsupported(lb);
 }

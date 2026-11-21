@@ -443,7 +443,10 @@ void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m, MsStr text)
         const MsScanNode node = ms_effect_scan_decl(&scratch, c, m, d);
         ms_buf_printf(out, "%s %u:%u\n", d->kind == MS_D_CONST ? "const" : "fn", d->pos.line, d->pos.column);
         for (uint32_t k = 0; k < node.nedges; k++) {
-            const MsStr name = ms_name(c->names, c->syms.name[node.edges[k].callee]);
+            // A method has no symbol: the oracle's serial method id is normalized to `method` too.
+            const MsStr name = node.edges[k].callee >= c->syms.count
+                                   ? (MsStr){"method", 6}
+                                   : ms_name(c->names, c->syms.name[node.edges[k].callee]);
             ms_buf_printf(out, "edge %.*s %u:%u\n", (int)name.len, name.ptr, node.edges[k].pos.line,
                           node.edges[k].pos.column);
         }

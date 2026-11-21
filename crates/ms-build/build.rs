@@ -3,8 +3,11 @@
 
 #[path = "../../runtime/build_c.rs"]
 mod build_c;
+/// What linking needs embedded: musl and mingw startup files, the glibc symbol table, the pinned lld downloads.
+mod link_bundle;
 
 fn main() {
+    link_bundle::bundle();
     let root = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"))
         .join("../..");
     for path in [

@@ -237,30 +237,88 @@ static const char *install_state_name(MsInstallState state) {
     return "";
 }
 
-uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out) {
-    MsArena arena = {0};
-    const size_t update_count = ms_list_len(update);
-    const char **names = MS_NEW_N(&arena, const char *, update_count + 1);
-    for (size_t i = 0; i < update_count; i++) {
-        ms_value value = ms_list_get(update, i);
-        names[i] = ms_arena_strndup(&arena, (const char *)value.as.buf.data, value.as.buf.len);
-        ms_value_free(&value);
-    }
-    const MsInstallOptions options = {.manifest = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest)),
-                                      .update = names, .update_count = (uint32_t)update_count, .locked = locked != 0, .frozen = frozen != 0};
+static uint8_t install_run(MsArena *arena, MsInstallOptions options, ms_list *out, ms_str *message_out) {
     MsInstallReport report = {0};
     MsProjectError error = {0};
     uint8_t status = 0;
-    if (!ms_install(&arena, &options, &report, &error)) {
-        const char *text = ms_project_error_text(&arena, &error);
+    if (!ms_install(arena, &options, &report, &error)) {
+        const char *text = ms_project_error_text(arena, &error);
         ms_string_new((const uint8_t *)text, strlen(text), message_out);
         status = ms_project_error_is_unsupported(&error) ? 2 : 1;
     }
     for (uint32_t i = 0; status == 0 && i < report.count; i++) {
         const MsInstalledCopy *c = &report.copies[i];
-        push_text(out, ms_arena_fmt(&arena, "%s\t%s\t%s\t%s\t%s", c->name, c->copy.entry.spec, c->copy.entry.revision,
-                                   install_state_name(c->state), c->effects).ptr);
+        push_text(out, ms_arena_fmt(arena, "%s\t%s\t%s\t%s\t%s", c->name, c->copy.entry.spec, c->copy.entry.revision,
+                                    install_state_name(c->state), c->effects).ptr);
     }
+    return status;
+}
+
+static const char **install_names(MsArena *arena, const ms_list *update, size_t *count) {
+    *count = ms_list_len(update);
+    const char **names = MS_NEW_N(arena, const char *, *count + 1);
+    for (size_t i = 0; i < *count; i++) {
+        ms_value value = ms_list_get(update, i);
+        names[i] = ms_arena_strndup(arena, (const char *)value.as.buf.data, value.as.buf.len);
+        ms_value_free(&value);
+    }
+    return names;
+}
+
+uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    size_t count = 0;
+    const char **names = install_names(&arena, update, &count);
+    const MsInstallOptions options = {.manifest = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest)),
+                                      .update = names, .update_count = (uint32_t)count, .locked = locked != 0, .frozen = frozen != 0};
+    const uint8_t status = install_run(&arena, options, out, message_out);
+    ms_arena_free(&arena);
+    return status;
+}
+
+uint8_t ms_tool_workspace(const ms_str *manifest, uint8_t root_only, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest));
+    MsWorkspace workspace = {0};
+    MsProjectError error = {0};
+    bool found = false;
+    const bool ok = root_only != 0 ? ms_workspace_root_members(&arena, path, &workspace, &found, &error) : ms_workspace_find(&arena, path, &workspace, &found, &error);
+    uint8_t status = 0;
+    if (!ok) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    } else if (found) {
+        push_row(&arena, out, "root", workspace.root, NULL);
+        for (uint32_t i = 0; i < workspace.count; i++) {
+            push_row(&arena, out, "member", workspace.members[i].name, workspace.members[i].root);
+        }
+    }
+    ms_arena_free(&arena);
+    return status;
+}
+
+uint8_t ms_tool_install_workspace(const ms_str *lock_root, const ms_list *members, const ms_list *update, uint8_t locked, uint8_t frozen,
+                                  ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    size_t count = 0;
+    const char **names = install_names(&arena, update, &count);
+    /* Members are `name\tmanifest` rows. */
+    const size_t total = ms_list_len(members);
+    const char **member_names = MS_NEW_N(&arena, const char *, total + 1);
+    const char **manifests = MS_NEW_N(&arena, const char *, total + 1);
+    for (size_t i = 0; i < total; i++) {
+        ms_value value = ms_list_get(members, i);
+        const char *row = ms_arena_strndup(&arena, (const char *)value.as.buf.data, value.as.buf.len);
+        ms_value_free(&value);
+        const char *tab = strchr(row, '\t');
+        member_names[i] = tab == NULL ? row : ms_arena_strndup(&arena, row, (size_t)(tab - row));
+        manifests[i] = tab == NULL ? row : tab + 1;
+    }
+    const MsInstallOptions options = {.lock_root = ms_arena_strndup(&arena, (const char *)ms_str_data(lock_root), ms_str_len(lock_root)),
+                                      .member_names = member_names, .member_manifests = manifests, .member_count = (uint32_t)total,
+                                      .update = names, .update_count = (uint32_t)count, .locked = locked != 0, .frozen = frozen != 0};
+    const uint8_t status = install_run(&arena, options, out, message_out);
     ms_arena_free(&arena);
     return status;
 }

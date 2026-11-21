@@ -83,3 +83,13 @@ MsTy ms_body_map(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     return ty;
 }
+
+/* `m[key]` with the receiver's type `map`: the key keeps its own type and the result is the value. A value
+ * with one owner is borrowed in place, which the ownership walk does not follow yet. */
+MsTy ms_body_map_index(MsBody *b, MsTy map, const MsExpr *key) {
+    const MsTy *args = ms_ty_args(&b->c->tys, map);
+    if (args[1] != b->int_ty && args[1] != b->float_ty && args[1] != b->bool_ty) {
+        return ms_body_unsupported(b);
+    }
+    return ms_body_expr(b, key, args[0]) == MS_TY_NONE ? MS_TY_NONE : args[1];
+}
