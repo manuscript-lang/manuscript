@@ -21,7 +21,12 @@
 #include "ms/mir_builder.h"
 #include "ms/ty_algebra.h"
 
-LbVal lb_unsupported(Lb *lb) {
+LbVal lb_unsupported_at(Lb *lb, const char *site, int line) {
+    if (lb->ok) { // the first refusal is the reason; the rest follow from it
+        lb->fail_site = site;
+        lb->fail_line = line;
+        lb->fail_stmt = lb->stmt;
+    }
     lb->ok = false;
     return LB_FAIL;
 }

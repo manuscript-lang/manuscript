@@ -1,5 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
-/* ms_lower_dump STDLIB_DIR --program [--run] FILE...: the same for a whole project, the entry file plus every
+/* ms_lower_dump STDLIB_DIR --program --why FILE...: per program, the functions the lowering refused and where
+ * (`ms_lower_program_why`), or why the program was not lowered at all.
+ * ms_lower_dump STDLIB_DIR --program [--run] FILE...: the same for a whole project, the entry file plus every
  * project module it imports, lowered into one module (compiler/tests/lower-program-diff.sh).
  * ms_lower_dump STDLIB_DIR [--run] FILE...: checks each single-file program with the C checker, lowers
  * the functions the C lowering handles, and prints each as the Rust lowering's text, so the two
@@ -156,7 +158,7 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
 
 /* Loads the project `path` (entry file plus the modules it imports), checks every module, lowers the program and
  * prints each function. A program with diagnostics prints nothing. */
-static bool lower_program_file(const StdFiles *files, MsNames *names, const char *path, bool run) {
+static bool lower_program_file(const StdFiles *files, MsNames *names, const char *path, bool run, bool why) {
     MsArena arena = {0};
     MsGraph graph;
     MsProjectError error = {0};
@@ -181,7 +183,17 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
             (void)ms_program_check_bundled(&check); // the standard modules the program reaches
             MirModule mir;
             mir_module_init(&mir);
-            (void)ms_lower_program(&check, ids[graph.count - 1], &mir);
+            MsBuf refused = {0};
+            (void)ms_lower_program_why(&check, ids[graph.count - 1], &mir, why ? &refused : NULL);
+            if (why) { // `--why`: the functions the lowering refused, and nothing else
+                printf("=== %s\n%.*s", path, (int)refused.len, refused.data != NULL ? (const char *)refused.data : "");
+                ms_buf_free(&refused);
+                mir_module_free(&mir);
+                ms_check_free(&check);
+                ms_arena_free(&std_syntax);
+                ms_arena_free(&arena);
+                return true;
+            }
             verified = verify_module(&mir, path);
             MsBuf elaborate_error = {0};
             if (!mir_elaborate(&mir, &elaborate_error)) {
@@ -204,9 +216,13 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
                 ms_buf_free(&out);
             }
             mir_module_free(&mir);
+        } else if (why) {
+            printf("=== %s\n\t\tchecker diagnostics\n", path);
         }
         ms_check_free(&check);
         ms_arena_free(&std_syntax);
+    } else if (why) {
+        printf("=== %s\n\t\tproject does not load\n", path);
     }
     ms_arena_free(&arena);
     return verified;
@@ -259,6 +275,7 @@ int main(int argc, char **argv) {
     }
     const bool program = argc > 2 && strcmp(argv[2], "--program") == 0;
     const bool run = argc > 2 && (strcmp(argv[2], "--run") == 0 || (program && argc > 3 && strcmp(argv[3], "--run") == 0));
+    const bool why = program && argc > 3 && strcmp(argv[3], "--why") == 0;
     StdFiles files = {0};
     if (!read_std_files(&files, argv[1])) {
         return 1;
@@ -267,8 +284,8 @@ int main(int argc, char **argv) {
     ms_names_init(&names);
     if (program) {
         bool all_verified = true;
-        for (int i = run ? 4 : 3; i < argc; i++) {
-            all_verified = lower_program_file(&files, &names, argv[i], run) && all_verified;
+        for (int i = run || why ? 4 : 3; i < argc; i++) {
+            all_verified = lower_program_file(&files, &names, argv[i], run, why) && all_verified;
         }
         ms_names_free(&names);
         free_std_files(&files);
