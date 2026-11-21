@@ -139,6 +139,7 @@ fn Optional[T].is_none() Bool: ...
 
 // Returns the payload; `none` raises a fault, so use it only when absence is a bug.
 // Prefer `if value := optional:` or `get_or(default)`.
+// ms: borrows
 fn Optional[T].get() T: ...
 
 // Returns the payload, or `default` when this is `none`. The default is always
@@ -194,6 +195,7 @@ fn Result[T, E].is_error() Bool: ...
 
 // Returns the successful payload; an error raises a fault, so use it only when
 // failure is a bug. Prefer `?`, `if value := result:` or `get_or(default)`.
+// ms: borrows
 fn Result[T, E].get() T: ...
 
 // Returns the successful payload, or `default` when this is an error. The default is

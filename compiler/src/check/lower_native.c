@@ -467,6 +467,36 @@ static LbVal ln_method_without_function(Lb *lb, const MsExpr *e, MsTy receiver_t
     return ln_conversion_method(lb, e);
 }
 
+/* The kinds of the parameters after the receiver that take an argument of the call, in order: a
+ * descriptor or an out parameter takes none, and an optional one (`MS_RT_HAS`) takes one for its pair.
+ * Returns how many there are. */
+static uint32_t ln_argument_kinds(const MsRtFn *fn, MsRtParam *kinds) {
+    uint32_t count = 0;
+    for (uint32_t i = 1; i < fn->nparams; i++) {
+        const MsRtParam kind = fn->params[i];
+        if (kind == MS_RT_HAS) {
+            kinds[count++] = kind;
+            i++; // its payload parameter takes no argument of its own
+        } else if (kind != MS_RT_DESC && kind != MS_RT_KEY_DESC && kind != MS_RT_VAL_DESC && kind != MS_RT_OUT_STR &&
+                   kind != MS_RT_OUT_LIST) {
+            kinds[count++] = kind;
+        }
+    }
+    return count;
+}
+
+/* A call of `fn`: one that reports failure by a status or absence by a flag (`-> u8`) becomes the `Result` or Optional
+ * its result type says, as a call of a declared `extern fn` does (lower_extern.c); any other is a plain call. */
+static LbVal ln_call_reporting(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty) {
+    if (ls_reports_status(lb, fn, result_ty)) {
+        return ls_call(lb, fn, args, nargs, result_ty);
+    }
+    if (ls_reports_found(lb, fn, result_ty)) {
+        return ls_found_call(lb, fn, args, nargs, result_ty);
+    }
+    return lb_native_call(lb, fn, args, nargs, result_ty);
+}
+
 /* A method call the runtime implements: evaluates the receiver and arguments, then calls. */
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
@@ -503,18 +533,7 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     MirValue args[MS_RT_MAX_PARAMS];
     args[0] = first.v;
     MsRtParam kinds[MS_RT_MAX_PARAMS];
-    uint32_t value_params = 0;
-    for (uint32_t i = 1; i < fn->nparams; i++) {
-        const MsRtParam kind = fn->params[i];
-        if (kind == MS_RT_HAS) {
-            kinds[value_params++] = kind;
-            i++; // its payload parameter takes no argument of its own
-        } else if (kind != MS_RT_DESC && kind != MS_RT_KEY_DESC && kind != MS_RT_VAL_DESC && kind != MS_RT_OUT_STR &&
-            kind != MS_RT_OUT_LIST) {
-            kinds[value_params++] = fn->params[i];
-        }
-    }
-    if (value_params != nargs) {
+    if (ln_argument_kinds(fn, kinds) != nargs) {
         return LB_UNSUPPORTED(lb);
     }
     for (uint32_t i = 0; i < nargs && lb->ok; i++) {
@@ -534,7 +553,7 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
         return LB_FAIL;
     }
     lb->twin_ok = lb->iterable == e;
-    const LbVal call = lb_native_call(lb, fn, args, nargs + 1, result_ty);
+    const LbVal call = ln_call_reporting(lb, fn, args, nargs + 1, result_ty);
     lb->twin_ok = false;
     if (!lb->ok) {
         return LB_FAIL;

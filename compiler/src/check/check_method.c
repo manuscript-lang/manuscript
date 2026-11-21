@@ -221,12 +221,12 @@ static bool primitive_in(MsStr name, const char *const *members) {
     return false;
 }
 
-/* The operations a type has when it has the property that grants them: `clone` (Clonable), `equals` (Equal) and `hash` (Hashable). */
+/* The operations a type has when it has the property that grants them: `clone` (Clonable), and `equals` (Equal). */
 static bool derived_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
     const struct {
         MsProperty property;
         const char *interface;
-    } derived[] = {{MS_PROP_CLONABLE, "CloneOperations"}, {MS_PROP_EQUAL, "EqualOperations"}, {MS_PROP_HASHABLE, "HashOperations"}};
+    } derived[] = {{MS_PROP_CLONABLE, "CloneOperations"}, {MS_PROP_EQUAL, "EqualOperations"}};
     for (size_t i = 0; i < sizeof derived / sizeof *derived; i++) {
         if (intrinsic_in(b, derived[i].interface, receiver, name, out) &&
             ms_implements_property(b->c, b->methods, receiver, derived[i].property) == MS_FIT_YES) {
@@ -376,10 +376,12 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
 /* `receiver.name(args)` on a primitive receiver of any shape (a local, a literal, another call):
  * an intrinsic operation that borrows its receiver, recorded as a call through the interface
  * `call_interface` names. */
-/* A borrowing call whose result the context uses in place, on a receiver that is a local: the ownership walk
- * pins that local while the result is in use. A result that is kept or passed on is left to the Rust checker. */
+/* A borrowing call whose result the context uses in place, on a local (the ownership walk pins it while the
+ * result is in use), a text or another call's temporary (which lives to the end of the statement). A result
+ * that is kept or passed on is left to the Rust checker. */
 static bool body_borrow_in_place(const MsBody *b, const MsExpr *e) {
-    return b->borrow_ok == e && e->u.call.callee->u.member.left->kind == MS_E_NAME;
+    const MsExprKind receiver = (MsExprKind)e->u.call.callee->u.member.left->kind;
+    return b->borrow_ok == e && (receiver == MS_E_NAME || receiver == MS_E_TEXT || receiver == MS_E_CALL);
 }
 
 static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {

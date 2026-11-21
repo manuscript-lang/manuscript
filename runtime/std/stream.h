@@ -17,7 +17,7 @@ struct MsStream {
     bool append; /* the host ignores a positioned write's offset, so it is invalid input */
     bool file;   /* an @std/fs file handle: flushing synchronizes the file */
 #ifdef _WIN32
-    bool adopted; /* an overlapped pipe the runtime poller adopted (a child's piped stream) */
+    bool adopted; /* a blocking pipe the scheduler adopted (a child's piped stream): its transfers run on the pool */
 #endif
     char *name; /* owned (malloc), NUL-terminated: the path for error messages */
     size_t name_length;
@@ -50,8 +50,7 @@ bool ms_stream_read(MsStream *stream, bool has_max, int64_t max, MsFsBuffer *dat
 bool ms_stream_write(MsStream *stream, MsBytes data, MsFsFail *fail);
 
 #ifdef _WIN32
-/* Windows reads of a pipe that cannot be waited on, and waits for console input (stream_win.c). */
-bool ms_stream_win_read_pipe(const MsStream *stream, uint8_t *buffer, size_t capacity, size_t *count, MsFsFail *fail);
+/* Windows waits for console input (stream_win.c). */
 bool ms_stream_win_wait_console(const MsStream *stream, MsFsFail *fail);
 #endif
 
