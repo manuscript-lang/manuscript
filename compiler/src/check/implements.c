@@ -241,7 +241,9 @@ static MsFit fit_data(FitWalk *w, MsTy ty, MsProperty property) {
     }
     const MsSymId sym = t->def[ty] - 1;
     const MsDecl *decl = sym < w->c->syms.count ? w->c->syms.decl[sym] : NULL;
-    if (decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.opaque || fit_has_deciding_row(w, ty, property)) {
+    const bool declared = decl != NULL && (decl->kind == MS_D_TYPE || decl->kind == MS_D_ENUM);
+    const bool opaque = declared && (decl->kind == MS_D_TYPE ? decl->u.type.opaque : decl->u.enumeration.opaque);
+    if (!declared || opaque || fit_has_deciding_row(w, ty, property)) {
         return MS_FIT_UNKNOWN;
     }
     const MsDef def = *ms_def(w->c, sym); // by value: a later ms_def may move the rows
