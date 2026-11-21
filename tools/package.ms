@@ -10,7 +10,7 @@ import (
 	working_directory from "@std/os/env.ms",
 	chmod, copy, create_directory, remove, temporary, write_file from "@std/os/fs.ms",
 
-	capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms",
+	capture, dist_arch, dist_os, env, file_sha256, note, run_program from "./lib.ms",
 )
 
 fn supported(target_os: String, target_arch: String) Bool:
@@ -77,10 +77,13 @@ fn main() Int:
 	copy(rust, f"{bundle}/{rust_name}").get()
 
 	// The front links libms with the tool entry points, built here for this host.
-	code = run_program(
-		"cmake",
-		["-S", ".", "-B", "target/cmake/tools", "-G", "Ninja", "-DMS_BUILD_RUNTIME=OFF"],
-	)
+	// Windows programs use the llvm-mingw ABI, so libms is built with the same clang as the runtime.
+	var configure = ["-S", ".", "-B", "target/cmake/tools", "-G", "Ninja", "-DMS_BUILD_RUNTIME=OFF"]
+	mingw := env("MS_MINGW", "")
+	if target_os == "windows" and mingw != "":
+		mingw_triple := if target_arch == "arm64": "aarch64-w64-mingw32" else: "x86_64-w64-mingw32"
+		configure.append(f"-DCMAKE_C_COMPILER={mingw}/bin/{mingw_triple}-clang.exe")
+	code = run_program("cmake", configure)
 	if code != 0: return code
 
 	code = run_program("cmake", ["--build", "target/cmake/tools", "--target", "ms_tool"])
