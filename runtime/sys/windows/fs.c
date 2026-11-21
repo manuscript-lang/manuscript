@@ -624,25 +624,6 @@ static MsSysError stat_disk(HANDLE handle, MsSysStat *out) {
     return 0;
 }
 
-MsSysError ms_sys_fs_stat(const char *path, bool follow, MsSysStat *out) {
-    WidePath wide = {0};
-    MsSysError error = open_path(path, &wide);
-    if (error != 0) {
-        return error;
-    }
-    DWORD flags = FILE_FLAG_BACKUP_SEMANTICS | (follow ? 0 : FILE_FLAG_OPEN_REPARSE_POINT);
-    const DWORD share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
-    const HANDLE handle = CreateFileW(wide.text, 0, share, NULL, OPEN_EXISTING, flags, NULL);
-    error = handle == INVALID_HANDLE_VALUE ? last_error() : 0;
-    close_path(&wide);
-    if (error != 0) {
-        return error;
-    }
-    error = stat_disk(handle, out);
-    (void)CloseHandle(handle);
-    return error;
-}
-
 MsSysError ms_sys_fs_fstat(MsSysFd fd, MsSysStat *out) {
     if (is_invalid(fd)) {
         return MS_ERROR_INVALID_HANDLE;
@@ -661,48 +642,6 @@ MsSysError ms_sys_fs_fstat(MsSysFd fd, MsSysStat *out) {
     default:
         return last_error();
     }
-}
-
-MsSysError ms_sys_fs_stat_filesystem(const char *path, MsSysFsStat *out) {
-    MsSysStat existing;
-    MsSysError error = ms_sys_fs_stat(path, true, &existing);
-    if (error != 0) {
-        return error;
-    }
-    WidePath wide = {0};
-    error = open_path(path, &wide);
-    if (error != 0) {
-        return error;
-    }
-    WCHAR root[MAX_PATH + 1];
-    const BOOL found = GetVolumePathNameW(wide.text, root, (DWORD)MS_COUNT_OF(root));
-    error = found ? 0 : last_error();
-    close_path(&wide);
-    if (error != 0) {
-        return error;
-    }
-    DWORD sectors = 0;
-    DWORD sector_bytes = 0;
-    DWORD free_clusters = 0;
-    DWORD total_clusters = 0;
-    ULARGE_INTEGER available = {0};
-    ULARGE_INTEGER total = {0};
-    ULARGE_INTEGER free_bytes = {0};
-    if (!GetDiskFreeSpaceW(root, &sectors, &sector_bytes, &free_clusters, &total_clusters) ||
-        !GetDiskFreeSpaceExW(root, &available, &total, &free_bytes)) {
-        return last_error();
-    }
-    const uint64_t block = (uint64_t)sectors * sector_bytes;
-    if (block == 0) {
-        return MS_ERROR_INVALID_PARAMETER;
-    }
-    *out = (MsSysFsStat){
-        .block_size = (int64_t)block,
-        .blocks = (int64_t)(total.QuadPart / block),
-        .blocks_free = (int64_t)(free_bytes.QuadPart / block),
-        .blocks_available = (int64_t)(available.QuadPart / block),
-    };
-    return 0;
 }
 
 /* ---- changing files by descriptor ---- */
@@ -774,14 +713,7 @@ static MsSysError with_path(const char *path, PathCall call) {
 
 static BOOL make_directory(const WCHAR *path) { return CreateDirectoryW(path, NULL); }
 
-MsSysError ms_sys_fs_mkdir(const char *path, uint32_t mode) {
-    (void)mode; /* Windows directories have no permission bits here */
-    return with_path(path, make_directory);
-}
-
 static BOOL remove_directory(const WCHAR *path) { return RemoveDirectoryW(path); }
-
-MsSysError ms_sys_fs_rmdir(const char *path) { return with_path(path, remove_directory); }
 
 /* Deletes a file; a read-only file loses the attribute first, and a directory link is removed as a directory. */
 static BOOL delete_file(const WCHAR *path) {
@@ -816,8 +748,6 @@ static BOOL delete_file(const WCHAR *path) {
     return FALSE;
 }
 
-MsSysError ms_sys_fs_unlink(const char *path) { return with_path(path, delete_file); }
-
 /* Two converted paths for a call. */
 typedef BOOL (*PairCall)(const WCHAR *first, const WCHAR *second);
 
@@ -840,11 +770,7 @@ static BOOL move_file(const WCHAR *from, const WCHAR *to) {
     return MoveFileExW(from, to, MOVEFILE_REPLACE_EXISTING);
 }
 
-MsSysError ms_sys_fs_rename(const char *from, const char *to) { return with_pair(from, to, move_file); }
-
 static BOOL make_hard_link(const WCHAR *from, const WCHAR *to) { return CreateHardLinkW(to, from, NULL); }
-
-MsSysError ms_sys_fs_link(const char *from, const char *to) { return with_pair(from, to, make_hard_link); }
 
 /* A link target with `/` written as `\`, as Windows stores it. */
 static void use_backslashes(WCHAR *text) {
@@ -874,28 +800,6 @@ static bool target_is_directory(const WCHAR *link_path, const WCHAR *target) {
     }
     const DWORD attributes = GetFileAttributesW(joined);
     return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-}
-
-MsSysError ms_sys_fs_symlink(const char *target, const char *path) {
-    WidePath link = {0};
-    MsSysError error = open_path(path, &link);
-    WCHAR *wide_target = NULL;
-    size_t target_length = 0;
-    if (error == 0) {
-        error = wide_from_utf8(target, strlen(target), &wide_target, &target_length);
-    }
-    if (error == 0) {
-        use_backslashes(wide_target);
-        use_backslashes(link.text);
-        DWORD flags = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
-        if (target_is_directory(link.text, wide_target)) {
-            flags |= SYMBOLIC_LINK_FLAG_DIRECTORY;
-        }
-        error = CreateSymbolicLinkW(link.text, wide_target, flags) ? 0 : last_error();
-    }
-    free(wide_target);
-    close_path(&link);
-    return error;
 }
 
 /* Opens a path without following a final link, for reading its reparse data or resolving it. */
@@ -978,119 +882,10 @@ static bool locate_target(MsReparseBuffer *data, ReparseTarget *out) {
     return true;
 }
 
-MsSysError ms_sys_fs_readlink(const char *path, char **target, size_t *length) {
-    HANDLE handle = INVALID_HANDLE_VALUE;
-    MsSysError error = open_reparse(path, FILE_FLAG_OPEN_REPARSE_POINT, &handle);
-    if (error != 0) {
-        return error;
-    }
-    MsReparseBuffer *data = malloc(MS_REPARSE_BUFFER_SIZE);
-    if (data == NULL) {
-        (void)CloseHandle(handle);
-        return ERROR_NOT_ENOUGH_MEMORY;
-    }
-    DWORD returned = 0;
-    ReparseTarget found = {0};
-    if (!DeviceIoControl(handle, FSCTL_GET_REPARSE_POINT, NULL, 0, data, MS_REPARSE_BUFFER_SIZE, &returned, NULL)) {
-        error = last_error();
-    } else if (!locate_target(data, &found)) {
-        error = MS_ERROR_INVALID_PARAMETER;
-    }
-    (void)CloseHandle(handle);
-    if (error == 0) {
-        error = utf8_from_wide(found.text, found.units, target, length);
-    }
-    free(data);
-    return error;
-}
-
-MsSysError ms_sys_fs_canonicalize(const char *path, char **resolved, size_t *length) {
-    HANDLE handle = INVALID_HANDLE_VALUE;
-    MsSysError error = open_reparse(path, 0, &handle);
-    if (error != 0) {
-        return error;
-    }
-    const DWORD needed = GetFinalPathNameByHandleW(handle, NULL, 0, VOLUME_NAME_DOS);
-    WCHAR *wide = needed != 0 ? malloc(((size_t)needed + 1) * sizeof *wide) : NULL;
-    if (wide == NULL) {
-        error = needed == 0 ? last_error() : ERROR_NOT_ENOUGH_MEMORY;
-    } else {
-        const DWORD written = GetFinalPathNameByHandleW(handle, wide, needed + 1, VOLUME_NAME_DOS);
-        error = written == 0 || written > needed ? last_error() : utf8_from_wide(wide, written, resolved, length);
-    }
-    free(wide);
-    (void)CloseHandle(handle);
-    return error;
-}
-
-MsSysError ms_sys_fs_chmod(const char *path, uint32_t mode) {
-    HANDLE handle = INVALID_HANDLE_VALUE;
-    MsSysError error = open_reparse(path, 0, &handle);
-    if (error != 0) {
-        return error;
-    }
-    /* Attribute changes need write-attribute access, which the query-only open above lacks. */
-    (void)CloseHandle(handle);
-    WidePath wide = {0};
-    error = open_path(path, &wide);
-    if (error != 0) {
-        return error;
-    }
-    DWORD attributes = GetFileAttributesW(wide.text);
-    if (attributes == INVALID_FILE_ATTRIBUTES) {
-        error = last_error();
-    } else {
-        attributes = (mode & 0200u) == 0 ? (attributes | FILE_ATTRIBUTE_READONLY)
-                                         : (attributes & ~(DWORD)FILE_ATTRIBUTE_READONLY);
-        if (attributes == 0) {
-            attributes = FILE_ATTRIBUTE_NORMAL;
-        }
-        error = SetFileAttributesW(wide.text, attributes) ? 0 : last_error();
-    }
-    close_path(&wide);
-    return error;
-}
-
 MsSysError ms_sys_fs_chmod_link(const char *path, uint32_t mode) {
     (void)path;
     (void)mode;
     return MS_ERROR_NOT_SUPPORTED;
-}
-
-MsSysError ms_sys_fs_chown(const char *path, int64_t uid, int64_t gid, bool follow) {
-    (void)path;
-    (void)uid;
-    (void)gid;
-    (void)follow;
-    return MS_ERROR_NOT_SUPPORTED;
-}
-
-MsSysError ms_sys_fs_truncate(const char *path, int64_t size) {
-    MsSysFd fd = MS_SYS_FD_INVALID;
-    MsSysError error = ms_sys_fs_open(path, MS_SYS_O_WRITE, 0, &fd);
-    if (error != 0) {
-        return error;
-    }
-    error = ms_sys_fs_truncate_fd(fd, size);
-    ms_sys_fs_close_quietly(fd);
-    return error;
-}
-
-MsSysError ms_sys_fs_access(const char *path, int32_t mode) {
-    MsSysStat info;
-    MsSysError error = ms_sys_fs_stat(path, true, &info);
-    if (error != 0) {
-        return error;
-    }
-    if (mode == 0 || (info.mode & MS_SYS_S_IFMT) == MS_SYS_S_IFDIR) {
-        return 0;
-    }
-    MsSysFd fd = MS_SYS_FD_INVALID;
-    error = ms_sys_fs_open(path, (mode & 2) != 0 ? MS_SYS_O_READ_WRITE : MS_SYS_O_READ, 0, &fd);
-    if (error == 0) {
-        ms_sys_fs_close_quietly(fd);
-    }
-    return error;
 }
 
 MsSysError ms_sys_fs_set_times(const char *path, MsSysTime accessed, MsSysTime modified, bool follow) {
@@ -1113,104 +908,6 @@ MsSysError ms_sys_fs_set_times(const char *path, MsSysTime accessed, MsSysTime m
     error = ms_sys_fs_set_times_fd((MsSysFd)handle, accessed, modified);
     (void)CloseHandle(handle);
     return error;
-}
-
-/* ---- directories ---- */
-
-struct MsSysDir {
-    HANDLE find;         /* owned; INVALID_HANDLE_VALUE once exhausted */
-    WIN32_FIND_DATAW pending; /* the entry found but not yet returned */
-    bool has_pending;
-};
-
-MsSysError ms_sys_fs_dir_open(const char *path, MsSysDir **dir) {
-    WidePath wide = {0};
-    MsSysError error = open_path(path, &wide);
-    if (error != 0) {
-        return error;
-    }
-    const size_t length = wide.length;
-    WCHAR *pattern = malloc((length + 3) * sizeof *pattern);
-    MsSysDir *created = malloc(sizeof *created);
-    if (pattern == NULL || created == NULL) {
-        free(pattern);
-        free(created);
-        close_path(&wide);
-        return ERROR_NOT_ENOUGH_MEMORY;
-    }
-    memcpy(pattern, wide.text, length * sizeof *pattern);
-    size_t used = length;
-    if (used > 0 && pattern[used - 1] != L'\\' && pattern[used - 1] != L'/') {
-        pattern[used++] = L'\\';
-    }
-    pattern[used++] = L'*';
-    pattern[used] = L'\0';
-    close_path(&wide);
-    created->find = FindFirstFileW(pattern, &created->pending);
-    free(pattern);
-    if (created->find == INVALID_HANDLE_VALUE) {
-        error = last_error();
-        free(created);
-        return error;
-    }
-    created->has_pending = true;
-    *dir = created;
-    return 0;
-}
-
-static uint8_t kind_of_find(const WIN32_FIND_DATAW *data) {
-    if (is_link(data->dwFileAttributes, data->dwReserved0)) {
-        return MS_SYS_DT_LNK;
-    }
-    if ((data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
-        return MS_SYS_DT_DIR;
-    }
-    return MS_SYS_DT_REG;
-}
-
-static bool is_dot_entry(const WCHAR *name) {
-    return wcscmp(name, L".") == 0 || wcscmp(name, L"..") == 0;
-}
-
-/* Moves to the next entry of the search, if any. */
-static MsSysError advance(MsSysDir *dir) {
-    if (FindNextFileW(dir->find, &dir->pending)) {
-        dir->has_pending = true;
-        return 0;
-    }
-    dir->has_pending = false;
-    const DWORD error = GetLastError();
-    return error == ERROR_NO_MORE_FILES ? 0 : (MsSysError)error;
-}
-
-MsSysError ms_sys_fs_dir_read(MsSysDir *dir, MsSysDirEntry *entry, bool *found) {
-    *found = false;
-    while (dir->has_pending && is_dot_entry(dir->pending.cFileName)) {
-        const MsSysError error = advance(dir);
-        if (error != 0) {
-            return error;
-        }
-    }
-    if (!dir->has_pending) {
-        return 0;
-    }
-    const int length = WideCharToMultiByte(CP_UTF8, 0, dir->pending.cFileName, -1, entry->name, MS_SYS_NAME_MAX, NULL,
-                                           NULL);
-    if (length <= 0) {
-        return last_error();
-    }
-    entry->name_length = (size_t)length - 1;
-    entry->kind = kind_of_find(&dir->pending);
-    *found = true;
-    return advance(dir);
-}
-
-void ms_sys_fs_dir_close(MsSysDir *dir) {
-    if (dir == NULL) {
-        return;
-    }
-    (void)FindClose(dir->find);
-    free(dir);
 }
 
 /* ---- the process's view ---- */

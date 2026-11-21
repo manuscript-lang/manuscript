@@ -475,30 +475,6 @@ static void fill_from_stat(const struct stat *source, MsSysStat *out) {
 #endif
 }
 
-MsSysError ms_sys_fs_stat(const char *path, bool follow, MsSysStat *out) {
-#ifdef __linux__
-    struct MsStatx extended;
-    const int flags = follow ? 0 : AT_SYMLINK_NOFOLLOW;
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, ms_statx(AT_FDCWD, path, flags, &extended));
-    if (result == 0) {
-        fill_from_statx(&extended, out);
-        return 0;
-    }
-    if (errno != ENOSYS) {
-        return last_error();
-    }
-#endif
-    struct stat plain;
-    int plain_result = -1;
-    MS_RETRY_INTERRUPTED(plain_result, follow ? stat(path, &plain) : lstat(path, &plain));
-    if (plain_result < 0) {
-        return last_error();
-    }
-    fill_from_stat(&plain, out);
-    return 0;
-}
-
 MsSysError ms_sys_fs_fstat(MsSysFd fd, MsSysStat *out) {
     if (fd < 0) {
         return EBADF;
@@ -522,25 +498,6 @@ MsSysError ms_sys_fs_fstat(MsSysFd fd, MsSysStat *out) {
         return last_error();
     }
     fill_from_stat(&plain, out);
-    return 0;
-}
-
-MsSysError ms_sys_fs_stat_filesystem(const char *path, MsSysFsStat *out) {
-    struct statfs source;
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, statfs(path, &source));
-    if (result < 0) {
-        return last_error();
-    }
-    *out = (MsSysFsStat){
-        .kind = (int64_t)source.f_type,
-        .block_size = (int64_t)source.f_bsize,
-        .blocks = (int64_t)source.f_blocks,
-        .blocks_free = (int64_t)source.f_bfree,
-        .blocks_available = (int64_t)source.f_bavail,
-        .files = (int64_t)source.f_files,
-        .files_free = (int64_t)source.f_ffree,
-    };
     return 0;
 }
 
@@ -601,64 +558,6 @@ MsSysError ms_sys_fs_clone_file(MsSysFd output, MsSysFd input) {
 
 /* ---- changing files by path ---- */
 
-MsSysError ms_sys_fs_mkdir(const char *path, uint32_t mode) {
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, mkdir(path, (mode_t)mode));
-    return status_of(result);
-}
-
-MsSysError ms_sys_fs_unlink(const char *path) { return status_of(unlink(path)); }
-
-MsSysError ms_sys_fs_rmdir(const char *path) { return status_of(rmdir(path)); }
-
-MsSysError ms_sys_fs_rename(const char *from, const char *to) { return status_of(rename(from, to)); }
-
-MsSysError ms_sys_fs_link(const char *from, const char *to) { return status_of(link(from, to)); }
-
-MsSysError ms_sys_fs_symlink(const char *target, const char *path) { return status_of(symlink(target, path)); }
-
-MsSysError ms_sys_fs_readlink(const char *path, char **target, size_t *length) {
-    size_t capacity = 256;
-    for (;;) {
-        char *buffer = malloc(capacity);
-        if (buffer == NULL) {
-            return ENOMEM;
-        }
-        const ssize_t written = readlink(path, buffer, capacity - 1);
-        if (written < 0) {
-            const MsSysError error = last_error();
-            free(buffer);
-            return error;
-        }
-        if ((size_t)written < capacity - 1) {
-            buffer[written] = '\0';
-            *target = buffer;
-            *length = (size_t)written;
-            return 0;
-        }
-        free(buffer);
-        if (!ms_size_mul(capacity, 2, &capacity)) {
-            return ENAMETOOLONG;
-        }
-    }
-}
-
-MsSysError ms_sys_fs_canonicalize(const char *path, char **resolved, size_t *length) {
-    char *absolute = realpath(path, NULL);
-    if (absolute == NULL) {
-        return last_error();
-    }
-    *resolved = absolute;
-    *length = strlen(absolute);
-    return 0;
-}
-
-MsSysError ms_sys_fs_chmod(const char *path, uint32_t mode) {
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, chmod(path, (mode_t)mode));
-    return status_of(result);
-}
-
 MsSysError ms_sys_fs_chmod_link(const char *path, uint32_t mode) {
 #ifdef __APPLE__
     int result = -1;
@@ -669,30 +568,6 @@ MsSysError ms_sys_fs_chmod_link(const char *path, uint32_t mode) {
     (void)mode;
     return ENOTSUP;
 #endif
-}
-
-MsSysError ms_sys_fs_chown(const char *path, int64_t uid, int64_t gid, bool follow) {
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, follow ? chown(path, id_of(uid), (gid_t)id_of(gid))
-                                        : lchown(path, id_of(uid), (gid_t)id_of(gid)));
-    return status_of(result);
-}
-
-MsSysError ms_sys_fs_truncate(const char *path, int64_t size) {
-    MsSysFd fd = MS_SYS_FD_INVALID;
-    MsSysError error = ms_sys_fs_open(path, MS_SYS_O_WRITE, 0, &fd);
-    if (error != 0) {
-        return error;
-    }
-    error = ms_sys_fs_truncate_fd(fd, size);
-    ms_sys_fs_close_quietly(fd);
-    return error;
-}
-
-MsSysError ms_sys_fs_access(const char *path, int32_t mode) {
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, access(path, mode));
-    return status_of(result);
 }
 
 /* Opens a file to set its times: reading is enough, writing is the fallback for a file only writable. */
@@ -719,72 +594,6 @@ MsSysError ms_sys_fs_set_times(const char *path, MsSysTime accessed, MsSysTime m
     error = ms_sys_fs_set_times_fd(fd, accessed, modified);
     ms_sys_fs_close_quietly(fd);
     return error;
-}
-
-/* ---- directories ---- */
-
-struct MsSysDir {
-    DIR *handle; /* owned */
-};
-
-MsSysError ms_sys_fs_dir_open(const char *path, MsSysDir **dir) {
-    MsSysDir *created = malloc(sizeof *created);
-    if (created == NULL) {
-        return ENOMEM;
-    }
-    created->handle = opendir(path);
-    if (created->handle == NULL) {
-        const MsSysError error = last_error();
-        free(created);
-        return error;
-    }
-    *dir = created;
-    return 0;
-}
-
-static uint8_t kind_of_dirent(unsigned char type) {
-    switch (type) {
-    case DT_DIR:
-        return MS_SYS_DT_DIR;
-    case DT_REG:
-        return MS_SYS_DT_REG;
-    case DT_LNK:
-        return MS_SYS_DT_LNK;
-    default:
-        return MS_SYS_DT_UNKNOWN;
-    }
-}
-
-MsSysError ms_sys_fs_dir_read(MsSysDir *dir, MsSysDirEntry *entry, bool *found) {
-    for (;;) {
-        errno = 0;
-        // NOLINTNEXTLINE(concurrency-mt-unsafe): one thread reads a directory handle; readdir is safe per stream.
-        const struct dirent *next = readdir(dir->handle);
-        if (next == NULL) {
-            *found = false;
-            return errno;
-        }
-        const char *name = next->d_name;
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
-            continue;
-        }
-        const size_t length = strnlen(name, sizeof next->d_name < MS_SYS_NAME_MAX ? sizeof next->d_name : MS_SYS_NAME_MAX - 1);
-        memcpy(entry->name, name, length);
-        entry->name[length] = '\0';
-        entry->name_length = length;
-        entry->kind = kind_of_dirent(next->d_type);
-        *found = true;
-        return 0;
-    }
-}
-
-void ms_sys_fs_dir_close(MsSysDir *dir) {
-    if (dir == NULL) {
-        return;
-    }
-    (void)closedir(dir->handle);
-    dir->handle = NULL;
-    free(dir);
 }
 
 /* ---- the process's view ---- */
