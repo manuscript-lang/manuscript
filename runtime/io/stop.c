@@ -66,7 +66,7 @@ static void on_signal(uv_signal_t *handle, int signal_number) {
 
 void ms_io_stop_raise(int signal_number) {
     if (state.running) {
-        state.on_stop(request_of(signal_number));
+        state.on_stop(ms_io_stop_request_of(signal_number));
     }
 }
 
