@@ -830,6 +830,18 @@ static const MsMethod *own_walked_method(const OwnWalk *w, uint32_t row, const M
     return method;
 }
 
+/* Whether the method `row` is a native (`: ...`, no body to walk) whose result is a value of its own.
+ * A native takes over only the parameters its signature marks `move`, and its result points into the
+ * receiver only where the declaration says so (`// ms: borrows`: `xs.get(i)`, `m.keys()`). */
+static bool own_is_owning_native(const OwnWalk *w, uint32_t row) {
+    const MsMethods *methods = w->facts->methods;
+    const MsMethod *method = methods->native[row] == MS_NATIVE_SOURCE ? own_method_of_row(w, row) : NULL;
+    if (method == NULL || method->func.external || method->func.body.len != 0) {
+        return false;
+    }
+    return !ms_doc_has_marker(w->check->mods[methods->module[row]].text, method->pos.offset, "borrows");
+}
+
 /* The arguments of a method call, by what the method does with each parameter: a `var` one changes a
  * variable, a `move` one (or a plain one the method's own walk found it consumes) is handed over, the
  * rest are read. `consumed` has the receiver at bit 0. */
@@ -882,7 +894,9 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     // What the method moves of its parameters, and whether its result is a reference into them, is known
     // once its module's walk has run; a call over plain values needs neither.
     uint32_t consumed = 0;
-    if (!plain) {
+    if (!plain && own_is_owning_native(w, row)) {
+        // Nothing to learn from a walk: the signature says what it takes, and the result is its own.
+    } else if (!plain) {
         const MsFacts *home = NULL;
         const MsMethod *walked = w->facts->methods->native[row] == MS_NATIVE_SOURCE ? own_walked_method(w, row, &home) : NULL;
         if (walked == NULL || home->ret_borrowed[walked->id]) {

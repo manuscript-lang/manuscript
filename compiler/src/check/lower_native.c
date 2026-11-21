@@ -534,7 +534,9 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
         return LB_FAIL;
     }
     lb->twin_ok = lb->iterable == e;
-    const LbVal call = lb_native_call(lb, fn, args, nargs + 1, result_ty);
+    // A native that reports "found" by a Bool and writes the value through an out parameter yields an Optional.
+    const LbVal call = !by_reference && ls_reports_found(lb, fn, result_ty) ? ls_found_call(lb, fn, args, nargs + 1, result_ty)
+                                                                           : lb_native_call(lb, fn, args, nargs + 1, result_ty);
     lb->twin_ok = false;
     if (!lb->ok) {
         return LB_FAIL;
