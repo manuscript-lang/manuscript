@@ -27,6 +27,11 @@ const INDEX: i64 = 8;
 const LEN: i64 = 16;
 const MASK: i64 = 40;
 /// Top bit of a slot's hash word: set for a live entry.
+/// Set by the C lowering's differential oracle (`c_lower_oracle`) so the map probes stay runtime
+/// calls and its MIR compares with the C lowering, which leaves the inlining to a later pass.
+/// A workaround for the missing C probe pass: remove it with that pass (issue filed).
+pub static KEEP_PROBE_CALLS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 const LIVE: i64 = i64::MIN;
 const K0: i64 = 0x9e37_79b9_7f4a_7c15_u64 as i64;
 const K1: i64 = 0xff51_afd7_ed55_8ccd_u64 as i64;
@@ -457,6 +462,9 @@ impl FnLower<'_> {
         if sym == "msrt_bytes_view" && args.len() == 4 {
             let f = self.bytes_view_fn(self.ty_of(args[0]));
             return Some(self.b.call(f, args));
+        }
+        if KEEP_PROBE_CALLS.load(std::sync::atomic::Ordering::Relaxed) {
+            return None;
         }
         let (shape, result) = probe_of(sym)?;
         let f = self.probe_fn(shape, result);

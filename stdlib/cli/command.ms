@@ -35,6 +35,7 @@ fn main() Int:
 import (
 	Align, Table from "@std/cli/table.ms",
 	Data from "@std/core.ms",
+	edit_distance from "@std/data/diff.ms",
 	parse, stringify from "@std/data/json.ms",
 	stderr, stdout from "@std/io/io.ms",
 )
@@ -81,8 +82,12 @@ export type Arg:
 	name: String
 	// One line shown in help.
 	help: String = ""
-	// Absence is an error. A required argument may not follow an optional one.
+	// Absence is an error unless there is a default. A required argument may not follow
+	// an optional one.
 	required: Bool = true
+	// Text used when the argument is absent (the only item of a `rest` argument); an
+	// argument with a default is optional.
+	default: String?
 	// Takes every remaining word as a list; only the last argument may be rest.
 	rest: Bool = false
 	// What the argument accepts: `String` (the default), `Int` or `Float`. An `Int` or
@@ -184,9 +189,7 @@ fn Command.execute(argv: List[String]) Int:
 	parsed := self.parse(argv)
 
 	if parsed.is_error():
-		stderr().write(
-			parsed.err().message + f"\nRun '{self.name} --help' for usage.\n"
-		).get()
+		stderr().write(parsed.err().message + "\n" + self.usage_hint(argv) + "\n").get()
 		return 2
 
 	match parsed.get():
@@ -201,6 +204,50 @@ fn Command.execute(argv: List[String]) Int:
 				return 1
 
 			return result.get()
+
+// The line that points a failed parse of `argv` at the help of the deepest command its
+// words select: `Run 'tool serve --help' for usage.`
+fn Command.usage_hint(argv: List[String]) String:
+	path := hint_path(self, argv, 0, [self.name.clone()], [])
+	return f"Run '{path.join(" ")} --help' for usage."
+
+// The path of the deepest subcommand the words of `argv` from `start` on select at
+// `node`.
+fn hint_path(
+	node: Command,
+	argv: List[String],
+	start: Int,
+	path: List[String],
+	inherited: List[Flag],
+) List[String]:
+	var index = start
+
+	while index < argv.length():
+		token := argv[index].clone()
+		index += 1
+		if token == "--": break
+
+		if token.starts_with("-") and token.length() > 1:
+			long := token.starts_with("--")
+			body := token.view(if long: 2 else: 1, token.length())
+			cut := body.index_of("=")
+			key := body.view(0, cut.get_or(body.length()))
+			if flag := find_flag(inherited.concat(node.flags), key, long):
+				if not is_bool(flag.kind) and cut.is_none(): index += 1
+			continue
+
+		if next := node.child(token):
+			return hint_path(
+				next,
+				argv,
+				index,
+				path.concat([token.clone()]),
+				inherited.concat(persistent_flags(node.flags)),
+			)
+
+		break
+
+	return path.clone()
 
 // Runs the handler of the command `matches.path` names, as `parse` resolved it, and
 // returns its exit status. The path starts at this node's name; an unknown path is
@@ -226,7 +273,7 @@ fn Command.child(word: String) Command?:
 
 // The outcome of parsing: help text to show, or a node ready to run.
 export enum Parsed:
-	// `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
+	// `-h`, `--help`, a leading `help` word, or a group invoked with no subcommand and no flag.
 	Help(
 		// The rendered help ending in a newline, ready to write to stdout.
 		text: String
@@ -265,7 +312,7 @@ fn help_at(
 			inherited.concat(persistent_flags(node.flags)),
 		)
 
-	return error(cli_unknown_command(words[from].clone(), names.join(" ")))
+	return error(unknown_in(node, words[from], names))
 
 /*
 Builds a leaf command whose handler receives the options record `T`.
@@ -455,7 +502,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 					f"rest argument {arg.name} must be last in {where}"
 				)
 			)
-		if arg.required and optional_seen:
+		if arg.required and arg.default.is_none() and optional_seen:
 			return error(
 				cli_invalid_schema(
 					f"required argument {arg.name} follows an optional one in {where}"
@@ -468,7 +515,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 				)
 			)
 
-		if not arg.required: optional_seen = true
+		if not arg.required or arg.default.is_some(): optional_seen = true
 		index += 1
 
 	var words: List[String] = []
@@ -618,7 +665,8 @@ fn walk_from(
 
 		words.append(token)
 
-	if not node.children.is_empty() and words.is_empty():
+	// A group shows its help unless a flag was given: `tool --version` runs the group.
+	if not node.children.is_empty() and words.is_empty() and values.is_empty():
 		return ok(Parsed.Help(render_help(node, path, inherited)))
 
 	bind(node, words, values, path)?
@@ -639,17 +687,23 @@ fn bind(
 
 	for arg in node.args:
 		if arg.rest:
-			remaining := words.drop(next)
-			if arg.required and remaining.is_empty(): return error(
-				cli_missing_required(arg.name.clone())
-			)
+			var remaining = words.drop(next)
+
+			if remaining.is_empty():
+				if fallback := arg.default: remaining = [fallback.clone()]
+				else if arg.required: return error(
+					cli_missing_required(arg.name.clone())
+				)
 
 			values[arg.name.clone()] = remaining
 			next = words.length()
 			continue
 
 		if next >= words.length():
-			if arg.required: return error(cli_missing_required(arg.name.clone()))
+			if fallback := arg.default:
+				values[arg.name.clone()] = [fallback.clone()]
+			else if arg.required:
+				return error(cli_missing_required(arg.name.clone()))
 
 			continue
 
@@ -668,7 +722,7 @@ fn bind(
 
 	if next < words.length():
 		if node.args.is_empty() and not node.children.is_empty():
-			return error(cli_unknown_command(words[next].clone(), path.join(" ")))
+			return error(unknown_in(node, words[next], path))
 		return error(cli_too_many_arguments(words[next].clone()))
 
 	return ok()
@@ -703,7 +757,10 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 
 	for arg in node.args:
 		label := arg.name + (if arg.rest: "..." else: "")
-		usage += if arg.required: f" <{label}>" else: f" [{label}]"
+		usage += (
+			if arg.required
+			and arg.default.is_none(): f" <{label}>" else: f" [{label}]"
+		)
 
 	if node.passthrough: usage += " [-- arguments...]"
 	out += f"Usage:\n{usage}\n"
@@ -760,6 +817,28 @@ fn cli_unknown_flag(name: String) Error:
 
 fn cli_unknown_command(name: String, path: String) Error:
 	return Error(f"cli: unknown command {name} for {path}", kind: "EINVAL")
+
+// The subcommand of `node` closest to the unknown word, when it is within two edits.
+fn nearest(node: Command, word: String) String?:
+	var best: String? = none
+	var best_distance = 3
+
+	for candidate in node.children:
+		distance := edit_distance(word, candidate.name)
+
+		if distance < best_distance:
+			best = candidate.name.clone()
+			best_distance = distance
+
+	return best
+
+// An unknown subcommand error that names the nearest real one.
+fn unknown_in(node: Command, word: String, path: List[String]) Error:
+	failure := cli_unknown_command(word.clone(), path.join(" "))
+	if guess := nearest(node, word):
+		return Error(f"{failure.message}; did you mean {guess}?", kind: "EINVAL")
+
+	return failure
 
 fn cli_missing_value(name: String) Error:
 	return Error(f"cli: flag {name} needs a value", kind: "EINVAL")

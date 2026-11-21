@@ -143,6 +143,13 @@ test "optional and rest arguments":
 	full.string_or_none("url") | expect_equal("u")?
 
 test "usage errors name the problem":
+	(
+		(failure(["serv"])?)
+		| expect_equal(
+			"cli: unknown command serv for tool; did you mean serve?"
+		)?
+	)
+	(failure(["zzzzz"])?) | expect_equal("cli: unknown command zzzzz for tool")?
 	(failure(["serve"])?) | expect_equal("cli: missing required root")?
 	(failure(["serve", "a", "b"])?) | expect_equal("cli: unexpected argument b")?
 	(
@@ -318,3 +325,37 @@ test "a passthrough command keeps the words after dashes out of its arguments":
 			matches.passthrough | expect_equal(["x", "--y"])?
 			(tool.help() | expect_some?) | expect_contains("[-- arguments...]")?
 		Help(_): return fail("help")
+
+fn matches_of(tool: Command, argv: List[String]) Matches!:
+	parsed := tool.parse(argv)
+	if parsed.is_error(): return error(parsed.err().clone())
+
+	match parsed.get():
+		Run(matches): return ok(matches.clone())
+		Help(text): return ok(Matches(path: [text.clone()]))
+
+test "an argument with a default is optional and takes the default when absent":
+	tool := Command(
+		name: "tool",
+		args: [
+			Arg("file", default: "ms.toml"),
+			Arg("more", rest: true, default: "all"),
+		],
+	)
+	absent := (matches_of(tool, []) | expect_ok?)
+	absent.string("file") | expect_equal("ms.toml")?
+	absent.list("more") | expect_equal(["all"])?
+
+	given := (matches_of(tool, ["a.ms", "b.ms"]) | expect_ok?)
+	given.string("file") | expect_equal("a.ms")?
+	given.list("more") | expect_equal(["b.ms"])?
+
+test "a group runs, not helps, when a flag is given without a subcommand":
+	group := Command(
+		name: "tool",
+		flags: [Flag("version", FlagKind.Bool)],
+		children: [Command(name: "serve")],
+	)
+	flagged := (matches_of(group, ["--version"]) | expect_ok?)
+	flagged.path | expect_equal(["tool"])?
+	flagged.bool("version") | expect_equal(true)?
