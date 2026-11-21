@@ -1,5 +1,5 @@
 #!/bin/sh
-# Compares `ms check FILE [--json]` through the C driver (check=c) with the Rust `ms` over the conformance fixtures:
+# Compares `ms check FILE [--json [--with-text [--each]]]` through the C driver (check=c) with the Rust `ms` over the conformance fixtures:
 # output and exit status must be identical. The census says how many files the C command served itself and how many
 # it handed to Rust (a handover is correct by construction: the Rust command then runs). Usage, from the repository
 # root: sh src/compiler/tests/check-cmd-diff.sh [LIMIT]
@@ -10,9 +10,11 @@ set -eu
 if [ "${1:-}" = --one ]; then
     f=$2
     id=$(printf '%s' "$f" | cksum | cut -d' ' -f1)
-    for mode in text json; do
+    for mode in text json with-text each; do
         flag=
         [ "$mode" = json ] && flag=--json
+        [ "$mode" = with-text ] && flag="--json --with-text"
+        [ "$mode" = each ] && flag="--json --with-text --each"
         base="$MS_OUT/$id.$mode"
         { "$MS_RUST_CLI" check "$f" $flag 2>&1; echo "exit $?"; } > "$base.rust" || true
         { MS_STAGES=check=c MS_DRIVER_TRACE=1 "$MS_C_MS" check "$f" $flag 2>&1; echo "exit $?"; } > "$base.ctrace" || true

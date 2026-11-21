@@ -48,7 +48,14 @@ static const struct {
     {"search_symbol", B(MS_STAGE_CHECK) | B(MS_STAGE_TOOL)},
 };
 
-/* `ms check FILE.ms [--json]`: the one target and optional --json; anything else is a handover. */
+static bool check_is_source_file(const char *target) {
+    const size_t n = strlen(target);
+    struct stat st;
+    return n >= 4 && strcmp(target + n - 3, ".ms") == 0 && stat(target, &st) == 0 && S_ISREG(st.st_mode);
+}
+
+/* `ms check FILE.ms... [--json [--with-text [--each]]]`: one target, or several with --each; anything else is a
+ * handover. */
 int ms_cmd_check(int argc, char **argv, const char **reason) {
 #ifdef _WIN32
     /* The project loader is POSIX only for now (libms.c): the Rust command checks. */
@@ -57,28 +64,42 @@ int ms_cmd_check(int argc, char **argv, const char **reason) {
     *reason = "the project loader is POSIX only";
     return MS_CMD_HANDOVER;
 #else
-    const char *target = NULL;
-    bool json = false;
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--json") == 0 && !json) {
-            json = true;
-        } else if (argv[i][0] != '-' && target == NULL) {
-            target = argv[i];
+    const char **targets = calloc((size_t)argc + 1, sizeof *targets);
+    size_t count = 0;
+    MsCheckFormat format = {0};
+    bool each = false, known = targets != NULL;
+    for (int i = 1; known && i < argc; i++) {
+        if (strcmp(argv[i], "--json") == 0) {
+            format.json = true;
+        } else if (strcmp(argv[i], "--with-text") == 0) {
+            format.with_text = true;
+        } else if (strcmp(argv[i], "--each") == 0) {
+            each = true;
+        } else if (argv[i][0] != '-') {
+            targets[count++] = argv[i];
         } else {
-            *reason = "arguments the C command does not take";
-            return MS_CMD_HANDOVER;
+            known = false;
         }
     }
-    const size_t n = target == NULL ? 0 : strlen(target);
-    struct stat st;
-    if (n < 4 || strcmp(target + n - 3, ".ms") != 0 || stat(target, &st) != 0 || !S_ISREG(st.st_mode)) {
-        *reason = "a target that is not a .ms file";
+    // The Rust command words the misuse of a flag: --with-text needs --json, and --each needs both.
+    if (!known || count == 0 || (count != 1 && !each) || (format.with_text && !format.json) || (each && !format.with_text)) {
+        free(targets);
+        *reason = "arguments the C command does not take";
         return MS_CMD_HANDOVER;
+    }
+    for (size_t i = 0; i < count; i++) {
+        if (!check_is_source_file(targets[i])) {
+            free(targets);
+            *reason = "a target that is not a .ms file";
+            return MS_CMD_HANDOVER;
+        }
     }
     uint32_t nstd = 0;
     const MsStdFile *std_files = ms_std_embedded(&nstd);
     MsBuf out = {0}, err = {0};
-    const int status = ms_check_run(std_files, nstd, target, (MsCheckFormat){.json = json}, &out, &err, reason);
+    const int status = each ? ms_check_run_each(std_files, nstd, targets, count, &out, reason)
+                            : ms_check_run(std_files, nstd, targets[0], format, &out, &err, reason);
+    free(targets);
     if (status != MS_CHECK_HANDOVER) {
         if (out.len != 0) {
             fwrite(out.data, 1, out.len, stdout);
