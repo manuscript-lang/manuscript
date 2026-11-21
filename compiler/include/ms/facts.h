@@ -53,7 +53,8 @@ typedef enum MsConflict { MS_CONFLICT_NONE, MS_CONFLICT_TYPE, MS_CONFLICT_CASE_A
 /* MS_BIND_FED: a read of the binding only computes its own next value (`total = total + 1`). */
 /* MS_BIND_BORROWS: set by the ownership walk when the binding is a reference into another binding (`y := x`,
  * `y := f(x)` where `f` returns a borrow): it owns nothing, so a lowering neither copies nor drops it. */
-enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2, MS_BIND_FED = 4, MS_BIND_RESOURCE = 8, MS_BIND_BORROWS = 16 };
+/* MS_BIND_FIELD_STORED: a field of the binding is assigned (`self.closed = true`), so a lowering keeps it in a variable. */
+enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2, MS_BIND_FED = 4, MS_BIND_RESOURCE = 8, MS_BIND_BORROWS = 16, MS_BIND_FIELD_STORED = 32 };
 typedef enum MsBindRole {
     MS_ROLE_PARAM, MS_ROLE_SELF, MS_ROLE_LET, MS_ROLE_VAR, MS_ROLE_PATTERN, MS_ROLE_LOOP,
     MS_ROLE_ARM, MS_ROLE_LAMBDA_PARAM
@@ -125,6 +126,7 @@ typedef struct MsFacts {
     bool *body_checked;   /* by declaration node id: the function's body was checked */
     MsSite *refusal;      /* by declaration node id: where the body checker gave up on the body, or NULL file when it did not */
     uint32_t *param_consumed; /* by declaration node id: bit i is set when the function moves its plain parameter i, so callers hand it over (ownership pass) */
+    const MsPos **param_consumed_at; /* by declaration node id: where the function moves each parameter (by position), NULL when it moves none; a caller's diagnostic names it */
     bool ownership_done; /* the ownership pass walked this module */
     bool *ret_borrowed;   /* by declaration node id: every result is a reference into the arguments (ownership pass) */
     MsBindings bindings;

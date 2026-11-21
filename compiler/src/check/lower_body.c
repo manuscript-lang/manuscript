@@ -1440,6 +1440,17 @@ bool lb_is_pointer_param(Lb *lb, uint32_t binding) {
     return false;
 }
 
+void lb_param_into_var(Lb *lb, uint32_t binding) {
+    const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
+    const bool owned = lb_owns(lb, ty);
+    lb->var_of[binding] = mir_b_declare_var(&lb->b, ty, owned ? MM_MOVE : MM_BORROW);
+    mir_b_def_var(&lb->b, lb->var_of[binding], lb->value_of[binding]);
+    if (owned) {
+        const LbVarOwner owner = {binding, lb->scopes.depth - 1};
+        MIR_PUSH(lb->m, lb->vars, lb->nvars, lb->cvars, LbVarOwner, owner);
+    }
+}
+
 bool lb_var_owned(const Lb *lb, uint32_t binding) {
     for (uint32_t i = 0; i < lb->nvars; i++) {
         if (lb->vars[i].binding == binding) {
