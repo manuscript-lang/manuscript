@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <uv.h>
 
 #ifdef __linux__
 #include <sys/ioctl.h>
@@ -212,13 +214,27 @@ static int host_open_flags(int32_t flags) {
 
 /* ---- opening and descriptors ---- */
 
+/* The result of a finished synchronous libuv request: the count it transferred, or the negative errno. The request is
+ * cleaned up. libuv retries an interrupted call itself, as MS_RETRY_INTERRUPTED does for the calls it does not own. */
+static ssize_t uv_result(uv_fs_t *req) {
+    const ssize_t result = (ssize_t)req->result;
+    uv_fs_req_cleanup(req);
+    return result;
+}
+
+static MsSysError uv_status(uv_fs_t *req) {
+    const ssize_t result = uv_result(req);
+    return result < 0 ? (MsSysError)-result : 0;
+}
+
 MsSysError ms_sys_fs_open(const char *path, int32_t flags, uint32_t mode, MsSysFd *fd) {
-    int opened = -1;
-    MS_RETRY_INTERRUPTED(opened, open(path, host_open_flags(flags), (mode_t)mode));
+    uv_fs_t req;
+    const ssize_t opened = uv_fs_open(NULL, &req, path, host_open_flags(flags), (int)mode, NULL);
+    uv_fs_req_cleanup(&req);
     if (opened < 0) {
-        return last_error();
+        return (MsSysError)-opened;
     }
-    *fd = opened;
+    *fd = (MsSysFd)opened;
     return 0;
 }
 
@@ -227,7 +243,9 @@ MsSysError ms_sys_fs_close(MsSysFd fd) {
         return EBADF;
     }
     /* Never retried: even an interrupted close can have released the descriptor. */
-    return status_of(close((int)fd));
+    uv_fs_t req;
+    (void)uv_fs_close(NULL, &req, (uv_file)fd, NULL);
+    return uv_status(&req);
 }
 
 MsSysError ms_sys_fs_dup(MsSysFd fd, MsSysFd *out) {
@@ -249,56 +267,39 @@ void ms_sys_fs_set_blocking(MsSysFd fd) {
     }
 }
 
-MsSysError ms_sys_fs_read(MsSysFd fd, uint8_t *buffer, size_t capacity, size_t *count) {
+/* Reads or writes at the current position (`offset` -1) or at `offset`, without moving the position. */
+static MsSysError transfer(bool writing, MsSysFd fd, uint8_t *buffer, size_t length, int64_t offset, size_t *count) {
     if (fd < 0) {
         return EBADF;
     }
-    ssize_t transferred = -1;
-    MS_RETRY_INTERRUPTED(transferred, read((int)fd, buffer, capacity));
+    uv_fs_t req;
+    uv_buf_t buf = uv_buf_init((char *)buffer, (unsigned int)length);
+    if (length > (size_t)UINT_MAX) {
+        buf.len = UINT_MAX; /* a short transfer, as the callers of read and write already handle */
+    }
+    (void)(writing ? uv_fs_write(NULL, &req, (uv_file)fd, &buf, 1, offset, NULL) : uv_fs_read(NULL, &req, (uv_file)fd, &buf, 1, offset, NULL));
+    const ssize_t transferred = uv_result(&req);
     if (transferred < 0) {
-        return last_error();
+        return (MsSysError)-transferred;
     }
     *count = (size_t)transferred;
     return 0;
+}
+
+MsSysError ms_sys_fs_read(MsSysFd fd, uint8_t *buffer, size_t capacity, size_t *count) {
+    return transfer(false, fd, buffer, capacity, -1, count);
 }
 
 MsSysError ms_sys_fs_write(MsSysFd fd, const uint8_t *data, size_t length, size_t *count) {
-    if (fd < 0) {
-        return EBADF;
-    }
-    ssize_t transferred = -1;
-    MS_RETRY_INTERRUPTED(transferred, write((int)fd, data, length));
-    if (transferred < 0) {
-        return last_error();
-    }
-    *count = (size_t)transferred;
-    return 0;
+    return transfer(true, fd, (uint8_t *)(uintptr_t)data, length, -1, count);
 }
 
 MsSysError ms_sys_fs_pread(MsSysFd fd, uint8_t *buffer, size_t capacity, int64_t offset, size_t *count) {
-    if (fd < 0) {
-        return EBADF;
-    }
-    ssize_t transferred = -1;
-    MS_RETRY_INTERRUPTED(transferred, pread((int)fd, buffer, capacity, (off_t)offset));
-    if (transferred < 0) {
-        return last_error();
-    }
-    *count = (size_t)transferred;
-    return 0;
+    return transfer(false, fd, buffer, capacity, offset, count);
 }
 
 MsSysError ms_sys_fs_pwrite(MsSysFd fd, const uint8_t *data, size_t length, int64_t offset, size_t *count) {
-    if (fd < 0) {
-        return EBADF;
-    }
-    ssize_t transferred = -1;
-    MS_RETRY_INTERRUPTED(transferred, pwrite((int)fd, data, length, (off_t)offset));
-    if (transferred < 0) {
-        return last_error();
-    }
-    *count = (size_t)transferred;
-    return 0;
+    return transfer(true, fd, (uint8_t *)(uintptr_t)data, length, offset, count);
 }
 
 MsSysError ms_sys_fs_seek(MsSysFd fd, int64_t offset, int32_t origin, int64_t *position) {
@@ -325,24 +326,19 @@ MsSysError ms_sys_fs_truncate_fd(MsSysFd fd, int64_t size) {
     if (fd < 0) {
         return EBADF;
     }
-    int result = -1;
-    MS_RETRY_INTERRUPTED(result, ftruncate((int)fd, (off_t)size));
-    return status_of(result);
+    uv_fs_t req;
+    (void)uv_fs_ftruncate(NULL, &req, (uv_file)fd, size, NULL);
+    return uv_status(&req);
 }
 
-/* Flushes to stable storage; macOS needs F_FULLFSYNC for the data to reach the disk. */
+/* Flushes to stable storage; libuv uses F_FULLFSYNC on macOS, where the data would not reach the disk otherwise. */
 static MsSysError flush_to_disk(MsSysFd fd, bool data_only) {
     if (fd < 0) {
         return EBADF;
     }
-    int result = -1;
-#ifdef __APPLE__
-    (void)data_only;
-    MS_RETRY_INTERRUPTED(result, fcntl((int)fd, F_FULLFSYNC));
-#else
-    MS_RETRY_INTERRUPTED(result, data_only ? fdatasync((int)fd) : fsync((int)fd));
-#endif
-    return status_of(result);
+    uv_fs_t req;
+    (void)(data_only ? uv_fs_fdatasync(NULL, &req, (uv_file)fd, NULL) : uv_fs_fsync(NULL, &req, (uv_file)fd, NULL));
+    return uv_status(&req);
 }
 
 MsSysError ms_sys_fs_sync(MsSysFd fd) { return flush_to_disk(fd, false); }
