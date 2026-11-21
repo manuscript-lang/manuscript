@@ -15,8 +15,10 @@
 
 #ifdef __APPLE__
 typedef int MsGroupId; /* getgrouplist takes int on macOS */
+typedef int MsGroupCount; /* setgroups takes int on macOS */
 #else
 typedef gid_t MsGroupId;
+typedef size_t MsGroupCount;
 #endif
 
 enum { FIRST_GROUPS = 32, TITLE_LIMIT = 4096, PASSWD_BUFFER = 1024 };
@@ -70,7 +72,7 @@ int ms_sys_process_set_groups(const int64_t *list, size_t count) {
   for (size_t i = 0; i < count; i++) {
     groups[i] = (gid_t)list[i];
   }
-  const int status = setgroups(count, groups);
+  const int status = setgroups((MsGroupCount)count, groups);
   const int error = status == 0 ? 0 : last_error();
   ms_free(groups);
   return error;
