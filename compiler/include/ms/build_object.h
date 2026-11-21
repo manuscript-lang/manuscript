@@ -18,6 +18,9 @@ typedef struct MsObjectOptions {
 
 /* Compiles the module `mir` describes (`shown` as for ms_backend_ir) to an object file. On success `object` holds
  * its bytes, freed with ms_backend_free; on failure `why` is the reason, freed with ms_backend_free too. */
+/* Whether the C build links for the host it runs on: where it does not, `ms build` goes to the Rust command. */
+bool ms_build_host_ported(void);
+
 MS_NODISCARD MS_NONNULL bool ms_build_object(const char *mir, size_t mir_len, const char *shown, size_t shown_len,
                                              const MsObjectOptions *options, MsBackendText *object, MsBackendText *why);
 

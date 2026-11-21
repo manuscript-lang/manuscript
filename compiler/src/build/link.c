@@ -4,16 +4,12 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "build/link_internal.h"
 #include "ms/base.h"
 #include "ms/build_tool.h"
 
-bool ms_link_exists(const char *path) {
-    struct stat st;
-    return stat(path, &st) == 0 && S_ISREG(st.st_mode);
-}
+bool ms_link_exists(const char *path) { return ms_build_is_file(path); }
 
 void ms_link_push(BlJob *job, const char *arg) { MS_VEC_PUSH(job->argv, const char *, arg); }
 
@@ -59,18 +55,14 @@ bool ms_build_link(const char *object, const char *const *inputs, size_t ninputs
     bool ok = ms_link_prepare(&job, &reason);
     if (ok) {
         ms_link_push(&job, NULL);
-        const size_t log_size = strlen(out) + sizeof ".link.log";
-        char *log = ms_alloc(&job.arena, log_size, 1);
-        (void)snprintf(log, log_size, "%s.link.log", out);
         MsBuf detail = {0};
-        ok = ms_build_run("the bundled linker", (const char *const *)ms_buf_items(&job.argv), log, &detail);
+        ok = ms_build_run("the bundled linker", (const char *const *)ms_buf_items(&job.argv), &detail);
         if (!ok) {
             ms_buf_puts(&reason, "linking failed; the linker output follows. ");
             ms_link_advice(&detail, options->musl, &reason);
             ms_buf_printf(&reason, ":\n%.*s", (int)detail.len, detail.data == NULL ? "" : detail.data);
         }
         ms_buf_free(&detail);
-        ms_build_unlink(log);
         ok = ms_link_finish(&job, ok, &reason) && ok;
     } else {
         (void)ms_link_finish(&job, false, &reason);

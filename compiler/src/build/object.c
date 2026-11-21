@@ -3,20 +3,12 @@
  * is removed on the way out. */
 #include "ms/build_object.h"
 
-#include <errno.h>
-#include <fcntl.h>
-#include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 #include "ms/base.h"
 #include "ms/build_tool.h"
-
-extern char **environ;
 
 /* The target the host builds for, as the LLVM triple; NULL where the build is not ported. */
 static const char *bo_triple(void) {
@@ -33,6 +25,8 @@ static const char *bo_triple(void) {
 #endif
 }
 
+bool ms_build_host_ported(void) { return bo_triple() != NULL; }
+
 /* The path `name` in the directory `dir`. */
 static void bo_path(MsBuf *out, const char *dir, const char *name) {
     out->len = 0;
@@ -41,9 +35,9 @@ static void bo_path(MsBuf *out, const char *dir, const char *name) {
 }
 
 /* Runs `argv`; the reason of a failure goes to `why`. */
-static bool bo_run(const char *what, const char *const *argv, const char *log, MsBackendText *why) {
+static bool bo_run(const char *what, const char *const *argv, MsBackendText *why) {
     MsBuf reason = {0};
-    if (ms_build_run(what, argv, log, &reason)) {
+    if (ms_build_run(what, argv, &reason)) {
         ms_buf_free(&reason);
         return true;
     }
@@ -106,7 +100,7 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
         *why = ms_backend_take(&message);
         return false;
     }
-    MsBuf triple = {0}, opt = {0}, llc = {0}, ll = {0}, bc = {0}, plain = {0}, wrapped = {0}, obj = {0}, log = {0};
+    MsBuf triple = {0}, opt = {0}, llc = {0}, ll = {0}, bc = {0}, plain = {0}, wrapped = {0}, obj = {0};
     ms_buf_printf(&triple, "-mtriple=%s", triple_name);
     ms_buf_putc(&triple, 0);
     ms_buf_printf(&opt, "%s/opt", o->tools);
@@ -118,7 +112,6 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
     bo_path(&plain, dir, "program.plain.s");
     bo_path(&wrapped, dir, "program.asm.ll");
     bo_path(&obj, dir, "program.o");
-    bo_path(&log, dir, "tool.log");
     bool ok = ms_build_write(ll.data, ir->ptr, ir->len);
     if (!ok) {
         MsBuf message = {0};
@@ -146,7 +139,7 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
         argv[n++] = "-o";
         argv[n++] = bc.data;
         argv[n] = NULL;
-        ok = bo_run("opt (LLVM optimizer)", argv, log.data, why);
+        ok = bo_run("opt (LLVM optimizer)", argv, why);
         input = bc.data;
     }
     if (ok) {
@@ -165,7 +158,7 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
         argv[n++] = "-o";
         argv[n++] = plain.data;
         argv[n] = NULL;
-        ok = bo_run("llc (LLVM code generator)", argv, log.data, why);
+        ok = bo_run("llc (LLVM code generator)", argv, why);
     }
     MsBuf assembly = {0}, wrapped_text = {0};
     MsBackendText with_tables = {0};
@@ -196,7 +189,7 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
     if (ok) {
         const char *argv[10] = {llc.data, "-filetype=obj", "-relocation-model=pic", triple.data, wrapped.data,
                           "-o", obj.data, NULL};
-        ok = bo_run("llc (assembler)", argv, log.data, why);
+        ok = bo_run("llc (assembler)", argv, why);
     }
     if (ok) {
         MsBuf bytes = {0};
@@ -210,7 +203,7 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
         }
         ms_buf_free(&bytes);
     }
-    const char *const made[] = {ll.data, bc.data, plain.data, wrapped.data, obj.data, log.data};
+    const char *const made[] = {ll.data, bc.data, plain.data, wrapped.data, obj.data};
     for (size_t i = 0; i < sizeof made / sizeof made[0]; i++) {
         ms_build_unlink(made[i]);
     }
@@ -225,7 +218,6 @@ static bool bo_compile(const char *dir, const MsObjectOptions *o, const MsBacken
     ms_buf_free(&plain);
     ms_buf_free(&wrapped);
     ms_buf_free(&obj);
-    ms_buf_free(&log);
     return ok;
 }
 
@@ -238,19 +230,17 @@ bool ms_build_object(const char *mir, size_t mir_len, const char *shown, size_t 
     if (!ms_backend_ir(mir, mir_len, "program.mir", shown, shown_len, &backend, &ir, &meta, why)) {
         return false;
     }
-    const char *temp = getenv("TMPDIR"); // NOLINT(concurrency-mt-unsafe): read before any thread starts.
     MsBuf pattern = {0};
-    ms_buf_printf(&pattern, "%s/ms-cbackend-XXXXXX", temp != NULL && *temp != '\0' ? temp : "/tmp");
-    ms_buf_putc(&pattern, 0);
+    const int made = ms_build_make_scratch("ms-cbackend", &pattern);
     bool ok = false;
-    if (!ms_build_make_dir(pattern.data)) {
+    if (made != 0) {
         MsBuf message = {0};
         ms_buf_puts(&message, "cannot create a build directory: ");
-        ms_build_errno_text(errno, &message);
+        ms_build_errno_text(made, &message);
         *why = ms_backend_take(&message);
     } else {
         ok = bo_compile(pattern.data, options, &ir, &meta, object, why);
-        ms_build_unlink(pattern.data);
+        ms_build_remove_tree(pattern.data);
     }
     ms_buf_free(&pattern);
     ms_backend_free(&ir);

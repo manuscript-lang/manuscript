@@ -5,10 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "build/link_internal.h"
 #include "ms/base.h"
+#include "ms_rt/sys_fs.h"
 #include "ms/build_macho.h"
 #include "ms/build_tool.h"
 #include "ms/hints.h"
@@ -157,18 +157,21 @@ static const char *bm_absolute(BlJob *job, const char *path) {
     if (path[0] == '/') {
         return path;
     }
-    char cwd[BL_PATH];
-    if (getcwd(cwd, sizeof cwd) == NULL) {
+    char *cwd = NULL;
+    size_t length = 0;
+    if (ms_sys_fs_current_directory(&cwd, &length) != 0) {
         return path;
     }
-    return ms_arena_fmt(&job->arena, "%s/%s", cwd, path).ptr;
+    const char *absolute = ms_arena_fmt(&job->arena, "%s/%s", cwd, path).ptr;
+    free(cwd);
+    return absolute;
 }
 
 bool ms_link_prepare(BlJob *job, MsBuf *why) {
     const MsLinkOptions *o = job->options;
     char pattern[BL_PATH];
     (void)snprintf(pattern, sizeof pattern, "%s/.sdk-XXXXXX", o->files);
-    if (!ms_build_make_dir(pattern)) {
+    if (ms_build_make_dir(pattern) != 0) {
         ms_buf_printf(why, "cannot stage the SDK stubs in %s", o->files);
         return false;
     }
@@ -240,9 +243,7 @@ static bool bm_companion(BlJob *job, MsBuf *why) {
     const char *out = bm_absolute(job, job->out);
     const char *companion = ms_arena_fmt(&job->arena, "%s.dSYM", out).ptr;
     const char *argv[] = {"dsymutil", out, "-o", companion, NULL};
-    const char *log = ms_arena_fmt(&job->arena, "%s.dsym.log", out).ptr;
-    const bool ok = ms_build_run_in("dsymutil", argv, dir, log, why);
-    ms_build_unlink(log);
+    const bool ok = ms_build_run_in("dsymutil", argv, dir, why);
     return ok;
 }
 

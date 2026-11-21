@@ -6,13 +6,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "ms/build_link.h"
 #include "ms/build_object.h"
 #include "ms/build_run.h"
 #include "ms/check_run_state.h"
 #include "ms/build_tool.h"
+#include "ms_rt/sys_fs.h"
 #include "ms/lower.h"
 #include "ms/mir_pass.h"
 #include "ms/program.h"
@@ -62,7 +62,7 @@ static bool build_write_metadata(const MsBuildRequest *request) {
     MsBuf text = {0};
     ms_buf_printf(&text, "{\n  \"format\": 1,\n  \"version\": \"%s\",\n  \"backend\": \"llvm\",\n  \"build_type\": \"%s\"\n}\n",
                   request->version, request->release ? "Release" : "Debug");
-    const bool ok = ms_build_write(staged, text.data, text.len) && rename(staged, path) == 0;
+    const bool ok = ms_build_write(staged, text.data, text.len) && ms_sys_fs_rename(staged, path) == 0;
     ms_buf_free(&text);
     return ok;
 }
@@ -88,15 +88,15 @@ static int build_link(const MsBuildRequest *request, const MsBackendText *object
         ms_buf_printf(err, "%.*s", (int)why.len, why.ptr != NULL ? why.ptr : "link failed");
         ms_backend_free(&why);
         status = 1;
-    } else if (rename(staged, request->output) != 0) {
+    } else if (ms_sys_fs_rename(staged, request->output) != 0) {
         ms_buf_printf(err, "cannot write %s", request->output);
         status = 1;
     } else if (!build_write_metadata(request)) {
         ms_buf_printf(err, "cannot write build metadata %s.ms-build.json", request->output);
         status = 1;
     }
-    (void)unlink(object_path);
-    (void)unlink(staged);
+    ms_build_unlink(object_path);
+    ms_build_unlink(staged);
     return status;
 }
 
@@ -119,7 +119,8 @@ int ms_build_program(const MsStdFile *std_files, uint32_t nstd, const MsBuildReq
     MsCheckRun run = {0};
     ms_names_init(&run.names);
     int status = MS_BUILD_HANDOVER;
-    const char *why = ms_check_load(&run, std_files, nstd, request->target);
+    const char *why = ms_build_host_ported() ? NULL : "a host the C build does not link for yet, which the Rust command does";
+    why = why != NULL ? why : ms_check_load(&run, std_files, nstd, request->target);
     why = why != NULL ? why : ms_check_diagnose(&run);
     if (why == NULL && (run.load_failed || run.nreports != 0)) {
         why = "a diagnostic, which the Rust command renders";
