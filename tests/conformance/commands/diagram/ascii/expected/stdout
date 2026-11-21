@@ -1,0 +1,19 @@
+CALL GRAPH
+src/main.ms::main [fn]
+  -> @std/core.ms::print (function)
+  -> src/shapes.ms::parse_total (function)
+src/main.ms::main total [test]
+  -> @std/test/test.ms::expect_equal (function)
+  -> src/shapes.ms::parse_total (function)
+src/shapes.ms::Failure [alternative]
+src/shapes.ms::area [fn]
+src/shapes.ms::parse_total [fn]
+  -> Result[Int, Failure].get_or (operation)
+  -> Shape (construct)
+  -> src/shapes.ms::area (function)
+  -> src/shapes.ms::read_number (function)
+src/shapes.ms::read_number [fn]
+  -> Failure (construct)
+  -> Result[Int, Failure] (construct) x2
+  -> String.parse_int (operation)
+src/shapes.ms::Shape [type]

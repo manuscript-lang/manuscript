@@ -1,0 +1,9 @@
+CALLS VIEW
+`- parse_total  [fn] src/shapes.ms:15
+   |- area  [fn] src/shapes.ms:8
+   |- read_number  [fn] src/shapes.ms:11
+   |  |- Failure
+   |  |- Result[Int, Failure]
+   |  `- String.parse_int
+   |- Result[Int, Failure].get_or
+   `- Shape
