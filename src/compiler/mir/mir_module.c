@@ -5,6 +5,8 @@
  * wins. Lists that grow are base lists, freed by mir_module_free; everything else is in the module arena. */
 #include "compiler/mir/mir.h"
 
+#include "base/fatal.h"
+
 static const MirTyKind builtin_kinds[MIR_BUILTIN_TYPES] = {
     MK_VOID,  MK_BOOL,   MK_INT,    MK_FLOAT,  MK_STR,    MK_BYTES,  MK_PTR,   MK_INT8,
     MK_INT16, MK_INT32,  MK_FLOAT32, MK_UINT8, MK_UINT16, MK_UINT32, MK_UINT64};
@@ -229,4 +231,34 @@ void mir_func_init(MirModule *module, MirFunc *func, MsName name, const MirParam
     const MirBlockParam param = {mir_new_value(func, params[index].ty), params[index].mode};
     mir_block_param_list_push(&func->blocks.ptr[entry].params, param);
   }
+}
+
+/* ---- terminators ---- */
+
+uint32_t mir_term_ntargets(const MirTerm *term) {
+  switch ((MirTermKind)term->kind) {
+  case MT_BR:
+    return 1;
+  case MT_CONDBR:
+    return 2;
+  case MT_SWITCH:
+    return term->ncases + 1;
+  case MT_RET: case MT_FAULT: case MT_UNREACHABLE:
+    return 0;
+  }
+  return 0;
+}
+
+MirTarget *mir_term_target(MirTerm *term, uint32_t index) {
+  switch ((MirTermKind)term->kind) {
+  case MT_BR:
+    return &term->a;
+  case MT_CONDBR:
+    return index == 0 ? &term->a : &term->b;
+  case MT_SWITCH:
+    return index < term->ncases ? &term->cases[index].target : &term->b;
+  case MT_RET: case MT_FAULT: case MT_UNREACHABLE:
+    break;
+  }
+  ms_fatal(MS_FATAL_INVARIANT, "mir_term_target: terminator has no targets");
 }
