@@ -1172,6 +1172,10 @@ typedef struct Scrutinee {
 static Scrutinee own_borrowed_call(OwnWalk *w, const MsExpr *e) {
     const MsExpr *receiver = e->u.call.callee->u.member.left;
     own_expr(w, e, DEMAND_READ);
+    if (receiver->kind != MS_E_NAME) {
+        OWN_DECLINE(w); /* a literal receiver has no local to pin; ownership of its result is left to Rust */
+        return (Scrutinee){true, MS_NONE, false};
+    }
     return (Scrutinee){false, own_resolve(w, w->facts->res_ref[receiver->id]), false};
 }
 

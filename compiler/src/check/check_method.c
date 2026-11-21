@@ -376,10 +376,11 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, Target *target) {
 /* `receiver.name(args)` on a primitive receiver of any shape (a local, a literal, another call):
  * an intrinsic operation that borrows its receiver, recorded as a call through the interface
  * `call_interface` names. */
-/* A borrowing call whose result the context uses in place, on a receiver that is a local: the ownership walk
- * pins that local while the result is in use. A result that is kept or passed on is left to the Rust checker. */
+/* A borrowing call whose result the context uses in place, on a receiver that is a local (the ownership walk
+ * pins it while the result is in use) or a text literal (nothing to pin). A result that is kept or passed on is left to the Rust checker. */
 static bool body_borrow_in_place(const MsBody *b, const MsExpr *e) {
-    return b->borrow_ok == e && e->u.call.callee->u.member.left->kind == MS_E_NAME;
+    const MsExprKind receiver = (MsExprKind)e->u.call.callee->u.member.left->kind;
+    return b->borrow_ok == e && (receiver == MS_E_NAME || receiver == MS_E_TEXT);
 }
 
 static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
