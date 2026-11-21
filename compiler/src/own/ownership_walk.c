@@ -1861,17 +1861,16 @@ static uint32_t *own_bindings_by_node(const MsFacts *facts, MsArena *arena) {
 
 static void own_allocate(OwnWalk *w, MsArena *arena) {
     const size_t n = (size_t)w->facts->bindings.count + 1;
-    w->perm = MS_NEW_N(arena, uint8_t, n);
-    w->class_of = MS_NEW_N(arena, uint8_t, n);
-    w->origin = MS_NEW_N(arena, uint32_t, n);
-    w->is_param = MS_NEW_N(arena, bool, n);
-    w->deferred = MS_NEW_N(arena, bool, n);
-    w->closure_holds = MS_NEW_N(arena, bool, n);
-    w->lent = MS_NEW_N(arena, bool, n);
-    w->param_mode = MS_NEW_N(arena, uint8_t, n);
-    w->param_index = MS_NEW_N(arena, uint32_t, n);
-    w->summaries = MS_NEW_N(arena, OwnSummary, (size_t)w->facts->node_count + 1);
-    memset(w->summaries, 0, ((size_t)w->facts->node_count + 1) * sizeof *w->summaries);
+    w->perm = ms_alloc_zeroed(arena, n, sizeof(uint8_t));
+    w->class_of = ms_alloc_zeroed(arena, n, sizeof(uint8_t));
+    w->origin = ms_alloc_zeroed(arena, n, sizeof(uint32_t));
+    w->is_param = ms_alloc_zeroed(arena, n, sizeof(bool));
+    w->deferred = ms_alloc_zeroed(arena, n, sizeof(bool));
+    w->closure_holds = ms_alloc_zeroed(arena, n, sizeof(bool));
+    w->lent = ms_alloc_zeroed(arena, n, sizeof(bool));
+    w->param_mode = ms_alloc_zeroed(arena, n, sizeof(uint8_t));
+    w->param_index = ms_alloc_zeroed(arena, n, sizeof(uint32_t));
+    w->summaries = ms_alloc_zeroed(arena, (size_t)w->facts->node_count + 1, sizeof *w->summaries);
 }
 
 /* Walks one function and records what its callers need to know. Returns whether the summary
