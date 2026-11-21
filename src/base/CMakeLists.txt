@@ -1,4 +1,4 @@
-add_library(ms_base STATIC alloc.c arena.c bytes.c cstr.c desc.c fatal.c intern.c list.c map.c strbuild.c string.c table.c)
+add_library(ms_base STATIC alloc.c arena.c bytes.c cstr.c desc.c fatal.c intern.c list.c map.c search.c strbuild.c string.c table.c utf8.c)
 ms_target_defaults(ms_base)
 
 # Unit tests of pure data structures only; the corpus is the gate (plan rule 2).
