@@ -1,11 +1,11 @@
-//! MIR to executable: optimize, generate Cranelift code, link with the runtime.
+//! MIR to executable: the C back end writes the program as LLVM IR, the pinned LLVM tools compile it, and the
+//! linker joins it with the runtime.
 
 use std::path::{Path, PathBuf};
 
 use crate::{BuildOptions, CopyProbe};
 use ms_clif::Options;
 use ms_mir::ir::Module;
-use ms_mir::opt::{Level, optimize};
 
 /// An exclusively owned temporary directory beside the final executable.
 /// Callers remove their artifacts; dropping this guard removes only an empty directory,
@@ -89,61 +89,39 @@ pub enum Profile {
     MinSizeRel,
 }
 
-/// The backend selected for the program's functions. LLVM builds still use
-/// Cranelift for data, descriptors and the native entry point.
+/// The backend that built the program's functions: the C emitter over LLVM.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Backend {
-    Cranelift,
     Llvm,
 }
 
 impl Backend {
     pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Cranelift => "cranelift",
-            Self::Llvm => "llvm",
-        }
+        "llvm"
     }
 }
 
 impl Profile {
-    fn options(self, build: &BuildOptions) -> (Level, Options, Option<&'static str>) {
+    /// Whether the build optimizes: Debug keeps every check and skips optimization so locals and
+    /// line tables stay faithful.
+    fn speed(self) -> bool {
+        self != Profile::Debug
+    }
+
+    fn options(self, build: &BuildOptions) -> Options {
         let mut options = Options {
             clif_verify: build.clif_verify,
             poison_slots: build.poison_slots,
             dump_clif: build.dump_clif,
             ..Options::default()
         };
-        let mut llvm = None;
-        let level = match self {
-            // Debug keeps every check and skips MIR and Cranelift optimization so
-            // locals and line tables stay faithful.
-            Profile::Debug => {
-                options.opt_level = "none";
-                Level::None
-            }
-            Profile::Release => {
-                llvm = llvm_level(build, "3");
-                Level::Speed
-            }
-            Profile::MinSizeRel => {
-                options.opt_level = "speed_and_size";
-                llvm = llvm_level(build, "s");
-                Level::Speed
-            }
-        };
-        (level, options, llvm)
+        if self == Profile::Debug {
+            options.opt_level = "none";
+        } else if self == Profile::MinSizeRel {
+            options.opt_level = "speed_and_size";
+        }
+        options
     }
-}
-
-/// LLVM optimization for release builds: used when the LLVM tools can be fetched (or are named by
-/// `build.llvm_tools`) and `build.cranelift_only` is off; otherwise release builds fall back to
-/// Cranelift.
-fn llvm_level(build: &BuildOptions, level: &'static str) -> Option<&'static str> {
-    if build.cranelift_only {
-        return None;
-    }
-    crate::llvm::available(build).then_some(level)
 }
 
 /// Native inputs beyond the explicit link files: the selected runtime archive.
@@ -152,14 +130,9 @@ pub fn native_inputs(_build: &BuildOptions, runtime: &Path) -> Vec<PathBuf> {
     vec![runtime.to_path_buf()]
 }
 
-/// The backend currently available for `profile`. For an existing artifact, use
-/// the backend returned by `build_executable`.
-pub fn backend_name(profile: Profile, build: &BuildOptions) -> &'static str {
-    let llvm = match profile {
-        Profile::Debug => None,
-        Profile::Release | Profile::MinSizeRel => llvm_level(build, "3"),
-    };
-    if llvm.is_some() { "llvm" } else { "cranelift" }
+/// The backend that builds `profile`.
+pub fn backend_name(_profile: Profile, _build: &BuildOptions) -> &'static str {
+    "llvm"
 }
 
 /// The runtime archive named by `build.runtime` (`MS_RT_LIB`), which replaces the one embedded in `ms`.
@@ -175,17 +148,6 @@ pub fn runtime_override(build: &BuildOptions) -> Result<Option<PathBuf>, String>
             path.display()
         ))
     }
-}
-
-/// Re-verifies `module` after the pass `name`, which must keep it valid.
-fn verify_after(module: &Module, name: &str) -> Result<(), String> {
-    ms_mir::verify::verify_module(module).map_err(|errors| {
-        let text: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
-        format!(
-            "the {name} pass produced invalid code (this is a Manuscript bug):\n{}",
-            text.join("\n")
-        )
-    })
 }
 
 /// Reports or rejects the copies of object values in `module` (`MS_COPY_PROBE`,
@@ -246,55 +208,11 @@ pub fn build_executable(
             );
         }
     };
-    let (level, options, llvm) = profile.options(build);
-    let backend = if llvm.is_some() {
-        Backend::Llvm
-    } else {
-        Backend::Cranelift
-    };
-    let compiled = if crate::c_backend::enabled() {
-        // The C pipeline runs the optimizer and the finishing passes itself.
-        crate::c_backend::compile(module, level == Level::Speed, options.checks, build)
-            .map(|object| vec![object])
-    } else {
-        optimize(module, level, cfg!(debug_assertions));
-        if build.count_ops {
-            ms_mir::count_ops::run(module);
-        }
-        // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
-        let unwound = ms_mir::unwind::run(module);
-        if unwound && cfg!(debug_assertions) {
-            verify_after(module, "unwind")?;
-        }
-        // The hybrid cancel exits run the cleanups `unwind` registered, so they go in after it: its
-        // discard after a parking call must not sit between the call and the check.
-        if ms_mir::cancel_edges::enabled()
-            && ms_mir::cancel_edges::run(module)
-            && cfg!(debug_assertions)
-        {
-            verify_after(module, "cancel_edges")?;
-        }
-        // After `unwind`, which looks for the check as the first instruction of a function.
-        if ms_mir::depth::lower(module) && cfg!(debug_assertions) {
-            verify_after(module, "depth")?;
-        }
-        // The checks and list growth the backends lower are explicit MIR from here on.
-        ms_mir::expand::run(module, options.checks);
-        if cfg!(debug_assertions) {
-            verify_after(module, "expand")?;
-        }
-        // Drop and clone functions are made here; the backends lower only primitives, so the release
-        // shorthands become loads, drops and frees.
-        ms_mir::glue::run_and_expand(module);
-        phase("mir optimize");
-        match llvm {
-            Some(level) => crate::llvm::compile(module, options.checks, level, build)
-                .map_err(|e| e.to_string()),
-            None => ms_clif::compile(module, &options)
-                .map(|object| vec![object])
-                .map_err(|e| e.to_string()),
-        }
-    };
+    let options = profile.options(build);
+    // The C pipeline runs the optimizer and the finishing passes itself.
+    let compiled = crate::c_backend::compile(module, profile.speed(), options.checks, build)
+        .map(|object| vec![object]);
+    phase("mir optimize");
     let mut objects = compiled.map_err(|e| {
         format!(
             "native code generation failed (this is a Manuscript bug, so report it with the source that triggers it; 'ms emit <file>' prints the lowered code): {e}"
@@ -363,7 +281,7 @@ pub fn build_executable(
         cleanup();
         format!("cannot write {}: {error}", output.display())
     })?;
-    Ok(backend)
+    Ok(Backend::Llvm)
 }
 
 /// Adjacent dSYM lookup checks the executable basename before checking UUIDs.
