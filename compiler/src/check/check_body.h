@@ -74,6 +74,8 @@ MsTy ms_body_case_name(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
 /* A call `receiver.name(args)' (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
+bool ms_body_reordered(const MsExpr *call, const uint32_t *slot); /* some argument is not at its parameter's index */
+bool ms_body_bind_arguments(const MsExpr *call, const MsSym *names, const bool *positional, uint32_t nparams, uint32_t *slot, bool *covered);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
 void ms_body_report(MsBody *b, MsPos pos, MsStr message); /* a type diagnostic, held until the function is claimed */
 MsTy ms_body_unsupported(MsBody *b);

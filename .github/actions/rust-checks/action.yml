@@ -124,15 +124,14 @@ runs:
         cargo build --workspace --all-targets --locked --keep-going --timings
         # The LLVM job of a pull request runs only the tests of the LLVM backend.
         if [ "$LLVM_TESTS" = true ]; then
-          cargo nextest run --workspace --locked --no-fail-fast -E 'package(ms-mir-llvm) | test(/^llvm::/) | test(/^llvm_direct(_data)?::/)'
+          cargo nextest run --workspace --locked --no-fail-fast -E 'test(/^llvm::/)'
           exit 0
         fi
         # A pull request that touches no LLVM-specific code skips the tests of the LLVM backend (the
-        # `llvm`, `llvm_direct` and `llvm_direct_data` test modules and the `ms-mir-llvm` crate); main and
-        # LLVM pull requests run them.
+        # `llvm` test modules); main and LLVM pull requests run them.
         skip=()
         if [ "$LLVM" != true ]; then
-          skip+=('package(ms-mir-llvm)' 'test(/^llvm::/)' 'test(/^llvm_direct(_data)?::/)')
+          skip+=('test(/^llvm::/)')
         fi
         if [ "$DOCS" = false ]; then
           skip+=('test(/^doc_examples::/)')

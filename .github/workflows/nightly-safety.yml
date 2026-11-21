@@ -59,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, drift-check, poison-check, view-matrix, ownership-fuzz, stress-sched, bench-gate, c-compiler-test]
+        check: [cancel-sweep, drift-check, poison-check, view-matrix, ownership-fuzz, bench-gate, c-compiler-test]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-env

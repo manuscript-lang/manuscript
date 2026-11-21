@@ -276,6 +276,28 @@ uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t l
     return status;
 }
 
+uint8_t ms_tool_workspace(const ms_str *manifest, uint8_t root_only, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest));
+    MsWorkspace workspace = {0};
+    MsProjectError error = {0};
+    bool found = false;
+    const bool ok = root_only != 0 ? ms_workspace_root_members(&arena, path, &workspace, &found, &error) : ms_workspace_find(&arena, path, &workspace, &found, &error);
+    uint8_t status = 0;
+    if (!ok) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    } else if (found) {
+        push_row(&arena, out, "root", workspace.root, NULL);
+        for (uint32_t i = 0; i < workspace.count; i++) {
+            push_row(&arena, out, "member", workspace.members[i].name, workspace.members[i].root);
+        }
+    }
+    ms_arena_free(&arena);
+    return status;
+}
+
 uint8_t ms_tool_install_workspace(const ms_str *lock_root, const ms_list *members, const ms_list *update, uint8_t locked, uint8_t frozen,
                                   ms_list *out, ms_str *message_out) {
     MsArena arena = {0};

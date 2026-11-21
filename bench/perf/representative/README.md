@@ -14,8 +14,8 @@ warm-up. Build validation executes separately from the timed compilation.
 Build both compiler revisions with the same pinned Rust toolchain and the pinned
 LLVM bundle from `toolchain/lld.lock`. Save the binaries under different names. Build
 the stage driver separately with `cargo build --release --locked -p ms-build --example
-perf_stages`. It uses the same public passes as Release and requires a real LLVM
-object; it cannot silently measure a Cranelift fallback.
+perf_stages`. It calls the same C back end as Release (MIR optimization and code generation are
+one stage) and needs the pinned LLVM tools.
 
 For the recorded campaign the base is `414d66451b1efe8acde9cd31097dcb456ee62b0b`
 and the production change is `f24a068e88a827e4ae10956b84b3c546a0cc819e`.
@@ -48,11 +48,10 @@ Additional phases:
   and runtime extraction, **not** cold OS page caches; it performs no build-time download.
 - `stages`: `--stages before=/absolute/path/perf_stages-before` (and `after=...`). The
   driver separates load/parse, checking, lowering, checked-program destruction, verification,
-  LLVM availability, MIR optimization, code generation, object writes, linking and MIR
-  destruction. Python wrappers record actual `opt` and `llc` invocations and their resources.
+  LLVM availability, code generation (the C back end's MIR optimization and LLVM), object
+  writes and linking. Python wrappers record actual `opt` and `llc` invocations and their resources.
   Their interpreter startup adds overhead: use the unwrapped `build` phase for end-to-end
-  claims, and tool child times for stage diagnosis. `MS_PERF_MIR_PASSES=1` enables a diagnostic
-  replay of the MIR pipeline, which must be kept in sync with `ms-mir/src/opt/mod.rs`.
+  claims, and tool child times for stage diagnosis.
 - `memory` and `memory-build`: separate RSS trials using `--rss /absolute/path/rss`.
   Build that helper with `gcc -O2 -Wall -Wextra -Werror bench/perf/representative/rss.c -o rss`.
   Its native fork isolates the child from Python's inherited high-water mark. Linux
