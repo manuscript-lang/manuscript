@@ -6,11 +6,27 @@ import (
 	Bytes from "@std/bytes.ms",
 	stderr, stdin, stdout_bytes from "@std/io/io.ms",
 
+	analyze_in from "./analysis.ms",
 	check_document from "./check.ms",
 	format_document from "./format.ms",
 	Framer, encode from "./frame.ms",
-	Backend, Next, Server from "./server.ms",
+	definition, hover from "./navigate.ms",
+	Backend, Found, Next, Server from "./server.ms",
 )
+
+fn hover_at(path: String, text: String, offset: Int) Found?:
+	facts := analyze_in(path, text, [])
+	if facts.is_error(): return none
+
+	shown := hover(facts.get(), text, offset)?
+	return Found(text: shown.text, start: shown.span.start, end: shown.span.end)
+
+fn definition_at(path: String, text: String, offset: Int) Found?:
+	facts := analyze_in(path, text, [])
+	if facts.is_error(): return none
+
+	target := definition(facts.get(), text, offset)?
+	return Found(text: "", start: target.start, end: target.end)
 
 fn send(messages: List[String]) Void!:
 	var out = stdout_bytes()
@@ -22,7 +38,12 @@ fn serve() Int!:
 	var input = stdin()
 	var framer = Framer()
 	var server = Server(version: "dev")
-	backend := Backend(check: check_document, format: format_document)
+	backend := Backend(
+		check: check_document,
+		format: format_document,
+		hover: hover_at,
+		definition: definition_at,
+	)
 
 	for chunk in input:
 		framer.push(chunk)
