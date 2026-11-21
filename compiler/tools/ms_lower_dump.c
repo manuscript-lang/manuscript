@@ -163,6 +163,7 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
                 ms_module_check_ownership(&check, ids[i]);
                 modules[i] = &graph.modules[i].syntax;
             }
+            (void)ms_program_check_bundled(&check); // the standard modules the program reaches
             MirModule mir;
             mir_module_init(&mir);
             (void)ms_lower_program(&check, ids[graph.count - 1], &mir);
