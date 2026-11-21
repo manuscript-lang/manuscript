@@ -175,7 +175,7 @@ uint8_t msrt_heap_has(void) { return 1; }
 /* out[0] bytes in use and out[1] bytes the allocator holds from the system, for the process. mimalloc counts a page's
  * blocks when the page fills or is collected and folds a thread's counts into the process figures only after some
  * churn, so the calling thread collects first (a normal collection: it frees nothing a program still holds). The
- * commit figure is per chunk: the system figure is never reported below the use. */
+ * commit figure is per chunk. */
 void msrt_heap_stats(int64_t *out) {
     mi_collect(false);
     mi_stats_t stats = {.size = sizeof stats, .version = MI_STAT_VERSION};
@@ -183,9 +183,9 @@ void msrt_heap_stats(int64_t *out) {
     size_t peak_commit = 0;
     mi_process_info(NULL, NULL, NULL, NULL, NULL, &current_commit, &peak_commit, NULL);
     const int64_t committed = (int64_t)current_commit;
-    const int64_t used = mi_stats_get(&stats) ? stats.allocated.current : committed;
+    const int64_t used = mi_stats_get(&stats) ? stats.malloc_normal.current + stats.malloc_huge.current : committed;
     out[0] = used;
-    out[1] = used > committed ? used : committed;
+    out[1] = committed;
 }
 
 /* out[0] allocations and out[1] bytes requested by the calling thread and by every thread that has
