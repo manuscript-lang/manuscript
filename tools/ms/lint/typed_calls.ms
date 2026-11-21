@@ -2,7 +2,7 @@
 // zero (MSL118), `get(i)` on a list (MSL119), a map `get` chained with `get_or`
 // (MSL120), a Result `get` as a statement (MSL129, MSL130), a printed Result (MSL131),
 // a `slice` with a fallback (MSL132), a Void value bound or printed (MSL134) and
-// `to_string()` on Bytes (MSL135). Each reports only what the checker's facts prove, so
+// `to_string()` on Bytes (MSL135), a promise dropped as a statement (MSL115) and a map entry rebuilt from its own lookup (MSL127). Each reports only what the checker's facts prove, so
 // a node the checker did not type yields no finding.
 import (
 	Bytes from "@std/bytes.ms",
@@ -20,6 +20,8 @@ OP_AND := 1
 OP_EQ := 2
 OP_NE := 3
 OP_GT := 5
+// The compound assignments that stand for a binary operator (`+` is 8 ... `%` is 12).
+OPERATOR_UPDATES := {8: "+=", 9: "-=", 10: "*=", 11: "/=", 12: "%="}
 
 // Everything a rule reads: the tree, the checker facts, the source and the findings.
 type Scan:
@@ -429,6 +431,90 @@ fn bytes_to_string(s: Scan, at: Int, var out: List[Finding]) Void:
 		)
 	)
 
+// A name or a field path over names: `k`, `it.sku`.
+fn is_path(s: Scan, at: Int) Bool:
+	if s.tree.kind[at] == s.name: return true
+	if s.tree.kind[at] != s.member: return false
+
+	return is_path(s, children(s.tree, at)[0])
+
+// The source of the expression at `at` when it can stand alone in an edit; ""
+// otherwise.
+fn text_of(s: Scan, at: Int) String:
+	found := span(s.source, first_offset(s.tree, at), last_offset(s.tree, at))
+	if found.is_none(): return ""
+
+	return found.get()
+
+// `m[k.clone()] = m.get(k).get() op rest` on a map is `m[k] op= rest` (MSL127).
+fn map_update(s: Scan, at: Int, var out: List[Finding]) Void:
+	store_found := dotted(s, at)
+	if store_found.is_none(): return
+
+	store := store_found.get()
+	if store.method != "[]=" or store.values.length() != 2 or store.named: return
+	if not is_path(s, store.receiver) or kind(s, store.receiver) != "Map": return
+
+	value := store.values[1]
+	if s.tree.kind[value] != s.binary: return
+
+	symbol := OPERATOR_UPDATES.get_or(s.tree.flags[value], "")
+	if symbol.is_empty(): return
+
+	parts := children(s.tree, value)
+	unwrap_found := dotted(s, parts[0])
+	if unwrap_found.is_none(): return
+
+	unwrap := unwrap_found.get()
+	if unwrap.method != "get" or not unwrap.values.is_empty(): return
+
+	lookup_found := dotted(s, unwrap.receiver)
+	if lookup_found.is_none(): return
+
+	lookup := lookup_found.get()
+	if lookup.method != "get" or lookup.values.length() != 1 or lookup.named: return
+	if not is_path(s, lookup.values[0]) or not is_path(s, lookup.receiver): return
+
+	map := text_of(s, store.receiver)
+	again := text_of(s, lookup.receiver)
+	key := text_of(s, lookup.values[0])
+	index := text_of(s, store.values[0])
+	rest := text_of(s, parts[1])
+	if map.is_empty() or key.is_empty() or rest.is_empty(): return
+	if map != again or (index != key and index != f"{key}.clone()"): return
+
+	from := first_offset(s.tree, at)
+	to := last_offset(s.tree, parts[1])
+	whole := span(s.source, from, to)
+	if whole.is_none() or whole.get().contains("//"): return
+
+	found := report(
+		s,
+		"MSL127",
+		"error",
+		"Update the map entry in place with `m[k] op= value`",
+		at,
+	)
+	out.append(with_fix(found, from, to, f"{map}[{key}] {symbol} {rest}"))
+
+// A promise dropped as a statement is cancelled at once (MSL115); the fix waits for it.
+fn dropped_promise(s: Scan, at: Int, var out: List[Finding]) Void:
+	if kind(s, at) != "Promise": return
+
+	from := first_offset(s.tree, at)
+	to := last_offset(s.tree, at)
+	found := report(
+		s,
+		"MSL115",
+		"warning",
+		"This promise is dropped as soon as it is made, which cancels it; bind it and call wait() on it, or pass it to wait_all",
+		at,
+	)
+	text := span(s.source, from, to)
+
+	if s.tree.kind[at] != s.call or text.is_none(): out.append(found)
+	else: out.append(with_fix(found, from, to, f"void {text.get()} | .wait()"))
+
 // The findings of these rules for the module in `source`, given its checker facts.
 export fn lint_typed_calls(
 	tree: Syntax,
@@ -456,6 +542,8 @@ export fn lint_typed_calls(
 		else if node == s.call_stmt:
 			statement_get(s, parts[0], out)
 			printed_result(s, parts[0], out)
+			map_update(s, parts[0], out)
+			dropped_promise(s, parts[0], out)
 		else if node == s.bind: bound_void(s, at, out)
 		else if node == s.call:
 			list_get(s, at, out)
@@ -571,3 +659,21 @@ test "to_string on Bytes and a printed Void are reported":
 	found.length() | expect_equal(expected: 2)?
 	found[0].code | expect_equal(expected: "MSL135")?
 	found[1].code | expect_equal(expected: "MSL134")?
+
+test "a map entry rebuilt from its own lookup is updated in place":
+	source := "fn f(m: Map[String, Int], k: String) Void:\n    m[k.clone()] = m.get(k).get() + 1\n"
+	tree := parse(source).get()
+	receiver := nodes_of(tree, "Name", "m")[0]
+	found := lint_with(source, [Typed(at: receiver, kind: "Map")])
+	found.length() | expect_equal(expected: 1)?
+	found[0].code | expect_equal(expected: "MSL127")?
+	found[0].fix_text | expect_equal(expected: "m[k] += 1")?
+
+test "a promise dropped as a statement is waited for":
+	source := "fn f() Void:\n    promise(fn: work())\n"
+	tree := parse(source).get()
+	call := nodes_of(tree, "Call", "")[0]
+	found := lint_with(source, [Typed(at: call, kind: "Promise")])
+	found.length() | expect_equal(expected: 1)?
+	found[0].code | expect_equal(expected: "MSL115")?
+	found[0].fix_text | expect_equal(expected: "void promise(fn: work()) | .wait()")?
