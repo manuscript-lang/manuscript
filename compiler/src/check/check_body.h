@@ -57,6 +57,7 @@ MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_lambda_inferred(MsBody *b, const MsExpr *e, MsTy settled); /* `settled` fixes the parameter types; the body decides the result */
 /* The primitive type a written annotation names, or MS_TY_NONE after giving up. */
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
+MsTy ms_body_type_argument(MsBody *b, const MsTypeRef *t);
 /* Lists (check_list.c): whether `ty` is a `List` of admitted elements, a `List[...]` annotation,
  * a list literal and an index expression. */
 /* The standard type that declares builtin `kind`, when the module sees it under its own name (no
