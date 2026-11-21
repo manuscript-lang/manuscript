@@ -73,6 +73,7 @@
 #include "opt/opt_probe.c"
 #include "opt/opt_viewfast.c"
 #include "opt/opt_bytesfast.c"
+#include "opt/opt_strfast.c"
 #include "opt/opt_sortgen_drift.c"
 #include "opt/opt_sortgen.c"
 #include "opt/opt_copyelim.c"

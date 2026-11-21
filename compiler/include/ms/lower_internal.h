@@ -304,6 +304,7 @@ LbVal lst_empty(Lb *lb, MirTy ty);
 LbVal lst_index(Lb *lb, const MsExpr *e);
 /* `list.get(index)` and `list.get_or(index, fallback)` of a list or Bytes: true when `e` is one (`out` is its value). */
 bool lst_read_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
+LbVal lst_get(Lb *lb, const MsExpr *left, const MsExpr *at);
 void lst_for(Lb *lb, const MsStmt *s);
 LbVal lb_native_method(Lb *lb, const MsExpr *e);
 const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);

@@ -35,8 +35,6 @@ mod natiface;
 mod native;
 mod nativetype;
 mod rtcall;
-mod rtinline;
-mod rtstr;
 mod runner;
 mod scalar;
 mod scope;
