@@ -871,6 +871,16 @@ static bool own_is_owning_native(const OwnWalk *w, uint32_t row) {
     return !ms_doc_has_marker(w->check->mods[methods->module[row]].text, method->pos.offset, "borrows");
 }
 
+/* Whether the method `row` is a native whose result points into its receiver (`// ms: borrows`: `xs.get(i)`). */
+static bool own_is_borrowing_native(const OwnWalk *w, uint32_t row) {
+    const MsMethods *methods = w->facts->methods;
+    const MsMethod *method = methods->native[row] == MS_NATIVE_SOURCE ? own_method_of_row(w, row) : NULL;
+    if (method == NULL || method->func.external || method->func.body.len != 0) {
+        return false;
+    }
+    return ms_doc_has_marker(w->check->mods[methods->module[row]].text, method->pos.offset, "borrows");
+}
+
 /* Whether method `row` has no body to walk: a runtime operation or an intrinsic declared with `...`. */
 static bool own_method_unwalked(const OwnWalk *w, uint32_t row) {
     const MsMethods *methods = w->facts->methods;
@@ -936,7 +946,7 @@ static bool own_args_touch(const OwnWalk *w, const MsExpr *call, uint32_t held) 
  * the local in place, and no argument may read it; the others borrow it. A result that is not a plain
  * value may be a reference into the receiver (`list.get(i)`), which this walk does not follow: the
  * function is left to the Rust checker unless the method is known to return a value of its own. */
-static void own_method_call(OwnWalk *w, const MsExpr *e) {
+static void own_method_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     const MsExpr *receiver = e->u.call.callee->u.member.left;
     const uint32_t row = w->facts->call_method[e->id];
     const MsTy result = w->facts->expr_ty[e->id];
@@ -955,6 +965,8 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
         consumed = 0; // nothing to walk: what such a method takes is what its signature says (`move`, `var`), and a plain result borrows nothing
     } else if (!plain && own_is_owning_native(w, row)) {
         // Nothing to learn from a walk either: the result is the native's own value (no `// ms: borrows`).
+    } else if (!plain && demand == DEMAND_READ && own_is_borrowing_native(w, row)) {
+        // A result that points into the receiver, only read here (`xs.get(i).clone()`): nothing keeps it.
     } else if (!plain) {
         const MsFacts *home = NULL;
         const MsMethod *walked = w->facts->methods->native[row] == MS_NATIVE_SOURCE ? own_walked_method(w, row, &home) : NULL;
@@ -1178,7 +1190,7 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
         return;
     }
     if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_method[e->id] != MS_NONE && w->facts->methods != NULL) {
-        own_method_call(w, e);
+        own_method_call(w, e, demand);
         return;
     }
     if (own_is_constructor(w, e)) {
