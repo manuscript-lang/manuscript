@@ -59,4 +59,28 @@ MS_NONNULL void ms_sys_signals_stop(MsSysSignals *observer);
 /* Stops and frees the observer. */
 MS_NONNULL void ms_sys_signals_destroy(MsSysSignals *observer);
 
+/* ---- a child process and what it leads ---- */
+
+/* The processes a child leads: its process group (POSIX; the child is started detached, so its pid is the group id) or
+ * its job object (Windows), so that ending the child ends its whole tree. */
+typedef struct MsSysGroup MsSysGroup;
+
+/* The group of the child `pid`; `process_handle` is libuv's uv_process_t.process_handle (Windows; ignored elsewhere). */
+MS_RETURNS_NONNULL MsSysGroup *ms_sys_group_new(int64_t pid, void *process_handle);
+/* Asks the group to end (SIGTERM, or SIGKILL when `force` or the signal fails; Windows has no graceful signal). */
+MS_NONNULL void ms_sys_group_signal(MsSysGroup *group, bool force);
+/* Kills whatever remains, also after the leader was reaped (its pid is the group id). */
+MS_NONNULL void ms_sys_group_kill(MsSysGroup *group);
+/* The exit code libuv's exit callback reports as `status` and `signal`: -1 when a signal or ms_sys_group_signal ended
+ * the child (Windows reports that as an ordinary code). */
+MS_NONNULL int64_t ms_sys_group_exit_code(const MsSysGroup *group, int64_t status, int signal);
+/* The peak resident set size of the child in bytes, 0 when unknown: sampled while it runs (Linux), the most any
+ * reaped child used (other POSIX), or read from the process handle at exit (Windows; call it in the exit callback). */
+MS_NONNULL int64_t ms_sys_group_peak_resident(const MsSysGroup *group, bool exited);
+MS_NONNULL void ms_sys_group_free(MsSysGroup *group);
+
+/* Replaces the process image; returns only on failure, as a libuv status (UV_ENOTSUP on Windows). `env` is the whole
+ * environment. */
+MS_NONNULL int ms_sys_process_exec(const char *file, char *const *argv, char *const *env);
+
 #endif
