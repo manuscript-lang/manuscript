@@ -121,6 +121,7 @@ typedef struct MsGraph {
 
 typedef struct MsLoadOptions {
   bool tests;               /* add the project's test.ms, *_test.ms, bench.ms and *_bench.ms files */
+  bool project_sources;     /* add every source file of a manifest's project too (`ms check`) */
   const MsOverlay *overlay; /* unsaved contents in place of disk, or NULL */
 } MsLoadOptions;
 
@@ -129,5 +130,11 @@ typedef struct MsLoadOptions {
  * `names` and `arena`. */
 void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLoadOptions *options,
                      MsGraph *out);
+
+/* The source files a command target stands for: a .ms file is itself; a directory or an ms.toml stands for the
+ * project's modules (every .ms file below its source directory, its test and bench files, and its entry),
+ * confined to the project root. Paths are appended to `paths`. */
+MS_NODISCARD bool ms_project_format_files(MsArena *arena, MsSpan target, MsSpanList *paths,
+                                          MsProjectError *error);
 
 #endif

@@ -51,6 +51,8 @@ typedef struct MsModuleInfo {
   MsName file; /* the name the file is reported under */
   const MsModule *tree;
   MsScope scope;      /* owned: name -> symbol id */
+  MsScope imports;    /* owned: imported name -> symbol id (0 when the import did not resolve) */
+  const int32_t *targets; /* borrowed from the graph: module index of each local import; NULL for std */
   MsFacts facts;
 } MsModuleInfo;
 
@@ -63,6 +65,9 @@ typedef struct MsCheckDiag {
   MsPos pos;
   MsCheckPhase phase;
   MsString message; /* owned */
+  bool has_fix;     /* an edit that repairs the diagnostic: replace [fix_pos, fix_end) with `fix_text` */
+  MsPos fix_pos, fix_end;
+  MsString fix_text; /* owned; empty without a fix */
 } MsCheckDiag;
 
 MS_LIST_DEFINE(MsCheckDiagList, ms_check_diag_list, MsCheckDiag)
@@ -76,6 +81,7 @@ typedef struct MsCheckProgram {
   MsModuleList modules;
   MsCheckDiagList diagnostics;
   uint32_t serial; /* counter behind unique symbol ids */
+  uint32_t user_modules; /* the first modules are the graph's; the rest are bundled standard modules */
 } MsCheckProgram;
 
 void ms_check_program_init(MsCheckProgram *program, MsNames *names);
@@ -88,9 +94,18 @@ uint32_t ms_check_add_module(MsCheckProgram *program, MsName file, const MsModul
 void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsCheckPhase phase,
                      MsString message);
 
+/* Attaches a repairing edit to the last diagnostic: replace [pos, end) with `replacement` (taken). */
+void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString replacement);
+
 /* Declares a module's own types, functions, constants and aliases in its scope (a duplicate name is a
  * resolution diagnostic). Impl and test declarations declare nothing. */
 void ms_check_declare(MsCheckProgram *program, uint32_t module);
+
+/* Loads every bundled standard module the program's modules import, transitively, as further modules. */
+void ms_check_load_std(MsCheckProgram *program);
+
+/* Binds each import of `module` to the exported symbol it names (declare must have run on every module). */
+void ms_check_bind_imports(MsCheckProgram *program, uint32_t module);
 
 /* Reports each written type name in a module's declaration signatures that no scope gives a meaning. */
 void ms_check_resolve_types(MsCheckProgram *program, uint32_t module);

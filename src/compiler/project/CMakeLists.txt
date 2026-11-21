@@ -7,7 +7,7 @@ add_custom_command(
           -P ${PROJECT_SOURCE_DIR}/cmake/EmbedStdlib.cmake
   DEPENDS ${std_files} ${PROJECT_SOURCE_DIR}/cmake/EmbedStdlib.cmake
   COMMENT "Embedding stdlib/*.ms")
-add_library(ms_project STATIC load.c manifest.c project.c resolve.c toml.c ${std_embedded})
+add_library(ms_project STATIC discover.c embed.c files.c load.c manifest.c project.c resolve.c toml.c ${std_embedded})
 ms_target_defaults(ms_project)
 target_include_directories(ms_project PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(ms_project PUBLIC ms_syntax ms_base)

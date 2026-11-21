@@ -1,7 +1,9 @@
 /* Process state on Windows: no user or group ids and no umask, so those report unsupported; the title is the console
  * title. A process without a console keeps the title it was given in memory, as a program expects get_title to return
  * what set_title stored. Errors are libuv statuses. */
+#define PSAPI_VERSION 2 /* GetProcessMemoryInfo from kernel32, so no extra library */
 #include <windows.h>
+#include <psapi.h>
 
 #include <uv.h>
 #include <wchar.h>
@@ -133,4 +135,63 @@ int ms_sys_process_set_title(const char *text, size_t length) {
   stored_length = length;
   ReleaseSRWLockExclusive(&title_lock);
   return 0;
+}
+
+/* ---- a child process and what it leads ---- */
+
+struct MsSysGroup {
+  HANDLE job;
+  HANDLE process;
+  bool terminated; /* ended by ms_sys_group_signal: Windows reports that as an ordinary exit code */
+};
+
+MsSysGroup *ms_sys_group_new(int64_t pid, void *process_handle) {
+  (void)pid;
+  MsSysGroup *group = ms_alloc(sizeof *group);
+  group->process = process_handle;
+  group->terminated = false;
+  group->job = CreateJobObjectW(NULL, NULL);
+  if (group->job != NULL) {
+    (void)AssignProcessToJobObject(group->job, process_handle);
+  }
+  return group;
+}
+
+void ms_sys_group_kill(MsSysGroup *group) {
+  if (group->job != NULL) {
+    (void)TerminateJobObject(group->job, 1);
+  }
+}
+
+void ms_sys_group_signal(MsSysGroup *group, bool force) {
+  (void)force;
+  group->terminated = true;
+  ms_sys_group_kill(group);
+  (void)TerminateProcess(group->process, 1);
+}
+
+int64_t ms_sys_group_exit_code(const MsSysGroup *group, int64_t status, int signal) {
+  return signal != 0 || group->terminated ? -1 : status;
+}
+
+int64_t ms_sys_group_peak_resident(const MsSysGroup *group, bool exited) {
+  PROCESS_MEMORY_COUNTERS counters = {.cb = sizeof counters};
+  if (exited && GetProcessMemoryInfo(group->process, &counters, sizeof counters)) {
+    return (int64_t)counters.PeakWorkingSetSize;
+  }
+  return 0;
+}
+
+void ms_sys_group_free(MsSysGroup *group) {
+  if (group->job != NULL) {
+    (void)CloseHandle(group->job);
+  }
+  ms_free(group);
+}
+
+int ms_sys_process_exec(const char *file, char *const *argv, char *const *env) {
+  (void)file;
+  (void)argv;
+  (void)env;
+  return UV_ENOTSUP;
 }
