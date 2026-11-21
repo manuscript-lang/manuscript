@@ -291,6 +291,10 @@ uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want);
 
 /* Structural text of a record or enum (lower_format.c, included after lower_text.c). */
 LbVal lf_text(Lb *lb, LbVal value);
+/* Converts the number `x` to `checked_result` (a number, or an Optional integer); false when this does not lower. */
+/* Whether the method `name` is spelled as a conversion to a primitive type: `to_int16`, `to_float`. */
+bool lb_is_conversion_name(const Lb *lb, MsSym name);
+bool lb_numeric_conversion(Lb *lb, MirValue x, MsTy checked_result, LbVal *out);
 
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);

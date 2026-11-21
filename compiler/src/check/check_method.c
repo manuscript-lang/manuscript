@@ -188,22 +188,52 @@ static bool intrinsic_in(const MsBody *b, const char *iface_name, MsTy receiver,
     return false;
 }
 
-/* An operation of a primitive receiver: its own interface, then the one every value has. */
-static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
-    const char *own = NULL;
-    if (receiver == b->string_ty) {
-        own = "StringOperations";
-    } else if (receiver == b->int_ty) {
-        own = "IntOperations";
-    } else if (receiver == b->float_ty) {
-        own = "FloatOperations";
+/* The primitives that share a generic operations interface (`IntegerOperations[T]`, ...), each
+ * applied to itself. Mirrors `SHARED_OPERATIONS` in `stdlib.rs`. */
+static const struct {
+    const char *interface;
+    MsBuiltin members[9];
+} shared_operations[] = {
+    {"IntegerOperations", {MS_BI_INT, MS_BI_INT8, MS_BI_INT16, MS_BI_INT32, MS_BI_UINT8, MS_BI_UINT16, MS_BI_UINT32, MS_BI_UINT64, MS_B_NONE}},
+    {"SignedIntegerOperations", {MS_BI_INT, MS_BI_INT8, MS_BI_INT16, MS_BI_INT32, MS_B_NONE}},
+};
+
+/* Whether the primitive `receiver` is one of the types `interface` is shared by. */
+static bool shares_operations(const MsBody *b, MsTy receiver, size_t row) {
+    for (size_t i = 0; shared_operations[row].members[i] != MS_B_NONE; i++) {
+        if (ms_ty_is(&b->c->tys, receiver, shared_operations[row].members[i])) {
+            return true;
+        }
     }
-    // `Int` shares the generic integer interfaces, applied to itself, after its own.
-    const bool integer = receiver == b->int_ty;
-    return (own != NULL && intrinsic_in(b, own, receiver, name, out)) ||
-           (integer && (intrinsic_in(b, "IntegerOperations", receiver, name, out) ||
-                        intrinsic_in(b, "SignedIntegerOperations", receiver, name, out))) ||
-           intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
+    return false;
+}
+
+/* `<Type>Operations`, the interface a primitive declares for its own operations: `IntOperations`,
+ * `UInt8Operations`, ... False when `receiver` is not a primitive. */
+static bool own_operations_name(const MsBody *b, MsTy receiver, char *out, size_t cap) {
+    const MsBuiltin builtin = ms_ty_builtin(&b->c->tys, receiver);
+    for (size_t i = 0; builtin != MS_B_NONE && i < ms_primitive_count(); i++) {
+        const char *name = ms_primitive_name(i);
+        if (ms_builtin_primitive((MsStr){name, (uint32_t)strlen(name)}) == builtin) {
+            return snprintf(out, cap, "%sOperations", name) < (int)cap;
+        }
+    }
+    return false;
+}
+
+/* An operation of a primitive receiver: its own interface, then the generic ones it shares, then
+ * the ones every value has. */
+static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
+    char own[40];
+    if (own_operations_name(b, receiver, own, sizeof own) && intrinsic_in(b, own, receiver, name, out)) {
+        return true;
+    }
+    for (size_t i = 0; i < sizeof shared_operations / sizeof shared_operations[0]; i++) {
+        if (shares_operations(b, receiver, i) && intrinsic_in(b, shared_operations[i].interface, receiver, name, out)) {
+            return true;
+        }
+    }
+    return intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
 }
 
 /* The natives whose result points into their receiver (`view`, `split`, `chars`, ...): the
@@ -282,7 +312,7 @@ static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *
 }
 
 static bool body_is_primitive(const MsBody *b, MsTy ty) {
-    return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
+    return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ms_body_is_sized_number(b, ty);
 }
 
 /* The arguments of a method call against its signature, paired with parameters by position or

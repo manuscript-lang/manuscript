@@ -70,6 +70,8 @@ MsTy ms_body_map(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_index(MsBody *b, const MsExpr *e);
 /* Int, Float, Bool or String: what a binding or argument of the handled set may hold. */
 bool ms_body_is_primitive_value(const MsBody *b, MsTy ty);
+/* `Int8` through `UInt64` and `Float32`: the sized numbers, which carry their own operations interface. */
+bool ms_body_is_sized_number(const MsBody *b, MsTy ty);
 /* A type whose values the pass can pass around (see body_is_admitted). */
 bool ms_body_is_admitted(const MsBody *b, MsTy ty);
 /* What a local can hold: an admitted type, an Optional or a Result of one. */

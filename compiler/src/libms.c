@@ -92,6 +92,7 @@
 #include "check/lower_list.c"
 #include "check/lower_extern.c"
 #include "check/lower_out.c"
+#include "check/lower_numeric.c"
 #include "check/lower_native.c"
 #include "check/lower_map.c"
 #include "check/lower_enum.c"

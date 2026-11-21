@@ -336,6 +336,19 @@ static uint32_t ln_var_receiver(Lb *lb, const MsExpr *receiver) {
     return lb->var_of[binding] != MIR_NONE && lb_var_owned(lb, binding) ? binding : MS_NONE;
 }
 
+/* A method of a number that no runtime function implements: a conversion to another number. */
+static LbVal ln_conversion_method(Lb *lb, const MsExpr *e) {
+    if (!lb_is_conversion_name(lb, e->u.call.callee->u.member.name)) {
+        return lb_unsupported(lb);
+    }
+    const LbVal receiver = lb_expr(lb, e->u.call.callee->u.member.left);
+    LbVal converted;
+    if (!lb->ok || !lb_numeric_conversion(lb, receiver.v, lb->facts->expr_ty[e->id], &converted)) {
+        return lb_unsupported(lb);
+    }
+    return converted;
+}
+
 /* A method call the runtime implements: evaluates the receiver and arguments, then calls. */
 LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
@@ -345,6 +358,9 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     if (fn == NULL && nargs == 0 && ms_name_is(lb->c->names, callee->u.member.name, "to_string")) {
         const LbVal value = lb_expr(lb, callee->u.member.left); // a String is its own text, a scalar prints through its runtime form
         return lb->ok ? lt_to_string(lb, value, receiver_ty) : LB_FAIL;
+    }
+    if (fn == NULL && nargs == 0) {
+        return ln_conversion_method(lb, e);
     }
     if (fn == NULL || fn->nparams == 0 || nargs + 1 > MS_RT_MAX_PARAMS) {
         return lb_unsupported(lb);
