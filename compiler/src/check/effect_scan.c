@@ -2,11 +2,13 @@
  * `Scan` visitor of crates/ms-check/src/effects.rs for the constructs the C body checker handles so
  * far (named calls, constants, writes through a member); the rest follow the call columns
  * (methods, interface conversions) as the checker fills them. */
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "ms/effects.h"
 #include "ms/facts.h"
+#include "ms/methods.h"
 #include "ms/walk.h"
 
 typedef struct ScanState {
@@ -106,10 +108,41 @@ static void scan_stmt(void *ctx, const MsStmt *stmt) {
     }
 }
 
+/* Turning a value into an interface hands out its methods, so the conversion is charged for them: the
+ * impls of the interface for the source type, and the type's own methods the interface's operations name. */
+static void scan_conversion(ScanState *s, const MsExpr *e, MsTy source) {
+    const MsMethods *methods = s->facts->methods;
+    const MsTy target = s->facts->expr_ty[e->id];
+    const MsTyTable *tys = &s->check->tys;
+    const MsOperations *ops = tys->def[target] == 0
+                                  ? NULL
+                                  : ms_interface_operations((const MsMethodTable *)methods, tys->def[target] - 1);
+    for (uint32_t row = 0; row < methods->count; row++) {
+        if (methods->receiver[row] != source || methods->native[row] != MS_NATIVE_SOURCE || methods->decl[row] == NULL) {
+            continue;
+        }
+        bool charged = methods->contract[row] == target;
+        if (methods->inherent[row] && ops != NULL) {
+            const MsMethod *method = (const MsMethod *)((const char *)methods->decl[row] - offsetof(MsMethod, func));
+            for (uint32_t k = 0; k < ops->count; k++) {
+                charged = charged || ops->items[k].name == method->func.name;
+            }
+        }
+        if (!charged) {
+            continue;
+        }
+        if (ms_effect_method_is_node(methods, row)) {
+            scan_edge(s, ms_effect_method_node(s->check, row), e->pos);
+        } else {
+            s->partial = true; // a method of a generic impl has no node yet
+        }
+    }
+}
+
 static void scan_expr(void *ctx, const MsExpr *e) {
     ScanState *s = ctx;
     if (s->facts->coerce_iface[e->id] != MS_TY_NONE) {
-        s->partial = true; // the interface's operations are charged where a value becomes one, which the scan does not port yet
+        scan_conversion(s, e, s->facts->coerce_iface[e->id]);
     }
     if (s->facts->const_use[e->id]) {
         scan_call(s, e);
