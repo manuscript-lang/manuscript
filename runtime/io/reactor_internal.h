@@ -25,11 +25,11 @@ MS_NONNULL_ARGS(1) void ms_io_reactor_set_platform(MsIoReactor *reactor, void *p
 #ifdef _WIN32
 /* The Windows hooks of reactor.c (windows/platform.c). */
 
-/* Opens the platform state (precise timer, signalled-object queue, pipe table). False when out of memory. */
+/* Opens the platform state (precise timer, signalled-object queue). False when out of memory. */
 MS_NONNULL bool ms_io_windows_open(MsIoReactor *reactor);
-/* Ends every pipe and object watch and the timer; libuv finishes closing them while the loop runs. */
+/* Ends every object watch and the timer; libuv finishes closing them while the loop runs. */
 MS_NONNULL void ms_io_windows_close(MsIoReactor *reactor);
-/* Whether `fd` names an adopted pipe (or its writer key) or a watched object, not a socket. */
+/* Whether `fd` names a watched object, not a socket. */
 MS_NONNULL bool ms_io_windows_owns(const MsIoReactor *reactor, uintptr_t fd);
 /* Re-queues events that found the ring full. Call before running the loop. */
 MS_NONNULL void ms_io_windows_flush(MsIoReactor *reactor);
