@@ -321,6 +321,11 @@ static MsFit fit_shape(MsCheck *c, const MsMethodTable *table, MsTy receiver, Ms
     return answer;
 }
 
+MsFit ms_implements_equal(MsCheck *c, const MsMethodTable *table, MsTy ty) {
+    FitWalk walk = {.c = c, .table = table};
+    return fit_structural(&walk, ty, MS_PROP_EQUAL);
+}
+
 MsFit ms_implements(MsCheck *c, const MsMethodTable *table, MsTy receiver, MsTy contract) {
     const MsTyTable *t = &c->tys;
     if (receiver == contract) {
