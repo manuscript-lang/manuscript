@@ -171,4 +171,29 @@ typedef struct MsEntityEffects {
  * declaration order; `*count` is the number of rows. */
 MsEntityEffects *ms_effect_facts(MsArena *arena, const MsCheck *c, MsModId module, MsStr text, uint32_t *count);
 
+/* ---- fetched packages (effect_facts.c) ---- */
+
+/* A module whose callables the scan treats as code written for this build: the project's own, or a fetched package's
+ * (`cap` present: the effects its manifest declares, which nothing in its files may widen). */
+typedef struct MsEffectModule {
+    MsModId id;
+    MsStr text;           /* the module's source */
+    MsEffectScope cap;    /* a fetched package's `[project] effects`; absent for the project's own modules */
+    const char *package;  /* the name diagnostics use for the package (`@host/acme/wire@v1`); NULL for the project */
+} MsEffectModule;
+
+/* A package callable that reaches an effect its manifest does not declare. */
+typedef struct MsPackageViolation {
+    const char *file;    /* the module's path as the checker names it */
+    MsPos pos;           /* the first reference in the callable that brings the effect in */
+    const char *message; /* the Rust text */
+} MsPackageViolation;
+
+/* The violations of the package modules among `modules` (every module of the build that is not the standard
+ * library, bodies checked first), in node order. `*complete` is false when a package callable reaches code the scan
+ * cannot see through, so a missing violation proves nothing: the caller must then leave the build to the Rust
+ * driver. False when the graph is malformed. */
+MS_NODISCARD bool ms_effect_package_violations(MsArena *arena, const MsCheck *c, const MsEffectModule *modules,
+                                               uint32_t count, MsPackageViolation **out, uint32_t *nout, bool *complete);
+
 #endif
