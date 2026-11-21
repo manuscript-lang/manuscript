@@ -223,6 +223,10 @@ const struct MsRtFn *lb_native_function(Lb *lb, MsTy receiver, MsSym method);
 /* lower_extern.c: a call of a bodiless `extern fn`, by its own symbol in the ms-sig table. */
 MirTy lx_type(Lb *lb, MsTy ty);
 bool lx_is_extern(const Lb *lb, MsSymId callee);
+
+/* lower_out.c: the room a call's `out` pointer writes to, and the value taken from it after a successful call. */
+MirValue lo_out_slot(Lb *lb, MirTy ty);
+MirValue lo_take_out(Lb *lb, MirValue slot, MirTy ty);
 LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 /* Stores `value` in the stack slot `slot`. */
