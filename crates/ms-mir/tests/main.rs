@@ -8,5 +8,4 @@ mod interp;
 mod outline;
 mod persist;
 mod text;
-mod unwind;
 mod view_provenance;

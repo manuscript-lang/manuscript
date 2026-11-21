@@ -40,7 +40,6 @@ pub(crate) fn extern_of(
     })
 }
 
-
 /// Whether `inst` can reach a cancellation point.
 pub(crate) fn parks(m: &Module, parks: &[bool], inst: &Inst) -> bool {
     match (inst.op, inst.imm) {

@@ -86,7 +86,6 @@ fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> Result<bool, String> {
         "expand" => ms_mir::expand::run(m, true),
         "expand-nochecks" => ms_mir::expand::run(m, false),
         "expand_owned" => ms_mir::expand_owned::run(m),
-        "unwind" => ms_mir::unwind::run(m),
         "glue" => ms_mir::glue::run(m),
         "frames" | "copies" => true,
         "glue_expand" => {
