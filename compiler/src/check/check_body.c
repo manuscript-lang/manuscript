@@ -724,6 +724,17 @@ static bool body_constructible_extern(const MsBody *b, MsSymId sym, const MsDecl
            ms_doc_has_marker(b->c->mods[syms->module[sym]].text, decl->pos.offset, "constructible");
 }
 
+/* The signature of the function `sym` names. A standard function the native tables and the module's own
+ * declarations both register (`panic`) is resolved on the symbol the module declares, not on the table's. */
+static MsTy body_declared_signature(const MsBody *b, MsSymId sym) {
+    const MsSyms *syms = &b->c->syms;
+    if (syms->ty[sym] != MS_TY_NONE) {
+        return syms->ty[sym];
+    }
+    const MsSymId own = ms_decl_own_symbol(b->c, syms->module[sym], syms->decl[sym]);
+    return own == MS_NONE ? MS_TY_NONE : syms->ty[own];
+}
+
 static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     ms_body_check_home(b, sym);
     const MsSyms *syms = &b->c->syms;
@@ -883,7 +894,10 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (syms->nvars[sym] != 0) {
         return ms_body_generic_call(b, e, sym, NULL, expected);
     }
-    const MsTy sig = syms->ty[sym];
+    if (syms->ty[sym] == MS_TY_NONE) {
+        ms_module_resolve_types(b->c, syms->module[sym]); // a native function's signature is resolved on first call
+    }
+    const MsTy sig = body_declared_signature(b, sym);
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION) {
         return ms_body_unsupported(b);

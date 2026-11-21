@@ -386,7 +386,7 @@ static bool ln_marshal(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t 
         }
     }
     const bool missing_result = call.has_out && (result_ty == MIR_NONE || result_ty == MIR_VOID);
-    if (call.next != nargs || missing_result || fn->twinned) { // a twinned result may be a view into an argument; choosing the twin is not lowered here yet
+    if (call.next != nargs || missing_result || (fn->twinned && !lb->twin_ok)) { // a twinned result may be a view into an argument; choosing the twin is not lowered here yet
         return false;
     }
     return ln_emit(lb, fn, &call, result_ty, status, out);
@@ -516,7 +516,9 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
     if (!lb->ok) {
         return LB_FAIL;
     }
+    lb->twin_ok = lb->iterable == e;
     const LbVal call = lb_native_call(lb, fn, args, nargs + 1, result_ty);
+    lb->twin_ok = false;
     if (!lb->ok) {
         return LB_FAIL;
     }

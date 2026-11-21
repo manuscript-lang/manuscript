@@ -14,8 +14,10 @@
 #include "ms/stdlib.h"
 
 /* The modules whose methods every module sees: the prelude's types (`List`, `Optional`, `Result`,
- * `String`) are declared there. */
-static const char *const program_prelude[] = {"@std/core.ms", "@std/string.ms", "@std/collections/collections.ms"};
+ * `String`) are declared there, and the ones that extend native types in every program (`Bytes`, the scalars'
+ * `min`/`max`, `Decimal`): the loader's EXTENSION_MODULES. */
+static const char *const program_prelude[] = {"@std/core.ms",     "@std/string.ms",   "@std/collections/collections.ms",
+                                              "@std/bytes.ms",    "@std/collections/ordering.ms", "@std/math/decimal.ms"};
 
 /* Desugars the inherent methods of module `m`; a `+source` half names the types its native half
  * declares. Must run before anything declares the module. */
