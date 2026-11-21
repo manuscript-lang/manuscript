@@ -69,9 +69,21 @@ typedef struct LbCallable {
     bool mutating;  /* the receiver is a `var` one */
 } LbCallable;
 
-/* An impl method the module wrote: its row, where it starts, and the source lines it owns. */
+/* What the lowering reads of one source module: its facts, and the tables its node and binding ids
+ * index. A body is lowered with its own module's view entered (`lb_view_enter`). */
+typedef struct LbView {
+    MsModId module;
+    const MsFacts *facts;
+    uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE (output arena, per pass) */
+    MirValue *value_of;   /* by binding id (output arena, per pass) */
+    MirVar *var_of;       /* by binding id (output arena, per pass) */
+    bool *failed;         /* by declaration: it did not lower in an earlier pass (malloc) */
+} LbView;
+
+/* An impl method a lowered module wrote: its row, where it starts, and the source lines it owns. */
 typedef struct LbMethodRow {
-    const MsMethod *method; /* NULL for a row no method of this module carries */
+    const MsMethod *method; /* NULL for a row no method of the lowered modules carries */
+    uint32_t view;          /* the view of the module that wrote it */
     MsPos owner_pos;        /* where the impl declaration starts: the method's location in MIR */
     uint32_t first_line, end_line;
 } LbMethodRow;
@@ -79,7 +91,10 @@ typedef struct LbMethodRow {
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
-    MsModId module; /* the module being lowered: a callee another module declares is not lowered here */
+    LbView *views;  /* the modules being lowered into `m` (malloc) */
+    uint32_t nviews;
+    uint32_t view;  /* the entered view: `module`, `facts`, `binding_at`, `value_of` and `var_of` are its */
+    MsModId module; /* the module whose body is being lowered */
     MsCheck *mut; /* the same table, for `ms_def`, which adds rows on demand */
     const MsFacts *facts;
     MirModule *m;
@@ -150,8 +165,9 @@ LbVal li_box(Lb *lb, const MsExpr *e, LbVal value); /* a concrete value passed a
 /* lower_method.c: methods of impls. */
 bool lm_has(const Lb *lb, uint32_t row); /* a method this module wrote */
 LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
-uint32_t lm_prepare(Lb *lb, MsModId module);                              /* the method rows; their count */
-void lm_stubs(Lb *lb, MsModId module, uint32_t nrows, const bool *failed); /* a stub for each method to lower */
+uint32_t lb_view_enter(Lb *lb, uint32_t view); /* reads module `view` from here on; returns the view it left */
+uint32_t lm_prepare(Lb *lb);                                 /* the method rows of every view; their count */
+void lm_stubs(Lb *lb, uint32_t nrows, const bool *failed);   /* a stub for each method to lower */
 bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered);   /* true when one did not lower */
 
 /* lower_closure.c: function values and lambdas. */
