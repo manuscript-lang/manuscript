@@ -112,20 +112,34 @@ MirValue la_test(Lb *lb, MirValue subject) {
     return mir_b_icmp(&lb->b, MCC_EQ, tag, mir_b_iconst(&lb->b, LA_OK));
 }
 
+/* The payload of `subject` (a Result held by value) in case `index`: read in place when the holder
+ * needs no drop; otherwise it moves out (read, take, then release what is left of the holder), the
+ * way the Rust lowering writes it. */
+static MirValue la_field(Lb *lb, MirValue subject, uint32_t alt, uint32_t index, MirTy ty) {
+    const MirImm field = {.tag = MI_ALTFIELD, .a = alt, .b = index, .c = 0};
+    const MirValue read = mir_b_emit(&lb->b, MOP_AltGet, &subject, 1, field, ty);
+    if (!lb_owns(lb, mir_b_ty(&lb->b, subject))) {
+        return read; // the holder needs no release
+    }
+    const MirValue taken = mir_b_emit(&lb->b, MOP_AltTake, &subject, 1, field, ty);
+    const MirImm mask = {.tag = MI_ALTMASK, .a = alt, .b = index, .c = 1};
+    (void)mir_b_emit(&lb->b, MOP_AltRelease, &subject, 1, mask, MIR_NONE);
+    return taken;
+}
+
 /* The value `subject` holds, once `la_test` found it present. */
 MirValue la_payload(Lb *lb, MirValue subject) {
     const MirTy ty = mir_b_ty(&lb->b, subject);
     const MirTyData *data = mir_ty_data(lb->m, ty);
     const MirTy held = data->kind == MK_OPT ? data->elem : lb->m->alts[data->id].cases[LA_OK].fields[0].ty;
-    if (lb_owns(lb, held)) {
-        lb->ok = false; // taking an owned payload out of its holder is not lowered yet
-        return subject;
-    }
     if (data->kind == MK_OPT) {
+        if (lb_owns(lb, held)) {
+            lb->ok = false; // taking an owned payload out of an Optional is not lowered yet
+            return subject;
+        }
         return mir_b_emit(&lb->b, MOP_OptGet, &subject, 1, (MirImm){0}, data->elem);
     }
-    const MirImm imm = {.tag = MI_ALTFIELD, .a = data->id, .b = LA_OK, .c = 0};
-    return mir_b_emit(&lb->b, MOP_AltGet, &subject, 1, imm, held);
+    return la_field(lb, subject, data->id, LA_OK, held);
 }
 
 /* `call()?` on a Result inside a function that returns a Result with the same error type: the
@@ -133,9 +147,6 @@ MirValue la_payload(Lb *lb, MirValue subject) {
 LbVal la_try(Lb *lb, const MsExpr *e) {
     const LbVal result = lb_expr(lb, e->u.bin.left);
     const MirTy ret = lb->b.f.ret;
-    if (lb->ok && lb_owns(lb, mir_b_ty(&lb->b, result.v))) {
-        return lb_unsupported(lb); // the error or the value moves out of an owned result: not lowered yet
-    }
     if (!lb->ok || mir_ty_data(lb->m, mir_b_ty(&lb->b, result.v))->kind != MK_ALT ||
         mir_ty_data(lb->m, ret)->kind != MK_ALT) {
         return lb_unsupported(lb);
@@ -154,8 +165,7 @@ LbVal la_try(Lb *lb, const MsExpr *e) {
     mir_b_seal_block(&lb->b, fail_block);
     mir_b_seal_block(&lb->b, go_on);
     lb_enter(lb, fail_block);
-    const MirImm error_field = {.tag = MI_ALTFIELD, .a = held->id, .b = LA_ERROR, .c = 0};
-    const MirValue error = mir_b_emit(&lb->b, MOP_AltGet, &result.v, 1, error_field, cause);
+    const MirValue error = la_field(lb, result.v, held->id, LA_ERROR, cause);
     const MirImm error_case = {.tag = MI_CASE, .a = back->id, .b = LA_ERROR};
     const MirValue handed = mir_b_emit(&lb->b, MOP_AltNew, &error, 1, error_case, ret);
     lb_own_vars(lb, 0, MIR_NONE);
@@ -164,5 +174,6 @@ LbVal la_try(Lb *lb, const MsExpr *e) {
     lb_emit_plain(lb, MOP_DepthLeave);
     mir_b_ret(&lb->b, handed);
     lb_enter(lb, go_on);
-    return (LbVal){la_payload(lb, result.v), false};
+    const MirValue value = la_payload(lb, result.v);
+    return (LbVal){value, lb_owns(lb, mir_b_ty(&lb->b, value))}; // an owned value moves out of the result
 }

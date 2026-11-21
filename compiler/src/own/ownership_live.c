@@ -179,8 +179,8 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_MEMBER: live_expr(w, e->u.member.left); return;
     case MS_E_INDEX:
     case MS_E_APPLY: { /* `xs[i]` before name resolution said `xs` is a value */
-        const MsExpr *list = NULL;
-        const MsExpr *index = NULL;
+        MsExpr *list = NULL;
+        MsExpr *index = NULL;
         if (!ms_expr_index(e, &list, &index)) {
             w->supported = false;
             return;

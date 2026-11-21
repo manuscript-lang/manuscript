@@ -219,9 +219,38 @@ MS_NODISCARD bool ms_project_format_paths(MsArena *a, const char *target, const 
  * imports (`@std/`) belong to the checker and are not passed here. */
 MS_NODISCARD bool ms_project_resolve_import(MsArena *a, const MsProject *p, const char *importer, const char *path,
                                             const char **out, MsProjectError *err);
+/* Unsaved editor contents keyed by path. A file that is not on disk may be named only when an overlay holds it. */
+typedef struct MsOverlayFile {
+    const char *path;
+    const char *text;
+    size_t length;
+} MsOverlayFile;
+
+typedef struct MsOverlay {
+    const MsOverlayFile *files;
+    uint32_t count;
+} MsOverlay;
+
+/* The overlay's text for the canonical path, or NULL. `overlay` may be NULL. */
+const MsOverlayFile *ms_overlay_find(const MsOverlay *overlay, const char *canonical);
+/* Canonicalises the paths of `in` as filesystem reads and imports are, so two spellings of one file cannot select
+ * conflicting content. A document outside the project root, or that cannot be named, is left out; two spellings that
+ * carry different text are an error. `root` is canonical. */
+MS_NODISCARD bool ms_overlay_canonical(MsArena *a, const char *root, const MsOverlay *in, MsOverlay *out,
+                                       MsProjectError *err);
 /* Canonicalises `path` (relative paths are under `root`, which is canonical) and rejects one that leaves `root`. */
 MS_NODISCARD bool ms_project_source_path(MsArena *a, const char *root, const char *path, const char **out,
                                          MsProjectError *err);
+/* Like ms_project_source_path; a file the overlay holds need not exist, but its directory must, inside `root`. */
+MS_NODISCARD bool ms_project_source_path_overlay(MsArena *a, const char *root, const char *path,
+                                                 const MsOverlay *overlay, const char **out, MsProjectError *err);
+/* Like ms_project_resolve_import, resolving to files the overlay holds that are not on disk. */
+MS_NODISCARD bool ms_project_resolve_import_overlay(MsArena *a, const MsProject *p, const MsOverlay *overlay,
+                                                    const char *importer, const char *path, const char **out,
+                                                    MsProjectError *err);
+/* The text `ms_project_quote` writes, read back: Go's strconv.Unquote for a double-quoted string. False where Go
+ * reports a syntax error. */
+MS_NODISCARD bool ms_project_unquote(MsArena *a, const char *text, const char **out);
 /* Go's strconv.Quote, for `%q` in diagnostics. */
 const char *ms_project_quote(MsArena *a, const char *text);
 /* The text as Rust's `{:?}` writes a string, for the messages that were formatted that way. */
@@ -282,6 +311,9 @@ MS_NODISCARD bool ms_project_load(MsArena *a, MsNames *names, const char *filena
  * `@package/path` and `out->packages` lists the packages for the checker's effect and native rules. Only a caller
  * whose checker enforces those rules may use it; ms_project_load reports such a project as unsupported. */
 MS_NODISCARD bool ms_project_load_packages(MsArena *a, MsNames *names, const char *filename, MsGraph *out, MsProjectError *err);
+/* Like ms_project_load_packages, reading the files of `overlay` (unsaved editor buffers, any path) in place of disk, and
+ * naming files that exist only there. `overlay` may be NULL. */
+MS_NODISCARD bool ms_project_load_overlay(MsArena *a, MsNames *names, const char *filename, const MsOverlay *overlay, MsGraph *out, MsProjectError *err);
 
 /* ---- checking a graph (project/graph_check.c) ---- */
 

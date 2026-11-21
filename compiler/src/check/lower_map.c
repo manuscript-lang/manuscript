@@ -33,7 +33,7 @@ bool lb_is_map(const Lb *lb, MirTy ty) {
 
 /* The runtime function `name` over these borrowed parameters, declared on first use: the same name
  * over other types is another declaration (`msrt_map_new` returns each map type). */
-static uint32_t lm_extern(Lb *lb, const char *name, const MirTy *params, uint32_t nparams, MirTy ret, uint8_t role,
+uint32_t lb_runtime_extern(Lb *lb, const char *name, const MirTy *params, uint32_t nparams, MirTy ret, uint8_t role,
                           bool reads) {
     const MsSym sym = mir_name(lb->m, name, strlen(name));
     MirParam *wanted = MS_NEW_N(&lb->m->arena, MirParam, nparams + 1);
@@ -85,10 +85,10 @@ LbVal lm_literal(Lb *lb, const MsExpr *e) {
     const MirTyData *data = mir_ty_data(lb->m, ty);
     const MirTy key_ty = data->args[0];
     const MirTy value_ty = data->args[1];
-    const uint32_t make = lm_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
+    const uint32_t make = lb_runtime_extern(lb, "msrt_map_new", NULL, 0, ty, MR_MAP_NEW, false);
     const MirValue empty = mir_b_call_rt(&lb->b, make, NULL, 0);
     const MirTy ptr5[5] = {MIR_PTR, MIR_PTR, MIR_PTR, MIR_PTR, MIR_PTR};
-    const uint32_t add = lm_extern(lb, "msrt_map_add", ptr5, 5, MIR_VOID, MR_NONE, false);
+    const uint32_t add = lb_runtime_extern(lb, "msrt_map_add", ptr5, 5, MIR_VOID, MR_NONE, false);
     const bool single = e->u.map.len == 1; // one entry is read before the map is put in its slot, and gets slots of its own
     MirValue first_key = MIR_NONE;
     MirValue first_value = MIR_NONE;
@@ -156,7 +156,7 @@ static MirValue lm_missing_message(Lb *lb, MirValue key) {
         return mir_b_emit(&lb->b, MOP_StrLit, NULL, 0, lm_str(lb, head, sizeof head - 1), MIR_STR);
     }
     const MirValue label = mir_b_emit(&lb->b, MOP_StrLit, NULL, 0, lm_str(lb, "map key not found: ", 19), MIR_STR);
-    const MirValue digits = mir_b_call_rt(&lb->b, lm_extern(lb, "msrt_int_to_string", int_param, 1, MIR_STR, MR_INT_TO_STRING, false), &key, 1);
+    const MirValue digits = mir_b_call_rt(&lb->b, lb_runtime_extern(lb, "msrt_int_to_string", int_param, 1, MIR_STR, MR_INT_TO_STRING, false), &key, 1);
     const MirValue pair[2] = {label, digits};
     return mir_b_call_rt(&lb->b, lb_string_concat(lb), pair, 2);
 }
@@ -183,10 +183,10 @@ static LmShape lm_shape(Lb *lb, MirTy key, MirTy value) {
 
 /* The entry of `generic` that fits a map of `key` and `value`: the specialisation the runtime declares
  * for the layout (`@word_key_of`, `@text_key_of`), else `generic` itself. */
-static const MsRtOp *lm_specialize(Lb *lb, const MsRtOp *generic, MirTy key, MirTy value) {
+const MsRtFn *lm_specialize(Lb *lb, const MsRtFn *generic, MirTy key, MirTy value) {
     const LmShape shape = lm_shape(lb, key, value);
     const char *twin = shape == LM_WORD ? generic->word_twin : (shape == LM_TEXT ? generic->text_twin : "");
-    const MsRtOp *found = twin[0] != '\0' ? ms_rt_op_find(twin, strlen(twin)) : NULL;
+    const MsRtFn *found = twin[0] != '\0' ? ms_rt_fn_find(twin, strlen(twin)) : NULL;
     return found != NULL ? found : generic;
 }
 
@@ -203,9 +203,9 @@ LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at) {
     const MirValue value_desc = lm_desc(lb, data->args[1]);
     const MirValue key_slot = lm_slot(lb, data->args[0]);
     lb_store(lb, key_slot, key.v);
-    const MsRtOp *entry = lm_specialize(lb, ms_rt_op_find("msrt_map_get_ptr", strlen("msrt_map_get_ptr")), data->args[0], data->args[1]);
+    const MsRtFn *entry = lm_specialize(lb, ms_rt_fn_find("msrt_map_get_ptr", strlen("msrt_map_get_ptr")), data->args[0], data->args[1]);
     const MirTy params[4] = {ty, MIR_PTR, MIR_PTR, MIR_PTR};
-    const uint32_t lookup_fn = lm_extern(lb, entry->symbol, params, 4, MIR_PTR, MR_NONE, entry->pure);
+    const uint32_t lookup_fn = lb_runtime_extern(lb, entry->symbol, params, 4, MIR_PTR, MR_NONE, entry->pure);
     const MirValue lookup[4] = {map.v, key_desc, value_desc, key_slot};
     const MirValue found = mir_b_call_rt(&lb->b, lookup_fn, lookup, 4);
     const MirValue absent = mir_b_emit(&lb->b, MOP_PtrIsNull, &found, 1, (MirImm){0}, MIR_BOOL);
@@ -230,73 +230,4 @@ LbVal lm_index(Lb *lb, LbVal map, const MsExpr *at) {
         lb_drop(lb, map.v);
     }
     return (LbVal){value, false};
-}
-
-/* A method the runtime implements on a map, as the call of its runtime function: each parameter takes
- * what its declared type asks for (the map, a descriptor of its key or value type, a key in a slot the
- * call borrows, an argument value), and the specialisation for the map's layout is used when there is one.
- * `fn` is the function the receiver type and method name select (see lower_native.c). */
-LbVal lm_runtime_method(Lb *lb, const MsExpr *e, const MsRtOp *fn) {
-    const MsExpr *callee = e->u.call.callee;
-    uint32_t wanted = 0;
-    for (uint32_t i = 0; i < fn->nparams; i++) {
-        if (fn->params[i] == MS_RT_OTHER || fn->params[i] == MS_RT_LIST || fn->params[i] == MS_RT_LIST_VAR ||
-            fn->params[i] == MS_RT_DESC) {
-            return lb_unsupported(lb);
-        }
-        wanted += fn->params[i] == MS_RT_VALUE || fn->params[i] == MS_RT_KEY_REF ? 1u : 0u;
-    }
-    if (e->u.call.args.len != wanted) {
-        return lb_unsupported(lb);
-    }
-    const LbVal map = lb_expr(lb, callee->u.member.left);
-    if (!lb->ok || !lb_is_map(lb, mir_b_ty(&lb->b, map.v))) {
-        return lb_unsupported(lb);
-    }
-    const MirTy map_ty = mir_b_ty(&lb->b, map.v);
-    const MirTy key_ty = mir_ty_data(lb->m, map_ty)->args[0];
-    const MirTy value_ty = mir_ty_data(lb->m, map_ty)->args[1];
-    const MsRtOp *entry = lm_specialize(lb, fn, key_ty, value_ty);
-    MirValue operands[MS_RT_MAX_PARAMS];
-    MirTy types[MS_RT_MAX_PARAMS];
-    LbVal key = LB_FAIL;
-    bool has_key = false;
-    uint32_t next_argument = 0;
-    for (uint32_t i = 0; i < fn->nparams && lb->ok; i++) {
-        switch (fn->params[i]) {
-        case MS_RT_MAP: operands[i] = map.v; types[i] = map_ty; break;
-        case MS_RT_KEY_DESC: operands[i] = lm_desc(lb, key_ty); types[i] = MIR_PTR; break;
-        case MS_RT_VAL_DESC: operands[i] = lm_desc(lb, value_ty); types[i] = MIR_PTR; break;
-        case MS_RT_KEY_REF:
-            key = lb_expr(lb, e->u.call.args.ptr[next_argument++].value);
-            has_key = true;
-            if (!lb->ok || mir_b_ty(&lb->b, key.v) != key_ty) {
-                return lb_unsupported(lb);
-            }
-            operands[i] = lm_slot(lb, key_ty);
-            lb_store(lb, operands[i], key.v);
-            types[i] = MIR_PTR;
-            break;
-        default: // an argument value
-            operands[i] = lb_expr(lb, e->u.call.args.ptr[next_argument++].value).v;
-            types[i] = mir_b_ty(&lb->b, operands[i]);
-            break;
-        }
-    }
-    if (!lb->ok) {
-        return LB_FAIL;
-    }
-    const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
-    if (result_ty == MIR_NONE) {
-        return lb_unsupported(lb);
-    }
-    const uint32_t call = lm_extern(lb, entry->symbol, types, fn->nparams, result_ty, MR_NONE, entry->pure);
-    const MirValue result = mir_b_call_rt(&lb->b, call, operands, fn->nparams);
-    if (has_key && key.owned) {
-        lb_drop(lb, key.v);
-    }
-    if (map.owned) {
-        lb_hold_temp(lb, map.v); // a temporary receiver lives to the end of the statement
-    }
-    return (LbVal){result, false};
 }

@@ -1,7 +1,7 @@
-/* The runtime functions that are one MIR instruction: a native whose runtime function is tagged
- * `@op=<mnemonic>` in its `ms-sig` comment lowers to that instruction on its arguments. The table is
- * generated from the headers' signatures (`cargo xtask symbols`), so no function is named in
- * the compiler. */
+/* The runtime functions the C lowering can call from their `ms-sig` declaration. The table is
+ * generated from the headers' signatures (`cargo xtask symbols`), so no function is named in the
+ * compiler: each parameter's role comes from its declared type, and a function whose signature is
+ * tagged `@op=<mnemonic>` is exactly that MIR instruction on its arguments. */
 #ifndef MS_RT_OPS_H
 #define MS_RT_OPS_H
 
@@ -14,26 +14,37 @@
 typedef enum MsRtParam {
     MS_RT_LIST,     /* a list, borrowed */
     MS_RT_LIST_VAR, /* a list by reference: the instruction yields the updated list */
-    MS_RT_DESC,     /* the descriptor of the element type: a `typedesc` before the instruction */
-    MS_RT_VALUE,    /* an argument value */
+    MS_RT_STR,      /* a string, borrowed */
+    MS_RT_DESC,     /* the descriptor of the element type: a `typedesc` before the call */
+    MS_RT_ELEMENT,  /* an element the list takes */
+    MS_RT_INT,
+    MS_RT_FLOAT,
+    MS_RT_BOOL,
+    MS_RT_OUT_STR,  /* the result, a string, written through a pointer */
+    MS_RT_OUT_LIST, /* the result, a list, written through a pointer */
     MS_RT_MAP,      /* a map, borrowed */
     MS_RT_KEY_DESC, /* the descriptor of a map's key type */
     MS_RT_VAL_DESC, /* the descriptor of a map's value type */
     MS_RT_KEY_REF,  /* a key passed by address: stored in a slot the call borrows */
-    MS_RT_OTHER     /* anything the lowering does not marshal yet: the method is left to Rust */
+    MS_RT_OTHER     /* anything the lowering does not marshal: a handle, a slot, an error slot */
 } MsRtParam;
 
-typedef struct MsRtOp {
+typedef enum MsRtRet { MS_RT_RET_VOID, MS_RT_RET_INT, MS_RT_RET_FLOAT, MS_RT_RET_BOOL, MS_RT_RET_OTHER } MsRtRet;
+
+typedef struct MsRtFn {
     const char *symbol;
-    const char *op; /* the MIR mnemonic, or "" when the function is a runtime call */
+    const char *op; /* the MIR mnemonic, or "" */
     MsRtParam params[MS_RT_MAX_PARAMS];
     uint32_t nparams;
-    bool pure;             /* only reads memory and cannot fault (`@pure`) */
+    MsRtRet ret;
+    bool leaf;
+    bool twinned; /* a borrowing twin exists (`@view_of=` and siblings): the result may be lent */
+    bool pure;    /* only reads memory and cannot fault (`@pure`) */
     const char *word_twin; /* its specialisation for a one-word key over a one-word value, or "" */
     const char *text_twin; /* its specialisation for a String key over a one-word value, or "" */
-} MsRtOp;
+} MsRtFn;
 
-/* The tagged function named `symbol`, or NULL. */
-const MsRtOp *ms_rt_op_find(const char *symbol, size_t length);
+/* The function named `symbol`, or NULL. */
+const MsRtFn *ms_rt_fn_find(const char *symbol, size_t length);
 
 #endif

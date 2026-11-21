@@ -9,8 +9,7 @@ description: The Rust checks for one platform (pull requests on Linux, pushes to
 #           packaged ms on a hello project, glibc 2.28 on Linux. They run in part b, except on legs
 #           that run the second corpus pass in part b, where they run in part a. Measured on main, part
 #           a (build, nextest, doc tests) outlasts part b by several minutes on every leg without that pass.
-#   second pass  the run and test phases of the corpus again at Release, then at Debug (unoptimized MIR).
-#           It was the Cranelift pass until every build moved to the C back end.
+#   second pass  the run and test phases of the corpus again at Debug (unoptimized MIR).
 
 inputs:
   docs:
@@ -232,13 +231,6 @@ runs:
     # A pull request that touches no LLVM-related code runs the whole corpus once.
     - name: Conformance corpus (every phase)
       if: env.CONFORM == 'true' && env.LLVM != 'true'
-      shell: bash
-      run: MS=target/debug/ms target/debug/ms run tools/conform.ms
-    # The pass that Cranelift used to build. It now repeats the run and test phases of the pass above.
-    - name: Conformance corpus (second pass, run and test)
-      if: env.SECOND_PASS == 'true'
-      env:
-        CONFORM_BACKEND_ONLY: '1'
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/conform.ms
     # `ms run` and `ms test` build at Debug by default, which skips MIR optimization and so runs other MIR
