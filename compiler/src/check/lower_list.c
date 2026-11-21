@@ -75,7 +75,9 @@ void lst_for(Lb *lb, const MsStmt *s) {
         return;
     }
     const uint32_t outer = lscope_push(&lb->scopes);
+    lb->iterable = s->u.each.iter;
     const LbVal list = lb_expr(lb, s->u.each.iter);
+    lb->iterable = NULL;
     if (!lb->ok || !lb_is_list(lb, mir_b_ty(&lb->b, list.v))) {
         lb->ok = false;
         return;
