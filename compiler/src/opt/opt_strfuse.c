@@ -4,7 +4,7 @@
  * no use of `s` in between, `string_append` takes `s` by move and grows it in place, so a loop
  * that builds a string stays linear even in an unoptimised build. A join whose first part is such
  * an `s` (`s += f"{k}={n};"`) becomes `string_append_fmtN`, which writes the other parts straight
- * onto `s`. Port of crates/ms-mir/src/opt/strfuse.rs. */
+ * onto `s`. Port of the former Rust crates/ms-mir/src/opt/strfuse.rs. */
 #include <stdio.h>
 #include <string.h>
 

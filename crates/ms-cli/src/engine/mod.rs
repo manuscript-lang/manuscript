@@ -189,12 +189,16 @@ impl<L: Lower> Engine<L> {
             }
             Err(failure) => return Ok(failure.report(io)),
         };
-        let mut module = compiled.module;
+        let module = compiled.module;
         // `MS_EMIT_OPT=1` prints the code after the optimizer, the form that gets compiled.
-        if std::env::var_os("MS_EMIT_OPT").is_some_and(|v| v == "1") {
-            ms_mir::opt::optimize(&mut module, ms_mir::opt::Level::Speed, false);
-        }
-        let text = ms_mir::print::print_module(&module);
+        let text = if std::env::var_os("MS_EMIT_OPT").is_some_and(|v| v == "1") {
+            match ms_build::c_backend::optimized_mir(&module) {
+                Ok(text) => text,
+                Err(why) => return Err(BackendError(why)),
+            }
+        } else {
+            ms_mir::print::print_module(&module)
+        };
         Ok(crate::util::write_output(
             io,
             &request.output,

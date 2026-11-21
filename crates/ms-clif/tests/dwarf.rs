@@ -2,7 +2,7 @@
 //! Missing consumer tools fail the test; the six-platform gate installs them.
 
 use ms_clif::{Options, compile};
-use ms_mir::{opt, parse::parse_module, verify::verify_module};
+use ms_mir::{parse::parse_module, verify::verify_module};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -239,7 +239,6 @@ b0:
         let mut m = parse_module(&src).unwrap();
         verify_module(&m).unwrap();
         if optimized {
-            opt::optimize(&mut m, opt::Level::Speed, true);
             ms_mir::depth::lower(&mut m);
         }
         let opts = Options {

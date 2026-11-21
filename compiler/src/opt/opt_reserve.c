@@ -16,7 +16,7 @@
  * at least once. Then the loop pushes at least `max(0, n - i0)` items (one more for `icmp.le`).
  * Capacity is not observable, so a loop that faults early only allocated sooner; the trip count is
  * clamped to MAX_RESERVE items so a huge bound never allocates more than that up front. Port of
- * crates/ms-mir/src/opt/reserve.rs. */
+ * the former Rust crates/ms-mir/src/opt/reserve.rs. */
 #include <string.h>
 
 #include "ms/mir_analysis.h"

@@ -599,13 +599,13 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
 
 /// MIR instructions in one function above which a Debug module is allocated with the single-pass
 /// register allocator.
-const SINGLE_PASS_INSTS: usize = ms_mir::opt::LONG_FUNCTION_INSTS;
+const SINGLE_PASS_INSTS: usize = 4000;
 
 fn single_pass(m: &Module, opts: &Options) -> bool {
     opts.opt_level == "none"
         && m.funcs
             .iter()
-            .any(|f| ms_mir::opt::instruction_count(f) > SINGLE_PASS_INSTS)
+            .any(|f| f.blocks.iter().map(|b| b.insts.len()).sum::<usize>() > SINGLE_PASS_INSTS)
 }
 
 fn compile_with_isa(
@@ -1314,19 +1314,14 @@ mod target_tests {
         ];
         for path in files {
             let source = std::fs::read_to_string(&path).unwrap();
-            for level in [ms_mir::opt::Level::None, ms_mir::opt::Level::Speed] {
+            for level in ["none", "speed"] {
                 let mut m = ms_mir::parse::parse_module(&source).unwrap();
                 ms_mir::verify::verify_module(&m).unwrap();
-                ms_mir::opt::optimize(&mut m, level, true);
                 ms_mir::depth::lower(&mut m);
                 ms_mir::expand::run(&mut m, true);
                 ms_mir::glue::run_and_expand(&mut m);
                 let opts = Options {
-                    opt_level: if level == ms_mir::opt::Level::None {
-                        "none"
-                    } else {
-                        "speed"
-                    },
+                    opt_level: level,
                     ..Options::default()
                 };
                 for (target, magic) in targets {

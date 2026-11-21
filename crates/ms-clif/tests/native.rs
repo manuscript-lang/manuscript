@@ -83,9 +83,6 @@ pub fn run_native_with(src: &str, opts: &Options, tag: &str) -> Outcome {
 /// Like [`run_native_with`], also returning stderr.
 pub fn run_native_full(src: &str, opts: &Options, tag: &str) -> (Outcome, String) {
     let mut m = module(src);
-    if tag.ends_with(".opt") {
-        ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
-    }
     ms_mir::expand::run(&mut m, opts.checks);
     let obj = compile_lowered(&m, opts).unwrap_or_else(|e| panic!("{e}"));
     let d = dir();
@@ -368,11 +365,8 @@ fn build_runtime(root: &std::path::Path) -> PathBuf {
 }
 
 /// Compiles `src` and links it with the real runtime plus the print shim.
-fn run_real(src: &str, opt: bool, tag: &str) -> Outcome {
+fn run_real(src: &str, tag: &str) -> Outcome {
     let mut m = module(src);
-    if opt {
-        ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
-    }
     ms_mir::expand::run(&mut m, true);
     let obj = compile_lowered(&m, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
     let d = dir();
@@ -414,11 +408,9 @@ fn kernels_on_real_runtime() {
             "9223372036854775806\n-9223372036854775808\n-9223372036854775805\n35",
         ),
     ] {
-        for opt in [false, true] {
-            let o = run_real(&kernel_src(name), opt, &format!("real_{name}_{opt}"));
-            assert_eq!(o.code, 0, "{name} opt={opt} exit code");
-            assert_eq!(o.stdout.trim(), expect, "{name} opt={opt} checksum");
-        }
+        let o = run_real(&kernel_src(name), &format!("real_{name}"));
+        assert_eq!(o.code, 0, "{name} exit code");
+        assert_eq!(o.stdout.trim(), expect, "{name} checksum");
     }
 }
 
@@ -492,7 +484,6 @@ b0:
 }
 "#;
     let mut m = module(src);
-    ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
     assert_eq!(m.funcs.len(), 1, "limit and probe inline into main");
     ms_mir::expand::run(&mut m, true);
     let obj = compile_lowered(&m, &Options::default()).unwrap();
@@ -841,8 +832,7 @@ b0:
 }}
 "#
         );
-        let mut m = module(&src);
-        ms_mir::opt::ifconv::run(&mut m);
+        let m = module(&src);
         ms_mir::verify::verify_module(&m).unwrap();
         let prepared = ms_mir::print::print_module(&m);
         for opt_level in ["none", "speed"] {
@@ -907,8 +897,6 @@ b0:
 }
 "#;
     let mut m = module(src);
-    ms_mir::opt::ifconv::run(&mut m);
-    ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
     assert_eq!(m.funcs.len(), 1);
     let d = dir();
     let objp = d.join("inline-flags.o");
