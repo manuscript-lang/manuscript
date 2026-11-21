@@ -39,6 +39,13 @@ if(_triple MATCHES "windows")
 endif()
 set(MS_ALL_PLATFORM_DIRS posix linux glibc musl darwin windows)
 
+# Programs link no libgcc or compiler-rt, and an aarch64 Linux compiler calls their __aarch64_ldadd8_relax and
+# friends for atomics unless told to emit the instructions (gcc does by default since 10, clang since 12 as an
+# option); every C object here, runtime or compiler tool, gets the instructions.
+if(_triple MATCHES "linux" AND (MS_TRIPLE MATCHES "^(aarch64|arm64)" OR (MS_TRIPLE STREQUAL "" AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")))
+  add_compile_options(-mno-outline-atomics)
+endif()
+
 # Whether the C libraries are wired for this target. Each target joins as its build is proven (workstream W0b);
 # a source that needs a library the target lacks stays out of the archive and the Rust runtime serves it.
 # A Windows host's own build (the unit tests of the Rust crates) targets MSVC and has no libraries yet.
