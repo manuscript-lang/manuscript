@@ -60,7 +60,11 @@ MsTy ms_self_variable(MsCheck *c, MsTy contract);
 
 /* The method declaration behind each row of `m` that `module` wrote (by row; NULL for another
  * module's rows and for properties no method carries). */
-const MsMethod **ms_method_rows(MsCheck *c, MsModId module, const MsMethods *m);
+const MsMethod **ms_method_rows(MsCheck *c, MsModId module, const MsMethods *m, const MsDecl **owners);
+
+/* The first inherent impl of `module` with the receiver form of `impl`, which the later ones are
+ * one block with (the position MIR gives their methods). */
+const MsDecl *ms_impl_first_block(MsCheck *c, MsModId module, const MsDecl *impl);
 
 /* The operations of the interface symbol `sym`, in declaration order; NULL when it has none. */
 const MsOperations *ms_interface_operations(const MsMethodTable *table, MsSymId sym);

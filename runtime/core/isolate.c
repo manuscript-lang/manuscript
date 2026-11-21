@@ -22,6 +22,17 @@ typedef struct Slot {
  * atomic, and `wake` is published by the release store of `state`. */
 static Slot slots[MS_MAX_ISOLATES];
 static _Atomic uint32_t live_count;
+static _Atomic(const MsMailKindOps *) kind_ops[MS_MAIL_KIND_COUNT];
+
+void ms_isolate_set_mail_kind(uint32_t kind, const MsMailKindOps *ops) {
+    if (kind < MS_MAIL_KIND_COUNT) {
+        atomic_store(&kind_ops[kind], ops);
+    }
+}
+
+const MsMailKindOps *ms_isolate_mail_kind(uint32_t kind) {
+    return kind < MS_MAIL_KIND_COUNT ? atomic_load(&kind_ops[kind]) : NULL;
+}
 static _Thread_local uint32_t self_index = MS_NO_ISOLATE; /* per-thread, like the scheduler */
 
 uint32_t ms_isolate_register(MsWakeFn wake, void *argument) {
@@ -51,7 +62,10 @@ void ms_isolate_unregister(uint32_t index, void (*discard)(MsMail *mail)) {
     MsMail *mail = atomic_exchange(&slots[index].mail, NULL);
     while (mail != NULL) {
         MsMail *const next = mail->next;
-        if (discard != NULL) {
+        const MsMailKindOps *const ops = ms_isolate_mail_kind(mail->kind);
+        if (ops != NULL && ops->discard != NULL) {
+            ops->discard(mail);
+        } else if (discard != NULL) {
             discard(mail);
         }
         msrt_free(mail);
