@@ -1,7 +1,8 @@
 #!/bin/sh
 # Installs the tools and libraries the C build needs: CMake, Ninja, ccache, pkg-config, and libuv, nghttp2, OpenSSL,
 # PCRE2, zlib and libcurl (the system packages CMakeLists.txt finds with pkg-config).
-# Usage: libs.sh install
+# Usage: libs.sh install   (`make setup`)
+#        libs.sh check     (every `make runtime`: names what is missing and the command that installs it)
 # Which libraries a build uses is decided by cmake/MsLibs.cmake: system packages (default), the pinned versions
 # in c-libs.lock built by build.sh (musl runtime archives), or the MSYS2 CLANG64 or CLANGARM64 packages (Windows,
 # mingw-w64-clang-<arch>-*; `install` runs pacman at MS_MSYS2, default C:/msys64).
@@ -48,5 +49,25 @@ install)
     else
         echo "libs.sh: no supported package manager (apt, dnf, Homebrew, apk, vcpkg)" >&2; exit 1
     fi ;;
-*) echo "usage: libs.sh install" >&2; exit 1 ;;
+check)
+    # What the pinned C library build and the runtime archives run: a build tool, a C compiler for the host, perl for
+    # OpenSSL's Configure and, on Linux, clang (the glibc archive) and musl-gcc (the static one). Without one the
+    # build stops deep inside CMake ("C compiler identification is unknown"), so say it here.
+    missing=
+    for tool in cmake ninja make perl cc; do
+        command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+    done
+    case "$(uname -s)" in
+    Linux)
+        for tool in clang "${MS_MUSL_CC:-musl-gcc}"; do
+            command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+        done ;;
+    esac
+    # Windows builds run in MSYS2 with llvm-mingw (toolchain/fetch-mingw.sh); only the shell's own tools are checked.
+    if [ -n "$missing" ]; then
+        echo "libs.sh: missing:$missing" >&2
+        echo "Install the build tools and libraries with: make setup   (sh runtime/third_party/libs.sh install)" >&2
+        exit 1
+    fi ;;
+*) echo "usage: libs.sh install|check" >&2; exit 1 ;;
 esac

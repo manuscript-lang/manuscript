@@ -13,6 +13,8 @@ Build the compiler, run its tests, and package native releases. `ms` is implemen
 
 Building `ms` needs a C compiler (`ring` compiles C sources), the platform prerequisites below, and the pinned dependencies, downloaded during setup or supplied through the Cargo cache.
 
+On a new machine run `make setup` once (it runs `sh runtime/third_party/libs.sh install`: CMake, Ninja, clang, musl-gcc, perl and the system libraries; apt, Homebrew, apk, dnf and MSYS2 are supported). `make runtime` first checks that those tools exist and names what is missing. The pinned C libraries are built once per target into `target/c-libs`; a build left by an older checkout (another source folder or compiler) is discarded and rebuilt, so a stale cache needs no manual cleanup. `make rebuild` removes everything built.
+
 The native runtime (`ms-native`) is an explicit step: `make runtime` (`cmake -P cmake/BuildRuntime.cmake`) builds it into `target/ms-native/libms_native.a`. The build script of `ms-cli` only embeds that archive (or the one `MS_NATIVE_LIB` names) and fails, naming this command, when the archive is missing. Rerun the command after changing `ms-rt`, `ms-rt-abi`, `ms-rt-hot`, or any `ms-std-*` crate.
 
 ```sh
