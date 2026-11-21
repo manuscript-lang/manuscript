@@ -210,7 +210,8 @@ int64_t lb_number_bits(Lb *lb, const MsExpr *e, MirTy ty, bool negate) {
         return bits;
     }
     const uint64_t magnitude = strtoull(digits, NULL, 10);
-    return (int64_t)(negate ? 0 - magnitude : magnitude); // unsigned negation: the minimum Int has no positive twin
+    /* Negated as an unsigned value: the magnitude of Int.min does not fit a signed one. */
+    return (int64_t)(negate ? 0 - magnitude : magnitude);
 }
 
 static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
@@ -854,9 +855,6 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const MsTy dispatch = lb->facts->call_interface[e->id];
     if (dispatch != MS_TY_NONE && ms_ty_kind(&lb->c->tys, lb->facts->call_receiver[e->id]) == MS_K_CONTRACT) {
         return li_call(lb, e);
-    }
-    if (callee == MS_NONE && dispatch != MS_TY_NONE && lb->facts->call_borrows[e->id] && lb->iterable != e) {
-        return LB_UNSUPPORTED(lb); // a borrowed result used elsewhere is lent by a twin that is not lowered yet
     }
     if (callee == MS_NONE && dispatch != MS_TY_NONE) {
         return lb_native_method(lb, e); // an operation of a primitive: its runtime function
