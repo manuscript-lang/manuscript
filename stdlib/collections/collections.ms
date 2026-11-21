@@ -12,6 +12,7 @@ export extern type List[T]:
 // Returns an element; negative indexes are relative to the end. An out-of-range
 // index raises a fault, as `xs[i]` does. Use `get_or` for indexes that may miss, or
 // `first()` and `last()`.
+// ms: borrows
 fn List[T].get(index: Int) T: ...
 
 // Returns an element, or `default` when the index is out of range; negative indexes are
@@ -140,6 +141,7 @@ fn List[T: Clonable].clone() List[T]: ...
 // Returns a new list containing copies of the elements in [start, end).
 // Negative bounds are relative to the end; bounds outside 0 <= start <= end <=
 // length() return an `Error` of kind `ERANGE`.
+// ms: borrows
 fn List[T: Clonable].slice(start: Int, end: Int) List[T]!: ...
 
 // Returns a new list with copies of the first `count` elements, or of all of them
@@ -511,6 +513,7 @@ fn var Map[T, U].add_default_from(move key: T, create: fn(T) U) Void: ...
 fn var Map[T, U].clear() Void: ...
 
 // Returns a new list of the keys in insertion order.
+// ms: borrows
 fn Map[T, U].keys() List[T]: ...
 
 // Calls `operation(key, value)` for each entry in insertion order.
@@ -523,6 +526,7 @@ fn Map[T, U].for_each(operation: fn(T, var U) Void) Void: ...
 fn Map[T, U].contains(key: T) Bool: ...
 
 // Returns the value stored for an equal key, or `none` when the key is absent.
+// ms: borrows
 fn Map[T, U].get(key: T) U?: ...
 
 // Returns the number of entries.
@@ -562,6 +566,7 @@ fn Map[T: Hashable, U: Clonable].find(predicate: fn(T, U) Bool) MapEntry[T, U]?:
 fn Map[T: Hashable, U: Clonable].find_last(predicate: fn(T, U) Bool) MapEntry[T, U]?: ...
 
 // Returns a new list of the values in insertion order.
+// ms: borrows
 fn Map[T: Hashable, U: Clonable].values() List[U]: ...
 
 // Returns a new list of `MapEntry` records in insertion order. Each record holds the

@@ -247,11 +247,13 @@ bool ls_reports_found(Lb *lb, const MsRtFn *fn, MirTy result_ty) {
         return false;
     }
     const MirTy elem = mir_ty_data(lb->m, result_ty)->elem;
-    bool has_out = false;
+    bool scalar_out = false;
+    bool text_out = false;
     for (uint32_t i = 0; i < fn->nparams; i++) {
-        has_out = has_out || fn->params[i] == MS_RT_OUT_SCALAR;
+        scalar_out = scalar_out || fn->params[i] == MS_RT_OUT_SCALAR;
+        text_out = text_out || fn->params[i] == MS_RT_OUT_STR;
     }
-    return has_out && (elem == MIR_INT || elem == MIR_FLOAT || elem == MIR_BOOL);
+    return (scalar_out && (elem == MIR_INT || elem == MIR_FLOAT || elem == MIR_BOOL)) || (text_out && elem == MIR_STR);
 }
 
 /* `some(value)` when the native reports it found one, else `none`. */
@@ -270,7 +272,7 @@ LbVal ls_found_call(Lb *lb, const MsRtFn *fn, const MirValue *args, uint32_t nar
     mir_b_seal_block(b, yes);
     mir_b_seal_block(b, no);
     const MirBlock join = mir_b_new_block(b);
-    const MirValue result = mir_b_add_block_param(b, join, result_ty, MM_BORROW);
+    const MirValue result = mir_b_add_block_param(b, join, result_ty, lb_owns(lb, result_ty) ? MM_MOVE : MM_BORROW);
     mir_b_switch_to(b, yes);
     const MirValue value = lo_take_out(lb, slots.out, elem);
     const MirValue some = mir_b_emit(b, MOP_OptSome, &value, 1, (MirImm){0}, result_ty);

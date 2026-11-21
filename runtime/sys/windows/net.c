@@ -26,6 +26,10 @@ static int startup(void) {
     return 0;
 }
 
+/* Overlapped: libuv cancels a poll by issuing a request on the socket itself, which on a socket without
+ * WSA_FLAG_OVERLAPPED blocks the closing thread until the peer sends something. */
+#define SOCKET_FLAGS (WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT)
+
 static int would_block(int e) { return e == WSAEWOULDBLOCK || e == WSAEINPROGRESS; }
 
 static int to_sockaddr(const MsAddr *a, SOCKADDR_STORAGE *ss) {
@@ -74,7 +78,7 @@ static int prepare(SOCKET s) {
 
 static int new_socket(const MsAddr *a, SOCKET *out) {
     if (startup()) return MS_SYS_ERROR;
-    SOCKET s = WSASocketW(a->family == 4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_NO_HANDLE_INHERIT);
+    SOCKET s = WSASocketW(a->family == 4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP, NULL, 0, SOCKET_FLAGS);
     if (s == INVALID_SOCKET) return MS_SYS_ERROR;
     if (prepare(s) < 0) return fail_close(s);
     *out = s;
@@ -118,7 +122,7 @@ static int unix_address(const char *path, SOCKADDR_UN *sun) {
 
 static int new_unix_socket(SOCKET *out) {
     if (startup()) return MS_SYS_ERROR;
-    SOCKET s = WSASocketW(AF_UNIX, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_NO_HANDLE_INHERIT);
+    SOCKET s = WSASocketW(AF_UNIX, SOCK_STREAM, 0, NULL, 0, SOCKET_FLAGS);
     if (s == INVALID_SOCKET) return MS_SYS_ERROR;
     *out = s;
     return MS_SYS_OK;
@@ -144,7 +148,7 @@ int ms_sys_net_unix_connect(const char *path, MsSock *out) {
 
 int ms_sys_net_udp_bind(const MsAddr *addr, MsSock *out) {
     if (startup()) return MS_SYS_ERROR;
-    SOCKET s = WSASocketW(addr->family == 4 ? AF_INET : AF_INET6, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, WSA_FLAG_NO_HANDLE_INHERIT);
+    SOCKET s = WSASocketW(addr->family == 4 ? AF_INET : AF_INET6, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, SOCKET_FLAGS);
     if (s == INVALID_SOCKET) return MS_SYS_ERROR;
     if (prepare(s) < 0) return fail_close(s);
     BOOL reset = FALSE; /* a datagram to a closed port must not make the next receive fail (WSAECONNRESET) */
@@ -295,7 +299,7 @@ int ms_sys_net_duplicate(MsSock s, MsSock *out) {
     WSAPROTOCOL_INFOW info;
     if (WSADuplicateSocketW((SOCKET)s, GetCurrentProcessId(), &info) != 0) return MS_SYS_ERROR;
     const SOCKET copy = WSASocketW(FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO, &info, 0,
-                                   WSA_FLAG_NO_HANDLE_INHERIT);
+                                   SOCKET_FLAGS);
     if (copy == INVALID_SOCKET) return MS_SYS_ERROR;
     *out = (MsSock)copy;
     return MS_SYS_OK;
