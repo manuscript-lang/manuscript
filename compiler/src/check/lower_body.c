@@ -215,9 +215,15 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
     if (facts->res_kind[e->id] != MS_RES_BINDING) {
         return facts->res_kind[e->id] == MS_RES_NONE ? la_none(lb, e) : lb_unsupported(lb);
     }
+    if (facts != lb->views[lb->view].facts) {
+        return lb_unsupported(lb); // a field default read under its declaring module's facts: no local of this function is in scope there
+    }
     const uint32_t binding = facts->res_ref[e->id];
     if (lb->var_of[binding] != MIR_NONE) {
         return (LbVal){mir_b_use_var(&lb->b, lb->var_of[binding]), false};
+    }
+    if (lb->value_of[binding] == MIR_NONE) {
+        return lb_unsupported(lb); // a name no statement of this function bound: a field default naming a sibling field
     }
     return (LbVal){lb->value_of[binding], false};
 }
