@@ -6,7 +6,8 @@
 // files of ms/build_link.h) and `MS_RT_LIB` (the runtime archive) until the C side fetches and embeds them.
 import (
 	environment from "@std/os/env.ms",
-	stat from "@std/os/fs.ms",
+	remove, stat, temporary_directory from "@std/os/fs.ms",
+	SpawnOptions, Stdio, spawn from "@std/os/process.ms",
 	stderr, stdout from "@std/io/io.ms",
 
 	Invocation from "./args.ms",
@@ -27,41 +28,86 @@ extern fn ms_tool_build(
 	release: Bool,
 ) List[String]!BuildError
 
-// The exit status, or none when the Rust command must run.
-export fn run_build(inv: Invocation) Int?:
-	if inv.structured or inv.static_libc or inv.watch: return none
-	if not inv.link.is_empty(): return none
-	if inv.targets.length() > 1: return none
-
-	kind := inv.build_type_name.lower()
-	if kind != "" and kind != "debug" and kind != "release": return none
-
-	target := if inv.targets.is_empty(): inv.filename.clone() else: inv.targets[0].clone()
-	if not target.ends_with(".ms"): return none
-
-	vars := environment()
-	if vars.is_error(): return none
-
-	env := vars.get()
+// The tools directory, `lld`, the linker's files and the runtime archive, or none while one is not named.
+fn tool_paths(env: Map[String, String]) List[String]?:
 	tools := env.get("MS_LLVM_TOOLS")?
 	lld := env.get("MS_LLD")?
 	files := env.get("MS_LINKER_FILES")?
 	runtime := env.get("MS_RT_LIB")?
+	return [tools.clone(), lld.clone(), files.clone(), runtime.clone()]
+
+// Whether the C pipeline built `inv`'s program into `output`; false when the Rust command must build it.
+fn built_in_c(inv: Invocation, output: String) Bool:
+	if inv.structured or inv.static_libc or inv.watch: return false
+	if not inv.link.is_empty(): return false
+	if inv.targets.length() > 1: return false
+
+	kind := inv.build_type_name.lower()
+	if kind != "" and kind != "debug" and kind != "release": return false
+
+	target := if inv.targets.is_empty(): inv.filename.clone() else: inv.targets[0].clone()
+	if not target.ends_with(".ms"): return false
+
+	vars := environment()
+	if vars.is_error(): return false
+
+	env := vars.get()
+	paths := tool_paths(env)
+	if paths.is_none(): return false
+
+	// A failed or declined C build is the Rust command's to report, in its words.
+	built := ms_tool_build(
+		target,
+		output,
+		paths.get()[3],
+		paths.get()[0],
+		paths.get()[1],
+		paths.get()[2],
+		kind == "release",
+	)
+
+	if built.is_error():
+		if env.contains("MS_DRIVER_TRACE"): trace(built.err())
+		return false
+
+	return true
+
+// The exit status, or none when the Rust command must run.
+export fn run_build(inv: Invocation) Int?:
 	shown := if inv.output.is_empty(): "program" else: inv.output.clone()
 
 	// The Rust command makes the output's directory and refuses a directory as output.
 	if directory(shown): return none
 	if shown.contains("/") and not directory(shown.slice(0, shown.last_index_of("/")?)): return none
-
-	// A failed or declined C build is the Rust command's to report, in its words.
-	built := ms_tool_build(target, shown, runtime, tools, lld, files, kind == "release")
-
-	if built.is_error():
-		if env.contains("MS_DRIVER_TRACE"): trace(built.err())
-		return none
+	if not built_in_c(inv, shown): return none
 
 	stdout().write(f"Built {shown}\n").get()
 	return 0
+
+// `ms run`: the program is built into a temporary directory and started with the arguments after `--`; its exit
+// status is the command's. None when the Rust command must run.
+export fn run_program(inv: Invocation) Int?:
+	root := temporary_directory("manuscript-run-")
+	if root.is_error(): return none
+
+	dir := root.get().clone()
+	executable := f"{dir}/program"
+
+	if not built_in_c(inv, executable):
+		void remove(dir, recursive: true)
+		return none
+
+	child := spawn(
+		executable,
+		inv.arguments,
+		SpawnOptions(stdin: Stdio.Inherit, stdout: Stdio.Inherit, stderr: Stdio.Inherit),
+	)
+
+	var status = 1
+	if child.is_ok(): status = child.get().wait().get_or(1)
+
+	void remove(dir, recursive: true)
+	return status
 
 // Says on standard error why the C build left the command to the Rust one.
 fn trace(error: BuildError) Void:
