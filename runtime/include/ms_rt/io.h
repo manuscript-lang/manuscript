@@ -22,6 +22,11 @@ uint8_t msstd_io_write(void *handle, const MsStr *data, MsStr *err);
 uint8_t msstd_io_write_bytes(void *handle, const MsVec *data, MsStr *err);
 
 /* Standard output, buffered in runtime/core/stdout.c; standard error flushes it first. */
+/* Writes out what the runtime buffered for standard output, and the OS code of the first failed write (0 when none)
+ * (runtime/core/stdout.c). Declared here, not in ms_sched.h, whose wait bits clash with core/task.h. */
+void ms_sched_flush_stdout(void);
+int32_t ms_sched_stdout_error(void);
+
 /* ms-sig: msrt_io_write_stdout(s: *const StrVal) */
 void msrt_io_write_stdout(const MsStr *text);
 

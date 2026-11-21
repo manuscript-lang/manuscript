@@ -157,7 +157,7 @@ typedef struct MsEntityEffects {
     uint32_t neffects;
     const MsStr *permits; /* `allow_effect` patterns in force, as written */
     uint32_t npermits;
-    const MsStr *calls; /* project callables the body calls: declaration names, sorted and unique */
+    const MsStr *calls; /* project callables the body calls: entity keys `path#fn#name`, sorted and unique */
     uint32_t ncalls;
     const MsStr *external; /* callees outside the project: their symbol ids, sorted and unique */
     uint32_t nexternal;

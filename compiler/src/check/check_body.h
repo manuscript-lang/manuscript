@@ -31,6 +31,7 @@ typedef struct MsBody {
     bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
     bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
     bool supported;         /* false once a construct outside the handled set is met */
+    MsSite gave_up;         /* the first `ms_body_unsupported` call of this function */
 } MsBody;
 
 /* A parameter or local of this type can be called and passed around (check_closure.c). */

@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dump_io.h"
 #include "ms/check.h"
 #include "ms/lower.h"
 #include "ms/desugar.h"
@@ -268,7 +269,12 @@ static int run_oracle_dump(const char *path) {
     return 0;
 }
 
+/* `MS_WHY=1`: each place the body checker gave a function up, as `WHY file:line` on stderr, in the order met. */
+
 int main(int argc, char **argv) {
+    if (getenv("MS_WHY") != NULL) {
+        ms_body_decline_hook = print_decline;
+    }
     if (argc == 3 && strcmp(argv[1], "--run-mir") == 0) {
         return run_oracle_dump(argv[2]);
     }
