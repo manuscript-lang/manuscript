@@ -95,6 +95,11 @@ typedef struct EmitSite {
 } EmitSite;
 
 bool emit_scalar_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
+bool emit_checked_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
+/* Whether the runtime takes a value of `type` as its scalar leaves; anything else crosses by address. */
+bool emit_rt_direct(EmitCx *cx, MirTy type);
+/* Whether extern `def` is a function of a C library (not the runtime's own, which takes a Float32 as a double). */
+bool emit_extern_is_c(const EmitCx *cx, const MirExtern *def);
 bool emit_call_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_record_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_option_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
