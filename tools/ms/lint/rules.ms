@@ -9,6 +9,7 @@ import (
 	lint_imports from "./imports.ms",
 	lint_interpolation from "./interpolation.ms",
 	lint_matches from "./matches.ms",
+	lint_payloads from "./payloads.ms",
 	lint_recursion from "./recursion.ms",
 	lint_terse from "./terse.ms",
 	lint_source from "./text.ms",
@@ -27,4 +28,5 @@ export fn lint_all(file: String, text: String) List[Finding]:
 	found.extend(lint_flush(file, text))
 	found.extend(lint_effects(file, text))
 	found.extend(lint_interpolation(file, text))
+	found.extend(lint_payloads(file, text))
 	return found

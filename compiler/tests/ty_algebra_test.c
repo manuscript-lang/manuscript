@@ -78,11 +78,11 @@ static void test_has_variable(void) {
     fixture_init(&f);
     MsTy int_ty = named(&f, "Int", MS_BI_INT, NULL, 0);
     MsTy v = variable(&f, "T");
-    CHECK(!ms_ty_has_variable(&f.c.tys, &f.arena, int_ty));
-    CHECK(ms_ty_has_variable(&f.c.tys, &f.arena, v));
-    CHECK(ms_ty_has_variable(&f.c.tys, &f.arena, list_of(&f, v)));
-    CHECK(ms_ty_has_variable(&f.c.tys, &f.arena, function(&f, "fn1", 0, int_ty, list_of(&f, v))));
-    CHECK(!ms_ty_has_variable(&f.c.tys, &f.arena, function(&f, "fn2", 0, int_ty, int_ty)));
+    CHECK(!ms_ty_has_variable(&f.c.tys, int_ty));
+    CHECK(ms_ty_has_variable(&f.c.tys, v));
+    CHECK(ms_ty_has_variable(&f.c.tys, list_of(&f, v)));
+    CHECK(ms_ty_has_variable(&f.c.tys, function(&f, "fn1", 0, int_ty, list_of(&f, v))));
+    CHECK(!ms_ty_has_variable(&f.c.tys, function(&f, "fn2", 0, int_ty, int_ty)));
     /* Pair[T, T] nested 60 times has 2^60 paths and 60 nodes. */
     MsTy deep = v;
     MsTy plain = int_ty;
@@ -90,8 +90,8 @@ static void test_has_variable(void) {
         deep = pair(&f, deep, deep);
         plain = pair(&f, plain, plain);
     }
-    CHECK(ms_ty_has_variable(&f.c.tys, &f.arena, deep));
-    CHECK(!ms_ty_has_variable(&f.c.tys, &f.arena, plain));
+    CHECK(ms_ty_has_variable(&f.c.tys, deep));
+    CHECK(!ms_ty_has_variable(&f.c.tys, plain));
     fixture_free(&f);
 }
 
