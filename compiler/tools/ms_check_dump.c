@@ -203,10 +203,6 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
     }
 }
 
-static void print_decline(const char *file, int line) {
-    const char *base = strrchr(file, '/');
-    fprintf(stderr, "WHY %s:%d\n", base == NULL ? file : base + 1, line);
-}
 
 /* `--project-facts FILE`: the fact document of the project FILE belongs to (every local module it imports),
  * the model `ms_tool_facts_project` prints, checked in dependency order. */

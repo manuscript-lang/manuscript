@@ -8,6 +8,7 @@
 #include "ms/interface_sig.h"
 #include "ms/param_order.h"
 #include "ms/methods.h"
+#include "ms/ownership.h"
 #include "ms/program.h"
 #include "ms/public_sig.h"
 #include "ms/stdlib.h"

@@ -1,6 +1,6 @@
 /* Records in the lowering (crates/ms-lower: `lower_ty` for `Kind::Type`, `call.rs` construction,
- * `expr.rs` member access): a `type` without type parameters whose fields all have MIR types is a
- * MIR `type`; `Name(field: value, ...)` is `type.new` (a field left out takes its default) and
+ * `expr.rs` member access): a `type` whose fields all have MIR types is a
+ * MIR `type` (one per instance of a generic record, its fields at the instance's arguments); `Name(field: value, ...)` is `type.new` (a field left out takes its default) and
  * `value.field` is `type.get`. */
 #include "check_body.h"
 #include "ms/lower_internal.h"
@@ -8,11 +8,11 @@
 /* The MIR type of record `ty`, declared on first use; MIR_NONE when it is not one this pass lowers. */
 MirTy lr_type(Lb *lb, MsTy ty) {
     const MsTyTable *tys = &lb->c->tys;
-    if (ms_ty_kind(tys, ty) != MS_K_TYPE || tys->nargs[ty] != 0 || tys->def[ty] == 0) {
+    if (ms_ty_kind(tys, ty) != MS_K_TYPE || tys->def[ty] == 0) {
         return MIR_NONE;
     }
     const MsSymId sym = tys->def[ty] - 1;
-    if (sym >= lb->c->defs_cap || lb->c->syms.kind[sym] != MS_SYM_TYPE) {
+    if (sym >= lb->c->defs_cap || lb->c->syms.kind[sym] != MS_SYM_TYPE || tys->nargs[ty] != lb->c->defs[sym].nvars) {
         return MIR_NONE;
     }
     if (lb->type_of[ty] == LB_TYPE_PENDING) {
@@ -25,7 +25,7 @@ MirTy lr_type(Lb *lb, MsTy ty) {
     MirField *fields = MS_NEW_N(&lb->m->arena, MirField, (size_t)def->nfields + 1);
     lb->type_of[ty] = LB_TYPE_PENDING;
     for (uint32_t i = 0; i < def->nfields; i++) {
-        const MirTy field = lb_mir_ty(lb, def->fields[i].ty);
+        const MirTy field = lb_mir_ty(lb, le_field_ty(lb, def, ty, def->fields[i].ty)); // a generic record: at its arguments
         if (field == MIR_NONE) {
             lb->type_of[ty] = MIR_NONE;
             return MIR_NONE;

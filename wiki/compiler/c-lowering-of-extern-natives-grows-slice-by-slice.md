@@ -11,3 +11,7 @@ Verified: a call of a bodiless `extern fn` (`msstd_*`, `msrt_*`) lowers through 
 `lower-program-diff.sh` is the oracle: a function whose text differs from Rust fails it, so each shape lands with a stdlib function that uses it.
 
 Apply when: lowering natives in C, or asking why a stdlib function is not lowered (`target/cmake/test/compiler/ms_lower_dump stdlib --program FILE`, then instrument `lb_unsupported`).
+
+## Cyclic standard imports (checker)
+
+Standard modules import each other in cycles. A std module declares its own symbols before its imports, so a module reached through a cycle already has them; otherwise its importer saw nothing and every body naming `msstd_*`, `parse_ip` or `sqrt` was "body not checked". User modules keep import-first order (their duplicate-name diagnostics depend on it). Bodies of `fn move` methods are checked like any other (the consuming-receiver skip in `body_check_methods` is gone; check-diff and facts agree with Rust). `ConnectionSink.close` still waits for the status-to-`Result` slice, since `lx_call` declines a `Void!` extern result.

@@ -282,6 +282,10 @@ fn param_kind(at: Int, p: String) String:
 	if ty == "*const MapVal": return "MS_RT_MAP"
 	if ty == "KeyDesc": return "MS_RT_KEY_DESC"
 	if ty == "ValDesc": return "MS_RT_VAL_DESC"
+	if ty == "HasRaw": return "MS_RT_HAS"
+	if ty == "ErrSlot": return "MS_RT_ERR"
+	if ty.starts_with("*mut *mut ObjCell<") and pname == "out": return "MS_RT_OUT_HANDLE"
+	if ty.starts_with("*const ObjCell<") and pname.starts_with("handle "): return "MS_RT_HANDLE"
 	if ty == "*const u8" and pname == "key": return "MS_RT_KEY_REF"
 	if ty == "*const u8": return "MS_RT_ELEMENT"
 	if ty == "i64": return "MS_RT_INT"
@@ -366,7 +370,7 @@ fn rt_ops_text(symbols: String) String:
 		has_imm := imm.is_some()
 		imm_value := imm.get_or(0)
 		out = out.concat(
-			f"    \{\"{name}\", \"{op}\", \{{kinds.join(", ")}\}, {kinds.length()}, {ret}, {leaf}, {twinned.contains(name)}, {pure}, \"{word_key}\", \"{text_key}\", {fresh}, {has_imm}, {imm_value}, \"{seq}\"\},\n"
+			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {has_imm}\},\n"
 		)
 
 	return out.concat("};\n")
