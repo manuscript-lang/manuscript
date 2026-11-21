@@ -114,6 +114,48 @@ static void fmt_comment_words(Fmt *f, MsSpan text, SpanList *words) {
   }
 }
 
+/* Refills the `count` lines of one wide prose comment paragraph at `indent`, whose first line's text is
+ * `first`, appending the wrapped lines. */
+static void fmt_refill_paragraph(Fmt *f, const MsSpan *lines, size_t count, size_t indent, MsSpan first,
+                                 SpanList *out) {
+  MsStrBuild prefix_buf = {0};
+  fmt_spaces(&prefix_buf, indent);
+  ms_strbuild_append_text(&prefix_buf, "// ");
+  const MsSpan prefix = fmt_take(f, &prefix_buf);
+  const size_t prefix_chars = fmt_chars(prefix);
+  const size_t room = FMT_WIDTH > prefix_chars ? FMT_WIDTH - prefix_chars : 0;
+  SpanList words = {0};
+  fmt_comment_words(f, first, &words);
+  for (size_t k = 1; k < count; k++) {
+    MsSpan text;
+    if (fmt_prose_comment(lines[k], &text)) {
+      fmt_comment_words(f, text, &words);
+    }
+  }
+  MsStrBuild row = {0};
+  const MsSpan *list = words.ptr;
+  for (size_t w = 0; w < words.len; w++) {
+    const size_t width = fmt_chars(fmt_tail(&row, 0)) + (ms_strbuild_length(&row) != 0) + fmt_chars(list[w]);
+    if (ms_strbuild_length(&row) != 0 && width > room) {
+      MsStrBuild line = {0};
+      fmt_put(&line, prefix);
+      fmt_put(&line, fmt_tail(&row, 0));
+      span_list_push(out, fmt_take(f, &line));
+      ms_strbuild_clear(&row);
+    }
+    if (ms_strbuild_length(&row) != 0) {
+      ms_strbuild_append_byte(&row, (uint8_t)(' '));
+    }
+    fmt_put(&row, list[w]);
+  }
+  MsStrBuild line = {0};
+  fmt_put(&line, prefix);
+  fmt_put(&line, fmt_tail(&row, 0));
+  span_list_push(out, fmt_take(f, &line));
+  ms_strbuild_free(&row);
+  span_list_free(&words);
+}
+
 /* Rewraps each paragraph of consecutive prose `//` lines that has a line wider than the formatter
  * width, filling lines greedily up to the width. Paragraphs that already fit, and everything that
  * is not plain prose, are unchanged. */
@@ -149,43 +191,7 @@ void fmt_wrap_comments(Fmt *f, const MsSpan *lines, size_t count, SpanList *out)
       i = end;
       continue;
     }
-    MsStrBuild prefix_buf = {0};
-    fmt_spaces(&prefix_buf, indent);
-    ms_strbuild_append_text(&prefix_buf, "// ");
-    const MsSpan prefix = fmt_take(f, &prefix_buf);
-    const size_t prefix_chars = fmt_chars(prefix);
-    const size_t room = FMT_WIDTH > prefix_chars ? FMT_WIDTH - prefix_chars : 0;
-    SpanList words = {0};
-    fmt_comment_words(f, first, &words);
-    for (size_t k = i + 1; k < end; k++) {
-      MsSpan text;
-      if (fmt_prose_comment(lines[k], &text)) {
-        fmt_comment_words(f, text, &words);
-      }
-    }
-    MsStrBuild row = {0};
-    const MsSpan *list = words.ptr;
-    for (size_t w = 0; w < words.len; w++) {
-      const size_t width =
-          fmt_chars(fmt_tail(&row, 0)) + (ms_strbuild_length(&row) != 0) + fmt_chars(list[w]);
-      if (ms_strbuild_length(&row) != 0 && width > room) {
-        MsStrBuild line = {0};
-        fmt_put(&line, prefix);
-        fmt_put(&line, fmt_tail(&row, 0));
-        span_list_push(out, fmt_take(f, &line));
-        ms_strbuild_clear(&row);
-      }
-      if (ms_strbuild_length(&row) != 0) {
-        ms_strbuild_append_byte(&row, (uint8_t)(' '));
-      }
-      fmt_put(&row, list[w]);
-    }
-    MsStrBuild line = {0};
-    fmt_put(&line, prefix);
-    fmt_put(&line, fmt_tail(&row, 0));
-    span_list_push(out, fmt_take(f, &line));
-    ms_strbuild_free(&row);
-    span_list_free(&words);
+    fmt_refill_paragraph(f, lines + i, end - i, indent, first, out);
     i = end;
   }
 }
@@ -239,6 +245,36 @@ static bool fmt_after_operand(MsTok previous) {
          previous == MS_T_Percent;
 }
 
+/* Whether the `-` before tokens[at] is a sign: the first token, or after an operator or opener. */
+static bool minus_is_unary(const MsToken *tokens, size_t at) {
+  if (at == 1) {
+    return true;
+  }
+  switch ((MsTok)tokens[at - 2].kind) {
+  case MS_T_Assign:
+  case MS_T_ColonAssign:
+  case MS_T_LParen:
+  case MS_T_LBracket:
+  case MS_T_Comma:
+  case MS_T_Colon:
+  case MS_T_Return:
+  case MS_T_Plus:
+  case MS_T_Minus:
+  case MS_T_Star:
+  case MS_T_Slash:
+  case MS_T_Percent:
+  case MS_T_Lt:
+  case MS_T_Gt:
+  case MS_T_EqEq:
+  case MS_T_NotEq:
+  case MS_T_Le:
+  case MS_T_Ge:
+    return true;
+  default:
+    return false;
+  }
+}
+
 bool fmt_token_space(const MsToken *tokens, size_t at) {
   const MsTok current = (MsTok)tokens[at].kind;
   const MsTok previous = (MsTok)tokens[at - 1].kind;
@@ -285,33 +321,8 @@ bool fmt_token_space(const MsToken *tokens, size_t at) {
                                    previous == MS_T_RBracket || previous == MS_T_RParen)) {
     return false;
   }
-  if (previous == MS_T_Minus) {
-    if (at == 1) {
-      return false;
-    }
-    switch ((MsTok)tokens[at - 2].kind) {
-    case MS_T_Assign:
-    case MS_T_ColonAssign:
-    case MS_T_LParen:
-    case MS_T_LBracket:
-    case MS_T_Comma:
-    case MS_T_Colon:
-    case MS_T_Return:
-    case MS_T_Plus:
-    case MS_T_Minus:
-    case MS_T_Star:
-    case MS_T_Slash:
-    case MS_T_Percent:
-    case MS_T_Lt:
-    case MS_T_Gt:
-    case MS_T_EqEq:
-    case MS_T_NotEq:
-    case MS_T_Le:
-    case MS_T_Ge:
-      return false;
-    default:
-      break;
-    }
+  if (previous == MS_T_Minus && minus_is_unary(tokens, at)) {
+    return false;
   }
   return true;
 }

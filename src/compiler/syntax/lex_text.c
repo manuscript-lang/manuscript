@@ -160,31 +160,8 @@ MS_NODISCARD static bool interpolation_body(Scanner *s, MsPos open) {
     }
     if (b == 'r' && lex_peek(s, s->offset + 1) == '"' && !lex_starts_with(s, s->offset + 2, "\"\"") &&
         !after_word) {
-      /* scan_raw_line */
-      MsPos opened = lex_pos(s);
-      lex_advance(s);
-      lex_advance(s);
-      for (;;) {
-        if (s->offset >= n) {
-          return lex_fail_at_text(s, opened,
-                                  "unterminated raw text literal; add the closing '\"' on the same line");
-        }
-        uint8_t c = lex_advance(s);
-        if (c == '"') {
-          break;
-        }
-        if (c == '\n') {
-          return lex_fail_at_text(s, opened,
-                                  "unterminated raw text literal; r\"...\" must close on the same line and "
-                                  "cannot hold a quote, so add the quote or use r\"\"\" multi-line raw text");
-        }
-        if (c < 32) {
-          return lex_fail_text(s, "literal control characters are not allowed in text; use r\"\"\" raw text "
-                                  "for tabs, or write an escape such as \\t in non-raw text");
-        }
-        if (c == 0xE2 && lex_bidi_control_at(s, s->offset - 1)) {
-          return lex_fail_previous_byte(s, ms_span_of_text(TEXT_BIDI));
-        }
+      if (!lex_scan_raw_line(s)) {
+        return false;
       }
       continue;
     }
@@ -205,7 +182,6 @@ MS_NODISCARD static bool interpolation_body(Scanner *s, MsPos open) {
     }
   }
   return fail_hinted_at(s, open, "unterminated interpolation; add the closing } before the closing quote");
-  return true;
 }
 
 MS_NODISCARD static bool scan_interpolation(Scanner *s) {
@@ -233,10 +209,7 @@ MS_NODISCARD static bool scan_interpolation(Scanner *s) {
 MS_NODISCARD bool lex_scan_string(Scanner *s, bool interpolating) {
   size_t start = s->offset;
   if (lex_starts_with(s, start, "\"\"\"")) {
-    if (!lex_scan_multiline(s, false, interpolating)) {
-      return false;
-    }
-    return true;
+    return lex_scan_multiline(s, false, interpolating);
   }
   if (s->cached != NULL) {
     const MsByteRange *r = find_range(s->cached->strings, s->cached->nstrings, s->boundary_origin + start);
@@ -290,7 +263,6 @@ MS_NODISCARD bool lex_scan_string(Scanner *s, bool interpolating) {
     }
   }
   return lex_fail_at_text(s, opened, "unterminated text literal; add the closing '\"' on the same line");
-  return true;
 }
 
 /* Scans one-line raw text `r"..."`: every character is literal up to the first `"`. */
@@ -317,7 +289,6 @@ MS_NODISCARD bool lex_scan_raw_line(Scanner *s) {
     }
   }
   return lex_fail_at_text(s, opened, "unterminated raw text literal; add the closing '\"' on the same line");
-  return true;
 }
 
 static bool blank_line(const uint8_t *line, size_t length) {

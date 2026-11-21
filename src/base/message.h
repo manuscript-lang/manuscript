@@ -1,7 +1,7 @@
-/* compiler/syntax/message.h: building diagnostic message texts in an arena from literal and computed parts.
+/* base/message.h: building diagnostic message texts in an arena from literal and computed parts.
  */
-#ifndef MS_SYNTAX_MESSAGE_H
-#define MS_SYNTAX_MESSAGE_H
+#ifndef MS_BASE_MESSAGE_H
+#define MS_BASE_MESSAGE_H
 
 #include <stdarg.h>
 
