@@ -100,6 +100,9 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         }
         ms_buf_free(&elaborate_error);
         if (run) {
+            if (mir_expand_owned_needed(&mir)) {
+                (void)mir_expand_owned(&mir); // the interpreter has no owned shorthands (`alt.take`)
+            }
             run_module(&mir, path);
         }
         for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
