@@ -184,7 +184,10 @@ void ms_tool_keywords(ms_list *out);
  * resource bindings (flag 8) and for each its binding index, 1 when the ownership pass followed its function and the
  * name of its `flush` or `commit` method taking nothing and returning a Result (-1 for none); then the effect rows (MSL116):
  * 1 when the scan saw every callable it reached, the count of undeclared-effect violations and for each its offset, line,
- * column and message; then the span of each node row in order, as start and end offsets in the text.
+ * column and message; then the span of each node row in order, as start and end offsets in the text; then the conflict
+ * rows (MSL106): the count of capitalised match payload names that coincide with a type or a case and for each its
+ * arm's node id, the name's offset, line and column, what it coincides with, the payload's type, the nested pattern to
+ * write and, for an arm of a match over an interface value, the type it names (-1 for none of the last two).
  * Every name, module path and type text is an index into the names (-1 for none); types print as source reads them.
  */
 #define MS_TOOL_ANALYZE_NODE_WIDTH 6
