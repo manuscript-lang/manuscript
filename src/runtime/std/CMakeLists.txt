@@ -48,3 +48,9 @@ target_link_libraries(ms_std_random PUBLIC ms_base openssl_crypto)
 add_library(ms_std_compress STATIC compress.c)
 ms_target_defaults(ms_std_compress)
 target_link_libraries(ms_std_compress PUBLIC ms_base ms_values zlib)
+
+# @std/crypto: digests, HMAC, key derivation, AES, Ed25519, ECDSA, ECDH and RSA on libcrypto.
+add_library(ms_std_crypto STATIC crypto.c crypto_asym.c)
+ms_target_defaults(ms_std_crypto)
+add_dependencies(ms_std_crypto openssl_build)
+target_link_libraries(ms_std_crypto PUBLIC ms_base ms_values openssl_crypto)

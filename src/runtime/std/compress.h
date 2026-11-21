@@ -7,13 +7,9 @@
 #ifndef MS_RUNTIME_STD_COMPRESS_H
 #define MS_RUNTIME_STD_COMPRESS_H
 
-#include "abi/status.h"
 #include "base/bytes.h"
 #include "base/string.h"
-
-/* The status of a format the codec does not know (the catalogue numbers it 9; abi/status.h lists no such
- * code). */
-enum { COMPRESS_STATUS_UNSUPPORTED = 9 };
+#include "runtime/std/status.h"
 
 /* ms-sig: msstd_compress_compress(data: *const VecVal, format: *const StrVal, level: i64, has_max: HasRaw,
  * max: i64, out: *mut VecVal) -> u8 @domain=compression */
