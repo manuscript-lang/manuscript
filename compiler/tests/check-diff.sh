@@ -166,6 +166,11 @@ if ! grep -q 'body_literal_borrow.ms 1:1$' "$out/bodies.keys"; then
     echo "FAIL bodies: a borrowing call on a literal is no longer checked in C (compiler/tests/scope/body_literal_borrow.ms)"
     status=1
 fi
+# A method of a generic type names the receiver's variables (`held: T`) and its own in annotations.
+if ! grep -q 'body_generic_method.ms 4:11$' "$out/bodies.keys" || ! grep -q 'body_generic_method.ms 8:11$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a method of a generic type is no longer checked in C (compiler/tests/scope/body_generic_method.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else
