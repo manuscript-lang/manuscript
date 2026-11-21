@@ -46,6 +46,9 @@ MsPipeStatus ms_sched_pipe_write(intptr_t handle, const uint8_t *data, size_t le
 
 void ms_sched_pipe_close(intptr_t handle) { CloseHandle((HANDLE)handle); }
 
+/* No stop handler runs in the std tests, so a stop request raised at the process itself reaches no one. */
+void ms_io_stop_raise(int signal_number) { (void)signal_number; }
+
 MsObjectWait ms_sched_object_wait(intptr_t handle, int64_t timeout_ns) {
     (void)handle;
     (void)timeout_ns;
