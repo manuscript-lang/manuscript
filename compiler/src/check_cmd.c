@@ -124,7 +124,7 @@ typedef struct CheckRun {
 static const char *check_load(CheckRun *run, const MsStdFile *std_files, uint32_t nstd, const char *target) {
     MsProjectError error = {0};
     MsGraph *graph = &run->graph;
-    if (!ms_project_load(&run->arena, &run->names, target, graph, &error)) {
+    if (!ms_project_load_packages(&run->arena, &run->names, target, graph, &error)) {
         return ms_project_error_is_unsupported(&error) ? "a project the loader does not read" : "the loader failed";
     }
     if (graph->ndiagnostics != 0) {
@@ -192,7 +192,17 @@ static const char *check_diagnose(CheckRun *run) {
     if (ms_graph_check(check, graph, run->ids, unchecked) != 0) {
         return "a module the passes left unchecked";
     }
-    size_t total = 0;
+    /* What a build owes its fetched packages: natives outside a member and effects a package lacks. */
+    MsGraphDiag *package_diags = NULL;
+    uint32_t npackage_diags = 0;
+    bool complete = true;
+    if (graph->package_count != 0 && !ms_graph_check_packages(check, &run->arena, graph, run->ids, &package_diags, &npackage_diags, &complete)) {
+        return "the package rules";
+    }
+    if (!complete) {
+        return "a package effect the scan cannot follow";
+    }
+    size_t total = npackage_diags;
     for (uint32_t i = 0; i < graph->count; i++) {
         ms_module_check_ownership(check, run->ids[i]);
         ms_module_check_unused(check, run->ids[i]);
@@ -207,6 +217,12 @@ static const char *check_diagnose(CheckRun *run) {
         for (uint32_t k = 0; k < row->ndiags; k++) {
             check_add_report(run, i, &row->diags[k]);
         }
+    }
+    for (uint32_t i = 0; i < npackage_diags; i++) {
+        run->reports[run->nreports++] = (MsReport){.diag = package_diags[i].diag,
+                                                   .file = package_diags[i].file,
+                                                   .shown = check_shown_file(run, package_diags[i].file),
+                                                   .phase = "type"};
     }
     /* The entry module, when it has no diagnostic, must declare a `main` the runtime can start. */
     const uint32_t entry = graph->count - 1;
