@@ -122,6 +122,7 @@ void ms_tys_free(MsTyTable *t) {
     free(t->params_at);
     free(t->nparams);
     free(t->result);
+    free(t->open);
     free(t->args_pool);
     free(t->params_pool);
     free(t->slots);
@@ -178,6 +179,7 @@ static void reserve_row(MsTyTable *t, const MsTyDesc *d) {
         t->params_at = ms_array_resize(t->params_at, cap, sizeof *t->params_at);
         t->nparams = ms_array_resize(t->nparams, cap, sizeof *t->nparams);
         t->result = ms_array_resize(t->result, cap, sizeof *t->result);
+        t->open = ms_array_resize(t->open, cap, sizeof *t->open);
         t->cap = cap;
     }
     const uint32_t args_needed = t->args_len + d->nargs;
@@ -192,6 +194,19 @@ static void reserve_row(MsTyTable *t, const MsTyDesc *d) {
     }
 }
 
+/* Whether the type `d` describes mentions a type variable. Its parts are rows already, so each
+ * has the answer: a type built by repeated doubling is never walked path by path. */
+static bool desc_is_open(const MsTyTable *t, const MsTyDesc *d) {
+    bool open = d->kind == MS_K_VARIABLE || (d->result != MS_TY_NONE && t->open[d->result]);
+    for (uint32_t i = 0; i < d->nargs && !open; i++) {
+        open = t->open[d->args[i]];
+    }
+    for (uint32_t i = 0; i < d->nparams && !open; i++) {
+        open = t->open[d->params[i].ty];
+    }
+    return open;
+}
+
 static MsTy add_row(MsTyTable *t, const MsTyDesc *d) {
     reserve_row(t, d);
     const uint32_t r = t->count;
@@ -201,6 +216,7 @@ static MsTy add_row(MsTyTable *t, const MsTyDesc *d) {
     t->builtin[r] = (uint8_t)d->builtin;
     t->def[r] = d->def;
     t->result[r] = d->result;
+    t->open[r] = desc_is_open(t, d);
     t->args_at[r] = t->args_len;
     t->nargs[r] = d->nargs;
     if (d->nargs != 0) {

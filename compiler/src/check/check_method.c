@@ -248,45 +248,6 @@ static bool native_result_borrows(const MsBody *b, MsTy receiver, MsSym name, ui
     return false;
 }
 
-/* Whether `ty` is plainly clonable: a primitive, or a list, map, set, optional or record of such,
- * holding no resource (a type with a `close`) or function. The Rust checker's finer cases (alternatives,
- * cycles, interface-valued fields) are left to it. */
-static bool value_clonable(const MsBody *b, MsTy ty, uint32_t depth) {
-    const MsTyTable *tys = &b->c->tys;
-    if (depth > 4) {
-        return false;
-    }
-    switch (ms_ty_kind(tys, ty)) {
-    case MS_K_PRIMITIVE:
-        return true;
-    case MS_K_NATIVE: {
-        bool plain = ms_ty_is(tys, ty, MS_BI_LIST) || ms_ty_is(tys, ty, MS_BI_MAP) || ms_ty_is(tys, ty, MS_BI_SET);
-        for (uint32_t i = 0; plain && i < tys->nargs[ty]; i++) {
-            plain = value_clonable(b, ms_ty_args(tys, ty)[i], depth + 1);
-        }
-        return plain;
-    }
-    case MS_K_ALTERNATIVE: {
-        bool plain = ms_ty_is(tys, ty, MS_BI_OPTIONAL) || ms_ty_is(tys, ty, MS_BI_RESULT);
-        for (uint32_t i = 0; plain && i < tys->nargs[ty]; i++) {
-            plain = value_clonable(b, ms_ty_args(tys, ty)[i], depth + 1);
-        }
-        return plain;
-    }
-    case MS_K_TYPE: {
-        Target closing;
-        const MsDef *def = tys->def[ty] == 0 ? NULL : ms_def(b->c, tys->def[ty] - 1);
-        bool plain = def != NULL && !method_row(b, ty, ms_intern_cstr(b->c->names, "close"), 0, &closing);
-        for (uint32_t i = 0; plain && i < def->nfields; i++) {
-            plain = value_clonable(b, def->fields[i].ty, depth + 1);
-        }
-        return plain;
-    }
-    default:
-        return false;
-    }
-}
-
 /* `to_string` and `clone`, which exist without an impl: every non-generic value shows as text, and
  * data values (types, alternatives, lists, maps, sets, bytes) clone deeply (`native_method` of the
  * Rust checker). */
@@ -302,7 +263,23 @@ static bool value_operation(const MsBody *b, MsTy receiver, MsSym name, Target *
     if (intrinsic_in(b, "ValueOperations", receiver, name, out)) {
         return true;
     }
-    return value_clonable(b, receiver, 0) && intrinsic_in(b, "CloneOperations", receiver, name, out);
+    return ms_implements_property(b->c, b->methods, receiver, MS_PROP_CLONABLE) == MS_FIT_YES && intrinsic_in(b, "CloneOperations", receiver, name, out);
+}
+
+/* The function-typed field `name` of a record `receiver` with no type arguments: `value.operation(x)` calls
+ * the function the field holds. */
+static MsTy function_field(const MsBody *b, MsTy receiver, MsSym name) {
+    const MsTyTable *tys = &b->c->tys;
+    if (ms_ty_kind(tys, receiver) != MS_K_TYPE || tys->def[receiver] == 0 || tys->nargs[receiver] != 0) {
+        return MS_TY_NONE;
+    }
+    const MsDef *def = ms_def(b->c, tys->def[receiver] - 1);
+    for (uint32_t i = 0; i < def->nfields; i++) {
+        if (def->fields[i].name == name) {
+            return ms_body_is_function_value(b, def->fields[i].ty) ? def->fields[i].ty : MS_TY_NONE;
+        }
+    }
+    return MS_TY_NONE;
 }
 
 static bool body_is_primitive(const MsBody *b, MsTy ty) {
@@ -451,7 +428,8 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved) {
-        return ms_body_unsupported(b);
+        const MsTy field = function_field(b, receiver_ty, name);
+        return field == MS_TY_NONE ? ms_body_unsupported(b) : ms_body_call_function(b, e, field);
     }
     if ((target.consuming && target.method == MS_NONE) || (target.mutating && immutable)) {
         return ms_body_unsupported(b);

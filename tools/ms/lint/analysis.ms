@@ -158,7 +158,8 @@ export fn analyze(text: String) Analyzed?:
 			)
 		)
 
-	at += 2 + rows[at + 1] * REACH_WIDTH
+	// The span of each node row follows the effect rows: two offsets per node.
+	at += 2 + rows[at + 1] * REACH_WIDTH + 2 * rows[0]
 
 	for index in 0..rows[at]:
 		first := at + 1 + index * CONFLICT_WIDTH
