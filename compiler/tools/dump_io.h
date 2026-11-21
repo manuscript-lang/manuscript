@@ -17,12 +17,6 @@ static inline void print_decline(const char *file, int line) {
     fprintf(stderr, "WHY %s:%d\n", base == NULL ? file : base + 1, line);
 }
 
-/* The `MS_WHY` trace of a body the checker declines: `WHY file:line` on stderr (`ms_body_decline_hook`). */
-static inline void print_decline(const char *file, int line) {
-    const char *base = strrchr(file, '/');
-    fprintf(stderr, "WHY %s:%d\n", base == NULL ? file : base + 1, line);
-}
-
 /* Splits `line` at tabs in place; returns the field count (at most `max`). */
 static inline size_t split_fields(char *line, char **fields, size_t max) {
     size_t n = 0;
