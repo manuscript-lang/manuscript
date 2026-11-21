@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "ms/lower_internal.h"
+#include "ms/mir_pass.h"
 
 enum { LC_OK = 0, LC_ERROR = 1 }; /* the cases of `Result` */
 

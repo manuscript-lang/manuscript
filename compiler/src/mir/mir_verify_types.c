@@ -1190,9 +1190,6 @@ static const char *mvt_scope_marker(const MvtCx *c) {
         return mvt_arity(c, 0);
     }
     MVT_TRY(mvt_arity(c, 1));
-    if (c->in->imm.b >= 2) { // a close function (its index plus two) runs on the address of a slot
-        return mvt_want(mvt_t(c, 0) == MIR_PTR, "scope.own with a close function takes a slot address");
-    }
     return mvt_want(mvt_needs_drop(c, mvt_t(c, 0)), "scope.own takes a value that needs a drop");
 }
 
