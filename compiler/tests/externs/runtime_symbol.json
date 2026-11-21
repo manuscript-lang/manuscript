@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "phase": "type",
+      "message": "extern fn msrt_task_current names a runtime-internal symbol; msrt_ and msstd_ natives are reserved for bundled standard modules, so call the standard library instead",
+      "position": {
+        "file": "runtime_symbol.ms",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      }
+    }
+  ]
+}

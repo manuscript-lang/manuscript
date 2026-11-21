@@ -1,0 +1,5 @@
+021.ms:4:3: parse: unexpected source character '$'; this character is not part of Manuscript's syntax outside text
+   |
+ 4 | fn$ later(
+   |   ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

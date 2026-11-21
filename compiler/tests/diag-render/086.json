@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected 'from', found '='; imports read: import name from \"path.ms\"",
+      "position": {
+        "file": "086.ms",
+        "line": 5,
+        "column": 11,
+        "offset": 245
+      },
+      "end": {
+        "file": "086.ms",
+        "line": 5,
+        "column": 12,
+        "offset": 246
+      }
+    }
+  ]
+}

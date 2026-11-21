@@ -1,0 +1,5 @@
+057.ms:1:1: parse: expected a module declaration or import, found '/'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn
+   |
+ 1 | / conform: tags=diagnostics
+   | ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

@@ -142,9 +142,9 @@ static bool ty_in_standard(const MsCheck *c, MsModId module) {
 }
 
 /* The names of the module's types, for a spelling suggestion; `Optional` is left out. */
-static MsStr *ty_type_names(MsResolver *r, size_t *count) {
+static MsStr *ty_type_names(MsResolver *r, MsArena *scratch, size_t *count) {
     const MsNameMap *names = &r->c->mods[r->module].names;
-    MsStr *out = MS_NEW_N(&r->c->arena, MsStr, names->cap + 1);
+    MsStr *out = MS_NEW_N(scratch, MsStr, names->cap + 1);
     size_t n = 0;
     for (uint32_t i = 0; i < names->cap; i++) {
         if (names->vals[i] == 0) {
@@ -189,11 +189,17 @@ static MsStr ty_unknown_message(MsResolver *r, MsSym name_sym) {
     if (builtin != NULL) {
         return ms_arena_fmt(&c->arena, "%.*s; did you mean '%s'?", (int)message.len, message.ptr, builtin);
     }
+    // The candidate list and the distance tables are scratch: only the message outlives the search.
+    MsArena scratch = {0};
     size_t count = 0;
-    const MsStr *candidates = ty_type_names(r, &count);
-    const MsStr hint = ms_did_you_mean(&c->arena, name, candidates, count);
-    if (hint.len != 0) {
-        return ms_arena_fmt(&c->arena, "%.*s%.*s", (int)message.len, message.ptr, (int)hint.len, hint.ptr);
+    const MsStr *candidates = ty_type_names(r, &scratch, &count);
+    const MsStr hint = ms_did_you_mean(&scratch, name, candidates, count);
+    const MsStr suggested = hint.len == 0 ? (MsStr){0}
+                                          : ms_arena_fmt(&c->arena, "%.*s%.*s", (int)message.len, message.ptr,
+                                                         (int)hint.len, hint.ptr);
+    ms_arena_free(&scratch);
+    if (suggested.len != 0) {
+        return suggested;
     }
     return ms_arena_fmt(&c->arena,
                         "%.*s; declare it with 'type %.*s:' / 'enum %.*s:' / 'interface %.*s:', declare it as a type "

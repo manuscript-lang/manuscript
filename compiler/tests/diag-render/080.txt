@@ -1,0 +1,5 @@
+080.ms:6:5: parse: a block comment must start its own line; write a trailing comment with '//'
+   |
+ 6 | NAME/* := "hi"
+   |     ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

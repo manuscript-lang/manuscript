@@ -1,0 +1,37 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected ':' between 'fourth_valnot' and its type; parameters and fields are written name: Type",
+      "position": {
+        "file": "079.ms",
+        "line": 4,
+        "column": 76,
+        "offset": 241
+      },
+      "end": {
+        "file": "079.ms",
+        "line": 4,
+        "column": 76,
+        "offset": 241
+      },
+      "fix": {
+        "position": {
+          "file": "079.ms",
+          "line": 4,
+          "column": 76,
+          "offset": 241
+        },
+        "end": {
+          "file": "079.ms",
+          "line": 4,
+          "column": 76,
+          "offset": 241
+        },
+        "replacement": ":"
+      }
+    }
+  ]
+}

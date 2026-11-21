@@ -1,0 +1,5 @@
+041.ms:5:9: parse: a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4
+   |
+ 5 |         if value: return 1
+   |         ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

@@ -1,0 +1,5 @@
+094.ms:19:9: parse: expected a name, found 'in'; 'in' is a reserved word and cannot be used as a name
+    |
+ 19 |     for in [1, 2]:
+    |         ^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

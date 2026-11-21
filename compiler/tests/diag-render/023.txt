@@ -1,0 +1,5 @@
+023.ms:4:16: parse: expected '=', found name 'ate'
+   |
+ 4 |     var values ate(values: values)
+   |                ^^^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

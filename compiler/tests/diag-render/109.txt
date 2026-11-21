@@ -1,0 +1,2 @@
+109.ms:1:1: parse: source must be valid UTF-8; re-save the file with UTF-8 encoding
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

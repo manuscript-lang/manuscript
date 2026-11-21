@@ -1,0 +1,5 @@
+// conform: tags"=dia//gnostics
+// conform: phase=check
+fn area%d(s: Shapelsee%d) Int:
+    var out = 0
+    match s:

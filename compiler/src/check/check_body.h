@@ -32,6 +32,8 @@ typedef struct MsBody {
     bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
     MsTy result_hint;       /* with `infer_result`: the result the context expects, whose variables the body decides */
     bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
+    const MsTypeParams *tparams; /* the type parameters of the function being checked, and their variables */
+    const MsTy *tvars;
     bool supported;         /* false once a construct outside the handled set is met */
     MsSite gave_up;         /* the first `ms_body_unsupported` call of this function */
 } MsBody;
@@ -46,6 +48,7 @@ bool ms_body_reads_where_var_expected(const MsBody *b, MsTy actual, MsTy expecte
 bool ms_body_has_invalid(const MsBody *b, MsTy ty);
 /* `callee(args)` through the function-typed binding `binding`. */
 MsTy ms_body_call_value(MsBody *b, const MsExpr *e, uint32_t binding);
+MsTy ms_body_call_function(MsBody *b, const MsExpr *e, MsTy fn);
 /* A module function named as a value; an anonymous function. */
 MsTy ms_body_function_name(MsBody *b, const MsExpr *e);
 MsTy ms_body_lambda(MsBody *b, const MsExpr *e, MsTy expected);

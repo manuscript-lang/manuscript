@@ -1,0 +1,5 @@
+045.ms:1:1: parse: unterminated block comment; close it with '*/'
+   |
+ 1 | /*/ conform: tags=diagnostics
+   | ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
