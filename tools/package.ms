@@ -90,13 +90,16 @@ fn main() Int:
 		mingw_triple := if target_arch == "arm64": "aarch64-w64-mingw32" else: "x86_64-w64-mingw32"
 		configure.append(f"-DCMAKE_C_COMPILER={mingw}/bin/{mingw_triple}-clang.exe")
 
-		// libms hashes packages with libcrypto: the MSYS2 prefix the runtime build
-		// reads has it.
-		msys := env("MS_MSYS2", "")
+		// libms hashes packages with libcrypto: use the pinned build the runtime links,
+		// not MSYS2's.
+		arch := if target_arch == "arm64": "aarch64" else: "x86_64"
+		set_environment("CC", f"{mingw}/bin/{mingw_triple}-clang.exe").get()
 
-		if msys != "":
-			msys_env := if target_arch == "arm64": "clangarm64" else: "clang64"
-			configure.append(f"-DOPENSSL_ROOT_DIR={msys}/{msys_env}")
+		libs := capture(
+			"sh",
+			["runtime/third_party/build.sh", f"{arch}-pc-windows-gnullvm"],
+		).trim()
+		if libs != "": configure.append(f"-DMS_LIBS_PREFIX={libs}")
 
 	code = run_program("cmake", configure)
 	if code != 0: return code
