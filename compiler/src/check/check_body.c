@@ -1899,13 +1899,68 @@ static MsTy body_test_outcome(MsBody *b) {
     return ms_ty_apply(b->c, b->c->syms.ty[result], args, 2);
 }
 
+/* `Void!`: a `Result[Void, Error]` written out. */
+static bool body_is_void_result_ref(const MsBody *b, const MsTypeRef *t) {
+    return t != NULL && t->kind == MS_TYPE_NAMED && ms_name_is(b->c->names, t->name, "Result") && t->args.len == 2 &&
+           t->args.ptr[0]->kind == MS_TYPE_NAMED && ms_name_is(b->c->names, t->args.ptr[0]->name, "Void") &&
+           t->args.ptr[1]->kind == MS_TYPE_NAMED && ms_name_is(b->c->names, t->args.ptr[1]->name, "Error");
+}
+
+/* The type a valid `make_fixture` returns: a plain record of this module whose hooks (`before_all`,
+ * `before_each`, `after_each`, `after_all`), where it declares them, are `var fn name() Void!`. A factory the
+ * Rust checker would reject, or a hook it would, leaves the module's tests and factory unchecked here. */
+static MsTy body_fixture_type(const MsBody *b) {
+    const MsModule *syntax = b->c->mods[b->module].syntax;
+    const MsDecl *factory = NULL;
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        const MsDecl *d = syntax->decls[i];
+        if (d->kind == MS_D_FN && !d->synthetic && ms_name_is(b->c->names, d->u.fn.name, "make_fixture")) {
+            factory = d;
+        }
+    }
+    const MsSymId sym = factory == NULL ? MS_NONE : ms_decl_own_symbol(b->c, b->module, factory);
+    if (sym == MS_NONE || factory->u.fn.type_params.len != 0 || factory->u.fn.params.len != 0) {
+        return MS_TY_NONE;
+    }
+    const MsTyTable *tys = &b->c->tys;
+    const MsTy sig = b->c->syms.ty[sym];
+    if (sig == MS_TY_NONE || ms_ty_kind(tys, sig) != MS_K_FUNCTION) {
+        return MS_TY_NONE;
+    }
+    const MsTy result = tys->result[sig];
+    const uint32_t def = result == MS_TY_NONE ? 0 : tys->def[result];
+    if (def == 0 || ms_ty_kind(tys, result) != MS_K_TYPE || tys->nargs[result] != 0 || b->c->syms.module[def - 1] != b->module ||
+        !body_is_bindable(b, result)) {
+        return MS_TY_NONE;
+    }
+    static const char *const hooks[] = {"before_all", "before_each", "after_each", "after_all"};
+    const MsSym type_name = b->c->syms.name[def - 1];
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        const MsDecl *d = syntax->decls[i];
+        if (d->kind != MS_D_IMPL || d->u.impl.contract != NULL || d->u.impl.receiver == NULL || d->u.impl.receiver->name != type_name) {
+            continue;
+        }
+        for (uint32_t m = 0; m < d->u.impl.methods.len; m++) {
+            const MsMethod *method = d->u.impl.methods.ptr[m];
+            for (size_t h = 0; h < MS_COUNT_OF(hooks); h++) {
+                if (ms_name_is(b->c->names, method->func.name, hooks[h]) &&
+                    (!method->mutating || method->consuming || method->func.params.len != 0 || method->func.type_params.len != 0 ||
+                     !body_is_void_result_ref(b, method->func.result))) {
+                    return MS_TY_NONE;
+                }
+            }
+        }
+    }
+    return result;
+}
+
 /* A `test` block is a function of no parameters returning `Result[Void, Error]`. A module with a fixture
  * factory binds `fixture` in its tests, which this pass does not model. */
 static void body_check_test(MsBody *b, const MsDecl *d) {
     const MsModule *syntax = b->c->mods[b->module].syntax;
-    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+    for (uint32_t i = 0; b->fixture == MS_TY_NONE && i < syntax->ndecls; i++) {
         if (syntax->decls[i]->kind == MS_D_FN && ms_name_is(b->c->names, syntax->decls[i]->u.fn.name, "make_fixture")) {
-            return;
+            return; // a factory this pass does not accept
         }
     }
     const MsTy outcome = body_test_outcome(b);
@@ -1919,6 +1974,10 @@ static void body_check_test(MsBody *b, const MsDecl *d) {
     b->function = d->id;
     b->supported = true;
     b->result = outcome;
+    // A test (not a benchmark) reads the file's fixture.
+    if (b->fixture != MS_TY_NONE && !d->u.test.bench) {
+        (void)ms_body_bind(b, ms_intern_cstr(b->c->names, "fixture"), b->fixture, d->id, d->pos, 0, MS_ROLE_PARAM);
+    }
     body_statements(b, &d->u.test.body, d->pos);
     if (b->supported) {
         b->facts->body_checked[d->id] = true;
@@ -1929,7 +1988,7 @@ static void body_check_test(MsBody *b, const MsDecl *d) {
 }
 
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
-    if (!body_is_test_fixture(b, &d->u.fn)) {
+    if (!body_is_test_fixture(b, &d->u.fn) || b->fixture != MS_TY_NONE) {
         body_check_callable(b, d->id, d->pos, d->is_exported, &d->u.fn, b->c->syms.ty[sym], NULL);
     }
 }
@@ -2194,6 +2253,7 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
               .methods = methods,
               .invalid_ty = ms_check_invalid_ty(c)};
     body_allocate(&b, facts);
+    b.fixture = body_fixture_type(&b);
     facts->methods = methods == NULL ? NULL : &methods->methods;
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
     // Constants first: a function reads them wherever they are declared.
