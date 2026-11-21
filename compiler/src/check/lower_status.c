@@ -251,7 +251,7 @@ static bool ls_out_matches(const Lb *lb, MsRtParam kind, MirTy elem) {
     case MS_RT_LIST: case MS_RT_LIST_VAR: case MS_RT_STR: case MS_RT_INT: case MS_RT_FLOAT: case MS_RT_BOOL:
     case MS_RT_UINT64: case MS_RT_MAP: case MS_RT_ALT: case MS_RT_ELEMENT: case MS_RT_DESC: case MS_RT_KEY_DESC:
     case MS_RT_VAL_DESC: case MS_RT_KEY_REF: case MS_RT_HANDLE: case MS_RT_OUT_HANDLE: case MS_RT_OUT_RECORD:
-    case MS_RT_RECORD: case MS_RT_ERR: case MS_RT_HAS: case MS_RT_ALT: case MS_RT_OTHER: return false;
+    case MS_RT_RECORD: case MS_RT_ERR: case MS_RT_HAS: case MS_RT_OTHER: return false;
     }
     return false;
 }
