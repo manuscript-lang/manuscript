@@ -342,7 +342,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
 void ms_body_text_method(MsBody *b, const MsExpr *part, MsTy ty) {
     Target target;
     if (b->methods == NULL || ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE ||
-        !method_row(b, ty, ms_intern_cstr(b->c->names, "to_string"), &target)) {
+        !method_row(b, ty, ms_intern_cstr(b->c->names, "to_string"), 0, &target)) {
         return;
     }
     const MsTyTable *tys = &b->c->tys;
