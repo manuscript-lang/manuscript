@@ -378,7 +378,7 @@ fn run<L: Lower>(
             ));
         }
     };
-    let executable = directory.0.join("program");
+    let executable = directory.0.join(ms_build::native::STAGED_EXECUTABLE);
     if let Err(message) = backend.link(
         &mut compiled,
         &executable,
