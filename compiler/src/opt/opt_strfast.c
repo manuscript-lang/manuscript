@@ -28,13 +28,6 @@ static MirValue sf_const_cmp(MirBuilder *b, MirCc cc, MirValue x, int64_t y) {
     return mir_b_icmp(b, cc, x, mir_b_iconst(b, y));
 }
 
-/* Continues in `then` or `other`, both of whose predecessors are now emitted. */
-static void sf_br_if(MirBuilder *b, MirValue cond, MirBlock then, MirBlock other) {
-    mir_b_br_if(b, cond, then, NULL, 0, other, NULL, 0);
-    mir_b_seal_block(b, then);
-    mir_b_seal_block(b, other);
-}
-
 static MirValue sf_slot_of(MirBuilder *b, MirValue text) {
     const MirValue slot = mir_b_emit(b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_PTR);
     const MirValue spill[2] = {slot, text};
@@ -86,13 +79,13 @@ static void sf_parse_int(MirBuilder *b, uint32_t slow_ext) {
     const MirValue minus = sf_const_cmp(b, MCC_EQ, c0, '-');
     const MirValue plus = sf_const_cmp(b, MCC_EQ, c0, '+');
     const MirValue yes = mir_b_bconst(b, true);
-    const MirValue signed_ = mir_b_select(b, minus, yes, plus);
-    const MirValue start = mir_b_select(b, signed_, one, zero);
+    const MirValue has_sign = mir_b_select(b, minus, yes, plus);
+    const MirValue start = mir_b_select(b, has_sign, one, zero);
     const MirValue n = mir_b_binop(b, MOP_ISub, t.len, start);
     mir_b_br_if(b, mir_b_icmp(b, MCC_LE, n, zero), fail, NULL, 0, long_check, NULL, 0);
     mir_b_seal_block(b, long_check);
     mir_b_switch_to(b, long_check);
-    sf_br_if(b, sf_const_cmp(b, MCC_GT, n, 18), slow, scan);
+    ob_br_if(b, sf_const_cmp(b, MCC_GT, n, 18), slow, scan);
     mir_b_switch_to(b, scan);
     const MirVar acc = mir_b_declare_var(b, MIR_INT, MM_BORROW);
     const MirVar at = mir_b_declare_var(b, MIR_INT, MM_BORROW);
@@ -101,7 +94,7 @@ static void sf_parse_int(MirBuilder *b, uint32_t slow_ext) {
     mir_b_br(b, header, NULL, 0);
     mir_b_switch_to(b, header);
     const MirValue i = mir_b_use_var(b, at);
-    sf_br_if(b, mir_b_icmp(b, MCC_LT, i, t.len), body, done);
+    ob_br_if(b, mir_b_icmp(b, MCC_LT, i, t.len), body, done);
     mir_b_switch_to(b, body);
     const MirValue digit = ob_int(b, MOP_ISub, sf_byte_at(b, t.data, i), '0');
     const MirValue below = mir_b_icmp(b, MCC_LT, digit, zero);
@@ -140,7 +133,7 @@ static void sf_contains(MirBuilder *b, uint32_t slow_ext) {
     const SfBytes h = sf_bytes_of(b, sf_slot_of(b, hay));
     const SfBytes n = sf_bytes_of(b, sf_slot_of(b, needle));
     const MirValue fits = ob_and(b, sf_const_cmp(b, MCC_LT, h.len, 32), sf_const_cmp(b, MCC_EQ, n.len, 1));
-    sf_br_if(b, fits, one_byte, slow);
+    ob_br_if(b, fits, one_byte, slow);
     mir_b_switch_to(b, one_byte);
     const MirValue zero = mir_b_iconst(b, 0);
     const MirValue c = sf_byte_at(b, n.data, zero);
@@ -149,9 +142,9 @@ static void sf_contains(MirBuilder *b, uint32_t slow_ext) {
     mir_b_br(b, header, NULL, 0);
     mir_b_switch_to(b, header);
     const MirValue i = mir_b_use_var(b, at);
-    sf_br_if(b, mir_b_icmp(b, MCC_LT, i, h.len), body, miss);
+    ob_br_if(b, mir_b_icmp(b, MCC_LT, i, h.len), body, miss);
     mir_b_switch_to(b, body);
-    sf_br_if(b, mir_b_icmp(b, MCC_EQ, sf_byte_at(b, h.data, i), c), hit, step);
+    ob_br_if(b, mir_b_icmp(b, MCC_EQ, sf_byte_at(b, h.data, i), c), hit, step);
     mir_b_switch_to(b, step);
     mir_b_def_var(b, at, ob_int(b, MOP_IAdd, i, 1));
     mir_b_br(b, header, NULL, 0);
@@ -184,12 +177,12 @@ static void sf_decode(MirBuilder *b, MirValue text, MirValue offset, MirValue b0
     mir_b_br_if(b, sf_const_cmp(b, MCC_GE, b0, 0xC0), lead_ok, NULL, 0, slow, NULL, 0);
     mir_b_seal_block(b, lead_ok);
     mir_b_switch_to(b, lead_ok);
-    sf_br_if(b, sf_const_cmp(b, MCC_LT, b0, 0xE0), two, wide);
+    ob_br_if(b, sf_const_cmp(b, MCC_LT, b0, 0xE0), two, wide);
     mir_b_switch_to(b, two);
     MirValue r = mir_b_binop(b, MOP_Or, ob_int(b, MOP_Shl, ob_int(b, MOP_And, b0, 0x1F), 6), sf_continuation(b, text, offset, 1));
     sf_return_scalar(b, r, 2, step);
     mir_b_switch_to(b, wide);
-    sf_br_if(b, sf_const_cmp(b, MCC_LT, b0, 0xF0), three, four);
+    ob_br_if(b, sf_const_cmp(b, MCC_LT, b0, 0xF0), three, four);
     mir_b_switch_to(b, three);
     const MirValue x = ob_int(b, MOP_Shl, ob_int(b, MOP_And, b0, 0x0F), 12);
     const MirValue y = ob_int(b, MOP_Shl, sf_continuation(b, text, offset, 1), 6);
@@ -222,7 +215,7 @@ static void sf_scalar(MirBuilder *b, uint32_t slow_ext, bool step) {
         mir_b_switch_to(b, read);
         b0 = sf_byte_of_text(b, text, offset);
     }
-    sf_br_if(b, sf_const_cmp(b, MCC_LT, b0, 128), ascii, multi);
+    ob_br_if(b, sf_const_cmp(b, MCC_LT, b0, 128), ascii, multi);
     mir_b_switch_to(b, ascii);
     mir_b_ret(b, step ? ob_int(b, MOP_Or, ob_int(b, MOP_Shl, b0, 3), 1) : b0);
     mir_b_switch_to(b, multi);
@@ -261,18 +254,18 @@ static void sf_affix(MirBuilder *b, uint32_t slow_ext, bool end) {
     const MirBlock four_check = mir_b_new_block(b), four = mir_b_new_block(b);
     const SfBytes t = sf_bytes_of(b, sf_slot_of(b, text));
     const SfBytes p = sf_bytes_of(b, sf_slot_of(b, part));
-    sf_br_if(b, mir_b_icmp(b, MCC_GT, p.len, t.len), no, check);
+    ob_br_if(b, mir_b_icmp(b, MCC_GT, p.len, t.len), no, check);
     mir_b_switch_to(b, check);
-    sf_br_if(b, sf_const_cmp(b, MCC_GT, p.len, 16), slow, fits);
+    ob_br_if(b, sf_const_cmp(b, MCC_GT, p.len, 16), slow, fits);
     mir_b_switch_to(b, fits);
     /* The window of the text to compare: its first or last `p.len` bytes. */
     const MirValue zero = mir_b_iconst(b, 0);
     const MirValue window = ob_past(b, t.data, end ? mir_b_binop(b, MOP_ISub, t.len, p.len) : zero);
-    sf_br_if(b, mir_b_icmp(b, MCC_EQ, p.len, zero), empty, mid);
+    ob_br_if(b, mir_b_icmp(b, MCC_EQ, p.len, zero), empty, mid);
     mir_b_switch_to(b, mid);
-    sf_br_if(b, sf_const_cmp(b, MCC_GE, p.len, 8), wide, four_check);
+    ob_br_if(b, sf_const_cmp(b, MCC_GE, p.len, 8), wide, four_check);
     mir_b_switch_to(b, four_check);
-    sf_br_if(b, sf_const_cmp(b, MCC_GE, p.len, 4), four, tiny);
+    ob_br_if(b, sf_const_cmp(b, MCC_GE, p.len, 4), four, tiny);
     mir_b_switch_to(b, wide);
     sf_return_same(b, sf_diff_overlapping(b, window, p.data, p.len, 8));
     mir_b_switch_to(b, four);
@@ -317,8 +310,8 @@ static void sf_compare_inline(MirBuilder *b, MirValue sx, MirValue sy, MirBlock 
     const MirValue y0 = ob_load(b, sy, 0, MIR_INT), y1 = ob_load(b, sy, SF_WORD, MIR_INT);
     const MirValue nx = ob_int(b, MOP_Xor, ob_int(b, MOP_Ushr, x1, SF_TAG_SHIFT), 1);
     const MirValue ny = ob_int(b, MOP_Xor, ob_int(b, MOP_Ushr, y1, SF_TAG_SHIFT), 1);
-    const MirValue both = sf_const_cmp(b, MCC_EQ, mir_b_binop(b, MOP_Or, nx, ny), 0);
-    sf_br_if(b, both, inl, general);
+    const MirValue inline_pair = sf_const_cmp(b, MCC_EQ, mir_b_binop(b, MOP_Or, nx, ny), 0);
+    ob_br_if(b, inline_pair, inl, general);
     mir_b_switch_to(b, inl);
     const MirValue first = mir_b_binop(b, MOP_Xor, x0, y0);
     const MirValue first_args[3] = {x0, y0, first};
@@ -358,7 +351,7 @@ static void sf_compare(MirBuilder *b, uint32_t slow_ext) {
     const SfBytes xs = sf_bytes_of(b, sx), ys = sf_bytes_of(b, sy);
     const MirValue shorter = mir_b_icmp(b, MCC_LT, xs.len, ys.len);
     const MirValue n = mir_b_select(b, shorter, xs.len, ys.len);
-    sf_br_if(b, sf_const_cmp(b, MCC_GT, n, 16), slow, scan);
+    ob_br_if(b, sf_const_cmp(b, MCC_GT, n, 16), slow, scan);
     mir_b_switch_to(b, slow);
     sf_call_slow(b, slow_ext, ps, 2);
     mir_b_switch_to(b, scan);
@@ -384,11 +377,11 @@ static void sf_compare(MirBuilder *b, uint32_t slow_ext) {
     mir_b_br(b, whead, &end, 1);
     mir_b_seal_block(b, whead);
     mir_b_switch_to(b, head);
-    sf_br_if(b, mir_b_icmp(b, MCC_LT, i, n), body, tail);
+    ob_br_if(b, mir_b_icmp(b, MCC_LT, i, n), body, tail);
     mir_b_switch_to(b, body);
     const MirValue xb = sf_byte_at(b, xs.data, i), yb = sf_byte_at(b, ys.data, i);
     const MirBlock differ = mir_b_new_block(b);
-    sf_br_if(b, mir_b_icmp(b, MCC_EQ, xb, yb), step, differ);
+    ob_br_if(b, mir_b_icmp(b, MCC_EQ, xb, yb), step, differ);
     mir_b_switch_to(b, differ);
     mir_b_ret(b, mir_b_select(b, mir_b_icmp(b, MCC_LT, xb, yb), minus, plus));
     mir_b_switch_to(b, step);

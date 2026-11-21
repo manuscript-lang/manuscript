@@ -31,4 +31,11 @@ static inline MirValue ob_and(MirBuilder *b, MirValue x, MirValue y) {
     return mir_b_binop(b, MOP_And, x, y);
 }
 
+/* Branches to `then` or `other`, both of whose predecessors are then emitted: both are sealed. */
+static inline void ob_br_if(MirBuilder *b, MirValue cond, MirBlock then, MirBlock other) {
+    mir_b_br_if(b, cond, then, NULL, 0, other, NULL, 0);
+    mir_b_seal_block(b, then);
+    mir_b_seal_block(b, other);
+}
+
 #endif
