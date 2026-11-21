@@ -189,6 +189,12 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
         v->var_of = MS_NEW_N(arena, MirVar, bindings->count + 1);
         memset(v->var_of, 0xff, (bindings->count + 1) * sizeof *v->var_of);
         memset(v->value_of, 0xff, (bindings->count + 1) * sizeof *v->value_of);
+        const MsStr path = ms_name(lb->c->names, lb->c->mods[v->module].path);
+        char *text = MS_NEW_N(arena, char, (size_t)path.len + 1);
+        memcpy(text, path.ptr, path.len);
+        const MsStr file = {text, path.len};
+        v->file = lb->m->nfiles; // a location names its file by this index
+        MIR_PUSH(lb->m, lb->m->files, lb->m->nfiles, lb->m->cfiles, MsStr, file);
     }
     (void)lb_view_enter(lb, 0);
 }
@@ -446,15 +452,39 @@ uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out) {
     return lb_lower_modules(c, &module, 1, out);
 }
 
-uint32_t ms_lower_program(MsCheck *c, MirModule *out) {
+/* Appends `module` and then the project modules it imports, each once, in import order: the order
+ * in which the program's source files are first reached from the entry. */
+static void lb_reach(const MsCheck *c, MsModId module, bool *seen, MsModId *modules, uint32_t *n) {
+    if (seen[module]) {
+        return;
+    }
+    seen[module] = true;
+    modules[(*n)++] = module;
+    const MsModuleRow *row = &c->mods[module];
+    for (uint32_t i = 0; row->import_targets != NULL && i < row->syntax->nimports; i++) {
+        if (row->import_targets[i] != MS_NONE) {
+            lb_reach(c, row->import_targets[i], seen, modules, n);
+        }
+    }
+}
+
+uint32_t ms_lower_program(MsCheck *c, MsModId entry, MirModule *out) {
     MsModId *modules = calloc((size_t)c->nmods + 1, sizeof *modules); /* owned, freed below */
-    if (modules == NULL) {
+    bool *seen = calloc((size_t)c->nmods + 1, sizeof *seen);          /* owned, freed below */
+    if (modules == NULL || seen == NULL) {
+        free(modules);
+        free(seen);
         return 0;
     }
+    uint32_t n = 0;
+    lb_reach(c, entry, seen, modules, &n); // the entry first: its source file is file 0
     for (uint32_t i = 0; i < c->nmods; i++) {
-        modules[i] = i;
+        if (!seen[i]) {
+            modules[n++] = i; // the standard library's modules, which no import target names
+        }
     }
-    const uint32_t lowered = lb_lower_modules(c, modules, c->nmods, out);
+    free(seen);
+    const uint32_t lowered = lb_lower_modules(c, modules, n, out);
     free(modules);
     return lowered;
 }
