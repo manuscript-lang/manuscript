@@ -4,11 +4,10 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #include "ms/parse.h"
 #include "ms/project.h"
+#include "project/host.h"
 
 /* ---- failures ---- */
 
@@ -38,12 +37,12 @@ static MsGraphDiag load_resolution(const char *file, MsPos pos, const char *mess
 
 /* The path of a failed system call, relative to the working directory when it lies below it. */
 static const char *load_display_path(MsArena *a, const char *path) {
-    char cwd[4096];
-    if (getcwd(cwd, sizeof cwd) == NULL) {
-        return path;
-    }
+    const char *cwd;
     const char *canonical;
     MsProjectError ignored;
+    if (!ms_path_working_dir(a, &cwd, &ignored)) {
+        return path;
+    }
     const char *bases[2] = {cwd, NULL};
     if (ms_path_eval_symlinks(a, cwd, &canonical, &ignored)) {
         bases[1] = canonical;
@@ -64,13 +63,13 @@ static const char *load_explain(MsArena *a, const MsProjectError *err, const cha
         return ms_project_error_text(a, err);
     }
     const char *name = load_display_path(a, err->path);
-    if (err->err_no == ENOENT && import_path[0] != 0) {
+    if (host_missing(err->err_no) && import_path[0] != 0) {
         return ms_arena_fmt(a, "cannot find module %s (looked for %s); check the spelling, make sure the file exists, and that the path is relative to the importing file", import_path, name).ptr;
     }
-    if (err->err_no == ENOENT) {
+    if (host_missing(err->err_no)) {
         return ms_arena_fmt(a, "file not found: %s; check the path, pass a .ms file or a project ms.toml, and run from the directory that contains it", name).ptr;
     }
-    if (err->err_no == EACCES) {
+    if (host_denied(err->err_no)) {
         return ms_arena_fmt(a, "permission denied reading %s; make the file readable", name).ptr;
     }
     return ms_project_error_text(a, err);
@@ -172,32 +171,6 @@ static bool load_logical(GraphLoader *l, const char *canonical, const char **out
     }
     *fail = load_failure_error(&err);
     return false;
-}
-
-static const char *load_read(MsArena *a, const char *path, size_t *length, MsProjectError *err) {
-    FILE *f = fopen(path, "rbe");
-    if (f == NULL) {
-        ms_project_error_path(err, a, "open", path, errno);
-        return NULL;
-    }
-    MsBuf data = {0};
-    char chunk[16384];
-    size_t n;
-    while ((n = fread(chunk, 1, sizeof chunk, f)) > 0) {
-        ms_buf_put(&data, chunk, n);
-    }
-    const bool failed = ferror(f) != 0;
-    const int saved = errno;
-    fclose(f);
-    if (failed) {
-        ms_buf_free(&data);
-        ms_project_error_path(err, a, "read", path, saved);
-        return NULL;
-    }
-    *length = data.len;
-    char *text = ms_arena_strndup(a, data.data == NULL ? "" : data.data, data.len);
-    ms_buf_free(&data);
-    return text;
 }
 
 static bool load_visit(GraphLoader *l, MsSym canonical, int32_t *module, LoadFailure *fail);
@@ -308,7 +281,7 @@ static bool load_module(GraphLoader *l, MsSym canonical, const char *file, int32
             text = buffer->text;
             length = buffer->length;
         } else {
-            text = load_read(l->arena, path, &length, &err);
+            text = ms_project_read_file(l->arena, path, &length, &err);
         }
         /* A package file is checked against the locked index as it is read. */
         const MsPackage *package = text != NULL && l->project != NULL ? ms_project_package_of(l->project, path) : NULL;
@@ -413,8 +386,8 @@ static const char *load_enclosing_manifest(MsArena *a, const char *dir) {
     const char *current = dir;
     for (;;) {
         const char *candidate = MS_PATH_JOIN(a, current, "ms.toml");
-        struct stat info;
-        if (stat(candidate, &info) == 0 && S_ISREG(info.st_mode)) {
+        MsSysStat info;
+        if (ms_sys_fs_stat(candidate, true, &info) == 0 && host_is_reg(&info)) {
             return candidate;
         }
         const char *parent = ms_path_dir(a, current);

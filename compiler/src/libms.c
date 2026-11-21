@@ -177,7 +177,7 @@
 #endif
 /* The project loader uses POSIX file calls, which the Windows tools do not need; the back end library the Rust
  * `ms` links leaves it out on every platform (cmake/MsCompiler.cmake, target ms_backend). */
-#if !defined(_WIN32) && !defined(MS_LIBMS_NO_PROJECT)
+#if !defined(MS_LIBMS_NO_PROJECT)
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/discover.c"

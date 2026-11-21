@@ -52,6 +52,8 @@ const char *ms_path_base(MsArena *a, const char *path);
 /* The suffix beginning at the final dot of the last element ("" for none); points into `path`. */
 const char *ms_path_ext(const char *path);
 bool ms_path_is_abs(const char *path);
+/* The working directory, cleaned (`/` separators on Windows). */
+MS_NODISCARD bool ms_path_working_dir(MsArena *a, const char **dir, MsProjectError *err);
 MS_NODISCARD bool ms_path_abs(MsArena *a, const char *path, const char **out, MsProjectError *err);
 MS_NODISCARD bool ms_path_rel(MsArena *a, const char *base, const char *target, const char **out, MsProjectError *err);
 /* True when `rel` (from ms_path_rel) leaves its base directory. */

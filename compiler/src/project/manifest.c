@@ -6,10 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "ms/lock.h"
 #include "ms/project.h"
+#include "project/host.h"
 #include "ms/text.h"
 #include "ms/resolve.h"
 
@@ -786,13 +786,13 @@ static bool manifest_add_project_key(Builder *b, const Entry *e) {
 }
 
 static bool manifest_is_dir(const char *path) {
-    struct stat info;
-    return stat(path, &info) == 0 && S_ISDIR(info.st_mode);
+    MsSysStat info;
+    return ms_sys_fs_stat(path, true, &info) == 0 && host_is_dir(&info);
 }
 
 bool ms_project_is_file(const char *path) {
-    struct stat info;
-    return stat(path, &info) == 0 && S_ISREG(info.st_mode);
+    MsSysStat info;
+    return ms_sys_fs_stat(path, true, &info) == 0 && host_is_reg(&info);
 }
 
 typedef enum Section { SECTION_NONE, SECTION_PROJECT, SECTION_ALIASES, SECTION_EMBED, SECTION_DEPENDENCIES, SECTION_EFFECTS, SECTION_WORKSPACE } Section;
@@ -1000,23 +1000,22 @@ static bool manifest_finish(Builder *b) {
 }
 
 const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err) {
-    FILE *f = fopen(path, "rbe");
-    if (f == NULL) {
-        ms_project_error_path(err, a, "open", path, errno);
+    MsSysFd fd;
+    MsSysError failure = ms_sys_fs_open(path, MS_SYS_O_READ, 0, &fd);
+    if (failure != 0) {
+        ms_project_error_path(err, a, "open", path, failure);
         return NULL;
     }
     MsBuf data = {0};
-    char chunk[8192];
-    size_t n;
-    while ((n = fread(chunk, 1, sizeof chunk, f)) > 0) {
+    uint8_t chunk[16384];
+    size_t n = 1;
+    while (n > 0 && (failure = ms_sys_fs_read(fd, chunk, sizeof chunk, &n)) == 0) {
         ms_buf_put(&data, chunk, n);
     }
-    const bool failed = ferror(f) != 0;
-    const int saved = errno;
-    fclose(f);
-    if (failed) {
+    ms_sys_fs_close_quietly(fd);
+    if (failure != 0) {
         ms_buf_free(&data);
-        ms_project_error_path(err, a, "read", path, saved);
+        ms_project_error_path(err, a, "read", path, failure);
         return NULL;
     }
     *length = data.len;
@@ -1129,8 +1128,8 @@ const char *ms_project_find_manifest(MsArena *a, const char *filename) {
     const char *directory = ms_path_dir(a, filename);
     for (;;) {
         const char *manifest = MS_PATH_JOIN(a, directory, "ms.toml");
-        struct stat info;
-        if (stat(manifest, &info) == 0) {
+        MsSysStat info;
+        if (ms_sys_fs_stat(manifest, true, &info) == 0) {
             return manifest;
         }
         const char *parent = ms_path_dir(a, directory);

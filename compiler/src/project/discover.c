@@ -3,12 +3,11 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #endif
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "ms/project.h"
+#include "project/host.h"
 
 typedef struct Discovery {
     MsArena *arena;
@@ -35,14 +34,14 @@ static bool discover_is_test_name(const char *name) {
 }
 
 static bool discover_is_nested_project(Discovery *d, const char *dir) {
-    struct stat info;
-    return stat(MS_PATH_JOIN(d->arena, dir, "ms.toml"), &info) == 0 && S_ISREG(info.st_mode);
+    MsSysStat info;
+    return ms_sys_fs_stat(MS_PATH_JOIN(d->arena, dir, "ms.toml"), true, &info) == 0 && host_is_reg(&info);
 }
 
 /* A symlink to a directory. */
-static bool discover_is_directory_link(const char *path, const struct stat *link) {
-    struct stat target;
-    return S_ISLNK(link->st_mode) && stat(path, &target) == 0 && S_ISDIR(target.st_mode);
+static bool discover_is_directory_link(const char *path, const MsSysStat *link) {
+    MsSysStat target;
+    return host_is_link(link) && ms_sys_fs_stat(path, true, &target) == 0 && host_is_dir(&target);
 }
 
 /* Whether the walk enters this entry; a file is recorded when it is a module of the scan. */
@@ -77,15 +76,16 @@ static bool discover_children(Discovery *d, const char *path, MsBuf *children) {
     for (uint32_t i = 0; i < count; i++) {
         const char *name = names[i];
         const char *full = MS_PATH_JOIN(d->arena, path, name);
-        struct stat info;
-        if (lstat(full, &info) != 0) {
-            ms_project_error_path(d->err, d->arena, "lstat", path, errno);
+        MsSysStat info;
+        const MsSysError failure = ms_sys_fs_stat(full, false, &info);
+        if (failure != 0) {
+            ms_project_error_path(d->err, d->arena, "lstat", path, failure);
             return false;
         }
         if (discover_is_directory_link(full, &info)) {
             continue; /* a symlink to a directory is skipped, even when its name ends in `.ms` */
         }
-        const bool is_dir = S_ISDIR(info.st_mode);
+        const bool is_dir = host_is_dir(&info);
         if (!ms_utf8_valid(name, strlen(name))) {
             const bool ignored = is_dir ? name[0] == '.' : !(discover_is_test_name(name) || (d->all && discover_has_suffix(name, ".ms")));
             if (ignored) {
@@ -115,16 +115,17 @@ static bool discover_entry(Discovery *d, const char *path, const char *name, boo
 }
 
 static bool discover_walk(Discovery *d, const char *root) {
-    struct stat info;
-    if (lstat(root, &info) != 0) {
-        ms_project_error_path(d->err, d->arena, "lstat", root, errno);
+    MsSysStat info;
+    const MsSysError failure = ms_sys_fs_stat(root, false, &info);
+    if (failure != 0) {
+        ms_project_error_path(d->err, d->arena, "lstat", root, failure);
         return false;
     }
     d->scan_root = root;
     if (discover_is_directory_link(root, &info)) {
         return true;
     }
-    return discover_entry(d, root, ms_path_base(d->arena, root), S_ISDIR(info.st_mode));
+    return discover_entry(d, root, ms_path_base(d->arena, root), host_is_dir(&info));
 }
 
 bool ms_project_discover(MsArena *a, const MsProject *project, bool include_source, const char ***paths, uint32_t *count, MsProjectError *err) {
@@ -157,12 +158,13 @@ bool ms_project_discover(MsArena *a, const MsProject *project, bool include_sour
 }
 
 bool ms_project_format_paths(MsArena *a, const char *target, const char ***paths, uint32_t *count, MsProjectError *err) {
-    struct stat info;
-    if (stat(target, &info) != 0) {
-        ms_project_error_path(err, a, "stat", target, errno);
+    MsSysStat info;
+    const MsSysError failure = ms_sys_fs_stat(target, true, &info);
+    if (failure != 0) {
+        ms_project_error_path(err, a, "stat", target, failure);
         return false;
     }
-    if (!S_ISDIR(info.st_mode) && strcmp(ms_path_base(a, target), "ms.toml") != 0) {
+    if (!host_is_dir(&info) && strcmp(ms_path_base(a, target), "ms.toml") != 0) {
         const char **one = MS_NEW_N(a, const char *, 1);
         one[0] = target;
         *paths = one;
@@ -170,7 +172,7 @@ bool ms_project_format_paths(MsArena *a, const char *target, const char ***paths
         return true;
     }
     MsProject project = {0};
-    if (S_ISDIR(info.st_mode)) {
+    if (host_is_dir(&info)) {
         const char *absolute;
         if (!ms_path_abs(a, target, &absolute, err) || !ms_path_eval_symlinks(a, absolute, &project.root, err)) {
             return false;
