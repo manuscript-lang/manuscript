@@ -843,9 +843,7 @@ static void own_method_arguments(OwnWalk *w, const MsExpr *e, uint32_t row, uint
     }
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsExpr *arg = e->u.call.args.ptr[i].value;
-        if (i >= tys->nparams[sig]) {
-            own_expr(w, arg, DEMAND_READ);
-        } else if ((params[i].flags & MS_PARAM_VAR) != 0) {
+        if (i < tys->nparams[sig] && (params[i].flags & MS_PARAM_VAR) != 0) {
             const uint32_t binding = own_argument_local(w, arg);
             if (binding == MS_NONE) {
                 OWN_DECLINE(w); /* a place that is not a variable has its own message */
@@ -898,9 +896,7 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
             return;
         }
         own_expr(w, receiver, DEMAND_MOVE);
-    } else if (mutating && receiver->kind == MS_E_CALL) {
-        own_expr(w, receiver, DEMAND_READ); /* a temporary: nothing else names it */
-    } else if (mutating) {
+    } else if (mutating && receiver->kind != MS_E_CALL) { /* a temporary result is changed unseen: nothing else names it */
         bool overlaps = binding == MS_NONE;
         for (uint32_t i = 0; i < e->u.call.args.len && !overlaps; i++) {
             overlaps = own_mentions(w, e->u.call.args.ptr[i].value, binding);
