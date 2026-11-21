@@ -1,5 +1,5 @@
-/* Owns message construction for syntax diagnostics: joins parts and numbers into arena text. */
-#include "compiler/syntax/message.h"
+/* Owns message construction: joins parts and numbers into arena text. */
+#include "base/message.h"
 
 MsSpan ms_message_from_builder(MsArena *arena, const MsStrBuild *builder) {
   return ms_arena_copy(arena, ms_strbuild_span(builder));

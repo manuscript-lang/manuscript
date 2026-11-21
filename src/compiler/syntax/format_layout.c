@@ -73,6 +73,43 @@ static size_t lay_group_following(const Layout *l, MsSpan text, Nodes nodes, siz
   return 0;
 }
 
+/* Parses and lexes `*text`, first compacting callback suites (which may rewrite `*text`). */
+static bool layout_parse(Fmt *f, MsArena *scratch, MsSpan *text, MsModule *module, MsLexed *lexed) {
+  if (!fmt_parse(f, scratch, *text, module) || !fmt_lex(f, scratch, *text, lexed)) {
+    return false;
+  }
+  MsSpan compacted;
+  if (!lay_compact_callback_suites(f, module, lexed->tokens, lexed->ntokens, *text, &compacted)) {
+    return true;
+  }
+  ms_arena_free(scratch);
+  *text = compacted;
+  return fmt_parse(f, scratch, *text, module) && fmt_lex(f, scratch, *text, lexed);
+}
+
+/* Renders every group of `nodes` flat or broken into `output`, copying the text between them. */
+static void layout_render(const Layout *l, MsSpan text, Nodes nodes, MsStrBuild *output) {
+  size_t offset = 0;
+  for (size_t index = 0; index < nodes.len; index++) {
+    if (nodes.ptr[index].group < 0) {
+      continue;
+    }
+    const size_t gid = (size_t)nodes.ptr[index].group;
+    const Group *g = lay_group_at(l, gid);
+    if (lay_import_clauses(text, nodes, index, g)) {
+      continue;
+    }
+    fmt_put(output, fmt_slice(text, offset, g->open.lo));
+    const MsSpan so_far = fmt_tail(output, 0);
+    const size_t newline = fmt_rfind_byte(so_far, '\n');
+    const MsSpan line = newline == FMT_NONE ? so_far : fmt_slice(so_far, newline + 1, so_far.len);
+    lay_group(l, gid, fmt_indent_of(line), fmt_chars(line), lay_group_following(l, text, nodes, index, g),
+              output);
+    offset = g->close.hi;
+  }
+  fmt_put(output, fmt_slice(text, offset, text.len));
+}
+
 bool fmt_expression_layout(Fmt *f, MsSpan source, MsSpan *out) {
   MsSpan text;
   if (!fmt_group_statement_expressions(f, source, true, &text) ||
@@ -82,18 +119,9 @@ bool fmt_expression_layout(Fmt *f, MsSpan source, MsSpan *out) {
   MsArena scratch = {0};
   MsModule module;
   MsLexed lexed;
-  if (!fmt_parse(f, &scratch, text, &module) || !fmt_lex(f, &scratch, text, &lexed)) {
+  if (!layout_parse(f, &scratch, &text, &module, &lexed)) {
     ms_arena_free(&scratch);
     return false;
-  }
-  MsSpan compacted;
-  if (lay_compact_callback_suites(f, &module, lexed.tokens, lexed.ntokens, text, &compacted)) {
-    ms_arena_free(&scratch);
-    text = compacted;
-    if (!fmt_parse(f, &scratch, text, &module) || !fmt_lex(f, &scratch, text, &lexed)) {
-      ms_arena_free(&scratch);
-      return false;
-    }
   }
   MsArena tree = {0};
   SpanList line_buf = {0};
@@ -123,25 +151,7 @@ bool fmt_expression_layout(Fmt *f, MsSpan source, MsSpan *out) {
     ms_walk_decl(&visitor, module.decls[i]);
   }
   MsStrBuild output = {0};
-  size_t offset = 0;
-  for (size_t index = 0; index < nodes.len; index++) {
-    if (nodes.ptr[index].group < 0) {
-      continue;
-    }
-    const size_t gid = (size_t)nodes.ptr[index].group;
-    const Group *g = lay_group_at(&l, gid);
-    if (lay_import_clauses(text, nodes, index, g)) {
-      continue;
-    }
-    fmt_put(&output, fmt_slice(text, offset, g->open.lo));
-    const MsSpan so_far = fmt_tail(&output, 0);
-    const size_t newline = fmt_rfind_byte(so_far, '\n');
-    const MsSpan line = newline == FMT_NONE ? so_far : fmt_slice(so_far, newline + 1, so_far.len);
-    lay_group(&l, gid, fmt_indent_of(line), fmt_chars(line), lay_group_following(&l, text, nodes, index, g),
-              &output);
-    offset = g->close.hi;
-  }
-  fmt_put(&output, fmt_slice(text, offset, text.len));
+  layout_render(&l, text, nodes, &output);
   *out = fmt_take(f, &output);
   span_list_free(&line_buf);
   group_list_free(&l.groups);

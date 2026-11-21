@@ -202,6 +202,30 @@ static bool kind_is(const char *kind, const char *spelling) {
   return ms_span_is_text(ms_span_of_text(kind), spelling);
 }
 
+/* The hint for a name expected where `found` stands. */
+static MsSpan need_name_hint(Parser *p, MsToken found) {
+  MsSpan found_text = parse_text(p, found);
+  MsTok fk = (MsTok)found.kind;
+  if (fk == MS_T_SelfKw) {
+    return ms_span_of_text("; 'self' is reserved: a method's receiver is implicit, so leave it out of the "
+                           "parameter list and write self.field in the body");
+  }
+  if (fk == MS_T_LParen) {
+    return ms_span_of_text("; give it a name, e.g. fn add(a: Int, b: Int) Int:");
+  }
+  if (ms_span_is_text(found_text, "_")) {
+    return ms_span_of_text("; '_' is a reserved word and cannot be used as a name: loops, parameters and "
+                           "bindings need a real name such as item, unused or ignored");
+  }
+  const char *fs = ms_tok_str(fk);
+  if (ms_span_is_text(found_text, fs) && found_text.len > 0 &&
+      ((found_text.ptr[0] >= 'a' && found_text.ptr[0] <= 'z') ||
+       (found_text.ptr[0] >= 'A' && found_text.ptr[0] <= 'Z'))) {
+    return parse_fmt(p, "; '%S' is a reserved word and cannot be used as a name", found_text);
+  }
+  return ms_span_of_text("");
+}
+
 /* The expected-token hint; `kind` is the expected kind's spelling. */
 static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
   MsSpan found_text = parse_text(p, found);
@@ -247,24 +271,7 @@ static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
                            "parameters with a type go in parentheses, as in fn(n: Int): n + 1");
   }
   if (kind_is(kd, "NAME")) {
-    if (fk == MS_T_SelfKw) {
-      return ms_span_of_text("; 'self' is reserved: a method's receiver is implicit, so leave it out of the "
-                             "parameter list and write self.field in the body");
-    }
-    if (fk == MS_T_LParen) {
-      return ms_span_of_text("; give it a name, e.g. fn add(a: Int, b: Int) Int:");
-    }
-    if (ms_span_is_text(found_text, "_")) {
-      return ms_span_of_text("; '_' is a reserved word and cannot be used as a name: loops, parameters and "
-                             "bindings need a real name such as item, unused or ignored");
-    }
-    const char *fs = ms_tok_str(fk);
-    if (ms_span_is_text(found_text, fs) && found_text.len > 0 &&
-        ((found_text.ptr[0] >= 'a' && found_text.ptr[0] <= 'z') ||
-         (found_text.ptr[0] >= 'A' && found_text.ptr[0] <= 'Z'))) {
-      return parse_fmt(p, "; '%S' is a reserved word and cannot be used as a name", found_text);
-    }
-    return ms_span_of_text("");
+    return need_name_hint(p, found);
   }
   if (kind_is(kd, "NEWLINE"))
     return ms_span_of_text("; end the statement with a line break");
@@ -426,6 +433,40 @@ MS_NODISCARD bool parse_enter(Parser *p) {
   return true;
 }
 
+/* The advice after "expected end of statement" for the token `t` that followed it. */
+static const char *end_hint(Parser *p, MsToken t) {
+  bool prev_new = p->at > 0 && parse_text_is(p, parse_previous(p), "new");
+  MsSpan prev_word = p->at > 0 ? parse_text(p, parse_previous(p)) : ms_span_of_text("");
+  const char *hint;
+  if (ms_span_is_text(prev_word, "def") && t.kind == MS_T_Name) {
+    hint = "; there is no 'def': declare a function with 'fn name(a: Int) Int:'";
+  } else if (ms_span_is_text(prev_word, "lambda")) {
+    hint = "; there is no 'lambda': write an anonymous function as 'fn x: x + 1'";
+  } else if (ms_span_is_text(prev_word, "elif")) {
+    hint = "; there is no 'elif': write 'else if <condition>:' for a further branch";
+  } else if (t.kind == MS_T_Name && parse_text_is(p, t, "is")) {
+    hint = IS_HINT;
+  } else if (t.kind == MS_T_Name && prev_new) {
+    hint = "; there is no 'new': construct a value by calling the type, Name(field: value)";
+  } else if (t.kind == MS_T_If) {
+    hint = "; there is no inline conditional expression 'a if c else b': write 'if c: a else: b', or use an "
+           "if statement";
+  } else if (t.kind == MS_T_Question) {
+    hint = "; '?' after a Result call propagates its error, and is not '?\?' or 'c ? a : b': unwrap an "
+           "Optional with 'if x := v:' or give it a default with 'v.get(default)', chain with 'a?.b', and "
+           "write a conditional as 'if c: a else: b'";
+  } else if (t.kind == MS_T_Comma) {
+    hint = "; commas separate items only inside (), [] or {}: put each field, case, or statement on its own "
+           "line";
+  } else if (t.kind == MS_T_LBrace) {
+    hint = "; '{' does not open a block: end the header with ':' and indent the body (an interface method is "
+           "just its signature)";
+  } else {
+    hint = "; put one statement per line, and join operands with an operator or a comma inside brackets";
+  }
+  return hint;
+}
+
 MS_NODISCARD bool parse_end(Parser *p) {
   if (p->inline_statement) {
     switch (parse_kind(p)) {
@@ -474,35 +515,7 @@ MS_NODISCARD bool parse_end(Parser *p) {
                ms_span_of_text("there is no arrow function; anonymous functions are written fn x: x + 1"));
     return false;
   }
-  bool prev_new = p->at > 0 && parse_text_is(p, parse_previous(p), "new");
-  MsSpan prev_word = p->at > 0 ? parse_text(p, parse_previous(p)) : ms_span_of_text("");
-  const char *hint;
-  if (ms_span_is_text(prev_word, "def") && t.kind == MS_T_Name) {
-    hint = "; there is no 'def': declare a function with 'fn name(a: Int) Int:'";
-  } else if (ms_span_is_text(prev_word, "lambda")) {
-    hint = "; there is no 'lambda': write an anonymous function as 'fn x: x + 1'";
-  } else if (ms_span_is_text(prev_word, "elif")) {
-    hint = "; there is no 'elif': write 'else if <condition>:' for a further branch";
-  } else if (t.kind == MS_T_Name && parse_text_is(p, t, "is")) {
-    hint = IS_HINT;
-  } else if (t.kind == MS_T_Name && prev_new) {
-    hint = "; there is no 'new': construct a value by calling the type, Name(field: value)";
-  } else if (t.kind == MS_T_If) {
-    hint = "; there is no inline conditional expression 'a if c else b': write 'if c: a else: b', or use an "
-           "if statement";
-  } else if (t.kind == MS_T_Question) {
-    hint = "; '?' after a Result call propagates its error, and is not '?\?' or 'c ? a : b': unwrap an "
-           "Optional with 'if x := v:' or give it a default with 'v.get(default)', chain with 'a?.b', and "
-           "write a conditional as 'if c: a else: b'";
-  } else if (t.kind == MS_T_Comma) {
-    hint = "; commas separate items only inside (), [] or {}: put each field, case, or statement on its own "
-           "line";
-  } else if (t.kind == MS_T_LBrace) {
-    hint = "; '{' does not open a block: end the header with ':' and indent the body (an interface method is "
-           "just its signature)";
-  } else {
-    hint = "; put one statement per line, and join operands with an operator or a comma inside brackets";
-  }
+  const char *hint = end_hint(p, t);
   MsSpan dt = parse_describe(p, t);
   parse_fail(p, t, parse_fmt(p, "expected end of statement, found %S%s", dt, hint));
   return false;

@@ -11,6 +11,67 @@ static MsPattern *new_pattern(Parser *p, MsPos pos, MsPatternKind k) {
   return pt;
 }
 
+/* `[a, b]`: the list pattern after its opening bracket was seen at `t`. */
+MS_NODISCARD static bool pattern_list(Parser *p, MsToken t, MsPattern **out) {
+  MsPatterns elements = {NULL, 0};
+  if (!parse_take(p, MS_T_RBracket)) {
+    size_t m = parse_mark(p);
+    for (;;) {
+      if (!parse_push_pattern(p))
+        return false;
+      if (!parse_take(p, MS_T_Comma)) {
+        break;
+      }
+      if (parse_kind(p) == MS_T_RBracket) {
+        break;
+      }
+    }
+    if (!parse_need(p, MS_T_RBracket))
+      return false;
+    elements.ptr = parse_finish(p, m, &elements.len, sizeof(void *), _Alignof(void *));
+  }
+  MsPattern *pt = new_pattern(p, t.pos, MS_P_LIST);
+  pt->u.list = elements;
+  *out = pt;
+  return true;
+}
+
+/* `{x, y: pattern}`: the type pattern after its opening brace was seen at `t`. */
+MS_NODISCARD static bool pattern_fields(Parser *p, MsToken t, MsPattern **out) {
+  size_t m = parse_mark(p);
+  for (;;) {
+    MsToken name = {0};
+    if (!parse_need_token(p, MS_T_Name, &name))
+      return false;
+    MsPattern *child;
+    if (parse_take(p, MS_T_Colon)) {
+      if (!parse_pattern(p, &child))
+        return false;
+    } else {
+      child = new_pattern(p, name.pos, MS_P_NAME);
+      child->u.name = parse_sym(p, name);
+    }
+    MsPatternField f = {name.pos, parse_sym(p, name), child};
+    parse_push(p, &f, sizeof f);
+    if (!parse_take(p, MS_T_Comma)) {
+      break;
+    }
+    if (parse_kind(p) == MS_T_RBrace) {
+      break;
+    }
+  }
+  if (!parse_need(p, MS_T_RBrace))
+    return false;
+  MsPattern *pt = NULL;
+  uint32_t n;
+  MsPatternField *fields = parse_finish(p, m, &n, sizeof(MsPatternField), _Alignof(MsPatternField));
+  pt = new_pattern(p, t.pos, MS_P_TYPE);
+  pt->u.fields.ptr = fields;
+  pt->u.fields.len = n;
+  *out = pt;
+  return true;
+}
+
 MS_NODISCARD static bool pattern_inner(Parser *p, MsPattern **out) {
   MsToken t = parse_peek(p);
   if (t.kind == MS_T_Void) {
@@ -33,61 +94,10 @@ MS_NODISCARD static bool pattern_inner(Parser *p, MsPattern **out) {
     return true;
   }
   if (parse_take(p, MS_T_LBracket)) {
-    MsPatterns elements = {NULL, 0};
-    if (!parse_take(p, MS_T_RBracket)) {
-      size_t m = parse_mark(p);
-      for (;;) {
-        if (!parse_push_pattern(p))
-          return false;
-        if (!parse_take(p, MS_T_Comma)) {
-          break;
-        }
-        if (parse_kind(p) == MS_T_RBracket) {
-          break;
-        }
-      }
-      if (!parse_need(p, MS_T_RBracket))
-        return false;
-      elements.ptr = parse_finish(p, m, &elements.len, sizeof(void *), _Alignof(void *));
-    }
-    MsPattern *pt = new_pattern(p, t.pos, MS_P_LIST);
-    pt->u.list = elements;
-    *out = pt;
-    return true;
+    return pattern_list(p, t, out);
   }
   if (parse_take(p, MS_T_LBrace)) {
-    size_t m = parse_mark(p);
-    for (;;) {
-      MsToken name = {0};
-      if (!parse_need_token(p, MS_T_Name, &name))
-        return false;
-      MsPattern *child;
-      if (parse_take(p, MS_T_Colon)) {
-        if (!parse_pattern(p, &child))
-          return false;
-      } else {
-        child = new_pattern(p, name.pos, MS_P_NAME);
-        child->u.name = parse_sym(p, name);
-      }
-      MsPatternField f = {name.pos, parse_sym(p, name), child};
-      parse_push(p, &f, sizeof f);
-      if (!parse_take(p, MS_T_Comma)) {
-        break;
-      }
-      if (parse_kind(p) == MS_T_RBrace) {
-        break;
-      }
-    }
-    if (!parse_need(p, MS_T_RBrace))
-      return false;
-    MsPattern *pt = NULL;
-    uint32_t n;
-    MsPatternField *fields = parse_finish(p, m, &n, sizeof(MsPatternField), _Alignof(MsPatternField));
-    pt = new_pattern(p, t.pos, MS_P_TYPE);
-    pt->u.fields.ptr = fields;
-    pt->u.fields.len = n;
-    *out = pt;
-    return true;
+    return pattern_fields(p, t, out);
   }
   MsSpan dt = parse_describe(p, t);
   parse_fail(
@@ -217,15 +227,19 @@ MS_NODISCARD bool parse_binding(Parser *p, bool is_mutable, const MsPos *group, 
   return true;
 }
 
-/* The `( ... )` after a consumed `var`. The lexer ends each line of the group with a newline. */
-MS_NODISCARD bool parse_binding_group(Parser *p, MsToken keyword, MsStmts *out) {
+/* The column of the line `keyword` starts, which the group's `)` aligns with. */
+static uint32_t group_indent(const Parser *p, MsToken keyword) {
   uint32_t indent = keyword.pos.column;
   long i = (long)p->at - 2;
   while (i >= 0 && p->tokens[i].pos.line == keyword.pos.line && p->tokens[i].kind != MS_T_Newline) {
     indent = p->tokens[i].pos.column;
     i--;
   }
-  const char *kw = ms_tok_str((MsTok)keyword.kind);
+  return indent;
+}
+
+/* The `(` and the line end after it. */
+MS_NODISCARD static bool group_open(Parser *p, const char *kw) {
   if (p->inline_statement) {
     parse_fail(p, parse_peek(p),
                parse_fmt(p,
@@ -246,6 +260,41 @@ MS_NODISCARD bool parse_binding_group(Parser *p, MsToken keyword, MsStmts *out) 
     return false;
   }
   parse_next(p);
+  return true;
+}
+
+/* One entry line of the group, at `indent` + 4. */
+MS_NODISCARD static bool group_entry(Parser *p, MsToken keyword, const char *kw, uint32_t indent) {
+  MsToken t = parse_peek(p);
+  if (t.kind == MS_T_Eof) {
+    if (!parse_need(p, MS_T_RParen))
+      return false;
+  } else if (t.pos.column != indent + 4) {
+    parse_fail(p, t,
+               parse_fmt(p, "binding group entries are indented four spaces past the '%s' line, to column %u",
+                         kw, indent + 4));
+    return false;
+  }
+  if (!parse_push_binding(p, true, &keyword.pos, parse_peek(p).pos))
+    return false;
+  if (parse_kind(p) == MS_T_Comma) {
+    parse_fail(p, parse_peek(p),
+               parse_fmt(p,
+                         "a binding group holds one 'name = value' per line, not a comma list; to "
+                         "destructure write '%s [a, b] = value' or '%s {x, y} = value'",
+                         kw, kw));
+    return false;
+  }
+  /* A block lambda value ends at its dedent, which also ends the line. */
+  return parse_previous(p).kind == MS_T_Dedent || parse_need(p, MS_T_Newline);
+}
+
+/* The `( ... )` after a consumed `var`. The lexer ends each line of the group with a newline. */
+MS_NODISCARD bool parse_binding_group(Parser *p, MsToken keyword, MsStmts *out) {
+  const uint32_t indent = group_indent(p, keyword);
+  const char *kw = ms_tok_str((MsTok)keyword.kind);
+  if (!group_open(p, kw))
+    return false;
   size_t m = parse_mark(p);
   uint32_t count = 0;
   for (;;) {
@@ -260,33 +309,9 @@ MS_NODISCARD bool parse_binding_group(Parser *p, MsToken keyword, MsStmts *out) 
       }
       break;
     }
-    if (t.kind == MS_T_Eof) {
-      if (!parse_need(p, MS_T_RParen))
-        return false;
-    } else if (t.pos.column != indent + 4) {
-      parse_fail(p, t,
-                 parse_fmt(p,
-                           "binding group entries are indented four spaces past the '%s' line, to column %u",
-                           kw, indent + 4));
-      return false;
-    }
-    MsPos epos = parse_peek(p).pos;
-    if (!parse_push_binding(p, true, &keyword.pos, epos))
+    if (!group_entry(p, keyword, kw, indent))
       return false;
     count++;
-    if (parse_kind(p) == MS_T_Comma) {
-      parse_fail(p, parse_peek(p),
-                 parse_fmt(p,
-                           "a binding group holds one 'name = value' per line, not a comma list; to "
-                           "destructure write '%s [a, b] = value' or '%s {x, y} = value'",
-                           kw, kw));
-      return false;
-    }
-    /* A block lambda value ends at its dedent, which also ends the line. */
-    if (parse_previous(p).kind != MS_T_Dedent) {
-      if (!parse_need(p, MS_T_Newline))
-        return false;
-    }
   }
   if (count == 0) {
     parse_fail(
@@ -294,9 +319,7 @@ MS_NODISCARD bool parse_binding_group(Parser *p, MsToken keyword, MsStmts *out) 
         ms_span_of_text("a binding group cannot be empty; add 'name = value' lines or remove the group"));
     return false;
   }
-  if (!parse_need(p, MS_T_RParen))
-    return false;
-  if (!parse_end(p))
+  if (!parse_need(p, MS_T_RParen) || !parse_end(p))
     return false;
   MsStmts result;
   result.ptr = parse_finish(p, m, &result.len, sizeof(void *), _Alignof(void *));

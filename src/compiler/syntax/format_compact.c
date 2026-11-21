@@ -134,6 +134,40 @@ static void compact_index_compound(Compact *c, const MsStmt *s, const MsExpr *ca
   compact_compound(c, s, value);
 }
 
+/* The offset where the jump statement `only` (`return [value]`, `break`, `continue`) ends. */
+static bool compact_jump_end(const Compact *c, const MsStmt *only, size_t *end_offset) {
+  if (only->kind == MS_S_RETURN && only->u.expr != NULL) {
+    *end_offset = only->u.expr->end.offset;
+    return true;
+  }
+  if (only->kind != MS_S_RETURN && only->kind != MS_S_BREAK && only->kind != MS_S_CONTINUE) {
+    return false;
+  }
+  size_t line_end;
+  if (!compact_line_end(c->source, only->pos.offset, &line_end) || line_end < only->pos.offset) {
+    return false;
+  }
+  const MsSpan text = fmt_trim_end(fmt_slice(c->source, only->pos.offset, line_end));
+  if (!fmt_is(text, "return") && !fmt_is(text, "break") && !fmt_is(text, "continue")) {
+    return false;
+  }
+  *end_offset = only->pos.offset + text.len;
+  return true;
+}
+
+/* Whether the text holds a multi-line text placeholder, a newline or a comment. */
+static bool compact_body_blocked(MsSpan body_text) {
+  // A multi-line text literal reaches this pass as a private-use placeholder.
+  for (size_t at = 0; at < body_text.len;) {
+    uint32_t scalar;
+    at += fmt_scalar_at(body_text, at, &scalar);
+    if (scalar >= 0xE000 && scalar <= 0xF8FF) {
+      return true;
+    }
+  }
+  return fmt_contains(body_text, "\n") || fmt_contains(body_text, "//");
+}
+
 /* `if c:` over a single `return`, `break` or `continue` line becomes one line. */
 static void compact_inline_if(Compact *c, const MsStmt *s, MsStmts body) {
   if (body.len != 1) {
@@ -141,19 +175,7 @@ static void compact_inline_if(Compact *c, const MsStmt *s, MsStmts body) {
   }
   const MsStmt *only = body.ptr[0];
   size_t end_offset;
-  if (only->kind == MS_S_RETURN && only->u.expr != NULL) {
-    end_offset = only->u.expr->end.offset;
-  } else if (only->kind == MS_S_RETURN || only->kind == MS_S_BREAK || only->kind == MS_S_CONTINUE) {
-    size_t line_end;
-    if (!compact_line_end(c->source, only->pos.offset, &line_end) || line_end < only->pos.offset) {
-      return;
-    }
-    const MsSpan text = fmt_trim_end(fmt_slice(c->source, only->pos.offset, line_end));
-    if (!fmt_is(text, "return") && !fmt_is(text, "break") && !fmt_is(text, "continue")) {
-      return;
-    }
-    end_offset = only->pos.offset + text.len;
-  } else {
+  if (!compact_jump_end(c, only, &end_offset)) {
     return;
   }
   const MsToken *colon = compact_token_before(c, only->pos.offset);
@@ -186,14 +208,7 @@ static void compact_inline_if(Compact *c, const MsStmt *s, MsStmts body) {
   if (!compact_get(c->source, to, end_offset, &body_text)) {
     return;
   }
-  // A multi-line text literal reaches this pass as a private-use placeholder.
-  bool masked = false;
-  for (size_t at = 0; at < body_text.len;) {
-    uint32_t scalar;
-    at += fmt_scalar_at(body_text, at, &scalar);
-    masked = masked || (scalar >= 0xE000 && scalar <= 0xF8FF);
-  }
-  if (masked || fmt_contains(body_text, "\n") || fmt_contains(body_text, "//")) {
+  if (compact_body_blocked(body_text)) {
     return;
   }
   const size_t line_break = fmt_rfind_byte(fmt_slice(c->source, 0, if_start), '\n');
