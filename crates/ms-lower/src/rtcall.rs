@@ -36,7 +36,7 @@ type RtEntry = (
 );
 
 /// The ABI facts a runtime function declares with a `// ms:` comment in its source
-/// (`cargo xtask symbols` types them in `rt_symbols.txt`).
+/// (`ms run tools/ms/symbols.ms` types them in `rt_symbols.txt`).
 #[derive(Clone, Copy, Default)]
 pub(crate) struct RtFlags {
     /// Never reaches a cancellation point.
