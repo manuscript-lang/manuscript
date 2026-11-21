@@ -12,7 +12,7 @@ const MUSL_FILES: [&str; 5] = ["crt1.o", "crti.o", "crtn.o", "libc.a", "libunwin
 /// Files copied from llvm-mingw's `<arch>-w64-mingw32/lib`: the C startup object, the CRT and unwinder
 /// libraries, and the import libraries for every DLL the runtime (Rust's `std` plus the standard library
 /// crates) calls.
-const MINGW_FILES: [&str; 21] = [
+const MINGW_FILES: [&str; 22] = [
     "crt2.o",
     "libmingw32.a",
     "libmingwex.a",
@@ -34,6 +34,7 @@ const MINGW_FILES: [&str; 21] = [
     "libws2_32.a",
     "libuser32.a",
     "libshell32.a",
+    "libsynchronization.a",
 ];
 
 pub fn bundle() {
@@ -60,6 +61,23 @@ pub fn bundle() {
             assert_no_line_tables(&to, name);
             names.push(name.to_string());
         }
+        // The compiler runtime: stack probes (`___chkstk_ms`) that the runtime and the C libraries call and that the mingw
+        // libraries do not define. It sits under `lib/clang/<version>/lib/windows`.
+        let builtins = std::fs::read_dir(mingw().join("lib/clang"))
+            .expect("read llvm-mingw's lib/clang")
+            .filter_map(Result::ok)
+            .map(|e| {
+                e.path()
+                    .join(format!("lib/windows/libclang_rt.builtins-{arch}.a"))
+            })
+            .find(|p| p.is_file())
+            .unwrap_or_else(|| panic!("llvm-mingw has no libclang_rt.builtins-{arch}.a"));
+        copy(
+            &builtins,
+            &bundle.join("libclang_rt.builtins.a"),
+            "the compiler runtime",
+        );
+        names.push("libclang_rt.builtins.a".to_string());
     }
     println!(
         "cargo:rustc-env=MS_EXE_SUFFIX={}",
