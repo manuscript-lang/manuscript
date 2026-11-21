@@ -1,0 +1,5 @@
+101.ms:27:73: parse: invalid Unicode scalar escape; use only hexadecimal digits 0-9 and a-f inside \u{...}
+    |
+ 27 |     s3 := (f"{7}:" + ("line\nbreak" + "MiXeD CaSe".replace("hello wo\u{rld", "ms")))
+    |                                                                         ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

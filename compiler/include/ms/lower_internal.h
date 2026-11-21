@@ -96,6 +96,16 @@ typedef struct LbEq {
     uint32_t func;
 } LbEq;
 
+/* The function building the `Error` of a native's status table (lower_status.c). */
+typedef struct LbStatusFn {
+    MirTy error;
+    bool said;
+    const char *domain;
+    uint32_t nrows;
+    struct MsStatusRow *rows;
+    uint32_t func;
+} LbStatusFn;
+
 /* A resource type with its own `close` (lower_close.c): its MIR type, the method row, and the helper
  * functions the elaborate pass runs, made on first use. */
 typedef struct LbCloser {
@@ -153,6 +163,8 @@ typedef struct Lb {
     uint32_t ninsts, cinsts;
     LbEq *eqs;            /* this pass's equality functions (module arena) */
     uint32_t neqs, ceqs;
+    LbStatusFn *status_fns; /* this pass's status error functions (module arena) */
+    uint32_t nstatus_fns, cstatus_fns;
     LbInst *dead_insts;         /* instances that failed in an earlier pass, kept across passes (malloc) */
     uint32_t ndead_insts, cdead_insts;
     LbCloser *closers;    /* this pass's resource types (module arena) */
@@ -188,6 +200,7 @@ void lb_return_void(Lb *lb);
 uint32_t lb_scoped(Lb *lb, const MsStmts *body);          /* lowers `body` in its own scope; its owner depth */
 MirBlock lb_step_block(Lb *lb, LbLoop *loop);             /* where `continue` of `loop` goes */
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
+MirValue lb_copy(Lb *lb, MirValue v); /* a borrowed String copied into a value the caller owns */
 void lb_hold_temp(Lb *lb, MirValue v); /* an owned temporary that lives to the end of the statement */
 MirLoc lb_loc(const Lb *lb, MsPos pos);
 void lb_reset_state(Lb *lb);
@@ -304,6 +317,9 @@ MirValue lb_native_status_call(Lb *lb, const struct MsRtFn *fn, const MirValue *
 MirValue lo_out_slot(Lb *lb, MirTy ty);
 MirValue lo_take_out(Lb *lb, MirValue slot, MirTy ty);
 LbVal lx_call(Lb *lb, const MsExpr *e, MsSymId callee);
+/* lower_status.c: a native reporting failure by a status, called for a `Result[T, Error]`. */
+bool ls_reports_status(Lb *lb, const struct MsRtFn *fn, MirTy result_ty);
+LbVal ls_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 LbVal lb_native_call(Lb *lb, const struct MsRtFn *fn, const MirValue *args, uint32_t nargs, MirTy result_ty);
 
 /* Whether `ty` is a plain scalar a closure captures and a map holds by value. */
@@ -336,6 +352,12 @@ uint32_t lt_runtime_extern(Lb *lb, const MirExtern *want);
 
 /* Structural text of a record or enum (lower_format.c, included after lower_text.c). */
 LbVal lf_text(Lb *lb, LbVal value);
+/* Converts the number `x` to `checked_result` (a number, or an Optional integer); false when this does not lower. */
+/* Whether the method `name` is spelled as a conversion to a primitive type: `to_int16`, `to_float`. */
+bool lb_is_conversion_name(const Lb *lb, MsSym name);
+bool lb_numeric_conversion(Lb *lb, MirValue x, MsTy checked_result, LbVal *out);
+/* `abs` or `sign` of an `Int`: true when `e` is one (`out` is its value), false before anything is lowered. */
+bool lb_int_method(Lb *lb, const MsExpr *e, MsTy receiver_ty, LbVal *out);
 
 /* User enums (lower_enum.c, included after lower_body.c). */
 MirTy le_type(Lb *lb, MsTy ty);

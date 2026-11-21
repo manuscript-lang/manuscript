@@ -1,0 +1,5 @@
+063.ms:6:29: parse: mismatched closing delimiter ')'; the '[' opened at line 6:28 needs ']'
+   |
+ 6 | export fn double(value: Int[) Int:
+   |                             ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

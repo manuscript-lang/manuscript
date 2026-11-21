@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: setup lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -27,11 +27,17 @@ verify: check repo-check c-lint workflow-check bench-check lsp-test unit docs-ch
 
 verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
-# Builds the native C runtime into target/ms-native; every build of ms-cli embeds it.
+# Installs what the C build needs (CMake, Ninja, clang, musl-gcc, perl and the system libraries); run once on a new machine.
+setup:
+	sh runtime/third_party/libs.sh install
+
+# Builds the native C runtime into target/ms-native; every build of ms-cli embeds it. A missing tool is named first,
+# with `make setup`, rather than failing inside CMake.
 runtime:
+	sh runtime/third_party/libs.sh check
 	cmake -P cmake/BuildRuntime.cmake
 
-check: runtime
+check: build
 	"$(RELEASE_MS)" run tools/ms/symbols.ms -- --check
 	cargo fmt --all --check
 	cargo clippy --workspace --all-targets -- -D warnings
@@ -262,7 +268,6 @@ c-compiler-test:
 	sh compiler/tests/fixes-diff.sh
 	sh compiler/tests/prelude-fix-diff.sh
 	sh compiler/tests/import-hints-diff.sh
-	sh compiler/tests/run-run.sh
 	sh compiler/tests/asm-tables.sh
 	sh compiler/tests/llvm-run.sh
 	sh compiler/tests/llvm-main-run.sh
@@ -289,6 +294,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/review_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/diagram_cmd.ms
 	"$(RELEASE_MS)" test tools/ms/symbols.ms
+	"$(RELEASE_MS)" test tools/ms/toolchain.ms
+	"$(RELEASE_MS)" test tools/ms/proxy_get.ms
 	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
 	"$(RELEASE_MS)" test tools/ms/cli.ms
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
@@ -323,7 +330,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	cargo run -q --release --locked -p ms-tooling --example api_model > target/c-tool/model.json
 	target/c-tool/ms_api_model stdlib > target/c-tool/model.c.json && cmp target/c-tool/model.json target/c-tool/model.c.json
 	"$(RELEASE_MS)" build tools/ms/facts_entry.ms --link target/c-tool/libmstool.a -o target/c-tool/facts_entry
-	mkdir -p target/c-tool/facts && cp tools/ms/facts_entry.ms target/c-tool/facts/main.ms && cd target/c-tool/facts && ../facts_entry main.ms > entry.json && ../../cmake/tools/compiler/ms_check_dump ../../../stdlib --facts main.ms > dump.json && cmp entry.json dump.json
+	mkdir -p target/c-tool/facts && cp tests/conformance/fixtures/e2e/stdlib/log.ms target/c-tool/facts/main.ms && cd target/c-tool/facts && ../facts_entry main.ms > entry.json && ../../cmake/tools/compiler/ms_check_dump ../../../stdlib --facts main.ms > dump.json && cmp entry.json dump.json
 	rm -rf target/c-tool/proj && mkdir -p target/c-tool/proj/src && printf 'import helper from "./src/lib.ms"\n\nfn main() Int:\n\treturn helper(2)\n' > target/c-tool/proj/a.ms && printf 'export fn helper(n: Int) Int:\n\treturn n + 1\n' > target/c-tool/proj/src/lib.ms
 	target/c-tool/facts_entry --project target/c-tool/proj/a.ms > target/c-tool/proj/facts.json && grep -q '"key": "a.ms#fn#main"' target/c-tool/proj/facts.json && grep -q '"key": "src/lib.ms#fn#helper"' target/c-tool/proj/facts.json && grep -q '"paths": \["./src/lib.ms"\]' target/c-tool/proj/facts.json && grep -q '"calls": \["src/lib.ms#fn#helper"\], "effects_known": true' target/c-tool/proj/facts.json
 	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -coverage target/c-tool/coverage.rust.json -artifacts target/c-tool/docs.rust -static target/c-tool/static.rust

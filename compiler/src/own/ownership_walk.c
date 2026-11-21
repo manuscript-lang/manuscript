@@ -63,6 +63,8 @@ typedef struct OwnWalk {
     uint32_t consumed;  /* parameters this walk moved */
     MsPos consumed_at[32];
     uint8_t *param_mode; /* by binding id: 0 plain, 1 `var`, 2 `move` (parameters only) */
+    uint32_t self_binding; /* the receiver of the method being walked, else MS_NONE */
+    bool self_consuming;   /* the method is `move`: the receiver is its own, so it may change it */
     bool quiet;         /* a summary round: diagnostics are left to the final pass */
     bool *closure_holds; /* by binding id: a closure that borrows non-copy locals; moving it would let it outlive them */
     bool lambda_escaping; /* the lambda being walked is returned, stored or handed to a `move` parameter */
@@ -361,6 +363,9 @@ static void own_use_local(OwnWalk *w, const MsExpr *e, Demand demand) {
         } else {
             w->captured[w->ncaptured++] = own_resolve(w, binding);
         }
+    }
+    if (binding < w->floor && w->lambda_escaping && w->perm[binding] == PERM_MUTABLE) {
+        OWN_DECLINE(w); /* an escaping closure copies a `var`: a later use of it is an error left to Rust */
     }
     if (demand == DEMAND_MOVE && w->closure_holds[binding]) {
         OWN_DECLINE(w); /* the closure would outlive the locals it borrows */
@@ -691,6 +696,14 @@ static void own_mutate_place(OwnWalk *w, MsPos pos, uint32_t binding, MsPlace pl
                                "%.*s.clone()`",
                                (int)text.len, text.ptr, (int)name.len, name.ptr, (int)from.len, from.ptr, (int)name.len,
                                name.ptr, (int)name.len, name.ptr));
+    } else if (perm == PERM_IMMUTABLE && binding == w->self_binding) {
+        if (!w->self_consuming) {
+            own_error(w, pos,
+                      ms_arena_fmt(&w->check->arena,
+                                   "cannot change `%.*s`: this method does not change its receiver; write `fn var` in "
+                                   "its declaration to allow that",
+                                   (int)text.len, text.ptr));
+        }
     } else if (perm == PERM_IMMUTABLE && w->is_param[binding] && w->param_mode[binding] != 2) {
         own_error(w, pos,
                   ms_arena_fmt(&w->check->arena,
@@ -1504,6 +1517,8 @@ static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const MsM
     if (method != NULL) {
         const uint32_t self = by_node[method->id];
         own_declare(w, self, method->mutating ? PERM_MUTABLE : PERM_IMMUTABLE, true);
+        w->self_binding = self;
+        w->self_consuming = method->consuming;
         w->param_index[self] = 0;
         w->param_mode[self] = method->mutating ? 1 : 0;
     }
@@ -1529,6 +1544,8 @@ static bool own_function(OwnWalk *w, const MsFunc *function, const MsMethod *met
     w->borrowed_params = 0;
     w->consumed = 0;
     w->note_param = MS_NONE;
+    w->self_binding = MS_NONE;
+    w->self_consuming = false;
     w->supported = true;
     w->by_node = by_node;
     own_declare_parameters(w, function, method, by_node);
@@ -1639,16 +1656,6 @@ static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
     }
 }
 
-/* Where the walk gave up on declaration `node`, for the refusal report: its own decline, the one
- * its summary kept, or liveness (which records no site). */
-static MsSite own_refusal(const OwnWalk *w, uint32_t node) {
-    if (w->summaries[node].usable) {
-        return w->declined;
-    }
-    const MsSite summary = w->summaries[node].declined;
-    return summary.file != NULL ? summary : (MsSite){"ownership_live.c", 0};
-}
-
 void ms_module_check_ownership(MsCheck *c, MsModId module) {
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
@@ -1684,7 +1691,14 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         if (d->kind == MS_D_FN && facts->body_checked[d->id]) {
             facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, &d->u.fn, NULL, by_node);
             if (!facts->body_checked[d->id]) {
-                facts->refusal[d->id] = own_refusal(&w, d->id);
+                MsSite refusal = w.declined;
+                if (!w.summaries[d->id].usable) {
+                    refusal = w.summaries[d->id].declined;
+                    if (refusal.file == NULL) {
+                        refusal = (MsSite){"ownership_live.c", 0};
+                    }
+                }
+                facts->refusal[d->id] = refusal;
             }
             facts->ret_borrowed[d->id] = facts->body_checked[d->id] && w.summaries[d->id].returns_borrow;
             facts->param_consumed[d->id] = facts->body_checked[d->id] ? w.summaries[d->id].consumed : 0;

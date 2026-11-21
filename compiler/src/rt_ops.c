@@ -8,6 +8,20 @@
 #include "ms/rt_ops.h"
 
 #include "rt_ops_data.inc"
+#include "status_rows_data.inc"
+
+size_t ms_rt_status_rows(const MsRtFn *fn, MsStatusRow *out, size_t cap) {
+    const size_t count = sizeof status_rows / sizeof status_rows[0];
+    for (size_t i = 0; i < count && i < cap; i++) {
+        out[i] = status_rows[i];
+        for (size_t k = 0; k < sizeof status_words / sizeof status_words[0]; k++) {
+            if (status_words[k].status == status_rows[i].status && strcmp(status_words[k].symbol, fn->symbol) == 0) {
+                out[i].words = status_words[k].words;
+            }
+        }
+    }
+    return count;
+}
 
 const MsRtFn *ms_rt_fn_find(const char *symbol, size_t length) {
     size_t low = 0;

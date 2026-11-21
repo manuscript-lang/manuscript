@@ -1,8 +1,9 @@
 #!/bin/sh
 # Hello world through the C object and link steps: `ms emit` MIR text, ms_build_object, ms_build_link, run. One cheap
 # check that the C link works on the host (the corpus diff is compiler/tests/build-object-diff.sh).
-# Needs a built `ms` whose cache holds the pinned lld, LLVM tools and linker files (any `ms build` fills it) and the
-# runtime archive; run from the repository root:
+# Needs a built `ms` whose cache holds the pinned lld and LLVM tools (any `ms build` fills it) and the runtime
+# archive; run from the repository root. MS_LINKER_FILES names the linker files (the output of
+# `cmake -DMS_MODE=linker -P cmake/BuildRuntime.cmake`); without it the cache's, which `ms build` extracts, are used.
 #   sh compiler/tests/c-link-hello.sh [RUST_MS] [TOOLS_DIR] [RUNTIME_ARCHIVE] [WORKDIR]
 set -eu
 ms=${1:-target/release/ms}
@@ -12,13 +13,13 @@ work=${4:-target/c-link-hello}
 exe=
 case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) exe=.exe ;; esac
 if [ -n "${LOCALAPPDATA:-}" ] && [ -n "$exe" ]; then
-	cache=$LOCALAPPDATA/ms
+	cache=$(cygpath -u "$LOCALAPPDATA")/ms
 else
 	cache=${XDG_CACHE_HOME:-$HOME/.cache}/ms
 fi
 llvm=$(ls -d "$cache"/llvm/*/ | head -n 1)
 lld=$(ls "$cache"/lld/*/lld$exe | head -n 1)
-files=$(ls -d "$cache"/linker/*/ 2>/dev/null | head -n 1 || true)
+files=${MS_LINKER_FILES:-$(ls -d "$cache"/linker/*/ 2>/dev/null | head -n 1 || true)}
 mkdir -p "$work"
 if [ -z "$files" ]; then
 	files=$work/linker

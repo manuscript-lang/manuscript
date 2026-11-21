@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS1000",
+      "phase": "parse",
+      "message": "expected 'from', found name 'MapEntry'; imports read: import name from \"path.ms\"",
+      "position": {
+        "file": "069.ms",
+        "line": 6,
+        "column": 5,
+        "offset": 203
+      },
+      "end": {
+        "file": "069.ms",
+        "line": 6,
+        "column": 13,
+        "offset": 211
+      }
+    }
+  ]
+}

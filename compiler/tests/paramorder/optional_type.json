@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "diagnostics": [
+    {
+      "code": "MS3000",
+      "subcode": "MS3000.18",
+      "phase": "type",
+      "message": "required b follows optional a (a `T?` parameter or field defaults to none, so it counts as optional); put optional parameters and fields last",
+      "position": {
+        "file": "optional_type.ms",
+        "line": 1,
+        "column": 15,
+        "offset": 14
+      }
+    }
+  ]
+}

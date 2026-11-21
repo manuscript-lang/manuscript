@@ -17,6 +17,8 @@ import (
 
 TABLE_PATH := "crates/ms-lower/rt_symbols.txt"
 OPS_PATH := "compiler/src/rt_ops_data.inc"
+STATUS_PATH := "compiler/src/status_rows_data.inc"
+STDLIB_DIR := "stdlib"
 HEADER_DIR := "runtime/include/ms_rt"
 SYMBOLS_DIR := "runtime/symbols"
 
@@ -269,6 +271,11 @@ fn flag_value(text: String, key: String) String?:
 		if value := flag.cut_prefix(key): return value.trim()
 	return none
 
+// The runtime's value records: a user type whose fields the runtime reads or fills in
+// as a C struct.
+fn is_value_record(name: String) Bool:
+	return name == "Instant" or name == "Timestamp" or name == "DecType"
+
 fn param_kind(at: Int, p: String) String:
 	parts := p.split_once(":")
 	pname := (if parts.is_some(): parts.get().before.trim() else: "")
@@ -278,18 +285,27 @@ fn param_kind(at: Int, p: String) String:
 	if ty == "*mut VecVal" and at == 0: return "MS_RT_LIST_VAR"
 	if ty == "*const StrVal": return "MS_RT_STR"
 	if ty == "*mut StrVal" and pname == "out": return "MS_RT_OUT_STR"
+	if (ty == "*mut i64" or ty == "*mut f64" or ty == "*mut u8") and pname == "out": return "MS_RT_OUT_SCALAR"
 	if ty == "ElemDesc": return "MS_RT_DESC"
 	if ty == "*const MapVal": return "MS_RT_MAP"
 	if ty == "KeyDesc": return "MS_RT_KEY_DESC"
 	if ty == "ValDesc": return "MS_RT_VAL_DESC"
 	if ty == "HasRaw": return "MS_RT_HAS"
 	if ty == "ErrSlot": return "MS_RT_ERR"
+	if (
+		ty.starts_with("*mut ")
+		and (ty.ends_with("Out") or is_value_record(ty.replace("*mut ", "")))
+		and ty != "*mut InfoOut"
+		and pname == "out"
+	): return "MS_RT_OUT_RECORD"
+	if ty.starts_with("*const ") and is_value_record(ty.replace("*const ", "")): return "MS_RT_RECORD"
 	if ty.starts_with("*mut *mut ObjCell<") and pname == "out": return "MS_RT_OUT_HANDLE"
 	if ty.starts_with("*const ObjCell<") and pname.starts_with("handle "): return "MS_RT_HANDLE"
 	if ty == "*const u8" and pname == "key": return "MS_RT_KEY_REF"
 	if ty == "*const u8": return "MS_RT_ELEMENT"
 	if ty == "i64": return "MS_RT_INT"
 	if ty == "f64": return "MS_RT_FLOAT"
+	if ty == "u64": return "MS_RT_UINT64"
 	if ty == "u8" or ty == "bool": return "MS_RT_BOOL"
 
 	return "MS_RT_OTHER"
@@ -298,6 +314,7 @@ fn result_kind(text: String) String:
 	if text == "-> i64": return "MS_RT_RET_INT"
 	if text == "-> f64": return "MS_RT_RET_FLOAT"
 	if text == "-> u8": return "MS_RT_RET_BOOL"
+	if text.starts_with("-> *mut ObjCell<"): return "MS_RT_RET_HANDLE"
 	if text.is_empty(): return "MS_RT_RET_VOID"
 
 	return "MS_RT_RET_OTHER"
@@ -369,11 +386,79 @@ fn rt_ops_text(symbols: String) String:
 		fresh := rest.contains(" @fresh")
 		has_imm := imm.is_some()
 		imm_value := imm.get_or(0)
+		domain := flag_value(rest, "domain=").get_or("")
 		out = out.concat(
-			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {has_imm}\},\n"
+			f"    \{\"{name}\", \"{op}\", \"{word_key}\", \"{text_key}\", \"{seq}\", {imm_value}, {kinds.length()}, {ret}, \{{kinds.join(", ")}\}, {leaf}, {twinned.contains(name)}, {pure}, {fresh}, {has_imm}, \"{domain}\"\},\n"
 		)
 
 	return out.concat("};\n")
+
+// ---- The status rows ----
+
+// Every `.ms` file under `dir`, sorted.
+fn stdlib_files(dir: String) List[String]!:
+	var found = List[String]()
+
+	for entry in list(dir)?:
+		path := f"{dir}/{entry.name}"
+
+		if entry.directory: found.extend(stdlib_files(path)?)
+		else if entry.name.ends_with(".ms"): found.append(path)
+
+	return ok(found.sorted())
+
+// The error kind and words of each runtime status (`// ms: status <n> <kind> <words>`
+// in the standard library) and the per-extern wording of a status
+// (`// ms: words <n> <words>` covering the externs a file declares or lists with
+// `// ms: native`), the tables `ms_rt_status_rows` merges for the C lowering.
+fn status_rows_text() String!:
+	var rows = Map[Int, String]()
+	var words = List[String]()
+
+	for path in stdlib_files(STDLIB_DIR)?:
+		var local = List[List[String]]()
+		var externs = List[String]()
+
+		for raw in read_text(path)?.split("\n"):
+			if rest := raw.cut_prefix("// ms: status "):
+				parts := rest.split(" ")
+				if parts.length() < 3: return error(
+					Error(f"{path}: malformed status row: {raw}")
+				)
+
+				text := parts.drop(2).join(" ")
+				number := parts[0].parse_int()
+				if number.is_none(): return error(
+					Error(f"{path}: malformed status row: {raw}")
+				)
+
+				rows.add(
+					number.get(),
+					f"    \{{parts[0]}, \"{parts[1]}\", \"{text}\"\},\n",
+				)
+			else if rest := raw.cut_prefix("// ms: words "):
+				if split := rest.split_once(" "): local.append(
+					[split.before.clone(), split.after.clone()]
+				)
+				else: return error(Error(f"{path}: malformed words row: {raw}"))
+			else if rest := raw.cut_prefix("// ms: native "):
+				externs.extend(rest.split(" "))
+			else if rest := raw.cut_prefix("export extern fn "): externs.append(
+				before(rest, "(")
+			)
+			else if rest := raw.cut_prefix("extern fn "): externs.append(
+				before(rest, "(")
+			)
+
+		for sym in externs:
+			for row in local:
+				words.append(f"    \{\"{sym}\", {row[0]}, \"{row[1]}\"\},\n")
+
+	var out = "/* Generated by `ms run tools/ms/symbols.ms` from the `// ms: status` and `// ms: words` rows of stdlib/; do not edit. */\nstatic const MsStatusRow status_rows[] = {\n"
+	for number in rows.keys().sorted(): out = out.concat(rows.get_or(number, ""))
+	out = out.concat("};\nstatic const MsStatusWords status_words[] = {\n")
+	out = out.concat(words.sorted().join(""))
+	return ok(out.concat("};\n"))
 
 // ---- The check that the headers and the symbol lists agree ----
 
@@ -479,10 +564,11 @@ fn generate(check: Bool) String!:
 	check_c_abi(header.lines)?
 
 	ops := rt_ops_text(text)
+	status := status_rows_text()?
 	count := header.lines.length()
 
 	if check:
-		for pair in [[TABLE_PATH, text], [OPS_PATH, ops]]:
+		for pair in [[TABLE_PATH, text], [OPS_PATH, ops], [STATUS_PATH, status]]:
 			have := read_text(pair[0]).get_or("")
 			if have != pair[1]: return error(
 				Error(
@@ -493,6 +579,7 @@ fn generate(check: Bool) String!:
 		return ok(f"{TABLE_PATH} is current ({count} symbols)")
 
 	write_file(OPS_PATH, ops, replace: true).wait()?
+	write_file(STATUS_PATH, status, replace: true).wait()?
 	write_file(TABLE_PATH, text, replace: true).wait()?
 	return ok(f"wrote {TABLE_PATH} ({count} symbols)")
 

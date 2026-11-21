@@ -20,6 +20,7 @@ typedef struct MsBody {
     MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
     MsTy invalid_ty;        /* the type of an expression that already drew a diagnostic */
     MsTy result;
+    MsTy fixture;           /* the type a test file's `make_fixture` returns (its tests bind `fixture`), or MS_TY_NONE */
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */
     uint32_t function;      /* the declaration node of the function being checked */
     bool *closed;           /* by binding id: its block ended, so the name is free again */
@@ -29,7 +30,10 @@ typedef struct MsBody {
     MsBuf diags;            /* MsCheckDiag of the function being checked, reported once it is claimed */
     const char *context;    /* what the next `ms_body_expr` value is for ("the return value"), or NULL */
     bool match_falls;       /* set by each `match` checked: control leaves it (some statement arm falls through) */
+    MsTy result_hint;       /* with `infer_result`: the result the context expects, whose variables the body decides */
     bool infer_result;      /* in a function literal whose result its body decides: the first `return` fixes `result` */
+    const MsTypeParams *tparams; /* the type parameters of the function being checked, and their variables */
+    const MsTy *tvars;
     bool supported;         /* false once a construct outside the handled set is met */
     MsSite gave_up;         /* the first `ms_body_unsupported` call of this function */
 } MsBody;
@@ -84,8 +88,13 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty);
 /* `ok(v)`, `error(e)` and `some(v)`, the built-in cases of Result and Optional (check_builtin.c). */
 bool ms_body_is_builtin_case(const MsBody *b, MsSym name);
 MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
+/* `ok(v)` or `error(e)` returned where the result is still being decided and the context expects the Result `hint`: the
+ * payload fixes what `hint` leaves open. MS_TY_NONE when the call is not one. */
+MsTy ms_body_builtin_open(MsBody *b, const MsExpr *e, MsTy hint);
 /* An enum case called like a function where the context expects its enum (check_alt.c). */
 bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name);
+/* A type declared `opaque` in another module: its cases, fields and constructor are denied here (a Rust diagnostic). */
+bool ms_body_is_foreign_opaque(const MsBody *b, MsTy ty);
 MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected);
 /* Whether `label` is the name of the payload field of `ok` (`success`) or `error` of the Result type `result`. */
 bool ms_body_result_label(const MsBody *b, MsTy result, bool success, MsSym label);

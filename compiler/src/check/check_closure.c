@@ -63,8 +63,8 @@ bool ms_body_reads_where_var_expected(const MsBody *b, MsTy actual, MsTy expecte
     return differs;
 }
 
-/* A function value whose parameters and result are plain values: the only ones a lambda is checked
- * for. A parameter of another type is owned or borrowed by the function type's mode, which the
+/* A function value whose parameters are plain values and whose result is any bindable type: the only ones a
+ * lambda is checked for. A parameter of another type is owned or borrowed by the function type's mode, which the
  * ownership walk does not model for a lambda's own parameters yet. */
 static bool closure_plain(const MsBody *b, MsTy fn) {
     const MsTyTable *tys = &b->c->tys;
@@ -77,7 +77,7 @@ static bool closure_plain(const MsBody *b, MsTy fn) {
             return false;
         }
     }
-    return ms_body_is_plain_value(b, tys->result[fn]) || tys->result[fn] == b->void_ty;
+    return ms_body_is_bindable(b, tys->result[fn]) || tys->result[fn] == b->void_ty;
 }
 
 /* The name a function type's parameter `index` carries: `_0`, `_1`, as the parser spells them. */
@@ -221,11 +221,13 @@ static MsTy closure_check(MsBody *b, const MsExpr *e, MsTy expected, bool infer)
     }
     const MsTy outer_result = b->result;
     const bool outer_infer = b->infer_result;
+    const MsTy outer_hint = b->result_hint;
     const uint32_t outer_depth = b->loop_depth, outer_floor = b->lambda_floor;
     const uint32_t outer_breaks = b->breaks;
     const uint32_t first = b->facts->bindings.count;
     b->result = infer ? MS_TY_NONE : result;
     b->infer_result = infer;
+    b->result_hint = infer && ms_ty_kind(&b->c->tys, expected) == MS_K_FUNCTION ? b->c->tys.result[expected] : MS_TY_NONE;
     b->loop_depth = 0;
     b->breaks = 0;
     b->lambda_floor = first;
@@ -245,6 +247,7 @@ static MsTy closure_check(MsBody *b, const MsExpr *e, MsTy expected, bool infer)
     }
     b->result = outer_result;
     b->infer_result = outer_infer;
+    b->result_hint = outer_hint;
     b->loop_depth = outer_depth;
     b->breaks = outer_breaks;
     b->lambda_floor = outer_floor;
