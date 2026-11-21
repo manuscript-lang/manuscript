@@ -279,6 +279,12 @@ static bool ln_value_param(Lb *lb, LnCall *call, MsRtParam kind, const MirValue 
     if (kind == MS_RT_RECORD && (given == MIR_NONE || mir_ty_data(lb->m, given)->kind != MK_TYPE)) {
         return false;
     }
+    if (kind == MS_RT_ALT) {
+        const MirTyKind held = given == MIR_NONE ? MK_INT : mir_ty_data(lb->m, given)->kind;
+        if (held != MK_OPT && held != MK_ALT) {
+            return false;
+        }
+    }
     if (bytes) {
         call->element = MIR_UINT8;
     } else if (list) {
@@ -563,7 +569,11 @@ LbVal lb_native_method(Lb *lb, const MsExpr *e) {
         return (LbVal){mir_b_unit(&lb->b), false};
     }
     if (first.owned) {
-        lb_hold_temp(lb, first.v); // a temporary receiver lives to the end of the statement
+        if (fn->params[0] == MS_RT_ALT) {
+            lb_drop(lb, first.v); // an Optional or Result is tested in place, then released at once, as Rust does
+        } else {
+            lb_hold_temp(lb, first.v); // a temporary receiver lives to the end of the statement
+        }
     }
     return call;
 }
