@@ -1,5 +1,6 @@
 /* compiler/mir/mir_layout.c: the layouts built on the shapes: alternative fields, heap blocks of records,
  * closure objects, and the pointer and boolean flags the LLVM emitter reads. Kept in the MirLayouts arena. */
+#include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_layout_internal.h"
 
 /* ---- alternatives ---- */
@@ -264,4 +265,21 @@ const bool *mir_pointer_leaves(MirLayouts *layouts, MirTy ty) {
 
 const bool *mir_bool_leaves(MirLayouts *layouts, MirTy ty) {
   return marks_of(layouts, ty, false);
+}
+
+bool mir_rt_direct(const MirModule *module, MirLayouts *layouts, MirTy ty) {
+  const MirTyData *data = mir_ty_data(module, ty);
+  switch ((MirTyKind)data->kind) {
+  case MK_VOID: case MK_BOOL: case MK_INT: case MK_INT8: case MK_INT16: case MK_INT32:
+  case MK_UINT8: case MK_UINT16: case MK_UINT32: case MK_UINT64: case MK_FLOAT:
+  case MK_FLOAT32: case MK_PTR: case MK_FN: case MK_IFACE:
+    return true;
+  case MK_OBJ:
+    return data->obj_class != MIR_OBJ_COLLECTION;
+  case MK_OPT:
+    return mir_opt_is_nullable(layouts, data->elem) || mir_is_scalar(module, data->elem);
+  case MK_STR: case MK_BYTES: case MK_TYPE: case MK_ALT: case MK_LIST:
+    return false;
+  }
+  return false;
 }
