@@ -101,7 +101,8 @@ test "replace rejects invalid programs before leaving this process":
 	)
 
 	if info.uid < 0:
-		// Windows has no exec, but a call that is wrong everywhere is rejected as it is elsewhere.
+		// Windows has no exec, but a call that is wrong everywhere is rejected as it is
+		// elsewhere.
 		expect_process_error(empty, Error("process: invalid input", kind: "EINVAL"))?
 		expect_process_error(
 			missing,
