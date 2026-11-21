@@ -39,10 +39,8 @@ fn main() Int:
 	ys := [1, 2]
 	ts := ["a"]
 	us := ["b"]
-	if same_point(p, p) and not other_point(p, p) and same_named(n, n):
-		return 1
-	if same_shape(Circle(3), Circle(3)) or same_shape(Dot, Pair(1, true)):
-		return 2
-	if same_list(xs, ys) or same_texts(ts, us) or same_maybe(1, none):
-		return 3
+	if same_point(p, p) and not other_point(p, p) and same_named(n, n): return 1
+	if same_shape(Circle(3), Circle(3)) or same_shape(Dot, Pair(1, true)): return 2
+	if same_list(xs, ys) or same_texts(ts, us) or same_maybe(1, none): return 3
+
 	return 0
