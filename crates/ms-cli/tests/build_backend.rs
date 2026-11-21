@@ -10,7 +10,7 @@ fn tools() -> Option<&'static Path> {
     static TOOLS: OnceLock<Option<PathBuf>> = OnceLock::new();
     TOOLS
         .get_or_init(|| {
-            ms_clif::link::llvm_tools(&ms_cli::engine::build_options_from_env()).unwrap()
+            ms_build::link::llvm_tools(&ms_cli::engine::build_options_from_env()).unwrap()
         })
         .as_deref()
 }

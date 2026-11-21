@@ -65,12 +65,12 @@ Under Miri the allocator takes its reservation from the heap in place of `mmap` 
 | `ms-check` | Resolution, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics |
 | `ms-mir` | MIR representation, ownership elaboration, optimizer, verifier, text format, interpreter |
 | `ms-mir-llvm` | MIR to LLVM IR text: functions, glue, descriptors, vtables and globals; depends only on `ms-mir` and `ms-rt-abi` |
-| `ms-clif` | MIR to Cranelift object code, line tables, perf map, and native linking with cached lld/LLVM tools and embedded startup files |
+| `ms-clif` | MIR to Cranelift object code, line tables, perf map |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime (with the `ffi` and `glue` helpers the native crates build on), C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module, depending on `ms-rt` as an ordinary Rust crate |
 | `ms-lower` | Checked HIR to MIR, including native standard calls |
 | `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
-| `ms-build` | Lowering seam, optimization, native codegen and link |
+| `ms-build` | Lowering seam, optimization, native codegen, and linking with cached lld/LLVM tools and embedded startup files (`link`, `build.rs`) |
 | `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, agent skill, docgen; language server |
 | `ms-cli` | The `ms` binary (the conformance runner is `tools/conform-run.ms`) |
 
@@ -92,7 +92,7 @@ Use a compatible local `lld` through `MS_LLD`, or let `ms` cache the SHA-256-ver
 
 **Linux.** Linux links dynamic executables that run on glibc 2.28 or newer: the runtime is built for `<arch>-unknown-linux-gnu` and defines `_start` itself (`crates/ms-native`), and lld links it, with the bundled static `libunwind.a`, against stub glibc libraries generated from `toolchain/glibc/<arch>.symbols` (`toolchain/glibc/generate.sh` regenerates them from glibc 2.28's ABI lists). The host's glibc, `libc6-dev` and a C compiler are never used.
 
-`--static` instead links a static musl executable over the startup files and libc copied from the Rust toolchain by `crates/ms-clif/build.rs`, with a second runtime built for the musl target (`libms_native_musl.a`); `ms` embeds both.
+`--static` instead links a static musl executable over the startup files and libc copied from the Rust toolchain by `crates/ms-build/build.rs`, with a second runtime built for the musl target (`libms_native_musl.a`); `ms` embeds both.
 
 **macOS.** macOS links against `.tbd` stubs generated from the imported symbols; it needs no SDK, and `dsymutil` (if present) writes `<output>.dSYM` beside the executable, which should stay with it for source lookup.
 

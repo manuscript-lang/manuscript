@@ -2,7 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-use ms_clif::{BuildOptions, CopyProbe, Options};
+use crate::{BuildOptions, CopyProbe};
+use ms_clif::Options;
 use ms_mir::ir::Module;
 use ms_mir::opt::{Level, optimize};
 
@@ -108,7 +109,9 @@ impl Backend {
 impl Profile {
     fn options(self, build: &BuildOptions) -> (Level, Options, Option<&'static str>) {
         let mut options = Options {
-            build: build.clone(),
+            clif_verify: build.clif_verify,
+            poison_slots: build.poison_slots,
+            dump_clif: build.dump_clif,
             ..Options::default()
         };
         let mut llvm = None;
@@ -251,7 +254,7 @@ pub fn build_executable(
     };
     let compiled = if crate::c_backend::enabled() {
         // The C pipeline runs the optimizer and the finishing passes itself.
-        crate::c_backend::compile(module, level == Level::Speed, options.checks, build.keep_ll)
+        crate::c_backend::compile(module, level == Level::Speed, options.checks, build)
             .map(|object| vec![object])
     } else {
         optimize(module, level, cfg!(debug_assertions));
@@ -322,7 +325,7 @@ pub fn build_executable(
             let _ = std::fs::remove_file(path);
         }
         let _ = std::fs::remove_file(&staged);
-        if let Some(companion) = ms_clif::link::debug_companion_path(&staged) {
+        if let Some(companion) = crate::link::debug_companion_path(&staged) {
             let _ = std::fs::remove_dir_all(companion);
         }
     };
@@ -340,7 +343,7 @@ pub fn build_executable(
         }
         inputs.insert(k, path);
     }
-    let linked = ms_clif::link::link_with(
+    let linked = crate::link::link_with(
         &object_path,
         &inputs,
         &staged,
@@ -390,10 +393,10 @@ fn normalize_debug_resource(companion: &Path, staged: &Path, output: &Path) -> s
 /// Publish the native debug companion together with the staged executable. If
 /// replacing the executable fails, restore the previous companion as well.
 pub fn publish(staged: &Path, output: &Path) -> std::io::Result<()> {
-    let Some(destination) = ms_clif::link::debug_companion_path(output) else {
+    let Some(destination) = crate::link::debug_companion_path(output) else {
         return std::fs::rename(staged, output);
     };
-    let companion = ms_clif::link::debug_companion_path(staged).expect("same native platform");
+    let companion = crate::link::debug_companion_path(staged).expect("same native platform");
     let has_new = companion.exists();
     if has_new {
         normalize_debug_resource(&companion, staged, output)?;
@@ -454,7 +457,7 @@ mod tests {
         let output = root.join("output");
         std::fs::write(&staged, "new executable").unwrap();
         std::fs::write(&output, "old executable").unwrap();
-        let old = ms_clif::link::debug_companion_path(&output).unwrap();
+        let old = crate::link::debug_companion_path(&output).unwrap();
         std::fs::create_dir_all(&old).unwrap();
         std::fs::write(old.join("data"), "old").unwrap();
         super::publish(&staged, &output).unwrap();
@@ -473,8 +476,8 @@ mod tests {
         let output = root.join("output");
         std::fs::write(&staged, "new executable").unwrap();
         std::fs::create_dir_all(&output).unwrap(); // file rename must fail
-        let new = ms_clif::link::debug_companion_path(&staged).unwrap();
-        let old = ms_clif::link::debug_companion_path(&output).unwrap();
+        let new = crate::link::debug_companion_path(&staged).unwrap();
+        let old = crate::link::debug_companion_path(&output).unwrap();
         let resources = new.join("Contents/Resources/DWARF");
         std::fs::create_dir_all(&resources).unwrap();
         std::fs::create_dir_all(&old).unwrap();

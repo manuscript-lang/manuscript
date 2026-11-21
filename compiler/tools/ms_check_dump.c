@@ -79,6 +79,8 @@ static bool add_project(MsCheck *check, MsNames *names, const char *path, MsModI
             uint32_t nerrors = 0;
             ms_module_desugar(check, rows[m], (MsStr){graph.modules[m].source, (uint32_t)graph.modules[m].length}, NULL,
                               0, &errors, &nerrors);
+            // A module is checked before the ones that import it: its constants carry their types.
+            check_bodies_with_methods(check, rows[m], graph.modules[m].source, graph.modules[m].length);
         }
     }
     *entry = rows[graph.count - 1];
@@ -132,6 +134,7 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             if (json_mode != 0) {
                 check_bodies_with_methods(check, id, check_text, (size_t)n);
                 if (json_mode == 1) {
+                    ms_module_check_ownership(check, id); // marks the bindings that close at scope end
                     ms_dump_module_facts(&dump, check, id, (MsStr){check_text, (uint32_t)n});
                 } else {
                     ms_dump_module_nodes(&dump, check, id);

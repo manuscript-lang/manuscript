@@ -1,6 +1,6 @@
 name: C pipeline platforms
 
-# `MS_BACKEND=c ms build` (MIR text, ms_mir_build, clang, ms_asm_tables) on the platforms the pull request jobs do not
+# `MS_BACKEND=c ms build` (the C back end linked into `ms`, then the pinned LLVM tools) on the platforms the pull request jobs do not
 # run: the corpus of `compiler/tests/build-diff.sh` built by both back ends and compared. Manual runs only; the
 # Linux legs run the same script through `make c-compiler-test`.
 
@@ -42,10 +42,6 @@ jobs:
         with:
           os: ${{ matrix.leg.os }}
           arch: ${{ matrix.leg.arch }}
-      - name: Build the C tools
-        run: |
-          cmake -S . -B target/cmake/platform -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build target/cmake/platform --target ms_mir_build ms_asm_tables
       - name: Build ms and its runtime
         run: |
           cargo xtask runtime
@@ -53,11 +49,9 @@ jobs:
       - name: Hello through the C pipeline
         run: |
           printf 'import stdout from "@std/io/io.ms"\n\nexport fn main() Int:\n    _w := stdout().write("hello\\n")\n    return 0\n' > hello.ms
-          MS_BACKEND=c MS_C_BACKEND_DIR="$PWD/target/cmake/platform/compiler" target/release/ms build hello.ms --build-type Debug -o hello
+          MS_BACKEND=c target/release/ms build hello.ms --build-type Debug -o hello
           ./hello
       - name: Compare the corpus
-        env:
-          MS_C_TOOLS: ${{ github.workspace }}/target/cmake/platform/compiler
         run: sh compiler/tests/build-diff.sh '${{ inputs.limit }}' | tee build-diff.log
       - name: Keep the logs of the programs that differ or fail
         if: always()
