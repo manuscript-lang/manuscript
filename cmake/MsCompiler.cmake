@@ -137,7 +137,7 @@ ms_compiler_exe(effect_graph_gen "${_c}/tests/effect_graph_gen.c" PLAIN)
 
 # libmstool.a: libms plus the tool interface (compiler/include/ms/tool.h), the archive a Manuscript tool links
 # with `--link`. No sanitizers: it links into programs built by `ms`.
-add_library(ms_tool STATIC "${_c}/src/libms.c" "${_c}/src/tool.c")
+add_library(ms_tool STATIC "${_c}/src/libms.c" "${_c}/src/tool.c" $<TARGET_OBJECTS:ms_std_embed>)
 target_include_directories(ms_tool PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include"
                            "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include" "${_mimalloc_include}" ${MS_LIB_crypto_INCLUDES})
 target_compile_options(ms_tool PRIVATE -O1 -g -Wall -Wextra -Werror -Wno-format-truncation
