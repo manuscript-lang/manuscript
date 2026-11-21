@@ -189,14 +189,13 @@ static char *const *install_git_environment(MsArena *a, const char *protocols) {
  * failed: <stderr>` with credentials removed. */
 static bool install_git(MsArena *a, const char *dir, const char *protocols, const char *const *args, const char **output,
                         const char **error) {
-    static char git[] = "git";
-    static char *const options[] = {git, "-c", "core.autocrlf=false", "-c", "core.safecrlf=false", "-c",
+    static const char *const options[] = {"git", "-c", "core.autocrlf=false", "-c", "core.safecrlf=false", "-c",
                                     "advice.detachedHead=false",
                                     /* A server that stops sending must fail the install, not hang it. */
                                     "-c", "http.lowSpeedLimit=1000", "-c", "http.lowSpeedTime=30"};
     MsBuf argv = {0};
     for (size_t i = 0; i < sizeof options / sizeof options[0]; i++) {
-        MS_VEC_PUSH(argv, char *, options[i]);
+        MS_VEC_PUSH(argv, char *, ms_arena_strndup(a, options[i], strlen(options[i])));
     }
     if (dir != NULL) {
         MS_VEC_PUSH(argv, char *, ms_arena_strndup(a, "-C", 2));
