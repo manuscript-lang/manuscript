@@ -140,7 +140,7 @@ static bool generic_arguments(MsBody *b, const MsExpr *e, MsTy sig, const MsFunc
 static bool generic_grows(MsBody *b, const MsInfer *in) {
     for (uint32_t i = 0; i < in->nvars; i++) {
         if (ms_ty_kind(&b->c->tys, in->bound[i]) != MS_K_VARIABLE &&
-            ms_ty_has_variable(&b->c->tys, &b->c->arena, in->bound[i])) {
+            ms_ty_has_variable(&b->c->tys, in->bound[i])) {
             return true;
         }
     }
@@ -351,7 +351,7 @@ MsTy ms_body_generic_construct(MsBody *b, const MsExpr *e, MsSymId sym, const Ms
     const MsTy result = ms_ty_apply(b->c, syms->ty[sym], in.bound, def->nvars);
     // A type applied to the caller's own variables may be a cycle of applications that never ends (its
     // defaults call back into the caller), which the Rust checker reports (recursion.rs).
-    if (result == MS_TY_NONE || !ms_body_is_bindable(b, result) || ms_ty_has_variable(&b->c->tys, &b->c->arena, result)) {
+    if (result == MS_TY_NONE || !ms_body_is_bindable(b, result) || ms_ty_has_variable(&b->c->tys, result)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_reordered[e->id] = ms_body_reordered(e, slot);
