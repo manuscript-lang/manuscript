@@ -187,18 +187,16 @@ fn dispatch(root: Command, matches: Matches) Int:
 		return delegate(rust_arguments(root, matches))
 
 	if command == "install" or command == "add" or command == "remove":
-		if done := run_manifest_command(command, matches):
-			out(done.stdout)
-			err(done.stderr)
-			return done.status
-
-		return delegate(rust_arguments(root, matches))
+		done := run_manifest_command(command, matches)
+		out(done.stdout)
+		err(done.stderr)
+		return done.status
 
 	if is_source_command(command): return run_source_command(root, matches)
 
 	return delegate(rust_arguments(root, matches))
 
-fn run_manifest_command(command: String, matches: Matches) Printed?:
+fn run_manifest_command(command: String, matches: Matches) Printed:
 	if command == "install": return run_install(matches)
 	if command == "add": return run_add(matches)
 
