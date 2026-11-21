@@ -27,7 +27,6 @@
 #include "ms/facts.h"
 #include "ms/hints.h"
 #include "ms/import_hints.h"
-#include "ms/ty_algebra.h"
 
 
 
