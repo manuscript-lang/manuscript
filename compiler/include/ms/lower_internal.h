@@ -296,6 +296,7 @@ void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 
 void lb_write_back(Lb *lb);
 LbVal lb_expr_plain(Lb *lb, const MsExpr *e);              /* lowers `e` without converting it to a plain value */
+bool lb_is_pointer_param(Lb *lb, uint32_t binding);   /* a `var` record parameter: read and written through its pointer */
 bool lb_var_owned(const Lb *lb, uint32_t binding);        /* whether the local `binding` owns what it holds */
 
 /* Lists of scalars (lower_list.c, included after lower_body.c). */
@@ -390,6 +391,7 @@ LbVal lr_construct(Lb *lb, const MsExpr *call);
 MsTy le_field_ty(Lb *lb, const MsDef *def, MsTy ty, MsTy declared);
 LbVal lm_empty(Lb *lb, MirTy ty);
 LbVal lr_field(Lb *lb, const MsExpr *e);
+void lr_assign_field(Lb *lb, const MsStmt *s);
 
 /* Optional and Result (lower_alt.c, included after lower_body.c). */
 MirTy la_type(Lb *lb, MsTy ty);
