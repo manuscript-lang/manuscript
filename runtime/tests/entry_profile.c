@@ -33,6 +33,24 @@ static char *slurp(const char *path) {
     return text;
 }
 
+/* The profiler reads its settings with getenv, which on Windows sees only the C library's own copy of the environment:
+ * the Win32 call (and so libuv's) does not update it once it exists, _putenv_s does both. */
+static int set_env(const char *name, const char *value) {
+#ifdef _WIN32
+    return _putenv_s(name, value);
+#else
+    return uv_os_setenv(name, value);
+#endif
+}
+
+static void unset_env(const char *name) {
+#ifdef _WIN32
+    (void)_putenv_s(name, "");
+#else
+    (void)uv_os_unsetenv(name);
+#endif
+}
+
 static volatile unsigned sink;
 
 static void burn(void) {
@@ -54,17 +72,17 @@ int main(void) {
     snprintf(alloc_path, sizeof alloc_path, "%s/ms-entry-profile-%d.allocs", directory, (int)uv_os_getpid());
 
     /* Off by default: nothing is written. */
-    (void)uv_os_unsetenv("MS_PROFILE");
-    (void)uv_os_unsetenv("MS_PROFILE_ALLOCS");
+    unset_env("MS_PROFILE");
+    unset_env("MS_PROFILE_ALLOCS");
     ms_profile_start();
     ms_profile_attach_runtime_thread();
     ms_profile_finish();
     expect(slurp(time_path) == NULL, "no file without MS_PROFILE");
 
-    expect(uv_os_setenv("MS_PROFILE", time_path) == 0, "setenv MS_PROFILE");
-    expect(uv_os_setenv("MS_PROFILE_HZ", "1000") == 0, "setenv MS_PROFILE_HZ");
-    expect(uv_os_setenv("MS_PROFILE_ALLOCS", alloc_path) == 0, "setenv MS_PROFILE_ALLOCS");
-    expect(uv_os_setenv("MS_PROFILE_ALLOC_PERIOD", "4") == 0, "setenv MS_PROFILE_ALLOC_PERIOD");
+    expect(set_env("MS_PROFILE", time_path) == 0, "setenv MS_PROFILE");
+    expect(set_env("MS_PROFILE_HZ", "1000") == 0, "setenv MS_PROFILE_HZ");
+    expect(set_env("MS_PROFILE_ALLOCS", alloc_path) == 0, "setenv MS_PROFILE_ALLOCS");
+    expect(set_env("MS_PROFILE_ALLOC_PERIOD", "4") == 0, "setenv MS_PROFILE_ALLOC_PERIOD");
     msrt_heap_claim();
     ms_profile_start();
     ms_profile_attach_runtime_thread();
