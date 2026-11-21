@@ -1,0 +1,1 @@
+ms install: ms.toml:7:11: dependency @util: unknown field git; a dependency has url and one of version, tag or sha, or only path

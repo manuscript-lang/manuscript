@@ -5,6 +5,8 @@
 //
 // A fixture is a directory tests/conformance/commands/<command>/<name>/ holding
 //   args        one argument per line (the command is the first line)
+//   stdin       optional bytes fed to standard input
+//   ignore      optional paths (one per line) left out of the compared tree
 //   input/      files copied into a fresh working directory before the run
 //   expected/   stdout, stderr, status, and tree/ (every file in the working directory
 //               after the run)
@@ -53,12 +55,15 @@ fn normalize(text: String, dir: String) String:
 	return out
 
 // Every file under `root` as relative path then normalized content.
-fn tree_of(root: String, dir: String) Map[String, String]:
+fn tree_of(root: String, dir: String, ignored: List[String]) Map[String, String]:
 	var files = Map[String, String]()
 
-	for found in glob(root, GlobOptions(patterns: ["**/*"])).get_or([]):
+	for found in glob(root, GlobOptions(patterns: ["**/*", "**/.*", "**/.*/**"])).get_or(
+		[]
+	):
 		path := f"{root}/{found.path}"
 		if found.entry.directory: continue
+		if ignored.contains(found.path): continue
 
 		files.add(
 			found.path.clone(),
@@ -88,16 +93,32 @@ fn execute(ms: String, case_dir: String) Outcome:
 			CopyOptions(recursive: true, replace: true),
 		).get()
 
+	var ignored = List[String]()
+	if access(f"{case_dir}/ignore", 0).is_ok():
+		for line in text_of(read_file(f"{case_dir}/ignore").wait().get()).split("\n"):
+			if line != "": ignored.append(line.clone())
+
+	var input = "".to_bytes()
+	if access(f"{case_dir}/stdin", 0).is_ok(): input = (
+		read_file(f"{case_dir}/stdin")
+		.wait()
+		.get()
+	)
+
 	var args = List[String]()
 	for line in text_of(read_file(f"{case_dir}/args").wait().get()).split("\n"):
 		if line != "": args.append(line.clone())
 
-	out := run(ms.clone(), args, RunOptions(cwd: work.clone(), timeout: seconds(120))).wait().get()
+	out := run(
+		ms.clone(),
+		args,
+		RunOptions(cwd: work.clone(), timeout: seconds(120), input: input),
+	).wait().get()
 	return Outcome(
 		stdout: normalize(text_of(out.stdout), work),
 		stderr: normalize(text_of(out.stderr), work),
 		status: out.exit_code,
-		files: tree_of(work, work),
+		files: tree_of(work, work, ignored),
 	)
 
 fn record(case_dir: String, outcome: Outcome) Void:
@@ -132,7 +153,9 @@ fn difference(case_dir: String, outcome: Outcome) String:
 	tree := f"{case_dir}/expected/tree"
 	var recorded = 0
 
-	for found in glob(tree, GlobOptions(patterns: ["**/*"])).get_or([]):
+	for found in glob(tree, GlobOptions(patterns: ["**/*", "**/.*", "**/.*/**"])).get_or(
+		[]
+	):
 		if found.entry.directory: continue
 
 		recorded += 1
