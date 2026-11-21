@@ -57,10 +57,11 @@ static bool function_diverges(const MsNames *names, const MsModule *module, MsSt
     return false;
 }
 
-/* Whether any module of `modules` holds a loop or a `match` in the function called `name`. */
-static bool program_function_diverges(const MsNames *names, const MsModule *const *modules, uint32_t count, MsStr name) {
-    for (uint32_t i = 0; i < count; i++) {
-        if (function_diverges(names, modules[i], name)) {
+/* Whether the function called `name` holds a loop or a `match` in any module of the program, the standard library's
+ * included. */
+static bool program_function_diverges(const MsCheck *check, MsStr name) {
+    for (uint32_t i = 0; i < check->nmods; i++) {
+        if (check->mods[i].syntax != NULL && function_diverges(check->names, check->mods[i].syntax, name)) {
             return true;
         }
     }
@@ -208,7 +209,7 @@ static bool lower_program_file(const StdFiles *files, MsNames *names, const char
             for (uint32_t i = 0; i < mir.nfuncs && !run; i++) {
                 MsBuf out = {0};
                 mir_print_func(&mir, &mir.funcs[i], &out);
-                if (program_function_diverges(names, modules, graph.count, ms_name(&mir.names, mir.funcs[i].name))) {
+                if (program_function_diverges(&check, ms_name(&mir.names, mir.funcs[i].name))) {
                     printf("; divergent\n");
                 }
                 printf("%.*s\n", (int)out.len, (const char *)out.data);

@@ -21,7 +21,15 @@
 #include "ms/mir_builder.h"
 #include "ms/ty_algebra.h"
 
-LbVal lb_unsupported(Lb *lb) {
+LbVal lb_unsupported_at(Lb *lb, const char *file, int line) {
+    static int why = -1;
+    if (why < 0) {
+        why = getenv("MS_LOWER_WHY") != NULL;
+    }
+    if (why && lb->ok) {
+        const MsStr name = ms_name(&lb->m->names, lb->b.f.name);
+        fprintf(stderr, "why %s:%d %.*s\n", file, line, (int)name.len, name.ptr);
+    }
     lb->ok = false;
     return LB_FAIL;
 }
