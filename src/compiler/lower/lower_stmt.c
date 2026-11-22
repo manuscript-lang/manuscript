@@ -120,6 +120,15 @@ static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
   if (ref->kind != MS_REF_PARAM) {
     return false;
   }
+  if (fn->lambda != NULL) { /* a captured parameter is a variable of the closure body */
+    for (uint32_t at = 0; at < fn->lambda->ncaptures; at++) {
+      const LowerCapture *capture = &fn->lambda->captures[at];
+      if (capture->kind == MS_REF_PARAM && capture->index == ref->local && capture->name == place->u.sym) {
+        *out = fn->cap_vars[at];
+        return true;
+      }
+    }
+  }
   if (var_owns(fn, fn->param_vars[ref->local])) {
     *out = fn->param_vars[ref->local]; /* a `move` parameter the body assigns into */
     return true;

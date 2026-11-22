@@ -95,6 +95,9 @@ static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName n
 }
 
 static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface, MsName name) {
+  if (subst != NULL && subst->count > 0) { /* the methods are those of the instance's receiver, not of its variables */
+    receiver = ms_ty_subst(&cx->program->types, receiver, subst->vars, subst->args, subst->count);
+  }
   const MsDef *def = ms_defs_get(&cx->program->defs, ms_ty_row(&cx->program->types, iface)->def);
   uint32_t *methods = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint32_t, def->operations.len + 1);
   for (size_t index = 0; index < def->operations.len; index++) {

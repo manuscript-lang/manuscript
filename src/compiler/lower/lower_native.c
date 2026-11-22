@@ -458,6 +458,21 @@ bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation
   return true;
 }
 
+/* Whether `operation` is one the checker gives every value of the receiver type (`ValueOperations`,
+ * `CloneOperations` of intrinsics.ms): it has no runtime function of its own. */
+static bool is_universal_operation(const LowerFn *fn, MsTy receiver, MsSpan operation) {
+  MsCheckProgram *program = fn->cx->program;
+  MsMethodMatchList found = {0};
+  ms_check_find_native(program, receiver, ms_names_intern(program->names, operation), &found);
+  bool universal = false;
+  for (size_t at = 0; at < found.len && !universal; at++) {
+    const MsSpan interface = ms_names_span(program->names, ms_ty_row(&program->types, found.ptr[at].contract)->name);
+    universal = ms_span_is_text(interface, "ValueOperations") || ms_span_is_text(interface, "CloneOperations");
+  }
+  ms_method_match_list_free(&found);
+  return universal;
+}
+
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsExpr *callee = expr->u.call.callee;
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
@@ -489,7 +504,9 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   if (fn_native_on(fn, callee->u.member.left, owner, operation, call->arg_count, args, ret, &result)) {
     return result;
   }
-  if (standard_form(fn, args, call->arg_count, ret, &result) && via_bound) {
+  const bool universal = via_bound || (ms_native_sig_find(ms_names_span(&fn->cx->module->names, runtime_name(fn, owner, operation))) == NULL &&
+                                       is_universal_operation(fn, owner, operation));
+  if (universal && standard_form(fn, args, call->arg_count, ret, &result)) {
     return result; /* the operation every value has, with no runtime function of its own */
   }
   return fn_runtime_call(fn, runtime_name(fn, owner, operation), args, call->arg_count, ret);
