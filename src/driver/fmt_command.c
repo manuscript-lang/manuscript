@@ -1,4 +1,4 @@
-/* Driver: `ms fmt <files> [--check] [--json]`. Formats each file in place, or with --check only reports
+/* Driver: `ms fmt <files> [--check] [--json] [--drop-labels]`. Formats each file in place, or with --check only reports
  * which files differ. With --json the report is `{format, files, diagnostics}` on stdout; without it
  * problems go to stderr. Status 0 is clean, 1 an error or a file needing formatting, 2 a usage error. */
 #include "driver/fmt_command.h"
@@ -13,12 +13,13 @@
 #include "base/sort.h"
 #include "compiler/syntax/diag_json.h"
 #include "compiler/syntax/format.h"
+#include "driver/fmt_labels.h"
 #include "driver/fmt_targets.h"
 
-enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70 };
+enum { STATUS_FAILED = 1, STATUS_USAGE = 2 };
 
 typedef struct FmtOptions {
-  bool check, json;
+  bool check, json, drop_labels;
 } FmtOptions;
 
 MS_LIST_DEFINE(TargetList, target_list, MsSpan)
@@ -71,8 +72,7 @@ static int parse_arguments(int argc, char **argv, FmtOptions *options, TargetLis
     } else if (!positional && is_option(argument, "--json")) {
       options->json = true;
     } else if (!positional && is_option(argument, "--drop-labels")) {
-      (void)fprintf(stderr, "ms fmt: --drop-labels is not implemented yet\n");
-      return STATUS_NOT_IMPLEMENTED;
+      options->drop_labels = true;
     } else if (!positional && text.len > 0 && text.ptr[0] == '-') {
       (void)fprintf(stderr, "unknown option %s for ms fmt; run 'ms help fmt' for its options\n", argument);
       return STATUS_USAGE;
@@ -152,7 +152,11 @@ static void format_file(MsSpan path, const FmtOptions *options, FmtOutcome *outc
   MsStrBuild formatted = ms_strbuild_new();
   MsDiag diag = {0};
   const MsSpan source = ms_bytes_span(&bytes);
-  if (!ms_format(&arena, source, &formatted, &diag)) {
+  MsSpan text = source;
+  MsSpan problem = {0};
+  if (options->drop_labels && !fmt_drop_labels(&arena, path, outcome->display, source, &text, &problem)) {
+    report_plain(outcome, "MSF002", problem);
+  } else if (!ms_format(&arena, text, &formatted, &diag)) {
     report_syntax(outcome, &diag);
   } else if (ms_span_equal(source, ms_strbuild_span(&formatted))) {
     outcome->state = "clean";

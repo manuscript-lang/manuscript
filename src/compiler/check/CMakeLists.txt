@@ -3,3 +3,4 @@ ms_target_defaults(ms_check)
 target_link_libraries(ms_check PUBLIC ms_base ms_syntax ms_project)
 # Body checking (the Checker owner's files).
 target_sources(ms_check PRIVATE facts.c bodies.c exprs.c exprs_ops.c calls.c match.c)
+target_sources(ms_check PRIVATE drop_labels.c)
